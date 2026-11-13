@@ -1,5 +1,11 @@
 # T1/T2 consolidation — slice plans
 
+**Execution addendum:** [`execution-schedule.md`](./execution-schedule.md) owns current PR grouping,
+dependencies and file reservations; [`decomposition.md`](./decomposition.md) adds ownership
+extractions. The specifications below remain authoritative for scope, behavior, measurement,
+acceptance and rollback; their original one-slice-per-PR and lane packaging is superseded only by
+that additive schedule.
+
 Findings are in [`audit.md`](./audit.md); the renderer target is in
 [`renderer-refactor.md`](./renderer-refactor.md). Each slice is one pull request unless it says
 otherwise. A slice edits only its listed touchpoints; a needed change outside them is reported, not

@@ -31,6 +31,8 @@ Not in scope: new product features, kernel replacement, a WebGPU migration, spec
 | [`audit.md`](./audit.md) | Evidence: findings against the invariants, the pipeline as built, the cost model with every figure labelled measured, counted, estimate or unknown |
 | [`renderer-refactor.md`](./renderer-refactor.md) | Design of the renderer refactor: layers, ownership, keys, the one material factory, identity, instancing, portability rules |
 | [`slices.md`](./slices.md) | Implementation-ready slices: touchpoints, dependencies, measure-first step, tests, acceptance, rollback, lanes |
+| [`execution-schedule.md`](./execution-schedule.md) | Additive execution packaging: complete slice coverage, PR packets, dependencies, file reservations, gates and rollback boundaries |
+| [`decomposition.md`](./decomposition.md) | Additive God-file inventory and extraction contracts: route, facade, adapters, lifecycle/parity and executable ownership guards |
 
 ## Headline findings
 
@@ -52,6 +54,12 @@ before changing anything, apply the optimisation only if the measurement support
 measure again afterwards. Counts are the instrument and the acceptance line; durations are evidence.
 
 ## Execution shape
+
+**Execution addendum:** use [`execution-schedule.md`](./execution-schedule.md) for PR grouping and
+ordering, including the new [`decomposition.md`](./decomposition.md) work. It consolidates the
+existing specifications into 13 PR groups and adds eight bounded extraction groups. The original
+slice algorithms, conditions, tests and owner decisions remain authoritative; the paragraph below
+records the original packaging, not the current execution schedule.
 
 Seventeen slices in four file-disjoint lanes after one baseline slice (C0). Lanes can run as
 parallel sessions; order inside a lane is fixed. If the milestone is cut short, the value order is
