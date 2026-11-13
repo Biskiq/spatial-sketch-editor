@@ -1,5 +1,15 @@
 # T2 · Gallery UX Recovery — diagnosis and specification
 
+> **Status note (2026-11-13, revision 2 of [`ux-design.html`](./ux-design.html)).** For lighting
+> presentation, the Light Cards, Time and Sky, the sheet is now normative; its §0 lists exactly what
+> it supersedes. Superseded here: §4.1 guide inks; §5.3–5.4 Point and Spot presentation (ray
+> silhouette, no surface footprints); §5.5, O4, O5 and A3 (Directional is retired; the Sky owns
+> the only Sun); O6 and the §6.1 Brightness chips (log slider); the §6.2 Direction group; growth
+> rule 4 (the Spot Card has five rows); and the Beam wording (Card shows full width, `angle` stays
+> the stored half-angle). Everything else here stands. Panel ids cited below (`#point`, `#spot`,
+> `#directional`, `#placement`, `#advanced`) are from the earlier sheet; the current sheet's
+> sections are `#stage`, `#cards`, `#sky`, `#artwork` and `#shell`.
+
 **Status:** design accepted by the owner (all decisions in §2), amended by the PR #314 review
 (§2.1). Nothing is implemented.
 **Companion:** [`ux-design.html`](./ux-design.html) — interactive sheet; panel ids are cited as `#id`.
