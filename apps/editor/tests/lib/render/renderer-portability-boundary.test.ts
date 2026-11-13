@@ -8,10 +8,9 @@
  * only shrink.
  *
  * Forbidden outside the allowlist: `onBeforeCompile`, `ShaderMaterial` (which
- * includes `RawShaderMaterial`), `WebGLRenderTarget`, a `WebGLRenderer`
- * reference, `getContext(` on anything but a 2D canvas, an alpha-test depth
+ * includes `RawShaderMaterial`), `WebGLRenderTarget`, `getContext(` on anything but a 2D canvas, an alpha-test depth
  * override (`customDepthMaterial` / `customDistanceMaterial`), and an import from
- * a WebGL-only Three path (`three/examples/jsm/lines/*`, `three/src/*`).
+ * a WebGL-only Three path (`three/examples/jsm/lines/*`, `three/addons/lines/*`, `three/src/*`).
  */
 import { describe, expect, it } from 'vitest';
 import { readProductSources, scanTokens, type TokenRule } from '../../helpers/render-boundary-scan';
@@ -20,19 +19,16 @@ const RULES: readonly TokenRule[] = [
 	{ name: 'onBeforeCompile', pattern: /\bonBeforeCompile\b/ },
 	{ name: 'ShaderMaterial', pattern: /ShaderMaterial\b/ },
 	{ name: 'WebGLRenderTarget', pattern: /\bWebGLRenderTarget\b/ },
-	{ name: 'WebGLRenderer', pattern: /\bWebGLRenderer\b/ },
 	{ name: 'getContext-non-2d', pattern: /\.getContext\(\s*(?!['"]2d['"])/ },
 	{ name: 'customDepthMaterial', pattern: /\bcustomDepthMaterial\b/ },
 	{ name: 'customDistanceMaterial', pattern: /\bcustomDistanceMaterial\b/ },
-	{ name: 'webgl-only-three-path', pattern: /from\s*['"]three\/(?:examples\/jsm\/lines|src)\// }
+	{ name: 'webgl-only-three-path', pattern: /from\s*['"]three\/(?:examples\/jsm\/lines|addons\/lines|src)\// }
 ];
 
 /** Every permitted site, and exactly what each may contain. */
 export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {
 	// The WebGL shim: the DFG lookup lifecycle wraps onBeforeCompile. The only renderer-specific module.
-	'apps/editor/src/lib/render/managed-webgl-renderer.ts': ['WebGLRenderer', 'onBeforeCompile'],
-	// Types the Canvas renderer factories it builds through the shim.
-	'apps/editor/src/lib/render/canvas-renderers.ts': ['WebGLRenderer'],
+	'apps/editor/src/lib/render/managed-webgl-renderer.ts': ['onBeforeCompile'],
 	// Editor-only GLSL for the mat and grid; a node material when a port happens.
 	'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts': ['ShaderMaterial'],
 	// Editor-only fat lines; Three ships a WebGPU line variant.

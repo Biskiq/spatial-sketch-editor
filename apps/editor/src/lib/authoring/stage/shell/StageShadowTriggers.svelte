@@ -9,8 +9,7 @@
 	 * The triggers are identities, not polls: a canonical compile installs a new
 	 * `geometry` (a Wall or object edit, Undo/Redo, a replacement, a reading
 	 * change), Scene resolution installs a new `scene` (a placement added, moved or
-	 * removed, a light changed, an entity's transform or flags changed), and the
-	 * Room registry installs new placement transforms. Reading them in one effect
+	 * removed, a light changed, an entity's transform or flags changed). Reading them in one effect
 	 * means a render at rest — an orbit, a hover, a selection — invalidates
 	 * nothing, which is the saving.
 	 *

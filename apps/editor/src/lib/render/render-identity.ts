@@ -60,8 +60,10 @@ export type LayoutIdentityIndex = {
 /**
  * Reconcile a representation's hidden set against a new one.
  *
- * Work is proportional to the ids whose state changed: each id leaving the set is
- * shown, each id entering it is hidden, and ids in both are untouched. The
+ * Visibility writes are proportional to the ids whose state changed: each id leaving
+ * the set is shown, each id entering it is hidden, and ids in both are untouched.
+ * (Finding what changed walks both sets, so the scan is proportional to their size;
+ * the sets are the host's display overlay, not the document.) The
  * returned set is the new current set (the caller keeps it so a later-built item
  * with a hidden id is born hidden).
  */

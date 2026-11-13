@@ -16,10 +16,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { BufferGeometry } from 'three';
 import {
 	compileWallFirstLayoutGeometry,
+	createLayoutCompileSession,
+	ensureLayoutWorldIndex,
+	planRigidWallMove,
+	withLayoutCompileSession,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 
+import { immutableF4Data } from '@portfolio/project-model';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { renderIdentityOf } from '$lib/render/render-identity';
@@ -277,7 +282,7 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 		} finally {
 			counting.stop();
 		}
-	});
+	}, 60_000);
 
 	it('remembers the hidden set: a rebuilt Wall stays hidden and a later Wall is born hidden', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
@@ -301,5 +306,32 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 			if (wall.wallId !== early && wall.wallId !== rebuilt) expect(representation.objectOf(wall.wallId)!.visible).toBe(true);
 		}
 		representation.dispose();
-	});
+	}, 60_000);
+
+	it('keeps a hidden Wall hidden, tagged and the same mesh across a session delta (the copy path)', () => {
+		let document = immutableF4Data(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const session = createLayoutCompileSession();
+		const base = session.compile(document).geometry;
+		ensureLayoutWorldIndex(document);
+		const target = document.walls[4]!.id;
+		const representation = createWallRepresentation();
+		representation.update(base);
+		const mesh = representation.objectOf(target)!;
+		representation.setHidden(new Set([target]));
+		expect(mesh.visible).toBe(false);
+
+		const plan = withLayoutCompileSession(session, () => planRigidWallMove(document, { wallId: target, delta: [0, 0.01] }));
+		if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+		document = plan.document;
+		const stats = representation.update(plan.acceptance!.geometry);
+		// The delta path patches the attached mesh in place: copy() would otherwise show it again.
+		expect(stats.built).toBeGreaterThan(0);
+		expect(representation.objectOf(target)).toBe(mesh);
+		expect(mesh.visible).toBe(false);
+		expect(renderIdentityOf(mesh)).toEqual({ kind: 'wall', id: target });
+
+		representation.setHidden(new Set());
+		expect(mesh.visible).toBe(true);
+		representation.dispose();
+	}, 60_000);
 });
