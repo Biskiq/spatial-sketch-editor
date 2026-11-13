@@ -13,7 +13,9 @@ The synthetic harness used the same production entry points the Stage uses, driv
 - **M / L:** the certified `grid-M` / `grid-L` workloads, opened through source admission, read in
   Plan, candidate preview ticked once, then one accepted Wall edit and one accepted Camera edit.
 - **Scene:** the `counting-scene` fixture (`tests/lib/authoring/__fixtures__/counting-scene.ts`),
-  prepared and rendered once, then released.
+  prepared once. Its material and texture rows are a **synthetic sweep** of the production
+  resolver/acquire functions over the fixture's renderable list; they are not a mounted Scene
+  consumer measurement. Mounted per-entity material and texture work is **unmeasured**.
 
 Counts are read through `installPerfWorkObserver`'s `__BISKIQ_PERF_WORK__.counts` and the
 `paper:plan` representation stats. The mounted call-site tests in
@@ -25,7 +27,7 @@ Counts are read through `installPerfWorkObserver`'s `__BISKIQ_PERF_WORK__.counts
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `grid-M` | 112 | 49 | 112 | 0 | — | 0 |
 | `grid-L` | 420 | 196 | 420 | 0 | — | 0 |
-| `counting-scene` | 112 | 49 | 0 | 277 | 3 | 49 |
+| `counting-scene` | 112 | 49 | 112 | 277 | 3 | 49 |
 
 `counting-scene` is `grid-M` plus, per Room, three primitives (two sharing a look), one Form and one
 textured primitive; plus 20 artworks of four sizes and 12 instances of one model. Distribution:
@@ -42,10 +44,12 @@ textured primitive; plus 20 artworks of four sizes and 12 instances of one model
 | `scene:resolve` per accepted Camera edit | 1 | 1 | 1 | counted |
 | Paper segments after one accepted build | 3,612 | 13,692 (preparation) | 3,612 (layout) | counted |
 | `paper:plan-build` / `paper:scene-build` per drawing revision | 1 / 1 | 1 / 1 | 1 / 1 | counted (mounted revision change) |
-| `material:resolve` per full Scene material resolution | 0 (no Scene entities) | 0 (no Scene entities) | 277 | counted |
+| `material:resolve` per full Scene material resolution (synthetic sweep) | 0 (no Scene entities) | 0 (no Scene entities) | 277 | counted, synthetic |
+| `material:resolve` per mounted Scene render | unmeasured | unmeasured | unmeasured | **unmeasured** |
 | `material:resolve` per accepted edit | unmeasured | unmeasured | unmeasured | **unmeasured** |
-| `texture:variant-acquire` per Scene mount | 0 | 0 | 554 calls, 4 distinct variants | counted |
-| `texture:variant-dispose` on full release | 0 | 0 | 4 | counted |
+| `texture:variant-acquire` in the synthetic sweep | 0 | 0 | 554 calls, 4 distinct variants | counted, synthetic |
+| `texture:variant-dispose` in the synthetic sweep | 0 | 0 | 4 | counted, synthetic |
+| `texture:variant-acquire` / `dispose` per mounted Scene | unmeasured | unmeasured | unmeasured | **unmeasured** |
 | `texture:variant-*` per accepted edit | unmeasured | unmeasured | unmeasured | **unmeasured** |
 | `render:shadow-update` per accept / per second at rest | unmeasured | unmeasured | unmeasured | **unmeasured** |
 | Live geometries / materials / textures | unmeasured | unmeasured | unmeasured | **unmeasured** |
@@ -60,6 +64,10 @@ Notes:
   measurement, so the baseline row stays unmeasured.
 - `render:stage-frame` counts Stage surfaces only. A Preview surface is counted separately as
   `render:preview-frame` (the one documented extra name) and is never reported as a Stage frame.
+- The synthetic material/texture sweep calls the production functions once per fixture entity; a
+  mounted Scene may acquire, reuse or release different numbers. No mounted value is inferred from
+  the sweep. The fixture Opening inventory is asserted against `addOpenings` (112 of 112 eligible
+  Walls), so the content table cannot drift silently.
 
 ## Browser evidence gap
 

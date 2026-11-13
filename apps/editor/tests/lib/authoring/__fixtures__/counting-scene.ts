@@ -76,6 +76,7 @@ export type CountingSceneFixture = {
 	readonly counts: {
 		readonly walls: number;
 		readonly rooms: number;
+		readonly openings: number;
 		readonly primitives: number;
 		readonly forms: number;
 		readonly artworks: number;
@@ -90,6 +91,17 @@ function roomPoint(index: number, roomSize = CELL_METERS): [number, number] {
 	const column = index % COUNTING_GRID;
 	const row = Math.floor(index / COUNTING_GRID);
 	return [column * roomSize + 1, row * roomSize + 1];
+}
+
+/** The count `addOpenings` promises: one per Wall of at least 3 m. */
+function eligibleOpeningWalls(document: LayoutDocumentWallFirst): number {
+	const points = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
+	return document.walls.filter((wall) => {
+		const a = points.get(wall.startJunctionId);
+		const b = points.get(wall.endJunctionId);
+		if (a === undefined || b === undefined) throw new Error(`missing junction for ${wall.id}`);
+		return Math.hypot(b[0] - a[0], b[1] - a[1]) >= 3;
+	}).length;
 }
 
 function primitive(
@@ -210,7 +222,14 @@ export async function buildCountingSceneFixture(
 	projectId = COUNTING_PROJECT_ID
 ): Promise<CountingSceneFixture> {
 	const captures = sequentialCaptures('e0-counting-');
-	const document = addOpenings(buildGrid(COUNTING_GRID, captures), captures);
+	const base = buildGrid(COUNTING_GRID, captures);
+	const expectedOpenings = eligibleOpeningWalls(base);
+	const document = addOpenings(base, captures);
+	if (document.openings.length !== expectedOpenings) {
+		throw new Error(
+			`the counting fixture has ${document.openings.length} Openings, but addOpenings promises ${expectedOpenings}`
+		);
+	}
 	const compile = compileWallFirstLayoutGeometry(document);
 	const blocking = compile.issues.filter((issue) => issue.severity !== 'warning');
 	if (blocking.length > 0) {
@@ -279,6 +298,7 @@ export async function buildCountingSceneFixture(
 		counts: {
 			walls: document.walls.length,
 			rooms: rooms.length,
+			openings: document.openings.length,
 			primitives: entities.filter((entity) => entity.kind === 'primitive').length,
 			forms: entities.filter((entity) => entity.kind === 'form').length,
 			artworks: entities.filter((entity) => entity.kind === 'artwork').length,

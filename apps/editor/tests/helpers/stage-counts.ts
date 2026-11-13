@@ -14,7 +14,6 @@
  * `null` rather than an inferred number.
  */
 import { setWorkObserver } from '@portfolio/layout-core';
-import { perfRenderer } from '$lib/platform/perf-marks';
 
 export type RendererInfo = {
 	readonly calls: number | null;
@@ -107,16 +106,3 @@ export function startStageCounting(): StageCounting {
 	return seam;
 }
 
-/**
- * Hand one renderer to the product's own `perfRenderer` hook.
- *
- * This is the same call the Stage and Preview Canvas factories make; a test uses
- * it for a renderer that is not constructed by a WebGL context. Without the
- * counting seam's flag it returns the renderer and calls no hook.
- */
-export function registerCountingRenderer<T extends object>(
-	renderer: T,
-	surface: 'stage' | 'preview' = 'stage'
-): T {
-	return perfRenderer(renderer, surface);
-}

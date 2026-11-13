@@ -17,7 +17,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { Scene as ThreeScene, type Camera, type Object3D, type WebGLRenderer } from 'three';
+import { Scene as ThreeScene, type Camera } from 'three';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import { createEmptyLayoutRoomRegistry, type RuntimeScene } from '@portfolio/project-model';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
@@ -25,9 +25,9 @@ import { createCameraSession } from '$lib/authoring/stage/camera-session';
 import { createPaperScene } from '$lib/authoring/stage/paper-scene';
 import { buildLayoutCandidatePaper } from '$lib/authoring/adapters/layout/candidate-preview';
 import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
-import { manageWebGLRenderer } from '$lib/render/managed-webgl-renderer';
+import { previewCanvasRenderer, stageCanvasRenderer } from '$lib/render/canvas-renderers';
 import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
-import { registerCountingRenderer, startStageCounting, type StageCounting } from '../../helpers/stage-counts';
+import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 vi.mock('@threlte/core', async () => import('./fixtures/threlte-counting-context'));
 
@@ -42,38 +42,40 @@ import {
 	releaseMaterialVariant
 } from '$lib/museum/materials/texture-cache';
 import { getMaterial } from '$lib/content/materials';
-import { buildCountingSceneFixture, COUNTING_ROOMS, type CountingSceneFixture } from './__fixtures__/counting-scene';
+import {
+	buildCountingSceneFixture,
+	COUNTING_GRID,
+	type CountingSceneFixture
+} from './__fixtures__/counting-scene';
+
+vi.mock('three', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('three')>();
+	/** Only the GPU implementation is doubled; the managed wrapper stays production. */
+	class StubWebGLRenderer {
+		readonly info = { render: { calls: 4, triangles: 120 }, memory: { geometries: 2, textures: 1 } };
+		render(): void {}
+		dispose(): void {}
+	}
+	return { ...actual, WebGLRenderer: StubWebGLRenderer };
+});
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const RENDERER_INFO = { render: { calls: 4, triangles: 120 }, memory: { geometries: 2, textures: 1 } };
-
-/** A renderer-shaped object for the managed wrapper and the perf renderer hook. */
-function fakeRenderer() {
-	const frames: number[] = [];
-	const renderer = {
-		render(_scene: Object3D, _camera: Camera): void {
-			frames.push(frames.length);
-		},
-		dispose(): void {},
-		rendererState: frames,
-		info: RENDERER_INFO
-	};
-	return renderer;
-}
 
 function shadowLights() {
 	return [{ castShadow: true }];
 }
 
 let fixture: CountingSceneFixture;
-let counting: StageCounting;
+let counting: StageCounting | null = null;
 
 beforeAll(async () => {
 	fixture = await buildCountingSceneFixture();
 }, 60_000);
 
 afterEach(() => {
-	counting.stop();
+	counting?.stop();
+	counting = null;
 	vi.restoreAllMocks();
 	threlteProbe.reset();
 });
@@ -84,6 +86,12 @@ function begin(): StageCounting {
 }
 
 describe('E0 work counters through their production callers', () => {
+	it('keeps the Scene fixture Opening inventory aligned with addOpenings', () => {
+		expect(fixture.counts.openings).toBe(2 * COUNTING_GRID * COUNTING_GRID + 2 * COUNTING_GRID);
+		expect(fixture.counts.openings).toBe(fixture.counts.walls);
+		expect(fixture.counts.openings).toBe(fixture.document.openings.length);
+	});
+
 	it('resolves the Scene unit through the one runtime preparation path', () => {
 		const seam = begin();
 		const prepared = prepareUnitRuntime(fixture.project);
@@ -149,17 +157,23 @@ describe('E0 work counters through their production callers', () => {
 		expect(seam.count('camera:evaluate')).toBe(1);
 	});
 
-	it('counts a Stage frame in the managed renderer and reports its renderer.info', () => {
+	it('registers Stage and Preview surfaces through the production Canvas renderer callbacks', () => {
 		const seam = begin();
-		const renderer = fakeRenderer();
-		const managed = manageWebGLRenderer(renderer as unknown as WebGLRenderer, 'stage');
-		registerCountingRenderer(managed, 'stage');
-		managed.render(new ThreeScene(), {} as Camera);
-		managed.render(new ThreeScene(), {} as Camera);
+		const stage = stageCanvasRenderer(document.createElement('canvas'));
+		const preview = previewCanvasRenderer(document.createElement('canvas'));
+		stage.render(new ThreeScene(), {} as Camera);
+		stage.render(new ThreeScene(), {} as Camera);
+		preview.render(new ThreeScene(), {} as Camera);
 		expect(seam.count('render:stage-frame')).toBe(2);
-		expect(renderer.rendererState).toHaveLength(2);
-		expect(seam.surfaces()).toContain('stage');
+		expect(seam.count('render:preview-frame')).toBe(1);
+		expect(seam.surfaces()).toEqual(expect.arrayContaining(['stage', 'preview']));
 		expect(seam.rendererInfo('stage')).toEqual({
+			calls: 4,
+			triangles: 120,
+			geometries: 2,
+			textures: 1
+		});
+		expect(seam.rendererInfo('preview')).toEqual({
 			calls: 4,
 			triangles: 120,
 			geometries: 2,
@@ -280,9 +294,7 @@ describe('E0 observer-disabled behaviour', () => {
 		const drawing = buildPaperPlan(fixture.plan, fixture.compiled, fixture.footprints);
 		const resources = createPaperScene(drawing, [1280, 720]);
 		resources.dispose();
-		const renderer = fakeRenderer();
-		const managed = manageWebGLRenderer(renderer as unknown as WebGLRenderer, 'stage');
-		registerCountingRenderer(managed, 'stage');
+		const managed = stageCanvasRenderer(document.createElement('canvas'));
 		managed.render(new ThreeScene(), {} as Camera);
 		expect(seam.counts()).toEqual(countsBefore);
 		expect(seam.rendererInfo('stage')).toBeNull();

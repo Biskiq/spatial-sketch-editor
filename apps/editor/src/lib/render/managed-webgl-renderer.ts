@@ -47,11 +47,12 @@ export function manageWebGLRenderer(
 ): WebGLRenderer {
 	const sharedLookups = new Set<Texture>();
 	const render = renderer.render;
+	const frameCounter = `render:${surface}-frame`;
 	// The one frame counter. Inert without an observer: no allocation, no branch
 	// beyond `countWork`'s own null check. It wraps the original render directly,
 	// so it survives the discovery wrapper's self-removal below.
 	const managedFrame = function (scene: Object3D, camera: Camera): void {
-		countWork(`render:${surface}-frame`);
+		countWork(frameCounter);
 		render.call(renderer, scene, camera);
 	};
 	const dispose = renderer.dispose;
