@@ -727,6 +727,7 @@ The PR stays open and unmerged.
 | 7 | `9869922f` | Directional dial and immediate Directional shelf creation |
 | 8 | `f81918f0` | Light hover ghost, lit candidate and placement lifecycle |
 | 9 | `1c77c42b` | Artwork wall-follow move, nine-point fit test and ghost lifecycle |
+| 10 | `912c62dc` | Dial 0° tick and tick hover names, light `Placing…`/refused-release ghost, Card foot action width |
 
 Verification follow-ups are separate commits: `80409077` moves the new colour dial onto the
 `--shell-white` presentation token, `c1e6e699` fixes the Advanced White/Colour mode toggle so it
@@ -742,7 +743,10 @@ Duplicate/Delete and in-place delete confirmation, and refusal-red dashed Artwor
 pass completes the last approved §5.5 marks — the dial's centre name chip and one clickable 6 px
 tick per other Directional light — through a generic guide label on the Stage contract, and points
 `LightCardFields` at the adapter host's `ShellIcon` export so the adapter boundary test is green
-again.
+again. `912c62dc` closes the last §5.5 and §5.7 marks found in the post-implementation audit: the
+dial's 0° tick, a hovered tick's name, the light placement's `Placing…` hold with input ignored
+until the one create settles, the refused-release ghost held in refusal ink for four seconds, and
+the Card-foot specificity fix that had been clipping `Duplicate` behind the 24 px icon-button rule.
 
 **Verification evidence**
 
@@ -775,14 +779,34 @@ again.
   dial showed no other-light tick or name chip. The browser pass did not exercise Artwork move or
   cast shadows because the guest scene has no imported Artwork asset; those paths are covered by the
   focused unit suites rather than by a visual check.
+- Browser spot check after `912c62dc` at 1440×900: Spot shelf placement showed
+  `Point at a surface` before the pointer and then the selected light with one undo entry; two
+  Directional creates gave the dial its 0° tick and one other-light tick, and editing `From` from
+  225° to 90° moved the selected arrows while the companion tick stayed at its bearing; the
+  Advanced list showed Colour/Brightness/Direction/Shadows with one group open, the White/Colour
+  mode stayed Card-local, `Cast shadows` toggled and its group summary changed to `On`; the Card
+  foot now shows `Advanced ⌄ · Delete · Duplicate` without clipping. The Artwork shelf contains only
+  `Import` in the guest project, so Artwork placement, wall-follow move and resizing were not
+  visually exercised. Cast shadows had no receiving geometry in the empty scene, and the preview
+  surface has no hover command, so the tick name tag is covered by the lifecycle seam test rather
+  than a browser hover. The `Placing…` chip is held only while the create is pending; the local
+  create settles inside one frame, so it was not captured visually.
+- After `912c62dc`: `light-adapter-lifecycle`, `light-card-fields`, `editor-card-facts` and
+  `directional-dial` — 4 files, 57 tests passed; `npm run check` — 0 errors and the same 4 visitor
+  a11y warnings; `npm run test:arch -- --maxWorkers=2` — 24 files, 202 tests passed.
 
 **Known gaps**
 
-- The Directional dial now draws the selected light's name at its centre and one clickable 6 px
-  derived tick per other Directional light; a tick resolves through the same pick path as the Index
-  and selects that light without a gesture or a write. The approved ring, From spoke, quarter arc,
-  travel arrows and two point beads remain. A tick does not show its name on hover: the selected
-  name is the centre chip and the Index lists every light by name.
+- The Directional dial draws the selected light's name at its centre, the 0° mark and one clickable
+  6 px derived tick per other Directional light; a tick resolves through the same pick path as the
+  Index and selects that light without a gesture or a write. An unpressed hover on a tick appends
+  that light's name at its bearing through the Stage's idle-hover seam. The approved ring, From
+  spoke, quarter arc, travel arrows and two point beads remain.
+- Point/Spot placement holds the drawn ghost under `Placing…` and ignores pointer input until the
+  one create settles; a refused release keeps the ghost in refusal ink with the planner's message
+  until the next pointer move or four seconds. Object and Artwork placement still own their older
+  lifecycle paths and have no `Placing…` chip; their own refusal and ghost tests remain the
+  evidence for those subjects.
 - The Light Card foot now names the closed Advanced groups and owns Duplicate/Delete. Delete asks
   in the foot and opens no subject menu; a refusal still reports in the Card's existing status line.
 - A hover over a surface with no passing Artwork pose still uses the candidate ghost ink only. The
