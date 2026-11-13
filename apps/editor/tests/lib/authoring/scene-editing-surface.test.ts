@@ -1970,6 +1970,38 @@ describe('Scene adapter registration', () => {
 		expect(facade.session.task()).toBeNull();
 	});
 
+	it('holds Placing…, ignores input and keeps a refused Object release ghost', async () => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const deferred: { resolve: ((outcome: Awaited<ReturnType<SceneWritePort['accept']>>) => void) | null } = { resolve: null };
+		let accepts = 0;
+		const accept: SceneWritePort['accept'] = () => {
+			accepts += 1;
+			return new Promise((resolve) => { deferred.resolve = resolve; });
+		};
+		const { facade, session, evaluationId } = await withSceneSurface(accept, 'scene-place', project);
+		const target = stageCssOf(facade, [3.5, 0, 7.5]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: target, evaluationId }).claimed).toBe(true);
+		expect(facade.pointerIntent({ phase: 'up', css: target, evaluationId }).claimed).toBe(true);
+		await eventually(() => accepts === 1);
+		expect(facade.overlays().map((marker) => marker.label)).toContain('Placing…');
+		expect(session.candidate()?.kind).toBe('place');
+		// A second press while the one create is pending is claimed but starts no
+		// new preview and sends no second intent.
+		expect(facade.pointerIntent({ phase: 'down', css: target, evaluationId }).claimed).toBe(true);
+		expect(accepts).toBe(1);
+
+		const settle = deferred.resolve;
+		if (settle === null) throw new Error('the Object create was not deferred');
+		settle({ kind: 'refused', code: 'fixture-refusal', message: 'The fixture refused this pose.' });
+		await eventually(() => facade.ghosts().some((ghost) => ghost.treatment === 'refused'));
+		expect(facade.overlays().map((marker) => marker.label)).toContain('The fixture refused this pose.');
+
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		expect(facade.ghosts().every((ghost) => ghost.treatment !== 'refused')).toBe(true);
+		facade.pointerIntent({ phase: 'cancel', css: target, evaluationId });
+	});
+
 	it('previews and commits a pointer Place on the datum beyond the Room floor', async () => {
 		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const offsetRect = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };

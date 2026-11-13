@@ -18,7 +18,7 @@ import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/sce
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
-import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
+import { createStageAcceptanceHost, type StageAcceptOutcome } from '$lib/authoring/stage/host-acceptance';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
@@ -230,6 +230,56 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(forward[0]).toBeCloseTo(0, 8);
 		expect(forward[1]).toBeCloseTo(-1, 8);
 		expect(forward[2]).toBeCloseTo(0, 8);
+	});
+
+	it('holds Placing…, ignores input and keeps the refused release ghost until the next move', async () => {
+		const { facade, host } = await mounted();
+		openSpotTask(facade);
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history();
+		const deferred: { resolve: ((outcome: StageAcceptOutcome) => void) | null } = { resolve: null };
+		const accept = vi.spyOn(host, 'accept').mockImplementationOnce(
+			() => new Promise<StageAcceptOutcome>((resolve) => { deferred.resolve = resolve; }) as never
+		);
+
+		facade.pointerIntent({ phase: 'down', css: [640, 380], evaluationId });
+		facade.pointerIntent({ phase: 'move', css: [700, 380], evaluationId });
+		facade.pointerIntent({ phase: 'up', css: [700, 380], evaluationId });
+
+		const held = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement');
+		expect(held?.role).toBe('subject');
+		expect(held?.labels.map((label) => label.text)).toContain('Placing…');
+		expect(facade.session.gesture()).toBeNull();
+		// While the one create is in flight, a second press is claimed but starts
+		// no placement gesture and writes nothing.
+		expect(facade.pointerIntent({ phase: 'down', css: [520, 300], evaluationId }).claimed).toBe(true);
+		expect(facade.session.gesture()).toBeNull();
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(lightsOf(facade)).toHaveLength(0);
+		expect(host.history()).toEqual(before);
+
+		const settle = deferred.resolve;
+		if (settle === null) throw new Error('the light create was not deferred');
+		settle({
+			kind: 'refused',
+			code: 'fixture-refusal',
+			message: 'The fixture refused this pose.'
+		});
+		await waitFor(() =>
+			facade.candidatePreviews().some(
+				(candidate) => candidate.id === 'light-placement' && candidate.role === 'refused'
+			)
+		);
+		const refused = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement');
+		expect(refused?.labels.map((label) => label.text)).toContain('The fixture refused this pose.');
+		expect(lightsOf(facade)).toHaveLength(0);
+		expect(host.history()).toEqual(before);
+
+		// The next pointer move clears the refused pose rather than reviving it.
+		facade.hoverIntent({ phase: 'move', css: [600, 380], evaluationId });
+		const fresh = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement');
+		expect(fresh?.role).toBe('subject');
+		expect(fresh?.labels.map((label) => label.text)).not.toContain('The fixture refused this pose.');
 	});
 
 	it('edits a freshly placed light through an admitted mark while placement stays rearmed', async () => {

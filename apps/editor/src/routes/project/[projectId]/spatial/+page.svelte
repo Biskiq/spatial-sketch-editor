@@ -1040,6 +1040,41 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	} | null>(null);
 	let artworkResizeGhost = $state.raw<SceneArtworkEntity | null>(null);
 	let artworkResizeBlocked = $state(false);
+	/** The pointer's local Stage point, the fallback anchor for an Artwork need chip. */
+	let artworkPlacementCss = $state<readonly [number, number] | null>(null);
+	/**
+	 * T2 §5.7 — the Artwork placement lifecycle's one Stage chip. The ghost's
+	 * projected centre anchors Click / Placing / refusal text; before any pose
+	 * exists the chip follows the pointer (or the Stage centre on arming).
+	 */
+	const artworkPlacementCandidate = $derived.by(() => {
+		const prompt = artwork.placementPrompt;
+		if (prompt === null || evaluation?.renderedReading !== '3d' || rect === null) return null;
+		const ghost = artwork.ghost;
+		const id = facade?.evaluationId() ?? null;
+		let projectedCss: readonly [number, number] | null = null;
+		if (ghost !== null && facade !== null && id !== null) {
+			const projected = facade.projectWorld(
+				[
+					ghost.position[0],
+					ghost.position[1] + artworkOuterSize(ghost).height / 2,
+					ghost.position[2]
+				] as const,
+				id
+			);
+			if (projected.kind === 'projected' && projected.visibility === 'visible') {
+				projectedCss = [projected.css[0] - rect.left, projected.css[1] - rect.top];
+			}
+		}
+		const css = projectedCss ?? artworkPlacementCss ?? ([rect.width / 2, rect.height * 0.42] as const);
+		return {
+			id: 'artwork-placement-chip',
+			role: prompt.refused ? ('refused' as const) : ('subject' as const),
+			polygons: [],
+			segments: [],
+			labels: [{ css, text: prompt.text }]
+		};
+	});
 	function cancelArtworkResize(): void {
 		artworkResize?.lease.release();
 		artworkResize = null;
@@ -3237,7 +3272,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			artworkResizeBlocked = artworkResize.blocked;
 			return;
 		}
-		if (artwork.armed && event.buttons === 0) artwork.move(artworkPoseAt(event));
+		if (artwork.armed) {
+			if (rect !== null) {
+				artworkPlacementCss = [event.clientX - rect.left, event.clientY - rect.top];
+			}
+			if (event.buttons === 0) artwork.move(artworkPoseAt(event));
+		}
 		if (sheetPinDrag !== null) {
 			if (event.pointerId === sheetPinDrag.pointerId) sheetPinMove(event);
 			return;
@@ -4982,7 +5022,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if experienceLens.lookThroughSession() === null}
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} {guides} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} {guides} candidates={[...candidatePreviews, ...(artworkPlacementCandidate === null ? [] : [artworkPlacementCandidate])]} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
 					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
 						<ExperienceMarks
