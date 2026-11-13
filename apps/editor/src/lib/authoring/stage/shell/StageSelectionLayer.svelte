@@ -44,6 +44,7 @@
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { compiledOpeningFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
 	import { STAGE_PAINT } from './stage-paint';
+	import { renderIdentityOf } from '$lib/render/render-identity';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
 	import {
@@ -121,26 +122,15 @@
 		const id = entry.reference.subject.id;
 		const domain = entry.reference.domain;
 		if (domain === 'layout') {
-			const layout = scenePick.layoutObject();
-			if (layout === null) return NO_SOURCE;
 			const kind = entry.reference.subject.kind;
-			if (kind === 'wall') {
-				// A failed Wall is still readable as its failure surface, so the creator
-				// can see that the selected identity is the one the compiler refused.
-				const wall =
-					layout.getObjectByName(`VisitorPhysicalWall:${id}`) ??
-					layout.getObjectByName(`VisitorPhysicalWallFailure:${id}`);
-				return wall === undefined ? NO_SOURCE : { objects: [wall], dispose: () => {} };
-			}
-			if (kind === 'object') {
-				const object = layout.getObjectByName(`VisitorLayoutObject:${id}`);
-				return object === undefined ? NO_SOURCE : { objects: [object], dispose: () => {} };
-			}
-			if (kind === 'room') {
-				const floor = layout.getObjectByName(`VisitorFloor:${id}`);
-				return floor === undefined ? NO_SOURCE : { objects: [floor], dispose: () => {} };
-			}
-			return NO_SOURCE;
+			// A failed Wall is still readable as its failure surface, so the creator
+			// can see that the selected identity is the one the compiler refused.
+			const owned =
+				kind === 'wall' ? scenePick.layoutObjectOf('wall', id)
+				: kind === 'object' ? scenePick.layoutObjectOf('object', id)
+				: kind === 'room' ? scenePick.layoutObjectOf('floor', id)
+				: null;
+			return owned === null ? NO_SOURCE : { objects: [owned], dispose: () => {} };
 		}
 		const entity = scenePick.entityObject(id);
 		return entity === null ? NO_SOURCE : { objects: [entity], dispose: () => {} };
@@ -339,7 +329,7 @@
 				(tone === 'selection' || tone === 'hover') &&
 				wallOutline === 'stencil' &&
 				meshes.length === 1 &&
-				meshes[0]!.name.startsWith('VisitorPhysicalWall:')
+				renderIdentityOf(meshes[0]!)?.kind === 'wall'
 			) {
 				addStencilSilhouette(meshes[0]!, tone);
 				return;

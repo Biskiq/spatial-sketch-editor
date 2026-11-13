@@ -3,6 +3,7 @@ import { Box3, Matrix3, Mesh, Raycaster, type Intersection, type Object3D } from
 import type { PointerRay } from '@portfolio/camera-core';
 import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
+import { renderIdentityOf, type LayoutIdentityIndex } from '$lib/render/render-identity';
 
 export type SceneRenderedHit = {
 	readonly entityId: string | null;
@@ -26,6 +27,8 @@ export function hasVisibleAncestor(node: Object3D): boolean {
 export function createScenePickSource() {
 	const roots = new Map<string, Object3D>();
 	let layoutRoot: Object3D | null = null;
+	/** The Layout shell's owned id → object index; never a subtree search. */
+	let layoutIdentity: LayoutIdentityIndex | null = null;
 	/** Renderer-only observers; they never participate in picking. */
 	const listeners = new Set<() => void>();
 	function notify(): void {
@@ -104,7 +107,7 @@ export function createScenePickSource() {
 			...(normal === null ? {} : { wallNormal: normal.toArray() }),
 			...(faceNormal === undefined ? {} : { normal: faceNormal }),
 			entityId,
-			kind: entityId !== null ? 'entity' : object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout',
+			kind: entityId !== null ? 'entity' : renderIdentityOf(object)?.kind === 'floor' ? 'floor' : 'layout',
 			distanceMeters: hit.distance,
 			worldPoint: hit.point.toArray()
 		};
@@ -159,9 +162,16 @@ export function createScenePickSource() {
 			roots.set(id, root); refresh();
 			return () => { if (roots.get(id) === root) { roots.delete(id); notify(); } };
 		},
-		/** A read-only render root lookup for the Stage's selection layer. */
-		layoutObject(): Object3D | null {
-			return layoutRoot;
+		/** Register the Layout shell's owned identity index (see `VisitorLayoutShell`). */
+		registerLayoutIdentity(index: LayoutIdentityIndex) {
+			// Deferred like `registerLayout`: this runs inside the shell's mount effect, and a
+			// synchronous observer that writes state would loop that effect.
+			layoutIdentity = index; refresh();
+			return () => { if (layoutIdentity === index) { layoutIdentity = null; notify(); } };
+		},
+		/** The object that draws this Layout item, resolved through the owner's index. */
+		layoutObjectOf(kind: 'wall' | 'object' | 'floor', id: string): Object3D | null {
+			return layoutIdentity?.objectOf(kind, id) ?? null;
 		},
 		entityObject(id: string): Object3D | null {
 			return roots.get(id) ?? null;

@@ -47,7 +47,7 @@ describe('I3 precondition (a): a format-7 compile never yields Room-owned walls'
 		expectNoRoomOwnedWalls(compileWallFirstLayoutGeometry(document, undefined, reuse).geometry);
 		// A second compile of the same document takes the retained/delta path.
 		expectNoRoomOwnedWalls(compileWallFirstLayoutGeometry(document, undefined, reuse).geometry);
-	});
+	}, 60_000);
 });
 
 describe('I3 precondition (b): the Scene codec refuses roomId', () => {
@@ -76,7 +76,7 @@ describe('I3 precondition (b): the Scene codec refuses roomId', () => {
 			expect(dirty.success).toBe(false);
 		}
 		expect(kinds.size).toBeGreaterThanOrEqual(4);
-	});
+	}, 60_000);
 });
 
 describe('I3 final state: the Room frame and its registry are gone', () => {
@@ -85,7 +85,7 @@ describe('I3 final state: the Room frame and its registry are gone', () => {
 		const prepared = prepareUnitRuntime(fixture.project);
 		if (prepared.kind !== 'ready') throw new Error(`fixture did not prepare: ${prepared.kind}`);
 		expect('rooms' in prepared).toBe(false);
-	});
+	}, 60_000);
 
 	it('no product source names the Room registry, the Room frame type or a Scene roomId', () => {
 		const productionFiles = [

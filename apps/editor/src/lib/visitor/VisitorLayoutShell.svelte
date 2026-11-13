@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
-	import { Shape } from 'three';
+	import { Shape, type Object3D } from 'three';
 	import type { LayoutVec2 } from '@portfolio/layout-core';
 	import type { CompiledLayoutGeometry, CompiledRoom } from '@portfolio/layout-core';
 	import { DEFAULT_FLOOR_COLOR, neutralVisitorRoomPresentation } from './room-presentation';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
+	import { renderIdentity, type LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import MuseumMaterial from '$lib/museum/materials/MuseumMaterial.svelte';
 	import RoomPortal from '$lib/museum/layout/RoomPortal.svelte';
@@ -16,7 +17,8 @@
 		textureScope = null,
 		plinth = true,
 		doorFrames = true,
-		hiddenWallIds = []
+		hiddenWallIds = [],
+		onIdentity
 	}: {
 		geometry: CompiledLayoutGeometry;
 		textureScope?: TextureLoadScope | null;
@@ -28,6 +30,12 @@
 		doorFrames?: boolean;
 		/** A display-only overlay (the unfold sheet) owns these Wall bodies. */
 		hiddenWallIds?: readonly string[];
+		/**
+		 * Receives the shell's identity index once, on mount: id → the object that draws
+		 * it. The host resolves picks and selection through it instead of searching the
+		 * subtree by name. Returns the host's unregister function.
+		 */
+		onIdentity?: (index: LayoutIdentityIndex) => (() => void) | void;
 	} = $props();
 
 	function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
@@ -89,12 +97,12 @@
 	// representation immediately before every update.
 	$effect(() => {
 		walls.update(geometry);
-		const hidden = new Set(hiddenWallIds);
-		for (const wall of geometry.walls) {
-			const object = walls.object3d.getObjectByName(`VisitorPhysicalWall:${wall.wallId}`) ??
-				walls.object3d.getObjectByName(`VisitorPhysicalWallFailure:${wall.wallId}`);
-			if (object !== undefined) object.visible = !hidden.has(wall.wallId);
-		}
+	});
+	// Hiding is its own effect: a change of the hidden set must not re-run the
+	// compile reconciliation, and a recompile must not re-walk the hidden set (the
+	// representation remembers it and applies it to whatever it rebuilds).
+	$effect(() => {
+		walls.setHidden(new Set(hiddenWallIds));
 	});
 	$effect(() => () => walls.dispose());
 
@@ -109,6 +117,17 @@
 		objects.update(geometry);
 	});
 	$effect(() => () => objects.dispose());
+
+	/** Room floors are shell-owned meshes; this is their id → object index. */
+	const floors = new Map<string, Object3D>();
+	const identity: LayoutIdentityIndex = {
+		objectOf(kind, id) {
+			if (kind === 'wall') return walls.objectOf(id);
+			if (kind === 'object') return objects.objectOf(id);
+			return floors.get(id) ?? null;
+		}
+	};
+	$effect(() => onIdentity?.(identity));
 
 	$effect(() => {
 		// Bound the shape cache by the rooms this geometry actually has.
@@ -131,6 +150,13 @@
 		<T.Group name={`VisitorRoom:${room.roomId}`}>
 			<T.Mesh
 				name={`VisitorFloor:${room.roomId}`}
+				userData={renderIdentity('floor', room.roomId)}
+				oncreate={(mesh) => {
+					floors.set(room.roomId, mesh);
+					return () => {
+						if (floors.get(room.roomId) === mesh) floors.delete(room.roomId);
+					};
+				}}
 				position={[0, room.floorElevation, 0]}
 				rotation={[-Math.PI / 2, 0, 0]}
 			>

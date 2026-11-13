@@ -110,7 +110,13 @@ export const ARCH_FILES: string[] = [
 	// no accepted intent reaches the curve planners that call them, and an
 	// uncalled planner is invisible to every build, type check and lane report,
 	// so only a call-site boundary can hold the condition.
-	'tests/lib/layout/layout-identity-boundary.test.ts'
+	'tests/lib/layout/layout-identity-boundary.test.ts',
+	// E1/R1: the renderer portability boundary (an exact, shrink-only allowlist of
+	// the WebGL-specific sites) and render identity (no name search or name
+	// parsing). Both are source-level facts: a renderer happily draws whichever
+	// shader or name it is given, so no lane report or build can see a new site.
+	'tests/lib/render/renderer-portability-boundary.test.ts',
+	'tests/lib/render/render-identity-boundary.test.ts'
 ];
 
 /**

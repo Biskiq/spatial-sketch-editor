@@ -16,6 +16,8 @@ import {
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
+import { renderIdentityOf } from '$lib/render/render-identity';
+import { startStageCounting } from '../../helpers/stage-counts';
 
 function compiled(document: LayoutDocumentWallFirst): CompiledLayoutGeometry {
 	return compileWallFirstLayoutGeometry(document).geometry;
@@ -151,5 +153,66 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 		expect(disposeSpy).not.toHaveBeenCalled();
 		disposeSpy.mockRestore();
 		materialSpy.mockRestore();
+	});
+});
+
+describe('E1/R1 — owned render identity on the object representation', () => {
+	it('objectOf returns the retained mesh, tagged with its id, for every compiled object', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const representation = createObjectRepresentation();
+		representation.update(geometry);
+		for (const object of geometry.objects) {
+			const mesh = representation.objectOf(object.objectId);
+			expect(mesh, object.objectId).not.toBeNull();
+			expect(renderIdentityOf(mesh!)).toEqual({ kind: 'object', id: object.objectId });
+			mesh!.name = 'renamed';
+			expect(representation.objectOf(object.objectId)).toBe(mesh);
+		}
+		expect(representation.objectOf('no-such-object')).toBeNull();
+		representation.dispose();
+	});
+
+	it('is null once the object is released or the representation disposed', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const representation = createObjectRepresentation();
+		representation.update(geometry);
+		const removed = geometry.objects.at(-1)!;
+		representation.update({ ...geometry, objects: geometry.objects.filter((object) => object.objectId !== removed.objectId) });
+		expect(representation.objectOf(removed.objectId)).toBeNull();
+		representation.dispose();
+		for (const object of geometry.objects) expect(representation.objectOf(object.objectId)).toBeNull();
+	});
+
+	it('hides k objects with k writes, remembers the set across a rebuild, and births a late object hidden', () => {
+		const counting = startStageCounting();
+		try {
+			const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
+			const base = compiled(document);
+			const representation = createObjectRepresentation();
+			const ids = base.objects.map((object) => object.objectId);
+			const moved = ids[0]!;
+			const late = ids[1]!;
+			// Born hidden: set before the object exists.
+			representation.setHidden(new Set([late]));
+			representation.update(base);
+			expect(representation.objectOf(late)!.visible).toBe(false);
+
+			counting.reset();
+			representation.setHidden(new Set([late, moved]));
+			expect(counting.count('representation:visibility-write')).toBe(1);
+			expect(counting.count('representation:object-entry-test')).toBe(0);
+			representation.setHidden(new Set([late, moved]));
+			expect(counting.count('representation:visibility-write')).toBe(1);
+
+			// A rebuilt object is a new mesh: the remembered set applies to it.
+			const edited = compiled(moveOneObject(document));
+			const stats = representation.update(edited);
+			expect(stats.built).toBe(1);
+			expect(representation.objectOf(moved)!.visible).toBe(false);
+			for (const id of ids.filter((id) => id !== moved && id !== late)) expect(representation.objectOf(id)!.visible, id).toBe(true);
+			representation.dispose();
+		} finally {
+			counting.stop();
+		}
 	});
 });

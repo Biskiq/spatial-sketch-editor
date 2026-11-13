@@ -289,7 +289,8 @@ import StageMatGround from './StageMatGround.svelte';
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
-			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]} />
+			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
