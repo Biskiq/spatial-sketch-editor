@@ -41,6 +41,8 @@
  * satisfies {@link ShadowMapLike}, and the unit test drives a fake one.
  */
 
+import { countWork } from '@portfolio/layout-core';
+
 /** The slice of `THREE.WebGLShadowMap` this module needs. */
 export type ShadowMapLike = {
 	autoUpdate: boolean;
@@ -139,6 +141,9 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 		const casting = active ? lights.filter((light) => light.castShadow) : [];
 		if (casting.length > 0) {
 			passes += 1;
+			// The work counter mirrors `stats().passes`: one shadow-map update that
+			// actually rendered, never the call three skipped.
+			countWork('render:shadow-update');
 			for (const light of casting) maps += light.isPointLight ? 6 : 1;
 		}
 		originalRender.call(shadowMap, lights, scene, camera);

@@ -20,6 +20,7 @@ import { chromium, type CDPSession, type Page } from '@playwright/test';
 import { newMeasuredSession } from './lib/browser';
 import {
 	acceptedResultCount,
+	chooseCreateStarter,
 	commitPrecisionLength,
 	fitStage,
 	frameWindow,
@@ -221,8 +222,12 @@ async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: s
 	const refresh = await refreshPeriod(page);
 	const openWallStart = Date.now();
 	const openDispatch = 0;
+	// The runner's own session sets no Playwright `baseURL`, so the absolute URL
+	// stays here; the shared helper then accepts a build that still presents the
+	// retired starter chooser without requiring it (issue #273: never wait for a
+	// dialog this shell does not show).
 	await page.goto(`${BASE_URL}/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await page.getByRole('dialog', { name: 'Start a project' }).waitFor();
+	await chooseCreateStarter(page, 'Begin empty');
 	await openSourceJson(page, { size: tier, projectId, envelope: JSON.parse(canonicalJson), canonicalJson, facts: { walls: 0, openings: 0, rooms: 0 } });
 	const opened = await waitForRelevantFrame(page, async () => openTiming(await readLedger(page), openDispatch));
 	const openWallMs = Date.now() - openWallStart;

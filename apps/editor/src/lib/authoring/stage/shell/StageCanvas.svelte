@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
-	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
+	import { stageCanvasRenderer } from '$lib/render/canvas-renderers';
+	import { perfMark } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
 	 *
@@ -246,7 +246,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 </script>
 
-<Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas, { stencil: true }), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+<Canvas createRenderer={stageCanvasRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
 	<!--
 		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is

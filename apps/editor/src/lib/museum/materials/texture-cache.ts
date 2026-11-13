@@ -6,6 +6,7 @@ import {
   type Texture as ThreeTexture
 } from 'three';
 import type { MaterialDefinition, MaterialTextureSlot } from '$lib/types/materials';
+import { countWork } from '@portfolio/layout-core';
 
 export type LoadedTextureMaps = Partial<Record<MaterialTextureSlot, ThreeTexture>>;
 
@@ -282,6 +283,7 @@ export function acquireMaterialVariant(
   rotation = 0,
   scope?: TextureLoadScope | TextureScopeKey | null
 ): LoadedTextureMaps {
+	countWork('texture:variant-acquire');
   const key = variantKey(definition.id, repeatX, repeatY, rotation, scope ?? null);
   const existing = variantCache.get(key);
   if (existing) {
@@ -312,6 +314,7 @@ export function releaseMaterialVariant(
     texture?.dispose();
   }
   variantCache.delete(key);
+	countWork('texture:variant-dispose');
 }
 
 /** Test helper: clear in-memory caches (does not dispose GPU sources still referenced). */
@@ -400,6 +403,7 @@ export function acquireEffectiveVariant(
   rotation = 0,
   scope?: TextureLoadScope | TextureScopeKey | null
 ): LoadedTextureMaps {
+	countWork('texture:variant-acquire');
   const key = effectiveVariantKey(effective.variantSeed, repeatX, repeatY, rotation, scope ?? null);
   const existing = variantCache.get(key);
   if (existing) {
@@ -445,4 +449,5 @@ export function releaseEffectiveVariant(
 
   for (const texture of Object.values(existing.maps)) texture?.dispose();
   variantCache.delete(key);
+	countWork('texture:variant-dispose');
 }

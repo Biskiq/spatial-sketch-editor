@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
-	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
+	import { previewCanvasRenderer } from '$lib/render/canvas-renderers';
+	import { perfMark } from '$lib/platform/perf-marks';
 	import { onMount, untrack } from 'svelte';
 import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 import { PCFShadowMap } from 'three';
@@ -424,7 +424,7 @@ import { PCFShadowMap } from 'three';
 		aria-describedby="visitor-preview-help"
 	>
 		<Canvas
-		createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'preview')}
+		createRenderer={previewCanvasRenderer}
 		dpr={[1, 1.5]}
 		shadows={PCFShadowMap}
 		renderMode={active ? 'always' : 'on-demand'}

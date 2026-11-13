@@ -33,6 +33,7 @@ import { newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
 import {
 	acceptedResultCount,
+	chooseCreateStarter,
 	fitStage,
 	gotoCreateIntent,
 	setStageReading,
@@ -293,9 +294,10 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 		const projectId = uniqueProjectId('s03diagempty');
 		const evidence: Record<string, unknown> = { projectId };
 
-		await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-		await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-		await page.getByRole('button', { name: 'Begin empty' }).click();
+		// Issue #273: the shipped route opens the minted project directly. The shared
+		// helper keeps a stale build's chooser branch without requiring that dialog.
+		await gotoCreateIntent(page, projectId);
+		await chooseCreateStarter(page, 'Begin empty');
 		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
 		await saveProject(page);
 

@@ -25,6 +25,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { createPaperFillGeometry } from './paper-fill-geometry';
+import { countWork } from '@portfolio/layout-core';
 import {
 	PAPER_FILL_INK,
 	PAPER_GROUND_INK,
@@ -74,6 +75,7 @@ export function createPaperScene(
 	resolution: readonly [number, number],
 	datumMeters = 0
 ): PaperSceneResources {
+	countWork('paper:scene-build');
 	const group = new Group();
 	group.name = 'StagePaper';
 	const disposables: { dispose(): void }[] = [];

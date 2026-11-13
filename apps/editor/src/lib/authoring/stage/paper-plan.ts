@@ -18,6 +18,7 @@ import {
 	eligiblePlanFragments,
 	createPlanBoxIndex,
 	indexedCompiledWall,
+	countWork,
 	type CompiledLayoutGeometry,
 	type CompiledOpening,
 	type CompiledPhysicalWall,
@@ -716,6 +717,7 @@ export function buildPaperPlan(
 		readonly datumMeters?: number;
 	} = {}
 ): PaperPlanDrawing {
+	countWork('paper:plan-build');
 	const lines: PaperLineDraw[] = [];
 	const fills: PaperFillDraw[] = [];
 	const cutBands = new Map<string, Omit<PaperLineDraw, 'segments'> & { spans: CutWallSpan[] }>();

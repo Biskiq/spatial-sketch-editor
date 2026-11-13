@@ -161,14 +161,15 @@ export function prepareValidatedUnitRuntime(
 
 	let runtimeScene: RuntimeScene;
 	try {
-		runtimeScene = p2311Measure('scene-resolve', () =>
-			resolveSceneDocument(
+		runtimeScene = p2311Measure('scene-resolve', () => {
+			countWork('scene:resolve');
+			return resolveSceneDocument(
 				sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
 				// Force the Camera-unit policy after merging the host's catalogue
 				// options: editor admission and visitor preparation share one answer.
 				{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
-			)
-		);
+			);
+		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Scene preparation failed';
 		return {
