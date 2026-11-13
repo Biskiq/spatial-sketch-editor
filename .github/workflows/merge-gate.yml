@@ -32,6 +32,21 @@ jobs:
         with:
           fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '2' }}
           persist-credentials: false
+      # GitHub records a pull request's base SHA when its comparison is built. A
+      # stacked pull request's parent branch can move afterwards, so the shallow
+      # checkout above may not contain that commit. Deepen the checkout instead of
+      # relaxing the ancestry check the classifier performs.
+      - name: Materialize the comparison base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if git merge-base --is-ancestor "$BASE_SHA" HEAD 2>/dev/null; then exit 0; fi
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --no-tags --unshallow origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          fi
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -258,6 +273,19 @@ jobs:
         with:
           fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '2' }}
           persist-credentials: false
+      # The aggregate step re-resolves the same event plan, so it needs the same
+      # comparison base in a shallow checkout.
+      - name: Materialize the comparison base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if git merge-base --is-ancestor "$BASE_SHA" HEAD 2>/dev/null; then exit 0; fi
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --no-tags --unshallow origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          fi
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: 22
