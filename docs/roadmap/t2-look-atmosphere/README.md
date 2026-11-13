@@ -7,6 +7,16 @@ claimed, planned where §12 says so, and reviewed on its own, and every Tier 2 i
 in that slice's PR. It is not a reference contract; §12 lists the contracts each slice must amend. **Review page:** [`review.html`](./review.html)
 (open directly in a browser; SVG sketches and five small interactive studies).
 
+> **UX authority (13 November 2026).** For lighting presentation, the Light Cards, the Environment
+> control (Time and Sky) and the shell placement of these controls, the finalized
+> [`gallery-ux-recovery/ux-design.html`](./gallery-ux-recovery/ux-design.html) (revision 4) is the
+> **authoritative T2 UX reference for subsequent implementation**. It wins where it disagrees with
+> the `fix.md` sections its §0 lists; everywhere else `fix.md` remains the contract. PR #314
+> implements that `fix.md` recovery and stays open for review. The newer design is delivered in
+> **separate follow-up PRs**, with functional seams and visual presentation separated. Nothing here
+> brings a deferred capability forward: Directional retirement, stored Sky fields, grouping,
+> volumetrics and WebGPU work stay gated by their own slices.
+
 **Read against:** [Shell / PLATE](../../reference/design-system/editor-shell-and-visual-system.md),
 [Scene content](../../reference/components/scene-content.md) (§ Material and light semantic gaps),
 [Assets](../../reference/components/assets.md) (§ Current asset system, P20),
@@ -332,6 +342,22 @@ as **go, go with a renamed label, or wait**. **Not ruled out, each behind its ow
 interior reflection capture, area lights, transmission, a post pass, baked or cached shadows. The
 contract that keeps them open is cheap: one resolved-look module with a quality input, one material
 factory, no slice bypassing either.
+
+**Renderer portability (owner decision 2026-11-12; a review line for every T2 slice, not a
+contract change).** `WebGLRenderer` stays the production renderer. A later WebGPU trial would run
+two renderers, because three's internal WebGL fallback measured 4.7× slower per draw. So:
+
+1. Materials come from the shared material factory as built-in Three materials and parameters. A
+   new `ShaderMaterial`, `onBeforeCompile` or node (TSL) material needs a `WebGLRenderer`
+   implementation and a PR sentence naming its TSL port, or saying why it stays editor-only.
+2. No post pass is built on `EffectComposer` before the renderer question is decided; a promise
+   that needs one (bloom, for example) raises that decision first.
+3. Renderer-specific API (`renderer.info`, render targets, context access) stays in the render
+   modules, not in Svelte components.
+
+Evidence and reopen conditions:
+[rendering and compute assessment §7](../../../broad-research/rendering-compute-architecture-assessment.md#7-owner-decisions-and-probe-outcome-2026-11-12).
+The measured shadow constants there are input to item 4's shadow budget.
 
 ## 9. Homes: one writer per fact, no new panel
 

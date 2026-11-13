@@ -14,23 +14,26 @@
 	 */
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { RuntimeScene } from '$lib/content/scene';
-	import type { LayoutRoomRegistry } from '@portfolio/project-model';
+	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
 
 	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
 
 	let {
 		scene,
-		rooms,
+		artworkScope = null,
+		onArtworkError,
 		modelUrls = null,
 		onFormRendererReady,
 		onEntityRenderable,
 		scenePick,
-		onEntityRoot
+		onEntityRoot,
+		includeLights = true
 	}: {
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
 		/** Resolved approved creator-model bytes, owned by the route's session. */
+		artworkScope?: ArtworkScope | null;
+		onArtworkError?: (message: string) => void;
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
 		onFormRendererReady: () => void;
@@ -39,6 +42,7 @@
 		scenePick: ScenePickSource;
 		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
 		onEntityRoot?: (id: string, root: Parameters<ScenePickSource['register']>[1]) => () => void;
+		includeLights?: boolean;
 	} = $props();
 
 	let ModelComponent = $state<AssetModelComponent | null>(null);
@@ -77,4 +81,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />
+<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />

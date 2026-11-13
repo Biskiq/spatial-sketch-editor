@@ -1,9 +1,20 @@
 /** Mounted Scene geometry is data for the Stage hit provider, never a selection authority. */
-import { Box3, Mesh, Raycaster, type Object3D } from 'three';
+import { Box3, Matrix3, Mesh, Raycaster, type Intersection, type Object3D } from 'three';
 import type { PointerRay } from '@portfolio/camera-core';
+import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
+import { renderIdentityOf, type LayoutIdentityIndex } from '$lib/render/render-identity';
 
-export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly distanceMeters: number; readonly worldPoint: [number, number, number] };
+export type SceneRenderedHit = {
+	readonly entityId: string | null;
+	readonly kind: 'entity' | 'floor' | 'layout';
+	readonly wallId?: string;
+	readonly wallNormal?: [number, number, number];
+	readonly distanceMeters: number;
+	readonly worldPoint: [number, number, number];
+	/** World-space surface normal when the hit is a mesh face. */
+	readonly normal?: [number, number, number];
+};
 
 /** True when this node and every ancestor are visible; the same rule the pick ray uses. */
 export function hasVisibleAncestor(node: Object3D): boolean {
@@ -16,6 +27,8 @@ export function hasVisibleAncestor(node: Object3D): boolean {
 export function createScenePickSource() {
 	const roots = new Map<string, Object3D>();
 	let layoutRoot: Object3D | null = null;
+	/** The Layout shell's owned id → object index; never a subtree search. */
+	let layoutIdentity: LayoutIdentityIndex | null = null;
 	/** Renderer-only observers; they never participate in picking. */
 	const listeners = new Set<() => void>();
 	function notify(): void {
@@ -69,6 +82,53 @@ export function createScenePickSource() {
 		});
 		return found;
 	}
+	/**
+	 * One ray hit in the shared vocabulary. Layout wall sides carry the pick
+	 * normal A1's placement policy reads; opening reveals, lintels, bridges and
+	 * free-end caps carry none (a cap keeps the `side` owner but is excluded by
+	 * `isArtworkWallFace`, which reads T1's compiled Wall tangent).
+	 */
+	function describeHit(hit: Intersection, entityId: string | null): SceneRenderedHit {
+		// The caller admits only Mesh hits; `Intersection.object` is the wide base type.
+		const object = hit.object as Mesh;
+		const triangleOffset = hit.faceIndex == null ? -1 : hit.faceIndex * 3;
+		const ranges = object.geometry.userData.pickRanges as readonly Layout3dPickRange[] | undefined;
+		const face = entityId === null ? ranges?.find((range) =>
+			triangleOffset >= range.start && triangleOffset < range.start + range.count) : undefined;
+		const isWall = face?.kind === 'wall' && face.surface === 'side';
+		const normal = isWall && hit.face
+			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld))
+			: null;
+		const faceNormal = hit.face
+			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld)).toArray() as [number, number, number]
+			: undefined;
+		return {
+			...(face?.kind === 'wall' ? { wallId: face.segmentId } : {}),
+			...(normal === null ? {} : { wallNormal: normal.toArray() }),
+			...(faceNormal === undefined ? {} : { normal: faceNormal }),
+			entityId,
+			kind: entityId !== null ? 'entity' : renderIdentityOf(object)?.kind === 'floor' ? 'floor' : 'layout',
+			distanceMeters: hit.distance,
+			worldPoint: hit.point.toArray()
+		};
+	}
+	function prepare(ray: PointerRay, expected: RuntimeScene): boolean {
+		if (source !== expected || ![...ray.origin, ...ray.direction].every(Number.isFinite)) return false;
+		raycaster.ray.origin.set(...ray.origin);
+		raycaster.ray.direction.set(...ray.direction);
+		return true;
+	}
+	function targetsFor(expected: RuntimeScene): Array<{ id: string | null; root: Object3D | undefined }> {
+		const targets = expected.entities.map((entity) => ({ id: entity.id as string | null, root: roots.get(entity.id) }));
+		if (layoutRoot !== null) targets.push({ id: null, root: layoutRoot });
+		return targets;
+	}
+	function nearest(candidate: SceneRenderedHit, current: SceneRenderedHit | null): SceneRenderedHit {
+		if (current === null) return candidate;
+		if (candidate.distanceMeters < current.distanceMeters) return candidate;
+		if (candidate.distanceMeters === current.distanceMeters && (candidate.entityId ?? '') < (current.entityId ?? '')) return candidate;
+		return current;
+	}
 	return {
 		setSource(next: RuntimeScene) { source = next; refresh(); },
 		/**
@@ -102,9 +162,16 @@ export function createScenePickSource() {
 			roots.set(id, root); refresh();
 			return () => { if (roots.get(id) === root) { roots.delete(id); notify(); } };
 		},
-		/** A read-only render root lookup for the Stage's selection layer. */
-		layoutObject(): Object3D | null {
-			return layoutRoot;
+		/** Register the Layout shell's owned identity index (see `VisitorLayoutShell`). */
+		registerLayoutIdentity(index: LayoutIdentityIndex) {
+			// Deferred like `registerLayout`: this runs inside the shell's mount effect, and a
+			// synchronous observer that writes state would loop that effect.
+			layoutIdentity = index; refresh();
+			return () => { if (layoutIdentity === index) { layoutIdentity = null; notify(); } };
+		},
+		/** The object that draws this Layout item, resolved through the owner's index. */
+		layoutObjectOf(kind: 'wall' | 'object' | 'floor', id: string): Object3D | null {
+			return layoutIdentity?.objectOf(kind, id) ?? null;
 		},
 		entityObject(id: string): Object3D | null {
 			return roots.get(id) ?? null;
@@ -115,13 +182,9 @@ export function createScenePickSource() {
 			return () => { listeners.delete(listener); };
 		},
 		pick(ray: PointerRay, expected: RuntimeScene): SceneRenderedHit | null {
-			if (source !== expected || ![...ray.origin, ...ray.direction].every(Number.isFinite)) return null;
-			raycaster.ray.origin.set(...ray.origin);
-			raycaster.ray.direction.set(...ray.direction);
-			let nearest: SceneRenderedHit | null = null;
-			const targets = expected.entities.map((entity) => ({ id: entity.id as string | null, root: roots.get(entity.id) }));
-			if (layoutRoot !== null) targets.push({ id: null, root: layoutRoot });
-			for (const target of targets) {
+			if (!prepare(ray, expected)) return null;
+			let result: SceneRenderedHit | null = null;
+			for (const target of targetsFor(expected)) {
 				const root = target.root;
 				if (root === undefined) continue;
 				// Exact hierarchy/matrix/geometry stamps invalidate conservative bounds
@@ -134,14 +197,47 @@ export function createScenePickSource() {
 						if (!node.visible) { visible = false; break; }
 					}
 					if (!visible) continue;
-					if (nearest === null || hit.distance < nearest.distanceMeters ||
-						hit.distance === nearest.distanceMeters && (target.id ?? '') < (nearest.entityId ?? '')) {
-						nearest = { entityId: target.id, kind: target.id !== null ? 'entity' : hit.object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout', distanceMeters: hit.distance, worldPoint: hit.point.toArray() };
-					}
+					result = nearest(describeHit(hit, target.id), result);
 					break;
 				}
 			}
-			return nearest;
+			return result;
+		},
+		/**
+		 * The nearest **visible** Layout face accepted by `accept`, refusing a face
+		 * that a nearer entity or the Floor occludes. Opening reveals, lintels and
+		 * bridges carry no acceptance in the caller's predicate and are skipped
+		 * rather than treated as an occluder: a ray through a doorway can still
+		 * reach the far wall face. Placement policy owns `accept`; this source
+		 * owns only the ray walk and the visibility rule.
+		 */
+		pickVisibleFace(
+			ray: PointerRay,
+			expected: RuntimeScene,
+			accept: (hit: SceneRenderedHit) => boolean
+		): SceneRenderedHit | null {
+			if (!prepare(ray, expected)) return null;
+			let accepted: SceneRenderedHit | null = null;
+			let blockedAt: number | null = null;
+			for (const target of targetsFor(expected)) {
+				const root = target.root;
+				if (root === undefined) continue;
+				if (!raycaster.ray.intersectsBox(boundsOf(root))) continue;
+				for (const hit of raycaster.intersectObject(root, true)) {
+					if (!(hit.object instanceof Mesh)) continue;
+					let visible = true;
+					for (let node: Object3D | null = hit.object; node !== null; node = node.parent) {
+						if (!node.visible) { visible = false; break; }
+					}
+					if (!visible) continue;
+					const candidate = describeHit(hit, target.id);
+					if (accept(candidate)) accepted = nearest(candidate, accepted);
+					else if (candidate.kind === 'entity' || candidate.kind === 'floor') {
+						blockedAt = Math.min(blockedAt ?? Infinity, candidate.distanceMeters);
+					}
+				}
+			}
+			return accepted !== null && (blockedAt === null || accepted.distanceMeters <= blockedAt) ? accepted : null;
 		}
 	};
 }

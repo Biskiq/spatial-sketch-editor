@@ -37,17 +37,18 @@ describe('Living Draft World toolbar registry', () => {
 		expect(worldFamily('land').defaultTool).toBe('ground');
 	});
 
-	it('keeps the complete #285 library category set', () => {
+	it('retires the inert lights category and lands the Lights tool', () => {
 		expect(WORLD_LIBRARY_CATEGORIES.map((category) => category.id)).toEqual([
 			'objects',
 			'materials',
 			'my-objects',
-			'lights',
 			'plants',
 			'buildings'
 		]);
 		expect(new Set(WORLD_LIBRARY_CATEGORIES.map((category) => category.label)).size).toBe(
 			WORLD_LIBRARY_CATEGORIES.length
 		);
+		expect(worldTool('lights').stage).toBe('landed');
+		expect(worldTool('lights').options).toBeUndefined();
 	});
 });

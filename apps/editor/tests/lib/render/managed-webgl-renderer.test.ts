@@ -39,7 +39,11 @@ it('releases retired ownership immediately without changing surviving Canvas sta
 			owner.managed.render(owner.scene, new Camera());
 			expect(owner.compile).toHaveBeenCalledTimes(1);
 			expect(owner.material.onBeforeCompile).toBe(owner.compile);
-			expect(owner.managed.render).toBe(owner.render);
+			// The discovery wrapper removes itself after the lookup is found; the
+			// managed-frame wrapper stays installed so every Stage frame is counted
+			// (E0/C0 `render:stage-frame`) and delegates to the renderer's own render.
+			expect(owner.managed.render).not.toBe(owner.render);
+			expect(owner.render).toHaveBeenCalledTimes(1);
 		}
 		first.managed.dispose();
 		expect(release).toHaveBeenCalledTimes(1);

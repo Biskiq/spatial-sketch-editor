@@ -9,6 +9,14 @@ export type ApiConfig = {
 	 * Unset means forwarded headers are ignored; see `createApp`'s trustProxy.
 	 */
 	trustProxy?: string;
+	/**
+	 * Storage driver. `r2` is the production Cloudflare R2 path and keeps the
+	 * strict HTTPS endpoint validation. `local` is the explicit development-only
+	 * switch for the loopback S3-compatible service started by `npm run dev:local`.
+	 */
+	objectStoreMode: 'r2' | 'local';
+	/** True only for the local driver; R2 uses its virtual-hosted endpoint. */
+	objectStoreForcePathStyle: boolean;
 	r2Endpoint: string;
 	r2Bucket: string;
 	/**
@@ -116,6 +124,46 @@ function readR2Endpoint(value: string | undefined): string {
 	}
 }
 
+/**
+ * The local driver exists only for the loopback development service. Requiring
+ * HTTP on a loopback host means a stray `LOCAL_OBJECT_STORE=1` cannot point a
+ * deployed API at a remote or TLS endpoint, and the production R2 validation
+ * above stays exactly as strict as it was.
+ */
+function readLocalObjectStoreEndpoint(value: string | undefined): string {
+	const endpoint = readRequired(value, 'R2_ENDPOINT');
+	try {
+		const url = new URL(endpoint);
+		const loopback = ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(url.hostname);
+		if (
+			url.protocol !== 'http:' ||
+			!loopback ||
+			url.username ||
+			url.password ||
+			url.pathname !== '/' ||
+			url.search ||
+			url.hash
+		) {
+			throw new Error();
+		}
+		return url.origin;
+	} catch {
+		throw new ConfigError(
+			'LOCAL_OBJECT_STORE requires R2_ENDPOINT to be a credential-free loopback HTTP URL'
+		);
+	}
+}
+
+function readObjectStoreMode(env: NodeJS.ProcessEnv): 'r2' | 'local' {
+	const value = env.LOCAL_OBJECT_STORE?.trim();
+	if (!value) return 'r2';
+	if (value !== '1') throw new ConfigError('LOCAL_OBJECT_STORE must be 1 when set');
+	if (env.NODE_ENV?.trim().toLowerCase() === 'production') {
+		throw new ConfigError('LOCAL_OBJECT_STORE is not available in production');
+	}
+	return 'local';
+}
+
 function readTestAuthSecret(value: string | undefined): string | undefined {
 	const secret = value?.trim();
 	if (!secret) return undefined;
@@ -154,6 +202,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 	const port = readPort(env.PORT);
 	const editorOrigin = readOrigin(env.EDITOR_ORIGIN, 'EDITOR_ORIGIN', true)!;
 	const apiOrigin = readOrigin(env.API_ORIGIN ?? env.RENDER_EXTERNAL_URL, 'API_ORIGIN', false, true);
+	const objectStoreMode = readObjectStoreMode(env);
 	return {
 		databaseUrl,
 		port,
@@ -161,7 +210,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 		...(apiOrigin ? { apiOrigin } : {}),
 		sessionKey: readSessionKey(env.SESSION_KEY),
 		trustProxy: readTrustProxy(env.TRUST_PROXY),
-		r2Endpoint: readR2Endpoint(env.R2_ENDPOINT),
+		objectStoreMode,
+		objectStoreForcePathStyle: objectStoreMode === 'local',
+		r2Endpoint:
+			objectStoreMode === 'local'
+				? readLocalObjectStoreEndpoint(env.R2_ENDPOINT)
+				: readR2Endpoint(env.R2_ENDPOINT),
 		r2Bucket: readRequired(env.R2_BUCKET, 'R2_BUCKET'),
 		r2ObjectNamespace: readObjectNamespace(env.R2_OBJECT_NAMESPACE),
 		r2AccessKeyId: readRequired(env.R2_ACCESS_KEY_ID, 'R2_ACCESS_KEY_ID'),

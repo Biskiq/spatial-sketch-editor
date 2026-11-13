@@ -12,7 +12,7 @@ import { createApp } from '../dist/app.js';
 import { ConfigError, readConfig } from '../dist/config.js';
 import { sanitizeDatabaseError } from '../dist/database.js';
 import { installShutdownHandlers } from '../dist/shutdown.js';
-import { startServer } from '../dist/server.js';
+import { listenHostFor, startServer } from '../dist/server.js';
 
 import { R2_ENV, stubPool } from './test-support.mjs';
 
@@ -126,6 +126,58 @@ test('configuration validates deployment auth values without exposing secrets', 
 			R2_OBJECT_NAMESPACE: 'Preview/Bucket'
 		}),
 		(error) => error instanceof ConfigError && error.message.includes('R2_OBJECT_NAMESPACE')
+	);
+});
+
+test('local object storage is an explicit development-only loopback driver', () => {
+	const key = Buffer.alloc(32, 3).toString('base64');
+	const base = {
+		DATABASE_URL: 'postgres://user@db.example.test/app',
+		PORT: '3000',
+		EDITOR_ORIGIN: 'https://editor.example.test',
+		SESSION_KEY: key,
+		...R2_ENV
+	};
+
+	const r2 = readConfig(base);
+	assert.equal(r2.objectStoreMode, 'r2');
+	assert.equal(r2.objectStoreForcePathStyle, false);
+
+	const local = readConfig({ ...base, LOCAL_OBJECT_STORE: '1', R2_ENDPOINT: 'http://127.0.0.1:18333' });
+	assert.equal(local.objectStoreMode, 'local');
+	assert.equal(local.objectStoreForcePathStyle, true);
+	assert.equal(local.r2Endpoint, 'http://127.0.0.1:18333');
+	assert.equal(listenHostFor(local), '127.0.0.1');
+	assert.equal(listenHostFor(r2), '0.0.0.0');
+
+	assert.throws(
+		() => readConfig({ ...base, R2_ENDPOINT: 'http://127.0.0.1:18333' }),
+		(error) => error instanceof ConfigError && error.message === 'R2_ENDPOINT must be a credential-free HTTPS URL'
+	);
+	assert.throws(
+		() => readConfig({ ...base, LOCAL_OBJECT_STORE: '1', R2_ENDPOINT: 'http://192.168.1.5:8333' }),
+		(error) => error instanceof ConfigError && /loopback HTTP URL/.test(error.message)
+	);
+	assert.throws(
+		() => readConfig({ ...base, LOCAL_OBJECT_STORE: '1', R2_ENDPOINT: 'https://127.0.0.1:8333' }),
+		(error) => error instanceof ConfigError && /loopback HTTP URL/.test(error.message)
+	);
+	assert.throws(
+		() => readConfig({ ...base, LOCAL_OBJECT_STORE: '1', R2_ENDPOINT: 'http://user:secret@127.0.0.1:8333' }),
+		(error) => error instanceof ConfigError && /loopback HTTP URL/.test(error.message) && !error.message.includes('secret')
+	);
+	assert.throws(
+		() => readConfig({
+			...base,
+			NODE_ENV: 'production',
+			LOCAL_OBJECT_STORE: '1',
+			R2_ENDPOINT: 'http://127.0.0.1:8333'
+		}),
+		(error) => error instanceof ConfigError && error.message === 'LOCAL_OBJECT_STORE is not available in production'
+	);
+	assert.throws(
+		() => readConfig({ ...base, LOCAL_OBJECT_STORE: 'yes', R2_ENDPOINT: 'http://127.0.0.1:8333' }),
+		(error) => error instanceof ConfigError && error.message === 'LOCAL_OBJECT_STORE must be 1 when set'
 	);
 });
 

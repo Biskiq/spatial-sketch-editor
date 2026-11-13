@@ -79,6 +79,20 @@ existing binary store; failure leaves the current project unchanged. Provider se
 delete/GC remain deferred. Built-ins retain catalogue identity — do not invent registry behavior for
 them.
 
+## Artwork images
+
+Artwork uses P20 ready image uploads with project-local IDs and immutable original bytes.
+The initial admission accepts static PNG, JPEG and WebP up to 25 MiB and 4096 pixels per edge.
+Larger originals require future display-derivative support. Save verifies ownership, MIME, length,
+digest and oriented dimensions for shelf images. Reopen verifies the shelf before replacing the
+current source and decodes placed images only. Undo and deletion of a hanging leave the P20 bytes
+available to accepted revisions.
+
+Release preparation pins placed Artwork images together with the P20 texture closure, once per
+asset ID. Unplaced shelf entries stay outside delivery. The detached visitor verifies release
+bytes against the digest and Artwork dimensions before loading the visitor scope. T4 owns
+prepared public reader activation and the retained delivery package.
+
 ## My Objects form library scope
 
 The first consumer of the ratified **library scope**, implemented, is one typed `form` item,
@@ -115,7 +129,7 @@ it does not create the derivative. Approved revisions remain while project versi
 project deletion cleanup belongs to the later C3 work.
 
 The F2 resources unit (format 2) carries a model resource with derivative and source pins, recipe,
-report digest and placement definition. Scene format 5 may name a catalogue asset or a model resource
+report digest and placement definition. Scene format 6 may name a catalogue asset or a model resource
 locked in the same envelope. Editor host admission resolves that resource in the envelope, and Save
 checks its complete pin against an approved revision owned by the same project. The visitor/public
 release path remains catalogue-only. The import procedure that produces these revisions is described in

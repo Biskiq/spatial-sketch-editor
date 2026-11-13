@@ -15,10 +15,12 @@ import {
 	compileWallFirstLayoutGeometry,
 	evaluateLayoutPlan,
 	buildArchProfile,
+	countWork,
 	type LayoutDocumentWallFirst,
 	type LayoutWallOpening,
 	type LayoutVec2,
 	type PlanEvaluation,
+	type CompiledLayoutGeometry,
 	wallCenterlineSamples
 } from '@portfolio/layout-core';
 
@@ -157,13 +159,26 @@ export function buildLayoutCandidatePaper(
 	subjectIds: ReadonlySet<string>,
 	affectedIds: ReadonlySet<string>
 ): LayoutCandidatePaper {
-	const compiled = compileWallFirstLayoutGeometry(document).geometry;
+	return buildCompiledLayoutCandidatePaper(
+		compileWallFirstLayoutGeometry(document).geometry, plan, datumMeters, subjectIds, affectedIds
+	);
+}
+
+export function buildCompiledLayoutCandidatePaper(
+	compiled: CompiledLayoutGeometry,
+	plan: PlanEvaluation,
+	datumMeters: number,
+	subjectIds: ReadonlySet<string>,
+	affectedIds: ReadonlySet<string>,
+	lateralSpanHalfWidthMeters = plan.lateralSpanHalfWidthMeters
+): LayoutCandidatePaper {
+	countWork('candidate:paper-build');
 	const evaluated = evaluateLayoutPlan(
 		compiled,
 		{
 			cutHeightMeters: plan.cutHeightMeters,
 			depthMeters: plan.depthMeters,
-			lateralSpanHalfWidthMeters: plan.lateralSpanHalfWidthMeters,
+			lateralSpanHalfWidthMeters,
 			sourceKindFilter: plan.sourceKindFilter,
 			reveal: plan.reveal
 		},

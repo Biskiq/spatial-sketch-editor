@@ -104,6 +104,7 @@ import {
 } from './layout-geometry-delta';
 import { hasAnySamplingTestObserver } from './layout-world-index';
 
+export { readPassiveCompiledGeometry } from './layout-geometry-delta';
 export { recordPassiveCompiledGeometry };
 
 const OPENING_CENTER_EPSILON = 0.01;

@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
@@ -30,6 +31,9 @@ import {
 	serializeProjectEnvelope
 } from '@portfolio/project-model/units';
 
+import { registerAsset, uploadAsset } from '../dist/asset-persistence.js';
+import { prepareArtworkPins } from '../dist/artwork-persistence.js';
+import { memoryObjectStore } from './test-support.mjs';
 import { runMigrations } from '../dist/migrate.js';
 import { ProjectNotFoundError } from '../dist/project-persistence.js';
 import { saveAcceptedSource, saveAcceptedSourceWithHandler } from '../dist/save-persistence.js';
@@ -46,6 +50,7 @@ function nextProjectId() {
 }
 
 async function cleanupProject(projectId) {
+	await pool.query('DELETE FROM assets WHERE project_id = $1', [projectId]);
 	await pool.query('DELETE FROM save_receipts WHERE project_id = $1', [projectId]);
 	await pool.query('DELETE FROM project_versions WHERE project_id = $1', [projectId]);
 	await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
@@ -65,7 +70,8 @@ async function unitEnvelope(projectId, label = 'S05 unit', options = {}) {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
 				textures: [],
 				materials: [],
-				entities: options.sceneEntities ?? []
+				entities: options.sceneEntities ?? [],
+				...(options.artworkLibrary === undefined ? {} : { artworkLibrary: options.artworkLibrary })
 			}
 		},
 		camera: {
@@ -201,12 +207,12 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
 		[projectId]
 	);
-	// Scene format 5 is the only admitted format now, and Save stores exactly
+	// Scene format 6 is the only admitted format now, and Save stores exactly
 	// the captured canonical bytes — the form source is never re-derived.
-	assert.equal(SCENE_UNIT_FORMAT_VERSION, 5);
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 6);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
-	assert.equal(storedScene.header.formatVersion, 5);
+	assert.equal(storedScene.header.formatVersion, 6);
 	assert.deepEqual(storedScene.data.entities, canonicalScene.data.entities);
 	assert.deepEqual(storedScene.data.entities, [NATIVE_FORM]);
 });
@@ -505,4 +511,41 @@ test('a failure after version staging but before the pointer update leaves the p
 	assert.equal(state.rows[0].savedBaseToken, token);
 	const versions = await pool.query('SELECT count(*)::int AS count FROM project_versions WHERE project_id = $1', [projectId]);
 	assert.equal(versions.rows[0].count, 1);
+});
+
+test('Artwork Save verifies project bytes and release preparation pins each placed image once', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	async function upload(name) {
+		const pending = await registerAsset(pool, owner, projectId, name, 'test');
+		const ready = await uploadAsset(pool, owner, projectId, pending.id, bytes.length, Readable.from([bytes]), store, 'test');
+		return { assetId: ready.id, name, pixelWidth: 1, pixelHeight: 1 };
+	}
+	const image = await upload('Placed.png');
+	const unplaced = await upload('Unplaced.png');
+	const artwork = {
+		id: 'artwork-a', kind: 'artwork', name: image.name, position: [0, 1, 0], rotation: [0, 0, 0],
+		widthMeters: 1, source: { kind: 'image', assetId: image.assetId, pixelWidth: 1, pixelHeight: 1 }
+	};
+	const envelope = await unitEnvelope(projectId, 'Artwork Save', {
+		artworkLibrary: [unplaced, image], sceneEntities: [artwork, { ...artwork, id: 'artwork-b' }]
+	});
+	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
+	const pins = await prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release');
+	assert.deepEqual(pins.map((pin) => pin.assetId), [image.assetId]);
+	await assert.rejects(prepareArtworkPins(pool, store, 'foreign', projectId, envelope.units.scene.data, 'release'));
+	const original = store.objects.get(pins[0].objectKey);
+	store.objects.set(pins[0].objectKey, { ...original, bytes: Buffer.alloc(bytes.length) });
+	await assert.rejects(saveAcceptedSource(pool, owner, request, store), /registry digest/);
+	const before = await pool.query('SELECT latest_version FROM projects WHERE id = $1', [projectId]);
+	assert.equal(Number(before.rows[0].latest_version), 1);
+	store.objects.set(pins[0].objectKey, original);
+	const saved = await saveAcceptedSource(pool, owner, request, store);
+	assert.equal(saved.version, 2);
+	store.objects.delete(pins[0].objectKey);
+	assert.deepEqual(await saveAcceptedSource(pool, owner, request, store), saved);
 });

@@ -19,7 +19,8 @@ import { describe, expect, it } from 'vitest';
  * `lib/render/layout-wall-representation.ts`, which retains one mesh per compiled
  * Wall and reconciles it in place. The invariants did not move with them: each is
  * asserted against the file that now owns it, and the shell keeps the Room
- * surfaces, door portals and the explicit failure surface.
+ * floor/ceiling surfaces and door portals. E1/I3 removed the Room-owned wall path
+ * and its shell-level failure surface.
  */
 const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../src');
 const shellPath = resolve(srcRoot, 'lib/visitor/VisitorLayoutShell.svelte');
@@ -54,9 +55,10 @@ describe('G4 visitor shell boundary', () => {
 		expect(owned).toContain('buildStandaloneWallMesh');
 		expect(owned).toContain('toWallBufferGeometry');
 		expect(owned).toContain('createVisitorWallMaterialFactory');
-		expect(shell()).toContain('buildRoomWallMesh');
-		expect(shell()).toContain('toWallBufferGeometry');
-		expect(shell()).toContain('createVisitorWallMaterialFactory');
+		// E1/I3: the Room-owned wall path is gone; the shell builds no wall mesh.
+		expect(shell()).not.toContain('buildRoomWallMesh');
+		expect(shell()).not.toContain('toWallBufferGeometry');
+		expect(shell()).not.toContain('createVisitorWallMaterialFactory');
 		// Door portals and floor/ceiling ShapeGeometry stay with the shell.
 		expect(shell()).toContain('RoomPortal');
 		expect(shell()).toContain('ShapeGeometry');
@@ -68,27 +70,13 @@ describe('G4 visitor shell boundary', () => {
 		expect(source).not.toMatch(/from\s+['"]svelte['"]/);
 	});
 
-	it('renders an explicit failure surface rather than silently omitting a room', () => {
-		expect(shell()).toContain('VisitorWallFailure:');
-		expect(shell()).toContain('ok === false');
-		// The retained Wall representation owns its own failure surface too.
+	it('renders an explicit failure surface through the retained Wall representation', () => {
+		// E1/I3: the shell's Room-owned failure surface left with the Room-owned
+		// wall path. The retained Wall representation owns the failure surface.
+		expect(shell()).not.toContain('VisitorWallFailure:');
+		expect(shell()).not.toContain('room.walls');
 		expect(representation()).toContain('VisitorPhysicalWallFailure:');
 		expect(representation()).toContain('failureBox');
-	});
-
-	it('filters detail-less rooms BEFORE buildRoomWallMesh, matching the topology estimator', () => {
-		const source = shell();
-		// The guard must gate the build loop itself, not only hide the rendered
-		// group — otherwise the live scene still pays the build cost and diverges
-		// from estimateWallMeshTopology's exclusion semantics. This is P23.6H: a
-		// wall-first canonical Room carries no Room-owned wall detail (its Walls
-		// render through the canonical physical-Wall path), so it must build no
-		// room mesh at all rather than a fabricated failure surface.
-		const buildIndex = source.lastIndexOf('buildRoomWallMesh');
-		const emptyRoomIndex = source.indexOf('if (room.walls.length === 0) return [];');
-		expect(buildIndex).toBeGreaterThan(0);
-		expect(emptyRoomIndex).toBeGreaterThan(0);
-		expect(emptyRoomIndex).toBeLessThan(buildIndex);
 	});
 
 	it('mounts Layout objects as one retained subtree, not a component per object', () => {
@@ -119,9 +107,11 @@ describe('G4 visitor shell boundary', () => {
 		// because it needs that renderer; the trigger set is the plan's D.6
 		// contract, and the camera is deliberately not one of them.
 		expect(stageCanvas()).toContain('StageShadowTriggers');
-		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />');
+		// The render projection, not only the accepted Scene, is the trigger: a
+		// previewed or candidate light must move its cast shadow with its light.
+		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
-		expect(stageEntities()).toContain('{onFormRendererReady} Model={ModelComponent}');
+		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} Model={ModelComponent}');
 		const groups = entityGroups();
 		expect(groups).toContain('onMounted={onFormRendererReady}');
 		expect(entityForm()).toContain("import { onMount } from 'svelte'");

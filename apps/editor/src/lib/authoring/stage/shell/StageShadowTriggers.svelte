@@ -9,8 +9,7 @@
 	 * The triggers are identities, not polls: a canonical compile installs a new
 	 * `geometry` (a Wall or object edit, Undo/Redo, a replacement, a reading
 	 * change), Scene resolution installs a new `scene` (a placement added, moved or
-	 * removed, a light changed, an entity's transform or flags changed), and the
-	 * Room registry installs new placement transforms. Reading them in one effect
+	 * removed, a light changed, an entity's transform or flags changed). Reading them in one effect
 	 * means a render at rest — an orbit, a hover, a selection — invalidates
 	 * nothing, which is the saving.
 	 *
@@ -33,20 +32,18 @@
 	 */
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
+	import type { RuntimeScene } from '@portfolio/project-model';
 
 	import { createShadowInvalidation, needsPerFrameShadows } from '$lib/render/shadow-invalidation';
 
 	let {
 		geometry,
 		scene,
-		rooms,
 		modelUrls = null,
 		formRenderRevision
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Changes when a lazy form renderer has attached its mesh to the scene. */
 		formRenderRevision: number;
@@ -62,7 +59,7 @@
 		canvas: renderer.domElement
 	});
 
-	const sources = $derived([geometry, scene, rooms, modelUrls, formRenderRevision] as const);
+	const sources = $derived([geometry, scene, modelUrls, formRenderRevision] as const);
 	const asynchronousCaster = $derived(needsPerFrameShadows(scene.entities));
 
 	$effect(() => {

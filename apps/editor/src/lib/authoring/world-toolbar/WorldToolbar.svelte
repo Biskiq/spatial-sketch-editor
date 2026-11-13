@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { ArtworkLibraryEntry } from '@portfolio/project-model';
 	/**
 	 * The Living Draft World toolbar: the #285 plate and dock.
 	 *
@@ -21,6 +22,7 @@
 		type WorldTool,
 		type WorldToolId
 	} from './registry';
+import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';
 
 	let {
 		activeTool,
@@ -29,6 +31,11 @@
 		onLibrary,
 		onObjectPick,
 		onMaterialPick,
+		lookShelf = null,
+		artworkShelf = null,
+		onArtworkPick = () => {},
+		onArtworkImport = () => {},
+		onLookPick = () => {},
 		plate,
 		plateOpen = true,
 		onPlateOpen = () => {}
@@ -39,6 +46,12 @@
 		onLibrary: () => void;
 		onObjectPick: (assetId: string) => void;
 		onMaterialPick: (materialId: string) => void;
+		/** The Look shelf later T2 slices fill; empty in P0, so nothing is drawn. */
+		lookShelf?: LookLibraryShelf | null;
+		artworkShelf?: readonly ArtworkLibraryEntry[] | null;
+		onArtworkPick?: (entry: ArtworkLibraryEntry) => void;
+		onArtworkImport?: (files: File[]) => void;
+		onLookPick?: (entryId: string) => void;
 		plate?: Snippet;
 		/** The upper parchment plate is an intentional expanded/collapsed state. */
 		plateOpen?: boolean;
@@ -46,7 +59,8 @@
 	} = $props();
 
 	const plateId = $props.id();
-	let libraryCategory = $state<WorldLibraryCategory>('objects');
+	let artworkFileInput = $state<HTMLInputElement>();
+	let libraryCategory = $state<WorldLibraryCategory | 'look' | 'artwork'>('objects');
 	let remembered = $state<Record<WorldFamily['id'], WorldToolId>>({
 		build: 'walls',
 		form: 'form',
@@ -61,6 +75,12 @@
 	$effect(() => {
 		const family = familyOf(activeTool);
 		if (family !== null) remembered[family.id] = activeTool;
+	});
+
+	// The Lights tool opens the Library on the Look shelf; it is the same one
+	// arm the shelf uses, not a second placement controller.
+	$effect(() => {
+		if (libraryOpen && activeTool === 'lights') libraryCategory = 'look';
 	});
 
 	function pressFamily(family: WorldFamily): void {
@@ -123,6 +143,19 @@
 							onclick={() => (libraryCategory = category.id)}
 						>{category.label}</button>
 					{/each}
+					{#if artworkShelf !== null}
+						<button type="button" class="sub" class:on={libraryCategory === 'artwork'}
+							aria-pressed={libraryCategory === 'artwork'} onclick={() => (libraryCategory = 'artwork')}>Artwork</button>
+					{/if}
+					{#if lookShelf !== null && lookShelf.entries.length > 0}
+						<button
+							type="button"
+							class="sub"
+							class:on={libraryCategory === 'look'}
+							aria-pressed={libraryCategory === 'look'}
+							onclick={() => (libraryCategory = 'look')}
+						>{lookShelf.label}</button>
+					{/if}
 				{:else if activeFamily !== null}
 					<div class="subs" aria-label={`${activeFamily.label} tools`}>
 						{#each activeFamilyTools as tool (tool.id)}
@@ -157,7 +190,25 @@
 		<div class="row picks">
 			<div class="strip">
 				{#if libraryOpen}
-					{#if libraryCategory === 'objects'}
+					{#if libraryCategory === 'artwork' && artworkShelf !== null}
+						<div class="librow" aria-label="Artwork in this project">
+							<input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden bind:this={artworkFileInput}
+								onchange={() => { onArtworkImport(Array.from(artworkFileInput?.files ?? [])); if (artworkFileInput) artworkFileInput.value = ''; }} />
+							<button class="tile" type="button" onclick={() => artworkFileInput?.click()}>Import</button>
+							{#each artworkShelf as entry (entry.assetId)}
+								<button class="tile" type="button" title={entry.name} onclick={() => onArtworkPick(entry)}>{entry.name}</button>
+							{/each}
+						</div>
+					{:else if libraryCategory === 'look' && lookShelf !== null}
+						<div class="librow" aria-label={lookShelf.label}>
+							{#each lookShelf.entries as entry (entry.id)}
+								<button type="button" class="tile" title={entry.summary ?? entry.label} onclick={() => onLookPick(entry.id)}>
+									<span class="tile-glyph"><WorldIcon name="sun" size={20} /></span>
+									<span class="tile-label">{entry.label}</span>
+								</button>
+							{/each}
+						</div>
+					{:else if libraryCategory === 'objects'}
 						<div class="librow" aria-label="Approved objects">
 							{#each approvedAssets as asset (asset.id)}
 								<button type="button" class="tile" title={asset.name} onclick={() => onObjectPick(asset.id)}>
@@ -183,13 +234,10 @@
 						</div>
 					{:else}
 						<div class="librow planned-row">
-							{#each (libraryCategory === 'lights' ? ['Point', 'Spot', 'Area'] : libraryCategory === 'plants' ? ['Bed', 'Shrub', 'Hedge', 'Tree'] : ['House', 'Annex', 'Shed']) as label (label)}
+							{#each (libraryCategory === 'plants' ? ['Bed', 'Shrub', 'Hedge', 'Tree'] : ['House', 'Annex', 'Shed']) as label (label)}
 								<button type="button" class="tile planned-tile" disabled>
 									<span class="tile-glyph">
-										<WorldIcon
-											name={libraryCategory === 'lights' ? 'light' : libraryCategory === 'plants' ? 'plants' : 'building'}
-											size={20}
-										/>
+										<WorldIcon name={libraryCategory === 'plants' ? 'plants' : 'building'} size={20} />
 									</span>
 									<span class="tile-label">{label}</span>
 									<small>Planned · T{libraryCategory === 'buildings' ? '5' : '2'}</small>

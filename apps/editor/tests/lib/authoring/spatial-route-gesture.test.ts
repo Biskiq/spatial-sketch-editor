@@ -60,7 +60,9 @@ import {
 
 /** The starter keeps its fixed captured identity across every boot. */
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
+import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
+import { wallStationFrame } from '$lib/authoring/adapters/layout/precision';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import {
 	draftingSnapIncrementMeters,
@@ -1087,6 +1089,28 @@ describe('mounted Stage drawing and deletion', () => {
 		expect(target.querySelector('[data-stage-instrument="place-object"]')).not.toBeNull();
 	});
 
+	it('hides a selected Wall\'s marks while an armed Lights task owns the surface', async () => {
+		const wallMark = facade().marks().find((mark) => mark.id.startsWith('layout-wall-'));
+		expect(wallMark).toBeDefined();
+		armLight('project-1', 'spot');
+		try {
+			const opened = facade().openContributedTask('light-place', 'light');
+			expect(opened.kind).toBe('opened');
+			await frame();
+			expect(facade().session.task()?.kind).toBe('light-place');
+			expect(facade().selection()?.sourceId).toBe(wallId);
+			expect(armedLightKind('project-1')).toBe('spot');
+			// The open Lights task may keep its own selected-light marks, but the
+			// previously selected Wall's marks belong to Layout, not this task.
+			expect(facade().marks()).toEqual([]);
+			expect(target.querySelector('[data-mark-id^="layout-wall-"]')).toBeNull();
+			expect(facade().hitMark({ css: wallMark!.anchor, coarse: false })).toBeNull();
+		} finally {
+			facade().closeTask();
+			clearArmedLight();
+		}
+	});
+
 	it('binds a Card confirmation to the subject whose consequences it disclosed', async () => {
 		const canonical = facade().snapshot().canonicalJson;
 		// Review pass 2 §4: the menu's one delete home reads Erase; its accessible
@@ -1908,6 +1932,50 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(history()).toEqual(previousHistory);
 	});
 it('invokes subject commands through the contextual ellipsis',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-card-action]')).toBeNull();card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();await frame();expect(card.querySelector('[data-card-action="layout-wall-delete"]')!.classList.contains('destructive')).toBe(true);expect(card.textContent).not.toContain('Open task');});
+
+	it('splits at the Card midpoint even after a press elsewhere on the Wall, and Undo restores it', async () => {
+		const before = stageEnvelope(facade().snapshot()).units.layout.data;
+		const length = wallFirstWallLength(before, wallId);
+		if (length === undefined) throw new Error('the selected Wall has no resolvable length');
+		const station = length / 2;
+		const pressAt = length * 0.25;
+		const at = wallStationFrame(before, wallId)!.pointAt(pressAt)!;
+		const press = projected([at.point[0], 0, at.point[1]]);
+		pointer('pointerdown', press);
+		pointer('pointerup', press);
+		pointer('click', press);
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(wallId);
+
+		const baselineBytes = facade().snapshot().canonicalJson;
+		const beforeHistory = (harness.host as StageAcceptanceHost).history();
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
+		await frame();
+		const split = card.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-split"]')!;
+		expect(split.textContent).toContain('Split wall here');
+		split.click();
+		await vi.waitFor(
+			() => expect(stageEnvelope(facade().snapshot()).units.layout.data.walls).toHaveLength(before.walls.length + 1),
+			{ timeout: 3000 }
+		);
+
+		const after = stageEnvelope(facade().snapshot()).units.layout.data;
+		// The start-side Wall keeps its id, and the joint is the midpoint, not the press.
+		expect(after.walls.some((wall) => wall.id === wallId)).toBe(true);
+		expect(wallFirstWallLength(after, wallId)).toBeCloseTo(station, 6);
+		// Opening and Room identities survive the editor journey.
+		expect(after.rooms.map((room) => room.id)).toEqual(before.rooms.map((room) => room.id));
+		expect(after.openings.map((opening) => opening.id).sort()).toEqual(
+			before.openings.map((opening) => opening.id).sort()
+		);
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({
+			depth: beforeHistory.depth + 1,
+			position: beforeHistory.position + 1
+		});
+		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
+		expect(facade().snapshot().canonicalJson).toBe(baselineBytes);
+	});
 
 	it('keeps one selection path and no expanded Index procedures', () => {
 		const row = indexRowOf(target, wallId)!;

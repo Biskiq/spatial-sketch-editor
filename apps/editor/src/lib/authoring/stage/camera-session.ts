@@ -63,6 +63,7 @@ import {
 } from '@portfolio/project-model';
 
 import type { StageReadSnapshot } from './accepted-read';
+import { countWork } from '@portfolio/layout-core';
 
 /** The default inspection framing of a project, from its compiled bounds. */
 export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): InspectionPose {
@@ -317,6 +318,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		evaluation: () => currentEvaluation,
 		evaluationId: () => (currentEvaluation === null ? null : evaluationIdOf(currentEvaluation)),
 		evaluate(rect, clockSeconds, minimumGroundReachMeters) {
+			countWork('camera:evaluate');
 			// A frame clock that has run past a reading flip's endpoint applies it
 			// exactly once *here*, at the frame that realises it. Without this the
 			// settled reading would lag the rendered one until some unrelated intent

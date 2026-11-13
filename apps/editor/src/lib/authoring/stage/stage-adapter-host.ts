@@ -39,8 +39,9 @@ export type StageTaskPort = Pick<StageSession,
 export type StageAdapterPort = Pick<StageFacade,
 	'snapshot' | 'evaluation' | 'evaluationId' | 'plan' | 'heightSheet' | 'heightTicks' |
 	'resolvePick' | 'hitMark' | 'selection' | 'selectionState' | 'setSelection' | 'select' |
-	'drafting' | 'onAdaptersChanged' | 'inkReadings' | 'openInkReading' |
-	'openContributedTask' | 'notifySurfaceChange' | 'acquireGesture'
+	'drafting' | 'sceneBounds' | 'onAdaptersChanged' | 'inkReadings' | 'openInkReading' |
+	'openContributedTask' | 'closeTask' | 'notifySurfaceChange' | 'acquireGesture' |
+	'lightPreview'
 > & { readonly session: StageTaskPort };
 
 export type StageAdapterServices = {

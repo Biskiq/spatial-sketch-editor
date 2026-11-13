@@ -3,9 +3,9 @@ import {
   validateSceneDocument
 } from './scene-codec';
 import type { SceneValidationOptions } from './scene-validation';
+import type { ArtworkFrame } from './artwork-frame';
 
 export type Vec3 = [number, number, number];
-export type RoomId = string;
 export type AssetId = string;
 export type MaterialId =
   | 'plaster-warm'
@@ -50,13 +50,6 @@ export const CAMERA_EASING: readonly CameraEasing[] = [
 
 export type NavigationNodeData = {
   id: string;
-  /**
-   * Room ownership is legacy-room-local machinery. World-local (P23.0b
-   * migrated) documents leave it absent; absent means `position` and
-   * `cameraTarget` are already project/world coordinates and must never be
-   * resolved through a Room frame again.
-   */
-  roomId?: string;
   label: string;
   position: Vec3;
   cameraTarget: Vec3;
@@ -133,14 +126,11 @@ export type SceneObjectPlacement = {
   position: Vec3;
   rotation: Vec3;
   scale?: number;
-  roomId?: RoomId;
 };
 
 export type SceneObjectCluster = {
   id: string;
   name: string;
-  /** Absent in world-local documents (cluster carries no spatial frame). */
-  roomId?: RoomId;
   memberIds: string[];
 };
 
@@ -171,13 +161,6 @@ export type SceneEntityTransform = {
 export type SceneEntityBase = SceneEntityTransform & {
   id: string;
   name: string;
-  /**
-   * Room ownership is legacy-room-local machinery. World-local (P23.0b
-   * migrated) documents leave it absent; absent means `position` and
-   * `rotation` are already project/world coordinates and must never be
-   * resolved through a Room frame again.
-   */
-  roomId?: RoomId;
 };
 
 export type SceneRenderableEntityBase = SceneEntityBase & {
@@ -316,7 +299,17 @@ export type SceneLightEntity =
 			castShadow: boolean;
 	  });
 
+export type SceneArtworkEntity = Omit<SceneEntityBase, 'scale'> & {
+  kind: 'artwork';
+  source: import('./artwork').ArtworkImageSource;
+  widthMeters: number;
+  /** Optional generated framing presentation; absent means no frame and no Mat. */
+  frame?: ArtworkFrame;
+  scale?: never;
+};
+
 export type SceneEntity =
+	| SceneArtworkEntity
 	| SceneModelEntity
 	| ScenePrimitiveEntity
 	| SceneFormEntity
@@ -326,9 +319,9 @@ export type SceneNavigationNode = Omit<
   NavigationNodeData,
   'position' | 'cameraTarget'
 > & {
-  /** Room-local eye position (legacy) or world position (absent roomId). */
+  /** World-space eye position. */
   position: Vec3;
-  /** Room-local look target (legacy) or world target (absent roomId). */
+  /** World-space look target. */
   cameraTarget: Vec3;
 };
 
@@ -337,9 +330,8 @@ export type SceneCameraViewKeyframe = {
   id: string;
   /** Exact-edge arc-length progress in this track's travel direction. */
   progress: number;
-  /** Room-local when roomId is present, otherwise world-space. */
+  /** World-space look target. */
   cameraTarget: Vec3;
-  roomId?: RoomId;
   /** Vertical PerspectiveCamera field of view in degrees. */
   fov: number;
   /** Phase 3.7 authored post-key timing. */
@@ -369,9 +361,8 @@ export type SceneConnectionTimingPair = {
 };
 
 export type SceneWaypoint = {
-  /** Room-local when roomId is present, otherwise world-space. */
+  /** World-space position. */
   position: Vec3;
-  roomId?: RoomId;
 };
 
 export type ScenePathAnchor = SceneWaypoint & {
@@ -501,7 +492,6 @@ export function listSceneModelEntities(
 export function modelEntityToPlacement(entity: SceneModelEntity): SceneObjectPlacement {
   return {
     id: entity.id,
-    roomId: entity.roomId,
     assetId: entity.assetId,
     fallback: entity.fallback,
     position: entity.position,
@@ -515,11 +505,19 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
   const transform = {
     id: entity.id,
     name: entity.name,
-    roomId: entity.roomId,
     position: cloneVec3(entity.position),
     rotation: cloneVec3(entity.rotation),
     ...(entity.scale === undefined ? {} : { scale: entity.scale })
   };
+
+  if (entity.kind === 'artwork') {
+    return {
+      kind: 'artwork', id: entity.id, name: entity.name,
+      position: cloneVec3(entity.position), rotation: cloneVec3(entity.rotation),
+      source: { ...entity.source }, widthMeters: entity.widthMeters,
+      ...(entity.frame === undefined ? {} : { frame: { ...entity.frame } })
+    };
+  }
 
   if (entity.kind === 'model') {
     return {

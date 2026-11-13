@@ -21,6 +21,7 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	LAYOUT_DIMENSION_LIMIT_MESSAGE,
 	MAX_LAYOUT_DIMENSION_METERS,
+	planCreateCircularRoom,
 	planCreateWallFirstOpening,
 	planExactJunctionMove,
 	planWallChain,
@@ -2022,10 +2023,11 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
-		// Straight Walls expose delete only: no hidden Bend-armed mode and no
-		// curve vocabulary leaks in; unfold entry lives in the Card foot.
+		// Straight Walls expose the scoped Split and delete: no hidden Bend-armed
+		// mode and no curve vocabulary leaks in; unfold entry lives in the Card foot.
 		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
-				'layout-wall-delete'
+				'layout-wall-delete',
+				'layout-wall-split'
 			]);
 
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -2123,10 +2125,19 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, metaKey: true }).claimed).toBe(true);
 		const to = stageCss(mounted.facade, [3, 3.4]);
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(
-			mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
-		).toBe(true);
+		const work: string[] = [];
+		const previous = setWorkObserver({ count: (name) => work.push(name), span: (name) => work.push(name) });
+		try {
+			mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted.facade, [3, 3.1]), evaluationId });
+			mounted.facade.candidatePreviews();
+			mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+			expect(
+				mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
+			).toBe(true);
+		} finally {
+			setWorkObserver(previous);
+		}
+		expect(work.filter((name) => name === 'compile' || name === 'validation:layout-document' || name === 'room-reconciliation')).toEqual([]);
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => {
 			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
@@ -2153,6 +2164,55 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(restored.centerline.knots).toHaveLength(0);
 		// The Card remains the non-pointer path for the Wall's ordinary fields.
 		expect(createCardFieldsInstrument(mounted.services)!.fields().some((field) => field.id === 'height')).toBe(true);
+	});
+
+	it('retries a refused Bend release without validating pointer moves', async () => {
+		const base = createEmptyWallFirstLayoutDocument();
+		base.floor.elevation = ELEVATION;
+		base.junctions = [{ id: 'bend-start', point: [0, 0] }, { id: 'bend-end', point: [6, 0] }];
+		base.walls = [{
+			id: 'bend-wall', startJunctionId: 'bend-start', endJunctionId: 'bend-end',
+			thickness: 0.2, height: 3, centerline: { kind: 'line' }
+		}];
+		const circle = planCreateCircularRoom({
+			baseline: base, center: [3, 4.5], rim: [3.6, 4.5],
+			capture: freshCapture(), levelId: base.floor.id
+		});
+		if (circle.kind !== 'success') throw new Error(circle.rejection.message);
+		const mounted = await mount({ document: circle.document, wallId: 'bend-wall', openingId: '' });
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, 'bend-wall');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const before = mounted.facade.snapshot().canonicalJson;
+		const from = stageCss(mounted.facade, [3, 0]);
+		const refused = stageCss(mounted.facade, [3, 4.5]);
+		const clear = stageCss(mounted.facade, [3, 1]);
+
+		const propose = (to: readonly [number, number]) => {
+			expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, metaKey: true }).claimed).toBe(true);
+			const work: string[] = [];
+			const previous = setWorkObserver({ count: (name) => work.push(name), span: (name) => work.push(name) });
+			try {
+				mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+				expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall-bend')).toBe(true);
+			} finally {
+				setWorkObserver(previous);
+			}
+			expect(work.filter((name) => name === 'compile' || name === 'validation:layout-document' || name === 'room-reconciliation')).toEqual([]);
+			mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		};
+
+		propose(refused);
+		await eventually(() => mounted.facade.candidatePreviews().some((preview) =>
+			preview.id === 'layout-candidate-refused-settled' && preview.labels.some((label) => label.text.includes('circular Wall'))
+		));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(mounted.host.history().position).toBe(0);
+
+		propose(clear);
+		await eventually(() => acceptedLayout(mounted.facade).walls.find((wall) => wall.id === 'bend-wall')?.centerline.kind === 'cubic-chain');
+		expect(mounted.host.history().position).toBe(1);
+		mounted.facade.dispose();
 	});
 
 	it('removes an existing knot by flattening it onto the neighbour chord, and Undo restores it', async () => {

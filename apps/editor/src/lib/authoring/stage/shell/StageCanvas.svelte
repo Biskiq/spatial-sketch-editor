@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
-	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
+	import { stageCanvasRenderer } from '$lib/render/canvas-renderers';
+	import { perfMark } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
 	 *
@@ -18,16 +18,12 @@
 	import { Canvas, T } from '@threlte/core';
 	import { PCFShadowMap } from 'three';
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
-	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
+	import type { RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
 	import type { StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
-	import {
-		neutralVisitorRoomPresentation,
-		type VisitorRoomPresentation
-	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { paperStageComposition, PAPER_GROUND_INK } from '../paper-plan';
 import { workspaceRectFor } from '../stage-grid';
@@ -36,6 +32,9 @@ import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
 import StageMatGround from './StageMatGround.svelte';
+	import EntityArtwork from '$lib/museum/entities/EntityArtwork.svelte';
+	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
+	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
@@ -49,6 +48,11 @@ import StageMatGround from './StageMatGround.svelte';
 	import { worldEnvironmentLook } from '$lib/render/world-environment';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
+	import {
+		LIGHT_PREVIEW_CANDIDATE_ID,
+		mergeLightPreview,
+		type StageLightPreview
+	} from '../stage-light-preview.svelte';
 
 	function ignoreRaycast(): void {}
 
@@ -58,10 +62,14 @@ import StageMatGround from './StageMatGround.svelte';
 		sourceContentId,
 		layoutRevision,
 		scene,
-		rooms,
+		/** The session-only light preview merged into the rendered entity list. */
+		lightPreview = null,
 		evaluation,
 		ghosts = [],
 		modelUrls = null,
+		artworkScope = null,
+		artworkGhost = null,
+		onArtworkError,
 		plan = null,
 		planAppearance = 'paper',
 		paperInk2d = PAPER_GROUND_INK,
@@ -91,12 +99,15 @@ import StageMatGround from './StageMatGround.svelte';
 		sourceContentId: string;
 		layoutRevision: string;
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
+		lightPreview?: StageLightPreview | null;
 		evaluation: ViewportEvaluation | null;
 		/** Adapter-proposed poses, drawn here by the one Canvas. */
 		ghosts?: readonly StageGhostMesh[];
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		artworkScope?: ArtworkScope | null;
+		artworkGhost?: SceneArtworkEntity | null;
+		onArtworkError?: (message: string) => void;
 		/** The facade's retained Plan: the drawing and the hit path share this object. */
 		plan?: PlanEvaluation | null;
 		/** PLATE's app preference; Paper is the default. */
@@ -133,6 +144,20 @@ import StageMatGround from './StageMatGround.svelte';
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
+	/**
+	 * The editor shell's one merge point for the session-only light preview: an
+	 * overridden light is replaced by its preview value and a placement candidate
+	 * is appended under a reserved id. Visitor entities and entity renderers are
+	 * unchanged, and the accepted `scene` object is never mutated.
+	 */
+	const renderScene = $derived(mergeLightPreview(scene, lightPreview));
+	// A live Artwork manipulation draws one opaque ghost; the accepted body is
+	// hidden so the drag never shows two copies of the same Artwork.
+	const entityScene = $derived(
+		artworkGhost === null || !renderScene.entities.some((entity) => entity.id === artworkGhost.id)
+			? renderScene
+			: { ...renderScene, entities: renderScene.entities.filter((entity) => entity.id !== artworkGhost.id) }
+	);
 	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
 	const paperComposition = $derived(
 		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
@@ -165,12 +190,6 @@ import StageMatGround from './StageMatGround.svelte';
 	});
 	// Both readings and appearances honor the same Grid toggle.
 	const gridVisible = $derived(drafting.grid && framedViewport === null);
-
-	const presentation = $derived.by(() => {
-		const record: Record<string, VisitorRoomPresentation> = {};
-		for (const room of geometry.rooms) record[room.roomId] = neutralVisitorRoomPresentation;
-		return record;
-	});
 
 	// Runs after the accepted props update, before Threlte submits the next frame.
 	$effect(() => {
@@ -215,7 +234,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 </script>
 
-<Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas, { stencil: true }), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+<Canvas createRenderer={stageCanvasRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
 	<!--
 		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is
@@ -226,7 +245,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<T.AmbientLight intensity={0.12} />
 		<WorldEnvironment preset={environment} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
-		<T.AmbientLight intensity={0.35} />
+		<T.AmbientLight intensity={0.45} />
 		<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
 		<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 		<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
@@ -264,11 +283,14 @@ import StageMatGround from './StageMatGround.svelte';
 		because it owns this renderer's shadow map; see the component for the full
 		trigger contract.
 	-->
-	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
+	<!-- The preview projection is a shadow trigger too: an overridden or candidate
+		light must move its cast shadow with its illumination. -->
+	<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
-		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false}
-			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]} />
+		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
+			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
@@ -280,14 +302,22 @@ import StageMatGround from './StageMatGround.svelte';
 	{#if unfoldedWallId === null && unfoldAnchorPin !== null}
 		<StageWallPin position={unfoldAnchorPin} hovered={unfoldPinHovered} active={unfoldPinActive} />
 	{/if}
+	{#if artworkGhost !== null}
+		<EntityArtwork entity={artworkGhost} scope={artworkScope} ghost onError={onArtworkError} />
+	{/if}
 	<StageEntities
+		{artworkScope}
+		{onArtworkError}
 		{scenePick}
-		{scene}
-		{rooms}
+		scene={entityScene}
 		{modelUrls}
+		includeLights={environment !== 'paper'}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
-		onEntityRoot={registerSceneRoot}
+		onEntityRoot={(id, root) =>
+			// The placement candidate renders, but it is not an authored or pickable
+			// entity: keep it out of the Stage pick registry.
+			id === LIGHT_PREVIEW_CANDIDATE_ID ? () => {} : registerSceneRoot(id, root)}
 	/>
 	{#if paperReveal !== null && gridVisible}
 		<StageGrid {evaluation} {datumMeters} {contentBounds} fade={paperReveal.sheet} />

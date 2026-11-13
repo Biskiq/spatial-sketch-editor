@@ -187,9 +187,12 @@ export function stageCardFacts(
 			suffix += 1;
 		}
 		used.add(label);
-		facts.push(contributed.fieldId === undefined
-			? { label, value: contributed.value }
-			: { label, value: contributed.value, fieldId: contributed.fieldId });
+		facts.push({
+			label,
+			value: contributed.value,
+			...(contributed.fieldId === undefined ? {} : { fieldId: contributed.fieldId }),
+			...(contributed.select === undefined ? {} : { select: contributed.select })
+		});
 	}
 	return facts;
 }

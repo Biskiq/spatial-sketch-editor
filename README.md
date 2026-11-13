@@ -1,49 +1,104 @@
 # Biskiq
 
-Biskiq is a browser-native editor for creating spatial worlds and directing visitor experiences.
-Creators draw rooms and native shapes, arrange objects, manipulate them directly, author Camera
-Views and Experience Guides, and run an isolated visitor Preview.
+Biskiq is an attempt to combine spatial sketching, object arrangement, and interactive visitor experiences in one browser editor.
 
-**Core Product Stability is owner-accepted at PR #271 (`ce4e232c`).** That is the foundation for
-future work, not the product ceiling. Advanced geometry, the complete Object Studio and public
-publishing are not claimed as shipped. Prepared visitor delivery remains future work; the public
-publication route is unavailable until its prepared reader is implemented and activated.
+The working editor lets creators draw rooms and shapes, arrange objects directly, author Camera Views and Experience Guides, and run a visitor Preview. The prototypes below remain standalone experiments exploring specific ideas; they are not wired into that editor.
 
-World and Experience are lenses over one project. Layout, Scene, Camera, Experience and typed
-resources retain distinct semantic ownership. The ambitious [North Star](docs/reference/north-star.md)
-defines the destination; approved UX defines the desired state for its scope, while code and tests
-establish landed behavior. Automated evidence status is separate from owner product acceptance.
+![Vellum, Smart Wall, Conservatory and the unified shell](docs/assets/readme/cover.jpg)
 
-## First ten minutes
+## Prototypes
 
-1. Install Node 20+ and run `npm install`.
-2. Copy `.env.example` to `.env` and set local values. Start the backend with `npm run stack:up`,
-   then `npm run dev`. Open the local URL Vite prints. For host Postgres or editor-only development,
-   see [local development](docs/local-development.md).
-3. Run `npm run status` for capability evidence, flags and claims. An absent or incomplete current
-   report is `unknown`, not a claim that the accepted product is missing or that CI passed.
-4. Read [AGENTS.md](AGENTS.md), then the [documentation router](docs/README.md). Use the
-   [path map](docs/path-map.md) to read only the contract needed for the affected responsibility.
-5. Claim work through the [workflow](docs/workflow.md); check issues and active PRs for collisions.
+### Vellum
 
-Guest/local editing works without the API. Cloud Save/Load uses local username/password accounts;
-create an account from the editor. No account is preconfigured. Production workspaces are
-`apps/editor`, `apps/api` and the shared packages. Root editor commands do not verify the API.
+Draw and edit rooms, walls, roofs, openings and stairs. Make a visitor walk.
 
-## Product references
+**Working prototype.** [More and how to run](prototypes/p3-vellum/README.md).
 
-- [Architecture and boundaries](docs/reference/architecture.md)
-- [Shared composition and execution contracts](docs/reference/composition-execution.md)
-- [Approved shell and visual system](docs/reference/design-system/editor-shell-and-visual-system.md)
-- [World interaction sheet](docs/reference/design-system/world-interaction-sheet.html)
-- [Experience interaction sheet](docs/reference/design-system/experience-interaction-sheet.html)
-- [Tests and verification](apps/editor/tests/README.md)
+![A roof selected in Vellum](docs/assets/readme/vellum-roof.jpg)
+
+<p>
+<img src="docs/assets/readme/vellum-draw.jpg" width="48.5%" alt="Drawing a room in Vellum">
+<img src="docs/assets/readme/vellum-walk.jpg" width="48.5%" alt="Creating a visitor walk in Vellum">
+</p>
+
+### Smart Wall
+
+Arrange paintings and lights on a gallery wall. Bend the wall, adjust spacing and compare changes.
+
+**Working prototype.** [More and how to run](prototypes/p2-smart-wall/README.md).
+
+![A curved gallery wall with artworks and spotlights](docs/assets/readme/smart-wall-bend.jpg)
+
+<p>
+<img src="docs/assets/readme/smart-wall-compare.jpg" width="48.5%" alt="Comparing a previous arrangement">
+<img src="docs/assets/readme/smart-wall-revision.jpg" width="48.5%" alt="A spacing conflict and repair options">
+</p>
+
+### Conservatory
+
+Create camera views, arrange stops and paths, and preview a guided visit or free exploration.
+
+**Working prototype with sample data.** [More and how to run](prototypes/experience-ux-alternative/README.md).
+
+![Conservatory with a guided route and camera views](docs/assets/readme/conservatory-guide.jpg)
+
+![Visitor preview in Conservatory](docs/assets/readme/conservatory-visit.jpg)
+
+### Unified shell
+
+Try an interface that puts space editing and visitor experiences in the same workspace.
+
+**Interactive wireframe with mock data.** [More and how to run](prototypes/production-shell-wireframe/README.md) · [28-state atlas](prototypes/production-shell-wireframe/atlas.html).
+
+![The shell showing an Experience guide](docs/assets/readme/shell-guide.jpg)
+
+<p>
+<img src="docs/assets/readme/shell-objects.jpg" width="48.5%" alt="Object editing controls in the shell">
+<img src="docs/assets/readme/shell-roof.jpg" width="48.5%" alt="Roof editing controls in the shell">
+</p>
+
+## More prototypes
+
+- [World spatial interactions](prototypes/spatial-authoring/README.md)
+- [Architectural depth](prototypes/p3-depth/README.md)
+- [Living Drawings](prototypes/living-drawing/README.md)
+- [Native Form Lab](prototypes/native-form-lab/README.md)
+- [Object Composition](prototypes/object-composition-prototype/README.md)
+- [All prototypes](prototypes/README.md)
+
+## Run locally
+
+Run each prototype from the repository root, in its own terminal:
+
+```sh
+cd prototypes/p3-vellum && npm install && npm run dev
+cd prototypes/p2-smart-wall && npm install && npm run dev
+cd prototypes/experience-ux-alternative && python3 -m http.server 8841
+cd prototypes/production-shell-wireframe && python3 serve.py 8850
+```
+
+Default ports: Vellum 5191, Smart Wall 5175, Conservatory 8841, shell 8850. The prototype READMEs have more instructions.
+
+## Development
+
+One command starts the editor, API, PostgreSQL and local S3-compatible storage:
+
+```sh
+npm install
+npm run dev:local
+```
+
+The editor is served at <http://localhost:5173> (or the next free port printed by
+the command). `npm run dev:local:stop` stops the stack and keeps local data. To
+clear the local PostgreSQL database and object storage, run
+`npm run dev:local:reset`; the next start recreates both. Use
+`npm run dev:local:logs` and `npm run dev:local:status` for service logs and
+readiness.
+
+- [Local development](docs/local-development.md)
+- [Documentation](docs/README.md)
+- [Tests](apps/editor/tests/README.md)
+- [Roadmap](docs/roadmap/README.md)
 - [Contributing](CONTRIBUTING.MD)
 
-## Optional research library
-
-[Research](broad-research/README.md) and [prototypes](prototypes/README.md) preserve alternative
-approaches, technical comparisons and runnable experiments. They are opt-in evidence, not current
-product capability, persisted-format authority or a competing UX specification. Their shortcuts and
-mock evaluators are not production architecture. Run an experiment using its own README; prototypes
-are outside the npm workspace and production build.
+Production code lives in `apps/` and `packages/`. The demos live in `prototypes/`.

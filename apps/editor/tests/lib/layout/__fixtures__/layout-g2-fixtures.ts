@@ -299,7 +299,6 @@ export function resolveG2ReferenceHit(
 
 function g2Node(
 	id: string,
-	roomId: string,
 	position: Vec3,
 	cameraTarget: Vec3,
 	fov: number,
@@ -307,7 +306,6 @@ function g2Node(
 ): NavigationNodeData {
 	return {
 		id,
-		roomId,
 		label: id.toUpperCase(),
 		position: [...position] as Vec3,
 		cameraTarget: [...cameraTarget] as Vec3,
@@ -349,14 +347,13 @@ function g2Connection(
  */
 export function g2SceneNavigationGraph(): NavigationGraph {
 	const definitions = [
-		{ id: 'n0', roomId: 'room-a', position: [0, 1.6, 0] as Vec3, cameraTarget: [3, 1.2, 0] as Vec3, fov: 54, connected: ['n1'], },
-		{ id: 'n1', roomId: 'room-b', position: [6, 1.6, 0] as Vec3, cameraTarget: [6, 1.2, 2] as Vec3, fov: 54, connected: ['n0', 'n2'], },
-		{ id: 'n2', roomId: 'room-c', position: [6, 1.6, 4] as Vec3, cameraTarget: [3, 1.2, 4] as Vec3, fov: 60, connected: ['n1'], next: 'n0', previous: 'n1' }
+		{ id: 'n0', position: [0, 1.6, 0] as Vec3, cameraTarget: [3, 1.2, 0] as Vec3, fov: 54, connected: ['n1'], },
+		{ id: 'n1', position: [6, 1.6, 0] as Vec3, cameraTarget: [6, 1.2, 2] as Vec3, fov: 54, connected: ['n0', 'n2'], },
+		{ id: 'n2', position: [6, 1.6, 4] as Vec3, cameraTarget: [3, 1.2, 4] as Vec3, fov: 60, connected: ['n1'], next: 'n0', previous: 'n1' }
 	];
 	const navigationNodes = definitions.map((definition) =>
 		g2Node(
 			definition.id,
-			definition.roomId,
 			definition.position,
 			definition.cameraTarget,
 			definition.fov,

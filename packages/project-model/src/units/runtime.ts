@@ -1,7 +1,7 @@
 /**
  * F.2 unit runtime preparation — the one live read path for an admitted project.
  *
- * The Layout compiles through the one canonical geometry core. The Scene 2
+ * The Layout compiles through the one canonical geometry core. The Scene
  * payload resolves through the landed Scene resolver. The **Camera unit**, not
  * the Scene, supplies the navigation graph: views become navigation nodes and
  * the Camera connections stay Camera-owned records. A source that the editor
@@ -18,7 +18,6 @@ import {
 	type LayoutCompileSession,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
-import { createEmptyLayoutRoomRegistry, type LayoutRoomRegistry } from '../project-layout-semantics';
 import {
 	createNavigationGraph,
 	resolveSceneDocument,
@@ -59,7 +58,6 @@ export type UnitRuntimeReady = {
 	 * but execution (F4 acceptance, Save, release) must refuse it.
 	 */
 	readonly closure: readonly EnvelopeClosureFinding[];
-	readonly rooms: LayoutRoomRegistry;
 	readonly runtimeScene: RuntimeScene;
 	readonly graph: NavigationGraph;
 };
@@ -161,14 +159,15 @@ export function prepareValidatedUnitRuntime(
 
 	let runtimeScene: RuntimeScene;
 	try {
-		runtimeScene = p2311Measure('scene-resolve', () =>
-			resolveSceneDocument(
+		runtimeScene = p2311Measure('scene-resolve', () => {
+			countWork('scene:resolve');
+			return resolveSceneDocument(
 				sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
 				// Force the Camera-unit policy after merging the host's catalogue
 				// options: editor admission and visitor preparation share one answer.
 				{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
-			)
-		);
+			);
+		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Scene preparation failed';
 		return {
@@ -195,7 +194,6 @@ export function prepareValidatedUnitRuntime(
 		issues: compiled.issues,
 		diagnostics: validated.diagnostics,
 		closure: validated.closure,
-		rooms: createEmptyLayoutRoomRegistry(),
 		runtimeScene,
 		graph: createNavigationGraph(runtimeScene)
 	};

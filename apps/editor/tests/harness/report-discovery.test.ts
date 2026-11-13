@@ -20,7 +20,7 @@ const TEMP = mkdtempSync(join(tmpdir(), 'harness-discovery-'));
 const REQUIRED_SUITES = [
 	'npm run check',
 	'npm run test:arch',
-	'npm test',
+	'npm run test:fast',
 	'npm run test:heavy',
 	'npm run build',
 	'npm run check:api',
@@ -67,7 +67,7 @@ const FAKE_GH = [
 	'const args = process.argv.slice(2);',
 	'const runs = JSON.parse(readFileSync(process.env.FAKE_GH_RUNS, "utf8"));',
 	'const reports = JSON.parse(readFileSync(process.env.FAKE_GH_REPORTS, "utf8"));',
-	'if (args[0] === "run" && args[1] === "list") { console.log(JSON.stringify(runs)); process.exit(0); }',
+	'if (args[0] === "run" && args[1] === "list") { console.log(JSON.stringify(runs.filter(run => run.event === args[args.indexOf("--event") + 1]))); process.exit(0); }',
 	'if (args[0] === "api" && args[1].includes("/commits/main")) {',
 	'  if (process.env.FAKE_GH_REMOTE_MAIN) {',
 	'    console.log(JSON.stringify({ sha: process.env.FAKE_GH_REMOTE_MAIN }));',
@@ -180,7 +180,7 @@ function reportFor(
 		...(options.ledger === null ? {} : { ledger: options.ledger ?? ledgerFor('r2') }),
 		...(options.issues === null ? {} : { issues: options.issues ?? [] }),
 		suites: REQUIRED_SUITES.map((name) => {
-			if (name === 'npm test') {
+			if (name === 'npm run test:fast') {
 				return { name, status: 'complete', results: { numTotalTests: 1, testResults } };
 			}
 			if (name === 'npm run test:arch' || name === 'npm run test:heavy') {
@@ -263,7 +263,7 @@ describe('fresh main report discovery', () => {
 		expect(report.testedCommit).toBe(null);
 		expect(report.capabilities[0].health).toBe('unknown');
 		expect(report.evidence.source).toBe('github-main');
-		expect(report.evidence.reason).toContain('no successful Merge gate push run');
+		expect(report.evidence.reason).toContain('no successful Merge gate full report');
 	});
 
 	it('rejects a successful pull-request run even when its head is the main commit', () => {
@@ -318,10 +318,10 @@ describe('fresh main report discovery', () => {
 
 	it('uses only a complete ancestor report for regression, not the current run', () => {
 		const { repo, previous, main } = makeRepo();
-		const previousReport = writeJson('previous-report.json', reportFor(previous));
+		const previousReport = writeJson('previous-report.json', { ...reportFor(previous), profile: 'full', goldens: 'success' });
 		const currentReport = writeJson(
 			'current-report.json',
-			reportFor(main, { status: 'failed' })
+			{ ...reportFor(main, { status: 'failed' }), profile: 'full', goldens: 'success' }
 		);
 		const report = statusJson(
 			runStatus(repo, main, {
@@ -329,7 +329,7 @@ describe('fresh main report discovery', () => {
 					{
 						databaseId: 20,
 						workflowName: 'Merge gate',
-						event: 'push',
+						event: 'workflow_dispatch',
 						status: 'completed',
 						conclusion: 'success',
 						headSha: previous,
@@ -340,7 +340,7 @@ describe('fresh main report discovery', () => {
 					{
 						databaseId: 21,
 						workflowName: 'Merge gate',
-						event: 'push',
+						event: 'schedule',
 						status: 'completed',
 						conclusion: 'success',
 						headSha: main,

@@ -16,7 +16,10 @@ import {
 	type WallOpeningRejection
 } from '@portfolio/layout-core';
 
+const CLOSED_WALL_CONTACT_WORDS = 'This would touch or cross a circular Wall. Move it clear of the circle.';
+
 export function wallRefusalWords(code: string, message = ''): string {
+	if (message.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
 	switch (code) {
 		case 'dimension_out_of_range':
 			return LAYOUT_DIMENSION_LIMIT_MESSAGE;
@@ -109,6 +112,69 @@ export function wallRefusalWords(code: string, message = ''): string {
 	}
 }
 
+/**
+ * T1 A1 — the split's own words.
+ *
+ * A split is not a bend: sharing `closed_wall_isolated`'s bend wording would
+ * offer Radius for a Wall the creator is trying to divide. These two refusals
+ * are the slice's promised clear feedback; everything else falls back to the
+ * shared Wall map.
+ */
+export function wallSplitRefusalWords(code: string, message = ''): string {
+	switch (code) {
+		case 'split_through_opening_interior':
+			return 'A split cannot pass through an Opening. Choose a clear point on the Wall.';
+		case 'closed_wall_isolated':
+			return 'A circular Wall is one closed loop and cannot be split. Change its Radius instead.';
+		case 'split_at_existing_endpoint':
+			return "Choose a point between the Wall's ends.";
+		case 'split_distance_out_of_range':
+			return 'Choose a point along the open Wall.';
+		default:
+			return wallRefusalWords(code, message);
+	}
+}
+
+/**
+ * T1 A2 — the join's own words.
+ *
+ * A join is not a bend and not a delete: "Remove joint" must say why a corner,
+ * a three-Wall joint, a mismatched pair or a non-tangent arc pair cannot join,
+ * in the creator's terms. Every other code falls back to the shared Wall map.
+ */
+export function wallJoinRefusalWords(code: string, message = ''): string {
+	switch (code) {
+		case 'non_collinear_straight_pair':
+			return 'These Walls meet at a corner. Drag the joint onto the line between their ends to join them.';
+		case 'non_tangent_curved_pair':
+			return 'These curved Walls meet at a corner. Only a smooth continuation can join.';
+		case 'junction_degree_not_two':
+			return 'Three or more Walls meet here. A join needs exactly two Walls in a line.';
+		case 'incompatible_wall_pair':
+			if (/thickness or height/i.test(message)) {
+				return 'These Walls differ in height or thickness. Make them match to join.';
+			}
+			if (/mix straight and curved/i.test(message)) {
+				return 'A straight Wall and a curved Wall cannot join.';
+			}
+			if (/authored names/i.test(message)) {
+				return 'These Walls carry different names. Give them the same name to join.';
+			}
+			return 'These Walls cannot join.';
+		case 'degenerate_wall_pair':
+			return 'This Wall loops back to itself here. A closed Wall cannot be joined.';
+		case 'duplicate_joined_wall':
+			return 'Another Wall already joins these two ends.';
+		case 'room_identity_lost':
+		case 'room_reconciliation_rejected':
+			return 'Joining here would change a Room boundary. Keep the joint on the Room side.';
+		case 'captured_id_in_use':
+			return 'That identity is already taken. Start again.';
+		default:
+			return wallRefusalWords(code, message);
+	}
+}
+
 /** The attempted metrics an Opening refusal may quote. */
 export type OpeningRefusalAttempt = {
 	readonly openingId?: string;
@@ -176,12 +242,72 @@ export function openingRefusalWords(
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
 
+/** The one coincident-copy refusal sentence: preview, pointer and acceptance share it. */
+export const ROOM_DUPLICATE_COINCIDENT_MESSAGE =
+	'Move the copy clear of its source before placing it.';
+
+/** The planner/refusal shape the Room duplicate seam accepts. */
+export type RoomDuplicateRejection = {
+	readonly code: string;
+	readonly message?: string;
+	readonly targetIds?: readonly string[];
+};
+
+/**
+ * T1 A4 — duplicate's own words.
+ *
+ * The planner's diagnostic names ids. The creator needs the same facts in the
+ * Room's vocabulary, and a non-isolated Room must **name the shared Wall** rather
+ * than ask them to read a planner message. `targetIds` carries the involved
+ * Rooms and Walls; every id that resolves to a Wall is named here, with its
+ * authored name when it has one.
+ */
+export function roomDuplicateRefusalWords(
+	document: LayoutDocumentWallFirst,
+	rejection: RoomDuplicateRejection
+): string {
+	if (rejection.message?.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
+	switch (rejection.code) {
+		case 'coincident_with_source':
+			return ROOM_DUPLICATE_COINCIDENT_MESSAGE;
+		case 'room_not_isolated': {
+			const walls = (rejection.targetIds ?? [])
+				.map((id) => document.walls.find((wall) => wall.id === id))
+				.filter((wall): wall is LayoutDocumentWallFirst['walls'][number] => wall !== undefined)
+				.map((wall) => wall.name ?? wall.id);
+			if (walls.length > 0) {
+				const named = walls.map((wall) => `"${wall}"`).join(', ');
+				return `This Room is not isolated: Wall ${named} is shared with other architecture. A Room can be duplicated only with its own Walls.`;
+			}
+			return 'This Room is not isolated: one of its Walls is shared with other architecture. A Room can be duplicated only with its own Walls.';
+		}
+		case 'external_portal_relation':
+			return 'An Opening in this Room is connected to another Room. Remove that door relation before duplicating.';
+		case 'profile_object_read_only':
+			return 'This Room contains a read-only profile object. Remove it before duplicating.';
+		case 'unknown_room':
+			return 'That Room is gone. Select the Room again.';
+		case 'unresolvable_floor':
+			return 'This Room has no resolvable floor to place a copy.';
+		case 'captured_id_in_use':
+			return 'That identity is already taken. Start the duplicate again.';
+		case 'invalid-value':
+		case 'invalid_value':
+			return 'This Room cannot be placed there. Move the copy and try again.';
+		default:
+			return 'This Room cannot be duplicated as it stands.';
+	}
+}
+
 /** Drawing diagnostics stay in tooling; the local problem marker offers a remedy. */
 export function drawingRefusalWords(code: string): string {
+	if (code === 'closed_wall_isolated') return CLOSED_WALL_CONTACT_WORDS;
 	// A chain refusal is about the outline being drawn, not about editing an
 	// existing Room. Name the attempted closure and the smallest repair instead
 	// of the Card's "Room moved across its boundary" words.
 	switch (code) {
+		case 'arc_rise_out_of_range':
+			return 'An Arc bulge can be no more than half its chord. Pull the bulge closer to the line.';
 		case 'invalid_candidate_document':
 		case 'candidate_does_not_compile':
 		case 'room_reconciliation_rejected':

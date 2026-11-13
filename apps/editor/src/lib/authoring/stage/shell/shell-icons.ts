@@ -91,4 +91,11 @@ export const shellIcons: Readonly<Record<string, string>> = {
   familyFurnish: '<path d="M6 11 V5 A2 2 0 0 1 8 3 H16 A2 2 0 0 1 18 5 V11"/><path d="M4 11 H20 V16 H4 Z"/><path d="M6 16 V21 M18 16 V21"/>',
   sky: '<circle cx="12" cy="9" r="3.5"/><path d="M3 19 C5 15.5 8 15 10 17 C12 13 16 13 18 17 C19.5 15.5 21 16 22 17"/><path d="M2 19 H22"/>',
   room: '<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 10 H20 M10 4 V20"/>',
+  lightColour: '<circle cx="12" cy="12" r="8"/><path d="M12 4 A8 8 0 0 1 12 20 Z" fill="currentColor" stroke="none"/>',
+  lightBrightness: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5 V5 M12 19 V21.5 M2.5 12 H5 M19 12 H21.5 M5.3 5.3 L7.1 7.1 M16.9 16.9 L18.7 18.7 M18.7 5.3 L16.9 7.1 M7.1 16.9 L5.3 18.7"/>',
+  lightShape: '<path d="M4 18 L12 5 L20 18 Z"/><path d="M4 18 H20" stroke-dasharray="2.5 2"/>',
+  lightPosition: '<circle cx="12" cy="12" r="7"/><path d="M12 2 V5.5 M12 18.5 V22 M2 12 H5.5 M18.5 12 H22"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
+  lightShadows: '<circle cx="9.5" cy="9.5" r="4.5"/><ellipse cx="14.5" cy="17" rx="5.5" ry="2.2" stroke-dasharray="2.5 2"/><path d="M14 14.5 L18 18"/>',
+  duplicate: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15 V6 A2 2 0 0 1 7 4 H16"/><path d="M13.5 11 V16 M11 13.5 H16"/>',
+  direction: '<circle cx="12" cy="12" r="8.5"/><path d="M12 2.5 V5.5 M12 18.5 V21.5 M2.5 12 H5.5 M18.5 12 H21.5"/><path d="M12 6.5 L15 14 L12 12.5 L9 14 Z" fill="currentColor" stroke="none"/>',
 };

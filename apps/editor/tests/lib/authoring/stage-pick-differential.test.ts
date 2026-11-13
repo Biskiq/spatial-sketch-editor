@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { tagRenderIdentity } from '$lib/render/render-identity';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Shape, ShapeGeometry } from 'three';
@@ -63,6 +64,7 @@ async function samples(fixture: typeof fixtures[number], registerLayout = true) 
 			shape.closePath();
 			const mesh = new Mesh(new ShapeGeometry(shape), new MeshBasicMaterial());
 			mesh.name = name === 'floor' ? `VisitorFloor:${room.roomId}` : `VisitorCeiling:${room.roomId}`;
+			if (name === 'floor') tagRenderIdentity(mesh, 'floor', room.roomId);
 			mesh.position.y = height; mesh.rotation.x = rotation; root.add(mesh); meshes.push(mesh);
 		}
 	}
@@ -123,6 +125,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// C2 format 7 updates only generation IDs, because the canonical
 			// document now serializes `formatVersion: 7`. Every winner, point and
 			// pick field is unchanged (266 values, all generationId).
+			// A1 Artwork updates only generation IDs and the Scene content
+			// revision, because Scene moves to format 6 and the source hash covers
+			// the header. Every winner, point and pick field is unchanged (266
+			// values are generationId; 16 are the shared Scene contentRevision).
 			expect(actual).toEqual(expected);
 		}
 	});

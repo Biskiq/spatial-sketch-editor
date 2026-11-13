@@ -89,8 +89,8 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 
 | Authority | Owns | Current encoding |
 |---|---|---|
-| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 6`: Junctions, Walls, persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 5 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
+| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 7`: Junctions, Walls (including one isolated self-connected closed Wall), persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path; format 7 is the only recognized version |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 6 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/pacing, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 4, collection-capable); Presentations, linear Guides, one entry View/stay per Stop, invitations, detours and visitor reach |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
@@ -132,6 +132,8 @@ is migration input, not Experience authority. Preview never writes source;
 visitor chunks exclude editor selection, history, gizmos and authoring stores.
 Repairable unresolved authored bindings remain explicit under F.1/F.4;
 selected executable/publication programs require closure under F.5.
+
+**Temporary visitor exception (T1/T2 D2, AR-7).** The existing neutral visitor free-look pose is driven by `OrbitControls` outside the Camera evaluator. The owner has explicitly accepted this named exception until T3 reconciles the visitor free-look authority. It is not a second authored Camera or a claim that hard rule 1 is satisfied. Preserve existing navigation behavior; T3 must establish a targeted regression/authority test before removing the exception. The [T1/T2 audit](../roadmap/t1-t2-consolidation/audit.md) continues to record AR-7 as unresolved.
 
 ### Expressive creation and revision (destination)
 
@@ -267,7 +269,7 @@ interior-only.
 |---------|-----------------|
 | Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
-| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 5 (`@portfolio/project-model`) |
+| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 6 (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `units.camera.data` / Camera 1 (`@portfolio/project-model`) |
 | Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
 | Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |
@@ -319,7 +321,8 @@ primitive, and its spatial role is derived: Walls taking part in a closed
 enclosure bound it, a Wall that encloses nothing is free-standing, and a Wall
 drawn across an enclosed Room divides it, producing the derived Room topology
 through the canonical compiler and its lineage. Rooms stay derived, and no Room
-geometry becomes editable. Layout format 6 has no authored Wall role; every closed ring encloses.
+geometry becomes editable. Layout format 7 has no authored Wall role; every closed ring encloses,
+and a self-connected Wall is the isolated circular case.
 Two curved Walls between the same two Junctions are a valid Room boundary when the stored
 cycle matches the bounded face walk (a two-Wall lens); they are not a duplicate-Wall pair.
 The chord-level overlap and the sampled curve gate still prove the loop is simple and
@@ -420,7 +423,11 @@ normal, so one gesture can travel valid → invalid → valid without the previe
 Release while refused writes nothing and restores the accepted geometry with no history entry.
 The attempted geometry is never compiled, persisted, admitted to history or serialized. Layout builds its preview from the planner's own
 candidate document through the existing compile and `buildPaperPlan` path — the same solve release
-commits — and filters it to the changed Wall and Opening ids. Paper's bounded sheet includes a live
+commits — and filters it to the changed Wall and Opening ids.
+**Approved optimization target (E4/G1, not yet shipped):** use one project-scoped canonical
+compiler session and reuse the compiled Paper result once per **distinct candidate**, never per
+rAF tick or unchanged frame. The accepted intent and the preview must remain the same solve; no
+second preview evaluator is permitted. Paper's bounded sheet includes a live
 candidate's extent, so a drag never leaves the sheet, and the Camera is never reframed by it.
 
 ### Coordination over domain policy

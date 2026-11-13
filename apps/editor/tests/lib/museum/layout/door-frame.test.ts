@@ -31,7 +31,8 @@ describe('a door frame stays inside its Opening', () => {
 	it('frames only rectangular doors, at their sill, from the Wall they sit in', () => {
 		const shell = readFileSync(resolve(process.cwd(), 'src/lib/visitor/VisitorLayoutShell.svelte'), 'utf8');
 		expect(shell).toContain("opening.kind === 'door' && opening.profile === 'rectangular'");
-		expect(shell.match(/wallThickness=\{wall\.thickness\}/g)).toHaveLength(2);
-		expect(shell.match(/\+ opening\.sillHeight/g)).toHaveLength(2);
+		// One portal loop remains: the Room-owned wall path (a second loop) is retired.
+		expect(shell.match(/wallThickness=\{wall\.thickness\}/g)).toHaveLength(1);
+		expect(shell.match(/\+ opening\.sillHeight/g)).toHaveLength(1);
 	});
 });

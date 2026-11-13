@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Render cost calibration — Biskiq research</title>
+		<link rel="stylesheet" href="./src/style.css" />
+		<script type="importmap">
+			{
+				"imports": {
+					"three/webgpu": "./vendor/three.webgpu.js",
+					"three/tsl": "./vendor/three.tsl.js"
+				}
+			}
+		</script>
+	</head>
+	<body>
+		<header>
+			<div>
+				<h1>Render cost calibration</h1>
+				<p class="sub">
+					P2 unit costs and light-budget curves. Deterministic scenes, three r187, built-in
+					materials only. <a href="./README.md">README</a> ·
+					<a href="./model.md">model</a> ·
+					<a href="./portability.md">portability log</a>
+				</p>
+			</div>
+			<div class="controls">
+				<label>
+					Backend
+					<select id="backend">
+						<option value="webgl">A · WebGLRenderer</option>
+						<option value="webgpu">B · WebGPURenderer (WebGPU)</option>
+						<option value="webgpu-force-webgl">C · WebGPURenderer (forceWebGL)</option>
+					</select>
+				</label>
+				<button id="run" type="button">Run selected backend</button>
+				<button id="run-all" type="button" class="secondary">Run all three (~5–8 min each)</button>
+				<button id="download" type="button" class="secondary" disabled>Download JSON</button>
+				<button id="run-lighting" type="button" class="secondary">Run lighting-system sweep (A + B)</button>
+				<button id="download-lighting" type="button" class="secondary">Download lighting JSON</button>
+				<span id="lighting-status" class="note"></span>
+			</div>
+		</header>
+
+		<main>
+			<section class="status-panel">
+				<div id="status" role="status" aria-live="polite">Idle. 1280×720, DPR 1.</div>
+				<pre id="availability"></pre>
+				<progress id="progress" max="100" value="0"></progress>
+			</section>
+
+			<section>
+				<h2>Canvas</h2>
+				<canvas id="view" width="1280" height="720"></canvas>
+				<p class="note" id="canvas-note"></p>
+			</section>
+
+			<section>
+				<h2>Constants and fits</h2>
+				<div id="fits" class="fits"><p class="note">No run yet.</p></div>
+			</section>
+
+			<section>
+				<h2>Light budget curves</h2>
+				<div id="budgets" class="fits"><p class="note">No run yet.</p></div>
+			</section>
+
+			<section>
+				<h2>Per-configuration results</h2>
+				<div class="table-wrap">
+					<table id="results">
+						<thead>
+							<tr>
+								<th>Group</th>
+								<th>Configuration</th>
+								<th class="num">Median ms</th>
+								<th class="num">p95 ms</th>
+								<th class="num">CPU submit ms</th>
+								<th class="num">GPU ms</th>
+								<th class="num">Work ms</th>
+								<th class="num">Sync ms</th>
+								<th class="num">Draws</th>
+								<th class="num">Triangles</th>
+								<th class="num">Programs</th>
+								<th class="num">First frame ms</th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</section>
+		</main>
+
+		<script type="module" src="./src/app.js"></script>
+	</body>
+</html>

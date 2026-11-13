@@ -66,7 +66,7 @@ export function buildPlanSceneFootprintProjection(
 	const footprints: PlanSceneFootprint[] = [];
 
 	for (const entity of document.entities) {
-		if (entity.kind === 'light') continue;
+		if (entity.kind === 'light' || entity.kind === 'artwork') continue;
 		if (entity.kind === 'form') {
 			// A form's ring is already the evaluated, source-scaled footprint, so it
 			// is transformed by yaw and translation only: applying the entity scale

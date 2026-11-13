@@ -111,6 +111,7 @@ import type {
 	StageSession,
 	StageTask
 } from './stage-session';
+import type { StageLightPreview } from './stage-light-preview.svelte';
 
 /** The capabilities this host actually provides. Anything else refuses mounting. */
 export const HOST_STAGE_CAPABILITIES: readonly string[] = [
@@ -237,6 +238,37 @@ export type StageOverlayContribution = {
 	 */
 	readonly css: readonly [number, number];
 	readonly label: string;
+};
+
+/**
+ * A persistent, world-space guide contributed by a domain binding.
+ *
+ * Unlike a candidate preview, this is not an uncommitted proposal: it stays
+ * while its subject is selected. The Stage projects both segment lists once
+ * through the same evaluation as the candidate layer, so the guide can never
+ * disagree with the geometry it describes.
+ */
+export type StageGuideContribution = {
+	readonly id: string;
+	readonly role: 'selection' | 'hover' | 'armed';
+	readonly segments: readonly (readonly [Vec3, Vec3])[];
+	/** Derived helpers (unbounded reach, stems) are drawn differently. */
+	readonly derivedSegments?: readonly (readonly [Vec3, Vec3])[];
+	/**
+	 * A guide's own label, e.g. the selected instrument's name at its centre.
+	 * It is never a permanent subject label: the host draws it in the live-tag
+	 * style, and only for as long as the guide itself is contributed.
+	 */
+	readonly labels?: readonly { readonly world: Vec3; readonly text: string }[];
+};
+
+/** One guide after the facade's single projection into Stage CSS space. */
+export type StageGuideView = {
+	readonly id: string;
+	readonly role: StageGuideContribution['role'];
+	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly derivedSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
 };
 
 /**
@@ -431,6 +463,12 @@ export type StageTaskContribution = {
 	readonly target?: SemanticReference | null;
 	readonly configuration?: F4JsonValue;
 	readonly lens?: StageLens;
+	/**
+	 * Keep the primary selection's admitted marks visible and hit-testable while
+	 * this task is open. The task's pointer hook must claim those marks before its
+	 * own task gesture. Default false: an open task owns the whole surface.
+	 */
+	readonly marksWhileOpen?: boolean;
 	/** Called for explicit Resume against current content, never at lens return. */
 	readonly revalidate?: (task: StageTask, snapshot: StageReadSnapshot) => TaskResumeOutcome;
 	/** Explicit deterministic order; ties break by adapter ID, then contribution ID. */
@@ -493,6 +531,15 @@ export type StageCardFact = {
 	readonly label: string;
 	readonly value: string;
 	readonly fieldId?: string;
+	/**
+	 * T2.S3's derived relation affordance: the value is a subject the creator may
+	 * reveal. The reference is the semantic identity; the callback is the one
+	 * existing Stage selection write, never a second selection model.
+	 */
+	readonly select?: {
+		readonly reference: SemanticReference;
+		readonly onSelect: () => void;
+	};
 };
 
 /** The Card's subject identity, supplied by the host (never private Stage state). */
@@ -541,6 +588,8 @@ export type StageCardActionOutcome = {
 export type StageCardAction = {
 	readonly id: string;
 	readonly label: string;
+	/** A shorter Card-foot verb, when the full label is too long for the row. */
+	readonly compactLabel?: string;
 	/**
 	 * Words the creator reads **before** the action is taken: the planner-derived
 	 * consequences (hosted Openings, Room merge/open). Required for a destructive
@@ -584,8 +633,25 @@ export type StageInstrumentContent = {
 	 * Card fact whose `fieldId` is listed is shown by this writer, so it is not repeated.
 	 */
 	readonly fieldIds?: readonly string[];
+	/**
+	 * Place this writer's primary contributed actions in the Card foot instead of
+	 * the subject menu. The Light Card uses it for Duplicate and Delete.
+	 */
+	readonly inlineActions?: boolean;
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
-	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]>; more?: Snippet<[Snippet?]> }>; readonly services: StageAdapterServices };
+	readonly view?: {
+		readonly component: Component<{
+			services: StageAdapterServices;
+			detailOpen?: boolean;
+			footer?: Snippet<[string?]>;
+			secondary?: Snippet<[Snippet?]>;
+			more?: Snippet<[Snippet?]>;
+			/** The subject's scoped actions, so a writer can place a primary one in its foot. */
+			actions?: readonly StageCardActionRecord[];
+			onAction?: (action: StageCardActionRecord) => void;
+		}>;
+		readonly services: StageAdapterServices;
+	};
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */
@@ -623,6 +689,8 @@ export type StageAdapterBinding = {
 	 */
 	readonly heightTicks?: (context: StageAdapterContext) => readonly StageHeightTick[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
+	/** Persistent selected/armed guide lines; projected once by the host. */
+	readonly guides?: (context: StageAdapterContext) => readonly StageGuideContribution[];
 	/**
 	 * R217.S14 — the candidate geometry this binding proposes right now.
 	 *
@@ -813,6 +881,8 @@ export type StageFacade = {
 	snapshot(): StageReadSnapshot;
 	readonly session: StageSession;
 	readonly camera: CameraSession;
+	/** The session-only light preview, or `null` when this host provides none. */
+	lightPreview(): StageLightPreview | null;
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
 	/** The drawn body of one Scene entity, as the host's pick source measured it. */
@@ -959,6 +1029,8 @@ export type StageFacade = {
 	/** Every scoped Card action contributed for a subject, in deterministic order. */
 	cardActions(subject: StageCardSubject): readonly StageCardActionRecord[];
 	overlays(): readonly StageOverlayContribution[];
+	/** Every adapter's persistent line guide, projected once into Stage CSS space. */
+	guides(): readonly StageGuideView[];
 	/** Every adapter candidate, projected once into Stage CSS space. */
 	candidatePreviews(): readonly StageCandidatePreviewView[];
 	graphics(): readonly StageWorldGraphic[];
@@ -1026,6 +1098,8 @@ export function createStageFacade(input: {
 	readonly outputId?: string;
 	readonly scenePick?: (ray: PointerRay, scene: StageReadSnapshot['domain']['scene']) => SceneRenderedHit | null;
 	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
+	/** The session-only light preview the editor shell merges into its render. */
+	readonly lightPreview?: StageLightPreview | null;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -1381,15 +1455,59 @@ export function createStageFacade(input: {
 		return session.lens() !== 'experience';
 	}
 
+	/**
+	 * The binding that actually publishes this selected subject.
+	 *
+	 * A reference's domain is not always the adapter id: T2's Light adapter owns
+	 * light entities inside the Scene domain, while the Scene adapter deliberately
+	 * excludes them. Prefer a binding whose subject list contains the reference;
+	 * fall back to the domain binding for subjects an adapter does not enumerate.
+	 */
+	function adapterForSelection(entry: StageSelectionState['ordered'][number]) {
+		const direct = adapters.get(entry.reference.domain);
+		const owns = (candidate: NonNullable<typeof direct>): boolean =>
+			candidate.contributions.subjects?.some((subject) =>
+				sameReference(subject.reference, entry.reference)
+			) ?? false;
+		if (direct !== undefined && (direct.contributions.subjects === undefined || owns(direct))) {
+			return direct;
+		}
+		for (const [adapterId, candidate] of adapters) {
+			if (adapterId !== entry.reference.domain && owns(candidate)) return candidate;
+		}
+		return direct;
+	}
+
+	/**
+	 * The adapter whose marks may stay visible under the open contributed task.
+	 * A task that opts into `marksWhileOpen` owns only its own selection marks;
+	 * another adapter's selected subject must not leak through the task surface.
+	 */
+	function openTaskMarkOwner(): string | null {
+		const owner = contributedTaskOwner;
+		if (owner === null) return null;
+		ensureBindings();
+		const task = tasksOf().find(
+			(entry) =>
+				entry.adapterId === owner.adapterId &&
+				entry.id === owner.taskId &&
+				entry.marksWhileOpen === true
+		);
+		return task?.adapterId ?? null;
+	}
+
 	function selectionMarks(): readonly StageMarkView[] {
 		if (!isLive() || !worldMarksOffered()) return [];
 		syncDisclosureSelection();
-		if (session.task() !== null) return [];
+		const taskOpen = session.task() !== null;
+		const taskMarkOwner = taskOpen ? openTaskMarkOwner() : null;
+		if (taskOpen && taskMarkOwner === null) return [];
 		const entry = primaryEntry(session.selectionState());
 		if (entry === null) return [];
 		ensureBindings();
-		const adapterEntry = adapters.get(entry.reference.domain);
+		const adapterEntry = adapterForSelection(entry);
 		if (adapterEntry === undefined) return [];
+		if (taskMarkOwner !== null && adapterEntry.adapter.id !== taskMarkOwner) return [];
 		const handle = adapterContext();
 		if (handle === null) return [];
 		let descriptors: readonly StageHandleDescriptor[] = [];
@@ -1593,6 +1711,7 @@ export function createStageFacade(input: {
 
 	const facade: StageFacade = {
 		snapshot: () => currentSnapshot,
+		lightPreview: () => input.lightPreview ?? null,
 		session,
 		camera,
 		evaluation: () => camera.evaluation(),
@@ -2110,6 +2229,41 @@ export function createStageFacade(input: {
 						css: [marker.css[0] - left, marker.css[1] - top] as const
 					}));
 				} catch { return []; }
+			});
+		},
+		guides() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			const { left, top } = handle.context.evaluation.rect;
+			const project = (world: Vec3): readonly [number, number] | null => {
+				if (world.length !== 3 || !world.every(Number.isFinite)) return null;
+				const projected = handle.context.project(world);
+				return projected === null ? null : [projected[0] - left, projected[1] - top];
+			};
+			const segmentsOf = (
+				segments: readonly (readonly [Vec3, Vec3])[]
+			): readonly (readonly [readonly [number, number], readonly [number, number]])[] =>
+				segments.flatMap(([from, to]) => {
+					const a = project(from);
+					const b = project(to);
+					return a === null || b === null ? [] : [[a, b] as const];
+				});
+			return [...adapters.values()].flatMap((entry) => {
+				try {
+					return (entry.contributions.guides?.(handle.context) ?? []).map((guide) => ({
+						id: guide.id,
+						role: guide.role,
+						segments: segmentsOf(guide.segments),
+						derivedSegments: segmentsOf(guide.derivedSegments ?? []),
+						labels: (guide.labels ?? []).flatMap((label) => {
+							const point = project(label.world);
+							return point === null ? [] : [{ css: point, text: label.text }];
+						})
+					}));
+				} catch {
+					return [];
+				}
 			});
 		},
 		candidatePreviews() {

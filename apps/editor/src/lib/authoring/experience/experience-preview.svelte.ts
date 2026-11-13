@@ -16,6 +16,8 @@ import { loweringProblem } from './experience-problems';
 import { guideTimeMapForProgram } from './playback-map';
 import type { StageFacade } from '../stage/stage-facade';
 
+import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
+
 type VisitorSurface = (typeof import('$lib/visitor/VisitorPreviewSurface.svelte'))['default'];
 
 export type ExperiencePreviewHost = {
@@ -39,6 +41,7 @@ export type ExperiencePreviewHost = {
 	snapSuspended: () => boolean;
 	patchDrafting: (patch: { snapSuspended: boolean }) => void;
 	notice: (message: string) => void;
+	prepareArtwork?: (domain: unknown, signal: AbortSignal) => Promise<ArtworkScope | null>;
 	perfMark: (name: string, data?: Record<string, unknown>) => void;
 };
 
@@ -67,6 +70,14 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	let previewViewRead = $state.raw<unknown | null>(null);
 	let previewSurface = $state.raw<VisitorSurface | null>(null);
 	let previewEpoch = 0;
+	let artworkScope = $state.raw<ArtworkScope | null>(null);
+	let artworkPreparation: AbortController | null = null;
+	function releaseArtwork() {
+		artworkPreparation?.abort();
+		artworkPreparation = null;
+		artworkScope?.dispose();
+		artworkScope = null;
+	}
 	let previewBusy = $state(false);
 	/** An explicit Card action's entry mode (guided or free), or null for the head Preview. */
 	let previewRequestedMode = $state<'guided' | 'free' | null>(null);
@@ -156,6 +167,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	 * nothing is reinstated.
 	 */
 	function close(): void {
+		releaseArtwork();
 		const stage = host.stage();
 		const active = preview;
 		preview = null;
@@ -240,6 +252,25 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 			// A load is asynchronous: the source this entry resolved against must
 			// still be the mounted one before ownership moves.
 			if (!host.isCurrent(token) || stage !== host.stage()) return;
+			if (host.prepareArtwork) {
+				const abort = new AbortController();
+				artworkPreparation = abort;
+				try {
+					const ready = await host.prepareArtwork(snapshot.domain, abort.signal);
+					if (abort.signal.aborted || !host.isCurrent(token) || host.snapshot() !== snapshot) {
+						ready?.dispose();
+						return;
+					}
+					artworkScope = ready;
+				} catch (error) {
+					if (!abort.signal.aborted && host.isCurrent(token)) {
+						host.notice(error instanceof Error ? error.message : 'Artwork could not be loaded for Preview.');
+					}
+					return;
+				} finally {
+					if (artworkPreparation === abort) artworkPreparation = null;
+				}
+			}
 			const handover = enterPreview(stage.camera, {
 				runEpoch,
 				returnToken: previewReturnToken(
@@ -248,6 +279,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 				)
 			});
 			if (handover.kind === 'refused') {
+				releaseArtwork();
 				host.notice(handover.message);
 				return;
 			}
@@ -267,6 +299,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 
 	/** Drop a run and a surface built from a replaced source; the chunk stays cached. */
 	function reset(): void {
+		releaseArtwork();
 		preview = null;
 		previewView = null;
 		previewViewRead = null;
@@ -276,6 +309,7 @@ export function createExperiencePreview(host: ExperiencePreviewHost) {
 	}
 
 	return {
+		get artworkScope() { return artworkScope; },
 		get preview() {
 			return preview;
 		},

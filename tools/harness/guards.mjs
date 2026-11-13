@@ -13,9 +13,12 @@
  * text normalised out so retagging remains the same check. A legitimate fix may
  * turn `it.fails` back into `it` — the tagged check itself stays.
  *
- * Two production consumers:
+ * Three production consumers:
  *
  *   pull_request  `guards.mjs --base <ref> --head <ref> --labels-file <json>`
+ *   merge_group   `guards.mjs --entries-file <json>`; every queued entry is
+ *                 evaluated against its own delta and its own labels, so an
+ *                 approval on one PR cannot authorize another PR's removal.
  *   issues event  `issue-response.mjs` (uses `evaluateIssueEvent` below) which
  *                 restores an unauthorized label/state change and fails.
  */
@@ -347,6 +350,7 @@ function parseArgs(argv) {
 		head: 'HEAD',
 		labels: null,
 		labelsFile: null,
+		entriesFile: null,
 		baseIssues: null,
 		headIssues: null,
 		baseMarkers: null,
@@ -367,6 +371,7 @@ function parseArgs(argv) {
 		else if (arg === '--head') options.head = next();
 		else if (arg === '--labels') options.labels = next();
 		else if (arg === '--labels-file') options.labelsFile = next();
+		else if (arg === '--entries-file') options.entriesFile = next();
 		else if (arg === '--base-issues') options.baseIssues = next();
 		else if (arg === '--head-issues') options.headIssues = next();
 		else if (arg === '--base-markers') options.baseMarkers = next();
@@ -398,6 +403,34 @@ function cli() {
 			event: readJson(options.eventFile),
 			linkedFixes: readLinkedFixes(options.linkedFixes)
 		});
+	} else if (options.entriesFile) {
+		const entries = readJson(options.entriesFile);
+		if (!Array.isArray(entries) || entries.length === 0) {
+			throw new Error('--entries-file must contain at least one entry');
+		}
+		violations = [];
+		for (let index = 0; index < entries.length; index += 1) {
+			const entry = entries[index];
+			if (
+				typeof entry?.base !== 'string' ||
+				typeof entry?.head !== 'string' ||
+				!Array.isArray(entry?.labels)
+			) {
+				throw new Error(`entry ${index + 1} is missing base, head or labels`);
+			}
+			const scope = `entry ${index + 1}${
+				Array.isArray(entry.prNumbers) && entry.prNumbers.length > 0
+					? ` (#${entry.prNumbers.join(', #')})`
+					: ''
+			}`;
+			for (const violation of evaluateGuards({
+				base: checksAt(options.repoRoot, entry.base),
+				head: checksAt(options.repoRoot, entry.head),
+				labels: entry.labels
+			})) {
+				violations.push({ ...violation, reason: `${scope}: ${violation.reason}` });
+			}
+		}
 	} else {
 		const labels = options.labels ? options.labels.split(',') : readLabels(options.labelsFile);
 		violations = evaluateGuards({

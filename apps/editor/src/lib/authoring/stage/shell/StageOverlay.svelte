@@ -20,13 +20,14 @@
 	 * never written anywhere.
 	 */
 	import type { StageMarkView } from '../stage-handles';
-	import type { StageCandidatePreviewView } from '../stage-facade';
+	import type { StageCandidatePreviewView, StageGuideView } from '../stage-facade';
 	import StageSticker from './StageSticker.svelte';
 
 	let {
 		markers,
 		marks = [],
 		roomLabels = [],
+		guides = [],
 		candidates = [],
 		viewportWidth = 0,
 		viewportHeight = 0,
@@ -39,6 +40,7 @@
 		}[];
 		marks?: readonly StageMarkView[];
 		roomLabels?: readonly import('../room-labels').RoomLabelView[];
+		guides?: readonly StageGuideView[];
 		candidates?: readonly StageCandidatePreviewView[];
 		viewportWidth?: number;
 		viewportHeight?: number;
@@ -60,7 +62,7 @@
 	}
 
 	/** Carry the dash phase across samples belonging to the same outline. */
-	function candidatePath(segments: StageCandidatePreviewView['segments']): string {
+	function candidatePath(segments: readonly (readonly [readonly [number, number], readonly [number, number]])[]): string {
 		let previous: readonly [number, number] | undefined;
 		return segments.map(([from, to]) => {
 			const start = previous?.[0] === from[0] && previous[1] === from[1] ? '' : `M${from[0]},${from[1]}`;
@@ -177,6 +179,19 @@
 		<g class="room-label" transform={`translate(${room.css[0]} ${room.css[1]})`}>
 			<text text-anchor="middle">{room.name}</text>
 			<text class="area" text-anchor="middle" y="15">{room.area.toFixed(1)} m²</text>
+		</g>
+	{/each}
+	{#each guides as guide (guide.id)}
+		<g class="guide" data-guide-id={guide.id} data-guide-role={guide.role}>
+			{#if guide.segments.length > 0}<path class="guide-edge" d={candidatePath(guide.segments)} />{/if}
+			{#if guide.derivedSegments.length > 0}<path class="guide-edge derived" d={candidatePath(guide.derivedSegments)} />{/if}
+			{#each guide.labels as label, index (`${guide.id}:label:${index}`)}
+				{@const width = tagWidth(label.text)}
+				<g class="tag guide-tag" transform={`translate(${label.css[0] + 8} ${label.css[1] - 26})`}>
+					<rect {width} height="17" rx="3" />
+					<text x="6" y="12">{label.text}</text>
+				</g>
+			{/each}
 		</g>
 	{/each}
 	{#each candidates as candidate (candidate.id)}
@@ -431,6 +446,17 @@
 		stroke-width: 1.5;
 		stroke-dasharray: 6 4;
 		stroke-linecap: round;
+	}
+	.guide-edge {
+		fill: none;
+		stroke: var(--overlay-ink);
+		stroke-width: 1.25;
+		stroke-linecap: round;
+		opacity: 0.72;
+	}
+	.guide-edge.derived {
+		stroke-dasharray: 4 4;
+		opacity: 0.48;
 	}
 	.candidate.drawing .candidate-edge { stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); stroke-width: 1.6; stroke-dasharray: none; }
 	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); filter: none; stroke-width: 2; stroke-dasharray: 6 4; }

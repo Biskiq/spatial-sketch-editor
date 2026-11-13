@@ -1,7 +1,7 @@
 # Agent context — Personal / Museum
 
 **Bootstrap:** [`docs/README.md`](./docs/README.md) (router). **Human start:**
-[`README.md`](./README.md#first-ten-minutes). **Status:** `npm run status`.
+[`README.md`](./README.md#development). **Status:** `npm run status`.
 **Workflow:** [`docs/workflow.md`](./docs/workflow.md) (claims, flags, risk tiers, plans).
 **Focus:** [`focus.md`](./focus.md). **Glossary:** [`docs/glossary.md`](./docs/glossary.md).
 **Path map:** [`docs/path-map.md`](./docs/path-map.md).
@@ -43,7 +43,7 @@ the North Star states intent. Do not read the archive unless current evidence ne
    projection and evaluation; Experience owns visitor-facing composition and editorial occurrences;
    typed resources form their own independently versioned system. Never hide a new domain inside
    another document. World-local project placement with explicit internal frames; no mandatory Room
-   frame. The landed F2 encoding is separate Layout, Camera-free Scene 5, Camera 1, Experience 4 and
+   frame. The landed F2 encoding is separate Layout, Camera-free Scene 6, Camera 1, Experience 4 and
    resources 2 units. Camera data inside `project.scene` was the pre-cutover encoding (historical, not
    the destination); the separate Camera unit is the landed split.
 3. **Authored truth excludes generated/render/session state** — authored connection anchors are
@@ -110,6 +110,12 @@ persisted-format change the previous reader can still read (or with a tested rec
 review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-rule, North Star,
 approved-design or ledger-shape change, incompatible format, check removal, owner review,
 production activation, licence or new dependency → owner decides before merge.
+
+**Integration is native.** The target path is implement → focused local tests → PR → review → CI →
+merge queue → merge. Once the owner activates the queue, the queue validates each batch against
+current `main`; agents do not rebase sibling work, refresh a behind branch by hand, or rerun CI to
+integrate another PR. See
+[CI and merge automation](./docs/operations/ci-merge-automation.md).
 
 On-demand skills: `work-checkpoint`, `owner-checkpoint`, `gardener` (archive-only) and `breaker`.
 No schedules. The

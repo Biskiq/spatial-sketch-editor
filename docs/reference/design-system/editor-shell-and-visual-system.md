@@ -1288,7 +1288,7 @@ These questions belong to feature design and usability evaluation; they do not r
 - The Section inset covers the Stage's lower right where the Sheet's foot and zoom controls sit.
 - iPad landscape is tight with the Index, a selection and the Ink palette all open; iPad
   portrait was checked only scaled down.
-- The near-wall cutaway is automatic, with no hold-to-see-outside.
+- The near-wall cutaway remains a specified target, but is not implemented in the current Stage. Lane X2 adds the **Near walls: Cut | Whole** control and hold-to-see-whole behavior.
 - Portrait Preview crops authored Views; Look through needs aspect safe-area guidance or
   per-aspect framing.
 - Similar names in dense projects need thumbnails or hover highlight beyond room and Level context.

@@ -24,7 +24,7 @@ type Identity = { sourceId: string; label: string; kind: string; status: string;
 function mountCard(options: {
 	identity?: Identity;
 	facts?: readonly StageCardFact[];
-	writer?: { summary: string; adapterId: string; fieldIds?: readonly string[];
+	writer?: { summary: string; adapterId: string; fieldIds?: readonly string[]; inlineActions?: boolean;
 	} | null;
 	actions?: readonly StageCardActionRecord[];
 	technicalFacts?: readonly StageCardFact[];
@@ -197,6 +197,38 @@ describe('Card actions: only a destructive action is destructive', () => {
 		const button = target.querySelector<HTMLButtonElement>('[data-card-action="layout-something"]')!;
 		expect(button.classList.contains('destructive')).toBe(false);
 		expect(button.closest('[data-card-more]')).toBeNull();
+	});
+
+	it('moves a writer-owned action into the Card foot and out of the subject menu', () => {
+		const target = mountCard({
+			writer: { summary: 'Light fields', adapterId: 'light', inlineActions: true },
+			actions: [
+				action('light-duplicate', { label: 'Duplicate light', compactLabel: 'Duplicate' }),
+				action('light-delete', { label: 'Delete light', compactLabel: 'Delete', destructive: true, detail: 'Remove Sun.' })
+			]
+		});
+		const duplicate = target.querySelector<HTMLButtonElement>('[data-card-footer-action="light-duplicate"]')!;
+		const remove = target.querySelector<HTMLButtonElement>('[data-card-footer-action="light-delete"]')!;
+		expect(duplicate.textContent).toBe('Duplicate');
+		expect(remove.textContent).toBe('Delete');
+		expect(target.querySelector('[data-card-action="light-duplicate"]')).toBeNull();
+		expect(target.querySelector('[data-card-action="light-delete"]')).toBeNull();
+	});
+
+	it('confirms a destructive foot action in place before running it', async () => {
+		const remove = action('light-delete', { label: 'Delete light', compactLabel: 'Delete', destructive: true, detail: 'Remove Sun. Undo restores it.' });
+		const target = mountCard({
+			writer: { summary: 'Light fields', adapterId: 'light', inlineActions: true },
+			actions: [remove]
+		});
+		await settle();
+		target.querySelector<HTMLButtonElement>('[data-card-footer-action="light-delete"]')!.click();
+		await settle();
+		expect(remove.run).not.toHaveBeenCalled();
+		expect(target.textContent).toContain('Remove Sun. Undo restores it.');
+		target.querySelector<HTMLButtonElement>('[data-card-footer-confirm]')!.click();
+		await settle();
+		expect(remove.run).toHaveBeenCalledTimes(1);
 	});
 });
 

@@ -82,7 +82,7 @@ import {
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { openingRefusalWords } from './refusals';
+import { openingRefusalWords, wallRefusalWords } from './refusals';
 
 export const LAYOUT_WALL_HEIGHT_KIND = 'layout-wall-height';
 export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
@@ -520,7 +520,7 @@ function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ distance, point: [x, z] },
 			{ knotId }
 		);
-		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, wallRefusalWords(plan.rejection.code, plan.rejection.message));
 		return preparedLayoutCandidate(request, 'layout-wall-bend', { kind: 'wall', id: wallId }, plan.document, [
 			'shape'
 		]);
@@ -547,7 +547,7 @@ function wallKnotDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			wallId,
 			knotId
 		);
-		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, wallRefusalWords(plan.rejection.code, plan.rejection.message));
 		return preparedLayoutCandidate(request, 'layout-wall-knot-delete', { kind: 'wall', id: wallId }, plan.document, [
 			'shape'
 		]);
@@ -1341,26 +1341,6 @@ export function wallStationNearPoint(
 	);
 	if (projected === undefined || projected.distanceToPath > maxDistanceToPath) return null;
 	return projected.distance;
-}
-
-/**
- * The Bend preview: the exact candidate the retained planner builds, or its
- * refusal. Preview and commit share the same captured knot id.
- */
-export function previewWallBend(
-	document: LayoutDocumentWallFirst,
-	wallId: string,
-	distance: number,
-	point: readonly [number, number],
-	knotId: string
-):
-	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
-	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
-	const plan = planBendWallCurveKnot(document, wallId, { distance, point: [point[0], point[1]] }, { knotId });
-	if (plan.kind === 'rejected') {
-		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
-	}
-	return { kind: 'planned', document: plan.document };
 }
 
 /**

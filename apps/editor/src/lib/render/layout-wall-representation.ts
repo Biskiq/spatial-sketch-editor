@@ -54,6 +54,7 @@ import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
 import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
+import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 
 /** One retained Wall: what it was built from and how to release it. */
 type RetainedWall = {
@@ -80,6 +81,18 @@ export type WallRepresentation = {
 	/** The subtree to mount; it is never replaced, only reconciled. */
 	readonly object3d: Group;
 	update(geometry: CompiledLayoutGeometry): WallRepresentationStats;
+	/**
+	 * The retained object drawing this Wall (its failure surface when the builder
+	 * refused it), or null when no Wall by that id is held. Reads the representation's
+	 * own index; never searches the subtree and never reads a name.
+	 */
+	objectOf(wallId: string): Object3D | null;
+	/**
+	 * Hide exactly these Walls. Work is proportional to the ids that changed
+	 * state, and the set is remembered: a Wall built later with a hidden id is
+	 * born hidden, and a rebuilt Wall keeps its state.
+	 */
+	setHidden(wallIds: ReadonlySet<string>): void;
 	/** Release every retained mesh and material. Idempotent. */
 	dispose(): void;
 };
@@ -165,6 +178,7 @@ export function createWallRepresentation(): WallRepresentation {
 	const materialsSeen = new Set<Material>();
 	let disposed = false;
 	let previousGeometry: CompiledLayoutGeometry | undefined;
+	let hidden: ReadonlySet<string> = new Set();
 
 	// A physical Wall belongs to no Room: the mesh builder resolves its surface
 	// with the Wall's own id as `roomId`, so the tint is always the default
@@ -193,6 +207,7 @@ export function createWallRepresentation(): WallRepresentation {
 			materialsSeen.add(material);
 			const mesh = new Mesh(geometry, material);
 			mesh.name = `VisitorPhysicalWallFailure:${wall.wallId}`;
+			tagRenderIdentity(mesh, 'wall-failure', wall.wallId);
 			mesh.position.set(...box.position);
 			return {
 				object: mesh,
@@ -205,6 +220,7 @@ export function createWallRepresentation(): WallRepresentation {
 		const adapted = toWallBufferGeometry(result.mesh, resolveMaterial);
 		const mesh = new Mesh(adapted.geometry, adapted.materials);
 		mesh.name = `VisitorPhysicalWall:${wall.wallId}`;
+		tagRenderIdentity(mesh, 'wall', wall.wallId);
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
 		return { object: mesh, release: adapted.dispose };
@@ -230,6 +246,8 @@ export function createWallRepresentation(): WallRepresentation {
 					// Keep the attached mesh and its child-array slot. Mesh.copy(false)
 					// replaces buffers/material/transform without scanning or splicing N children.
 					previous.object.copy(next.object, false);
+					// `copy` resets visibility with the rest of the transform state.
+					previous.object.visible = !hidden.has(patch.wall.wallId);
 					previous.release();
 					retained.set(patch.wall.wallId, { key, object: previous.object, release: next.release });
 					built += 1;
@@ -260,6 +278,7 @@ export function createWallRepresentation(): WallRepresentation {
 					elevationByFloor.get(wall.floorId) ?? 0,
 					endsByWall.get(wall.wallId) ?? null
 				);
+				next.object.visible = !hidden.has(wall.wallId);
 				const entry: RetainedWall = { key, object: next.object, release: next.release };
 				if (previous) {
 					// Swap in place so draw order follows the compiled Wall order.
@@ -295,10 +314,24 @@ export function createWallRepresentation(): WallRepresentation {
 			};
 		},
 
+		objectOf(wallId) {
+			return retained.get(wallId)?.object ?? null;
+		},
+
+		setHidden(wallIds) {
+			if (disposed) throw new Error('the layout wall representation has been disposed');
+			hidden = reconcileHidden(hidden, wallIds, (wallId, isHidden) => {
+				countWork('representation:visibility-write');
+				const entry = retained.get(wallId);
+				if (entry !== undefined) entry.object.visible = !isHidden;
+			});
+		},
+
 		dispose() {
 			if (disposed) return;
 			disposed = true;
 			previousGeometry = undefined;
+			hidden = new Set();
 			for (const entry of retained.values()) {
 				entry.object.removeFromParent();
 				entry.release();

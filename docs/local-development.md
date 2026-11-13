@@ -3,7 +3,143 @@
 Run these commands from the repository root. For the project overview and demos,
 see the [Biskiq README](../README.md).
 
-Needs Node.js 20+ and a WebGL browser.
+Needs Node.js 20+, Docker with Compose v2, and a WebGL browser. No cloud account,
+remote database or Cloudflare R2 credentials are needed for the self-contained
+stack.
+
+## One command: the full self-contained stack (recommended)
+
+```bash
+npm install
+npm run dev:local
+```
+
+That command:
+
+1. starts PostgreSQL 16 and SeaweedFS (the local S3-compatible store) in an
+   isolated Compose project;
+2. applies every database migration (idempotent);
+3. creates and verifies the object-storage bucket with a signed write/read/delete
+   probe;
+4. starts the existing Fastify API with source watching;
+5. starts SvelteKit/Vite with hot reload in the foreground and waits until both
+   HTTP services answer.
+
+Open the printed editor URL (usually `http://localhost:<port>`; the editor
+prefers Vite's default port `5173` and moves to the next free port when it is
+occupied). No username or password account is preconfigured: choose **Create an
+account** on the sign-in page. Accounts, projects, project versions and asset
+bytes survive restarts.
+
+The first run pulls the `postgres:16-alpine` and `chrislusf/seaweedfs:4.53`
+images. Later runs reuse them.
+
+### Lifecycle commands
+
+| Command | Effect |
+| --- | --- |
+| `npm run dev:local` | Start or resume the stack and run the API/editor in the foreground. |
+| `Ctrl+C` | Stop the API, the editor and the Compose services. Data is preserved. |
+| `npm run dev:local:stop` | Same stop from another terminal; data is preserved. |
+| `npm run dev:local:reset` | **Destructive.** Stop and delete the local PostgreSQL and object-storage volumes and the local stack state. |
+| `npm run dev:local:logs` | Follow the PostgreSQL and SeaweedFS logs; `Ctrl+C` stops following only. |
+| `npm run dev:local:status` | Print the stack identity, container status and HTTP readiness. |
+
+### Clearing local data
+
+`npm run dev:local:reset` is the supported way to clear the local PostgreSQL
+database and SeaweedFS bucket. It stops the stack, deletes both data volumes and
+the local stack state, and leaves the next `npm run dev:local` to recreate them.
+Use `npm run dev:local:stop` instead when you only want to stop the services and
+keep your accounts, projects and asset bytes.
+
+Startup is idempotent: migrations, bucket creation and service startup may be
+repeated. A lock file prevents two supervisors from racing on one worktree; a
+stale lock from a crashed process is reclaimed. `stop` and `reset` are safe to
+repeat when nothing is running.
+
+`stop` and `reset` authorize the persisted state against the current absolute
+worktree path before using its Compose project. A state file copied from another
+worktree cannot target that other stack: `stop` falls back to the current
+worktree's identity, and `reset` refuses and leaves the state file in place. If
+Docker cleanup fails, `reset` reports the failure and also leaves the state file
+so the operation can be retried without losing the only recovery record.
+
+The API and editor started by `dev:local` listen only on loopback. The editor is
+served at `localhost` (the same host used by `npm run dev`), and its browser
+requests use the `localhost` API origin; the API listener itself is loopback-only.
+PostgreSQL and SeaweedFS publish their ports on loopback too. The API chooses
+loopback whenever the development-only local object store is active; the normal
+R2 path keeps its `0.0.0.0` listener, and `npm run dev:editor` is unchanged.
+
+### What is isolated, and where the data lives
+
+Every checkout's absolute path determines a short hash. That hash names the
+Compose project, both Docker volumes, the database password, the S3 access keys,
+the object-key namespace and the S3 bucket. Two worktrees can therefore run side
+by side without sharing a port, database, bucket or credential.
+
+The first run writes `.local/dev-stack.json` (mode `0600`, git-ignored) with the
+allocated ports, credentials and session key. The editor prefers `5173`; an
+existing state moves to that port on the next start when it is free, otherwise
+the prior editor port is retained. The ports are reused on the next start when
+they are still free. The Compose volumes are named
+`<stack>_pgdata` and `<stack>_s3data`; `dev:local:status` prints `<stack>`. Use
+`npm run dev:local:logs` to follow the service logs.
+
+`npm run dev:local:reset` deletes both volumes, so the next start creates a fresh
+database and bucket. Delete `.local/` only through that command (or after
+stopping), because the state file is how a restart finds its existing data.
+
+### No production configuration is read
+
+`dev:local` does not source `.env`. It starts every child with inherited
+`DATABASE_URL`, `SESSION_KEY`, `R2_*`, `E2E_TEST_AUTH_SECRET`,
+`RENDER_EXTERNAL_URL` and `BISKIQ_*` values removed, then sets the loopback
+values from `.local/dev-stack.json`. A developer's deployed database or R2
+credentials cannot be reached by this stack.
+
+The test-only authentication seam is deliberately absent: `dev:local` never sets
+`E2E_TEST_AUTH_SECRET`. Sign-in uses the normal username/password account flow.
+
+### Object storage and production safety
+
+Local storage is [SeaweedFS](https://github.com/seaweedfs/seaweedfs) 4.53, pinned
+by image tag. It is Apache-2.0 licensed and the image's multi-arch index includes
+`linux/amd64` and `linux/arm64`. The API talks to it through the same
+`@aws-sdk/client-s3` `ObjectStore` used for R2, using S3 Signature V4 with
+path-style addressing.
+
+The development-only switch is explicit:
+
+```env
+LOCAL_OBJECT_STORE=1
+R2_ENDPOINT=http://127.0.0.1:<port>
+```
+
+`readConfig` accepts that driver only when all of these hold: the value is exactly
+`1`, `NODE_ENV` is not `production`, and `R2_ENDPOINT` is a credential-free HTTP
+URL on a loopback host. The production path is unchanged: without
+`LOCAL_OBJECT_STORE`, `R2_ENDPOINT` must still be a credential-free HTTPS URL and
+the SDK uses its normal virtual-hosted style. A deployed process that sets the
+local switch fails closed.
+
+### Technical checks
+
+```bash
+npm run test:local-dev   # stack identity, isolation, environment and port allocation
+npm run check:api        # API typecheck
+npm run test:api         # API contracts; needs DATABASE_URL (see below)
+```
+
+The local stack itself is ready for the owner's separate manual T2 review; no
+browser journey or Playwright acceptance is part of this command.
+
+## Alternative: Docker backend with a real R2 development bucket
+
+This predates `dev:local` and is **not** self-contained: it still uses the `R2_*`
+values in `.env` for uploads and reads. If you use it, point those at a
+development-only bucket — never the production bucket or keys.
 
 Install dependencies and create the local environment file if it does not exist.
 Then set the local values in `.env` (do not commit it):
@@ -13,38 +149,29 @@ npm install
 cp .env.example .env
 ```
 
-Set a 32-byte `SESSION_KEY` and the `R2_*` values in `.env`, with the editor's
-API origin. No username/password account is preconfigured: open the editor's
-sign-in page and choose **Create an account**. An already signed-in legacy
-account can enroll credentials while keeping its existing projects. There are
-no external identity-provider credentials or callback registrations.
+Set a 32-byte `SESSION_KEY` and the `R2_*` values, with the editor's API origin:
 
 ```env
 PUBLIC_API_ORIGIN=http://localhost:8787
 ```
 
-## Backend in Docker (recommended)
-
-Needs Docker with Compose v2. One command builds the API image, starts
-PostgreSQL 16, applies every migration and returns once the API reports ready
-(`/health/ready` reaches the database):
+One command builds the API image, starts PostgreSQL 16, applies every migration
+and returns once the API reports ready (`/health/ready` reaches the database):
 
 ```bash
 npm run stack:up
 ```
 
-That starts the backend only. Then run the editor natively, with Vite hot reload
-(two commands by design: the editor is never containerized):
+Then run the editor natively, with Vite hot reload:
 
 ```bash
 npm run dev
 ```
 
-Open <http://localhost:5173>. The Compose stack ([`docker-compose.yml`](../docker-compose.yml))
-reads the secrets from `.env` but always uses its own database and origins:
-the API serves `http://localhost:8787` and restarts when `apps/api/src` or
-`packages/*/src` change. Data lives in the `biskiq_pgdata` volume and survives
-restarts; the database is also reachable from the host at
+Open <http://localhost:5173>. The Compose stack
+([`docker-compose.yml`](../docker-compose.yml)) reads secrets from `.env` but
+always uses its own database and origins. Data lives in the `biskiq_pgdata`
+volume; the database is also reachable at
 `postgresql://biskiq:biskiq@localhost:5433/biskiq`. `BISKIQ_DB_PORT` and
 `BISKIQ_API_PORT` change the host ports; with a different API port, set
 `PUBLIC_API_ORIGIN` to match.
@@ -57,29 +184,12 @@ npm run stack:reset     # stop and delete the database volume
 npm run test:api:stack  # API suite against the Compose database
 ```
 
-**Object storage is not isolated.** Compose replaces the database, but the API
-still uses the `R2_*` values from `.env` for real uploads and reads. Point them at
-a development-only R2 bucket with credentials scoped to it — never the
-production bucket or keys.
+This legacy stack is shared by default: every checkout that does not set
+`BISKIQ_STACK`, `BISKIQ_DB_PORT` and `BISKIQ_API_PORT` uses the same project,
+image and volume. For parallel work prefer `dev:local`, whose isolation is
+automatic.
 
-**Parallel worktrees.** By default every checkout shares one stack (project,
-image and volume `biskiq`); `stack:up` from another worktree rebuilds the shared
-API from that checkout and `stack:reset` deletes the shared database. For an
-isolated stack per worktree, set a distinct name and host ports in that
-worktree's environment before every `stack:*` command, and point its editor at
-the matching API origin:
-
-```bash
-export BISKIQ_STACK=biskiq-t2 BISKIQ_DB_PORT=5434 BISKIQ_API_PORT=8788
-npm run stack:up
-```
-
-Its `.env` then needs `PUBLIC_API_ORIGIN=http://localhost:8788`.
-
-The image is for local development only; deployment (`render.yaml`,
-`vercel.json`) does not use it.
-
-## Backend on a host Postgres
+## Alternative: backend on a host Postgres
 
 Use a local Postgres database:
 
@@ -116,7 +226,8 @@ npm run api
 npm run dev
 ```
 
-Open <http://localhost:5173>. The root scripts load `.env` automatically.
+Open <http://localhost:5173>. The root scripts load `.env` automatically. This
+path still needs the `.env` `R2_*` storage configuration described above.
 
 Stop Postgres when finished:
 
@@ -138,6 +249,6 @@ npm test        # the complete editor suite (all lanes)
 
 The API has its own gates: `npm run check:api` and `npm run test:api` (build plus
 every API contract; the persistence, Save, publication and auth-seam contracts
-need a reachable Postgres — `npm run test:api:stack` uses the Compose database).
-Kernel packages have `check:layout-core`, `check:project-model` and
+need a reachable Postgres — `npm run test:api:stack` uses the legacy Compose
+database). Kernel packages have `check:layout-core`, `check:project-model` and
 `check:camera-core`.

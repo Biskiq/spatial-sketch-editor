@@ -41,6 +41,7 @@ import {
 	type Material,
 	type Object3D
 } from 'three';
+import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import { countWork, sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core';
 
 /** One retained object: what it was built from, the object and its buffers. */
@@ -62,6 +63,10 @@ export type ObjectRepresentation = {
 	/** The subtree to mount; it is never replaced, only reconciled. */
 	readonly object3d: Group;
 	update(geometry: CompiledLayoutGeometry): ObjectRepresentationStats;
+	/** The retained mesh drawing this compiled object, or null. Reads the owned index, not the subtree. */
+	objectOf(objectId: string): Object3D | null;
+	/** Hide exactly these objects; work is proportional to the ids that changed state. */
+	setHidden(objectIds: ReadonlySet<string>): void;
 	/** Release every retained mesh and the shared material. Idempotent. */
 	dispose(): void;
 };
@@ -109,6 +114,7 @@ export function createObjectRepresentation(): ObjectRepresentation {
 	const material: Material = new MeshStandardMaterial({ color: 0xe7e4dd, roughness: 0.78, metalness: 0 });
 	let disposed = false;
 	let previousObjects: CompiledLayoutGeometry['objects'] | undefined;
+	let hidden: ReadonlySet<string> = new Set();
 
 	return {
 		object3d,
@@ -135,6 +141,8 @@ export function createObjectRepresentation(): ObjectRepresentation {
 				mesh.receiveShadow = true;
 				mesh.scale.set(...buffer.scale);
 				mesh.name = `VisitorLayoutObject:${object.objectId}`;
+				tagRenderIdentity(mesh, 'object', object.objectId);
+				mesh.visible = !hidden.has(object.objectId);
 				mesh.position.set(...object.position);
 				mesh.rotation.set(object.rotation[0], object.rotation[1], object.rotation[2]);
 
@@ -165,10 +173,24 @@ export function createObjectRepresentation(): ObjectRepresentation {
 			return { objects: present.size, built, retained: kept, released };
 		},
 
+		objectOf(objectId) {
+			return retained.get(objectId)?.object ?? null;
+		},
+
+		setHidden(objectIds) {
+			if (disposed) throw new Error('the layout object representation has been disposed');
+			hidden = reconcileHidden(hidden, objectIds, (objectId, isHidden) => {
+				countWork('representation:visibility-write');
+				const entry = retained.get(objectId);
+				if (entry !== undefined) entry.object.visible = !isHidden;
+			});
+		},
+
 		dispose() {
 			if (disposed) return;
 			disposed = true;
 			previousObjects = undefined;
+			hidden = new Set();
 			for (const entry of retained.values()) {
 				entry.object.removeFromParent();
 				entry.geometry.dispose();

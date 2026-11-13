@@ -31,7 +31,6 @@ import {
 const nodes: NavigationNodeData[] = [
   {
     id: 'a',
-    roomId: 'entrance',
     label: 'A',
     position: [0, 1, 0],
     cameraTarget: [0, 1, 1],
@@ -40,7 +39,6 @@ const nodes: NavigationNodeData[] = [
   },
   {
     id: 'b',
-    roomId: 'poland',
     label: 'B',
     position: [2, 1, 0],
     cameraTarget: [2, 1, 1],
@@ -49,7 +47,6 @@ const nodes: NavigationNodeData[] = [
   },
   {
     id: 'c',
-    roomId: 'departure',
     label: 'C',
     position: [4, 1, 2],
     cameraTarget: [4, 1, 3],
@@ -58,7 +55,6 @@ const nodes: NavigationNodeData[] = [
   },
   {
     id: 'isolated',
-    roomId: 'legacy',
     label: 'Isolated',
     position: [9, 1, 9],
     cameraTarget: [8, 1, 9],
@@ -337,7 +333,6 @@ describe('getCameraRoute', () => {
       ...nodes.slice(0, 3),
       {
         id: 'd',
-        roomId: 'paris',
         label: 'D',
         position: [7, 1, 2],
         cameraTarget: [7, 1, 3],

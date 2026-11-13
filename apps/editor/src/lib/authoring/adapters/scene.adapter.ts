@@ -58,6 +58,7 @@ import { getAssetById } from '$lib/content/assets';
 import {
 	approvedModelResources,
 	createScenePlanners,
+	createArtworkPlanners,
 	creatorModelDefinition,
 	resolveSceneSupportOnGeometry,
 	sceneEntityLift,
@@ -161,7 +162,7 @@ function entityFacts(
 	entityId: string
 ): readonly StageCardFact[] {
 	const entity = source.entities.find((candidate) => candidate.id === entityId);
-	if (entity === undefined) return [];
+	if (entity === undefined || entity.kind === 'light') return [];
 	const contact =
 		entity.kind === 'model'
 			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
@@ -179,6 +180,7 @@ function entityFacts(
 		},
 		{
 			label: 'Elevation',
+			...(entity.kind === 'artwork' ? { fieldId: 'elevation' } : {}),
 			value: `${entity.position[1]} m`
 		},
 		{
@@ -289,7 +291,7 @@ function sceneEntityAtCandidate(
 ): SceneEntity | null {
 	if (candidate.entityId !== null) {
 		const accepted = acceptedEntities.find((entity) => entity.id === candidate.entityId);
-		if (accepted === undefined) return null;
+		if (accepted === undefined || accepted.kind === 'artwork') return null;
 		if (accepted.kind === 'form') {
 			return {
 				...accepted,
@@ -443,7 +445,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	// else. Built-in catalogue models enter this set only after their r186 contact
 	// verification is recorded; approved creator models remain project-scoped.
 	const admitted: NormalizedPlacementDefinition[] = [];
-	const planners = createScenePlanners({
+	const planners = [...createArtworkPlanners(), ...createScenePlanners({
 		definitions: () => {
 			// The approved model a creator has armed is an admitted definition even
 			// before its first placement installs the resource. A rebind (a drawing
@@ -453,7 +455,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			const armed = armedModelDefinition(projectId);
 			return [...admitted, ...creatorDefinitions(), ...(armed === null ? [] : [armed])];
 		}
-	});
+	})];
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
@@ -517,6 +519,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly message: string;
 				readonly candidate: SceneCandidate | null;
 			} | null = null;
+			/** A released placement while its one acceptance is in flight. */
+			let placementCommit: { readonly candidate: SceneCandidate } | null = null;
+			/** The last pointer point while Place is armed, for the need chip. */
+			let placementPointerCss: readonly [number, number] | null = null;
+			/** A refused release holds the last drawn candidate in refusal ink. */
+			let placementReleaseRefusal: {
+				readonly candidate: SceneCandidate;
+				readonly message: string;
+				readonly until: number;
+			} | null = null;
+
+			function livePlacementReleaseRefusal() {
+				if (placementReleaseRefusal === null) return null;
+				if (Date.now() > placementReleaseRefusal.until) {
+					placementReleaseRefusal = null;
+					return null;
+				}
+				return placementReleaseRefusal;
+			}
 
 			function placementRefusalCandidate(
 				session: ScenePlacementSession,
@@ -1677,8 +1698,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			async function commitPointerPlace(session: ScenePlacementSession): Promise<void> {
 				// The session reports a committed placement to the binding that attached
 				// completion, which selects the new entity and reopens this persistent task
-				// through the host's one install path. Re-read the surface either way, so a
-				// refused release withdraws any shown pose.
+				// through the host's one install path. Capture the shown candidate first:
+				// a refusal withdraws it, and the ghost must stay for four seconds.
+				const pending = session.candidate();
+				if (pending !== null && pending.kind === 'place') {
+					const token = { candidate: pending };
+					placementCommit = token;
+					services.stage.notifySurfaceChange();
+					let outcome: SceneSessionOutcome;
+					try {
+						outcome = await session.commitPlace();
+					} catch (error) {
+						outcome = {
+							kind: 'failed',
+							code: 'accept-failed',
+							message: error instanceof Error ? error.message : 'The accepted install failed.'
+						};
+					}
+					if (placementCommit === token) {
+						placementCommit = null;
+						if (outcome.kind === 'refused' || outcome.kind === 'failed') {
+							const until = Date.now() + 4_000;
+							placementReleaseRefusal = { candidate: pending, message: outcome.message, until };
+							setTimeout(() => {
+								if (placementReleaseRefusal?.until !== until) return;
+								placementReleaseRefusal = null;
+								services.stage.notifySurfaceChange();
+							}, 4_000);
+						}
+					}
+					if (outcome.kind === 'refused' || outcome.kind === 'failed') {
+						session.reportPointerOutcome(outcome);
+					}
+					services.stage.notifySurfaceChange();
+					return;
+				}
 				const outcome = await session.commitPlace();
 				if (outcome.kind === 'refused') session.reportPointerOutcome(outcome);
 				services.stage.notifySurfaceChange();
@@ -1742,8 +1796,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		/** Owner-declared found surfaces; the host merges and sorts them. */
 		heightTicks(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
 			return heightTicksFor(adapterContext);
-		},
-		subjects: source.entities.map((entity) => ({
+		},			subjects: source.entities.filter((entity) => entity.kind !== 'light').map((entity) => ({
 					id: `scene:entity:${entity.id}`,
 					label: entity.name,
 					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
@@ -1933,6 +1986,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// A refused clamp or a missing selection refuses the claim rather than
 				// starting a drag.
 				pointerIntent(intent: StagePointerIntent, adapterContext) {
+					// One release is one commit: the held ghost stays and further pointer
+					// phases are ignored until the acceptance settles.
+					if (placementCommit !== null) return true;
+					if (placementReleaseRefusal !== null) {
+						if (intent.phase === 'move' || intent.phase === 'down' || intent.phase === 'cancel') {
+							placementReleaseRefusal = null;
+							services.stage.notifySurfaceChange();
+						}
+					}
+					if (openTaskKind === 'place-object') placementPointerCss = [intent.css[0], intent.css[1]];
 					// Compose is a typed command surface. It claims no pointer: a press over
 					// the Stage during Compose is ordinary navigation, never an accidental
 					// move/yaw of the selected entity.
@@ -2108,6 +2171,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return objectMarkKey(intent);
 				},
 				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (placementCommit !== null) return true;
+					if (openTaskKind === 'place-object') placementPointerCss = [intent.css[0], intent.css[1]];
+					if (placementReleaseRefusal !== null) {
+						placementReleaseRefusal = null;
+						services.stage.notifySurfaceChange();
+					}
 					return drawnTile() !== null && objectDraw.hover(intent, adapterContext);
 				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
@@ -2117,11 +2186,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (objectMarkGesture !== null) endObjectMarkGesture();
 					objectMarkRefusal = null;
 					placementPointerRefusal = null;
+					placementCommit = null;
+					placementReleaseRefusal = null;
+					placementPointerCss = null;
 				},
 				taskClosed() {
 					if (objectMarkGesture !== null) endObjectMarkGesture();
 					objectMarkRefusal = null;
 					placementPointerRefusal = null;
+					placementCommit = null;
+					placementReleaseRefusal = null;
+					placementPointerCss = null;
 					dragOrigin = null;
 					objectDraw.cancel();
 					// A creation closes and reopens the task, in an order the host owns; only
@@ -2180,10 +2255,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					) return [];
 					const runtimeScene = adapterContext.snapshot.domain.scene;
 					let entity: SceneEntity | null = null;
-					let candidate: SceneCandidate | null = null;
+					let candidate: SceneCandidate | null = placementCommit?.candidate ?? null;
 					let role: StageCandidatePreview['role'] = 'subject';
 					let label: { readonly world: Vec3; readonly text: string } | undefined;
-					if (entity === null && objectMarkGesture !== null && objectMarkGesture.candidate !== null) {
+					if (candidate !== null) {
+						label = { world: candidate.position, text: 'Placing…' };
+					} else {
+						const releaseRefusal = livePlacementReleaseRefusal();
+						if (releaseRefusal !== null) {
+							candidate = releaseRefusal.candidate;
+							role = 'refused';
+							label = { world: candidate.position, text: releaseRefusal.message };
+						}
+					}
+					if (entity === null && candidate === null && objectMarkGesture !== null && objectMarkGesture.candidate !== null) {
 						candidate = objectMarkGesture.candidate;
 					}
 					if (entity === null && candidate === null && placementPointerRefusal !== null) {
@@ -2220,32 +2305,55 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
 					if (drawnTile() !== null) return objectDraw.overlay(adapterContext);
+					const held = placementCommit?.candidate ?? null;
+					if (held !== null) {
+						const css = adapterContext.project(held.position);
+						return css === null ? [] : [{ id: 'scene-candidate-hold', css, label: 'Placing…' }];
+					}
+					const releaseRefusal = livePlacementReleaseRefusal();
+					if (releaseRefusal !== null) {
+						const css = adapterContext.project(releaseRefusal.candidate.position);
+						return css === null
+							? []
+							: [{ id: 'scene-candidate-refusal', css, label: releaseRefusal.message }];
+					}
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate = surface?.session.candidate() ?? null;
 					if (candidate === null) {
-						return placementPointerRefusal === null
-							? []
-							: [{
-									id: 'scene-candidate-refusal',
-									// StageFacade applies the viewport-to-surface translation to all
-									// adapter overlays. This refusal is captured in surface CSS by the
-									// pointer path, so restore viewport CSS before returning it.
-									css: [
-										placementPointerRefusal.css[0] + adapterContext.evaluation.rect.left,
-										placementPointerRefusal.css[1] + adapterContext.evaluation.rect.top
-									],
-									label: placementPointerRefusal.message
-								}];
+						if (placementPointerRefusal !== null) {
+							return [{
+								id: 'scene-candidate-refusal',
+								// StageFacade applies the viewport-to-surface translation to all
+								// adapter overlays. This refusal is captured in surface CSS by the
+								// pointer path, so restore viewport CSS before returning it.
+								css: [
+									placementPointerRefusal.css[0] + adapterContext.evaluation.rect.left,
+									placementPointerRefusal.css[1] + adapterContext.evaluation.rect.top
+								],
+								label: placementPointerRefusal.message
+							}];
+						}
+						if (openTaskKind === 'place-object' && placementPointerCss !== null) {
+							return [{
+								id: 'scene-candidate-need',
+								css: [
+									placementPointerCss[0] + adapterContext.evaluation.rect.left,
+									placementPointerCss[1] + adapterContext.evaluation.rect.top
+								],
+								label: 'Point at a surface'
+							}];
+						}
+						return [];
 					}
 					const css = adapterContext.project(candidate.position);
 					if (css === null) return [];
-					const snap = candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`;
-					const scale = candidate.kind === 'resize' ? ` · scale ${candidate.scale}` : '';
 					return [
 						{
 							id: 'scene-candidate',
 							css,
-							label: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${scale}${snap}`
+							label: openTaskKind === 'place-object'
+								? 'Click to place · Esc cancels'
+								: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${candidate.kind === 'resize' ? ` · scale ${candidate.scale}` : ''}${candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`}`
 						}
 					];
 				},
@@ -2257,8 +2365,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (drawnTile() !== null) marks.push(...objectDraw.ghosts());
 					if (object !== null) marks.push(object);
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
-					const candidate: SceneCandidate | null = surface?.session.candidate() ?? null;
-					const refused = candidate === null ? placementPointerRefusal?.candidate ?? null : null;
+					const candidate: SceneCandidate | null =
+						placementCommit?.candidate ?? surface?.session.candidate() ?? null;
+					const releaseRefusal = candidate === null ? livePlacementReleaseRefusal() : null;
+					const refused = candidate === null
+						? releaseRefusal?.candidate ?? placementPointerRefusal?.candidate ?? null
+						: null;
 					const shown = candidate ?? refused;
 					if (shown === null) return marks;
 					const entity =
@@ -2274,7 +2386,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								: null,
 						modelContactMinY:
 							shown.modelContactMinY ?? (entity?.kind === 'model' ? objectContact(entity) : null),
-						treatment: refused === null ? 'subject' : 'refused'
+						treatment: candidate !== null ? 'subject' : 'refused'
 					});
 					return ghost === null ? marks : [...marks, ghost];
 				},
@@ -2299,7 +2411,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const entity = stageScene(services.stage.snapshot()).entities.find(
 						(entry) => entry.id === subject.sourceId
 					);
-					if (entity === undefined) return null;
+					if (entity === undefined || entity.kind === 'light') return null;
 					return {
 						value: entity.name,
 						async commit(name: string) {

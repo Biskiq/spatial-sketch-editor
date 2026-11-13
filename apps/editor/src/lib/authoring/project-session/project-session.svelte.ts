@@ -5,6 +5,7 @@ import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 import { discardPendingCapture, persistPendingCapture, readPendingCapture } from '$lib/authoring/save/pending-capture';
 import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/save';
 import { serializeProjectEnvelope, validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { verifyArtworkLibrary } from '$lib/authoring/artwork/project-artwork';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
 import { bootEmpty, bootFromLoadOutcome, bootFromSourceJson, bootStarterGallery, initialBootState, type BootIntent, type BootLoadOutcome, type BootState } from '$lib/authoring/stage/boot-state';
 import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
@@ -306,6 +307,16 @@ export function createProjectSession(host: {
 			reportSourceRefusal(next, 'reload');
 			return;
 		}
+		if (next.snapshot.domain.scene.entities.some((entity) => entity.kind === 'artwork') ||
+			offer.project.units.scene.data.artworkLibrary?.length) {
+			try {
+				await runBoundLoad(session, (signal) => verifyOpenedArtwork(offer.project, signal));
+			} catch (error) {
+				if (session.isCurrent(token)) host.notice = error instanceof Error ? error.message : 'Artwork could not be verified.';
+				return;
+			}
+			if (!session.isCurrent(token)) return;
+		}
 		const precondition = offer.save.capture.precondition;
 		pendingSavedBase = {
 			token: precondition.kind === 'expected-saved-base' ? precondition.token : null,
@@ -350,6 +361,12 @@ export function createProjectSession(host: {
 		host.notice = 'The pending Save was discarded; the cloud copy is unchanged.';
 	}
 
+	async function verifyOpenedArtwork(document: unknown, signal: AbortSignal): Promise<void> {
+		const validated = validateProjectEnvelope(document);
+		if (!validated.success || api === null) return;
+		await verifyArtworkLibrary(api, projectId, validated.envelope.units.scene.data, signal);
+	}
+
 	async function fetchOutcome(
 		projectIdToLoad: string,
 		signal: AbortSignal,
@@ -358,6 +375,7 @@ export function createProjectSession(host: {
 	): Promise<BootLoadOutcome> {
 		try {
 			const loaded = await api!.loadProject(projectIdToLoad, signal);
+			await verifyOpenedArtwork(loaded.document, signal);
 			// Capture the cloud row's saved base with the document it describes: the
 			// save state is built from this pair, never from the admitted snapshot
 			// alone (which cannot know the server's version token).
@@ -388,7 +406,7 @@ export function createProjectSession(host: {
 			if (error.code === 'network') return { kind: 'network' };
 			return { kind: 'server', message: error.message };
 		}
-		return { kind: 'network' };
+		return { kind: 'server', message: error instanceof Error ? error.message : 'Project could not be loaded.' };
 	}
 
 	function activeProject(): boolean {
@@ -796,6 +814,13 @@ export function createProjectSession(host: {
 		// `Reload remote` that a newer replacement (or teardown) superseded is
 		// abandoned instead of installing over the project the creator now has.
 		const token = session.token();
+		try {
+			await runBoundLoad(session, (signal) => verifyOpenedArtwork(offer.document, signal));
+		} catch (error) {
+			if (session.isCurrent(token)) host.notice = error instanceof Error ? error.message : 'Artwork could not be verified.';
+			return false;
+		}
+		if (!session.isCurrent(token)) return false;
 		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
 		// Admission itself is asynchronous: a stale offer installs nothing, adopts no
 		// saved base and reports no refusal over the newer session.
@@ -870,7 +895,8 @@ export function createProjectSession(host: {
 		// mounted when the admission resolves. A superseded Open is abandoned rather
 		// than installed over the newer project, its history and its saved base.
 		const token = session.token();
-		const next = await bootFromSourceJson(await file.text(), projectId, admissionContext());
+		const source = await file.text();
+		const next = await bootFromSourceJson(source, projectId, admissionContext());
 		// A stale result reports nothing: neither a success nor a refusal may appear
 		// for an action the creator has already replaced.
 		if (!session.isCurrent(token)) return;
@@ -878,6 +904,13 @@ export function createProjectSession(host: {
 			reportSourceRefusal(next, 'open');
 			return;
 		}
+		// Standalone JSON does not transfer project-owned P20 byte identity.
+		const validated = validateProjectEnvelope(JSON.parse(source));
+		if (validated.success && validated.envelope.units.scene.data.artworkLibrary?.length) {
+			host.notice = 'This source uses project Artwork images. Open its saved cloud project to recover those images.';
+			return;
+		}
+
 		// A successfully opened source is a locally minted baseline with no cloud
 		// row behind it, so its first Save is a create. Set this only once the
 		// source has actually admitted; a refused open must not clear it.

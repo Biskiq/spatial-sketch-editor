@@ -19,6 +19,7 @@
  * The Scene Plan policy is `pickPlanSceneSubject`, the production function the
  * Scene adapter calls; the test wrapper only converts a Stage query into it.
  */
+import { tagRenderIdentity } from '$lib/render/render-identity';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Layers, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene } from 'three';
 import {
@@ -143,7 +144,7 @@ function mount(plan: PlanEvaluation, compiled: CompiledLayoutGeometry): Mounted 
 	const graph = new Scene();
 	const layoutRoot = new Group();
 	const floor = new Mesh(new BoxGeometry(40, 0.2, 40), new MeshBasicMaterial());
-	floor.name = 'VisitorFloor:fixture';
+	floor.name = 'VisitorFloor:fixture'; tagRenderIdentity(floor, 'floor', 'fixture');
 	floor.position.y = -0.2;
 	layoutRoot.add(floor);
 	graph.add(layoutRoot);

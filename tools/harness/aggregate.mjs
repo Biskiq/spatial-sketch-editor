@@ -21,7 +21,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { validateLedger } from './ledger.mjs';
 import { collectChecks, gateFailures, validateRun } from './report.mjs';
-import { REQUIRED_SUITES, expectedCommand, suiteFor } from './suites.mjs';
+import { FOCUSED_SUITE, REQUIRED_SUITES, expectedCommand, requiredSuites, suiteFor } from './suites.mjs';
 
 const COMMIT = /^[0-9a-f]{7,40}$/;
 const STATUSES = new Set(['complete', 'failed', 'interrupted']);
@@ -41,6 +41,9 @@ function readSource(file) {
  */
 export function aggregate(dir, options = {}) {
 	const problems = [];
+	const profile = options.plan?.profile ?? 'full';
+	const required = requiredSuites(profile);
+	const names = options.plan ? [...REQUIRED_SUITES, FOCUSED_SUITE.name] : REQUIRED_SUITES;
 	/** @type {Map<string, any>} */
 	const bySuite = new Map();
 	/** @type {string[]} */
@@ -50,7 +53,7 @@ export function aggregate(dir, options = {}) {
 			(name) => name.endsWith('.json') && !name.endsWith('.vitest.json')
 		);
 	} catch (error) {
-		problems.push(`artifact directory unreadable: ${error.message}`);
+		if (required.length || error.code !== 'ENOENT') problems.push(`artifact directory unreadable: ${error.message}`);
 	}
 
 	for (const file of files) {
@@ -65,7 +68,7 @@ export function aggregate(dir, options = {}) {
 			problems.push(`${file}: no suite name`);
 			continue;
 		}
-		if (!REQUIRED_SUITES.includes(provenance.suite)) {
+		if (!required.includes(provenance.suite)) {
 			problems.push(`${file}: ${provenance.suite} is not part of the merge-gate contract`);
 			continue;
 		}
@@ -108,7 +111,7 @@ export function aggregate(dir, options = {}) {
 	}
 
 	const commits = [...new Set([...bySuite.values()].map((entry) => entry.commit).filter(Boolean))];
-	const commit = options.commit ?? commits[0] ?? null;
+	const commit = options.plan?.head ?? options.commit ?? commits[0] ?? null;
 	if (commits.length > 1) {
 		problems.push(`artifacts came from different commits: ${commits.join(', ')}`);
 	}
@@ -116,7 +119,20 @@ export function aggregate(dir, options = {}) {
 		problems.push(`artifacts were produced for a commit other than ${options.commit}`);
 	}
 
-	const suites = REQUIRED_SUITES.map((name) => {
+	const focused = bySuite.get(FOCUSED_SUITE.name);
+	if (focused) {
+		const actual = focused.results?.testResults?.map(({ name }) =>
+			name?.split('/apps/editor/').at(-1)).sort();
+		const expected = options.testFiles;
+		const command = `${expectedCommand(FOCUSED_SUITE)} ${expected.join(' ')} --reporter=json --outputFile=`;
+		if (!focused.command?.startsWith(command) || JSON.stringify(actual) !== JSON.stringify(expected) ||
+			focused.results?.success !== true) {
+			problems.push('focused evidence does not match the selected test files and command');
+		}
+	}
+
+	const suites = names.map((name) => {
+		if (!required.includes(name)) return { name, status: 'not applicable' };
 		const provenance = bySuite.get(name);
 		if (!provenance) return { name, status: 'missing' };
 		const status =
@@ -137,7 +153,7 @@ export function aggregate(dir, options = {}) {
 	// was interrupted cannot be certified, even though the report engine treats
 	// such a run as valid evidence about capabilities.
 	for (const entry of suites) {
-		if (entry.status !== 'complete') {
+		if (required.includes(entry.name) && entry.status !== 'complete') {
 			problems.push(`${entry.name} is ${entry.status}; the merge gate requires a complete run`);
 		}
 	}
@@ -160,6 +176,30 @@ export function aggregate(dir, options = {}) {
 		generatedAt: (options.now ?? new Date()).toISOString(),
 		suites
 	};
+	if (options.plan) {
+		run.profile = profile;
+		run.base = options.plan.base ?? null;
+		const guardRequired = options.eventName === 'merge_group' ||
+			(options.eventName === 'pull_request' && profile === 'full');
+		const expectedJobs = {
+			prepare: 'success',
+			guards: guardRequired ? 'success' : 'skipped',
+			suite: profile === 'full' ? 'success' : 'skipped',
+			api: profile === 'full' ? 'success' : 'skipped',
+			goldens: profile === 'full' ? 'success' : 'skipped',
+			focused: profile === 'focused' ? 'success' : 'skipped'
+		};
+		for (const [job, result] of Object.entries(expectedJobs)) {
+			if (options.jobs?.[job]?.result !== result) {
+				problems.push(`${job}: expected ${result}, got ${options.jobs?.[job]?.result ?? 'missing'}`);
+			}
+		}
+		if (options.jobs?.prepare?.outputs?.profile !== profile ||
+			(options.jobs?.prepare?.outputs?.base ?? '') !== (options.plan.base ?? '')) {
+			problems.push('prepare output does not match the independently resolved event plan');
+		}
+		run.goldens = profile === 'full' ? (options.jobs?.goldens?.result ?? 'missing') : 'not applicable';
+	}
 	// The artifact carries the definitions and issue state that produced this
 	// run. A later status scan can then compare like with like at the previous
 	// commit instead of rebuilding history from today's ledger and live bugs.
@@ -212,11 +252,24 @@ function parseArgs(argv) {
 	return options;
 }
 
-function cli() {
+async function cli() {
 	const options = parseArgs(process.argv.slice(2));
 	const dir = resolve(options.dir);
+	let ci = {};
+	if (process.env.CI_GATE_JOBS !== undefined) {
+		const { eventPlan } = await import('./plan.mjs');
+		const plan = eventPlan();
+		const { focusedFiles } = await import('./focused.mjs');
+		ci = {
+			plan,
+			jobs: JSON.parse(process.env.CI_GATE_JOBS),
+			eventName: process.env.GITHUB_EVENT_NAME,
+			testFiles: plan.profile === 'focused' ? focusedFiles(plan) : []
+		};
+	}
 	const { run, problems } = aggregate(dir, {
-		commit: options.commit,
+		...ci,
+		commit: ci.plan?.head ?? options.commit,
 		ledger: options.ledger,
 		issues: options.issues
 	});
@@ -228,7 +281,7 @@ function cli() {
 		process.exitCode = 1;
 	} else {
 		console.log(
-			`harness gate: ${run.suites.length} suites complete at ${run.commit ?? 'unknown commit'}`
+			`harness gate: ${run.profile ?? 'full'} verification complete at ${run.commit ?? 'unknown commit'}`
 		);
 	}
 	const out = resolve(options.out);

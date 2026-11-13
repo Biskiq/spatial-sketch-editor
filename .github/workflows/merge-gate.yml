@@ -1,41 +1,74 @@
-# The repository merge gate. It runs every PR and every push to main, with no
-# path filter: a docs-only change can still break the architecture lane.
-#
-# Each job name is a stable check name. `merge gate` is the single aggregator
-# that fails when any required suite's provenance is missing, failed or
-# incomplete; `check guards` refuses an unapproved check removal/downgrade.
-# The default-branch ruleset must require those two contexts (plus the retained
-# native-form goldens job) before autonomous merges start — see the #259 packet.
+# Stable required checks: merge gate, check guards, linux-x64.
+# The gate validates the plan, job outcomes, and suite artifacts for this SHA.
 name: Merge gate
 on:
   pull_request:
-  push:
-    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  schedule:
+    - cron: "17 7 * * 0"
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: merge-gate-${{ github.ref }}
-  cancel-in-progress: true
+  # A merge group is an isolated validation of one batch. Cancelling it when
+  # another group appears would discard evidence GitHub is already waiting for.
+  # Pull requests and full regression events keep cancel-in-progress.
+  group: merge-gate-${{ github.event_name }}-${{ github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 env:
   CI: '1'
 jobs:
   prepare:
-    name: prepare matrix
+    name: classify and check static changes
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
+      profile: ${{ steps.plan.outputs.profile }}
+      base: ${{ steps.plan.outputs.base }}
       matrix: ${{ steps.suites.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '2' }}
+          persist-credentials: false
+      # GitHub records a pull request's base SHA when its comparison is built. A
+      # stacked pull request's parent branch can move afterwards, so the shallow
+      # checkout above may not contain that commit. Deepen the checkout instead of
+      # relaxing the ancestry check the classifier performs.
+      - name: Materialize the comparison base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if git merge-base --is-ancestor "$BASE_SHA" HEAD 2>/dev/null; then exit 0; fi
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --no-tags --unshallow origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          fi
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - id: plan
+        run: node tools/harness/plan.mjs
+      - name: Verify Minimal delta and documentation references
+        if: steps.plan.outputs.profile == 'minimal'
+        env:
+          BASE: ${{ steps.plan.outputs.base }}
+        run: |
+          git diff --check "$BASE" "$GITHUB_SHA"
+          if [ -n "$(git diff --name-only "$BASE" "$GITHUB_SHA" -- ':(icase,glob)**/*.md' ':(icase,glob)*.md')" ]; then
+            node tools/harness/check-docs.mjs
+          fi
       - id: suites
+        if: steps.plan.outputs.profile == 'full'
         run: echo "matrix=$(node tools/harness/matrix.mjs)" >> "$GITHUB_OUTPUT"
 
   suite:
-    name: ${{ matrix.suite }}
+    name: ${{ matrix.job }}
     needs: prepare
+    if: needs.prepare.outputs.profile == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -46,7 +79,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Materialize main for repository-history tests
-        run: |
+        run: |-
           git fetch origin main:refs/remotes/origin/main
           if [ "$(git symbolic-ref --short -q HEAD)" = "main" ]; then
             current=$(git rev-parse HEAD)
@@ -66,7 +99,15 @@ jobs:
       - name: Generate SvelteKit types
         run: npm exec -w @portfolio/editor -- svelte-kit sync
       - name: Produce suite provenance
-        run: node tools/harness/produce.mjs --suite "${{ matrix.suite }}" --artifact-dir .harness/artifacts
+        env:
+          SUITES: ${{ join(matrix.suites, '|') }}
+        run: |
+          failed=0
+          IFS='|' read -ra suites <<< "$SUITES"
+          for suite in "${suites[@]}"; do
+            node tools/harness/produce.mjs --suite "$suite" --artifact-dir .harness/artifacts || failed=1
+          done
+          exit "$failed"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -75,8 +116,42 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  focused:
+    name: editor focused verification
+    needs: prepare
+    if: needs.prepare.outputs.profile == 'focused'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Materialize main for repository-history tests
+        run: git branch --force main refs/remotes/origin/main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Produce focused provenance
+        run: |
+          failed=0
+          node tools/harness/produce.mjs --suite "npm run check" || failed=1
+          node tools/harness/produce.mjs --suite "editor focused tests" || failed=1
+          exit "$failed"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-editor-focused
+          path: .harness/artifacts
+          if-no-files-found: warn
+          retention-days: 14
+
   api:
     name: npm run test:api
+    needs: prepare
+    if: needs.prepare.outputs.profile == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:
@@ -114,9 +189,16 @@ jobs:
 
   guards:
     name: check guards
-    if: github.event_name == 'pull_request'
+    needs: prepare
+    # Any PR changing a marker-bearing test path is Full. A queue batch can
+    # remove and restore a check across entries, so always inspect each entry.
+    if: github.event_name == 'merge_group' || (github.event_name == 'pull_request' && needs.prepare.outputs.profile == 'full')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -126,25 +208,61 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" --depth=1
-      - name: Read the pull request's labels
+      - name: Resolve event base and authorizing pull requests
+        id: event
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p .harness
-          gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
-            --jq '[.[].name]' > .harness/pr-labels.json
-      - name: Refuse unapproved check removal or downgrade
+          REPOSITORY: ${{ github.repository }}
         run: >-
-          node tools/harness/guards.mjs
-          --base "origin/${{ github.base_ref }}"
-          --head HEAD
-          --labels-file .harness/pr-labels.json
+          node tools/harness/event-context.mjs
+          --event-file "$GITHUB_EVENT_PATH"
+          --repo "$REPOSITORY"
+          --repo-root .
+          --labels-out .harness/pr-labels.json
+          --entries-out .harness/queue-entries.json
+          --github-output "$GITHUB_OUTPUT"
+      - name: Refuse unapproved check removal or downgrade
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE: ${{ needs.prepare.outputs.base }}
+        run: |
+          if [ "$EVENT_NAME" = "merge_group" ]; then
+            node tools/harness/guards.mjs \
+              --repo-root . \
+              --entries-file .harness/queue-entries.json
+          else
+            node tools/harness/guards.mjs \
+              --repo-root . \
+              --base "$BASE" \
+              --head HEAD \
+              --labels-file .harness/pr-labels.json
+          fi
+
+  goldens:
+    name: linux-x64
+    needs: prepare
+    if: needs.prepare.outputs.profile == 'full'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify native runner
+        run: node -e "if(process.platform!=='linux'||process.arch!=='x64')process.exit(1);console.log(process.platform,process.arch,process.version)"
+      - run: npm ci
+      - run: npm run check:geometry-core
+      - run: npm exec -w @portfolio/editor -- svelte-kit sync
+      - name: Check pinned corpus and determinism boundary
+        working-directory: apps/editor
+        run: npx vitest run tests/lib/geometry-core
 
   gate:
     name: merge gate
     if: always()
-    needs: [suite, api, guards]
+    needs: [prepare, suite, focused, api, guards, goldens]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -152,15 +270,33 @@ jobs:
       issues: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '2' }}
+          persist-credentials: false
+      # The aggregate step re-resolves the same event plan, so it needs the same
+      # comparison base in a shallow checkout.
+      - name: Materialize the comparison base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if git merge-base --is-ancestor "$BASE_SHA" HEAD 2>/dev/null; then exit 0; fi
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --no-tags --unshallow origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          fi
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - uses: actions/download-artifact@v4
+        if: needs.prepare.outputs.profile == 'full' || needs.prepare.outputs.profile == 'focused'
         with:
           pattern: harness-*
           path: artifacts
           merge-multiple: true
       - name: Capture open issue evidence for historical comparison
+        if: needs.prepare.outputs.profile == 'full'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -169,6 +305,9 @@ jobs:
           gh issue list --state open --limit 200 --json number,title,labels,assignees > .harness/open-issues.json.tmp \
             && mv .harness/open-issues.json.tmp .harness/open-issues.json
       - name: Aggregate provenance and refuse an uncertifiable run
+        if: always()
+        env:
+          CI_GATE_JOBS: ${{ toJSON(needs) }}
         run: |
           args=(--dir artifacts --out report.json --commit "$GITHUB_SHA" --ledger capabilities.json)
           if [ -f .harness/open-issues.json ]; then args+=(--issues .harness/open-issues.json); fi

@@ -24,6 +24,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { ARCH_FILES, HEAVY_FILES, NON_FAST_FILES } from '../../test-lanes';
+import archConfig from '../../vitest.arch.config';
+import fastConfig from '../../vitest.fast.config';
+import heavyConfig from '../../vitest.heavy.config';
 import { ALL_TESTS_INCLUDE } from '../../vitest.shared';
 
 const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -122,6 +125,19 @@ describe('lane configuration is provable from the tree', () => {
 		const fast = population.filter((file) => !NON_FAST_FILES.includes(file));
 		expect(fast.length).toBeGreaterThan(0);
 		expect([...ARCH_FILES, ...HEAVY_FILES, ...fast].sort()).toEqual([...population].sort());
+	});
+
+	it('wires every lane config to the curated membership', () => {
+		const fast = fastConfig.test ?? {};
+		const arch = archConfig.test ?? {};
+		const heavy = heavyConfig.test ?? {};
+		// The lane scripts, not only the constants, must select the partition: a
+		// renamed export or a hand-edited include is invisible to the lane report.
+		expect(arch.include).toEqual(ARCH_FILES);
+		expect(heavy.include).toEqual(HEAVY_FILES);
+		expect(fast.include).toEqual(ALL_TESTS_INCLUDE);
+		expect(fast.exclude).toEqual(expect.arrayContaining([...NON_FAST_FILES]));
+		expect((fast.exclude ?? []).slice(-NON_FAST_FILES.length)).toEqual([...NON_FAST_FILES]);
 	});
 
 	it('fails a missing or renamed entry, an overlap, a duplicate, and a dropped file', () => {

@@ -149,10 +149,10 @@
 				<VisitorPreviewSurface
 					scene={readyBundle.scene}
 					geometry={readyBundle.geometry}
-					rooms={readyBundle.rooms}
 					graph={readyBundle.graph}
 					resolveTexture={readyBundle.textureScope.resolveTexture}
 					textureScope={readyScope}
+					artworkScope={readyBundle.artworkScope}
 					{reducedMotion}
 					mode="public"
 					title={readyBundle.projectName}

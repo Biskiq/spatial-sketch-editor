@@ -54,23 +54,35 @@ import {
 	mintLayoutIdCapture,
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
+	planDissolveJunction,
 	proposeWallFirstArchitectureGeometry,
 	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
 	readWallFirstDragProposal,
 	resolveIsolatedRoomGroupSubgraph,
+	resolveIsolatedRoomSubgraph,
 	type WallFirstArchitectureProposalWall,
 	planExactWallHeight,
 	planExactWallThickness,
 	planCreateCircularRoom,
 	planResizeClosedWallRadius,
 	planTranslateClosedWall,
+	prepareWallBend,
+	proposeWallKnotRemoval,
+	validateWallFirstOpeningSubset,
+	type LayoutWallCenterline,
+	wallCenterlineSamples,
 	readClosedWallCircle,
 	isClosedWall,
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
-	type LayoutVec2
+	type LayoutIdCapture,
+	type LayoutVec2,
+	type WallChainArc,
+	measureWallArc,
+	wallCenterlinePoints,
+	MIN_WALL_ARC_RISE
 } from '@portfolio/layout-core';
 
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
@@ -98,7 +110,13 @@ import LayoutCardFields from './layout/LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';	import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
-import { wallRefusalWords } from './layout/refusals';
+import {
+	roomDuplicateRefusalWords,
+	wallJoinRefusalWords,
+	wallRefusalWords,
+	wallSplitRefusalWords,
+	type RoomDuplicateRejection
+} from './layout/refusals';
 import {
 	EMPTY_CHAIN_DRAFT,
 	appendChainPoint,
@@ -139,6 +157,14 @@ import {
 	wallDeleteIntent,
 	type WallDeletionPreview
 } from './layout/drawing-planners';
+import { createSplitPlanners, wallSplitIntent } from './layout/split-planners';
+import { createJoinPlanners, LAYOUT_WALL_JOIN_KIND, wallJoinIntent } from './layout/join-planners';
+import {
+	createRoomDuplicatePlanners,
+	LAYOUT_ROOM_DUPLICATE_KIND,
+	roomDuplicateIntent,
+	roomDuplicateIsCoincident
+} from './layout/room-duplicate-planners';
 import {
 	classifyInkPointerTarget,
 	INK_JUNCTION_HIT_CSS_PX,
@@ -194,7 +220,6 @@ import {
 	curvedWallFrame,
 	curvedWallPointAt,
 	openWallFrame,
-	previewWallBend,
 	previewWallKnotDelete,
 	previewWallStraighten,
 	wallBendIntent,
@@ -232,6 +257,7 @@ import {
 import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingPlacement, snapDraftingPoint } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	buildLayoutCandidatePaper,
+	buildCompiledLayoutCandidatePaper,
 	openingAttemptFacePaper,
 	openingAttemptPlanPaper,
 	openingFacePaper,
@@ -248,6 +274,8 @@ import {
 	publishPausedProposal,
 	type PausedWallProposal
 } from './layout/paused-proposal';
+import { createOpeningRepeatPlanners, previewOpeningRepeat } from './layout/opening-repeat';
+import { openingRepeatProposal } from './layout/opening-repeat-proposal';
 
 /** The dock tool's contributed task and Find-entry id. */
 const LAYOUT_INK_TASK = 'layout-ink';
@@ -534,6 +562,22 @@ type JunctionHoverGesture = {
 	readonly readPreview: ReturnType<typeof createWallDragReader>;
 	snap: LayoutSnapWinner | null;
 	pointerPoint: LayoutVec2 | null;
+	/** The operation's captured nonce: the join preview and its commit share it. */
+	readonly capture: LayoutIdCapture;
+	/** The pointer names **Remove joint** rather than a Junction move. */
+	removal: boolean;
+	/** The pointer has left the removal zone since press; leaving arms removal. */
+	leftRemovalZone: boolean;
+	/** The dissolve candidate while removal is armed; `null` when refused. */
+	joinPreview: { readonly document: LayoutDocumentWallFirst; readonly survivorWallId: string } | null;
+	/**
+	 * The pointer travelled past the drag threshold at some point since the press.
+	 *
+	 * A junction edit is a drag, not a displacement: an out-and-back that ends
+	 * where it started is still an edit request, and `isPointerDrag(press, release)`
+	 * alone would discard it.
+	 */
+	dragged: boolean;
 };
 
 /** One claimed Bend gesture: a body press anywhere on an open Wall. */
@@ -552,9 +596,14 @@ type BendGesture = {
 	readonly grabOffset: LayoutVec2;
 	readonly existingKnot: boolean;
 	readonly lease: GestureAcquisition | null;
-	readonly baseline: LayoutDocumentWallFirst;
+	readonly revision: string;
+	readonly shape: ReturnType<typeof prepareWallBend>;
+	readonly openingRefusal: (centerline: LayoutWallCenterline) => string | null;
+	readonly removalRefusal: string | null;
+	readonly removedPoints: readonly LayoutVec2[] | null;
+	readonly removalChord: readonly [LayoutVec2, LayoutVec2] | null;
 	intent: { readonly distance: number; readonly point: LayoutVec2 } | null;
-	previewDocument: LayoutDocumentWallFirst | null;
+	previewPoints: readonly LayoutVec2[] | null;
 	/** Snapped into the neighbour chord: release removes this existing knot. */
 	removal: boolean;
 	/** The pointer has left the removal zone since press; leaving arms removal. */
@@ -568,9 +617,13 @@ type BendGesture = {
 /** A body press is on the Wall when its sampled centerline is this near, in metres. */
 const BEND_BODY_TOLERANCE_METERS = 0.35;
 /** A held knot enters the remove zone inside this distance of its neighbour chord. */
-const BEND_REMOVE_ENTER_METERS = 0.12;
+const REMOVE_ENTER_METERS = 0.12;
 /** It must leave this wider zone once before removal can arm; the hysteresis stops flicker. */
-const BEND_REMOVE_LEAVE_METERS = 0.3;
+const REMOVE_LEAVE_METERS = 0.3;
+/** A held joint names **Remove joint** inside this distance of its neighbours' chord. */
+const JOINT_REMOVE_ENTER_METERS = 0.12;
+/** The joint must leave this wider zone once before removal can arm. */
+const JOINT_REMOVE_LEAVE_METERS = 0.3;
 
 /** Planar distance from `point` to the chord between two neighbour knots. */
 function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
@@ -580,6 +633,72 @@ function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2):
 	if (lengthSquared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
 	const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared));
 	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
+}
+
+/** The two Walls a degree-2 Joint joins, with each one's far endpoint. */
+function degreeTwoPair(
+	document: LayoutDocumentWallFirst,
+	junctionId: string
+): { readonly firstFar: LayoutVec2; readonly secondFar: LayoutVec2 } | null {
+	const incident = document.walls.filter(
+		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
+	);
+	if (incident.length !== 2) return null;
+	const farOf = (wall: LayoutDocumentWallFirst['walls'][number]): LayoutVec2 | null => {
+		// A closed Wall is one canonical loop; its seam is not a pair at all.
+		if (wall.startJunctionId === wall.endJunctionId) return null;
+		const farId = wall.startJunctionId === junctionId ? wall.endJunctionId : wall.startJunctionId;
+		const junction = document.junctions.find((entry) => entry.id === farId);
+		return junction === undefined ? null : [junction.point[0], junction.point[1]];
+	};
+	const firstFar = farOf(incident[0]!);
+	const secondFar = farOf(incident[1]!);
+	return firstFar === null || secondFar === null ? null : { firstFar, secondFar };
+}
+
+/**
+ * Whether a held Joint is naming **Remove joint**.
+ *
+ * This is the bend-point removal rule one topology level up: a Joint of exactly
+ * two Walls dragged within `JOINT_REMOVE_ENTER_METERS` of the chord between their
+ * far ends asks for the join, and the pointer must have left the wider zone once
+ * since the press (`leftRemovalZone`) so a Joint that is already collinear does
+ * not arm the moment it is touched. A Joint of any other degree names no chord
+ * and is never offered removal — "delete a junction" has no single meaning once
+ * three Walls meet.
+ */
+function jointRemovalArmed(
+	gesture: JunctionHoverGesture,
+	document: LayoutDocumentWallFirst,
+	point: LayoutVec2
+): boolean {
+	const pair = degreeTwoPair(document, gesture.junctionId);
+	if (pair === null) return false;
+	const distance = distanceToChord(point, pair.firstFar, pair.secondFar);
+	if (distance > JOINT_REMOVE_LEAVE_METERS) gesture.leftRemovalZone = true;
+	return gesture.leftRemovalZone && distance <= JOINT_REMOVE_ENTER_METERS;
+}
+
+/**
+ * The join candidate as the Stage draws it: the joined Wall's own canonical
+ * centerline points, read from the planned document through the one centerline
+ * reader. Nothing here re-derives curve geometry or reorders spans by hand.
+ */
+function joinedPreview(plan: {
+	readonly document: LayoutDocumentWallFirst;
+	readonly survivorWallId: string;
+}): WallFirstArchitectureProposalWall[] {
+	const joined = plan.document.walls.find((wall) => wall.id === plan.survivorWallId);
+	if (joined === undefined) return [];
+	const start = plan.document.junctions.find((junction) => junction.id === joined.startJunctionId);
+	const end = plan.document.junctions.find((junction) => junction.id === joined.endJunctionId);
+	if (start === undefined || end === undefined) return [];
+	return [
+		{
+			wallId: joined.id,
+			points: wallCenterlinePoints(joined.centerline, start.point, end.point, 'forward')
+		}
+	];
 }
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
@@ -676,7 +795,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	const planners = [
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
-		...createOpeningPlanners()
+		...createSplitPlanners(),
+		...createJoinPlanners(),
+		...createRoomDuplicatePlanners(),
+		...createOpeningPlanners(),
+		// T1 A8 — Repeat is one retained planner beside the other Opening
+		// operations, on the same registry, admission and coordinator.
+		...createOpeningRepeatPlanners()
 	];
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
@@ -1257,6 +1382,272 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				})];
 			}
 
+			/*
+			 * T1 A4 — Duplicate an isolated Room. The Card arms one task; the task's
+			 * unpressed moves carry the complete cloned Room as one proposal, and a
+			 * click accepts it through one captured intent. The initial proposal is
+			 * placed one metre clear of the source, so Duplicate never proposes an
+			 * ambiguous coincident copy and a click before any move still places it.
+			 * Nothing here is a mark, an armed dock tool or a second document.
+			 */
+			type RoomDuplicateSession = {
+				readonly roomId: string;
+				readonly capture: LayoutIdCapture;
+				readonly defaultDelta: LayoutVec2;
+				readonly center: LayoutVec2;
+				/** The last pointer point on the datum, or `null` before the first move. */
+				pointer: LayoutVec2 | null;
+				/** The first pointer point a move named; every later move is relative to it. */
+				origin: LayoutVec2 | null;
+				delta: LayoutVec2;
+				readonly revision: string;
+				readonly subjectIds: ReadonlySet<string>;
+				paper: { key: string; geometry: CandidatePaperGeometry } | null;
+				snap: LayoutSnapWinner | null;
+			};
+			let roomDuplicate: RoomDuplicateSession | null = null;
+			/** The Room the Card asked to duplicate, consumed by the task's instrument. */
+			let pendingRoomDuplicateId: string | null = null;
+			let roomDuplicateNotice: RoomDuplicateRejection | null = null;
+			let roomDuplicateCommitting = false;
+			let roomDuplicateProposal: ProposalLease | null = null;
+			const ROOM_DUPLICATE_PREVIEW_ID = 'layout-room-duplicate-candidate';
+
+			function endRoomDuplicate(): void {
+				roomDuplicate = null;
+				roomDuplicateNotice = null;
+				roomDuplicateProposal?.release();
+				roomDuplicateProposal = null;
+			}
+
+			function roomDuplicateCount(count: number, noun: string): string {
+				return `${count} ${noun}${count === 1 ? '' : 's'}`;
+			}
+
+			/** The compiled floor extent, with the authored boundary as a fallback. */
+			function roomDuplicateFrame(roomId: string): { readonly center: LayoutVec2; readonly delta: LayoutVec2 } | null {
+				const compiled = services.stage.snapshot().domain.geometry.rooms.find(
+					(entry) => entry.roomId === roomId
+				);
+				let points: readonly LayoutVec2[] = compiled !== undefined && compiled.floorPolygon.length >= 3
+					? compiled.floorPolygon
+					: [];
+				if (points.length === 0) {
+					const room = document.rooms.find((entry) => entry.id === roomId);
+					const collected: LayoutVec2[] = [];
+					for (const ref of room?.boundary ?? []) {
+						const wall = document.walls.find((entry) => entry.id === ref.wallId);
+						if (wall === undefined) continue;
+						for (const junctionId of [wall.startJunctionId, wall.endJunctionId]) {
+							const junction = document.junctions.find((entry) => entry.id === junctionId);
+							if (junction !== undefined) collected.push(junction.point);
+						}
+					}
+					points = collected;
+				}
+				if (points.length === 0) return null;
+				const minX = Math.min(...points.map((point) => point[0]));
+				const maxX = Math.max(...points.map((point) => point[0]));
+				const minZ = Math.min(...points.map((point) => point[1]));
+				const maxZ = Math.max(...points.map((point) => point[1]));
+				const width = Math.max(0, maxX - minX);
+				return {
+					center: [(minX + maxX) / 2, (minZ + maxZ) / 2],
+					// One clear metre past the source's own extent. The planner never
+					// invents a delta; this is the adapter's initial proposal only.
+					delta: [Number((width + 1).toFixed(3)), 0]
+				};
+			}
+
+			/** Begin one Room copy: one capture, one proposal lease, one initial delta. */
+			function beginRoomDuplicate(roomId: string): boolean {
+				const room = document.rooms.find((entry) => entry.id === roomId);
+				if (room === undefined) {
+					roomDuplicateNotice = { code: 'unknown_room' };
+					return false;
+				}
+				const isolation = resolveIsolatedRoomSubgraph(document, roomId);
+				if (isolation.kind === 'rejected') {
+					roomDuplicateNotice = isolation.rejection;
+					return false;
+				}
+				const frame = roomDuplicateFrame(roomId);
+				if (frame === null) {
+					roomDuplicateNotice = { code: 'unresolvable_floor' };
+					return false;
+				}
+				roomDuplicate = {
+					roomId,
+					capture: mintLayoutIdCapture(),
+					defaultDelta: frame.delta,
+					center: frame.center,
+					pointer: null,
+					origin: null,
+					delta: frame.delta,
+					revision: services.authoring.acceptedRevision().revisionId,
+					subjectIds: new Set([
+						roomId, ...isolation.subgraph.wallIds, ...isolation.subgraph.openingIds,
+						...isolation.subgraph.associatedObjectIds
+					]),
+					paper: null,
+					snap: null
+				};
+				roomDuplicateNotice = null;
+				roomDuplicateProposal?.release();
+				roomDuplicateProposal = services.stage.session.registerProposal({
+					owner: LAYOUT_ROOM_DUPLICATE_KIND,
+					reason: 'A Room copy is live; place it or cancel it — Undo is available once it settles.'
+				});
+				return true;
+			}
+
+			/** Translate the proposal by pointer motion, relative to the first move. */
+			function moveRoomDuplicate(ctx: StageAdapterContext, point: LayoutVec2): void {
+				const current = roomDuplicate;
+				if (current === null) return;
+				roomDuplicateNotice = null;
+				current.pointer = [point[0], point[1]];
+				if (current.origin === null) {
+					current.origin = [point[0], point[1]];
+					current.snap = null;
+					return;
+				}
+				const origin = current.origin;
+				const snapped = resolvePlanarDragSnap(
+					origin,
+					point,
+					ctx.drafting(),
+					(from, to) => datumSnapDistance(ctx, from, to)
+				);
+				current.delta = [
+					Number((current.defaultDelta[0] + snapped.point[0] - origin[0]).toFixed(9)),
+					Number((current.defaultDelta[1] + snapped.point[1] - origin[1]).toFixed(9))
+				];
+				current.snap = snapped.winner;
+			}
+
+			function roomDuplicateSelected(): boolean {
+				return services.stage.session.task()?.kind === LAYOUT_ROOM_DUPLICATE_KIND;
+			}
+
+			function roomDuplicatePointer(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
+				if (!roomDuplicateSelected()) return false;
+				if (intent.phase === 'cancel') {
+					endRoomDuplicate();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'down') {
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (point !== null) moveRoomDuplicate(ctx, [point[0], point[1]]);
+					const current = roomDuplicate;
+					if (current === null) {
+						roomDuplicateNotice = { code: 'unknown_room' };
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					if (roomDuplicateIsCoincident(current.delta)) {
+						roomDuplicateNotice = { code: 'coincident_with_source' };
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					void commitRoomDuplicate(current);
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (point !== null) {
+						moveRoomDuplicate(ctx, [point[0], point[1]]);
+						services.stage.notifySurfaceChange();
+					}
+					return true;
+				}
+				// `up` belongs to the press that committed (or refused) on `down`.
+				return true;
+			}
+
+			function roomDuplicateHover(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
+				if (intent.phase !== 'move' || !roomDuplicateSelected() || roomDuplicate === null) return false;
+				const point = pointerDatumPoint(ctx, intent.css);
+				if (point === null) return false;
+				moveRoomDuplicate(ctx, [point[0], point[1]]);
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			async function commitRoomDuplicate(current: RoomDuplicateSession): Promise<void> {
+				if (roomDuplicateCommitting) return;
+				roomDuplicateCommitting = true;
+				try {
+					const snapshot = services.stage.snapshot();
+					if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+					const outcome = await services.authoring.accept(
+						roomDuplicateIntent({
+							roomId: current.roomId,
+							delta: [current.delta[0], current.delta[1]],
+							capture: current.capture,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: current.revision,
+							contentRevision,
+							levelId
+						})
+					);
+					if (outcome.kind === 'refused') {
+						if (roomDuplicate !== current) return;
+						roomDuplicateNotice = { code: outcome.code, message: outcome.message };
+						services.stage.notifySurfaceChange();
+						return;
+					}
+					if (roomDuplicate === current) endRoomDuplicate();
+					services.stage.notifySurfaceChange();
+				} finally {
+					roomDuplicateCommitting = false;
+				}
+			}
+
+			/** The complete cloned Room as one proposal; a refusal carries its words. */
+			function roomDuplicatePreviews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
+				const current = roomDuplicate;
+				if (current === null) return [];
+				const rejection = roomDuplicateIsCoincident(current.delta)
+					? { code: 'coincident_with_source' }
+					: roomDuplicateNotice;
+				const refused = rejection === null ? null : rejection.code === 'planner-rejected'
+					? rejection.message ?? roomDuplicateRefusalWords(document, rejection)
+					: roomDuplicateRefusalWords(document, rejection);
+				const anchor: [number, number, number] = current.pointer === null
+					? [current.center[0] + current.delta[0], y, current.center[1] + current.delta[1]]
+					: [current.pointer[0], y, current.pointer[1]];
+				const label = refused ?? `Copy · ${planarDeltaLabel(current.delta[0], current.delta[1])}`;
+				const result = services.stage.plan();
+				if (result.kind === 'evaluated') {
+					const plan = result.plan;
+					const key = JSON.stringify([y, plan.cutHeightMeters, plan.depthMeters, plan.sourceKindFilter, plan.reveal]);
+					if (current.paper?.key !== key) {
+						current.paper = {
+							key,
+							geometry: buildCompiledLayoutCandidatePaper(
+								ctx.snapshot.domain.geometry, plan, y, current.subjectIds, new Set(), null
+							).subject
+						};
+					}
+				}
+				const paper = current.paper?.geometry;
+				const shift = ([x, height, z]: [number, number, number]): [number, number, number] =>
+					[x + current.delta[0], height, z + current.delta[1]];
+				return [candidatePreviewOf({
+					id: ROOM_DUPLICATE_PREVIEW_ID,
+					role: refused === null ? 'subject' : 'refused',
+					geometry: {
+						polygons: paper?.polygons.map((polygon) => polygon.map(shift)) ?? [],
+						segments: paper?.segments.map(([a, b]) => [shift(a), shift(b)]) ?? []
+					},
+					labels: [{ world: anchor, text: label }],
+					snap: current.snap === null ? undefined : { world: anchor, name: current.snap.name }
+				})];
+			}
+
 			let junctionGesture: JunctionHoverGesture | null = null;
 			let idleJunctionHover: IdleJunctionHover | null = null;
 			/**
@@ -1298,6 +1689,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			} | null = null;
 			/** The live chain draft, its hover target and its planner preview. */
 			let draft: ChainDraft = EMPTY_CHAIN_DRAFT;
+			/** A3 — the decided bulge apex and the raw plane point currently shaping it. */
+			let inkArcApex: LayoutVec2 | null = null;
+			let inkArcHover: LayoutVec2 | null = null;
 			/** One operation, one capture: the same identity previews and commits. */
 			let chainCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
 			let inkHover: InkPointerTarget | null = null;
@@ -1395,7 +1789,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * and read by both the marks and the Card's one action channel.
 			 */
 			let activeKnot: { readonly wallId: string; readonly knotId: string } | null = null;
-
 			function endBendGesture(): void {
 				const current = bendGesture;
 				bendGesture = null;
@@ -1481,24 +1874,33 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return { kind: 'accepted' };
 			}
 
-			function commitBend(current: BendGesture, intent: NonNullable<BendGesture['intent']>): void {
-				// D13 — the sheet's centerline is display-only. A bend gesture that began
-				// before unfolding must not write the canonical chain.
+			async function commitBend(current: BendGesture): Promise<void> {
 				if (wallUnfold.isActive(current.wallId)) return;
 				const snapshot = services.stage.snapshot();
-				void services.authoring.accept(
-					wallBendIntent({
-						wallId: current.wallId,
-						distance: intent.distance,
-						point: intent.point,
-						knotId: current.knotId,
-						operationId: globalThis.crypto.randomUUID(),
-						projectId: snapshot.acceptedRevision.projectId,
-						revisionId: services.authoring.acceptedRevision().revisionId,
-						contentRevision: stageUnitRevision(snapshot, 'layout'),
-						levelId: snapshot.domain.layoutLevelId
-					})
+				if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+				const target = {
+					wallId: current.wallId,
+					knotId: current.knotId,
+					operationId: globalThis.crypto.randomUUID(),
+					projectId: snapshot.acceptedRevision.projectId,
+					revisionId: current.revision,
+					contentRevision,
+					levelId: snapshot.domain.layoutLevelId
+				};
+				const intent = current.intent;
+				if (!current.removal && intent === null) return;
+				const outcome = await services.authoring.accept(
+					current.removal ? wallKnotDeleteIntent(target) : wallBendIntent({ ...target, ...intent! })
 				);
+				if (outcome.kind === 'refused' && stageUnitRevision(services.stage.snapshot(), 'layout') === contentRevision) {
+					settledRefusal = {
+						subject: { kind: 'wall', wallId: current.wallId },
+						contentRevision,
+						point: current.attemptPoint ?? current.anchor,
+						text: outcome.code === 'planner-rejected' ? outcome.message : wallRefusalWords(outcome.code, outcome.message)
+					};
+					services.stage.notifySurfaceChange();
+				}
 			}
 
 			/**
@@ -1798,6 +2200,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						policy: 'cancel-on-reading-change'
 					});
 					if (acquisition.kind !== 'granted') return false;
+					const removal = knot === undefined ? null : proposeWallKnotRemoval(document, selected.wallId, knotId);
+					const knots = source.centerline.kind === 'cubic-chain' ? source.centerline.knots : [];
+					const knotIndex = knots.findIndex((entry) => entry.id === knotId);
+					const openings = document.openings.flatMap((opening, index) =>
+						opening.wallId === selected.wallId ? [{ opening, index }] : []);
+					const pointById = new Map([
+						[source.startJunctionId, selected.frame.start],
+						[source.endJunctionId, selected.frame.end]
+					]);
+					const openingRefusal = (centerline: LayoutWallCenterline): string | null => {
+						if (openings.length === 0) return null;
+						const [issue] = validateWallFirstOpeningSubset(document, openings, {
+							pointById, wallById: new Map([[source.id, { ...source, centerline }]])
+						});
+						return issue ? wallRefusalWords(issue.code, issue.message) : null;
+					};
+					const samples = removal?.kind === 'proposed'
+						? wallCenterlineSamples({ id: selected.wallId, centerline: removal.centerline }, removal.start, removal.end, 'forward')
+						: undefined;
+					settledRefusal = null;
 					bendGesture = {
 						evaluationId: intent.evaluationId,
 						pressCss: intent.css,
@@ -1810,9 +2232,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						grabOffset: [anchor[0] - press[0], anchor[1] - press[1]],
 						existingKnot: knot !== undefined,
 						lease: acquisition,
-						baseline: document,
+						revision: services.authoring.acceptedRevision().revisionId,
+						shape: prepareWallBend(document, selected.wallId, distance, knotId),
+						openingRefusal,
+						removalRefusal: removal?.kind === 'proposed' ? openingRefusal(removal.centerline) : null,
+						removedPoints: samples?.samples.map((sample) => sample.point) ?? null,
+						removalChord: knotIndex < 0 ? null : [
+							knots[knotIndex - 1]?.point ?? selected.frame.start,
+							knots[knotIndex + 1]?.point ?? selected.frame.end
+						],
 						intent: null,
-						previewDocument: null,
+						previewPoints: null,
 						removal: false,
 						leftRemovalZone: false,
 						attemptPoints: selected.frame.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2),
@@ -1830,14 +2260,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (intent.phase === 'move') {
 					if (wallUnfold.isActive(active.wallId)) {
 						active.intent = null;
-						active.previewDocument = null;
+						active.previewPoints = null;
+						active.removal = false;
 						active.refusal = WALL_UNFOLD_SHAPE_REFUSAL;
 						services.stage.notifySurfaceChange();
 						return true;
 					}
 					if (!isPointerDrag(active.pressCss, intent.css)) {
 						active.intent = null;
-						active.previewDocument = null;
+						active.previewPoints = null;
+						active.removal = false;
 						active.refusal = null;
 						services.stage.notifySurfaceChange();
 						return true;
@@ -1858,38 +2290,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// a removal, not a bend. The preview is the real no-knot candidate and
 					// release writes exactly that one command; leaving the chord returns
 					// to the ordinary bend. `leftRemovalZone` is the must-leave hysteresis.
-					let removal = false;
-					if (active.existingKnot) {
-						const source = active.baseline.walls.find((candidate) => candidate.id === active.wallId);
-						if (source !== undefined && source.centerline.kind !== 'line') {
-							const index = source.centerline.knots.findIndex((candidate) => candidate.id === active.knotId);
-							if (index >= 0) {
-								const previous = index > 0
-									? source.centerline.knots[index - 1]!.point
-									: active.frame.start;
-								const next = index < source.centerline.knots.length - 1
-									? source.centerline.knots[index + 1]!.point
-									: active.frame.end;
-								const distance = distanceToChord(attempted, previous, next);
-								if (distance > BEND_REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
-								removal = active.leftRemovalZone && distance <= BEND_REMOVE_ENTER_METERS;
-							}
-						}
+					active.removal = false;
+					if (active.removalChord !== null) {
+						const distance = distanceToChord(attempted, ...active.removalChord);
+						if (distance > REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
+						active.removal = active.leftRemovalZone && distance <= REMOVE_ENTER_METERS;
 					}
-					active.removal = removal;
-					const planned = removal
-						? previewWallKnotDelete(active.baseline, active.wallId, active.knotId)
-						: previewWallBend(active.baseline, active.wallId, active.distance, attempted, active.knotId);
-					if (planned.kind === 'refused') {
-						// Keep the last valid preview on screen: the Bend stops at the
-						// geometric limit instead of snapping back to the baseline. The
-						// release guard below refuses to commit while this refusal stands.
-						active.refusal = wallRefusalWords(planned.code, planned.message);
-					} else {
-						active.intent = removal ? null : { distance: active.distance, point: attempted };
-						active.previewDocument = planned.document;
-						active.refusal = null;
-					}
+					const shape = active.shape;
+					const proposal = shape.kind === 'ready' ? shape.reshape(attempted) : shape;
+					const samples = shape.kind === 'ready' && proposal.kind === 'proposed'
+						? wallCenterlineSamples({ id: active.wallId, centerline: proposal.centerline }, shape.start, shape.end, 'forward')
+						: undefined;
+					const points = active.removal ? active.removedPoints : samples?.samples.map((sample) => sample.point);
+					active.previewPoints = points ?? null;
+					active.intent = active.removal || !points ? null : { distance: active.distance, point: attempted };
+					const openingIssue = active.removal ? active.removalRefusal
+						: proposal.kind === 'proposed' ? active.openingRefusal(proposal.centerline) : null;
+					active.refusal = openingIssue ?? (points ? null : proposal.kind === 'rejected'
+						? wallRefusalWords(proposal.rejection.code, proposal.rejection.message)
+						: 'This shape is not a valid Wall layout.');
 					services.stage.notifySurfaceChange();
 					return true;
 				}
@@ -1903,9 +2322,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// The removal is one canonical knot-delete command. The knot is gone,
 					// so the session's active shape point is cleared; Undo restores it.
 					activeKnot = null;
-					void removeWallKnot(current.wallId, current.knotId);
+					if (current.refusal === null) void commitBend(current);
 				} else if (current !== null) activeKnot = { wallId: current.wallId, knotId: current.knotId };
-				if (current !== null && !current.removal && current.intent !== null && current.refusal === null) commitBend(current, current.intent);
+				if (current !== null && !current.removal && current.intent !== null && current.refusal === null) void commitBend(current);
 				else if (
 					current !== null &&
 					(current.existingKnot || current.markId.startsWith('layout-wall-knot:')) &&
@@ -2211,13 +2630,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					kind: 'point',
 					role: 'edit',
 					anchor: [point[0], adapterContext.snapshot.domain.datumMeters, point[1]],
-					label: 'Move point',
+					// The armed mark is the join's own operation, not a Junction move with a
+					// different caption: label, verb and planner all name the join it will
+					// accept. The handle id is unchanged, so gesture ownership is untouched.
+					label: active?.removal === true ? 'Remove joint' : 'Move point',
 					fact: 'junction',
-					verb: 'Move',
-					planner: LAYOUT_JUNCTION_MOVE_KIND,
-					value: numericValue ?? (active?.request === null || active?.request === undefined
-						? planarDeltaLabel(0, 0)
-						: planarDeltaLabel(active.request.point[0] - active.startPoint[0], active.request.point[1] - active.startPoint[1])),
+					verb: active?.removal === true ? 'Join' : 'Move',
+					planner: active?.removal === true ? LAYOUT_WALL_JOIN_KIND : LAYOUT_JUNCTION_MOVE_KIND,
+					value: numericValue ?? (active?.removal === true
+						? 'Remove joint'
+						: active?.request === null || active?.request === undefined
+							? planarDeltaLabel(0, 0)
+							: planarDeltaLabel(active.request.point[0] - active.startPoint[0], active.request.point[1] - active.startPoint[1])),
 					refusal: active === null ? null : refusal
 				}];
 			}
@@ -2787,6 +3211,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 					};
 				}
+				services.stage.notifySurfaceChange();
+			}
+
+			/**
+			 * Commit one joint removal through the join intent. The capture was minted at
+			 * the press, so the candidate the creator previewed and the document that
+			 * lands describe the same ids — Undo and Redo replay them.
+			 */
+			async function commitJoin(junctionId: string, capture: LayoutIdCapture): Promise<void> {
+				const snapshot = services.stage.snapshot();
+				const outcome = await services.authoring.accept(
+					wallJoinIntent({
+						junctionId,
+						capture,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId
+					})
+				);
+				refusal = outcome.kind === 'refused' ? wallJoinRefusalWords(outcome.code, outcome.message) : null;
 				services.stage.notifySurfaceChange();
 			}
 
@@ -3847,6 +4293,30 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
 					return;
 				}
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					// A3 — the preview is the exact cubic the third activation commits. The
+					// planner owns the range refusal, so the Stage shows the drawn bulge and
+					// repeats its words rather than clamping the bulge to a semicircle.
+					if (draft.points.length < 2) {
+						inkPreview = null;
+						inkNotice = null;
+						return;
+					}
+					if (inkArcHover !== null) {
+						// A pointer on the chord names no bulge: clearing here prevents a
+						// stale curve from outliving the bulge the creator moved away from.
+						inkArcApex = arcApexAt(inkArcHover);
+					}
+					if (inkArcApex === null) {
+						// Keep the release's words ("pull the bulge…") readable: a chord
+						// with no rise is not a plan, but the refusal is still the answer.
+						inkPreview = null;
+						return;
+					}
+					inkPreview = planInkDraft(draft, { pointIndex: 0, apex: inkArcApex });
+					inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+					return;
+				}
 				if (inkReading === 'wall' && inkWallMode === 'box') {
 					// Box previews the very ring its release commits. With no second corner
 					// yet there is nothing to plan, and a refusal set by the last release
@@ -3864,15 +4334,37 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/** One planner pass over a draft at the remembered thickness and height. */
-			function planInkDraft(target: ChainDraft): ChainPlanPreview {
+			function planInkDraft(target: ChainDraft, arc?: WallChainArc): ChainPlanPreview {
 				return planChainDraft({
 					document,
 					draft: target,
 					capture: chainCapture ?? mintLayoutIdCapture(),
 					levelId,
 					...(inkThickness === null ? {} : { thickness: inkThickness }),
-					...(inkHeight === null ? {} : { height: inkHeight })
+					...(inkHeight === null ? {} : { height: inkHeight }),
+					...(arc === undefined ? {} : { arc })
 				});
+			}
+
+			/**
+			 * The bulge apex under a raw working-plane point. Only the perpendicular
+			 * rise is kept; a bulge past the semicircle is passed through as drawn so
+			 * the canonical planner can refuse it, never silently clamped.
+			 */
+			function arcApexAt(point: LayoutVec2): LayoutVec2 | null {
+				const start = draft.points[0];
+				const end = draft.points[1];
+				if (start === undefined || end === undefined) return null;
+				const measured = measureWallArc(start.point, end.point, point);
+				if (measured === null) return null;
+				const magnitude = Math.abs(measured.rise);
+				if (!(magnitude > 0)) return null;
+				const sign = measured.rise < 0 ? -1 : 1;
+				const dx = end.point[0] - start.point[0];
+				const dz = end.point[1] - start.point[1];
+				const mx = (start.point[0] + end.point[0]) / 2;
+				const mz = (start.point[1] + end.point[1]) / 2;
+				return [mx - (dz / measured.chord) * magnitude * sign, mz + (dx / measured.chord) * magnitude * sign];
 			}
 
 			/**
@@ -4032,11 +4524,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function snapshotForPalette(): InkPaletteSnapshot {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
 				const circleMode = inkReading === 'wall' && inkWallMode === 'circle';
-				const withHover = circleMode ? draft : linePreviewDraft();
+				const arcMode = inkReading === 'wall' && inkWallMode === 'arc';
+				const withHover = circleMode || arcMode ? draft : linePreviewDraft();
 				const effective = boxMode ? (boxPreviewDraft() ?? draft)
 					: 'points' in withHover ? withHover : draft;
 				const pending =
-					inkHover === null || boxMode || circleMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
+					inkHover === null || boxMode || circleMode || arcMode
+						? null
+						: pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
 				const box =
 					anchor === null || inkHover === null
@@ -4045,12 +4540,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								width: Math.abs(inkHover.point[0] - anchor.point[0]),
 								depth: Math.abs(inkHover.point[1] - anchor.point[1])
 							};
+				const arc =
+					arcMode && draft.points.length >= 2 && inkArcApex !== null
+						? (() => {
+								const measured = measureWallArc(draft.points[0]!.point, draft.points[1]!.point, inkArcApex!);
+								return measured === null
+									? null
+									: {
+											chord: measured.chord,
+											rise: measured.rise,
+											radius: measured.radius,
+											belowMinimum: Math.abs(measured.rise) < MIN_WALL_ARC_RISE
+										};
+							})()
+						: null;
 				const selectedHostId = currentOpeningHostId();
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					options: { thickness: inkThickness, height: inkHeight },
 					reading: inkReading,
 					wallMode: inkWallMode,
+					arc,
 					box,
 					readings: paletteReadings(),
 					opening:
@@ -4073,13 +4583,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
-					canFinish: !boxMode && !circleMode && draft.points.length >= 2,
-					canClose: !boxMode && !circleMode && draft.points.length >= 3 && !draft.closed,
+					canFinish: !boxMode && !circleMode && !arcMode && draft.points.length >= 2,
+					canClose: !boxMode && !circleMode && !arcMode && draft.points.length >= 3 && !draft.closed,
 					canBacktrack: draft.points.length > 0,
 					consequence:
 						inkPreview !== null &&
 						inkPreview.kind === 'planned' &&
-						(circleMode || effective.points.length >= 2)
+						(circleMode || arcMode || effective.points.length >= 2)
 							? inkPreview.consequence.summary
 							: null,
 					pending,
@@ -4090,6 +4600,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Begin the live chain: one capture and one proposal lease per operation. */
 			function beginChain(point: ChainDraftPoint): void {
 				draft = { points: [point], closed: false };
+				inkArcApex = null;
+				inkArcHover = null;
 				chainCapture = mintLayoutIdCapture();
 				inkProposal?.release();
 				inkProposal = services.stage.session.registerProposal({
@@ -4104,6 +4616,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Drop the live chain's last point, keeping the operation alive while any remain. */
 			function backtrackChain(): void {
 				draft = backtrackChainPoint(draft);
+				if (draft.points.length < 2) {
+					inkArcApex = null;
+					inkArcHover = null;
+				}
 				if (draft.points.length === 0) {
 					inkProposal?.release();
 					inkProposal = null;
@@ -4117,6 +4633,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Drop the live chain and its proposal, exactly once. */
 			function clearChain(): void {
 				draft = EMPTY_CHAIN_DRAFT;
+				inkArcApex = null;
+				inkArcHover = null;
 				chainCapture = null;
 				inkHover = null;
 				inkSnapWinner = null;
@@ -4171,12 +4689,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					setWallMode: (mode: InkWallMode) => {
 						if (mode === inkWallMode) return;
 						if (draft.points.length > 0 || inkPress !== null) {
-							inkNotice = 'Finish or cancel the Wall chain before switching between Line, Box and Circle.';
+							inkNotice = 'Finish or cancel the Wall chain before switching between Line, Arc, Box and Circle.';
 							publishInk();
 							return;
 						}
 						inkWallMode = mode;
 						inkNotice = null;
+						inkArcApex = null;
+						inkArcHover = null;
 						inkHover = null;
 						refreshInkPreview();
 						services.stage.notifySurfaceChange();
@@ -4204,8 +4724,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						setOpeningCandidate(candidate);
 						void commitOpening(candidate);
 					},
-					finish: () => void commitChain(),
+					finish: () => {
+						if (inkReading === 'wall' && inkWallMode === 'arc') {
+							if (draft.points.length < 2 || inkArcApex === null) {
+								inkNotice = 'An Arc needs a start, an end and a bulge.';
+								publishInk();
+								return;
+							}
+							void commitChain(draft, { pointIndex: 0, apex: inkArcApex });
+							return;
+						}
+						void commitChain();
+					},
 					close: () => {
+						if (inkReading === 'wall' && inkWallMode === 'arc') {
+							inkNotice = 'An Arc is one open Wall; a ring is closed with Line.';
+							publishInk();
+							return;
+						}
 						const closed = closeChainDraft(draft);
 						if ('points' in closed) void commitChain(closed);
 						else {
@@ -4219,6 +4755,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const parsed = parsePlacementXZ(xText, zText);
 						if (!parsed.ok) {
 							inkNotice = parsed.reason;
+							publishInk();
+							return;
+						}
+						if (inkReading === 'wall' && inkWallMode === 'arc' && draft.points.length >= 2) {
+							inkNotice = 'An Arc takes its bulge from the Stage: move the pointer and click to finish.';
 							publishInk();
 							return;
 						}
@@ -4252,6 +4793,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				draft = appended;
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					inkArcApex = null;
+					inkArcHover = null;
+				}
 				inkNotice = null;
 				inkHover = null;
 				refreshInkPreview();
@@ -4313,7 +4858,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * saw is what the planner commits. A refusal leaves the live chain editable
 			 * and writes no partial source.
 			 */
-			async function commitChain(override?: ChainDraft): Promise<void> {
+			async function commitChain(override?: ChainDraft, arc?: WallChainArc): Promise<void> {
 				// One chain, one acceptance. A second activation of the same command (a
 				// focused Finish button activated by the very keydown the host maps) is the
 				// same creator intent, not a second operation.
@@ -4326,14 +4871,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				chainCommitInFlight = true;
 				try {
-					await commitChainOnce(target);
+					await commitChainOnce(target, arc);
 				} finally {
 					chainCommitInFlight = false;
 				}
 			}
 
 			/** The one acceptance pass; `commitChain` owns the in-flight guard. */
-			async function commitChainOnce(target: ChainDraft): Promise<void> {
+			async function commitChainOnce(target: ChainDraft, arc?: WallChainArc): Promise<void> {
 				const capture = chainCapture ?? mintLayoutIdCapture();
 				const request = chainPlanRequest(target);
 				const payload = {
@@ -4342,7 +4887,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					junctionSnaps: request.endpointJunctionSnaps,
 					hostSnaps: request.endpointHostSnaps,
 					thickness: inkThickness,
-					height: inkHeight
+					height: inkHeight,
+					...(arc === undefined ? {} : { arc })
 				};
 				const planned = planChainDraft({
 					document,
@@ -4350,7 +4896,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					capture,
 					levelId,
 					...(inkThickness === null ? {} : { thickness: inkThickness }),
-					...(inkHeight === null ? {} : { height: inkHeight })
+					...(inkHeight === null ? {} : { height: inkHeight }),
+					...(arc === undefined ? {} : { arc })
 				});
 				if (planned.kind === 'refused') {
 					// Refused in words, with a repair: the chain stays exactly as it was and
@@ -4438,6 +4985,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						dragging: false
 					};
 					inkHover = target;
+					const pressedArcHover = pointerDatumPoint(adapterContext, intent.css);
+					inkArcHover = pressedArcHover === null ? null : [pressedArcHover[0], pressedArcHover[1]];
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
 					publishInk();
@@ -4472,6 +5021,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					} else {
 						inkHover = null;
 					}
+					const movedArcHover = pointerDatumPoint(adapterContext, intent.css);
+					inkArcHover = movedArcHover === null ? null : [movedArcHover[0], movedArcHover[1]];
+					if (inkReading === 'wall' && inkWallMode === 'arc') inkNotice = null;
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
 					publishInk();
@@ -4487,6 +5039,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const pressTarget = current.pressTarget;
 				endInkPress();
 				inkHover = null;
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					// A3 — start, end, bulge. A drag from the first point names both
+					// endpoints in one gesture; the third activation sets the bulge.
+					const apexPoint = pointerDatumPoint(adapterContext, intent.css);
+					const rawRelease: LayoutVec2 =
+						apexPoint === null ? [release.point[0], release.point[1]] : [apexPoint[0], apexPoint[1]];
+					if (draft.points.length === 0) {
+						beginChain({ point: pressTarget.point, target: pressTarget.target });
+						if (travel > 4) {
+							const appended = appendChainPoint(draft, { point: release.point, target: release.target });
+							if ('points' in appended) {
+								draft = appended;
+								inkArcApex = null;
+							}
+						}
+					} else if (draft.points.length === 1) {
+						const appended = appendChainPoint(draft, { point: release.point, target: release.target });
+						if ('points' in appended) {
+							draft = appended;
+							inkArcApex = null;
+						} else {
+							inkNotice = appended.message;
+						}
+					} else {
+						const bulge = arcApexAt(rawRelease);
+						if (bulge !== null) {
+							inkArcApex = bulge;
+							inkArcHover = rawRelease;
+							// The commit's own refusal words must survive: re-planning here
+							// could clear a policy refusal the preview never ran.
+							void commitChain(draft, { pointIndex: 0, apex: bulge });
+							publishInk();
+							return true;
+						}
+						inkNotice = 'Pull the bulge away from the chord to set the Arc.';
+					}
+					refreshInkPreview();
+					publishInk();
+					return true;
+				}
 				if (inkReading === 'wall' && inkWallMode === 'box') {
 					// Box: a drag names both corners; a tap names the first corner, and the
 					// next tap the opposite one.
@@ -4577,6 +5169,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						taskKind: LAYOUT_PLINTH_PLACE_KIND,
 						label: 'Place plinth',
 						order: 10
+					},
+					// A4 — a procedure invoked by the Room Card, never a dock tool and
+					// never an Index entry: no armable mode is added to the tool strip.
+					{
+						id: LAYOUT_ROOM_DUPLICATE_KIND,
+						taskKind: LAYOUT_ROOM_DUPLICATE_KIND,
+						label: 'Duplicate room',
+						order: 20
 					}
 				],
 				findEntries: [
@@ -4670,6 +5270,58 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * returns the host Wall to the selection.
 				 */
 				cardActions(cardSubject: StageCardSubject): readonly StageCardAction[] {
+					// A4 — Duplicate is the Room's one scoped action. The disclosure comes
+					// from the same isolation planner the acceptance re-proves; a
+					// non-isolated Room states why, naming every involved Wall, instead of
+					// offering a copy that would have to detach shared architecture.
+					if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
+						const roomId = cardSubject.sourceId;
+						const room = document.rooms.find((entry) => entry.id === roomId);
+						if (room === undefined) {
+							return [{
+								id: 'layout-room-duplicate',
+								label: 'Duplicate',
+								group: 'secondary',
+								detail: 'That Room is gone. Select the Room again.',
+								run: async () => ({ kind: 'refused', message: 'That Room is gone. Select the Room again.' })
+							}];
+						}
+						const isolation = resolveIsolatedRoomSubgraph(document, roomId);
+						let detail: string;
+						if (isolation.kind === 'rejected') {
+							detail = roomDuplicateRefusalWords(document, isolation.rejection);
+						} else {
+							const objects = isolation.subgraph.associatedObjectIds.length;
+							detail = [
+								`Copies ${room.name} with its ${roomDuplicateCount(isolation.subgraph.wallIds.length, 'Wall')}, ${roomDuplicateCount(isolation.subgraph.junctionIds.length, 'Junction')}, ${roomDuplicateCount(isolation.subgraph.openingIds.length, 'Opening')}${objects === 0 ? '' : ` and ${roomDuplicateCount(objects, 'object')}`}.`,
+								'The copy starts clear of its source; move the pointer, then click to place it.'
+							].join(' ');
+						}
+						return [{
+							id: 'layout-room-duplicate',
+							label: 'Duplicate',
+							// Duplicate adds a copy and Undo removes it: it is scoped and
+							// reversible, so it sits in the Card's More disclosure rather than
+							// the destructive row.
+							group: 'secondary',
+							detail,
+							run: async () => {
+								if (isolation.kind === 'rejected') {
+									return { kind: 'refused', message: detail };
+								}
+								pendingRoomDuplicateId = roomId;
+								const opened = services.stage.openContributedTask(LAYOUT_ROOM_DUPLICATE_KIND, 'layout');
+								if (opened.kind !== 'opened') {
+									pendingRoomDuplicateId = null;
+									return { kind: 'refused', message: opened.message };
+								}
+								return {
+									kind: 'accepted',
+									message: 'Move the pointer, then click to place the copy. Escape cancels.'
+								};
+							}
+						}];
+					}
 					if (cardSubject.sourceKind === 'opening') {
 						const opening = document.openings.find((entry) => entry.id === cardSubject.sourceId);
 						if (opening === undefined) {
@@ -4741,6 +5393,62 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// one captured intent, so a refusal writes nothing and an acceptance is
 					// one undo step. A straight Wall adds no action here.
 					const wallSource = document.walls.find((candidate) => candidate.id === wallId);
+					// T1 A1 — one Split over the retained noder. The Card is the
+					// midpoint path: a press elsewhere on the Wall never retargets it.
+					// Pointer-specific placement belongs to the deferred Stage context
+					// menu. Nothing here arms a tool or adds a mark.
+					const splitLength = wallStationFrame(document, wallId)?.length;
+					const splitAt = splitLength === undefined ? null : splitLength / 2;
+					const splitOpening = splitAt === null
+						? undefined
+						: document.openings.find((opening) =>
+							opening.wallId === wallId && splitAt > opening.offset && splitAt < opening.offset + opening.width
+						);
+					const splitRefusal = wallSource === undefined
+						? 'That Wall is no longer in the project.'
+						: isClosedWall(wallSource)
+							? wallSplitRefusalWords('closed_wall_isolated')
+							: splitAt === null
+								? 'This Wall has no resolvable length.'
+								: splitOpening !== undefined
+									? wallSplitRefusalWords('split_through_opening_interior')
+									: null;
+					const splitAction: StageCardAction = {
+						id: 'layout-wall-split',
+						label: 'Split wall here',
+						detail: splitRefusal ??
+							`Adds a joint at ${splitAt!.toFixed(2)} m. The start-side Wall keeps this Wall's identity; Openings keep their places and the Room is unchanged.`,
+						run: async () => {
+							if (splitRefusal !== null || splitAt === null) {
+								return { kind: 'refused', message: splitRefusal ?? 'The Wall cannot be split there.' };
+							}
+							const capture = mintLayoutIdCapture();
+							const snapshot = services.stage.snapshot();
+							const outcome = await services.authoring.accept(
+								wallSplitIntent({
+									wallId,
+									distance: splitAt,
+									capture,
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision: stageUnitRevision(snapshot, 'layout'),
+									levelId: snapshot.domain.layoutLevelId
+								})
+							);
+							if (outcome.kind === 'refused') {
+								services.stage.notifySurfaceChange();
+								return { kind: 'refused', message: outcome.message };
+							}
+							// The start-side fragment keeps the Wall id; keep the creator on it so
+							// the Card describes the Wall they just divided.
+							selectLayoutSubject('wall', wallId);
+							services.stage.notifySurfaceChange();
+							return outcome.kind === 'no-op'
+								? { kind: 'no-op', message: 'The Wall was already split there.' }
+								: { kind: 'accepted' };
+						}
+					};
 					const curveActions: StageCardAction[] = [];
 					if (wallSource?.centerline.kind === 'cubic-chain') {
 						const knots = wallSource.centerline.knots;
@@ -4799,7 +5507,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// the selected Wall; there is no hidden Bend-armed mode.
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [...curveActions,
+						return [splitAction, ...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -4810,6 +5518,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
+						splitAction,
 						...curveActions,
 						{
 							id: 'layout-wall-delete',
@@ -5056,6 +5765,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return ticks;
 				},
 				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					// The Room copy follows unpressed motion; the press that places it is
+					// claimed by `pointerIntent`, so navigation still belongs to the host.
+					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND) return roomDuplicateHover(intent, adapterContext);
 					if (openTaskKind !== LAYOUT_INK_TASK) return false;
 					if (inkReading !== 'wall' && inkReading !== 'opening') {
 						const session = ensureContributedSession();
@@ -5068,6 +5780,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// A Wall-reading hover updates the live chain. It never claims a move:
 					// the host's navigation gesture and the next press stay the host's.
 					if (intent.phase !== 'move') return false;
+					if (inkReading === 'wall' && inkWallMode === 'arc') {
+						const hoveredArc = pointerDatumPoint(adapterContext, intent.css);
+						inkArcHover = hoveredArc === null ? null : [hoveredArc[0], hoveredArc[1]];
+						inkNotice = null;
+					}
 					inkHover = inkTargetAt(adapterContext, intent.css);
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
@@ -5082,6 +5799,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return updateIdleBendHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND) return roomDuplicatePointer(intent, adapterContext);
 					if (intent.phase === 'down' && idleBendHint !== null) {
 						idleBendHint = null;
 						services.stage.notifySurfaceChange();
@@ -5155,7 +5873,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								proposal: null,
 								readPreview: createWallDragReader(baseline),
 								snap: null,
-								pointerPoint: [point[0], point[1]]
+								pointerPoint: [point[0], point[1]],
+								capture: mintLayoutIdCapture(),
+								removal: false,
+								leftRemovalZone: false,
+								joinPreview: null,
+								dragged: false
 							};
 							idleJunctionHover = null;
 							services.stage.notifySurfaceChange();
@@ -5404,7 +6127,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// the creator is entering, and its eventual up never commits.
 						if ((gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
 						const pressCss = junctionGesture?.pressCss ?? gesture?.pressCss ?? openingGesture!.pressCss;
-						if (!isPointerDrag(pressCss, intent.css)) {
+						// A Junction edit is a drag, not a displacement: once the pointer has
+						// passed the threshold the gesture stays an edit even when it returns
+						// to the press point, which is exactly how an already-collinear Joint
+						// is armed and joined.
+						if (junctionGesture !== null && isPointerDrag(junctionGesture.pressCss, intent.css)) {
+							junctionGesture.dragged = true;
+						}
+						if (!isPointerDrag(pressCss, intent.css) && junctionGesture?.dragged !== true) {
 							if (junctionGesture !== null) {
 								junctionGesture.request = null;
 								junctionGesture.proposal = null;
@@ -5469,6 +6199,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							const free = snapDraftingPlacement(aimed, null);
 							const snappedPoint = snap ? gridPoint : [free.x, free.z];
 							junctionGesture.pointerPoint = [point[0], point[1]];
+							// **Remove joint.** A degree-2 joint dragged onto the chord between its
+							// neighbours' far ends names the join, exactly as a bend point dragged
+							// onto its neighbours' line names the knot removal. The preview is the
+							// real dissolve candidate; a refusal keeps the attempted chord and its
+							// words, and release writes nothing.
+							const armed = jointRemovalArmed(junctionGesture, document, [
+								snappedPoint[0],
+								snappedPoint[1]
+							] as LayoutVec2);
+							junctionGesture.removal = armed;
+							if (armed) {
+								const dissolved = planDissolveJunction(
+									document,
+									junctionGesture.junctionId,
+									junctionGesture.capture,
+									adapterContext.snapshot.domain.layoutLevelId
+								);
+								junctionGesture.request = null;
+								junctionGesture.snap = null;
+								if (dissolved.kind === 'rejected') {
+									junctionGesture.joinPreview = null;
+									junctionGesture.proposal = null;
+									junctionGesture.attempt = proposeWallFirstArchitectureGeometry(document, {
+										kind: 'junction-move',
+										junctionId: junctionGesture.junctionId,
+										point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2
+									}) ?? null;
+									junctionGesture.refusalPoint = [snappedPoint[0], snappedPoint[1]];
+									refusal = wallJoinRefusalWords(dissolved.rejection.code, dissolved.rejection.message);
+								} else {
+									junctionGesture.joinPreview = dissolved;
+									junctionGesture.attempt = joinedPreview(dissolved);
+									junctionGesture.proposal = junctionGesture.attempt;
+									junctionGesture.refusalPoint = null;
+									refusal = null;
+								}
+								services.stage.notifySurfaceChange();
+								return true;
+							}
+							junctionGesture.joinPreview = null;
 							if (
 								Math.hypot(
 									snappedPoint[0] - junctionGesture.startPoint[0],
@@ -5837,9 +6607,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					if (junctionGesture !== null) {
-						const dragged = isPointerDrag(junctionGesture.pressCss, intent.css);
-						const pending = dragged ? junctionGesture.request : null;
+						const dragged = junctionGesture.dragged;
+						// A Joint in the removal zone is not a move: its parameter is withdrawn
+						// while armed, so release writes the join or its refusal and can never
+						// install the move the pointer passed through on the way.
+						const removing = dragged && junctionGesture.removal && junctionGesture.joinPreview !== null;
+						const pending = dragged && !junctionGesture.removal ? junctionGesture.request : null;
 						const wallId = junctionGesture.wallId;
+						const junctionId = junctionGesture.junctionId;
+						const capture = junctionGesture.capture;
 						const attemptGeometry = junctionGesture.attempt === null
 							? null
 							: wallProposalPaper(junctionGesture.attempt, adapterContext.snapshot.domain.datumMeters);
@@ -5854,7 +6630,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						const point = junctionGesture.pointerPoint;
 						endJunctionGesture();
-						if (pending !== null) void commit(pending, 'start', wallId, point, attemptGeometry);
+						if (removing) void commitJoin(junctionId, capture);
+						else if (pending !== null) void commit(pending, 'start', wallId, point, attemptGeometry);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -6040,12 +6817,36 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							view: { component: LayoutPlacementInstrument, services }
 						};
 					}
+					if (task.kind === LAYOUT_ROOM_DUPLICATE_KIND) {
+						// The Card names the Room; opening the task closes any previous
+						// contributed task first, so the request is consumed here, after that
+						// close, and never by a clear on `taskClosed`.
+						const roomId = pendingRoomDuplicateId;
+						pendingRoomDuplicateId = null;
+						const started = roomId !== null && beginRoomDuplicate(roomId);
+						const room = roomId === null ? undefined : document.rooms.find((entry) => entry.id === roomId);
+						return {
+							summary: 'Duplicate Room',
+							facts: [
+								{ label: 'Copy', value: room === undefined ? 'One isolated Room' : `${room.name}, its Walls, Junctions and Openings` },
+								{
+									label: 'Place',
+									value: started
+										? 'Move the pointer, then click. Escape cancels.'
+										: roomDuplicateNotice === null
+											? 'Select an isolated Room and choose Duplicate.'
+											: roomDuplicateRefusalWords(document, roomDuplicateNotice)
+								}
+							]
+						};
+					}
 					return null;
 				},
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
 					rearmEpoch += 1;
 					if (roomMove !== null) endRoomMove();
+					endRoomDuplicate();
 					openTaskKind = null;
 					settledRefusal = null;
 					if (pausedProposal !== null) {
@@ -6106,6 +6907,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
+				if (roomDuplicate !== null) return roomDuplicatePreviews(adapterContext, y);
 				if (roomMove !== null) return roomMovePreviews(adapterContext, y);
 				if (scalarGesture !== null) {
 					const current = scalarGesture;
@@ -6227,26 +7029,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// tag still belongs at the press, not only on the midpoint grip.
 				const activeBend = bendGesture;
 				if (activeBend !== null) {
-					if (activeBend.previewDocument !== null) {
-						const built = candidatePaper(
-							activeBend.previewDocument,
-							y,
-							new Set([activeBend.wallId]),
-							new Set()
-						);
-						if (built !== null) {
-							return [
-								candidatePreviewOf({
-									id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
-									role: 'subject',
-									geometry: built.paper.subject,
-									...(activeBend.removal ? {
-										labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }]
-									} : {}),
-									snap: snapOf(null)
-								})
-							];
-						}
+					if (activeBend.previewPoints !== null && activeBend.refusal === null) {
+						return [candidatePreviewOf({
+							id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
+							role: 'subject',
+							geometry: wallProposalPaper([{ wallId: activeBend.wallId, points: [...activeBend.previewPoints] }], y),
+							...(activeBend.removal ? { labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }] } : {})
+						})];
 					}
 					if (activeBend.attemptPoints.length >= 2) {
 						const geometry = wallProposalPaper([{ wallId: activeBend.wallId, points: [...activeBend.attemptPoints] }], y);
@@ -6300,6 +7089,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 				const activeJunction = junctionGesture;
 				if (activeJunction !== null) {
+					// A successful join candidate is the whole joined Wall, not a Junction
+					// move: it has no Junction parameter, so `request` is null by design.
+					// Drawn from the planner's own document through the same paper pass as
+					// every other candidate, before the move branch can read that null as
+					// "nothing to preview".
+					if (activeJunction.removal && activeJunction.joinPreview !== null && activeJunction.proposal !== null) {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-junction-join',
+							role: 'subject',
+							geometry: wallProposalPaper(activeJunction.proposal, y),
+							labels: [{ world: world(activeJunction.pointerPoint ?? activeJunction.startPoint), text: 'Remove joint' }]
+						})];
+					}
 					if (activeJunction.request === null || activeJunction.proposal === null) {
 						if (refusal !== null && activeJunction.pointerPoint !== null) {
 							return [candidatePreviewOf({
@@ -6350,6 +7152,37 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					})];
 				}
 
+				// T1 A8 — the Card's live Repeat proposal. Every copy comes from the
+				// planner's own candidate document, filtered to the Openings it created,
+				// so the Stage can never show a copy acceptance would refuse. The Card
+				// owns the typed count/spacing; this is a read of the same proposal.
+				const activeRepeat = openingRepeatProposal(
+					adapterContext.snapshot.sourceContentId,
+					selectedOpening(adapterContext)?.openingId ?? ''
+				);
+				if (activeRepeat !== null) {
+					const preview = previewOpeningRepeat({
+						document,
+						openingId: activeRepeat.openingId,
+						count: activeRepeat.count,
+						spacing: activeRepeat.spacing
+					});
+					if (preview.kind === 'planned') {
+						const createdIds = new Set(preview.createdOpeningIds);
+						const built = candidatePaper(preview.document, y, createdIds, new Set());
+						if (built !== null) {
+							const geometry = adapterContext.evaluation.settledReading === 'plan'
+								? built.paper.subject
+								: openingFacePaper(preview.document, createdIds, y);
+							return [candidatePreviewOf({
+								id: 'layout-candidate-opening-repeat',
+								role: 'subject',
+								geometry
+							})];
+						}
+					}
+				}
+
 				if (inkReading === 'opening') {
 					if (openingPreview?.kind === 'planned') {
 						const subjectIds = new Set([openingPreview.openingId, ...openingPreview.changedWallIds]);
@@ -6387,6 +7220,92 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							role: 'refused',
 							geometry,
 							...(ghost === null ? {} : { labels: [{ world: world(ghost[0]), text: refusedWords }] })
+						})];
+					}
+					return [];
+				}
+
+				// A3 — Arc's preview is the canonical cubic the third activation commits.
+				// Until the bulge is named, the chord and its length stand in; a straight
+				// fallback says so in words before the creator accepts it.
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					const start = draft.points[0];
+					const end = draft.points[1];
+					if (start === undefined) {
+						return [];
+					}
+					if (end === undefined) {
+						if (inkHover === null) return [];
+						const length = Math.hypot(
+							inkHover.point[0] - start.point[0],
+							inkHover.point[1] - start.point[1]
+						);
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc-cursor',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: [], segments: [[world(start.point), world(inkHover.point)]] },
+							labels: [{ world: world(inkHover.point), text: `${length.toFixed(2)} m` }],
+							snap: snapOf(inkSnapWinner)
+						})];
+					}
+					const chord = Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]);
+					const midpoint: [number, number] = [
+						(start.point[0] + end.point[0]) / 2,
+						(start.point[1] + end.point[1]) / 2
+					];
+					if (inkArcApex === null) {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: [], segments: [[world(start.point), world(end.point)]] },
+							labels: [{ world: world(midpoint), text: `${chord.toFixed(2)} m · pull the bulge` }]
+						})];
+					}
+					const measured = measureWallArc(start.point, end.point, inkArcApex);
+					const fallback = measured !== null && Math.abs(measured.rise) < MIN_WALL_ARC_RISE;
+					const facts =
+						measured === null
+							? null
+							: fallback
+								? `Line · rise under ${MIN_WALL_ARC_RISE.toFixed(2)} m`
+								: `Rise ${Math.abs(measured.rise).toFixed(2)} m · R ${Number.isFinite(measured.radius) ? measured.radius.toFixed(2) : '∞'} m`;
+					if (inkPreview?.kind === 'planned') {
+						const wallId = inkPreview.authoredWallIds[0];
+						const frame = wallId === undefined ? null : openWallFrame(inkPreview.document, wallId);
+						const segments =
+							frame === null
+								? ([[world(start.point), world(end.point)]] as const)
+								: frame.samples
+										.slice(1)
+										.map((sample, index) => [world(frame.samples[index]!.point), world(sample.point)] as const);
+						const closesRoom = inkPreview.createdRoomIds.length > 0;
+						const built = closesRoom
+							? candidatePaper(inkPreview.document, y, new Set(inkPreview.createdRoomIds), new Set())
+							: null;
+						const labels: { world: [number, number, number]; text: string }[] = [];
+						if (facts !== null) labels.push({ world: world(inkArcApex), text: facts });
+						if (closesRoom) {
+							labels.push({
+								world: world(start.point),
+								text: inkPreview.createdRoomIds.length === 1 ? 'Creates 1 Room' : `Creates ${inkPreview.createdRoomIds.length} Rooms`
+							});
+						}
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: built?.paper.subject.polygons ?? [], segments },
+							labels
+						})];
+					}
+					if (inkPreview?.kind === 'refused') {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc-refused',
+							role: 'refused',
+							geometry: { polygons: [], segments: [[world(start.point), world(end.point)]] },
+							labels: [{ world: world(inkArcApex), text: inkPreview.message }]
 						})];
 					}
 					return [];

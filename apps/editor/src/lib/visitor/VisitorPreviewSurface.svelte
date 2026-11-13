@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
-	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
+	import { previewCanvasRenderer } from '$lib/render/canvas-renderers';
+	import { perfMark } from '$lib/platform/perf-marks';
 	import { onMount, untrack } from 'svelte';
+import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
 	import { T } from '@threlte/core';
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { NavigationGraph } from '@portfolio/project-model';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import type { ExecutionProgram, ExperienceInterpreterOptions } from '@portfolio/project-model/units';
 	import { formatGuideTime } from '@portfolio/camera-core';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
@@ -17,7 +17,6 @@ import { PCFShadowMap } from 'three';
 	import VisitorTimeline from './VisitorTimeline.svelte';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
-	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
 	import VisitorEntities from './VisitorEntities.svelte';
 	import VisitorLayoutShell from './VisitorLayoutShell.svelte';
@@ -27,7 +26,6 @@ import { PCFShadowMap } from 'three';
 	let {
 		scene,
 		geometry,
-		rooms,
 		graph,
 		program = null,
 		experienceOptions = null,
@@ -43,6 +41,7 @@ import { PCFShadowMap } from 'three';
 		active = true,
 		resolveTexture,
 		textureScope = null,
+		artworkScope = null,
 		modelUrls = null,
 		reducedMotion = false,
 		mode = 'preview',
@@ -58,7 +57,6 @@ import { PCFShadowMap } from 'three';
 	}: {
 		scene: RuntimeScene;
 		geometry: CompiledLayoutGeometry;
-		rooms: LayoutRoomRegistry;
 		graph: NavigationGraph;
 		/** The lowered Experience program. Absent means no guided Experience. */
 		program?: ExecutionProgram | null;
@@ -68,6 +66,7 @@ import { PCFShadowMap } from 'three';
 		active?: boolean;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
+		artworkScope?: ArtworkScope | null;
 		/** Runtime-safe approved model bytes, resolved by the owning session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
 		reducedMotion?: boolean;
@@ -374,14 +373,6 @@ import { PCFShadowMap } from 'three';
 		};
 	});
 
-	const presentation = $derived.by(() => {
-		const record: Record<string, typeof neutralVisitorRoomPresentation> = {};
-		for (const room of geometry.rooms) {
-			record[room.roomId] = neutralVisitorRoomPresentation;
-		}
-		return record;
-	});
-
 	const isZeroNode = $derived(visitorState === null || visitorState.program.stops.length === 0);
 	const canvasDescription = $derived(
 		mode === 'public'
@@ -421,7 +412,7 @@ import { PCFShadowMap } from 'three';
 		aria-describedby="visitor-preview-help"
 	>
 		<Canvas
-		createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'preview')}
+		createRenderer={previewCanvasRenderer}
 		dpr={[1, 1.5]}
 		shadows={PCFShadowMap}
 		renderMode={active ? 'always' : 'on-demand'}
@@ -456,8 +447,14 @@ import { PCFShadowMap } from 'three';
 					onLook={(value) => (lookingAround = value)}
 				/>
 			{/if}
-			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
-			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} />
+			<VisitorLayoutShell {geometry} textureScope={textureScope} />
+			<VisitorEntities
+				scene={scene}
+				{textureScope}
+				{artworkScope}
+				{modelUrls}
+				includeLights={environment !== 'paper'}
+			/>
 		</Canvas>
 	</div>
 	<div class="visitor-brand" class:published={mode === 'public'}>

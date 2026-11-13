@@ -9,6 +9,7 @@ import type {
 	SceneMaterialInstance,
 	SceneTextureAsset
 } from '$lib/content/scene';
+import { countWork } from '@portfolio/layout-core';
 
 const DEFAULT_TILE: [number, number] = [1, 1];
 const SLOT_ORDER: MaterialTextureSlot[] = [
@@ -66,6 +67,7 @@ export function resolveSceneMaterial(
 	document: Pick<SceneDocument, 'materials' | 'textures'>,
 	target: ResolveTarget
 ): EffectiveSceneMaterial {
+	countWork('material:resolve');
 	const instance: SceneMaterialInstance | undefined = target.materialInstanceId
 		? document.materials.find(
 				(material) => material.id === target.materialInstanceId

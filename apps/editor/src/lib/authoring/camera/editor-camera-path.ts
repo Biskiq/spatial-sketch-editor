@@ -1,5 +1,4 @@
 
-import type { LayoutRoomRegistry } from '@portfolio/project-model';
 import type {
 	SceneDocument,
 	SceneConnection,
@@ -11,7 +10,7 @@ import {
 	type CameraPositionPathPart,
 	type Vector3Like
 } from '@portfolio/camera-core';
-import type { RoomId, Vec3 } from '$lib/types/scene';
+import type { Vec3 } from '$lib/types/scene';
 import type { CameraConnectionDirection } from '$lib/types/scene';
 import { CurvePath, MathUtils, Vector3 } from 'three';
 
@@ -41,33 +40,8 @@ function cloneFiniteVec3(value: Vector3Like, label: string): Vec3 {
 	return [components[0], components[1], components[2]];
 }
 
-function resolveScenePoint(
-	point: { position: Vec3; roomId?: RoomId },
-	rooms: LayoutRoomRegistry
-): Vec3 {
-	return point.roomId ? rooms.point(point.roomId, point.position) : [...point.position];
-}
-
-/**
- * XZ footprint check for a room-owned point: is it inside the Room it names?
- * An unknown Room returns false, so the caller falls back to world-space
- * ownership.
- *
- * T1.P02.S05: the check used to approximate the footprint from the legacy
- * authored Room boundary's AABB in room-local space. A wall-first Layout owns no
- * Room frame and no authored boundary on the registry entry, and the
- * current-format registry is always empty, so no entry ever resolves — the
- * function keeps its contract (unknown Room → false → world-space ownership)
- * without a footprint it can no longer read. The parameters stay because the
- * retained Camera authoring callers pass them.
- */
-export function isWorldPointInsideRoomXZ(
-	_roomId: RoomId,
-	_worldPoint: Vec3,
-	_rooms: LayoutRoomRegistry,
-	_epsilon = 1e-6
-): boolean {
-	return false;
+function resolveScenePoint(point: { position: Vec3 }): Vec3 {
+	return [...point.position];
 }
 
 function getDraftConnection(
@@ -91,18 +65,16 @@ function getDraftNode(document: SceneDocument, nodeId: string) {
  */
 export function resolveDraftConnectionPathPart(
 	document: SceneDocument,
-	connectionId: string,
-	rooms: LayoutRoomRegistry
+	connectionId: string
 ): CameraPositionPathPart {
 	const connection = getDraftConnection(document, connectionId);
 	const fromNode = getDraftNode(document, connection.fromNodeId);
 	const toNode = getDraftNode(document, connection.toNodeId);
 	const points = [
-		// P23.0b: room-owned endpoints resolve through the legacy frame;
-		// world-local endpoints (no roomId) pass through unchanged.
-		resolveScenePoint(fromNode, rooms),
-		...connection.positionPath.anchors.map((anchor) => resolveScenePoint(anchor, rooms)),
-		resolveScenePoint(toNode, rooms)
+		// A Scene is world-local: endpoints are already project/world space.
+		resolveScenePoint(fromNode),
+		...connection.positionPath.anchors.map((anchor) => resolveScenePoint(anchor)),
+		resolveScenePoint(toNode)
 	];
 
 	return connection.positionPath.kind === 'rounded-polyline'
@@ -118,10 +90,9 @@ export function resolveDraftConnectionPathPart(
 export function createDraftConnectionPositionPath(
 	document: SceneDocument,
 	connectionId: string,
-	direction: CameraConnectionDirection,
-	rooms: LayoutRoomRegistry
+	direction: CameraConnectionDirection
 ) {
-	const part = resolveDraftConnectionPathPart(document, connectionId, rooms);
+	const part = resolveDraftConnectionPathPart(document, connectionId);
 	if (direction === 'reverse') {
 		return createCameraPositionPath([
 			part.kind === 'rounded-polyline'
@@ -160,48 +131,28 @@ export function findScenePathAnchor(
 	return connection?.positionPath.anchors.find((anchor) => anchor.id === anchorId) ?? null;
 }
 
-/** Read an authored anchor in world space without exposing its stored coordinate basis. */
+/** Read an authored anchor in world space. */
 export function getScenePathAnchorWorldPosition(
-	anchor: ScenePathAnchor,
-	rooms: LayoutRoomRegistry
+	anchor: ScenePathAnchor
 ): Vec3 {
-	return resolveScenePoint(anchor, rooms);
+	return resolveScenePoint(anchor);
 }
 
-/**
- * Update one authored anchor from world space. Existing room ownership is retained even
- * when the new point leaves that room's footprint.
- */
+/** Update one authored anchor from world space (a Scene is world-local). */
 export function writeScenePathAnchorWorldPosition(
 	anchor: ScenePathAnchor,
-	worldPosition: Vector3Like,
-	rooms: LayoutRoomRegistry
+	worldPosition: Vector3Like
 ) {
-	const point = cloneFiniteVec3(worldPosition, 'Camera path anchor position');
-	anchor.position = anchor.roomId ? rooms.localPoint(anchor.roomId, point) : point;
+	anchor.position = cloneFiniteVec3(worldPosition, 'Camera path anchor position');
 	return anchor;
 }
 
-/**
- * New anchors are world-space. The active-room branch is retained but unreachable
- * while the current-format Layout Room registry is empty (`isWorldPointInsideRoomXZ`
- * is constant `false`), so every new anchor takes the world-space path.
- */
+/** New anchors are world-space: a Scene carries no Room frame. */
 export function createScenePathAnchorAtWorldPoint(
 	id: string,
-	worldPosition: Vector3Like,
-	activeRoomId: RoomId | null | undefined,
-	rooms: LayoutRoomRegistry
+	worldPosition: Vector3Like
 ): ScenePathAnchor {
-	const point = cloneFiniteVec3(worldPosition, 'Camera path anchor position');
-	if (activeRoomId && isWorldPointInsideRoomXZ(activeRoomId, point, rooms)) {
-		return {
-			id,
-			roomId: activeRoomId,
-			position: rooms.localPoint(activeRoomId, point)
-		};
-	}
-	return { id, position: point };
+	return { id, position: cloneFiniteVec3(worldPosition, 'Camera path anchor position') };
 }
 
 function sampleDistanceSquared(
@@ -319,10 +270,9 @@ export function getCameraPathInsertionIndex(
  */
 export function sampleDraftConnectionPath2D(
 	document: SceneDocument,
-	connectionId: string,
-	rooms: LayoutRoomRegistry
+	connectionId: string
 ): LayoutVec2[] {
-	const path = createDraftConnectionPositionPath(document, connectionId, 'forward', rooms);
+	const path = createDraftConnectionPositionPath(document, connectionId, 'forward');
 	const count = getCameraPathVisualSampleCount(path);
 	const point = new Vector3();
 	const polyline: LayoutVec2[] = [];

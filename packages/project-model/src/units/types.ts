@@ -12,7 +12,7 @@
  * imported by the project-model root barrel: an F.2 envelope is reached through
  * its own package subpath, which `T3.P01.S04` activated.
  *
- * The Scene unit is Camera-free Scene 5: the world-local record grammar
+ * The Scene unit is Camera-free Scene 6: the world-local record grammar
  * (textures, materials, entities, clusters) with the navigation graph moved out
  * to the Camera and Experience units, and native forms admitted as entities.
  * The Camera unit keeps the
@@ -44,7 +44,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 5 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 6 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
@@ -135,8 +135,8 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 5: the landed world-local records without the navigation
- * graph, carrying native forms and optional world presentation. `formatVersion: 5` is the payload's own
+ * Camera-free Scene 6: the landed world-local records without the navigation
+ * graph, carrying native forms and optional world presentation. `formatVersion: 6` is the payload's own
  * version and matches the unit header. A model names a catalogue asset or a
  * `model` resource of the same envelope; the fallback vocabulary includes the
  * generic footprint box.
@@ -146,6 +146,7 @@ export type CameraFreeSceneDocument = {
 	textures: SceneTextureAsset[];
 	materials: SceneMaterialInstance[];
 	entities: SceneEntity[];
+	artworkLibrary?: import('../artwork').ArtworkLibraryEntry[];
 	/** Editor-only hierarchy metadata; visitor rendering stays flat. */
 	clusters?: SceneObjectCluster[];
 	/**
