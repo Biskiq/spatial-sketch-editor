@@ -1,27 +1,33 @@
 # T2 · Gallery UX Recovery — diagnosis and specification
 
-> **Status note (2026-11-13, revision 2 of [`ux-design.html`](./ux-design.html)).** For lighting
-> presentation, the Light Cards, Time and Sky, the sheet is now normative; its §0 lists exactly what
-> it supersedes. Superseded here: §4.1 guide inks; §5.3–5.4 Point and Spot presentation (ray
-> silhouette, no surface footprints); §5.5, O4, O5 and A3 (Directional is retired; the Sky owns
-> the only Sun); O6 and the §6.1 Brightness chips (log slider); the §6.2 Direction group; growth
-> rule 4 (the Spot Card has five rows); and the Beam wording (Card shows full width, `angle` stays
-> the stored half-angle). Everything else here stands. Panel ids cited below (`#point`, `#spot`,
-> `#directional`, `#placement`, `#advanced`) are from the earlier sheet; the current sheet's
-> sections are `#stage`, `#cards`, `#sky`, `#artwork` and `#shell`.
+> **Status note (2026-11-13, revision 4 of [`ux-design.html`](./ux-design.html)).** For lighting
+> presentation, the Light Cards, the Environment control (Time and Sky) and the shell placement of
+> these controls, the sheet is normative; its §0 lists exactly what it supersedes. Superseded here:
+> §4.1 guide inks; §5.3–5.4 Point and Spot presentation (ray silhouette, no surface footprints);
+> §5.5, O4, O5 and A3 (Directional is retired; the Sky owns the only Sun); O6 and the §6.1
+> Brightness chips (log slider); the §6.2 Direction group; everyday colour editing (now on the Card,
+> with a Card-local White | Colour view that never writes); and the Beam wording (the Card shows full
+> width; `angle` stays the stored half-angle). Growth rule 4 is **kept**: Beam and Soft edge share
+> one row, so every light Card has four everyday rows. Aim writes `rotation` and no target is
+> stored; shadow softness is never per light; writes of `range ≤ 0` are refused (sheet §7.2).
+> Everything else here stands. Panel ids cited below (`#point`, `#spot`, `#directional`,
+> `#placement`, `#advanced`) are from the earlier sheet; the current sheet's sections are `#stage`,
+> `#cards`, `#sky`, `#artwork` and `#shell`.
 
 **Status:** design accepted by the owner (all decisions in §2), amended by the PR #314 review
-(§2.1). Nothing is implemented.
+(§2.1). Implemented on `t2-review-pass` in PR #314 (open, unmerged); §12 is the record. The newer
+design in `ux-design.html` revision 4 is not implemented; its §7.4 compares the two.
 **Companion:** [`ux-design.html`](./ux-design.html) — interactive sheet; panel ids are cited as `#id`.
 **Reviewed at:** `main` `ad1742b0`.
 **Evidence:** seven owner screenshots; the code cited inline; the focused light suites (5 files,
 45 tests) and the architecture lane (24 files, 202 tests), all green. The light suites pin the
 current behaviour, including behaviours listed as defects below.
 
-**Authority.** This file is the specification. Where the sheet and this file differ, this file
-wins; the sheet is schematic and its pixel styling is not normative. Where this file is silent, the
-implementer keeps current behaviour and does not invent. Every number here is exact unless marked
-*(tunable)*.
+**Authority.** For the areas the status note above lists, `ux-design.html` is normative and wins
+where the two differ. Everywhere else this file is the specification and wins over the sheet,
+whose Stage diagrams are schematic and whose pixel styling is not normative. Where both are silent,
+the implementer keeps current behaviour and does not invent. Every number here is exact unless
+marked *(tunable)*.
 
 **Not done in this review:** no editor browser session was run. §9 lists the two items read from
 code that need one manual confirmation.
