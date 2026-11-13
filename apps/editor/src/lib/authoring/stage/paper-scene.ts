@@ -14,13 +14,13 @@ import {
 	Color,
 	DoubleSide,
 	Group,
-	InstancedInterleavedBuffer,
-	InterleavedBufferAttribute,
 	Mesh,
 	MeshBasicMaterial,
 	NotEqualStencilFunc,
 	PlaneGeometry,
 	ReplaceStencilOp,
+	type InstancedInterleavedBuffer,
+	type InterleavedBufferAttribute,
 	type Material
 } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -48,31 +48,36 @@ export type PaperSceneResources = {
 	/** CSS-pixel viewport size; fat-line widths are CSS pixels, never device pixels. */
 	setResolution(widthCssPx: number, heightCssPx: number): void;
 	/**
-	 * Draw every line batch except one source's own instance runs, without
-	 * rebuilding any geometry. The selection names the source; `null` restores the
-	 * full batches. A source the drawing does not contain leaves every batch drawn.
+	 * Draw every line batch except one source's own instance runs, by compacting
+	 * the batch's existing instance storage in place. No geometry, GPU buffer or
+	 * object is created or disposed per selection; `null` restores the built
+	 * drawing byte for byte. A source the drawing does not contain leaves every
+	 * batch drawn.
 	 */
 	setHiddenSource(sourceId: string | null): void;
 	dispose(): void;
 };
 
 /**
- * One built line batch, retained so a selection can draw a range of its
- * instances without rebuilding it.
+ * One built line batch, retained so a selection can hide a source's instances
+ * without building another geometry.
  *
- * `positions` and `distances` are the batch's own buffers; a hidden source is
- * omitted by drawing the complement of its runs from views that borrow them.
- * Nothing is re-triangulated, re-ordered or re-computed.
+ * The batch's own `InstancedInterleavedBuffer`s are the only instance storage:
+ * a hidden source's complement is compacted into them in place, and `null`
+ * restores the retained drawing. No geometry, GPU buffer or object is created
+ * per selection, and nothing is re-triangulated or re-computed.
  */
 type PaperLineBatch = {
-	readonly object: LineSegments2;
-	readonly material: LineMaterial;
-	readonly renderOrder: number;
+	readonly geometry: LineSegmentsGeometry;
 	readonly total: number;
 	readonly runs: readonly PaperSourceRun[];
-	readonly positions: Float32Array;
+	readonly positions: InstancedInterleavedBuffer;
 	/** Per-instance dash distances; only a dashed batch has them. */
-	readonly distances: Float32Array | null;
+	readonly distances: InstancedInterleavedBuffer | null;
+	readonly originalPositions: Float32Array;
+	readonly originalDistances: Float32Array | null;
+	/** The source this batch currently omits, or null for the whole drawing. */
+	hiddenSource: string | null;
 };
 
 /** Beyond any reach of the Camera, and beneath Paper's room-floor tint (10). */
@@ -109,63 +114,51 @@ export function createPaperScene(
 	const disposables: { dispose(): void }[] = [];
 	const fades: FadeEntry[] = [];
 	const batches: PaperLineBatch[] = [];
-	/** Instances a hidden source leaves visible, borrowing each batch's own buffers. */
-	const views: LineSegments2[] = [];
 	let hiddenSource: string | null = null;
 
 	const addFade = (material: Material & { opacity: number }, baseOpacity: number, part: keyof PaperReveal): void => {
 		fades.push({ material, baseOpacity, part });
 	};
 
-	// `LineSegmentsGeometry` is instanced and has no per-object draw range, so a
-	// visibility range is another object over the same instance buffers: the
-	// draw-range equivalent for a line batch, with no vertex built or copied.
-	const addView = (batch: PaperLineBatch, start: number, count: number): void => {
-		const geometry = new LineSegmentsGeometry();
-		const positions = new InstancedInterleavedBuffer(
-			batch.positions.subarray(start * 6, (start + count) * 6),
-			6,
-			1
-		);
-		geometry.setAttribute('instanceStart', new InterleavedBufferAttribute(positions, 3, 0));
-		geometry.setAttribute('instanceEnd', new InterleavedBufferAttribute(positions, 3, 3));
+	// Restore every instance of a batch from the drawing it was built from. The
+	// arrays are the ones the batch already owns; only their contents and the
+	// instance count change, so the GPU buffers stay the same allocations.
+	const restoreBatch = (batch: PaperLineBatch): void => {
+		(batch.positions.array as Float32Array).set(batch.originalPositions);
+		batch.positions.needsUpdate = true;
 		if (batch.distances !== null) {
-			const distances = new InstancedInterleavedBuffer(
-				batch.distances.subarray(start * 2, (start + count) * 2),
-				2,
-				1
-			);
-			geometry.setAttribute('instanceDistanceStart', new InterleavedBufferAttribute(distances, 1, 0));
-			geometry.setAttribute('instanceDistanceEnd', new InterleavedBufferAttribute(distances, 1, 1));
+			(batch.distances.array as Float32Array).set(batch.originalDistances!);
+			batch.distances.needsUpdate = true;
 		}
-		geometry.instanceCount = count;
-		const object = new LineSegments2(geometry, batch.material);
-		object.renderOrder = batch.renderOrder;
-		object.frustumCulled = false;
-		object.layers.set(STAGE_OVERLAY_LAYER);
-		group.add(object);
-		views.push(object);
+		batch.geometry.instanceCount = batch.total;
+		batch.hiddenSource = null;
 	};
 
-	const clearViews = (): void => {
-		for (const view of views) {
-			group.remove(view);
-			view.geometry.dispose();
-		}
-		views.length = 0;
-	};
-
-	// The complement of one source's runs: every instance the batch keeps drawing.
-	const visibleRanges = (batch: PaperLineBatch, sourceId: string): { start: number; count: number }[] => {
-		const ranges: { start: number; count: number }[] = [];
+	// Compact the complement of one source's runs to the front of the batch's own
+	// instance storage. `LineSegmentsGeometry` can only draw a prefix of its
+	// instances, so this is the draw range: the same geometry and buffers, with
+	// the visible instances packed in order. A segment keeps its own dash
+	// distances as it moves, so a dashed batch's phase does not shift.
+	const compactBatch = (batch: PaperLineBatch, sourceId: string): void => {
+		const positions = batch.positions.array as Float32Array;
+		const distances = batch.distances?.array as Float32Array | undefined;
+		let written = 0;
 		let cursor = 0;
+		const copy = (from: number, to: number): void => {
+			positions.set(batch.originalPositions.subarray(from * 6, to * 6), written * 6);
+			distances?.set(batch.originalDistances!.subarray(from * 2, to * 2), written * 2);
+			written += to - from;
+		};
 		for (const run of batch.runs) {
 			if (run.sourceId !== sourceId) continue;
-			if (run.start > cursor) ranges.push({ start: cursor, count: run.start - cursor });
+			if (run.start > cursor) copy(cursor, run.start);
 			cursor = run.start + run.count;
 		}
-		if (cursor < batch.total) ranges.push({ start: cursor, count: batch.total - cursor });
-		return ranges;
+		if (cursor < batch.total) copy(cursor, batch.total);
+		batch.geometry.instanceCount = written;
+		batch.positions.needsUpdate = true;
+		if (batch.distances !== null) batch.distances.needsUpdate = true;
+		batch.hiddenSource = sourceId;
 	};
 
 	// The sheet itself, under every ink. It veils the shaded frame without touching
@@ -234,19 +227,24 @@ export function createPaperScene(
 			group.add(object);
 			disposables.push(geometry, material);
 			addFade(material, style.opacity, 'lines');
+			const positionBuffer = (
+				geometry.getAttribute('instanceStart') as InterleavedBufferAttribute
+			).data as InstancedInterleavedBuffer;
+			const distanceBuffer = dashed
+				? ((
+						geometry.getAttribute('instanceDistanceStart') as InterleavedBufferAttribute
+					).data as InstancedInterleavedBuffer)
+				: null;
 			batches.push({
-				object,
-				material,
-				renderOrder: object.renderOrder,
+				geometry,
 				total: geometry.instanceCount,
 				runs: paperSourceRuns(batch),
-				positions,
-				distances: dashed
-					? (
-							(geometry.getAttribute('instanceDistanceStart') as InterleavedBufferAttribute)
-								.data.array as Float32Array
-						)
-					: null
+				positions: positionBuffer,
+				distances: distanceBuffer,
+				originalPositions: (positionBuffer.array as Float32Array).slice(),
+				originalDistances:
+					distanceBuffer === null ? null : (distanceBuffer.array as Float32Array).slice(),
+				hiddenSource: null
 			});
 		}
 	}
@@ -339,18 +337,18 @@ export function createPaperScene(
 		},
 		setHiddenSource(sourceId: string | null): void {
 			if (sourceId === hiddenSource) return;
-			clearViews();
-			for (const batch of batches) batch.object.geometry.instanceCount = batch.total;
 			hiddenSource = sourceId;
-			if (sourceId === null) return;
 			for (const batch of batches) {
-				if (!batch.runs.some((run) => run.sourceId === sourceId)) continue;
-				batch.object.geometry.instanceCount = 0;
-				for (const range of visibleRanges(batch, sourceId)) addView(batch, range.start, range.count);
+				const next =
+					sourceId !== null && batch.runs.some((run) => run.sourceId === sourceId)
+						? sourceId
+						: null;
+				if (batch.hiddenSource === next) continue;
+				if (next === null) restoreBatch(batch);
+				else compactBatch(batch, next);
 			}
 		},
 		dispose(): void {
-			clearViews();
 			group.clear();
 			for (const disposable of disposables) disposable.dispose();
 			fades.length = 0;

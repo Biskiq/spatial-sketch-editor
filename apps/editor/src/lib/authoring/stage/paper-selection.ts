@@ -8,7 +8,7 @@
  *
  * - **which source** the primary selection replaces (`paperHiddenSource`); and
  * - **where that source's ink lives** in a line batch (`paperSourceRuns`), as
- *   contiguous instance runs the scene can draw around.
+ *   contiguous instance runs the scene can omit without rebuilding.
  *
  * It evaluates no Plan, projects nothing, batches nothing and allocates no
  * renderer resource. Plan assembly, GPU batches, fill geometry and outline union

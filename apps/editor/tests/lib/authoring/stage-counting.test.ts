@@ -17,7 +17,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { Scene as ThreeScene, type Camera } from 'three';
+import { Scene as ThreeScene, type Camera, type InterleavedBufferAttribute } from 'three';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { evaluateLayoutPlan, type LayoutVec2, type PlanEvaluation } from '@portfolio/layout-core';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
@@ -291,19 +291,49 @@ describe('E0 mounted Stage shell counting', () => {
 			const ink = () =>
 				paper.children.filter((child): child is LineSegments2 => child instanceof LineSegments2);
 
-			// Selection: the Opening's ink becomes a hidden instance range.
+			const bufferOf = (line: LineSegments2) => {
+				const distance = line.geometry.getAttribute('instanceDistanceStart') as
+					| InterleavedBufferAttribute
+					| undefined;
+				return {
+					line,
+					geometry: line.geometry,
+					positions: (line.geometry.getAttribute('instanceStart') as InterleavedBufferAttribute).data,
+					distances: distance === undefined ? null : distance.data
+				};
+			};
+			const resources = ink().map(bufferOf);
+			const visible = () => ink().reduce((sum, line) => sum + line.geometry.instanceCount, 0);
+			const builtVisible = visible();
+			const sameResources = () => {
+				const now = ink().map(bufferOf);
+				expect(now).toHaveLength(resources.length);
+				for (const [index, entry] of now.entries()) {
+					const before = resources[index]!;
+					expect(entry.line).toBe(before.line);
+					expect(entry.geometry).toBe(before.geometry);
+					expect(entry.positions).toBe(before.positions);
+					expect(entry.distances).toBe(before.distances);
+				}
+			};
+
+			// Selection: the Opening's instances leave the batch in place. Through the
+			// mounted caller no geometry, GPU buffer or object may be reallocated.
 			component.select(selection);
 			flushSync();
 			await tick();
 			expect(seam.count('paper:plan-build')).toBe(1);
 			expect(seam.count('paper:scene-build')).toBe(1);
-			expect(ink().some((line) => line.geometry.instanceCount === 0)).toBe(true);
+			expect(visible()).toBeLessThan(builtVisible);
+			sameResources();
 
 			// Deselection, hover and zoom (a viewport resolution change) keep it built.
 			component.select(null);
 			flushSync();
 			await tick();
 			expect(seam.count('paper:scene-build')).toBe(1);
+			expect(visible()).toBe(builtVisible);
+			sameResources();
 			component.hoverOn(selection);
 			flushSync();
 			await tick();

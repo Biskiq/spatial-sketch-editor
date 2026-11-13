@@ -127,12 +127,13 @@ drawing revision, and a selection hide/show adds neither: the L trace ran the mo
 `paper:plan-build` = 2 and `paper:scene-build` = 2 over the whole sequence. M and L therefore have
 the same interaction counts; only their content sizes differ.
 
-### G3 step 2 — declined, not measured
+### G3 step 2 — deferred, unmeasured
 
-G3 step 2 (incremental Room/Wall Paper entries) is gated on a trace showing Paper is a material
-share of the post-commit cost for an accepted L edit. That trace is **unmeasured** here: the
-browser evidence gap above still holds (the D1-authorised spot flow did not produce a session in
-this environment, and further headless launches were stopped rather than retried). The count probe
-cannot attribute cost — its L run spends most of its wall clock outside Paper — so no Paper share is
-claimed or inferred. No incremental cache, new cache key or second geometry path was added; the
-step-1 drawing remains the fallback and the step-2 gate stays open for a later measured trace.
+G3 step 2 (incremental Room/Wall Paper entries) is **deferred**: its gate is a trace showing Paper
+is a material share of the post-commit cost for an accepted L edit, and that trace is **unmeasured**
+here. The browser evidence gap above still holds (the D1-authorised spot flow did not produce a
+session in this environment, and further headless launches were stopped rather than retried). The
+count probe cannot attribute cost — its L run spends most of its wall clock outside Paper — so
+Paper's share is neither measured nor declined; no conclusion is drawn either way. No incremental
+cache, new cache key or second geometry path was added; the step-1 drawing remains the fallback and
+the step-2 gate stays open for a later measured trace.
