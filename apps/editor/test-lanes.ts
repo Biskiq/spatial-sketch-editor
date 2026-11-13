@@ -116,7 +116,10 @@ export const ARCH_FILES: string[] = [
 	// parsing). Both are source-level facts: a renderer happily draws whichever
 	// shader or name it is given, so no lane report or build can see a new site.
 	'tests/lib/render/renderer-portability-boundary.test.ts',
-	'tests/lib/render/render-identity-boundary.test.ts'
+	'tests/lib/render/render-identity-boundary.test.ts',
+	// E4 / I2: one compiler read path. Only the acceptance host and the Layout
+	// adapter's project-epoch compile seam reach a compile function.
+	'tests/lib/authoring/compile-entry-boundary.test.ts'
 ];
 
 /**

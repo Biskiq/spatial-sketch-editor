@@ -1,9 +1,9 @@
 /**
  * R217.S14 — Layout candidate geometry from the planner's own document.
  *
- * The preview is not a second solve. A caller hands this module the exact
- * document a retained planner produced, compiles it through the same geometry
- * core admission uses, evaluates the live Plan parameters against it, and reads
+ * The preview is not a second solve. A caller hands this module the compiled
+ * geometry of the exact document a retained planner produced (read through the
+ * Layout adapter's compile context, E4), evaluates the live Plan parameters against it, and reads
  * the same `buildPaperPlan` drawing Paper draws. The result is filtered to the
  * source ids the operation changed, so the preview can never show more than the
  * commit will.
@@ -12,7 +12,6 @@
  * projects them, exactly as it does every overlay mark.
  */
 import {
-	compileWallFirstLayoutGeometry,
 	evaluateLayoutPlan,
 	buildArchProfile,
 	countWork,
@@ -21,10 +20,12 @@ import {
 	type LayoutVec2,
 	type PlanEvaluation,
 	type CompiledLayoutGeometry,
-	wallCenterlineSamples
+	wallCenterlineSamples,
+	openingAttemptSymbolSource,
+	openingPlanSymbol
 } from '@portfolio/layout-core';
 
-import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments, wallPointAtDistance } from '../../layout/opening-faces';
+import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 
@@ -44,15 +45,15 @@ function worldPoint(point: LayoutVec2, datumMeters: number): Vec3 {
 	return [point[0], datumMeters, point[1]];
 }
 
-type OpeningGhostValues = Pick<LayoutWallOpening, 'kind' | 'profile' | 'offset' | 'width' | 'height' | 'sillHeight'>;
+export type OpeningGhostValues = Pick<LayoutWallOpening, 'kind' | 'profile' | 'offset' | 'width' | 'height' | 'sillHeight'>;
 
 /** The candidate's compiled profile outline on both Wall faces in the 3D reading. */
 export function openingFacePaper(
-	document: LayoutDocumentWallFirst,
+	compiled: CompiledLayoutGeometry,
 	openingIds: ReadonlySet<string>,
 	datumMeters: number
 ): CandidatePaperGeometry {
-	const compiled = compileWallFirstLayoutGeometry(document).geometry;
+	countWork('candidate:opening-build');
 	const segments: CandidatePaperGeometry['segments'][number][] = [];
 	for (const wall of compiled.walls) {
 		for (const opening of wall.openings) {
@@ -65,12 +66,13 @@ export function openingFacePaper(
 
 /** A rejected placement stays at the raw typed/pointer dimensions and is never clamped. */
 export function openingAttemptFacePaper(
-	document: LayoutDocumentWallFirst,
+	compiled: CompiledLayoutGeometry,
 	wallId: string,
 	values: OpeningGhostValues,
 	datumMeters: number
 ): CandidatePaperGeometry {
-	const wall = compileWallFirstLayoutGeometry(document).geometry.walls.find((candidate) => candidate.wallId === wallId);
+	countWork('candidate:opening-build');
+	const wall = compiled.walls.find((candidate) => candidate.wallId === wallId);
 	if (wall === undefined) return { polygons: [], segments: [] };
 	const profile = values.profile === 'rectangular'
 		? { topBoundary: [[0, values.height], [values.width, values.height]] as LayoutVec2[] }
@@ -79,91 +81,36 @@ export function openingAttemptFacePaper(
 	return { polygons: [], segments: openingLoopSegments(openingFaceLoops(wall, values, datumMeters, profile?.topBoundary ?? envelope)) };
 }
 
-/** The rejected Plan attempt's wall-local symbol, built from its exact raw dimensions. */
+/**
+ * The rejected Plan attempt's symbol at its exact raw dimensions (E4 / I5): the
+ * accepted Opening's own `openingPlanSymbol`, fed the compiler's centre frame
+ * unclamped, so a refused and an accepted Opening draw identically.
+ */
 export function openingAttemptPlanPaper(
-	document: LayoutDocumentWallFirst,
+	compiled: CompiledLayoutGeometry,
 	wallId: string,
 	values: OpeningGhostValues,
 	datumMeters: number
 ): CandidatePaperGeometry {
-	const wall = compileWallFirstLayoutGeometry(document).geometry.walls.find((candidate) => candidate.wallId === wallId);
+	countWork('candidate:opening-build');
+	const wall = compiled.walls.find((candidate) => candidate.wallId === wallId);
 	if (wall === undefined) return { polygons: [], segments: [] };
-	if (values.kind === 'window') {
-		const segments: [Vec3, Vec3][] = [];
-		const start = wallPointAtDistance(wall, values.offset);
-		const end = wallPointAtDistance(wall, values.offset + values.width);
-		if (start !== null && end !== null) {
-			for (const location of [start, end]) {
-				const normal: LayoutVec2 = [-location.tangent[1], location.tangent[0]];
-				segments.push([
-					[location.point[0] - normal[0] * wall.thickness / 2, datumMeters, location.point[1] - normal[1] * wall.thickness / 2],
-					[location.point[0] + normal[0] * wall.thickness / 2, datumMeters, location.point[1] + normal[1] * wall.thickness / 2]
-				]);
-			}
-		}
-		for (const side of [-1, 1]) {
-			const points: Vec3[] = [];
-			for (let index = 0; index <= 6; index += 1) {
-				const location = wallPointAtDistance(wall, values.offset + values.width * index / 6);
-				if (location === null) continue;
-				const normal: LayoutVec2 = [-location.tangent[1], location.tangent[0]];
-				points.push([location.point[0] + normal[0] * wall.thickness * side * 0.2, datumMeters, location.point[1] + normal[1] * wall.thickness * side * 0.2]);
-			}
-			for (let index = 1; index < points.length; index += 1) segments.push([points[index - 1]!, points[index]!]);
-		}
-		return { polygons: [], segments };
-	}
-	const start = wallPointAtDistance(wall, values.offset);
-	const end = wallPointAtDistance(wall, values.offset + values.width);
-	const center = wallPointAtDistance(wall, values.offset + values.width / 2);
-	if (start === null || end === null || center === null) return { polygons: [], segments: [] };
-	const tangent = center.tangent;
-	const normal: LayoutVec2 = [-tangent[1], tangent[0]];
-	const arc: Vec3[] = [];
-	for (let index = 0; index <= 18; index += 1) {
-		const angle = index / 18 * Math.PI / 2;
-		arc.push([
-			start.point[0] + tangent[0] * values.width * Math.cos(angle) + normal[0] * values.width * Math.sin(angle),
-			datumMeters,
-			start.point[1] + tangent[1] * values.width * Math.cos(angle) + normal[1] * values.width * Math.sin(angle)
-		]);
-	}
-	const hinge: Vec3 = [start.point[0], datumMeters, start.point[1]];
-	const leafEnd: Vec3 = [start.point[0] + tangent[0] * values.width, datumMeters, start.point[1] + tangent[1] * values.width];
-	const startNormal: LayoutVec2 = [-start.tangent[1], start.tangent[0]];
-	const endNormal: LayoutVec2 = [-end.tangent[1], end.tangent[0]];
-	const jambs: [Vec3, Vec3][] = [
-		[
-			[start.point[0] - startNormal[0] * wall.thickness / 2, datumMeters, start.point[1] - startNormal[1] * wall.thickness / 2],
-			[start.point[0] + startNormal[0] * wall.thickness / 2, datumMeters, start.point[1] + startNormal[1] * wall.thickness / 2]
-		],
-		[
-			[end.point[0] - endNormal[0] * wall.thickness / 2, datumMeters, end.point[1] - endNormal[1] * wall.thickness / 2],
-			[end.point[0] + endNormal[0] * wall.thickness / 2, datumMeters, end.point[1] + endNormal[1] * wall.thickness / 2]
-		]
-	];
-	return { polygons: [], segments: [...jambs, ...arc.slice(1).map((point, index) => [arc[index]!, point] as const), [hinge, leafEnd]] };
+	const symbol = openingPlanSymbol(openingAttemptSymbolSource(wall, values), wall.thickness);
+	return {
+		polygons: [],
+		segments: [...symbol.segments, ...symbol.dashedSegments].map(
+			([a, b]) => [worldPoint(a, datumMeters), worldPoint(b, datumMeters)] as const
+		)
+	};
 }
 
 /**
- * Build the filtered Paper drawing for one candidate document.
+ * Build the filtered Paper drawing for one compiled candidate document.
  *
  * Every point is placed on the level **datum**, never the Paper cut elevation:
  * Plan is top-down and cannot tell the difference, but 3D must show the
  * candidate's footprint on the mat, not a slice floating at cut height.
  */
-export function buildLayoutCandidatePaper(
-	document: LayoutDocumentWallFirst,
-	plan: PlanEvaluation,
-	datumMeters: number,
-	subjectIds: ReadonlySet<string>,
-	affectedIds: ReadonlySet<string>
-): LayoutCandidatePaper {
-	return buildCompiledLayoutCandidatePaper(
-		compileWallFirstLayoutGeometry(document).geometry, plan, datumMeters, subjectIds, affectedIds
-	);
-}
-
 export function buildCompiledLayoutCandidatePaper(
 	compiled: CompiledLayoutGeometry,
 	plan: PlanEvaluation,

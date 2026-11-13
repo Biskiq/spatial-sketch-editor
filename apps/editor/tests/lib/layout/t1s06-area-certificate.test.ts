@@ -2,7 +2,7 @@
  * accumulated delta error and cancellation at large world coordinates. */
 import { describe, expect, it } from 'vitest';
 import {
- clearTopologyGateObserverForTest, compileWallFirstLayoutGeometry,
+ clearTopologyGateObserverForTest, compileWallFirstLayoutGeometryFresh,
  createLayoutCompileSession, ensureLayoutWorldIndex, planRigidWallMove,
  setTopologyGateObserverForTest, withLayoutCompileSession,
  type LayoutDocumentWallFirst, type PrecisionPlan
@@ -29,7 +29,7 @@ describe('topology area sign certification', () => {
     expect(local.kind).toBe(cold.kind);
     if (local.kind === 'success' && cold.kind === 'success') {
      expect(JSON.stringify(local.document)).toBe(JSON.stringify(cold.document));
-     expect(JSON.stringify(local.acceptance!.geometry)).toBe(JSON.stringify(compileWallFirstLayoutGeometry(cold.document).geometry));
+     expect(JSON.stringify(local.acceptance!.geometry)).toBe(JSON.stringify(compileWallFirstLayoutGeometryFresh(cold.document).geometry));
      document = local.document;
     } else if (local.kind === 'rejected' && cold.kind === 'rejected') {
      expect(local.rejection).toEqual(cold.rejection);

@@ -19,8 +19,8 @@ import {
 	createPlanBoxIndex,
 	indexedCompiledWall,
 	countWork,
+	openingPlanSymbol,
 	type CompiledLayoutGeometry,
-	type CompiledOpening,
 	type CompiledPhysicalWall,
 	type LayoutVec2,
 	type PlanBox,
@@ -214,83 +214,7 @@ function polygonOfFragment(fragment: PlanFragment): readonly LayoutVec2[] | null
 	return fragment.geometry.kind === 'polygon' ? fragment.geometry.polygon : null;
 }
 
-function polylineSegments(points: readonly LayoutVec2[]): PaperSegment[] {
-	return points.slice(1).map((point, index) => [points[index]!, point] as const);
-}
-
 /** Offset a sampled Opening centerline within the compiled host Wall thickness. */
-function offsetOpeningPolyline(
-	points: readonly LayoutVec2[],
-	offsetMeters: number
-): LayoutVec2[] {
-	return points.map((point, index) => {
-		const before = points[Math.max(0, index - 1)]!;
-		const after = points[Math.min(points.length - 1, index + 1)]!;
-		const dx = after[0] - before[0];
-		const dz = after[1] - before[1];
-		const length = Math.hypot(dx, dz);
-		if (!(length > 0)) return [point[0], point[1]];
-		const nx = -dz / length;
-		const nz = dx / length;
-		return [point[0] + nx * offsetMeters, point[1] + nz * offsetMeters];
-	});
-}
-
-/** The restrained Plan symbol for an Opening, on the same symbol stream Paper resolves. */
-export function openingPlanSymbol(
-	opening: CompiledOpening,
-	wall: CompiledPhysicalWall
-): { readonly segments: PaperSegment[]; readonly dashedSegments: PaperSegment[] } {
-	const nearFace = offsetOpeningPolyline(opening.centerPolyline, -wall.thickness / 2);
-	const farFace = offsetOpeningPolyline(opening.centerPolyline, wall.thickness / 2);
-	const jambs: PaperSegment[] = nearFace.length === 0 || farFace.length === 0
-		? []
-		: [
-				[nearFace[0]!, farFace[0]!],
-				[nearFace.at(-1)!, farFace.at(-1)!]
-			];
-	if (opening.kind === 'window') {
-		const inset = wall.thickness * 0.2;
-		return {
-			segments: [
-				...jambs,
-				...polylineSegments(offsetOpeningPolyline(opening.centerPolyline, -inset)),
-				...polylineSegments(offsetOpeningPolyline(opening.centerPolyline, inset))
-			],
-			dashedSegments: []
-		};
-	}
-	const tangentRaw: LayoutVec2 = opening.centerPolyline.length > 1
-		? [
-			opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0],
-			opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]
-		]
-		: opening.center.tangent;
-	const tangentLength = Math.hypot(tangentRaw[0], tangentRaw[1]) || 1;
-	const tangent: LayoutVec2 = [tangentRaw[0] / tangentLength, tangentRaw[1] / tangentLength];
-	const normal: LayoutVec2 = [-tangent[1], tangent[0]];
-	const hinge = nearFace[0] ?? opening.center.point;
-	const arc: LayoutVec2[] = [];
-	for (let index = 0; index <= 18; index += 1) {
-		const angle = (index / 18) * Math.PI / 2;
-		arc.push([
-			hinge[0] + normal[0] * opening.width * Math.cos(angle) + tangent[0] * opening.width * Math.sin(angle),
-			hinge[1] + normal[1] * opening.width * Math.cos(angle) + tangent[1] * opening.width * Math.sin(angle)
-		]);
-	}
-	const leafEnd: LayoutVec2 = [hinge[0] + normal[0] * opening.width, hinge[1] + normal[1] * opening.width];
-	return { segments: [...jambs, [hinge, leafEnd]], dashedSegments: polylineSegments(arc) };
-}
-
-/** Flattened Plan symbol geometry for candidate previews and pure geometry callers. */
-export function openingPlanSymbolSegments(
-	opening: CompiledOpening,
-	wall: CompiledPhysicalWall
-): PaperSegment[] {
-	const symbol = openingPlanSymbol(opening, wall);
-	return [...symbol.segments, ...symbol.dashedSegments];
-}
-
 /**
  * The Wall's cut band: its drawn span offset to both faces by the compiled Wall's
  * own thickness.
@@ -779,7 +703,7 @@ export function buildPaperPlan(
 				.filter((candidate) => candidate.openingId === fragment.ref.sourceId)
 				.map((candidate) => ({ opening: candidate, wall })))[0]
 			: undefined;
-		const symbol = opening === undefined ? null : openingPlanSymbol(opening.opening, opening.wall);
+		const symbol = opening === undefined ? null : openingPlanSymbol(opening.opening, opening.wall.thickness);
 		if (symbol === null) {
 			lines.push({
 				key,

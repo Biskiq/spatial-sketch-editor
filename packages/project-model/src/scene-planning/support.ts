@@ -40,8 +40,6 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-/** A live draw preview plans on every pointer move; one accepted Layout compiles once. */
-const compiledBySource = new WeakMap<LayoutDocumentWallFirst, CompiledLayoutGeometry>();
 
 /** The compile/support generation of one accepted snapshot. */
 export function sceneSupportGenerationId(sourceContentId: string): string {
@@ -195,11 +193,8 @@ export function resolveSceneSupport(input: {
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneSupportResolution {
 	const generationId = sceneSupportGenerationId(input.sourceContentId);
-	let geometry = compiledBySource.get(input.layout);
-	if (geometry === undefined) {
-		geometry = compileWallFirstLayoutGeometry(input.layout).geometry;
-		compiledBySource.set(input.layout, geometry);
-	}
+	// The canonical read: an accepted (frozen) Layout compiles once per document.
+	const geometry = compileWallFirstLayoutGeometry(input.layout).geometry;
 	return resolveSceneSupportOnGeometry({ ...input, geometry, generationId });
 }
 

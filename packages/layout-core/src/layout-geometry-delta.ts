@@ -223,6 +223,12 @@ export type RetainedCompileWorld = {
 type PassiveCompileRecord = {
 	readonly geometry: CompiledLayoutGeometry;
 	readonly issues: readonly LayoutGeometryIssue[];
+	/** Only clean records seed a compile store. */
+	readonly clean: boolean;
+	/** The document already carried a deep immutable-JSON proof when this was
+	 * recorded, so the record is its compile for as long as the object lives
+	 * (E4 / I2 canonical read). A shallow freeze proves nothing. */
+	readonly sealed: boolean;
 };
 
 const PASSIVE_COMPILE_BY_DOC = new WeakMap<LayoutDocumentWallFirst, PassiveCompileRecord>();
@@ -231,15 +237,27 @@ export function readPassiveCompiledGeometry(document: LayoutDocumentWallFirst): 
 	return PASSIVE_COMPILE_BY_DOC.get(document);
 }
 
-/** Record a clean result in O(1). Warming can restore a proven retained root in
- * O(1), or build retained indexes in O(N) when this is only a passive result. */
+/** Record a clean result. Sealing is proven once per document: O(1) once the
+ * immutable-JSON proof exists, one deep check that mints it otherwise. Warming
+ * can restore a proven retained root in O(1), or build retained indexes in O(N)
+ * when this is only a passive result. */
 export function recordPassiveCompiledGeometry(
 	document: LayoutDocumentWallFirst,
 	geometry: CompiledLayoutGeometry,
 	issues: readonly LayoutGeometryIssue[] = []
 ): void {
 	if (issues.length > 0) return;
-	PASSIVE_COMPILE_BY_DOC.set(document, { geometry, issues });
+	PASSIVE_COMPILE_BY_DOC.set(document, { geometry, issues, clean: true, sealed: verifiedFrozenSource(document) });
+}
+
+/** E4 / I2 — the session-less compile records every canonical result, issues
+ * included; a record with issues is read back verbatim but never seeds. */
+export function recordSessionlessCompile(
+	document: LayoutDocumentWallFirst,
+	geometry: CompiledLayoutGeometry,
+	issues: readonly LayoutGeometryIssue[]
+): void {
+	PASSIVE_COMPILE_BY_DOC.set(document, { geometry, issues, clean: issues.length === 0, sealed: verifiedFrozenSource(document) });
 }
 
 function mergeBounds3Into(
@@ -426,7 +444,7 @@ export function seedReuseFromPassiveCompile(
 		return true;
 	}
 	const passive = PASSIVE_COMPILE_BY_DOC.get(document);
-	if (!passive || passive.issues.length > 0) return false;
+	if (!passive || !passive.clean) return false;
 	if (!preserveExistingUnits) {
 		reuse.walls.clear();
 		reuse.junctions.clear();

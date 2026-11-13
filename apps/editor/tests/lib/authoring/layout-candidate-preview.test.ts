@@ -570,7 +570,7 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
 		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
 		const created = acceptedLayout(mounted.facade).openings.find((entry) => entry.id !== mounted.openingId)!;
-		const acceptedFace = openingFacePaper(acceptedLayout(mounted.facade), new Set([created.id]), datum);
+		const acceptedFace = openingFacePaper(compileWallFirstLayoutGeometry(acceptedLayout(mounted.facade)).geometry, new Set([created.id]), datum);
 		expect(worldPreview.segments).toEqual(acceptedFace.segments);
 	});
 });
