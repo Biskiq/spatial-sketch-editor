@@ -2,7 +2,7 @@
 
 **Baseline:** [PR #317](https://github.com/Biskiq/spatial-sketch-editor/pull/317), head
 `29a710590854be4170d00fa6c4651ac7577eebad`, production base `afca870f`.
-**Status:** owner-approved execution schedule as part of Tier 2 PR #317 (2026-11-13). This addendum itself implements no production remediation; every E/X packet remains separately claimed, reviewed and verified. D1 authorises two bounded spot checkpoints and named traces; see the ratified D1–D5 decisions in [README.md](./README.md#owner-approved-decisions-d1d5-2026-11-13). The audit, renderer design, invariants and slice specifications remain the behavioral baseline.
+**Status:** owner-approved execution schedule as part of Tier 2 PR #317 (2026-11-13). This addendum itself implements no production remediation; every E/X packet remains separately claimed, reviewed and verified. D1 authorises two bounded spot checkpoints and named traces; see the ratified D1–D5 decisions in [README.md](./README.md#owner-decisions). The audit, renderer design, invariants and slice specifications remain the behavioral baseline.
 This document replaces only the baseline's one-slice-per-PR packaging and four-lane schedule.
 Where packaging differs, use this schedule; for behavior, algorithms, thresholds and stop rules,
 use [the slices](./slices.md) and [renderer design](./renderer-refactor.md).
