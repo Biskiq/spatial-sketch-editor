@@ -295,6 +295,44 @@ describe('E4/G1 — still pointer, 60 ticks', { timeout: 20_000 }, () => {
 });
 
 
+describe('E4/G1 — pan with a live candidate', { timeout: 20_000 }, () => {
+	it('a bounded span rebuilds Paper and reuses the unchanged candidate’s compile', async () => {
+		const mounted = await mount();
+		try {
+			settle(mounted.facade, 'plan');
+			// A bounded lateral span is the only Plan input a pan can reach.
+			mounted.facade.setPlanParameters({ lateralSpanHalfWidthMeters: 20 });
+			armInk(mounted.facade);
+			const evaluationId = mounted.facade.evaluationId()!;
+			mounted.facade.pointerIntent({ phase: 'down', css: css(mounted.facade, [1, -2]), evaluationId });
+			mounted.facade.pointerIntent({ phase: 'move', css: css(mounted.facade, [1, 2]), evaluationId });
+			counting = startStageCounting();
+			expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-chain')).toBe(true);
+			expect(counting.count('compile:walls')).toBeGreaterThan(0);
+			counting.reset();
+
+			const target = mounted.facade.camera.state().pose.target;
+			const dependency = mounted.facade.planDependencyKey();
+			mounted.facade.acquireInspection('exclusive');
+			mounted.facade.requestViewingIntent(
+				{ kind: 'pan', deltaCss: [30, 0], rect: RECT },
+				mounted.facade.inspectionTicket(),
+				20
+			);
+			expect(mounted.facade.camera.state().pose.target).not.toEqual(target);
+			expect(mounted.facade.planDependencyKey()).not.toBe(dependency);
+
+			expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-chain')).toBe(true);
+			// The target is a Plan input, so the Paper is rebuilt once; the candidate
+			// document did not change, so it is not compiled again.
+			expect(counting.count('candidate:paper-build')).toBe(1);
+			expect(counting.count('compile:walls')).toBe(0);
+		} finally {
+			mounted.dispose();
+		}
+	});
+});
+
 /** The previews with every memo bypassed: what an un-memoised build draws. */
 function coldPreviews(facade: StageFacade): unknown {
 	setCandidateMemoBypassForTest(true);
@@ -439,6 +477,40 @@ describe('E4/I2 — compile context handover', () => {
 			const cold = context.compiled(other);
 			expect(cold.geometry).not.toBe(presented.geometry);
 			expect(counting.count('compile:walls')).toBe(other.walls.length);
+		} finally {
+			context.dispose();
+		}
+	});
+
+	it('reuses the last document it compiled while that exact object is unchanged', () => {
+		const context = createLayoutCompileContext();
+		try {
+			const first = clone();
+			const equal = clone();
+			counting = startStageCounting();
+			const compiled = context.compiled(first);
+			expect(counting.count('compile:walls')).toBe(first.walls.length);
+			counting.reset();
+			const reused = context.compiled(first);
+			expect(reused.geometry).toBe(compiled.geometry);
+			expect(counting.counts()).toEqual({});
+
+			// One entry, matched by object identity: an equal clone compiles.
+			context.compiled(equal);
+			expect(counting.count('compile:walls')).toBe(equal.walls.length);
+
+			// A planner step owns the candidate set again.
+			context.plan(first, () => undefined);
+			counting.reset();
+			context.compiled(equal);
+			expect(counting.count('compile:walls')).toBe(equal.walls.length);
+
+			// dispose releases the entry; the canonical read still works cold.
+			context.dispose();
+			counting.reset();
+			context.compiled(equal);
+			expect(counting.count('compile:walls')).toBe(equal.walls.length);
+			expect(context.retained()).toEqual({ walls: 0, junctions: 0, rooms: 0, objects: 0 });
 		} finally {
 			context.dispose();
 		}

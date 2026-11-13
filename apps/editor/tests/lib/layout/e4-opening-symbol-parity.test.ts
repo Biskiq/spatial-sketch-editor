@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	compileWallFirstLayoutGeometryFresh,
+	createClosedWallCircleDocument,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
 	openingAttemptSymbolSource,
@@ -77,6 +78,67 @@ describe('E4/I5 — one Opening Plan symbol', () => {
 			});
 		}
 	}
+
+	it('a closed host is periodic: an attempt before the seam equals one period on', () => {
+		const created = createClosedWallCircleDocument({
+			center: [0, 0],
+			rim: [5, 0],
+			junctionId: 'j-ring',
+			wallId: 'wall-ring',
+			thickness: 0.2,
+			height: 3
+		});
+		if (created.kind !== 'success') throw new Error(JSON.stringify(created.rejection));
+		const wall = compileWallFirstLayoutGeometryFresh(created.document).geometry.walls[0]!;
+
+		// One period is the same physical span: the polyline and the frame agree,
+		// rather than the centre wrapping while the jambs clamp to the seam.
+		const before = openingAttemptSymbolSource(wall, { kind: 'window', offset: -1, width: 2 });
+		const wrapped = openingAttemptSymbolSource(wall, { kind: 'window', offset: wall.length - 1, width: 2 });
+		expect(before).toEqual(wrapped);
+		expect(before.center.point).toEqual(wrapped.center.point);
+
+		// The refusal stays 2 m long across the seam; a clamp would leave 1 m.
+		const arc = before.centerPolyline.slice(1).reduce((sum, point, index) => {
+			const previous = before.centerPolyline[index]!;
+			return sum + Math.hypot(point[0] - previous[0], point[1] - previous[1]);
+		}, 0);
+		expect(before.centerPolyline.length).toBeGreaterThanOrEqual(3);
+		expect(arc).toBeCloseTo(2, 1);
+	});
+
+	it('an accepted Opening crossing the seam and its attempt draw one symbol', () => {
+		const created = createClosedWallCircleDocument({
+			center: [0, 0],
+			rim: [5, 0],
+			junctionId: 'j-ring',
+			wallId: 'wall-ring',
+			thickness: 0.2,
+			height: 3
+		});
+		if (created.kind !== 'success') throw new Error(JSON.stringify(created.rejection));
+		const base = created.document;
+		const host = compileWallFirstLayoutGeometryFresh(base).geometry.walls[0]!;
+		const plan = planCreateWallFirstOpening(
+			base,
+			{ wallId: host.wallId, kind: 'window', offset: host.length - 0.4 },
+			sequentialCaptures('e4-i5-closed-seam')(),
+			base.floor.id
+		);
+		if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+		const compiled = compileWallFirstLayoutGeometryFresh(plan.document).geometry;
+		const wall = compiled.walls[0]!;
+		const opening = wall.openings[0]!;
+		// The Opening's own span crosses the seam, so the accepted symbol is the
+		// seam-split polyline the attempt must reproduce.
+		expect(opening.centerPolyline.length).toBeGreaterThan(2);
+		const accepted = openingPlanSymbol(opening, wall.thickness);
+		const attempt = openingPlanSymbol(
+			openingAttemptSymbolSource(wall, { kind: 'window', offset: opening.offset, width: opening.width }),
+			wall.thickness
+		);
+		expect(attempt).toEqual(accepted);
+	});
 
 	it('an attempt overhanging its Wall is drawn at its raw position, never clamped', () => {
 		const compiled = compileWallFirstLayoutGeometryFresh(singleWall({ kind: 'line' })).geometry;

@@ -73,7 +73,7 @@ stay allowed on purpose because they reach the canonical read: `prepareValidated
 type LayoutCompileContext = {
   /** Run one planner step with this project's session bound (seeded from the accepted baseline). */
   plan<T>(accepted: LayoutDocumentWallFirst, body: () => T): T;
-  /** The canonical session-less read (passive record or one compile). */
+  /** The canonical session-less read (passive record, the last compiled document, or one compile). */
   compiled(document: LayoutDocumentWallFirst): CompiledLayoutGeometryResult;
   retained(): { walls; junctions; rooms; objects };
   dispose(): void;   // idempotent: reset store → retained() = 0
@@ -111,6 +111,12 @@ the context — `candidate-preview.ts` no longer imports the compiler.
   `width`, `height`, `sillHeight`. A hit returns the same previews; a miss builds once and replaces
   the entry. A non-finite Plan target is never retained by the facade, so `plan()` returns a new
   identity and the memo misses — correct; the still-pointer proofs use a finite target.
+- **Bounded-span pans reuse the candidate's compile.** With a bounded lateral span the inspection
+  target is a Plan input, so a pan is a new Plan evaluation and the presentation slot misses. The
+  compile context keeps one entry of the last document it compiled (matched by object identity,
+  cleared by `plan` and `dispose`), so only the Paper is rebuilt; the unchanged candidate is not
+  compiled again. Proved mounted (a pan rebuilds Paper once and compiles 0 Walls) and directly (a
+  distinct equal object still compiles).
 - **Proposal slot (one entry), Opening Repeat only.** Key = accepted document identity, opening id,
   count, spacing. `previewOpeningRepeat` mints a capture per call; the memo pins the preview ids for
   its lifetime; the commit's capture is unaffected.

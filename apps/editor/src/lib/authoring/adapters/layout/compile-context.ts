@@ -13,7 +13,10 @@
  *   compiles reuse every unchanged entity;
  * - `compiled` is the canonical session-less read (the record of a frozen
  *   document, or one compile) used by candidate presentation; a planner step's
- *   own last compile is handed over once for that exact document object.
+ *   own last compile is handed over once for that exact document object, and the
+ *   context keeps one identity-keyed entry of the last document it compiled, so a
+ *   new Plan evaluation of an unchanged candidate (a bounded-span pan) reads that
+ *   geometry instead of compiling it again.
  *
  * It is a cache, never decision state: a cold run of either is equal by the
  * session's construction proof. After `dispose`, `plan` runs its body with no
@@ -54,6 +57,21 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 	 * object instead of compiling it a second time.
 	 */
 	let handover: { document: LayoutDocumentWallFirst; result: CompiledLayoutGeometryResult } | null = null;
+	/**
+	 * The last document this context compiled, and that compile.
+	 *
+	 * A candidate stays one document object while only the view moves. A bounded
+	 * Plan lateral span makes the inspection target a Plan input, so a pan is a new
+	 * Plan evaluation and the presenter rebuilds its Paper from the same candidate;
+	 * without this entry that rebuild would repeat a whole-project compile for an
+	 * object that has not changed. One entry, matched by object identity only, and
+	 * cleared by `plan` and `dispose`.
+	 *
+	 * Contract: a document passed to `compiled` is treated as unchanged from the
+	 * moment it is compiled. Production callers pass planner-produced candidates
+	 * and accepted documents, both replaced rather than edited.
+	 */
+	let lastCompiled: { document: LayoutDocumentWallFirst; result: CompiledLayoutGeometryResult } | null = null;
 	const bound: LayoutCompileSession = {
 		...session,
 		compile(document, sampling) {
@@ -65,6 +83,7 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 	return {
 		plan(accepted, body) {
 			handover = null;
+			lastCompiled = null;
 			if (!live) return body();
 			return withLayoutCompileSession(bound, () => {
 				session.seedFromCompiled(accepted);
@@ -75,15 +94,22 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 			const taken = handover;
 			handover = null;
 			if (live && taken !== null && taken.document === document) {
+				lastCompiled = { document, result: taken.result };
 				return { geometry: taken.result.geometry, issues: [...taken.result.issues] };
 			}
-			return compileWallFirstLayoutGeometry(document);
+			if (live && lastCompiled !== null && lastCompiled.document === document) {
+				return { geometry: lastCompiled.result.geometry, issues: [...lastCompiled.result.issues] };
+			}
+			const result = compileWallFirstLayoutGeometry(document);
+			if (live) lastCompiled = { document, result };
+			return result;
 		},
 		retained: () => session.retained(),
 		disposed: () => !live,
 		dispose() {
 			live = false;
 			handover = null;
+			lastCompiled = null;
 			session.reset();
 		}
 	};
