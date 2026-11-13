@@ -1,8 +1,10 @@
 /**
  * R217.S07/S18 — Paper selection ink.
  *
- * Paper's selection is a filter over the drawing S04 already built. These tests
- * pin the claims a visual check cannot: the filter is by canonical subject id
+ * Paper's selection is a filter over the drawing S04 already built. Which base
+ * ink a selection hides is `paper-selection`'s decision (G3); this overlay never
+ * asks for a second drawing. These tests pin the claims a visual check cannot:
+ * the filter is by canonical subject id
  * (so a Layout selection never lights a Scene footprint and vice versa), the
  * re-stroke is an overlay pass above the sheet, and S18 fills a Scene subject
  * from the polygons its footprint projection already retained.
@@ -19,9 +21,9 @@ import {
 	PAPER_SELECTION_EDGE_INK,
 	PAPER_SELECTION_INK,
 	createPaperMarkScene,
-	paperDrawingForSelection,
 	paperMarkSet
 } from '$lib/authoring/stage/paper-marks';
+import { paperHiddenSource } from '$lib/authoring/stage/paper-selection';
 import {
 	PAPER_LAYER,
 	STAGE_OVERLAY_LAYER,
@@ -566,9 +568,12 @@ describe('R217.S07 — Paper mark overlay', () => {
 			]
 		};
 		const selected = entry('layout', 'opening', OPENING_ID);
-		const baseDrawing = paperDrawingForSelection(drawing, selected);
-		expect(baseDrawing.lines.some((line) => line.sourceId === OPENING_ID)).toBe(false);
-		expect(baseDrawing.lines.some((line) => line.sourceId === WALL_ID)).toBe(true);
+		// G3: the base drawing keeps every entry; Paper's scene hides the selected
+		// source's instance range, so the mark never needs a filtered drawing.
+		expect(drawing.lines.some((line) => line.sourceId === OPENING_ID)).toBe(true);
+		expect(paperHiddenSource(selected)).toBe(OPENING_ID);
+		expect(paperHiddenSource(entry('layout', 'wall', WALL_ID))).toBeNull();
+		expect(paperHiddenSource(null)).toBeNull();
 		const marks = paperMarkSet(drawing, selected, null);
 		expect(marks.selection.selectedOpening).toBe(true);
 		const resources = createPaperMarkScene(marks, [800, 600]);

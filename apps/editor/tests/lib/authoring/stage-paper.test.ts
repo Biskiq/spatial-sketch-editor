@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../helpers/import-closure';
-import { Layers, Mesh, MeshBasicMaterial } from 'three';
+import { InterleavedBufferAttribute, Layers, Mesh, MeshBasicMaterial } from 'three';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import {
@@ -64,11 +64,15 @@ import {
 	stageCameraLayerMask,
 	unionOutline,
 	STAGE_OVERLAY_LAYER,
-	STAGE_WORLD_LAYER
+	STAGE_WORLD_LAYER,
+	type PaperLineDraw,
+	type PaperSegment
 } from '$lib/authoring/stage/paper-plan';
+import { paperHiddenSource, paperSourceRuns } from '$lib/authoring/stage/paper-selection';
 import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
 import { DEFAULT_APP_PREFERENCES } from '$lib/platform/app-preferences';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { openingSelection } from './fixtures/selection-entry';
 
 type Fixture = { readonly compiled: CompiledLayoutGeometry; readonly document: LayoutDocumentWallFirst };
 
@@ -164,6 +168,19 @@ function evaluate(
 }
 
 const EMPTY_PROJECTION: PlanSceneProjection = { footprints: [] };
+
+/** One synthetic batch entry; the addressability contract reads only these fields. */
+function lineOf(sourceId: string, segments: number): PaperLineDraw {
+	return {
+		key: `${sourceId}:${segments}`,
+		sourceId,
+		stream: 'symbol',
+		layer: PAPER_LAYER.symbol,
+		treatment: 'symbol',
+		elevationMeters: 0,
+		segments: Array.from({ length: segments }, (_, index): PaperSegment => [[index, 0], [index + 1, 0]])
+	};
+}
 
 function drawnSourceStreams(drawing: ReturnType<typeof buildPaperPlan>): Set<string> {
 	const drawn = new Set<string>();
@@ -613,6 +630,74 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		const outlined = drawing.footprints[0]!;
 		expect(outlined.segments).toHaveLength(4);
 		expect(outlined.polygons[0]).toEqual(projection.footprints[0]!.points);
+	});
+});
+
+describe('G3 — selection changes Paper visibility, not its drawing', () => {
+	it('addresses one source as contiguous instance runs of a batch', () => {
+		expect(paperSourceRuns([lineOf('a', 2), lineOf('a', 1), lineOf('b', 2)])).toEqual([
+			{ sourceId: 'a', start: 0, count: 3 },
+			{ sourceId: 'b', start: 3, count: 2 }
+		]);
+	});
+
+	it('hides and restores a selected Opening without rebuilding Paper', () => {
+		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const openingInstances = drawing.lines
+			.filter((line) => line.sourceId === opening.openingId)
+			.reduce((sum, line) => sum + line.segments.length, 0);
+		expect(openingInstances).toBeGreaterThan(0);
+		expect(paperHiddenSource(openingSelection(opening.openingId))).toBe(opening.openingId);
+		expect(paperHiddenSource(null)).toBeNull();
+
+		const counts = new Map<string, number>();
+		const previous = setWorkObserver({
+			span() {},
+			count(name, amount) {
+				counts.set(name, (counts.get(name) ?? 0) + amount);
+			}
+		});
+		const resources = createPaperScene(drawing, [800, 600]);
+		try {
+			const inks = () =>
+				resources.group.children.filter(
+					(child): child is LineSegments2 => child instanceof LineSegments2
+				);
+			const snapshot = (ink: LineSegments2) => ({
+				count: ink.geometry.instanceCount,
+				buffers: Float32Array.from(
+					(ink.geometry.getAttribute('instanceStart') as InterleavedBufferAttribute).data.array as Float32Array
+				)
+			});
+			const built = inks().map(snapshot);
+			const builtTotal = built.reduce((sum, entry) => sum + entry.count, 0);
+			expect(builtTotal).toBe(drawing.lines.reduce((sum, line) => sum + line.segments.length, 0));
+
+			resources.setHiddenSource(opening.openingId);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			const shown = inks().filter((ink) => ink.geometry.instanceCount > 0);
+			expect(shown.reduce((sum, ink) => sum + ink.geometry.instanceCount, 0)).toBe(
+				builtTotal - openingInstances
+			);
+			for (const ink of inks()) expect(ink.layers.mask).toBe(1 << STAGE_OVERLAY_LAYER);
+
+			resources.setHiddenSource(null);
+			expect(inks().map(snapshot)).toEqual(built);
+			expect(counts.get('paper:scene-build')).toBe(1);
+		} finally {
+			resources.dispose();
+			setWorkObserver(previous);
+		}
+	});
+
+	it('keeps the drawing unfiltered, so a selection never owns a second copy', () => {
+		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		expect(paperHiddenSource(openingSelection(opening.openingId))).toBe(opening.openingId);
+		expect(drawing.lines.some((line) => line.sourceId === opening.openingId)).toBe(true);
 	});
 });
 

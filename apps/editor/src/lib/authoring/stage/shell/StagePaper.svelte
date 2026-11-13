@@ -11,7 +11,9 @@
 	 * It owns no geometry authority: every line, fill and outline comes from
 	 * `buildPaperPlan`. S05 adds the grid on the same layer; S07 re-strokes the
 	 * selected source's entries from the same drawing set through `paper-marks`,
-	 * as a filter over this drawing rather than a second Plan.
+	 * as a filter over this drawing rather than a second Plan. E5 keeps that
+	 * drawing stable across selection: the scene hides the selected Opening's
+	 * instance runs instead of Paper rebuilding a filtered copy.
 	 */
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
@@ -20,11 +22,11 @@
 	import { buildPaperPlan, type PaperReveal } from '../paper-plan';
 	import {
 		createPaperMarkScene,
-		paperDrawingForSelection,
 		paperMarkSet,
 		type PaperMarkSceneResources
 	} from '../paper-marks';
 	import { createPaperScene, type PaperSceneResources } from '../paper-scene';
+	import { paperHiddenSource } from '../paper-selection';
 
 	let {
 		plan,
@@ -74,16 +76,14 @@
 		void revision;
 		return buildPaperPlan(plan, compiled, footprints, { isFootprintMounted, datumMeters });
 	});
-	// A selected Opening is drawn once in selection gold: its normal black symbol
-	// lines leave Paper and are replaced by the matching gold PaperMark contours.
-	const sceneDrawing = $derived.by(() => paperDrawingForSelection(drawing, selection));
-
 	// The selection is a filter over the drawing Paper already owns; a pan does not
 	// rebuild it, and the entries can never disagree with what is drawn underneath.
 	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover, hoverTone));
 
 	$effect(() => {
-		const built = createPaperScene(sceneDrawing, [1, 1], datumMeters);
+		// The unfiltered drawing: a selection changes which instance runs are drawn,
+		// never which drawing Paper owns.
+		const built = createPaperScene(drawing, [1, 1], datumMeters);
 		resources = built;
 		scene.add(built.group);
 		invalidate();
@@ -93,6 +93,15 @@
 			resources = null;
 			invalidate();
 		};
+	});
+
+	$effect(() => {
+		// A selected Opening reads as one gold mark, so its own black symbol is not
+		// drawn. That is a visibility range on the built batches, never a rebuild.
+		const current = resources;
+		if (current === null) return;
+		current.setHiddenSource(paperHiddenSource(selection));
+		invalidate();
 	});
 
 	$effect(() => {

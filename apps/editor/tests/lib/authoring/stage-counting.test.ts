@@ -18,6 +18,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { Scene as ThreeScene, type Camera } from 'three';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { evaluateLayoutPlan, type LayoutVec2, type PlanEvaluation } from '@portfolio/layout-core';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import { createEmptyLayoutRoomRegistry, type RuntimeScene } from '@portfolio/project-model';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
@@ -31,8 +33,9 @@ import { startStageCounting, type StageCounting } from '../../helpers/stage-coun
 
 vi.mock('@threlte/core', async () => import('./fixtures/threlte-counting-context'));
 
-import { countingShadowMap, threlteProbe } from './fixtures/threlte-counting-context';
+import { countingScene, countingShadowMap, threlteProbe } from './fixtures/threlte-counting-context';
 import StagePaperCountingProbe from './fixtures/StagePaperCountingProbe.svelte';
+import { openingSelection } from './fixtures/selection-entry';
 import StageShadowTriggers from '$lib/authoring/stage/shell/StageShadowTriggers.svelte';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import {
@@ -83,6 +86,19 @@ afterEach(() => {
 function begin(): StageCounting {
 	counting = startStageCounting();
 	return counting;
+}
+
+/** The Plan identity an accepted Wall edit hands Paper. */
+function acceptedPlan(): PlanEvaluation {
+	const bounds = fixture.compiled.bounds!;
+	const target: LayoutVec2 = [(bounds.min[0] + bounds.max[0]) / 2, (bounds.min[2] + bounds.max[2]) / 2];
+	const result = evaluateLayoutPlan(
+		fixture.compiled,
+		{ cutHeightMeters: 1.2, depthMeters: 100, lateralSpanHalfWidthMeters: null, sourceKindFilter: null, reveal: [] },
+		{ generationId: 'generation-e5-accepted', target, datumMeters: 0 }
+	);
+	if (result.kind !== 'evaluated') throw new Error(`the accepted Plan did not evaluate: ${JSON.stringify(result.issues)}`);
+	return result.plan;
 }
 
 describe('E0 work counters through their production callers', () => {
@@ -244,6 +260,62 @@ describe('E0 mounted Stage shell counting', () => {
 			expect(seam.count('paper:scene-build')).toBe(1);
 			expect(threlteProbe.invalidationCount).toBeGreaterThan(0);
 			component.bumpRevision();
+			flushSync();
+			await tick();
+			expect(seam.count('paper:plan-build')).toBe(2);
+			expect(seam.count('paper:scene-build')).toBe(2);
+		} finally {
+			await unmount(component);
+			target.remove();
+		}
+	});
+
+	it('keeps Paper geometry across selection, hover and zoom, and rebuilds once for an accepted Plan', async () => {
+		const seam = begin();
+		const openingId = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]?.openingId;
+		if (openingId === undefined) throw new Error('the counting fixture has no Opening');
+		const selection = openingSelection(openingId);
+		const target = document.createElement('div');
+		document.body.append(target);
+		const component = mount(StagePaperCountingProbe, {
+			target,
+			props: { plan: fixture.plan, compiled: fixture.compiled, footprints: fixture.footprints }
+		});
+		try {
+			flushSync();
+			await tick();
+			expect(seam.count('paper:plan-build')).toBe(1);
+			expect(seam.count('paper:scene-build')).toBe(1);
+			const paper = countingScene.getObjectByName('StagePaper');
+			if (paper === undefined) throw new Error('the mounted Paper group was not added to the Stage scene');
+			const ink = () =>
+				paper.children.filter((child): child is LineSegments2 => child instanceof LineSegments2);
+
+			// Selection: the Opening's ink becomes a hidden instance range.
+			component.select(selection);
+			flushSync();
+			await tick();
+			expect(seam.count('paper:plan-build')).toBe(1);
+			expect(seam.count('paper:scene-build')).toBe(1);
+			expect(ink().some((line) => line.geometry.instanceCount === 0)).toBe(true);
+
+			// Deselection, hover and zoom (a viewport resolution change) keep it built.
+			component.select(null);
+			flushSync();
+			await tick();
+			expect(seam.count('paper:scene-build')).toBe(1);
+			component.hoverOn(selection);
+			flushSync();
+			await tick();
+			expect(seam.count('paper:scene-build')).toBe(1);
+			component.hoverOn(null);
+			component.resize(960);
+			flushSync();
+			await tick();
+			expect(seam.count('paper:scene-build')).toBe(1);
+
+			// An accepted edit hands Paper a new Plan, so the drawing is rebuilt once.
+			component.applyPlan(acceptedPlan());
 			flushSync();
 			await tick();
 			expect(seam.count('paper:plan-build')).toBe(2);

@@ -236,22 +236,6 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 	return EMPTY_GEOMETRY;
 }
 
-/**
- * A selected Opening's gold stroke replaces its normal Plan ink. Other Paper
- * sources remain in the shared drawing and keep their current selection pass.
- */
-export function paperDrawingForSelection(
-	drawing: PaperPlanDrawing,
-	selection: StageSelectionEntry | null
-): PaperPlanDrawing {
-	if (
-		selection?.reference.domain !== 'layout' ||
-		selection.reference.subject.kind !== 'opening'
-	) return drawing;
-	const selectedId = selection.reference.subject.id;
-	return { ...drawing, lines: drawing.lines.filter((line) => line.sourceId !== selectedId) };
-}
-
 /** The selected identity, plus hover only when it is a different subject. */
 export function paperMarkSet(
 	drawing: PaperPlanDrawing,
@@ -421,7 +405,7 @@ export function createPaperMarkScene(
 	}
 
 	if (marks.selection.selectedOpening) {
-		// StagePaper omits this Opening's black base lines while selected, so the
+		// Paper hides this Opening's base instance range while selected, so the
 		// symbol itself reads as gold; a dark under-stroke would turn it brown.
 		for (const dashed of [false, true]) {
 			const symbol = {

@@ -14,6 +14,8 @@ import {
 	Color,
 	DoubleSide,
 	Group,
+	InstancedInterleavedBuffer,
+	InterleavedBufferAttribute,
 	Mesh,
 	MeshBasicMaterial,
 	NotEqualStencilFunc,
@@ -25,6 +27,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { createPaperFillGeometry } from './paper-fill-geometry';
+import { paperSourceRuns, type PaperSourceRun } from './paper-selection';
 import { countWork } from '@portfolio/layout-core';
 import {
 	PAPER_FILL_INK,
@@ -44,7 +47,32 @@ export type PaperSceneResources = {
 	setReveal(reveal: PaperReveal): void;
 	/** CSS-pixel viewport size; fat-line widths are CSS pixels, never device pixels. */
 	setResolution(widthCssPx: number, heightCssPx: number): void;
+	/**
+	 * Draw every line batch except one source's own instance runs, without
+	 * rebuilding any geometry. The selection names the source; `null` restores the
+	 * full batches. A source the drawing does not contain leaves every batch drawn.
+	 */
+	setHiddenSource(sourceId: string | null): void;
 	dispose(): void;
+};
+
+/**
+ * One built line batch, retained so a selection can draw a range of its
+ * instances without rebuilding it.
+ *
+ * `positions` and `distances` are the batch's own buffers; a hidden source is
+ * omitted by drawing the complement of its runs from views that borrow them.
+ * Nothing is re-triangulated, re-ordered or re-computed.
+ */
+type PaperLineBatch = {
+	readonly object: LineSegments2;
+	readonly material: LineMaterial;
+	readonly renderOrder: number;
+	readonly total: number;
+	readonly runs: readonly PaperSourceRun[];
+	readonly positions: Float32Array;
+	/** Per-instance dash distances; only a dashed batch has them. */
+	readonly distances: Float32Array | null;
 };
 
 /** Beyond any reach of the Camera, and beneath Paper's room-floor tint (10). */
@@ -80,9 +108,64 @@ export function createPaperScene(
 	group.name = 'StagePaper';
 	const disposables: { dispose(): void }[] = [];
 	const fades: FadeEntry[] = [];
+	const batches: PaperLineBatch[] = [];
+	/** Instances a hidden source leaves visible, borrowing each batch's own buffers. */
+	const views: LineSegments2[] = [];
+	let hiddenSource: string | null = null;
 
 	const addFade = (material: Material & { opacity: number }, baseOpacity: number, part: keyof PaperReveal): void => {
 		fades.push({ material, baseOpacity, part });
+	};
+
+	// `LineSegmentsGeometry` is instanced and has no per-object draw range, so a
+	// visibility range is another object over the same instance buffers: the
+	// draw-range equivalent for a line batch, with no vertex built or copied.
+	const addView = (batch: PaperLineBatch, start: number, count: number): void => {
+		const geometry = new LineSegmentsGeometry();
+		const positions = new InstancedInterleavedBuffer(
+			batch.positions.subarray(start * 6, (start + count) * 6),
+			6,
+			1
+		);
+		geometry.setAttribute('instanceStart', new InterleavedBufferAttribute(positions, 3, 0));
+		geometry.setAttribute('instanceEnd', new InterleavedBufferAttribute(positions, 3, 3));
+		if (batch.distances !== null) {
+			const distances = new InstancedInterleavedBuffer(
+				batch.distances.subarray(start * 2, (start + count) * 2),
+				2,
+				1
+			);
+			geometry.setAttribute('instanceDistanceStart', new InterleavedBufferAttribute(distances, 1, 0));
+			geometry.setAttribute('instanceDistanceEnd', new InterleavedBufferAttribute(distances, 1, 1));
+		}
+		geometry.instanceCount = count;
+		const object = new LineSegments2(geometry, batch.material);
+		object.renderOrder = batch.renderOrder;
+		object.frustumCulled = false;
+		object.layers.set(STAGE_OVERLAY_LAYER);
+		group.add(object);
+		views.push(object);
+	};
+
+	const clearViews = (): void => {
+		for (const view of views) {
+			group.remove(view);
+			view.geometry.dispose();
+		}
+		views.length = 0;
+	};
+
+	// The complement of one source's runs: every instance the batch keeps drawing.
+	const visibleRanges = (batch: PaperLineBatch, sourceId: string): { start: number; count: number }[] => {
+		const ranges: { start: number; count: number }[] = [];
+		let cursor = 0;
+		for (const run of batch.runs) {
+			if (run.sourceId !== sourceId) continue;
+			if (run.start > cursor) ranges.push({ start: cursor, count: run.start - cursor });
+			cursor = run.start + run.count;
+		}
+		if (cursor < batch.total) ranges.push({ start: cursor, count: batch.total - cursor });
+		return ranges;
 	};
 
 	// The sheet itself, under every ink. It veils the shaded frame without touching
@@ -151,6 +234,20 @@ export function createPaperScene(
 			group.add(object);
 			disposables.push(geometry, material);
 			addFade(material, style.opacity, 'lines');
+			batches.push({
+				object,
+				material,
+				renderOrder: object.renderOrder,
+				total: geometry.instanceCount,
+				runs: paperSourceRuns(batch),
+				positions,
+				distances: dashed
+					? (
+							(geometry.getAttribute('instanceDistanceStart') as InterleavedBufferAttribute)
+								.data.array as Float32Array
+						)
+					: null
+			});
 		}
 	}
 
@@ -236,15 +333,29 @@ export function createPaperScene(
 			for (const entry of fades) entry.material.opacity = entry.baseOpacity * reveal[entry.part];
 		},
 		setResolution(widthCssPx: number, heightCssPx: number): void {
-		group.traverse((node) => {
-			if (node instanceof LineSegments2) (node.material as LineMaterial).resolution.set(widthCssPx, heightCssPx);
-		});
+			group.traverse((node) => {
+				if (node instanceof LineSegments2) (node.material as LineMaterial).resolution.set(widthCssPx, heightCssPx);
+			});
+		},
+		setHiddenSource(sourceId: string | null): void {
+			if (sourceId === hiddenSource) return;
+			clearViews();
+			for (const batch of batches) batch.object.geometry.instanceCount = batch.total;
+			hiddenSource = sourceId;
+			if (sourceId === null) return;
+			for (const batch of batches) {
+				if (!batch.runs.some((run) => run.sourceId === sourceId)) continue;
+				batch.object.geometry.instanceCount = 0;
+				for (const range of visibleRanges(batch, sourceId)) addView(batch, range.start, range.count);
+			}
 		},
 		dispose(): void {
+			clearViews();
 			group.clear();
 			for (const disposable of disposables) disposable.dispose();
 			fades.length = 0;
 			disposables.length = 0;
+			hiddenSource = null;
 		}
 	};
 }

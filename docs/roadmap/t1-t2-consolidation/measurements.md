@@ -89,3 +89,50 @@ Consequently the browser-only rows above are **unmeasured**: frames at rest, liv
 geometries/materials/textures, draws per frame, per-accept material/texture/shadow counts, and the
 wall-clock spot baseline. They are not inferred from rAF cadence or from the audit. The deterministic
 counts remain valid and are the acceptance lines E1/E4 consume.
+
+## E5/G3 — Paper retention by responsibility
+
+**Date:** 2026-11-13. **Branch:** `claude/e5-paper-retention` (from `main` `bc9d2662`, PR #318
+merged). **Scope:** G3 step 1. Every value below is a `countWork` output at a production Paper call
+site (**counted**), through the mounted `StagePaper` caller (grid-M) or through `buildPaperPlan` →
+`createPaperScene` directly (grid-M and grid-L). No wall-clock share is inferred.
+
+### Fixture content
+
+| Fixture | Walls | Openings | Paper lines | Paper segments | Paper fills |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| grid-M (`grid-7`) | 112 | 112 | 924 | 3,612 | 273 |
+| grid-L (`grid-14`) | 420 | 420 | 3,220 | 13,692 | 1,036 |
+
+### Counts per interaction
+
+Both columns are increments for the interaction, measured after mount. The “before” column is the
+pre-E5 caller at `main`, where `paperDrawingForSelection` produced a filtered drawing object for a
+selected Opening; the “after” column is this change, which builds from the unfiltered drawing and
+hides that source's instance runs.
+
+| Interaction | Before: plan / scene | After: plan / scene | Class |
+| --- | ---: | ---: | --- |
+| Select an Opening | 0 / 1 | 0 / 0 | counted, mounted M |
+| Deselect | 0 / 1 | 0 / 0 | counted, mounted M |
+| Hover a subject | 0 / 0 | 0 / 0 | counted, mounted M |
+| Pan (Camera move) | 0 / 0 | 0 / 0 | counted, mounted M: the Plan identity is retained |
+| Zoom (viewport resolution) | 0 / 0 | 0 / 0 | counted, mounted M |
+| Accept one Wall move (new Plan identity) | 1 / 1 | 1 / 1 | counted, mounted M |
+| Initial mount | 1 / 1 | 1 / 1 | counted, mounted M |
+
+At grid-L the same production builders give one `paper:plan-build` and one `paper:scene-build` per
+drawing revision, and a selection hide/show adds neither: the L trace ran the mount build, a
+`setHiddenSource(opening)` / `setHiddenSource(null)` pair, and one accepted-Plan rebuild, for
+`paper:plan-build` = 2 and `paper:scene-build` = 2 over the whole sequence. M and L therefore have
+the same interaction counts; only their content sizes differ.
+
+### G3 step 2 — declined, not measured
+
+G3 step 2 (incremental Room/Wall Paper entries) is gated on a trace showing Paper is a material
+share of the post-commit cost for an accepted L edit. That trace is **unmeasured** here: the
+browser evidence gap above still holds (the D1-authorised spot flow did not produce a session in
+this environment, and further headless launches were stopped rather than retried). The count probe
+cannot attribute cost — its L run spends most of its wall clock outside Paper — so no Paper share is
+claimed or inferred. No incremental cache, new cache key or second geometry path was added; the
+step-1 drawing remains the fallback and the step-2 gate stays open for a later measured trace.
