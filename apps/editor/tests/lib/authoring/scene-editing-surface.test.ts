@@ -14,6 +14,7 @@
  *
  * No test here writes Layout: every accepted intent is a Scene operation.
  */
+import { tagRenderIdentity } from '$lib/render/render-identity';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -856,7 +857,7 @@ describe('Scene adapter registration', () => {
 		const { facade, host, rendered } = await mounted(await supportedProject([below, rolled]));
 		mountStageAdapter(facade, host, createAdapter);
 		const floor = new Mesh(new PlaneGeometry(7, 6), new MeshBasicMaterial());
-		floor.name = 'VisitorFloor:test'; floor.position.set(3.5, 0, 3); floor.rotation.x = -Math.PI / 2;
+		floor.name = 'VisitorFloor:test'; tagRenderIdentity(floor, 'floor', 'test'); floor.position.set(3.5, 0, 3); floor.rotation.x = -Math.PI / 2;
 		const root = new Group(); root.add(floor);
 		const wall = new Mesh(new BoxGeometry(1, 2, 1), new MeshBasicMaterial());
 		wall.position.set(4, 2, 3.5); root.add(wall);

@@ -172,11 +172,10 @@ describe('the editor host boots into exactly one named state', () => {
 		expect(snapshot.domain.geometry.floors).toHaveLength(1);
 		expect(snapshot.domain.datumMeters).toBe(snapshot.domain.geometry.floors[0]!.elevation);
 		expect(snapshot.domain.geometry.bounds).not.toBeNull();
-		// Room identity in the current format lives on the compiled Floor, and the
-		// registry a consumer reads is empty by that same contract — both are asserted
-		// so a registry that invented entries (or a Floor that lost its Room) fails.
+		// Room identity in the current format lives on the compiled Floor; no Room
+		// registry exists on the domain to invent entries.
 		expect(snapshot.domain.geometry.floors[0]!.roomIds.length).toBeGreaterThan(0);
-		expect(snapshot.domain.rooms.entries).toEqual([]);
+		expect('rooms' in snapshot.domain).toBe(false);
 		// The starter Scene carries no Camera path, so the navigation graph is
 		// resolved and genuinely empty rather than merely present.
 		expect(snapshot.domain.graph.connections).toEqual([]);

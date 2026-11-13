@@ -6,14 +6,12 @@
 	 */
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
-	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import AssetModel from '$lib/museum/assets/AssetModel.svelte';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import VisitorEntityGroups from './VisitorEntityGroups.svelte';
 
 	let {
 		scene,
-		rooms,
 		textureScope = null,
 		artworkScope = null,
 		onArtworkError,
@@ -21,7 +19,6 @@
 		includeLights = true
 	}: {
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
 		textureScope?: TextureLoadScope | null;
 		/**
 		 * Runtime-safe approved model bytes: model resource id → derivative URL. The
@@ -35,4 +32,4 @@
 	} = $props();
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {artworkScope} {onArtworkError} {textureScope} {modelUrls} {includeLights} Model={AssetModel} />
+<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {textureScope} {modelUrls} {includeLights} Model={AssetModel} />

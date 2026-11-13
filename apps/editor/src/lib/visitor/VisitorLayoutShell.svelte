@@ -1,16 +1,12 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
-	import { Shape, type BufferGeometry, type Material } from 'three';
+	import { Shape, type Object3D } from 'three';
 	import type { LayoutVec2 } from '@portfolio/layout-core';
-	import type { CompiledLayoutGeometry, CompiledRoom, LayoutBounds3 } from '@portfolio/layout-core';
-	import type { VisitorRoomPresentation } from './room-presentation';
+	import type { CompiledLayoutGeometry, CompiledRoom } from '@portfolio/layout-core';
 	import { DEFAULT_FLOOR_COLOR, neutralVisitorRoomPresentation } from './room-presentation';
-	import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
-	import { p2311Measure } from '@portfolio/layout-core';
-	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
-	import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
+	import { renderIdentity, type LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import MuseumMaterial from '$lib/museum/materials/MuseumMaterial.svelte';
 	import RoomPortal from '$lib/museum/layout/RoomPortal.svelte';
@@ -18,14 +14,13 @@
 
 	let {
 		geometry,
-		presentation,
 		textureScope = null,
 		plinth = true,
 		doorFrames = true,
-		hiddenWallIds = []
+		hiddenWallIds = [],
+		onIdentity
 	}: {
 		geometry: CompiledLayoutGeometry;
-		presentation: Readonly<Record<string, VisitorRoomPresentation>>;
 		textureScope?: TextureLoadScope | null;
 		/**
 		 * The visitor's dark ground plinth. A host with its own ground surface (the
@@ -35,6 +30,12 @@
 		doorFrames?: boolean;
 		/** A display-only overlay (the unfold sheet) owns these Wall bodies. */
 		hiddenWallIds?: readonly string[];
+		/**
+		 * Receives the shell's identity index once, on mount: id → the object that draws
+		 * it. The host resolves picks and selection through it instead of searching the
+		 * subtree by name. Returns the host's unregister function.
+		 */
+		onIdentity?: (index: LayoutIdentityIndex) => (() => void) | void;
 	} = $props();
 
 	function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
@@ -46,10 +47,6 @@
 		for (const point of points.slice(1)) shape.lineTo(point[0], mapZ(point));
 		shape.closePath();
 		return shape;
-	}
-
-	function roomPresentation(roomId: string) {
-		return presentation[roomId] ?? neutralVisitorRoomPresentation;
 	}
 
 	const floorElevationById = $derived(
@@ -86,18 +83,6 @@
 		return next;
 	}
 
-	type AdaptedRoom =
-		| {
-				roomId: string;
-				ok: true;
-				geometry: BufferGeometry;
-				materials: Material[];
-				dispose: () => void;
-		  }
-		| { roomId: string; ok: false; bounds: LayoutBounds3 };
-
-	let adaptedRooms = $state<AdaptedRoom[]>([]);
-
 	/**
 	 * The retained Wall representation: one imperative subtree for every compiled
 	 * physical Wall, reconciled in place. It rebuilds only the Walls whose own
@@ -112,12 +97,12 @@
 	// representation immediately before every update.
 	$effect(() => {
 		walls.update(geometry);
-		const hidden = new Set(hiddenWallIds);
-		for (const wall of geometry.walls) {
-			const object = walls.object3d.getObjectByName(`VisitorPhysicalWall:${wall.wallId}`) ??
-				walls.object3d.getObjectByName(`VisitorPhysicalWallFailure:${wall.wallId}`);
-			if (object !== undefined) object.visible = !hidden.has(wall.wallId);
-		}
+	});
+	// Hiding is its own effect: a change of the hidden set must not re-run the
+	// compile reconciliation, and a recompile must not re-walk the hidden set (the
+	// representation remembers it and applies it to whatever it rebuilds).
+	$effect(() => {
+		walls.setHidden(new Set(hiddenWallIds));
 	});
 	$effect(() => () => walls.dispose());
 
@@ -133,66 +118,26 @@
 	});
 	$effect(() => () => objects.dispose());
 
+	/** Room floors are shell-owned meshes; this is their id → object index. */
+	const floors = new Map<string, Object3D>();
+	const identity: LayoutIdentityIndex = {
+		objectOf(kind, id) {
+			if (kind === 'wall') return walls.objectOf(id);
+			if (kind === 'object') return objects.objectOf(id);
+			return floors.get(id) ?? null;
+		}
+	};
+	$effect(() => onIdentity?.(identity));
+
 	$effect(() => {
 		// Bound the shape cache by the rooms this geometry actually has.
 		const present = new Set(geometry.rooms.map((room) => room.roomId));
 		for (const roomId of roomShapes.keys()) if (!present.has(roomId)) roomShapes.delete(roomId);
 	});
 
-	// The room-derived mesh path is retained for the legacy room-owned shape; a
-	// format-6 Room carries no Room-owned wall detail (its Walls render through
-	// the canonical physical-Wall representation above), so this builds nothing.
-	// The representation build is one harness-gated span (T1.P02.S06 stage
-	// attribution); `p2311Measure` is inert without the work observer.
-	$effect(() => p2311Measure('layout-representation', () => {
-		// A wall-first Room carries no Room-owned wall detail (its Walls render
-		// through the canonical physical-Wall representation), so this path builds
-		// nothing — and must not create a material factory per compile just to
-		// dispose it again. The legacy path keeps its own factory when a Room does
-		// carry wall detail.
-		if (!geometry.rooms.some((room) => room.walls.length > 0)) {
-			adaptedRooms = [];
-			return;
-		}
-		const materials = createVisitorWallMaterialFactory((roomId) => roomPresentation(roomId).color);
-		const built: AdaptedRoom[] = geometry.rooms.flatMap((room) => {
-			if (room.walls.length === 0) return [];
-			const result = buildRoomWallMesh(room, { classifySurface: () => 'wall' });
-			if (!result.mesh) {
-				return [{ roomId: room.roomId, ok: false, bounds: room.bounds3 } as AdaptedRoom];
-			}
-			const adapted = toWallBufferGeometry(result.mesh, materials.factory);
-			return [{ roomId: room.roomId, ok: true, ...adapted } as AdaptedRoom];
-		});
-		adaptedRooms = built;
-		return () => {
-			for (const room of built) if (room.ok) room.dispose();
-			materials.dispose();
-		};
-	}));
-
 	/** A straight frame only fits a rectangular door; an arch keeps its bare reveal. */
 	function isFramedDoor(opening: { kind: string; profile: string }): boolean {
 		return doorFrames && opening.kind === 'door' && opening.profile === 'rectangular';
-	}
-
-	function adaptedFor(roomId: string): AdaptedRoom | undefined {
-		return adaptedRooms.find((room) => room.roomId === roomId);
-	}
-
-	function failureBox(bounds: LayoutBounds3) {
-		return {
-			position: [
-				(bounds.min[0] + bounds.max[0]) / 2,
-				(bounds.min[1] + bounds.max[1]) / 2,
-				(bounds.min[2] + bounds.max[2]) / 2
-			] as [number, number, number],
-			size: [
-				bounds.max[0] - bounds.min[0],
-				bounds.max[1] - bounds.min[1],
-				bounds.max[2] - bounds.min[2]
-			] as [number, number, number]
-		};
 	}
 </script>
 
@@ -201,12 +146,17 @@
 		<GroundPlinth />
 	{/if}
 	{#each geometry.rooms as room (room.roomId)}
-		{@const colors = roomPresentation(room.roomId)}
-		{@const adapted = adaptedFor(room.roomId)}
 		{@const shapes = shapesFor(room)}
 		<T.Group name={`VisitorRoom:${room.roomId}`}>
 			<T.Mesh
 				name={`VisitorFloor:${room.roomId}`}
+				userData={renderIdentity('floor', room.roomId)}
+				oncreate={(mesh) => {
+					floors.set(room.roomId, mesh);
+					return () => {
+						if (floors.get(room.roomId) === mesh) floors.delete(room.roomId);
+					};
+				}}
 				position={[0, room.floorElevation, 0]}
 				rotation={[-Math.PI / 2, 0, 0]}
 			>
@@ -235,37 +185,6 @@
 				<T.ShapeGeometry args={[shapes.ceiling]} />
 				<MuseumMaterial materialId="plaster-warm" surfaceSize={[8, 8]} tint="#111018" textures="off" scope={textureScope} />
 			</T.Mesh>
-
-			{#if adapted?.ok}
-				<T.Mesh
-					name={`VisitorWall:${room.roomId}`}
-					geometry={adapted.geometry}
-					material={adapted.materials}
-					castShadow
-					receiveShadow
-				/>
-			{:else if adapted?.ok === false}
-				<T.Mesh
-					name={`VisitorWallFailure:${room.roomId}`}
-					position={failureBox(adapted.bounds).position}
-				>
-					<T.BoxGeometry args={failureBox(adapted.bounds).size} />
-					<T.MeshBasicMaterial color="#ff2fd4" wireframe />
-				</T.Mesh>
-			{/if}
-
-			{#each room.walls as wall (wall.segmentId)}
-				{#each wall.openings.filter(isFramedDoor) as opening (opening.openingId)}
-					<RoomPortal
-						position={[opening.center.point[0], room.floorElevation + opening.sillHeight, opening.center.point[1]]}
-						rotation={[0, opening.center.yaw, 0]}
-						width={opening.width}
-						height={opening.height}
-						wallThickness={wall.thickness}
-						color={colors.accentColor}
-					/>
-				{/each}
-			{/each}
 		</T.Group>
 	{/each}
 	<!--

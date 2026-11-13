@@ -1,5 +1,4 @@
 
-import type { LayoutRoomRegistry } from '@portfolio/project-model';
 import type {
 	SceneDocument,
 	SceneCameraViewKeyframe,
@@ -7,14 +6,10 @@ import type {
 } from '$lib/content/scene';
 import type {
 	CameraConnectionDirection,
-	RoomId,
 	Vec3
 } from '$lib/types/scene';
 import type { Vector3Like } from '@portfolio/camera-core';
-import {
-	createDraftConnectionPositionPath,
-	isWorldPointInsideRoomXZ
-} from './editor-camera-path';
+import { createDraftConnectionPositionPath } from './editor-camera-path';
 
 export const EDITOR_CAMERA_VIEW_PROGRESS_EPSILON = 1e-6;
 export const EDITOR_CAMERA_VIEW_MOVE_EPSILON = 1e-4;
@@ -37,7 +32,6 @@ export function mirrorCameraViewTrack(
 			id,
 			progress: 1 - keyframe.progress,
 			cameraTarget: [...keyframe.cameraTarget] as Vec3,
-			...(keyframe.roomId === undefined ? {} : { roomId: keyframe.roomId }),
 			fov: keyframe.fov
 		};
 	});
@@ -122,12 +116,9 @@ export function findSceneCameraViewKeyframe(
 }
 
 export function getSceneCameraViewKeyframeWorldTarget(
-	keyframe: SceneCameraViewKeyframe,
-	rooms: LayoutRoomRegistry
+	keyframe: SceneCameraViewKeyframe
 ): Vec3 {
-	return keyframe.roomId
-		? rooms.point(keyframe.roomId, keyframe.cameraTarget)
-		: [...keyframe.cameraTarget];
+	return [...keyframe.cameraTarget];
 }
 
 /**
@@ -158,43 +149,23 @@ export function orbitWorldLookTarget(
 	return [eye[0] + finalX, eye[1] + pitchedY, eye[2] + finalZ];
 }
 
-/** Preserve existing coordinate ownership while moving a target in world space. */
+/** Move a view target in world space (a Scene is world-local). */
 export function writeSceneCameraViewKeyframeWorldTarget(
 	keyframe: SceneCameraViewKeyframe,
-	worldTarget: Vector3Like,
-	rooms: LayoutRoomRegistry
+	worldTarget: Vector3Like
 ) {
-	const target = cloneFiniteVec3(worldTarget, 'Camera view target');
-	keyframe.cameraTarget = keyframe.roomId
-		? rooms.localPoint(keyframe.roomId, target)
-		: target;
+	keyframe.cameraTarget = cloneFiniteVec3(worldTarget, 'Camera view target');
 	return keyframe;
 }
 
-/**
- * New targets are world-space. The active-room branch is retained but unreachable
- * while the current-format Layout Room registry is empty (`isWorldPointInsideRoomXZ`
- * is constant `false`), so every new target takes the world-space path.
- */
+/** New targets are world-space: a Scene carries no Room frame. */
 export function createSceneCameraViewKeyframeAtWorldTarget(
 	id: string,
 	progress: number,
 	worldTarget: Vector3Like,
-	fov: number,
-	activeRoomId: RoomId | null | undefined,
-	rooms: LayoutRoomRegistry
+	fov: number
 ): SceneCameraViewKeyframe {
-	const target = cloneFiniteVec3(worldTarget, 'Camera view target');
-	if (activeRoomId && isWorldPointInsideRoomXZ(activeRoomId, target, rooms)) {
-		return {
-			id,
-			progress,
-			roomId: activeRoomId,
-			cameraTarget: rooms.localPoint(activeRoomId, target),
-			fov
-		};
-	}
-	return { id, progress, cameraTarget: target, fov };
+	return { id, progress, cameraTarget: cloneFiniteVec3(worldTarget, 'Camera view target'), fov };
 }
 
 /** Exact shared position curve in this direction; no independent marker math. */
@@ -202,8 +173,7 @@ export function getSceneCameraViewKeyframeWorldPosition(
 	document: SceneDocument,
 	connectionId: string,
 	direction: CameraConnectionDirection,
-	progress: number,
-	rooms: LayoutRoomRegistry
+	progress: number
 ): Vec3 {
 	if (!Number.isFinite(progress)) {
 		throw new Error('Camera view progress must be finite');
@@ -211,8 +181,7 @@ export function getSceneCameraViewKeyframeWorldPosition(
 	const path = createDraftConnectionPositionPath(
 		document,
 		connectionId,
-		direction,
-		rooms
+		direction
 	);
 	return path.getPointAt(progress).toArray() as Vec3;
 }

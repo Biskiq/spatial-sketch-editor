@@ -2,7 +2,7 @@
  * P22.1 — store-free cold release preparation.
  *
  * Takes a saved document plus caller-supplied verified P20 bytes and returns a
- * detached scene, compiled geometry, rooms, graph and a read-only
+ * detached scene, compiled geometry, graph and a read-only
  * release-scoped texture scope. Imports canonical packages directly; never
  * touches session stores, history, selection, gizmos, or mutable globals.
  *
@@ -21,7 +21,6 @@ import {
 	hasBlockingLayoutIssues,
 	artworkAssetUri, probeArtworkImage, type ArtworkImage,
 	type CompiledLayoutGeometry,
-	type LayoutRoomRegistry,
 	type NavigationGraph,
 	type RuntimeScene
 } from '@portfolio/project-model';
@@ -49,7 +48,6 @@ export type ColdReleaseBundle = {
 	projectName: string;
 	scene: RuntimeScene;
 	geometry: CompiledLayoutGeometry;
-	rooms: LayoutRoomRegistry;
 	graph: NavigationGraph;
 	textureScope: ReleaseTextureScope;
 	artworkScope: ArtworkScope;
@@ -244,7 +242,6 @@ export function composeColdReleaseBundle(input: {
 	if (!prepared.envelope.id) throw new Error('Project is not ready for release');
 
 	const projectId = prepared.envelope.id;
-	const rooms = prepared.rooms;
 	const runtimeScene = prepared.runtimeScene;
 	// The navigation graph is the Camera unit's own connectivity, prepared by the
 	// one unit runtime; the released Scene no longer carries a navigation graph.
@@ -297,7 +294,6 @@ export function composeColdReleaseBundle(input: {
 		projectName: name,
 		scene: runtimeScene,
 		geometry: prepared.geometry,
-		rooms,
 		graph,
 		textureScope,
 		artworkScope,

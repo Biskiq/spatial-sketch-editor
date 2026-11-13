@@ -6,7 +6,6 @@ export type NodeConnectionRow = {
 	bucket: NodeConnectionBucket;
 	connectionId: string;
 	partnerId: string;
-	partnerRoomId?: string;
 	anchorsCount: number;
 	kind: 'rounded-polyline' | 'auto-bezier';
 	clearance: number;
@@ -51,7 +50,6 @@ export function getNodeConnections(
 			bucket: isOutgoing ? 'outgoing' : 'incoming',
 			connectionId: connection.id,
 			partnerId,
-			partnerRoomId: partner.roomId,
 			anchorsCount: connection.positionPath.anchors.length,
 			kind: connection.positionPath.kind,
 			clearance: connection.clearance,

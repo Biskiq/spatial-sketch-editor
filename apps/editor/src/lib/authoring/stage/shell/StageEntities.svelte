@@ -14,7 +14,6 @@
 	 */
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { RuntimeScene } from '$lib/content/scene';
-	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
 
@@ -22,7 +21,6 @@
 
 	let {
 		scene,
-		rooms,
 		artworkScope = null,
 		onArtworkError,
 		modelUrls = null,
@@ -33,7 +31,6 @@
 		includeLights = true
 	}: {
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		artworkScope?: ArtworkScope | null;
 		onArtworkError?: (message: string) => void;
@@ -84,4 +81,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />
+<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />

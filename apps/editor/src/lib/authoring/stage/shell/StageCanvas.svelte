@@ -18,16 +18,12 @@
 	import { Canvas, T } from '@threlte/core';
 	import { PCFShadowMap } from 'three';
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
-	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
+	import type { RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
 	import type { StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
-	import {
-		neutralVisitorRoomPresentation,
-		type VisitorRoomPresentation
-	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { paperStageComposition, PAPER_GROUND_INK } from '../paper-plan';
 import { workspaceRectFor } from '../stage-grid';
@@ -66,7 +62,6 @@ import StageMatGround from './StageMatGround.svelte';
 		sourceContentId,
 		layoutRevision,
 		scene,
-		rooms,
 		/** The session-only light preview merged into the rendered entity list. */
 		lightPreview = null,
 		evaluation,
@@ -104,7 +99,6 @@ import StageMatGround from './StageMatGround.svelte';
 		sourceContentId: string;
 		layoutRevision: string;
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
 		lightPreview?: StageLightPreview | null;
 		evaluation: ViewportEvaluation | null;
 		/** Adapter-proposed poses, drawn here by the one Canvas. */
@@ -196,12 +190,6 @@ import StageMatGround from './StageMatGround.svelte';
 	});
 	// Both readings and appearances honor the same Grid toggle.
 	const gridVisible = $derived(drafting.grid && framedViewport === null);
-
-	const presentation = $derived.by(() => {
-		const record: Record<string, VisitorRoomPresentation> = {};
-		for (const room of geometry.rooms) record[room.roomId] = neutralVisitorRoomPresentation;
-		return record;
-	});
 
 	// Runs after the accepted props update, before Threlte submits the next frame.
 	$effect(() => {
@@ -297,11 +285,12 @@ import StageMatGround from './StageMatGround.svelte';
 	-->
 	<!-- The preview projection is a shadow trigger too: an overridden or candidate
 		light must move its cast shadow with its illumination. -->
-	<StageShadowTriggers {geometry} scene={renderScene} {rooms} {modelUrls} {formRenderRevision} />
+	<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
-		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false}
-			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]} />
+		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
+			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
@@ -321,7 +310,6 @@ import StageMatGround from './StageMatGround.svelte';
 		{onArtworkError}
 		{scenePick}
 		scene={entityScene}
-		{rooms}
 		{modelUrls}
 		includeLights={environment !== 'paper'}
 		onFormRendererReady={formRendererReady}

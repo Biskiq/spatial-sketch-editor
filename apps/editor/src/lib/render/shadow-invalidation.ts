@@ -15,12 +15,12 @@
  * - a **caster's geometry** — the retained Wall/object representation's rebuild, a
  *   Scene placement added, moved or removed, an imported model's arrival or
  *   disposal, a ghost that casts: the wiring watches the compiled `geometry`, the
- *   resolved `scene`, the Room registry and `modelUrls`, which is exactly what
+ *   resolved `scene` and `modelUrls`, which is exactly what
  *   changes when any of those happen (Undo/Redo, replacement and reads included,
  *   because they all install a new compiled geometry or Scene);
  * - a **caster's or receiver's transform, visibility or flags, or a
  *   depth-affecting material change** — the same identities: every mesh the Stage
- *   draws is derived from `geometry`, `scene` or `rooms`;
+ *   draws is derived from `geometry` or `scene`;
  * - a **Scene light** added, removed or changed — `scene` identity again;
  * - an **animated caster, or a caster whose arrival is asynchronous and therefore
  *   not observable at this boundary** (a resolved creator model parses after its

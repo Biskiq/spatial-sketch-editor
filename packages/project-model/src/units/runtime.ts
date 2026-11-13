@@ -18,7 +18,6 @@ import {
 	type LayoutCompileSession,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
-import { createEmptyLayoutRoomRegistry, type LayoutRoomRegistry } from '../project-layout-semantics';
 import {
 	createNavigationGraph,
 	resolveSceneDocument,
@@ -59,7 +58,6 @@ export type UnitRuntimeReady = {
 	 * but execution (F4 acceptance, Save, release) must refuse it.
 	 */
 	readonly closure: readonly EnvelopeClosureFinding[];
-	readonly rooms: LayoutRoomRegistry;
 	readonly runtimeScene: RuntimeScene;
 	readonly graph: NavigationGraph;
 };
@@ -196,7 +194,6 @@ export function prepareValidatedUnitRuntime(
 		issues: compiled.issues,
 		diagnostics: validated.diagnostics,
 		closure: validated.closure,
-		rooms: createEmptyLayoutRoomRegistry(),
 		runtimeScene,
 		graph: createNavigationGraph(runtimeScene)
 	};

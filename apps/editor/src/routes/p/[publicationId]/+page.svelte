@@ -149,7 +149,6 @@
 				<VisitorPreviewSurface
 					scene={readyBundle.scene}
 					geometry={readyBundle.geometry}
-					rooms={readyBundle.rooms}
 					graph={readyBundle.graph}
 					resolveTexture={readyBundle.textureScope.resolveTexture}
 					textureScope={readyScope}

@@ -21,7 +21,7 @@ import { Scene as ThreeScene, type Camera, type InterleavedBufferAttribute } fro
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { evaluateLayoutPlan, type LayoutVec2, type PlanEvaluation } from '@portfolio/layout-core';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
-import { createEmptyLayoutRoomRegistry, type RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
 import { createCameraSession } from '$lib/authoring/stage/camera-session';
 import { createPaperScene } from '$lib/authoring/stage/paper-scene';
@@ -368,7 +368,6 @@ describe('E0 mounted Stage shell counting', () => {
 			props: {
 				geometry: prepared.geometry,
 				scene,
-				rooms: createEmptyLayoutRoomRegistry(),
 				modelUrls: null,
 				formRenderRevision: 0
 			}

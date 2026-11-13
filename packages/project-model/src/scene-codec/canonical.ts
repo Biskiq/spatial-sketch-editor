@@ -23,7 +23,6 @@ import type { SceneDocument } from '../scene';
 
 export function cloneWaypoint(value: SceneWaypoint): SceneWaypoint {
 	return {
-		...(value.roomId === undefined ? {} : { roomId: value.roomId }),
 		position: [...value.position]
 	};
 }
@@ -34,7 +33,6 @@ export function cloneViewKeyframe(
 	return {
 		id: value.id,
 		progress: value.progress,
-		...(value.roomId === undefined ? {} : { roomId: value.roomId }),
 		cameraTarget: [...value.cameraTarget],
 		fov: value.fov,
 		...(value.holdSeconds === undefined ? {} : { holdSeconds: value.holdSeconds }),
@@ -58,7 +56,6 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			kind: 'model',
 			id: entity.id,
 			name: entity.name,
-			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 			assetId: entity.assetId,
 			fallback: entity.fallback,
 			position: [...entity.position],
@@ -74,7 +71,6 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			kind: 'primitive',
 			id: entity.id,
 			name: entity.name,
-			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 			primitive: entity.primitive,
 			dimensions: { ...entity.dimensions },
 			materialId: entity.materialId,
@@ -93,7 +89,6 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			kind: 'form',
 			id: entity.id,
 			name: entity.name,
-			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 			position: [...entity.position],
 			rotation: [...entity.rotation],
 			form: cloneFormSource(entity.form),
@@ -110,7 +105,6 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			kind: 'light',
 			id: entity.id,
 			name: entity.name,
-			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 			light: 'spot',
 			color: entity.color,
 			intensity: entity.intensity,
@@ -128,7 +122,6 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			kind: 'light',
 			id: entity.id,
 			name: entity.name,
-			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 			light: 'point',
 			color: entity.color,
 			intensity: entity.intensity,
@@ -143,7 +136,6 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 		kind: 'light',
 		id: entity.id,
 		name: entity.name,
-		...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 		light: 'directional',
 		color: entity.color,
 		intensity: entity.intensity,
@@ -175,8 +167,8 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 			...(material.metalness === undefined ? {} : { metalness: material.metalness })
 		})),
 		entities: document.entities.map(cloneEntity),
-		...(document.clusters === undefined ? {} : { clusters: document.clusters.map((cluster) => ({ id: cluster.id, name: cluster.name, ...(cluster.roomId === undefined ? {} : { roomId: cluster.roomId }), memberIds: [...cluster.memberIds] })) }),
-		navigationNodes: document.navigationNodes.map((node) => ({ id: node.id, ...(node.roomId === undefined ? {} : { roomId: node.roomId }), label: node.label, position: [...node.position], cameraTarget: [...node.cameraTarget], fov: node.fov, connectedNodeIds: [...node.connectedNodeIds] })),
+		...(document.clusters === undefined ? {} : { clusters: document.clusters.map((cluster) => ({ id: cluster.id, name: cluster.name, memberIds: [...cluster.memberIds] })) }),
+		navigationNodes: document.navigationNodes.map((node) => ({ id: node.id, label: node.label, position: [...node.position], cameraTarget: [...node.cameraTarget], fov: node.fov, connectedNodeIds: [...node.connectedNodeIds] })),
 		connections: document.connections.map((connection) => ({
 			id: connection.id,
 			fromNodeId: connection.fromNodeId,

@@ -1,6 +1,6 @@
 /** Common accepted Stage read boundary. No current-format source dependency. */
 import type { CompiledLayoutGeometry, LayoutGeometryIssue } from '@portfolio/layout-core';
-import type { AcceptedRevision, ReferenceReadContext, RuntimeScene, LayoutRoomRegistry, NavigationGraph } from '@portfolio/project-model';
+import type { AcceptedRevision, ReferenceReadContext, RuntimeScene, NavigationGraph } from '@portfolio/project-model';
 import type { EnvelopeClosureFinding, EnvelopeDiagnostic, UnitDomain } from '@portfolio/project-model/units';
 
 /** The domain read access a Stage snapshot publishes. Immutable by construction. */
@@ -21,8 +21,6 @@ export type StageDomainRead = {
 	readonly datumMeters: number;
 	/** The resolved runtime Scene. */
 	readonly scene: RuntimeScene;
-	/** The current-format (empty) Room registry. */
-	readonly rooms: LayoutRoomRegistry;
 	/** The visitor-equivalent navigation graph, built from the Camera unit. */
 	readonly graph: NavigationGraph;
 	/**
