@@ -756,6 +756,7 @@ describe('G3 — selection changes Paper visibility, not its drawing', () => {
 				entry.distances === null ? null : Float32Array.from(entry.distances.array as Float32Array)
 			);
 			const countsBefore = realized.map((entry) => entry.geometry.instanceCount);
+			const versions = realized.map((entry) => entry.positions.version);
 			const childCount = resources.group.children.length;
 			const all = drawnSegments(null);
 			expect(realized.length).toBeGreaterThan(0);
@@ -796,6 +797,9 @@ describe('G3 — selection changes Paper visibility, not its drawing', () => {
 			// A: exactly the complement, with each segment's dash pair carried over.
 			resources.setHiddenSource(openingIds[0]);
 			expect(counts.get('paper:scene-build')).toBe(1);
+			expect(
+				realized.some((entry, index) => entry.positions.version > versions[index]!)
+			).toBe(true);
 			sameResources();
 			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[0])));
 			for (const ink of inks()) {
