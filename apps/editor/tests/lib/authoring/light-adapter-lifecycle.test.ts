@@ -745,6 +745,16 @@ describe('S3a light adapter pointer lifecycle', () => {
 		});
 		expect(resolved.kind).toBe('resolved');
 		if (resolved.kind === 'resolved') expect(resolved.hit.sourceId).toBe('light-fill');
+
+		// An unpressed hover on the tick names that light; leaving the tick clears it.
+		facade.idleHoverIntent({ phase: 'move', css: midpoint, evaluationId: facade.evaluationId()! });
+		expect(
+			facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels.map((label) => label.text)
+		).toContain('North fill');
+		facade.idleHoverIntent({ phase: 'cancel', css: midpoint, evaluationId: facade.evaluationId()! });
+		expect(
+			facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels.map((label) => label.text)
+		).not.toContain('North fill');
 	});
 
 	it('exposes directional azimuth and elevation controls', async () => {

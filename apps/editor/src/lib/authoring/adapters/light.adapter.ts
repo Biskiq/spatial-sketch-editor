@@ -637,6 +637,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let lease: ReturnType<StageAdapterServices['stage']['acquireGesture']> | null = null;
 			/** The last refusal, shown at the grip and cleared by the next move. */
 			let refusal: { readonly message: string; readonly until: number } | null = null;
+			/** A released candidate while its one create is in flight; input is ignored. */
+			let placing: Placement | null = null;
+			/** A refused release: the candidate is held in refusal ink until the next move. */
+			let placementRefusal: {
+				readonly placement: Placement;
+				readonly message: string;
+				readonly until: number;
+			} | null = null;
+			/**
+			 * The Directional tick under an unpressed pointer, for its name tag.
+			 * Idle-hover state only: never selection, history or source.
+			 */
+			let hoveredDialTick: string | null = null;
 
 			function noteRefusal(message: string): void {
 				refusal = { message, until: Date.now() + 4_000 };
@@ -649,6 +662,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return null;
 				}
 				return refusal.message;
+			}
+
+			function livePlacementRefusal() {
+				if (placementRefusal === null) return null;
+				if (Date.now() > placementRefusal.until) {
+					placementRefusal = null;
+					return null;
+				}
+				return placementRefusal;
 			}
 
 			/** Publish the dragged light for this frame; nothing is written. */
@@ -1063,8 +1085,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					} else if (outcome.kind === 'refused') {
 						// D11: a refused placement must say so rather than end silently.
 						noteRefusal(outcome.message);
+						placementRefusal = {
+							placement: pending,
+							message: outcome.message,
+							until: Date.now() + 4_000
+						};
 					}
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : 'The light could not be placed.';
+					noteRefusal(message);
+					placementRefusal = { placement: pending, message, until: Date.now() + 4_000 };
 				} finally {
+					placing = null;
+					// The committed or refused pose is no longer the hover candidate; the
+					// next move derives a fresh one, so no stale chip survives the release.
+					hoverPlacement = null;
 					rearmingAfterInstall = false;
 					services.stage.lightPreview()?.setCandidate(null);
 					if (openTaskKind === LIGHT_TASK) zeroCandidate();
@@ -1358,12 +1394,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const side = scale(horizontal, frame.radius * 0.06);
 						segments.push([end, add(back, side)], [end, sub(back, side)]);
 					}
-					// Other Directional lights: one 6 px derived tick on the ring at
-					// each one's own bearing, never an arrow or a drag.
+					// The bearing ring's 0° mark and one 6 px derived tick per other
+					// Directional light, at that light's own bearing. Ticks never drag.
 					const tickHalfLength = directionalDialTickHalfLength(
 						dialCssPerMeter(adapterContext, frame.center)
 					);
-					for (const companion of dialCompanionsFor(light, adapterContext)) {
+					derivedSegments.push(
+						directionalDialTick({
+							center: frame.center,
+							radius: frame.radius,
+							from: 0,
+							halfLength: tickHalfLength
+						})
+					);
+					const companions = dialCompanionsFor(light, adapterContext);
+					for (const companion of companions) {
 						derivedSegments.push(
 							directionalDialTick({
 								center: frame.center,
@@ -1374,8 +1419,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						);
 					}
 					// The dial always names its selected light at the centre; the Index
-					// still lists every light by name.
+					// still lists every light by name. A hovered tick names its own light.
 					labels = [{ world: frame.center, text: directionalDialName(light.name) }];
+					const hovered =
+						hoveredDialTick === null
+							? null
+							: companions.find((companion) => companion.id === hoveredDialTick) ?? null;
+					if (hovered !== null) {
+						labels.push({
+							world: directionalDialBearingPoint(
+								frame.center,
+								frame.radius,
+								hovered.from
+							),
+							text: directionalDialName(hovered.name)
+						});
+					}
 				}
 				return { segments, derivedSegments, labels };
 			}
@@ -1717,7 +1776,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				candidatePreview(adapterContext) {
 					const previews: StageCandidatePreview[] = [];
 					const kind = armedLightKind(projectId()) ?? 'spot';
-					const active = placement ?? hoverPlacement;
+					const refused = livePlacementRefusal();
+					const active = placing ?? refused?.placement ?? placement ?? hoverPlacement;
 					if (active === null) {
 						if (openTaskKind === LIGHT_TASK && kind !== 'directional') {
 							previews.push({
@@ -1772,13 +1832,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					const labels = [{
 						world: active.body,
-						text: active.moved
-							? 'Release on what it should light'
-							: active.hit
-								? `${lightKindLabel(kind)} · click to place · Esc cancels`
-								: 'Point at a surface'
+						text: placing !== null
+							? 'Placing…'
+							: refused !== null
+								? refused.message
+								: active.moved
+									? 'Release on what it should light'
+									: active.hit
+										? `${lightKindLabel(kind)} · click to place · Esc cancels`
+										: 'Point at a surface'
 					}];
-					if (active.moved && kind === 'spot') {
+					if (placing === null && refused === null && active.moved && kind === 'spot') {
 						labels.push({
 							world: active.target,
 							text: `Aim · ${formatMeters(distance(active.body, active.target))}`
@@ -1786,14 +1850,32 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					previews.push({
 						id: 'light-placement',
-						role: 'subject',
+						role: refused === null ? 'subject' : 'refused',
 						segments,
 						labels,
 						polygons: []
 					});
 					return previews;
 				},
+				idleHoverIntent(intent, adapterContext) {
+					if (intent.phase === 'cancel') {
+						if (hoveredDialTick !== null) {
+							hoveredDialTick = null;
+							services.stage.notifySurfaceChange();
+						}
+						return false;
+					}
+					const tick = directionalTickAt(intent.css, adapterContext, intent.coarse === true);
+					const next = tick?.light.id ?? null;
+					if (next !== hoveredDialTick) {
+						hoveredDialTick = next;
+						services.stage.notifySurfaceChange();
+					}
+					return false;
+				},
 				hoverIntent(intent, adapterContext) {
+					// A new pointer move starts a fresh candidate after a refused release.
+					placementRefusal = null;
 					if (
 						openTaskKind !== LIGHT_TASK ||
 						placement !== null ||
@@ -1821,7 +1903,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				pointerIntent(intent, adapterContext) {
+					// One release is one commit: while it is in flight the held ghost
+					// stays and further moves and clicks are ignored.
+					if (placing !== null) return true;
 					if (intent.phase === 'down') {
+						placementRefusal = null;
 						if (openTaskKind === LIGHT_TASK) {
 							// The plan gives an admitted mark priority over both the emitter
 							// glyph and a new placement while Lights is armed.
@@ -1912,6 +1998,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							// Release first runs the up event through the same candidate function
 							// as a final move, so the payload is the pose that was drawn.
 							updatePlacement(intent.css, adapterContext);
+							// Hold that exact ghost under a Placing… chip until the one create
+							// settles; pointer moves and clicks are ignored meanwhile.
+							placing = pendingPlacement;
 							void commitPlacement(pendingPlacement, adapterContext);
 						}
 						services.stage.notifySurfaceChange();
@@ -2004,6 +2093,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				instrument(task) {
 					openTaskKind = task.kind;
 					if (task.kind !== LIGHT_TASK) return null;
+					placementRefusal = null;
 					const kind = armedLightKind(projectId()) ?? 'spot';
 					if (kind === 'point' || kind === 'spot') zeroCandidate();
 					return {

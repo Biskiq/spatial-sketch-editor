@@ -689,7 +689,7 @@
 		background: var(--shell-hover);
 	}
 	.head-actions button,
-	.footer button:not(.more) {
+	.footer button:not(.more):not(.footer-action) {
 		width: 24px;
 		padding: 0;
 	}
