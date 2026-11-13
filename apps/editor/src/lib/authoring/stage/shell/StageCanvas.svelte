@@ -52,6 +52,11 @@ import StageMatGround from './StageMatGround.svelte';
 	import { worldEnvironmentLook } from '$lib/render/world-environment';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
+	import {
+		LIGHT_PREVIEW_CANDIDATE_ID,
+		mergeLightPreview,
+		type StageLightPreview
+	} from '../stage-light-preview.svelte';
 
 	function ignoreRaycast(): void {}
 
@@ -62,6 +67,8 @@ import StageMatGround from './StageMatGround.svelte';
 		layoutRevision,
 		scene,
 		rooms,
+		/** The session-only light preview merged into the rendered entity list. */
+		lightPreview = null,
 		evaluation,
 		ghosts = [],
 		modelUrls = null,
@@ -98,6 +105,7 @@ import StageMatGround from './StageMatGround.svelte';
 		layoutRevision: string;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
+		lightPreview?: StageLightPreview | null;
 		evaluation: ViewportEvaluation | null;
 		/** Adapter-proposed poses, drawn here by the one Canvas. */
 		ghosts?: readonly StageGhostMesh[];
@@ -142,6 +150,20 @@ import StageMatGround from './StageMatGround.svelte';
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
+	/**
+	 * The editor shell's one merge point for the session-only light preview: an
+	 * overridden light is replaced by its preview value and a placement candidate
+	 * is appended under a reserved id. Visitor entities and entity renderers are
+	 * unchanged, and the accepted `scene` object is never mutated.
+	 */
+	const renderScene = $derived(mergeLightPreview(scene, lightPreview));
+	// A live Artwork manipulation draws one opaque ghost; the accepted body is
+	// hidden so the drag never shows two copies of the same Artwork.
+	const entityScene = $derived(
+		artworkGhost === null || !renderScene.entities.some((entity) => entity.id === artworkGhost.id)
+			? renderScene
+			: { ...renderScene, entities: renderScene.entities.filter((entity) => entity.id !== artworkGhost.id) }
+	);
 	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
 	const paperComposition = $derived(
 		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
@@ -273,7 +295,9 @@ import StageMatGround from './StageMatGround.svelte';
 		because it owns this renderer's shadow map; see the component for the full
 		trigger contract.
 	-->
-	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
+	<!-- The preview projection is a shadow trigger too: an overridden or candidate
+		light must move its cast shadow with its illumination. -->
+	<StageShadowTriggers {geometry} scene={renderScene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
 		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false}
@@ -296,13 +320,16 @@ import StageMatGround from './StageMatGround.svelte';
 		{artworkScope}
 		{onArtworkError}
 		{scenePick}
-		{scene}
+		scene={entityScene}
 		{rooms}
 		{modelUrls}
 		includeLights={environment !== 'paper'}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
-		onEntityRoot={registerSceneRoot}
+		onEntityRoot={(id, root) =>
+			// The placement candidate renders, but it is not an authored or pickable
+			// entity: keep it out of the Stage pick registry.
+			id === LIGHT_PREVIEW_CANDIDATE_ID ? () => {} : registerSceneRoot(id, root)}
 	/>
 	{#if paperReveal !== null && gridVisible}
 		<StageGrid {evaluation} {datumMeters} {contentBounds} fade={paperReveal.sheet} />

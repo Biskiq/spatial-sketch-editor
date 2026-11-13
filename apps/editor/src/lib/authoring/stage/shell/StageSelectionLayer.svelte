@@ -314,6 +314,18 @@
 		tone: 'selection' | 'hover' | 'erase'
 	): void {
 		if (entry === null) return;
+		// Artwork is selected by its screen-space frame polygon and grips
+		// (ArtworkResizeOverlay), not by mesh contour: a 3 px gold line on every
+		// mesh edge hides thin frames and the image edge. Hover and erase still
+		// trace the mesh, because those tones are about the surface under the
+		// pointer, not about the Artwork's own identity.
+		if (
+			tone === 'selection' &&
+			entry.reference.domain === 'scene' &&
+			entry.reference.subject.kind === 'artwork'
+		) {
+			return;
+		}
 		if (entry.reference.domain === 'layout' && entry.reference.subject.kind === 'opening') {
 			addContour(openingContour(entry.reference.subject.id), tone);
 			return;

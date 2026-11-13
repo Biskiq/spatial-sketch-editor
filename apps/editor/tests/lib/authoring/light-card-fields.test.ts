@@ -112,12 +112,22 @@ async function mountCard(
 	entity: SceneLightEntity,
 	options: {
 		readonly detailOpen?: boolean;
-		readonly footer?: Snippet;
+		readonly footer?: Snippet<[string?]>;
 		readonly secondary?: Snippet<[Snippet?]>;
 	} = {}
 ) {
 	const snapshot = snapshotOf(entity);
 	const accept = vi.fn(async (_intent: unknown) => ({ kind: 'installed' as const }));
+	const overrides = new Map<string, unknown>();
+	const lightPreview = {
+		overrides,
+		candidate: null,
+		setOverride: (id: string, light: unknown) => overrides.set(id, light),
+		clearOverride: (id: string) => overrides.delete(id),
+		setCandidate: vi.fn(),
+		clear: () => overrides.clear(),
+		flush: vi.fn()
+	};
 	const services = {
 		stage: {
 			snapshot: () => snapshot,
@@ -125,7 +135,8 @@ async function mountCard(
 				primary: { domain: 'scene', subject: { kind: 'entity', id: entity.id } }
 			}),
 			notifySurfaceChange: vi.fn(),
-			setSelection: vi.fn()
+			setSelection: vi.fn(),
+			lightPreview: () => lightPreview
 		},
 		authoring: {
 			accept,
@@ -146,7 +157,7 @@ async function mountCard(
 	});
 	cleanup = () => unmount(component);
 	await tick();
-	return { target, accept };
+	return { target, accept, lightPreview };
 }
 
 function field(target: HTMLElement, name: string): HTMLInputElement | HTMLButtonElement {
@@ -155,6 +166,14 @@ function field(target: HTMLElement, name: string): HTMLInputElement | HTMLButton
 	);
 	if (found === null) throw new Error(`the ${name} field is missing`);
 	return found;
+}
+
+async function openGroup(target: HTMLElement, id: string): Promise<void> {
+	const head = target.querySelector<HTMLButtonElement>(`[data-advanced-group-head="${id}"]`);
+	if (head === null) throw new Error(`the ${id} Advanced group is missing`);
+	// The open group is session state remembered per kind; leave it open if it is.
+	if (head.getAttribute('aria-expanded') !== 'true') head.click();
+	await tick();
 }
 
 describe('S3a Light Card writer', () => {
@@ -173,6 +192,28 @@ describe('S3a Light Card writer', () => {
 		}));
 		const { target } = await mountCard(spot(), { detailOpen: false, secondary });
 		expect(target.querySelector('[data-test-secondary]')).not.toBeNull();
+	});
+
+	it('names the closed Advanced groups in the shared foot', async () => {
+		const footer = createRawSnippet((summary: unknown) => ({
+			render: () => {
+				const value = typeof summary === 'function'
+					? (summary as () => string | undefined)()
+					: summary;
+				return `<button type="button" data-test-footer>${value ?? ''}</button>`;
+			}
+		}));
+		const { target } = await mountCard(spot(), { detailOpen: false, footer });
+		expect(target.querySelector('[data-test-footer]')?.textContent).toBe(
+			'Colour · Brightness · Shape · Position · Shadows'
+		);
+	});
+
+	it('draws an Instrument icon on every Advanced group head', async () => {
+		const { target } = await mountCard(spot(), { detailOpen: true });
+		for (const id of ['colour', 'brightness', 'shape', 'position', 'shadows']) {
+			expect(target.querySelector(`[data-advanced-group-head="${id}"] .group-icon svg`)).not.toBeNull();
+		}
 	});
 
 	it('enables the authored Shadow toggle and writes castShadow', async () => {
@@ -194,9 +235,10 @@ describe('S3a Light Card writer', () => {
 
 	it('keeps zero and custom Brightness values without selecting a stop', async () => {
 		const { target } = await mountCard(spot({ intensity: 0 }));
-		expect(target.textContent).toContain('Custom');
-		expect(target.textContent).toContain('0.00 cd');
-		expect((field(target, 'exact-intensity') as HTMLInputElement).value).toBe('0');
+		await openGroup(target, 'brightness');
+		expect(field(target, 'brightness-custom').textContent).toContain('0×');
+		expect(target.textContent).toContain('0.000 cd');
+		expect((field(target, 'exact-intensity') as HTMLInputElement).value).toBe('0.000');
 		for (const stop of ['0.25', '0.5', '1', '2', '4']) {
 			expect(field(target, `brightness-${stop}`).getAttribute('aria-pressed')).toBe('false');
 		}
@@ -206,10 +248,80 @@ describe('S3a Light Card writer', () => {
 		const spotCard = await mountCard(spot());
 		expect(field(spotCard.target, 'adjust-beam')).toBeDefined();
 		expect(spotCard.target.querySelector('[data-field="adjust-reach"]')).toBeNull();
+		const directionalCard = await mountCard(directional());
+		expect(directionalCard.target.querySelector('[data-field="adjust-reach"]')).toBeNull();
+		expect(directionalCard.target.querySelector('[data-field="adjust-beam"]')).toBeNull();
+	});
+
+	it('writes an unlimited Reach from the chip and a typed Reach from the field', async () => {
+		const unlimited = await mountCard(spot({ light: 'point', range: 3 } as never));
+		(field(unlimited.target, 'unlimited') as HTMLButtonElement).click();
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(unlimited.accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID, range: null }
+		});
+
+		const typed = await mountCard(spot({ light: 'point' } as never));
+		const reach = field(typed.target, 'adjust-reach') as HTMLInputElement;
+		reach.value = '2.5';
+		reach.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		reach.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(typed.accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID, range: 2.5 }
+		});
+	});
+
+	it('writes Directional From and Height in sky from the everyday Direction row', async () => {
+		const { target, accept } = await mountCard(directional());
+		const from = field(target, 'direction-from') as HTMLInputElement;
+		const height = field(target, 'direction-height') as HTMLInputElement;
+		// A zero rotation travels toward −Z, so the source is at +Z: From 180°, horizon.
+		expect(Number(from.value)).toBeCloseTo(180, 4);
+		expect(Number(height.value)).toBeCloseTo(0, 4);
+		from.value = '300';
+		from.dispatchEvent(new Event('input', { bubbles: true }));
+		height.value = '50';
+		height.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		from.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		const payload = accept.mock.calls[0]![0] as { payload: { rotation: [number, number, number] } };
+		expect(payload.payload.rotation.every(Number.isFinite)).toBe(true);
+	});
+
+	it('opens the colour dial without writing a mode value', async () => {
+		const { target, accept } = await mountCard(spot());
+		await openGroup(target, 'colour');
+		const colourMode = target.querySelector<HTMLButtonElement>('[data-advanced-mode="colour"]');
+		if (colourMode === null) throw new Error('the Colour mode chip is missing');
+		colourMode.click();
+		await tick();
+		expect(target.querySelector('.dial')).not.toBeNull();
+		expect(target.querySelector('[data-advanced-row="colour"]')).not.toBeNull();
+		expect(target.querySelector('[data-advanced-row="warmth"]')).toBeNull();
+		expect(accept).not.toHaveBeenCalled();
+
+		target.querySelector<HTMLButtonElement>('[data-advanced-mode="white"]')!.click();
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID, color: expect.stringMatching(/^#[0-9a-f]{6}$/) }
+		});
 	});
 
 	it('commits exact values on Enter, restores on Esc, and never writes on blur', async () => {
 		const { target, accept } = await mountCard(spot());
+		await openGroup(target, 'brightness');
 		const intensity = field(target, 'exact-intensity') as HTMLInputElement;
 		const accepted = intensity.value;
 
@@ -255,8 +367,53 @@ describe('S3a Light Card writer', () => {
 		expect(intensity.value).toBe(accepted);
 	});
 
+	it('previews a Brightness slider drag and commits exactly once on release', async () => {
+		const { target, accept, lightPreview } = await mountCard(spot());
+		await openGroup(target, 'brightness');
+		const slider = target.querySelector<HTMLInputElement>('[data-advanced-slider="brightness"]');
+		if (slider === null) throw new Error('the Brightness slider is missing');
+
+		slider.value = '1';
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		expect(accept).not.toHaveBeenCalled();
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(true);
+		expect((lightPreview.overrides.get(LIGHT_ID) as { intensity: number }).intensity).toBeCloseTo(
+			Math.PI * 2,
+			9
+		);
+
+		slider.dispatchEvent(new Event('change', { bubbles: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID }
+		});
+		const intensity = (accept.mock.calls[0]![0] as { payload: { intensity: number } }).payload.intensity;
+		expect(intensity).toBeCloseTo(Math.PI * 2, 9);
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(false);
+	});
+
+	it('restores the accepted value and writes nothing when Esc ends a slider drag', async () => {
+		const { target, accept, lightPreview } = await mountCard(spot());
+		await openGroup(target, 'brightness');
+		const slider = target.querySelector<HTMLInputElement>('[data-advanced-slider="brightness"]');
+		if (slider === null) throw new Error('the Brightness slider is missing');
+		slider.value = '-1';
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(true);
+		slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await tick();
+		expect(accept).not.toHaveBeenCalled();
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(false);
+	});
+
 	it('exposes azimuth/elevation instead of Reach or Beam for a directional', async () => {
 		const { target } = await mountCard(directional());
+		await openGroup(target, 'direction');
 		expect(field(target, 'azimuth')).toBeDefined();
 		expect(field(target, 'elevation')).toBeDefined();
 		expect(target.querySelector('[data-field="adjust-reach"]')).toBeNull();

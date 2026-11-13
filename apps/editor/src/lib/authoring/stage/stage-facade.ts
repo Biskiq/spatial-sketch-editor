@@ -111,6 +111,7 @@ import type {
 	StageSession,
 	StageTask
 } from './stage-session';
+import type { StageLightPreview } from './stage-light-preview.svelte';
 
 /** The capabilities this host actually provides. Anything else refuses mounting. */
 export const HOST_STAGE_CAPABILITIES: readonly string[] = [
@@ -253,6 +254,12 @@ export type StageGuideContribution = {
 	readonly segments: readonly (readonly [Vec3, Vec3])[];
 	/** Derived helpers (unbounded reach, stems) are drawn differently. */
 	readonly derivedSegments?: readonly (readonly [Vec3, Vec3])[];
+	/**
+	 * A guide's own label, e.g. the selected instrument's name at its centre.
+	 * It is never a permanent subject label: the host draws it in the live-tag
+	 * style, and only for as long as the guide itself is contributed.
+	 */
+	readonly labels?: readonly { readonly world: Vec3; readonly text: string }[];
 };
 
 /** One guide after the facade's single projection into Stage CSS space. */
@@ -261,6 +268,7 @@ export type StageGuideView = {
 	readonly role: StageGuideContribution['role'];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
 	readonly derivedSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
 };
 
 /**
@@ -580,6 +588,8 @@ export type StageCardActionOutcome = {
 export type StageCardAction = {
 	readonly id: string;
 	readonly label: string;
+	/** A shorter Card-foot verb, when the full label is too long for the row. */
+	readonly compactLabel?: string;
 	/**
 	 * Words the creator reads **before** the action is taken: the planner-derived
 	 * consequences (hosted Openings, Room merge/open). Required for a destructive
@@ -623,8 +633,25 @@ export type StageInstrumentContent = {
 	 * Card fact whose `fieldId` is listed is shown by this writer, so it is not repeated.
 	 */
 	readonly fieldIds?: readonly string[];
+	/**
+	 * Place this writer's primary contributed actions in the Card foot instead of
+	 * the subject menu. The Light Card uses it for Duplicate and Delete.
+	 */
+	readonly inlineActions?: boolean;
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
-	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]>; more?: Snippet<[Snippet?]> }>; readonly services: StageAdapterServices };
+	readonly view?: {
+		readonly component: Component<{
+			services: StageAdapterServices;
+			detailOpen?: boolean;
+			footer?: Snippet<[string?]>;
+			secondary?: Snippet<[Snippet?]>;
+			more?: Snippet<[Snippet?]>;
+			/** The subject's scoped actions, so a writer can place a primary one in its foot. */
+			actions?: readonly StageCardActionRecord[];
+			onAction?: (action: StageCardActionRecord) => void;
+		}>;
+		readonly services: StageAdapterServices;
+	};
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */
@@ -854,6 +881,8 @@ export type StageFacade = {
 	snapshot(): StageReadSnapshot;
 	readonly session: StageSession;
 	readonly camera: CameraSession;
+	/** The session-only light preview, or `null` when this host provides none. */
+	lightPreview(): StageLightPreview | null;
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
 	/** The drawn body of one Scene entity, as the host's pick source measured it. */
@@ -1069,6 +1098,8 @@ export function createStageFacade(input: {
 	readonly outputId?: string;
 	readonly scenePick?: (ray: PointerRay, scene: StageReadSnapshot['domain']['scene']) => SceneRenderedHit | null;
 	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
+	/** The session-only light preview the editor shell merges into its render. */
+	readonly lightPreview?: StageLightPreview | null;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -1680,6 +1711,7 @@ export function createStageFacade(input: {
 
 	const facade: StageFacade = {
 		snapshot: () => currentSnapshot,
+		lightPreview: () => input.lightPreview ?? null,
 		session,
 		camera,
 		evaluation: () => camera.evaluation(),
@@ -2223,7 +2255,11 @@ export function createStageFacade(input: {
 						id: guide.id,
 						role: guide.role,
 						segments: segmentsOf(guide.segments),
-						derivedSegments: segmentsOf(guide.derivedSegments ?? [])
+						derivedSegments: segmentsOf(guide.derivedSegments ?? []),
+						labels: (guide.labels ?? []).flatMap((label) => {
+							const point = project(label.world);
+							return point === null ? [] : [{ css: point, text: label.text }];
+						})
 					}));
 				} catch {
 					return [];

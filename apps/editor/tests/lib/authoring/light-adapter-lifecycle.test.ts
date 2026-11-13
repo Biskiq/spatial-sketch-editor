@@ -12,14 +12,16 @@ import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-mod
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { armedLightKind, armLight } from '$lib/authoring/look/light-tool.svelte';
 import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import { directionForPresentationAngles } from '$lib/authoring/look/light-presentation';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
-import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
+import { createStageAcceptanceHost, type StageAcceptOutcome } from '$lib/authoring/stage/host-acceptance';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
+import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
 import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
@@ -130,9 +132,11 @@ async function mounted(options: {
 	if (admitted.kind !== 'admitted') throw new Error(`light fixture not admitted: ${admitted.kind}`);
 	const session = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
 	session.replace(admitted.snapshot);
+	const lightPreview = createStageLightPreview();
 	const facade = createStageFacade({
 		snapshot: admitted.snapshot,
 		session,
+		lightPreview,
 		...(options.scenePick === undefined ? {} : { scenePick: options.scenePick as never }),
 		...(options.sceneBounds === undefined ? {} : { sceneBounds: options.sceneBounds })
 	});
@@ -154,7 +158,7 @@ async function mounted(options: {
 		if (registration.kind !== 'registered') throw new Error('light fixture adapter did not mount');
 	}
 	facade.camera.evaluate(rect, 2);
-	return { facade, host };
+	return { facade, host, lightPreview };
 }
 
 async function waitFor(predicate: () => boolean): Promise<void> {
@@ -216,9 +220,9 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(reopened.kind).toBe('opened');
 		expect(facade.session.task()?.kind).toBe('light-place');
 		// A plain click aims straight down and writes no range; its body is at the
-		// working plane, not snapped to the floor grid.
+		// approved floor-like working height, not snapped to the floor grid.
 		expect(light!.position[1]).toBeCloseTo(
-			facade.snapshot().domain.datumMeters + 1.5,
+			facade.snapshot().domain.datumMeters + 2.2,
 			9
 		);
 		expect('range' in light!).toBe(false);
@@ -226,6 +230,56 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(forward[0]).toBeCloseTo(0, 8);
 		expect(forward[1]).toBeCloseTo(-1, 8);
 		expect(forward[2]).toBeCloseTo(0, 8);
+	});
+
+	it('holds Placing…, ignores input and keeps the refused release ghost until the next move', async () => {
+		const { facade, host } = await mounted();
+		openSpotTask(facade);
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history();
+		const deferred: { resolve: ((outcome: StageAcceptOutcome) => void) | null } = { resolve: null };
+		const accept = vi.spyOn(host, 'accept').mockImplementationOnce(
+			() => new Promise<StageAcceptOutcome>((resolve) => { deferred.resolve = resolve; }) as never
+		);
+
+		facade.pointerIntent({ phase: 'down', css: [640, 380], evaluationId });
+		facade.pointerIntent({ phase: 'move', css: [700, 380], evaluationId });
+		facade.pointerIntent({ phase: 'up', css: [700, 380], evaluationId });
+
+		const held = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement');
+		expect(held?.role).toBe('subject');
+		expect(held?.labels.map((label) => label.text)).toContain('Placing…');
+		expect(facade.session.gesture()).toBeNull();
+		// While the one create is in flight, a second press is claimed but starts
+		// no placement gesture and writes nothing.
+		expect(facade.pointerIntent({ phase: 'down', css: [520, 300], evaluationId }).claimed).toBe(true);
+		expect(facade.session.gesture()).toBeNull();
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(lightsOf(facade)).toHaveLength(0);
+		expect(host.history()).toEqual(before);
+
+		const settle = deferred.resolve;
+		if (settle === null) throw new Error('the light create was not deferred');
+		settle({
+			kind: 'refused',
+			code: 'fixture-refusal',
+			message: 'The fixture refused this pose.'
+		});
+		await waitFor(() =>
+			facade.candidatePreviews().some(
+				(candidate) => candidate.id === 'light-placement' && candidate.role === 'refused'
+			)
+		);
+		const refused = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement');
+		expect(refused?.labels.map((label) => label.text)).toContain('The fixture refused this pose.');
+		expect(lightsOf(facade)).toHaveLength(0);
+		expect(host.history()).toEqual(before);
+
+		// The next pointer move clears the refused pose rather than reviving it.
+		facade.hoverIntent({ phase: 'move', css: [600, 380], evaluationId });
+		const fresh = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement');
+		expect(fresh?.role).toBe('subject');
+		expect(fresh?.labels.map((label) => label.text)).not.toContain('The fixture refused this pose.');
 	});
 
 	it('edits a freshly placed light through an admitted mark while placement stays rearmed', async () => {
@@ -323,11 +377,12 @@ describe('S3a light adapter pointer lifecycle', () => {
 			evaluationId
 		);
 		if (result.kind !== 'ray') throw new Error('the offset placement produced no pointer ray');
-		const y = facade.snapshot().domain.datumMeters + 1.5;
-		const t = (y - result.ray.origin[1]) / result.ray.direction[1];
+		const datum = facade.snapshot().domain.datumMeters;
+		// Approved placement: a miss meets the datum plane, then rises 2.20 m.
+		const t = (datum - result.ray.origin[1]) / result.ray.direction[1];
 		const expected: Vec3 = [
 			result.ray.origin[0] + result.ray.direction[0] * t,
-			y,
+			datum + 2.2,
 			result.ray.origin[2] + result.ray.direction[2] * t
 		];
 		facade.pointerIntent({ phase: 'down', css: local, evaluationId });
@@ -337,6 +392,25 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(light.position[0]).toBeCloseTo(expected[0], 8);
 		expect(light.position[1]).toBeCloseTo(expected[1], 8);
 		expect(light.position[2]).toBeCloseTo(expected[2], 8);
+	});
+
+	it('mounts a zero-intensity candidate while armed and previews a hover ghost', async () => {
+		const scenePick = (): SceneRenderedHit => ({
+			entityId: 'floor',
+			kind: 'entity',
+			distanceMeters: 2,
+			worldPoint: [0, 0, 0],
+			normal: [0, 1, 0]
+		});
+		const { facade, lightPreview } = await mounted({ scenePick });
+		openSpotTask(facade);
+		expect(lightPreview.candidate?.intensity).toBe(0);
+		const css: [number, number] = [560, 340];
+		expect(facade.hoverIntent({ phase: 'move', css, evaluationId: facade.evaluationId()! })).toBe(true);
+		expect(lightPreview.candidate?.intensity).toBeCloseTo(Math.PI, 9);
+		expect(lightPreview.candidate?.position).toEqual([0, 2.2, 0]);
+		const ghost = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement')!;
+		expect(ghost.labels.map((label) => label.text).join(' ')).toContain('click to place');
 	});
 
 	it('selects an existing light and disarms armed placement on its glyph', async () => {
@@ -448,7 +522,55 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(host.history().depth).toBe(before.depth + 1);
 	});
 
-	it('stands off along the surface normal and extends a dragged spot cutoff past the target', async () => {
+	it('keeps a surface-bound target fixed while a Spot body moves', async () => {
+		// The floor under the light is the only surface the forward ray meets.
+		const scenePick = (): SceneRenderedHit => ({
+			entityId: 'floor',
+			kind: 'entity',
+			distanceMeters: 2,
+			worldPoint: [0, 0, 0],
+			normal: [0, 1, 0]
+		});
+		const { facade, host } = await mounted({ entities: [spotAt([0, 2, 0])], scenePick });
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const mark = facade.marks().find((candidate) => candidate.id === 'light-body');
+		if (mark === undefined) throw new Error('the selected spot has no body glyph');
+		const start = mark.anchor;
+		const dragCss: [number, number] = [start[0] + 90, start[1] + 5];
+		const evaluationId = facade.evaluationId()!;
+		const dragRay = facade.pointerRay(
+			[dragCss[0] + RECT.left, dragCss[1] + RECT.top],
+			evaluationId
+		);
+		if (dragRay.kind !== 'ray') throw new Error('the body manipulation produced no pointer ray');
+		const t = (2 - dragRay.ray.origin[1]) / dragRay.ray.direction[1];
+		const expected: Vec3 = [
+			dragRay.ray.origin[0] + dragRay.ray.direction[0] * t,
+			2,
+			dragRay.ray.origin[2] + dragRay.ray.direction[2] * t
+		];
+		const before = host.history().depth;
+
+		facade.pointerIntent({ phase: 'down', css: start, evaluationId, handleId: 'light-body' });
+		facade.pointerIntent({ phase: 'move', css: dragCss, evaluationId });
+		facade.pointerIntent({ phase: 'up', css: dragCss, evaluationId });
+		await waitFor(() => host.history().depth === before + 1);
+		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		const moved = lightsOf(facade)[0]!;
+		expect(moved.position[0]).toBeCloseTo(expected[0], 6);
+		expect(moved.position[2]).toBeCloseTo(expected[2], 6);
+		const targetVector: Vec3 = [-moved.position[0], -moved.position[1], -moved.position[2]];
+		const targetLength = Math.hypot(...targetVector);
+		const toTarget = targetVector.map((component) => component / targetLength);
+		const forward = lightForward(moved.rotation);
+		expect(forward[0] * toTarget[0] + forward[1] * toTarget[1] + forward[2] * toTarget[2]).toBeCloseTo(1, 6);
+	});
+
+	it('stands off along the surface normal and leaves a pressed Spot Unlimited', async () => {
 		let pick = 0;
 		const scenePick = (): SceneRenderedHit | null => {
 			pick += 1;
@@ -483,9 +605,9 @@ describe('S3a light adapter pointer lifecycle', () => {
 		const light = lightsOf(facade)[0]!;
 		expect(light.position[0]).toBeCloseTo(1, 8);
 		expect(light.position[1]).toBeCloseTo(1, 8);
-		expect(Math.abs(light.position[2])).toBeCloseTo(0.02, 8);
-		if (!('range' in light)) throw new Error('the dragged spot did not write a range');
-		expect(light.range).toBeGreaterThan(3.4);
+		expect(Math.abs(light.position[2])).toBeCloseTo(0.1, 8);
+		// A press-drag aims the new Spot; it never invents a cutoff.
+		expect('range' in light).toBe(false);
 		const forward = lightForward(light.rotation);
 		const toTarget = [4 - light.position[0], 1 - light.position[1], 0 - light.position[2]];
 		const length = Math.hypot(...toTarget);
@@ -527,14 +649,37 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(light.range).not.toBeCloseTo(3, 5);
 	});
 
-	it('publishes Point Reach and Spot soft-edge controls', async () => {
-		const point = await mounted({ entities: [pointAt([0, 2, 0])] });
+	it('publishes Point Reach only when a range is authored, and Spot soft-edge controls', async () => {
+		const unlimited = await mounted({ entities: [pointAt([0, 2, 0])] });
+		const unlimitedReference = sceneEntityReference(
+			'light-point',
+			unlimited.facade.snapshot().domain.unitRevisions.scene
+		);
+		unlimited.facade.setSelection({
+			ordered: [{ reference: unlimitedReference }],
+			primary: unlimitedReference
+		});
+		expect(unlimited.facade.marks().map((mark) => mark.id)).not.toContain('light-reach');
+
+		const point = await mounted({ entities: [pointAt([0, 2, 0], 3)] });
 		const pointReference = sceneEntityReference(
 			'light-point',
 			point.facade.snapshot().domain.unitRevisions.scene
 		);
 		point.facade.setSelection({ ordered: [{ reference: pointReference }], primary: pointReference });
 		expect(point.facade.marks().map((mark) => mark.id)).toContain('light-reach');
+
+		// A sphere that cannot meet the datum keeps a screen-facing reach ring
+		// with the truthful tag, rather than disappearing.
+		const low = await mounted({ entities: [pointAt([0, 0.6, 0], 0.3)] });
+		const lowReference = sceneEntityReference(
+			'light-point',
+			low.facade.snapshot().domain.unitRevisions.scene
+		);
+		low.facade.setSelection({ ordered: [{ reference: lowReference }], primary: lowReference });
+		const lowReach = low.facade.marks().find((mark) => mark.id === 'light-reach');
+		expect(lowReach).toBeDefined();
+		expect(lowReach?.tag).toContain('does not reach the floor');
 
 		const spot = await mounted({
 			entities: [{ ...spotAt([0, 2, 0]), range: 3, penumbra: 0.35 } as SceneLightEntity]
@@ -555,9 +700,7 @@ describe('S3a light adapter pointer lifecycle', () => {
 				{ ...spotAt([2, 2, 0], 'light-hard'), angle: degrees(30), penumbra: 0.01 } as SceneLightEntity,
 				// A 60° beam keeps the 2% inner ring above the host's minimum projected
 				// ring size, so the test reaches the mark-visibility rule itself.
-				{ ...spotAt([4, 2, 0], 'light-soft-low'), angle: degrees(60), penumbra: 0.02 } as SceneLightEntity,
-				{ ...spotAt([6, 2, 0], 'light-soft-high'), angle: degrees(60), penumbra: 0.98 } as SceneLightEntity,
-				{ ...spotAt([8, 2, 0], 'light-soft-over'), angle: degrees(60), penumbra: 0.99 } as SceneLightEntity
+				{ ...spotAt([4, 2, 0], 'light-soft-low'), angle: degrees(60), penumbra: 0.02 } as SceneLightEntity
 			]
 		});
 		const markIds = (id: string): string[] => {
@@ -571,10 +714,31 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(markIds('light-beam-wide')).not.toContain('light-angle');
 		const hard = markIds('light-hard');
 		expect(hard).toContain('light-angle');
-		expect(hard).not.toContain('light-penumbra');
+		// The inner ring is the renderer's full-brightness edge; a hard beam puts
+		// it on the footprint ring, not at the cap radius's midpoint.
+		expect(hard).toContain('light-penumbra');
 		expect(markIds('light-soft-low')).toContain('light-penumbra');
-		expect(markIds('light-soft-high')).toContain('light-penumbra');
-		expect(markIds('light-soft-over')).not.toContain('light-penumbra');
+		const wide = markIds('light-beam-wide');
+		expect(wide).not.toContain('light-angle');
+		expect(wide).not.toContain('light-penumbra');
+		expect(facade.marks().find((mark) => mark.id === 'light-aim')?.tag).toContain(
+			'wider than the guide'
+		);
+		// The footprint is still drawn, at the 80° guide limit and in derived ink.
+		const wideGuide = facade.guides().find((guide) => guide.id === 'light-guide')!;
+		expect(wideGuide.derivedSegments.length).toBeGreaterThan(40);
+
+		// Rim and Inner-ring controls share one ring plane; their turn controls
+		// sit on opposite screen sides so a zero soft edge cannot stack them.
+		markIds('light-soft-low');
+		const angle = facade.marks().find((mark) => mark.id === 'light-angle')!;
+		const penumbra = facade.marks().find((mark) => mark.id === 'light-penumbra')!;
+		const phase = (mark: typeof angle): number[] | undefined => mark.descriptor.phase as number[] | undefined;
+		const a = phase(angle);
+		const p = phase(penumbra);
+		expect(a).toBeDefined();
+		expect(p).toBeDefined();
+		expect(a![0] * p![0] + a![1] * p![1] + a![2] * p![2]).toBeLessThan(0);
 	});
 
 	it('exposes persistent selection guides separately from candidate previews', async () => {
@@ -588,6 +752,61 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(facade.candidatePreviews().map((candidate) => candidate.id)).not.toContain('light-guide');
 	});
 
+	it('names the selected Directional dial and picks another light from its ring tick', async () => {
+		const aimed = (from: number, height: number) =>
+			rotationForLightDirection(directionForPresentationAngles(from, height));
+		const other: SceneLightEntity = {
+			...directionalAt([0, 2, 0]),
+			id: 'light-fill',
+			name: 'North fill',
+			rotation: aimed(135, 40)
+		};
+		const { facade } = await mounted({
+			entities: [{ ...directionalAt([0, 2, 0]), rotation: aimed(300, 45) }, other]
+		});
+		const select = (id: string): void => {
+			const reference = sceneEntityReference(
+				id,
+				facade.snapshot().domain.unitRevisions.scene
+			);
+			facade.setSelection({ ordered: [{ reference }], primary: reference });
+		};
+		select('light-sun');
+
+		const guide = facade.guides().find((candidate) => candidate.id === 'light-guide')!;
+		expect(guide.labels.map((label) => label.text)).toEqual(['Sun']);
+		// The other Directional light adds exactly one derived tick segment.
+		const tick = guide.derivedSegments.at(-1)!;
+		const midpoint: [number, number] = [
+			(tick[0][0] + tick[1][0]) / 2,
+			(tick[0][1] + tick[1][1]) / 2
+		];
+		expect(Math.hypot(midpoint[0] - guide.labels[0]!.css[0], midpoint[1] - guide.labels[0]!.css[1]))
+			.toBeGreaterThan(40);
+
+		// The route's click path resolves the same domain pick; the tick selects
+		// that light without a gesture, a mark or a write.
+		const resolved = facade.resolvePick({
+			css: midpoint,
+			coarse: false,
+			evaluationId: facade.evaluationId()!,
+			purpose: 'select',
+			tool: null
+		});
+		expect(resolved.kind).toBe('resolved');
+		if (resolved.kind === 'resolved') expect(resolved.hit.sourceId).toBe('light-fill');
+
+		// An unpressed hover on the tick names that light; leaving the tick clears it.
+		facade.idleHoverIntent({ phase: 'move', css: midpoint, evaluationId: facade.evaluationId()! });
+		expect(
+			facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels.map((label) => label.text)
+		).toContain('North fill');
+		facade.idleHoverIntent({ phase: 'cancel', css: midpoint, evaluationId: facade.evaluationId()! });
+		expect(
+			facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels.map((label) => label.text)
+		).not.toContain('North fill');
+	});
+
 	it('exposes directional azimuth and elevation controls', async () => {
 		const { facade, host } = await mounted({ entities: [directionalAt([0, 2, 0])] });
 		const reference = sceneEntityReference(
@@ -598,6 +817,11 @@ describe('S3a light adapter pointer lifecycle', () => {
 		const ids = facade.marks().map((mark) => mark.id);
 		expect(ids).toContain('light-azimuth');
 		expect(ids).toContain('light-elevation');
+		// The dial is a ring on the datum with a spoke and a quarter arc, not a
+		// box around the scene and not a forward ray from the light's position.
+		const dial = facade.guides().find((guide) => guide.id === 'light-guide')!;
+		expect(dial.segments.length).toBeGreaterThan(40);
+		expect(dial.derivedSegments.length).toBeGreaterThan(4);
 		const mark = facade.marks().find((candidate) => candidate.id.includes('light-azimuth'));
 		if (mark === undefined) throw new Error('the selected directional has no azimuth mark');
 		const beforeRotation = [...lightsOf(facade)[0]!.rotation];
@@ -651,10 +875,14 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(expected.kind).toBe('ray');
 		if (expected.kind !== 'ray') return;
 		expect(rays.length).toBeGreaterThan(0);
-		for (const ray of rays) {
-			expect(ray.origin).toEqual(expected.ray.origin);
-			expect(ray.direction).toEqual(expected.ray.direction);
-		}
+		// Other picks derive a Spot target from the light itself; the pointer's own
+		// hit path must still use the viewport-correct ray.
+		const pointerRays = rays.filter(
+			(ray) =>
+				ray.origin.every((value, index) => value === expected.ray.origin[index]) &&
+				ray.direction.every((value, index) => value === expected.ray.direction[index])
+		);
+		expect(pointerRays.length).toBeGreaterThan(0);
 	});
 
 	it('deletes a selected light through the keyboard and eraser through the same Card action', async () => {
@@ -692,6 +920,58 @@ describe('S3a light adapter pointer lifecycle', () => {
 		if (answer?.kind !== 'action') return;
 		await answer.action.run();
 		await waitFor(() => lightsOf(eraser.facade).length === 0);
+	});
+
+	it('publishes a session-only preview during a drag and commits its last value once', async () => {
+		const { facade, host, lightPreview } = await mounted({ entities: [spotAt([0, 2, 0])] });
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const body = facade.marks().find((mark) => mark.id === 'light-body');
+		if (body === undefined) throw new Error('the light has no body mark');
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history();
+		const dragCss: [number, number] = [body.anchor[0] + 90, body.anchor[1] + 15];
+
+		facade.pointerIntent({ phase: 'down', css: body.anchor, evaluationId, handleId: body.id });
+		facade.pointerIntent({ phase: 'move', css: dragCss, evaluationId });
+		const previewed = lightPreview.overrides.get('light-existing');
+		expect(previewed).toBeDefined();
+		expect(previewed!.position).not.toEqual([0, 2, 0]);
+		// A preview is not authored work: no history entry, no canonical change.
+		expect(host.history().depth).toBe(before.depth);
+		expect(host.history().position).toBe(before.position);
+
+		// Release resolves its own pointer position, not the previous move frame.
+		const releaseCss: [number, number] = [dragCss[0] + 40, dragCss[1] + 20];
+		facade.pointerIntent({ phase: 'up', css: releaseCss, evaluationId });
+		const released = lightPreview.overrides.get('light-existing');
+		expect(released).toBeDefined();
+		expect(released!.position).not.toEqual(previewed!.position);
+		await waitFor(() => host.history().depth === before.depth + 1);
+		await waitFor(() => !lightPreview.overrides.has('light-existing'));
+		const committed = lightsOf(facade)[0]!;
+		expect(committed.position).toEqual(released!.position);
+
+		// Esc/cancel restores the accepted light and writes nothing.
+		const afterMove = host.history();
+		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		const current = facade.marks().find((mark) => mark.id === 'light-body');
+		if (current === undefined) throw new Error('the moved light has no body mark');
+		facade.pointerIntent({ phase: 'down', css: current.anchor, evaluationId, handleId: current.id });
+		facade.pointerIntent({
+			phase: 'move',
+			css: [current.anchor[0] + 50, current.anchor[1]],
+			evaluationId
+		});
+		expect(lightPreview.overrides.has('light-existing')).toBe(true);
+		facade.pointerIntent({ phase: 'cancel', css: current.anchor, evaluationId });
+		expect(lightPreview.overrides.has('light-existing')).toBe(false);
+		expect(host.history().depth).toBe(afterMove.depth);
+		expect(host.history().position).toBe(afterMove.position);
+		expect(lightsOf(facade)[0]!.position).toEqual(committed.position);
 	});
 
 	it('reads Lit by from object bounds rather than an object centre', async () => {

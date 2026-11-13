@@ -47,12 +47,30 @@ export function createArtworkAuthoring(host: {
 	let ghost = $state.raw<SceneArtworkEntity | null>(null);
 	let importing = $state(false);
 	let replacing = $state(false);
-	let placing = false;
+	let placing = $state(false);
+	let refusal = $state<{ readonly message: string; readonly until: number } | null>(null);
+	let refusalTimer: ReturnType<typeof setTimeout> | null = null;
 	let request: AbortController | null = null;
 
+	function clearRefusal() {
+		if (refusalTimer !== null) clearTimeout(refusalTimer);
+		refusalTimer = null;
+		refusal = null;
+	}
+	function noteRefusal(message: string) {
+		clearRefusal();
+		const until = Date.now() + 4_000;
+		refusal = { message, until };
+		refusalTimer = setTimeout(() => {
+			if (refusal?.until !== until) return;
+			refusal = null;
+			refusalTimer = null;
+		}, 4_000);
+	}
 	function cancel() {
 		armed = null;
 		ghost = null;
+		clearRefusal();
 		request?.abort();
 		request = null;
 		importing = false;
@@ -62,6 +80,7 @@ export function createArtworkAuthoring(host: {
 		if (!host.canEdit()) return;
 		armed = entry;
 		ghost = null;
+		clearRefusal();
 		host.notice(`Place ${entry.name} on the Stage. Esc cancels.`);
 	}
 	async function importFiles(files: File[]) {
@@ -119,6 +138,8 @@ export function createArtworkAuthoring(host: {
 		return snap.guideId === null ? candidate : { ...candidate, position: snap.position };
 	}
 	function move(pose: ArtworkPose | null) {
+		if (placing) return;
+		clearRefusal();
 		const services = host.services();
 		if (!armed || !pose || !services) { ghost = null; return; }
 		ghost = snapped(services, ghostFor(armed, pose));
@@ -126,18 +147,35 @@ export function createArtworkAuthoring(host: {
 	async function place(pose: ArtworkPose | null) {
 		const services = host.services();
 		if (placing || !armed || !services || !host.canEdit()) return;
-		if (!pose) { host.notice('No placement is available at that point.'); return; }
+		if (!pose) {
+			ghost = null;
+			noteRefusal('No placement is available at that point.');
+			host.notice('');
+			return;
+		}
 		const entry = armed;
+		const candidate = snapped(services, ghostFor(entry, pose));
+		// Hold the exact pose the creator saw, under Placing…, until the one
+		// acceptance settles. A refusal keeps it in refusal ink instead of
+		// clearing the ghost before the message is read.
+		ghost = candidate;
 		placing = true;
+		clearRefusal();
 		try {
 			const id = crypto.randomUUID();
-			const candidate = snapped(services, ghostFor(entry, pose));
 			const result = await artworkCommand(services, ARTWORK_PLACE,
 				{ assetId: entry.assetId, position: candidate.position, rotation: candidate.rotation }, { create: id });
 			if (host.services() !== services) return;
-			if (result.kind === 'refused') { host.notice(result.message); return; }
+			if (result.kind === 'refused') {
+				noteRefusal(result.message);
+				host.notice('');
+				return;
+			}
 			if (armed === entry) cancel();
 			host.select(services, id);
+			host.notice('');
+		} catch (error) {
+			noteRefusal(error instanceof Error ? error.message : 'The Artwork could not be placed.');
 			host.notice('');
 		} finally { placing = false; }
 	}
@@ -200,5 +238,20 @@ export function createArtworkAuthoring(host: {
 		};
 	}
 
-	return { get armed() { return armed; }, get ghost() { return ghost; }, get importing() { return importing; }, get replacing() { return replacing; }, cancel, arm, importFiles, move, place, replaceFile, card };
+	return {
+		get armed() { return armed; },
+		get ghost() { return ghost; },
+		get importing() { return importing; },
+		get replacing() { return replacing; },
+		get placing() { return placing; },
+		/** The Stage chip for the armed Artwork placement lifecycle. */
+		get placementPrompt(): { readonly text: string; readonly refused: boolean } | null {
+			if (armed === null) return null;
+			if (placing) return { text: 'Placing…', refused: false };
+			if (refusal !== null) return { text: refusal.message, refused: true };
+			if (ghost !== null) return { text: 'Click to place · Esc cancels', refused: false };
+			return { text: 'Point at a wall', refused: false };
+		},
+		cancel, arm, importFiles, move, place, replaceFile, card
+	};
 }

@@ -23,7 +23,11 @@ import type {
 	StageCardWriterRecord
 } from '../stage/stage-facade';
 import type { StageMarkView } from '../stage/stage-handles';
+import { sceneEntityReference } from '../adapters/scene/placement';
+import { stageScene } from '../stage/stage-adapter-host';
+import type { Vec3 } from '@portfolio/project-model';
 import { armLight, type ArmedLightKind } from './light-tool.svelte';
+import { directionalShelfRotation } from './directional-dial';
 
 /** The exact Library feedback the material shelf has always given. */
 export const LOOK_MATERIAL_PICK_NOTICE =
@@ -76,6 +80,7 @@ export type LookAuthoringHost = {
 export function createLookAuthoring(host: LookAuthoringHost) {
 	let editOnPaper = $state(false);
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
+	let directionalWrite = $state.raw<StageAdapterServices | null>(null);
 
 	const environment = $derived(host.environment());
 	/** The environment the Stage and visitor preview actually render. */
@@ -119,8 +124,69 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 	}
 
 	/**
-	 * A Look shelf pick. The three light kinds arm the one light task; no source is
-	 * written until the Stage press is accepted, and S7's recipes stay absent.
+	 * Directional picks create immediately (O5): there is no body to place. The
+	 * light comes from behind the viewer's left shoulder, 50° in the sky.
+	 */
+	async function createDirectional(services: StageAdapterServices): Promise<void> {
+		if (directionalWrite === services) return;
+		directionalWrite = services;
+		try {
+			const snapshot = services.stage.snapshot();
+			const evaluation = services.stage.evaluation();
+			const eye = evaluation?.eye ?? ([0, 2, 6] as Vec3);
+			const target = evaluation?.pose.target ?? ([0, 1, 0] as Vec3);
+			const rotation = directionalShelfRotation([
+				target[0] - eye[0],
+				target[1] - eye[1],
+				target[2] - eye[2]
+			]);
+			const names = new Set(
+				stageScene(snapshot).entities
+					.filter((entity) => entity.kind === 'light')
+					.map((entity) => entity.name)
+			);
+			let name = 'Sun';
+			for (let index = 2; names.has(name); index += 1) name = `Sun ${index}`;
+			const id = `light-${crypto.randomUUID()}`;
+			const outcome = await services.authoring.accept({
+				version: 1,
+				kind: 'create-light',
+				operationId: crypto.randomUUID(),
+				expectedRevision: snapshot.acceptedRevision,
+				targets: [],
+				payload: {
+					light: 'directional',
+					name,
+					color: '#ffffff',
+					intensity: Math.PI,
+					castShadow: false,
+					position: [0, snapshot.domain.datumMeters, 0],
+					rotation: [...rotation]
+				},
+				capturedInputs: [],
+				allocatedIds: [{ kind: 'scene-entity', id }]
+			});
+			if (host.services() !== services) return;
+			if (outcome.kind === 'refused') {
+				host.onNotice(outcome.message);
+				return;
+			}
+			if (outcome.kind === 'installed') {
+				const reference = sceneEntityReference(
+					id,
+					services.stage.snapshot().domain.unitRevisions.scene
+				);
+				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+			}
+		} finally {
+			directionalWrite = null;
+			services.stage.notifySurfaceChange();
+		}
+	}
+
+	/**
+	 * A Look shelf pick. Point and Spot arm the one light task; Directional
+	 * creates at once. No source is written until the one acceptance host says so.
 	 */
 	function pickLibraryEntry(entryId: string): void {
 		if (!entryId.startsWith('light:')) return;
@@ -129,6 +195,10 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		const services = host.services();
 		if (services === null) {
 			host.onNotice('The Stage is still opening; try the light again in a moment.');
+			return;
+		}
+		if (kind === 'directional') {
+			void createDirectional(services);
 			return;
 		}
 		armLight(services.stage.snapshot().acceptedRevision.projectId, kind);
