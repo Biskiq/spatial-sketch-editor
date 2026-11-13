@@ -13,10 +13,19 @@
 > Everything else here stands. Panel ids cited below (`#point`, `#spot`, `#directional`,
 > `#placement`, `#advanced`) are from the earlier sheet; the current sheet's sections are `#stage`,
 > `#cards`, `#sky`, `#artwork` and `#shell`.
+>
+> **UX authority handoff (13 November 2026).** [`ux-design.html`](./ux-design.html) revision 4 is
+> the **authoritative T2 UX reference for subsequent implementation**. This file remains the
+> contract for the recovery PR #314 ships and its implementation record; it is not the brief for the
+> newer design. That design is delivered in **separate follow-up PRs**, with functional seams and
+> visual presentation separated: #314 does not adopt it, and no slice here is widened or reduced.
+> Deferred capabilities stay gated by their own dependencies (S1 for stored Sky fields, the grouping
+> slice, post-WebGPU for volumetrics); this file promises none of them early.
 
 **Status:** design accepted by the owner (all decisions in §2), amended by the PR #314 review
 (§2.1). Implemented on `t2-review-pass` in PR #314 (open, unmerged); §12 is the record. The newer
-design in `ux-design.html` revision 4 is not implemented; its §7.4 compares the two.
+design in `ux-design.html` revision 4 is delivered by follow-up PRs and is not part of #314; the
+sheet's §7.4 compares the two.
 **Companion:** [`ux-design.html`](./ux-design.html) — interactive sheet; panel ids are cited as `#id`.
 **Reviewed at:** `main` `ad1742b0`.
 **Evidence:** seven owner screenshots; the code cited inline; the focused light suites (5 files,
@@ -729,7 +738,11 @@ self-review, and `11f51fcb` fixes the Index's Lights facet, which filtered on th
 while light rows use the singular group and therefore always showed 0 rows. `9784d0cd` adds the
 finish-proposal section to `ux-design.html`; `0923555e` ships the extractable parts of it — the
 Instrument icon set on the Advanced group heads, the Card-foot group summary with text
-Duplicate/Delete and in-place delete confirmation, and refusal-red dashed Artwork ink.
+Duplicate/Delete and in-place delete confirmation, and refusal-red dashed Artwork ink. The final
+pass completes the last approved §5.5 marks — the dial's centre name chip and one clickable 6 px
+tick per other Directional light — through a generic guide label on the Stage contract, and points
+`LightCardFields` at the adapter host's `ShellIcon` export so the adapter boundary test is green
+again.
 
 **Verification evidence**
 
@@ -746,6 +759,12 @@ Duplicate/Delete and in-place delete confirmation, and refusal-red dashed Artwor
   `light-advanced`, `light-card-fields`, `artwork-wall-move`, `artwork-overlay`, `artwork-card`.
 - After `0923555e`: `light-card-fields.test.ts` and `editor-card-facts.test.ts` — 2 files, 30 tests
   passed; `npm run check` — 0 errors and the same 4 visitor a11y warnings.
+- After the final dial pass: `directional-dial.test.ts` and `light-adapter-lifecycle.test.ts` —
+  2 files, 27 tests passed; `light-card-fields.test.ts` and `light-presentation.test.ts` — 2 files,
+  34 tests passed; `npm run check` — 0 errors and the same 4 visitor a11y warnings;
+  `npm run test:arch -- --maxWorkers=2` — 24 files, 202 tests passed. This arch run is the first
+  green full lane after `0923555e`; that commit's adapter import of the shell icon path was the one
+  failure and is fixed here.
 - Browser pass on a local Vite session against `ux-design.html`: Spot shelf placement created one
   selected light and one undo entry, with the placement chip and cone ghost before the click and the
   Move/Height/Aim/Beam/Soft-edge marks after it; Point showed the lit placement ghost and, once the
@@ -759,9 +778,11 @@ Duplicate/Delete and in-place delete confirmation, and refusal-red dashed Artwor
 
 **Known gaps**
 
-- The Directional dial's centre name chip and other-Directional ticks with click selection are not
-  implemented; the approved marks are the ring, From spoke, quarter arc, travel arrows and the two
-  point beads. Two Directional lights are therefore indistinguishable on the dial in a browser.
+- The Directional dial now draws the selected light's name at its centre and one clickable 6 px
+  derived tick per other Directional light; a tick resolves through the same pick path as the Index
+  and selects that light without a gesture or a write. The approved ring, From spoke, quarter arc,
+  travel arrows and two point beads remain. A tick does not show its name on hover: the selected
+  name is the centre chip and the Index lists every light by name.
 - The Light Card foot now names the closed Advanced groups and owns Duplicate/Delete. Delete asks
   in the foot and opens no subject menu; a refusal still reports in the Card's existing status line.
 - A hover over a surface with no passing Artwork pose still uses the candidate ghost ink only. The

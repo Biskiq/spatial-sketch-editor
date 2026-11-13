@@ -254,6 +254,12 @@ export type StageGuideContribution = {
 	readonly segments: readonly (readonly [Vec3, Vec3])[];
 	/** Derived helpers (unbounded reach, stems) are drawn differently. */
 	readonly derivedSegments?: readonly (readonly [Vec3, Vec3])[];
+	/**
+	 * A guide's own label, e.g. the selected instrument's name at its centre.
+	 * It is never a permanent subject label: the host draws it in the live-tag
+	 * style, and only for as long as the guide itself is contributed.
+	 */
+	readonly labels?: readonly { readonly world: Vec3; readonly text: string }[];
 };
 
 /** One guide after the facade's single projection into Stage CSS space. */
@@ -262,6 +268,7 @@ export type StageGuideView = {
 	readonly role: StageGuideContribution['role'];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
 	readonly derivedSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
 };
 
 /**
@@ -2248,7 +2255,11 @@ export function createStageFacade(input: {
 						id: guide.id,
 						role: guide.role,
 						segments: segmentsOf(guide.segments),
-						derivedSegments: segmentsOf(guide.derivedSegments ?? [])
+						derivedSegments: segmentsOf(guide.derivedSegments ?? []),
+						labels: (guide.labels ?? []).flatMap((label) => {
+							const point = project(label.world);
+							return point === null ? [] : [{ css: point, text: label.text }];
+						})
 					}));
 				} catch {
 					return [];

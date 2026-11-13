@@ -5,6 +5,14 @@
 approved. **Look through** is a separate implementation PR (**S3b**) because it touches the one
 Camera authority.
 
+> **Design authority (13 November 2026).** For lighting presentation, the Light Cards, the
+> Environment control and their shell placement, the finalized
+> [`../gallery-ux-recovery/ux-design.html`](../gallery-ux-recovery/ux-design.html) (revision 4) is the
+> **authoritative T2 UX reference for subsequent implementation**. This plan stays the contract for
+> the S3 slice and for what PR #314 implements; the sheet's later design lands in separate follow-up
+> PRs, with functional seams and visual presentation separated. No deferred capability (Directional
+> retirement, Sky fields, groups, volumetrics) is pulled into S3 by this note.
+
 **Base:** `0ce09d70` — current `main`, the merge of PR #292 (P0 Look seams). PR #289 (the approved
 Look & Atmosphere baseline) is merged at `37ef36ba`; this branch is cut from `origin/main` after
 both.

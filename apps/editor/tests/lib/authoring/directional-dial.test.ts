@@ -5,11 +5,21 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+	directionalDialBearingPoint,
+	directionalDialCompanions,
 	directionalDialFrame,
+	directionalDialName,
+	directionalDialTick,
+	directionalDialTickHalfLength,
 	directionalShelfRotation,
-	DIRECTIONAL_DIAL_MIN_RADIUS_METERS
+	DIRECTIONAL_DIAL_MIN_RADIUS_METERS,
+	DIRECTIONAL_DIAL_NAME_LIMIT
 } from '$lib/authoring/look/directional-dial';
-import { presentationAngles } from '$lib/authoring/look/light-presentation';
+import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import {
+	directionForPresentationAngles,
+	presentationAngles
+} from '$lib/authoring/look/light-presentation';
 
 const viewport = { width: 1000, height: 800 };
 /** Plan-like projection: 100 px per metre, y ignored. */
@@ -60,6 +70,52 @@ describe('Directional dial frame', () => {
 			cameraRight: [1, 0, 0]
 		});
 		expect(frame.radius).toBe(DIRECTIONAL_DIAL_MIN_RADIUS_METERS);
+	});
+});
+
+describe('Directional dial companions', () => {
+	const aimedAt = (from: number, height: number) =>
+		rotationForLightDirection(directionForPresentationAngles(from, height));
+
+	it('lists every other Directional light by bearing, never the selected one', () => {
+		const companions = directionalDialCompanions(
+			[
+				{ id: 'sun', name: 'Sun', rotation: aimedAt(225, 50) },
+				{ id: 'fill', name: 'North fill', rotation: aimedAt(20, 30) }
+			],
+			'sun'
+		);
+		expect(companions.map((companion) => companion.id)).toEqual(['fill']);
+		expect(companions[0]!.from).toBeCloseTo(20, 6);
+	});
+
+	it('truncates the centre name to 18 characters including the ellipsis', () => {
+		expect(directionalDialName('Sun')).toBe('Sun');
+		const long = directionalDialName('Afternoon fill from the north window');
+		expect(long).toHaveLength(DIRECTIONAL_DIAL_NAME_LIMIT);
+		expect(long.endsWith('…')).toBe(true);
+	});
+
+	it('draws a short radial tick centred on the bearing ring', () => {
+		const point = directionalDialBearingPoint([0, 0, 0], 2, 90);
+		expect(point[0]).toBeCloseTo(2, 9);
+		expect(point[1]).toBe(0);
+		expect(point[2]).toBeCloseTo(0, 9);
+		const [start, end] = directionalDialTick({
+			center: [0, 0, 0],
+			radius: 2,
+			from: 90,
+			halfLength: 0.05
+		});
+		expect(start[0]).toBeCloseTo(1.95, 9);
+		expect(end[0]).toBeCloseTo(2.05, 9);
+		expect(start[2]).toBeCloseTo(0, 9);
+	});
+
+	it('keeps the tick at six CSS pixels whatever the ring scale', () => {
+		// 100 CSS px per metre: a 6 px tick is 0.03 m on each side.
+		expect(directionalDialTickHalfLength(100)).toBeCloseTo(0.03, 9);
+		expect(directionalDialTickHalfLength(0)).toBe(0.01);
 	});
 });
 

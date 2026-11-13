@@ -58,7 +58,12 @@ import {
 	spotTarget
 } from '../look/light-presentation';
 import {
+	directionalDialBearingPoint,
+	directionalDialCompanions,
 	directionalDialFrame,
+	directionalDialName,
+	directionalDialTick,
+	directionalDialTickHalfLength,
 	type DirectionalDialFrame
 } from '../look/directional-dial';
 import {
@@ -146,7 +151,11 @@ function lightById(snapshot: StageReadSnapshot, id: string): Light | null {
 	return isLight(entity) ? entity : null;
 }
 
-/** The light glyph under a Stage-local point, using the same 18 px target as selection. */
+/**
+ * The light glyph under a Stage-local point, using the same 18 px target as
+ * selection. A Directional light has no position and no glyph: it is selected
+ * from the Index, the shelf list or the dial's own tick, never from a body mark.
+ */
 function lightGlyphAt(
 	css: readonly [number, number],
 	context: StageAdapterContext
@@ -154,6 +163,7 @@ function lightGlyphAt(
 	const viewport = viewportCss(css, context);
 	const candidates: { readonly light: Light; readonly distance: number }[] = [];
 	for (const entity of stageScene(context.snapshot).entities.filter(isLight)) {
+		if (entity.light === 'directional') continue;
 		const projected = context.project(entity.position);
 		if (projected === null) continue;
 		const distance = Math.hypot(projected[0] - viewport[0], projected[1] - viewport[1]);
@@ -1087,6 +1097,61 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return union;
 			}
 
+			function dialCssPerMeter(adapterContext: StageAdapterContext, center: Vec3): number {
+				const forward = normalize(
+					sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye)
+				);
+				const right = normalize(cross(forward, [0, 1, 0]));
+				const anchor = adapterContext.project(center);
+				const sample = adapterContext.project(add(center, right));
+				if (anchor === null || sample === null) return 0;
+				return Math.hypot(sample[0] - anchor[0], sample[1] - anchor[1]);
+			}
+
+			/**
+			 * The dial's other Directional lights. The Index lists every light; the
+			 * ticks are how several Directionals stay distinguishable on the Stage.
+			 */
+			function dialCompanionsFor(light: Light, adapterContext: StageAdapterContext) {
+				const directional = stageScene(adapterContext.snapshot)
+					.entities.filter(isLight)
+					.filter((entity) => entity.light === 'directional');
+				return directionalDialCompanions(directional, light.id);
+			}
+
+			/**
+			 * A non-draggable tick under the pointer. Clicking it selects that light,
+			 * exactly as the Index does; it never starts a gesture or writes.
+			 */
+			function directionalTickAt(
+				css: readonly [number, number],
+				adapterContext: StageAdapterContext,
+				coarse: boolean
+			): { readonly light: Light; readonly distance: number } | null {
+				const selected = selectedLight(adapterContext);
+				if (selected === null || selected.light !== 'directional') return null;
+				const frame = gesture?.dialCenter !== undefined && gesture.dialRadius !== undefined
+					? { center: gesture.dialCenter, radius: gesture.dialRadius }
+					: dialFrameFor(adapterContext);
+				const viewport = viewportCss(css, adapterContext);
+				const hitRadius = coarse ? 22 : 11;
+				let nearest: { readonly light: Light; readonly distance: number } | null = null;
+				for (const companion of dialCompanionsFor(selected, adapterContext)) {
+					const entity = lightById(adapterContext.snapshot, companion.id);
+					if (entity === null) continue;
+					const projected = adapterContext.project(
+						directionalDialBearingPoint(frame.center, frame.radius, companion.from)
+					);
+					if (projected === null) continue;
+					const distance = Math.hypot(projected[0] - viewport[0], projected[1] - viewport[1]);
+					if (distance > hitRadius) continue;
+					if (nearest === null || distance < nearest.distance) {
+						nearest = { light: entity, distance };
+					}
+				}
+				return nearest;
+			}
+
 			function dialFrameFor(adapterContext: StageAdapterContext): DirectionalDialFrame {
 				const bounds = sceneBoundsUnion();
 				const rect = adapterContext.evaluation.rect;
@@ -1150,9 +1215,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			): {
 				readonly segments: readonly (readonly [Vec3, Vec3])[];
 				readonly derivedSegments: readonly (readonly [Vec3, Vec3])[];
+				readonly labels: readonly { readonly world: Vec3; readonly text: string }[];
 			} {
 				const segments: [Vec3, Vec3][] = [];
 				const derivedSegments: [Vec3, Vec3][] = [];
+				let labels: { readonly world: Vec3; readonly text: string }[] = [];
 				const datumMeters = adapterContext.snapshot.domain.datumMeters;
 				if (light.light === 'spot') {
 					const forward = normalize(lightForward(light.rotation));
@@ -1291,8 +1358,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const side = scale(horizontal, frame.radius * 0.06);
 						segments.push([end, add(back, side)], [end, sub(back, side)]);
 					}
+					// Other Directional lights: one 6 px derived tick on the ring at
+					// each one's own bearing, never an arrow or a drag.
+					const tickHalfLength = directionalDialTickHalfLength(
+						dialCssPerMeter(adapterContext, frame.center)
+					);
+					for (const companion of dialCompanionsFor(light, adapterContext)) {
+						derivedSegments.push(
+							directionalDialTick({
+								center: frame.center,
+								radius: frame.radius,
+								from: companion.from,
+								halfLength: tickHalfLength
+							})
+						);
+					}
+					// The dial always names its selected light at the centre; the Index
+					// still lists every light by name.
+					labels = [{ world: frame.center, text: directionalDialName(light.name) }];
 				}
-				return { segments, derivedSegments };
+				return { segments, derivedSegments, labels };
 			}
 
 			function duplicateActionFor(light: Light): StageCardAction {
@@ -1374,7 +1459,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					worldPoint: entity.position
 				})),
 				pick(candidate, live) {
-					const nearest = lightGlyphAt(candidate.css, live);
+					const nearest =
+						lightGlyphAt(candidate.css, live) ??
+						directionalTickAt(candidate.css, live, candidate.coarse === true);
 					if (nearest === null) return null;
 					return {
 						hit: {
@@ -1622,7 +1709,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							id: 'light-guide',
 							role: 'selection' as const,
 							segments: guide.segments,
-							derivedSegments: guide.derivedSegments
+							derivedSegments: guide.derivedSegments,
+							labels: guide.labels
 						}
 					];
 				},

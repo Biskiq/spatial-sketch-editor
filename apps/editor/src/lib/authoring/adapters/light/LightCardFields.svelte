@@ -21,7 +21,7 @@
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import type { SceneLightEntity, Vec3 } from '@portfolio/project-model';
-	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
+	import { ShellIcon } from '$lib/authoring/stage/stage-adapter-host';
 	import { acceptFormCommand } from '../scene/form-card-command';
 	import {
 		brightnessStopForIntensity,

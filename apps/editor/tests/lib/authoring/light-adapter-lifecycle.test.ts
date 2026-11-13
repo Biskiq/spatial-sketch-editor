@@ -12,6 +12,7 @@ import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-mod
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { armedLightKind, armLight } from '$lib/authoring/look/light-tool.svelte';
 import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import { directionForPresentationAngles } from '$lib/authoring/look/light-presentation';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
@@ -699,6 +700,51 @@ describe('S3a light adapter pointer lifecycle', () => {
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
 		expect(facade.guides().map((guide) => guide.id)).toContain('light-guide');
 		expect(facade.candidatePreviews().map((candidate) => candidate.id)).not.toContain('light-guide');
+	});
+
+	it('names the selected Directional dial and picks another light from its ring tick', async () => {
+		const aimed = (from: number, height: number) =>
+			rotationForLightDirection(directionForPresentationAngles(from, height));
+		const other: SceneLightEntity = {
+			...directionalAt([0, 2, 0]),
+			id: 'light-fill',
+			name: 'North fill',
+			rotation: aimed(135, 40)
+		};
+		const { facade } = await mounted({
+			entities: [{ ...directionalAt([0, 2, 0]), rotation: aimed(300, 45) }, other]
+		});
+		const select = (id: string): void => {
+			const reference = sceneEntityReference(
+				id,
+				facade.snapshot().domain.unitRevisions.scene
+			);
+			facade.setSelection({ ordered: [{ reference }], primary: reference });
+		};
+		select('light-sun');
+
+		const guide = facade.guides().find((candidate) => candidate.id === 'light-guide')!;
+		expect(guide.labels.map((label) => label.text)).toEqual(['Sun']);
+		// The other Directional light adds exactly one derived tick segment.
+		const tick = guide.derivedSegments.at(-1)!;
+		const midpoint: [number, number] = [
+			(tick[0][0] + tick[1][0]) / 2,
+			(tick[0][1] + tick[1][1]) / 2
+		];
+		expect(Math.hypot(midpoint[0] - guide.labels[0]!.css[0], midpoint[1] - guide.labels[0]!.css[1]))
+			.toBeGreaterThan(40);
+
+		// The route's click path resolves the same domain pick; the tick selects
+		// that light without a gesture, a mark or a write.
+		const resolved = facade.resolvePick({
+			css: midpoint,
+			coarse: false,
+			evaluationId: facade.evaluationId()!,
+			purpose: 'select',
+			tool: null
+		});
+		expect(resolved.kind).toBe('resolved');
+		if (resolved.kind === 'resolved') expect(resolved.hit.sourceId).toBe('light-fill');
 	});
 
 	it('exposes directional azimuth and elevation controls', async () => {

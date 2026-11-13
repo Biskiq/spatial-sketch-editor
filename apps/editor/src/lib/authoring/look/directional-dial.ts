@@ -8,11 +8,15 @@
  */
 import type { Vec3 } from '@portfolio/project-model';
 import { rotationForLightDirection } from './light-aim';
-import { directionForPresentationAngles } from './light-presentation';
+import { directionForPresentationAngles, presentationAngles } from './light-presentation';
 
 export const DIRECTIONAL_DIAL_INSET_PX = 96;
 export const DIRECTIONAL_DIAL_RADIUS_PX = 72;
 export const DIRECTIONAL_DIAL_MIN_RADIUS_METERS = 0.5;
+/** Another Directional light's tick on the ring, in CSS pixels. */
+export const DIRECTIONAL_DIAL_TICK_PX = 6;
+/** The centre name chip's limit, including its ellipsis. */
+export const DIRECTIONAL_DIAL_NAME_LIMIT = 18;
 
 export type DirectionalDialFrame = {
 	readonly center: Vec3;
@@ -23,6 +27,85 @@ function normalize(value: Vec3): Vec3 | null {
 	const length = Math.hypot(value[0], value[1], value[2]);
 	if (!(length > 1e-9)) return null;
 	return [value[0] / length, value[1] / length, value[2] / length];
+}
+
+function add(left: Vec3, right: Vec3): Vec3 {
+	return [left[0] + right[0], left[1] + right[1], left[2] + right[2]];
+}
+
+function scale(value: Vec3, amount: number): Vec3 {
+	return [value[0] * amount, value[1] * amount, value[2] * amount];
+}
+
+function sub(left: Vec3, right: Vec3): Vec3 {
+	return [left[0] - right[0], left[1] - right[1], left[2] - right[2]];
+}
+
+/** Another Directional light the dial marks on its bearing ring. */
+export type DirectionalDialCompanion = {
+	readonly id: string;
+	readonly name: string;
+	/** Bearing toward the source, in degrees. */
+	readonly from: number;
+};
+
+/**
+ * The other Directional lights, by bearing. The selected light is excluded: its
+ * own bead and spoke already state where it comes from. Ticks never drag.
+ */
+export function directionalDialCompanions(
+	lights: readonly { readonly id: string; readonly name: string; readonly rotation: Vec3 }[],
+	selectedId: string
+): readonly DirectionalDialCompanion[] {
+	return lights
+		.filter((light) => light.id !== selectedId)
+		.map((light) => ({
+			id: light.id,
+			name: light.name,
+			from: presentationAngles(light.rotation).from
+		}));
+}
+
+/** The selected light's name chip text, truncated to the approved limit. */
+export function directionalDialName(name: string): string {
+	const trimmed = name.trim();
+	if (trimmed.length <= DIRECTIONAL_DIAL_NAME_LIMIT) return trimmed;
+	return `${trimmed.slice(0, DIRECTIONAL_DIAL_NAME_LIMIT - 1)}…`;
+}
+
+/** The bearing ring's point for a source bearing, on the datum. */
+export function directionalDialBearingPoint(
+	center: Vec3,
+	radius: number,
+	from: number
+): Vec3 {
+	const radians = (from * Math.PI) / 180;
+	return add(center, scale([Math.sin(radians), 0, -Math.cos(radians)], radius));
+}
+
+/**
+ * A short radial tick centred on the bearing ring at `from`. `halfLength` is in
+ * metres, derived from the ring's own CSS scale so the tick keeps its 6 px size.
+ */
+export function directionalDialTick(input: {
+	readonly center: Vec3;
+	readonly radius: number;
+	readonly from: number;
+	readonly halfLength: number;
+}): [Vec3, Vec3] {
+	const radians = (input.from * Math.PI) / 180;
+	const direction: Vec3 = [Math.sin(radians), 0, -Math.cos(radians)];
+	const point = directionalDialBearingPoint(input.center, input.radius, input.from);
+	return [
+		sub(point, scale(direction, input.halfLength)),
+		add(point, scale(direction, input.halfLength))
+	];
+}
+
+/** The world half-length that projects `DIRECTIONAL_DIAL_TICK_PX`. */
+export function directionalDialTickHalfLength(cssPerMeter: number): number {
+	if (!(cssPerMeter > 0.5)) return 0.01;
+	return Math.max(0.005, DIRECTIONAL_DIAL_TICK_PX / 2 / cssPerMeter);
 }
 
 function pointOnDatum(

@@ -185,6 +185,13 @@
 		<g class="guide" data-guide-id={guide.id} data-guide-role={guide.role}>
 			{#if guide.segments.length > 0}<path class="guide-edge" d={candidatePath(guide.segments)} />{/if}
 			{#if guide.derivedSegments.length > 0}<path class="guide-edge derived" d={candidatePath(guide.derivedSegments)} />{/if}
+			{#each guide.labels as label, index (`${guide.id}:label:${index}`)}
+				{@const width = tagWidth(label.text)}
+				<g class="tag guide-tag" transform={`translate(${label.css[0] + 8} ${label.css[1] - 26})`}>
+					<rect {width} height="17" rx="3" />
+					<text x="6" y="12">{label.text}</text>
+				</g>
+			{/each}
 		</g>
 	{/each}
 	{#each candidates as candidate (candidate.id)}
