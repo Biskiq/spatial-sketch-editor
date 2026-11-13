@@ -19,7 +19,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { Scene as ThreeScene, type Camera } from 'three';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
-import { createEmptyLayoutRoomRegistry, type RuntimeScene } from '@portfolio/project-model';
+import type { RuntimeScene } from '@portfolio/project-model';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
 import { createCameraSession } from '$lib/authoring/stage/camera-session';
 import { createPaperScene } from '$lib/authoring/stage/paper-scene';
@@ -266,7 +266,6 @@ describe('E0 mounted Stage shell counting', () => {
 			props: {
 				geometry: prepared.geometry,
 				scene,
-				rooms: createEmptyLayoutRoomRegistry(),
 				modelUrls: null,
 				formRenderRevision: 0
 			}

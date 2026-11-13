@@ -79,33 +79,37 @@ describe('I3 precondition (b): the Scene codec refuses roomId', () => {
 	});
 });
 
-describe('I3 precondition (c): nothing populates a Room registry', () => {
-	it('the prepared runtime registry is empty and refuses room lookups', async () => {
+describe('I3 final state: the Room frame and its registry are gone', () => {
+	it('the prepared runtime carries no Room registry', async () => {
 		const fixture = await buildCountingSceneFixture();
 		const prepared = prepareUnitRuntime(fixture.project);
 		if (prepared.kind !== 'ready') throw new Error(`fixture did not prepare: ${prepared.kind}`);
-		expect(prepared.rooms.entries).toEqual([]);
-		expect(prepared.rooms.has('anything')).toBe(false);
-		expect(() => prepared.rooms.getRequired('anything')).toThrow();
+		expect('rooms' in prepared).toBe(false);
 	});
 
-	it('the empty constructor has one production caller, and no other module builds a registry', () => {
+	it('no product source names the Room registry, the Room frame type or a Scene roomId', () => {
 		const productionFiles = [
 			...listSourceFiles(EDITOR_SRC),
 			...readdirSync(PACKAGES_ROOT).flatMap((name) => listSourceFiles(path.join(PACKAGES_ROOT, name, 'src')))
 		].filter((file) => /\.(ts|svelte)$/.test(file));
-		const callers: string[] = [];
-		const implementers: string[] = [];
+		const offenders: string[] = [];
 		for (const file of productionFiles) {
 			const source = readFileSync(file, 'utf8');
-			const relative = relativeToRepo(file);
-			if (/createEmptyLayoutRoomRegistry\(/.test(source) && !/export function createEmptyLayoutRoomRegistry/.test(source)) {
-				callers.push(relative);
+			if (/\bLayoutRoomRegistry\b|createEmptyLayoutRoomRegistry|\bcross_room_cluster_member\b/.test(source)) {
+				offenders.push(relativeToRepo(file));
 			}
-			// A second implementation of the registry shape would populate `byId`.
-			if (/\bbyId\.set\(/.test(source) && /LayoutRoomRegistry/.test(source)) implementers.push(relative);
 		}
-		expect(callers).toEqual(['packages/project-model/src/units/runtime.ts']);
-		expect(implementers).toEqual([]);
+		expect(offenders).toEqual([]);
+	});
+
+	it('the Scene product types carry no roomId field', () => {
+		const source = readFileSync(path.join(PACKAGES_ROOT, 'project-model/src/scene.ts'), 'utf8');
+		expect(source).not.toMatch(/\broomId\??:/);
+		expect(source).not.toMatch(/\bRoomId\b/);
+	});
+
+	it('the visitor shell builds no Room-owned wall or portal from a Room', () => {
+		const shell = readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorLayoutShell.svelte'), 'utf8');
+		expect(shell).not.toMatch(/buildRoomWallMesh|room\.walls|room\.openings|VisitorWallFailure/);
 	});
 });

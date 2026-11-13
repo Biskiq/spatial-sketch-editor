@@ -9,7 +9,6 @@ import { PCFShadowMap } from 'three';
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { NavigationGraph } from '@portfolio/project-model';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import type { ExecutionProgram, ExperienceInterpreterOptions } from '@portfolio/project-model/units';
 	import { formatGuideTime } from '@portfolio/camera-core';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
@@ -18,7 +17,6 @@ import { PCFShadowMap } from 'three';
 	import VisitorTimeline from './VisitorTimeline.svelte';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
-	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
 	import VisitorEntities from './VisitorEntities.svelte';
 	import VisitorLayoutShell from './VisitorLayoutShell.svelte';
@@ -28,7 +26,6 @@ import { PCFShadowMap } from 'three';
 	let {
 		scene,
 		geometry,
-		rooms,
 		graph,
 		program = null,
 		experienceOptions = null,
@@ -60,7 +57,6 @@ import { PCFShadowMap } from 'three';
 	}: {
 		scene: RuntimeScene;
 		geometry: CompiledLayoutGeometry;
-		rooms: LayoutRoomRegistry;
 		graph: NavigationGraph;
 		/** The lowered Experience program. Absent means no guided Experience. */
 		program?: ExecutionProgram | null;
@@ -377,14 +373,6 @@ import { PCFShadowMap } from 'three';
 		};
 	});
 
-	const presentation = $derived.by(() => {
-		const record: Record<string, typeof neutralVisitorRoomPresentation> = {};
-		for (const room of geometry.rooms) {
-			record[room.roomId] = neutralVisitorRoomPresentation;
-		}
-		return record;
-	});
-
 	const isZeroNode = $derived(visitorState === null || visitorState.program.stops.length === 0);
 	const canvasDescription = $derived(
 		mode === 'public'
@@ -459,10 +447,9 @@ import { PCFShadowMap } from 'three';
 					onLook={(value) => (lookingAround = value)}
 				/>
 			{/if}
-			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
+			<VisitorLayoutShell {geometry} textureScope={textureScope} />
 			<VisitorEntities
 				scene={scene}
-				{rooms}
 				{textureScope}
 				{artworkScope}
 				{modelUrls}

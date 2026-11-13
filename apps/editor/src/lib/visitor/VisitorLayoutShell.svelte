@@ -1,14 +1,9 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
-	import { Shape, type BufferGeometry, type Material } from 'three';
+	import { Shape } from 'three';
 	import type { LayoutVec2 } from '@portfolio/layout-core';
-	import type { CompiledLayoutGeometry, CompiledRoom, LayoutBounds3 } from '@portfolio/layout-core';
-	import type { VisitorRoomPresentation } from './room-presentation';
+	import type { CompiledLayoutGeometry, CompiledRoom } from '@portfolio/layout-core';
 	import { DEFAULT_FLOOR_COLOR, neutralVisitorRoomPresentation } from './room-presentation';
-	import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
-	import { p2311Measure } from '@portfolio/layout-core';
-	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
-	import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
@@ -18,14 +13,12 @@
 
 	let {
 		geometry,
-		presentation,
 		textureScope = null,
 		plinth = true,
 		doorFrames = true,
 		hiddenWallIds = []
 	}: {
 		geometry: CompiledLayoutGeometry;
-		presentation: Readonly<Record<string, VisitorRoomPresentation>>;
 		textureScope?: TextureLoadScope | null;
 		/**
 		 * The visitor's dark ground plinth. A host with its own ground surface (the
@@ -46,10 +39,6 @@
 		for (const point of points.slice(1)) shape.lineTo(point[0], mapZ(point));
 		shape.closePath();
 		return shape;
-	}
-
-	function roomPresentation(roomId: string) {
-		return presentation[roomId] ?? neutralVisitorRoomPresentation;
 	}
 
 	const floorElevationById = $derived(
@@ -85,18 +74,6 @@
 		roomShapes.set(room.roomId, next);
 		return next;
 	}
-
-	type AdaptedRoom =
-		| {
-				roomId: string;
-				ok: true;
-				geometry: BufferGeometry;
-				materials: Material[];
-				dispose: () => void;
-		  }
-		| { roomId: string; ok: false; bounds: LayoutBounds3 };
-
-	let adaptedRooms = $state<AdaptedRoom[]>([]);
 
 	/**
 	 * The retained Wall representation: one imperative subtree for every compiled
@@ -139,60 +116,9 @@
 		for (const roomId of roomShapes.keys()) if (!present.has(roomId)) roomShapes.delete(roomId);
 	});
 
-	// The room-derived mesh path is retained for the legacy room-owned shape; a
-	// format-6 Room carries no Room-owned wall detail (its Walls render through
-	// the canonical physical-Wall representation above), so this builds nothing.
-	// The representation build is one harness-gated span (T1.P02.S06 stage
-	// attribution); `p2311Measure` is inert without the work observer.
-	$effect(() => p2311Measure('layout-representation', () => {
-		// A wall-first Room carries no Room-owned wall detail (its Walls render
-		// through the canonical physical-Wall representation), so this path builds
-		// nothing — and must not create a material factory per compile just to
-		// dispose it again. The legacy path keeps its own factory when a Room does
-		// carry wall detail.
-		if (!geometry.rooms.some((room) => room.walls.length > 0)) {
-			adaptedRooms = [];
-			return;
-		}
-		const materials = createVisitorWallMaterialFactory((roomId) => roomPresentation(roomId).color);
-		const built: AdaptedRoom[] = geometry.rooms.flatMap((room) => {
-			if (room.walls.length === 0) return [];
-			const result = buildRoomWallMesh(room, { classifySurface: () => 'wall' });
-			if (!result.mesh) {
-				return [{ roomId: room.roomId, ok: false, bounds: room.bounds3 } as AdaptedRoom];
-			}
-			const adapted = toWallBufferGeometry(result.mesh, materials.factory);
-			return [{ roomId: room.roomId, ok: true, ...adapted } as AdaptedRoom];
-		});
-		adaptedRooms = built;
-		return () => {
-			for (const room of built) if (room.ok) room.dispose();
-			materials.dispose();
-		};
-	}));
-
 	/** A straight frame only fits a rectangular door; an arch keeps its bare reveal. */
 	function isFramedDoor(opening: { kind: string; profile: string }): boolean {
 		return doorFrames && opening.kind === 'door' && opening.profile === 'rectangular';
-	}
-
-	function adaptedFor(roomId: string): AdaptedRoom | undefined {
-		return adaptedRooms.find((room) => room.roomId === roomId);
-	}
-
-	function failureBox(bounds: LayoutBounds3) {
-		return {
-			position: [
-				(bounds.min[0] + bounds.max[0]) / 2,
-				(bounds.min[1] + bounds.max[1]) / 2,
-				(bounds.min[2] + bounds.max[2]) / 2
-			] as [number, number, number],
-			size: [
-				bounds.max[0] - bounds.min[0],
-				bounds.max[1] - bounds.min[1],
-				bounds.max[2] - bounds.min[2]
-			] as [number, number, number]
-		};
 	}
 </script>
 
@@ -201,8 +127,6 @@
 		<GroundPlinth />
 	{/if}
 	{#each geometry.rooms as room (room.roomId)}
-		{@const colors = roomPresentation(room.roomId)}
-		{@const adapted = adaptedFor(room.roomId)}
 		{@const shapes = shapesFor(room)}
 		<T.Group name={`VisitorRoom:${room.roomId}`}>
 			<T.Mesh
@@ -235,37 +159,6 @@
 				<T.ShapeGeometry args={[shapes.ceiling]} />
 				<MuseumMaterial materialId="plaster-warm" surfaceSize={[8, 8]} tint="#111018" textures="off" scope={textureScope} />
 			</T.Mesh>
-
-			{#if adapted?.ok}
-				<T.Mesh
-					name={`VisitorWall:${room.roomId}`}
-					geometry={adapted.geometry}
-					material={adapted.materials}
-					castShadow
-					receiveShadow
-				/>
-			{:else if adapted?.ok === false}
-				<T.Mesh
-					name={`VisitorWallFailure:${room.roomId}`}
-					position={failureBox(adapted.bounds).position}
-				>
-					<T.BoxGeometry args={failureBox(adapted.bounds).size} />
-					<T.MeshBasicMaterial color="#ff2fd4" wireframe />
-				</T.Mesh>
-			{/if}
-
-			{#each room.walls as wall (wall.segmentId)}
-				{#each wall.openings.filter(isFramedDoor) as opening (opening.openingId)}
-					<RoomPortal
-						position={[opening.center.point[0], room.floorElevation + opening.sillHeight, opening.center.point[1]]}
-						rotation={[0, opening.center.yaw, 0]}
-						width={opening.width}
-						height={opening.height}
-						wallThickness={wall.thickness}
-						color={colors.accentColor}
-					/>
-				{/each}
-			{/each}
 		</T.Group>
 	{/each}
 	<!--

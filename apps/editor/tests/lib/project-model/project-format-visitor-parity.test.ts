@@ -166,7 +166,7 @@ describe('P23.0 stage 4 — current-format preparation discipline', () => {
 		const prepared = prepareUnitRuntime(structuredClone(payload));
 		if (prepared.kind === 'rejected') throw new Error('expected ready');
 		expect(prepared.runtimeScene.navigationNodes.map((node) => node.id)).toEqual(['node-1']);
-		expect(prepared.rooms.entries).toEqual([]);
+		expect('rooms' in prepared).toBe(false);
 	});
 
 	it('rejects an unknown root key through the canonical validator, before any state is installed', async () => {

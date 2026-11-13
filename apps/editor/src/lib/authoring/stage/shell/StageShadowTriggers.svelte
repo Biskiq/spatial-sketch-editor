@@ -33,20 +33,18 @@
 	 */
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
+	import type { RuntimeScene } from '@portfolio/project-model';
 
 	import { createShadowInvalidation, needsPerFrameShadows } from '$lib/render/shadow-invalidation';
 
 	let {
 		geometry,
 		scene,
-		rooms,
 		modelUrls = null,
 		formRenderRevision
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
-		rooms: LayoutRoomRegistry;
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Changes when a lazy form renderer has attached its mesh to the scene. */
 		formRenderRevision: number;
@@ -62,7 +60,7 @@
 		canvas: renderer.domElement
 	});
 
-	const sources = $derived([geometry, scene, rooms, modelUrls, formRenderRevision] as const);
+	const sources = $derived([geometry, scene, modelUrls, formRenderRevision] as const);
 	const asynchronousCaster = $derived(needsPerFrameShadows(scene.entities));
 
 	$effect(() => {

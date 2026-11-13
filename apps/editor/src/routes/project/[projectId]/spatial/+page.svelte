@@ -4991,7 +4991,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						sourceContentId={boot.snapshot.sourceContentId}
 						layoutRevision={boot.snapshot.domain.unitRevisions.layout}
 						scene={boot.snapshot.domain.scene}
-						rooms={boot.snapshot.domain.rooms}
 						{evaluation}
 						{ghosts}
 						{modelUrls}
@@ -5305,7 +5304,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<Surface
 						geometry={read.geometry}
 						scene={read.scene}
-						rooms={read.rooms}
 						graph={read.graph}
 						program={entry === null ? null : entry.kind === 'presentations' ? (entry.program ?? null)
 								: entry.program}

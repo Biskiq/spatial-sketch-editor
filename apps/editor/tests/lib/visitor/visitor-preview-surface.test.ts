@@ -23,7 +23,7 @@ async function mounted(mode: 'preview' | 'public' = 'preview', startMode: 'guide
 	if (lowered.kind !== 'lowered') throw Error(lowered.message);
 	const target = document.createElement('div'); document.body.append(target);
 	const component = mount(VisitorPreviewSurface, { target, props: {
-		scene: ready.runtimeScene, geometry: ready.geometry, rooms: ready.rooms, graph: ready.graph,
+		scene: ready.runtimeScene, geometry: ready.geometry, graph: ready.graph,
 		program: lowered.program, experienceOptions: { runId: 'run-surface', runEpoch: 1, sourceContentId, transitions: lowered.transitions },
 		resolveTexture: () => null, startMode, mode
 	} });

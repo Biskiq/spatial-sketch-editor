@@ -123,7 +123,6 @@ function domainOf(
 		layoutLevelId: envelope.units.layout.data.floor.id,
 		datumMeters: layoutDatumMeters(runtime.geometry),
 		scene: runtime.runtimeScene,
-		rooms: runtime.rooms,
 		graph: runtime.graph,
 		unitRevisions,
 		warnings: runtime.issues.filter((issue) => issue.severity === 'warning'),
