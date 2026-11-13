@@ -63,7 +63,9 @@ parallel sessions; order inside a lane is fixed. If the milestone is cut short, 
 I1, G2, I2 + G1, R1, R2a, R3. R7 (instancing and batching) is gated and expected to be abandoned
 unless measurement shows the frame is draw-bound.
 
-## Owner-approved decisions D1–D5 (2026-11-13)
+## Owner decisions
+
+**D1–D5 ratified by the owner on 2026-11-13.**
 
 The owner approves the recommendations below as the execution policy for this milestone. These decisions replace the undecided defaults from the planning draft. They authorise the plan and the bounded measurements, **not a blanket merge or implementation waiver**: claim each E/X packet separately and respect its tests, rollback, Tier 2 gates and external prerequisites. No code optimisation is deemed measured or accepted by this approval.
 
