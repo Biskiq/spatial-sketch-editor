@@ -36,7 +36,7 @@ import {
 	type ExperienceUnitPayload,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { compileWallFirstLayoutGeometry, LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometryFresh, LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { DEFAULT_STARTER_TEMPLATE } from '$lib/authoring/stage/starter-gallery';
 import {
@@ -172,7 +172,7 @@ describe('source admission', () => {
 		// warnings, so asserting only "they are warnings" would hold on an empty list,
 		// and the blocking half of the partition is pinned non-vacuously by the
 		// `diagnostics` case below.
-		const independent = compileWallFirstLayoutGeometry(stageLayout(snapshot));
+		const independent = compileWallFirstLayoutGeometryFresh(stageLayout(snapshot));
 		const expectedWarnings = independent.issues.filter((issue) => issue.severity === 'warning');
 		expect(domain.warnings.map((issue) => issue.code).sort()).toEqual(
 			expectedWarnings.map((issue) => issue.code).sort()

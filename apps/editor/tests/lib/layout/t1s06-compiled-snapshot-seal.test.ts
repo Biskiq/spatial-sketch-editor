@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
- compileWallFirstLayoutGeometry, createWallSamplingDerivation, createLayoutCompileSession, ensureLayoutWorldIndex, indexedCompiledWall,
+ compileWallFirstLayoutGeometryFresh, createWallSamplingDerivation, createLayoutCompileSession, ensureLayoutWorldIndex, indexedCompiledWall,
  planRigidWallMove, sealCompiledLayoutSnapshot, setWorkObserver, withLayoutCompileSession
 } from '@portfolio/layout-core';
 import { immutableF4Data } from '@portfolio/project-model';
@@ -56,7 +56,7 @@ describe('Stage sealing of persistent generated snapshots', () => {
    expect(after.floors[0]!.cacheKey).toBeTruthy();
    expect(counts.get('cache-key:deferred-floor-built')).toBe(1);
    // A genuine full-output consumer still receives exactly the canonical key.
-   expect(after.floors[0]!.cacheKey).toBe(compileWallFirstLayoutGeometry(plan.document).geometry.floors[0]!.cacheKey);
+   expect(after.floors[0]!.cacheKey).toBe(compileWallFirstLayoutGeometryFresh(plan.document).geometry.floors[0]!.cacheKey);
   } finally { setWorkObserver(old); }
  });
 
@@ -69,7 +69,7 @@ describe('Stage sealing of persistent generated snapshots', () => {
   const second = session.compile(document, wrapper);
   expect(requests).toBeGreaterThan(before);
   expect(JSON.stringify(second) === JSON.stringify(first)).toBe(true);
-  expect(JSON.stringify(session.compile(document)) === JSON.stringify(compileWallFirstLayoutGeometry(document))).toBe(true);
+  expect(JSON.stringify(session.compile(document)) === JSON.stringify(compileWallFirstLayoutGeometryFresh(document))).toBe(true);
   const originalSamples = canonical.samples;
   canonical.samples = (...args) => { requests += 1; return originalSamples(...args); };
   session.compile(document, canonical); const modifiedBefore = requests;

@@ -774,7 +774,12 @@ export type StageAdapterBinding = {
 		readonly kind: string;
 		readonly targetRef: PlanSourceRef | null;
 	}) => StageInstrumentContent | null;
-	/** Ends this binding (listeners, buffers, callbacks). Run exactly once. */
+	/**
+	 * Ends this binding (listeners, buffers, callbacks). Run exactly once. On a
+	 * factory adapter (one with `bind`), the adapter's own `dispose` instead ends
+	 * the **registration**: the facade runs it exactly once, after the last
+	 * binding, when the registration ends or the facade is disposed.
+	 */
 	readonly dispose?: () => void;
 };
 
@@ -1146,7 +1151,14 @@ export function createStageFacade(input: {
 			factory: boolean;
 			/** A factory binding waiting for the next live evaluation. */
 			pending: boolean;
+			/** Ends the current binding. */
 			dispose: () => void;
+			/**
+			 * Ends the registration, once (E4): for a factory adapter, its own
+			 * `dispose` after its last binding; for a static adapter, nothing beyond
+			 * its binding.
+			 */
+			end: () => void;
 		}
 	>();
 	/** The host's own inspection run order, minted strictly newer than every accepted epoch. */
@@ -1546,7 +1558,10 @@ export function createStageFacade(input: {
 	/** End every binding and registration: used by dispose, never by a content change. */
 	function endAdapters(): readonly string[] {
 		const ids = [...adapters.keys()];
-		for (const entry of [...adapters.values()]) entry.dispose();
+		for (const entry of [...adapters.values()]) {
+			entry.dispose();
+			entry.end();
+		}
 		adapters.clear();
 		return ids;
 	}
@@ -1617,7 +1632,8 @@ export function createStageFacade(input: {
 				contributions: built.contributions,
 				factory: true,
 				pending: false,
-				dispose: built.dispose
+				dispose: built.dispose,
+				end: entry.end
 			});
 			rebuilt = true;
 		}
@@ -1652,7 +1668,8 @@ export function createStageFacade(input: {
 				contributions: {},
 				factory: true,
 				pending: true,
-				dispose: () => {}
+				dispose: () => {},
+				end: entry.end
 			});
 		}
 		if (rebound.length === 0) return rebound;
@@ -2180,6 +2197,10 @@ export function createStageFacade(input: {
 			// The map entry owns the *binding* disposer; the registration disposer also
 			// removes the entry, so a content change never ends a registration.
 			const bindingDispose = built.kind === 'built' ? built.dispose : () => {};
+			// E4 — one shared, once-only registration end. A factory adapter's own
+			// `dispose` releases what it holds for the registration (the Layout
+			// adapter's project compile context); it runs after its last binding.
+			const endRegistration = factory ? once(() => adapter.dispose?.()) : () => {};
 			const dispose = () => {
 				if (ended) return;
 				ended = true;
@@ -2190,6 +2211,7 @@ export function createStageFacade(input: {
 					session.closeTask();
 				}
 				currentBinding?.dispose();
+				endRegistration();
 				notifyAdaptersChanged();
 			};
 			adapters.set(adapter.id, {
@@ -2197,7 +2219,8 @@ export function createStageFacade(input: {
 				contributions: built.kind === 'built' ? built.contributions : {},
 				factory,
 				pending: factory && built.kind === 'deferred',
-				dispose: bindingDispose
+				dispose: bindingDispose,
+				end: endRegistration
 			});
 			session.addDisposable(dispose);
 			notifyAdaptersChanged();

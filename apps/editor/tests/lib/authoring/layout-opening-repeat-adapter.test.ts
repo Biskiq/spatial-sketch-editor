@@ -28,7 +28,8 @@ import {
 	wallFirstWallLength,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
-	type PlanSourceRef
+	type PlanSourceRef,
+	compileWallFirstLayoutGeometry
 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
@@ -368,8 +369,8 @@ describe('T1 A8 — Opening Repeat', () => {
 		});
 		expect(oneCopy.kind).toBe('planned');
 		if (oneCopy.kind !== 'planned') throw new Error(oneCopy.message);
-		const oneGeometry = openingFacePaper(oneCopy.document, new Set(oneCopy.createdOpeningIds), ELEVATION);
-		const fourGeometry = openingFacePaper(preview.document, new Set(preview.createdOpeningIds), ELEVATION);
+		const oneGeometry = openingFacePaper(compileWallFirstLayoutGeometry(oneCopy.document).geometry, new Set(oneCopy.createdOpeningIds), ELEVATION);
+		const fourGeometry = openingFacePaper(compileWallFirstLayoutGeometry(preview.document).geometry, new Set(preview.createdOpeningIds), ELEVATION);
 		expect(oneGeometry.segments.length).toBeGreaterThan(0);
 		expect(fourGeometry.segments.length).toBe(oneGeometry.segments.length * 4);
 
@@ -555,8 +556,8 @@ describe('T1 A8 — Opening Repeat', () => {
 			spacing: 1
 		});
 		if (twoCopies.kind !== 'planned' || oneCopy.kind !== 'planned') throw new Error('the curved preview was refused');
-		const twoGeometry = openingFacePaper(twoCopies.document, new Set(twoCopies.createdOpeningIds), ELEVATION);
-		const oneGeometry = openingFacePaper(oneCopy.document, new Set(oneCopy.createdOpeningIds), ELEVATION);
+		const twoGeometry = openingFacePaper(compileWallFirstLayoutGeometry(twoCopies.document).geometry, new Set(twoCopies.createdOpeningIds), ELEVATION);
+		const oneGeometry = openingFacePaper(compileWallFirstLayoutGeometry(oneCopy.document).geometry, new Set(oneCopy.createdOpeningIds), ELEVATION);
 		expect(twoGeometry.segments.length).toBe(oneGeometry.segments.length * 2);
 
 		publishRepeat(mounted, fixture.openingId, 2, 1);
@@ -618,8 +619,7 @@ describe('T1 A8 — Opening Repeat', () => {
 				spacing: 1
 			});
 			if (initialPreview.kind !== 'planned') throw new Error(initialPreview.message);
-			const initialGeometry = openingFacePaper(
-				initialPreview.document,
+			const initialGeometry = openingFacePaper(compileWallFirstLayoutGeometry(initialPreview.document).geometry,
 				new Set(initialPreview.createdOpeningIds),
 				ELEVATION
 			);
