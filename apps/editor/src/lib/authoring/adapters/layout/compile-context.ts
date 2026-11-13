@@ -16,7 +16,9 @@
  *   own last compile is handed over once for that exact document object, and the
  *   context keeps one identity-keyed entry of the last document it compiled, so a
  *   new Plan evaluation of an unchanged candidate (a bounded-span pan) reads that
- *   geometry instead of compiling it again.
+ *   geometry instead of compiling it again. That entry is released when the task
+ *   ends or its binding is disposed, so a gesture's whole-candidate compile is
+ *   never retained for the rest of the project.
  *
  * It is a cache, never decision state: a cold run of either is equal by the
  * session's construction proof. After `dispose`, `plan` runs its body with no
@@ -39,6 +41,10 @@ export type LayoutCompileContext = {
 	plan<T>(accepted: LayoutDocumentWallFirst, body: () => T): T;
 	/** The canonical session-less read of `document`. */
 	compiled(document: LayoutDocumentWallFirst): CompiledLayoutGeometryResult;
+	/** Release the one cached candidate compile (task end, binding dispose). */
+	releaseCandidate(): void;
+	/** Whether a candidate compile is still held, for release proofs. */
+	candidateHeld(): boolean;
 	/** Retained units, per entity class. */
 	retained(): { walls: number; junctions: number; rooms: number; objects: number };
 	/** Whether `dispose` has run. */
@@ -65,7 +71,8 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 	 * Plan evaluation and the presenter rebuilds its Paper from the same candidate;
 	 * without this entry that rebuild would repeat a whole-project compile for an
 	 * object that has not changed. One entry, matched by object identity only, and
-	 * cleared by `plan` and `dispose`.
+	 * cleared by `plan`, `releaseCandidate` (task end and binding dispose) and
+	 * `dispose`.
 	 *
 	 * Contract: a document passed to `compiled` is treated as unchanged from the
 	 * moment it is compiled. Production callers pass planner-produced candidates
@@ -104,6 +111,11 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 			if (live) lastCompiled = { document, result };
 			return result;
 		},
+		releaseCandidate() {
+			handover = null;
+			lastCompiled = null;
+		},
+		candidateHeld: () => handover !== null || lastCompiled !== null,
 		retained: () => session.retained(),
 		disposed: () => !live,
 		dispose() {

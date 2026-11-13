@@ -6877,6 +6877,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				taskClosed() {
 					rearmEpoch += 1;
 					presenter.reset();
+					// A gesture's candidate compile is not retained after its task ends.
+					compileContext.releaseCandidate();
 					if (roomMove !== null) endRoomMove();
 					endRoomDuplicate();
 					openTaskKind = null;
@@ -6899,6 +6901,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				dispose() {
 					rearmEpoch += 1;
 					presenter.reset();
+					// The binding owns no candidate compile; the project context keeps none
+					// for the next binding to inherit.
+					compileContext.releaseCandidate();
 					if (lifetime.memoHeld === presenter.held) lifetime.memoHeld = null;
 					if (roomMove !== null) endRoomMove();
 					openTaskKind = null;

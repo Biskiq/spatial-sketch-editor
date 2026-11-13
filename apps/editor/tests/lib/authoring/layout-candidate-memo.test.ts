@@ -333,6 +333,28 @@ describe('E4/G1 — pan with a live candidate', { timeout: 20_000 }, () => {
 	});
 });
 
+describe('E4/I2 — candidate compile release', { timeout: 20_000 }, () => {
+	it('closing the task releases the gesture’s candidate compile', async () => {
+		const mounted = await mount();
+		try {
+			settle(mounted.facade, 'plan');
+			armInk(mounted.facade);
+			const evaluationId = mounted.facade.evaluationId()!;
+			mounted.facade.pointerIntent({ phase: 'down', css: css(mounted.facade, [1, -2]), evaluationId });
+			mounted.facade.pointerIntent({ phase: 'move', css: css(mounted.facade, [1, 2]), evaluationId });
+			counting = startStageCounting();
+			expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-chain')).toBe(true);
+			expect(counting.count('compile:walls')).toBeGreaterThan(0);
+			expect(mounted.lifetime.context.candidateHeld()).toBe(true);
+
+			mounted.facade.closeTask();
+			expect(mounted.lifetime.context.candidateHeld()).toBe(false);
+		} finally {
+			mounted.dispose();
+		}
+	});
+});
+
 /** The previews with every memo bypassed: what an un-memoised build draws. */
 function coldPreviews(facade: StageFacade): unknown {
 	setCandidateMemoBypassForTest(true);
@@ -511,6 +533,25 @@ describe('E4/I2 — compile context handover', () => {
 			context.compiled(equal);
 			expect(counting.count('compile:walls')).toBe(equal.walls.length);
 			expect(context.retained()).toEqual({ walls: 0, junctions: 0, rooms: 0, objects: 0 });
+		} finally {
+			context.dispose();
+		}
+	});
+
+	it('releases the cached candidate on request, so a closed gesture retains nothing', () => {
+		const context = createLayoutCompileContext();
+		try {
+			const document = clone();
+			counting = startStageCounting();
+			context.compiled(document);
+			expect(context.candidateHeld()).toBe(true);
+
+			context.releaseCandidate();
+			expect(context.candidateHeld()).toBe(false);
+			// The release is real: the same object compiles again from cold.
+			counting.reset();
+			context.compiled(document);
+			expect(counting.count('compile:walls')).toBe(document.walls.length);
 		} finally {
 			context.dispose();
 		}

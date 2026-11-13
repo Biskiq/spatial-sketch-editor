@@ -114,9 +114,13 @@ the context — `candidate-preview.ts` no longer imports the compiler.
 - **Bounded-span pans reuse the candidate's compile.** With a bounded lateral span the inspection
   target is a Plan input, so a pan is a new Plan evaluation and the presentation slot misses. The
   compile context keeps one entry of the last document it compiled (matched by object identity,
-  cleared by `plan` and `dispose`), so only the Paper is rebuilt; the unchanged candidate is not
-  compiled again. Proved mounted (a pan rebuilds Paper once and compiles 0 Walls) and directly (a
-  distinct equal object still compiles).
+  cleared by `plan`, `releaseCandidate` when the task ends or its binding is disposed, and
+  `dispose`), so only the Paper is rebuilt; the unchanged candidate is not compiled again, and a
+  gesture's whole-candidate compile is never retained for the rest of the project. A task close
+  releases it, and a binding dispose is the same guard (an accepted install reaches both, the task
+  close first). Proved mounted (a pan rebuilds Paper once and compiles 0 Walls; closing the task
+  leaves no entry) and directly (a distinct equal object still compiles, and a released entry
+  recompiles the same object).
 - **Proposal slot (one entry), Opening Repeat only.** Key = accepted document identity, opening id,
   count, spacing. `previewOpeningRepeat` mints a capture per call; the memo pins the preview ids for
   its lifetime; the commit's capture is unaffected.
