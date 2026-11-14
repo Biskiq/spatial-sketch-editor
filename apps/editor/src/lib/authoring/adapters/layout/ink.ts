@@ -17,6 +17,10 @@
  */
 import type { LayoutVec2 } from '@portfolio/layout-core';
 
+/** The dock tool's contributed task and Find-entry id. */
+export const LAYOUT_INK_TASK = 'layout-ink';
+export const LAYOUT_INK_ENTRY = 'layout-ink';
+
 /** How near a press must be to a projected Junction mark, in CSS pixels. */
 export const INK_JUNCTION_HIT_CSS_PX = 10;
 /** How near a press must be to a Wall's projected centerline, in CSS pixels. */

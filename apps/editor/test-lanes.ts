@@ -120,6 +120,9 @@ export const ARCH_FILES: string[] = [
 	// E4 / I2: one compiler read path. Only the acceptance host and the Layout
 	// adapter's project-epoch compile seam reach a compile function.
 	'tests/lib/authoring/compile-entry-boundary.test.ts',
+	// X5: Layout drawing and Opening placement are owned by two per-binding
+	// controllers; the adapter keeps registration, dispatch and the defaults.
+	'tests/lib/authoring/layout-drawing-boundary.test.ts',
 	// X1: the route composes the extracted project-epoch and asset-lease
 	// controllers, and those controllers keep their named dependency direction.
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
