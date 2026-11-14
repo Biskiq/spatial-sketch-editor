@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createNavigationGraph,
-  type RuntimeScene
+  createNavigationGraph
 } from '$lib/content/scene';
 import type {
   RuntimeConnection,
@@ -101,15 +100,8 @@ const connections: RuntimeConnection[] = [
   }
 ];
 
-const customScene: RuntimeScene = {
-  textures: [],
-  materials: [],
-  entities: [],
-  objects: [],
-  navigationNodes: nodes,
-  connections
-};
-const customGraph = createNavigationGraph(customScene);
+const customNavigation = { navigationNodes: nodes, connections };
+const customGraph = createNavigationGraph(customNavigation);
 
 // `FIXTURE_EDGE_MIDPOINTS` and `FIXTURE_MULTI_HOP` held frame-transformed
 // absolute-position goldens for the Chopin fixture graph. They moved with the
@@ -284,8 +276,6 @@ describe('getCameraRoute', () => {
       }
     ];
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: coincidentNodes,
       connections: [
         {
@@ -369,8 +359,6 @@ describe('getCameraRoute', () => {
       }
     ];
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: mixedNodes,
       connections: mixedConnections
     });
@@ -489,8 +477,6 @@ describe('getCameraRoute', () => {
 
   it('rejects non-contiguous connection joins before motion compilation', () => {
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: nodes.slice(0, 3),
       connections: [
         {
@@ -555,8 +541,6 @@ describe('getCameraConnectionRoute', () => {
       }
     ];
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: nodes.slice(0, 2),
       connections: parallelConnections
     });
@@ -639,8 +623,6 @@ describe('getCameraConnectionRoute', () => {
       }
     };
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: directionalNodes,
       connections: [directionalConnection]
     });
@@ -699,8 +681,6 @@ describe('getCameraConnectionRoute', () => {
 
   it('does not reuse a forward view track as a reverse fallback', () => {
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: nodes.slice(0, 2),
       connections: [
         {
@@ -732,8 +712,6 @@ describe('getCameraConnectionRoute', () => {
 
   it('uses travel-facing reverse look-ahead when reverse has no authored keys', () => {
     const graph = createNavigationGraph({
-      entities: [],
-  objects: [],
       navigationNodes: nodes.slice(0, 2),
       connections: [connections[0]]
     });

@@ -1,5 +1,6 @@
 import {
 	createNavigationGraph,
+	resolveNavigationDocument,
 	resolveSceneDocument,
 	type SceneDocument,
 	type NavigationGraph,
@@ -33,7 +34,9 @@ const fixtures: Record<FixtureSceneName, unknown> = {
 export function loadFixtureScene(name: FixtureSceneName = 'tour-minimal'): LoadedFixtureScene {
 	const document = loadFixtureSceneDocument(name);
 	const scene = resolveSceneDocument(document);
-	const graph = createNavigationGraph(scene);
+	// The fixture keeps its Camera records in the document it was authored as; the
+	// runtime splits them into their own value, exactly as an F.2 source does.
+	const graph = createNavigationGraph(resolveNavigationDocument(document));
 	return { document, scene, graph };
 }
 

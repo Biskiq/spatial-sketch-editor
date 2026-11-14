@@ -439,6 +439,23 @@ export type SceneDocument = {
 /** Runtime type that the document parser canonicalises into. */
 export type CanonicalSceneDocument = SceneDocument;
 
+/**
+ * The Camera-owned runtime navigation value.
+ *
+ * Hard rule 2: Camera owns views, routes, framing and projection. The runtime
+ * Scene resolves object composition and world presentation only, so a Camera
+ * edit cannot change a Scene-keyed input, and a Scene edit cannot change
+ * navigation. The two values are prepared from their own authored units and
+ * retained separately.
+ */
+export type RuntimeNavigation = {
+  /** World-space camera poses, one per Camera view. */
+  navigationNodes: NavigationNodeData[];
+  /** World-space waypoints, including fresh node endpoints. */
+  connections: RuntimeConnection[];
+};
+
+/** The resolved Scene: object composition and world presentation, Camera-free. */
 export type RuntimeScene = {
   /** Registered texture assets; rendering support lands in Phase 5.3. */
   textures: SceneTextureAsset[];
@@ -459,10 +476,6 @@ export type RuntimeScene = {
    * Read-projection data supplied by the unit runtime; never authored.
    */
   modelFootprints?: ReadonlyMap<string, { width: number; depth: number }>;
-  /** World-space camera poses. */
-  navigationNodes: NavigationNodeData[];
-  /** World-space waypoints, including fresh node endpoints. */
-  connections: RuntimeConnection[];
 };
 
 export function isSceneModelEntity(entity: SceneEntity): entity is SceneModelEntity {
@@ -642,6 +655,11 @@ function resolveViewKeyframe(
  * physical values are already project/world coordinates, so there is no Room
  * registry and no Room-frame resolution: every value is cloned once, exactly,
  * with no transform and no second pass.
+ *
+ * The returned value is Camera-free. A document that also carries navigation is
+ * still validated as one document (so an invalid endpoint is still refused), but
+ * its Camera half resolves through {@link resolveNavigationDocument} into its own
+ * value rather than into this one.
  */
 export function resolveSceneDocument(
   input: unknown,
@@ -651,6 +669,49 @@ export function resolveSceneDocument(
   if (!validation.success) throw new SceneDocumentValidationError(validation.issues[0]!);
   const document = validation.document;
 
+  const entities = document.entities.map(cloneSceneEntity);
+  const textures = document.textures.map((texture) => ({ ...texture }));
+  const materials = document.materials.map((material) => ({ ...material }));
+  const objects = listSceneModelEntities(document).map(
+    (entity): SceneObjectPlacement => ({
+      ...modelEntityToPlacement(entity),
+      position: cloneVec3(entity.position),
+      rotation: cloneVec3(entity.rotation)
+    })
+  );
+
+  return { textures, materials, entities, objects };
+}
+
+/**
+ * Resolve one Camera unit's navigation records into the runtime navigation value.
+ *
+ * The records are validated through the same Scene document validator the Camera
+ * unit is admitted through, with the unit's connectivity policy supplied by the
+ * caller, so the runtime cannot accept a navigation graph the authored unit could
+ * not carry. Only the navigation half is resolved: no entity, material or texture
+ * value is read here.
+ */
+export function resolveNavigationDocument(
+  input: Pick<SceneDocument, 'navigationNodes' | 'connections'>,
+  options: SceneValidationOptions = {}
+): RuntimeNavigation {
+  const validation = validateSceneDocument(
+    {
+      formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
+      textures: [],
+      materials: [],
+      entities: [],
+      navigationNodes: [...input.navigationNodes],
+      connections: [...input.connections]
+    },
+    options
+  );
+  if (!validation.success) throw new SceneDocumentValidationError(validation.issues[0]!);
+  return resolveNavigation(validation.document);
+}
+
+function resolveNavigation(document: SceneDocument): RuntimeNavigation {
   const navigationNodes = document.navigationNodes.map((node): NavigationNodeData => ({
     ...node,
     position: cloneVec3(node.position),
@@ -728,43 +789,31 @@ export function resolveSceneDocument(
       };
     }
 
-    return resolved;
+    	return resolved;
   });
 
-  const entities = document.entities.map(cloneSceneEntity);
-  const textures = document.textures.map((texture) => ({ ...texture }));
-  const materials = document.materials.map((material) => ({ ...material }));
-  const objects = listSceneModelEntities(document).map(
-    (entity): SceneObjectPlacement => ({
-      ...modelEntityToPlacement(entity),
-      position: cloneVec3(entity.position),
-      rotation: cloneVec3(entity.rotation)
-    })
-  );
-
-  return { textures, materials, entities, objects, navigationNodes, connections };
+  return { navigationNodes, connections };
 }
 
-export function createNavigationGraph<
-  T extends Pick<RuntimeScene, 'navigationNodes' | 'connections'>
->(
-  scene: T
+/** Index one resolved navigation value for the one Camera evaluator. */
+export function createNavigationGraph(
+  navigation: Pick<RuntimeNavigation, 'navigationNodes' | 'connections'>
 ): NavigationGraph {
   return {
-    navigationNodes: scene.navigationNodes,
-    connections: scene.connections,
-    nodeById: new Map(scene.navigationNodes.map((node) => [node.id, node]))
+    navigationNodes: navigation.navigationNodes,
+    connections: navigation.connections,
+    nodeById: new Map(navigation.navigationNodes.map((node) => [node.id, node]))
   };
 }
 
-export function assertNavigationGraphMatchesScene(
+export function assertNavigationGraphMatchesNavigation(
   graph: NavigationGraph,
-  scene: RuntimeScene
+  navigation: RuntimeNavigation
 ) {
   if (
-    graph.navigationNodes !== scene.navigationNodes ||
-    graph.connections !== scene.connections
+    graph.navigationNodes !== navigation.navigationNodes ||
+    graph.connections !== navigation.connections
   ) {
-    throw new Error('Navigation state must use the same resolved scene instance');
+    throw new Error('Navigation state must use the same resolved navigation value');
   }
 }

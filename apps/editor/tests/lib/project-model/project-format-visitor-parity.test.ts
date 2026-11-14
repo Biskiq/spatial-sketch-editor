@@ -165,7 +165,7 @@ describe('P23.0 stage 4 — current-format preparation discipline', () => {
 		const payload = await wallFirstPayload();
 		const prepared = prepareUnitRuntime(structuredClone(payload));
 		if (prepared.kind === 'rejected') throw new Error('expected ready');
-		expect(prepared.runtimeScene.navigationNodes.map((node) => node.id)).toEqual(['node-1']);
+		expect(prepared.graph.navigationNodes.map((node) => node.id)).toEqual(['node-1']);
 		expect('rooms' in prepared).toBe(false);
 	});
 

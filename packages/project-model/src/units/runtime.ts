@@ -2,10 +2,11 @@
  * F.2 unit runtime preparation — the one live read path for an admitted project.
  *
  * The Layout compiles through the one canonical geometry core. The Scene
- * payload resolves through the landed Scene resolver. The **Camera unit**, not
- * the Scene, supplies the navigation graph: views become navigation nodes and
- * the Camera connections stay Camera-owned records. A source that the editor
- * shows is therefore exactly a source the visitor can prepare.
+ * payload resolves through the landed Scene resolver, which is Camera-free. The
+ * **Camera unit**, not the Scene, supplies navigation: its views and its
+ * connections resolve into their own runtime value, indexed by the one
+ * navigation graph. Hard rule 2 therefore holds at runtime too — a Camera edit
+ * cannot change a Scene-keyed input, and a Scene edit cannot change navigation.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
@@ -20,9 +21,11 @@ import {
 } from '@portfolio/layout-core';
 import {
 	createNavigationGraph,
+	resolveNavigationDocument,
 	resolveSceneDocument,
 	SCENE_WORLD_LOCAL_FORMAT_VERSION,
 	type NavigationGraph,
+	type RuntimeNavigation,
 	type RuntimeScene,
 	type SceneConnection,
 	type SceneDocument
@@ -33,7 +36,9 @@ import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import type {
 	CameraFreeSceneDocument,
 	CameraUnitPayload,
-	ProjectEnvelope
+	ProjectEnvelope,
+	ResourceUnitPayload,
+	UnitDomain
 } from './types';
 import {
 	validateProjectEnvelope,
@@ -58,9 +63,21 @@ export type UnitRuntimeReady = {
 	 * but execution (F4 acceptance, Save, release) must refuse it.
 	 */
 	readonly closure: readonly EnvelopeClosureFinding[];
+	/** Object composition and world presentation, resolved from the Scene unit. */
 	readonly runtimeScene: RuntimeScene;
+	/** Navigation, resolved from the Camera unit and indexed for its one evaluator. */
 	readonly graph: NavigationGraph;
 };
+
+/**
+ * The parts of a prepared runtime a live host can offer back to preparation.
+ *
+ * A host passes the runtime it is already showing, exactly as it passes its
+ * compile session: preparation then reuses the Scene and navigation values whose
+ * authored units are unchanged instead of resolving them again. The envelope is
+ * the record of the unit revisions those values were prepared from.
+ */
+export type RetainedUnitRuntime = Pick<UnitRuntimeReady, 'envelope' | 'runtimeScene' | 'graph'>;
 
 export type UnitRuntimeRejection = {
 	readonly kind: 'rejected';
@@ -79,23 +96,36 @@ export type ValidatedProjectEnvelope = {
 };
 
 /**
- * Build the Scene 1 view of an envelope for the landed resolver.
+ * The Camera-free Scene document for the landed resolver.
  *
- * Scene 1 is not a second source: this value is a transient read projection built
- * from the two authored units, never installed, serialized or accepted. The
- * resolved graph is the Camera unit's own connectivity, and the Scene entity
- * records are the Scene unit's own records.
+ * The Scene unit is not a second source: this is a transient read projection of
+ * the unit's own records, never installed, serialized or accepted. Navigation is
+ * empty here by construction — the Camera unit never enters a Scene document on
+ * this path.
  */
-function sceneProjectionForRuntime(
-	scene: CameraFreeSceneDocument,
-	camera: CameraUnitPayload
-): SceneDocument {
+function cameraFreeSceneProjection(scene: CameraFreeSceneDocument): SceneDocument {
 	return {
 		formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
 		textures: scene.textures,
 		materials: scene.materials,
 		entities: scene.entities,
 		...(scene.clusters === undefined ? {} : { clusters: scene.clusters }),
+		navigationNodes: [],
+		connections: []
+	};
+}
+
+/**
+ * The Camera unit's navigation records for the navigation resolver.
+ *
+ * A view is the non-editorial half of a navigation node, so this is the one
+ * landed mapping — the same records Camera-unit admission reads, not a second
+ * graph.
+ */
+function navigationProjectionForRuntime(
+	camera: CameraUnitPayload
+): Pick<SceneDocument, 'navigationNodes' | 'connections'> {
+	return {
 		navigationNodes: camera.views.map((view) => ({
 			id: view.id,
 			label: view.label,
@@ -106,6 +136,63 @@ function sceneProjectionForRuntime(
 		})),
 		connections: camera.connections as SceneConnection[]
 	};
+}
+
+/**
+ * Whether an authored unit of the previous runtime is the same content as the
+ * unit being prepared.
+ *
+ * The unit content revision is F.2's own content identity for a unit and is
+ * derived from that unit's data by the acceptance adapter
+ * (`normalizeUnitEnvelope`), which is also the rule the coordinator uses to
+ * share an unchanged unit object between accepted revisions. Identity is enough
+ * here for the same reason: nothing downstream reads a unit header.
+ */
+function sameUnitContent(
+	previous: ProjectEnvelope,
+	next: ProjectEnvelope,
+	domain: UnitDomain
+): boolean {
+	return (
+		previous.id === next.id &&
+		previous.units[domain].header.contentRevision === next.units[domain].header.contentRevision
+	);
+}
+
+/** The previous Scene value, or `null` when either of its inputs moved. */
+function retainedSceneOf(
+	previous: RetainedUnitRuntime | undefined,
+	envelope: ProjectEnvelope
+): RuntimeScene | null {
+	if (previous === undefined) return null;
+	// The resolved Scene carries the resource unit's approved model footprints, so
+	// both authored inputs must be unchanged before it can be reused.
+	if (!sameUnitContent(previous.envelope, envelope, 'scene')) return null;
+	if (!sameUnitContent(previous.envelope, envelope, 'resources')) return null;
+	return previous.runtimeScene;
+}
+
+/** The resources unit's approved model footprints, keyed by resource id. */
+function modelFootprintsOf(
+	resources: ResourceUnitPayload
+): Map<string, { width: number; depth: number }> {
+	const footprints = new Map<string, { width: number; depth: number }>();
+	for (const resource of resources.resources) {
+		if (resource.kind !== 'model' || resource.model === undefined) continue;
+		const { width, depth } = resource.model.placement.footprint;
+		footprints.set(resource.id, { width, depth });
+	}
+	return footprints;
+}
+
+/** The previous navigation value, or `null` when the Camera unit moved. */
+function retainedNavigationOf(
+	previous: RetainedUnitRuntime | undefined,
+	envelope: ProjectEnvelope
+): NavigationGraph | null {
+	if (previous === undefined) return null;
+	if (!sameUnitContent(previous.envelope, envelope, 'camera')) return null;
+	return previous.graph;
 }
 
 /**
@@ -147,7 +234,21 @@ export function prepareValidatedUnitRuntime(
 	 * (T1.P02.S06 D.3). Absent, preparation is the cold canonical compile — the
 	 * visitor runtime's own path, which must not carry editor state between sources.
 	 */
-	compileSession?: LayoutCompileSession
+	compileSession?: LayoutCompileSession,
+	/**
+	 * The runtime the caller is already showing, if it has one.
+	 *
+	 * Each part is reused only when its own authored inputs are unchanged: the
+	 * Scene when the Scene and resources units are, navigation when the Camera
+	 * unit is. `sceneOptions` is the caller's host policy for those same units, so
+	 * a caller whose policy changes while the units stay identical must not offer
+	 * a previous runtime — admission derives it from the envelope and the host
+	 * catalogue, which is what makes the reuse sound there.
+	 *
+	 * Absent, preparation resolves every part: boot, Preview and the visitor
+	 * runtime keep the cold path and carry no editor state between sources.
+	 */
+	previous?: RetainedUnitRuntime
 ): UnitRuntimeReady | UnitRuntimeRejection {
 	countWork('unit-runtime:prepare-validated');
 	const envelope = validated.envelope;
@@ -157,35 +258,58 @@ export function prepareValidatedUnitRuntime(
 		? compileSession.compile(envelope.units.layout.data)
 		: compileWallFirstLayoutGeometry(envelope.units.layout.data);
 
-	let runtimeScene: RuntimeScene;
-	try {
-		runtimeScene = p2311Measure('scene-resolve', () => {
-			countWork('scene:resolve');
-			return resolveSceneDocument(
-				sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
-				// Force the Camera-unit policy after merging the host's catalogue
-				// options: editor admission and visitor preparation share one answer.
-				{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
-			);
-		});
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Scene preparation failed';
-		return {
-			kind: 'rejected',
-			reason: 'scene-invalid',
-			issues: [{ path: '$.units.scene', code: 'scene_invalid', message }]
-		};
+	let runtimeScene = retainedSceneOf(previous, envelope);
+	if (runtimeScene === null) {
+		try {
+			runtimeScene = p2311Measure('scene-resolve', () => {
+				countWork('scene:resolve');
+				return resolveSceneDocument(
+					cameraFreeSceneProjection(envelope.units.scene.data),
+					// Force the Camera-unit policy after merging the host's catalogue
+					// options: editor admission and visitor preparation share one answer.
+					{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
+				);
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Scene preparation failed';
+			return {
+				kind: 'rejected',
+				reason: 'scene-invalid',
+				issues: [{ path: '$.units.scene', code: 'scene_invalid', message }]
+			};
+		}
+		// The approved placement is read-projection data, never authored into the
+		// envelope: a model resource's footprint sizes its generic fallback. It is
+		// part of the resolved Scene, so it is read only on a cache miss — a retained
+		// Scene already carries the footprints it was resolved with, and a Scene-only
+		// edit must not walk an unchanged resources unit.
+		const modelFootprints = modelFootprintsOf(envelope.units.resources.data);
+		if (modelFootprints.size > 0) runtimeScene = { ...runtimeScene, modelFootprints };
 	}
 
-	// The approved placement is read-projection data, never authored into the
-	// envelope: a model resource's footprint sizes its generic fallback.
-	const modelFootprints = new Map<string, { width: number; depth: number }>();
-	for (const resource of envelope.units.resources.data.resources) {
-		if (resource.kind !== 'model' || resource.model === undefined) continue;
-		const { width, depth } = resource.model.placement.footprint;
-		modelFootprints.set(resource.id, { width, depth });
+	let graph = retainedNavigationOf(previous, envelope);
+	if (graph === null) {
+		try {
+			graph = p2311Measure('navigation-resolve', () => {
+				countWork('navigation:resolve');
+				return createNavigationGraph(
+					resolveNavigationDocument(
+						navigationProjectionForRuntime(envelope.units.camera.data),
+						{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
+					)
+				);
+			});
+		} catch (error) {
+			// Unreachable through admission — Camera-unit admission runs the same
+			// validator — so this is the honest answer rather than a silent empty graph.
+			const message = error instanceof Error ? error.message : 'Navigation preparation failed';
+			return {
+				kind: 'rejected',
+				reason: 'scene-invalid',
+				issues: [{ path: '$.units.camera', code: 'scene_invalid', message }]
+			};
+		}
 	}
-	if (modelFootprints.size > 0) runtimeScene = { ...runtimeScene, modelFootprints };
 
 	return {
 		kind: 'ready',
@@ -195,6 +319,6 @@ export function prepareValidatedUnitRuntime(
 		diagnostics: validated.diagnostics,
 		closure: validated.closure,
 		runtimeScene,
-		graph: createNavigationGraph(runtimeScene)
+		graph
 	};
 }

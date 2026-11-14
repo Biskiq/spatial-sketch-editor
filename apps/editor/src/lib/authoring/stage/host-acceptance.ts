@@ -33,7 +33,8 @@ import {
 	canonicalUnitJson,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
-	type ProjectEnvelope
+	type ProjectEnvelope,
+	type RetainedUnitRuntime
 } from '@portfolio/project-model/units';
 import {
 	consumePreparedCowCandidate,
@@ -54,7 +55,7 @@ import { admitSource, type StageDomainRead, type StageReadSnapshot } from './sou
 import type { StageContentInstall, StageFacade } from './stage-facade';
 import { requalifySelectionEntry, requalifySelection } from './selection-requalification';
 import { sameReference, sameSubject } from './semantic-selection';
-import { attachUnitStageSource, stageLayout } from './unit-stage-source';
+import { attachUnitStageSource, stageEnvelope, stageLayout } from './unit-stage-source';
 
 /** The baseline one host lifetime starts from; the route already admitted it. */
 export type StageAcceptanceBaseline = {
@@ -307,6 +308,30 @@ export function createStageAcceptanceHost(options: {
 		return code !== 'superseded-epoch' && code !== 'stale-session';
 	}
 
+	/**
+	 * The runtime the Stage is showing, as preparation's retention input (G2/I4).
+	 *
+	 * The mounted snapshot's domain is exactly the Scene and navigation value the
+	 * previous admission resolved, and its attached envelope is the unit record
+	 * those values were prepared from. Reading the mounted state rather than
+	 * keeping a parallel copy is what keeps Undo/Redo, replacement and metadata
+	 * adoption from ever offering a runtime the Stage is not showing.
+	 */
+	function retainedRuntime(): RetainedUnitRuntime | undefined {
+		const mounted = facade.snapshot();
+		if (
+			mounted.sourceKind !== UNIT_ENVELOPE_SOURCE_KIND ||
+			mounted.sourceVersion !== UNIT_ENVELOPE_SOURCE_VERSION
+		) {
+			return undefined;
+		}
+		return {
+			envelope: stageEnvelope(mounted),
+			runtimeScene: mounted.domain.scene,
+			graph: mounted.domain.graph
+		};
+	}
+
 	async function install(
 		snapshot: AcceptedSnapshot<ProjectEnvelope>,
 		correspondence: readonly CorrespondenceEntry[],
@@ -384,7 +409,8 @@ export function createStageAcceptanceHost(options: {
 				{
 					compileSession,
 					knownIdentity: installOptions.knownIdentity,
-					preparedLayout: installOptions.preparedLayout
+					preparedLayout: installOptions.preparedLayout,
+					previousRuntime: retainedRuntime()
 				}
 			);
 			if (admission.kind === 'refused') {

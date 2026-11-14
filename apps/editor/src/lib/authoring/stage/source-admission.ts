@@ -51,6 +51,7 @@ import {
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	type ProjectEnvelope,
+	type RetainedUnitRuntime,
 	type UnitDomain,
 	type UnitRuntimeReady
 } from '@portfolio/project-model/units';
@@ -211,11 +212,25 @@ export async function admitSource(
 			readonly sourceContentId: string;
 			readonly canonicalJson: string;
 		};
+		/**
+		 * The runtime this host is already showing, so preparation can reuse the
+		 * Scene and navigation values whose authored units did not move (G2/I4).
+		 * Only a host that owns a mounted runtime passes it; boot, Preview and the
+		 * visitor runtime prepare cold.
+		 */
+		readonly previousRuntime?: RetainedUnitRuntime;
 	} = {}
 ): Promise<AdmissionOutcome> {
 	// Harness-gated stage span (inert without the work observer).
 	return measureWorkAsync('admission', () =>
-		admitSourceOnce(input, context, options.compileSession, options.knownIdentity, options.preparedLayout)
+		admitSourceOnce(
+			input,
+			context,
+			options.compileSession,
+			options.knownIdentity,
+			options.preparedLayout,
+			options.previousRuntime
+		)
 	);
 }
 
@@ -227,7 +242,8 @@ async function admitSourceOnce(
 		readonly sourceContentId: string;
 		readonly canonicalJson: string;
 	},
-	preparedLayout?: PreparedLayout
+	preparedLayout?: PreparedLayout,
+	previousRuntime?: RetainedUnitRuntime
 ): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
 	// Scene resolution, then prepare **that validated value**: preparation splits
@@ -256,7 +272,8 @@ async function admitSourceOnce(
 			read, sceneOptionsFor(read.envelope),
 			preparedLayout && compileSession && areEquivalentLayoutClones(preparedLayout.data, read.envelope.units.layout.data)
 				? { ...compileSession, compile: () => ({ geometry: preparedLayout.compiled.geometry, issues: [...preparedLayout.compiled.issues] }) }
-				: compileSession
+				: compileSession,
+			previousRuntime
 		)
 	);
 	if (prepared.kind === 'rejected') {
