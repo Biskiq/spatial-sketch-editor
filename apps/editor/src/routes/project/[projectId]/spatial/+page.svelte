@@ -53,8 +53,6 @@
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
 	import {
 		createStageSession,
-		runBoundLoad,
-		type StageSession,
 		type StageSelection,
 		type StageTask
 	} from '$lib/authoring/stage/stage-session';
@@ -78,11 +76,6 @@
 	import { stageResizeCursorCss } from '$lib/authoring/stage/stage-glyphs';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 	import {
-		createStageAdapterServices,
-		mountStageAdapter,
-		type StageAdapterServices
-	} from '$lib/authoring/stage/stage-adapter-host';
-	import {
 		stageCardActions,
 		stageCardFacts,
 		stageCardWriter,
@@ -94,11 +87,8 @@
 	} from '$lib/authoring/stage/stage-contributions';
 	import { createStageMeasure, STAGE_MEASURE_TASK, type StageMeasureController } from '$lib/authoring/stage/stage-measure';
 	import { createStageEraser, STAGE_ERASER_TASK, type StageEraserController } from '$lib/authoring/stage/stage-eraser';
-	import {
-		createStageAcceptanceHost,
-		type StageAcceptanceHost,
-		type StageHistoryState
-	} from '$lib/authoring/stage/host-acceptance';
+	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
+	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
 		developmentPointAtStationFromBuffers,
 		LAYOUT_DIMENSION_LIMIT_MESSAGE,
@@ -190,11 +180,6 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	const scenePick = createScenePickSource();
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
 	import { isPaperPlanVisible, PAPER_TONES } from '$lib/authoring/stage/paper-plan';
-	import {
-		approvedModelPins,
-		resolveApprovedModels,
-		type ApprovedModelSources
-	} from '$lib/authoring/scene/model-bytes';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
@@ -273,12 +258,63 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** One session-only live lighting preview; it is merged by the editor Stage shell. */
 	const lightPreview = createStageLightPreview();
 
+	/**
+	 * X1 / contract A — approved model and artwork leases for this route. The
+	 * route hands the controller the existing resolver and keeps only the
+	 * composition: the Canvas borrows the artwork scope, and Preview still owns its
+	 * own scope.
+	 */
+	const stageAssets = createStageAssetLeases({
+		session,
+		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
+		resolveArtwork: async (image, signal) => {
+			if (api === null) throw new Error('Artwork storage is unavailable.');
+			return readVerifiedArtwork(api, projectId, image, signal);
+		},
+		notice: {
+			read: () => notice,
+			write: (message) => { notice = message; }
+		}
+	});
+
+	/**
+	 * X1 / contract P — the route's one project epoch. Activation, replacement,
+	 * reset, acceptance/contribution subscriptions, Save mounting, Undo/Redo
+	 * orchestration and teardown live here; the route supplies presentation
+	 * callbacks and its existing project-session/facade factories.
+	 */
+	const stageEpoch = createStageProjectEpoch({
+		session,
+		assets: stageAssets,
+		projectSession: () => projectSession,
+		preview: () => previewController,
+		createFacade: (snapshot) => createStageFacade({
+			snapshot,
+			session,
+			scenePick: scenePick.pick,
+			sceneBounds: scenePick.bounds,
+			lightPreview
+		}),
+		adapterFactories: stageAdapterFactories,
+		interruptInput: interruptForReplacement,
+		resetFocus: () => experienceFocus.reset(),
+		resetPresentationBeforeSwap: resetPresentationBeforeSwap,
+		resetPresentation: resetViewContext,
+		onFacadeMounted: bindEpochFacade,
+		onAdaptersChanged: refreshAdapterPresentation,
+		onAccepted: refreshAcceptedPresentation,
+		onHistoryInstalled: completeHistoryInstall,
+		onNotice: (message) => { notice = message; },
+		refresh: () => refresh(),
+		isActiveProject: () => boot.status === 'ready' || boot.status === 'empty'
+	});
+
 	const projectSession = createProjectSession({
 		projectId, intent, api, auth, session,
 		url: () => page.url,
-		acceptance: () => acceptance,
-		tornDown: () => tornDown,
-		activate,
+		acceptance: () => stageEpoch.acceptance,
+		tornDown: () => stageEpoch.tornDown,
+		activate: (snapshot) => stageEpoch.activate(snapshot),
 		get notice() { return notice; },
 		set notice(value) { notice = value; }
 	});
@@ -307,13 +343,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	});
 	/** The last Preview lowering refusal, worded like a source problem. */
 	let previewProblem = $state<ExperienceProblem | null>(null);
-	let facade = $state.raw<StageFacade | null>(null);
+	/** The current epoch's facade; owned by the project-epoch controller. */
+	const facade = $derived(stageEpoch.facade);
 	/**
 	 * The host↔F4 acceptance host for the current project epoch. There is exactly
-	 * one per epoch, recreated by `activate` on every replacement; it is the only
-	 * acceptance writer, and the Head's history controls are its commands.
+	 * one per epoch, recreated on every replacement; it is the only acceptance
+	 * writer, and the Head's history controls are its commands.
 	 */
-	let acceptance = $state.raw<StageAcceptanceHost | null>(null);
+	const acceptance = $derived(stageEpoch.acceptance);
 	/**
 	 * Bumped whenever the mounted facade's adapter registrations or bindings change.
 	 * The contribution views below read a `$state.raw` facade whose adapter map is
@@ -321,18 +358,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Index, the Card and the instrument host.
 	 */
 	let contributionsVersion = $state(0);
-	let unsubscribeContributions: (() => void) | null = null;
-	let unsubscribeAcceptance: (() => void) | null = null;
 	let contributedTaskId = $state<{ id: string; adapterId: string } | null>(null);
 
-	let historyState = $state<StageHistoryState>({
-		canUndo: false,
-		canRedo: false,
-		depth: 1,
-		position: 0,
-		undoUnavailableReason: 'Nothing to undo yet — no change has been accepted.',
-		redoUnavailableReason: 'Nothing to redo.'
-	});
+	/** The acceptance host's one bounded history, published by the epoch controller. */
+	const historyState = $derived(stageEpoch.history);
 	let selection = $state<StageSelectionEntry | null>(null);
 	/** A one-shot Stage pick for linking a Presentation; Esc cancels it. */
 	let stagePickPresentationId = $state<string | null>(null);
@@ -497,7 +526,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		readonly fov: number;
 	};
 	/** The adapter services the Stage and the Experience homes edit through. */
-	let adapterServices = $state.raw<StageAdapterServices | null>(null);
+	const adapterServices = $derived(stageEpoch.services);
 	/**
 	 * R217.S25 — the Experience controller the shared homes read. ExperienceHomesHost creates it
 	 * while the Experience lens is open and binds it here; it is null in World.
@@ -641,7 +670,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// The gesture lease is host state that changes what Undo can do without an
 			// acceptance, so the Head's reported history follows it on the same frame as
 			// the render rather than only on the next accepted change.
-			refreshHistory();
+			stageEpoch.refreshHistory();
 			// R217.S22 (D36): an authored gesture is a non-navigation lease. The Card fades while
 			// it lives. A navigation press (pan, orbit, zoom) never fades the Card.
 			const lease = session.gesture();
@@ -1024,21 +1053,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const ghosts = $derived(stageViewport.ghosts);
 	/**
 	 * Approved creator-model bytes for the accepted source, keyed by model resource
-	 * id. They are resolved from the resource pins — never from an import
-	 * session — so a fresh reopen fetches the same immutable derivative, and the
-	 * Preview surface receives plain URLs without learning how they were
-	 * authorised.
+	 * id. The asset-lease controller resolves them from the resource pins — never
+	 * from an import session — so a fresh reopen fetches the same immutable
+	 * derivative, and the Preview surface receives plain URLs without learning how
+	 * they were authorised.
 	 */
-	let modelUrls = $state<ReadonlyMap<string, string>>(new Map());
-	let modelResolution: { dispose(): void } | null = null;
-	/** Monotone ticket: only the newest resolution may install its URLs. */
-	let modelGeneration = 0;
-	/** The pin set of the newest request, installed or in flight; an unchanged set is reused. */
-	let modelPinSignature = '';
-	/** The pin set the installed URLs were resolved for. */
-	let installedModelSignature = '';
-	/** The model-failure notice this resolver last set, so an unrelated notice survives. */
-	let modelNotice: string | null = null;
+	const modelUrls = $derived(stageAssets.urls);
 	const roomLabels = $derived(stageViewport.roomLabels);
 	const marks = $derived(stageViewport.marks);
 	const tracePreview = $derived(stageViewport.tracePreview);
@@ -1059,11 +1079,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		notice: (message) => { notice = message; },
 		select: (services, id) => selectStageReference(artworkReference(services, id))
 	});
-	const stageArtworkScope = createArtworkScope(async (image, signal) => {
-		if (api === null) throw new Error('Artwork storage is unavailable.');
-		return readVerifiedArtwork(api, projectId, image, signal);
-	});
-	$effect(() => () => { artwork.cancel(); stageArtworkScope.dispose(); });
+	$effect(() => () => { artwork.cancel(); stageAssets.disposeArtwork(); });
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artwork.cancel();
 		if (!canPlaceArtwork()) {
@@ -1276,8 +1292,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const timeout = setTimeout(() => { if (notice === shown) notice = ''; }, 4000);
 		return () => clearTimeout(timeout);
 	});
-	/** Set by the route's teardown: no late completion may mount a stage after it. */
-	let tornDown = false;
 	let stageEl: HTMLDivElement | undefined = $state(undefined);
 	/** The one lower column's measured height; the Card clears it at narrow widths. */
 	let lowerColumnEl: HTMLDivElement | undefined = $state(undefined);
@@ -1437,107 +1451,57 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		hoverSelection = null;
 	}
 
-	function activate(snapshot: StageReadSnapshot): void {
+/* --- project-epoch presentation callbacks ---------------------------------- */
 
-		// A completion that arrives after the route tore down must not mount a stage:
-		// nothing would ever dispose it, and it would hold a camera for a page that
-		// no longer exists.
-		if (tornDown) return;
-		// Replacement: validate first (the snapshot is already admitted), then the
-		// session atomically cancels writers, clears selection/task and swaps.
-		clearHover();
-		interruptPress('replacement');
-		session.replace(snapshot);
-		// A Preview run and the lens focus name identities from the replaced source;
-		// the warm surface cannot describe the new one. Drop both (the chunk stays
-		// cached) rather than keeping another project's scene alive behind the editor.
-		previewController.reset();
-		adapterServices = null;
-		experienceFocus.reset();
-		expandedPresentationId = null;
-		// The previous facade's listeners are dropped before its replacement exists,
-		// so a disposal-time notification cannot write through the new facade.
-		unsubscribeContributions?.();
-		unsubscribeContributions = null;
-		facade?.dispose();
-		acceptance?.dispose();
-		facade = createStageFacade({
-			snapshot,
-			session,
-			scenePick: scenePick.pick,
-			sceneBounds: scenePick.bounds,
-			lightPreview
-		});
-		measureTool = createStageMeasure(facade);
-		eraserTool = createStageEraser(facade, () => refreshHostTools());
-		// The session keeps Grid/Snap across a replacement; the presenter re-reads it
-		// from the mounted authority rather than assuming its own default.
-		drafting = facade.drafting();
-		unsubscribeContributions = facade.onAdaptersChanged(() => {
-			contributionsVersion += 1;
-			task = facade?.session.task() ?? null;
-			syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-			syncContributedTask();
-		});
-		task = null;
-		contributedTaskId = null;
-		// The host owns one inspection output; every viewing intent below presents
-		// this claim's ticket, so a replaced or rebased output cannot keep writing.
-		facade.acquireInspection('exclusive');
-		// One acceptance coordinator per project epoch, starting from the admitted
-		// baseline. The coordinator's bounded history is the single history; this
-		// host never keeps a second one.
-		const mounted = createStageAcceptanceHost({
-			sessionEpoch: snapshot.sessionEpoch,
-			baseline: {
-				revision: snapshot.acceptedRevision,
-				source: stageEnvelope(snapshot),
-				// The baseline's bytes must be the snapshot's own canonical form: the F4
-				// adapter re-admits them on Undo and refuses a different serialization.
-				canonicalJson: snapshot.canonicalJson,
-				sourceContentId: snapshot.sourceContentId
-			},
-			facade
-		});
-		unsubscribeAcceptance?.();
-		projectSession.unmountSave();
-		// The mounted facade is the epoch's source. The mark is the anchor the
-		// performance harness uses for the first architectural frame (F1/F2).
-		perfMark('build:identity', { version: typeof __BISKIQ_BUILD_REVISION__ === 'string' ? __BISKIQ_BUILD_REVISION__ : 'unverified' });
-		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
-		acceptance = mounted;
-		adapterServices = createStageAdapterServices(facade, mounted);
-		void resolveModels(snapshot);
-		unsubscribeAcceptance = mounted.onChanged(() => {
-			if (acceptance !== mounted || tornDown) return;
-			// A source change ends the Preview claim through the protocol's rebase (the
-			// output's source identity is no longer current), so leaving it restores
-			// nothing: the Stage continues under the claim the content change minted.
-			if (previewController.openState) previewController.close();
-			refreshHistory();
-			// The Save state derives its status from the accepted source, so an
-			// accepted edit is what makes the project dirty. Without this refresh
-			// the Head keeps reporting the pre-edit status and the exit/replacement
-			// guards never see unsaved work.
-			headSave?.refresh();
-			if (facade !== null && (boot.status === 'ready' || boot.status === 'empty')) {
-				projectSession.updateSnapshot(facade.snapshot());
-				// A newly placed (or removed) model changes the pins this route holds.
-				void resolveModels(facade.snapshot());
-			}
-			task = facade?.session.task() ?? null;
-			syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-			syncContributedTask();
-			stageViewport.invalidatePlan();
-			refresh();
-		});
-		for (const factory of stageAdapterFactories) mountStageAdapter(facade, mounted, factory);
-		// The previous epoch's controller belongs to its disposed coordinator; this
-		// epoch gets exactly one state machine over the new one.
-		projectSession.mountSave(mounted, snapshot);
-		historyState = mounted.history();
-		resetViewContext();
+/** Interrupt old input before the session's replacement swaps the source. */
+function interruptForReplacement(): void {
+	clearHover();
+	interruptPress('replacement');
+}
+
+/** Presentation that names the replaced source is cleared before disposal. */
+function resetPresentationBeforeSwap(): void {
+	expandedPresentationId = null;
+}
+
+/** The new facade exists: bind the host tools and re-read session view state. */
+function bindEpochFacade(next: StageFacade): void {
+	measureTool = createStageMeasure(next);
+	eraserTool = createStageEraser(next, () => refreshHostTools());
+	// The session keeps Grid/Snap across a replacement; the presenter re-reads it
+	// from the mounted authority rather than assuming its own default.
+	drafting = next.drafting();
+	task = null;
+	contributedTaskId = null;
+}
+
+/** Adapter registrations/bindings changed for the mounted epoch. */
+function refreshAdapterPresentation(): void {
+	contributionsVersion += 1;
+	task = facade?.session.task() ?? null;
+	syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
+	syncContributedTask();
+}
+
+/** The acceptance host installed a changed source for the mounted epoch. */
+function refreshAcceptedPresentation(): void {
+	task = facade?.session.task() ?? null;
+	syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
+	syncContributedTask();
+	stageViewport.invalidatePlan();
+	refresh();
+}
+
+/** Undo/Redo installed a restored source; requalified selection is re-read. */
+function completeHistoryInstall(outcome: {
+	readonly selectionClearedReason: 'subject-retired' | 'no-correspondence' | null;
+}): void {
+	selection = facade ? primaryEntry(facade.selectionState()) : null;
+	if (outcome.selectionClearedReason !== null) {
+		notice = 'The selected subject no longer exists in the restored source.';
 	}
+	stageViewport.invalidatePlan();
+}
 
 
 	/* --- viewport refresh --------------------------------------------------- */
@@ -1662,7 +1626,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// session (`isCurrent` is false, the registered abort fires) and drops its
 			// result instead of mounting a second stage.
 			experienceLens.dispose();
-			tornDown = true;
+			stageEpoch.markTornDown();
 			// Stop scheduling before the facade is disposed.
 			stageViewport.dispose();
 			clearHover();
@@ -1676,91 +1640,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// Session teardown cancels every registered writer (including an in-flight
 			// project GET) and runs every registered disposer exactly once; no
 			// project-specific singleton — acceptance host, history or facade — survives
-			// the route.
-			unsubscribeContributions?.();
-			unsubscribeAcceptance?.();
-			projectSession.dispose();
-			unsubscribeContributions = null;
-			acceptance?.dispose();
-			facade?.dispose();
-			// The route owns every approved-model URL it acquired; the visitor
-			// surface never revokes what it was handed.
-			modelResolution?.dispose();
-			modelResolution = null;
-			modelUrls = new Map();
-			modelPinSignature = '';
-			installedModelSignature = '';
-			session.dispose();
+			// the route. The epoch controller releases its subscriptions, Save mount,
+			// acceptance/facade and project-bound asset leases in the baseline order,
+			// then disposes the Stage session.
+			stageEpoch.dispose();
 		};
 	});
-
-	/**
-	 * Resolve every approved creator-model derivative for one accepted source.
-	 *
-	 * The pins come from the envelope's `model` resources, so this is the same
-	 * resolution a fresh reopen performs: a stale import-session URL is never
-	 * reused, and a source change releases exactly the URLs the previous source
-	 * acquired. A failed model stays a failure and the fallback box carries the
-	 * approved footprint; it is never drawn as if the bytes had loaded.
-	 */
-	async function resolveModels(snapshot: Parameters<typeof stageEnvelope>[0]): Promise<void> {
-		const pins = approvedModelPins(stageEnvelope(snapshot));
-		// An edit that does not change the approved pins keeps the URLs it already
-		// has: revoking and re-downloading every derivative on each accepted command
-		// would flash the fallback box and re-fetch immutable bytes.
-		const signature = pins.map((pin) => `${pin.assetId}@${pin.hash}`).join('|');
-		if (signature === modelPinSignature) return;
-		modelPinSignature = signature;
-		const generation = ++modelGeneration;
-		// The installed set stays live while the new one resolves. Shared hashes keep
-		// their references through the object-URL ref count, so they are neither
-		// revoked nor re-fetched; the old set is released only once its replacement
-		// is installed.
-		const landed: { value: ApprovedModelSources | null } = { value: null };
-		let installable = false;
-		try {
-			// The session's cancellation registry is the one abort authority: a
-			// replacement or teardown ends this read, exactly like a project load.
-			// `runBoundLoad` discards the value of a cancelled read, so the value is
-			// captured here and released below rather than leaked.
-			installable =
-				(await runBoundLoad(session, async (signal) => {
-					landed.value = await resolveApprovedModels({
-						envelope: stageEnvelope(snapshot),
-						projectId: snapshot.acceptedRevision.projectId,
-						apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
-						signal
-					});
-					return landed.value;
-				})) !== null;
-		} catch {
-			// A failed resolution installs nothing: the Stage keeps the installed set
-			// and the fallback for any model outside it.
-		}
-		const resolved = landed.value;
-		if (!installable || resolved === null || tornDown || generation !== modelGeneration) {
-			// A stale, cancelled or failed attempt releases only what it acquired.
-			resolved?.dispose();
-			if (!tornDown && generation === modelGeneration) modelPinSignature = installedModelSignature;
-			return;
-		}
-		const previous = modelResolution;
-		modelResolution = resolved;
-		installedModelSignature = signature;
-		modelUrls = resolved.urls;
-		previous?.dispose();
-		// A model whose bytes are unavailable is stated, not dressed as a loaded
-		// mesh: the fallback box carries the approved footprint and this note names
-		// the reason. A successful resolution clears only a notice it set itself.
-		const failure = resolved.failures.size === 0 ? null : [...resolved.failures.values()][0]!;
-		if (failure !== null) {
-			notice = failure;
-			modelNotice = failure;
-		} else {
-			if (modelNotice !== null && notice === modelNotice) notice = '';
-			modelNotice = null;
-		}
-	}
 
 	/* --- Camera intents ----------------------------------------------------- */
 
@@ -1901,81 +1786,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	/* --- source history (host commands through the F4 boundary) -------------- */
-
-	function refreshHistory(): void {
-		const next = acceptance?.history() ?? {
-			canUndo: false,
-			canRedo: false,
-			depth: 1,
-			position: 0,
-			undoUnavailableReason: 'History belongs to the mounted project.',
-			redoUnavailableReason: 'History belongs to the mounted project.'
-		};
-		// Assigned only when something changed: this runs on the animation frame, so
-		// an unconditional assignment would re-render the Head 60 times a second.
-		if (
-			next.canUndo === historyState.canUndo &&
-			next.canRedo === historyState.canRedo &&
-			next.depth === historyState.depth &&
-			next.position === historyState.position &&
-			next.undoUnavailableReason === historyState.undoUnavailableReason &&
-			next.redoUnavailableReason === historyState.redoUnavailableReason
-		) {
-			return;
-		}
-		historyState = next;
-	}
-
-	async function undo(): Promise<void> {
-		const host = acceptance;
-		if (host === null) return;
-		perfMark('command:undo');
-		const outcome = await host.undo();
-		if (acceptance !== host || tornDown) return;
-		if (outcome.kind === 'installed') {
-			// The restored state installed through the same facade path an accept uses:
-			// the view stays, the selection was requalified against the restored
-			// correspondence, and the plan/markers refresh below reads the new snapshot.
-			selection = facade ? primaryEntry(facade.selectionState()) : null;
-			if (outcome.selectionClearedReason !== null) {
-				notice = 'The selected subject no longer exists in the restored source.';
-			}
-			stageViewport.invalidatePlan();
-		} else if (outcome.kind === 'unavailable') {
-			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Undo runs once it settles.' : 'Nothing to undo.';
-		} else if (outcome.kind === 'refused') {
-			notice =
-				outcome.compensation === 'failed'
-					? `${outcome.message} The history could not be rolled back to match what is shown.`
-					: outcome.message;
-		}
-		refreshHistory();
-		refresh();
-	}
-
-	async function redo(): Promise<void> {
-		const host = acceptance;
-		if (host === null) return;
-		perfMark('command:redo');
-		const outcome = await host.redo();
-		if (acceptance !== host || tornDown) return;
-		if (outcome.kind === 'installed') {
-			selection = facade ? primaryEntry(facade.selectionState()) : null;
-			if (outcome.selectionClearedReason !== null) {
-				notice = 'The selected subject no longer exists in the restored source.';
-			}
-			stageViewport.invalidatePlan();
-		} else if (outcome.kind === 'unavailable') {
-			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Redo runs once it settles.' : 'Nothing to redo.';
-		} else if (outcome.kind === 'refused') {
-			notice =
-				outcome.compensation === 'failed'
-					? `${outcome.message} The history could not be rolled back to match what is shown.`
-					: outcome.message;
-		}
-		refreshHistory();
-		refresh();
-	}
 
 	/* --- selection, tasks and Reveal ---------------------------------------- */
 
@@ -4585,8 +4395,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 		canUndo={historyState.canUndo}
 		canRedo={historyState.canRedo}
-		onUndo={() => void undo()}
-		onRedo={() => void redo()}
+		onUndo={() => void stageEpoch.undo()}
+		onRedo={() => void stageEpoch.redo()}
 		save={headSave}
 		onReloadRemote={(offer) => void applyReloadOffer(offer)}
 		saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
@@ -4840,7 +4650,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{evaluation}
 						{ghosts}
 						{modelUrls}
-						artworkScope={stageArtworkScope}
+						artworkScope={stageAssets.artworkScope}
 						artworkGhost={artworkResizeGhost ?? artwork.ghost}
 						onArtworkError={(message) => { notice = message; }}
 						plan={planView}
