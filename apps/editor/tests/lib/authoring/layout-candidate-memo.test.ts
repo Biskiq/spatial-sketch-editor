@@ -321,6 +321,8 @@ describe('E4/G1 — pan with a live candidate', { timeout: 20_000 }, () => {
 			);
 			expect(mounted.facade.camera.state().pose.target).not.toEqual(target);
 			expect(mounted.facade.planDependencyKey()).not.toBe(dependency);
+			// The route's frame realises the panned view before the next read.
+			expect(mounted.facade.camera.evaluate(RECT, 20).kind).toBe('evaluated');
 
 			expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-chain')).toBe(true);
 			// The target is a Plan input, so the Paper is rebuilt once; the candidate

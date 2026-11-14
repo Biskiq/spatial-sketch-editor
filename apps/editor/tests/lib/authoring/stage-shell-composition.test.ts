@@ -78,6 +78,8 @@ const CANVAS_FILE = 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelt
  * another API or call site is a composition decision, not a test fix.
  */
 const HEIGHT_SHEET = relativeToRepo(join(SHELL_DIR, 'StageHeightSheet.svelte'));
+// E3 — the route's extracted viewport controller is the Stage's one measurer.
+const STAGE_VIEWPORT = relativeToRepo(join(STAGE_DIR, 'route', 'stage-viewport.svelte.ts'));
 const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 
 /** The route and its one constructed posture controller, never all dependencies. */
@@ -335,8 +337,9 @@ describe('Stage shell composition', () => {
 
 		// The representation drives eligibility and the Index, through the facade's
 		// own evaluation — the same call the hit path makes.
-		expect(route).toContain('stage.setPlanParameters(parameters)');
-		expect(route).toContain('stage.plan()');
+		const viewport = codeOf(STAGE_VIEWPORT);
+		expect(viewport).toContain('stage.setPlanParameters(parameters)');
+		expect(viewport).toContain('stage.plan()');
 		expect(route).toContain('planView.membership');
 		expect(route).toContain('stage.resolveSourceHit(');
 	});
@@ -485,22 +488,28 @@ describe('Stage shell composition', () => {
 		];
 		const measurers = sources
 			.filter(([, source]) =>
-				/getBoundingClientRect|clientWidth|clientHeight|devicePixelRatio/.test(source)
+				/getBoundingClientRect\(|\.clientWidth\b|\.clientHeight\b/.test(source)
 			)
 			.map(([file]) => file);
-		expect(measurers).toEqual([ROUTE]);
+		expect(measurers).toEqual([STAGE_VIEWPORT]);
 		expect((snapshotHost.match(/devicePixelRatio/g) ?? []).length).toBe(1);
 		expect(snapshotHost).not.toMatch(/getBoundingClientRect|clientWidth|clientHeight/);
 		expect((heightSheet.match(/getBoundingClientRect/g) ?? []).length).toBe(2);
 		expect(sanctionedHeightSheet).not.toMatch(
 			/getBoundingClientRect|clientWidth|clientHeight|devicePixelRatio/
 		);
-		expect((route.match(/getBoundingClientRect\(\)/g) ?? []).length).toBe(2);
+		// The route composes the controller and never measures the surface itself.
+		expect(route).not.toMatch(/getBoundingClientRect|clientWidth|clientHeight|devicePixelRatio/);
+		expect(route).toContain('stageViewport.measure()');
 		// One function reads the element — one `clientWidth`/`clientHeight` pair and
 		// one left/top pair — and both the mount and the per-frame refresh call it.
-		expect((route.match(/clientWidth/g) ?? []).length).toBe(1);
-		expect((route.match(/clientHeight/g) ?? []).length).toBe(1);
-		expect((route.match(/measure\(\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+		const viewport = codeOf(STAGE_VIEWPORT);
+		expect((viewport.match(/getBoundingClientRect\(\)/g) ?? []).length).toBe(2);
+		expect((viewport.match(/clientWidth/g) ?? []).length).toBe(1);
+		expect((viewport.match(/clientHeight/g) ?? []).length).toBe(1);
+		expect((viewport.match(/function measure\(\)/g) ?? []).length).toBe(1);
+		expect(viewport).toContain('scheduler.request(tick)');
+		expect(route).not.toContain('requestAnimationFrame(tick)');
 
 		// Chrome may translate (that is layout of the chrome itself); nothing in the
 		// Stage may scale or matrix-transform the surface. Comments are blanked

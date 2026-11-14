@@ -1309,3 +1309,88 @@ describe('R217.S06 — the Height Sheet drives the Plan cut', () => {
 		expect(seen).toEqual([1.8]);
 	});
 });
+
+/**
+ * E3 — identity retention at the Camera host and at the facade's output boundary.
+ *
+ * A settled Stage refreshes every display frame. These are the two identities
+ * that make that refresh publish nothing: the Camera returns its previous
+ * evaluation for identical inputs, and the facade returns its previous
+ * contribution arrays until one of their inputs changes.
+ */
+describe('Stage viewport output identity (E3)', () => {
+	it('returns the identical Camera evaluation until an input changes', async () => {
+		const { facade } = await mount();
+		const first = facade.camera.evaluate(RECT, 0);
+		expect(first.kind).toBe('evaluated');
+		if (first.kind !== 'evaluated') return;
+		const retained = first.evaluation;
+
+		const repeated = facade.camera.evaluate(RECT, 0.5);
+		expect(repeated.kind).toBe('evaluated');
+		if (repeated.kind !== 'evaluated') return;
+		expect(repeated.evaluation).toBe(retained);
+
+		facade.camera.applyIntent({ kind: 'pan', deltaCss: [10, 0], rect: RECT }, 0.5);
+		const panned = facade.camera.evaluate(RECT, 0.5);
+		expect(panned.kind).toBe('evaluated');
+		if (panned.kind !== 'evaluated') return;
+		expect(panned.evaluation).not.toBe(retained);
+
+		const resized = facade.camera.evaluate({ ...RECT, width: RECT.width - 100 }, 0.5);
+		expect(resized.kind).toBe('evaluated');
+		if (resized.kind !== 'evaluated') return;
+		expect(resized.evaluation).not.toBe(panned.evaluation);
+
+		facade.camera.rebaseSource('source-next');
+		expect(facade.camera.evaluation()).toBeNull();
+		const rebased = facade.camera.evaluate(RECT, 0.5);
+		expect(rebased.kind).toBe('evaluated');
+		if (rebased.kind !== 'evaluated') return;
+		expect(rebased.evaluation).not.toBe(resized.evaluation);
+	});
+
+	it('retains contributed output arrays until an input changes', async () => {
+		const { facade } = await mount();
+		facade.camera.evaluate(RECT, 0);
+		facade.registerStageAdapter({
+			id: 'e3-identity-probe',
+			overlay: () => [{ id: 'probe-marker', css: [12, 18], label: 'probe' }],
+			guides: () => [{ id: 'probe-guide', role: 'selection', segments: [] }],
+			candidatePreview: () => [
+				{ id: 'probe-candidate', role: 'subject', polygons: [], segments: [], labels: [] }
+			],
+			ghosts: () => []
+		});
+
+		const overlays = facade.overlays();
+		const guides = facade.guides();
+		const candidates = facade.candidatePreviews();
+		const ghosts = facade.ghosts();
+		expect(facade.overlays()).toBe(overlays);
+		expect(facade.guides()).toBe(guides);
+		expect(facade.candidatePreviews()).toBe(candidates);
+		expect(facade.ghosts()).toBe(ghosts);
+
+		// An adapter's own surface change is explicit; the read then rebuilds once.
+		facade.notifySurfaceChange();
+		const changed = facade.overlays();
+		expect(changed).not.toBe(overlays);
+		expect(facade.overlays()).toBe(changed);
+
+		// A selection change is a new input even when the contributed content is
+		// textually the same.
+		const fragment = facade.eligibleFragments()[0];
+		expect(fragment).toBeDefined();
+		if (fragment === undefined) return;
+		facade.select({
+			sourceId: fragment.ref.sourceId,
+			sourceKind: fragment.ref.sourceKind,
+			generationId: fragment.ref.generationId,
+			ref: fragment.ref
+		});
+		const selected = facade.overlays();
+		expect(selected).not.toBe(changed);
+		expect(facade.overlays()).toBe(selected);
+	});
+});
