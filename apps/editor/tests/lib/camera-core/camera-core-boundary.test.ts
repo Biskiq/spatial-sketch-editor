@@ -19,7 +19,7 @@ const packageSrc = resolve(appSrc, '../../../packages/camera-core/src');
  * the shared renderer it mounts. The separate `apps/museum` fork this used to
  * walk was retired with the frozen project (§3.5).
  */
-const visitorSrcRoots = [resolve(appSrc, 'lib/visitor'), resolve(appSrc, 'lib/museum')];
+const visitorSrcRoots = [resolve(appSrc, 'lib/visitor'), resolve(appSrc, 'lib/render')];
 
 function sourceFiles(root: string): string[] {
   const files: string[] = [];

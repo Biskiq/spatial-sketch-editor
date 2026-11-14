@@ -30,8 +30,8 @@ import {
 } from '$lib/content/scene';
 import { getAssetById } from '$lib/content/assets';
 import { getMaterial } from '$lib/content/materials';
-import { fallbackDimensionsFor, fallbackKindFor, type AssetFallbackKind } from '$lib/museum/assets/fallbacks';
-import { fallbackPartsFor, type FallbackPart } from '$lib/museum/assets/fallback-shapes';
+import { fallbackDimensionsFor, fallbackKindFor, type AssetFallbackKind } from '$lib/render/assets/fallbacks';
+import { fallbackPartsFor, type FallbackPart } from '$lib/render/assets/fallback-shapes';
 import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model';
 import type {
 	RuntimeScene,
@@ -56,7 +56,7 @@ import {
 	type SceneTransform,
 	type SceneVec3
 } from './resources/scene-render-item';
-import { resolveSceneMaterial, sceneLookFor } from '$lib/museum/materials/scene-instance-material';
+import { resolveSceneMaterial, sceneLookFor } from '$lib/render/materials/scene-instance-material';
 import type { StandardMaterialDescriptor } from './resources/material-descriptor';
 
 /** One canonical Form evaluation, as the lazy form kernel produces it. */
@@ -303,7 +303,7 @@ function fallbackGeometry(primitive: FallbackPart['primitive']): {
 
 /**
  * The fallback surface: the catalogue's untextured look, as `FallbackMaterial`
- * (`MuseumMaterial` with `textures="off"`) acquired it.
+ * (`CatalogueMaterial` with `textures="off"`) acquired it.
  */
 function fallbackDescriptor(part: FallbackPart, wireframe: boolean): StandardMaterialDescriptor {
 	const definition = getMaterial(part.materialId);

@@ -44,7 +44,7 @@ import {
 
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
-import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
+import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-material-factory';
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import type { MaterialStore } from '$lib/render/resources/material-store';

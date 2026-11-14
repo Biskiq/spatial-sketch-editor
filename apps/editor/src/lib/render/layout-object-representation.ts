@@ -26,7 +26,7 @@
  * by `sphereRenderScale` — so the rendered result is unchanged.
  *
  * What it deliberately does not own: Room floors, ceilings and door portals (they
- * need `MuseumMaterial`'s texture scope) and Scene entities (`VisitorEntities`).
+ * need `CatalogueMaterial`'s texture scope) and Scene entities (`VisitorEntities`).
  * The compiled object id lives on the mesh itself (`VisitorLayoutObject:<id>`);
  * the shell used to nest it in a `T.Group` with the same name, and no consumer
  * reads the group, so a per-object transform must be applied to the mesh.

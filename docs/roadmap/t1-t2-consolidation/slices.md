@@ -1,5 +1,7 @@
 # T1/T2 consolidation — slice plans
 
+EVIDENCE-PATHS: start — source paths below are as written at the plan base `afca870f`; E12 moved `lib/museum/*` to `lib/render/*` and `tests/lib/museum/*` to their owning roots (see [`measurements.md`](./measurements.md#e12--final-placement-and-names))
+
 **Execution addendum:** [`execution-schedule.md`](./execution-schedule.md) owns current PR grouping,
 dependencies and file reservations; [`decomposition.md`](./decomposition.md) adds ownership
 extractions. The specifications below remain authoritative for scope, behavior, measurement,

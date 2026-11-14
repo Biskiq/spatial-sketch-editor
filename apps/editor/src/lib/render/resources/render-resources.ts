@@ -10,7 +10,7 @@
  * This is still one owner, not a second authority: `MaterialStore` remains the
  * only material factory, `GeometryStore` the only geometry owner and, since
  * E10/R6, `LightStore` the only realizer of a world light. The context
- * exists so a deep component (`MuseumMaterial`, a door portal, a fallback body)
+ * exists so a deep component (`CatalogueMaterial`, a door portal, a fallback body)
  * reaches the Canvas's stores without threading a prop through every world
  * component. Mounting world content without a Canvas owner is a programming
  * error, and says so.

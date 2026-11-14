@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { getAssetById } from '$lib/content/assets';
-import { assetFallbackDimensions, fallbackDimensionsFor, fallbackKindFor } from '$lib/museum/assets/fallbacks';
+import { assetFallbackDimensions, fallbackDimensionsFor, fallbackKindFor } from '$lib/render/assets/fallbacks';
 
 describe('creator-model generic fallback', () => {
 	it('uses the approved footprint width and depth', () => {

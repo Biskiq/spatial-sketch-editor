@@ -21,7 +21,7 @@
 import { Mesh, type Material, type Object3D, type Texture } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { inspectModel } from '$lib/museum/assets/model-utils';
+import { inspectModel } from '$lib/render/assets/model-utils';
 import { realizeModel } from './model-realization';
 import type {
 	ModelTemplate,

@@ -591,7 +591,7 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 [overlay]: ../apps/editor/src/lib/authoring/stage/shell/StageOverlay.svelte
 [route]: ../apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
 [grammar]: ../docs/reference/design-system/spatial-instrument-grammar.md#density-and-correspondence-between-readings
-[model-clone]: ../apps/editor/src/lib/museum/assets/model-utils.ts
+[model-clone]: ../apps/editor/src/lib/render/assets/model-utils.ts
 [orbit]: ../apps/editor/perf/README.md
 [fixtures]: ../apps/editor/perf/lib/fixtures.ts
 [harness]: ../apps/editor/perf/README.md

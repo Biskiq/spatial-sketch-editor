@@ -36,7 +36,7 @@
 	} from '@threlte/core';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
-	import GroundPlinth from '$lib/museum/layout/GroundPlinth.svelte';
+	import GroundPlinth from '$lib/render/layout/GroundPlinth.svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 	import type { Object3D } from 'three';
 

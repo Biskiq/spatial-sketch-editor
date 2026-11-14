@@ -33,7 +33,7 @@ import {
 	resetTextureCachesForTests,
 	type TextureLoadScope
 } from '$lib/render/resources/texture-store';
-import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
+import type { EffectiveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 
 const LOOK_A: ModelLook = { material: { color: '#c4b4a0', roughness: 0.9, metalness: 0 }, texture: null };
 const LOOK_B: ModelLook = { material: { color: '#2b3d5c', roughness: 0.4, metalness: 0.1 }, texture: null };

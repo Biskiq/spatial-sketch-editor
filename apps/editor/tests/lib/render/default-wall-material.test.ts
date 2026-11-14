@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MeshStandardMaterial } from 'three';
 import { describe, expect, it } from 'vitest';
-import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
+import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-material-factory';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';

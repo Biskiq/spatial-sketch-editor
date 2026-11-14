@@ -8,7 +8,7 @@ import {
 	resetTextureCachesForTests,
 	setDefaultTextureSourceLoader
 } from '$lib/render/resources/texture-store';
-import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
+import type { EffectiveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 import type { Texture as ThreeTexture, Vector2 } from 'three';
 
 const texturesByUri = new Map<string, ThreeTexture>();

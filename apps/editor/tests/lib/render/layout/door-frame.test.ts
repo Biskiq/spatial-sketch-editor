@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DOOR_FRAME_FACE_INSET_METERS, doorFrameBoxes } from '$lib/museum/layout/door-frame';
+import { DOOR_FRAME_FACE_INSET_METERS, doorFrameBoxes } from '$lib/render/layout/door-frame';
 
 const CASES = [
 	{ width: 1, height: 2.1, wallThickness: 0.2 },

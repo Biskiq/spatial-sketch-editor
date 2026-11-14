@@ -8,8 +8,8 @@
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
-	import RoomPortal from '$lib/museum/layout/RoomPortal.svelte';
-	import GroundPlinth from '$lib/museum/layout/GroundPlinth.svelte';
+	import RoomPortal from '$lib/render/layout/RoomPortal.svelte';
+	import GroundPlinth from '$lib/render/layout/GroundPlinth.svelte';
 
 	let {
 		geometry,

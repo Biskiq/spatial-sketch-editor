@@ -1,5 +1,7 @@
 # T1/T2 consolidation — audit
 
+EVIDENCE-PATHS: start — source paths below are as written at the plan base `afca870f`; E12 moved `lib/museum/*` to `lib/render/*` and `tests/lib/museum/*` to their owning roots (see [`measurements.md`](./measurements.md#e12--final-placement-and-names))
+
 **Base:** `main` at `afca870f` (merge of PR #314). **Method:** static inspection of the code against
 the documented invariants, existing measurement records, and hand-calculated cost models. No
 benchmark was run for this audit. Every quantitative statement is labelled:

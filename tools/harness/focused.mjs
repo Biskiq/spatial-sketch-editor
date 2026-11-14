@@ -14,10 +14,11 @@ export function focusedFiles(plan, cwd = process.cwd()) {
 		if (area) areas.add(area);
 		if (/camera|navigation|experience|\/routes\//i.test(path)) {
 			areas.add('experience');
-			areas.add('museum');
+			areas.add('camera-core');
+			areas.add('render');
 		}
-		if (!area || !['authoring', 'design', 'content', 'museum', 'render'].includes(area)) {
-			for (const fallback of ['content', 'experience', 'museum', 'render']) areas.add(fallback);
+		if (!area || !['authoring', 'design', 'content', 'render'].includes(area)) {
+			for (const fallback of ['content', 'experience', 'camera-core', 'render']) areas.add(fallback);
 		}
 	}
 	const cohort = execFileSync('git', ['ls-tree', '-r', '--name-only', '-z', plan.head, 'apps/editor/tests/lib'],
@@ -26,7 +27,7 @@ export function focusedFiles(plan, cwd = process.cwd()) {
 		.map((path) => path.slice('apps/editor/'.length))
 		.filter((path) => {
 			const [, , area, subarea] = path.split('/');
-			return areas.has(area) && !heavyFiles.has(path) && !(area === 'museum' && subarea === 'layout');
+			return areas.has(area) && !heavyFiles.has(path) && !(area === 'render' && subarea === 'layout');
 		});
 	return [...new Set([...ARCH_FILES, ...cohort])].sort();
 }

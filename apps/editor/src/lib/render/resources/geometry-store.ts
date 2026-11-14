@@ -25,7 +25,7 @@ import {
 	SphereGeometry,
 	type BufferGeometry
 } from 'three';
-import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 import { artworkBackingGeometry, artworkFrameGeometry, artworkMatGeometry } from '../artwork/artwork-geometry';
 import { geometryKeyOf, type GeometrySpec } from './scene-render-item';
 

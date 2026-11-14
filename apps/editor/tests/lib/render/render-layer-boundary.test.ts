@@ -145,7 +145,7 @@ describe('render-layer-boundary: stores read no authoring layer', () => {
 		);
 		// R2b replaced the one pre-existing exception: the store no longer reads the
 		// resolved-look module to know what a variant source is.
-		expect(importsOf(TEXTURE_STORE)).not.toContain('$lib/museum/materials/scene-instance-material');
+		expect(importsOf(TEXTURE_STORE)).not.toContain('$lib/render/materials/scene-instance-material');
 	});
 
 	it('the Scene description is portable data: no Three and no store', () => {

@@ -21,7 +21,7 @@ import { createAdapter as layoutAdapter } from '$lib/authoring/adapters/layout.a
 import { createAdapter as sceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
-import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 
 const rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 // Captured against trusted main 8c2c86e6 with this fixture and the real Layout

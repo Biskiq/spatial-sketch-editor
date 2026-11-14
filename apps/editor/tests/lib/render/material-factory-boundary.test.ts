@@ -167,10 +167,10 @@ describe('material-factory-boundary: one factory for world materials', () => {
 			expect(entry.owner, file).toMatch(/^E(7|8|9|10)\//);
 		}
 		// The three Layout surfaces R2a moved are gone from the list entirely.
-		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/layout/wall-material-factory.ts');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout/wall-material-factory.ts');
 		// E7/R2b retired the Scene look, the museum surface and the fallback body.
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/materials/SceneInstanceMaterial.svelte');
-		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/materials/MuseumMaterial.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/materials/CatalogueMaterial.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/assets/FallbackMaterial.svelte');
 		// E8/R5 retired the per-entity model host and its bounds-helper exception.
 		expect(EDITOR_INK).not.toHaveProperty('lib/museum/assets/AssetModel.svelte');
@@ -180,7 +180,7 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/visitor/VisitorLayoutShell.svelte');
 		// E9/R5 + R2c retired artwork, the environment grounds and the plinth.
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/entities/EntityArtwork.svelte');
-		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/layout/GroundPlinth.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout/GroundPlinth.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/WorldEnvironment.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/visitor/VisitorPreviewSurface.svelte');
 		// E10/R6 retired the light proxy: no world site is left; everything else is editor ink.
@@ -193,7 +193,7 @@ describe('material-factory-boundary: one factory for world materials', () => {
 			'lib/render/scene-artwork-representation.ts',
 			'lib/render/resources/StoreMaterial.svelte',
 			'lib/render/WorldEnvironment.svelte',
-			'lib/museum/layout/GroundPlinth.svelte',
+			'lib/render/layout/GroundPlinth.svelte',
 			'lib/visitor/VisitorPreviewSurface.svelte'
 		]) {
 			const absolutePath = path.join(EDITOR_SRC, file);
@@ -205,7 +205,7 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(handler).toContain('store.acquire(');
 		for (const file of [
 			'lib/render/WorldEnvironment.svelte',
-			'lib/museum/layout/GroundPlinth.svelte',
+			'lib/render/layout/GroundPlinth.svelte',
 			'lib/visitor/VisitorPreviewSurface.svelte'
 		]) {
 			expect(readFileSync(path.join(EDITOR_SRC, file), 'utf8'), file).toContain('<StoreMaterial');

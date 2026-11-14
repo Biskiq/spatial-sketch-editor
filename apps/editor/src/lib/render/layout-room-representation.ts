@@ -121,7 +121,7 @@ function roomDescriptors(): {
 			color: '#111018',
 			roughness: plaster.roughness,
 			metalness: plaster.metalness,
-			// `MuseumMaterial` defaults `receiveLighting`, and with `textures="off"`
+			// `CatalogueMaterial` defaults `receiveLighting`, and with `textures="off"`
 			// it draws a plain untoned-free standard surface: `toneMapped = true`.
 			toneMapped: true
 		}

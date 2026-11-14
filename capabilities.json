@@ -132,7 +132,7 @@
       "area": "T2",
       "summary": "Distinguish object definitions, placed instances, internal components, groups and explicit attachments",
       "northStar": "north-star.md#stage--world-composition-and-shared-assets",
-      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/content/**", "apps/editor/src/lib/museum/**", "apps/api/src/**"],
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/content/**", "apps/editor/src/lib/render/**", "apps/api/src/**"],
       "design": null,
       "review": null
     },

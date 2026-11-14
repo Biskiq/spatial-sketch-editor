@@ -38,7 +38,7 @@ import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/author
 import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
-import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';

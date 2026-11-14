@@ -26,7 +26,7 @@
   /**
    * A real Threlte context for mounted material-lifecycle regressions.
    *
-   * `MuseumMaterial` renders a real `<T is={material} dispose={false} />`, so a
+   * `CatalogueMaterial` renders a real `<T is={material} dispose={false} />`, so a
    * faithful mount needs the contexts a Canvas normally provides: a scheduler, a
    * disposal registry, and a parent object. They are created here with
    * `@threlte/core`'s own factories — no mocked `T`, no renderer and no WebGL —
@@ -46,7 +46,7 @@
     createSchedulerContext,
     T
   } from '@threlte/core';
-  import MuseumMaterial from '$lib/museum/materials/MuseumMaterial.svelte';
+  import CatalogueMaterial from '$lib/render/materials/CatalogueMaterial.svelte';
   import { provideRenderResources } from '$lib/render/resources/render-resources';
 
   let { surfaces, handle }: { surfaces: SurfaceSpec[]; handle: MaterialLifecycleHandle } = $props();
@@ -84,7 +84,7 @@
         meshes[index] = mesh;
       }}
     >
-      <MuseumMaterial {...spec} />
+      <CatalogueMaterial {...spec} />
     </T.Mesh>
   {/if}
 {/each}

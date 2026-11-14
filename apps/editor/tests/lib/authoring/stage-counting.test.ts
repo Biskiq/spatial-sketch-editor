@@ -29,7 +29,7 @@ import { buildCompiledLayoutCandidatePaper } from '$lib/authoring/adapters/layou
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
 import { previewCanvasRenderer, stageCanvasRenderer } from '$lib/render/canvas-renderers';
-import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
+import { resolveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 vi.mock('@threlte/core', async () => import('./fixtures/threlte-counting-context'));

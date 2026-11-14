@@ -10,7 +10,7 @@
 	import { EdgesGeometry } from 'three';
 	import type { SceneFormSource } from '@portfolio/project-model';
 	import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
-	import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+	import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 
 	let {
 		form,
