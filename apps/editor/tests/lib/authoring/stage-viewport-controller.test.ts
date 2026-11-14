@@ -207,3 +207,83 @@ describe('Stage viewport controller', () => {
 		viewport.dispose();
 	});
 });
+
+describe('Stage viewport controller — Look Through capture frame', () => {
+	it('evaluates the absolute capture frame while the scissor stays Stage-local', async () => {
+		const probe = harness();
+		const evaluate = probe.facade.camera.evaluate as ReturnType<typeof vi.fn>;
+		const queue = new Map<number, FrameRequestCallback>();
+		let nextHandle = 0;
+		const frameRect = {
+			left: 202,
+			top: 113,
+			width: 420,
+			height: 260,
+			right: 622,
+			bottom: 373,
+			x: 202,
+			y: 113,
+			toJSON() {}
+		};
+		const viewport = createStageViewport({
+			facade: () => probe.facade,
+			stageElement: () =>
+				({
+					clientWidth: RECT.width,
+					clientHeight: RECT.height,
+					getBoundingClientRect: () => RECT
+				}) as unknown as HTMLElement,
+			throughFrameElement: () =>
+				({
+					clientLeft: 2,
+					clientTop: 3,
+					getBoundingClientRect: () => frameRect
+				}) as unknown as HTMLElement,
+			lookThroughActive: () => true,
+			previewing: () => false,
+			lens: () => 'experience',
+			revealed: () => [],
+			roomLabels: () => ({ plan: false, threeD: false }),
+			groundReachMeters: () => undefined,
+			nowSeconds: () => 0,
+			advanceLookThroughZoom: () => {},
+			advancePlayback: () => {},
+			onBeforeRefresh: () => {},
+			onAfterRefresh: () => {},
+			scheduler: {
+				request(callback) {
+					queue.set(++nextHandle, callback);
+					return nextHandle;
+				},
+				cancel(handle) {
+					queue.delete(handle);
+				}
+			}
+		});
+		viewport.start();
+		await runOne(queue);
+
+		// The Stage is 800×600; the capture frame is 420×260 at another offset.
+		// Evaluation receives the frame's absolute box, the scissor its Stage-local
+		// box. If evaluation is fed the Stage rect, these cannot both align.
+		expect(evaluate).toHaveBeenCalledWith(
+			{
+				left: 204,
+				top: 116,
+				width: 420,
+				height: 260,
+				devicePixelRatio: 1
+			},
+			0,
+			undefined
+		);
+		expect(viewport.framedViewport).toEqual({
+			left: 194,
+			top: 96,
+			width: 420,
+			height: 260
+		});
+		expect(viewport.framedViewport).not.toEqual(viewport.rect);
+		viewport.dispose();
+	});
+});

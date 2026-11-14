@@ -169,14 +169,20 @@ export function createStageViewport(input: StageViewportInput) {
 		const framed = input.lookThroughActive() ? measureThroughFrame() : null;
 		if (framed === null) {
 			if (framedViewport !== null) framedViewport = null;
-		} else if (
-			framedViewport === null ||
-			framedViewport.left !== framed.local.left ||
-			framedViewport.top !== framed.local.top ||
-			framedViewport.width !== framed.local.width ||
-			framedViewport.height !== framed.local.height
-		) {
-			framedViewport = framed.local;
+		} else {
+			// Camera reads the capture frame's absolute viewport; the renderer's
+			// scissor reads the same box in Stage-local coordinates. They are the
+			// same capture frame in two spaces, never two different measurements.
+			currentRect = framed.absolute;
+			if (
+				framedViewport === null ||
+				framedViewport.left !== framed.local.left ||
+				framedViewport.top !== framed.local.top ||
+				framedViewport.width !== framed.local.width ||
+				framedViewport.height !== framed.local.height
+			) {
+				framedViewport = framed.local;
+			}
 		}
 		const result = stage.camera.evaluate(
 			currentRect,
