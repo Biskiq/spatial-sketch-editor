@@ -827,8 +827,13 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId: firstId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted.facade, [5, 0]), evaluationId: firstId });
 
-		// A new evaluation is the reading flip: the CSS the gesture measured is not
+		// A reading flip is a new evaluation: the CSS the gesture measured is not
 		// the CSS that is drawn any more.
+		const reading = mounted.facade.evaluation()!.settledReading;
+		mounted.facade.camera.applyIntent(
+			{ kind: 'set-reading', reading: reading === 'plan' ? '3d' : 'plan' },
+			2
+		);
 		settle(mounted.facade, 4);
 		const secondId = mounted.facade.evaluationId()!;
 		expect(secondId).not.toBe(firstId);
@@ -859,6 +864,11 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 
 		// A reading flip ends the writer and preserves the exact parameter. The
 		// stale release cannot commit it.
+		const reading = mounted.facade.evaluation()!.settledReading;
+		mounted.facade.camera.applyIntent(
+			{ kind: 'set-reading', reading: reading === 'plan' ? '3d' : 'plan' },
+			2
+		);
 		settle(mounted.facade, 4);
 		const secondId = mounted.facade.evaluationId()!;
 		mounted.facade.pointerIntent({ phase: 'move', css: targetCss, evaluationId: secondId });

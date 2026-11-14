@@ -383,8 +383,11 @@ describe('T1 A8 — Opening Repeat', () => {
 		// A proposal is not a write: the accepted bytes are untouched.
 		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
 
-		// Clearing the proposal removes the proposal and changes no document.
+		// Clearing the proposal removes the proposal and changes no document. The
+		// surface change is the adapter's explicit invalidation, exactly as its
+		// instrument issues it after clearing.
 		clearOpeningRepeatProposal(mounted.facade.snapshot().sourceContentId, fixture.openingId);
+		mounted.facade.notifySurfaceChange();
 		settle(mounted.facade);
 		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-opening-repeat')).toBe(false);
 	});

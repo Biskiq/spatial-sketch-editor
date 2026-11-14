@@ -257,6 +257,13 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 	 */
 	let lastEvaluationRect: ViewportRect | null = null;
 	let lastMinimumGroundReach: number | undefined;
+	/**
+	 * The camera state that produced `currentEvaluation`. An intent can settle the
+	 * state before the next frame evaluates it (Fit, an endpoint applied at an
+	 * unbounded clock), so comparing only this frame's before/after state would
+	 * retain an evaluation from the previous pose.
+	 */
+	let lastEvaluationState: ViewportCameraState | null = null;
 	let output = createCameraOutputState({
 		outputId: input.outputId,
 		viewportId: input.viewportId,
@@ -349,7 +356,10 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			if (radius !== currentState.sceneRadiusMeters) currentState = { ...currentState, sceneRadiusMeters: radius };
 			// A reading transition is an animation: its progress changes with the clock
 			// even though the settled state object does not, so it is never retained.
-			const stateUnchanged = currentState === previousState && currentState.transition === null;
+			const stateUnchanged =
+				currentState === previousState &&
+				currentState === lastEvaluationState &&
+				currentState.transition === null;
 			if (
 				stateUnchanged &&
 				currentEvaluation !== null &&
@@ -368,6 +378,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentEvaluation = result.kind === 'evaluated' ? result.evaluation : null;
 			lastEvaluationRect = currentEvaluation === null ? null : { ...rect };
 			lastMinimumGroundReach = minimumGroundReachMeters;
+			lastEvaluationState = currentEvaluation === null ? null : currentState;
 			return result;
 		},
 		applyIntent(intent, clockSeconds) {
@@ -405,6 +416,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			// new source, and it stops a stale token being handed out as live.
 			currentEvaluation = null;
 			lastEvaluationRect = null;
+			lastEvaluationState = null;
 			const rebasedOutput = rebaseCameraOutputSource(output, sourceRevision);
 			output = rebasedOutput.state;
 			if (rebasedOutput.kind === 'rebased') {
@@ -569,6 +581,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentState = state;
 			currentEvaluation = null;
 			lastEvaluationRect = null;
+			lastEvaluationState = null;
 			return true;
 		},
 		commitLookThrough() {

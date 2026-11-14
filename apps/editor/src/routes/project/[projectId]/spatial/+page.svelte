@@ -72,6 +72,7 @@
 		type StageOverlayContribution,
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
+	import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
 	import type { StageMarkView } from '$lib/authoring/stage/stage-handles';
 	import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
 	import { stageResizeCursorCss } from '$lib/authoring/stage/stage-glyphs';
@@ -557,8 +558,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** Scroll in Look through accumulates until one 0.25 m step is owed. */
 	let showExperienceWelcome = $state(false);
 
-	/** The capture frame's measured local viewport for the one Stage renderer. */
-	let throughViewport = $state<{ readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
 	let throughFrameEl = $state<HTMLElement | null>(null);
 	/** Monotone guard: only the newest Present-this run may capture framing. */
 
@@ -616,6 +615,46 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** The lens's one playback session, read by the Guide instrument. */
 	const playback = experienceLens.playback;
 	experienceLens.install();
+
+	/**
+	 * E3 — the mounted Stage's one viewport controller. Measurement, Camera
+	 * evaluation, Plan/overlay publication and the animation-frame refresh live
+	 * here; this route composes the controller and reads what it publishes.
+	 */
+	const stageViewport = createStageViewport({
+		facade: () => facade,
+		stageElement: () => stageEl,
+		throughFrameElement: () => throughFrameEl,
+		lookThroughActive: () => experienceLens.lookThroughSession() !== null,
+		previewing: () => preview !== null,
+		lens: () => lens,
+		revealed: () => revealed,
+		roomLabels: () => ({ plan: preferences.roomLabels2d, threeD: preferences.roomLabels3d }),
+		groundReachMeters: () =>
+			!look.editOnPaper && look.environment !== 'paper'
+				? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS
+				: undefined,
+		nowSeconds,
+		advanceLookThroughZoom: (now) => experienceLens.advanceLookThroughZoom(now),
+		advancePlayback: (now) => experienceLens.advancePlayback(now),
+		onBeforeRefresh: () => {
+			// The gesture lease is host state that changes what Undo can do without an
+			// acceptance, so the Head's reported history follows it on the same frame as
+			// the render rather than only on the next accepted change.
+			refreshHistory();
+			// R217.S22 (D36): an authored gesture is a non-navigation lease. The Card fades while
+			// it lives. A navigation press (pan, orbit, zoom) never fades the Card.
+			const lease = session.gesture();
+			// Review round 3 (sheet §24, Card only): a camera edit keeps the Card clear, so its
+			// framing and picture read beside the camera being moved. Other authored gestures fade it.
+			const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
+			const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;
+			if (gesturing !== cardGesturing) cardGesturing = gesturing;
+		},
+		onAfterRefresh: () => refreshHostTools()
+	});
+	/** The controller's published capture frame, read by the one renderer. */
+	const throughViewport = $derived(stageViewport.framedViewport);
 
 	const advancedCamera = $derived(experienceLens.advancedCamera());
 	const advancedViewId = $derived(experienceLens.advancedViewId());
@@ -785,7 +824,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
-	let evaluation = $state<ViewportEvaluation | null>(null);
+	const evaluation = $derived(stageViewport.evaluation);
 	/**
 	 * C3/D14 — the single executor for unfold camera requests.
 	 *
@@ -971,18 +1010,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
 	});
 	$effect(() => facade?.camera.setContentBounds(stageContentBounds));
-	// Generated Plan evaluations are replaced whole; raw data keeps their references
-	// cloneable when Index selection crosses the immutable selection boundary.
-	let planView = $state.raw<PlanEvaluation | null>(null);
+	// Generated Plan evaluations are replaced whole; the controller keeps their
+	// identity while the dependency key is unchanged.
+	const planView = $derived(stageViewport.planView);
 	// The chrome's own paper/material cue follows the same truth as the Canvas: a
 	// settled Plan in the Paper appearance. It is a CSS inset perimeter only, never a
 	// second drawing surface or a pointer target.
 	const paperVisible = $derived(isPaperPlanVisible(evaluation, preferences.planAppearance));
-	let rect = $state<ViewportRect | null>(null);
-	let markers = $state<readonly StageOverlayContribution[]>([]);
-	let candidatePreviews = $state.raw<readonly StageCandidatePreviewView[]>([]);
-	let guides = $state.raw<readonly StageGuideView[]>([]);
-	let ghosts = $state<readonly StageGhostMesh[]>([]);
+	const rect = $derived(stageViewport.rect);
+	const markers = $derived(stageViewport.markers);
+	const candidatePreviews = $derived(stageViewport.candidatePreviews);
+	const guides = $derived(stageViewport.guides);
+	const ghosts = $derived(stageViewport.ghosts);
 	/**
 	 * Approved creator-model bytes for the accepted source, keyed by model resource
 	 * id. They are resolved from the resource pins — never from an import
@@ -1000,8 +1039,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let installedModelSignature = '';
 	/** The model-failure notice this resolver last set, so an unrelated notice survives. */
 	let modelNotice: string | null = null;
-	let roomLabels = $state<readonly RoomLabelView[]>([]);
-	let marks = $state<readonly StageMarkView[]>([]);
+	const roomLabels = $derived(stageViewport.roomLabels);
+	const marks = $derived(stageViewport.marks);
+	const tracePreview = $derived(stageViewport.tracePreview);
 	let stageCursor = $state<string | null>(null);
 	let notice = $state('');
 	/**
@@ -1391,13 +1431,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A replacement is not a press the creator finished: no click from the old
 		// project may select into the new one.
 		press.abort();
-		planView = null;
-		// The key must be dropped with the view it described, or the recompute that
-		// follows a swap would be skipped as unchanged.
-		planKey = '';
-		planParametersKey = '';
-		markers = [];
-		marks = [];
+		// Drop the controller's view-dependent keys with the view they described, or
+		// the recompute that follows a swap would be skipped as unchanged.
+		stageViewport.reset();
 		hoverSelection = null;
 	}
 
@@ -1492,8 +1528,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			task = facade?.session.task() ?? null;
 			syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
 			syncContributedTask();
-			planKey = '';
-		planParametersKey = '';
+			stageViewport.invalidatePlan();
 			refresh();
 		});
 		for (const factory of stageAdapterFactories) mountStageAdapter(facade, mounted, factory);
@@ -1505,33 +1540,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 
-	/* --- viewport measurement and evaluation -------------------------------- */
+	/* --- viewport refresh --------------------------------------------------- */
 
-	function measure(): ViewportRect {
-		const element = stageEl;
-		const width = element?.clientWidth ?? 0;
-		const height = element?.clientHeight ?? 0;
-		const bounds = element?.getBoundingClientRect();
-		return { left: bounds?.left ?? 0, top: bounds?.top ?? 0, width, height, devicePixelRatio: window.devicePixelRatio || 1 };
-	}
-
-	/** The gold frame's content box: absolute for Camera, Stage-local for the scissor. */
-	function measureThroughFrame():
-		| { readonly absolute: ViewportRect; readonly local: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } }
-		| null {
-		const frame = throughFrameEl;
-		if (stageEl === undefined || frame === null) return null;
-		const stageRect = rect ?? measure();
-		const frameRect = frame.getBoundingClientRect();
-		const width = frameRect.width;
-		const height = frameRect.height;
-		if (!(width > 0 && height > 0)) return null;
-		const left = frameRect.left + frame.clientLeft;
-		const top = frameRect.top + frame.clientTop;
-		return {
-			absolute: { left, top, width, height, devicePixelRatio: window.devicePixelRatio || 1 },
-			local: { left: left - stageRect.left, top: top - stageRect.top, width, height }
-		};
+	function nowSeconds(): number {
+		const real = typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
+		return motionClock.read(real);
 	}
 
 	// `bind:this` lands after the first look-through refresh; measure it then.
@@ -1541,143 +1554,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (frame !== null && session !== null) untrack(() => refresh());
 	});
 
-	function acceptRect(next: ViewportRect): void {
-		rect = next;
-	}
-
-	function nowSeconds(): number {
-		const real = typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
-		return motionClock.read(real);
-	}
-
-	let planKey = '';
-	/**
-	 * The last reveal union this route handed the facade.
-	 *
-	 * Separate from `planKey` because the two answer different questions: this one
-	 * says whether host parameters need sending, and `planKey` says whether the
-	 * evaluation they name needs recomputing. Both are reset with the mount.
-	 */
-	let planParametersKey = '';
-	/**
-	 * The last overlay marker set the route painted, as a cheap identity key.
-	 * T3.P03.S02 marks a change only: the harness pairs the newest dragged input with
-	 * the frame that carried its preview, so a presentation is never inferred from an
-	 * install timestamp.
-	 */
-	let lastOverlayKey = '';
-	let tracePreview = $state<PerfTracePreview | null>(null);
-
+	/** The one refresh command; the controller owns measurement and publication. */
 	function refresh(): void {
-		experienceLens.advanceLookThroughZoom(performance.now());
-		const stage = facade;
-		if (stage === null) return;
-		// The gesture lease is host state that changes what Undo can do without an
-		// acceptance, so the Head's reported history follows it on the same frame as
-		// the render rather than only on the next accepted change.
-		refreshHistory();
-		// R217.S22 (D36): an authored gesture is a non-navigation lease. The Card fades while
-		// it lives. A navigation press (pan, orbit, zoom) never fades the Card.
-		const lease = session.gesture();
-		// Review round 3 (sheet §24, Card only): a camera edit keeps the Card clear, so its
-		// framing and picture read beside the camera being moved. Other authored gestures fade it.
-		const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
-		const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;
-		if (gesturing !== cardGesturing) cardGesturing = gesturing;
-		// Look through renders the real picture inside its 16:10 capture frame; the
-		// same measured rect is both Camera's evaluation and the Canvas scissor.
-		let currentRect = rect ?? measure();
-		const framed = experienceLens.lookThroughSession() === null ? null : measureThroughFrame();
-		if (framed !== null) currentRect = framed.absolute;
-		if (framed === null) {
-			if (throughViewport !== null) throughViewport = null;
-		} else if (
-			throughViewport === null ||
-			throughViewport.left !== framed.local.left ||
-			throughViewport.top !== framed.local.top ||
-			throughViewport.width !== framed.local.width ||
-			throughViewport.height !== framed.local.height
-		) {
-			throughViewport = framed.local;
-		}
-		const groundReach = !look.editOnPaper && look.environment !== 'paper' ? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS : undefined;
-		const result = stage.camera.evaluate(currentRect, nowSeconds(), groundReach);
-		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
-		if (evaluation === null) return;
-
-		// The Plan evaluation is recomputed only when it would actually differ, and
-		// **the facade is the authority on that**, not this presenter.
-		//
-		// `evaluateLayoutPlan` reads the inspection target in exactly one place, the
-		// `lateral-span` membership stage, whose provider default is explicit
-		// unbounded coverage — so a pan cannot change a fragment, a membership row, a
-		// stream or a bound. Keying on the target here unconditionally made every pan
-		// frame re-evaluate the whole Plan (four full-array sorts and a fresh
-		// candidate object per source) and then hand a new `planView` to the Index,
-		// which re-grouped every membership row on the same frame. `planDependencyKey`
-		// names the inputs the evaluation really reads, including the target when a
-		// producer has bounded the lateral span, so this needs no knowledge of which
-		// case it is in.
-		// Reveal is host state the facade holds, so the Plan the Stage draws and the
-		// Plan its hit path resolves agree about which sources are eligible.
-		const parameters = { reveal: [...revealed].sort() };
-		// Encoded only when non-empty: a reveal set is usually empty, and a source id
-		// must never be able to make two different sets compare equal.
-		const parametersKey =
-			parameters.reveal.length === 0 ? '' : JSON.stringify(parameters.reveal);
-		if (parametersKey !== planParametersKey) {
-			planParametersKey = parametersKey;
-			stage.setPlanParameters(parameters);
-		}
-		const key = stage.planDependencyKey();
-		if (key !== planKey) {
-			planKey = key;
-			const planResult = stage.plan();
-			planView = planResult.kind === 'evaluated' ? planResult.plan : null;
-		}
-
-		// Overlays project through the *same* evaluation: adapter contributions and
-		// the selection echo are CSS points from `projectWorld`, never a second
-		// projection.
-		markers = stage.overlays();
-		candidatePreviews = stage.candidatePreviews();
-		guides = stage.guides();
-		// The key is only evidence for the harness, so it must cost nothing in the
-		// ordinary build: no string building or marker scan when the flag is absent.
-		if (perfMarksEnabled()) {
-			// Tenths of a CSS pixel: a slow drag moves a preview by less than one pixel
-			// per sample, and a coarse key would make those presentations invisible.
-			const overlayKey = markers
-				.map((marker) => `${marker.id}:${Math.round(marker.css[0] * 10)},${Math.round(marker.css[1] * 10)}`)
-				.join('|');
-			if (overlayKey !== lastOverlayKey) {
-				lastOverlayKey = overlayKey;
-				tracePreview = perfTracePreview(markers);
-				// The preview is presented by the frame that paints this overlay state; the
-				// ledger's sequence says which input sample it belongs to. `preview` keeps a
-				// later overlay change (release, selection) from being counted as the
-				// presentation of the drag that produced it.
-				perfMark('overlay:updated', {
-					markers: markers.length,
-					preview: markers.some((marker) => marker.id.endsWith('-preview'))
-				});
-			}
-		}
-		const snapshot = stage.snapshot();
-		const evaluationId = stage.evaluationId();
-		// Room labels are a per-view ⚙ preference: on in 2D, off in 3D by default.
-		const labelsShown = evaluation?.settledReading === 'plan' ? preferences.roomLabels2d : preferences.roomLabels3d;
-		roomLabels = evaluationId === null || !evaluation || lens !== 'world' || !labelsShown ? [] : projectRoomLabels(
-			roomLabelFacts(snapshot.domain.geometry, stageEnvelope(snapshot).units.layout.data.rooms),
-			point => {
-				const projected = stage.projectWorld(point, evaluationId);
-				return projected.kind === 'projected' && projected.visibility === 'visible' && rect
-					? [projected.css[0] - rect.left, projected.css[1] - rect.top] : null;
-			}, evaluation.targetPlaneMetersPerCssPixel
-		);
-		ghosts = stage.ghosts();
-		marks = stage.marks();
-		refreshHostTools();
+		stageViewport.refresh();
 	}
 
 	/**
@@ -1697,7 +1576,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const local = (point: readonly [number, number, number]): readonly [number, number] | null => {
 			const projected = stage.projectWorld([point[0], point[1], point[2]], id);
 			if (projected.kind !== 'projected') return null;
-			const current = rect ?? measure();
+			const current = rect ?? stageViewport.measure();
 			return [projected.css[0] - current.left, projected.css[1] - current.top];
 		};
 		let measured: NonNullable<typeof hostToolOverlay>['measure'] = null;
@@ -1730,39 +1609,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		} catch {
 			showExperienceWelcome = true;
 		}
-		const initial = measure();
-		acceptRect(initial);
-		let frame = 0;
-		const tick = () => {
-			// The next frame is scheduled in `finally`: one throwing adapter
-			// contribution must not stop the Stage's own rendering for the rest of
-			// the session.
-			try {
-				// The isolated Preview owns the Camera output and the Stage's canvas is
-				// unmounted: evaluating or refreshing an inspection view here would be a
-				// second reader of an output this run no longer owns.
-				if (preview !== null) return;
-				const stage = stageEl;
-				if (stage !== undefined) {
-					const next = measure();
-					if (
-						rect === null ||
-						next.width !== rect.width ||
-						next.height !== rect.height ||
-						next.left !== rect.left ||
-						next.top !== rect.top ||
-						next.devicePixelRatio !== rect.devicePixelRatio
-					) {
-						acceptRect(next);
-					}
-				}
-				experienceLens.advancePlayback(performance.now());
-				refresh();
-			} finally {
-				frame = requestAnimationFrame(tick);
-			}
-		};
-		frame = requestAnimationFrame(tick);
+		stageViewport.start();
 
 		const media = window.matchMedia('(prefers-reduced-motion: reduce)');
 		preferences = readAppPreferences();
@@ -1816,7 +1663,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// result instead of mounting a second stage.
 			experienceLens.dispose();
 			tornDown = true;
-			cancelAnimationFrame(frame);
+			// Stop scheduling before the facade is disposed.
+			stageViewport.dispose();
 			clearHover();
 			media.removeEventListener('change', onMedia);
 			narrow.removeEventListener('change', onNarrow);
@@ -2092,8 +1940,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (outcome.selectionClearedReason !== null) {
 				notice = 'The selected subject no longer exists in the restored source.';
 			}
-			planKey = '';
-		planParametersKey = '';
+			stageViewport.invalidatePlan();
 		} else if (outcome.kind === 'unavailable') {
 			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Undo runs once it settles.' : 'Nothing to undo.';
 		} else if (outcome.kind === 'refused') {
@@ -2117,8 +1964,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (outcome.selectionClearedReason !== null) {
 				notice = 'The selected subject no longer exists in the restored source.';
 			}
-			planKey = '';
-		planParametersKey = '';
+			stageViewport.invalidatePlan();
 		} else if (outcome.kind === 'unavailable') {
 			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Redo runs once it settles.' : 'Nothing to redo.';
 		} else if (outcome.kind === 'refused') {
@@ -2368,7 +2214,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (projected.kind !== 'projected') return null;
 		// `projectWorld` is viewport CSS; `sample.css` and edge picks are local
 		// to the Stage. Normalise here so hover and press agree on the handle.
-		const current = rect ?? measure();
+		const current = rect ?? stageViewport.measure();
 		const local: [number, number] = [projected.css[0] - current.left, projected.css[1] - current.top];
 		const distance = Math.hypot(local[0] - css[0], local[1] - css[1]);
 		const threshold = coarse ? WALL_UNFOLD_PIN_HIT_COARSE_CSS : WALL_UNFOLD_PIN_HIT_CSS;
@@ -2970,7 +2816,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * coordinate space.
 	 */
 	function stageCss(event: PointerEvent): [number, number] {
-		const current = rect ?? measure();
+		const current = rect ?? stageViewport.measure();
 		return [event.clientX - current.left, event.clientY - current.top];
 	}
 
