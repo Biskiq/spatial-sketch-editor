@@ -32,6 +32,7 @@ import {
 import {
 	MATERIAL_TEXTURE_SLOTS,
 	materialKey,
+	type ImportedMaterialDescriptor,
 	type MaterialDescriptor,
 	type MaterialTextureSlotKey
 } from './material-descriptor';
@@ -79,8 +80,13 @@ export type MaterialStore = {
 	 * descriptor with no `textures` needs none. Equal descriptors share one
 	 * instance, so two surfaces drawing the same look hold two leases on one
 	 * material.
+	 *
+	 * An `imported` descriptor without a `remap` is built from `source`: the store
+	 * clones the asset's own material once, the first time the key is acquired, and
+	 * owns the clone thereafter. `source` is never retained and never disposed by
+	 * the store, so the loader's cached asset stays intact for the next instance.
 	 */
-	acquire(descriptor: MaterialDescriptor, maps?: MaterialTextureMaps): MaterialLease;
+	acquire(descriptor: MaterialDescriptor, maps?: MaterialTextureMaps, source?: Material): MaterialLease;
 	/** The live instance for `descriptor`, or null. Takes no lease; for reads and tests. */
 	peek(descriptor: MaterialDescriptor): Material | null;
 	stats(): MaterialStoreStats;
@@ -99,7 +105,12 @@ function boundMaps(
 	descriptor: MaterialDescriptor,
 	maps: MaterialTextureMaps | undefined
 ): Partial<Record<MaterialTextureSlotKey, Texture>> | null {
-	const declared = descriptor.kind === 'standard' ? descriptor.textures : undefined;
+	const declared =
+		descriptor.kind === 'standard'
+			? descriptor.textures
+			: descriptor.kind === 'imported'
+				? descriptor.remap?.textures
+				: undefined;
 	if (declared === undefined) return null;
 	const bound: Partial<Record<MaterialTextureSlotKey, Texture>> = {};
 	for (const slot of MATERIAL_TEXTURE_SLOTS) {
@@ -113,7 +124,45 @@ function boundMaps(
 	return bound;
 }
 
-function construct(descriptor: MaterialDescriptor, maps: MaterialTextureMaps | undefined): Material {
+/**
+ * An imported surface. A remap is an ordinary standard look (built by the same
+ * constructor every other world surface uses); without one the asset's own
+ * material is cloned, so the store owns a copy and the loader's source is never
+ * the thing this store disposes.
+ */
+function constructImported(
+	descriptor: ImportedMaterialDescriptor,
+	maps: MaterialTextureMaps | undefined,
+	source: Material | undefined
+): Material {
+	if (descriptor.remap !== undefined) {
+		return construct(
+			{
+				kind: 'standard',
+				...descriptor.remap,
+				...(descriptor.wireframe === undefined ? {} : { wireframe: descriptor.wireframe })
+			},
+			maps
+		);
+	}
+	if (source === undefined) {
+		throw new Error(
+			`imported material ${descriptor.asset} mesh ${descriptor.mesh} slot ${descriptor.slot} needs its source material`
+		);
+	}
+	const clone = source.clone();
+	if (descriptor.wireframe !== undefined && 'wireframe' in clone) {
+		(clone as Material & { wireframe: boolean }).wireframe = descriptor.wireframe;
+	}
+	return clone;
+}
+
+function construct(
+	descriptor: MaterialDescriptor,
+	maps: MaterialTextureMaps | undefined,
+	source?: Material
+): Material {
+	if (descriptor.kind === 'imported') return constructImported(descriptor, maps, source);
 	const bound = boundMaps(descriptor, maps);
 	switch (descriptor.kind) {
 		case 'standard':
@@ -161,12 +210,12 @@ export function createMaterialStore(): MaterialStore {
 	let disposed = false;
 
 	return {
-		acquire(descriptor, maps) {
+		acquire(descriptor, maps, source) {
 			if (disposed) throw new Error('the material store has been disposed');
 			const key = materialKey(descriptor);
 			let entry = entries.get(key);
 			if (entry === undefined) {
-				entry = { descriptor, material: construct(descriptor, maps), refCount: 0 };
+				entry = { descriptor, material: construct(descriptor, maps, source), refCount: 0 };
 				entries.set(key, entry);
 				created += 1;
 			}

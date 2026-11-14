@@ -103,10 +103,32 @@ export type ShadowMaterialDescriptor = {
 	readonly polygonOffsetUnits?: number;
 };
 
+/**
+ * A surface of an imported model (E8/R2c). Its identity is the asset, the mesh and
+ * slot it sits on, and the remap it wears: `remap` absent means the asset's own
+ * material, cloned once by the store; present means the resolved look, which
+ * replaces the imported material on that mesh. N instances of one model therefore
+ * hold one material per (mesh, slot, remap) rather than one each.
+ */
+export type ImportedMaterialDescriptor = {
+	readonly kind: 'imported';
+	/** The approved asset bytes' identity (the URL the loader was given). */
+	readonly asset: string;
+	/** The mesh's index in the source hierarchy's depth-first Mesh order. */
+	readonly mesh: number;
+	/** The material slot on that mesh; `0` for a single material. */
+	readonly slot: number;
+	/** Absent means `false`, as Three's default. */
+	readonly wireframe?: boolean;
+	/** The resolved look that replaces the imported material, if any. */
+	readonly remap?: Omit<StandardMaterialDescriptor, 'kind'>;
+};
+
 export type MaterialDescriptor =
 	| StandardMaterialDescriptor
 	| BasicMaterialDescriptor
-	| ShadowMaterialDescriptor;
+	| ShadowMaterialDescriptor
+	| ImportedMaterialDescriptor;
 
 function hex2(value: number): string {
 	return value.toString(16).padStart(2, '0');
@@ -169,6 +191,22 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`wireframe=${bool(descriptor.wireframe, false)}`,
 				`toneMapped=${bool(descriptor.toneMapped, true)}`
 			].join('|');
+		case 'imported': {
+			// The asset is an approved URL: encoded so no character of it can be
+			// mistaken for a field separator, and the remap is nested in brackets.
+			const remap =
+				descriptor.remap === undefined
+					? '-'
+					: `[${materialKey({ kind: 'standard', ...descriptor.remap })}]`;
+			return [
+				'imported',
+				`asset=${encodeURIComponent(descriptor.asset)}`,
+				`mesh=${num(descriptor.mesh)}`,
+				`slot=${num(descriptor.slot)}`,
+				`wireframe=${bool(descriptor.wireframe, false)}`,
+				`remap=${remap}`
+			].join('|');
+		}
 		case 'shadow': {
 			const offset = descriptor.polygonOffset ?? false;
 			return [

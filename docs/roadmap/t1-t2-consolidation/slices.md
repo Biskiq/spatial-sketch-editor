@@ -498,7 +498,7 @@ RR-7, PF-4. Three pull requests.
 `apps/editor/src/lib/museum/materials/MuseumMaterial.svelte`,
 `apps/editor/src/lib/render/resources/texture-store.ts`,
 `apps/editor/src/lib/museum/assets/FallbackMaterial.svelte`,
-`apps/editor/src/lib/museum/assets/instance-material-remap.ts`,
+`apps/editor/src/lib/render/models/model-realization.ts`,
 `apps/editor/src/lib/museum/entities/EntityArtwork.svelte`,
 `apps/editor/src/lib/museum/layout/GroundPlinth.svelte`,
 `apps/editor/src/lib/render/WorldEnvironment.svelte`,
@@ -605,7 +605,7 @@ ink unchanged.
 
 **Touchpoints.** `apps/editor/src/lib/museum/assets/AssetModel.svelte`,
 `apps/editor/src/lib/museum/assets/model-utils.ts`,
-`apps/editor/src/lib/museum/assets/instance-material-remap.ts`,
+`apps/editor/src/lib/render/models/model-realization.ts`,
 `apps/editor/src/lib/museum/entities/EntityArtwork.svelte`,
 `apps/editor/src/lib/render/artwork/artwork-scope.ts`; the representation from R4.
 

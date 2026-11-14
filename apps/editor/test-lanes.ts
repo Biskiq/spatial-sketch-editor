@@ -131,7 +131,9 @@ export const ARCH_FILES: string[] = [
 	// E6: the renderer's layer direction — portable descriptors, stores that read
 	// no authoring layer, representations that consume compiled output and stores.
 	// Each is a dependency edge, and a reversed edge still type-checks and renders.
-	'tests/lib/render/render-layer-boundary.test.ts'
+	'tests/lib/render/render-layer-boundary.test.ts',
+	// E8/R5 + R2c + G4: one model realization, one caster channel, no per-frame model rule.
+	'tests/lib/render/model-lifecycle-boundary.test.ts'
 ];
 
 /**

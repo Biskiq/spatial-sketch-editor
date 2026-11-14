@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Box3, Group, REVISION, Texture, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { cloneModelScene, disposeModelInstance } from '$lib/museum/assets/model-utils';
+import { cloneModelHierarchy } from '$lib/render/models/model-realization';
 import { getAssetById } from '$lib/content/assets';
 import { CATALOGUE_MODEL_CONTACT_RECORDS, catalogueModelDefinition } from '$lib/authoring/scene/object-definition-policy';
 
@@ -24,7 +24,7 @@ describe('catalogue admission retains r186-verified geometry under r187', () => 
 		}));
 		const gltf = await loader.parseAsync(Uint8Array.from(bytes).buffer, '');
 		const sourceScale = gltf.scene.scale.toArray();
-		const instance = cloneModelScene(gltf.scene, asset.castShadow, asset.receiveShadow);
+		const instance = cloneModelHierarchy(gltf.scene);
 		const root = new Group();
 		root.scale.setScalar(asset.defaultScale);
 		if (asset.defaultRotation) root.rotation.set(...asset.defaultRotation);
@@ -41,9 +41,8 @@ describe('catalogue admission retains r186-verified geometry under r187', () => 
 			expect(gltf.scene.scale.toArray()).toEqual(sourceScale);
 			expect(gltf.scene.parent).toBeNull();
 		} finally {
-			// Retained clone ownership: instance materials only. Source cache geometry
-			// and source materials remain the loader owner's responsibility.
-			disposeModelInstance(instance);
+			// The clone shares the source's geometry and materials, so only the test's own
+			// source disposal below releases anything.
 			root.remove(instance);
 			gltf.scene.traverse(object => {
 				const mesh = object as import('three').Mesh;
@@ -71,7 +70,7 @@ describe('catalogue admission retains r186-verified geometry under r187', () => 
 	}));
 	const gltf = await loader.parseAsync(Uint8Array.from(bytes).buffer, '');
 	const sourceScale = gltf.scene.scale.toArray();
-	const instance = cloneModelScene(gltf.scene, asset.castShadow, asset.receiveShadow);
+	const instance = cloneModelHierarchy(gltf.scene);
 	const root = new Group();
 	root.scale.setScalar(asset.defaultScale);
 	if (asset.defaultRotation) root.rotation.set(...asset.defaultRotation);
@@ -94,7 +93,6 @@ describe('catalogue admission retains r186-verified geometry under r187', () => 
 		expect(gltf.scene.scale.toArray()).toEqual(sourceScale);
 		expect(gltf.scene.parent).toBeNull();
 	} finally {
-		disposeModelInstance(instance);
 		root.remove(instance);
 		gltf.scene.traverse(object => {
 			const mesh = object as import('three').Mesh;

@@ -1,4 +1,17 @@
 <script lang="ts">
+  /**
+   * One approved model in the Scene, on the Canvas's stores (E8/R5 + R2c).
+   *
+   * This component is the per-entity host: it owns the GLB subscription, the
+   * fallback (a Svelte tree) and the entity root's transform. Everything about a
+   * drawn instance lives in `$lib/render/models/model-realization`: the clone of
+   * the template, its store leases and its texture variant. The host publishes
+   * caster events on the Canvas's channel, so the shadow owner invalidates once per
+   * arrival and once per release, not every frame (G4).
+   *
+   * A load that resolves after its host has moved on is rejected by the arrival
+   * gate: a replaced URL, a replaced look or an unmounted host never mounts a clone.
+   */
   import { untrack } from 'svelte';
   import { T } from '@threlte/core';
   import { useGltf, useMeshopt } from '@threlte/extras';
@@ -14,17 +27,16 @@
   import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
   import AssetFallback from './AssetFallback.svelte';
   import { fallbackDimensionsFor, fallbackKindFor } from './fallbacks';
+  import { inspectModel } from './model-utils';
   import {
-    cloneModelScene,
-    disposeModelInstance,
-    inspectModel,
-    setModelWireframe
-  } from './model-utils';
-  import {
-    remapModelMaterials,
-    releaseModelMaterialRemap,
-    type RemapKey
-  } from './instance-material-remap';
+    createArrivalGate,
+    modelLookFor,
+    nextModelEntityId,
+    realizeModel,
+    texturesReady,
+    type ModelRealization
+  } from '$lib/render/models/model-realization';
+  import { useRenderResources } from '$lib/render/resources/render-resources';
   import { loadEffectiveTextures, type TextureLoadScope } from '$lib/render/resources/texture-store';
 
   const ZERO: Vec3 = [0, 0, 0];
@@ -78,8 +90,11 @@
     error?: string;
   } = $props();
 
+  const resources = useRenderResources();
   const loader = useGltf({ meshoptDecoder: useMeshopt() });
-  // A creator-model id is deliberately absent from the catalogue: it has no
+  const entity = `model-host:${nextModelEntityId()}`;
+  const gate = createArrivalGate();
+  // A creator model id is deliberately absent from the catalogue: it has no
   // production GLB in this build, so the approved footprint box is its render.
   const asset = $derived(getAssetById(assetId));
   // Placement fallback is authoritative. Manifest resolution is compatibility-only
@@ -88,7 +103,8 @@
   const fallbackDimensions = $derived(fallbackDimensionsFor(fallbackKind, fallbackFootprint));
 
   let instance = $state<Object3D>();
-  let acquiredRemap = $state<RemapKey | null>(null);
+  /** The drawn instance this host owns; a raw value, never proxied. */
+  let realization = $state.raw<ModelRealization | null>(null);
   let rawBounds = $state<Box3>();
   let rawMetrics = $state<AssetMetrics>();
   /** Internal load flag — avoid writing `$bindable status` inside the loader effect. */
@@ -110,6 +126,23 @@
   const castShadow = $derived(asset?.castShadow ?? true);
   const receiveShadow = $derived(asset?.receiveShadow ?? true);
 
+  /** The style a drawn instance is in: the look's identity and the shadow flags. */
+  function styleKeyOf(): string {
+    return [
+      effective?.variantSeed ?? '-',
+      effective?.color ?? '-',
+      effective?.roughness ?? '-',
+      effective?.metalness ?? '-',
+      scope?.scopeId ?? '-',
+      wireframe,
+      shadows && castShadow,
+      shadows && receiveShadow
+    ].join('|');
+  }
+  let applied: { readonly realization: ModelRealization; readonly key: string } | null = null;
+
+  // The load and its arrival. A new URL or a disabled host closes the previous
+  // gate, and that teardown releases the instance the previous load mounted.
   $effect(() => {
     const shouldLoad = enabled && Boolean(loadUrl);
     const url = loadUrl;
@@ -122,60 +155,47 @@
       return;
     }
 
-    let cancelled = false;
-    let ownedInstance: Object3D | undefined;
+    const token = gate.begin();
     loadStatus = 'loading';
 
     const resource = loader.load(url);
     const unsubscribeModel = resource.subscribe((gltf) => {
-      if (!gltf || cancelled) return;
-      const activeEffective = effective;
-      const activeScope = scope;
-      ownedInstance = cloneModelScene(
-        gltf.scene,
-        shadows && castShadow,
-        shadows && receiveShadow
-      );
-      if (activeEffective) {
-        // Drop any prior remap before re-applying to the new instance.
-        if (acquiredRemap) {
-          releaseModelMaterialRemap(acquiredRemap, activeScope);
-          acquiredRemap = null;
-        }
-        if (activeScope) {
-          // Scoped cold path: wait for the release resolver before the first
-          // remap, so the mounted frame is already textured — one acquire,
-          // no transient mapless variant. Mount, inspection publish and the
-          // ready status all ride the same gate below; the tail after this
-          // block is the unscoped editor path only.
-          const animNames = gltf.animations.map((animation) => animation.name).filter(Boolean);
-          void loadEffectiveTextures(activeEffective, activeScope)
-            .catch(() => undefined)
-            .then(() => {
-              if (cancelled) return;
-              if (!ownedInstance) return;
-              acquiredRemap = remapModelMaterials(ownedInstance, activeEffective, [1, 1], activeScope).acquiredKey;
-              const inspection = inspectModel(ownedInstance, animNames);
-              instance = ownedInstance;
-              rawBounds = inspection.bounds;
-              rawMetrics = inspection.metrics;
-              loadStatus = 'ready';
-            });
-          return;
-        }
-        acquiredRemap = remapModelMaterials(ownedInstance, activeEffective, [1, 1], activeScope).acquiredKey;
+      if (!gltf || !gate.accepts(token)) return;
+      const template = gltf.scene;
+      const animationNames = gltf.animations.map((animation) => animation.name).filter(Boolean);
+      const mount = (textured: boolean): void => {
+        // Textures resolve asynchronously: only the arrival that is still current mounts.
+        if (!gate.accepts(token)) return;
+        const active = effective;
+        const next = realizeModel(template, {
+          asset: url,
+          store: resources.materials,
+          look: active === null ? null : modelLookFor(active, scope, textured),
+          wireframe,
+          castShadow: shadows && castShadow,
+          receiveShadow: shadows && receiveShadow
+        });
+        const inspection = inspectModel(next.root, animationNames);
+        realization = next;
+        applied = { realization: next, key: styleKeyOf() };
+        instance = next.root;
+        rawBounds = inspection.bounds;
+        rawMetrics = inspection.metrics;
+        loadStatus = 'ready';
+        resources.casters.publish({ kind: 'arrived', entity });
+      };
+      if (effective === null) {
+        mount(false);
+        return;
       }
-      const inspection = inspectModel(
-        ownedInstance,
-        gltf.animations.map((animation) => animation.name).filter(Boolean)
-      );
-      instance = ownedInstance;
-      rawBounds = inspection.bounds;
-      rawMetrics = inspection.metrics;
-      loadStatus = 'ready';
+      // The textures resolve before the first mount, so the mounted frame is already
+      // textured. A failed load mounts the untextured look, as the GLB's own did.
+      void loadEffectiveTextures(effective, scope)
+        .catch(() => undefined)
+        .then((result) => mount(texturesReady(result)));
     });
     const unsubscribeError = resource.error.subscribe((loadError) => {
-      if (!loadError || cancelled) return;
+      if (!loadError || !gate.accepts(token)) return;
       loadStatus = 'failed';
       untrack(() => {
         error = loadError.message;
@@ -186,16 +206,61 @@
     });
 
     return () => {
-      cancelled = true;
+      gate.close();
       unsubscribeModel();
       unsubscribeError();
-      if (ownedInstance) disposeModelInstance(ownedInstance);
-      if (instance === ownedInstance) instance = undefined;
-      if (acquiredRemap) {
-        releaseModelMaterialRemap(acquiredRemap, scope);
-        acquiredRemap = null;
+      if (realization !== null) {
+        resources.casters.publish({ kind: 'released', entity });
+        realization.release();
+        realization = null;
       }
+      instance = undefined;
     };
+  });
+
+  // Re-style the drawn instance when its look, wireframe or shadow flags change.
+  // The arrival already styled it with the same key, so that case does nothing.
+  let latestKey = '';
+  $effect(() => {
+    const current = realization;
+    if (current === null) return;
+    const key = styleKeyOf();
+    if (applied !== null && applied.realization === current && applied.key === key) return;
+    const activeEffective = effective;
+    const activeScope = scope;
+    const flags = {
+      wireframe,
+      castShadow: shadows && castShadow,
+      receiveShadow: shadows && receiveShadow
+    };
+    latestKey = key;
+    const restyle = (textured: boolean): void => {
+      // A newer style, or a released instance, supersedes this one: never apply it.
+      if (realization !== current || latestKey !== key) return;
+      current.restyle({
+        look: activeEffective === null ? null : modelLookFor(activeEffective, activeScope, textured),
+        ...flags
+      });
+      applied = { realization: current, key };
+    };
+    if (activeEffective === null) {
+      restyle(false);
+      return;
+    }
+    void loadEffectiveTextures(activeEffective, activeScope)
+      .catch(() => undefined)
+      .then((result) => restyle(texturesReady(result)));
+  });
+
+  // A caster that stays mounted but changes what it draws (visibility or the shadow
+  // switch) is a caster change the shadow owner must observe.
+  let drawnFlags: string | null = null;
+  $effect(() => {
+    const flags = `${visible}|${shadows}`;
+    if (drawnFlags !== null && drawnFlags !== flags && realization !== null) {
+      resources.casters.publish({ kind: 'changed', entity });
+    }
+    drawnFlags = flags;
   });
 
   // Mirror internal status to bindable for /dev/assets without feedback loops.
@@ -205,10 +270,6 @@
       status = next;
       if (next !== 'failed') error = undefined;
     });
-  });
-
-  $effect(() => {
-    if (instance) setModelWireframe(instance, wireframe);
   });
 
   const computedMetrics = $derived.by((): AssetMetrics => {
@@ -244,45 +305,6 @@
         ? [0, -fallbackDimensions[1] / 2, 0]
         : [0, fallbackDimensions[1] / 2, 0]
   );
-
-  // Re-apply the remap whenever the effective material changes after the GLTF
-  // instance has already loaded.
-  $effect(() => {
-    const seed = effective?.variantSeed;
-    const activeEffective = effective;
-    const activeScope = scope;
-    const mounted = instance;
-    if (!mounted || !activeEffective || seed === undefined) return;
-    if (acquiredRemap && acquiredRemap.seed === seed && (acquiredRemap.scopeId ?? null) === (activeScope?.scopeId ?? null)) return;
-    if (acquiredRemap) {
-      releaseModelMaterialRemap(acquiredRemap, activeScope);
-      acquiredRemap = null;
-    }
-    if (activeScope) {
-      // Scoped path: remap once after the release resolver lands so the
-      // swapped frame is already textured. The previous scoped variant was
-      // released above; a failed load keeps the GLB's own materials.
-      let cancelled = false;
-      void loadEffectiveTextures(activeEffective, activeScope)
-        .catch(() => undefined)
-        .then(() => {
-          if (cancelled) return;
-          if (instance !== mounted) return;
-          if (acquiredRemap) releaseModelMaterialRemap(acquiredRemap, activeScope);
-          acquiredRemap = remapModelMaterials(mounted, activeEffective, [1, 1], activeScope).acquiredKey;
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    acquiredRemap = remapModelMaterials(mounted, activeEffective, [1, 1], activeScope).acquiredKey;
-    return () => {
-      if (acquiredRemap) {
-        releaseModelMaterialRemap(acquiredRemap, activeScope);
-        acquiredRemap = null;
-      }
-    };
-  });
 
   const rootPosition = $derived(localTransform ? ZERO : position);
   const rootRotation = $derived(localTransform ? ZERO : rotation);

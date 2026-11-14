@@ -216,3 +216,88 @@ record states the failed hypothesis:
 Frames at rest, live `renderer.info` geometries/materials/textures, draws per frame, the L-open trace
 split, and the post-change open-gap re-recording. The Room component counts are derived from the
 template's inventory, not read from a running Canvas.
+
+## E8/R5 + R2c + G4 — model realization, model remaps and caster lifecycle
+
+**Date:** 2026-11-14. **Branch:** `claude/e8-models-remaps-casters` (from `main` `f41c4e26`, E7 #327).
+**Scope:** model instances, model remaps through the Canvas `MaterialStore`, and the caster channel
+that replaces the per-frame model trigger. Not E9 (artwork, environment) and not E10 (lights). Every
+value is a **counted** number from the test named beside it; no wall-clock claim is made.
+
+### G4 — `render:shadow-update` counts, identical fixture
+
+Method: the real `StageShadowTriggers` mounted with the counting Canvas boundary. The test emulates
+three's frame contract (`render` runs every frame and clears `needsUpdate` after a pass). One warm-up
+frame is excluded, then 50 frames are counted. The "before" column is the same harness on `main`.
+
+| Scenario | Before (`main`) | After (this PR) |
+| --- | ---: | ---: |
+| Static Scene at rest, no model | 0 | 0 |
+| Static Scene at rest, model + casting light | 50 (per frame) | **0** |
+| Camera-only edit, model + casting light | 50 (per frame) | **0** |
+| Model arrival | not observed: 50 (per frame) | **1** |
+| Model release | not observed: 50 (per frame) | **1** |
+| Caster edit (new Scene identity), no model | 1 | **1** |
+| Caster edit (new Scene identity), model + casting light | 50 (per frame) | **1** |
+| Animation playing | 50 (per frame, for any model) | 50 (per frame, only while playing) |
+| Animation stops | — | **1**, then 0 |
+
+Test: `tests/lib/render/shadow-g4-counts.test.ts`. The Stage counting suite
+(`tests/lib/authoring/stage-counting.test.ts`) still passes with the new wiring.
+
+### R2c — materials for 8 instances of a 3-mesh model
+
+Method: the removed `cloneModelScene` and `remapModelMaterials` were reproduced verbatim in a
+temporary probe (not committed) and counted as distinct material objects across the 8 instances.
+The "after" column is the same count through `realizeModel` and the store.
+
+| Case | Before (per-instance clone/remap) | After (store) | `MaterialStore.created` after |
+| --- | ---: | ---: | ---: |
+| Unstyled (asset's own materials) | 24 (8 × 3) | **3** (one store copy per mesh) | 3 |
+| Remapped, m = 2 looks | 24 (8 × 3) | **6** (2 looks × 3 meshes) | 6 |
+
+Behavioral parity tests: `tests/lib/render/models/model-realization.test.ts` (16 tests): static and
+skinned clone parity, skeleton independence, animation on one instance leaving the others and the
+template at rest, shared surfaces by identity and refcount, scoped teardown, texture-variant lease
+accounting and the stale-arrival gate.
+
+### Ownership evidence
+
+- World-material constructors: `MaterialStore` is unchanged at 3 sites. `AssetModel.svelte` keeps one
+  Threlte bounds helper (`showBounds`), recorded in the editor-ink allowlist. The E8 entries for
+  `AssetModel.svelte` and `instance-material-remap.ts` are removed from the R2 allowlist.
+- Retired: `instance-material-remap.ts`, `cloneModelScene`, `disposeModelInstance`,
+  `setModelWireframe`, `remapModelMaterials`. Their tests now call the realization.
+- Disposal: an instance releases only its own leases. A test asserts that the template's materials
+  are never disposed, and that releasing one of two instances never disposes the survivor's material.
+- Guard: `tests/lib/render/model-lifecycle-boundary.test.ts` (in the arch lane) fails on a second
+  constructor, a per-instance `.dispose()` or `.clone()`, identity by name, a second publisher of
+  caster events, or a return of the per-frame model rule.
+
+### Limitations
+
+- **No animation playback exists in the product.** `src/` contains no `AnimationMixer`, and the
+  import pipeline records animations as observed-not-admitted. The playing path is proven with a test
+  mixer on cloned skeletons and the channel. Product animated shadows are unchanged because no
+  product action exists yet.
+- **Conflict with the E7 representation interface (reported, not worked around).** E7's
+  representation owns Three objects only. A model's fallback is the Svelte `AssetFallback` tree
+  (about fifteen shapes with Svelte materials), so a model cannot be drawn by the representation
+  without porting that tree. This PR keeps `AssetModel.svelte` as the per-entity host and moves every
+  drawn-instance concern (clone, leases, arrival, release) into `model-realization.ts`, using the same
+  store, geometry-free identity and caster contracts. A later packet can port the fallback and then
+  move the host.
+- **Behavior change on the unscoped path:** a textured look now waits for its texture load before the
+  first mount, as the scoped path already did. A failed load mounts the untextured look, as before.
+- **Browser QA not run.** The E0 note records that headless Stage launches hang in this environment,
+  so the Stage and `/dev/assets` renders are unverified here. The owner's manual acceptance applies.
+- **Re-measure G4 after E9** adds artwork casters; artwork arrivals will need the same channel.
+- **Heavy lane not run locally**, per the shared heavy-test slot rule. Fast and arch lanes were run;
+  the full suite is left to CI.
+
+### Rollback
+
+- G4 alone: restore the `needsPerFrameShadows` rule in `StageShadowTriggers.svelte` and
+  `shadow-invalidation.ts`. The channel stays harmless: nothing else listens.
+- R5/R2c: revert `AssetModel.svelte` and `model-realization.ts` together with the deleted
+  `instance-material-remap.ts`. The store's `imported` kind is additive and can stay.
