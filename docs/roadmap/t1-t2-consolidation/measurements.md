@@ -526,6 +526,125 @@ tokens.
 - The store's `lambert`, `depth` and `distance` kinds and `StoreMaterial.svelte` are additive and can
   stay. The environment and plinth acquisition stays even if Artwork reverts.
 
+## E10/R6 — Resolved lights
+
+**Date:** 2026-11-14. **Branch:** `claude/e10-resolved-lights` (from `main` `30301614`, after E8).
+**Scope:** pure Light descriptors for authored Point/Spot and the Sky's Sun, one Canvas-scoped
+`LightStore` with acquire, update and release, a retained Scene light handler, and the Sun acquired
+from that store by `WorldEnvironment`. No new Light feature, no shadow architecture change, no
+migration. Directional stays retired; the Sky owns the only Sun.
+
+### Structure
+
+- `render/resources/light-descriptor.ts`: plain data and one canonical key per descriptor. Point and
+  Spot carry candela intensity with decay 2 and distance 0 for "no range". The Sun carries lux, its
+  position and target, and the full shadow block: map size, bias, normal bias, radius and the
+  orthographic frustum.
+- `render/resources/light-store.ts`: the only module that constructs `PointLight`, `SpotLight` or
+  `DirectionalLight`. A lease updates in place when its key changes, and refuses a kind change
+  (release, then acquire). `release` detaches the light and its target and disposes it once.
+  `RenderResources.lights` gives one store per Canvas, disposed with the others.
+- `render/scene-light-description.ts`: resolves `SceneLightEntity` to descriptors, memoised by
+  `RuntimeScene` identity, as `describeSceneRender` is.
+- `render/scene-light-representation.ts`: one `SceneLights` root, one holder per light carrying the
+  entity transform. Changed key → update in place; moved → holder moves, same light; kind change →
+  replaced; removed → released.
+- `world-environment.ts` `resolveSkySun` restates the old component formulas (target, reach,
+  `from × reach × 2.5`, frustum ±reach, far reach×6, normal bias by flat ground) as a pure function.
+  `WorldEnvironment.svelte` leases the Sun and keeps its `HemisphereLight` fill.
+- `EntityLight.svelte` is deleted. `VisitorEntityGroups` mounts the light handler next to the entity
+  root, so Stage and Visitor share one path.
+
+### Parity method and result
+
+A golden was recorded on `main` `30301614` with the retired `EntityLight.svelte` and the old
+`WorldEnvironment` Sun, mounted through the real `VisitorEntityGroups` and `WorldEnvironment` under a
+Threlte `<T>` tree. The same harness, cases and reader now run against the new path
+(`tests/lib/render/lights/light-realization-parity.test.ts`). Every Light in the world is read and
+compared exactly (12 significant digits): type, colour, intensity, world position, visibility,
+layers, `castShadow`, distance, decay, angle, penumbra, target world position and whether the target
+is in the scene, and the full shadow (map size, bias, normal bias, radius, blur samples, intensity,
+auto-update, focus, camera type, near/far, zoom, projection matrix and frustum or fov/aspect).
+Hemisphere readings add the ground colour.
+
+| Case | Steps compared | Differing steps |
+| --- | ---: | ---: |
+| Stage daylight (flat ground, shadow bounds, ground 0.3): spot edit, range removed + shadow on, bounds moved, preset, kind replaced, lights removed, Paper and back | 10 | 0 |
+| Visitor golden hour: bounds grew, bounds cleared, dusk | 5 | 0 |
+| Paper with lights hidden, then shown | 3 | 0 |
+
+**Finding fixed during parity:** Three's `SpotLight` constructor puts the light at `DEFAULT_UP`
+(0, 1, 0). The old `<T.SpotLight>` reset it through Threlte props. A bare store construction placed
+every Spot 1 m above its entity. The store now zeroes the Spot's position. The diff caught it before
+it shipped.
+
+### Resource lifetime
+
+`tests/lib/render/lights/light-resource-lifetime.test.ts` (9 tests) runs through the mounted
+harness with store stats as the oracle:
+
+- A Camera-only change (same `RuntimeScene`) makes no light change and no invalidate.
+- An unrelated Scene edit (box added, then moved) keeps the same Light objects. The store counts
+  nothing.
+- A changed Spot updates in place (`updated` +1, `created` +0). A moved light keeps its object.
+- A kind change disposes the old light and builds one new one.
+- The Sun updates in place on bounds and preset changes. It is released on Paper and rebuilt on Dusk.
+- Hiding lights, Paper, and unmount leave 0 live lights. Two Canvases never share a light.
+
+`tests/lib/render/resources/light-store.test.ts` (6) and
+`tests/lib/render/lights/scene-light-description.test.ts` (7) pin the store and the description
+alone.
+
+### Ownership evidence
+
+- `tests/lib/render/light-realizer-boundary.test.ts` (10, arch lane):
+  - `PointLight`, `SpotLight` and `DirectionalLight` are constructed once each, only in
+    `light-store.ts`. Point and Spot appear nowhere else.
+  - Host lights are pinned to an exact, shrink-only allowlist: the Stage and Visitor rigs' ambient
+    and directional, `WorldEnvironment`'s hemisphere, and the two `/dev` routes.
+  - The detector catches aliases, namespaces and `<T.*Light>`, with a self-test.
+  - `EntityLight` is gone, and the consumers lease from `resources.lights`.
+  - Mutation check: adding `<T.SpotLight />` to `WorldEnvironment` fails two tests.
+- `material-factory-boundary`: the R2 remainder is now empty.
+- `shadow-invalidation`: the authored shadow flag is read from the description and applied by the
+  store.
+- `render-identity-consumers`: `VisitorEntityGroups` mounts two retained roots and no
+  `{#each scene.entities}`.
+- Existing S3 Light suites unchanged and passing: 13 files, 155 tests.
+
+### Lanes
+
+- Fast: 348 files, 4520 tests passed.
+- Arch: 345 tests passed after the documentation-reference fix in this PR (three doc paths named the
+  deleted component).
+- Heavy: 11 files, 138 tests passed.
+- `npm run check` reports 0 errors; its 12 warnings are pre-existing on `main`. `npm run build`
+  passes.
+
+### Limitations
+
+- **Hemisphere fill and the host rigs stay where they were.** `WorldEnvironment`'s
+  `HemisphereLight` and the Stage/Visitor ambient and directional rigs are not world lights under
+  R6. They are pinned by the boundary allowlist, not moved into the store.
+- **Point/Spot shadows keep Three's defaults** (map size, bias, camera), as before. R6 adds no shadow
+  configuration.
+- **The unused pick proxy is gone.** `EntityLight.svelte` carried a `showPickProxy` mesh that no
+  caller enabled. Light picking goes through `lightGlyphAt` and is unchanged.
+- **Browser QA:**
+  - Done on a local Stage: Daylight, then Living, a Furnish box, a placed Spot with its aim gizmo
+    and card, 4× brightness and cast shadows, then Dusk.
+  - The Sun's shadow re-aimed on the preset change, and the console showed no errors.
+  - Preview was not reached: it needs an Experience and the cloud API, as in E9. The Visitor path is
+    the same `VisitorEntityGroups` + `WorldEnvironment`, which the parity golden covers.
+  - The owner's manual acceptance applies.
+
+### Rollback
+
+Revert the descriptor, store, description, representation and the `VisitorEntityGroups`,
+`WorldEnvironment` and `RenderResources` edits together. Restore `EntityLight.svelte` and its
+`RR7_REMAINDER` entry, and drop `light-realizer-boundary.test.ts` from `ARCH_FILES`. The Directional
+retirement is external to E10 and is not reverted.
+
 ## E11 — Measurement-gated batching (R7 and R3)
 
 **Status: measured decline.** The named E11 L pan / Scene orbit trace with M comparison

@@ -119,17 +119,13 @@ describe('Scene entities keep their world frame', () => {
 		const source = read('lib/visitor/VisitorEntityGroups.svelte');
 		const ast = parse(source, { modern: true });
 		const nodes = ast.fragment.nodes.filter((node) => node.type !== 'Text' && node.type !== 'Comment');
-		// E7/R4: the primitive/Form root is mounted once, then the remaining
-		// component families dispatch per entity. No wrapping group either way.
-		expect(nodes.map((node) => node.type)).toEqual(['Component', 'EachBlock']);
+		// E7/R4: the primitive/Form root is mounted once; E10/R6 retired the last
+		// per-entity dispatch (lights), so the authored lights are a second retained
+		// root. No per-entity component and no wrapping group either way.
+		expect(nodes.map((node) => node.type)).toEqual(['Component', 'Component']);
 		expect(source).toContain('<T is={entities.object3d} />');
-		const each = nodes[1] as unknown as {
-			expression: { type: string; object: { name: string }; property: { name: string } };
-			body: { nodes: Array<{ type: string }> };
-		};
-		expect(`${each.expression.object.name}.${each.expression.property.name}`).toBe('scene.entities');
-		// One family dispatch left: the light component, until E10.
-		expect(each.body.nodes.filter((node) => node.type !== 'Text').map((node) => node.type)).toEqual(['IfBlock']);
+		expect(source).toContain('<T is={lights.object3d} />');
+		expect(source).not.toMatch(/\{#each scene\.entities/);
 		// E8/R5: models are drawn by the retained root; their transform-free roots are
 		// registered through the representation's one `onRoot`, not a per-entity component.
 		expect(source).toContain('onRoot: (id, root) => onEntityRoot?.(id, root)');

@@ -38,8 +38,8 @@ import { withoutComments } from '../../helpers/render-boundary-scan';
  * file is a failure rather than a silent pass.
  */
 const RR7_REMAINDER: Record<string, { count: number; owner: string }> = {
-	// R6 — the light entity's invisible hit proxy (E10).
-	'lib/museum/entities/EntityLight.svelte': { count: 1, owner: 'E10/R6' }
+	// Empty: E10/R6 retired the last site, the light entity's unused hit proxy,
+	// together with `EntityLight.svelte`.
 };
 
 /** Editor ink: Paper, the mat grid, selection and gizmos. Not a world surface (§2.4). */
@@ -183,8 +183,9 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/layout/GroundPlinth.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/WorldEnvironment.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/visitor/VisitorPreviewSurface.svelte');
-		// The one world site left is E10's light proxy; everything else is editor ink.
-		expect(Object.keys(RR7_REMAINDER)).toEqual(['lib/museum/entities/EntityLight.svelte']);
+		// E10/R6 retired the light proxy: no world site is left; everything else is editor ink.
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/entities/EntityLight.svelte');
+		expect(Object.keys(RR7_REMAINDER)).toEqual([]);
 	});
 
 	it('the Artwork handler and the world grounds acquire instead of constructing', () => {

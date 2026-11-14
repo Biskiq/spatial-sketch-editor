@@ -7,7 +7,9 @@
 	 * The sky is the scene background (a vertical gradient, so it never clips at
 	 * the camera's far plane), the ground is one disc fading into the horizon
 	 * haze, and the light is a hemisphere fill plus one sun whose shadow camera
-	 * fits the World's bounds. `paper` renders nothing: the host keeps its own look.
+	 * fits the World's bounds. The Sun is resolved by `resolveSkySun` and realized
+	 * by the Canvas light store (E10/R6); this component constructs no light but
+	 * the hemisphere fill. `paper` renders nothing: the host keeps its own look.
 	 */
 	import { onDestroy } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
@@ -16,12 +18,20 @@
 		CanvasTexture,
 		CircleGeometry,
 		Color,
-		type DirectionalLight,
+		Group,
 		SRGBColorSpace,
 		type Texture
 	} from 'three';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
-	import { WORLD_ENVIRONMENT_GROUND_RADIUS_METERS, worldEnvironmentLook } from './world-environment';
+	import {
+		WORLD_ENVIRONMENT_GROUND_RADIUS_METERS,
+		resolveSkySun,
+		worldEnvironmentCenter,
+		worldEnvironmentLook
+	} from './world-environment';
+	import { useRenderResources } from './resources/render-resources';
+	import type { LightLease } from './resources/light-store';
+	import type { WorldEnvironmentBounds } from './world-environment';
 	import StoreMaterial from './resources/StoreMaterial.svelte';
 	import type { BasicMaterialDescriptor, LambertMaterialDescriptor } from './resources/material-descriptor';
 
@@ -38,7 +48,7 @@
 	};
 	const LIT_GROUND: LambertMaterialDescriptor = { kind: 'lambert', vertexColors: true };
 
-	type Bounds = { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
+	type Bounds = WorldEnvironmentBounds;
 
 	let {
 		preset = 'paper',
@@ -116,68 +126,47 @@
 		ground.dispose();
 	});
 
-	const center = $derived.by((): [number, number, number] => {
-		if (bounds === null) return [0, groundY, 0];
-		return [(bounds.min[0] + bounds.max[0]) / 2, groundY, (bounds.min[2] + bounds.max[2]) / 2];
-	});
-	const sunCenter = $derived<[number, number, number]>(shadowBounds === null ? center : [
-		(shadowBounds.min[0] + shadowBounds.max[0]) / 2,
-		(shadowBounds.min[1] + shadowBounds.max[1]) / 2,
-		(shadowBounds.min[2] + shadowBounds.max[2]) / 2
-	]);
-	const reach = $derived.by(() => {
-		const frame = shadowBounds ?? bounds;
-		if (frame === null) return 12;
-		const height = shadowBounds === null ? 0 : frame.max[1] - frame.min[1];
-		return Math.max(4, Math.hypot(frame.max[0] - frame.min[0], height, frame.max[2] - frame.min[2]) / 2 + 2);
-	});
-	let sun = $state<DirectionalLight | undefined>(undefined);
-	// The sun aims at the World's centre; its target joins the scene with it.
+	const center = $derived(worldEnvironmentCenter({ bounds, groundY }));
+
+	/**
+	 * The Sky's one Sun (E10/R6): resolved here as a pure descriptor and realized
+	 * by the Canvas light store, which owns its construction, shadow camera and
+	 * disposal. The lease lives as long as the Sky has a Sun: a changed preset or
+	 * frame updates the same light in place; `paper` releases it. The Sun sits in
+	 * this component's holder and aims at a target that joins the scene with it.
+	 */
+	const resources = useRenderResources();
+	const sunDescriptor = $derived(resolveSkySun(look, { bounds, shadowBounds, groundY, flatGround }));
+	const sunHolder = new Group();
+	let sun: LightLease<'sun'> | null = null;
+	function releaseSun(): void {
+		sun?.release();
+		sun = null;
+	}
 	$effect(() => {
-		const light = sun;
-		void reach;
-		const [x, y, z] = sunCenter;
-		if (light === undefined) return;
-		light.target.position.set(x, y, z);
-		light.target.updateMatrixWorld();
-		light.shadow.camera.updateProjectionMatrix();
-		light.shadow.needsUpdate = true;
-		scene.add(light.target);
+		const descriptor = sunDescriptor;
+		if (descriptor === null) {
+			if (sun !== null) {
+				releaseSun();
+				invalidate();
+			}
+			return;
+		}
+		if (sun === null) {
+			sun = resources.lights.acquire(descriptor);
+			sunHolder.add(sun.light);
+			scene.add(sun.light.target);
+		} else if (!sun.update(descriptor)) {
+			return;
+		}
 		invalidate();
-		return () => {
-			scene.remove(light.target);
-		};
 	});
-	const sunPosition = $derived.by((): [number, number, number] => {
-		if (look === null) return [0, 10, 0];
-		const [x, y, z] = look.sun.from;
-		const length = Math.hypot(x, y, z) || 1;
-		const distance = reach * 2.5;
-		return [sunCenter[0] + (x / length) * distance, sunCenter[1] + (y / length) * distance, sunCenter[2] + (z / length) * distance];
-	});
+	onDestroy(releaseSun);
 </script>
 
 {#if look !== null}
 	<T.HemisphereLight args={[look.hemisphere[0], look.hemisphere[1], look.hemisphere[2]]} />
-	<T.DirectionalLight
-		bind:ref={sun}
-		position={sunPosition}
-		color={look.sun.color}
-		intensity={look.sun.intensity}
-		castShadow
-		shadow.mapSize.width={2048}
-		shadow.mapSize.height={2048}
-		shadow.bias={-0.0004}
-		shadow.normalBias={flatGround ? 0.05 : 0.02}
-		shadow.radius={3}
-		shadow.camera.left={-reach}
-		shadow.camera.right={reach}
-		shadow.camera.top={reach}
-		shadow.camera.bottom={-reach}
-		shadow.camera.near={0.5}
-		shadow.camera.far={reach * 6}
-	>
-	</T.DirectionalLight>
+	<T is={sunHolder} />
 	<T.Mesh geometry={ground} rotation.x={-Math.PI / 2} position={[center[0], groundY - (flatGround ? 0.05 : 0.02), center[2]]} renderOrder={flatGround ? -1 : 0} receiveShadow={!flatGround}>
 		<StoreMaterial descriptor={flatGround ? FLAT_GROUND : LIT_GROUND} />
 	</T.Mesh>

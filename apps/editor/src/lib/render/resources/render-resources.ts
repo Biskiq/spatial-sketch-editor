@@ -8,7 +8,8 @@
  * Canvas host and both families lease from the same two stores.
  *
  * This is still one owner, not a second authority: `MaterialStore` remains the
- * only material factory and `GeometryStore` the only geometry owner. The context
+ * only material factory, `GeometryStore` the only geometry owner and, since
+ * E10/R6, `LightStore` the only realizer of a world light. The context
  * exists so a deep component (`MuseumMaterial`, a door portal, a fallback body)
  * reaches the Canvas's stores without threading a prop through every world
  * component. Mounting world content without a Canvas owner is a programming
@@ -22,6 +23,7 @@ import { getContext, setContext } from 'svelte';
 import { createGeometryStore, type GeometryStore } from './geometry-store';
 import { createMaterialStore, type MaterialStore } from './material-store';
 import { createCasterChannel, type CasterChannel } from './caster-channel';
+import { createLightStore, type LightStore } from './light-store';
 
 export type RenderResources = {
 	/** The Canvas's one material factory. */
@@ -30,6 +32,8 @@ export type RenderResources = {
 	readonly geometry: GeometryStore;
 	/** The Canvas's caster arrivals and animation state (E8/G4). */
 	readonly casters: CasterChannel;
+	/** The Canvas's one light realizer: authored Point/Spot and the Sky's Sun (E10/R6). */
+	readonly lights: LightStore;
 	/** Dispose the stores and the channel. Idempotent. */
 	dispose(): void;
 };
@@ -45,14 +49,17 @@ export function provideRenderResources(): RenderResources {
 	const materials = createMaterialStore();
 	const geometry = createGeometryStore();
 	const casters = createCasterChannel();
+	const lights = createLightStore();
 	let disposed = false;
 	const resources: RenderResources = {
 		materials,
 		geometry,
 		casters,
+		lights,
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			lights.dispose();
 			casters.dispose();
 			geometry.dispose();
 			materials.dispose();

@@ -11,6 +11,7 @@
  * exactly as it did before presets existed.
  */
 import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+import type { SunLightDescriptor } from './resources/light-descriptor';
 
 export const WORLD_ENVIRONMENT_GROUND_RADIUS_METERS = 400;
 
@@ -77,4 +78,83 @@ export const WORLD_ENVIRONMENT_CHOICES: readonly { readonly preset: SceneEnviron
 
 export function worldEnvironmentLook(preset: SceneEnvironmentPreset | null | undefined): WorldEnvironmentLook | null {
 	return preset === undefined || preset === null || preset === 'paper' ? null : WORLD_ENVIRONMENT_LOOKS[preset];
+}
+
+/** An axis-aligned World extent in metres. */
+export type WorldEnvironmentBounds = {
+	readonly min: readonly [number, number, number];
+	readonly max: readonly [number, number, number];
+};
+
+/** Where a Sky's light lands: the World it shines on and the ground datum. */
+export type WorldEnvironmentFrame = {
+	readonly bounds: WorldEnvironmentBounds | null;
+	/** The caster extent the Sun's shadow camera must cover; the World bounds when absent. */
+	readonly shadowBounds: WorldEnvironmentBounds | null;
+	readonly groundY: number;
+	/** The editor Stage's unlit ground: a larger normal bias against acne on its plate. */
+	readonly flatGround: boolean;
+};
+
+/** The ground disc's centre: the World's plan centre at the datum. */
+export function worldEnvironmentCenter(frame: Pick<WorldEnvironmentFrame, 'bounds' | 'groundY'>): [number, number, number] {
+	const { bounds, groundY } = frame;
+	if (bounds === null) return [0, groundY, 0];
+	return [(bounds.min[0] + bounds.max[0]) / 2, groundY, (bounds.min[2] + bounds.max[2]) / 2];
+}
+
+/**
+ * E10/R6 — the Sky's one Sun, resolved: a pure descriptor the Canvas light store
+ * realizes. The Sun aims at the caster centre (the shadow bounds' centre, else
+ * the ground centre), sits 2.5 reaches back along the preset's `from`
+ * direction, and its orthographic shadow camera is a square of half-size
+ * `reach` (half the extent's diagonal plus 2 m, at least 4 m) reaching 6 reaches
+ * deep. `paper` has no Sky and so no Sun.
+ */
+export function resolveSkySun(
+	look: WorldEnvironmentLook | null,
+	frame: WorldEnvironmentFrame
+): SunLightDescriptor | null {
+	if (look === null) return null;
+	const { bounds, shadowBounds } = frame;
+	const center = worldEnvironmentCenter(frame);
+	const target: [number, number, number] =
+		shadowBounds === null
+			? center
+			: [
+					(shadowBounds.min[0] + shadowBounds.max[0]) / 2,
+					(shadowBounds.min[1] + shadowBounds.max[1]) / 2,
+					(shadowBounds.min[2] + shadowBounds.max[2]) / 2
+				];
+	const extent = shadowBounds ?? bounds;
+	const reach =
+		extent === null
+			? 12
+			: Math.max(
+					4,
+					Math.hypot(
+						extent.max[0] - extent.min[0],
+						shadowBounds === null ? 0 : extent.max[1] - extent.min[1],
+						extent.max[2] - extent.min[2]
+					) /
+						2 +
+						2
+				);
+	const [x, y, z] = look.sun.from;
+	const length = Math.hypot(x, y, z) || 1;
+	const distance = reach * 2.5;
+	return {
+		kind: 'sun',
+		color: look.sun.color,
+		intensity: look.sun.intensity,
+		position: [target[0] + (x / length) * distance, target[1] + (y / length) * distance, target[2] + (z / length) * distance],
+		target,
+		shadow: {
+			mapSize: 2048,
+			bias: -0.0004,
+			normalBias: frame.flatGround ? 0.05 : 0.02,
+			radius: 3,
+			camera: { left: -reach, right: reach, top: reach, bottom: -reach, near: 0.5, far: reach * 6 }
+		}
+	};
 }

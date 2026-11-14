@@ -19,7 +19,7 @@
 	import type { Object3D } from 'three';
 	import { T, useThrelte } from '@threlte/core';
 	import type { RuntimeScene } from '$lib/content/scene';
-	import { isSceneFormEntity, isSceneLightEntity } from '$lib/content/scene';
+	import { isSceneFormEntity } from '$lib/content/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import { createSceneEntityRepresentation } from '$lib/render/scene-entity-representation';
@@ -29,7 +29,8 @@
 		type SceneFormSupport
 	} from '$lib/render/scene-render-description';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
-	import EntityLight from '$lib/museum/entities/EntityLight.svelte';
+	import { createSceneLightRepresentation } from '$lib/render/scene-light-representation';
+	import { describeSceneLights, EMPTY_SCENE_LIGHT_DESCRIPTION } from '$lib/render/scene-light-description';
 
 	let {
 		scene,
@@ -138,15 +139,25 @@
 	});
 
 	$effect(() => () => entities.dispose());
+
+	/**
+	 * Authored Point and Spot lights (E10/R6): resolved once per Scene identity,
+	 * realized by this Canvas's light store and placed by one retained root. An
+	 * unrelated edit hands back the same description and touches no light; a
+	 * changed light updates in place; a changed kind is replaced. Paper draws no
+	 * authored light, so it releases them all.
+	 */
+	const lights = createSceneLightRepresentation({ lights: resources.lights });
+	$effect(() => {
+		const description = includeLights ? describeSceneLights(scene) : EMPTY_SCENE_LIGHT_DESCRIPTION;
+		const stats = lights.update(description);
+		if (stats.built + stats.updated + stats.moved + stats.released > 0) invalidate();
+	});
+	$effect(() => () => lights.dispose());
 </script>
 
 <!-- The retained Scene root (primitives, Forms, Artworks, models): mounted once, patched in place. -->
 <T is={entities.object3d} />
 
-{#each scene.entities as entity (entity.id)}
-	{#if includeLights && isSceneLightEntity(entity)}
-		<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
-			<EntityLight {entity} />
-		</T.Group>
-	{/if}
-{/each}
+<!-- The retained authored lights: mounted once, patched in place. -->
+<T is={lights.object3d} />

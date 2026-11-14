@@ -144,7 +144,10 @@ export const ARCH_FILES: string[] = [
 	// Each is a dependency edge, and a reversed edge still type-checks and renders.
 	'tests/lib/render/render-layer-boundary.test.ts',
 	// E8/R5 + R2c + G4: one model realization, one caster channel, no per-frame model rule.
-	'tests/lib/render/model-lifecycle-boundary.test.ts'
+	'tests/lib/render/model-lifecycle-boundary.test.ts',
+	// E10/R6: one light realizer. A `PointLight`/`SpotLight`/Sun constructor outside
+	// the Canvas light store is a light Three draws happily; no build can see it.
+	'tests/lib/render/light-realizer-boundary.test.ts'
 ];
 
 /**
