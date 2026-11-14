@@ -22,7 +22,6 @@
  */
 import {
 	createEmptyWallFirstLayoutDocument,
-	compileWallFirstLayoutGeometry,
 	planWallChain,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
@@ -111,18 +110,4 @@ export const DEFAULT_STARTER_TEMPLATE = STARTER_TEMPLATES[0]!;
 /** One template by id, or `null` when it is not an offered template. */
 export function starterTemplate(templateId: string): StarterTemplate | null {
 	return STARTER_TEMPLATES.find((template) => template.id === templateId) ?? null;
-}
-
-/**
- * The blocking compile issues of a starter envelope, if any.
- *
- * A template that cannot compile to a real floor is not a template: the gallery's
- * own test pins this to `[]`, and the route refuses to boot a template that names
- * one rather than rendering a silent partial Stage.
- */
-export function starterBlockingIssueMessages(envelope: ProjectEnvelope): readonly string[] {
-	const compiled = compileWallFirstLayoutGeometry(envelope.units.layout.data);
-	return compiled.issues
-		.filter((issue) => issue.severity !== 'warning')
-		.map((issue) => issue.message);
 }

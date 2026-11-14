@@ -2,7 +2,7 @@
  * Timing lives in the bounded Node comparison, never in assertions here. */
 import { describe, expect, it } from 'vitest';
 import {
- compileWallFirstLayoutGeometry, createLayoutCompileSession, ensureLayoutWorldIndex,
+ compileWallFirstLayoutGeometryFresh, createLayoutCompileSession, ensureLayoutWorldIndex,
  planExactWallLength, planRigidWallMove, withLayoutCompileSession, setWorkObserver,
  indexedCompiledWall, indexedCompiledWallQueries, linkClonedCowCandidate,
  type LayoutDocumentWallFirst, type CompiledLayoutGeometry
@@ -57,7 +57,7 @@ describe('persistent candidate → certification → compile → indexed consume
    expect(measured.counts.get('representation:child-array-scan-bound') ?? 0).toBe(0);
    expect(measured.counts.get('index:node-test') ?? 0).toBeLessThan(400);
    expect(session.stats().wallsEvaluated).toBeLessThanOrEqual(3);
-   expect(exact(geometry) === exact(compileWallFirstLayoutGeometry(document).geometry)).toBe(true);
+   expect(exact(geometry) === exact(compileWallFirstLayoutGeometryFresh(document).geometry)).toBe(true);
    // Reading complete old results must never reveal an in-place session update.
    expect(exact(originalGeometry)).toBe(original);
    expect(previous).not.toBe(geometry);
@@ -92,7 +92,7 @@ describe('persistent candidate → certification → compile → indexed consume
   const old = roots[2]!;
   const branch = withLayoutCompileSession(session, () => planExactWallLength(old.document, { wallId: old.document.walls[4]!.id, length: 8, fixedEndpoint: 'start' }));
   if (branch.kind !== 'success') throw new Error(branch.rejection.message);
-  expect(exact(branch.acceptance!.geometry)).toBe(exact(compileWallFirstLayoutGeometry(branch.document).geometry));
+  expect(exact(branch.acceptance!.geometry)).toBe(exact(compileWallFirstLayoutGeometryFresh(branch.document).geometry));
   expect(exact(old.geometry)).toBe(old.bytes);
  });
  it('does not mistake a shallow-frozen, mutable source for a restorable immutable root', () => {
@@ -101,7 +101,7 @@ describe('persistent candidate → certification → compile → indexed consume
   const session = createLayoutCompileSession(); session.compile(document);
   const { result, counts } = observe(() => session.compile(document));
   expect(counts.get('compile:historical-root-restore') ?? 0).toBe(0);
-  expect(exact(result.geometry) === exact(compileWallFirstLayoutGeometry(document).geometry)).toBe(true);
+  expect(exact(result.geometry) === exact(compileWallFirstLayoutGeometryFresh(document).geometry)).toBe(true);
  });
  it('restores membership-changing snapshots in constant root work and keeps sessions isolated', () => {
   const session = createLayoutCompileSession(), other = createLayoutCompileSession();
@@ -120,7 +120,7 @@ describe('persistent candidate → certification → compile → indexed consume
   const baseline = documents[0]!; ensureLayoutWorldIndex(baseline);
   const branch = withLayoutCompileSession(session, () => planRigidWallMove(baseline, { wallId: baseline.walls[4]!.id, delta: [0, 0.01] }));
   if (branch.kind !== 'success') throw new Error(branch.rejection.message);
-  expect(exact(branch.acceptance!.geometry)).toBe(exact(compileWallFirstLayoutGeometry(branch.document).geometry));
+  expect(exact(branch.acceptance!.geometry)).toBe(exact(compileWallFirstLayoutGeometryFresh(branch.document).geometry));
   session.reset();
   expect(session.compile(baseline).geometry).not.toBe(roots[0]);
   expect(session.stats().cold).toBe(true);

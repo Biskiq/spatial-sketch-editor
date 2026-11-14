@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-	compileWallFirstLayoutGeometry,
+	compileWallFirstLayoutGeometryFresh,
 	createDynamicBvh,
 	createLayoutCompileSession,
 	createPlanBoxIndex,
@@ -58,8 +58,8 @@ function withWorkCounts<T>(fn: () => T): { result: T; counts: Map<string, number
 }
 
 function entitySetsMatch(docA: LayoutDocumentWallFirst, docB: LayoutDocumentWallFirst): boolean {
-	const a = compileWallFirstLayoutGeometry(docA).geometry;
-	const b = compileWallFirstLayoutGeometry(docB).geometry;
+	const a = compileWallFirstLayoutGeometryFresh(docA).geometry;
+	const b = compileWallFirstLayoutGeometryFresh(docB).geometry;
 	const sortById = <T extends Record<string, unknown>>(arr: readonly T[] | undefined, key: keyof T): T[] =>
 		[...(arr ?? [])].sort((x, y) => String(x[key]).localeCompare(String(y[key])));
 	return (

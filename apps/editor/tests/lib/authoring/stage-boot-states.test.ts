@@ -48,10 +48,21 @@ import type { AdmissionContext } from '$lib/authoring/stage/source-admission';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import {
 	STARTER_TEMPLATES,
-	buildStarterEnclosureLayout,
-	starterBlockingIssueMessages
+	buildStarterEnclosureLayout
 } from '$lib/authoring/stage/starter-gallery';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { FIXTURE_PROJECT_ID, buildFoldedPartitionProject } from './__fixtures__/f4-current-source-fixtures';
+
+/**
+ * The blocking compile issues of a starter envelope. A template that cannot
+ * compile to a real floor is not a template; this test pins every offered one
+ * to `[]` (production never compiles a template outside admission).
+ */
+function starterBlockingIssueMessages(envelope: ProjectEnvelope): readonly string[] {
+	return compileWallFirstLayoutGeometry(envelope.units.layout.data)
+		.issues.filter((issue) => issue.severity !== 'warning')
+		.map((issue) => issue.message);
+}
 
 const PROJECT_ID = 'project-boot-states';
 

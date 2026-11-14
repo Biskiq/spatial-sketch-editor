@@ -4,7 +4,7 @@
  * Two obligations, and nothing else counts as evidence:
  *
  * 1. **Equal output.** For every edit in a sweep, a session compile must equal a
- *    cold `compileWallFirstLayoutGeometry` of the same document *including every
+ *    cold `compileWallFirstLayoutGeometryFresh` of the same document *including every
  *    `cacheKey`*. Keys are compared here on purpose (the D.1 differential strips
  *    them): retention is proved by keys, so a key that does not change when its
  *    entity does is a bug this suite must catch, not forgive.
@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-	compileWallFirstLayoutGeometry,
+	compileWallFirstLayoutGeometryFresh,
 	createLayoutCompileSession,
 	cowCreateObject,
 	cowDeleteObject,
@@ -39,11 +39,11 @@ import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-sc
 
 /** Whole compiled result, keys included: this is the retention proof's own claim. */
 function exactCompiled(document: LayoutDocumentWallFirst): string {
-	return JSON.stringify(compileWallFirstLayoutGeometry(document).geometry);
+	return JSON.stringify(compileWallFirstLayoutGeometryFresh(document).geometry);
 }
 
 function issuesOf(document: LayoutDocumentWallFirst): string {
-	return JSON.stringify(compileWallFirstLayoutGeometry(document).issues);
+	return JSON.stringify(compileWallFirstLayoutGeometryFresh(document).issues);
 }
 
 /** A deep copy through JSON, so an edit never mutates a retained document. */
@@ -100,7 +100,7 @@ describe('T1.P02.S06 H1 — incremental canonical compile', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const session = createLayoutCompileSession();
 		const first = session.compile(document);
-		const cold = compileWallFirstLayoutGeometry(document);
+		const cold = compileWallFirstLayoutGeometryFresh(document);
 		expect(JSON.stringify(first.geometry)).toBe(JSON.stringify(cold.geometry));
 		expect(JSON.stringify(first.issues)).toBe(JSON.stringify(cold.issues));
 		expect(session.stats().cold).toBe(true);

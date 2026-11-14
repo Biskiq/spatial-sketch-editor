@@ -63,6 +63,8 @@ import {
 } from './layout-geometry-reuse';
 import {
 	pointAlongSamples,
+	openingCenterFrame,
+	openingCenterPolyline,
 	sampleSegment,
 	segmentVertexPoints,
 	type SampleableSegment,
@@ -92,6 +94,8 @@ import {
 import { bounds2, createQueryGeometryBuilder, polygonBounds2, type QueryGeometryBuilder } from './layout-geometry-queries';
 import {
 	recordPassiveCompiledGeometry,
+	readPassiveCompiledGeometry,
+	recordSessionlessCompile,
 	seedReuseFromPassiveCompile,
 	tryCompileWallFirstLayoutGeometryDelta,
 	type CanonicalDeltaBuilders,
@@ -107,7 +111,27 @@ import { hasAnySamplingTestObserver } from './layout-world-index';
 export { readPassiveCompiledGeometry } from './layout-geometry-delta';
 export { recordPassiveCompiledGeometry };
 
-const OPENING_CENTER_EPSILON = 0.01;
+
+function compileSessionlessOnce(document: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): CompiledLayoutGeometryResult {
+	countWork('compile:walls', layoutLength(document, 'walls'));
+	countWork('compile:junctions', layoutLength(document, 'junctions'));
+	countWork('compile:openings', layoutLength(document, 'openings'));
+	countWork('compile:rooms', layoutLength(document, 'rooms'));
+	return p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling));
+}
+
+/**
+ * E4 / I2 — the cold oracle. Always compiles from the document, never reads nor
+ * writes a recorded result, so a differential can never compare a session's
+ * compile with that session's own record.
+ */
+export function compileWallFirstLayoutGeometryFresh(
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation
+): CompiledLayoutGeometryResult {
+	countWork('compile');
+	return compileSessionlessOnce(document, sampling);
+}
 
 /**
  * Compile the authored Layout once into render-neutral geometry consumed by
@@ -146,14 +170,19 @@ export function compileWallFirstLayoutGeometry(
 	}
 	countWork('compile');
 	if (!reuse) {
-		countWork('compile:walls', layoutLength(document, 'walls'));
-		countWork('compile:junctions', layoutLength(document, 'junctions'));
-		countWork('compile:openings', layoutLength(document, 'openings'));
-		countWork('compile:rooms', layoutLength(document, 'rooms'));
-		const result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling));
-		if (!hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling) && result.issues.length === 0) {
-			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
+		// E4 / I2 — the one session-less read. A document that was already frozen
+		// when its result was recorded cannot have changed since, so that record
+		// is its compile; an unfrozen document always compiles.
+		const canonical = !hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling);
+		if (canonical) {
+			const record = readPassiveCompiledGeometry(document);
+			if (record?.sealed === true) {
+				countWork('compile:passive-read');
+				return { geometry: record.geometry, issues: [...record.issues] };
+			}
 		}
+		const result = compileSessionlessOnce(document, sampling);
+		if (canonical) recordSessionlessCompile(document, result.geometry, result.issues);
 		return result;
 	}
 	// T1.P02.S06 D.3 (H1) — an incremental compile reports its own work: how many
@@ -1315,9 +1344,10 @@ function spanRecordPhysical(
  * including across membership changes; their transient memo tables are retired
  * by root replacement. Stats count evaluations separately from storage/output.
  *
- * Callers that cannot hold state (`admitSource`, a one-shot script) keep calling
- * `compileWallFirstLayoutGeometry` without a store and get exactly today's
- * cold compile.
+ * Callers that cannot hold state call `compileWallFirstLayoutGeometry` with no
+ * session bound: the canonical read returns the result recorded for that exact
+ * frozen document object, or compiles once and records it (E4 / I2).
+ * `compileWallFirstLayoutGeometryFresh` is the cold oracle for differentials.
  */
 export type LayoutCompileSession = {
 	/** Compile `document`, reusing every entity whose authored inputs are unchanged. */
@@ -1808,27 +1838,11 @@ function compileOpening(
 	roomId: string,
 	segmentDependency: CacheKeyDependency
 ): CompiledOpening {
-	// A closed Wall is periodic. An Opening that straddles the seam has its
-	// centre and tangent evaluated modulo the circumference, and its Plan
-	// polyline is the two physical pieces joined without a chord through the
-	// middle of the Room.
-	const closedHost = sampledIsClosed(sampled);
-	const rawCenterDistance = opening.offset + opening.width / 2;
-	const centerDistance = closedHost
-		? ((rawCenterDistance % sampled.length) + sampled.length) % sampled.length
-		: rawCenterDistance;
-	const pointAtDistance = (distance: number): LayoutVec2 => {
-		if (!closedHost) return pointAlongSamples(sampled.samples, distance);
-		const wrapped = ((distance % sampled.length) + sampled.length) % sampled.length;
-		return pointAlongSamples(sampled.samples, wrapped);
-	};
-	const point = pointAtDistance(centerDistance);
-	const before = pointAtDistance(centerDistance - OPENING_CENTER_EPSILON);
-	const after = pointAtDistance(centerDistance + OPENING_CENTER_EPSILON);
-	const tangentX = after[0] - before[0];
-	const tangentZ = after[1] - before[1];
-	const magnitude = Math.hypot(tangentX, tangentZ) || 1;
-	const tangent: LayoutVec2 = [tangentX / magnitude, tangentZ / magnitude];
+	// The centre frame and Plan polyline are the shared I5 builders in
+	// `layout-geometry-curve.ts`; a closed Wall is periodic there.
+	const frame = openingCenterFrame(sampled, opening.offset, opening.width);
+	const { point, tangent, closedHost } = frame;
+	const centerDistance = frame.distance;
 	const profileShape = opening.profile === 'rectangular'
 		? undefined
 		: buildArchProfile(opening.profile, opening.width, opening.height).profile ?? undefined;
@@ -1856,7 +1870,7 @@ function compileOpening(
 			distance: centerDistance,
 			tangent,
 			normal: [-tangent[1], tangent[0]],
-			yaw: -Math.atan2(tangentZ, tangentX)
+			yaw: frame.yaw
 		},
 		centerPolyline,
 		bounds2: polygonBounds2(centerPolyline) ?? bounds2(point[0], point[1], point[0], point[1]),
@@ -1864,41 +1878,6 @@ function compileOpening(
 	};
 }
 
-function sampledIsClosed(sampled: SampledSegment): boolean {
-	const first = sampled.samples[0]?.point;
-	const last = sampled.samples.at(-1)?.point;
-	return (
-		first !== undefined &&
-		last !== undefined &&
-		Math.abs(first[0] - last[0]) <= OPENING_CENTER_EPSILON &&
-		Math.abs(first[1] - last[1]) <= OPENING_CENTER_EPSILON
-	);
-}
-
-function openingCenterPolyline(
-	sampled: SampledSegment,
-	start: number,
-	end: number,
-	closedHost = false
-): LayoutVec2[] {
-	if (closedHost && end > sampled.length + OPENING_CENTER_EPSILON) {
-		const first = openingCenterPolyline(sampled, start, sampled.length);
-		const second = openingCenterPolyline(sampled, 0, end - sampled.length);
-		const seam = first.at(-1);
-		const continuing = second.length > 0 && seam !== undefined &&
-			Math.abs(seam[0] - second[0]![0]) <= OPENING_CENTER_EPSILON &&
-			Math.abs(seam[1] - second[0]![1]) <= OPENING_CENTER_EPSILON
-			? second.slice(1)
-			: second;
-		return [...first, ...continuing];
-	}
-	const points: LayoutVec2[] = [pointAlongSamples(sampled.samples, start)];
-	for (const sample of sampled.samples) {
-		if (sample.distance > start + 1e-6 && sample.distance < end - 1e-6) points.push([...sample.point] as LayoutVec2);
-	}
-	points.push(pointAlongSamples(sampled.samples, end));
-	return points;
-}
 
 function buildSolidSpans(samples: readonly CompiledCurveSample[], sections: readonly CompiledWallSection[]): CompiledSolidSpan[] {
 	const spans: CompiledSolidSpan[] = [];

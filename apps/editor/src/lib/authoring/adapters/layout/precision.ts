@@ -30,7 +30,6 @@
 
 import {
 	materializeLayoutSourceForCapture,
-	createLayoutCompileSession,
 	deriveLayoutWallRole,
 	isClosedWall,
 	readClosedWallCircle,
@@ -61,7 +60,6 @@ import {
 	planWallMetadataUpdate,
 	projectPointToWallCenterline,
 	wallCenterlineSamples,
-	withLayoutCompileSession,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
@@ -230,33 +228,11 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
 }
 
 /**
- * One process-local compile store for this adapter's planners.
- *
- * Every layout planner compiles the candidate it is about to accept. Live scalar
- * and Opening edits also plan from the accepted baseline. The session reuses
- * entities whose authored inputs did not change (T1.P02.S06 D.3 / H1).
- *
- * Sharing it cannot change a plan: a reused entity is one whose authored inputs
- * are unchanged, which is the retention proof the canonical compiler checks per
- * entity. It is a cache, not decision state, and it is pruned to the document it
- * last compiled.
- *
- * Lifetime, stated rather than implied: this store lives as long as the module,
- * so after a document is closed it still holds that document's units (samples,
- * sections, query records — bounded by one document, never accumulating across
- * documents, because each compile prunes what the new document does not
- * contain). It is not part of any undo history or authored state, and no
- * consumer can observe it. The Stage host does not use this store at all; it
- * owns one for its own lifetime, released with the host's closure.
- */
-const plannerCompileSession = createLayoutCompileSession();
-
-/**
- * One Layout planner over the adapter's shared compile session.
- *
- * Exported for the S02 drawing planners (chain commit, Wall delete), which are
- * registered by the same adapter and must run their candidates through the same
- * session, source kind and admission shape as every other Layout operation.
+ * One Layout planner: id, admission and source shape shared by every Layout
+ * operation. It binds no compile session; the adapter that registers it runs
+ * each `prepare` through its project-epoch compile context (E4,
+ * `compile-context.ts`). Called directly (tests), a planner compiles cold, which
+ * is equal by the session's construction proof.
  */
 export function layoutPlanner(
 	kind: string,
@@ -268,11 +244,7 @@ export function layoutPlanner(
 		admission: Object.freeze({ domain: 'layout', compound: false, units: false, resources: false }),
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
-		prepare: (request) =>
-			withLayoutCompileSession(plannerCompileSession, () => {
-				plannerCompileSession.seedFromCompiled(request.snapshot.domain.source.units.layout.data);
-				return prepare(request);
-			})
+		prepare
 	};
 }
 

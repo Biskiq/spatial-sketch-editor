@@ -49,7 +49,6 @@ import { axisTravelFromRay } from '$lib/authoring/stage/stage-adapter-host';
  */
 
 import {
-	compileWallFirstLayoutGeometry,
 	evaluateLayoutPlan,
 	mintLayoutIdCapture,
 	planCreateWallFirstOpening,
@@ -158,6 +157,13 @@ import {
 	type WallDeletionPreview
 } from './layout/drawing-planners';
 import { createSplitPlanners, wallSplitIntent } from './layout/split-planners';
+import {
+	bindLayoutCompileContext,
+	createLayoutCompileContext,
+	plannerInContext,
+	type LayoutAdapterLifetime
+} from './layout/compile-context';
+import { createLayoutCandidatePresenter } from './layout/candidate-presenter';
 import { createJoinPlanners, LAYOUT_WALL_JOIN_KIND, wallJoinIntent } from './layout/join-planners';
 import {
 	createRoomDuplicatePlanners,
@@ -256,16 +262,13 @@ import {
 } from './layout/snap';
 import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingPlacement, snapDraftingPoint } from '$lib/authoring/stage/stage-adapter-host';
 import {
-	buildLayoutCandidatePaper,
 	buildCompiledLayoutCandidatePaper,
-	openingAttemptFacePaper,
-	openingAttemptPlanPaper,
-	openingFacePaper,
+	type CandidatePaperGeometry,
+	type LayoutCandidatePaper,
 	wallCenterlinePaper,
 	wallHeightGhostPaper,
 	candidatePreviewOf,
-	openingIdsOnWalls,
-	type CandidatePaperGeometry
+	openingIdsOnWalls
 } from './layout/candidate-preview';
 import {
 	clearPausedProposal,
@@ -792,6 +795,9 @@ function framePoint(frame: WallFrame, distance: number, y: number): [number, num
 
 export const createAdapter: StageAdapterFactory = (services) => {
 	const pick = createPlanPickProvider(() => services.stage.plan());
+	/** E4 — this project's compile context; bindings borrow it, the registration end releases it. */
+	const compileContext = createLayoutCompileContext();
+	const lifetime: LayoutAdapterLifetime = { context: compileContext, memoHeld: null };
 	const planners = [
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
@@ -802,7 +808,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		// T1 A8 — Repeat is one retained planner beside the other Opening
 		// operations, on the same registry, admission and coordinator.
 		...createOpeningRepeatPlanners()
-	];
+	].map((planner) => plannerInContext(compileContext, planner));
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
@@ -853,8 +859,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		// Handle admission reads the planner kinds this factory actually registered;
 		// a mark cannot promise an operation the coordinator never received.
 		plannerKinds: planners.map((planner) => planner.kind),
+		/** E4 — ends the registration: release this project's compile context. */
+		dispose: () => compileContext.dispose(),
 		bind(context): StageAdapterBinding {
 			const document = stageLayout(context.snapshot);
+			/** E4 — this binding's candidate memo; it dies with the binding (rebase). */
+			const presenter = createLayoutCandidatePresenter(compileContext);
+			lifetime.memoHeld = presenter.held;
 			const levelId = context.snapshot.domain.layoutLevelId;
 			const contentRevision = context.snapshot.domain.unitRevisions.layout;
 			/** The task this binding is showing; pointer handles belong to it. */
@@ -4289,7 +4300,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// commits. The authored rim point is the canonical seam, so the ghost
 					// shows the same seam the saved Wall will carry.
 					const circle = circlePreviewPoints();
-					inkPreview = circle === null ? null : planCircleDraft(circle.center, circle.rim);
+					inkPreview = circle === null ? null : circleDraftPreview(circle);
 					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
 					return;
 				}
@@ -4379,6 +4390,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (center === null || inkHover === null) return null;
 				if (Math.hypot(inkHover.point[0] - center.point[0], inkHover.point[1] - center.point[1]) < 1e-9) return null;
 				return { center, rim: { point: inkHover.point, target: inkHover.target } };
+			}
+
+			/**
+			 * The live Circle preview plan, once per distinct centre → rim, size and
+			 * capture (E4). The preview reads only its outcome and words; the release
+			 * plans for itself through `planCircleDraft`.
+			 */
+			function circleDraftPreview(circle: { center: ChainDraftPoint; rim: ChainDraftPoint }): ChainPlanPreview {
+				return presenter.proposal(
+					[
+						'circle', document, chainCapture, inkThickness, inkHeight,
+						circle.center.point[0], circle.center.point[1], circle.rim.point[0], circle.rim.point[1]
+					],
+					() => planCircleDraft(circle.center, circle.rim)
+				);
 			}
 
 			/** One retained circular-Room plan over the live centre → rim pair. */
@@ -6684,7 +6710,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * once; this binding owns no second projection and no second drawing.
 				 */
 				candidatePreview(adapterContext) {
-					return candidatePreviews(adapterContext);
+					presenter.beginFrame();
+					try {
+						return candidatePreviews(adapterContext);
+					} finally {
+						presenter.endFrame();
+					}
 				},
 				overlay(adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
@@ -6845,6 +6876,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
 					rearmEpoch += 1;
+					presenter.reset();
+					// A gesture's candidate compile is not retained after its task ends.
+					compileContext.releaseCandidate();
 					if (roomMove !== null) endRoomMove();
 					endRoomDuplicate();
 					openTaskKind = null;
@@ -6866,6 +6900,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				dispose() {
 					rearmEpoch += 1;
+					presenter.reset();
+					// The binding owns no candidate compile; the project context keeps none
+					// for the next binding to inherit.
+					compileContext.releaseCandidate();
+					if (lifetime.memoHeld === presenter.held) lifetime.memoHeld = null;
 					if (roomMove !== null) endRoomMove();
 					openTaskKind = null;
 					if (pausedProposal !== null) {
@@ -6890,11 +6929,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				datumMeters: number,
 				subjectIds: ReadonlySet<string>,
 				affectedIds: ReadonlySet<string>
-			): { readonly paper: ReturnType<typeof buildLayoutCandidatePaper>;
-			} | null {
+			): { readonly paper: LayoutCandidatePaper } | null {
 				const result = services.stage.plan();
 				if (result.kind !== 'evaluated') return null;
-				return { paper: buildLayoutCandidatePaper(document, result.plan, datumMeters, subjectIds, affectedIds) };
+				return { paper: presenter.paper(document, result.plan, datumMeters, subjectIds, affectedIds) };
+			}
+
+			/**
+			 * The 3D reading's Opening outline. It draws only when the live Plan
+			 * evaluates (the same null condition the Plan reading has) and never
+			 * builds the Plan Paper it would discard.
+			 */
+			function openingFace(
+				document: LayoutDocumentWallFirst,
+				openingIds: ReadonlySet<string>,
+				datumMeters: number
+			): CandidatePaperGeometry | null {
+				if (services.stage.plan().kind !== 'evaluated') return null;
+				return presenter.face(document, openingIds, datumMeters);
 			}
 
 			/**
@@ -7130,11 +7182,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const activeOpeningMark = openingGesture;
 				if (activeOpeningMark !== null && activeOpeningMark.previewDocument !== null) {
 					const subjectIds = new Set([activeOpeningMark.openingId, activeOpeningMark.wallId]);
-					const built = candidatePaper(activeOpeningMark.previewDocument, y, subjectIds, new Set());
-					if (built !== null) {
-						const geometry = adapterContext.evaluation.settledReading === 'plan'
-							? built.paper.subject
-							: openingFacePaper(activeOpeningMark.previewDocument, new Set([activeOpeningMark.openingId]), y);
+					const geometry = adapterContext.evaluation.settledReading === 'plan'
+						? candidatePaper(activeOpeningMark.previewDocument, y, subjectIds, new Set())?.paper.subject ?? null
+						: openingFace(activeOpeningMark.previewDocument, new Set([activeOpeningMark.openingId]), y);
+					if (geometry !== null) {
 						return [candidatePreviewOf({ id: 'layout-candidate-opening-mark', role: 'subject', geometry, snap: snapOf(activeOpeningMark.snap) })];
 					}
 					return [];
@@ -7161,19 +7212,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					selectedOpening(adapterContext)?.openingId ?? ''
 				);
 				if (activeRepeat !== null) {
-					const preview = previewOpeningRepeat({
-						document,
-						openingId: activeRepeat.openingId,
-						count: activeRepeat.count,
-						spacing: activeRepeat.spacing
-					});
+					// One proposal per distinct (accepted, Opening, count, spacing); its
+					// minted preview ids stay pinned while the memo holds it.
+					const preview = presenter.proposal(
+						['opening-repeat', document, activeRepeat.openingId, activeRepeat.count, activeRepeat.spacing],
+						// The proposal's own validation compile runs through this project's
+						// session, as the Repeat planner's commit does.
+						() => compileContext.plan(document, () => previewOpeningRepeat({
+							document,
+							openingId: activeRepeat.openingId,
+							count: activeRepeat.count,
+							spacing: activeRepeat.spacing
+						}))
+					);
 					if (preview.kind === 'planned') {
 						const createdIds = new Set(preview.createdOpeningIds);
-						const built = candidatePaper(preview.document, y, createdIds, new Set());
-						if (built !== null) {
-							const geometry = adapterContext.evaluation.settledReading === 'plan'
-								? built.paper.subject
-								: openingFacePaper(preview.document, createdIds, y);
+						const geometry = adapterContext.evaluation.settledReading === 'plan'
+							? candidatePaper(preview.document, y, createdIds, new Set())?.paper.subject ?? null
+							: openingFace(preview.document, createdIds, y);
+						if (geometry !== null) {
 							return [candidatePreviewOf({
 								id: 'layout-candidate-opening-repeat',
 								role: 'subject',
@@ -7186,12 +7243,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (inkReading === 'opening') {
 					if (openingPreview?.kind === 'planned') {
 						const subjectIds = new Set([openingPreview.openingId, ...openingPreview.changedWallIds]);
-						const built = candidatePaper(openingPreview.document, y, subjectIds, new Set());
-						if (built !== null) {
+						const geometry = adapterContext.evaluation.settledReading === 'plan'
+							? candidatePaper(openingPreview.document, y, subjectIds, new Set())?.paper.subject ?? null
+							: openingFace(openingPreview.document, new Set([openingPreview.openingId]), y);
+						if (geometry !== null) {
 							const ghost = openingCandidate === null ? null : openingGhost(openingCandidate.wallId, openingCandidate.offset);
-							const geometry = adapterContext.evaluation.settledReading === 'plan'
-								? built.paper.subject
-								: openingFacePaper(openingPreview.document, new Set([openingPreview.openingId]), y);
 							return [candidatePreviewOf({
 								id: 'layout-candidate-opening',
 								role: 'subject',
@@ -7212,9 +7268,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							height: openingOptions.height,
 							sillHeight: openingOptions.sillHeight
 						};
-						const geometry = adapterContext.evaluation.settledReading === 'plan'
-							? openingAttemptPlanPaper(document, openingCandidate.wallId, values, y)
-							: openingAttemptFacePaper(document, openingCandidate.wallId, values, y);
+						const geometry = presenter.attempt(
+							adapterContext.evaluation.settledReading === 'plan' ? 'plan' : 'face',
+							document,
+							openingCandidate.wallId,
+							values,
+							y
+						);
 						return [candidatePreviewOf({
 							id: 'layout-candidate-opening-refused',
 							role: 'refused',
@@ -7322,7 +7382,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						circle.rim.point[1] - circle.center.point[1]
 					);
 					if (!(radius > 0)) return [];
-					const planned = planCircleDraft(circle.center, circle.rim);
+					const planned = circleDraftPreview(circle);
 					const segments: [[number, number, number], [number, number, number]][] = [];
 					const steps = 64;
 					for (let index = 0; index < steps; index += 1) {
@@ -7506,5 +7566,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		}
 	};
 
+	bindLayoutCompileContext(adapter, lifetime);
 	return adapter;
 };

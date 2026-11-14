@@ -25,7 +25,8 @@ import type { RuntimeScene } from '@portfolio/project-model';
 import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
 import { createCameraSession } from '$lib/authoring/stage/camera-session';
 import { createPaperScene } from '$lib/authoring/stage/paper-scene';
-import { buildLayoutCandidatePaper } from '$lib/authoring/adapters/layout/candidate-preview';
+import { buildCompiledLayoutCandidatePaper } from '$lib/authoring/adapters/layout/candidate-preview';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
 import { previewCanvasRenderer, stageCanvasRenderer } from '$lib/render/canvas-renderers';
 import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
@@ -149,7 +150,9 @@ describe('E0 work counters through their production callers', () => {
 	it('builds one candidate Paper per distinct candidate, through the Layout builder', () => {
 		const seam = begin();
 		const wallIds = new Set(fixture.document.walls.map((wall) => wall.id));
-		const paper = buildLayoutCandidatePaper(fixture.document, fixture.plan, 0, wallIds, new Set());
+		const paper = buildCompiledLayoutCandidatePaper(
+			compileWallFirstLayoutGeometry(fixture.document).geometry, fixture.plan, 0, wallIds, new Set()
+		);
 		expect(paper.subject.segments.length).toBeGreaterThan(0);
 		expect(seam.count('candidate:paper-build')).toBe(1);
 		// The candidate's drawing is the same `buildPaperPlan` Paper draws.

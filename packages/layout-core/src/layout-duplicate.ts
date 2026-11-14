@@ -27,7 +27,7 @@
  *   cloned without detaching shared architecture.
  */
 import type { LayoutDocumentIssue } from './layout-issue';
-import { compileWallFirstLayoutGeometry } from './layout-geometry';
+import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
@@ -237,7 +237,11 @@ function finalizeCandidate(
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId]);
 	}
-	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	// The bound authoring session, as every other Layout planner compiles (E4).
+	const compileSession = activeLayoutCompileSession();
+	const compiled = compileSession
+		? compileSession.compile(structural.document)
+		: compileWallFirstLayoutGeometry(structural.document);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject(
 			'candidate_does_not_compile',

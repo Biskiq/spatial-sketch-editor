@@ -387,3 +387,82 @@ export function lineCount(file: string): number {
 	// one final partial line.
 	return source.endsWith('\n') ? lines : lines + 1;
 }
+
+/**
+ * One module-level binding edge, read from the TypeScript AST (E4).
+ *
+ * `named` imports and re-exports keep the exported name they read; a namespace
+ * import, `export *` and a dynamic `import()` cannot be narrowed to names, so a
+ * boundary must treat them as reaching every export of their target.
+ */
+export type ModuleBindingEdge =
+	| { readonly kind: 'import-named'; readonly specifier: string; readonly imported: string; readonly local: string; readonly typeOnly: boolean }
+	| { readonly kind: 'import-namespace'; readonly specifier: string; readonly typeOnly: boolean }
+	| { readonly kind: 'export-named'; readonly specifier: string; readonly imported: string; readonly exported: string; readonly typeOnly: boolean }
+	| { readonly kind: 'export-local'; readonly local: string; readonly exported: string }
+	| { readonly kind: 'export-all'; readonly specifier: string }
+	| { readonly kind: 'dynamic'; readonly specifier: string };
+
+/** The script of a `.svelte` file (instance and module), or the source of a TS module. */
+function scriptSources(file: string, source: string): string[] {
+	if (!file.endsWith('.svelte')) return [source];
+	const parsed = parse(source, { modern: true });
+	const scripts: string[] = [];
+	for (const script of [parsed.module, parsed.instance]) {
+		// The parser provides offsets on its ESTree Program at runtime (see above).
+		const content = script?.content as { start?: number; end?: number } | undefined;
+		if (content?.start !== undefined && content.end !== undefined) scripts.push(source.slice(content.start, content.end));
+	}
+	return scripts;
+}
+
+/** Every import/re-export edge a module declares, with the names it binds. */
+export function moduleBindingEdges(file: string, source: string): ModuleBindingEdge[] {
+	const edges: ModuleBindingEdge[] = [];
+	for (const code of scriptSources(file, source)) {
+		const tree = ts.createSourceFile('module.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+		const visit = (node: ts.Node): void => {
+			if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+				const specifier = node.moduleSpecifier.text;
+				const clause = node.importClause;
+				const clauseTypeOnly = clause?.isTypeOnly ?? false;
+				if (clause?.name) edges.push({ kind: 'import-named', specifier, imported: 'default', local: clause.name.text, typeOnly: clauseTypeOnly });
+				const bindings = clause?.namedBindings;
+				if (bindings && ts.isNamespaceImport(bindings)) edges.push({ kind: 'import-namespace', specifier, typeOnly: clauseTypeOnly });
+				if (bindings && ts.isNamedImports(bindings)) {
+					for (const element of bindings.elements) {
+						edges.push({
+							kind: 'import-named',
+							specifier,
+							imported: element.propertyName?.text ?? element.name.text,
+							local: element.name.text,
+							typeOnly: clauseTypeOnly || element.isTypeOnly
+						});
+					}
+				}
+			} else if (ts.isExportDeclaration(node)) {
+				const specifier = node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) ? node.moduleSpecifier.text : null;
+				const clause = node.exportClause;
+				if (specifier !== null && clause === undefined) edges.push({ kind: 'export-all', specifier });
+				else if (specifier !== null && clause && ts.isNamespaceExport(clause)) edges.push({ kind: 'export-all', specifier });
+				else if (clause && ts.isNamedExports(clause)) {
+					for (const element of clause.elements) {
+						const imported = element.propertyName?.text ?? element.name.text;
+						if (specifier === null) edges.push({ kind: 'export-local', local: imported, exported: element.name.text });
+						else edges.push({ kind: 'export-named', specifier, imported, exported: element.name.text, typeOnly: node.isTypeOnly || element.isTypeOnly });
+					}
+				}
+			} else if (
+				ts.isCallExpression(node) &&
+				node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+				node.arguments[0] !== undefined &&
+				ts.isStringLiteralLike(node.arguments[0])
+			) {
+				edges.push({ kind: 'dynamic', specifier: node.arguments[0].text });
+			}
+			ts.forEachChild(node, visit);
+		};
+		visit(tree);
+	}
+	return edges;
+}
