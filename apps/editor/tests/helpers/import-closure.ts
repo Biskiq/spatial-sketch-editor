@@ -332,6 +332,23 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 		if (!constructsImportedOwner(route, code, file, factory)) throw new Error(`Route must construct ${factory} from ${file}`);
 		sources.push({ file, code: fs.readFileSync(file, 'utf8') });
 	}
+	// X1's controllers are constructed as typed owners and passed into the
+	// existing session/epoch composition, so they have no later top-level method
+	// call of their own. Require the direct factory construction and include their
+	// sources in every host-wide negative check.
+	const constructed = [
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts'), 'createStageProjectEpoch'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts'), 'createStageAssetLeases']
+	] as const;
+	for (const [file, factory] of constructed) {
+		if (!reachable.has(file)) throw new Error(`Route must import ${factory} from ${file}`);
+		if (!new RegExp(`const\\s+[\\w$]+\\s*=\\s*${factory}\\s*\\(`).test(code)) {
+			throw new Error(`Route must construct ${factory} from ${file}`);
+		}
+		if (!sources.some((source) => source.file === file)) {
+			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
+		}
+	}
 	// Markup and helpers reached by either extracted owner remain inside host-wide
 	// negative checks, even when they are not controller factories. Do not add
 	// a named controller twice if it was already included above.

@@ -51,6 +51,8 @@ const PLATFORM_PERSISTENCE_MEMBER = 'apps/editor/src/lib/platform/project-persis
 const PLATFORM_PENDING_SAVE_MEMBER = 'apps/editor/src/lib/platform/project-pending-save.ts';
 const EDITOR_SOURCE_PREFIX = 'apps/editor/src/';
 const PROJECT_SESSION_PREFIX = 'apps/editor/src/lib/authoring/project-session/';
+/** X1: the epoch controller now owns the acceptance subscription and Save mount. */
+const PROJECT_EPOCH_MEMBER = 'apps/editor/src/lib/authoring/stage/route/stage-project-epoch.svelte.ts';
 
 /** The two Save-owned transports: the only modules that may call a raw writer. */
 const AUTHORIZED_SAVE = 'saveAcceptedSource';
@@ -88,7 +90,12 @@ function sourceOf(member: string): string {
 
 /** A route-composed session owner, not an arbitrary matching dependency. */
 function sessionOwners(members: readonly string[]): string[] {
-	return members.filter((member) => member === ROUTE_MEMBER || member.startsWith(PROJECT_SESSION_PREFIX));
+	return members.filter(
+		(member) =>
+			member === ROUTE_MEMBER ||
+			member === PROJECT_EPOCH_MEMBER ||
+			member.startsWith(PROJECT_SESSION_PREFIX)
+	);
 }
 
 function sessionOwnerWith(pattern: RegExp): { member: string; code: string } {
@@ -97,7 +104,11 @@ function sessionOwnerWith(pattern: RegExp): { member: string; code: string } {
 		.filter(({ code }) => pattern.test(code));
 	expect(owners, `one composed session owner must match ${pattern}`).toHaveLength(1);
 	const owner = owners[0]!;
-	if (owner.member !== ROUTE_MEMBER) {
+	if (owner.member === PROJECT_EPOCH_MEMBER) {
+		// The epoch is constructed as a typed owner and passed into project-session's
+		// host, so the route's proof is the direct factory construction.
+		expect(sourceOf(ROUTE_MEMBER)).toMatch(/const\s+[A-Za-z_$][\w$]*\s*=\s*createStageProjectEpoch\s*\(/);
+	} else if (owner.member !== ROUTE_MEMBER) {
 		expect(constructsImportedOwner(ROUTE_ROOT, sourceOf(ROUTE_MEMBER), join(REPO_ROOT, owner.member), 'createProjectSession')).toBe(true);
 	}
 	return owner;

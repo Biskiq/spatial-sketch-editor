@@ -120,6 +120,10 @@ export const ARCH_FILES: string[] = [
 	// E4 / I2: one compiler read path. Only the acceptance host and the Layout
 	// adapter's project-epoch compile seam reach a compile function.
 	'tests/lib/authoring/compile-entry-boundary.test.ts',
+	// X1: the route composes the extracted project-epoch and asset-lease
+	// controllers, and those controllers keep their named dependency direction.
+	'tests/lib/authoring/spatial-route-boundary.test.ts',
+	'tests/lib/authoring/authoring-controller-boundary.test.ts',
 	// E6/R2a: one material factory. A `Mesh*Material`, `ShadowMaterial` or
 	// `T.Mesh*Material` constructor outside the store is a site the renderer draws
 	// happily, so no lane report or build can see a second owner appear.
