@@ -131,6 +131,9 @@ export const ARCH_FILES: string[] = [
 	// X7: the Scene adapter composes its placement, mark-gesture, contribution and
 	// presenter owners and keeps no lifetime of its own.
 	'tests/lib/authoring/scene-adapter-boundary.test.ts',
+	// X8: the Light adapter composes its placement, gesture and contribution owners
+	// over one lease/refusal/install port set and keeps no lifetime of its own.
+	'tests/lib/authoring/light-adapter-boundary.test.ts',
 	// E6/R2a: one material factory. A `Mesh*Material`, `ShadowMaterial` or
 	// `T.Mesh*Material` constructor outside the store is a site the renderer draws
 	// happily, so no lane report or build can see a second owner appear.
