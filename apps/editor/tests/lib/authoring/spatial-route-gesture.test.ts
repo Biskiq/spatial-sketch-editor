@@ -103,6 +103,8 @@ import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-sour
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
 let component: ReturnType<typeof mount>;
+/** False after a test intentionally unmounts its route, so afterEach is not a second teardown. */
+let componentMounted = false;
 let target: HTMLElement;
 let frames = new Map<number, FrameRequestCallback>();
 let frameId = 0;
@@ -248,6 +250,7 @@ async function mountRoute(
 	target = document.createElement('div');
 	document.body.append(target);
 	component = mount(Page, { target });
+	componentMounted = true;
 	await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
 	await frame();
 	button('Plan').click();
@@ -297,7 +300,8 @@ afterEach(() => {
 	// it active for the next mounted route, where it would deliberately suppress
 	// ordinary Stage selection (the unfolded display owns the surface).
 	wallUnfold.exit();
-	unmount(component);
+	if (componentMounted) unmount(component);
+	componentMounted = false;
 	target.remove();
 	if (captureDescriptor === undefined)
 		Reflect.deleteProperty(HTMLElement.prototype, 'setPointerCapture');
@@ -2791,6 +2795,41 @@ describe('mounted X2 gesture lifetimes', () => {
 		// shared unwind clears the now-stale selection.
 		expect(acceptedSelection.primary).not.toBeNull();
 		expect(facade().selection()).toBeNull();
+	});
+
+	it('cancels an active unfolded Opening drag when the route unmounts', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'multi-bezier')!;
+		const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
+		const opening = openingOn(fixture, length * 0.4, 1.2);
+		await remountWith(opening.document);
+		await enterUnfold(fixture.wallId);
+		const display = developedDisplay(fixture);
+		const band = display.openingBands.find((candidate) => candidate.openingId === opening.openingId)!;
+		const centre = (band.stationStart + band.stationEnd) / 2;
+		const height = display.floorY + band.sillHeight + (band.headHeight - band.sillHeight) / 2;
+		const at = (station: number) => {
+			const point = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
+			return projected([point.point[0], height, point.point[1]]);
+		};
+
+		pointer('pointerdown', at(centre), false, 51);
+		await frame();
+		pointer('pointermove', at(centre + 0.35), false, 51);
+		await frame();
+		expect(wallUnfold.previewOpening).not.toBeNull();
+
+		const accepted = harness.host as StageAcceptanceHost;
+		const revisionBefore = accepted.acceptedRevision();
+		const historyBefore = accepted.history();
+		await unmount(component);
+		componentMounted = false;
+		target.remove();
+
+		// Disposal clears the captured session's display-only preview, and the
+		// unmount itself never becomes an accepted edit.
+		expect(wallUnfold.previewOpening).toBeNull();
+		expect(accepted.acceptedRevision()).toEqual(revisionBefore);
+		expect(accepted.history()).toEqual(historyBefore);
 	});
 
 	it('arms an Artwork from the Library, previews placement and cancels it cleanly', async () => {

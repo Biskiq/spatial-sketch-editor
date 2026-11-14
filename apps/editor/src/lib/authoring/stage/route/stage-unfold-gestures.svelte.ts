@@ -727,6 +727,10 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 			cancelSheetPin();
 			cancelSheetEdge();
 			cancelSheetOpening();
+			// The preview belongs to the module-level Unfold store, so clear it even
+			// when a previous cleanup already dropped the drag. This keeps repeated
+			// disposal harmless and prevents an orphaned display-only Opening.
+			wallUnfold.setOpeningPreview(null);
 		}
 	};
 }

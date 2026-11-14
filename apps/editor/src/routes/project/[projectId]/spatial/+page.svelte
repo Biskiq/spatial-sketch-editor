@@ -1416,6 +1416,11 @@ function completeHistoryInstall(outcome: {
 		void projectSession.load(projectId, intent);
 
 		return () => {
+			// The Unfold display and its Opening preview live in a module-level
+			// session store. Cancel a captured Opening drag before the project
+			// session/facade is disposed, or its display-only preview would outlive
+			// the route. Disposal is idempotent, so repeated teardown is harmless.
+			unfoldGestures.dispose();
 			// Order matters: the flag and the session teardown both run before the
 			// facade is disposed, so a load already past its fetch sees a torn-down
 			// session (`isCurrent` is false, the registered abort fires) and drops its
