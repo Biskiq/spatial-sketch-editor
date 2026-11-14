@@ -57,9 +57,12 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
+	let appliedReading: 'wall' | 'opening' | null = null;
 	$effect(() => {
 		const surface = inkSurface();
 		if (surface === null) return;
+		if (reading === appliedReading) return;
+		appliedReading = reading;
 		if (surface.snapshot().reading !== reading) surface.controller.setReading(reading);
 	});
 

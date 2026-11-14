@@ -46,6 +46,11 @@ const SHELL_DIR = join(STAGE_DIR, 'shell');
 const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
+const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
+const SHELL_STATE = join(STAGE_DIR, 'route', 'stage-shell-state.svelte.ts');
+const ROUTE_VIEWPORT = join(SHELL_DIR, 'StageViewportRegion.svelte');
+const ROUTE_PANELS = join(SHELL_DIR, 'StagePanels.svelte');
+const ROUTE_TOOLBARS = join(SHELL_DIR, 'StageToolbars.svelte');
 const X2_INPUT_FILE = join(STAGE_DIR, 'route', 'stage-input.svelte.ts');
 const X2_UNFOLD_FILE = join(STAGE_DIR, 'route', 'stage-unfold-gestures.svelte.ts');
 const X2_ARTWORK_FILE = join(STAGE_DIR, 'route', 'stage-artwork-interaction.svelte.ts');
@@ -90,10 +95,11 @@ const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 /** The route and the controllers it constructs, never all dependencies. */
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
-	const files = [ROUTE];
+	const files = [ROUTE, SHELL_STATE];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
-		expect(constructsImportedOwner(ROUTE, route, EXPERIENCE_LENS, 'createExperienceLens')).toBe(true);
-		files.push(EXPERIENCE_LENS);
+		expect(route).toContain('createStageExperienceBinding({');
+		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
+		files.push(EXPERIENCE_BINDING, EXPERIENCE_LENS);
 	}
 	// X2's input owners are constructed by the route and own its handler bodies.
 	const x2 = [
@@ -344,8 +350,8 @@ describe('Stage shell composition', () => {
 		// as one typed value for the Paper layer; the Canvas itself never interprets a
 		// fragment, groups streams or builds plan geometry.
 		expect(canvas).toContain('geometry: CompiledLayoutGeometry');
-		expect(route).toContain('<StageCanvas');
-		expect(route).toContain('geometry={boot.snapshot.domain.geometry}');
+		expect(readSource(relativeToRepo(ROUTE_VIEWPORT))).toContain('<StageCanvas');
+		expect(route).toContain('geometry: boot.snapshot.domain.geometry');
 		expect(canvas).toContain('plan?: PlanEvaluation | null');
 		expect(canvas).toContain("from './StagePaper.svelte'");
 		expect(canvas).not.toMatch(/PlanFragment|planParameters|buildPaperPlan/);
@@ -402,8 +408,9 @@ describe('Stage shell composition', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		const input = stripComments(readFileSync(join(REPO_ROOT, X2_INPUT), 'utf8'));
 		expect(input).toContain("acquisition.kind !== 'granted'");
-		expect(route).toContain('onpointercancel={(event) => stageInput.pointerCancel(event)}');
-		expect(route).toContain('onlostpointercapture={(event) => stageInput.lostPointerCapture(event)}');
+		const viewport = stripComments(readFileSync(ROUTE_VIEWPORT, 'utf8'));
+		expect(viewport).toContain('onpointercancel={(event) => input.pointerCancel(event)}');
+		expect(viewport).toContain('onlostpointercapture={(event) => input.lostPointerCapture(event)}');
 		// A reading change must end the route press after the lease policy runs.
 		// The mounted spatial-route-gesture suite also proves the adapter receives
 		// the interruption first and preserves its exact Resume/Discard proposal.
@@ -459,6 +466,13 @@ describe('Stage shell composition', () => {
 		// Blank only the two sanctioned rail reads, not the whole file: any other
 		// measurement in the Sheet still has to fail the single-measurer rule.
 		const sanctionedHeightSheet = heightSheet.replaceAll(HEIGHT_SHEET_RAIL_READ, '');
+		// The extracted lower column measures its own dock span for the layout lane
+		// variables; that is chrome layout, never the Stage surface rectangle.
+		const toolbars = codeOf(relativeToRepo(ROUTE_TOOLBARS));
+		const sanctionedToolbars = toolbars.replaceAll('column.getBoundingClientRect().height', '');
+		// The Sheet lane measures its own width to publish a chrome inset.
+		const viewportRegion = codeOf(relativeToRepo(ROUTE_VIEWPORT));
+		const sanctionedViewportRegion = viewportRegion.replaceAll('lane.getBoundingClientRect().width', '');
 		// R217.S28's snapshot host composes a fixed offscreen capture rect; its
 		// `devicePixelRatio: 1` is a target definition, not a viewport measurement.
 		// Blank exactly that one literal and prove it remains the only occurrence.
@@ -501,6 +515,10 @@ describe('Stage shell composition', () => {
 						file,
 						file === HEIGHT_SHEET
 							? sanctionedHeightSheet
+							: file === relativeToRepo(ROUTE_TOOLBARS)
+								? sanctionedToolbars
+								: file === relativeToRepo(ROUTE_VIEWPORT)
+									? sanctionedViewportRegion
 							: file === SNAPSHOT_HOST
 								? sanctionedSnapshotHost
 								: codeOf(file)
@@ -516,6 +534,10 @@ describe('Stage shell composition', () => {
 		expect((snapshotHost.match(/devicePixelRatio/g) ?? []).length).toBe(1);
 		expect(snapshotHost).not.toMatch(/getBoundingClientRect|clientWidth|clientHeight/);
 		expect((heightSheet.match(/getBoundingClientRect/g) ?? []).length).toBe(2);
+		expect((toolbars.match(/column\.getBoundingClientRect\(\)\.height/g) ?? []).length).toBe(2);
+		expect(sanctionedToolbars).not.toMatch(/getBoundingClientRect|clientWidth|clientHeight/);
+		expect((viewportRegion.match(/lane\.getBoundingClientRect\(\)\.width/g) ?? []).length).toBe(1);
+		expect(sanctionedViewportRegion).not.toMatch(/getBoundingClientRect|clientWidth|clientHeight/);
 		expect(sanctionedHeightSheet).not.toMatch(
 			/getBoundingClientRect|clientWidth|clientHeight|devicePixelRatio/
 		);
@@ -557,12 +579,12 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 	it('never submits a Camera intent, fit or Plan change from a lane measurement', () => {
 		// A lane observer changes placement only. Its effect bodies name no intent, no
 		// framing, no Plan parameter and no Camera: layout never moves the Camera.
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		const start = route.indexOf('const element = sheetLaneEl;');
-		const end = route.indexOf('const sheetLaneRight = $derived');
+		const toolbars = stripComments(readFileSync(ROUTE_TOOLBARS, 'utf8'));
+		const start = toolbars.indexOf('const column = lowerColumn;');
+		const end = toolbars.indexOf('function checked(');
 		expect(start).toBeGreaterThan(0);
 		expect(end).toBeGreaterThan(start);
-		const lanes = route.slice(start, end);
+		const lanes = toolbars.slice(start, end);
 		expect(lanes.match(/new ResizeObserver/g) ?? []).toHaveLength(1);
 		expect(lanes).not.toMatch(/submit\(|requestViewingIntent|acquireInspection|\bfit\(|bringIntoView|setPlanParameters|camera\./);
 	});
@@ -574,11 +596,11 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		// The flag is the live lease the session holds; a navigation press is excluded, and
 		// review round 3 (sheet §24, Card only) keeps the Card clear while a camera is edited.
-		const owners = postureSources().filter(({ code }) => code.includes("const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');"));
+		const owners = postureSources().filter(({ code }) => code.includes('function syncGestureFade('));
 		expect(owners).toHaveLength(1);
-		expect(owners[0]!.code).toContain("const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');");
+		expect(owners[0]!.code).toMatch(/const cameraEdit =\s*lease !== null &&\s*\(lease\.owner === 'experience-view-edit' \|\| lease\.owner === 'experience-path-point'\);/);
 		expect(owners[0]!.code).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
-		expect(route).toContain('gesturing={cardGesturing}');
+		expect(route).toContain('gesturing: shell.cardGesturing');
 	});
 
 	it('states no plain "Nothing selectable there." for an ordinary empty click, but keeps the excluded-subjects reason', () => {
@@ -590,8 +612,8 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 	it('keeps pin creation and jumps while leaving pin removal unexposed', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		expect(route).not.toContain('pinHintSeen');
-		expect(route).toContain('addHeightPin');
-		expect(route).toContain('onAddPin={addHeightPin}');
+		expect(route).toContain('shell.addHeightPin');
+		expect(route).toContain('onAddPin: shell.addHeightPin');
 		expect(route).not.toContain('removeHeightPin');
 		expect(route).not.toContain('onRemovePin');
 		const sheet = codeOf(HEIGHT_SHEET);
@@ -681,42 +703,46 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 	});
 
 	it('keeps the Stage rectangle fixed behind the Index at every width', () => {
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).toMatch(/\.stage-frame \{[^}]*position: absolute;[^}]*inset: 0;/);
-		expect(route).toMatch(/:global\(\.plate-index\) \{[^}]*position: absolute;[^}]*inset: 0 auto 0 0;/);
+		const viewport = stripComments(readFileSync(ROUTE_VIEWPORT, 'utf8'));
+		const panels = stripComments(readFileSync(ROUTE_PANELS, 'utf8'));
+		expect(viewport).toMatch(/\.stage-frame \{[^}]*position: absolute;[^}]*inset: 0;/);
+		expect(panels).toMatch(/:global\(\.plate-index\) \{[^}]*position: absolute;[^}]*inset: 0 auto 0 0;/);
 	});
 
 	it('ends the constrained Index above the lower column and drops the viewport-sized shadow', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const panels = stripComments(readFileSync(ROUTE_PANELS, 'utf8'));
 		// Extracted Experience markup cannot reintroduce the viewport-sized shadow.
 		for (const { file, code } of composedSpatialHost()) expect(stripComments(code), file).not.toContain('100vmax');
-		expect(route).toContain('bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);');
-		expect(route).toMatch(/\.index-scrim \{[^}]*bottom: calc\(0\.75rem \+ var\(--lower-column-height, 0px\)\);/);
+		expect(panels).toContain('bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);');
+		expect(panels).toMatch(/\.index-scrim \{[^}]*bottom: calc\(0\.75rem \+ var\(--lower-column-height, 0px\)\);/);
 		// The lane variables are published on the body that holds the Index and the scrim.
 		expect(route).toMatch(/class="editor-body"\s*\n\s*style=\{`--lower-column-height/);
 	});
 
 	it('stacks the scrim beneath the dock, the drafting controls and the Card, with the Index above all', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const panels = stripComments(readFileSync(ROUTE_PANELS, 'utf8'));
+		const toolbars = stripComments(readFileSync(ROUTE_TOOLBARS, 'utf8'));
 		const card = codeOf(CARD);
 		const z = (source: string, selector: string): number => {
 			const match = source.match(new RegExp(`${selector} \\{[^}]*z-index: (\\d+);`));
 			if (match === null) throw new Error(`no z-index on ${selector}`);
 			return Number(match[1]);
 		};
-		const scrim = z(route, '\\.index-scrim');
-		const lower = z(route, '\\.lower-column');
+		const scrim = z(panels, '\\.index-scrim');
+		const lower = z(toolbars, '\\.lower-column');
 		const cardLayer = z(card, '\\.card');
-		const index = z(route, ':global\\(\\.plate-index\\)');
+		const index = z(panels, ':global\\(\\.plate-index\\)');
 		expect(scrim).toBeLessThan(lower);
 		expect(lower).toBeLessThan(cardLayer);
 		expect(cardLayer).toBeLessThan(index);
 	});
 
 	it('renders the scrim only for an open constrained Index, as a pointer-only close target', () => {
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).toContain('{#if preview === null && narrowShell && indexOpen}');
-		expect(route).toContain('onclick={() => (indexOpen = false)}');
-		expect(route).toContain('tabindex="-1"');
+		const panels = stripComments(readFileSync(ROUTE_PANELS, 'utf8'));
+		expect(panels).toContain('{#if !previewing && scrim}');
+		expect(panels).toContain('onclick={() => onCloseScrim?.()}');
+		expect(panels).toContain('tabindex="-1"');
 	});
 });

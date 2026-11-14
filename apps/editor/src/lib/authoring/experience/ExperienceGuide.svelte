@@ -346,6 +346,9 @@
 	}
 
 	function onWindowKeydown(event: KeyboardEvent): void {
+		// The shell region may clear the Guide's props one tick before its
+		// `<svelte:window>` listener is detached during route teardown.
+		if (!playback) return;
 		if (event.defaultPrevented) return;
 		if (event.key !== 'Escape' || !playback.following) return;
 		event.preventDefault();

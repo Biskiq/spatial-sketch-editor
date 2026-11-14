@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { EDITOR_LIB, EDITOR_SRC, constructsImportedOwner, importClosure, stripComments } from '../../helpers/import-closure';
+import { EDITOR_LIB, EDITOR_SRC, importClosure, stripComments } from '../../helpers/import-closure';
 import {
 	computeEnvelopeSourceContentId,
 	lowerExperienceProgram,
@@ -146,18 +146,19 @@ describe('R217.S30 playback', () => {
 			.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
 		const owners = sources.filter(({ code }) => /\bconst playback = createExperiencePlayback\(/.test(code));
 		expect(owners.map(({ file }) => file)).toHaveLength(1);
-		if (owners[0]!.file !== route) {
-			expect(constructsImportedOwner(route, readFileSync(route, 'utf8'), owners[0]!.file, 'createExperienceLens')).toBe(true);
-		}
 		const page = owners[0]!.code;
 		const routeCode = stripComments(readFileSync(route, 'utf8'));
+		const binding = path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts');
+		const bindingCode = stripComments(readFileSync(binding, 'utf8'));
 		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
 		expect(page).toContain('createExperiencePlayback');
 		expect(page).toContain('shouldWritePlaybackSample');
 		expect(page).toContain('captureStandpoint');
 		expect(page).toContain('restoreStandpoint');
 		expect(page).toContain('playback.prepare()');
-		expect(routeCode).toContain('previewMode: (mode, guideId) => void previewController.open(mode, guideId)');
+		expect(routeCode).toContain('createStageExperienceBinding({');
+		expect(bindingCode).toContain('createExperienceLens({');
+		expect(bindingCode).toContain('previewMode: (mode, guideId) => void input.preview().open(mode, guideId)');
 		expect(guide).not.toContain('createExperiencePlayback');
 		expect(guide).toContain('data-view-span');
 		// The strip requests transport through the host; only the host opens the
@@ -166,8 +167,8 @@ describe('R217.S30 playback', () => {
 		expect(readFileSync('src/lib/authoring/experience/ExperienceStopWriter.svelte', 'utf8')).toContain("kind: 'stop'");
 		expect(readFileSync('src/lib/authoring/experience/ExperienceTransitionWriter.svelte', 'utf8')).toContain("kind: 'move'");
 		expect(page).toContain('playback: () => playback');
-		expect(routeCode).toContain('experienceLens.homes(');
-		expect(routeCode).toContain('experienceLens.install()');
+		expect(bindingCode).toContain('lens.homes({');
+		expect(bindingCode).toContain('lens.install()');
 		expect(page).toContain('playback.playFromStart()');
 		expect(page).toContain('playback.playFromStop(action.stopId)');
 		expect(page).toContain('playback.previewMove(action.occurrence)');

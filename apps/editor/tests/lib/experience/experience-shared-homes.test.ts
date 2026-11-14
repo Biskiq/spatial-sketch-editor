@@ -10,11 +10,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { EDITOR_LIB, EDITOR_SRC, constructsImportedOwner, importClosure, listSourceFiles, relativeToRepo, stripComments } from '../../helpers/import-closure';
+import { EDITOR_LIB, EDITOR_SRC, importClosure, listSourceFiles, relativeToRepo, stripComments } from '../../helpers/import-closure';
 
 const ROUTE = path.join(EDITOR_LIB, '..', 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const EXPERIENCE_DIR = path.join(EDITOR_LIB, 'authoring', 'experience');
 const SHELL_DIR = path.join(EDITOR_LIB, 'authoring', 'stage', 'shell');
+const STAGE_ROUTE_DIR = path.join(EDITOR_LIB, 'authoring', 'stage', 'route');
 
 /** The Experience homes: the components and modules the shared homes are made of. */
 const HOME_FILES = [
@@ -82,7 +83,7 @@ function guideOwner(sources: readonly { file: string; code: string }[]): { file:
 function composedHostSources(): { file: string; code: string }[] {
 	const projectSession = path.join(EDITOR_LIB, 'authoring', 'project-session');
 	return [...importClosure([ROUTE])]
-		.filter((file) => file === ROUTE || file.startsWith(`${EXPERIENCE_DIR}${path.sep}`) || file.startsWith(`${projectSession}${path.sep}`))
+		.filter((file) => file === ROUTE || file.startsWith(`${EXPERIENCE_DIR}${path.sep}`) || file.startsWith(`${projectSession}${path.sep}`) || file.startsWith(`${STAGE_ROUTE_DIR}${path.sep}`))
 		.filter((file) => /\.(svelte|ts)$/.test(file))
 		.map((file) => ({ file, code: codeOf(file) }));
 }
@@ -125,7 +126,7 @@ describe('R217.S25 — the Experience home map', () => {
 	it('names each Experience action in one home: New Experience in the Index crumb menu, Capture on the dock', () => {
 		const homes: Record<string, { pattern: RegExp; home: string }> = {
 			'New Experience': { pattern: /New Experience/, home: 'EditorIndex.svelte' },
-			'Capture control': { pattern: /aria-label="Capture"|>\s*Capture\s*</, home: 'ExperienceDock.svelte' }
+			'Capture control': { pattern: /aria-label="Capture"/, home: 'ExperienceDock.svelte' }
 		};
 		const sources = authoringSources();
 		for (const [label, { pattern, home }] of Object.entries(homes)) {
@@ -189,13 +190,14 @@ describe('R217.S25 — the Experience home map', () => {
 		expect(sources.map(({ file }) => file)).toContain(ROUTE);
 		const owner = guideOwner(sources);
 		if (owner.file !== ROUTE) {
-			expect(constructsImportedOwner(ROUTE, readFileSync(ROUTE, 'utf8'), owner.file, 'createExperienceLens')).toBe(true);
+			expect(codeOf(ROUTE)).toContain('createStageExperienceBinding({');
+			expect(owner.code).toContain('createExperienceLens({');
 		}
 		expect(owner.code).toMatch(/let experienceGuideOpen = \$state\(false\);/);
 		// Lens entry closes the Guide and clears the Card subject (the R217.S25 Guide-open effect would reopen it otherwise).
-		expect(owner.code).toMatch(/if \(lens === 'experience'\) \{\s*experienceGuideOpen = false;\s*experienceFocus\.select\(null\);/);
+		expect(owner.code).toMatch(/if \(lensState === 'experience'\) \{\s*experienceGuideOpen = false;\s*experienceFocus\.select\(null\);/);
 		// With no Experience, a World selection carried in has no Card, so lens entry drops it.
-		expect(owner.code).toMatch(/experienceController\?\.current == null && selection !== null\) closeSelection\(\);/);
+		expect(owner.code).toMatch(/controller\?\.current == null && input\.selection\(\) !== null\) input\.closeSelection\(\);/);
 		// The lookup must fail closed when the owner disappears or is duplicated.
 		expect(() => guideOwner(sources.filter(({ file }) => file !== owner.file))).toThrow('found 0');
 		expect(() => guideOwner([...sources, owner])).toThrow('found 2');

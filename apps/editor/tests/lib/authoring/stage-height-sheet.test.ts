@@ -366,11 +366,11 @@ describe('R217.S23 — the Height Sheet white mark set', () => {
 	});
 
 	it('takes no quiet, Paper or light-ground flag from the route', () => {
-		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
-		const start = route.indexOf('<StageHeightSheet');
-		const end = route.indexOf('/>', start);
+		const region = readFileSync('src/lib/authoring/stage/shell/StageViewportRegion.svelte', 'utf8');
+		const start = region.indexOf('<StageHeightSheet');
+		const end = region.indexOf('/>', start);
 		expect(start).toBeGreaterThan(0);
-		expect(route.slice(start, end)).not.toMatch(/quiet|lightGround|data-paper/);
+		expect(region.slice(start, end)).not.toMatch(/quiet|lightGround|data-paper/);
 	});
 });
 

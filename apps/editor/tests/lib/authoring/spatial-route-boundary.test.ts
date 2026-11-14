@@ -37,6 +37,18 @@ const INPUT = path.join(EDITOR_LIB, 'authoring/stage/route/stage-input.svelte.ts
 const KEYBOARD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-keyboard.ts');
 const UNFOLD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-unfold-gestures.svelte.ts');
 const ARTWORK = path.join(EDITOR_LIB, 'authoring/stage/route/stage-artwork-interaction.svelte.ts');
+const EXPERIENCE_BINDING = path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts');
+const SHELL_STATE = path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts');
+const SHELL_COMMANDS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-commands.ts');
+const SELECTION_VIEW = path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts');
+const CONTRIBUTION_VIEW = path.join(EDITOR_LIB, 'authoring/stage/route/stage-contribution-view.ts');
+const NOTICES = path.join(EDITOR_LIB, 'authoring/stage/shell/StageProjectNotices.svelte');
+const VIEWPORT_REGION = path.join(EDITOR_LIB, 'authoring/stage/shell/StageViewportRegion.svelte');
+const PANELS = path.join(EDITOR_LIB, 'authoring/stage/shell/StagePanels.svelte');
+const TOOLBARS = path.join(EDITOR_LIB, 'authoring/stage/shell/StageToolbars.svelte');
+const EXPERIENCE_LENS = path.join(EDITOR_LIB, 'authoring/experience/experience-lens.svelte.ts');
+const STAGE_FACADE = path.join(EDITOR_LIB, 'authoring/stage/stage-facade.ts');
+const PROJECT_SESSION = path.join(EDITOR_LIB, 'authoring/project-session/project-session.svelte.ts');
 
 const OWNERSHIP_SITES = [
 	{ id: 'acceptance-host', pattern: /\bcreateStageAcceptanceHost\s*\(/ },
@@ -73,6 +85,32 @@ function x2OwnershipSites(source: string): string[] {
 	return X2_OWNERSHIP_SITES.filter(({ pattern }) => pattern.test(source)).map(({ id }) => id);
 }
 
+/**
+ * X3's old route-owned presentation. These are the state declarations, DOM
+ * regions and Experience wiring that moved to the approved controllers and
+ * shell components; naming their new owners is not an ownership site.
+ */
+const X3_OWNERSHIP_SITES = [
+	{ id: 'route-lens-construction', pattern: /\bcreateExperienceLens\s*\(/ },
+	{ id: 'route-lens-install', pattern: /\bexperienceLens\.install\s*\(/ },
+	{ id: 'route-disclosure-state', pattern: /\blet (indexOpen|narrowShell|coarsePointer|showMarkers|showFrustums|showPaths|showLabels|showMode|paletteOpen|keysOpen|viewLine|lowerColumnHeight)\b/ },
+	{ id: 'route-task-state', pattern: /\blet (task|eraseHover|heightMeters|heightSheetOpen|notice|previewProblem)\b/ },
+	{ id: 'route-selection-projection', pattern: /\b(function|const) (cardForSelection|selectionCard|indexRowsFor|selectedEntry|sourceLocatorFor)\b/ },
+	{ id: 'route-contribution-projection', pattern: /\b(function|const) (dockEntriesFor|findEntriesFor|hostToolEntries|contributedInstrumentFor)\b/ },
+	{ id: 'route-shell-frame', pattern: /class="(stage-frame|lower-column|index-scrim)"/ },
+	{ id: 'route-index-markup', pattern: /<EditorIndex\b/ },
+	{ id: 'route-card-markup', pattern: /<EditorCard\b/ },
+	{ id: 'route-guide-markup', pattern: /<ExperienceGuide\b/ },
+	{ id: 'route-dock-markup', pattern: /<ExperienceDock\b/ },
+	{ id: 'route-drafting-markup', pattern: /<StageDraftingControl\b/ },
+	{ id: 'route-scale-markup', pattern: /<StageScaleBar\b/ },
+	{ id: 'route-height-sheet-markup', pattern: /<StageHeightSheet\b/ }
+] as const;
+
+function x3OwnershipSites(source: string): string[] {
+	return X3_OWNERSHIP_SITES.filter(({ pattern }) => pattern.test(source)).map(({ id }) => id);
+}
+
 const source = fs.readFileSync(ROUTE, 'utf8');
 const code = stripComments(source);
 
@@ -85,7 +123,7 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('stageEpoch.dispose()');
 		expect(code).toContain('onUndo={() => void stageEpoch.undo()}');
 		expect(code).toContain('onRedo={() => void stageEpoch.redo()}');
-		expect(code).toContain('artworkScope={stageAssets.artworkScope}');
+		expect(code).toContain('artworkScope: stageAssets.artworkScope');
 	});
 
 	it('keeps no second epoch, history or asset-lease owner in the route', () => {
@@ -99,12 +137,12 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('createStageArtworkInteraction({');
 		// One drag/click authority, injected into every input owner.
 		expect(code.match(/createStagePressTracker\(\)/g) ?? []).toHaveLength(1);
-		expect(code).toContain('onpointerdown={(event) => stageInput.pointerDown(event)}');
-		expect(code).toContain('onpointermove={(event) => stageInput.pointerMove(event)}');
-		expect(code).toContain('onpointerup={(event) => stageInput.pointerUp(event)}');
-		expect(code).toContain('onpointercancel={(event) => stageInput.pointerCancel(event)}');
-		expect(code).toContain('onlostpointercapture={(event) => stageInput.lostPointerCapture(event)}');
-		expect(code).toContain('onwheel={(event) => stageInput.wheel(event)}');
+		expect(code).toContain('pointerDown: (event: PointerEvent) => stageInput.pointerDown(event)');
+		expect(code).toContain('pointerMove: (event: PointerEvent) => stageInput.pointerMove(event)');
+		expect(code).toContain('pointerUp: (event: PointerEvent) => stageInput.pointerUp(event)');
+		expect(code).toContain('pointerCancel: (event: PointerEvent) => stageInput.pointerCancel(event)');
+		expect(code).toContain('lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event)');
+		expect(code).toContain('wheel: (event: WheelEvent) => stageInput.wheel(event)');
 		expect(code).toContain('stageKeyboard.handleKey(event);');
 	});
 
@@ -194,5 +232,86 @@ describe('spatial route composition boundary (X1)', () => {
 			'route-unfold-drag',
 			'route-unfold-planner'
 		]);
+	});
+
+	it('composes the X3 presentation controllers and shell regions', () => {
+		expect(code).toContain('createStageExperienceBinding({');
+		expect(code).toContain('createStageShellState({');
+		expect(code).toContain('createStageShellCommands({');
+		expect(code).toContain('createStageSelectionView()');
+		expect(code).toContain('stageDockView({');
+		expect(code).toContain('stageFindView({');
+		expect(code).toContain('hostTools: shell.hostToolOverlay');
+		for (const region of ['StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars']) {
+			expect(code.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
+		}
+	});
+
+	it('keeps no old X3 presentation ownership in the route', () => {
+		expect(x3OwnershipSites(code)).toEqual([]);
+	});
+
+	it('detects every old X3 ownership site in a synthetic route source', () => {
+		const synthetic = [
+			'const lens = createExperienceLens({});',
+			'experienceLens.install();',
+			'let indexOpen = false;',
+			'let task = null;',
+			'const cardForSelection = options.selection;',
+			'const dockEntriesFor = () => [];',
+			'<div class="stage-frame"></div>',
+			'<EditorIndex {...index} />',
+			'<EditorCard {...card} />',
+			'<ExperienceGuide {...guide} />',
+			'<ExperienceDock {...dock} />',
+			'<StageDraftingControl {...drafting} />',
+			'<StageScaleBar {...bar} />',
+			'<StageHeightSheet {...sheet} />'
+		].join('\n');
+		expect(x3OwnershipSites(stripComments(synthetic))).toEqual([
+			'route-lens-construction',
+			'route-lens-install',
+			'route-disclosure-state',
+			'route-task-state',
+			'route-selection-projection',
+			'route-contribution-projection',
+			'route-shell-frame',
+			'route-index-markup',
+			'route-card-markup',
+			'route-guide-markup',
+			'route-dock-markup',
+			'route-drafting-markup',
+			'route-scale-markup',
+			'route-height-sheet-markup'
+		]);
+	});
+
+	it('imports the X3 controllers and regions directly, and no region reaches a route owner', () => {
+		const direct = moduleBindingEdges(ROUTE, source).flatMap((edge) => {
+			if (!('specifier' in edge)) return [];
+			const target = resolveSpecifier(ROUTE, edge.specifier);
+			return target === null ? [] : [target];
+		});
+		for (const target of [EXPERIENCE_BINDING, SHELL_STATE, SHELL_COMMANDS, SELECTION_VIEW, CONTRIBUTION_VIEW, NOTICES, VIEWPORT_REGION, PANELS, TOOLBARS]) {
+			expect(direct).toContain(target);
+		}
+		const forbidden = new Set([
+			EXPERIENCE_BINDING,
+			SHELL_STATE,
+			SHELL_COMMANDS,
+			SELECTION_VIEW,
+			CONTRIBUTION_VIEW,
+			EXPERIENCE_LENS,
+			STAGE_FACADE,
+			PROJECT_SESSION
+		]);
+		for (const file of [NOTICES, VIEWPORT_REGION, PANELS, TOOLBARS]) {
+			const imports = moduleBindingEdges(file, fs.readFileSync(file, 'utf8')).flatMap((edge) => {
+				if (!('specifier' in edge)) return [];
+				const target = resolveSpecifier(file, edge.specifier);
+				return target === null ? [] : [target];
+			});
+			expect(imports.filter((target) => forbidden.has(target)), file).toEqual([]);
+		}
 	});
 });
