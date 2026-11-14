@@ -49,13 +49,17 @@ function envelopeWith(pins: readonly { assetId: string; hash: string }[]): Proje
 	} as unknown as ProjectEnvelope;
 }
 
-function snapshotWith(envelope: ProjectEnvelope, contentId: string): StageReadSnapshot {
+function snapshotWith(
+	envelope: ProjectEnvelope,
+	contentId: string,
+	sessionEpoch = 'session-1'
+): StageReadSnapshot {
 	return attachUnitStageSource(
 		{
 			acceptedRevision: { projectId: 'project-1', revisionId: `revision-${contentId}` },
 			sourceContentId: contentId,
 			canonicalJson: '{}',
-			sessionEpoch: 'session-1',
+			sessionEpoch,
 			sourceKind: UNIT_SOURCE_KIND,
 			sourceVersion: UNIT_SOURCE_VERSION,
 			compileGeneration: `compile-${contentId}`,
@@ -204,6 +208,48 @@ describe('approved asset leases', () => {
 
 		// The stale attempt returned the signature to the installed one, so the
 		// unchanged new pins are still retained rather than re-fetched.
+		await subject.controller.resolve(B);
+		expect(call).toBe(2);
+	});
+
+	it('starts an installable resolution for a same-pin replacement that cancelled the in-flight one', async () => {
+		const samePins = envelopeWith([{ assetId: 'model-a', hash: HASH_A }]);
+		const A = snapshotWith(samePins, 'a', 'session-1');
+		const B = snapshotWith(samePins, 'b', 'session-2');
+		const cancelled = approvedSources({ 'model-a': 'blob:a' });
+		const landed = approvedSources({ 'model-a': 'blob:a' });
+		let call = 0;
+		let releaseLanded: ((value: ApprovedModelSources) => void) | null = null;
+		const resolveModels = ((input: { signal?: AbortSignal }) => {
+			call += 1;
+			if (call === 1) {
+				// The first request is cancelled by the replacement. Its non-installable
+				// completion must not suppress a resolution for the new epoch.
+				return new Promise<ApprovedModelSources>((resolve) => {
+					input.signal?.addEventListener('abort', () => resolve(cancelled));
+				});
+			}
+			return new Promise<ApprovedModelSources>((resolve) => {
+				releaseLanded = resolve;
+			});
+		}) as unknown as StageAssetLeaseInput['resolveModels'];
+		const subject = controllerWith({ resolveModels });
+
+		const first = subject.controller.resolve(A);
+		subject.session.replace(B);
+		const second = subject.controller.resolve(B);
+		expect(call).toBe(2);
+
+		await first;
+		expect(cancelled.dispose).toHaveBeenCalledTimes(1);
+		expect(subject.controller.urls.size).toBe(0);
+
+		releaseLanded!(landed);
+		await second;
+		expect(subject.controller.urls).toBe(landed.urls);
+		expect(landed.dispose).not.toHaveBeenCalled();
+
+		// The same-pin map is now installed for the replacement epoch.
 		await subject.controller.resolve(B);
 		expect(call).toBe(2);
 	});

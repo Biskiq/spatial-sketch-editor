@@ -37,7 +37,11 @@ import {
 	type ArtworkBytes,
 	type ArtworkScope
 } from '$lib/render/artwork/artwork-scope';
-import { runBoundLoad, type StageSession } from '../stage-session';
+import {
+	runBoundLoad,
+	type ReplacementEpochToken,
+	type StageSession
+} from '../stage-session';
 import { stageEnvelope } from '../unit-stage-source';
 import type { StageReadSnapshot } from '../accepted-read';
 
@@ -68,10 +72,15 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 	let modelResolution: ApprovedModelSources | null = null;
 	/** Monotone ticket: only the newest resolution may install its URLs. */
 	let modelGeneration = 0;
-	/** The pin set of the newest request, installed or in flight; an unchanged set is reused. */
-	let modelPinSignature = '';
 	/** The pin set the installed URLs were resolved for. */
 	let installedModelSignature = '';
+	/**
+	 * The newest request, bound to the session lifetime it started under. A
+	 * same-pin request is reused only while that token is still current: a
+	 * replacement cancels the read and must not make the new epoch believe an
+	 * installable resolution is already in flight.
+	 */
+	let inFlight: { readonly signature: string; readonly token: ReplacementEpochToken } | null = null;
 	/** The model-failure notice this resolver last set, so an unrelated notice survives. */
 	let modelNotice: string | null = null;
 	let disposed = false;
@@ -94,8 +103,13 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		// has: revoking and re-downloading every derivative on each accepted command
 		// would flash the fallback box and re-fetch immutable bytes.
 		const signature = pins.map((pin) => `${pin.assetId}@${pin.hash}`).join('|');
-		if (signature === modelPinSignature) return;
-		modelPinSignature = signature;
+		if (signature === installedModelSignature) return;
+		// The same pins may also be retained while a request for them is genuinely
+		// current. A request cancelled by a project replacement is not current: the
+		// new epoch must start its own installable read instead of returning early.
+		if (inFlight !== null && inFlight.signature === signature && input.session.isCurrent(inFlight.token)) return;
+		const request = { signature, token: input.session.token() };
+		inFlight = request;
 		const generation = ++modelGeneration;
 		// The installed set stays live while the new one resolves. Shared hashes keep
 		// their references through the object-URL ref count, so they are neither
@@ -127,10 +141,13 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		const resolved = landed.value;
 		if (!installable || resolved === null || disposed || generation !== modelGeneration) {
 			// A stale, cancelled or failed attempt releases only what it acquired.
+			// Only the current attempt may clear the in-flight mark: a newer request
+			// already owns it.
 			resolved?.dispose();
-			if (!disposed && generation === modelGeneration) modelPinSignature = installedModelSignature;
+			if (generation === modelGeneration && inFlight === request) inFlight = null;
 			return;
 		}
+		if (inFlight === request) inFlight = null;
 		const previous = modelResolution;
 		modelResolution = resolved;
 		installedModelSignature = signature;
@@ -173,7 +190,7 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		modelResolution = null;
 		modelUrls = new Map();
 		modelFailures = new Map();
-		modelPinSignature = '';
+		inFlight = null;
 		installedModelSignature = '';
 		modelNotice = null;
 		disposeArtwork();

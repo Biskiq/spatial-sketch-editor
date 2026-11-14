@@ -25,6 +25,86 @@ import {
 const ROUTE = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
 const EPOCH = path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts');
 const ASSETS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts');
+const STAGE_DIR = path.join(EDITOR_LIB, 'authoring/stage');
+const STAGE_ADAPTER_HOST = path.join(STAGE_DIR, 'stage-adapter-host.ts');
+const STAGE_FACADE = path.join(STAGE_DIR, 'stage-facade.ts');
+const HOST_ACCEPTANCE = path.join(STAGE_DIR, 'host-acceptance.ts');
+const STAGE_SESSION = path.join(STAGE_DIR, 'stage-session.ts');
+const UNIT_STAGE_SOURCE = path.join(STAGE_DIR, 'unit-stage-source.ts');
+const ACCEPTED_READ = path.join(STAGE_DIR, 'accepted-read.ts');
+const PERF_MARKS = path.join(EDITOR_LIB, 'platform/perf-marks.ts');
+const MODEL_BYTES = path.join(EDITOR_LIB, 'authoring/scene/model-bytes.ts');
+const ARTWORK_SCOPE = path.join(EDITOR_LIB, 'render/artwork/artwork-scope.ts');
+
+/**
+ * The owner modules each extracted controller is allowed to execute.
+ *
+ * These boundaries are opaque: the owner is responsible for its own closure,
+ * so the indirect walk neither follows its internals nor accuses the controller
+ * of a dependency the owner legitimately acquired. A local barrel or re-export
+ * is *not* a boundary and is always followed to its actual targets.
+ */
+const APPROVED_BOUNDARIES: Readonly<Record<string, ReadonlySet<string>>> = {
+	[EPOCH]: new Set([
+		STAGE_ADAPTER_HOST,
+		STAGE_FACADE,
+		HOST_ACCEPTANCE,
+		STAGE_SESSION,
+		UNIT_STAGE_SOURCE,
+		PERF_MARKS
+	]),
+	[ASSETS]: new Set([
+		MODEL_BYTES,
+		ARTWORK_SCOPE,
+		STAGE_SESSION,
+		UNIT_STAGE_SOURCE,
+		ACCEPTED_READ
+	])
+};
+
+const FORBIDDEN_PREFIXES = [
+	'apps/editor/src/lib/authoring/adapters/',
+	'apps/editor/src/lib/authoring/f4/'
+] as const;
+const FORBIDDEN_PACKAGES = new Set([
+	'packages/layout-core/src/index.ts',
+	'packages/project-model/src/index.ts'
+]);
+
+/** Every executable non-boundary module reachable from one actual controller. */
+function indirectTargets(root: string, boundaries: ReadonlySet<string>): string[] {
+	const seen = new Set([root]);
+	const pending = [root];
+	const reached = new Set<string>();
+	while (pending.length > 0) {
+		const file = pending.pop()!;
+		const source = fs.readFileSync(file, 'utf8');
+		for (const edge of moduleBindingEdges(file, source)) {
+			if (!('specifier' in edge)) continue;
+			if ('typeOnly' in edge && edge.typeOnly) continue;
+			const target = resolveSpecifier(file, edge.specifier);
+			if (target === null || seen.has(target)) continue;
+			seen.add(target);
+			if (boundaries.has(target)) continue;
+			reached.add(target);
+			pending.push(target);
+		}
+	}
+	return [...reached];
+}
+
+function forbiddenIndirect(controller: string, target: string): boolean {
+	const relative = relativeToRepo(target);
+	if (relative === relativeToRepo(ROUTE)) return true;
+	if (FORBIDDEN_PREFIXES.some((prefix) => relative.startsWith(prefix))) return true;
+	if (FORBIDDEN_PACKAGES.has(relative)) return true;
+	if (controller === EPOCH) return relative.startsWith('apps/editor/src/lib/render/');
+	if (controller === ASSETS) {
+		if (relative.startsWith('apps/editor/src/lib/render/')) return true;
+		return target === HOST_ACCEPTANCE || target === STAGE_ADAPTER_HOST || target === STAGE_FACADE;
+	}
+	return false;
+}
 
 type ResolvedEdge = {
 	readonly kind: string;
@@ -89,6 +169,19 @@ describe('authoring controller boundary (X1)', () => {
 	it('never lets an extracted controller import the route', () => {
 		for (const file of [EPOCH, ASSETS]) {
 			expect(edgesOf(file).filter((edge) => edge.target === ROUTE), relativeToRepo(file)).toEqual([]);
+		}
+	});
+
+	it('finds no forbidden dependency indirectly from the actual extracted controllers', () => {
+		for (const controller of [EPOCH, ASSETS]) {
+			const boundaries = APPROVED_BOUNDARIES[controller]!;
+			// An allowlist naming a missing owner would silently stop guarding the
+			// boundary it was meant to respect.
+			for (const boundary of boundaries) expect(fs.existsSync(boundary), relativeToRepo(boundary)).toBe(true);
+			const offenders = indirectTargets(controller, boundaries)
+				.filter((target) => forbiddenIndirect(controller, target))
+				.map(relativeToRepo);
+			expect(offenders, relativeToRepo(controller)).toEqual([]);
 		}
 	});
 
