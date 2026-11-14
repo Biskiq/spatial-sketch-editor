@@ -46,6 +46,11 @@ const SHELL_DIR = join(STAGE_DIR, 'shell');
 const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
+const X2_INPUT_FILE = join(STAGE_DIR, 'route', 'stage-input.svelte.ts');
+const X2_UNFOLD_FILE = join(STAGE_DIR, 'route', 'stage-unfold-gestures.svelte.ts');
+const X2_ARTWORK_FILE = join(STAGE_DIR, 'route', 'stage-artwork-interaction.svelte.ts');
+const X2_INPUT = relativeToRepo(X2_INPUT_FILE);
+const X2_ARTWORK = relativeToRepo(X2_ARTWORK_FILE);
 // R217.S28's offscreen snapshot host (fixed capture rect, not a viewport measurement).
 const SNAPSHOT_HOST = 'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte';
 
@@ -82,13 +87,25 @@ const HEIGHT_SHEET = relativeToRepo(join(SHELL_DIR, 'StageHeightSheet.svelte'));
 const STAGE_VIEWPORT = relativeToRepo(join(STAGE_DIR, 'route', 'stage-viewport.svelte.ts'));
 const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 
-/** The route and its one constructed posture controller, never all dependencies. */
+/** The route and the controllers it constructs, never all dependencies. */
 function postureSources(): { file: string; code: string }[] {
 	const route = readFileSync(ROUTE, 'utf8');
 	const files = [ROUTE];
 	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
 		expect(constructsImportedOwner(ROUTE, route, EXPERIENCE_LENS, 'createExperienceLens')).toBe(true);
 		files.push(EXPERIENCE_LENS);
+	}
+	// X2's input owners are constructed by the route and own its handler bodies.
+	const x2 = [
+		[X2_INPUT_FILE, 'createStageInputArbiter'],
+		[X2_UNFOLD_FILE, 'createStageUnfoldGestures'],
+		[X2_ARTWORK_FILE, 'createStageArtworkInteraction']
+	] as const;
+	for (const [file, factory] of x2) {
+		// These owners are consumed by template handlers and named route commands,
+		// so their construction is the top-level composition fact to prove.
+		expect(route, file).toContain(`${factory}({`);
+		files.push(file);
 	}
 	return files.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
 }
@@ -232,7 +249,10 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte',
 			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
 			'apps/editor/src/lib/authoring/stage/paper-marks.ts',
-			'apps/editor/src/lib/authoring/stage/paper-fill-geometry.ts'
+			'apps/editor/src/lib/authoring/stage/paper-fill-geometry.ts',
+			// X2's Artwork gesture owner uses vector math for artwork placement and
+			// movement. It mounts no control object, camera or renderer.
+			X2_ARTWORK
 		].sort());
 
 		// The pose math lives in exactly one place: the realizer copies the
@@ -301,7 +321,7 @@ describe('Stage shell composition', () => {
 		expect(guide[0]!.code).toContain('(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)');
 		const raw = host.filter(({ file }) => file !== pathsFile && file !== guideFile)
 			.flatMap(({ code }) => code.match(/\.setPointerCapture(?:\?\.)?\(/g) ?? []);
-		expect(raw).toHaveLength(2);
+		expect(raw).toHaveLength(1);
 		expect(matches(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/)).toHaveLength(1);
 		expect(matches(/try \{ surface\.setPointerCapture\(event\.pointerId\); \} catch/)).toHaveLength(1);
 		const lens = stripComments(readFileSync(EXPERIENCE_LENS, 'utf8'));
@@ -340,8 +360,9 @@ describe('Stage shell composition', () => {
 		const viewport = codeOf(STAGE_VIEWPORT);
 		expect(viewport).toContain('stage.setPlanParameters(parameters)');
 		expect(viewport).toContain('stage.plan()');
-		expect(route).toContain('planView.membership');
-		expect(route).toContain('stage.resolveSourceHit(');
+		const input = codeOf(X2_INPUT);
+		expect(input).toContain('planView.membership');
+		expect(input).toContain('stage.resolveSourceHit(');
 	});
 
 	it('binds the project read to the session, so a stale load cannot install', () => {
@@ -379,51 +400,51 @@ describe('Stage shell composition', () => {
 		// (behavioural in `stage-facade`); what only the route can prove is that it
 		// acts on the answer and ends the gesture at every ending.
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).toContain("acquisition.kind !== 'granted'");
-		expect(route).toContain('onpointercancel={onPointerCancel}');
-		expect(route).toContain('onlostpointercapture={onLostPointerCapture}');
+		const input = stripComments(readFileSync(join(REPO_ROOT, X2_INPUT), 'utf8'));
+		expect(input).toContain("acquisition.kind !== 'granted'");
+		expect(route).toContain('onpointercancel={(event) => stageInput.pointerCancel(event)}');
+		expect(route).toContain('onlostpointercapture={(event) => stageInput.lostPointerCapture(event)}');
 		// A reading change must end the route press after the lease policy runs.
 		// The mounted spatial-route-gesture suite also proves the adapter receives
 		// the interruption first and preserves its exact Resume/Discard proposal.
 		const reading = route.slice(route.indexOf('function setReading('), route.indexOf('function fit('));
-		expect(reading).toMatch(/if \(drag !== null && session\.gesture\(\) === null\) \{[\s\S]*interruptPress\('reading-change'\);/);
-		// One ending, used by every path, so a policy- released lease is not released
+		expect(reading).toMatch(/if \(stageInput\.drag !== null && session\.gesture\(\) === null\) \{[\s\S]*interruptPress\('reading-change'\);/);
+		// One ending, used by every path, so a policy-released lease is not released
 		// twice and no ending is forgotten.
-		expect((route.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
+		expect((input.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
 
 		// The click that follows pointerup still has to know how far the pointer travelled,
 		// so a normal ending **ends** the press decision while an interruption aborts it.
 		// Collapsing the two is how every drag came to select what it was dropped on.
-		const pointerUpBody = route.slice(route.indexOf('function onPointerUp('), route.indexOf('function interruptPress('));
-		expect(pointerUpBody).toContain('press.end(event.pointerId)');
-		expect(pointerUpBody).not.toContain('press.abort(');
+		const pointerUpBody = input.slice(input.indexOf('function pointerUp('), input.indexOf('function pointerCancel('));
+		expect(pointerUpBody).toContain('input.press.end(event.pointerId)');
+		expect(pointerUpBody).not.toContain('input.press.abort(');
 
 		// Every environmental ending reaches the same interruption path, which
 		// delivers cancel to the adapter before dropping the lease and capture.
-		const interruption = route.slice(route.indexOf('function interruptPress('), route.indexOf('function onPointerCancel('));
+		const interruption = input.slice(input.indexOf('function interrupt('), input.indexOf('function pointerDown('));
 		expect(interruption).toContain("phase: 'cancel'");
 		expect(interruption).toContain('abortGesture()');
-		const pointerCancel = route.slice(route.indexOf('function onPointerCancel('), route.indexOf('function onLostPointerCapture('));
-		const lostCapture = route.slice(route.indexOf('function onLostPointerCapture('), route.indexOf('function pointerIdOf('));
-		expect(pointerCancel).toContain("interruptPress('pointercancel')");
-		expect(lostCapture).toContain("interruptPress('lostpointercapture')");
-		expect(route).toContain('press.decide(');
+		const pointerCancel = input.slice(input.indexOf('function pointerCancel('), input.indexOf('function lostPointerCapture('));
+		const lostCapture = input.slice(input.indexOf('function lostPointerCapture('), input.indexOf('function pointerIdOf('));
+		expect(pointerCancel).toContain("interrupt('pointercancel')");
+		expect(lostCapture).toContain("interrupt('lostpointercapture')");
+		expect(input).toContain('input.press.decide(');
 		expect(route).toContain('createStagePressTracker()');
 
 		// Pointer ownership: a refused second pointer cannot end the holder's press, and its
 		// own click is marked so it cannot select either.
-		expect(route).toContain('press.refuse(event.pointerId)');
-		expect(route).toContain("interruptPress('second-pointer')");
+		expect(input).toContain('input.press.refuse(event.pointerId)');
+		expect(input).toContain("interrupt('second-pointer')");
 
 		// …and its **movement** is refused too, before any sample is consumed. Movement is
 		// the one event a refused pointer keeps producing, and the owner's drag origin is
 		// not where that pointer is, so taking its coordinates pans by the distance between
 		// two fingers.
-		const pointerMove = route.slice(route.indexOf('function onPointerMove('));
-		const pointerMoveBody = pointerMove.slice(0, pointerMove.indexOf('function onPointerUp('));
-		expect(pointerMoveBody).toContain('if (!press.ownsPointer(event.pointerId)) return;');
-		const singlePointerMove = pointerMoveBody.slice(pointerMoveBody.lastIndexOf('if (!press.ownsPointer(event.pointerId)) return;'));
-		expect(singlePointerMove.indexOf('press.ownsPointer(event.pointerId)')).toBeLessThan(singlePointerMove.indexOf('pan('));
+		const pointerMove = input.slice(input.indexOf('function pointerMove('), input.indexOf('function pointerUp('));
+		expect(pointerMove).toContain('if (!input.press.ownsPointer(event.pointerId)) return;');
+		const singlePointerMove = pointerMove.slice(pointerMove.lastIndexOf('if (!input.press.ownsPointer(event.pointerId)) return;'));
+		expect(singlePointerMove.indexOf('input.press.ownsPointer(event.pointerId)')).toBeLessThan(singlePointerMove.indexOf('input.pan('));
 	});
 
 	it('measures the viewport in one place and never scales the stage with CSS', () => {

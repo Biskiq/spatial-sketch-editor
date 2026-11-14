@@ -6,7 +6,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
-const harness = vi.hoisted(() => ({ document: null as unknown, facade: null as unknown, host: null as unknown }));
+const harness = vi.hoisted(() => ({
+	document: null as unknown,
+	facade: null as unknown,
+	host: null as unknown,
+	artwork: {
+		assetId: '00000000-0000-4000-8000-000000000001',
+		bytes: Uint8Array.from(
+			Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64')
+		),
+		row: {
+			id: '00000000-0000-4000-8000-000000000001',
+			projectId: 'project-1',
+			name: 'Gesture print',
+			kind: 'texture',
+			storageKind: 'r2',
+			sourceKind: 'upload',
+			sourceRef: null,
+			mime: 'image/png',
+			byteSize: 68,
+			sha256: 'sha256-5e3d382db4dd83d59aa5742793ad6b7903409e865c83bcbc54835049f043bc15',
+			importState: 'ready',
+			createdAt: '2026-11-11T00:00:00.000Z',
+			updatedAt: '2026-11-11T00:00:00.000Z'
+		}
+	}
+}));
+vi.mock('$lib/render/artwork/artwork-decode', () => ({ verifyArtworkDecode: async () => {} }));
 vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/stage/stage-facade')>();
 	return { ...actual, createStageFacade: (...args: Parameters<typeof actual.createStageFacade>) => {
@@ -29,11 +55,15 @@ vi.mock('$lib/authoring/stage/shell/StageCanvas.svelte', async () => ({ default:
 vi.mock('$lib/platform/project-persistence', async (original) => {
 	const actual = await original<typeof import('$lib/platform/project-persistence')>();
 	return { ...actual, createProjectAuth: () => ({ getSession: async () => ({ authenticated: false }), signIn() { }, async signOut() { } }),
-		createProjectApi: () => ({ async loadProject() { return { document: harness.document, savedBaseToken: 'base', savedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, savedSourceContentId: 'content-1' }; } }) };
+		createProjectApi: () => ({
+			async loadProject() { return { document: harness.document, savedBaseToken: 'base', savedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, savedSourceContentId: 'content-1' }; },
+			async listAssets() { return [harness.artwork.row]; },
+			async loadAssetContent() { return { bytes: harness.artwork.bytes, mime: 'image/png' }; }
+		}) };
 });
 import { readFileSync } from 'node:fs';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { captureUnitSave } from '@portfolio/project-model/units';
+import { captureUnitSave, type CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
@@ -51,8 +81,8 @@ import {
 	type LayoutWallCurveKnot
 } from '@portfolio/layout-core';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-import { wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
-import { buildWallUnfoldDisplay, type WallUnfoldDisplay } from '$lib/layout/wall-unfold-pick';
+import { wallUnfoldSourceSpans, wallUnfoldTopPoint } from '$lib/layout/wall-unfold';
+import { buildWallUnfoldDisplay, unfoldDisplayPointAtStation, type WallUnfoldDisplay } from '$lib/layout/wall-unfold-pick';
 import {
 	buildStarterEnclosureLayout,
 	STARTER_TEMPLATE_ID_CAPTURE
@@ -69,10 +99,12 @@ import {
 	metersPerCssPixelForScaleRatio
 } from '$lib/authoring/stage/stage-drafting';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
-import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
 let component: ReturnType<typeof mount>;
+/** False after a test intentionally unmounts its route, so afterEach is not a second teardown. */
+let componentMounted = false;
 let target: HTMLElement;
 let frames = new Map<number, FrameRequestCallback>();
 let frameId = 0;
@@ -209,12 +241,16 @@ async function openPlacement(): Promise<void> {
 	await settled();
 }
 
-async function mountRoute(layout = buildStarterEnclosureLayout()): Promise<void> {
+async function mountRoute(
+	layout = buildStarterEnclosureLayout(),
+	scene?: CameraFreeSceneDocument
+): Promise<void> {
 	wallId = layout.walls[0]!.id;
-	harness.document = await createUnitProject({ id: 'project-1', name: 'Mounted gestures', layout });
+	harness.document = await createUnitProject({ id: 'project-1', name: 'Mounted gestures', layout, ...(scene === undefined ? {} : { scene }) });
 	target = document.createElement('div');
 	document.body.append(target);
 	component = mount(Page, { target });
+	componentMounted = true;
 	await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
 	await frame();
 	button('Plan').click();
@@ -264,7 +300,8 @@ afterEach(() => {
 	// it active for the next mounted route, where it would deliberately suppress
 	// ordinary Stage selection (the unfolded display owns the surface).
 	wallUnfold.exit();
-	unmount(component);
+	if (componentMounted) unmount(component);
+	componentMounted = false;
 	target.remove();
 	if (captureDescriptor === undefined)
 		Reflect.deleteProperty(HTMLElement.prototype, 'setPointerCapture');
@@ -2562,5 +2599,266 @@ describe('mounted unfolded inverse picking', () => {
 		expect(second.endKnotId).toBe(first.endKnotId);
 		expect(second.face).toBe(first.face);
 		expect(facade().selection()?.sourceId).toBe(fixture.wallId);
+	});
+});
+
+/* ------------------------------------------------------------------------- *
+ * X2 — extracted gesture lifetimes through the mounted route.
+ *
+ * These cases exercise the ownership moved into stage-artwork-interaction,
+ * stage-unfold-gestures and the input arbiter: one captured lease, one accepted
+ * operation on success, zero on cancel, unchanged selected identity, and no
+ * second history writer. The route only composes the controllers.
+ * ------------------------------------------------------------------------- */
+const ARTWORK_ID = 'gesture-artwork';
+const ARTWORK_ASSET = harness.artwork.assetId;
+
+function artworkScene(): CameraFreeSceneDocument {
+	return {
+		formatVersion: 6,
+		textures: [],
+		materials: [],
+		artworkLibrary: [
+			{ assetId: ARTWORK_ASSET, name: 'Gesture print', pixelWidth: 1, pixelHeight: 1 }
+		],
+		entities: [
+			{
+				kind: 'artwork',
+				id: ARTWORK_ID,
+				name: 'Gesture print',
+				position: [0, 1.6, 0],
+				rotation: [0, 0, 0],
+				source: { kind: 'image', assetId: ARTWORK_ASSET, pixelWidth: 1, pixelHeight: 1 },
+				widthMeters: 1.4
+			}
+		]
+	};
+}
+
+async function remountWithScene(scene: CameraFreeSceneDocument): Promise<void> {
+	unmount(component);
+	target.remove();
+	await mountRoute(buildStarterEnclosureLayout(), scene);
+	await frame();
+}
+
+/** Settle the declared reading transition into 3D without waiting on wall-clock. */
+async function settle3d(): Promise<void> {
+	const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+	button('3D').click();
+	clock.mockReturnValue(2_000);
+	for (let index = 0; index < 4; index += 1) await frame();
+	expect(facade().evaluation()?.settledReading).toBe('3d');
+}
+
+/** Dispatch a pointer event on a control (the Stage grip owns its own press). */
+function pointerOn(
+	node: EventTarget,
+	type: string,
+	point: readonly [number, number],
+	id = 1
+): void {
+	const event = new MouseEvent(type, { bubbles: true, clientX: point[0], clientY: point[1] });
+	Object.defineProperty(event, 'pointerId', { value: id });
+	Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+	node.dispatchEvent(event);
+}
+
+function gripPoint(grip: HTMLElement): [number, number] {
+	return [Number.parseFloat(grip.style.left) + RECT.left, Number.parseFloat(grip.style.top) + RECT.top];
+}
+
+async function selectArtwork(): Promise<HTMLButtonElement> {
+	await settle3d();
+	const row = indexRowOf(target, ARTWORK_ID);
+	if (row === null) throw new Error('the Artwork has no Index row');
+	row.click();
+	await frame();
+	await vi.waitFor(() => expect(target.querySelector('[aria-label="Resize Artwork"]')).not.toBeNull());
+	return target.querySelector<HTMLButtonElement>('[aria-label="Resize Artwork"]')!;
+}
+
+describe('mounted X2 gesture lifetimes', () => {
+	it('commits one Artwork resize, keeps its identity and releases the lease', async () => {
+		await remountWithScene(artworkScene());
+		const grip = await selectArtwork();
+		const start = gripPoint(grip);
+		const baseline = facade().snapshot().canonicalJson;
+
+		pointerOn(grip, 'pointerdown', start, 21);
+		expect(facade().session.gesture()?.owner).toBe('artwork-resize');
+		pointer('pointermove', [start[0] + 90, start[1] + 60], false, 21);
+		await frame();
+		pointer('pointerup', [start[0] + 90, start[1] + 60], false, 21);
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(baseline));
+		await settled();
+
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+		expect(facade().selectionState().primary?.subject.id).toBe(ARTWORK_ID);
+		expect(facade().session.gesture()).toBeNull();
+	});
+
+	it('cancels an Artwork resize on Escape with zero history and no stale lease', async () => {
+		await remountWithScene(artworkScene());
+		const grip = await selectArtwork();
+		const start = gripPoint(grip);
+		const baseline = facade().snapshot().canonicalJson;
+
+		pointerOn(grip, 'pointerdown', start, 22);
+		pointer('pointermove', [start[0] + 90, start[1] + 60], false, 22);
+		await frame();
+		key('Escape');
+		await frame();
+		pointer('pointerup', [start[0] + 90, start[1] + 60], false, 22);
+		await frame();
+
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(history().canUndo).toBe('false');
+		expect(facade().selectionState().primary?.subject.id).toBe(ARTWORK_ID);
+		expect(facade().session.gesture()).toBeNull();
+	});
+
+	it('slides the Unfold pin without a document write or history', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'multi-bezier')!;
+		await remountWith(fixture.document);
+		await enterUnfold(fixture.wallId);
+		const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === fixture.wallId)!;
+		const station = wallUnfold.anchorForWall(wall)!;
+		const point = wallUnfoldTopPoint(wall, station, facade().snapshot().domain.datumMeters)!;
+		const start = projected(point);
+		const baseline = facade().snapshot().canonicalJson;
+
+		pointer('pointerdown', start, false, 31);
+		await frame();
+		pointer('pointermove', [start[0] + 90, start[1]], false, 31);
+		await frame();
+		pointer('pointerup', [start[0] + 90, start[1]], false, 31);
+		await frame();
+
+		const moved = wallUnfold.anchorForWall(wall);
+		expect(moved).not.toBeNull();
+		expect(moved).not.toBeCloseTo(station, 6);
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(history().canUndo).toBe('false');
+	});
+
+	it('commits one unfolded Opening slide, then cancels the next without history', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'multi-bezier')!;
+		const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
+		const opening = openingOn(fixture, length * 0.4, 1.2);
+		await remountWith(opening.document);
+		await enterUnfold(fixture.wallId);
+		const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === fixture.wallId)!;
+		const display = developedDisplay(fixture);
+		const band = display.openingBands.find((candidate) => candidate.openingId === opening.openingId)!;
+		const centre = (band.stationStart + band.stationEnd) / 2;
+		const height = display.floorY + band.sillHeight + (band.headHeight - band.sillHeight) / 2;
+		const at = (station: number) => {
+			const point = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
+			return projected([point.point[0], height, point.point[1]]);
+		};
+		const start = at(centre);
+		const moved = at(centre + 0.35);
+		const compiledOffset = wall.openings.find((candidate) => candidate.openingId === opening.openingId)!.offset;
+		const baseline = facade().snapshot().canonicalJson;
+
+		pointer('pointerdown', start, false, 41);
+		await frame();
+		pointer('pointermove', moved, false, 41);
+		await frame();
+		pointer('pointerup', moved, false, 41);
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(baseline));
+		await frame();
+
+		const accepted = stageLayout(facade().snapshot()).openings.find((candidate) => candidate.id === opening.openingId)!;
+		expect(accepted.offset).toBeCloseTo(compiledOffset + 0.35, 1);
+		expect(facade().selection()?.sourceId).toBe(opening.openingId);
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+		expect(facade().session.gesture()).toBeNull();
+
+		// The next edit previews and is cancelled: the preview is cleared and the
+		// accepted source, history and selection are unchanged.
+		const acceptedJson = facade().snapshot().canonicalJson;
+		const acceptedSelection = facade().selectionState();
+		pointer('pointerdown', start, false, 42);
+		await frame();
+		pointer('pointermove', moved, false, 42);
+		await frame();
+		key('Escape');
+		await frame();
+		pointer('pointerup', moved, false, 42);
+		await frame();
+		expect(wallUnfold.previewOpening).toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(acceptedJson);
+		// Baseline unwinding is preserved: after the sheet preview is cancelled the
+		// same Escape is not a press (the sheet session is not a Stage drag), so the
+		// shared unwind clears the now-stale selection.
+		expect(acceptedSelection.primary).not.toBeNull();
+		expect(facade().selection()).toBeNull();
+	});
+
+	it('cancels an active unfolded Opening drag when the route unmounts', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'multi-bezier')!;
+		const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
+		const opening = openingOn(fixture, length * 0.4, 1.2);
+		await remountWith(opening.document);
+		await enterUnfold(fixture.wallId);
+		const display = developedDisplay(fixture);
+		const band = display.openingBands.find((candidate) => candidate.openingId === opening.openingId)!;
+		const centre = (band.stationStart + band.stationEnd) / 2;
+		const height = display.floorY + band.sillHeight + (band.headHeight - band.sillHeight) / 2;
+		const at = (station: number) => {
+			const point = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
+			return projected([point.point[0], height, point.point[1]]);
+		};
+
+		pointer('pointerdown', at(centre), false, 51);
+		await frame();
+		pointer('pointermove', at(centre + 0.35), false, 51);
+		await frame();
+		expect(wallUnfold.previewOpening).not.toBeNull();
+
+		const accepted = harness.host as StageAcceptanceHost;
+		const revisionBefore = accepted.acceptedRevision();
+		const historyBefore = accepted.history();
+		await unmount(component);
+		componentMounted = false;
+		target.remove();
+
+		// Disposal clears the captured session's display-only preview, and the
+		// unmount itself never becomes an accepted edit.
+		expect(wallUnfold.previewOpening).toBeNull();
+		expect(accepted.acceptedRevision()).toEqual(revisionBefore);
+		expect(accepted.history()).toEqual(historyBefore);
+	});
+
+	it('arms an Artwork from the Library, previews placement and cancels it cleanly', async () => {
+		await remountWithScene(artworkScene());
+		await settle3d();
+		const baseline = facade().snapshot().canonicalJson;
+
+		worldKey('Library').click();
+		await settled();
+		const artworkTab = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .sub')]
+			.find((node) => node.textContent?.trim() === 'Artwork');
+		if (artworkTab === undefined) throw new Error('the Library offers no Artwork category');
+		artworkTab.click();
+		await settled();
+		const tile = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .tile')]
+			.find((node) => node.textContent?.includes('Gesture print'));
+		if (tile === undefined) throw new Error('the Library offers no Gesture print tile');
+		tile.click();
+		await settled();
+		expect(target.textContent).toContain('Place Gesture print on the Stage');
+
+		pointer('pointermove', projected([3.5, 0, -4]));
+		await frame();
+		expect(target.textContent).toContain('Click to place');
+
+		key('Escape');
+		await frame();
+		expect(target.textContent).not.toContain('Click to place');
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(history().canUndo).toBe('false');
 	});
 });
