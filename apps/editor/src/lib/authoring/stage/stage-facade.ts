@@ -1119,7 +1119,57 @@ export function createStageFacade(input: {
 	/** Live listeners for the contribution surface; see `onAdaptersChanged`. */
 	const adapterListeners = new Set<() => void>();
 	let adaptersChangeQueued = false;
+	/**
+	 * Monotone version of every input a contributed output array can read besides
+	 * the evaluation, the accepted snapshot and the live selection/hover/task.
+	 * Adapter state that changes a preview asks for a surface change; that request
+	 * (and every registration change) lands here, so an unchanged read returns the
+	 * previous array instead of rebuilding it on every display frame.
+	 */
+	let outputsRevision = 0;
+	/**
+	 * The inputs a contributed output array reads. Identities are compared, not
+	 * contents: the session replaces its selection/task/hover records only when they
+	 * change, and the accepted snapshot only when the source is installed.
+	 */
+	type OutputInputs = {
+		readonly evaluation: ViewportEvaluation;
+		readonly revision: number;
+		readonly snapshot: StageReadSnapshot;
+		readonly selection: StageSelectionState;
+		readonly hover: StageSelectionEntry | null;
+		readonly task: StageTask | null;
+		readonly lens: StageLens;
+	};
+	function outputInputs(evaluation: ViewportEvaluation): OutputInputs {
+		return {
+			evaluation,
+			revision: outputsRevision,
+			snapshot: currentSnapshot,
+			selection: session.selectionState(),
+			hover: session.hover(),
+			task: session.task(),
+			lens: session.lens()
+		};
+	}
+	function sameOutputInputs(left: OutputInputs, right: OutputInputs): boolean {
+		return (
+			left.evaluation === right.evaluation &&
+			left.revision === right.revision &&
+			left.snapshot === right.snapshot &&
+			left.selection === right.selection &&
+			left.hover === right.hover &&
+			left.task === right.task &&
+			left.lens === right.lens
+		);
+	}
+	let overlayOutput: { inputs: OutputInputs; value: readonly StageOverlayContribution[] } | null = null;
+	let guideOutput: { inputs: OutputInputs; value: readonly StageGuideView[] } | null = null;
+	let candidateOutput: { inputs: OutputInputs; value: readonly StageCandidatePreviewView[] } | null = null;
+	let ghostOutput: { inputs: OutputInputs; value: readonly StageGhostMesh[] } | null = null;
+	let markOutput: { inputs: OutputInputs; extra: string; value: readonly StageMarkView[] } | null = null;
 	function notifyAdaptersChanged(): void {
+		outputsRevision += 1;
 		for (const listener of [...adapterListeners]) {
 			try {
 				listener();
@@ -1636,6 +1686,9 @@ export function createStageFacade(input: {
 				end: entry.end
 			});
 			rebuilt = true;
+			// The read that discovered this rebuild must not answer with the array built
+			// from the previous binding; the deferred notification still tells listeners.
+			outputsRevision += 1;
 		}
 		// A rebuild is discovered **inside a read** (`overlays()`, `tasks()`, …), and the
 		// host reads those from derived values. Notifying synchronously here would let a

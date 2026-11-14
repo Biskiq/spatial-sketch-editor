@@ -219,6 +219,16 @@ export type CameraSessionInput = {
 	readonly pose?: InspectionPose;
 };
 
+function sameViewportRect(left: ViewportRect, right: ViewportRect): boolean {
+	return (
+		left.left === right.left &&
+		left.top === right.top &&
+		left.width === right.width &&
+		left.height === right.height &&
+		left.devicePixelRatio === right.devicePixelRatio
+	);
+}
+
 export function evaluationIdOf(evaluation: ViewportEvaluation): string {
 	return `${evaluation.token.outputId}::${evaluation.token.sessionEpoch}::${evaluation.token.sourceRevision}::${evaluation.token.evaluationGeneration}`;
 }
@@ -239,6 +249,14 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 	});
 	let generation = 0;
 	let currentEvaluation: ViewportEvaluation | null = null;
+	/**
+	 * The inputs the current evaluation was produced from. A settled Stage refreshes
+	 * every display frame; re-evaluating identical inputs would mint a new object (and
+	 * therefore a new render) for a view that has not changed. Identity is retained
+	 * only while these inputs are identical, so every real change still evaluates.
+	 */
+	let lastEvaluationRect: ViewportRect | null = null;
+	let lastMinimumGroundReach: number | undefined;
 	let output = createCameraOutputState({
 		outputId: input.outputId,
 		viewportId: input.viewportId,
@@ -318,23 +336,38 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		evaluation: () => currentEvaluation,
 		evaluationId: () => (currentEvaluation === null ? null : evaluationIdOf(currentEvaluation)),
 		evaluate(rect, clockSeconds, minimumGroundReachMeters) {
-			countWork('camera:evaluate');
 			// A frame clock that has run past a reading flip's endpoint applies it
 			// exactly once *here*, at the frame that realises it. Without this the
 			// settled reading would lag the rendered one until some unrelated intent
 			// happened to arrive: the Plan toggle would still read "3D" over a plan
 			// view, and the settled endpoint would be reported by a frame nobody drew.
+			const previousState = currentState;
 			currentState = advanceViewport(currentState, clockSeconds);
 			// Source bounds calibrate Camera's own depth evaluation; they never refit
 			// the pose. Recompute after a pan as well as after an authored edit.
 			const radius = sceneRadiusOf(boundsUnion(bounds, contentBounds), currentState.pose.target);
 			if (radius !== currentState.sceneRadiusMeters) currentState = { ...currentState, sceneRadiusMeters: radius };
+			// A reading transition is an animation: its progress changes with the clock
+			// even though the settled state object does not, so it is never retained.
+			const stateUnchanged = currentState === previousState && currentState.transition === null;
+			if (
+				stateUnchanged &&
+				currentEvaluation !== null &&
+				lastEvaluationRect !== null &&
+				sameViewportRect(lastEvaluationRect, rect) &&
+				lastMinimumGroundReach === minimumGroundReachMeters
+			) {
+				return { kind: 'evaluated', evaluation: currentEvaluation };
+			}
+			countWork('camera:evaluate');
 			generation += 1;
 			const evaluationState = minimumGroundReachMeters === undefined
 				? currentState
 				: { ...currentState, minimumGroundReachMeters };
 			const result = evaluateViewport(evaluationState, rect, clockSeconds, generation);
 			currentEvaluation = result.kind === 'evaluated' ? result.evaluation : null;
+			lastEvaluationRect = currentEvaluation === null ? null : { ...rect };
+			lastMinimumGroundReach = minimumGroundReachMeters;
 			return result;
 		},
 		applyIntent(intent, clockSeconds) {
@@ -371,6 +404,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			// any more: dropping it is the honest answer until the host evaluates the
 			// new source, and it stops a stale token being handed out as live.
 			currentEvaluation = null;
+			lastEvaluationRect = null;
 			const rebasedOutput = rebaseCameraOutputSource(output, sourceRevision);
 			output = rebasedOutput.state;
 			if (rebasedOutput.kind === 'rebased') {
@@ -534,6 +568,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			if (lookThroughState !== null) return false;
 			currentState = state;
 			currentEvaluation = null;
+			lastEvaluationRect = null;
 			return true;
 		},
 		commitLookThrough() {
