@@ -22,6 +22,8 @@ import { PCFShadowMap } from 'three';
 	import VisitorEntities from './VisitorEntities.svelte';
 	import VisitorLayoutShell from './VisitorLayoutShell.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
+	import StoreMaterial from '$lib/render/resources/StoreMaterial.svelte';
+	import type { LambertMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 
 	let {
@@ -86,6 +88,8 @@ import { PCFShadowMap } from 'three';
 
 	/** One render-resource owner for the Preview Canvas (E7); see `StageCanvas`. */
 	const resources = provideRenderResources();
+	/** The paper reading's ground disc, from the Canvas store (E9/R2c). */
+	const PAPER_GROUND: LambertMaterialDescriptor = { kind: 'lambert', color: '#e2e5de' };
 	onDestroy(() => resources.dispose());
 
 	const visitorState = $derived.by(() => {
@@ -430,7 +434,7 @@ import { PCFShadowMap } from 'three';
 				<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 				<T.Mesh rotation.x={-Math.PI / 2} position={[0, -0.02, 0]} receiveShadow>
 					<T.CircleGeometry args={[90, 48]} />
-					<T.MeshLambertMaterial color="#e2e5de" />
+					<StoreMaterial descriptor={PAPER_GROUND} />
 				</T.Mesh>
 			{:else}
 				<T.AmbientLight intensity={0.12} />

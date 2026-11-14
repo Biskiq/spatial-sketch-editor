@@ -49,7 +49,9 @@ const REPRESENTATIONS = [
 	`${LIB}/render/layout-object-representation.ts`,
 	`${LIB}/render/layout-room-representation.ts`,
 	// E7/R4: the retained primitive/Form representation.
-	`${LIB}/render/scene-entity-representation.ts`
+	`${LIB}/render/scene-entity-representation.ts`,
+	// E9/R5: its Artwork family handler.
+	`${LIB}/render/scene-artwork-representation.ts`
 ];
 /**
  * The one permitted `$lib/visitor` edge: three constant strings with no imports
@@ -58,7 +60,7 @@ const REPRESENTATIONS = [
  */
 const VISITOR_PRESENTATION = `${LIB}/visitor/room-presentation.ts`;
 
-const REPRESENTATION_FILE = /(?:layout-(?:wall|object|room)|scene-entity)-representation\.ts$/;
+const REPRESENTATION_FILE = /(?:layout-(?:wall|object|room)|scene-entity|scene-artwork)-representation\.ts$/;
 
 /** A layer no resource module may reach, by resolved path. */
 function forbiddenForStores(relative: string): boolean {
@@ -73,6 +75,17 @@ function forbiddenForStores(relative: string): boolean {
 /** Representations additionally may not read authored Scene truth. */
 function forbiddenForRepresentations(relative: string): boolean {
 	return forbiddenForStores(relative) || relative.startsWith('packages/project-model/');
+}
+
+/**
+ * The one permitted representation → representation edge: the Scene root owns
+ * its Artwork family handler (E9). Nothing else may import a representation.
+ */
+const SCENE_ROOT = `${LIB}/render/scene-entity-representation.ts`;
+const SCENE_ARTWORK = `${LIB}/render/scene-artwork-representation.ts`;
+function forbiddenFor(file: string, relative: string): boolean {
+	if (file === SCENE_ROOT && relative === SCENE_ARTWORK) return false;
+	return forbiddenForRepresentations(relative);
 }
 
 function absolute(relative: string): string {
@@ -152,7 +165,7 @@ describe('render-layer-boundary: representations consume compiled output and sto
 	for (const file of REPRESENTATIONS) {
 		it(`${path.basename(file)} imports no authored-unit, compile, codec or session module`, () => {
 			const offenders = resolvedImports(file)
-				.filter(({ resolved }) => resolved !== null && forbiddenForRepresentations(resolved))
+				.filter(({ resolved }) => resolved !== null && forbiddenFor(file, resolved))
 				.map(({ specifier, resolved }) => `${specifier} → ${resolved}`);
 			expect(offenders).toEqual([]);
 		});
@@ -164,7 +177,7 @@ describe('render-layer-boundary: representations consume compiled output and sto
 			const offenders = [...importClosure([absolute(file)])]
 				.map(relativeToRepo)
 				.filter((member) => member !== file)
-				.filter(forbiddenForRepresentations)
+				.filter((member) => forbiddenFor(file, member))
 				.sort();
 			expect(offenders).toEqual([]);
 		});

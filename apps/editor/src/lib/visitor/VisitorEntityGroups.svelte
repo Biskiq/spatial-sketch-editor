@@ -6,9 +6,10 @@
 	 * so entities render directly under the world root with no frame transform.
 	 *
 	 * E7 moved primitives and Forms onto the retained representation (mounted once
-	 * as `entities.object3d`, patched by item key). Models, artwork and lights keep
-	 * their existing components until their own packets install handlers; exactly
-	 * one of the two paths draws any given entity, so nothing renders twice.
+	 * as `entities.object3d`, patched by item key) and E9 added its Artwork handler.
+	 * Models and lights keep their existing components until their own packets
+	 * install handlers; exactly one of the two paths draws any given entity, so
+	 * nothing renders twice.
 	 *
 	 * The model renderer is a prop rather than an import: the public preview keeps
 	 * its static `AssetModel` (unchanged first-load graph), while the editor Stage
@@ -16,7 +17,7 @@
 	 * one implementation, so editor and visitor cannot drift.
 	 */
 	import type { Object3D } from 'three';
-	import { T } from '@threlte/core';
+	import { T, useThrelte } from '@threlte/core';
 	import type {
 		RuntimeScene,
 		SceneDocument,
@@ -37,7 +38,6 @@
 		describeSceneRender,
 		type SceneFormSupport
 	} from '$lib/render/scene-render-description';
-	import EntityArtwork from '$lib/museum/entities/EntityArtwork.svelte';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import EntityLight from '$lib/museum/entities/EntityLight.svelte';
 
@@ -92,11 +92,19 @@
 	 * Materials and geometry are leases on this Canvas's stores.
 	 */
 	const resources = useRenderResources();
+	const { invalidate } = useThrelte();
 	const entities = createSceneEntityRepresentation({
 		store: resources.materials,
 		geometry: resources.geometry,
 		scope: () => textureScope,
-		onRoot: (id, root) => onEntityRoot?.(id, root)
+		onRoot: (id, root) => onEntityRoot?.(id, root),
+		// Read inside the update effect, so a replaced scope re-runs it.
+		artworkScope: () => artworkScope,
+		onArtworkArrival: () => {
+			invalidate();
+			onFormRendererReady?.();
+		},
+		onArtworkError: (message) => onArtworkError?.(message)
 	});
 
 	/**
@@ -138,6 +146,9 @@
 		const description = describeSceneRender(scene, formSupport);
 		const stats = entities.update(description);
 		if (stats.forms > 0) onFormRendererReady?.();
+		const art = stats.artworks;
+		// A moved or rebuilt Artwork changed the frame imperatively; Threlte cannot see it.
+		if (art.rebodied + art.moved + art.released + art.detached > 0) invalidate();
 	});
 
 	$effect(() => () => entities.dispose());
@@ -164,8 +175,6 @@
 				/>
 			</T.Group>
 		{/if}
-	{:else if entity.kind === 'artwork'}
-		<EntityArtwork {entity} scope={artworkScope} onError={onArtworkError} onReady={onFormRendererReady} />
 	{:else if includeLights && isSceneLightEntity(entity)}
 		<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 			<EntityLight {entity} />

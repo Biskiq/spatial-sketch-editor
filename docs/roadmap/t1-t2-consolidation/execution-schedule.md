@@ -261,6 +261,10 @@ are in the factory; editor ink remains separately allowed. E8 and E9 together co
 **Rollback:** artwork handler/resources together; the alpha optimization independently. Retain the
 factory acquisition interface for environment/plinth even if artwork parity requires a fallback.
 
+**Retained exception (E9 result):** the custom depth/distance materials stay. Surface `alphaTest`
+would match the shadow but discard blended texels below 0.5 in the colour pass. The exception is
+the same two tokens, moved to `render/scene-artwork-representation.ts`; see `measurements.md` (E9).
+
 ### E10 — Resolved lights (R6)
 
 **Depends:** E8 + E9 and separate Directional retirement under owner decision D4. **Owns:** resolved

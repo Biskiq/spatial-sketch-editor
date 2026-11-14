@@ -316,3 +316,84 @@ accounting and the stale-arrival gate.
   `shadow-invalidation.ts`. The channel stays harmless: nothing else listens.
 - R5/R2c: revert `AssetModel.svelte` and `model-realization.ts` together with the deleted
   `instance-material-remap.ts`. The store's `imported` kind is additive and can stay.
+
+## E9/R5 + R2c — Artwork and the remaining world materials
+
+**Date:** 2026-11-14. **Branch:** `claude/e9-artwork-world-materials` (from `main` `d67d1172`).
+**Scope:** Artwork realization through a retained Scene handler, keyed Artwork geometry, and the
+Artwork, World-ground, paper-ground and plinth materials through the Canvas `MaterialStore`. Not E10
+(lights) and not E8's model exception. Every value is a **counted** number; no wall-clock claim.
+
+### Identical-fixture counts and parity
+
+Method: the removed `EntityArtwork.svelte` was restored from `main` into a temporary probe (not
+committed) and mounted under a real Threlte `<T>` tree. The same entities were realized through
+`createSceneArtworkRepresentation` with the stores. Counts are distinct geometry and material objects
+in the drawn tree; custom depth and distance materials count as materials. Parity compares every
+mesh's world matrix, float32 vertex positions, index count, material type, colour, map presence,
+`transparent`, `opacity`, `depthWrite`, `alphaTest`, `side`, `toneMapped`, `castShadow`,
+`receiveShadow`, and the custom depth/distance type, `alphaTest`, packing and map.
+
+| Fixture | Meshes before/after | Geometries before → after | Materials before → after | Differing meshes |
+| --- | ---: | ---: | ---: | ---: |
+| 20 framed (gallery + Mat), 4 sizes | 80 / 80 | 80 → **13** (1 + 3·4) | 80 → **3** | 0 |
+| 20 thin black (no Mat), 4 sizes | 60 / 60 | 60 → **9** (1 + 2·4) | 60 → **3** | 0 |
+| 20 unframed, 4 sizes | 20 / 20 | 20 → **1** | 20 → **1** | 0 |
+| 2 transparent framed, 1 size | 8 / 8 | 8 → **4** | 12 → **5** | 0 |
+| Ghost, transparent framed | 4 / 4 | 4 → 4 | 4 → 3 | 0 |
+| Ghost, thin | 3 / 3 | 3 → 3 | 3 → 3 | 0 |
+
+The gallery Mat and gallery backing are both the Mat colour, so they share one Lambert lease. The
+frame colour is not part of a buffer key, so two frame colours of one size share the ring.
+
+Committed tests: `tests/lib/render/scene-artwork-representation.test.ts` (20 tests) pins the same
+counts against the baseline inventory restated from the component's template, plus fidelity, the
+alpha exception, ghost, arrivals, stale and drawn-source replacement, scope swap, failure, disposal
+and retained edits (move, resize, remove). `tests/lib/render/artwork-world-mounted.test.ts` (5 tests)
+mounts the real `VisitorEntityGroups`, `WorldEnvironment` and `GroundPlinth`: draw on arrival,
+invalidate and notify, one shared image material, a scope swap without a new Scene, a cold visitor
+with no scope, the ground swap by key, and zero material, geometry and image leases after unmount.
+
+### Retained alpha exception (R5)
+
+Silhouette parity was **not** taken as proof for removal. Moving `alphaTest: 0.5` onto the surface
+gives the same shadow, but it also discards texels below 0.5 in the colour pass, which the blended
+surface draws today. The colour image would differ, so the custom depth and distance materials stay.
+They are now store leases keyed by texture identity, shared across Artworks of one image (2
+transparent Artworks: 4 → 2 shadow materials). The portability allowlist entry moved from
+`museum/entities/EntityArtwork.svelte` to `render/scene-artwork-representation.ts` with the same two
+tokens.
+
+### Ownership evidence
+
+- `material-factory-boundary`: the `MaterialStore` constructs at 6 sites (Lambert, depth, distance
+  added). The R2 allowlist drops `EntityArtwork.svelte`, `GroundPlinth.svelte`,
+  `WorldEnvironment.svelte` and `VisitorPreviewSurface.svelte`. Only `EntityLight.svelte` (E10) is
+  left. A new test asserts the handler, `StoreMaterial.svelte` and the grounds acquire and never construct.
+- `render-layer-boundary`: the handler is a representation (no project-model, authoring or visitor
+  edge). The one representation → representation edge is the Scene root owning its Artwork handler.
+- Picking is unchanged: Artwork was never pick-registered, and the handler registers nothing.
+- Shadows: the arrival path is unchanged (`onFormRendererReady`), and Artwork publishes no caster
+  event. `tests/lib/render/shadow-g4-counts.test.ts` passes unchanged.
+- `WorldEnvironment` lights are untouched (E10).
+
+### Limitations
+
+- **Browser QA:** see the PR for the focused Stage/Preview spot check. The owner's manual acceptance
+  applies.
+- **Heavy lane not run locally**, per the shared heavy-test slot rule with X4 (PR #338). CI runs it.
+
+### Correction after review (same PR, counts unchanged)
+
+- **Invalidate on re-source:** a drawn Artwork whose source or scope is replaced leaves the frame
+  imperatively. The handler reports it as `detached`, and `VisitorEntityGroups` and
+  `StageArtworkGhost` invalidate on it, as the component's unmount did. Without it an on-demand
+  Canvas could keep the old picture until the next frame. Tests: the scope-swap cases in both suites.
+
+### Rollback
+
+- Artwork: revert `scene-artwork-representation.ts`, `artwork-geometry.ts`, the artwork specs in
+  `scene-render-item.ts` and `geometry-store.ts`, the description and dispatch edits, and
+  `StageArtworkGhost.svelte` together, and restore `EntityArtwork.svelte` with its allowlist entries.
+- The store's `lambert`, `depth` and `distance` kinds and `StoreMaterial.svelte` are additive and can
+  stay. The environment and plinth acquisition stays even if Artwork reverts.

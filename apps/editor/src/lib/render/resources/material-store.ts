@@ -24,7 +24,12 @@
  */
 import {
 	MeshBasicMaterial,
+	MeshDepthMaterial,
+	MeshDistanceMaterial,
+	MeshLambertMaterial,
 	MeshStandardMaterial,
+	RGBADepthPacking,
+	BasicDepthPacking,
 	ShadowMaterial,
 	type Material,
 	type Texture
@@ -105,12 +110,16 @@ function boundMaps(
 	descriptor: MaterialDescriptor,
 	maps: MaterialTextureMaps | undefined
 ): Partial<Record<MaterialTextureSlotKey, Texture>> | null {
-	const declared =
+	const declared: Readonly<Partial<Record<MaterialTextureSlotKey, string>>> | undefined =
 		descriptor.kind === 'standard'
 			? descriptor.textures
 			: descriptor.kind === 'imported'
 				? descriptor.remap?.textures
-				: undefined;
+				: descriptor.kind === 'lambert' || descriptor.kind === 'depth' || descriptor.kind === 'distance'
+					? descriptor.map === undefined
+						? undefined
+						: { map: descriptor.map }
+					: undefined;
 	if (declared === undefined) return null;
 	const bound: Partial<Record<MaterialTextureSlotKey, Texture>> = {};
 	for (const slot of MATERIAL_TEXTURE_SLOTS) {
@@ -178,7 +187,29 @@ function construct(
 			return new MeshBasicMaterial({
 				color: descriptor.color,
 				...(descriptor.wireframe === undefined ? {} : { wireframe: descriptor.wireframe }),
-				...(descriptor.toneMapped === undefined ? {} : { toneMapped: descriptor.toneMapped })
+				...(descriptor.toneMapped === undefined ? {} : { toneMapped: descriptor.toneMapped }),
+				...(descriptor.vertexColors === undefined ? {} : { vertexColors: descriptor.vertexColors }),
+				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite })
+			});
+		case 'lambert':
+			return new MeshLambertMaterial({
+				...(descriptor.color === undefined ? {} : { color: descriptor.color }),
+				...(descriptor.transparent === undefined ? {} : { transparent: descriptor.transparent }),
+				...(descriptor.opacity === undefined ? {} : { opacity: descriptor.opacity }),
+				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite }),
+				...(descriptor.vertexColors === undefined ? {} : { vertexColors: descriptor.vertexColors }),
+				...(bound === null ? {} : bound)
+			});
+		case 'depth':
+			return new MeshDepthMaterial({
+				depthPacking: descriptor.packing === 'rgba' ? RGBADepthPacking : BasicDepthPacking,
+				...(descriptor.alphaTest === undefined ? {} : { alphaTest: descriptor.alphaTest }),
+				...(bound === null ? {} : bound)
+			});
+		case 'distance':
+			return new MeshDistanceMaterial({
+				...(descriptor.alphaTest === undefined ? {} : { alphaTest: descriptor.alphaTest }),
+				...(bound === null ? {} : bound)
 			});
 		case 'shadow':
 			return new ShadowMaterial({

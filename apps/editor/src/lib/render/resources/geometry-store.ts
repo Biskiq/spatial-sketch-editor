@@ -26,10 +26,12 @@ import {
 	type BufferGeometry
 } from 'three';
 import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+import { artworkBackingGeometry, artworkFrameGeometry, artworkMatGeometry } from '../artwork/artwork-geometry';
 import { geometryKeyOf, type GeometrySpec } from './scene-render-item';
 
 export { geometryKeyOf } from './scene-render-item';
 export type {
+	ArtworkGeometrySpec,
 	FormGeometrySpec,
 	FormPlane,
 	GeometrySpec,
@@ -64,6 +66,9 @@ export type GeometryStore = {
 
 function construct(spec: GeometrySpec): BufferGeometry {
 	if (spec.kind === 'form') return buildFormGeometry(spec.mesh, spec.plane);
+	if (spec.kind === 'artwork-frame') return artworkFrameGeometry(spec);
+	if (spec.kind === 'artwork-mat') return artworkMatGeometry(spec);
+	if (spec.kind === 'artwork-backing') return artworkBackingGeometry(spec);
 	switch (spec.shape) {
 		case 'box':
 			return new BoxGeometry(1, 1, 1);
