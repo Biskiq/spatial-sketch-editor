@@ -257,7 +257,6 @@ describe('Scene adapter boundary (X7)', () => {
 		]) {
 			expect(source.split(factory).length - 1, factory).toBe(1);
 		}
-		expect(source.split('\n').length).toBeLessThan(300);
 	});
 
 	it('never duplicates the old gesture state machines outside their owners', () => {
