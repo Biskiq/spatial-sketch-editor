@@ -14,7 +14,7 @@
     releaseMaterialVariant,
     type LoadedTextureMaps,
     type TextureLoadScope
-  } from './texture-cache';
+  } from '$lib/render/resources/texture-store';
 
   let {
     materialId,

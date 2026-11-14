@@ -137,3 +137,82 @@ count probe cannot attribute cost — its L run spends most of its wall clock ou
 Paper's share is neither measured nor declined; no conclusion is drawn either way. No incremental
 cache, new cache key or second geometry path was added; the step-1 drawing remains the fallback and
 the step-2 gate stays open for a later measured trace.
+
+## E6/R2a + R3 — Layout resources and retained Rooms
+
+**Date:** 2026-11-14. **Branch:** `e6-layout-resources-retained-rooms` (from `main` `ea4e236c`,
+E1/E2/E3/E4/E5 landed). **Scope:** R2a's material/texture stores and Layout surfaces, and R3's
+retained Room representation — not R2b's Scene materials, not deferred texture release, not
+floor/ceiling batching (E11). Every value below is either a **counted** number with its source or
+**unmeasured**. No wall-clock claim is made.
+
+### Gate A prerequisite (D4)
+
+`88be0561` (`T2.S0: Gate A accepted — pipeline, artwork fidelity, and light units`, PR #291) is an
+ancestor of this branch's base, so the accepted pipeline record
+([`pipeline.md`](../t2-look-atmosphere/s0-rendering-gate/pipeline.md)) is landed, not a draft. The
+store encodes it and re-decides none of it: it sets no tone mapping, exposure or output colour
+space, and `toneMapped` is only the per-material opt-out the record already permits. **Not** covered
+by this slice: the record's Stage-snapshot sRGB warning, which the snapshot path owns and this
+packet did not touch.
+
+### R3 baseline, counted before the change
+
+One bounded probe (not committed) compiled `grid-7` (M) and `grid-14` (L) through the production
+compiler and then ran, per compiled Room, the **exact Three calls the `VisitorLayoutShell` template
+made**: two `Shape` objects, then three `ShapeGeometry` constructions (floor, floor-shadow from the
+same `Shape`, ceiling). The wall-clock trace was not run (see below), so nothing here is a duration.
+
+| Tier | Rooms | Floor+ceiling triangle vertices | `Shape` objects | Triangulations | Geometries | Material components |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| M | 49 | 392 | 98 | **147** | 147 | 147 |
+| L | 196 | 1,568 | 392 | **588** | 588 | 588 |
+
+/ `ShapeGeometry` vertices, not triangles: four per quad at these polygons. The table reproduces
+audit 6.5's A4 counts exactly (M 147 / L 588 triangulations and materials), which is the cross-check
+that the probe measures the path the shell shipped.
+
+Component mounts are **derived from the template**, not mounted: 1 `T.Group` + 3 `T.Mesh` +
+3 `T.ShapeGeometry` + 3 `T.*Material` = 10 per Room (≈490 at M, ≈1,960 at L; audit 6.5's "≈10").
+
+### After the change, counted
+
+The same compiler output through `createRoomRepresentation`: one `ShapeGeometry` per Room surface,
+the floor's shared by the floor and the floor-shadow mesh.
+
+| Tier | Rooms | Triangulations | Shared geometries | Materials (all Rooms) | Room components |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| M | 49 | **98** | 98 | **3** | 0 |
+| L | 196 | **392** | 392 | **3** | 0 |
+
+Total vertices are identical before and after (M 392, L 1,568) and the parity test compares every
+Room's floor, floor-shadow and ceiling **world** vertices against the component path, so the saving
+is a removed duplicate triangulation and a shared material, never a different surface.
+
+Material identity is counted through the store, not inferred: 196 Rooms acquire `created = 3`,
+`live = 3`, and a compile takes no new acquisition; a second representation of the same look shares
+the instance. Those assertions live in `tests/lib/render/resources/material-store.test.ts`,
+`tests/lib/render/layout-room-representation.test.ts` and `tests/lib/render/default-wall-material.test.ts`.
+
+### H-R3 — the open-time hypothesis failed to be measured
+
+R3's hypothesis is that per-Room Svelte mounting is the largest remaining term in the L open render
+gap, and its "measure first" step is **one trace of the L open** split into shell mount,
+representation updates, Paper build, pick index, first shadow and first frame. That trace is
+**unmeasured**: this environment has the browser evidence gap recorded for E0 above (headless
+launches hang in the Stage flow; a synchronous command is capped at 295 s), and D1 permits one named
+trace, not retries. Per R3's own rule the slice still proceeds as an ownership refactor, and this
+record states the failed hypothesis:
+
+- The ownership result **is** proved: 588 → 392 triangulations, 588 → 3 materials, ≈1,960 → 0 Room
+  components at L, with identical world vertices.
+- Whether Room mounting was the largest term in the open gap is **not proved**, and no term is
+  claimed dominant. The dominant term stays a flag for a measured trace.
+- R3's gated batching step was **not attempted**: it requires a measured L pan frame that is
+  draw-bound, and no draw measurement exists. It stays with E11.
+
+### Unmeasured
+
+Frames at rest, live `renderer.info` geometries/materials/textures, draws per frame, the L-open trace
+split, and the post-change open-gap re-recording. The Room component counts are derived from the
+template's inventory, not read from a running Canvas.

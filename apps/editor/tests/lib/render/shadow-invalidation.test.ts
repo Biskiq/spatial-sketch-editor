@@ -253,8 +253,13 @@ describe('the default lighting policy', () => {
 	});
 
 	it('keeps Walls casting and receiving, and the unlit floor eligible', () => {
-		const shell = read('src/lib/visitor/VisitorLayoutShell.svelte');
-		expect(shell).toMatch(/VisitorFloorShadow:[\s\S]*?receiveShadow[\s\S]*?<T\.ShadowMaterial/);
+		// E6/R3: the floor and its shadow catcher moved into the retained Room
+		// representation; the unlit floor still cannot receive, so the catcher that
+		// shares its geometry keeps the Room eligible for an authored light.
+		const rooms = read('src/lib/render/layout-room-representation.ts');
+		expect(rooms).toMatch(/kind: 'shadow'/);
+		expect(rooms).toMatch(/floorShadow\.receiveShadow = true;/);
+		expect(rooms).not.toMatch(/floor\.receiveShadow = true;/);
 		const walls = read('src/lib/render/layout-wall-representation.ts');
 		expect(walls).toContain('mesh.castShadow = true');
 		expect(walls).toContain('mesh.receiveShadow = true');

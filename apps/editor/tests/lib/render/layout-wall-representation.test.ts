@@ -27,6 +27,7 @@ import {
 import { immutableF4Data } from '@portfolio/project-model';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
+import { createMaterialStore } from '$lib/render/resources/material-store';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { startStageCounting } from '../../helpers/stage-counts';
 
@@ -55,7 +56,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 	it('builds one mesh per Wall on the first update and nothing on the second', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const geometry = compiled(document);
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 
 		const first = representation.update(geometry);
 		expect(first.walls).toBe(geometry.walls.length);
@@ -85,7 +86,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		// absolute bound here is fixture-specific and the invariant below
 		// (built + retained = walls) is the one that holds everywhere.
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		const base = compiled(document);
 		representation.update(base);
 		const before = meshes(representation);
@@ -119,7 +120,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 
 	it('releases a departed Wall s buffers in the same update', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		const base = compiled(document);
 		representation.update(base);
 
@@ -144,12 +145,12 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		const edited = moved(document);
 		const geometry = compiled(edited);
 
-		const incremental = createWallRepresentation();
+		const incremental = createWallRepresentation(createMaterialStore());
 		const base = compiled(document);
 		incremental.update(base);
 		incremental.update(geometry);
 
-		const fresh = createWallRepresentation();
+		const fresh = createWallRepresentation(createMaterialStore());
 		fresh.update(geometry);
 
 		const incrementalMeshes = meshes(incremental);
@@ -170,7 +171,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 	it('disposes every mesh buffer exactly once', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const geometry = compiled(document);
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		representation.update(geometry);
 		// Count per geometry, not per call: "at least N calls" also passes on a
 		// double dispose, which is the failure mode that matters here.
@@ -198,7 +199,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 describe('E1/R1 — owned render identity on the wall representation', () => {
 	it('objectOf returns the retained mesh, tagged with its id, for every compiled Wall', () => {
 		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		representation.update(geometry);
 		for (const wall of geometry.walls) {
 			const object = representation.objectOf(wall.wallId);
@@ -212,7 +213,7 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 
 	it('resolves by identity, so renaming an object changes nothing', () => {
 		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		representation.update(geometry);
 		const wall = geometry.walls[0]!;
 		const object = representation.objectOf(wall.wallId)!;
@@ -224,7 +225,7 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 
 	it('indexes whatever object currently draws each Wall after an edit, and is null after release', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		const base = compiled(document);
 		representation.update(base);
 		const before = new Map(base.walls.map((wall) => [wall.wallId, representation.objectOf(wall.wallId)!] as const));
@@ -256,7 +257,7 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 			const writes = [] as number[];
 			for (const tier of ['small', 'medium'] as const) {
 				const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS[tier]));
-				const representation = createWallRepresentation();
+				const representation = createWallRepresentation(createMaterialStore());
 				representation.update(geometry);
 				const ids = geometry.walls.map((wall) => wall.wallId);
 				counting.reset();
@@ -286,7 +287,7 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 
 	it('remembers the hidden set: a rebuilt Wall stays hidden and a later Wall is born hidden', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		const base = compiled(document);
 		// Hidden before the Wall exists: it must be born hidden.
 		const early = base.walls[0]!.wallId;
@@ -314,7 +315,7 @@ describe('E1/R1 — owned render identity on the wall representation', () => {
 		const base = session.compile(document).geometry;
 		ensureLayoutWorldIndex(document);
 		const target = document.walls[4]!.id;
-		const representation = createWallRepresentation();
+		const representation = createWallRepresentation(createMaterialStore());
 		representation.update(base);
 		const mesh = representation.objectOf(target)!;
 		representation.setHidden(new Set([target]));

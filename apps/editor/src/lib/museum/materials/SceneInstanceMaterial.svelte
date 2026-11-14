@@ -9,7 +9,7 @@
 		releaseEffectiveVariant,
 		type LoadedTextureMaps,
 		type TextureLoadScope
-	} from './texture-cache';
+	} from '$lib/render/resources/texture-store';
 	import type { EffectiveSceneMaterial } from './scene-instance-material';
 
 	let {

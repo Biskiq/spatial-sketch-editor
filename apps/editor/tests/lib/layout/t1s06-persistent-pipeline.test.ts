@@ -10,6 +10,7 @@ import {
 import { immutableF4Data } from '@portfolio/project-model';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
+import { createMaterialStore } from '$lib/render/resources/material-store';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 function observe<T>(run: () => T) {
@@ -29,7 +30,7 @@ describe('persistent candidate → certification → compile → indexed consume
   const session = createLayoutCompileSession();
   let geometry = session.compile(document).geometry;
   ensureLayoutWorldIndex(document);
-  const walls = createWallRepresentation(), objects = createObjectRepresentation();
+  const store = createMaterialStore(), walls = createWallRepresentation(store), objects = createObjectRepresentation(store);
   walls.update(geometry); objects.update(geometry);
   const original = exact(geometry);
   const originalGeometry = geometry;

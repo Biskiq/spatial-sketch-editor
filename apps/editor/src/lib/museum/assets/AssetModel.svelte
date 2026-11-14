@@ -25,7 +25,7 @@
     releaseModelMaterialRemap,
     type RemapKey
   } from './instance-material-remap';
-  import { loadEffectiveTextures, type TextureLoadScope } from '$lib/museum/materials/texture-cache';
+  import { loadEffectiveTextures, type TextureLoadScope } from '$lib/render/resources/texture-store';
 
   const ZERO: Vec3 = [0, 0, 0];
 

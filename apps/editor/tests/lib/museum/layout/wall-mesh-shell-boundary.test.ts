@@ -26,6 +26,7 @@ const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../sr
 const shellPath = resolve(srcRoot, 'lib/visitor/VisitorLayoutShell.svelte');
 const representationPath = resolve(srcRoot, 'lib/render/layout-wall-representation.ts');
 const objectRepresentationPath = resolve(srcRoot, 'lib/render/layout-object-representation.ts');
+const roomRepresentationPath = resolve(srcRoot, 'lib/render/layout-room-representation.ts');
 const shadowTriggersPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageShadowTriggers.svelte');
 const shadowInvalidationPath = resolve(srcRoot, 'lib/render/shadow-invalidation.ts');
 const stageCanvasPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageCanvas.svelte');
@@ -37,6 +38,7 @@ const factoryPath = resolve(srcRoot, 'lib/museum/layout/wall-material-factory.ts
 const shell = () => readFileSync(shellPath, 'utf8');
 const representation = () => readFileSync(representationPath, 'utf8');
 const objectRepresentation = () => readFileSync(objectRepresentationPath, 'utf8');
+const roomRepresentation = () => readFileSync(roomRepresentationPath, 'utf8');
 const shadowTriggers = () => readFileSync(shadowTriggersPath, 'utf8');
 const shadowInvalidation = () => readFileSync(shadowInvalidationPath, 'utf8');
 const stageCanvas = () => readFileSync(stageCanvasPath, 'utf8');
@@ -59,9 +61,11 @@ describe('G4 visitor shell boundary', () => {
 		expect(shell()).not.toContain('buildRoomWallMesh');
 		expect(shell()).not.toContain('toWallBufferGeometry');
 		expect(shell()).not.toContain('createVisitorWallMaterialFactory');
-		// Door portals and floor/ceiling ShapeGeometry stay with the shell.
+		// Door portals stay with the shell; E6/R3 moved the floor/ceiling
+		// triangulation into the retained Room representation.
 		expect(shell()).toContain('RoomPortal');
-		expect(shell()).toContain('ShapeGeometry');
+		expect(shell()).not.toContain('ShapeGeometry');
+		expect(roomRepresentation()).toContain('ShapeGeometry');
 	});
 
 	it('keeps the visitor wall-material factory free of editor imports', () => {
@@ -86,16 +90,23 @@ describe('G4 visitor shell boundary', () => {
 		const owned = objectRepresentation();
 		expect(owned).toContain('geometry.objects');
 		expect(owned).toContain('VisitorLayoutObject:');
-		expect(owned).toContain('MeshStandardMaterial');
+		// E6/R2a: the surface is a descriptor acquired from the Canvas store, so
+		// the representation itself no longer constructs a material.
+		expect(owned).toContain('OBJECT_SURFACE');
+		expect(owned).toContain('store.acquire(');
 		expect(shell()).toContain('createObjectRepresentation');
 		expect(shell()).toContain('objects.object3d');
-		// Teardown must not live in the update effect: Svelte runs a returned
-		// cleanup before each re-run, and `geometry` changes identity on every
-		// compile, so a combined effect would dispose the representation and then
-		// update a disposed one.
-		expect(shell()).toContain('$effect(() => () => walls.dispose());');
-		expect(shell()).toContain('$effect(() => () => objects.dispose());');
-		expect(shell()).not.toMatch(/\$effect\(\(\) => \{[\s\S]{0,200}?return \(\) => (walls|objects)\.dispose\(\);/);
+		// Teardown must not live in an update effect: Svelte runs a returned cleanup
+		// before each re-run, and `geometry` changes identity on every compile, so a
+		// combined effect would dispose the representation and then update a
+		// disposed one. One teardown effect releases the representations first and
+		// the material store last, because they lease from it.
+		const teardown = /\$effect\(\s*\(\) => \(\) => \{([\s\S]*?)\}\s*\);/u.exec(shell())?.[1] ?? '';
+		expect(teardown).toContain('rooms.dispose()');
+		expect(teardown.indexOf('walls.dispose()')).toBeGreaterThan(teardown.indexOf('rooms.dispose()'));
+		expect(teardown.indexOf('objects.dispose()')).toBeGreaterThan(teardown.indexOf('walls.dispose()'));
+		expect(teardown.indexOf('materials.dispose()')).toBeGreaterThan(teardown.indexOf('objects.dispose()'));
+		expect(shell()).not.toMatch(/\$effect\(\(\) => \{[\s\S]{0,200}?return \(\) => (walls|objects|rooms)\.dispose\(\);/);
 		// The per-object component loop is gone, so nothing re-creates a geometry
 		// per render from the compiled object list.
 		expect(shell()).not.toContain('geometry.objects as object');

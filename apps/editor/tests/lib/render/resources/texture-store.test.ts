@@ -7,7 +7,7 @@ import {
 	releaseEffectiveVariant,
 	resetTextureCachesForTests,
 	setDefaultTextureSourceLoader
-} from '$lib/museum/materials/texture-cache';
+} from '$lib/render/resources/texture-store';
 import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 import type { Texture as ThreeTexture, Vector2 } from 'three';
 

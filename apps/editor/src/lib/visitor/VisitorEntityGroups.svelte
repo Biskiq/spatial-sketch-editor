@@ -26,7 +26,7 @@
 		isScenePrimitiveEntity
 	} from '$lib/content/scene';
 	import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
-	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import EntityArtwork from '$lib/museum/entities/EntityArtwork.svelte';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import EntityLight from '$lib/museum/entities/EntityLight.svelte';

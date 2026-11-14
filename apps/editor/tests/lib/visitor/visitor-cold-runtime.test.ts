@@ -10,7 +10,7 @@ import {
 	acquireEffectiveVariant,
 	releaseEffectiveVariant,
 	type TextureLoadScope
-} from '$lib/museum/materials/texture-cache';
+} from '$lib/render/resources/texture-store';
 import { remapModelMaterials, releaseModelMaterialRemap } from '$lib/museum/assets/instance-material-remap';
 import {
 	createReleaseTextureScope,

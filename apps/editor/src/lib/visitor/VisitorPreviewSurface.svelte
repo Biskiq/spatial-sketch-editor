@@ -16,7 +16,7 @@ import { PCFShadowMap } from 'three';
 	import { guideRunFromProgram, guideTimeMapForProgram } from './guide-run-map';
 	import VisitorTimeline from './VisitorTimeline.svelte';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
-	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
 	import VisitorEntities from './VisitorEntities.svelte';
 	import VisitorLayoutShell from './VisitorLayoutShell.svelte';

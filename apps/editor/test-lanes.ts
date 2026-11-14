@@ -123,7 +123,15 @@ export const ARCH_FILES: string[] = [
 	// X1: the route composes the extracted project-epoch and asset-lease
 	// controllers, and those controllers keep their named dependency direction.
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
-	'tests/lib/authoring/authoring-controller-boundary.test.ts'
+	'tests/lib/authoring/authoring-controller-boundary.test.ts',
+	// E6/R2a: one material factory. A `Mesh*Material`, `ShadowMaterial` or
+	// `T.Mesh*Material` constructor outside the store is a site the renderer draws
+	// happily, so no lane report or build can see a second owner appear.
+	'tests/lib/render/material-factory-boundary.test.ts',
+	// E6: the renderer's layer direction — portable descriptors, stores that read
+	// no authoring layer, representations that consume compiled output and stores.
+	// Each is a dependency edge, and a reversed edge still type-checks and renders.
+	'tests/lib/render/render-layer-boundary.test.ts'
 ];
 
 /**
