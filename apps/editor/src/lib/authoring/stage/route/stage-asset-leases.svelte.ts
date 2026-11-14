@@ -103,7 +103,16 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		// has: revoking and re-downloading every derivative on each accepted command
 		// would flash the fallback box and re-fetch immutable bytes.
 		const signature = pins.map((pin) => `${pin.assetId}@${pin.hash}`).join('|');
-		if (signature === installedModelSignature) return;
+		if (signature === installedModelSignature) {
+			// A pending request for other pins must not publish over the restored
+			// installed map. Invalidating its generation makes its eventual completion
+			// stale, so that attempt disposes only the leases it acquired.
+			if (inFlight !== null && inFlight.signature !== signature) {
+				modelGeneration += 1;
+				inFlight = null;
+			}
+			return;
+		}
 		// The same pins may also be retained while a request for them is genuinely
 		// current. A request cancelled by a project replacement is not current: the
 		// new epoch must start its own installable read instead of returning early.

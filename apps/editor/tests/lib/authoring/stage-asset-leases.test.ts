@@ -254,6 +254,52 @@ describe('approved asset leases', () => {
 		expect(call).toBe(2);
 	});
 
+	it('retains the installed map when a restored source invalidates a changed-pin request', async () => {
+		const aPins = envelopeWith([{ assetId: 'model-a', hash: HASH_A }]);
+		const installed = approvedSources({ 'model-a': 'blob:a' });
+		const changed = approvedSources({ 'model-b': 'blob:b' });
+		let call = 0;
+		let releaseChanged: ((value: ApprovedModelSources) => void) | null = null;
+		const resolveModels = (() => {
+			call += 1;
+			if (call === 1) return Promise.resolve(installed);
+			if (call === 2) {
+				return new Promise<ApprovedModelSources>((resolve) => {
+					releaseChanged = resolve;
+				});
+			}
+			return Promise.reject(new Error('unchanged pins must not refetch'));
+		}) as unknown as StageAssetLeaseInput['resolveModels'];
+		const subject = controllerWith({ resolveModels });
+
+		await subject.controller.resolve(snapshotWith(aPins, 'a'));
+		const installedUrls = subject.controller.urls;
+		expect(installedUrls).toBe(installed.urls);
+
+		// B starts while A is installed. Before B lands, the accepted source returns
+		// to A: the installed fast path must invalidate B rather than let it publish.
+		const pending = subject.controller.resolve(
+			snapshotWith(envelopeWith([{ assetId: 'model-b', hash: HASH_B }]), 'b')
+		);
+		expect(call).toBe(2);
+		const restored = snapshotWith(aPins, 'a-restored');
+		await subject.controller.resolve(restored);
+		expect(subject.controller.urls).toBe(installedUrls);
+		expect(installed.dispose).not.toHaveBeenCalled();
+
+		releaseChanged!(changed);
+		await pending;
+		expect(subject.controller.urls).toBe(installedUrls);
+		expect(changed.dispose).toHaveBeenCalledTimes(1);
+		expect(installed.dispose).not.toHaveBeenCalled();
+
+		// The restored A source is unchanged: it retains the exact map without a
+		// new resolver call.
+		await subject.controller.resolve(restored);
+		expect(call).toBe(2);
+		expect(subject.controller.urls).toBe(installedUrls);
+	});
+
 	it('aborts an in-flight read on replacement and releases its own result once', async () => {
 		const acquired = approvedSources({ 'model-a': 'blob:a' });
 		const resolveModels = ((input: { signal?: AbortSignal }) =>
