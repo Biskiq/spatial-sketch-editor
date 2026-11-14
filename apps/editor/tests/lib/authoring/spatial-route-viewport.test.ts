@@ -35,7 +35,7 @@ vi.mock('$lib/authoring/stage/shell/EditorHead.svelte', async () => ({
 	default: (await import('./fixtures/HeadProbe.svelte')).default
 }));
 vi.mock('$lib/authoring/stage/shell/StageCanvas.svelte', async () => ({
-	default: (await import('./fixtures/StageCanvasProbe.svelte')).default
+	default: (await import('./fixtures/StageCanvasBoundsProbe.svelte')).default
 }));
 vi.mock('$lib/platform/project-persistence', async (original) => {
 	const actual = await original<typeof import('$lib/platform/project-persistence')>();
@@ -62,6 +62,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
+import { canvasBoundsProbe } from './fixtures/StageCanvasBoundsProbe.svelte';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 const RECT = {
@@ -120,6 +121,7 @@ function key(value: string): void {
 }
 
 beforeEach(async () => {
+	vi.clearAllMocks();
 	try {
 		globalThis.localStorage?.clear();
 	} catch {
@@ -228,4 +230,23 @@ describe('mounted Stage viewport rest', () => {
 		mounted = false;
 		expect(frames.size).toBe(0);
 	});
+});
+
+it('refreshes Canvas bounds without replaying the Scene source or Layout root registration', async () => {
+	const { readBounds, setSource, registerLayoutIdentity, refresh } = canvasBoundsProbe;
+	expect(setSource).toHaveBeenCalledTimes(1);
+	expect(registerLayoutIdentity).toHaveBeenCalledTimes(1);
+	const originalBounds = readBounds.mock.lastCall?.[0];
+	expect(originalBounds).toEqual(expect.objectContaining({ minX: expect.any(Number) }));
+	expect(refresh).not.toBeNull();
+
+	const reads = readBounds.mock.calls.length;
+	for (let index = 1; index <= 2; index += 1) {
+		refresh!();
+		await frame();
+		expect(readBounds).toHaveBeenCalledTimes(reads + index);
+		expect(readBounds.mock.lastCall?.[0]).toEqual(originalBounds);
+		expect(setSource).toHaveBeenCalledTimes(1);
+		expect(registerLayoutIdentity).toHaveBeenCalledTimes(1);
+	}
 });

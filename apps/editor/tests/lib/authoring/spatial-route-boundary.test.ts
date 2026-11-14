@@ -123,7 +123,7 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('stageEpoch.dispose()');
 		expect(code).toContain('onUndo={() => void stageEpoch.undo()}');
 		expect(code).toContain('onRedo={() => void stageEpoch.redo()}');
-		expect(code).toContain('artworkScope: stageAssets.artworkScope');
+		expect(code).toMatch(/get artworkScope\(\)\s*\{\s*return stageAssets\.artworkScope\s*;/);
 	});
 
 	it('keeps no second epoch, history or asset-lease owner in the route', () => {

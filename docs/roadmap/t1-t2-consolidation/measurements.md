@@ -397,3 +397,71 @@ tokens.
   `StageArtworkGhost.svelte` together, and restore `EntityArtwork.svelte` with its allowlist entries.
 - The store's `lambert`, `depth` and `distance` kinds and `StoreMaterial.svelte` are additive and can
   stay. The environment and plinth acquisition stays even if Artwork reverts.
+
+## E11 — Measurement-gated batching (R7 and R3)
+
+**Status: measured decline.** The named E11 L pan / Scene orbit trace with M comparison
+completed after the Stage bounds-loop fix.
+
+### Initial setup failure
+
+The E9 production build (`22b21180`) yielded no gesture samples. The first file-import attempt
+used a mismatched project ID. The matching-ID import also timed out at source admission.
+An intercepted saved-project load timed out waiting for the Canvas after 60 s, then again
+after 150 s on the owner-requested retry. Chrome used about one CPU core during the stall.
+Those setup attempts consumed no `perf:spot` checkpoint.
+
+### Completed trace after the Stage fix
+
+**Decision: measured decline.** X3 (#329, `843d6266`) made the Canvas Scene and bounds
+props depend on the same derived object. The render-root notification recomputed the bounds,
+which replayed the unchanged Scene source and scheduled another bounds refresh. The M import
+succeeded on X3's immediate parent, stalled on X3, and succeeded with the fix through the
+normal file chooser. The route now gives each view prop its own reactive getter.
+
+The fixed production build reported `7753ab192db3974270960f73b9c7cf94703258fa`, based on
+`main` at `9da1ee25` (Scene format 7, authored Directional retired). The E8 host exception
+still applied. Headed Chrome 157.0.8103.52 used ANGLE Metal on an Apple M2 MacBook Air,
+macOS 15.8.2, with a 1440 × 900 viewport at DPR 1 and unthrottled loopback. Each fixture
+used a fresh browser context and the Stage's saved-project admission path. The Scene
+counting fixture needed valid texture and catalogue asset pins. Its test response served
+the 800 × 600 synthetic artwork and texture, with the piano from the shipped catalogue.
+The authored Scene inventory was unchanged.
+
+Fixture source SHA-256 digests:
+
+- M: `47db86d251a5547fc64ce7ec59f003a82b2fa6ab88cae3bc591ce14f32fe6504`
+- L: `51d3caed64681f12062a6504ddf1db6e3df21868c59c224b47e369fa0863edac`
+- Scene with resource pins: `09c1a0934791f695827f3b39c58be4b98f42cfd6d82ea6683bf16931ede26f44`
+
+From a fitted 3D view, each window used 24 horizontal pointer moves with a 40 ms delay.
+The same path was used before and after hiding every other retained Wall. The second
+window hides half the Walls, so the actual reduction in total main-pass draws varies with
+the fixture. All six windows moved the camera. CPU timing covers main-thread renderer
+submission, GPU timing uses the WebGL timer query, and all windows issued zero shadow draws.
+
+| Gesture | Walls hidden | Frames | Draws/frame | Triangles/frame | CPU mean ms | CPU median ms | GPU mean ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| M pan | 0 | 25 | 261 | 52,182 | 0.74 | 0.70 | 1.60 |
+| M pan | 56 | 24 | 205 | 34,430 | 1.28 | 1.30 | 0.99 |
+| L pan | 0 | 25 | 1,010 | 145,016 | 3.87 | 2.50 | 2.01 |
+| L pan | 210 | 24 | 800 | 81,288 | 3.65 | 4.40 | 1.58 |
+| Scene orbit | 0 | 25 | 724.44 | 275,121 | 1.86 | 1.80 | 1.93 |
+| Scene orbit | 56 | 24 | 662.62 | 255,695 | 3.54 | 3.95 | 2.02 |
+
+L's 20.8% draw reduction accompanied a 5.8% mean CPU decrease and a 76% median CPU
+increase. Scene's 8.5% draw reduction accompanied increases in both CPU statistics. M
+also showed higher CPU timing with fewer draws. The Wall visibility perturbation changes
+triangle and pixel work alongside submission, so its GPU timings cannot isolate a draw-call
+effect. The observed result gives insufficient evidence to establish the draw-bound
+prerequisite. The fixed run retained the first usable window for each fixture and did
+not consume `perf:spot`.
+
+- **R7 Scene instancing at threshold 8:** declined at the draw-sensitivity prerequisite.
+- **R7 Room batching:** declined at the same prerequisite. No independent prototype timing.
+- **R3 floor and ceiling batching:** declined at the L draw-bound prerequisite. The
+  separate 25% Room draw-reduction gate was never reached.
+- **R7 Wall batching:** declined before the residual draw-bound and one-Wall patch gates.
+
+There is no batching rollback. The Stage fix is a separate commit and can be reverted
+independently, which would restore the X3 feedback loop.
