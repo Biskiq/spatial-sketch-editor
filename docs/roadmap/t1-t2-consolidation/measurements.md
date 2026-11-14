@@ -746,3 +746,26 @@ The two boundary sweeps that walked `lib/museum` (`camera-core-boundary`,
 shared renderer. Retired-file assertions that name a deleted `lib/museum` path keep that path: they
 pin the absence of the retired file, not a location. Rollback is the table above, applied in
 reverse as one unit.
+
+### E12 spot checkpoint — unmeasured
+
+One `npm run perf:spot` run, as D1 allows, with no retry and no extra benchmarking. It ran against
+the production preview of `13580e38` (`npm run build` passed; preview on
+`http://127.0.0.1:4173`). Machine: Apple M2, Chromium 157, load average 4.2–4.8 at start.
+
+- Fixtures generated: grid-M (112 Walls, 112 Openings, 49 Rooms) in 3.9 s and grid-L (420 Walls,
+  420 Openings, 196 Rooms) in 45.7 s. Setup took 54.0 s and the run 612.3 s.
+- Both tiers reached `f2:open-admitted` and `stage:source-ready` (M at 864 ms, L at 880 ms), and
+  recorded three `stage:pick` marks while selecting the Wall. Each then timed out after 300 s in
+  `page.waitForFunction`, waiting for the drag's accepted result (`waitForAcceptedResult`,
+  `LARGE_TIER_WAIT_MS`). The last browser events are the drag's pointer-down (M) and pointer-enter
+  (L).
+- The report labels both tiers `incomplete` with zero sessions:
+  `2026-11-14T23-21-55-343Z-spot.json` under the temporary `biskiq-spot` directory.
+
+So the E12 wall-clock spot values are **unmeasured**, like the E0/C0 baseline in
+[Browser evidence gap](#browser-evidence-gap). The symptom matches that gap: a headless 300 s
+timeout in the post-open Stage flow. This run does not show whether the cause is the harness
+or the product. The E11 trace numbers above stay the most recent measured values. E12
+changed no executable code after `a9976b90` (token proof in the PR), so this checkpoint is no
+evidence of a regression from E12's comment and documentation commits.
