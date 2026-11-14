@@ -13,6 +13,17 @@
    * the next mount asks for. While the maps load, the untextured descriptor is
    * drawn — exactly what `<T.MeshStandardMaterial>` rendered before its maps
    * arrived.
+   *
+   * Two lifecycle rules are load-bearing:
+   *
+   * - **Ownership is untracked.** The effect reads only descriptor inputs; the
+   *   lease it holds lives in a plain variable, and the reactive `lease` is a
+   *   publication for the template. If the effect read the published state it
+   *   would track it, and publishing a lease would re-run the effect forever.
+   * - **Threlte never disposes the instance.** `dispose={false}` keeps the shared
+   *   material out of Threlte's disposal registry: the reference-counted store is
+   *   the only disposal authority, so one consumer unmounting cannot free a
+   *   material another consumer still draws.
    */
   import { T } from '@threlte/core';
   import { useRenderResources } from '$lib/render/resources/render-resources';
@@ -70,7 +81,29 @@
   );
   const color = $derived(tint ?? definition.fallbackColor);
 
+  /**
+   * The lease this component owns, as plain (untracked) state.
+   *
+   * The effect must not read this: ownership changes inside the effect, and a
+   * reactive read would make the effect depend on its own writes. `lease` below
+   * is the template's view of the same value, written only.
+   */
+  let owned: MaterialLease | null = null;
   let lease = $state<MaterialLease | null>(null);
+
+  /** Hand the template a new view. Never read `lease` from the effect. */
+  function publish(next: MaterialLease | null): void {
+    owned = next;
+    lease = next;
+  }
+
+  /** Give this component's claim back; the store disposes at the last lease. */
+  function releaseOwned(): void {
+    const current = owned;
+    owned = null;
+    lease = null;
+    current?.release();
+  }
 
   /** The variant key per bound slot: the material key records texture identity. */
   function boundTextures(maps: LoadedTextureMaps, key: string): MaterialTextureKeys | null {
@@ -85,6 +118,7 @@
   }
 
   $effect(() => {
+    // Tracked inputs: the resolved descriptor and its keyed lookup parameters.
     const def = definition;
     const [rx, ry] = computedRepeat;
     const rot = rotation;
@@ -101,15 +135,15 @@
     let cancelled = false;
     let variant: { id: string; rx: number; ry: number; rot: number } | null = null;
 
-    lease?.release();
-    lease = resources.materials.acquire(base);
+    // Untracked ownership: release the previous run's claim, take this run's.
+    releaseOwned();
+    publish(resources.materials.acquire(base));
 
     if (mode === 'off' || !def.textures || Object.keys(def.textures).length === 0) {
       status = 'fallback';
       return () => {
         cancelled = true;
-        lease?.release();
-        lease = null;
+        releaseOwned();
       };
     }
 
@@ -131,8 +165,8 @@
         return;
       }
       variant = { id: def.id, rx, ry, rot };
-      const untextured = lease;
-      lease = resources.materials.acquire({ ...base, textures: bound }, maps);
+      const untextured = owned;
+      publish(resources.materials.acquire({ ...base, textures: bound }, maps));
       // Another surface with this tint keeps the untextured instance alive.
       untextured?.release();
       status = 'ready';
@@ -140,8 +174,7 @@
 
     return () => {
       cancelled = true;
-      lease?.release();
-      lease = null;
+      releaseOwned();
       if (variant) {
         releaseMaterialVariant(variant.id, variant.rx, variant.ry, variant.rot, activeScope);
         variant = null;
@@ -151,6 +184,11 @@
 </script>
 
 {#if lease}
-  <!-- Attaches the shared instance; `T` sets the parent mesh's material. -->
-  <T is={lease.material} />
+  <!--
+    Attaches the shared instance; `T` sets the parent mesh's material.
+    `dispose={false}` is required: Threlte's disposal context would otherwise
+    call `dispose()` on this store-owned instance on unmount, freeing a material
+    other consumers still lease. The store is the only disposal authority.
+  -->
+  <T is={lease.material} dispose={false} />
 {/if}
