@@ -497,7 +497,7 @@ RR-7, PF-4. Three pull requests.
 `apps/editor/src/lib/museum/materials/scene-instance-material.ts`,
 `apps/editor/src/lib/museum/materials/MuseumMaterial.svelte`,
 `apps/editor/src/lib/render/resources/texture-store.ts`,
-`apps/editor/src/lib/museum/assets/FallbackMaterial.svelte`,
+`apps/editor/src/lib/museum/assets/fallback-shapes.ts` (E8 retired `FallbackMaterial.svelte`),
 `apps/editor/src/lib/render/models/model-realization.ts`,
 `apps/editor/src/lib/render/scene-artwork-representation.ts` (E9 retired `EntityArtwork.svelte`),
 `apps/editor/src/lib/museum/layout/GroundPlinth.svelte`,
@@ -603,7 +603,7 @@ ink unchanged.
    check shows the same shadow silhouette; otherwise the custom depth materials stay and remain on
    the portability allowlist.
 
-**Touchpoints.** `apps/editor/src/lib/museum/assets/AssetModel.svelte`,
+**Touchpoints.** `apps/editor/src/lib/render/scene-model-representation.ts` (E8 retired `AssetModel.svelte`),
 `apps/editor/src/lib/museum/assets/model-utils.ts`,
 `apps/editor/src/lib/render/models/model-realization.ts`,
 `apps/editor/src/lib/render/scene-artwork-representation.ts` (E9 retired `EntityArtwork.svelte`),

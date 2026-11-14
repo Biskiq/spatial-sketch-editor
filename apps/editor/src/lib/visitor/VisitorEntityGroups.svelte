@@ -6,42 +6,30 @@
 	 * so entities render directly under the world root with no frame transform.
 	 *
 	 * E7 moved primitives and Forms onto the retained representation (mounted once
-	 * as `entities.object3d`, patched by item key) and E9 added its Artwork handler.
-	 * Models and lights keep their existing components until their own packets
-	 * install handlers; exactly one of the two paths draws any given entity, so
-	 * nothing renders twice.
+	 * as `entities.object3d`, patched by item key), E9 added its Artwork handler and
+	 * E8 its model handler. Lights keep their component until E10 installs a
+	 * handler; exactly one path draws any given entity, so nothing renders twice.
 	 *
-	 * The model renderer is a prop rather than an import: the public preview keeps
-	 * its static `AssetModel` (unchanged first-load graph), while the editor Stage
-	 * supplies a lazily loaded one. Geometry and material resolution have exactly
-	 * one implementation, so editor and visitor cannot drift.
+	 * The model support (glTF loader and skeleton-aware realization) is a prop
+	 * rather than an import: the public preview supplies it statically (unchanged
+	 * first-load graph), while the editor Stage supplies a lazily loaded one. Until
+	 * it arrives every model draws its fallback. Geometry and material resolution
+	 * have exactly one implementation, so editor and visitor cannot drift.
 	 */
 	import type { Object3D } from 'three';
 	import { T, useThrelte } from '@threlte/core';
-	import type {
-		RuntimeScene,
-		SceneDocument,
-		SceneFormEntity,
-		SceneModelEntity,
-		ScenePrimitiveEntity
-	} from '$lib/content/scene';
-	import {
-		isSceneFormEntity,
-		isSceneLightEntity,
-		isSceneModelEntity
-	} from '$lib/content/scene';
-	import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
+	import type { RuntimeScene } from '$lib/content/scene';
+	import { isSceneFormEntity, isSceneLightEntity } from '$lib/content/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import { createSceneEntityRepresentation } from '$lib/render/scene-entity-representation';
+	import type { SceneModelSupport } from '$lib/render/scene-model-representation';
 	import {
 		describeSceneRender,
 		type SceneFormSupport
 	} from '$lib/render/scene-render-description';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import EntityLight from '$lib/museum/entities/EntityLight.svelte';
-
-	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
 
 	let {
 		scene,
@@ -53,7 +41,8 @@
 		onEntityRoot,
 		/** Paper is an editor-only reading: it never draws authored Scene lights. */
 		includeLights = true,
-		Model
+		modelSupport,
+		onModelDrawn
 	}: {
 		scene: RuntimeScene;
 		textureScope?: TextureLoadScope | null;
@@ -65,26 +54,12 @@
 		onFormRendererReady?: () => void;
 		/** Optional renderer lifecycle observer; no authoring behavior lives here. */
 		onEntityRoot?: (id: string, root: Object3D) => (() => void) | void;
-		/** The model renderer; `null` until a lazy host has fetched it. */
-		Model: AssetModelComponent | null;
+		/** The model support; `null` until a lazy host has fetched it. */
+		modelSupport: SceneModelSupport | null;
+		/** Optional Stage-only notification after a model instance was drawn or restyled. */
+		onModelDrawn?: () => void;
 		includeLights?: boolean;
 	} = $props();
-
-	function entityEffective(
-		entity: ScenePrimitiveEntity | SceneModelEntity | SceneFormEntity
-	): ReturnType<typeof resolveSceneMaterial> {
-		return resolveSceneMaterial(
-			{ materials: scene.materials, textures: scene.textures } as Pick<
-				SceneDocument,
-				'materials' | 'textures'
-			>,
-			{
-				materialInstanceId: entity.materialInstanceId ?? null,
-				fallbackCatalogueId:
-					entity.kind === 'primitive' || entity.kind === 'form' ? entity.materialId : 'paper-aged'
-			}
-		);
-	}
 
 	/**
 	 * The retained primitive/Form subtree (E7/R4): one root for the shell's whole
@@ -104,7 +79,15 @@
 			invalidate();
 			onFormRendererReady?.();
 		},
-		onArtworkError: (message) => onArtworkError?.(message)
+		onArtworkError: (message) => onArtworkError?.(message),
+		casters: resources.casters,
+		// Read inside the update effect, so an arriving support or new URLs re-run it.
+		modelSupport: () => modelSupport,
+		modelUrls: () => modelUrls,
+		onModelDrawn: () => {
+			invalidate();
+			onModelDrawn?.();
+		}
 	});
 
 	/**
@@ -149,33 +132,19 @@
 		const art = stats.artworks;
 		// A moved or rebuilt Artwork changed the frame imperatively; Threlte cannot see it.
 		if (art.rebodied + art.moved + art.released + art.detached > 0) invalidate();
+		const models = stats.models;
+		// Built, moved, replaced or released models changed the frame imperatively.
+		if (models.built + models.moved + models.replaced + models.refallbacked + models.released > 0) invalidate();
 	});
 
 	$effect(() => () => entities.dispose());
 </script>
 
-<!-- The retained primitive/Form root: mounted once, patched in place. -->
+<!-- The retained Scene root (primitives, Forms, Artworks, models): mounted once, patched in place. -->
 <T is={entities.object3d} />
 
 {#each scene.entities as entity (entity.id)}
-	{#if isSceneModelEntity(entity)}
-		{#if Model}
-			<!-- Transform-free root: the model body applies its own placement. -->
-			<T.Group name={`SceneEntity:${entity.id}`} oncreate={(root) => onEntityRoot?.(entity.id, root)}>
-				<Model
-					assetId={entity.assetId}
-					position={entity.position}
-					rotation={entity.rotation}
-					scale={entity.scale ?? 1}
-					fallback={entity.fallback}
-					fallbackFootprint={scene.modelFootprints?.get(entity.assetId)}
-					resolvedUrl={modelUrls?.get(entity.assetId) ?? null}
-					effective={entity.materialInstanceId ? entityEffective(entity) : null}
-					scope={textureScope}
-				/>
-			</T.Group>
-		{/if}
-	{:else if includeLights && isSceneLightEntity(entity)}
+	{#if includeLights && isSceneLightEntity(entity)}
 		<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 			<EntityLight {entity} />
 		</T.Group>

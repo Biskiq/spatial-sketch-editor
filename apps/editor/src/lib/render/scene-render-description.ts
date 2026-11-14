@@ -25,8 +25,13 @@
  */
 import {
 	isSceneFormEntity,
+	isSceneModelEntity,
 	isScenePrimitiveEntity
 } from '$lib/content/scene';
+import { getAssetById } from '$lib/content/assets';
+import { getMaterial } from '$lib/content/materials';
+import { fallbackDimensionsFor, fallbackKindFor, type AssetFallbackKind } from '$lib/museum/assets/fallbacks';
+import { fallbackPartsFor, type FallbackPart } from '$lib/museum/assets/fallback-shapes';
 import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model';
 import type {
 	RuntimeScene,
@@ -34,6 +39,7 @@ import type {
 	SceneDocument,
 	SceneFormEntity,
 	SceneFormSource,
+	SceneModelEntity,
 	ScenePrimitiveEntity
 } from '@portfolio/project-model';
 import type { FormMesh } from '@portfolio/geometry-core';
@@ -42,12 +48,16 @@ import {
 	geometryKeyOf,
 	type GeometrySpec,
 	type SceneArtworkItem,
+	type SceneModelFallbackPart,
+	type SceneModelItem,
+	type SceneModelLook,
 	type SceneRenderDescription,
 	type SceneRenderItem,
 	type SceneTransform,
 	type SceneVec3
 } from './resources/scene-render-item';
-import { sceneLookFor } from '$lib/museum/materials/scene-instance-material';
+import { resolveSceneMaterial, sceneLookFor } from '$lib/museum/materials/scene-instance-material';
+import type { StandardMaterialDescriptor } from './resources/material-descriptor';
 
 /** One canonical Form evaluation, as the lazy form kernel produces it. */
 export type SceneFormGeometry = {
@@ -242,6 +252,210 @@ export function describeSceneArtwork(entity: SceneArtworkEntity): SceneArtworkIt
 	};
 }
 
+/**
+ * One fallback part as a store geometry. Boxes, planes, spheres and closed
+ * equal-radius cylinders are the unit geometries scaled to size, exactly as a
+ * primitive is; a tapered or open cylinder is built at size under its own key.
+ */
+function fallbackGeometry(primitive: FallbackPart['primitive']): {
+	readonly spec: GeometrySpec;
+	readonly scale: SceneVec3;
+} {
+	switch (primitive.shape) {
+		case 'box':
+			return { spec: { kind: 'unit', shape: 'box' }, scale: [...primitive.size] };
+		case 'plane':
+			return { spec: { kind: 'unit', shape: 'plane' }, scale: [primitive.width, primitive.height, 1] };
+		case 'sphere': {
+			const d = primitive.radius * 2;
+			return {
+				spec: {
+					kind: 'unit',
+					shape: 'sphere',
+					widthSegments: primitive.widthSegments,
+					heightSegments: primitive.heightSegments
+				},
+				scale: [d, d, d]
+			};
+		}
+		case 'cylinder': {
+			if (primitive.radiusTop === primitive.radiusBottom && !primitive.openEnded) {
+				const d = primitive.radiusTop * 2;
+				return {
+					spec: { kind: 'unit', shape: 'cylinder', radialSegments: primitive.radialSegments },
+					scale: [d, primitive.height, d]
+				};
+			}
+			return {
+				spec: {
+					kind: 'frustum',
+					radiusTop: primitive.radiusTop,
+					radiusBottom: primitive.radiusBottom,
+					height: primitive.height,
+					radialSegments: primitive.radialSegments,
+					openEnded: primitive.openEnded
+				},
+				scale: [1, 1, 1]
+			};
+		}
+	}
+}
+
+/**
+ * The fallback surface: the catalogue's untextured look, as `FallbackMaterial`
+ * (`MuseumMaterial` with `textures="off"`) acquired it.
+ */
+function fallbackDescriptor(part: FallbackPart, wireframe: boolean): StandardMaterialDescriptor {
+	const definition = getMaterial(part.materialId);
+	return {
+		kind: 'standard',
+		color: part.tint ?? definition.fallbackColor,
+		roughness: definition.roughness,
+		metalness: definition.metalness,
+		toneMapped: true,
+		...(wireframe ? { wireframe: true } : {})
+	};
+}
+
+/** What one model draws, as the Scene (or the asset QA page) states it. */
+export type SceneModelInput = {
+	readonly id: string;
+	readonly assetId: string;
+	/** The authored placement fallback; the catalogue's fallback when absent. */
+	readonly fallback?: AssetFallbackKind;
+	/** A creator model's approved footprint (metres); sizes the generic box. */
+	readonly footprint?: { readonly width: number; readonly depth: number };
+	readonly position: SceneVec3;
+	readonly rotation: SceneVec3;
+	readonly scale: number;
+	readonly look: SceneModelLook | null;
+	readonly wireframe?: boolean;
+	readonly shadows?: boolean;
+	readonly visible?: boolean;
+};
+
+/**
+ * E8/R5 — one model's resolved item. The catalogue record, the fallback body and
+ * the shadow defaults are decided here once, with the rules `AssetModel` applied:
+ *
+ * - the placement fallback wins; otherwise the catalogue's; a creator model (absent
+ *   from the catalogue) draws its approved footprint box;
+ * - the catalogue file loads only when the asset is approved or testing;
+ * - fallback shadows default off and drawn-model shadows default on.
+ *
+ * Exported because the asset QA page draws the same handler over its own items.
+ */
+export function describeSceneModel(input: SceneModelInput): SceneModelItem {
+	const asset = getAssetById(input.assetId);
+	const kind = fallbackKindFor(input.fallback, asset);
+	const dimensions = fallbackDimensionsFor(kind, input.footprint);
+	const wireframe = input.wireframe ?? false;
+	const shadows = input.shadows ?? true;
+	const visible = input.visible ?? true;
+	const parts: SceneModelFallbackPart[] = fallbackPartsFor(kind, dimensions).map((part) => {
+		const geometry = fallbackGeometry(part.primitive);
+		return {
+			geometry: geometry.spec,
+			geometryScale: geometry.scale,
+			position: [...part.position],
+			rotation: [...part.rotation],
+			material: fallbackDescriptor(part, wireframe)
+		};
+	});
+	const fallbackCast = shadows && (asset?.castShadow ?? false);
+	const fallbackReceive = shadows && (asset?.receiveShadow ?? false);
+	const castShadow = shadows && (asset?.castShadow ?? true);
+	const receiveShadow = shadows && (asset?.receiveShadow ?? true);
+	const catalogueUrl =
+		asset?.productionFile !== undefined && (asset.status === 'approved' || asset.status === 'testing')
+			? asset.productionFile
+			: null;
+	const presentation = {
+		rotation: [...(asset?.defaultRotation ?? [0, 0, 0])] as unknown as SceneVec3,
+		scale: asset?.defaultScale ?? 1
+	};
+	const transform: SceneTransform = {
+		position: [...input.position],
+		rotation: [...input.rotation],
+		scale: [input.scale, input.scale, input.scale]
+	};
+	const look = input.look;
+	return {
+		id: input.id,
+		assetId: input.assetId,
+		catalogueUrl,
+		sourceKey: [input.assetId, catalogueUrl ?? '-', ...presentation.rotation, presentation.scale].join('|'),
+		placementKey: [...transform.position, ...transform.rotation, input.scale, visible ? 1 : 0].join('|'),
+		fallbackKey: [
+			kind,
+			...dimensions,
+			wireframe ? 1 : 0,
+			fallbackCast ? 1 : 0,
+			fallbackReceive ? 1 : 0
+		].join('|'),
+		styleKey: [
+			look?.variantSeed ?? '-',
+			look?.color ?? '-',
+			look?.roughness ?? '-',
+			look?.metalness ?? '-',
+			wireframe,
+			castShadow,
+			receiveShadow
+		].join('|'),
+		transform,
+		visible,
+		presentation,
+		fallback: {
+			kind,
+			dimensions: [...dimensions],
+			parts,
+			castShadow: fallbackCast,
+			receiveShadow: fallbackReceive
+		},
+		look,
+		wireframe,
+		castShadow,
+		receiveShadow
+	};
+}
+
+function sceneModelItem(
+	entity: SceneModelEntity,
+	scene: RuntimeScene,
+	document: Pick<SceneDocument, 'materials' | 'textures'>
+): SceneModelItem {
+	// The resolved look a model's meshes are remapped to; without an instance the
+	// asset keeps its own materials. `paper-aged` is the catalogue fallback the
+	// per-entity renderer used for a model instance.
+	const effective = entity.materialInstanceId
+		? resolveSceneMaterial(document, {
+				materialInstanceId: entity.materialInstanceId,
+				fallbackCatalogueId: 'paper-aged'
+			})
+		: null;
+	const look: SceneModelLook | null =
+		effective === null
+			? null
+			: {
+					color: effective.color,
+					roughness: effective.roughness,
+					metalness: effective.metalness,
+					variantSeed: effective.variantSeed,
+					slotUris: effective.slotUris
+				};
+	const footprint = scene.modelFootprints?.get(entity.assetId);
+	return describeSceneModel({
+		id: entity.id,
+		assetId: entity.assetId,
+		fallback: entity.fallback,
+		...(footprint === undefined ? {} : { footprint }),
+		position: [entity.position[0], entity.position[1], entity.position[2]],
+		rotation: [entity.rotation[0], entity.rotation[1], entity.rotation[2]],
+		scale: entity.scale ?? 1,
+		look
+	});
+}
+
 export function describeSceneRender(
 	scene: RuntimeScene,
 	forms: SceneFormSupport | null = null
@@ -253,8 +467,13 @@ export function describeSceneRender(
 		} as Pick<SceneDocument, 'materials' | 'textures'>;
 		const items: SceneRenderItem[] = [];
 		const artworks: SceneArtworkItem[] = [];
+		const models: SceneModelItem[] = [];
 
 		for (const entity of scene.entities) {
+			if (isSceneModelEntity(entity)) {
+				models.push(sceneModelItem(entity, scene, document));
+				continue;
+			}
 			if (entity.kind === 'artwork') {
 				artworks.push(describeSceneArtwork(entity));
 				continue;
@@ -338,6 +557,6 @@ export function describeSceneRender(
 			});
 		}
 
-		return { items, artworks };
+		return { items, artworks, models };
 	});
 }

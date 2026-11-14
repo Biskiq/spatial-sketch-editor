@@ -1,12 +1,12 @@
 <script lang="ts">
 	/**
 	 * The visitor's scene renderer: grouping/material resolution plus the static
-	 * model renderer. The public preview and the visitor path import this module,
+	 * model support (glTF loader and realization). The public preview and the visitor path import this module,
 	 * so its closure stays exactly what the preview boundary expects.
 	 */
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
-	import AssetModel from '$lib/museum/assets/AssetModel.svelte';
+	import { sceneModelSupport } from '$lib/render/models/scene-model-support';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import VisitorEntityGroups from './VisitorEntityGroups.svelte';
 
@@ -32,4 +32,4 @@
 	} = $props();
 </script>
 
-<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {textureScope} {modelUrls} {includeLights} Model={AssetModel} />
+<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {textureScope} {modelUrls} {includeLights} modelSupport={sceneModelSupport} />

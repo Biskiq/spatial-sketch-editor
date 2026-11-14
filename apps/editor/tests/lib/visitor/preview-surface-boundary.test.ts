@@ -30,9 +30,9 @@ describe('preview-surface-boundary validator', () => {
 				// Alias indirection: $lib resolves to src/lib; Svelte re-export
 				// lands on a leaf with no Chopin edge.
 				'$lib/visitor/VisitorEntities.svelte': {
-					imports: ['$lib/museum/assets/AssetModel.svelte']
+					imports: ['$lib/render/models/scene-model-support.ts']
 				},
-				'$lib/museum/assets/AssetModel.svelte': { imports: [] }
+				'$lib/render/models/scene-model-support.ts': { imports: [] }
 			})
 		);
 		expect(result.ok).toBe(true);

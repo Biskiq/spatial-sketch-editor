@@ -16,7 +16,13 @@ const read = (relative: string): string => withoutComments(readFileSync(resolve(
 const srcRel = (absolute: string): string => absolute.slice(resolve(EDITOR_SRC, '..').length + 1);
 
 const REALIZATION = 'src/lib/render/models/model-realization.ts';
-const HOST = 'src/lib/museum/assets/AssetModel.svelte';
+const HOST = 'src/lib/render/scene-model-representation.ts';
+const SUPPORT = 'src/lib/render/models/scene-model-support.ts';
+const RETIRED_HOSTS = [
+	'lib/museum/assets/AssetModel.svelte',
+	'lib/museum/assets/AssetFallback.svelte',
+	'lib/museum/assets/FallbackMaterial.svelte'
+];
 const TRIGGERS = 'src/lib/authoring/stage/shell/StageShadowTriggers.svelte';
 const STORE = 'src/lib/render/resources/material-store.ts';
 
@@ -29,7 +35,10 @@ describe('model realization: ownership (E8/R2c)', () => {
 
 	it('disposes nothing itself: every disposal of a surface or geometry is the store\'s or the loader\'s', () => {
 		expect(read(REALIZATION)).not.toMatch(/\.dispose\(\)/);
-		expect(read(HOST)).not.toMatch(/\.dispose\(\)/);
+		// The handler's one disposal is the per-Canvas loader's, after every instance is released.
+		const host = read(HOST);
+		expect(host.match(/\.dispose\(\)/g)).toHaveLength(1);
+		expect(host).toMatch(/loader\?\.dispose\(\);/);
 	});
 
 	it('never clones a material per instance: an unstyled surface is a store copy, not a template clone', () => {
@@ -95,19 +104,49 @@ describe('model arrival: one caster channel (E8/G4)', () => {
 
 	it('a stale load mounts nothing: every arrival path is gated by the token the load began with', () => {
 		const host = read(HOST);
-		expect(host).toMatch(/const token = gate\.begin\(\);/);
-		expect(host).toMatch(/if \(!gltf \|\| !gate\.accepts\(token\)\) return;/);
-		expect(host).toMatch(/if \(!gate\.accepts\(current\.token\)\) return;/);
-		expect(host).toMatch(/gate\.close\(\);/);
+		expect(host).toMatch(/const token = entry\.gate\.begin\(\);/);
+		expect(host.match(/if \(disposed \|\| !entry\.gate\.accepts\(token\)\) return;/g)?.length).toBeGreaterThanOrEqual(2);
+		expect(host).toMatch(/if \(!entry\.gate\.accepts\(current\.token\)\) return;/);
+		expect(host).toMatch(/entry\.gate\.close\(\);/);
 	});
 
 	it('a superseded texture completion applies nothing: each completion is checked against the generation it began under', () => {
 		const host = read(HOST);
-		expect(host).toMatch(/const id = generation;/);
-		expect(host).toMatch(/if \(id !== generation\) return;/);
+		expect(host).toMatch(/const id = entry\.generation;/);
+		expect(host).toMatch(/if \(disposed \|\| id !== entry\.generation\) return;/);
+	});
+});
+
+describe('model host retirement (E8/R5)', () => {
+	it('the per-entity model host, fallback tree and fallback material component are gone', () => {
+		for (const retired of RETIRED_HOSTS) expect(existsSync(resolve(EDITOR_SRC, retired))).toBe(false);
+		const offenders = listSourceFiles(EDITOR_SRC).filter((file) =>
+			/AssetModel\.svelte|AssetFallback\.svelte|FallbackMaterial\.svelte|\buseGltf\b|\buseMeshopt\b/.test(
+				withoutComments(readFileSync(file, 'utf8'))
+			)
+		);
+		expect(offenders.map(srcRel)).toEqual([]);
 	});
 
-	it('mounts the drawn instance with explicit external ownership, so Threlte never disposes its leases or template', () => {
-		expect(read(HOST)).toMatch(/<T is=\{instance\} dispose=\{false\} \/>/);
+	it('the handler reaches the loader and SkeletonUtils only through the injected support', () => {
+		const host = read(HOST);
+		expect(host).not.toMatch(/GLTFLoader|SkeletonUtils|meshopt/i);
+		expect(host).not.toMatch(/import\s+(?!type\b)[^;]*from\s+['"]\.\/models\/(?:model-realization|scene-model-support)['"]/);
+		expect(read(SUPPORT)).toMatch(/GLTFLoader/);
+	});
+
+	it('the editor Stage imports the model support lazily; the visitor imports it statically', () => {
+		const stage = read('src/lib/authoring/stage/shell/StageEntities.svelte');
+		expect(stage).toMatch(/import\(\s*['"]\$lib\/render\/models\/scene-model-support['"]\s*\)/);
+		expect(stage).not.toMatch(/from\s+['"]\$lib\/render\/models\/scene-model-support['"]/);
+		expect(read('src/lib/visitor/VisitorEntities.svelte')).toMatch(
+			/import \{ sceneModelSupport \} from '\$lib\/render\/models\/scene-model-support';/
+		);
+	});
+
+	it('the Scene model handler constructs only through the stores and counts its entry work', () => {
+		const host = read(HOST);
+		expect(host).not.toMatch(/new\s+[A-Za-z]*(?:Geometry|Material)\(/);
+		expect(host).toMatch(/countWork\('representation:scene-model-entry'\)/);
 	});
 });

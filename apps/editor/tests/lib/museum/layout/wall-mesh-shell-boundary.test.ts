@@ -124,7 +124,9 @@ describe('G4 visitor shell boundary', () => {
 		// previewed or candidate light must move its cast shadow with its light.
 		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
-		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} Model={ModelComponent}');
+		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()}');
+		// E8/R5: a drawn model is the retained representation's arrival too; it reports
+		// through the caster channel (StageShadowTriggers) and renderable notification.
 		// E7/R4: a Form body is built by the retained representation, so its arrival
 		// is reported after an update that built one — the same trigger the lazy
 		// component's mount provided, now owned by the representation.

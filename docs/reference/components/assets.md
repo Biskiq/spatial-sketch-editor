@@ -185,8 +185,10 @@ by F.2/F.1 under the contract's interface-ownership rule (see
 | Manifest | `apps/editor/src/lib/content/assets.ts` |
 | Plan proxy metadata | `apps/editor/assets-source/plan-proxy/` |
 
-`AssetModel.svelte` owns load/clone/fallback. Do not add a second, room-local GLTF loader — the
-legacy room-frame loader branch was removed in #115 and the single renderer path is the contract.
+The retained Scene model handler (`apps/editor/src/lib/render/scene-model-representation.ts`) owns
+load/clone/fallback, with its per-Canvas loader in
+`apps/editor/src/lib/render/models/scene-model-support.ts`. Do not add a second, room-local GLTF
+loader — the legacy room-frame loader branch was removed in #115 and the single renderer path is the contract.
 
 ## Model preparation and validation checklist
 

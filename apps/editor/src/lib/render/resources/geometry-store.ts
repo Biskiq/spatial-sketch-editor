@@ -34,6 +34,7 @@ export type {
 	ArtworkGeometrySpec,
 	FormGeometrySpec,
 	FormPlane,
+	FrustumGeometrySpec,
 	GeometrySpec,
 	UnitGeometrySpec
 } from './scene-render-item';
@@ -69,6 +70,16 @@ function construct(spec: GeometrySpec): BufferGeometry {
 	if (spec.kind === 'artwork-frame') return artworkFrameGeometry(spec);
 	if (spec.kind === 'artwork-mat') return artworkMatGeometry(spec);
 	if (spec.kind === 'artwork-backing') return artworkBackingGeometry(spec);
+	if (spec.kind === 'frustum') {
+		return new CylinderGeometry(
+			spec.radiusTop,
+			spec.radiusBottom,
+			spec.height,
+			spec.radialSegments,
+			1,
+			spec.openEnded
+		);
+	}
 	switch (spec.shape) {
 		case 'box':
 			return new BoxGeometry(1, 1, 1);

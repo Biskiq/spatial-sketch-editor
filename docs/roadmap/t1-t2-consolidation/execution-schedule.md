@@ -240,15 +240,14 @@ producer; E8 cannot require R6 to land. Re-measure after E9 installs artwork cas
 **Rollback:** G4 independently falls back to prior invalidation if necessary; model hierarchy/remap
 transition reverts as one content family while preserving the store and instance identity contract.
 
-**Owner exception (E8 correction; bounded, tracked):** E7's retained representation does not draw
-models. Until E8's remaining work lands, a model's placeholder is the Svelte `AssetFallback` tree
-(`src/lib/museum/assets/AssetFallback.svelte`, shapes from `src/lib/museum/assets/fallbacks.ts`), and
-`src/lib/museum/assets/AssetModel.svelte` is the per-entity host that realizes the model. The
-exception covers exactly those two files for the Svelte-tree fallback and host. It adds no
-fallback renderer and does not redesign E7. Remaining work, owned by E8 and required before E12: port
-the approved fallback shapes to the E7 representation and retire the `AssetModel.svelte` host. E12
-must not start until that port and retirement are merged or a new owner decision re-records the
-exception.
+**Owner exception (E8 correction; closed by the E8 model-renderer retirement):** E7's retained
+representation did not draw models, so a model's placeholder was the Svelte `AssetFallback` tree and
+`AssetModel.svelte` was the per-entity host. The retirement ported the approved fallback shapes to
+data (`src/lib/museum/assets/fallback-shapes.ts`), drew them and the realized model from the retained
+Scene model handler (`src/lib/render/scene-model-representation.ts`, owned by the E7 Scene root), and
+deleted `AssetModel.svelte`, `AssetFallback.svelte` and `FallbackMaterial.svelte`. The exception no
+longer exists; E12 is not blocked by it. Evidence and rollback: `measurements.md`, "E8/R5 — model
+renderer retirement".
 
 ### E9 — Artwork and remaining world materials (R5 artwork + rest of R2c)
 

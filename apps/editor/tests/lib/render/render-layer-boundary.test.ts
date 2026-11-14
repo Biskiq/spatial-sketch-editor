@@ -51,7 +51,9 @@ const REPRESENTATIONS = [
 	// E7/R4: the retained primitive/Form representation.
 	`${LIB}/render/scene-entity-representation.ts`,
 	// E9/R5: its Artwork family handler.
-	`${LIB}/render/scene-artwork-representation.ts`
+	`${LIB}/render/scene-artwork-representation.ts`,
+	// E8/R5: its model family handler.
+	`${LIB}/render/scene-model-representation.ts`
 ];
 /**
  * The one permitted `$lib/visitor` edge: three constant strings with no imports
@@ -60,7 +62,7 @@ const REPRESENTATIONS = [
  */
 const VISITOR_PRESENTATION = `${LIB}/visitor/room-presentation.ts`;
 
-const REPRESENTATION_FILE = /(?:layout-(?:wall|object|room)|scene-entity|scene-artwork)-representation\.ts$/;
+const REPRESENTATION_FILE = /(?:layout-(?:wall|object|room)|scene-entity|scene-artwork|scene-model)-representation\.ts$/;
 
 /** A layer no resource module may reach, by resolved path. */
 function forbiddenForStores(relative: string): boolean {
@@ -78,13 +80,15 @@ function forbiddenForRepresentations(relative: string): boolean {
 }
 
 /**
- * The one permitted representation → representation edge: the Scene root owns
- * its Artwork family handler (E9). Nothing else may import a representation.
+ * The permitted representation → representation edges: the Scene root owns its
+ * Artwork (E9) and model (E8) family handlers. Nothing else may import a
+ * representation.
  */
 const SCENE_ROOT = `${LIB}/render/scene-entity-representation.ts`;
 const SCENE_ARTWORK = `${LIB}/render/scene-artwork-representation.ts`;
+const SCENE_MODEL = `${LIB}/render/scene-model-representation.ts`;
 function forbiddenFor(file: string, relative: string): boolean {
-	if (file === SCENE_ROOT && relative === SCENE_ARTWORK) return false;
+	if (file === SCENE_ROOT && (relative === SCENE_ARTWORK || relative === SCENE_MODEL)) return false;
 	return forbiddenForRepresentations(relative);
 }
 

@@ -128,10 +128,12 @@ describe('Scene entities keep their world frame', () => {
 			body: { nodes: Array<{ type: string }> };
 		};
 		expect(`${each.expression.object.name}.${each.expression.property.name}`).toBe('scene.entities');
-		// One family dispatch (`if model / else if artwork / else if light`).
+		// One family dispatch left: the light component, until E10.
 		expect(each.body.nodes.filter((node) => node.type !== 'Text').map((node) => node.type)).toEqual(['IfBlock']);
-		// A model root stays transform-free: its body applies its own placement.
-		expect(source).toContain('oncreate={(root) => onEntityRoot?.(entity.id, root)}');
+		// E8/R5: models are drawn by the retained root; their transform-free roots are
+		// registered through the representation's one `onRoot`, not a per-entity component.
+		expect(source).toContain('onRoot: (id, root) => onEntityRoot?.(id, root)');
+		expect(source).not.toMatch(/<Model\b|oncreate=/);
 	});
 
 	it('the retained root is transform-free and an item root carries only the authored transform', () => {

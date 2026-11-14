@@ -57,7 +57,7 @@ function item(id: string, overrides: Partial<SceneRenderItem> = {}): SceneRender
 }
 
 function description(...items: SceneRenderItem[]): SceneRenderDescription {
-	return { items, artworks: [] };
+	return { items, artworks: [], models: [] };
 }
 
 function bodyOf(representation: SceneEntityRepresentation, id: string): Mesh {
@@ -85,8 +85,8 @@ describe('E7/R4 — retained Scene entities', () => {
 			}))
 		);
 		expect(stats).toMatchObject({ items: 3, built: 3, retained: 0, released: 0, textured: 0 });
-		// One group per item, beside the artwork family root (E9).
-		expect(representation.object3d.children.filter((child) => child.name !== 'SceneArtworks')).toHaveLength(3);
+		// One group per item, beside the artwork (E9) and model (E8) family roots.
+		expect(representation.object3d.children.filter((child) => child.name !== 'SceneArtworks' && child.name !== 'SceneModels')).toHaveLength(3);
 
 		const a = bodyOf(representation, 'box-a');
 		const b = bodyOf(representation, 'box-b');
