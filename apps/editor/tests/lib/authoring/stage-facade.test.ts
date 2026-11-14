@@ -1123,7 +1123,47 @@ describe('S03 no-task press routing', () => {
 		expect(layout).not.toHaveBeenCalled();
 		expect(sceneClaim).toHaveBeenCalledOnce();
 	});
-	it('keeps the subject projection identity across selection and refreshes it for contributions', async () => {
+	it('binds pending registrations in order on the first read and defers the settled surface notification', async () => {
+	const { facade } = await mount(undefined, false);
+	const events: string[] = [];
+	facade.onAdaptersChanged(() => events.push('changed'));
+
+	const register = (id: string) => facade.registerStageAdapter({
+		id,
+		bind: () => {
+			events.push(`bind:${id}`);
+			return {
+				overlay: () => [{ id, css: [12, 18], label: id }],
+				dispose: () => events.push(`binding-end:${id}`)
+			};
+		},
+		dispose: () => events.push(`registration-end:${id}`)
+	});
+	const first = register('z-first');
+	const second = register('a-second');
+	if (first.kind !== 'registered' || second.kind !== 'registered') throw new Error('adapter refused');
+	expect(events).toEqual(['changed', 'changed']);
+	expect(facade.overlays()).toEqual([]);
+	evaluate(facade);
+
+	const overlays = facade.overlays();
+	expect(overlays.map((overlay) => overlay.id)).toEqual(['z-first', 'a-second']);
+	expect(facade.overlays()).toBe(overlays);
+	expect(events).toEqual(['changed', 'changed', 'bind:z-first', 'bind:a-second']);
+	await Promise.resolve();
+	expect(events).toEqual(['changed', 'changed', 'bind:z-first', 'bind:a-second', 'changed']);
+
+	events.length = 0;
+	first.dispose();
+	first.dispose();
+	facade.dispose();
+	expect(events).toEqual([
+		'binding-end:z-first', 'registration-end:z-first', 'changed',
+		'binding-end:a-second', 'registration-end:a-second', 'changed'
+	]);
+});
+
+it('keeps the subject projection identity across selection and refreshes it for contributions', async () => {
 		const { facade, snapshot } = await mount();
 		const reference = sceneEntityReference('stable-box', snapshot.domain.unitRevisions.scene);
 		const subject = {
