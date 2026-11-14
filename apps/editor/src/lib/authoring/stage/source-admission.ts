@@ -56,7 +56,7 @@ import {
 	type UnitRuntimeReady
 } from '@portfolio/project-model/units';
 
-import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
+import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
 
 import type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 export type { StageDomainRead, StageReadSnapshot } from './accepted-read';
@@ -155,7 +155,7 @@ function snapshotOf(
 	);
 }
 
-const HOST_SCENE_OPTIONS = MUSEUM_SCENE_VALIDATION_OPTIONS;
+const HOST_SCENE_OPTIONS = CATALOGUE_SCENE_VALIDATION_OPTIONS;
 
 /**
  * The host's catalogue plus this envelope's own approved creator models.

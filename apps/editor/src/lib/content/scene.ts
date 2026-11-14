@@ -2,7 +2,7 @@ import {
 	resolveSceneDocument as resolveCore,
 	type RuntimeScene
 } from '@portfolio/project-model';
-import { MUSEUM_SCENE_VALIDATION_OPTIONS } from './scene-validation';
+import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from './scene-validation';
 
 export * from '@portfolio/project-model';
 
@@ -21,5 +21,5 @@ export * from '@portfolio/project-model';
  * tests.
  */
 export function resolveSceneDocument(input: unknown): RuntimeScene {
-	return resolveCore(input, MUSEUM_SCENE_VALIDATION_OPTIONS);
+	return resolveCore(input, CATALOGUE_SCENE_VALIDATION_OPTIONS);
 }
