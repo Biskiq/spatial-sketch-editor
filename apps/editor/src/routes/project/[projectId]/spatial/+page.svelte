@@ -1,107 +1,66 @@
 <script lang="ts">
-	import { roomLabelFacts, projectRoomLabels, type RoomLabelView } from '$lib/authoring/stage/room-labels';
-	import { acceptedSceneRoomMembership } from '$lib/authoring/adapters/scene/room-membership';
-	import {
-		createWorldIndexModel,
-		resolveWorldScope,
-		type WorldScope
-	} from '$lib/authoring/stage/shell/world-index-model';
-	import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
-	import {
-		indexLabels,
-		layoutKindWord,
-		membershipLabel,
-		sceneKindWord,
-		type IndexLabelInput
-	} from '$lib/authoring/stage/shell/index-labels';
-
 	/**
-	 * T1.P01.S02 — the editor **route host**.
+	 * X3 / decomposition contract S — the spatial route composition root.
 	 *
-	 * This replaces the foundation-reset notice. It performs a **read-only cloud
-	 * boot** (only `loadProject`), admits the source through the one admission path
-	 * (canonical validation + canonical compile + runtime Scene resolution), and
-	 * mounts the Stage shell on the admitted snapshot. The route reaches no raw
-	 * writer: the Head owns `api.saveAcceptedSource` behind its Save transport, and
-	 * TD-9's sign-in capture is written and cleared only through the Save-owned
-	 * `pending-capture` seam (see `editor-host-no-write.test.ts`).
+	 * The route keeps only composition: boot, project epoch, Preview handover,
+	 * source admission and the one ordered teardown. Presentation state machines,
+	 * projections and the large Stage regions live with their owners:
 	 *
-	 * Every explicit state is rendered: loading, new (starter gallery/empty), empty,
-	 * ready, diagnostics (blocking compile), refused (invalid/non-current format),
-	 * missing, forbidden and error. A minted identity starts directly on an admitted
-	 * empty baseline; starter replacement remains available through Find. An
-	 * explicitly opened absence is `missing`.
+	 * - `stage-selection-view` reads selection, Index, Source locator and Card;
+	 * - `stage-contribution-view` reads Dock/Find/task/host-tool projections;
+	 * - `stage-shell-state` owns disclosure, preferences, responsive and view state;
+	 * - `stage-shell-commands` is the one named selection/task/tool/delete dispatch;
+	 * - `stage-experience-binding` owns the route-local lens/View/Look Through wiring;
+	 * - `StageProjectNotices`, `StageViewportRegion`, `StagePanels` and
+	 *   `StageToolbars` own their DOM regions.
 	 *
-	 * One Stage canvas serves both readings and both lenses. Reading flips are
-	 * Camera-evaluated (never a shell tween); pointer input becomes viewing intent;
-	 * a click selects through the eligible Plan fragments so a hidden or excluded
-	 * target can never intercept input.
+	 * Existing authorities are unchanged: the Stage facade/session, Camera, Canvas,
+	 * EditorHead/Index/Card, Unfold, Artwork, Experience lens/controller, drafting
+	 * and the Height Sheet remain exactly where they were.
 	 */
-	import { onMount, tick, untrack } from 'svelte';
-	import { DEFAULT_APP_PREFERENCES, readAppPreferences, writeAppPreferences, type AppPreferences } from '$lib/platform/app-preferences';
-	import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
-	import { createProjectSession } from '$lib/authoring/project-session/project-session.svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
-	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
-	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
+	import type { AppPreferences } from '$lib/platform/app-preferences';
+	import { perfMark } from '$lib/platform/perf-marks';
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
-	import { layoutSelectionReference, primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
+	import type { SceneArtworkEntity } from '@portfolio/project-model';
+	import { primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import { bootIntentFromSearch, type BootIntent } from '$lib/authoring/stage/boot-state';
-	import type { StageDomainRead, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
+	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
-	import {
-		createStageSession,
-		type StageSelection,
-		type StageTask
-	} from '$lib/authoring/stage/stage-session';
+	import { createStageSession } from '$lib/authoring/stage/stage-session';
 	import {
 		createStageFacade,
-		type StageCardActionRecord,
-		type StageCardSubject,
-		type StageCardWriterRecord,
 		type StageFacade,
 		type StageIntentResult,
-		type StageInstrumentContent,
-		type StageCandidatePreviewView,
-		type StageGhostMesh,
-		type StageGuideView,
-		type StageOverlayContribution,
-		type StageSourceHit
+		type StageCardActionRecord,
+		type StageCardWriterRecord
 	} from '$lib/authoring/stage/stage-facade';
 	import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
 	import { createStageArtworkInteraction } from '$lib/authoring/stage/route/stage-artwork-interaction.svelte';
 	import { createStageUnfoldGestures, selectedCurvedWallOf } from '$lib/authoring/stage/route/stage-unfold-gestures.svelte';
 	import { createStageInputArbiter } from '$lib/authoring/stage/route/stage-input.svelte';
 	import { createStageKeyboard } from '$lib/authoring/stage/route/stage-keyboard';
-	import type { StageMarkView } from '$lib/authoring/stage/stage-handles';
 	import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
-		import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
-	import {
-		stageCardActions,
-		stageCardFacts,
-		stageCardWriter,
-		stageFindEntries,
-		stageDockKeys,
-		stageDockTools,
-		STAGE_HOST_ADAPTER_ID,
-		type StageDockKey
-	} from '$lib/authoring/stage/stage-contributions';
-	import { createStageMeasure, STAGE_MEASURE_TASK, type StageMeasureController } from '$lib/authoring/stage/stage-measure';
-	import { createStageEraser, STAGE_ERASER_TASK, type StageEraserController } from '$lib/authoring/stage/stage-eraser';
+	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
+	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
+	import { createStageEraser, STAGE_ERASER_TASK } from '$lib/authoring/stage/stage-eraser';
 	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
 	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
 		developmentPointAtStationFromBuffers,
 		LAYOUT_DIMENSION_LIMIT_MESSAGE,
-		type CompiledPhysicalWall,
-		planFragmentOf,
-		planMembershipOf,
-		type PlanEvaluation,
-		type PlanMembershipReason
+		type PlanEvaluation
 	} from '@portfolio/layout-core';
-	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import {
+		eyeOfInspectionPose,
+		fovYDegreesOf,
+		type ViewingIntent,
+		type ViewportEvaluation,
+		type ViewportRect
+	} from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import {
 		wallUnfoldShouldReturn,
@@ -109,109 +68,56 @@
 	} from '$lib/layout/wall-unfold';
 	import {
 		createStagePressTracker,
-		readingIntentClockSeconds,
-		STAGE_DOCK_SHORTCUTS,
-		type StageDockSlot
+		readingIntentClockSeconds
 	} from '$lib/authoring/stage/stage-input';
 	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 	import '$lib/authoring/stage/shell/shell-roles.css';
 	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
-	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
-	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
-	import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
-	import WorldIcon from '$lib/authoring/world-toolbar/WorldIcon.svelte';
-
-import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
-import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
-import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
-import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
-	import ArtworkResizeOverlay from '$lib/authoring/artwork/ArtworkResizeOverlay.svelte';
-	import ArtworkHangingGuides from '$lib/authoring/artwork/ArtworkHangingGuides.svelte';
+	import StagePanels from '$lib/authoring/stage/shell/StagePanels.svelte';
+	import StageProjectNotices from '$lib/authoring/stage/shell/StageProjectNotices.svelte';
+	import StageToolbars from '$lib/authoring/stage/shell/StageToolbars.svelte';
+	import StageViewportRegion from '$lib/authoring/stage/shell/StageViewportRegion.svelte';
 	import { artworkHangingGuides, snapArtworkHeight, activeArtworkHangGuide } from '$lib/authoring/artwork/artwork-hanging';
-	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import { artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
 	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
-	import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
-import { worldTool, type WorldToolId } from '$lib/authoring/world-toolbar/registry';
-import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
-import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
-import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
-	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
-		import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-	const scenePick = createScenePickSource();
-	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
+	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { isPaperPlanVisible, PAPER_TONES } from '$lib/authoring/stage/paper-plan';
-	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
-	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
-	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
-	import ExperienceMarks from '$lib/authoring/experience/ExperienceMarks.svelte';
 	import { WORLD_ENVIRONMENT_GROUND_RADIUS_METERS } from '$lib/render/world-environment';
-	import { EYE_HEIGHT_STEPS, LENS_STEPS } from '$lib/authoring/experience/look-through';
-	import { angleDelta, frameView, moveViewOnFloor, planLensFromDrag, snapViewDrag, turnViewAboutEye, viewEditMoved, viewTilt, yawFromEye, type AdvancedViewFraming, type AuthoredViewPose, type ViewEditKind } from '$lib/authoring/experience/experience-view-edit';
-	import { CAMERA_FRUSTUM_FAR_METRES, CAMERA_LENS_OFFSET_METRES } from '$lib/authoring/experience/experience-marks';
-	import { createEditorCameraFramingBasis, createEditorCameraFovDragBasis, evaluateEditorCameraFovDrag } from '$lib/authoring/camera/editor-camera-framing';
-	import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
-	import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
-	import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePresentationWriter.svelte';
-	import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
-	import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
-	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
-	import ExperienceExperienceWriter from '$lib/authoring/experience/ExperienceExperienceWriter.svelte';
-	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
-	import { provideExperienceHomes } from '$lib/authoring/experience/experience-homes';
-	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
-	import {
-		experienceCardModel,
-		presentationCardModel,
-		stopCardModel,
-		subjectCardModel,
-		transitionCardModel,
-		viewCardModel
-	} from '$lib/authoring/experience/experience-card-model';
-	import { NAME_NEEDED, type ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
-	import type { ExperienceRemovalTarget } from '$lib/authoring/experience/experience-removal';
-	import type { ComponentProps } from 'svelte';
-	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
-	import {
-		experienceProblems,
-		loweringProblem,
-		type ExperienceProblem
-	} from '$lib/authoring/experience/experience-problems';
-	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
-	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
-	import type { StagePostureLayer } from '$lib/authoring/stage/stage-adapter-host';
-import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
-import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
-import { removalItem, backOf, experienceNameWriter, experienceShownCardFor } from '$lib/authoring/experience/experience-card-wiring';
-import { rememberWelcomeDismissed, welcomeDismissed } from '$lib/authoring/experience/experience-welcome';
-import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
-	import {
-		enterPreview,
-		nextPreviewRunEpoch,
-		previewReturnToken,
-		returnPreview
-	} from '$lib/authoring/experience/preview-handover';
+	import { experienceProblems, loweringProblem, type ExperienceProblem } from '$lib/authoring/experience/experience-problems';
+	import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
-import {
-	SCALE_DETENTS,
-	STAGE_DRAFTING_DEFAULTS,
-	applyDraftingPatch,
-	draftingSnapIncrementMeters,
-	gridWord as draftingWordForGrid,
-	roundScaleBarLength,
-	scaleDetentIntent,
-	snapWord as draftingWordForSnap,
-	type StageDraftingPatch,
-	type StageDraftingState
-} from '$lib/authoring/stage/stage-drafting';
-import type { GridRect } from '$lib/authoring/stage/stage-grid';
+	import {
+		scaleDetentIntent,
+		type StageDraftingPatch
+	} from '$lib/authoring/stage/stage-drafting';
+	import type { GridRect } from '$lib/authoring/stage/stage-grid';
+	import { createProjectSession } from '$lib/authoring/project-session/project-session.svelte';
+	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
+	import { acceptedSceneRoomMembership } from '$lib/authoring/adapters/scene/room-membership';
+	import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+	import { createStageSelectionView, stageWorldCardView } from '$lib/authoring/stage/route/stage-selection-view';
+	import {
+		stageArmedDockId,
+		stageContributedInstrument,
+		stageDockView,
+		stageFindView,
+		stageInactiveTask,
+		stageTaskHost,
+		type StageHeadFindEntry
+	} from '$lib/authoring/stage/route/stage-contribution-view';
+	import { createStageShellState } from '$lib/authoring/stage/route/stage-shell-state.svelte';
+	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
+	import {
+		createStageExperienceBinding,
+		type StageExperienceBinding
+	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
+	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 
-	// Harness-gated work ledger (T1.P02.S06); inert without the perf flag.
 	installPerfWorkObserver();
 
 	const projectId = decodeURIComponent(page.params.projectId ?? '');
@@ -220,15 +126,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
 	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
-	/** One session-only live lighting preview; it is merged by the editor Stage shell. */
 	const lightPreview = createStageLightPreview();
+	const scenePick = createScenePickSource();
 
-	/**
-	 * X1 / contract A — approved model and artwork leases for this route. The
-	 * route hands the controller the existing resolver and keeps only the
-	 * composition: the Canvas borrows the artwork scope, and Preview still owns its
-	 * own scope.
-	 */
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
@@ -236,18 +136,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (api === null) throw new Error('Artwork storage is unavailable.');
 			return readVerifiedArtwork(api, projectId, image, signal);
 		},
-		notice: {
-			read: () => notice,
-			write: (message) => { notice = message; }
-		}
+		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
 
-	/**
-	 * X1 / contract P — the route's one project epoch. Activation, replacement,
-	 * reset, acceptance/contribution subscriptions, Save mounting, Undo/Redo
-	 * orchestration and teardown live here; the route supplies presentation
-	 * callbacks and its existing project-session/facade factories.
-	 */
 	const stageEpoch = createStageProjectEpoch({
 		session,
 		assets: stageAssets,
@@ -269,7 +160,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		onAdaptersChanged: refreshAdapterPresentation,
 		onAccepted: refreshAcceptedPresentation,
 		onHistoryInstalled: completeHistoryInstall,
-		onNotice: (message) => { notice = message; },
+		onNotice: (message) => shell.setNotice(message),
 		refresh: () => refresh(),
 		isActiveProject: () => boot.status === 'ready' || boot.status === 'empty'
 	});
@@ -280,176 +171,96 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		acceptance: () => stageEpoch.acceptance,
 		tornDown: () => stageEpoch.tornDown,
 		activate: (snapshot) => stageEpoch.activate(snapshot),
-		get notice() { return notice; },
-		set notice(value) { notice = value; }
+		get notice() { return shell.notice; },
+		set notice(value) { shell.setNotice(value); }
 	});
 	const boot = $derived(projectSession.boot);
 	const headSave = $derived(projectSession.headSave);
 	const resumeOffer = $derived(projectSession.resumeOffer);
 	const pendingReplacement = $derived(projectSession.pendingReplacement);
 	const projectActionBusy = $derived(projectSession.projectActionBusy);
-	const { activeProject, requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer,
+	const {
+		activeProject, requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer,
 		prepareProjectLifecycle, renameCurrentProject, deleteCurrentProject, finishCurrentProjectAction,
-		reloadLifecycleRemote, applyReloadOffer } = projectSession;
-	/**
-	 * Validator findings of the mounted source, disclosed without being repaired.
-	 * `closure` is executable and blocks Save; `diagnostics` are repairable
-	 * authored bindings and stay visible without blocking inspection or edits.
-	 */
+		reloadLifecycleRemote, applyReloadOffer
+	} = projectSession;
+
 	const sourceFindings = $derived.by(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
 		const { diagnostics, closure } = boot.snapshot.domain;
 		return diagnostics.length === 0 && closure.length === 0 ? null : { diagnostics, closure };
 	});
-	/** Plain-language source problems; one validator pass feeds every sentence. */
 	const sourceProblems = $derived.by(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') return [] as readonly ExperienceProblem[];
 		return experienceProblems(stageEnvelope(boot.snapshot), boot.snapshot.domain.diagnostics);
 	});
-	/** The last Preview lowering refusal, worded like a source problem. */
-	let previewProblem = $state<ExperienceProblem | null>(null);
-	/** The current epoch's facade; owned by the project-epoch controller. */
-	const facade = $derived(stageEpoch.facade);
-	/**
-	 * The host↔F4 acceptance host for the current project epoch. There is exactly
-	 * one per epoch, recreated on every replacement; it is the only acceptance
-	 * writer, and the Head's history controls are its commands.
-	 */
-	const acceptance = $derived(stageEpoch.acceptance);
-	/**
-	 * Bumped whenever the mounted facade's adapter registrations or bindings change.
-	 * The contribution views below read a `$state.raw` facade whose adapter map is
-	 * plain data, so this signal is what makes a registration after mount reach the
-	 * Index, the Card and the instrument host.
-	 */
-	let contributionsVersion = $state(0);
-	let contributedTaskId = $state<{ id: string; adapterId: string } | null>(null);
 
-	/** The acceptance host's one bounded history, published by the epoch controller. */
+	const facade = $derived(stageEpoch.facade);
+	const acceptance = $derived(stageEpoch.acceptance);
 	const historyState = $derived(stageEpoch.history);
 	let selection = $state<StageSelectionEntry | null>(null);
-	/** A one-shot Stage pick for linking a Presentation; Esc cancels it. */
-	let stagePickPresentationId = $state<string | null>(null);
-	/** The hovered subject's echoed entry; never the primary selection. */
-	/** R217.S15 — whether the pointer is over a draggable selected Wall body or grip. */
-	let task = $state<StageTask | null>(null);
-	/** Instrument content contributed by the adapter whose task is open, if any. */
-	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
-		void contributionsVersion;
-		return contributedTaskId === null ? null : (facade?.instrumentForTask(contributedTaskId.id, contributedTaskId.adapterId) ?? null);
-	});
-	const inactiveTask = $derived.by(() => {
-		void contributionsVersion;
-		const lifecycle = facade?.session.taskLifecycle();
-		if (lifecycle?.status !== 'inactive') return null;
-		// Only where it can actually be resumed: a world task in the Experience lens
-		// refuses Resume, so showing its panel there would stack two controls that
-		// cannot act on each other.
-		return (lifecycle.task.lens ?? 'world') === lens ? lifecycle.task : null;
-	});
-	function changeLens(next: 'world' | 'experience'): void {
-		// A lens switch invalidates any Present-this framing run still waiting.
-		stagePickPresentationId = null;
-
-		const previous = lens;
-		// Preview returns to the lens it was entered from; a lens switch ends it.
-		previewController.close();
-		clearHover();
-		interruptPress('lens-change');
-		// A notice describes the previous context; the lens is the new one.
-		notice = '';
-		if (facade?.changeLens(next)) {
-			lens = session.lens();
-			// Leaving the lens ends its transient posture; a refused switch keeps it.
-			if (previous === 'experience' && lens !== 'experience') experienceLens.deactivate();
-			task = null;
-			contributionsVersion += 1;
-			// R217.S25: the Guide instrument is closed by default, so every entry starts closed. A Card
-			// subject left from the last visit is cleared too, or its Guide-type subject would reopen it.
-			if (lens === 'experience') {
-				experienceGuideOpen = false;
-				experienceFocus.select(null);
-				// With no Experience there is no Card for a carried-over World selection, so it goes too.
-				if (experienceController?.current == null && selection !== null) closeSelection();
-			}
-		}
-		// Arming the Experience dock's Guide key is not a mode: the lens owns it.
-	}
-	function resumeTask(): void {
-		const result = facade?.resumeTask();
-		if (result?.kind === 'refused') notice = result.message;
-		else { task = session.task(); notice = ''; }
-		contributionsVersion += 1;
-	}
-	/**
-	 * R217.S20 — the viewing preferences the Head's Find reaches. The Stage's ⚙ holds
-	 * the same values; Find is the second door, and both write the one preference.
-	 */
-	const HEAD_PREFERENCE_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string;
-	}[] = [
-		{ id: 'appearance:paper', adapterId: 'preference', label: '2D appearance: Paper', verb: 'Set' },
-		{ id: 'appearance:shaded', adapterId: 'preference', label: '2D appearance: Shaded', verb: 'Set' },
-		{ id: 'height-sheet:right', adapterId: 'preference', label: 'Height Sheet: Right', verb: 'Set' },
-		{ id: 'height-sheet:left', adapterId: 'preference', label: 'Height Sheet: Left', verb: 'Set' },
-		{ id: 'reduce-motion', adapterId: 'preference', label: 'Reduce motion', verb: 'Toggle' },
-		{ id: 'motion-speed:slow', adapterId: 'preference', label: 'Motion speed: Slow', verb: 'Set' },
-		{ id: 'motion-speed:normal', adapterId: 'preference', label: 'Motion speed: Normal', verb: 'Set' },
-		{ id: 'motion-speed:fast', adapterId: 'preference', label: 'Motion speed: Fast', verb: 'Set' }
-	];
-	/**
-	 * R217.S20 — the project procedures under the project name. Rename and delete run
-	 * in the Head's own lifecycle dialog; download and source replacement run the
-	 * same route functions the project menu runs.
-	 */
-	const HEAD_PROJECT_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string;
-	}[] = [
-		{ id: 'rename', adapterId: 'project-menu', label: 'Rename project', verb: 'Run' },
-		{ id: 'delete', adapterId: 'project-menu', label: 'Delete project', verb: 'Run' },
-		{ id: 'download', adapterId: 'project-menu', label: 'Download source JSON', verb: 'Run' },
-		{ id: 'source', adapterId: 'project-menu', label: 'Open source JSON', verb: 'Replace' }
-	];
-	/** Whether the Keys reference is open; it lives in Find and closes with its own control. */
-	let keysOpen = $state(false);
-	/** Moves focus into an opened reference, so a keyboard user lands in what Find opened. */
-	function focusOnOpen(node: HTMLElement): void {
-		node.focus();
-	}
 	let revealed = $state<string[]>([]);
-	let lens = $state<'world' | 'experience'>('world');
-	/**
-	 * R217.S23 — below 1280 px the Index starts collapsed. The starting state is read once
-	 * here, as session state the creator then changes: it is not a CSS-only hide, so a
-	 * later Index toggle is never undone by a re-render at the same width.
-	 */
-	const constrainedAtStart =
-		typeof window !== 'undefined' &&
-		typeof window.matchMedia === 'function' &&
-		window.matchMedia('(max-width: 860px)').matches;
-	let indexOpen = $state(!constrainedAtStart);
-	let query = $state('');
-	let reducedMotion = $state(false);
-	let preferences = $state<AppPreferences>({ ...DEFAULT_APP_PREFERENCES });
-	const motionClock = createEditorMotionClock();
-	function updatePreferences(next: AppPreferences): void {
-		const real = performance.now() / 1000;
-		motionClock.setSpeed(next.motionSpeed, real);
-		preferences = next;
-		writeAppPreferences(next);
-	}
+	let stageEl: HTMLDivElement | undefined = $state(undefined);
+	let throughFrameEl: HTMLElement | undefined = $state(undefined);
+	let cardGesturing = $state(false);
+
+	/** The Experience binding owns lens/View/Look Through; the shell state owns chrome. */
+	let experience!: StageExperienceBinding;
+	const shell = createStageShellState({
+		session,
+		facade: () => facade,
+		evaluation: () => evaluation,
+		rect: () => rect,
+		measure: () => stageViewport.measure(),
+		previewing: () => preview !== null,
+		lens: () => experience.lensState,
+		selection: () => selection
+	});
+	experience = createStageExperienceBinding({
+		session,
+		stage: () => facade,
+		shell: () => shell,
+		selection: () => selection,
+		cardIdentity: () => selectionViewView?.cardIdentity ?? null,
+		floorDatum: () => experienceFloorDatum,
+		closeSelection: () => commands.closeSelection(),
+		clearStageSelection: () => {
+			facade?.select(null);
+			selection = null;
+		},
+		preview: () => previewController,
+		reducedMotion: () => shell.reducedMotion,
+		evaluation: () => evaluation,
+		rect: () => rect,
+		stageElement: () => stageEl,
+		capturePointer,
+		stageCss,
+		absoluteCss,
+		refresh: () => refresh(),
+		renameRequest: () => shell.requestCardRename(),
+		clearHover,
+		refusePress: (pointerId) => press.refuse(pointerId),
+		interruptPress,
+		gestureActive: () => session.gesture() !== null,
+		notice: (message) => shell.setNotice(message),
+		setPreviewProblem: (problem) => shell.setPreviewProblem(problem),
+		setStagePickPresentationId: (id) => shell.setStagePickPresentationId(id)
+	});
+
 	const previewController = createExperiencePreview({
-		lens: () => lens,
+		lens: () => experience.lensState,
 		snapshot: () => (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null),
 		token: () => session.token(),
 		isCurrent: (token) => session.isCurrent(token as never),
 		envelope: () => currentEnvelope,
 		envelopeOf: (snapshot) => stageEnvelope(snapshot as Parameters<typeof stageEnvelope>[0]),
 		focus: () => experienceFocus.read(),
-		setProblem: (problem) => { previewProblem = problem as ExperienceProblem | null; },
+		setProblem: (problem) => shell.setPreviewProblem(problem as ExperienceProblem | null),
 		stage: () => facade,
-		stopAndRestore: () => experienceLens.stopAndRestore(),
-		snapSuspended: () => drafting.snapSuspended,
-		patchDrafting: (patch) => patchDrafting(patch),
-		notice: (message) => { notice = message; },
+		stopAndRestore: () => experience.stopAndRestore(),
+		snapSuspended: () => shell.drafting.snapSuspended,
+		patchDrafting: (patch) => shell.patchDrafting(patch),
+		notice: (message) => shell.setNotice(message),
 		perfMark: (name, data) => perfMark(name, data),
 		async prepareArtwork(domain, signal) {
 			const read = domain as StageDomainRead;
@@ -483,1561 +294,115 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const previewViewLabels = $derived(previewController.labels);
 	const previewAvailable = $derived(previewController.available);
 	const projectActionsUnavailableReason = $derived(projectSession.projectActionsUnavailableReason());
-	type PlaybackView = {
-		readonly eye: [number, number, number];
-		readonly target: [number, number, number];
-		readonly fov: number;
-	};
-	/** The adapter services the Stage and the Experience homes edit through. */
 	const adapterServices = $derived(stageEpoch.services);
-	/**
-	 * The one drag-versus-click authority. The input arbiter and the Unfold and
-	 * Artwork sessions share this instance, so a specialised gesture refuses the
-	 * same press the arbiter will later judge.
-	 */
 	const press = createStagePressTracker();
-	/**
-	 * R217.S25 — the Experience controller the shared homes read. ExperienceHomesHost creates it
-	 * while the Experience lens is open and binds it here; it is null in World.
-	 */
-	let experienceController = $state.raw<ExperienceController | null>(null);
-	/** Whether the Guide instrument is open in the lower edge. Closed by default. */
-	let experienceGuideOpen = $state(false);
-	/** The controller the homes read; null outside the Experience lens. */
-	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
-	/** The World toolbar's selected row; the task/selection controllers remain authoritative. */
-	let activeWorldTool = $state<WorldToolId>('select');
-	/** The upper parchment plate: opens on a family press and folds on a second one. */
-	let worldPlateOpen = $state(false);
-	let libraryOpen = $state(false);
-	let toolBeforeLibrary = $state<WorldToolId>('select');
-	let inkReading = $state<'wall' | 'opening'>('wall');
 
-	// A completed task leaves no plate behind. A library visit is its own mode and
-	// Select is already the empty state, so those two keep their word.
-	$effect(() => {
-		if (task === null) {
-			if (libraryOpen || activeWorldTool === 'library' || activeWorldTool === 'select') return;
-			// A planned row is inspectable without a task; only a landed tool that has
-			// just completed belongs back at Select.
-			if (worldTool(activeWorldTool).stage === 'planned') return;
-			activeWorldTool = 'select';
-			worldPlateOpen = false;
-			return;
-		}
-		if (task.kind === STAGE_MEASURE_TASK) activeWorldTool = 'measure';
-		else if (task.kind === STAGE_ERASER_TASK) activeWorldTool = 'erase';
-	});
-
-	/** R217.S29 Show ▾ — session-only Stage drawing flags; all on by default. */
-	let showOpen = $state(false);
-	let showMode = $state<'whole' | 'selection'>('whole');
-	let showMarkers = $state(true);
-	let showFrustums = $state(true);
-	let showPaths = $state(true);
-	let showLabels = $state(true);
-	const showOffCount = $derived([showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length);
-	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
-	let expandedPresentationId = $state<string | null>(null);
-	/** The Scene entity the Card shows in the Experience lens: the Stage's primary Scene selection. */
-	const experienceSceneSubject = $derived.by(() => {
-		const selected = selection;
-		if (selected === null || selected.reference.domain !== 'scene' || selected.reference.subject.kind !== 'entity') {
-			return null;
-		}
-		return { entityId: selected.reference.subject.id, label: cardIdentity?.label ?? 'Object' };
-	});
-	/* --- R217.S28 — Place a View, Look through and Present this --------------- */
-
-	type StageTriple = [number, number, number];
-
-	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
-	let experienceTool = $state<'select' | 'place'>('select');
-	/** Scroll in Look through accumulates until one 0.25 m step is owed. */
-	let showExperienceWelcome = $state(false);
-
-	let throughFrameEl = $state<HTMLElement | null>(null);
-	/** Monotone guard: only the newest Present-this run may capture framing. */
-
-
-	/* --- R217.S30 — the Experience lens owns playback and its Follow entry ---- */
-
-	const experienceLens = createExperienceLens({
-		activeController: () => activeExperience,
-		stage: () => facade,
-		lens: () => lens,
-		guideOpen: () => experienceGuideOpen,
-		setGuideOpen: (open) => { experienceGuideOpen = open; },
-		clearStageSelection: () => {
-			stagePickPresentationId = null;
-			facade?.select(null);
-			selection = null;
-		},
-		openCard: () => { cardOpen = true; },
-		pickActive: () => stagePickPresentationId !== null,
-		cancelPick: () => {
-			stagePickPresentationId = null;
-			notice = 'Pick cancelled.';
-		},
-		dismiss: () => {
-			if (experienceFocus.subject !== null) { experienceFocus.select(null); return true; }
-			if (selection !== null) { closeSelection(); return true; }
-			if (experienceGuideOpen) { experienceGuideOpen = false; return true; }
-			return false;
-		},
-		reducedMotion: () => reducedMotion,
-		previewOpen: () => previewController.openState,
-		previewBusy: () => previewController.busy,
-		previewRequested: () => previewController.requestedMode !== null,
-		pathAnchorPoint: (css, height) => pathAnchorPoint(css, height),
-		stageCss: (event) => stageCss(event),
-		showMarkers: () => showMarkers,
-		showFrustums: () => showFrustums,
-		gestureActive: () => session.gesture() !== null,
-		refusePress: (pointerId) => press.refuse(pointerId),
-		clearHover: () => clearHover(),
-		evaluationGeneration: () => evaluation?.token.evaluationGeneration ?? 0,
-		tool: () => experienceTool,
-		setTool: (next) => { experienceTool = next; },
-		absoluteCss: (event) => absoluteCss(event),
-		stageElement: () => stageEl,
-		capturePointer: (target, pointerId) => capturePointer(target, pointerId),
-		floorDatum: () => experienceFloorDatum,
-		evaluation: () => evaluation,
-		refresh: () => refresh(),
-		renameRequest: () => { cardOpen = true; cardRenameRequest += 1; },
-		notice: (message) => { notice = message; }
-	});
-	/** The one active posture; World dispatches to adapters and navigation directly. */
-	const activeLayer = $derived<StagePostureLayer | null>(lens === 'experience' ? experienceLens.posture : null);
-	/** The lens's one playback session, read by the Guide instrument. */
-	const playback = experienceLens.playback;
-	experienceLens.install();
-
-	/**
-	 * E3 — the mounted Stage's one viewport controller. Measurement, Camera
-	 * evaluation, Plan/overlay publication and the animation-frame refresh live
-	 * here; this route composes the controller and reads what it publishes.
-	 */
 	const stageViewport = createStageViewport({
 		facade: () => facade,
 		stageElement: () => stageEl,
-		throughFrameElement: () => throughFrameEl,
-		lookThroughActive: () => experienceLens.lookThroughSession() !== null,
+		throughFrameElement: () => throughFrameEl ?? null,
+		lookThroughActive: () => experience.lookThroughActive(),
 		previewing: () => preview !== null,
-		lens: () => lens,
+		lens: () => experience.lensState,
 		revealed: () => revealed,
-		roomLabels: () => ({ plan: preferences.roomLabels2d, threeD: preferences.roomLabels3d }),
+		roomLabels: () => ({ plan: shell.preferences.roomLabels2d, threeD: shell.preferences.roomLabels3d }),
 		groundReachMeters: () =>
 			!look.editOnPaper && look.environment !== 'paper'
 				? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS
 				: undefined,
 		nowSeconds,
-		advanceLookThroughZoom: (now) => experienceLens.advanceLookThroughZoom(now),
-		advancePlayback: (now) => experienceLens.advancePlayback(now),
+		advanceLookThroughZoom: (now) => experience.advanceLookThroughZoom(now),
+		advancePlayback: (now) => experience.advancePlayback(now),
 		onBeforeRefresh: () => {
-			// The gesture lease is host state that changes what Undo can do without an
-			// acceptance, so the Head's reported history follows it on the same frame as
-			// the render rather than only on the next accepted change.
 			stageEpoch.refreshHistory();
-			// R217.S22 (D36): an authored gesture is a non-navigation lease. The Card fades while
-			// it lives. A navigation press (pan, orbit, zoom) never fades the Card.
-			const lease = session.gesture();
-			// Review round 3 (sheet §24, Card only): a camera edit keeps the Card clear, so its
-			// framing and picture read beside the camera being moved. Other authored gestures fade it.
-			const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
-			const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;
-			if (gesturing !== cardGesturing) cardGesturing = gesturing;
+			shell.syncGestureFade(session.gesture());
 		},
-		onAfterRefresh: () => refreshHostTools()
+		onAfterRefresh: () => shell.refreshHostTools()
 	});
-	/** The controller's published capture frame, read by the one renderer. */
 	const throughViewport = $derived(stageViewport.framedViewport);
-
-	const advancedCamera = $derived(experienceLens.advancedCamera());
-	const advancedViewId = $derived(experienceLens.advancedViewId());
-	const viewEdit = $derived(experienceLens.viewEdit());
-	const pendingViewWrite = $derived(experienceLens.pendingViewWrite());
-
-	const experienceFloorDatum = $derived.by(() =>
-		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
-	);
-
-	/** One path anchor drag point, through the same Camera ray and a level plane at its height. */
-	let pathDragLease: { release(): void } | null = null;
-	function beginPathDragLease(): boolean {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		if (stage === null || id === null || pathDragLease !== null) return false;
-		const outcome = stage.acquireGesture({
-			owner: 'experience-path-point',
-			evaluationId: id,
-			policy: 'cancel-on-reading-change'
-		});
-		if (outcome.kind !== 'granted') return false;
-		pathDragLease = outcome.lease;
-		return true;
-	}
-	function endPathDragLease(): void {
-		pathDragLease?.release();
-		pathDragLease = null;
-	}
-
-	function pathAnchorPoint(css: readonly [number, number], height: number): StageTriple | null {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		if (stage === null || id === null) return null;
-		const ray = stage.pointerRay([css[0], css[1]], id);
-		if (ray.kind !== 'ray') return null;
-		const hit = stage.intersectWorkingPlane(
-			ray.ray,
-			{
-				originMeters: [0, height, 0],
-				normal: [0, 1, 0],
-				yawRadians: 0,
-				datumMeters: experienceFloorDatum,
-				supportedLocalExtent: null
-			},
-			id
-		);
-		return hit.kind === 'intersected' ? hit.worldPoint : null;
-	}
-
-	function viewMarkAt(event: MouseEvent) {
-		const target = event.target;
-		if (!(target instanceof Element)) return null;
-		const mark = target.closest('[data-view-mark]');
-		const viewId = mark?.getAttribute('data-view-mark') ?? null;
-		const kind = target.closest('[data-turn-grip]') !== null ? 'turn' : mark?.getAttribute('data-mark-kind') ?? null;
-		return viewId === null || kind === null || mark === null ? null : { viewId, kind, mark };
-	}
-
-	const viewEditPreview = $derived.by(() => {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		const edit = viewEdit;
-		const origin = rect;
-		if (stage === null || id === null || edit === null || origin === null) return null;
-		const local = (point: readonly [number, number]): [number, number] => [point[0] - origin.left, point[1] - origin.top];
-		const eye = stage.projectWorld(edit.eye, id);
-		if (eye.kind !== 'projected') return null;
-		const target = stage.projectWorld(edit.target, id);
-		const eyeCss = local(eye.css);
-		const targetCss = target.kind === 'projected' ? local(target.css) : null;
-		// Turn (G1): a ghost wedge along the new direction, an arc from the start
-		// direction and the angle; never a line that stretches with the pointer.
-		let turn: { readonly wedge: string; readonly arc: string; readonly label: string; readonly labelAt: readonly [number, number] } | null = null;
-		if (edit.kind === 'turn' && targetCss !== null) {
-			const start = stage.projectWorld(edit.start.target, id);
-			if (start.kind === 'projected') {
-				const startCss = local(start.css);
-				const a0 = Math.atan2(startCss[1] - eyeCss[1], startCss[0] - eyeCss[0]);
-				const a1 = Math.atan2(targetCss[1] - eyeCss[1], targetCss[0] - eyeCss[0]);
-				let delta = a1 - a0;
-				while (delta > Math.PI) delta -= 2 * Math.PI;
-				while (delta < -Math.PI) delta += 2 * Math.PI;
-				const half = (Math.max(10, Math.min(110, edit.start.fov)) * Math.PI) / 360;
-				const at = (angle: number, radius: number): string =>
-					`${(eyeCss[0] + Math.cos(angle) * radius).toFixed(1)},${(eyeCss[1] + Math.sin(angle) * radius).toFixed(1)}`;
-				const length = 90;
-				const arcRadius = 46;
-				const startYaw = yawFromEye(edit.start, edit.start.target);
-				const turnedYaw = yawFromEye(edit.start, edit.target);
-				const yawChange = startYaw === null || turnedYaw === null ? 0 : turnedYaw - startYaw;
-				const degrees = Math.round(Math.abs(Math.atan2(Math.sin(yawChange), Math.cos(yawChange))) * 180 / Math.PI);
-				turn = {
-					wedge: `M${eyeCss[0]},${eyeCss[1]}L${at(a1 - half, length)}A${length},${length} 0 0 1 ${at(a1 + half, length)}Z`,
-					arc: `M${at(a0, arcRadius)}A${arcRadius},${arcRadius} 0 0 ${delta > 0 ? 1 : 0} ${at(a1, arcRadius)}`,
-					label: `${degrees}°`,
-					labelAt: [eyeCss[0] + Math.cos(a0 + delta / 2) * (arcRadius + 16), eyeCss[1] + Math.sin(a0 + delta / 2) * (arcRadius + 16)]
-				};
-			}
-		}
-		return {
-			kind: edit.kind,
-			eye: eyeCss,
-			target: targetCss,
-			turn
-		};
-	});
-
-	provideExperienceHomes(experienceLens.homes({
-		controller: () => (lens === 'experience' ? experienceController : null),
-		guideOpen: () => experienceGuideOpen,
-		setGuideOpen: (open) => {
-			experienceGuideOpen = open;
-		},
-		select: experienceLens.selectSubject,
-		sceneSubject: () => experienceSceneSubject,
-		openInWorld: () => changeLens('world'),
-		pickStageSubject: (presentationId) => {
-			if (lens !== 'experience') return false;
-			stagePickPresentationId = presentationId;
-			notice = 'Pick a Stage object to link. Esc cancels.';
-			return true;
-		},
-		previewMode: (mode, guideId) => void previewController.open(mode, guideId),
-		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null
-	}));
-	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
-	// replaces must not linger beside it.
-	$effect(() => {
-		if (activeExperience?.subject == null) return;
-		untrack(() => {
-			if (selection === null) return;
-			facade?.select(null);
-			selection = null;
-		});
-	});
-	// A subject whose ids no longer resolve (an undo, a redo or a removed Presentation) would leave the
-	// Card blank: clear it, so the Card falls back to the Stage selection or to nothing.
-	$effect(() => {
-		const controller = activeExperience;
-		const subject = controller?.subject ?? null;
-		if (controller === null || subject === null) return;
-		const resolves =
-			subject.kind === 'experience'
-				? controller.current !== null
-				: subject.kind === 'view'
-					? controller.selectedView !== null
-					: subject.kind === 'stop' || subject.kind === 'transition'
-						? controller.selectedStop !== null
-						: controller.selectedPresentation !== null;
-		if (!resolves) untrack(() => experienceFocus.select(null));
-	});
-	// A Stop or transition belongs to the Guide, so its instrument opens. A Presentation, View,
-	// Experience or Stage subject never closes it. Lens entry clears the subject, so this does not
-	// fight the closed-on-entry rule in changeLens.
-	$effect(() => {
-		const kind = activeExperience?.subject?.kind;
-		if (kind !== 'stop' && kind !== 'transition') return;
-		untrack(() => experienceLens.openGuide());
-	});
-	// The Index opens the selected Presentation's Views. Only its id drives the effect, so a new object
-	// for the same Presentation (a rename, a capture) cannot re-expand a row the user collapsed.
-	const selectedPresentationId = $derived(activeExperience?.selectedPresentation?.id ?? null);
-	$effect(() => {
-		if (selectedPresentationId !== null) expandedPresentationId = selectedPresentationId;
-	});
-	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
-		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
-	);
 	const evaluation = $derived(stageViewport.evaluation);
-	/**
-	 * C3/D14 — the single executor for unfold camera requests.
-	 *
-	 * Entry no longer fits or otherwise moves the Camera, so the only request is
-	 * the conditional Put-back return. It is refused unless the entry performed a
-	 * fit (legacy state only) and the settled pose still matches the current one.
-	 * Scrub, peel and face changes never move the Camera; Bring into view is the
-	 * explicit framing action.
-	 */
-	$effect(() => {
-		wallUnfold.setCameraExecutor((request) => {
-			const stage = facade;
-			const current = stage?.evaluation() ?? null;
-			if (stage === null || current === null) return false;
-			const ticket = stage.inspectionTicket();
-			if (ticket === null) return false;
-			const camera = stage.camera.state();
-			if (
-				!wallUnfoldShouldReturn({
-					entryAdjusted: request.entryAdjusted,
-					settled: request.settled,
-					current: { pose: camera.pose, reading: camera.reading }
-				})
-			) return false;
-			return (
-				stage.requestViewingIntent(
-					{
-						kind: 'set-view',
-						eye: eyeOfInspectionPose(request.pose),
-						target: request.pose.target,
-						fovYDegrees: fovYDegreesOf(request.pose),
-						transition: true
-					},
-					ticket,
-					performance.now() / 1000
-				).kind === 'accepted'
-			);
-		});
-		return () => wallUnfold.setCameraExecutor(null);
-	});
-	/**
-	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
-	 * session so the furniture re-renders; it is never part of the project source,
-	 * history or Save, and a replacement keeps it.
-	 */
-	let drafting = $state<StageDraftingState>(STAGE_DRAFTING_DEFAULTS);
-	/** Re-evaluates content bounds when a lazy model or form root mounts. */
-	let renderRootsRevision = $state(0);
-	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
-	/**
-	 * R217.S06's one Height Sheet fact, mirrored from the session so the control,
-	 * the Canvas plane and the mounted chrome all read the same height. It is
-	 * session view state: a replacement resets it, and nothing here is saved.
-	 */
-	const heightSheet = session.heightSheet();
-	let heightMeters = $state(heightSheet.height());
-	let heightTicks = $state<readonly StageHeightTick[]>([]);
-	let heightPins = $state<readonly number[]>([]);
-	let heightSheetSide = $state<'left' | 'right'>('right');
-	let heightPlaneVisible = $state(false);
-	let heightPlaneTimer: ReturnType<typeof setTimeout> | null = null;
-	$effect(() => {
-		heightMeters = heightSheet.height();
-		heightPins = heightSheet.pins();
-		const unsubscribeHeight = heightSheet.subscribe('route-height-sheet', (height) => {
-			heightMeters = height;
-		});
-		const unsubscribePins = heightSheet.subscribePins('route-height-sheet-pins', (pins) => {
-			heightPins = pins;
-		});
-		return () => {
-			unsubscribeHeight();
-			unsubscribePins();
-		};
-	});
-	$effect(() => {
-		// A binding rebuild can add or remove owner surfaces, and a viewport output
-		// is needed before the binding exists; read the merged set for both.
-		evaluation;
-		contributionsVersion;
-		const stage = facade;
-		heightTicks = stage === null ? [] : stage.heightTicks();
-	});
-	$effect(() => () => {
-		if (heightPlaneTimer !== null) clearTimeout(heightPlaneTimer);
-	});
-	function setHeight(heightMetersValue: number, cause: 'drag' | 'key' | 'tick'): void {
-		heightSheet.set(heightMetersValue, cause);
-		heightMeters = heightSheet.height();
-	}
-	/** Session-only pin creation; pin removal is intentionally unexposed. */
-	function addHeightPin(): void {
-		heightSheet.addPin(heightMeters);
-		heightPins = heightSheet.pins();
-	}
-	function setHeightPlaneActive(active: boolean): void {
-		if (heightPlaneTimer !== null) {
-			clearTimeout(heightPlaneTimer);
-			heightPlaneTimer = null;
-		}
-		// The Sheet is World-lens chrome. Its teardown on a lens switch is not a
-		// pointer release: do not leave a tail running behind the Experience lens.
-		if (lens !== 'world') {
-			heightPlaneVisible = false;
-			return;
-		}
-		if (active) {
-			heightPlaneVisible = true;
-			return;
-		}
-		if (reducedMotion) {
-			heightPlaneVisible = false;
-			return;
-		}
-		heightPlaneTimer = setTimeout(() => {
-			heightPlaneVisible = false;
-			heightPlaneTimer = null;
-		}, 1000);
-	}
-	$effect(() => {
-		// A lens switch can happen after the Sheet already went inactive (for
-		// example focus moved to the lens button first), so cancel any live tail
-		// on the lens change itself rather than relying on the unmount callback.
-		if (lens === 'world') return;
-		if (heightPlaneTimer !== null) {
-			clearTimeout(heightPlaneTimer);
-			heightPlaneTimer = null;
-		}
-		heightPlaneVisible = false;
-	});
-	const draftingReading: 'plan' | '3d' = $derived(
-		evaluation?.settledReading === 'plan' ? 'plan' : '3d'
-	);
-	const draftingGridWord = $derived(draftingWordForGrid(drafting));
-	const draftingSnapWord = $derived(draftingWordForSnap(drafting));
-	/** Arrow-key stepping follows the fixed increment, or 0.1 m while Snap is off. */
-	const heightSnapIncrement = $derived(
-		draftingSnapIncrementMeters(drafting) ?? 0.1
-	);
-	const draftingScaleBar = $derived(
-		roundScaleBarLength(evaluation?.targetPlaneMetersPerCssPixel ?? 0)
-	);
-	/**
-	 * Layout ∪ Scene datum bounds, the one read Fit and Paper's sheet share.
-	 *
-	 * A free Scene object outside the drawing is still on the Stage, so the sheet
-	 * and Fit must see it. The bounds contain no Camera state: they never move a
-	 * pose or ask the Camera to reframe.
-	 */
-	function readStageContentBounds(stage: StageFacade): {
-		readonly min: [number, number, number];
-		readonly max: [number, number, number];
-	} | null {
-		const layoutBounds = stage.snapshot().domain.geometry.bounds;
-		let min: [number, number, number] | null =
-			layoutBounds === null ? null : [layoutBounds.min[0], layoutBounds.min[1], layoutBounds.min[2]];
-		let max: [number, number, number] | null =
-			layoutBounds === null ? null : [layoutBounds.max[0], layoutBounds.max[1], layoutBounds.max[2]];
-		for (const entity of stage.snapshot().domain.scene.entities) {
-			const bounds = stage.sceneBounds(entity.id);
-			if (bounds === null) continue;
-			min =
-				min === null
-					? [bounds.min[0], bounds.min[1], bounds.min[2]]
-					: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
-			max =
-				max === null
-					? [bounds.max[0], bounds.max[1], bounds.max[2]]
-					: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
-		}
-		return min === null || max === null ? null : { min, max };
-	}
-	const stageContentBounds = $derived.by(() => {
-		void renderRootsRevision;
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		const stage = facade;
-		return stage === null ? null : readStageContentBounds(stage);
-	});
-	const paperContentBounds = $derived.by((): GridRect | null => {
-		const bounds = stageContentBounds;
-		return bounds === null
-			? null
-			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
-	});
-	$effect(() => facade?.camera.setContentBounds(stageContentBounds));
-	// Generated Plan evaluations are replaced whole; the controller keeps their
-	// identity while the dependency key is unchanged.
 	const planView = $derived(stageViewport.planView);
-	// The chrome's own paper/material cue follows the same truth as the Canvas: a
-	// settled Plan in the Paper appearance. It is a CSS inset perimeter only, never a
-	// second drawing surface or a pointer target.
-	const paperVisible = $derived(isPaperPlanVisible(evaluation, preferences.planAppearance));
 	const rect = $derived(stageViewport.rect);
 	const markers = $derived(stageViewport.markers);
 	const candidatePreviews = $derived(stageViewport.candidatePreviews);
 	const guides = $derived(stageViewport.guides);
 	const ghosts = $derived(stageViewport.ghosts);
-	/**
-	 * Approved creator-model bytes for the accepted source, keyed by model resource
-	 * id. The asset-lease controller resolves them from the resource pins — never
-	 * from an import session — so a fresh reopen fetches the same immutable
-	 * derivative, and the Preview surface receives plain URLs without learning how
-	 * they were authorised.
-	 */
-	const modelUrls = $derived(stageAssets.urls);
 	const roomLabels = $derived(stageViewport.roomLabels);
 	const marks = $derived(stageViewport.marks);
 	const tracePreview = $derived(stageViewport.tracePreview);
-	let notice = $state('');
-	/**
-	 * T2 P0 — the route's one Look authoring module. The Sky popover, the Card's
-	 * look stratum, the Stage's Look mark layer and the Library's Look shelf all
-	 * consume this one construction; later T2 slices fill the strata without
-	 * growing a second route writer.
-	 */
-	const canPlaceArtwork = () => lens === 'world' && preview === null && wallUnfold.state === null;
-	/**
-	 * X2 / contract W — the route's one Artwork interaction owner. Placement,
-	 * drop, move, turn and resize lifetimes live here; the existing planners and
-	 * the F4 command boundary stay their owners.
-	 */
-	const artworkInteraction = createStageArtworkInteraction({
-		api,
-		services: () => adapterServices,
-		canEdit: canPlaceArtwork,
-		isSaved: () => headSave?.snapshot().savedBaseToken != null,
-		selected: () => selectedArtwork,
-		facade: () => facade,
-		evaluation: () => evaluation,
-		rect: () => rect,
-		measure: () => stageViewport.measure(),
-		stageElement: () => stageEl,
-		pickVisibleFace: scenePick.pickVisibleFace,
-		press,
-		capturePointer,
-		onNotice: (message) => { notice = message; },
-		onSelect: (services, id) => selectStageReference(artworkReference(services, id)),
-		selectTool
-	});
-	$effect(() => () => { artworkInteraction.dispose(); stageAssets.disposeArtwork(); });
-	$effect(() => {
-		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
-		if (!canPlaceArtwork()) {
-			artworkInteraction.cancel();
-			artworkInteraction.cancelResize();
-		}
-	});
-
-	const look = createLookAuthoring({
-		environment: () => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper',
-		services: () => adapterServices,
-		onNotice: (message) => { notice = message; }
-	});
-	$effect(() => {
-		const shown = notice;
-		if (lens !== 'experience' || shown === '') return;
-		const timeout = setTimeout(() => { if (notice === shown) notice = ''; }, 4000);
-		return () => clearTimeout(timeout);
-	});
-	let stageEl: HTMLDivElement | undefined = $state(undefined);
-	/** The one lower column's measured height; the Card clears it at narrow widths. */
-	let lowerColumnEl: HTMLDivElement | undefined = $state(undefined);
-	let lowerColumnHeight = $state(0);
-	/**
-	 * R217.S22 — the measured lanes beside the Stage. The Height Sheet's lane box and the
-	 * zoom cluster are measured here, and the Card clears them through CSS variables on
-	 * the Stage frame. A lane measurement only changes placement: it never submits a
-	 * Camera intent and never refits the view.
-	 */
-	let sheetLaneEl = $state<HTMLElement | null>(null);
-	let sheetLaneWidth = $state(0);
-	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades (D36). */
-	let cardGesturing = $state(false);
-	/**
-	 * Whether the contextual Card is shown. Closing the Card never clears the
-	 * selection: the Index keeps echoing it, and selecting the subject again (or
-	 * another one) brings the Card back, so identity is never lost to a dismissal.
-	 */
-	let cardOpen = $state(true);
-	/** Bumped by an Index double-click: the Card opens its inline name editor. */
-	let cardRenameRequest = $state(0);
-	/**
-	 * Whether the armed tool's palette is open above the dock. Folding it hides the
-	 * instrument without disarming the tool: the creator collapses the palette to see
-	 * the Stage, not to drop what they were drawing.
-	 */
-	let paletteOpen = $state(true);
-	/**
-	 * The dock's armed contributed tool.
-	 *
-	 * Host state, not session state: an accepted install closes the active task — its
-	 * subject belonged to the source that was replaced — and the creator's armed tool
-	 * must not vanish with it. Every explicit close (Select, the palette's close, Esc
-	 * once the chain has settled) disarms, so this never resurrects a tool the
-	 * creator put down.
-	 */
-	let armedTool = $state<{ readonly id: string; readonly adapterId: string;
-	} | null>(null);
-	/**
-	 * R217.S10 — the host's own tools. Each is bound to the live facade and keeps
-	 * only session view state (a measurement, an erase candidate or its words).
-	 */
-	let measureTool: StageMeasureController | null = null;
-	let eraserTool: StageEraserController | null = null;
-	/** What the host tools draw this frame, in Stage-local CSS. */
-	let hostToolOverlay = $state<{
-		readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean;
-		} | null;
-		readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string;
-		} | null;
-	} | null>(null);
-	/** The Eraser's winner, drawn with the erase treatment in place of hover. */
-	let eraseHover = $state<StageSelectionEntry | null>(null);
-	/** The Head's bounded Find query. */
-	let findQuery = $state('');
-	/**
-	 * A destructive Card action whose consequences have been disclosed and which
-	 * awaits a second `Delete`.
-	 *
-	 * The offer is a **fingerprint**, not the record it was read from: the exact
-	 * subject and the words that subject's adapter disclosed. The second press
-	 * compares it with the **live** Card action, so a different Wall — or the same
-	 * Wall whose consequences changed — is disclosed again, and a stale record can
-	 * never run against a later subject.
-	 */
-	let pendingDelete = $state<{
-		readonly subjectKey: string;
-		readonly actionId: string;
-		readonly detail: string | null;
-	} | null>(null);
-	/** The selected subject's confirmation key, or `null` when nothing is selected. */
-	const deleteSubjectKey = $derived.by(() => {
-		const selected = selection;
-		return selected === null
-			? null
-			: `${selected.reference.subject.kind}:${selected.reference.subject.id}`;
-	});
-	$effect(() => {
-		// A selection change spends the offer: the disclosure was read for one
-		// subject, and the notice beside it named that subject's consequences. Only
-		// the selection is tracked — the press that opens an offer must not retrigger
-		// this and clear it.
-		const key = deleteSubjectKey;
-		untrack(() => {
-			if (pendingDelete === null || pendingDelete.subjectKey === key) return;
-			pendingDelete = null;
-			notice = '';
-		});
-	});
-	/**
-	 * PLATE arbitration at constrained width: the Card folds to identity so the
-	 * dock/palette's one lower column stays readable. The creator's own toggle wins
-	 * over the width rule until the task closes.
-	 */
-	let narrowShell = $state(constrainedAtStart);
-
-	$effect(() => {
-		const element = lowerColumnEl;
-		if (element === undefined) return;
-		// jsdom (the route contract lane) has no layout and no ResizeObserver.
-		if (typeof ResizeObserver === 'undefined') return;
-		// The observed box is the measurement: reading the element again here would
-		// be a second layout read beside the one viewport function above.
-		const observer = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			lowerColumnHeight = entry?.borderBoxSize?.[0]?.blockSize ?? entry?.contentRect.height ?? 0;
-		});
-		observer.observe(element);
-		return () => observer.disconnect();
-	});
-	$effect(() => {
-		// The Sheet lane: its border-box width, measured wherever the Sheet is mounted.
-		const element = sheetLaneEl;
-		// Unmounting the Sheet (leaving World) may leave the binding null or undefined.
-		if (element === null || element === undefined) {
-			sheetLaneWidth = 0;
-			return;
-		}
-		if (typeof ResizeObserver === 'undefined') return;
-		const observer = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			sheetLaneWidth = entry?.borderBoxSize?.[0]?.inlineSize ?? entry?.contentRect.width ?? 0;
-		});
-		observer.observe(element);
-		return () => observer.disconnect();
-	});
-	/** The lane on each edge: a Sheet on the right (or left) owns that edge; the other is clear. */
-	const sheetLaneRight = $derived(heightSheetSide === 'right' ? sheetLaneWidth : 0);
-	const sheetLaneLeft = $derived(heightSheetSide === 'left' ? sheetLaneWidth : 0);
-
-	// Register the session's unsaved-work navigation guard during route initialization.
-	projectSession.bindNavigation();
-
-	/* --- activation, content change and the replacement epoch --------------- */
-
-	/** Everything a project swap or a content change invalidates in the host's view. */
-	function resetViewContext(): void {
-		selection = null;
-		task = null;
-		revealed = [];
-		notice = '';
-		// A replacement is not a disclosure the creator read: no offer survives into
-		// a source its words were never derived from.
-		pendingDelete = null;
-		// A replaced project is not the run the tool was armed for: drop it with
-		// the task it belonged to, so a later notification cannot re-arm it.
-		armedTool = null;
-		cardOpen = true;
-		// Contract W: a placement ghost or resize captured against the old source is
-		// view state, not a lease the new project can inherit. The session's
-		// replacement has already cancelled the gesture lease; dropping the captured
-		// operation here also removes its overlay and prevents late asset work.
-		artworkInteraction.cancel();
-		artworkInteraction.cancelResize();
-		// A replacement is not a press the creator finished: no click from the old
-		// project may select into the new one. The arbiter drops its host view state
-		// without ending a lease; the session's replacement does that.
-		stageInput.reset();
-		// Drop the controller's view-dependent keys with the view they described, or
-		// the recompute that follows a swap would be skipped as unchanged.
-		stageViewport.reset();
-	}
-
-/* --- project-epoch presentation callbacks ---------------------------------- */
-
-/** Interrupt old input before the session's replacement swaps the source. */
-function interruptForReplacement(): void {
-	clearHover();
-	interruptPress('replacement');
-}
-
-/** Presentation that names the replaced source is cleared before disposal. */
-function resetPresentationBeforeSwap(): void {
-	expandedPresentationId = null;
-}
-
-/** The new facade exists: bind the host tools and re-read session view state. */
-function bindEpochFacade(next: StageFacade): void {
-	measureTool = createStageMeasure(next);
-	eraserTool = createStageEraser(next, () => refreshHostTools());
-	// The session keeps Grid/Snap across a replacement; the presenter re-reads it
-	// from the mounted authority rather than assuming its own default.
-	drafting = next.drafting();
-	task = null;
-	contributedTaskId = null;
-}
-
-/** Adapter registrations/bindings changed for the mounted epoch. */
-function refreshAdapterPresentation(): void {
-	contributionsVersion += 1;
-	task = facade?.session.task() ?? null;
-	syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-	syncContributedTask();
-}
-
-/** The acceptance host installed a changed source for the mounted epoch. */
-function refreshAcceptedPresentation(): void {
-	task = facade?.session.task() ?? null;
-	syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
-	syncContributedTask();
-	stageViewport.invalidatePlan();
-	refresh();
-}
-
-/** Undo/Redo installed a restored source; requalified selection is re-read. */
-function completeHistoryInstall(outcome: {
-	readonly selectionClearedReason: 'subject-retired' | 'no-correspondence' | null;
-}): void {
-	selection = facade ? primaryEntry(facade.selectionState()) : null;
-	if (outcome.selectionClearedReason !== null) {
-		notice = 'The selected subject no longer exists in the restored source.';
-	}
-	stageViewport.invalidatePlan();
-}
-
-
-	/* --- viewport refresh --------------------------------------------------- */
-
-	function nowSeconds(): number {
-		const real = typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
-		return motionClock.read(real);
-	}
-
+	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
+		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
+	);
+	const experienceFloorDatum = $derived.by(() =>
+		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
+	);
+	const activeLayer = $derived(experience.posture);
 	// `bind:this` lands after the first look-through refresh; measure it then.
 	$effect(() => {
 		const frame = throughFrameEl;
-		const session = experienceLens.lookThroughSession();
-		if (frame !== null && session !== null) untrack(() => refresh());
+		const current = experience.lookThroughSession();
+		if (frame !== undefined && current !== null) untrack(() => refresh());
 	});
 
-	/** The one refresh command; the controller owns measurement and publication. */
-	function refresh(): void {
-		stageViewport.refresh();
-	}
-
-	/**
-	 * Project what the host tools draw through the same evaluation as everything
-	 * else: Measure's dimension line and tag, the Eraser's words, and its winner as
-	 * the erase-treated hover. Identity is kept while the subject is unchanged so a
-	 * pointer moving within one subject does not rebuild the Stage's ink.
-	 */
-	function refreshHostTools(): void {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		if (stage === null || id === null || armedHostTool === null) {
-			if (hostToolOverlay !== null) hostToolOverlay = null;
-			if (eraseHover !== null) eraseHover = null;
-			return;
-		}
-		const local = (point: readonly [number, number, number]): readonly [number, number] | null => {
-			const projected = stage.projectWorld([point[0], point[1], point[2]], id);
-			if (projected.kind !== 'projected') return null;
-			const current = rect ?? stageViewport.measure();
-			return [projected.css[0] - current.left, projected.css[1] - current.top];
-		};
-		let measured: NonNullable<typeof hostToolOverlay>['measure'] = null;
-		const view = armedHostTool === 'measure' ? (measureTool?.view() ?? null) : null;
-		if (view !== null) {
-			const from = local(view.from.point);
-			const to = local(view.to.point);
-			if (from !== null && to !== null) measured = { from, to, label: view.label, live: view.live };
-		}
-		const eraseNotice = armedHostTool === 'erase' ? (eraserTool?.notice() ?? null) : null;
-		hostToolOverlay = { measure: measured, notice: eraseNotice };
-		const candidate = armedHostTool === 'erase' ? (eraserTool?.candidate() ?? null) : null;
-		if (candidate === null || candidate.refusal !== null) {
-			if (eraseHover !== null) eraseHover = null;
-			return;
-		}
-		const hit = candidate.hit;
-		const representation = hit.reference === undefined
-			? { sourceId: hit.sourceId, sourceKind: hit.sourceKind, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
-			: undefined;
-		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
-		if (eraseHover !== null && sameReference(eraseHover.reference, reference)) return;
-		eraseHover = representation === undefined ? { reference } : { reference, representation };
-	}
-
-	onMount(() => {
-		perfMark('stage:route-mounted');
-		try {
-			showExperienceWelcome = !welcomeDismissed();
-		} catch {
-			showExperienceWelcome = true;
-		}
-		stageViewport.start();
-
-		const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-		preferences = readAppPreferences();
-		motionClock.setSpeed(preferences.motionSpeed, performance.now() / 1000);
-		reducedMotion = preferences.reducedMotion ?? media.matches;
-		const onMedia = (event: MediaQueryListEvent) => {
-			if (preferences.reducedMotion === null) reducedMotion = event.matches;
-		};
-		media.addEventListener('change', onMedia);
-
-		// The shell's width rule: at a constrained width the Card folds to identity
-		// rather than covering the dock/palette's one lower column.
-		const narrow = window.matchMedia('(max-width: 1100px)');
-		narrowShell = narrow.matches;
-		const portrait = window.matchMedia('(max-width: 860px)');
-		if (portrait.matches) indexOpen = false;
-		const onNarrow = (event: MediaQueryListEvent) => {
-			narrowShell = event.matches;
-		};
-		narrow.addEventListener('change', onNarrow);
-		const onPortrait = (event: MediaQueryListEvent) => {
-			if (event.matches) indexOpen = false;
-		};
-		portrait.addEventListener('change', onPortrait);
-
-		const onKey = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
-			// A held Alt/Option is the shared Snap suspension. Reading it from the
-			// event's own modifier keeps the fact true for a key pressed while Alt was
-			// already down, not only for Alt's own keydown.
-			if (event.altKey) suspendSnap(true);
-			handleKey(event);
-		};
-		// Releasing the modifier — or losing the window — always restores Snap: a
-		// modifier the browser never delivers a keyup for must not strand it off.
-		const onReleaseSnap = (event: KeyboardEvent) => {
-			if (event.key === 'Alt') suspendSnap(false);
-		};
-		const onWindowBlur = () => suspendSnap(false);
-		window.addEventListener('keydown', onKey);
-		window.addEventListener('keyup', onReleaseSnap);
-		window.addEventListener('blur', onWindowBlur);
-		const removeInterruptions = installStageInterruptions(window, document, interruptPress);
-
-		void projectSession.load(projectId, intent);
-
-		return () => {
-			// The Unfold display and its Opening preview live in a module-level
-			// session store. Cancel a captured Opening drag before the project
-			// session/facade is disposed, or its display-only preview would outlive
-			// the route. Disposal is idempotent, so repeated teardown is harmless.
-			unfoldGestures.dispose();
-			// Order matters: the flag and the session teardown both run before the
-			// facade is disposed, so a load already past its fetch sees a torn-down
-			// session (`isCurrent` is false, the registered abort fires) and drops its
-			// result instead of mounting a second stage.
-			experienceLens.dispose();
-			stageEpoch.markTornDown();
-			// Stop scheduling before the facade is disposed.
-			stageViewport.dispose();
-			clearHover();
-			media.removeEventListener('change', onMedia);
-			narrow.removeEventListener('change', onNarrow);
-			portrait.removeEventListener('change', onPortrait);
-			window.removeEventListener('keydown', onKey);
-			window.removeEventListener('keyup', onReleaseSnap);
-			window.removeEventListener('blur', onWindowBlur);
-			removeInterruptions();
-			// Session teardown cancels every registered writer (including an in-flight
-			// project GET) and runs every registered disposer exactly once; no
-			// project-specific singleton — acceptance host, history or facade — survives
-			// the route. The epoch controller releases its subscriptions, Save mount,
-			// acceptance/facade and project-bound asset leases in the baseline order,
-			// then disposes the Stage session.
-			stageEpoch.dispose();
-		};
-	});
-
-	/* --- Camera intents ----------------------------------------------------- */
-
-	/**
-	 * Submit one viewing intent through the seam, presenting the host's own
-	 * inspection claim.
-	 *
-	 * `superseded` is the ownership answer, not a domain rejection: the output was
-	 * replaced or ended by a content change and this run no longer holds it. The
-	 * host re-acquires its own inspection output once and retries the same intent.
-	 */
-	function submit(intent: ViewingIntent, clockSeconds: number): StageIntentResult | null {
-		const stage = facade;
-		if (stage === null) return null;
-		// A claimed adapter press owns its projection until release or an explicit
-		// reading interruption. Wheel/Fit/keyboard navigation must not remap that
-		// press while its evaluation identity is deliberately retained.
-		if (stageInput.drag?.mode === 'adapter' && intent.kind !== 'set-reading') return null;
-		const first = stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
-		if (first.kind !== 'superseded') return first;
-		stage.acquireInspection('exclusive');
-		return stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
-	}
-
-	function setReading(reading: '3d' | 'plan'): void {
-
-		// Reduced motion cuts directly to the declared endpoint through the one
-		// settling rule — it is not a shortened tween.
-		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(reducedMotion, nowSeconds()));
-		// The host ran the live lease's policy as part of that request: a lease that
-		// `cancel-on-reading-change` ended is already gone, and its delta samples were
-		// taken against the reading that is ending. Dropping them here is what makes
-		// T2.S03's "cancel before the flip" mean the gesture also stops moving.
-		if (stageInput.drag !== null && session.gesture() === null) {
-			if (stageInput.drag.mode === 'adapter' && facade !== null) {
-				// Evaluate through Camera before notifying the claimed adapter: ordinary
-				// frame generations retain the press id, but this explicit reading change
-				// must reach its existing mismatch path and preserve the exact request.
-				// A move cannot commit; cancel then clears the pointer owner (including
-				// adapters whose reading-change contract simply discards the preview).
-				const css: [number, number] = [stageInput.drag.x - (rect?.left ?? 0), stageInput.drag.y - (rect?.top ?? 0)];
-				refresh();
-				const id = facade.evaluationId();
-				if (id !== null) {
-					facade.pointerIntent({ phase: 'move', css, evaluationId: id });
-				}
-			}
-			interruptPress('reading-change');
-		}
-	}
-
-	/**
-	 * Change the one Grid/Snap fact through the session authority.
-	 *
-	 * Nothing here touches acceptance, history or Save: the session's view state
-	 * is not authored content, so a Grid/Snap toggle cannot dirty the project.
-	 */
-	function patchDrafting(patch: StageDraftingPatch): void {
-		drafting = facade === null ? applyDraftingPatch(drafting, patch) : facade.setDrafting(patch);
-	}
-
-	/**
-	 * A Scale detent as the **existing** zoom viewing intent.
-	 *
-	 * The shell computes no pose: it converts the requested ratio to the settled
-	 * target-plane size and lets the Camera's own zoom semantics land on it.
-	 */
-	function requestScaleDetent(ratio: number): void {
-		const stage = facade;
-		const viewport = rect;
-		if (stage === null || viewport === null || viewport.height <= 0) return;
-		// Derive the ratio from the live settled pose, not the last painted frame:
-		// a zoom or Fit between frames must not leave the detent computed against a
-		// stale evaluation. The multiply stays in Camera's `zoom` intent.
-		const settledHeight = stage.camera.state().pose.targetPlaneHeightMeters;
-		const metersPerCssPixel = settledHeight / viewport.height;
-		const intent = scaleDetentIntent(ratio, metersPerCssPixel);
-		if (intent !== null) submit(intent, nowSeconds());
-	}
-
-	/**
-	 * Alt/Option holds Snap off until release, blur or teardown.
-	 *
-	 * Entering the hold is ignored during Preview (the Stage is not listening for
-	 * drawing there), but releasing it always applies: a keyup the Preview guard
-	 * swallowed would otherwise strand `Snap held` after Exit forever.
-	 */
-	function suspendSnap(suspended: boolean): void {
-		if (drafting.snapSuspended === suspended) return;
-		if (preview !== null && suspended) return;
-		patchDrafting({ snapSuspended: suspended });
-	}
-
-	/**
-	 * Fit all through the existing `fit` intent.
-	 *
-	 * The frame is the union of the compiled Layout bounds and every placed Scene
-	 * entity's drawn body: a free Scene object outside the drawing is still on the
-	 * Stage, so "Fit all" must not leave it off-screen. No pose is composed here.
-	 */
-	function fit(): void {
-		const stage = facade;
-		if (stage === null || rect === null) return;
-
-		const bounds = readStageContentBounds(stage);
-		if (bounds === null) return;
-		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
-	}
-
-	/** Zoom steps use the same Camera `zoom` the wheel drives: 1.25 per press. */
-	function zoomIn(): void {
-		zoom(1 / 1.25);
-	}
-	function zoomOut(): void {
-		zoom(1.25);
-	}
-
-	function bringIntoView(target: readonly [number, number, number]): void {
-		// A Card action competes with any Present-this run still waiting for its frame.
-
-		submit({ kind: 'bring-into-view', target: [target[0], target[1], target[2]] }, nowSeconds());
-	}
-
-	function zoom(scale: number): void {
-
-		submit({ kind: 'zoom', scale }, nowSeconds());
-	}
-
-	function pan(dx: number, dy: number): void {
-		if (rect === null) return;
-
-		submit({ kind: 'pan', deltaCss: [dx, dy], rect }, nowSeconds());
-	}
-
-	function orbit(dAzimuth: number, dElevation: number): void {
-
-		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
-	}
-
-	/* --- source history (host commands through the F4 boundary) -------------- */
-
-	/* --- selection, tasks and Reveal ---------------------------------------- */
-
-	/** A compact, complete reference: the source kind plus its canonical identity. */
-	function sourceLabel(sourceId: string, kind: string): string {
-		return `${kind === 'room-floor' ? 'floor' : kind} · ${sourceId}`;
-	}
-
-	/**
-	 * Mirror a selection the host or an adapter made canonically.
-	 *
-	 * A contributed task may select a new subject after its own accepted install
-	 * (Create, Place, Duplicate). A new primary selection replaces the Experience
-	 * subject (D10, one Card selection); a revision-only requalification of the same
-	 * subject leaves the current Card selection alone.
-	 */
-	function syncPrimarySelection(next: StageSelectionEntry | null): void {
-		const pick = stagePickPresentationId;
-		if (
-			pick !== null &&
-			next !== null &&
-			next.reference.domain === 'scene' &&
-			next.reference.subject.kind === 'entity'
-		) {
-			stagePickPresentationId = null;
-			selection = null;
-			cardOpen = true;
-			void activeExperience?.linkPresentation(pick, next.reference.subject.id).then((accepted) => {
-				if (accepted) experienceLens.selectSubject({ kind: 'presentation', presentationId: pick });
-			});
-			return;
-		}
-		const keyOf = (entry: StageSelectionEntry | null) =>
-			entry === null
-				? ''
-				: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
-		const previous = keyOf(selection);
-		const key = keyOf(next);
-		selection = next;
-		if (key !== '' && key !== previous) {
-			experienceFocus.select(null);
-			cardOpen = true;
-		}
-	}
-
-	function selectHit(hit: StageSourceHit): void {
-		const stage = facade;
-		if (stage === null) return;
-		const pick = stagePickPresentationId;
-		if (
-			pick !== null &&
-			hit.reference !== undefined &&
-			hit.reference.domain === 'scene' &&
-			hit.reference.subject.kind === 'entity'
-		) {
-			stagePickPresentationId = null;
-			selection = null;
-			cardOpen = true;
-			void activeExperience?.linkPresentation(pick, hit.reference.subject.id);
-			return;
-		}
-		if (hit.reference !== undefined) {
-			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
-			selection = primaryEntry(stage.selectionState());
-			experienceFocus.select(null);
-			cardOpen = true;
-			return;
-		}
-		const selected: StageSelection = {
-			sourceId: hit.sourceId,
-			sourceKind: hit.sourceKind,
-			generationId: hit.generationId,
-			ref: {
-				sourceId: hit.sourceId,
-				sourceKind: hit.sourceKind,
-				generationId: hit.generationId,
-				stream: hit.stream,
-				subRef: hit.subRef
-			}
-		};
-		stage.select(selected);
-		selection = primaryEntry(stage.selectionState());
-		experienceFocus.select(null);
-		cardOpen = true;
-	}
-
-	/** The Card is an overlay: hiding it is not a selection change. */
-	function closeCard(): void {
-		cardOpen = false;
-	}
-
-	/** Clearing the selection does reopen the Card for the next subject. */
-	function closeSelection(): void {
-		facade?.select(null);
-		selection = null;
-		experienceFocus.select(null);
-		cardOpen = true;
-	}
-
-	/** Open the Card a problem names; the chip itself never edits the source. */
-	function showProblem(problem: ExperienceProblem): void {
-		if (problem.subject === null) return;
-		if (lens !== 'experience') changeLens('experience');
-		cardOpen = true;
-		const subject = problem.subject;
-			if (subject.kind === 'guide') {
-			// D-2: a Guide has no Card. Show opens its instrument and keeps the Experience Card.
-			const controller = activeExperience;
-			const guide = controller?.guides.find((entry) => entry.id === subject.guideId);
-			if (controller == null || guide === undefined) return;
-			experienceLens.openGuide(guide.id);
-			experienceFocus.select({ kind: 'experience' });
-			return;
-		}
-		experienceFocus.select(subject);
-	}
-
-	/**
-	 * C3 checkpoint 5 — the live unfolded press.
-	 *
-	 * The developed sheet is the addressed surface while unfolded, so a primary
-	 * press is cast through the accepted Camera evaluation into the same
-	 * checkpoint-4 display strip the Stage draws. The nearest positive hit is
-	 * attributed to canonical Station/span/knot/face (ties keep the first display
-	 * triangle in mesh order; a closed Station wraps modulo L; a seam-crossing
-	 * Opening resolves through `developmentOpeningIdentity`) and selected through
-	 * the route's ordinary selection state. This reads geometry and writes only
-	 * selection/pick evidence: no document write, no edit, no undo entry.
-	 *
-	 * An open adapter task keeps the press: Opening placement/editing is still
-	 * canonical work under D13. A miss falls through to ordinary Stage navigation
-	 * and the click guard in `onClick` prevents a canonical hit behind the sheet.
-	 */
-	type UnfoldPinHit = { readonly css: readonly [number, number] };
-	type UnfoldPinContext = {
-		readonly wallId: string;
-		readonly station: number;
-		readonly point: readonly [number, number, number];
-		readonly active: boolean;
-	};
-
-	/** The curved Wall whose idle pin should accompany the current selection. */
-	const selectedCurvedWall = $derived.by(() =>
-		boot.status === 'ready' || boot.status === 'empty'
-			? selectedCurvedWallOf(
-				selection,
-				boot.snapshot.domain.geometry,
-				boot.snapshot.domain.datumMeters,
-				evaluation?.pose.target ?? null,
-				wallUnfoldViewCentreStation
-			)
-			: null
+	const selectionView = createStageSelectionView();
+	const sceneRooms = $derived(
+		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
 	);
-
-	// Seed once when the Wall is selected. The route, Card and pin all read the
-	// remembered session station after this; selecting an Opening never re-seeds.
-	$effect(() => {
-		const candidate = selectedCurvedWall;
-		if (candidate === null) return;
-		wallUnfold.ensureAnchor(candidate.wall, candidate.defaultStation);
+	const locatedSubjects = $derived.by(() => {
+		void shell.contributionsVersion;
+		return facade?.subjects() ?? [];
 	});
+	const selectionViewView = $derived(selectionView.read({
+		snapshot: boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null,
+		envelope: currentEnvelope,
+		sceneRooms,
+		selection,
+		planView,
+		subjects: locatedSubjects,
+		scope: shell.worldScope
+	}));
+	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
+	const dockKeys = $derived(dockView.keys);
+	const inactiveTask = $derived(stageInactiveTask({
+		facade,
+		lens: experience.lensState,
+		revision: shell.contributionsVersion
+	}));
+	const contributedInstrument = $derived(stageContributedInstrument({
+		facade,
+		contributedTaskId: shell.contributedTaskId,
+		revision: shell.contributionsVersion
+	}));
+	const taskHost = $derived(stageTaskHost({
+		task: shell.task,
+		armedHostTool: shell.armedHostTool
+	}));
+	const armedDockId = $derived(stageArmedDockId({
+		task: shell.task,
+		armedHostTool: shell.armedHostTool,
+		armedTool: shell.armedTool,
+		dockKeys
+	}));
+	const findView = $derived(stageFindView({
+		facade,
+		revision: shell.contributionsVersion,
+		lens: experience.lensState,
+		query: shell.findQuery,
+		worldIndex: selectionViewView.worldIndex,
+		dockKeys
+	}));
 
-	/**
-	 * X2 / contract U — the route's one Unfold gesture owner. The pin, free edge
-	 * and Opening sessions keep their captured pointer, source epoch and lease;
-	 * the existing unfold store and layout planners remain the authorities.
-	 */
-	const unfoldGestures = createStageUnfoldGestures({
-		facade: () => facade,
-		evaluation: () => evaluation,
-		rect: () => rect,
-		measure: () => stageViewport.measure(),
-		stageElement: () => stageEl,
-		stageCss,
-		layout: () => layoutPayload,
-		task: () => task,
-		selectedCurvedWall: () => selectedCurvedWall,
+	const heightSheet = session.heightSheet();
+	const look = createLookAuthoring({
+		environment: () => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper',
 		services: () => adapterServices,
-		acceptOpening: (services, intent) => services.authoring.accept(intent),
-		selectSubject: selectUnfoldedSubject,
-		press,
-		capturePointer,
-		clearHover,
-		onNotice: (message) => { notice = message; }
+		onNotice: (message) => shell.setNotice(message)
 	});
 
-	function selectUnfoldedSubject(wallId: string, openingId: string | null): void {
-		const stage = facade;
-		if (stage === null) return;
-		const sourceId = openingId ?? wallId;
-		// Use the snapshot's resolved subject reference, exactly as `selectSource`
-		// does. Constructing the reference here would re-state a revision the
-		// resolver already owns and can disagree with the current qualification.
-		const subject = stage.subjects().find((candidate) => candidate.id === sourceId);
-		if (subject !== undefined) {
-			const change = stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
-			if (change.kind === 'selected') {
-				selection = primaryEntry(stage.selectionState());
-				experienceFocus.select(null);
-				cardOpen = true;
-				return;
-			}
-		}
-		// A compiled Wall/Opening can be present in the Plan while its resolved
-		// subject is not contributed to the Index. `selectSource` already handles
-		// that case from the Plan fragment; the unfolded pick uses the same fallback.
-		const fragment = planView === null ? undefined : planFragmentOf(planView, sourceId);
-		if (fragment === undefined) return;
-		stage.select({
-			sourceId: fragment.ref.sourceId,
-			sourceKind: fragment.ref.sourceKind,
-			generationId: fragment.ref.generationId,
-			ref: fragment.ref
-		});
-		selection = primaryEntry(stage.selectionState());
-		experienceFocus.select(null);
-		cardOpen = true;
-	}
-
-	function selectSource(sourceId: string): void {
-		const stage = facade;
-		const plan = planView;
-		if (stage === null || plan === null) return;
-		cardOpen = true;
-		const subject = stage.subjects().find((item) => item.id === sourceId);
-		if (subject !== undefined) {
-			stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
-			selection = primaryEntry(stage.selectionState());
-			experienceFocus.select(null);
-			return;
-		}
-		const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
-		const fragment = planFragmentOf(plan, layoutId);
-		if (fragment === undefined) return;
-		stage.select({
-			sourceId: layoutId,
-			sourceKind: fragment.ref.sourceKind,
-			generationId: fragment.ref.generationId,
-			ref: fragment.ref
-		});
-		selection = primaryEntry(stage.selectionState());
-		experienceFocus.select(null);
-	}
-
-	/**
-	 * Keep the instrument home's mirror of the facade's contributed task in step.
-	 *
-	 * The facade owns the task and its instrument content: an adapter can reopen its
-	 * own persistent task after an accepted install closed it, so this host cannot
-	 * rely on its own invocation alone. `instrumentForTask` carries the facade-side
-	 * owner check, so probing the contributed entries re-identifies the one live
-	 * task — and yields the very content the home renders. A parked (inactive) task
-	 * keeps whatever mirror it had, as before.
-	 */
-	function syncContributedTask(): void {
-		const stage = facade;
-		if (stage === null) return;
-		const lifecycle = stage.session.taskLifecycle();
-		if (lifecycle === null) {
-			contributedTaskId = null;
-			rearmDockTool();
-			return;
-		}
-		if (lifecycle.status !== 'active') return;
-		const current = contributedTaskId;
-		if (current !== null && stage.instrumentForTask(current.id, current.adapterId) !== null) return;
-		for (const entry of stage.tasks()) {
-			if (stage.instrumentForTask(entry.id, entry.adapterId) !== null) {
-				contributedTaskId = { id: entry.id, adapterId: entry.adapterId };
-				return;
-			}
-		}
-		contributedTaskId = null;
-	}
-
-	/**
-	 * Invoke a contributed operation. The facade owns the task and its instrument
-	 * content; this host only mirrors them into the one instrument home, so a new
-	 * domain adapter needs no change here.
-	 */
-	function invokeContribution(adapterId: string, id: string, revealInstrument = true): void {
-		const stage = facade;
-		if (stage === null) return;
-		// Opening any other contributed operation takes the lower column: put the
-		// dock tool down first, or a completion that closes this task would re-arm a
-		// tool the creator had already left (the only re-arm is the armed tool's own).
-		const keepsArmedTool =
-			armedTool !== null && armedTool.id === id && armedTool.adapterId === adapterId;
-		if (!keepsArmedTool) armedTool = null;
-		const opened = stage.openFindEntry(adapterId, id);
-		if (opened.kind !== 'opened') {
-			notice = opened.message;
-			return;
-		}
-		task = opened.task;
-		if (revealInstrument) paletteOpen = true;
-		contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
-	}
-
-	function closeTask(): void {
-		// Disarm **before** closing: the close notifies the contribution surface, and a
-		// notification re-arms an armed dock tool. An explicit close puts the tool down
-		// first, so the notification it causes cannot pick it back up.
-		armedTool = null;
-		measureTool?.clear();
-		eraserTool?.clear();
-		eraseHover = null;
-		hostToolOverlay = null;
-		facade?.closeTask();
-		task = null;
-		contributedTaskId = null;
-		// The Card's fold is reconsidered for the next task: a hand expansion belongs
-		// to the work it was made for, not to the shell forever.
-	}
-
-	function toggleReveal(sourceId: string): void {
-		revealed = revealed.includes(sourceId)
-			? revealed.filter((id) => id !== sourceId)
-			: [...revealed, sourceId];
-	}
-
-	/* --- pointer and keyboard ---------------------------------------------- */
-
-	/**
-	 * CSS pixels relative to the Stage surface, the space adapter pointer intents
-	 * use. This reads the one accepted rect (`measure()`), never a second DOM
-	 * measurement: the drawn image, the ray and the adapter intent must share a
-	 * coordinate space.
-	 */
-	function stageCss(event: PointerEvent): [number, number] {
-		const current = rect ?? stageViewport.measure();
-		return [event.clientX - current.left, event.clientY - current.top];
-	}
-
-	/** Camera's pointerRay consumes absolute viewport CSS. */
-	/** Capture a pointer, reporting failure instead of throwing: `setPointerCapture`
-	 * throws NotFoundError for a pointer that has already ended, and every caller must
-	 * then roll back whatever lease, press or session it claimed before capturing. */
-	function capturePointer(target: Element, pointerId: number): boolean {
-		try {
-			target.setPointerCapture(pointerId);
-			return true;
-		} catch {
-			return false;
-		}
-	}
-
-	function absoluteCss(event: PointerEvent): [number, number] {
-		return [event.clientX, event.clientY];
-	}
-
-	/**
-	 * X2 / contract G — the one authoritative input arbiter. It preserves the
-	 * dispatch precedence (specialised sheet, Experience posture, host tools,
-	 * marks, adapters, navigation), the press tracker's drag-to-click
-	 * suppression, pinch handoff and one interruption policy.
-	 */
-	const stageInput = createStageInputArbiter({
-		facade: () => facade,
-		evaluation: () => evaluation,
-		rect: () => rect,
-		measure: () => stageViewport.measure(),
-		stageElement: () => stageEl,
-		session,
-		activeLayer: () => activeLayer,
-		artwork: artworkInteraction,
-		unfold: unfoldGestures,
-		stageCss,
-		capturePointer,
-		press,
-		armedHostTool: () => armedHostTool,
-		measureTool: () => measureTool,
-		eraserTool: () => eraserTool,
-		task: () => task,
-		dockToolArmed: () => armedTool !== null,
-		planView: () => planView,
-		previewing: () => preview !== null,
-		pick: scenePick.pick,
-		viewMarkAt,
-		eraseHover: () => eraseHover,
-		setEraseHover: (entry) => { eraseHover = entry; },
-		onNotice: (message) => { notice = message; },
-		onRefreshHostTools: refreshHostTools,
-		selectHit,
-		pan,
-		orbit,
-		zoom,
-		submit,
-		nowSeconds
-	});
-
-	/** Clear the shared hover tier without ending an independent proposal. */
-	function clearHover(): void {
-		stageInput.clearHover();
-	}
-
-	/** The one interruption policy, used by the epoch, keyboard and environment. */
-	function interruptPress(reason: StageInterruptionReason): void {
-		stageInput.interrupt(reason);
-	}
-
-	/**
-	 * X2 / contract G — keyboard routing as a leaf over the same commands. It has
-	 * no second gesture state and no separate acceptance path.
-	 */
-	const stageKeyboard = createStageKeyboard({
-		artworkEscape: () => artworkInteraction.escape(),
-		previewActive: () => preview !== null,
-		closePreview: () => previewController.close(),
-		activeLayer: () => activeLayer,
-		pressing: () => stageInput.pressing,
-		dragMode: () => stageInput.drag?.mode ?? null,
-		facade: () => facade,
-		reducedMotion: () => reducedMotion,
-		nowSeconds,
-		submit,
-		setReading,
-		zoom,
-		fit,
-		pan,
-		pressDockSlot,
-		requestDelete,
-		openCard: () => { cardOpen = true; },
-		pendingDelete: () => pendingDelete !== null,
-		clearPendingDelete: () => { pendingDelete = null; notice = ''; },
-		interrupt: interruptPress,
-		task: () => task,
-		closeTask,
-		armedHostTool: () => armedHostTool,
-		measureTool: () => measureTool,
-		eraserTool: () => eraserTool,
-		clearEraseHover: () => { eraseHover = null; },
-		refreshHostTools,
-		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
-		paletteOpen: () => paletteOpen,
-		closePalette: () => { paletteOpen = false; },
-		libraryOpen: () => libraryOpen,
-		toggleLibrary: toggleWorldLibrary,
-		activeWorldTool: () => activeWorldTool,
-		clearWorldTool: () => { libraryOpen = false; activeWorldTool = 'select'; },
-		worldPlateOpen: () => worldPlateOpen,
-		closeWorldPlate: () => { worldPlateOpen = false; },
-		lens: () => lens,
-		selectionPresent: () => selection !== null,
-		closeSelection
-	});
-
-	function handleKey(event: KeyboardEvent): void {
-		stageKeyboard.handleKey(event);
-	}
-
-	/* --- shell view data ---------------------------------------------------- */
+	let artworkInteraction!: ReturnType<typeof createStageArtworkInteraction>;
+	let unfoldGestures!: ReturnType<typeof createStageUnfoldGestures>;
+	let stageInput!: ReturnType<typeof createStageInputArbiter>;
+	let stageKeyboard!: ReturnType<typeof createStageKeyboard>;
 
 	function downloadSourceJson(): void {
 		const snapshot = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null;
@@ -2051,209 +416,221 @@ function completeHistoryInstall(outcome: {
 		URL.revokeObjectURL(url);
 	}
 
-	const locatedSubjects = $derived.by(() => {
-		void contributionsVersion;
-		return facade?.subjects() ?? [];
-	});
-	const locatedSubjectMap = $derived(new Map(locatedSubjects.map((subject) => [subject.id, subject])));
-	const selectedLocatorId = $derived.by(() => {
-		const selected = selection;
-		if (selected === null) return null;
-		return `${selected.reference.domain}:${selected.reference.subject.kind === 'room' ? 'room-floor' : selected.reference.subject.kind}:${selected.reference.subject.id}`;
-	});
-	/**
-	 * R217.S21 — the authored names and kind words the Index and the Card read, taken from
-	 * the admitted source: Layout walls, openings and floors, and Scene entities. A read
-	 * only. A generated `Kind n` is shown and never written back.
-	 */
-	const layoutPayload = $derived.by(() => {
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		try {
-			return stageLayout(boot.snapshot);
-		} catch {
-			return null;
-		}
-	});
-	const scenePayload = $derived.by(() => {
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		try {
-			return stageScene(boot.snapshot);
-		} catch {
-			return null;
-		}
+	const commands = createStageShellCommands({
+		facade: () => facade,
+		planView: () => planView,
+		session,
+		shell,
+		selection: () => selection,
+		setSelection: (entry) => { selection = entry; },
+		focus: experienceFocus,
+		experience: {
+			lens: experience.lens,
+			active: () => experience.active
+		},
+		cardActions: () => worldCard.actions,
+		dockKeys: () => dockKeys,
+		notice: (message) => shell.setNotice(message),
+		refreshHostTools: () => shell.refreshHostTools(),
+		cancelArtwork: () => artworkInteraction.cancel(),
+		view: {
+			zoomIn: () => zoomIn(),
+			zoomOut: () => zoomOut(),
+			fit: () => fit(),
+			requestScaleDetent: (ratio) => requestScaleDetent(ratio)
+		},
+		project: {
+			requestReplacement: (kind) => requestReplacement(kind),
+			downloadSourceJson: () => downloadSourceJson()
+		},
+		showExperienceWelcome: () => experience.showWelcome()
 	});
 
-	/** The authored name of one Layout subject, or `null` when it has none (objects never do). */
-	function layoutNameOf(sourceKind: string, sourceId: string): string | null {
-		const document = layoutPayload;
-		if (document === null) return null;
-		if (sourceKind === 'wall') return document.walls.find((wall) => wall.id === sourceId)?.name ?? null;
-		if (sourceKind === 'opening') return (
-				document.openings.find((opening) => opening.id === sourceId)?.name ?? null
-			);
-		if (sourceKind === 'room-floor' || sourceKind === 'room') {
-			return document.rooms.find((room) => room.id === sourceId)?.name ?? null;
-		}
-		return null;
-	}
-
-	/** The kind word of one Layout subject; an Opening reads its own door or window. */
-	function layoutKindWordOf(sourceKind: string, sourceId: string): string {
-		if (sourceKind !== 'opening') return layoutKindWord(sourceKind);
-		const opening = layoutPayload?.openings.find((candidate) => candidate.id === sourceId);
-		return layoutKindWord(sourceKind, opening?.kind);
-	}
-
-	/** One Scene entity's authored name and kind word, from the admitted Scene. */
-	function sceneEntityOf(entityId: string) {
-		return (
-			scenePayload?.entities.find((entity) => entity.id === entityId) ?? null
-		);
-	}
-
-	/**
-	 * Every located subject, before any search: the Plan's Layout membership rows and the
-	 * contributed subjects. The labels are numbered over this whole list, so a search never
-	 * changes a label.
-	 */
-	const indexEntries = $derived.by(() => {
-		const entries: {
-			group: string;
-			sourceId: string;
-			kindWord: string;
-			name: string | null;
-			eligible: boolean;
-			revealed: boolean;
-			membership: string;
-		}[] = [];
-		const plan = planView;
-		if (plan === null) return entries;
-		for (const membership of plan.membership) {
-			entries.push({
-				group: membership.sourceKind,
-				sourceId: `layout:${membership.sourceKind}:${membership.sourceId}`,
-				kindWord: layoutKindWordOf(membership.sourceKind, membership.sourceId),
-				name: layoutNameOf(membership.sourceKind, membership.sourceId),
-				eligible: membership.eligible,
-				revealed: membership.revealed,
-				membership: membership.reason
-			});
-		}
-		for (const subject of locatedSubjects) {
-			const entity = subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
-			entries.push({
-				group: entity?.kind === 'light' ? 'light' : subject.reference.domain,
-				sourceId: subject.id,
-				kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
-				name: entity?.name ?? null,
-				eligible: true,
-				revealed: false,
-				membership: 'included'
-			});
-		}
-		return entries;
+	artworkInteraction = createStageArtworkInteraction({
+		api,
+		services: () => adapterServices,
+		canEdit: canPlaceArtwork,
+		isSaved: () => headSave?.snapshot().savedBaseToken != null,
+		selected: () => selectionViewView.selectedArtwork,
+		facade: () => facade,
+		evaluation: () => evaluation,
+		rect: () => rect,
+		measure: () => stageViewport.measure(),
+		stageElement: () => stageEl,
+		pickVisibleFace: scenePick.pickVisibleFace,
+		press,
+		capturePointer,
+		onNotice: (message) => shell.setNotice(message),
+		onSelect: (services, id) => commands.selectStageReference(artworkReference(services, id)),
+		selectTool: () => commands.selectTool()
 	});
 
-	/** Each located subject's display label, keyed by its Index row. */
-	const indexLabelMap = $derived(
-		indexLabels(
-			indexEntries.map((entry): IndexLabelInput => ({
-				identity: entry.sourceId,
-				kind: entry.kindWord,
-				name: entry.name
-			}))
-		)
-	);
-	const indexEntryMap = $derived(new Map(indexEntries.map((entry) => [entry.sourceId, entry])));
+	unfoldGestures = createStageUnfoldGestures({
+		facade: () => facade,
+		evaluation: () => evaluation,
+		rect: () => rect,
+		measure: () => stageViewport.measure(),
+		stageElement: () => stageEl,
+		stageCss,
+		layout: () => selectionViewView.layoutPayload,
+		task: () => shell.task,
+		selectedCurvedWall: () => selectedCurvedWall,
+		services: () => adapterServices,
+		acceptOpening: (services, intent) => services.authoring.accept(intent),
+		selectSubject: (wallId, openingId) => commands.selectUnfoldedSubject(wallId, openingId),
+		press,
+		capturePointer,
+		clearHover,
+		onNotice: (message) => shell.setNotice(message)
+	});
 
-	const worldIndexModel = createWorldIndexModel();
-	let worldScope = $state<WorldScope>('project');
-	const worldIndex = $derived(
-		worldIndexModel(
-			layoutPayload,
-			indexEntries.map((entry) => ({
-				...entry,
-				label: indexLabelMap.get(entry.sourceId) ?.label ?? entry.kindWord, authored: indexLabelMap.get(entry.sourceId)?.authored ?? false,
-				kind: entry.kindWord
-			})),
-			boot.status === 'ready' || boot.status === 'empty'
-				? boot.snapshot.domain.name
-				: 'Project',
-			currentEnvelope ? acceptedSceneRoomMembership(currentEnvelope) : new Map()
-		)
-	);
-	const resolvedScope = $derived(resolveWorldScope(worldIndex, worldScope));
-	const locationLabel = $derived(
-		worldIndex.contexts
-			.filter((c) =>
-					c.id === 'project' ||
+	stageInput = createStageInputArbiter({
+		facade: () => facade,
+		evaluation: () => evaluation,
+		rect: () => rect,
+		measure: () => stageViewport.measure(),
+		stageElement: () => stageEl,
+		session,
+		activeLayer: () => activeLayer,
+		artwork: artworkInteraction,
+		unfold: unfoldGestures,
+		stageCss,
+		capturePointer,
+		press,
+		armedHostTool: () => shell.armedHostTool,
+		measureTool: () => shell.measureTool,
+		eraserTool: () => shell.eraserTool,
+		task: () => shell.task,
+		dockToolArmed: () => shell.armedTool !== null,
+		planView: () => planView,
+		previewing: () => preview !== null,
+		pick: scenePick.pick,
+		viewMarkAt: (event) => experience.viewMarkAt(event),
+		eraseHover: () => shell.eraseHover,
+		setEraseHover: (entry) => shell.setEraseHover(entry),
+		onNotice: (message) => shell.setNotice(message),
+		onRefreshHostTools: () => shell.refreshHostTools(),
+		selectHit: (hit) => commands.selectHit(hit),
+		pan,
+		orbit,
+		zoom,
+		submit,
+		nowSeconds
+	});
 
-					c.id === resolvedScope
+	stageKeyboard = createStageKeyboard({
+		artworkEscape: () => artworkInteraction.escape(),
+		previewActive: () => preview !== null,
+		closePreview: () => previewController.close(),
+		activeLayer: () => activeLayer,
+		pressing: () => stageInput.pressing,
+		dragMode: () => stageInput.drag?.mode ?? null,
+		facade: () => facade,
+		reducedMotion: () => shell.reducedMotion,
+		nowSeconds,
+		submit,
+		setReading,
+		zoom,
+		fit,
+		pan,
+		pressDockSlot: (slot) => commands.pressDockSlot(slot),
+		requestDelete: () => commands.requestDelete(),
+		openCard: () => shell.setCardOpen(true),
+		pendingDelete: () => shell.pendingDelete !== null,
+		clearPendingDelete: () => { shell.setPendingDelete(null); shell.setNotice(''); },
+		interrupt: interruptPress,
+		task: () => shell.task,
+		closeTask: () => commands.closeTask(),
+		armedHostTool: () => shell.armedHostTool,
+		measureTool: () => shell.measureTool,
+		eraserTool: () => shell.eraserTool,
+		clearEraseHover: () => shell.setEraseHover(null),
+		refreshHostTools: () => shell.refreshHostTools(),
+		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
+		paletteOpen: () => shell.paletteOpen,
+		closePalette: () => shell.setPaletteOpen(false),
+		libraryOpen: () => shell.libraryOpen,
+		toggleLibrary: () => commands.toggleWorldLibrary(),
+		activeWorldTool: () => shell.activeWorldTool,
+		clearWorldTool: () => { shell.setLibraryOpen(false); shell.setActiveWorldTool('select'); },
+		worldPlateOpen: () => shell.worldPlateOpen,
+		closeWorldPlate: () => shell.setWorldPlateOpen(false),
+		lens: () => experience.lensState,
+		selectionPresent: () => selection !== null,
+		closeSelection: () => commands.closeSelection()
+	});
+
+	const selectedCurvedWall = $derived.by(() =>
+		boot.status === 'ready' || boot.status === 'empty'
+			? selectedCurvedWallOf(
+				selection,
+				boot.snapshot.domain.geometry,
+				boot.snapshot.domain.datumMeters,
+				evaluation?.pose.target ?? null,
+				wallUnfoldViewCentreStation
 			)
-			.map((c) => c.label)
-			.join(' › ')
+			: null
 	);
-
-	/** Plan membership is a Layout fact; another domain's subject has none to report. */
-	const selectedMembership = $derived.by((): PlanMembershipReason | null => {
-		const plan = planView;
-		const selected = selection;
-		if (plan === null || selected === null || selected.reference.domain !== 'layout') return null;
-		// Indexed against the membership array: this is read on every presented frame
-		// while something is selected, so it must not scan the project.
-		return (
-			planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null
-		);
+	$effect(() => {
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return;
+		wallUnfold.ensureAnchor(candidate.wall, candidate.defaultStation);
 	});
 
-	/**
-	 * The Card's identity: the subject's name (authored, or its generated `Kind n`), its
-	 * kind word and, for Layout, its Plan membership in words. The canonical ID stays in
-	 * Technical details.
-	 */
-	const cardIdentity = $derived.by(() => {
-		const selected = selection;
-		if (selected === null) return null;
-		const key = selectedLocatorId ?? '';
-		const entry = indexEntryMap.get(key);
-		const label = indexLabelMap.get(key);
-		const domainWord = selected.reference.domain === 'layout' ? 'Layout' : 'Scene';
-		return {
-			sourceId: selected.reference.subject.id,
-			label: label?.label ?? entry?.kindWord ?? domainWord,
-			kind: entry?.kindWord ?? domainWord,
-			// A Layout subject states its Plan membership; a Scene subject names its own domain.
-			status:
-				selected.reference.domain !== 'layout'
-					? domainWord
-					: selectedMembership !== null
-						? membershipLabel(selectedMembership)
-						: 'Not in the current Plan'
-		};
+	const paperVisible = $derived(isPaperPlanVisible(evaluation, shell.preferences.planAppearance));
+	const modelUrls = $derived(stageAssets.urls);
+
+	function readStageContentBounds(stage: StageFacade): {
+		readonly min: [number, number, number];
+		readonly max: [number, number, number];
+	} | null {
+		const layoutBounds = stage.snapshot().domain.geometry.bounds;
+		let min: [number, number, number] | null =
+			layoutBounds === null ? null : [layoutBounds.min[0], layoutBounds.min[1], layoutBounds.min[2]];
+		let max: [number, number, number] | null =
+			layoutBounds === null ? null : [layoutBounds.max[0], layoutBounds.max[1], layoutBounds.max[2]];
+		for (const entity of stage.snapshot().domain.scene.entities) {
+			const bounds = stage.sceneBounds(entity.id);
+			if (bounds === null) continue;
+			min = min === null
+				? [bounds.min[0], bounds.min[1], bounds.min[2]]
+				: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
+			max = max === null
+				? [bounds.max[0], bounds.max[1], bounds.max[2]]
+				: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
+		}
+		return min === null || max === null ? null : { min, max };
+	}
+
+	let renderRootsRevision = $state(0);
+	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
+	const stageContentBounds = $derived.by(() => {
+		void renderRootsRevision;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		return facade === null ? null : readStageContentBounds(facade);
+	});
+	const paperContentBounds = $derived.by((): GridRect | null => {
+		const bounds = stageContentBounds;
+		return bounds === null
+			? null
+			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
+	});
+	$effect(() => facade?.camera.setContentBounds(stageContentBounds));
+
+	function canPlaceArtwork(): boolean {
+		return experience.lensState === 'world' && preview === null && wallUnfold.state === null;
+	}
+
+	$effect(() => () => { artworkInteraction.dispose(); stageAssets.disposeArtwork(); });
+	$effect(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
+		if (!canPlaceArtwork()) {
+			artworkInteraction.cancel();
+			artworkInteraction.cancelResize();
+		}
 	});
 
-	/**
-	 * The selected subject in the shared Card vocabulary. The Look stratum and every
-	 * adapter contribution read the one subject; the route does not rebuild it.
-	 */
-	const cardSubject = $derived.by((): StageCardSubject | null => {
-		const selected = selection;
-		if (selected === null) return null;
-		return {
-			sourceId: selected.reference.subject.id,
-			sourceKind: selected.reference.subject.kind,
-			reference: selected.reference,
-			ref: selected.representation ?? null
-		};
-	});
-
-	const selectedArtwork = $derived.by(() => {
-		if (cardSubject?.reference?.domain !== 'scene') return null;
-		const entity = scenePayload?.entities.find((candidate) => candidate.id === cardSubject.sourceId);
-		return entity?.kind === 'artwork' ? entity : null;
-	});
-
-	/** The one live proposal that can carry hanging guides: placement or Move, never Turn/resize. */
+	const selectedArtwork = $derived(selectionViewView.selectedArtwork);
 	const hangingCandidate = $derived(artworkInteraction.hangingCandidate);
 	const hangingGuides = $derived.by(() => {
 		const stage = facade;
@@ -2266,1391 +643,704 @@ function completeHistoryInstall(outcome: {
 		const candidate = hangingCandidate;
 		return candidate === null ? null : activeArtworkHangGuide(hangingGuides, candidate.position[1]);
 	});
-
-	/** The Card's Look stratum: empty in P0, filled by later Finish, Light or Artwork slices. */
 	const lookCardStratum = $derived.by(() => {
-		void contributionsVersion;
-		const subject = cardSubject;
+		void shell.contributionsVersion;
+		const subject = selectionViewView.cardSubject;
 		const entity = subject?.reference?.domain === 'scene'
-			? scenePayload?.entities.find((entry) => entry.id === subject.sourceId)
+			? selectionViewView.scenePayload?.entities.find((entry) => entry.id === subject.sourceId)
 			: undefined;
 		return (entity?.kind === 'artwork' ? artworkInteraction.card(entity) : null) ?? look.cardStratum(subject);
 	});
-
-	/**
-	 * The Card's ordinary facts: the Layout datum, then whatever adapters registered for
-	 * this subject, without this route knowing which domain contributed them. A fact whose
-	 * field the header or the writer shows is dropped by the Card, so each value appears once.
-	 */
-	const cardFacts = $derived.by((): readonly { readonly label: string; readonly value: string; readonly fieldId?: string;
-		}[] => {
-		// Reading the version makes an adapter registration or disposal re-derive.
-		void contributionsVersion;
-		const selected = selection;
-		if (selected === null) return [];
-		const own = selected.reference.domain === 'layout'
-			? [
-				{
-					label: 'Datum',
-					value: `${boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0} m`
-				}
-			]
-			: [];
-		return [...stageCardFacts(facade, cardSubject, own), ...lookCardStratum.facts];
-	});
-
-	const cardNameWriter = $derived.by(() => {
-		void contributionsVersion;
-		const subject = cardSubject;
-		if (subject === null || facade === null) return null;
-		return facade.cardNameWriter(subject);
-	});
-
-	/**
-	 * The Card's contributed **field writer** for the selected subject.
-	 *
-	 * Round 2 D9 makes the Card the one writer for ordinary dimensions, so the
-	 * migrated Layout fields render there through the same controller the retired
-	 * Dimensions task used. The route knows nothing about the fields themselves.
-	 */
-	const cardWriter = $derived.by(() => {
-		void contributionsVersion;
-		const subject = cardSubject;
-		if (subject === null) return null;
-		return lookCardStratum.writer ?? (facade === null ? null : stageCardWriter(facade, subject));
-	});
-
-	/**
-	 * The selected subject's scoped actions, each carrying the consequences its own
-	 * adapter disclosed. A destructive one is what both the Card and `Delete` run.
-	 */
-	const cardActions = $derived.by((): readonly StageCardActionRecord[] => {
-		void contributionsVersion;
-		const subject = cardSubject;
-		if (subject === null) return [];
-		return [
-			...(facade === null ? [] : stageCardActions(facade, subject)),
-			...lookCardStratum.actions
-		];
-	});
-
-	/** The display label of a located Stage subject, or null when the Index does not list it. */
-	function referenceLabel(reference: StageSelectionEntry['reference']): string | null {
-		const kind = reference.subject.kind === 'room' ? 'room-floor' : reference.subject.kind;
-		return indexLabelMap.get(`${reference.domain}:${kind}:${reference.subject.id}`)?.label ?? null;
-	}
-
-	/** Stage-select a subject from an Experience Card link: the Stage selection replaces the Card subject. */
-	function selectStageReference(reference: StageSelectionEntry['reference']): void {
-		const stage = facade;
-		if (stage === null) return;
-		const change = stage.setSelection({ ordered: [{ reference }], primary: reference });
-		if (change.kind === 'refused') return;
-		selection = primaryEntry(stage.selectionState());
-		experienceFocus.select(null);
-		cardOpen = true;
-	}
-
-	/**
-	 * R217.S25 — the Experience lens's groups for the shared Index: the Experience switch, the
-	 * Guides, and the Presentations with their Views and Stop numbers. A read of the controller;
-	 * every action is one of its commands or the one Card selection.
-	 */
-	const experienceIndex = $derived(experienceIndexFor({
-		lens,
-		controller: experienceController,
-		guideOpen: experienceGuideOpen,
-		expandedPresentationId,
-		select: experienceLens.selectSubject,
-		setExpanded: (presentationId) => { expandedPresentationId = presentationId; },
-		setCardOpen: (open) => { cardOpen = open; },
-		setGuideOpen: (open) => { experienceGuideOpen = open; }
+	const worldCard = $derived(stageWorldCardView({
+		facade,
+		subject: selectionViewView.cardSubject,
+		datumMeters: experienceFloorDatum,
+		look: lookCardStratum,
+		revision: shell.contributionsVersion
 	}));
-
-	/** The Card's `menu` item shape (R217.S26: danger items, consequence blocks and submenus). */
-	type ExperienceCardMenuItem = NonNullable<ComponentProps<typeof EditorCard>['menu']>[number];
-	type ShownCard = {
-		readonly identity: { sourceId: string; label: string; kind: string; status: string } | null;
-		readonly facts: readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[];
-		readonly nameWriter: ComponentProps<typeof EditorCard>['nameWriter'];
-		readonly writer: StageCardWriterRecord | null;
-		readonly actions: readonly StageCardActionRecord[];
-		readonly functions: readonly string[] | null;
-		readonly bringIntoView: (() => void) | null;
-		readonly kindLink: { readonly label: string; readonly onOpen: () => void } | null;
-		readonly menu: readonly ExperienceCardMenuItem[] | null;
-		readonly back: { readonly label: string; readonly onBack: () => void } | null;
-	};
-	const NO_CARD: ShownCard = {
-		identity: null,
-		facts: [],
-		nameWriter: null,
-		writer: null,
-		actions: [],
-		functions: [],
-		bringIntoView: null,
-		kindLink: null,
-		menu: null,
-		back: null
-	};
-
-	const cardBack = (controller: ExperienceController, parent: Parameters<typeof backOf>[1]) =>
-		backOf(controller, parent, () => { cardOpen = true; });
-
-	const experienceShownCard = $derived.by((): ShownCard => {
-		const controller = activeExperience;
-		const services = adapterServices;
-		// The ready draft (no Experience yet) still shows the Stage selection, so Present this can start it.
-		if (controller === null || services === null) return NO_CARD;
-		const bring = () => {
-			const target = selectedWorldPoint();
+	const experienceShownCard = $derived.by(() => experience.cardView({
+		services: adapterServices,
+		selection,
+		sceneSubject: experience.sceneSubject,
+		cardIdentity: selectionViewView.cardIdentity,
+		bring: () => {
+			const target = selectionViewView.selectedWorldPoint();
 			if (target !== null) bringIntoView(target);
-		};
-		return experienceShownCardFor({
-			controller,
-			services,
-			selection,
-			sceneSubject: experienceSceneSubject,
-			cardIdentity,
-			select: experienceLens.selectSubject,
-			changeLens: () => changeLens('world'),
-			bring,
-			selectStageReference,
-			referenceLabel,
-			openCard: () => { cardOpen = true; }
-		}) as unknown as ShownCard;
-	});
-
-	/**
-	 * What the one Card shows for the current lens. The Experience lens shows its own Card (one
-	 * selection, D10); World shows the Stage selection exactly as before.
-	 */
-	const shownCard = $derived.by((): ShownCard => {
-		if (lens === 'experience') return experienceShownCard;
+		},
+		selectStageReference: (reference) => commands.selectStageReference(reference),
+		referenceLabel: (reference) => selectionViewView.referenceLabel(reference)
+	}));
+	const shownCard = $derived.by(() => {
+		if (experience.lensState === 'experience') return experienceShownCard;
 		return {
-			identity: cardIdentity,
-			facts: cardFacts,
-			nameWriter: cardNameWriter,
-			writer: cardWriter,
-			actions: cardActions,
+			identity: selectionViewView.cardIdentity,
+			facts: worldCard.facts,
+			nameWriter: worldCard.nameWriter,
+			writer: worldCard.writer,
+			actions: worldCard.actions,
 			functions: null,
 			kindLink: null,
 			menu: null,
 			back: null,
 			bringIntoView: () => {
-				const target = selectedWorldPoint();
+				const target = selectionViewView.selectedWorldPoint();
 				if (target !== null) bringIntoView(target);
 			}
 		};
 	});
 
-	/**
-	 * Whether the Card is folded to identity.
-	 *
-	 * PLATE's arbitration: the Card keeps its facts readable *beside* the one lower
-	 * column, so at constrained width it folds instead of covering the task. The
-	 * creator's explicit expansion wins. A constrained stage folds the Card once, when a
-	 * task opens (below), and the fold is never re-derived from the live task: a commit
-	 * that closes the task therefore cannot expand a folded Card (R217.S22, D36). Closing
-	 * a task by hand reconsiders the fold (`closeTask` clears the explicit choice).
-	 */
+	function toggleReveal(sourceId: string): void {
+		revealed = revealed.includes(sourceId)
+			? revealed.filter((id) => id !== sourceId)
+			: [...revealed, sourceId];
+	}
 
-	/** Every contributed Find/rail entry from the adapters currently mounted. */
-	const findContributions = $derived.by(() => {
-		// Same signal: a newly registered adapter's Find entries appear at once.
-		void contributionsVersion;
-		return stageFindEntries(facade);
+	projectSession.bindNavigation();
+
+	function resetViewContext(): void {
+		selection = null;
+		shell.setTask(null);
+		revealed = [];
+		shell.setNotice('');
+		shell.setPendingDelete(null);
+		shell.setArmedTool(null);
+		shell.setCardOpen(true);
+		artworkInteraction.cancel();
+		artworkInteraction.cancelResize();
+		stageInput.reset();
+		stageViewport.reset();
+	}
+
+	function interruptForReplacement(): void {
+		clearHover();
+		interruptPress('replacement');
+	}
+
+	function resetPresentationBeforeSwap(): void {
+		shell.setExpandedPresentationId(null);
+	}
+
+	function bindEpochFacade(next: StageFacade): void {
+		shell.bindFacade(next);
+	}
+
+	function refreshAdapterPresentation(): void {
+		shell.bumpContributions();
+		shell.setTask(facade?.session.task() ?? null);
+		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
+		commands.syncContributedTask();
+	}
+
+	function refreshAcceptedPresentation(): void {
+		shell.setTask(facade?.session.task() ?? null);
+		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
+		commands.syncContributedTask();
+		stageViewport.invalidatePlan();
+		refresh();
+	}
+
+	function completeHistoryInstall(outcome: {
+		readonly selectionClearedReason: 'subject-retired' | 'no-correspondence' | null;
+	}): void {
+		selection = facade ? primaryEntry(facade.selectionState()) : null;
+		if (outcome.selectionClearedReason !== null) {
+			shell.setNotice('The selected subject no longer exists in the restored source.');
+		}
+		stageViewport.invalidatePlan();
+	}
+
+	function nowSeconds(): number {
+		return shell.nowSeconds();
+	}
+
+	function refresh(): void {
+		stageViewport.refresh();
+	}
+
+	function stageCss(event: PointerEvent): [number, number] {
+		const current = rect ?? stageViewport.measure();
+		return [event.clientX - current.left, event.clientY - current.top];
+	}
+
+	function capturePointer(target: Element, pointerId: number): boolean {
+		try {
+			target.setPointerCapture(pointerId);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	function absoluteCss(event: PointerEvent): [number, number] {
+		return [event.clientX, event.clientY];
+	}
+
+	function clearHover(): void {
+		stageInput.clearHover();
+	}
+
+	function interruptPress(reason: StageInterruptionReason): void {
+		stageInput.interrupt(reason);
+	}
+
+	function handleKey(event: KeyboardEvent): void {
+		stageKeyboard.handleKey(event);
+	}
+
+	function submit(intent: ViewingIntent, clockSeconds: number): StageIntentResult | null {
+		const stage = facade;
+		if (stage === null) return null;
+		if (stageInput.drag?.mode === 'adapter' && intent.kind !== 'set-reading') return null;
+		const first = stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
+		if (first.kind !== 'superseded') return first;
+		stage.acquireInspection('exclusive');
+		return stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
+	}
+
+	function setReading(reading: '3d' | 'plan'): void {
+		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
+		if (stageInput.drag !== null && session.gesture() === null) {
+			if (stageInput.drag.mode === 'adapter' && facade !== null) {
+				const css: [number, number] = [stageInput.drag.x - (rect?.left ?? 0), stageInput.drag.y - (rect?.top ?? 0)];
+				refresh();
+				const id = facade.evaluationId();
+				if (id !== null) facade.pointerIntent({ phase: 'move', css, evaluationId: id });
+			}
+			interruptPress('reading-change');
+		}
+	}
+
+	function patchDrafting(patch: StageDraftingPatch): void {
+		shell.patchDrafting(patch);
+	}
+
+	function requestScaleDetent(ratio: number): void {
+		const stage = facade;
+		const viewport = rect;
+		if (stage === null || viewport === null || viewport.height <= 0) return;
+		const settledHeight = stage.camera.state().pose.targetPlaneHeightMeters;
+		const intent = scaleDetentIntent(ratio, settledHeight / viewport.height);
+		if (intent !== null) submit(intent, nowSeconds());
+	}
+
+	function fit(): void {
+		const stage = facade;
+		if (stage === null || rect === null) return;
+		const bounds = readStageContentBounds(stage);
+		if (bounds === null) return;
+		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
+	}
+
+	function zoomIn(): void {
+		zoom(1 / 1.25);
+	}
+
+	function zoomOut(): void {
+		zoom(1.25);
+	}
+
+	function bringIntoView(target: readonly [number, number, number]): void {
+		submit({ kind: 'bring-into-view', target: [target[0], target[1], target[2]] }, nowSeconds());
+	}
+
+	function zoom(scale: number): void {
+		submit({ kind: 'zoom', scale }, nowSeconds());
+	}
+
+	function pan(dx: number, dy: number): void {
+		if (rect === null) return;
+		submit({ kind: 'pan', deltaCss: [dx, dy], rect }, nowSeconds());
+	}
+
+	function orbit(dAzimuth: number, dElevation: number): void {
+		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
+	}
+
+	$effect(() => {
+		wallUnfold.setCameraExecutor((request) => {
+			const stage = facade;
+			const current = stage?.evaluation() ?? null;
+			if (stage === null || current === null) return false;
+			const ticket = stage.inspectionTicket();
+			if (ticket === null) return false;
+			const camera = stage.camera.state();
+			if (!wallUnfoldShouldReturn({
+				entryAdjusted: request.entryAdjusted,
+				settled: request.settled,
+				current: { pose: camera.pose, reading: camera.reading }
+			})) return false;
+			return stage.requestViewingIntent(
+				{
+					kind: 'set-view',
+					eye: eyeOfInspectionPose(request.pose),
+					target: request.pose.target,
+					fovYDegrees: fovYDegreesOf(request.pose),
+					transition: true
+				},
+				ticket,
+				performance.now() / 1000
+			).kind === 'accepted';
+		});
+		return () => wallUnfold.setCameraExecutor(null);
 	});
 
-	/** The bottom dock's armable tools: the contributed entries whose home is the dock. */
-	const dockTools = $derived.by(() => {
-		void contributionsVersion;
-		return stageDockTools(facade);
+	onMount(() => {
+		perfMark('stage:route-mounted');
+		experience.start();
+		shell.start();
+		stageViewport.start();
+
+		const onKey = (event: KeyboardEvent) => {
+			if (event.defaultPrevented) return;
+			if (event.altKey) shell.suspendSnap(true);
+			handleKey(event);
+		};
+		const onReleaseSnap = (event: KeyboardEvent) => {
+			if (event.key === 'Alt') shell.suspendSnap(false);
+		};
+		const onWindowBlur = () => shell.suspendSnap(false);
+		window.addEventListener('keydown', onKey);
+		window.addEventListener('keyup', onReleaseSnap);
+		window.addEventListener('blur', onWindowBlur);
+		const removeInterruptions = installStageInterruptions(window, document, interruptPress);
+
+		void projectSession.load(projectId, intent);
+
+		return () => {
+			unfoldGestures.dispose();
+			experience.dispose();
+			stageEpoch.markTornDown();
+			stageViewport.dispose();
+			shell.dispose();
+			clearHover();
+			window.removeEventListener('keydown', onKey);
+			window.removeEventListener('keyup', onReleaseSnap);
+			window.removeEventListener('blur', onWindowBlur);
+			removeInterruptions();
+			stageEpoch.dispose();
+		};
 	});
 
-	/** R217.S10 — the dock's keys: Select · Ink · Measure · Eraser | Objects. */
-	const dockKeys = $derived(stageDockKeys(dockTools));
+	// The Stage input handlers are named once and passed as a group to the region.
+	const viewportInput = {
+		pointerDown: (event: PointerEvent) => stageInput.pointerDown(event),
+		pointerMove: (event: PointerEvent) => stageInput.pointerMove(event),
+		pointerUp: (event: PointerEvent) => stageInput.pointerUp(event),
+		pointerCancel: (event: PointerEvent) => stageInput.pointerCancel(event),
+		lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event),
+		click: (event: MouseEvent) => stageInput.click(event),
+		wheel: (event: WheelEvent) => stageInput.wheel(event),
+		pointerLeave: () => { clearHover(); artworkInteraction.leave(); },
+		dragOver: (event: DragEvent) => { if (artworkInteraction.acceptsDrop(event.dataTransfer)) event.preventDefault(); },
+		drop: (event: DragEvent) => artworkInteraction.drop(event),
+		contextMenu: (event: MouseEvent) => { if (experience.lookThroughActive()) event.preventDefault(); }
+	};
 
-	/** The armed host tool, read from the one task the session holds. */
-	const armedHostTool = $derived<'measure' | 'erase' | null>(
-		task?.kind === STAGE_MEASURE_TASK ? 'measure' : task?.kind === STAGE_ERASER_TASK ? 'erase' : null
+	const canvas = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		return {
+			scenePick,
+			lightPreview,
+			geometry: boot.snapshot.domain.geometry,
+			sourceContentId: boot.snapshot.sourceContentId,
+			layoutRevision: boot.snapshot.domain.unitRevisions.layout,
+			scene: boot.snapshot.domain.scene,
+			evaluation,
+			ghosts,
+			modelUrls,
+			artworkScope: stageAssets.artworkScope,
+			artworkGhost: artworkInteraction.resizeGhost ?? artworkInteraction.ghost,
+			onArtworkError: (message: string) => shell.setNotice(message),
+			plan: planView,
+			planAppearance: shell.preferences.planAppearance,
+			paperInk2d: PAPER_TONES[shell.preferences.paperTone2d].ink,
+			paperInk3d: PAPER_TONES[shell.preferences.paperTone3d].ink,
+			drafting: shell.drafting,
+			datumMeters: boot.snapshot.domain.datumMeters,
+			contentBounds: paperContentBounds,
+			snapshotBounds: stageContentBounds,
+			environment: look.stageEnvironment,
+			framedViewport: experience.lookThroughActive() ? throughViewport : null,
+			selection,
+			hover: shell.armedHostTool === 'erase' ? shell.eraseHover : stageInput.hoverSelection,
+			hoverTone: shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const,
+			heightMeters: experience.lensState === 'world' ? shell.heightMeters : null,
+			heightPlaneVisible: experience.lensState === 'world' && shell.heightPlaneVisible,
+			unfoldPinHovered: unfoldGestures.pinHovered,
+			unfoldPinActive: unfoldGestures.sheetPinActive,
+			unfoldAnchorPin: unfoldGestures.idlePin?.point ?? null
+		};
+	});
+
+	const overlay = $derived({
+		markers,
+		marks: [...marks, ...look.stageMarks],
+		roomLabels,
+		guides,
+		candidates: [...candidatePreviews, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])],
+		viewportWidth: rect?.width ?? 0,
+		viewportHeight: rect?.height ?? 0,
+		tracePreview,
+		hostTools: shell.hostToolOverlay,
+		lightGround: paperVisible || evaluation?.renderedReading === '3d'
+	});
+
+	const stageCursor = $derived(
+		experience.viewEdit !== null ? (experience.viewEdit.kind === 'turn' ? 'turn' : 'grabbing')
+			: stageInput.drag?.mode === 'pan' || stageInput.drag?.mode === 'orbit' || (stageInput.drag?.mode === 'adapter' && shell.task === null) ? 'grabbing'
+				: experience.lookThroughActive() ? 'look'
+					: experience.experienceTool === 'place' ? 'place-view'
+						: stageInput.hoverMove ? 'move'
+							: shell.task?.kind === 'layout-ink' || shell.armedHostTool !== null ? 'draw'
+								: 'select'
 	);
 
-	/**
-	 * The armed dock key: Select when no task is open, the armed tool's key while
-	 * one is, and none while a non-dock task (Compose, Import) holds the column.
-	 */
-	const armedDockId = $derived.by(() => {
-		if (task === null) return 'host-select';
-		if (armedHostTool !== null) return task.kind;
-		const armed = armedTool;
-		if (armed !== null && dockKeys.some((key) => key.id === armed.id && key.adapterId === armed.adapterId)) return armed.id;
-		return (
-			dockKeys.find((key) => key.taskKind === task?.kind && key.adapterId !== STAGE_HOST_ADAPTER_ID)?.id ?? ''
-		);
+	const viewportLookThrough = $derived.by(() => {
+		const current = experience.lookThroughSession();
+		if (current === null) return null;
+		return {
+			label: current.label,
+			moved: experience.lookThroughMoved(),
+			confirm: experience.lookThroughConfirm(),
+			canUpdate: !(experience.active?.busy ?? false),
+			onUpdate: () => void experience.updateLookThrough(experience.lookThroughConfirm() !== null),
+			onExit: () => experience.exitLookThrough(),
+			onCapture: () => void experience.captureProvisional(),
+			onClearConfirm: () => experience.clearLookThroughConfirm()
+		};
 	});
 
-	/**
-	 * The bounded **Find in Head** list: every contributed entry by label, with the
-	 * verb that reaches it — `Arm` for a dock tool, `Invoke` for an Index task.
-	 *
-	 * It is a discovery route to what the mounted adapters contributed, not a subject
-	 * search and not the scope-model Index.
-	 */
-	const headFindEntries = $derived.by(() => {
-		const needle = findQuery.trim().toLowerCase();
-		const entries = [
-			{ id: 'starter', adapterId: 'project-replacement', label: 'Use enclosed room starter', verb: 'Replace' },
-			...worldIndex.rows.map((row) => ({ id: row.sourceId, adapterId: 'subject', label: row.label, verb: 'Select' })),
-			...worldIndex.contexts.map((context) => ({
-				id: context.id,
-				adapterId: 'scope',
-				label: context.label,
-				verb: 'Go to'
-			})),
-			...['Zoom in', 'Zoom out', 'Fit'].map((label, index) => ({
-				id: String(index),
-				adapterId: 'view-command',
-				label,
-				verb: 'Run'
-			})),
-			...dockKeys
-				.filter((key) => !key.unavailableReason)
-				.map((key) => ({
-				id: key.id,
-				adapterId: key.adapterId,
-				label: key.label,
-				verb: 'Arm'
-			})),
-			...findContributions.map((entry) => ({
-				id: entry.id, adapterId: entry.adapterId, label: entry.label, verb: 'Invoke'
-			})),
-			// O8: the Scale detents stay reachable after the Scale word leaves the
-			// toolbar. They are the same existing zoom intent, not a second control.
-			...SCALE_DETENTS.map((ratio) => ({
-				id: `scale:${ratio}`,
-				adapterId: 'scale',
-				label: `Scale 1:${ratio}`,
-				verb: 'Zoom'
-			})),
-			// R217.S20: the former ☰ menu's capabilities keep a Find entry beside their
-			// permanent homes (viewing preferences in the Stage's ⚙, the project
-			// procedures under the project name), and Keys, which has no other home.
-			...HEAD_PREFERENCE_ENTRIES,
-			{ id: 'keys', adapterId: 'keys', label: 'Keys', verb: 'Show' },
-			...(lens === 'experience'
-				? [{ id: 'tips', adapterId: 'experience', label: 'Show Experience tips', verb: '' }]
-				: []),
-			...HEAD_PROJECT_ENTRIES
-		];
-		return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
+	const viewportPreview = $derived.by(() => {
+		if (previewSurface === null || previewViewRead === null) return null;
+		const entry = previewView?.entry ?? null;
+		const read = previewViewRead;
+		return {
+			surface: previewSurface,
+			props: {
+				geometry: read.geometry,
+				scene: read.scene,
+				graph: read.graph,
+				program: entry === null ? null : entry.kind === 'presentations' ? (entry.program ?? null) : entry.program,
+				experienceOptions: entry === null ? null : entry.kind === 'presentations' ? (entry.options ?? null) : entry.options,
+				entryPresentationId: entry?.kind === 'program' ? entry.entryPresentationId : null,
+				runEpoch: previewView?.epoch ?? 0,
+				active: preview !== null,
+				resolveTexture: (uri: string) => isAllowedShippedTextureUri(uri) ? uri : null,
+				modelUrls,
+				artworkScope: previewController.artworkScope,
+				reducedMotion: shell.reducedMotion,
+				title: entry?.title ?? null,
+				experienceTitle: entry?.title ?? null,
+				startMode: previewRequestedMode ?? (entry?.kind === 'program' && entry.entryPresentationId !== null ? 'presentation' : 'welcome'),
+				guideStopCount: previewGuideStats.stops,
+				guideSeconds: previewGuideStats.seconds,
+				viewLabels: previewViewLabels,
+				onExit: previewController.close,
+				environment: look.environment
+			},
+			active: preview !== null
+		};
 	});
 
-	/**
-	 * Arm a dock tool: the very same contributed task the Index invokes, so a tool
-	 * has one operation behind it, never a second dock-only path into the domain.
-	 */
-	function armDockTool(tool: { readonly id: string; readonly adapterId: string;
-	}): void {
-		invokeContribution(tool.adapterId, tool.id);
-		armedTool = { id: tool.id, adapterId: tool.adapterId };
-		paletteOpen = true;
-		worldPlateOpen = true;
-		pendingDelete = null;
-	}
-
-	/** Select — the host's own tool: it closes the contributed task and keeps what is selected. */
-	function selectTool(): void {
-		artworkInteraction.cancel();
-		closeTask();
-	}
-
-	/** The host task an armed Measure or Eraser holds. It names no target. */
-	function hostToolTask(kind: string): StageTask | null {
-		if (kind === STAGE_MEASURE_TASK) return { kind, label: 'Measure', targetRef: null, target: null };
-		if (kind === STAGE_ERASER_TASK) return { kind, label: 'Eraser', targetRef: null, target: null };
-		return null;
-	}
-
-	/**
-	 * Arm Measure or Eraser. Like every dock key it takes the lower column and leaves
-	 * the selection exactly as it was; it opens no adapter instrument.
-	 */
-	function armHostTool(kind: string): void {
-		const stage = facade;
-		const next = hostToolTask(kind);
-		if (stage === null || next === null) return;
-		closeTask();
-		if (!stage.openTask(next)) return;
-		task = next;
-		armedTool = { id: kind, adapterId: STAGE_HOST_ADAPTER_ID };
-		paletteOpen = true;
-		worldPlateOpen = true;
-		pendingDelete = null;
-		notice = '';
-		refreshHostTools();
-	}
-
-	/** Arm one dock key (from the dock, its key or Find). */
-	function armDockKey(key: StageDockKey): void {
-		if (key.slot === 'select') {
-			activeWorldTool = 'select';
-			libraryOpen = false;
-			selectTool();
-		} else if (key.adapterId === STAGE_HOST_ADAPTER_ID) {
-			activeWorldTool = key.id === STAGE_MEASURE_TASK ? 'measure' : 'erase';
-			libraryOpen = false;
-			armHostTool(key.id);
-		} else if (key.slot === 'library') {
-			activeWorldTool = 'objects';
-			libraryOpen = false;
-			armDockTool({ id: key.id, adapterId: key.adapterId });
-		} else if (key.slot === 'ink') {
-			activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
-			libraryOpen = false;
-			armDockTool({ id: key.id, adapterId: key.adapterId });
-			paletteOpen = false;
-		} else {
-			armDockTool({ id: key.id, adapterId: key.adapterId });
-		}
-	}
-
-	/** The Living Draft row's one bridge into the existing dock/host controllers. */
-	function armWorldTool(id: WorldToolId): void {
-		artworkInteraction.cancel();
-		worldPlateOpen = id !== 'select';
-		if (id === 'library') {
-			toggleWorldLibrary();
-			return;
-		}
-		libraryOpen = false;
-		if (id === 'select') {
-			activeWorldTool = 'select';
-			selectTool();
-			return;
-		}
-		if (id === 'walls' || id === 'opening') {
-			const key = dockKeys.find((candidate) => candidate.slot === 'ink');
-			if (key === undefined) {
-				notice = 'Ink is not available in this project.';
-				return;
-			}
-			inkReading = id === 'opening' ? 'opening' : 'wall';
-			armDockTool({ id: key.id, adapterId: key.adapterId });
-			activeWorldTool = id;
-			paletteOpen = false;
-			return;
-		}
-		if (id === 'lights') {
-			const previous = activeWorldTool;
-			closeTask();
-			libraryOpen = true;
-			toolBeforeLibrary = previous === 'library' ? 'select' : previous;
-			activeWorldTool = 'lights';
-			worldPlateOpen = true;
-			paletteOpen = false;
-			return;
-		}
-		if (id === 'objects') {
-			const key = dockKeys.find((candidate) => candidate.slot === 'library');
-			if (key === undefined) {
-				notice = 'Objects is not available in this project.';
-				return;
-			}
-			armDockTool({ id: key.id, adapterId: key.adapterId });
-			activeWorldTool = 'objects';
-			paletteOpen = false;
-			return;
-		}
-		if (id === 'measure' || id === 'erase') {
-			armHostTool(id === 'measure' ? STAGE_MEASURE_TASK : STAGE_ERASER_TASK);
-			activeWorldTool = id;
-			paletteOpen = false;
-			return;
-		}
-		// A planned row is inspectable, but it writes nothing until its post-merge branch.
-		closeTask();
-		activeWorldTool = id;
-		paletteOpen = false;
-	}
-
-	function toggleWorldLibrary(): void {
-		if (libraryOpen) {
-			libraryOpen = false;
-			activeWorldTool = toolBeforeLibrary === 'library' ? 'select' : toolBeforeLibrary;
-			return;
-		}
-		toolBeforeLibrary = activeWorldTool === 'library' ? 'select' : activeWorldTool;
-		closeTask();
-		libraryOpen = true;
-		activeWorldTool = 'library';
-		worldPlateOpen = true;
-		paletteOpen = false;
-	}
-
-	function pickWorldObject(assetId: string): void {
-		libraryOpen = false;
-		armWorldTool('objects');
-		notice = assetId === '' ? 'Choose a placement in the Objects panel.' : 'Choose the object in the Objects panel to place it.';
-	}
-
-	/** A dock press: arm the key, or fold/unfold the armed key's own palette. */
-	function pressDockKey(key: StageDockKey): void {
-		if (key.id === armedDockId && key.slot !== 'select') {
-			if (key.palette) togglePalette();
-			return;
-		}
-		armDockKey(key);
-	}
-
-	/** A dock shortcut: the same press as the key, or a word when the key is absent. */
-	function pressDockSlot(slot: StageDockSlot): void {
-		const key = dockKeys.find((candidate) => candidate.slot === slot);
-		if (key === undefined) {
-			notice = 'That tool is not available in this project.';
-			return;
-		}
-		pressDockKey(key);
-	}
-
-	/**
-	 * Re-arm the dock's tool after an accepted install.
-	 *
-	 * The install closed the task; this re-opens the **same** contributed entry once
-	 * its rebound adapter publishes it again, so the next Wall of a run does not need
-	 * a second trip to the dock. It is a no-op for a tool the creator disarmed, and
-	 * for an entry whose adapter no longer contributes it.
-	 */
-	function rearmDockTool(): void {
-		const stage = facade;
-		if (stage === null) return;
-		const armed = armedTool;
-		// The light arm is session fact in the adapter: it survives the install's
-		// task close, and is already cleared when a glyph selects and disarms. A
-		// dock tool's own arm owns the re-open when both facts are present.
-		const lightProjectId = stage.snapshot().acceptedRevision.projectId;
-		if (armed === null && armedLightKind(lightProjectId) !== null) {
-			const lightTask = stage
-				.tasks()
-				.find((entry) => entry.id === 'light-place' && entry.adapterId === 'light');
-			if (lightTask !== undefined && stage.session.task() === null) {
-				const opened = stage.openContributedTask(lightTask.id, lightTask.adapterId);
-				if (opened.kind === 'opened') {
-					task = opened.task;
-					contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
-					activeWorldTool = 'lights';
-					libraryOpen = true;
-					worldPlateOpen = true;
-				}
-			}
-			return;
-		}
-		if (armed === null) return;
-		if (armed.adapterId === STAGE_HOST_ADAPTER_ID) {
-			// An erase installs new content, which closes the task; the Eraser stays armed.
-			const next = hostToolTask(armed.id);
-			if (next !== null && stage.session.task() === null && stage.openTask(next)) task = next;
-			return;
-		}
-		// Other contributed tasks re-open directly; Find entries are the other arm shape.
-		const taskEntry = stage
-			.tasks()
-			.find((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
-		if (taskEntry !== undefined) {
-			if (stage.session.task() === null) {
-				const opened = stage.openContributedTask(taskEntry.id, taskEntry.adapterId);
-				if (opened.kind === 'opened') {
-					task = opened.task;
-					contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
-				}
-			}
-			// The install briefly closed the task, so the task/chrome sync reset the
-			// World tool to Select. Keep the re-armed Ink row attached to its task.
-			if (armed.id === 'layout-ink') {
-				activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
-				worldPlateOpen = true;
-			}
-			return;
-		}
-		const stillContributed = stage
-			.findEntries()
-			.some((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
-		if (!stillContributed) return;
-		invokeContribution(armed.adapterId, armed.id, false);
-		// The install briefly closed the task, so the task/chrome sync reset the World
-		// tool to Select. Keep the re-armed Ink row attached to the task it drives.
-		if (armed.id === 'layout-ink') {
-			activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
-			worldPlateOpen = true;
-		}
-	}
-
-	/** Pressing the armed key again folds or re-opens its palette without disarming the tool. */
-	function togglePalette(): void {
-		paletteOpen = !paletteOpen;
-	}
-
-	/** R217.S20 — a Find preference entry writes the same browser preference the Stage's ⚙ writes. */
-	function runPreferenceEntry(id: string): void {
-		if (id === 'reduce-motion') {
-			reducedMotion = !reducedMotion;
-			updatePreferences({ ...preferences, reducedMotion });
-			return;
-		}
-		const [name, value] = id.split(':');
-		if (name === 'appearance' && (value === 'paper' || value === 'shaded')) updatePreferences({ ...preferences, planAppearance: value });
-		else if (name === 'height-sheet' && (value === 'left' || value === 'right')) heightSheetSide = value;
-		else if (name === 'motion-speed' && (value === 'slow' || value === 'normal' || value === 'fast')) updatePreferences({ ...preferences, motionSpeed: value });
-	}
-
-	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
-	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string;
-	}): void {
-		if (entry.adapterId === 'project-replacement' && entry.id === 'starter') {
-			requestReplacement('starter');
-			return;
-		}
-		if (entry.adapterId === 'scope') {
-			worldScope = entry.id as WorldScope;
-			indexOpen = true;
-			return;
-		}
-		if (entry.adapterId === 'view-command') {
-			if (entry.id === '0') zoomIn();
-			else if (entry.id === '1') zoomOut();
-			else fit();
-			return;
-		}
-		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
-		if (entry.adapterId === 'scale') {
-			requestScaleDetent(Number(entry.id.slice('scale:'.length)));
-			return;
-		}
-		if (entry.adapterId === 'preference') { runPreferenceEntry(entry.id); return; }
-		if (entry.adapterId === 'keys') { keysOpen = true; return; }
-		if (entry.adapterId === 'experience' && entry.id === 'tips') {
-			showExperienceWelcome = true;
-			return;
-		}
-		if (entry.adapterId === 'project-menu') {
-			// Rename and delete open the Head's own dialog and never reach the route.
-			if (entry.id === 'download') downloadSourceJson();
-			else if (entry.id === 'source') requestReplacement('source');
-			return;
-		}
-		const key = dockKeys.find(
-			(candidate) => candidate.id === entry.id && candidate.adapterId === entry.adapterId
-		);
-		if (key !== undefined) {
-			armDockKey(key);
-			if (key.palette) paletteOpen = true;
-			return;
-		}
-		invokeContribution(entry.adapterId, entry.id);
-	}
-
-	/**
-	 * The keyboard route to a subject's own destructive action.
-	 *
-	 * The first press **names the consequences the owning adapter disclosed** — the
-	 * same planner-derived words the Card shows, hosted Openings and Room merge/open
-	 * included — and the second confirms. The first press writes nothing, and a
-	 * domain that contributes no destructive action is never offered one. The
-	 * confirmation is bound to that exact disclosure: a different subject, or the
-	 * same subject disclosed differently, reserves a fresh offer instead of
-	 * spending the one that was read.
-	 */
-	function requestDelete(): void {
-		const selected = selection;
-		const destructive = cardActions.filter((action) => action.destructive === true);
-		if (selected === null || destructive.length !== 1) {
-			pendingDelete = null;
-			notice = selected === null ? 'Select a subject to delete it.' : 'Nothing here can be deleted.';
-			return;
-		}
-		const record = destructive[0]!;
-		const subjectKey = `${selected.reference.subject.kind}:${selected.reference.subject.id}`;
-		const detail = record.detail ?? null;
-		if (
-			pendingDelete !== null &&
-			pendingDelete.subjectKey === subjectKey &&
-			pendingDelete.actionId === record.id &&
-			pendingDelete.detail === detail
-		) {
-			pendingDelete = null;
-			void runCardAction(record, subjectKey);
-			return;
-		}
-		pendingDelete = { subjectKey, actionId: record.id, detail };
-		const disclosed = record.detail ?? 'the owning domain disclosed no consequences';
-		notice = `${record.label} — ${disclosed.endsWith('.') ? disclosed : `${disclosed}.`} Press Delete again to confirm, or Escape to keep it.`;
-	}
-
-	/** Run one contributed Card action and report exactly what it said. */
-	async function runCardAction(record: StageCardActionRecord, subjectKey: string): Promise<void> {
-		const outcome = await record.run();
-		if (pendingDelete?.subjectKey === subjectKey) pendingDelete = null;
-		notice = outcome.kind === 'accepted' ? '' : (outcome.message ?? `${record.label} was not applied.`);
-	}
-
-	/**
-	 * The instrument host's task view. The target is named explicitly and may differ
-	 * from the canonical selection — an Opening can stay selected while the task
-	 * works on its host Wall.
-	 */
-	const taskHost = $derived(
-		task === null || armedHostTool !== null
-			? null
-			: {
-					kind: task.kind,
-					label: task.label,
-					targetLabel:
-						task.targetRef === null
-							? null
-							: sourceLabel(task.targetRef.sourceId, task.targetRef.sourceKind)
-				}
-	);
-
-	/** The world point a "Bring into view" request targets, from the selected fragment. */
-	function selectedWorldPoint(): [number, number, number] | null {
-		const plan = planView;
-		const selected = selection;
-		if (plan === null || selected === null) return null;
-		if (selected.reference.domain !== 'layout') {
-			const subject = locatedSubjects.find((item) => item.reference.domain === selected.reference.domain && item.reference.subject.id === selected.reference.subject.id);
-			return subject === undefined ? null : [...subject.worldPoint];
-		}
-		const fragment = planFragmentOf(plan, selected.reference.subject.id);
-		if (fragment === undefined) return null;
-		const points =
-			fragment.geometry.kind === 'span'
-				? [fragment.geometry.start, fragment.geometry.end]
-				: fragment.geometry.kind === 'polyline'
-					? fragment.geometry.polyline
-					: fragment.geometry.polygon;
-		if (points.length === 0) return null;
-		const center = points.reduce<[number, number]>(
-			(accumulator, point) => [accumulator[0] + point[0] / points.length, accumulator[1] + point[1] / points.length],
-			[0, 0]
-		);
-		return [center[0], fragment.elevationMeters, center[1]];
-	}
 </script>
 
 <div class="editor-host" data-shell="living-draft">
-	<!--
-		The Head and the Index are authoring chrome, so they are not mounted while
-		the isolated Preview run owns the Camera output: a visible Undo, Save or
-		selection there would be a second writer reaching the source this run does
-		not own. Leaving Preview remounts the same host and selection state.
-	-->
 	{#if preview === null}
-	<EditorHead
-		{projectId}
-		projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : 'Loading project'}
-		{lens}
-		onLens={changeLens}
-		canDownloadSource={activeProject()}
-		onDownloadSource={downloadSourceJson}
-		onOpenSource={() => requestReplacement('source')}
-		historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
-		redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
-		canUndo={historyState.canUndo}
-		canRedo={historyState.canRedo}
-		onUndo={() => void stageEpoch.undo()}
-		onRedo={() => void stageEpoch.redo()}
-		save={headSave}
-		onReloadRemote={(offer) => void applyReloadOffer(offer)}
-		saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
-		canPreview={previewAvailable}
-		onPreview={() => void previewController.open()}
-		previewUnavailableReason={currentEnvelope === null
-			? 'Preview needs an admitted project source.'
-			: 'Create an Experience in the Experience lens to Preview it.'}
-		{indexOpen}
-		onToggleIndex={() => (indexOpen = !indexOpen)}
-			{locationLabel}
-		onOpenIndex={() => (indexOpen = true)}
+		<EditorHead
+			{projectId}
+			projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : 'Loading project'}
+			lens={experience.lensState}
+			onLens={experience.changeLens}
+			canDownloadSource={activeProject()}
+			onDownloadSource={downloadSourceJson}
+			onOpenSource={() => requestReplacement('source')}
+			historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
+			redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
+			canUndo={historyState.canUndo}
+			canRedo={historyState.canRedo}
+			onUndo={() => void stageEpoch.undo()}
+			onRedo={() => void stageEpoch.redo()}
+			save={headSave}
+			onReloadRemote={(offer) => void applyReloadOffer(offer)}
+			saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
+			canPreview={previewAvailable}
+			onPreview={() => void previewController.open()}
+			previewUnavailableReason={currentEnvelope === null
+				? 'Preview needs an admitted project source.'
+				: 'Create an Experience in the Experience lens to Preview it.'}
+			indexOpen={shell.indexOpen}
+			onToggleIndex={() => shell.setIndexOpen(!shell.indexOpen)}
+			locationLabel={selectionViewView.locationLabel}
+			onOpenIndex={() => shell.setIndexOpen(true)}
 			{projectActionsUnavailableReason}
-		{projectActionBusy}
-		onPrepareRename={() => prepareProjectLifecycle(false)}
-		onRenameProject={renameCurrentProject}
-		onPrepareDelete={() => prepareProjectLifecycle(true)}
-		onDeleteProject={deleteCurrentProject}
-		onProjectActionComplete={finishCurrentProjectAction}
-		onProjectActionBusyChange={projectSession.setProjectActionBusy}
-		onRefreshRemoteProject={reloadLifecycleRemote}
-		find={{
-			query: findQuery,
-			entries: headFindEntries,
-			onQuery: (value) => (findQuery = value),
-			onRun: runHeadFindEntry
-		}}
+			{projectActionBusy}
+			onPrepareRename={() => prepareProjectLifecycle(false)}
+			onRenameProject={renameCurrentProject}
+			onPrepareDelete={() => prepareProjectLifecycle(true)}
+			onDeleteProject={deleteCurrentProject}
+			onProjectActionComplete={finishCurrentProjectAction}
+			onProjectActionBusyChange={projectSession.setProjectActionBusy}
+			onRefreshRemoteProject={reloadLifecycleRemote}
+			find={{
+				query: shell.findQuery,
+				entries: findView.entries,
+				onQuery: (value: string) => shell.setFindQuery(value),
+				onRun: (entry: Pick<StageHeadFindEntry, 'id' | 'adapterId'>) => commands.runHeadFindEntry(entry)
+			}}
+		/>
+	{/if}
+
+	<StageProjectNotices
+		resumeOffer={resumeOffer !== null}
+		onResume={() => void resumePendingSave()}
+		onDiscard={dismissResumeOffer}
+		{sourceFindings}
+		{sourceProblems}
+		previewProblem={shell.previewProblem as ExperienceProblem | null}
+		onShowProblem={(problem) => experience.showProblem(problem)}
 	/>
-	{/if}
-
-	{#if resumeOffer}
-		<div class="resume-offer" role="region" aria-label="Pending cloud save">
-			<p>
-				A cloud Save was captured before sign-in. Resuming mounts your captured work and
-				replays that exact Save — it is never applied automatically.
-			</p>
-			<button type="button" class="primary" onclick={() => void resumePendingSave()}>Resume pending Save</button>
-			<button type="button" onclick={dismissResumeOffer}>Discard captured Save</button>
-		</div>
-	{/if}
-
-	{#if sourceFindings !== null || sourceProblems.length > 0 || previewProblem !== null}
-		<!--
-			Experience review 1: source problems are a quiet chip, not a page banner.
-			The creator reads a plain sentence and uses *Show* to open the Stop's
-			Transition Card; ids, paths and codes stay in *Copy details*.
-		-->
-		<details
-			class="source-findings"
-			class:blocking={(sourceFindings?.closure.length ?? 0) > 0}
-			aria-label="Source findings"
-		>
-			<summary>
-				{#if (sourceFindings?.closure.length ?? 0) > 0}
-					<strong>This project can't be saved yet.</strong> Something it needs is missing.
-				{:else}
-					<strong>{sourceProblems.length + (previewProblem === null ? 0 : 1)} to review</strong>
-					{previewProblem === null
-						? 'This file needs attention before every move plays.'
-						: 'Preview cannot start from this file.'}
-				{/if}
-				<span class="source-findings-more">Details</span>
-			</summary>
-			<ul>
-				{#each (previewProblem === null ? sourceProblems : [previewProblem, ...sourceProblems]).slice(0, 8) as problem (problem.code + problem.detail)}
-					<li data-finding-code={problem.code}>
-						<span
-							>{problem.sentence}{#if problem.fix}<span class="source-problem-fix">{problem.fix}</span>{/if}</span
-						>
-						{#if problem.subject !== null}
-							<button type="button" class="source-problem-show" onclick={() => showProblem(problem)}
-								>Show</button
-							>
-						{/if}
-					</li>
-				{/each}
-				{#each (sourceFindings?.closure ?? []).slice(0, 8) as finding (finding.path + finding.code)}
-					<li data-finding-code={finding.code}>{finding.message}</li>
-				{/each}
-			</ul>
-			<button
-				type="button"
-				onclick={() =>
-					void navigator.clipboard?.writeText(
-						[...(previewProblem === null ? [] : [previewProblem]), ...sourceProblems]
-							.map((problem) => problem.detail)
-							.concat(
-								(sourceFindings?.closure ?? []).map(
-									(finding) => `${finding.path}: ${finding.message} (${finding.code})`
-								)
-							)
-							.join('\n')
-					)}>Copy details</button
-			>
-		</details>
-	{/if}
 
 	<div
 		class="editor-body"
-		style={`--lower-column-height: ${lowerColumnHeight}px; ${lens === 'experience' ? '--card-right: 10px; ' : ''}${lens === 'experience' && !experienceGuideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
-		data-index-open={preview === null && indexOpen}
+		style={`--lower-column-height: ${shell.lowerColumnHeight}px; ${experience.lensState === 'experience' ? '--card-right: 10px; ' : ''}${experience.lensState === 'experience' && !experience.guideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${shell.sheetLaneRight}px; --sheet-lane-left: ${shell.sheetLaneLeft}px`}
+		data-index-open={preview === null && shell.indexOpen}
 	>
-		{#if preview === null}
-		<EditorIndex
-			open={indexOpen}
-				model={worldIndex}
-				scope={resolvedScope}
-				onScope={(scope) => (worldScope = scope)}
-				onClose={() => (indexOpen = false)}
-			selectionId={selectedLocatorId}
-			{query}
-			onQuery={(next) => (query = next)}
-			onSelect={selectSource}
-			onBringIntoView={(sourceId) => {
-				const subject = locatedSubjects.find((item) => item.id === sourceId);
-				if (subject !== undefined) { bringIntoView(subject.worldPoint); return; }
-				const plan = planView;
-				const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
-				const fragment = plan === null ? undefined : planFragmentOf(plan, layoutId);
-				if (fragment === undefined) return;
-				const points =
-					fragment.geometry.kind === 'span'
-						? [fragment.geometry.start, fragment.geometry.end]
-						: fragment.geometry.kind === 'polyline'
-							? fragment.geometry.polyline
-							: fragment.geometry.polygon;
-				if (points.length === 0) return;
-				const center = points.reduce<[number, number]>(
-					(accumulator, point) => [accumulator[0] + point[0] / points.length, accumulator[1] + point[1] / points.length],
-					[0, 0]
-				);
-				bringIntoView([center[0], fragment.elevationMeters, center[1]]);
+		<StageViewportRegion
+			previewing={preview !== null}
+			{canvas}
+			{overlay}
+			experienceMarks={experience.lensState === 'experience' && evaluation !== null && !experience.lookThroughActive()
+				? {
+					evaluation,
+					placementGhost: experience.placementGhost(),
+					liveEdit: experience.viewEdit,
+					advanced: experience.advancedViewId !== null,
+					datum: experienceFloorDatum,
+					rig: experience.playback.status === 'idle' ? null : experience.playback.sample,
+					onLookThrough: (viewId: string) => experience.lookThroughView(viewId),
+					showMarkers: shell.showMarkers,
+					showFrustums: shell.showFrustums,
+					showPaths: shell.showPaths,
+					showLabels: shell.showLabels,
+					selectionOnly: shell.showMode === 'selection',
+					onPlanePoint: experience.pathAnchorPoint,
+					beginPathDragLease: experience.beginPathDragLease,
+					endPathDragLease: experience.endPathDragLease
+				}
+				: null}
+			viewEditTurn={experience.viewEdit?.moved && !experience.viewEdit.advanced && experience.viewEditPreview?.turn
+				? experience.viewEditPreview.turn
+				: null}
+			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
+				? { bar: shell.draftingScaleBar, quiet: paperVisible }
+				: null}
+			heightSheet={experience.lensState === 'world'
+				? {
+					heightMeters: shell.heightMeters,
+					ticks: shell.heightTicks,
+					pins: shell.heightPins,
+					snapIncrement: shell.heightSnapIncrement,
+					reducedMotion: shell.reducedMotion,
+					side: shell.heightSheetSide,
+					drawing: shell.task?.kind === 'layout-ink',
+					onSetHeight: shell.setHeight,
+					onAddPin: shell.addHeightPin,
+					onActiveChange: shell.setHeightPlaneActive,
+					onResetSubscribe: (onReset: () => void) => heightSheet.subscribeReset('height-sheet-control', onReset)
+				}
+				: null}
+			lookThrough={viewportLookThrough}
+			pendingViewWrite={experience.pendingViewWrite}
+			onResolvePendingViewWrite={() => void experience.confirmPendingViewWrite()}
+			onCancelPendingViewWrite={() => experience.clearPendingViewWrite()}
+			welcome={experience.lensState === 'experience' && experience.welcome && !experience.lookThroughActive() && experience.experienceTool === 'select'}
+			onDismissWelcome={() => experience.dismissWelcome()}
+			hanging={facade !== null && evaluation?.renderedReading === '3d' && hangingGuides.length > 0
+				? { guides: hangingGuides, stage: facade, evaluation, activeGuideId: activeHangingGuide }
+				: null}
+			artwork={selectedArtwork !== null && facade !== null && evaluation?.renderedReading === '3d' && canPlaceArtwork() && !artworkInteraction.armed
+				? {
+					entity: artworkInteraction.resizeGhost ?? selectedArtwork,
+					stage: facade,
+					evaluation,
+					resizing: artworkInteraction.resizeGhost !== null,
+					blocked: artworkInteraction.resizeBlocked,
+					canTurn: selectedArtwork === null || !artworkInteraction.isHungNow(selectedArtwork),
+					onStart: artworkInteraction.startResize
+				}
+				: null}
+			notice={experience.lensState !== 'experience' ? shell.notice : ''}
+			preview={viewportPreview}
+			previewLoading={preview !== null && viewportPreview === null}
+			{stageCursor}
+			styleCursor={stageInput.stageCursor}
+			{paperVisible}
+			homes={experience.lensState === 'experience' && adapterServices !== null && currentEnvelope !== null
+				? { services: adapterServices, snapshot: currentEnvelope }
+				: null}
+			onLaneWidth={(width) => shell.setSheetLaneWidth(width)}
+			onExperienceController={(controller: ExperienceController | null) => experience.setController(controller)}
+			onActivateDisclosure={(id) => {
+				if (facade?.activateDisclosure(id) === true) facade.notifySurfaceChange();
 			}}
-			onReveal={(id) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); }}
-			onRename={() => { cardOpen = true; cardRenameRequest += 1; }}
-			experience={experienceIndex}
+			input={viewportInput}
+			bind:stageElement={stageEl}
+			bind:throughFrameElement={throughFrameEl}
 		/>
-		{/if}
-		<!--
-			R217.S23 — at a constrained width an open Index is a sheet over the Stage. Its
-			scrim is an explicit, bounded close target: it covers the Stage above the lower
-			column's measured span and sits beneath the dock, palette, drafting controls and
-			Card, so every one of them stays usable behind the sheet.
-		-->
-		{#if preview === null && narrowShell && indexOpen}
-			<button
-				type="button"
-				class="index-scrim"
-				tabindex="-1"
-				aria-label="Close the Index"
-				data-index-scrim
-				onclick={() => (indexOpen = false)}
-			></button>
-		{/if}
 
-		<!--
-			The old second line is restored: the reading grid and 2D/3D controls sit
-			under the project Head, and the new Measure, Slice and Sky controls join
-			that line rather than replacing it.
-		-->
-		{#if preview === null}
-			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-			<div
-				class="view-line"
-				data-view-line
-				onclick={(event) => event.stopPropagation()}
-				onpointerdown={(event) => event.stopPropagation()}
-			>
-				<StageDraftingControl
-					{drafting}
-					reading={draftingReading}
-					gridWord={draftingGridWord}
-					snapWord={draftingSnapWord}
-					onReading={setReading}
-					onPatch={patchDrafting}
-					planAppearance={preferences.planAppearance}
-					onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-					measureActive={activeWorldTool === 'measure'}
-					onMeasure={() => armWorldTool('measure')}
-					roomLabels2d={preferences.roomLabels2d}
-					roomLabels3d={preferences.roomLabels3d}
-					paperTone2d={preferences.paperTone2d}
-					paperTone3d={preferences.paperTone3d}
-					onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
-					{heightSheetSide}
-					onHeightSheetSide={(side) => (heightSheetSide = side)}
-					{reducedMotion}
-					onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
-					motionSpeed={preferences.motionSpeed}
-					onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
-				>
-					{#snippet sky()}
-						{#if adapterServices !== null}
-							<SkyControl
-								environment={look.environment}
-								onEnvironment={(preset) => void look.setEnvironment(preset)}
-								editOnPaper={look.editOnPaper}
-								onEditOnPaper={(value) => look.setEditOnPaper(value)}
-								busy={look.busy}
-							/>
-						{/if}
-					{/snippet}
-				</StageDraftingControl>
-			</div>
-		{/if}
+		<StagePanels
+			previewing={preview !== null}
+			scrim={preview === null && shell.narrowShell && shell.indexOpen}
+			onCloseScrim={() => shell.setIndexOpen(false)}
+			index={{
+				open: shell.indexOpen,
+				model: selectionViewView.worldIndex,
+				scope: selectionViewView.resolvedScope,
+				onScope: (scope) => shell.setWorldScope(scope),
+				onClose: () => shell.setIndexOpen(false),
+				selectionId: selectionViewView.selectedLocatorId,
+				query: shell.query,
+				onQuery: (next: string) => shell.setQuery(next),
+				onSelect: (sourceId: string) => commands.selectSource(sourceId),
+				onBringIntoView: (sourceId: string) => {
+					const target = selectionViewView.sourceWorldPoint(sourceId);
+					if (target !== null) bringIntoView(target);
+				},
+				onReveal: (id: string) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); },
+				onRename: () => shell.requestCardRename(),
+				experience: experience.index
+			}}
+			card={{
+				identity: preview === null && shell.cardOpen ? shownCard.identity : null,
+				facts: shownCard.facts,
+				nameWriter: shownCard.nameWriter,
+				renameRequest: shell.cardRenameRequest,
+				writer: shownCard.writer as StageCardWriterRecord | null,
+				actions: shownCard.actions as readonly StageCardActionRecord[],
+				functions: shownCard.functions,
+				kindLink: shownCard.kindLink,
+				menu: shownCard.menu,
+				back: shownCard.back,
+				gesturing: shell.cardGesturing,
+				onClose: () => commands.closeCard(),
+				onBringIntoView: shownCard.bringIntoView
+			}}
+			inactiveTask={preview === null && inactiveTask !== null ? { label: inactiveTask.label } : null}
+			onResumeTask={() => commands.resumeTask()}
+			onCloseTask={() => commands.closeTask()}
+			keysOpen={shell.keysOpen}
+			onCloseKeys={() => shell.setKeysOpen(false)}
+		/>
 
-		<div class="stage-frame">
-			{#if preview === null}
-				<!--
-				The Stage surface is a pointer-driven viewport, not a widget: it handles
-				click (selection through eligible Plan fragments) and wheel (zoom), while
-				keyboard viewing intents are handled once by the host's own window listener
-				(3/2/f/arrows/Escape) so a focused element handler cannot double-apply them.
-			-->
-			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -->
-			<div
-				class="stage"
-				bind:this={stageEl}
-				role="application"
-				tabindex="0"
-				data-paper={paperVisible ? 'true' : 'false'}
-				data-cursor={viewEdit !== null ? (viewEdit.kind === 'turn' ? 'turn' : 'grabbing')
-				: stageInput.drag?.mode === 'pan' || stageInput.drag?.mode === 'orbit' || (stageInput.drag?.mode === 'adapter' && task === null) ? 'grabbing'
-				: experienceLens.lookThroughSession() !== null ? 'look'
-				: experienceTool === 'place' ? 'place-view'
-				: stageInput.hoverMove ? 'move'
-				: task?.kind === 'layout-ink' || armedHostTool !== null ? 'draw'
-				: 'select'}
-				style:cursor={stageInput.stageCursor ?? undefined}
-				aria-label="Spatial stage"
-				onpointerleave={() => { clearHover(); artworkInteraction.leave(); }}
-				ondragover={(event) => { if (artworkInteraction.acceptsDrop(event.dataTransfer)) event.preventDefault(); }}
-				ondrop={(event) => artworkInteraction.drop(event)}
-				onpointerdown={(event) => stageInput.pointerDown(event)}
-				onpointermove={(event) => stageInput.pointerMove(event)}
-				onpointerup={(event) => stageInput.pointerUp(event)}
-				onpointercancel={(event) => stageInput.pointerCancel(event)}
-				onlostpointercapture={(event) => stageInput.lostPointerCapture(event)}
-				onclick={(event) => stageInput.click(event)}
-				onwheel={(event) => stageInput.wheel(event)}
-				oncontextmenu={(event) => { if (experienceLens.lookThroughSession() !== null) event.preventDefault(); }}
-			>
-				{#if boot.status === 'ready' || boot.status === 'empty'}
-					<StageCanvas
-						{scenePick}
-						{lightPreview}
-						geometry={boot.snapshot.domain.geometry}
-						sourceContentId={boot.snapshot.sourceContentId}
-						layoutRevision={boot.snapshot.domain.unitRevisions.layout}
-						scene={boot.snapshot.domain.scene}
-						{evaluation}
-						{ghosts}
-						{modelUrls}
-						artworkScope={stageAssets.artworkScope}
-						artworkGhost={artworkInteraction.resizeGhost ?? artworkInteraction.ghost}
-						onArtworkError={(message) => { notice = message; }}
-						plan={planView}
-						planAppearance={preferences.planAppearance}
-						paperInk2d={PAPER_TONES[preferences.paperTone2d].ink}
-						paperInk3d={PAPER_TONES[preferences.paperTone3d].ink}
-						{drafting}
-						datumMeters={boot.snapshot.domain.datumMeters}
-						contentBounds={paperContentBounds}
-						snapshotBounds={stageContentBounds}
-						environment={look.stageEnvironment}
-						framedViewport={experienceLens.lookThroughSession() !== null ? throughViewport : null}
-							{selection}
-						hover={armedHostTool === 'erase' ? eraseHover : stageInput.hoverSelection}
-						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
-						heightMeters={lens === 'world' ? heightMeters : null}
-						heightPlaneVisible={lens === 'world' && heightPlaneVisible}
-						unfoldPinHovered={unfoldGestures.pinHovered}
-						unfoldPinActive={unfoldGestures.sheetPinActive}
-						unfoldAnchorPin={unfoldGestures.idlePin?.point ?? null}
-					/>
-				{/if}
-				<div class="overlay-layer">
-					{#if experienceLens.lookThroughSession() === null}
-						<StageOverlay
-								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} {guides} candidates={[...candidatePreviews, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])]} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
-					{/if}
-					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
-						<ExperienceMarks
-							{evaluation}
-							placementGhost={experienceLens.placementGhost()}
-							liveEdit={viewEdit}
-							advanced={advancedViewId !== null}
-							datum={experienceFloorDatum}
-							rig={playback.status === 'idle' ? null : playback.sample}
-							onLookThrough={experienceLens.lookThroughView}
-							{showMarkers}
-							{showFrustums}
-							{showPaths}
-							{showLabels}
-							selectionOnly={showMode === 'selection'}
-							onPlanePoint={pathAnchorPoint}
-							beginPathDragLease={beginPathDragLease}
-							endPathDragLease={endPathDragLease}
-						/>
-					{/if}
-					{#if viewEdit?.moved && !viewEdit.advanced && viewEditPreview?.turn}
-						<!-- Review round 3 (sheet §23): the View itself turns live and ExperienceMarks
-						     draws the start-pose ghost; this layer adds only the arc and the angle. -->
-						<svg class="view-edit-preview" data-view-edit-turn aria-hidden="true">
-							<path class="turn-arc" d={viewEditPreview.turn.arc} />
-							<text class="turn-angle" x={viewEditPreview.turn.labelAt[0]} y={viewEditPreview.turn.labelAt[1]} text-anchor="middle" dominant-baseline="middle">{viewEditPreview.turn.label}</text>
-						</svg>
-					{/if}
-				</div>
-				<!--
-					The measured ruler is a Plan-only reading of the same evaluation. It
-					hides as soon as the projection leaves Plan, not only once 3D settles,
-					so it cannot float over a transition. World-lens chrome, like the Sheet.
-				-->
-				{#if lens === 'world' && evaluation?.projectionKind === 'plan-orthographic'}
-					<StageScaleBar bar={draftingScaleBar} quiet={paperVisible} />
-				{/if}
-
-
-
-				<!--
-					The toolbar sits over the pointer-driven Stage surface, so it stops its
-					own pointer and click events: pressing Plan/3D/Fit must never also
-					hit-test the world underneath the button.
-				-->
-				{#if lens === 'experience'}
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="stage-actions"
-					style:display={experienceLens.lookThroughSession() !== null ? 'none' : undefined}
-					onclick={(event) => event.stopPropagation()}
-					onpointerdown={(event) => event.stopPropagation()}
-				>
-					{#if lens === 'experience'}
-						<!-- R217.S29 Show ▾: session-only Stage drawing flags beside the reading control. -->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="show-control"
-							data-show-control
-							onclick={(event) => event.stopPropagation()}
-							onpointerdown={(event) => event.stopPropagation()}
-						>
-							<button
-								type="button"
-								class="show-button"
-								aria-expanded={showOpen}
-								aria-haspopup="true"
-								title="Show: what the Guide draws on the Stage"
-								onclick={() => (showOpen = !showOpen)}
-							>
-								<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 2 1.5 5.5 8 9l6.5-3.5z" /><path d="m1.5 8.5 6.5 3.5 6.5-3.5" /></svg>Show
-								{#if showOffCount > 0}<span class="show-off" data-show-off>{showOffCount} off</span>{/if}
-							</button>
-							{#if showOpen}
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div
-									class="show-popover"
-									role="dialog"
-									tabindex="-1"
-									aria-label="Show on the Stage"
-									onkeydown={(event) => {
-										if (event.key !== 'Escape') return;
-										event.stopPropagation();
-										showOpen = false;
-									}}
-								>
-									<header><strong>Show</strong><span>editor only</span></header>
-									<div class="show-mode" role="group" aria-label="Guide reading">
-										<button type="button" aria-pressed={showMode === 'whole'} onclick={() => (showMode = 'whole')}>Whole Guide</button>
-										<button type="button" aria-pressed={showMode === 'selection'} onclick={() => (showMode = 'selection')}>Selection only</button>
-									</div>
-									<label><input type="checkbox" bind:checked={showMarkers} /> Camera markers</label>
-									<label><input type="checkbox" bind:checked={showFrustums} /> View frustums</label>
-									<label><input type="checkbox" bind:checked={showPaths} /> Camera paths</label>
-									<label><input type="checkbox" bind:checked={showLabels} /> View labels</label>
-									<button
-										type="button"
-										class="show-all"
-										onclick={() => {
-											showMarkers = true;
-											showFrustums = true;
-											showPaths = true;
-											showLabels = true;
-										}}
-									>Show all</button>
-								</div>
-							{/if}
-						</div>
-					{/if}
-				</div>
-				{/if}
-				{#if lens === 'world'}
-					<!--
-						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
-						the control and its plane are hidden in Experience and return with the
-						session height on the way back. The slot is a transparent wrapper: the
-						Sheet places its own lane on the Stage, so it is not clipped by a box of
-						the slot's own.
-					-->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="stage-height-slot"
-							onclick={(event) => event.stopPropagation()}
-							onpointerdown={(event) => event.stopPropagation()}
-						>
-							<StageHeightSheet
-								{heightMeters}
-								ticks={heightTicks}
-								pins={heightPins}
-								snapIncrement={heightSnapIncrement}
-								{reducedMotion}
-								side={heightSheetSide}
-								drawing={task?.kind === 'layout-ink'}
-								bind:laneRef={sheetLaneEl}
-								onSetHeight={setHeight}
-								onAddPin={addHeightPin}
-								onActiveChange={setHeightPlaneActive}
-								onResetSubscribe={(onReset: () => void) =>
-									heightSheet.subscribeReset('height-sheet-control', onReset)}
-							/>
-						</div>
-					{/if}
-
-					{#if keysOpen}
-						<!--
-						R217.S20: the Keys reference, opened from Find. Its rows read the dock's
-						own shortcut map, so the list cannot drift from the keys that work.
-					-->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<section
-						class="keys-panel"
-						aria-labelledby="keys-panel-title"
-						data-keys-panel
-						tabindex="-1"
-						use:focusOnOpen
-						onclick={(event) => event.stopPropagation()}
-						onpointerdown={(event) => event.stopPropagation()}
-						onkeydown={(event) => {
-							if (event.key !== 'Escape') return;
-							event.stopPropagation();
-							keysOpen = false;
-						}}
-					>
-						<h2 id="keys-panel-title">Keys</h2>
-						<dl>
-							<div><dt>⌘K · Ctrl+K</dt><dd>Find a subject, tool or operation</dd></div>
-							<div><dt>3 · 2</dt><dd>3D and 2D readings</dd></div>
-							<div><dt>F</dt><dd>Fit</dd></div>
-							<div><dt>{STAGE_DOCK_SHORTCUTS.select} · {STAGE_DOCK_SHORTCUTS.ink} · {STAGE_DOCK_SHORTCUTS.measure} · {STAGE_DOCK_SHORTCUTS.erase} · {STAGE_DOCK_SHORTCUTS.library}</dt><dd>Select · Ink · Measure · Eraser · Objects</dd></div>
-							<div><dt>Esc</dt><dd>Cancel the current step</dd></div>
-						</dl>
-						<button type="button" onclick={() => (keysOpen = false)}>Close keys</button>
-					</section>
-				{/if}
-
-				{#if lens === 'experience' && adapterServices !== null && currentEnvelope !== null}
-					<!-- The shared homes' controller: it renders nothing; the Index, Card and lower edge read it. -->
-					{#key adapterServices}
-						<ExperienceHomesHost services={adapterServices} snapshot={currentEnvelope} bind:controller={experienceController} />
-					{/key}
-				{/if}
-
-				{#if lens === 'experience' && experienceLens.lookThroughSession() !== null}
-					<!-- The capture frame sits beside the Card and above the Guide; helpers are hidden. -->
-					<div class="through-slot" bind:this={throughFrameEl} data-through-frame>
-						<div class="through-frame" aria-hidden="true"></div>
-						<div class="through-safe" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-					</div>
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						class="mode-pill through-pill"
-						data-look-through-pill
-						onclick={(event) => event.stopPropagation()}
-						onpointerdown={(event) => event.stopPropagation()}
-					>
-						<span class="live-dot" aria-hidden="true"></span>
-						<span>Looking through <b>{experienceLens.lookThroughSession()!.label}</b></span>
-						{#if experienceLens.lookThroughMoved()}<span class="moved">moved</span>{/if}
-						<button
-							type="button"
-							class="pill-primary"
-							disabled={!experienceLens.lookThroughMoved() || (activeExperience?.busy ?? false)}
-							title={experienceLens.lookThroughMoved() ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
-							onclick={() => void experienceLens.updateLookThrough(experienceLens.lookThroughConfirm() !== null)}>Update View</button
-						>
-						<button type="button" onclick={experienceLens.exitLookThrough}>Exit View Esc</button>
-						<button type="button" title="Capture this provisional pose as a new View" onclick={() => void experienceLens.captureProvisional()}>Capture</button>
-					</div>
-					{#if experienceLens.lookThroughConfirm() !== null}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
-							<p>Also changes {experienceLens.lookThroughConfirm()!.join(', ')}.</p>
-							<div class="through-confirm-actions">
-								<button type="button" class="pill-primary" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
-								<button type="button" onclick={() => experienceLens.clearLookThroughConfirm()}>Cancel</button>
-							</div>
-						</div>
-					{/if}
-				{/if}
-				{#if pendingViewWrite !== null}
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
-						<p>Also changes {pendingViewWrite.alsoIn.join(', ')}.</p>
-						<div class="through-confirm-actions">
-							<button type="button" class="pill-primary" onclick={() => void experienceLens.confirmPendingViewWrite()}>Update View</button>
-							<button type="button" onclick={() => (experienceLens.clearPendingViewWrite())}>Cancel</button>
-						</div>
-					</div>
-				{/if}
-				{#if lens === 'experience' && showExperienceWelcome && experienceLens.lookThroughSession() === null && experienceTool === 'select'}
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<aside class="experience-welcome" aria-label="Welcome to Experience" onpointerdown={(event) => event.stopPropagation()} onclick={(event) => event.stopPropagation()}>
-						<span>Welcome to Experience</span>
-						<h2>Turn this World into a visit</h2>
-						<ol>
-							<li><b>Present an object.</b> Select it, then choose <em>Present this</em> in its Card.</li>
-							<li><b>Capture</b> keeps what the Stage shows as a View.</li>
-							<li><b>Open a Guide</b> to put Stops in order, then press Play.</li>
-						</ol>
-						<footer>
-							<small>Tips again: ⌘K → Show Experience tips</small>
-							<button type="button" onclick={() => { showExperienceWelcome = false; rememberWelcomeDismissed(); }}>Got it</button>
-						</footer>
-					</aside>
-				{/if}
-				{#if facade && evaluation?.renderedReading === '3d' && hangingGuides.length > 0}
-					<ArtworkHangingGuides guides={hangingGuides} stage={facade} {evaluation} activeGuideId={activeHangingGuide} />
-				{/if}
-				{#if selectedArtwork && facade && evaluation?.renderedReading === '3d' && canPlaceArtwork() && !artworkInteraction.armed}
-					<ArtworkResizeOverlay entity={artworkInteraction.resizeGhost ?? selectedArtwork} stage={facade}
-						{evaluation} resizing={artworkInteraction.resizeGhost !== null} blocked={artworkInteraction.resizeBlocked}
-						canTurn={selectedArtwork === null || !artworkInteraction.isHungNow(selectedArtwork)} onStart={artworkInteraction.startResize} />
-				{/if}
-				{#if lens !== 'experience' && notice}<p class="stage-note" role="status">{notice}</p>{/if}
-			</div>
-			{/if}
-
-			{#if previewSurface !== null && previewViewRead !== null}
-				{@const Surface = previewSurface}
-				{@const entry = previewView?.entry ?? null}
-				{@const read = previewViewRead}
-				<!--
-					The Preview takeover replaces the Stage rather than sitting on top of
-					a live one: the authoring canvas is unmounted, so no inspection claim,
-					gesture or overlay survives into the isolated visitor run.
-
-					Once built, the visitor surface stays mounted and is hidden between
-					sessions. Cleanup was never the ownership protocol: the Camera claim ends
-					with the return, while keeping the renderer and scene alive turns a repeat
-					entry into a new run instead of a rebuild. A hidden surface renders no
-					frames (`on-demand` while inactive) and is inert, so it cannot take input.
-				-->
-				<div
-					class="preview-takeover"
-					role="region"
-					aria-label="Visitor preview"
-					hidden={preview === null}
-					inert={preview === null}
-				>
-					<Surface
-						geometry={read.geometry}
-						scene={read.scene}
-						graph={read.graph}
-						program={entry === null ? null : entry.kind === 'presentations' ? (entry.program ?? null)
-								: entry.program}
-						experienceOptions={entry === null ? null : entry.kind === 'presentations' ? (entry.options ?? null)
-								: entry.options}
-						entryPresentationId={entry?.kind === 'program' ? entry.entryPresentationId : null}
-						runEpoch={previewView?.epoch ?? 0}
-						active={preview !== null}
-						resolveTexture={(uri: string) =>
-							isAllowedShippedTextureUri(uri) ? uri : null}
-						{modelUrls}
-						artworkScope={previewController.artworkScope}
-						{reducedMotion}
-						title={entry?.title ?? null}
-						experienceTitle={entry?.title ?? null}
-						startMode={previewRequestedMode ?? (entry?.kind === 'program' && entry.entryPresentationId !== null ? 'presentation' : 'welcome')}
-						guideStopCount={previewGuideStats.stops}
-						guideSeconds={previewGuideStats.seconds}
-						viewLabels={previewViewLabels}
-						onExit={previewController.close}
-						environment={look.environment}
-					/>
-				</div>
-			{:else if preview !== null}
-				<p class="stage-note" role="status">Loading the visitor Preview…</p>
-			{/if}
-			{#if preview !== null}
-				<p class="stage-note preview-actions-note" role="status">Project rename and delete are unavailable in Preview. Exit Preview to manage this project.</p>
-			{/if}
-
-			<EditorCard
-				identity={preview === null && cardOpen ? shownCard.identity : null}
-				facts={shownCard.facts}
-				nameWriter={shownCard.nameWriter}
-				renameRequest={cardRenameRequest}
-				writer={shownCard.writer}
-				actions={shownCard.actions}
-				functions={shownCard.functions}
-				kindLink={shownCard.kindLink}
-				menu={shownCard.menu}
-				back={shownCard.back}
-				gesturing={cardGesturing}
-				onClose={closeCard}
-				onBringIntoView={shownCard.bringIntoView}
-			/>
-
-			{#if preview === null && inactiveTask}
-				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-				<div
-					class="inactive-task"
-					role="region"
-					aria-label="Inactive task"
-					onpointerdown={(event) => event.stopPropagation()}
-					onclick={(event) => event.stopPropagation()}
-				>
-					<p aria-live="polite">{inactiveTask.label} is inactive. Resume to continue, or close it.</p>
-					<button type="button" onclick={resumeTask}>Resume {inactiveTask.label}</button>
-					<button type="button" onclick={closeTask}>Close inactive task</button>
-				</div>
-			{/if}
-			<!--
-				PLATE's one lower column: the dock, the armed tool's palette (the invoked
-				Instrument) and nothing else. A contributed tool appears here because its
-				entry declares `home: 'dock'`; the shell owns no domain slot of its own.
-			-->
-			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
-				{#if lens === 'world'}
-					<WorldToolbar
-						activeTool={activeWorldTool}
-						{libraryOpen}
-						plateOpen={worldPlateOpen}
-						onPlateOpen={(open) => (worldPlateOpen = open)}
-						onTool={armWorldTool}
-						onLibrary={toggleWorldLibrary}
-						onObjectPick={pickWorldObject}
-						onMaterialPick={look.pickMaterial}
-						lookShelf={look.libraryShelf}
-						artworkShelf={scenePayload === null ? null : scenePayload.artworkLibrary ?? []}
-						onArtworkPick={(entry) => { selectTool(); artworkInteraction.arm(entry); }}
-						onArtworkImport={(files) => { selectTool(); void artworkInteraction.importFiles(files); }}
-						onLookPick={look.pickLibraryEntry}
-					>
-						{#snippet plate()}
-							{#if activeWorldTool === 'walls' || activeWorldTool === 'opening'}
-								<InkPlate reading={inkReading} onMore={() => (paletteOpen = !paletteOpen)} />
-							{:else if activeWorldTool === 'objects'}
-								<ObjectsPlate onOpen={pickWorldObject} />
-							{/if}
-						{/snippet}
-					</WorldToolbar>
-					{#if contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || paletteOpen)}
-						<StageInstrumentHost
-							task={taskHost}
-							onClose={closeTask}
-							onCollapse={() => (paletteOpen = false)}
-							instrument={contributedInstrument}
-						/>
-					{/if}
-				{/if}
-				{#if activeExperience !== null}
-					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
-					<ExperienceDock
-						captureDisabled={experienceLens.captureReason() !== undefined}
-						captureReason={experienceLens.captureReason()}
-						guideOpen={experienceGuideOpen}
-						placeArmed={experienceTool === 'place'}
-						onPlaceView={experienceLens.togglePlaceView}
-						onCapture={() => void activeExperience?.capture()}
-						onToggleGuide={experienceLens.toggleGuide}
-					/>
-					{#if notice || activeExperience.feedback}
-						<p
-							class="experience-feedback"
-							class:refused={!notice && activeExperience.feedback?.kind === 'refusal'}
-							class:info={!notice && activeExperience.feedback?.kind === 'info'}
-							class:success={!notice && activeExperience.feedback?.kind === 'success'}
-							role="status"
-						>
-							{notice || activeExperience.feedback?.text}
-						</p>
-					{/if}
-					{#if experienceGuideOpen}							<ExperienceGuide
-								onClose={() => (experienceGuideOpen = false)}
-								{playback}
-							/>
-					{/if}
-				{/if}
-			</div>
-		</div>
+		<StageToolbars
+			previewing={preview !== null}
+			viewLine={preview === null
+				? {
+					drafting: {
+						drafting: shell.drafting,
+						reading: shell.draftingReading,
+						gridWord: shell.draftingGridWord,
+						snapWord: shell.draftingSnapWord,
+						onReading: setReading,
+						onPatch: patchDrafting,
+						planAppearance: shell.preferences.planAppearance,
+						onPlanAppearance: (planAppearance: 'paper' | 'shaded') =>
+							shell.updatePreferences({ ...shell.preferences, planAppearance }),
+						measureActive: shell.activeWorldTool === 'measure',
+						onMeasure: () => commands.armWorldTool('measure'),
+						roomLabels2d: shell.preferences.roomLabels2d,
+						roomLabels3d: shell.preferences.roomLabels3d,
+						paperTone2d: shell.preferences.paperTone2d,
+						paperTone3d: shell.preferences.paperTone3d,
+						onViewPreference: (patch) => { shell.updatePreferences({ ...shell.preferences, ...patch }); refresh(); },
+						heightSheetSide: shell.heightSheetSide,
+						onHeightSheetSide: (side: 'left' | 'right') => shell.setHeightSheetSide(side),
+						reducedMotion: shell.reducedMotion,
+						onToggleReducedMotion: () => shell.toggleReducedMotion(),
+						motionSpeed: shell.preferences.motionSpeed,
+						onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed })
+					},
+					sky: adapterServices !== null
+						? {
+							environment: look.environment,
+							onEnvironment: (preset) => void look.setEnvironment(preset),
+							editOnPaper: look.editOnPaper,
+							onEditOnPaper: (value: boolean) => look.setEditOnPaper(value),
+							busy: look.busy
+						}
+						: null
+				}
+				: null}
+			show={preview === null && experience.lensState === 'experience'
+				? {
+					open: shell.showOpen,
+					mode: shell.showMode,
+					markers: shell.showMarkers,
+					frustums: shell.showFrustums,
+					paths: shell.showPaths,
+					labels: shell.showLabels,
+					offCount: shell.showOffCount,
+					hidden: experience.lookThroughActive(),
+					onToggle: () => shell.setShowOpen(!shell.showOpen),
+					onClose: () => shell.setShowOpen(false),
+					onMode: (mode) => shell.setShowMode(mode),
+					onMarkers: (value) => shell.setShowMarkers(value),
+					onFrustums: (value) => shell.setShowFrustums(value),
+					onPaths: (value) => shell.setShowPaths(value),
+					onLabels: (value) => shell.setShowLabels(value),
+					onShowAll: () => shell.showAll()
+				}
+				: null}
+			world={preview === null && experience.lensState === 'world'
+				? {
+					activeTool: shell.activeWorldTool,
+					libraryOpen: shell.libraryOpen,
+					plateOpen: shell.worldPlateOpen,
+					onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
+					onTool: (id) => commands.armWorldTool(id),
+					onLibrary: () => commands.toggleWorldLibrary(),
+					onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
+					onMaterialPick: look.pickMaterial,
+					lookShelf: look.libraryShelf,
+					artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
+					onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
+					onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
+					onLookPick: look.pickLibraryEntry,
+					plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : null,
+					inkReading: shell.inkReading,
+					onTogglePalette: () => shell.togglePalette()
+				}
+				: null}
+			instrument={preview === null && contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || shell.paletteOpen)
+				? {
+					task: taskHost,
+					onClose: () => commands.closeTask(),
+					onCollapse: () => shell.setPaletteOpen(false),
+					instrument: contributedInstrument
+				}
+				: null}
+			experience={preview === null && experience.active !== null
+				? {
+					dock: {
+						captureDisabled: experience.captureReason() !== undefined,
+						captureReason: experience.captureReason(),
+						guideOpen: experience.guideOpen,
+						placeArmed: experience.experienceTool === 'place',
+						onPlaceView: () => experience.togglePlaceView(),
+						onCapture: () => experience.capture(),
+						onToggleGuide: () => experience.toggleGuide()
+					},
+					feedback: shell.notice || experience.feedback !== null
+						? {
+							text: shell.notice || experience.feedback!.text,
+							kind: shell.notice ? null : experience.feedback!.kind
+						}
+						: null,
+					guide: experience.guideOpen ? { onClose: () => experience.toggleGuide(), playback: experience.playback } : null
+				}
+				: null}
+			onLowerColumnHeight={(height) => shell.setLowerColumnHeight(height)}
+		/>
 	</div>
 
 	{#if boot.status === 'new'}
@@ -3731,83 +1421,6 @@ function completeHistoryInstall(outcome: {
 		flex: 1;
 		overflow: hidden;
 	}
-	.stage-frame {
-		position: absolute;
-		inset: 0;
-	}
-	.stage {
-		position: absolute;
-		inset: 0;
-		/* The mat is the Stage's default surface; Paper's vellum is drawn in the Canvas. */
-		background: #152c26;
-		outline: none;
-		touch-action: none;
-		cursor: var(--cursor-select);
-	}
-	.stage[data-cursor='turn'] { cursor: var(--cursor-turn); }
-	.stage[data-cursor='grabbing'] { cursor: var(--cursor-grabbing); }
-	.stage[data-cursor='look'] { cursor: var(--cursor-look); }
-	.stage[data-cursor='place-view'] { cursor: var(--cursor-place-view); }
-	.stage[data-cursor='draw'] { cursor: var(--cursor-draw); }
-	/*
-		PLATE's 1 CSS px inset perimeter separates Paper from the chassis. It is an
-		inset shadow, not a border: the canvas rectangle, Camera aspect and pointer
-		mapping stay unchanged, and it intercepts no picking.
-	*/
-	.stage[data-paper='true'] {
-		box-shadow: inset 0 0 0 1px var(--stage-paper-edge);
-	}
-	.stage:focus-visible {
-		box-shadow: inset 0 0 0 1px var(--shell-leaf);
-	}
-	.stage :global(canvas) {
-		display: block;
-		width: 100%;
-		height: 100%;
-	}
-	.overlay-layer {
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-	}
-	/*
-		PLATE's one lower working edge: the dock, the armed tool's palette and nothing
-		else, centred on the Stage. The column itself is a layout, not a surface — the
-		Stage stays pointer-driven around it, and only the dock and the instrument take
-		input — so it never turns the lower strip into a control bar.
-	*/
-	/*
-		R217.S23 — the lower column never enters the Height Sheet's lane on either side. The
-		lane is the Sheet's measured width (S22); the 1.5 rem is the Stage inset plus the gap the
-		zoom cluster and the Card already keep. The dock is centred in what remains, and the
-		palette and its upward disclosures wrap inside that width rather than overlap the Sheet.
-	*/
-	.lower-column {
-		position: absolute;
-		inset-inline-start: calc(12px + var(--index-cover, 0px));
-		inset-inline-end: 12px;
-		bottom: 10px;
-		z-index: 11;
-		display: flex;
-		flex-direction: column-reverse;
-		align-items: center;
-		gap: 0.4rem;
-		pointer-events: none;
-	}
-	.lower-column > :global(.world-toolbar) {
-		align-self: center;
-	}
-	.lower-column > :global(*) {
-		pointer-events: auto;
-	}
-	.lower-column[hidden] { display: none; }
-	/* The Index covers the Stage without participating in viewport layout. */
-	.editor-body > :global(.plate-index) {
-		position: absolute;
-		z-index: 20;
-		inset: 0 auto 0 0;
-		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
-	}
 	/* The Card takes its surface, type and radius from the shared roles; only its
 	   lane beside the Height Sheet is the route's business. */
 	.editor-host[data-shell='living-draft'] :global(.card) {
@@ -3820,621 +1433,14 @@ function completeHistoryInstall(outcome: {
 			--index-cover: var(--shell-index-width);
 		}
 	}
-	/* The constrained Index ends above the lower column and has a close scrim. */
-	@media (max-width: 1100px) {
-		.editor-body > :global(.plate-index) {
-			/* Keep the dock's measured span, but never trust a stale zero reading. */
-			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
-			bottom: calc(0.75rem + max(var(--lower-column-height, 0px), 166px) + 0.5rem);
-			width: min(var(--shell-index-width), 80%);
-		}
-		/*
-			The scrim covers the Stage above the lower column and beneath it: the dock, the
-			palette, the drafting controls and the Card all stack above it (z-index 6 to 12).
-			Its tint is the forest chassis role, so the Stage reads as dimmed, not as a second
-			surface.
-		*/
-		.index-scrim {
-			position: absolute;
-			z-index: 5;
-			top: 0;
-			right: 0;
-			bottom: calc(0.75rem + var(--lower-column-height, 0px));
-			left: 0;
-			margin: 0;
-			padding: 0;
-			border: 0;
-			background: rgb(0 0 0 / 0.12);
-			cursor: pointer;
-		}
-		.index-scrim:focus-visible {
-			outline: none;
-		}
-	}
 	@media (pointer: coarse) {
-		.editor-host { --shell-touch-target:44px; --shell-head-height:52px; }
-	}
-	/* The old second line, with the new tools beside it rather than replacing it. */
-	.view-line {
-		position: absolute;
-		top: 10px;
-		left: calc(10px + var(--index-cover, 0px));
-		z-index: 8;
-		display: flex;
-		align-items: flex-start;
-		flex-wrap: wrap;
-		gap: 6px;
-		max-width: calc(100% - 20px - var(--index-cover, 0px));
-	}
-	.view-line > :global(*) {
-		pointer-events: auto;
-	}
-	/* Experience's Show control sits below the restored reading line. */
-	.stage-actions {
-		position: absolute;
-		top: 54px;
-		left: calc(10px + var(--index-cover, 0px));
-		z-index: 6;
-		display: flex;
-		gap: 0.4rem;
-	}
-	/*
-		R217.S20: the Keys reference Find opens. It sits where the stage's top-right
-		action used to be, clear of the Height Sheet, and takes no pointer outside itself.
-	*/
-	.keys-panel {
-		position: absolute;
-		top: 0.75rem;
-		right: 0.75rem;
-		z-index: 9;
-		display: grid;
-		gap: 0.5rem;
-		width: min(20rem, calc(100% - 1.5rem));
-		padding: 0.75rem;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 0.4rem;
-		background: var(--shell-forest);
-		color: var(--shell-ink-light);
-		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 40%);
-		font-family: var(--shell-sans);
-		font-size: var(--shell-text-body);
-	}
-	.keys-panel:focus-visible {
-		outline: var(--shell-focus-ring);
-		outline-offset: 2px;
-	}
-	.keys-panel h2 {
-		margin: 0;
-		font-size: var(--shell-text-body);
-		font-weight: 600;
-	}
-	.keys-panel dl {
-		display: grid;
-		gap: 0.3rem;
-		margin: 0;
-	}
-	.keys-panel dl > div {
-		display: grid;
-		grid-template-columns: 7.5rem 1fr;
-		gap: 0.5rem;
-	}
-	.keys-panel dt {
-		font-family: var(--shell-mono);
-		font-size: var(--shell-text-utility);
-		color: var(--shell-leaf-soft);
-		font-variant-numeric: tabular-nums;
-	}
-	.keys-panel dd {
-		margin: 0;
-		font-size: var(--shell-text-utility);
-		color: var(--shell-ink-quiet);
-	}
-	.keys-panel button {
-		justify-self: start;
-		min-height: var(--shell-control-height);
-		padding: 0 0.6rem;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 0.35rem;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-	}
-	/*
-		R217.S22: the slot is a transparent wrapper (the Sheet places its own lane and
-		hint on the Stage). It keeps the Sheet's pointer isolation without a box.
-	*/
-	.stage-height-slot {
-		display: contents;
-	}
-	/* R217.S28 — Place a View, Look through and the empty Stage coach. */
-	.view-edit-preview {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		overflow: visible;
-		pointer-events: none;
-	}
-	.view-edit-preview .turn-arc {
-		fill: none;
-		stroke: var(--shell-gold-ink);
-		stroke-width: 1.2;
-		stroke-dasharray: 3 3;
-	}
-	.view-edit-preview .turn-angle {
-		fill: var(--shell-gold-ink);
-		font: 600 11px var(--shell-sans);
-		paint-order: stroke;
-		stroke: var(--shell-focus-halo);
-		stroke-width: 3px;
-	}
-	/* R217.S29 Show ▾: a light disclosure beside the Stage reading control. */
-	.show-control {
-		position: relative;
-		display: flex;
-		align-items: center;
-		padding: 3px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 10px;
-		background: var(--shell-glass-light);
-		box-shadow: var(--shell-furniture-shadow);
-		backdrop-filter: blur(10px);
-	}
-	.show-button {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		height: 28px;
-		padding: 0 10px;
-		border: 0;
-		border-radius: 7px;
-		background: transparent;
-		color: var(--shell-ink);
-		font: inherit;
-		font-size: 12.5px;
-		cursor: pointer;
-	}
-	.show-button:hover {
-		background: rgb(27 32 28 / 0.06);
-	}
-	.show-button[aria-expanded='true'] {
-		background: var(--shell-action);
-		color: var(--shell-on-action);
-	}
-	.show-button:focus-visible,
-	.show-mode button:focus-visible,
-	.show-all:focus-visible {
-		outline: var(--shell-focus-ring-light);
-		outline-offset: 1px;
-	}
-	.show-off {
-		padding: 0 6px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--shell-gold) 28%, transparent);
-		color: var(--shell-gold-ink);
-		font-size: 11px;
-		font-weight: 600;
-	}
-	.show-popover {
-		position: absolute;
-		top: calc(100% + 8px);
-		right: 0;
-		z-index: 8;
-		width: 268px;
-		display: grid;
-		gap: 6px;
-		padding: 12px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 14px;
-		background: var(--shell-popover);
-		color: var(--shell-ink);
-		box-shadow: var(--shell-shadow);
-		font-size: 12.5px;
-	}
-	.show-popover header {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		margin-bottom: 2px;
-	}
-	.show-popover header strong {
-		font-size: 13.5px;
-	}
-	.show-popover header span {
-		color: var(--shell-ink-3);
-		font-size: 11.5px;
-	}
-	.show-mode {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 3px;
-		padding: 3px;
-		border-radius: 10px;
-		background: var(--shell-surface-sunken);
-	}
-	.show-mode button {
-		height: 28px;
-		border: 0;
-		border-radius: 8px;
-		background: none;
-		color: var(--shell-ink-2);
-		font: inherit;
-		font-size: 12px;
-		cursor: pointer;
-	}
-	.show-mode button[aria-pressed='true'] {
-		background: var(--shell-field-focus);
-		color: var(--shell-ink);
-		font-weight: 600;
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
-	}
-	.show-popover label {
-		display: flex;
-		align-items: center;
-		gap: 9px;
-		min-height: 30px;
-		padding: 0 2px;
-		border-radius: 8px;
-		cursor: pointer;
-	}
-	.show-popover label:hover {
-		background: var(--shell-hover);
-	}
-	.show-popover input[type='checkbox'] {
-		appearance: none;
-		-webkit-appearance: none;
-		flex: none;
-		width: 18px;
-		height: 18px;
-		margin: 0;
-		border: 1.5px solid var(--shell-field-line-strong);
-		border-radius: 5px;
-		background: var(--shell-field);
-		cursor: pointer;
-	}
-	.show-popover input[type='checkbox']:checked {
-		border-color: var(--shell-leaf);
-		background: var(--shell-leaf) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
-	}
-	.show-popover input[type='checkbox']:focus-visible {
-		outline: var(--shell-focus-ring-light);
-		outline-offset: 2px;
-	}
-	.show-all {
-		height: 28px;
-		margin-top: 2px;
-		border: 1px solid var(--shell-field-line);
-		border-radius: 8px;
-		background: var(--shell-field);
-		color: inherit;
-		font: inherit;
-		font-size: 12px;
-		cursor: pointer;
-	}
-	/* Look through fills the Stage: a gold edge and 16:10 safe-frame ticks. */
-	.through-slot {
-		position: absolute;
-		inset: 0;
-		z-index: 2;
-		container-type: size;
-		pointer-events: none;
-	}
-	.through-frame {
-		position: absolute;
-		inset: 0;
-		box-shadow: inset 0 0 0 3px var(--shell-gold);
-	}
-	.through-safe {
-		position: absolute;
-		left: 50%;
-		top: 50%;
-		width: min(100cqw - 48px, (100cqh - 24px) * 1.6);
-		aspect-ratio: 16 / 10;
-		transform: translate(-50%, -50%);
-	}
-	.through-safe i {
-		position: absolute;
-		width: 22px;
-		height: 22px;
-		border: 0 solid var(--shell-ink-light);
-		filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.6));
-	}
-	.through-safe i:nth-child(1) { left: 0; top: 0; border-width: 2px 0 0 2px; }
-	.through-safe i:nth-child(2) { right: 0; top: 0; border-width: 2px 2px 0 0; }
-	.through-safe i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 2px 2px; }
-	.through-safe i:nth-child(4) { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
-	.mode-pill {
-		position: absolute;
-		left: 50%;
-		top: 0.75rem;
-		z-index: 6;
-		transform: translateX(-50%);
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 4px 4px 4px 12px;
-		border-radius: 20px;
-		background: var(--shell-glass-dark);
-		color: var(--shell-ink-light);
-		font-size: 12px;
-		box-shadow: 0 8px 20px rgb(0 0 0 / 0.28);
-	}
-	.mode-pill button {
-		height: 28px;
-		padding: 0 11px;
-		border: 0;
-		border-radius: 14px;
-		background: var(--shell-on-forest-wash-strong);
-		color: inherit;
-		font: inherit;
-		font-size: 12px;
-		cursor: pointer;
-	}
-	.mode-pill button:disabled {
-		opacity: 0.45;
-		cursor: default;
-	}
-	.mode-pill button.pill-primary {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-		font-weight: 600;
-	}
-	.mode-pill .live-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--shell-leaf-soft);
-	}
-	.mode-pill .moved {
-		color: var(--shell-leaf-soft);
-		font-weight: 600;
-	}
-	/* Center Look through in the part of the Stage that the Index leaves visible. */
-	.mode-pill.through-pill {
-		--through-index-cover: var(--index-cover, 0px);
-		left: calc((100% + var(--through-index-cover)) / 2);
-		width: max-content;
-		max-width: calc(100% - var(--through-index-cover) - 1.5rem);
-		flex-wrap: wrap;
-		justify-content: center;
-	}
-	@media (width <= 1100px) {
-		.editor-body[data-index-open='true'] .through-pill {
-			--through-index-cover: min(var(--shell-index-width), 256px, 80%);
+		.editor-host {
+			--shell-touch-target: 44px;
+			--shell-head-height: 52px;
 		}
-	}
-	@media (width <= 440px) {
-		.editor-body[data-index-open='true'] .through-pill {
-			/* The narrow Index leaves too little room beside it for the controls. */
-			--through-index-cover: 0px;
-			z-index: 21;
-		}
-	}
-	.through-confirm {
-		position: absolute;
-		left: 50%;
-		top: 3.4rem;
-		z-index: 7;
-		transform: translateX(-50%);
-		width: min(22rem, calc(100% - 2rem));
-		padding: 10px 12px;
-		border-radius: 10px;
-		background: var(--shell-popup-dark);
-		color: var(--shell-ink-light);
-		box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
-		font-size: 12px;
-	}
-	.through-confirm p {
-		margin: 0 0 8px;
-	}
-	.through-confirm-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 6px;
-	}
-	.through-confirm button {
-		height: 28px;
-		padding: 0 10px;
-		border: 0;
-		border-radius: 7px;
-		background: var(--shell-on-forest-wash-strong);
-		color: inherit;
-		font: inherit;
-		font-size: 12px;
-		cursor: pointer;
-	}
-	.through-confirm button.pill-primary {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-		font-weight: 600;
-	}
-	.experience-welcome {
-		position: absolute;
-		left: calc(1rem + var(--index-cover, 0px));
-		bottom: 4.75rem;
-		width: min(18rem, calc(100% - 2rem));
-		padding: 1rem;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 12px;
-		background: var(--shell-surface-raised);
-		box-shadow: var(--shell-shadow);
-		color: var(--shell-ink);
-		font-size: 0.8rem;
-	}
-	.experience-welcome > span {
-		color: var(--shell-ink-3);
-		font-size: var(--shell-text-meta);
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-	}
-	.experience-welcome h2 {
-		margin: 0.25rem 0 0.6rem;
-		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
-	}
-	.experience-welcome ol {
-		margin: 0 0 0.75rem;
-		padding-left: 1.1rem;
-	}
-	.experience-welcome li + li { margin-top: 0.35rem; }
-	.experience-welcome footer {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-	.experience-welcome button {
-		flex: none;
-		padding: 0.35rem 0.65rem;
-		border: 0;
-		border-radius: 6px;
-		background: var(--shell-action);
-		color: var(--shell-on-action);
-		cursor: pointer;
-	}
-	@media (pointer: coarse) {
-		.mode-pill button,
-		.through-confirm button {
-			min-width: 44px;
-			min-height: 44px;
-		}
-	}
-		/* R217.S25: the Experience dock's feedback line sits on the lower edge, above its dock. */
-	.experience-feedback {
-		max-width: min(30rem, 100%);
-		margin: 0;
-		padding: 0.25rem 0.6rem;
-		border-radius: 8px;
-		background: var(--shell-dock-surface);
-		color: var(--shell-ink-light);
-		font-size: 0.78rem;
-		line-height: 1.35;
-	}
-	/* Kind decides the styling, never the words: a success is never a refusal. */
-	.experience-feedback.success { background: var(--shell-forest-raised); }
-	.experience-feedback.info { background: var(--shell-forest-3); }
-	.experience-feedback.refused { background: color-mix(in srgb, var(--shell-refuse) 70%, var(--shell-forest)); }
-	.preview-takeover {
-		position: absolute;
-		inset: 0;
-		z-index: 20;
-		background: #050508;
-	}
-	.stage-note {
-		position: absolute;
-		left: 1rem;
-		bottom: 6rem;
-		/* A notice is information, never a control surface: it must not swallow a
-		   click meant for a panel or a button underneath it. */
-		pointer-events: none;
-		max-width: min(28rem, calc(100% - 2rem));
-		margin: 0;
-		padding: 0.4rem 0.6rem;
-		border-radius: 0.35rem;
-		background: var(--shell-popup-dark);
-		color: var(--shell-ink-light);
-	}
-	.preview-actions-note {
-		top: 0.5rem;
-		bottom: auto;
-		color: var(--shell-leaf-soft);
-	}
-	/*
-	 * Parked-task notice. It sits at the top-left because the lower edge already
-	 * belongs to the instrument and the selection Card, and it must never be covered
-	 * by another control: Resume is the only way back into a parked task.
-	 */
-	.inactive-task {
-		position: absolute;
-		/* Below the toolbar band: at a narrow width the two would overlap and this
-		   panel would cover the only reading controls. */
-		top: 3.5rem;
-		left: 1rem;
-		z-index: 9;
-		max-width: min(22rem, calc(100% - 2rem));
-		padding: 0.75rem;
-		box-sizing: border-box;
-		background: var(--shell-popup-dark);
-		border: 1px solid var(--shell-line-on-forest);
-	}
-	.resume-offer {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.7rem 1rem;
-		border-bottom: 1px solid var(--shell-hairline-dark);
-		background: var(--shell-forest-raised);
-		color: var(--shell-ink-light);
-	}
-	.resume-offer p {
-		flex: 1 1 22rem;
-		margin: 0;
-		line-height: 1.4;
-	}
-	.resume-offer button {
-		padding: 0.45rem 0.7rem;
-		border: 1px solid var(--shell-line-on-forest);
-		border-radius: 0.35rem;
-		background: var(--shell-forest-raised);
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-	}
-	.resume-offer button.primary {
-		border-color: transparent;
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-	}
-	.source-findings {
-		position: absolute;
-		top: calc(var(--shell-head-height) + 8px);
-		left: 50%;
-		z-index: 30;
-		transform: translateX(-50%);
-		max-width: min(32rem, calc(100% - 2rem));
-		padding: 6px 12px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 12px;
-		background: var(--shell-popover);
-		box-shadow: var(--shell-shadow);
-		color: var(--shell-ink);
-		font-size: 12.5px;
-	}
-	.source-findings summary {
-		display: flex;
-		gap: 6px;
-		align-items: baseline;
-		cursor: pointer;
-		list-style: none;
-	}
-	.source-findings strong {
-		color: var(--shell-ink);
-	}
-	.source-findings.blocking strong {
-		color: var(--shell-caution);
-	}
-	.source-findings-more {
-		margin-left: auto;
-		color: var(--shell-ink-3);
-		text-decoration: underline;
-	}
-	.source-findings ul {
-		margin: 6px 0 4px 1rem;
-		padding: 0;
-		color: var(--shell-ink-2);
-	}
-	.source-findings button {
-		border: 1px solid var(--shell-field-line);
-		border-radius: 8px;
-		background: var(--shell-field);
-		padding: 3px 9px;
-		font: inherit;
-		cursor: pointer;
 	}
 	/* Boot, absence and replacement are dialogs, so they share the light Card
-	   surface and field grammar rather than the dark stage\'s forest panel. */
+	   surface and field grammar rather than the dark stage's forest panel. */
 	.boot-panel {
 		position: absolute;
 		z-index: 30;
@@ -4461,7 +1467,7 @@ function completeHistoryInstall(outcome: {
 	.boot-panel .boot-loading {
 		margin: 0 0 0.4rem;
 		color: var(--shell-ink);
-		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
+		font: 600 var(--shell-text-title) / 1.25 var(--shell-sans);
 		letter-spacing: -0.01em;
 	}
 	.boot-panel .boot-loading {
@@ -4470,7 +1476,7 @@ function completeHistoryInstall(outcome: {
 	.boot-panel p {
 		margin: 0 0 0.8rem;
 		color: var(--shell-ink-2);
-		font: var(--shell-text-body)/1.45 var(--shell-sans);
+		font: var(--shell-text-body) / 1.45 var(--shell-sans);
 	}
 	.boot-panel button {
 		margin: 0 0.4rem 0.35rem 0;
@@ -4497,13 +1503,5 @@ function completeHistoryInstall(outcome: {
 	.boot-panel button:focus-visible {
 		outline: var(--shell-focus-ring-light);
 		outline-offset: 1px;
-	}
-
-	@media (max-width: 720px) {
-		/* Below the centered lens panel in a narrow shell, so the notice never
-		   overlaps its buttons. */
-		.stage-note {
-			bottom: 0.5rem;
-		}
 	}
 </style>

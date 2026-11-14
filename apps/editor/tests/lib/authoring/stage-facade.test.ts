@@ -1123,6 +1123,56 @@ describe('S03 no-task press routing', () => {
 		expect(layout).not.toHaveBeenCalled();
 		expect(sceneClaim).toHaveBeenCalledOnce();
 	});
+	it('keeps the subject projection identity across selection and refreshes it for contributions', async () => {
+		const { facade, snapshot } = await mount();
+		const reference = sceneEntityReference('stable-box', snapshot.domain.unitRevisions.scene);
+		const subject = {
+			id: 'scene:entity:stable-box',
+			label: 'Stable box',
+			reference,
+			worldPoint: [0, 0, 0] as [number, number, number]
+		};
+		const unregister = facade.registerStageAdapter({ id: 'stable-subject-probe', subjects: [subject] });
+		if (unregister.kind !== 'registered') throw new Error('the subject probe was refused');
+		const before = facade.subjects();
+		expect(before).toContain(subject);
+
+		const fragment = facade.eligibleFragments().find((item) => item.ref.sourceKind === 'wall')!;
+		const layoutReference = {
+			version: 1 as const,
+			domain: 'layout' as const,
+			revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
+			subject: { kind: 'wall' as const, id: fragment.ref.sourceId },
+			instancePath: [],
+			location: {
+				kind: 'layout-location' as const,
+				levelId: snapshot.domain.layoutLevelId,
+				structureInstancePath: []
+			},
+			componentId: null,
+			capabilityId: null
+		};
+		expect(facade.setSelection({ ordered: [{ reference: layoutReference }], primary: layoutReference }).kind).toBe('selected');
+		expect(facade.subjects()).toBe(before);
+
+		const second = facade.registerStageAdapter({
+			id: 'second-subject-probe',
+			subjects: [{
+				...subject,
+				id: 'scene:entity:second-box',
+				label: 'Second box',
+				reference: sceneEntityReference('second-box', snapshot.domain.unitRevisions.scene)
+			}]
+		});
+		if (second.kind !== 'registered') throw new Error('the second subject probe was refused');
+		const afterContribution = facade.subjects();
+		expect(afterContribution).not.toBe(before);
+		expect(afterContribution.some((item) => item.id === 'scene:entity:second-box')).toBe(true);
+
+		second.dispose();
+		expect(facade.subjects()).not.toBe(afterContribution);
+		unregister.dispose();
+	});
 
 });
 

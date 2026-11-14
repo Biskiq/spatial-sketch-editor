@@ -323,7 +323,6 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	const code = fs.readFileSync(route, 'utf8');
 	const reachable = importClosure([route]);
 	const controllers = [
-		[path.join(EDITOR_LIB, 'authoring/experience/experience-lens.svelte.ts'), 'createExperienceLens'],
 		[path.join(EDITOR_LIB, 'authoring/project-session/project-session.svelte.ts'), 'createProjectSession']
 	] as const;
 	const sources = [{ file: route, code }];
@@ -338,11 +337,15 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	// sources in every host-wide negative check.
 	const constructed = [
 		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts'), 'createStageProjectEpoch'],
-		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts'), 'createStageAssetLeases']
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts'), 'createStageAssetLeases'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts'), 'createStageExperienceBinding'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts'), 'createStageShellState'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-commands.ts'), 'createStageShellCommands'],
+		[path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts'), 'createStageSelectionView']
 	] as const;
 	for (const [file, factory] of constructed) {
 		if (!reachable.has(file)) throw new Error(`Route must import ${factory} from ${file}`);
-		if (!new RegExp(`const\\s+[\\w$]+\\s*=\\s*${factory}\\s*\\(`).test(code)) {
+		if (!new RegExp(`(?:(?:const|let|var)\\s+[\\w$]+|^\\s*[\\w$]+)\\s*=\\s*${factory}\\s*\\(`, 'm').test(code)) {
 			throw new Error(`Route must construct ${factory} from ${file}`);
 		}
 		if (!sources.some((source) => source.file === file)) {
@@ -359,6 +362,21 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	for (const file of reachable) {
 		if (ownerDirs.some((dir) => file.startsWith(`${dir}${path.sep}`)) && /\.(svelte|ts)$/.test(file) &&
 			!sources.some((source) => source.file === file)) {
+			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
+		}
+	}
+	for (const file of [
+		path.join(EDITOR_LIB, 'authoring/stage/route/stage-contribution-view.ts'),
+		path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts'),
+		path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts'),
+		path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-commands.ts'),
+		path.join(EDITOR_LIB, 'authoring/stage/route/stage-selection-view.ts'),
+		path.join(EDITOR_LIB, 'authoring/stage/shell/StageProjectNotices.svelte'),
+		path.join(EDITOR_LIB, 'authoring/stage/shell/StageViewportRegion.svelte'),
+		path.join(EDITOR_LIB, 'authoring/stage/shell/StagePanels.svelte'),
+		path.join(EDITOR_LIB, 'authoring/stage/shell/StageToolbars.svelte')
+	]) {
+		if (reachable.has(file) && !sources.some((source) => source.file === file)) {
 			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
 		}
 	}

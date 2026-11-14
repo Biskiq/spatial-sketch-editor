@@ -1211,6 +1211,15 @@ export function createStageFacade(input: {
 			end: () => void;
 		}
 	>();
+	/**
+	 * The last projected subject list. Adapter notifications also fire for
+	 * selection and task changes, so `subjects()` must not allocate a fresh array
+	 * for every one: the route keys its Index projection on this identity.
+	 */
+	let subjectsCache: readonly StageSubject[] | null = null;
+	function invalidateSubjects(): void {
+		subjectsCache = null;
+	}
 	/** The host's own inspection run order, minted strictly newer than every accepted epoch. */
 	let inspectionRun = 0;
 	const lifetimeToken = session.token();
@@ -1613,6 +1622,7 @@ export function createStageFacade(input: {
 			entry.end();
 		}
 		adapters.clear();
+		invalidateSubjects();
 		return ids;
 	}
 
@@ -1690,6 +1700,7 @@ export function createStageFacade(input: {
 			// from the previous binding; the deferred notification still tells listeners.
 			outputsRevision += 1;
 		}
+		if (rebuilt) invalidateSubjects();
 		// A rebuild is discovered **inside a read** (`overlays()`, `tasks()`, …), and the
 		// host reads those from derived values. Notifying synchronously here would let a
 		// subscriber write reactive state while a derivation is being evaluated, which
@@ -1725,6 +1736,7 @@ export function createStageFacade(input: {
 				end: entry.end
 			});
 		}
+		if (rebound.length > 0) invalidateSubjects();
 		if (rebound.length === 0) return rebound;
 		ensureBindings();
 		return rebound;
@@ -2285,6 +2297,7 @@ export function createStageFacade(input: {
 				ended = true;
 				const currentBinding = disposed ? undefined : adapters.get(adapter.id);
 				adapters.delete(adapter.id);
+				invalidateSubjects();
 				if (contributedTaskOwner?.adapterId === adapter.id) {
 					contributedTaskOwner = null;
 					session.closeTask();
@@ -2301,6 +2314,7 @@ export function createStageFacade(input: {
 				dispose: bindingDispose,
 				end: endRegistration
 			});
+			invalidateSubjects();
 			session.addDisposable(dispose);
 			notifyAdaptersChanged();
 			return { kind: 'registered', id: adapter.id, dispose };
@@ -2570,7 +2584,10 @@ export function createStageFacade(input: {
 		},
 		subjects() {
 			ensureBindings();
-			return [...adapters.values()].flatMap((entry) => entry.contributions.subjects ?? []);
+			if (subjectsCache === null) {
+				subjectsCache = [...adapters.values()].flatMap((entry) => entry.contributions.subjects ?? []);
+			}
+			return subjectsCache;
 		},
 		findEntries() {
 			ensureBindings();

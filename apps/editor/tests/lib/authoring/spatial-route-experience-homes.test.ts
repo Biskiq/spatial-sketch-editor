@@ -36,7 +36,8 @@ const harness = vi.hoisted(() => ({
 	document: null as unknown,
 	facade: null as unknown,
 	acceptance: null as unknown,
-	homes: null as ExperienceHomes | null
+	homes: null as ExperienceHomes | null,
+	indexBuilds: 0
 }));
 
 vi.mock('$lib/authoring/experience/experience-homes', async (original) => {
@@ -53,6 +54,20 @@ vi.mock('$lib/authoring/experience/experience-homes', async (original) => {
 vi.mock('$lib/authoring/experience/preview-entry', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/experience/preview-entry')>();
 	return { ...actual, previewEntryFor: vi.fn(actual.previewEntryFor) };
+});
+
+vi.mock('$lib/authoring/stage/shell/world-index-model', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/stage/shell/world-index-model')>();
+	return {
+		...actual,
+		createWorldIndexModel: () => {
+			const model = actual.createWorldIndexModel();
+			return (...args: Parameters<typeof model>) => {
+				harness.indexBuilds += 1;
+				return model(...args);
+			};
+		}
+	};
 });
 
 vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
@@ -995,6 +1010,71 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(target.querySelector('.preview-takeover [data-testid="stage-canvas"]')?.getAttribute('data-start-mode')).toBe('free');
 	});
 
+	it('unmounts the Show control and its focus target for Preview, then restores it on return', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		if (harness.homes === null) throw new Error('Experience homes were not registered');
+		const show = target.querySelector<HTMLButtonElement>('[data-show-control] .show-button');
+		if (show === null) throw new Error('the Show control did not mount');
+		show.focus();
+		show.click();
+		await frame();
+		expect(target.querySelector('[aria-label="Show on the Stage"]')).not.toBeNull();
+		expect(document.activeElement).toBe(show);
+
+		harness.homes.previewMode('free', 'guide-1');
+		await vi.waitFor(() => expect(target.querySelector('.preview-takeover:not([hidden])')).not.toBeNull());
+		expect(target.querySelector('[data-show-control]')).toBeNull();
+		expect(target.querySelector('.show-button')).toBeNull();
+		expect(show.isConnected).toBe(false);
+		expect(document.activeElement).not.toBe(show);
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(target.querySelector('.preview-takeover:not([hidden])')).toBeNull());
+		await vi.waitFor(() => expect(target.querySelector('[data-show-control]')).not.toBeNull());
+		expect(target.querySelector('[data-show-control]')?.contains(document.activeElement)).toBe(false);
+	});
+
+	it('keeps the Index projection across facade selection and scope notifications, and rebuilds for a contribution', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await vi.waitFor(() => expect(target.querySelector('#world-location-toggle')).not.toBeNull());
+		await frame();
+		const stage = facade();
+		const subject = stage.subjects()[0];
+		if (subject === undefined) throw new Error('the Stage contributed no subjects');
+		expect(harness.indexBuilds).toBeGreaterThan(0);
+		harness.indexBuilds = 0;
+
+		// Selection reaches the route through the facade's adapter notification.
+		expect(stage.setSelection({
+			ordered: [{ reference: subject.reference }],
+			primary: subject.reference
+		}).kind).toBe('selected');
+		await frame();
+		expect(harness.indexBuilds).toBe(0);
+
+		const toggle = target.querySelector<HTMLButtonElement>('#world-location-toggle');
+		if (toggle === null) throw new Error('the Index location control did not mount');
+		toggle.click();
+		await frame();
+		const location = [...target.querySelectorAll<HTMLButtonElement>('#world-locations button')]
+			.find((button) => button.getAttribute('aria-current') !== 'location');
+		if (location === undefined) throw new Error('the Index offered no other scope');
+		location.click();
+		await frame();
+		expect(harness.indexBuilds).toBe(0);
+
+		const registration = stage.registerStageAdapter({
+			id: 'route-subject-probe',
+			subjects: [{ ...subject, id: 'scene:entity:route-probe', label: 'Route probe' }]
+		});
+		if (registration.kind !== 'registered') throw new Error('the route subject probe was refused');
+		await frame();
+		expect(stage.subjects().some((item) => item.label === 'Route probe')).toBe(true);
+		expect(harness.indexBuilds).toBeGreaterThan(0);
+		registration.dispose();
+	});
+
 	it('routes Stop and transition playback actions to the mounted Guide', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
@@ -1442,9 +1522,11 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 		await vi.waitFor(() => expect(presentationRows()).toHaveLength(1));
 		expect(target.querySelector('[data-can-undo="true"]')).not.toBeNull();
 
+		harness.indexBuilds = 0;
 		const outcome = await acceptance().undo();
 		expect(outcome.kind).toBe('installed');
 		await vi.waitFor(() => expect(presentationRows()).toHaveLength(0));
+		expect(harness.indexBuilds).toBeGreaterThan(0);
 		// Undo restores only the Capture: the Experience created before it stays.
 		expect(experienceName()).toBe('Experience 1');
 		expect(target.textContent).toContain('Nothing presented yet. Select an object and choose Present this, or press Capture in the dock.');
