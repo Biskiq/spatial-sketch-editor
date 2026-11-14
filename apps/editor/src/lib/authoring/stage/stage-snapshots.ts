@@ -1,5 +1,5 @@
 /**
- * R217.S28 — the Stage snapshot service (E10).
+ * The Stage snapshot service.
  *
  * Snapshots are a **derived render**: the Stage's own renderer draws the exact
  * authored View pose through `camera-core` into one reusable offscreen target.

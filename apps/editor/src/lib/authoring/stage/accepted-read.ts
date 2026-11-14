@@ -49,8 +49,8 @@ export type StageDomainRead = {
 /**
  * `StageReadSnapshot` — the source-independent validated read facade the Stage
  * mounts. Field names follow AM-4's `AcceptedSnapshot@1` (accepted revision,
- * source-content identity, admitted source kind/version, domain read access) so
- * the later host↔F4 wiring can swap in S03's export without renaming a consumer.
+ * source-content identity, admitted source kind/version, domain read access), so
+ * F4's accepted snapshot and this facade share one vocabulary.
  */
 export type StageReadSnapshot = {
 	readonly acceptedRevision: AcceptedRevision;

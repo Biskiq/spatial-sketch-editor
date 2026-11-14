@@ -51,9 +51,9 @@
 		onRedo = () => {},
 		saveUnavailableReason,
 		/**
-		 * T1.P01.S04's Head Save integration. Present only when the composition root
-		 * mounts T3.P01.S02's state machine; absent keeps the previous read-only
-		 * posture and its visible reason.
+		 * The Head Save integration. Present only when the composition root mounts
+		 * the Save state machine; absent keeps the read-only posture and its visible
+		 * reason.
 		 */
 		save = null,
 		onReloadRemote = () => {},
@@ -98,7 +98,7 @@
 		/** Why Undo/Redo cannot run; shown as Undo's disclosure. */
 		historyUnavailableReason: string;
 		redoUnavailableReason?: string;
-		/** Live host history commands (T1.P01.S07 wiring). */
+		/** Live host history commands. */
 		canUndo?: boolean;
 		canRedo?: boolean;
 		onUndo?: () => void;

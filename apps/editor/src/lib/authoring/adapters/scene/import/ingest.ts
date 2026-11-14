@@ -1,5 +1,5 @@
 /**
- * T2.P02.S02 — the `creator-import@1` ingest recipe.
+ * The `creator-import@1` ingest recipe.
  *
  * One pipeline over captured bytes: validate the source set, read it with glTF
  * semantics, record what the source actually contains, append **one** pivot

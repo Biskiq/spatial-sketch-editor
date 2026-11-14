@@ -1,5 +1,5 @@
 /**
- * R217.S04 — the **Paper Plan drawing set**.
+ * The **Paper Plan drawing set**.
  *
  * Paper is a *drawing* of data the Stage already computes: Layout's ordinary
  * `PlanEvaluation` (cut, projected, hidden and symbol streams, already filtered by
@@ -463,7 +463,7 @@ function edgeKey(a: LayoutVec2, b: LayoutVec2): string {
  * than once (a box's front and side faces both bound the left side), and a
  * triangulated face splits a straight silhouette into several edges. Drawing the
  * raw edge set would over-stroke the same line; merging keeps the outline a clean
- * closed boundary for the drawing and for S07's later re-stroke.
+ * closed boundary for the drawing and for the selection re-stroke.
  */
 function mergeCollinear(segments: readonly PaperSegment[]): PaperSegment[] {
 	type Group = { readonly reference: LayoutVec2; readonly direction: LayoutVec2; readonly intervals: Array<[number, number]>;
@@ -789,7 +789,7 @@ export function buildPaperPlan(
  * World geometry is layer 0 and every Canvas-drawn Stage overlay is layer 2.
  * Paper shows only its drawing; 3D and Shaded Plan show the world plus the
  * overlays that belong to them. Enabling both in the world case is deliberate:
- * later Stage overlays (S07's selection and hover) live on layer 2 and must be
+ * Stage overlays (selection and hover) live on layer 2 and must be
  * visible on the mat without another mask decision here.
  */
 export function stageCameraLayerMask(paperVisible: boolean): readonly number[] {

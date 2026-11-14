@@ -1,6 +1,6 @@
 /**
  * `layout-robust-orientation.ts` — the one Museum X/Z robust orientation
- * adapter (P23.8 / H3 §4).
+ * adapter.
  *
  * Wraps `robust-predicates`' adaptive `orient2d` (Shewchuk expansion
  * arithmetic) behind a single renderer-neutral seam. Upstream documents its
@@ -16,13 +16,13 @@
  * ```
  *
  * Rules:
- * - callers never import `robust-predicates` directly (H3 §4.4);
+ * - callers never import `robust-predicates` directly;
  * - no epsilon is ever applied to the result — the sign *is* the answer and
  *   is exact for the given doubles;
  * - only `orient2d` is used; `orient2dfast` and the in/3D predicates are not
- *   part of Museum topology (H3 §4.4).
+ *   part of Museum topology.
  *
- * Dependency provenance (H3 §3): `mourner/robust-predicates@3.0.3`,
+ * Dependency provenance: `mourner/robust-predicates@3.0.3`,
  * Unlicense / public-domain dedication; `orient2d` only.
  */
 import { orient2d } from 'robust-predicates';

@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { isSessionUserId } from './auth.js';
 
 /**
- * P22 test-auth seam — deterministic automation identities.
+ * Test-auth seam — deterministic automation identities.
  *
  * Test-only issuer in front of the existing session adapter: it replaces
  * only the password ceremony and then creates the exact session

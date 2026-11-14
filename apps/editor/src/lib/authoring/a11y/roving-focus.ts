@@ -3,7 +3,7 @@
  *
  * Plain buttons in a strip (`role="tablist"`) and plain buttons in a popover
  * (`role="menu"`, `role="menuitemradio"`) are both "one tab stop plus arrow
- * keys", and both were previously reachable only by clicking. The model lives
+ * keys". The model lives
  * here so the behaviour cannot drift between the Navigator's Hierarchy | Assets
  * row, the Asset library's four sections, and the Project Head popovers.
  *

@@ -36,7 +36,7 @@
 		/** Double-click on a row renames through the selected subject's Card writer. */
 		onRename?: (id: string) => void;
 		/**
-		 * R217.S25: the Experience lens's groups. When present the Index shows them in place
+		 * The Experience lens's groups. When present the Index shows them in place
 		 * of the World locator: the Experience crumb with its sibling menu, the Guides, and the
 		 * Presentations with their Views. Same Index shell and rows.
 		 */
@@ -85,7 +85,7 @@
 		limit = 40;
 	});
 
-	/* R217.S26 — the Experience crumb's inline rename: Enter or blur commits, Esc cancels. */
+	/* The Experience crumb's inline rename: Enter or blur commits, Esc cancels. */
 	let renamingExperience = $state(false);
 	let experienceDraft = $state('');
 	let renameBusy = $state(false);
@@ -884,7 +884,7 @@
 		background: var(--shell-hover);
 		color: var(--shell-ink);
 	}
-	/* R217.S26: the crumb's inline rename uses the crumb's own metrics. */
+	/* The crumb's inline rename uses the crumb's own metrics. */
 	.crumb-input {
 		box-sizing: border-box;
 		min-width: 0;

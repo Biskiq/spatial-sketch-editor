@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * R217.S08 — the Card's writer for every Scene object: models, primitives
+	 * The Card's writer for every Scene object: models, primitives
 	 * and drawn forms. Only the size row differs by kind (one uniform Size, or a
 	 * form's Width/Height/Depth), and only a form offers Save to My Objects.
 	 *

@@ -2,7 +2,7 @@ import { countWork } from './p2311-perf';
 import { hasImmutableJsonProof } from './immutable-json';
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
- * `LayoutDocument` (`formatVersion: 7`), shared by P23.1 operations and the
+ * `LayoutDocument` (`formatVersion: 7`), shared by the precision operations and the
  * canonical project Save boundary. Format 7 adds the canonical self-connected
  * Wall (one Wall with equal endpoint Junction IDs and 16 cubic spans); a closed
  * Wall in any other representation is refused.
@@ -13,12 +13,12 @@ import { hasImmutableJsonProof } from './immutable-json';
  *   - a `createEmptyWallFirstLayoutDocument()` fixture/boot helper
  *
  * Semantic mutations live in the operation planners
- * (`layout-wall-first-precision.ts` and the P23.8 noding/topology modules);
+ * (`layout-wall-first-precision.ts` and the noding/topology modules);
  * this module remains a pure validation/canonicalization boundary.
  *
  * Validation policy mirrors the legacy codec's strictness (reject-on-issue,
  * explicit issue codes, canonical JSON) so downstream F0 gates can rely on
- * the same failure semantics. P23.8's topology validity rules (noding,
+ * the same failure semantics. The topology validity rules (noding,
  * crossings, enclosure, correspondence) are **out of scope here**; this codec
  * validates reference structure and numeric sanity only.
  */
@@ -60,7 +60,7 @@ import type { LayoutObject } from './layout-wall-first-types';
  *
  * A success is **always** the canonical current-format document. There is one
  * recognized version (`7`) and no historical variant: a payload declaring anything
- * else fails as `unsupported_format_version` (P23.6I pre-baseline policy).
+ * else fails as `unsupported_format_version`.
  */
 export type WallFirstLayoutValidationResult =
 	| {
@@ -91,10 +91,10 @@ const ROOT_KEYS = [
 	'objects',
 	'identity'
 ] as const;
-/** P23.12 — the reference ledger's key set. */
+/** The reference ledger's key set. */
 const IDENTITY_KEYS = ['cursor', 'rooms', 'junctions', 'walls', 'openings'] as const;
 /**
- * Canonical Floor key set (P23.6I). The current Floor has no vertical extent, so a
+ * Canonical Floor key set. The current Floor has no vertical extent, so a
  * present `height` is `unknown_key`.
  */
 const FLOOR_KEYS_V5 = ['id', 'name', 'elevation'] as const;
@@ -108,9 +108,9 @@ const WALL_KEYS = [
 	'centerline',
 	'name'
 ] as const;
-/** P23.11 — one bend point of a Wall `cubic-chain` centerline. */
+/** One bend point of a Wall `cubic-chain` centerline. */
 const WALL_CURVE_KNOT_KEYS = ['id', 'point'] as const;
-/** P23.11 — one cubic span of a Wall `cubic-chain` centerline: controls only. */
+/** One cubic span of a Wall `cubic-chain` centerline: controls only. */
 const WALL_CURVE_SPAN_KEYS = ['handleOut', 'handleIn'] as const;
 const ROOM_KEYS = ['id', 'name', 'boundary', 'floorThickness', 'ceilingThickness'] as const;
 const WALL_REF_KEYS = ['wallId', 'direction'] as const;
@@ -147,8 +147,8 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 		rooms: [],
 		openings: [],
 		objects: [],
-		// P23.12 — the canonical writers always emit the ledger; it stays optional
-		// on read because every pre-P23.12 document lacks it.
+		// The canonical writers always emit the ledger; it stays optional
+		// on read because documents written before the ledger lack it.
 		identity: emptyLayoutIdentityLedger()
 	};
 }
@@ -218,12 +218,12 @@ export function parseWallFirstLayoutDocumentJson(json: string): WallFirstLayoutV
 }
 
 /**
- * P23.6H — the canonical *writer* format requirement (S1b).
+ * The canonical *writer* format requirement (S1b).
  *
  * The canonical writers receive canonical current-format state, so a document
  * declaring any other format version rejects fail-closed instead of being
  * persisted as if it were current. This is current-format strictness, not a
- * compatibility branch: P23.6I recognizes exactly one version, so there is no
+ * compatibility branch: the codec recognizes exactly one version, so there is no
  * historical payload that could be rewritten on the way out.
  *
  * Returns `undefined` when the input is not an object at all, so structural
@@ -248,7 +248,7 @@ export function wallFirstCanonicalFormatVersionIssue(
  * Canonical Layout serialization. Throws on invalid input.
  *
  * Unlike validation, this is a **writer**: it requires canonical current-format
- * state and rejects a historical payload by name (P23.6H, S1b).
+ * state and rejects a historical payload by name.
  */
 export function serializeWallFirstLayoutDocument(document: unknown): string {
 	const versionIssue = wallFirstCanonicalFormatVersionIssue(document);
@@ -275,7 +275,7 @@ function parseDocument(
 	}
 
 	const formatVersion = readFormatVersion(record.formatVersion, `${path}.formatVersion`, issues);
-	// P23.6I — one Floor key set only: no vertical extent, so a present `height`
+	// One Floor key set only: no vertical extent, so a present `height`
 	// is `unknown_key`.
 	const floor =
 		formatVersion === LAYOUT_WALL_FIRST_FORMAT_VERSION
@@ -287,7 +287,7 @@ function parseDocument(
 	const rooms = parseArray(record.rooms, `${path}.rooms`, issues, parseRoom);
 	const openings = parseArray(record.openings, `${path}.openings`, issues, parseOpening);
 	const objects = parseArray(record.objects, `${path}.objects`, issues, parseObject);
-	// P23.12 — the reference ledger is optional on read (pre-P23.12 documents and
+	// The reference ledger is optional on read (pre-P23.12 documents and
 	// already-published releases have none) but strict when present: malformed
 	// tokens and duplicate values reject.
 	const identity = parseIdentityLedger(record.identity, `${path}.identity`, issues);
@@ -360,7 +360,7 @@ function parseDocument(
 			);
 			continue;
 		}
-		// D6 — the 16/15 count above proves only the structural envelope. A closed
+		// The 16/15 count above proves only the structural envelope. A closed
 		// Wall is a CIRCULAR Wall, so the codec also proves the saved geometry is
 		// the one symmetric chain the constructor writes. Re-fitting at Save/Load is
 		// exact-safe because JSON preserves the authored doubles; without this a
@@ -464,7 +464,7 @@ function parseDocument(
 }
 
 /**
- * P23.12 — parse the optional reference ledger.
+ * Parse the optional reference ledger.
  *
  * `undefined` means "absent", which is legal (pre-P23.12 payloads). A present but
  * malformed ledger reports issues and returns `undefined`, so the caller can fail
@@ -634,7 +634,7 @@ function validateClosedWallCircle(
 	}
 }
 
-/** Optional authored name (P23.12): absent means unnamed, blank rejects. */
+/** Optional authored name: absent means unnamed, blank rejects. */
 function parseOptionalName(
 	input: unknown,
 	path: string,
@@ -665,7 +665,7 @@ function readFormatVersion(
 	return input as LayoutFormatVersion;
 }
 
-/** Canonical Floor: `id`/`name`/`elevation` only (P23.6I). */
+/** Canonical Floor: `id`/`name`/`elevation` only. */
 function parseFloorV5(
 	input: unknown,
 	path: string,
@@ -715,10 +715,10 @@ function parseWall(
 	const endJunctionId = readId(record.endJunctionId, `${path}.endJunctionId`, issues);
 	const thickness = readPositiveNumber(record.thickness, `${path}.thickness`, issues);
 	const height = readPositiveNumber(record.height, `${path}.height`, issues);
-	// P23.11 — the centerline is required on every Wall (fresh-authority
+	// The centerline is required on every Wall (fresh-authority
 	// policy: no migration, no missing-field tolerance).
 	const centerline = parseWallCenterline(record.centerline, `${path}.centerline`, issues);
-	// P23.12 — an authored name is optional; present-but-blank is invalid, which
+	// An authored name is optional; present-but-blank is invalid, which
 	// makes absence the only representation of "unnamed".
 	const name = parseOptionalName(record.name, `${path}.name`, issues);
 	if (
@@ -732,7 +732,7 @@ function parseWall(
 	) {
 		return undefined;
 	}
-	// D6 — a self-connected Wall is the canonical closed representation, not an
+	// A self-connected Wall is the canonical closed representation, not an
 	// accident. It is legal only as the approved 16-span cubic chain: a straight
 	// self-loop has no interior, and any other span count would be a second closed
 	// Wall vocabulary the product cannot author or reason about.
@@ -768,7 +768,7 @@ function parseWall(
 }
 
 /**
- * P23.11 — parse the canonical Wall centerline union. `line` carries no
+ * Parse the canonical Wall centerline union. `line` carries no
  * payload; `cubic-chain` requires ordered bend points with stable unique IDs
  * and one control pair per cubic span (`spans.length === knots.length + 1`).
  * An empty knot list is legal and means one cubic between the endpoint
@@ -864,7 +864,7 @@ function parseRoom(
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readNonEmptyString(record.name, `${path}.name`, issues);
 	const boundary = parseBoundaryRefs(record.boundary, `${path}.boundary`, issues);
-	// P23.6I (D7) — a canonical Room with zero boundary references is not a
+	// A canonical Room with zero boundary references is not a
 	// degenerate architecture, it is invalid state: the codec previously accepted
 	// `boundary: []` because an empty array parses cleanly, which let a Room with
 	// no enclosure reach the compiler and acquire an invented ceiling. The ceiling
@@ -1226,7 +1226,7 @@ function readNumber(
 	return input;
 }
 
-/** P23.12 — the ledger cursor is a non-negative integer (allocation index). */
+/** The ledger cursor is a non-negative integer (allocation index). */
 function readNonNegativeInteger(
 	input: unknown,
 	path: string,

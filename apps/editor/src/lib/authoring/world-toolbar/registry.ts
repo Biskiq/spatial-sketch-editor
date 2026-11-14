@@ -3,7 +3,7 @@
  *
  * The registry is presentation data, not a second task system. A landed tool
  * names the existing contribution it arms through the route's host bridge; a
- * planned tool carries no controller and says so, so the complete #285 toolbar
+ * planned tool carries no controller and says so, so the complete toolbar
  * can be inspected without pretending a capability exists.
  */
 export type WorldFamilyId = 'build' | 'form' | 'land' | 'furnish';

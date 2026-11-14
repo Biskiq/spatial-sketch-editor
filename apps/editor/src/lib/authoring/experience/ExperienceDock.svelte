@@ -13,7 +13,7 @@
 		captureDisabled?: boolean;
 		captureReason?: string;
 		guideOpen?: boolean;
-		/** S28: Place a View is armed on the Stage until Esc or another key. */
+		/** Place a View is armed on the Stage until Esc or another key. */
 		placeArmed?: boolean;
 		onPlaceView?: () => void;
 		onCapture: () => void;

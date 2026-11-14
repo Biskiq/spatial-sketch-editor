@@ -24,7 +24,7 @@ type OrientedConnection = {
 export type CameraRouteErrorKind = 'no-flow' | 'gap';
 
 /**
- * P11.3 §9 — typed route failure. Kinds are data-shaped, never message
+ * Typed route failure. Kinds are data-shaped, never message
  * parsing: `gap` carries the missing connection's flow endpoints, `no-flow`
  * means no ordered flow exists. Genuine defects (malformed path data,
  * non-contiguous joins, broken reciprocal links) stay plain `Error` so the

@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * R217.S04 — the Paper Plan layer.
+	 * The Paper Plan layer.
 	 *
 	 * A drawing of the Plan evaluation and the Scene footprint projection the Stage
 	 * already holds. It is mounted through a flip and while Paper is the settled
@@ -9,10 +9,9 @@
 	 * without touching their pick eligibility.
 	 *
 	 * It owns no geometry authority: every line, fill and outline comes from
-	 * `buildPaperPlan`. S05 adds the grid on the same layer; S07 re-strokes the
-	 * selected source's entries from the same drawing set through `paper-marks`,
-	 * as a filter over this drawing rather than a second Plan. E5 keeps that
-	 * drawing stable across selection: the scene hides the selected Opening's
+	 * `buildPaperPlan`. The grid shares the layer; `paper-marks` re-strokes the
+	 * selected source's entries from the same drawing set, as a filter over this
+	 * drawing rather than a second Plan. The drawing stays stable across selection: the scene hides the selected Opening's
 	 * instance runs instead of Paper rebuilding a filtered copy.
 	 */
 	import { useThrelte } from '@threlte/core';
@@ -58,7 +57,7 @@
 		selection?: StageSelectionEntry | null;
 		/** The hovered subject; quiet neutral contour, suppressed for the selection itself. */
 		hover?: StageSelectionEntry | null;
-		/** R217.S10: `erase` re-strokes the hovered subject in the Eraser's red dashes. */
+		/** `erase` re-strokes the hovered subject in the Eraser's red dashes. */
 		hoverTone?: 'hover' | 'erase';
 		/** Changes when Scene entity roots mount or unmount, so the drawing follows. */
 		revision?: number;

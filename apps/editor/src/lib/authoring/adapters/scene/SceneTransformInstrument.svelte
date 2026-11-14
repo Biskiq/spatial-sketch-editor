@@ -1,13 +1,12 @@
 <script lang="ts">
 	/**
-	 * T2.P01.S03 — the Scene editing instrument.
+	 * The Scene editing instrument.
 	 *
 	 * It is mounted by `StageInstrumentHost` for this adapter's tasks
 	 * (`place-object`, `scene-compose`, `import-model`) and receives only the public
 	 * `StageAdapterServices`, so it reads no host internals and edits no shell.
 	 *
-	 * R217.S08 removes the old Arrange posture: a selected object's exact Position,
-	 * Yaw and Size are the Card writer, while this panel keeps Place and the
+	 * A selected object's exact Position, Yaw and Size are the Card writer, while this panel keeps Place and the
 	 * bounded Compose commands. Presentation is deliberately plain; it shows the
 	 * planner's captured candidate and refusal reason, and never commits on blur.
 	 * Esc/Close and unmount both run the session's one `cancel()`.
@@ -69,7 +68,7 @@
 
 	let x = $state('0');
 	let z = $state('0');
-	/** S04's uniform Resize entry; blank/non-finite/non-positive never commits. */
+	/** The uniform Resize entry; blank/non-finite/non-positive never commits. */
 	let composeScaleText = $state('');
 	let composeActive = $state(false);
 	/** The entity the active Resize proposal was opened for, never a live guess. */
@@ -157,7 +156,7 @@
 
 	const entities = $derived(services.stage.snapshot().domain.scene.entities);
 	/**
-	 * Whether this mount is S04's bounded Compose surface. The adapter contributes
+	 * Whether this mount is the bounded Compose surface. The adapter contributes
 	 * the same instrument for all three tasks, and a new task re-provides services,
 	 * so this follows the live task rather than a captured bind-time kind.
 	 */

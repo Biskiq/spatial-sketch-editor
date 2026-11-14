@@ -1,21 +1,14 @@
 /**
- * E6/R3 — the retained Room representation.
+ * The retained Room representation.
  *
- * Rooms used to be the last world content mounted per entity through Svelte: one
- * `{#each}` in `VisitorLayoutShell`, and per Room a group, three meshes, three
- * geometry components and three material components — ≈10 mounts, 3
- * triangulations and 3 materials. At L (196 Rooms) that is 588 triangulations,
- * 588 materials and ≈1,960 mounted components for surfaces that are two flat
- * polygons and three fixed looks (audit 6.5, re-counted for this slice).
- *
- * This module owns them instead, on the same terms as the Wall and object
- * representations:
+ * Every compiled Room's floor, floor-shadow catcher and ceiling are owned here
+ * imperatively, on the same terms as the Wall and object representations, rather
+ * than mounted per Room through Svelte:
  *
  * - **Retained by the Room's own `cacheKey`.** A Room whose key did not move
  *   keeps its group, its two geometries, its transforms and its meshes.
  * - **Two geometries per Room.** One floor triangulation, shared by the floor
- *   and the floor-shadow mesh, and one ceiling triangulation. The component path
- *   built a third `ShapeGeometry` for the shadow mesh from the same `Shape`.
+ *   and the floor-shadow mesh, and one ceiling triangulation.
  * - **Three materials for every Room.** Acquired once from the Canvas's
  *   `MaterialStore`: the unlit ground-coloured floor, the shadow catcher and the
  *   dark plaster ceiling. Equal descriptors share one instance, so 196 Rooms draw
@@ -26,8 +19,8 @@
  * Deliberately unchanged: the world placement of each surface (floor
  * `-π/2` at `floorElevation`, ceiling `+π/2` at `ceilingElevation`), the
  * shadow-catcher's `raycast` opt-out (it is never picked), the ceiling's absence
- * of a render-identity tag (a ceiling hit is Layout, not a floor — preserved from
- * the component path), and the framed door portals, which stay with the shell.
+ * of a render-identity tag (a ceiling hit is Layout, not a floor), and the framed
+ * door portals, which stay with the shell.
  */
 import { Group, Mesh, Shape, ShapeGeometry, type BufferGeometry, type Object3D } from 'three';
 import {
@@ -52,7 +45,7 @@ type RetainedRoom = {
 	readonly geometry: readonly BufferGeometry[];
 };
 
-/** What one update did, as counts — the R3 oracle reads these, never a stopwatch. */
+/** What one update did, as counts — tests read these, never a stopwatch. */
 export type RoomRepresentationStats = {
 	/** Compiled Rooms in the geometry. */
 	readonly rooms: number;

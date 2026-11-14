@@ -1,5 +1,5 @@
 /**
- * R217.S06 — the Height Sheet's one height fact.
+ * The Height Sheet's one height fact.
  *
  * The Sheet is **host-owned session view state**, never source: a height, its
  * pins and the subscribers a consumer registers. It imports no consumer and no

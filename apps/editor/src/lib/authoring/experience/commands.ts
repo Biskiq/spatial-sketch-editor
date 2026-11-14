@@ -1,5 +1,5 @@
 /**
- * Experience authoring commands (T3.P02.S01).
+ * Experience authoring commands.
  *
  * One builder per authored operation. Each is a pure function of the accepted
  * envelope the surface is showing, the surface's focus, and the ids the host
@@ -74,7 +74,7 @@ export type CommandIds = {
 	readonly presentation?: string;
 	readonly stop?: string;
 	readonly guide?: string;
-	/** R217.S29 — a captured Camera connection id. */
+	/** A captured Camera connection id. */
 	readonly connection?: string;
 	/** Captured Camera connection ids for automatic Travel path reconciliation. */
 	readonly connections?: readonly string[];
@@ -403,7 +403,7 @@ export function stopUpdateIntent(input: {
 
 type Revision = { readonly projectId: string; readonly revisionId: string };
 
-/** R217.S26 — rename the Experience or choose its Opening Guide. */
+/** Rename the Experience or choose its Opening Guide. */
 export function experienceUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -427,7 +427,7 @@ export function experienceUpdateIntent(input: {
 	);
 }
 
-/** R217.S26 — rename a Guide or set its pacing (sheet §31). */
+/** Rename a Guide or set its pacing (sheet §31). */
 export function guideUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -493,7 +493,7 @@ export function viewUpdateIntent(input: {
 }
 
 /**
- * R217.S26 — rename a Camera View. The operation rewrites the View's whole pose, so
+ * Rename a Camera View. The operation rewrites the View's whole pose, so
  * the pose is sent back exactly as authored: only the label changes.
  */
 export function viewRenameIntent(input: {
@@ -544,7 +544,7 @@ function cameraViewReference(envelope: ProjectEnvelope, viewId: string): Semanti
 }
 
 /**
- * R217.S29 (E11) — one straight Camera path from the exit View to the entry
+ * One straight Camera path from the exit View to the entry
  * View, with the captured connection id and Camera's automatic duration.
  */
 export function cameraConnectionCreateIntent(input: {
@@ -568,7 +568,7 @@ export function cameraConnectionCreateIntent(input: {
 }
 
 /**
- * R217.S29 — replace one Camera path's interior anchors or one direction's
+ * Replace one Camera path's interior anchors or one direction's
  * duration. `durationSeconds: null` clears only that direction's duration.
  */
 export function cameraConnectionUpdateIntent(input: {
@@ -608,7 +608,7 @@ export function cameraConnectionUpdateIntent(input: {
 	);
 }
 
-/** R217.S26 (E4) — remove one Stop, one Guide or one Presentation. */
+/** Remove one Stop, one Guide or one Presentation. */
 export function removeIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -633,7 +633,7 @@ export function removeIntent(input: {
 	);
 }
 
-/** R217.S26 (E4) — remove one View from one Presentation; removing View 1 makes the next View the Default unless one is named. */
+/** Remove one View from one Presentation; removing View 1 makes the next View the Default unless one is named. */
 export function viewRemoveIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;

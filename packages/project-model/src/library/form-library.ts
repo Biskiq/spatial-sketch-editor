@@ -1,5 +1,5 @@
 /**
- * T5.P01.S04 — the `form` library payload (format 1).
+ * The `form` library payload (format 1).
  *
  * My Objects stores one native form's authored source, never a generated mesh.
  * The payload is the typed-resource content for the `form` kind:

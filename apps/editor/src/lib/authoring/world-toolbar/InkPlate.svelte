@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Ink plate: the #285 shape row bound to Layout's existing Ink surface.
+	 * The Ink plate: the World toolbar's shape row bound to Layout's existing Ink surface.
 	 * It never writes geometry itself; every command goes through the adapter's
 	 * published controller.
 	 */

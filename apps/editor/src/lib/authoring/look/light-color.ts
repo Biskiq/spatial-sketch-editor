@@ -1,5 +1,5 @@
 /**
- * T2 gallery UX recovery — Warmth, Colour and Brightness presentation.
+ * Warmth, Colour and Brightness presentation.
  *
  * Warmth is a white-balance ramp over the stored sRGB `color`; no kelvin value
  * is stored or shown. Colour is HSV with value fixed at 1, because darkness is

@@ -1,5 +1,5 @@
 /**
- * T2.P02.S02 — the import procedure session.
+ * The import procedure session.
  *
  * One session per import attempt, tied to one project. It owns the chosen files,
  * the worker, the staging record and the approved revision; none of that is

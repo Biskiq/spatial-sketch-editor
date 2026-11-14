@@ -199,7 +199,7 @@ export function createJunctionGestureSession({
 	}
 
 	/**
-	 * O9's one preselection exception: a fine pointer may reveal the nearest
+	 * The one preselection exception: a fine pointer may reveal the nearest
 	 * Layout Junction in Plan. The Stage has already offered selected marks, so
 	 * this contributes only when that higher tier missed.
 	 */

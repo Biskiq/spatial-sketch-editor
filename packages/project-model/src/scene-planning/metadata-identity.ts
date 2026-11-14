@@ -1,11 +1,11 @@
 /**
- * T2.P01.S01 — the captured-metadata identity of one normalized definition.
+ * The captured-metadata identity of one normalized definition.
  *
  * The normalized definition input carries `metadataContentId`: an immutable
  * identity of the operation metadata captured before preparation, so a replayed
  * placement compares contents instead of re-reading a mutable catalogue. It is
- * **not** the current-source content identity that `T1.P01.S03` owns and that
- * `T1.P01.S02` reuses for boot — that identity hashes authored source bytes.
+ * **not** the current-source content identity the F4 provider owns and boot
+ * reuses — that identity hashes authored source bytes.
  * This one hashes the captured definition metadata, and it reuses the package's
  * one hash primitive (`sha256Bytes`) rather than introducing a second one.
  *

@@ -1,5 +1,5 @@
 /**
- * R217.S13 — the **drafting state** and its arithmetic.
+ * The **drafting state** and its arithmetic.
  *
  * PLATE's drafting cluster is one view-state fact, not a second document, a
  * Camera mode or a source writer:

@@ -1,5 +1,5 @@
 /**
- * T2.P01.S03 — the candidate's drawn body.
+ * The candidate's drawn body.
  *
  * A proposal is shown as the object's own shape at the captured pose, so both
  * readings present what acceptance will install instead of a label beside an

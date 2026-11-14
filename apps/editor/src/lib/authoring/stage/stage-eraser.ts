@@ -1,5 +1,5 @@
 /**
- * R217.S10 — the **Eraser**, a host tool.
+ * The **Eraser**, a host tool.
  *
  * The Eraser removes one subject per click by calling the **winning domain's own**
  * delete: the Stage asks every binding that declares host tool `erase` for one

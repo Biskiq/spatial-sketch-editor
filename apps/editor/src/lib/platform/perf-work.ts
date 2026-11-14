@@ -1,5 +1,5 @@
 /**
- * Harness-gated work ledger (T1.P02.S06).
+ * Harness-gated work ledger.
  *
  * `@portfolio/layout-core` exposes one inert work observer: measured spans
  * (compile, validation passes, Scene resolve, admission, mesh build) and

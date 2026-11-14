@@ -1,5 +1,5 @@
 /**
- * Experience review 1 (R5) — the World environment presets.
+ * Experience review 1 — the World environment presets.
  *
  * One runtime-safe table shared by the Stage, its snapshots, Preview and the
  * published visit: Scene stores only the preset id (`environment.preset`), and
@@ -104,7 +104,7 @@ export function worldEnvironmentCenter(frame: Pick<WorldEnvironmentFrame, 'bound
 }
 
 /**
- * E10/R6 — the Sky's one Sun, resolved: a pure descriptor the Canvas light store
+ * The Sky's one Sun, resolved: a pure descriptor the Canvas light store
  * realizes. The Sun aims at the caster centre (the shadow bounds' centre, else
  * the ground centre), sits 2.5 reaches back along the preset's `from`
  * direction, and its orthographic shadow camera is a square of half-size

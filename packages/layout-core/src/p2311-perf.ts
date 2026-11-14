@@ -3,9 +3,9 @@
  *
  * Two inert-by-default consumers share these call sites:
  *
- * - the P23.11 diagnostic marks, which the editor enables only in dev builds
+ * - the diagnostic marks, which the editor enables only in dev builds
  *   through `__P2311_PERF__`;
- * - a {@link WorkObserver} (T1.P02.S06), installed only by a measurement
+ * - a {@link WorkObserver}, installed only by a measurement
  *   harness or a deterministic census. It receives every measured span's
  *   duration and every named work count, so per-stage time and count oracles
  *   read the same boundaries. It works in production builds, because the

@@ -352,7 +352,7 @@ export function planResizeClosedWallRadius(options: {
 }
 
 /**
- * D8 — a circular Wall's body drag is a rigid translation.
+ * A circular Wall's body drag is a rigid translation.
  *
  * A closed Wall has one Junction identity, so the straight-Wall chord solve is
  * meaningless (its chord is zero). This planner moves that one Junction and the

@@ -1,5 +1,5 @@
 /**
- * Experience profile controllers — guided, free and reduced motion (T3.P01.S06).
+ * Experience profile controllers — guided, free and reduced motion.
  *
  * These controllers translate an editorial invocation into a **Camera intent**:
  * a Cut realizes a resolved View, a Travel names one real Camera connection. They

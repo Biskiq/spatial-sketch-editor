@@ -1,12 +1,12 @@
 /**
- * `layout-wall-centerline.ts` — P23.11 canonical Wall-centerline helpers.
+ * `layout-wall-centerline.ts` — canonical Wall-centerline helpers.
  *
  * One seam between the canonical Wall representation and the curve kernel:
  * every consumer that needs Wall centerline geometry (compiler, topology,
  * Opening sets, planners) reads it through this module or the sampled output
  * of {@link wallCenterlineSegment}. Curve evaluation is never duplicated.
  *
- * P23.11 stores the curve as an explicit **cubic chain**: bend points plus one
+ * The centerline stores the curve as an explicit **cubic chain**: bend points plus one
  * control pair per cubic span. The read path never re-derives a control, so a
  * split is an exact cubical subdivision and a rigid move is an exact
  * translation. `deriveChainSpans` (write path) is the only place the smoothness
@@ -106,7 +106,7 @@ export function translateWallCenterline(
  * Stable across a split because the fragments derive their IDs from their own
  * canonical Wall ID, and never derived from time, randomness or array order.
  *
- * T1.P02.S01 §1 scope — deliberately NOT capture-derived. Its remaining call
+ * Deliberately NOT capture-derived. Its remaining call
  * sites are the curve planners (`planConvertWallToCurve`,
  * `planInsertWallCurveKnot`), which mint a bend point before a capture-shaped
  * intent owns that id. `planDissolveJunction` no longer calls it: the demoted
@@ -352,7 +352,7 @@ export function wallCenterlineSamples(
 }
 
 /**
- * P23B.4 correction (F1) — test-only observation of actual consumer sampling calls.
+ * Test-only observation of actual consumer sampling calls.
  *
  * While set, every `wallCenterlineSamples` invocation reports its inputs and result.
  * Unset (the production default) is zero behavior change beyond one undefined check.
@@ -406,7 +406,7 @@ export function hasWallSamplingObserverForTest(): boolean {
  *   (different centerline objects), so sharing is per key, never across keys (EQ-1).
  * - The key INCLUDES traversal (conservative form): `reverse` is derived independently,
  *   never served by reversing the `forward` array, until OR-2 proves otherwise.
- * - The key INCLUDES the Wall id (P23B.5 S1, completing this contract): the returned
+ * - The key INCLUDES the Wall id: the returned
  *   artefact carries `segmentId = wall.id`, so two Walls that share a centerline OBJECT
  *   and endpoints/traversal must still get their OWN entry. Sharing one entry would hand
  *   the second Wall the first Wall's metadata — a real API hazard, even though landed

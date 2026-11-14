@@ -1,8 +1,8 @@
 /**
- * X3 / decomposition contract S — named shell command dispatch.
+ * Named shell command dispatch.
  *
- * Selection, task, dock/tool, Find and destructive-action commands move out of
- * the route as one narrow dispatcher. Every command delegates to an existing
+ * Selection, task, dock/tool, Find and destructive-action commands go through
+ * one narrow dispatcher. Every command delegates to an existing
  * authority:
  *
  * - selection writes go through the facade/session canonical selection;
@@ -78,7 +78,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	 * Mirror a selection the host or an adapter made canonically.
 	 *
 	 * A contributed task may select a new subject after its own accepted install.
-	 * A new primary selection replaces the Experience subject (D10, one Card
+	 * A new primary selection replaces the Experience subject (one Card
 	 * selection); a revision-only requalification of the same subject leaves the
 	 * current Card selection alone.
 	 */
@@ -575,7 +575,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		}
 	}
 
-	/** R217.S20 — a Find preference entry writes the same browser preference the ⚙ writes. */
+	/** A Find preference entry writes the same browser preference the ⚙ writes. */
 	function runPreferenceEntry(id: string): void {
 		if (id === 'reduce-motion') {
 			shell.toggleReducedMotion();

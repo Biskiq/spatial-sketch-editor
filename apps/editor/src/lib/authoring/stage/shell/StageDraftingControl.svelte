@@ -4,7 +4,7 @@
 	 * inspection tools, Sky and the viewing preferences.
 	 *
 	 * It is a forest instrument on both readings. Every value is state the route
-	 * already owns; the bar only groups the controls that used to float apart.
+	 * already owns; the bar only groups those controls in one place.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageDraftingPatch, StageDraftingState } from '../stage-drafting';

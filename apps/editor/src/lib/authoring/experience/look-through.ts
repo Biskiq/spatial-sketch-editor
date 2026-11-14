@@ -1,5 +1,5 @@
 /**
- * R217.S28 — Look-through steps over the retained Camera presets (E7).
+ * Look-through steps over the retained Camera presets.
  *
  * Lens and Eye height are three-step shortcuts over exact authored Camera
  * values. The lens steps are the retained `CAMERA_LENS_PRESETS` (24, 50 and
@@ -32,7 +32,7 @@ export type EyeHeightStep = {
 	readonly metres: number;
 };
 
-/** Seated, the Camera default, and Raised (E7). */
+/** Seated, the Camera default, and Raised. */
 export const EYE_HEIGHT_STEPS: readonly EyeHeightStep[] = [
 	{ label: 'Seated', metres: 1.15 },
 	{ label: 'Standing', metres: 1.65 },

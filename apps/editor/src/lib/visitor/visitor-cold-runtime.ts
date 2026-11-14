@@ -1,5 +1,5 @@
 /**
- * P22.1 — store-free cold release preparation.
+ * Store-free cold release preparation.
  *
  * Takes a saved document plus caller-supplied verified P20 bytes and returns a
  * detached scene, compiled geometry, graph and a read-only

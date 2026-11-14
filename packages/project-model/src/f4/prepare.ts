@@ -6,7 +6,7 @@
  * function dispatches a captured intent to exactly one planner. Nothing here
  * reads a source, computes a digest, mints a revision or installs anything —
  * planning is deterministic and separate from the accepting boundary, which is
- * what makes replay comparable and what lets `T3.P01.S03` add unit planners on
+ * what makes replay comparable and what lets unit planners join on
  * the same seam without touching this file.
  *
  * `prepareIntent` keeps the "unchanged expected baseline" claim in one place: it
@@ -74,8 +74,8 @@ function registrationRefusal(reason: string, message: string): RegistrationRefus
 
 /**
  * The admission a planner registry grants. The defaults **are** the landed
- * `local-single-domain-v1` rule; a wider profile (T3.P01.S03's
- * `unit-acceptance-v1`) is an explicit option on the one registry rather than a
+ * `local-single-domain-v1` rule; a wider profile
+ * (`unit-acceptance-v1`) is an explicit option on the one registry rather than a
  * second registration loop, so the seam that admits a planner is single.
  */
 export type PlannerRegistryAdmission = {

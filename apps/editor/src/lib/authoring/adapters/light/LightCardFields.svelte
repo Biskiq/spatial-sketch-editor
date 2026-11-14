@@ -5,7 +5,7 @@
 
 <script lang="ts">
 	/**
-	 * T2 gallery UX recovery — the Light Card.
+	 * The Light Card.
 	 *
 	 * Everyday rows: Warmth · Brightness · Reach | Beam · Shadow.
 	 * Advanced expands in the same Card, below them, as a registry of groups with

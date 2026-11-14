@@ -121,7 +121,7 @@ function compileSessionlessOnce(document: LayoutDocumentWallFirst, sampling?: Wa
 }
 
 /**
- * E4 / I2 — the cold oracle. Always compiles from the document, never reads nor
+ * The cold oracle. Always compiles from the document, never reads nor
  * writes a recorded result, so a differential can never compare a session's
  * compile with that session's own record.
  */
@@ -136,7 +136,7 @@ export function compileWallFirstLayoutGeometryFresh(
 /**
  * Compile the authored Layout once into render-neutral geometry consumed by
  * Plan, editor 3D, and visitor 3D. Pure, deterministic, non-mutating,
- * visitor-safe. T1.P02.S05 retired the legacy adapter: every document is wall-first
+ * visitor-safe. Every document is wall-first
  * and this is the one compiler entry.
  *
  * Document-global Walls become the boundary segments (identity: `wallId` — the
@@ -170,7 +170,7 @@ export function compileWallFirstLayoutGeometry(
 	}
 	countWork('compile');
 	if (!reuse) {
-		// E4 / I2 — the one session-less read. A document that was already frozen
+		// The one session-less read. A document that was already frozen
 		// when its result was recorded cannot have changed since, so that record
 		// is its compile; an unfrozen document always compiles.
 		const canonical = !hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling);
@@ -185,7 +185,7 @@ export function compileWallFirstLayoutGeometry(
 		if (canonical) recordSessionlessCompile(document, result.geometry, result.issues);
 		return result;
 	}
-	// T1.P02.S06 D.3 (H1) — an incremental compile reports its own work: how many
+	// An incremental compile reports its own work: how many
 	// entities the canonical builders ran for, how many retained values were
 	// installed by reference, and how many structural comparisons that took.
 	// "Cold" means the store held no unit of any class when this compile began, so
@@ -249,7 +249,7 @@ function compileWallFirstLayoutGeometryOnce(
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 
 	const wallThicknessBySegmentId: Record<string, number> = {};
-	// P23.6H — the same canonical per-Wall loop also supplies the Opening
+	// The same canonical per-Wall loop also supplies the Opening
 	// vertical limit, so Wall-owned thickness and Wall-owned height reach the
 	// compiler through one adapter.
 	const openingHeightLimitBySegmentId: Record<string, number> = {};
@@ -258,10 +258,10 @@ function compileWallFirstLayoutGeometryOnce(
 		openingHeightLimitBySegmentId[wall.id] = wall.height;
 	}
 
-	// P23.6I (D6) — a wall-first Room's ceiling is the derived flat plane
+	// A wall-first Room's ceiling is the derived flat plane
 	// `floor.elevation + max(boundary Wall heights)`, computed once here and fed
 	// into the shared Room compile path. The Floor no longer supplies it.
-	// D7 applies: an unresolvable boundary is invalid state, not an architecture
+	// An unresolvable boundary is invalid state, not an architecture
 	// to invent a ceiling for — the shared core skips such a Room with a blocking
 	// `room_ceiling_undefined` issue and no fallback.
 	const ceilingElevationByRoomId = new Map<string, number>();
@@ -278,33 +278,33 @@ function compileWallFirstLayoutGeometryOnce(
 		}
 		if (!resolved || heights.length === 0) {
 			// No derived ceiling: the shared core owns the skip + blocking
-			// issue (D7) — never a manufactured ceiling.
+			// issue — never a manufactured ceiling.
 			continue;
 		}
 		ceilingElevationByRoomId.set(room.id, document.floor.elevation + Math.max(...heights));
 	}
 
-	// P23B.4 M-1: segment-identity map serving the shared-core room validation
+	// Segment-identity map serving the shared-core room validation
 	// from the chain derivation. One map for all rooms is sound: segment objects
 	// are created fresh per room above, so identity lookup can never alias rooms.
 	const preSampled = new Map<SampleableSegment, SampledSegment>();
-	// T1.P02.S06 D.1 (H3) — the Room × Opening join is an id index, not a scan:
+	// The Room × Opening join is an id index, not a scan:
 	// `document.openings` is grouped once and each Room reads only its own
 	// boundary Walls' openings. That read is boundary-ordered, so the compiled
 	// Room's Opening list is restored to document order below; together the two
 	// keep every compiled Opening list unchanged.
 	const openingsByHostWallId = openingsGroupedByWallId(document.openings);
-	// T1.P02.S06 D.1 (H3) — position of each Opening in `document.openings`. The
+	// Position of each Opening in `document.openings`. The
 	// join below reads the boundary (so it only visits this Room's own Openings),
 	// which is boundary order, not document order; the compiled Room's Opening
 	// list is document-ordered, so it is restored by this index rather than by a
 	// second scan of every Opening for every Room.
 	const openingOrderById = new Map(document.openings.map((opening, index) => [opening.id, index]));
-	// T1.P02.S06 D.3 (H1) — the Room-input pass is its own span, because in an
+	// The Room-input pass is its own span, because in an
 	// incremental compile it is the O(R) comparison term rather than the O(k)
 	// evaluation term, and the two must stay separable in an attribution.
 	const rooms: CompilerRoomSource[] = p2311Measure('incremental:room-inputs', () => document.rooms.map((room) => {
-		// T1.P02.S06 D.3 (H1) — the retained Room **input** is compared before it
+		// The retained Room **input** is compared before it
 		// is rebuilt. Everything below derives from the Room's own authored
 		// fields, its boundary Walls' authored centerlines and endpoint
 		// coordinates, those Walls' thickness/height (they reach the source as
@@ -355,7 +355,7 @@ function compileWallFirstLayoutGeometryOnce(
 		}
 		const segments: SampleableSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
-		// P23.11 — reverse-ref Opening offsets mirror by the **sampled arc
+		// Reverse-ref Opening offsets mirror by the **sampled arc
 		// length** of the host Wall's canonical centerline, never the Euclidean
 		// chord (straight Walls keep the identical chord value).
 		const arcLengthByWallId = new Map<string, number>();
@@ -373,17 +373,17 @@ function compileWallFirstLayoutGeometryOnce(
 			// The shared compiler core measures opening offsets from each
 			// boundary segment's start, so reverse refs also mirror offsets
 			// (o' = L − (o + w)) to keep them measured from the canonical
-			// Wall start downstream. P23.11: the centerline adapter supplies
+			// Wall start downstream. The centerline adapter supplies
 			// the segment, so curved Walls flow through the curve kernel
 			// unchanged (no second sampling path).
 			const reversed = ref.direction === 'reverse';
 			// Canonical endpoints + traversal flag: the adapter alone decides the
 			// walk direction, so a reversed ref cannot pair the chain with the
-			// wrong knot order (P23.11 slice 2).
+			// wrong knot order.
 			const segment = wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward');
 			segments.push(segment);
 			if (sampling) {
-				// P23B.4 M-1: serve the room-validation sampling below from the
+				// Serve the room-validation sampling below from the
 				// shared derivation (same key the face/topology gates use). Omitted
 				// from the map when the seam yields undefined so the core keeps its
 				// sampling-failed issue path exactly.
@@ -393,7 +393,7 @@ function compileWallFirstLayoutGeometryOnce(
 			if (!arcLengthByWallId.has(wall.id)) {
 				// Mirroring always measures along the CANONICAL traversal: an
 				// Opening offset is authored from the Wall's own start Junction.
-				// P23B.4 M-1: `:260` keeps 'forward' — a change here is a behaviour
+				// The arc-length site keeps 'forward' — a change here is a behaviour
 				// change, so the shared derivation is keyed forward like the seam.
 				const sampled = sampling
 					? sampling.samples(wall, start, end, 'forward')
@@ -448,7 +448,7 @@ function compileWallFirstLayoutGeometryOnce(
 		return source;
 	}));
 
-	// D7 is enforced inside the shared core: a Room with no derived ceiling is
+	// Ceiling resolution is enforced inside the shared core: a Room with no derived ceiling is
 	// skipped there with a blocking `room_ceiling_undefined` issue, so no
 	// post-hoc issue append is needed here.
 	return compileWallFirstWithPhysicalWalls(document, {
@@ -463,8 +463,7 @@ function floorElevationOf(document: LayoutDocumentWallFirst): number {
 }
 
 /**
- * Wall-first compile with canonical physical-Wall output (P23.9 compiler
- * prerequisite, acceptance-blocking). Every document Wall compiles exactly
+ * Wall-first compile with canonical physical-Wall output. Every document Wall compiles exactly
  * once into top-level `geometry.walls` (canonical, wall-start frame, keyed
  * by document-global Wall ID, no fake `roomId`). Room-derived walls are NOT
  * re-emitted: wall-first `CompiledRoom` records keep identity + floor/ceiling
@@ -484,7 +483,7 @@ function compileWallFirstWithPhysicalWalls(
 	sampling?: WallSamplingDerivation,
 	reuse?: LayoutCompileReuse
 ): CompiledLayoutGeometryResult {
-	// T1.P02.S06 D.1 (H3) — the room-derived point, span and Wall/Opening AABB
+	// The room-derived point, span and Wall/Opening AABB
 	// records are dropped below in favour of the canonical physical-Wall set, so
 	// this adapter asks the shared core not to build them. Bench 1 counted them
 	// as 76 M of a grid-L compile's 97 M cache-key characters plus their whole
@@ -515,12 +514,12 @@ function compileWallFirstWithPhysicalWalls(
 	// `free-standing` (none). Nothing here reads an authored field.
 	const derivedWallRoles = deriveLayoutWallRoles(document);
 	const physicalWalls: CompiledPhysicalWall[] = [];
-	// T1.P02.S06 D.1 (H3) — one grouping serves every Wall's Opening join below.
+	// One grouping serves every Wall's Opening join below.
 	const openingsByHostWallId = openingsGroupedByWallId(document.openings);
 	// Where each Wall's query AABB landed, so the Junction-resolution pass below
 	// replaces it in place instead of scanning the AABB list per Wall.
 	const wallAabbIndexByWallId = new Map<string, number>();
-	// T1.P02.S06 D.3 (H1) — per-Wall retention. A Wall unit keeps the authored
+	// Per-Wall retention. A Wall unit keeps the authored
 	// inputs it was compiled from, its own *unresolved* extent (a re-resolved
 	// miter can shrink as well as grow, so the base is what re-expansion starts
 	// from), the query records it contributed and its endpoint legs. The legs are
@@ -551,7 +550,7 @@ function compileWallFirstWithPhysicalWalls(
 		const start = pointById.get(wall.startJunctionId);
 		const end = pointById.get(wall.endJunctionId);
 		if (!start || !end) continue;
-		// T1.P02.S06 D.3 (H1) — the retained Wall is compared on exactly the
+		// The retained Wall is compared on exactly the
 		// inputs its compiled output is a function of: the authored Wall, its two
 		// endpoint coordinates, the Floor datum, the Openings it hosts, the derived
 		// role (a Room boundary change re-roles a Wall) and whether this compile
@@ -587,11 +586,11 @@ function compileWallFirstWithPhysicalWalls(
 			reuse.counters.wallsEvaluated += 1;
 			reuse.counters.openingsEvaluated += hostedOpenings.length;
 		}
-		// P23.11 — the canonical centerline adapter maps every Wall (line or
+		// The canonical centerline adapter maps every Wall (line or
 		// auto-bezier) onto the existing curve kernel; no second sampling path.
 		const segment = wallCenterlineSegment(wall, start, end, 'forward');
 		let sampled: SampledSegment;
-		// P23B.4 M-1: the physical loop serves the same forward key the arc-length
+		// The physical loop serves the same forward key the arc-length
 		// site uses. `undefined` keeps the historical skip exactly.
 		if (sampling) {
 			const shared = sampling.samples(wall, start, end, 'forward');
@@ -604,7 +603,7 @@ function compileWallFirstWithPhysicalWalls(
 				continue;
 			}
 		}
-		// T1.P02.S06 D.1 (H3) — Wall × Opening through the same id index the Room
+		// Wall × Opening through the same id index the Room
 		// join uses, instead of a full `document.openings` scan per Wall. The
 		// index preserves document order, so each Wall's Opening list is unchanged.
 		countWork('pairs:wall-opening', hostedOpenings.length);
@@ -612,11 +611,11 @@ function compileWallFirstWithPhysicalWalls(
 		// The host Wall's **geometry** dependency: built once and embedded by
 		// reference in every Opening key rather than re-encoded per Opening.
 		//
-		// T1.P02.S06 (H4 prerequisite) — this used to name the Wall's *identity*
-		// (`['physical-wall-geometry', floorId, wallId]`), so an Opening's key did
-		// not change when the Wall it sits on moved, even though `compileOpening`
-		// reads the sampled centerline to derive the Opening's point, tangent,
-		// yaw and center polyline. A `cacheKey` is a retention proof, so it must
+		// It names the Wall's geometry, not only its identity
+		// (`['physical-wall-geometry', floorId, wallId]`): `compileOpening` reads
+		// the sampled centerline to derive the Opening's point, tangent, yaw and
+		// center polyline, so an Opening's key must change when the Wall it sits
+		// on moves. A `cacheKey` is a retention proof, so it must
 		// name every input the Opening's compiled output depends on: the segment
 		// (authored centerline plus endpoint coordinates), the Floor datum and
 		// the Wall's thickness/height. It costs one key per Wall, not one per
@@ -630,7 +629,7 @@ function compileWallFirstWithPhysicalWalls(
 			wall.height,
 			floor.elevation
 		]));
-		// P23.6H — the Wall's own authoritative height decides its physical
+		// The Wall's own authoritative height decides its physical
 		// vertical extent (`topY = floor.elevation + wall.height`). Room/Floor
 		// envelopes stay Floor-derived; a partial-height Wall never lowers them.
 		const wallTop = floorElevation + wall.height;
@@ -661,7 +660,7 @@ function compileWallFirstWithPhysicalWalls(
 			startJunctionId: wall.startJunctionId,
 			endJunctionId: wall.endJunctionId
 		};
-		// P23.11 / Issue #6 — render-safe acceptance. A curved Wall whose local
+		// Render-safe acceptance. A curved Wall whose local
 		// bend is tighter than half its thickness renders as a folded or
 		// overlapping solid. That is a property of the compile output, so it is
 		// decided HERE, from the very samples the renderers consume, and reported
@@ -669,7 +668,7 @@ function compileWallFirstWithPhysicalWalls(
 		// Walls are skipped: their offsets are two parallel polylines with
 		// identical tangents, so neither branch of the predicate can fire.
 		// The gate's results are collected per Wall so they can be retained with it
-		// and replayed in document order by a reused Wall (H1).
+		// and replayed in document order by a reused Wall.
 		const wallClearanceIssues: LayoutGeometryIssue[] = [];
 		if (wall.centerline.kind !== 'line') {
 			const clearance = p2311Measure('finite-thickness', () => wallOffsetClearanceFailure(compiled.samples, wall.thickness));
@@ -717,7 +716,7 @@ function compileWallFirstWithPhysicalWalls(
 	});
 
 	physicalWalls.sort((a, b) => (a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0));
-	// P23.15 — compile canonical Junction topology: canonical incidence + the
+	// Compile canonical Junction topology: canonical incidence + the
 	// Junction-local resolution. Renderers/visitors consume these facts and never
 	// receive the document or solve topology themselves.
 	const junctions = p2311Measure('junction-resolution', () =>
@@ -730,7 +729,7 @@ function compileWallFirstWithPhysicalWalls(
 	// counterpart, which left `bounds3` — and therefore the Floor aggregate and
 	// the wall query AABB — covering less than the emitted mesh.
 	//
-	// T1.P02.S06 D.3 (H1) — the final extent is computed **from the retained
+	// The final extent is computed **from the retained
 	// base** rather than by including into the value already held, so reusing a
 	// Wall never accumulates an earlier expansion and a miter that shrinks is
 	// reflected. When nothing moved the computed extent equals the held one and
@@ -748,7 +747,7 @@ function compileWallFirstWithPhysicalWalls(
 			// The Wall query AABB was created before the Junction resolve, so it is
 			// stale by construction once resolved geometry extends the Wall.
 			// Reconcile it from the final bounds instead of leaving a pre-resolution
-			// record; T1.P02.S06 D.1 (H3) recorded its position, so this is one
+			// record; T1.P02.S06 D.1 recorded its position, so this is one
 			// lookup instead of an AABB-list scan per Wall.
 			const index = wallAabbIndexByWallId.get(wall.wallId);
 			countWork('pairs:wall-aabb', index === undefined ? 0 : 1);
@@ -798,7 +797,7 @@ function compileWallFirstWithPhysicalWalls(
 	// identity, floor/ceiling semantics, floor polygons and bounds, but their
 	// `walls`/`openings` are views the canonical collection now owns. Every
 	// physical Wall therefore has exactly one compiled + query representation.
-	// T1.P02.S06 D.3 (H1) — an unchanged Room's stripped view is retained too, so
+	// An unchanged Room's stripped view is retained too, so
 	// the whole output graph keeps its identity across compiles (the rendering
 	// layer's retention proof then compares references rather than rebuilding).
 	const strippedByRoomId = new Map<string, CompiledRoom>();
@@ -927,7 +926,7 @@ function compileWallFirstJunctions(
 	};
 	for (const wall of walls) {
 		if (wall.samples.length < 2) continue;
-		// T1.P02.S06 D.3 (H1) — a retained Wall already carries its endpoint legs,
+		// A retained Wall already carries its endpoint legs,
 		// derived when the Wall was compiled, so the Junction pass never re-derives
 		// one per Wall per compile.
 		const retainedLegs = legsByWallId?.get(wall.wallId);
@@ -956,7 +955,7 @@ function compileWallFirstJunctions(
 				(a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0) ||
 				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
 		);
-		// T1.P02.S06 D.3 (H1) — a Junction's resolved geometry is a function of its
+		// A Junction's resolved geometry is a function of its
 		// point, the endpoint facts of every incident Wall leg, the Floor id (its
 		// compiled id is `compiledJunctionId(floor.id, junctionId)`) and the Floor
 		// elevation (its `bounds3` vertical extent). All four are in hand here, so
@@ -975,7 +974,7 @@ function compileWallFirstJunctions(
 		const junctionIssues: LayoutGeometryIssue[] = [];
 		const resolved = resolveJunctionGeometry(junctionId, point, legs);
 		junctionIssues.push(...resolved.issues);
-		// P23.15 — canonical seam acceptance. Validity is decided HERE, from the
+		// Canonical seam acceptance. Validity is decided HERE, from the
 		// resolved geometry the renderers consume, so a mesh builder is never the
 		// first place a seam failure is discovered. The resolution already reports
 		// a fold (it needs that fact for control flow); this de-duplicates by code
@@ -1118,7 +1117,7 @@ function includeBounds2(bounds: LayoutBounds2, min: LayoutVec2, max: LayoutVec2)
  * Query records for one canonical physical Wall — no fake `roomId`.
  *
  * Returns the records instead of pushing them into the shared builder so the
- * incremental compile (H1) can retain them with the Wall and splice them back in
+ * incremental compile can retain them with the Wall and splice them back in
  * document order without rebuilding; the shared builder receives exactly those
  * records in the same order.
  */
@@ -1346,7 +1345,7 @@ function spanRecordPhysical(
  *
  * Callers that cannot hold state call `compileWallFirstLayoutGeometry` with no
  * session bound: the canonical read returns the result recorded for that exact
- * frozen document object, or compiles once and records it (E4 / I2).
+ * frozen document object, or compiles once and records it.
  * `compileWallFirstLayoutGeometryFresh` is the cold oracle for differentials.
  */
 export type LayoutCompileSession = {
@@ -1468,7 +1467,7 @@ export function withLayoutCompileSession<T>(session: LayoutCompileSession | unde
  *   polygons and Room AABBs — because that adapter replaces every room-derived
  *   point, span and Wall/Opening AABB with the canonical physical-Wall set.
  *
- * T1.P02.S06 D.1 (H3): the wall-first adapter used to build the discarded set
+ * The wall-first adapter used to build the discarded set
  * and then drop it, which Bench 1 counted as most of a grid-L compile's
  * cache-key characters and geometry work.
  */
@@ -1495,7 +1494,7 @@ export function compileLayoutGeometrySource(
 	for (const [floorIndex, floorEntry] of source.floors.entries()) {
 		const floor = floorEntry.floor;
 		const floorRoomIds: string[] = [];
-		// P23.6I — the Floor no longer carries a vertical extent, so a storey
+		// The Floor no longer carries a vertical extent, so a storey
 		// scalar is kept only as a *cache-key dependency* where a source supplies
 		// one (wall-first supplies each Room's derived ceiling instead). Keys for
 		// sources without a storey height are therefore unchanged.
@@ -1519,7 +1518,7 @@ export function compileLayoutGeometrySource(
 				});
 				continue;
 			}
-			// T1.P02.S06 D.3 (H1) — the core's Room compile is keyed by the identity
+			// The core's Room compile is keyed by the identity
 			// of the `CompilerRoomSource` it was handed. That value IS the complete
 			// input of `prepareLayoutRoomSegments` + validation + `compileRoom`, so
 			// an identical source object proves an identical result without
@@ -1599,7 +1598,7 @@ export function compileLayoutGeometrySource(
 			includeBounds3(floorMin, floorMax, compiledRoom.bounds3.min, compiledRoom.bounds3.max);
 		}
 
-		// T1.P02.S06 D.1 (H3) — the object × Room join is an id-set membership test,
+		// The object × Room join is an id-set membership test,
 		// not a scan over the floor's Rooms per object.
 		const floorRoomIdSet = new Set(floorEntry.rooms.map((roomSource) => roomSource.room.id));
 		for (const object of objects) {
@@ -1663,7 +1662,7 @@ export function compileLayoutGeometrySource(
 
 /**
  * Group authored Openings by hosting Wall id, preserving document order inside
- * each group. T1.P02.S06 D.1 (H3): one grouping replaces the Room × Opening and
+ * each group. T1.P02.S06 D.1: one grouping replaces the Room × Opening and
  * Wall × Opening scans (`find` / `filter` per Room and per Wall).
  */
 function openingsGroupedByWallId<TOpening extends { readonly wallId: string }>(
@@ -1687,7 +1686,7 @@ function compileRoom(
 ): CompiledRoom {
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
-	// P23.6I — a wall-first Room carries its derived ceiling (`floor.elevation +
+	// A wall-first Room carries its derived ceiling (`floor.elevation +
 	// max(boundary Wall heights)`); a source that supplies no derived ceiling
 	// keeps the storey-derived one, and no format-6 source supplies a storey
 	// height, so a wall-first Room always takes the derived value here.
@@ -1730,12 +1729,12 @@ function compileRoom(
 		walls = roomSource.boundary.segments.map((segment, index) => {
 			const sampled = sampledSegments[index]!;
 			const openings = openingsBySegment.get(segment.id) ?? [];
-			// P23.0b: wall thickness is Wall-owned in the wall-first schema. The
+			// Wall thickness is Wall-owned in the wall-first schema. The
 			// per-wall override keeps every downstream record identical in shape;
 			// only the thickness value may differ per wall. Cache keys remain
 			// structural (`thickness` participates where it always did).
 			const wallThickness = roomSource.wallThicknessBySegmentId?.[segment.id] ?? room.wallThickness;
-			// T1.P02.S06 D.1 (H3) — the segment's dependency key is built once and
+			// The segment's dependency key is built once and
 			// embedded by reference in this Wall's key and in every hosted Opening's
 			// key, instead of being re-serialized and re-escaped at each level.
 			const segmentDependency = cacheKeyDependency(cacheKeyOf([
@@ -1805,11 +1804,11 @@ function compileRoom(
 			room.floorThickness,
 			room.ceilingThickness,
 			roomSource.openings,
-			// T1.P02.S06 D.1 (H3) — only the thicknesses this Room's own segments
-			// read. The whole-document per-Wall thickness map used to be embedded
-			// in every Room key, which made one key O(document walls) and a compile
-			// O(rooms × walls) characters: at grid-L, 12.8 M of the compile's 97 M
-			// key characters came from 196 Room keys. The pairs are ordered by
+			// Only the thicknesses this Room's own segments
+			// read. Embedding the whole-document per-Wall thickness map in every
+			// Room key would make one key O(document walls) and a compile
+			// O(rooms × walls) characters (at grid-L, 12.8 M of 97 M key
+			// characters from 196 Room keys). The pairs are ordered by
 			// boundary, so the key stays a deterministic function of the Room's own
 			// inputs (equal iff equal).
 			...(roomSource.wallThicknessBySegmentId
@@ -1838,7 +1837,7 @@ function compileOpening(
 	roomId: string,
 	segmentDependency: CacheKeyDependency
 ): CompiledOpening {
-	// The centre frame and Plan polyline are the shared I5 builders in
+	// The centre frame and Plan polyline are the shared builders in
 	// `layout-geometry-curve.ts`; a closed Wall is periodic there.
 	const frame = openingCenterFrame(sampled, opening.offset, opening.width);
 	const { point, tangent, closedHost } = frame;

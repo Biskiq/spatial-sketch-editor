@@ -854,7 +854,7 @@ export function createWallGestureSession({
 			wallGesture.neighbours = [];
 			wallGesture.snap = null;
 			publishRefusal('Drag the endpoint back across the fixed endpoint to name a length.');
-			// T3.P03.S02: a refused sample installs no preview, so the harness must
+			// A refused sample installs no preview, so the harness must
 			// see it as refused rather than as an input that never arrived.
 			perfMark('wall-preview:refused', { wallId: wallGesture.frame.wallId });
 			services.stage.notifySurfaceChange();
@@ -1324,7 +1324,7 @@ export function createWallGestureSession({
 		point: LayoutVec2 | null = null,
 		attemptGeometry: CandidatePaperGeometry | null = null
 	): Promise<void> {
-		// T3.P03.S02: release commits exactly once; that commit is the command
+		// Release commits exactly once; that commit is the command
 		// whose completion the performance flow measures.
 		perfMark('command:commit', { wallId });
 		const snapshot = services.stage.snapshot();

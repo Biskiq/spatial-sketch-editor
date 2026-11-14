@@ -1,7 +1,7 @@
 /**
- * `layout-align.ts` — P23.2 bounded alignment for Layout objects.
+ * `layout-align.ts` — bounded alignment for Layout objects.
  *
- * Scope (P23.2 plan §Alignment): one selected supported Layout object → one
+ * Scope: one selected supported Layout object → one
  * explicit reference. References are canonical compiled records:
  *
  *   - another Layout object's compiled plan footprint AABB,

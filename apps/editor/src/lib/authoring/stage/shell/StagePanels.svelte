@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * X3 / decomposition contract S — the Stage panels region.
+	 * The Stage panels region.
 	 *
 	 * The Index (and its constrained scrim), the one selection Card, the parked
-	 * task notice and the Keys reference move here as one region. They remain
+	 * task notice and the Keys reference form one region. They remain
 	 * their own owners:
 	 *
 	 * - `EditorIndex` reads the world-index model and the Experience Index groups;
@@ -55,7 +55,7 @@
 	<EditorIndex {...index} />
 {/if}
 <!--
-	R217.S23 — at a constrained width an open Index is a sheet over the Stage. Its
+	At a constrained width an open Index is a sheet over the Stage. Its
 	scrim is an explicit, bounded close target: it covers the Stage above the lower
 	column's measured span and sits beneath the dock, palette, drafting controls and
 	Card, so every one of them stays usable behind the sheet.
@@ -90,7 +90,7 @@
 
 {#if !previewing && keysOpen}
 	<!--
-		R217.S20: the Keys reference, opened from Find. Its rows read the dock's
+		The Keys reference, opened from Find. Its rows read the dock's
 		own shortcut map, so the list cannot drift from the keys that work.
 	-->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->

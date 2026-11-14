@@ -1,5 +1,5 @@
 /**
- * T2.P01.S01 — deterministic `place-object` candidate preparation.
+ * Deterministic `place-object` candidate preparation.
  *
  * One pure function turns captured inputs into one candidate Scene or one typed
  * refusal. It allocates nothing, reads no clock, no catalogue, no mesh and no

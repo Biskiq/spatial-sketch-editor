@@ -1,5 +1,5 @@
 /**
- * T2.S3 — the one light-unit vocabulary.
+ * The one light-unit vocabulary.
  *
  * Gate A measured `NoToneMapping`, exposure 1.0, sRGB output and a π reference
  * intensity for a point light at one metre. These helpers are the editor's only

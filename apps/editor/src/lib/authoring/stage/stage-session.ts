@@ -285,8 +285,8 @@ export type StageSession = {
 	 * were projected in the reading that is ending). `continue-after-revalidation`
 	 * keeps it: the accepted revision is unchanged, so the operation it names is
 	 * still the same operation. `suspend-proposal` keeps the lease but reports the
-	 * proposal suspended — S02 has no proposal writer, so that is the whole effect
-	 * today and the reason it is reported rather than silently assumed.
+	 * proposal suspended — the session has no proposal writer, so that is the whole
+	 * effect and the reason it is reported rather than silently assumed.
 	 */
 	applyReadingChange(): GestureReadingChange;
 	/** Validate-first, then atomically cancel/clear/swap. */
@@ -677,7 +677,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			}
 			// `continue-after-revalidation` and `suspend-proposal` both keep the lease:
 			// the reading is a projection of the same accepted revision, so the captured
-			// operation is unchanged. Only a proposal would be withheld, and S02 has no
+			// operation is unchanged. Only a proposal would be withheld, and the session has no
 			// proposal writer — reported rather than silently assumed.
 			return { cancelled: false, suspended: lease.policy === 'suspend-proposal', owner: lease.owner };
 		},
@@ -720,7 +720,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				const previousSelection = layoutPrimary();
 				const previousOrdered = selectionValue;
 				const closedTask = task !== null && taskStatus === 'active';
-				// S02 has no operation-parameter revalidation, so a gesture lease whose
+				// The session has no operation-parameter revalidation, so a gesture lease whose
 				// revision just expired cannot legitimately continue: it is released and
 				// reported instead of silently carrying a stale proposal forward.
 				const lease = activeGesture?.lease;

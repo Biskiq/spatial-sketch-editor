@@ -5,7 +5,7 @@
 
 <script lang="ts">
 	/**
-	 * The Guide instrument (R217.S25): the Experience's Stops as 118 px cards with their
+	 * The Guide instrument: the Experience's Stops as 118 px cards with their
 	 * connectors, the header (name, + Stop, compact, close) and the Stop-order bar. It sits
 	 * in the lower column above the dock, in the shared forest material.
 	 *
@@ -79,7 +79,7 @@
 	let pacingWrap = $state<HTMLElement | null>(null);
 	let pacingButton = $state<HTMLButtonElement | null>(null);
 
-	// ---- R217.S30: the Stage owns the one ephemeral playback session ----
+	// ---- The Stage owns the one ephemeral playback session ----
 
 	const canPlay = $derived(playback.map !== null || (controller?.playbackSource ?? null) !== null);
 	const stopTimes = $derived(
@@ -487,7 +487,7 @@
 		await addStop(presentationId);
 	}
 
-	// ---- Slice 5: rename, Guide actions and the pacing popover ----
+	// ---- Rename, Guide actions and the pacing popover ----
 
 	async function startRename(): Promise<void> {
 		if (guide === null) return;
@@ -1737,7 +1737,7 @@
 		display: grid;
 		place-items: center;
 	}
-	/* Adjacency is drawn only for a connector whose destination is the neighbour (D11). */
+	/* Adjacency is drawn only for a connector whose destination is the neighbour. */
 	.slot.adjacent::before {
 		content: '';
 		position: absolute;
@@ -1805,7 +1805,7 @@
 		pointer-events: none;
 	}
 
-	/* ---- R217.S30: time timeline ---- */
+	/* ---- Time timeline ---- */
 	.transport-cluster {
 		display: inline-flex;
 		align-items: center;

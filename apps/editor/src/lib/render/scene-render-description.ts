@@ -1,9 +1,9 @@
 /**
- * E7/R4 — the Scene render description: resolved Scene in, frozen items out.
+ * The Scene render description: resolved Scene in, frozen items out.
  *
- * `renderer-refactor.md` §2 makes this the missing layer for Scene content. The
- * accepted Scene is already a derived description (one resolution per changed
- * unit, retained by G2/E2); this module turns it into per-drawable items — what
+ * This is the render-description layer for Scene content. The accepted Scene is
+ * already a derived description (one resolution per changed unit, retained per
+ * unit); this module turns it into per-drawable items — what
  * to draw, never how — and memoises the conversion by the Scene value's identity.
  *
  * Two properties are the point:
@@ -20,8 +20,7 @@
  * Forms are the one content family whose geometry is not unit-scale. The item
  * carries the kernel's canonical evaluated mesh (from the existing evaluation
  * cache) so the geometry store can build its one buffer without an evaluator of
- * its own; when the lazy form kernel has not arrived yet, form items are omitted
- * — exactly what the lazy `EntityForm` mount did before them.
+ * its own; when the lazy form kernel has not arrived yet, form items are omitted.
  */
 import {
 	isSceneFormEntity,
@@ -112,8 +111,8 @@ function primitiveGeometry(entity: ScenePrimitiveEntity): {
 				scale: [entity.dimensions.width, entity.dimensions.height, 1]
 			};
 		case 'cylinder':
-			// A unit cylinder scaled to `(2r, h, 2r)` is the geometry the component
-			// built at size, vertex for vertex (R4's parity test proves it).
+			// A unit cylinder scaled to `(2r, h, 2r)` matches a cylinder built at
+			// size, vertex for vertex (the geometry parity test proves it).
 			return {
 				spec: { kind: 'unit', shape: 'cylinder', radialSegments: 32 },
 				scale: [entity.dimensions.radius * 2, entity.dimensions.height, entity.dimensions.radius * 2]
@@ -187,7 +186,7 @@ function itemKey(
 }
 
 /**
- * E9/R5 — one Artwork's resolved item: the frame layout evaluated once.
+ * One Artwork's resolved item: the frame layout evaluated once.
  *
  * Exported because the Stage's placement ghost is the same handler over one
  * item; it is still this one conversion, not a second reading of the frame.
@@ -335,7 +334,7 @@ export type SceneModelInput = {
 };
 
 /**
- * E8/R5 — one model's resolved item. The catalogue record, the fallback body and
+ * One model's resolved item. The catalogue record, the fallback body and
  * the shadow defaults are decided here once, with the rules `AssetModel` applied:
  *
  * - the placement fallback wins; otherwise the catalogue's; a creator model (absent
@@ -514,8 +513,8 @@ export function describeSceneRender(
 			}
 			if (!isSceneFormEntity(entity)) continue;
 			// Until the lazy kernel arrives a form has no drawable geometry. The
-			// description omits it exactly as the old `{#if FormComponent}` did,
-			// and a new description is built when the kernel arrives.
+			// description omits it, and a new description is built when the kernel
+			// arrives.
 			const form = forms?.evaluate(entity.form) ?? null;
 			if (form === null) continue;
 			const look = sceneLookFor(

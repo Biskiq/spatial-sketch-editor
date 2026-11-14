@@ -1,5 +1,5 @@
 /**
- * E9/R5 — the retained Artwork handler of the Scene entity representation.
+ * The retained Artwork handler of the Scene entity representation.
  *
  * `EntityArtwork.svelte` mounted one component, four meshes, four geometries and
  * up to six materials per Artwork. This handler draws the same result from the
@@ -22,7 +22,7 @@
  * moves the retained group, a body edit rebuilds the meshes and their leases
  * while keeping the loaded image, and a source edit releases the image lease.
  *
- * **Retained portability exception (R5).** An image with transparent texels
+ * **Retained portability exception.** An image with transparent texels
  * keeps custom depth and distance materials with `alphaTest: 0.5`, so its shadow
  * has the image's silhouette while the surface still blends every texel.
  * Moving `alphaTest` onto the surface would give the same shadow but would also

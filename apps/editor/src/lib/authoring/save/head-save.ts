@@ -1,10 +1,10 @@
 /**
- * T1.P01.S04 — the PLATE **Head** Save integration.
+ * The PLATE **Head** Save integration.
  *
- * The protocol, the server and the client state machine are `T3.P01.S02`'s
- * (`createSaveState`); this module builds none of them. It mounts that state in
- * Head vocabulary and owns the three host obligations the S02 pair record
- * assigned to the Head:
+ * The protocol, the server and the client state machine belong to the Save
+ * contract (`createSaveState`); this module builds none of them. It mounts that
+ * state in Head vocabulary and owns the three host obligations assigned to the
+ * Head:
  *
  * 1. **One label and one visible reason** for the Save control. The Head never
  *    renders a dead button: a state that cannot save says why.

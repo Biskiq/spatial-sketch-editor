@@ -1,7 +1,7 @@
 import { registerCowDocumentDelta } from './layout-world-index';
 /**
- * `layout-room-move.ts` — P23.6a: rigid Room-unit translation for wall-first
- * Layout documents ([P23.6a plan](../../../../docs/roadmap/p23-layout-depth/2026-09-12-P23.6a-wall-first-room-unit-move.md)).
+ * `layout-room-move.ts` — rigid Room-unit translation for wall-first
+ * Layout documents.
  *
  * In wall-first Layout a Room is persistent semantic identity reconciled from
  * topology, not an authored polygon, so a whole-Room move translates canonical
@@ -24,10 +24,10 @@ import { registerCowDocumentDelta } from './layout-world-index';
  * group, not a lone Room: Rooms joined through shared boundary Junctions cannot
  * be separated without detaching architecture, so dragging any member moves the
  * whole group rigidly while the shared interior Walls travel exactly once. A
- * Room with no shared boundary Junctions is a group of one — the original
- * P23.6a behaviour, discovered rather than special-cased.
+ * Room with no shared boundary Junctions is a group of one — the single-Room
+ * move, discovered rather than special-cased.
  *
- * Guarantees (P23.6a D3/D4/D5/D7):
+ * Guarantees:
  * - Wall `id`/`role`/`thickness`/`height`, Opening identity and semantics,
  *   Room identity and metadata are preserved exactly — only Junction points and
  *   explicitly associated object X/Z change;
@@ -113,7 +113,7 @@ export type RoomMovePlan =
 	  }
 	| { kind: 'rejected'; rejection: RoomMoveRejection };
 
-/** P23.8 result narrowing: `RoomReconciliation` carries no `kind` discriminant. */
+/** Result narrowing: `RoomReconciliation` carries no `kind` discriminant. */
 function isReconciliationFailure(
 	result: ReconciliationResult
 ): result is ReconciliationFailure {
@@ -201,7 +201,7 @@ export function roomUnitMoveCandidate(
 					}
 				: junction
 		),
-		// P23.11 — a moved Wall's curve anchors are absolute document X/Z, so
+		// A moved Wall's curve anchors are absolute document X/Z, so
 		// they translate with the same delta as its Junctions. Anchors left
 		// behind would not preserve the moved shape: the curve would swing back
 		// toward the baseline position and can cross a Wall outside the move
@@ -409,7 +409,7 @@ export function planWallFirstRoomMove(
 		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
 	}
 
-	// Shared isolation policy (P23.6a S1) in its group scope (amendment A): the
+	// Shared isolation policy in its group scope (amendment A): the
 	// movable unit is the connected Room group containing this Room.
 	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
 	if (isolation.kind === 'rejected') {
@@ -461,7 +461,7 @@ export function planWallFirstRoomRotation(
 		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
 	}
 
-	// Shared isolation policy (P23.6a S1) in its group scope: the rotatable unit is
+	// Shared isolation policy in its group scope: the rotatable unit is
 	// the connected Room group containing this Room, exactly as for translation.
 	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
 	if (isolation.kind === 'rejected') {
@@ -504,10 +504,10 @@ function finalizeRoomUnitMotion(
 	candidateDocument: LayoutDocumentWallFirst,
 	operation: 'room-move' | 'room-rotate'
 ): RoomMovePlan {
-	// P23.6H/P23.6I — Wall records carry no moved field, so every authored `height`
+	// Wall records carry no moved field, so every authored `height`
 	// survives verbatim and no Floor-level quantity is ever consulted.
 
-	// --- explicit boundary-lineage correspondence (D6) ---------------------
+	// --- explicit boundary-lineage correspondence ---------------------
 	// A rigid motion with unchanged wall IDs and directions leaves the canonical
 	// boundary-cycle key invariant, so correspondence is exact key equality over
 	// every predecessor Room — no overlap ground truth, so arbitrarily long moves
@@ -543,7 +543,7 @@ function finalizeRoomUnitMotion(
 		return reject('room_identity_lost', rejection.message, rejection.roomIds);
 	}
 
-	// --- global identity preservation, asserted (D7) ------------------------
+	// --- global identity preservation, asserted ------------------------
 	const identityIssue = assertRoomIdentityPreserved(document, reconciliation, {
 		roomId,
 		allocationAttempted: attemptedAllocation.value
@@ -554,7 +554,7 @@ function finalizeRoomUnitMotion(
 
 	const reconciled = reconciliation.document;
 
-	// --- canonical gates (D9) ----------------------------------------------
+	// --- canonical gates ----------------------------------------------
 	const structural = validateWallFirstLayoutDocument(reconciled);
 	if (!structural.success) {
 		return reject(

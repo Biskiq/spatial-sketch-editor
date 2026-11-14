@@ -1,5 +1,5 @@
 /**
- * T1 A2 — one Join intent over the retained `planDissolveJunction` planner.
+ * One Join intent over the retained `planDissolveJunction` planner.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |

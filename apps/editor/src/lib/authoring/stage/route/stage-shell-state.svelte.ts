@@ -1,9 +1,8 @@
 /**
- * X3 / decomposition contract S — the mounted shell's presentation state.
+ * The mounted shell's presentation state.
  *
  * Disclosure and focus state, browser preferences, the responsive width facts
- * and the Grid/Snap + Height Sheet bindings used to be route-local variables.
- * They are session view state, never authored content, and they belong to one
+ * and the Grid/Snap + Height Sheet bindings are session view state, never authored content, and they belong to one
  * owner so the route can remain a composition root.
  *
  * This controller writes only host view state:
@@ -104,7 +103,7 @@ export function createStageShellState(input: StageShellStateInput) {
 
 	/** Whether the Keys reference is open; it lives in Find and closes with its own control. */
 	let keysOpen = $state(false);
-	/** R217.S29 Show ▾ — session-only Stage drawing flags; all on by default. */
+	/** Show ▾ — session-only Stage drawing flags; all on by default. */
 	let showOpen = $state(false);
 	let showMode = $state<'whole' | 'selection'>('whole');
 	let showMarkers = $state(true);
@@ -116,7 +115,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	let cardOpen = $state(true);
 	/** Bumped by an Index double-click: the Card opens its inline name editor. */
 	let cardRenameRequest = $state(0);
-	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades (D36). */
+	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades. */
 	let cardGesturing = $state(false);
 
 	/** Whether the armed tool's palette is open above the dock. */
@@ -150,7 +149,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	 */
 	let pendingDelete = $state<StagePendingDelete | null>(null);
 
-	/** R217.S10 — the host's own tools, bound to the live facade. */
+	/** The host's own tools, bound to the live facade. */
 	let measureTool = $state.raw<StageMeasureController | null>(null);
 	let eraserTool = $state.raw<StageEraserController | null>(null);
 	let hostToolOverlay = $state.raw<StageHostToolOverlay | null>(null);

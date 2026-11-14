@@ -230,8 +230,8 @@ export function prepareValidatedUnitRuntime(
 	/**
 	 * An optional incremental compile store owned by the caller's surface. A long-
 	 * lived host passes the same store for every preparation, so a compile after
-	 * one accepted edit reuses every Layout entity the edit did not touch
-	 * (T1.P02.S06 D.3). Absent, preparation is the cold canonical compile — the
+	 * one accepted edit reuses every Layout entity the edit did not touch.
+	 * Absent, preparation is the cold canonical compile — the
 	 * visitor runtime's own path, which must not carry editor state between sources.
 	 */
 	compileSession?: LayoutCompileSession,

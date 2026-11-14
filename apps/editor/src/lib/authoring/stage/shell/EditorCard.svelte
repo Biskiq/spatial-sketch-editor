@@ -33,7 +33,7 @@
 	const moreByKind = new Map<string, boolean>();
 
 	/**
-	 * R217.S26 — what a danger item discloses before it runs: the consequence block reads
+	 * What a danger item discloses before it runs: the consequence block reads
 	 * the effect lines (and, when the removal needs one, a choice such as the new Default)
 	 * and runs only after the creator presses Remove. It is shown in place, never as a modal.
 	 */
@@ -56,10 +56,10 @@
 		readonly disabled?: boolean;
 		/** Why a disabled item cannot run; shown as its hint, its title and to assistive technology. */
 		readonly reason?: string;
-		/** R217.S26: a destructive item. It sits at the end after a rule, in red, and runs through `consequence`. */
+		/** A destructive item. It sits at the end after a rule, in red, and runs through `consequence`. */
 		readonly danger?: boolean;
 		readonly consequence?: CardConsequence;
-		/** R217.S26: a submenu (such as Add to Guide ▸); the item opens it in place instead of running. */
+		/** A submenu (such as Add to Guide ▸); the item opens it in place instead of running. */
 		readonly children?: readonly CardMenuItem[];
 		readonly run?: () => void;
 	};
@@ -93,13 +93,13 @@
 		nameWriter?: {
 			readonly value: string;
 			commit(name: string): Promise<{ readonly kind: string; readonly message?: string }>;
-			/** R217.S26: blur commits too (the Experience rename fields); Esc still cancels. */
+			/** Blur commits too (the Experience rename fields); Esc still cancels. */
 			readonly commitOnBlur?: boolean;
 			/** The refusal an empty name shows; `Enter a name.` when absent. */
 			readonly emptyMessage?: string;
 		} | null;
 		/**
-		 * The subject's contributed **ordinary-field writer** (T1.P02.S02). The Card is
+		 * The subject's contributed **ordinary-field writer**. The Card is
 		 * the one writer for these facts — the Dimensions task and its route are
 		 * retired — so the fields render here through the owning domain's own
 		 * controller, never through a shell-built intent.
@@ -132,12 +132,12 @@
 		 */
 		menu?: readonly CardMenuItem[] | null;
 		/**
-		 * R217.S26 (E17): the previous selection, when it is not the kind line's parent. The kind
+		 * The previous selection, when it is not the kind line's parent. The kind
 		 * line shows it as *‹ Stop 2* before the kind; it changes what is looked at, never undoes.
 		 */
 		back?: { readonly label: string; readonly onBack: () => void } | null;
 		/**
-		 * R217.S22 (D36): a live authored gesture on the Stage. The Card fades and takes no
+		 * A live authored gesture on the Stage. The Card fades and takes no
 		 * pointer events until it ends, so the subject being edited stays visible. Only the
 		 * lease changes this; the Card's position, fold and facts do not.
 		 */
@@ -348,7 +348,7 @@
 		actionTrigger?.focus();
 	}
 
-	/** The menu's ordinary items first; danger items after a rule, at the end (R217.S26). */
+	/** The menu's ordinary items first; danger items after a rule, at the end. */
 	const ordinaryItems = $derived((menu ?? []).filter((item) => item.danger !== true));
 	const dangerItems = $derived((menu ?? []).filter((item) => item.danger === true));
 	let openSubmenu = $state<string | null>(null);

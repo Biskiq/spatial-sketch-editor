@@ -1,6 +1,5 @@
 /**
- * `layout-wall-openings.ts` — canonical wall-first Opening domain operations
- * (P23.3).
+ * `layout-wall-openings.ts` — canonical wall-first Opening domain operations.
  *
  * One authored Opening record per physical opening, hosted by one canonical
  * Wall (`Opening.wallId`), `offset` in physical meters from the canonical Wall

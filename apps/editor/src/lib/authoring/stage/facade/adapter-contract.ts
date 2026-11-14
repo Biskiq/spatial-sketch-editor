@@ -197,7 +197,7 @@ export type StageKeyboardIntent =
 	| { readonly kind: 'type'; readonly key: string };
 
 /**
- * One **Ink reading** a domain offers to the one Pen (decision D5).
+ * One **Ink reading** a domain offers to the one Pen.
  *
  * Ink stays one tool with one palette and one stroke buffer. A reading is a
  * session a contributing domain owns: it receives the pointer and command keys
@@ -320,7 +320,7 @@ export type StageFindEntry = {
 	/** `dock` arms the tool from the bottom dock; `find` (default) invokes it. */
 	readonly home?: StageEntryHome;
 	/**
-	 * R217.S10 — the fixed dock key a `dock` entry fills (`ink`, `library`). The
+	 * The fixed dock key a `dock` entry fills (`ink`, `library`). The
 	 * dock's order, icon and shortcut belong to the slot; an entry with no slot is
 	 * an extra key after the Eraser.
 	 */
@@ -347,7 +347,7 @@ export type StageCardFact = {
 	readonly value: string;
 	readonly fieldId?: string;
 	/**
-	 * T2.S3's derived relation affordance: the value is a subject the creator may
+	 * A derived relation affordance: the value is a subject the creator may
 	 * reveal. The reference is the semantic identity; the callback is the one
 	 * existing Stage selection write, never a second selection model.
 	 */
@@ -427,8 +427,8 @@ export type StageCardAction = {
 export type StageCardActionRecord = StageCardAction & { readonly adapterId: string };
 
 /**
- * The Card's contributed **writer** for one subject: the fields that used to be
- * the Dimensions instrument's, now rendered where PLATE puts them.
+ * The Card's contributed **writer** for one subject: the subject's exact
+ * fields, rendered where PLATE puts them.
  */
 export type StageCardWriterRecord = StageInstrumentContent & { readonly adapterId: string };
 
@@ -507,7 +507,7 @@ export type StageAdapterBinding = {
 	/** Persistent selected/armed guide lines; projected once by the host. */
 	readonly guides?: (context: StageAdapterContext) => readonly StageGuideContribution[];
 	/**
-	 * R217.S14 — the candidate geometry this binding proposes right now.
+	 * The candidate geometry this binding proposes right now.
 	 *
 	 * Additive and optional. World coordinates only: the facade projects them
 	 * once and the Stage overlay paints them, so no adapter owns a second
@@ -520,7 +520,7 @@ export type StageAdapterBinding = {
 	readonly pick?: (query: StagePickQuery, context: StageAdapterContext) => StageDomainPick | null;
 	readonly hostTools?: readonly string[];
 	/**
-	 * R217.S10 — the Eraser's one question to the winning domain: which existing
+	 * The Eraser's one question to the winning domain: which existing
 	 * delete action removes this subject, or why it cannot be erased. Additive and
 	 * optional; a binding that declares `erase` but answers `null` erases nothing.
 	 */

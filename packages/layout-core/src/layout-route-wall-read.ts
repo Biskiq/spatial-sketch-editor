@@ -1,5 +1,5 @@
 /**
- * R217.S29 (E12) — the route-versus-Wall advisory read.
+ * The route-versus-Wall advisory read.
  *
  * A pure, runtime-safe reading of an evaluated Camera route against the
  * **already compiled** Layout: each route segment is tested against the plan

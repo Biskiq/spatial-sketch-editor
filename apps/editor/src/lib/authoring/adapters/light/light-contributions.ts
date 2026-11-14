@@ -1,5 +1,5 @@
 /**
- * X8 — the Light binding's read-only contributions.
+ * The Light binding's read-only contributions.
  *
  * Everything the Light adapter contributes to the Stage that does not capture
  * input: the Lights task, subjects, picking, the erase and delete routes, the

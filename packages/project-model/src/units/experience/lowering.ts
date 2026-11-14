@@ -1,6 +1,6 @@
 /**
  * Experience lowering — one selected Experience + its Camera unit -> the accepted
- * `ExecutionProgram@4` codec (AM-6, T3.P01.S06).
+ * `ExecutionProgram@4` codec (AM-6).
  *
  * Lowering is **derivation**, not a second authored format: it reads the accepted
  * F.2 envelope, resolves every Experience/Presentation/Stop/View/connection

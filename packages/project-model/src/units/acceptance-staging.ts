@@ -1,6 +1,6 @@
 /**
  * `F4.intent-acceptance@1:unit-acceptance-v1` — the **F.2-dependent half** of the
- * additive unit admission (T3.P01.S05).
+ * additive unit admission.
  *
  * Why this file lives under `units/` and not under `f4/`: the architecture gate
  * (`apps/editor/tests/lib/project-model/program-entry-closure.test.ts`) keeps
@@ -41,7 +41,7 @@ export type StagedUnitResource = {
 	 * pin's content hash for external bytes. Never inferred or fabricated.
 	 *
 	 * For a pinned external resource this is a **pin identity**, not a content-unit
-	 * revision; `T3.P01.S04` consumers must not treat the two as interchangeable.
+	 * revision; consumers must not treat the two as interchangeable.
 	 */
 	readonly contentRevision: string;
 	/** The external-bytes pin when this resource has one; `null` for in-project bytes. */

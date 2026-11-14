@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * E9/R2c — attach one store-owned material to the parent mesh.
+	 * Attach one store-owned material to the parent mesh.
 	 *
 	 * The environment ground, the Preview's paper ground and the ground plinth are
 	 * single world surfaces with fixed looks. They acquire from the Canvas

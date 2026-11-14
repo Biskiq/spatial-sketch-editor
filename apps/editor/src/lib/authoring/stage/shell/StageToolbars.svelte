@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * X3 / decomposition contract S — the Stage toolbars region.
+	 * The Stage toolbars region.
 	 *
 	 * The reading line, Experience's Show disclosure and the one lower column (the
 	 * World toolbar, the armed instrument and the Experience dock/Guide) move
@@ -108,9 +108,8 @@
 
 {#if viewLine !== null}
 	<!--
-		The old second line is restored: the reading grid and 2D/3D controls sit
-		under the project Head, and the new Measure, Slice and Sky controls join
-		that line rather than replacing it.
+		The second line: the reading grid and 2D/3D controls sit under the project
+		Head, and the Measure, Slice and Sky controls join that line.
 	-->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
@@ -131,7 +130,7 @@
 {/if}
 
 {#if show !== null && !previewing}
-	<!-- R217.S29 Show ▾: session-only Stage drawing flags beside the reading control. -->
+	<!-- Show ▾: session-only Stage drawing flags beside the reading control. -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="stage-actions"
@@ -331,7 +330,7 @@
 		display: flex;
 		gap: 0.4rem;
 	}
-	/* R217.S29 Show ▾: a light disclosure beside the Stage reading control. */
+	/* Show ▾: a light disclosure beside the Stage reading control. */
 	.show-control {
 		position: relative;
 		display: flex;
@@ -476,7 +475,7 @@
 		font-size: 12px;
 		cursor: pointer;
 	}
-	/* R217.S25: the Experience dock's feedback line sits on the lower edge, above its dock. */
+	/* The Experience dock's feedback line sits on the lower edge, above its dock. */
 	.experience-feedback {
 		max-width: min(30rem, 100%);
 		margin: 0;

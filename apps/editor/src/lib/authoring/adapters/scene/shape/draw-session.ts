@@ -1,5 +1,5 @@
 /**
- * R217.S17A — drawing an object from the Objects panel.
+ * Drawing an object from the Objects panel.
  *
  * The Scene binding routes a press here while a Box, Round or Free tile is armed
  * in its Place task. One gesture has one result:

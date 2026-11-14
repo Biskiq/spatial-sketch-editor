@@ -1,15 +1,15 @@
 <script lang="ts">
 	/**
-	 * T1.P02.S02 — the Ink palette: the one lower-column reading the dock arms.
+	 * The Ink palette: the one lower-column reading the dock arms.
 	 *
 	 * PLATE (Round 2) puts the armable tool, its supported readings and the live
 	 * facts in one palette above the palette's own dock key. Ink exposes exactly the
 	 * reading the domain supports — a straight Wall chain, drawn as Line points or
-	 * as a Box from two opposite corners (R217.S10). There are no empty
+	 * as a Box from two opposite corners. There are no empty
 	 * Slice/Eraser/Brush/Measure slots and no unsupported Shape/Round/roof option,
 	 * because a control this shell offers would be a promise the domain cannot keep.
 	 *
-	 * R217.S23 — the palette is one compact row above the dock. Reading, mode, Finish,
+	 * The palette is one compact row above the dock. Reading, mode, Finish,
 	 * Close ring, Backtrack and Cancel are keys in that row. The typed X/Z point and
 	 * the Wall or Opening options are not drawn until asked for: each discloses
 	 * upward from the row, one at a time, so the drawing stays visible.

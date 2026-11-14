@@ -1,5 +1,5 @@
 /**
- * X8 — the small owners one Light binding lends its two sessions.
+ * The small owners one Light binding lends its two sessions.
  *
  * A binding has exactly one gesture lease, one grip refusal, one "install in
  * flight" window and one session-only preview. The placement session and the

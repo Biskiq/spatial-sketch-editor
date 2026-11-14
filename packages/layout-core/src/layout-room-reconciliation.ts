@@ -1,5 +1,5 @@
 /**
- * `layout-room-reconciliation.ts` — P23.8 Room correspondence and
+ * `layout-room-reconciliation.ts` — Room correspondence and
  * reconciliation (H5 evidence, product-owned identity).
  *
  * Geometry derives candidate faces; **this module owns persistent Room
@@ -14,7 +14,7 @@
  * 5. canonical candidate face key
  * ```
  *
- * Safe automatic components for initial P23:
+ * Safe automatic components:
  *
  * ```text
  * 0 old Rooms → new independent candidate faces (Room birth)
@@ -29,7 +29,7 @@
  * independent safe components; every component must reconcile or the entire
  * command rejects.
  *
- * Transaction shape (P23.8): invalid/cancel/no-op → no history. A committed
+ * Transaction shape: invalid/cancel/no-op → no history. A committed
  * snapshot contains the exact new Junction/Wall/Opening/Room IDs; undo/redo
  * restores snapshots and never reruns matching.
  */
@@ -56,7 +56,7 @@ import {
 	pointStrictlyInsidePolygon
 } from './layout-face-extraction';
 
-/** Why reconciliation rejected; stable machine codes per P23.8 diagnostics. */
+/** Why reconciliation rejected; stable machine codes. */
 export type ReconciliationRejection = {
 	code:
 		| 'ambiguous_room_correspondence'
@@ -108,7 +108,7 @@ export type RoomIdAllocator = {
 	nextRoomName(existingNames: readonly string[]): string;
 };
 
-/** Current Room creation defaults (P23.8: 0.1 m floor/ceiling). */
+/** Current Room creation defaults. */
 export const ROOM_CREATION_DEFAULTS = {
 	floorThickness: 0.1,
 	ceilingThickness: 0.1
@@ -116,7 +116,7 @@ export const ROOM_CREATION_DEFAULTS = {
 
 /**
  * Predecessor Room boundary as an ordered X/Z polygon, resolved against a
- * complete document (P23.6: shared with the wall role-change planner, which
+ * complete document (shared with the wall role-change planner, which
  * runs the same correspondence as the chain engine). `null` when the
  * boundary is unresolvable — callers reject rather than guess. Curved Walls
  * contribute their oriented sampled centerline, matching candidate faces.
@@ -220,7 +220,7 @@ function polygonCentroid(points: readonly LayoutVec2[]): LayoutVec2 {
 }
 
 /**
- * Identity authority for correspondence unions (P23B.3a D-12).
+ * Identity authority for correspondence unions.
  *
  * A predecessor Room's key comes from its SURVIVING boundary Walls in the
  * candidate document; a candidate face's key comes from its own boundary Walls.
@@ -279,7 +279,7 @@ export function correspondenceAuthorization(options: {
 /**
  * May this predecessor Room and this candidate face be unioned by EVIDENCE?
  *
- * THE CONTRACT (P23B.3a D-12 — a POSITIVE identity match or nothing):
+ * THE CONTRACT (D-12 — a POSITIVE identity match or nothing):
  *
  * 1. BOTH sides resolve -> the component labels must MATCH. This is the rule that
  *    keeps two coincident or contained graph-independent Rooms apart.
@@ -312,7 +312,7 @@ function unionAuthorized(
 }
 
 /**
- * P23B.11 S3 (M-1b) — the coarse phase's own slack.
+ * M-1b — the coarse phase's own slack.
  *
  * M-1b prunes a pair only when BOTH merge conditions are PROVEN impossible, and
  * each impossibility is proved by the exact predicate it removes:
@@ -389,7 +389,7 @@ function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds
 }
 
 /**
- * P23B.11 S3 (OR-6) — the pair classes the observer counts.
+ * The pair classes the observer counts.
  *
  * `undefined` covers both D-12 branches in which a label is missing: the
  * one-sided denial AND the defensive neither-resolves branch that hands the
@@ -399,9 +399,8 @@ function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds
 export type CorrespondencePairClass = 'same-group' | 'cross-group' | 'undefined';
 
 /**
- * P23B.11 S3 — one `buildCorrespondenceComponents` pass, as the test-only observer
- * sees it (P23B.4 observer precedent: opt-in, never retains, unset changes
- * nothing at all).
+ * One `buildCorrespondenceComponents` pass, as the test-only observer
+ * sees it (opt-in, never retains, unset changes nothing at all).
  *
  * ACCOUNTING, per mode:
  *
@@ -589,10 +588,10 @@ function recordOverlapCall(
 }
 
 /**
- * True P23.8 correspondence components: connected components of the
+ * True correspondence components: connected components of the
  * bipartite predecessor-Room ↔ candidate-face graph. An edge exists when the
  * predecessor witness lies strictly inside the face or the predecessor
- * polygon overlaps the face with positive area — AND (P23B.3a D-12) the two
+ * polygon overlaps the face with positive area — AND the two
  * sides share a connected component of authored Wall identity, so geometry
  * alone can never union two graph-independent structures. Faces with no
  * predecessor form independent 0→1 birth components. Groups are sorted
@@ -618,7 +617,7 @@ export function buildCorrespondenceComponents(options: {
 	predecessorPolygons: ReadonlyMap<string, readonly LayoutVec2[]>;
 	/**
 	 * CANDIDATE Wall/Junction graph — the identity authority for AUTHORIZED
-	 * unions (P23B.3a D-12). Required: there is deliberately no way to build
+	 * unions. Required: there is deliberately no way to build
 	 * correspondence from geometry alone, because spatial overlap must never be
 	 * able to union two graph-independent structures on its own.
 	 */
@@ -723,7 +722,7 @@ export function buildCorrespondenceComponents(options: {
 				if (inside) observation.insideDecisions += 1;
 				else if (overlap) observation.overlapDecisions += 1;
 				if (!inside && !overlap) return;
-				// P23B.3a D-12 — AUTHORIZATION. Geometry is evidence, not permission: a
+				// D-12 — AUTHORIZATION. Geometry is evidence, not permission: a
 				// predecessor Room and a candidate face may join only when authored
 				// identity puts them in the SAME connected component of the candidate Wall
 				// graph. Two coincident or contained graph-INDEPENDENT Rooms therefore stay
@@ -1023,7 +1022,7 @@ export function reconcileRooms(options: {
 			}
 			const retired = predecessors.find((room) => room.id !== winner.id)!;
 			// Field-level metadata policy: conflicting authored surface fields
-			// reject rather than silently choosing (H5 §6.4).
+			// reject rather than silently choosing.
 			if (predecessors[0]!.floorThickness !== predecessors[1]!.floorThickness) {
 				return failure({
 					code: 'metadata_merge_conflict',
@@ -1070,7 +1069,7 @@ export function reconcileRooms(options: {
 		}
 	}
 
-	// --- layout-object semantic associations (P23.8) ------------------------
+	// --- layout-object semantic associations ------------------------
 	const roomIdMap = new Map<string, string>();
 	for (const record of lineage) {
 		for (const predecessorId of record.predecessorRoomIds) {
@@ -1139,7 +1138,7 @@ export function reconcileRooms(options: {
 	};
 }
 
-/** Greatest-overlap split survivor with witness and faceKey ties (H5 §6.2). */
+/** Greatest-overlap split survivor with witness and faceKey ties. */
 function chooseSplitSurvivor(options: {
 	predecessor: LayoutWallFirstRoom;
 	candidates: DerivedCandidateFace[];
@@ -1188,7 +1187,7 @@ function predecessorPolygonOverlap(
 	return polygonIntersectionArea(polygon, face.polygon);
 }
 
-/** Greatest-contributor merge survivor with room-ID tie (H5 §6.4). */
+/** Greatest-contributor merge survivor with room-ID tie. */
 function chooseMergeSurvivor(options: {
 	predecessors: LayoutWallFirstRoom[];
 	face: DerivedCandidateFace;
@@ -1215,7 +1214,7 @@ type PortalSideResolution =
 	| { kind: 'unresolved'; reason: string };
 
 /**
- * Portal semantic remapping for topology edits (P23.8). New-schema doors on
+ * Portal semantic remapping for topology edits. New-schema doors on
  * boundary walls derive physical adjacency from the wall; the explicit
  * `connectsRoomIds` relation is remapped only when lineage makes the result
  * unambiguous, cleared on planned semantic collapse, and rejected otherwise.

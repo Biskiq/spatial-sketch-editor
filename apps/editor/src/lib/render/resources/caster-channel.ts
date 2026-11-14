@@ -1,5 +1,5 @@
 /**
- * E8/G4 — the caster channel: one per Canvas, the observable record of when a
+ * The caster channel: one per Canvas, the observable record of when a
  * shadow caster appears, leaves, or starts and stops animating.
  *
  * Shadow maps depend on caster content. Most caster content is an identity the

@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * X3 / decomposition contract S — the Stage viewport region.
+	 * The Stage viewport region.
 	 *
-	 * The route used to own this whole DOM region: the one Stage Canvas, the
+	 * This component owns the Stage's DOM region: the one Stage Canvas, the
 	 * overlay layer, the Height Sheet slot, the Look Through capture frame, the
 	 * Welcome note, the hanging/resize artwork overlays and the isolated Preview
-	 * takeover. They move here as one cohesive region, but none of them becomes a
+	 * takeover. They form one cohesive region, but none of them becomes a
 	 * second owner:
 	 *
 	 * - `StageCanvas` remains the one persistent renderer;
@@ -228,7 +228,7 @@
 
 			{#if heightSheet !== null}
 				<!--
-					PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
+					PLATE's Height Sheet in the Stage's right-edge slot. It is world-lens chrome:
 					the control and its plane are hidden in Experience and return with the
 					session height on the way back. The slot is a transparent wrapper: the
 					Sheet places its own lane on the Stage, so it is not clipped by a box of

@@ -1,5 +1,5 @@
 /**
- * P21.4 — generic visitor room presentation.
+ * Generic visitor room presentation.
  *
  * Neutral room tint data with no Chopin coupling. The legacy Chopin module
  * (content presentation for the frozen relic) re-exports this shape for its

@@ -1,6 +1,5 @@
 /**
- * `layout-topology-components.ts` — the GENERAL Wall/Junction connectivity test
- * (P23B.3a M-3a-1, decision record §2.11.3 GAP 1).
+ * `layout-topology-components.ts` — the GENERAL Wall/Junction connectivity test.
  *
  * Connectivity is **explicit graph identity**, and the rule is the TRANSITIVE
  * CLOSURE of it: two Walls are in one component when a chain of Walls joins them

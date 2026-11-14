@@ -45,7 +45,7 @@ export function aimViewAtPoint(pose: AuthoredViewPose, point: Vec3): AuthoredVie
 }
 
 /**
- * Experience review round 2 (G1): turn a View about its eye by `deltaYaw`
+ * Experience review round 2: turn a View about its eye by `deltaYaw`
  * radians. The eye, the target's height, its horizontal distance from the eye and
  * the lens all stay; only the direction the View faces changes.
  */

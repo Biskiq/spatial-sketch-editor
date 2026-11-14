@@ -1,5 +1,5 @@
 /**
- * R217.S30 — the one ephemeral Guide playback session.
+ * The one ephemeral Guide playback session.
  *
  * It is host view state, never authored state: the map is derived from the
  * accepted program and Camera graph, the clock advances only by explicit frame

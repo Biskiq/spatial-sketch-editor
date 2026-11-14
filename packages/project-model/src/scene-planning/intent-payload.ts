@@ -1,5 +1,5 @@
 /**
- * T2.P01.S02 — the strict intent payload, target and allocation reader.
+ * The strict intent payload, target and allocation reader.
  *
  * An `AuthoringIntent@1` payload is captured, serializable domain data, so it is
  * read strictly: unknown keys, missing fields and non-finite numbers are

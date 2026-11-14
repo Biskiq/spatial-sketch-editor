@@ -1,5 +1,5 @@
 /**
- * T2.S3 — the pure light operation set.
+ * The pure light operation set.
  *
  * A light is a Scene entity with no floor contact, so it cannot reuse the
  * object-transform planners. These three operations own exactly the light

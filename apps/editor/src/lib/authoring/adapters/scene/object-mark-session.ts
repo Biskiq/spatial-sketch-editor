@@ -1,10 +1,10 @@
 /**
- * X7 — the object-mark session: Move, Turn, Size, Lift and Form-ray gestures.
+ * The object-mark session: Move, Turn, Size, Lift and Form-ray gestures.
  *
  * One no-task mark gesture at a time. The press captures the accepted baseline
  * and the exact world reading its mark drives; every move previews through the
  * same planner the release submits; the one release is one captured candidate,
- * one F4 intent and one history entry. The lease is the S03 one, owned here for
+ * one F4 intent and one history entry. The lease is the Stage gesture lease, owned here for
  * exactly the gesture's life: it is released on release, pointer cancel, Escape,
  * a selection change, a task opening, a lease the host ended (reading change,
  * source replacement) and disposal, and never left held on any of them.
@@ -96,7 +96,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 	/**
 	 * One no-task mark gesture. The press captures the accepted baseline and the
 	 * exact world reading its mark drives; every move previews through the same
-	 * planner the release submits. The lease is the S03 one, so a reading change
+	 * planner the release submits. The lease is the Stage gesture lease, so a reading change
 	 * ends the gesture rather than reinterpreting it.
 	 */
 	type ObjectMarkGesture = {

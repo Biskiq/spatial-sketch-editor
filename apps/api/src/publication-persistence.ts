@@ -1,7 +1,7 @@
 /**
  * Publication status under the AM-9 publication gap.
  *
- * Publishing is unavailable until `T4.P01.S05`: the route returns
+ * Publishing is unavailable until the prepared release reader lands: the route returns
  * `prepared-reader-required` and no authored release is prepared here. The
  * reset migration removes every publication and release row, so after
  * activation a project reads as never published (revision 0) and Unpublish is

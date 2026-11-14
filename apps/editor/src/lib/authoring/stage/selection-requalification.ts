@@ -1,5 +1,5 @@
 /**
- * Selection requalification through **accepted correspondence** (T1.P01.S07).
+ * Selection requalification through **accepted correspondence**.
  *
  * An accepted change publishes correspondence entries: explicit data saying how a
  * subject on the previous source relates to a subject on the next one. That data —

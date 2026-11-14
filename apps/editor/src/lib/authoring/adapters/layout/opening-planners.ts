@@ -1,5 +1,5 @@
 /**
- * T1.P02.S03 — the bounded F.4 operations the Opening family adds.
+ * The bounded F.4 operations the Opening family adds.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |

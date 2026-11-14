@@ -1,5 +1,5 @@
 /**
- * T5.P01.S04 — owner-scoped `form` library storage (My Objects).
+ * Owner-scoped `form` library storage (My Objects).
  *
  * One item is one immutable saved revision: a server-allocated logical id and
  * canonical payload bytes whose SHA-256 is the item's content identity. The

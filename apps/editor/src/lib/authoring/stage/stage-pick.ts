@@ -8,7 +8,7 @@ export type StagePickProvider = {
 
 export type StagePickWinner = { readonly adapterId: string; readonly pick: StageDomainPick };
 
-/** Arbitrate only between domain winners. The mark tier remains reserved for S07. */
+/** Arbitrate only between domain winners; the mark host owns the mark tier. */
 export function resolveStagePick(
 	query: StagePickQuery,
 	providers: readonly StagePickProvider[],

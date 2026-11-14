@@ -1,5 +1,5 @@
 /**
- * T2.P01.S01 — the normalized object-definition input.
+ * The normalized object-definition input.
  *
  * The pure Scene planner cannot read the app catalogue or create a renderer
  * object, so a host policy adapter on the editor side supplies this shape. It

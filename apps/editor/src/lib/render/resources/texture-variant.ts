@@ -1,12 +1,10 @@
 /**
- * E7/R2b — the texture-variant source: the part of a resolved look the texture
+ * The texture-variant source: the part of a resolved look the texture
  * store needs, without an upside-down dependency.
  *
- * The variant pool was moved into `texture-store.ts` by E6 with one stated
- * exception: it imported the resolved-look type from
- * `museum/materials/scene-instance-material`. That is the resource layer reading
- * a content layer, and `render-layer-boundary` recorded it as the edge R2b
- * replaces. This module is the replacement: it holds the two fields a variant is
+ * The texture store must not import the resolved-look type from the materials
+ * layer: that would be the resource layer reading a content layer, which
+ * `render-layer-boundary` forbids. This module holds the two fields a variant is
  * keyed by (a seed and the slot → URI map) and nothing else, so the store can
  * type its own input and the resolved look satisfies it structurally.
  */

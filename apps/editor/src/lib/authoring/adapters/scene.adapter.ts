@@ -1,15 +1,14 @@
 /**
- * T2.P01.S03 — the Scene adapter: the first coherent Scene editing surface.
+ * The Scene adapter: the first coherent Scene editing surface.
  *
  * It registers the Scene planners with the one F.4 coordinator and contributes
- * Place, Compose and Import through T1.P01.S07's AM-5 points. R217.S08 adds the
- * shared Stage mark vocabulary for a selected object: Move, Turn, a Scale point
+ * Place, Compose and Import through the AM-5 contribution points. It also publishes
+ * the shared Stage mark vocabulary for a selected object: Move, Turn, a Scale point
  * disclosure and the Size ray it reveals. The same exact Position, Yaw and Size
  * values are the Card's writer. It edits no host core, route or shell module, and
  * it never writes Layout: support is consulted by the retained planner.
  *
- * X7 splits the one closure it used to be into owned modules, and this file keeps
- * what only an adapter can: registering the planners, composing one binding per
+ * The behavior lives in owned modules; this file keeps what only an adapter can: registering the planners, composing one binding per
  * bind, and dispatching each Stage entry point to the module that owns the
  * lifetime it touches. The three never share state.
  *

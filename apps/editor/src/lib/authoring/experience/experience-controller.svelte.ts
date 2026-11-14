@@ -1,5 +1,5 @@
 /**
- * The Experience lens controller (R217.S24, R217.S25, R217.S26).
+ * The Experience lens controller.
  *
  * The Experience homes read this controller: the shared Index, the Card's writers and
  * the lower-edge Guide and dock. It holds the reactive reading of the accepted source
@@ -7,13 +7,13 @@
  * submitted through the host's one F.4 acceptance port), the message and busy flag, and
  * the Presentation filter.
  *
- * R217.S26 adds the structure commands (renames, additional Guides, the Opening Guide, a
- * Guide's start, View order) and the four E4 removals. A removal is previewed from the same
+ * It also owns the structure commands (renames, additional Guides, the Opening Guide, a
+ * Guide's start, View order) and the four removals. A removal is previewed from the same
  * pure plan its planner installs, so the Card's consequence block names exactly what runs.
- * Back (E17) reads the focus's session history.
+ * Back reads the focus's session history.
  *
  * It is not an authority. Focus stays in focus.svelte.ts, the one writable owner of what
- * the lens works on (one Card subject, D10); the readings stay in experience-model.ts;
+ * the lens works on (one Card subject); the readings stay in experience-model.ts;
  * travel gaps stay in travel-gap.ts; every intent stays in commands.ts. The controller
  * has no DOM access and never touches the Stage selection or the Camera.
  *
@@ -107,7 +107,7 @@ type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 export type ExperienceViewChoice = { readonly id: string; readonly label: string };
 
 /**
- * What a passing line is (fix.md slice 1). The kind is carried by the write that
+ * What a passing line is. The kind is carried by the write that
  * produced it, never inferred from the text: a success, an informational notice
  * and a refusal are three different things and are styled as three.
  */
@@ -201,7 +201,7 @@ export type ExperienceController = {
 	/** Make a Guide of the current Experience the active one. It selects nothing. */
 	openGuide(guideId: string): void;
 	viewFacts(viewId: string): ExperienceViewFacts | null;
-	/** Where a Stop's continuation goes, read against the context Guide (D11). */
+	/** Where a Stop's continuation goes, read against the context Guide. */
 	resolveContinuation(stopId: string): ResolvedContinuation | null;
 	/** The context Guide's Stops that guide this View. */
 	viewStops(viewId: string): readonly GuidedViewPosition[];
@@ -216,7 +216,7 @@ export type ExperienceController = {
 	 */
 	readonly draftLabel: string;
 	/**
-	 * Dock Capture (D1, D2): the current 3D viewpoint into the subject's Presentation,
+	 * Dock Capture: the current 3D viewpoint into the subject's Presentation,
 	 * keeping its Default View, else a new standpoint Presentation. Never adds a Stop.
 	 */
 	capture(): Promise<boolean>;
@@ -252,10 +252,10 @@ export type ExperienceController = {
 	setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean>;
 	/** Choose the occurrence the Path action reads; step occurrences live inside a Stop. */
 	selectPath(occurrence: ExperiencePathOccurrence | null): void;
-	/** Experience review 1 (R5) — the World's saved environment preset. */
+	/** Experience review 1 — the World's saved environment preset. */
 	/** Choose the World's environment: one accepted Scene change, one Undo. */
 	selectAnchor(anchorId: string | null): void;
-	/** Add the one Camera path a Travel needs (E11); never for a Cut. */
+	/** Add the one Camera path a Travel needs; never for a Cut. */
 	createPath(occurrence: ExperiencePathOccurrence): Promise<boolean>;
 	previewPathDrag(anchorId: string | null, point: readonly [number, number, number], origin: readonly [number, number, number]): ExperiencePathRead['samples'] | null;
 	/**
@@ -277,15 +277,15 @@ export type ExperienceController = {
 	updatePresentationText(presentationId: string, body: string): Promise<boolean>;
 	/** The View Card's Make default: the only place a Default View changes. */
 	setDefaultView(presentationId: string, viewId: string): Promise<void>;
-	/* R217.S26 — structure. Each rename refuses an empty name and adds nothing when unchanged. */
+	/* Structure. Each rename refuses an empty name and adds nothing when unchanged. */
 	renameExperience(label: string): Promise<ExperienceRenameOutcome>;
 	renameGuide(guideId: string, label: string): Promise<ExperienceRenameOutcome>;
 	renameView(viewId: string, label: string): Promise<ExperienceRenameOutcome>;
 	/** The Guide Card's Make this the opening Guide. */
 	makeOpeningGuide(guideId: string): Promise<boolean>;
-	/** E5: a Stop of this Presentation at the end of a chosen Guide, which becomes active. */
+	/** A Stop of this Presentation at the end of a chosen Guide, which becomes active. */
 	addToGuide(presentationId: string, guideId: string): Promise<boolean>;
-	/** E5: New Guide… — a new, active Guide with this Presentation as its Stop 1. */
+	/** New Guide… — a new, active Guide with this Presentation as its Stop 1. */
 	createGuide(presentationId: string, entryViewId?: string | null): Promise<boolean>;
 	/** Other Presentations that list this View, for *Also in*. */
 	alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[];
@@ -300,14 +300,14 @@ export type ExperienceController = {
 	readonly cameraViews: readonly CameraView[];
 	/** The accepted source content identity: a snapshot cache key, never an authored value. */
 	readonly sourceRevision: string;
-	/** The one lowered program + Camera graph S30 playback reads; null when lowering refuses. */
+	/** The one lowered program + Camera graph playback reads; null when lowering refuses. */
 	readonly playbackSource: PlaybackSource | null;
 	/** The accepted source for an explicit Guide, independent of the open Guide. */
 	playbackSourceFor(guideId: string): PlaybackSource | null;
 	/** The Guide that lists a Stop, preferring the active Guide. */
 	guideForStop(stopId: string): string | null;
 	viewPose(viewId: string): ExperienceViewPose | null;
-	/** Lens and Eye height steps write the exact Camera View (E7). */
+	/** Lens and Eye height steps write the exact Camera View. */
 	setViewFraming(
 		viewId: string,
 		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
@@ -329,7 +329,7 @@ export type ExperienceController = {
 		label: string,
 		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
 	): Promise<boolean>;
-	/** The subject Back returns to, or null (E17). */
+	/** The subject Back returns to, or null. */
 	readonly backTarget: ExperienceSubject | null;
 	/** Back to the previous subject. It changes only what is looked at; it never undoes. */
 	back(): boolean;
@@ -408,7 +408,7 @@ export function createExperienceController(
 		return current.guides.find((guide) => guide.id === current.entryGuideId) ?? null;
 	});
 	const guideStops = $derived(current === null ? [] : guideStopsOf(current, contextGuide));
-	// R217.S29 — the Path action's occurrence and its one derived Camera read. The
+	// The Path action's occurrence and its one derived Camera read. The
 	// occurrence is a selection *within* the Card subject, never a second authority.
 	let pathOccurrence = $state<ExperiencePathOccurrence | null>(null);
 	let selectedAnchorId = $state<string | null>(null);
@@ -420,7 +420,7 @@ export function createExperienceController(
 	});
 	const acceptedGeometry = $derived(acceptedDomain?.geometry ?? null);
 	const acceptedGraph = $derived(acceptedDomain?.graph ?? null);
-	// R217.S30 — the one lowered program the timeline/playback reads. It is the
+	// The one lowered program the timeline/playback reads. It is the
 	// same lowering Preview and the visitor use, never a second topology.
 	function lowerPlaybackSource(guideId: string): PlaybackSource | null {
 		if (current === null || acceptedGraph === null) return null;
@@ -541,7 +541,7 @@ export function createExperienceController(
 	}
 
 	/**
-	 * G1–G5 / R9 / R27 — the consequences planning added to an accepted change
+	 * The consequences planning added to an accepted change
 	 * reach the creator: a Cut normalisation or a straight path the edit required.
 	 * One sentence, appended to the action's own success line.
 	 */
@@ -713,7 +713,7 @@ export function createExperienceController(
 	}
 
 	/**
-	 * Dock Capture (D1, D2). Into the visibly selected Presentation (or the one a selected
+	 * Dock Capture. Into the visibly selected Presentation (or the one a selected
 	 * View belongs to) when there is one: the new View is appended, joined by a Cut, and
 	 * the Default (View 1) is unchanged. A Presentation with no View takes it as its
 	 * Default, and the message says so. Otherwise a new standpoint Presentation with no
@@ -1249,7 +1249,7 @@ export function createExperienceController(
 		await movePresentationView(presentationId, viewId, 0);
 	}
 
-	/* --- R217.S26 structure ------------------------------------------------------ */
+	/* --- Structure -------------------------------------------------------------- */
 
 	async function rename(
 		label: string,
@@ -1463,7 +1463,7 @@ export function createExperienceController(
 		};
 	}
 
-	/** The parent a removal selects (E4: removing the selected subject selects its parent). */
+	/** The parent a removal selects: removing the selected subject selects its parent. */
 	function parentOf(target: ExperienceRemovalTarget): ExperienceSubject | null {
 		if (target.kind === 'view') return { kind: 'presentation', presentationId: target.presentationId };
 		// A Stop's parent is the Guide instrument, which is not a Card subject (D-2).
@@ -1601,7 +1601,7 @@ export function createExperienceController(
 		}
 	}
 
-	// ---- Camera paths (R217.S29) ----
+	// ---- Camera paths ----
 
 	function selectPath(occurrence: ExperiencePathOccurrence | null): void {
 		pathOccurrence = occurrence;

@@ -69,7 +69,7 @@
 	}: {
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
-		/** R217.S10: the armed Eraser's winner reads as red dashes, never gold. */
+		/** The armed Eraser's winner reads as red dashes, never gold. */
 		hoverTone?: 'hover' | 'erase';
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;

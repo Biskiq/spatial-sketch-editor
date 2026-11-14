@@ -1,5 +1,5 @@
 /**
- * T5.P01.S02 — per-axis size rays on a selected native form.
+ * Per-axis size rays on a selected native form.
  *
  * A form is sized by its own `form.scale`, never by the entity-level uniform
  * scale. Three rays name the form's local X (Width), Y (Height) and Z (Depth)

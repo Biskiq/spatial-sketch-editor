@@ -1,5 +1,5 @@
 /**
- * X8 — the Light Card's commands.
+ * The Light Card's commands.
  *
  * The named actions a Light contributes to the Card and the Eraser: Duplicate,
  * Delete, the name writer, and S7's "Light it" selection recipe for Artwork and

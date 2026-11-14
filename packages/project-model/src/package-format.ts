@@ -4,13 +4,13 @@
  * ZIP/Blob/File orchestration stays in the editor. This module owns only the
  * deterministic, browser/Node-safe values consumed by that orchestration.
  *
- * P23.0 stage 2: the manifest carries an explicit package `formatVersion`
- * (separate from the nested Scene/Layout schema versions — H5 §10.1).
+ * The manifest carries an explicit package `formatVersion` (separate from the
+ * nested Scene/Layout schema versions).
  */
 
 import { sha256Bytes } from './package-sha';
 
-/** Portable package format version written by P23.0 stage-2 writers. */
+/** Portable package format version the package writers emit. */
 export const PACKAGE_MANIFEST_FORMAT_VERSION = 2 as const;
 
 export type SupportedMime = 'image/png' | 'image/webp' | 'image/jpeg';

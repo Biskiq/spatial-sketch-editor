@@ -1,5 +1,5 @@
 /**
- * R217.S21 — Index labels.
+ * Index labels.
  *
  * A located subject's **display** label: its authored name when it has one, else a
  * session-stable `Kind n`, where `n` is its place among the subjects of that kind sorted

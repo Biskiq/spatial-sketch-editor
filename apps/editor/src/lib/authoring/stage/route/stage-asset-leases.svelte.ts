@@ -1,5 +1,5 @@
 /**
- * X1 / decomposition contract A — the mounted route's approved asset leases.
+ * The mounted route's approved asset leases.
  *
  * The route admitted a source; this controller owns the **leases** that make its
  * approved model derivatives and artwork images renderable. It does not read

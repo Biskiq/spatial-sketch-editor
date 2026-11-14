@@ -5,10 +5,10 @@
 	 * A Scene is world-local: every entity position is already project/world space,
 	 * so entities render directly under the world root with no frame transform.
 	 *
-	 * E7 moved primitives and Forms onto the retained representation (mounted once
-	 * as `entities.object3d`, patched by item key), E9 added its Artwork handler and
-	 * E8 its model handler. Lights keep their component until E10 installs a
-	 * handler; exactly one path draws any given entity, so nothing renders twice.
+	 * Primitives, Forms, Artwork and models draw through the retained Scene entity
+	 * representation (mounted once as `entities.object3d`, patched by item key);
+	 * authored lights draw through the retained Scene light representation. Exactly
+	 * one path draws any given entity, so nothing renders twice.
 	 *
 	 * The model support (glTF loader and skeleton-aware realization) is a prop
 	 * rather than an import: the public preview supplies it statically (unchanged
@@ -63,7 +63,7 @@
 	} = $props();
 
 	/**
-	 * The retained primitive/Form subtree (E7/R4): one root for the shell's whole
+	 * The retained primitive/Form subtree: one root for the shell's whole
 	 * lifetime, one group and mesh per drawable entity, patched by content key.
 	 * Materials and geometry are leases on this Canvas's stores.
 	 */
@@ -141,7 +141,7 @@
 	$effect(() => () => entities.dispose());
 
 	/**
-	 * Authored Point and Spot lights (E10/R6): resolved once per Scene identity,
+	 * Authored Point and Spot lights: resolved once per Scene identity,
 	 * realized by this Canvas's light store and placed by one retained root. An
 	 * unrelated edit hands back the same description and touches no light; a
 	 * changed light updates in place; a changed kind is replaced. Paper draws no

@@ -1,13 +1,8 @@
 /**
- * Retained Layout wall representation (T1.P02.S06 D.3 / H4).
+ * Retained Layout wall representation.
  *
- * The Stage used to rebuild every Wall's `BufferGeometry`, resolved materials and
- * mesh on every compile — including each drag preview — and then dispose the
- * whole previous set. Bench 1 counted that as the representation half of F4/F8
- * (167 ms at grid-L) and as the accumulating live geometries behind F13's
- * "geometries back to baseline" clause (+2,968 per accepted commit at L).
- *
- * This module owns that representation instead:
+ * This module owns every compiled Wall's mesh across compiles, including each
+ * drag preview:
  *
  * - **Retained.** One `Mesh` per compiled Wall, keyed by a retention key that
  *   names every input the mesh builder reads: the Wall's own `cacheKey` (its
@@ -25,12 +20,12 @@
  *   material at all. The representation gives its leases back once, on dispose;
  *   a tint another representation also draws survives that release.
  *
- * It is imperative on purpose: at grid-L the previous shell created one Svelte
- * component pair per Wall, so every compile also cost the framework thousands of
- * ownership operations. A `THREE.Group` with `Mesh` children has none.
+ * It is imperative on purpose: one Svelte component pair per Wall would cost the
+ * framework thousands of ownership operations per compile at large grids. A
+ * `THREE.Group` with `Mesh` children has none.
  *
- * What it deliberately does not own: Room floors and ceilings (E6/R3's
- * `layout-room-representation.ts`), door portals and Scene entities.
+ * What it deliberately does not own: Room floors and ceilings
+ * (`layout-room-representation.ts`), door portals and Scene entities.
  */
 import { BoxGeometry, Group, Mesh, type Material, type Object3D } from 'three';
 import {
@@ -57,7 +52,7 @@ type RetainedWall = {
 	readonly release: () => void;
 };
 
-/** What one update did, as counts — the H4 oracle reads these, never a stopwatch. */
+/** What one update did, as counts — tests read these, never a stopwatch. */
 export type WallRepresentationStats = {
 	/** Compiled Walls in the geometry. */
 	readonly walls: number;

@@ -1,8 +1,7 @@
 /**
- * X1 / decomposition contract P — one route project epoch.
+ * One route project epoch.
  *
- * This controller owns the composition-lifetime wiring that used to live in the
- * spatial route: it creates the epoch's facade, acceptance host and adapter
+ * This controller owns the spatial route's composition-lifetime wiring: it creates the epoch's facade, acceptance host and adapter
  * services, subscribes their notifications, mounts the Save controller, moves
  * Undo/Redo orchestration through the existing acceptance commands, and runs the
  * ordered teardown. It is **not** a second project session, acceptance writer,

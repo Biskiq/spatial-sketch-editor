@@ -1,8 +1,8 @@
 /**
- * R217.S30 — the editor's movement previews over the one Guide clock.
+ * The editor's movement previews over the one Guide clock.
  *
- * The Guide's time map itself lives in the visitor-safe `guide-run-map` module
- * (guide-playback plan, slice 4), so Preview, a release and the editor read one
+ * The Guide's time map itself lives in the visitor-safe `guide-run-map` module,
+ * so Preview, a release and the editor read one
  * adapter. This module adds only the editor's single-movement preview ("play
  * this move"), for a Guide connection or a Presentation's explore step.
  *

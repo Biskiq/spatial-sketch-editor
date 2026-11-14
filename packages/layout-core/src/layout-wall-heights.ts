@@ -42,7 +42,7 @@ import type {
 export const WALL_HEIGHT_EPSILON = 1e-9;
 
 /**
- * The one Wall-creation default (P23.6I).
+ * The one Wall-creation default.
  *
  * It is a **creation default only** — not an architectural envelope, not a
  * validation cap, not a Room height, not a Floor height. It is the initial value of

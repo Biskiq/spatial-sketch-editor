@@ -1,8 +1,8 @@
 /**
- * `layout-duplicate.ts` — P23.4 duplicate and linear repeat.
+ * `layout-duplicate.ts` — duplicate and linear repeat.
  *
  * Deterministic two-pass clone/remap planners over an immutable wall-first
- * document ([P23.4 plan](../../../../docs/roadmap/p23-layout-depth/2026-09-08-P23.4-duplicate-and-linear-repeat.md)):
+ * document:
  *
  * ```text
  * collect source graph in stable order
@@ -20,7 +20,7 @@
  * No timestamps, no random IDs. Any invalid copy rejects the whole batch and
  * the caller commits nothing (invalid/no-op → no history).
  *
- * Supported targets (P23.4 initial minimum):
+ * Supported targets:
  * - one supported document-level Layout object;
  * - one Wall-hosted Opening on its current Wall;
  * - one **isolated** Room whose bounded Wall/Junction/Opening subgraph can be
@@ -54,7 +54,7 @@ import type {
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';
 
-/** Repeat-count cap (P23.4: `1..50` unless measured evidence justifies more). */
+/** Repeat-count cap. */
 export const LAYOUT_DUPLICATE_MAX_COPIES = 50 as const;
 
 export type DuplicateOperation =
@@ -103,7 +103,7 @@ export type DuplicatePlan =
 	  }
 	| { kind: 'rejected'; rejection: DuplicateRejection };
 
-/** Captured id from a seed; occupancy is only the refusal check (T1.P02.S01 §1). */
+/** Captured id from a seed; occupancy is only the refusal check. */
 function allocateId(
 	taken: ReadonlySet<string>,
 	seed: string,
@@ -158,9 +158,9 @@ function isValidCopyCount(count: number): boolean {
  * → portal relations → canonical compile. One batch validates once — never per
  * copy.
  *
- * P23B.3a S7 / D-8 — the topology step IS the canonical gate
- * (`validateWallFirstTopology`, the same function the P23.1 precision planners
- * and the P23.6a Room-move planner run), never a second, chord-exact crossing
+ * The topology step IS the canonical gate
+ * (`validateWallFirstTopology`, the same function the precision planners
+ * and the Room-move planner run), never a second, chord-exact crossing
  * rule owned by this module. The bar a duplicate batch holds is therefore the
  * bar every other commit holds, by construction rather than by a docstring
  * claiming a parity the local rule did not have (this doc used to make exactly
@@ -201,7 +201,7 @@ function finalizeCandidate(
 		);
 	}
 	if ((created.createdWallIds?.length ?? 0) > 0) {
-		// P23B.3a S7 — ONE rule, called from the ONE canonical authority (see the
+		// ONE rule, called from the ONE canonical authority (see the
 		// doc above): no local crossing classifier, no second tolerance.
 		//
 		// `openingSet: 'defer'` keeps the Opening-set vocabulary canonical while
@@ -237,7 +237,7 @@ function finalizeCandidate(
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId]);
 	}
-	// The bound authoring session, as every other Layout planner compiles (E4).
+	// The bound authoring session, as every other Layout planner compiles.
 	const compileSession = activeLayoutCompileSession();
 	const compiled = compileSession
 		? compileSession.compile(structural.document)
@@ -499,7 +499,7 @@ function planDuplicateIsolatedRoomInternal(
 		}
 	}
 
-	// S1 (P23.6a) — one shared isolation policy for duplicate and move.
+	// S1 — one shared isolation policy for duplicate and move.
 	const isolation = resolveIsolatedRoomSubgraph(document, intent.roomId);
 	if (isolation.kind === 'rejected') {
 		return reject(
@@ -552,10 +552,10 @@ function planDuplicateIsolatedRoomInternal(
 			endJunctionId: junctionIdMap.get(wall.endJunctionId)!,
 			thickness: wall.thickness,
 			height: wall.height,
-			// P23.12 — explicit duplicate copies the optional authored name
+			// Explicit duplicate copies the optional authored name
 			// unchanged (new references are minted at the install seam).
 			...(wall.name !== undefined ? { name: wall.name } : {}),
-			// P23.11 — the cloned Wall keeps its centerline shape with a deep
+			// The cloned Wall keeps its centerline shape with a deep
 			// anchor copy so the copy never shares arrays/points with the source,
 			// translated by the same delta as its Junctions. Anchors are absolute
 			// document X/Z: leaving them at the source position would not
@@ -576,7 +576,7 @@ function planDuplicateIsolatedRoomInternal(
 			id: newId,
 			wallId: wallIdMap.get(opening.wallId)!,
 			kind: opening.kind,
-			// P23.12 — the optional authored name copies unchanged.
+			// The optional authored name copies unchanged.
 			...(opening.name !== undefined ? { name: opening.name } : {}),
 			// Cloned wall geometry moves with the copy: offsets stay unchanged.
 			offset: opening.offset,

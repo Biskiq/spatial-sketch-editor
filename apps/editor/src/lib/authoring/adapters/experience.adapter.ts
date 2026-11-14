@@ -1,8 +1,8 @@
 /**
- * T3.P02.S01 — the Experience adapter.
+ * The Experience adapter.
  *
- * It registers the slice's Experience planners with the one F.4 coordinator and
- * contributes the Experience task and Find entry through T1.P01.S07's AM-5 points.
+ * It registers the Experience planners with the one F.4 coordinator and
+ * contributes the Experience task and Find entry through the AM-5 contribution points.
  * The authoring homes (the Index groups, the Card writers and the Guide instrument) are
  * mounted once by the route's Experience lens, not here: a second contribution would put
  * two draft editors over one accepted source. It edits no host core, route or shell module, and it owns no selection,

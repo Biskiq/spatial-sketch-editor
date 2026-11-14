@@ -1,5 +1,5 @@
 /**
- * T1.P01.S04 — the Dimensions instrument's framework-free controller.
+ * The Dimensions instrument's framework-free controller.
  *
  * Explicit inputs (the accepted source, the subject, the session revision),
  * explicit commands (`edit`, `commit`, `cancel`, `blur`, `place`) and an
@@ -240,7 +240,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	}
 
 	async function submit(intent: AuthoringIntent): Promise<LayoutInstrumentOutcome> {
-		// T3.P03.S02: an explicit typed command starts here; the accepted result it
+		// An explicit typed command starts here; the accepted result it
 		// produces is marked by the host's acceptance path.
 		perfMark('command:instrument', { taskKind: intent.kind, operationId: intent.operationId, wallId: options.subject.kind === 'wall' ? options.subject.id : null });
 		inFlight = true;
@@ -357,7 +357,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 				return { kind: 'refused', code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE };
 			}
 
-			// C2/D3b — a closed Wall's radius and diameter are exact physical writes.
+			// A closed Wall's radius and diameter are exact physical writes.
 			// Diameter is converted to radius here so one planner owns the semantics;
 			// the planner preserves every Opening's angular station and width, or
 			// refuses the edit without writing a clamped value.
@@ -384,7 +384,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 				return outcome;
 			}
 
-			// **T1.P01.S05 — existing straight-Wall manipulation.** Length and angle are
+			// **Existing straight-Wall manipulation.** Length and angle are
 			// exact solves with one explicit fixed endpoint; the rigid move takes both
 			// deltas so it is one intent and one history result. All three build the
 			// canonical planner's payload through one helper, so the typed path and the
@@ -415,7 +415,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
 				return outcome;
 			}
-			// R217.S15 — the Card's disclosed Start/End X/Z use the same shared-Junction
+			// The Card's disclosed Start/End X/Z use the same shared-Junction
 			// planner as the Stage's endpoint drag. The companion coordinate is the
 			// accepted one, so committing X never silently rewrites Z.
 			if (
@@ -591,7 +591,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					placement = { ...placement, error: parsed.reason };
 					return { kind: 'invalid', code: parsed.code, message: parsed.reason };
 				}
-				// T1.P02.S01 §1 — capture identity BEFORE evaluation, outside the
+				// Capture identity BEFORE evaluation, outside the
 				// undoable document, and let the planner re-derive it from the nonce.
 				const capture = mintLayoutIdCapture();
 				const objectId = nextLayoutPresetObjectId(options.document, capture);

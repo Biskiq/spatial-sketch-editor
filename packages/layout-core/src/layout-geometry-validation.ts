@@ -69,7 +69,7 @@ export function prepareLayoutRoomSegments(
 }
 
 /**
- * The compiler-source Room slice room validation reads (T1.P02.S05): identity,
+ * The compiler-source Room slice room validation reads: identity,
  * the boundary chain and its segment-hosted Openings. It is the same record the
  * shared compile core holds, so validation and compilation can never disagree
  * about what a Room is.
@@ -83,7 +83,7 @@ export type CompilerRoomValidationSource = {
 export function validatePreparedLayoutRoomGeometry(
 	room: CompilerRoomValidationSource,
 	/**
-	 * P23.6I — `height` is optional and no format-6 source supplies it: the
+	 * `height` is optional and no format-6 source supplies it: the
 	 * canonical wall-first Floor has no vertical extent, and each Room's Opening
 	 * fit comes from its hosting Wall instead. Only a direct caller of the shared
 	 * core can pass a storey height here, and then the fit (including the
@@ -93,7 +93,7 @@ export function validatePreparedLayoutRoomGeometry(
 	prepared: readonly (SampledSegment | null)[],
 	path = `rooms.${room.id}`,
 	/**
-	 * P23.6H — optional per-boundary-segment vertical limit for Opening fit,
+	 * Optional per-boundary-segment vertical limit for Opening fit,
 	 * keyed by segment id (the wall-first compiler supplies each Wall's
 	 * authoritative height). Absent falls back to the optional `floor.height`;
 	 * exactly one fit rule remains (this branch), never a second validator.
@@ -182,7 +182,7 @@ export function validatePreparedLayoutRoomGeometry(
 		if (!Number.isFinite(opening.width) || opening.width <= 0) issues.push({ path: `${path}.openings[${index}].width`, code: 'opening_width_invalid', message: 'Opening width must be finite and greater than zero.', targetId: opening.id });
 		if (!Number.isFinite(opening.height) || opening.height <= 0) issues.push({ path: `${path}.openings[${index}].height`, code: 'opening_height_invalid', message: 'Opening height must be finite and greater than zero.', targetId: opening.id });
 		if (!Number.isFinite(opening.sillHeight) || opening.sillHeight < 0) issues.push({ path: `${path}.openings[${index}].sillHeight`, code: 'opening_sill_invalid', message: 'Opening sill height must be finite and non-negative.', targetId: opening.id });
-		// P23.6I — provenance comes from **source presence**, never numeric equality.
+		// Provenance comes from **source presence**, never numeric equality.
 		// Comparing `heightLimit === floor.height` mislabelled an Opening whose
 		// hosting Wall happens to be exactly as tall as a supplied storey height:
 		// the Opening is still constrained by its Wall and must name it.

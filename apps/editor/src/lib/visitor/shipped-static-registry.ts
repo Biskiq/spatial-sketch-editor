@@ -1,5 +1,5 @@
 /**
- * P22.1 — shipped-static compatibility registry (checked-in allowlist).
+ * Shipped-static compatibility registry (checked-in allowlist).
  *
  * Thin visitor-safe facade over the canonical registry in
  * `@portfolio/project-model`: stable logical identities keyed by logical URI

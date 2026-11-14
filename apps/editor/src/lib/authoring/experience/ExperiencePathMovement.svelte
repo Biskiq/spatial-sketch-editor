@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * R217.S29 — the one Movement section for a selected Camera path.
+	 * The one Movement section for a selected Camera path.
 	 *
 	 * A Transition Card and an in-Stop step both render this same section against
 	 * the controller's selected occurrence. It owns no selection or write path:

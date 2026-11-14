@@ -1,14 +1,14 @@
 <script lang="ts">
 	/**
-	 * The Card's writer for a selected View (R217.S25, Conservatory composition at Round 2 width):
+	 * The Card's writer for a selected View, in the Conservatory composition:
 	 * the actions row, a 16:10 hero with its lens and eye height, the Framing facts and where
-	 * visitors see the View. Make default is the only Default mutation (D12); the Default shows as
+	 * visitors see the View. Make default is the only Default mutation; the Default shows as
 	 * an informational badge otherwise. Look through shows the View provisionally; Update View
 	 * writes the exact re-aimed pose back. While looking through, Lens and Eye height apply live
 	 * to the provisional Camera and are committed by Update View. It edits through the Experience
 	 * controller and holds no state of its own.
 	 *
-	 * R217.S26: a View another Presentation also lists says *Also in ⟨Presentation⟩*, so a rename
+	 * A View another Presentation also lists says *Also in ⟨Presentation⟩*, so a rename
 	 * or a removal is read as shared before it runs. The name renames from the Card title.
 	 */
 	import type { Snippet } from 'svelte';

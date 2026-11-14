@@ -1,5 +1,5 @@
 /**
- * T2.P01.S01 — deterministic Scene planning.
+ * Deterministic Scene planning.
  *
  * The normalized definition input, the yaw-only local frame and its inverse,
  * the captured-metadata identity and `place-object` candidate preparation.
@@ -7,7 +7,7 @@
  * import reaches this module; `@portfolio/layout-core` sits below this package
  * and supplies the floor-support vocabulary the planner consumes.
  *
- * T2.P01.S02 appends the operation set over F.4's landed contracts: the
+ * It also holds the operation set over F.4's contracts: the
  * snapshot-qualified support re-derivation, the record-scope guard, the seven
  * operation implementations, the strict intent reader and the `DomainPlanner`
  * set. They register into the accepted coordinator; no history, installer or

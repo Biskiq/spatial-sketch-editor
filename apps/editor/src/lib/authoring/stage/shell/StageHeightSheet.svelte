@@ -37,7 +37,7 @@
 		heightMeters: number;
 		ticks: readonly StageHeightTick[];
 		pins: readonly number[];
-		/** The S05 increment, or 0.1 m while Snap is off. */
+		/** The Snap increment, or 0.1 m while Snap is off. */
 		snapIncrement: number;
 		reducedMotion?: boolean;
 		side?: 'left' | 'right';

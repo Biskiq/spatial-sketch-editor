@@ -1,5 +1,5 @@
 /**
- * X2 / decomposition contract W — Artwork placement and direct manipulation.
+ * Artwork placement and direct manipulation.
  *
  * This controller owns the route's Artwork gesture lifetime: the armed placement
  * ghost, the drop handler, and the captured move/turn/corner-resize operation.
@@ -100,7 +100,7 @@ export function createStageArtworkInteraction(input: StageArtworkInteractionInpu
 	let placementCss = $state<readonly [number, number] | null>(null);
 
 	/**
-	 * T2 §5.7 — the Artwork placement lifecycle's one Stage chip. The ghost's
+	 * The Artwork placement lifecycle's one Stage chip. The ghost's
 	 * projected centre anchors Click / Placing / refusal text; before any pose
 	 * exists the chip follows the pointer (or the Stage centre on arming).
 	 */

@@ -53,7 +53,7 @@ export type LayoutSessionPorts = {
 	/** The accepted Layout document this binding was built from. */
 	readonly document: LayoutDocumentWallFirst;
 	readonly levelId: string;
-	/** E4 — this binding's candidate presenter; it dies with the binding. */
+	/** This binding's candidate presenter; it dies with the binding. */
 	readonly presenter: LayoutCandidatePresenter;
 	readonly memory: InkMemory;
 	/** Whether the Ink task is the task this binding is showing. */

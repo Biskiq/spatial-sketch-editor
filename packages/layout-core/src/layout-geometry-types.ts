@@ -4,7 +4,7 @@ import type { LayoutObject, LayoutDerivedWallRole } from './layout-wall-first-ty
 import type { SampleableSegment, SampledSegment } from './layout-geometry-curve';
 
 /**
- * P23.11 — the compiler's room-boundary segment list: wide enough to carry the
+ * The compiler's room-boundary segment list: wide enough to carry the
  * canonical Wall adapter's `cubic-chain` output, which is derived geometry
  * rather than an authored `DraftSegment`.
  */
@@ -45,12 +45,11 @@ export type CompiledCurveSample = {
 };
 
 // ---------------------------------------------------------------------------
-// Compiler input (T1.P02.S05)
+// Compiler input
 //
 // These records are the one accepted input of `compileLayoutGeometrySource`.
-// They used to be `Pick<LayoutRoom | LayoutFloor, …>` / an alias of the legacy
-// segment-hosted `LayoutOpening`, which kept the compiler coupled to the retired
-// document. They are now owned here: the compiler input is its own contract, and
+// They are owned here, not borrowed from a document type, so the compiler stays
+// decoupled from any document generation: the compiler input is its own contract, and
 // `compileWallFirstLayoutGeometry` is its only adapter.
 // ---------------------------------------------------------------------------
 
@@ -58,7 +57,7 @@ export type CompiledCurveSample = {
  * Opening shape accepted by the compiler source, hosted by a boundary segment.
  *
  * Wall-first Openings are mapped onto it with `segmentId = wallId`, so the one
- * geometry compiler/output model (P23.0) reads a Wall-hosted Opening exactly as
+ * geometry compiler/output model reads a Wall-hosted Opening exactly as
  * it reads any segment-hosted one. `offset` is metres from that segment's start
  * and is the only horizontal authority the compiler reads.
  */
@@ -103,25 +102,25 @@ export type CompilerRoomSource = {
 	boundary: CompilerBoundarySource;
 	openings: readonly CompilerOpening[];
 	/**
-	 * Per-wall thickness override keyed by boundary segment id (P23.0b: wall
+	 * Per-wall thickness override keyed by boundary segment id (wall
 	 * thickness is Wall-owned in the wall-first schema). Absent keeps the
 	 * room-uniform fallback.
 	 */
 	wallThicknessBySegmentId?: Readonly<Record<string, number>>;
 	/**
-	 * P23.6H/P23.6I Per-wall Opening vertical limit keyed by boundary segment id
+	 * Per-wall Opening vertical limit keyed by boundary segment id
 	 * (the wall-first adapter supplies each Wall's authoritative `height`).
 	 * Absent keeps the `floor.height` rule.
 	 */
 	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>;
 	/**
-	 * P23.6I — explicit derived Room ceiling elevation (wall-first), computed once
+	 * Explicit derived Room ceiling elevation (wall-first), computed once
 	 * by the adapter as `floor.elevation + max(boundary Wall heights)`. Absent means
 	 * the Floor-derived ceiling.
 	 */
 	ceilingElevation?: number;
 	/**
-	 * P23B.4 M-1 — pre-sampled room-boundary segments keyed by segment object
+	 * Pre-sampled room-boundary segments keyed by segment object
 	 * identity, derived through the chain-scoped sampling derivation at the
 	 * adapter (where Wall + traversal authority are known). The shared core
 	 * serves a mapped segment instead of re-sampling it.
@@ -137,7 +136,7 @@ export type CompilerFloorEntry = {
 
 /** Everything `compileLayoutGeometrySource` accepts. */
 export type CompilerSource = {
-	/** One entry per floor, in document order (P23 review round 1 / B1). */
+	/** One entry per floor, in document order. */
 	floors: readonly CompilerFloorEntry[];
 	objects: readonly LayoutObject[];
 };
@@ -237,7 +236,7 @@ export type CompiledRoom = CompiledIdentity & {
 /**
  * Compiled Floor.
  *
- * P23.6I — carries **no vertical extent**. `height` was a copy of the legacy
+ * Carries **no vertical extent**. `height` was a copy of the legacy
  * storey scalar, and the wall-first model defines the enclosure by its Walls
  * (`CompiledPhysicalWall.height`) with Room ceilings derived per Room
  * (`CompiledRoom.ceilingElevation`). It is deliberately not replaced by another
@@ -346,7 +345,7 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 	floorId: string;
 	thickness: number;
 	/**
-	 * P23.6H — the Wall's authoritative physical height in meters, carried into
+	 * The Wall's authoritative physical height in meters, carried into
 	 * compiled output so downstream consumers (mesh builders, Inspector, Plan)
 	 * never have to re-read `LayoutDocument`. Vertical extent is
 	 * `[floor.elevation, floor.elevation + height]`.
@@ -362,7 +361,7 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 	bounds2: LayoutBounds2;
 	bounds3: LayoutBounds3;
 	/**
-	 * P23.15 — the canonical Junction at each Wall end, carried into compiled
+	 * The canonical Junction at each Wall end, carried into compiled
 	 * output so renderers and visitors can see a Wall's neighbours without ever
 	 * receiving `LayoutDocument`. Optional so hand-built/legacy compiled Walls
 	 * (and test fixtures) stay valid; wall-first compilation always sets them.
@@ -372,7 +371,7 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 };
 
 /**
- * P23.15 — one vertical band of a Wall endpoint's cross-section. `solid` is
+ * One vertical band of a Wall endpoint's cross-section. `solid` is
  * true where the Wall body exists at that band; an Opening reaching the
  * endpoint makes the band `solid: false` and names the Opening. Compiled, not
  * re-read from the document (Decision 10).
@@ -385,7 +384,7 @@ export type CompiledEndpointBand = {
 };
 
 /**
- * P23.15 — one canonical incident Wall leg at a Junction, with the facts a
+ * One canonical incident Wall leg at a Junction, with the facts a
  * Junction-local solve needs. `tangentOut`/`normalOut` point **outward from the
  * Junction into the Wall** (the Junction-local frame that removes the canonical
  * orientation ambiguity). `outwardAngle` exists only for deterministic cyclic
@@ -419,14 +418,14 @@ export type CompiledEndCorner = { front: CompiledCornerSide; back: CompiledCorne
 export type CompiledLegJoinKind = 'terminal' | 'suppressed' | 'miter' | 'bevel' | 'trim';
 
 /**
- * P23.15 — one vertical band of a resolved Junction surface/interface.
+ * One vertical band of a resolved Junction surface/interface.
  * Per-band resolution is what makes exposure Opening-aware: a branch that
  * covers a difference step in plan below its own top does not cover it above.
  */
 export type CompiledJunctionBand = { bottomY: number; topY: number };
 
 /**
- * P23.15 — one resolved, Wall-attributed physical surface at a Junction.
+ * One resolved, Wall-attributed physical surface at a Junction.
  *
  * `layout-core` decides **what physical surface exists and who owns it**; a
  * builder only turns this into vertices/indices. No builder decides thickness
@@ -454,7 +453,7 @@ export type CompiledJunctionSurface = {
 };
 
 /**
- * P23.15 — an internal interface: another incident Wall's material rests on
+ * An internal interface: another incident Wall's material rests on
  * this Wall's own offset face here, so that region of the face is interior to
  * the resolved Junction material and must not be painted.
  *
@@ -512,18 +511,18 @@ export type CompiledLegJoin = {
 	 */
 	fold?: true;
 	/**
-	 * P23.15 — the resolved, Wall-attributed surfaces this end owns: tangent
+	 * The resolved, Wall-attributed surfaces this end owns: tangent
 	 * continuation difference steps and exposed branch trims. Emitted by
 	 * `layout-core`; a builder only triangulates them.
 	 */
 	surfaces?: CompiledJunctionSurface[];
 	/**
-	 * P23.15 — internal interfaces resting on **this** Wall's own faces: the
+	 * Internal interfaces resting on **this** Wall's own faces: the
 	 * region of the face that is interior to the resolved Junction material.
 	 */
 	interfaces?: CompiledJunctionInterface[];
 	/**
-	 * P23.15 — along-distance from this Junction end where the Wall's material
+	 * Along-distance from this Junction end where the Wall's material
 	 * begins (0 = the Junction plane). A trimmed branch carries the distance at
 	 * which it leaves the resolved Junction material; its sections/reveals are
 	 * clipped there and its end cross-section is **not** painted, because that
@@ -531,7 +530,7 @@ export type CompiledLegJoin = {
 	 */
 	clipDistance?: number;
 	/**
-	 * P23.15 — the resolved Junction-local **keel** of a degree >= 3 sector
+	 * The resolved Junction-local **keel** of a degree >= 3 sector
 	 * partition: the plan region of Junction material this Wall owns between its
 	 * own cap line and the two partition beams that bound its sector.
 	 *
@@ -550,7 +549,7 @@ export type CompiledLegJoin = {
 	keel?: { regions: LayoutVec2[][]; bands: CompiledJunctionBand[] };
 };
 
-/** P23.15 — the local, renderer-neutral solve result for one Junction. */
+/** The local, renderer-neutral solve result for one Junction. */
 export type CompiledJunctionResolution = {
 	junctionId: string;
 	legOrder: Array<{ wallId: string; end: 'start' | 'end' }>;
@@ -558,7 +557,7 @@ export type CompiledJunctionResolution = {
 	bounds2: LayoutBounds2;
 };
 
-/** P23.15 — compiled Junction topology: canonical identity + incident legs + local solve. */
+/** Compiled Junction topology: canonical identity + incident legs + local solve. */
 export type CompiledJunction = CompiledIdentity & {
 	junctionId: string;
 	point: LayoutVec2;
@@ -582,7 +581,7 @@ export type CompiledLayoutGeometry = {
 	 */
 	walls: CompiledPhysicalWall[];
 	/**
-	 * P23.15 — compiled Junction topology (wall-first only; empty/absent for
+	 * Compiled Junction topology (wall-first only; empty/absent for
 	 * legacy). Each canonical Junction with at least one incident Wall appears
 	 * once, carrying its incident legs and Junction-local resolution. The
 	 * renderer consumes these facts and never solves topology. Optional so

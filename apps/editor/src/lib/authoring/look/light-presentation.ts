@@ -1,5 +1,5 @@
 /**
- * T2 gallery UX recovery — the light instrument's presentation maths.
+ * The light instrument's presentation maths.
  *
  * One module owns every derived quantity the Stage marks and the Card show:
  * the Spot's derived target distance, the soft-edge ring, the Point reach ring, the placement

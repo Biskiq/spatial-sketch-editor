@@ -154,7 +154,7 @@ export function createContributionView(input: ContributionViewPort) {
 	}
 
 	/**
-	 * R217.S25: the Experience lens reads a settled World. Every mark the adapters publish (move,
+	 * The Experience lens reads a settled World. Every mark the adapters publish (move,
 	 * turn, size, wall ends) is World editing, so none is drawn or hit there.
 	 */
 	function worldMarksOffered(): boolean {

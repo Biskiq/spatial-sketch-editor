@@ -1,26 +1,26 @@
 /**
- * `layout-wall-topology-ops.ts` — P23.0 F0 stage 2: canonical wall-first
- * authoring planners over the P23.8 topology/reconciliation engine.
+ * `layout-wall-topology-ops.ts` — canonical wall-first
+ * authoring planners over the topology/reconciliation engine.
  *
- * Stage-2 scope (P23.0 execution order, item 2): the canonical writers for
- * the P23 minimum are **planners** — explicit-intent → candidate-graph →
+ * Scope: the canonical writers
+ * are **planners** — explicit-intent → candidate-graph →
  * extract → reconcile → validate → commit-once — implemented as pure
  * functions over the existing engine pieces rather than a new system:
  *
- * - `reconcileRooms` (P23.8) owns persistent Room correspondence;
- * - `extractBoundaryCandidateFaces` (P23.8) derives candidate faces;
- * - `validateWallFirstLayoutDocument` (P23.0a) is the final canonical gate;
- * - `compileWallFirstLayoutGeometry` (P23.0b) proves the document compiles.
+ * - `reconcileRooms` owns persistent Room correspondence;
+ * - `extractBoundaryCandidateFaces` derives candidate faces;
+ * - `validateWallFirstLayoutDocument` is the final canonical gate;
+ * - `compileWallFirstLayoutGeometry` proves the document compiles.
  *
  * Planners allocate during the authoring operation only; compilation and
- * rendering never create Rooms (P23.8 "Initial Room creation"). Every
+ * rendering never create Rooms. Every
  * rejection names a stable machine code; invalid intent → no document, the
  * caller leaves history untouched. Undo/Redo keeps restoring exact
  * snapshots — allocation never reruns.
  *
  * **Writer-enable boundary.** These planners are called from the canonical
  * writers and the editor's wall-first transaction path after the F0 gate;
- * P23.1 precision operations use the same candidate/validation discipline.
+ * The precision operations use the same candidate/validation discipline.
  */
 import type {
 	LayoutDocumentWallFirst,
@@ -55,7 +55,7 @@ import {
 } from './layout-id-capture';
 
 /**
- * Captured Room allocator (T1.P02.S01 §1). Room IDs derive from the
+ * Captured Room allocator. Room IDs derive from the
  * operation's nonce plus the sanitized canonical face key; the taken set is
  * only the refusal check that the captured id is unused. Names extend the
  * existing `Draft Room N` convention — a name is not identity.
@@ -88,7 +88,7 @@ export type WallFirstOpRejectionCode =
 	| 'room_reconciliation_rejected'
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile'
-	/* P23.6d — canonical Room lifecycle completion. */
+	/* Canonical Room lifecycle completion. */
 	| 'unknown_room'
 	| 'invalid_patch'
 	| 'invalid_value'
@@ -258,7 +258,7 @@ export function planFirstEnclosureCreation(options: {
 	candidateDocument: LayoutDocumentWallFirst;
 	/** The operation's captured identity; every born Room derives from it. */
 	capture: LayoutIdCapture;
-	/** T1.P02.S01 §1 — explicit working level; must name `candidateDocument.floor.id`. */
+	/** Explicit working level; must name `candidateDocument.floor.id`. */
 	levelId: string;
 }): WallFirstOpPlan {
 	const levelIssue = layoutWorkingLevelIssue(options.candidateDocument, options.levelId);
@@ -291,7 +291,7 @@ export function planFirstEnclosureCreation(options: {
 }
 
 /**
- * P23.6c/P23.6d — shared Wall-removal pipeline: delete a SET of physical
+ * Shared Wall-removal pipeline: delete a SET of physical
  * Walls atomically. `planDeleteWall` (one Wall) and `planRemoveRoom` (a
  * Room's exclusive enclosure Walls) both ride this one authority — never a
  * forked pipeline.
@@ -427,7 +427,7 @@ function planWallRemovalSet(
 }
 
 /**
- * P23.6c — canonical deletion of ONE physical Wall (the viewport/Inspector/
+ * Canonical deletion of ONE physical Wall (the viewport/Inspector/
  * hierarchy Wall delete). Rides the shared removal pipeline above. One plan =
  * one history entry at the caller.
  */
@@ -463,7 +463,7 @@ export function planDeleteWall(
 }
 
 /**
- * P23.6d — canonical Room metadata update (name, floor/ceiling thickness).
+ * Canonical Room metadata update (name, floor/ceiling thickness).
  *
  * Metadata is **not** topology: no face extraction, no P23.8 reconciliation.
  * The candidate rewrites only the Room's own authored fields and runs the same
@@ -565,7 +565,7 @@ export function planRoomMetadataUpdate(
 }
 
 /**
- * P23.12 — the exact optional-name patch semantics shared by the Wall and
+ * The exact optional-name patch semantics shared by the Wall and
  * Opening metadata planners (owner-required lock):
  *
  * - `name: 'North Gallery Wall'` trims and sets;
@@ -621,7 +621,7 @@ function applyOptionalNamePatch(
 }
 
 /**
- * P23.12 — canonical Wall metadata update (optional name) through the one
+ * Canonical Wall metadata update (optional name) through the one
  * planner. A sibling of {@link planRoomMetadataUpdate}: metadata is not
  * topology, so no face extraction runs; the candidate still passes the
  * canonical validation + compile gate. See {@link OptionalNamePatch} for the
@@ -687,7 +687,7 @@ export function planWallMetadataUpdate(
 }
 
 /**
- * P23.12 — canonical Opening metadata update (optional name) through the one
+ * Canonical Opening metadata update (optional name) through the one
  * planner. A sibling of {@link planRoomMetadataUpdate}; the Opening survives
  * the edit, so its reference and its host Wall are untouched. See
  * {@link OptionalNamePatch} for the exact patch semantics.
@@ -745,7 +745,7 @@ export function planOpeningMetadataUpdate(
 }
 
 /**
- * P23.6d — the Room's own boundary Walls that reference **no other** Room
+ * The Room's own boundary Walls that reference **no other** Room
  * (exclusive per the baseline document's `rooms[].boundary` references, never
  * geometry). This is exactly the Wall set {@link planRemoveRoom} demolishes —
  * a shared Wall is one physical Wall the neighbour still needs, so it is kept.
@@ -770,7 +770,7 @@ export function roomExclusiveBoundaryWallIds(
 }
 
 /**
- * P23.6d — canonical "Remove Room": remove the Room and its exclusive
+ * Canonical "Remove Room": remove the Room and its exclusive
  * enclosure Walls in one atomic operation while preserving shared physical
  * Walls required by adjacent Rooms, so selecting a Room and deleting removes
  * the Room together with the Walls it owns alone (never a neighbour's Walls).
@@ -866,7 +866,7 @@ export function closedChainWalls(options: {
 	walls: ReadonlyArray<readonly [string, string, string]>;
 	thickness?: number;
 	/**
-	 * P23.6H — required authoritative Wall height. Fixtures pass their Floor
+	 * Required authoritative Wall height. Fixtures pass their Floor
 	 * height; no fixed default survives on this (or any) Wall-birth path.
 	 */
 	height: number;

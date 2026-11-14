@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * C3 checkpoint 5 — the developed Wall sheet on the Stage.
+	 * The developed Wall sheet on the Stage.
 	 *
 	 * The sheet is the working representation while a Wall is unfolded. The
 	 * canonical Wall is still the only geometry authority; it is hidden by its

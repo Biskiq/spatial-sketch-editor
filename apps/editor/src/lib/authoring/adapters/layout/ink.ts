@@ -1,5 +1,5 @@
 /**
- * T1.P02.S02 — the Ink tool's palette surface: what the creator reads, and the
+ * The Ink tool's palette surface: what the creator reads, and the
  * deliberate pointer targets the drawing gesture can name.
  *
  * Two responsibilities, both narrow:
@@ -322,7 +322,7 @@ export type InkOpeningKind = 'door' | 'window';
 export type InkOpeningProfile = 'rectangular' | 'rounded' | 'pointed';
 
 /**
- * R217.S10 — how the Wall reading names a chain: **Line** taps or drags points one
+ * How the Wall reading names a chain: **Line** taps or drags points one
  * at a time; **Arc** takes a start, an end and a bulge and authors one open
  * canonical `cubic-chain` Wall; **Box** takes two opposite corners and closes the
  * four-Wall ring; **Circle** takes a centre then a rim point and authors the

@@ -1,5 +1,5 @@
 /**
- * T5.P01.S04 — the editor's client for the owner-scoped My Objects routes.
+ * The editor's client for the owner-scoped My Objects routes.
  *
  * The client is transport, not an authority: Save posts the shared codec's
  * canonical payload and content id; read verifies the received bytes against

@@ -1,5 +1,5 @@
 /**
- * Visitor runtime — Experience-unit orchestration (AM-9, T3.P01.S04).
+ * Visitor runtime — Experience-unit orchestration (AM-9).
  *
  * The visitor executes one lowered `ExecutionProgram@4` through the single
  * Experience reducer. There is no node-keyed order, no main-flow walk and no
@@ -243,7 +243,7 @@ export class VisitorRuntimeState {
 	}
 
 	/**
-	 * R217.S30 — after the authored run ends, free exploration starts a fresh
+	 * After the authored run ends, free exploration starts a fresh
 	 * neutral presentation-entry run. The completed run is never reused: its
 	 * terminal phase would ignore `enterPresentation`.
 	 */

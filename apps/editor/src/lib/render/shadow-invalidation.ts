@@ -1,16 +1,14 @@
 /**
- * Shadow-map invalidation (T1.P02.S06 D.6 / H9).
+ * Shadow-map invalidation.
  *
  * three's `WebGLShadowMap` defaults to `autoUpdate = true`, so **every rendered
  * frame** re-renders every shadow map — including every orbit frame, although the
  * Stage's lights and their shadow cameras are fixed in world space and its
- * casters are static between edits. Bench 1 records the Stage's CPU time inside
- * `render()` per frame (F7: 7.0 ms at L) without attributing a share to the shadow
- * pass; the claim here is the count, not a duration.
+ * casters are static between edits.
  *
  * This module owns that decision instead: the Stage keeps `autoUpdate = false`
  * and re-renders a shadow map only when something a shadow map actually depends
- * on changed. The trigger contract (D.6, revised by E8/G4):
+ * on changed. The trigger contract:
  *
  * - a **caster's geometry, Scene or approved model bytes**: the retained
  *   Wall/object rebuild, a Scene placement added, moved or removed, a ghost that
@@ -23,7 +21,7 @@
  * - a **Scene light** added, removed or changed: `scene` identity again;
  * - a **model arrival, release or drawn-state change**: a GLB parses after its URL
  *   is known, so no identity observes it. The Canvas's caster channel reports it
- *   and the owner invalidates once per event (E8/G4);
+ *   and the owner invalidates once per event;
  * - an **animation that is playing**: a moving caster needs a fresh map every
  *   frame. The owner renders per frame only while the channel counts a playing
  *   action, and returns to render-on-change when the last one stops;
@@ -117,8 +115,8 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 
 	// three skips the whole pass when `autoUpdate` is off and nothing asked for
 	// an update, but the call itself still happens. Count only a pass that
-	// actually renders, which is what the H9 oracle means by "shadow-map renders
-	// during a fixed orbit = 0".
+	// actually renders, so "shadow-map renders during a fixed orbit = 0" holds as
+	// a count.
 	shadowMap.render = function counted(lights, scene, camera): void {
 		// A disabled shadow map renders nothing however the flags stand, so counting
 		// it would overstate the oracle.

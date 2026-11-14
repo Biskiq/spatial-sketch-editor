@@ -1,12 +1,10 @@
 /**
- * `plan-numeric-entry.ts` — P23.13 S7: the ratified numeric-entry lifecycle
- * (spec §7 "Adopt optional type-to-enter", A5's keyboard contract).
+ * `plan-numeric-entry.ts` — the numeric-entry lifecycle (optional
+ * type-to-enter while drafting).
  *
- * Before S7 the viewport had one honest answer to "what does typing do while
- * drafting": nothing. §7 ratifies a small editor instead, and it is deliberately
- * **one** editor for every gesture — a finite field set per host, a trigger that
+ * It is deliberately **one** editor for every gesture — a finite field set per host, a trigger that
  * depends on the field's *canonical domain* rather than its label, units that are
- * parsed but never guessed, and exactly the exits §7 lists (Enter once, Escape to
+ * parsed but never guessed, and exactly these exits (Enter once, Escape to
  * restore then cancel, blur never commits, tool change cancels).
  *
  * Nothing here measures geometry, solves, or writes history. A parsed value is
@@ -21,7 +19,7 @@
 
 /** A field's canonical domain — never its display label — decides the trigger. */
 export type PlanNumericDomain =
-	/** Strictly greater than zero: §7 ratifies "Length/Width must be positive". */
+	/** Strictly greater than zero: Length and Width must be positive. */
 	| 'positive'
 	/** Zero is a legal value (an offset flush with the canonical start). */
 	| 'nonnegative'
@@ -120,7 +118,7 @@ export type PlanNumericHost =
 	| 'opening-resize'
 	/** Rigid Wall move: "ΔX / ΔZ". */
 	| 'wall-move'
-	/** R217.S15 body drag: one signed distance along the Wall's current normal. */
+	/** Body drag: one signed distance along the Wall's current normal. */
 	| 'wall-normal'
 	| 'height'
 	| 'thickness'

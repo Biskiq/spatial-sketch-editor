@@ -27,11 +27,11 @@
  *   editorial fields: a Presentation's label, text, subject, Default (a newly
  *   captured View rebinds it deliberately) and View order (a permutation of its
  *   `viewIds`), free-exploration reach, and a Stop's guided Views and outgoing step.
- * - `experience-update` and `experience-guide-update` (R217.S26) edit an
+ * - `experience-update` and `experience-guide-update` edit an
  *   Experience's label, welcome and Opening Guide, and a Guide's label and start Stop.
  * - `experience-stop-remove`, `experience-presentation-view-remove`,
- *   `experience-presentation-remove` and `experience-guide-remove` (R217.S26)
- *   install the E4 removal plans of `experience-structure.ts`: one operation,
+ *   `experience-presentation-remove` and `experience-guide-remove`
+ *   install the removal plans of `experience-structure.ts`: one operation,
  *   nothing replaced silently, Camera truth removed only when unshared.
  *
  * Everything a planner needs is supplied: the captured ids arrive in
@@ -126,13 +126,13 @@ export const EXPERIENCE_STOP_UPDATE_KIND = 'experience-stop-update';
 export const EXPERIENCE_UPDATE_KIND = 'experience-update';
 /** Edit one Guide's label or start Stop. */
 export const EXPERIENCE_GUIDE_UPDATE_KIND = 'experience-guide-update';
-/** Remove one Stop under the E4 rules. */
+/** Remove one Stop under the removal rules. */
 export const EXPERIENCE_STOP_REMOVE_KIND = 'experience-stop-remove';
-/** Remove one View from one Presentation under the E4 rules (writes Camera when unshared). */
+/** Remove one View from one Presentation under the removal rules (writes Camera when unshared). */
 export const EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND = 'experience-presentation-view-remove';
-/** Remove one Presentation under the E4 rules (writes Camera when unshared). */
+/** Remove one Presentation under the removal rules (writes Camera when unshared). */
 export const EXPERIENCE_PRESENTATION_REMOVE_KIND = 'experience-presentation-remove';
-/** Remove one Guide under the E4 rules. */
+/** Remove one Guide under the removal rules. */
 export const EXPERIENCE_GUIDE_REMOVE_KIND = 'experience-guide-remove';
 
 /** The captured staging input name; the value is the staging set the host uploaded. */
@@ -956,7 +956,7 @@ const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'st
  * payload names one of its views). Reusing a Presentation creates a fresh Stop
  * identity: no Camera pose or FOV is copied and no Connection is manufactured.
  *
- * Any number of Guides may be created (R217.S26, E5). The first one becomes the
+ * Any number of Guides may be created. The first one becomes the
  * Experience's explicit `entryGuideId`; a later one leaves the Opening Guide as
  * it is. Guide membership is never made mandatory for any other Presentation,
  * and a source with no Guide still Previews through the visitor list.
@@ -1688,7 +1688,7 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 	};
 }
 
-/* --- Camera connections (R217.S29) ----------------------------------------- */
+/* --- Camera connections ----------------------------------------- */
 
 /**
  * The straight Camera path a Travel needs, added to `candidate` unless the pair
@@ -1946,7 +1946,7 @@ function mergeConnectionTiming(
 }
 
 /**
- * Create one straight Camera path between two current Views (E11).
+ * Create one straight Camera path between two current Views.
  *
  * Targets: exactly two `camera:view` references, from then to. The planner
  * allocates no identity — the captured connection id arrives in
@@ -2132,7 +2132,7 @@ export function createCameraConnectionUpdatePlanner(): DomainPlanner<ProjectEnve
 	};
 }
 
-/* --- Experience and Guide fields (R217.S26) -------------------------------- */
+/* --- Experience and Guide fields -------------------------------- */
 
 /** The Experience a member reference names through its one-element instance path. */
 function containerOf(envelope: ProjectEnvelope, target: SemanticReference): Experience | undefined {
@@ -2350,7 +2350,7 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 	};
 }
 
-/* --- Removal (R217.S26, E4) ------------------------------------------------ */
+/* --- Removal ------------------------------------------------ */
 
 /**
  * The changes and correspondence of an installed removal plan: every removed
@@ -2426,7 +2426,7 @@ function emptyPayload(request: PlannerRequest<ProjectEnvelope>, what: string): P
 }
 
 /**
- * Remove one Stop (E4). Targets: exactly one `experience:stop` reference. The
+ * Remove one Stop. Targets: exactly one `experience:stop` reference. The
  * Stop leaves every Guide that orders it; the only Stop of a Guide and a Stop a
  * Detour uses refuse.
  */
@@ -2453,7 +2453,7 @@ export function createExperienceStopRemovePlanner(): DomainPlanner<ProjectEnvelo
 }
 
 /**
- * Remove one Guide (E4). Targets: exactly one `experience:guide` reference. Its
+ * Remove one Guide. Targets: exactly one `experience:guide` reference. Its
  * Stops no other Guide orders go with it; the Opening Guide passes to the next.
  */
 export function createExperienceGuideRemovePlanner(): DomainPlanner<ProjectEnvelope> {
@@ -2479,7 +2479,7 @@ export function createExperienceGuideRemovePlanner(): DomainPlanner<ProjectEnvel
 }
 
 /**
- * Remove one Presentation (E4). Targets: exactly one `experience:presentation`
+ * Remove one Presentation. Targets: exactly one `experience:presentation`
  * reference. Its Stops, Gates and unshared Camera Views (with their connections)
  * go with it, so it may write Camera.
  */
@@ -2515,7 +2515,7 @@ export function createExperiencePresentationRemovePlanner(): DomainPlanner<Proje
 const VIEW_REMOVE_KEYS = ['viewId', 'defaultViewId'] as const;
 
 /**
- * Remove one View from one Presentation (E4). Targets: exactly one
+ * Remove one View from one Presentation. Targets: exactly one
  * `experience:presentation` reference; the payload names the View and, when it
  * is the Default, the new Default. The Camera View is deleted only when no other
  * Presentation lists it, so it may write Camera.
@@ -2565,7 +2565,7 @@ export function createExperiencePresentationViewRemovePlanner(): DomainPlanner<P
 }
 
 /** Every planner a host registers for this slice's authored operations. */
-/** Experience review 1 (R5) — choose the World's environment preset. */
+/** Experience review 1 — choose the World's environment preset. */
 export const SCENE_ENVIRONMENT_SET_KIND = 'scene-environment-set';
 
 /**

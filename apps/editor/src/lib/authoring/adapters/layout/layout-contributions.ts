@@ -180,7 +180,7 @@ export function createLayoutContributions({
 		)
 			return [];
 		if (closed !== null) {
-			// D8 — the only shape grip a closed Wall publishes is the radius grip.
+			// The only shape grip a closed Wall publishes is the radius grip.
 			// It sits on the authored seam (the rim point) and writes the same
 			// retained radius planner as the Card's Radius/Diameter fields.
 			// The closed Wall's only shape grip is a radius ray from the centre to
@@ -224,7 +224,7 @@ export function createLayoutContributions({
 			];
 		}
 		if (curved !== null) {
-			// C1 — a curved Wall does not carry a permanent constellation of bend
+			// A curved Wall does not carry a permanent constellation of bend
 			// handles. The body is the ordinary editing surface; only the knot a
 			// creator deliberately activated, or is currently dragging, is drawn.
 			const source = document.walls.find((candidate) => candidate.id === curved.wallId);
@@ -247,7 +247,7 @@ export function createLayoutContributions({
 						} satisfies StageHandleDescriptor);
 			const withSize = (marks: StageHandleDescriptor[]): StageHandleDescriptor[] =>
 				sizeChip === null ? marks : [sizeChip, ...marks];
-			// D2 — a different host clears the session's active knot. This is a
+			// A different host clears the session's active knot. This is a
 			// read-side reconciliation, not a document or history change.
 
 			const live = bendGesture?.wallId === curved.wallId ? bendGesture : null;
@@ -256,7 +256,7 @@ export function createLayoutContributions({
 				shownId === null
 					? undefined
 					: source.centerline.knots.find((candidate) => candidate.id === shownId);
-			// D1/P1 — both ends of an open curved Wall stay reachable while its
+			// Both ends of an open curved Wall stay reachable while its
 			// body offers Bend. They are the same junction writers a straight Wall
 			// uses, so shared ends keep canonical identity.
 			const ends: StageHandleDescriptor[] = [
@@ -816,7 +816,7 @@ export function createLayoutContributions({
 			if (subject === null) return [];
 			const facts = [...layoutFacts(document, subject)];
 			const activeKnot = readActiveKnot();
-			// C1 — the approved Card reads a curved Wall's arc length and bend-point
+			// The approved Card reads a curved Wall's arc length and bend-point
 			// count, and names the active bend point when one is selected. Straight
 			// Walls keep exactly their existing facts.
 			const source =
@@ -882,7 +882,7 @@ export function createLayoutContributions({
 		},
 		/**
 		 * Scoped deletes. The Wall action discloses hosted Openings and Room
-		 * consequences (S02); the Opening action removes exactly that Opening and
+		 * consequences; the Opening action removes exactly that Opening and
 		 * returns the host Wall to the selection.
 		 */
 		cardActions(cardSubject: StageCardSubject): readonly StageCardAction[] {
@@ -1002,12 +1002,12 @@ export function createLayoutContributions({
 			}
 			if (cardSubject.sourceKind !== 'wall') return [];
 			const wallId = cardSubject.sourceId;
-			// C1/D2 — one shared action channel for the active knot and the Wall's
+			// One shared action channel for the active knot and the Wall's
 			// shape. Each run previews the retained planner first and then accepts
 			// one captured intent, so a refusal writes nothing and an acceptance is
 			// one undo step. A straight Wall adds no action here.
 			const wallSource = document.walls.find((candidate) => candidate.id === wallId);
-			// T1 A1 — one Split over the retained noder. The Card is the
+			// One Split over the retained noder. The Card is the
 			// midpoint path: a press elsewhere on the Wall never retargets it.
 			// Pointer-specific placement belongs to the deferred Stage context
 			// menu. Nothing here arms a tool or adds a mark.
@@ -1076,7 +1076,7 @@ export function createLayoutContributions({
 				const activeIndex =
 					activeKnot?.wallId === wallId ? knots.findIndex((knot) => knot.id === activeKnot!.knotId) : -1;
 				const runCurve = async (kind: 'delete' | 'straighten'): Promise<StageCardActionOutcome> => {
-					// D13 — centerline and knot shape edits are refused while unfolded,
+					// Centerline and knot shape edits are refused while unfolded,
 					// explicitly and with the same words the Stage uses.
 					if (wallUnfold.isActive(wallId)) {
 						return { kind: 'refused', message: WALL_UNFOLD_SHAPE_REFUSAL };
@@ -1117,7 +1117,7 @@ export function createLayoutContributions({
 					run: () => runCurve('straighten')
 				});
 			}
-			// C3/D14 — unfold entry lives only in the Card foot; the Stage pill
+			// Unfold entry lives only in the Card foot; the Stage pill
 			// owns Put back and the face switch. Shape rings are contextual on
 			// the selected Wall; there is no hidden Bend-armed mode.
 			const preview = deletionPreview(wallId);

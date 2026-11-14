@@ -6,13 +6,13 @@ import type { StandardMaterialDescriptor } from '$lib/render/resources/material-
 /**
  * Imperative visitor wall-material factory — the Wall surface's descriptor.
  *
- * Reproduces the `textures="off"` plain-tint wall surface the Layout shell has
- * always drawn: `plaster-warm` roughness/metalness + the room's tint, with no
+ * Builds the `textures="off"` plain-tint wall surface the Layout shell draws:
+ * `plaster-warm` roughness/metalness + the room's tint, with no
  * texture maps. Materials are acquired by descriptor from the shared
  * `MaterialStore`, so two surfaces with the same tint share one instance and a
  * compile constructs none.
  *
- * Textures stay off in G4 (pixel parity). Tile repeat is a material-side concern
+ * Wall textures stay off (pixel parity). Tile repeat is a material-side concern
  * that applies only once textures turn on — the builder emits raw metric UVs and
  * this factory owns no repeat today.
  *

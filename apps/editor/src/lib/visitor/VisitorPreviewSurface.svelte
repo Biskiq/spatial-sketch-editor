@@ -75,20 +75,20 @@ import { PCFShadowMap } from 'three';
 		reducedMotion?: boolean;
 		mode?: 'preview' | 'public';
 		title?: string | null;
-		/** S30: welcome | guided | free | presentation, chosen by the head Preview entry. */
+		/** Welcome | guided | free | presentation, chosen by the head Preview entry. */
 		startMode?: 'welcome' | 'guided' | 'free' | 'presentation';
 		experienceTitle?: string | null;
 		guideStopCount?: number;
 		guideSeconds?: number;
 		viewLabels?: ReadonlyMap<string, string> | null;
 		onExit?: () => void;
-		/** Experience review 1 (R5) — the Scene's World environment; Paper by default, never black. */
+		/** Experience review 1 — the Scene's World environment; Paper by default, never black. */
 		environment?: SceneEnvironmentPreset;
 	} = $props();
 
-	/** One render-resource owner for the Preview Canvas (E7); see `StageCanvas`. */
+	/** One render-resource owner for the Preview Canvas; see `StageCanvas`. */
 	const resources = provideRenderResources();
-	/** The paper reading's ground disc, from the Canvas store (E9/R2c). */
+	/** The paper reading's ground disc, from the Canvas store. */
 	const PAPER_GROUND: LambertMaterialDescriptor = { kind: 'lambert', color: '#e2e5de' };
 	onDestroy(() => resources.dispose());
 

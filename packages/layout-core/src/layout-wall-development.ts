@@ -1,11 +1,11 @@
 /**
  * `layout-wall-development.ts` — the one development map for a Wall.
  *
- * C3 checkpoint 4. This module owns the data/geometry proof surface only; it
+ * This module owns the data/geometry proof surface only; it
  * has no editor imports and no UI state. One mechanism serves every valid Wall:
  * straight, multi-Bézier, S-curve, inflection and closed self-connected chains.
  *
- * ## Reference surface (D10)
+ * ## Reference surface
  *
  * The development is isometric along the **centerline**. Stations, Opening
  * offsets/widths and Wall length are centerline quantities. Wall faces at
@@ -21,7 +21,7 @@
  * along the developed straight line. Open Walls use that coordinate directly
  * (`anchorStation` is normally 0). A closed Wall rotates the sheet so the
  * **display cut** is at the sheet ends: `sheet = wrap(s - cutStation, L)`.
- * `cutStation` is opposite the anchor (D11) and the canonical seam remains
+ * `cutStation` is opposite the anchor and the canonical seam remains
  * station 0; the seam is a tick at `wrap(-cutStation, L)`, never a moved
  * Junction or a changed canonical station.
  *
@@ -679,7 +679,7 @@ export function developmentStationDistanceFromAnchor(
 
 /**
  * Displayed sheet coordinate. Open Walls keep the anchor-relative station;
- * closed Walls rotate the sheet so the display cut is at 0/L (D11).
+ * closed Walls rotate the sheet so the display cut is at 0/L.
  */
 export function developmentSheetCoordinate(
   development: WallDevelopment,
@@ -747,7 +747,7 @@ export type WallDevelopmentDisplaySample = {
  * The developed centerline in **display order**.
  *
  * Open Walls keep canonical order with `sheet = s - anchor`. A closed Wall is
- * rotated so the display cut is at the sheet ends (D11); the seam remains an
+ * rotated so the display cut is at the sheet ends; the seam remains an
  * interior tick and never splits a sample run. This is the one ordering the
  * inverse map, the face frame and sheet picking consume.
  */
@@ -1035,7 +1035,7 @@ export function developmentOpeningFragments(
   const end = start + opening.width;
   // The display cut is the only discontinuity. The canonical seam is a tick
   // interior to the sheet, so an Opening crossing the seam stays ONE fragment;
-  // only an Opening crossing the cut is split (D11).
+  // only an Opening crossing the cut is split.
   const sheetStart = developmentSheetCoordinate(development, start);
   const sheetEnd = sheetStart + opening.width;
   const fragments: WallDevelopmentOpeningFragment[] = [];

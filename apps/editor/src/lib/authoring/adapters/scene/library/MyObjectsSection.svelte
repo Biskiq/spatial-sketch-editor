@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * T5.P01.S04 — My Objects, the `form` library scope's editor surface.
+	 * My Objects, the `form` library scope's editor surface.
 	 *
 	 * It is a section of the existing Place instrument. The list loads lazily when
 	 * the section opens; choosing an item reads its bytes, verifies the content id

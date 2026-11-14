@@ -1,5 +1,5 @@
 /**
- * X7 — the Scene adapter's candidate presentation.
+ * The Scene adapter's candidate presentation.
  *
  * Pure projection from one Stage adapter context plus the candidate facts the
  * placement binding and the object-mark session expose, to the three Stage

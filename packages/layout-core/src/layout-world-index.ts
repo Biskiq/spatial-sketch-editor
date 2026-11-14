@@ -1,7 +1,6 @@
 /**
  * `layout-world-index.ts` — Copy-on-Write (COW) candidate deltas, retained
- * document world index, and sound Swept-Bounds Geometry Delta Certificate
- * (T1.P02.S06).
+ * document world index, and sound Swept-Bounds Geometry Delta Certificate.
  *
  * Architectural contract:
  * 1. Never serializes into authored documents (AGENTS.md hard rule 3); all
@@ -368,7 +367,7 @@ export function lookupIndexedObject(
  *
  * Uses the indexed Wall/Junction lookups so a COW candidate answers from its
  * persistent roots: a precision plan must not materialize a whole collection
- * just to check one changed Wall (T1.P02.S06's bounded container work).
+ * just to check one changed Wall.
  */
 export function exceedsLayoutWallSpan(
 	document: LayoutDocumentWallFirst,

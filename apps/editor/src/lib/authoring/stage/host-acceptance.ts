@@ -1,5 +1,5 @@
 /**
- * The host↔F4 wiring (T1.P01.S07).
+ * The host↔F4 wiring.
  *
  * One editor host owns **one** `createAcceptanceCoordinator` per project epoch. The
  * coordinator is the only acceptance writer; this module is the host half that
@@ -190,14 +190,14 @@ export function createStageAcceptanceHost(options: {
 }): StageAcceptanceHost {
 	const { facade, baseline } = options;
 	const sessionEpoch = options.sessionEpoch;
-	// T1.P02.S06 D.3 (H1) — one incremental compile store for this host lifetime.
+	// One incremental compile store for this host lifetime.
 	// Every admission after the first reuses the Layout entities the accepted
 	// edit did not move, so an accepted Wall edit no longer pays a whole-document
 	// compile to prove the other thousand Rooms are unchanged. It is bounded by
 	// the document (units for removed entities are released each compile) and it
 	// never outlives the host it belongs to.
 	const compileSession = createLayoutCompileSession();
-	// T2.P02.S02's bounded host contribution: the coordinator that serves this
+	// The bounded host contribution: the coordinator that serves this
 	// Stage grants resource staging, so the one placement planner that declares it
 	// can install a creator model's resource, exact lock and entity together.
 	// Per H0's scope, the grant is the host's; each planner still declares its own
@@ -309,7 +309,7 @@ export function createStageAcceptanceHost(options: {
 	}
 
 	/**
-	 * The runtime the Stage is showing, as preparation's retention input (G2/I4).
+	 * The runtime the Stage is showing, as preparation's retention input.
 	 *
 	 * The mounted snapshot's domain is exactly the Scene and navigation value the
 	 * previous admission resolved, and its attached envelope is the unit record
@@ -461,7 +461,7 @@ export function createStageAcceptanceHost(options: {
 			return { kind: 'refused', code: installed.code, message: installed.message };
 		}
 		rememberAdmittedSnapshot(admittedSnapshot);
-		// T3.P03.S02: the accepted revision is installed into the Stage here. The
+		// The accepted revision is installed into the Stage here. The
 		// performance harness pairs this with the frame that presents it; the input
 		// sequence is the drag sample that produced the commit.
 		perfResult('accepted-result', { sourceContentId: installed.sourceContentId, operationId: installOptions.operationId });

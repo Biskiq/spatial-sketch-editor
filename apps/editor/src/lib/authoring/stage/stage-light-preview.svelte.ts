@@ -1,5 +1,5 @@
 /**
- * T2 gallery UX recovery — the one session-only light preview.
+ * The one session-only light preview.
  *
  * A lighting gesture must be seen as light before it is committed. The Stage
  * session owns this transient value: an overridden light replaces the accepted

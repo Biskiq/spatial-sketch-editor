@@ -1,5 +1,5 @@
 /**
- * E9/R5 — the Artwork body buffers, built once per geometry key.
+ * The Artwork body buffers, built once per geometry key.
  *
  * These are the exact constructions `EntityArtwork.svelte` mounted per entity
  * (the same ring, extrude settings and plate), moved behind the Canvas geometry

@@ -1,5 +1,5 @@
 /**
- * E8 — the approved model fallback bodies, as data.
+ * The approved model fallback bodies, as data.
  *
  * These are the shapes `AssetFallback.svelte` drew while a model's GLB was absent,
  * loading or failed, ported part for part: the same primitive, size, segment

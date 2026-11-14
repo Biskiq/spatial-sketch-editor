@@ -9,7 +9,7 @@
  * authored-source machinery into the delivery path. The closure is proved by a
  * module-graph test rather than by review.
  *
- * `T4.P01.S02` imports this entry for F5 program slots. Nothing here is exported
+ * The F5 program slots import this entry. Nothing here is exported
  * from the package's root barrel.
  */
 

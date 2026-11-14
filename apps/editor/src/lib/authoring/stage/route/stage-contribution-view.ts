@@ -1,7 +1,7 @@
 /**
- * X3 / decomposition contract S — contribution, Find, Dock and toolbar reads.
+ * Contribution, Find, Dock and toolbar reads.
  *
- * These are the projections the route used to carry inline: which contributed
+ * These are the route's contribution projections: which contributed
  * tools are home on the dock, what the Head's Find lists, which dock key is
  * armed, what the one instrument home shows and what the host tools draw. They
  * are pure reads over the facade and already-owned view state; commands stay in
@@ -44,7 +44,7 @@ export type StageDockView = {
 	readonly keys: readonly StageDockKey[];
 };
 
-/** The dock's armable tools and its fixed keys, in their one owner-approved order. */
+/** The dock's armable tools and its fixed keys, in their one approved order. */
 export function stageDockView(input: {
 	readonly facade: StageFacade | null;
 	readonly revision: number;
@@ -104,7 +104,7 @@ export function stageFindView(input: {
 			label: entry.label,
 			verb: 'Invoke'
 		})),
-		// O8: the Scale detents stay reachable after the Scale word leaves the
+		// The Scale detents stay reachable after the Scale word leaves the
 		// toolbar. They are the same existing zoom intent, not a second control.
 		...SCALE_DETENTS.map((ratio) => ({
 			id: `scale:${ratio}`,
@@ -112,7 +112,7 @@ export function stageFindView(input: {
 			label: `Scale 1:${ratio}`,
 			verb: 'Zoom'
 		})),
-		// R217.S20: the former ☰ menu's capabilities keep a Find entry beside their
+		// The former ☰ menu's capabilities keep a Find entry beside their
 		// permanent homes, and Keys, which has no other home.
 		...HEAD_PREFERENCE_ENTRIES,
 		{ id: 'keys', adapterId: 'keys', label: 'Keys', verb: 'Show' },
@@ -135,7 +135,7 @@ export type StageHeadFindEntry = {
 };
 
 /**
- * R217.S20 — viewing preferences the Head's Find reaches. The Stage's ⚙ holds
+ * Viewing preferences the Head's Find reaches. The Stage's ⚙ holds
  * the same values; Find is the second door, and both write the one preference.
  */
 export const HEAD_PREFERENCE_ENTRIES: readonly StageHeadFindEntry[] = [
@@ -150,7 +150,7 @@ export const HEAD_PREFERENCE_ENTRIES: readonly StageHeadFindEntry[] = [
 ];
 
 /**
- * R217.S20 — the project procedures under the project name. Rename and delete
+ * The project procedures under the project name. Rename and delete
  * run in the Head's own lifecycle dialog; download and source replacement run
  * the same route commands the project menu runs.
  */

@@ -1,5 +1,5 @@
 /**
- * E4 / I2 — the Layout adapter's project-epoch compile seam.
+ * The Layout adapter's project-epoch compile seam.
  *
  * One context per Layout adapter: `createAdapter` runs exactly once per Stage
  * facade / acceptance-host pair, so the context lives for one opened project and

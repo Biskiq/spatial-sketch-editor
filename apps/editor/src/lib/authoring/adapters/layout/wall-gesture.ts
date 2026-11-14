@@ -1,5 +1,5 @@
 /**
- * T1.P01.S05 — pointer parameters for an **existing straight Wall**.
+ * Pointer parameters for an **existing straight Wall**.
  *
  * The module is deliberately framework-free and makes no document. Marks are
  * admitted, projected and hit-tested by the Stage's shared mark layer; what is
@@ -59,7 +59,7 @@ export function pointerWallRequest(input: {
 		};
 	}
 	if (input.handle === 'body' || input.mode === 'move') {
-		// O2 — a Wall body slides along its own normal. The pointer names a signed
+		// A Wall body slides along its own normal. The pointer names a signed
 		// distance on that normal; the off-normal part is deliberately discarded,
 		// so no small sideways wobble skews both neighbours.
 		const normal: LayoutVec2 = [-input.frame.direction[1], input.frame.direction[0]];

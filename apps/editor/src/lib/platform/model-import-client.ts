@@ -1,7 +1,7 @@
 /**
- * T2.P02.S02 — the editor's client for S01's creator-model routes.
+ * The editor's client for the creator-model routes.
  *
- * S01 already owns staging, byte upload, cancel, approval and the immutable
+ * The API owns staging, byte upload, cancel, approval and the immutable
  * hash-keyed read. This module is only the transport: it declares the file set,
  * pushes exactly the bytes whose hashes it declared, and returns the approved
  * revision exactly as the server pinned it. It never re-hashes locally and never

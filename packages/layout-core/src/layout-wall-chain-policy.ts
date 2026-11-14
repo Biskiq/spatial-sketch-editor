@@ -1,14 +1,14 @@
 /**
- * `layout-wall-chain-policy.ts` — T1.P02.S02's bounded drawing-policy refusals.
+ * `layout-wall-chain-policy.ts` — bounded drawing-policy refusals.
  *
  * `planWallChain` is the semantic authority and always was: it builds the whole
  * candidate through the canonical engine and refuses what that engine refuses
  * (collinear overlap inside one component, canonical validation, compile). The
  * engine deliberately permits an *un-noded* contact between INDEPENDENT
- * components (P23B.3a S4/S5) — that is legal architecture for a document that
+ * components — that is legal architecture for a document that
  * already contains such geometry, and it never becomes connectivity.
  *
- * The phase's owner-accepted drawing policy (T1.P02 README, 2026-10-22) is
+ * The owner-accepted drawing policy is
  * narrower than what the document format tolerates: while a creator *draws*, a
  * crossing without a Junction, an endpoint that merely touches a Wall's
  * interior, and a closed ring nested inside a Room without sharing a Junction

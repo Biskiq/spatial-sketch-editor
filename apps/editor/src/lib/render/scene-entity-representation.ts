@@ -1,12 +1,9 @@
 /**
- * E7/R4 — the retained Scene entity representation for primitives and Forms.
+ * The retained Scene entity representation for primitives and Forms.
  *
- * Scene content used to mount one Svelte component (and one geometry/material
- * component) per entity: at L that is a component tree for content that changes
- * once per accepted edit. Walls, objects and Rooms already prove the alternative,
- * and this module applies it to the first two Scene families — the ones E7 owns.
- *
- * The contract is the same representation interface E6 established:
+ * Scene primitives and Forms are retained here rather than mounted as one Svelte
+ * component per entity, on the representation contract the Wall, object and Room
+ * representations share:
  *
  * - **One root, mounted once.** `object3d` is the subtree the shell mounts; it is
  *   never replaced.
@@ -21,20 +18,19 @@
  *   registers each item's root; selection reads the same object.
  *
  * Texture variants are loaded per look and bound to the shared material when they
- * arrive. A failed or partial load keeps the untextured surface, which is what
- * the per-entity component rendered while its maps were missing. Releases are
+ * arrive. A failed or partial load keeps the untextured surface. Releases are
  * deferred by the texture store, so a rebuilt entity that reuses a look does not
  * delete and re-upload its bytes inside one update.
  *
- * Artwork (E9) is a family handler under the same root: `description.artworks`
+ * Artwork is a family handler under the same root: `description.artworks`
  * goes to `scene-artwork-representation`, which leases from the same stores.
  *
- * Models (E8) are the second family handler: `description.models` goes to
+ * Models are the second family handler: `description.models` goes to
  * `scene-model-representation`, which draws each fallback from the same stores
  * and realizes the loaded template through the lazily injected model support.
  *
  * Deliberately not owned here: lights and any editor affordance. Authored lights
- * are the sibling `scene-light-representation` (E10/R6), realized by the Canvas
+ * are the sibling `scene-light-representation`, realized by the Canvas
  * light store, so one Scene entity is never drawn twice.
  */
 import { Group, Mesh, type Object3D } from 'three';
@@ -68,7 +64,7 @@ import {
 	type TextureLoadScope
 } from './resources/texture-store';
 
-/** What one update did, as counts — the R2b/R4 oracles read these, never a stopwatch. */
+/** What one update did, as counts — tests read these, never a stopwatch. */
 export type SceneEntityRepresentationStats = {
 	/** Drawable items after the update. */
 	readonly items: number;
@@ -101,13 +97,13 @@ export type SceneEntityRepresentationOptions = {
 	 * released, so the pick source never walks a subtree to find an entity.
 	 */
 	readonly onRoot?: (id: string, root: Object3D) => (() => void) | void;
-	/** The artwork scope this Canvas draws images from (E9). Read on every update. */
+	/** The artwork scope this Canvas draws images from. Read on every update. */
 	readonly artworkScope?: () => ArtworkImageSource | null;
 	/** An Artwork's image arrived and is drawn. */
 	readonly onArtworkArrival?: (id: string) => void;
 	/** An Artwork's image could not be drawn. */
 	readonly onArtworkError?: (message: string) => void;
-	/** The Canvas caster channel the model handler publishes on (E8/G4). */
+	/** The Canvas caster channel the model handler publishes on. */
 	readonly casters?: CasterChannel;
 	/** The lazily loaded model support; null until it arrives. Read on every update. */
 	readonly modelSupport?: () => SceneModelSupport | null;

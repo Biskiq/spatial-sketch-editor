@@ -1,7 +1,7 @@
 /**
  * Light authoring adapter — registration, composition and dispatch.
  *
- * X8: the behavior lives in bounded owners under `./light/`. Placement (the armed
+ * The behavior lives in bounded owners under `./light/`. Placement (the armed
  * kind, the captured press, the held create) is `light-placement-session`; the
  * mark gestures of an existing light are `light-gesture-session`; the subjects,
  * picking, marks, guides, Card and tasks are `light-contributions`. They share one

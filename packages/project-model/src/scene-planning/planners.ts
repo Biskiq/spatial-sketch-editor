@@ -1,14 +1,14 @@
 /**
- * T2.P01.S02 — the Scene `DomainPlanner` set over F.4's landed contracts.
+ * The Scene `DomainPlanner` set over F.4's landed contracts.
  *
  * This module registers **planners**, not a history, an installer or an adapter:
  * a candidate is admitted by the current-source adapter and installed by the
- * editor coordinator, exactly as `T1.P01.S03` landed them. Live registration in
- * a host belongs to the host↔F4 wiring and `T2.P01.S03`; nothing here is
+ * editor coordinator. Live registration in a host belongs to the host↔F4
+ * wiring; nothing here is
  * reachable from a route.
  *
  * The normalized-definition policy is **injected** (`options.definitions`,
- * captured from S01's editor object-definition policy). Planning never reads the
+ * captured from the editor object-definition policy). Planning never reads the
  * application catalogue, and the intent carries the captured
  * `metadataContentId`, so a policy that changed underneath an intent refuses
  * (`definition-changed`) instead of silently placing a different object.

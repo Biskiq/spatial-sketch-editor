@@ -1,5 +1,5 @@
 /**
- * R217.S29 — the one derived read of a Guided occurrence's Camera path.
+ * The one derived read of a Guided occurrence's Camera path.
  *
  * An occurrence is where a Guided move happens: the outgoing edge of a Stop, or
  * a step between two Views inside one Stop. The key is source identity only

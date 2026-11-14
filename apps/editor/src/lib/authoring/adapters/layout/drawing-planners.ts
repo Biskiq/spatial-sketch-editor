@@ -1,6 +1,6 @@
 import { drawingRefusalWords } from './refusals';
 /**
- * T1.P02.S02 — the two bounded F.4 operations drawing adds.
+ * The two bounded F.4 operations drawing adds.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |
@@ -58,11 +58,11 @@ import { layoutPlanner, preparedLayoutCandidate } from './precision';
 
 export const LAYOUT_WALL_CHAIN_COMMIT_KIND = 'layout-wall-chain-commit';
 export const LAYOUT_WALL_DELETE_KIND = 'layout-wall-delete';
-/** C2 — one centre → rim Circle gesture becomes one closed Wall and one Room. */
+/** One centre → rim Circle gesture becomes one closed Wall and one Room. */
 export const LAYOUT_CIRCLE_ROOM_CREATE_KIND = 'layout-circle-room-create';
-/** C2/D3b — exact radius edit on a closed Wall, preserving Opening stations. */
+/** Exact radius edit on a closed Wall, preserving Opening stations. */
 export const LAYOUT_CIRCLE_RADIUS_KIND = 'layout-circle-radius';
-/** C2/D8 — a circular Wall's body drag is one rigid translation. */
+/** A circular Wall's body drag is one rigid translation. */
 export const LAYOUT_CIRCLE_TRANSLATE_KIND = 'layout-circle-translate';
 
 /** One draft vertex as the intent carries it: exact coordinates, no display units. */
@@ -203,7 +203,7 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 /**
  * An exact F.1 reference to one Layout subject of the operation's own level.
  *
- * Shared with the Opening operations (S03): they address a host Wall or an
+ * Shared with the Opening operations: they address a host Wall or an
  * Opening through the same reference shape, never a second encoding.
  */
 export function layoutSubjectReference(input: {
@@ -229,7 +229,7 @@ export function layoutSubjectReference(input: {
  * readers. A missing capture is a caller defect, never something to infer from
  * the document.
  *
- * Shared with the Opening operations (S03), which use the same captured
+ * Shared with the Opening operations, which use the same captured
  * identity and level contract as every other Layout F.4 planner.
  */
 export function readCapturedOperation(
@@ -499,7 +499,7 @@ function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
-/** C2 circle payload: exact centre and rim points plus optional Wall dimensions. */
+/** Circle payload: exact centre and rim points plus optional Wall dimensions. */
 export type CircleRoomCreatePayload = {
 	readonly center: LayoutVec2;
 	readonly rim: LayoutVec2;
@@ -664,7 +664,7 @@ function circleTranslatePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
-/** The S02 drawing operations plus C2's Circle creation, radius and move. */
+/** The chain drawing operations plus Circle creation, radius and move. */
 export function createDrawingPlanners(): readonly DomainPlanner<ProjectEnvelope>[] {
 	return [
 		wallChainCommitPlanner(),

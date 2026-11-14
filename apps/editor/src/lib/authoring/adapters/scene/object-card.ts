@@ -1,5 +1,5 @@
 /**
- * R217.S08 — the Card's object writer, for every Scene object.
+ * The Card's object writer, for every Scene object.
  *
  * A catalogue model, a primitive and a drawn native form share this one
  * controller. Sizing is the only field set that differs by kind: a uniform

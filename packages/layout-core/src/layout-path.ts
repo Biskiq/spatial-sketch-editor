@@ -2,8 +2,7 @@
  * `layout-path.ts` — the authored plan-path records.
  *
  * A `DraftPath` is a closed ordered chain of `DraftSegment`s, each either a
- * straight line or an auto-bezier through explicit interior anchors. T1.P02.S05
- * moved these records here from the retired legacy document barrel: they are
+ * straight line or an auto-bezier through explicit interior anchors. These records are
  * live authored vocabulary — a Layout object's `profile` is a `DraftPath`, and
  * the compiler's sampling kernel accepts a line or auto-bezier segment — but
  * they are not a document, a Room or a Floor.

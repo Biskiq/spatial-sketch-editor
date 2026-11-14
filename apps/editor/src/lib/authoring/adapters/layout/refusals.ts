@@ -1,9 +1,9 @@
 /**
- * R217.S15 — the Wall planner's refusals in human words.
+ * The Wall planner's refusals in human words.
  *
  * The planner's own message names ids and operation codes; those are diagnostics,
  * not something a creator should read on the Stage or in the Card. This map
- * covers the Wall operations this slice exposes and falls back to one neutral
+ * covers the Wall operations the Stage exposes and falls back to one neutral
  * sentence for a future code, so a raw message can never leak through an
  * unhandled branch. Both surfaces import this one map: the Stage's tag and the
  * Card's field error must say the same thing.
@@ -113,11 +113,11 @@ export function wallRefusalWords(code: string, message = ''): string {
 }
 
 /**
- * T1 A1 — the split's own words.
+ * The split's own words.
  *
  * A split is not a bend: sharing `closed_wall_isolated`'s bend wording would
  * offer Radius for a Wall the creator is trying to divide. These two refusals
- * are the slice's promised clear feedback; everything else falls back to the
+ * are the split's own clear feedback; everything else falls back to the
  * shared Wall map.
  */
 export function wallSplitRefusalWords(code: string, message = ''): string {
@@ -136,7 +136,7 @@ export function wallSplitRefusalWords(code: string, message = ''): string {
 }
 
 /**
- * T1 A2 — the join's own words.
+ * The join's own words.
  *
  * A join is not a bend and not a delete: "Remove joint" must say why a corner,
  * a three-Wall joint, a mismatched pair or a non-tangent arc pair cannot join,
@@ -254,7 +254,7 @@ export type RoomDuplicateRejection = {
 };
 
 /**
- * T1 A4 — duplicate's own words.
+ * Duplicate's own words.
  *
  * The planner's diagnostic names ids. The creator needs the same facts in the
  * Room's vocabulary, and a non-isolated Room must **name the shared Wall** rather

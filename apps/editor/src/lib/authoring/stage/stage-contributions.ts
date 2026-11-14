@@ -1,5 +1,5 @@
 /**
- * The host's **generic consumption** of AM-5 adapter contributions (T1.P01.S07).
+ * The host's **generic consumption** of AM-5 adapter contributions.
  *
  * A domain adapter registers its tasks, Find entries, Card facts and instrument
  * content with the Stage facade. Nothing in the shell knows about a particular
@@ -44,7 +44,7 @@ export type StageDockTool = {
 export const STAGE_HOST_ADAPTER_ID = 'host';
 
 /**
- * One key the **dock** draws (R217.S10): the host's Select, Measure and Eraser
+ * One key the **dock** draws: the host's Select, Measure and Eraser
  * plus the contributed Ink and Library, in the owner-ruled order
  * Select · Ink · Measure · Eraser | Library.
  */

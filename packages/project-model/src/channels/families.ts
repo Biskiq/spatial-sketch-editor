@@ -9,7 +9,7 @@
  * nothing.
  *
  * Additional families stay on this gate as compatible, optional admissions
- * (`T3.P01.S03` adds `camera-handoff-v1` through the same protocol) — they join
+ * (`camera-handoff-v1` joins through the same protocol) — they join
  * `createChannelHost` rather than minting a parallel channel format.
  */
 

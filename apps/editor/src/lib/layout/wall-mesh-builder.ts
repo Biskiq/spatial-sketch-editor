@@ -87,7 +87,7 @@ export type IndexedWallMesh = {
 	 */
 	pickRanges: Layout3dPickRange[];
 	/**
-	 * C3 checkpoint 4 — optional canonical development attribution: three
+	 * Optional canonical development attribution: three
 	 * values per vertex, in vertex order: station `s`, signed offset `w`
 	 * (positive along the canonical left normal) and height `y` above the
 	 * floor. Present only when `WallMeshOptions.attribution` is true; the
@@ -95,7 +95,7 @@ export type IndexedWallMesh = {
 	 */
 	attribution?: Float32Array;
 	/**
-	 * Exact (Float64) twin of `attribution`, for the C3 proof suite only. The
+	 * Exact (Float64) twin of `attribution`, for the development proof suite only. The
 	 * render/GPU path uses the compact Float32 array; at metre-scale stations
 	 * Float32 quantisation is already larger than the development's 1e-9 m
 	 * contract, so the geometric proof must read the unrounded values.
@@ -127,7 +127,7 @@ export type WallMeshBuildResult = {
 };
 
 /**
- * P23.15 — absolute along-distance span a resolved Wall end actually occupies.
+ * Absolute along-distance span a resolved Wall end actually occupies.
  * A branch trimmed against the resolved Junction material starts (or ends) at
  * its `clipDistance`, never at the Junction plane, so no Wall-owned body can
  * occupy the same volume as the Junction material.
@@ -141,7 +141,7 @@ type ResolvedEndClip = {
 };
 
 /**
- * P23.15 — one internal interface resting on this Wall's own offset face. The
+ * One internal interface resting on this Wall's own offset face. The
  * builder only **omits** the covered face region; it never decides that the
  * interface exists (that is resolved in `layout-core`).
  */
@@ -153,7 +153,7 @@ type ResolvedFaceSuppression = {
 };
 
 /**
- * P23.15 — already-resolved Junction endpoints passed to the standalone builder.
+ * Already-resolved Junction endpoints passed to the standalone builder.
  * The builder consumes resolved end geometry; it must not decide whether a
  * Junction is a miter, T, X or continuation. A connected endpoint with no
  * resolution fails closed (no square-cap fallback).
@@ -170,7 +170,7 @@ type Vertex = {
 	n: V3;
 	u: number;
 	v: number;
-	/** C3 attribution attached where the emitter already knows the station. */
+	/** Development attribution attached where the emitter already knows the station. */
 	a?: [number, number, number];
 };
 
@@ -292,8 +292,8 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
 }
 
 /**
- * Build one standalone box mesh for a canonical physical Wall (P23.9,
- * Junction-correct as of P23.15).
+ * Build one standalone box mesh for a canonical physical Wall, with
+ * correct Junction ends.
  *
  * **The builder consumes already-resolved endpoint geometry.** Per-Wall
  * ownership/output remains the unit; per-Wall geometry *solving* does not. The
@@ -317,11 +317,11 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
  * class so material grouping and the pick partition are unchanged.
  *
  * Render-only for interaction: canonical wall-first 3D picking/highlighting is
- * explicitly deferred post-P23. Callers must NOT enter the result into
+ * not provided here. Callers must NOT enter the result into
  * room-keyed pick-index maps (its refs namespace to the Wall ID, and there is
  * no Room ownership to claim).
  *
- * Vertical extent comes from `wall.height` (P23.6H): `floorElevation` …
+ * Vertical extent comes from `wall.height`: `floorElevation` …
  * `floorElevation + wall.height`, so a partial-height Wall ends at its authored
  * top with no fake ceiling extension.
  */
@@ -340,7 +340,7 @@ export function buildStandaloneWallMesh(
 	}
 	if (issues.length > 0) return { mesh: undefined, issues };
 
-	// P23.15 — fail closed, unconditionally. An end bound to a canonical
+	// Fail closed, unconditionally. An end bound to a canonical
 	// Junction needs its compiled resolution: degree 1 arrives as
 	// `kind: 'terminal'` (the square cap), degree >= 2 as miter/bevel/trim/
 	// suppressed. A missing resolution is an invariant failure, never a square
@@ -387,7 +387,7 @@ export function buildStandaloneWallMesh(
 
 	const classify = options.classifySurface ?? ((ref: WallMeshSectionRef) => ref.kind);
 	const weldTolerance = options.weldTolerance ?? DEFAULT_WELD_TOLERANCE;
-	// P23.6H — the Wall's own authoritative height decides the mesh extent.
+	// The Wall's own authoritative height decides the mesh extent.
 	// Dropping the `ceilingElevation` parameter makes a Floor-derived vertical
 	// extent impossible to pass in by accident: every surface that renders
 	// wall-first architecture shares this one compiled contract.
@@ -403,7 +403,7 @@ export function buildStandaloneWallMesh(
 	const first = wall.samples[0]!;
 	const last = wall.samples.at(-1)!;
 	const length = last.distance ?? 0;
-	// P23.15 — the resolved end clip and interfaces, straight from the compiled
+	// The resolved end clip and interfaces, straight from the compiled
 	// Junction resolution. The builder does not derive either: it only clips the
 	// Wall's own sections/reveals to the resolved span and omits the faces the
 	// resolution reports as interior.
@@ -464,7 +464,7 @@ export function buildStandaloneWallMesh(
 		if (bridge) bridges.push(bridge);
 	}
 	faces.bridges = bridges;
-	// P23.15 — the resolved difference/trim surfaces are **compiled facts**. This
+	// The resolved difference/trim surfaces are **compiled facts**. This
 	// path only triangulates them; it never compares thicknesses, never inspects
 	// a neighbour's bands and never decides whether a step exists.
 	const surfaceFaces = buildStandaloneResolvedSurfaces(roomView, ends, breakpoints);
@@ -472,7 +472,7 @@ export function buildStandaloneWallMesh(
 		const ref: WallMeshSectionRef = { roomId: wall.wallId, segmentId: wall.wallId, sectionIndex: -1, kind: 'side' };
 		faces.sections.push({ ref, surfaceKey: classify(ref), faces: surfaceFaces });
 	}
-	// P23.15 — a resolved sector keel is *solid* resolved material (the Y / star
+	// A resolved sector keel is *solid* resolved material (the Y / star
 	// partition), so it contributes horizontal faces here; its vertical sides are
 	// the resolved `junction-keel` surfaces above. Both are compiled facts: this
 	// path never decides where a keel is or who owns it.
@@ -511,7 +511,7 @@ function standaloneHeightBreakpoints(wall: CompiledPhysicalWall, wallHeight: num
 	return [...breakpoints].sort((a, b) => a - b);
 }
 
-/** P23.15 — a connected end with no resolved geometry fails closed. */
+/** A connected end with no resolved geometry fails closed. */
 function missingResolutionIssue(wall: CompiledPhysicalWall, end: 'start' | 'end'): LayoutGeometryIssue {
 	return {
 		path: `walls.${wall.wallId}`,
@@ -564,7 +564,7 @@ function legOuterApex(
 }
 
 /**
- * P23.15 — close a resolved Junction end. Mirrors the room path's start bridge
+ * Close a resolved Junction end. Mirrors the room path's start bridge
  * but reads both legs' resolved facts (corner + endpoint profiles), so the
  * standalone Wall never needs its neighbour's mesh. Emitted only by the leg
  * that owns the seam (`ownedSeam`); pure miter corners with no endpoint void
@@ -666,7 +666,7 @@ function buildStandaloneEndBridge(
 }
 
 /**
- * P23.15 — triangulate the **resolved** Junction surfaces this Wall owns.
+ * Triangulate the **resolved** Junction surfaces this Wall owns.
  *
  * `layout-core` decides what physical surface exists, in which vertical bands,
  * and which Wall owns it (`CompiledJunctionSurface`). This function only turns
@@ -719,7 +719,7 @@ function buildStandaloneResolvedSurfaces(
 }
 
 /**
- * P23.15 — extrude the **resolved** sector keels this Wall owns.
+ * Extrude the **resolved** sector keels this Wall owns.
  *
  * A keel is the Junction-local plan region a degree >= 3 sector partition
  * attributes to this Wall beyond its own cap line: the piece a swept Wall strip
@@ -819,7 +819,7 @@ function validateRoom(room: CompiledRoom): LayoutGeometryIssue[] {
 function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 	const issues: LayoutGeometryIssue[] = [];
 	for (const wall of room.walls) {
-		// P23.11 — the finite-thickness decision comes from `layout-core`, the
+		// The finite-thickness decision comes from `layout-core`, the
 		// same predicate the canonical compile gate runs. This builder keeps its
 		// own issue shaping only; it never re-derives the rule.
 		const clearance = wallOffsetClearanceFailure(wall.samples, wall.thickness);
@@ -977,7 +977,7 @@ function buildSectionFaces(
 	suppressions: readonly ResolvedFaceSuppression[] = [],
 	attribution = false
 ): Face[] {
-	// P23.15 — a trimmed end shortens the Wall's own material: the section span
+	// A trimmed end shortens the Wall's own material: the section span
 	// starts (or stops) at the resolved clip distance, never at the Junction
 	// plane, so the Wall's body cannot occupy the Junction material's volume.
 	const spanStart = Math.max(section.startDistance, endClip?.start ?? 0);
@@ -1062,7 +1062,7 @@ function buildSectionFaces(
 			const yLoAWorld = floorElevation + yLoA;
 			const yLoBWorld = floorElevation + yLoB;
 			const yHiWorld = floorElevation + hi;
-			// P23.15 — a resolved internal interface means the corrected region is
+			// A resolved internal interface means the corrected region is
 			// interior to the Junction material, so the Wall's own face is omitted
 			// there. Both offset faces are tested by their own outward normal.
 			const frontOmitted = faceOmitted(suppressions, nA, a.distance, b.distance, lo, hi);
@@ -1366,7 +1366,7 @@ function cornerSide(
 	signHalf: number,
 	miterLimit: number
 ): CornerSide {
-	// P23.15 — one rule, two callers. The offset-line intersection, the miter
+	// One rule, two callers. The offset-line intersection, the miter
 	// limit and the fold refusal live in `layout-core`
 	// (`resolveSharedCornerSide`); this room-loop path and the standalone
 	// Junction solve share them instead of keeping a second copy of the
@@ -1790,7 +1790,7 @@ function vertex(x: number, y: number, z: number, nx: number, ny: number, nz: num
 }
 
 /**
- * C3 checkpoint 4 — the builder's explicit development attribution. A vertex
+ * The builder's explicit development attribution. A vertex
  * is projected onto the source centerline segment it was emitted from; the
  * station is the true sample distance, the offset is signed along the
  * canonical left normal, and the height is above the floor. This is the

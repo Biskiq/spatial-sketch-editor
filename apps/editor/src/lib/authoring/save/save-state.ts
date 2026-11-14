@@ -1,5 +1,5 @@
 /**
- * Framework-free conditional Save state (T3.P01.S02).
+ * Framework-free conditional Save state.
  *
  * Explicit inputs, explicit commands, an observable snapshot: no Svelte, host,
  * Stage, route or renderer import, so the T1 Head integration can mount it

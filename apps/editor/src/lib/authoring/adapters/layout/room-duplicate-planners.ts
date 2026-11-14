@@ -1,12 +1,12 @@
 /**
- * T1 A4 — one Duplicate intent over the retained `planDuplicateIsolatedRoom`.
+ * One Duplicate intent over the retained `planDuplicateIsolatedRoom`.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |
  * | Duplicate one isolated Room | `layout-room-duplicate` | `planDuplicateIsolatedRoom` |
  *
- * The planner is the same deterministic clone/remap planner the P23.4 cutover
- * retained. It receives the complete translation the pointer proposal last
+ * The planner is the same deterministic clone/remap planner Layout core
+ * owns. It receives the complete translation the pointer proposal last
  * showed, captures every new identity before evaluation, and returns one
  * complete candidate document. Nothing here mutates the baseline, invents a
  * second clone path, or joins the copy to its source.

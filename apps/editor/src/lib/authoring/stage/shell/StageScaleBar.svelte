@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * R217.S13 — the Stage's **scale ruler**, at the bottom left (D41).
+	 * The Stage's **scale ruler**, at the bottom left.
 	 *
 	 * It is a reading, not a control: the round length and its projected width are
 	 * derived from the evaluation's own target-plane scale, so the bar cannot

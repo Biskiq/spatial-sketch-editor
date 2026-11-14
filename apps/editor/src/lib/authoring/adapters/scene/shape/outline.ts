@@ -1,5 +1,5 @@
 /**
- * R217.S17A — a drawn gesture becomes a native-form outline.
+ * A drawn gesture becomes a native-form outline.
  *
  * This module is session work, not a format: it reads points on the horizontal
  * X/Z plane and produces the outline anchors `create-form` captures. The only

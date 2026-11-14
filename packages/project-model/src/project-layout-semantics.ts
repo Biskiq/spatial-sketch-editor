@@ -1,7 +1,7 @@
 /**
  * `project-layout-semantics.ts` — project-level Scene semantics.
  *
- * PR #115 (WP3) — current-format-only. There is exactly one supported document
+ * Current-format-only. There is exactly one supported document
  * pair (wall-first Layout + world-local Scene), so there is no Room registry to
  * build and no cross-document room-reference gate to run: the Scene reader
  * already rejects any `roomId`, which is what made a registry necessary.

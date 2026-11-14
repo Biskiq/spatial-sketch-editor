@@ -1,5 +1,5 @@
 /**
- * X8 — the Light screen-space geometry.
+ * The Light screen-space geometry.
  *
  * Pure projections of one Light and one live Stage context into the guide
  * segments and ring controls the Stage draws. Nothing here holds a lifetime,

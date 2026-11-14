@@ -1,14 +1,11 @@
 /**
- * `layout-wall-first-types.ts` — P23.0a wall-first Layout schema types.
+ * `layout-wall-first-types.ts` — wall-first Layout schema types.
  *
- * These types are the wall-first `LayoutDocument` shape ratified by
- * the P23 umbrella ([P23 umbrella §F0.1](../../../../docs/roadmap/p23-layout-depth/2026-09-07-P23-layout-depth-minimum-build.md))
- * and the P23.0 child plan. The Foundation Gate is closed; these records are
- * now consumed by the wall-first Save and P23.1 precise semantic operations.
- * T1.P02.S05 retired the legacy Room-owned document surface: these records are
+ * These types are the wall-first `LayoutDocument` shape. They are consumed by
+ * the wall-first Save and the precise semantic operations. These records are
  * the only authored Layout shape, and there is no compatibility path.
  *
- * Identity rules (P23 umbrella F0.1, P23.0 "Identity rules"):
+ * Identity rules:
  * - Junction IDs are the only normal-authoring connectivity authority.
  * - Wall IDs are document-global and survive deformation; canonical Wall
  *   orientation (start → end) is stable and identity-bearing because opening
@@ -16,7 +13,7 @@
  * - Opening IDs are document-global in the new schema.
  * - Room IDs remain product identities, never face-extractor IDs.
  * - IDs never derive from coordinates, traversal order, timestamps or random
- *   allocation (allocation happens in P23.8/P23.0b authoring operations, not
+ *   allocation (allocation happens in authoring operations, not
  *   in this codec).
  */
 import type { LayoutVec2 } from './layout-coordinates';
@@ -24,8 +21,7 @@ import type { DraftPath } from './layout-path';
 import type { Vec3 } from './types';
 
 /**
- * Document-level Layout object (T1.P02.S05 moved it out of the retired legacy
- * document barrel).
+ * Document-level Layout object.
  *
  * Objects stay document-level and project/world-local: they are not owned by a
  * Floor, a Room or a Wall, and their transform is the authored world transform.
@@ -48,22 +44,21 @@ export type LayoutObject = {
 /**
  * Explicit wall-first format discriminator value (current canonical format).
  *
- * Historical usage recheck (P23.0 requires this before freezing): the active
+ * Historical usage recheck: the active
  * legacy Layout JSON carries no `formatVersion` key (the legacy codec rejects
  * it as `unknown_key`), so a missing version can only mean the Room-owned
  * legacy shape. Archived Museum terminology called the immediately preceding
- * Layout model "v3"; the least surprising wall-first number was therefore `4`
- * (H5 §10.1). Any other explicit value is rejected as unrecognized — a real
+ * Layout model "v3"; the least surprising wall-first number was therefore `4`.
+ * Any other explicit value is rejected as unrecognized — a real
  * decoder must exist before a number becomes loadable.
  *
- * P23.6H bumped the canonical format to `5` and P23.6I made it the **final**
- * Wall-defined vertical model: `LayoutWall.height` is the only authored vertical
- * Wall authority, the canonical Floor carries `id`/`name`/`elevation` only, and a
+ * Format `5` introduced the **final** Wall-defined vertical model:
+ * `LayoutWall.height` is the only authored vertical Wall authority, the canonical Floor carries `id`/`name`/`elevation` only, and a
  * Room ceiling is derived from its boundary Wall heights. Heights have no
  * Floor-relative cap; the shared 1,000 m Layout geometry envelope is enforced by
  * the current reader and authoring planners.
  *
- * **T1.P02.S01 moved the canonical format to `6`: format 5 without the authored
+ * **Format `6` is format 5 without the authored
  * Wall `role`; format 7 adds the closed-Wall shape.** A Wall's role is derived from face membership instead
  * ({@link LayoutDerivedWallRole}): the compiler, the Room gates and the Card fact
  * all read the derived value, and nothing authors it. This settles the
@@ -72,7 +67,7 @@ export type LayoutObject = {
  * field says so.
  *
  * **`7` is the only recognized version, and there is no `6` decoder.** Format 7
- * adds the canonical self-connected Wall (D6): one Wall whose start and end
+ * adds the canonical self-connected Wall: one Wall whose start and end
  * Junction IDs are equal, carrying exactly 16 cubic spans. The change is
  * pre-baseline (`docs/reference/north-star.md` → *Development-stage schema
  * compatibility (pre-baseline)*), so there is no migration, no dual reader and
@@ -82,7 +77,7 @@ export type LayoutObject = {
 export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 7 as const;
 
 /**
- * The approved closed-Wall representation (D6) is exactly 16 symmetric cubic
+ * The approved closed-Wall representation is exactly 16 symmetric cubic
  * spans with 15 interior bend points. The counts are structural: the codec
  * refuses a closed Wall in any other shape rather than admitting a second,
  * unbounded closed representation that the product cannot construct.
@@ -114,7 +109,7 @@ export type LayoutJunction = {
 };
 
 /**
- * One persistent interior bend point of a curved Wall centerline (P23.11).
+ * One persistent interior bend point of a curved Wall centerline.
  *
  * Bend points carry identity and their `point` is the authored, user-facing
  * value. They are owned by their Wall — they are never Junctions and never
@@ -127,7 +122,7 @@ export type LayoutWallCurveKnot = {
 };
 
 /**
- * Control pair for exactly ONE cubic span of a curved Wall centerline (P23.11).
+ * Control pair for exactly ONE cubic span of a curved Wall centerline.
  * `handleOut` leaves the span's first point and `handleIn` arrives at its
  * second point, so one span evaluates to exactly one cubic.
  *
@@ -141,7 +136,7 @@ export type LayoutWallCubicSpan = {
 };
 
 /**
- * Canonical Wall centerline (P23.11). A Wall is either a straight line between
+ * Canonical Wall centerline. A Wall is either a straight line between
  * its endpoint Junctions (`kind: 'line'`) or an explicit cubic chain through
  * its endpoint Junctions and its ordered interior bend points.
  *
@@ -177,13 +172,13 @@ export type LayoutWallCenterline =
  * One physical Wall between two explicit Junctions. A Wall exists once even
  * when it bounds two Rooms; no Wall stores or infers Room ownership.
  *
- * `startJunctionId === endJunctionId` means one **closed** Wall (D6). It is
+ * `startJunctionId === endJunctionId` means one **closed** Wall. It is
  * still an ordinary Wall record: the single Junction is the canonical seam, and
  * the centerline must be the canonical 16-span `cubic-chain`. Closed Walls are
- * isolated (D7); the topology gate refuses a second Wall at the seam and any
+ * isolated; the topology gate refuses a second Wall at the seam and any
  * crossing or endpoint attachment.
  *
- * `height` is the **authoritative physical height** of this Wall (P23.6H),
+ * `height` is the **authoritative physical height** of this Wall,
  * measured upward from the Floor elevation:
  *
  * ```text
@@ -199,7 +194,7 @@ export type LayoutWallCenterline =
  * fit — and is deliberately **not** part of Plan
  * face extraction, so a height change alone never alters Room topology.
  *
- * `centerline` is the authoritative P23.11 curve state: `'line'` for straight
+ * `centerline` is the authoritative curve state: `'line'` for straight
  * Walls, a `cubic-chain` of bend points and one control pair per cubic span for
  * curved ones. The field is required on every persisted Wall (fresh-authority
  * policy: no migration, no missing-field tolerance).
@@ -216,7 +211,7 @@ export type LayoutWall = {
   height: number;
   centerline: LayoutWallCenterline;
   /**
-   * P23.12 — optional authored Wall name. Absence is the only representation of
+   * Optional authored Wall name. Absence is the only representation of
    * "unnamed" (a present-but-blank name is `invalid_value`), duplicates are
    * legal, and a name is never display identity: the reference is. Wall naming
    * does not touch canonical IDs, connectivity or geometry.
@@ -235,8 +230,8 @@ export type OrientedWallRef = {
  * start (H1 meter-offset semantics, never normalized coordinates).
  *
  * `connectsRoomIds` stays an optional explicit semantic inter-Room relation on
- * doors (legacy meaning preserved on read); the stricter P23.8 new-schema
- * adjacency contract arrives with the topology child plan, not here.
+ * doors (legacy meaning preserved on read); the stricter new-schema
+ * adjacency contract is `validateWallFirstPortalRelations`, not this type.
  */
 export type LayoutWallOpening = {
   id: string;
@@ -249,14 +244,14 @@ export type LayoutWallOpening = {
   profile: 'rectangular' | 'rounded' | 'pointed';
   connectsRoomIds?: [string, string];
   /**
-   * P23.12 — optional authored Opening name, same policy as `LayoutWall.name`.
+   * Optional authored Opening name, same policy as `LayoutWall.name`.
    * The reference, not the name, is display identity, and a kind flip
    * (door ↔ window) never changes either one.
    */
   name?: string;
 };/**
- * Floor descriptor — **canonical current (format 6)** shape after P23.6I, the
- * Working-level owner T1.P02.S01 threads as a captured intent input.
+ * Floor descriptor — **canonical current (format 6)** shape, the
+ * Working-level owner threaded as a captured intent input.
  *
  * The Floor owns the horizontal *datum* only: `elevation` is authoritative for
  * Wall bottoms (`bottomY = floor.elevation`) and the Room floor plane. It carries
@@ -278,7 +273,7 @@ export type LayoutWallFirstFloor = {
 
 /**
  * Persistent semantic Room over a derived candidate face. `boundary` holds
- * oriented Wall references (derived/reconciled by P23.8 — this codec only
+ * oriented Wall references (derived/reconciled by Room reconciliation — this codec only
  * validates the reference structure). Surface thicknesses stay Room metadata;
  * wall thickness belongs to Walls.
  */
@@ -291,7 +286,7 @@ export type LayoutWallFirstRoom = {
 };
 
 /**
- * P23.12 — the entity collections a reference can be allocated for. These are
+ * The entity collections a reference can be allocated for. These are
  * the ledger keys, and they are the **only** families: a Junction is never
  * named, and Door/Window share the `openings` family because kind is mutable.
  */
@@ -306,7 +301,7 @@ export const LAYOUT_IDENTITY_FAMILIES = [
 ] as const satisfies readonly LayoutIdentityFamily[];
 
 /**
- * P23.12 — one compact reference per entity, keyed by **canonical ID**.
+ * One compact reference per entity, keyed by **canonical ID**.
  *
  * References are presentation identity only and live here rather than on the
  * entity records: a document-level ledger removes the spread-copy hazard
@@ -330,24 +325,23 @@ export type LayoutIdentityLedger = {
 /**
  * Wall-first Layout document root. `objects` keeps the existing
  * `LayoutObject[]` record type: Layout objects remain document-level and
- * project/world-local; P23.0a does not move them under Floors and does not
- * change their transform ownership.
+ * project/world-local; they are not owned by Floors and keep their
+ * transform ownership.
  *
- * `identity` is the P23.12 reference ledger. It is **optional on read**: every
+ * `identity` is the reference ledger. It is **optional on read**: every
  * already-saved project and every already-published release predates it, and the
  * visitor path re-validates released documents with the same codec, so absence
  * must stay acceptable. The canonical writers always emit it.
  */export type LayoutDocumentWallFirst = {
 	units: 'meters';
 	/**
-	 * Canonical current format — narrowed to the constant's value (P23.6I), so no
+	 * Canonical current format — narrowed to the constant's value, so no
 	 * downstream consumer needs a `formatVersion` branch at all.
 	 */
 	formatVersion: typeof LAYOUT_WALL_FIRST_FORMAT_VERSION;
 	/**
-	 * Floor-level Y datum (P23.0b/P23.6I). Exactly one floor for the P23 minimum;
-	 * multi-floor legacy payloads are compatibility-only (H5 excludes
-	 * multi-floor topology). Carries no vertical extent — see
+	 * Floor-level Y datum. Exactly one floor in the current scope;
+	 * multi-floor legacy payloads are compatibility-only. Carries no vertical extent — see
 	 * {@link LayoutWallFirstFloor}.
 	 */
   floor: LayoutWallFirstFloor;

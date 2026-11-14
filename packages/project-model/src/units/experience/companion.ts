@@ -1,5 +1,5 @@
 /**
- * The semantic DOM / Info Panel companion (AM-6, T3.P01.S06).
+ * The semantic DOM / Info Panel companion (AM-6).
  *
  * A framework-free view model over one program run: what a visitor can reach,
  * what is current, what the Info Panel shows and what should be announced. It

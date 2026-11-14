@@ -1,5 +1,5 @@
 /**
- * X2 / decomposition contract U — Unfold gesture sessions.
+ * Unfold gesture sessions.
  *
  * This controller owns the route-local captured operations on the developed
  * Wall sheet: the pin drag that slides the anchor and selects on a tap, the free
@@ -262,11 +262,11 @@ export function createStageUnfoldGestures(input: StageUnfoldGesturesInput) {
 	}
 
 	/**
-	 * C3 checkpoint 5 — the live unfolded press.
+	 * The live unfolded press.
 	 *
 	 * The developed sheet is the addressed surface while unfolded, so a primary
 	 * press is cast through the accepted Camera evaluation into the same
-	 * checkpoint-4 display strip the Stage draws. The nearest positive hit is
+	 * development display strip the Stage draws. The nearest positive hit is
 	 * attributed to canonical Station/span/knot/face and selected through the
 	 * route's ordinary selection state. This reads geometry and writes only
 	 * selection/pick evidence: no document write, no edit, no undo entry.

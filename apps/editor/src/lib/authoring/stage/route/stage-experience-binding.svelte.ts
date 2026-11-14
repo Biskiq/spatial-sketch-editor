@@ -1,8 +1,8 @@
 /**
- * X3 / decomposition contract S — the Experience binding.
+ * The Experience binding.
  *
- * This controller owns the route-local Experience presentation wiring that used
- * to sit inline in the spatial page: the lens posture, the Guide disclosure, the
+ * This controller owns the route-local Experience presentation wiring: the lens
+ * posture, the Guide disclosure, the
  * one-Stage-pick link mode, the Welcome note, the View marker hit test, the path
  * anchor drag lease and the live turn-arc projection. Capture, View/path edits,
  * playback and Camera operations stay with their existing owners:
@@ -80,7 +80,7 @@ export type StageExperienceBindingInput = {
 export function createStageExperienceBinding(input: StageExperienceBindingInput) {
 	let lensState = $state<'world' | 'experience'>('world');
 	let controller = $state.raw<ExperienceController | null>(null);
-	/** The Guide is closed by default; every lens entry starts closed (R217.S25). */
+	/** The Guide is closed by default; every lens entry starts closed. */
 	let experienceGuideOpen = $state(false);
 	/** Manual View placement is armed lens-local posture. */
 	let experienceTool = $state<'select' | 'place'>('select');
@@ -239,7 +239,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 		const target = stage.projectWorld(edit.target, id);
 		const eyeCss = local(eye.css);
 		const targetCss = target.kind === 'projected' ? local(target.css) : null;
-		// Turn (G1): a ghost wedge along the new direction, an arc from the start
+		// Turn: a ghost wedge along the new direction, an arc from the start
 		// direction and the angle; never a line that stretches with the pointer.
 		let turn: {
 			readonly wedge: string;
@@ -282,7 +282,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 	});
 
 	/**
-	 * R217.S25 — the Experience lens's groups for the shared Index: the Experience
+	 * The Experience lens's groups for the shared Index: the Experience
 	 * switch, the Guides, and the Presentations with their Views and Stop numbers.
 	 */
 	const experienceIndex = $derived(
@@ -318,7 +318,7 @@ export function createStageExperienceBinding(input: StageExperienceBindingInput)
 			if (previous === 'experience' && lensState !== 'experience') lens.deactivate();
 			input.shell().setTask(null);
 			input.shell().bumpContributions();
-			// R217.S25: the Guide instrument is closed by default, so every entry starts
+			// The Guide instrument is closed by default, so every entry starts
 			// closed. A Card subject left from the last visit is cleared too, or its
 			// Guide-type subject would reopen it.
 			if (lensState === 'experience') {

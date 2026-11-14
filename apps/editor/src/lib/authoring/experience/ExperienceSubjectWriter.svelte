@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * The Card's writer for a Scene object shown in the Experience lens (R217.S25, Round 2 density).
-	 * Present this is the only subject-based creation (D1): a Presentation about the object from the
-	 * 3D framing, with no Stop (D2). The controller refuses it in 2D and says why, so the button stays
+	 * The Card's writer for a Scene object shown in the Experience lens.
+	 * Present this is the only subject-based creation: a Presentation about the object from the
+	 * 3D framing, with no Stop. The controller refuses it in 2D and says why, so the button stays
 	 * enabled and that refusal is shown. Open in World keeps the object selected and switches the
 	 * lens. Already presented in lists the Presentations about it. There are no World editing fields.
 	 */
@@ -32,7 +32,7 @@
 
 	async function presentThis(): Promise<void> {
 		if (controller === null || subject === null || presentReason !== '') return;
-		// E9: the Stage visibly frames the subject (or arms placement in Plan) before
+		// The Stage visibly frames the subject (or arms placement in Plan) before
 		// anything is captured; the route owns that Camera request.
 		await homes.presentThis(subject.entityId, subject.label);
 	}

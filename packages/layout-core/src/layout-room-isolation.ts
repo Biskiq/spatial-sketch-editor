@@ -1,5 +1,5 @@
 /**
- * `layout-room-isolation.ts` — P23.6a: the **single** shared isolation policy
+ * `layout-room-isolation.ts` — the **single** shared isolation policy
  * for whole-Room operations.
  *
  * A wall-first Room is persistent semantic identity reconciled from topology,
@@ -8,7 +8,7 @@
  * callers:
  *
  * - `resolveIsolatedRoomSubgraph()` — **one** Room whose boundary graph is
- *   isolated from every other Room and Wall. P23.4 duplication uses this scope;
+ *   isolated from every other Room and Wall. Room duplication uses this scope;
  *   an isolated Room move still resolves through the group scope as a group of one.
  * - `resolveIsolatedRoomGroupSubgraph()` — the **connected Room group** that
  *   contains a Room: every Room transitively joined to it through shared
@@ -23,7 +23,7 @@
  * from the other's outside-architecture, portal-relation or read-only-object
  * policy.
  *
- * Rejection codes keep the P23.4 vocabulary (`unknown_room`,
+ * Rejection codes keep the duplicate planners' vocabulary (`unknown_room`,
  * `invalid_reference`, `room_not_isolated`, `external_portal_relation`,
  * `profile_object_read_only`).
  *
@@ -194,7 +194,7 @@ function outsideIncidentWallIds(
 /**
  * Hosted Opening portal relations that would leave the set: a relation stays
  * valid only when **every** endpoint is a member. (For the single-Room scope
- * the only member is that Room, which is the P23.4 external-relation rule.)
+ * the only member is that Room, which is the external-relation rule.)
  */
 function externalPortalOpeningIds(
 	hostedOpenings: readonly LayoutWallOpening[],
@@ -265,7 +265,7 @@ export function connectedRoomIds(
 }
 
 /**
- * Resolve one Room's isolated subgraph, or the exact P23.4 reason it is not
+ * Resolve one Room's isolated subgraph, or the exact reason it is not
  * isolated. Cell order (stable, and identical to the pre-extraction duplicate
  * behavior):
  *
@@ -356,7 +356,7 @@ export function resolveIsolatedRoomSubgraph(
 
 /**
  * Resolve the **connected Room group** containing `roomId` as one rigidly
- * movable unit (P23.6a amendment A).
+ * movable unit.
  *
  * The group is the smallest set that can translate without detaching
  * architecture: members are joined through shared boundary Junctions, so an

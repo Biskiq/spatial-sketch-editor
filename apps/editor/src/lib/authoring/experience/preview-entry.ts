@@ -1,7 +1,7 @@
 /**
- * Preview entry (T3.P02.S01).
+ * Preview entry.
  *
- * The Preview entry rule is the owner-accepted shell draft's: Preview enters *what
+ * The Preview entry rule: Preview enters *what
  * you are working on* — an open Guide at its entry Stop (never the focused Stop, so
  * the welcome's guided tour always starts there), otherwise the Experience's entry
  * Guide; from a selected Presentation, that Presentation alone

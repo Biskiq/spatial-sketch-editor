@@ -1,5 +1,5 @@
 /**
- * T2.S3 — light aim and guide geometry.
+ * Light aim and guide geometry.
  *
  * The Scene stores an Euler rotation, and the Canvas light store
  * (`render/resources/light-store.ts`) aims a spot down its holder's local −Z.

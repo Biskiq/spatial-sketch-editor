@@ -15,10 +15,7 @@ import { findPolygonContaining, projectPointToSpans } from '@portfolio/layout-co
  * record: the caller's acquisition engine decides *which* target wins, and this
  * resolver still decides *what* that target means.
  *
- * PR #115 moved this type here from `plan-control-grammar.ts`, which §5.1
- * removes as old Plan presentation: the mark shapes and acquisition radii it
-also held belong to the removed shell, while the resolver (a §4.3 retained
- * module) is the only surviving consumer.
+ * The resolver is this type's only consumer, so the type lives beside it.
  */
 export type PlanControlAuthority = {
 	kind: 'junction' | 'curve-control' | 'opening-edge' | 'opening-slide' | 'object-rotation' | 'room-rotation';
@@ -46,20 +43,20 @@ export type PlanHitResult =
 	| { kind: 'wall'; roomId: string; segmentId: string; projection: PlanWallProjection }
 	| { kind: 'room'; roomId: string }
 	/**
-	 * P23.3 — canonical wall-first hits keyed by document-global IDs only. Room
+	 * Canonical wall-first hits keyed by document-global IDs only. Room
 	 * context is derived on demand by the caller (never faked into the record),
 	 * and these never carry a `roomId`/`segmentId` pair.
 	 */
 	| { kind: 'wallOpening'; wallId: string; openingId: string; projection: PlanWallProjection }
 	| { kind: 'physicalWall'; wallId: string; projection: PlanWallProjection }
 	/**
-	 * P23.6 — canonical wall-first Wall endpoint (a real Junction). The caller
+	 * Canonical wall-first Wall endpoint (a real Junction). The caller
 	 * resolves `junctionId` from the document (`start/endJunctionId` by
 	 * `endpoint`); the record itself never carries Room context.
 	 */
 	| { kind: 'wallEndpoint'; wallId: string; endpoint: 0 | 1; point: LayoutVec2 }
 	/**
-	 * P23.11 — one interior control of a curved Wall. Transient editing state
+	 * One interior control of a curved Wall. Transient editing state
 	 * keyed by `{ wallId, anchorId }`: it is never a durable `LayoutSelection`
 	 * variant and never a hierarchy row, so the Wall stays the selection and
 	 * this hit carries no Room/segment context.
@@ -68,7 +65,7 @@ export type PlanHitResult =
 	| null;
 
 /**
- * P23.11 — one candidate curve control for the hit query. Controls are
+ * One candidate curve control for the hit query. Controls are
  * transient editing state owned by the caller (only a selected curved Wall
  * exposes them), so they are supplied per query rather than derived from
  * compiled query geometry.
@@ -283,7 +280,7 @@ function canonicalWallHit(
 }
 
 /**
- * P23.11 — nearest curve control within tolerance, or `null`. Ties resolve to
+ * Nearest curve control within tolerance, or `null`. Ties resolve to
  * the first candidate in caller order, so the caller's own ordering stays the
  * authority (never a distance tiebreak the document cannot express).
  */
@@ -341,9 +338,9 @@ function nearestWallHit(
  * (Junction) hits — below the Junction-handle LOD the invisible endpoint
  * must not outrank its Wall, so callers pass false and the physical Wall
  * wins (default true preserves the full authority). `options.curveControls`
- * are the transient controls of the selected curved Wall (P23.11).
- * `options.controlAuthority` is the verdict of the P23.13 S4 owner-aware
- * acquisition pre-pass (§6). It names a control by canonical identity; this
+ * are the transient controls of the selected curved Wall.
+ * `options.controlAuthority` is the verdict of the owner-aware
+ * acquisition pre-pass. It names a control by canonical identity; this
  * resolver still builds the record, so acquisition changes *which* target wins
  * and never *what* a target means. With no verdict the class fallback below is
  * untouched, so an uncontested pointer behaves exactly as before.
@@ -401,7 +398,7 @@ export function resolvePlanHit(
 	const canonicalOpening = canonicalOpeningHit(queries, point, tolerance);
 	if (canonicalOpening) return canonicalOpening;
 
-	// P23.11 — locked priority: Junction / endpoint > Opening body/handle >
+	// Locked priority: Junction / endpoint > Opening body/handle >
 	// curve control > Wall body. A control outranks the Wall and object body it
 	// sits on (otherwise dragging it would re-select what it belongs to) and
 	// stays below Junction and Opening handles so an overlapping endpoint or

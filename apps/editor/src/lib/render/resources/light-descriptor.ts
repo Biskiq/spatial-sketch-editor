@@ -1,18 +1,18 @@
 /**
- * E10/R6 — resolved light descriptors: what a light is, never how it is built.
+ * Resolved light descriptors: what a light is, never how it is built.
  *
- * `slices.md` R6 routes every world light through the resolved look: a pure
- * function produces a descriptor and one Canvas-scoped store realizes it. A
+ * Every world light goes through the resolved look: a pure function produces a
+ * descriptor and one Canvas-scoped store realizes it. A
  * descriptor is plain, frozen, portable data — no Three object, no import — so
  * it can be compared, keyed and tested without a renderer, exactly like a
  * material descriptor (`material-descriptor.ts`).
  *
  * The kinds are the T2 kinds and nothing more: an authored **Point** and
- * **Spot**, and the Sky's one **Sun**. Authored Directional is retired (AR-11,
- * Scene format 7); the Sun is not an authored kind and is never reachable from
+ * **Spot**, and the Sky's one **Sun**. Authored Directional is retired (Scene
+ * format 7); the Sun is not an authored kind and is never reachable from
  * a Scene entity.
  *
- * Units are the T2.S0 Gate A units, stated rather than implied: Point and Spot
+ * Units are the approved T2 pipeline units (Gate A), stated rather than implied: Point and Spot
  * intensity is candela with physical inverse-square `decay` 2 (Three's physical
  * mode, the only mode r187 has), `distance` 0 is unbounded, a cone is radians;
  * the Sun's intensity is lux. The store applies exactly these values.

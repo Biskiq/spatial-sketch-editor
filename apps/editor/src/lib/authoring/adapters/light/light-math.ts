@@ -1,5 +1,5 @@
 /**
- * X8 — the Light authoring vector and ray helpers.
+ * The Light authoring vector and ray helpers.
  *
  * Pure, lifetime-free arithmetic shared by the Light guides, marks, gestures and
  * placement: no state, no session, no host. Moved verbatim from the former

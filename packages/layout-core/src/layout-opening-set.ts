@@ -1,20 +1,20 @@
 /**
- * `layout-opening-set.ts` — canonical wall-first Opening-set validator (P23.3).
+ * `layout-opening-set.ts` — canonical wall-first Opening-set validator.
  *
  * ONE validator owns whole-hosting-Wall opening fit for the wall-first schema,
- * consumed by both the P23.1 precise wall-edit gates and the P23.3 opening
+ * consumed by both the precise wall-edit gates and the opening
  * create/edit/drag/resize path:
  *
  * ```text
  * canonical opening-set validator
  *         ↑
- * P23.1 wall edits
- * P23.3 opening create/edit/drag/resize
+ * precise wall edits
+ * opening create/edit/drag/resize
  * ```
  *
  * Scope: the hosting-geometry semantics the wall-first codec cannot see —
  * host Wall resolvability, interval fit against the canonical Wall length,
- * vertical fit against the **hosting Wall's authoritative height** (P23.6H),
+ * vertical fit against the **hosting Wall's authoritative height**,
  * same-Wall interval overlap, and profile/width/height compatibility. Field
  * shape (finite/non-negative/positive numbers, enum values), reference
  * existence, and door-only portal relations stay the codec's job; nothing here
@@ -38,7 +38,7 @@ import type { LayoutVec2 } from './layout-coordinates';
 import { countWork } from './p2311-perf';
 import { isClosedWall } from './layout-closed-wall';
 
-/** Fit tolerance shared with the P23.1 precision gates (unchanged semantics). */
+/** Fit tolerance shared with the precision gates (unchanged semantics). */
 export const OPENING_SET_EPSILON = LAYOUT_GEOMETRY_EPSILON;
 
 export type OpeningSetIssueCode =
@@ -47,7 +47,7 @@ export type OpeningSetIssueCode =
 	| 'opening_dimensions_invalid'
 	| 'opening_exceeds_wall'
 	/**
-	 * P23.6H — the Opening's vertical extent exceeds its **hosting Wall's**
+	 * The Opening's vertical extent exceeds its **hosting Wall's**
 	 * authoritative `height`. Renamed from `opening_exceeds_floor_height`: the
 	 * Floor envelope bounds Wall height, not Opening-top directly.
 	 */
@@ -65,7 +65,7 @@ export type OpeningSetIssue = {
 };
 
 /**
- * Identity indexes over one document (T1.P02.S06 D.1 / H3).
+ * Identity indexes over one document.
  *
  * `wallFirstWallSpan` resolves two Junction ids per call. A caller that resolves
  * many Walls — the whole-hosting-Wall Opening set, which used to scan the
@@ -89,7 +89,7 @@ export function wallFirstWallIndex(document: LayoutDocumentWallFirst): WallFirst
 /**
  * Canonical Wall span in document X/Z space (meters).
  *
- * P23.11 — `length` is the **sampled arc length** of the Wall's canonical
+ * `length` is the **sampled arc length** of the Wall's canonical
  * centerline, so curved Walls report their true physical length (a straight
  * Wall's arc length equals its chord exactly, keeping prior behavior).
  * `start`/`end` remain the resolved endpoint Junction coordinates.
@@ -108,7 +108,7 @@ export function wallFirstWallSpan(
 		start = index.pointById.get(wall.startJunctionId);
 		end = index.pointById.get(wall.endJunctionId);
 	} else {
-		// T1.P02.S06 work count (inert without an observer): two linear Junction
+		// Work count (inert without an observer): two linear Junction
 		// lookups per call, an upper bound on the visits.
 		countWork('lookup:junctions', 2 * document.junctions.length);
 		start = document.junctions.find(
@@ -181,7 +181,7 @@ function validateIndexedOpeningRecords(
 	const openingsByWall = new Map<string, LayoutWallOpening[]>();
 	// One span per hosting Wall: the periodic overlap pass must reuse the span
 	// the fit pass already resolved. Recomputing it doubles every consumer
-	// kernel/wall call on documents with many hosted Openings (P23B.4).
+	// kernel/wall call on documents with many hosted Openings.
 	const spanByWall = new Map<string, ReturnType<typeof wallFirstWallSpan>>();
 
 	for (const { opening, index } of entries) {
@@ -252,7 +252,7 @@ function validateIndexedOpeningRecords(
 				message: `Opening '${opening.id}' does not fit on Wall '${opening.wallId}'`
 			});
 		}
-		// P23.6H — vertical fit is measured against the hosting Wall, not the
+		// Vertical fit is measured against the hosting Wall, not the
 		// Floor: a partial-height Wall legitimately caps its own Openings while a
 		// full-height Wall keeps the historical Floor-envelope behavior.
 		if (

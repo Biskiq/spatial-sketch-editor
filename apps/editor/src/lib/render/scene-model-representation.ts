@@ -1,5 +1,5 @@
 /**
- * E8/R5 + R2c + G4 — the retained model handler of the Scene entity representation.
+ * The retained model handler of the Scene entity representation.
  *
  * `AssetModel.svelte` mounted one component per approved model: a GLB
  * subscription, a Svelte fallback tree with one material component per part, and

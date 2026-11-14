@@ -1,8 +1,8 @@
 /**
- * The Experience lens's authoring focus (T3.P02.S01, R217.S25).
+ * The Experience lens's authoring focus.
  *
  * One writable owner for what the lens is working on: the open Experience, the active
- * Guide, and the one Card subject (D10). It is **surface focus**, not canonical Stage
+ * Guide, and the one Card subject. It is **surface focus**, not canonical Stage
  * selection: a Presentation or Stop is not a spatial subject, so it never enters the
  * host's selection or history. The Head's Preview entry rule reads it; the Stage keeps
  * owning selection, task focus and gestures.
@@ -15,7 +15,7 @@
  * A project replacement resets it, because the identities it names belong to the
  * source that was replaced.
  *
- * R217.S26 (E17): the subjects selected before the current one form a session-only
+ * The subjects selected before the current one form a session-only
  * history of at most 40 entries, so Back can return to what was looked at. Back only
  * changes what is looked at; it never undoes, and history is never serialized.
  */

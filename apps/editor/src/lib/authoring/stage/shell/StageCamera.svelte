@@ -40,7 +40,7 @@
 	// Runs before the render pass each frame, so the evaluated matrices are the
 	// ones the meshes are actually drawn with even if Threlte touched the camera.
 	//
-	// T1.P02.S06 D.6 (H9) — `autoInvalidate: false`: by default a task asks for a
+	// `autoInvalidate: false`: by default a task asks for a
 	// frame every time it runs, which made the Stage re-render continuously even
 	// at rest (Bench 1: 120 of 120 idle frames). Writing the evaluated matrices
 	// is not itself a reason to draw, so a new evaluation asks for exactly one

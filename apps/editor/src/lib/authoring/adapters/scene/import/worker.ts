@@ -1,5 +1,5 @@
 /**
- * T2.P02.S02 — the import worker entry.
+ * The import worker entry.
  *
  * Loaded only when Import opens. It owns the glTF reader, the conditional
  * decoders and the encoders, so none of that weight is in the Stage's first

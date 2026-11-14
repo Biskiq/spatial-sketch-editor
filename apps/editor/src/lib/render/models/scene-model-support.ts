@@ -1,5 +1,5 @@
 /**
- * E8/R5 — the model support the Scene model handler loads lazily.
+ * The model support the Scene model handler loads lazily.
  *
  * Everything a drawn model needs beyond plain data is here: the glTF loader with
  * its Meshopt decoder, the skeleton-aware realization and the read-only model

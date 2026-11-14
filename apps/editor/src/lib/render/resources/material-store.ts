@@ -1,5 +1,5 @@
 /**
- * E6/R2a — the material store: the one factory for world surfaces.
+ * The material store: the one factory for world surfaces.
  *
  * `renderer-refactor.md` §2.4 makes this module the only place a world material
  * is constructed. A descriptor — plain data — is canonicalised to one key, and
@@ -7,16 +7,16 @@
  * material when its last lease is released, so no consumer can free a resource
  * another consumer is still drawing.
  *
- * Ownership is per renderer, as §2.4 requires: the Layout shell creates one
- * store for its Canvas subtree, hands it to the Wall, object and Room
- * representations, and disposes it after them. Two Canvases therefore never
- * share a material — WebGL objects cannot be shared across contexts — and no
- * representation constructs one on its own.
+ * Ownership is per renderer, as §2.4 requires: the Canvas host creates one
+ * store through `provideRenderResources` (`render-resources.ts`), the Layout and
+ * Scene representations lease from it, and the host disposes it after them. Two
+ * Canvases therefore never share a material — WebGL objects cannot be shared
+ * across contexts — and no representation constructs one on its own.
  *
- * The store reads the T2.S0 Gate A record; it does not re-decide it. Gate A's
+ * The store reads the Gate A record; it does not re-decide it. Gate A's
  * accepted pipeline is `NoToneMapping` at exposure 1.0 with sRGB output and an
- * `srgb-linear` working space, owned by `createManagedWebGLRenderer` (E1 captured
- * that shared factory). Nothing here sets tone mapping, exposure or an output
+ * `srgb-linear` working space, owned by the shared `createManagedWebGLRenderer`
+ * factory. Nothing here sets tone mapping, exposure or an output
  * colour space, so a material built by this store renders under exactly the
  * pipeline Gate A measured. `toneMapped` is a per-material opt-out the record
  * permits — Gate A named `MeshLambertMaterial` with no mapper as the artwork

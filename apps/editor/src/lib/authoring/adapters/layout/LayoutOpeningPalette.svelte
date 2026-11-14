@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * T1.P02.S03 — the Opening reading's palette.
+	 * The Opening reading's palette.
 	 *
 	 * Loaded on demand when the creator switches Ink from Wall to Opening, so the
 	 * Stage's first load does not carry a family it is not using. It is a reader

@@ -1,6 +1,6 @@
 /**
  * The editor-only authoring history: **one** bounded chronological stack of
- * accepted source states (AM-4; T1.P01.S03 plan §Scope).
+ * accepted source states (AM-4).
  *
  * Three things this is deliberately not:
  *

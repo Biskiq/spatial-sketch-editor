@@ -1,9 +1,9 @@
 /**
- * `layout-junction-clearance.ts` — P23.15 canonical Junction seam validation.
+ * `layout-junction-clearance.ts` — canonical Junction seam validation.
  *
  * Compile canonical Walls/Junctions → resolve Junction geometry → **validate the
  * resolved geometry** → `LayoutGeometryIssue` → only valid compiled geometry
- * reaches consumers. This is the P23.11 render-safe shape: canonical compiler
+ * reaches consumers. This is the render-safe shape: canonical compiler
  * acceptance is authoritative, and the mesh builders repeat the same pure
  * predicate as defense-in-depth instead of being the first place validity is
  * discovered.
@@ -33,7 +33,7 @@
  * between two walls is simply outside the union, not a hole. An *unresolved*
  * leg, by contrast, always leaves a real gap.
  *
- * The throwaway raster/coverage probe from the P23.15 investigation is
+ * The throwaway raster/coverage probe from the seam investigation is
  * deliberately **not** the production predicate. It lives on as a fixture oracle
  * in the test helper, precisely because it does not share this algorithm.
  *
@@ -192,7 +192,7 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 			}
 		}
 	}
-	// P23.15 — resolved Wall-attributed surfaces are emitted geometry, so they are
+	// Resolved Wall-attributed surfaces are emitted geometry, so they are
 	// validated here too: finite, non-zero plan span, positive vertical span, and
 	// owned by the Wall whose join carries them. A zero-area or unowned surface
 	// would render as a degenerate sliver or as unexplained material.
@@ -223,7 +223,7 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 			return junctionSeamFailure('junction_seam_overlap');
 		}
 	}
-	// P23.15 — a resolved sector keel is emitted physical geometry (the builders
+	// A resolved sector keel is emitted physical geometry (the builders
 	// extrude its regions into top/bottom faces), so it is validated like every
 	// other resolved fact. The declared shape of `CompiledLegJoin['keel']` is
 	// pinned here too: each region is a convex CCW plan polygon with real area,

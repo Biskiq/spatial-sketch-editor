@@ -1,5 +1,5 @@
 /**
- * T2.S7 — *Light it* recipe geometry.
+ * *Light it* recipe geometry.
  *
  * A recipe is a plan for one ordinary S3 spot light: where its body goes, how it
  * is aimed, and the cone that covers the subject's evaluated rectangle (Artwork)

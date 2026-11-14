@@ -1,5 +1,5 @@
 /**
- * R217.S08 — Scene object marks: the domain half of the S07 mark contract.
+ * Scene object marks: the domain half of the Stage mark contract.
  *
  * A selected Scene object — a catalogue model, a primitive or a drawn native
  * form — publishes one mark vocabulary: a floor **move** track, a vertical

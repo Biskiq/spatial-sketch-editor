@@ -1,5 +1,5 @@
 /**
- * T2.P01.S01 — the host policy adapter for normalized object definitions.
+ * The host policy adapter for normalized object definitions.
  *
  * `@portfolio/project-model` plans placements and must not import this app's
  * catalogue or Three, so this module is the single place where the catalogue is
@@ -21,7 +21,7 @@
  *   canonical 1.48 x 1.59 m footprint and contact 0; the authored entity carries
  *   neither number.
  *
- * The inventory below is the slice's reviewable admission artifact: every
+ * The inventory below is the reviewable admission artifact: every
  * catalogue asset whose declared surface is `floor` appears exactly once, either
  * admitted or excluded with reasons a reviewer can check.
  */
@@ -93,8 +93,8 @@ export type CatalogueModelContactRecord = {
  *
  * A floor-pivot note is a declaration, not a verification. The salon chair's
  * corrected contact and footprint have been measured on the landed r186 loader
- * base (three 0.186.1); its browser-rendering readiness is checked by the S17
- * matrix. The piano geometry check failed and is recorded below; the remaining
+ * base (three 0.186.1); its browser-rendering readiness is checked by the
+ * rendering matrix. The piano geometry check failed and is recorded below; the remaining
  * models await verification. Analytical primitives need no such verification.
  */
 export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactRecord[] = [
@@ -303,8 +303,9 @@ export function catalogueModelContactMinY(
  *
  * This is admission for new placement only. It is not a replacement for the
  * Scene reader's `isKnownAssetId` seam: existing documents may reference assets
- * this phase excludes, and invalidating them is not this policy's decision —
- * the host integration that consumes this function is `T2.P01.S03`'s.
+ * this policy excludes, and invalidating them is not this policy's decision —
+ * that belongs to the Scene adapter's host integration, which consumes this
+ * function.
  */
 export function isAdmittedPlacementAssetId(assetId: string, manifest: readonly Asset[] = assets): boolean {
 	const asset = findAsset(manifest, assetId);

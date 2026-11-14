@@ -1,5 +1,5 @@
 /**
- * T2 gallery UX recovery §7.1 — the Artwork selection polygon and size tags.
+ * The Artwork selection polygon and size tags.
  *
  * Selection is a screen-space reading of the Artwork's projected outer corners,
  * 6 px outside the frame. It is deliberately not mesh ink: a frame must stay

@@ -47,13 +47,12 @@
 	}
 
 	/**
-	 * The Canvas's one resource owner (E7).
+	 * The Canvas's one resource owner.
 	 *
-	 * E6 created the material store here, while the Layout was its only consumer.
-	 * Scene entities are a sibling of this shell, so ownership moved up to the
-	 * Canvas host (`StageCanvas`, `VisitorPreviewSurface`) and both families lease
-	 * from the same stores. Walls, Layout objects and Rooms still acquire from the
-	 * one factory; no representation constructs a material.
+	 * The Canvas host (`StageCanvas`, `VisitorPreviewSurface`) owns the stores;
+	 * this shell and the Scene entities, its sibling, lease from the same ones.
+	 * Walls, Layout objects and Rooms acquire from the one factory; no
+	 * representation constructs a material.
 	 */
 	const resources = useRenderResources();
 	const materials = resources.materials;
@@ -81,7 +80,7 @@
 	});
 
 	/**
-	 * The retained Layout object representation (T1.P02.S06 D.3 / H4): one mesh per
+	 * The retained Layout object representation: one mesh per
 	 * compiled object, reconciled in place. The compiled object's own `cacheKey` is
 	 * the retention proof.
 	 */
@@ -92,7 +91,7 @@
 	});
 
 	/**
-	 * The retained Room representation (E6/R3): one group per compiled Room, keyed
+	 * The retained Room representation: one group per compiled Room, keyed
 	 * by the Room's `cacheKey`, two triangulations and a shared floor buffer, and
 	 * three materials for every Room. The shell mounts its root once — there is no
 	 * per-Room component, geometry component or material component left.
@@ -158,7 +157,7 @@
 		{/each}
 	{/each}
 	<!--
-		The retained Layout object subtree (T1.P02.S06 D.3 / H4). It is one object
+		The retained Layout object subtree. It is one object
 		for the shell's lifetime; `update` patches meshes inside it. The neutral
 		object surface it uses matches the editor layoutBox tone `#e7e4dd` by value;
 		the editor palette module stays outside the visitor closure.
