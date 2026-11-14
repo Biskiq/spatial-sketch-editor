@@ -9,7 +9,7 @@
 		PublicVisitorError,
 		type ColdReleaseBundle
 	} from '$lib/visitor/public-release-client';
-	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 
 	type PublicStatus = 'loading' | 'ready' | 'not-found' | 'failed' | 'missing-config';
 

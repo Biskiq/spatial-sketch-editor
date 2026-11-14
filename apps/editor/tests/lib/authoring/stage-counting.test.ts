@@ -44,7 +44,7 @@ import {
 	acquireMaterialVariant,
 	releaseEffectiveVariant,
 	releaseMaterialVariant
-} from '$lib/museum/materials/texture-cache';
+} from '$lib/render/resources/texture-store';
 import { getMaterial } from '$lib/content/materials';
 import {
 	buildCountingSceneFixture,

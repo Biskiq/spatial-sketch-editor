@@ -1,3 +1,18 @@
+/**
+ * E6/R2a — the texture-resource store.
+ *
+ * Moved here unchanged from `museum/materials/texture-cache.ts`: the same
+ * source cache, the same per-effective-material variant pool, the same
+ * reference counts and the same two `texture:variant-*` counters. Ownership is
+ * what changed — a render resource now lives beside the material store that
+ * leases it, not inside the museum components that happened to use it first.
+ *
+ * `renderer-refactor.md` §2.4 also asks for **deferred** variant release (a
+ * variant whose count reaches zero is disposed at the next idle point, so a
+ * release-then-reacquire inside one update never deletes a GPU texture). That
+ * behaviour is R2b/E7's, with the Scene look that exercises it; E6 moves the
+ * pool and establishes its owner without changing when a texture is released.
+ */
 import {
   NoColorSpace,
   RepeatWrapping,
@@ -331,7 +346,7 @@ export function resetTextureCachesForTests() {
 // Phase 5.3 — per-effective material-instance variant pool.
 // ---------------------------------------------------------------------------
 
-import type { EffectiveSceneMaterial } from './scene-instance-material';
+import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 
 export type EffectiveLoadResult =
   | { status: 'ready'; maps: LoadedTextureMaps }

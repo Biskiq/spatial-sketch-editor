@@ -19,28 +19,20 @@
  *   one rebuilt.
  * - **Released.** A Wall that left the document, and every superseded buffer, is
  *   disposed in the same call — there is no deferred sweep and no second owner.
- * - **Persistent materials.** One material factory for the representation's whole
- *   lifetime and one material per tint across all Walls, so a compile creates no
- *   materials at all. They are disposed once, with the representation.
+ * - **Shared materials.** Every surface is acquired from the Canvas's
+ *   `MaterialStore` by descriptor — one material per tint across all Walls, and
+ *   the failure surface from the same store — so a compile constructs no
+ *   material at all. The representation gives its leases back once, on dispose;
+ *   a tint another representation also draws survives that release.
  *
  * It is imperative on purpose: at grid-L the previous shell created one Svelte
  * component pair per Wall, so every compile also cost the framework thousands of
  * ownership operations. A `THREE.Group` with `Mesh` children has none.
  *
- * What it deliberately does not own: Room floors, ceilings and door portals stay
- * with `VisitorLayoutShell` (they need `MuseumMaterial`'s texture scope, a
- * different concern), and Scene entities stay with `VisitorEntities`. The shell
- * retains their `Shape` objects by Room key so unchanged Rooms do not recreate
- * their geometry either.
+ * What it deliberately does not own: Room floors and ceilings (E6/R3's
+ * `layout-room-representation.ts`), door portals and Scene entities.
  */
-import {
-	BoxGeometry,
-	Group,
-	Mesh,
-	MeshBasicMaterial,
-	type Material,
-	type Object3D
-} from 'three';
+import { BoxGeometry, Group, Mesh, type Material, type Object3D } from 'three';
 import {
 	legJoinsByWall,
 	diffCompiledWalls,
@@ -55,6 +47,8 @@ import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/
 import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
+import type { MaterialStore } from '$lib/render/resources/material-store';
+import type { BasicMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 
 /** One retained Wall: what it was built from and how to release it. */
 type RetainedWall = {
@@ -73,7 +67,7 @@ export type WallRepresentationStats = {
 	readonly retained: number;
 	/** Meshes removed and released because their Wall left the document. */
 	readonly released: number;
-	/** Distinct tint materials the representation has ever created (monotone). */
+	/** Distinct material instances this representation has drawn (monotone). */
 	readonly materials: number;
 };
 
@@ -98,6 +92,8 @@ export type WallRepresentation = {
 };
 
 const MAGENTA = 0xff2fd4;
+/** The explicit failure surface the shell has always drawn: a magenta wireframe box. */
+const FAILURE_SURFACE: BasicMaterialDescriptor = { kind: 'basic', color: MAGENTA, wireframe: true };
 
 /**
  * Attach `object` to `parent` at `index`.
@@ -169,7 +165,7 @@ function endKeysByWall(geometry: CompiledLayoutGeometry): Map<string, string> {
 	return keys;
 }
 
-export function createWallRepresentation(): WallRepresentation {
+export function createWallRepresentation(store: MaterialStore): WallRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutWalls';
 	const retained = new Map<string, RetainedWall>();
@@ -185,7 +181,7 @@ export function createWallRepresentation(): WallRepresentation {
 	// Wall colour. Keeping it constant is what lets the factory outlive every compile (a
 	// Room-tinted lookup would also make the representation depend on Room
 	// presentation, an input no Wall mesh reads).
-	const factory = createVisitorWallMaterialFactory(() => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE);
+	const factory = createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE);
 	const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
 		const resolved = factory.factory(surfaceKey, mesh);
 		materialsSeen.add(resolved.material);
@@ -203,9 +199,11 @@ export function createWallRepresentation(): WallRepresentation {
 			// wireframe box, never a silently missing Wall.
 			const box = failureBox(wall.bounds3);
 			const geometry = new BoxGeometry(...box.size);
-			const material = new MeshBasicMaterial({ color: MAGENTA, wireframe: true });
-			materialsSeen.add(material);
-			const mesh = new Mesh(geometry, material);
+			// One lease per failure mesh: giving it back never frees another mesh's
+			// claim, and the store disposes the instance at the last one.
+			const lease = store.acquire(FAILURE_SURFACE);
+			materialsSeen.add(lease.material);
+			const mesh = new Mesh(geometry, lease.material);
 			mesh.name = `VisitorPhysicalWallFailure:${wall.wallId}`;
 			tagRenderIdentity(mesh, 'wall-failure', wall.wallId);
 			mesh.position.set(...box.position);
@@ -213,7 +211,7 @@ export function createWallRepresentation(): WallRepresentation {
 				object: mesh,
 				release: () => {
 					geometry.dispose();
-					material.dispose();
+					lease.release();
 				}
 			};
 		}
@@ -338,7 +336,7 @@ export function createWallRepresentation(): WallRepresentation {
 			}
 			retained.clear();
 			factory.dispose();
-			// The failure-surface materials are owned per mesh and released above;
+			// The failure-surface leases are owned per mesh and released above;
 			// clearing the record keeps the set from pinning them.
 			materialsSeen.clear();
 		}

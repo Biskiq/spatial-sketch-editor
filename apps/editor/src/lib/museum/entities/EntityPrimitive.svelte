@@ -2,7 +2,7 @@
 	import { T } from '@threlte/core';
 	import type { ScenePrimitiveEntity } from '$lib/content/scene';
 	import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
-	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import SceneInstanceMaterial from '$lib/museum/materials/SceneInstanceMaterial.svelte';
 	import type { Vec2 } from '$lib/types/materials';
 
