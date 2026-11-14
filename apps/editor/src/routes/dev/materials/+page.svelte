@@ -2,9 +2,15 @@
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
   import { page } from '$app/state';
   import { Canvas, T } from '@threlte/core';
+  import { onDestroy } from 'svelte';
+  import { provideRenderResources } from '$lib/render/resources/render-resources';
   import { computeTextureRepeat, getMaterial } from '$lib/content/materials';
   import MaterialPreviewItem from '$lib/museum/materials/MaterialPreviewItem.svelte';
   import type { MaterialId, MaterialLoadStatus, Vec2 } from '$lib/types/materials';
+
+  // The Canvas owns one material and geometry store for its subtree (E7).
+  const resources = provideRenderResources();
+  onDestroy(() => resources.dispose());
 
   type PreviewSpec = {
     id: MaterialId;

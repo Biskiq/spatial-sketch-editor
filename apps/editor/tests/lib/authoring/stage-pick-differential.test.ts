@@ -6,6 +6,7 @@ import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Shape, ShapeGeometry } fro
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
+import { createGeometryStore } from '$lib/render/resources/geometry-store';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import type { SceneEntity } from '@portfolio/project-model';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -55,7 +56,7 @@ async function samples(fixture: typeof fixtures[number], registerLayout = true) 
 	const root = new Group();
 	const materials = createMaterialStore();
 	const walls = createWallRepresentation(materials); walls.update(admitted.snapshot.domain.geometry); root.add(walls.object3d);
-	const objects = createObjectRepresentation(materials); objects.update(admitted.snapshot.domain.geometry); root.add(objects.object3d);
+	const objects = createObjectRepresentation(materials, createGeometryStore()); objects.update(admitted.snapshot.domain.geometry); root.add(objects.object3d);
 	for (const room of admitted.snapshot.domain.geometry.rooms) {
 		for (const [name, points, height, rotation, invert] of [
 			['floor', room.floorPolygon, room.floorElevation, -Math.PI / 2, true],

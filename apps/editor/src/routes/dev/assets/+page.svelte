@@ -2,6 +2,8 @@
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
   import { Canvas, T } from '@threlte/core';
 import { PCFShadowMap } from 'three';
+  import { onDestroy } from 'svelte';
+  import { provideRenderResources } from '$lib/render/resources/render-resources';
   import { OrbitControls } from '@threlte/extras';
   import { getAsset, assets } from '$lib/content/assets';
   import AssetModel from '$lib/museum/assets/AssetModel.svelte';
@@ -11,6 +13,10 @@ import { PCFShadowMap } from 'three';
     AssetMetrics
   } from '$lib/types/assets';
   import type { Vec3 } from '$lib/types/scene';
+
+  // The Canvas owns one material and geometry store for its subtree (E7).
+  const resources = provideRenderResources();
+  onDestroy(() => resources.dispose());
 
   let selectedAssetId = $state<AssetId>('paris-grand-piano');
   let wireframe = $state(false);

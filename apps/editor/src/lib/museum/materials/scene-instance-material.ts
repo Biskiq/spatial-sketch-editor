@@ -1,4 +1,4 @@
-import { materialById } from '$lib/content/materials';
+import { computeTextureRepeat, materialById } from '$lib/content/materials';
 import type {
 	MaterialDefinition,
 	MaterialId,
@@ -10,6 +10,8 @@ import type {
 	SceneTextureAsset
 } from '$lib/content/scene';
 import { countWork } from '@portfolio/layout-core';
+import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import type { SceneTextureSpec } from '$lib/render/resources/scene-render-item';
 
 const DEFAULT_TILE: [number, number] = [1, 1];
 const SLOT_ORDER: MaterialTextureSlot[] = [
@@ -32,6 +34,54 @@ export type EffectiveSceneMaterial = {
 	defaultTileSizeMeters: [number, number];
 	variantSeed: string;
 };
+
+/**
+ * One resolved Scene look as render data: the surface's canonical descriptor and
+ * the texture variant it binds, or none.
+ *
+ * This is the pure half of R2b. `resolveSceneMaterial` used to be called from a
+ * Svelte component per entity per render, and every entity then constructed its
+ * own `MeshStandardMaterial`. Now it is evaluated once per Scene description
+ * build, and this value is plain data a descriptor-keyed store can share: two
+ * entities with the same look produce the same descriptor and therefore one
+ * material instance.
+ */
+export type SceneLook = {
+	readonly material: StandardMaterialDescriptor;
+	readonly textures: SceneTextureSpec | null;
+};
+
+/**
+ * The resolved look for one entity at one surface size.
+ *
+ * `toneMapped` is `true`, as `SceneInstanceMaterial` rendered it: the Scene's
+ * accepted pipeline left the surface toned (Gate A). The repeat is the same
+ * `computeTextureRepeat` the component used, so textured tiling is unchanged.
+ */
+export function sceneLookFor(
+	document: Pick<SceneDocument, 'materials' | 'textures'>,
+	target: ResolveTarget,
+	surfaceSize: readonly [number, number]
+): SceneLook {
+	const effective = resolveSceneMaterial(document, target);
+	const repeat = computeTextureRepeat([surfaceSize[0], surfaceSize[1]], effective.defaultTileSizeMeters);
+	const slotUris: Partial<Record<MaterialTextureSlot, string>> = {};
+	for (const slot of SLOT_ORDER) {
+		const uri = effective.slotUris[slot];
+		if (uri !== undefined) slotUris[slot] = uri;
+	}
+	const bound = Object.keys(slotUris).length > 0;
+	return {
+		material: {
+			kind: 'standard',
+			color: effective.color,
+			roughness: effective.roughness,
+			metalness: effective.metalness,
+			toneMapped: true
+		},
+		textures: bound ? { variantSeed: effective.variantSeed, slotUris, repeat } : null
+	};
+}
 
 export type ResolveTarget = {
 	materialInstanceId: string | null;

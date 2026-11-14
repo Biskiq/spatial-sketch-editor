@@ -32,7 +32,7 @@ const shadowInvalidationPath = resolve(srcRoot, 'lib/render/shadow-invalidation.
 const stageCanvasPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageCanvas.svelte');
 const stageEntitiesPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageEntities.svelte');
 const entityGroupsPath = resolve(srcRoot, 'lib/visitor/VisitorEntityGroups.svelte');
-const entityFormPath = resolve(srcRoot, 'lib/museum/entities/EntityForm.svelte');
+const sceneRepresentationPath = resolve(srcRoot, 'lib/render/scene-entity-representation.ts');
 const factoryPath = resolve(srcRoot, 'lib/museum/layout/wall-material-factory.ts');
 
 const shell = () => readFileSync(shellPath, 'utf8');
@@ -44,7 +44,7 @@ const shadowInvalidation = () => readFileSync(shadowInvalidationPath, 'utf8');
 const stageCanvas = () => readFileSync(stageCanvasPath, 'utf8');
 const stageEntities = () => readFileSync(stageEntitiesPath, 'utf8');
 const entityGroups = () => readFileSync(entityGroupsPath, 'utf8');
-const entityForm = () => readFileSync(entityFormPath, 'utf8');
+const sceneRepresentation = () => readFileSync(sceneRepresentationPath, 'utf8');
 
 describe('G4 visitor shell boundary', () => {
 	it('removes the per-span chord-box wall path in favor of the builder + adapter', () => {
@@ -99,13 +99,15 @@ describe('G4 visitor shell boundary', () => {
 		// Teardown must not live in an update effect: Svelte runs a returned cleanup
 		// before each re-run, and `geometry` changes identity on every compile, so a
 		// combined effect would dispose the representation and then update a
-		// disposed one. One teardown effect releases the representations first and
-		// the material store last, because they lease from it.
+		// disposed one. One teardown effect releases the representations in order;
+		// E7/R2b moved the store's disposal up to the Canvas that owns it, because
+		// Scene entities lease from the same store outside this shell.
 		const teardown = /\$effect\(\s*\(\) => \(\) => \{([\s\S]*?)\}\s*\);/u.exec(shell())?.[1] ?? '';
 		expect(teardown).toContain('rooms.dispose()');
 		expect(teardown.indexOf('walls.dispose()')).toBeGreaterThan(teardown.indexOf('rooms.dispose()'));
 		expect(teardown.indexOf('objects.dispose()')).toBeGreaterThan(teardown.indexOf('walls.dispose()'));
-		expect(teardown.indexOf('materials.dispose()')).toBeGreaterThan(teardown.indexOf('objects.dispose()'));
+		expect(teardown).not.toContain('materials.dispose()');
+		expect(stageCanvas()).toContain('resources.dispose()');
 		expect(shell()).not.toMatch(/\$effect\(\(\) => \{[\s\S]{0,200}?return \(\) => (walls|objects|rooms)\.dispose\(\);/);
 		// The per-object component loop is gone, so nothing re-creates a geometry
 		// per render from the compiled object list.
@@ -123,10 +125,13 @@ describe('G4 visitor shell boundary', () => {
 		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
 		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} Model={ModelComponent}');
+		// E7/R4: a Form body is built by the retained representation, so its arrival
+		// is reported after an update that built one — the same trigger the lazy
+		// component's mount provided, now owned by the representation.
 		const groups = entityGroups();
-		expect(groups).toContain('onMounted={onFormRendererReady}');
-		expect(entityForm()).toContain("import { onMount } from 'svelte'");
-		expect(entityForm()).toContain('onMount(() => onMounted?.())');
+		expect(groups).toContain('if (stats.forms > 0) onFormRendererReady?.()');
+		expect(groups).toContain("import('$lib/render/scene-form-support')");
+		expect(sceneRepresentation()).toContain("if (item.geometry.kind === 'form') forms += 1");
 		const triggers = shadowTriggers();
 		expect(triggers).toContain('createShadowInvalidation');
 		expect(triggers).toContain('renderer.shadowMap');

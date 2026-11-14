@@ -17,6 +17,8 @@
 	 */
 	import { Canvas, T } from '@threlte/core';
 	import { PCFShadowMap } from 'three';
+	import { onDestroy } from 'svelte';
+	import { provideRenderResources } from '$lib/render/resources/render-resources';
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
 	import type { RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
@@ -141,6 +143,18 @@ import StageMatGround from './StageMatGround.svelte';
 		/** The idle pin shown on a selected curved Wall, before Unroll. */
 		unfoldAnchorPin?: readonly [number, number, number] | null;
 	} = $props();
+
+	/**
+	 * One render-resource owner for this Canvas (E7).
+	 *
+	 * The Layout shell and the Scene entity representation are siblings, so the
+	 * stores live with the Canvas they belong to: equal looks and equal geometry
+	 * are shared across both families, and no WebGL object can cross into another
+	 * Canvas. The shell and the representation release their leases when they are
+	 * destroyed; the stores free anything left here.
+	 */
+	const resources = provideRenderResources();
+	onDestroy(() => resources.dispose());
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));

@@ -33,7 +33,16 @@
  */
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute } from 'three';
 import type { FormMesh } from '@portfolio/geometry-core';
-import type { SceneFormPlane } from '$lib/content/scene';
+
+/**
+ * The two profile planes the kernel extrudes in.
+ *
+ * Declared locally rather than imported from the Scene types: this adapter is
+ * reachable from the geometry store, and a type-only edge to `$lib/content/scene`
+ * would put project-model in a representation's import closure. The union is the
+ * same one `SceneFormPlane` names, so a caller passes it unchanged.
+ */
+type SceneFormPlane = 'plan' | 'elevation';
 
 export function buildFormGeometry(mesh: FormMesh, plane: SceneFormPlane): BufferGeometry {
 	const source = mesh.positions;

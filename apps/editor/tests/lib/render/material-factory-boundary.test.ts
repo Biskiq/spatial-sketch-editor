@@ -41,10 +41,6 @@ const RR7_REMAINDER: Record<string, { count: number; owner: string }> = {
 	// R2c models — shared model remaps (E8).
 	'lib/museum/assets/AssetModel.svelte': { count: 1, owner: 'E8/R2c models' },
 	'lib/museum/assets/instance-material-remap.ts': { count: 1, owner: 'E8/R2c models' },
-	// R2b — the Scene look and its material components (E7).
-	'lib/museum/assets/FallbackMaterial.svelte': { count: 1, owner: 'E7/R2b' },
-	'lib/museum/materials/MuseumMaterial.svelte': { count: 1, owner: 'E7/R2b' },
-	'lib/museum/materials/SceneInstanceMaterial.svelte': { count: 1, owner: 'E7/R2b' },
 	// R5 artwork, environment ground and plinth (E9).
 	'lib/museum/entities/EntityArtwork.svelte': { count: 6, owner: 'E9/R5 artwork' },
 	'lib/museum/layout/GroundPlinth.svelte': { count: 1, owner: 'E9/R2c plinth' },
@@ -178,6 +174,10 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		}
 		// The three Layout surfaces R2a moved are gone from the list entirely.
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/layout/wall-material-factory.ts');
+		// E7/R2b retired the Scene look, the museum surface and the fallback body.
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/materials/SceneInstanceMaterial.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/materials/MuseumMaterial.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/assets/FallbackMaterial.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-wall-representation.ts');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-object-representation.ts');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-room-representation.ts');
@@ -198,13 +198,25 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		}
 	});
 
-	it('the shell hands every representation the one Canvas store', () => {
-		const shell = readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorLayoutShell.svelte'), 'utf8');
-		expect(shell).toContain('createMaterialStore()');
+	it('the Canvas owns the one store and the shell leases from it', () => {
+		// E7 moved ownership up to the Canvas host: Scene entities are a sibling of
+		// the Layout shell, so both families must lease from the same store.
+		for (const host of [
+			'lib/authoring/stage/shell/StageCanvas.svelte',
+			'lib/visitor/VisitorPreviewSurface.svelte'
+		]) {
+			const code = withoutComments(readFileSync(path.join(EDITOR_SRC, host), 'utf8'));
+			expect(code, host).toContain('provideRenderResources()');
+			expect(code, host).toMatch(/resources\.dispose\(\)/);
+		}
+		const shell = withoutComments(readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorLayoutShell.svelte'), 'utf8'));
+		expect(shell).toContain('useRenderResources()');
+		expect(shell).not.toContain('createMaterialStore');
 		expect(shell).toContain('createWallRepresentation(materials)');
-		expect(shell).toContain('createObjectRepresentation(materials)');
+		expect(shell).toContain('createObjectRepresentation(materials, resources.geometry)');
 		expect(shell).toContain('createRoomRepresentation(materials)');
-		expect(shell).toMatch(/materials\.dispose\(\)/);
+		// The representations release their leases; the Canvas frees what is left.
+		expect(shell).not.toMatch(/materials\.dispose\(\)/);
 	});
 });
 

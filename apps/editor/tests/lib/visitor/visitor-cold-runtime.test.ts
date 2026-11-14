@@ -12,6 +12,7 @@ import {
 	type TextureLoadScope
 } from '$lib/render/resources/texture-store';
 import { remapModelMaterials, releaseModelMaterialRemap } from '$lib/museum/assets/instance-material-remap';
+import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 import {
 	createReleaseTextureScope,
 	type ReleaseBytesEntry
@@ -79,18 +80,16 @@ describe('P22.1 cold runtime + asset seam', () => {
 			return tex;
 		});
 		const scope = scopeWith(loader, 'project-a@v1');
-		const result = await loadEffectiveTextures(
-			{
-				catalogue: 'plaster-warm',
-				slotUris: { map: p20Uri },
-				roughness: 0.9,
-				metalness: 0,
-				color: '#ffffff',
-				defaultTileSizeMeters: [1, 1],
-				variantSeed: 'vP20A'
-			},
-			scope
-		);
+		const effective: EffectiveSceneMaterial = {
+			catalogue: 'plaster-warm',
+			slotUris: { map: p20Uri },
+			roughness: 0.9,
+			metalness: 0,
+			color: '#ffffff',
+			defaultTileSizeMeters: [1, 1],
+			variantSeed: 'vP20A'
+		};
+		const result = await loadEffectiveTextures(effective, scope);
 		expect(result.status).toBe('ready');
 		expect(loader).toHaveBeenCalledTimes(1);
 		expect(loader).toHaveBeenCalledWith(p20Uri);

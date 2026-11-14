@@ -32,6 +32,35 @@
 /** A colour as Three accepts it at the constructor: a packed RGB number or `#rgb`/`#rrggbb`. */
 export type MaterialColor = number | string;
 
+/**
+ * The texture slots a world surface may bind, in the one order every key uses.
+ *
+ * This is the same five slots the authored material catalogue names; the union
+ * lives here so a descriptor can carry texture identity without importing a
+ * content module (this module has no imports at all, by design).
+ */
+export type MaterialTextureSlotKey =
+	| 'map'
+	| 'normalMap'
+	| 'roughnessMap'
+	| 'aoMap'
+	| 'metalnessMap';
+
+export const MATERIAL_TEXTURE_SLOTS: readonly MaterialTextureSlotKey[] = [
+	'map',
+	'normalMap',
+	'roughnessMap',
+	'aoMap',
+	'metalnessMap'
+];
+
+/**
+ * One texture-variant identity per bound slot. The value is the variant key the
+ * texture store issued — plain text, so two looks that bind the same loaded
+ * variant produce the same material key.
+ */
+export type MaterialTextureKeys = Readonly<Partial<Record<MaterialTextureSlotKey, string>>>;
+
 export type StandardMaterialDescriptor = {
 	readonly kind: 'standard';
 	readonly color: MaterialColor;
@@ -43,6 +72,14 @@ export type StandardMaterialDescriptor = {
 	readonly emissiveIntensity?: number;
 	/** Absent means `true`, as Three's default. */
 	readonly toneMapped?: boolean;
+	/** Absent means `false`, as Three's default. */
+	readonly wireframe?: boolean;
+	/**
+	 * Bound texture variants by slot; absent means an untextured surface. A
+	 * descriptor that names a slot is constructed with that slot's maps, so an
+	 * untextured acquire can never stand in for a textured key.
+	 */
+	readonly textures?: MaterialTextureKeys;
 };
 
 export type BasicMaterialDescriptor = {
@@ -117,7 +154,13 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`metalness=${num(descriptor.metalness)}`,
 				`emissive=${canonicalColor(descriptor.emissive ?? 0x000000)}`,
 				`emissiveIntensity=${num(descriptor.emissiveIntensity ?? 1)}`,
-				`toneMapped=${bool(descriptor.toneMapped, true)}`
+				`toneMapped=${bool(descriptor.toneMapped, true)}`,
+				`wireframe=${bool(descriptor.wireframe, false)}`,
+				// Fixed slot order, `-` for an unbound slot: the key is a function of
+				// which variants are bound, not of how the record was spelled.
+				`textures=${MATERIAL_TEXTURE_SLOTS.map(
+					(slot) => `${slot}:${descriptor.textures?.[slot] ?? '-'}`
+				).join(';')}`
 			].join('|');
 		case 'basic':
 			return [
