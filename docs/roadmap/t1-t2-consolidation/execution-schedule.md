@@ -240,6 +240,16 @@ producer; E8 cannot require R6 to land. Re-measure after E9 installs artwork cas
 **Rollback:** G4 independently falls back to prior invalidation if necessary; model hierarchy/remap
 transition reverts as one content family while preserving the store and instance identity contract.
 
+**Owner exception (E8 correction; bounded, tracked):** E7's retained representation does not draw
+models. Until E8's remaining work lands, a model's placeholder is the Svelte `AssetFallback` tree
+(`src/lib/museum/assets/AssetFallback.svelte`, shapes from `src/lib/museum/assets/fallbacks.ts`), and
+`src/lib/museum/assets/AssetModel.svelte` is the per-entity host that realizes the model. The
+exception covers exactly those two files for the Svelte-tree fallback and host. It adds no
+fallback renderer and does not redesign E7. Remaining work, owned by E8 and required before E12: port
+the approved fallback shapes to the E7 representation and retire the `AssetModel.svelte` host. E12
+must not start until that port and retirement are merged or a new owner decision re-records the
+exception.
+
 ### E9 — Artwork and remaining world materials (R5 artwork + rest of R2c)
 
 **Depends:** E7 for leaf work, E8 for integration. **Owns:** EntityArtwork/artwork-scope, proposed artwork handler, environment ground

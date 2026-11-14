@@ -37,7 +37,7 @@ vi.mock('@threlte/core', async () => import('./fixtures/threlte-counting-context
 import { countingScene, countingShadowMap, threlteProbe } from './fixtures/threlte-counting-context';
 import StagePaperCountingProbe from './fixtures/StagePaperCountingProbe.svelte';
 import { openingSelection } from './fixtures/selection-entry';
-import StageShadowTriggers from '$lib/authoring/stage/shell/StageShadowTriggers.svelte';
+import ShadowTriggersWithResources from './fixtures/ShadowTriggersWithResources.svelte';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import {
 	acquireEffectiveVariant,
@@ -373,7 +373,7 @@ describe('E0 mounted Stage shell counting', () => {
 		const scene: RuntimeScene = prepared.runtimeScene;
 		const target = document.createElement('div');
 		document.body.append(target);
-		const component = mount(StageShadowTriggers, {
+		const component = mount(ShadowTriggersWithResources, {
 			target,
 			props: {
 				geometry: prepared.geometry,

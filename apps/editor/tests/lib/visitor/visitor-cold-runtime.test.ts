@@ -11,7 +11,8 @@ import {
 	releaseEffectiveVariant,
 	type TextureLoadScope
 } from '$lib/render/resources/texture-store';
-import { remapModelMaterials, releaseModelMaterialRemap } from '$lib/museum/assets/instance-material-remap';
+import { modelLookFor, realizeModel } from '$lib/render/models/model-realization';
+import { createMaterialStore } from '$lib/render/resources/material-store';
 import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 import {
 	createReleaseTextureScope,
@@ -115,12 +116,21 @@ describe('P22.1 cold runtime + asset seam', () => {
 
 		const group = new Group();
 		group.add(new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial()));
-		const { acquiredKey } = remapModelMaterials(group, effective, [1, 1], scope);
-		expect(acquiredKey.scopeId).toBe('project-a@v1');
-		const mesh = group.children[0] as Mesh;
+		const store = createMaterialStore();
+		const realization = realizeModel(group, {
+			asset: 'scope-test-model',
+			store,
+			look: modelLookFor(effective, scope, true),
+			wireframe: false,
+			castShadow: false,
+			receiveShadow: false
+		});
+		const mesh = realization.root.children[0] as Mesh;
 		const material = mesh.material as MeshStandardMaterial;
 		expect(material.map).toBeDefined();
-		releaseModelMaterialRemap(acquiredKey, scope);
+		expect(realization.leaseCount()).toBe(2);
+		realization.release();
+		expect(store.stats().live).toBe(0);
 	});
 
 	it('colliding logical URIs in two releases do not share textures', async () => {
