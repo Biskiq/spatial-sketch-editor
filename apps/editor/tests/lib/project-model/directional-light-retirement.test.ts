@@ -6,6 +6,8 @@
  * migration: a version-6 unit and a Directional entity are both refused with a
  * typed error, never read, converted or dropped. Point and Spot are unchanged.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
@@ -114,6 +116,27 @@ describe('Directional light refusal', () => {
 		if (result.success) return;
 		expect(result.issues.map((issue) => issue.code)).toContain('invalid_light');
 		expect(result.issues.map((issue) => issue.code)).not.toContain('unsupported_light_kind');
+	});
+});
+
+describe('the authored Light kinds stay exactly Point and Spot', () => {
+	const source = (file: string): string =>
+		readFileSync(resolve(process.cwd(), '../../packages/project-model/src', file), 'utf8');
+
+	it('admits only point and spot in the codec reader', () => {
+		const match = source('scene-codec/readers.ts').match(/SCENE_LIGHT_KINDS\s*=\s*\[([^\]]*)\]/);
+		expect(match?.[1]?.replace(/['"\s]/g, '').split(',').filter(Boolean)).toEqual(['point', 'spot']);
+	});
+
+	it('types the Scene light kind as point or spot only', () => {
+		expect(source('scene.ts')).toMatch(/type SceneLightKind\s*=\s*'point'\s*\|\s*'spot'\s*;/);
+	});
+
+	it('names the retired kind only in the codec refusal', () => {
+		for (const file of ['scene.ts', 'scene-codec/readers.ts', 'scene-codec/canonical.ts', 'scene-planning/light-operations.ts', 'scene-planning/intent-payload.ts']) {
+			expect(source(file), file).not.toMatch(/['"]directional['"]/);
+		}
+		expect(source('scene-codec/parse-entities.ts')).toContain("RETIRED_DIRECTIONAL_LIGHT = 'directional'");
 	});
 });
 
