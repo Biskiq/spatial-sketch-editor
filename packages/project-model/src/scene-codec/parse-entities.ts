@@ -586,6 +586,19 @@ export function parseFormEntity(
 	};
 }
 
+/**
+ * The retired authored light kind. It is not in `SCENE_LIGHT_KINDS`; it is
+ * recognised only so the codec can refuse it with a typed error that names the
+ * entity. There is no conversion: the Sky owns the only Sun.
+ */
+const RETIRED_DIRECTIONAL_LIGHT = 'directional';
+
+function describeRetiredLight(id: string | undefined, name: string | undefined): string {
+	if (id && name) return `entity "${id}" ("${name}")`;
+	if (id) return `entity "${id}"`;
+	return 'an entity';
+}
+
 export function parseLightEntity(
 	input: JsonRecord,
 	path: string,
@@ -620,7 +633,14 @@ export function parseLightEntity(
 		lightRaw && (SCENE_LIGHT_KINDS as readonly string[]).includes(lightRaw)
 			? (lightRaw as SceneLightKind)
 			: undefined;
-	if (lightRaw && !light) {
+	if (lightRaw === RETIRED_DIRECTIONAL_LIGHT) {
+		addIssue(
+			issues,
+			`${path}.light`,
+			'unsupported_light_kind',
+			`This project uses a light kind that is no longer supported: ${describeRetiredLight(id, name)} is a Directional light. The Sky owns the only Sun.`
+		);
+	} else if (lightRaw && !light) {
 		addIssue(issues, `${path}.light`, 'invalid_light', `Invalid light kind: ${lightRaw}`);
 	}
 	const color = readRequiredString(input, 'color', path, issues);
@@ -655,13 +675,7 @@ export function parseLightEntity(
 			penumbra = undefined;
 		}
 	}
-	if (light === 'directional') {
-		if ('range' in input) addIssue(issues, `${path}.range`, 'unexpected_property', 'Directional lights do not use range');
-		if ('angle' in input) addIssue(issues, `${path}.angle`, 'unexpected_property', 'Directional lights do not use angle');
-		if ('penumbra' in input) {
-			addIssue(issues, `${path}.penumbra`, 'unexpected_property', 'Directional lights do not use penumbra');
-		}
-	} else if (light === 'point') {
+	if (light === 'point') {
 		if ('angle' in input) addIssue(issues, `${path}.angle`, 'unexpected_property', 'Point lights do not use angle');
 		if ('penumbra' in input) {
 			addIssue(issues, `${path}.penumbra`, 'unexpected_property', 'Point lights do not use penumbra');
@@ -708,28 +722,16 @@ export function parseLightEntity(
 			...(penumbra === undefined ? {} : { penumbra })
 		};
 	}
-	if (light === 'point') {
-		return {
-			kind: 'light',
-			id,
-			name,
-			light: 'point',
-			color: color!,
-			intensity: intensity!,
-			castShadow,
-			...transform,
-			...(range === undefined ? {} : { range })
-		};
-	}
 	return {
 		kind: 'light',
 		id,
 		name,
-		light: 'directional',
+		light: 'point',
 		color: color!,
 		intensity: intensity!,
 		castShadow,
 		...transform,
+		...(range === undefined ? {} : { range })
 	};
 }
 

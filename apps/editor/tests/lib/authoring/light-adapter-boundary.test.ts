@@ -218,7 +218,6 @@ describe('Light adapter boundary (X8)', () => {
 			['let placementRefusal', [PLACEMENT_SESSION], 'the refused-release ghost'],
 			['let placing', [PLACEMENT_SESSION], 'the held release'],
 			['let gesture', [GESTURE_SESSION], 'the captured mark gesture'],
-			['let hoveredDialTick', [CONTRIBUTIONS], 'the idle dial-tick tag'],
 			['let refusal', [PORTS], 'the grip refusal'],
 			['let lease', [PORTS], 'the lease slot'],
 			// Placement's one create, and the Card's own "Light it" recipe action.
@@ -274,6 +273,22 @@ describe('Light adapter boundary (X8)', () => {
 			expect(source, relativeToRepo(file)).not.toContain('function commitGesture');
 			expect(source, relativeToRepo(file)).not.toContain('function commitPlacement');
 			expect(source, relativeToRepo(file)).not.toContain('function updateGesture');
+		}
+	});
+
+	it('keeps the retired Directional light kind out of the Light adapter and look sources', () => {
+		// Directional was retired (T2 UX §7.3, D4): the Sky owns the only Sun. The
+		// dial module is gone and no Light source may name the kind again.
+		expect(fs.existsSync(path.join(EDITOR_LIB, 'authoring/look/directional-dial.ts'))).toBe(false);
+		const files = [
+			...walk(LIGHT),
+			ADAPTER,
+			...walk(path.join(EDITOR_LIB, 'authoring/look')).filter((file) => /light/.test(path.basename(file)))
+		];
+		for (const file of files) {
+			const source = fs.readFileSync(file, 'utf8');
+			expect(source, relativeToRepo(file)).not.toMatch(/['"]directional['"]/);
+			expect(source, relativeToRepo(file)).not.toMatch(/directional-dial|directionalTickAt/);
 		}
 	});
 

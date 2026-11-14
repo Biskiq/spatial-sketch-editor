@@ -40,20 +40,6 @@ function spot(overrides: Partial<SceneLightEntity> = {}): SceneLightEntity {
 	} as SceneLightEntity;
 }
 
-function directional(): SceneLightEntity {
-	return {
-		kind: 'light',
-		light: 'directional',
-		id: LIGHT_ID,
-		name: 'Card sun',
-		color: '#ffffff',
-		intensity: Math.PI,
-		castShadow: false,
-		position: [0, 2, 0],
-		rotation: [0, 0, 0]
-	};
-}
-
 function snapshotOf(entity: SceneLightEntity): StageReadSnapshot {
 	const sceneData = {
 		formatVersion: SCENE_UNIT_FORMAT_VERSION,
@@ -244,13 +230,12 @@ describe('S3a Light Card writer', () => {
 		}
 	});
 
-	it('shows Spot Beam but no Adjust Reach, and directional has neither', async () => {
+	it('shows Spot Beam but no Adjust Reach, and a Point has neither', async () => {
 		const spotCard = await mountCard(spot());
 		expect(field(spotCard.target, 'adjust-beam')).toBeDefined();
 		expect(spotCard.target.querySelector('[data-field="adjust-reach"]')).toBeNull();
-		const directionalCard = await mountCard(directional());
-		expect(directionalCard.target.querySelector('[data-field="adjust-reach"]')).toBeNull();
-		expect(directionalCard.target.querySelector('[data-field="adjust-beam"]')).toBeNull();
+		const pointCard = await mountCard(spot({ light: 'point' } as never));
+		expect(pointCard.target.querySelector('[data-field="adjust-beam"]')).toBeNull();
 	});
 
 	it('writes an unlimited Reach from the chip and a typed Reach from the field', async () => {
@@ -275,26 +260,6 @@ describe('S3a Light Card writer', () => {
 			kind: 'update-light',
 			payload: { entityId: LIGHT_ID, range: 2.5 }
 		});
-	});
-
-	it('writes Directional From and Height in sky from the everyday Direction row', async () => {
-		const { target, accept } = await mountCard(directional());
-		const from = field(target, 'direction-from') as HTMLInputElement;
-		const height = field(target, 'direction-height') as HTMLInputElement;
-		// A zero rotation travels toward −Z, so the source is at +Z: From 180°, horizon.
-		expect(Number(from.value)).toBeCloseTo(180, 4);
-		expect(Number(height.value)).toBeCloseTo(0, 4);
-		from.value = '300';
-		from.dispatchEvent(new Event('input', { bubbles: true }));
-		height.value = '50';
-		height.dispatchEvent(new Event('input', { bubbles: true }));
-		await tick();
-		from.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-		await tick();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(accept).toHaveBeenCalledTimes(1);
-		const payload = accept.mock.calls[0]![0] as { payload: { rotation: [number, number, number] } };
-		expect(payload.payload.rotation.every(Number.isFinite)).toBe(true);
 	});
 
 	it('opens the colour dial without writing a mode value', async () => {
@@ -411,12 +376,13 @@ describe('S3a Light Card writer', () => {
 		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(false);
 	});
 
-	it('exposes azimuth/elevation instead of Reach or Beam for a directional', async () => {
-		const { target } = await mountCard(directional());
-		await openGroup(target, 'direction');
-		expect(field(target, 'azimuth')).toBeDefined();
-		expect(field(target, 'elevation')).toBeDefined();
-		expect(target.querySelector('[data-field="adjust-reach"]')).toBeNull();
-		expect(target.querySelector('[data-field="adjust-beam"]')).toBeNull();
+	it('has no Direction row, Advanced group or From / Height fields for any kind', async () => {
+		for (const entity of [spot(), spot({ light: 'point' } as never)]) {
+			const { target } = await mountCard(entity);
+			expect(target.querySelector('[data-field="direction-from"]')).toBeNull();
+			expect(target.querySelector('[data-field="direction-height"]')).toBeNull();
+			expect(target.querySelector('[data-advanced-group="direction"]')).toBeNull();
+			expect(target.textContent).not.toContain('Height in sky');
+		}
 	});
 });

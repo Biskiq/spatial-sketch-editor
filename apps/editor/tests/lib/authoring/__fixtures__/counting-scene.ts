@@ -269,7 +269,7 @@ export async function buildCountingSceneFixture(
 	for (let index = 0; index < COUNTING_MODEL_INSTANCES; index += 1) entities.push(model(index));
 
 	const scene: CameraFreeSceneDocument = {
-		formatVersion: 6,
+		formatVersion: 7,
 		textures,
 		materials,
 		entities,

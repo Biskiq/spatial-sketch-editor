@@ -3,10 +3,9 @@
  *
  * Everything the Light adapter contributes to the Stage that does not capture
  * input: the Lights task, subjects, picking, the erase and delete routes, the
- * marks, the guides, the dial-tick hover tag and the Card (fields, facts, name,
- * actions). It reads the gesture session's captured copy and the grip refusal
- * through narrow views and owns only the idle-hover tick tag, which is
- * session-only presentation: never selection, history or source.
+ * marks, the guides and the Card (fields, facts, name, actions). It reads the
+ * gesture session's captured copy and the grip refusal through narrow views and
+ * holds no state of its own.
  */
 import type {
 	StageAdapterBinding,
@@ -17,7 +16,7 @@ import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityReference } from '../scene/placement';
 import { lightCardActions, deleteLightAction, lightNameWriter } from './light-actions';
 import { lightCardFacts } from './light-card';
-import { directionalTickAt, guideSegments } from './light-guides';
+import { guideSegments } from './light-guides';
 import { lightMarkDescriptors } from './light-marks';
 import type { LightRefusal } from './light-session-ports';
 import type { LightGestureSession } from './light-gesture-session';
@@ -34,7 +33,6 @@ export type LightContributionKeys =
 	| 'keyIntent'
 	| 'handles'
 	| 'guides'
-	| 'idleHoverIntent'
 	| 'cardWriter'
 	| 'cardFacts'
 	| 'cardName'
@@ -46,16 +44,14 @@ export type LightContributionDeps = {
 	readonly services: StageAdapterServices;
 	/** The binding context's scene pick; camera-free, so a Card read may use it. */
 	readonly context: StageAdapterContext;
-	/** The captured gesture's dragged copy and frozen dial frame. */
-	readonly gesture: Pick<LightGestureSession, 'entity' | 'dialFrame'>;
+	/** The captured gesture's dragged copy. */
+	readonly gesture: Pick<LightGestureSession, 'entity'>;
 	readonly refusal: LightRefusal;
 };
 
 export function createLightContributions(deps: LightContributionDeps): LightContributions {
 	const { services, context, gesture, refusal } = deps;
 	const source = stageScene(context.snapshot);
-	/** The Directional tick under an unpressed pointer, for its name tag. */
-	let hoveredDialTick: string | null = null;
 
 	const effectiveLight = (adapterContext: StageAdapterContext): Light | null =>
 		gesture.entity ?? selectedLight(adapterContext);
@@ -82,15 +78,7 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 			worldPoint: entity.position
 		})),
 		pick(candidate, live) {
-			const nearest =
-				lightGlyphAt(candidate.css, live) ??
-				directionalTickAt(
-					candidate.css,
-					live,
-					candidate.coarse === true,
-					services.stage,
-					gesture.dialFrame
-				);
+			const nearest = lightGlyphAt(candidate.css, live);
 			if (nearest === null) return null;
 			return {
 				hit: {
@@ -125,49 +113,20 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 		handles(adapterContext) {
 			const light = effectiveLight(adapterContext);
 			if (light === null) return [];
-			return lightMarkDescriptors(
-				light,
-				adapterContext,
-				services.stage,
-				refusal.current(),
-				gesture.dialFrame
-			);
+			return lightMarkDescriptors(light, adapterContext, refusal.current());
 		},
 		guides(adapterContext) {
 			const light = effectiveLight(adapterContext);
 			if (light === null) return [];
-			const guide = guideSegments(light, adapterContext, services.stage, hoveredDialTick);
+			const guide = guideSegments(light, adapterContext);
 			return [
 				{
 					id: 'light-guide',
 					role: 'selection' as const,
 					segments: guide.segments,
-					derivedSegments: guide.derivedSegments,
-					labels: guide.labels
+					derivedSegments: guide.derivedSegments
 				}
 			];
-		},
-		idleHoverIntent(intent, adapterContext) {
-			if (intent.phase === 'cancel') {
-				if (hoveredDialTick !== null) {
-					hoveredDialTick = null;
-					services.stage.notifySurfaceChange();
-				}
-				return false;
-			}
-			const tick = directionalTickAt(
-				intent.css,
-				adapterContext,
-				intent.coarse === true,
-				services.stage,
-				gesture.dialFrame
-			);
-			const next = tick?.light.id ?? null;
-			if (next !== hoveredDialTick) {
-				hoveredDialTick = next;
-				services.stage.notifySurfaceChange();
-			}
-			return false;
 		},
 		cardWriter(subject) {
 			if (subject.reference?.domain !== 'scene') return null;

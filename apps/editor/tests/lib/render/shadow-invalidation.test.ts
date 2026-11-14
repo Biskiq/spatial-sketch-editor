@@ -248,8 +248,8 @@ describe('the default lighting policy', () => {
 		}
 	});
 
-	it('lets an authored light keep its own setting, in every kind', () => {
-		expect(read('src/lib/museum/entities/EntityLight.svelte').match(/castShadow=\{entity\.castShadow\}/g)).toHaveLength(3);
+	it('lets an authored light keep its own setting, in every kind (Point and Spot)', () => {
+		expect(read('src/lib/museum/entities/EntityLight.svelte').match(/castShadow=\{entity\.castShadow\}/g)).toHaveLength(2);
 	});
 
 	it('keeps Walls casting and receiving, and the unlit floor eligible', () => {

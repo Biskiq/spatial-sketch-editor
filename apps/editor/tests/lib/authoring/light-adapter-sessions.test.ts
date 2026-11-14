@@ -16,7 +16,6 @@ import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/la
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
-import { directionForPresentationAngles } from '$lib/authoring/look/light-presentation';
 import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
@@ -80,20 +79,6 @@ function point(position: Vec3 = [3, 2.4, 3], range?: number): SceneLightEntity {
 		position,
 		rotation: [0, 0, 0],
 		...(range === undefined ? {} : { range })
-	};
-}
-
-function directional(): SceneLightEntity {
-	return {
-		kind: 'light',
-		light: 'directional',
-		id: 'light-sun',
-		name: 'Sun',
-		color: '#ffffff',
-		intensity: Math.PI,
-		castShadow: false,
-		position: [0, 2, 0],
-		rotation: rotationForLightDirection(directionForPresentationAngles(300, 45))
 	};
 }
 
@@ -300,22 +285,6 @@ describe('X8 mark-gesture families commit one update-light with their own payloa
 			delta: [50, 10],
 			keys: ['entityId', 'range'],
 			changed: (a, b) => (a as { range?: number }).range !== (b as { range?: number }).range
-		},
-		{
-			name: 'Directional From',
-			entity: () => directional(),
-			mark: 'light-azimuth',
-			delta: [80, 20],
-			keys: ['entityId', 'rotation'],
-			changed: (a, b) => a.rotation.some((v, i) => v !== b.rotation[i])
-		},
-		{
-			name: 'Directional Height in sky',
-			entity: () => directional(),
-			mark: 'light-elevation',
-			delta: [10, -40],
-			keys: ['entityId', 'rotation'],
-			changed: (a, b) => a.rotation.some((v, i) => v !== b.rotation[i])
 		}
 	];
 
@@ -508,7 +477,7 @@ describe('X8 mark-gesture terminations', () => {
 });
 
 describe('X8 placement lifetimes', () => {
-	function open(facade: StageFacade, kind: 'point' | 'spot' | 'directional' = 'spot'): void {
+	function open(facade: StageFacade, kind: 'point' | 'spot' = 'spot'): void {
 		armLight(PROJECT_ID, kind);
 		const opened = facade.openContributedTask('light-place', 'light');
 		if (opened.kind !== 'opened') throw new Error(`task not opened: ${opened.message}`);
@@ -647,21 +616,6 @@ describe('X8 placement lifetimes', () => {
 		expect(fixture.lightPreview.candidate === null || fixture.lightPreview.candidate.intensity === 0).toBe(true);
 	});
 
-	it('a Directional arm never claims a placement press and writes nothing', async () => {
-		const fixture = await mounted({ scenePick: floorPick });
-		const { facade, host } = fixture;
-		open(facade, 'directional');
-		const evaluationId = facade.evaluationId()!;
-		const before = host.history();
-		const claim = facade.pointerIntent({ phase: 'down', css: [640, 380], evaluationId });
-		expect(claim.claimed).toBe(false);
-		facade.pointerIntent({ phase: 'up', css: [640, 380], evaluationId });
-		await settle();
-		expect(host.history()).toEqual(before);
-		expect(leaseOwner(facade)).toBeNull();
-		expect(lights(facade)).toHaveLength(0);
-	});
-
 	it('refuses the release visibly, then clears the refusal and the arm survives a thrown create', async () => {
 		const fixture = await mounted({ scenePick: floorPick });
 		const { facade, host } = fixture;
@@ -747,8 +701,7 @@ describe('X8 screen guides and marks keep their exact geometry', () => {
 		['Spot', spot()],
 		['Spot with no Reach', (() => { const { range: _range, ...open } = spot() as SceneLightEntity & { range?: number }; return open as SceneLightEntity; })()],
 		['Point with Reach on the floor', point([3, 1.2, 3], 2)],
-		['Point with Reach in the air', point([3, 2.4, 3], 1)],
-		['Directional', directional()]
+		['Point with Reach in the air', point([3, 2.4, 3], 1)]
 	] as const) {
 		it(`pins the ${name} marks and guide`, async () => {
 			const fixture = await mounted({ entities: [entity], scenePick: floorPick });

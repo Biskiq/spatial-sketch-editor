@@ -2,15 +2,13 @@
  * T2 gallery UX recovery — the light presentation rules.
  *
  * These cases pin the derived quantities the Stage and the Card share: the
- * Directional vocabulary (From / Height in sky), the Spot target that is
- * independent of Reach, the renderer-matched soft-edge ring, the Point reach
+ * Spot target that is independent of Reach, the renderer-matched soft-edge ring, the Point reach
  * ring and the approved placement stand-off table.
  */
 import { describe, expect, it } from 'vitest';
 import type { Vec3 } from '@portfolio/project-model';
-import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import {
-	directionForPresentationAngles,
 	formatDegrees,
 	formatExactIntensity,
 	formatMeters,
@@ -22,7 +20,6 @@ import {
 	lightPlacementBody,
 	penumbraForInnerRadius,
 	pointReachRingRadius,
-	presentationAngles,
 	spotFootprintRadius,
 	spotInnerRadius,
 	spotTarget
@@ -33,48 +30,6 @@ const DEGREES = (value: number): number => (value * Math.PI) / 180;
 function close(actual: number, expected: number, digits = 6): void {
 	expect(actual).toBeCloseTo(expected, digits);
 }
-
-describe('light presentation angles', () => {
-	it('reads a downward light as 90° high in the sky', () => {
-		const angles = presentationAngles(rotationForLightDirection([0, -1, 0]));
-		close(angles.heightInSky, 90);
-	});
-
-	it('keeps 0° as world −Z and 90° as world +X', () => {
-		// A source at world −Z means the light travels toward +Z.
-		const fromNorth = presentationAngles(rotationForLightDirection([0, 0, 1]));
-		close(fromNorth.from, 0, 4);
-		const fromEast = presentationAngles(rotationForLightDirection([-1, 0, 0]));
-		close(fromEast.from, 90, 4);
-	});
-
-	it('round-trips both presentation angles', () => {
-		for (const from of [0, 37, 180, 300]) {
-			for (const height of [-45, 0, 20, 50, 90]) {
-				const rotation = rotationForLightDirection(
-					directionForPresentationAngles(from, height)
-				);
-				const angles = presentationAngles(rotation);
-				if (height === 90 || height === -90) {
-					close(angles.heightInSky, height, 4);
-				} else {
-					close(angles.from, from, 4);
-					close(angles.heightInSky, height, 4);
-				}
-			}
-		}
-	});
-
-	it('keeps the last displayed From while the source is overhead', () => {
-		const angles = presentationAngles(rotationForLightDirection([0, -1, 0]), 212);
-		close(angles.from, 212);
-	});
-
-	it('never lights from below the floor for a positive Height in sky', () => {
-		const forward = lightForward(rotationForLightDirection(directionForPresentationAngles(0, 20)));
-		expect(forward[1]).toBeLessThan(0);
-	});
-});
 
 describe('spot target distance', () => {
 	it('uses the forward ray surface hit and marks it surface-bound', () => {
@@ -229,7 +184,6 @@ describe('light number formats', () => {
 		expect(formatDegrees(30.25, 0)).toBe('30°');
 		expect(formatMultiplier(Math.PI)).toBe('1×');
 		expect(formatMultiplier(Math.PI * 1.41)).toBe('1.41×');
-		expect(formatExactIntensity(Math.PI, 'spot')).toBe('3.142 cd');
-		expect(formatExactIntensity(Math.PI, 'directional')).toBe('3.142 lx');
+		expect(formatExactIntensity(Math.PI)).toBe('3.142 cd');
 	});
 });

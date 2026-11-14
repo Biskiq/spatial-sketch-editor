@@ -60,14 +60,9 @@ export function planCreateLight(input: {
 	if (!finiteVec3(input.position)) return invalid('A light needs a finite world position.', ['position']);
 	if (!finiteVec3(input.rotation)) return invalid('A light needs a finite rotation.', ['rotation']);
 
-	if (input.light === 'directional') {
-		if (input.range !== undefined || input.angle !== undefined || input.penumbra !== undefined) {
-			return invalid('Directional lights do not use range, angle or penumbra.', [
-				'range',
-				'angle',
-				'penumbra'
-			]);
-		}
+	if (input.light !== 'point' && input.light !== 'spot') {
+		// Directional was retired (the Sky owns the only Sun); no other kind exists.
+		return invalid(`Unsupported light kind "${String(input.light)}"; lights are Point or Spot.`, ['light']);
 	}
 	if (input.light === 'point') {
 		if (input.angle !== undefined || input.penumbra !== undefined) {
@@ -112,13 +107,11 @@ export function planCreateLight(input: {
 					...(input.range === undefined ? {} : { range: input.range }),
 					...(input.penumbra === undefined ? {} : { penumbra: input.penumbra })
 				}
-			: input.light === 'point'
-				? {
-						...base,
-						light: 'point',
-						...(input.range === undefined ? {} : { range: input.range })
-					}
-				: { ...base, light: 'directional' };
+			: {
+					...base,
+					light: 'point',
+					...(input.range === undefined ? {} : { range: input.range })
+				};
 
 	return finalizeCreatedLight({
 		context: input.context,
@@ -162,9 +155,6 @@ export function planUpdateLight(input: {
 	const hasRange = Object.prototype.hasOwnProperty.call(update, 'range');
 	const hasAngle = Object.prototype.hasOwnProperty.call(update, 'angle');
 	const hasPenumbra = Object.prototype.hasOwnProperty.call(update, 'penumbra');
-	if (existing.light === 'directional' && (hasRange || hasAngle || hasPenumbra)) {
-		return invalid('Directional lights do not use range, angle or penumbra.', ['range', 'angle', 'penumbra']);
-	}
 	if (existing.light === 'point' && (hasAngle || hasPenumbra)) {
 		return invalid('Point lights do not use angle or penumbra.', ['angle', 'penumbra']);
 	}
