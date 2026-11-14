@@ -394,10 +394,15 @@ export function lineCount(file: string): number {
  * `named` imports and re-exports keep the exported name they read; a namespace
  * import, `export *` and a dynamic `import()` cannot be narrowed to names, so a
  * boundary must treat them as reaching every export of their target.
+ *
+ * A namespace edge also carries the **local** name it binds (`import * as THREE
+ * from 'three'`), because a caller-qualified construction such as
+ * `new THREE.MeshBasicMaterial(...)` is only matchable through that name. An
+ * aliased namespace is the same edge with a different `local`.
  */
 export type ModuleBindingEdge =
 	| { readonly kind: 'import-named'; readonly specifier: string; readonly imported: string; readonly local: string; readonly typeOnly: boolean }
-	| { readonly kind: 'import-namespace'; readonly specifier: string; readonly typeOnly: boolean }
+	| { readonly kind: 'import-namespace'; readonly specifier: string; readonly local: string; readonly typeOnly: boolean }
 	| { readonly kind: 'export-named'; readonly specifier: string; readonly imported: string; readonly exported: string; readonly typeOnly: boolean }
 	| { readonly kind: 'export-local'; readonly local: string; readonly exported: string }
 	| { readonly kind: 'export-all'; readonly specifier: string }
@@ -428,7 +433,9 @@ export function moduleBindingEdges(file: string, source: string): ModuleBindingE
 				const clauseTypeOnly = clause?.isTypeOnly ?? false;
 				if (clause?.name) edges.push({ kind: 'import-named', specifier, imported: 'default', local: clause.name.text, typeOnly: clauseTypeOnly });
 				const bindings = clause?.namedBindings;
-				if (bindings && ts.isNamespaceImport(bindings)) edges.push({ kind: 'import-namespace', specifier, typeOnly: clauseTypeOnly });
+				if (bindings && ts.isNamespaceImport(bindings)) {
+					edges.push({ kind: 'import-namespace', specifier, local: bindings.name.text, typeOnly: clauseTypeOnly });
+				}
 				if (bindings && ts.isNamedImports(bindings)) {
 					for (const element of bindings.elements) {
 						edges.push({
