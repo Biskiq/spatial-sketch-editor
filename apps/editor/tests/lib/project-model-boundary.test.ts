@@ -70,6 +70,62 @@ describe('[cap:project.envelope core] project-model package boundary', () => {
 		}
 	});
 
+	it('keeps the runtime Scene Camera-free and navigation Camera-owned', async () => {
+		// Hard rule 2 at runtime (E2/I4): a Camera view resolves into the navigation
+		// value, and the Scene value carries no navigation field at all. A re-merged
+		// projection — the pre-cutover shape — fails here even if every render test
+		// still passes, because this asserts the prepared value the renderers receive.
+		const envelope = await units.createProjectEnvelope({
+			id: 'project',
+			name: 'Project',
+			acceptedRevision: { projectId: 'project', revisionId: 'revision-1' },
+			dependencyLock: { formatVersion: 1, entries: [] },
+			layout: { unitId: 'project:layout', data: createEmptyWallFirstLayoutDocument() },
+			scene: {
+				unitId: 'project:scene',
+				data: {
+					formatVersion: units.SCENE_UNIT_FORMAT_VERSION,
+					textures: [],
+					materials: [],
+					entities: [
+						{
+							kind: 'primitive',
+							id: 'box',
+							name: 'Box',
+							primitive: 'box',
+							position: [0, 0, 0],
+							rotation: [0, 0, 0],
+							dimensions: { width: 1, height: 1, depth: 1 },
+							materialId: 'plaster-warm',
+							castShadow: true,
+							receiveShadow: true
+						}
+					]
+				}
+			},
+			camera: {
+				unitId: 'project:camera',
+				data: {
+					formatVersion: 1,
+					views: [
+						{ id: 'view-1', label: 'Entrance', eye: [0, 1, 0], target: [0, 1, 1], fov: 60, connectedViewIds: [] }
+					],
+					connections: []
+				}
+			},
+			experience: { unitId: 'project:experience', data: { formatVersion: 4, experiences: [] } },
+			resources: { unitId: 'project:resources', data: { formatVersion: units.RESOURCE_UNIT_FORMAT_VERSION, resources: [] } }
+		});
+
+		const prepared = units.prepareUnitRuntime(envelope);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') return;
+		expect(Object.keys(prepared.runtimeScene)).not.toContain('navigationNodes');
+		expect(Object.keys(prepared.runtimeScene)).not.toContain('connections');
+		expect(prepared.runtimeScene.entities.map((entity) => entity.id)).toEqual(['box']);
+		expect(prepared.graph.navigationNodes.map((node) => node.id)).toEqual(['view-1']);
+	});
+
 	it('leaves no app-side re-export facade between callers and the package', () => {
 		// PR #115 removed the `$lib/content/package-format.ts` and
 		// `$lib/editor/helpers/package-sha.ts` re-export facades (§5.1: "thin

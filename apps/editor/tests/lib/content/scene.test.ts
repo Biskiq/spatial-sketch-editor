@@ -7,9 +7,8 @@ import { describe, expect, it } from 'vitest';
 // is passed. What remains asserts the retained module validation and rejection
 // boundaries. Resolution coverage returns with the T2/T3 Scene unit.
 import {
-	assertNavigationGraphMatchesScene,
-	createNavigationGraph,
 	modelEntityToPlacement,
+	resolveNavigationDocument,
 	resolveSceneDocument,
 	type SceneDocument,
 	type SceneModelEntity
@@ -52,7 +51,7 @@ describe('resolveSceneDocument', () => {
 
 
 
-	it('rejects duplicate ids and unknown endpoints', () => {
+	it('rejects duplicate ids and unknown connection endpoints', () => {
 		const cloneDocument = () => fixtureDocument();
 		const duplicate = cloneDocument();
 		duplicate.entities.push({ ...duplicate.entities[0] });
@@ -60,9 +59,11 @@ describe('resolveSceneDocument', () => {
 			`Duplicate scene entity id: ${duplicate.entities[0].id}`
 		);
 
+		// Navigation is its own runtime value: the Camera half refuses an endpoint
+		// that its own records do not carry.
 		const unknownEndpoint = cloneDocument();
 		unknownEndpoint.connections[0].toNodeId = 'missing-node';
-		expect(() => resolveSceneDocument(unknownEndpoint)).toThrow(
+		expect(() => resolveNavigationDocument(unknownEndpoint)).toThrow(
 			'Unknown navigation node: missing-node'
 		);
 	});
@@ -84,7 +85,6 @@ describe('resolveSceneDocument', () => {
 		};
 		expect(() => resolveSceneDocument(bad)).toThrow(/invalid_duration_seconds/);
 	});
-
 
 
 });

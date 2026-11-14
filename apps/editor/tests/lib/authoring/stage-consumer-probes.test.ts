@@ -197,7 +197,7 @@ describe('viewport-projection-v1 — consumer probes through the public editor h
 
 	it('lets a T3-style adapter project a read-only Camera subject under one inspection claim', async () => {
 		const { facade, snapshot } = await mount();
-		const node = snapshot.domain.scene.navigationNodes[0];
+		const node = snapshot.domain.graph.navigationNodes[0];
 		expect(node, 'the fixture must carry one Camera navigation node').toBeDefined();
 		if (node === undefined) return;
 		const eye = node.position;
