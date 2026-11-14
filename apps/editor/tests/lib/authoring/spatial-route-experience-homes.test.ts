@@ -995,6 +995,32 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(target.querySelector('.preview-takeover [data-testid="stage-canvas"]')?.getAttribute('data-start-mode')).toBe('free');
 	});
 
+	it('unmounts the Show control and its focus target for Preview, then restores it on return', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		if (harness.homes === null) throw new Error('Experience homes were not registered');
+		const show = target.querySelector<HTMLButtonElement>('[data-show-control] .show-button');
+		if (show === null) throw new Error('the Show control did not mount');
+		show.focus();
+		show.click();
+		await frame();
+		expect(target.querySelector('[aria-label="Show on the Stage"]')).not.toBeNull();
+		expect(document.activeElement).toBe(show);
+
+		harness.homes.previewMode('free', 'guide-1');
+		await vi.waitFor(() => expect(target.querySelector('.preview-takeover:not([hidden])')).not.toBeNull());
+		expect(target.querySelector('[data-show-control]')).toBeNull();
+		expect(target.querySelector('.show-button')).toBeNull();
+		expect(show.isConnected).toBe(false);
+		expect(document.activeElement).not.toBe(show);
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(target.querySelector('.preview-takeover:not([hidden])')).toBeNull());
+		await vi.waitFor(() => expect(target.querySelector('[data-show-control]')).not.toBeNull());
+		expect(target.querySelector('[data-show-control]')?.contains(document.activeElement)).toBe(false);
+	});
+
+
 	it('routes Stop and transition playback actions to the mounted Guide', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();

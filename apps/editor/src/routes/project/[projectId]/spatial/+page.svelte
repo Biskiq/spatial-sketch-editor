@@ -52,7 +52,6 @@
 	import {
 		developmentPointAtStationFromBuffers,
 		LAYOUT_DIMENSION_LIMIT_MESSAGE,
-		planFragmentOf,
 		type PlanEvaluation
 	} from '@portfolio/layout-core';
 	import {
@@ -346,6 +345,9 @@
 	});
 
 	const selectionView = createStageSelectionView();
+	const sceneRooms = $derived(
+		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
+	);
 	const locatedSubjects = $derived.by(() => {
 		void shell.contributionsVersion;
 		return facade?.subjects() ?? [];
@@ -353,7 +355,7 @@
 	const selectionViewView = $derived(selectionView.read({
 		snapshot: boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null,
 		envelope: currentEnvelope,
-		sceneRooms: currentEnvelope === null ? new Map() : acceptedSceneRoomMembership(currentEnvelope),
+		sceneRooms,
 		selection,
 		planView,
 		subjects: locatedSubjects,
@@ -686,26 +688,6 @@
 			}
 		};
 	});
-
-	function sourceWorldPoint(sourceId: string): [number, number, number] | null {
-		const subject = locatedSubjects.find((item) => item.id === sourceId);
-		if (subject !== undefined) return [...subject.worldPoint];
-		const plan = planView;
-		const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
-		const fragment = plan === null ? undefined : planFragmentOf(plan, layoutId);
-		if (fragment === undefined) return null;
-		const points = fragment.geometry.kind === 'span'
-			? [fragment.geometry.start, fragment.geometry.end]
-			: fragment.geometry.kind === 'polyline'
-				? fragment.geometry.polyline
-				: fragment.geometry.polygon;
-		if (points.length === 0) return null;
-		const center = points.reduce<[number, number]>(
-			(accumulator, point) => [accumulator[0] + point[0] / points.length, accumulator[1] + point[1] / points.length],
-			[0, 0]
-		);
-		return [center[0], fragment.elevationMeters, center[1]];
-	}
 
 	function toggleReveal(sourceId: string): void {
 		revealed = revealed.includes(sourceId)
@@ -1221,7 +1203,7 @@
 				onQuery: (next: string) => shell.setQuery(next),
 				onSelect: (sourceId: string) => commands.selectSource(sourceId),
 				onBringIntoView: (sourceId: string) => {
-					const target = sourceWorldPoint(sourceId);
+					const target = selectionViewView.sourceWorldPoint(sourceId);
 					if (target !== null) bringIntoView(target);
 				},
 				onReveal: (id: string) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); },
@@ -1289,7 +1271,7 @@
 						: null
 				}
 				: null}
-			show={experience.lensState === 'experience'
+			show={preview === null && experience.lensState === 'experience'
 				? {
 					open: shell.showOpen,
 					mode: shell.showMode,

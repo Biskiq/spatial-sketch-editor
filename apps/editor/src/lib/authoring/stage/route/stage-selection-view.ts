@@ -69,14 +69,19 @@ export type StageWorldCardView = {
 	readonly actions: readonly StageCardActionRecord[];
 };
 
-export type StageSelectionView = {
+/** The stable document/Index read; selection and scope never rebuild it. */
+export type StageIndexProjection = {
 	readonly layoutPayload: ReturnType<typeof stageLayout> | null;
 	readonly scenePayload: ReturnType<typeof stageScene> | null;
 	readonly entries: readonly StageIndexEntry[];
 	readonly labels: ReadonlyMap<string, IndexLabel>;
 	readonly entryMap: ReadonlyMap<string, StageIndexEntry>;
-	readonly selectedLocatorId: string | null;
 	readonly worldIndex: WorldIndexModel;
+	readonly sceneEntityOf: (entityId: string) => ReturnType<typeof stageScene>['entities'][number] | null;
+};
+
+export type StageSelectionView = StageIndexProjection & {
+	readonly selectedLocatorId: string | null;
 	readonly resolvedScope: WorldScope;
 	readonly locationLabel: string;
 	readonly selectedMembership: PlanMembershipReason | null;
@@ -85,7 +90,7 @@ export type StageSelectionView = {
 	readonly selectedArtwork: SceneArtworkEntity | null;
 	readonly referenceLabel: (reference: StageSelectionEntry['reference']) => string | null;
 	readonly selectedWorldPoint: () => [number, number, number] | null;
-	readonly sceneEntityOf: (entityId: string) => ReturnType<typeof stageScene>['entities'][number] | null;
+	readonly sourceWorldPoint: (sourceId: string) => [number, number, number] | null;
 };
 
 export type StageSelectionViewInput = {
@@ -120,6 +125,31 @@ function locatorOf(entry: StageSelectionEntry): string {
 	}:${entry.reference.subject.id}`;
 }
 
+/** The plan-space centre used by both selection reveal and Index bring-into-view. */
+function layoutWorldPoint(
+	plan: PlanEvaluation | null,
+	sourceId: string
+): [number, number, number] | null {
+	if (plan === null) return null;
+	const fragment = planFragmentOf(plan, sourceId);
+	if (fragment === undefined) return null;
+	const points =
+		fragment.geometry.kind === 'span'
+			? [fragment.geometry.start, fragment.geometry.end]
+			: fragment.geometry.kind === 'polyline'
+				? fragment.geometry.polyline
+				: fragment.geometry.polygon;
+	if (points.length === 0) return null;
+	const center = points.reduce<[number, number]>(
+		(accumulator, point) => [
+			accumulator[0] + point[0] / points.length,
+			accumulator[1] + point[1] / points.length
+		],
+		[0, 0]
+	);
+	return [center[0], fragment.elevationMeters, center[1]];
+}
+
 /**
  * The read-only selection projection for one frame.
  *
@@ -128,62 +158,81 @@ function locatorOf(entry: StageSelectionEntry): string {
  */
 export function createStageSelectionView() {
 	const worldIndexModel = createWorldIndexModel();
+	let indexKey: {
+		readonly snapshot: StageReadSnapshot | null;
+		readonly envelope: ProjectEnvelope | null;
+		readonly sceneRooms: ReadonlyMap<string, string>;
+		readonly planView: PlanEvaluation | null;
+		readonly subjects: readonly StageSubject[];
+	} | null = null;
+	let indexValue: StageIndexProjection | null = null;
 
-	return {
-		read(input: StageSelectionViewInput): StageSelectionView {
-			let layoutPayload: ReturnType<typeof stageLayout> | null = null;
-			let scenePayload: ReturnType<typeof stageScene> | null = null;
-			if (input.snapshot !== null) {
-				try {
-					layoutPayload = stageLayout(input.snapshot);
-				} catch {
-					layoutPayload = null;
-				}
-				try {
-					scenePayload = stageScene(input.snapshot);
-				} catch {
-					scenePayload = null;
-				}
+	function indexFor(input: StageSelectionViewInput): StageIndexProjection {
+		const cached = indexKey;
+		if (
+			cached !== null &&
+			cached.snapshot === input.snapshot &&
+			cached.envelope === input.envelope &&
+			cached.sceneRooms === input.sceneRooms &&
+			cached.planView === input.planView &&
+			cached.subjects === input.subjects
+		) {
+			return indexValue!;
+		}
+
+		let layoutPayload: ReturnType<typeof stageLayout> | null = null;
+		let scenePayload: ReturnType<typeof stageScene> | null = null;
+		if (input.snapshot !== null) {
+			try {
+				layoutPayload = stageLayout(input.snapshot);
+			} catch {
+				layoutPayload = null;
 			}
-
-			const layoutNameOf = (sourceKind: string, sourceId: string): string | null => {
-				if (layoutPayload === null) return null;
-				if (sourceKind === 'wall') {
-					return layoutPayload.walls.find((wall) => wall.id === sourceId)?.name ?? null;
-				}
-				if (sourceKind === 'opening') {
-					return layoutPayload.openings.find((opening) => opening.id === sourceId)?.name ?? null;
-				}
-				if (sourceKind === 'room-floor' || sourceKind === 'room') {
-					return layoutPayload.rooms.find((room) => room.id === sourceId)?.name ?? null;
-				}
-				return null;
-			};
-
-			const layoutKindWordOf = (sourceKind: string, sourceId: string): string => {
-				if (sourceKind !== 'opening') return layoutKindWord(sourceKind);
-				const opening = layoutPayload?.openings.find((candidate) => candidate.id === sourceId);
-				return layoutKindWord(sourceKind, opening?.kind);
-			};
-
-			const sceneEntityOf = (entityId: string) =>
-				scenePayload?.entities.find((entity) => entity.id === entityId) ?? null;
-
-			const entries: StageIndexEntry[] = [];
-			if (input.planView !== null) {
-				for (const membership of input.planView.membership) {
-					entries.push({
-						group: membership.sourceKind,
-						sourceId: `layout:${membership.sourceKind}:${membership.sourceId}`,
-						kindWord: layoutKindWordOf(membership.sourceKind, membership.sourceId),
-						name: layoutNameOf(membership.sourceKind, membership.sourceId),
-						eligible: membership.eligible,
-						revealed: membership.revealed,
-						membership: membership.reason
-					});
-				}
+			try {
+				scenePayload = stageScene(input.snapshot);
+			} catch {
+				scenePayload = null;
 			}
-			for (const subject of input.subjects) {
+		}
+
+		const layoutNameOf = (sourceKind: string, sourceId: string): string | null => {
+			if (layoutPayload === null) return null;
+			if (sourceKind === 'wall') {
+				return layoutPayload.walls.find((wall) => wall.id === sourceId)?.name ?? null;
+			}
+			if (sourceKind === 'opening') {
+				return layoutPayload.openings.find((opening) => opening.id === sourceId)?.name ?? null;
+			}
+			if (sourceKind === 'room-floor' || sourceKind === 'room') {
+				return layoutPayload.rooms.find((room) => room.id === sourceId)?.name ?? null;
+			}
+			return null;
+		};
+
+		const layoutKindWordOf = (sourceKind: string, sourceId: string): string => {
+			if (sourceKind !== 'opening') return layoutKindWord(sourceKind);
+			const opening = layoutPayload?.openings.find((candidate) => candidate.id === sourceId);
+			return layoutKindWord(sourceKind, opening?.kind);
+		};
+
+		const sceneEntityOf = (entityId: string) =>
+			scenePayload?.entities.find((entity) => entity.id === entityId) ?? null;
+
+		const entries: StageIndexEntry[] = [];
+		if (input.planView !== null) {
+			for (const membership of input.planView.membership) {
+				entries.push({
+					group: membership.sourceKind,
+					sourceId: `layout:${membership.sourceKind}:${membership.sourceId}`,
+					kindWord: layoutKindWordOf(membership.sourceKind, membership.sourceId),
+					name: layoutNameOf(membership.sourceKind, membership.sourceId),
+					eligible: membership.eligible,
+					revealed: membership.revealed,
+					membership: membership.reason
+				});
+			}
+		}
+		for (const subject of input.subjects) {
 				const entity =
 					subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
 				entries.push({
@@ -197,19 +246,16 @@ export function createStageSelectionView() {
 				});
 			}
 
-			const labels = indexLabels(
+		const labels = indexLabels(
 				entries.map((entry): IndexLabelInput => ({
 					identity: entry.sourceId,
 					kind: entry.kindWord,
 					name: entry.name
 				}))
 			);
-			const entryMap = new Map(entries.map((entry) => [entry.sourceId, entry] as const));
+		const entryMap = new Map(entries.map((entry) => [entry.sourceId, entry] as const));
 
-			const selectedLocatorId =
-				input.selection === null ? null : locatorOf(input.selection);
-
-			const worldIndex = worldIndexModel(
+		const worldIndex = worldIndexModel(
 				layoutPayload,
 				entries.map((entry) => ({
 					...entry,
@@ -219,7 +265,34 @@ export function createStageSelectionView() {
 				})),
 				input.snapshot?.domain.name ?? 'Project',
 				input.envelope === null ? new Map() : input.sceneRooms
-			);
+		);
+
+		const value: StageIndexProjection = {
+			layoutPayload,
+			scenePayload,
+			entries,
+			labels,
+			entryMap,
+			worldIndex,
+			sceneEntityOf
+		};
+		indexKey = {
+			snapshot: input.snapshot,
+			envelope: input.envelope,
+			sceneRooms: input.sceneRooms,
+			planView: input.planView,
+			subjects: input.subjects
+		};
+		indexValue = value;
+		return value;
+	}
+
+	return {
+		read(input: StageSelectionViewInput): StageSelectionView {
+			const index = indexFor(input);
+			const { layoutPayload, scenePayload, entries, labels, entryMap, worldIndex, sceneEntityOf } = index;
+			const selectedLocatorId =
+				input.selection === null ? null : locatorOf(input.selection);
 			const resolvedScope = resolveWorldScope(worldIndex, input.scope);
 			const locationLabel = worldIndex.contexts
 				.filter((context) => context.id === 'project' || context.id === resolvedScope)
@@ -287,23 +360,16 @@ export function createStageSelectionView() {
 					);
 					return subject === undefined ? null : [...subject.worldPoint];
 				}
-				const fragment = planFragmentOf(plan, selected.reference.subject.id);
-				if (fragment === undefined) return null;
-				const points =
-					fragment.geometry.kind === 'span'
-						? [fragment.geometry.start, fragment.geometry.end]
-						: fragment.geometry.kind === 'polyline'
-							? fragment.geometry.polyline
-							: fragment.geometry.polygon;
-				if (points.length === 0) return null;
-				const center = points.reduce<[number, number]>(
-					(accumulator, point) => [
-						accumulator[0] + point[0] / points.length,
-						accumulator[1] + point[1] / points.length
-					],
-					[0, 0]
-				);
-				return [center[0], fragment.elevationMeters, center[1]];
+				return layoutWorldPoint(plan, selected.reference.subject.id);
+			};
+
+			const sourceWorldPoint = (sourceId: string): [number, number, number] | null => {
+				const subject = input.subjects.find((item) => item.id === sourceId);
+				if (subject !== undefined) return [...subject.worldPoint];
+				const layoutId = sourceId.startsWith('layout:')
+					? sourceId.slice(sourceId.indexOf(':', 7) + 1)
+					: sourceId;
+				return layoutWorldPoint(input.planView, layoutId);
 			};
 
 			return {
@@ -322,6 +388,7 @@ export function createStageSelectionView() {
 				selectedArtwork,
 				referenceLabel,
 				selectedWorldPoint,
+				sourceWorldPoint,
 				sceneEntityOf
 			};
 		}

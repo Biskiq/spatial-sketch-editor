@@ -130,7 +130,7 @@
 	</div>
 {/if}
 
-{#if show !== null}
+{#if show !== null && !previewing}
 	<!-- R217.S29 Show ▾: session-only Stage drawing flags beside the reading control. -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
