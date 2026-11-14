@@ -42,6 +42,8 @@ import { admitSource } from '$lib/authoring/stage/source-admission';
 import {
 	acquireEffectiveVariant,
 	acquireMaterialVariant,
+	deferredTextureReleaseCount,
+	flushDeferredTextureReleases,
 	releaseEffectiveVariant,
 	releaseMaterialVariant
 } from '$lib/render/resources/texture-store';
@@ -222,7 +224,7 @@ describe('E0 work counters through their production callers', () => {
 		}
 	});
 
-	it('counts texture variant acquires and the disposal the release actually performs', () => {
+	it('counts texture variant acquires and the disposal the deferred release performs', () => {
 		const seam = begin();
 		const definition = getMaterial('plaster-warm');
 		const maps = {};
@@ -232,6 +234,10 @@ describe('E0 work counters through their production callers', () => {
 		releaseMaterialVariant(definition.id, 1, 1);
 		expect(seam.count('texture:variant-dispose')).toBe(0);
 		releaseMaterialVariant(definition.id, 1, 1);
+		// E7/R2b: the last release marks the variant, and the idle point disposes it.
+		expect(seam.count('texture:variant-dispose')).toBe(0);
+		expect(deferredTextureReleaseCount()).toBe(1);
+		flushDeferredTextureReleases();
 		expect(seam.count('texture:variant-dispose')).toBe(1);
 
 		const effective = resolveSceneMaterial(fixture.project.units.scene.data, {
@@ -243,6 +249,7 @@ describe('E0 work counters through their production callers', () => {
 		releaseEffectiveVariant(effective.variantSeed, 3, 2);
 		releaseEffectiveVariant(effective.variantSeed, 3, 2);
 		expect(seam.count('texture:variant-acquire')).toBe(4);
+		flushDeferredTextureReleases();
 		expect(seam.count('texture:variant-dispose')).toBe(2);
 	});
 });

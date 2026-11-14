@@ -31,19 +31,11 @@
  * the shell used to nest it in a `T.Group` with the same name, and no consumer
  * reads the group, so a per-object transform must be applied to the mesh.
  */
-import {
-	BoxGeometry,
-	CylinderGeometry,
-	Group,
-	Mesh,
-	SphereGeometry,
-	type BufferGeometry,
-	type Material,
-	type Object3D
-} from 'three';
+import { Group, Mesh, type Material, type Object3D } from 'three';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import type { MaterialStore } from '$lib/render/resources/material-store';
 import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import type { GeometryLease, GeometryStore } from '$lib/render/resources/geometry-store';
 import { countWork, sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core';
 
 /** The neutral Layout-object surface the shell has always drawn (`#e7e4dd`). */
@@ -54,11 +46,11 @@ const OBJECT_SURFACE: StandardMaterialDescriptor = {
 	metalness: 0
 };
 
-/** One retained object: what it was built from, the object and its buffers. */
+/** One retained object: what it was built from, the object and its buffer lease. */
 type RetainedObject = {
 	readonly key: string;
 	readonly object: Object3D;
-	readonly geometry: BufferGeometry;
+	readonly geometry: GeometryLease;
 };
 
 /** What one update did, as counts — the H4 oracle reads these, never a stopwatch. */
@@ -97,25 +89,40 @@ function attachAt(parent: Group, object: Object3D, index: number): void {
 	parent.children.splice(index, 0, object);
 }
 
-function bufferFor(object: CompiledLayoutObject): { geometry: BufferGeometry; scale: [number, number, number] } {
+/**
+ * The shared geometry spec and the unit scale reproducing the compiled object.
+ *
+ * E7/R4 moved these buffers into the Canvas `GeometryStore`, so two objects of a
+ * kind share one unit buffer and a changed dimension is a transform, not a
+ * rebuild. The sphere already used the unit geometry; the cylinder's scale is
+ * `(diameter, height, depth)`, which reproduces `CylinderGeometry(r, r, h, 24)`
+ * under a `d2 / d0` z-scale vertex for vertex (the R4 parity test proves it).
+ */
+function geometrySpecFor(object: CompiledLayoutObject): {
+	spec: Parameters<GeometryStore['acquire']>[0];
+	scale: [number, number, number];
+} {
 	if (object.kind === 'cylinder') {
 		return {
-			geometry: new CylinderGeometry(object.dimensions[0] / 2, object.dimensions[0] / 2, object.dimensions[1], 24),
-			scale: [1, 1, object.dimensions[2] / object.dimensions[0]]
+			spec: { kind: 'unit', shape: 'cylinder', radialSegments: 24 },
+			scale: [object.dimensions[0], object.dimensions[1], object.dimensions[2]]
 		};
 	}
 	if (object.kind === 'sphere') {
 		const scale = sphereRenderScale(object.dimensions);
 		return {
-			geometry: new SphereGeometry(0.5, 24, 16),
+			spec: { kind: 'unit', shape: 'sphere', widthSegments: 24, heightSegments: 16 },
 			scale: [scale[0], scale[1], scale[2]]
 		};
 	}
-	// box, plane and profile: the compiled slab itself.
-	return { geometry: new BoxGeometry(...object.dimensions), scale: [1, 1, 1] };
+	// box, plane and profile: the compiled slab as a scaled unit box.
+	return { spec: { kind: 'unit', shape: 'box' }, scale: [...object.dimensions] as [number, number, number] };
 }
 
-export function createObjectRepresentation(store: MaterialStore): ObjectRepresentation {
+export function createObjectRepresentation(
+	store: MaterialStore,
+	geometryStore: GeometryStore
+): ObjectRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutObjects';
 	const retained = new Map<string, RetainedObject>();
@@ -146,8 +153,9 @@ export function createObjectRepresentation(store: MaterialStore): ObjectRepresen
 					kept += 1;
 					continue;
 				}
-				const buffer = bufferFor(object);
-				const mesh = new Mesh(buffer.geometry, material);
+				const buffer = geometrySpecFor(object);
+				const geometry = geometryStore.acquire(buffer.spec);
+				const mesh = new Mesh(geometry.geometry, material);
 				mesh.castShadow = true;
 				mesh.receiveShadow = true;
 				mesh.scale.set(...buffer.scale);
@@ -157,14 +165,14 @@ export function createObjectRepresentation(store: MaterialStore): ObjectRepresen
 				mesh.position.set(...object.position);
 				mesh.rotation.set(object.rotation[0], object.rotation[1], object.rotation[2]);
 
-				const entry: RetainedObject = { key: object.cacheKey, object: mesh, geometry: buffer.geometry };
+				const entry: RetainedObject = { key: object.cacheKey, object: mesh, geometry };
 				if (previous) {
 					// Swap in place so draw order follows compiled object order.
 					const index = object3d.children.indexOf(previous.object);
 					previous.object.removeFromParent();
 					if (index >= 0) attachAt(object3d, mesh, index);
 					else object3d.add(mesh);
-					previous.geometry.dispose();
+					previous.geometry.release();
 				} else {
 					object3d.add(mesh);
 				}
@@ -176,7 +184,7 @@ export function createObjectRepresentation(store: MaterialStore): ObjectRepresen
 			for (const [objectId, entry] of retained) {
 				if (present.has(objectId)) continue;
 				entry.object.removeFromParent();
-				entry.geometry.dispose();
+				entry.geometry.release();
 				retained.delete(objectId);
 				released += 1;
 			}
@@ -204,10 +212,11 @@ export function createObjectRepresentation(store: MaterialStore): ObjectRepresen
 			hidden = new Set();
 			for (const entry of retained.values()) {
 				entry.object.removeFromParent();
-				entry.geometry.dispose();
+				entry.geometry.release();
 			}
 			retained.clear();
 			surface.release();
 		}
 	};
 }
+

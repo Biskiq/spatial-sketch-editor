@@ -5,7 +5,7 @@
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 	import { createRoomRepresentation } from '$lib/render/layout-room-representation';
-	import { createMaterialStore } from '$lib/render/resources/material-store';
+	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import RoomPortal from '$lib/museum/layout/RoomPortal.svelte';
@@ -47,14 +47,16 @@
 	}
 
 	/**
-	 * One resource owner for this Canvas subtree (E6/R2a).
+	 * The Canvas's one resource owner (E7).
 	 *
-	 * WebGL objects cannot be shared across contexts, so the store lives with the
-	 * shell: walls, Layout objects and Rooms all acquire their surfaces from it,
-	 * equal descriptors share one instance, and the shell disposes it after the
-	 * representations that lease from it. No representation constructs a material.
+	 * E6 created the material store here, while the Layout was its only consumer.
+	 * Scene entities are a sibling of this shell, so ownership moved up to the
+	 * Canvas host (`StageCanvas`, `VisitorPreviewSurface`) and both families lease
+	 * from the same stores. Walls, Layout objects and Rooms still acquire from the
+	 * one factory; no representation constructs a material.
 	 */
-	const materials = createMaterialStore();
+	const resources = useRenderResources();
+	const materials = resources.materials;
 
 	/**
 	 * The retained Wall representation: one imperative subtree for every compiled
@@ -83,7 +85,7 @@
 	 * compiled object, reconciled in place. The compiled object's own `cacheKey` is
 	 * the retention proof.
 	 */
-	const objects = createObjectRepresentation(materials);
+	const objects = createObjectRepresentation(materials, resources.geometry);
 
 	$effect(() => {
 		objects.update(geometry);
@@ -112,13 +114,13 @@
 	$effect(() => onIdentity?.(identity));
 
 	// One teardown, in dependency order: representations release their buffers and
-	// material leases first, then the store disposes whatever is left.
+	// material leases. The Canvas host owns the stores and disposes whatever is
+	// left; a release after that disposal is a no-op in both stores.
 	$effect(
 		() => () => {
 			rooms.dispose();
 			walls.dispose();
 			objects.dispose();
-			materials.dispose();
 		}
 	);
 

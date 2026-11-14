@@ -11,13 +11,54 @@
  * - `dispose()` ends every remaining claim, and the store refuses to serve after.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { MeshBasicMaterial, MeshStandardMaterial } from 'three';
+import { MeshBasicMaterial, MeshStandardMaterial, Texture } from 'three';
 import {
 	canonicalColor,
 	materialKey,
 	type MaterialDescriptor
 } from '$lib/render/resources/material-descriptor';
 import { createMaterialStore } from '$lib/render/resources/material-store';
+
+describe('E7/R2b — a textured descriptor is one material per variant', () => {
+	it('shares one instance between equal textured keys and binds the supplied maps', () => {
+		const store = createMaterialStore();
+		const map = new Texture();
+		const descriptor: MaterialDescriptor = {
+			kind: 'standard',
+			color: '#c4b4a0',
+			roughness: 0.6,
+			metalness: 0,
+			toneMapped: true,
+			textures: { map: 'eff|seed|1.0000|1.0000|0.0000' }
+		};
+		const first = store.acquire(descriptor, { map });
+		const second = store.acquire(descriptor, { map });
+		expect(first.material).toBe(second.material);
+		expect((first.material as MeshStandardMaterial).map).toBe(map);
+		expect(store.stats()).toMatchObject({ created: 1, live: 1, acquired: 2 });
+
+		// A different bound variant is a different surface, not the same one relabelled.
+		const otherVariant = store.acquire({ ...descriptor, textures: { map: 'eff|other|1.0000|1.0000|0.0000' } }, { map });
+		expect(otherVariant.material).not.toBe(first.material);
+		expect(otherVariant.key).not.toBe(first.key);
+		expect(store.stats().created).toBe(2);
+		store.dispose();
+	});
+
+	it('refuses to construct a descriptor whose declared slot has no map', () => {
+		const store = createMaterialStore();
+		expect(() =>
+			store.acquire({
+				kind: 'standard',
+				color: '#c4b4a0',
+				roughness: 0.6,
+				metalness: 0,
+				textures: { map: 'eff|seed|1.0000|1.0000|0.0000' }
+			})
+		).toThrow(/no texture/);
+		expect(store.stats().created).toBe(0);
+	});
+});
 
 const WALL: MaterialDescriptor = {
 	kind: 'standard',

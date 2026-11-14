@@ -115,21 +115,33 @@ describe('the Layout shell owns visibility and identity', () => {
 });
 
 describe('Scene entities keep their world frame', () => {
-	it('each entity root is a transform-free direct child of the world root', () => {
+	it('mounts the retained root once and never wraps the entity list in a group', () => {
 		const source = read('lib/visitor/VisitorEntityGroups.svelte');
 		const ast = parse(source, { modern: true });
-		const nodes = ast.fragment.nodes.filter((node) => node.type !== 'Text');
-		// The markup is exactly one each over scene.entities: no wrapping group.
-		expect(nodes.map((node) => node.type)).toEqual(['EachBlock']);
-		const each = nodes[0] as unknown as {
+		const nodes = ast.fragment.nodes.filter((node) => node.type !== 'Text' && node.type !== 'Comment');
+		// E7/R4: the primitive/Form root is mounted once, then the remaining
+		// component families dispatch per entity. No wrapping group either way.
+		expect(nodes.map((node) => node.type)).toEqual(['Component', 'EachBlock']);
+		expect(source).toContain('<T is={entities.object3d} />');
+		const each = nodes[1] as unknown as {
 			expression: { type: string; object: { name: string }; property: { name: string } };
-			body: { nodes: Array<{ type: string; name?: string; attributes?: Array<{ name: string }> }> };
+			body: { nodes: Array<{ type: string }> };
 		};
 		expect(`${each.expression.object.name}.${each.expression.property.name}`).toBe('scene.entities');
-		const roots = each.body.nodes.filter((node) => node.type !== 'Text');
-		expect(roots).toHaveLength(1);
-		expect(roots[0]!.name).toBe('T.Group');
-		// Only identity and lifecycle: a transform here would move every entity.
-		expect(roots[0]!.attributes!.map((attribute) => attribute.name).sort()).toEqual(['name', 'oncreate']);
+		// One family dispatch (`if model / else if artwork / else if light`).
+		expect(each.body.nodes.filter((node) => node.type !== 'Text').map((node) => node.type)).toEqual(['IfBlock']);
+		// A model root stays transform-free: its body applies its own placement.
+		expect(source).toContain('oncreate={(root) => onEntityRoot?.(entity.id, root)}');
+	});
+
+	it('the retained root is transform-free and an item root carries only the authored transform', () => {
+		const representation = read('lib/render/scene-entity-representation.ts');
+		expect(representation).toContain("object3d.name = 'SceneEntities'");
+		// The retained root is never moved, rotated or scaled: entity placement is
+		// the item's own transform, exactly the world frame the accepted Scene has.
+		expect(representation).not.toMatch(/object3d\.(position|rotation|scale)\.set/);
+		expect(representation).toContain('group.position.set(...item.transform.position)');
+		expect(representation).toContain('group.rotation.set(...item.transform.rotation)');
+		expect(representation).toContain('group.scale.set(...item.transform.scale)');
 	});
 });

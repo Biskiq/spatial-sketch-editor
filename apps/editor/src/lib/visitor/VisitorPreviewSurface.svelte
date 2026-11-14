@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { previewCanvasRenderer } from '$lib/render/canvas-renderers';
 	import { perfMark } from '$lib/platform/perf-marks';
-	import { onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
+	import { provideRenderResources } from '$lib/render/resources/render-resources';
 import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
@@ -82,6 +83,10 @@ import { PCFShadowMap } from 'three';
 		/** Experience review 1 (R5) — the Scene's World environment; Paper by default, never black. */
 		environment?: SceneEnvironmentPreset;
 	} = $props();
+
+	/** One render-resource owner for the Preview Canvas (E7); see `StageCanvas`. */
+	const resources = provideRenderResources();
+	onDestroy(() => resources.dispose());
 
 	const visitorState = $derived.by(() => {
 		// The run identity, not the component lifetime, creates a fresh runtime: a

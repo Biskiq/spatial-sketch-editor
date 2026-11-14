@@ -17,6 +17,7 @@ import {
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
+import { createGeometryStore } from '$lib/render/resources/geometry-store';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { startStageCounting } from '../../helpers/stage-counts';
 
@@ -43,7 +44,7 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 	it('builds one mesh per object on the first update, shares one material, and nothing on the second', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const geometry = compiled(document);
-		const representation = createObjectRepresentation(createMaterialStore());
+		const representation = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 
 		const first = representation.update(geometry);
 		expect(first.objects).toBe(geometry.objects.length);
@@ -66,7 +67,7 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 
 	it('rebuilds only the object that moved and keeps every other mesh', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createObjectRepresentation(createMaterialStore());
+		const representation = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 		const base = compiled(document);
 		representation.update(base);
 		const before = meshes(representation);
@@ -89,9 +90,9 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 		representation.dispose();
 	});
 
-	it('releases a departed object in the same update', () => {
+	it('releases a departed object in the same update without freeing a shared buffer', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createObjectRepresentation(createMaterialStore());
+		const representation = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 		const base = compiled(document);
 		representation.update(base);
 
@@ -101,23 +102,26 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 		const stats = representation.update(pruned);
 		expect(stats.released).toBe(1);
 		expect(stats.built).toBe(0);
-		expect(disposeSpy).toHaveBeenCalled();
-		disposeSpy.mockRestore();
+		// E7/R4: this object's buffer is a shared unit geometry other objects still
+		// lease, so leaving the document releases the lease and keeps the buffer.
+		expect(disposeSpy).not.toHaveBeenCalled();
 		expect(meshes(representation).has(`VisitorLayoutObject:${removed.objectId}`)).toBe(false);
 
 		representation.dispose();
+		expect(disposeSpy).toHaveBeenCalled();
+		disposeSpy.mockRestore();
 	});
 
 	it('a retained rebuild equals a from-scratch build buffer for buffer', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const edited = moveOneObject(document);
 
-		const incremental = createObjectRepresentation(createMaterialStore());
+		const incremental = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 		const base = compiled(document);
 		incremental.update(base);
 		incremental.update(compiled(edited));
 
-		const fresh = createObjectRepresentation(createMaterialStore());
+		const fresh = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 		fresh.update(compiled(edited));
 
 		const delivered = meshes(incremental);
@@ -136,16 +140,21 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 		fresh.dispose();
 	});
 
-	it('disposes every mesh and material exactly once', () => {
+	it('releases every buffer lease and its material exactly once', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
-		const representation = createObjectRepresentation(createMaterialStore());
+		const geometryStore = createGeometryStore();
+		const representation = createObjectRepresentation(createMaterialStore(), geometryStore);
 		representation.update(compiled(document));
 		const mesh = [...meshes(representation).values()][0]!;
 		const disposeSpy = vi.spyOn(BufferGeometry.prototype, 'dispose');
 		const materialSpy = vi.spyOn(mesh.material as { dispose: () => void }, 'dispose');
 
+		// E7/R4 shares unit buffers: the store's leases, not one dispose per object,
+		// are the ownership proof. Every created buffer is gone and none is left live.
+		expect(geometryStore.stats().live).toBeGreaterThan(0);
 		representation.dispose();
-		expect(disposeSpy.mock.calls.length).toBeGreaterThanOrEqual(document.objects.length);
+		expect(geometryStore.stats()).toMatchObject({ live: 0, disposed: geometryStore.stats().created });
+		expect(disposeSpy.mock.calls.length).toBe(geometryStore.stats().created);
 		expect(materialSpy).toHaveBeenCalledTimes(1);
 		expect(representation.object3d.children).toHaveLength(0);
 
@@ -160,7 +169,7 @@ describe('T1.P02.S06 H4 — retained Layout object representation', () => {
 describe('E1/R1 — owned render identity on the object representation', () => {
 	it('objectOf returns the retained mesh, tagged with its id, for every compiled object', () => {
 		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
-		const representation = createObjectRepresentation(createMaterialStore());
+		const representation = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 		representation.update(geometry);
 		for (const object of geometry.objects) {
 			const mesh = representation.objectOf(object.objectId);
@@ -175,7 +184,7 @@ describe('E1/R1 — owned render identity on the object representation', () => {
 
 	it('is null once the object is released or the representation disposed', () => {
 		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
-		const representation = createObjectRepresentation(createMaterialStore());
+		const representation = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 		representation.update(geometry);
 		const removed = geometry.objects.at(-1)!;
 		representation.update({ ...geometry, objects: geometry.objects.filter((object) => object.objectId !== removed.objectId) });
@@ -189,7 +198,7 @@ describe('E1/R1 — owned render identity on the object representation', () => {
 		try {
 			const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 			const base = compiled(document);
-			const representation = createObjectRepresentation(createMaterialStore());
+			const representation = createObjectRepresentation(createMaterialStore(), createGeometryStore());
 			const ids = base.objects.map((object) => object.objectId);
 			const moved = ids[0]!;
 			const late = ids[1]!;

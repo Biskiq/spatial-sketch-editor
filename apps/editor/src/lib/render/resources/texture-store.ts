@@ -22,6 +22,7 @@ import {
 } from 'three';
 import type { MaterialDefinition, MaterialTextureSlot } from '$lib/types/materials';
 import { countWork } from '@portfolio/layout-core';
+import type { TextureVariantSource } from './texture-variant';
 
 export type LoadedTextureMaps = Partial<Record<MaterialTextureSlot, ThreeTexture>>;
 
@@ -41,7 +42,55 @@ type VariantKey = string;
 type VariantEntry = {
   maps: LoadedTextureMaps;
   refCount: number;
+  /**
+   * E7/R2b — the variant's count reached zero.
+   *
+   * The GPU textures stay alive until the next idle point, so a release and a
+   * re-acquire inside one update never delete and re-upload a texture. A later
+   * acquire clears the mark and keeps the same maps.
+   */
+  pendingDispose: boolean;
 };
+
+/**
+ * Variants released during the current update, waiting for the idle point.
+ *
+ * Deferred disposal is what makes a changed look cheap: Scene materials are
+ * released and re-acquired inside one representation update whenever a mesh is
+ * rebuilt, and disposing the old variant immediately would re-upload bytes that
+ * the next entity with the same look is about to ask for.
+ */
+let pendingVariantDisposals = 0;
+let flushScheduled = false;
+
+function scheduleDeferredFlush(): void {
+  if (flushScheduled) return;
+  flushScheduled = true;
+  queueMicrotask(() => {
+    flushScheduled = false;
+    flushDeferredTextureReleases();
+  });
+}
+
+/**
+ * Dispose every variant still at zero references. Called at the idle point (a
+ * microtask after the update that released it) and by tests that need a
+ * deterministic ending; safe to call at any time.
+ */
+export function flushDeferredTextureReleases(): void {
+  for (const [key, entry] of variantCache) {
+    if (!entry.pendingDispose || entry.refCount > 0) continue;
+    for (const texture of Object.values(entry.maps)) texture?.dispose();
+    variantCache.delete(key);
+    pendingVariantDisposals -= 1;
+    countWork('texture:variant-dispose');
+  }
+}
+
+/** How many variants are waiting for the idle point. Observation only. */
+export function deferredTextureReleaseCount(): number {
+  return pendingVariantDisposals;
+}
 
 const loader = new TextureLoader();
 const sourceCache = new Map<string, SourceEntry>();
@@ -303,11 +352,16 @@ export function acquireMaterialVariant(
   const existing = variantCache.get(key);
   if (existing) {
     existing.refCount += 1;
+    if (existing.pendingDispose) {
+      // Re-acquired before the idle point: the same maps stay on the GPU.
+      existing.pendingDispose = false;
+      pendingVariantDisposals -= 1;
+    }
     return existing.maps;
   }
 
   const maps = cloneMaps(sourceMaps, repeatX, repeatY, rotation);
-  variantCache.set(key, { maps, refCount: 1 });
+  variantCache.set(key, { maps, refCount: 1, pendingDispose: false });
   return maps;
 }
 
@@ -321,15 +375,16 @@ export function releaseMaterialVariant(
   const key = variantKey(materialId, repeatX, repeatY, rotation, scope ?? null);
   const existing = variantCache.get(key);
   if (!existing) return;
+  // A duplicate release is a caller bug, not a second claim: an already-zero
+  // entry must not schedule a second disposal.
+  if (existing.refCount <= 0) return;
 
   existing.refCount -= 1;
   if (existing.refCount > 0) return;
 
-  for (const texture of Object.values(existing.maps)) {
-    texture?.dispose();
-  }
-  variantCache.delete(key);
-	countWork('texture:variant-dispose');
+  existing.pendingDispose = true;
+  pendingVariantDisposals += 1;
+  scheduleDeferredFlush();
 }
 
 /** Test helper: clear in-memory caches (does not dispose GPU sources still referenced). */
@@ -338,6 +393,8 @@ export function resetTextureCachesForTests() {
     for (const texture of Object.values(entry.maps)) texture?.dispose();
   }
   variantCache.clear();
+  pendingVariantDisposals = 0;
+  flushScheduled = false;
   materialLoadPromises.clear();
   sourceCache.clear();
 }
@@ -345,8 +402,6 @@ export function resetTextureCachesForTests() {
 // ---------------------------------------------------------------------------
 // Phase 5.3 — per-effective material-instance variant pool.
 // ---------------------------------------------------------------------------
-
-import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 
 export type EffectiveLoadResult =
   | { status: 'ready'; maps: LoadedTextureMaps }
@@ -367,7 +422,7 @@ export function loadSourceTexture(
 }
 
 export async function loadEffectiveTextures(
-  effective: EffectiveSceneMaterial,
+  effective: TextureVariantSource,
   scope?: TextureLoadScope | null
 ): Promise<EffectiveLoadResult> {
   const entries = Object.entries(effective.slotUris) as [MaterialTextureSlot, string][];
@@ -411,8 +466,36 @@ function effectiveVariantKey(
   return id ? `${id}::${base}` : base;
 }
 
+/**
+ * The published name of one effective variant, for a material descriptor's key.
+ *
+ * The descriptor must record the texture identity without holding Three objects,
+ * so the variant pool is the one place that names it. A look's material key is
+ * therefore a function of its variant key, and equal looks share one material.
+ */
+export function effectiveTextureVariantKey(
+  seed: string,
+  repeatX: number,
+  repeatY: number,
+  rotation = 0,
+  scope?: TextureLoadScope | TextureScopeKey | null
+): string {
+  return effectiveVariantKey(seed, repeatX, repeatY, rotation, scope ?? null);
+}
+
+/** The published name of one catalogue-material variant, for a descriptor's key. */
+export function materialTextureVariantKey(
+  materialId: string,
+  repeatX: number,
+  repeatY: number,
+  rotation = 0,
+  scope?: TextureLoadScope | TextureScopeKey | null
+): string {
+  return variantKey(materialId, repeatX, repeatY, rotation, scope ?? null);
+}
+
 export function acquireEffectiveVariant(
-  effective: EffectiveSceneMaterial,
+  effective: TextureVariantSource,
   repeatX: number,
   repeatY: number,
   rotation = 0,
@@ -423,6 +506,10 @@ export function acquireEffectiveVariant(
   const existing = variantCache.get(key);
   if (existing) {
     existing.refCount += 1;
+    if (existing.pendingDispose) {
+      existing.pendingDispose = false;
+      pendingVariantDisposals -= 1;
+    }
     return existing.maps;
   }
 
@@ -444,7 +531,7 @@ export function acquireEffectiveVariant(
     clone.needsUpdate = true;
     maps[entrySlot] = clone;
   }
-  variantCache.set(key, { maps, refCount: 1 });
+  variantCache.set(key, { maps, refCount: 1, pendingDispose: false });
   return maps;
 }
 
@@ -458,11 +545,13 @@ export function releaseEffectiveVariant(
   const key = effectiveVariantKey(seed, repeatX, repeatY, rotation, scope ?? null);
   const existing = variantCache.get(key);
   if (!existing) return;
+  if (existing.refCount <= 0) return;
 
   existing.refCount -= 1;
   if (existing.refCount > 0) return;
 
-  for (const texture of Object.values(existing.maps)) texture?.dispose();
-  variantCache.delete(key);
-	countWork('texture:variant-dispose');
+  // Deferred: release and re-acquire inside one update keeps the GPU texture.
+  existing.pendingDispose = true;
+  pendingVariantDisposals += 1;
+  scheduleDeferredFlush();
 }

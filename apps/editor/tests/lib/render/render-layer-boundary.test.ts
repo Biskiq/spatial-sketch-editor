@@ -43,10 +43,13 @@ const LIB = 'apps/editor/src/lib';
 const DESCRIPTOR = `${LIB}/render/resources/material-descriptor.ts`;
 const STORE = `${LIB}/render/resources/material-store.ts`;
 const TEXTURE_STORE = `${LIB}/render/resources/texture-store.ts`;
+const DESCRIPTION = `${LIB}/render/scene-render-description.ts`;
 const REPRESENTATIONS = [
 	`${LIB}/render/layout-wall-representation.ts`,
 	`${LIB}/render/layout-object-representation.ts`,
-	`${LIB}/render/layout-room-representation.ts`
+	`${LIB}/render/layout-room-representation.ts`,
+	// E7/R4: the retained primitive/Form representation.
+	`${LIB}/render/scene-entity-representation.ts`
 ];
 /**
  * The one permitted `$lib/visitor` edge: three constant strings with no imports
@@ -54,10 +57,8 @@ const REPRESENTATIONS = [
  * and the Wall unlit share from it; it is a value module, not a visitor host.
  */
 const VISITOR_PRESENTATION = `${LIB}/visitor/room-presentation.ts`;
-/** The texture store's one pre-existing type-only edge, which R2b/E7 replaces with a descriptor. */
-const SCENE_LOOK = `${LIB}/museum/materials/scene-instance-material.ts`;
 
-const REPRESENTATION_FILE = /layout-(?:wall|object|room)-representation\.ts$/;
+const REPRESENTATION_FILE = /(?:layout-(?:wall|object|room)|scene-entity)-representation\.ts$/;
 
 /** A layer no resource module may reach, by resolved path. */
 function forbiddenForStores(relative: string): boolean {
@@ -116,16 +117,25 @@ describe('render-layer-boundary: stores read no authoring layer', () => {
 		expect([...importClosure([absolute(STORE)])].map(relativeToRepo).sort()).toEqual([DESCRIPTOR, STORE].sort());
 	});
 
-	it('the texture store’s module set is exact and keeps its one named exception', () => {
+	it('the texture store’s module set is exact and holds no content-layer edge', () => {
 		expect(importsOf(TEXTURE_STORE).sort()).toEqual(
 			[
 				'@portfolio/layout-core',
-				'$lib/museum/materials/scene-instance-material',
 				'$lib/types/materials',
-				'three'
+				'three',
+				'./texture-variant'
 			].sort()
 		);
-		expect(SCENE_LOOK).toMatch(/scene-instance-material\.ts$/);
+		// R2b replaced the one pre-existing exception: the store no longer reads the
+		// resolved-look module to know what a variant source is.
+		expect(importsOf(TEXTURE_STORE)).not.toContain('$lib/museum/materials/scene-instance-material');
+	});
+
+	it('the Scene description is portable data: no Three and no store', () => {
+		const imports = importsOf(DESCRIPTION);
+		expect(imports).not.toContain('three');
+		expect(imports.some((specifier) => /material-store|geometry-store/.test(specifier))).toBe(false);
+		expect(imports).toContain('./resources/scene-render-item');
 	});
 
 	it('no store reaches a forbidden layer by name or by path', () => {

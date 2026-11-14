@@ -495,7 +495,6 @@ RR-7, PF-4. Three pull requests.
 `apps/editor/src/lib/render/layout-wall-representation.ts`,
 `apps/editor/src/lib/render/layout-object-representation.ts`,
 `apps/editor/src/lib/museum/materials/scene-instance-material.ts`,
-`apps/editor/src/lib/museum/materials/SceneInstanceMaterial.svelte`,
 `apps/editor/src/lib/museum/materials/MuseumMaterial.svelte`,
 `apps/editor/src/lib/render/resources/texture-store.ts`,
 `apps/editor/src/lib/museum/assets/FallbackMaterial.svelte`,
@@ -572,8 +571,8 @@ gesture of a primitive (expect one per preview step).
 5. Forms: one `BufferGeometry` per `formEvaluationKey` in the store; the per-entity lease in
    `form-geometry.ts` is replaced by the store's reference count.
 
-**Touchpoints.** `apps/editor/src/lib/museum/entities/EntityPrimitive.svelte`,
-`apps/editor/src/lib/museum/entities/EntityForm.svelte`,
+**Touchpoints.** `apps/editor/src/lib/render/scene-entity-representation.ts`,
+`apps/editor/src/lib/render/scene-render-description.ts`,
 `apps/editor/src/lib/museum/entities/form-geometry.ts`,
 `apps/editor/src/lib/render/layout-object-representation.ts`,
 `apps/editor/src/lib/visitor/VisitorEntityGroups.svelte`,

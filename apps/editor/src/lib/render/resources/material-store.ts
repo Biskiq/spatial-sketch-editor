@@ -26,9 +26,26 @@ import {
 	MeshBasicMaterial,
 	MeshStandardMaterial,
 	ShadowMaterial,
-	type Material
+	type Material,
+	type Texture
 } from 'three';
-import { materialKey, type MaterialDescriptor } from './material-descriptor';
+import {
+	MATERIAL_TEXTURE_SLOTS,
+	materialKey,
+	type MaterialDescriptor,
+	type MaterialTextureSlotKey
+} from './material-descriptor';
+
+/**
+ * The loaded variants a textured descriptor binds, by slot.
+ *
+ * Maps travel beside the descriptor rather than inside it: the descriptor is
+ * plain portable data and the key only records the variant identity. The store
+ * refuses a key whose declared slots do not all arrive, because a material whose
+ * key names a texture and whose instance has none is exactly the silent drift
+ * this factory exists to prevent.
+ */
+export type MaterialTextureMaps = Readonly<Partial<Record<MaterialTextureSlotKey, Texture>>>;
 
 /**
  * One claim on a shared material. `release` is idempotent and, once the last
@@ -55,8 +72,15 @@ export type MaterialStoreStats = {
 };
 
 export type MaterialStore = {
-	/** The shared instance for `descriptor`, and a lease on it. */
-	acquire(descriptor: MaterialDescriptor): MaterialLease;
+	/**
+	 * The shared instance for `descriptor`, and a lease on it.
+	 *
+	 * `maps` supplies the loaded variants for every slot the descriptor names; a
+	 * descriptor with no `textures` needs none. Equal descriptors share one
+	 * instance, so two surfaces drawing the same look hold two leases on one
+	 * material.
+	 */
+	acquire(descriptor: MaterialDescriptor, maps?: MaterialTextureMaps): MaterialLease;
 	/** The live instance for `descriptor`, or null. Takes no lease; for reads and tests. */
 	peek(descriptor: MaterialDescriptor): Material | null;
 	stats(): MaterialStoreStats;
@@ -70,7 +94,27 @@ type Entry = {
 	refCount: number;
 };
 
-function construct(descriptor: MaterialDescriptor): Material {
+/** The maps a textured descriptor declares, or a refusal naming the missing slot. */
+function boundMaps(
+	descriptor: MaterialDescriptor,
+	maps: MaterialTextureMaps | undefined
+): Partial<Record<MaterialTextureSlotKey, Texture>> | null {
+	const declared = descriptor.kind === 'standard' ? descriptor.textures : undefined;
+	if (declared === undefined) return null;
+	const bound: Partial<Record<MaterialTextureSlotKey, Texture>> = {};
+	for (const slot of MATERIAL_TEXTURE_SLOTS) {
+		if (declared[slot] === undefined) continue;
+		const map = maps?.[slot];
+		if (map === undefined) {
+			throw new Error(`material descriptor binds "${slot}" but no texture was supplied`);
+		}
+		bound[slot] = map;
+	}
+	return bound;
+}
+
+function construct(descriptor: MaterialDescriptor, maps: MaterialTextureMaps | undefined): Material {
+	const bound = boundMaps(descriptor, maps);
 	switch (descriptor.kind) {
 		case 'standard':
 			return new MeshStandardMaterial({
@@ -84,7 +128,9 @@ function construct(descriptor: MaterialDescriptor): Material {
 				...(descriptor.emissiveIntensity === undefined
 					? {}
 					: { emissiveIntensity: descriptor.emissiveIntensity }),
-				...(descriptor.toneMapped === undefined ? {} : { toneMapped: descriptor.toneMapped })
+				...(descriptor.toneMapped === undefined ? {} : { toneMapped: descriptor.toneMapped }),
+				...(descriptor.wireframe === undefined ? {} : { wireframe: descriptor.wireframe }),
+				...(bound === null ? {} : bound)
 			});
 		case 'basic':
 			return new MeshBasicMaterial({
@@ -115,12 +161,12 @@ export function createMaterialStore(): MaterialStore {
 	let disposed = false;
 
 	return {
-		acquire(descriptor) {
+		acquire(descriptor, maps) {
 			if (disposed) throw new Error('the material store has been disposed');
 			const key = materialKey(descriptor);
 			let entry = entries.get(key);
 			if (entry === undefined) {
-				entry = { descriptor, material: construct(descriptor), refCount: 0 };
+				entry = { descriptor, material: construct(descriptor, maps), refCount: 0 };
 				entries.set(key, entry);
 				created += 1;
 			}
