@@ -53,6 +53,7 @@ const ALLOWED_IMPORTS: Readonly<Record<string, ReadonlySet<string>>> = {
 		'./candidate-preview',
 		'./ink',
 		'./opening-planners',
+		'./layout-subjects',
 		'./precision',
 		'./session-ports',
 		'./stage-pointer'
