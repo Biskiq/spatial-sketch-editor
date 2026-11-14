@@ -1610,9 +1610,12 @@ describe('Scene adapter registration', () => {
 		const candidate = session.candidate();
 		if (candidate === null) throw new Error('typing an exact value produced no candidate');
 
-		// The candidate asks the host to redraw it, and every frame raises the
-		// evaluation generation. The reading has not changed, so nothing about the
-		// proposal has.
+		// E3: a settled frame retains its evaluation identity instead of minting a
+		// new one. A real view update still raises it, and the typed proposal
+		// survives that new evaluation.
+		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
+		expect(facade.evaluationId()).toBe(evaluationId);
+		facade.camera.applyIntent({ kind: 'pan', deltaCss: [4, 0], rect: RECT }, 2);
 		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
 		expect(facade.evaluationId()).not.toBe(evaluationId);
 		expect(session.proposalLive()).toBe(true);
@@ -1797,9 +1800,10 @@ describe('Scene adapter registration', () => {
 		const claimed = session.candidate();
 		expect(claimed?.kind).toBe('place');
 
-		// A second viewport evaluation arrives while the press is still held. A
-		// release that resolved the surface again would read a fresh, empty session
-		// and silently drop the pose the creator is dragging.
+		// A real view update raises a new evaluation while the press is still held.
+		// A release that resolved the surface again would read a fresh, empty
+		// session and silently drop the pose the creator is dragging.
+		facade.camera.applyIntent({ kind: 'pan', deltaCss: [4, 0], rect: RECT }, 2);
 		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
 		expect(facade.evaluationId()).not.toBe(evaluationId);
 		facade.pointerIntent({ phase: 'up', css: first, evaluationId });

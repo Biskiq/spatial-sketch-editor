@@ -1119,7 +1119,57 @@ export function createStageFacade(input: {
 	/** Live listeners for the contribution surface; see `onAdaptersChanged`. */
 	const adapterListeners = new Set<() => void>();
 	let adaptersChangeQueued = false;
+	/**
+	 * Monotone version of every input a contributed output array can read besides
+	 * the evaluation, the accepted snapshot and the live selection/hover/task.
+	 * Adapter state that changes a preview asks for a surface change; that request
+	 * (and every registration change) lands here, so an unchanged read returns the
+	 * previous array instead of rebuilding it on every display frame.
+	 */
+	let outputsRevision = 0;
+	/**
+	 * The inputs a contributed output array reads. Identities are compared, not
+	 * contents: the session replaces its selection/task/hover records only when they
+	 * change, and the accepted snapshot only when the source is installed.
+	 */
+	type OutputInputs = {
+		readonly evaluation: ViewportEvaluation;
+		readonly revision: number;
+		readonly snapshot: StageReadSnapshot;
+		readonly selection: StageSelectionState;
+		readonly hover: StageSelectionEntry | null;
+		readonly task: StageTask | null;
+		readonly lens: StageLens;
+	};
+	function outputInputs(evaluation: ViewportEvaluation): OutputInputs {
+		return {
+			evaluation,
+			revision: outputsRevision,
+			snapshot: currentSnapshot,
+			selection: session.selectionState(),
+			hover: session.hover(),
+			task: session.task(),
+			lens: session.lens()
+		};
+	}
+	function sameOutputInputs(left: OutputInputs, right: OutputInputs): boolean {
+		return (
+			left.evaluation === right.evaluation &&
+			left.revision === right.revision &&
+			left.snapshot === right.snapshot &&
+			left.selection === right.selection &&
+			left.hover === right.hover &&
+			left.task === right.task &&
+			left.lens === right.lens
+		);
+	}
+	let overlayOutput: { inputs: OutputInputs; value: readonly StageOverlayContribution[] } | null = null;
+	let guideOutput: { inputs: OutputInputs; value: readonly StageGuideView[] } | null = null;
+	let candidateOutput: { inputs: OutputInputs; value: readonly StageCandidatePreviewView[] } | null = null;
+	let ghostOutput: { inputs: OutputInputs; value: readonly StageGhostMesh[] } | null = null;
+	let markOutput: { inputs: OutputInputs; extra: string; value: readonly StageMarkView[] } | null = null;
 	function notifyAdaptersChanged(): void {
+		outputsRevision += 1;
 		for (const listener of [...adapterListeners]) {
 			try {
 				listener();
@@ -1636,6 +1686,9 @@ export function createStageFacade(input: {
 				end: entry.end
 			});
 			rebuilt = true;
+			// The read that discovered this rebuild must not answer with the array built
+			// from the previous binding; the deferred notification still tells listeners.
+			outputsRevision += 1;
 		}
 		// A rebuild is discovered **inside a read** (`overlays()`, `tasks()`, …), and the
 		// host reads those from derived values. Notifying synchronously here would let a
@@ -2031,7 +2084,33 @@ export function createStageFacade(input: {
 			}
 		},
 		marks() {
-			return stageMarks();
+			if (!isLive()) return [];
+			ensureBindings();
+			const evaluation = camera.evaluation();
+			if (evaluation === null) return [];
+			const inputs = outputInputs(evaluation);
+			// Marks also read hover, disclosure, press and resize-handle state, none of
+			// which is an adapter-surface change; they are part of the key so a hover
+			// still updates while an unchanged frame returns the previous array.
+			const extra = [
+				markHover?.adapterId ?? '',
+				markHover?.id ?? '',
+				idleMarkHover?.adapterId ?? '',
+				idleMarkHover?.id ?? '',
+				activeMarkId ?? '',
+				[...openDisclosures].sort().join(','),
+				session.resizeHandles() ? '1' : '0'
+			].join('|');
+			if (
+				markOutput !== null &&
+				sameOutputInputs(markOutput.inputs, inputs) &&
+				markOutput.extra === extra
+			) {
+				return markOutput.value;
+			}
+			const value = stageMarks();
+			markOutput = { inputs, extra, value };
+			return value;
 		},
 		hitMark(query) {
 			return hitStageMark(selectionMarks(), query);
@@ -2245,7 +2324,11 @@ export function createStageFacade(input: {
 			// translation, applied here so no adapter has to know the surface offset
 			// and no marker can be painted one Index panel to the right of its target.
 			const { left, top } = handle.context.evaluation.rect;
-			return [...adapters.values()].flatMap((entry) => {
+			const inputs = outputInputs(handle.context.evaluation);
+			if (overlayOutput !== null && sameOutputInputs(overlayOutput.inputs, inputs)) {
+				return overlayOutput.value;
+			}
+			const value = [...adapters.values()].flatMap((entry) => {
 				try {
 					return (entry.contributions.overlay?.(handle.context) ?? []).map((marker) => ({
 						...marker,
@@ -2253,12 +2336,18 @@ export function createStageFacade(input: {
 					}));
 				} catch { return []; }
 			});
+			overlayOutput = { inputs, value };
+			return value;
 		},
 		guides() {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return [];
 			const { left, top } = handle.context.evaluation.rect;
+			const inputs = outputInputs(handle.context.evaluation);
+			if (guideOutput !== null && sameOutputInputs(guideOutput.inputs, inputs)) {
+				return guideOutput.value;
+			}
 			const project = (world: Vec3): readonly [number, number] | null => {
 				if (world.length !== 3 || !world.every(Number.isFinite)) return null;
 				const projected = handle.context.project(world);
@@ -2272,7 +2361,7 @@ export function createStageFacade(input: {
 					const b = project(to);
 					return a === null || b === null ? [] : [[a, b] as const];
 				});
-			return [...adapters.values()].flatMap((entry) => {
+			const value = [...adapters.values()].flatMap((entry) => {
 				try {
 					return (entry.contributions.guides?.(handle.context) ?? []).map((guide) => ({
 						id: guide.id,
@@ -2288,12 +2377,18 @@ export function createStageFacade(input: {
 					return [];
 				}
 			});
+			guideOutput = { inputs, value };
+			return value;
 		},
 		candidatePreviews() {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return [];
 			const { left, top } = handle.context.evaluation.rect;
+			const inputs = outputInputs(handle.context.evaluation);
+			if (candidateOutput !== null && sameOutputInputs(candidateOutput.inputs, inputs)) {
+				return candidateOutput.value;
+			}
 			// One projection, at the same boundary the overlay uses. World points an
 			// adapter contributes are never translated again by it.
 			const css = (world: Vec3): readonly [number, number] | null => {
@@ -2301,7 +2396,7 @@ export function createStageFacade(input: {
 				const projected = handle.context.project(world);
 				return projected === null ? null : [projected[0] - left, projected[1] - top];
 			};
-			return [...adapters.values()].flatMap((entry) => {
+			const value = [...adapters.values()].flatMap((entry) => {
 				try {
 					return (entry.contributions.candidatePreview?.(handle.context) ?? []).flatMap(
 						(candidate): StageCandidatePreviewView[] => {
@@ -2336,6 +2431,8 @@ export function createStageFacade(input: {
 					);
 				} catch { return []; }
 			});
+			candidateOutput = { inputs, value };
+			return value;
 		},
 		graphics() {
 			ensureBindings();
@@ -2349,9 +2446,15 @@ export function createStageFacade(input: {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return [];
-			return [...adapters.values()].flatMap((entry) => {
+			const inputs = outputInputs(handle.context.evaluation);
+			if (ghostOutput !== null && sameOutputInputs(ghostOutput.inputs, inputs)) {
+				return ghostOutput.value;
+			}
+			const value = [...adapters.values()].flatMap((entry) => {
 				try { return entry.contributions.ghosts?.(handle.context) ?? []; } catch { return []; }
 			});
+			ghostOutput = { inputs, value };
+			return value;
 		},
 		tasks() {
 			ensureBindings();

@@ -454,6 +454,14 @@ describe('mounted Stage pointer lifecycle', () => {
 		const baseline = facade().snapshot().canonicalJson;
 		const id = facade().evaluationId();
 		const point = await startDrag();
+		// An ordinary Camera update (not a reading flip) while the adapter owns the
+		// drag: the evaluation changes, the proposal and press stay live.
+		const evaluation = facade().camera.evaluation()!;
+		facade().camera.applyIntent(
+			{ kind: 'pan', deltaCss: [6, 0], rect: evaluation.rect },
+			performance.now() / 1000
+		);
+		await frame();
 		expect(facade().evaluationId()).not.toBe(id);
 		expect(target.textContent).not.toContain('Paused after a reading change');
 		pointer('pointerup', point, true);
