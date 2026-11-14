@@ -1,0 +1,157 @@
+# Rendering
+
+**Owns:** the world-rendering pipeline under `apps/editor/src/lib/render/` — its layers, resource
+ownership, render identity, portability and frame/shadow work — and the guard that holds each rule.
+Layout and Scene semantics stay with the [Layout](./layout.md) and [Scene content](./scene-content.md)
+contracts; measurement policy stays with [Performance](./performance.md).
+
+Rendering is a consumer: it reads the one compiler's output and the one Scene resolution and
+derives no architecture or Scene semantics of its own (hard rule 6). The Stage and the visitor
+runtime draw world content through the same modules, so editor and visitor cannot drift.
+
+## Layers
+
+```text
+Authored units        Layout 7 · Scene 7 · Camera · Experience
+      │  one compiler; one Scene resolution, retained per unit
+      ▼
+Derived descriptions  CompiledLayoutGeometry · resolved Scene content
+      │  frozen data, no Three
+      ▼
+Render descriptions   one frozen RenderItem per drawable (scene-render-description.ts,
+      │               scene-light-description.ts); memoised by the identity they derive from
+      ▼
+Render resources      per Canvas: MaterialStore · GeometryStore · LightStore · CasterChannel
+      │               (render-resources.ts); module-level: the texture pool (texture-store.ts)
+      ▼
+Representations       Layout Walls, objects, Rooms · Scene entities · Scene lights
+      │               imperative Object3D graphs, mounted once and patched by item key
+      ▼
+Renderer              managed-webgl-renderer.ts · on-demand frames · shadow invalidation
+```
+
+The Canvas host — `StageCanvas.svelte` or `VisitorPreviewSurface.svelte` — calls
+`provideRenderResources()` once, and everything mounted under it leases from those stores. The
+snapshot renderer draws the Stage's own scene with the Stage's renderer into an offscreen target, so
+it never creates a second context or store set.
+
+## Rules and their guards
+
+Each rule is held by the named test under `apps/editor/tests/lib/`. Guards in the unconditional
+architecture lane are listed in `apps/editor/test-lanes.ts` (`ARCH_FILES`).
+
+### Layer direction
+
+Each layer reads only the layer above it. `material-descriptor.ts` imports nothing; the material
+store imports only Three and its descriptor; the texture store's module set is exact; the Scene
+description is Three-free and store-free. Representations consume compiled output and stores: no
+authored-unit reader, codec, compiler, session, adapter or project-model truth. The check follows
+resolved paths and whole import closures, so a relative spelling or a barrel cannot carry a
+forbidden edge. One exact visitor exception is permitted: `visitor/room-presentation.ts`.
+
+**Guards:** `render/render-layer-boundary` (descriptor → store → representation for lights is also
+pinned by `render/light-realizer-boundary`).
+
+### One material factory
+
+`MaterialStore.acquire(descriptor)` is the only place a world material is constructed. Equal
+descriptors share one instance; the store counts references and disposes at zero. Constructors are
+found through each module's import bindings, so an aliased class or namespace import is the same
+site. Editor ink — Paper lines, the mat grid, selection and gizmos — is not a world surface and stays
+outside the store on an exact allowlist. Model realization constructs no material, disposes nothing
+itself and never clones a material per instance.
+
+**Guards:** `render/material-factory-boundary`, `render/model-lifecycle-boundary`.
+
+### One light realizer
+
+The Canvas `LightStore` is the only constructor of a world Point, Spot or Sun light. Host fills
+(ambient, the Sky's hemisphere, Paper's neutral rig) and dev benches are counted per file on an exact,
+shrink-only allowlist. The Stage and the Preview lease from the Canvas store.
+
+**Guard:** `render/light-realizer-boundary`.
+
+### Owned render identity
+
+Rendered objects are found by owned identity, never by name: each representation's `objectOf(id)`
+index and the `userData` identity tag are the only functional channels. Product code never calls
+`getObjectByName` or `getObjectByProperty('name', …)` and never parses a debug name. Names stay on
+objects for debugging only. When instancing or batching is introduced, it stays behind `objectOf`.
+
+**Guards:** `render/render-identity-boundary`, `render/render-identity-consumers`.
+
+### Retained representations
+
+A representation mounts one root for its lifetime, diffs item keys on `update`, acquires and
+releases through the stores, and reports built / retained / released counts; those counts are the
+test oracle. It never creates geometry or material outside the stores and never disposes a borrowed
+resource. Primitives, forms, artwork and models draw through `createSceneEntityRepresentation`;
+authored lights through `createSceneLightRepresentation`; the Layout through the Wall, object and
+Room representations. Exactly one path draws any entity. A render refactor shows structural parity
+(ids, world matrices, vertices, material properties) against the path it replaces before it merges.
+
+**Guards:** the representation suites under `render/` (counts and parity, including
+`render/scene-geometry-parity`), `render/model-lifecycle-boundary`,
+`render/layout/wall-mesh-shell-boundary`.
+
+### Per-Canvas resources
+
+WebGL objects cannot be shared across contexts, so materials, geometry, lights and the caster
+channel exist once per Canvas. Teardown invalidates pending async callbacks, releases family leases,
+then disposes the stores; disposal is idempotent in either order.
+
+Texture sources and variants are the exception: one module-level pool keyed by load scope
+(`TextureLoadScope`). A variant whose count reaches zero is disposed at the next idle point (a
+microtask after the update that released it), so a release-then-reacquire inside one update never
+deletes a GPU texture.
+
+**Guards:** `render/material-factory-boundary` (the Canvas owns the one store),
+`render/light-realizer-boundary`, `render/materials/catalogue-material-lifecycle` (deferred variant
+release).
+
+### Portability allowlist
+
+World code uses built-in Three material classes and standard properties, which both WebGL and WebGPU
+renderers honour. Outside an exact allowlist, product code has no `onBeforeCompile`,
+`ShaderMaterial`, `WebGLRenderTarget`, non-2D `getContext`, custom depth or distance material, or
+WebGL-only Three import path. A new site fails, and so does a stale entry, so the list only shrinks.
+`managed-webgl-renderer.ts` is the one renderer-specific module. The artwork shadow-pass materials
+stay listed in `scene-artwork-representation.ts`, because `alphaTest` on the surface would discard
+colour-pass texels and change the image.
+
+**Guard:** `render/renderer-portability-boundary`.
+
+### On-demand frames and shadow invalidation
+
+The Stage renders on demand: a settled Stage renders zero frames, and each relevant input change asks
+for exactly one. Shadow maps keep `autoUpdate = false` and re-render only when something they depend
+on changes — a new compiled `geometry` or resolved `scene` identity, a model's arrival or release on
+the caster channel, a playing animation (per frame only while one plays), or a fresh or restored
+context. An orbit, hover or selection renders no shadow pass, and a static model adds no per-frame
+trigger.
+
+**Guards:** `authoring/stage-render-frames`, `render/shadow-invalidation`, `render/shadow-g4-counts`,
+`render/model-lifecycle-boundary`.
+
+## Colour pipeline
+
+Gate A accepted `NoToneMapping` at exposure 1.0, sRGB output and an `srgb-linear` working space,
+measured on the shared `createManagedWebGLRenderer` factory, with `MeshLambertMaterial` as the
+artwork baseline. The material store reads that record and sets no tone mapping, exposure or output
+colour space.
+
+## Open exceptions and divergences
+
+- **AR-7 / D2 — visitor free-look.** The neutral visitor's free-look pose is driven by
+  `OrbitControls` outside the Camera evaluator. It is a named, owner-accepted temporary exception,
+  not a second authored Camera; T3 retires it behind a targeted regression and authority test. See
+  [Architecture](../architecture.md#semantic-authorities-ratified-destination).
+- **Tone mapping on the product Canvases (Tier 2, unresolved).** The Stage and Preview `<Canvas>`
+  pass no `toneMapping`, and Threlte's Canvas applies its own default (`AgXToneMapping`) to the
+  renderer the factory returns. Gate A measured only the bare factory, and the per-surface parity
+  check was left to Gate B. Whether the product surfaces match Gate A needs an owner ruling; this
+  contract records the gap and does not change behaviour.
+- **Texture pool scope (Tier 2, unresolved).** The renderer design placed the texture store with the
+  per-Canvas resources; the code keeps one module-level pool. Three uploads a shared `Texture`
+  separately into each renderer, so the pool is correct for two Canvases, but promoting it to the
+  per-Canvas set — or ratifying the module-level pool — is an owner decision.

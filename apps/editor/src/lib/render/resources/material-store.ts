@@ -1,7 +1,7 @@
 /**
  * The material store: the one factory for world surfaces.
  *
- * `renderer-refactor.md` §2.4 makes this module the only place a world material
+ * The rendering contract makes this module the only place a world material
  * is constructed. A descriptor — plain data — is canonicalised to one key, and
  * equal keys share one instance. The store counts references and disposes a
  * material when its last lease is released, so no consumer can free a resource
@@ -15,8 +15,8 @@
  *
  * The store reads the Gate A record; it does not re-decide it. Gate A's
  * accepted pipeline is `NoToneMapping` at exposure 1.0 with sRGB output and an
- * `srgb-linear` working space, owned by the shared `createManagedWebGLRenderer`
- * factory. Nothing here sets tone mapping, exposure or an output
+ * `srgb-linear` working space, measured on the shared `createManagedWebGLRenderer`
+ * factory; per-surface parity is Gate B's. Nothing here sets tone mapping, exposure or an output
  * colour space, so a material built by this store renders under exactly the
  * pipeline Gate A measured. `toneMapped` is a per-material opt-out the record
  * permits — Gate A named `MeshLambertMaterial` with no mapper as the artwork

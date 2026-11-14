@@ -1,7 +1,8 @@
 /**
  * One render-resource owner per Canvas.
  *
- * `renderer-refactor.md` §2 makes layers 4–6 exist **once per Canvas**, because
+ * The rendering contract (`docs/reference/components/rendering.md`) makes the
+ * render resources exist **once per Canvas**, because
  * WebGL objects cannot be shared across contexts. The Canvas host (the Stage
  * canvas or the visitor preview surface) calls `provideRenderResources` once, and
  * the Layout shell and the Scene entities, which are siblings under it, lease

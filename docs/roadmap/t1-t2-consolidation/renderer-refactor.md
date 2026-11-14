@@ -2,7 +2,9 @@
 
 **Scope:** the path **Scene → derived geometry → render resources → renderer**, for the editor Stage
 and the visitor surfaces that share it. **Evidence:** [`audit.md`](./audit.md) sections 4–6.
-**Execution:** slices R1–R8 in [`slices.md`](./slices.md).
+**Execution:** slices R1–R8 in [`slices.md`](./slices.md). **Current rules:** the shipped,
+guard-enforced invariants are promoted to the [rendering contract](../../reference/components/rendering.md),
+which wins where this design record differs.
 
 This is a refactor of ownership, not a rewrite. Three r187 on WebGL stays the production renderer;
 nothing here migrates to WebGPU, replaces the kernel or changes a rendered pixel on purpose.

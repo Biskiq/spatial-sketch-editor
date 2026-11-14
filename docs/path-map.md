@@ -12,7 +12,7 @@
 | `packages/geometry-core/src/` | [Scene content](./reference/components/scene-content.md) | [Architecture](./reference/architecture.md) |
 | `apps/editor/src/lib/authoring/stage/` | [Shell / PLATE](./reference/design-system/editor-shell-and-visual-system.md) | [Stage grammar](./reference/design-system/spatial-instrument-grammar.md), [acceptance](../apps/editor/tests/README.md) |
 | `apps/editor/src/lib/authoring/experience/` | [Shell — Experience expression](./reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) | [Experience](./reference/components/experience.md), [Camera](./reference/components/camera-tour.md) |
-| `apps/editor/src/lib/render/` | [Architecture — Ownership](./reference/architecture.md#ownership-current-source-of-truth) | [Performance](./reference/components/performance.md), [Scene content](./reference/components/scene-content.md) |
+| `apps/editor/src/lib/render/` | [Rendering](./reference/components/rendering.md) | [Architecture — Ownership](./reference/architecture.md#ownership-current-source-of-truth), [Performance](./reference/components/performance.md) |
 | `apps/editor/src/lib/visitor/` | [Camera — Visitor guided runtime](./reference/components/camera-tour.md#visitor-guided-runtime) | [Architecture — platform boundary](./reference/architecture.md#platform-boundary-current) |
 | `apps/editor/src/lib/authoring/save/` | [Persistence](./reference/components/persistence.md) | [F.4 acceptance](./reference/composition-execution.md#f4-compound-acceptance) |
 | `apps/editor/src/routes/project/` | [Architecture — Product routes](./reference/architecture.md#product-routes-current) | [Shell](./reference/design-system/editor-shell-and-visual-system.md) |

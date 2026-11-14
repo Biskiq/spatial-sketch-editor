@@ -1,7 +1,7 @@
 /**
  * The geometry store: one shared buffer per geometry key.
  *
- * `renderer-refactor.md` §2.3 fixes the key space: a primitive is one unit
+ * The rendering contract fixes the key space: a primitive is one unit
  * geometry scaled by its transform, a Form is one buffer per canonical
  * evaluation, and equal keys share one GPU buffer. Before this store every
  * primitive created a fresh `BoxGeometry`/`SphereGeometry` at its own size, so

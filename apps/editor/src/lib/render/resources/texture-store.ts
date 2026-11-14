@@ -7,7 +7,7 @@
  * is a module-level pool keyed by load scope, not one of the per-Canvas stores
  * in `render-resources.ts`.
  *
- * Variant release is **deferred**, as `renderer-refactor.md` §2.4 asks: a
+ * Variant release is **deferred**, as the rendering contract asks: a
  * variant whose count reaches zero is disposed at the next idle point, so a
  * release-then-reacquire inside one update never deletes a GPU texture.
  */

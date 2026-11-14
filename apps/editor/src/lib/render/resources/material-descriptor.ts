@@ -2,7 +2,7 @@
  * The material descriptor: plain data, one canonical key.
  *
  * A descriptor says **what a world surface looks like**, never how to build it.
- * It is the portability seam `renderer-refactor.md` §2.4 names: the material
+ * It is the portability seam the rendering contract names: the material
  * store turns one into a Three material today, and a future node-material
  * backend replaces that construction step and nothing above it.
  *

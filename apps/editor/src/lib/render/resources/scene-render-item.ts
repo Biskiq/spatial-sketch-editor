@@ -1,7 +1,7 @@
 /**
  * The Scene render item: what to draw, never how.
  *
- * `renderer-refactor.md` §2.2 defines a `RenderItem` as frozen, Three-free data
+ * The rendering contract defines a `RenderItem` as frozen, Three-free data
  * built once per derived-description identity. This module is its type and its
  * canonical geometry key; it imports no value from Three and nothing from an
  * authored-unit reader, so both the description that builds items and the
