@@ -1087,43 +1087,7 @@ describe('S03 investigation — retained Layout halo', () => {
 });
 
 
-describe('S03 no-task press routing', () => {
-	it('asks no adapter without a selection and only Layout for its selection', async () => {
-		const { facade } = await mount(undefined, false);
-		const id = evaluate(facade);
-		const layout = vi.fn(() => true);
-		const scene = vi.fn(() => true);
-		facade.registerStageAdapter({ id: 'scene', pressWhenNoTask: true, pointerIntent: scene });
-		facade.registerStageAdapter({ id: 'layout', pressWhenNoTask: true, pointerIntent: layout });
-		const down = { phase: 'down' as const, css: [0, 0] as const, evaluationId: id };
-		expect(facade.pointerIntent(down).claimed).toBe(false);
-		expect(layout).not.toHaveBeenCalled();
-		expect(scene).not.toHaveBeenCalled();
-		const fragment = facade.eligibleFragments().find((item) => item.ref.sourceKind === 'wall')!;
-		facade.select({ sourceId: fragment.ref.sourceId, sourceKind: fragment.ref.sourceKind, generationId: fragment.ref.generationId, ref: fragment.ref });
-		expect(facade.pointerIntent(down)).toEqual({ claimed: true, adapterId: 'layout' });
-		expect(layout).toHaveBeenCalledOnce();
-		expect(scene).not.toHaveBeenCalled();
-	});
-	it('never offers a Scene selection press to Layout', async () => {
-		const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
-		const scene = { formatVersion: 1 as const, textures: [], materials: [], navigationNodes: [], connections: [], entities: [{
-			kind: 'primitive' as const, primitive: 'box' as const, id: 'selected-box', name: 'Box', dimensions: { width: 1, height: 1, depth: 1 },
-			materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true, position: [2, .5, -2] as [number, number, number], rotation: [0, 0, 0] as [number, number, number]
-		}] };
-		const source = await createUnitProject({ id: base.id, name: base.name, layout: base.units.layout.data, scene });
-		const { facade } = await mount(source, false);
-		const id = evaluate(facade);
-		const layout = vi.fn(() => true), sceneClaim = vi.fn(() => true);
-		facade.registerStageAdapter({ id: 'layout', pressWhenNoTask: true, pointerIntent: layout });
-		facade.registerStageAdapter({ id: 'scene', pressWhenNoTask: true, pointerIntent: sceneClaim });
-		const reference = sceneEntityReference('selected-box', facade.snapshot().domain.unitRevisions.scene);
-		expect(facade.setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
-		expect(facade.pointerIntent({ phase: 'down', css: [0, 0], evaluationId: id })).toEqual({ claimed: true, adapterId: 'scene' });
-		expect(layout).not.toHaveBeenCalled();
-		expect(sceneClaim).toHaveBeenCalledOnce();
-	});
-	it('binds pending registrations in order on the first read and defers the settled surface notification', async () => {
+it('binds pending registrations in order on the first read and defers the settled surface notification', async () => {
 	const { facade } = await mount(undefined, false);
 	const events: string[] = [];
 	facade.onAdaptersChanged(() => events.push('changed'));
@@ -1163,7 +1127,43 @@ describe('S03 no-task press routing', () => {
 	]);
 });
 
-it('keeps the subject projection identity across selection and refreshes it for contributions', async () => {
+describe('S03 no-task press routing', () => {
+	it('asks no adapter without a selection and only Layout for its selection', async () => {
+		const { facade } = await mount(undefined, false);
+		const id = evaluate(facade);
+		const layout = vi.fn(() => true);
+		const scene = vi.fn(() => true);
+		facade.registerStageAdapter({ id: 'scene', pressWhenNoTask: true, pointerIntent: scene });
+		facade.registerStageAdapter({ id: 'layout', pressWhenNoTask: true, pointerIntent: layout });
+		const down = { phase: 'down' as const, css: [0, 0] as const, evaluationId: id };
+		expect(facade.pointerIntent(down).claimed).toBe(false);
+		expect(layout).not.toHaveBeenCalled();
+		expect(scene).not.toHaveBeenCalled();
+		const fragment = facade.eligibleFragments().find((item) => item.ref.sourceKind === 'wall')!;
+		facade.select({ sourceId: fragment.ref.sourceId, sourceKind: fragment.ref.sourceKind, generationId: fragment.ref.generationId, ref: fragment.ref });
+		expect(facade.pointerIntent(down)).toEqual({ claimed: true, adapterId: 'layout' });
+		expect(layout).toHaveBeenCalledOnce();
+		expect(scene).not.toHaveBeenCalled();
+	});
+	it('never offers a Scene selection press to Layout', async () => {
+		const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
+		const scene = { formatVersion: 1 as const, textures: [], materials: [], navigationNodes: [], connections: [], entities: [{
+			kind: 'primitive' as const, primitive: 'box' as const, id: 'selected-box', name: 'Box', dimensions: { width: 1, height: 1, depth: 1 },
+			materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true, position: [2, .5, -2] as [number, number, number], rotation: [0, 0, 0] as [number, number, number]
+		}] };
+		const source = await createUnitProject({ id: base.id, name: base.name, layout: base.units.layout.data, scene });
+		const { facade } = await mount(source, false);
+		const id = evaluate(facade);
+		const layout = vi.fn(() => true), sceneClaim = vi.fn(() => true);
+		facade.registerStageAdapter({ id: 'layout', pressWhenNoTask: true, pointerIntent: layout });
+		facade.registerStageAdapter({ id: 'scene', pressWhenNoTask: true, pointerIntent: sceneClaim });
+		const reference = sceneEntityReference('selected-box', facade.snapshot().domain.unitRevisions.scene);
+		expect(facade.setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
+		expect(facade.pointerIntent({ phase: 'down', css: [0, 0], evaluationId: id })).toEqual({ claimed: true, adapterId: 'scene' });
+		expect(layout).not.toHaveBeenCalled();
+		expect(sceneClaim).toHaveBeenCalledOnce();
+	});
+	it('keeps the subject projection identity across selection and refreshes it for contributions', async () => {
 		const { facade, snapshot } = await mount();
 		const reference = sceneEntityReference('stable-box', snapshot.domain.unitRevisions.scene);
 		const subject = {

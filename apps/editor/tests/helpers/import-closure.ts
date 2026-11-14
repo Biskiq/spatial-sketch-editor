@@ -440,7 +440,8 @@ export type ModuleBindingEdge =
 	| { readonly kind: 'import-namespace'; readonly specifier: string; readonly local: string; readonly typeOnly: boolean }
 	| { readonly kind: 'export-named'; readonly specifier: string; readonly imported: string; readonly exported: string; readonly typeOnly: boolean }
 	| { readonly kind: 'export-local'; readonly local: string; readonly exported: string }
-	| { readonly kind: 'export-all'; readonly specifier: string }
+	| { readonly kind: 'export-all'; readonly specifier: string; readonly typeOnly: boolean }
+	| { readonly kind: 'import-side-effect'; readonly specifier: string }
 	| { readonly kind: 'dynamic'; readonly specifier: string };
 
 /** The script of a `.svelte` file (instance and module), or the source of a TS module. */
@@ -466,6 +467,7 @@ export function moduleBindingEdges(file: string, source: string): ModuleBindingE
 				const specifier = node.moduleSpecifier.text;
 				const clause = node.importClause;
 				const clauseTypeOnly = clause?.isTypeOnly ?? false;
+				if (!clause) edges.push({ kind: 'import-side-effect', specifier });
 				if (clause?.name) edges.push({ kind: 'import-named', specifier, imported: 'default', local: clause.name.text, typeOnly: clauseTypeOnly });
 				const bindings = clause?.namedBindings;
 				if (bindings && ts.isNamespaceImport(bindings)) {
@@ -485,8 +487,8 @@ export function moduleBindingEdges(file: string, source: string): ModuleBindingE
 			} else if (ts.isExportDeclaration(node)) {
 				const specifier = node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) ? node.moduleSpecifier.text : null;
 				const clause = node.exportClause;
-				if (specifier !== null && clause === undefined) edges.push({ kind: 'export-all', specifier });
-				else if (specifier !== null && clause && ts.isNamespaceExport(clause)) edges.push({ kind: 'export-all', specifier });
+				if (specifier !== null && clause === undefined) edges.push({ kind: 'export-all', specifier, typeOnly: node.isTypeOnly });
+				else if (specifier !== null && clause && ts.isNamespaceExport(clause)) edges.push({ kind: 'export-all', specifier, typeOnly: node.isTypeOnly });
 				else if (clause && ts.isNamedExports(clause)) {
 					for (const element of clause.elements) {
 						const imported = element.propertyName?.text ?? element.name.text;

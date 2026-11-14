@@ -341,7 +341,8 @@ reading-change policy per lease. Its `registerProposal` and `liveProposal` expos
 proposals to the Undo availability reason. F4 owns the one chronological history
 (`apps/editor/src/lib/authoring/f4/history.ts`). See
 `apps/editor/src/lib/authoring/stage/stage-session.ts` and
-`apps/editor/src/lib/authoring/stage/stage-facade.ts`.
+`apps/editor/src/lib/authoring/stage/stage-facade.ts`. See also
+[Extending Stage authoring](./components/authoring-extensions.md).
 
 `StageFacade.resolvePick` delegates cross-domain arbitration to
 [`stage-pick.ts`](../../apps/editor/src/lib/authoring/stage/stage-pick.ts). Layout chooses
