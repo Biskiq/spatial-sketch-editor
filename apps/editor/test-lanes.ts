@@ -124,6 +124,9 @@ export const ARCH_FILES: string[] = [
 	// controllers, and those controllers keep their named dependency direction.
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
 	'tests/lib/authoring/authoring-controller-boundary.test.ts',
+	// X7: the Scene adapter composes its placement, mark-gesture, contribution and
+	// presenter owners and keeps no lifetime of its own.
+	'tests/lib/authoring/scene-adapter-boundary.test.ts',
 	// E6/R2a: one material factory. A `Mesh*Material`, `ShadowMaterial` or
 	// `T.Mesh*Material` constructor outside the store is a site the renderer draws
 	// happily, so no lane report or build can see a second owner appear.
