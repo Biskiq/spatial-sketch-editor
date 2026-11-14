@@ -37,6 +37,7 @@ import type {
 	CameraFreeSceneDocument,
 	CameraUnitPayload,
 	ProjectEnvelope,
+	ResourceUnitPayload,
 	UnitDomain
 } from './types';
 import {
@@ -171,6 +172,19 @@ function retainedSceneOf(
 	return previous.runtimeScene;
 }
 
+/** The resources unit's approved model footprints, keyed by resource id. */
+function modelFootprintsOf(
+	resources: ResourceUnitPayload
+): Map<string, { width: number; depth: number }> {
+	const footprints = new Map<string, { width: number; depth: number }>();
+	for (const resource of resources.resources) {
+		if (resource.kind !== 'model' || resource.model === undefined) continue;
+		const { width, depth } = resource.model.placement.footprint;
+		footprints.set(resource.id, { width, depth });
+	}
+	return footprints;
+}
+
 /** The previous navigation value, or `null` when the Camera unit moved. */
 function retainedNavigationOf(
 	previous: RetainedUnitRuntime | undefined,
@@ -244,15 +258,6 @@ export function prepareValidatedUnitRuntime(
 		? compileSession.compile(envelope.units.layout.data)
 		: compileWallFirstLayoutGeometry(envelope.units.layout.data);
 
-	// The approved placement is read-projection data, never authored into the
-	// envelope: a model resource's footprint sizes its generic fallback.
-	const modelFootprints = new Map<string, { width: number; depth: number }>();
-	for (const resource of envelope.units.resources.data.resources) {
-		if (resource.kind !== 'model' || resource.model === undefined) continue;
-		const { width, depth } = resource.model.placement.footprint;
-		modelFootprints.set(resource.id, { width, depth });
-	}
-
 	let runtimeScene = retainedSceneOf(previous, envelope);
 	if (runtimeScene === null) {
 		try {
@@ -273,6 +278,12 @@ export function prepareValidatedUnitRuntime(
 				issues: [{ path: '$.units.scene', code: 'scene_invalid', message }]
 			};
 		}
+		// The approved placement is read-projection data, never authored into the
+		// envelope: a model resource's footprint sizes its generic fallback. It is
+		// part of the resolved Scene, so it is read only on a cache miss — a retained
+		// Scene already carries the footprints it was resolved with, and a Scene-only
+		// edit must not walk an unchanged resources unit.
+		const modelFootprints = modelFootprintsOf(envelope.units.resources.data);
 		if (modelFootprints.size > 0) runtimeScene = { ...runtimeScene, modelFootprints };
 	}
 
