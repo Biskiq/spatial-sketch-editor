@@ -397,3 +397,52 @@ tokens.
   `StageArtworkGhost.svelte` together, and restore `EntityArtwork.svelte` with its allowlist entries.
 - The store's `lambert`, `depth` and `distance` kinds and `StoreMaterial.svelte` are additive and can
   stay. The environment and plinth acquisition stays even if Artwork reverts.
+
+## E11 — Measurement-gated batching (R7 and R3)
+
+**Status: pending.** The targeted `E11 L pan / Scene orbit draw sensitivity (M comparison)`
+trace stopped during setup. It yielded zero gesture render samples. This leaves draw sensitivity
+unmeasured and E11 open for E12 sequencing.
+
+### Trace provenance
+
+- Built and served the production Vite preview from clean `main` at
+  `22b21180206f3f7b04baddc48529cafe74ef707c` (E9, #339) in the isolated E11 worktree.
+- Used headed Chrome 157.0.8103.52 through Playwright 1.63.0 on an Apple M2 MacBook Air
+  (16 GiB, macOS 15.8.2), 1440 × 900 CSS pixels at DPR 1, unthrottled loopback.
+  The build contains the retained Directional light path and the E8 model-handler exception.
+- Prepared the certified `grid-M` and `grid-L` fixtures. Their canonical source digests were
+  `sha256-80f104079f15bc671710434be4b6f51590a7081538e46320c6ea02b382831a9b` and
+  `sha256-5bae65224fdc80226a611e61e751a2f72cda3d03dfb2c2b4e396cb1f38aaa8d2`.
+  The intended Scene workload was the existing `counting-scene` fixture.
+- The planned comparison used fitted 3D Stage views, horizontal pan on M and L, and orbit on
+  Scene. For each gesture, the harness would repeat the same pointer path with every other
+  retained Wall hidden in the browser scene graph, then compare actual main-pass draws,
+  shadow work and main-thread renderer time per frame. The setup stop prevented this comparison.
+
+### Setup stop
+
+The first run used a route ID that differed from the M envelope's ID. The initial file import
+and the corrected matching-ID import both timed out at the `f2:open-admitted` wait after 30 s.
+The Scene fixture also requires the saved-project path because the editor's standalone JSON Open
+refuses source documents with project Artwork. Switching the setup to the real saved-project
+load path with an intercepted fixture response left M at “Loading project…” with no mounted
+Canvas after 60 s. A host sample during that wait found the Chrome renderer process using
+about one CPU core. Its stack lacked browser JavaScript symbols, so the cause remains unknown.
+On the owner-requested retry after sibling work stopped, the same saved-project setup timed out
+waiting for the M Canvas after 150 s. No local build or tests ran during the retry. Chrome’s
+renderer still used about one CPU core. L and Scene gesture windows were never reached.
+The setup attempts collected no timing samples
+and there was no `perf:spot` execution.
+
+### Gate decisions and rollback
+
+| Part | Decision |
+| --- | --- |
+| R7 Scene instancing, threshold 8 | Pending. Draw sensitivity and the independent L timing and M regression gates are unmeasured. |
+| R7 Room batching | Pending. The independent L timing and M regression gates are unmeasured. |
+| R3 Room floor and ceiling batching | Pending. The L pan draw-bound prerequisite and the separate 25% draw-reduction gate are unmeasured. |
+| R7 Wall batching | Pending. The residual draw-bound and one-Wall update prerequisites were never reached. |
+
+There are no production changes to roll back. Reverting this record only removes the investigation
+notes. The milestone-end spot checkpoint remains reserved.
