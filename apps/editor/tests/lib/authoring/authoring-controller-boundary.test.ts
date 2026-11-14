@@ -1,10 +1,15 @@
 /**
- * X1 / schedule guarantee — cohesive controllers, no new God module.
+ * X1/X2 / schedule guarantee — cohesive controllers, no new God module.
  *
  * The route's extracted controllers may compose only the owners their contract
  * names. They must not import the route, a renderer, an adapter implementation,
  * an F4 planner or another sibling's mutable internals; a controller that could
  * read those directly would be a parallel owner wearing a new filename.
+ *
+ * X2 adds the input arbiter, keyboard leaf, Unfold-session owner and Artwork
+ * interaction owner. The guard also proves they share the route's one press
+ * tracker instead of constructing a second drag/click authority, and that none
+ * of them becomes a replacement or acceptance writer.
  *
  * Direct imports are read with the shared import-closure reader so aliases,
  * namespaces, re-exports and dynamic imports all count. A synthetic closure
@@ -17,15 +22,39 @@ import { describe, expect, it } from 'vitest';
 import {
 	EDITOR_LIB,
 	EDITOR_SRC,
+	REPO_ROOT,
 	moduleBindingEdges,
 	relativeToRepo,
 	resolveSpecifier
 } from '../../helpers/import-closure';
 
 const ROUTE = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
-const EPOCH = path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts');
-const ASSETS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts');
 const STAGE_DIR = path.join(EDITOR_LIB, 'authoring/stage');
+const STAGE_ROUTE_DIR = path.join(STAGE_DIR, 'route');
+const EPOCH = path.join(STAGE_ROUTE_DIR, 'stage-project-epoch.svelte.ts');
+const ASSETS = path.join(STAGE_ROUTE_DIR, 'stage-asset-leases.svelte.ts');
+const INPUT = path.join(STAGE_ROUTE_DIR, 'stage-input.svelte.ts');
+const KEYBOARD = path.join(STAGE_ROUTE_DIR, 'stage-keyboard.ts');
+const UNFOLD = path.join(STAGE_ROUTE_DIR, 'stage-unfold-gestures.svelte.ts');
+const ARTWORK = path.join(STAGE_ROUTE_DIR, 'stage-artwork-interaction.svelte.ts');
+const STAGE_INPUT = path.join(STAGE_DIR, 'stage-input.ts');
+const STAGE_WHEEL_ZOOM = path.join(STAGE_DIR, 'stage-wheel-zoom.ts');
+const STAGE_GLYPHS = path.join(STAGE_DIR, 'stage-glyphs.ts');
+const SEMANTIC_SELECTION = path.join(STAGE_DIR, 'semantic-selection.ts');
+const WALL_UNFOLD = path.join(EDITOR_LIB, 'layout/wall-unfold.ts');
+const WALL_UNFOLD_PICK = path.join(EDITOR_LIB, 'layout/wall-unfold-pick.ts');
+const WALL_UNFOLD_OPENING_DRAG = path.join(EDITOR_LIB, 'layout/wall-unfold-opening-drag.ts');
+const WALL_UNFOLD_STORE = path.join(EDITOR_LIB, 'authoring/layout/wall-unfold-store.svelte.ts');
+const LAYOUT_PRECISION = path.join(EDITOR_LIB, 'authoring/adapters/layout/precision.ts');
+const LAYOUT_OPENING_PLANNERS = path.join(EDITOR_LIB, 'authoring/adapters/layout/opening-planners.ts');
+const ARTWORK_RESIZE = path.join(EDITOR_LIB, 'authoring/artwork/artwork-resize.ts');
+const ARTWORK_HANGING = path.join(EDITOR_LIB, 'authoring/artwork/artwork-hanging.ts');
+const ARTWORK_COMMAND = path.join(EDITOR_LIB, 'authoring/artwork/artwork-command.ts');
+const ARTWORK_PLACEMENT = path.join(EDITOR_LIB, 'authoring/artwork/artwork-placement.ts');
+const ARTWORK_WALL_MOVE = path.join(EDITOR_LIB, 'authoring/artwork/artwork-wall-move.ts');
+const ARTWORK_AUTHORING = path.join(EDITOR_LIB, 'authoring/artwork/artwork-authoring.svelte.ts');
+const PROJECT_MODEL_INDEX = path.join(REPO_ROOT, 'packages/project-model/src/index.ts');
+const CAMERA_CORE = path.join(REPO_ROOT, 'packages/camera-core/src/index.ts');
 const STAGE_ADAPTER_HOST = path.join(STAGE_DIR, 'stage-adapter-host.ts');
 const STAGE_FACADE = path.join(STAGE_DIR, 'stage-facade.ts');
 const HOST_ACCEPTANCE = path.join(STAGE_DIR, 'host-acceptance.ts');
@@ -59,8 +88,42 @@ const APPROVED_BOUNDARIES: Readonly<Record<string, ReadonlySet<string>>> = {
 		STAGE_SESSION,
 		UNIT_STAGE_SOURCE,
 		ACCEPTED_READ
+	]),
+	[INPUT]: new Set([
+		STAGE_INPUT,
+		STAGE_WHEEL_ZOOM,
+		STAGE_GLYPHS,
+		SEMANTIC_SELECTION,
+		PERF_MARKS,
+		CAMERA_CORE
+	]),
+	[KEYBOARD]: new Set([STAGE_INPUT]),
+	[UNFOLD]: new Set([
+		WALL_UNFOLD,
+		WALL_UNFOLD_PICK,
+		WALL_UNFOLD_OPENING_DRAG,
+		WALL_UNFOLD_STORE,
+		LAYOUT_PRECISION,
+		LAYOUT_OPENING_PLANNERS,
+		UNIT_STAGE_SOURCE,
+		CAMERA_CORE
+	]),
+	[ARTWORK]: new Set([
+		ARTWORK_RESIZE,
+		ARTWORK_HANGING,
+		ARTWORK_COMMAND,
+		ARTWORK_PLACEMENT,
+		ARTWORK_WALL_MOVE,
+		ARTWORK_AUTHORING,
+		// The transform intent kind is an existing model owner. The workspace
+		// resolver folds the package subpath into this barrel, so the approved
+		// boundary is the model package rather than a scene-planning leaf.
+		PROJECT_MODEL_INDEX,
+		CAMERA_CORE
 	])
 };
+
+const X2_CONTROLLERS = new Set([INPUT, KEYBOARD, UNFOLD, ARTWORK]);
 
 const FORBIDDEN_PREFIXES = [
 	'apps/editor/src/lib/authoring/adapters/',
@@ -102,6 +165,10 @@ function forbiddenIndirect(controller: string, target: string): boolean {
 	if (controller === ASSETS) {
 		if (relative.startsWith('apps/editor/src/lib/render/')) return true;
 		return target === HOST_ACCEPTANCE || target === STAGE_ADAPTER_HOST || target === STAGE_FACADE;
+	}
+	if (X2_CONTROLLERS.has(controller)) {
+		if (target === HOST_ACCEPTANCE || target === STAGE_ADAPTER_HOST || target === STAGE_FACADE) return true;
+		if (relative.startsWith('apps/editor/src/lib/render/')) return true;
 	}
 	return false;
 }
@@ -165,15 +232,15 @@ function reaches(sources: Record<string, string>, root: string, forbidden: strin
 	return false;
 }
 
-describe('authoring controller boundary (X1)', () => {
+describe('authoring controller boundary (X1/X2)', () => {
 	it('never lets an extracted controller import the route', () => {
-		for (const file of [EPOCH, ASSETS]) {
+		for (const file of [EPOCH, ASSETS, INPUT, KEYBOARD, UNFOLD, ARTWORK]) {
 			expect(edgesOf(file).filter((edge) => edge.target === ROUTE), relativeToRepo(file)).toEqual([]);
 		}
 	});
 
 	it('finds no forbidden dependency indirectly from the actual extracted controllers', () => {
-		for (const controller of [EPOCH, ASSETS]) {
+		for (const controller of [EPOCH, ASSETS, INPUT, KEYBOARD, UNFOLD, ARTWORK]) {
 			const boundaries = APPROVED_BOUNDARIES[controller]!;
 			// An allowlist naming a missing owner would silently stop guarding the
 			// boundary it was meant to respect.
@@ -221,6 +288,51 @@ describe('authoring controller boundary (X1)', () => {
 			.map((edge) => relativeToRepo(edge.target))
 			.filter((file) => under(file, 'apps/editor/src/lib/render'));
 		expect(renderTargets).toEqual(['apps/editor/src/lib/render/artwork/artwork-scope.ts']);
+	});
+
+	it('keeps the X2 owners on the existing policy, planner and command boundaries', () => {
+		const executableTargets = (file: string) => executable(edgesOf(file)).map((edge) => edge.target);
+
+		// Input and keyboard route through the one pure policy module, not a copy.
+		expect(executableTargets(INPUT)).toContain(STAGE_INPUT);
+		expect(executableTargets(KEYBOARD)).toContain(STAGE_INPUT);
+
+		// Unfold keeps the existing unfold store/display and planner payloads.
+		const unfold = executableTargets(UNFOLD);
+		expect(unfold).toContain(WALL_UNFOLD);
+		expect(unfold).toContain(WALL_UNFOLD_PICK);
+		expect(unfold).toContain(WALL_UNFOLD_OPENING_DRAG);
+		expect(unfold).toContain(WALL_UNFOLD_STORE);
+		expect(unfold).toContain(LAYOUT_PRECISION);
+		expect(unfold).toContain(LAYOUT_OPENING_PLANNERS);
+
+		// Artwork keeps the planner helpers and the one F4 command boundary.
+		const artwork = executableTargets(ARTWORK);
+		expect(artwork).toContain(ARTWORK_RESIZE);
+		expect(artwork).toContain(ARTWORK_COMMAND);
+		expect(artwork).toContain(ARTWORK_AUTHORING);
+
+		for (const targets of [unfold, artwork]) {
+			expect(targets).not.toContain(HOST_ACCEPTANCE);
+			expect(targets).not.toContain(STAGE_ADAPTER_HOST);
+			expect(targets).not.toContain(STAGE_FACADE);
+			expect(targets).not.toContain(ARTWORK_SCOPE);
+			expect(targets.filter((target) => under(relativeToRepo(target), 'apps/editor/src/lib/render'))).toEqual([]);
+		}
+	});
+
+	it('shares the route press tracker and never becomes a replacement or acceptance writer', () => {
+		for (const controller of [INPUT, KEYBOARD, UNFOLD, ARTWORK]) {
+			const source = fs.readFileSync(controller, 'utf8');
+			expect(source, relativeToRepo(controller)).not.toContain('createStagePressTracker(');
+			expect(source, relativeToRepo(controller)).not.toContain('createStageAcceptanceHost(');
+			expect(source, relativeToRepo(controller)).not.toContain('session.replace(');
+		}
+		// The three gesture owners accept the one tracker from the route.
+		for (const controller of [INPUT, UNFOLD, ARTWORK]) {
+			const source = fs.readFileSync(controller, 'utf8');
+			expect(source, relativeToRepo(controller)).toContain('press');
+		}
 	});
 
 	it('fails a forbidden dependency hidden behind an alias, barrel, namespace or dynamic import', () => {
