@@ -332,6 +332,7 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		expect(action.detail).toContain('starts clear of its source');
 
 		await openDuplicate(mounted);
+		expect(mounted.session.liveProposal()?.owner).toBe('layout-room-duplicate');
 		const initialDelta = previewDelta(mounted.facade);
 		expect(initialDelta[0]).toBeGreaterThan(0);
 		expect(initialDelta[1]).toBe(0);
@@ -349,6 +350,7 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 			position: beforeHistory.position + 1
 		});
 		expect(mounted.facade.session.task()).toBeNull();
+		expect(mounted.session.liveProposal()).toBeNull();
 
 		// Every source boundary Junction has exactly one translated copy whose id
 		// is derived from that source id, and the whole copy sits clear of its

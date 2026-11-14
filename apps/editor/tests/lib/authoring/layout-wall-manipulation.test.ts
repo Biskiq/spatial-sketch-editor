@@ -1321,6 +1321,17 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		expect(
 			mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length' && mark.tag.includes('Length 7'))
 		).toBe(true);
+		let notifications = 0;
+		const unsubscribe = mounted.facade.onAdaptersChanged(() => notifications++);
+		try {
+			mounted.facade.pointerIntent({ phase: 'move', css: rayCss, evaluationId });
+			expect(notifications).toBe(0);
+			mounted.facade.pointerIntent({ phase: 'up', css: rayCss, evaluationId });
+			expect(notifications).toBe(1);
+			expect(mounted.session.liveProposal()).not.toBeNull();
+		} finally {
+			unsubscribe();
+		}
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
 		await eventually(() => Math.abs(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).length - 7) < 1e-6);
 		// The release that follows is consumed; it cannot install a second entry.
@@ -2163,6 +2174,8 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: secondFrom, evaluationId: secondId, metaKey: true }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId: secondId });
 		mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId: secondId });
+		expect(mounted.session.gesture()).toBeNull();
+		expect(mounted.session.liveProposal()).toBeNull();
 		expect(
 			mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
 		).toBe(false);
@@ -2749,7 +2762,10 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		const to = stageCss(mounted.facade, [junction.point[0] + 0.62, junction.point[1] + 0.77]);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-junction-hover')).toBe(true);
+		expect(mounted.session.liveProposal()).not.toBeNull();
 		expect(mounted.facade.gestureKeyIntent({ kind: 'cancel' }).claimed).toBe(true);
+		expect(mounted.session.gesture()).toBeNull();
+		expect(mounted.session.liveProposal()).toBeNull();
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
@@ -2766,7 +2782,10 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: openingFrom, evaluationId: openingEvaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: openingTo, evaluationId: openingEvaluationId });
 		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-opening-mark')).toBe(true);
+		expect(mounted.session.liveProposal()).not.toBeNull();
 		expect(mounted.facade.gestureKeyIntent({ kind: 'cancel' }).claimed).toBe(true);
+		expect(mounted.session.gesture()).toBeNull();
+		expect(mounted.session.liveProposal()).toBeNull();
 		mounted.facade.pointerIntent({ phase: 'up', css: openingTo, evaluationId: openingEvaluationId });
 		expect(mounted.facade.snapshot().canonicalJson).toBe(openingBaseline);
 		expect(currentOpening(mounted)).toEqual(openingBefore);

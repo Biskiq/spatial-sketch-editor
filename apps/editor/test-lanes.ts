@@ -123,6 +123,7 @@ export const ARCH_FILES: string[] = [
 	// X5: Layout drawing and Opening placement are owned by two per-binding
 	// controllers; the adapter keeps registration, dispatch and the defaults.
 	'tests/lib/authoring/layout-drawing-boundary.test.ts',
+	'tests/lib/authoring/layout-manipulation-boundary.test.ts',
 	// X1: the route composes the extracted project-epoch and asset-lease
 	// controllers, and those controllers keep their named dependency direction.
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
