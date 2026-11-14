@@ -10,26 +10,24 @@
  *
  * This module owns that decision instead: the Stage keeps `autoUpdate = false`
  * and re-renders a shadow map only when something a shadow map actually depends
- * on changed. The trigger contract is the plan's (D.6):
+ * on changed. The trigger contract (D.6, revised by E8/G4):
  *
- * - a **caster's geometry** — the retained Wall/object representation's rebuild, a
- *   Scene placement added, moved or removed, an imported model's arrival or
- *   disposal, a ghost that casts: the wiring watches the compiled `geometry`, the
- *   resolved `scene` and `modelUrls`, which is exactly what
- *   changes when any of those happen (Undo/Redo, replacement and reads included,
- *   because they all install a new compiled geometry or Scene);
+ * - a **caster's geometry, Scene or approved model bytes**: the retained
+ *   Wall/object rebuild, a Scene placement added, moved or removed, a ghost that
+ *   casts. The wiring watches the compiled `geometry`, the resolved `scene` and
+ *   `modelUrls`, which change whenever those do (Undo/Redo, replacement and reads
+ *   included, because they all install a new compiled geometry or Scene);
  * - a **caster's or receiver's transform, visibility or flags, or a
- *   depth-affecting material change** — the same identities: every mesh the Stage
- *   draws is derived from `geometry` or `scene`;
- * - a **Scene light** added, removed or changed — `scene` identity again;
- * - an **animated caster, or a caster whose arrival is asynchronous and therefore
- *   not observable at this boundary** (a resolved creator model parses after its
- *   URL arrives) — {@link ShadowInvalidation.setAlwaysUpdate} keeps today's
- *   per-frame behaviour for that surface. The wiring turns it on whenever the
- *   resolved Scene carries a model entity, which is the plan's rule that a
- *   trigger whose exact invalidation cannot be established keeps the per-frame
- *   update;
- * - **renderer lifecycle** — a fresh controller starts invalidated, and a restored
+ *   depth-affecting material change**: the same identities, since every mesh the
+ *   Stage draws is derived from `geometry` or `scene`;
+ * - a **Scene light** added, removed or changed: `scene` identity again;
+ * - a **model arrival, release or drawn-state change**: a GLB parses after its URL
+ *   is known, so no identity observes it. The Canvas's caster channel reports it
+ *   and the owner invalidates once per event (E8/G4);
+ * - an **animation that is playing**: a moving caster needs a fresh map every
+ *   frame. The owner renders per frame only while the channel counts a playing
+ *   action, and returns to render-on-change when the last one stops;
+ * - **renderer lifecycle**: a fresh controller starts invalidated, and a restored
  *   WebGL context invalidates, because the maps were lost with the context. A
  *   recreated renderer is a new mount and therefore a new controller.
  *
@@ -94,19 +92,6 @@ export type ShadowInvalidation = {
 	/** Restore the renderer's default behaviour and stop observing. Idempotent. */
 	dispose(): void;
 };
-
-/**
- * Whether a Scene needs per-frame shadow updates: a model's arrival can't be
- * observed, but it can only change a shadow if a light casts one.
- */
-export function needsPerFrameShadows(
-	entities: readonly { readonly kind: string; readonly castShadow?: boolean }[]
-): boolean {
-	return (
-		entities.some((entity) => entity.kind === 'model') &&
-		entities.some((entity) => entity.kind === 'light' && entity.castShadow === true)
-	);
-}
 
 /** Shadow maps a controller already owns, so two mounts cannot fight over one. */
 const owners = new WeakMap<ShadowMapLike, { controller: ShadowInvalidation; mounts: number }>();

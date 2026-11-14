@@ -38,9 +38,6 @@ import { withoutComments } from '../../helpers/render-boundary-scan';
  * file is a failure rather than a silent pass.
  */
 const RR7_REMAINDER: Record<string, { count: number; owner: string }> = {
-	// R2c models — shared model remaps (E8).
-	'lib/museum/assets/AssetModel.svelte': { count: 1, owner: 'E8/R2c models' },
-	'lib/museum/assets/instance-material-remap.ts': { count: 1, owner: 'E8/R2c models' },
 	// R5 artwork, environment ground and plinth (E9).
 	'lib/museum/entities/EntityArtwork.svelte': { count: 6, owner: 'E9/R5 artwork' },
 	'lib/museum/layout/GroundPlinth.svelte': { count: 1, owner: 'E9/R2c plinth' },
@@ -55,6 +52,8 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/paper-marks.ts': { count: 3, owner: 'Paper ink' },
 	'lib/authoring/stage/paper-scene.ts': { count: 3, owner: 'Paper scene' },
 	'lib/authoring/stage/shell/StageCanvas.svelte': { count: 1, owner: 'mat ground overlay' },
+	// The bounds box a dev/Stage inspector draws over a model; editor ink, not a world surface.
+	'lib/museum/assets/AssetModel.svelte': { count: 1, owner: 'model bounds helper' },
 	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'mat ground' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageWallDevelopment.svelte': { count: 1, owner: 'development overlay' },

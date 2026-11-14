@@ -13,7 +13,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-	createShadowInvalidation, needsPerFrameShadows,
+	createShadowInvalidation,
 	type ShadowCasterLight,
 	type ShadowMapLike
 } from '$lib/render/shadow-invalidation';
@@ -265,12 +265,17 @@ describe('the default lighting policy', () => {
 		expect(walls).toContain('mesh.receiveShadow = true');
 	});
 
-	it('updates per frame only for a model that a casting light could shadow', () => {
-		const model = { kind: 'model', castShadow: true };
-		expect(needsPerFrameShadows([model])).toBe(false);
-		expect(needsPerFrameShadows([model, { kind: 'light', castShadow: false }])).toBe(false);
-		expect(needsPerFrameShadows([model, { kind: 'light', castShadow: true }])).toBe(true);
-		expect(needsPerFrameShadows([{ kind: 'light', castShadow: true }])).toBe(false);
+	it('no longer renders a model per frame: a static model is an identity-free caster (E8/G4)', () => {
+		// The per-frame rule for any model with a casting light is gone. A static model
+		// changes the map on arrival, release or drawn-state change, which the caster
+		// channel reports, and an animation keeps per-frame updates only while playing.
+		const shadowMap: ShadowMapLike = { autoUpdate: false, needsUpdate: false, enabled: true, render: () => {} };
+		const shadows = createShadowInvalidation({ shadowMap });
+		try {
+			expect(shadowMap.autoUpdate).toBe(false);
+		} finally {
+			shadows.dispose();
+		}
 	});
 
 	it('counts no shadow pass with no casting light', () => {

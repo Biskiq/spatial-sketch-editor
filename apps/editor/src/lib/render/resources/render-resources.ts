@@ -21,13 +21,16 @@
 import { getContext, setContext } from 'svelte';
 import { createGeometryStore, type GeometryStore } from './geometry-store';
 import { createMaterialStore, type MaterialStore } from './material-store';
+import { createCasterChannel, type CasterChannel } from './caster-channel';
 
 export type RenderResources = {
 	/** The Canvas's one material factory. */
 	readonly materials: MaterialStore;
 	/** The Canvas's one geometry owner. */
 	readonly geometry: GeometryStore;
-	/** Dispose both stores. Idempotent. */
+	/** The Canvas's caster arrivals and animation state (E8/G4). */
+	readonly casters: CasterChannel;
+	/** Dispose the stores and the channel. Idempotent. */
 	dispose(): void;
 };
 
@@ -41,13 +44,16 @@ const KEY = Symbol('biskiq.render-resources');
 export function provideRenderResources(): RenderResources {
 	const materials = createMaterialStore();
 	const geometry = createGeometryStore();
+	const casters = createCasterChannel();
 	let disposed = false;
 	const resources: RenderResources = {
 		materials,
 		geometry,
+		casters,
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			casters.dispose();
 			geometry.dispose();
 			materials.dispose();
 		}
