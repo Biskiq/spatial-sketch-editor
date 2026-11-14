@@ -1,4 +1,4 @@
-import type { StageAdapterBinding, StageAdapterContext, StageDomainPick, StagePickQuery } from './stage-facade';
+import type { StageAdapterBinding, StageAdapterContext, StageDomainPick, StagePickQuery } from './facade/adapter-contract';
 
 /** A binding supplies exactly one winner, after applying its own policy. */
 export type StagePickProvider = {
