@@ -1,11 +1,12 @@
 <script lang="ts">
 	/**
-	 * The editor Stage's scene entities with a lazily loaded model renderer.
+	 * The editor Stage's scene entities with a lazily loaded model support.
 	 *
-	 * The model renderer is the one Stage dependency that pulls a glTF loader and
+	 * The model support is the one Stage dependency that pulls a glTF loader and
 	 * skeletal cloning; an enclosure-only Stage has no model to draw, so its first
-	 * load never pays for those bytes. Deferring the chunk is an editor-only
-	 * decision: the public visitor keeps the static renderer through
+	 * load never pays for those bytes. Until it arrives every model draws its
+	 * fallback from the retained Scene representation. Deferring the chunk is an
+	 * editor-only decision: the public visitor keeps the static support through
 	 * `VisitorEntities`, whose first-load graph this component does not change.
 	 *
 	 * The fetch starts at idle rather than at the first model, so a cold placement
@@ -15,9 +16,8 @@
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
+	import type { SceneModelSupport } from '$lib/render/scene-model-representation';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
-
-	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
 
 	let {
 		scene,
@@ -37,7 +37,7 @@
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
 		onFormRendererReady: () => void;
-		/** Notify Paper after a lazy model renderer mounts its fallback or body. */
+		/** Notify Paper after a model instance was drawn or restyled. */
 		onEntityRenderable?: () => void;
 		scenePick: ScenePickSource;
 		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
@@ -45,16 +45,16 @@
 		includeLights?: boolean;
 	} = $props();
 
-	let ModelComponent = $state<AssetModelComponent | null>(null);
+	let modelSupport = $state.raw<SceneModelSupport | null>(null);
 	$effect(() => {
-		if (ModelComponent !== null) return;
+		if (modelSupport !== null) return;
 		let cancelled = false;
 		let attempt = 0;
 		let timer: ReturnType<typeof setTimeout> | null = null;
 		const load = (): void => {
-			void import('$lib/museum/assets/AssetModel.svelte')
+			void import('$lib/render/models/scene-model-support')
 				.then((module) => {
-					if (!cancelled) ModelComponent = module.default;
+					if (!cancelled) modelSupport = module.sceneModelSupport;
 				})
 				.catch(() => {
 					// A transient chunk failure must not leave every model invisible; retry
@@ -70,15 +70,6 @@
 			if (timer !== null) clearTimeout(timer);
 		};
 	});
-
-	// The model component is shared by every model entity. Its root may have been
-	// registered long before this lazy chunk arrived; bump Paper once the fallback
-	// (or the loaded GLB) is actually mounted under those roots.
-	$effect(() => {
-		if (ModelComponent === null) return;
-		const frame = requestAnimationFrame(() => onEntityRenderable?.());
-		return () => cancelAnimationFrame(frame);
-	});
 </script>
 
-<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />
+<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()} onEntityRoot={onEntityRoot ?? scenePick.register} />

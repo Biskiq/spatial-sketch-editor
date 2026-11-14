@@ -6,7 +6,7 @@ import { PCFShadowMap } from 'three';
   import { provideRenderResources } from '$lib/render/resources/render-resources';
   import { OrbitControls } from '@threlte/extras';
   import { getAsset, assets } from '$lib/content/assets';
-  import AssetModel from '$lib/museum/assets/AssetModel.svelte';
+  import AssetInspectorModel from './AssetInspectorModel.svelte';
   import type {
     AssetId,
     AssetLoadStatus,
@@ -147,20 +147,19 @@ import { PCFShadowMap } from 'three';
         castShadow={shadows}
       />
 
-      {#key selectedAssetId}
-        <AssetModel
-          assetId={selectedAssetId}
-          rotation={previewRotation}
-          scale={previewScale}
-          visible={modelVisible}
-          {wireframe}
-          {shadows}
-          {showBounds}
-          bind:status
-          bind:metrics
-          bind:error
-        />
-      {/key}
+      <!-- One retained handler: a new selection is a source replacement, not a remount. -->
+      <AssetInspectorModel
+        assetId={selectedAssetId}
+        rotation={previewRotation}
+        scale={previewScale}
+        visible={modelVisible}
+        {wireframe}
+        {shadows}
+        {showBounds}
+        bind:status
+        bind:metrics
+        bind:error
+      />
 
       <T.Mesh position={[0, -0.012, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <T.PlaneGeometry args={[14, 14]} />

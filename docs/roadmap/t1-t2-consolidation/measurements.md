@@ -317,6 +317,134 @@ accounting and the stale-arrival gate.
 - R5/R2c: revert `AssetModel.svelte` and `model-realization.ts` together with the deleted
   `instance-material-remap.ts`. The store's `imported` kind is additive and can stay.
 
+## E8/R5 — model renderer retirement
+
+**Date:** 2026-11-14. **Branch:** `claude/e8-model-renderer-retirement` (from `main` `bd7bfb09`).
+**Scope:** closes the E8 owner exception. The approved fallback shapes become data
+(`apps/editor/src/lib/museum/assets/fallback-shapes.ts`), and the retained Scene model handler
+(`apps/editor/src/lib/render/scene-model-representation.ts`) draws them and the realized model. The
+handler is owned by the E7 Scene root, next to the E9 Artwork handler. Deleted:
+`AssetModel.svelte`, `AssetFallback.svelte` and `FallbackMaterial.svelte`. Not E10 (lights), not
+authoring tools, schemas or batching. Every value below is a **counted** number.
+
+### Structure
+
+Per model entity, the handler keeps:
+
+```
+SceneEntity:<id>          transform-free pick root (registered through onRoot, as before)
+  placement               authored transform and visibility
+    presentation          catalogue defaultRotation / defaultScale
+      SceneModelFallback:<id> | realized instance
+```
+
+The model bytes come from a per-Canvas template loader in
+`apps/editor/src/lib/render/models/scene-model-support.ts`. It makes one request per URL, keeps one
+template per URL for the Canvas lifetime, gives a lease per drawn instance, evicts a failed load and
+frees its templates on dispose. That module is the only one that reaches `GLTFLoader`, the Meshopt
+decoder and SkeletonUtils:
+
+- the Stage imports it lazily (idle, three retries), so an enclosure-only Stage never downloads them;
+- the visitor imports it statically, the first-load graph its model renderer always had.
+
+The fallback draws synchronously, before the support arrives. The old Stage drew nothing until the
+`AssetModel` chunk loaded.
+
+### Parity against the retired path
+
+Method: before deleting anything, the old `AssetModel`/`AssetFallback` path at `bd7bfb09` was
+mounted under a real Threlte tree in a temporary probe (not committed). It recorded a per-mesh
+summary to `apps/editor/tests/lib/render/fixtures/model-path-baseline.json`. Each summary covers
+vertices, triangles, world bounds, world position, normal and UV sums, material colour, roughness,
+metalness, wireframe and tone mapping, and shadow flags.
+
+The fixture is placed at `[1, 0.5, -2]`, rotated `[0.1, 0.7, -0.2]`, scaled 1.3, and covers:
+
+- all 14 fallback kinds (the generic box uses a 1.7 × 0.6 m footprint);
+- 4 catalogue assets while loading, with their own default rotation, scale and shadow flags;
+- one loaded model with a nested group, a non-uniform transform and an array material.
+
+The new handler matches every mesh within 1e-6:
+
+- 84 fallback meshes;
+- 2 model meshes;
+- the store's material identities (live 24, created 24 for the whole fixture).
+
+Test: `apps/editor/tests/lib/render/scene-model-representation.test.ts`.
+
+### Resource counts (identical fixtures)
+
+| Fixture | Old path geometries | New geometries (store) | New materials (store) |
+| --- | ---: | ---: | ---: |
+| 14 fallback kinds × 1 | 60 (one per part) | **18** keyed (60 leases) | 21 |
+| 14 fallback kinds × 10 | 600 | **18** keyed (600 leases) | 21 |
+
+- **10 instances of one 3-mesh model:** 1 request, 1 template, 10 leases. Materials are 3 live
+  store copies, 1 per source mesh, not 30. The fallback's 1 geometry and 2 materials are released
+  at arrival.
+- **Fallback materials:** these were already store leases since E7, so sharing is unchanged. The
+  geometry saving is new: unit box, plane, sphere and cylinder are scaled to size, and keyed
+  frustums are built at size.
+- **Unchanged input** (same items, or a rebuilt description with equal keys): 0 built, moved,
+  replaced, restyled or loaded. No store acquire, no loader request and no caster event.
+- **Dispose:** materials 0 live, geometry 0 live and leases 0. Cached templates are freed once, and
+  a late arrival mounts nothing.
+
+### Behaviour pinned by tests
+
+- **`scene-model-representation.test.ts` (18 tests, node):**
+  - successful load, failed load and retry on a new URL;
+  - no approved bytes (fallback only, no request);
+  - lazy support arrival;
+  - replacement with a stale arrival rejected, and removal;
+  - multiple instances sharing one request, geometry and materials;
+  - skinned instances with independent skeletons, with animation names reported and
+    `casters.playing() === 0`;
+  - pick roots, move-only updates and caster `changed`;
+  - scoped and unscoped texture races, ported from the deleted `asset-model-lifecycle.test.ts`;
+  - zero work on unchanged input;
+  - teardown.
+- **`scene-model-mounted.test.ts` (3 tests, jsdom, real `VisitorEntityGroups`):**
+  - Stage: the fallback is drawn and pickable before support, then arrives, invalidates, notifies
+    `onModelDrawn` and keeps the same root;
+  - Preview: support at mount, two instances sharing one request and one material;
+  - unmount releases everything, both after arrival and with bytes in flight.
+- **Guards:**
+  - `model-lifecycle-boundary.test.ts` is retargeted to the handler: a single caster publisher, the
+    gate and generation checks, and one `.dispose()` (the loader's). It also checks that the retired
+    hosts and `useGltf`/`useMeshopt` are absent, that the handler only type-imports the
+    realization, and that the Stage imports the support lazily while the visitor imports it
+    statically.
+  - `render-layer-boundary.test.ts` adds the handler as a representation and allows the one Scene
+    root → model handler edge.
+  - `material-factory-boundary.test.ts` removes the `AssetModel.svelte` bounds-helper exception.
+
+### Limitations
+
+- **No product animation playback**, as in E8. The skinned test asserts independent skeletons only.
+- The `/dev/assets` bench now draws the handler too, and its bounds are a `Box3Helper`.
+- **Browser check:** `/dev/assets` was run in headless Chromium (SwiftShader) against the dev server
+  with no console errors. The real piano and chair GLBs load to `ready` with bounds and shadows, the
+  chair's wireframe toggles on and off, and the placeholder desk draws its fallback. Stage and
+  Preview were not run in a browser (the E0 note: headless Stage launches hang here). Their wiring is
+  covered by `scene-model-mounted.test.ts`.
+- **Lanes run locally:**
+  - fast: 4494 tests; one Paper geometry test timed out while the heavy lane ran alongside it, and
+    passes alone;
+  - arch: 335;
+  - heavy: 138;
+  - `npm run check`: 0 errors (12 warnings, all in files this change does not touch);
+  - `npm run build`: passes. The loader chunk is static only in the visitor `/p/[publicationId]` and
+    `/dev/assets` routes; the editor routes reach it by dynamic import.
+
+### Rollback
+
+Revert the PR as one unit. The handler, the fallback data, the support module and the restored
+`AssetModel.svelte`/`AssetFallback.svelte`/`FallbackMaterial.svelte` move together with the
+`VisitorEntityGroups`/`StageEntities` wiring. `model-realization.ts` keeps its exports (the moved
+helpers are re-exported from `model-presentation.ts`), and the store's `frustum` geometry spec is
+additive, so neither needs to move. Then re-record the owner exception in `execution-schedule.md`.
+
 ## E9/R5 + R2c — Artwork and the remaining world materials
 
 **Date:** 2026-11-14. **Branch:** `claude/e9-artwork-world-materials` (from `main` `d67d1172`).

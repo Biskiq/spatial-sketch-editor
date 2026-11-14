@@ -22,12 +22,13 @@
  * other instance still draws. The store's own clone of an imported material is
  * disposed only when its last lease goes.
  *
- * The module is framework-free: the Svelte host supplies the template, the store
- * and the look, and mounts the root it gets back.
+ * The module is framework-free: the Scene model handler supplies the template, the
+ * store and the look, and mounts the root it gets back. It is reached only through
+ * the lazily loaded model support, because SkeletonUtils is part of its graph; the
+ * Three-free presentation rules live in `model-presentation`.
  */
 import { Mesh, type Material, type Object3D, type SkinnedMesh, type Texture } from 'three';
 import { clone as cloneSkinnedHierarchy } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 import type { MaterialLease, MaterialStore, MaterialTextureMaps } from '../resources/material-store';
 import {
 	MATERIAL_TEXTURE_SLOTS,
@@ -41,18 +42,17 @@ import {
 	releaseEffectiveVariant,
 	type TextureLoadScope
 } from '../resources/texture-store';
-import type { TextureVariantSource } from '../resources/texture-variant';
+import type { ModelLook } from './model-presentation';
 
-/** The surface look a model's meshes wear, and the texture variant it binds, if any. */
-export type ModelLook = {
-	readonly material: Omit<StandardMaterialDescriptor, 'kind' | 'textures'>;
-	/** The loaded texture source and its cache namespace; null for an untextured look. */
-	readonly texture: {
-		readonly source: TextureVariantSource;
-		readonly repeat: readonly [number, number];
-		readonly scope: TextureLoadScope | null;
-	} | null;
-};
+export {
+	createArrivalGate,
+	modelLookFor,
+	nextModelEntityId,
+	texturesReady,
+	type ArrivalGate,
+	type ModelLook,
+	type ModelSurfaceSource
+} from './model-presentation';
 
 /** How a drawn instance's surfaces and shadows are styled. */
 export type ModelStyle = {
@@ -97,14 +97,6 @@ type VariantHold = {
 	readonly scope: TextureLoadScope | null;
 };
 
-const CONTROL = { nextId: 0 };
-
-/** A process-unique id for one host, so its caster events name one caster. */
-export function nextModelEntityId(): number {
-	CONTROL.nextId += 1;
-	return CONTROL.nextId;
-}
-
 /** Every mesh under `object`, in depth-first order: the index a remap names. */
 export function meshesOf(object: Object3D): Mesh[] {
 	const meshes: Mesh[] = [];
@@ -124,29 +116,6 @@ export function cloneModelHierarchy(template: Object3D): Object3D {
 		if ((candidate as SkinnedMesh).isSkinnedMesh === true) skinned = true;
 	});
 	return skinned ? cloneSkinnedHierarchy(template) : template.clone(true);
-}
-
-/**
- * Whether a texture load produced maps a look may bind. A failed or absent load keeps
- * the untextured surface, as the GLB's own material did.
- */
-export function texturesReady(result: { readonly status: string } | undefined): boolean {
-	return result?.status === 'ready' || result?.status === 'partial';
-}
-
-/**
- * The look of an approved creator model's effective material, as a surface look.
- * The variant repeat is the unit repeat a model's surfaces always used.
- */
-export function modelLookFor(
-	effective: EffectiveSceneMaterial,
-	scope: TextureLoadScope | null,
-	textured: boolean
-): ModelLook {
-	return {
-		material: { color: effective.color, roughness: effective.roughness, metalness: effective.metalness },
-		texture: textured ? { source: effective, repeat: [1, 1], scope } : null
-	};
 }
 
 /**
@@ -292,33 +261,6 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		},
 		leaseCount() {
 			return holds.length + (variant === null ? 0 : 1);
-		}
-	};
-}
-
-/**
- * Stale-arrival rejection. A host begins a token for each load it starts; an
- * arrival may mount only while its token is still the current one. Closing the
- * gate, which a host does on teardown, invalidates every outstanding token.
- */
-export type ArrivalGate = {
-	begin(): number;
-	accepts(token: number): boolean;
-	close(): void;
-};
-
-export function createArrivalGate(): ArrivalGate {
-	let current = 0;
-	return {
-		begin() {
-			current += 1;
-			return current;
-		},
-		accepts(token) {
-			return token === current;
-		},
-		close() {
-			current += 1;
 		}
 	};
 }

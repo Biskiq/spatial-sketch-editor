@@ -208,7 +208,7 @@ describe('Stage shell composition', () => {
 		expect(canvas).toContain("from './StageEntities.svelte'");
 		const stageEntities = codeOf('apps/editor/src/lib/authoring/stage/shell/StageEntities.svelte');
 		expect(stageEntities).toContain("from '$lib/visitor/VisitorEntityGroups.svelte'");
-		expect(stageEntities).toContain("import('$lib/museum/assets/AssetModel.svelte')");
+		expect(stageEntities).toContain("import('$lib/render/models/scene-model-support')");
 		// Explicit shadow-map type; never the boolean that resolves to the removed
 		// PCFSoft filtering path.
 		expect(canvas).toContain('shadows={PCFShadowMap}');

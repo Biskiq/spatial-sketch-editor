@@ -29,9 +29,13 @@
  * Artwork (E9) is a family handler under the same root: `description.artworks`
  * goes to `scene-artwork-representation`, which leases from the same stores.
  *
- * Deliberately not owned here: models (E8's bounded exception), lights (E10) and
- * any editor affordance. Those keep their existing components until their own
- * packet installs a handler, so one Scene entity is never drawn twice.
+ * Models (E8) are the second family handler: `description.models` goes to
+ * `scene-model-representation`, which draws each fallback from the same stores
+ * and realizes the loaded template through the lazily injected model support.
+ *
+ * Deliberately not owned here: lights (E10) and any editor affordance. Lights keep
+ * their component until their own packet installs a handler, so one Scene entity
+ * is never drawn twice.
  */
 import { Group, Mesh, type Object3D } from 'three';
 import { countWork } from '@portfolio/layout-core';
@@ -48,6 +52,13 @@ import {
 	type ArtworkImageSource,
 	type SceneArtworkStats
 } from './scene-artwork-representation';
+import {
+	createSceneModelRepresentation,
+	type SceneModelState,
+	type SceneModelStats,
+	type SceneModelSupport
+} from './scene-model-representation';
+import type { CasterChannel } from './resources/caster-channel';
 import {
 	acquireEffectiveVariant,
 	effectiveTextureVariantKey,
@@ -73,6 +84,8 @@ export type SceneEntityRepresentationStats = {
 	readonly textured: number;
 	/** The artwork handler's own counts for this update. */
 	readonly artworks: SceneArtworkStats;
+	/** The model handler's own counts for this update. */
+	readonly models: SceneModelStats;
 };
 
 export type SceneEntityRepresentationOptions = {
@@ -94,6 +107,16 @@ export type SceneEntityRepresentationOptions = {
 	readonly onArtworkArrival?: (id: string) => void;
 	/** An Artwork's image could not be drawn. */
 	readonly onArtworkError?: (message: string) => void;
+	/** The Canvas caster channel the model handler publishes on (E8/G4). */
+	readonly casters?: CasterChannel;
+	/** The lazily loaded model support; null until it arrives. Read on every update. */
+	readonly modelSupport?: () => SceneModelSupport | null;
+	/** Resolved approved creator-model bytes. Read on every update. */
+	readonly modelUrls?: () => ReadonlyMap<string, string> | null;
+	/** A model instance was drawn or restyled. */
+	readonly onModelDrawn?: (id: string) => void;
+	/** A model's load status changed. */
+	readonly onModelState?: (id: string, state: SceneModelState) => void;
 };
 
 export type SceneEntityRepresentation = {
@@ -102,6 +125,8 @@ export type SceneEntityRepresentation = {
 	update(description: SceneRenderDescription): SceneEntityRepresentationStats;
 	/** The retained root drawing this entity, or null. Reads the owned index. */
 	objectOf(id: string): Object3D | null;
+	/** A model's load status, or null when no model has this id. */
+	modelStateOf(id: string): SceneModelState | null;
 	/** Resolves when no texture variant is still arriving. Observation only. */
 	idle(): Promise<void>;
 	/** Release every retained item, its leases and its pick registration. Idempotent. */
@@ -153,6 +178,14 @@ function texturedDescriptor(
 	return { ...base, textures: keys } satisfies StandardMaterialDescriptor;
 }
 
+/** A channel nobody listens to, for a host with no shadow owner. */
+const NO_CASTERS: CasterChannel = {
+	publish() {},
+	subscribe: () => () => {},
+	playing: () => 0,
+	dispose() {}
+};
+
 export function createSceneEntityRepresentation(
 	options: SceneEntityRepresentationOptions
 ): SceneEntityRepresentation {
@@ -165,6 +198,15 @@ export function createSceneEntityRepresentation(
 		onError: (message) => options.onArtworkError?.(message)
 	});
 	object3d.add(artworks.object3d);
+	const models = createSceneModelRepresentation({
+		store: options.store,
+		geometry: options.geometry,
+		casters: options.casters ?? NO_CASTERS,
+		onRoot: (id, root) => options.onRoot?.(id, root),
+		onDrawn: (id) => options.onModelDrawn?.(id),
+		onState: (id, state) => options.onModelState?.(id, state)
+	});
+	object3d.add(models.object3d);
 	const retained = new Map<string, RetainedItem>();
 	const pending = new Set<Promise<void>>();
 	let disposed = false;
@@ -271,6 +313,13 @@ export function createSceneEntityRepresentation(
 			// replaces its scope), so the artwork handler is asked on every update;
 			// it does nothing when neither its items nor its scope changed.
 			const artworkStats = artworks.update(description.artworks, options.artworkScope?.() ?? null);
+			// Likewise the model support, URLs and texture scope arrive or change without
+			// a new description; the handler does nothing when none of them changed.
+			const modelStats = models.update(description.models, {
+				support: options.modelSupport?.() ?? null,
+				urls: options.modelUrls?.() ?? null,
+				scope: options.scope?.() ?? null
+			});
 			if (previous === description) {
 				return {
 					items: retained.size,
@@ -279,7 +328,8 @@ export function createSceneEntityRepresentation(
 					released: 0,
 					forms: 0,
 					textured: 0,
-					artworks: artworkStats
+					artworks: artworkStats,
+					models: modelStats
 				};
 			}
 			previous = description;
@@ -315,11 +365,24 @@ export function createSceneEntityRepresentation(
 				released += 1;
 			}
 
-			return { items: retained.size, built, retained: kept, released, forms, textured, artworks: artworkStats };
+			return {
+					items: retained.size,
+					built,
+					retained: kept,
+					released,
+					forms,
+					textured,
+					artworks: artworkStats,
+					models: modelStats
+				};
 		},
 
 		objectOf(id) {
-			return retained.get(id)?.group ?? artworks.objectOf(id);
+			return retained.get(id)?.group ?? artworks.objectOf(id) ?? models.objectOf(id);
+		},
+
+		modelStateOf(id) {
+			return models.stateOf(id);
 		},
 
 		async idle() {
@@ -327,6 +390,7 @@ export function createSceneEntityRepresentation(
 			// material acquire), so the loop drains until nothing is pending.
 			while (pending.size > 0) await Promise.all([...pending]);
 			await artworks.idle();
+			await models.idle();
 		},
 
 		dispose() {
@@ -337,6 +401,8 @@ export function createSceneEntityRepresentation(
 			retained.clear();
 			artworks.dispose();
 			artworks.object3d.removeFromParent();
+			models.dispose();
+			models.object3d.removeFromParent();
 		}
 	};
 }

@@ -47,8 +47,6 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/paper-marks.ts': { count: 3, owner: 'Paper ink' },
 	'lib/authoring/stage/paper-scene.ts': { count: 3, owner: 'Paper scene' },
 	'lib/authoring/stage/shell/StageCanvas.svelte': { count: 1, owner: 'mat ground overlay' },
-	// The bounds box a dev/Stage inspector draws over a model; editor ink, not a world surface.
-	'lib/museum/assets/AssetModel.svelte': { count: 1, owner: 'model bounds helper' },
 	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'mat ground' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageWallDevelopment.svelte': { count: 1, owner: 'development overlay' },
@@ -174,6 +172,8 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/materials/SceneInstanceMaterial.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/materials/MuseumMaterial.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/assets/FallbackMaterial.svelte');
+		// E8/R5 retired the per-entity model host and its bounds-helper exception.
+		expect(EDITOR_INK).not.toHaveProperty('lib/museum/assets/AssetModel.svelte');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-wall-representation.ts');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-object-representation.ts');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-room-representation.ts');

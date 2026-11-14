@@ -1,7 +1,7 @@
 /**
  * T2.P02.S01 — the generic creator-model fallback is the approved footprint box.
  *
- * `AssetModel`/`AssetFallback` draw a creator model with no loaded GLB as a box.
+ * The Scene model handler draws a creator model with no loaded GLB as a box.
  * Its plan extent comes from the approved revision's placement (metres), not a
  * catalogue dimension: the format owns the footprint and the renderer reads it.
  * Height stays a neutral 1 m because the placement format carries no height.

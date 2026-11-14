@@ -78,8 +78,25 @@ export type ArtworkGeometrySpec =
 			readonly height: number;
 	  };
 
+/**
+ * E8 — a tapered or open-ended cylinder, built at size.
+ *
+ * A model fallback's tapered legs, stems and shades are not a scaled unit
+ * cylinder (its radii differ, or it has no caps), so the buffer is built from the
+ * exact numbers and keyed by them: equal fallback parts across instances share one
+ * buffer.
+ */
+export type FrustumGeometrySpec = {
+	readonly kind: 'frustum';
+	readonly radiusTop: number;
+	readonly radiusBottom: number;
+	readonly height: number;
+	readonly radialSegments: number;
+	readonly openEnded: boolean;
+};
+
 /** What shape to draw. Plain data: the store decides how to build it. */
-export type GeometrySpec = UnitGeometrySpec | FormGeometrySpec | ArtworkGeometrySpec;
+export type GeometrySpec = UnitGeometrySpec | FormGeometrySpec | ArtworkGeometrySpec | FrustumGeometrySpec;
 
 /**
  * The canonical key of one geometry spec.
@@ -98,6 +115,9 @@ export function geometryKeyOf(spec: GeometrySpec): string {
 		return `artwork-mat:${spec.width}x${spec.height}:inner=${spec.innerWidth}x${spec.innerHeight}`;
 	}
 	if (spec.kind === 'artwork-backing') return `artwork-backing:${spec.width}x${spec.height}`;
+	if (spec.kind === 'frustum') {
+		return `frustum:${spec.radiusTop}/${spec.radiusBottom}x${spec.height}:${spec.radialSegments}${spec.openEnded ? ':open' : ''}`;
+	}
 	switch (spec.shape) {
 		case 'box':
 			return 'unit:box';
@@ -184,9 +204,77 @@ export type SceneArtworkItem = {
 	readonly backing: SceneArtworkBody<'artwork-backing'> | null;
 };
 
+/** One fallback part: a keyed buffer, its unit scale, its local pose and its surface. */
+export type SceneModelFallbackPart = {
+	readonly geometry: GeometrySpec;
+	readonly geometryScale: SceneVec3;
+	readonly position: SceneVec3;
+	readonly rotation: SceneVec3;
+	readonly material: StandardMaterialDescriptor;
+};
+
+/**
+ * The resolved material a model's meshes are remapped to (E8/R2c): the colour and
+ * PBR scalars and the texture variant it loads. Identity only, no GPU object.
+ */
+export type SceneModelLook = {
+	readonly color: string;
+	readonly roughness: number;
+	readonly metalness: number;
+	readonly variantSeed: string;
+	readonly slotUris: Readonly<Partial<Record<MaterialTextureSlotKey, string>>>;
+};
+
+/**
+ * E8/R5 — one approved model, resolved: what to draw, never how.
+ *
+ * The description resolves the catalogue record, the fallback body and the look
+ * once, so the model handler never reads authored truth or the asset catalogue.
+ * Its keys split an edit's work:
+ *
+ * - `sourceKey` — which bytes. A change releases the drawn instance and its
+ *   leases, shows the fallback and loads the new bytes. (A resolved approved
+ *   derivative URL is runtime data the handler adds to this key.)
+ * - `placementKey` — position, rotation, scale and visibility. A change moves the
+ *   retained group and nothing else.
+ * - `fallbackKey` — the fallback body. A change rebuilds the fallback meshes.
+ * - `styleKey` — the look, wireframe and shadow flags of the drawn instance. A
+ *   change starts one new presentation of the arrived template.
+ */
+export type SceneModelItem = {
+	readonly id: string;
+	readonly assetId: string;
+	/** The catalogue's production file when the asset is approved/testing; otherwise null. */
+	readonly catalogueUrl: string | null;
+	readonly sourceKey: string;
+	readonly placementKey: string;
+	readonly fallbackKey: string;
+	readonly styleKey: string;
+	readonly transform: SceneTransform;
+	readonly visible: boolean;
+	/** The catalogue's orientation and scale correction for the asset's own frame. */
+	readonly presentation: { readonly rotation: SceneVec3; readonly scale: number };
+	readonly fallback: {
+		readonly kind: string;
+		/** Approximate fallback bounds in metres: [width, height, depth]. */
+		readonly dimensions: SceneVec3;
+		readonly parts: readonly SceneModelFallbackPart[];
+		readonly castShadow: boolean;
+		readonly receiveShadow: boolean;
+	};
+	/** The resolved remap, or null to keep the asset's own materials. */
+	readonly look: SceneModelLook | null;
+	readonly wireframe: boolean;
+	/** The drawn instance's shadow flags. */
+	readonly castShadow: boolean;
+	readonly receiveShadow: boolean;
+};
+
 /** One Scene conversion's drawable items, in authored order. */
 export type SceneRenderDescription = {
 	readonly items: readonly SceneRenderItem[];
 	/** E9: Artworks, in authored order. Drawn by the artwork handler. */
 	readonly artworks: readonly SceneArtworkItem[];
+	/** E8: approved models, in authored order. Drawn by the model handler. */
+	readonly models: readonly SceneModelItem[];
 };
