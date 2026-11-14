@@ -55,14 +55,12 @@ import {
 } from './opening-planners';
 import {
 	parseMeasureInput,
-	wallFrame,
 	wallStationFrame,
-	wallStationNearPoint,
-	type WallFrame,
-	type WallStationFrame
+	wallStationNearPoint
 } from './precision';
 import type { LayoutSessionPorts } from './session-ports';
 import { pointerDatumPoint, projectedScene } from './stage-pointer';
+import { openingSpanOf } from './layout-subjects';
 
 /**
  * One host-relative Opening candidate.
@@ -95,30 +93,6 @@ function preferredHostOf(
 	if (sourceKind === 'wall') return sourceId;
 	if (sourceKind !== 'opening') return null;
 	return document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null;
-}
-
-/** The host Wall's frame and resolved length, when it has one. */
-export function openingSpanOf(
-	document: LayoutDocumentWallFirst,
-	wallId: string
-): { frame: WallFrame; length: number; station: WallStationFrame } | null {
-	// Surface 3: one station frame per host. An Opening mark, ghost or
-	// handle reads `station.pointAt`, which is exact arc length on a
-	// curved centerline and linear on a straight one, so only curved
-	// hosts move and straight-host output stays byte-identical.
-	const station = wallStationFrame(document, wallId);
-	if (station === null) return null;
-	const frame = wallFrame(document, wallId) ?? {
-		wallId,
-		startJunctionId: '',
-		endJunctionId: '',
-		start: station.start,
-		end: station.end,
-		direction: station.direction,
-		length: station.length,
-		angleRadians: Math.atan2(station.direction[1], station.direction[0])
-	};
-	return station.length > 0 ? { frame, length: station.length, station } : null;
 }
 
 /** The Opening reading as the binding drives it. */
