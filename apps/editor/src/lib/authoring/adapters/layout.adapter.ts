@@ -435,8 +435,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						services.stage.notifySurfaceChange();
 						return true;
 					}
-					if (wall.numeric !== null || junction.numeric !== null || existingOpening.numeric !== null)
+										if (wall.numeric !== null || junction.numeric !== null || existingOpening.numeric !== null) {
+						if (intent.phase === 'up') services.stage.notifySurfaceChange();
 						return true;
+					}
 					if (intent.phase === 'move') {
 						if (junction.active) return junction.move(intent, adapterContext);
 						if (existingOpening.active) return existingOpening.move(intent, adapterContext);

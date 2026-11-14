@@ -1,8 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { EDITOR_LIB, moduleBindingEdges, resolveSpecifier } from '../../helpers/import-closure';
+import {
+	EDITOR_LIB,
+	importClosure,
+	moduleBindingEdges,
+	parseModuleSpecifiers,
+	resolveSpecifier
+} from '../../helpers/import-closure';
 
 const adapters = path.join(EDITOR_LIB, 'authoring/adapters');
 const layout = path.join(adapters, 'layout');
@@ -169,11 +176,13 @@ function forbiddenEdges(file: string, source = read(file)): string[] {
 	const allowedTargets = new Set(
 		allowed.get(file)!.map((specifier) => resolveSpecifier(file, specifier) ?? specifier)
 	);
-	return moduleBindingEdges(file, source).flatMap((edge) => {
-		if (edge.kind === 'export-local') return [];
-		const target = resolveSpecifier(file, edge.specifier) ?? edge.specifier;
-		return allowedTargets.has(target) ? [] : [edge.specifier];
-	});
+	const specifiers = new Set(parseModuleSpecifiers(source));
+	for (const edge of moduleBindingEdges(file, source)) {
+		if (edge.kind !== 'export-local') specifiers.add(edge.specifier);
+	}
+	return [...specifiers].filter(
+		(specifier) => !allowedTargets.has(resolveSpecifier(file, specifier) ?? specifier)
+	);
 }
 
 function declarations(source: string): Set<string> {
@@ -197,6 +206,40 @@ function declarations(source: string): Set<string> {
 describe('Layout manipulation ownership', () => {
 	it('only imports the dependencies of each owner', () => {
 		for (const file of allowed.keys()) expect(forbiddenEdges(file), path.basename(file)).toEqual([]);
+	});
+
+	it('keeps sessions and contribution readers independent through their import closures', () => {
+		const owners = [...allowed.keys()].filter(
+			(file) =>
+				file === adapter ||
+				file.endsWith('-gesture-session.ts') ||
+				file.endsWith('layout-contributions.ts')
+		);
+		for (const file of owners) {
+			if (file === adapter) continue;
+			const closure = importClosure([file]);
+			expect(
+				owners.filter((owner) => owner !== file && closure.has(owner)),
+				path.basename(file)
+			).toEqual([]);
+		}
+	});
+
+	it('finds a sibling hidden behind an allowed reader', () => {
+		const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'layout-import-closure-'));
+		try {
+			const contribution = path.join(fixture, 'layout-contributions.ts');
+			const reader = path.join(fixture, 'layout-subjects.ts');
+			const session = path.join(fixture, 'wall-gesture-session.ts');
+			fs.writeFileSync(contribution, "export { selectedWall } from './layout-subjects';");
+			fs.writeFileSync(reader, 'export const selectedWall = () => null;');
+			fs.writeFileSync(session, 'export const createWallGestureSession = () => null;');
+			expect(importClosure([contribution]).has(session)).toBe(false);
+			fs.appendFileSync(reader, "\nexport * from './wall-gesture-session';");
+			expect(importClosure([contribution]).has(session)).toBe(true);
+		} finally {
+			fs.rmSync(fixture, { recursive: true, force: true });
+		}
 	});
 
 	it('declares each live capture only in its session', () => {
@@ -244,6 +287,7 @@ describe('Layout manipulation ownership', () => {
 			"import { createWallGestureSession } from './wall-gesture-session';",
 			"import { createWallGestureSession as create } from '$lib/authoring/adapters/layout/wall-gesture-session';",
 			"export * from './gesture-barrel';",
+			"import './wall-gesture-session';",
 			"const load = () => import('./wall-gesture-session');"
 		])
 			expect(forbiddenEdges(file, source)).toHaveLength(1);

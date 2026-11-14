@@ -10,6 +10,7 @@ import {
 
 import {
 	type StageAdapterContext,
+	type StageCandidatePreview,
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';

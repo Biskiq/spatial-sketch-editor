@@ -1321,6 +1321,17 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		expect(
 			mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length' && mark.tag.includes('Length 7'))
 		).toBe(true);
+		let notifications = 0;
+		const unsubscribe = mounted.facade.onAdaptersChanged(() => notifications++);
+		try {
+			mounted.facade.pointerIntent({ phase: 'move', css: rayCss, evaluationId });
+			expect(notifications).toBe(0);
+			mounted.facade.pointerIntent({ phase: 'up', css: rayCss, evaluationId });
+			expect(notifications).toBe(1);
+			expect(mounted.session.liveProposal()).not.toBeNull();
+		} finally {
+			unsubscribe();
+		}
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
 		await eventually(() => Math.abs(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).length - 7) < 1e-6);
 		// The release that follows is consumed; it cannot install a second entry.
