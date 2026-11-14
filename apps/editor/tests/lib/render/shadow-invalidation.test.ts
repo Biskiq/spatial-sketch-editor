@@ -249,7 +249,10 @@ describe('the default lighting policy', () => {
 	});
 
 	it('lets an authored light keep its own setting, in every kind (Point and Spot)', () => {
-		expect(read('src/lib/museum/entities/EntityLight.svelte').match(/castShadow=\{entity\.castShadow\}/g)).toHaveLength(2);
+		// E10/R6: the resolved descriptor carries the authored flag for both kinds,
+		// and the Canvas light store applies it.
+		expect(read('src/lib/render/scene-light-description.ts').match(/castShadow: entity\.castShadow/g)).toHaveLength(2);
+		expect(read('src/lib/render/resources/light-store.ts').match(/\.castShadow = descriptor\.castShadow;/g)).toHaveLength(2);
 	});
 
 	it('keeps Walls casting and receiving, and the unlit floor eligible', () => {

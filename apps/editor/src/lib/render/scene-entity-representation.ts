@@ -33,9 +33,9 @@
  * `scene-model-representation`, which draws each fallback from the same stores
  * and realizes the loaded template through the lazily injected model support.
  *
- * Deliberately not owned here: lights (E10) and any editor affordance. Lights keep
- * their component until their own packet installs a handler, so one Scene entity
- * is never drawn twice.
+ * Deliberately not owned here: lights and any editor affordance. Authored lights
+ * are the sibling `scene-light-representation` (E10/R6), realized by the Canvas
+ * light store, so one Scene entity is never drawn twice.
  */
 import { Group, Mesh, type Object3D } from 'three';
 import { countWork } from '@portfolio/layout-core';

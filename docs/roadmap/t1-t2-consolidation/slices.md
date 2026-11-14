@@ -625,7 +625,7 @@ produced by the resolved look; one `light-store` realises them. `EntityLight.sve
 `WorldEnvironment.svelte` stop constructing lights. The slice is written against Point and Spot
 plus the Sky's Sun; it does not carry Directional forward.
 
-**Touchpoints.** `apps/editor/src/lib/museum/entities/EntityLight.svelte`,
+**Touchpoints.** `apps/editor/src/lib/render/scene-light-representation.ts` (E10 retired `EntityLight.svelte`),
 `apps/editor/src/lib/render/WorldEnvironment.svelte`; the resolved-look and store modules.
 
 **Tests.** Parity of light properties and shadow camera settings; the S3 Lights suites unchanged.

@@ -1,10 +1,11 @@
 /**
  * T2.S3 — light aim and guide geometry.
  *
- * The Scene stores an Euler rotation, and `EntityLight.svelte` aims a spot
- * light down its parent's local −Z. This module is the one place
- * that converts between that stored rotation and a world direction, so the
- * handles, the guide and the created entity cannot disagree.
+ * The Scene stores an Euler rotation, and the Canvas light store
+ * (`render/resources/light-store.ts`) aims a spot down its holder's local −Z.
+ * This module is the one place that converts between that stored rotation and
+ * a world direction, so the handles, the guide and the created entity cannot
+ * disagree.
  *
  * The guide geometry is deliberately reusable: S3b's Look-through renders the
  * same spot cone through the one Camera, rather than treating the Camera's FOV

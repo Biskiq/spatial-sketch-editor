@@ -1,0 +1,3560 @@
+{
+	"stage daylight": {
+		"mounted": [
+			{
+				"type": "DirectionalLight",
+				"color": "fff6df",
+				"intensity": 1.9,
+				"position": [
+					8.19742323812,
+					22.2640663946,
+					11.810236517
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					1,
+					1.7,
+					0.5
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 58.9152427256,
+						"zoom": 1,
+						"projection": [
+							0.101841216677,
+							0,
+							0,
+							0,
+							0,
+							0.101841216677,
+							0,
+							0,
+							0,
+							0,
+							-0.0342376391278,
+							0,
+							0,
+							0,
+							-1.01711881956,
+							1
+						],
+						"left": -9.81920712093,
+						"right": 9.81920712093,
+						"top": 9.81920712093,
+						"bottom": -9.81920712093
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "f4f7f2",
+				"intensity": 1.5,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "b9b49c"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"spot properties changed": [
+			{
+				"type": "DirectionalLight",
+				"color": "fff6df",
+				"intensity": 1.9,
+				"position": [
+					8.19742323812,
+					22.2640663946,
+					11.810236517
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					1,
+					1.7,
+					0.5
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 58.9152427256,
+						"zoom": 1,
+						"projection": [
+							0.101841216677,
+							0,
+							0,
+							0,
+							0,
+							0.101841216677,
+							0,
+							0,
+							0,
+							0,
+							-0.0342376391278,
+							0,
+							0,
+							0,
+							-1.01711881956,
+							1
+						],
+						"left": -9.81920712093,
+						"right": 9.81920712093,
+						"top": 9.81920712093,
+						"bottom": -9.81920712093
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "f4f7f2",
+				"intensity": 1.5,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "b9b49c"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffd6a5",
+				"intensity": 1.57079632679,
+				"position": [
+					1,
+					2.5,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 4,
+				"decay": 2,
+				"angle": 0.9,
+				"penumbra": 0.8,
+				"target": [
+					1.1986693308,
+					1.9466127834,
+					-0.808883851675
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"point range removed and shadow on": [
+			{
+				"type": "DirectionalLight",
+				"color": "fff6df",
+				"intensity": 1.9,
+				"position": [
+					8.19742323812,
+					22.2640663946,
+					11.810236517
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					1,
+					1.7,
+					0.5
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 58.9152427256,
+						"zoom": 1,
+						"projection": [
+							0.101841216677,
+							0,
+							0,
+							0,
+							0,
+							0.101841216677,
+							0,
+							0,
+							0,
+							0,
+							-0.0342376391278,
+							0,
+							0,
+							0,
+							-1.01711881956,
+							1
+						],
+						"left": -9.81920712093,
+						"right": 9.81920712093,
+						"top": 9.81920712093,
+						"bottom": -9.81920712093
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "f4f7f2",
+				"intensity": 1.5,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "b9b49c"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"shadow bounds moved": [
+			{
+				"type": "DirectionalLight",
+				"color": "fff6df",
+				"intensity": 1.9,
+				"position": [
+					5.1819882917,
+					16.3771094049,
+					7.35741017268
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0.5,
+					3,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 38.3248931622,
+						"zoom": 1,
+						"projection": [
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							-0.052875231965,
+							0,
+							0,
+							0,
+							-1.02643761598,
+							1
+						],
+						"left": -6.3874821937,
+						"right": 6.3874821937,
+						"top": 6.3874821937,
+						"bottom": -6.3874821937
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "f4f7f2",
+				"intensity": 1.5,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "b9b49c"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"preset changed": [
+			{
+				"type": "DirectionalLight",
+				"color": "ffc985",
+				"intensity": 2.1,
+				"position": [
+					-13.6900609285,
+					8.95982558998,
+					4.25701827856
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0.5,
+					3,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 38.3248931622,
+						"zoom": 1,
+						"projection": [
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							-0.052875231965,
+							0,
+							0,
+							0,
+							-1.02643761598,
+							1
+						],
+						"left": -6.3874821937,
+						"right": 6.3874821937,
+						"top": 6.3874821937,
+						"bottom": -6.3874821937
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "ffe6c4",
+				"intensity": 1.2,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "a07e58"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"kind replaced": [
+			{
+				"type": "DirectionalLight",
+				"color": "ffc985",
+				"intensity": 2.1,
+				"position": [
+					-13.6900609285,
+					8.95982558998,
+					4.25701827856
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0.5,
+					3,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 38.3248931622,
+						"zoom": 1,
+						"projection": [
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							-0.052875231965,
+							0,
+							0,
+							0,
+							-1.02643761598,
+							1
+						],
+						"left": -6.3874821937,
+						"right": 6.3874821937,
+						"top": 6.3874821937,
+						"bottom": -6.3874821937
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "ffe6c4",
+				"intensity": 1.2,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "a07e58"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"lights removed": [
+			{
+				"type": "DirectionalLight",
+				"color": "ffc985",
+				"intensity": 2.1,
+				"position": [
+					-13.6900609285,
+					8.95982558998,
+					4.25701827856
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0.5,
+					3,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 38.3248931622,
+						"zoom": 1,
+						"projection": [
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							-0.052875231965,
+							0,
+							0,
+							0,
+							-1.02643761598,
+							1
+						],
+						"left": -6.3874821937,
+						"right": 6.3874821937,
+						"top": 6.3874821937,
+						"bottom": -6.3874821937
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "ffe6c4",
+				"intensity": 1.2,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "a07e58"
+			}
+		],
+		"environment to paper": [],
+		"environment back": [
+			{
+				"type": "DirectionalLight",
+				"color": "b9c3dd",
+				"intensity": 0.45,
+				"position": [
+					8.4349135501,
+					8.55443948507,
+					-12.6958616802
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0.5,
+					3,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.05,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 38.3248931622,
+						"zoom": 1,
+						"projection": [
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							0.156556209423,
+							0,
+							0,
+							0,
+							0,
+							-0.052875231965,
+							0,
+							0,
+							0,
+							-1.02643761598,
+							1
+						],
+						"left": -6.3874821937,
+						"right": 6.3874821937,
+						"top": 6.3874821937,
+						"bottom": -6.3874821937
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "5b6884",
+				"intensity": 0.7,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "3a342c"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"unmounted": []
+	},
+	"visitor golden hour": {
+		"mounted": [
+			{
+				"type": "DirectionalLight",
+				"color": "ffc985",
+				"intensity": 2.1,
+				"position": [
+					-30.2342012686,
+					11.4383645328,
+					9.67026038057
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					-3,
+					0,
+					1.5
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.02,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 73.554853586,
+						"zoom": 1,
+						"projection": [
+							0.0815717754503,
+							0,
+							0,
+							0,
+							0,
+							0.0815717754503,
+							0,
+							0,
+							0,
+							0,
+							-0.0273766889101,
+							0,
+							0,
+							0,
+							-1.01368834446,
+							1
+						],
+						"left": -12.2591422643,
+						"right": 12.2591422643,
+						"top": 12.2591422643,
+						"bottom": -12.2591422643
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "ffe6c4",
+				"intensity": 1.2,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "a07e58"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"bounds grew": [
+			{
+				"type": "DirectionalLight",
+				"color": "ffc985",
+				"intensity": 2.1,
+				"position": [
+					-57.8089284463,
+					23.0197499474,
+					19.4426785339
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					-3,
+					0,
+					3
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.02,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 148.029408585,
+						"zoom": 1,
+						"projection": [
+							0.0405324864657,
+							0,
+							0,
+							0,
+							0,
+							0.0405324864657,
+							0,
+							0,
+							0,
+							0,
+							-0.013556619112,
+							0,
+							0,
+							0,
+							-1.00677830956,
+							1
+						],
+						"left": -24.6715680975,
+						"right": 24.6715680975,
+						"top": 24.6715680975,
+						"bottom": -24.6715680975
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "ffe6c4",
+				"intensity": 1.2,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "a07e58"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"bounds cleared": [
+			{
+				"type": "DirectionalLight",
+				"color": "ffc985",
+				"intensity": 2.1,
+				"position": [
+					-26.6585058054,
+					11.1965724383,
+					7.99755174161
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0,
+					0,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.02,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 72,
+						"zoom": 1,
+						"projection": [
+							0.0833333333333,
+							0,
+							0,
+							0,
+							0,
+							0.0833333333333,
+							0,
+							0,
+							0,
+							0,
+							-0.027972027972,
+							0,
+							0,
+							0,
+							-1.01398601399,
+							1
+						],
+						"left": -12,
+						"right": 12,
+						"top": 12,
+						"bottom": -12
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "ffe6c4",
+				"intensity": 1.2,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "a07e58"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"dusk": [
+			{
+				"type": "DirectionalLight",
+				"color": "b9c3dd",
+				"intensity": 0.45,
+				"position": [
+					14.90711985,
+					10.434983895,
+					-23.85139176
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"target": [
+					0,
+					0,
+					0
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						2048,
+						2048
+					],
+					"bias": -0.0004,
+					"normalBias": 0.02,
+					"radius": 3,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "OrthographicCamera",
+						"near": 0.5,
+						"far": 72,
+						"zoom": 1,
+						"projection": [
+							0.0833333333333,
+							0,
+							0,
+							0,
+							0,
+							0.0833333333333,
+							0,
+							0,
+							0,
+							0,
+							-0.027972027972,
+							0,
+							0,
+							0,
+							-1.01398601399,
+							1
+						],
+						"left": -12,
+						"right": 12,
+						"top": 12,
+						"bottom": -12
+					}
+				}
+			},
+			{
+				"type": "HemisphereLight",
+				"color": "5b6884",
+				"intensity": 0.7,
+				"position": [
+					0,
+					1,
+					0
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"groundColor": "3a342c"
+			},
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"unmounted": []
+	},
+	"paper": {
+		"mounted": [],
+		"lights shown": [
+			{
+				"type": "PointLight",
+				"color": "ffd6a5",
+				"intensity": 3.14159265359,
+				"position": [
+					1.5,
+					2.4,
+					-0.75
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 6,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "PointLight",
+				"color": "ffffff",
+				"intensity": 0.785398163397,
+				"position": [
+					-2,
+					1.8,
+					3
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							1,
+							0,
+							0,
+							0,
+							0,
+							1,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 90,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "dbe9ff",
+				"intensity": 12.5663706144,
+				"position": [
+					0.5,
+					3,
+					1
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": true,
+				"distance": 9.5,
+				"decay": 2,
+				"angle": 0.42,
+				"penumbra": 0.3,
+				"target": [
+					0.110581657691,
+					2.17914366308,
+					0.582210305524
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			},
+			{
+				"type": "SpotLight",
+				"color": "ffffff",
+				"intensity": 6.28318530718,
+				"position": [
+					-1,
+					2.2,
+					-2
+				],
+				"visible": true,
+				"layers": 1,
+				"castShadow": false,
+				"distance": 0,
+				"decay": 2,
+				"angle": 0.628318530718,
+				"penumbra": 0,
+				"target": [
+					-1,
+					1.7,
+					-2
+				],
+				"targetInScene": true,
+				"shadow": {
+					"mapSize": [
+						512,
+						512
+					],
+					"bias": 0,
+					"normalBias": 0,
+					"radius": 1,
+					"blurSamples": 8,
+					"intensity": 1,
+					"autoUpdate": true,
+					"focus": 1,
+					"camera": {
+						"type": "PerspectiveCamera",
+						"near": 0.5,
+						"far": 500,
+						"zoom": 1,
+						"projection": [
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							2.14450692051,
+							0,
+							0,
+							0,
+							0,
+							-1.002002002,
+							-1,
+							0,
+							0,
+							-1.001001001,
+							0
+						],
+						"fov": 50,
+						"aspect": 1
+					}
+				}
+			}
+		],
+		"unmounted": []
+	}
+}
