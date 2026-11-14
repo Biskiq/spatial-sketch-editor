@@ -163,8 +163,9 @@ export function createStageViewport(input: StageViewportInput) {
 		const stage = input.facade();
 		if (stage === null) return;
 		input.onBeforeRefresh();
-		// Look through renders the real picture inside its 16:10 capture frame; the
-		// same measured rect is both Camera's evaluation and the Canvas scissor.
+		// Look through renders the real picture inside its 16:10 capture frame.
+		// Camera reads that frame's absolute box; the Canvas scissor reads the
+		// same frame in Stage-local coordinates.
 		let currentRect = rect ?? measure();
 		const framed = input.lookThroughActive() ? measureThroughFrame() : null;
 		if (framed === null) {
