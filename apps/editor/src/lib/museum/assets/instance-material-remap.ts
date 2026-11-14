@@ -4,7 +4,7 @@ import {
 	releaseEffectiveVariant,
 	type TextureLoadScope,
 	type TextureScopeKey
-} from '../materials/texture-cache';
+} from '$lib/render/resources/texture-store';
 import type { EffectiveSceneMaterial } from '../materials/scene-instance-material';
 
 export type RemapKey = { seed: string; rx: number; ry: number; rot: number; scopeId?: string | null };

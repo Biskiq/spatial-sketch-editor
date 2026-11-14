@@ -4,7 +4,7 @@ import {
 	remapModelMaterials,
 	releaseModelMaterialRemap
 } from '$lib/museum/assets/instance-material-remap';
-import { resetTextureCachesForTests } from '$lib/museum/materials/texture-cache';
+import { resetTextureCachesForTests } from '$lib/render/resources/texture-store';
 import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 import type { Texture as ThreeTexture } from 'three';
 

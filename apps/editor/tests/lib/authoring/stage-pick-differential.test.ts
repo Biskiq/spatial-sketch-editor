@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Shape, ShapeGeometry } from 'three';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
+import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import type { SceneEntity } from '@portfolio/project-model';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -52,8 +53,9 @@ async function samples(fixture: typeof fixtures[number], registerLayout = true) 
 	// canonical wall/object renderers and its floor and ceiling meshes. The Stage
 	// turns the visitor ground plinth off (R217.S19): the mat is its ground.
 	const root = new Group();
-	const walls = createWallRepresentation(); walls.update(admitted.snapshot.domain.geometry); root.add(walls.object3d);
-	const objects = createObjectRepresentation(); objects.update(admitted.snapshot.domain.geometry); root.add(objects.object3d);
+	const materials = createMaterialStore();
+	const walls = createWallRepresentation(materials); walls.update(admitted.snapshot.domain.geometry); root.add(walls.object3d);
+	const objects = createObjectRepresentation(materials); objects.update(admitted.snapshot.domain.geometry); root.add(objects.object3d);
 	for (const room of admitted.snapshot.domain.geometry.rooms) {
 		for (const [name, points, height, rotation, invert] of [
 			['floor', room.floorPolygon, room.floorElevation, -Math.PI / 2, true],

@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
-	import { Shape, type Object3D } from 'three';
-	import type { LayoutVec2 } from '@portfolio/layout-core';
-	import type { CompiledLayoutGeometry, CompiledRoom } from '@portfolio/layout-core';
-	import { DEFAULT_FLOOR_COLOR, neutralVisitorRoomPresentation } from './room-presentation';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
-	import { renderIdentity, type LayoutIdentityIndex } from '$lib/render/render-identity';
-	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
-	import MuseumMaterial from '$lib/museum/materials/MuseumMaterial.svelte';
+	import { createRoomRepresentation } from '$lib/render/layout-room-representation';
+	import { createMaterialStore } from '$lib/render/resources/material-store';
+	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import RoomPortal from '$lib/museum/layout/RoomPortal.svelte';
 	import GroundPlinth from '$lib/museum/layout/GroundPlinth.svelte';
 
@@ -38,17 +37,6 @@
 		onIdentity?: (index: LayoutIdentityIndex) => (() => void) | void;
 	} = $props();
 
-	function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
-		const shape = new Shape();
-		const first = points[0];
-		if (!first) return shape;
-		const mapZ = (point: LayoutVec2) => (invertZ ? -point[1] : point[1]);
-		shape.moveTo(first[0], mapZ(first));
-		for (const point of points.slice(1)) shape.lineTo(point[0], mapZ(point));
-		shape.closePath();
-		return shape;
-	}
-
 	const floorElevationById = $derived(
 		new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const))
 	);
@@ -59,37 +47,22 @@
 	}
 
 	/**
-	 * T1.P02.S06 D.3 (H4) — a Room's floor and ceiling `Shape` is retained by the
-	 * Room's compiled `cacheKey`.
+	 * One resource owner for this Canvas subtree (E6/R2a).
 	 *
-	 * The template used to call `polygonShape(...)` inline, so every render built a
-	 * new `Shape`, Threlte saw a changed `args` value and allocated a new
-	 * `ShapeGeometry`, and the previous geometry was never released. Retaining the
-	 * shape means an unchanged Room keeps its geometry across compiles; a changed
-	 * Room (new `cacheKey`) gets one new shape and geometry.
+	 * WebGL objects cannot be shared across contexts, so the store lives with the
+	 * shell: walls, Layout objects and Rooms all acquire their surfaces from it,
+	 * equal descriptors share one instance, and the shell disposes it after the
+	 * representations that lease from it. No representation constructs a material.
 	 */
-	const roomShapes = new Map<string, { key: string; floor: Shape; ceiling: Shape }>();
-
-	function shapesFor(room: CompiledRoom) {
-		const key = room.cacheKey;
-		const existing = roomShapes.get(room.roomId);
-		if (existing && existing.key === key) return existing;
-		const next = {
-			key,
-			floor: polygonShape(room.floorPolygon),
-			ceiling: polygonShape(room.ceilingPolygon, false)
-		};
-		roomShapes.set(room.roomId, next);
-		return next;
-	}
+	const materials = createMaterialStore();
 
 	/**
 	 * The retained Wall representation: one imperative subtree for every compiled
 	 * physical Wall, reconciled in place. It rebuilds only the Walls whose own
-	 * `cacheKey` or whose Junction end geometry moved, keeps one material per tint
-	 * for its whole lifetime, and releases a superseded buffer in the same update.
+	 * `cacheKey` or whose Junction end geometry moved and releases a superseded
+	 * buffer in the same update.
 	 */
-	const walls = createWallRepresentation();
+	const walls = createWallRepresentation(materials);
 
 	// Update and teardown are separate effects on purpose: Svelte runs a
 	// returned cleanup before each re-run of the same effect, and `geometry`
@@ -104,36 +77,50 @@
 	$effect(() => {
 		walls.setHidden(new Set(hiddenWallIds));
 	});
-	$effect(() => () => walls.dispose());
 
 	/**
 	 * The retained Layout object representation (T1.P02.S06 D.3 / H4): one mesh per
-	 * compiled object, reconciled in place, with one material for its lifetime. The
-	 * compiled object's own `cacheKey` is the retention proof.
+	 * compiled object, reconciled in place. The compiled object's own `cacheKey` is
+	 * the retention proof.
 	 */
-	const objects = createObjectRepresentation();
+	const objects = createObjectRepresentation(materials);
 
 	$effect(() => {
 		objects.update(geometry);
 	});
-	$effect(() => () => objects.dispose());
 
-	/** Room floors are shell-owned meshes; this is their id → object index. */
-	const floors = new Map<string, Object3D>();
+	/**
+	 * The retained Room representation (E6/R3): one group per compiled Room, keyed
+	 * by the Room's `cacheKey`, two triangulations and a shared floor buffer, and
+	 * three materials for every Room. The shell mounts its root once — there is no
+	 * per-Room component, geometry component or material component left.
+	 */
+	const rooms = createRoomRepresentation(materials);
+
+	$effect(() => {
+		rooms.update(geometry);
+	});
+
+	/** Every owned id → the object that draws it. Floors resolve through the Rooms. */
 	const identity: LayoutIdentityIndex = {
 		objectOf(kind, id) {
 			if (kind === 'wall') return walls.objectOf(id);
 			if (kind === 'object') return objects.objectOf(id);
-			return floors.get(id) ?? null;
+			return rooms.objectOf(id);
 		}
 	};
 	$effect(() => onIdentity?.(identity));
 
-	$effect(() => {
-		// Bound the shape cache by the rooms this geometry actually has.
-		const present = new Set(geometry.rooms.map((room) => room.roomId));
-		for (const roomId of roomShapes.keys()) if (!present.has(roomId)) roomShapes.delete(roomId);
-	});
+	// One teardown, in dependency order: representations release their buffers and
+	// material leases first, then the store disposes whatever is left.
+	$effect(
+		() => () => {
+			rooms.dispose();
+			walls.dispose();
+			objects.dispose();
+			materials.dispose();
+		}
+	);
 
 	/** A straight frame only fits a rectangular door; an arch keeps its bare reveal. */
 	function isFramedDoor(opening: { kind: string; profile: string }): boolean {
@@ -145,48 +132,11 @@
 	{#if plinth}
 		<GroundPlinth />
 	{/if}
-	{#each geometry.rooms as room (room.roomId)}
-		{@const shapes = shapesFor(room)}
-		<T.Group name={`VisitorRoom:${room.roomId}`}>
-			<T.Mesh
-				name={`VisitorFloor:${room.roomId}`}
-				userData={renderIdentity('floor', room.roomId)}
-				oncreate={(mesh) => {
-					floors.set(room.roomId, mesh);
-					return () => {
-						if (floors.get(room.roomId) === mesh) floors.delete(room.roomId);
-					};
-				}}
-				position={[0, room.floorElevation, 0]}
-				rotation={[-Math.PI / 2, 0, 0]}
-			>
-				<T.ShapeGeometry args={[shapes.floor]} />
-				<T.MeshBasicMaterial color={DEFAULT_FLOOR_COLOR} toneMapped={false} />
-			</T.Mesh>
-			<!--
-				The unlit floor cannot receive, so this keeps its eligibility for an authored
-				light's shadow. With no casting light it draws nothing. Never picked.
-			-->
-			<T.Mesh
-				name={`VisitorFloorShadow:${room.roomId}`}
-				position={[0, room.floorElevation, 0]}
-				rotation={[-Math.PI / 2, 0, 0]}
-				receiveShadow
-				raycast={() => {}}
-			>
-				<T.ShapeGeometry args={[shapes.floor]} />
-				<T.ShadowMaterial opacity={0.3} depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
-			</T.Mesh>
-			<T.Mesh
-				name={`VisitorCeiling:${room.roomId}`}
-				position={[0, room.ceilingElevation, 0]}
-				rotation={[Math.PI / 2, 0, 0]}
-			>
-				<T.ShapeGeometry args={[shapes.ceiling]} />
-				<MuseumMaterial materialId="plaster-warm" surfaceSize={[8, 8]} tint="#111018" textures="off" scope={textureScope} />
-			</T.Mesh>
-		</T.Group>
-	{/each}
+	<!--
+		The retained Room subtree. Mounted once; `update` patches rooms inside it
+		rather than the shell re-creating a component per Room.
+	-->
+	<T is={rooms.object3d} />
 	<!--
 		The retained physical-Wall subtree. It is one object for the shell's whole
 		lifetime; `update` patches meshes inside it rather than the shell re-creating

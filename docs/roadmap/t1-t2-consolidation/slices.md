@@ -122,7 +122,7 @@ Highest value first if the milestone is cut short: **I1, G2, I2 + G1, R1, R2a, R
 `apps/editor/src/lib/authoring/stage/paper-scene.ts`,
 `packages/project-model/src/units/runtime.ts`,
 `apps/editor/src/lib/museum/materials/scene-instance-material.ts`,
-`apps/editor/src/lib/museum/materials/texture-cache.ts`; new helper and fixture under the editor
+`apps/editor/src/lib/render/resources/texture-store.ts`; new helper and fixture under the editor
 `tests/helpers` folder.
 
 **Acceptance.** Each counter is asserted non-zero by one test through its real call site; with no
@@ -497,7 +497,7 @@ RR-7, PF-4. Three pull requests.
 `apps/editor/src/lib/museum/materials/scene-instance-material.ts`,
 `apps/editor/src/lib/museum/materials/SceneInstanceMaterial.svelte`,
 `apps/editor/src/lib/museum/materials/MuseumMaterial.svelte`,
-`apps/editor/src/lib/museum/materials/texture-cache.ts`,
+`apps/editor/src/lib/render/resources/texture-store.ts`,
 `apps/editor/src/lib/museum/assets/FallbackMaterial.svelte`,
 `apps/editor/src/lib/museum/assets/instance-material-remap.ts`,
 `apps/editor/src/lib/museum/entities/EntityArtwork.svelte`,
@@ -505,7 +505,7 @@ RR-7, PF-4. Three pull requests.
 `apps/editor/src/lib/render/WorldEnvironment.svelte`,
 `apps/editor/src/lib/visitor/VisitorEntityGroups.svelte`, `apps/editor/test-lanes.ts`,
 `apps/editor/tests/lib/museum/materials/scene-instance-material.test.ts`,
-`apps/editor/tests/lib/museum/materials/texture-cache.test.ts`,
+`apps/editor/tests/lib/render/resources/texture-store.test.ts`,
 `apps/editor/tests/lib/render/default-wall-material.test.ts`.
 
 **Acceptance.** Material constructors exist in one module; live materials on the Scene fixture equal

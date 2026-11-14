@@ -16,8 +16,9 @@
  *   an unchanged object keeps its object, buffers and material;
  * - a changed object is rebuilt and swapped in place, in compiled order;
  * - an object that left the document is released in the same update;
- * - one material for every object for the representation's whole lifetime, which
- *   is what makes "materials created per edit = 0" true here as well.
+ * - its one surface material is acquired from the Canvas's `MaterialStore`, so a
+ *   compile constructs no material and a second representation drawing the same
+ *   look shares the instance.
  *
  * Shapes and transforms are the ones the Svelte shell drew — a box, plane or
  * profile is a `BoxGeometry` of its dimensions; a cylinder is a unit-height
@@ -35,14 +36,23 @@ import {
 	CylinderGeometry,
 	Group,
 	Mesh,
-	MeshStandardMaterial,
 	SphereGeometry,
 	type BufferGeometry,
 	type Material,
 	type Object3D
 } from 'three';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
+import type { MaterialStore } from '$lib/render/resources/material-store';
+import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 import { countWork, sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core';
+
+/** The neutral Layout-object surface the shell has always drawn (`#e7e4dd`). */
+const OBJECT_SURFACE: StandardMaterialDescriptor = {
+	kind: 'standard',
+	color: 0xe7e4dd,
+	roughness: 0.78,
+	metalness: 0
+};
 
 /** One retained object: what it was built from, the object and its buffers. */
 type RetainedObject = {
@@ -105,13 +115,14 @@ function bufferFor(object: CompiledLayoutObject): { geometry: BufferGeometry; sc
 	return { geometry: new BoxGeometry(...object.dimensions), scale: [1, 1, 1] };
 }
 
-export function createObjectRepresentation(): ObjectRepresentation {
+export function createObjectRepresentation(store: MaterialStore): ObjectRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutObjects';
 	const retained = new Map<string, RetainedObject>();
-	// The neutral Layout-object surface the shell drew (`#e7e4dd`, roughness
-	// 0.78, metalness 0). One instance for the representation's lifetime.
-	const material: Material = new MeshStandardMaterial({ color: 0xe7e4dd, roughness: 0.78, metalness: 0 });
+	// One lease for the representation's lifetime; the store shares the instance
+	// with any other surface drawing this look and disposes it at the last lease.
+	const surface = store.acquire(OBJECT_SURFACE);
+	const material: Material = surface.material;
 	let disposed = false;
 	let previousObjects: CompiledLayoutGeometry['objects'] | undefined;
 	let hidden: ReadonlySet<string> = new Set();
@@ -196,7 +207,7 @@ export function createObjectRepresentation(): ObjectRepresentation {
 				entry.geometry.dispose();
 			}
 			retained.clear();
-			material.dispose();
+			surface.release();
 		}
 	};
 }

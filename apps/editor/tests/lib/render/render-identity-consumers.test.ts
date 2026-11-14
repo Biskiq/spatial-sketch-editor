@@ -98,10 +98,13 @@ describe('the Layout shell owns visibility and identity', () => {
 	});
 
 	it('tags floors by identity and exposes one index over walls, objects and floors', () => {
-		expect(shell).toContain("renderIdentity('floor', room.roomId)");
+		// E6/R3: the floors moved into the retained Room representation, which tags
+		// each floor mesh and owns the id → object index; the shell composes it.
+		expect(read('lib/render/layout-room-representation.ts')).toContain("tagRenderIdentity(floor, 'floor', room.roomId)");
 		expect(shell).toContain('walls.objectOf(id)');
 		expect(shell).toContain('objects.objectOf(id)');
-		expect(shell).toContain('floors.get(id)');
+		expect(shell).toContain('rooms.objectOf(id)');
+		expect(shell).not.toContain('floors.get(id)');
 		expect(shell).toContain('onIdentity?.(identity)');
 	});
 
