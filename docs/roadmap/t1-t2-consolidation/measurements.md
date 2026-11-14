@@ -769,3 +769,6 @@ timeout in the post-open Stage flow. This run does not show whether the cause is
 or the product. The E11 trace numbers above stay the most recent measured values. E12
 changed no executable code after `a9976b90` (token proof in the PR), so this checkpoint is no
 evidence of a regression from E12's comment and documentation commits.
+
+**Owner ruling (E12 close-out):** the E12 result stays unmeasured. There are no further `perf:spot`
+runs for E12. Diagnosing the 300 s accepted-result timeout is deferred to a focused follow-up PR.

@@ -100,10 +100,14 @@ WebGL objects cannot be shared across contexts, so materials, geometry, lights a
 channel exist once per Canvas. Teardown invalidates pending async callbacks, releases family leases,
 then disposes the stores; disposal is idempotent in either order.
 
-Texture sources and variants are the exception: one module-level pool keyed by load scope
-(`TextureLoadScope`). A variant whose count reaches zero is disposed at the next idle point (a
-microtask after the update that released it), so a release-then-reacquire inside one update never
-deletes a GPU texture.
+Texture sources and variants are the one ratified exception: a single shared, module-level pool
+keyed by load scope (`TextureLoadScope`), not a per-Canvas store (owner ruling, E12). It is correct
+across Canvases because Three uploads a shared `Texture` separately into each renderer; disposing a
+variant releases every renderer's copy. A variant whose count reaches zero is disposed at the next
+idle point (a microtask after the update that released it), so a release-then-reacquire inside one
+update never deletes a GPU texture. Consumers (the Scene entity representation and
+`CatalogueMaterial`) acquire and release variants through the pool's functions; the pool owns
+their disposal.
 
 **Guards:** `render/material-factory-boundary` (the Canvas owns the one store),
 `render/light-realizer-boundary`, `render/materials/catalogue-material-lifecycle` (deferred variant
@@ -135,10 +139,11 @@ trigger.
 
 ## Colour pipeline
 
-Gate A accepted `NoToneMapping` at exposure 1.0, sRGB output and an `srgb-linear` working space,
-measured on the shared `createManagedWebGLRenderer` factory, with `MeshLambertMaterial` as the
-artwork baseline. The material store reads that record and sets no tone mapping, exposure or output
-colour space.
+**Rule:** every world surface renders with `NoToneMapping` at exposure 1.0, sRGB output and an
+`srgb-linear` working space, with `MeshLambertMaterial` as the artwork baseline. This is Gate A's
+accepted decision, measured on the shared `createManagedWebGLRenderer` factory, and it stands
+(owner ruling, E12). The material store reads that record and sets no tone mapping, exposure or
+output colour space. The product Canvases do not yet meet it — see the open discrepancy below.
 
 ## Open exceptions and divergences
 
@@ -146,12 +151,9 @@ colour space.
   `OrbitControls` outside the Camera evaluator. It is a named, owner-accepted temporary exception,
   not a second authored Camera; T3 retires it behind a targeted regression and authority test. See
   [Architecture](../architecture.md#semantic-authorities-ratified-destination).
-- **Tone mapping on the product Canvases (Tier 2, unresolved).** The Stage and Preview `<Canvas>`
-  pass no `toneMapping`, and Threlte's Canvas applies its own default (`AgXToneMapping`) to the
-  renderer the factory returns. Gate A measured only the bare factory, and the per-surface parity
-  check was left to Gate B. Whether the product surfaces match Gate A needs an owner ruling; this
-  contract records the gap and does not change behaviour.
-- **Texture pool scope (Tier 2, unresolved).** The renderer design placed the texture store with the
-  per-Canvas resources; the code keeps one module-level pool. Three uploads a shared `Texture`
-  separately into each renderer, so the pool is correct for two Canvases, but promoting it to the
-  per-Canvas set — or ratifying the module-level pool — is an owner decision.
+- **Stage/Preview tone mapping (open; separate Tier 2 correction PR).** The Stage and Preview
+  `<Canvas>` pass no `toneMapping`, so Threlte's Canvas applies its own default (`AgXToneMapping`)
+  to the renderer the factory returns, contrary to the Gate A rule above. Gate A measured only the
+  bare factory and left per-surface parity to Gate B. The correction changes rendered output, so it
+  belongs to its own Tier 2 PR with a per-surface pipeline check; E12 records the discrepancy and
+  changes no behaviour.
