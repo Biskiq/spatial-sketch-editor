@@ -127,7 +127,7 @@ export type SceneOperationPayload =
 	| { readonly kind: 'set-name'; readonly entityId: string; readonly name: string }
 	| {
 			readonly kind: 'create-light';
-			readonly light: 'point' | 'spot' | 'directional';
+			readonly light: 'point' | 'spot';
 			readonly name: string;
 			readonly color: string;
 			readonly intensity: number;
@@ -627,11 +627,7 @@ function readCreateLightPayload(reader: ShapeReader, raw: unknown): SceneOperati
 		'penumbra'
 	]);
 	if (record === null) return null;
-	const light = reader.tag(record.light, `${path}.light`, ['point', 'spot', 'directional']) as
-		| 'point'
-		| 'spot'
-		| 'directional'
-		| null;
+	const light = reader.tag(record.light, `${path}.light`, ['point', 'spot']) as 'point' | 'spot' | null;
 	const name = reader.string(record.name, `${path}.name`);
 	const color = reader.string(record.color, `${path}.color`);
 	const intensity = reader.number(record.intensity, `${path}.intensity`);

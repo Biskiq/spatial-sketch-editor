@@ -197,7 +197,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 		const ray = adapterContext.ray(viewportCss(css, adapterContext));
 		if (ray === null) return null;
 		const kind = armedLightKind(projectId());
-		if (kind === null || kind === 'directional') return null;
+		if (kind === null) return null;
 		const drawn = adapterContext.pickScene(ray);
 		let normal: Vec3 = [0, 1, 0];
 		if (drawn !== null) {
@@ -264,10 +264,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 		let position: Vec3;
 		let rotation: Vec3;
 		let range: number | undefined;
-		if (kind === 'directional') {
-			position = [0, adapterContext.snapshot.domain.datumMeters, 0];
-			rotation = rotationForLightDirection([0, -1, 0]);
-		} else if (kind === 'point') {
+		if (kind === 'point') {
 			position = pending.body;
 			rotation = [0, 0, 0];
 		} else {
@@ -426,7 +423,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 		const refused = livePlacementRefusal();
 		const active = placing ?? refused?.placement ?? placement ?? hoverPlacement;
 		if (active === null) {
-			if (openTaskKind === LIGHT_TASK && kind !== 'directional') {
+			if (openTaskKind === LIGHT_TASK) {
 				previews.push({
 					id: 'light-placement',
 					role: 'subject',

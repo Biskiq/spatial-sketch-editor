@@ -73,15 +73,12 @@ export function drawableSpotHalfAngle(angle: number): number {
 }
 
 export function lightKindLabel(light: SceneLightEntity['light']): string {
-	return light === 'point' ? 'Point light' : light === 'spot' ? 'Spot light' : 'Directional light';
+	return light === 'point' ? 'Point light' : 'Spot light';
 }
 
-/** The Card's Brightness value, e.g. `1× · π`; directional reads in lux. */
-export function formatBrightness(
-	intensity: number,
-	kind: SceneLightEntity['light'] = 'point'
-): string {
-	const unit = kind === 'directional' ? 'lx' : 'cd';
+/** The Card's Brightness value, e.g. `1× · π cd`. */
+export function formatBrightness(intensity: number): string {
+	const unit = 'cd';
 	const stop = brightnessStopForIntensity(intensity);
 	return stop === null
 		? `${intensity.toFixed(2)} ${unit}`

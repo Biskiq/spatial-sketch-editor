@@ -8,11 +8,7 @@
  * every row contributes to its group's one-line summary.
  */
 import type { Vec3 } from '@portfolio/project-model';
-import {
-	formatMultiplier,
-	directionForPresentationAngles,
-	presentationAngles
-} from '$lib/authoring/look/light-presentation';
+import { formatMultiplier } from '$lib/authoring/look/light-presentation';
 import {
 	brightnessForSlider,
 	brightnessSliderValue,
@@ -23,10 +19,10 @@ import {
 	warmthColorAt,
 	warmthName
 } from '$lib/authoring/look/light-color';
-import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import { lightKindLabel, radiansToDegrees } from '$lib/authoring/look/light-units';
 
-export type LightAdvancedKind = 'point' | 'spot' | 'directional';
+export type LightAdvancedKind = 'point' | 'spot';
 export type LightAdvancedLight = {
 	readonly light: LightAdvancedKind;
 	readonly color: string;
@@ -100,8 +96,7 @@ export type LightAdvancedGroup = {
 	summary(light: LightAdvancedLight, datum: number): string;
 };
 
-const ALL: readonly LightAdvancedKind[] = ['point', 'spot', 'directional'];
-const PLACED: readonly LightAdvancedKind[] = ['point', 'spot'];
+const ALL: readonly LightAdvancedKind[] = ['point', 'spot'];
 
 function degrees(radians: number): number {
 	return Math.round(radiansToDegrees(radians) * 10) / 10;
@@ -122,8 +117,7 @@ function softnessLabel(penumbra: number): string {
 }
 
 function targetFromRotation(light: LightAdvancedLight): Vec3 {
-	const angles = presentationAngles(light.rotation);
-	const forward = directionForPresentationAngles(angles.from, angles.heightInSky);
+	const forward = lightForward(light.rotation);
 	return [
 		light.position[0] + forward[0] * 3,
 		light.position[1] + forward[1] * 3,
@@ -226,7 +220,7 @@ const softnessRow: LightAdvancedRow = {
 const reachRow: LightAdvancedRow = {
 	id: 'reach',
 	label: 'Reach',
-	kinds: PLACED,
+	kinds: ALL,
 	control: {
 		kind: 'slider',
 		min: 0.5,
@@ -240,61 +234,10 @@ const reachRow: LightAdvancedRow = {
 	summary: reachLabel
 };
 
-const fromRow: LightAdvancedRow = {
-	id: 'direction-from',
-	label: 'From',
-	kinds: ['directional'],
-	control: {
-		kind: 'slider',
-		min: 0,
-		max: 359,
-		step: 1,
-		unit: '°',
-		field: { min: 0, max: 359, step: 1 }
-	},
-	read: (light) => presentationAngles(light.rotation).from,
-	write: (value, light) => {
-		const angles = presentationAngles(light.rotation);
-		const from = ((Number(value) % 360) + 360) % 360;
-		return {
-			rotation: rotationForLightDirection(
-				directionForPresentationAngles(from, angles.heightInSky)
-			)
-		};
-	},
-	summary: (light) => `From ${Math.round(presentationAngles(light.rotation).from)}°`
-};
-
-const skyHeightRow: LightAdvancedRow = {
-	id: 'direction-height',
-	label: 'Height in sky',
-	kinds: ['directional'],
-	control: {
-		kind: 'slider',
-		min: 0,
-		max: 90,
-		step: 1,
-		ends: ['Horizon', 'Overhead'],
-		unit: '°',
-		field: { min: -90, max: 90, step: 1 }
-	},
-	read: (light) => presentationAngles(light.rotation).heightInSky,
-	write: (value, light) => {
-		const angles = presentationAngles(light.rotation);
-		return {
-			rotation: rotationForLightDirection(
-				directionForPresentationAngles(angles.from, Number(value))
-			)
-		};
-	},
-	summary: (light) =>
-		`${Math.round(presentationAngles(light.rotation).heightInSky)}° high`
-};
-
 const positionRow: LightAdvancedRow = {
 	id: 'position',
 	label: 'Position',
-	kinds: PLACED,
+	kinds: ALL,
 	control: { kind: 'triplet', axes: ['X', 'Height', 'Z'], unit: 'm', relativeHeight: true },
 	read: (light, datum) => [
 		Math.round(light.position[0] * 100) / 100,
@@ -371,7 +314,7 @@ export const LIGHT_ADVANCED_GROUPS: readonly LightAdvancedGroup[] = [
 	{
 		id: 'shape',
 		label: 'Shape',
-		kinds: PLACED,
+		kinds: ALL,
 		rows: [beamRow, softnessRow, reachRow],
 		summary: (light) =>
 			light.light === 'spot'
@@ -379,19 +322,9 @@ export const LIGHT_ADVANCED_GROUPS: readonly LightAdvancedGroup[] = [
 				: reachLabel(light)
 	},
 	{
-		id: 'direction',
-		label: 'Direction',
-		kinds: ['directional'],
-		rows: [fromRow, skyHeightRow],
-		summary: (light) => {
-			const angles = presentationAngles(light.rotation);
-			return `From ${Math.round(angles.from)}° · ${Math.round(angles.heightInSky)}° high`;
-		}
-	},
-	{
 		id: 'position',
 		label: 'Position',
-		kinds: PLACED,
+		kinds: ALL,
 		rows: [positionRow, aimRow],
 		summary: (light, datum) =>
 			`${light.position[0].toFixed(2)} · ${(light.position[1] - datum).toFixed(2)} · ${light.position[2].toFixed(2)} m`

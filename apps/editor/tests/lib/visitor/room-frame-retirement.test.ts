@@ -58,7 +58,7 @@ describe('I3 precondition (b): the Scene codec refuses roomId', () => {
 			if (kinds.has(entity.kind)) continue;
 			kinds.add(entity.kind);
 			const scene = (extra: Record<string, unknown>) => ({
-				formatVersion: 6,
+				formatVersion: 7,
 				textures: [],
 				materials: [],
 				entities: [{ ...entity, ...extra }],

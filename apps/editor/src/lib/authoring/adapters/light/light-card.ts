@@ -2,7 +2,7 @@
  * X8 — the Light Card's read-only facts.
  *
  * What the Card says about a Light (kind, brightness, position, aim, reach, beam,
- * the Directional angles, shadow) and what it says about an object a light
+ * shadow) and what it says about an object a light
  * reaches ("Lit by"). Pure reads of the accepted snapshot and the binding's
  * camera-free scene pick: no lifetime, no lease, no write. The Card's field
  * writer stays `LightCardFields`; its commands stay in `light-actions`.
@@ -22,8 +22,7 @@ import {
 	formatDegrees,
 	formatExactIntensity,
 	formatMeters,
-	formatMultiplier,
-	presentationAngles
+	formatMultiplier
 } from '../../look/light-presentation';
 import {
 	boundsCorners,
@@ -38,7 +37,6 @@ import { isLight, lightById, lightRange, spotTargetFor, type Light } from './lig
 
 /** A light illuminates an object only when it reaches its bounds, not its centre. */
 function illuminates(light: Light, bounds: SceneBounds): boolean {
-	if (light.light === 'directional') return true;
 	const range = lightRange(light);
 	if (light.light === 'point') {
 		if (range === undefined) return true;
@@ -64,17 +62,15 @@ export function lightFacts(light: Light, adapterContext: StageAdapterContext): r
 		{ label: 'Kind', value: lightKindLabel(light.light), fieldId: 'kind' },
 		{
 			label: 'Brightness',
-			value: `${formatMultiplier(light.intensity)} · ${formatExactIntensity(light.intensity, light.light)}`,
+			value: `${formatMultiplier(light.intensity)} · ${formatExactIntensity(light.intensity)}`,
 			fieldId: 'brightness'
 		}
 	];
-	if (light.light !== 'directional') {
-		facts.push({
-			label: 'Position',
-			value: `${formatMeters(light.position[0])} · ${formatMeters(light.position[1])} · ${formatMeters(light.position[2])}`,
-			fieldId: 'position'
-		});
-	}
+	facts.push({
+		label: 'Position',
+		value: `${formatMeters(light.position[0])} · ${formatMeters(light.position[1])} · ${formatMeters(light.position[2])}`,
+		fieldId: 'position'
+	});
 	if (light.light === 'spot') {
 		const target = spotTargetFor(light, adapterContext);
 		facts.push({
@@ -92,15 +88,6 @@ export function lightFacts(light: Light, adapterContext: StageAdapterContext): r
 			label: 'Beam',
 			value: formatDegrees(radiansToDegrees(light.angle)),
 			fieldId: 'angle'
-		});
-	}
-	if (light.light === 'directional') {
-		const angles = presentationAngles(light.rotation);
-		facts.push({ label: 'From', value: formatDegrees(angles.from), fieldId: 'from' });
-		facts.push({
-			label: 'Height in sky',
-			value: formatDegrees(angles.heightInSky),
-			fieldId: 'height-in-sky'
 		});
 	}
 	facts.push({

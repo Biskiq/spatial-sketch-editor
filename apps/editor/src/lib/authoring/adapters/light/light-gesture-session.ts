@@ -2,8 +2,7 @@
  * X8 — the Light mark-gesture session.
  *
  * One captured edit of the selected light: Move, Height, Aim, Reach, Beam, Soft
- * edge and the Directional From / Height-in-sky beads. The session owns the
- * captured copy and its frozen dial frame, takes the binding's one gesture lease
+ * edge. The session owns the captured copy, takes the binding's one gesture lease
  * on press, publishes the dragged copy as a session-only preview, and on
  * release commits exactly one `update-light` through the Scene's shared Form
  * command path (so a refusal restores the accepted value). It never edits the
@@ -23,25 +22,21 @@ import type {
 import { acceptFormCommand } from '../scene/form-card-command';
 import { lightForward, rotationForLightDirection } from '../../look/light-aim';
 import {
-	directionForPresentationAngles,
 	drawableSpotAngle,
 	LIGHT_MIN_RANGE_METERS,
 	penumbraForInnerRadius,
-	pointReachRingRadius,
-	presentationAngles
+	pointReachRingRadius
 } from '../../look/light-presentation';
 import {
 	add,
 	closestAxisPoint,
 	distance,
 	horizontalDistance,
-	normalize,
 	pointOf,
 	rayPlane,
 	scale,
 	sub
 } from './light-math';
-import { dialFrameFor, type LightDialFrame } from './light-guides';
 import {
 	LIGHT_DEFAULT_SPOT_ANGLE,
 	cloneLight,
@@ -65,8 +60,6 @@ type GestureKind =
 	| 'range'
 	| 'angle'
 	| 'penumbra'
-	| 'azimuth'
-	| 'elevation'
 	| 'height';
 
 type Gesture = {
@@ -76,11 +69,6 @@ type Gesture = {
 	readonly pointRangePlaneY?: number;
 	/** A Spot Move keeps a surface-bound target as a fixed world point. */
 	readonly fixedTarget?: Vec3;
-	/** The Directional presentation bearing at press, kept while overhead. */
-	readonly lastFrom?: number;
-	/** The dial frame is frozen from press to release of either bead. */
-	readonly dialCenter?: Vec3;
-	readonly dialRadius?: number;
 };
 
 /** How a mark press resolved: started, refused by the lease, or not a Light mark. */
@@ -91,8 +79,6 @@ export type LightGestureSession = {
 	readonly active: boolean;
 	/** The dragged copy of the light, while captured; the marks and guides read it. */
 	readonly entity: Light | null;
-	/** The dial frame frozen at press, while either Directional bead is held. */
-	readonly dialFrame: LightDialFrame | null;
 	/** Press on a mark: capture the selected light, then take the lease. */
 	begin(
 		intent: StagePointerIntent,
@@ -142,11 +128,7 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 								? 'angle'
 								: handleId === 'light-penumbra'
 									? 'penumbra'
-									: handleId === 'light-azimuth'
-										? 'azimuth'
-										: handleId === 'light-elevation'
-											? 'elevation'
-											: null;
+									: null;
 		if (kind === null) return null;
 		refusal.clear();
 		if (kind === 'range' && entity.light === 'point') {
@@ -161,20 +143,14 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 					: entity.position[1]
 			};
 		}
-		const angles = presentationAngles(entity.rotation);
 		const target =
 			kind === 'move' && entity.light === 'spot' && !shift
 				? spotTargetFor(entity, adapterContext)
 				: null;
-		const dial = kind === 'azimuth' || kind === 'elevation'
-			? dialFrameFor(adapterContext, services.stage)
-			: null;
 		return {
 			kind,
 			entity: cloneLight(entity),
-			...(target?.surfaceBound ? { fixedTarget: [...target.target] as Vec3 } : {}),
-			lastFrom: angles.from,
-			...(dial === null ? {} : { dialCenter: [...dial.center] as Vec3, dialRadius: dial.radius })
+			...(target?.surfaceBound ? { fixedTarget: [...target.target] as Vec3 } : {})
 		};
 	}
 
@@ -269,41 +245,6 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 			);
 			return;
 		}
-		if (gesture.kind === 'azimuth') {
-			const point = pointOf(ray, adapterContext.snapshot.domain.datumMeters);
-			if (point === null) return;
-			const angles = presentationAngles(current.rotation, gesture.lastFrom ?? 0);
-			const origin: Vec3 = gesture.dialCenter ?? [0, adapterContext.snapshot.domain.datumMeters, 0];
-			const from =
-				((Math.atan2(point[0] - origin[0], -(point[2] - origin[2])) * 180) / Math.PI +
-					360) %
-				360;
-			current.rotation = rotationForLightDirection(
-				directionForPresentationAngles(from, angles.heightInSky)
-			);
-			return;
-		}
-		if (gesture.kind === 'elevation') {
-			const worldMark: Vec3 = gesture.dialCenter ?? [0, adapterContext.snapshot.domain.datumMeters, 0];
-			const angles = presentationAngles(current.rotation, gesture.lastFrom ?? 0);
-			const azimuth = (angles.from * Math.PI) / 180;
-			const horizontal: Vec3 = [Math.sin(azimuth), 0, -Math.cos(azimuth)];
-			const normal = normalize([-horizontal[2], 0, horizontal[0]]);
-			const point = rayPlane(ray, worldMark, normal);
-			if (point === null) return;
-			const heightInSky = Math.min(
-				90,
-				Math.max(
-					5,
-					(Math.atan2(point[1] - worldMark[1], horizontalDistance(worldMark, point)) *
-						180) /
-						Math.PI
-				)
-			);
-			current.rotation = rotationForLightDirection(
-				directionForPresentationAngles(angles.from, heightInSky)
-			);
-		}
 	}
 
 	async function commitGesture(
@@ -355,11 +296,6 @@ export function createLightGestureSession(deps: LightGestureDeps): LightGestureS
 		},
 		get entity() {
 			return gesture?.entity ?? null;
-		},
-		get dialFrame() {
-			return gesture?.dialCenter !== undefined && gesture.dialRadius !== undefined
-				? { center: gesture.dialCenter, radius: gesture.dialRadius }
-				: null;
 		},
 		begin(intent, adapterContext, shift) {
 			const next = beginGesture(intent.handleId, adapterContext, shift);

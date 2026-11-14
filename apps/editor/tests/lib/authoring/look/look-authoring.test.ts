@@ -113,11 +113,18 @@ describe('T2 P0 — the Look authoring seam', () => {
 			label: 'Lights',
 			entries: [
 				{ id: 'light:point', label: 'Point', summary: 'A light with no direction or beam.' },
-				{ id: 'light:spot', label: 'Spot', summary: 'A cone aimed at a surface.' },
-				{ id: 'light:directional', label: 'Directional', summary: 'Parallel light, like the sun.' }
+				{ id: 'light:spot', label: 'Spot', summary: 'A cone aimed at a surface.' }
 			]
 		});
 		host.look.pickLibraryEntry('missing');
+		expect(host.notice()).toBe('');
+	});
+
+	it('has no Directional shelf entry: a stale pick writes nothing and arms nothing', () => {
+		const host = harness();
+		expect(host.look.libraryShelf.entries.map((entry) => entry.id)).not.toContain('light:directional');
+		host.look.pickLibraryEntry('light:directional');
+		expect(host.accept).not.toHaveBeenCalled();
 		expect(host.notice()).toBe('');
 	});
 });

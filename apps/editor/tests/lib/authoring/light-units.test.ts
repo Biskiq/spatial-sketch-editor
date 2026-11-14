@@ -23,14 +23,13 @@ describe('S3 light units', () => {
 		for (const stop of [0.25, 0.5, 1, 2, 4]) {
 			expect(brightnessStopForIntensity(intensityForBrightnessStop(stop))).toBe(stop);
 		}
-		// Directional intensity is lux; point/spot intensity is candela.
-		expect(formatBrightness(Math.PI, 'directional')).toContain('lx');
-		expect(formatBrightness(Math.PI, 'point')).toContain('cd');
+		// Point and Spot intensity is candela.
+		expect(formatBrightness(Math.PI)).toContain('cd');
 		// Zero is a valid custom intensity, never the nearest 0.25× stop.
 		expect(brightnessStopForIntensity(0)).toBeNull();
-		expect(formatBrightness(0, 'point')).toBe('0.00 cd');
+		expect(formatBrightness(0)).toBe('0.00 cd');
 		expect(brightnessStopForIntensity(2.5)).toBeNull();
-		expect(formatBrightness(2.5, 'directional')).toBe('2.50 lx');
+		expect(formatBrightness(2.5)).toBe('2.50 cd');
 		expect(brightnessStopForIntensity(Number.NaN)).toBeNull();
 	});
 

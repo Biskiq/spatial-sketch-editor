@@ -7,7 +7,7 @@
 	/**
 	 * T2 gallery UX recovery — the Light Card.
 	 *
-	 * Everyday rows: Warmth · Brightness · Reach | Beam | Direction · Shadow.
+	 * Everyday rows: Warmth · Brightness · Reach | Beam · Shadow.
 	 * Advanced expands in the same Card, below them, as a registry of groups with
 	 * one group open at a time. A group is one 32 px row: name left, current-value
 	 * summary right. No group that has no control for the kind is rendered and
@@ -32,12 +32,7 @@
 		radiansToDegrees,
 		intensityForBrightnessStop
 	} from '$lib/authoring/look/light-units';
-	import {
-		directionForPresentationAngles,
-		formatExactIntensity,
-		formatMultiplier,
-		presentationAngles
-	} from '$lib/authoring/look/light-presentation';
+	import { formatExactIntensity, formatMultiplier } from '$lib/authoring/look/light-presentation';
 	import {
 		colourAmount,
 		hexToHsv,
@@ -47,7 +42,6 @@
 		warmthColorAt,
 		warmthName
 	} from '$lib/authoring/look/light-color';
-	import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
 	import {
 		advancedGroupsFor,
 		advancedRowsFor,
@@ -87,8 +81,6 @@
 	let previewLight = $state.raw<Light | null>(null);
 	let reach = $state('');
 	let beam = $state('');
-	let fromField = $state('');
-	let heightField = $state('');
 	let message = $state('');
 	let busy = $state(false);
 	let dialActive = $state(false);
@@ -107,7 +99,6 @@
 		colour: 'lightColour',
 		brightness: 'lightBrightness',
 		shape: 'lightShape',
-		direction: 'direction',
 		position: 'lightPosition',
 		shadows: 'lightShadows'
 	};
@@ -161,9 +152,6 @@
 		const range = rangeOf(next);
 		reach = range === undefined ? '' : range.toFixed(2);
 		beam = next.light === 'spot' ? String(roundedDegrees(next.angle)) : '';
-		const angles = presentationAngles(next.rotation);
-		fromField = String(Math.round(angles.from * 10) / 10);
-		heightField = String(Math.round(angles.heightInSky * 10) / 10);
 	}
 
 	async function commit(update: Record<string, unknown>): Promise<boolean> {
@@ -261,25 +249,6 @@
 		void commit({ angle: radians });
 	}
 
-	function commitDirection(): void {
-		const from = Number(fromField.trim());
-		const height = Number(heightField.trim());
-		if (
-			!Number.isFinite(from) ||
-			!Number.isFinite(height) ||
-			from < 0 ||
-			from > 359 ||
-			height < 0 ||
-			height > 90
-		) {
-			message = 'From is 0…359° and Height is 0…90°.';
-			return;
-		}
-		void commit({
-			rotation: rotationForLightDirection(directionForPresentationAngles(from, height))
-		});
-	}
-
 	function exactKey(event: KeyboardEvent, run: () => void): void {
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -309,9 +278,8 @@
 		return brightnessStopForIntensity(value.intensity) === null;
 	}
 
-	function brightnessTitle(stop: number, kindOfLight: Light['light']): string {
-		const unit = kindOfLight === 'directional' ? 'lx' : 'cd';
-		return `${stop}× · ${intensityForBrightnessStop(stop).toFixed(3)} ${unit}`;
+	function brightnessTitle(stop: number): string {
+		return `${stop}× · ${intensityForBrightnessStop(stop).toFixed(3)} cd`;
 	}
 
 	function toggleGroup(group: LightAdvancedGroup): void {
@@ -355,8 +323,6 @@
 
 	function fieldHook(row: LightAdvancedRow): string | undefined {
 		if (row.id === 'brightness') return 'exact-intensity';
-		if (row.id === 'direction-from') return 'azimuth';
-		if (row.id === 'direction-height') return 'elevation';
 		return undefined;
 	}
 
@@ -475,7 +441,7 @@
 						data-field={`brightness-${stop}`}
 						class:current={brightnessStopForIntensity(light.intensity) === stop}
 						aria-pressed={brightnessStopForIntensity(light.intensity) === stop}
-						title={brightnessTitle(stop, light.light)}
+						title={brightnessTitle(stop)}
 						onclick={() => setBrightness(stop)}
 					>{stop}×</button>
 				{/each}
@@ -536,42 +502,6 @@
 			</div>
 		{/if}
 
-		{#if light.light === 'directional'}
-			<div class="row direction">
-				<span class="label">Direction</span>
-				<div class="pair">
-					<label>
-						<span>From</span>
-						<input
-							type="number"
-							data-field="direction-from"
-							min="0"
-							max="359"
-							step="1"
-							value={fromField}
-							oninput={(event) => (fromField = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitDirection)}
-						/>
-						<em>°</em>
-					</label>
-					<label>
-						<span>Height</span>
-						<input
-							type="number"
-							data-field="direction-height"
-							min="0"
-							max="90"
-							step="1"
-							value={heightField}
-							oninput={(event) => (heightField = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitDirection)}
-						/>
-						<em>°</em>
-					</label>
-				</div>
-			</div>
-		{/if}
-
 		<label class="row toggle">
 			<span class="label">Shadow</span>
 			<span class="chips">
@@ -587,7 +517,7 @@
 
 		{#if message !== ''}<p class="refusal" role="status">{message}</p>{/if}
 		<p class="readout">
-			{formatMultiplier(light.intensity)} · {formatExactIntensity(light.intensity, light.light)} · {lightKindLabel(light.light)}
+			{formatMultiplier(light.intensity)} · {formatExactIntensity(light.intensity)} · {lightKindLabel(light.light)}
 		</p>
 
 		{#if detailOpen}
@@ -862,20 +792,6 @@
 	}
 	.note {
 		grid-column: 2;
-	}
-	.pair {
-		display: flex;
-		gap: 8px;
-	}
-	.pair label {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		color: var(--shell-ink-2);
-		font-size: 10px;
-	}
-	.pair input {
-		width: 56px;
 	}
 	.toggle .chips {
 		gap: 6px;

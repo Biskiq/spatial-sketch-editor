@@ -588,12 +588,12 @@ describe('scene document codec', () => {
 		const badLight = cloneDocument();
 		badLight.entities.push({
 			kind: 'light',
-			id: 'bad-dir',
-			name: 'Dir',
-			light: 'directional',
+			id: 'bad-point',
+			name: 'Point',
+			light: 'point',
 			color: '#ffffff',
 			intensity: 1,
-			range: 4,
+			angle: 0.5,
 			castShadow: true,
 			position: [0, 4, 0],
 			rotation: [0, 0, 0]
@@ -601,8 +601,49 @@ describe('scene document codec', () => {
 		expectIssue(
 			badLight,
 			'unexpected_property',
-			`$.entities[${badLight.entities.length - 1}].range`
+			`$.entities[${badLight.entities.length - 1}].angle`
 		);
+	});
+
+	it('refuses the retired Directional light kind with a typed error naming the entity', () => {
+		const document = cloneDocument();
+		document.entities.push({
+			kind: 'light',
+			id: 'sun-1',
+			name: 'Sun',
+			light: 'directional',
+			color: '#ffffff',
+			intensity: 1,
+			castShadow: true,
+			position: [0, 4, 0],
+			rotation: [0, 0, 0]
+		} as never);
+		const path = `$.entities[${document.entities.length - 1}].light`;
+		const result = validateSceneDocument(document);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		const issue = result.issues.find((candidate) => candidate.path === path);
+		expect(issue?.code).toBe('unsupported_light_kind');
+		expect(issue?.message).toContain('This project uses a light kind that is no longer supported');
+		expect(issue?.message).toContain('"sun-1"');
+		// It is refused, never converted, and never reported as a generic bad value.
+		expect(result.issues.map((candidate) => candidate.code)).not.toContain('invalid_light');
+	});
+
+	it('still reports an unknown light kind as invalid_light, distinct from the retired kind', () => {
+		const document = cloneDocument();
+		document.entities.push({
+			kind: 'light',
+			id: 'odd',
+			name: 'Odd',
+			light: 'area',
+			color: '#ffffff',
+			intensity: 1,
+			castShadow: true,
+			position: [0, 4, 0],
+			rotation: [0, 0, 0]
+		} as never);
+		expectIssue(document, 'invalid_light', `$.entities[${document.entities.length - 1}].light`);
 	});
 
 	it('round-trips texture and material instance IDs with renderable references', () => {
@@ -829,10 +870,10 @@ describe('world-local roomId discipline (P23.0 F0 review)', () => {
 		expectIssue(keyed, 'room_id_forbidden_in_world_local', '$.connections[0].viewTracks.forward[0].roomId');
 	});
 
-	it('canonicalizes directional lights without a roomId key (round-trip green)', () => {
+	it('canonicalizes point lights without a roomId key (round-trip green)', () => {
 		const document = worldDocument();
 		(document as { entities: unknown[] }).entities = [
-			{ kind: 'light', id: 'sun', name: 'Sun', light: 'directional', color: '#ffffff', intensity: 1, castShadow: false, position: [0, 5, 0], rotation: [0, 0, 0] }
+			{ kind: 'light', id: 'lamp', name: 'Lamp', light: 'point', color: '#ffffff', intensity: 1, castShadow: false, position: [0, 5, 0], rotation: [0, 0, 0] }
 		];
 		const first = validateSceneDocument(document);
 		expect(first.success).toBe(true);

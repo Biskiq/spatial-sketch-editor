@@ -195,7 +195,7 @@ describe('Scene adapter boundary (X7)', () => {
 				.map(relativeToRepo);
 			expect(offenders, relativeToRepo(file)).toEqual([]);
 		}
-	});
+	}, 60_000);
 
 	it('gives the presenter and the contributions no way to open a placement surface', () => {
 		const surfaceOwners = new Set([

@@ -150,7 +150,7 @@ export type SceneMaterialInstance = {
 };
 
 export type ScenePrimitiveKind = 'box' | 'plane' | 'cylinder' | 'sphere';
-export type SceneLightKind = 'point' | 'spot' | 'directional';
+export type SceneLightKind = 'point' | 'spot';
 
 export type SceneEntityTransform = {
   position: Vec3;
@@ -289,13 +289,6 @@ export type SceneLightEntity =
 			range?: number;
 			angle: number;
 			penumbra?: number;
-			castShadow: boolean;
-	  })
-	| (SceneEntityBase & {
-			kind: 'light';
-			light: 'directional';
-			color: string;
-			intensity: number;
 			castShadow: boolean;
 	  });
 
@@ -585,27 +578,16 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
     };
   }
 
-  if (entity.light === 'spot') {
-    return {
-      ...transform,
-      kind: 'light',
-      light: 'spot',
-      color: entity.color,
-      intensity: entity.intensity,
-      angle: entity.angle,
-      castShadow: entity.castShadow,
-      ...(entity.range === undefined ? {} : { range: entity.range }),
-      ...(entity.penumbra === undefined ? {} : { penumbra: entity.penumbra })
-    };
-  }
-
   return {
     ...transform,
     kind: 'light',
-    light: 'directional',
+    light: 'spot',
     color: entity.color,
     intensity: entity.intensity,
-    castShadow: entity.castShadow
+    angle: entity.angle,
+    castShadow: entity.castShadow,
+    ...(entity.range === undefined ? {} : { range: entity.range }),
+    ...(entity.penumbra === undefined ? {} : { penumbra: entity.penumbra })
   };
 }
 
