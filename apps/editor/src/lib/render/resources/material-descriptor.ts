@@ -118,8 +118,11 @@ export type ImportedMaterialDescriptor = {
 	readonly mesh: number;
 	/** The material slot on that mesh; `0` for a single material. */
 	readonly slot: number;
-	/** Absent means `false`, as Three's default. */
-	readonly wireframe?: boolean;
+	/**
+	 * Always explicit. A look that names `false` overrides a source whose own material
+	 * draws wireframe, so the source's flag never decides identity or appearance.
+	 */
+	readonly wireframe: boolean;
 	/** The resolved look that replaces the imported material, if any. */
 	readonly remap?: Omit<StandardMaterialDescriptor, 'kind'>;
 };

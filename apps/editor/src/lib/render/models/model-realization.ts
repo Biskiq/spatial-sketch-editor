@@ -214,7 +214,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 			asset: options.asset,
 			mesh: meshIndex,
 			slot,
-			...(wireframe ? { wireframe: true } : {})
+			wireframe
 		};
 		if (bound === null) return options.store.acquire(identity, undefined, templateMaterial);
 		return options.store.acquire({ ...identity, remap: bound.remap }, bound.maps);

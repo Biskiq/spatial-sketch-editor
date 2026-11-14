@@ -136,24 +136,17 @@ function constructImported(
 	source: Material | undefined
 ): Material {
 	if (descriptor.remap !== undefined) {
-		return construct(
-			{
-				kind: 'standard',
-				...descriptor.remap,
-				...(descriptor.wireframe === undefined ? {} : { wireframe: descriptor.wireframe })
-			},
-			maps
-		);
+		return construct({ kind: 'standard', ...descriptor.remap, wireframe: descriptor.wireframe }, maps);
 	}
 	if (source === undefined) {
 		throw new Error(
 			`imported material ${descriptor.asset} mesh ${descriptor.mesh} slot ${descriptor.slot} needs its source material`
 		);
 	}
+	// The descriptor's wireframe always wins: an explicit false overrides a source
+	// whose own material draws wireframe, and the source is never mutated.
 	const clone = source.clone();
-	if (descriptor.wireframe !== undefined && 'wireframe' in clone) {
-		(clone as Material & { wireframe: boolean }).wireframe = descriptor.wireframe;
-	}
+	if ('wireframe' in clone) (clone as Material & { wireframe: boolean }).wireframe = descriptor.wireframe;
 	return clone;
 }
 

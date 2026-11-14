@@ -125,6 +125,21 @@ describe('G4 — exact shadow-update counts through the mounted wiring', () => {
 		expect(plain.count()).toBe(1);
 	});
 
+	it('releasing the last playing model ends the per-frame rule without a stop event', async () => {
+		const session = await begin(true);
+		resources().casters.publish({ kind: 'animating', entity: 'model-host:9', playing: true });
+		flushSync();
+		frames(FRAMES);
+		expect(session.count()).toBe(FRAMES);
+		resources().casters.publish({ kind: 'released', entity: 'model-host:9' });
+		flushSync();
+		frames(FRAMES);
+		// The release renders once; the map is then static, with nothing playing.
+		expect(session.count()).toBe(FRAMES + 1);
+		expect(resources().casters.playing()).toBe(0);
+		expect(countingShadowMap.autoUpdate).toBe(false);
+	});
+
 	it('a playing animation renders every frame, and one pass more when it stops', async () => {
 		const session = await begin(true);
 		resources().casters.publish({ kind: 'animating', entity: 'model-host:1', playing: true });

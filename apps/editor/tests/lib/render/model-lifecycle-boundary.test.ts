@@ -96,7 +96,18 @@ describe('model arrival: one caster channel (E8/G4)', () => {
 	it('a stale load mounts nothing: every arrival path is gated by the token the load began with', () => {
 		const host = read(HOST);
 		expect(host).toMatch(/const token = gate\.begin\(\);/);
-		expect(host).toMatch(/if \(!gate\.accepts\(token\)\) return;/);
+		expect(host).toMatch(/if \(!gltf \|\| !gate\.accepts\(token\)\) return;/);
+		expect(host).toMatch(/if \(!gate\.accepts\(current\.token\)\) return;/);
 		expect(host).toMatch(/gate\.close\(\);/);
+	});
+
+	it('a superseded texture completion applies nothing: each completion is checked against the generation it began under', () => {
+		const host = read(HOST);
+		expect(host).toMatch(/const id = generation;/);
+		expect(host).toMatch(/if \(id !== generation\) return;/);
+	});
+
+	it('mounts the drawn instance with explicit external ownership, so Threlte never disposes its leases or template', () => {
+		expect(read(HOST)).toMatch(/<T is=\{instance\} dispose=\{false\} \/>/);
 	});
 });

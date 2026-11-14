@@ -9,8 +9,15 @@
    * caster events on the Canvas's channel, so the shadow owner invalidates once per
    * arrival and once per release, not every frame (G4).
    *
-   * A load that resolves after its host has moved on is rejected by the arrival
-   * gate: a replaced URL, a replaced look or an unmounted host never mounts a clone.
+   * Presentation is generational. Every arrival, style change and teardown starts a
+   * new generation; a texture completion applies only while it is still the newest,
+   * so a superseded look never mounts or restyles, and the newest look always gets
+   * its own completion. A load that resolves after its host has moved on is rejected
+   * by the arrival gate, so a replaced URL or an unmounted host never mounts a clone.
+   *
+   * The instance is mounted with `dispose={false}`: the store owns every material it
+   * draws and the loader's cache owns the template geometry, so Threlte's disposal
+   * registry must never free either.
    */
   import { untrack } from 'svelte';
   import { T } from '@threlte/core';
@@ -34,7 +41,8 @@
     nextModelEntityId,
     realizeModel,
     texturesReady,
-    type ModelRealization
+    type ModelRealization,
+    type ModelStyle
   } from '$lib/render/models/model-realization';
   import { useRenderResources } from '$lib/render/resources/render-resources';
   import { loadEffectiveTextures, type TextureLoadScope } from '$lib/render/resources/texture-store';
@@ -139,7 +147,98 @@
       shadows && receiveShadow
     ].join('|');
   }
-  let applied: { readonly realization: ModelRealization; readonly key: string } | null = null;
+
+  /** An arrived template, as the load that produced it named it. Plain data, never reactive. */
+  type Arrival = {
+    readonly token: number;
+    readonly url: string;
+    readonly template: Object3D;
+    readonly animationNames: string[];
+  };
+  /** The style one presentation applies, captured when the presentation starts. */
+  type Presentation = {
+    readonly key: string;
+    readonly effective: EffectiveSceneMaterial | null;
+    readonly scope: TextureLoadScope | null;
+    readonly wireframe: boolean;
+    readonly castShadow: boolean;
+    readonly receiveShadow: boolean;
+  };
+
+  let arrival: Arrival | null = null;
+  /** Bumped by every presentation, arrival and teardown: only the newest may apply. */
+  let generation = 0;
+  /** The style key the drawn instance shows now; showing the same key again is a no-op. */
+  let shown: string | null = null;
+
+  /**
+   * Show a presentation on the arrived template. The first show mounts the instance;
+   * later shows restyle it. A gate-closed arrival never shows.
+   */
+  function show(current: Arrival, look: Presentation, textured: boolean): void {
+    if (!gate.accepts(current.token)) return;
+    const surface =
+      look.effective === null ? null : modelLookFor(look.effective, look.scope, textured);
+    const style: ModelStyle = {
+      look: surface,
+      wireframe: look.wireframe,
+      castShadow: look.castShadow,
+      receiveShadow: look.receiveShadow
+    };
+    const key = `${look.key}|${textured}`;
+    if (realization === null) {
+      const next = realizeModel(current.template, {
+        asset: current.url,
+        store: resources.materials,
+        ...style
+      });
+      const inspection = inspectModel(next.root, current.animationNames);
+      realization = next;
+      shown = key;
+      instance = next.root;
+      rawBounds = inspection.bounds;
+      rawMetrics = inspection.metrics;
+      loadStatus = 'ready';
+      resources.casters.publish({ kind: 'arrived', entity });
+      return;
+    }
+    if (shown === key) return;
+    realization.restyle(style);
+    shown = key;
+  }
+
+  /**
+   * Present the current style on the arrived template. An unscoped look mounts at
+   * once, untextured, and remaps when its textures resolve. A scoped look waits for
+   * its textures before the first mount, so its mounted frame is already textured.
+   * Every completion is checked against the generation it started under.
+   */
+  function present(): void {
+    const current = arrival;
+    if (current === null || !gate.accepts(current.token)) return;
+    const look: Presentation = {
+      key: styleKeyOf(),
+      effective,
+      scope,
+      wireframe,
+      castShadow: shadows && castShadow,
+      receiveShadow: shadows && receiveShadow
+    };
+    generation += 1;
+    const id = generation;
+    const active = look.effective;
+    if (active === null) {
+      show(current, look, false);
+      return;
+    }
+    if (look.scope === null) show(current, look, false);
+    void loadEffectiveTextures(active, look.scope)
+      .catch(() => undefined)
+      .then((result) => {
+        if (id !== generation) return;
+        show(current, look, texturesReady(result));
+      });
+  }
 
   // The load and its arrival. A new URL or a disabled host closes the previous
   // gate, and that teardown releases the instance the previous load mounted.
@@ -161,38 +260,13 @@
     const resource = loader.load(url);
     const unsubscribeModel = resource.subscribe((gltf) => {
       if (!gltf || !gate.accepts(token)) return;
-      const template = gltf.scene;
-      const animationNames = gltf.animations.map((animation) => animation.name).filter(Boolean);
-      const mount = (textured: boolean): void => {
-        // Textures resolve asynchronously: only the arrival that is still current mounts.
-        if (!gate.accepts(token)) return;
-        const active = effective;
-        const next = realizeModel(template, {
-          asset: url,
-          store: resources.materials,
-          look: active === null ? null : modelLookFor(active, scope, textured),
-          wireframe,
-          castShadow: shadows && castShadow,
-          receiveShadow: shadows && receiveShadow
-        });
-        const inspection = inspectModel(next.root, animationNames);
-        realization = next;
-        applied = { realization: next, key: styleKeyOf() };
-        instance = next.root;
-        rawBounds = inspection.bounds;
-        rawMetrics = inspection.metrics;
-        loadStatus = 'ready';
-        resources.casters.publish({ kind: 'arrived', entity });
+      arrival = {
+        token,
+        url,
+        template: gltf.scene,
+        animationNames: gltf.animations.map((animation) => animation.name).filter(Boolean)
       };
-      if (effective === null) {
-        mount(false);
-        return;
-      }
-      // The textures resolve before the first mount, so the mounted frame is already
-      // textured. A failed load mounts the untextured look, as the GLB's own did.
-      void loadEffectiveTextures(effective, scope)
-        .catch(() => undefined)
-        .then((result) => mount(texturesReady(result)));
+      untrack(() => present());
     });
     const unsubscribeError = resource.error.subscribe((loadError) => {
       if (!loadError || !gate.accepts(token)) return;
@@ -207,6 +281,8 @@
 
     return () => {
       gate.close();
+      arrival = null;
+      generation += 1;
       unsubscribeModel();
       unsubscribeError();
       if (realization !== null) {
@@ -214,42 +290,17 @@
         realization.release();
         realization = null;
       }
+      shown = null;
       instance = undefined;
     };
   });
 
-  // Re-style the drawn instance when its look, wireframe or shadow flags change.
-  // The arrival already styled it with the same key, so that case does nothing.
-  let latestKey = '';
+  // Every style input (look, wireframe, shadow flags) starts one presentation of the
+  // arrived template. Reading the key tracks each input; the presentation itself is
+  // untracked, so its own writes cannot re-run this effect.
   $effect(() => {
-    const current = realization;
-    if (current === null) return;
-    const key = styleKeyOf();
-    if (applied !== null && applied.realization === current && applied.key === key) return;
-    const activeEffective = effective;
-    const activeScope = scope;
-    const flags = {
-      wireframe,
-      castShadow: shadows && castShadow,
-      receiveShadow: shadows && receiveShadow
-    };
-    latestKey = key;
-    const restyle = (textured: boolean): void => {
-      // A newer style, or a released instance, supersedes this one: never apply it.
-      if (realization !== current || latestKey !== key) return;
-      current.restyle({
-        look: activeEffective === null ? null : modelLookFor(activeEffective, activeScope, textured),
-        ...flags
-      });
-      applied = { realization: current, key };
-    };
-    if (activeEffective === null) {
-      restyle(false);
-      return;
-    }
-    void loadEffectiveTextures(activeEffective, activeScope)
-      .catch(() => undefined)
-      .then((result) => restyle(texturesReady(result)));
+    void styleKeyOf();
+    untrack(() => present());
   });
 
   // A caster that stays mounted but changes what it draws (visibility or the shadow
@@ -338,7 +389,7 @@
 
   {#if instance}
     <T.Group rotation={asset?.defaultRotation ?? ZERO} scale={asset?.defaultScale ?? 1}>
-      <T is={instance} />
+      <T is={instance} dispose={false} />
       {#if showBounds && rawBounds}
         <T.Box3Helper args={[rawBounds, 0xd6b35f]} />
       {/if}

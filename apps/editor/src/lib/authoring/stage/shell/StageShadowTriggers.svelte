@@ -74,11 +74,10 @@
 	$effect(() => {
 		shadows.setAlwaysUpdate(resources.casters.playing() > 0);
 		return resources.casters.subscribe((event) => {
-			if (event.kind === 'animating') {
-				shadows.setAlwaysUpdate(resources.casters.playing() > 0);
-				return;
-			}
-			shadows.invalidate();
+			// Every event re-reads the playing count, so a released moving caster
+			// ends the per-frame rule without waiting for its own stop event.
+			shadows.setAlwaysUpdate(resources.casters.playing() > 0);
+			if (event.kind !== 'animating') shadows.invalidate();
 		});
 	});
 

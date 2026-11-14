@@ -280,20 +280,35 @@ accounting and the stale-arrival gate.
   import pipeline records animations as observed-not-admitted. The playing path is proven with a test
   mixer on cloned skeletons and the channel. Product animated shadows are unchanged because no
   product action exists yet.
-- **Conflict with the E7 representation interface (reported, not worked around).** E7's
-  representation owns Three objects only. A model's fallback is the Svelte `AssetFallback` tree
-  (about fifteen shapes with Svelte materials), so a model cannot be drawn by the representation
-  without porting that tree. This PR keeps `AssetModel.svelte` as the per-entity host and moves every
-  drawn-instance concern (clone, leases, arrival, release) into `model-realization.ts`, using the same
-  store, geometry-free identity and caster contracts. A later packet can port the fallback and then
-  move the host.
-- **Behavior change on the unscoped path:** a textured look now waits for its texture load before the
-  first mount, as the scoped path already did. A failed load mounts the untextured look, as before.
+- **E7 representation gap (owner exception, tracked).** E7's representation owns Three objects only,
+  and a model's fallback is the Svelte `AssetFallback` tree, so the representation cannot draw a model
+  yet. The exception is recorded in `execution-schedule.md` (E8 section) with its exact files and the
+  remaining work that must land before E12: port the approved fallback shapes to the E7 representation
+  and retire the `AssetModel.svelte` host. No fallback renderer was added.
+- **Unscoped arrival is immediate and untextured.** The unscoped path mounts the untextured look at
+  arrival and applies the look's textures asynchronously, restoring the pre-E8 behavior. A texture
+  completion for a superseded look is rejected. Scoped loads still wait for their textures before mounting.
 - **Browser QA not run.** The E0 note records that headless Stage launches hang in this environment,
   so the Stage and `/dev/assets` renders are unverified here. The owner's manual acceptance applies.
 - **Re-measure G4 after E9** adds artwork casters; artwork arrivals will need the same channel.
-- **Heavy lane not run locally**, per the shared heavy-test slot rule. Fast and arch lanes were run;
-  the full suite is left to CI.
+- **Heavy lane not run locally**, per the shared heavy-test slot rule. The fast-lane results above
+  predate the correction below; the correction ran the focused suites and the arch lane. The full
+  suite is left to CI.
+
+### Correction after review (same PR, G4 counts unchanged)
+
+- **Race:** `AssetModel.svelte` captures a look generation per presentation. A texture completion for a
+  superseded look applies nothing, and an unmount while textures are pending mounts nothing.
+  Tests: `tests/lib/museum/assets/asset-model-lifecycle.test.ts` (6 tests, mounted Threlte tree).
+- **Wireframe parity:** an explicit `false` overrides an imported source that draws wireframe. The
+  source is never mutated. Test: `tests/lib/render/models/model-wireframe-parity.test.ts` (2 tests),
+  false → true → false with the template still wireframe.
+- **Ownership:** `<T is={instance} dispose={false} />`. Threlte 8.5.16 does not dispose a plain Group
+  root, so this makes the external ownership explicit rather than changing observed behavior. The
+  mounted two-consumer teardown test passes with or without the prop; the arch guard pins the prop.
+- **Caster release:** `CasterChannel` removes an entity from the playing set on `released`. Test:
+  `tests/lib/render/shadow-g4-counts.test.ts`, releasing the final playing model ends the per-frame
+  rule without a stop event (7 tests in the file, G4 table above unchanged).
 
 ### Rollback
 

@@ -46,6 +46,9 @@ export function createCasterChannel(): CasterChannel {
 			if (event.kind === 'animating') {
 				if (event.playing) playingEntities.add(event.entity);
 				else playingEntities.delete(event.entity);
+			} else if (event.kind === 'released') {
+				// A released caster is gone: it cannot keep the per-frame rule on.
+				playingEntities.delete(event.entity);
 			}
 			// A snapshot: a listener that unsubscribes or subscribes during dispatch
 			// does not change who hears this event.
