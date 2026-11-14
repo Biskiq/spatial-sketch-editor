@@ -1,9 +1,9 @@
 /**
- * `layout-wall-topology.ts` — P23.8 typed straight-wall intersection
- * classifier (H3 §8) plus the topology diagnostics vocabulary.
+ * `layout-wall-topology.ts` — typed straight-wall intersection
+ * classifier plus the topology diagnostics vocabulary.
  *
  * One renderer-neutral classifier over the `orientXZ` adapter. It answers
- * the semantic question the legacy boolean helper could not (H3 §2):
+ * the semantic question the legacy boolean helper could not:
  *
  * ```text
  * none | shared explicit junction | endpoint-on-interior (T)
@@ -11,7 +11,7 @@
  * | numerically unstable
  * ```
  *
- * Classification rules (H3 §8):
+ * Classification rules:
  * 1. an explicit shared Junction ID wins first — that is a topological
  *    endpoint touch, classified before any orientation math;
  * 2. four robust orientation signs decide proper/T/collinear classes;
@@ -64,7 +64,7 @@ export type TopologySegment = {
 };
 
 /**
- * P23.11 — a resolved input Wall for curve-level classification: authored
+ * A resolved input Wall for curve-level classification: authored
  * identity, endpoint Junction IDs and the **canonical forward** sampled
  * centerline (canonical order, i.e. `startJunctionId → endJunctionId`).
  */
@@ -76,7 +76,7 @@ export type SampledTopologyWall = {
 };
 
 /**
- * P23.11 — does one Wall's sampled centerline cross itself?
+ * Does one Wall's sampled centerline cross itself?
  *
  * The chord-level classifier cannot see this: a bowed Wall whose endpoints are
  * far apart still sweeps back through its own path. Direction-independent, so
@@ -87,7 +87,7 @@ export function sampledWallSelfIntersects(wall: SampledTopologyWall): boolean {
 }
 
 /**
- * P23B.4 M-2a — conservative broad phase over Wall-pair swept extents.
+ * Conservative broad phase over Wall-pair swept extents.
  *
  * True means the pair MIGHT interact and must reach the narrow-phase predicate;
  * false means the tolerance-expanded sample boxes are disjoint, in which case no
@@ -137,7 +137,7 @@ export function sampledWallExtentsOverlap(
 }
 
 /**
- * P23.11 — do two Walls' sampled centerlines cross?
+ * Do two Walls' sampled centerlines cross?
  *
  * `classifyWallIntersection` is exact for straight Walls but blind to curvature:
  * two Walls whose endpoint chords miss each other can still cross where they

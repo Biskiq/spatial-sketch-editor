@@ -326,7 +326,8 @@ Pure descriptions have no GPU/session/DOM state. Resource stores own allocation,
 disposal only; they do not inspect authored documents or decide selection/visibility. A representation
 owns retained objects/instance identity and releases store handles, never disposes a borrowed
 resource directly. Per-Canvas owner teardown invalidates pending async callbacks, releases family
-leases, then disposes stores; a queued texture idle-release callback cannot outlive its store.
+leases, then disposes stores. (E12 ratified the texture pool as shared and module-level, so its idle
+release is not tied to one Canvas owner; see the rendering contract.)
 The snapshot renderer borrows the Stage owner; Preview has its own Canvas owner.
 
 ## Guard rollout and parity ownership

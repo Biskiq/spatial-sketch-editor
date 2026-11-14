@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
-	 * R217.S13 — Paper's fixed-value world-anchored grid, in the one Stage Canvas.
-	 * The mat's grid is per-pixel and lives in `StageMatGround.svelte` (R217.S19).
+	 * Paper's fixed-value world-anchored grid, in the one Stage Canvas.
+	 * The mat's grid is per-pixel and lives in `StageMatGround.svelte`.
 	 *
 	 * The drawing is rebuilt only when its own key changes: the visible levels or
 	 * the quantised rectangle. A pan inside the same rectangle retains the

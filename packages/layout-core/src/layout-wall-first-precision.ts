@@ -1,6 +1,6 @@
 import { layoutItem, layoutLength } from './layout-source-collections';
 /**
- * P23.1 precise semantic operations for the wall-first Layout document.
+ * Precise semantic operations for the wall-first Layout document.
  *
  * These planners are deliberately small and operation-specific. They build a
  * complete candidate from an immutable document, run the wall-first codec,
@@ -8,7 +8,7 @@ import { layoutItem, layoutLength } from './layout-source-collections';
  * result for the editor transaction runner to commit. There is no persistent
  * constraint solver and no snap state involved in an exact operation.
  *
- * P23.10 extends this module with `planRigidWallMove` and moves every
+ * The module includes `planRigidWallMove` and routes every
  * canonical Junction-coordinate operation (Junction position, Wall length,
  * Wall angle, rigid Wall move, exact rectangle dimensions and Wall
  * subdivision) onto `finalizeWallGeometryCandidate`, which adds explicit 1→1
@@ -117,7 +117,7 @@ import type { Vec3 } from './types';
 const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;
 
 /**
- * D4 — maximum number of bend points a **new** insertion may produce.
+ * Maximum number of bend points a **new** insertion may produce.
  *
  * The ceiling bounds sampling, preflight and unfold cost. It is enforced on the
  * write paths only: an existing chain that already carries more knots (for
@@ -143,7 +143,7 @@ export type WallAngleIntent = {
 };
 
 /**
- * P23.10 — one rigid Wall translation: both endpoint Junctions
+ * One rigid Wall translation: both endpoint Junctions
  * receive the identical X/Z delta. Endpoint order, role, thickness, height,
  * length and angle are all preserved.
  */
@@ -179,30 +179,30 @@ export type PrecisionOperation =
 	| 'junction-position'
 	| 'wall-length'
 	| 'wall-angle'
-	/** P23.10 — rigid straight-Wall translation (planner: `planRigidWallMove`). */
+	/** Rigid straight-Wall translation (planner: `planRigidWallMove`). */
 	| 'wall-move'
 	| 'wall-thickness'
 	| 'wall-height'
 	| 'wall-role'
-	/** P23.6c — canonical Wall deletion (planner: `planDeleteWall`). */
+	/** Canonical Wall deletion (planner: `planDeleteWall`). */
 	| 'wall-delete'
-	/** P23 Junction dissolve — degree-2 Junction deletion via Wall join (planner: `planDissolveJunction`). */
+	/** Junction dissolve — degree-2 Junction deletion via Wall join (planner: `planDissolveJunction`). */
 	| 'junction-dissolve'
-	/** P23.6d — canonical Room metadata update (planner: `planRoomMetadataUpdate`). */
+	/** Canonical Room metadata update (planner: `planRoomMetadataUpdate`). */
 	| 'room-metadata'
-	/** P23.12 — canonical Wall metadata update (planner: `planWallMetadataUpdate`). */
+	/** Canonical Wall metadata update (planner: `planWallMetadataUpdate`). */
 	| 'wall-metadata'
-	/** P23.12 — canonical Opening metadata update (planner: `planOpeningMetadataUpdate`). */
+	/** Canonical Opening metadata update (planner: `planOpeningMetadataUpdate`). */
 	| 'opening-metadata'
-	/** P23.6d — Room removal through the Wall pipeline (planner: `planRemoveRoom`). */
+	/** Room removal through the Wall pipeline (planner: `planRemoveRoom`). */
 	| 'room-remove'
-	/** P23.11 — canonical curve operations (convert / knot insert / move / delete / bend). */
+	/** Canonical curve operations (convert / knot insert / move / delete / bend). */
 	| 'wall-convert-to-curve'
 	| 'wall-convert-to-line'
 	| 'wall-curve-knot-insert'
 	| 'wall-curve-knot-move'
 	| 'wall-curve-knot-delete'
-	/** P23.11 — the Bend gesture: insert at a physical arc position and place it. */
+	/** The Bend gesture: insert at a physical arc position and place it. */
 	| 'wall-curve-knot-bend'
 	| 'wall-subdivision'
 	| 'rectangle-dimensions'
@@ -217,34 +217,34 @@ export type PrecisionRejection = {
 		| 'unknown_room'
 		| 'unknown_object'
 		| 'invalid_value'
-		/** R217 — a linear dimension or Wall span is outside the supported envelope. */
+		/** A linear dimension or Wall span is outside the supported envelope. */
 		| 'dimension_out_of_range'
 		| 'invalid_endpoint'
 		| 'invalid_reference'
 		| 'unsupported_geometry'
 		/**
-		 * P23.11 — the operation is straight-only and the target Wall carries a
+		 * The operation is straight-only and the target Wall carries a
 		 * curved centerline. Exact length, exact angle and subdivision all reject
 		 * here rather than approximate a curve they cannot solve for.
 		 */
 		| 'curved_wall_unsupported'
-		/** P23.11 — the named curve control does not exist on that Wall. */
+		/** The named curve control does not exist on that Wall. */
 		| 'unknown_curve_anchor'
 		| 'shared_boundary_resize_ambiguous'
 		| 'topology_invalid'
 		/**
-		 * P23.10 — the geometry edit could not map every baseline Room to exactly
+		 * The geometry edit could not map every baseline Room to exactly
 		 * one candidate face through explicit boundary-cycle lineage. Direct
 		 * coordinate edits and subdivision never authorize Room birth, retirement,
 		 * split or merge.
 		 */
 		| 'room_identity_lost'
-		/** P23.10 — the candidate failed the canonical whole-document Opening set. */
+		/** The candidate failed the canonical whole-document Opening set. */
 		| 'opening_set_invalid'
-		/** P23.10 — the candidate failed the canonical portal-relation (adjacency) gate. */
+		/** The candidate failed the canonical portal-relation (adjacency) gate. */
 		| 'portal_relation_invalid'
 		/**
-		 * P23.6H — the edit would cap a Wall below the top of a hosted Opening. The
+		 * The edit would cap a Wall below the top of a hosted Opening. The
 		 * canonical Opening validator owns the rule; this code only names the
 		 * rejection so the message stays actionable.
 		 */
@@ -254,11 +254,11 @@ export type PrecisionRejection = {
 		| 'split_at_existing_endpoint'
 		| 'split_distance_out_of_range'
 		| 'split_through_opening_interior'
-		/** D7 — a closed Wall is one canonical loop and refuses topology mutations. */
+		/** A closed Wall is one canonical loop and refuses topology mutations. */
 		| 'closed_wall_isolated'
-		/** D8 — a circular Wall resizes by radius; its canonical chain is not freely bendable. */
+		/** A circular Wall resizes by radius; its canonical chain is not freely bendable. */
 		| 'closed_wall_not_bendable'
-		/** D4 — a Wall may not gain more than the supported number of bend points. */
+		/** A Wall may not gain more than the supported number of bend points. */
 		| 'curve_knot_limit'
 		| 'junction_point_mismatch';
 	message: string;
@@ -294,7 +294,7 @@ export type PrecisionPlan =
 			changedJunctionIds: readonly string[];
 			changedWallIds: readonly string[];
 			changedObjectIds?: readonly string[];
-			/** P23.5 — the object a preset create birthed (its stored ID). */
+			/** The object a preset create birthed (its stored ID). */
 			createdObjectId?: string;
 			/**
 			 * Set only by the wall-geometry path, and only for the document in
@@ -340,7 +340,7 @@ export function planExactJunctionMove(
 }
 
 /**
- * P23.10 — translate one canonical Wall rigidly in X/Z: both endpoint
+ * Translate one canonical Wall rigidly in X/Z: both endpoint
  * Junctions receive the identical delta, so the Wall keeps its ID, role,
  * thickness, height, endpoint order, length and angle, and every hosted Opening
  * keeps its ID, host, offset, width and vertical/profile fields.
@@ -422,7 +422,7 @@ export function planExactWallLength(
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
-	// P23.11 — an exact *length* is a chord solve: the endpoint moves along the
+	// An exact *length* is a chord solve: the endpoint moves along the
 	// endpoint direction and the curve would have to be re-solved to keep its
 	// shape. Curves use the canonical anchor planners instead.
 	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact length', wall.id);
@@ -483,7 +483,7 @@ export function planExactWallAngle(
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
-	// P23.11 — an exact *angle* is the endpoint-chord direction of a straight
+	// An exact *angle* is the endpoint-chord direction of a straight
 	// Wall; a curve has no single angle to set.
 	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact angle', wall.id);
 	const angle = intent.angle;
@@ -539,7 +539,7 @@ export function planExactWallThickness(
 }
 
 /**
- * Set a Wall's authoritative physical height (P23.6H),
+ * Set a Wall's authoritative physical height,
  * preserving Wall, Junction, Opening and Room identity.
  *
  * Height is independent of X/Z topology: the Wall stays the same authored Wall
@@ -571,8 +571,8 @@ export function planExactWallHeight(
 
 /**
  * Add one explicit Vertex by subdividing a Wall at a physical meter offset.
- * The existing P23.8 noder owns deterministic IDs, opening rebasing, and
- * forward/reverse Room-boundary rewrites; this planner adds the P23.1 final
+ * The existing noder owns deterministic IDs, opening rebasing, and
+ * forward/reverse Room-boundary rewrites; this planner adds the final
  * candidate gates around that result.
  */
 export function planWallSubdivision(
@@ -581,7 +581,7 @@ export function planWallSubdivision(
 	splitDistance: number,
 	allocator: NodingIdAllocator
 ): PrecisionPlan {
-	// P23.11 — curved Walls split exactly through the same noder: the split
+	// Curved Walls split exactly through the same noder: the split
 	// measures the canonical arc, resolves once, and hands both fragments their
 	// own partition of the chain, so no flatten can happen here.
 	const planned: NodingPlan = planWallSplit(document, wallId, splitDistance, allocator);
@@ -598,11 +598,11 @@ export function planWallSubdivision(
 	});
 }
 
-/** P23.1 naming alias for callers that describe the operation as Add Vertex. */
+/** Naming alias for callers that describe the operation as Add Vertex. */
 export const planAddWallVertex = planWallSubdivision;
 
 // =====================================================================
-// P23.11 — canonical curve operations.
+// Canonical curve operations.
 //
 // Every planner builds a candidate from the immutable baseline, mutates only
 // canonical Layout data, allocates deterministic anchor IDs, runs the shared
@@ -936,7 +936,7 @@ export function planDeleteWallCurveKnot(
 }
 
 // =====================================================================
-// P23.11 — the pure curve PROPOSAL seam.
+// The pure curve PROPOSAL seam.
 //
 // Separate from canonical acceptance on purpose: a rejected drag must still
 // render the attempted Wall while the immutable baseline is installed, and the
@@ -963,7 +963,7 @@ export type WallFirstArchitectureProposalIntent =
 	| { kind: 'wall-bend'; wallId: string; distance: number; point: LayoutVec2 };
 
 /**
- * P23.11 — pure, non-validating curve **proposal**.
+ * Pure, non-validating curve **proposal**.
  *
  * Runs the canonical chain algebra (`moveWallCurveKnot`, the exact subdivision
  * authority) WITHOUT acceptance and samples the result through the one
@@ -1019,7 +1019,7 @@ export function resolveProposedCurveChain(
 }
 
 /**
- * P23.11 — sample a proposed curve intent through the one canonical Wall
+ * Sample a proposed curve intent through the one canonical Wall
  * adapter, without acceptance. A thin sampler over `resolveProposedCurveChain`,
  * so the drawn attempt and the preflight below can never describe different
  * geometry.
@@ -1246,7 +1246,7 @@ function spliceWallFirstArchitectureCandidate(
 export type WallFirstArchitectureCandidatePair = readonly [string, string];
 
 /**
- * P23B.7 S3 — the AFFECTED EXTENT of one direct-edit intent.
+ * The AFFECTED EXTENT of one direct-edit intent.
  *
  * Derived from the SAME patch the proposal and the preflight splice
  * (`architectureCandidatePatch`), so nothing here can invent geometry those two do
@@ -1359,7 +1359,7 @@ function candidatePairsInGateOrder<Key>(
 }
 
 /**
- * P23B.7 S4 — one move's AFFECTED-ONLY pass.
+ * One move's AFFECTED-ONLY pass.
  *
  * The SAME stages in the SAME order with the SAME predicates as
  * `validateWallFirstTopology`, evaluated over that move's affected extent alone: the moved
@@ -1388,7 +1388,7 @@ function validateWallFirstArchitectureAffectedCandidate(
 }
 
 /**
- * P23B.7 S4 — what one gesture's verdict scope did. Every number is a count of moves or of
+ * What one gesture's verdict scope did. Every number is a count of moves or of
  * candidate subjects, never a duration and never a count of the predicate evaluations themselves
  * (those are observed at the predicate sites — see `WallFirstTopologyEvaluation`).
  */
@@ -1414,7 +1414,7 @@ export type WallFirstArchitectureVerdictScopeStats = {
 };
 
 /**
- * P23B.7 S4 — the GESTURE-SCOPED VERDICT SET.
+ * The GESTURE-SCOPED VERDICT SET.
  *
  * One gesture's frozen baseline, and the one thing that lets a pointermove skip work the canonical
  * preflight would repeat: a CLEAN INITIALIZATION. On the first move of a target the scope runs the
@@ -1461,7 +1461,7 @@ export type WallFirstArchitectureVerdictScope = {
 /**
  * The identity a gesture's target keeps across moves; a change re-initializes the scope.
  *
- * THE FIELDS ARE A TUPLE, NEVER A DELIMITER JOIN (PR #92 review, P2). Layout IDs are free-form —
+ * THE FIELDS ARE A TUPLE, NEVER A DELIMITER JOIN. Layout IDs are free-form —
  * `/^[A-Za-z0-9][A-Za-z0-9._:-]*$/` admits `:` — so joining them with a delimiter is ambiguous:
  * `(wall "A:B", knot "C")` and `(wall "A", knot "B:C")` both encoded as
  * `curve-control-move:A:B:C`. Two different targets sharing one identity means a target CHANGE can
@@ -1545,7 +1545,7 @@ export type WallFirstArchitecturePreflightFailure = {
 };
 
 /**
- * P23.11 — the **cheap canonical prefix** of the direct-edit transaction, for
+ * The **cheap canonical prefix** of the direct-edit transaction, for
  * live feedback. It applies the intent's patch and runs exactly one canonical
  * gate — `validateWallFirstTopology(..., { openingSet: 'defer' })`, the stage
  * the planner itself runs before Room reconciliation — then stops.
@@ -1584,7 +1584,7 @@ export function preflightWallFirstArchitectureCandidate(
 	 */
 	sampling?: WallSamplingDerivation,
 	/**
-	 * P23B.7 S4 — an optional GESTURE-SCOPED VERDICT SET, supplied by the caller (the gesture)
+	 * An optional GESTURE-SCOPED VERDICT SET, supplied by the caller (the gesture)
 	 * and never silently inside the gate.
 	 *
 	 * With it, this function returns the scope's verdict: after one clean initialization the same
@@ -1652,7 +1652,7 @@ export function prepareWallBend(
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
 	const { wall, start, end, chain } = target;
-	// D8 — the 16-span chain is the canonical circle, not an authored freeform
+	// The 16-span chain is the canonical circle, not an authored freeform
 	// curve. Its shape is owned by the radius writer and preserve-angle placement;
 	// a bend would break both invariants, so it refuses explicitly.
 	if (isClosedWall(wall)) {
@@ -1816,7 +1816,7 @@ export function planExactRectangleDimensions(
 }
 
 // =====================================================================
-// P23.5 — small architectural preset set (creation defaults only).
+// Small architectural preset set (creation defaults only).
 //
 // A preset is never a serialized kind, linked instance, library service or
 // renderer branch (P23.5 contract): it resolves to ONE ordinary document-level
@@ -1826,7 +1826,7 @@ export function planExactRectangleDimensions(
 // and canonical compiler as every manually created primitive.
 // =====================================================================
 
-/** P23.5 preset identifiers. No `Partition` preset: partitions are first-class wall-first Walls (P23.9). */
+/** P23.5 preset identifiers. No `Partition` preset: partitions are first-class wall-first Walls. */
 export type LayoutArchitecturalPresetId = 'column' | 'platform' | 'plinth';
 
 export type LayoutArchitecturalPreset = {
@@ -1875,7 +1875,7 @@ export function layoutPresetPlacement(
 }
 
 /**
- * P23.5 — create one ordinary LayoutObject from a preset on a wall-first
+ * Create one ordinary LayoutObject from a preset on a wall-first
  * document. Click point is the object's X/Z center (document meters); the
  * stored transform stays project/world-local with no Room containment and no
  * preset metadata. Rejection codes reuse the canonical set so the shared
@@ -1886,9 +1886,9 @@ export function planCommitLayoutObjectPreset(
 	presetId: LayoutArchitecturalPresetId,
 	point: LayoutVec2,
 	floorElevation: number,
-	/** The identity captured before evaluation (T1.P02.S01 §1). */
+	/** The identity captured before evaluation. */
 	capturedObjectId: string,
-	/** T1.P02.S01 §1 — explicit working level; must name `document.floor.id`. */
+	/** Explicit working level; must name `document.floor.id`. */
 	levelId: string
 ): PrecisionPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
@@ -2061,7 +2061,7 @@ function finalizeCandidate(
 	}
 	const topologyIssue = validateWallFirstTopology(structural.document);
 	if (topologyIssue) {
-		// P23.6H — a Wall-vs-Opening vertical conflict keeps its own rejection
+		// A Wall-vs-Opening vertical conflict keeps its own rejection
 		// code; every other topology failure stays `topology_invalid`.
 		const topologyCode: PrecisionRejection['code'] =
 			topologyIssue.code === 'wall_height_below_opening'
@@ -2069,7 +2069,7 @@ function finalizeCandidate(
 				: 'topology_invalid';
 		return reject(topologyCode, topologyIssue.message, topologyIssue.targetId ? [topologyIssue.targetId] : undefined, [topologyIssue]);
 	}
-	// T1.P02.S06 D.3 (H1) — a candidate compiled during a session reuses every
+	// A candidate compiled during a session reuses every
 	// entity its authored inputs did not move. The result is the canonical
 	// compiler's own output (same builders, same assembly), so this is a cheaper
 	// compile, not a different one.
@@ -2101,7 +2101,7 @@ function isReconciliationFailure(
 }
 
 /**
- * P23.10 — the canonical **geometry-edit acceptance path**.
+ * The canonical **geometry-edit acceptance path**.
  *
  * Every operation that edits canonical Junction coordinates or subdivides a
  * Wall runs the same seam, so a pointer gesture and the Inspector's exact
@@ -2293,7 +2293,7 @@ function finalizeWallGeometryCandidate(options: {
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	// T1.P02.S06 D.3 (H1) — the same session, with the step's shared sampling
+	// The same session, with the step's shared sampling
 	// derivation: one pointer sample re-compiles only the entities it moved.
 	const compileSession = activeLayoutCompileSession();
 	const compiled = p2311Measure('acceptance-compile', () =>
@@ -2462,7 +2462,7 @@ export type WallFirstTopologyOptions = {
 	 */
 	sampling?: WallSamplingDerivation;
 	/**
-	 * P23B.4 correction (F2) — test-only bypass of the M-2a extent prune.
+	 * Test-only bypass of the M-2a extent prune.
 	 * When true, `detectWallCurveTopologyCrossings` evaluates every candidate pair
 	 * through the shipped narrow-phase predicate (the genuine exhaustive behavior
 	 * with only the new extent gate absent). Absent/false is production behavior.
@@ -2472,7 +2472,7 @@ export type WallFirstTopologyOptions = {
 };
 
 /**
- * P23B.4 correction (F1) — test-only observation of the actual sample arrays the
+ * Test-only observation of the actual sample arrays the
  * topology gate feeds its crossing predicate (post-seam, as consumed).
  *
  * While set, each gate run reports every sampled Wall exactly as the predicate sees
@@ -2497,7 +2497,7 @@ export function clearTopologyGateObserverForTest(): void {
 }
 
 /**
- * P23B.7 S4 — the predicates ONE pass evaluates. Absent (the canonical gate) evaluates all of
+ * The predicates ONE pass evaluates. Absent (the canonical gate) evaluates all of
  * them; a scoped pass evaluates only the listed subjects, in the gate's own order.
  *
  * A scoped pass may only run after a CLEAN initialization (see the verdict scope below): every
@@ -2516,7 +2516,7 @@ type TopologyPassSubject = {
 };
 
 /**
- * P23B.7 S4 correction (PR #92 review, P2) — THE INVARIANT PREDICATES a pass actually EVALUATED.
+ * THE INVARIANT PREDICATES a pass actually EVALUATED.
  *
  * The verdict scope's `candidates` counts are summed from a move's affected extent BEFORE the pass
  * runs, so they cannot show that the pass stayed inside it: the review's mutation — discarding the
@@ -2687,7 +2687,7 @@ function validateWallFirstTopologyPass(
 	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
 	const junctionIndexById = new Map(document.junctions.map((junction, index) => [junction.id, index] as const));
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
-	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
+	// One id→point index for every Wall this pass resolves,
 	// instead of two linear Junction scans per Wall.
 	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
 
@@ -2715,7 +2715,7 @@ function validateWallFirstTopologyPass(
 			if (failure) return failure;
 		}
 	} else {
-		// T1.P02.S06 D.1 (H3) — the coincidence rule is an index query, not an
+		// The coincidence rule is an index query, not an
 		// O(J²) sweep: `coincidentJunctionPairs` hands back the pairs that CAN
 		// coincide (a superset), in this loop's own order. The predicate, its
 		// component scope and the first-wins rule are the shipped ones below.
@@ -2768,7 +2768,7 @@ function validateWallFirstTopologyPass(
 	}
 
 	const walls = document.walls;
-	// P23B.3a S4 — component-scoped SUBJECT (the transitive closure of explicit
+	// Component-scoped SUBJECT (the transitive closure of explicit
 	// Junction identity, never coordinates: two Walls with no Junction id in common
 	// can still be one component through a third Wall). A pair from two different
 	// components is skipped before the UNCHANGED predicate sees it, so the
@@ -2816,7 +2816,7 @@ function validateWallFirstTopologyPass(
 			if (failure) return failure;
 		}
 	} else {
-		// T1.P02.S06 D.1 (H3) — Wall × Wall through a plan-space box index (I2).
+		// Wall × Wall through a plan-space box index.
 		// Two Wall segments whose boxes are disjoint cannot share an endpoint,
 		// cross or overlap, so the chord classifier would answer `none`; the index
 		// visits only the pairs whose boxes overlap, in this loop's own order.
@@ -2842,7 +2842,7 @@ function validateWallFirstTopologyPass(
 		}
 	}
 
-	// P23.11 — canonical curve-level crossing gate (one implementation, shared
+	// Canonical curve-level crossing gate (one implementation, shared
 	// with the Wall-chain authoring path).
 	const curveCrossing = detectWallCurveTopologyCrossings(
 		document,
@@ -2913,7 +2913,7 @@ function validateWallFirstTopologyPass(
 		// translates the first canonical issue.
 		const openingIssue = validateWallFirstOpeningSet(document, options.sampling)[0];
 		if (openingIssue) {
-			// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
+			// The host-Wall vertical-fit issue gets a dedicated code so a
 			// Wall-height edit can report it as `wall_height_below_opening` instead of
 			// a generic topology failure. The canonical Opening validator owns the
 			// rule; this branch only translates its issue.
@@ -3014,7 +3014,7 @@ function hasAmbiguousSharedBoundary(
 }
 
 /**
- * P23.11 — a Wall pair (or one Wall against itself) that only the **sampled**
+ * A Wall pair (or one Wall against itself) that only the **sampled**
  * centerlines reveal.
  */
 export type WallCurveTopologyCrossing =
@@ -3022,7 +3022,7 @@ export type WallCurveTopologyCrossing =
 	| { kind: 'pair'; wallIds: [string, string]; sharedJunctionId?: string };
 
 /**
- * P23.11 — the canonical **curve-level** Wall-crossing gate.
+ * The canonical **curve-level** Wall-crossing gate.
  *
  * `classifyWallIntersection` is exact for straight Walls but blind to
  * curvature: two Walls whose endpoint chords miss each other can still cross
@@ -3052,7 +3052,7 @@ export type WallCurveTopologyCrossing =
  * form S4 left for the chain path).
  */
 /**
- * P23B.7 S4 — which candidate the crossing authority evaluates. Absent evaluates every Wall and
+ * Which candidate the crossing authority evaluates. Absent evaluates every Wall and
  * every same-component pair, exactly as before; a scoped pass names the Walls whose
  * self-intersection and the pairs whose crossing it evaluates, in the canonical gate's own order.
  * The SAMPLING loop is unaffected either way: every Wall is still sampled once per call, so a
@@ -3125,13 +3125,13 @@ export function detectWallCurveTopologyCrossings(
 			return { kind: 'self', wallId: wall.id };
 		}
 	}
-	// P23B.3a S4 — two Walls from different components never reach the sampled
+	// Two Walls from different components never reach the sampled
 	// predicate. Every pair that does share a Junction id is in one component, so
 	// `shared` below can never point at a pair this skips.
 	const keyByWallId = topologyComponentKeyByWallId(document);
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall] as const));
 	if (subject?.pairs) {
-		// P23B.7 S4 — the affected pairs of one move, in the canonical gate's own order. The
+		// The affected pairs of one move, in the canonical gate's own order. The
 		// predicate, the component skip and the extent prune are the SAME ones the full loop uses.
 		for (const [firstId, secondId] of subject.pairs) {
 			const a = wallById.get(firstId);
@@ -3177,7 +3177,7 @@ export function detectWallCurveTopologyCrossings(
 		}
 		return undefined;
 	}
-	// T1.P02.S06 D.1 (H3) — the same prune, made an index query. Every pair whose
+	// The same prune, made an index query. Every pair whose
 	// tolerance-expanded sample boxes overlap is a candidate, in the shipped order;
 	// a pair the index omits is one `sampledWallExtentsOverlap` would have
 	// rejected anyway (OR-9), so the verdict, the reporting and the first-wins rule
@@ -3296,7 +3296,7 @@ function incidentWallIds(document: LayoutDocumentWallFirst, junctionId: string):
 }
 
 /**
- * P23.11 — a straight Wall's centerline as a two-point polyline. Densifying a
+ * A straight Wall's centerline as a two-point polyline. Densifying a
  * line adds no information for crossing tests, so the chord endpoints are the
  * whole representation (and the shape `sampledWallsCross` already walks for
  * curved Walls).
@@ -3317,7 +3317,7 @@ function cloneDocument(document: LayoutDocumentWallFirst): LayoutDocumentWallFir
 		...document,
 		floor: { ...document.floor },
 		junctions: document.junctions.map((junction) => ({ ...junction, point: [junction.point[0], junction.point[1]] })),
-		// P23.11 — Wall clones deep-copy the centerline so candidate planners
+		// Wall clones deep-copy the centerline so candidate planners
 		// never share anchor arrays or points with the baseline.
 		walls: document.walls.map((wall) => ({ ...wall, centerline: cloneWallCenterline(wall.centerline) })),
 		rooms: document.rooms.map((room) => ({ ...room, boundary: room.boundary.map((ref) => ({ ...ref })) })),

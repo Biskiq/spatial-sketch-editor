@@ -1,5 +1,5 @@
 /**
- * T1 A1 — one Split intent over the retained `planWallSplitAtPoint` planner.
+ * One Split intent over the retained `planWallSplitAtPoint` planner.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |

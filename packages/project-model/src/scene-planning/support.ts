@@ -1,5 +1,5 @@
 /**
- * T2.P01.S02 — snapshot-qualified floor support for Scene operations.
+ * Snapshot-qualified floor support for Scene operations.
  *
  * Every Scene operation that needs support re-derives it from the **snapshot's**
  * canonical Layout compile through the landed `layout-core` floor-support query.
@@ -7,8 +7,8 @@
  *
  * - **No captured geometry, no mesh height.** A support query runs against
  *   compiled `room-floor` records, so a renderer hit's face Y cannot enter a
- *   committed pose (S01's planner has nowhere to put it).
- * - **The datum is the support of last resort (R217.S17A).** Where no Room floor
+ *   committed pose (the planner has nowhere to put it).
+ * - **The datum is the support of last resort.** Where no Room floor
  *   covers a point, the Layout's explicit horizontal datum supports it, so object
  *   creation never needs an enclosure. A Room floor always wins where it exists,
  *   and the datum goes through the same selection: an operation that must keep
@@ -16,8 +16,7 @@
  * - **The snapshot is the qualification.** The compile is a pure function of the
  *   accepted Layout, so the support generation identity is derived from the
  *   snapshot's own content identity (`sceneSupportGenerationId`). There is no
- *   viewport generation to map here — `T2.P01.S03` owns that mapping when a real
- *   host exists. A captured choice from another generation refuses instead of
+ *   viewport generation to map here — the host↔F4 wiring owns that mapping. A captured choice from another generation refuses instead of
  *   being re-resolved against a source the creator never saw.
  *
  * Selection never picks an elevation: a required elevation must be yielded by

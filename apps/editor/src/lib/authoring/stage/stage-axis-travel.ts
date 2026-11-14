@@ -1,5 +1,5 @@
 /**
- * T5.P01.S02 — one ray/axis measurement shared by depth and sizing.
+ * One ray/axis measurement shared by depth and sizing.
  *
  * Both the depth handle and a per-axis size knob name one point on a world
  * axis. The pointer ray rarely intersects that axis exactly, so the value is

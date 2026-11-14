@@ -1,5 +1,5 @@
 /**
- * X8 — the Light mark descriptors.
+ * The Light mark descriptors.
  *
  * One pure function turns the effective Light (the dragged copy during a
  * gesture, otherwise the selected one) into the ordered edit marks the Stage

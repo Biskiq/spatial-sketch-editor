@@ -10,9 +10,9 @@
  * This module is vocabulary only. Strict validation lives in `./validate`,
  * canonical bytes and content revisions in `./canonical`. Nothing here is
  * imported by the project-model root barrel: an F.2 envelope is reached through
- * its own package subpath, which `T3.P01.S04` activated.
+ * its own package subpath.
  *
- * The Scene unit is Camera-free Scene 6: the world-local record grammar
+ * The Scene unit is Camera-free Scene 7: the world-local record grammar
  * (textures, materials, entities, clusters) with the navigation graph moved out
  * to the Camera and Experience units, and native forms admitted as entities.
  * The Camera unit keeps the
@@ -135,8 +135,8 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 6: the landed world-local records without the navigation
- * graph, carrying native forms and optional world presentation. `formatVersion: 6` is the payload's own
+ * Camera-free Scene 7: the world-local records without the navigation
+ * graph, carrying native forms and optional world presentation. `formatVersion: 7` is the payload's own
  * version and matches the unit header. A model names a catalogue asset or a
  * `model` resource of the same envelope; the fallback vocabulary includes the
  * generic footprint box.
@@ -157,7 +157,7 @@ export type CameraFreeSceneDocument = {
 	environment?: SceneEnvironment;
 };
 
-/** The fixed environment presets (Experience review 1, R5). */
+/** The fixed environment presets. */
 export const SCENE_ENVIRONMENT_PRESETS = ['paper', 'daylight', 'golden-hour', 'dusk'] as const;
 export type SceneEnvironmentPreset = (typeof SCENE_ENVIRONMENT_PRESETS)[number];
 export type SceneEnvironment = { readonly preset: SceneEnvironmentPreset };

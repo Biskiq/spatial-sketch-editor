@@ -1,6 +1,6 @@
 <script lang="ts">
   import { T } from '@threlte/core';
-  import MuseumMaterial from '$lib/museum/materials/MuseumMaterial.svelte';
+  import CatalogueMaterial from '$lib/render/materials/CatalogueMaterial.svelte';
   import type { MaterialId, MaterialLoadStatus, Vec2 } from '$lib/types/materials';
 
   let {
@@ -23,21 +23,21 @@
 {#if kind === 'floor'}
   <T.Mesh {position} rotation={[-Math.PI / 2, 0, 0]}>
     <T.PlaneGeometry args={surfaceSize} />
-    <MuseumMaterial {materialId} {surfaceSize} {textures} bind:status />
+    <CatalogueMaterial {materialId} {surfaceSize} {textures} bind:status />
   </T.Mesh>
 {:else if kind === 'brass'}
   <T.Mesh {position}>
     <T.CylinderGeometry args={[0.28, 0.28, 1.2, 32]} />
-    <MuseumMaterial {materialId} {surfaceSize} {textures} bind:status />
+    <CatalogueMaterial {materialId} {surfaceSize} {textures} bind:status />
   </T.Mesh>
 {:else if kind === 'box'}
   <T.Mesh {position}>
     <T.BoxGeometry args={[1.4, 0.25, 1.4]} />
-    <MuseumMaterial {materialId} {surfaceSize} {textures} bind:status />
+    <CatalogueMaterial {materialId} {surfaceSize} {textures} bind:status />
   </T.Mesh>
 {:else}
   <T.Mesh {position}>
     <T.PlaneGeometry args={surfaceSize} />
-    <MuseumMaterial {materialId} {surfaceSize} {textures} bind:status />
+    <CatalogueMaterial {materialId} {surfaceSize} {textures} bind:status />
   </T.Mesh>
 {/if}

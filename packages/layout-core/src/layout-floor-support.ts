@@ -1,5 +1,5 @@
 /**
- * T2.P01.S01 — the Layout-owned floor-support query and chooser.
+ * The Layout-owned floor-support query and chooser.
  *
  * Answers one question over the canonical compiler's output: which compiled
  * Room floors support a world X/Z point, and at what elevation? It is
@@ -37,8 +37,7 @@ import { pointInPolygon } from './layout-geometry-objects';
 /**
  * Operation/query tolerances, not compiler epsilon.
  *
- * Confirmed by independent focused T1/Layout review (2026-10-16; S01 review
- * evidence); they never round a canonical value and never
+ * They never round a canonical value and never
  * change `layout-core`'s compiler tolerances. `boundaryMeters` is the declared
  * boundary-membership tolerance, `coplanarElevationMeters` decides when two
  * compiled elevations denote the same support, and `upNormalComponent` is the
@@ -158,7 +157,7 @@ export function layoutDatumElevation(geometry: { readonly floors: readonly { rea
 }
 
 /**
- * The support the explicit datum offers at one point (R217.S17A).
+ * The support the explicit datum offers at one point.
  *
  * The datum is authored, not compiled from a Room, so it has no witness. It is
  * only ever offered where `queryFloorSupports` found no Room floor: a floor that

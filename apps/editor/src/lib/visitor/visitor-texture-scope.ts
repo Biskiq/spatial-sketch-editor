@@ -1,5 +1,5 @@
 /**
- * P22.1 — store-free release texture scope.
+ * Store-free release texture scope.
  *
  * Visitor-safe: pure + `three` only. No session/store imports. Takes verified
  * P20 bytes supplied by the caller (future API manifest, current tests), mints

@@ -1,12 +1,11 @@
 /**
- * E7/R4 — the lazily loaded Form kernel, behind one seam.
+ * The lazily loaded Form kernel, behind one seam.
  *
- * The form kernel and its cached evaluation were already lazy: `EntityForm` was
- * imported only once a document carried a form, so an enclosure-only load never
- * downloaded `@portfolio/geometry-core`'s adapter path or the evaluator. E7 moves
- * form drawing into the retained Scene representation without making that
- * download eager: `VisitorEntityGroups` imports *this module* dynamically, and
- * the description omits form items until it arrives.
+ * The form kernel and its cached evaluation are lazy, so an enclosure-only load
+ * never downloads `@portfolio/geometry-core`'s adapter path or the evaluator.
+ * Forms draw through the retained Scene representation: `VisitorEntityGroups`
+ * imports *this module* dynamically, and the description omits form items until
+ * it arrives.
  *
  * The module is the only place that reads a form source for rendering. It returns
  * canonical data (the evaluation key and the kernel's mesh); the geometry store

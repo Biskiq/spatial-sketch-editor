@@ -1,7 +1,7 @@
 /**
- * E7/R4 — the Scene render item: what to draw, never how.
+ * The Scene render item: what to draw, never how.
  *
- * `renderer-refactor.md` §2.2 defines a `RenderItem` as frozen, Three-free data
+ * The rendering contract defines a `RenderItem` as frozen, Three-free data
  * built once per derived-description identity. This module is its type and its
  * canonical geometry key; it imports no value from Three and nothing from an
  * authored-unit reader, so both the description that builds items and the
@@ -48,7 +48,7 @@ export type FormGeometrySpec = {
 };
 
 /**
- * E9/R5 — the three keyed Artwork bodies. The image itself is `unit:plane`.
+ * The three keyed Artwork bodies. The image itself is `unit:plane`.
  *
  * Each spec names exactly the numbers its buffer is built from, so two Artworks
  * whose frame layout resolves to the same numbers share one buffer, and any size
@@ -79,7 +79,7 @@ export type ArtworkGeometrySpec =
 	  };
 
 /**
- * E8 — a tapered or open-ended cylinder, built at size.
+ * A tapered or open-ended cylinder, built at size.
  *
  * A model fallback's tapered legs, stems and shades are not a scaled unit
  * cylinder (its radii differ, or it has no caps), so the buffer is built from the
@@ -178,7 +178,7 @@ export type SceneArtworkBody<K extends ArtworkGeometrySpec['kind']> = {
 };
 
 /**
- * E9/R5 — one Artwork, resolved: what to draw, never how.
+ * One Artwork, resolved: what to draw, never how.
  *
  * The frame layout is evaluated once here, by the description, so the handler
  * never reads authored truth. Three keys split the work an edit causes:
@@ -214,7 +214,7 @@ export type SceneModelFallbackPart = {
 };
 
 /**
- * The resolved material a model's meshes are remapped to (E8/R2c): the colour and
+ * The resolved material a model's meshes are remapped to: the colour and
  * PBR scalars and the texture variant it loads. Identity only, no GPU object.
  */
 export type SceneModelLook = {
@@ -226,7 +226,7 @@ export type SceneModelLook = {
 };
 
 /**
- * E8/R5 — one approved model, resolved: what to draw, never how.
+ * One approved model, resolved: what to draw, never how.
  *
  * The description resolves the catalogue record, the fallback body and the look
  * once, so the model handler never reads authored truth or the asset catalogue.
@@ -273,8 +273,8 @@ export type SceneModelItem = {
 /** One Scene conversion's drawable items, in authored order. */
 export type SceneRenderDescription = {
 	readonly items: readonly SceneRenderItem[];
-	/** E9: Artworks, in authored order. Drawn by the artwork handler. */
+	/** Artworks, in authored order. Drawn by the artwork handler. */
 	readonly artworks: readonly SceneArtworkItem[];
-	/** E8: approved models, in authored order. Drawn by the model handler. */
+	/** Approved models, in authored order. Drawn by the model handler. */
 	readonly models: readonly SceneModelItem[];
 };

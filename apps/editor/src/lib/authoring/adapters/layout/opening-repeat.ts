@@ -1,12 +1,12 @@
 /**
- * T1 A8 — one Repeat intent over the retained `planRepeatWallOpening` planner.
+ * One Repeat intent over the retained `planRepeatWallOpening` planner.
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |
  * | Add N copies of one Opening along its host Wall | `layout-opening-repeat` | `planRepeatWallOpening` |
  *
- * The planner is the **same** deterministic batch copier the P23.4 suite
- * certifies. Copy `i` lands at `source.offset + i × spacing` measured from the
+ * The planner is the **same** deterministic batch copier
+ * `layout-duplicate.ts` owns and its suite certifies. Copy `i` lands at `source.offset + i × spacing` measured from the
  * ORIGINAL source, so no accumulated drift can enter; every copy keeps the
  * source's kind, width, height, sill and profile, and the complete final
  * Opening set on the Wall validates once as one batch. A set that would leave

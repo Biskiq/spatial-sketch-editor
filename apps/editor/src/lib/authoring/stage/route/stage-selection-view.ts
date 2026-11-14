@@ -1,9 +1,9 @@
 /**
- * X3 / decomposition contract S — read-only selection, Index, source-locator
+ * Read-only selection, Index, source-locator
  * and Card projections.
  *
- * The route used to derive these records inline from the admitted snapshot and
- * the facade. They are presentation reads: the selection, the compiled Plan,
+ * These records derive from the admitted snapshot and the facade. They are
+ * presentation reads: the selection, the compiled Plan,
  * the located subjects and the authored payloads stay their owners, and this
  * module only shapes what the Index, the source crumb and the one Card show.
  *

@@ -20,7 +20,7 @@
  * **Output vs viewport.** `outputId` is the identity a ticket names; `viewportId`
  * is the Stage viewport that realises the output. They are separate fields
  * because they are separate identities — AM-3 says a second viewport is a distinct
- * output, which the Stage owner (T1.P01.S02) enforces when it creates states, and
+ * output, which the Stage owner enforces when it creates states, and
  * this protocol never assumes the two strings are equal. Tickets are qualified by
  * `outputId` only.
  *
@@ -48,7 +48,7 @@
  * resolves ownership from immutable state and returns a decision — there is no
  * Camera runtime, evaluator, output controller, renderer realisation, projection
  * or navigation here, and no clock, subscription, callback or pending work. The
- * Stage owner (T1.P01.S02) realises the output; the Camera authority evaluates
+ * Stage owner realises the output; the Camera authority evaluates
  * pose and projection. Every function is pure: it takes a state and returns the
  * next state, so a caller can replay or discard a decision without side effects.
  */

@@ -13,7 +13,7 @@ import {
 } from '$lib/render/resources/texture-store';
 import { modelLookFor, realizeModel } from '$lib/render/models/model-realization';
 import { createMaterialStore } from '$lib/render/resources/material-store';
-import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
+import type { EffectiveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 import {
 	createReleaseTextureScope,
 	type ReleaseBytesEntry

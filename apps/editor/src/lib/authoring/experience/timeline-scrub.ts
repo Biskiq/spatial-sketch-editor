@@ -1,5 +1,5 @@
 /**
- * R217.S30 — pointer resolution for the timeline's zero-width wait hatches.
+ * Pointer resolution for the timeline's zero-width wait hatches.
  *
  * A wait is zero elapsed seconds, so several waits can share one timestamp (for
  * example one after another untimed Stop). They are distinct addressable
@@ -26,7 +26,7 @@ export function coincidentWaitMarkers(
 export type SegmentLane = { readonly id: string; readonly widthFraction: number };
 
 /**
- * R217.S30 / slice 5 — map a pointer's fraction of the whole track to the
+ * Map a pointer's fraction of the whole track to the
  * segment under it and that segment's own local fraction. Cards of different
  * stay lengths therefore each map their own span; the caller multiplies the
  * local fraction by the segment's duration.

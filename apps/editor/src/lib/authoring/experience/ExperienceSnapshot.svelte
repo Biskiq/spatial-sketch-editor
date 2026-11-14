@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * A View snapshot slot (R217.S28, E10).
+	 * A View snapshot slot.
 	 *
 	 * The slot keeps its Round 2 geometry and placeholder until a **visible** slot
 	 * asks the Stage's one renderer for its exact authored pose. Results are cached

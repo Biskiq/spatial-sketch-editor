@@ -1,14 +1,14 @@
 <script lang="ts">
 	/**
-	 * The Card's writer for a selected Presentation (R217.S25, Round 2 density). Its body is a
-	 * snapshot grid of the Presentation's Views: a tile selects that View (the one Card selection,
-	 * D10), a double-click opens Look through, and the ◆ and the tour dot are informational only,
-	 * since the Default changes on the View Card (D12). *Visitors reach it* names the Stops that show its Views. While the first
-	 * Guide is awaiting its name (D8) the name is asked inline here. Add to Guide is the visible
+	 * The Card's writer for a selected Presentation. Its body is a
+	 * snapshot grid of the Presentation's Views: a tile selects that View (the one Card selection),
+	 * a double-click opens Look through, and the ◆ and the tour dot are informational only,
+	 * since the Default changes on the View Card. *Visitors reach it* names the Stops that show its Views. While the first
+	 * Guide is awaiting its name the name is asked inline here. Add to Guide is the visible
 	 * action under the Card name; the Information text is committed on blur. It edits through the Experience controller; its
 	 * own state is the Views filter, the text draft and the first-Guide name.
 	 *
-	 * R217.S26: `•••` → Add to Guide ▸ New Guide… asks the new Guide's name here too (E5).
+	 * `•••` → Add to Guide ▸ New Guide… asks the new Guide's name here too.
 	 *
 	 * Sheet §32: the View list is the rail (`ExperienceViewRail`) — the one place View
 	 * order, the Default (View 1) and the Cut/Travel steps between neighbours are edited.
@@ -273,7 +273,7 @@
 		resize: vertical;
 	}
 
-	/* R217.S26: the reorder caret is the Stop cards' gold insertion caret, at the tile's edge. */
+	/* The reorder caret is the Stop cards' gold insertion caret, at the tile's edge. */
 
 	.reach-row {
 		display: flex;

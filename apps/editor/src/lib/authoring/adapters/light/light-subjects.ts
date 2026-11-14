@@ -1,5 +1,5 @@
 /**
- * X8 — the Light subjects, lookups and pick.
+ * The Light subjects, lookups and pick.
  *
  * What a Light *is* to the adapter, with no lifetime: the Light entity type,
  * the canonical selection and snapshot lookups, the glyph under a Stage-local

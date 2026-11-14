@@ -1,5 +1,5 @@
 /**
- * `layout-wall-curve-algebra.ts` — P23.11 exact cubic-chain primitives.
+ * `layout-wall-curve-algebra.ts` — exact cubic-chain primitives.
  *
  * The chain is `[startJunction, …knots, endJunction]` with exactly
  * `spans.length === knots.length + 1`, cubic `i` being

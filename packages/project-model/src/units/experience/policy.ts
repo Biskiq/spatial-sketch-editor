@@ -1,6 +1,6 @@
 /**
  * Derive the runtime policy the interpreter needs from the **authored**
- * Experience unit (T3.P01.S06).
+ * Experience unit.
  *
  * `ExecutionProgram@4` has no detour slot, so the interpreter takes detours as
  * explicit policy. That policy is not a second authoring surface: this module

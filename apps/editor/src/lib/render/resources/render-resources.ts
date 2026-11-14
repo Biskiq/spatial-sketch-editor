@@ -1,16 +1,17 @@
 /**
- * E7 — one render-resource owner per Canvas.
+ * One render-resource owner per Canvas.
  *
- * `renderer-refactor.md` §2 makes layers 4–6 exist **once per Canvas**, because
- * WebGL objects cannot be shared across contexts. E6 created the material store
- * inside the Layout shell, which worked while the Layout was its only consumer;
- * E7 adds Scene entities as a sibling of that shell, so ownership moves up to the
- * Canvas host and both families lease from the same two stores.
+ * The rendering contract (`docs/reference/components/rendering.md`) makes the
+ * render resources exist **once per Canvas**, because
+ * WebGL objects cannot be shared across contexts. The Canvas host (the Stage
+ * canvas or the visitor preview surface) calls `provideRenderResources` once, and
+ * the Layout shell and the Scene entities, which are siblings under it, lease
+ * from the same stores.
  *
- * This is still one owner, not a second authority: `MaterialStore` remains the
- * only material factory, `GeometryStore` the only geometry owner and, since
- * E10/R6, `LightStore` the only realizer of a world light. The context
- * exists so a deep component (`MuseumMaterial`, a door portal, a fallback body)
+ * This is one owner, not a second authority: `MaterialStore` is the only
+ * material factory, `GeometryStore` the only geometry owner and `LightStore` the
+ * only realizer of a world light. The context
+ * exists so a deep component (`CatalogueMaterial`, a door portal, a fallback body)
  * reaches the Canvas's stores without threading a prop through every world
  * component. Mounting world content without a Canvas owner is a programming
  * error, and says so.
@@ -30,9 +31,9 @@ export type RenderResources = {
 	readonly materials: MaterialStore;
 	/** The Canvas's one geometry owner. */
 	readonly geometry: GeometryStore;
-	/** The Canvas's caster arrivals and animation state (E8/G4). */
+	/** The Canvas's caster arrivals and animation state. */
 	readonly casters: CasterChannel;
-	/** The Canvas's one light realizer: authored Point/Spot and the Sky's Sun (E10/R6). */
+	/** The Canvas's one light realizer: authored Point/Spot and the Sky's Sun. */
 	readonly lights: LightStore;
 	/** Dispose the stores and the channel. Idempotent. */
 	dispose(): void;

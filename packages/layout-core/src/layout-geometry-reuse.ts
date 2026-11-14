@@ -1,7 +1,7 @@
 import { layoutLength } from './layout-source-collections';
 /**
  * `layout-geometry-reuse.ts` — retained compile units for the incremental Layout
- * compile (T1.P02.S06 D.3 / H1).
+ * compile.
  *
  * The canonical compiler stays the only compiler. What changes is that it may be
  * handed a store it wrote last time: each entity (Wall, Junction, Room, object)

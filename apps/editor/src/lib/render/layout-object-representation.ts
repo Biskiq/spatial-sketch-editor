@@ -1,15 +1,8 @@
 /**
- * Retained Layout object representation (T1.P02.S06 D.3 / H4).
+ * Retained Layout object representation.
  *
- * The Stage drew every Layout object as its own Svelte component pair. Bench 1
- * located the cost in the mount itself (characterization §2: Svelte inserting each
- * mesh component's anchors is 86 % of the XL open's self time, × 4.4 per
- * doubling), and a compile paid it again for every object whose output had not
- * changed. At L the fixture carries three objects per Room, so the object rows are
- * a larger component population than the Walls are.
- *
- * This module owns that representation imperatively, on the same terms as the
- * Wall representation:
+ * Every compiled Layout object is owned here imperatively, on the same terms as
+ * the Wall representation, rather than mounted as a Svelte component pair:
  *
  * - one `Mesh` per compiled object, keyed by the object's own `cacheKey` (which
  *   names its kind, dimensions, position, rotation, Room and read-only flag), so
@@ -20,16 +13,14 @@
  *   compile constructs no material and a second representation drawing the same
  *   look shares the instance.
  *
- * Shapes and transforms are the ones the Svelte shell drew — a box, plane or
- * profile is a `BoxGeometry` of its dimensions; a cylinder is a unit-height
- * `CylinderGeometry` scaled to its dimensions; a sphere is the unit sphere scaled
- * by `sphereRenderScale` — so the rendered result is unchanged.
+ * Every shape is a shared unit geometry from the Canvas `GeometryStore` scaled
+ * to the compiled dimensions (see `geometrySpecFor`).
  *
- * What it deliberately does not own: Room floors, ceilings and door portals (they
- * need `MuseumMaterial`'s texture scope) and Scene entities (`VisitorEntities`).
- * The compiled object id lives on the mesh itself (`VisitorLayoutObject:<id>`);
- * the shell used to nest it in a `T.Group` with the same name, and no consumer
- * reads the group, so a per-object transform must be applied to the mesh.
+ * What it deliberately does not own: Room floors and ceilings
+ * (`layout-room-representation.ts`), door portals (they need
+ * `CatalogueMaterial`'s texture scope) and Scene entities. The compiled object id
+ * lives on the mesh itself (`VisitorLayoutObject:<id>`) and there is no wrapping
+ * group, so a per-object transform must be applied to the mesh.
  */
 import { Group, Mesh, type Material, type Object3D } from 'three';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
@@ -53,7 +44,7 @@ type RetainedObject = {
 	readonly geometry: GeometryLease;
 };
 
-/** What one update did, as counts — the H4 oracle reads these, never a stopwatch. */
+/** What one update did, as counts — tests read these, never a stopwatch. */
 export type ObjectRepresentationStats = {
 	readonly objects: number;
 	readonly built: number;
@@ -92,11 +83,11 @@ function attachAt(parent: Group, object: Object3D, index: number): void {
 /**
  * The shared geometry spec and the unit scale reproducing the compiled object.
  *
- * E7/R4 moved these buffers into the Canvas `GeometryStore`, so two objects of a
- * kind share one unit buffer and a changed dimension is a transform, not a
- * rebuild. The sphere already used the unit geometry; the cylinder's scale is
+ * Two objects of a kind share one unit buffer from the Canvas `GeometryStore`, and
+ * a changed dimension is a transform, not a rebuild. The cylinder's scale is
  * `(diameter, height, depth)`, which reproduces `CylinderGeometry(r, r, h, 24)`
- * under a `d2 / d0` z-scale vertex for vertex (the R4 parity test proves it).
+ * under a `d2 / d0` z-scale vertex for vertex (the geometry parity test proves
+ * it).
  */
 function geometrySpecFor(object: CompiledLayoutObject): {
 	spec: Parameters<GeometryStore['acquire']>[0];

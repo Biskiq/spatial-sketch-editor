@@ -1,5 +1,5 @@
 /**
- * T1.P01.S04 — wiring between the adapter's public services and the
+ * Wiring between the adapter's public services and the
  * framework-free instrument controller.
  *
  * It reads the accepted F.2 Layout unit and the one canonical selection; it owns
@@ -177,8 +177,8 @@ export function layoutRoomNameTarget(
 
 /**
  * The Card's field-writer input for a selected Wall or Opening; `null` when there
- * is none. T1.P02.S02 moved these ordinary Layout fields out of the retired
- * Dimensions task and into the Card, with the same controller.
+ * is none. The ordinary Layout fields live on the Card and use the Dimensions
+ * instrument's controller.
  */
 export function layoutCardFieldsInput(services: StageAdapterServices): LayoutInstrumentOptions | null {
 	const snapshot = services.stage.snapshot();

@@ -1,5 +1,5 @@
 /**
- * R217.S13 — the **grid** as measured drawing at fixed values.
+ * The **grid** as measured drawing at fixed values.
  *
  * PLATE fixes the grid's grammar, and this module is the only implementation of
  * it:
@@ -12,7 +12,7 @@
  * - lines are anchored to world `(0, datum, 0)` and generated only inside the
  *   drawn rectangle;
  * - Paper's rectangle is a bounded sheet around the work, drawn as lines;
- * - the mat's grid is drawn per pixel on the finite mat (R217.S19): each pixel
+ * - the mat's grid is drawn per pixel on the finite mat: each pixel
  *   fades each level by its own projected spacing, so a perspective view keeps
  *   1 m near the eye, 5 m further out and 25 m toward the horizon;
  * - Paper and the mat have their own inks from PLATE §Semantic color, and the
@@ -387,7 +387,7 @@ export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
 }
 
 /**
- * R217.S19 — the mat grid's per-pixel level weights.
+ * The mat grid's per-pixel level weights.
  *
  * The mat is a perspective surface, so one zoom-wide fade could never suit both
  * the ground at the eye and the ground at the horizon: the whole lattice faded
@@ -435,7 +435,7 @@ export type MatGround = {
 };
 
 /**
- * R217.S19 — the finite mat follows the Camera's own ground reach.
+ * The finite mat follows the Camera's own ground reach.
  *
  * The half-extent is at least 1.5 × the reach the evaluator clips the ground at,
  * rounded up to a power of two so a zoom rarely changes it. The centre is the

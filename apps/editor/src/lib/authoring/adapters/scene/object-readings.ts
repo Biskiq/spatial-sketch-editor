@@ -1,5 +1,5 @@
 /**
- * X7 — read-only facts about the selected Scene object.
+ * Read-only facts about the selected Scene object.
  *
  * The selected entity, its verified contact, drawn or analytic bounds, the
  * admitted-model footprint proxy and the accepted payload the size planners read.

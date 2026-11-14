@@ -1,9 +1,9 @@
 /**
- * T2.P01.S03/S04 — the first coherent Scene editing surface, bounded by S04's
- * uniform Resize, duplicate and delete commands.
+ * The Scene editing surface: placement plus the bounded uniform Resize,
+ * duplicate and delete commands.
  *
- * A framework-free placement session over `T2.P01.S02`'s pure planners and
- * `T1.P01.S07`'s one gesture lease:
+ * A framework-free placement session over the pure Scene planners and the
+ * Stage's one gesture lease:
  *
  * - **Arming is session state only.** No document, history or view changes when
  *   Place/Move/Yaw is armed; Place stays armed after a success until Select or
@@ -21,7 +21,7 @@
  *   which restores the accepted baseline and releases the lease exactly once.
  * - **Scene mutates Scene only.** Support is resolved by the retained planner
  *   from compiled Layout; this session never writes Layout.
- * - **S04 adds no second writer.** Resize, duplicate and delete all build the
+ * - **Compose adds no second writer.** Resize, duplicate and delete all build the
  *   same F.4 intent shape the move/yaw paths use, and each previews through the
  *   same retained planner that commit calls. Resize resolves its contact on the
  *   entity's own accepted X/Z inside the planner, so the shown Y and the

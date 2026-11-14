@@ -1,5 +1,5 @@
 /**
- * T2.P01.S02 — the pure Scene operation set.
+ * The pure Scene operation set.
  *
  * One function per operation turns captured inputs into one candidate Scene or
  * one typed refusal. Nothing here allocates an id (creation ids arrive
@@ -34,8 +34,8 @@
  * re-derives it the same way and keeps it: Move, Place, Resize and Duplicate
  * carry the lift to the destination's support. A primitive's
  * contact is analytical and a captured disagreement refuses; a model's contact
- * is host metadata captured with the intent, exactly as S01 treats verified
- * model contact.
+ * is host metadata captured with the intent, exactly as the object-definition
+ * policy treats verified model contact.
  */
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import {

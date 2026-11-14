@@ -1,5 +1,5 @@
 /**
- * E5/G3 step 1 — **selection is a visibility decision over Paper's drawing**.
+ * Selection is a visibility decision over Paper's drawing**.
  *
  * Paper builds one drawing from the Plan (`buildPaperPlan`). A selection never
  * changes that drawing: the one subject a selection replaces is an Opening,

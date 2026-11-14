@@ -1,5 +1,5 @@
 /**
- * X7 — pointer-to-support readings for the Scene authoring gestures.
+ * Pointer-to-support readings for the Scene authoring gestures.
  *
  * Pure functions of one Stage adapter context: the datum point a pointer ray
  * reaches, the floor support it may stand on past the drawn geometry, the

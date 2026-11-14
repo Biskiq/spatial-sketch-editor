@@ -122,7 +122,7 @@ export type InspectionPose = {
 	readonly elevationRadians: number;
 	readonly targetPlaneHeightMeters: number;
 	/**
-	 * R217.S28 — an authored vertical field of view in degrees. When absent the
+	 * An authored vertical field of view in degrees. When absent the
 	 * Stage keeps its fixed 54° reference FOV and `targetPlaneHeightMeters` alone
 	 * selects the dolly distance. When present the eye is placed at
 	 * `targetPlaneHeightMeters / 2 / tan(fov / 2)`, so an authored View's exact
@@ -239,7 +239,7 @@ export type ViewportCameraState = {
 	/** Declared scene radius in meters, used for the depth range and the Plan eye distance. */
 	readonly sceneRadiusMeters: number;
 	/**
-	 * R217.S19 — the session's display-ground height, or `null` for none. It only
+	 * The session's display-ground height, or `null` for none. It only
 	 * widens the perspective clip range to the visible ground; it never enters scene
 	 * bounds, Fit or the pose.
 	 */
@@ -256,7 +256,7 @@ export type ViewportCameraInput = {
 	readonly pose: InspectionPose;
 	readonly sceneRadiusMeters: number;
 	readonly reading?: ViewportReading;
-	/** R217.S19 — optional session display ground; defaults to `null`. */
+	/** Optional session display ground; defaults to `null`. */
 	readonly displayGroundYMeters?: number | null;
 };
 
@@ -273,7 +273,7 @@ export type ViewingIntent =
 			readonly paddingFraction?: number;
 	  }
 	/**
-	 * C3/D14 — face a surface: place the eye directly outside it along `−look`
+	 * Face a surface: place the eye directly outside it along `−look`
 	 * and frame its bounds, ending in the 3D reading. `look` is the direction the
 	 * camera looks (from the eye toward the surface), so the eye sits on the
 	 * negative side of it. Layout supplies the frame; only camera-core builds a
@@ -287,25 +287,25 @@ export type ViewingIntent =
 			readonly paddingFraction?: number;
 	  }
 	| { readonly kind: 'bring-into-view'; readonly target: Vec3; readonly targetPlaneHeightMeters?: number }
-	/** R217.S28 — re-aim at a new target with the eye held exactly still. */
+	/** Re-aim at a new target with the eye held exactly still. */
 	| { readonly kind: 'aim'; readonly target: Vec3 }
-	/** R217.S28 — install one exact authored View pose (eye, target, FOV). */
+	/** Install one exact authored View pose (eye, target, FOV). */
 	| {
 			readonly kind: 'set-view';
 			readonly eye: Vec3;
 			readonly target: Vec3;
 			readonly fovYDegrees: number;
 			/**
-			 * C3/D14 — animate to the pose instead of installing it. The unfolded
+			 * Animate to the pose instead of installing it. The unfolded
 			 * context returns to its exact entry pose through this flag, so the return
 			 * uses the same generalised transition as `face` rather than a second
 			 * interpolation path.
 			 */
 			readonly transition?: boolean;
 	  }
-	/** R217.S28 — move eye and target together, keeping aim and FOV. */
+	/** Move eye and target together, keeping aim and FOV. */
 	| { readonly kind: 'lift'; readonly deltaMeters: number }
-	/** R217.S28 — change the authored lens at a fixed eye and target. */
+	/** Change the authored lens at a fixed eye and target. */
 	| { readonly kind: 'lens'; readonly fovYDegrees: number }
 	/**
 	 * Experience review 1 — turn the view in place: the eye holds still while the
@@ -581,7 +581,7 @@ export function eyeOfInspectionPose(pose: InspectionPose): Vec3 {
 }
 
 /**
- * An exact authored View as an inspection pose (R217.S28).
+ * An exact authored View as an inspection pose.
  *
  * `eye` and `target` place the view direction and distance; `fovDegrees` is the
  * authored source of truth and sets the target-plane height so the evaluator
@@ -614,7 +614,7 @@ export function inspectionPoseFromView(input: {
 }
 
 /**
- * Re-aim at a new target while the eye stays exactly where it is (R217.S28).
+ * Re-aim at a new target while the eye stays exactly where it is.
  * The authored FOV and the eye are preserved; only the direction and the
  * target-plane extent change. The Plan reading is orthographic and has no
  * eye to hold, so callers present a 3D pose.
@@ -732,7 +732,7 @@ export function frameSubjectPose(input: {
 }
 
 /**
- * C3/D14 — the inspection pose that **faces** a surface.
+ * The inspection pose that **faces** a surface.
  *
  * `look` is the camera's look direction (eye → surface), so the eye is placed
  * along `−look` from the bounds centre. The framed extent is measured by
@@ -890,15 +890,15 @@ function depthRange(distanceMeters: number, sceneRadiusMeters: number): { near: 
 	return { near, far, clamped: rawNear < VIEWPORT_NEAR_FLOOR_METERS };
 }
 
-/** R217.S19 — the display ground reaches this many target-plane extents. */
+/** The display ground reaches this many target-plane extents. */
 export const VIEWPORT_GROUND_REACH_EXTENTS = 24;
 /**
- * R217.S19 — and at least this many eye heights above the display ground. The
+ * And at least this many eye heights above the display ground. The
  * plan's 64 left a 13–15 CSS px band below the horizon at the 54° reference FOV;
  * 96 keeps it within 12 px at 900 px (amended plan §3a row 2).
  */
 export const VIEWPORT_GROUND_REACH_EYE_HEIGHTS = 96;
-/** R217.S19 — the near plane sits this fraction of the nearest visible ground depth. */
+/** The near plane sits this fraction of the nearest visible ground depth. */
 export const VIEWPORT_GROUND_NEAR_FRACTION = 0.9;
 
 /**
@@ -920,11 +920,11 @@ export function viewportGroundReachMeters(input: {
 }
 
 /**
- * R217.S19 — the clip range that keeps a display ground visible.
+ * The clip range that keeps a display ground visible.
  *
  * The scene-sphere range clipped the finite ground twice: the far plane cut it in
- * a straight line (D21) and, at a low orbit, the near plane cut the ground at the
- * frame's bottom (D28). Far reaches the specified ground distance; near never
+ * a straight line and, at a low orbit, the near plane cut the ground at the
+ * frame's bottom. Far reaches the specified ground distance; near never
  * passes the nearest ground the frame's bottom row sees. With no ground the range
  * is exactly the scene-sphere one.
  */
@@ -981,7 +981,7 @@ function transitionFrame(
 	progress: number
 ): { pose: InspectionPose; orthographicWeight: number } {
 	const eased = smoothstep(progress);
-	// C3/D14 — a face entry and its return run in 3D at both ends. The
+	// A face entry and its return run in 3D at both ends. The
 	// orthographic weight is therefore zero throughout, and the pose eases over
 	// the whole duration instead of reserving the flip's Paper pose-hold share.
 	const inPlace3d = transition.from === '3d' && transition.to === '3d';
@@ -1478,7 +1478,7 @@ export function requestViewingIntent(
 				VIEWPORT_ELEVATION_LIMIT_RADIANS
 			);
 			if (intent.transition === true) {
-				// C3/D14 — the unfolded context's return. The endpoint is exactly the
+				// The unfolded context's return. The endpoint is exactly the
 				// authored pose; only the route to it is animated, through the same
 				// generalised in-place transition as `face`.
 				return accept({

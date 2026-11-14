@@ -1,5 +1,5 @@
 /**
- * X8 — the Light mark-gesture session.
+ * The Light mark-gesture session.
  *
  * One captured edit of the selected light: Move, Height, Aim, Reach, Beam, Soft
  * edge. The session owns the captured copy, takes the binding's one gesture lease

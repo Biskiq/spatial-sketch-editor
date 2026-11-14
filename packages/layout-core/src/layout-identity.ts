@@ -1,5 +1,5 @@
 /**
- * `layout-identity.ts` — P23.12 compact reference identity.
+ * `layout-identity.ts` — compact reference identity.
  *
  * A **reference** is presentation identity only: a short, document-unique,
  * non-semantic label a person can read out loud (`Gallery A · R-7K3M`). It is
@@ -7,7 +7,7 @@
  * connectivity authority — and nothing in the layout, geometry, selection,
  * history or topology code may read one.
  *
- * Shape (P23.12 final design contract §1/§2):
+ * Shape:
  * - `family + '-' + 4 characters`, exactly **6 characters** total, from the
  *   31-character unambiguous alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ`
  *   (`0 O 1 I L` are excluded so a reference can be read aloud).
@@ -29,7 +29,7 @@
  *   allocations differ in all four suffix characters, and no consumer can read an
  *   order, a position or a role out of one.
  *
- * Durable vs provisional (P23.12 D1 rule, proved by T1–T6):
+ * Durable vs provisional:
  * - {@link withLayoutIdentity} is the **provisional** primitive: it mints into
  *   its own copy from a frozen base and is safe on the pointermove path. It never
  *   advances anything outside the copy it returns.

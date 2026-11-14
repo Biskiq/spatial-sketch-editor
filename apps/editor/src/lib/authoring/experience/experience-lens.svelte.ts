@@ -161,7 +161,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			!host.guideOpen()
 	);
 
-	/** S30 playback writes the one Camera through a set-view intent, never a pose copy. */
+	/** Playback writes the one Camera through a set-view intent, never a pose copy. */
 	function applyView(view: PlaybackView): boolean {
 		const stage = host.stage();
 		if (stage === null) return false;
@@ -217,7 +217,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	/**
-	 * D10 — a Card subject replaces the Stage selection. Nothing here moves the Camera.
+	 * A Card subject replaces the Stage selection. Nothing here moves the Camera.
 	 */
 	function selectSubject(subject: ExperienceSubject | null): void {
 		host.clearStageSelection();
@@ -376,7 +376,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		return false;
 	}
 
-	/** S28 Escape precedence: provisional write, marker edit, place, then Look through. */
+	/** Escape precedence: provisional write, marker edit, place, then Look through. */
 	function escape(): boolean {
 		if (pendingViewWrite !== null) {
 			pendingViewWrite = null;

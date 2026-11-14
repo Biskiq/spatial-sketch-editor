@@ -7,9 +7,8 @@
  * verifies every unit content revision and dependency lock, and refuses any
  * capture that is not the canonical encoding of its own contents.
  *
- * `T3.P01.S04` activates this handler: it is now the only handler the route
- * constructs, and the schema fence (`project_versions.source_format`) makes a
- * pre-epoch writer fail structurally. The old current-source handler is gone.
+ * This is the only handler the route constructs, and the schema fence
+ * (`project_versions.source_format`) makes a pre-epoch writer fail structurally.
  *
  * The saved base token is durable metadata beside the strict document. It is not
  * the local `AcceptedRevision`, the SQL `latest_version` ordinal publication
@@ -292,7 +291,7 @@ LIMIT 1`,
 		) {
 			throw new SaveRefusalError('content-identity-mismatch', 'Admission produced a different source than the capture');
 		}
-		// T2.P02.S01: a `model` resource is host-asserted no longer. Every model in
+		// A `model` resource is host-asserted no longer. Every model in
 		// the admitted source must name an approved revision of this project whose
 		// retained bytes and provenance agree with the resource's pins; the refusal
 		// rolls the transaction back, so no stored version changes.

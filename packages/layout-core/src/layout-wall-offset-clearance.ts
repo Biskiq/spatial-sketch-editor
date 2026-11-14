@@ -1,5 +1,5 @@
 /**
- * `layout-wall-offset-clearance.ts` — P23.11 shared finite-thickness Wall
+ * `layout-wall-offset-clearance.ts` — shared finite-thickness Wall
  * clearance predicate (Issue #6).
  *
  * A Wall renders as a solid of finite `thickness`, i.e. its centerline swept
@@ -11,11 +11,11 @@
  * - `neck` — the Wall passes closer than its own thickness to itself, so the
  *   two offset regions overlap.
  *
- * Before P23.11 this rule lived only inside the two renderer mesh builders, so
- * a curved Wall could pass commit validation and then produce a broken solid
- * with no canonical error — the exact defect Issue #6 describes.
+ * If this rule lived only inside the renderer mesh builders, a curved Wall
+ * could pass commit validation and then produce a broken solid with no
+ * canonical error.
  *
- * ONE pure implementation now serves all three consumers: canonical compile
+ * ONE pure implementation serves all three consumers: canonical compile
  * acceptance, the editor mesh builder and the museum mesh builder. It reads
  * compiled samples only — no renderer, no Three.js, no editor or museum state
  * — so an accepted document cannot be rejected at render time for a reason

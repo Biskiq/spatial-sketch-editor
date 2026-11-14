@@ -1,7 +1,7 @@
 import { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';
 /**
  * `layout-geometry-delta.ts` — persistent retained compile roots and local delta
- * evaluation for `compileWallFirstLayoutGeometry` (T1.P02.S06).
+ * evaluation for `compileWallFirstLayoutGeometry`.
  *
  * Architectural contract (AGENTS.md rules 3 & 6):
  * 1. **One canonical compiler** — every dirty Room, Wall, Junction, Object and
@@ -226,8 +226,8 @@ type PassiveCompileRecord = {
 	/** Only clean records seed a compile store. */
 	readonly clean: boolean;
 	/** The document already carried a deep immutable-JSON proof when this was
-	 * recorded, so the record is its compile for as long as the object lives
-	 * (E4 / I2 canonical read). A shallow freeze proves nothing. */
+	 * recorded, so the record is its compile for as long as the object lives.
+	 * A shallow freeze proves nothing. */
 	readonly sealed: boolean;
 };
 
@@ -250,7 +250,7 @@ export function recordPassiveCompiledGeometry(
 	PASSIVE_COMPILE_BY_DOC.set(document, { geometry, issues, clean: true, sealed: verifiedFrozenSource(document) });
 }
 
-/** E4 / I2 — the session-less compile records every canonical result, issues
+/** The session-less compile records every canonical result, issues
  * included; a record with issues is read back verbatim but never seeds. */
 export function recordSessionlessCompile(
 	document: LayoutDocumentWallFirst,

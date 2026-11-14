@@ -1,5 +1,5 @@
 /**
- * X5 — Opening placement: the Opening reading's one-operation controller.
+ * Opening placement: the Opening reading's one-operation controller.
  *
  * It owns the host preference, the one host-relative candidate (pointer or typed),
  * the edge-positioned planner preview, defaults acceptance and the re-arm

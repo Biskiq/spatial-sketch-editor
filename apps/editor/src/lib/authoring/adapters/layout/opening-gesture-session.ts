@@ -625,7 +625,7 @@ export function createOpeningGestureSession({
 		adapterContext: StageAdapterContext,
 		y: number
 	): readonly StageCandidatePreview[] | null {
-		// T1 A8 — the Card's live Repeat proposal. Every copy comes from the
+		// The Card's live Repeat proposal. Every copy comes from the
 		// planner's own candidate document, filtered to the Openings it created,
 		// so the Stage can never show a copy acceptance would refuse. The Card
 		// owns the typed count/spacing; this is a read of the same proposal.

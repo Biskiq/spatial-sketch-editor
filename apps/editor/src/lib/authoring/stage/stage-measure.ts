@@ -1,12 +1,12 @@
 /**
- * R217.S10 — **Measure**, a host tool.
+ * Measure**, a host tool.
  *
  * Measure names two points and reads the distance between them. Each endpoint is
  * the winner of host tool `measure` across every domain that declares it — a Wall
  * end or Junction from Layout, a bounds corner from Scene — arbitrated spatially by
  * the one Stage resolver, so a single measurement may run from a Wall to an object.
  * With no domain winner the endpoint is the datum point under the pointer, rounded
- * by the shared Snap fact (S05).
+ * by the shared Snap fact.
  *
  * Measure writes nothing. It registers no proposal and its press is declared a
  * non-authoring lease, so Undo stays available throughout; the measurement is

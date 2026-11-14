@@ -54,7 +54,7 @@ import { createLayoutContributions } from './layout/layout-contributions';
 
 export const createAdapter: StageAdapterFactory = (services) => {
 	const pick = createPlanPickProvider(() => services.stage.plan());
-	/** E4 — this project's compile context; bindings borrow it, the registration end releases it. */
+	/** This project's compile context; bindings borrow it, the registration end releases it. */
 	const compileContext = createLayoutCompileContext();
 	const lifetime: LayoutAdapterLifetime = { context: compileContext, memoHeld: null };
 	const planners = [
@@ -64,7 +64,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createJoinPlanners(),
 		...createRoomDuplicatePlanners(),
 		...createOpeningPlanners(),
-		// T1 A8 — Repeat is one retained planner beside the other Opening
+		// Repeat is one retained planner beside the other Opening
 		// operations, on the same registry, admission and coordinator.
 		...createOpeningRepeatPlanners()
 	].map((planner) => plannerInContext(compileContext, planner));
@@ -99,11 +99,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		// Handle admission reads the planner kinds this factory actually registered;
 		// a mark cannot promise an operation the coordinator never received.
 		plannerKinds: planners.map((planner) => planner.kind),
-		/** E4 — ends the registration: release this project's compile context. */
+		/** Ends the registration: release this project's compile context. */
 		dispose: () => compileContext.dispose(),
 		bind(context): StageAdapterBinding {
 			const document = stageLayout(context.snapshot);
-			/** E4 — this binding's candidate memo; it dies with the binding (rebase). */
+			/** This binding's candidate memo; it dies with the binding (rebase). */
 			const presenter = createLayoutCandidatePresenter(compileContext);
 			lifetime.memoHeld = presenter.held;
 			const levelId = context.snapshot.domain.layoutLevelId;
@@ -370,7 +370,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							if (hit !== null && hit.adapterId === 'layout' && hit.role === 'edit') {
 								markId = hit.id;
 							} else if (selected !== null) {
-								// R217.S15 — a selected subject's owner may claim a press on its
+								// A selected subject's owner may claim a press on its
 								// own body. The pick is resolved once, with the same purpose a
 								// click uses. In Plan Select an Opening now outranks its host, so an
 								// aperture press cannot move the selected Wall.

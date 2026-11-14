@@ -1,5 +1,5 @@
 /**
- * X5 — Ink drawing: the Wall reading's one-operation controller.
+ * Ink drawing: the Wall reading's one-operation controller.
  *
  * It owns the Line, Box, Arc and Circle state machines: the live chain draft,
  * the one identity capture shared by preview and acceptance, the in-flight
@@ -425,8 +425,7 @@ export function createInkSession(
 
 	/**
 	 * Circle's two authored points: a centre tap (or the live press) and the
-	 * rim under the pointer. The rim is the canonical seam, exactly as D9
-	 * requires; no separate circle geometry is inferred later.
+	 * rim under the pointer. The rim is the canonical seam; no separate circle geometry is inferred later.
 	 */
 	function circlePreviewPoints(): { center: ChainDraftPoint; rim: ChainDraftPoint } | null {
 		const placed = draft.points[0];
@@ -439,7 +438,7 @@ export function createInkSession(
 
 	/**
 	 * The live Circle preview plan, once per distinct centre → rim, size and
-	 * capture (E4). The preview reads only its outcome and words; the release
+	 * capture. The preview reads only its outcome and words; the release
 	 * plans for itself through `planCircleDraft`.
 	 */
 	function circleDraftPreview(circle: { center: ChainDraftPoint; rim: ChainDraftPoint }): ChainPlanPreview {

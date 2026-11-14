@@ -1,7 +1,7 @@
 /**
- * C3 checkpoint 5 — inverse picking on the developed sheet.
+ * Inverse picking on the developed sheet.
  *
- * The display strip is built once from checkpoint 4's development mesh. Every
+ * The display strip is built once from the development mesh. Every
  * vertex already carries its canonical `(station, lateral, height)`, so a
  * pointer ray interpolates those three values barycentrically across the hit
  * triangle: the map is piecewise affine, unique wherever the sheet does not

@@ -319,6 +319,8 @@ accounting and the stale-arrival gate.
 
 ## E8/R5 — model renderer retirement
 
+EVIDENCE-PATHS: start — paths as written when E8 landed, before E12 moved `lib/museum/*` to `lib/render/*`
+
 **Date:** 2026-11-14. **Branch:** `claude/e8-model-renderer-retirement` (from `main` `bd7bfb09`).
 **Scope:** closes the E8 owner exception. The approved fallback shapes become data
 (`apps/editor/src/lib/museum/assets/fallback-shapes.ts`), and the retained Scene model handler
@@ -444,6 +446,8 @@ Revert the PR as one unit. The handler, the fallback data, the support module an
 `VisitorEntityGroups`/`StageEntities` wiring. `model-realization.ts` keeps its exports (the moved
 helpers are re-exported from `model-presentation.ts`), and the store's `frustum` geometry spec is
 additive, so neither needs to move. Then re-record the owner exception in `execution-schedule.md`.
+
+EVIDENCE-PATHS: end
 
 ## E9/R5 + R2c — Artwork and the remaining world materials
 
@@ -712,3 +716,59 @@ not consume `perf:spot`.
 
 There is no batching rollback. The Stage fix is a separate commit and can be reverted
 independently, which would restore the X3 feedback loop.
+
+## E12 — Final placement and names
+
+**Status: mechanical.** E12 (R8) moved the remaining product renderer modules out of the legacy
+`lib/museum` root and renamed the catalogue validation policy. Bodies are unchanged apart from
+import specifiers; no rendered output, format or lane membership changed.
+
+EVIDENCE-PATHS: start — the Before column names paths that E12 removed
+
+| Before | After |
+| --- | --- |
+| `apps/editor/src/lib/museum/materials/*` | `apps/editor/src/lib/render/materials/*` |
+| `apps/editor/src/lib/museum/materials/MuseumMaterial.svelte` | `apps/editor/src/lib/render/materials/CatalogueMaterial.svelte` |
+| `apps/editor/src/lib/museum/layout/*` | `apps/editor/src/lib/render/layout/*` |
+| `apps/editor/src/lib/museum/assets/*` | `apps/editor/src/lib/render/assets/*` |
+| `apps/editor/src/lib/museum/entities/form-geometry.ts` | `apps/editor/src/lib/render/entities/form-geometry.ts` |
+| `apps/editor/tests/lib/museum/{materials,layout,assets}/*` | `apps/editor/tests/lib/render/{materials,layout,assets}/*` |
+| `apps/editor/tests/lib/museum/form-geometry.test.ts` | `apps/editor/tests/lib/render/entities/form-geometry.test.ts` |
+| `apps/editor/tests/lib/museum/materials/museum-material-lifecycle.test.ts` | `apps/editor/tests/lib/render/materials/catalogue-material-lifecycle.test.ts` |
+| `apps/editor/tests/lib/museum/navigation/*`, `camera-core-boundary.test.ts` | `apps/editor/tests/lib/camera-core/` |
+| `apps/editor/tests/lib/museum/stage-snapshots.test.ts` | `apps/editor/tests/lib/authoring/stage-snapshots.test.ts` |
+| `MUSEUM_SCENE_VALIDATION_OPTIONS` | `CATALOGUE_SCENE_VALIDATION_OPTIONS` |
+
+EVIDENCE-PATHS: end
+
+The two boundary sweeps that walked `lib/museum` (`camera-core-boundary`,
+`visitor-identity-isolation`) now walk `lib/render`, which holds the same files plus the rest of the
+shared renderer. Retired-file assertions that name a deleted `lib/museum` path keep that path: they
+pin the absence of the retired file, not a location. Rollback is the table above, applied in
+reverse as one unit.
+
+### E12 spot checkpoint — unmeasured
+
+One `npm run perf:spot` run, as D1 allows, with no retry and no extra benchmarking. It ran against
+the production preview of `13580e38` (`npm run build` passed; preview on
+`http://127.0.0.1:4173`). Machine: Apple M2, Chromium 157, load average 4.2–4.8 at start.
+
+- Fixtures generated: grid-M (112 Walls, 112 Openings, 49 Rooms) in 3.9 s and grid-L (420 Walls,
+  420 Openings, 196 Rooms) in 45.7 s. Setup took 54.0 s and the run 612.3 s.
+- Both tiers reached `f2:open-admitted` and `stage:source-ready` (M at 864 ms, L at 880 ms), and
+  recorded three `stage:pick` marks while selecting the Wall. Each then timed out after 300 s in
+  `page.waitForFunction`, waiting for the drag's accepted result (`waitForAcceptedResult`,
+  `LARGE_TIER_WAIT_MS`). The last browser events are the drag's pointer-down (M) and pointer-enter
+  (L).
+- The report labels both tiers `incomplete` with zero sessions:
+  `2026-11-14T23-21-55-343Z-spot.json` under the temporary `biskiq-spot` directory.
+
+So the E12 wall-clock spot values are **unmeasured**, like the E0/C0 baseline in
+[Browser evidence gap](#browser-evidence-gap). The symptom matches that gap: a headless 300 s
+timeout in the post-open Stage flow. This run does not show whether the cause is the harness
+or the product. The E11 trace numbers above stay the most recent measured values. E12
+changed no executable code after `a9976b90` (token proof in the PR), so this checkpoint is no
+evidence of a regression from E12's comment and documentation commits.
+
+**Owner ruling (E12 close-out):** the E12 result stays unmeasured. There are no further `perf:spot`
+runs for E12. Diagnosing the 300 s accepted-result timeout is deferred to a focused follow-up PR.

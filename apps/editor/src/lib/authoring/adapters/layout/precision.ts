@@ -1,5 +1,5 @@
 /**
- * T1.P01.S04 — the existing-Layout precision operation set.
+ * The existing-Layout precision operation set.
  *
  * One `DomainPlanner` per writable fact, each delegating to a **retained**
  * Layout planner (`layout-core`). Nothing here hand-mutates geometry: the
@@ -87,24 +87,24 @@ export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
 export const LAYOUT_OPENING_MEASURE_KIND = 'layout-opening-measure';
 export const LAYOUT_ENTITY_NAME_KIND = 'layout-entity-name';
 export const LAYOUT_PLINTH_PLACE_KIND = 'layout-plinth-place';
-/** T1.P01.S05 — exact straight-Wall length, keeping one explicit endpoint fixed. */
+/** Exact straight-Wall length, keeping one explicit endpoint fixed. */
 export const LAYOUT_WALL_LENGTH_KIND = 'layout-wall-length';
 /**
- * T1.P01.S05 — exact straight-Wall angle. The payload carries **radians**, the
+ * Exact straight-Wall angle. The payload carries **radians**, the
  * canonical `atan2(z, x)` unit `planExactWallAngle` solves in; the instrument
  * converts the degrees it displays, so no intent ever carries a display unit.
  */
 export const LAYOUT_WALL_ANGLE_KIND = 'layout-wall-angle';
-/** T1.P01.S05 — rigid straight-Wall translation: both endpoints move by one delta. */
+/** Rigid straight-Wall translation: both endpoints move by one delta. */
 export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
 /**
- * T1 C1 — one grab on an open Wall body becomes one bend point and one reshape.
+ * One grab on an open Wall body becomes one bend point and one reshape.
  * The payload carries the physical arc distance the press resolved and the
  * captured id of the bend point the write may insert, so preview and commit
  * address the same identity.
  */
 export const LAYOUT_WALL_BEND_KIND = 'layout-wall-bend';
-/** C1/D2 — the Card's two knot shape actions, through one planner each. */
+/** The Card's two knot shape actions, through one planner each. */
 export const LAYOUT_WALL_KNOT_DELETE_KIND = 'layout-wall-knot-delete';
 export const LAYOUT_WALL_STRAIGHTEN_KIND = 'layout-wall-straighten';
 /**
@@ -113,7 +113,7 @@ export const LAYOUT_WALL_STRAIGHTEN_KIND = 'layout-wall-straighten';
  * with the canonical gates' words; Scene objects stay where they are.
  */
 export const LAYOUT_ROOM_MOVE_KIND = 'layout-room-move';
-/** R217.S15 — one shared Junction moves freely in X/Z; every incident Wall follows. */
+/** One shared Junction moves freely in X/Z; every incident Wall follows. */
 export const LAYOUT_JUNCTION_MOVE_KIND = 'layout-junction-move';
 
 /** The one opening field each edit owns; the UI never sends a combined patch. */
@@ -230,8 +230,8 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
 /**
  * One Layout planner: id, admission and source shape shared by every Layout
  * operation. It binds no compile session; the adapter that registers it runs
- * each `prepare` through its project-epoch compile context (E4,
- * `compile-context.ts`). Called directly (tests), a planner compiles cold, which
+ * each `prepare` through its project-epoch compile context
+ * (`compile-context.ts`). Called directly (tests), a planner compiles cold, which
  * is equal by the session's construction proof.
  */
 export function layoutPlanner(
@@ -274,7 +274,7 @@ function addressedSubject(
 }
 
 /**
- * T1.P02.S01 §1 — the working level is an explicit captured input, never a field
+ * The working level is an explicit captured input, never a field
  * read out of the document during planning. A missing or stale level fails closed.
  */
 function capturedWorkingLevel(
@@ -463,7 +463,7 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 }
 
 /**
- * C1 — the composite Bend planner. One grab, one candidate, one history entry:
+ * The composite Bend planner. One grab, one candidate, one history entry:
  * a straight Wall becomes a chain when the grab inserts its first bend point,
  * and an invalid release rejects atomically through the retained planner.
  */
@@ -500,7 +500,7 @@ function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
 }
 
 /**
- * C1/D2 — remove the active bend point. The retained delete-by-merge planner
+ * Remove the active bend point. The retained delete-by-merge planner
  * owns the geometry, Opening fit and atomic refusal; the Card only names which
  * captured knot the creator made active.
  */
@@ -526,7 +526,7 @@ function wallKnotDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
-/** C1 — Straighten Wall through the retained convert-to-line planner. */
+/** Straighten Wall through the retained convert-to-line planner. */
 function wallStraightenPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_STRAIGHTEN_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_STRAIGHTEN_KIND, request.intent.payload);
@@ -561,7 +561,7 @@ function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
 }
 
 /**
- * R217.S15 — move one shared Junction freely. The selected Wall supplies the
+ * Move one shared Junction freely. The selected Wall supplies the
  * F.1 target and the payload names the Junction that must be one of its ends, so
  * a stale gesture cannot move a Junction on another Wall. The retained planner
  * owns the shared-Junction consequences and every identity/Opening/Room gate.
@@ -726,7 +726,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (request.intent.targets.length !== 0) {
 			return rejected('invalid-value', 'A plinth placement addresses no existing subject.');
 		}
-		// T1.P02.S01 §1 — identity is captured, not allocated: the nonce input
+		// Identity is captured, not allocated: the nonce input
 		// derives the object id, and the intent's captured allocation must agree.
 		const capture = readLayoutIdCapture(request.capturedInputs);
 		if (capture === null) {
@@ -815,7 +815,7 @@ export function layoutSubjectOf(
  *
  * `null` for a curved Wall: exact length and exact angle are straight-Wall
  * solves (the retained planners refuse a curve with `curved_wall_unsupported`),
- * so this slice offers no such handle for one and its S04 scalar edits remain.
+ * so no such handle is offered for one; its precision scalar edits remain.
  * Direction is canonical start → end; the angle is the same `atan2(z, x)` the
  * planner solves in.
  */
@@ -880,7 +880,7 @@ export type CurvedWallFrame = {
 export type OpenWallFrame = CurvedWallFrame;
 
 /**
- * D1 — the frame the Bend gesture consumes. Unlike `curvedWallFrame` it also
+ * The frame the Bend gesture consumes. Unlike `curvedWallFrame` it also
  * resolves a straight Wall, because a body press must bend it on the spot; the
  * sampled length of a `line` centerline is its chord.
  */
@@ -1029,7 +1029,7 @@ export type WallNeighbourPreview = {
 /**
  * One F.4 intent for a Wall manipulation, with captured identity and revision.
  *
- * The reference names the level the accepted source owns, exactly as the S04
+ * The reference names the level the accepted source owns, exactly as the
  * precision instrument does, so the target cannot name another level.
  */
 export function wallManipulationIntent(input: {
@@ -1100,7 +1100,7 @@ export function wallManipulationIntent(input: {
 }
 
 /**
- * One C1 Bend intent: the physical station the press resolved, the pointer's
+ * One Bend intent: the physical station the press resolved, the pointer's
  * bend point, and the captured id the write may insert.
  *
  * Preview and commit build this same intent, so the document the preview draws
@@ -1146,7 +1146,7 @@ export function wallBendIntent(input: {
 	});
 }
 
-/** C1/D2 — one captured intent for removing the active bend point. */
+/** One captured intent for removing the active bend point. */
 export function wallKnotDeleteIntent(input: {
 	readonly wallId: string;
 	readonly knotId: string;
@@ -1178,7 +1178,7 @@ export function wallKnotDeleteIntent(input: {
 	});
 }
 
-/** C1 — one captured intent for Straighten Wall. */
+/** One captured intent for Straighten Wall. */
 export function wallStraightenIntent(input: {
 	readonly wallId: string;
 	readonly operationId: string;
@@ -1316,7 +1316,7 @@ export function wallStationNearPoint(
 }
 
 /**
- * C1/D2 — the exact candidate a Card knot action would install, or its refusal.
+ * The exact candidate a Card knot action would install, or its refusal.
  * The action runs this before acceptance, so a refused edit is named without a
  * write and the accepted edit is the same planner's document.
  */
@@ -1333,7 +1333,7 @@ export function previewWallKnotDelete(
 		: { kind: 'planned', document: plan.document };
 }
 
-/** C1 — the exact Straighten candidate, or its refusal. */
+/** The exact Straighten candidate, or its refusal. */
 export function previewWallStraighten(
 	document: LayoutDocumentWallFirst,
 	wallId: string
@@ -1446,7 +1446,7 @@ export function layoutWritableFacts(
 			return dimensions;
 		}
 		const frame = wallFrame(document, subject.id);
-		// A curved open Wall keeps every S04 scalar edit and gains no length/angle/rigid
+		// A curved open Wall keeps every precision scalar edit and gains no length/angle/rigid
 		// field: those are straight-Wall solves and offering them would be an
 		// invitation the canonical planner has to refuse.
 		if (frame === null) {
@@ -1464,7 +1464,7 @@ export function layoutWritableFacts(
 			{ id: 'angle', label: 'Angle', value: (frame.angleRadians * 180) / Math.PI, unit: 'deg' },
 			{ id: 'deltaX', label: 'Move ΔX', value: 0, unit: 'm' },
 			{ id: 'deltaZ', label: 'Move ΔZ', value: 0, unit: 'm' },
-			// R217.S15 — the non-pointer path for the same shared-Junction planner.
+			// The non-pointer path for the same shared-Junction planner.
 			{ id: 'startX', label: 'Start X', value: frame.start[0], unit: 'm' },
 			{ id: 'startZ', label: 'Start Z', value: frame.start[1], unit: 'm' },
 			{ id: 'endX', label: 'End X', value: frame.end[0], unit: 'm' },
@@ -1537,7 +1537,7 @@ export function parsePlacementXZ(xText: string, zText: string): PlacementParse {
 /**
  * Build the F.4 intent for one writable fact, with captured identity and revision.
  *
- * The working level is always an explicit captured input (T1.P02.S01 §1); an
+ * The working level is always an explicit captured input; an
  * operation that mints Layout identity additionally captures its nonce here, so
  * the planner derives the exact ids this intent recorded. Neither value is read
  * out of the document by planning.

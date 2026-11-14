@@ -67,7 +67,7 @@ afterEach(async () => {
 	document.body.replaceChildren();
 });
 
-describe('R2b — MuseumMaterial mounted lifecycle', () => {
+describe('R2b — CatalogueMaterial mounted lifecycle', () => {
 	it('acquires once on mount and its own publication does not re-run the effect', async () => {
 		open = mountSurfaces([PLAIN]);
 		const store = open.handle.resources.materials;

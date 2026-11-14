@@ -1,5 +1,5 @@
 /**
- * C3 checkpoint 5 — the **unfold session**.
+ * The **unfold session**.
  *
  * This is display/session state, never authored data: it holds the Wall, the
  * canonical anchor station, the closed-Wall display cut, which face is being
@@ -7,9 +7,9 @@
  * will return to. It is never serialized, never enters history, and Undo never
  * changes it.
  *
- * The geometry itself comes from checkpoint 4's one development map
+ * The geometry itself comes from the one development map
  * (`layout-wall-development.ts`). This module only prepares that map from a
- * compiled Wall, enforces the D12 scrub rules and states the D13 edit policy in
+ * compiled Wall, enforces the scrub rules and states the unfolded edit policy in
  * one place so the Card, the Stage and the adapter cannot disagree.
  */
 import {
@@ -71,7 +71,7 @@ export const WALL_UNFOLD_EDGE_HIT_COARSE_CSS = 44;
 export const WALL_UNFOLD_PIN_HIT_CSS = 24;
 export const WALL_UNFOLD_PIN_HIT_COARSE_CSS = 44;
 
-/** Why a shape edit is refused while unfolded (D13). */
+/** Why a shape edit is refused while unfolded. */
 export const WALL_UNFOLD_SHAPE_REFUSAL =
 	'Centerline and bend-point editing are unavailable while the Wall is unfolded. Fold it back first.';
 
@@ -90,7 +90,7 @@ export type WallUnfoldState = {
 	readonly wallId: string;
 	/** Canonical station the Wall opens around, modulo L for a closed Wall. */
 	readonly anchorStation: number;
-	/** Closed-Wall display cut opposite the anchor (D11); `null` for an open Wall. */
+	/** Closed-Wall display cut opposite the anchor; `null` for an open Wall. */
 	readonly cutStation: number | null;
 	readonly side: WallUnfoldSide;
 	/** The side whose surface belongs to the derived Room. */
@@ -270,7 +270,7 @@ export function createWallUnfoldState(input: {
 	return {
 		wallId: input.wall.wallId,
 		anchorStation,
-		// D11 — the display cut is opposite the anchor. It never changes the
+		// The display cut is opposite the anchor. It never changes the
 		// canonical seam or the Wall's Junction. A cut that falls in an Opening's
 		// void moves to the nearest solid gap so the peel edge is real Wall.
 		cutStation: closed ? wallUnfoldCutStation(anchorStation, length, input.openings) : null,
@@ -577,7 +577,7 @@ export function unfoldAmountFromDrag(deltaCss: number): number {
 }
 
 /**
- * The D12 release rules: below 0.04 closes silently; within ±0.035 of half or
+ * The scrub release rules: below 0.04 closes silently; within ±0.035 of half or
  * flat snaps; otherwise the sheet stays where the creator left it.
  */
 export function snapWallUnfoldAmount(amount: number): number {
@@ -603,7 +603,7 @@ export function flipWallUnfoldSide(state: WallUnfoldState): WallUnfoldState {
 	return { ...state, side: state.side === 1 ? -1 : 1 };
 }
 
-/** Prepare checkpoint 4's development for this session. */
+/** Prepare the Wall's development map for this session. */
 export function prepareWallUnfoldDevelopment(
 	state: WallUnfoldState,
 	wall: CompiledPhysicalWall
@@ -672,7 +672,7 @@ export function wallUnfoldSourceSpans(
 }
 
 /**
- * The D13 policy in one place. While unfolded, Opening placement/editing and
+ * The unfolded edit policy in one place. While unfolded, Opening placement/editing and
  * Wall height stay available because they are canonical Wall facts; centerline
  * and knot shape edits are refused explicitly rather than silently accepted.
  */

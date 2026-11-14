@@ -1,5 +1,5 @@
 /**
- * C3 checkpoint 5 — the one live unfold context, as a session store.
+ * The one live unfold context, as a session store.
  *
  * Runes make the Card scrubber, the Stage sheet and the adapter actions read
  * the same state. Entry **never moves the Camera**: the current pose is the one
@@ -154,7 +154,7 @@ class WallUnfoldStore {
 		this.pinnedOpeningId = options.pinnedOpeningId ?? wallUnfoldOpeningAtStation(wall, state.anchorStation);
 		this.#cancelSideFrame();
 		this.presentationAngle = wallUnfoldSideAngle(state.side);
-		// D5 — entry changes no Camera at all: no fit, no orientation change. The
+		// Entry changes no Camera at all: no fit, no orientation change. The
 		// current pose is preserved and Bring into view remains the explicit action.
 		if (straight) {
 			// The straight Wall enters already flat: there is nothing to peel and
@@ -197,7 +197,7 @@ class WallUnfoldStore {
 
 	flip(_wall: CompiledPhysicalWall): void {
 		if (this.state === null) return;
-		// D6 — the side is a display reading change, never a camera move.
+		// The side is a display reading change, never a camera move.
 		this.state = flipWallUnfoldSide(this.state);
 		this.#animateSide(this.state.side);
 	}

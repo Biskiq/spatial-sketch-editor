@@ -146,8 +146,8 @@ it('certifies Minimal only with successful static checks and skipped test jobs',
 
 it('rejects missing, mismatched or failed focused evidence', () => {
 	const fixture = repo();
-	const cameraTest = 'tests/lib/museum/navigation/camera-motion.test.ts';
-	const heavyTest = 'tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts';
+	const cameraTest = 'tests/lib/camera-core/navigation/camera-motion.test.ts';
+	const heavyTest = 'tests/lib/camera-core/navigation/camera-motion-dense-sweeps.test.ts';
 	const baseSha = fixture.commit({
 		[`apps/editor/${cameraTest}`]: 'fixture',
 		[`apps/editor/${heavyTest}`]: 'fixture'

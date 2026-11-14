@@ -1,5 +1,5 @@
 /**
- * R217.S30 — the Guide time map: one pure, derived read of editorial time.
+ * The Guide time map: one pure, derived read of editorial time.
  *
  * The map is the only source for the timeline bar, the Guide's tour time, each
  * Stop's time, scrub and playback. It is **derivation**, not authority: the

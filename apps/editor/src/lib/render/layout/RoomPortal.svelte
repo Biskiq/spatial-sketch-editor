@@ -2,7 +2,7 @@
   import { T } from '@threlte/core';
   import type { MaterialId } from '$lib/types/materials';
   import type { Vec3 } from '$lib/types/scene';
-  import MuseumMaterial from '../materials/MuseumMaterial.svelte';
+  import CatalogueMaterial from '../materials/CatalogueMaterial.svelte';
   import { doorFrameBoxes } from './door-frame';
 
   let {
@@ -30,7 +30,7 @@
   {#each boxes as box}
     <T.Mesh position={[...box.center]}>
       <T.BoxGeometry args={[...box.size]} />
-      <MuseumMaterial
+      <CatalogueMaterial
         {materialId}
         surfaceSize={[Math.max(box.size[0], box.size[2]), box.size[1]]}
         tint={color}

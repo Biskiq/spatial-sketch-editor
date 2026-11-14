@@ -1,16 +1,16 @@
 /**
- * `layout-wall-noding.ts` — P23.8 deterministic T/X noding planning.
+ * `layout-wall-noding.ts` — deterministic T/X noding planning.
  *
- * Noding is an explicit semantic mutation, not a compiler repair (H3 §9).
+ * Noding is an explicit semantic mutation, not a compiler repair.
  * These planners build the **complete candidate document** from an immutable
  * baseline; the caller validates once and commits once. Nothing here mutates
  * its inputs.
  *
- * Identity rules (P23.8 plan):
+ * Identity rules:
  * - Wall `W(A → B)` split at distance `d` from canonical start `A`:
  *   `A → X` retains Wall ID `W`; `X → B` receives one new deterministic
  *   Wall ID. Canonical orientation is never reversed for convenience.
- * - Opening rebasing by physical meter offset (H5 §5.2):
+ * - Opening rebasing by physical meter offset:
  *   `o + width <= d` stays; `o >= d` moves with `offset' = o - d`;
  *   `o < d < o + width` rejects the whole operation; exact start/end splits
  *   are legal and deterministic.
@@ -58,13 +58,13 @@ export type NodingRejection = {
 		| 'unknown_wall'
 		| 'unknown_junction'
 		/**
-		 * P23.11 — a curved Wall whose canonical chain cannot be resolved for a
+		 * A curved Wall whose canonical chain cannot be resolved for a
 		 * split (unresolved endpoints, no effective length, or a crossing planner
 		 * that would have to measure it in chords). A resolvable curved Wall splits
 		 * normally and exactly.
 		 */
 		| 'curved_wall_unsupported'
-		/** D7 — a closed Wall is one canonical loop and cannot be subdivided. */
+		/** A closed Wall is one canonical loop and cannot be subdivided. */
 		| 'closed_wall_isolated'
 		| 'junction_point_mismatch';
 	message: string;
@@ -85,7 +85,7 @@ export type NodingPlanSuccess = {
 
 export type NodingPlan = NodingPlanSuccess | { kind: 'rejected'; rejection: NodingRejection };
 
-/** Deterministic allocator contract supplied by the caller (P23.8: from pre-commit document, never timestamps/random). */
+/** Deterministic allocator contract supplied by the caller. */
 export type NodingIdAllocator = {
 	/** Next collision-free deterministic ID for a new wall fragment. */
 	nextWallId(baseDocument: LayoutDocumentWallFirst, seed: string): string;
@@ -139,7 +139,7 @@ function planWallSplitInternal(
 	if (!wall) {
 		return rejected({ code: 'unknown_wall', message: `Unknown wall '${wallId}'`, wallId });
 	}
-	// D7 — splitting a closed Wall would create two open fragments and destroy
+	// Splitting a closed Wall would create two open fragments and destroy
 	// the single canonical loop. This is a closed-Wall policy refusal, not a
 	// distance error; the caller must detach/resize through the circle product
 	// path instead.
@@ -160,7 +160,7 @@ function planWallSplitInternal(
 		});
 	}
 
-	// P23.11 — one resolved split result decides the split point, the resolved
+	// One resolved split result decides the split point, the resolved
 	// distance and both fragment chains. A straight Wall's chord IS its arc
 	// length, so the straight path keeps its exact chord arithmetic; a curved
 	// Wall resolves through the canonical chain and never measures a chord.
@@ -219,7 +219,7 @@ function planWallSplitInternal(
 		fragmentB = wallCubicChain(result.fragments.b.knots, result.fragments.b.spans);
 	}
 
-	// Opening rebasing on the baseline wall (H5 §5.2), measured against the
+	// Opening rebasing on the baseline wall, measured against the
 	// RESOLVED distance along the wall's true arc. Rejects before any candidate
 	// construction when a split would pass through an opening.
 	const rebased = rebaseOpenings(document.openings, wallId, resolvedDistance, wallLength);
@@ -266,7 +266,7 @@ function planWallSplitInternal(
 			walls.push(candidate);
 			continue;
 		}
-		// P23.11 — each fragment takes its chain straight from the resolved
+		// Each fragment takes its chain straight from the resolved
 		// partition: the Wall ID stays on `A → X`, the new ID carries `X → B`,
 		// and a split curve keeps its exact geometry across the two.
 		walls.push({ ...candidate, endJunctionId: junctionId, centerline: fragmentA });
@@ -295,7 +295,7 @@ function planWallSplitInternal(
 		}
 	}
 
-	// Room boundary rewrites (H5 §5.2): forward [W] → [W, W2]; reverse [W] → [W2, W].
+	// Room boundary rewrites: forward [W] → [W, W2]; reverse [W] → [W2, W].
 	const rooms = document.rooms.map((room) => ({
 		...room,
 		boundary: rewriteBoundaryForSplit(room.boundary, wallId, newWallId)
@@ -336,7 +336,7 @@ export function planWallSplitAtPoint(
 
 /**
  * Node a proper X crossing: one new shared junction, both walls split
- * against it, processed in stable wall-ID order (H3 §9.2).
+ * against it, processed in stable wall-ID order.
  */
 export function planWallCrossing(
 	document: LayoutDocumentWallFirst,
@@ -354,7 +354,7 @@ export function planWallCrossing(
 			wallId: !first ? firstId : secondId
 		});
 	}
-	// P23.11 — crossing discovery still measures in chords, so curve
+	// Crossing discovery still measures in chords, so curve
 	// participation keeps rejecting rather than silently mis-placing a node.
 	// (General automatic curve noding stays deferred; the deterministic
 	// split-distance path above is the only curved split.)
@@ -418,11 +418,11 @@ function distanceTo(
 }
 
 /**
- * Opening rebasing classification (P23.8). Returns retained/moved opening
+ * Opening rebasing classification. Returns retained/moved opening
  * descriptors, or the offending opening ID when the split passes through an
  * interior.
  *
- * P23.11 — the classification is edge-tolerant. A curved Wall's split distance
+ * The classification is edge-tolerant. A curved Wall's split distance
  * is resolved through arc-length inversion, so the resolved distance can sit a
  * few ulps away from the distance the author placed on the Opening's edge; an
  * edge within {@link CURVE_ARC_LENGTH_TOLERANCE} therefore counts as that edge.

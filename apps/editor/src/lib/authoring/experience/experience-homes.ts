@@ -1,5 +1,5 @@
 /**
- * The Experience homes' shared context (R217.S25).
+ * The Experience homes' shared context.
  *
  * The route owns the Experience controller (created by ExperienceHomesHost once the
  * admitted source is mounted) and the shell state the homes share: whether the Guide
@@ -47,7 +47,7 @@ export type ExperienceHomes = {
 		readonly pose: (viewId: string) => AuthoredViewPose | null;
 		readonly write: (viewId: string, edit: AdvancedViewFraming) => Promise<void>;
 	};
-	/** R217.S28 — the View the Stage's provisional through-camera shows, or null. */
+	/** The View the Stage's provisional through-camera shows, or null. */
 	readonly lookThroughViewId: () => string | null;
 	readonly lookThroughMoved: () => boolean;
 	/** The live provisional framing while looking through: authored lens and floor-relative eye height. */
@@ -58,9 +58,9 @@ export type ExperienceHomes = {
 	readonly exitLookThrough: () => void;
 	readonly updateLookThrough: () => Promise<void>;
 	readonly captureProvisional: () => Promise<void>;
-	/** Present this through Camera's visible framing (E9), or arm placement in Plan. */
+	/** Present this through Camera's visible framing, or arm placement in Plan. */
 	readonly presentThis: (entityId: string, label: string) => Promise<void>;
-	/** R217.S30 — the Stage-owned playback session, or null before the lens mounts. */
+	/** The Stage-owned playback session, or null before the lens mounts. */
 	readonly playback: () => ExperiencePlayback | null;
 	/** Open Preview deliberately in guided or free exploration, for this Guide. */
 	readonly previewMode: (mode: 'guided' | 'free', guideId: string | null) => void;

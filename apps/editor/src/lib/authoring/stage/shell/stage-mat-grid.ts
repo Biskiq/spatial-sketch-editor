@@ -1,5 +1,5 @@
 /**
- * R217.S19 — the mat's grid, drawn per pixel on one finite quad.
+ * The mat's grid, drawn per pixel on one finite quad.
  *
  * The mat is seen in perspective, so one zoom-wide fade cannot suit the ground
  * at the eye and the ground at the horizon at once. Each fragment computes the

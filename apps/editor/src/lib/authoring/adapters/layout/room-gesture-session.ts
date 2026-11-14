@@ -288,7 +288,7 @@ export function createRoomGestureSession({
 	}
 
 	/*
-	 * T1 A4 — Duplicate an isolated Room. The Card arms one task; the task's
+	 * Duplicate an isolated Room. The Card arms one task; the task's
 	 * unpressed moves carry the complete cloned Room as one proposal, and a
 	 * click accepts it through one captured intent. The initial proposal is
 	 * placed one metre clear of the source, so Duplicate never proposes an

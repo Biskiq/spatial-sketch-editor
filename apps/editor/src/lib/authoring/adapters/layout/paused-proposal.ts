@@ -1,5 +1,5 @@
 /**
- * T1.P01.S05 — a Wall proposal preserved across a **reading change**.
+ * A Wall proposal preserved across a **reading change**.
  *
  * A reading flip ends the pointer writer, because the CSS the drag was measured
  * in no longer describes what is drawn. The work is not wrong, though: the

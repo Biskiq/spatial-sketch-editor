@@ -18,7 +18,7 @@ import { tagRenderIdentity } from '$lib/render/render-identity';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
-import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	type AuthoringIntent,

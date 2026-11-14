@@ -1,5 +1,5 @@
 /**
- * T2.P02.S02 — the definitions one import procedure captured.
+ * The definitions one import procedure captured.
  *
  * A creator model's next placement resolves its definition from the accepted
  * envelope's `model` resource. The **first** placement happens before that

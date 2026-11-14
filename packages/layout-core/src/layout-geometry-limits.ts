@@ -3,7 +3,7 @@
  *
  * ## Where 1,000 m comes from
  *
- * Measured on 2026-10-31, on latest `main` after PR #235, with the production
+ * Measured on 2026-10-31 with the production
  * compiler and Paper drawing over a four-Wall enclosure whose long Wall is the
  * stated length (`apps/editor/tests/lib/authoring/stage-paper.test.ts` fixture;
  * Node 22, `performance.now()`, one warm compile per row):
@@ -15,7 +15,7 @@
  * | 4,000 m | 16,000 | 180 ms | 654 ms | 156 ms | 70 ms |
  * | 8,000 m | 32,000 | 453 ms | 2,495 ms | 317 ms | 154 ms |
  *
- * The S12–S15 spatial index keeps the 1,000 m path linear (4,000 bands) and
+ * The spatial index keeps the 1,000 m path linear (4,000 bands) and
  * usable: a full Plan rebuild stays around 150 ms. Above it the Plan drawing
  * build grows ~3–4× per doubling (the index's candidate sets widen), while a
  * pointer drag also re-plans and re-compiles: a typed length's plan plus

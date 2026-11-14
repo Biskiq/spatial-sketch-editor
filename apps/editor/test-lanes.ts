@@ -34,8 +34,8 @@
 export const ARCH_FILES: string[] = [
 	// Package / import direction + render/camera/wall/geometry boundaries.
 	'tests/lib/layout/layout-geometry-boundary.test.ts',
-	'tests/lib/museum/camera-core-boundary.test.ts',
-	'tests/lib/museum/layout/wall-mesh-shell-boundary.test.ts',
+	'tests/lib/camera-core/camera-core-boundary.test.ts',
+	'tests/lib/render/layout/wall-mesh-shell-boundary.test.ts',
 	'tests/lib/project-model-boundary.test.ts',
 	// T5.P01.S01: the native-form kernel's dependency direction and canonical
 	// arithmetic. `@portfolio/geometry-core` is runtime-safe and deterministic by
@@ -165,7 +165,7 @@ export const HEAVY_FILES: string[] = [
 	'tests/lib/content/normalize-asset.test.ts',
 	// P1.4 dense whole-transition acceptance matrices: a >=1001-value edge-local
 	// progress grid per fixture (~5.0s).
-	'tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts',
+	'tests/lib/camera-core/navigation/camera-motion-dense-sweeps.test.ts',
 	// The two oblique-host sweeps: 591 independently projected divider
 	// positions each (~3.4s).
 	'tests/lib/layout/angled-plan-noding-sweeps.test.ts',

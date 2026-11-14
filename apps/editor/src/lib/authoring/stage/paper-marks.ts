@@ -1,5 +1,5 @@
 /**
- * R217.S07/S18 — **selection and hover ink on Paper**.
+ * Selection and hover ink on Paper**.
  *
  * Paper already owns the Plan drawing (`buildPaperPlan`). This module does not
  * evaluate, project or regroup anything: it filters that drawing's own entries by
@@ -10,15 +10,15 @@
  *
  * - a **gold** pass for the primary selection: a translucent fill under a solid
  *   contour, so a selected Room, Opening or Scene footprint reads as one identity.
- *   R217.S18 reads a Scene fill from the polygons `buildPaperPlan` already retained,
+ *   A Scene fill reads from the polygons `buildPaperPlan` already retained,
  *   and keeps the fill under cut ink. A cut Wall's poché keeps its black ink with no
  *   tint is repainted in gold from the same cut polygons;
  * - a **quiet neutral** contour for hover, never gold (gold means selected);
- * - R217.S10's **erase** treatment: the armed Eraser's winner in red dashes, drawn
+ * - the **erase** treatment: the armed Eraser's winner in red dashes, drawn
  *   above the selection so it reads even on the selected subject.
  *
  * Every mark is depth-test-free. Contours are ordered above
- * `PAPER_LAYER.sceneFootprint` as S04's handoff requires; the selection fill sits
+ * `PAPER_LAYER.sceneFootprint`; the selection fill sits
  * above the cut poché and under the cut stroke. Nothing writes `Object3D.visible`;
  * the Paper layer is mounted only when Paper is the visible reading, and the
  * mat's mesh ink is a separate component that is unmounted instead.
@@ -54,7 +54,7 @@ import {
 
 /** PLATE's selection gold: the translucent fill under a selected subject. */
 export const PAPER_SELECTION_INK = '#d4ad45';
-/** Owner ruling O1's dark-gold Paper edge, the wireframe's own value. */
+/** The dark-gold Paper selection edge, the wireframe's own value. */
 export const PAPER_SELECTION_EDGE_INK = '#74560c';
 /** The same quiet neutral as the mat's ink: never gold, and legible on a halo. */
 export const PAPER_HOVER_INK = '#4f8f6c';
@@ -415,7 +415,7 @@ export function createPaperMarkScene(
 			addLine(symbol, PAPER_SELECTION_INK, 2, 1, PAPER_MARK_LAYER.selectionLine, dashed);
 		}
 	} else {
-		// Selection: the dark-gold edge (owner ruling O1) over the same dark halo as
+		// Selection: the dark-gold edge over the same dark halo as
 		// hover. The tint above sits under the cut poché, so a subject's identity reads
 		// without hiding the Plan.
 		const room = { fills: [], contours: marks.selection.contours.filter((contour) => contour.roomFloor) };

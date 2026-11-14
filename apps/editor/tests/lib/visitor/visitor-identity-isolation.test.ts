@@ -137,7 +137,7 @@ describe('visitor isolation from editor machinery', () => {
 		// `apps/museum` was the second visitor app this pinned; #115 retired it
 		// (§3.5), so the claim is held against the product visitor and
 		// shared-renderer layer.
-		for (const root of ['visitor', 'museum']) {
+		for (const root of ['visitor', 'render']) {
 			const directory = join(SRC, 'lib', root);
 			for (const file of collectFiles(directory, '.ts').concat(collectFiles(directory, '.svelte'))) {
 				inspected += 1;

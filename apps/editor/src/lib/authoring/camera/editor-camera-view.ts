@@ -122,7 +122,7 @@ export function getSceneCameraViewKeyframeWorldTarget(
 }
 
 /**
- * S10.1 closeout — orbit a look target around an eye by yaw (world Y) then
+ * Orbit a look target around an eye by yaw (world Y) then
  * pitch (local X): the turntable aim mapping shared by camera-node rotate and
  * view-breakpoint Aim. Roll is not representable (an aim has no roll) and the
  * eye→target radius is preserved exactly. Pure, renderer-neutral tuple math —

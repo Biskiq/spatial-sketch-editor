@@ -19,9 +19,9 @@ export function coincidesAsJunction(a: LayoutVec2, b: LayoutVec2): boolean {
 
 /**
  * Every Junction pair that could coincide, as index pairs in gate order
- * (first ascending, then second). T1.P02.S06 D.1 (H3).
+ * (first ascending, then second).
  *
- * The `duplicate_junction_point` rule used to be an O(J²) loop over every pair.
+ * The `duplicate_junction_point` rule does not test every pair (O(J²)).
  * Coincidence is a tolerance test, so a pair with a coordinate difference above
  * the epsilon on either axis cannot coincide: a sweep over the Junctions sorted
  * by X visits only the pairs whose X gap is within the epsilon and keeps those
@@ -70,7 +70,7 @@ export function coincidentJunctionPairs(
 		}
 	}
 	pairs.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-	// I2 count oracle: the sweep's own visits, and the pairs it hands the rule.
+	// Count oracle: the sweep's own visits, and the pairs it hands the rule.
 	countWork('index:junction-sweep-visits', visited);
 	return pairs;
 }

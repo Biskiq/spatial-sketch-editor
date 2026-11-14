@@ -1,9 +1,9 @@
 /**
- * T2.P02.S02 — a creator model as a typed resource and a Scene placement.
+ * A creator model as a typed resource and a Scene placement.
  *
  * The resource kind, its retained source/recipe/report detail and its placement
- * definition are S01's resources format 2. This module owns the two pure
- * translations S02 adds:
+ * definition are resources format 2. This module owns the two pure
+ * translations:
  *
  * - **approval → resource + lock.** One approved immutable revision becomes one
  *   `model` resource entry and the exact dependency-lock entry that pins its

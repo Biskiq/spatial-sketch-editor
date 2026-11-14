@@ -1,5 +1,5 @@
 /**
- * R217.S30 — the visitor-safe initial entry discriminant.
+ * The visitor-safe initial entry discriminant.
  *
  * A published route is a visitor experience, not an editor Preview: it enters
  * the guided tour (or free exploration when that is its declared entry) without

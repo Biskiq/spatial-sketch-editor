@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
+import { resolveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 import type { SceneDocument } from '$lib/content/scene';
 
 const WALL_TEXTURE = { id: 'wall-detail', name: 'Wall Detail', uri: '/textures/wall-detail.webp' };

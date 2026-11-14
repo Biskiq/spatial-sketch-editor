@@ -15,7 +15,7 @@
 	 * canvas; pointer hit testing happens through the Stage resolver, in the same
 	 * CSS space.
 	 *
-	 * R217.S10 adds the host tools' own marks: Measure's dimension line with its
+	 * It also draws the host tools' own marks: Measure's dimension line with its
 	 * mono tag, and the Eraser's words beside the pointer. Both are drawn here,
 	 * never written anywhere.
 	 */

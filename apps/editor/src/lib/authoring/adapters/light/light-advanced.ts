@@ -1,5 +1,5 @@
 /**
- * T2 gallery UX recovery — the Light Card's Advanced registry.
+ * The Light Card's Advanced registry.
  *
  * One ordered list of groups, each an ordered list of row descriptors. The Card
  * renders this list and holds no per-row markup; adding a feature is adding a

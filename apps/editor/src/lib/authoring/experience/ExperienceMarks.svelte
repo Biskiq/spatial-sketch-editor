@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * R217.S28 — Experience View marks on the Stage.
+	 * Experience View marks on the Stage.
 	 *
 	 * Every point comes from `experience-marks`, which projects the authored Views
 	 * through the current `ViewportEvaluation`. The overlay only paints: in 3D each
@@ -31,7 +31,7 @@
 
 	let {
 		evaluation,
-		/** R217.S30 — the projected, read-only playback rig; never an authored mark. */
+		/** The projected, read-only playback rig; never an authored mark. */
 		rig = null,
 		placementGhost = null,
 		liveEdit = null,
@@ -68,7 +68,7 @@
 			readonly moved: boolean;
 		} | null;
 		onLookThrough?: (viewId: string) => void;
-		/** R217.S29 Show ▾: the four independent flags, all on by default. */
+		/** Show ▾: the four independent flags, all on by default. */
 		showMarkers?: boolean;
 		showFrustums?: boolean;
 		showPaths?: boolean;
@@ -145,7 +145,7 @@
 	});
 
 	/**
-	 * R217.S30 playback rig, review round 3: the same camera and frustum a View draws
+	 * The playback rig: the same camera and frustum a View draws
 	 * (3D Detailed camera, or the Plan camera and wedge), read-only and never authored.
 	 */
 	const rigGlyph = $derived(rig === null

@@ -1,8 +1,8 @@
 /**
  * `F4.intent-acceptance@1:unit-acceptance-v1` — the additive F.2-backed
- * acceptance extension (T3.P01.S03).
+ * acceptance extension.
  *
- * The landed provider (`types.ts`, `prepare.ts`, T1.P01.S03) is the enduring
+ * The provider (`types.ts`, `prepare.ts`) is the enduring
  * `acceptance-invariants-v1` lifecycle plus one retiring admission scope,
  * `local-single-domain-v1`: one domain, no compound, no unit planner, no
  * resource staging. This module adds the wider admission **without editing that
@@ -30,7 +30,7 @@
  * (the adapter admits), it does not mint revisions or keep history (the
  * coordinator owns both), and it exposes no writer. `conditional-save-units-v1`
  * reuses the landed Save protocol over these candidates and is the live Save
- * path since `T3.P01.S04`.
+ * path.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */

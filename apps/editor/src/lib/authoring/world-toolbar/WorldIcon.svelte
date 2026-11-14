@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The #285 prototype's exact 24px glyphs.
+	 * The World creation tools prototype's exact 24px glyphs.
 	 *
 	 * `hero` selects the dock-key drawing (the prototype's HERO map); the default
 	 * palette set is the same 24px grid the prototype uses for options and chrome.

@@ -1,5 +1,5 @@
 /**
- * R217.S26 — the Experience removal rules (E4), as pure plans.
+ * The Experience removal rules, as pure plans.
  *
  * One function per removal returns either a refusal with its reason or the
  * Experience (and, for a View or Presentation, the Camera payload) the removal
@@ -233,7 +233,7 @@ function plannedRemoval(
 	return { kind: 'planned', experience: normalizeTransitions(experience).experience, camera, consequences };
 }
 
-/** E4 — remove one Stop from the Experience and from every Guide that orders it. */
+/** Remove one Stop from the Experience and from every Guide that orders it. */
 export function planStopRemoval(experience: Experience, stopId: string): ExperienceRemovalPlan {
 	if (!experience.stops.some((stop) => stop.id === stopId)) {
 		return refused('missing-target', `stop "${stopId}" is not in experience "${experience.id}"`);
@@ -245,7 +245,7 @@ export function planStopRemoval(experience: Experience, stopId: string): Experie
 }
 
 /**
- * E4 — remove one Guide and the Stops no other Guide orders. Removing the Opening
+ * Remove one Guide and the Stops no other Guide orders. Removing the Opening
  * Guide makes the next Guide (the one after it, else the one before) the Opening
  * Guide; with none left the Experience enters nothing.
  */
@@ -270,7 +270,7 @@ export function planGuideRemoval(experience: Experience, guideId: string): Exper
 }
 
 /**
- * E4 — remove one Presentation: its Stops (under the Stop rules, so a Guide left
+ * Remove one Presentation: its Stops (under the Stop rules, so a Guide left
  * empty refuses) and its Camera Views no other Presentation lists,
  * with their connections.
  */
@@ -299,7 +299,7 @@ export function planPresentationRemoval(
 }
 
 /**
- * E4 — remove one View from one Presentation. The last View refuses. The
+ * Remove one View from one Presentation. The last View refuses. The
  * Default is the first View: removing it makes the next View the Default, or
  * `newDefaultViewId` when the creator chose another (it moves to the top).
  * The Views either side of the removed one become neighbours and keep their

@@ -51,7 +51,7 @@ export type PlanSceneFootprintOptions = {
  * Build passive Scene footprints from live editor Scene data.
  *
  * Point order is canonical local footprint → effective scale → entity yaw →
- * entity translation. PR #115 (WP3): the entity's transform *is* project/world
+ * entity translation. The entity's transform *is* project/world
  * space (the current format guarantees it), so there is no Room frame in this
  * path at all and an entity's footprint is never conditional on a room it names.
  * Y is deliberately discarded; default asset scale/orientation never re-enters.

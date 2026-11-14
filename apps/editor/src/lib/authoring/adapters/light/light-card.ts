@@ -1,5 +1,5 @@
 /**
- * X8 — the Light Card's read-only facts.
+ * The Light Card's read-only facts.
  *
  * What the Card says about a Light (kind, brightness, position, aim, reach, beam,
  * shadow) and what it says about an object a light

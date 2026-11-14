@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * R217.S28 — the Stage's one snapshot render host (E10).
+	 * The Stage's one snapshot render host.
 	 *
 	 * It renders an authored View's exact pose through `camera-core` into a
 	 * reusable offscreen target on the **existing** renderer: never a second WebGL

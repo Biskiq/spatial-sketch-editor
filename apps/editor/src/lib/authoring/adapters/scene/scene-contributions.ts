@@ -1,5 +1,5 @@
 /**
- * X7 — the Scene adapter's read-only contribution projections.
+ * The Scene adapter's read-only contribution projections.
  *
  * Everything the Scene adapter tells the host without owning a gesture: the
  * subjects it can select, the found surfaces the Height Sheet reads, the Scene
@@ -327,7 +327,7 @@ export function createSceneContributions(
 		const entity = stageScene(snapshot).entities.find((entity) => entity.id === subject.sourceId);
 		if (entity === undefined) return [];
 		if (!isSceneObjectEntity(entity)) return [];
-		// S08 moves the object's exact fields to the Card; the existing
+		// The object's exact fields are on the Card; the existing
 		// immediate commands stay beside them, so the creator does not have to
 		// open Compose to duplicate or delete the selected object.
 		return [
@@ -480,7 +480,7 @@ export function createSceneContributions(
 			{
 				id: SCENE_PLACE_TASK,
 				taskKind: SCENE_PLACE_KIND,
-				// R217.S17A: Objects is the one place to create and insert an object.
+				// Objects is the one place to create and insert an object.
 				label: 'Objects',
 				railFamily: 'place',
 				capability: 'scene',

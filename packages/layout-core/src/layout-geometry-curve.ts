@@ -8,7 +8,7 @@ export const CURVE_FLATNESS_TOLERANCE = 0.01;
 export const CURVE_MAX_SAMPLE_SPAN = 0.25;
 export const CURVE_SELF_INTERSECTION_TOLERANCE = 1e-4;
 /**
- * P23.11 — absolute arc-length tolerance in metres for cubic quadrature and
+ * Absolute arc-length tolerance in metres for cubic quadrature and
  * arc-length inversion. It bounds only how faithfully a physical distance maps
  * to a curve parameter; de Casteljau subdivision at the resolved parameter
  * stays exact. A cubic's speed is smooth, so 16-point Gauss converges on one
@@ -52,7 +52,7 @@ export type CubicSpanControls = {
 };
 
 /**
- * P23.11 — the canonical Wall adapter's transient segment shape: explicit
+ * The canonical Wall adapter's transient segment shape: explicit
  * cubic spans already resolved against the Wall's endpoint Junctions. Never
  * persisted and never a `DraftSegment`: it carries derived geometry, not
  * authored control points.
@@ -107,7 +107,7 @@ export function autoBezierAnchorPoints(segment: AutoBezierSegment): LayoutVec2[]
 }
 
 /**
- * P23.11 — the one canonical smoothness rule, on the **write** path only.
+ * The one canonical smoothness rule, on the **write** path only.
  *
  * Derives one control pair per cubic span from the ordered point sequence:
  * endpoints get a one-sided tangent, interior points blend both neighbours
@@ -162,7 +162,7 @@ function spanControlsFromTangents(
 }
 
 /**
- * P23.11 — the canonical smoothness rule for exactly one span: the control pair
+ * The canonical smoothness rule for exactly one span: the control pair
  * span `index` would receive on the whole-chain write path.
  *
  * Exported so a local bend-point move can reshape only the spans touching the
@@ -222,7 +222,7 @@ export function legacyBezierToAutoBezier(segment: LegacyBezierSegment): AutoBezi
  * Deterministic interior-anchor ID: `{segmentId}:anchor:{n}` for the first free
  * `n`.
  *
- * T1.P02.S01 §1 scope — deliberately NOT capture-derived, and unreachable: its
+ * Deliberately NOT capture-derived, and unreachable: its
  * only call site is `legacyBezierToAutoBezier`, which has no caller anywhere in
  * `packages/` or `apps/` (it is not on any adapter path). No accepted intent
  * allocates an interior anchor, so nothing can replay one. A curve-authoring
@@ -428,7 +428,7 @@ export function sampleSegment(
 }
 
 /**
- * P23B.4 correction (F1) — test-only observation of actual kernel sampling.
+ * Test-only observation of actual kernel sampling.
  *
  * While set, every `sampleSegment` call reports its segment identity and result.
  * Covers the compile direct paths (`wallCenterlineSegment` + kernel) that bypass the
@@ -750,7 +750,7 @@ export function sampledPolylineSelfIntersects(
 }
 
 /**
- * P23.11 — the ONE authored Wall-distance metric.
+ * The ONE authored Wall-distance metric.
  *
  * A sample's `distance` is the **true cubic arc length** from the segment start
  * to that sample's parameter, not the cumulative chord of the sampled polyline.
@@ -1126,7 +1126,7 @@ function clamp01(value: number): number {
 }
 
 /**
- * E4 / I5 — the Opening centre frame, shared by the compiler and the Plan
+ * The Opening centre frame, shared by the compiler and the Plan
  * symbol of a refused attempt. A closed host is periodic: distances wrap
  * modulo its length. An open host normally clamps to its ends; the
  * `unclamped` mode (attempts only) extends the end tangents instead, so an

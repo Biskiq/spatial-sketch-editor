@@ -105,7 +105,7 @@ export function createCurveGestureSession({
 	} | null = null;
 	/** Release the live manipulation lease and drop the in-flight gesture. */
 	let bendGesture: BendGesture | null = null;
-	/** C2 — one radius grip drag on a selected closed Wall. */
+	/** One radius grip drag on a selected closed Wall. */
 	type CircleRadiusGesture = {
 		readonly evaluationId: string;
 		readonly pressCss: readonly [number, number];
@@ -123,7 +123,7 @@ export function createCurveGestureSession({
 		circleRadiusGesture = null;
 		if (current?.lease.lease.active) current.lease.lease.release();
 	}
-	/** D8 — one rigid body drag on a selected closed Wall. */
+	/** One rigid body drag on a selected closed Wall. */
 	type CircleTranslateGesture = {
 		readonly evaluationId: string;
 		readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
@@ -141,7 +141,7 @@ export function createCurveGestureSession({
 		if (current?.lease.lease.active) current.lease.lease.release();
 	}
 	/**
-	 * C1/D2 — the bend point the Card currently names. It is selection-scoped
+	 * The bend point the Card currently names. It is selection-scoped
 	 * session state: never serialized, cleared by Escape or a different host,
 	 * and read by both the marks and the Card's one action channel.
 	 */
@@ -153,7 +153,7 @@ export function createCurveGestureSession({
 	}
 
 	/**
-	 * D2 — one bend-point removal for both callers: the Card action and the
+	 * One bend-point removal for both callers: the Card action and the
 	 * Delete/Backspace key. The keyboard must not grow a second write path, so it
 	 * calls exactly this helper: preview the retained planner, capture one intent,
 	 * accept it once, then clear the session's active knot.
@@ -215,7 +215,7 @@ export function createCurveGestureSession({
 	}
 
 	/**
-	 * C2/D8 — the radius grip. A press captures the selected closed Wall and
+	 * The radius grip. A press captures the selected closed Wall and
 	 * one gesture lease; every move previews the retained radius planner; the
 	 * release accepts exactly that radius once. Bending never enters this path.
 	 */
@@ -303,7 +303,7 @@ export function createCurveGestureSession({
 	}
 
 	/**
-	 * C2/D8 — a circular Wall is translated by a body drag. The straight move
+	 * A circular Wall is translated by a body drag. The straight move
 	 * path requires a chord frame, which a self-connected Wall does not have,
 	 * so this gesture runs the closed-Wall translation planner and the canonical
 	 * `layout-wall-move` intent. It never enters the bend sub-machine:
@@ -422,7 +422,7 @@ export function createCurveGestureSession({
 	}
 
 	/**
-	 * C1 — the Bend sub-machine, driven through the same `pointer()` entry as
+	 * The Bend sub-machine, driven through the same `pointer()` entry as
 	 * every other captured gesture. A press on the body captures one station
 	 * and one knot id; a move previews through the retained planner; the up
 	 * commits exactly once. The rigid move mark never enters this path.
@@ -442,7 +442,7 @@ export function createCurveGestureSession({
 			const knotMark = handle?.startsWith('layout-wall-knot:') === true;
 			const spanMark = handle?.startsWith('layout-wall-span:') === true;
 			if (handle !== undefined && !knotMark && !spanMark) return false;
-			// D1 — a plain body press is the rigid move, not a bend. Meta/Ctrl is
+			// A plain body press is the rigid move, not a bend. Meta/Ctrl is
 			// captured on pointer-down; the visible span rings are the direct
 			// touch/keyboard alternative and need no hidden armed mode.
 			const shapeModifier = intent.metaKey === true || intent.ctrlKey === true;
@@ -452,7 +452,7 @@ export function createCurveGestureSession({
 			if (source === undefined) return false;
 			// Targeted precedence: a press any admitted mark or other pickable
 			// subject claims belongs to that path. Only a genuine body press on this
-			// Wall reaches the bend — straight and curved alike (D1).
+			// Wall reaches the bend — straight and curved alike.
 			let effectiveHandle = handle;
 			if (effectiveHandle === undefined) {
 				const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
@@ -674,7 +674,7 @@ export function createCurveGestureSession({
 		const current = bendGesture;
 		bendGesture = null;
 		if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
-		// D2 — the knot a gesture created or edited stays named after release,
+		// The knot a gesture created or edited stays named after release,
 		// including a brand-new knot, until Escape or a different selection.
 		if (current !== null && current.removal) {
 			// The removal is one canonical knot-delete command. The knot is gone,
@@ -785,7 +785,7 @@ export function createCurveGestureSession({
 
 	function previews(y: number) {
 		const { world } = previewCoordinates(y);
-		// C2 — the radius grip's candidate is the same resized closed Wall the
+		// The radius grip's candidate is the same resized closed Wall the
 		// release writes. A refused radius draws no geometry and names its reason.
 		const activeCircleRadius = circleRadiusGesture;
 		if (activeCircleRadius !== null && activeCircleRadius.preview !== null) {
@@ -806,7 +806,7 @@ export function createCurveGestureSession({
 				];
 			}
 		}
-		// D8 — a body drag previews the translated closed Wall it will commit.
+		// A body drag previews the translated closed Wall it will commit.
 		const activeCircleTranslate = circleTranslateGesture;
 		if (activeCircleTranslate !== null && activeCircleTranslate.preview !== null) {
 			const built = candidatePaper(

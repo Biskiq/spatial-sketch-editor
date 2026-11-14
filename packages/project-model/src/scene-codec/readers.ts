@@ -144,7 +144,7 @@ export function readVec3(
 }
 
 /**
- * PR #115 (WP3) — current-format-only Scene reading: a `roomId` is never
+ * PR #115 — current-format-only Scene reading: a `roomId` is never
  * accepted anywhere in a Scene document. `roomId` remains optional in the
  * document types (absent = project/world coordinates = what the current
  * format guarantees); a *present* value is rejected by name, because a

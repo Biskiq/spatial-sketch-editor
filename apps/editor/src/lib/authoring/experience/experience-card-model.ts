@@ -1,5 +1,5 @@
 /**
- * The shared Card's identity and facts for each Experience subject (R217.S25).
+ * The shared Card's identity and facts for each Experience subject.
  *
  * Every Experience subject (a Presentation, a View, a Stop, a Stop's transition, the Experience
  * itself and a Scene object) is shown through the one Card. Each helper here returns the Card's kind

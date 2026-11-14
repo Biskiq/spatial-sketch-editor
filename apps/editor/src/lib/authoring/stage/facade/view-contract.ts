@@ -62,7 +62,7 @@ export type ResolvedStageHit =
 	  };
 
 /**
- * R217.S10 — what one **host tool** (Measure, Eraser) finds at a Stage-local point.
+ * What one **host tool** (Measure, Eraser) finds at a Stage-local point.
  *
  * The host asks every binding that declares the tool in `hostTools` and arbitrates
  * only between their winners, exactly as Select does. `datumPoint` is the raw
@@ -219,9 +219,9 @@ export type StageFacade = {
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
-	/** R217.S10 — the one host-tool winner (with its owning adapter) at a Stage-local point. */
+	/** The one host-tool winner (with its owning adapter) at a Stage-local point. */
 	hostToolTarget(query: StageHitCandidate & { readonly tool: string; readonly coarse?: boolean }): StageHostToolTarget;
-	/** R217.S10 — the owning binding's erase answer for its own winner. */
+	/** The owning binding's erase answer for its own winner. */
 	eraseAnswer(adapterId: string, hit: StageSourceHit): StageEraseAnswer | null;
 	/** Admitted selected-subject marks, then any current domain idle-hover marks. */
 	marks(): readonly StageMarkView[];
@@ -328,7 +328,7 @@ export type StageFacade = {
 	/**
 	 * Offer a command key to the registered adapters when neither an open task nor
 	 * a live press owns the keyboard. A selected subject's adapter can claim a
-	 * key it has a scoped meaning for (D2: Delete/Backspace on an active bend
+	 * key it has a scoped meaning for (Delete/Backspace on an active bend
 	 * point); every other adapter leaves it to the host's existing map.
 	 */
 	selectionKeyIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };

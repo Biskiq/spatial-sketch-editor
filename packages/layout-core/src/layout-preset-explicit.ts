@@ -1,7 +1,7 @@
 /**
- * T1.P01.S04 — bounded explicit-ID architectural preset creation.
+ * Bounded explicit-ID architectural preset creation.
  *
- * `planCommitLayoutObjectPreset` owns preset semantics. T1.P02.S01 §1 captures
+ * `planCommitLayoutObjectPreset` owns preset semantics. It captures
  * the created identity **before** evaluation: the operation's nonce derives the
  * `layout-object-N` seed, so the id is fixed at intent time and never read from
  * the document's occupancy. This module is the explicit-ID seam the Place →

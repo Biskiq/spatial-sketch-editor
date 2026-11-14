@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * T1.P01.S04 — Place → Layout plinth.
+	 * Place → Layout plinth.
 	 *
 	 * Typed working-plane X/Z plus the selected floor datum. The controller
 	 * captures the new object id before evaluation; the retained preset planner

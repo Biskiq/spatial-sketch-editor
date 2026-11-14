@@ -498,7 +498,7 @@ export function createApp({
 		if (typeof projectId !== 'string' || !projectId) {
 			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
 		}
-		// AM-9 publication gap (R4): every authored publication row is removed at
+		// AM-9 publication gap: every authored publication row is removed at
 		// activation and prepared delivery is T4's. The request is understood and
 		// refused with the ratified code, never read as an old release.
 		return reply
@@ -526,7 +526,7 @@ export function createApp({
 		}
 	});
 
-	// T2.P02.S01 — creator model staging and the immutable approved revision.
+	// Creator model staging and the immutable approved revision.
 	// Owner-only throughout: an import the owner does not own is not-found, so no
 	// route reveals another project's import or revision.
 	const requireModelSession = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -662,7 +662,7 @@ export function createApp({
 		}
 	});
 
-	// T5.P01.S04 — My Objects, the owner-scoped `form` library scope. Every route
+	// My Objects, the owner-scoped `form` library scope. Every route
 	// is authenticated and owner-filtered; another owner's item answers as not
 	// found. An item is not project data, so no project/release/visitor route can
 	// reach it.

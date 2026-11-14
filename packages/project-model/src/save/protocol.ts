@@ -1,6 +1,6 @@
 /**
  * `SaveAcceptedSource@1` — the conditional Save capture (AM-4,
- * `F4.intent-acceptance@1:conditional-save-current-v1`, T3.P01.S02).
+ * `F4.intent-acceptance@1:conditional-save-current-v1`).
  *
  * The protocol is runtime-safe and lives on its own package subpath so the API,
  * the editor client and conformance tests share one shape without a root-barrel

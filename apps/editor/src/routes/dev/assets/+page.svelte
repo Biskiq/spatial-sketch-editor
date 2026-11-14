@@ -14,7 +14,7 @@ import { PCFShadowMap } from 'three';
   } from '$lib/types/assets';
   import type { Vec3 } from '$lib/types/scene';
 
-  // The Canvas owns one material and geometry store for its subtree (E7).
+  // The Canvas owns one material and geometry store for its subtree.
   const resources = provideRenderResources();
   onDestroy(() => resources.dispose());
 

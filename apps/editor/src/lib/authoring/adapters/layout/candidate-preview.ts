@@ -1,9 +1,9 @@
 /**
- * R217.S14 — Layout candidate geometry from the planner's own document.
+ * Layout candidate geometry from the planner's own document.
  *
  * The preview is not a second solve. A caller hands this module the compiled
  * geometry of the exact document a retained planner produced (read through the
- * Layout adapter's compile context, E4), evaluates the live Plan parameters against it, and reads
+ * Layout adapter's compile context), evaluates the live Plan parameters against it, and reads
  * the same `buildPaperPlan` drawing Paper draws. The result is filtered to the
  * source ids the operation changed, so the preview can never show more than the
  * commit will.
@@ -82,7 +82,7 @@ export function openingAttemptFacePaper(
 }
 
 /**
- * The rejected Plan attempt's symbol at its exact raw dimensions (E4 / I5): the
+ * The rejected Plan attempt's symbol at its exact raw dimensions: the
  * accepted Opening's own `openingPlanSymbol`, fed the compiler's centre frame
  * unclamped, so a refused and an accepted Opening draw identically.
  */

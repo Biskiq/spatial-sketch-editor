@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * X3 / decomposition contract S — the project notices region.
+	 * The project notices region.
 	 *
 	 * A pending Save and the admitted source's findings are chrome over the
-	 * project, not the Stage: they used to be route markup. The region reads the
+	 * project, not the Stage. The region reads the
 	 * records its composition root passes and runs only its named commands
 	 * (`Resume`, `Discard`, `Show`, `Copy details`). It owns no source, Save or
 	 * selection state and never repairs a finding.

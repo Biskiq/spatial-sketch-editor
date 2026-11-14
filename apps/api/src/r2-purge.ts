@@ -1,5 +1,5 @@
 /**
- * Idempotent epoch cleanup for unreferenced R2 object bytes (AM-9, T3.P01.S04).
+ * Idempotent epoch cleanup for unreferenced R2 object bytes (AM-9).
  *
  * The reset migration removes every authored row, including `assets`. This
  * module then removes the bytes those rows pointed at, under five guards:

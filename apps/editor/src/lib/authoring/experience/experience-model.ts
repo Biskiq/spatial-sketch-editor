@@ -1,5 +1,5 @@
 /**
- * The Experience homes' reading model (R217.S25).
+ * The Experience homes' reading model.
  *
  * Pure functions of the accepted Experience and Camera facts: what a Card subject is,
  * where a Stop's continuation actually goes, which Stops guide a View, which
@@ -25,7 +25,7 @@ import {
 } from '@portfolio/project-model/units';
 
 /**
- * The one Card subject (D10). A Stage pick, an Index row, a strip card or connector, or
+ * The one Card subject. A Stage pick, an Index row, a strip card or connector, or
  * a Card link replaces it; nothing else does. `transition` is a Stop's outgoing
  * continuation. `experience` is the Experience itself: the Card of nothing selected.
  */

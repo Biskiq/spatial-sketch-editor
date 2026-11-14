@@ -12,7 +12,7 @@ import {
 	extrudeProfile,
 	type FormMesh
 } from '@portfolio/geometry-core';
-import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
+import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 import type { SceneFormPlane } from '$lib/content/scene';
 
 function unitSquareMesh(plane: SceneFormPlane, extent = 1): FormMesh {

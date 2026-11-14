@@ -1,10 +1,9 @@
 /**
- * E10/R6 — the retained representation of authored Scene lights.
+ * The retained representation of authored Scene lights.
  *
- * Authored Point and Spot lights used to be a Svelte component per entity that
- * constructed its own Three light. They are now items of the resolved light
- * description, realized by the Canvas `LightStore` and placed here, with the
- * representation contract every other retained family has:
+ * Authored Point and Spot lights are items of the resolved light description,
+ * realized by the Canvas `LightStore` and placed here, with the representation
+ * contract every other retained family has:
  *
  * - **One root, mounted once.** `object3d` is never replaced.
  * - **Patched by key.** An unchanged item touches nothing. A moved item moves
@@ -16,7 +15,7 @@
  *
  * The holder carries the entity's position, Euler rotation and uniform scale;
  * the light sits at its origin and a Spot aims down its local −Z (the store's
- * realization), so an authored rotation steers the cone exactly as before.
+ * realization), so an authored rotation steers the cone.
  */
 import { Group } from 'three';
 import type { LightLease, LightStore } from './resources/light-store';

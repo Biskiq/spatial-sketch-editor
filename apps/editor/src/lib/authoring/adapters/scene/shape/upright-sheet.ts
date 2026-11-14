@@ -1,9 +1,9 @@
 /**
  * The upright Sheet arithmetic an elevation form is drawn against.
  *
- * R217.S17A removed upright drawing from the Stage. The model keeps elevation
- * forms, so this frame arithmetic stays for T5's future face-frame reading; no
- * Stage control reaches it.
+ * The Stage offers no upright drawing. The model keeps elevation forms, so this
+ * frame arithmetic stays for a future face-frame reading; no Stage control
+ * reaches it.
  */
 import type { Vec3, WorkingPlane } from '@portfolio/camera-core';
 import { datumWorkingPlane } from '$lib/authoring/stage/stage-adapter-host';

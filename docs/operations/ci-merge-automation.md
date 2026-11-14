@@ -42,8 +42,8 @@ a base that is not in the tested commit's history still blocks certification.
   in the style. Other Svelte edits follow the code rules.
 - **Focused** is the default for editor source and static changes that remain after the Full
   rules. It runs the architecture files plus authoring and design tests and the changed source
-  area's matching test directory. Camera, navigation, experience and routes add the experience
-  and museum tests outside museum layout. Unknown editor areas and static assets use a broader
+  area's matching test directory. Camera, navigation, experience and routes add the experience,
+  camera-core and render tests outside render layout. Unknown editor areas and static assets use a broader
   set of editor cohorts. Tests that read source text, mount routes or load modules at runtime
   stay covered by area, even when they have no import edge to the changed file. Focused excludes
   the curated Heavy lane. Critical changes and scheduled or manual Full runs retain those tests.

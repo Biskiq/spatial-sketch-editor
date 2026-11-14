@@ -1,6 +1,6 @@
 import { drawingRefusalWords } from './refusals';
 /**
- * T1.P02.S02 — the straight Wall chain: draft state, deliberate targets and the
+ * The straight Wall chain: draft state, deliberate targets and the
  * planner-derived consequence the creator sees before finishing.
  *
  * Framework-free and document-free: it owns **the draft** (which points the
@@ -132,7 +132,7 @@ export function classifyTypedChainPoint(
 }
 
 /**
- * R217.S10 — Ink's **Box** for the Wall reading: two opposite corners name the
+ * Ink's **Box** for the Wall reading: two opposite corners name the
  * closed four-point ring a creator would otherwise tap by hand.
  *
  * The two named corners keep the targets the gesture gave them (a Junction mark,
@@ -299,7 +299,7 @@ export function planChainDraft(options: {
 	if (request.points.length < 2) {
 		return { kind: 'refused', code: 'insufficient_chain', message: 'A chain needs at least two points.' };
 	}
-	// T1.P02 drawing policy (owner-accepted 2026-10-22): the refusals the document
+	// Drawing policy: the refusals the document
 	// format tolerates but a *drawing* gesture must not author are asked of the one
 	// bounded policy predicate, before the planner builds anything.
 	const policy = detectUnsupportedChainConnections({

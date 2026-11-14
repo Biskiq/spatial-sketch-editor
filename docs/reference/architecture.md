@@ -32,8 +32,8 @@ apps/editor (product)            frozen Chopin project (separate)
   copy. The Chopin museum project was externalized by PR #115 and is independently
   hosted and versioned.
 - The product has no build-flag gating — the reduced surface is simply what ships.
-- Shared visitor-safe geometry/render modules serve the product's visitor runtime
-  and the frozen project; session, selection, hierarchy, gizmo, authoring, import
+- Shared visitor-safe geometry and render modules (`apps/editor/src/lib/render/`) serve
+  the editor Stage and the product's visitor runtime; session, selection, hierarchy, gizmo, authoring, import
   and asset-store code stay editor-only. Runtime-safe domain evaluators (e.g. Layout
   representation) are shared with visitor runtimes by design — editor-only means
   session/authoring machinery, not forked domain mathematics.
@@ -269,13 +269,14 @@ interior-only.
 |---------|-----------------|
 | Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
-| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 6 (`@portfolio/project-model`) |
+| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 7 (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `units.camera.data` / Camera 1 (`@portfolio/project-model`) |
 | Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
 | Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
 | Cross-domain reference (F.1) and channel (F.3) interfaces | `packages/project-model/src/references` · `packages/project-model/src/channels` — shared runtime-safe interfaces with no editor/renderer dependency; their accepted readiness is recorded in the [gate register](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#gate-register) |
 | Plan presentation | The orthographic Plan reading evaluates the Layout Plan representation over compiled geometry. The Stage draws that evaluation on Paper: cut Wall poché, projected ink, hidden dashes, Opening symbols, Room-floor tint and Scene/native-form footprints. Paper and the pick path share one `PlanEvaluation` and one Scene footprint projection; appearance is a camera layer mask, never `Object3D.visible` |
+| World rendering | `apps/editor/src/lib/render/`: frozen render descriptions → per-Canvas stores (`MaterialStore`, the one world-material factory; `GeometryStore`; `LightStore`, the one Point/Spot/Sun realizer) → retained representations (Layout Walls, objects and Rooms; Scene entities; Scene lights) → `managed-webgl-renderer.ts`. Texture sources and variants are one shared, module-level pool keyed by load scope, with deferred variant release (ratified E12). Consumes compiled geometry and the one Scene resolution; derives no Layout or Scene semantics. Rules and guards: [Rendering](./components/rendering.md) |
 | 3D wall meshes | compiled Junction contract (`CompiledJunction` / `resolveJunctionGeometry`) → Junction-aware `wall-mesh-builder` → `wall-geometry-adapter` |
 | Camera route/motion | `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) — replaceable mechanism under the one Camera authority |
 | Publication status, active version, revision | `publications` row (`apps/api`) |
@@ -327,8 +328,7 @@ Two curved Walls between the same two Junctions are a valid Room boundary when t
 cycle matches the bounded face walk (a two-Wall lens); they are not a duplicate-Wall pair.
 The chord-level overlap and the sampled curve gate still prove the loop is simple and
 bounded, and the boundary keeps the face walk's direction. Division keeps the landed Room
-reconciliation (P23.8 lineage:
-split survivor by evidence order, one Room born). The creator-facing expression is
+reconciliation (split survivor by evidence order, one Room born). The creator-facing expression is
 [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 
 
@@ -343,6 +343,17 @@ proposals to the Undo availability reason. F4 owns the one chronological history
 `apps/editor/src/lib/authoring/stage/stage-session.ts` and
 `apps/editor/src/lib/authoring/stage/stage-facade.ts`. See also
 [Extending Stage authoring](./components/authoring-extensions.md).
+
+`StageFacade` is a coordinator over owner leaves in `stage/facade/`: type-only contracts
+(`adapter-contract.ts`, `view-contract.ts`) and executable owners for adapter bindings,
+selection and pick, the Plan view and the contribution view. Each owner reaches only its named
+executable dependencies and never the facade, another owner or authoring and rendering state
+(`stage-facade-boundary`). The spatial route composes the Stage from controllers in
+`stage/route/`: the project epoch, asset leases, the one input arbiter, the keyboard leaf, Unfold
+and Artwork gestures, the viewport, shell state, shell commands, the Experience binding and the
+selection and contribution views. The route keeps no second epoch, history, asset-lease, pointer
+or keyboard owner, and no controller imports the route (`spatial-route-boundary`,
+`authoring-controller-boundary`).
 
 `StageFacade.resolvePick` delegates cross-domain arbitration to
 [`stage-pick.ts`](../../apps/editor/src/lib/authoring/stage/stage-pick.ts). Layout chooses
@@ -425,10 +436,14 @@ Release while refused writes nothing and restores the accepted geometry with no 
 The attempted geometry is never compiled, persisted, admitted to history or serialized. Layout builds its preview from the planner's own
 candidate document through the existing compile and `buildPaperPlan` path — the same solve release
 commits — and filters it to the changed Wall and Opening ids.
-**Approved optimization target (E4/G1, not yet shipped):** use one project-scoped canonical
-compiler session and reuse the compiled Paper result once per **distinct candidate**, never per
-rAF tick or unchanged frame. The accepted intent and the preview must remain the same solve; no
-second preview evaluator is permitted. Paper's bounded sheet includes a live
+One compile context per open project
+([`compile-context.ts`](../../apps/editor/src/lib/authoring/adapters/layout/compile-context.ts))
+binds the incremental session for planner steps and keeps the last compiled document, and candidate
+Paper, Opening face and attempt builds are memoised per live binding by document identity and
+released on end, cancel, rebase and binding dispose — so the compile runs once per **distinct
+candidate**, never per rAF tick or unchanged frame. `compile-entry-boundary` keeps every compile
+reach under the acceptance host and that context. The accepted intent and the preview remain the
+same solve; no second preview evaluator is permitted. Paper's bounded sheet includes a live
 candidate's extent, so a drag never leaves the sheet, and the Camera is never reframed by it.
 
 ### Coordination over domain policy
@@ -436,9 +451,23 @@ candidate's extent, so a drag never leaves the sheet, and the Camera is never re
 The Stage host coordinates pointer routing, arbitration between each domain's winner,
 session selection, hover, mark disclosure, gesture leases and interruption. Domains own
 eligibility, hit tests and internal ranking, occlusion, marks, gesture meaning, capture
-and refusal text. The host does not compute or reorder a domain's hits. The complete
-rule, including host tools, spatial arbitration and coarse-pointer targets, is in
-[R217 coordination](architecture.md).
+and refusal text. The host does not compute or reorder a domain's hits.
+
+- **Routing.** A live gesture's owner captures. A domain tool asks only its domain; a host tool
+  (Measure, Eraser) asks every domain that declares it; otherwise the input is Select.
+- **Arbitration.** The host asks each domain for one winner and arbitrates only between domain
+  winners by spatial truth: the nearest surface along the ray in 3D, Paper draw order in Plan
+  ([Interaction coordination](#interaction-coordination)). The selected subject's admitted marks
+  rank above world geometry.
+- **Domain policy.** Each domain owns its eligibility and refusal words per host tool, its hit
+  test and internal ranking, its occlusion policy, which marks exist, and a gesture's meaning,
+  candidate, refusal text and capture. Appearance never changes eligibility.
+- **Coarse pointer.** Mark hit areas grow to 44 × 44 px while marks stay visually small; the
+  domain decides whether a larger area could be ambiguous within its class.
+
+The host never rewrites a refusal or imposes one cross-domain node, anchor or object priority.
+Experience-lens Camera framing policies keep their T3 owner and run through the coordinator
+unchanged.
 
 ### Package responsibilities
 
@@ -450,8 +479,17 @@ rule, including host tools, spatial arbitration and coarse-pointer targets, is i
 | `project-model` | Units, codecs, Scene planning and validation | T2 Scene; T3 units/F4 |
 
 A runtime-safe helper moves into a package only when it has a second runtime-safe
-consumer. Session arithmetic stays in the editor. Persistence classes are specified
-in [R217 persistence](architecture.md).
+consumer. Session arithmetic stays in the editor.
+
+| State | Saved | After reload |
+| --- | --- | --- |
+| **Source** — Layout, Scene, Camera and Experience units | Yes; Save writes accepted source only, never a live gesture's candidate | Byte-identical |
+| **Undo history** — F4 entries | Never; bounded session state | Empty; Undo and Redo unavailable, with their reason |
+| **Session and view state** — selection, hover, armed tool, reading, grid and snap, Sheet height, Index and Card open state | Never | Defaults |
+| **App preferences** — Paper or shaded Plan, Reduce motion, Motion speed, Room labels, Paper tone | Never in project source | Kept per browser ([`app-preferences.ts`](../../apps/editor/src/lib/platform/app-preferences.ts)) |
+
+No Undo crosses a replacement baseline. The [persistence contract](./components/persistence.md)
+owns Save semantics.
 
 
 ## Where to look (per surface)

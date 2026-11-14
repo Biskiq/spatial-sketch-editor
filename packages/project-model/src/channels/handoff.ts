@@ -1,6 +1,6 @@
 /**
  * `F3.channels@1:camera-handoff-v1` — the Experience handoff discipline over the
- * landed Camera-output ticket protocol (T3.P01.S06).
+ * landed Camera-output ticket protocol.
  *
  * The landed protocol (`./camera-output`) owns ownership order: acquire /
  * request / replace / return / cancel, a qualified ticket context (`outputId`,

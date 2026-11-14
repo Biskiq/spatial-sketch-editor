@@ -1,5 +1,5 @@
 /**
- * P22.3 — public release fetch + cold bundle loader.
+ * Public release fetch + cold bundle loader.
  *
  * Visitor-safe: pure fetch plus the cold runtime only. No session, store,
  * history, gizmo, or mutable process-global loader installation. Imports

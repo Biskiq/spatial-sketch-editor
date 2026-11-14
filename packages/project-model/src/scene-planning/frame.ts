@@ -1,5 +1,5 @@
 /**
- * T2.P01.S01 — the explicit yaw-only local input frame.
+ * The explicit yaw-only local input frame.
  *
  * Scene storage stays world-local; a creator that offers a local input frame
  * gets exactly the contract's conversion applied **once** at the domain
@@ -84,9 +84,7 @@ export function frameYawFromWorld(frame: LocalInputFrame, yaw: number): number {
  * Normalize a composed yaw into the renderer's `[-pi, pi)` range, with `-0` and
  * any value inside `Number.EPSILON` collapsed to exactly `0`.
  *
- * T1.P02.S05 moved this arithmetic here from `@portfolio/layout-core`
- * (`normalizeLayoutRoomYaw`, retired with the legacy Room-frame document
- * surface) with **no numerical change**: the frame it normalizes is the Scene
+ * The frame it normalizes is the Scene
  * input frame, so Scene — not Layout — owns it. Layout has no Room frame left to
  * normalize; its Walls carry explicit centerlines.
  */

@@ -56,7 +56,7 @@ import {
 	type UnitRuntimeReady
 } from '@portfolio/project-model/units';
 
-import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
+import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
 
 import type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 export type { StageDomainRead, StageReadSnapshot } from './accepted-read';
@@ -155,7 +155,7 @@ function snapshotOf(
 	);
 }
 
-const HOST_SCENE_OPTIONS = MUSEUM_SCENE_VALIDATION_OPTIONS;
+const HOST_SCENE_OPTIONS = CATALOGUE_SCENE_VALIDATION_OPTIONS;
 
 /**
  * The host's catalogue plus this envelope's own approved creator models.
@@ -201,7 +201,7 @@ export async function admitSource(
 	 *
 	 * A Stage lifetime keeps one store and passes it on every admission, so the
 	 * compile after an accepted edit rebuilds only the Layout entities that edit
-	 * moved (T1.P02.S06 D.3 / H1). The result is the canonical compiler's own
+	 * moved. The result is the canonical compiler's own
 	 * output; nothing about admission's verdict changes. Boot, Preview and the
 	 * visitor runtime pass nothing and keep the cold compile.
 	 */
@@ -214,7 +214,7 @@ export async function admitSource(
 		};
 		/**
 		 * The runtime this host is already showing, so preparation can reuse the
-		 * Scene and navigation values whose authored units did not move (G2/I4).
+		 * Scene and navigation values whose authored units did not move.
 		 * Only a host that owns a mounted runtime passes it; boot, Preview and the
 		 * visitor runtime prepare cold.
 		 */

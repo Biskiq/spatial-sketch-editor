@@ -1,5 +1,5 @@
 /**
- * The Experience groups the shared Index shows in the Experience lens (R217.S25).
+ * The Experience groups the shared Index shows in the Experience lens.
  *
  * A projection the route builds from the Experience controller. The Index only renders
  * it and reports the creator's intent back through these callbacks; it owns no
@@ -27,7 +27,7 @@ export type ExperienceIndexGroups = {
 		/** The Guide's Stops, for the row's *n stops* meta. */
 		readonly stopCount: number;
 		readonly open: boolean;
-		/** R217.S26: the Experience's Opening Guide carries the *opens* tag. */
+		/** The Experience's Opening Guide carries the *opens* tag. */
 		readonly opening: boolean;
 	}[];
 	/** The Presentations the filter leaves, in the Experience's own order. */
@@ -57,7 +57,7 @@ export type ExperienceIndexGroups = {
 	onOpenExperience(experienceId: string): void;
 	/** Create and open an empty Experience under this name (Experience review 1: inline in the list). */
 	onCreateExperience(label?: string): Promise<boolean> | void;
-	/** R217.S26: the crumb's inline rename. An empty name refuses with its reason. */
+	/** The crumb's inline rename. An empty name refuses with its reason. */
 	onRenameExperience(label: string): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	/** null = the "No Guide yet" row: open the empty Guide. */
 	onOpenGuide(guideId: string | null): void;

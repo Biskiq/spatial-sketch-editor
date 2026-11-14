@@ -1,11 +1,7 @@
 /**
  * `layout-wall-portals.ts` — wall-first Opening portal relations.
  *
- * T1.P02.S05 moved these live functions here from `layout-portals.ts`, whose
- * other half (`projectLayoutPortalRelations`, `portalOpeningHasRoomPair`)
- * projected the retired legacy Room-owned document, had no callers, and is
- * deleted with it. Everything below reads only the canonical wall-first
- * document, so the portal contract survives the retirement unchanged.
+ * Everything here reads only the canonical wall-first document.
  */
 import type { LayoutDocumentWallFirst, LayoutWallOpening } from './layout-wall-first-types';
 
@@ -36,8 +32,8 @@ export function wallFirstAdjacentRooms(
 }
 
 /**
- * Strict new-schema `connectsRoomIds` adjacency rule (P23.3 "Physical
- * adjacency versus semantic portal intent"): the pair must be exactly the two
+ * Strict new-schema `connectsRoomIds` adjacency rule (physical
+ * adjacency versus semantic portal intent): the pair must be exactly the two
  * physical Rooms adjacent to the hosting boundary Wall at the opening. Shape
  * rules (door-only, two distinct known Room IDs) already hold on every
  * validated path — the wall-first codec enforces them structurally
@@ -47,8 +43,8 @@ export function wallFirstAdjacentRooms(
  *
  * Read-path codecs intentionally do NOT run this: a document with a
  * nonadjacent relation stays readable, and the wall-first Save gate runs the
- * rule fail-closed (P23.0 "block new-schema Save until the relation is
- * explicitly resolved/removed").
+ * rule fail-closed: Save is blocked until the relation is explicitly
+ * resolved or removed.
  */
 export function validateWallFirstPortalRelations(
   document: LayoutDocumentWallFirst

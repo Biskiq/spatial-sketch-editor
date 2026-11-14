@@ -1,5 +1,5 @@
 /**
- * `layout-wall-chain.ts` — P23.9 wall/partition chain sketch planner.
+ * `layout-wall-chain.ts` — wall/partition chain sketch planner.
  *
  * Two authoring surfaces share this engine:
  * - `planWallSegment()` owns continuous Wall/Partition authoring: one
@@ -11,30 +11,29 @@
  *   bounded tool commits one atomic history entry.
  *
  * Either way the planner builds the **complete candidate document** through
- * the P23.8 engine — DECLARED junction reuse (never coordinate coincidence),
+ * the topology engine — DECLARED junction reuse (never coordinate coincidence),
  * endpoint-on-interior T noding, proper-crossing X noding, collinear-overlap
  * rejection, then the canonical validate → reconcile → compile gates — so one
  * bounded tool commits **one** history entry and an invalid candidate commits
  * nothing. Adoption and noding apply only inside the component(s) the operation
- * DECLARES (P23B.3a S6), so an overlap between independent groups is permitted
+ * DECLARES, so an overlap between independent groups is permitted
  * geometry and never a join. Nothing here mutates its inputs.
  *
- * Semantics ratified by the P23.9 plan:
+ * Semantics:
  * - open chains are valid architecture and commit without producing a Room;
- * - **every** chain invokes P23.8 face extraction and Room reconciliation
+ * - **every** chain invokes face extraction and Room reconciliation
  *   (first-enclosure birth, 1→2 divider split, or no-op preservation per witness
  *   correspondence). Format 6 has no authored role: a ring encloses and a Wall
- *   between two points of one Room's boundary divides it (T1.P02 drawing policy,
- *   owner-accepted 2026-10-22);
+ *   between two points of one Room's boundary divides it (the owner-accepted
+ *   drawing policy);
  * - snapping is a suggestion (the editor resolves coordinates before this
  *   planner runs); committed topology here is explicit and DECLARED;
  * - collinear overlap rejects — no auto-merge/trim — WITHIN one connected
  *   component; two independent components may overlap freely;
  * - committed data never contains an un-noded visual crossing INSIDE one
  *   connected component. A crossing between independent components is permitted
- *   geometry (P23B.3a S4/S5) and is deliberately left un-noded;
- * - **authoring intent is DECLARED, never inferred from geometry** (P23B.3a S6,
- *   decision record §4.0.1 / M-3a-4). An operation that deliberately connects to
+ *   geometry and is deliberately left un-noded;
+ * - **authoring intent is DECLARED, never inferred from geometry**. An operation that deliberately connects to
  *   existing geometry declares the identity it connects to
  *   (`endpointJunctionSnaps` / `endpointHostSnaps`) — operation class 3,
  *   extending a group it belongs to — and keeps today's adoption and noding
@@ -97,9 +96,9 @@ import {
 } from './layout-junction-identity';
 
 /**
- * Chain wall/junction defaults (same as the P23.0 seed helpers).
+ * Chain wall/junction defaults (same as the seed helpers).
  *
- * P23.6I removed the Wall-birth height from this table: a new Wall's height comes
+ * The Wall-birth height is not in this table: a new Wall's height comes
  * from `resolveWallBirthHeight()` (the named `WALL_AUTHORING_DEFAULT_HEIGHT` or a
  * deterministic incident-Wall inheritance), so no runtime Wall-birth path may
  * carry a literal height. Thickness stays a fixed sketch default (it is not a
@@ -110,7 +109,7 @@ export const WALL_CHAIN_DEFAULTS = {
 } as const;
 
 /**
- * A DECLARED host-Wall connection for one draft point (P23B.3a S6).
+ * A DECLARED host-Wall connection for one draft point.
  *
  * Relationship acquisition, not geometry: the caller names the host Wall
  * explicitly. `planWallChain` VALIDATES the claim before granting any authority
@@ -127,7 +126,7 @@ export type WallEndpointHostSnap = {
 };
 
 /**
- * P23B.3a S6 — DECLARED CONNECTION ANCHOR, junction form.
+ * DECLARED CONNECTION ANCHOR, junction form.
  *
  * The operation's explicit statement that draft point `pointIndex` CONNECTS to
  * the existing Junction `junctionId`: operation class 3, extending an already
@@ -328,7 +327,7 @@ export type WallChainPlan =
 			startJunctionId: string;
 			/** Canonical resolved end junction of the committed candidate. */
 			endJunctionId: string;
-			/** `created` lineage records from the P23.8 reconciliation. */
+			/** `created` lineage records from the reconciliation. */
 			lineage: ReadonlyArray<{
 				faceKey: string;
 				roomId: string;
@@ -336,7 +335,7 @@ export type WallChainPlan =
 			}>;
 			retiredRoomIds: readonly string[];
 			/**
-			 * P23B.11 M-4 — the compile the final canonical gate already produced for
+			 * The compile the final canonical gate already produced for
 			 * exactly `document` (canonical JSON, geometry and issues). It is the same
 			 * payload type the precision path carries, and it is a *result*, never an
 			 * authority: an installing caller must re-prove that the document it is about
@@ -421,7 +420,7 @@ function cloneWallFirstDocument(document: LayoutDocumentWallFirst): LayoutDocume
  * pressing Close).
  */
 /**
- * P23B.11 S1 — the wall-chain plan's own DEV-only mark boundaries.
+ * The wall-chain plan's own DEV-only mark boundaries.
  *
  * The P23B.6 S6 capture left this block in an UNATTRIBUTED interval because no
  * `p2311Measure` mark existed anywhere in the wall-chain / correspondence /
@@ -448,18 +447,18 @@ export type WallChainPlanOptions = {
 	 */
 	arc?: WallChainArc | null;
 	/**
-	 * T1.P02.S01 §1 — the operation's captured identity. Required: the chain
+	 * The operation's captured identity. Required: the chain
 	 * mints Junctions, Walls, noding fragments and (on a closed ring) Rooms, and
 	 * every one of those derives from this nonce rather than from occupancy.
 	 */
 	capture: LayoutIdCapture;
 	/**
-	 * T1.P02.S01 §1 — the explicit working level. Required and refused unless it
+	 * The explicit working level. Required and refused unless it
 	 * names `baseline.floor.id`; the chain never infers its level from the document.
 	 */
 	levelId: string;
 	/**
-	 * P23B.3a S6 — DECLARED host-Wall connections, keyed by draft point index.
+	 * DECLARED host-Wall connections, keyed by draft point index.
 	 *
 	 * The annotation names the point that expresses the attachment (the endpoint
 	 * the author snapped onto a Wall's face); what it MEANS is that this operation
@@ -476,7 +475,7 @@ export type WallChainPlanOptions = {
 	 */
 	endpointHostSnaps?: readonly WallEndpointHostSnap[];
 	/**
-	 * P23B.3a S6 — DECLARED Junction connection anchors, keyed by draft point
+	 * DECLARED Junction connection anchors, keyed by draft point
 	 * index. Together with `endpointHostSnaps` this IS the operation's declared
 	 * intent: supplying either one makes the chain an EXTENSION of the group(s)
 	 * it names (class 3 — adoption and in-group noding apply); supplying neither
@@ -527,7 +526,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	if (points.some((point) => point.some((value) => !Number.isFinite(value)))) {
 		return reject({ code: 'non_finite_point', message: 'Chain points must be finite coordinates' });
 	}
-	// P23B.3a S6 — DECLARED CONNECTION ANCHORS, never coordinate coincidence (the
+	// DECLARED CONNECTION ANCHORS, never coordinate coincidence (the
 	// D-9 authoring rule, decision record §4.0.1 classes 2 and 3). A draft point
 	// adopts an existing Junction id only when the operation DECLARED that
 	// identity; the draft point then normalizes onto the stored coordinate, so a
@@ -724,7 +723,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 			endJunctionId: endId,
 			thickness,
 			height,
-			// P23.11 — authored chain legs are straight; A3 is the one bounded
+			// Authored chain legs are straight; A3 is the one bounded
 			// exception: the drawn Arc's leg carries the canonical cubic-chain the
 			// curve planners already read, and every other leg stays `line`.
 			centerline: arcLeg !== null && index === arcLeg.pointIndex
@@ -966,7 +965,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	}
 
 	const finalJunctionIds = new Set(validated.document.junctions.map((junction) => junction.id));
-	// P23B.3a S6 — the last-resort coordinate recovery may only reach identities in
+	// The last-resort coordinate recovery may only reach identities in
 	// the component this operation authored. Coincident records in unrelated
 	// components are legal now, so an unrestricted lookup could hand a chain an
 	// unrelated group's Junction as its own start/end — the implicit join this step
@@ -1230,7 +1229,7 @@ type NodingFix =
 	| { kind: 'reject'; rejection: WallChainRejection };
 
 /**
- * The Junction this operation may ADOPT at `point` (P23B.3a S6).
+ * The Junction this operation may ADOPT at `point`.
  *
  * A record is adoptable when it is an endpoint of one of the relationship's own
  * Walls, or when it belongs to the component those Walls are in. A coincident
@@ -1328,7 +1327,7 @@ function teeThroughJunction(
 /**
  * Find the next un-noded relationship this operation is AUTHORIZED to resolve: a
  * chain wall against a Wall it may acquire topology from — a DECLARED host, or a
- * Wall already in the chain's own connected component (P23B.3a S6). A pair
+ * Wall already in the chain's own connected component. A pair
  * involving an independent, undeclared Wall is skipped outright, so a permitted
  * overlap never becomes a join. Returns `null` when no such relationship remains.
  */
@@ -1339,7 +1338,7 @@ function nextNodingFix(
 	endpointHostWallIds: ReadonlyMap<string, string>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
-	// P23B.3a S6 — the operation's DECLARED scope. `declaredHostWallIds` are the
+	// The operation's DECLARED scope. `declaredHostWallIds` are the
 	// pre-existing Walls this chain explicitly anchored to; any other pre-existing
 	// Wall is authorizable only by CONNECTIVITY (the chain is already in its
 	// component, because it adopted one of that group's Junctions or earlier
@@ -1672,7 +1671,7 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 		if (!start || !end) continue;
 		entries.push({ wall, segment: { id: wall.id, start: start.point, end: end.point } });
 	}
-	// P23.11 — the chord classifier below is exact for straight/straight
+	// The chord classifier below is exact for straight/straight
 	// relationships and stays authoritative there. A curved Wall can bow across
 	// a new straight Wall while its endpoint chord never intersects it, so the
 	// canonical sampled crossing authority runs on the built candidate before
@@ -1680,7 +1679,7 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 	// second crossing algorithm — and any curve crossing that would need
 	// automatic curved noding rejects the whole authoring command.
 	//
-	// P23B.3a S5 — SUBJECT: the sampled authority is called with ITS shipped subject
+	// SUBJECT: the sampled authority is called with ITS shipped subject
 	// (the connected component); the transitional document-subject form S4 left for
 	// this caller is gone. The chord loop below is scoped the same way, in the same
 	// commit, so the two halves of this gate cannot disagree — and neither can this
@@ -1709,7 +1708,7 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 			  };
 	}
 	const segments = entries.map((entry) => entry.segment);
-	// P23B.3a S5 — the chord half takes the SAME subject as everything above it: a
+	// The chord half takes the SAME subject as everything above it: a
 	// pair from two different components is permitted geometry, so it is skipped
 	// before the unchanged classifier sees it. Every pair that shares an explicit
 	// Junction is in one component by construction, so the `shared-explicit-junction`
@@ -1774,7 +1773,7 @@ function nodingAllocatorAdapter(allocator: WallChainIdAllocator, document: Layou
  * points and no implicit close. Callers use the returned `startJunctionId` /
  * `endJunctionId` for continuation — never `createdWallIds`.
  *
- * **Wall-birth height lives here, not in the editor (P23.6I).** A headless
+ * **Wall-birth height lives here, not in the editor.** A headless
  * caller and the human Plan interaction must execute the same semantic
  * operation, so the first-segment rule is resolved from canonical document
  * topology by `resolveWallBirthHeight()`:
@@ -1790,7 +1789,7 @@ function nodingAllocatorAdapter(allocator: WallChainIdAllocator, document: Layou
  * coordinate fallback: the Junction `resolveWallBirthHeight` reads is the DECLARED
  * start anchor when the caller names one, else the Junction coinciding with the
  * start. Topology does NOT follow that fallback — adoption happens only through
- * the declared anchors on this signature (P23B.3a S6). Continuation *inside one active draw run* stays an
+ * the declared anchors on this signature. Continuation *inside one active draw run* stays an
  * explicit caller decision: the editor holds the run height as transient state
  * and passes it as `height`, which the explicit branch above honours.
  */
@@ -1807,7 +1806,7 @@ export function planWallSegment(options: {
 	/** Existing `wall-span` snap identity for the authored endpoint. */
 	endpointHostWallId?: string;
 	/**
-	 * P23B.3a S6 — DECLARED connection anchors (host-Wall form), keyed by point
+	 * DECLARED connection anchors (host-Wall form), keyed by point
 	 * index exactly like `endpointJunctionSnaps`: a segment that terminates on an
 	 * existing Wall's span (a divider landing on the enclosure) says so here, and
 	 * that declaration is what authorizes noding inside that host's group.
@@ -1820,7 +1819,7 @@ export function planWallSegment(options: {
 	 */
 	endpointHostSnaps?: readonly WallEndpointHostSnap[];
 	/**
-	 * P23B.3a S6 — DECLARED connection anchors for this segment (junction form),
+	 * DECLARED connection anchors for this segment (junction form),
 	 * keyed by point index: `0` is `start`, `1` is `end`. Supplying either one is
 	 * the operation declaring that it EXTENDS the group it names (class 3), so
 	 * adoption and noding apply inside that group; supplying neither — and no
@@ -1834,7 +1833,7 @@ export function planWallSegment(options: {
 	const declaredStartJunctionId = options.endpointJunctionSnaps?.find(
 		(snap) => snap.pointIndex === 0
 	)?.junctionId;
-	// Birth height (P23.6I) is a vertical-coherence rule, not a topology rule, so
+	// Birth height is a vertical-coherence rule, not a topology rule, so
 	// it keeps its coordinate fallback: a segment whose start sits on a Junction
 	// inherits that Junction's height whether or not the operation declared the
 	// identity. A declared anchor is authoritative when both are present.

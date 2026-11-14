@@ -95,9 +95,9 @@ placement; no resource is silently admitted. T2.P02.S01 adds editor-host admissi
 resource in the same envelope and Save verification against the project's approved revision. Its
 `generic` fallback uses the approved footprint; part fields remain refused and `componentId` stays
 null. T2.P02.S02 adds the import procedure and the placement journey; its owner-run rows, including
-Preview pixels, stay unrun in its acceptance stub. The visitor reader remains catalogue-only. The shared Stage/visitor renderers remain under
-`apps/editor/src/lib/museum/`, with catalogue policy in
-`apps/editor/src/lib/content/scene-validation.ts`. The directory name is not a separate product.
+Preview pixels, stay unrun in its acceptance stub. The visitor reader remains catalogue-only. The shared Stage/visitor renderer lives under
+`apps/editor/src/lib/render/`, with catalogue policy in
+`apps/editor/src/lib/content/scene-validation.ts`.
 Open and Download use F2 source JSON. Publication UI remains absent; the
 [bounded capture/Guide/Preview loop](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome)
 does not admit general Camera path authoring.

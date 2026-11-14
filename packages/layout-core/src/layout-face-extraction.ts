@@ -1,6 +1,6 @@
 /**
- * `layout-face-extraction.ts` — P23.8 boundary-Wall candidate-face
- * extraction (H3 §10).
+ * `layout-face-extraction.ts` — boundary-Wall candidate-face
+ * extraction.
  *
  * Runs over **every Wall** (format 6): there is no authored `role`, so a ring
  * encloses because of its topology, not because a field permits it. Emits
@@ -9,7 +9,7 @@
  * `LayoutRoom` identity (hard H3/H5 boundary). Room correspondence happens
  * in `layout-room-reconciliation.ts` on top of these candidates.
  *
- * Pipeline (H3 §10.1):
+ * Pipeline:
  *
  * ```text
  * validated boundary wall graph
@@ -36,7 +36,7 @@ import { createDynamicBvh } from './layout-bvh';
 import type { PlanBox } from './layout-plan-box-index';
 
 /**
- * P23B.4 correction (F1) — test-only observation of the actual sample arrays the
+ * Test-only observation of the actual sample arrays the
  * face consumer feeds its polygon builder (post-seam, as consumed).
  *
  * While set, each curved half-edge reports the exact array it consumes. This catches
@@ -152,7 +152,7 @@ export function extractBoundaryCandidateFaces(
 	// neighbour (B1).
 	// The ordering pass derives each curved half-edge's sampled centerline once.
 	// The polygon pass below reuses that same array, so departure ordering adds
-	// no sampling call to the consumer count the P23B.4 observations pin.
+	// no sampling call to the consumer count the observations pin.
 	const departureByEdge = new Map<string, { ray: DepartureRay; sampled?: SampledSegment }>();
 	const departureOf = (edge: HalfEdge): DepartureRay => {
 		const key = `${edge.wallId}|${edge.direction}`;
@@ -215,7 +215,7 @@ export function extractBoundaryCandidateFaces(
 			wallId: half.wallId,
 			direction: half.direction
 		}));
-		// P23.11 — the geometric face polygon expands each curved Wall into its
+		// The geometric face polygon expands each curved Wall into its
 		// canonical sampled centerline vertices in traversal order (samples
 		// between the ring's junction endpoints; each edge's start junction is
 		// the previous edge's end and is omitted). Straight walls contribute
@@ -313,7 +313,7 @@ export function extractBoundaryCandidateFaces(
 /**
  * Recursively strip degree-1 boundary walls from the face working graph.
  * Authored walls are diagnosed and retained in the document; only the face
- * working graph excludes them (H3 §10.5).
+ * working graph excludes them.
  */
 function stripDangles(
 	walls: readonly LayoutWall[],
@@ -455,7 +455,7 @@ function quadrantOf(dx: number, dy: number): number {
 /**
  * Next half-edge around the face: at the current edge's target junction,
  * take the outgoing edge immediately clockwise from the twin (reverse of
- * the current edge), keeping the face on the left (H3 §10.3).
+ * the current edge), keeping the face on the left.
  */
 function nextCounterClockwiseFaceEdge(
 	outgoing: Map<string, HalfEdge[]>,
@@ -482,8 +482,8 @@ function nextCounterClockwiseFaceEdge(
 }
 
 /**
- * Canonical **boundary-cycle key** for one oriented wall-reference cycle
- * (P23.6a S2). This is the single derivation used both by candidate-face
+ * Canonical **boundary-cycle key** for one oriented wall-reference cycle.
+ * This is the single derivation used both by candidate-face
  * extraction (a face key) and by explicit boundary-lineage correspondence (a
  * persisted Room's `boundary` cycle): the token format and the
  * rotation-normalization live in exactly one place, so a face key and a Room
@@ -507,7 +507,7 @@ function keyFloorlessTokens(
 /**
  * Canonical face key from the oriented cycle: rotate so the
  * lexicographically smallest token sequence comes first, then serialize with
- * the collision-safe `geometryId()` helper (H5 §4.2). The reversed cycle is
+ * the collision-safe `geometryId()` helper. The reversed cycle is
  * NOT considered — bounded traversal orientation is already canonical.
  */
 function canonicalFaceKey(tokens: readonly string[]): string {
@@ -533,7 +533,7 @@ function polygonSignedArea(polygon: readonly LayoutVec2[]): number {
 }
 
 /**
- * Deterministic nesting detection (H3 §10.6): a bounded face whose polygon
+ * Deterministic nesting detection: a bounded face whose polygon
  * is strictly inside another bounded face is a nested loop diagnostic; one
  * touching the outer face's boundary is reported as a touching nested loop.
  * No hole/Room semantics are synthesized in the P23 minimum.
@@ -790,7 +790,7 @@ export function polygonIntersectionArea(
  * The adjacency predicates' own slack, in metres. `polygonsShareInteriorArea`
  * treats a point as "on the ring" within this distance (its `withinRing` and
  * `pointNearSegment` probes), so a room and a face whose boundary probes come no
- * closer than this can never share interior area. Exported (P23B.11 S3) so a
+ * closer than this can never share interior area. Exported so a
  * coarse phase can prune only pairs PROVEN farther apart than the predicate's own
  * slack, instead of duplicating the number: one tolerance, one owner.
  */

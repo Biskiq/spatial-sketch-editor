@@ -1,5 +1,5 @@
 <!--
-	T1 A8 — the Card's **Repeat** writer for one selected Opening.
+	The Card's **Repeat** writer for one selected Opening.
 
 	Renders beside the Opening's ordinary fields, not in a new panel or a tool:
 	a count of copies and a spacing in metres, with the planner's own proposal

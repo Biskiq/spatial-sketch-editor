@@ -1,5 +1,5 @@
 /**
- * T2.P02.S02 — the lazy import worker client.
+ * The lazy import worker client.
  *
  * The worker module is reached through a dynamic import of its URL, so a build
  * that never opens Import emits no worker chunk. One worker serves one import

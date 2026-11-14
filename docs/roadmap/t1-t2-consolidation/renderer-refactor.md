@@ -2,7 +2,9 @@
 
 **Scope:** the path **Scene → derived geometry → render resources → renderer**, for the editor Stage
 and the visitor surfaces that share it. **Evidence:** [`audit.md`](./audit.md) sections 4–6.
-**Execution:** slices R1–R8 in [`slices.md`](./slices.md).
+**Execution:** slices R1–R8 in [`slices.md`](./slices.md). **Current rules:** the shipped,
+guard-enforced invariants are promoted to the [rendering contract](../../reference/components/rendering.md),
+which wins where this design record differs.
 
 This is a refactor of ownership, not a rewrite. Three r187 on WebGL stays the production renderer;
 nothing here migrates to WebGPU, replaces the kernel or changes a rendered pixel on purpose.
@@ -50,6 +52,9 @@ upstream identity change rebuilds everything downstream, and instancing has no p
 Each layer reads only the layer above it. Layers 1–3 are shared by every surface and hold no GPU
 state. Layers 4–6 exist once per Canvas, because WebGL contexts cannot share GPU objects: the
 snapshot renderer reuses the Stage's, and the Preview Canvas has its own.
+
+**E12 ruling:** the texture store was ratified as one shared, module-level pool keyed by load scope,
+not a per-Canvas store; see the [rendering contract](../../reference/components/rendering.md#per-canvas-resources).
 
 ### 2.1 Ownership
 

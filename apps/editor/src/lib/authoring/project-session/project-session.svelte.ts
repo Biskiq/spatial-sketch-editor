@@ -904,7 +904,7 @@ export function createProjectSession(host: {
 			reportSourceRefusal(next, 'open');
 			return;
 		}
-		// Standalone JSON does not transfer project-owned P20 byte identity.
+		// Standalone JSON does not transfer project-owned artwork byte identity.
 		const validated = validateProjectEnvelope(JSON.parse(source));
 		if (validated.success && validated.envelope.units.scene.data.artworkLibrary?.length) {
 			host.notice = 'This source uses project Artwork images. Open its saved cloud project to recover those images.';

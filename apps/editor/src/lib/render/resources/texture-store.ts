@@ -1,17 +1,15 @@
 /**
- * E6/R2a — the texture-resource store.
+ * The texture-resource store.
  *
- * Moved here unchanged from `museum/materials/texture-cache.ts`: the same
- * source cache, the same per-effective-material variant pool, the same
- * reference counts and the same two `texture:variant-*` counters. Ownership is
- * what changed — a render resource now lives beside the material store that
- * leases it, not inside the museum components that happened to use it first.
+ * It holds the source-texture cache and the per-effective-material variant pool,
+ * counts references, and reports the two `texture:variant-*` counters. It is a
+ * render resource that lives beside the material store that leases from it; it
+ * is a module-level pool keyed by load scope, not one of the per-Canvas stores
+ * in `render-resources.ts`.
  *
- * `renderer-refactor.md` §2.4 also asks for **deferred** variant release (a
+ * Variant release is **deferred**, as the rendering contract asks: a
  * variant whose count reaches zero is disposed at the next idle point, so a
- * release-then-reacquire inside one update never deletes a GPU texture). That
- * behaviour is R2b/E7's, with the Scene look that exercises it; E6 moves the
- * pool and establishes its owner without changing when a texture is released.
+ * release-then-reacquire inside one update never deletes a GPU texture.
  */
 import {
   NoColorSpace,
@@ -43,7 +41,7 @@ type VariantEntry = {
   maps: LoadedTextureMaps;
   refCount: number;
   /**
-   * E7/R2b — the variant's count reached zero.
+   * The variant's count reached zero.
    *
    * The GPU textures stay alive until the next idle point, so a release and a
    * re-acquire inside one update never delete and re-upload a texture. A later
@@ -120,7 +118,7 @@ export type TextureSourceLoader = (
 ) => Promise<ThreeTexture>;
 
 /**
- * P22.1 — explicit release scope for cold visitor loads.
+ * Explicit release scope for cold visitor loads.
  *
  * When supplied, texture loads use `loader` (never the mutable process-global
  * default) and every cache key is prefixed with `scopeId`, so the same logical

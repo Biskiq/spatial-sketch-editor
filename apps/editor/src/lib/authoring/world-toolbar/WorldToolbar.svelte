@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { ArtworkLibraryEntry } from '@portfolio/project-model';
 	/**
-	 * The Living Draft World toolbar: the #285 plate and dock.
+	 * The Living Draft World toolbar: the prototype's plate and dock.
 	 *
 	 * The surface is the prototype's cream plate over a forest dock. Every landed
 	 * row still delegates to the route's controllers; planned rows stay inspectable
@@ -46,7 +46,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onLibrary: () => void;
 		onObjectPick: (assetId: string) => void;
 		onMaterialPick: (materialId: string) => void;
-		/** The Look shelf later T2 slices fill; empty in P0, so nothing is drawn. */
+		/** The Look shelf; nothing is drawn while it is empty. */
 		lookShelf?: LookLibraryShelf | null;
 		artworkShelf?: readonly ArtworkLibraryEntry[] | null;
 		onArtworkPick?: (entry: ArtworkLibraryEntry) => void;

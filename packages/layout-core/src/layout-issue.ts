@@ -2,8 +2,8 @@
  * `layout-issue.ts` — the shared structured issue record for a Layout payload.
  *
  * `LayoutDocumentIssue` is the one `{ path, code, message }` shape every Layout
- * reader reports and the shape `LayoutDocumentValidationError` carries. T1.P02.S05
- * moved it out of the retired legacy codec so the wall-first codec, the identity
+ * reader reports and the shape `LayoutDocumentValidationError` carries. It lives
+ * in its own module so the wall-first codec, the identity
  * capture and the precision planners keep one issue owner without depending on a
  * document generation.
  *

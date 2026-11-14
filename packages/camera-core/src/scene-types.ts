@@ -30,7 +30,7 @@ export const CAMERA_EASING: readonly CameraEasing[] = [
 export type CameraGraphNode = {
   id: string;
   /**
-   * Legacy room-local graph gate. Absent under world-local (P23.0b)
+   * Legacy room-local graph gate. Absent under world-local
    * documents, where node coordinates are already project/world space.
    */
   roomId?: string;

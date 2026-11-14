@@ -344,8 +344,8 @@ feedback, not acceptance (rule 25).
 
 ```sh
 npx vitest run tests/lib/layout/layout-curve-editing.test.ts      # one contract
-npx vitest run tests/lib/museum/navigation/camera-motion.test.ts -t 'live target and FOV'
-npx vitest list tests/lib/museum/navigation/camera-motion.test.ts -t 'live target and FOV'
+npx vitest run tests/lib/camera-core/navigation/camera-motion.test.ts -t 'live target and FOV'
+npx vitest list tests/lib/camera-core/navigation/camera-motion.test.ts -t 'live target and FOV'
 npx vitest related --run src/lib/layout/wall-mesh-builder.ts       # importers of a source file
 npx vitest run --changed HEAD                                      # what the branch touched
 ```

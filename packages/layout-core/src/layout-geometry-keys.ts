@@ -1,6 +1,5 @@
 /**
- * `layout-geometry-keys.ts` — the one encoder for compiled-geometry cache keys
- * (T1.P02.S06 D.1 / H3).
+ * `layout-geometry-keys.ts` — the one encoder for compiled-geometry cache keys.
  *
  * A compiled entity's `cacheKey` names the inputs its compiled output depends
  * on. It is compared for equality only (the Floor-support witness check and the
@@ -92,7 +91,7 @@ export function cacheKeyOf(parts: readonly unknown[]): CacheKey {
 	const out: string[] = [];
 	for (const part of parts) encodePart(part, out);
 	const key = out.join('');
-	// T1.P02.S06 work counts (inert without an observer): the key's own length and
+	// Work counts (inert without an observer): the key's own length and
 	// the data characters that had to be re-serialized to build it.
 	countWork('cache-key:chars', key.length);
 	countWork('cache-key:built');

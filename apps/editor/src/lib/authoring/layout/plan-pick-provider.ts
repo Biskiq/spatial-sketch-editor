@@ -486,7 +486,7 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 	}
 
 	/**
-	 * Layout's Eraser eligibility, in its own words (R217.S10). A Room floor derives
+	 * Layout's Eraser eligibility, in its own words. A Room floor derives
 	 * from its Walls and a Layout object (the plinth) has no Layout delete, so the
 	 * Eraser refuses them here rather than skipping to a subject behind them.
 	 */

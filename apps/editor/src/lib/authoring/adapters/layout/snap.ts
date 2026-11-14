@@ -1,5 +1,5 @@
 /**
- * R217.S14 — Layout's **snap policy** for authoring gestures.
+ * Layout's **snap policy** for authoring gestures.
  *
  * Layout already owns snap geometry in `layout-core`; this module is only the
  * policy that decides what a gesture may snap to and how the winner is shown.
@@ -12,7 +12,7 @@
  *   from the previous point, then the fixed 0.5 m grid.
  * - Opening slide: the Opening drag family's edge/centre targets, then the
  *   fixed 0.5 m grid.
- * Wall length and body-move fallbacks belong to R217.S15 and live here: the
+ * Wall length and body-move fallbacks live here: the
  * normal distance or the length rounds to the fixed 0.5 m grid, and neither
  * ever snaps a Wall onto another Wall or Junction.
  *

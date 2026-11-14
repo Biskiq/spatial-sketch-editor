@@ -16,7 +16,7 @@ import type { SemanticReference } from '@portfolio/project-model';
 export type ExperienceCardMenuItem = NonNullable<ComponentProps<typeof EditorCard>['menu']>[number];
 
 /**
- * R217.S26 (E4) — a danger item for one removal. Its consequence block reads the
+ * A danger item for one removal. Its consequence block reads the
  * same plan the removal planner installs; an item the plan refuses stays disabled
  * with the reason as its hint. A Default View's removal asks for the new Default
  * in the block (no automatic choice).
@@ -61,7 +61,7 @@ export type ExperienceCardBack = {
 } | null;
 
 /**
- * R217.S26 (E17): the kind line's *‹ Back* when the previous subject is not the
+ * The kind line's *‹ Back* when the previous subject is not the
  * kind line's own parent link (a View's Presentation is already its kind link).
  */
 export function backOf(
@@ -84,7 +84,7 @@ export function backOf(
 	};
 }
 
-/** The Experience rename fields commit on Enter or blur and refuse an empty name (R217.S26). */
+/** The Experience rename fields commit on Enter or blur and refuse an empty name. */
 export function experienceNameWriter(
 	value: () => string,
 	commit: (name: string) => Promise<{ readonly kind: string; readonly message?: string }>
@@ -155,7 +155,7 @@ export type ExperienceCardHost = {
 };
 
 /**
- * R217.S25 (D10) — the one Card the Experience lens shows: the Experience subject
+ * The one Card the Experience lens shows: the Experience subject
  * when one is selected, otherwise the Stage selection as the subject Card,
  * otherwise none. The latest selection always replaced the other, so there is
  * never a second Card to arbitrate.
@@ -184,8 +184,8 @@ export function experienceShownCardFor(input: ExperienceCardHost): ExperienceSho
 			stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
 			hasDefaultView: presentation.views.length > 0
 		});
-		// E5: Add to Guide ▸ — the Guides, the active one first, with *again* where the
-		// Presentation already has a Stop, then New Guide…, which asks the name inline (D8).
+		// Add to Guide ▸ — the Guides, the active one first, with *again* where the
+		// Presentation already has a Stop, then New Guide…, which asks the name inline.
 		const activeGuideId = controller.currentGuide?.id ?? controller.contextGuide?.id ?? null;
 		const guidesInOrder = [
 			...controller.guides.filter((guide) => guide.id === activeGuideId),

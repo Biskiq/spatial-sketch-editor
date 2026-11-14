@@ -1,5 +1,5 @@
 /**
- * P21.4 — preview-surface import-closure validator (shared by the Vite build
+ * Preview-surface import-closure validator (shared by the Vite build
  * plugin and Vitest fixtures).
  *
  * Walks the resolved, transformed module graph from the VisitorPreviewSurface

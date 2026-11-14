@@ -9,7 +9,7 @@ export * from './channels';
 export type { ShapeIssue, ShapeValidation } from './strict-shape';
 export * from './package-format';
 export * from './package-sha';
-// T3.P01.S04 — the current-source reader, serializer, runtime and admission are
+// The current-source reader, serializer, runtime and admission are
 // retired. The one live source is the F.2 envelope at the explicit `./units`
 // subpath; the F.4 acceptance contract here is source-agnostic and its F.2
 // adapter lives behind that subpath too.

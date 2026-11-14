@@ -1,5 +1,5 @@
 /**
- * Preview Camera handover (T3.P02.S02).
+ * Preview Camera handover.
  *
  * Preview is an isolated visitor run, not a second Stage: entering it **hands the
  * Stage's one Camera output over** through the landed F3 ticket protocol's

@@ -1,5 +1,5 @@
 /**
- * T2.P02.S02 — the creator-import contract.
+ * The creator-import contract.
  *
  * One GLB, or one glTF plus its local buffers/maps, becomes one immutable
  * approved revision plus the placement the creator confirmed. This module owns
@@ -15,7 +15,7 @@
 /** The one admitted recipe. A second version is a new record, not an option. */
 export const CREATOR_IMPORT_RECIPE = Object.freeze({ id: 'creator-import@1', version: 1 });
 
-/** Owner-accepted batch E bounds, repeated here for the pre-upload check. */
+/** The approved import bounds, repeated here for the pre-upload check. */
 export const CREATOR_IMPORT_SOURCE_MAX_BYTES = 50 * 1024 * 1024;
 export const CREATOR_IMPORT_DERIVATIVE_MAX_BYTES = 25 * 1024 * 1024;
 

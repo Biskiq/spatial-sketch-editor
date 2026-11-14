@@ -388,8 +388,8 @@ export type SceneConnection = Omit<
 };
 
 /**
- * The Scene document format discriminator. `1` is the one supported format
- * (PR #115 / WP3): physical values are project/world coordinates and no record
+ * The Scene document format discriminator. `1` is the one supported format:
+ * physical values are project/world coordinates and no record
  * carries `roomId`, so a parsed document is runtime-final and is never resolved
  * through Room frames. Native forms are admitted through the F.2 Scene unit
  * format 4 that wraps this record grammar.
@@ -633,7 +633,7 @@ function resolveViewKeyframe(
 /**
  * Resolve a Scene document into the runtime Scene.
  *
- * PR #115 (WP3) — the current format is the only accepted one, and its
+ * The current format is the only accepted one, and its
  * physical values are already project/world coordinates, so there is no Room
  * registry and no Room-frame resolution: every value is cloned once, exactly,
  * with no transform and no second pass.

@@ -1,8 +1,8 @@
 /**
- * E10/R6 — authored Scene lights, resolved: Scene in, frozen light items out.
+ * Authored Scene lights, resolved: Scene in, frozen light items out.
  *
  * The light half of the resolved look. Each authored Point or Spot becomes one
- * item — its placement and a `LightDescriptor` in the T2.S0 units — and nothing
+ * item — its placement and a `LightDescriptor` in the approved light units — and nothing
  * here builds a Three object. The Canvas light store realizes the descriptors;
  * the light representation places them.
  *
@@ -13,8 +13,8 @@
  * `placementKey` let the representation tell a changed light from a moved one
  * from an unchanged one.
  *
- * Only Point and Spot exist: the authored Directional kind is retired (AR-11,
- * Scene format 7) and the Sky owns the only Sun (`resolveSkySun`).
+ * Only Point and Spot exist: the authored Directional kind is retired
+ * (Scene format 7) and the Sky owns the only Sun (`resolveSkySun`).
  */
 import { isSceneLightEntity, type RuntimeScene, type SceneLightEntity } from '@portfolio/project-model';
 import {

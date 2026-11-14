@@ -1,5 +1,5 @@
 /**
- * R217.S28 — Experience View marks on the Stage.
+ * Experience View marks on the Stage.
  *
  * Pure projection of the authored Camera Views through the **one** current
  * `ViewportEvaluation`: every mark point is produced by the same matrix the

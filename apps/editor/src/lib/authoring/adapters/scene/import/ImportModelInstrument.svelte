@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * T2.P02.S02 — the Import procedure instrument.
+	 * The Import procedure instrument.
 	 *
 	 * An Objects procedure hosted in the one lower Instrument: choose, read,
 	 * review, confirm and approve one of the creator's own models, then arm it for

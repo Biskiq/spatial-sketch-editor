@@ -1,5 +1,5 @@
 /**
- * T2.P01.S03 — floor support, resolved against the geometry the Stage draws.
+ * Floor support, resolved against the geometry the Stage draws.
  *
  * The datum plane alone is not evidence of floor support: a pointer aimed at a
  * Wall, a plinth or another object would still intersect the floor plane behind
@@ -18,9 +18,9 @@
  * `occluded`, even if an Opening would have let the ray through a Wall's gap —
  * the compiled solid spans already exclude openings, so this is the drawn body,
  * not its bounding box. Unverified shapes are not invented: a model entity has
- * no verified dimensions or contact metadata in this slice and contributes no
- * occluder, which means a model never *fakes* floor support; it can only fail to
- * block one, and that limit is stated in the slice's evidence.
+ * no verified dimensions or contact metadata here and contributes no occluder,
+ * which means a model never *fakes* floor support; it can only fail to block
+ * one.
  */
 
 import type { CompiledLayoutGeometry } from '@portfolio/layout-core';

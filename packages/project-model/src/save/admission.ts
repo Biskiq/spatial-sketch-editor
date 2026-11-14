@@ -3,7 +3,7 @@
  * admitted source formats.
  *
  * `SaveAcceptedSource@1` already carries `sourceKind`/`sourceVersion` and the
- * canonical source text. `T3.P01.S04` admits exactly one live source — the F.2
+ * canonical source text. Save admits exactly one live source — the F.2
  * envelope — without turning Save into a dispatcher that trusts the client: a
  * handler decides whether the captured bytes are a source **its own codec**
  * accepts, and the generic persistence path keeps the saved-base token,

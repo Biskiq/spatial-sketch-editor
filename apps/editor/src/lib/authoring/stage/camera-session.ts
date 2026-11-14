@@ -15,7 +15,7 @@
  * exactly the `outputId`/`sessionEpoch`/`sourceRevision` that ticket was qualified
  * for — there is no translation table and no host-minted ticket.
  *
- * **Preview is a handoff, not an unmount (T3.P02.S02).** Entering the isolated
+ * **Preview is a handoff, not an unmount.** Entering the isolated
  * visitor Preview transfers this one output through the protocol's ordered
  * handoff (`role: 'preview'`) and issues the Camera-owned return token. While the
  * Preview holds it the inspection ticket is `null`, so no Stage intent can be
@@ -140,7 +140,7 @@ export type LookThroughState = {
 export type CameraSession = {
 	state(): ViewportCameraState;
 	/**
-	 * R217.S28 — the provisional Look-through posture, or `null` at ordinary rest.
+	 * The provisional Look-through posture, or `null` at ordinary rest.
 	 * It is session state: no authored document holds it.
 	 */
 	lookThrough(): LookThroughState | null;
@@ -159,7 +159,7 @@ export type CameraSession = {
 	/** Move eye and target together to a floor-relative eye height. */
 	setLookThroughEyeHeight(eyeHeightMetres: number, floorDatumMeters?: number): boolean;
 	/**
-	 * R217.S30 — the exact settled inspection standpoint **and reading** a Follow
+	 * The exact settled inspection standpoint **and reading** a Follow
 	 * run restores. A pose copy is not enough: Plan/3D posture is part of it.
 	 */
 	captureStandpoint(): ViewportCameraState;
@@ -243,7 +243,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		sourceRevision: input.snapshot.sourceContentId,
 		pose,
 		sceneRadiusMeters: sceneRadiusOf(bounds),
-		// R217.S19 — the mat ground's datum widens the clip range to the visible
+		// The mat ground's datum widens the clip range to the visible
 		// ground. It is a session input only: never scene bounds, Fit or the pose.
 		displayGroundYMeters: input.snapshot.domain.datumMeters
 	});
@@ -273,7 +273,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 	let ticket: CameraOutputTicket | null = null;
 	let preview: CameraOutputTicket | null = null;
 	/**
-	 * R217.S28 — the exact settled inspection the through-camera temporarily
+	 * The exact settled inspection the through-camera temporarily
 	 * replaces. It holds a pose, a reading and the source identity it was captured
 	 * under: the output ticket protocol still owns the output, and a content
 	 * rebase moves the saved entry to the new revision with the live state so Exit

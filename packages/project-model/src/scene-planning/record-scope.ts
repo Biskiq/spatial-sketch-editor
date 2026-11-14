@@ -1,5 +1,5 @@
 /**
- * T2.P01.S02 — the Scene record-scope guard and the one candidate finalizer.
+ * The Scene record-scope guard and the one candidate finalizer.
  *
  * The landed current-source adapter already refuses a Scene change that touches
  * Layout, project identity, the Camera-bearing `navigationNodes`/`connections`,

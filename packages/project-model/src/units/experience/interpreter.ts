@@ -1,5 +1,5 @@
 /**
- * The one Experience interpreter (AM-6, T3.P01.S06).
+ * The one Experience interpreter (AM-6).
  *
  * A deterministic reducer over `ExecutionProgram@4`: an initial state plus
  * ordered events produce the same state every time, and an explicit integer

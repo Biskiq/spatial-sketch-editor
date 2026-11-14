@@ -1,5 +1,5 @@
 /**
- * `layout-closed-wall.ts` — the canonical closed-Wall foundation (D6).
+ * `layout-closed-wall.ts` — the canonical closed-Wall foundation.
  *
  * A closed Wall is **one ordinary Wall record whose start and end Junction IDs
  * are equal**. It is not a parametric circle kind: the persisted centerline is
@@ -8,10 +8,10 @@
  * is what lets identity, Room tracing, Openings and Save/Load consume closed
  * Walls without a second geometry vocabulary.
  *
- * The authored seam is the Wall's single Junction. D9 authors it at the rim
+ * The authored seam is the Wall's single Junction. Authoring places it at the rim
  * point (centre → rim), and because the seam is a Junction ID rather than a
  * sampled coordinate it survives Save/Load exactly. The later display cut
- * (D11) is a presentation decision derived from the unfold anchor; it never
+ * is a presentation decision derived from the unfold anchor; it never
  * moves this canonical seam.
  *
  * The 16-span arc approximation uses the standard cubic circular-arc control

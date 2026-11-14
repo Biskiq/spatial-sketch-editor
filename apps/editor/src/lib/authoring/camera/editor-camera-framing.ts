@@ -59,7 +59,7 @@ export function createEditorCameraFramingBasis(
 }
 
 /**
- * P21.6 review (A/B P2-7) — shared orientation basis. The nub (mesh, +Z
+ * Shared orientation basis. The nub (mesh, +Z
  * forward), the framing rectangle/handles (derived from the same basis
  * above), and the preview camera (camera, −Z forward) all orient from one
  * supported basis — never independent `lookAt()` calls, whose default-Y-up
@@ -151,7 +151,7 @@ export function createEditorCameraFrustumLinePoints(
 }
 
 /**
- * P21.6 Slice B §3.1 — fixed frustum-volume layout: apex + 4 far-plane
+ * Fixed frustum-volume layout: apex + 4 far-plane
  * corners (TL, TR, BR, BL), 6 triangles with plan-specified winding.
  * Allocate the position buffer once, write in place, never rebuild per tick.
  */
@@ -191,7 +191,7 @@ export function writeEditorCameraFrustumVolumePositions(
 }
 
 /**
- * P21.6 Slice B §3.2 — fixed frustum-perimeter layout: 16 segment endpoints
+ * Fixed frustum-perimeter layout: 16 segment endpoints
  * (4 eye→corner rays + 4 far-rectangle edges). In-place twin of
  * `createEditorCameraFrustumLinePoints` (same vertex order) for the
  * selected-object helper; the preview rig keeps the allocating variant.
@@ -237,7 +237,7 @@ export function verticalFovFromEditorCameraFrustumPoint(
 }
 
 /**
- * P21.6 Slice B §3.4 — frozen FOV-drag basis. The full drag frame (eye,
+ * Frozen FOV-drag basis. The full drag frame (eye,
  * forward, up, depth) is captured at pointer-down from the authored pose and
  * never recomputed mid-gesture (the world-up fallback flips abruptly near
  * vertical). The solver branch locks for the whole gesture.
@@ -317,7 +317,7 @@ export function createEditorCameraFovDragBasis(args: {
  * `abs()`, so crossing the center clamps at min instead of inverting);
  * invalid intersections hold the last valid FOV without switching solvers.
  *
- * P21.6 review (A/B P1-4) — per-move grazing recheck. `movementRayDirection`
+ * Per-move grazing recheck. `movementRayDirection`
  * is the live observer ray for this move (the caller already holds it for
  * the plane intersect): below the pointer-down threshold the plane hit is a
  * 1/sin(θ) blowup, so hold the last valid FOV instead of clamping the
@@ -385,7 +385,7 @@ export function evaluateEditorCameraFovDrag(
 }
 
 /**
- * P21.6 Slice B §3.4 — screen-space pick clamp. Invisible shells keep a
+ * Screen-space pick clamp. Invisible shells keep a
  * minimum 24px projected diameter (mouse baseline): perspective sizing from
  * observer-camera-space depth, CSS pixels, and the effective vertical FOV
  * (includes zoom). Returns a scale factor for a shell of `shellBaseRadius`
@@ -419,7 +419,7 @@ export function pickShellScale(
 export type CameraPreviewFramingOwner = 'playhead' | 'selection' | 'none';
 
 /**
- * P21.6 review (A/B P1) — paused-preview visual ownership, second pass.
+ * Paused-preview visual ownership, second pass.
  * Three outcomes: playing Director → `playhead`; paused with an editable
  * node/view-keyframe selection → `selection` (owns the filled helper +
  * handles, the competing preview helper hides); paused with no editable
@@ -452,7 +452,7 @@ export function resolveCameraPreviewFramingOwner(args: {
 }
 
 /**
- * P21.6 review (A/B P1-2) — selection-helper eligibility shared by both
+ * Selection-helper eligibility shared by both
  * frustum owners and framing picking: the Camera workspace with no pending
  * placement/light/primitive (mirrors the selection helper's own pose
  * gate in `EditorCameraFramingHelpers.framingPose`).
@@ -474,7 +474,7 @@ export type FramingOwnerIdentity =
 	  };
 
 /**
- * P21.6 review (A/B P2) — selection identity for the framing pose cache key.
+ * Selection identity for the framing pose cache key.
  * Geometry-equal poses from different owners must still refresh handle
  * `userData`; cover node IDs and full view-keyframe identity.
  */

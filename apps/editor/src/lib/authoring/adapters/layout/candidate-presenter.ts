@@ -1,5 +1,5 @@
 /**
- * E4 / G1 step 1 — Layout candidate presentation, once per distinct candidate.
+ * Layout candidate presentation, once per distinct candidate.
  *
  * One presenter per live Layout binding: created in `bind`, reset by the
  * binding's terminators and dropped with it on every accepted install (rebase).

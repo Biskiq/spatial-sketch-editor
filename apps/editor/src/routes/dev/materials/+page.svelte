@@ -5,10 +5,10 @@
   import { onDestroy } from 'svelte';
   import { provideRenderResources } from '$lib/render/resources/render-resources';
   import { computeTextureRepeat, getMaterial } from '$lib/content/materials';
-  import MaterialPreviewItem from '$lib/museum/materials/MaterialPreviewItem.svelte';
+  import MaterialPreviewItem from '$lib/render/materials/MaterialPreviewItem.svelte';
   import type { MaterialId, MaterialLoadStatus, Vec2 } from '$lib/types/materials';
 
-  // The Canvas owns one material and geometry store for its subtree (E7).
+  // The Canvas owns one material and geometry store for its subtree.
   const resources = provideRenderResources();
   onDestroy(() => resources.dispose());
 

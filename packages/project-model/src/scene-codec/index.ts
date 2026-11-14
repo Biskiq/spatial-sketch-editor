@@ -77,12 +77,12 @@ export function validateSceneDocument(
 		addIssue(issues, '$', 'invalid_type', 'Expected a scene document object');
 		return { success: false, issues };
 	}
-	// PR #115 (WP3) — current-format-only. The one supported Scene format is the
+	// PR #115 — current-format-only. The one supported Scene format is the
 	// world-local document, which carries the explicit discriminator
 	// `formatVersion: 1`. A missing discriminator or any other explicit value
 	// fails ordinary current-format validation right here: there is no legacy
 	// decoder branch, no change of shape interpretation and no version
-	// inference from field presence (H5 §10.1).
+	// inference from field presence.
 	if (typeof input.formatVersion !== 'number') {
 		addIssue(issues, '$.formatVersion', 'invalid_type', 'Expected a number');
 		return { success: false, issues };

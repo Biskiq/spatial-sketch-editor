@@ -10,7 +10,7 @@ export const HOST_STAGE_CAPABILITIES: readonly string[] = [
 	'layout-plan-representation-v1',
 	'stage-selection-v1',
 	'stage-instrument-v1',
-	// T5.P01.S02 — Ink is one Pen that can carry readings from more than one
+	// Ink is one Pen that can carry readings from more than one
 	// domain. The host keeps the contribution list; the reading's own session
 	// owns its meaning, so this adds no document state to the Stage.
 	'ink-readings-v1'
@@ -99,7 +99,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 			/** Ends the current binding. */
 			dispose: () => void;
 			/**
-			 * Ends the registration, once (E4): for a factory adapter, its own
+			 * Ends the registration, once: for a factory adapter, its own
 			 * `dispose` after its last binding; for a static adapter, nothing beyond
 			 * its binding.
 			 */
@@ -325,7 +325,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 		// The map entry owns the *binding* disposer; the registration disposer also
 		// removes the entry, so a content change never ends a registration.
 		const bindingDispose = built.kind === 'built' ? built.dispose : () => {};
-		// E4 — one shared, once-only registration end. A factory adapter's own
+		// One shared, once-only registration end. A factory adapter's own
 		// `dispose` releases what it holds for the registration (the Layout
 		// adapter's project compile context); it runs after its last binding.
 		const endRegistration = factory ? once(() => adapter.dispose?.()) : () => {};

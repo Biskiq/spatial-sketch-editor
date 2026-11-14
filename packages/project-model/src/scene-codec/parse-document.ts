@@ -757,7 +757,7 @@ export function validateSemantics(
 		if (to && !to.connectedNodeIds.includes(from?.id ?? '')) addIssue(issues, `$.connections[${index}].toNodeId`, 'connection_without_adjacency', `${to.id} must list ${connection.fromNodeId} as adjacent`);
 	}
 
-	// B0 (S10.1 closeout) — standalone placement authoring state: an isolated
+	// B0 — standalone placement authoring state: an isolated
 	// free node (no connections yet) is valid. A direct Scene document still
 	// requires every edge-bearing node to belong to one connected graph; only
 	// the Camera-unit context explicitly admits independent components.

@@ -1,5 +1,5 @@
 /**
- * X8 — the Light placement session.
+ * The Light placement session.
  *
  * The creation half of Light authoring: the armed Light kind, the hover ghost,
  * the captured press, the held release while its one `create-light` is in
@@ -297,7 +297,7 @@ export function createLightPlacementSession(deps: LightPlacementDeps): LightPlac
 				);
 				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 			} else if (outcome.kind === 'refused') {
-				// D11: a refused placement must say so rather than end silently.
+				// A refused placement must say so rather than end silently.
 				refusal.note(outcome.message);
 				placementRefusal = {
 					placement: pending,

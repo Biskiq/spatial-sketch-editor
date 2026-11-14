@@ -1,8 +1,7 @@
 /**
- * E10/R6 — the light store: the one realizer of world lights on a Canvas.
+ * The light store: the one realizer of world lights on a Canvas.
  *
- * `slices.md` R6 makes one `light-store` realize every resolved light
- * descriptor, so neither an authored-light component nor the Sky constructs a
+ * One `light-store` realizes every resolved light descriptor, so neither an authored-light component nor the Sky constructs a
  * Three light of its own. This module is that one construction site for Point,
  * Spot and the Sun, and the one place their properties are applied.
  *
@@ -22,7 +21,7 @@
  * contexts and no lease can free another Canvas's light. `dispose` releases
  * every lease still held and refuses further acquires.
  *
- * Applying a descriptor is exactly what the pre-E10 components did: a Point and
+ * Applying a descriptor: a Point and
  * Spot sit at their holder's origin with the descriptor's colour, intensity,
  * range, decay, cone and shadow flag on Three's per-kind shadow defaults; a Spot
  * aims at its own target one metre down local −Z; the Sun takes its world

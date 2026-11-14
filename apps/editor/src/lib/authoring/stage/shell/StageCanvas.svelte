@@ -76,20 +76,20 @@ import StageMatGround from './StageMatGround.svelte';
 		planAppearance = 'paper',
 		paperInk2d = PAPER_GROUND_INK,
 		paperInk3d = PAPER_GROUND_INK,
-		/** R217.S05's one Grid/Snap view state; the grid is display-only. */
+		/** The one Grid/Snap view state; the grid is display-only. */
 		drafting = STAGE_DRAFTING_DEFAULTS,
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
 		snapshotBounds = null,
 		environment = 'paper',
 		framedViewport = null,
-		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
+		/** The live candidate's extent; the sheet grows to include it. */
 		datumMeters = 0,
 		selection = null,
 		hover = null,
 		hoverTone = 'hover',
 		scenePick,
-		/** R217.S06's live Height Sheet height, or null in Experience. */
+		/** The live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
 		heightPlaneVisible = false,
@@ -123,7 +123,7 @@ import StageMatGround from './StageMatGround.svelte';
 		contentBounds?: GridRect | null;
 		/** Layout ∪ Scene world bounds for the snapshot host's depth range. */
 		snapshotBounds?: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] } | null;
-		/** Experience review 1 (R5) — the environment the Stage shows (already `paper` while editing on Paper). */
+		/** Experience review 1 — the environment the Stage shows (already `paper` while editing on Paper). */
 		environment?: SceneEnvironmentPreset;
 		/** A Look-through capture frame in Stage-local CSS; null draws the whole Stage. */
 		framedViewport?: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null;
@@ -132,7 +132,7 @@ import StageMatGround from './StageMatGround.svelte';
 		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
 		selection?: StageSelectionEntry | null;
 		hover?: StageSelectionEntry | null;
-		/** R217.S10: the armed Eraser draws its winner in red dashes instead of hover. */
+		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase';
 		scenePick: ScenePickSource;
 		heightMeters?: number | null;
@@ -145,7 +145,7 @@ import StageMatGround from './StageMatGround.svelte';
 	} = $props();
 
 	/**
-	 * One render-resource owner for this Canvas (E7).
+	 * One render-resource owner for this Canvas.
 	 *
 	 * The Layout shell and the Scene entity representation are siblings, so the
 	 * stores live with the Canvas they belong to: equal looks and equal geometry
@@ -185,7 +185,7 @@ import StageMatGround from './StageMatGround.svelte';
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
 	/**
-	 * R217.S06's quiet cut-plane cue: a neutral sheet at `datum + height`, spanning
+	 * The quiet cut-plane cue: a neutral sheet at `datum + height`, spanning
 	 * the Layout bounds. It is drawn only while the Sheet is active, carries no
 	 * depth write and is never a pick root; it is not the future Slice's yellow
 	 * inspection or cut-away.
@@ -255,7 +255,7 @@ import StageMatGround from './StageMatGround.svelte';
 		a measured ground, not an atmospheric room.
 	-->
 	{#if environmentShown}
-		<!-- R5: the World's environment replaces the neutral lights, and the mat outside the plate. -->
+		<!-- The World's environment replaces the neutral lights, and the mat outside the plate. -->
 		<T.AmbientLight intensity={0.12} />
 		<WorldEnvironment preset={environment} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
@@ -292,7 +292,7 @@ import StageMatGround from './StageMatGround.svelte';
 		</T.Mesh>
 	{/if}
 	<!--
-		T1.P02.S06 D.6 (H9) — the Stage's shadow maps are rendered when their own
+		The Stage's shadow maps are rendered when their own
 		dependencies change, not on every frame. Mounted inside this one Canvas
 		because it owns this renderer's shadow map; see the component for the full
 		trigger contract.
@@ -301,12 +301,12 @@ import StageMatGround from './StageMatGround.svelte';
 		light must move its cast shadow with its illumination. -->
 	<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
-		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
+		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
-	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
+	<!-- The unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
 	<StageWallDevelopment {geometry} {datumMeters} {layoutRevision}
 		selected={selection?.reference.domain === 'layout' && selection.reference.subject.kind === 'wall' &&
@@ -396,7 +396,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{/each}
 	{/if}
 	<!--
-		R217.S28 — the Experience snapshot host: the same renderer, an offscreen target,
+		The Experience snapshot host: the same renderer, an offscreen target,
 		and the authored View pose evaluated by Camera. It renders no frame of its own
 		until a visible slot asks.
 	-->

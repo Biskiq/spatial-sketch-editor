@@ -1,5 +1,5 @@
 /**
- * X2 / decomposition contract G — keyboard routing as a leaf policy.
+ * Keyboard routing as a leaf policy.
  *
  * This is the route's keyboard map over the **same** commands the pointer path
  * uses: reading/fit/zoom/pan, dock arming, Finish/Backtrack/Delete, and the
@@ -95,7 +95,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 			if (event.key === 'Escape') input.closePreview();
 			return;
 		}
-		// S28 Esc precedence: a live marker gesture, then place, then Look through,
+		// Esc precedence: a live marker gesture, then place, then Look through,
 		// then the Card's own unwinding.
 		const activeLayer = input.activeLayer();
 		if (event.key === 'Escape' && activeLayer !== null) {
@@ -107,7 +107,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		}
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
-		// R217.S26 (E17): Alt+← is the Card's Back in the Experience lens. A focused Stop card
+		// Alt+← is the Card's Back in the Experience lens. A focused Stop card
 		// or View tile claims Alt+← for its own reorder first (it prevents the default).
 		if (
 			activeLayer !== null &&
@@ -209,7 +209,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 					event.preventDefault();
 					break;
 				}
-				// D2 — with no task or live press, the selected subject's adapter may own
+				// With no task or live press, the selected subject's adapter may own
 				// Backspace (the active bend point). A straight Wall does not claim it, so
 				// the existing command map is unchanged there.
 				if (stage.selectionKeyIntent({ kind: action.kind }).claimed) {
@@ -223,7 +223,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 					event.preventDefault();
 					break;
 				}
-				// D2 — an active bend point owns Delete before the Wall's destructive
+				// An active bend point owns Delete before the Wall's destructive
 				// action. A curved Wall with no active knot claims and refuses the key, so
 				// Delete cannot silently fall through to deleting the Wall; a straight
 				// Wall is not claimed and keeps the existing `requestDelete` path.
@@ -255,7 +255,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				const hadPress = input.pressing();
 				input.interrupt('escape');
 				if (hadPress) break;
-				// R217.S10: a host tool clears its own measurement or words first, an open
+				// A host tool clears its own measurement or words first, an open
 				// palette folds next, and only then does the armed tool disarm.
 				const armedHostTool = input.armedHostTool();
 				if (armedHostTool === 'measure' && input.measureTool()?.clear()) { input.refreshHostTools(); break; }

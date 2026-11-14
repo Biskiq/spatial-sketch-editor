@@ -1,6 +1,6 @@
 /**
  * F.4 `acceptance-invariants-v1` — the enduring shared acceptance layer, and the
- * `local-single-domain-v1` admission it extends (AM-4, T1.P01.S03 provider).
+ * `local-single-domain-v1` admission it extends (AM-4).
  *
  * Two layers, one implementation, deliberately separable:
  *
@@ -8,16 +8,16 @@
  *   accepted revision per accepted change, an atomic validated install with
  *   exactly one undo result, stale/ABA rejection, one bounded chronological
  *   history and a validated read facade. It is the prerequisite of
- *   `T3.P01.S03`'s unit capabilities, so **no required signature here names
+ *   the unit capabilities, so **no required signature here names
  *   today's `ProjectDocument`**: the accepted source is a type parameter, and the
  *   only thing this layer claims to know about it is the adapter that admitted it.
  * - **`local-single-domain-v1` (retiring with the current-source adapter)** — the
  *   admission of current-source Layout and Scene planners over that source. It is
- *   the part `T3.P01.S04` retires, and the part whose scope is single-domain.
+ *   the retired part, and the part whose scope is single-domain.
  *
  * These are types and vocabulary: no IO, no editor dependency, no Svelte, no
  * renderer. `SessionEpoch`, `AcceptedRevision` and `SnapshotIdentity` are F.1's
- * landed read-context types (S01) and are **referenced, never forked** — an
+ * landed read-context types and are **referenced, never forked** — an
  * acceptance record and a reference resolution must agree on what an accepted
  * revision *is*.
  */
@@ -102,8 +102,8 @@ export type DomainReadAccess<Source> = {
 /**
  * `AcceptedSnapshot@1` — the validated read facade one accepted change publishes.
  *
- * Field names are the AM-4 names S02 composes its boot snapshot from, so the
- * later host↔F4 wiring swaps in this export without renaming a consumer. It is
+ * Field names are the AM-4 names the boot snapshot is composed from, so the
+ * host↔F4 wiring uses this export without renaming a consumer. It is
  * immutable by construction and contains no writable handle, no compiled
  * geometry and no current-source field the invariants layer depends on.
  */
@@ -198,7 +198,7 @@ export type PlannerAdmission = {
 	 * still needs the planner's `resources` grant.
 	 */
 	readonly writes?: readonly SemanticDomain[];
-	/** F.2 unit creation, which needs `T3.P01.S03`'s `unit-acceptance-v1`. */
+	/** F.2 unit creation, which needs `unit-acceptance-v1`. */
 	readonly units: boolean;
 	/** Resource staging or lock mutation, which this adapter never performs. */
 	readonly resources: boolean;

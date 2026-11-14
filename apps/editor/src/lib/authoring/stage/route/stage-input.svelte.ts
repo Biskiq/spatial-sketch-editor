@@ -1,5 +1,5 @@
 /**
- * X2 / decomposition contract G — the mounted Stage's one input arbiter.
+ * The mounted Stage's one input arbiter.
  *
  * This controller owns the route's pointer, click, wheel, hover and interruption
  * dispatch. The **one** precedence order is preserved:
@@ -224,7 +224,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				: stageResizeCursorCss(mark.mark.resizeCursor, mark.mark.direction);
 			input.session.setHover(null);
 			hoverSelection = null;
-			// R217.S15 — a selected Wall's own grips are draggable; every other
+			// A selected Wall's own grips are draggable; every other
 			// mark (an Opening's track, a disclosure) is not a body move.
 			const primary = primaryEntry(stage.selectionState());
 			hoverMove =
@@ -267,9 +267,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 		input.session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
-		// R217.S15 — the pick winner is the selected Wall itself, so a press here
-		// would be claimed as its body drag. Select keeps the host Wall first until
-		// S16 makes an Opening over it its own winner.
+		// The pick winner is the selected Wall itself, so a press here
+		// would be claimed as its body drag. Select keeps the host Wall first here.
 		hoverMove =
 			primary !== null &&
 			primary.reference.domain === 'layout' &&
@@ -349,7 +348,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (pointerEvaluationId !== null) {
 			const css = input.stageCss(event);
 			const coarse = event.pointerType !== 'mouse';
-			// R217.S10: an armed host tool asks every declaring domain for its winner.
+			// An armed host tool asks every declaring domain for its winner.
 			// A press that names nothing to measure or erase stays the host's navigation.
 			const armedHostTool = input.armedHostTool();
 			const hostTool = armedHostTool === 'measure' ? input.measureTool() : armedHostTool === 'erase' ? input.eraserTool() : null;
@@ -516,7 +515,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			const stage = input.facade();
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			if (stage === null || id === null) return;
-			// T3.P03.S02: one monotonic sequence per continuous input sample. The
+			// One monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
 			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
 			stage.pointerIntent({ phase: 'move', css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
@@ -659,7 +658,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			// The Plan places no fragment for an excluded source, so a miss cannot say
 			// which subject the creator meant. Exclusion reasons and Reveal live on the
 			// Index, and this notice points there without pretending to localize. An
-			// ordinary empty click says nothing (R217.S22, D42).
+			// ordinary empty click says nothing.
 			const planView = input.planView();
 			if (planView !== null && planView.membership.some((row) => !row.eligible)) {
 				input.onNotice('Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.');

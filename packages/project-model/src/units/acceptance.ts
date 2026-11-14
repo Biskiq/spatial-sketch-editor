@@ -1,6 +1,5 @@
 /**
- * `F4.intent-acceptance@1:unit-acceptance-v1` — the F.2 admission half
- * (T3.P01.S05).
+ * `F4.intent-acceptance@1:unit-acceptance-v1` — the F.2 admission half.
  *
  * The landed coordinator installs, mints revisions, keeps the one bounded
  * history and enforces stale/epoch rules. This module is the **source adapter**

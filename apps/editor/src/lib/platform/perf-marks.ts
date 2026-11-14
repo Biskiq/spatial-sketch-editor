@@ -1,5 +1,5 @@
 /**
- * Runtime-gated performance marks (T3.P03.S02).
+ * Runtime-gated performance marks.
  *
  * The product carries a monotonic sequence from continuous input through
  * preview installation and result installation. The ordinary timing harness
@@ -14,7 +14,7 @@
  * application module evaluates. Without that flag every export here returns
  * immediately: no mark, no record, no allocation. The measured build is
  * therefore the ordinary production build, not a special instrumented bundle
- * (T3.P03.S02 plan; the performance contract's correlation rule).
+ * (the performance contract's correlation rule).
  *
  * Records live on `globalThis.__BISKIQ_PERF_RECORDS__` rather than only in the
  * browser's user-timing buffer, which is small and drops entries once a drag
@@ -141,8 +141,7 @@ export function perfMark(name: string, detail?: Readonly<Record<string, unknown>
 /**
  * Hand one surface's renderer to the harness and return it unchanged.
  *
- * The harness reads `renderer.info` and counts shadow passes itself (T1.P02.S06
- * render counters); this helper only passes the object over. Without the
+ * The harness reads `renderer.info` and counts shadow passes itself; this helper only passes the object over. Without the
  * harness flag, or without the harness's hook, it does nothing.
  */
 export function perfRenderer<T extends object>(renderer: T, surface: 'stage' | 'preview'): T {

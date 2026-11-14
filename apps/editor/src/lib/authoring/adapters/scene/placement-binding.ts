@@ -1,5 +1,5 @@
 /**
- * X7 — the Scene adapter's placement binding.
+ * The Scene adapter's placement binding.
  *
  * Wraps the existing placement session (`./placement`) for the lifetime of one
  * adapter binding: which contributed task is open, the surface this binding

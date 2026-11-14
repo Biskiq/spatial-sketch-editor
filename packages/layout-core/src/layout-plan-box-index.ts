@@ -1,15 +1,13 @@
 import { countWork } from './p2311-perf';
 /**
- * `layout-plan-box-index.ts` — a small plan-space (X/Z) uniform box index
- * (T1.P02.S06 D.1 / H3, invariant I2).
+ * `layout-plan-box-index.ts` — a small plan-space (X/Z) uniform box index.
  *
  * The topology gates used to test every Wall pair and every Junction pair, so a
  * grid-L move ran 88 k Wall × Wall and 25 k Junction × Junction visits per gate
  * and Bench 1 measured that loop as the quadratic term (exponent ≈ 1.9). A pair
  * whose plan boxes are disjoint cannot intersect, cannot share an endpoint and
  * cannot touch, so it can only be classified `none`: pruning it removes work
- * the predicate would reject anyway (I2's "every pair test goes through an
- * index").
+ * the predicate would reject anyway (every pair test goes through an index).
  *
  * The index is deterministic and exact — it prunes by inclusive box overlap
  * only, never by a tolerance of its own. Callers that need a tolerance expand

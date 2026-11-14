@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * The Card's writer for a Stop's outgoing transition (R217.S25), composed as the Conservatory
-	 * Transition Card. The wide Cut / Travel switch is chosen here and only here (D6). The ends
+	 * The Card's writer for a Stop's outgoing transition, composed as the Conservatory
+	 * Transition Card. The wide Cut / Travel switch is chosen here and only here. The ends
 	 * block names the entry View the move leaves from and the one it arrives at, or the End of the
-	 * tour, resolved against the Guide (D11). Travel gaps the validator reports are listed as
-	 * written. Movement is a disabled placeholder until Camera path editing and playback land
-	 * (S26). It edits through the controller and holds no state.
+	 * tour, resolved against the Guide. Travel gaps the validator reports are listed as
+	 * written. Movement is a disabled placeholder until Camera path editing and playback land.
+	 * It edits through the controller and holds no state.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -60,7 +60,7 @@
 	const travelGaps = $derived(
 		stop === null || controller === null ? [] : (controller.travelGapsByStop.get(stop.id) ?? [])
 	);
-	/** R217.S29 — this transition's one derived Camera path read. */
+	/** This transition's one derived Camera path read. */
 	const path = $derived(
 		controller?.pathOccurrence?.kind === 'transition' && controller.pathOccurrence.stopId === stop?.id
 			? controller.selectedPath

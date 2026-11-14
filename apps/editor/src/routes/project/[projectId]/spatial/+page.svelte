@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * X3 / decomposition contract S — the spatial route composition root.
+	 * The spatial route composition root.
 	 *
 	 * The route keeps only composition: boot, project epoch, Preview handover,
 	 * source admission and the one ordered teardown. Presentation state machines,

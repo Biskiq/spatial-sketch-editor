@@ -1,5 +1,5 @@
 /**
- * R217.S26 (E4) — the words of a removal.
+ * The words of a removal.
  *
  * The removal plans live in `@portfolio/project-model/units` (`experience-structure.ts`)
  * and are the same ones the removal planners install. This module only turns a plan's

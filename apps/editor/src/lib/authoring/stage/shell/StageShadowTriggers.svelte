@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Stage's shadow-map trigger wiring (T1.P02.S06 D.6 / H9, revised by E8/G4).
+	 * The Stage's shadow-map trigger wiring.
 	 *
 	 * Mounted **inside** the Stage's one canvas component, because it needs that
 	 * renderer. It installs the invalidation controller on the renderer's shadow
@@ -22,9 +22,9 @@
 	 *   controller renders per frame only while the channel counts one. A model that
 	 *   is not animating is static, and a static Scene renders its maps once.
 	 *
-	 * Native forms use a narrower trigger: their renderer is lazy, but the shared
-	 * EntityForm reports from `onMount`. The Stage increments `formRenderRevision`
-	 * for that attached mesh; Scene identity still invalidates later additions,
+	 * Native forms use a narrower trigger: their renderer is lazy, and the Scene
+	 * entity representation reports when a form is drawn (`onFormRendererReady`).
+	 * The Stage increments `formRenderRevision` for that attached mesh; Scene identity still invalidates later additions,
 	 * removals and geometry edits.
 	 *
 	 * Not triggers, deliberately: the camera (a shadow map renders from the

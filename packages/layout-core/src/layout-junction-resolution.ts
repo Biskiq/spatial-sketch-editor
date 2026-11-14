@@ -1,5 +1,5 @@
 /**
- * `layout-junction-resolution.ts` — P23.15 Junction-local resolution.
+ * `layout-junction-resolution.ts` — Junction-local resolution.
  *
  * The durable model is a pure, renderer-neutral **network-aware** solve:
  *
@@ -27,7 +27,7 @@
  *    adjacency, never for physical ownership.
  *
  * No renderer, no Three.js, no editor/museum state, no second curve abstraction:
- * leg facts come from the incident `CompiledPhysicalWall` samples the P23.11
+ * leg facts come from the incident `CompiledPhysicalWall` samples the curve
  * evaluator already produced.
  */
 import type { LayoutVec2 } from './layout-coordinates';

@@ -1,5 +1,5 @@
 /**
- * `layout-wall-dissolve.ts` — P23 Junction dissolve / Wall join planning.
+ * `layout-wall-dissolve.ts` — Junction dissolve / Wall join planning.
  *
  * Delete-Junction means exactly one thing: a degree-2 Junction whose two
  * incident canonical Walls join without inventing or losing geometry or
@@ -148,7 +148,7 @@ export function planDissolveJunction(
 	}
 	const junctionPoint: LayoutVec2 = [junction.point[0], junction.point[1]];
 
-	// D7 — a self-connected Wall is one canonical loop. Check it before degree:
+	// A self-connected Wall is one canonical loop. Check it before degree:
 	// the loop is the only incident Wall, so a generic degree-2 diagnostic would
 	// misdescribe the refusal as an unrelated topology count.
 	const closedIncident = document.walls.find(
@@ -333,7 +333,7 @@ export function planDissolveJunction(
 		}
 		// The demoted knot's id comes from the operation's capture, never from
 		// occupancy: counting renamed a `{wallId}:knot:{n}` a captured tombstone
-		// may already have retired (T1.P02.S01 §1). Every pre-existing knot keeps
+		// may already have retired. Every pre-existing knot keeps
 		// its id; only this fresh one is derived.
 		try {
 			createdKnotId = allocateCapturedId(

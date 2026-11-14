@@ -9,7 +9,7 @@
  * where `F` is every eligible fragment in the project and `S` its surfaces — even
  * though the pointer can only ever be within 8 px of a handful of them. It made
  * *clicking* cost what the whole project contains, which is the one shape of work
- * `T1.P02.S06`'s locality objective (I1) calls a defect rather than a cost.
+ * the locality objective calls a defect rather than a cost.
  *
  * ## What it is
  *
@@ -33,8 +33,7 @@
  *
  * Query: `O(v + c log c)` where `v` is the number of nodes whose projected extent
  * reaches the pointer, `c` the number of fragments that survive the leaf test, and
- * every visited node costs up to 8 corner projections. The `c log c` term is real and
- * was previously unstated: the tree addresses a **permutation** of the caller's
+ * every visited node costs up to 8 corner projections. The `c log c` term is real: the tree addresses a **permutation** of the caller's
  * indices, so the surviving candidates come out of the traversal in tree order and
  * are sorted back into the hit path's rank order before they are returned. It is the
  * price of returning a ranked candidate list, and it is small because `c` is a count

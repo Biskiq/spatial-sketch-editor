@@ -1,12 +1,12 @@
 /**
- * T2 P0 — the Look authoring seam.
+ * The Look authoring seam.
  *
  * The spatial route constructs this module once. It owns the two look wirings
  * that exist today — the World's saved Sky preset and the Library's material
- * pick — and publishes the three strata later T2 slices fill: the Card stratum,
- * the Stage mark layer and the Library shelf. Those strata are deliberately
- * empty here: P0 adds no Sky, Light, Artwork or Finish capability and draws no
- * control before it works.
+ * pick — and publishes the three Look strata: the Card stratum, the Stage mark
+ * layer and the Library shelf. The Library shelf holds the light entries; the
+ * Card stratum and the mark layer are deliberately empty, so no control is drawn
+ * before it works.
  *
  * This module owns no route, selection, source or Camera state. Every write
  * still goes through the route's one acceptance host.
@@ -31,7 +31,7 @@ export const LOOK_MATERIAL_PICK_NOTICE =
 
 /**
  * The Card's look stratum: the facts, the one field writer and the actions a
- * later Finish, Light or Artwork slice contributes. Empty in P0.
+ * Look feature contributes. Currently empty.
  */
 export type LookCardStratum = {
 	readonly facts: readonly StageCardFact[];
@@ -54,7 +54,7 @@ export type LookLibraryShelf = {
 
 const EMPTY_CARD_STRATUM: LookCardStratum = { facts: [], writer: null, actions: [] };
 const EMPTY_STAGE_MARKS: readonly StageMarkView[] = [];
-/** T2.S3: the two physical light kinds (Directional is retired; the Sky owns the Sun). S7's recipes are not shelf entries. */
+/** The two physical light kinds (Directional is retired; the Sky owns the Sun). S7's recipes are not shelf entries. */
 const LIGHT_SHELF: LookLibraryShelf = {
 	label: 'Lights',
 	entries: [
@@ -151,11 +151,11 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		get cardStratum() {
 			return cardStratum;
 		},
-		/** The Stage's Look mark layer. Empty in P0. */
+		/** The Stage's Look mark layer. Currently empty. */
 		get stageMarks(): readonly StageMarkView[] {
 			return EMPTY_STAGE_MARKS;
 		},
-		/** The Library's Look shelf. Lights are the first populated slice. */
+		/** The Library's Look shelf: the light entries. */
 		get libraryShelf(): LookLibraryShelf {
 			return LIGHT_SHELF;
 		},

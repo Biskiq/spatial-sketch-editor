@@ -1694,7 +1694,7 @@ export function createPlanRetainer(): PlanRetainer {
 }
 
 /**
- * E4 / I5 — the one restrained Plan symbol for an Opening: jambs plus a sill
+ * The one restrained Plan symbol for an Opening: jambs plus a sill
  * pair for a window; jambs, leaf and a dashed swing arc for a door. Accepted
  * Openings (Paper) and refused attempts (candidate preview) both draw it, so
  * the two can never disagree.

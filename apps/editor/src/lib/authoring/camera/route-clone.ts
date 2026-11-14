@@ -2,19 +2,8 @@
  * `cloneResolvedCameraRoute` — deep-clone a resolved camera route so the
  * editor never mutates the checked-in graph / motion capture.
  *
- * Slice 3 of the Priority-1 file-split refactor extracts this helper
- * (and its private `cloneRoutePoint` / `isRoutePointTuple` pair) from
- * `editor-store.svelte.ts` so the function can be reused by future
- * controllers and tested in isolation without dragging the god-file class
- * along.
- *
- * **Duplicate in `camera-preview-controller.svelte.ts`.** That controller
- * owns its own copy of `cloneResolvedCameraRoute` (lines ~70–110) so it
- * doesn't have to import from the editor helpers. Drives a future slice
- * (the route cloning is the canonical surface and the controller should
- * import from here); left untouched for Slice 3 because the plan
- * deliberately freezes the controller's interface and the controller-local
- * copy is the one consumed by `FSM.play()` etc.
+ * `cloneRoutePoint` copies one route point, tuple or object form, into a fresh
+ * tuple.
  */
 import type { Vector3Like } from '@portfolio/camera-core';
 import type { ResolvedCameraRoute } from '@portfolio/camera-core';

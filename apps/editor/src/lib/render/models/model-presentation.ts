@@ -1,5 +1,5 @@
 /**
- * E8/R5 — the Three-free half of model presentation.
+ * The Three-free half of model presentation.
  *
  * The Scene model handler (`scene-model-representation`) is statically part of
  * every Stage and visitor graph, while the realization (`model-realization`) pulls

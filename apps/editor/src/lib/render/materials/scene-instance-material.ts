@@ -39,10 +39,8 @@ export type EffectiveSceneMaterial = {
  * One resolved Scene look as render data: the surface's canonical descriptor and
  * the texture variant it binds, or none.
  *
- * This is the pure half of R2b. `resolveSceneMaterial` used to be called from a
- * Svelte component per entity per render, and every entity then constructed its
- * own `MeshStandardMaterial`. Now it is evaluated once per Scene description
- * build, and this value is plain data a descriptor-keyed store can share: two
+ * It is evaluated once per Scene description build, not per entity per render,
+ * and this value is plain data a descriptor-keyed store can share: two
  * entities with the same look produce the same descriptor and therefore one
  * material instance.
  */
@@ -54,9 +52,8 @@ export type SceneLook = {
 /**
  * The resolved look for one entity at one surface size.
  *
- * `toneMapped` is `true`, as `SceneInstanceMaterial` rendered it: the Scene's
- * accepted pipeline left the surface toned (Gate A). The repeat is the same
- * `computeTextureRepeat` the component used, so textured tiling is unchanged.
+ * `toneMapped` is `true`: the Scene's accepted pipeline leaves the surface toned
+ * (Gate A). The repeat comes from `computeTextureRepeat`.
  */
 export function sceneLookFor(
 	document: Pick<SceneDocument, 'materials' | 'textures'>,

@@ -8,7 +8,7 @@
  * Runtime-safe: no editor, renderer, Svelte or Three import reaches this module.
  *
  * There is no evaluator, output controller, projection or navigation here — the
- * Stage/viewport provider (T1.P01.S02) owns the one inspection controller, and
+ * Stage/viewport provider owns the one inspection controller, and
  * the Camera authority evaluates pose and projection.
  */
 
@@ -17,7 +17,7 @@ export * from './validate';
 export * from './families';
 export * from './negotiate';
 export * from './camera-output';
-// T3.P01.S06 — the complete `camera-handoff-v1` over that protocol: guided/free
+// The complete `camera-handoff-v1` over that protocol: guided/free
 // ownership, Follow/Look-through/Preview, return and stale-run cleanup.
 // Appended: barrels are append-only for the batch.
 export * from './handoff';

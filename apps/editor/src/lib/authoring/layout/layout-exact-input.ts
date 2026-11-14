@@ -1,5 +1,5 @@
 /**
- * P23.6 — exact numeric input parsing and presentation formatting for the
+ * Exact numeric input parsing and presentation formatting for the
  * Inspector's canonical precision editors.
  *
  * Display is bounded (`3.00`, `121.6`) while stored precision never mutates:

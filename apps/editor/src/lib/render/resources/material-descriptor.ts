@@ -1,8 +1,8 @@
 /**
- * E6/R2a — the material descriptor: plain data, one canonical key.
+ * The material descriptor: plain data, one canonical key.
  *
  * A descriptor says **what a world surface looks like**, never how to build it.
- * It is the portability seam `renderer-refactor.md` §2.4 names: the material
+ * It is the portability seam the rendering contract names: the material
  * store turns one into a Three material today, and a future node-material
  * backend replaces that construction step and nothing above it.
  *
@@ -94,7 +94,7 @@ export type BasicMaterialDescriptor = {
 };
 
 /**
- * A Lambert surface (E9/R2c). Gate A names `MeshLambertMaterial` as the approved
+ * A Lambert surface. Gate A names `MeshLambertMaterial` as the approved
  * artwork baseline; the environment ground uses it too.
  *
  * `map` is the identity of the one loaded texture the surface binds, never a
@@ -118,7 +118,7 @@ export type LambertMaterialDescriptor = {
 };
 
 /**
- * A shadow-pass override for an alpha-tested surface (E9/R5). `depth` is the
+ * A shadow-pass override for an alpha-tested surface. `depth` is the
  * directional/spot pass; `distance` is the point-light pass. They exist for one
  * retained portability exception (artwork with transparent texels): see
  * `scene-artwork-representation.ts`.
@@ -154,7 +154,7 @@ export type ShadowMaterialDescriptor = {
 };
 
 /**
- * A surface of an imported model (E8/R2c). Its identity is the asset, the mesh and
+ * A surface of an imported model. Its identity is the asset, the mesh and
  * slot it sits on, and the remap it wears: `remap` absent means the asset's own
  * material, cloned once by the store; present means the resolved look, which
  * replaces the imported material on that mesh. N instances of one model therefore

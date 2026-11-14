@@ -1,5 +1,5 @@
 /**
- * E8/R5 + R2c — one drawn instance of an approved model, on this Canvas's stores.
+ * One drawn instance of an approved model, on this Canvas's stores.
  *
  * A loaded GLB is a template. Every drawn instance is a clone of its hierarchy:
  *
@@ -12,7 +12,7 @@
  * - **Surfaces are leases on the Canvas's `MaterialStore`.** An instance holds one
  *   lease per mesh slot. The store decides identity: N instances of one model hold
  *   one material per (mesh, slot, remap), not N. A remap is the resolved look,
- *   which replaces the asset's material on that mesh (E8/R2c).
+ *   which replaces the asset's material on that mesh.
  * - **Textures are leases on the texture store.** A textured look takes one
  *   variant lease per instance, released with the instance; the store's deferred
  *   release keeps a variant alive while any instance still names it.

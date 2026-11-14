@@ -12,7 +12,7 @@
 import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import type { ViewingIntent } from '@portfolio/camera-core';
 
-/** The dock's fixed keys, in dock order (R217.S10, owner ruling D3). */
+/** The dock's fixed keys, in dock order. */
 export type StageDockSlot = 'select' | 'ink' | 'measure' | 'erase' | 'library';
 
 /** The one production key for each dock slot; the Keys list shows this map. */
@@ -29,7 +29,7 @@ export type StageKeyAction =
 	| { readonly kind: 'reading'; readonly reading: '3d' | 'plan' }
 	| { readonly kind: 'fit' }
 	| { readonly kind: 'zoom'; readonly scale: number }
-	/** Arm one dock key (R217.S10): V Select · P Ink · M Measure · E Eraser · L Library. */
+	/** Arm one dock key: V Select · P Ink · M Measure · E Eraser · L Library. */
 	| { readonly kind: 'tool'; readonly slot: StageDockSlot }
 	/**
 	 * Finish the live proposal (a drawing chain) — the same command its palette's
@@ -57,11 +57,10 @@ export type StageKeyAction =
  * delete key, and none of them collides with the viewing map (3/2/f/arrows/Escape)
  * or with typing, which the text-entry guard already excludes.
  *
- * R217.S10 production key-map decision: the dock's letters arm its keys and the
- * Plan reading moves from `p` to `2`, beside `3`. While a press is live
- * (`pressing`), the dock letters and `2` keep their pre-S10 meaning of *no Stage
- * command*, so they still reach the live gesture's typed entry exactly as before;
- * `3`'s reading flip during a press is unchanged.
+ * The production key map: the dock's letters arm its keys and the Plan reading
+ * is `2`, beside `3`. While a press is live (`pressing`), the dock letters and
+ * `2` mean *no Stage command*, so they reach the live gesture's typed entry;
+ * `3` still flips the reading during a press.
  */
 export function stageKeyAction(key: string, options: { readonly pressing?: boolean } = {}): StageKeyAction {
 	const pressing = options.pressing === true;

@@ -1,9 +1,9 @@
 /**
- * T2.P02.S02 — approved creator-model bytes for rendering.
+ * Approved creator-model bytes for rendering.
  *
  * A Scene entity names a `model` resource id; the bytes are the resource pin's
  * immutable derivative. This module is the editor's one resolver: it fetches
- * each approved derivative through S01's owner-only hash-keyed route, keeps one
+ * each approved derivative through the owner-only hash-keyed model route, keeps one
  * object URL per content hash while it is referenced, and revokes it when the
  * accepted source no longer needs it. A fresh reopen resolves the pins again
  * instead of trusting a stale session URL.

@@ -1,5 +1,5 @@
 /**
- * `layout-snap.ts` — P23.2 centralized, deterministic Plan snapping resolver.
+ * `layout-snap.ts` — centralized, deterministic Plan snapping resolver.
  *
  * Snap truth derives from the canonical compiled query geometry
  * (`CompiledLayoutGeometry.queries`) plus transient gesture context — Plan/SVG
@@ -7,7 +7,7 @@
  * persistent snap points in the `LayoutDocument`, no persistent constraints,
  * and a snap result never mutates anything by itself.
  *
- * Deterministic winner order (P23.2 plan §Deterministic winner order):
+ * Deterministic winner order:
  *
  * ```text
  * tool/context validity
@@ -30,13 +30,13 @@ import { geometryId } from './layout-geometry-types';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
 import { p2311Measure } from './p2311-perf';
 
-/** Centralized default Plan grid step in meters (P23.2 §Grid step). */
+/** Centralized default Plan grid step in meters. */
 export const LAYOUT_PLAN_GRID_STEP = 0.25;
 
-/** Centralized pointer acquisition radius in CSS pixels (P23.2 H2 default). */
+/** Centralized pointer acquisition radius in CSS pixels. */
 export const LAYOUT_PLAN_SNAP_RADIUS_CSS_PX = 8;
 
-/** Semantic rank per candidate family — lower wins (P23.2 §winner order). */
+/** Semantic rank per candidate family — lower wins. */
 export type SnapFeatureKind =
 	| 'junction'
 	| 'wall-midpoint'
@@ -159,7 +159,7 @@ export type SnapQueryContext = {
 	 */
 	gridStep?: number;
 	/**
-	 * P23.13 S8 — the live draft anchor, when the caller has one.
+	 * The live draft anchor, when the caller has one.
 	 *
 	 * The `orthogonal-guide` family is **anchor-relative**: it says "hold this
 	 * coordinate equal to the anchor's", which is a statement about a draft, not
@@ -794,7 +794,7 @@ export function resolveLayoutSnap(
 		});
 	}
 
-	// P23.13 S8 — the draft-anchor axis family (rank 7, ratified in P23.2 and
+	// The draft-anchor axis family (rank 7, ratified in P23.2 and
 	// dormant until now because nothing produced it). It is emitted *after* the
 	// geometry candidates and *before* the winner is picked, so the family
 	// competes through the ratified rank order rather than being special-cased.
@@ -881,7 +881,7 @@ export type OpeningDragSnapResolution =
 	| { kind: 'none' };
 
 /**
- * P23.3 — which authored Opening coordinate the pointer drives.
+ * Which authored Opening coordinate the pointer drives.
  *
  * `center` (body drag): the pointer projects onto the Opening **center**, so
  * candidates resolve in center space and are emitted as start-edge offsets
@@ -895,7 +895,7 @@ export type OpeningDragSnapResolution =
 export type OpeningDragAnchor = { kind: 'center'; width: number } | { kind: 'edge' };
 
 /**
- * P23.2/P23.3 — resolve one opening drag along its host wall in offset space
+ * Resolve one opening drag along its host wall in offset space
  * (meters from the authored segment start) for an explicit
  * {@link OpeningDragAnchor}. The public `resolveOpeningDragSnap` (center) and
  * `resolveOpeningDragEdgeSnap` (edge) both funnel through here, so body and
@@ -1088,7 +1088,7 @@ export function resolveOpeningDragEdgeSnap(
 const OPENING_DRAG_EPSILON = 1e-6;
 
 /**
- * P23.3 — raw drag candidate validity, kept **separate** from the bounded
+ * Raw drag candidate validity, kept **separate** from the bounded
  * P23.2 snap result.
  *
  * The snap resolvers clamp every candidate into the anchor's legal range,

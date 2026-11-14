@@ -2,17 +2,15 @@
   /**
    * One catalogue surface, acquired from the Canvas material store.
    *
-   * R2b's remaining surface migration: this component used to construct a
-   * `MeshStandardMaterial` per mount, so 196 door portals with one look held 196
-   * materials and every re-mount paid a construction and a GPU upload. It now
-   * acquires by canonical descriptor key, and equal looks share one instance.
+   * It acquires by canonical descriptor key, so equal looks share one instance:
+   * 196 door portals with one look hold one material, and a re-mount pays no
+   * construction or GPU upload.
    *
    * The texture variant keeps its existing identity (material id × repeat ×
    * rotation, scope-namespaced) and its reference count. Its release is deferred
    * by the texture store, so a re-mount inside one update never deletes the bytes
    * the next mount asks for. While the maps load, the untextured descriptor is
-   * drawn — exactly what `<T.MeshStandardMaterial>` rendered before its maps
-   * arrived.
+   * drawn.
    *
    * Two lifecycle rules are load-bearing:
    *

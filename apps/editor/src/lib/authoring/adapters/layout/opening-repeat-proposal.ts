@@ -1,5 +1,5 @@
 /**
- * T1 A8 — the live Opening Repeat proposal, shared by the Card and the Stage.
+ * The live Opening Repeat proposal, shared by the Card and the Stage.
  *
  * The Card owns the typed count and spacing; the adapter reads the same values
  * to draw every proposed copy as a candidate along the host Wall. The planner

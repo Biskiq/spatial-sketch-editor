@@ -33,7 +33,7 @@ const stageCanvasPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageCanvas.
 const stageEntitiesPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageEntities.svelte');
 const entityGroupsPath = resolve(srcRoot, 'lib/visitor/VisitorEntityGroups.svelte');
 const sceneRepresentationPath = resolve(srcRoot, 'lib/render/scene-entity-representation.ts');
-const factoryPath = resolve(srcRoot, 'lib/museum/layout/wall-material-factory.ts');
+const factoryPath = resolve(srcRoot, 'lib/render/layout/wall-material-factory.ts');
 
 const shell = () => readFileSync(shellPath, 'utf8');
 const representation = () => readFileSync(representationPath, 'utf8');

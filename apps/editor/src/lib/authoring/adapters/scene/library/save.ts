@@ -1,5 +1,5 @@
 /**
- * T5.P01.S04 — Save to My Objects.
+ * Save to My Objects.
  *
  * Save is outside authoring history: it takes one **accepted** form entity,
  * writes the shared codec's canonical payload to the owner's library and adds no

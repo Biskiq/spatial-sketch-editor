@@ -1,5 +1,5 @@
 /**
- * Model resource storage (`T2.P02.S01`).
+ * Model resource storage.
  *
  * A creator model is not an image asset: the image registry's mutable
  * `pending -> ready` row cannot carry a source file set, a provenance record or

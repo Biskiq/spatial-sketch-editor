@@ -1,5 +1,5 @@
 /**
- * E3 / decomposition contract V — the mounted Stage's viewport and refresh
+ * The mounted Stage's viewport and refresh
  * controller.
  *
  * The route composes the Stage; this controller owns the one measured rect, the

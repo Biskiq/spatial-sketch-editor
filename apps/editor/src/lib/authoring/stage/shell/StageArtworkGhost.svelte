@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * E9 — the Stage's Artwork placement ghost, drawn by the retained Artwork
+	 * The Stage's Artwork placement ghost, drawn by the retained Artwork
 	 * handler in its ghost state (translucent, no shadows) from the Canvas stores.
 	 * It is the same realization the Scene uses, over one item, never a second
 	 * renderer; it registers no pick root, as the component it replaces did not.

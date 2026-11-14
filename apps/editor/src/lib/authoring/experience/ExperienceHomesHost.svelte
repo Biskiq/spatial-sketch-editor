@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Creates the Experience controller and publishes it to the route (R217.S25).
+	 * Creates the Experience controller and publishes it to the route.
 	 *
 	 * It renders nothing. The route mounts it only while the Experience lens is open, so
 	 * the controller adopts the first Experience when the lens is entered, as the old

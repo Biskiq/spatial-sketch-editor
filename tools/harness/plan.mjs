@@ -51,7 +51,7 @@ function fileProfile({ path, status, oldMode, newMode }, read) {
 	if (path.endsWith('.svelte') && status === 'M' && styleOnly(read('base', path), read('head', path))) {
 		return 'minimal';
 	}
-	if (/^apps\/editor\/src\/(?:lib\/(?:layout|platform|visitor|types|museum\/layout|authoring\/(?:f4|layout|adapters|project-session))\/|routes\/p\/|hooks\.)/.test(path) ||
+	if (/^apps\/editor\/src\/(?:lib\/(?:layout|platform|visitor|types|render\/layout|authoring\/(?:f4|layout|adapters|project-session))\/|routes\/p\/|hooks\.)/.test(path) ||
 		CRITICAL.test(path) || /\.(?:json|wasm|sql|ya?ml|toml)$/.test(path)) return 'full';
 	return 'focused';
 }

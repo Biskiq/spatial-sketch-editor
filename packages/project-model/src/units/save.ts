@@ -1,6 +1,6 @@
 /**
  * `F4.intent-acceptance@1:conditional-save-units-v1` — the F.2 half of the
- * conditional Save protocol (T3.P01.S05).
+ * conditional Save protocol.
  *
  * The protocol itself is the landed `SaveAcceptedSource@1`; this module only
  * supplies the F.2 source: the canonical envelope bytes, the envelope
