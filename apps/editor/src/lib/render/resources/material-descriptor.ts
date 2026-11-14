@@ -87,6 +87,56 @@ export type BasicMaterialDescriptor = {
 	readonly color: MaterialColor;
 	readonly wireframe?: boolean;
 	readonly toneMapped?: boolean;
+	/** Absent means `false`: the geometry's colour attribute is ignored. */
+	readonly vertexColors?: boolean;
+	/** Absent means `true`, as Three's default. */
+	readonly depthWrite?: boolean;
+};
+
+/**
+ * A Lambert surface (E9/R2c). Gate A names `MeshLambertMaterial` as the approved
+ * artwork baseline; the environment ground uses it too.
+ *
+ * `map` is the identity of the one loaded texture the surface binds, never a
+ * texture object: an artwork names its decoded image by the texture's own id, so
+ * equal images share one material and a replaced source cannot reuse a material
+ * that still binds the old texture.
+ */
+export type LambertMaterialDescriptor = {
+	readonly kind: 'lambert';
+	/** Absent means white, as the constructor does. */
+	readonly color?: MaterialColor;
+	readonly map?: string;
+	/** Absent means `false`. */
+	readonly transparent?: boolean;
+	/** Absent means 1. */
+	readonly opacity?: number;
+	/** Absent means `true`. */
+	readonly depthWrite?: boolean;
+	/** Absent means `false`. */
+	readonly vertexColors?: boolean;
+};
+
+/**
+ * A shadow-pass override for an alpha-tested surface (E9/R5). `depth` is the
+ * directional/spot pass; `distance` is the point-light pass. They exist for one
+ * retained portability exception (artwork with transparent texels): see
+ * `scene-artwork-representation.ts`.
+ */
+export type DepthMaterialDescriptor = {
+	readonly kind: 'depth';
+	readonly map?: string;
+	/** Absent means 0. */
+	readonly alphaTest?: number;
+	/** The depth encoding. Absent means `basic` (Three's default). */
+	readonly packing?: 'basic' | 'rgba';
+};
+
+export type DistanceMaterialDescriptor = {
+	readonly kind: 'distance';
+	readonly map?: string;
+	/** Absent means 0. */
+	readonly alphaTest?: number;
 };
 
 /**
@@ -130,6 +180,9 @@ export type ImportedMaterialDescriptor = {
 export type MaterialDescriptor =
 	| StandardMaterialDescriptor
 	| BasicMaterialDescriptor
+	| LambertMaterialDescriptor
+	| DepthMaterialDescriptor
+	| DistanceMaterialDescriptor
 	| ShadowMaterialDescriptor
 	| ImportedMaterialDescriptor;
 
@@ -157,6 +210,11 @@ export function canonicalColor(color: MaterialColor): string {
 function num(value: number): string {
 	if (!Number.isFinite(value)) throw new Error(`material descriptor value ${value} is not finite`);
 	return String(value === 0 ? 0 : value);
+}
+
+/** A bound texture's identity, encoded so it cannot read as a field separator. */
+function textureIdentity(map: string | undefined): string {
+	return map === undefined ? '-' : encodeURIComponent(map);
 }
 
 function bool(value: boolean | undefined, fallback: boolean): string {
@@ -192,7 +250,32 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				'basic',
 				`color=${canonicalColor(descriptor.color)}`,
 				`wireframe=${bool(descriptor.wireframe, false)}`,
-				`toneMapped=${bool(descriptor.toneMapped, true)}`
+				`toneMapped=${bool(descriptor.toneMapped, true)}`,
+				`vertexColors=${bool(descriptor.vertexColors, false)}`,
+				`depthWrite=${bool(descriptor.depthWrite, true)}`
+			].join('|');
+		case 'lambert':
+			return [
+				'lambert',
+				`color=${canonicalColor(descriptor.color ?? 0xffffff)}`,
+				`map=${textureIdentity(descriptor.map)}`,
+				`transparent=${bool(descriptor.transparent, false)}`,
+				`opacity=${num(descriptor.opacity ?? 1)}`,
+				`depthWrite=${bool(descriptor.depthWrite, true)}`,
+				`vertexColors=${bool(descriptor.vertexColors, false)}`
+			].join('|');
+		case 'depth':
+			return [
+				'depth',
+				`map=${textureIdentity(descriptor.map)}`,
+				`alphaTest=${num(descriptor.alphaTest ?? 0)}`,
+				`packing=${descriptor.packing ?? 'basic'}`
+			].join('|');
+		case 'distance':
+			return [
+				'distance',
+				`map=${textureIdentity(descriptor.map)}`,
+				`alphaTest=${num(descriptor.alphaTest ?? 0)}`
 			].join('|');
 		case 'imported': {
 			// The asset is an approved URL: encoded so no character of it can be

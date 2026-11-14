@@ -37,8 +37,10 @@ export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> 
 	'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte': ['webgl-only-three-path'],
 	// The generic RenderTarget when a port happens.
 	'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte': ['WebGLRenderTarget'],
-	// World code: alphaTest on the surface material replaces these once R5 verifies shadow parity.
-	'apps/editor/src/lib/museum/entities/EntityArtwork.svelte': ['customDepthMaterial', 'customDistanceMaterial']
+	// World code, retained R5 exception (E9): alphaTest on the surface would give the same shadow
+	// silhouette but discard alpha < 0.5 texels in the colour pass, so the image would not match.
+	// The two shadow-pass materials are built by the store; only their attachment is listed here.
+	'apps/editor/src/lib/render/scene-artwork-representation.ts': ['customDepthMaterial', 'customDistanceMaterial']
 };
 
 describe('renderer portability boundary', () => {

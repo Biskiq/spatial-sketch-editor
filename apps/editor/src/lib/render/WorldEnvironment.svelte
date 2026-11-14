@@ -22,6 +22,21 @@
 	} from 'three';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import { WORLD_ENVIRONMENT_GROUND_RADIUS_METERS, worldEnvironmentLook } from './world-environment';
+	import StoreMaterial from './resources/StoreMaterial.svelte';
+	import type { BasicMaterialDescriptor, LambertMaterialDescriptor } from './resources/material-descriptor';
+
+	/**
+	 * The ground's two looks, from the Canvas store (E9/R2c). The colours are the
+	 * disc's vertex colours, so one descriptor serves every preset.
+	 */
+	const FLAT_GROUND: BasicMaterialDescriptor = {
+		kind: 'basic',
+		color: 0xffffff,
+		vertexColors: true,
+		toneMapped: false,
+		depthWrite: false
+	};
+	const LIT_GROUND: LambertMaterialDescriptor = { kind: 'lambert', vertexColors: true };
 
 	type Bounds = { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
 
@@ -164,10 +179,6 @@
 	>
 	</T.DirectionalLight>
 	<T.Mesh geometry={ground} rotation.x={-Math.PI / 2} position={[center[0], groundY - (flatGround ? 0.05 : 0.02), center[2]]} renderOrder={flatGround ? -1 : 0} receiveShadow={!flatGround}>
-		{#if flatGround}
-			<T.MeshBasicMaterial vertexColors toneMapped={false} depthWrite={false} />
-		{:else}
-			<T.MeshLambertMaterial vertexColors />
-		{/if}
+		<StoreMaterial descriptor={flatGround ? FLAT_GROUND : LIT_GROUND} />
 	</T.Mesh>
 {/if}

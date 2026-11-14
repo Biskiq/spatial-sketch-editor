@@ -38,11 +38,6 @@ import { withoutComments } from '../../helpers/render-boundary-scan';
  * file is a failure rather than a silent pass.
  */
 const RR7_REMAINDER: Record<string, { count: number; owner: string }> = {
-	// R5 artwork, environment ground and plinth (E9).
-	'lib/museum/entities/EntityArtwork.svelte': { count: 6, owner: 'E9/R5 artwork' },
-	'lib/museum/layout/GroundPlinth.svelte': { count: 1, owner: 'E9/R2c plinth' },
-	'lib/render/WorldEnvironment.svelte': { count: 2, owner: 'E9/R2c environment, E10/R6 lights' },
-	'lib/visitor/VisitorPreviewSurface.svelte': { count: 1, owner: 'E9/R2c environment' },
 	// R6 — the light entity's invisible hit proxy (E10).
 	'lib/museum/entities/EntityLight.svelte': { count: 1, owner: 'E10/R6' }
 };
@@ -162,7 +157,9 @@ describe('material-factory-boundary: one factory for world materials', () => {
 
 	it('keeps the allowlist exact: a new site fails, and so does a stale entry', () => {
 		const actual = constructionSites();
-		const expected: Record<string, number> = { [STORE]: 3 };
+		// Standard, basic, Lambert, depth, distance and shadow (E9 added Lambert and
+		// the two shadow-pass kinds of the retained artwork alpha exception).
+		const expected: Record<string, number> = { [STORE]: 6 };
 		for (const [file, entry] of Object.entries({ ...RR7_REMAINDER, ...EDITOR_INK })) expected[file] = entry.count;
 		expect(actual).toEqual(expected);
 	});
@@ -181,6 +178,37 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-object-representation.ts');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/layout-room-representation.ts');
 		expect(RR7_REMAINDER).not.toHaveProperty('lib/visitor/VisitorLayoutShell.svelte');
+		// E9/R5 + R2c retired artwork, the environment grounds and the plinth.
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/entities/EntityArtwork.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/museum/layout/GroundPlinth.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/render/WorldEnvironment.svelte');
+		expect(RR7_REMAINDER).not.toHaveProperty('lib/visitor/VisitorPreviewSurface.svelte');
+		// The one world site left is E10's light proxy; everything else is editor ink.
+		expect(Object.keys(RR7_REMAINDER)).toEqual(['lib/museum/entities/EntityLight.svelte']);
+	});
+
+	it('the Artwork handler and the world grounds acquire instead of constructing', () => {
+		for (const file of [
+			'lib/render/scene-artwork-representation.ts',
+			'lib/render/resources/StoreMaterial.svelte',
+			'lib/render/WorldEnvironment.svelte',
+			'lib/museum/layout/GroundPlinth.svelte',
+			'lib/visitor/VisitorPreviewSurface.svelte'
+		]) {
+			const absolutePath = path.join(EDITOR_SRC, file);
+			expect(constructorSites(absolutePath, readFileSync(absolutePath, 'utf8')), file).toBe(0);
+		}
+		const handler = withoutComments(
+			readFileSync(path.join(EDITOR_SRC, 'lib/render/scene-artwork-representation.ts'), 'utf8')
+		);
+		expect(handler).toContain('store.acquire(');
+		for (const file of [
+			'lib/render/WorldEnvironment.svelte',
+			'lib/museum/layout/GroundPlinth.svelte',
+			'lib/visitor/VisitorPreviewSurface.svelte'
+		]) {
+			expect(readFileSync(path.join(EDITOR_SRC, file), 'utf8'), file).toContain('<StoreMaterial');
+		}
 	});
 
 	it('the Layout representations acquire instead of constructing', () => {

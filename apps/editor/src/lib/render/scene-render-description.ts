@@ -27,8 +27,10 @@ import {
 	isSceneFormEntity,
 	isScenePrimitiveEntity
 } from '$lib/content/scene';
+import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model';
 import type {
 	RuntimeScene,
+	SceneArtworkEntity,
 	SceneDocument,
 	SceneFormEntity,
 	SceneFormSource,
@@ -39,6 +41,7 @@ import { materialKey } from './resources/material-descriptor';
 import {
 	geometryKeyOf,
 	type GeometrySpec,
+	type SceneArtworkItem,
 	type SceneRenderDescription,
 	type SceneRenderItem,
 	type SceneTransform,
@@ -173,6 +176,72 @@ function itemKey(
 	].join('|');
 }
 
+/**
+ * E9/R5 — one Artwork's resolved item: the frame layout evaluated once.
+ *
+ * Exported because the Stage's placement ghost is the same handler over one
+ * item; it is still this one conversion, not a second reading of the frame.
+ */
+export function describeSceneArtwork(entity: SceneArtworkEntity): SceneArtworkItem {
+	const { assetId, pixelWidth, pixelHeight } = entity.source;
+	const width = entity.widthMeters;
+	const height = artworkHeight(width, entity.source);
+	const layout = artworkFrameLayout(width, height, entity.frame);
+	const frame =
+		layout.faceMeters > 0 && layout.frameColor !== null
+			? {
+					geometry: {
+						kind: 'artwork-frame',
+						outerWidth: layout.outerWidth,
+						outerHeight: layout.outerHeight,
+						faceMeters: layout.faceMeters,
+						depth: layout.depth
+					},
+					color: layout.frameColor,
+					z: 0
+				} as const
+			: null;
+	const mat =
+		layout.mat !== null
+			? {
+					geometry: {
+						kind: 'artwork-mat',
+						width: layout.mat.width,
+						height: layout.mat.height,
+						innerWidth: layout.mat.innerWidth,
+						innerHeight: layout.mat.innerHeight
+					},
+					color: layout.matColor,
+					z: layout.mat.z
+				} as const
+			: null;
+	const backing =
+		layout.backing !== null && layout.backingColor !== null
+			? {
+					geometry: { kind: 'artwork-backing', width: layout.backing.width, height: layout.backing.height },
+					color: layout.backingColor,
+					z: layout.backing.z
+				} as const
+			: null;
+	const position: SceneVec3 = [entity.position[0], entity.position[1], entity.position[2]];
+	const rotation: SceneVec3 = [entity.rotation[0], entity.rotation[1], entity.rotation[2]];
+	const body = (part: { geometry: GeometrySpec; color: string; z: number } | null): string =>
+		part === null ? '-' : `${geometryKeyOf(part.geometry)}@${part.color}@${part.z}`;
+	return {
+		id: entity.id,
+		image: { assetId, pixelWidth, pixelHeight },
+		sourceKey: `${assetId}/${pixelWidth}/${pixelHeight}`,
+		bodyKey: [width, height, body(frame), body(mat), body(backing)].join('|'),
+		placementKey: [...position, ...rotation].join('|'),
+		position,
+		rotation,
+		imageSize: [width, height],
+		frame,
+		mat,
+		backing
+	};
+}
+
 export function describeSceneRender(
 	scene: RuntimeScene,
 	forms: SceneFormSupport | null = null
@@ -183,8 +252,13 @@ export function describeSceneRender(
 			textures: scene.textures
 		} as Pick<SceneDocument, 'materials' | 'textures'>;
 		const items: SceneRenderItem[] = [];
+		const artworks: SceneArtworkItem[] = [];
 
 		for (const entity of scene.entities) {
+			if (entity.kind === 'artwork') {
+				artworks.push(describeSceneArtwork(entity));
+				continue;
+			}
 			if (isScenePrimitiveEntity(entity)) {
 				const geometry = primitiveGeometry(entity);
 				const surface = primitiveSurface(entity);
@@ -264,6 +338,6 @@ export function describeSceneRender(
 			});
 		}
 
-		return { items };
+		return { items, artworks };
 	});
 }

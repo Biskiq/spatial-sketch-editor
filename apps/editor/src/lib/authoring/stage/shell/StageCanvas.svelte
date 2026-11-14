@@ -34,7 +34,7 @@ import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
 import StageMatGround from './StageMatGround.svelte';
-	import EntityArtwork from '$lib/museum/entities/EntityArtwork.svelte';
+	import StageArtworkGhost from './StageArtworkGhost.svelte';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import StageEntities from './StageEntities.svelte';
@@ -317,7 +317,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<StageWallPin position={unfoldAnchorPin} hovered={unfoldPinHovered} active={unfoldPinActive} />
 	{/if}
 	{#if artworkGhost !== null}
-		<EntityArtwork entity={artworkGhost} scope={artworkScope} ghost onError={onArtworkError} />
+		<StageArtworkGhost entity={artworkGhost} scope={artworkScope} onError={onArtworkError} />
 	{/if}
 	<StageEntities
 		{artworkScope}

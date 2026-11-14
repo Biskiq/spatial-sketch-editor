@@ -26,9 +26,12 @@
  * deferred by the texture store, so a rebuilt entity that reuses a look does not
  * delete and re-upload its bytes inside one update.
  *
- * Deliberately not owned here: models (E8), artwork (E9), lights (E10) and any
- * editor affordance. Those keep their existing components until their own packet
- * installs a handler, so one Scene entity is never drawn twice.
+ * Artwork (E9) is a family handler under the same root: `description.artworks`
+ * goes to `scene-artwork-representation`, which leases from the same stores.
+ *
+ * Deliberately not owned here: models (E8's bounded exception), lights (E10) and
+ * any editor affordance. Those keep their existing components until their own
+ * packet installs a handler, so one Scene entity is never drawn twice.
  */
 import { Group, Mesh, type Object3D } from 'three';
 import { countWork } from '@portfolio/layout-core';
@@ -40,6 +43,11 @@ import {
 	type StandardMaterialDescriptor
 } from './resources/material-descriptor';
 import type { SceneRenderDescription, SceneRenderItem } from './resources/scene-render-item';
+import {
+	createSceneArtworkRepresentation,
+	type ArtworkImageSource,
+	type SceneArtworkStats
+} from './scene-artwork-representation';
 import {
 	acquireEffectiveVariant,
 	effectiveTextureVariantKey,
@@ -63,6 +71,8 @@ export type SceneEntityRepresentationStats = {
 	readonly forms: number;
 	/** Of the built items, how many acquired a texture variant in this update. */
 	readonly textured: number;
+	/** The artwork handler's own counts for this update. */
+	readonly artworks: SceneArtworkStats;
 };
 
 export type SceneEntityRepresentationOptions = {
@@ -78,6 +88,12 @@ export type SceneEntityRepresentationOptions = {
 	 * released, so the pick source never walks a subtree to find an entity.
 	 */
 	readonly onRoot?: (id: string, root: Object3D) => (() => void) | void;
+	/** The artwork scope this Canvas draws images from (E9). Read on every update. */
+	readonly artworkScope?: () => ArtworkImageSource | null;
+	/** An Artwork's image arrived and is drawn. */
+	readonly onArtworkArrival?: (id: string) => void;
+	/** An Artwork's image could not be drawn. */
+	readonly onArtworkError?: (message: string) => void;
 };
 
 export type SceneEntityRepresentation = {
@@ -142,6 +158,13 @@ export function createSceneEntityRepresentation(
 ): SceneEntityRepresentation {
 	const object3d = new Group();
 	object3d.name = 'SceneEntities';
+	const artworks = createSceneArtworkRepresentation({
+		store: options.store,
+		geometry: options.geometry,
+		onArrival: (id) => options.onArtworkArrival?.(id),
+		onError: (message) => options.onArtworkError?.(message)
+	});
+	object3d.add(artworks.object3d);
 	const retained = new Map<string, RetainedItem>();
 	const pending = new Set<Promise<void>>();
 	let disposed = false;
@@ -244,6 +267,10 @@ export function createSceneEntityRepresentation(
 
 		update(description) {
 			if (disposed) throw new Error('the scene entity representation has been disposed');
+			// The artwork scope can change without a new description (a Preview
+			// replaces its scope), so the artwork handler is asked on every update;
+			// it does nothing when neither its items nor its scope changed.
+			const artworkStats = artworks.update(description.artworks, options.artworkScope?.() ?? null);
 			if (previous === description) {
 				return {
 					items: retained.size,
@@ -251,7 +278,8 @@ export function createSceneEntityRepresentation(
 					retained: retained.size,
 					released: 0,
 					forms: 0,
-					textured: 0
+					textured: 0,
+					artworks: artworkStats
 				};
 			}
 			previous = description;
@@ -287,17 +315,18 @@ export function createSceneEntityRepresentation(
 				released += 1;
 			}
 
-			return { items: retained.size, built, retained: kept, released, forms, textured };
+			return { items: retained.size, built, retained: kept, released, forms, textured, artworks: artworkStats };
 		},
 
 		objectOf(id) {
-			return retained.get(id)?.group ?? null;
+			return retained.get(id)?.group ?? artworks.objectOf(id);
 		},
 
 		async idle() {
 			// A handler can enqueue another job (a variant that resolves into a
 			// material acquire), so the loop drains until nothing is pending.
 			while (pending.size > 0) await Promise.all([...pending]);
+			await artworks.idle();
 		},
 
 		dispose() {
@@ -306,6 +335,8 @@ export function createSceneEntityRepresentation(
 			previous = null;
 			for (const entry of retained.values()) releaseItem(entry);
 			retained.clear();
+			artworks.dispose();
+			artworks.object3d.removeFromParent();
 		}
 	};
 }

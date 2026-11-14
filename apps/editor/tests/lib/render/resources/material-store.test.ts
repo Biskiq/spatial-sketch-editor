@@ -11,7 +11,16 @@
  * - `dispose()` ends every remaining claim, and the store refuses to serve after.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { MeshBasicMaterial, MeshStandardMaterial, Texture } from 'three';
+import {
+	BasicDepthPacking,
+	MeshBasicMaterial,
+	MeshDepthMaterial,
+	MeshDistanceMaterial,
+	MeshLambertMaterial,
+	MeshStandardMaterial,
+	RGBADepthPacking,
+	Texture
+} from 'three';
 import {
 	canonicalColor,
 	materialKey,
@@ -202,6 +211,62 @@ describe('the material store', () => {
 		expect(shadow.material.type).toBe('ShadowMaterial');
 		expect(ceiling.material).toBeInstanceOf(MeshStandardMaterial);
 		expect(store.stats().created).toBe(3);
+		store.dispose();
+	});
+});
+
+describe('E9/R2c — Lambert, shadow-pass and vertex-colour kinds', () => {
+	it('keys a Lambert surface by its constructor defaults and its bound texture identity', () => {
+		expect(materialKey({ kind: 'lambert' })).toBe(
+			materialKey({ kind: 'lambert', color: '#fff', transparent: false, opacity: 1, depthWrite: true, vertexColors: false })
+		);
+		expect(materialKey({ kind: 'lambert', map: 'artwork:a' })).not.toBe(materialKey({ kind: 'lambert', map: 'artwork:b' }));
+		expect(materialKey({ kind: 'depth', map: 'a', alphaTest: 0.5, packing: 'rgba' })).not.toBe(
+			materialKey({ kind: 'distance', map: 'a', alphaTest: 0.5 })
+		);
+		expect(materialKey({ kind: 'basic', color: 0xffffff })).toBe(
+			materialKey({ kind: 'basic', color: '#ffffff', vertexColors: false, depthWrite: true })
+		);
+	});
+
+	it('constructs each kind with exactly the descriptor’s properties', () => {
+		const store = createMaterialStore();
+		const map = new Texture();
+		const lambert = store.acquire({ kind: 'lambert', map: 'artwork:t', transparent: true, depthWrite: false, opacity: 0.65 }, { map });
+		expect(lambert.material).toBeInstanceOf(MeshLambertMaterial);
+		const surface = lambert.material as MeshLambertMaterial;
+		expect([surface.map, surface.transparent, surface.depthWrite, surface.opacity, surface.vertexColors]).toEqual([map, true, false, 0.65, false]);
+		expect(surface.color.getHexString()).toBe('ffffff');
+		const depth = store.acquire({ kind: 'depth', map: 'artwork:t', alphaTest: 0.5, packing: 'rgba' }, { map }).material as MeshDepthMaterial;
+		expect([depth.map, depth.alphaTest, depth.depthPacking]).toEqual([map, 0.5, RGBADepthPacking]);
+		const plain = store.acquire({ kind: 'depth' }).material as MeshDepthMaterial;
+		expect([plain.map, plain.alphaTest, plain.depthPacking]).toEqual([null, 0, BasicDepthPacking]);
+		const distance = store.acquire({ kind: 'distance', map: 'artwork:t', alphaTest: 0.5 }, { map }).material as MeshDistanceMaterial;
+		expect(distance).toBeInstanceOf(MeshDistanceMaterial);
+		expect([distance.map, distance.alphaTest]).toEqual([map, 0.5]);
+		const ground = store.acquire({ kind: 'basic', color: 0xffffff, vertexColors: true, toneMapped: false, depthWrite: false }).material as MeshBasicMaterial;
+		expect([ground.vertexColors, ground.toneMapped, ground.depthWrite]).toEqual([true, false, false]);
+		const lit = store.acquire({ kind: 'lambert', vertexColors: true }).material as MeshLambertMaterial;
+		expect([lit.vertexColors, lit.transparent, lit.depthWrite, lit.opacity]).toEqual([true, false, true, 1]);
+		store.dispose();
+	});
+
+	it('refuses a mapped Lambert, depth or distance descriptor without its texture', () => {
+		const store = createMaterialStore();
+		expect(() => store.acquire({ kind: 'lambert', map: 'artwork:t' })).toThrow(/binds "map"/);
+		expect(() => store.acquire({ kind: 'depth', map: 'artwork:t' })).toThrow(/binds "map"/);
+		expect(() => store.acquire({ kind: 'distance', map: 'artwork:t' })).toThrow(/binds "map"/);
+		store.dispose();
+	});
+
+	it('builds the environment, paper ground and plinth looks from descriptors alone', () => {
+		const store = createMaterialStore();
+		const plinth = store.acquire({ kind: 'standard', color: '#0e0d11', roughness: 0.92, metalness: 0 }).material as MeshStandardMaterial;
+		// Equal to the removed `<T.MeshStandardMaterial color="#0e0d11" roughness={0.92} />`.
+		const reference = new MeshStandardMaterial({ color: '#0e0d11', roughness: 0.92 });
+		expect([plinth.color.getHex(), plinth.roughness, plinth.metalness]).toEqual([reference.color.getHex(), 0.92, reference.metalness]);
+		const paper = store.acquire({ kind: 'lambert', color: '#e2e5de' }).material as MeshLambertMaterial;
+		expect(paper.color.getHex()).toBe(new MeshLambertMaterial({ color: '#e2e5de' }).color.getHex());
 		store.dispose();
 	});
 });
