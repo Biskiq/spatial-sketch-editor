@@ -33,7 +33,6 @@ describe('Advanced groups', () => {
 			'colour',
 			'brightness',
 			'shape',
-			'direction',
 			'position',
 			'shadows'
 		]);
@@ -47,12 +46,18 @@ describe('Advanced groups', () => {
 			'position',
 			'shadows'
 		]);
-		expect(advancedGroupsFor('directional').map((group) => group.id)).toEqual([
+		expect(advancedGroupsFor('spot').map((group) => group.id)).toEqual([
 			'colour',
 			'brightness',
-			'direction',
+			'shape',
+			'position',
 			'shadows'
 		]);
+		// Directional is retired: no kind has a Direction group or its rows.
+		expect(LIGHT_ADVANCED_GROUPS.map((group) => group.id)).not.toContain('direction');
+		expect(
+			LIGHT_ADVANCED_GROUPS.flatMap((group) => group.rows.map((row) => row.id))
+		).not.toContain('direction-from');
 		const pointShape = advancedGroupsFor('point').find((group) => group.id === 'shape')!;
 		expect(advancedRowsFor(pointShape, 'point').map((row) => row.id)).toEqual(['reach']);
 	});
@@ -70,14 +75,10 @@ describe('Advanced groups', () => {
 		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[0]!, spot, 0)).toBe('Neutral white');
 		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[1]!, spot, 0)).toBe('1×');
 		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[2]!, spot, 0)).toBe('30° · sharp · unlimited');
-		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[4]!, spot, 0)).toBe('3.00 · 2.20 · 2.00 m');
-		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[5]!, spot, 0)).toBe('Off');
+		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[3]!, spot, 0)).toBe('3.00 · 2.20 · 2.00 m');
+		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[4]!, spot, 0)).toBe('Off');
 		const coloured = light({ color: '#ffa04d' });
 		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[0]!, coloured, 0)).toBe('Colour #ffa04d');
-		const directional = light({ light: 'directional', rotation: [0, 0, 0] });
-		expect(advancedSummary(LIGHT_ADVANCED_GROUPS[3]!, directional, 0)).toBe(
-			'From 180° · 0° high'
-		);
 	});
 });
 
@@ -113,19 +114,6 @@ describe('Advanced row writes', () => {
 		const reach = row('shape', 'reach');
 		expect(reach.write(null, light(), 0)).toEqual({ range: null });
 		expect(reach.write(2.5, light(), 0)).toEqual({ range: 2.5 });
-	});
-
-	it('round-trips Directional From and Height in sky', () => {
-		const from = row('direction', 'direction-from');
-		const height = row('direction', 'direction-height');
-		const start = light({ light: 'directional', rotation: [0, 0, 0] });
-		const written = from.write(300, start, 0) as { rotation: [number, number, number] };
-		const next = light({ light: 'directional', rotation: written.rotation });
-		expect(from.read(next, 0)).toBeCloseTo(300, 4);
-		const higher = height.write(50, next, 0) as { rotation: [number, number, number] };
-		const raised = light({ light: 'directional', rotation: higher.rotation });
-		expect(height.read(raised, 0)).toBeCloseTo(50, 4);
-		expect(from.read(raised, 0)).toBeCloseTo(300, 4);
 	});
 
 	it('reads position Height relative to the datum and writes it back', () => {

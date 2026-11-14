@@ -45,7 +45,7 @@ export function selectedLight(context: StageAdapterContext): Light | null {
 	return isLight(entity) ? entity : null;
 }
 
-/** A range is optional on point/spot and absent on directional; one accessor. */
+/** A range is optional on Point and Spot; one accessor. */
 export function lightRange(light: Light): number | undefined {
 	return 'range' in light ? light.range : undefined;
 }
@@ -57,8 +57,7 @@ export function lightById(snapshot: StageReadSnapshot, id: string): Light | null
 
 /**
  * The light glyph under a Stage-local point, using the same 18 px target as
- * selection. A Directional light has no position and no glyph: it is selected
- * from the Index, the shelf list or the dial's own tick, never from a body mark.
+ * selection.
  */
 export function lightGlyphAt(
 	css: readonly [number, number],
@@ -67,7 +66,6 @@ export function lightGlyphAt(
 	const viewport = viewportCss(css, context);
 	const candidates: { readonly light: Light; readonly distance: number }[] = [];
 	for (const entity of stageScene(context.snapshot).entities.filter(isLight)) {
-		if (entity.light === 'directional') continue;
 		const projected = context.project(entity.position);
 		if (projected === null) continue;
 		const distance = Math.hypot(projected[0] - viewport[0], projected[1] - viewport[1]);

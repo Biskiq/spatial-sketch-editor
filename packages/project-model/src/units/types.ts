@@ -44,7 +44,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 6 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 7 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;

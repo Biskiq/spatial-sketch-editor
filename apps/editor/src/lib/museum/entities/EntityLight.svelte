@@ -12,7 +12,7 @@
     showPickProxy?: boolean;
   } = $props();
 
-  // Spot/Directional default to local (0,1,0) and aim at an unbound world-origin target.
+  // A Spot defaults to local (0,1,0) and aims at an unbound world-origin target.
   // Keep light at entity origin; aim along parent local -Z so authored rotation steers.
   const aimTarget = new Object3D();
   aimTarget.position.set(0, 0, -1);
@@ -36,15 +36,6 @@
     distance={entity.range ?? 0}
     angle={entity.angle}
     penumbra={entity.penumbra ?? 0}
-    castShadow={entity.castShadow}
-  />
-{:else}
-  <T is={aimTarget} />
-  <T.DirectionalLight
-    position={[0, 0, 0]}
-    target={aimTarget}
-    color={entity.color}
-    intensity={entity.intensity}
     castShadow={entity.castShadow}
   />
 {/if}

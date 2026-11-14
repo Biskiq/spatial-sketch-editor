@@ -132,6 +132,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// revision, because Scene moves to format 6 and the source hash covers
 			// the header. Every winner, point and pick field is unchanged (266
 			// values are generationId; 16 are the shared Scene contentRevision).
+			// Directional light retirement updates only generation IDs and the Scene
+			// content revision, because Scene moves to format 7 and the source hash
+			// covers the header. Every winner, point and pick field is unchanged (266
+			// generationId values; 16 shared Scene contentRevision values).
 			expect(actual).toEqual(expected);
 		}
 	});

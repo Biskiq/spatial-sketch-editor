@@ -117,32 +117,18 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			...(entity.penumbra === undefined ? {} : { penumbra: entity.penumbra })
 		};
 	}
-	if (entity.light === 'point') {
-		return {
-			kind: 'light',
-			id: entity.id,
-			name: entity.name,
-			light: 'point',
-			color: entity.color,
-			intensity: entity.intensity,
-			castShadow: entity.castShadow,
-			position: [...entity.position],
-			rotation: [...entity.rotation],
-			...(entity.scale === undefined ? {} : { scale: entity.scale }),
-			...(entity.range === undefined ? {} : { range: entity.range })
-		};
-	}
 	return {
 		kind: 'light',
 		id: entity.id,
 		name: entity.name,
-		light: 'directional',
+		light: 'point',
 		color: entity.color,
 		intensity: entity.intensity,
 		castShadow: entity.castShadow,
 		position: [...entity.position],
 		rotation: [...entity.rotation],
-		...(entity.scale === undefined ? {} : { scale: entity.scale })
+		...(entity.scale === undefined ? {} : { scale: entity.scale }),
+		...(entity.range === undefined ? {} : { range: entity.range })
 	};
 }
 

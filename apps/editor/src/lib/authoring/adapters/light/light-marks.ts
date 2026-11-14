@@ -3,10 +3,9 @@
  *
  * One pure function turns the effective Light (the dragged copy during a
  * gesture, otherwise the selected one) into the ordered edit marks the Stage
- * hit-tests: body, height, aim, reach, beam and soft edge for Point and Spot,
- * the two dial beads for a Directional. It reads the live context and the frozen
- * dial frame a caller supplies; it holds no lifetime and never writes. The host
- * admits, projects and hit-tests the descriptors, and every gesture they start
+ * hit-tests: body, height, aim, reach, beam and soft edge for Point and Spot.
+ * It reads the live context a caller supplies; it holds no lifetime and never
+ * writes. The host admits, projects and hit-tests the descriptors, and every gesture they start
  * is owned by the gesture session.
  */
 import type { Vec3 } from '@portfolio/project-model';
@@ -21,76 +20,24 @@ import {
 	formatMeters,
 	isWideBeam,
 	pointReachRingRadius,
-	presentationAngles,
 	spotFootprintRadius,
 	spotInnerRadius
 } from '../../look/light-presentation';
 import { add, normalize, scale, sub } from './light-math';
-import {
-	dialFrameFor,
-	ringPhase,
-	screenRingExtent,
-	type LightDialFrame,
-	type LightSceneReads
-} from './light-guides';
+import { ringPhase, screenRingExtent } from './light-guides';
 import { lightRange, spotTargetFor, type Light } from './light-subjects';
 
 /**
- * The marks of one Light. `frozenDial` is the dial frame held from press to
- * release of either Directional bead; `refusal` is the grip's current message.
+ * The marks of one Light. `refusalNow` is the grip's current message.
  */
 export function lightMarkDescriptors(
 	light: Light,
 	adapterContext: StageAdapterContext,
-	reads: LightSceneReads,
-	refusalNow: string | null,
-	frozenDial: LightDialFrame | null
+	refusalNow: string | null
 ): readonly StageHandleDescriptor[] {
 	const forward = lightForward(light.rotation);
 	const datum = adapterContext.snapshot.domain.datumMeters;
 	const range = lightRange(light);
-	if (light.light === 'directional') {
-		// A Directional light has no body mark: the dial's two beads are
-		// the instrument. Their frame is frozen while either bead drags.
-		const frame = frozenDial ?? dialFrameFor(adapterContext, reads);
-		const angles = presentationAngles(light.rotation);
-		const from = (angles.from * Math.PI) / 180;
-		const height = (angles.heightInSky * Math.PI) / 180;
-		const horizontal: Vec3 = [Math.sin(from), 0, -Math.cos(from)];
-		const source: Vec3 = [
-			horizontal[0] * Math.cos(height),
-			Math.sin(height),
-			horizontal[2] * Math.cos(height)
-		];
-		return [
-			{
-				role: 'edit',
-				id: 'light-azimuth',
-				kind: 'point',
-				anchor: add(frame.center, scale(horizontal, frame.radius)),
-				label: 'From',
-				fact: 'azimuth',
-				verb: 'From {value}°',
-				planner: 'update-light',
-				draw: { pointRadius: 5 },
-				value: formatDegrees(angles.from, 0),
-				refusal: refusalNow
-			},
-			{
-				role: 'edit',
-				id: 'light-elevation',
-				kind: 'point',
-				anchor: add(frame.center, scale(source, frame.radius)),
-				label: 'Height in sky',
-				fact: 'elevation',
-				verb: 'Height in sky {value}°',
-				planner: 'update-light',
-				draw: { pointRadius: 5 },
-				value: formatDegrees(angles.heightInSky, 0),
-				refusal: refusalNow
-			}
-		];
-	}
 	const height = Math.max(0, light.position[1] - datum);
 	const handles: StageHandleDescriptor[] = [
 		{

@@ -16,7 +16,7 @@ import type { SceneDocumentIssue } from './index';
 export type JsonRecord = Record<string, unknown>;
 
 export const SCENE_PRIMITIVE_KINDS = ['box', 'plane', 'cylinder', 'sphere'] as const;
-export const SCENE_LIGHT_KINDS = ['point', 'spot', 'directional'] as const;
+export const SCENE_LIGHT_KINDS = ['point', 'spot'] as const;
 export const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 export function isRecord(value: unknown): value is JsonRecord {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

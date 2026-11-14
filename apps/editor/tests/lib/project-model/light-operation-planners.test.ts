@@ -169,12 +169,12 @@ describe('S3 light planners', () => {
 		expect(JSON.stringify(result.candidate.source.units.camera.data)).toBe(before);
 	});
 
-	it('refuses a spot without an angle and a directional with range', async () => {
+	it('refuses a spot without an angle and the retired Directional kind', async () => {
 		const project = await projectWith([]);
 		const snapshot = await snapshotOf(project);
 		for (const [payload, message] of [
 			[{ ...CREATION, angle: undefined }, 'angle'],
-			[{ ...CREATION, light: 'directional' }, 'range']
+			[{ ...CREATION, light: 'directional' }, 'retired-directional']
 		] as const) {
 			const result = prepare(
 				'create-light',

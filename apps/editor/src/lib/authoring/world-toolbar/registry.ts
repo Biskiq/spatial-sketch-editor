@@ -278,7 +278,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     icon: 'light',
     family: 'furnish',
     stage: 'landed',
-    summary: 'Place point, spot and directional lights from the Library.'
+    summary: 'Place point and spot lights from the Library.'
   },
   { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'planned', after: 'T5', summary: 'Assign a material to a surface.' },
   { id: 'erase', label: 'Erase', icon: 'erase', family: null, stage: 'landed', summary: 'Remove a subject from the Stage.', shortcut: 'E' },

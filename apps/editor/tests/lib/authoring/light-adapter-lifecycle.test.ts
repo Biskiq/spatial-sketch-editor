@@ -12,7 +12,6 @@ import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-mod
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { armedLightKind, armLight } from '$lib/authoring/look/light-tool.svelte';
 import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
-import { directionForPresentationAngles } from '$lib/authoring/look/light-presentation';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
@@ -70,20 +69,6 @@ function pointAt(position: Vec3, range?: number): SceneLightEntity {
 		position,
 		rotation: [0, 0, 0],
 		...(range === undefined ? {} : { range })
-	};
-}
-
-function directionalAt(position: Vec3): SceneLightEntity {
-	return {
-		kind: 'light',
-		light: 'directional',
-		id: 'light-sun',
-		name: 'Sun',
-		color: '#ffffff',
-		intensity: Math.PI,
-		castShadow: false,
-		position,
-		rotation: rotationForLightDirection([0, -1, 0])
 	};
 }
 
@@ -752,99 +737,23 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(facade.candidatePreviews().map((candidate) => candidate.id)).not.toContain('light-guide');
 	});
 
-	it('names the selected Directional dial and picks another light from its ring tick', async () => {
-		const aimed = (from: number, height: number) =>
-			rotationForLightDirection(directionForPresentationAngles(from, height));
-		const other: SceneLightEntity = {
-			...directionalAt([0, 2, 0]),
-			id: 'light-fill',
-			name: 'North fill',
-			rotation: aimed(135, 40)
-		};
-		const { facade } = await mounted({
-			entities: [{ ...directionalAt([0, 2, 0]), rotation: aimed(300, 45) }, other]
-		});
-		const select = (id: string): void => {
-			const reference = sceneEntityReference(
-				id,
-				facade.snapshot().domain.unitRevisions.scene
-			);
+	it('draws no dial, ring tick, name tag or bead for any light', async () => {
+		const { facade } = await mounted({ entities: [spotAt([0, 2, 0]), pointAt([2, 2, 0])] });
+		for (const id of ['light-existing', 'light-point']) {
+			const reference = sceneEntityReference(id, facade.snapshot().domain.unitRevisions.scene);
 			facade.setSelection({ ordered: [{ reference }], primary: reference });
-		};
-		select('light-sun');
-
-		const guide = facade.guides().find((candidate) => candidate.id === 'light-guide')!;
-		expect(guide.labels.map((label) => label.text)).toEqual(['Sun']);
-		// The other Directional light adds exactly one derived tick segment.
-		const tick = guide.derivedSegments.at(-1)!;
-		const midpoint: [number, number] = [
-			(tick[0][0] + tick[1][0]) / 2,
-			(tick[0][1] + tick[1][1]) / 2
-		];
-		expect(Math.hypot(midpoint[0] - guide.labels[0]!.css[0], midpoint[1] - guide.labels[0]!.css[1]))
-			.toBeGreaterThan(40);
-
-		// The route's click path resolves the same domain pick; the tick selects
-		// that light without a gesture, a mark or a write.
-		const resolved = facade.resolvePick({
-			css: midpoint,
-			coarse: false,
-			evaluationId: facade.evaluationId()!,
-			purpose: 'select',
-			tool: null
-		});
-		expect(resolved.kind).toBe('resolved');
-		if (resolved.kind === 'resolved') expect(resolved.hit.sourceId).toBe('light-fill');
-
-		// An unpressed hover on the tick names that light; leaving the tick clears it.
-		facade.idleHoverIntent({ phase: 'move', css: midpoint, evaluationId: facade.evaluationId()! });
-		expect(
-			facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels.map((label) => label.text)
-		).toContain('North fill');
-		facade.idleHoverIntent({ phase: 'cancel', css: midpoint, evaluationId: facade.evaluationId()! });
-		expect(
-			facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels.map((label) => label.text)
-		).not.toContain('North fill');
-	});
-
-	it('exposes directional azimuth and elevation controls', async () => {
-		const { facade, host } = await mounted({ entities: [directionalAt([0, 2, 0])] });
-		const reference = sceneEntityReference(
-			'light-sun',
-			facade.snapshot().domain.unitRevisions.scene
-		);
-		facade.setSelection({ ordered: [{ reference }], primary: reference });
-		const ids = facade.marks().map((mark) => mark.id);
-		expect(ids).toContain('light-azimuth');
-		expect(ids).toContain('light-elevation');
-		// The dial is a ring on the datum with a spoke and a quarter arc, not a
-		// box around the scene and not a forward ray from the light's position.
-		const dial = facade.guides().find((guide) => guide.id === 'light-guide')!;
-		expect(dial.segments.length).toBeGreaterThan(40);
-		expect(dial.derivedSegments.length).toBeGreaterThan(4);
-		const mark = facade.marks().find((candidate) => candidate.id.includes('light-azimuth'));
-		if (mark === undefined) throw new Error('the selected directional has no azimuth mark');
-		const beforeRotation = [...lightsOf(facade)[0]!.rotation];
-		const before = host.history().depth;
-		const evaluationId = facade.evaluationId()!;
-		facade.pointerIntent({
-			phase: 'down',
-			css: mark.anchor,
-			evaluationId,
-			handleId: mark.id
-		});
-		facade.pointerIntent({
-			phase: 'move',
-			css: [mark.anchor[0] + 80, mark.anchor[1] + 20],
-			evaluationId
-		});
-		facade.pointerIntent({
-			phase: 'up',
-			css: [mark.anchor[0] + 80, mark.anchor[1] + 20],
-			evaluationId
-		});
-		await waitFor(() => host.history().depth === before + 1);
-		expect(lightsOf(facade)[0]!.rotation).not.toEqual(beforeRotation);
+			const ids = facade.marks().map((mark) => mark.id);
+			expect(ids).not.toContain('light-azimuth');
+			expect(ids).not.toContain('light-elevation');
+			const guide = facade.guides().find((candidate) => candidate.id === 'light-guide')!;
+			expect(guide.labels).toEqual([]);
+			// An unpressed hover never tags a ring tick: there is no tick to hit.
+			const evaluationId = facade.evaluationId()!;
+			facade.idleHoverIntent({ phase: 'move', css: [200, 200], evaluationId });
+			expect(
+				facade.guides().find((candidate) => candidate.id === 'light-guide')!.labels
+			).toEqual([]);
+		}
 	});
 
 	it('uses viewport-correct rays for light picking with a nonzero Stage offset', async () => {

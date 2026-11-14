@@ -2,8 +2,7 @@
  * T2 gallery UX recovery — the light instrument's presentation maths.
  *
  * One module owns every derived quantity the Stage marks and the Card show:
- * the Directional presentation angles (From / Height in sky), the Spot's derived
- * target distance, the soft-edge ring, the Point reach ring, the placement
+ * the Spot's derived target distance, the soft-edge ring, the Point reach ring, the placement
  * stand-off table and the number formats. Stored fields remain the Scene's; none
  * of these values is ever authored.
  */
@@ -23,13 +22,6 @@ export const LIGHT_SPOT_TARGET_FALLBACK_METERS = 3;
 /** The smallest authored reach, in metres. */
 export const LIGHT_MIN_RANGE_METERS = 0.1;
 
-export type LightPresentationAngles = {
-	/** Bearing toward the source; 0° is world −Z, 90° is world +X. */
-	readonly from: number;
-	/** Source elevation above the horizon; straight overhead reads 90°. */
-	readonly heightInSky: number;
-};
-
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
 }
@@ -40,39 +32,6 @@ function degrees(radians: number): number {
 
 function radians(degreesValue: number): number {
 	return (degreesValue * Math.PI) / 180;
-}
-
-/**
- * The stored rotation as the two presentation angles.
- *
- * `lastFrom` keeps the last displayed bearing while the source is straight
- * overhead or straight below, where the horizontal part vanishes and every
- * bearing would be equally true.
- */
-export function presentationAngles(rotation: Vec3, lastFrom = 0): LightPresentationAngles {
-	const forward = lightForward(rotation);
-	// s points from the scene toward the source: the reverse of the travel
-	// direction. This is the vocabulary fix — elevation used to be the travel
-	// direction, so straight down read −90° and +20° lit from below the floor.
-	const source: Vec3 = [-forward[0], -forward[1], -forward[2]];
-	const heightInSky = degrees(Math.asin(clamp(source[1], -1, 1)));
-	const horizontal = Math.hypot(source[0], source[2]);
-	const from =
-		horizontal < 1e-6 ? lastFrom : (degrees(Math.atan2(source[0], -source[2])) + 360) % 360;
-	return { from, heightInSky };
-}
-
-/** The inverse of {@link presentationAngles}; `heightInSky` may be −90…90. */
-export function directionForPresentationAngles(from: number, heightInSky: number): Vec3 {
-	const azimuth = radians(from);
-	const height = radians(clamp(heightInSky, -90, 90));
-	const horizontal = Math.cos(height);
-	// s = [sin(F)·cos(H), sin(H), −cos(F)·cos(H)] and f = −s.
-	return [
-		-Math.sin(azimuth) * horizontal,
-		-Math.sin(height),
-		Math.cos(azimuth) * horizontal
-	];
 }
 
 /** A ray cast along the light's forward, as the pick provider reports it. */
@@ -176,14 +135,11 @@ export type LightPlacementHit = {
  * missed every surface and did not meet the datum.
  */
 export function lightPlacementBody(input: {
-	readonly kind: 'point' | 'spot' | 'directional';
+	readonly kind: 'point' | 'spot';
 	readonly hit: LightPlacementHit | null;
 	readonly datumMeters: number;
 	readonly ray: { origin: Vec3; direction: Vec3 };
 }): Vec3 | null {
-	if (input.kind === 'directional') {
-		return [0, input.datumMeters, 0];
-	}
 	const standoff =
 		input.kind === 'point' ? LIGHT_POINT_STANDOFF_METERS : LIGHT_SPOT_STANDOFF_METERS;
 	const hit = input.hit;
@@ -254,8 +210,8 @@ export function formatMultiplier(intensity: number): string {
 }
 
 /** Exact intensity: three decimals and its kind's unit. */
-export function formatExactIntensity(intensity: number, kind: 'point' | 'spot' | 'directional'): string {
-	return `${intensity.toFixed(3)} ${kind === 'directional' ? 'lx' : 'cd'}`;
+export function formatExactIntensity(intensity: number): string {
+	return `${intensity.toFixed(3)} cd`;
 }
 
 function normalize(value: Vec3): Vec3 {

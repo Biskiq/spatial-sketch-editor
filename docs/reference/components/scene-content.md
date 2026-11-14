@@ -10,12 +10,12 @@ owner-controlled)
 
 ## Current implementation
 
-The live Scene is the world-local Scene 6 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 7 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
 Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) / **form** /
-**light** (`point|spot|directional`) / **artwork** · textures · material instances · clusters.
+**light** (`point|spot`) / **artwork** · textures · material instances · clusters.
 
 Artwork stores a world-local centre and rotation, a tagged image source with its immutable P20 ID
 and oriented pixel dimensions, and one authored width in metres. Height follows the image aspect.
@@ -42,7 +42,7 @@ placement controls and hanging guides stay in authoring.
 | Models | Catalogue assets or same-envelope approved model resources; world-local placement, no Room ownership |
 | Shapes | Box / plane / cylinder / sphere |
 | Forms | Native drawn outlines extruded by `@portfolio/geometry-core`; authored source only, generated geometry never stored |
-| Lights | Point / spot / directional — aim by rotation |
+| Lights | Point / spot — spot aims by rotation; the Sky owns the only Sun |
 | Textures | URI/file → bind via materials (not scene objects); project assets use logical `/project-assets/{assetId}` refs resolved by authenticated context |
 
 Clusters = named member-id groups; the visitor renders them flat; **no** prefab library.
@@ -123,8 +123,8 @@ These are the codec's own rules, not a destination: `packages/project-model/src/
   Room-owned placement cannot be expressed or re-introduced. Placement-local bounds and footprint
   derivation are project/world space; the legacy room-frame projection branch is gone.
 - **Lights**: `color` must be `#rrggbb`; `intensity` finite ≥ 0; `range` finite > 0; `angle` in
-  `(0, π]`; `penumbra` in `[0, 1]`. Directional lights reject `range`/`angle`/`penumbra`, point
-  lights reject `angle`/`penumbra`, and spot lights require `angle`.
+  `(0, π]`; `penumbra` in `[0, 1]`. Point lights reject `angle`/`penumbra`, and spot lights require `angle`. A `directional`
+  light is refused with `unsupported_light_kind`; the Sky owns the only Sun.
 - **Material instances**: `baseMaterialId` must resolve to a known material; `roughness` and
   `metalness` are unit-interval.
 - **Texture URIs** must be safe root-relative public paths — no scheme, no `//`, no backslash, no

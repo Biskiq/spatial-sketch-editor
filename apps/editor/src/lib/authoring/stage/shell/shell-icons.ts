@@ -96,6 +96,5 @@ export const shellIcons: Readonly<Record<string, string>> = {
   lightShape: '<path d="M4 18 L12 5 L20 18 Z"/><path d="M4 18 H20" stroke-dasharray="2.5 2"/>',
   lightPosition: '<circle cx="12" cy="12" r="7"/><path d="M12 2 V5.5 M12 18.5 V22 M2 12 H5.5 M18.5 12 H22"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
   lightShadows: '<circle cx="9.5" cy="9.5" r="4.5"/><ellipse cx="14.5" cy="17" rx="5.5" ry="2.2" stroke-dasharray="2.5 2"/><path d="M14 14.5 L18 18"/>',
-  duplicate: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15 V6 A2 2 0 0 1 7 4 H16"/><path d="M13.5 11 V16 M11 13.5 H16"/>',
-  direction: '<circle cx="12" cy="12" r="8.5"/><path d="M12 2.5 V5.5 M12 18.5 V21.5 M2.5 12 H5.5 M18.5 12 H21.5"/><path d="M12 6.5 L15 14 L12 12.5 L9 14 Z" fill="currentColor" stroke="none"/>',
+  duplicate: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15 V6 A2 2 0 0 1 7 4 H16"/><path d="M13.5 11 V16 M11 13.5 H16"/>'
 };
