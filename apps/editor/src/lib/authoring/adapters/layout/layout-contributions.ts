@@ -28,7 +28,9 @@ import LayoutInkPalette from './LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './LayoutPlacementInstrument.svelte';
 import LayoutCardFields from './LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+import { wallFace } from '$lib/authoring/layout/wall-face-store';
 import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
+import { wallFaceFrame, wallSheetFaceFrame } from '$lib/layout/wall-face';
 import { droppedRoomRelationWords, roomDuplicateRefusalWords, wallSplitRefusalWords } from './refusals';
 import { independentWallOverlapGuides } from './room-overlap-cue';
 import {
@@ -1027,6 +1029,70 @@ export function createLayoutContributions({
 			}
 			if (cardSubject.sourceKind !== 'wall') return [];
 			const wallId = cardSubject.sourceId;
+			// A6 — Face is one explicit Look action over the landed `face` intent.
+			// Layout supplies the frame (bounds + look); the Camera derives the pose
+			// and the route owns the clock, so nothing here writes a camera. Put back
+			// restores the exact standpoint Face started from and is the action when
+			// this Wall is the faced one.
+			const facing = wallFace.isActive(wallId);
+			const faceAction: StageCardAction = {
+				id: 'layout-wall-face',
+				label: facing ? 'Put back' : 'Face this wall',
+				detail: facing
+					? 'Returns the Camera to the view it had before Face.'
+					: 'Squares the Camera to this Wall or its unrolled sheet. Put back returns to where you were looking.',
+				run: async () => {
+					if (wallFace.isActive(wallId)) {
+						const outcome = wallFace.putBack(wallId);
+						if (outcome.kind === 'refused') {
+							return {
+								kind: 'refused',
+								message:
+									outcome.reason === 'no-camera'
+										? 'The Stage has no Camera to put back.'
+										: 'The Camera could not return to where it was.'
+							};
+						}
+						services.stage.notifySurfaceChange();
+						return { kind: 'accepted' };
+					}
+					const wall = context.snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === wallId);
+					if (wall === undefined) {
+						return { kind: 'refused', message: 'That Wall is no longer in the project.' };
+					}
+					const session = wallUnfold.state;
+					const evaluation = services.stage.evaluation();
+					if (evaluation === null) {
+						return { kind: 'refused', message: 'The Stage is not ready to face a Wall.' };
+					}
+					const frame = session !== null && session.wallId === wallId
+						? wallSheetFaceFrame({
+								wall,
+								state: session,
+								sideAngle: wallUnfold.presentationAngle,
+								floorY: context.snapshot.domain.datumMeters
+							})
+						: wallFaceFrame(wall, {
+								pose: evaluation.pose,
+								reading: evaluation.settledReading
+							});
+					if (frame === null) {
+						return { kind: 'refused', message: 'That Wall has no face to square the view to.' };
+					}
+					const outcome = wallFace.face({ wallId, frame });
+					if (outcome.kind === 'refused') {
+						return {
+							kind: 'refused',
+							message:
+								outcome.reason === 'no-camera'
+									? 'The Stage has no Camera to face this Wall from.'
+									: 'The Camera could not face this Wall.'
+						};
+					}
+					services.stage.notifySurfaceChange();
+					return { kind: 'accepted' };
+				}
+			};
 			// One shared action channel for the active knot and the Wall's
 			// shape. Each run previews the retained planner first and then accepts
 			// one captured intent, so a refusal writes nothing and an acceptance is
@@ -1148,6 +1214,7 @@ export function createLayoutContributions({
 			const preview = deletionPreview(wallId);
 			if (preview.kind === 'refused') {
 				return [
+					faceAction,
 					splitAction,
 					...curveActions,
 					{
@@ -1160,6 +1227,7 @@ export function createLayoutContributions({
 				];
 			}
 			return [
+				faceAction,
 				splitAction,
 				...curveActions,
 				{

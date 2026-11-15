@@ -107,6 +107,27 @@ overlap never adjusts the amount automatically and is never written to the docum
   **Put back**, **pin** and **bend point** are the UI words; Unfold, Refold, Flip, Done and Peel
   are not.
 
+## Facing a Wall
+
+**Face this wall** is one explicit Look action on the selected Wall, offered from the Card's `•••`
+menu. Layout supplies the framed **bounds** and a horizontal **look** direction; camera-core's
+`face` intent derives the eye, target and distance, and its evaluator realises them, so no UI
+component writes the Camera. A folded Wall is faced at the station nearest the view centre, on the
+side the settled eye is on; the Plan reading has no eye and faces the Wall's left/Room face. A
+curved Wall is faced as one plane at that station and framed by its whole extent as a face
+footprint — the extent moved so the side the eye is on sits on the target plane, which keeps the
+near station inside the same padding instead of magnifying it past the frame. That is still a
+conservative frame that keeps the Wall body in view, not an exact elevation.
+
+While the Wall's Unroll sheet is open the same action faces the **displayed sheet**: its displayed
+extent at the current peel amount and side angle, square to the displayed face at the pin. Facing
+changes no peel, pin or Wall.
+
+**Put back** returns the Camera to the exact standpoint Face started from — pose and reading — and
+is the action offered while that Wall is the faced one. One Face exists at a time. It is a session
+reading: never serialized, never in history, Undo does not change it, and it never reaches Preview,
+a snapshot or a release. Entering Unroll never invokes Face; entry preserves the current view.
+
 ## Overlap is placement, not connection
 
 Junction ID equality is the only connectivity fact. Proximity may suggest a snap, but an

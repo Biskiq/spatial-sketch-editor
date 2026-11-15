@@ -62,6 +62,7 @@
 		type ViewportRect
 	} from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import { wallFace } from '$lib/authoring/layout/wall-face-store';
 	import {
 		wallUnfoldShouldReturn,
 		wallUnfoldViewCentreStation
@@ -698,6 +699,8 @@
 	projectSession.bindNavigation();
 
 	function resetViewContext(): void {
+		// A replaced project has no standpoint to put back into the new Camera.
+		wallFace.clear();
 		selection = null;
 		shell.setTask(null);
 		revealed = [];
@@ -855,6 +858,30 @@
 	function orbit(dAzimuth: number, dElevation: number): void {
 		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
 	}
+
+	// A6 — the Face reading's one camera port. The route owns the session clock and
+	// the reduced-motion rule; the Layout adapter supplies only bounds and a look
+	// direction, and Put back restores the exact standpoint Face started from.
+	$effect(() => {
+		wallFace.setCameraPort({
+			standpoint: () => facade?.camera.state() ?? null,
+			face: (frame) => {
+				const stage = facade;
+				const viewport = rect;
+				if (stage === null || viewport === null) return false;
+				const result = submit(
+					{ kind: 'face', bounds: frame.bounds, look: frame.look, rect: viewport },
+					readingIntentClockSeconds(shell.reducedMotion, nowSeconds())
+				);
+				return result?.kind === 'accepted';
+			},
+			putBack: (entry) => facade?.camera.restoreStandpoint(entry) ?? false
+		});
+		return () => {
+			wallFace.setCameraPort(null);
+			wallFace.clear();
+		};
+	});
 
 	$effect(() => {
 		wallUnfold.setCameraExecutor((request) => {

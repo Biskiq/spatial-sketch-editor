@@ -314,6 +314,7 @@ describe('T1 A1 — Split wall', () => {
 		});
 		expect(actions.map((action) => action.id)).toEqual([
 			'layout-wall-delete',
+			'layout-wall-face',
 			'layout-wall-split'
 		]);
 		const split = actions.find((action) => action.id === 'layout-wall-split')!;

@@ -2048,6 +2048,7 @@ describe('R217.S15 — gesture numeric entry', () => {
 		// mode and no curve vocabulary leaks in; unfold entry lives in the Card foot.
 		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
 				'layout-wall-delete',
+				'layout-wall-face',
 				'layout-wall-split'
 			]);
 
