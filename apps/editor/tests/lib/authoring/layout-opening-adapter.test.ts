@@ -21,7 +21,11 @@ import {
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	captureUnitSave,
+	readUnitEnvelopeForSave,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -32,6 +36,7 @@ import { stageCardActions } from '$lib/authoring/stage/stage-contributions';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
+import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import {
 	classifyOpeningHost,
 	inkSurface,
@@ -494,6 +499,267 @@ describe('T1.P02.S03 — Opening placement', () => {
 		controller.cancel();
 		controller.setReading('opening');
 		expect(inkSurface()!.snapshot().reading).toBe('opening');
+	});
+
+	it('places pointed Doors and Windows through the Ink options, previewing what acceptance writes', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		controller.setReading('opening');
+		// The plate's Pointed control writes exactly this through the one controller.
+		controller.setOpeningOptions({ kind: 'door', profile: 'pointed', width: 1, height: 2.1, sillHeight: 0 });
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted.facade, [3, 0]);
+		mounted.facade.pointerIntent({ phase: 'move', css: at, evaluationId });
+		const preview = inkSurface()!.snapshot().opening!;
+		expect(preview).toMatchObject({
+			kind: 'door',
+			profile: 'pointed',
+			width: 1,
+			height: 2.1,
+			sillHeight: 0,
+			canPlace: true
+		});
+		expect(preview.offset).toBeCloseTo(3, 2);
+
+		mounted.facade.pointerIntent({ phase: 'down', css: at, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const door = acceptedLayout(mounted.facade).openings[0]!;
+		expect(door).toMatchObject({
+			wallId: mounted.wallId,
+			kind: 'door',
+			profile: 'pointed',
+			width: 1,
+			height: 2.1,
+			sillHeight: 0
+		});
+		// Preview/commit parity: the offset shown under the pointer is the written one.
+		expect(door.offset).toBeCloseTo(preview.offset!, 6);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+
+		// The compiled head is the canonical pointed profile: rise half the width,
+		// apex at the Opening's full height, and a lintel that carries it.
+		let wall = mounted.facade.snapshot().domain.geometry.walls.find(
+			(candidate) => candidate.wallId === mounted.wallId
+		)!;
+		let compiled = wall.openings.find((opening) => opening.openingId === door.id)!;
+		expect(compiled.profile).toBe('pointed');
+		expect(compiled.profileShape?.kind).toBe('pointed');
+		expect(compiled.profileShape?.rise).toBeCloseTo(0.5, 9);
+		const boundary = compiled.profileShape!.topBoundary;
+		expect(boundary).toHaveLength(3);
+		expect(boundary[0]![0]).toBeCloseTo(0, 9);
+		expect(boundary[0]![1]).toBeCloseTo(1.6, 9);
+		expect(boundary[1]).toEqual([0.5, 2.1]);
+		expect(boundary[2]![0]).toBeCloseTo(1, 9);
+		expect(boundary[2]![1]).toBeCloseTo(1.6, 9);
+		const doorLintel = wall.sections.find(
+			(section) => section.openingId === door.id && section.kind === 'lintel'
+		)!;
+		expect(doorLintel.profile?.kind).toBe('pointed');
+		expect(doorLintel.profileBaseY).toBe(0);
+
+		// Undo removes the pointed Opening; Redo restores the same id and bytes.
+		const afterDoor = mounted.facade.snapshot().canonicalJson;
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).openings).toHaveLength(0);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).openings.map((opening) => opening.id)).toEqual([door.id]);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(afterDoor);
+
+		// The same controller places a pointed Window by exact offset, clear of the Door.
+		mounted.facade.camera.evaluate(RECT, 2);
+		const windowController = armInk(mounted.facade);
+		windowController.setReading('opening');
+		windowController.setOpeningOptions({ kind: 'window', profile: 'pointed', width: 1.2, height: 1.6, sillHeight: 1 });
+		// Typed placement reads the live selection, so name the host explicitly.
+		selectSubject(mounted.facade, 'wall', mounted.wallId);
+		windowController.placeOpening('1');
+		await eventually(() => acceptedLayout(mounted.facade).openings.length === 2);
+		const opened = acceptedLayout(mounted.facade).openings;
+		const window = opened.find((opening) => opening.kind === 'window')!;
+		expect(window).toMatchObject({ profile: 'pointed', width: 1.2, height: 1.6, sillHeight: 1 });
+		expect(window.offset).toBeCloseTo(1, 6);
+
+		wall = mounted.facade.snapshot().domain.geometry.walls.find(
+			(candidate) => candidate.wallId === mounted.wallId
+		)!;
+		compiled = wall.openings.find((opening) => opening.openingId === window.id)!;
+		expect(compiled.profileShape?.rise).toBeCloseTo(0.6, 9);
+		expect(wall.sections.some((section) => section.openingId === window.id && section.kind === 'side')).toBe(true);
+		const windowLintel = wall.sections.find(
+			(section) => section.openingId === window.id && section.kind === 'lintel'
+		)!;
+		expect(windowLintel.profileBaseY).toBe(1);
+
+		// The accepted document is an ordinary canonical source: Save/Load admits it unchanged.
+		const captured = await captureUnitSave({
+			snapshot: mounted.host.coordinator().acceptedSnapshot(),
+			operationId: 'a7-1-pointed-opening-roundtrip',
+			precondition: { kind: 'create-only' }
+		});
+		expect(captured.kind).toBe('captured');
+		if (captured.kind !== 'captured') throw new Error(`Save capture refused: ${captured.message}`);
+		const reloaded = await readUnitEnvelopeForSave(captured.capture.canonicalJson);
+		expect(reloaded.kind).toBe('read');
+		if (reloaded.kind !== 'read') throw new Error(`Save reload refused: ${reloaded.message}`);
+		const readmitted = await admitSource(reloaded.envelope, {
+			sessionEpoch: 'session-a7-1-pointed-opening-roundtrip',
+			acceptedRevision: captured.capture.acceptedRevision
+		});
+		expect(readmitted.kind).toBe('admitted');
+		if (readmitted.kind !== 'admitted') throw new Error(`Reload admission refused: ${readmitted.kind}`);
+		expect(
+			stageEnvelope(readmitted.snapshot).units.layout.data.openings.map((opening) => [
+				opening.id,
+				opening.kind,
+				opening.profile,
+				opening.width,
+				opening.height,
+				opening.sillHeight
+			])
+		).toEqual(
+			opened.map((opening) => [
+				opening.id,
+				opening.kind,
+				opening.profile,
+				opening.width,
+				opening.height,
+				opening.sillHeight
+			])
+		);
+	});
+
+	it('edits a pointed Opening through the Card without dropping its profile, and refuses a head that no longer fits', async () => {
+		const mounted = await mount();
+		const controller = armInk(mounted.facade);
+		controller.setReading('opening');
+		controller.setOpeningOptions({ kind: 'door', profile: 'pointed', width: 1, height: 2.1, sillHeight: 0 });
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted.facade, [2, 0]);
+		mounted.facade.pointerIntent({ phase: 'down', css: at, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
+		await eventually(() => acceptedLayout(mounted.facade).openings.length === 1);
+		const created = acceptedLayout(mounted.facade).openings[0]!;
+		mounted.facade.camera.evaluate(RECT, 2);
+
+		// The Card's own measure writer: one accepted edit, identity and profile kept.
+		const instrument = () =>
+			createLayoutInstrument({
+				subject: { kind: 'opening', id: created.id },
+				document: acceptedLayout(mounted.facade),
+				projectId: PROJECT_ID,
+				contentRevision: mounted.facade.snapshot().domain.unitRevisions.layout,
+				port: mounted.services.authoring
+			})!;
+		let widthWriter = instrument();
+		widthWriter.edit('width', '1.4');
+		expect(await widthWriter.commit('width')).toEqual({ kind: 'accepted' });
+		const widened = acceptedLayout(mounted.facade).openings[0]!;
+		expect(widened).toMatchObject({ id: created.id, profile: 'pointed', width: 1.4, height: 2.1 });
+		mounted.facade.camera.evaluate(RECT, 3);
+		let compiled = mounted.facade
+			.snapshot()
+			.domain.geometry.walls.flatMap((wall) => wall.openings)
+			.find((opening) => opening.openingId === created.id)!;
+		expect(compiled.profileShape?.rise).toBeCloseTo(0.7, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+
+		// Undo and Redo replay the same Opening id with its profile intact.
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({
+			id: created.id,
+			profile: 'pointed',
+			width: 1
+		});
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({
+			id: created.id,
+			profile: 'pointed',
+			width: 1.4
+		});
+
+		// A height whose half-width head no longer fits is refused in words; the
+		// canonical opening-set gate writes nothing.
+		mounted.facade.camera.evaluate(RECT, 3);
+		const settled = mounted.facade.snapshot().canonicalJson;
+		const heightWriter = instrument();
+		heightWriter.edit('height', '0.5');
+		const refused = await heightWriter.commit('height');
+		if (refused.kind !== 'refused') throw new Error(`expected a refusal, got ${refused.kind}`);
+		expect(refused.message.length).toBeGreaterThan(0);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(settled);
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({
+			id: created.id,
+			profile: 'pointed',
+			width: 1.4,
+			height: 2.1
+		});
+	});
+
+	it('edits a pointed Window through the Card and keeps its sill and profile', async () => {
+		const mounted = await mount();
+		const controller = armInk(mounted.facade);
+		controller.setReading('opening');
+		controller.setOpeningOptions({ kind: 'window', profile: 'pointed', width: 1.2, height: 1.2, sillHeight: 1 });
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted.facade, [4, 0]);
+		mounted.facade.pointerIntent({ phase: 'down', css: at, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
+		await eventually(() => acceptedLayout(mounted.facade).openings.length === 1);
+		const created = acceptedLayout(mounted.facade).openings[0]!;
+		expect(created).toMatchObject({ kind: 'window', profile: 'pointed', sillHeight: 1 });
+		mounted.facade.camera.evaluate(RECT, 2);
+
+		const instrument = () =>
+			createLayoutInstrument({
+				subject: { kind: 'opening', id: created.id },
+				document: acceptedLayout(mounted.facade),
+				projectId: PROJECT_ID,
+				contentRevision: mounted.facade.snapshot().domain.unitRevisions.layout,
+				port: mounted.services.authoring
+			})!;
+		const widthWriter = instrument();
+		widthWriter.edit('width', '1.4');
+		expect(await widthWriter.commit('width')).toEqual({ kind: 'accepted' });
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({
+			id: created.id,
+			kind: 'window',
+			profile: 'pointed',
+			width: 1.4,
+			height: 1.2,
+			sillHeight: 1
+		});
+		const compiled = mounted.facade
+			.snapshot()
+			.domain.geometry.walls.flatMap((wall) => wall.openings)
+			.find((opening) => opening.openingId === created.id)!;
+		expect(compiled.profileShape?.rise).toBeCloseTo(0.7, 9);
+
+		// A window head that would rise past its height is refused in words.
+		mounted.facade.camera.evaluate(RECT, 3);
+		const settled = mounted.facade.snapshot().canonicalJson;
+		const heightWriter = instrument();
+		heightWriter.edit('height', '0.6');
+		const refused = await heightWriter.commit('height');
+		if (refused.kind !== 'refused') throw new Error(`expected a refusal, got ${refused.kind}`);
+		expect(refused.message.length).toBeGreaterThan(0);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(settled);
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({
+			id: created.id,
+			profile: 'pointed',
+			width: 1.2
+		});
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({
+			id: created.id,
+			profile: 'pointed',
+			width: 1.4
+		});
 	});
 });
 

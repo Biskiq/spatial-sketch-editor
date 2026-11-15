@@ -13,7 +13,7 @@
     {
       "id": "layout.opening-hosted",
       "area": "T1",
-      "summary": "Place and remove door and window Openings hosted by straight Walls",
+      "summary": "Place and remove door and window Openings hosted by straight Walls, with rectangular, rounded and pointed profiles",
       "northStar": "north-star.md#build--world-architecture",
       "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**"],
       "design": null,

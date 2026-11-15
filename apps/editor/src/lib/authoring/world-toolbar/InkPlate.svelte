@@ -217,9 +217,14 @@
 					title="Arch"
 					onclick={() => setOpening(openingKind, 'rounded')}
 				><WorldIcon name="op-arch" size={19} /></button>
-				<button type="button" class="opt" aria-label="Pointed" title="Pointed openings arrive with T1" disabled>
-					<WorldIcon name="op-niche" size={19} />
-				</button>
+				<button
+					type="button"
+					class="opt"
+					aria-label="Pointed"
+					aria-pressed={openingProfile === 'pointed'}
+					title="Pointed"
+					onclick={() => setOpening(openingKind, 'pointed')}
+				><WorldIcon name="op-niche" size={19} /></button>
 			</div>
 		</div>
 	{/if}
