@@ -1,7 +1,27 @@
 import type { Page } from '@playwright/test';
 import { handlePoint, selectWallById } from './flow';
 import { readLedger } from './ledger';
-import { pickIdentity } from './spot-measurement';
+import { dragStall, pickIdentity } from './spot-measurement';
+
+/** Serialized into the browser: the element the browser hit-tests at a viewport point. */
+export function describeHitTarget(point: { x: number; y: number }): string | null {
+	const element = document.elementFromPoint(point.x, point.y);
+	if (element === null) return null;
+	const classes = element.getAttribute('class')?.trim().split(/\s+/).filter(Boolean) ?? [];
+	return [element.tagName.toLowerCase(), ...classes].join('.');
+}
+
+/**
+ * Fail at the first missing link of the drag's acceptance chain. Only a drag
+ * that reached its commit waits for the accepted result.
+ */
+export async function requireDragCommit(page: Page, drag: { pressedAt: number; pressTarget: string | null }, wallId: string): Promise<void> {
+	// The release's commit mark is recorded in the pointerup task; one frame
+	// lets any same-task follow-up land before the ledger is read.
+	await page.evaluate(() => new Promise<void>((resolveFrame) => requestAnimationFrame(() => resolveFrame())));
+	const stall = dragStall((await readLedger(page)).records.filter((record) => record.time >= drag.pressedAt), wallId);
+	if (stall !== null) throw new Error(`Wall drag stalled at ${stall.boundary}: ${stall.reason}; press target ${drag.pressTarget ?? 'none'}`);
+}
 
 export type WorkSnapshot = { spans: Record<string, { count: number; totalMs: number; maxMs: number }>; counts: Record<string, number> };
 

@@ -57,6 +57,13 @@ The accepted source content ID must match a nonempty Stage render before the pre
 is available. Raw start, acceptance, render-end and proxy timestamps stay in the JSON.
 A missing or ambiguous marker is incomplete. Undo starts at its fresh product `command:undo`.
 
+A Wall drag is checked link by link before its accepted result is awaited: an adapter-claimed
+`pointermove` input, a `wall-preview` install for that Wall, an `input:release` with phase `up`,
+and that release's `command:commit`. The first missing link fails the run at once, naming the
+boundary and the element the browser hit-tested at the press; only a committed drag waits for
+`accepted-result` under the tier's acceptance allowance. `flows/wall-end-drag.spec.ts` is the
+one-Room correctness flow for that chain.
+
 The presentation column is a conservative rAF opportunity **after** the relevant render submission,
 not physical scanout. Drag uses its matching overlay update and the existing rAF proxy. Pan uses
 capture-handler receipt to the first rAF timestamp at or after receipt (earlier offers are retained, never clamped to zero), with Chrome TaskDuration over that move's observation window as
