@@ -77,12 +77,27 @@ export async function clickPick(page: Page, wallId: string) {
 	const before = await workSnapshot(page);
 	const marksBefore = (await readLedger(page)).records.length;
 	await page.mouse.click(point.x, point.y);
-	await page.waitForTimeout(50);
+	// The pick is presented in a frame task, so a fixed sleep can read the ledger
+	// before its mark exists. Wait, bounded, for this click's own pick record.
+	await page
+		.waitForFunction(
+			(count) =>
+				((window as unknown as { __BISKIQ_PERF_RECORDS__?: { name: string }[] }).__BISKIQ_PERF_RECORDS__ ?? [])
+					.slice(count)
+					.some((record) => record.name === 'stage:pick'),
+			marksBefore,
+			{ timeout: 2_000 }
+		)
+		.catch(() => undefined);
 	const ledger = await readLedger(page);
 	const marks = ledger.records.slice(marksBefore).filter((record) => record.name === 'stage:pick');
 	const mark = marks.length === 1 ? marks[0] : undefined;
 	const after = await workSnapshot(page);
-	const selected = await page.locator('button.item-row[aria-current="true"]', { hasText: wallId }).count();
+	// The Index labels a Wall by its display name ("Wall 1"), so identity comes
+	// from the row's source id, exactly as the Index selection above does.
+	// Issue #346: matching the raw id in the row *text* reported every correct
+	// known-Wall pick as unselected.
+	const selected = await page.locator(`li.item[data-source-id$=":${wallId}"] button.item-row[aria-current="true"]`).count();
 	return { elapsedMs: typeof mark?.detail?.elapsedMs === 'number' ? mark.detail.elapsedMs : null,
 		resolved: pickIdentity(mark, wallId) === null ? null : pickIdentity(mark, wallId) === true && selected === 1,
 		indexBuilds: countDelta(before, after, 'plan-pick:node-built'), mark: mark ?? null, point, selectionCleared, selected };

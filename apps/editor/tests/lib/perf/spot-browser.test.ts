@@ -39,7 +39,21 @@ it('closes the overlay before a real canvas click and requires a new hit of the 
 			selected = true;
 			target.__BISKIQ_PERF_RECORDS__!.push({ kind: 'mark', name: 'stage:pick', time: 1, sequence: 0, detail: { elapsedMs: 2, outcome: 'resolved', sourceId: 'known', sourceKind: 'wall' } });
 		} },
-		waitForTimeout: async () => {}, locator: () => ({ count: async () => selected ? 1 : 0 })
+		waitForTimeout: async () => {},
+		// The harness waits for this click's own pick mark before reading the
+		// ledger; the fake runs the same predicate against the test window and
+		// fails like a timed-out wait when no record exists.
+		waitForFunction: async (fn: (arg?: unknown) => unknown, arg?: unknown) => {
+			if (fn(arg) !== true) throw new Error('the pick mark never appeared');
+		},
+		locator: (selector: string) => {
+			// Issue #346: the Index row shows a generated label ("Wall 1"), so the
+			// selected row is found by source identity, never by the raw id in text.
+			expect(selector).toContain('li.item[data-source-id$=":known"]');
+			expect(selector).toContain('aria-current="true"');
+			expect(selector).not.toContain('hasText');
+			return { count: async () => selected ? 1 : 0 };
+		}
 	} as unknown as Page;
 	expect(await clickPick(page, 'known')).toMatchObject({ resolved: true, elapsedMs: 2, selected: 1 });
 	target.__BISKIQ_PERF_RECORDS__ = [];
