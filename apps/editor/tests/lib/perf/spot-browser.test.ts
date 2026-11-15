@@ -47,11 +47,20 @@ it('closes the overlay before a real canvas click and requires a new hit of the 
 			if (fn(arg) !== true) throw new Error('the pick mark never appeared');
 		},
 		locator: (selector: string) => {
-			// Issue #346: the Index row shows a generated label ("Wall 1"), so the
-			// selected row is found by source identity, never by the raw id in text.
-			expect(selector).toContain('li.item[data-source-id$=":known"]');
-			expect(selector).toContain('aria-current="true"');
-			expect(selector).not.toContain('hasText');
+			// Two different boundaries use the same locator. Before the click the
+			// harness asks the *general* selected-row question to prove Escape
+			// cleared the selection; after it, the row is found by source identity.
+			if (selector === 'button.item-row[aria-current="true"]') {
+				// The pre-click "is the selection cleared?" probe names no identity;
+				// `mouse.click` already proves it ran after Escape cleared the row.
+				expect(selector).not.toContain('data-source-id');
+			} else {
+				// Issue #346: the Index row shows a generated label ("Wall 1"), so
+				// the selected row is never matched by the raw id in its text.
+				expect(selector).toContain('li.item[data-source-id$=":known"]');
+				expect(selector).toContain('aria-current="true"');
+				expect(selector).not.toContain('hasText');
+			}
 			return { count: async () => selected ? 1 : 0 };
 		}
 	} as unknown as Page;
