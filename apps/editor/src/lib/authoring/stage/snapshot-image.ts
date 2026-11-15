@@ -14,11 +14,13 @@
  * E6 fixed it here. Before: a 50% grey surface rendered 128 on the Stage and
  * 55 in a snapshot. After: both 128.
  *
- * The transfer function is the exact sRGB encode, tabulated once over the 256
- * linear byte values. The target stays 8-bit (it is the shipped GPU cost); the
- * table therefore also bounds the residual error: one linear byte step becomes
- * at most a few sRGB levels in the darkest tones and one level in mid-tones.
- * E6 measured that residual rather than assuming it away.
+ * The transfer function is the exact sRGB encode of a **quantized** linear byte,
+ * tabulated once over the 256 values; it is not a lossless transfer. Eight-bit
+ * linear storage has almost no resolution in the shadows, so linear byte 1
+ * encodes to sRGB 13 while mid-tones land within a level or two. That coarseness
+ * belongs to the shipped 8-bit target, not to the encode. The encode removes the
+ * measured 55-vs-128 error; E6 measured what remains (mean ΔE00 0.61) rather
+ * than assuming it away.
  */
 
 /** The exact sRGB encode of one linear-light value in 0…1, as an 8-bit code. */

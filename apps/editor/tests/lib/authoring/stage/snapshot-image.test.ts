@@ -29,6 +29,9 @@ describe('linear readback to sRGB', () => {
 		// Linear 0.2159 is the mid-grey a linear target stores for #808080: the
 		// old path showed 55. Linear 0.502 is what 128 linear encodes to 188.
 		expect(linearByteToSrgbByte(0)).toBe(0);
+		// The darkest step is coarse by construction: the encode is exact, but an
+		// 8-bit linear target cannot resolve the shadows it holds.
+		expect(linearByteToSrgbByte(1)).toBe(13);
 		expect(linearByteToSrgbByte(55)).toBe(128);
 		expect(linearByteToSrgbByte(128)).toBe(188);
 		expect(linearByteToSrgbByte(255)).toBe(255);
