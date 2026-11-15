@@ -2295,6 +2295,59 @@ it('retains Box/Line choices while disclosure changes',async()=>{await openInk()
 		expect(target.querySelector('[data-layout-ink-palette] [data-ink-finish]')).toBeNull();
 	});
 
+	it('enables the Pointed profile in the Opening plate and places a pointed Door through it', async () => {
+		// The World row's Opening tool is what puts the plate on its Opening row;
+		// the dock's Ink key alone keeps the Wall row.
+		worldKey('Build').click();
+		await settled();
+		const openingTool = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .tier .sub')]
+			.find((node) => node.textContent?.trim().startsWith('Opening'));
+		if (openingTool === undefined) throw new Error('the Build family offers no Opening tool');
+		openingTool.click();
+		await settled();
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+		expect(inkSurface()?.snapshot().reading).toBe('opening');
+
+		const pointed = target.querySelector<HTMLButtonElement>('[data-ink-plate] button[aria-label="Pointed"]');
+		if (pointed === null) throw new Error('the Opening plate offers no Pointed control');
+		expect(pointed.disabled).toBe(false);
+		expect(pointed.getAttribute('aria-pressed')).toBe('false');
+		pointed.click();
+		await settled();
+		expect(inkSurface()?.snapshot().opening?.profile).toBe('pointed');
+		expect(pointed.getAttribute('aria-pressed')).toBe('true');
+
+		// One press on the starter Wall's face through the same Ink controller.
+		const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === wallId)!;
+		const middle = wall.samples[Math.floor(wall.samples.length / 2)]!.point;
+		const at = projected([middle[0], 0, middle[1]]);
+		pointer('pointerdown', at);
+		pointer('pointerup', at);
+		await vi.waitFor(() => expect(stageLayout(facade().snapshot()).openings).toHaveLength(1));
+		const opening = stageLayout(facade().snapshot()).openings[0]!;
+		expect(opening).toMatchObject({
+			wallId,
+			kind: 'door',
+			profile: 'pointed',
+			width: 0.9,
+			height: 2.1,
+			sillHeight: 0
+		});
+		const compiled = facade()
+			.snapshot()
+			.domain.geometry.walls.flatMap((candidate) => candidate.openings)
+			.find((candidate) => candidate.openingId === opening.id)!;
+		expect(compiled.profileShape?.kind).toBe('pointed');
+		expect(compiled.profileShape?.rise).toBeCloseTo(0.45, 9);
+
+		// One press, one history step; Undo removes it and Redo restores the same id.
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
+		expect(stageLayout(facade().snapshot()).openings).toHaveLength(0);
+		expect(await (harness.host as StageAcceptanceHost).redo()).toMatchObject({ kind: 'installed' });
+		expect(stageLayout(facade().snapshot()).openings.map((candidate) => candidate.id)).toEqual([opening.id]);
+	});
+
 	it('draws the Index closed below 1280 px, opens it as a sheet with a scrim, and closes it by the scrim', async () => {
 		// Remount the same route at a constrained width.
 		unmount(component);
