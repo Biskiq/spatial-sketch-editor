@@ -332,9 +332,9 @@ commit (see Evidence).
 
 ## Gate C — E7 rendering performance and shadow budget
 
-**Status:** measured 2026-11-15 on `main` at `2d73bf6f`; one open, unmerged Tier 2 PR. Gate C is the
-final slice of the CP0 Rendering Foundation and is flagged for the owner checkpoint. D9 is
-**proposed**, not adopted.
+**Status:** measured 2026-11-15 on `main` at `2d73bf6f`; delivered in one open, unmerged Tier 2 PR
+([#351](https://github.com/Biskiq/spatial-sketch-editor/pull/351)). Gate C is the final slice of the
+CP0 Rendering Foundation and is flagged for the owner checkpoint. D9 is **proposed**, not adopted.
 
 Gate C asked for bounded Stage and Visitor readings on reference Worlds, not a benchmark campaign.
 It ran three Worlds through the shipped Stage and the visitor rendering path at 1280 × 720, DPR 1,
