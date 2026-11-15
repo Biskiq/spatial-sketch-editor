@@ -6,7 +6,7 @@ import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	mintLayoutIdCapture,
 	planDeleteWallFirstOpening,
-	resolveIsolatedRoomSubgraph,
+	resolveRoomCopyEnclosure,
 	isClosedWall,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
@@ -18,7 +18,8 @@ import {
 	type StageAdapterContext,
 	type StageCardAction,
 	type StageCardActionOutcome,
-	type StageCardSubject
+	type StageCardSubject,
+	type StageGuideContribution
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
@@ -28,7 +29,8 @@ import LayoutPlacementInstrument from './LayoutPlacementInstrument.svelte';
 import LayoutCardFields from './LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
-import { roomDuplicateRefusalWords, wallSplitRefusalWords } from './refusals';
+import { droppedRoomRelationWords, roomDuplicateRefusalWords, wallSplitRefusalWords } from './refusals';
+import { independentWallOverlapGuides } from './room-overlap-cue';
 import {
 	LAYOUT_OPENING_RESIZE_KIND,
 	openingDeleteIntent,
@@ -146,6 +148,23 @@ export function createLayoutContributions({
 	requestRoomDuplicate,
 	removeSelectedKnot
 }: ContributionPorts) {
+	/**
+	 * A5 — the derived **overlaps, not joined** cue. One query over this
+	 * binding's accepted document, computed once and projected by the host with
+	 * every other guide. Presentation only: it is never authored, planned,
+	 * serialized or written to history, and it cannot be pressed.
+	 */
+	let overlapGuides: readonly StageGuideContribution[] | null = null;
+	function guides(): readonly StageGuideContribution[] {
+		if (overlapGuides === null) {
+			overlapGuides = independentWallOverlapGuides(
+				document,
+				context.snapshot.domain.datumMeters
+			);
+		}
+		return overlapGuides;
+	}
+
 	/**
 	 * The marks a selected Wall or Opening publishes.
 	 *
@@ -740,6 +759,7 @@ export function createLayoutContributions({
 
 	const contributions = {
 		hostTools: ['erase', 'measure'],
+		guides,
 		/**
 		 * The Eraser reuses the Card's own delete for a Wall or an Opening — the
 		 * same planner-derived disclosure and the same one F4 entry. Every other
@@ -886,10 +906,12 @@ export function createLayoutContributions({
 		 * returns the host Wall to the selection.
 		 */
 		cardActions(cardSubject: StageCardSubject): readonly StageCardAction[] {
-			// A4 — Duplicate is the Room's one scoped action. The disclosure comes
-			// from the same isolation planner the acceptance re-proves; a
-			// non-isolated Room states why, naming every involved Wall, instead of
-			// offering a copy that would have to detach shared architecture.
+			// A5 — Duplicate is the Room's one scoped action and it works for every
+			// Room. The disclosure comes from the same copy-enclosure resolver the
+			// acceptance re-proves: a shared boundary Wall copies privately, and
+			// every Door relation that would leave the copy is named before the
+			// click. Only a genuine refusal (an unknown Room, an unresolved
+			// boundary or a read-only profile object) withholds the action.
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
 				const roomId = cardSubject.sourceId;
 				const room = document.rooms.find((entry) => entry.id === roomId);
@@ -907,14 +929,17 @@ export function createLayoutContributions({
 						}
 					];
 				}
-				const isolation = resolveIsolatedRoomSubgraph(document, roomId);
+				const resolved = resolveRoomCopyEnclosure(document, roomId);
 				let detail: string;
-				if (isolation.kind === 'rejected') {
-					detail = roomDuplicateRefusalWords(document, isolation.rejection);
+				if (resolved.kind === 'rejected') {
+					detail = roomDuplicateRefusalWords(document, resolved.rejection);
 				} else {
-					const objects = isolation.subgraph.associatedObjectIds.length;
+					const enclosure = resolved.enclosure;
+					const objects = enclosure.associatedObjectIds.length;
+					const dropped = droppedRoomRelationWords(document, roomId, enclosure.droppedRelations);
 					detail = [
-						`Copies ${room.name} with its ${roomDuplicateCount(isolation.subgraph.wallIds.length, 'Wall')}, ${roomDuplicateCount(isolation.subgraph.junctionIds.length, 'Junction')}, ${roomDuplicateCount(isolation.subgraph.openingIds.length, 'Opening')}${objects === 0 ? '' : ` and ${roomDuplicateCount(objects, 'object')}`}.`,
+						`Copies ${room.name} as a free island with its ${roomDuplicateCount(enclosure.wallIds.length, 'Wall')}, ${roomDuplicateCount(enclosure.junctionIds.length, 'Junction')}, ${roomDuplicateCount(enclosure.openingIds.length, 'Opening')}${objects === 0 ? '' : ` and ${roomDuplicateCount(objects, 'object')}`}.`,
+						...(dropped === null ? [] : [dropped]),
 						'The copy starts clear of its source; move the pointer, then click to place it.'
 					].join(' ');
 				}
@@ -928,7 +953,7 @@ export function createLayoutContributions({
 						group: 'secondary',
 						detail,
 						run: async () => {
-							if (isolation.kind === 'rejected') {
+							if (resolved.kind === 'rejected') {
 								return { kind: 'refused', message: detail };
 							}
 							return requestRoomDuplicate(roomId);

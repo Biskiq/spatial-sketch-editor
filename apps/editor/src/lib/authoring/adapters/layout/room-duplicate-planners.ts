@@ -1,9 +1,9 @@
 /**
- * One Duplicate intent over the retained `planDuplicateIsolatedRoom`.
+ * One Duplicate intent over `planDuplicateRoom` (T1 A5).
  *
  * | Operation | Kind | Canonical planner |
  * | --- | --- | --- |
- * | Duplicate one isolated Room | `layout-room-duplicate` | `planDuplicateIsolatedRoom` |
+ * | Duplicate any Room as a free island | `layout-room-duplicate` | `planDuplicateRoom` |
  *
  * The planner is the same deterministic clone/remap planner Layout core
  * owns. It receives the complete translation the pointer proposal last
@@ -20,24 +20,32 @@
  * source Wall     <w>  → <w>-copy.<nonce>   same thickness/height/name,
  *                                            centerline + delta, remapped ends
  * source Opening  <o>  → <o>-copy.<nonce>   same kind/name/offset/width/height/
- *                                            sill/profile, host remapped
+ *                                            sill/profile, host remapped,
+ *                                            connectsRoomIds dropped
  * source Room     <r>  → <r>-copy.<nonce>   name "<name> copy" (or the next
  *                                            free suffix), remapped boundary,
  *                                            same thicknesses
  * associated object <x> → <x>-copy.<nonce>  same shape, + delta, room remapped
  * ```
  *
+ * A boundary Wall shared with another Room copies privately: the source keeps
+ * its Wall and Junction ids, the copy gets new ones, and no Wall is split or
+ * welded. A Door relation that names a Room outside the copy is dropped and
+ * reported by the planner for the Card and instrument's words; the Opening
+ * itself still copies.
+ *
  * The one placement rule this seam adds is A4's own: a copy may not be
  * committed **coincident with its source**. Zero translation is refused before
  * the canonical planner runs, so no history entry can ever record it. A
  * non-coincident overlap remains ordinary independent placement, exactly as the
- * Layout contract states; A5 owns the general copy and its overlap cue.
+ * Layout contract states; the derived **overlaps, not joined** cue reports it
+ * and nothing is welded.
  */
 import {
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	materializeLayoutSourceForCapture,
-	planDuplicateIsolatedRoom,
+	planDuplicateRoom,
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
 	recordPreparedCowCandidate,
@@ -177,7 +185,7 @@ function roomDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 			return refused(ROOM_DUPLICATE_COINCIDENT_MESSAGE, 'coincident_with_source');
 		}
 
-		const plan = planDuplicateIsolatedRoom(
+		const plan = planDuplicateRoom(
 			baseline,
 			{ roomId, delta: [deltaX, deltaZ] },
 			capture,

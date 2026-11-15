@@ -13,6 +13,7 @@ import {
 	wallFirstWallLength,
 	type LayoutDocumentWallFirst,
 	type LayoutWallOpening,
+	type RoomCopyDroppedRelation,
 	type WallOpeningRejection
 } from '@portfolio/layout-core';
 
@@ -262,6 +263,38 @@ export type RoomDuplicateRejection = {
  * Rooms and Walls; every id that resolves to a Wall is named here, with its
  * authored name when it has one.
  */
+/**
+ * The consequence the copy states before it is committed: every Door relation
+ * that cannot travel with the free island, naming the Opening and the Room the
+ * relation leaves. `null` when the Room has none.
+ *
+ * The relation itself has no id; the Opening keeps its id and loses the
+ * relation, which is why the sentence names both the Opening and its outside
+ * Room instead of a relation id.
+ */
+export function droppedRoomRelationWords(
+	document: LayoutDocumentWallFirst,
+	sourceRoomId: string,
+	relations: readonly RoomCopyDroppedRelation[]
+): string | null {
+	if (relations.length === 0) return null;
+	const parts = relations.map((relation) => {
+		const opening = document.openings.find((entry) => entry.id === relation.openingId);
+		const openingLabel = opening?.name ?? (opening?.kind === 'window' ? 'Window' : 'Door');
+		const outside = relation.roomIds
+			.filter((roomId) => roomId !== sourceRoomId)
+			.map((roomId) => {
+				const room = document.rooms.find((entry) => entry.id === roomId);
+				return `"${room?.name ?? roomId}"`;
+			});
+		const target = outside.length === 0 ? 'another Room' : outside.join(' and ');
+		return `"${openingLabel}" to ${target}`;
+	});
+	return relations.length === 1
+		? `Drops the relation from ${parts[0]}.`
+		: `Drops ${relations.length} door relations: ${parts.join('; ')}.`;
+}
+
 export function roomDuplicateRefusalWords(
 	document: LayoutDocumentWallFirst,
 	rejection: RoomDuplicateRejection
