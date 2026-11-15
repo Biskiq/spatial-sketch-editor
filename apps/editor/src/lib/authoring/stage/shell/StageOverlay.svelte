@@ -6,7 +6,9 @@
 	 * produced by the same `ViewportEvaluation` the meshes were drawn with (the
 	 * host projects it and passes CSS points). This component only paints and
 	 * exposes keyboard focus for disclosure marks, so an overlay can never
-	 * disagree with the render.
+	 * disagree with the render. A disclosure mark is never a pointer target here
+	 * either: its press reaches the Stage resolver like any other mark's, so it
+	 * cannot shadow a neighbouring handle the resolver would have named.
 	 *
 	 * Selection is drawn by the Stage's own Canvas/Paper layer, never here: this
 	 * overlay owns **manipulation marks** (the shared ray/point/ring/track
@@ -278,14 +280,13 @@
 			aria-label={mark.role === 'disclose' ? 'Resize handles' : undefined}
 			aria-pressed={mark.role === 'disclose' ? mark.open : undefined}
 			onclick={mark.role === 'disclose' ? event => { event.stopPropagation(); onActivateDisclosure(mark.id); } : undefined}
-			onpointerdown={mark.role === 'disclose' ? event => event.stopPropagation() : undefined}
 			onkeydown={mark.role === 'disclose' ? (event) => onDisclosureKey(event, mark.id) : undefined}
 		>
 			<title>{mark.label}</title>
 			{#if mark.role === 'disclose'}
-				<!-- The W·D·H chip: click shows the size grips; a drag scales (where the domain allows). -->
+				<!-- The W·D·H chip: a press shows the size grips; a drag scales (where the domain allows).
+				     Both arrive through the Stage resolver; here the chip only paints and takes keyboard focus. -->
 				<g class="chip" class:open={mark.open} transform={`translate(${mark.anchor[0]} ${mark.anchor[1]})`}>
-					<rect class="toggle-hit" x="-22" y="-22" width="44" height="44" />
 					<rect class="glyph" x="-12" y="-12" width="24" height="24" rx="7" />
 					<path class="chip-icon" d="M-5,5 L5,-5 M-5,5 h4.2 M-5,5 v-4.2 M5,-5 h-4.2 M5,-5 v4.2" />
 				</g>
@@ -512,11 +513,9 @@
 		filter: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95));
 	}
 	.mark .glyph-line.dash { stroke-dasharray: 4 3.5; }
-	.mark .chip .toggle-hit { fill: transparent; stroke: none; filter: none; }
 	.mark .chip-icon { fill: none; stroke: var(--overlay-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 	.mark .chip.open .glyph { fill: var(--overlay-ink); }
 	.mark .chip.open .chip-icon { stroke: var(--shell-white); }
-	.mark.disclose { pointer-events: auto; cursor: pointer; }
 	/* A pointer click never paints the browser's focus ring; the keyboard still gets one. */
 	.mark.disclose:focus { outline: none; }
 	.mark.disclose:focus-visible .chip .glyph { stroke: var(--shell-leaf); stroke-width: 2.2; }

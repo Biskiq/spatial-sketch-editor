@@ -59,6 +59,40 @@ export async function collectGesture<T extends GestureObservation>(tier: SpotTie
 	return observations;
 }
 
+/** The Wall-drag acceptance chain, in the order the product records it. */
+export type DragBoundary = 'press-claimed' | 'preview-installed' | 'released' | 'committed';
+
+export type DragStall = { readonly boundary: DragBoundary; readonly reason: string };
+
+/**
+ * The first boundary a Wall drag's own ledger records never reached, or null
+ * when the drag reached its commit and only the accepted result remains.
+ *
+ * `records` are the ledger records from the press onward. The chain is the
+ * product's own instrumentation: an adapter-claimed `pointermove` input, a
+ * `wall-preview` install, an `input:release` whose phase is `up`, and the
+ * release's `command:commit` for this Wall. A missing link means no accepted
+ * result can follow, so the caller fails here instead of waiting for one.
+ */
+export function dragStall(records: readonly LedgerRecord[], wallId: string): DragStall | null {
+	const inputs = records.filter((record) => record.kind === 'input' && record.name === 'pointermove' && record.detail?.wallMode === true);
+	if (inputs.length === 0) {
+		const picks = records.filter((record) => record.name === 'stage:pick').length;
+		return { boundary: 'press-claimed', reason: `no adapter pointermove input was recorded (the press was not claimed by a Wall handle; ${picks} hover pick(s) recorded instead)` };
+	}
+	const installs = records.filter((record) => record.kind === 'install' && record.name === 'wall-preview' && record.detail?.wallId === wallId);
+	if (installs.length === 0) {
+		const refused = records.filter((record) => record.name === 'wall-preview:refused').length;
+		return { boundary: 'preview-installed', reason: `${inputs.length} input(s) but no wall-preview install for ${wallId} (${refused} refused preview(s))` };
+	}
+	const release = records.find((record) => record.name === 'input:release');
+	if (release === undefined) return { boundary: 'released', reason: 'no input:release was recorded for the press' };
+	if (release.detail?.phase !== 'up') return { boundary: 'released', reason: `the press ended with phase ${String(release.detail?.phase)}, not up` };
+	const commit = records.find((record) => record.name === 'command:commit' && record.detail?.wallId === wallId && record.time >= release.time);
+	if (commit === undefined) return { boundary: 'committed', reason: `release recorded no command:commit for ${wallId}` };
+	return null;
+}
+
 export function pickIdentity(mark: LedgerRecord | undefined, expectedId: string): boolean | null {
 	if (mark === undefined || typeof mark.detail?.outcome !== 'string') return null;
 	return mark.detail.outcome === 'resolved' && mark.detail.sourceKind === 'wall' && mark.detail.sourceId === expectedId;

@@ -32,7 +32,7 @@ import {
 	waitForAcceptedResult,
 	waitForStageSettled
 } from './lib/flow';
-import { clickPick, installPanObserver, workSnapshot, type WorkSnapshot } from './lib/spot-browser';
+import { clickPick, describeHitTarget, installPanObserver, requireDragCommit, workSnapshot, type WorkSnapshot } from './lib/spot-browser';
 import { collectSessions, collectGesture, openTiming, typedLengthTiming, sessionLabel, previewProvenance, type GestureObservation, type TimedOperation } from './lib/spot-measurement';
 import { correlateInputs, readLedger, type LedgerRecord } from './lib/ledger';
 import {
@@ -149,6 +149,9 @@ export async function dragSamples(page: Page, tier: SpotTier, refreshMs: number)
 	const direction = { x: (end.x - startHandle.x) / length, y: (end.y - startHandle.y) / length };
 	const ledgerBefore = (await readLedger(page)).records.length;
 	await page.mouse.move(end.x, end.y);
+	// Evidence for a stalled drag: what the browser hit-tests at the press point.
+	const pressTarget = await page.evaluate(describeHitTarget, end);
+	const pressedAt = await pageNow(page);
 	await page.mouse.down();
 	let observations: GestureObservation[];
 	try {
@@ -166,7 +169,7 @@ export async function dragSamples(page: Page, tier: SpotTier, refreshMs: number)
 	} finally { await page.mouse.up(); }
 	const ledger = await readLedger(page);
 	const inputs = correlateInputs(ledger.records.slice(ledgerBefore), ledger.ticks);
-	return { ...gestureColumns(observations), inputs: inputs.length, superseded: inputs.filter((row) => row.status === 'superseded').length };
+	return { ...gestureColumns(observations), inputs: inputs.length, superseded: inputs.filter((row) => row.status === 'superseded').length, pressedAt, pressTarget };
 }
 
 export async function panSamples(page: Page, cdp: CDPSession, tier: SpotTier, refreshMs: number) {
@@ -243,6 +246,7 @@ async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: s
 	await selectWallById(page, wallId);
 	const beforeDrag = await acceptedResultCount(page);
 	const drag = await dragSamples(page, tier, refresh.ms);
+	await requireDragCommit(page, drag, wallId);
 	await waitForAcceptedResult(page, beforeDrag);
 	await undoIfCommitted(page, beforeDrag);
 	const pickBefore = await clickPick(page, wallId);

@@ -5,7 +5,7 @@ vi.mock('../../../perf/lib/flow', () => ({
 	selectWallById: vi.fn(),
 	handlePoint: async (_page: unknown, title: string) => title === 'Wall start' ? { x: 100, y: 100 } : { x: 200, y: 100 }
 }));
-import { clickPick, installPanObserver } from '../../../perf/lib/spot-browser';
+import { clickPick, describeHitTarget, installPanObserver, requireDragCommit } from '../../../perf/lib/spot-browser';
 import type { LedgerRecord } from '../../../perf/lib/ledger';
 
 afterEach(() => vi.restoreAllMocks());
@@ -45,4 +45,33 @@ it('closes the overlay before a real canvas click and requires a new hit of the 
 	target.__BISKIQ_PERF_RECORDS__ = [];
 	(page.mouse.click as unknown) = async () => {};
 	expect(await clickPick(page, 'known')).toMatchObject({ resolved: null, elapsedMs: null });
+});
+
+it('names the element the browser hit-tests, so an overlay that shadows the Stage is visible', () => {
+	const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+	hit.setAttribute('class', 'toggle-hit svelte-x');
+	Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => hit });
+	expect(describeHitTarget({ x: 1, y: 1 })).toBe('rect.toggle-hit.svelte-x');
+	Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => null });
+	expect(describeHitTarget({ x: 1, y: 1 })).toBeNull();
+});
+
+it('fails a drag at its first missing boundary instead of waiting for an accepted result', async () => {
+	const target = window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] };
+	vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { callback(0); return 1; });
+	const page = { evaluate: async (fn: (arg?: unknown) => unknown, arg?: unknown) => fn(arg) } as unknown as Page;
+	target.__BISKIQ_PERF_RECORDS__ = [
+		{ kind: 'mark', name: 'stage:pick', time: 5, sequence: 0, detail: { outcome: 'resolved' } },
+		{ kind: 'input', name: 'pointermove', time: 9, sequence: 1, detail: { wallMode: true } }
+	];
+	// Records before the press belong to another gesture.
+	await expect(requireDragCommit(page, { pressedAt: 10, pressTarget: 'rect.toggle-hit' }, 'w'))
+		.rejects.toThrow('Wall drag stalled at press-claimed: no adapter pointermove input was recorded (the press was not claimed by a Wall handle; 0 hover pick(s) recorded instead); press target rect.toggle-hit');
+	target.__BISKIQ_PERF_RECORDS__ = [
+		{ kind: 'input', name: 'pointermove', time: 11, sequence: 2, detail: { wallMode: true } },
+		{ kind: 'install', name: 'wall-preview', time: 12, sequence: 3, detail: { wallId: 'w' } },
+		{ kind: 'mark', name: 'input:release', time: 13, sequence: 4, detail: { phase: 'up' } },
+		{ kind: 'mark', name: 'command:commit', time: 13, sequence: 5, detail: { wallId: 'w' } }
+	];
+	await expect(requireDragCommit(page, { pressedAt: 10, pressTarget: 'canvas' }, 'w')).resolves.toBeUndefined();
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectGesture, collectSessions, openTiming, pickIdentity, sessionLabel, typedLengthTiming, previewProvenance } from '../../../perf/lib/spot-measurement';
+import { collectGesture, collectSessions, dragStall, openTiming, pickIdentity, sessionLabel, typedLengthTiming, previewProvenance } from '../../../perf/lib/spot-measurement';
 import type { LedgerRecord, PerfLedger } from '../../../perf/lib/ledger';
 
 function record(name: string, time: number, detail: Record<string, unknown> = {}, kind: LedgerRecord['kind'] = 'mark'): LedgerRecord {
@@ -72,5 +72,43 @@ describe('spot measurement wiring', () => {
 		const labels = ['not-usable', 'smooth', 'smooth'] as const;
 		expect(sessionLabel(labels)).toBe('not-usable');
 		expect(labels).toEqual(['not-usable', 'smooth', 'smooth']);
+	});
+});
+
+describe('dragStall', () => {
+	const wall = 'wall-a';
+	const input = (time: number) => record('pointermove', time, { wallMode: true }, 'input');
+	const install = (time: number, wallId = wall) => record('wall-preview', time, { wallId }, 'install');
+	const release = (time: number, phase = 'up') => record('input:release', time, { phase });
+	const commit = (time: number, wallId = wall) => record('command:commit', time, { wallId });
+
+	it('names press-claimed for the ledger the stalled spot runs recorded: hover picks and nothing else', () => {
+		const stalled = [record('stage:pick', 1, { outcome: 'resolved' }), record('stage:pick', 2, { outcome: 'resolved' }), record('stage:pick', 3, { outcome: 'none' })];
+		expect(dragStall(stalled, wall)).toEqual({ boundary: 'press-claimed', reason: expect.stringContaining('3 hover pick(s)') });
+		expect(dragStall([], wall)?.boundary).toBe('press-claimed');
+	});
+
+	it('does not count a pointermove the adapter did not claim', () => {
+		expect(dragStall([record('pointermove', 1, {}, 'input')], wall)?.boundary).toBe('press-claimed');
+	});
+
+	it('names preview-installed when inputs arrive but no preview for this Wall installs', () => {
+		const stall = dragStall([input(1), install(2, 'wall-b'), record('wall-preview:refused', 3)], wall);
+		expect(stall).toEqual({ boundary: 'preview-installed', reason: expect.stringContaining('1 refused') });
+	});
+
+	it('names released when the press never ends, or ends as a cancel', () => {
+		expect(dragStall([input(1), install(2)], wall)?.boundary).toBe('released');
+		expect(dragStall([input(1), install(2), release(3, 'cancel'), commit(4)], wall)).toEqual({ boundary: 'released', reason: expect.stringContaining('phase cancel') });
+	});
+
+	it('names committed when the release records no commit for this Wall after it', () => {
+		expect(dragStall([input(1), install(2), release(3)], wall)?.boundary).toBe('committed');
+		expect(dragStall([input(1), install(2), commit(2.5), release(3)], wall)?.boundary).toBe('committed');
+		expect(dragStall([input(1), install(2), release(3), commit(4, 'wall-b')], wall)?.boundary).toBe('committed');
+	});
+
+	it('is null once the drag reached its commit; only the accepted result remains', () => {
+		expect(dragStall([input(1), install(2), input(3), install(4), release(5), commit(5)], wall)).toBeNull();
 	});
 });
