@@ -134,8 +134,20 @@ the caster channel, a playing animation (per frame only while one plays), or a f
 context. An orbit, hover or selection renders no shadow pass, and a static model adds no per-frame
 trigger.
 
+Gate C measured this contract on the reference laptop: **0 shadow maps per frame** in a 600-frame
+Stage orbit across the empty, small-room and gallery Worlds, and **1 map per frame** on the visitor
+path. The proposed D9 budget (one 2048² PCF sun, no second caster) and its refusal rule live in
+[performance.md](./performance.md#reference-laptop-render-and-shadow-budget-d9-proposed); they are
+not in force until the owner adopts them.
+
 **Guards:** `authoring/stage-render-frames`, `render/shadow-invalidation`, `render/shadow-g4-counts`,
 `render/model-lifecycle-boundary`.
+
+**Visitor first frame.** The Visitor Preview records `visitor:mounted`, the existing two-rAF
+`visitor:entry-frame` proxy, and Gate C's `visitor:first-frame`. The last is emitted by
+`lib/visitor/first-frame.ts` after the renderer's own `info.render.frame` counter advances; it is
+inert unless performance marks are enabled. It is a renderer-observed frame, not a physical scanout
+proof. Do not rename or remove `entry-frame`; the published-welcome path uses the same marks.
 
 ## Colour pipeline
 

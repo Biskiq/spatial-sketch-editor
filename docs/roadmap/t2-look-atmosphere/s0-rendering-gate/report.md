@@ -1,11 +1,13 @@
-# T2 S0 — Gate A and Gate B report
+# T2 S0 — Gate A, Gate B and Gate C report
 
 **Status:** Gate A (E1–E3) accepted, 2026-11-11, with follow-up corrections applied. Gate B (E4–E6)
-executed 2026-11-15 and delivered for review in one open, unmerged Tier 2 PR. Gate C (E7) is **not
-authorised** and has not started. No PR merge authorisation.
+executed 2026-11-15 and delivered in PR #349. Gate C (E7) executed 2026-11-15 on `main` at
+`2d73bf6f` (including merged PR #349) and is delivered for review in one open, unmerged Tier 2 PR.
+**D9 is proposed, not adopted:** it requires owner authorisation. No PR merge authorisation.
 
-This report carries the Gate A and Gate B slices of the §8 S0 report. It is deliberately narrower
-than the final S0 report; performance and the shadow budget stay open.
+This report carries the Gate A, Gate B and Gate C slices of the §8 S0 report. Gate C closes the
+performance and shadow-budget evidence; D9 and the reference-laptop frame target remain owner
+decisions.
 
 ## Verdicts
 
@@ -14,9 +16,9 @@ than the final S0 report; performance and the shadow budget stay open.
 | 1. Pipeline audit | Output sRGB, working `srgb-linear`, `NoToneMapping`, exposure 1.0, physical light units; readback calibration exact. E1 measured the shared renderer factory; E6 then measured each production surface. See [pipeline](./pipeline.md). | **Go**, with the pipeline recorded |
 | 2. PBR chart / indoor policy | `scene.environment` leaks open-sky light into an enclosed Room almost unchanged (Daylight floor ΔE00 13.5, luminance ×1.8; Golden hour ΔE00 19.4–23.7), and r187 has **no per-material opt-out**: `envMapIntensity = 0` measured identical to `1.0`. E4 images and numbers below. | **Wait** — no global environment; interior capture is its own slice |
 | 3. Live Sky | PMREM of the real preset sky builds in 9.9 ms p50 (14.5 max), rebuilds in 8.5 ms p50 during a 12-step drag; an intensity-only change costs 0 ms. The cost is affordable; the look is not yet defensible indoors. | **Go on cost, wait on look** |
-| 4. Performance / D9 | Not started | Gate C |
+| 4. Performance / D9 | Three reference Worlds measured at 1280 × 720, DPR 1 on an Apple M2 / ANGLE Metal laptop. Stage orbit p95 17.6–17.7 ms with **0 shadow maps/frame**; visit p95 17.6–17.7 ms with **1 shadow map/frame**; gallery shadow-off control removes 10+ draw calls and 1,228 triangles without changing p95. D9 is proposed as one 2048² PCF sun with a refusal policy. | **Proposed for owner authorisation**; visit idle p95 misses the strict 1-period target |
 | 5. Paper / Living | Even a neutral studio reflection at 0.3 relights Paper (pale wall 139 → 167 sRGB; floor 161 → 195); at 1.0 the pale wall reaches 217 (ΔE00 21.7). Paper and Living stay different readings. | **Go with D4 = no reflection on Paper** |
-| 6. Parity | Snapshot colour path fixed and measured: a 50% grey surface reads 128 on the Stage and 128 in a snapshot (it was 55); mean channel difference 0.54, 96.4% of channels within 2, mean ΔE00 0.61. Stage and Preview resolve the same look inputs. One separate snapshot defect is recorded (F6), and visitor cold start is a **deferred measurement requiring owner acceptance**. | **Go** for the colour path; parity differences named; cold start deferred |
+| 6. Parity | Snapshot colour path fixed and measured: a 50% grey surface reads 128 on the Stage and 128 in a snapshot (it was 55); mean channel difference 0.54, 96.4% of channels within 2, mean ΔE00 0.61. Stage and Preview resolve the same look inputs. One separate snapshot defect is recorded (F6). Visitor cold start was deferred by Gate B and is now recorded as a **baseline** in Gate C (first frame 61.0–72.0 ms after a warm-page mount request; 100.7 ms on the first surface mount). | **Go** for the colour path; parity differences named; cold-start baseline recorded |
 
 ## Gate A — E1–E3
 
@@ -256,13 +258,14 @@ Two differences are named and justified: the sun's **distance** (Stage 22.2, 63.
 8.8, 25.13, 13.82 — the same direction, different shadow-bounds framing), and the material set (the
 Stage draws its plate and ink, the Preview draws the visitor's lit ground and Lambert content).
 
-**Cold start: a deferred measurement, not a satisfied criterion.** The Preview surface records
-`visitor:mounted` at **298.5 ms**, but no `visitor:entry-frame` mark exists in the visitor module, so
-time-to-first-presented-frame is **not claimed** and E6's acceptance criterion "cold-start cost is
-recorded" is **not met**. The plan asked for the existing marks and only one exists. Gate B does not
-add visitor instrumentation to close it: the exception is recorded here and **requires owner
-acceptance** (either accept the deferral, or schedule the first-frame mark as its own slice). It does
-not block the colour-path verdict, and the `visitor:mounted` value must not be quoted as a load time.
+**Cold start: deferred by Gate B, closed as a baseline in Gate C.** The Preview surface records
+`visitor:mounted` at **298.5 ms**. Gate B reported that no `visitor:entry-frame` mark exists; that
+report was **inaccurate**. The mark has existed since commit `f6de016d` (2026-10-23), but it is a
+two-rAF scheduling proxy and is gated on an active visitor runtime (`program` and
+`experienceOptions`), which a zero-node Gate B surface does not have. Gate C corrects the record,
+adds a renderer-observed `visitor:first-frame` mark, and measures the cold-start baseline on a real
+`VisitorPreviewSurface` with a one-view bench program. The `visitor:mounted` value is still not a
+load time; the measured first-frame numbers are in [Gate C](#cold-start-baseline--visitor-first-frame).
 
 **One separate defect is recorded, not fixed (F6).** `StageCanvas.svelte` still passes
 `environment={environmentShown ? environment : 'paper'}` to the snapshot renderer, so a snapshot taken
@@ -299,8 +302,10 @@ Each F-row of the plan's §2 was re-read against `main` at `dddbdd01` before the
    `envMapIntensity` is not an escape hatch in r187.
 3. **F6 remains a real snapshot look difference.** A snapshot taken under Paper shows Paper even when
    the World is Living.
-4. **Cold start is a deferred measurement needing owner acceptance.** No first-frame mark exists; do
-   not quote the 298.5 ms mount time as a load time, and do not report E6's cold-start criterion as met.
+4. **Cold start was deferred by Gate B and is now a baseline, not a target.** The `visitor:entry-frame`
+   mark did exist; Gate B searched a surface with no active visitor runtime. Gate C adds
+   `visitor:first-frame` and records the baseline. Do not quote the 298.5 ms mount time as a load
+   time, and do not treat the baseline as an optimisation target.
 5. **One device, one browser.** PMREM timings are Apple M2 / ANGLE Metal only; no phone-class
    extrapolation.
 6. **The bench is not retained.** It is removed before merge; the numbers are reproducible from the
@@ -324,3 +329,179 @@ commit (see Evidence).
   with its sampling misses (all zero)
 - Source provenance: commit `120419bf` on `t2/s0-gate-b-look-truth`, delivered in PR #349 (removed
   from the tree; reproduce with `git show 120419bf:apps/editor/src/routes/dev/render-audit/audit.ts`)
+
+## Gate C — E7 rendering performance and shadow budget
+
+**Status:** measured 2026-11-15 on `main` at `2d73bf6f`; one open, unmerged Tier 2 PR. Gate C is the
+final slice of the CP0 Rendering Foundation and is flagged for the owner checkpoint. D9 is
+**proposed**, not adopted.
+
+Gate C asked for bounded Stage and Visitor readings on reference Worlds, not a benchmark campaign.
+It ran three Worlds through the shipped Stage and the visitor rendering path at 1280 × 720, DPR 1,
+for 10 s per run: `empty`, `small-room` (the canonical 7 × 6 starter enclosure) and `gallery-wall`
+(a 12 × 7 room with six textured Plane primitives on the far wall; these are scene primitives, not
+A1 Artwork). Stage was measured through `StageCanvas`; visit frame time through a bench host that
+mirrors `VisitorPreviewSurface`'s renderer and visitor components without the HUD or Camera input.
+Cold start used the real `VisitorPreviewSurface` with a synthetic one-view program. `rest`, `orbit`
+and `drag` (2 s of movement in the 10 s window) were sampled, plus a shadow-off control on the
+gallery visit. The bench camera sits inside each room; an earlier capture that put it outside the
+near Wall was discarded and the matrix rerun.
+
+### Environment and method
+
+| Fact | Value |
+| --- | --- |
+| Device | Apple M2, 8-core GPU, 16 GB |
+| Browser / GPU backend | Chrome 153, ANGLE Metal, hardware acceleration on |
+| Viewport | 1700 × 950 page; measured surfaces **1280 × 720**, DPR 1 |
+| Display | 60 Hz; frame intervals are vsync-quantised |
+| Sampling | 10 s per run; `requestAnimationFrame` intervals; renderer `info.render` read once per frame after the frame boundary |
+| Stage path | Shipped `StageCanvas`, orbit input through the production Camera controller |
+| Visit path | Bench host with the same `createManagedWebGLRenderer`, `WorldEnvironment`, layout shell, entities and shadow settings as `VisitorPreviewSurface`; no HUD, no Camera input |
+| Worlds | `empty`; `small-room` 7 × 6 m; `gallery-wall` 12 × 7 m + six textured quads |
+| Shadow control | Gallery visit with the sun's `castShadow` off, all else identical |
+
+The runner is a visible Chromium instance with background throttling disabled. The in-app preview
+tab reported `document.hidden = true` and paused `requestAnimationFrame`, so its numbers were not
+used.
+
+### Frame intervals and workload
+
+Stage `rest` rendered **0 frames** in every World: the shipped on-demand loop is confirmed. The
+Visitor loop always renders. `orbit` and `drag` for the Stage, and all three patterns for the visit,
+produced 600–601 frames per 10 s window. The table gives the p50, p95 and maximum of the frame
+interval distribution and the median per-frame renderer counts.
+
+| World | Surface | Pattern | Frames | p50 ms | p95 ms | max ms | Calls | Triangles | Textures | Programs | Shadow maps/frame |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| empty | Stage | orbit | 600 | 16.70 | 17.70 | 18.00 | 4 | 70 | 3 | 4 | 0.00 |
+| empty | Stage | drag | 120 | 16.70 | 17.60 | 19.00 | 4 | 70 | 3 | 4 | 0.00 |
+| empty | Visit | rest | 600 | 16.70 | 17.60 | 18.30 | 3 | 450 | 4 | 3 | 1.00 |
+| empty | Visit | orbit | 601 | 16.70 | 17.70 | 18.30 | 3 | 450 | 4 | 3 | 1.00 |
+| empty | Visit | drag | 601 | 16.70 | 17.70 | 17.90 | 3 | 450 | 4 | 3 | 1.00 |
+| small-room | Stage | orbit | 600 | 16.70 | 17.60 | 17.90 | 11 | 908 | 4 | 6 | 0.00 |
+| small-room | Stage | drag | 120 | 16.60 | 17.60 | 17.80 | 11 | 908 | 4 | 6 | 0.00 |
+| small-room | Visit | rest | 601 | 16.70 | 17.60 | 17.70 | 14 | 2,120 | 4 | 6 | 1.00 |
+| small-room | Visit | orbit | 600 | 16.70 | 17.70 | 18.80 | 14 | 2,120 | 4 | 6 | 1.00 |
+| small-room | Visit | drag | 601 | 16.70 | 17.60 | 17.80 | 14 | 2,120 | 4 | 6 | 1.00 |
+| gallery-wall | Stage | orbit | 599 | 16.70 | 17.70 | 28.10 | 15 | 1,300 | 6 | 7 | 0.00 |
+| gallery-wall | Stage | drag | 120 | 16.70 | 17.70 | 17.90 | 17 | 1,304 | 6 | 7 | 0.00 |
+| gallery-wall | Visit | rest | 601 | 16.70 | 17.60 | 18.30 | 26 | 2,912 | 6 | 7 | 1.00 |
+| gallery-wall | Visit | orbit | 601 | 16.70 | 17.70 | 19.60 | 24 | 2,908 | 6 | 7 | 1.00 |
+| gallery-wall | Visit | drag | 600 | 16.70 | 17.70 | 17.80 | 25 | 2,910 | 6 | 7 | 1.00 |
+| gallery-wall | Visit | orbit, shadows off | 600 | 16.70 | 17.70 | 18.00 | 14 | 1,680 | 4 | 6 | 0.00 |
+
+Stage `rest` is absent from the table because it rendered nothing. Its counts are zero by definition,
+not a missing sample. One gallery Stage orbit frame reached 28.10 ms; the p95 is 17.70 ms and no
+other run exceeded 19.60 ms.
+
+**Reading the table.** The reference laptop is **vsync-bound** at 60 Hz: p50 is 16.70 ms in every
+rendering run, and the p95 spread (17.6–17.7 ms) is scheduling jitter, not scene cost. The workload
+columns are therefore the useful shadow evidence; the frame interval alone cannot distinguish a
+450-triangle empty visit from a 2,912-triangle gallery visit on this device.
+
+### Shadow cost
+
+The gallery visit is the controlled comparison. With the sun casting:
+
+- **24–26 draw calls**, **2,908–2,912 triangles**, **6 textures**, **7 programs**, **1 shadow pass and 1 shadow map per frame**.
+
+With the sun's shadow off, all else identical:
+
+- **14 draw calls**, **1,680 triangles**, **4 textures**, **6 programs**, **0 shadow passes, 0 maps**.
+
+The shadow pass costs at least **10 draw calls, 1,228 triangles, two texture bindings and one program
+per frame**. It does **not** move the p95 (17.70 ms both ways) because the frame is vsync-bound. That
+is the key limitation of a wall-clock-only budget: on this reference laptop the shadow cost is
+visible in the renderer workload, not in the frame interval. The Stage confirms the on-demand path:
+**0 shadow maps per frame** in every 600-frame orbit, including the gallery. The Stage's shadow map is
+drawn on dependency change, not per frame.
+
+### D9 proposal — shadow budget and refusal policy
+
+**Status: proposed for owner authorisation. Not adopted by this PR.**
+
+1. **One shadow-casting Sun per World.** The Sky's sun is the only caster. A World may contain other
+   point or spot lights, but they do not cast shadows in this batch.
+2. **2048 × 2048 PCF shadow map**, `PCFShadowMap`, radius 3, `normalBias` 0.02 on the visitor path and
+   0.05 on the flat Stage plate. The measured budget is **one map per frame on the visit** and **zero
+   maps per frame on the Stage** while the camera moves.
+3. **Refusal rule, in words.** A second shadow-casting light, a shadow-casting point light (six cube
+   maps), a map larger than 2048², cascaded shadow maps, a baked or cached shadow architecture, or a
+   per-frame shadow update on the Stage is **refused for this batch**. It may return only with a
+   bounded measurement on the same three Worlds and explicit owner approval. The runtime must not
+   silently reduce the map size, disable shadows, or cap the number of lights to stay under budget;
+   if a default set cannot meet the budget, the **default set is reduced in the design**.
+4. **Frame targets on the reference laptop.** Stage drag p95 ≤ 2 display periods (33.3 ms): **met** at
+   17.6–17.7 ms. Gallery visit p95 ≤ 33 ms: **met** at 17.6–17.7 ms. Visit idle p95 ≤ 1 display
+   period (16.7 ms): **not met** at 17.6–17.7 ms, on the empty World as well as the gallery. p50 is
+   16.70 ms; the miss is about 1 ms of scheduler jitter, not scene or shadow work.
+
+**Owner decisions requested:**
+
+- Adopt D9's one-sun / 2048² / PCF budget and the refusal rule as written, or send it back.
+- Decide the visit idle target: keep the strict 16.7 ms p95 and record the measured 17.6–17.7 ms as a
+  miss, or authorise a documented allowance (for example 1.1 display periods, 18.3 ms). Gate C does
+  **not** change the target on its own authority.
+- Confirm that phone-class hardware remains **unmeasured** and that no phone extrapolation is made
+  from the M2 numbers.
+
+### Cold-start baseline — Visitor first frame
+
+Gate B deferred visitor cold start because it could not find a first-frame mark. Gate C adds the
+minimal measurement and records a baseline, not a target:
+
+| World | Mount request → mounted | → first rendered frame | → existing `entry-frame` |
+| --- | ---: | ---: | ---: |
+| empty (first surface mount after page load) | 78.9 ms | 100.7 ms | 104.6 ms |
+| small-room (fresh mount, warm page) | 15.5 ms | 61.0 ms | 62.4 ms |
+| gallery-wall (fresh mount, warm page) | 15.2 ms | 72.0 ms | 73.0 ms |
+
+**Instrumentation.** `visitor:mounted` and `visitor:entry-frame` already existed. `entry-frame` is a
+two-rAF scheduling proxy gated on an active visitor runtime. Gate C adds `visitor:first-frame`,
+which observes the renderer's own `info.render.frame` counter at the next scheduling opportunity
+(`apps/editor/src/lib/visitor/first-frame.ts`, mounted by `VisitorFirstFrame.svelte` inside the
+Preview Canvas). It is inert unless performance marks are enabled. It is a renderer-observed frame,
+not a physical scanout proof. The existing `entry-frame` remains; it is not renamed or removed.
+
+**How to read it.** These are **surface** cold starts on an already-loaded page, with a synthetic
+one-view program: they include the visitor renderer and its first frame, but not network, bundle
+parse, or the welcome/published route. The first-ever empty mount (100.7 ms to first frame) includes
+module and page warm-up; the warm-page mounts are 61.0–72.0 ms. The baseline is recorded; no
+optimisation target is set and no code was changed to move it.
+
+### Limitations and remaining risks
+
+1. **One device, one browser.** Apple M2 / ANGLE Metal / Chrome 153 only. Phone-class hardware is
+   **unmeasured**; do not extrapolate thermal, memory or fill-rate behaviour.
+2. **The laptop is vsync-bound.** Frame intervals hide shadow cost at 60 Hz. D9's budget is a
+   map/pass and draw-work budget, not a measured GPU-time cap. A slower device could turn the
+   10-call / 1,228-triangle shadow pass into a visible cost that this bench cannot see.
+3. **The visit path is not the full product surface.** HUD, Camera input, selection and the welcome
+   route are excluded. The visit frame-time host mirrors the renderer and visitor components, but it
+   is a bench host, not `VisitorPreviewSurface` itself. Cold start does use the real surface.
+4. **The gallery is primitives, not Artwork.** Six textured Plane entities exercise the shadow path;
+   they do not measure A1's material palette or texture sizes.
+5. **No GPU timer queries.** The renderer counts are CPU-side `info.render` readings. They are
+   consistent with the shadow-off control but are not a GPU profile.
+6. **The bench is removed before merge.** Gate A/B policy: no product route. The numbers are
+   reproducible from the Gate C commit, not from `main`.
+7. **D9 is not in force until the owner adopts it.** S3 Lights and A1 Artwork must not cite this as an
+   accepted budget before then.
+
+### Evidence (Gate C)
+
+- [Machine-readable result](./evidence/2026-11-15/gate-c/gate-c-result.json) — all 19 runs, the three
+  cold starts, environment, sampling and the proposed budget
+- [Stage — gallery wall at 1280 × 720](./evidence/2026-11-15/gate-c/gate-c-stage-gallery.png)
+- [Visitor — gallery wall at 1280 × 720](./evidence/2026-11-15/gate-c/gate-c-visit-gallery.png)
+- Source provenance: commit `GATE_C_COMMIT` on `t2/s0-gate-c-rendering-budget` (bench route and
+  runner removed; reproduce the evidence writer from that commit)
+
+### Checks (Gate C)
+
+- `npm run check`: 0 errors, 13 pre-existing warnings.
+- `npx vitest run tests/lib/visitor/first-frame.test.ts`: 3 tests pass.
+- `npm run test:arch`: pass.
+- `npm run build`: pass.
+- The 19-run matrix completed and wrote 19 runs plus three cold starts to the evidence JSON; two captures were saved.

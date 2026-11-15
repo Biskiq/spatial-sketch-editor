@@ -15,6 +15,39 @@ acceptance prerequisite on an ordinary slice, phase or final gate. Performance i
 historical evidence; they are not mandatory acceptance prerequisites, and an unmeasured row stays
 **unmeasured**, never a pass. The [spot check](#ml-spot-check) is the bounded authorized workflow.
 
+## Reference-laptop render and shadow budget (D9, proposed)
+
+**Status: proposed 2026-11-15 by Gate C; not in force until the owner adopts it.** S0 Gate C's
+19-run bounded bench is owner-authorised historical evidence under this policy. It did not run
+`perf:spot` or `npm run perf`, and it does not create a scheduled gate. The full method, numbers and
+limitations are in the [S0 Gate C report](../../roadmap/t2-look-atmosphere/s0-rendering-gate/report.md#gate-c--e7-rendering-performance-and-shadow-budget).
+
+On the measured reference laptop (Apple M2, ANGLE Metal, Chrome 153, 1280 × 720, DPR 1) the Stage
+rendered **zero shadow maps per frame** during a 600-frame orbit in all three reference Worlds. The
+Visitor rendered **one shadow map per frame**. On the gallery visit, turning the sun's shadow off
+removed at least **10 draw calls, 1,228 triangles, two texture bindings and one program per frame**
+without moving p95 (17.70 ms both ways): the laptop is vsync-bound at 60 Hz, so frame interval alone
+does not expose shadow cost.
+
+Proposed D9 budget:
+
+- one shadow-casting Sun per World, the Sky's sun;
+- one **2048 × 2048** `PCFShadowMap`, radius 3, `normalBias` 0.02 on the visitor path and 0.05 on the
+  flat Stage plate;
+- one map per frame on the visit; zero per frame on the Stage while the camera moves;
+- Stage drag p95 ≤ 2 display periods (33.3 ms), gallery visit p95 ≤ 33 ms, visit idle p95 ≤ 1 display
+  period (16.7 ms). The first two were met at 17.6–17.7 ms. The visit idle target was **missed** at
+  17.6–17.7 ms on the empty World as well as the gallery; p50 was 16.70 ms, so the miss is scheduler
+  jitter, not scene cost. The owner decides whether to keep the strict target or authorise an
+  allowance.
+
+**Refusal rule.** A second shadow-casting light, a shadow-casting point light, a map larger than
+2048², cascaded shadow maps, a baked/cached shadow architecture, or a per-frame shadow update on the
+Stage is refused for this batch. It may return only with a bounded measurement on the same three
+Worlds and explicit owner approval. The runtime must not silently reduce map size, disable shadows or
+cap lights; reduce the default set in the design instead. D9 is a map/pass and draw-work budget, not
+a GPU-time cap; phone-class hardware remains unmeasured.
+
 ## M/L spot check
 
 The bounded workflow permits
