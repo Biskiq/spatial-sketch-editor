@@ -16,7 +16,7 @@ decisions.
 | 1. Pipeline audit | Output sRGB, working `srgb-linear`, `NoToneMapping`, exposure 1.0, physical light units; readback calibration exact. E1 measured the shared renderer factory; E6 then measured each production surface. See [pipeline](./pipeline.md). | **Go**, with the pipeline recorded |
 | 2. PBR chart / indoor policy | `scene.environment` leaks open-sky light into an enclosed Room almost unchanged (Daylight floor ΔE00 13.5, luminance ×1.8; Golden hour ΔE00 19.4–23.7), and r187 has **no per-material opt-out**: `envMapIntensity = 0` measured identical to `1.0`. E4 images and numbers below. | **Wait** — no global environment; interior capture is its own slice |
 | 3. Live Sky | PMREM of the real preset sky builds in 9.9 ms p50 (14.5 max), rebuilds in 8.5 ms p50 during a 12-step drag; an intensity-only change costs 0 ms. The cost is affordable; the look is not yet defensible indoors. | **Go on cost, wait on look** |
-| 4. Performance / D9 | Three reference Worlds measured at 1280 × 720, DPR 1 on an Apple M2 / ANGLE Metal laptop. Stage orbit p95 17.6–17.7 ms with **0 shadow maps/frame**; visit p95 17.6–17.7 ms with **1 shadow map/frame**; gallery shadow-off control removes 10+ draw calls and 1,228 triangles without changing p95. D9 is proposed as one 2048² PCF sun with a refusal policy. | **Proposed for owner authorisation**; visit idle p95 misses the strict 1-period target |
+| 4. Performance / D9 | Three reference Worlds measured at 1280 × 720, DPR 1 on an Apple M2 / ANGLE Metal laptop. Stage orbit p95 17.6–17.7 ms with **0 shadow maps/frame**; visit p95 17.6–17.7 ms with **1 shadow map/frame**; gallery shadow-off control removes 10+ draw calls and 1,228 triangles without changing p95. D9 is proposed as a per-caster 2048² PCF budget that preserves the approved Spot/Point Shadow controls. | **Proposed for owner authorisation**; visit idle is within the proposed 1.1-period allowance but misses the aspirational 16.7 ms target |
 | 5. Paper / Living | Even a neutral studio reflection at 0.3 relights Paper (pale wall 139 → 167 sRGB; floor 161 → 195); at 1.0 the pale wall reaches 217 (ΔE00 21.7). Paper and Living stay different readings. | **Go with D4 = no reflection on Paper** |
 | 6. Parity | Snapshot colour path fixed and measured: a 50% grey surface reads 128 on the Stage and 128 in a snapshot (it was 55); mean channel difference 0.54, 96.4% of channels within 2, mean ΔE00 0.61. Stage and Preview resolve the same look inputs. One separate snapshot defect is recorded (F6). Visitor cold start was deferred by Gate B and is now recorded as a **baseline** in Gate C (first frame 61.0–72.0 ms after a warm-page mount request; 100.7 ms on the first surface mount). | **Go** for the colour path; parity differences named; cold-start baseline recorded |
 
@@ -370,9 +370,12 @@ used.
 Stage `rest` rendered **0 frames** in every World: the shipped on-demand loop is confirmed. The
 Visitor loop always renders. `orbit` and `drag` for the Stage, and all three patterns for the visit,
 produced 600–601 frames per 10 s window. The table gives the p50, p95 and maximum of the frame
-interval distribution and the median per-frame renderer counts.
+interval distribution and the median per-frame renderer counts. `Allocated textures` is
+`renderer.info.memory.textures`, and `Compiled programs` is `renderer.info.programs.length`: these
+are allocation counters, **not per-frame texture bindings or draw calls**. `Calls` and `Triangles`
+are the per-frame draw counters.
 
-| World | Surface | Pattern | Frames | p50 ms | p95 ms | max ms | Calls | Triangles | Textures | Programs | Shadow maps/frame |
+| World | Surface | Pattern | Frames | p50 ms | p95 ms | max ms | Calls | Triangles | Allocated textures | Compiled programs | Shadow maps/frame |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | empty | Stage | orbit | 600 | 16.70 | 17.70 | 18.00 | 4 | 70 | 3 | 4 | 0.00 |
 | empty | Stage | drag | 120 | 16.70 | 17.60 | 19.00 | 4 | 70 | 3 | 4 | 0.00 |
@@ -404,15 +407,15 @@ columns are therefore the useful shadow evidence; the frame interval alone canno
 
 The gallery visit is the controlled comparison. With the sun casting:
 
-- **24–26 draw calls**, **2,908–2,912 triangles**, **6 textures**, **7 programs**, **1 shadow pass and 1 shadow map per frame**.
+- **24–26 draw calls**, **2,908–2,912 triangles**, **6 allocated textures**, **7 compiled programs**, **1 shadow pass and 1 shadow map per frame**.
 
 With the sun's shadow off, all else identical:
 
-- **14 draw calls**, **1,680 triangles**, **4 textures**, **6 programs**, **0 shadow passes, 0 maps**.
+- **14 draw calls**, **1,680 triangles**, **4 allocated textures**, **6 compiled programs**, **0 shadow passes, 0 maps**.
 
-The shadow pass costs at least **10 draw calls, 1,228 triangles, two texture bindings and one program
-per frame**. It does **not** move the p95 (17.70 ms both ways) because the frame is vsync-bound. That
-is the key limitation of a wall-clock-only budget: on this reference laptop the shadow cost is
+The shadow pass costs at least **10 draw calls, 1,228 triangles, two allocated textures and one
+additional compiled program**. It does **not** move the p95 (17.70 ms both ways) because the frame
+is vsync-bound. That is the key limitation of a wall-clock-only budget: on this reference laptop the shadow cost is
 visible in the renderer workload, not in the frame interval. The Stage confirms the on-demand path:
 **0 shadow maps per frame** in every 600-frame orbit, including the gallery. The Stage's shadow map is
 drawn on dependency change, not per frame.
@@ -421,28 +424,55 @@ drawn on dependency change, not per frame.
 
 **Status: proposed for owner authorisation. Not adopted by this PR.**
 
-1. **One shadow-casting Sun per World.** The Sky's sun is the only caster. A World may contain other
-   point or spot lights, but they do not cast shadows in this batch.
-2. **2048 × 2048 PCF shadow map**, `PCFShadowMap`, radius 3, `normalBias` 0.02 on the visitor path and
-   0.05 on the flat Stage plate. The measured budget is **one map per frame on the visit** and **zero
-   maps per frame on the Stage** while the camera moves.
-3. **Refusal rule, in words.** A second shadow-casting light, a shadow-casting point light (six cube
-   maps), a map larger than 2048², cascaded shadow maps, a baked or cached shadow architecture, or a
-   per-frame shadow update on the Stage is **refused for this batch**. It may return only with a
-   bounded measurement on the same three Worlds and explicit owner approval. The runtime must not
-   silently reduce the map size, disable shadows, or cap the number of lights to stay under budget;
-   if a default set cannot meet the budget, the **default set is reduced in the design**.
-4. **Frame targets on the reference laptop.** Stage drag p95 ≤ 2 display periods (33.3 ms): **met** at
-   17.6–17.7 ms. Gallery visit p95 ≤ 33 ms: **met** at 17.6–17.7 ms. Visit idle p95 ≤ 1 display
-   period (16.7 ms): **not met** at 17.6–17.7 ms, on the empty World as well as the gallery. p50 is
-   16.70 ms; the miss is about 1 ms of scheduler jitter, not scene or shadow work.
+**Measured baseline — preserved.** The bench measured one shadow-casting Sun: one **2048 × 2048**
+`PCFShadowMap`, radius 3, `normalBias` 0.02 on the visitor path and 0.05 on the flat Stage plate;
+**1 map per frame on the visit** and **0 maps per frame on the Stage** while the camera moves.
+
+**The approved Shadow controls stay live.** T2 approves a Shadow control on Spot and Directional,
+and on Point with Shadow **off by default** (T2 README §5; S3 plan §6.4). D9 must not disable, hide or
+auto-change those controls, and S3's provisional `castShadow: false` creation default is unchanged.
+A creator can still turn a Spot or Point shadow on. The earlier Gate C draft refused “a second
+caster” and “a shadow-casting point light”; that refusal is **withdrawn** because it conflicted with
+the approved controls and would have left them inert. No Shadow control is disabled by D9.
+
+**Proposed budget — per caster, not a cap on the approved controls.**
+
+- One 2048² PCF shadow map per shadow-casting Directional or Spot; a shadow-casting Point light uses
+  six cube faces/maps. The measured Sun is one map.
+- Visit: one shadow map per enabled caster per frame, except the Point cube shadow's six faces;
+  Stage: zero shadow maps per frame while the camera moves (invalidation on dependency change only).
+- The one-Sun World is the only measured total: **1 map per frame**. Multi-caster totals are
+  **unmeasured**; D9 does not invent a maximum caster count or a multi-caster frame cost.
+
+**Refusal rule — architecture and quality, not the approved controls.** A map larger than 2048²,
+cascaded shadow maps, a baked or cached shadow architecture, and a per-frame shadow update on the
+Stage remain refused for this batch. Any silent runtime map-size reduction, shadow disablement or
+light cap also remains refused. Additional Spot/Point casters are **not refused**; they are
+contract-valid but unbudgeted until measured.
+
+**Unresolved owner policy — multi-caster shadows.** D9 cannot set a multi-caster total from
+one-caster evidence. Choose one:
+
+1. **Measure before promising (recommended):** measure additional Spot/Point casters on the same
+   Worlds in S3 or its own bounded slice, then set a total map/caster budget. Controls stay live
+   meanwhile, with no performance promise for multi-caster Worlds.
+2. **Cap in D9 before S3:** set a maximum simultaneous map/caster count with a visible
+   refusal/notification state; never disable a control silently or leave it inert.
+3. **Ship with no multi-caster budget:** keep the controls and mark multi-caster cost unmeasured,
+   with no “budgeted” claim.
+
+**Frame targets on the reference laptop.** Stage drag p95 ≤ 2 display periods (33.3 ms): **met** at
+17.6–17.7 ms. Gallery visit p95 ≤ 33 ms: **met** at 17.6–17.7 ms. Visitor idle: the original p95 ≤ 1
+display period (16.7 ms) is retained as **aspirational**; the proposed allowance is **1.1 display
+periods (~18.3 ms) p95**. The measured 17.6–17.7 ms is within the proposed allowance and misses the
+aspirational target. p50 is 16.70 ms; the difference is about 1 ms of scheduler jitter, not scene or
+shadow work.
 
 **Owner decisions requested:**
 
-- Adopt D9's one-sun / 2048² / PCF budget and the refusal rule as written, or send it back.
-- Decide the visit idle target: keep the strict 16.7 ms p95 and record the measured 17.6–17.7 ms as a
-  miss, or authorise a documented allowance (for example 1.1 display periods, 18.3 ms). Gate C does
-  **not** change the target on its own authority.
+- Adopt D9's measured one-Sun baseline, per-caster 2048² PCF budget, withdrawn Spot/Point refusal,
+  and the 18.3 ms Visitor idle allowance with 16.7 ms retained as aspirational.
+- Choose the unresolved multi-caster policy: measure, cap visibly, or ship unmeasured.
 - Confirm that phone-class hardware remains **unmeasured** and that no phone extrapolation is made
   from the M2 numbers.
 

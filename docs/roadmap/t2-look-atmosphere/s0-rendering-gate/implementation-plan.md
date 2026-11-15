@@ -308,14 +308,15 @@ Follow [performance.md](../../../reference/components/performance.md): performan
 owner-initiated and bounded. **Do not run `npm run perf:spot`** — it measures architectural grids,
 not rendering — and do not run a full suite.
 
-**Measurements:** p50/p95 frame interval; `renderer.info` calls, triangles and textures; shadow maps
-per frame; PMREM ms (from E4); the device and browser.
+**Measurements:** p50/p95 frame interval; `renderer.info` calls, triangles and allocated textures;
+shadow maps per frame; PMREM ms (from E4); the device and browser.
 
 **Acceptance:**
 
 - D9 is a shadow budget with numbers and a refusal rule in words.
 - The reference laptop has a stated p95 target per surface. Proposal: Stage drag ≤ 2 display
-  periods; visit idle ≤ 1; gallery p95 ≤ 33 ms on the reference laptop.
+  periods; gallery p95 ≤ 33 ms; Visitor idle ≤ 1 display period (16.7 ms) as the aspirational
+  target, with a proposed 1.1-period (~18.3 ms) p95 allowance.
 - Any device not measured is marked **unmeasured**, never extrapolated.
 
 **Stop:** no "smooth" claim without p95; no desktop-to-phone extrapolation. If the budget cannot be
@@ -330,7 +331,8 @@ frames; every Stage orbit/drag and visit run rendered 600–601 frames. p50 was 
 p95 was 17.6–17.7 ms (one 28.10 ms gallery Stage outlier). Stage rendered **0 shadow maps/frame**;
 visit rendered **1**. Shadows off removed 10+ calls and 1,228 triangles with no p95 change, because
 the laptop is vsync-bound. Stage drag and gallery targets were met; visit idle p95 (17.6–17.7 ms)
-**missed** the strict 16.7 ms target even on the empty World. Full numbers and the D9 proposal are in
+fell within the proposed 1.1-period (18.3 ms) allowance but **missed** the aspirational 16.7 ms
+target, even on the empty World. Full numbers and the D9 proposal are in
 [report.md](./report.md#gate-c--e7-rendering-performance-and-shadow-budget). The visit idle target and
 D9 itself require owner authorisation.
 
@@ -341,7 +343,7 @@ D9 itself require owner authorisation.
 | Tone mapping | **Measured: no mapper.** E2 rejected Neutral (mid-tone ΔE00 4.07), ACES (3.35) and AgX (6.35); None + Lambert scored 0 across all 18 patches. E4 then measured Lambert + `toneMapped = false` under all three mappers: **ΔE00 0**, so a mapper would not by itself compromise artwork. Still no mapper: the Sky's blocker is the indoor environment leak, not tone mapping. | Gate A accepted; opt-out measured in Gate B |
 | D5 light units | Keep physical stored units; Brightness stops are a UI mapping fixed by E3. | After E3 |
 | D4 Paper reflections | **Decided: no reflection on Paper.** A neutral studio probe at 0.3 already relights it (pale wall 139 → 167 sRGB); at 1.0 the pale wall reaches 217 (ΔE00 21.7). The Sky is worse (ΔE00 26.4). | Decided in E5, 2026-11-15 |
-| D9 shadow budget | **Proposed: one shadow-casting Sun per World; 2048² PCF, radius 3; 1 map/frame visit, 0/frame Stage while moving; refuse a second caster, point-light cube maps, larger maps, cascades, baked/cached shadows and per-frame Stage updates. Not adopted.** Measured: Stage 0 maps/frame across 600-frame orbits; visit 1 map/frame; gallery shadow-off removes 10+ calls / 1,228 triangles with no p95 change (vsync-bound). Visit idle p95 17.6–17.7 ms misses the strict 16.7 ms target; owner decides the allowance. | Proposed in E7, 2026-11-15; owner decision pending |
+| D9 shadow budget | **Proposed: preserve the measured one-Sun baseline (2048² PCF, radius 3; 1 map/frame visit, 0/frame Stage while moving) and the approved Spot/Point Shadow controls; Point stays off by default. The earlier refusal of a second caster/point shadow is withdrawn. Per-caster maps, multi-caster totals unmeasured; owner chooses measure/cap/ship-unmeasured. Visitor idle 16.7 ms is aspirational, with a proposed 18.3 ms allowance. Not adopted.** Measured: Stage 0 maps/frame; visit 1 map/frame; shadow-off removes 10+ calls / 1,228 triangles with no p95 change (vsync-bound). | Proposed in E7, 2026-11-15; owner decision pending |
 | D16 artwork response | **Approved baseline: `MeshLambertMaterial` + `NoToneMapping`.** It was exact (ΔE00 0); the standard PBR material lifted near-black by ΔE00 5.16. Gate B confirmed `toneMapped = false` is exact under ACES, AgX and Neutral, so the baseline survives a future mapper. | Gate A accepted; opt-out measured in Gate B |
 | Snapshot colour path | **Fixed in E6.** The writer encodes linear → sRGB; a 50% grey patch now reads 128 on the Stage and 128 in a snapshot (it was 55). Treated as a defect, not a look decision. | Done, 2026-11-15 |
 
@@ -418,16 +420,20 @@ Executed against `main` at `2d73bf6f` (including merged PR #349). Full record:
   does not separate the Worlds; renderer workload does.
 - **E7 — shadow cost: measured.** Stage orbit drew **0 shadow maps/frame** in all three Worlds
   (on-demand invalidation holds). Visit drew **1 shadow map/frame** and, on the gallery, 24–26 calls
-  / 2,908–2,912 triangles / 6 textures / 7 programs. The shadow-off control measured 14 calls /
-  1,680 triangles / 4 textures / 6 programs: at least 10 calls and 1,228 triangles are the shadow
-  pass. p95 was 17.70 ms both ways.
-- **D9 — proposed, awaiting owner.** One shadow-casting Sun per World, 2048² PCF (radius 3), one map
-  per frame on the visit, zero while the Stage camera moves. Refuse a second caster, point-light cube
-  maps, larger maps, cascades, baked/cached shadows, and per-frame Stage updates. Do not cap at
-  runtime; reduce the default set in the design. The D9 row above carries the full proposal.
-- **Frame target.** Stage drag p95 ≤ 33.3 ms **met**; gallery p95 ≤ 33 ms **met**; visit idle p95 ≤
-  16.7 ms **not met** at 17.6–17.7 ms, including the empty World. p50 is 16.70 ms. The owner must
-  keep the strict target and record a miss, or authorise a documented allowance.
+  / 2,908–2,912 triangles / 6 allocated textures / 7 compiled programs. The shadow-off control
+  measured 14 calls / 1,680 triangles / 4 allocated textures / 6 compiled programs: at least 10
+  calls and 1,228 triangles are the shadow pass. p95 was 17.70 ms both ways. These counters are
+  allocations, not per-frame texture bindings.
+- **D9 — proposed, awaiting owner.** Preserve the measured one-Sun baseline: 2048² PCF (radius 3),
+  one map per frame on the visit, zero while the Stage camera moves. T2's approved Spot/Point Shadow
+  controls remain live; Point stays off by default. Per-caster maps are budgeted, but multi-caster
+  totals are unmeasured; the earlier refusal of Spot/Point shadows is withdrawn. The owner chooses
+  measure / visible cap / ship-unmeasured for multi-caster Worlds. Architecture refusals remain:
+  maps >2048², cascades, baked/cached shadows, per-frame Stage updates, and silent runtime caps.
+  The D9 row above carries the proposal.
+- **Frame target.** Stage drag p95 ≤ 33.3 ms **met**; gallery p95 ≤ 33 ms **met**; Visitor idle p95
+  17.6–17.7 ms is **within the proposed 1.1-period (18.3 ms) allowance** but **misses the
+  aspirational 16.7 ms target**, including on the empty World. p50 is 16.70 ms.
 - **Cold start — baseline recorded, not optimised.** Gate C adds `visitor:first-frame`
   (`apps/editor/src/lib/visitor/first-frame.ts`, `VisitorFirstFrame.svelte`) and measures the real
   `VisitorPreviewSurface` with a one-view program: mount → first frame 61.0–72.0 ms on a warm page

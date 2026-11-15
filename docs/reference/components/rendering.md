@@ -136,7 +136,9 @@ trigger.
 
 Gate C measured this contract on the reference laptop: **0 shadow maps per frame** in a 600-frame
 Stage orbit across the empty, small-room and gallery Worlds, and **1 map per frame** on the visitor
-path. The proposed D9 budget (one 2048² PCF sun, no second caster) and its refusal rule live in
+path. The proposed D9 budget preserves that measured one-Sun baseline and keeps T2's approved
+Spot/Point Shadow controls live; per-caster maps are budgeted, while multi-caster totals remain
+unmeasured and await an owner policy. The full proposal and refusal rule live in
 [performance.md](./performance.md#reference-laptop-render-and-shadow-budget-d9-proposed); they are
 not in force until the owner adopts them.
 

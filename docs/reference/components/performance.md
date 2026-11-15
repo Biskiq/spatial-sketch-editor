@@ -25,28 +25,45 @@ limitations are in the [S0 Gate C report](../../roadmap/t2-look-atmosphere/s0-re
 On the measured reference laptop (Apple M2, ANGLE Metal, Chrome 153, 1280 × 720, DPR 1) the Stage
 rendered **zero shadow maps per frame** during a 600-frame orbit in all three reference Worlds. The
 Visitor rendered **one shadow map per frame**. On the gallery visit, turning the sun's shadow off
-removed at least **10 draw calls, 1,228 triangles, two texture bindings and one program per frame**
-without moving p95 (17.70 ms both ways): the laptop is vsync-bound at 60 Hz, so frame interval alone
-does not expose shadow cost.
+removed at least **10 draw calls, 1,228 triangles, two allocated textures and one additional
+compiled program**, without moving p95 (17.70 ms both ways): the laptop is vsync-bound at 60 Hz, so
+frame interval alone does not expose shadow cost. `renderer.info.memory.textures` counts **allocated
+textures**, not per-frame texture bindings; `renderer.info.programs.length` counts **compiled
+programs**, not per-frame binds.
 
-Proposed D9 budget:
+**Measured baseline.** One shadow-casting Sun: one **2048 × 2048** `PCFShadowMap`, radius 3,
+`normalBias` 0.02 on the visitor path and 0.05 on the flat Stage plate; **1 map per frame on the
+visit** and **0 maps per frame on the Stage** while the camera moves.
 
-- one shadow-casting Sun per World, the Sky's sun;
-- one **2048 × 2048** `PCFShadowMap`, radius 3, `normalBias` 0.02 on the visitor path and 0.05 on the
-  flat Stage plate;
-- one map per frame on the visit; zero per frame on the Stage while the camera moves;
-- Stage drag p95 ≤ 2 display periods (33.3 ms), gallery visit p95 ≤ 33 ms, visit idle p95 ≤ 1 display
-  period (16.7 ms). The first two were met at 17.6–17.7 ms. The visit idle target was **missed** at
-  17.6–17.7 ms on the empty World as well as the gallery; p50 was 16.70 ms, so the miss is scheduler
-  jitter, not scene cost. The owner decides whether to keep the strict target or authorise an
-  allowance.
+**Approved controls stay live.** T2 approves a Shadow control on Spot and Directional, and on Point
+with Shadow off by default. D9 must not disable, hide or auto-change those controls; additional
+Spot/Point casters are contract-valid and must not become inert. The earlier proposal to refuse a
+second caster or a shadow-casting Point light is withdrawn.
 
-**Refusal rule.** A second shadow-casting light, a shadow-casting point light, a map larger than
-2048², cascaded shadow maps, a baked/cached shadow architecture, or a per-frame shadow update on the
-Stage is refused for this batch. It may return only with a bounded measurement on the same three
-Worlds and explicit owner approval. The runtime must not silently reduce map size, disable shadows or
-cap lights; reduce the default set in the design instead. D9 is a map/pass and draw-work budget, not
-a GPU-time cap; phone-class hardware remains unmeasured.
+**Proposed per-caster budget.** One 2048² PCF map per shadow-casting Directional or Spot; a
+shadow-casting Point light uses six cube faces/maps. Visit: one shadow map per enabled caster per
+frame, except the Point cube shadow's six faces; Stage: zero per frame while the camera moves. The
+one-Sun World is the only measured total (**1 map/frame**). Multi-caster totals are **unmeasured**;
+D9 does not invent a maximum caster count or a multi-caster frame cost.
+
+**Unresolved owner policy — multi-caster shadows.** The owner must choose: (1) measure additional
+Spot/Point casters on the same Worlds before promising a total budget (recommended); (2) set a
+maximum simultaneous map/caster count in D9 with a visible refusal/notification state, never an
+inert control; or (3) ship the controls with multi-caster cost marked unmeasured and no “budgeted”
+claim. The [Gate C report](../../roadmap/t2-look-atmosphere/s0-rendering-gate/report.md#gate-c--e7-rendering-performance-and-shadow-budget)
+records the full choice.
+
+**Frame targets.** Stage drag p95 ≤ 2 display periods (33.3 ms) and gallery visit p95 ≤ 33 ms were
+met at 17.6–17.7 ms. Visitor idle retains the original p95 ≤ 1 display period (16.7 ms) as
+**aspirational**; the proposed allowance is **1.1 display periods (~18.3 ms) p95**. The measured
+17.6–17.7 ms is within the allowance and misses the aspirational target. p50 is 16.70 ms; the
+difference is scheduler jitter, not scene cost.
+
+**Refusal rule.** A map larger than 2048², cascaded shadow maps, a baked/cached shadow architecture,
+a per-frame shadow update on the Stage, and any silent runtime map-size reduction, shadow
+disablement or light cap remain refused for this batch. These are architecture/quality limits, not
+the approved Spot/Point controls. D9 is a map/pass and draw-work budget, not a GPU-time cap;
+phone-class hardware remains **unmeasured**.
 
 ## M/L spot check
 
