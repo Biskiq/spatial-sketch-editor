@@ -362,7 +362,7 @@ Executed against `main` at `dddbdd01` (including merged PR #347). Full record:
   the renderer writes the intensity uniform from `scene.environmentIntensity` when the material has
   no own `envMap`. No `scene.environment` ships; the top Sheen stop stays **High gloss**; interior
   capture is scheduled as its own slice. PMREM cost is affordable and recorded: build p50 9.9 ms
-  (max 13.6), drag rebuild p50 8.5 ms (p95 11.2), intensity-only 0 ms.
+  (max 14.5), drag rebuild p50 8.5 ms (p95 11.2), intensity-only 0 ms.
 - **E4 — Lambert opt-out (the Gate A open question): passes.** `MeshLambertMaterial` +
   `toneMapped = false` reproduced all 18 patches exactly (ΔE00 0, 0% clipping) under ACES Filmic, AgX
   and Neutral. With `toneMapped = true` the same mappers measured 4.06 / 5.29 / 4.33. A future mapper
@@ -378,7 +378,9 @@ Executed against `main` at `dddbdd01` (including merged PR #347). Full record:
   96.42% of channels within 2, p99 5, mean ΔE00 0.61 (max 2.01); the residual is silhouette aliasing
   (the default framebuffer is multisampled, the target has 0 samples). Stage and Preview resolve
   identical look inputs; the sun's distance and the host material sets are the two named differences.
-  `visitor:entry-frame` does not exist, so cold start is **unmeasured**.
+  `visitor:entry-frame` does not exist, so **cold start is a deferred measurement that requires
+  owner acceptance** — E6's "cold start is recorded" criterion is not met, and this PR adds no
+  visitor instrumentation to close it.
 - **Assumption recheck.** F1 superseded by PR #347 (Canvases now pass `NoToneMapping`; the factory
   still sets none); F2, F3 and F7 still true; F4 partly superseded (light values match, ground
   treatment differs); F5 confirmed and fixed; **F6 confirmed and still present** — a snapshot taken

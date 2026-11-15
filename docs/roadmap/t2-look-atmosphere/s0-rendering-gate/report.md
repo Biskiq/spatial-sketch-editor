@@ -13,10 +13,10 @@ than the final S0 report; performance and the shadow budget stay open.
 | --- | --- | --- |
 | 1. Pipeline audit | Output sRGB, working `srgb-linear`, `NoToneMapping`, exposure 1.0, physical light units; readback calibration exact. E1 measured the shared renderer factory; E6 then measured each production surface. See [pipeline](./pipeline.md). | **Go**, with the pipeline recorded |
 | 2. PBR chart / indoor policy | `scene.environment` leaks open-sky light into an enclosed Room almost unchanged (Daylight floor ΔE00 13.5, luminance ×1.8; Golden hour ΔE00 19.4–23.7), and r187 has **no per-material opt-out**: `envMapIntensity = 0` measured identical to `1.0`. E4 images and numbers below. | **Wait** — no global environment; interior capture is its own slice |
-| 3. Live Sky | PMREM of the real preset sky builds in 9.9 ms p50 (13.6 max), rebuilds in 8.5 ms p50 during a 12-step drag; an intensity-only change costs 0 ms. The cost is affordable; the look is not yet defensible indoors. | **Go on cost, wait on look** |
+| 3. Live Sky | PMREM of the real preset sky builds in 9.9 ms p50 (14.5 max), rebuilds in 8.5 ms p50 during a 12-step drag; an intensity-only change costs 0 ms. The cost is affordable; the look is not yet defensible indoors. | **Go on cost, wait on look** |
 | 4. Performance / D9 | Not started | Gate C |
 | 5. Paper / Living | Even a neutral studio reflection at 0.3 relights Paper (pale wall 139 → 167 sRGB; floor 161 → 195); at 1.0 the pale wall reaches 217 (ΔE00 21.7). Paper and Living stay different readings. | **Go with D4 = no reflection on Paper** |
-| 6. Parity | Snapshot colour path fixed and measured: a 50% grey surface reads 128 on the Stage and 128 in a snapshot (it was 55); mean channel difference 0.54, 96.4% of channels within 2, mean ΔE00 0.61. Stage and Preview resolve the same look inputs. One separate snapshot defect is recorded (F6). | **Go** for the colour path; parity differences named |
+| 6. Parity | Snapshot colour path fixed and measured: a 50% grey surface reads 128 on the Stage and 128 in a snapshot (it was 55); mean channel difference 0.54, 96.4% of channels within 2, mean ΔE00 0.61. Stage and Preview resolve the same look inputs. One separate snapshot defect is recorded (F6), and visitor cold start is a **deferred measurement requiring owner acceptance**. | **Go** for the colour path; parity differences named; cold start deferred |
 
 ## Gate A — E1–E3
 
@@ -150,7 +150,7 @@ adding the Sky environment at 0.3 / 1.0 moves patches by ΔE00 3.50 / 9.28, lift
 18,18,20 to 21,21,23 / 26,26,29, and clips 5.6% / 22.2% of patch pixels. The material-level opt-out
 `toneMapped = false` does **not** help here: that flag controls tone mapping, not the environment.
 
-**PMREM cost is affordable.** Daylight build, 8 samples: p50 **9.9 ms**, max **13.6 ms**. Rebuilding
+**PMREM cost is affordable.** Daylight build, 8 samples: p50 **9.9 ms**, max **14.5 ms**. Rebuilding
 while a 12-step elevation/azimuth drag runs: p50 **8.5 ms**, p95 and max **11.2 ms**. Changing only
 the reflection intensity: **0 ms** (no rebuild). A throttled rebuild on release would fit a frame
 budget; this is not what blocks the feature.
@@ -233,7 +233,7 @@ shipped 640-wide, `UnsignedByteType` target — the fix costs no GPU memory and 
 | --- | --- | --- |
 | 50% grey patch, Stage framebuffer | 128,128,128 | 128,128,128 |
 | Same patch, snapshot | **55,55,55** | **128,128,128** |
-| Mean channel difference vs Stage (640 × 400) | 30.7 (pre-fix run) | **0.54** |
+| Mean channel difference vs Stage (640 × 400) | not comparable (the pre-fix bench resized its renderer) | **0.54** |
 | Channels within 2 levels | — | **96.42%** |
 | p99 channel difference | — | **5** |
 | Mean ΔE00 over the sampled surfaces | — | **0.61** (max 2.01) |
@@ -256,9 +256,13 @@ Two differences are named and justified: the sun's **distance** (Stage 22.2, 63.
 8.8, 25.13, 13.82 — the same direction, different shadow-bounds framing), and the material set (the
 Stage draws its plate and ink, the Preview draws the visitor's lit ground and Lambert content).
 
-**Cold start: unmeasured, not estimated.** The Preview surface records `visitor:mounted` at 295.9 ms,
-but no `visitor:entry-frame` mark exists in the visitor module, so time-to-first-presented-frame is
-**not claimed**. The plan asked for the existing marks; only one exists.
+**Cold start: a deferred measurement, not a satisfied criterion.** The Preview surface records
+`visitor:mounted` at **298.5 ms**, but no `visitor:entry-frame` mark exists in the visitor module, so
+time-to-first-presented-frame is **not claimed** and E6's acceptance criterion "cold-start cost is
+recorded" is **not met**. The plan asked for the existing marks and only one exists. Gate B does not
+add visitor instrumentation to close it: the exception is recorded here and **requires owner
+acceptance** (either accept the deferral, or schedule the first-frame mark as its own slice). It does
+not block the colour-path verdict, and the `visitor:mounted` value must not be quoted as a load time.
 
 **One separate defect is recorded, not fixed (F6).** `StageCanvas.svelte` still passes
 `environment={environmentShown ? environment : 'paper'}` to the snapshot renderer, so a snapshot taken
@@ -295,8 +299,8 @@ Each F-row of the plan's §2 was re-read against `main` at `dddbdd01` before the
    `envMapIntensity` is not an escape hatch in r187.
 3. **F6 remains a real snapshot look difference.** A snapshot taken under Paper shows Paper even when
    the World is Living.
-4. **Cold start is unmeasured.** No first-frame mark exists; do not quote the 295.9 ms mount time as a
-   load time.
+4. **Cold start is a deferred measurement needing owner acceptance.** No first-frame mark exists; do
+   not quote the 298.5 ms mount time as a load time, and do not report E6's cold-start criterion as met.
 5. **One device, one browser.** PMREM timings are Apple M2 / ANGLE Metal only; no phone-class
    extrapolation.
 6. **The bench is not retained.** It is removed before merge; the numbers are reproducible from the
