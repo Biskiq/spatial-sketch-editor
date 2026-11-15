@@ -8,24 +8,35 @@
  * callers:
  *
  * - `resolveIsolatedRoomSubgraph()` — **one** Room whose boundary graph is
- *   isolated from every other Room and Wall. Room duplication uses this scope;
- *   an isolated Room move still resolves through the group scope as a group of one.
+ *   isolated from every other Room and Wall. The retained isolated duplicate
+ *   planner uses this scope; an isolated Room move still resolves through the
+ *   group scope as a group of one.
  * - `resolveIsolatedRoomGroupSubgraph()` — the **connected Room group** that
  *   contains a Room: every Room transitively joined to it through shared
  *   boundary Junctions. Moving any member alone would detach the others, so
  *   the group is the smallest unit a rigid translation can move. Interior
  *   shared Walls travel once with the group.
+ * - `resolveRoomCopyEnclosure()` — the **copy enclosure** of one Room: its
+ *   boundary Walls, their Junctions, hosted Openings and explicitly associated
+ *   objects. This is the A5 scope. It deliberately does not require isolation:
+ *   the copy takes a private clone of every boundary Wall, so a shared Wall or
+ *   a stationary Wall at a boundary Junction is architecture the copy leaves
+ *   behind, never a reason to refuse. A hosted Door relation that leaves the
+ *   enclosure is reported for the caller's words; it cannot travel with the
+ *   copy because the Rooms it joins do not.
  *
- * The two scopes differ deliberately, not by drift: duplication must reject a
- * shared Wall (the clone would need a private copy of it and its Junctions),
- * while a translation keeps the shared Wall and simply moves it once with the
- * group. Both share every rule helper below, so neither can silently diverge
- * from the other's outside-architecture, portal-relation or read-only-object
- * policy.
+ * The scopes differ deliberately, not by drift. The isolated subgraph still
+ * rejects a shared Wall because it promises a truly isolated clone. The A5 copy
+ * enclosure instead takes a private clone of the shared boundary and leaves the
+ * source architecture untouched, so the copy is a free island. A rigid move
+ * keeps the shared Wall and moves it once with the connected group. All scopes
+ * share every rule helper below, so none can silently diverge on
+ * outside-architecture, portal-relation or read-only-object policy.
  *
  * Rejection codes keep the duplicate planners' vocabulary (`unknown_room`,
  * `invalid_reference`, `room_not_isolated`, `external_portal_relation`,
- * `profile_object_read_only`).
+ * `profile_object_read_only`). The copy enclosure reports only its three kept
+ * refusals; the other codes belong to the retained isolated and group scopes.
  *
  * Pure and read-only: no allocation, no document mutation, no persistence.
  */
@@ -88,6 +99,33 @@ export type IsolatedRoomSubgraphResult =
 
 export type IsolatedRoomGroupSubgraphResult =
 	| { kind: 'success'; subgraph: IsolatedRoomGroupSubgraph }
+	| { kind: 'rejected'; rejection: RoomIsolationRejection };
+
+/** A Door relation the copy enclosure cannot carry: its Rooms do not copy. */
+export type RoomCopyDroppedRelation = {
+	/** The hosted Door whose `connectsRoomIds` is dropped from the copy. */
+	openingId: string;
+	/** The source relation's two Room ids, in their authored order. */
+	roomIds: readonly [string, string];
+};
+
+/** One Room's copy enclosure, resolved without the isolation gates. */
+export type RoomCopyEnclosure = {
+	room: LayoutWallFirstRoom;
+	/** Boundary Wall IDs in canonical Room-boundary order (deduped). */
+	wallIds: string[];
+	/** Boundary Junction IDs (deduped, deterministic document order). */
+	junctionIds: string[];
+	/** Openings hosted by those Walls, document order. */
+	openingIds: string[];
+	/** Objects explicitly associated with the Room, document order. */
+	associatedObjectIds: string[];
+	/** Door relations that cannot travel with the copy, document order. */
+	droppedRelations: RoomCopyDroppedRelation[];
+};
+
+export type RoomCopyEnclosureResult =
+	| { kind: 'success'; enclosure: RoomCopyEnclosure }
 	| { kind: 'rejected'; rejection: RoomIsolationRejection };
 
 /**
@@ -350,6 +388,69 @@ export function resolveIsolatedRoomSubgraph(
 			openingIds: graph.hostedOpenings.map((opening) => opening.id),
 			associatedObjectIds: graph.associatedObjects.map((object) => object.id),
 			profileObjectIds
+		}
+	};
+}
+
+/**
+ * Resolve one Room's **copy enclosure** for A5's duplicate-any-Room path.
+ *
+ * Unlike {@link resolveIsolatedRoomSubgraph}, this scope does **not** refuse a
+ * boundary Wall shared with another Room and does **not** refuse a stationary
+ * Wall incident to a boundary Junction: the clone owns private copies of the
+ * enclosure's Walls and Junctions, so the source's shared architecture is left
+ * untouched (the copy is a free island).
+ *
+ * What it still refuses:
+ * 1. the Room does not exist (`unknown_room`);
+ * 2. a boundary Wall does not resolve (`invalid_reference`);
+ * 3. an explicitly associated object is a read-only `profile`
+ *    (`profile_object_read_only`).
+ *
+ * A hosted Opening's `connectsRoomIds` is not a rejection here: the copy keeps
+ * the Door and drops the relation, and the relation is reported so the calling
+ * surface can name it before the copy is committed.
+ */
+export function resolveRoomCopyEnclosure(
+	document: LayoutDocumentWallFirst,
+	roomId: string
+): RoomCopyEnclosureResult {
+	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	if (!room) {
+		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
+	}
+
+	const collected = collectBoundaryGraph(document, [room]);
+	if (collected.kind === 'rejected') return collected;
+	const { graph } = collected;
+
+	const profileObjectIds = readOnlyProfileObjectIds(graph.associatedObjects);
+	if (profileObjectIds.length > 0) {
+		return reject(
+			'profile_object_read_only',
+			`Room '${roomId}' contains read-only profile object(s) ${profileObjectIds.join(', ')}; resolve or remove them before duplicating`,
+			[roomId, ...profileObjectIds]
+		);
+	}
+
+	const droppedRelations: RoomCopyDroppedRelation[] = [];
+	for (const opening of graph.hostedOpenings) {
+		if (opening.connectsRoomIds === undefined) continue;
+		droppedRelations.push({
+			openingId: opening.id,
+			roomIds: [opening.connectsRoomIds[0], opening.connectsRoomIds[1]]
+		});
+	}
+
+	return {
+		kind: 'success',
+		enclosure: {
+			room,
+			wallIds: graph.wallIds,
+			junctionIds: graph.junctionIds,
+			openingIds: graph.hostedOpenings.map((opening) => opening.id),
+			associatedObjectIds: graph.associatedObjects.map((object) => object.id),
+			droppedRelations
 		}
 	};
 }

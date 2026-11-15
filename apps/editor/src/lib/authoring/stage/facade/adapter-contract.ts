@@ -94,7 +94,12 @@ export type StageOverlayContribution = {
  */
 export type StageGuideContribution = {
 	readonly id: string;
-	readonly role: 'selection' | 'hover' | 'armed';
+	/**
+	 * `relation` is a derived, non-editable fact about two accepted subjects
+	 * (the independent-Wall overlap cue). It is never a selection, hover or
+	 * armed-tool guide and cannot be pressed.
+	 */
+	readonly role: 'selection' | 'hover' | 'armed' | 'relation';
 	readonly segments: readonly (readonly [Vec3, Vec3])[];
 	/** Derived helpers (unbounded reach, stems) are drawn differently. */
 	readonly derivedSegments?: readonly (readonly [Vec3, Vec3])[];
