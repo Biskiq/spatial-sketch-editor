@@ -437,7 +437,7 @@ Executed against `main` at `2d73bf6f` (including merged PR #349). Full record:
   existed since `f6de016d`. It is a two-rAF scheduling proxy gated on an active runtime, which the
   Gate B surface did not have. Gate C keeps it and adds a renderer-observed mark rather than
   renaming or removing it.
-- **Checks run for this gate:** `npm run check` (0 errors, 13 pre-existing warnings), the focused
+- **Checks run for this gate:** `npm run check` (0 errors, 12 pre-existing warnings), the focused
   `first-frame` unit test (3 cases), `npm run test:arch`, `npm run build`, and the 19-run bench. The
   bench route and runner are removed before merge; provenance stays in the Gate C commit.
 
@@ -523,7 +523,7 @@ PR is not planning-only.
 - **Planning PR:** `git diff --stat` showed the plan file only; no unit, integration, build or
   benchmark run was required or claimed. The plan's paths and line-level claims were read from base
   `b9908410`.
-- **Gate C PR:** `npm run check` (0 errors, 13 pre-existing warnings), the focused
+- **Gate C PR:** `npm run check` (0 errors, 12 pre-existing warnings), the focused
   `tests/lib/visitor/first-frame.test.ts` (3 cases), `npm run test:arch`, `npm run build`, and the
   bounded 19-run matrix. No `perf:spot` or full suite was run. The bench route and runner are
   removed before merge.

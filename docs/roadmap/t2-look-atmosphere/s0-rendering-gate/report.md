@@ -495,13 +495,14 @@ optimisation target is set and no code was changed to move it.
   cold starts, environment, sampling and the proposed budget
 - [Stage — gallery wall at 1280 × 720](./evidence/2026-11-15/gate-c/gate-c-stage-gallery.png)
 - [Visitor — gallery wall at 1280 × 720](./evidence/2026-11-15/gate-c/gate-c-visit-gallery.png)
-- Source provenance: commit `GATE_C_COMMIT` on `t2/s0-gate-c-rendering-budget` (bench route and
-  runner removed; reproduce the evidence writer from that commit)
+- Source provenance: commit `4ee65fb8` on `t2/s0-gate-c-rendering-budget` (bench route and runner
+  removed in the next commit; reproduce the evidence writer from `4ee65fb8`)
 
 ### Checks (Gate C)
 
-- `npm run check`: 0 errors, 13 pre-existing warnings.
+- `npm run check`: 0 errors, 12 pre-existing warnings.
 - `npx vitest run tests/lib/visitor/first-frame.test.ts`: 3 tests pass.
 - `npm run test:arch`: pass.
 - `npm run build`: pass.
-- The 19-run matrix completed and wrote 19 runs plus three cold starts to the evidence JSON; two captures were saved.
+- The 19-run matrix completed and wrote 19 runs plus three cold starts to the evidence
+  JSON; two captures were saved.
