@@ -1959,7 +1959,12 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		await frame();
 		const menu = card.querySelector<HTMLElement>('[data-card-actions]')!;
 		expect(menu.querySelector('[data-field="thickness"]')).toBeNull();
-		expect(menu.querySelector<HTMLButtonElement>('[data-card-function="Face this wall"]')?.disabled).toBe(true);
+		// A6: Face this wall is built. It is a real scoped action now, not a
+		// disabled placeholder, and the placeholder is gone rather than duplicated.
+		expect(menu.querySelector('[data-card-function="Face this wall"]')).toBeNull();
+		const face = menu.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-face"]')!;
+		expect(face.disabled).toBe(false);
+		expect(face.textContent).toContain('Face this wall');
 		expect(menu.querySelectorAll('button.destructive')).toHaveLength(1);
 	});
 	it('discards an uncommitted thickness when the disclosure closes without writing history', async () => {

@@ -115,8 +115,10 @@ const allowed = new Map<string, readonly string[]>([
 		[
 			numeric,
 			'$lib/authoring/layout/wall-unfold-store.svelte',
+			'$lib/authoring/layout/wall-face-store',
 			host,
 			'$lib/layout/wall-unfold',
+			'$lib/layout/wall-face',
 			'./LayoutCardFields.svelte',
 			'./LayoutInkPalette.svelte',
 			'./LayoutPlacementInstrument.svelte',
