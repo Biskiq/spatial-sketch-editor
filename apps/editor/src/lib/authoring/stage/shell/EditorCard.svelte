@@ -20,7 +20,9 @@
 	 * what it will become; Erase (the contributed destructive action) is last.
 	 */
 	const FUNCTIONS: Readonly<Record<'wall' | 'room' | 'opening' | 'object', readonly string[]>> = {
-		wall: ['Face this wall', 'Unroll the room', 'Section through here', 'Paint…', 'Present this in Experience'],
+		// Face this wall is built: the Layout adapter contributes it as a real Card
+		// action, so the disabled placeholder would duplicate it.
+		wall: ['Unroll the room', 'Section through here', 'Paint…', 'Present this in Experience'],
 		room: ['Unroll the room', 'Section through here', 'Paint floor…', 'Present this in Experience'],
 		opening: ['Face this opening', 'Section through here', 'Present this in Experience'],
 		object: ['Face this', 'Section through here', 'Paint…', 'Present this in Experience']

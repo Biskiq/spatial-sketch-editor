@@ -594,9 +594,11 @@ one Scene object with one Card writer and one action set; only sizing differs by
   **Relations** showing only facts the adapters publish. Expansion persists per subject kind
   for the session; Escape collapses More before it closes the Card.
 - **`•••` holds subject functions** in one compact anchored menu (no Stage click-through,
-  focus returns to its trigger). Functions not built yet (for example Face this wall,
-  Unroll the room, Section through here, Paint…, Present this in Experience) are disabled
-  with a quiet `Soon`; **Erase** is last and is the one delete home.
+  focus returns to its trigger). Functions not built yet (for example Unroll the room,
+  Section through here, Paint…, Present this in Experience) are disabled
+  with a quiet `Soon`; **Erase** is last and is the one delete home. A built function is a
+  contributed Card action in the same menu — **Face this wall**, then **Put back** while that
+  Wall is the faced one.
 - **Removed from ordinary UI:** technical identity, raw keys, absolute angle/yaw, endpoint
   coordinates, Move/Place/Turn forms and the fixed-endpoint radios. A Card length edit keeps
   the existing default anchor; choosing the other fixed endpoint is a deferred interaction
