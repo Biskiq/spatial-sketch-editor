@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { stageCanvasRenderer } from '$lib/render/canvas-renderers';
+	import { CANVAS_TONE_MAPPING, stageCanvasRenderer } from '$lib/render/canvas-renderers';
 	import { perfMark } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
@@ -13,7 +13,9 @@
 	 *
 	 * The shadow-map type is selected **explicitly** as the landed r186 upgrade does
 	 * (`PCFShadowMap`); the removed PCFSoft filtering path is never reachable through
-	 * a boolean `shadows`.
+	 * a boolean `shadows`. Tone mapping is named for the same reason: Threlte would
+	 * otherwise apply its `AgXToneMapping` default, and Gate A accepted
+	 * `NoToneMapping` (see `CANVAS_TONE_MAPPING`).
 	 */
 	import { Canvas, T } from '@threlte/core';
 	import { PCFShadowMap } from 'three';
@@ -248,7 +250,12 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 </script>
 
-<Canvas createRenderer={stageCanvasRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+<Canvas
+	createRenderer={stageCanvasRenderer}
+	dpr={[1, 1.5]}
+	shadows={PCFShadowMap}
+	toneMapping={CANVAS_TONE_MAPPING}
+>
 	<!--
 		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is

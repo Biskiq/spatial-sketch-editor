@@ -25,10 +25,26 @@ a maximum channel error of **0**.
 | Stage snapshot settings (bench replica) | 640 × 360, **`UnsignedByteType`**, texture colour space **`""` (NoColorSpace)** | `new WebGLRenderTarget(640, 360, { type: UnsignedByteType })`; `StageSnapshotRenderer.svelte` creates the same target |
 
 The Stage, Visitor Preview and published visit all use the same
-`createManagedWebGLRenderer` factory and set no tone-mapping, exposure or output-colour-space
-override. E1 captured that **shared factory** once; it did not instantiate or compare each production
-surface independently. These are factory-level facts, not per-surface parity evidence. Gate B/E6 owns
-the actual Stage / snapshot / Preview / visit comparison.
+`createManagedWebGLRenderer` factory. E1 captured that **shared factory** once; it did not instantiate
+or compare each production surface independently, so these are factory-level facts. Gate B/E6 owns
+the remaining Stage / snapshot / Preview / visit comparison — snapshot colour space and pixel parity.
+
+**Correction, 2026-11-15 — the Canvases did not run this pipeline.** Threlte's `<Canvas>` assigns its
+own `AgXToneMapping` default to the renderer the factory returns, and neither product Canvas passed
+`toneMapping`, so the Stage, the Preview and the published visit shipped AgX at exposure 1.0 while
+this record described `NoToneMapping`. Both Canvases now pass the accepted value through one exported
+constant, `CANVAS_TONE_MAPPING` (`apps/editor/src/lib/render/canvas-renderers.ts`). A mounted
+regression (`apps/editor/tests/lib/render/canvas-tone-mapping.test.ts`) reads the renderer Threlte
+configures on each production Canvas — `toneMapping` `NoToneMapping`, `toneMappingExposure` 1.0,
+`outputColorSpace` `sRGB`, working space `srgb-linear`, `PCFShadowMap` — and a source check requires
+both Canvases to name the constant, so a dependency default cannot reopen the gap. Removing the props
+again measures `toneMapping` 6 (`AgXToneMapping`) on both Canvases; that is the before state. The
+factory still sets none of these, and E12's shared renderer ownership is unchanged.
+
+**Evidence:** [before/after under Gate A's neutral reference](./evidence/2026-11-15/stage-preview-tone-mapping.png)
+· [machine-readable readback](./evidence/2026-11-15/stage-preview-tone-mapping.json). With the
+accepted pipeline the 18 chart patches reproduce their source sRGB values exactly; AgX crushes
+near-black (18,18,20 → 8,8,11) and compresses near-white (245,245,242 → 199,199,198).
 
 **Snapshot warning.** Three r187 renders a non-XR render target in
 `ColorManagement.workingColorSpace` (linear). The Stage target and the bench replica both leave the
