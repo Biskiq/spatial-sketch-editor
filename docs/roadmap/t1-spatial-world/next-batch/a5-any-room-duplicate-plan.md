@@ -28,7 +28,7 @@ topology rewrite, no format change (format 7 stays).
   topology within one component, Opening set, portal relations, compile).
 - **Dropped relations.** A hosted Opening with `connectsRoomIds` is copied as the same Door
   without the relation. The plan reports
-  `droppedPortalRelations: [{ openingId, roomIds }]`, one entry per dropped relation. An
+  `droppedRoomRelations: [{ openingId, roomIds }]`, one entry per dropped relation. An
   Opening with no relation copies untouched.
 - **Placement.** The adapter keeps A4's proposal: one task, the complete Room already proposed
   one clear metre past its own extent, unpressed motion translating it, one click committing
@@ -81,7 +81,7 @@ planner and `layout-room-move` policies are untouched.
 ## Files
 
 - `packages/layout-core/src/layout-duplicate.ts` — shared clone core, `planDuplicateRoom`,
-  `droppedPortalRelations` on the plan.
+  `droppedRoomRelations` on the plan.
 - `packages/layout-core/src/layout-room-isolation.ts` — `resolveRoomCopyEnclosure`.
 - `packages/layout-core/src/layout-wall-overlap.ts` *(new)* — independent-Wall coincidence
   query.
@@ -109,6 +109,10 @@ planner and `layout-room-move` policies are untouched.
   exact endpoints; same-component pair is not reported; touching-only and near-parallel pairs
   are not reported; a collinear cubic span against a straight Wall is reported; deterministic
   order; no document mutation.
+- Cost characterization: the X-sweep broad phase reports its wall count and admitted candidate
+  pairs. At M (100 detached components / 400 Walls) and L (400 / 1,600) the deterministic
+  candidate count stays linear; the all-pairs scan would admit ~8N². The test gates that count,
+  never wall-clock time (`apps/editor/tests/README.md` rule 11).
 - Adapter suite (the real facade and acceptance host): the shared-Wall Room offers Duplicate
   (no longer refuses); its detail names the dropped relation; one click commits one history
   entry; the copied Door has no `connectsRoomIds`; `facade.guides()` carries the
@@ -117,6 +121,13 @@ planner and `layout-room-move` policies are untouched.
 - Commands: the affected suites, `npm run check`, `npm run check:layout-core`,
   `npm run test:arch`, `npm run test:fast`, `npm run build`; `test:heavy` and the DB API are
   certified by CI per `apps/editor/tests/README.md`. Focused browser QA of the creator journey.
+
+## Guard change
+
+A5 intentionally replaces the A4 check `refuses a non-isolated Room on the Card, naming the
+shared Wall` with the shared-Wall free-island journey. The other two A4 checks keep their exact
+identities under the unchanged `T1 A4 — Duplicate isolated Room` suite. The removal is recorded
+here and authorized by the PR's `owner-approved-guard-change` label; no harness bypass is used.
 
 ## Risks
 

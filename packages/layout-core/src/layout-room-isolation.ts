@@ -8,8 +8,9 @@
  * callers:
  *
  * - `resolveIsolatedRoomSubgraph()` — **one** Room whose boundary graph is
- *   isolated from every other Room and Wall. Room duplication uses this scope;
- *   an isolated Room move still resolves through the group scope as a group of one.
+ *   isolated from every other Room and Wall. The retained isolated duplicate
+ *   planner uses this scope; an isolated Room move still resolves through the
+ *   group scope as a group of one.
  * - `resolveIsolatedRoomGroupSubgraph()` — the **connected Room group** that
  *   contains a Room: every Room transitively joined to it through shared
  *   boundary Junctions. Moving any member alone would detach the others, so
@@ -24,16 +25,18 @@
  *   enclosure is reported for the caller's words; it cannot travel with the
  *   copy because the Rooms it joins do not.
  *
- * The two scopes differ deliberately, not by drift: duplication must reject a
- * shared Wall (the clone would need a private copy of it and its Junctions),
- * while a translation keeps the shared Wall and simply moves it once with the
- * group. Both share every rule helper below, so neither can silently diverge
- * from the other's outside-architecture, portal-relation or read-only-object
- * policy.
+ * The scopes differ deliberately, not by drift. The isolated subgraph still
+ * rejects a shared Wall because it promises a truly isolated clone. The A5 copy
+ * enclosure instead takes a private clone of the shared boundary and leaves the
+ * source architecture untouched, so the copy is a free island. A rigid move
+ * keeps the shared Wall and moves it once with the connected group. All scopes
+ * share every rule helper below, so none can silently diverge on
+ * outside-architecture, portal-relation or read-only-object policy.
  *
  * Rejection codes keep the duplicate planners' vocabulary (`unknown_room`,
  * `invalid_reference`, `room_not_isolated`, `external_portal_relation`,
- * `profile_object_read_only`).
+ * `profile_object_read_only`). The copy enclosure reports only its three kept
+ * refusals; the other codes belong to the retained isolated and group scopes.
  *
  * Pure and read-only: no allocation, no document mutation, no persistence.
  */

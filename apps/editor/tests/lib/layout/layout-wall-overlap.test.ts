@@ -14,7 +14,8 @@ import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
-	type LayoutWall
+	type LayoutWall,
+	type LayoutWallOverlapObservation
 } from '@portfolio/layout-core';
 
 function documentWith(
@@ -42,6 +43,28 @@ function wall(id: string, startJunctionId: string, endJunctionId: string): Layou
 		height: 3,
 		centerline: { kind: 'line' }
 	};
+}
+
+/** A diagonal row of detached 4×4 squares: X overlaps neighbours, Z never does. */
+function detachedSquareRow(components: number): LayoutDocumentWallFirst {
+	const junctions: Record<string, LayoutVec2> = {};
+	const walls: LayoutWall[] = [];
+	for (let index = 0; index < components; index += 1) {
+		const x = index * 5;
+		const z = index * 10;
+		const corners = [0, 1, 2, 3].map((corner) => `s${index}-${corner}`);
+		junctions[corners[0]!] = [x, z];
+		junctions[corners[1]!] = [x + 6, z];
+		junctions[corners[2]!] = [x + 6, z + 4];
+		junctions[corners[3]!] = [x, z + 4];
+		walls.push(
+			wall(`s${index}-top`, corners[0]!, corners[1]!),
+			wall(`s${index}-right`, corners[1]!, corners[2]!),
+			wall(`s${index}-bottom`, corners[2]!, corners[3]!),
+			wall(`s${index}-left`, corners[3]!, corners[0]!)
+		);
+	}
+	return documentWith(junctions, walls);
 }
 
 /** Two 4×4 squares side by side, joining only at coordinate `(4, 0)`/`(4, 4)`. */
@@ -76,7 +99,13 @@ function abuttingSquares(shift: LayoutVec2 = [0, 0]): LayoutDocumentWallFirst {
 
 describe('T1 A5 — independent Wall overlap (derived cue)', () => {
 	it('reports one positive-length stretch between two coincident Walls of different components', () => {
-		const overlaps = independentWallOverlaps(abuttingSquares());
+		let observed: LayoutWallOverlapObservation | undefined;
+		const overlaps = independentWallOverlaps(abuttingSquares(), (observation) => {
+			observed = observation;
+		});
+		// Three Walls on each side of the shared boundary meet in X; only the
+		// coincident a-right/b-left pair survives the Z and centerline tests.
+		expect(observed).toEqual({ wallCount: 8, candidatePairs: 9 });
 		expect(overlaps).toHaveLength(1);
 		expect(overlaps[0]).toMatchObject({
 			firstWallId: 'a-right',
@@ -161,5 +190,27 @@ describe('T1 A5 — independent Wall overlap (derived cue)', () => {
 		const second = independentWallOverlaps(document);
 		expect(second).toEqual(first);
 		expect(JSON.stringify(document)).toBe(before);
+	});
+
+	it('keeps broad-phase candidates linear at M and L rather than scanning every pair', () => {
+		const observations: LayoutWallOverlapObservation[] = [];
+		for (const components of [100, 400]) {
+			const overlaps = independentWallOverlaps(detachedSquareRow(components), (observation) => {
+				observations.push(observation);
+			});
+			expect(overlaps).toEqual([]);
+		}
+		expect(observations).toHaveLength(2);
+		const medium = observations[0]!;
+		const large = observations[1]!;
+		expect(medium.wallCount).toBe(100 * 4);
+		expect(large.wallCount).toBe(400 * 4);
+		// Each square's X interval meets only its immediate neighbour, and its Z
+		// extents are disjoint, so the detailed pass rejects every admitted pair.
+		// A full cross-component scan would admit ~8N² pairs; the sweep admits
+		// ~9N. This is a deterministic structural bound, not a timing gate.
+		expect(medium.candidatePairs).toBeLessThanOrEqual(100 * 20);
+		expect(large.candidatePairs).toBeLessThanOrEqual(400 * 20);
+		expect(large.candidatePairs).toBeLessThanOrEqual(medium.candidatePairs * 5);
 	});
 });

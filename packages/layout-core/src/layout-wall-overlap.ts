@@ -45,6 +45,17 @@ export type LayoutIndependentWallOverlap = {
 	readonly labelAt: LayoutVec2;
 };
 
+/**
+ * Optional broad-phase cost characterization. Read-only diagnostics; it never
+ * changes the returned overlaps and the editor does not pass it.
+ */
+export type LayoutWallOverlapObservation = {
+	/** Walls whose canonical centerline was available to the query. */
+	readonly wallCount: number;
+	/** Cross-component pairs admitted by the X sweep, before Z and segment tests. */
+	readonly candidatePairs: number;
+};
+
 type WallPolyline = {
 	readonly wallId: string;
 	readonly componentKey: string;
@@ -240,12 +251,69 @@ function polylineMidpoint(points: readonly LayoutVec2[]): LayoutVec2 {
 }
 
 /**
+ * Broad-phase candidate pairs for the derived query.
+ *
+ * The sweep orders Walls by their minimum X and keeps an active set whose
+ * maximum X can still meet the current interval. Only cross-component pairs in
+ * that set become candidates; the X sweep is the material spatial filter, while
+ * Z extents and centerline geometry are detailed tests below. `candidatePairs`
+ * counts the pairs the broad phase admitted (before the Z and segment tests), so
+ * a focused test can characterize the query without a timing gate.
+ */
+function broadPhasePairs(polylines: readonly WallPolyline[]): {
+	readonly pairs: readonly (readonly [number, number])[];
+	readonly candidatePairs: number;
+} {
+	const ordered = polylines
+		.map((wall, index) => ({ wall, index }))
+		.sort((first, second) => first.wall.minX - second.wall.minX || first.index - second.index);
+	const active: { readonly wall: WallPolyline; readonly index: number }[] = [];
+	const pairs: [number, number][] = [];
+	let candidatePairs = 0;
+	for (const current of ordered) {
+		// Compact expired X intervals in place; `ordered` is the sweep order, so
+		// the active list stays in insertion order without another sort.
+		let kept = 0;
+		for (const candidate of active) {
+			if (candidate.wall.maxX + LAYOUT_WALL_OVERLAP_EPSILON >= current.wall.minX) {
+				active[kept] = candidate;
+				kept += 1;
+			}
+		}
+		active.length = kept;
+		for (const candidate of active) {
+			if (candidate.wall.componentKey === current.wall.componentKey) continue;
+			candidatePairs += 1;
+			if (
+				candidate.wall.maxZ + LAYOUT_WALL_OVERLAP_EPSILON < current.wall.minZ ||
+				current.wall.maxZ + LAYOUT_WALL_OVERLAP_EPSILON < candidate.wall.minZ
+			) {
+				continue;
+			}
+			pairs.push([
+				Math.min(candidate.index, current.index),
+				Math.max(candidate.index, current.index)
+			]);
+		}
+		active.push(current);
+	}
+	// The sweep discovers a pair when its later interval starts; restore the
+	// documented document-order pair order before the detailed pass.
+	pairs.sort((first, second) => first[0] - second[0] || first[1] - second[1]);
+	return { pairs, candidatePairs };
+}
+
+/**
  * Every coincident stretch between Walls of **different** connected
  * components, in document order of the Wall pair. Same-component pairs are
  * omitted: their overlap already refuses in the canonical topology gate.
+ *
+ * `observe` is optional read-only characterization of the broad phase; it never
+ * changes the returned overlaps.
  */
 export function independentWallOverlaps(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
+	observe?: (observation: LayoutWallOverlapObservation) => void
 ): readonly LayoutIndependentWallOverlap[] {
 	const keyByWallId = topologyComponentKeyByWallId(document);
 	const junctionPointById = new Map(
@@ -259,57 +327,48 @@ export function independentWallOverlaps(
 		if (polyline !== null) polylines.push(polyline);
 	}
 
+	const { pairs, candidatePairs } = broadPhasePairs(polylines);
 	const overlaps: LayoutIndependentWallOverlap[] = [];
-	for (let firstIndex = 0; firstIndex < polylines.length; firstIndex += 1) {
+	for (const [firstIndex, secondIndex] of pairs) {
 		const first = polylines[firstIndex]!;
-		for (let secondIndex = firstIndex + 1; secondIndex < polylines.length; secondIndex += 1) {
-			const second = polylines[secondIndex]!;
-			if (first.componentKey === second.componentKey) continue;
-			if (
-				first.maxX + LAYOUT_WALL_OVERLAP_EPSILON < second.minX ||
-				second.maxX + LAYOUT_WALL_OVERLAP_EPSILON < first.minX ||
-				first.maxZ + LAYOUT_WALL_OVERLAP_EPSILON < second.minZ ||
-				second.maxZ + LAYOUT_WALL_OVERLAP_EPSILON < first.minZ
-			) {
-				continue;
+		const second = polylines[secondIndex]!;
+		const pieces: (readonly [LayoutVec2, LayoutVec2])[] = [];
+		for (let firstLeg = 1; firstLeg < first.points.length; firstLeg += 1) {
+			const firstStart = first.points[firstLeg - 1]!;
+			const firstEnd = first.points[firstLeg]!;
+			for (let secondLeg = 1; secondLeg < second.points.length; secondLeg += 1) {
+				const overlap = collinearOverlap(
+					firstStart,
+					firstEnd,
+					second.points[secondLeg - 1]!,
+					second.points[secondLeg]!
+				);
+				if (overlap !== null) pieces.push(overlap);
 			}
-			const pieces: (readonly [LayoutVec2, LayoutVec2])[] = [];
-			for (let firstLeg = 1; firstLeg < first.points.length; firstLeg += 1) {
-				const firstStart = first.points[firstLeg - 1]!;
-				const firstEnd = first.points[firstLeg]!;
-				for (let secondLeg = 1; secondLeg < second.points.length; secondLeg += 1) {
-					const overlap = collinearOverlap(
-						firstStart,
-						firstEnd,
-						second.points[secondLeg - 1]!,
-						second.points[secondLeg]!
-					);
-					if (overlap !== null) pieces.push(overlap);
-				}
-			}
-			if (pieces.length === 0) continue;
-			const stretches = chainOverlaps(pieces);
-			if (stretches.length === 0) continue;
-			let length = 0;
-			let longest: LayoutWallOverlapStretch | null = null;
-			let longestLength = -1;
-			for (const stretch of stretches) {
-				const stretchLength = polylineLength(stretch);
-				length += stretchLength;
-				if (stretchLength > longestLength) {
-					longest = stretch;
-					longestLength = stretchLength;
-				}
-			}
-			if (longest === null || length <= LAYOUT_WALL_OVERLAP_EPSILON) continue;
-			overlaps.push({
-				firstWallId: first.wallId,
-				secondWallId: second.wallId,
-				stretches,
-				length,
-				labelAt: polylineMidpoint(longest)
-			});
 		}
+		if (pieces.length === 0) continue;
+		const stretches = chainOverlaps(pieces);
+		if (stretches.length === 0) continue;
+		let length = 0;
+		let longest: LayoutWallOverlapStretch | null = null;
+		let longestLength = -1;
+		for (const stretch of stretches) {
+			const stretchLength = polylineLength(stretch);
+			length += stretchLength;
+			if (stretchLength > longestLength) {
+				longest = stretch;
+				longestLength = stretchLength;
+			}
+		}
+		if (longest === null || length <= LAYOUT_WALL_OVERLAP_EPSILON) continue;
+		overlaps.push({
+			firstWallId: first.wallId,
+			secondWallId: second.wallId,
+			stretches,
+			length,
+			labelAt: polylineMidpoint(longest)
+		});
 	}
+	observe?.({ wallCount: polylines.length, candidatePairs });
 	return overlaps;
 }

@@ -20,6 +20,12 @@
  *    the accepted copy round-trips through Save/Load unchanged;
  * 7. A5 — a copy resting on another group's Wall contributes the derived
  *    **overlaps, not joined** cue, which clears on Undo and returns on Redo.
+ *
+ * Guard note: the suite title below is the protected A4 check identity. Keep it
+ * unchanged. The two still-applicable A4 checks (deterministic lineage and
+ * coincident-copy refusal) live under it; A5 intentionally replaces A4's
+ * non-isolated refusal with the shared-Wall journey at the end, recorded in the
+ * plan and authorized by the PR's `owner-approved-guard-change` label.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -338,7 +344,7 @@ function boundaryJunctions(document: LayoutDocumentWallFirst, roomId: string) {
 	return [...ids].map((id) => document.junctions.find((junction) => junction.id === id)!);
 }
 
-describe('T1 A4/A5 — Duplicate a Room', () => {
+describe('T1 A4 — Duplicate isolated Room', () => {
 	it('[cap:layout.room-duplicate core] clones the complete Room with deterministic new lineage through Undo, Redo and Save/Load', async () => {
 		const fixture = isolatedFixture();
 		const mounted = await mount(fixture);
