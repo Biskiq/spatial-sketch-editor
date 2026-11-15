@@ -20,6 +20,7 @@ import { PCFShadowMap } from 'three';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
 	import VisitorEntities from './VisitorEntities.svelte';
+	import VisitorFirstFrame from './VisitorFirstFrame.svelte';
 	import VisitorLayoutShell from './VisitorLayoutShell.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
 	import StoreMaterial from '$lib/render/resources/StoreMaterial.svelte';
@@ -465,6 +466,8 @@ import { PCFShadowMap } from 'three';
 				{modelUrls}
 				includeLights={environment !== 'paper'}
 			/>
+			<!-- Renderer-observed first frame; inert unless the harness enables marks. -->
+			<VisitorFirstFrame {runEpoch} {active} />
 		</Canvas>
 	</div>
 	<div class="visitor-brand" class:published={mode === 'public'}>
