@@ -3,7 +3,7 @@ import { planarDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	mintLayoutIdCapture,
 	resolveIsolatedRoomGroupSubgraph,
-	resolveIsolatedRoomSubgraph,
+	resolveRoomCopyEnclosure,
 	type LayoutIdCapture,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -18,7 +18,12 @@ import {
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-adapter-host';
 
-import { roomDuplicateRefusalWords, wallRefusalWords, type RoomDuplicateRejection } from './refusals';
+import {
+	droppedRoomRelationWords,
+	roomDuplicateRefusalWords,
+	wallRefusalWords,
+	type RoomDuplicateRejection
+} from './refusals';
 import {
 	LAYOUT_ROOM_DUPLICATE_KIND,
 	roomDuplicateIntent,
@@ -288,11 +293,13 @@ export function createRoomGestureSession({
 	}
 
 	/*
-	 * Duplicate an isolated Room. The Card arms one task; the task's
+	 * Duplicate any Room as a free island. The Card arms one task; the task's
 	 * unpressed moves carry the complete cloned Room as one proposal, and a
 	 * click accepts it through one captured intent. The initial proposal is
 	 * placed one metre clear of the source, so Duplicate never proposes an
 	 * ambiguous coincident copy and a click before any move still places it.
+	 * A shared boundary Wall copies privately; a Door relation that would leave
+	 * the copy is dropped and stated in the instrument before the click.
 	 * Nothing here is a mark, an armed dock tool or a second document.
 	 */
 	type RoomDuplicateSession = {
@@ -368,11 +375,12 @@ export function createRoomGestureSession({
 			roomDuplicateNotice = { code: 'unknown_room' };
 			return false;
 		}
-		const isolation = resolveIsolatedRoomSubgraph(document, roomId);
-		if (isolation.kind === 'rejected') {
-			roomDuplicateNotice = isolation.rejection;
+		const resolved = resolveRoomCopyEnclosure(document, roomId);
+		if (resolved.kind === 'rejected') {
+			roomDuplicateNotice = resolved.rejection;
 			return false;
 		}
+		const enclosure = resolved.enclosure;
 		const frame = roomDuplicateFrame(roomId);
 		if (frame === null) {
 			roomDuplicateNotice = { code: 'unresolvable_floor' };
@@ -389,9 +397,9 @@ export function createRoomGestureSession({
 			revision: services.authoring.acceptedRevision().revisionId,
 			subjectIds: new Set([
 				roomId,
-				...isolation.subgraph.wallIds,
-				...isolation.subgraph.openingIds,
-				...isolation.subgraph.associatedObjectIds
+				...enclosure.wallIds,
+				...enclosure.openingIds,
+				...enclosure.associatedObjectIds
 			]),
 			paper: null,
 			snap: null
@@ -589,20 +597,28 @@ export function createRoomGestureSession({
 		pendingRoomDuplicateId = null;
 		const started = roomId !== null && beginRoomDuplicate(roomId);
 		const room = roomId === null ? undefined : document.rooms.find((entry) => entry.id === roomId);
+		const enclosure = roomId === null ? null : resolveRoomCopyEnclosure(document, roomId);
+		const dropped =
+			roomId === null || enclosure?.kind !== 'success'
+				? null
+				: droppedRoomRelationWords(document, roomId, enclosure.enclosure.droppedRelations);
 		return {
 			summary: 'Duplicate Room',
 			facts: [
 				{
 					label: 'Copy',
 					value:
-						room === undefined ? 'One isolated Room' : `${room.name}, its Walls, Junctions and Openings`
+						room === undefined
+							? 'One Room, its Walls, Junctions and Openings'
+							: `${room.name}, its Walls, Junctions and Openings`
 				},
+				...(dropped === null ? [] : [{ label: 'Drops', value: dropped }]),
 				{
 					label: 'Place',
 					value: started
 						? 'Move the pointer, then click. Escape cancels.'
 						: roomDuplicateNotice === null
-							? 'Select an isolated Room and choose Duplicate.'
+							? 'Select a Room and choose Duplicate.'
 							: roomDuplicateRefusalWords(document, roomDuplicateNotice)
 				}
 			]

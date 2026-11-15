@@ -16,6 +16,7 @@ export * from './layout-opening-set';
 export * from './layout-wall-portals';
 export * from './layout-align';
 export * from './layout-duplicate';
+export * from './layout-wall-overlap';
 export * from './layout-snap';
 export * from './layout-room-isolation';
 export * from './layout-topology-components';

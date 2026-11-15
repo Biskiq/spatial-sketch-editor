@@ -1,21 +1,25 @@
 /**
- * T1 A4 — Duplicate isolated Room, through the production Layout adapter and
- * the real F4 host.
+ * T1 A4/A5 — Duplicate a Room, through the production Layout adapter and the
+ * real F4 host.
  *
  * The journey pinned here is the slice's acceptance:
  *
- * 1. an isolated Room's Card offers **Duplicate**, and invoking it opens one
- *    task with the complete cloned Room already proposed one metre clear;
+ * 1. a Room's Card offers **Duplicate**, and invoking it opens one task with
+ *    the complete cloned Room already proposed one metre clear;
  * 2. the proposal follows unpressed pointer motion, and a click accepts it;
  * 3. every copied Junction, Wall, Opening, Room and associated object gets a
  *    deterministic new id derived from its source, while architecture, geometry
  *    and Opening properties survive;
  * 4. a copy coincident with its source refuses in words, writes nothing and
  *    adds no history;
- * 5. a non-isolated Room refuses on the Card, naming the shared Wall, before a
+ * 5. A5 — a Room with a shared Wall duplicates as a free island: the shared
+ *    Wall copies privately, the copied Door keeps its place and loses its
+ *    outside relation, and the Card names the dropped relation before the
  *    task opens;
  * 6. one duplicate is one history entry; Undo/Redo replay the captured ids, and
- *    the accepted copy round-trips through Save/Load unchanged.
+ *    the accepted copy round-trips through Save/Load unchanged;
+ * 7. A5 — a copy resting on another group's Wall contributes the derived
+ *    **overlaps, not joined** cue, which clears on Undo and returns on Redo.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -24,6 +28,7 @@ import {
 	planCreateCircularRoom,
 	planCreateWallFirstOpening,
 	planWallChain,
+	planWallFirstRoomMove,
 	setWorkObserver,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
@@ -171,7 +176,32 @@ function sharedWallFixture(): Fixture {
 		roomFromFace('room-left', 'Left', left),
 		roomFromFace('room-right', 'Right', right)
 	];
-	return { document: base, roomId: 'room-left', wallId: 'wall-e', openingId: '', objectId: '' };
+	// A5 — the A4 fixture gains the shared party Wall's Door, so the copy has a
+	// real outside relation to drop.
+	const document: LayoutDocumentWallFirst = {
+		...base,
+		openings: [
+			{
+				id: 'opening:door:1',
+				wallId: 'wall-e',
+				kind: 'door',
+				name: 'Shared door',
+				offset: 1,
+				width: 0.9,
+				height: 2.1,
+				sillHeight: 0,
+				profile: 'rectangular',
+				connectsRoomIds: ['room-left', 'room-right']
+			}
+		]
+	};
+	return {
+		document,
+		roomId: 'room-left',
+		wallId: 'wall-e',
+		openingId: 'opening:door:1',
+		objectId: ''
+	};
 }
 
 async function mount(fixture: Fixture): Promise<Mounted> {
@@ -308,7 +338,7 @@ function boundaryJunctions(document: LayoutDocumentWallFirst, roomId: string) {
 	return [...ids].map((id) => document.junctions.find((junction) => junction.id === id)!);
 }
 
-describe('T1 A4 — Duplicate isolated Room', () => {
+describe('T1 A4/A5 — Duplicate a Room', () => {
 	it('[cap:layout.room-duplicate core] clones the complete Room with deterministic new lineage through Undo, Redo and Save/Load', async () => {
 		const fixture = isolatedFixture();
 		const mounted = await mount(fixture);
@@ -595,7 +625,7 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		mounted.facade.dispose();
 	});
 
-	it('[cap:layout.room-duplicate edge] refuses a non-isolated Room on the Card, naming the shared Wall', async () => {
+	it('[cap:layout.room-duplicate edge] duplicates a shared-Wall Room as a free island, names the dropped relation and keeps the overlap cue until Undo', async () => {
 		const fixture = sharedWallFixture();
 		const mounted = await mount(fixture);
 		settle(mounted.facade, 2);
@@ -604,13 +634,115 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 
 		const action = duplicateAction(mounted)!;
 		expect(action.label).toBe('Duplicate');
-		expect(action.detail).toContain('not isolated');
-		expect(action.detail).toContain('"Party wall"');
-		const outcome = await action.run();
-		expect(outcome.kind).toBe('refused');
-		expect(outcome.message).toContain('"Party wall"');
+		expect(action.detail).toContain('free island');
+		expect(action.detail).toContain('4 Walls');
+		expect(action.detail).toContain('4 Junctions');
+		expect(action.detail).toContain('1 Opening');
+		expect(action.detail).toContain('Drops the relation from "Shared door" to "Right".');
+		expect(action.detail).not.toContain('not isolated');
+
+		await openDuplicate(mounted);
+		expect(mounted.session.liveProposal()?.owner).toBe('layout-room-duplicate');
+
+		// The proposal default is clear of its source; one hover names the drag
+		// origin, then a click places the copy exactly on the right Room's ring
+		// (the left Room is 3 m wide, so default Δx 4 and a −1 m pointer move).
+		hover(mounted, [1, 1]);
+		click(mounted, [0, 1]);
+		await eventually(() => acceptedLayout(mounted.facade).rooms.length === 3);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		settle(mounted.facade, 3);
+
+		const after = acceptedLayout(mounted.facade);
 		expect(mounted.facade.session.task()).toBeNull();
-		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
-		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(mounted.host.history()).toMatchObject({
+			depth: beforeHistory.depth + 1,
+			position: beforeHistory.position + 1
+		});
+		const copy = after.rooms.find((room) => room.name === 'Left copy');
+		expect(copy).toBeDefined();
+		expect(copy!.boundary.every((ref) => ref.wallId.includes('-copy'))).toBe(true);
+		// The source keeps its shared Wall and both Rooms still name it.
+		expect(after.walls.filter((wall) => wall.id === 'wall-e')).toHaveLength(1);
+		expect(
+			after.rooms
+				.filter((room) => room.id !== copy!.id)
+				.every((room) => room.boundary.some((ref) => ref.wallId === 'wall-e'))
+		).toBe(true);
+		// The copied Door moved with the copy and carries no outside relation.
+		const copiedDoor = after.openings.find((opening) => opening.id.includes('opening:door:1-copy'));
+		expect(copiedDoor).toBeDefined();
+		expect(copiedDoor!.connectsRoomIds).toBeUndefined();
+		expect(copiedDoor!.offset).toBe(1);
+		expect(after.openings.find((opening) => opening.id === 'opening:door:1')!.connectsRoomIds).toEqual([
+			'room-left',
+			'room-right'
+		]);
+
+		// Every coincident copy/source Wall pair contributes one derived cue.
+		const cueOf = () =>
+			mounted.facade.guides().filter((guide) => guide.id.startsWith('layout-wall-overlap-cue'));
+		const cueIds = cueOf().map((guide) => guide.id);
+		expect(cueIds).toHaveLength(4);
+		for (const cue of cueOf()) {
+			expect(cue.role).toBe('relation');
+			expect(cue.labels.map((label) => label.text)).toEqual(['overlaps, not joined']);
+			expect(cue.derivedSegments.length).toBeGreaterThan(0);
+		}
+		expect(mounted.facade.snapshot().canonicalJson).not.toBe(beforeBytes);
+
+		// Undo removes the copy and with it the derived cue; Redo replays the
+		// captured ids and the same cue.
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		settle(mounted.facade, 4);
+		expect(acceptedLayout(mounted.facade).rooms).toHaveLength(2);
+		expect(cueOf()).toHaveLength(0);
+
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		settle(mounted.facade, 5);
+		expect(acceptedLayout(mounted.facade).rooms).toHaveLength(3);
+		expect(cueOf().map((guide) => guide.id)).toEqual(cueIds);
+	});
+
+	it('shows the overlap cue for a Room moved onto another group’s Wall', async () => {
+		const base = createEmptyWallFirstLayoutDocument();
+		base.floor.elevation = ELEVATION;
+		const first = planWallChain({
+			baseline: base,
+			points: [[0, 0], [2, 0], [2, 2], [0, 2]],
+			close: true,
+			capture: freshCapture(),
+			levelId: base.floor.id
+		});
+		if (first.kind !== 'success') throw new Error(first.rejection.message);
+		const second = planWallChain({
+			baseline: first.document,
+			points: [[4, 0], [6, 0], [6, 2], [4, 2]],
+			close: true,
+			capture: freshCapture(),
+			levelId: base.floor.id
+		});
+		if (second.kind !== 'success') throw new Error(second.rejection.message);
+		const anchorRoomId = first.document.rooms[0]!.id;
+		const moving = second.document.rooms.find((room) => room.id !== anchorRoomId)!;
+		// A rigid move puts the second Room's left Wall on the first Room's right
+		// Wall: permitted independent placement, now reported by the cue.
+		const moved = planWallFirstRoomMove(second.document, moving.id, [-2, 0]);
+		if (moved.kind !== 'success') throw new Error(moved.rejection.message);
+
+		const mounted = await mount({
+			document: moved.document,
+			roomId: moving.id,
+			wallId: '',
+			openingId: '',
+			objectId: ''
+		});
+		settle(mounted.facade, 2);
+		const cues = mounted.facade
+			.guides()
+			.filter((guide) => guide.id.startsWith('layout-wall-overlap-cue'));
+		expect(cues).toHaveLength(1);
+		expect(cues[0]!.labels[0]!.text).toBe('overlaps, not joined');
+		expect(cues[0]!.derivedSegments[0]!.length).toBeGreaterThan(0);
 	});
 });

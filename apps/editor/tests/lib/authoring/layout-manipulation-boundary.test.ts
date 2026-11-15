@@ -130,12 +130,14 @@ const allowed = new Map<string, readonly string[]>([
 			'./precision',
 			'./refusals',
 			'./room-duplicate-planners',
+			'./room-overlap-cue',
 			'./session-ports',
 			'./split-planners',
 			'./wall-gesture',
 			core
 		]
 	],
+	[path.join(layout, 'room-overlap-cue.ts'), [host, core]],
 	[path.join(layout, 'layout-subjects.ts'), [host, './precision', './wall-gesture', core]],
 	[path.join(layout, 'manipulation-support.ts'), [numeric, host, './candidate-preview', './snap', core]],
 	[

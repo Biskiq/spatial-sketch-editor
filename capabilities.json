@@ -49,7 +49,7 @@
     {
       "id": "layout.room-duplicate",
       "area": "T1",
-      "summary": "Duplicate one isolated Room with its Walls, Junctions and Openings, carrying the complete copy as one pointer-followed proposal, refusing a coincident placement and naming the shared Wall when the Room is not isolated",
+      "summary": "Duplicate any Room as a free island with private copies of its Walls, Junctions and Openings, dropping and naming every outside door relation, carrying the complete copy as one pointer-followed proposal, refusing a coincident placement, and showing overlaps, not joined on a coincident stretch between independent Wall groups",
       "northStar": "north-star.md#build--world-architecture",
       "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/adapters/**"],
       "design": null,

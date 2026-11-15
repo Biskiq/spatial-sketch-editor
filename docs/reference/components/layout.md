@@ -118,6 +118,14 @@ ids for every copied Wall, Junction, Opening and Room. Within one connected comp
 collinear overlap or self-intersection still refuses. A closed Wall's contact rules are the
 isolation refusals above.
 
+**The overlap cue.** The editor derives where a Wall of one connected component rests on a Wall of
+another and reads **overlaps, not joined** on the coincident stretch. It is presentation state:
+never authored, never serialized, never in history and never a validity rule. It clears when the
+coincidence ends, and it welds nothing. A Room's Duplicate copies its complete boundary enclosure
+even when a boundary Wall is shared with another Room; the copy is a free island and the source
+architecture is untouched. A copied door keeps its position and size but not its relation to a Room
+outside the copy, and that dropped relation is named before the copy is placed.
+
 ## Accepted future requirements and open mechanisms
 
 The requirements below preserve approved spatial depth. They are not claims that Section,

@@ -20,8 +20,8 @@ export { default as ShellIcon } from './shell/ShellIcon.svelte';
 export type {
 	StageAdapter, StageAdapterBinding, StageAdapterContext, StageCardAction,
 	StageCardActionOutcome, StageCardFact, StageCardSubject, StageCandidatePreview,
-	StageDomainPick, StageGhostMesh, StageInkReadingRecord, StageInkReadingSession,
-	StageKeyboardIntent, StageOverlayContribution, StagePointerIntent
+	StageDomainPick, StageGhostMesh, StageGuideContribution, StageInkReadingRecord,
+	StageInkReadingSession, StageKeyboardIntent, StageOverlayContribution, StagePointerIntent
 } from './stage-facade';
 export type { StageHandleDescriptor } from './stage-handles';
 export type { GestureAcquisition, ProposalLease } from './stage-session';
