@@ -1,9 +1,11 @@
 # T2 S0 Gate A — verified pipeline record
 
 **Status:** measured 2026-11-11; Gate A accepted with follow-up corrections applied. Gate B (E4–E6)
-measured 2026-11-15 and updated the snapshot row below. This record is the contract S3 Lights and A1
-Artwork may rely on. Reflections, Paper/Living and parity are [Gate B](./report.md#gate-b--e4e6); the
-shadow budget remains unmeasured.
+measured 2026-11-15 and updated the snapshot row below. Gate C (E7) measured rendering performance
+and the shadow cost on 2026-11-15; its D9 budget is **proposed, awaiting owner authorisation**. This
+record is the contract S3 Lights and A1 Artwork may rely on. Reflections, Paper/Living and parity are
+[Gate B](./report.md#gate-b--e4e6); performance and the proposed shadow budget are
+[Gate C](./report.md#gate-c--e7-rendering-performance-and-shadow-budget).
 
 **Evidence:** [Gate A report](./report.md) · [artwork fidelity](./artwork-fidelity.md) ·
 [contact sheet](./evidence/2026-11-11/gate-a-contact-sheet.png) ·
@@ -159,6 +161,7 @@ inventing a curve.
 
 - The chart is synthetic and the light is one white directional light at normal incidence. Real
   artwork, coloured lights, shadows, transparency and skylight are A1's and Gate B's tests.
-- One device and one browser; no performance or shadow-cost claim.
+- One device and one browser; Gate A's chart makes no performance or shadow-cost claim.
 - Gate B is delivered separately ([report](./report.md#gate-b--e4e6)) and owns reflections, indoor
-  policy, Paper/Living and parity; Gate C owns the shadow budget and is not authorised by this record.
+  policy, Paper/Living and parity. Gate C measured the shadow cost; its D9 budget is proposed there
+  and is not authorised by this record.
