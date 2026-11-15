@@ -318,4 +318,5 @@ commit (see Evidence).
 - [Snapshot before and after](./evidence/2026-11-15/gate-b/gate-b-e6-snapshot-before-after.png)
 - [Machine-readable result](./evidence/2026-11-15/gate-b/gate-b-result.json) — every number above,
   with its sampling misses (all zero)
-- Source provenance: the Gate B commit on `t2/s0-gate-b-look-truth`
+- Source provenance: commit `120419bf` on `t2/s0-gate-b-look-truth`, delivered in PR #349 (removed
+  from the tree; reproduce with `git show 120419bf:apps/editor/src/routes/dev/render-audit/audit.ts`)
