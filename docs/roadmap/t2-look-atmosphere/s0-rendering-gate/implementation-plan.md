@@ -1,11 +1,12 @@
 # T2 S0 — Rendering gate: implementation plan
 
-**Status:** Gate A accepted with follow-up corrections applied, 2026-11-11. This PR claims the slice
-**`T2.S0`**, not a creator capability: `tools/harness/ledger.mjs` defines capability ids as things a
-creator would say they can do, and a rendering gate is an engineering slice, so no
-`capabilities.json` row is added. Gate A added a dev-only bench and **no production change**.
-Gate B and Gate C are **not authorised**; this draft PR carries the Gate A records and waits for the
-next checkpoint.
+**Status:** Gate A accepted with follow-up corrections applied, 2026-11-11. Gate B (E4–E6) executed
+2026-11-15 and is delivered for review in this PR. Gate C (E7) is **not authorised** and has not
+started. This PR claims the slice **`T2.S0`**, not a creator capability: `tools/harness/ledger.mjs`
+defines capability ids as things a creator would say they can do, and a rendering gate is an
+engineering slice, so no `capabilities.json` row is added. Gate A added a dev-only bench and no
+production change; Gate B adds one production fix (the snapshot colour path) and no look change. The
+bench is removed before merge in both gates.
 
 **Base:** `b9908410` — the approved PR #289 baseline (T2 Look & Atmosphere, revision 4). PR #289 is
 merged; this branch is based on its head, not on later `main`.
@@ -323,12 +324,12 @@ runtime.
 
 | Decision | Recommendation | When |
 | --- | --- | --- |
-| Tone mapping | **Measured: no mapper.** E2 rejected Neutral (mid-tone ΔE00 4.07), ACES (3.35) and AgX (6.35); None + Lambert scored 0 across all 18 patches. Gate B may reopen only after measuring Lambert + `toneMapped = false`; any remaining shift is a D16 decision. | Gate A accepted; opt-out is a Gate B experiment |
+| Tone mapping | **Measured: no mapper.** E2 rejected Neutral (mid-tone ΔE00 4.07), ACES (3.35) and AgX (6.35); None + Lambert scored 0 across all 18 patches. E4 then measured Lambert + `toneMapped = false` under all three mappers: **ΔE00 0**, so a mapper would not by itself compromise artwork. Still no mapper: the Sky's blocker is the indoor environment leak, not tone mapping. | Gate A accepted; opt-out measured in Gate B |
 | D5 light units | Keep physical stored units; Brightness stops are a UI mapping fixed by E3. | After E3 |
-| D4 Paper reflections | **No Sky reflection on Paper**; a neutral studio reflection at most, and only if E5 shows it does not relight Paper. | After E5 |
+| D4 Paper reflections | **Decided: no reflection on Paper.** A neutral studio probe at 0.3 already relights it (pale wall 139 → 167 sRGB); at 1.0 the pale wall reaches 217 (ΔE00 21.7). The Sky is worse (ΔE00 26.4). | Decided in E5, 2026-11-15 |
 | D9 shadow budget | Set from E7; refuse in words beyond it. | After E7 |
-| D16 artwork response | **Approved baseline: `MeshLambertMaterial` + `NoToneMapping`.** It was exact (ΔE00 0); the standard PBR material lifted near-black by ΔE00 5.16. Gate B must test `toneMapped = false` under any proposed global mapper before rejecting it. | Gate A accepted; Gate B experiment |
-| Snapshot colour path | Treat F5 as a defect to verify and fix, not a look decision. | E6, before parity evidence |
+| D16 artwork response | **Approved baseline: `MeshLambertMaterial` + `NoToneMapping`.** It was exact (ΔE00 0); the standard PBR material lifted near-black by ΔE00 5.16. Gate B confirmed `toneMapped = false` is exact under ACES, AgX and Neutral, so the baseline survives a future mapper. | Gate A accepted; opt-out measured in Gate B |
+| Snapshot colour path | **Fixed in E6.** The writer encodes linear → sRGB; a 50% grey patch now reads 128 on the Stage and 128 in a snapshot (it was 55). Treated as a defect, not a look decision. | Done, 2026-11-15 |
 
 ### Gate A outcome (2026-11-11)
 
@@ -348,6 +349,44 @@ runtime.
   bytes are not sRGB-encoded. Gate A did not use it; E6 owns the fix.
 - **Unblocked:** S3 Lights and A1 Artwork may consume [pipeline.md](./pipeline.md) and
   [artwork-fidelity.md](./artwork-fidelity.md). Gate B and Gate C remain waiting.
+
+### Gate B outcome (2026-11-15)
+
+Executed against `main` at `dddbdd01` (including merged PR #347). Full record:
+[report.md](./report.md#gate-b--e4e6).
+
+- **E4 — reflections and indoor policy: wait.** `scene.environment` from the real Sky leaks open-sky
+  light into an enclosed Room almost unchanged: Daylight floor ΔE00 13.53 / 15.04 with luminance
+  ×1.80 / 1.94, pale wall ΔE00 17.82, and Golden hour is worse (19.37 / 21.32, pale wall 23.70).
+  r187 offers no per-material opt-out: `envMapIntensity = 0` measured **identical** to `1.0`, because
+  the renderer writes the intensity uniform from `scene.environmentIntensity` when the material has
+  no own `envMap`. No `scene.environment` ships; the top Sheen stop stays **High gloss**; interior
+  capture is scheduled as its own slice. PMREM cost is affordable and recorded: build p50 9.9 ms
+  (max 13.6), drag rebuild p50 8.5 ms (p95 11.2), intensity-only 0 ms.
+- **E4 — Lambert opt-out (the Gate A open question): passes.** `MeshLambertMaterial` +
+  `toneMapped = false` reproduced all 18 patches exactly (ΔE00 0, 0% clipping) under ACES Filmic, AgX
+  and Neutral. With `toneMapped = true` the same mappers measured 4.06 / 5.29 / 4.33. A future mapper
+  would not by itself compromise artwork; the Sky is blocked by the environment leak instead.
+- **E5 — Paper / Living: D4 = no reflection on Paper.** A neutral studio probe at 0.3 relights Paper
+  (pale wall 139 → 167 sRGB, floor 161 → 195); at 1.0 the pale wall is 217 (ΔE00 21.70) and the white
+  artwork 226 (ΔE00 21.44). The Sky is worse (pale wall ΔE00 26.43). Stage vs visit Paper is identical
+  on 8 of 10 surfaces; only the ground differs (unlit plate 161,163,158 vs lit disc 233,235,230,
+  ΔE00 18.09), recorded as intentional.
+- **E6 — parity and snapshot colour path: go.** The snapshot writer now encodes linear → sRGB
+  (`apps/editor/src/lib/authoring/stage/snapshot-image.ts`); a 50% grey patch reads 128 on the Stage
+  and 128 in a snapshot, where it read 55. Against the Stage frame: mean channel difference 0.54,
+  96.42% of channels within 2, p99 5, mean ΔE00 0.61 (max 2.01); the residual is silhouette aliasing
+  (the default framebuffer is multisampled, the target has 0 samples). Stage and Preview resolve
+  identical look inputs; the sun's distance and the host material sets are the two named differences.
+  `visitor:entry-frame` does not exist, so cold start is **unmeasured**.
+- **Assumption recheck.** F1 superseded by PR #347 (Canvases now pass `NoToneMapping`; the factory
+  still sets none); F2, F3 and F7 still true; F4 partly superseded (light values match, ground
+  treatment differs); F5 confirmed and fixed; **F6 confirmed and still present** — a snapshot taken
+  while Paper covers a Living World is rendered with the Paper look, recorded as a separate slice
+  rather than bundled into this PR.
+- **Checks run for this gate:** `npm run check` (0 errors), the focused snapshot colour-path tests,
+  `npm run test:arch`, `npm run build`, and the bench run that produced the evidence with zero
+  sampling misses. The bench route and its save endpoint are removed before merge.
 
 ## 6. Deliverables
 

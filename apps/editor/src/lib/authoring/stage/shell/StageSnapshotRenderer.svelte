@@ -12,6 +12,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { useThrelte } from '@threlte/core';
 	import { Color, PerspectiveCamera, UnsignedByteType, Vector4, WebGLRenderTarget } from 'three';
+	import { snapshotDataUrl } from '../snapshot-image';
 	import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core';
 	import { PAPER_GROUND_INK, STAGE_WORLD_LAYER } from '../paper-plan';
 	import {
@@ -45,24 +46,6 @@
 	const { scene, renderer } = useThrelte();
 	const camera = new PerspectiveCamera();
 	let target: WebGLRenderTarget | null = null;
-
-	function toDataUrl(pixels: Uint8Array, width: number, height: number): string | null {
-		if (typeof document === 'undefined') return null;
-		const canvas = document.createElement('canvas');
-		canvas.width = width;
-		canvas.height = height;
-		const context = canvas.getContext('2d');
-		if (context === null) return null;
-		const image = context.createImageData(width, height);
-		// WebGL reads bottom-up; the PNG is top-down.
-		for (let y = 0; y < height; y += 1) {
-			const from = (height - 1 - y) * width * 4;
-			image.data.set(pixels.subarray(from, from + width * 4), y * width * 4);
-		}
-		for (let index = 3; index < image.data.length; index += 4) image.data[index] = 255;
-		context.putImageData(image, 0, 0);
-		return canvas.toDataURL('image/png');
-	}
 
 	async function render(request: SnapshotRequest): Promise<string | null> {
 		const pose = inspectionPoseFromView({
@@ -134,7 +117,9 @@
 			renderer.render(scene, camera);
 			const pixels = new Uint8Array(WIDTH * height * 4);
 			renderer.readRenderTargetPixels(target, 0, 0, WIDTH, height, pixels);
-			return toDataUrl(pixels, WIDTH, height);
+			// The target renders linear bytes (r187 ignores a non-XR target's texture
+			// colour space); the shared writer is the one sRGB encode.
+			return snapshotDataUrl(pixels, WIDTH, height);
 		} catch {
 			return null;
 		} finally {

@@ -1,8 +1,9 @@
 # T2 S0 Gate A — verified pipeline record
 
-**Status:** measured 2026-11-11; Gate A accepted with follow-up corrections applied. This record is
-the contract S3 Lights and A1 Artwork may rely on. It is **not** a Gate B or Gate C result:
-reflections, Paper/Living, parity and the shadow budget remain unmeasured.
+**Status:** measured 2026-11-11; Gate A accepted with follow-up corrections applied. Gate B (E4–E6)
+measured 2026-11-15 and updated the snapshot row below. This record is the contract S3 Lights and A1
+Artwork may rely on. Reflections, Paper/Living and parity are [Gate B](./report.md#gate-b--e4e6); the
+shadow budget remains unmeasured.
 
 **Evidence:** [Gate A report](./report.md) · [artwork fidelity](./artwork-fidelity.md) ·
 [contact sheet](./evidence/2026-11-11/gate-a-contact-sheet.png) ·
@@ -22,7 +23,7 @@ a maximum channel error of **0**.
 | Tone mapping | **`NoToneMapping`**, exposure **1.0** | `renderer.toneMapping` / `toneMappingExposure` |
 | Shadow map | **`PCFShadowMap`** | `renderer.shadowMap.type` |
 | Colour texture | **`srgb`**; data maps stay `NoColorSpace` | texture slot assignment in `texture-cache.ts` |
-| Stage snapshot settings (bench replica) | 640 × 360, **`UnsignedByteType`**, texture colour space **`""` (NoColorSpace)** | `new WebGLRenderTarget(640, 360, { type: UnsignedByteType })`; `StageSnapshotRenderer.svelte` creates the same target |
+| Stage snapshot target | **640 wide × the pose's height** (400 at the default 1.6 aspect), **`UnsignedByteType`**, texture colour space **`""` (NoColorSpace)**; pixels are **sRGB-encoded on write** (Gate B) | `new WebGLRenderTarget(WIDTH, height, { type: UnsignedByteType })` in `StageSnapshotRenderer.svelte`; the encode is `snapshot-image.ts` |
 
 The Stage, Visitor Preview and published visit all use the same
 `createManagedWebGLRenderer` factory. E1 captured that **shared factory** once; it did not instantiate
@@ -46,11 +47,17 @@ factory still sets none of these, and E12's shared renderer ownership is unchang
 accepted pipeline the 18 chart patches reproduce their source sRGB values exactly; AgX crushes
 near-black (18,18,20 → 8,8,11) and compresses near-white (245,245,242 → 199,199,198).
 
-**Snapshot warning.** Three r187 renders a non-XR render target in
-`ColorManagement.workingColorSpace` (linear). The Stage target and the bench replica both leave the
-texture at `NoColorSpace`, so the RGBA bytes are linear but the PNG path has no sRGB encode. Snapshots
-are therefore **not valid colour evidence** until E6 fixes or verifies that path. Gate A did not use
-them; every number here comes from the default framebuffer immediately after `render()`.
+**Snapshot colour path — fixed in Gate B (E6, 2026-11-15).** Three r187 renders a non-XR render target
+in `ColorManagement.workingColorSpace` (linear) whatever the texture's `colorSpace` says, so the
+snapshot target's bytes are linear. Gate A left them unconverted and recorded the defect as F5. The
+shipped writer, `apps/editor/src/lib/authoring/stage/snapshot-image.ts`, now flips the bottom-up
+readback and maps every channel through the exact sRGB encode before `putImageData`; the target stays
+8-bit, so there is no extra GPU memory or draw. A 50% grey surface now reads **128** on the Stage and
+**128** in a snapshot (it read **55** before the fix). Against the Stage frame at 640 × 400: mean
+channel difference **0.54**, 96.42% of channels within 2 levels, p99 **5**, mean ΔE00 **0.61** (max
+2.01); the residual is silhouette aliasing, because the default framebuffer is multisampled and the
+target has 0 samples. Snapshots are valid colour evidence within that tolerance; they are not edge-
+parity evidence.
 
 ## 2. The chosen pipeline
 
@@ -139,8 +146,12 @@ inventing a curve.
 - Do **not** use `MeshStandardMaterial` for the artwork surface by default: its dielectric specular
   lobe lifts near-black (18,18,20 → 35,35,36) and produces a maximum patch ΔE00 of 5.16 under the
   neutral reference. That is a real, visible fidelity cost.
-- No environment map and no sky reflection. Once Gate B adds `scene.environment`, the artwork
-  material must set `envMapIntensity = 0` (or use a material that does not sample it).
+- No environment map and no sky reflection. **Correction, Gate B (2026-11-15):** the earlier advice
+  to set `envMapIntensity = 0` does **not** work in r187. When the material has no own `envMap`, the
+  renderer writes the environment's intensity uniform from `scene.environmentIntensity`, so a material
+  cannot opt out of `scene.environment`; setting the material field measured identical output
+  (ΔE00 0 on every sampled surface). A surface that must not receive the environment needs a material
+  that does not sample it, or no `scene.environment` at all — which is the shipped state.
 - Keep the image's `colorSpace = SRGBColorSpace`; never treat it as a data map.
 - Do not use the Stage snapshot path as a fidelity reference until E6 fixes its colour space.
 
@@ -149,5 +160,5 @@ inventing a curve.
 - The chart is synthetic and the light is one white directional light at normal incidence. Real
   artwork, coloured lights, shadows, transparency and skylight are A1's and Gate B's tests.
 - One device and one browser; no performance or shadow-cost claim.
-- Gate B and Gate C are **not authorised** by this record. Gate B owns reflections, indoor policy,
-  Paper/Living and parity; Gate C owns the shadow budget.
+- Gate B is delivered separately ([report](./report.md#gate-b--e4e6)) and owns reflections, indoor
+  policy, Paper/Living and parity; Gate C owns the shadow budget and is not authorised by this record.
