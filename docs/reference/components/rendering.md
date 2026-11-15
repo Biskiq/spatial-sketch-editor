@@ -158,6 +158,25 @@ callbacks and reads the renderer Threlte configured — `NoToneMapping`, exposur
 `srgb-linear` working space, `PCFShadowMap` — then requires both sources to name the shared constant,
 so a changed dependency default cannot reopen the gap silently.
 
+**Snapshot colour path.** The Stage snapshot renders the Stage's scene through its own 640-wide 8-bit
+target on the Stage's renderer and writes the image through `authoring/stage/snapshot-image.ts`. That
+module is the one writer: Three renders a non-XR target in the linear working space whatever
+`texture.colorSpace` says, so it maps every channel through the exact sRGB encode and flips WebGL's
+bottom-up rows before `putImageData`. The target stays 8-bit, so the fix costs no GPU memory and no
+extra draw. Nothing else may `putImageData` a render-target readback: when one did, a 50% grey surface
+measured 55 instead of the Stage's 128 (Gate B, E6; [report](../../roadmap/t2-look-atmosphere/s0-rendering-gate/report.md#e6--parity-and-the-snapshot-colour-path)).
+
+**Guard:** `authoring/stage/snapshot-image` pins the encode (linear 55 → 128, monotone), the row flip,
+the opaque alpha, the size check, and that the snapshot renderer calls the shared writer rather than
+building its own data URL.
+
+**No environment opt-out per material.** `envMapIntensity = 0` does not remove `scene.environment`:
+when a material has no own `envMap`, r187 writes the environment intensity uniform from
+`scene.environmentIntensity`, and the material field is ignored. Gate B measured `envMapIntensity` 0
+and 1 as identical (ΔE00 0 on every sampled surface). A surface that must not receive the environment
+needs a material that does not sample it, or no `scene.environment`. The shipped app has no
+`scene.environment`; do not add one and rely on a per-material opt-out.
+
 ## Open exceptions and divergences
 
 - **AR-7 / D2 — visitor free-look.** The neutral visitor's free-look pose is driven by
