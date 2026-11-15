@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { previewCanvasRenderer } from '$lib/render/canvas-renderers';
+	import { CANVAS_TONE_MAPPING, previewCanvasRenderer } from '$lib/render/canvas-renderers';
 	import { perfMark } from '$lib/platform/perf-marks';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
@@ -421,11 +421,12 @@ import { PCFShadowMap } from 'three';
 		aria-describedby="visitor-preview-help"
 	>
 		<Canvas
-		createRenderer={previewCanvasRenderer}
-		dpr={[1, 1.5]}
-		shadows={PCFShadowMap}
-		renderMode={active ? 'always' : 'on-demand'}
-	>
+			createRenderer={previewCanvasRenderer}
+			dpr={[1, 1.5]}
+			shadows={PCFShadowMap}
+			toneMapping={CANVAS_TONE_MAPPING}
+			renderMode={active ? 'always' : 'on-demand'}
+		>
 			{#if environment === 'paper'}
 				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
 				<T.Color attach="background" args={['#e9ebe6']} />

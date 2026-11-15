@@ -1,0 +1,94 @@
+{
+  "subject": "T2 Stage/Preview tone-mapping correction (E12 follow-up)",
+  "measured": "2026-11-15",
+  "baseCommit": "f2025b3f",
+  "device": "owner's laptop; local Chromium; DPR 2",
+  "three": "0.187.0",
+  "threlteCore": "8.5.16",
+
+  "acceptedPipeline": {
+    "toneMapping": 0,
+    "toneMappingLabel": "None",
+    "toneMappingExposure": 1,
+    "outputColorSpace": "srgb",
+    "workingColorSpace": "srgb-linear",
+    "colorManagement": true,
+    "shadowMap": "PCFShadowMap",
+    "authority": "T2 S0 Gate A, 2026-11-11 (pipeline.md §1-2)"
+  },
+
+  "before": {
+    "source": "Threlte <Canvas> default, applied to the renderer createRenderer returns",
+    "toneMapping": 6,
+    "toneMappingLabel": "AgXToneMapping",
+    "toneMappingExposure": 1,
+    "surfacesMeasured": ["stage", "preview", "published visit (same Preview surface)"],
+    "method": "Mount each production Canvas with the prop removed; read renderer.toneMapping. Both report 6."
+  },
+
+  "after": {
+    "surfaces": [
+      {
+        "surface": "stage",
+        "canvas": "StageCanvas.svelte",
+        "toneMapping": 0,
+        "toneMappingExposure": 1,
+        "outputColorSpace": "srgb",
+        "workingColorSpace": "srgb-linear",
+        "shadowMap": "PCFShadowMap"
+      },
+      {
+        "surface": "preview",
+        "canvas": "VisitorPreviewSurface.svelte",
+        "toneMapping": 0,
+        "toneMappingExposure": 1,
+        "outputColorSpace": "srgb",
+        "workingColorSpace": "srgb-linear",
+        "shadowMap": "PCFShadowMap"
+      }
+    ],
+    "method": "apps/editor/tests/lib/render/canvas-tone-mapping.test.ts mounts both production Canvases through their shipped createRenderer callbacks (Threlte's renderer context is the shipped one; only the GPU implementation is doubled) and reads the renderer Threlte configured."
+  },
+
+  "exposureNote": "Neither the shared factory, Threlte's <Canvas> nor the product code writes toneMappingExposure; the effective value is three's default 1.0.",
+
+  "chart": {
+    "condition": "Gate A neutral reference: one white directional light at intensity PI at normal incidence, MeshLambertMaterial, opaque sRGB chart, exposure 1.0, black background. readPixels immediately after render on the default framebuffer.",
+    "redrawPath": "createManagedWebGLRenderer (production factory), the same renderer the Canvases receive",
+    "noToneMappingReproducesSourceExactly": true,
+    "patches": [
+      { "source": [18, 18, 20], "agx": [8, 8, 11], "none": [18, 18, 20] },
+      { "source": [42, 38, 52], "agx": [41, 38, 56], "none": [42, 38, 52] },
+      { "source": [52, 52, 52], "agx": [55, 55, 55], "none": [52, 52, 52] },
+      { "source": [90, 90, 88], "agx": [101, 101, 99], "none": [90, 90, 88] },
+      { "source": [128, 128, 128], "agx": [136, 136, 136], "none": [128, 128, 128] },
+      { "source": [170, 170, 166], "agx": [165, 165, 162], "none": [170, 170, 166] },
+      { "source": [196, 150, 120], "agx": [180, 152, 133], "none": [196, 150, 120] },
+      { "source": [170, 48, 40], "agx": [173, 72, 59], "none": [170, 48, 40] },
+      { "source": [220, 120, 60], "agx": [196, 134, 94], "none": [220, 120, 60] },
+      { "source": [220, 180, 60], "agx": [192, 168, 106], "none": [220, 180, 60] },
+      { "source": [60, 120, 70], "agx": [79, 127, 82], "none": [60, 120, 70] },
+      { "source": [50, 80, 150], "agx": [61, 101, 159], "none": [50, 80, 150] },
+      { "source": [150, 110, 45], "agx": [154, 119, 66], "none": [150, 110, 45] },
+      { "source": [110, 70, 40], "agx": [122, 78, 47], "none": [110, 70, 40] },
+      { "source": [232, 226, 210], "agx": [194, 191, 185], "none": [232, 226, 210] },
+      { "source": [245, 245, 242], "agx": [199, 199, 198], "none": [245, 245, 242] },
+      { "source": [196, 96, 130], "agx": [183, 120, 139], "none": [196, 96, 130] },
+      { "source": [96, 150, 150], "agx": [116, 152, 153], "none": [96, 150, 150] }
+    ]
+  },
+
+  "images": [
+    {
+      "file": "stage-preview-tone-mapping.png",
+      "what": "The same chart under both pipelines, side by side: AgX (left, what the Canvases inherited) and NoToneMapping (right, Gate A accepted).",
+      "retention": "Visual evidence for the correction PR; the capture route was removed before commit."
+    }
+  ],
+
+  "limits": [
+    "The chart is synthetic and the light is one white directional at normal incidence; it proves the transform, not a specific artwork or a coloured light.",
+    "The readback is the default framebuffer of the capture page, not the Stage's own canvas: the Stage's scene content is A1's fidelity check.",
+    "Snapshot colour space (Gate A finding F5) is unchanged and remains E6's."
+  ]
+}

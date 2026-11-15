@@ -20,9 +20,11 @@ report; the remaining S0 items stay open.
 
 ## Blocking findings
 
-1. **There was no tone mapping to audit.** Production runs `NoToneMapping` at exposure 1. The gate
-   decided not to add one because no tested mapper meets the artwork target. The `Lambert +
-   toneMapped = false` opt-out is untested and remains a Gate B experiment.
+1. **There was no tone mapping to audit on the renderer factory.** The factory runs `NoToneMapping` at
+   exposure 1, and the gate decided not to add a mapper because no tested mapper meets the artwork
+   target. The Canvases did not run that pipeline: Threlte's `<Canvas>` applied `AgXToneMapping` until
+   the 2026-11-15 correction (see [pipeline.md](./pipeline.md#1-the-pipeline-as-measured)).
+   The `Lambert + toneMapped = false` opt-out is untested and remains a Gate B experiment.
 2. **The snapshot target is not colour-safe.** It is an `UnsignedByteType` target with no sRGB
    texture colour space; r187 renders it in the linear working space, and the PNG writer treats the
    bytes as sRGB. Do not use snapshots as parity or fidelity evidence until E6 fixes this.

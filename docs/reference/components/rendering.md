@@ -141,9 +141,22 @@ trigger.
 
 **Rule:** every world surface renders with `NoToneMapping` at exposure 1.0, sRGB output and an
 `srgb-linear` working space, with `MeshLambertMaterial` as the artwork baseline. This is Gate A's
-accepted decision, measured on the shared `createManagedWebGLRenderer` factory, and it stands
-(owner ruling, E12). The material store reads that record and sets no tone mapping, exposure or
-output colour space. The product Canvases do not yet meet it — see the open discrepancy below.
+accepted decision ([pipeline record](../../roadmap/t2-look-atmosphere/s0-rendering-gate/pipeline.md)),
+and it stands (owner ruling, E12). The material store reads that record and sets no tone mapping,
+exposure or output colour space.
+
+The accepted value is named once, as `CANVAS_TONE_MAPPING` in `canvas-renderers.ts`, and both product
+Canvases pass it to `<Canvas>`. That attribute is load-bearing, not decoration: Threlte's Canvas
+assigns its own `AgXToneMapping` default to the renderer the shared factory returns, so a Canvas that
+omits the prop silently runs a pipeline Gate A rejected. Exposure needs no prop — neither the factory
+nor Threlte writes `toneMappingExposure`, so Three's 1.0 stands — and output colour space is Threlte's
+sRGB default, which no Canvas overrides. Stage, Visitor Preview and the published visit therefore
+share one pipeline; the published route draws through the same Preview surface.
+
+**Guard:** `render/canvas-tone-mapping` mounts both production Canvases with their shipped renderer
+callbacks and reads the renderer Threlte configured — `NoToneMapping`, exposure 1.0, sRGB output,
+`srgb-linear` working space, `PCFShadowMap` — then requires both sources to name the shared constant,
+so a changed dependency default cannot reopen the gap silently.
 
 ## Open exceptions and divergences
 
@@ -151,9 +164,3 @@ output colour space. The product Canvases do not yet meet it — see the open di
   `OrbitControls` outside the Camera evaluator. It is a named, owner-accepted temporary exception,
   not a second authored Camera; T3 retires it behind a targeted regression and authority test. See
   [Architecture](../architecture.md#semantic-authorities-ratified-destination).
-- **Stage/Preview tone mapping (open; separate Tier 2 correction PR).** The Stage and Preview
-  `<Canvas>` pass no `toneMapping`, so Threlte's Canvas applies its own default (`AgXToneMapping`)
-  to the renderer the factory returns, contrary to the Gate A rule above. Gate A measured only the
-  bare factory and left per-surface parity to Gate B. The correction changes rendered output, so it
-  belongs to its own Tier 2 PR with a per-surface pipeline check; E12 records the discrepancy and
-  changes no behaviour.
