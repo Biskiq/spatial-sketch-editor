@@ -236,6 +236,10 @@ describe('Stage shell composition', () => {
 		);
 		expect(threeImporters.sort()).toEqual([
 			'apps/editor/src/lib/authoring/stage/shell/stage-grid-scene.ts',
+			// T1 X1's Lift ink: dashed outlines and the selected ghost. It owns no
+			// camera, control object or second renderer.
+			'apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageCelestialDial.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
@@ -285,10 +289,10 @@ describe('Stage shell composition', () => {
 		// The snapshot target owns its viewport in target pixels; the renderer's
 		// setViewport would apply the screen DPR even with a target bound.
 		const snapshot = codeOf(SNAPSHOT_HOST);
-		expect(snapshot).toContain('target.viewport.set(0, 0, WIDTH, height)');
-		expect(snapshot).toContain('target.scissor.set(0, 0, WIDTH, height)');
+		expect(snapshot).toContain('target.viewport.set(0, 0, SNAPSHOT_WIDTH, height)');
+		expect(snapshot).toContain('target.scissor.set(0, 0, SNAPSHOT_WIDTH, height)');
 		expect(snapshot).toContain('target.scissorTest = false');
-		expect(snapshot).not.toContain('renderer.setViewport(0, 0, WIDTH, height)');
+		expect(snapshot).not.toContain('renderer.setViewport(0, 0, SNAPSHOT_WIDTH, height)');
 	});
 
 	it('drives pose only through the host’s own inspection claim', () => {
@@ -525,7 +529,17 @@ describe('Stage shell composition', () => {
 					] as const
 			)
 		];
+		// These elements measure chrome for collision clearance. They never supply projection or pointer coordinates.
+		const chromeReads: Record<string, readonly string[]> = {
+			'StageEnvironmentControl.svelte': [
+				'stage.getBoundingClientRect()', 'dock?.getBoundingClientRect()', 'item.getBoundingClientRect()'
+			],
+			'StagePopover.svelte': ['node.getBoundingClientRect()'],
+			'EditorCard.svelte': ['cardNode.getBoundingClientRect()']
+		};
 		const measurers = sources
+			.map(([file, source]) => [file, (chromeReads[file.split('/').at(-1)!] ?? [])
+				.reduce((code, literal) => code.replace(literal, ''), source)] as const)
 			.filter(([, source]) =>
 				/getBoundingClientRect\(|\.clientWidth\b|\.clientHeight\b/.test(source)
 			)

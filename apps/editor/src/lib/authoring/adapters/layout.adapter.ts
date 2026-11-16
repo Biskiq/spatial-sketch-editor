@@ -50,10 +50,13 @@ import { createCurveGestureSession } from './layout/curve-gesture-session';
 import { createJunctionGestureSession } from './layout/junction-gesture-session';
 import { createOpeningGestureSession } from './layout/opening-gesture-session';
 import { createRoomGestureSession } from './layout/room-gesture-session';
+import { liftedSourcesNow } from '../layout/interior-lift-store.svelte';
 import { createLayoutContributions } from './layout/layout-contributions';
 
 export const createAdapter: StageAdapterFactory = (services) => {
-	const pick = createPlanPickProvider(() => services.stage.plan());
+	// The pick provider asks the live Lift reading which overheads it lifted, so a
+	// lifted outline answers the pointer without Layout learning about Stage state.
+	const pick = createPlanPickProvider(() => services.stage.plan(), liftedSourcesNow);
 	/** This project's compile context; bindings borrow it, the registration end releases it. */
 	const compileContext = createLayoutCompileContext();
 	const lifetime: LayoutAdapterLifetime = { context: compileContext, memoHeld: null };

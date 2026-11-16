@@ -19,6 +19,7 @@ const SPOT: SpotLightDescriptor = {
 };
 const SUN: SunLightDescriptor = {
 	kind: 'sun',
+	castShadow: true,
 	color: '#fff6df',
 	intensity: 1.9,
 	position: [5, 20, 8],

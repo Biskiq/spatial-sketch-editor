@@ -28,6 +28,7 @@ import LayoutInkPalette from './LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './LayoutPlacementInstrument.svelte';
 import LayoutCardFields from './LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
 import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import { wallFaceFrame, wallSheetFaceFrame } from '$lib/layout/wall-face';
@@ -138,6 +139,38 @@ type ContributionPorts = {
 		wallId: string
 	) => Promise<StageCardActionOutcome> | StageCardActionOutcome;
 };
+
+/**
+ * X1 — Lift is a **reading, not an edit**.
+ *
+ * The action changes only the shell's temporary scope: no document value, no
+ * history entry, no Camera intent. It is a Room action because a generated lid
+ * has no subject of its own and is selected through its Room. Running it while
+ * Lift is on with another scope narrows to this Space; while it is off, it
+ * starts here. The label follows the live scope, so the same button offers the
+ * way back.
+ */
+function roomLiftAction(
+	services: StageAdapterServices,
+	roomId: string,
+	roomName: string
+): StageCardAction {
+	const scope = interiorLift.reading?.scope ?? null;
+	const liftedHere = scope?.kind === 'space' && scope.roomId === roomId;
+	return {
+		id: 'layout-room-lift',
+		label: liftedHere ? 'Put back' : 'Lift',
+		detail: liftedHere
+			? `Puts ${roomName}'s overhead back. Nothing in the document changes.`
+			: `Lifts ${roomName}'s overhead to read inside. Nothing in the document changes.`,
+		run: async () => {
+			if (liftedHere) interiorLift.putBack();
+			else interiorLift.lift({ kind: 'space', roomId });
+			services.stage.notifySurfaceChange();
+			return { kind: 'accepted' };
+		}
+	};
+}
 
 export function createLayoutContributions({
 	services,
@@ -951,6 +984,7 @@ export function createLayoutContributions({
 					].join(' ');
 				}
 				return [
+					roomLiftAction(services, roomId, room.name),
 					{
 						id: 'layout-room-duplicate',
 						label: 'Duplicate',

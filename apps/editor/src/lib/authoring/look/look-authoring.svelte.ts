@@ -13,9 +13,15 @@
  */
 import {
 	SCENE_ENVIRONMENT_SET_KIND,
+	SCENE_SKY_UPDATE_KIND,
+	SCENE_SKY_DEFAULT,
+	skyIsEdited,
+	type SceneSkyUpdatePayload,
 	type SceneEnvironmentChoice,
 	type SceneSky
 } from '@portfolio/project-model/units';
+import type { AcceptedRevision, AuthoringIntent } from '@portfolio/project-model';
+import { createSkyGesture } from './sky-gesture.svelte';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import type {
 	StageCardActionRecord,
@@ -71,41 +77,69 @@ export type LookAuthoringHost = {
 	readonly services: () => StageAdapterServices | null;
 	/** The route's one notice line. */
 	readonly onNotice: (message: string) => void;
+	readonly windowHeading?: () => number | null;
 };
 
 export function createLookAuthoring(host: LookAuthoringHost) {
-	let editOnPaper = $state(false);
+	const preferenceKey = 'biskiq:edit-on-paper';
+	function readStudioPreference(): boolean {
+		try { return localStorage.getItem(preferenceKey) === 'true'; }
+		catch { return false; }
+	}
+	let studioWhileEditing = $state(readStudioPreference());
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
+	let previewSky = $state.raw<SceneSky | null>(null);
+	let panelOpen = $state(false);
 
 	const sky = $derived(host.sky());
-	/** The Sky the Stage and visitor preview actually render; `null` is Paper. */
-	const stageSky = $derived(editOnPaper ? null : sky);
+	const shownSky = $derived(previewSky ?? sky ?? SCENE_SKY_DEFAULT);
+	const stageSky = $derived(studioWhileEditing ? null : previewSky ?? sky);
 	const busy = $derived(environmentWrite !== null && environmentWrite === host.services());
+	const revision = () => host.services()?.stage.snapshot().acceptedRevision;
 
-	async function setEnvironment(preset: SceneEnvironmentChoice): Promise<void> {
+	async function write(kind: string, payload: AuthoringIntent['payload'], expectedRevision = revision()): Promise<void> {
 		const services = host.services();
-		// The current preset is deliberately allowed: on an edited Sky it is Reset,
-		// and the planner answers `no-change` when the Sky already equals its start.
-		if (services === null || environmentWrite === services) return;
+		if (services === null || expectedRevision === undefined || environmentWrite === services) return;
 		environmentWrite = services;
 		try {
 			const outcome = await services.authoring.accept({
 				version: 1,
-				kind: SCENE_ENVIRONMENT_SET_KIND,
+				kind,
 				operationId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-				expectedRevision: services.stage.snapshot().acceptedRevision,
+				expectedRevision,
 				targets: [],
-				payload: { preset },
+				payload,
 				allocatedIds: [],
 				capturedInputs: []
 			});
-			// `no-change` (the tile the World already shows) stays silent, as before Scene 8.
 			if (host.services() === services && outcome.kind === 'refused' && outcome.code !== 'no-change') {
 				host.onNotice(outcome.message);
 			}
 		} finally {
 			if (environmentWrite === services) environmentWrite = null;
 		}
+	}
+
+	function updateSky(patch: SceneSkyUpdatePayload, expectedRevision?: AcceptedRevision): Promise<void> {
+		return write(SCENE_SKY_UPDATE_KIND, patch, expectedRevision);
+	}
+	const gesture = createSkyGesture({
+		sky: () => sky ?? SCENE_SKY_DEFAULT,
+		revision,
+		busy: () => busy,
+		preview: (value) => { previewSky = value; },
+		update: updateSky
+	});
+
+	function setEnvironment(preset: SceneEnvironmentChoice): Promise<void> {
+		gesture.cancel();
+		return write(SCENE_ENVIRONMENT_SET_KIND, { preset });
+	}
+
+	function aimThroughWindows(): void {
+		const heading = host.windowHeading?.() ?? null;
+		if (heading === null) host.onNotice('No outside windows to aim through');
+		else void updateSky({ heading });
 	}
 
 	/**
@@ -148,9 +182,19 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		get stageSky() {
 			return stageSky;
 		},
-		get editOnPaper() {
-			return editOnPaper;
+		get studioWhileEditing() { return studioWhileEditing; },
+		get previewSky() { return previewSky; },
+		get shownSky() { return shownSky; },
+		get edited() { return shownSky.preset !== 'studio' && skyIsEdited(shownSky); },
+		get panelOpen() { return panelOpen; },
+		setPanelOpen(open: boolean) {
+			panelOpen = open;
+			if (!open) gesture.cancel();
 		},
+		gesture,
+		resetSky: () => setEnvironment(shownSky.preset),
+		updateSky,
+		aimThroughWindows,
 		get busy() {
 			return busy;
 		},
@@ -166,10 +210,14 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 			return LIGHT_SHELF;
 		},
 		setEnvironment,
-		setEditOnPaper(value: boolean) {
-			editOnPaper = value;
+		setStudioWhileEditing(value: boolean) {
+			studioWhileEditing = value;
+			try { localStorage.setItem(preferenceKey, String(value)); }
+			catch { /* The session preference still works with storage disabled. */ }
 		},
 		pickMaterial,
 		pickLibraryEntry
 	};
 }
+
+export type LookAuthoring = ReturnType<typeof createLookAuthoring>;

@@ -68,9 +68,13 @@ export type StageKeyboardInput = {
 	readonly clearWorldTool: () => void;
 	readonly worldPlateOpen: () => boolean;
 	readonly closeWorldPlate: () => void;
+	readonly dismissSky?: () => boolean;
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
+	/** A temporary reading is on (X1: Lift), and Escape puts it back. */
+	readonly liftActive: () => boolean;
+	readonly putBackLift: () => void;
 };
 
 export type StageKeyboard = { handleKey(event: KeyboardEvent): void };
@@ -267,8 +271,16 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				else if (input.activeWorldTool() !== 'select') { input.clearWorldTool(); }
 				// The plate is the last layer before Select: once the tool is clear,
 				// Escape folds the parchment instead of moving the selection.
+				else if (input.dismissSky?.()) { break; }
 				else if (input.lens() === 'world' && input.worldPlateOpen()) { input.closeWorldPlate(); }
-				else if (input.activeLayer()?.key(event, 'unwind') !== 'claimed' && input.selectionPresent()) input.closeSelection();
+				else {
+					// A selection — including one made inside a temporary reading — closes
+					// first, then the next Escape puts the reading back (X1: Lift). A claimed
+					// unwind does neither, and every earlier rung has already won.
+					const claimed = input.activeLayer()?.key(event, 'unwind') === 'claimed';
+					if (!claimed && input.selectionPresent()) input.closeSelection();
+					else if (!claimed && input.liftActive()) input.putBackLift();
+				}
 				break;
 			}
 			case 'none':

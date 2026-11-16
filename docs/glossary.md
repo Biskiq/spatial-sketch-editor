@@ -21,3 +21,7 @@
 | **Object Focus** | A proposed T5 editing scope for refining one object on the same Stage and source. It is not a current feature, another Scene or a second renderer. |
 | **F2 / unit envelope** | The current project source shape: one envelope containing versioned Layout, Scene, Camera, Experience and resource units plus accepted revision and dependency lock. |
 | **Capability ledger** | Definitions of what creators should be able to do, with review records but no hand-edited status. Health/maturity are computed from tagged checks and live bug state. |
+
+- **Environment control** — the World Stage control at bottom-right that opens the Sky panel.
+- **Celestial Dial** — the Stage instrument that shows the Sun or Moon bearing, noon heading,
+  and the shadow of its central pin.

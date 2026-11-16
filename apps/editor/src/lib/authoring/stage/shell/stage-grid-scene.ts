@@ -76,6 +76,7 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 		const geometry = new BufferGeometry();
 		geometry.setAttribute('position', new Float32BufferAttribute(bucket.positions, 3));
 		const material = new LineBasicMaterial({
+			fog: false,
 			color: new Color(bucket.color).getHex(),
 			transparent: bucket.opacity < 1,
 			opacity: bucket.opacity,

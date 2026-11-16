@@ -58,6 +58,25 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		controller.dispose();
 	});
 
+	it('renders only the shared directional map after a Sky direction change', () => {
+		const { frame, state } = fakeShadowMap([
+			{ castShadow: true, isDirectionalLight: true },
+			{ castShadow: true },
+			{ castShadow: true, isPointLight: true }
+		]);
+		const controller = createShadowInvalidation({ shadowMap: state.shadowMap });
+		frame();
+		expect(controller.stats().maps).toBe(8);
+		controller.invalidateSun();
+		controller.invalidateSun();
+		frame();
+		expect(controller.stats().maps).toBe(9);
+		controller.invalidateSun();
+		controller.invalidate();
+		frame();
+		expect(controller.stats().maps).toBe(17);
+	});
+
 	it('coalesces triggers into one pass and counts one map per casting light', () => {
 		const lights: ShadowCasterLight[] = [{ castShadow: true }, { castShadow: false }, { castShadow: true }];
 		const { frame, state } = fakeShadowMap(lights);
@@ -252,7 +271,7 @@ describe('the default lighting policy', () => {
 		// E10/R6: the resolved descriptor carries the authored flag for both kinds,
 		// and the Canvas light store applies it.
 		expect(read('src/lib/render/scene-light-description.ts').match(/castShadow: entity\.castShadow/g)).toHaveLength(2);
-		expect(read('src/lib/render/resources/light-store.ts').match(/\.castShadow = descriptor\.castShadow;/g)).toHaveLength(2);
+		expect(read('src/lib/render/resources/light-store.ts').match(/(?:spot|point)\.castShadow = descriptor\.castShadow;/g)).toHaveLength(2);
 	});
 
 	it('keeps Walls casting and receiving, and the unlit floor eligible', () => {

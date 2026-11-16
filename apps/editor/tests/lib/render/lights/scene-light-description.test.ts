@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { SceneLightEntity } from '@portfolio/project-model';
 import { describeSceneLights, resolveSceneLight } from '$lib/render/scene-light-description';
-import { SCENE_SKY_PRESET_STARTS } from '@portfolio/project-model/units';
-import { resolveSkySun, worldEnvironmentLook } from '$lib/render/world-environment';
+import { skyFromPreset } from '@portfolio/project-model/units';
+import { colorHex, resolveSkySun, worldEnvironmentLook } from '$lib/render/world-environment';
 import { POINT_OPEN, POINT_RANGED, SPOT_AIMED, SPOT_PLAIN, runtimeScene } from '../fixtures/light-parity-cases';
 
 describe('authored light descriptors', () => {
@@ -53,17 +53,17 @@ describe('the Sky’s one Sun', () => {
 	});
 
 	it('a Sky with no bounds aims at the datum with a 12 m reach', () => {
-		const look = worldEnvironmentLook(SCENE_SKY_PRESET_STARTS.daylight)!;
+		const look = worldEnvironmentLook(skyFromPreset('daylight', 0))!;
 		const sun = resolveSkySun(look, { bounds: null, shadowBounds: null, groundY: 0.5, flatGround: false })!;
 		expect(sun.target).toEqual([0, 0.5, 0]);
 		expect(sun.shadow.camera).toEqual({ left: -12, right: 12, top: 12, bottom: -12, near: 0.5, far: 72 });
 		expect(sun.shadow.normalBias).toBe(0.02);
 		expect(Math.hypot(sun.position[0], sun.position[1] - 0.5, sun.position[2])).toBeCloseTo(30, 10);
-		expect([sun.color, sun.intensity]).toEqual([look.sun.color, look.sun.intensity]);
+		expect([sun.color, sun.intensity]).toEqual([colorHex(look.lightColor), look.lightIntensity]);
 	});
 
 	it('the Stage’s flat ground takes the larger normal bias and the shadow bounds’ centre', () => {
-		const sun = resolveSkySun(worldEnvironmentLook(SCENE_SKY_PRESET_STARTS.dusk), {
+		const sun = resolveSkySun(worldEnvironmentLook(skyFromPreset('dusk', 0)), {
 			bounds: { min: [-1, 0, -1], max: [1, 1, 1] },
 			shadowBounds: { min: [0, 0, 0], max: [2, 4, 2] },
 			groundY: 0,

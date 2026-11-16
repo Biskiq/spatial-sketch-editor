@@ -385,6 +385,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 					css,
 					evaluationId: pointerEvaluationId,
 					shift: event.shiftKey,
+					altKey: event.altKey,
 					metaKey: event.metaKey,
 					ctrlKey: event.ctrlKey,
 					coarse,
@@ -518,7 +519,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			// One monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
 			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
-			stage.pointerIntent({ phase: 'move', css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
+			stage.pointerIntent({ phase: 'move', css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, altKey: event.altKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
 		}
@@ -589,7 +590,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				// rather than released, so no stale projection commits.
 				const phase = input.session.gesture() === null ? 'cancel' : 'up';
 				perfMark('input:release', { phase });
-				stage.pointerIntent({ phase, css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
+				stage.pointerIntent({ phase, css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, altKey: event.altKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
 				if (
 					chip !== null &&
 					phase === 'up' &&

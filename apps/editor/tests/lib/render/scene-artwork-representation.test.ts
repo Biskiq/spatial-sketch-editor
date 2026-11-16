@@ -327,7 +327,7 @@ describe('E9/R5 — Artwork fidelity against the removed component', () => {
 		representation.dispose();
 	});
 
-	it('draws the ghost translucent, without shadows or the alpha exception', async () => {
+	it('draws the ghost translucent and unfogged, without shadows or the alpha exception', async () => {
 		const images = scope();
 		const { representation } = setup(true);
 		const item = describeSceneArtwork(artwork(0, { frame: GALLERY_MAT }));
@@ -337,7 +337,7 @@ describe('E9/R5 — Artwork fidelity against the removed component', () => {
 		const root = representation.objectOf(item.id);
 		for (const mesh of meshes(root)) {
 			const material = mesh.material as MeshLambertMaterial;
-			expect([material.transparent, material.depthWrite, material.opacity]).toEqual([true, false, 0.65]);
+			expect([material.transparent, material.depthWrite, material.opacity, material.fog]).toEqual([true, false, 0.65, false]);
 			expect([mesh.castShadow, mesh.receiveShadow]).toEqual([false, false]);
 		}
 		expect(named(root, 'SceneArtworkImage').customDepthMaterial).toBeUndefined();
@@ -359,6 +359,7 @@ describe('E9/R5 — Artwork fidelity against the removed component', () => {
 		const b = named(ghost.objectOf(item.id), 'SceneArtworkImage');
 		expect(a.geometry).toBe(b.geometry);
 		expect(a.material).not.toBe(b.material);
+		expect((a.material as MeshLambertMaterial).fog).toBe(true);
 		scene.dispose();
 		ghost.dispose();
 		expect(store.stats().live).toBe(0);

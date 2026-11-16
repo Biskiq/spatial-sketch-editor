@@ -20,14 +20,12 @@
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
 	import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
 	import StageDraftingControl from './StageDraftingControl.svelte';
-	import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
 	import StageInstrumentHost from './StageInstrumentHost.svelte';
 	import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
 	import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
 	import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
 
 	type DraftingProps = ComponentProps<typeof StageDraftingControl>;
-	type SkyProps = ComponentProps<typeof SkyControl>;
 	type WorldProps = Omit<ComponentProps<typeof WorldToolbar>, 'plate'>;
 	type InstrumentProps = ComponentProps<typeof StageInstrumentHost>;
 	type DockProps = ComponentProps<typeof ExperienceDock>;
@@ -45,7 +43,6 @@
 		readonly previewing: boolean;
 		readonly viewLine?: {
 			readonly drafting: DraftingProps;
-			readonly sky: SkyProps | null;
 		} | null;
 		readonly show?: {
 			readonly open: boolean;
@@ -118,14 +115,7 @@
 		onclick={(event) => event.stopPropagation()}
 		onpointerdown={(event) => event.stopPropagation()}
 	>
-		<StageDraftingControl {...viewLine.drafting}>
-			{#snippet sky()}
-				{#if viewLine.sky !== null}
-					{@const skyProps = viewLine.sky}
-					<SkyControl {...skyProps} />
-				{/if}
-			{/snippet}
-		</StageDraftingControl>
+		<StageDraftingControl {...viewLine.drafting} />
 	</div>
 {/if}
 

@@ -15,7 +15,7 @@
  * root must be a member, and the closure must actually reach the shared F4
  * package modules.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -28,6 +28,23 @@ const SAVE_STATE = join(EDITOR_SRC, 'lib', 'authoring', 'save', 'save-state.ts')
 const SAVE_CLIENT = join(EDITOR_SRC, 'lib', 'platform', 'project-persistence.ts');
 
 describe('F.4 editor-only isolation', () => {
+	it('keeps the Lift reading out of visitor and public import closures', () => {
+		// T1 X1 — Lift is a shell session reading. A release, a Preview run and the
+		// public route see the project as built, so they must not reach the store that
+		// holds the scope, and Preview must not name the Stage's lifted list at all.
+		const store = join(EDITOR_SRC, 'lib', 'authoring', 'layout', 'interior-lift-store.svelte.ts');
+		const preview = join(EDITOR_SRC, 'lib', 'visitor', 'VisitorPreviewSurface.svelte');
+		expect(existsSync(store), 'the reading must exist for this proof to mean anything').toBe(true);
+		for (const root of [PUBLIC_ROUTE_ROOT, preview]) {
+			const reached = importClosure([root]);
+			expect(reached.has(root)).toBe(true);
+			expect(reached.has(store)).toBe(false);
+		}
+		const source = readFileSync(preview, 'utf8');
+		expect(source).not.toContain('liftedRoomIds');
+		expect(source).not.toContain('interior-lift-store');
+	});
+
 	it('keeps browser-local editor preferences out of visitor and public import closures', () => {
 		const preferences = join(EDITOR_SRC, 'lib', 'platform', 'app-preferences.ts');
 		expect(existsSync(preferences)).toBe(true);

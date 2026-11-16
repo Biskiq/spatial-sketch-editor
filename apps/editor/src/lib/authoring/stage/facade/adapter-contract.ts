@@ -170,6 +170,7 @@ export type StagePointerIntent = {
 	readonly evaluationId: string;
 	/** Modifier state at the press; a drag may use it for a second mode (yaw). */
 	readonly shift?: boolean;
+	readonly altKey?: boolean;
 	/**
 	 * The platform's alternate-shape modifier, sampled at the press. Cmd on macOS
 	 * and Ctrl on Windows/Linux mean the same authoring intent; adapters read the

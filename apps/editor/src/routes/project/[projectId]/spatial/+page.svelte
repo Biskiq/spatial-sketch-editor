@@ -51,6 +51,7 @@
 	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
 		developmentPointAtStationFromBuffers,
+		overheadSourcesOf,
 		LAYOUT_DIMENSION_LIMIT_MESSAGE,
 		type PlanEvaluation
 	} from '@portfolio/layout-core';
@@ -63,6 +64,10 @@
 	} from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import { wallFace } from '$lib/authoring/layout/wall-face-store';
+	import {
+		initialLiftScope,
+		interiorLift
+	} from '$lib/authoring/layout/interior-lift-store.svelte';
 	import {
 		wallUnfoldShouldReturn,
 		wallUnfoldViewCentreStation
@@ -84,6 +89,12 @@
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
+	import { pointInPolygon } from '@portfolio/layout-core';
+	import { createStagePanelRects } from '$lib/authoring/stage/shell/stage-panel-rects.svelte';
+	import { celestialDialModel, placeCelestialDial } from '$lib/authoring/look/celestial-dial';
+	import { bindSkySession } from '$lib/authoring/look/sky-session.svelte';
+	import { sunMarkAnchor } from '$lib/render/world-environment';
+	import { aimThroughWindows } from '$lib/authoring/look/aim-through-windows';
 	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { isPaperPlanVisible, PAPER_TONES } from '$lib/authoring/stage/paper-plan';
@@ -203,7 +214,7 @@
 	let revealed = $state<string[]>([]);
 	let stageEl: HTMLDivElement | undefined = $state(undefined);
 	let throughFrameEl: HTMLElement | undefined = $state(undefined);
-	let cardGesturing = $state(false);
+	let liveStageGesture = $state(false);
 
 	/** The Experience binding owns lens/View/Look Through; the shell state owns chrome. */
 	let experience!: StageExperienceBinding;
@@ -308,7 +319,7 @@
 		revealed: () => revealed,
 		roomLabels: () => ({ plan: shell.preferences.roomLabels2d, threeD: shell.preferences.roomLabels3d }),
 		groundReachMeters: () =>
-			!look.editOnPaper && look.sky !== null
+			look.sky !== null && look.sky.preset !== 'studio'
 				? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS
 				: undefined,
 		nowSeconds,
@@ -317,6 +328,7 @@
 		onBeforeRefresh: () => {
 			stageEpoch.refreshHistory();
 			shell.syncGestureFade(session.gesture());
+			liveStageGesture = session.gesture() !== null;
 		},
 		onAfterRefresh: () => shell.refreshHostTools()
 	});
@@ -394,9 +406,11 @@
 	}));
 
 	const heightSheet = session.heightSheet();
+	const skyRects = createStagePanelRects();
 	const look = createLookAuthoring({
 		sky: () => currentEnvelope?.units.scene.data.environment?.sky ?? null,
 		services: () => adapterServices,
+		windowHeading: () => facade ? aimThroughWindows(facade.snapshot().domain.geometry) : null,
 		onNotice: (message) => shell.setNotice(message)
 	});
 
@@ -556,9 +570,17 @@
 		clearWorldTool: () => { shell.setLibraryOpen(false); shell.setActiveWorldTool('select'); },
 		worldPlateOpen: () => shell.worldPlateOpen,
 		closeWorldPlate: () => shell.setWorldPlateOpen(false),
+		dismissSky: () => {
+			if (!look.panelOpen) return false;
+			look.setPanelOpen(false);
+			document.querySelector<HTMLButtonElement>('[data-stage-environment-control]')?.focus();
+			return true;
+		},
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
-		closeSelection: () => commands.closeSelection()
+		closeSelection: () => commands.closeSelection(),
+		liftActive: () => interiorLift.isActive(),
+		putBackLift: () => interiorLift.putBack()
 	});
 
 	const selectedCurvedWall = $derived.by(() =>
@@ -580,6 +602,111 @@
 
 	const paperVisible = $derived(isPaperPlanVisible(evaluation, shell.preferences.planAppearance));
 	const modelUrls = $derived(stageAssets.urls);
+
+	/**
+	 * The Rooms whose generated lids the live Lift reading has lifted.
+	 *
+	 * The route only maps Layout's overhead sources to the representation's ids:
+	 * which overheads a scope names is `overheadSourcesOf`'s answer, and V1's
+	 * authored regions will need their own representation instead of this list.
+	 * `VisitorPreviewSurface` never receives it, so Preview stays as-built.
+	 */
+	const liftedSources = $derived.by(() => {
+		const reading = interiorLift.reading;
+		if (reading === null) return [];
+		if (boot.status !== 'ready' && boot.status !== 'empty') return [];
+		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
+	});
+	const liftedRoomIds = $derived(liftedSources.map((source) => source.subject.id));
+	/** The selected Room, when the selection is one: a lift is selected through its Room. */
+	const selectedLiftRoomId = $derived(
+		selection !== null &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind === 'room'
+			? selection.reference.subject.id
+			: null
+	);
+
+	/**
+	 * The entry rule, stated once: a Room selection wins, then the Room the eye is
+	 * inside in 3D, then everything. Plan has no eye to be occupied by, and the
+	 * reading never re-derives its scope after entry.
+	 */
+	function toggleLift(): void {
+		if (interiorLift.isActive()) {
+			interiorLift.putBack();
+			return;
+		}
+		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		interiorLift.lift(
+			initialLiftScope({
+				selectedRoomId: selectedLiftRoomId,
+				reading: evaluation?.renderedReading === 'plan' ? 'plan' : '3d',
+				eye: evaluation === null ? null : eyeOfInspectionPose(evaluation.pose),
+				compiled: boot.snapshot.domain.geometry
+			})
+		);
+	}
+
+	const liftControl = $derived({ active: interiorLift.isActive(), toggle: toggleLift });
+
+	/**
+	 * The Lift pill's reads. The scoped Room is named as its Card titles it, and the
+	 * menu's candidate is the same rule entry uses: selected Room, occupied Room,
+	 * then the Room already scoped. Everything else is Today's scope.
+	 */
+	const liftPill = $derived.by(() => {
+		const reading = interiorLift.reading;
+		if (reading === null) return null;
+		const scopeRoomId = reading.scope.kind === 'space' ? reading.scope.roomId : null;
+		const nameOf = (roomId: string | null): string | null =>
+			roomId === null
+				? null
+				: (currentEnvelope?.units.layout.data.rooms.find((room) => room.id === roomId)?.name ??
+					null);
+		const geometry = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.geometry : null;
+		const occupiedRoomId =
+			geometry === null || evaluation === null
+				? null
+				: (() => {
+						const occupied = initialLiftScope({
+							selectedRoomId: null,
+							reading: '3d',
+							eye: eyeOfInspectionPose(evaluation.pose),
+							compiled: geometry
+						});
+						return occupied.kind === 'space' ? occupied.roomId : null;
+					})();
+		const candidateId = selectedLiftRoomId ?? occupiedRoomId ?? scopeRoomId;
+		const candidateName = nameOf(candidateId);
+		return {
+			scopeRoomId,
+			scopeLabel: nameOf(scopeRoomId),
+			candidate:
+				candidateId === null || candidateName === null
+					? null
+					: { id: candidateId, label: candidateName },
+			onScope: (roomId: string | null) => {
+				interiorLift.setScope(roomId === null ? { kind: 'all' } : { kind: 'space', roomId });
+			},
+			onPutBack: () => interiorLift.putBack()
+		};
+	});
+
+	/**
+	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
+	 * reading in words instead of leaving a pill pointing at nothing. This is a
+	 * read-side reconciliation: it writes no document and no history.
+	 */
+	$effect(() => {
+		const reading = interiorLift.reading;
+		if (reading === null || reading.scope.kind !== 'space') return;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		const roomId = reading.scope.roomId;
+		if (boot.snapshot.domain.geometry.rooms.some((room) => room.roomId === roomId)) return;
+		interiorLift.clear();
+		shell.setNotice('Lift ended: the Space is gone.');
+	});
 
 	function readStageContentBounds(stage: StageFacade): {
 		readonly min: [number, number, number];
@@ -622,7 +749,12 @@
 		return experience.lensState === 'world' && preview === null && wallUnfold.state === null;
 	}
 
-	$effect(() => () => { artworkInteraction.dispose(); stageAssets.disposeArtwork(); });
+	$effect(() => () => {
+		// Leaving the project ends the reading: Lift is never carried across routes.
+		interiorLift.clear();
+		artworkInteraction.dispose();
+		stageAssets.disposeArtwork();
+	});
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
 		if (!canPlaceArtwork()) {
@@ -699,8 +831,10 @@
 	projectSession.bindNavigation();
 
 	function resetViewContext(): void {
-		// A replaced project has no standpoint to put back into the new Camera.
+		// A replaced project has no standpoint to put back into the new Camera, and
+		// no overhead to keep lifted: Lift is session state, never a document value.
 		wallFace.clear();
+		interiorLift.clear();
 		selection = null;
 		shell.setTask(null);
 		revealed = [];
@@ -963,12 +1097,42 @@
 		contextMenu: (event: MouseEvent) => { if (experience.lookThroughActive()) event.preventDefault(); }
 	};
 
+	const dialPlacement = $derived.by(() => {
+		if (!look.panelOpen || experience.lensState !== 'world' || preview !== null ||
+			shell.task !== null || shell.armedHostTool !== null || look.studioWhileEditing ||
+			look.sky?.preset === 'studio' || !look.sky || !evaluation || !facade) return null;
+		void stageContentBounds;
+		const domain = facade.snapshot().domain;
+		const geometry = domain.geometry;
+		const datum = domain.datumMeters;
+		const boxes = [
+			...geometry.walls.map((wall) => wall.bounds3),
+			...domain.scene.entities.flatMap((entity) => {
+				const bounds = facade?.sceneBounds(entity.id);
+				return bounds ? [bounds] : [];
+			})
+		];
+		// Client rects: placement tests them against `dialProject`, which is in the
+		// viewport frame (`camera.rect`), not the stage-local frame of the marks.
+		const obstacles = [skyRects.panel, skyRects.dock, ...skyRects.fixed].flatMap((rect) => {
+			if (!rect || rect.width <= 0) return [];
+			return [{ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }];
+		});
+		const origin = sunMarkAnchor({ bounds: stageContentBounds, groundY: datum + 0.008 });
+		return placeCelestialDial(origin, evaluation, obstacles, ([x, , z]) => boxes.some(({ min, max }) =>
+			max[1] > datum + 0.05 && min[1] <= datum + 0.3 && x >= min[0] && x <= max[0] && z >= min[2] && z <= max[2]),
+		([x, , z]) => geometry.rooms.length === 0 || geometry.rooms.some(({ floorPolygon }) => pointInPolygon([x, z], floorPolygon)), geometry.bounds);
+	});
+	const dial = $derived(dialPlacement ? celestialDialModel(look.shownSky, dialPlacement) : null);
+	$effect(() => adapterServices ? bindSkySession(adapterServices.stage.session, { look, dial: () => dial }) : undefined);
+
 	const canvas = $derived.by(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
 		// Keep view updates from replaying the Canvas source and root-registration effects.
 		// StageViewportRegion spreads these props, so each getter tracks its own inputs.
 		return {
 			scenePick,
+			get dial() { return dial; },
 			lightPreview,
 			geometry: boot.snapshot.domain.geometry,
 			sourceContentId: boot.snapshot.sourceContentId,
@@ -993,6 +1157,8 @@
 			get selection() { return selection; },
 			get hover() { return shell.armedHostTool === 'erase' ? shell.eraseHover : stageInput.hoverSelection; },
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
+			get liftedRoomIds() { return liftedRoomIds; },
+			get liftSources() { return liftedSources; },
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
@@ -1002,6 +1168,7 @@
 	});
 
 	const overlay = $derived({
+		celestial: dial && evaluation ? { dial, camera: evaluation, haze: look.shownSky.haze, owner: look.gesture.owner } : null,
 		markers,
 		marks: [...marks, ...look.stageMarks],
 		roomLabels,
@@ -1160,6 +1327,7 @@
 			viewEditTurn={experience.viewEdit?.moved && !experience.viewEdit.advanced && experience.viewEditPreview?.turn
 				? experience.viewEditPreview.turn
 				: null}
+			lift={liftPill}
 			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
 				? { bar: shell.draftingScaleBar, quiet: paperVisible }
 				: null}
@@ -1217,7 +1385,116 @@
 			bind:throughFrameElement={throughFrameEl}
 		/>
 
+		{#snippet toolbars()}
+			<StageToolbars
+				previewing={preview !== null}
+				viewLine={preview === null
+					? {
+						drafting: {
+							drafting: shell.drafting,
+							reading: shell.draftingReading,
+							gridWord: shell.draftingGridWord,
+							snapWord: shell.draftingSnapWord,
+							onReading: setReading,
+							onPatch: patchDrafting,
+							planAppearance: shell.preferences.planAppearance,
+							onPlanAppearance: (planAppearance: 'paper' | 'shaded') =>
+								shell.updatePreferences({ ...shell.preferences, planAppearance }),
+							measureActive: shell.activeWorldTool === 'measure',
+							onMeasure: () => commands.armWorldTool('measure'),
+							studioWhileEditing: look.studioWhileEditing,
+							onStudioWhileEditing: look.setStudioWhileEditing,
+							roomLabels2d: shell.preferences.roomLabels2d,
+							roomLabels3d: shell.preferences.roomLabels3d,
+							paperTone2d: shell.preferences.paperTone2d,
+							paperTone3d: shell.preferences.paperTone3d,
+							onViewPreference: (patch) => { shell.updatePreferences({ ...shell.preferences, ...patch }); refresh(); },
+							heightSheetSide: shell.heightSheetSide,
+							onHeightSheetSide: (side: 'left' | 'right') => shell.setHeightSheetSide(side),
+							reducedMotion: shell.reducedMotion,
+							onToggleReducedMotion: () => shell.toggleReducedMotion(),
+							motionSpeed: shell.preferences.motionSpeed,
+							onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed }),
+							lift: liftControl
+						}
+					}
+					: null}
+				show={preview === null && experience.lensState === 'experience'
+					? {
+						open: shell.showOpen,
+						mode: shell.showMode,
+						markers: shell.showMarkers,
+						frustums: shell.showFrustums,
+						paths: shell.showPaths,
+						labels: shell.showLabels,
+						offCount: shell.showOffCount,
+						hidden: experience.lookThroughActive(),
+						onToggle: () => shell.setShowOpen(!shell.showOpen),
+						onClose: () => shell.setShowOpen(false),
+						onMode: (mode) => shell.setShowMode(mode),
+						onMarkers: (value) => shell.setShowMarkers(value),
+						onFrustums: (value) => shell.setShowFrustums(value),
+						onPaths: (value) => shell.setShowPaths(value),
+						onLabels: (value) => shell.setShowLabels(value),
+						onShowAll: () => shell.showAll()
+					}
+					: null}
+				world={preview === null && experience.lensState === 'world'
+					? {
+						activeTool: shell.activeWorldTool,
+						libraryOpen: shell.libraryOpen,
+						plateOpen: shell.worldPlateOpen,
+						onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
+						onTool: (id) => commands.armWorldTool(id),
+						onLibrary: () => commands.toggleWorldLibrary(),
+						onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
+						onMaterialPick: look.pickMaterial,
+						lookShelf: look.libraryShelf,
+						artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
+						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
+						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
+						onLookPick: look.pickLibraryEntry,
+						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : null,
+						inkReading: shell.inkReading,
+						onTogglePalette: () => shell.togglePalette()
+					}
+					: null}
+				instrument={preview === null && contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || shell.paletteOpen)
+					? {
+						task: taskHost,
+						onClose: () => commands.closeTask(),
+						onCollapse: () => shell.setPaletteOpen(false),
+						instrument: contributedInstrument
+					}
+					: null}
+				experience={preview === null && experience.active !== null
+					? {
+						dock: {
+							captureDisabled: experience.captureReason() !== undefined,
+							captureReason: experience.captureReason(),
+							guideOpen: experience.guideOpen,
+							placeArmed: experience.experienceTool === 'place',
+							onPlaceView: () => experience.togglePlaceView(),
+							onCapture: () => experience.capture(),
+							onToggleGuide: () => experience.toggleGuide()
+						},
+						feedback: shell.notice || experience.feedback !== null
+							? {
+								text: shell.notice || experience.feedback!.text,
+								kind: shell.notice ? null : experience.feedback!.kind
+							}
+							: null,
+						guide: experience.guideOpen ? { onClose: () => experience.toggleGuide(), playback: experience.playback } : null
+					}
+					: null}
+				onLowerColumnHeight={(height) => shell.setLowerColumnHeight(height)}
+			/>
+		{/snippet}
+
 		<StagePanels
+			{toolbars}
+			rects={skyRects}
+			environment={adapterServices && experience.lensState === 'world' ? { look, fading: liveStageGesture || stageInput.drag?.mode === 'orbit' } : null}
 			previewing={preview !== null}
 			scrim={preview === null && shell.narrowShell && shell.indexOpen}
 			onCloseScrim={() => shell.setIndexOpen(false)}
@@ -1261,115 +1538,6 @@
 			onCloseKeys={() => shell.setKeysOpen(false)}
 		/>
 
-		<StageToolbars
-			previewing={preview !== null}
-			viewLine={preview === null
-				? {
-					drafting: {
-						drafting: shell.drafting,
-						reading: shell.draftingReading,
-						gridWord: shell.draftingGridWord,
-						snapWord: shell.draftingSnapWord,
-						onReading: setReading,
-						onPatch: patchDrafting,
-						planAppearance: shell.preferences.planAppearance,
-						onPlanAppearance: (planAppearance: 'paper' | 'shaded') =>
-							shell.updatePreferences({ ...shell.preferences, planAppearance }),
-						measureActive: shell.activeWorldTool === 'measure',
-						onMeasure: () => commands.armWorldTool('measure'),
-						roomLabels2d: shell.preferences.roomLabels2d,
-						roomLabels3d: shell.preferences.roomLabels3d,
-						paperTone2d: shell.preferences.paperTone2d,
-						paperTone3d: shell.preferences.paperTone3d,
-						onViewPreference: (patch) => { shell.updatePreferences({ ...shell.preferences, ...patch }); refresh(); },
-						heightSheetSide: shell.heightSheetSide,
-						onHeightSheetSide: (side: 'left' | 'right') => shell.setHeightSheetSide(side),
-						reducedMotion: shell.reducedMotion,
-						onToggleReducedMotion: () => shell.toggleReducedMotion(),
-						motionSpeed: shell.preferences.motionSpeed,
-						onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed })
-					},
-					sky: adapterServices !== null
-						? {
-							sky: look.sky,
-							onEnvironment: (preset) => void look.setEnvironment(preset),
-							editOnPaper: look.editOnPaper,
-							onEditOnPaper: (value: boolean) => look.setEditOnPaper(value),
-							busy: look.busy
-						}
-						: null
-				}
-				: null}
-			show={preview === null && experience.lensState === 'experience'
-				? {
-					open: shell.showOpen,
-					mode: shell.showMode,
-					markers: shell.showMarkers,
-					frustums: shell.showFrustums,
-					paths: shell.showPaths,
-					labels: shell.showLabels,
-					offCount: shell.showOffCount,
-					hidden: experience.lookThroughActive(),
-					onToggle: () => shell.setShowOpen(!shell.showOpen),
-					onClose: () => shell.setShowOpen(false),
-					onMode: (mode) => shell.setShowMode(mode),
-					onMarkers: (value) => shell.setShowMarkers(value),
-					onFrustums: (value) => shell.setShowFrustums(value),
-					onPaths: (value) => shell.setShowPaths(value),
-					onLabels: (value) => shell.setShowLabels(value),
-					onShowAll: () => shell.showAll()
-				}
-				: null}
-			world={preview === null && experience.lensState === 'world'
-				? {
-					activeTool: shell.activeWorldTool,
-					libraryOpen: shell.libraryOpen,
-					plateOpen: shell.worldPlateOpen,
-					onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
-					onTool: (id) => commands.armWorldTool(id),
-					onLibrary: () => commands.toggleWorldLibrary(),
-					onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
-					onMaterialPick: look.pickMaterial,
-					lookShelf: look.libraryShelf,
-					artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
-					onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
-					onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
-					onLookPick: look.pickLibraryEntry,
-					plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : null,
-					inkReading: shell.inkReading,
-					onTogglePalette: () => shell.togglePalette()
-				}
-				: null}
-			instrument={preview === null && contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || shell.paletteOpen)
-				? {
-					task: taskHost,
-					onClose: () => commands.closeTask(),
-					onCollapse: () => shell.setPaletteOpen(false),
-					instrument: contributedInstrument
-				}
-				: null}
-			experience={preview === null && experience.active !== null
-				? {
-					dock: {
-						captureDisabled: experience.captureReason() !== undefined,
-						captureReason: experience.captureReason(),
-						guideOpen: experience.guideOpen,
-						placeArmed: experience.experienceTool === 'place',
-						onPlaceView: () => experience.togglePlaceView(),
-						onCapture: () => experience.capture(),
-						onToggleGuide: () => experience.toggleGuide()
-					},
-					feedback: shell.notice || experience.feedback !== null
-						? {
-							text: shell.notice || experience.feedback!.text,
-							kind: shell.notice ? null : experience.feedback!.kind
-						}
-						: null,
-					guide: experience.guideOpen ? { onClose: () => experience.toggleGuide(), playback: experience.playback } : null
-				}
-				: null}
-			onLowerColumnHeight={(height) => shell.setLowerColumnHeight(height)}
-		/>
 	</div>
 
 	{#if boot.status === 'new'}

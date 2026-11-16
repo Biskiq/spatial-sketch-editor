@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { T } from '@threlte/core';
+	import { T, useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
@@ -17,6 +17,7 @@
 		plinth = true,
 		doorFrames = true,
 		hiddenWallIds = [],
+		liftedRoomIds = [],
 		onIdentity
 	}: {
 		geometry: CompiledLayoutGeometry;
@@ -29,6 +30,12 @@
 		doorFrames?: boolean;
 		/** A display-only overlay (the unfold sheet) owns these Wall bodies. */
 		hiddenWallIds?: readonly string[];
+		/**
+		 * A display-only session overlay: the Rooms whose generated lids a Lift
+		 * reading has lifted. Never authored, never persisted, and never passed by
+		 * Preview — its Canvas draws the same world as built.
+		 */
+		liftedRoomIds?: readonly string[];
 		/**
 		 * Receives the shell's identity index once, on mount: id → the object that draws
 		 * it. The host resolves picks and selection through it instead of searching the
@@ -100,6 +107,18 @@
 
 	$effect(() => {
 		rooms.update(geometry);
+	});
+
+	/**
+	 * A layer change on a retained mesh is not a Threlte prop change, and the Stage
+	 * renders on demand, so a lift or a put-back must ask for its own frame or the
+	 * lid stays drawn (or stays gone) until something unrelated does. The
+	 * representation answers whether a mesh actually moved, so a repeated set and
+	 * Preview's default empty one cost no frame.
+	 */
+	const { invalidate } = useThrelte();
+	$effect(() => {
+		if (rooms.setLifted(new Set(liftedRoomIds))) invalidate();
 	});
 
 	/** Every owned id → the object that draws it. Floors resolve through the Rooms. */

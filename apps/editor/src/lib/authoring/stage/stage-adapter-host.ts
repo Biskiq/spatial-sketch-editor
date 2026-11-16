@@ -24,7 +24,7 @@ export type {
 	StageInkReadingSession, StageKeyboardIntent, StageOverlayContribution, StagePointerIntent
 } from './stage-facade';
 export type { StageHandleDescriptor } from './stage-handles';
-export type { GestureAcquisition, ProposalLease } from './stage-session';
+export type { GestureAcquisition, GestureLease, ProposalLease } from './stage-session';
 export type { StageHeightTick } from './stage-height-sheet';
 export type { StageDraftingState } from './stage-drafting';
 export type { StageAcceptOutcome } from './host-acceptance';

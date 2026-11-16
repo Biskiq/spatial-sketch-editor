@@ -1,8 +1,9 @@
 import { Box3, Ray, Vector3 } from 'three';
 import { compiledOpeningFaceLoops } from './opening-faces';
 import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core';
-import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry } from '@portfolio/layout-core';
+import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry } from '@portfolio/layout-core';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
+import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
 import { fragmentLayer } from '../stage/paper-plan';
 import type { PlanEvaluationResult } from '@portfolio/layout-core';
@@ -348,7 +349,14 @@ function surfaceDepth(ray: PointerRay | null, surface: StagePickSurface): number
 }
 
 /** Layout owns the retained index, exact tests and priority; Stage sees one winner. */
-export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
+export function createPlanPickProvider(
+	planFor: () => PlanEvaluationResult,
+	/**
+	 * The overheads the live Lift reading lifts, named by Layout for the geometry in
+	 * the pick context. No accessor means Lift is off: this test adds no hit.
+	 */
+	liftedOutlines: (geometry: CompiledLayoutGeometry) => readonly OverheadSource[] = () => []
+) {
 	/**
 	 * The retained pick index for one Plan evaluation.
 	 *
@@ -497,6 +505,104 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 				? 'A plinth cannot be erased; Layout has no delete for its objects.'
 				: null;
 
+	/**
+	 * A lifted overhead answers the pointer through the **outline it is drawn as**.
+	 *
+	 * A lift removes the lid from the view and from rays, so the dashed line is the
+	 * only thing that stands for it. The test is in CSS pixels, where the creator
+	 * aims, at the same tolerance as every other Layout hit — and at the plane the
+	 * outline is drawn on, not the lid's own elevation, so the line under the
+	 * pointer is the line that answers.
+	 *
+	 * The surface under the pointer keeps the final say: an outline behind a nearer
+	 * Wall is not editable through that Wall. The hit names the Room's own floor
+	 * fragment, because X1 lifts a generated lid and the Room is the subject it
+	 * stands for; no ceiling-specific selection model exists to name instead.
+	 */
+	function liftOutlinePick(
+		css: readonly [number, number],
+		evaluation: ViewportEvaluation,
+		token: ViewportEvaluationToken,
+		context: LayoutPickContext,
+		retained: RetainedPickIndex
+	): StageDomainPick | null {
+		const sources = liftedOutlines(context.snapshot.domain.geometry);
+		if (sources.length === 0) return null;
+		const rayResult = pointerRay(css, evaluation, token);
+		if (rayResult.kind !== 'ray') return null;
+		const { origin, direction } = rayResult.ray;
+		const projectPoint = (point: readonly [number, number, number]) => {
+			const projected = projectWorld(point as Vec3, evaluation, token);
+			return projected.kind === 'projected' && projected.visibility !== 'behind'
+				? projected.css
+				: null;
+		};
+		let best: {
+			readonly fragment: PlanFragment;
+			readonly worldPoint: Vec3;
+			readonly depthMeters: number;
+			readonly cssDistance: number;
+		} | null = null;
+		for (const source of sources) {
+			const outline = source.outline;
+			if (outline.length < 3) continue;
+			const elevation = source.elevation - LIFT_OUTLINE_DROP_METERS;
+			for (let index = 0; index < outline.length; index += 1) {
+				const start = outline[index]!;
+				const end = outline[(index + 1) % outline.length]!;
+				const startCss = projectPoint([start[0], elevation, start[1]]);
+				const endCss = projectPoint([end[0], elevation, end[1]]);
+				// An endpoint behind the camera is not something the pointer is over.
+				if (startCss === null || endCss === null) continue;
+				const closest = closestOnCssSegment(css, startCss, endCss);
+				if (closest.distance > PLAN_HIT_TOLERANCE_CSS_PX) continue;
+				if (best !== null && closest.distance >= best.cssDistance) continue;
+				const worldPoint: Vec3 = [
+					start[0] + (end[0] - start[0]) * closest.amount,
+					elevation,
+					start[1] + (end[1] - start[1]) * closest.amount
+				];
+				// Depth along the pointer's own ray, so an outline and a surface are
+				// compared on one axis.
+				const depthMeters =
+					(worldPoint[0] - origin[0]) * direction[0] +
+					(worldPoint[1] - origin[1]) * direction[1] +
+					(worldPoint[2] - origin[2]) * direction[2];
+				if (!(depthMeters > 0)) continue;
+				const fragment = retained.fragments.find(
+					(candidate) =>
+						candidate.ref.sourceKind === 'room-floor' &&
+						candidate.ref.sourceId === source.subject.id
+				);
+				if (fragment === undefined) continue;
+				best = { fragment, worldPoint, depthMeters, cssDistance: closest.distance };
+				break;
+			}
+		}
+		if (best === null) return null;
+		const drawn = context.pickScene(rayResult.ray);
+		if (
+			drawn !== null &&
+			drawn.distanceMeters < best.depthMeters - LIFT_OUTLINE_DEPTH_BAND_METERS
+		) {
+			return null;
+		}
+		return {
+			hit: {
+				sourceId: best.fragment.ref.sourceId,
+				sourceKind: best.fragment.ref.sourceKind,
+				generationId: best.fragment.ref.generationId,
+				stream: best.fragment.ref.stream,
+				subRef: best.fragment.ref.subRef,
+				worldPoint: best.worldPoint
+			},
+			refusal: null,
+			depthMeters: best.depthMeters,
+			planLayer: fragmentLayer(best.fragment),
+			cssDistance: best.cssDistance
+		};
+	}
+
 	return (query: StagePickQuery, context: LayoutPickContext): StageDomainPick | null => {
 		const evaluation = context.evaluation;
 		const css: [number, number] = [query.css[0] + evaluation.rect.left, query.css[1] + evaluation.rect.top];
@@ -557,6 +663,23 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 					&& wall.openings.some((opening) => opening.openingId === fragment.ref.sourceId))) {
 				winner = { fragment, pick };
 				break;
+			}
+		}
+		// A lifted overhead is only reachable in the 3D reading and only by the pointer's
+		// own verbs: a tool (Eraser, Measure) still works on what it can see.
+		if (evaluation.renderedReading !== 'plan' && query.purpose !== 'tool') {
+			const outlineRay = pointerRay(css, evaluation, token);
+			const winnerDepth =
+				winner === null
+					? null
+					: surfaceDepth(outlineRay.kind === 'ray' ? outlineRay.ray : null, winner.pick.surface);
+			const outline = liftOutlinePick(css, evaluation, token, context, retained);
+			if (
+				outline !== null &&
+				(winnerDepth === null ||
+					(outline.depthMeters ?? Infinity) <= winnerDepth + LIFT_OUTLINE_DEPTH_BAND_METERS)
+			) {
+				return outline;
 			}
 		}
 		if (winner !== null) {

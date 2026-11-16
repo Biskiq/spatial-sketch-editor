@@ -116,6 +116,9 @@ const allowed = new Map<string, readonly string[]>([
 			numeric,
 			'$lib/authoring/layout/wall-unfold-store.svelte',
 			'$lib/authoring/layout/wall-face-store',
+			// T1 X1 — Lift is a session reading beside Unroll and Face. The Room Card
+			// names the reading and toggles it; no authored value passes through it.
+			'$lib/authoring/layout/interior-lift-store.svelte',
 			host,
 			'$lib/layout/wall-unfold',
 			'$lib/layout/wall-face',
@@ -147,6 +150,9 @@ const allowed = new Map<string, readonly string[]>([
 		[
 			numeric,
 			'$lib/authoring/layout/plan-pick-provider',
+			// T1 X1 — the pick provider asks the live Lift reading which overheads it
+			// lifted. The adapter passes the accessor; the reading owns the scope.
+			'../layout/interior-lift-store.svelte',
 			host,
 			'./layout/candidate-presenter',
 			'./layout/candidate-preview',

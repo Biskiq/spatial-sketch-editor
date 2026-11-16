@@ -6,7 +6,6 @@
 	 * It is a forest instrument on both readings. Every value is state the route
 	 * already owns; the bar only groups those controls in one place.
 	 */
-	import type { Snippet } from 'svelte';
 	import type { StageDraftingPatch, StageDraftingState } from '../stage-drafting';
 	import { PAPER_TONES, PAPER_TONE_IDS, type PaperTone } from '../paper-plan';
 	import type { AppPreferences } from '$lib/platform/app-preferences';
@@ -27,7 +26,8 @@
 		onPlanAppearance = () => {},
 		measureActive = false,
 		onMeasure = () => {},
-		sky,
+		studioWhileEditing = false,
+		onStudioWhileEditing,
 		roomLabels2d = true,
 		roomLabels3d = false,
 		heightSheetSide = 'right',
@@ -38,7 +38,8 @@
 		onMotionSpeed = () => {},
 		paperTone2d = 'current',
 		paperTone3d = 'current',
-		onViewPreference = () => {}
+		onViewPreference = () => {},
+		lift = null
 	}: {
 		drafting: StageDraftingState;
 		/** The settled reading the segmented control reports. */
@@ -55,8 +56,8 @@
 		/** The existing Measure tool; the bar mirror only, never a second controller. */
 		measureActive?: boolean;
 		onMeasure?: () => void;
-		/** SkyControl keeps its own state and popover; it is mounted inside this one bar. */
-		sky?: Snippet;
+		studioWhileEditing?: boolean;
+		onStudioWhileEditing?: (value: boolean) => void;
 		roomLabels2d?: boolean;
 		roomLabels3d?: boolean;
 		heightSheetSide?: 'left' | 'right';
@@ -69,12 +70,19 @@
 		paperTone2d?: PaperTone;
 		paperTone3d?: PaperTone;
 		onViewPreference?: (patch: ViewPreferencePatch) => void;
+		/**
+		 * The reading control's ▾. X1 has exactly one more reading, Lift, so the menu
+		 * carries exactly one item and no disabled or planned ones. Null hides the ▾.
+		 */
+		lift?: { readonly active: boolean; toggle(): void } | null;
 	} = $props();
 
 	/** One Paper tray open at a time; it stays open until its row is pressed again. */
 	let toneTray = $state<'2d' | '3d' | null>(null);
 	let viewingOpen = $state(false);
+	let liftOpen = $state(false);
 	let gear: HTMLButtonElement | undefined;
+	let liftMore = $state<HTMLButtonElement>();
 	const viewingId = $props.id();
 
 	function closeViewing(returnFocus = false): void {
@@ -104,9 +112,35 @@
 	 * and a press on another bar control must still close the panel.
 	 */
 	function onWindowPointerDown(event: PointerEvent): void {
-		if (!viewingOpen) return;
 		const target = event.target;
-		if (target instanceof Element && target.closest('.viewing-slot') === null) closeViewing(true);
+		if (!(target instanceof Element)) return;
+		if (viewingOpen && target.closest('.viewing-slot') === null) closeViewing(true);
+		if (liftOpen && target.closest('.reading-more') === null) liftOpen = false;
+	}
+
+	function closeLift(returnFocus = false): void {
+		liftOpen = false;
+		if (returnFocus) liftMore?.focus();
+	}
+
+	function toggleLiftMenu(): void {
+		if (liftOpen) {
+			closeLift(true);
+			return;
+		}
+		liftOpen = true;
+	}
+
+	/** Escape closes the menu first and stops there, so the Stage keeps its own Escape. */
+	function onLiftKeydown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape' || !liftOpen) return;
+		event.stopPropagation();
+		closeLift(true);
+	}
+
+	function chooseLift(): void {
+		closeLift(true);
+		lift?.toggle();
 	}
 </script>
 
@@ -139,6 +173,43 @@
 		>
 			Plan
 		</button>
+		{#if lift !== null}
+			<div class="reading-more">
+				<button
+					type="button"
+					class="more"
+					data-reading-more
+					bind:this={liftMore}
+					aria-label="More readings"
+					aria-haspopup="menu"
+					aria-expanded={liftOpen}
+					title="More readings"
+					onclick={toggleLiftMenu}
+					onkeydown={onLiftKeydown}
+				>
+					<span aria-hidden="true">▾</span>
+				</button>
+				<div
+					class="reading-menu"
+					role="menu"
+					tabindex="-1"
+					aria-label="More readings"
+					hidden={!liftOpen}
+					onkeydown={onLiftKeydown}
+				>
+					<button
+						type="button"
+						role="menuitemcheckbox"
+						aria-checked={lift.active}
+						data-reading-lift
+						onclick={chooseLift}
+					>
+						<span>Lift</span>
+						{#if lift.active}<span class="check" aria-hidden="true">✓</span>{/if}
+					</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	<span class="divider" aria-hidden="true"></span>
@@ -219,10 +290,7 @@
 		</button>
 	</div>
 
-	{#if sky}
-		<span class="divider" aria-hidden="true"></span>
-		<div class="sky-slot">{@render sky()}</div>
-	{/if}
+
 
 	<span class="divider" aria-hidden="true"></span>
 
@@ -291,8 +359,14 @@
 				</select>
 			</label>
 			<strong class="group-title">Settings</strong>
+			{#if onStudioWhileEditing}
+				<label class="check">
+					<input type="checkbox" checked={studioWhileEditing} onchange={(event) => onStudioWhileEditing?.(event.currentTarget.checked)} />
+					<span>Studio light while editing · this browser</span>
+				</label>
+			{/if}
 			<label class="check">
-				<input type="checkbox" checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
+				<input type="checkbox" data-reduce-motion checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
 				<span>Reduce motion</span>
 			</label>
 			<label>
@@ -424,13 +498,49 @@
 	.short {
 		display: none;
 	}
-	.sky-slot {
-		display: flex;
-		align-items: center;
-	}
 	.viewing-slot {
 		position: relative;
 		display: flex;
+	}
+	.reading-more {
+		position: relative;
+		display: flex;
+	}
+	.reading-more .more {
+		min-width: 20px;
+		width: 20px;
+		padding: 0;
+		font-size: 11px;
+		line-height: 1;
+	}
+	.reading-menu {
+		position: absolute;
+		z-index: 40;
+		top: 36px;
+		left: 0;
+		min-width: 132px;
+		padding: 4px;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 10px;
+		background: var(--shell-popover);
+		color: var(--shell-ink);
+		box-shadow: var(--shell-shadow);
+	}
+	.reading-menu[hidden] {
+		display: none;
+	}
+	.reading-menu button {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		color: var(--shell-ink);
+	}
+	.reading-menu button:hover:not(:disabled) {
+		background: var(--shell-hover);
+	}
+	.reading-menu .check {
+		color: var(--shell-leaf);
 	}
 	.viewing-slot .gear {
 		min-width: 28px;

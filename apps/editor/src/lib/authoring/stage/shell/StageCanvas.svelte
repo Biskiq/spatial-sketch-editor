@@ -21,7 +21,7 @@
 	import { PCFShadowMap } from 'three';
 	import { onDestroy } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
-	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry, OverheadSource, PlanEvaluation } from '@portfolio/layout-core';
 	import type { RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
@@ -43,13 +43,16 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
+	import StageLiftLayer from './StageLiftLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
+	import StageCelestialDial from './StageCelestialDial.svelte';
+	import type { CelestialDialModel } from '../../look/celestial-dial';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
-	import { worldEnvironmentLook } from '$lib/render/world-environment';
+	import { sunShadowKey, worldEnvironmentLook } from '$lib/render/world-environment';
 	import type { SceneSky } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
 	import {
@@ -91,6 +94,15 @@ import StageMatGround from './StageMatGround.svelte';
 		hover = null,
 		hoverTone = 'hover',
 		scenePick,
+		/**
+		 * Display-only session overlay: the Rooms a Lift reading has lifted. Preview
+		 * is a separate Canvas and never passes it. `VisitorPreviewSurface` does not
+		 * even mount this component.
+		 */
+		liftedRoomIds = [],
+		/** The overheads a Lift reading lifts, as Layout names them (display-only). */
+		liftSources = [],
+		dial = null,
 		/** The live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
@@ -136,7 +148,10 @@ import StageMatGround from './StageMatGround.svelte';
 		hover?: StageSelectionEntry | null;
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase';
+		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
+		liftedRoomIds?: readonly string[];
+		liftSources?: readonly OverheadSource[];
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
 		/** The sheet pin is hovered or being dragged; the route owns both. */
@@ -180,6 +195,22 @@ import StageMatGround from './StageMatGround.svelte';
 	);
 	/** The display sheet owns the canonical body while a Wall is unfolded. */
 	const unfoldedWallId = $derived(wallUnfold.state?.wallId ?? null);
+	/**
+	 * A lifted overhead is selected through its Room, so the Lift ink reads the same
+	 * subject a floor click selects. No ceiling-specific selection exists in X1.
+	 */
+	const liftSelectedRoomId = $derived(
+		selection !== null &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind === 'room'
+			? selection.reference.subject.id
+			: null
+	);
+	const liftHoveredRoomId = $derived(
+		hover !== null && hover.reference.domain === 'layout' && hover.reference.subject.kind === 'room'
+			? hover.reference.subject.id
+			: null
+	);
 	const paperReveal = $derived(paperComposition.reveal);
 	const paperVisible = $derived(paperComposition.visible);
 	const paperCovers = $derived(paperComposition.covers);
@@ -221,7 +252,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 	/** A Scene root or lazy body arriving or leaving changes what Paper may draw. */
 	let sceneRootRevision = $state(0);
-	const environmentShown = $derived(sky !== null && !paperCovers);
+	const environmentShown = $derived(sky !== null && sky.preset !== 'studio' && !paperCovers);
 	const workspace = $derived(workspaceRectFor(contentBounds));
 	const shadowBounds = $derived({
 		min: [workspace.minX, Math.min(datumMeters, snapshotBounds?.min[1] ?? datumMeters), workspace.minZ] as const,
@@ -263,7 +294,6 @@ import StageMatGround from './StageMatGround.svelte';
 	-->
 	{#if environmentShown}
 		<!-- The World's environment replaces the neutral lights, and the mat outside the plate. -->
-		<T.AmbientLight intensity={0.12} />
 		<WorldEnvironment {sky} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
 		<T.AmbientLight intensity={0.45} />
@@ -295,7 +325,7 @@ import StageMatGround from './StageMatGround.svelte';
 			renderOrder={1}
 		>
 			<T.PlaneGeometry args={heightPlane.size} />
-			<T.MeshBasicMaterial color={0xf3f4ee} transparent opacity={0.12} depthWrite={false} />
+			<T.MeshBasicMaterial fog={false} color={0xf3f4ee} transparent opacity={0.12} depthWrite={false} />
 		</T.Mesh>
 	{/if}
 	<!--
@@ -306,11 +336,13 @@ import StageMatGround from './StageMatGround.svelte';
 	-->
 	<!-- The preview projection is a shadow trigger too: an overridden or candidate
 		light must move its cast shadow with its illumination. -->
-	<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
+	{#if dial}<StageCelestialDial {dial} />{/if}
+	<StageShadowTriggers sunKey={sunShadowKey(environmentShown ? worldEnvironmentLook(sky) : null, { bounds: snapshotBounds, shadowBounds, groundY: datumMeters, flatGround: true })} {geometry} {scene} {lightPreview} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			{liftedRoomIds}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	<!-- The unfolded Wall's own developed body. It is a Canvas child,
@@ -381,6 +413,21 @@ import StageMatGround from './StageMatGround.svelte';
 			fade={1 - (paperReveal?.sheet ?? 0)}
 		/>
 		{/if}
+	{/if}
+	{#if framedViewport === null && evaluation !== null}
+		<!--
+			The lifted overheads' dashed outlines, and the selected one's ghost. Editor
+			ink on the overlay layer: never a pick root, never lit, never in a snapshot.
+			It draws nothing in Plan and is absent from a Look-through capture frame.
+		-->
+		<StageLiftLayer
+			sources={liftSources}
+			selectedRoomId={liftSelectedRoomId}
+			hoveredRoomId={liftHoveredRoomId}
+			width={evaluation.rect.width}
+			height={evaluation.rect.height}
+			reading={evaluation.renderedReading}
+		/>
 	{/if}
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
