@@ -135,7 +135,10 @@ export function createSceneArtworkRepresentation(
 
 	/** A plain (untextured) body surface: frame, Mat or backing. */
 	function plain(color: string): LambertMaterialDescriptor {
-		return { kind: 'lambert', color, transparent: ghost, opacity: ghost ? GHOST_OPACITY : 1, depthWrite: !ghost };
+		return {
+			kind: 'lambert', color, transparent: ghost, opacity: ghost ? GHOST_OPACITY : 1, depthWrite: !ghost,
+			...(ghost ? { fog: false as const } : {})
+		};
 	}
 
 	function buildBody(entry: Entry, loaded: ArtworkImageLoad): Body {
@@ -171,7 +174,8 @@ export function createSceneArtworkRepresentation(
 					map: mapKey,
 					transparent: loaded.transparent || ghost,
 					depthWrite: !loaded.transparent && !ghost,
-					opacity: ghost ? GHOST_OPACITY : 1
+					opacity: ghost ? GHOST_OPACITY : 1,
+					...(ghost ? { fog: false as const } : {})
 				},
 				maps
 			),
