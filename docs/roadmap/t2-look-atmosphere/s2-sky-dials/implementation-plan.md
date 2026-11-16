@@ -10,12 +10,14 @@ it amends the roadmap's approved Sky model. The owner decides before merge.
 **Revision 2** (2026-11-15) rewrites revision 1 after the owner's planning revision on #358.
 [Review resolution](#review-resolution) lists what changed.
 
+**Owner authorization (2026-11-15):** This revision is approved for implementation **in this same PR #358**. No separate planning merge or implementation PR. Keep the PR draft and unmerged until the implementation, independent review, browser QA and final owner acceptance. The rulings and required verification gates are recorded below.
+
 **Authority:** [Gallery UX rev 4](../gallery-ux-recovery/ux-design.html), accepted by the owner on
 13 November 2026, is the product specification. Section numbers below (§4.1–§4.3, §6, §7, §8) refer
 to that sheet. The prototype script in the sheet is the visual reference for every instrument.
 Line numbers are cited where an implementer should port drawing code rather than redraw it. Where
-the sheet is silent, this plan states an engineering definition. The rare true gaps are listed under
-[Open decisions](#open-decisions).
+the sheet is silent, this plan states an engineering definition. The formerly open choices have owner rulings under
+[Owner rulings and verification gates](#owner-rulings-and-verification-gates).
 
 ## Goal and scope
 
@@ -171,9 +173,12 @@ The shared defaults come from the shipped S1 Daylight look, so "nothing is remap
 - `SCENE_UNIT_FORMAT_VERSION = 9`.
 - A Scene 8 unit, project or release is refused with `unsupported_format_version`. Nothing converts
   it, following the S1 precedent.
-- **Consequence:** a Scene 8 project or published release stops opening until it is re-authored or
-  re-published. This is the same pre-beta policy S1 applied to Scene 7. The PR body states it for
-  the owner.
+- **Consequence, explicitly accepted by the owner:** Scene 8 projects and releases stop opening.
+  There is **no in-app migration or automatic republish path** in S2: a refused Scene 8 project
+  cannot simply be opened, saved, or republished. Its content must be **recreated/re-authored in
+  Scene 9** (or converted through separately approved tooling, not provided here) before it can be
+  published anew. Existing Scene 8 releases remain inaccessible under the strict format policy.
+  This is the intentional pre-beta data-compatibility trade-off, as with S1's Scene 7 refusal.
 - Layout, Camera, Experience and resources versions are unchanged.
 - API save, load and release reuse `validateUnitPayload`, so no schema is duplicated.
 
@@ -237,7 +242,10 @@ resolveSkyLook(sky): {
 - The Sun and the Moon are the **same** `DirectionalLight` lease, retargeted by phase.
 - In dusk and dawn, intensity is 0 and the direction holds at the boundary it just crossed: el 4°,
   az = heading ± 90.
-- `castShadow` is `sunShadows`, whatever the phase.
+- `castShadow` is `sunShadows`, whatever the phase. **Owner-reviewed semantics:** the UI label
+  *Sun shadows* controls shadow casting by the same light **at night as the Moon**, too. Under
+  Sky › More, show a brief contextual clarification (*Also applies to Moon at night*) rather than
+  creating a second shadow toggle. Dusk and dawn have no direct shadow because light intensity is 0.
 - This keeps the light count, the shadow count and every shader program constant across a 24-hour
   drag (see [Rendering](#rendering)).
 
@@ -665,6 +673,8 @@ is valid.
 - Only a Sun shadows toggle, or a switch to or from Studio, changes the program set. Both are
   discrete clicks, never inside a drag.
 - A unit test asserts that the resolved light and fog *shape* is invariant across 96 times of day.
+  **This is not proof of zero recompiles.** The browser QA below must also measure actual WebGL
+  compile/link activity and program counts over a full 24-hour drag after warm-up.
 
 **Fog exemptions.**
 
@@ -873,7 +883,7 @@ system is built.
 | `scene-environment-set` | planner tests | Writes the full start keeping heading; Studio keeps heading; equal is `no-change`; current preset on edited resets; treatment untouched |
 | `scene-sky-update` | planner tests | Each field patches alone; `moon` merges; Studio non-heading refused, heading allowed; invalid ranges refused; equal is `no-change`; Undo/Redo restore the exact Sky |
 | Time model | `tests/lib/render/sky-time.test.ts` | The §4.3 formulas at 06:30, 13:00, 19:30, 21:00, 00:45 (Moon 38°), 04:30; phase boundaries; az at noon = heading; `snapTime` wrap at 23:57 → 23:55 and at 23:58 → 00:00; Page Up/Down phase starts; `hhmm` 60-minute carry |
-| Light model | `sky-atmosphere.test.ts` | HIGH with default colours = S1 Daylight exactly; continuity at 06:30/19:30 (intensity → 0); twilight intensity 0 with held direction; Moon uses `moon.color`; exposure scales lights ×2^EV but not the background; overcast desaturation; tint keeps colour edits visible at night; fog density formula and clear at 0; light, fog and shadow shape invariant across 96 times |
+| Light model | `sky-atmosphere.test.ts` | HIGH with default colours = S1 Daylight exactly; continuity at 06:30/19:30 (intensity → 0); twilight intensity 0 with held direction; Moon uses `moon.color`; `sunShadows` controls both day Sun and night Moon shadow casting, while twilight casts no visible direct shadow; exposure scales lights ×2^EV but not the background; overcast desaturation; tint keeps colour edits visible at night; fog density formula and clear at 0; light, fog and shadow shape invariant across 96 times |
 | Shadow invalidation | `shadow-invalidation.test.ts` + a trigger test | A time/heading/arcHeight change gives exactly one invalidation per frame; haze/exposure/colour/moon give 0; twilight drag gives 0; orbit gives 0 |
 | Aim | `aim-through-windows.test.ts` | Single exterior window; two opposite windows weighted by area; interior partition skipped; none → no write; seed heading 0 |
 | Gesture lifecycle | `sky-gesture.test.ts` (fake services) | One intent per release or burst; Esc writes 0; trailing change swallowed; revision drift cancels; busy refuses; refusal resyncs; preview held until accepted |
@@ -908,7 +918,8 @@ PR.
    - *Aim through windows* in a room with one exterior window: noon light comes through it.
 4. **Cancel everywhere:** Esc mid-drag on the Time dial, compass, sliders, dial glyph, tip and noon
    mark. The image snaps back and history is unchanged. A second Esc closes the panel and focus
-   returns to the control.
+   returns to the control. Test the native Sky/Ground/Moon colour input specifically: Esc cancels
+   without a Scene write or Undo entry, including in the supported browser's native picker.
 5. **Shell:**
    - With a Spot selected and Sky open at 1440, 1280 and 1024: the Card yields (about 0, 100 and
      132 px) and never folds; the dial relocates by about 1.4, 2.0 and 1.7 m with a leader.
@@ -920,14 +931,24 @@ PR.
    - Arm a light tool: the dial hides.
    - Experience lens: the control is absent and the panel closed.
    - Preview: no dial.
-7. **Haze, Exposure, colours:**
+7. **Haze, Exposure, colours and Moon shadows:**
    - Overcast: walls 15 m away stay legible; grids and marks stay crisp.
    - Moonlit at +1 EV: the room is readable.
+   - With *Sun shadows* on, the Moon casts shadows at night; turning it off removes both Moon
+     and Sun shadows. The More caption explains the shared control. Twilight has no direct shadows.
    - A Sky colour change is visible at noon and at 23:00.
    - Preview and the published visit match the Stage.
 8. **Studio:** no dials and no dial. The heading survives Studio → Daylight.
-9. **Performance:** with the work counter, idle orbit gives 0 shadow updates. A Time drag gives about
-   one per frame, and a twilight drag gives 0.
+9. **Performance in a real WebGL browser (not unit tests alone):** warm the editor and then drag
+   Time continuously across the full 24-hour cycle, including 06:30, 19:30, 21:00, 04:30 and
+   midnight. Record before/after and peak `renderer.info.programs` counts **and actual shader
+   compile/link calls** with a temporary renderer-module-only development probe (never production
+   instrumentation). A stable program count alone is insufficient to prove zero recompiles.
+   Expect **zero new shader compile/link calls during a warmed continuous drag**. Separately
+   record the discrete Studio switch and Sun-shadows toggle, which may change shader programs.
+   Record shadow-map passes per frame: idle Stage and orbit **0**; changing Sun/Moon direction
+   at most **1**; held-direction twilight, and Haze/Exposure/colour edits **0**. Attach measured
+   evidence and any deviations to the PR; don't claim the budget passed from unit tests alone.
 10. **#353 diagnostic**, as in the rule above.
 
 ## Acceptance criteria
@@ -942,10 +963,15 @@ PR.
   - the Card-yield rule;
   - the Esc ladder and focus order.
 - Scene 9 stores `time`, `heading` and `arcHeight`. Azimuth and elevation are derived everywhere.
-  Scene 8 is refused.
+  Scene 8 is strictly refused, with no in-app migration or republish path; the incompatibility is
+  explicitly documented in the PR.
 - One undo step per gesture, burst, tile, Reset or Aim. Cancel writes nothing.
 - The Stage, Preview and the published visit render the same Sky. Finish goldens are unchanged.
-- The idle Stage renders 0 shadow maps per frame. No program recompiles during any drag.
+- The idle Stage renders 0 shadow maps per frame. A warmed full-24-hour Time drag produces no
+  shader recompiles, **verified in a real WebGL browser** with compile/link counters and program
+  counts, while discrete Studio/shadow-toggle changes are evaluated separately.
+- The *Sun shadows* UI truthfully documents that the single Sun/Moon light also casts Moon shadows
+  at night; this is tested. The native colour picker Esc path writes nothing and leaves no Undo.
 - No reflections, no new dependency, no renderer API outside render modules, no editor module in
   visitor chunks.
 - The Sky chip, `SkyControl.svelte` and the old unmounted panel are gone. Every contract in
@@ -953,12 +979,12 @@ PR.
 - #353 has a recorded diagnostic and either an evidence-backed narrow fix or an issue comment.
 - `npm run check`, the unit lanes, the API tests and the boundary suites pass.
 
-## Open decisions
+## Owner rulings and verification gates
 
-None blocks implementation. Each has a recommended default that the plan builds; the owner may
-override any of them during review.
+**All three choices are accepted for implementation.** D3's native-picker cancellation behaviour
+and the final look tuning remain browser acceptance gates, not new planning blockers.
 
-| # | Gap in UX rev 4 | Recommended default |
+| # | Gap in UX rev 4 | Authorized implementation |
 | --- | --- | --- |
 | D1 | What the panel and control show while **Studio** is active. §4.3 lists the full contents but Studio has no time, direction or haze, and D18 forbids inert controls. | Header, tiles and the line *Studio light is even and fixed. Pick a sky to set the time.* The control's second line reads `Even light`. No Celestial Dial. Stored values, `heading` included, are kept. |
 | D2 | Where the existing per-browser **"Plain Paper while editing"** preference lives. It is not in the §4.3 Contents list, and §8 puts viewing preferences in ⚙. | Move it to the ⚙ Viewing settings as *Studio light while editing · this browser*, keeping its storage key. It is never serialized. |
@@ -992,7 +1018,9 @@ override any of them during review.
 
 ## Readiness and effort
 
-The plan is implementation-ready. The three open decisions have buildable defaults.
+**Implementation authorized in PR #358.** No separate planning merge or new PR is required. Keep
+this PR draft until implementation, independent review and browser/owner acceptance. D1 and D2
+are final; D3's Esc cancellation and look-tuning constants require browser QA.
 
 **Effort: very high**, about 15–20 agent working days, as one Tier 2 PR. That is roughly 30 source
 files (about 8 project-model, 22 editor), about 18 new or extended test files, the fixture sweep,
