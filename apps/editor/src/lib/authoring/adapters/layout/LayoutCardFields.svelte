@@ -5,8 +5,9 @@
 	 * One controller owns the accepted dimensions, drafts, refusals and history.
 	 * Ordinary Wall length/height and Opening measures stay compact; thickness
 	 * and offset use the Card's one anchored secondary panel. Coordinate and
-	 * transform procedures are absent. The planner's default fixed endpoint is
-	 * preserved; presentation does not silently choose a different anchor.
+	 * transform procedures are absent. Start stays the controller's default fixed
+	 * endpoint, and the Length field exposes that choice explicitly; presentation
+	 * never silently chooses a different anchor.
 	 * The name remains the Card's delegated inline writer.
 	 *
 	 * It renders what the framework-free controller owns: the accepted value, the
@@ -14,6 +15,7 @@
 	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
+	import type { FixedWallEndpoint } from '@portfolio/layout-core';
 	import { compactMeasure, indexLabels, stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
@@ -56,6 +58,16 @@
 	let currentController: LayoutInstrument | null = null;
 	/** A parameter a reading change preserved; Resume applies the captured value exactly. */
 	let paused = $state<PausedWallProposal | null>(null);
+	/** The endpoint the next exact Length solve keeps fixed; Start is the default. */
+	let fixedEnd = $state<FixedWallEndpoint>('start');
+	/** The subject the current choice belongs to; a new subject starts on Start. */
+	let fixedEndSubject: string | null = null;
+
+	/** The two explicit anchors the Length solve offers, in Card order. */
+	const FIXED_ENDS: readonly { readonly value: FixedWallEndpoint; readonly label: string }[] = [
+		{ value: 'start', label: 'Start' },
+		{ value: 'end', label: 'End' }
+	];
 
 	// The writer follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
@@ -245,17 +257,47 @@
 				: ['width', 'height'];
 		return ids.flatMap((id) => ordinaryFields.filter((field) => field.id === id));
 	});
+	/**
+	 * The choice sits beside the editable Length, so it exists exactly where the
+	 * writer offers one: a straight, open Wall. A curved Wall has no length field
+	 * and a closed Wall edits its radius/diameter instead, so neither shows it.
+	 */
+	const fixedEndShown = $derived(
+		instrument?.subject.kind === 'wall' && fields.some((field) => field.id === 'length')
+	);
 
 	function refresh(current = currentController): void {
 		fields = current?.fields() ?? [];
 		paused = current?.pausedProposal() ?? null;
+		fixedEnd = current?.fixedEndpoint() ?? 'start';
+	}
+
+	/**
+	 * Switching the anchor is editor-local: it sets the controller's explicit
+	 * endpoint for the next exact Length solve and submits no intent, so it can
+	 * never write the document, take the gesture lease or add a history entry.
+	 */
+	function chooseFixedEndpoint(endpoint: FixedWallEndpoint): void {
+		const current = currentController;
+		if (current === null) return;
+		current.setFixedEndpoint(endpoint);
+		fixedEnd = current.fixedEndpoint();
 	}
 
 	// One owner publishes the live controller to events and invalidates that
-	// reference before disposing it. A new subject restores its explicit endpoint.
+	// reference before disposing it.
 	$effect(() => {
 		const current = instrument;
 		currentController = current;
+		// An accepted edit rebuilds the controller for the same subject. The
+		// anchor is editor-local session state, so it must survive that rebuild:
+		// otherwise a second End-fixed Length edit would silently move End.
+		const subjectKey = current === null ? null : `${current.subject.kind}:${current.subject.id}`;
+		if (current !== null && subjectKey === fixedEndSubject) {
+			const chosen = untrack(() => fixedEnd);
+			if (chosen !== current.fixedEndpoint()) current.setFixedEndpoint(chosen);
+		}
+		fixedEndSubject = subjectKey;
 		refresh(current);
 		return () => {
 			if (currentController === current) currentController = null;
@@ -339,44 +381,62 @@
 </script>
 
 {#snippet fieldRow(field: LayoutFieldState)}
-	<label class="field">
-		<span>{field.label}</span>
-		<input
-			type="text"
-			inputmode="decimal"
-			data-field={field.id}
-			value={focusedField === field.id ? field.text : compactMeasure(field.text)}
-			onfocus={(event) => {
-				focusedField = field.id;
-				event.currentTarget.value =
-					currentController?.fields().find((value) => value.id === field.id)?.text ?? field.text;
-			}}
-			aria-invalid={field.error === null ? undefined : 'true'}
-			oninput={(event) => onInput(field.id, event)}
-			onkeydown={(event) => {
-				if (event.key === 'Enter') {
-					event.preventDefault();
-					void commit(field.id);
-				} else if (event.key === 'Escape') {
-					event.preventDefault();
-					discard(field.id, event.currentTarget as HTMLInputElement);
-				}
-			}}
-			onblur={(event) => {
-				// Removing the focused input during an accepted install can blur
-				// it after this panel or its keyed field row has retired. Read the
-				// captured DOM identity, never the row's destroyed derived value.
-				const input = event.currentTarget;
-				const id = input.dataset.field;
-				if (!alive || !input.isConnected || id === undefined) return;
-				focusedField = null;
-				currentController?.blur(id);
-				refresh();
-				restoreText(id, input);
-			}}
-		/>
-		<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
-	</label>
+	<div class="field-cell">
+		<label class="field">
+			<span>{field.label}</span>
+			<input
+				type="text"
+				inputmode="decimal"
+				data-field={field.id}
+				value={focusedField === field.id ? field.text : compactMeasure(field.text)}
+				onfocus={(event) => {
+					focusedField = field.id;
+					event.currentTarget.value =
+						currentController?.fields().find((value) => value.id === field.id)?.text ?? field.text;
+				}}
+				aria-invalid={field.error === null ? undefined : 'true'}
+				oninput={(event) => onInput(field.id, event)}
+				onkeydown={(event) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						void commit(field.id);
+					} else if (event.key === 'Escape') {
+						event.preventDefault();
+						discard(field.id, event.currentTarget as HTMLInputElement);
+					}
+				}}
+				onblur={(event) => {
+					// Removing the focused input during an accepted install can blur
+					// it after this panel or its keyed field row has retired. Read the
+					// captured DOM identity, never the row's destroyed derived value.
+					const input = event.currentTarget;
+					const id = input.dataset.field;
+					if (!alive || !input.isConnected || id === undefined) return;
+					focusedField = null;
+					currentController?.blur(id);
+					refresh();
+					restoreText(id, input);
+				}}
+			/>
+			<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
+		</label>
+		{#if field.id === 'length' && fixedEndShown}
+			<!-- The fixed end is a choice, not a label: one explicit anchor for the
+			     next exact Length solve, defaulting to the controller's Start. -->
+			<span class="fixed-end" role="group" aria-label="Length keeps fixed" data-layout-fixed-end>
+				{#each FIXED_ENDS as option (option.value)}
+					<button
+						type="button"
+						class="fixed-end-option"
+						data-fixed-end={option.value}
+						aria-pressed={fixedEnd === option.value}
+						title={`Length keeps the ${option.value} fixed`}
+						onclick={() => chooseFixedEndpoint(option.value)}
+					>{option.label}</button>
+				{/each}
+			</span>
+		{/if}
+	</div>
 {/snippet}
 
 {#if instrument !== null}
@@ -460,6 +520,11 @@
 		gap: 6px;
 		padding: 0 12px 8px;
 	}
+	.field-cell {
+		display: grid;
+		gap: 2px;
+		min-width: 0;
+	}
 	.field {
 		position: relative;
 		display: grid;
@@ -467,6 +532,26 @@
 		min-width: 0;
 		color: var(--shell-ink-2);
 		font-size: 10.5px;
+	}
+	.fixed-end {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 2px;
+	}
+	.fixed-end-option {
+		height: 18px;
+		min-height: 18px;
+		padding: 0 2px;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--shell-ink-quiet);
+		font: 9.5px var(--shell-mono);
+		line-height: 1;
+	}
+	.fixed-end-option[aria-pressed='true'] {
+		background: var(--shell-field);
+		border-color: var(--shell-field-line-strong);
+		color: var(--shell-ink);
 	}
 	input {
 		box-sizing: border-box;
@@ -573,6 +658,9 @@
 		}
 		.unit {
 			bottom: 14px;
+		}
+		.fixed-end-option {
+			min-width: 0;
 		}
 	}
 </style>
