@@ -23,9 +23,11 @@ import {
 	Mesh,
 	MeshBasicMaterial,
 	MeshStandardMaterial,
+	Raycaster,
 	Shape,
 	ShapeGeometry,
 	ShadowMaterial,
+	Vector3,
 	type Material
 } from 'three';
 import {
@@ -126,6 +128,30 @@ function materialProperties(material: Material): Record<string, unknown> {
 		metalness: (material as MeshStandardMaterial).metalness,
 		map: (material as MeshStandardMaterial).map ?? null
 	};
+}
+
+/**
+ * A point inside a Room, read from the Room floor's **own** triangulation.
+ *
+ * The bounding-box centre of a non-convex Room can sit outside it, and a ray
+ * there would describe a hole rather than the Room. The first triangle of the
+ * floor buffer is always inside the floor it draws.
+ */
+function insideFloor(mesh: Mesh): { readonly x: number; readonly z: number } {
+	const vertices = worldVertices(mesh);
+	return {
+		x: (vertices[0]! + vertices[3]! + vertices[6]!) / 3,
+		z: (vertices[2]! + vertices[5]! + vertices[8]!) / 3
+	};
+}
+
+function hitsAlong(group: Group, origin: Vector3, direction: Vector3): string[] {
+	// `Raycaster` reads `matrixWorld` and never writes it; the renderer is what
+	// normally updates it, so a headless test must. A stale identity matrix would
+	// test the wrong surface — and did, silently, before this line existed.
+	group.updateMatrixWorld(true);
+	const raycaster = new Raycaster(origin, direction.normalize(), 0, Infinity);
+	return raycaster.intersectObject(group, true).map((hit) => hit.object.name);
 }
 
 function moved(document: LayoutDocumentWallFirst, wallIndex = 0): LayoutDocumentWallFirst {
@@ -260,6 +286,68 @@ function meshNameFor(groupName: string, mesh: 'floor' | 'floorShadow' | 'ceiling
 	const roomId = groupName.slice(groupName.indexOf(':') + 1);
 	return mesh === 'floor' ? `VisitorFloor:${roomId}` : mesh === 'floorShadow' ? `VisitorFloorShadow:${roomId}` : `VisitorCeiling:${roomId}`;
 }
+
+/**
+ * T1 X1 — the generated Room lid as `main` actually builds it.
+ *
+ * Every later Lift guarantee reads these two facts, so they are pinned before
+ * any of them is relied on:
+ *
+ * - **The lid is invisible and click-through from above.** It is a `FrontSide`
+ *   mesh whose `+π/2` rotation turns its front face downward, so a ray from above
+ *   meets its back face and `Mesh.raycast` discards it. It occludes only a Camera
+ *   under it, which is why Lift must move it off the world layer rather than
+ *   write `visible`.
+ * - **The lid casts no shadow.** Walls and Layout objects do; today's generated
+ *   ceiling does not, so lifting it cannot change any light or shadow.
+ *
+ * Changing either is a stop condition for X1, not a detail to adapt to.
+ */
+describe('T1 X1 — the generated Room lid: ray behaviour and caster state', () => {
+	it('is missed from above, hit from inside, and casts no shadow', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const store = createMaterialStore();
+		const representation = createRoomRepresentation(store);
+		representation.update(geometry);
+		expect(geometry.rooms.length).toBeGreaterThan(0);
+
+		for (const room of geometry.rooms) {
+			const group = rooms(representation).get(`VisitorRoom:${room.roomId}`)!;
+			const floor = meshNamed(group, `VisitorFloor:${room.roomId}`);
+			const ceiling = meshNamed(group, `VisitorCeiling:${room.roomId}`);
+			const inside = insideFloor(floor);
+			const ceilingName = `VisitorCeiling:${room.roomId}`;
+			const floorName = `VisitorFloor:${room.roomId}`;
+
+			// From above: the lid's back face is culled, so the floor is what the
+			// ray meets — and every interior click at eye level works for the same
+			// reason.
+			const fromAbove = hitsAlong(
+				group,
+				new Vector3(inside.x, room.ceilingElevation + 2, inside.z),
+				new Vector3(0, -1, 0)
+			);
+			expect(fromAbove, `${room.roomId} from above`).not.toContain(ceilingName);
+			expect(fromAbove[0], `${room.roomId} from above`).toBe(floorName);
+
+			// From inside, looking up: the lid is front-facing and is hit. That is
+			// the occlusion Lift removes.
+			const fromInside = hitsAlong(
+				group,
+				new Vector3(inside.x, room.floorElevation + 1, inside.z),
+				new Vector3(0, 1, 0)
+			);
+			expect(fromInside[0], `${room.roomId} from inside`).toBe(ceilingName);
+
+			// Caster state is the Layout representation's, not a shadow policy:
+			// the generated lid does not cast today, so Lift changes no light.
+			expect(ceiling.castShadow, `${room.roomId} lid castShadow`).toBe(false);
+		}
+
+		representation.dispose();
+		store.dispose();
+	}, 60_000);
+});
 
 describe('E6/R3 — Room materials, release and identity', () => {
 	it('draws every Room with three store materials, whichever Room count', () => {
