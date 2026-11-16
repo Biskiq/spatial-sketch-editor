@@ -41,9 +41,11 @@ import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { buildFormGeometry } from '$lib/render/entities/form-geometry';
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
+import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createStageMeasure, resolveMeasureEndpoint } from '$lib/authoring/stage/stage-measure';
 import { createStageEraser } from '$lib/authoring/stage/stage-eraser';
+import { createStagePainter, STAGE_PAINT_TASK } from '$lib/authoring/stage/stage-painter';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -58,6 +60,10 @@ const PRIMITIVE: SceneEntity = {
 const MODEL: SceneEntity = {
 	kind: 'model', id: 'entity-piano', name: 'Piano', assetId: 'paris-grand-piano', fallback: 'piano',
 	position: [5, 0, 4.5], rotation: [0, 0, 0]
+};
+const LIGHT: SceneEntity = {
+	kind: 'light', light: 'point', id: 'entity-light', name: 'Fill light', color: '#ffffff',
+	intensity: 1, castShadow: false, position: [8, 2.4, 3], rotation: [0, 0, 0]
 };
 const FORM: SceneEntity = {
 	kind: 'form', id: 'entity-form', name: 'Form', position: [5, 0, 2], rotation: [0, 0, 0],
@@ -103,7 +109,7 @@ function layoutDocument(): { document: LayoutDocumentWallFirst; wallId: string; 
 	return { document: plinth.document, wallId, openingId: opening.changedOpeningIds[0]!, plinthId: plinth.createdObjectId };
 }
 
-async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEntity[] = [PRIMITIVE, FORM], modelRoot?: Object3D, lockModel = false): Promise<Mounted> {
+async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEntity[] = [PRIMITIVE, FORM], modelRoot?: Object3D, lockModel = false, withLight = false): Promise<Mounted> {
 	const { document, wallId, openingId, plinthId } = layoutDocument();
 	const modelEntry = lockModel ? creatorModelResourceEntry(MODEL.kind === 'model' ? MODEL.assetId : '', {
 		derivative: { hash: `sha256-${'a'.repeat(64)}`, mime: 'model/gltf-binary', size: 4096, locator: 'models/test.glb' },
@@ -152,7 +158,10 @@ async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEn
 			sourceContentId: snapshot.sourceContentId
 		}
 	});
-	for (const factory of [createLayoutAdapter, createSceneAdapter]) {
+	const factories = withLight
+		? [createLayoutAdapter, createSceneAdapter, createLightAdapter]
+		: [createLayoutAdapter, createSceneAdapter];
+	for (const factory of factories) {
 		const registration = mountStageAdapter(facade, host, factory);
 		if (registration.kind !== 'registered') throw new Error('an adapter did not mount');
 	}
@@ -171,6 +180,22 @@ function css(facade: StageFacade, point: Vec3): readonly [number, number] {
 	const projected = facade.projectWorld(point, facade.evaluationId()!);
 	if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
 	return [projected.css[0], projected.css[1]];
+}
+
+/** Paint options with a spy write; these cases never need a real Finish install. */
+function paintOptions() {
+	const assign = vi.fn(async () => true);
+	return {
+		assign,
+		options: {
+			hasActive: () => true,
+			isAlready: () => false,
+			assign,
+			dropperArmed: () => false,
+			copy: vi.fn(async () => true),
+			activeLabel: () => 'Warm Plaster'
+		}
+	};
 }
 
 /** Erase through the controller with one click, exactly as the route drives it. */
@@ -373,6 +398,116 @@ describe('R217.S10 — Eraser', () => {
 	});
 });
 
+
+describe('T2.S4a — Paint', () => {
+	it('refuses a Wall and a Light in their own words without writing', async () => {
+		const { facade } = await mount('plan', [LIGHT], undefined, false, true);
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const before = facade.snapshot().canonicalJson;
+
+		const wall = css(facade, [6, 0, 0]);
+		expect(painter.down({ css: wall, evaluationId })).toBe(true);
+		expect(painter.candidate()).toMatchObject({
+			adapterId: 'layout',
+			entityId: null,
+			refusal: 'Walls are not painted yet.'
+		});
+		await painter.up({ css: wall, evaluationId });
+		expect(painter.notice()).toMatchObject({ kind: 'refused', message: 'Walls are not painted yet.' });
+
+		const light = css(facade, LIGHT.position);
+		expect(painter.down({ css: light, evaluationId })).toBe(true);
+		expect(painter.candidate()).toMatchObject({
+			adapterId: 'light',
+			entityId: null,
+			refusal: 'Lights have no Finish.'
+		});
+		await painter.up({ css: light, evaluationId });
+		expect(painter.notice()).toMatchObject({ kind: 'refused', message: 'Lights have no Finish.' });
+
+		expect(assign).not.toHaveBeenCalled();
+		expect(facade.snapshot().canonicalJson).toBe(before);
+	});
+
+	it('does not paint a Scene object through the Light in front of it', async () => {
+		const hidden: SceneEntity = {
+			...PRIMITIVE,
+			id: 'entity-behind-light',
+			name: 'Behind light',
+			position: [8, 0.5, 3]
+		};
+		const { facade } = await mount('plan', [LIGHT, hidden], undefined, false, true);
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, LIGHT.position);
+		// The Light's glyph is in front of the box beneath it; Paint never skips the
+		// refusing Light to assign the hidden object.
+		expect(facade.hostToolTarget({ css: at, evaluationId, tool: 'paint' })).toMatchObject({
+			kind: 'hit',
+			adapterId: 'light'
+		});
+		const before = facade.snapshot().canonicalJson;
+
+		expect(painter.down({ css: at, evaluationId })).toBe(true);
+		expect(painter.candidate()).toMatchObject({
+			adapterId: 'light',
+			entityId: null,
+			refusal: 'Lights have no Finish.'
+		});
+		await painter.up({ css: at, evaluationId });
+
+		expect(assign).not.toHaveBeenCalled();
+		expect(facade.snapshot().canonicalJson).toBe(before);
+		expect(painter.notice()).toMatchObject({ kind: 'refused', message: 'Lights have no Finish.' });
+	});
+
+	it('cancels a press without writing and releases its gesture', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+
+		expect(painter.down({ css: at, evaluationId })).toBe(true);
+		expect(painter.pressing()).toBe(true);
+		expect(facade.session.gesture()).toMatchObject({ owner: STAGE_PAINT_TASK });
+		painter.cancel();
+
+		expect(painter.pressing()).toBe(false);
+		expect(painter.candidate()).toBeNull();
+		expect(painter.notice()).toBeNull();
+		expect(facade.session.gesture()).toBeNull();
+		await painter.up({ css: at, evaluationId });
+		expect(assign).not.toHaveBeenCalled();
+	});
+
+	it('writes once on release over the subject and nothing after a slide-off', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+
+		expect(painter.down({ css: at, evaluationId })).toBe(true);
+		expect(facade.session.gesture()).toMatchObject({ owner: STAGE_PAINT_TASK });
+		await painter.up({ css: at, evaluationId });
+		expect(assign).toHaveBeenCalledTimes(1);
+		expect(assign).toHaveBeenCalledWith(PRIMITIVE.id);
+		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster' });
+		expect(facade.session.gesture()).toBeNull();
+
+		assign.mockClear();
+		const away = css(facade, [3.5, 0, 3]);
+		expect(painter.down({ css: at, evaluationId })).toBe(true);
+		painter.move({ css: away, evaluationId });
+		await painter.up({ css: away, evaluationId });
+		expect(assign).not.toHaveBeenCalled();
+		expect(facade.session.gesture()).toBeNull();
+	});
+});
 
 describe('host-tool source and history contracts', () => {
 	it('measures snapped datum points and leaves real Undo available during its press', async () => {

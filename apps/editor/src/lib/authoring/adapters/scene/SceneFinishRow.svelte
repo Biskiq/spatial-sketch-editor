@@ -334,10 +334,10 @@
 							{/if}
 						</p>
 						<div class="ask-actions">
-							<button type="button" data-finish-ask="just-this" onclick={() => answer('just-this')}>
+							<button type="button" class="primary" data-finish-ask="just-this" onclick={() => answer('just-this')}>
 								Just this
 							</button>
-							<button type="button" class="primary" data-finish-ask="all" onclick={() => answer('all')}>
+							<button type="button" data-finish-ask="all" onclick={() => answer('all')}>
 								{ask.kind === 'palette-add' ? 'All N' : `All ${ask.reach}`}
 							</button>
 							<button type="button" data-finish-ask="cancel" onclick={() => answer('cancel')}>

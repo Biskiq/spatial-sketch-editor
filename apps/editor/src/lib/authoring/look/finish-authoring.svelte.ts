@@ -567,6 +567,16 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 	}
 
+	/** Dismiss a pending shared-Finish Ask without writing. */
+	function cancelAsk(): boolean {
+		if (ask === null && pending === null) return false;
+		ask = null;
+		pending = null;
+		applyToAllEdits = false;
+		clearPreview();
+		return true;
+	}
+
 	async function resolveAsk(choice: 'just-this' | 'all' | 'cancel'): Promise<void> {
 		const current = pending;
 		const asked = ask;
@@ -675,7 +685,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const view = viewFor(targetId);
 		const dropperState = dropper;
 		dropper = null;
-		if (view === null || view.key === 'model-own') {
+		if (view === null || (view.key === 'model-own' && dropperState?.forEntityId != null)) {
 			host.onNotice('That has no Finish colour.');
 			return false;
 		}
@@ -780,6 +790,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		setMetal,
 		saveToPalette,
 		resolveAsk,
+		cancelAsk,
 		setApplyToAllEdits,
 		noteRow,
 		setPaletteSlotColor,

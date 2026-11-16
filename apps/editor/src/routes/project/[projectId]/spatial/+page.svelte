@@ -368,6 +368,16 @@
 	});
 
 	const selectionView = createStageSelectionView();
+	let finishAskSelectionKey = '';
+	$effect(() => {
+		const entry = selection;
+		const key = entry === null
+			? ''
+			: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
+		if (key === finishAskSelectionKey) return;
+		finishAskSelectionKey = key;
+		untrack(() => finishes.cancelAsk());
+	});
 	const sceneRooms = $derived(
 		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
 	);
@@ -582,6 +592,7 @@
 		openCard: () => shell.setCardOpen(true),
 		pendingDelete: () => shell.pendingDelete !== null,
 		clearPendingDelete: () => { shell.setPendingDelete(null); shell.setNotice(''); },
+		cancelFinishAsk: () => finishes.cancelAsk(),
 		interrupt: interruptPress,
 		task: () => shell.task,
 		closeTask: () => commands.closeTask(),
@@ -966,6 +977,7 @@
 	}
 
 	function setReading(reading: '3d' | 'plan'): void {
+		finishes.cancelAsk();
 		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
 		if (stageInput.drag !== null && session.gesture() === null) {
 			if (stageInput.drag.mode === 'adapter' && facade !== null) {
@@ -1297,8 +1309,8 @@
 			redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 			canUndo={historyState.canUndo}
 			canRedo={historyState.canRedo}
-			onUndo={() => void stageEpoch.undo()}
-			onRedo={() => void stageEpoch.redo()}
+			onUndo={() => { finishes.cancelAsk(); void stageEpoch.undo(); }}
+			onRedo={() => { finishes.cancelAsk(); void stageEpoch.redo(); }}
 			save={headSave}
 			onReloadRemote={(offer) => void applyReloadOffer(offer)}
 			saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
