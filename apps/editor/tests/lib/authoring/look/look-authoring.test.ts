@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	SCENE_ENVIRONMENT_SET_KIND,
-	SCENE_SKY_PRESET_STARTS,
+	skyFromPreset,
 	type SceneSky
 } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -24,7 +24,7 @@ function harness(options: {
 	readonly admitted?: boolean;
 	readonly accept?: Accept;
 } = {}) {
-	const sky = options.sky === undefined ? SCENE_SKY_PRESET_STARTS.daylight : options.sky;
+	const sky = options.sky === undefined ? skyFromPreset('daylight', 0) : options.sky;
 	let notice = '';
 	const accept = vi.fn(options.accept ?? (async () => ({ kind: 'installed' })));
 	const current = options.admitted === false ? null : services(accept);
@@ -75,7 +75,7 @@ describe('T2 P0 — the Look authoring seam', () => {
 	});
 
 	it('writes the current preset as a Reset so an edited Sky returns to its start', async () => {
-		const host = harness({ sky: SCENE_SKY_PRESET_STARTS.dusk });
+		const host = harness({ sky: skyFromPreset('dusk', 0) });
 		await host.look.setEnvironment('dusk');
 		expect(host.accept).toHaveBeenCalledTimes(1);
 		expect(host.accept).toHaveBeenCalledWith(
@@ -96,7 +96,7 @@ describe('T2 P0 — the Look authoring seam', () => {
 			sky: null,
 			accept: async () => ({ kind: 'refused', code: 'no-change', message: 'The World already uses Paper' })
 		});
-		await unchanged.look.setEnvironment('paper');
+		await unchanged.look.setEnvironment('studio');
 		expect(unchanged.notice()).toBe('');
 
 		const installed = harness({ sky: null });
@@ -105,13 +105,13 @@ describe('T2 P0 — the Look authoring seam', () => {
 	});
 
 	it('keeps Plain Paper a session-only view and never rewrites the saved Sky', async () => {
-		const host = harness({ sky: SCENE_SKY_PRESET_STARTS.dusk });
-		expect(host.look.sky).toEqual(SCENE_SKY_PRESET_STARTS.dusk);
-		expect(host.look.stageSky).toEqual(SCENE_SKY_PRESET_STARTS.dusk);
-		host.look.setEditOnPaper(true);
-		expect(host.look.editOnPaper).toBe(true);
+		const host = harness({ sky: skyFromPreset('dusk', 0) });
+		expect(host.look.sky).toEqual(skyFromPreset('dusk', 0));
+		expect(host.look.stageSky).toEqual(skyFromPreset('dusk', 0));
+		host.look.setStudioWhileEditing(true);
+		expect(host.look.studioWhileEditing).toBe(true);
 		expect(host.look.stageSky).toBeNull();
-		expect(host.look.sky).toEqual(SCENE_SKY_PRESET_STARTS.dusk);
+		expect(host.look.sky).toEqual(skyFromPreset('dusk', 0));
 		expect(host.accept).not.toHaveBeenCalled();
 	});
 

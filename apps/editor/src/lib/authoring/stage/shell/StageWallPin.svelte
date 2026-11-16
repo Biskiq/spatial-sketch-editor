@@ -22,6 +22,7 @@
 	const { invalidate } = useThrelte();
 	const pinGeometry = new SphereGeometry(0.075, 14, 10);
 	const pinMaterial = new MeshBasicMaterial({
+			fog: false,
 		color: 0xb9932f,
 		toneMapped: false,
 		depthTest: false

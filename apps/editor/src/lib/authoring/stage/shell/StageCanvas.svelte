@@ -46,10 +46,12 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
+	import StageCelestialDial from './StageCelestialDial.svelte';
+	import type { CelestialDialModel } from '../../look/celestial-dial';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
-	import { worldEnvironmentLook } from '$lib/render/world-environment';
+	import { sunShadowKey, worldEnvironmentLook } from '$lib/render/world-environment';
 	import type { SceneSky } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
 	import {
@@ -91,6 +93,7 @@ import StageMatGround from './StageMatGround.svelte';
 		hover = null,
 		hoverTone = 'hover',
 		scenePick,
+		dial = null,
 		/** The live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
@@ -136,6 +139,7 @@ import StageMatGround from './StageMatGround.svelte';
 		hover?: StageSelectionEntry | null;
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase';
+		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
@@ -221,7 +225,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 	/** A Scene root or lazy body arriving or leaving changes what Paper may draw. */
 	let sceneRootRevision = $state(0);
-	const environmentShown = $derived(sky !== null && !paperCovers);
+	const environmentShown = $derived(sky !== null && sky.preset !== 'studio' && !paperCovers);
 	const workspace = $derived(workspaceRectFor(contentBounds));
 	const shadowBounds = $derived({
 		min: [workspace.minX, Math.min(datumMeters, snapshotBounds?.min[1] ?? datumMeters), workspace.minZ] as const,
@@ -263,7 +267,6 @@ import StageMatGround from './StageMatGround.svelte';
 	-->
 	{#if environmentShown}
 		<!-- The World's environment replaces the neutral lights, and the mat outside the plate. -->
-		<T.AmbientLight intensity={0.12} />
 		<WorldEnvironment {sky} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
 		<T.AmbientLight intensity={0.45} />
@@ -295,7 +298,7 @@ import StageMatGround from './StageMatGround.svelte';
 			renderOrder={1}
 		>
 			<T.PlaneGeometry args={heightPlane.size} />
-			<T.MeshBasicMaterial color={0xf3f4ee} transparent opacity={0.12} depthWrite={false} />
+			<T.MeshBasicMaterial fog={false} color={0xf3f4ee} transparent opacity={0.12} depthWrite={false} />
 		</T.Mesh>
 	{/if}
 	<!--
@@ -306,7 +309,8 @@ import StageMatGround from './StageMatGround.svelte';
 	-->
 	<!-- The preview projection is a shadow trigger too: an overridden or candidate
 		light must move its cast shadow with its illumination. -->
-	<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
+	{#if dial}<StageCelestialDial {dial} />{/if}
+	<StageShadowTriggers sunKey={sunShadowKey(environmentShown ? worldEnvironmentLook(sky) : null, { bounds: snapshotBounds, shadowBounds, groundY: datumMeters, flatGround: true })} {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}

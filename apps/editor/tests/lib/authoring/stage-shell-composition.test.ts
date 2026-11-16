@@ -236,6 +236,7 @@ describe('Stage shell composition', () => {
 		);
 		expect(threeImporters.sort()).toEqual([
 			'apps/editor/src/lib/authoring/stage/shell/stage-grid-scene.ts',
+			'apps/editor/src/lib/authoring/stage/shell/StageCelestialDial.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
@@ -525,7 +526,17 @@ describe('Stage shell composition', () => {
 					] as const
 			)
 		];
+		// These elements measure chrome for collision clearance. They never supply projection or pointer coordinates.
+		const chromeReads: Record<string, readonly string[]> = {
+			'StageEnvironmentControl.svelte': [
+				'stage.getBoundingClientRect()', 'dock?.getBoundingClientRect()', 'item.getBoundingClientRect()'
+			],
+			'StagePopover.svelte': ['node.getBoundingClientRect()'],
+			'EditorCard.svelte': ['cardNode.getBoundingClientRect()']
+		};
 		const measurers = sources
+			.map(([file, source]) => [file, (chromeReads[file.split('/').at(-1)!] ?? [])
+				.reduce((code, literal) => code.replace(literal, ''), source)] as const)
 			.filter(([, source]) =>
 				/getBoundingClientRect\(|\.clientWidth\b|\.clientHeight\b/.test(source)
 			)

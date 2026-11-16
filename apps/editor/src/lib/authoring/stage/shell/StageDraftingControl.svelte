@@ -6,7 +6,6 @@
 	 * It is a forest instrument on both readings. Every value is state the route
 	 * already owns; the bar only groups those controls in one place.
 	 */
-	import type { Snippet } from 'svelte';
 	import type { StageDraftingPatch, StageDraftingState } from '../stage-drafting';
 	import { PAPER_TONES, PAPER_TONE_IDS, type PaperTone } from '../paper-plan';
 	import type { AppPreferences } from '$lib/platform/app-preferences';
@@ -27,7 +26,8 @@
 		onPlanAppearance = () => {},
 		measureActive = false,
 		onMeasure = () => {},
-		sky,
+		studioWhileEditing = false,
+		onStudioWhileEditing,
 		roomLabels2d = true,
 		roomLabels3d = false,
 		heightSheetSide = 'right',
@@ -55,8 +55,8 @@
 		/** The existing Measure tool; the bar mirror only, never a second controller. */
 		measureActive?: boolean;
 		onMeasure?: () => void;
-		/** SkyControl keeps its own state and popover; it is mounted inside this one bar. */
-		sky?: Snippet;
+		studioWhileEditing?: boolean;
+		onStudioWhileEditing?: (value: boolean) => void;
 		roomLabels2d?: boolean;
 		roomLabels3d?: boolean;
 		heightSheetSide?: 'left' | 'right';
@@ -219,10 +219,7 @@
 		</button>
 	</div>
 
-	{#if sky}
-		<span class="divider" aria-hidden="true"></span>
-		<div class="sky-slot">{@render sky()}</div>
-	{/if}
+
 
 	<span class="divider" aria-hidden="true"></span>
 
@@ -291,8 +288,14 @@
 				</select>
 			</label>
 			<strong class="group-title">Settings</strong>
+			{#if onStudioWhileEditing}
+				<label class="check">
+					<input type="checkbox" checked={studioWhileEditing} onchange={(event) => onStudioWhileEditing?.(event.currentTarget.checked)} />
+					<span>Studio light while editing · this browser</span>
+				</label>
+			{/if}
 			<label class="check">
-				<input type="checkbox" checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
+				<input type="checkbox" data-reduce-motion checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
 				<span>Reduce motion</span>
 			</label>
 			<label>
@@ -423,10 +426,6 @@
 	}
 	.short {
 		display: none;
-	}
-	.sky-slot {
-		display: flex;
-		align-items: center;
 	}
 	.viewing-slot {
 		position: relative;

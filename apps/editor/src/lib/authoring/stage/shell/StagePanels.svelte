@@ -14,7 +14,9 @@
 	 * The region owns only the keyboard focus it moves into the Keys panel and the
 	 * scrim's close command. Every value is a typed read or named command.
 	 */
-	import type { ComponentProps } from 'svelte';
+	import type { ComponentProps, Snippet } from 'svelte';
+	import StageEnvironmentControl from './StageEnvironmentControl.svelte';
+	import type { StagePanelRects } from './stage-panel-rects.svelte';
 	import EditorCard from './EditorCard.svelte';
 	import EditorIndex from './EditorIndex.svelte';
 	import { STAGE_DOCK_SHORTCUTS } from '../stage-input';
@@ -24,6 +26,9 @@
 
 	let {
 		previewing,
+		toolbars,
+		environment = null,
+		rects,
 		index,
 		scrim = false,
 		card,
@@ -35,6 +40,9 @@
 		onCloseKeys
 	}: {
 		readonly previewing: boolean;
+		readonly toolbars?: Snippet;
+		readonly rects?: StagePanelRects;
+		readonly environment?: Omit<ComponentProps<typeof StageEnvironmentControl>, 'rects'> | null;
 		readonly index: IndexProps;
 		readonly scrim?: boolean;
 		readonly card: CardProps;
@@ -71,7 +79,7 @@
 	></button>
 {/if}
 
-<EditorCard {...card} />
+<EditorCard {...card} panelRects={rects} />
 
 {#if !previewing && inactiveTask !== null}
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -124,6 +132,12 @@
 		</dl>
 		<button type="button" onclick={() => onCloseKeys?.()}>Close keys</button>
 	</section>
+{/if}
+
+{@render toolbars?.()}
+
+{#if !previewing && environment && rects}
+	<StageEnvironmentControl {...environment} {rects} />
 {/if}
 
 <style>

@@ -28,7 +28,8 @@ import {
 	type LayoutVec2
 } from '@portfolio/layout-core';
 import type { AcceptedRevision } from '@portfolio/project-model';
-import { createEmptyUnitEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createEmptyUnitEnvelope, createEmptyUnitSceneDocument, prepareUnitRuntime, skyFromPreset, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { aimThroughWindows } from '../look/aim-through-windows';
 
 /**
  * The template's captured identity. A template is authored content, not an
@@ -82,16 +83,20 @@ export function buildStarterEnclosureLayout(): LayoutDocumentWallFirst {
 	return plan.document;
 }
 
-function starterEnvelope(
+async function starterEnvelope(
 	projectId: string,
 	name: string,
 	acceptedRevision: AcceptedRevision
 ): Promise<ProjectEnvelope> {
+	const input = { id: projectId, name, acceptedRevision, layout: buildStarterEnclosureLayout() };
+	const initial = await createEmptyUnitEnvelope(input);
+	const runtime = prepareUnitRuntime(initial);
+	if (runtime.kind !== 'ready') throw new Error('The starter gallery failed runtime preparation.');
+	const heading = aimThroughWindows(runtime.geometry);
+	if (heading === null || heading === 0) return initial;
 	return createEmptyUnitEnvelope({
-		id: projectId,
-		name,
-		acceptedRevision,
-		layout: buildStarterEnclosureLayout()
+		...input,
+		scene: { ...createEmptyUnitSceneDocument(), environment: { sky: skyFromPreset('studio', heading) } }
 	});
 }
 

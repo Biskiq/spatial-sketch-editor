@@ -39,11 +39,13 @@
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 
 	let {
+		sunKey = "off",
 		geometry,
 		scene,
 		modelUrls = null,
 		formRenderRevision
 	}: {
+		sunKey?: string;
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
 		modelUrls?: ReadonlyMap<string, string> | null;
@@ -67,6 +69,11 @@
 	$effect(() => {
 		void sources;
 		shadows.invalidate();
+	});
+
+	$effect(() => {
+		void sunKey;
+		shadows.invalidateSun();
 	});
 
 	// The caster channel: an arrival, a release or a drawn-state change is one

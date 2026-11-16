@@ -23,10 +23,13 @@
 	 */
 	import type { StageMarkView } from '../stage-handles';
 	import type { StageCandidatePreviewView, StageGuideView } from '../stage-facade';
+	import StageCelestialDialMarks from './StageCelestialDialMarks.svelte';
+	import type { ComponentProps } from 'svelte';
 	import StageSticker from './StageSticker.svelte';
 
 	let {
 		markers,
+		celestial = null,
 		marks = [],
 		roomLabels = [],
 		guides = [],
@@ -38,6 +41,7 @@
 		lightGround = false,
 		onActivateDisclosure = () => {}
 	}: {
+		celestial?: ComponentProps<typeof StageCelestialDialMarks> | null;
 		markers: readonly { id: string; css: readonly [number, number]; label: string;
 		}[];
 		marks?: readonly StageMarkView[];
@@ -177,6 +181,7 @@
 <svg class="overlay"
 	class:light={lightGround}
 	role="group" aria-label="Stage manipulation marks" focusable="false">
+	{#if celestial}<StageCelestialDialMarks {...celestial} />{/if}
 	{#each roomLabels as room (room.id)}
 		<g class="room-label" transform={`translate(${room.css[0]} ${room.css[1]})`}>
 			<text text-anchor="middle">{room.name}</text>

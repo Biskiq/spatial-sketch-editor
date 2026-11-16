@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { StagePanelRects } from "./stage-panel-rects.svelte";
 	/**
 	 * Compact identity and one contributed writer. More expands the Card in place
 	 * (secondary dimensions and relations); `•••` holds the subject's functions.
@@ -68,6 +69,7 @@
 
 	let {
 		identity,
+		panelRects,
 		facts,
 		nameWriter = null,
 		writer = null,
@@ -81,6 +83,7 @@
 		back = null,
 		onBringIntoView = null
 	}: {
+		panelRects?: StagePanelRects;
 		identity: {
 			sourceId: string;
 			/** The subject's name: its authored name, or a generated `Kind n` when it has none. */
@@ -147,6 +150,16 @@
 		/** Each increment opens the inline name editor (an Index row double-click). */
 		renameRequest?: number;
 	} = $props();
+
+	let cardNode = $state<HTMLElement>();
+	const clearance = $derived.by(() => {
+		const stage = panelRects?.stage;
+		const panel = panelRects?.panel;
+		if (!stage || !panel || !cardNode) return null;
+		const card = cardNode.getBoundingClientRect();
+		if (card.right + 12 < panel.left || card.left - 12 > panel.right) return null;
+		return { bottom: stage.bottom - panel.top + 12, folded: stage.width <= 860 || panel.top - card.top - 12 < 160 };
+	});
 
 	/** The facts the Card shows: never one the header or the writer already carries. */
 	const ordinaryFacts = $derived.by(() => {
@@ -510,6 +523,10 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 	<aside
 		class="card"
+		bind:this={cardNode}
+		class:yielding={clearance !== null}
+		class:folded={clearance?.folded ?? false}
+		style:--card-bottom-clearance={clearance ? `${clearance.bottom + 10}px` : undefined}
 		class:gesturing
 		aria-label="Selected subject"
 		onkeydown={event => {
@@ -622,6 +639,8 @@
 		transition: opacity 140ms;
 	}
 
+	.card.folded > :global(:not(.card-head, .name)) { display: none; }
+	.card.yielding .writer { mask-image: linear-gradient(black calc(100% - 10px), transparent); }
 	.card-head,
 	.name,
 	.card > .error { flex: none; }
