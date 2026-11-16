@@ -1,617 +1,1012 @@
 # T2 S2 Sky dials implementation plan
 
-**Claim:** T2 S2 Sky dials. **Base:** `main` at `a7f672db` (T2.S1 Look schema, Scene 8, #354).
-**Tier:** 1 for the work itself: a shared shell surface and contract details, with no format change.
-**O1** below departs from the owner-accepted Gallery UX rev 4 §4.3, which makes the PR **Tier 2**
-until the owner rules on O1. Everything else follows from merged contracts.
+**Claim:** T2 S2 Sky dials.
+
+**Base:** `main` at `a7f672db`, which merged T2.S1 Look schema (Scene 8, #354).
+
+**Tier:** 2. S2 bumps the Scene format from 8 to 9, an incompatible change with strict refusal, and
+it amends the roadmap's approved Sky model. The owner decides before merge.
+
+**Revision 2** (2026-11-15) rewrites revision 1 after the owner's planning revision on #358.
+[Review resolution](#review-resolution) lists what changed.
+
+**Authority:** [Gallery UX rev 4](../gallery-ux-recovery/ux-design.html), accepted by the owner on
+13 November 2026, is the product specification. Section numbers below (§4.1–§4.3, §6, §7, §8) refer
+to that sheet. The prototype script in the sheet is the visual reference for every instrument.
+Line numbers are cited where an implementer should port drawing code rather than redraw it. Where
+the sheet is silent, this plan states an engineering definition. The rare true gaps are listed under
+[Open decisions](#open-decisions).
 
 ## Goal and scope
 
-S2 makes the Scene 8 Sky editable. The existing toolbar **Sky popover** gains live dials:
+S2 delivers the Environment experience of §4 in full:
 
-- Time, Direction, Haze and Brightness;
-- a **More** group with the colours and shadow softness;
-- an *edited* state and **Reset**.
+- **The Environment control** at the Stage's bottom-right. Its **Sky panel** holds:
+  - the 24-hour **Time dial**;
+  - the **Sun direction** row (a compass and *Aim through windows*);
+  - **six preset tiles**;
+  - **Haze**;
+  - **More**: Sun shadows, Noon height, Exposure, Sky and Ground colours, Moon colour and strength,
+    and Sun shadow softness.
+- **The Celestial Dial**, the one Stage instrument for Sun, Moon, bearing and shadow.
+- **The Time ↔ Sun model of §4.3**, with time, heading and arcHeight as stored fields. It covers
+  day, dusk, night with a Moon, and dawn. A heading is kept when the preset changes.
+- ***edited*, Reset**, and one Sky intent per gesture.
+- **Rendering** of the time-driven Sun or Moon, the sky, Haze and Exposure. The Stage, Visitor
+  Preview and the published visit all draw it.
+- **The Scene 9 format** that stores all of this. It is S2's own first step.
 
-A **sun mark** on the Stage drags the Sun directly. S2 also renders Haze in the shared
-`WorldEnvironment`, so the Stage, Visitor Preview and the published visit change together. The
-popover becomes the one environment writer, and the unmounted environment panel is retired.
+In scope as well, because §7.2 and §8 assign them to S2:
 
-In scope:
-
-- planner `scene-sky-update`, the one new write;
-- the popover dials and More rows, the edited state, Reset and the chip reading;
-- the session-only Sky preview;
-- the sun mark through a new `sky` Stage adapter;
-- Haze rendering, its fog exemptions, and Sun shadow invalidation;
-- retiring `StageEnvironmentControl.svelte`, the inert hour slider and the fake hours table;
-- contract amendments: Shell/PLATE and `rendering.md`;
-- a #353 diagnosis step, with a correction only under the ownership rule below.
+- the shared popover primitive with the Card-yield rule;
+- removing the Sky chip from the viewing bar;
+- the Shell/PLATE amendment;
+- roadmap §6/§9 amendments;
+- retiring the unmounted `StageEnvironmentControl.svelte`.
 
 Out of scope:
 
-- S4 Finish, S6 Looks and Treatment UI;
-- reflections and environment maps;
-- the Celestial Dial, the bottom-right Environment control, Moon, night and twilight phases (O1);
-- any Scene format change;
-- Spot/Point shadow quality (S3);
-- a colour-picker redesign, and exact-number fields.
+- S4 Finish and S6 Looks. The panel header *reserves* the `Sky · Looks` tab row space only; no
+  inert tab is drawn.
+- Reflections, environment maps and Volumetrics (post-WebGPU, §7.1).
+- Spot/Point shadow quality (S3) and the Light Card rows (S3).
+- Migrating other popovers onto the new primitive. They keep working; S3 and the shell PR adopt it.
+
+## Superseded contracts
+
+S2 replaces each row below in the same PR. Nothing is kept as a dual reader.
+
+| Contract | Text today | After S2 |
+| --- | --- | --- |
+| S1 Scene 8 `SceneSky` | Stores `sun.{azimuth, elevation, color, intensity, softness}`, `zenith`, `horizon`, `ground`, `haze.{color, visibility}` and `hemisphere`. Three presets. Absent means Paper. | Scene 9 `SceneSky` (below). Stores `time`, `heading`, `arcHeight`, `haze`, `exposure`, `softness`, `sunShadows`, `moon` and two colours. Six presets. Absent means the Studio default. Direction, light colours and intensities are derived. |
+| T2 README §6 (line 209) | "Stored as sun azimuth/elevation, colours and scalars; Time is a UI reading of elevation" | Stored as `time` / `heading` / `arcHeight`; azimuth and elevation are derived (§4.3) |
+| T2 README §6 table (line 88) | "Time, Direction, Haze, Brightness; sun mark" | Time dial, Sun direction, presets, Haze, More; Celestial Dial |
+| T2 README §9 / line 367 / line 378 | "Sky popover", "Sky chip", "sun mark" | The Environment control at the Stage's bottom-right; the Sky panel is the one environment writer; the Celestial Dial is its Stage instrument |
+| T2 README §11 (line 417) | "drag the sun mark … Time → 16:00" | "drag the Sun along the Celestial Dial's arc … Time → 16:00" |
+| T2 README §12 S2 row and line 520 | Format "—"; "Sky popover as the one environment writer" | Format **Scene 9 (Tier 2)**; "the Environment control and Sky panel as the one environment writer; the shared popover primitive with the Card-yield rule; the Sky chip retired" |
+| `rendering.md` §Haze | `FogExp2(haze.color, √(ln 50)/visibility)`, stored in metres | `haze` is a percentage. Visibility and fog colour are derived (see [Rendering](#rendering)). The meteorological-visibility formula is kept as the internal mapping. |
+| `scene-content.md`, `persistence.md`, `scene-codec.md`, `architecture.md`, `composition-execution.md`, `AGENTS.md` hard rule 2 | "Scene 8" | "Scene 9", with the Sky fields |
+| Shell cutover plan | Sky chip in the viewing bar | Removed. The Environment control lives at the bottom-right. |
+| Revision 1 of this plan | O1: keep Scene 8 and defer the Dial | Withdrawn |
 
 ## Decisions settled by existing contracts
 
 | # | Decision | Source |
 | --- | --- | --- |
-| C1 | No format change. S2 writes only Scene 8 fields: `sun.{azimuth, elevation, color, intensity, softness}`, `zenith`, `horizon`, `ground`, `haze.{color, visibility}`, `hemisphere.{skyColor, groundColor, intensity}`. | Roadmap §12 ("—"); S1 plan; user constraint |
-| C2 | Time is a UI reading of `sun.elevation`, never stored. Brightness is a writer over the two intensities. Shadow fill is a reading of the hemisphere colours. | S1 plan, Sky shape |
-| C3 | *Edited* is exact equality with `SCENE_SKY_PRESET_STARTS[sky.preset]`. A preset choice writes the full start and keeps Treatment. Paper removes the Sky. Choosing the current preset on an edited Sky resets it. | S1 `scene-environment-set` |
-| C4 | Haze renders as `FogExp2(haze.color, √(ln 50) / visibility)`. An absent `visibility` is clear air. S2 chooses the exemptions. | `docs/reference/components/rendering.md` §Haze |
-| C5 | Softness maps to `radius = 1 + 4·softness` texels on the one Sun. | S1, `sunShadowRadius` |
-| C6 | The Sky is not a Card subject (D7). The unmounted environment panel retires with S2. The inert hour slider goes (D18). No control is shown before it works. | Roadmap D7, D18, §12 |
-| C7 | One undo step per gesture. A cancelled gesture writes nothing. | Roadmap §12 checks |
-| C8 | Live preview is session-only, rAF-coalesced and never saved. It follows `stage-light-preview.svelte.ts` and the Light Card slider lifecycle: `input` previews, `change` commits once, Esc restores. | Light authoring precedent |
-| C9 | Stage marks: idle marks via `idleHandles`, claimed by `pressWhenNoTask` + `pointerIntent`, and selection marks win overlaps. An editing grip names a planner its adapter registers. | `stage-handles.ts`, `contribution-view.ts`, `stage-facade.ts` |
-| C10 | No reflections (E4 wait). Built-in materials only. No `EffectComposer`. Renderer API stays in render modules. | S0 report; renderer-portability boundary test |
+| C1 | The Sun's position is a pure function of `time`, `heading` and `arcHeight`. It uses no date, latitude or clock. | §4.3 |
+| C2 | A preset tile writes its full set except `heading`. *Edited* is derived by comparison and never stored. Reset rewrites the preset. | §4.3, §8 |
+| C3 | Six presets: Studio, Daylight, Golden Hour, Dusk, Overcast, Moonlit. Studio is the user-facing name of today's Paper preset. | §8 owner decisions |
+| C4 | Sun shadows are on by default, with a toggle under More. Moon colour and strength have subtle defaults. | §8 |
+| C5 | Every release, key burst or tile is one typed Sky intent and one undo step. Esc mid-drag restores and writes nothing. | §4.3; roadmap §12 |
+| C6 | The Environment control never arms, never selects and never becomes a Card. The Celestial Dial is never a selectable or Card subject, and never appears in the visitor. | §4, §4.2 |
+| C7 | The Sky panel is non-modal: an outside press does not close it. Esc or a second press closes it, and focus returns to the control. | §4.3 panel spec, Esc ladder 3a |
+| C8 | No reflections (E4 wait). `NoToneMapping` at exposure 1.0. Built-in materials only. No `EffectComposer`. Renderer API stays in render modules. | S0 report and pipeline; portability test |
+| C9 | Idle Stage marks are admitted only with no task open; selection marks win overlaps; a claimed press beats navigation; an editing grip names a planner its adapter registers. | `stage-handles.ts`, `contribution-view.ts`, `stage-facade.ts` |
+| C10 | Live preview is session-only, rAF-coalesced and never saved. `input` previews and release commits once. | `stage-light-preview.svelte.ts`, Light Card lifecycle |
+| C11 | No versioned-data obligations before beta: bump, refuse strictly, no migration, regenerate fixtures. | AGENTS tiers; S1 C1; §7.3 |
+| C12 | The Sky owns the only parallel light. The Directional kind is already retired (`SceneLightKind = 'point' \| 'spot'`). | §7.3, Scene 8 |
 
-## Owner decisions
+## Scene 9 schema
 
-**O1 — Time model and the Celestial Dial (the one genuine conflict).**
+### Types (`packages/project-model`)
 
-UX rev 4 §4.3 stores `time`, `heading` and `arcHeight`, with azimuth and elevation derived. It adds
-Moon, dusk and dawn phases, six presets and a Celestial Dial in a bottom-right Environment control.
-That model needs a Scene format bump. Merged Scene 8 stores `azimuth`/`elevation`, and this brief
-forbids a bump and a UI overhaul.
+```ts
+export const SCENE_SKY_PRESETS = ['studio', 'daylight', 'golden-hour', 'dusk', 'overcast', 'moonlit'] as const;
+export type SceneSkyPreset = (typeof SCENE_SKY_PRESETS)[number];
 
-**Recommendation (planned below):**
+export type SceneSky = {
+	readonly preset: SceneSkyPreset;   // provenance: tile, label, edited/Reset target
+	readonly time: number;             // hours, [0, 24)
+	readonly heading: number;          // degrees, [0, 360): the Sun's bearing at solar noon
+	readonly arcHeight: number;        // degrees, [20, 80]: the noon elevation
+	readonly haze: number;             // percent, [0, 100]
+	readonly exposure: number;         // EV, [-2, 2]
+	readonly softness: number;         // [0, 1]: Sun/Moon shadow blur
+	readonly sunShadows: boolean;
+	readonly moon: { readonly color: string; readonly strength: number }; // strength [0, 1]
+	readonly skyColor: string;         // the noon zenith; tints the sky at every time
+	readonly groundColor: string;      // the noon ground; tints the ground at every time
+};
 
-- S2 implements the §4.3 *day-arc reading* over the stored fields: the afternoon half, for Time.
-- Direction is the stored azimuth.
-- The Celestial Dial, the bottom-right control, the morning half, night/Moon and twilight phases, and
-  "presets never write heading" go to a later presentation-plus-format slice.
+export type SceneEnvironment = { readonly sky?: SceneSky; readonly treatment?: SceneTreatment };
+```
 
-The owner confirms this, or chooses to bump the format first (S2 then waits). Until then the PR is
-Tier 2.
+`SceneEnvironmentChoice = SceneSkyPreset`. `'paper'` is gone from the model. The Plan-material
+*Living | Paper* toggle and the Stage's internal `paper` render names are unrelated and stay.
 
-**O1 consequences the owner accepts with it:**
+### Field rules
 
-- (a) Morning times are not expressible. Each elevation reads as one afternoon time, so Time and
-  Direction stay independent.
-- (b) A preset tile resets Direction too, because S1's planner writes the full start and there is
-  no stored heading to keep.
-- (c) The sun mark is a polar sky-chart mark on the floor, not the §4.3 dial ring.
+| Field | Rule |
+| --- | --- |
+| `sky` absent | Equals `SCENE_SKY_DEFAULT`, the Studio start with `heading: 0`. The canonical form **drops** a Sky deep-equal to the default, so new projects serialize as today. A Studio Sky with any other heading is kept. |
+| `preset` | One of `SCENE_SKY_PRESETS`. All other fields are required. |
+| `time` | Finite, `[0, 24)`. Writers emit multiples of 1/12 h (5 min), computed as `k/12` for an integer `k`. The reader accepts any value in range. |
+| `heading` | Finite, `[0, 360)`. World-fixed: **0° is world −Z and 90° is world +X** (clockwise seen from above, as the §4.3 prototype's `dirOf` defines). Writers emit whole degrees. |
+| `arcHeight` | Finite, `[20, 80]`. Writers emit whole degrees. |
+| `haze` | Finite, `[0, 100]`. 0 is clear air. Writers emit integers. |
+| `exposure` | Finite, `[-2, 2]`. Writers emit multiples of 0.1, rounded to 1 decimal. |
+| `softness` | Finite, `[0, 1]`. Shadow radius is `1 + 4·softness` texels (S1 C5, unchanged). Writers emit multiples of 0.05. |
+| `sunShadows` | Boolean. |
+| `moon.strength` | Finite, `[0, 1]`. Writers emit multiples of 0.05. |
+| colours | Lowercase `#rrggbb`. |
+| `environment: {}` | Dropped, as in S1. |
 
-No other owner decision is needed: every other row below follows from C1–C10 or is an
-implementation default named explicitly.
+**Refusal codes:** S1's Sky codes, reused under the same path naming: `invalid_sky_field`,
+`unknown_key` and `unsupported_format_version`. Check the exact spellings in `units/validate.ts` and
+keep them.
+
+### Preset starts (`units/sky-presets.ts`)
+
+The values come from the §4.3 prototype, `ux-design.html` lines 1801–1809. Studio is added with the
+neutral defaults. Every preset shares the default `skyColor`, `groundColor` and `moon.color`, so any
+colour change makes the Sky *edited*.
+
+| Preset | time | arcHeight | haze | exposure | moon.strength | softness | sunShadows |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `studio` | 156/12 (13:00) | 62 | 0 | 0 | 0.25 | 0.5 | true |
+| `daylight` | 156/12 (13:00) | 62 | 15 | 0 | 0.25 | 0.3 | true |
+| `golden-hour` | 220/12 (18:20) | 62 | 35 | 0 | 0.25 | 0.45 | true |
+| `dusk` | 243/12 (20:15) | 62 | 40 | 0.5 | 0.25 | 0.6 | true |
+| `overcast` | 156/12 (13:00) | 62 | 85 | 0.3 | 0.25 | 0.9 | true |
+| `moonlit` | 276/12 (23:00) | 62 | 20 | 1 | 0.35 | 0.4 | true |
+
+The shared defaults come from the shipped S1 Daylight look, so "nothing is remapped":
+
+- `skyColor` is `#b7cfcd`, the S1 Daylight zenith.
+- `groundColor` is `#e0e4d3`, the S1 Daylight ground.
+- `moon.color` is `#c9d6ff`, the §4.2 night-arc pale blue ("cool and dim").
+
+**Exports:**
+
+- `SCENE_SKY_PRESET_STARTS: Record<SceneSkyPreset, Omit<SceneSky, 'heading'>>`.
+- `SCENE_SKY_DEFAULT`.
+- `skyFromPreset(preset, heading)`.
+- `skyIsEdited(sky)`. It is exact equality over every field except `heading` and `preset`, against
+  the preset's start. It matches the prototype's `PRESET_KEYS` plus the colours and `sunShadows`.
+- `sameSky(a, b)`.
+- `sunShadowRadius(softness)`.
+
+### Persistence and compatibility
+
+- `SCENE_UNIT_FORMAT_VERSION = 9`.
+- A Scene 8 unit, project or release is refused with `unsupported_format_version`. Nothing converts
+  it, following the S1 precedent.
+- **Consequence:** a Scene 8 project or published release stops opening until it is re-authored or
+  re-published. This is the same pre-beta policy S1 applied to Scene 7. The PR body states it for
+  the owner.
+- Layout, Camera, Experience and resources versions are unchanged.
+- API save, load and release reuse `validateUnitPayload`, so no schema is duplicated.
+
+### S4 coordination (#360)
+
+S4 ("Finishes & Object Painting") plans no format change, states "Scene 8 validation passes", and
+does not touch `units/planning.ts` or the Sky files. Its §13 already gives S2 ownership of every Sky
+seam. The bump affects S4 only through the version number and the fixtures:
+
+1. **S4 never writes `environment`.** Its Finish, palette and texture fields are unchanged by
+   Scene 9.
+2. **Whichever PR lands second** re-runs the fixture sweep (step A6 below) over the other's new
+   fixtures. It uses the existing regeneration helpers, never hand-edited hashes. TypeScript
+   fixtures import `SCENE_UNIT_FORMAT_VERSION`. The `.mjs` API fixtures need the literal changed.
+3. **S4's plan text** "Scene 8 validation passes" should read "validation against the current Scene
+   format passes". It is a one-line amendment in #360. S2 does not edit #360; the owner or the S4
+   session applies it.
+4. S4's README edits stay single-row, so the §12 S2 row changes here do not collide.
+
+## Time ↔ light model
+
+### Sun and Moon position
+
+New pure module `apps/editor/src/lib/render/sky-time.ts`. It is runtime-safe and imported by the
+render, panel, dial and visitor paths alike. It ports the prototype (`ux-design.html`
+lines 1784–1796) exactly.
+
+```
+SR = 6.5, SS = 19.5, NOON = 13, DUSK = 21, DAWN = 4.5, NIGHT = 7.5, MOON_PEAK = 38
+phase(t):  day [6.5, 19.5] · dusk (19.5, 21) · night [21, 24)∪[0, 4.5) · dawn [4.5, 6.5)
+day:   u = (t − 6.5)/13;          az = heading − 90 + 180u;  el = 4 + (arcHeight − 4)·sin(πu)
+night: v = wrap24(t − 21)/7.5;    az = heading − 90 + 180v;  el = 4 + 34·sin(πv)
+dusk/dawn: body none; glow bearing = heading + 90 (dusk) or heading − 90 (dawn)
+direction(az, el) = [sin az·cos el, sin el, −cos az·cos el]   (from the scene toward the body)
+```
+
+The module exports:
+
+- `skyBodyAt(time, heading, arcHeight)`, returning `{ phase, body: 'sun' | 'moon' | 'none', u, az, el }`;
+- `skyDirection`, `phaseName`, `hhmm` and `snapTime` (round to 5 min, wrapping);
+- `phaseStarts = [4.5, 6.5, 19.5, 21]`, used by Page Up and Page Down;
+- `skyKind(body, haze)`: `twilight`, `moon`, `overcast` (haze ≥ 80), `low` (el < 14°) or `sun`.
+  The prototype is at line 1932.
+
+### Light and atmosphere
+
+New pure module `apps/editor/src/lib/render/sky-atmosphere.ts`. It resolves a `SceneSky` into
+everything `WorldEnvironment` draws:
+
+```ts
+resolveSkyLook(sky): {
+  body; direction; lightColor; lightIntensity; castShadow; shadowRadius;
+  zenith; horizon; glow: { bearing, color, strength } | null; ground; groundFar;
+  hemisphere: { skyColor, groundColor, intensity }; ambient;
+  fog: { color, density }
+}
+```
+
+**One parallel light.**
+
+- The Sun and the Moon are the **same** `DirectionalLight` lease, retargeted by phase.
+- In dusk and dawn, intensity is 0 and the direction holds at the boundary it just crossed: el 4°,
+  az = heading ± 90.
+- `castShadow` is `sunShadows`, whatever the phase.
+- This keeps the light count, the shadow count and every shader program constant across a 24-hour
+  drag (see [Rendering](#rendering)).
+
+**Intensity.**
+
+```
+L = 2^exposure
+fade(el) = smoothstep(4°, 12°, el)
+overcast = smoothstep(60, 100, haze)
+
+sun:  1.9·fade(el)·(1 − 0.7·overcast)·L
+moon: 0.6·moon.strength·fade(el)·L
+hemisphere: key.fill·(1 + 0.4·overcast)·L
+ambient: 0.12·L
+```
+
+- `fade` makes the Sun's arrival and departure at 06:30 and 19:30 continuous, although the phase
+  boundary is discrete.
+- The Sun peak of 1.9 is S1 Daylight's physical intensity.
+- The ambient 0.12 is today's Sky ambient.
+- **Exposure scales the Sky's own light, not the renderer.** S0 fixed `NoToneMapping`, where
+  `toneMappingExposure` does nothing, and the artwork calibration forbids a global mapper. The sky
+  background and the unlit ground are display colours and do not scale.
+
+**Time-of-day keyframes.** Colours are interpolated in linear sRGB by a light angle `a`:
+
+- in the day phase, `a = el`;
+- dusk runs linearly from 4° at 19:30 to −12° at 21:00;
+- night is −12°;
+- dawn runs from −12° at 04:30 to 4° at 06:30.
+
+The keyframes are the shipped S1 looks, with the night frame added:
+
+| a | zenith | horizon | ground | fill sky / ground | fill intensity | Sun colour |
+| --- | --- | --- | --- | --- | --- | --- |
+| ≥ 40° (HIGH) | `#b7cfcd` | `#eef0e6` | `#e0e4d3` | `#f4f7f2` / `#b9b49c` | 1.5 | `#fff6df` |
+| 15° (LOW) | `#e2a676` | `#f8e4c2` | `#e2c99e` | `#ffe6c4` / `#a07e58` | 1.2 | `#ffc985` |
+| 0° (SET) | `#25313e` | `#8b6e5d` | `#45473c` | `#5b6884` / `#3a342c` | 0.7 | `#ff9e5e` |
+| −12° (NIGHT) | `#0b1226` | `#1f2a44` | `#1a1d22` | `#2a3552` / `#15171c` | 0.25 | — (the Moon uses `moon.color`) |
+
+**User colours tint every keyframe.**
+
+```
+tintSky    = clamp(skyColor ⊘ #b7cfcd, 0, 2.5)      per linear channel
+tintGround = clamp(groundColor ⊘ #e0e4d3, 0, 2.5)
+
+zenith  = key.zenith ⊙ tintSky
+horizon = key.horizon ⊙ tintSky
+ground  = key.ground ⊙ tintGround
+fill    = key.fill ⊙ (tintSky, tintGround)
+```
+
+- At HIGH with the default colours the result is exactly S1 Daylight.
+- A colour edit stays visible at every time of day, so no colour control is ever inert.
+- **Overcast** desaturates the sky:
+  `zenith' = mix(zenith, grey(zenith)·1.1, 0.8·overcast)`, and the same for the horizon.
+
+**Glow.** In dusk and dawn the sky gets a lobe at the glow bearing:
+
+- colour `#e9a77a` at dusk and `#d8b0c8` at dawn (the §4.2 dial colours);
+- strength `1 − |progress − 0.5|·2`, where progress runs across the twilight span.
+
+**Haze.**
+
+```
+visibility = 20000·(60/20000)^(haze/100) m      for haze > 0
+density    = √(ln 50)/visibility                 (S1's formula; 0 when haze = 0)
+fog colour = horizon
+```
+
+Preset readings: Daylight about 8.4 km, Golden about 2.6 km, Dusk about 2.0 km, Overcast about
+145 m, Moonlit about 6.2 km. A gallery wall 15 m away keeps about 67% contrast under Overcast, so
+haze reads as air and never as fog that hides the room.
+
+**Tuning.** The constants above are implementation defaults chosen to reproduce the shipped S1
+looks. Final look acceptance belongs to the owner in browser QA (AGENTS verification policy). A
+retune changes constants and goldens only, never the schema or the interaction.
 
 ## Interaction contracts
 
-### Popover structure and states
+### Environment control (§4.3 spec)
 
-The chip in the drafting bar (`SkyControl.svelte`) keeps its place and trigger.
+- **Placement.** Inside the Stage region, 10 px from its right and bottom edges. It is a new
+  `stage/shell/StageEnvironmentControl.svelte`, which replaces the unmounted file of the same name
+  outright, mounted by `StagePanels.svelte`.
+  - 48 px high, radius 24, white with the line border, sized to its content (about 200 px with
+    Daylight).
+  - It holds a 36 px **medallion**, the preset name with a moss **edited dot**, a mono second line
+    and a caret `▴`.
+  - The medallion ports `medallionSVG`, lines 2255–2266: phase colours, the Sun or Moon at its
+    height, stars at night, the ground band.
+- **Second line:**
+  - `hh:mm · Sun 42°` for the Sun;
+  - `hh:mm · Moon`;
+  - `hh:mm · No sun` in twilight;
+  - `Even light` in Studio (Open decision D1).
+- **Medallion-only.** When the full control would come within 12 px of the dock's band, it shrinks to
+  the 48 × 48 medallion. The name and time move to the tooltip and the `aria-label`.
+- **States:**
+  - Hover: a moss ring.
+  - Expanded: a forest border and the caret down.
+  - Focus: a moss outline.
+  - During any Stage drag it stays put and does not fade.
+- **Behaviour:**
+  - A press toggles the panel, with `aria-expanded` and `aria-controls`.
+  - On open, focus goes to the Time dial (the preset tiles in Studio).
+  - Esc closes the panel and returns focus to the control (ladder rung 3a).
+  - It is the **last stop** in focus order (§6 focus 7). Its panel is 7a and wraps to 1.
+- **Lenses.** Shown in the World lens. In the Experience lens it is not shown, and an open panel
+  closes. Experience mood is out of scope (README §6). It is never in the visitor runtime.
 
-- **Chip text:**
-  - Paper: `Paper`.
-  - A Sky: `{preset label}[ · edited] · {Time reading}`, e.g. `Golden hour · edited · 18:00`.
-  - The fake `hours` table is removed.
+### Shared popover primitive and the Card-yield rule
 
-- **Header:**
-  - The title `Sky`.
-  - On an edited Sky only, a text button **Reset**. It dispatches `scene-environment-set
-    {preset: sky.preset}`. It is absent otherwise, never disabled (D18).
+New `stage/shell/StagePopover.svelte`, the §8 handoff primitive. It takes an anchor rect, a side,
+`modal: boolean`, an Esc rung and a focus-return target.
 
-- **Tiles:** Paper · Daylight · Golden hour · Dusk.
-  - The current preset's tile shows `aria-pressed="true"`.
-  - An edited Sky's tile also carries a small `edited` tag.
-  - Pressing a tile is unchanged from S1: the full start, Paper removes, and pressing the current
-    tile on an edited Sky resets.
-  - Tile subtitles come from `WORLD_ENVIRONMENT_PRESENTATIONS`.
+- **The Sky panel is the first consumer.** Other popovers are not migrated in S2, as scoped above.
+- **Card-yield rule.**
+  - The primitive publishes its rect to a small shell store, `stage/shell/stage-panel-rects.svelte.ts`.
+  - If the Sky panel rect would meet the Card rect plus 12 px, the Card **yields height**. The shell
+    sets `EditorCard`'s existing `--card-bottom-clearance` so the Card's bottom sits 12 px above the
+    panel's top.
+  - The Card body scrolls behind a soft bottom fade and keeps its header and foot.
+  - Below 160 px of body, the Card folds to its identity row through its existing constrained-width
+    fold.
+  - The panel never covers the Card.
+  - §4.1 measurements to reproduce with a Spot Card open: clear at 1440; the Card yields 100 px at
+    1280 and 132 px at 1024; it never folds.
 
-- **Dials** (only with a Sky): Time, Direction, Haze, Brightness, in that order. Each is a label,
-  a range input and a readout.
+### Sky panel (§4.3 panel spec, prototype lines 2026–2110)
 
-- **More** (a disclosure, closed by default; its open state is per-browser `localStorage`, guarded
-  by try/catch):
-  - Sun colour.
-  - Sky: Zenith and Horizon.
-  - Ground: Ground and Far (`haze.color`).
-  - Shadow fill: Fill (`hemisphere.skyColor`) and Bounce (`hemisphere.groundColor`).
-  - Softness.
+**Geometry.**
 
-- **Paper:** no dials and no More, only the line `Pick a Sky to adjust it.`
+- 320 px wide. It rises from the control: right-aligned to it, with its bottom 10 px above the
+  control.
+- Where it shares x with the dock's band, its bottom stays 10 px above the dock.
+- Its caret points at the control. It is non-modal (C7).
+- Its height is content height. More scrolls inside `max-height`, which runs to 12 px below the
+  World-controls bar.
 
-- **"Plain Paper while editing · this browser" on:** the dials stay operable and the sun mark is
-  hidden. One note line reads `Stage shows Paper · Preview shows this Sky.`
+**At ≤ 860 px Stage width** it becomes a **bottom sheet** with the same content in one column. The
+control stays a medallion, and the Card folds to identity while the sheet is open.
 
-- **Busy** (a commit in flight): every dial and tile is `aria-disabled`, and a new gesture is
-  refused. The input values stay put.
+**Fade.** During any Stage drag or dial drag, the panel body fades to 20% opacity except the control
+being dragged.
 
-- **Non-modal popover** (a change from today):
-  - An outside pointerdown no longer closes it, so the user can drag the sun mark and orbit with
-    the popover open.
-  - It closes on the chip press, Esc when no gesture is live, or switching to the Experience lens.
-  - Width stays 286 px. Height grows; with More open it scrolls internally (`max-height:
-    calc(100vh - toolbar - 24px)`).
+- "Any Stage drag" means any live gesture lease, navigation included.
+- The facade exposes this as a read-only `liveGesture: { owner, navigation } | null` on the Stage
+  snapshot. Add it if it is absent: today `acquireGesture` has no observable.
+- A Celestial Dial drag fades everything except the Time dial (for glyph or tip drags) or the
+  compass (for a noon-mark drag).
 
-- **During a sun-mark drag:** the popover fades to opacity 0.2 and `pointer-events: none`. It
-  returns on release or cancel.
+**Contents, top to bottom.**
 
-### Dials: mappings, ranges, defaults
+1. **Header.** `Sky` and the preset name. When edited, `edited · Reset` (a link button). Reset issues
+   `scene-environment-set {preset: sky.preset}`. The space reserved for the S6 `Sky · Looks` tab row
+   is layout only: nothing is drawn.
+2. **Time dial** (a 120 px SVG, `role="slider"`, `aria-valuetext="14:20, Afternoon"`). It ports
+   `timeDialSVG`, lines 1981–1999: phase sectors, 24 hour ticks, labels 00/06/12/18 with noon at
+   the top, stars in the night sector, and the body glyph on the hand radius.
+   - **Drag:** the angle about the centre maps to `t = angle/2π·24`, snapped to 5 min. It is
+     continuous through all four phases and wraps at midnight both ways.
+   - **Keys:**
+     - ←/↓ −15 min and →/↑ +15 min; Shift ±1 h.
+     - Page Up / Page Down go to the next or previous phase start.
+     - Home is sunrise (06:30) and End is sunset (19:30).
+     - All keys wrap.
+   - **Readout** beside the dial:
+     - large mono `hh:mm`;
+     - the phase name: *Morning*, *Solar noon* (within ±2.5 min of 13:00), *Afternoon*,
+       *Night · Moon*, *Dusk · no direct light* or *Dawn · no direct light*;
+     - for a body, `Sun bearing 148° · 22° high` (or Moon).
+3. **Sun direction row.** A 28 px compass (`role="slider"`, port `compassSVG`, line 2001), the label
+   `Noon 135°`, and the link button ***Aim through windows***.
+   - **Drag:** the bearing from the centre, snapped to 15°; Alt frees it.
+   - **Keys:** ←/→ ±15°, Shift ±45°, wrapping.
+4. **Preset tiles.** Six in one row (`repeat(6, minmax(0, 1fr))`, 6 px gap): Studio, Daylight,
+   Golden, Dusk, Overcast, Moonlit.
+   - Each tile shows a swatch gradient and its glyph: `tileArt` with `TILEKIND`, line 2026. Studio
+     uses the `#f4f2ec → #e4dfd0` swatch with no glyph.
+   - `aria-pressed` marks the current preset.
+   - **Check at 320 px:** no label is clipped and text is ≥ 10 px. Fall back to 10 px labels before
+     any re-layout.
+5. **Haze.** A range from 0 to 100, step 1. Readout `15%`.
+6. **More** (`<details>`, closed by default; its open state is kept per browser in try/catch
+   `localStorage`). Rows in the §4.3 Contents order:
+   - **Sun shadows** switch, on by default.
+   - **Noon height**, 20–80°, step 1. Readout `62°`.
+   - **Exposure**, −2 to +2, step 0.1. Readout `+0.5 EV`, `0.0 EV` or `−1.0 EV`.
+   - **Sky colour** and **Ground colour** swatch rows (Open decision D3).
+   - **Moon colour** swatch row, and **Moon strength** 0–1, step 0.05, with readout `25%`.
+   - **Sun shadow softness**, 0–1, step 0.05, with readout `0.45`.
 
-All angles are stored in radians and shown in degrees. `D = 180/π`. Each dial's thumb reads the
-current Sky, or the preview while a gesture is live. There are no separate defaults: every
-preset's start *is* the default, and Reset restores it.
+**Studio state** (Open decision D1). The header, the tiles, and the line *Studio light is even and
+fixed. Pick a sky to set the time.*
 
-**Time** (elevation, the afternoon day arc):
+- There is no Time dial, Sun direction, Haze or More, and no Celestial Dial: none of them would
+  change the image (D18).
+- The stored values, `heading` included, are kept.
 
-- `ARC = 62°`, the §4.3 default arc height. Range 13:00 → 19:30 (sunset).
-- **Write:** `u = (t − 6.5)/13`, `el = ARC·sin(πu)`. 19:30 gives exactly `0`.
-- **Read:** `el ≤ ARC` gives `t = 6.5 + 13·(1 − asin(el/ARC)/π)`.
-- **Out of range:** `el > ARC` reads `13:00` with a **hollow, pinned thumb**, and the readout shows
-  the exact elevation. Dragging from it writes normally.
-- **Readout:** `HH:MM · N° high` (minutes rounded, degrees rounded), e.g. `18:00 · 22° high`.
-- **Presets read** Daylight `14:41 · 57° high`, Golden hour `18:00 · 22° high`, Dusk
-  `18:07 · 20° high`.
-- **Snap:** 5 minutes on pointer drag. Keys: ←/→ ±15 min, Shift ±1 h, Home 13:00, End 19:30.
-  No wrap.
-- **Slider units:** minutes since 13:00, `min=0 max=390 step=5` (pointer) and `step=1` for
-  hollow-thumb display. Keys are handled explicitly; see the gesture rules.
+**Out-of-range stored values.** The reader accepts any in-range value, and every control spans its
+full stored range. Off-grid values, such as 13:07 or 137°, show exactly. The first write snaps them.
 
-**Direction** (azimuth; 0 = +Z, increasing toward +X):
+### Celestial Dial (§4.2)
 
-- Range 0°–360°. Stored `[0, 2π)`, so 360° writes `0`.
-- **Readout:** `N°`, e.g. `148°`. There is no compass name: the Stage has no north.
-- **Snap:** 15° on pointer drag, freed while Alt is held. The modifier is read from the latest
-  pointer or key event of the gesture, because range `input` events carry none.
-- **Keys:** ←/→ ±15°, Shift ±45°, wrapping at 0/360.
-- **Presets read** 32°, 287°, 148°.
+**Anchor.** The UX's "World mark" has no product object yet. S2 defines it as the plan centre of
+the World's content bounds at the datum. That is the point the Sun's shadow frustum already targets
+(`sunMarkAnchor(bounds)` in `world-environment.ts`, which shares `resolveSkySun`'s bounds arithmetic).
 
-**Haze** (visibility, log scale):
+**Size.** Constant screen size: ring radius 72 CSS px (144 px across), plate radius 44 px, gnomon
+20 px tall. World size = px × metres-per-CSS-pixel at the anchor, recomputed per camera change.
+Prototype constants are at line 1824 (`CD`): ring 1.18, plate 0.7, gnomon 0.4, Lmax 1.05 at
+62 px/m.
 
-- Slider `h ∈ [0, 1]`, step 0.01.
-- `h < 0.02` is **Clear**: it writes `haze.visibility` absent (patch `null`).
-- Otherwise `visibility = 500·(15/500)^h` m: 500 m at `h → 0`, 15 m at `h = 1`.
-- **Read:** absent gives `h = 0`. Otherwise `h = ln(500/v)/ln(500/15)`, clamped.
-- **Out of range:** `v > 500` or `v < 15` (valid S1 values from 5 to 100 000) shows a hollow pinned
-  thumb with the exact readout.
-- **Readout:** `Clear` or `N m visibility` (`N` to 2 significant figures). Presets read `Clear`.
-- **Keys:** ±0.05, Shift ±0.2.
+**Parts.** Port `celestialDial` and `sunStageSVG`, lines 1849–1930.
 
-**Brightness** (a scale over the preset's start intensities):
+| Part | Contract |
+| --- | --- |
+| Bearing ring | An ellipse in the floor plane. Ticks every 15° relative to `heading`, majors every 90° (0.9R; minors 0.95R). Ink at about .3 opacity. |
+| Active arc | Day: gold `#f5b400` from heading − 90° to heading + 90°. Night: `#c9d6ff`. A dotted sweep marks the part already travelled. Boundary ticks run from R to 1.16R, with labels at 1.2R: `06:30 sunrise` / `19:30 sunset`, or `21:00 rise` / `04:30 set` at night. Below 360 px of Stage width only the time shows. |
+| Glyph | One `skyGlyph` (line 1933: rayed Sun, low Sun, crescent Moon, overcast veil) on the ring at the body's bearing, radius 10 (Moon 11). Hit radius 18 px. It never floats. |
+| Noon mark | A diamond at bearing heading + 180° at 1.1R, with a dashed noon line to the plate. Hit radius 11 px. |
+| Gnomon, beam, shadow | A central pin; a dashed beam from the glyph to the gnomon top; the shadow from its foot, pointing away from the body, `L = min(Lmax, g/tan el)`. A dotted tip locus with hour dots (day 09/11/15/17; night 23/02). Hit radius 12 px on the tip. |
+| Dusk and dawn | No body and no arc. A glow arc ±25° around the boundary just crossed; a dimmed twilight glyph; the label `Dusk · use the Time dial in Sky` at 1.32R. Nothing drags for Time; the noon mark still drags `heading`. |
+| Night ink | Dial ink `#e8eeff` at night and in twilight, otherwise the guide ink. |
 
-- `k = sun.intensity / start.sun.intensity`.
-- **Write:** `sun.intensity = start.sun.intensity·k` and
-  `hemisphere.intensity = start.hemisphere.intensity·k`.
-- **Slider:** `p ∈ [0, 1]`, `k = 4^(2p − 1)`, so ¼×–4×.
-- **Detents** at ½×, 1× and 2× (`p = 0.25, 0.5, 0.75`). Pointer values within ±0.02 snap; Alt frees.
-- **Readout:** `1×`, `1.4×` (2 significant figures).
-- **Non-proportional hemisphere:** if `|hemi.intensity/start.hemi.intensity − k| > 1e-6·k`, the
-  readout appends `· custom fill`. The first Brightness write normalizes both.
-- **Out of range:** `k` outside ¼–4 shows a hollow pinned thumb. A zero start intensity cannot
-  occur in the three presets; if it did, the dial is not rendered (D18).
-- **Keys:** p ±0.05, Shift ±0.2.
+**Furniture.**
 
-**Colour rows** (More):
+- Ring, arc and locus segments behind scene geometry draw at 38% through it, depth-tested in the
+  Three layer.
+- The glyph, the tip, the noon mark, the labels and the tag always draw on top, in the SVG layer.
+- If scene geometry covers the gnomon (the anchor lies inside a Scene entity's or Wall's plan
+  footprint whose top is above datum + 0.05 m), the dial moves to the nearest clear floor point
+  within 2 m. Candidates are on a 0.3 m grid, nearest first. A dotted leader runs to a 3 px World
+  mark dot.
 
-- Native `<input type="color">`: `input` previews, `change` commits once. Values are written
-  lowercase `#rrggbb`.
-- Each row shows a swatch and its label.
-- The Light Card's warmth/hue dial lives inside `LightCardFields.svelte`; it is not extracted in S2.
+**Shell panels.**
 
-**Softness** (More):
+- The dial's screen footprint is the ring at 1.2R, plus 84 px on each side for labels, 22 px above
+  and 8 px below (prototype `cdBox`, line 1841).
+- It must clear, by 8 px, the Sky panel or sheet, the Card, the dock, the World-controls bar and the
+  Environment control. Rects come from `stage-panel-rects` plus the existing shell rects.
+- Otherwise it moves to the nearest clear floor point inside the World's floor bounds, with the
+  leader. It hides only when no floor point is clear.
+- §6 measurements to reproduce with Sky open and a Spot Card: moved 1.4 m at 1440, 2.0 m at 1280 and
+  1.7 m at 1024; at 820 it sits above the bottom sheet.
 
-- Range `[0, 1]`, step 0.01, with a detent at 0.5 (±0.02).
-- **Readout:** `Crisp` (< 0.15), `Soft` (0.15–0.75) or `Very soft` (> 0.75), followed by the value
-  to 2 decimals.
-- **Keys:** ±0.05, Shift ±0.2.
+**Off-screen.** If the anchor is off-screen, the dial hides and the Time dial is the instrument.
+Nothing draws at the edge.
 
-### Gesture lifecycle (dials, colour rows, keys)
+**Visibility.** Shown only while the panel is open or a dial drag is live, when all of these hold:
 
-One **gesture** is one of:
+- the Sky is not Studio;
+- the lens is World;
+- no tool task is armed (C9: the Stage belongs to the armed tool);
+- Visitor Preview is not open;
+- *Studio light while editing* is off (Open decision D2).
 
-- a pointer press on a slider through release;
-- one colour-picker session (first `input` through `change`);
-- a **key burst**: the first handled keydown through the keyup of the last held key on that input.
+A selection, with its Card open, may coexist with the dial (§6 "Sky open + Card").
 
-Rules:
+**Gestures** (§4.2 and §4.3 tables):
+
+| Grip | Writes | Rule | Feedback |
+| --- | --- | --- | --- |
+| Glyph | `time` on release | Moves only along the arc of the phase at press (day 06:30–19:30, night 21:00–04:30). The pointer projects to the nearest arc point, sampled every 2 min. Ties go to the point nearest the previous time. Clamps at the arc ends and never crosses twilight or midnight. Snaps to 5 min. Port `nearestT`, line 1945. | Gold ring on the glyph; mono tag `14:20 · 51° high`; panel fade except the Time dial |
+| Shadow tip | `time` on release | The same, along the tip locus | The same |
+| Noon mark | `heading` on release | Bearing from the anchor, minus 180°, snapped to 15°; Alt frees it. Works in every phase. | The whole arc turns; tag `Noon bearing 135°`; the noon mark turns gold |
+| Esc or pointercancel | nothing | Restores `time` and `heading` | Fade ends |
+
+**Authority.**
+
+- A new `lib/authoring/adapters/sky.adapter.ts`, auto-registered by `catalog.ts`'s glob, with
+  `plannerKinds: ['scene-sky-update']`.
+- It owns no subject and no pick, and contributes nothing to the Card.
+- It contributes the three grips as `idleHandles` of kind `point` with `draw.hidden: true`. The
+  admitted pointer target stays live, while the dial layer draws the visuals.
+- It uses `pressWhenNoTask` and `pointerIntent`, so a press on a grip beats camera navigation.
+- Selection marks are listed first and win overlaps.
+- A press that misses every grip falls through to selection and navigation unchanged.
+- It is never offered in the visitor or the snapshot renderer.
+
+**Rendering of the dial** (editor-only):
+
+- `stage/shell/StageCelestialDial.svelte` is the in-canvas Three layer: plate, ring, ticks, arc,
+  sweep, locus, gnomon, beam and shadow line.
+  - Built-in `LineBasicMaterial` and `MeshBasicMaterial`.
+  - A visible pass with depth test, plus an occluded pass at 38% with `depthFunc = GreaterDepth`.
+  - `fog: false`, `castShadow: false`, `receiveShadow: false`, raycast disabled, and excluded from
+    every shadow trigger source.
+- `stage/shell/StageCelestialDialMarks.svelte` is the SVG top layer: glyph, tip, noon mark,
+  boundary labels, the tag, and the leader dot.
+- Both read one pure model, `look/celestial-dial.ts`
+  (`celestialDialModel(sky, preview, camera, anchorInputs, shellRects)`). The adapter uses the same
+  model for grip anchors, so drawing and hits cannot disagree.
+
+### Gesture lifecycle (every control)
+
+A gesture is one of:
+
+- a pointer press through release on the Time dial, compass, any slider or a dial grip;
+- one colour-picker session;
+- a **key burst**: the first handled keydown through the keyup of the last held key on that control.
 
 1. **Begin.**
-   - Refused while busy.
-   - Captures `acceptedRevision` from `services.stage.snapshot()` and the accepted Sky.
+   - Refused while a Sky commit is in flight (busy).
+   - Captures `services.stage.snapshot().acceptedRevision` and the accepted Sky.
+   - A dial grip also acquires `services.stage.acquireGesture({ owner: 'sky', policy: 'cancel-on-reading-change' })`.
 2. **Move.**
-   - Computes the full next Sky from captured Sky + the dial's write. It never reads the preview
-     back.
-   - Sets the look preview, rAF-coalesced.
-   - Brightness writes both intensities from the captured preset start.
-3. **Commit** on `change`, pointerup, or the burst's keyup.
-   - Builds the patch as the difference between the preview Sky and the captured Sky.
-   - An empty patch commits nothing.
-   - Otherwise it dispatches one `scene-sky-update`, with `expectedRevision` = the captured
-     revision.
-   - It keeps the preview until the accepted Sky lands, so nothing flashes, then clears it.
-4. **Cancel** on Esc, pointercancel, blur during a pointer gesture, the popover closing, the lens
+   - Computes the next Sky from the captured Sky plus this control's write.
+   - Sets the look preview (`previewSky`, rAF-coalesced).
+   - The panel, the control, the dial and the Stage all render the preview.
+3. **Commit** on release, `change` or the burst's keyup.
+   - The patch is the minimal difference from the captured Sky. An empty patch writes nothing.
+   - Otherwise it dispatches one `scene-sky-update` with the captured `expectedRevision`.
+   - The preview is held until the accepted Sky arrives, then cleared, so nothing flashes.
+4. **Cancel** on Esc (ladder rung 1), pointercancel, blur during a press, the panel closing, the lens
    changing, or Preview opening.
-   - Clears the preview and resets the input to the accepted reading.
-   - Swallows the trailing `change`.
-   - Writes nothing.
-   - Esc is consumed: it does not also close the popover. A second Esc closes it.
+   - Clears the preview and restores the controls.
+   - Swallows the trailing `change` and writes nothing.
+   - Esc is consumed; a second Esc closes the panel (rung 3a).
 5. **Revision drift.** If the accepted revision changes mid-gesture (Undo/Redo or another writer),
    the gesture cancels and writes nothing.
 6. **Refusal.**
-   - Clears the preview and resyncs the input.
+   - Clears the preview and resyncs.
    - Shows the existing look notice, except for `no-change`, which is silent.
-   - A `stale-revision`-class refusal is handled the same way.
-7. **Undo/Redo.** One step per committed gesture. A key burst of four presses is one step. Undo
-   restores the prior Sky exactly, including an absent `visibility`.
+7. **Undo/Redo.** One step per gesture, burst, tile, Reset or Aim. Undo restores the exact prior Sky.
 
-### Sun mark
+### Presets, edited, Reset, heading
 
-**Authority:**
+- **A tile** dispatches `scene-environment-set {preset}`. The planner writes `skyFromPreset(preset,
+  current.heading)`: the full set except `heading`, which is kept.
+  - This is one step.
+  - A tile equal to the current state is `no-change` and silent.
+  - The current preset's tile on an edited Sky resets it.
+- **Edited** is `skyIsEdited(sky)`: any field except `heading` and `preset` differs from its start.
+  It shows as the header's `edited · Reset` and the control's moss dot.
+  - A heading change never marks a Sky edited.
+  - Studio is never edited, because the planner refuses Studio field writes (below).
+- **Heading** survives every preset change, Studio included (the Studio Sky keeps `heading`).
+- **Studio** renders exactly today's Paper path: neutral lights, the Paper plate, no Sun and no fog.
 
-- A new `sky.adapter.ts` with `plannerKinds: ['scene-sky-update']`. It owns no subject and no
-  pick, and is never selectable.
-- It contributes through `idleHandles` only, so it appears only when no task is open.
+### Aim through windows (§4.3)
 
-**Shown when all of these hold:**
+- **Computation** (pure, `look/aim-through-windows.ts`, over the compiled `LayoutGeometry`):
+  - For every compiled opening of kind `window`, probe both sides at
+    `center.point ± center.normal·(wallThickness/2 + 0.05)`.
+  - The side that lies in no `CompiledRoom.floorPolygon` is outward.
+  - A window with both or neither side in a Room (an interior partition, or a free wall) is skipped.
+  - Sum `outward·width·height`. The heading is `round(wrap360(atan2(x, −z)))` in the stored
+    convention.
+  - Port `aimThroughWindows`, line 1800.
+- **The button** is one `scene-sky-update {heading}` and one step. With no qualifying window, or a
+  zero-length sum, nothing is written and the notice reads *No outside windows to aim through*.
+- **"Also runs once when a World is created."** The new-World seed path runs the same function over
+  its initial Layout and writes the heading into the initial Scene. Today's seeds have no windows,
+  so the result is `heading: 0` (the default). A unit test pins this, and any future seed with
+  windows gets an aimed heading for free. Nothing recomputes when Layout changes.
 
-- the Sky popover is open (`sky-session.svelte.ts` `skyPopoverOpen(projectId)`, module state on
-  the `light-tool.svelte.ts` precedent);
-- the accepted Sky is present;
-- Plain Paper while editing is off;
-- the lens is World and `worldMarksOffered` holds;
-- Visitor Preview is not open.
+## Writes
 
-It is never in the visitor, the published route or the snapshot renderer.
+Both planners live in `packages/project-model/src/units/planning.ts`. S4 leaves this file to S2.
+Both validate the **merged** Sky with the exported Sky validator (`validateSceneSky`, from
+`units/validate.ts`), because `prepared()` does not run payload validation. Both emit
+`scene.environment.updated` and leave `treatment` untouched. The canonical rule drops a Sky equal to
+`SCENE_SKY_DEFAULT`.
 
-**Geometry** (a polar sky chart on the datum plane):
+**`scene-environment-set` (revised).**
 
-- **Anchor `C`:** the Sun target's plan centre at datum height, from a pure
-  `sunMarkAnchor(look, frame)` in `world-environment.ts`, which shares the bounds arithmetic with
-  `resolveSkySun`.
-- **Radius `R`:** the host ring calibration (72 CSS px, 144 px across) × `metersPerCssPixel` at
-  `C`. It is recomputed per frame while idle and **frozen at press** for the drag.
-- **Sun grip** (`point`): at `C + R·(1 − el/(π/2))·(sin az, 0, cos az)`, with `stem: C`. Zenith
-  sits at the centre and the horizon on the ring.
-- **Bearing grip** (`ring`): radius `R` about +Y, phase at `az`.
+- Payload `{ preset: SceneSkyPreset }`. `'paper'` is refused with `invalid-payload`.
+- It writes `skyFromPreset(preset, (current ?? SCENE_SKY_DEFAULT).heading)`.
+- An equal result is `no-change`.
 
-**Drag:**
-
-- **Sun grip:** intersect the pointer ray with the datum plane. With `d = hit − C`:
-  - `az = atan2(d.x, d.z)` normalized to `[0, 2π)`;
-  - `el = (π/2)·(1 − clamp(|d|/R, 0, 1))`.
-  - A grazing ray (no hit, or beyond 1000 m) keeps the last value.
-  - Elevation snaps to the Time dial's 5-minute grid when `el ≤ ARC` (it is free above), and
-    azimuth to 15°. Alt frees both.
-- **Bearing grip:** azimuth only, relative to the press angle (`az₀ + Δθ`), with the same snap.
-  Elevation is untouched.
-- **Value tag** at the grip: `Sun 148° · 22° high · 18:00`. Above `ARC` it drops the time.
-- **Feedback:**
-  - Hover: grip emphasis and the tag.
-  - Drag: grip, stem and a faint direction ray from `C` toward the Sun at ink weight.
-  - The popover fades (see above). Dials follow the preview live.
-
-**Transaction:**
-
-- Press: acquire `services.stage.acquireGesture`, capture the revision and Sky.
-- Move: preview.
-- Release: one `scene-sky-update {sun: {azimuth, elevation}}`. An unchanged result commits nothing.
-- Esc or pointercancel: restore and write nothing.
-- Revision drift cancels. Release the lease on every path.
-
-**Conflicts:**
-
-- Selection marks win overlaps; the host lists them first.
-- A press that misses both grips falls through to navigation and selection as today.
-- A claimed press beats camera navigation.
-- In Plan view the mark draws the same way, since it sits on the datum plane.
-- With a task open the mark is hidden, so tools are unaffected.
-
-### Presets, edited, Paper and Living
-
-- A tile press or Reset follows C3.
-  - Edited → Reset → not edited: one undo step.
-  - A tile on an unedited current preset is `no-change`, silent.
-- **Paper** removes the Sky; Undo restores it exactly. Dials, More and the sun mark disappear,
-  with no inert remnant.
-- **Living | Paper** in the toolbar is the Plan *material* toggle, not lighting. S2 does not
-  change it.
-- **Plain Paper while editing:** see the popover states. Stage rendering uses
-  `editOnPaper ? null : (previewSky ?? sky)`.
-
-## Planner `scene-sky-update`
-
-**Location:** `packages/project-model/src/units/planning.ts`, next to
-`createSceneEnvironmentSetPlanner`. It is registered in `createUnitCandidatePlanners`.
-
-**Payload** (strict reader; unknown keys are refused):
+**`scene-sky-update` (new).**
 
 ```ts
 type SceneSkyUpdatePayload = {
-  sun?: { azimuth?: number; elevation?: number; color?: string; intensity?: number; softness?: number };
-  zenith?: string; horizon?: string; ground?: string;
-  haze?: { color?: string; visibility?: number | null }; // null removes visibility
-  hemisphere?: { skyColor?: string; groundColor?: string; intensity?: number };
+	time?: number; heading?: number; arcHeight?: number; haze?: number; exposure?: number;
+	softness?: number; sunShadows?: boolean;
+	moon?: { color?: string; strength?: number };
+	skyColor?: string; groundColor?: string;
 };
 ```
 
-`preset` is not patchable. An empty payload, or an empty nested object, is `invalid-payload`.
-
-**Refusals:**
-
 | Condition | Code |
 | --- | --- |
-| No Sky (Paper) | `unsupported-operation` |
-| Payload shape wrong or unknown key | `invalid-payload` |
-| Merged Sky fails the S1 Sky validator (ranges, hex, finiteness) | `invalid-payload` |
-| Merged Sky equal to the current Sky | `no-change` |
+| Unknown key, empty payload, empty `moon`, `preset` present | `invalid-payload` |
+| Merged Sky fails the validator (range, finiteness, hex) | `invalid-payload` |
+| Current preset is Studio and the patch has any key other than `heading` | `unsupported-operation` |
+| Merged Sky equals the current Sky (colours compared lowercase) | `no-change` |
 
-**Validation:**
-
-- Export the private `readSky` from `units/validate.ts` as `validateSceneSky(input, path)`. It
-  returns the issues and stays the single source of the ranges.
-- Validate the **merged** Sky, because `prepared()` does not run payload validation.
-- Canonicalize colours to lowercase before the equality check.
-
-**Change:** one change of the same kind `scene-environment-set` uses (`scene.environment.updated`).
-It replaces the Sky with the merged Sky and leaves `treatment` untouched.
-
-**Shared equality:** move the private `deepEqual`/`sameSkyValue` from `planning.ts` into
-`units/sky-presets.ts` and export:
-
-- `sameSky(a, b)`;
-- `skyIsEdited(sky) = !sameSky(sky, SCENE_SKY_PRESET_STARTS[sky.preset])`.
-
-Both are runtime-safe: no Node-only imports. The planner and the UI use the same functions.
+Writers emit the grids in the field table. The planner does not re-snap: an imported off-grid value
+is valid.
 
 ## Rendering
 
-**Haze (`WorldEnvironment.svelte`):**
+**`WorldEnvironment.svelte` and `world-environment.ts`.**
 
-- While a Sky is shown it installs one `FogExp2` on the scene for the Sky's lifetime. It sets
-  `color = haze.color` and `density = visibility ? √(ln 50)/visibility : 0`.
-- The fog is updated in place. A constant `scene.fog` object means toggling clear ↔ hazy and
-  dragging recompiles no programs.
-- On unmount (Paper) it restores the previous `scene.fog`.
-- Density 0 is visually clear air. Its cost is one shader term.
+- **Input.** They take a `SceneSky` and resolve through `resolveSkyLook`. Studio, or no Sky, means
+  `WorldEnvironment` is not mounted: today's Paper path.
+- **Sky background.** It becomes an **equirectangular** `CanvasTexture`, 256 × 128, used as
+  `scene.background` with `EquirectangularReflectionMapping`.
+  - Rows interpolate horizon to zenith by elevation. The dusk/dawn glow is a lobe at its world
+    bearing.
+  - This is needed because the glow sits "on the heading ± 90° side", and today's screen-space
+    2 × 256 gradient cannot face a bearing.
+  - It sets `scene.background` only, never `scene.environment`, so there is no S0 environment leak.
+  - The texture is redrawn **in place** (`needsUpdate`) only when its colour key (zenith, horizon,
+    glow) changes.
+- **Ground disc.** Vertex colours are updated **in place** in the existing attribute. It blends
+  `ground → groundFar (= horizon)` toward the 400 m edge, keyed by `[ground, horizon]`. Nothing is
+  rebuilt.
+- **Lights.**
+  - The one Sun/Moon `DirectionalLight` is a light-store lease updated in place: direction, colour,
+    intensity, `castShadow`, shadow radius.
+  - `HemisphereLight` uses props (`color`, `groundColor`, `intensity`) instead of `args`, so it
+    updates in place.
+  - The ambient intensity is a prop.
+- **Fog.** One `FogExp2` installed for the Sky's lifetime and updated in place (colour, density).
+  Density 0 is clear. Unmount restores the previous `scene.fog`.
 
-**Fog exemptions:**
+**Program stability**, so a live drag never recompiles:
 
-- **Exempt by nature:** the sky background (a scene background texture is never fogged) and every
-  `ShaderMaterial` without `fog: true` (the mat grid and the experience lines).
-- **Explicitly exempt (`fog: false`):** editor-only built-in materials. These are ghosts and
-  candidate previews, the wall pin and height plane, mark and handle meshes drawn in the scene,
-  and selection outlines, if built in.
-  - The implementer greps `new Mesh*Material` and `T.Mesh*Material` under `lib/authoring` and
-    `lib/render` and lists each in the PR. A boundary test pins it (see Tests).
-- **Fogged:**
-  - Artwork, layout, walls and objects.
-  - The 400 m ground disc and the lit plate, so the world blends to `haze.color` at distance.
-  - The `ShadowMaterial` catcher, so shadows fade with the ground.
-- **Overlay:** the sun mark and the Stage's 2D overlay are not in the fogged scene.
+- The light count, the shadow-casting light count, the fog's presence and type, and the background's
+  presence and type are all constant while a Sky is shown.
+- Only a Sun shadows toggle, or a switch to or from Studio, changes the program set. Both are
+  discrete clicks, never inside a drag.
+- A unit test asserts that the resolved light and fog *shape* is invariant across 96 times of day.
 
-**Rebuild economy (live drag):**
+**Fog exemptions.**
 
-- Key the background `CanvasTexture` on `[zenith, horizon]` and the ground vertex colours on
-  `[ground, haze.color]`, not on look identity. A Time, Direction, Brightness or Haze-density drag
-  then rebuilds neither.
-- `HemisphereLight`: replace `args={…}` with props (`color`, `groundColor`, `intensity`), so it
-  updates in place instead of being recreated.
-- The Sun remains one light-store lease updated in place (`light-store.ts`). An unchanged key
-  is a no-op.
+- Unfogged by nature: the sky background, and every `ShaderMaterial` without `fog: true` (the mat
+  grid and the experience lines).
+- `fog: false` on every editor-only built-in material: ghosts and candidate previews, the wall pin,
+  the height plane, the Celestial Dial layer, and any outline drawn with built-in materials. The
+  implementer greps `Mesh*Material` and `Line*Material` under `lib/authoring` and `lib/render`, and
+  lists each one in the PR. A boundary test pins the list.
+- Fogged: Artwork, Layout, objects, the ground disc, the lit plate and the shadow catcher.
 
-**Shadow invalidation (`StageShadowTriggers.svelte`, `shadow-invalidation.ts` doc):**
+**Shadow invalidation.**
 
-- Add a `sunShadowKey(look, frame)` string: position, target, mapSize, bias, normalBias and the
-  camera frustum. Radius, colour and intensity do not re-render a map.
-- Pass it as a trigger source from `StageCanvas` (`skyShadowKey`). When it changes the controller
-  invalidates once, coalesced per frame.
-- This also fixes a latent bug: toggling *Plain Paper while editing* today changes `sky` without
-  changing `scene`, which leaves the Sun's map stale or never rendered.
-- `radius` is read at sample time in PCF, so softness needs a frame (`invalidate`), not a map
-  re-render.
+- `sunShadowKey(look, bounds)` covers the light direction, `castShadow`, the shadow camera frustum,
+  the map size and the biases. It excludes radius, colour and intensity.
+- It is passed as a new source to `StageShadowTriggers.svelte`.
+- A Time, heading or Noon-height preview re-renders one map per preview frame.
+- Haze, exposure, colours, Moon strength and softness re-render no map; softness needs a frame only.
+- In twilight the direction is held, so a drag through 19:30–21:00 re-renders nothing.
+- The key also fixes the latent stale map when the Studio-while-editing preference toggles.
+- Update the trigger list in `shadow-invalidation.ts`'s doc comment.
 
-**Preview routing:**
+**Preview routing.**
 
-- Look authoring exposes `previewSky`. `stageSky = editOnPaper ? null : (previewSky ?? sky)`.
-- `StageCanvas` receives the previewed Sky for `WorldEnvironment`, the lit plate and
-  `sunShadowKey`.
-- Unchanged:
-  - `StageSnapshotRenderer` keys on the **accepted** Sky. It never captures a preview.
-  - Visitor Preview takes the accepted `look.sky`.
-  - `groundReachMeters` stays on the accepted Sky.
+- Look authoring exposes `previewSky`. `stageSky = studioWhileEditing ? null : (previewSky ?? sky)`.
+- `StageCanvas` passes the previewed Sky to `WorldEnvironment`, the lit plate and `sunShadowKey`.
+- `StageSnapshotRenderer` keys on the **accepted** Sky.
+- Visitor Preview takes the accepted Sky, and so does `groundReachMeters`.
 
-**Parity:** Stage, Visitor Preview and the published visit all render through the one
-`WorldEnvironment` and `worldEnvironmentLook`. The published route already passes `sky`. After a
-commit all three show the same fog, colours and Sun.
+**Parity.**
 
-**Performance:**
+- The Stage, Visitor Preview and the published visit render through the one `WorldEnvironment` and
+  `resolveSkyLook`.
+- The published route already passes `sky`.
+- After a commit all three show the same Sun or Moon, sky, fog and exposure.
 
-- Idle Stage: 0 shadow maps per frame (unchanged, D9 proposed).
-- A Time/Direction/sun-mark drag: at most one 2048² Sun map per previewed frame. That equals the
-  visit baseline and was measured as affordable in S0.
-- A Haze, Brightness or colour drag: 0 maps, uniforms only.
-- No new render targets, passes or dependencies.
+**Zenith edge.**
 
-**Edge:** `el = π/2` puts the Sun straight up. `resolveSkySun`'s `lookAt` then needs a non-parallel
-up vector. A unit test asserts a finite shadow camera matrix at `el ∈ {0, π/2}`. Fix only if it
-fails: choose up = +Z when `|dir·Y| > 0.999`.
+- At `arcHeight = 80` the noon elevation is 80°, so the Sun never reaches straight up.
+- A unit test still asserts a finite shadow matrix at el ∈ {4°, 80°}.
+- It also checks the up-vector guard: up = +Z when |dir·Y| > 0.999.
+
+**Performance** (budget against S0's measurements):
+
+| State | Shadow maps per frame | Other per-frame cost |
+| --- | --- | --- |
+| Idle Stage, dial shown or not | 0 (D9 unchanged) | none |
+| Time / heading / Noon-height drag | ≤ 1 × 2048², the visit baseline S0 measured as affordable | a 256 × 128 canvas redraw and upload (128 KB) when the colour key changes; a ground colour attribute update; dial geometry |
+| Haze / exposure / colour / Moon drag | 0 | uniforms; a background redraw for colour |
+| Orbit with the dial shown | 0 | dial rescale; the shell-clearance search, which runs only when the camera or a shell rect changes (≤ 300 candidates × 48 projected points) |
+
+No new render targets, passes or dependencies.
+
+**Golden.**
+
+- Add a Scene 9 look golden before rendering changes:
+  `resolveSkyLook` for each preset at its start time, for Daylight at 6 times, and for Moonlit,
+  Dusk and Dawn.
+- The S1 golden's Sky entries are replaced (the format changed). Its Finish entries stay
+  byte-identical.
 
 ## Issue #353 disposition
 
-**Evidence (screenshots in the issue):**
+Carried from revision 1, adjusted to the time model.
 
-- The Sky chip reads `Dusk · 19:20`, and the plate tone is Dusk's `#9a9c96`. So the World
-  environment and its shadow-casting Sun were active. The Living | Paper toggle there is only the
-  Plan material.
-- The artifacts are parallel bright streaks through several openings, consistent with the
-  directional Sun.
-- The scene also has a Spot, which uses three's defaults: 512² map, bias 0, normalBias 0
-  (`light-store.ts`). That is S3's ownership.
-- The staircase blocks look about 1 m across. The computed Sun texel at the 40 m minimum bounds is
-  about 3 cm, ×2.9 stretched at 20° elevation. Plain Sun resolution does not explain them, so the
-  **root cause is not established**.
+**Evidence.**
 
-**Rule:** S2 keeps #353 open with no change by default. Implementation step 11 runs the diagnostic
-below.
+- The screenshots show the Dusk Sky with its shadow-casting Sun active.
+- The streaks are parallel, which is consistent with the parallel light.
+- The Spot uses three's 512² / bias-0 defaults, which S3 owns.
+- The roughly 1 m blocks far exceed the computed Sun texel (about 3 cm, ×2.9 at 20°).
+- The root cause is not established.
 
-- A correction lands in S2 only if a **Sun-only** reproduction places the cause inside
-  `resolveSkySun`'s shadow parameters: bounds/reach, bias/normalBias, or the camera frustum. It
-  needs a failing-then-passing unit test on the descriptor and an updated look golden.
-- Otherwise S2 posts the diagnostic result on #353 and leaves the fix to S3 (Spot) or a later
-  rendering slice. A stale map from the *Plain Paper* toggle is fixed regardless by
-  `sunShadowKey`; the comment says whether it explains the report.
+**Rule.**
 
-**Diagnostic:**
+- #353 stays open by default.
+- Step G2 runs the diagnostic:
+  1. A Dusk-like three-room scene. Set Golden at 18:20 (el about 20°) and Daylight at 13:00.
+  2. Sun only (Spot `castShadow` off).
+  3. Spot only (Studio).
+  4. Cycle the Studio-while-editing preference.
+- A narrow fix lands in S2 only if the Sun-only case places the cause inside `resolveSkySun`'s
+  shadow parameters (bounds, bias, frustum), with a failing-then-passing descriptor test. Otherwise
+  S2 comments the result on #353.
 
-1. Rebuild a Dusk three-room scene with openings.
-2. Sun only: Spot `castShadow` off. Compare at 20° and 45° elevation, and with the Plain Paper
-   toggle cycled.
-3. Spot only: set the Sky to Paper and turn the Spot shadow on.
-4. Record which case shows the streaks.
+## Implementation sequence (file level)
 
-## Implementation steps (file level)
+One PR, in this order. Each lettered group is one or more commits that leave `npm run check` green.
+There is no intermediate state where the old Sky popover writes Scene 9, so no temporary interaction
+system is built.
 
-1. **Shared Sky helpers** — `packages/project-model/src/units/sky-presets.ts`: export `sameSky`
-   and `skyIsEdited`. Remove the private copies from `planning.ts`.
-2. **Validator export** — `units/validate.ts`: export `validateSceneSky` from `readSky`, with no
-   behaviour change.
-3. **Planner** — `units/planning.ts`: `SCENE_SKY_UPDATE_KIND`, `createSceneSkyUpdatePlanner` and
-   its payload reader. Register it in `createUnitCandidatePlanners`. Re-export through the package
-   index the way `SCENE_ENVIRONMENT_SET_KIND` is.
-4. **Sky math (pure)** — new `apps/editor/src/lib/authoring/look/sky-dials.ts`:
-   - `ARC`, `timeFromElevation` and `elevationFromTime` (with the out-of-range flag);
-   - `directionDegrees` and `azimuthFromDegrees`;
-   - `hazeFromVisibility` and `visibilityFromHaze`;
-   - `brightnessFromSky` and `skyWithBrightness`;
-   - softness labels;
-   - the snap functions and the readout formatters;
-   - `skyPatch(captured, next)`, which returns the minimal patch, or `null`.
-5. **Look authoring** — `look/look-authoring.svelte.ts`:
-   - `previewSky`, rAF-coalesced, with `setPreviewSky` and `clearPreviewSky`;
-   - `updateSky(patch, expectedRevision)`, the guarded intent dispatch on the `setEnvironment`
-     pattern;
-   - `edited` from `skyIsEdited`;
-   - `resetSky()`;
-   - `stageSky` uses the preview.
-6. **Gesture controller** — new `look/sky-gesture.svelte.ts`: one framework-light state machine
-   (idle → live → committing) implementing rules 1–7 for any dial or colour row. It is used by
-   the popover and, through a port, by the sun-mark adapter.
-7. **Popover** — `world-toolbar/SkyControl.svelte`:
-   - the header and Reset;
-   - the edited tag and the chip reading;
-   - the four dials, More, the Paper line and the Plain Paper note;
-   - make it non-modal, add the fade-during-mark-drag state, and the Esc layering.
-   - Remove the `hours` table and the inert hour row with its `Planned · T2` tag.
-   - Publish its open state to `sky-session.svelte.ts`.
-   - Route props through `StageToolbars.svelte` and `routes/project/[projectId]/spatial/+page.svelte`
-     (`look.edited`, `look.updateSky`, `look.resetSky`, preview setters, busy).
-8. **Sun mark**:
-   - new `lib/authoring/adapters/sky.adapter.ts` (auto-registered via `catalog.ts`'s glob);
-   - `adapters/sky/sky-contributions.ts` (`idleHandles`, `pressWhenNoTask`, `pointerIntent`);
-   - `adapters/sky/sky-mark-session.ts` (lease, capture, preview, commit, cancel, on the
-     `light-gesture-session.ts` pattern);
-   - `look/sky-session.svelte.ts` (open flag per project, mark-drag flag for the fade).
-   - Add `sunMarkAnchor` to `render/world-environment.ts`.
-9. **Rendering**:
-   - `render/WorldEnvironment.svelte`: fog lifecycle, keyed rebuilds, hemisphere props.
-   - `render/world-environment.ts`: `sunShadowKey`, plus the zenith up-vector guard if needed.
-   - `stage/shell/StageCanvas.svelte`: preview Sky in; `skyShadowKey` to `StageShadowTriggers`.
-   - `StageShadowTriggers.svelte`: the new source.
-   - `fog: false` on the editor-only materials found by the grep.
-   - Update the doc comment in `shadow-invalidation.ts` to list the Sun key as a trigger.
-10. **Retire and document**:
-    - Delete `stage/shell/StageEnvironmentControl.svelte` and drop it from
-      `tests/lib/design/presentation-tokens.test.ts`.
-    - `docs/reference/design-system/editor-shell-and-visual-system.md` (Shell/PLATE): the Sky
-      popover is the one environment writer; non-modal; the sun mark is an idle world mark.
-    - `docs/reference/components/rendering.md` §Haze: the exemptions as built and the preview
-      routing.
-    - Roadmap §6: note that O1 defers the Celestial Dial.
-11. **#353 diagnostic** — run it and apply the ownership rule. Comment on the issue.
-12. **QA and goldens** — the focused browser journeys below. Update the look goldens only for
-    fog-bearing fixtures: the S1 presets have no visibility, so existing goldens must stay
-    byte-identical.
+**A. Scene 9** (Tier 2 core; S1's step 1–3 and 8–9 pattern):
+
+1. `units/types.ts`: version 9; the `SceneSky`, `SCENE_SKY_PRESETS` and `SceneEnvironmentChoice`
+   changes; `scene.ts` types.
+2. `units/sky-presets.ts`: starts, default, `skyFromPreset`, `skyIsEdited`, `sameSky` (moved out of
+   `planning.ts`) and `sunShadowRadius`. Remove `sceneSunFrom`.
+3. `units/validate.ts`: rewrite `readSky` for the new fields and export it as `validateSceneSky`;
+   default-dropping in normalization.
+4. Scene codec canonical form (`canonical.ts`): environment key order and the default drop.
+5. `units/runtime.ts`: no shape change beyond the type.
+6. **Fixtures:**
+   - Scene `formatVersion` 8 → 9 across the S1 list: `apps/api/tests/*.mjs`, the editor
+     `__fixtures__`, `units-conformance`, `units-canonical-form`, `scene-codec`,
+     `visitor-cold-runtime` and `perf/lib/workloads/registry.ts`.
+   - Rewrite Scene 8 Sky fixtures as `skyFromPreset(...)`.
+   - Regenerate revisions and snapshots with the existing helpers.
+   - Leave the other units' versions alone.
+7. Contracts: `scene-content.md` (fields and codes), `persistence.md`, `scene-codec.md`,
+   `architecture.md`, `composition-execution.md`, and the `AGENTS.md` hard rule 2 version.
+
+**B. Model (pure):**
+
+1. `render/sky-time.ts`.
+2. `render/sky-atmosphere.ts` (`resolveSkyLook`).
+3. `render/world-environment.ts`:
+   - build the look from `resolveSkyLook`;
+   - keep `resolveSkySun` bounds/bias with direction from the model;
+   - `sunShadowKey`, `sunMarkAnchor`, the up-vector guard;
+   - presentation: six labels, swatches and glyph kinds; delete `WORLD_ENVIRONMENT_CHOICES` hours.
+
+**C. Writes:**
+
+1. `units/planning.ts`: the revised `scene-environment-set` and the new `scene-sky-update`,
+   registered in `createUnitCandidatePlanners`, with `SCENE_SKY_UPDATE_KIND` exported where
+   `SCENE_ENVIRONMENT_SET_KIND` is.
+
+**D. Rendering:**
+
+1. `render/WorldEnvironment.svelte`: the equirect background, in-place ground colours, the one
+   lease retargeted Sun/Moon, hemisphere props, ambient, fog.
+2. `stage/shell/StageShadowTriggers.svelte` gets the Sun key. Update `shadow-invalidation.ts` docs.
+3. `fog: false` on the editor-only materials found by the grep.
+4. `stage/shell/StageCanvas.svelte`: preview Sky in; Studio means the Paper path.
+5. `visitor/VisitorPreviewSurface.svelte` and `routes/p/[publicationId]/+page.svelte`: type
+   follow-through only.
+6. Scene 9 look golden and the parity test.
+
+**E. Shell:**
+
+1. `stage/shell/StagePopover.svelte` and `stage/shell/stage-panel-rects.svelte.ts`.
+2. `EditorCard.svelte`: the yield via `--card-bottom-clearance`, the bottom fade, fold below 160 px.
+3. The facade snapshot's `liveGesture`.
+4. A new `stage/shell/StageEnvironmentControl.svelte` (control and medallion), mounted in
+   `StagePanels.svelte`, with the medallion-only rule against the dock rect.
+5. Remove `SkyControl.svelte` and its mount from `StageToolbars.svelte` (the Sky chip leaves the
+   viewing bar).
+6. `StageDraftingControl.svelte` ⚙ gets *Studio light while editing · this browser* (D2).
+7. Update `presentation-tokens.test.ts` for the replaced file.
+
+**F. Sky panel:**
+
+1. `authoring/look/sky-gesture.svelte.ts`: the lifecycle state machine for rules 1–7, shared by the
+   panel and the dial.
+2. `authoring/look/look-authoring.svelte.ts`:
+   - `previewSky`, `updateSky(patch, revision)`, `edited`, `resetSky()`, `aimThroughWindows()`;
+   - `stageSky` routing;
+   - rename `editOnPaper` to `studioWhileEditing`, keeping the same browser preference key so the
+     stored preference survives.
+3. `authoring/environment/SkyPanel.svelte`: header, Time dial, Sun direction, tiles, Haze, More,
+   Studio state, bottom sheet.
+4. `authoring/environment/sky-glyphs.ts`: ported `skyGlyph`, `medallionSVG`, `timeDialSVG`,
+   `compassSVG` and `tileArt` as pure SVG-string or Svelte snippets.
+5. `authoring/look/sky-session.svelte.ts`: panel-open flag per project, and the live dial-drag owner
+   for the fade.
+6. Route wiring in `routes/project/[projectId]/spatial/+page.svelte` (one block; S4 rebases).
+
+**G. Celestial Dial:**
+
+1. `authoring/look/celestial-dial.ts`: the model, anchor relocation, shell clearance, arc
+   projection (`nearestT`) and the tag.
+2. `stage/shell/StageCelestialDial.svelte` (Three) and `StageCelestialDialMarks.svelte` (SVG),
+   mounted by `StageCanvas` and `StageOverlay`.
+3. `authoring/adapters/sky.adapter.ts`, `adapters/sky/sky-contributions.ts` and
+   `adapters/sky/sky-dial-session.ts`: grips, pointer phases, lease, preview, commit, cancel.
+
+**H. Aim:**
+
+1. `authoring/look/aim-through-windows.ts` and the seed-path call.
+
+**I. Contracts:**
+
+1. `docs/reference/design-system/editor-shell-and-visual-system.md` (Shell/PLATE):
+   - the Environment control;
+   - the Sky panel as the one environment writer;
+   - the shared popover primitive with the Card-yield rule;
+   - the Celestial Dial as an idle world instrument;
+   - Esc ladder rungs 1 and 3a;
+   - focus stop 7/7a;
+   - the "Look" name: the Look *module* is the resolver; *Looks* are S6 presets.
+2. `rendering.md`: the time model, light model, haze mapping, exemptions, preview routing.
+3. The T2 README rows in [Superseded contracts](#superseded-contracts).
+4. `glossary.md`: Celestial Dial, Environment control.
+
+**J. QA:**
+
+1. Run the journeys below, then the #353 diagnostic (G2 in the rule above), and record both in the
+   PR.
 
 ## Tests
 
-| Area | Test (file) | Asserts |
+| Area | File | Asserts |
 | --- | --- | --- |
-| Planner writes | `packages/project-model` planner test, beside the S1 environment-set tests | Each patch field writes exactly that field; nested merge keeps siblings; `haze.visibility: null` removes the key; `preset` and `treatment` untouched; colours lowercased. |
-| Planner refusals | same | Paper → `unsupported-operation`; unknown key, empty payload, empty nested object, `NaN`, elevation > π/2, azimuth = 2π, visibility 4, bad hex → `invalid-payload`; equal result → `no-change`. |
-| Undo/Redo | same, through the unit apply/invert path | One update inverts to the exact prior Sky, including an absent visibility. Redo re-applies. |
-| Edited | `sky-presets` test | `skyIsEdited` false on each start, true after any single-field change, false after Reset; `sameSky` key-order and case independent. |
-| Dial math | new `tests/lib/authoring/look/sky-dials.test.ts` | Time round-trip within 1 min on the grid; 19:30 → 0; 13:00 → ARC; el > ARC flagged; preset readings 14:41 / 18:00 / 18:07; Haze round-trip, `h < 0.02` → absent; Brightness k round-trip, detents, normalization; azimuth wrap 360 → 0; `skyPatch` minimal and `null` when unchanged. |
-| Gesture lifecycle | new `sky-gesture` test (fake services) | Begin captures revision; moves preview only; commit dispatches once with the captured revision; key burst = 1 intent; Esc → 0 intents, preview cleared, trailing change swallowed; revision drift cancels; busy refuses begin; refusal clears and resyncs; `no-change` silent. |
-| Look authoring | `tests/lib/authoring/look/look-authoring.test.ts` | `stageSky` = preview ?? sky; `editOnPaper` wins; preview never reaches the save path or `sky`; Reset dispatches `scene-environment-set` with the current preset. |
-| Sun mark | new `tests/lib/authoring/adapters/sky-mark.test.ts` | Hidden unless open + Sky + not Plain Paper + World + no task + no Preview; grip position from (az, el); drag maps a ground hit back to (az, el); ring changes az only; grazing ray keeps the value; Esc writes nothing; one commit on release; lease released on every path; selection mark listed first; registered planner kind. |
-| Adapter contract | existing catalog/adapter-contract tests | `sky` adapter auto-registers; its grips name `scene-sky-update`; no subjects or pick. |
-| Rendering | `tests/lib/render/world-environment*.test.ts` | Fog density formula; clear → 0; `sunShadowKey` changes with az/el/bounds, not with softness/colour/intensity; finite shadow matrix at el 0 and π/2; `sunMarkAnchor` = bounds centre at the datum. |
-| Shadow invalidation | `tests/lib/render/shadow-invalidation.test.ts` + a trigger test | A Sun-key change → exactly one invalidation per frame; an orbit → 0; a Brightness or Haze preview → 0 map renders. |
-| Fog boundary | new `tests/lib/render/fog-exemption-boundary.test.ts` | Every editor-only built-in material listed in the plan sets `fog: false`; the ground disc, plate and catcher do not. |
-| Parity | `scene-render-description` / look-parity golden | Stage, Preview and published resolve the same fog and Sun for a hazed Sky; existing S1 goldens unchanged. |
-| Portability | `renderer-portability-boundary.test.ts` | Still passes: `FogExp2` is a scene object, not a renderer API outside render modules. |
-| Retirement | `presentation-tokens.test.ts`; a SkyControl test | No `StageEnvironmentControl`; no `Planned · T2`; no hours table; Paper shows no dials. |
+| Codec / validation | `scene-look-schema.test.ts` (extend), `units-conformance`, `units-canonical-form` | Every field's range edges (`time` 24 refused, `heading` 360 refused, `arcHeight` 19/81, `haze` −1/101, `exposure` ±2.1, non-boolean `sunShadows`, uppercase hex); unknown key refused; Scene 8 refused with `unsupported_format_version`; the default Sky is dropped canonically; a Studio Sky with heading 90 is kept; `'paper'` refused |
+| Presets | `sky-presets` test | Starts match the table; `skyFromPreset` keeps heading; `skyIsEdited` ignores heading and flags any other field; `sameSky` is order- and case-independent |
+| `scene-environment-set` | planner tests | Writes the full start keeping heading; Studio keeps heading; equal is `no-change`; current preset on edited resets; treatment untouched |
+| `scene-sky-update` | planner tests | Each field patches alone; `moon` merges; Studio non-heading refused, heading allowed; invalid ranges refused; equal is `no-change`; Undo/Redo restore the exact Sky |
+| Time model | `tests/lib/render/sky-time.test.ts` | The §4.3 formulas at 06:30, 13:00, 19:30, 21:00, 00:45 (Moon 38°), 04:30; phase boundaries; az at noon = heading; `snapTime` wrap at 23:57 → 23:55 and at 23:58 → 00:00; Page Up/Down phase starts; `hhmm` 60-minute carry |
+| Light model | `sky-atmosphere.test.ts` | HIGH with default colours = S1 Daylight exactly; continuity at 06:30/19:30 (intensity → 0); twilight intensity 0 with held direction; Moon uses `moon.color`; exposure scales lights ×2^EV but not the background; overcast desaturation; tint keeps colour edits visible at night; fog density formula and clear at 0; light, fog and shadow shape invariant across 96 times |
+| Shadow invalidation | `shadow-invalidation.test.ts` + a trigger test | A time/heading/arcHeight change gives exactly one invalidation per frame; haze/exposure/colour/moon give 0; twilight drag gives 0; orbit gives 0 |
+| Aim | `aim-through-windows.test.ts` | Single exterior window; two opposite windows weighted by area; interior partition skipped; none → no write; seed heading 0 |
+| Gesture lifecycle | `sky-gesture.test.ts` (fake services) | One intent per release or burst; Esc writes 0; trailing change swallowed; revision drift cancels; busy refuses; refusal resyncs; preview held until accepted |
+| Panel | `SkyPanel` component test | Studio shows no dials; edited shows Reset; tiles `aria-pressed`; Time dial keys including wrap and Page Up/Down; compass snap and Alt; More rows in order; six tiles do not clip at 320 px (`scrollWidth ≤ clientWidth`); bottom sheet at ≤ 860 |
+| Environment control | component test | Second-line variants; edited dot; medallion-only within 12 px of the dock; `aria-expanded`; Esc returns focus; non-modal (an outside press keeps it open) |
+| Card yield | `EditorCard` / shell test | Panel overlap sets clearance (Card bottom = panel top − 12); body scrolls; fold below 160 px; never covered |
+| Celestial Dial model | `celestial-dial.test.ts` | Constant screen radius across zoom; glyph on the ring at az; tip opposite the body with `L` clamped; `nearestT` stays in the press phase, clamps at the ends, ties toward the previous time; the noon mark sets heading with 15° snap; twilight has no time grips; furniture relocation within 2 m; shell clearance reproduces relocation, and hides when nothing is clear; off-screen hides |
+| Sky adapter | `sky-dial.adapter.test.ts` | Hidden unless panel open + not Studio + World + no task + no Preview + preference off; registered planner kind; selection marks first; miss falls through; lease released on every path; one commit on release; Esc writes nothing |
+| Fog boundary | `fog-exemption-boundary.test.ts` | The editor-only material list sets `fog: false`; world materials do not |
+| Parity | `scene-render-description`, look golden | Stage, Preview and published resolve identically for every preset; Finish golden entries unchanged |
+| Isolation | `public-surface-boundary`, `preview-surface-boundary` | No `sky.adapter`, panel, dial, `celestial-dial` or `sky-gesture` import reaches visitor chunks; `sky-time` and `sky-atmosphere` are allowed (runtime-safe) |
+| Portability | `renderer-portability-boundary.test.ts` | Still passes: fog, background mapping and `depthFunc` are scene/material properties |
 
 ## Browser QA journeys (focused, manual)
 
-Run them in the built editor, Chrome desktop. Record the outcome in the PR.
+Run the built editor in Chrome desktop at 1440, 1280, 1024 and 820, and record the outcomes in the
+PR.
 
-1. **Golden-hour walk** (roadmap §11):
-   - Open a room scene, choose Golden hour, and open Sky.
-   - Drag the sun mark until light rakes through an opening.
-   - Set Time to 16:00 and Softness to Soft.
-   - The chip shows `Golden hour · edited · 16:00`.
-   - One Undo per gesture walks back each step. Reset returns `Golden hour · 18:00` in one step.
-2. **Cancel everywhere:** Esc mid-drag on each dial, on the sun mark and on a colour picker. The
-   Stage snaps back, history is unchanged, and the popover stays open until a second Esc.
-3. **Haze:**
-   - Drag Haze to 40 m. Far walls and the ground fade to the Far colour; the sky gradient, grid
-     and marks stay crisp.
-   - Open Preview: the same haze. Publish and visit: the same haze.
-   - Clear restores today's image.
-4. **Brightness and colours:** 2× brightens Sun and fill together. A Fill colour change shows in
-   shadowed faces. Reload: everything persists.
-5. **Stage authority:**
-   - With the popover open, orbit and pan from empty space; the camera moves.
-   - Click an object: it selects, and its marks win over the sun mark where they overlap.
-   - Open a Light task: the sun mark hides.
-   - Switch to the Experience lens: the popover closes.
-6. **Plain Paper while editing:** toggle it on. The Stage shows Paper, the mark hides and the note
-   shows. Dials still change Preview. Toggle it off: the Sun shadow is correct at once, with no
-   stale map.
-7. **Paper and presets:** Paper removes the dials and the mark. Undo restores the edited Sky
-   exactly. Each tile resets Direction too (O1 b).
-8. **Performance:** orbit idle with the work counter on: 0 shadow updates. Drag Time: about one
-   per frame. Release: back to 0.
-9. **#353 diagnostic** (step 11).
+1. **Golden-hour walk** (README §11, amended):
+   - Open the Environment control and pick Golden.
+   - Drag the Sun along the dial's arc until light rakes through an opening.
+   - Set Time to 16:00 on the dial and Softness under More.
+   - The control reads `Golden hour •` and `16:00 · Sun N°`.
+   - One Undo per gesture walks back each step. Reset restores 18:20 in one step.
+2. **24 hours:**
+   - Drag the Time dial a full turn. Expect day → dusk (no sun, glow on the heading + 90 side, dial
+     hint) → night (Moon, cool and dim, its arc in blue) → dawn → day.
+   - Page Up/Down land on phase starts. Wrap works at midnight.
+3. **Heading:**
+   - Drag the noon mark: the arc turns and the tag reads `Noon bearing N°`.
+   - Pick Daylight, then Overcast: the heading is unchanged.
+   - *Aim through windows* in a room with one exterior window: noon light comes through it.
+4. **Cancel everywhere:** Esc mid-drag on the Time dial, compass, sliders, dial glyph, tip and noon
+   mark. The image snaps back and history is unchanged. A second Esc closes the panel and focus
+   returns to the control.
+5. **Shell:**
+   - With a Spot selected and Sky open at 1440, 1280 and 1024: the Card yields (about 0, 100 and
+     132 px) and never folds; the dial relocates by about 1.4, 2.0 and 1.7 m with a leader.
+   - At 820: a bottom sheet, the medallion-only control, and the Card folded.
+   - The panel fades to 20% during an orbit and a Beam drag.
+   - The panel stays open on a Stage press.
+6. **Authority:**
+   - With the panel open, an object press selects and its marks win over dial grips.
+   - Arm a light tool: the dial hides.
+   - Experience lens: the control is absent and the panel closed.
+   - Preview: no dial.
+7. **Haze, Exposure, colours:**
+   - Overcast: walls 15 m away stay legible; grids and marks stay crisp.
+   - Moonlit at +1 EV: the room is readable.
+   - A Sky colour change is visible at noon and at 23:00.
+   - Preview and the published visit match the Stage.
+8. **Studio:** no dials and no dial. The heading survives Studio → Daylight.
+9. **Performance:** with the work counter, idle orbit gives 0 shadow updates. A Time drag gives about
+   one per frame, and a twilight drag gives 0.
+10. **#353 diagnostic**, as in the rule above.
 
 ## Acceptance criteria
 
-- Every control writes, previews live and cancels cleanly. No inert control remains.
-- One undo step per gesture or key burst. Esc and pointercancel write nothing.
-- Edited and Reset match `scene-environment-set` semantics exactly. Paper hides every dial.
-- The sun mark never selects, never steals a press it does not hit, never shows with a task open,
-  in Experience, in Preview or in the visit.
-- Haze renders identically in the Stage, Preview and the published visit, with the listed
-  exemptions. Existing goldens are unchanged.
-- Idle Stage does 0 shadow-map renders per frame. Only Sun-geometry previews re-render the map.
-- No format change, no new dependency, no reflections, no renderer API outside render modules.
-- `StageEnvironmentControl.svelte` and the inert hour row are gone. Shell/PLATE and `rendering.md`
-  are amended.
+- Every §4 capability works as specified:
+  - the Environment control and Sky panel with all contents;
+  - the 24-hour Time dial with Sun, Moon, dusk and dawn;
+  - six presets keeping `heading`;
+  - Aim through windows;
+  - the Celestial Dial with its three grips, furniture and shell rules;
+  - responsive behaviour at ≤ 860;
+  - the Card-yield rule;
+  - the Esc ladder and focus order.
+- Scene 9 stores `time`, `heading` and `arcHeight`. Azimuth and elevation are derived everywhere.
+  Scene 8 is refused.
+- One undo step per gesture, burst, tile, Reset or Aim. Cancel writes nothing.
+- The Stage, Preview and the published visit render the same Sky. Finish goldens are unchanged.
+- The idle Stage renders 0 shadow maps per frame. No program recompiles during any drag.
+- No reflections, no new dependency, no renderer API outside render modules, no editor module in
+  visitor chunks.
+- The Sky chip, `SkyControl.svelte` and the old unmounted panel are gone. Every contract in
+  [Superseded contracts](#superseded-contracts) is amended.
 - #353 has a recorded diagnostic and either an evidence-backed narrow fix or an issue comment.
-- `npm run check`, unit tests and the boundary suites pass.
+- `npm run check`, the unit lanes, the API tests and the boundary suites pass.
+
+## Open decisions
+
+None blocks implementation. Each has a recommended default that the plan builds; the owner may
+override any of them during review.
+
+| # | Gap in UX rev 4 | Recommended default |
+| --- | --- | --- |
+| D1 | What the panel and control show while **Studio** is active. §4.3 lists the full contents but Studio has no time, direction or haze, and D18 forbids inert controls. | Header, tiles and the line *Studio light is even and fixed. Pick a sky to set the time.* The control's second line reads `Even light`. No Celestial Dial. Stored values, `heading` included, are kept. |
+| D2 | Where the existing per-browser **"Plain Paper while editing"** preference lives. It is not in the §4.3 Contents list, and §8 puts viewing preferences in ⚙. | Move it to the ⚙ Viewing settings as *Studio light while editing · this browser*, keeping its storage key. It is never serialized. |
+| D3 | Which **colour picker** the Sky, Ground and Moon swatches open. §3's radial hue/amount picker is fixed at full value, so it cannot express a dark ground or a muted sky. | A swatch row opening the native colour input: `input` previews, `change` commits, and Esc is handled by the platform. Adopt a full-value picker later only if the shell ships one. |
+
+**Engineering definitions** the sheet leaves to implementation (not owner decisions):
+
+- the World mark is the content-bounds plan centre;
+- the compass convention is 0° = −Z;
+- Exposure scales the Sky's lights, not the renderer (because of S0's `NoToneMapping`);
+- haze is a percentage mapped to visibility;
+- colours are time-keyframed with user tints;
+- the background is equirectangular;
+- one light serves as both Sun and Moon.
 
 ## Risks
 
-- **Non-modal popover vs other popovers:** if the toolbar has a single-open-popover policy,
-  opening another popover closes Sky. Keep that policy; only the outside-press close goes.
-- **Fog on overlooked editor meshes:** the boundary test lists them. A missed one shows as a
-  fogged guide in the haze journey.
-- **Hollow-thumb dials:** values written elsewhere (an imported Scene) can sit outside dial
-  ranges. The pinned thumb and the exact readout keep them honest, and the first drag rewrites them.
-- **O1 not ruled on:** the implementation stands on the stored fields either way. A later format
-  slice replaces the Time reading without touching the planner.
+- **Size.** This is the largest T2 slice. One PR is required, because a split would ship the old
+  popover against Scene 9 or the new panel against Scene 8, each a temporary system. Review it per
+  lettered group.
+- **The format bump against S4 (#360).** Mitigated by the coordination rules: S4 touches no Sky
+  seam, and the second lander re-runs the fixture sweep.
+- **Look tuning.** The keyframe and intensity constants may need owner retuning in QA. Only
+  constants and goldens move.
+- **Shell rects.** The Card-yield rule and dial clearance depend on live shell rects. The
+  `stage-panel-rects` store is the one source, and unit tests drive it with fixed rects.
+- **Dial occlusion pass.** `GreaterDepth` on the occluded pass relies on the main depth buffer. The
+  layer renders after the scene in the same pass (render order) and needs no extra target. If
+  Threlte's ordering resists, fall back to drawing occluded segments by plan-footprint test in the
+  SVG layer. The visual contract is the same.
 
-## Readiness
+## Readiness and effort
 
-The plan is implementation-ready once the owner confirms O1. Recommended effort: **high**, as one
-PR. It touches about 14 source files (3 package, about 11 editor) and about 8 new or extended test
-files, plus 3 doc amendments.
+The plan is implementation-ready. The three open decisions have buildable defaults.
+
+**Effort: very high**, about 15–20 agent working days, as one Tier 2 PR. That is roughly 30 source
+files (about 8 project-model, 22 editor), about 18 new or extended test files, the fixture sweep,
+and about 10 contract documents.
+
+## Review resolution
+
+Revision 2 answers the owner's planning revision on #358 (2026-11-15):
+
+| Owner instruction | Resolution |
+| --- | --- |
+| Schema follows UX; authorize Scene 9 | Scene 9 stores `time`, `heading` and `arcHeight`; azimuth and elevation are derived. Revision 1's O1 is withdrawn. |
+| 24-hour cycle, Sun/Moon, dawn/dusk, six presets, heading preserved | §4.3 model ported exactly; six presets from the prototype data; the planner keeps `heading`, Studio included. |
+| Bottom-right Environment control, Celestial Dial, gestures, responsive behaviour, hierarchy | Built as specified; the toolbar popover and the polar sky-chart mark are dropped. |
+| Reuse sound engineering | Kept: the planner pattern, the gesture lifecycle, live preview, `FogExp2` (now derived from `haze`), the Sun shadow key, preview routing and parity, and the #353 diagnostic. |
+| Reconcile contracts; check S4 | [Superseded contracts](#superseded-contracts) and [S4 coordination](#s4-coordination-360). |
+| Push back only with evidence | No pushback. Exposure is defined as a light scale because S0's `NoToneMapping` makes renderer exposure a no-op, as the S0 pipeline record documents. |
