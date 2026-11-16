@@ -15,6 +15,11 @@ This is the **integrated** architecture for the whole Slice lane and the **detai
 and SL3 open their own PRs and inherit §1–§6 without repeating the research; each keeps a short
 plan of its own only for what is marked *SL2 spike* or *SL3 plan* here.
 
+**Revision 2 (peer review on #362).** Corrected: clipping plane signs (§2.1), wholly-hidden
+classification (§2.4), cap assembly (§2.2), clip ownership and snapshot restoration (§2.1), and the
+three depth semantics (§1.1, §4, §5). Owner rulings on A-1…A-5 are recorded in §8. See
+[Revision log](#revision-log).
+
 Labels, as in X1:
 
 - **Verified** — true on `main` at `2710120a`, read in the code (three r187 read in its source).
@@ -83,14 +88,22 @@ shortcut or pill component.
 7. **The environment ground** is a store material (`WorldEnvironment.svelte` L161: `FLAT_GROUND`
    basic or `LIT_GROUND` lambert, vertex colours) at `groundY − 0.05` (flat) / `− 0.02`. The sky is
    `scene.background`. `StageMatGround` is editor ink, not a store material.
-8. **three r187 clipping.** `material.clippingPlanes` needs `renderer.localClippingEnabled`. The
-   fragment chunk discards where `dot(vClipPosition, plane.xyz) > plane.w` (union; optional
-   intersection group via `clipIntersection`). `numClippingPlanes` is part of the program key, so a
-   plane-*count* change recompiles; a plane-*value* change is a uniform update. In
-   `WebGLClipping.setState`, `renderingShadows && !clipShadows` applies **no** local clipping, and
-   `getDepthMaterial` copies `clipShadows` onto the shadow depth material. **So with
-   `clipShadows = false` (default) every shadow map is rendered from the unclipped world.**
-   `LineMaterial` supports clipping.
+8. **three r187 clipping.** `material.clippingPlanes` needs `renderer.localClippingEnabled`.
+   - **Sign.** The vertex chunk sets `vClipPosition = −mvPosition.xyz`; `WebGLClipping.projectPlanes`
+     uploads each plane transformed to view space as `(normal, constant)`; the fragment chunk
+     discards where `dot(vClipPosition, plane.xyz) > plane.w`. Substituting,
+     `−n·p > c ⇔ n·p + c < 0`: **a fragment is discarded where `plane.distanceToPoint(p) < 0`
+     and kept where it is ≥ 0** (union planes; an optional intersection group via
+     `clipIntersection`). The alpha-to-coverage path uses the same signed distance.
+   - `numClippingPlanes` is part of the program key, so a plane-*count* change recompiles; a
+     plane-*value* change is a uniform update.
+   - In `WebGLClipping.setState`, `renderingShadows && !clipShadows` applies **no** local clipping,
+     and `getDepthMaterial` copies `clipShadows` onto the shadow depth material. **So with
+     `clipShadows = false` (default) every shadow map is rendered from the unclipped world.**
+   - `Material.copy` (hence `clone()`) **clones** each plane into a new array, so a cloned material
+     no longer shares its source's planes. The store's `imported` path is the only material clone in
+     editor code (`material-store.ts` L158).
+   - `LineMaterial` supports clipping.
 9. **Render layers:** 0 world, 2 overlay ink, 3 `LIFTED_RENDER_LAYER`. The Stage camera renders
    `[0, 2]`; the snapshot camera renders world + lifted, never overlay. The Stage renders on demand:
    any retained-object change must `invalidate()`.
@@ -120,6 +133,17 @@ shortcut or pill component.
     `ViewportCameraState`.
 17. **Snapshots** render the Stage scene with the Stage renderer through `renderStageSnapshot`
     (`StageSnapshotRenderer.svelte` L61), cached on `revision`.
+18. **Renderer factories** are per surface (`render/canvas-renderers.ts`): `stageCanvasRenderer`
+    (stencil, `'stage'`) and `previewCanvasRenderer` (`'preview'`).
+19. **The wall builder** emits per-Wall meshes that are open at Junction ends and **omits** an
+    offset-face region that a resolved interface makes interior (`faceOmitted`, L1068), with keels
+    (degree ≥ 3) and bevel bridges as their own faces. Interface distances split faces, so abutting
+    vertices come from the same resolved values but are not guaranteed bit-identical.
+20. **Paper's union** (`paper-fill-geometry.ts` `unionPaperFillPolygons`) already stitches a
+    directed boundary into loops, turning clockwise at a touching point, checks in/out balance per
+    node, and returns `null` rather than guessing. A real-WebGL fixture harness exists outside the
+    Vitest lanes: `perf/regressions/renderer-lifetime-entry.ts` + `perf/flows/renderer-lifetime.spec.ts`
+    under `perf/playwright.config.ts` (owner-run, not a CI job).
 
 ## 1. The typed cut — one contract for three slices
 
@@ -127,29 +151,51 @@ shortcut or pill component.
 
 ```ts
 // authoring/stage/slice/slice-cut.ts  (pure, editor-only, no Svelte, no three)
-export type SliceDepth = { readonly kind: 'to-floor' } | { readonly kind: 'distance'; readonly meters: number };
+/** SL1: how far *below* a horizontal cut stays shown. Vertical. */
+export type LevelDepth = { readonly kind: 'to-floor' } | { readonly kind: 'below'; readonly meters: number };
 
 export type SliceReading =
-  | { readonly kind: 'level'; readonly depth: SliceDepth }
-  // SL2 adds, without changing the level arm:
-  // | { kind: 'drawn'; start: Vec2; end: Vec2; hidden: 'left' | 'right'; depth: SliceDepth }
+  | { readonly kind: 'level'; readonly depth: LevelDepth }
+  // SL2 adds, without changing the level arm (§5):
+  // | { kind: 'drawn'; start: Vec2; end: Vec2; hidden: 'left' | 'right'; depthMeters: number }
   ;
 
 /** A reading resolved against live view state, in world metres. The only input to every consumer. */
 export type ResolvedSlice =
   | { readonly kind: 'level'; readonly cutY: number; readonly lowerY: number | null };
-  // SL2: | { kind: 'drawn'; origin; along; normal (toward the hidden side); halfLength; depthMeters; cutY: null }
+  // SL2: | { kind: 'drawn'; origin; along; normal (toward the hidden side); halfLength; depthMeters }
 ```
 
 - A **Level** reading stores no elevation. Its elevation *is* the Height Sheet (Approved: "the plane
   appears at the Sheet height; dragging the Sheet moves it"). `resolveSlice(reading, { sheetHeight,
-  datumMeters })` gives `cutY = datum + sheetHeight`, `lowerY = depth.kind === 'to-floor' ? null :
-  cutY − depth.meters`. A `lowerY ≤ datum` is normalised to `null`.
-- **Depth is a distance**, so it travels with the cut when the Sheet moves. That is what "depth"
-  means in PLATE and the pill, and it is the same field SL2's depth ray drives.
+  datumMeters })` gives `cutY = datum + sheetHeight` and `lowerY = to-floor ? null :
+  cutY − depth.meters`; a computed `lowerY ≤ datum` is normalised to `null`.
+
+**Three depths, three meanings (Decided).** They share the word, not the type:
+
+| Slice | Depth means | Values | Default | Consumer |
+|---|---|---|---|---|
+| SL1 Level | **Vertical** extent below the horizontal cut that stays shown | `to-floor` or `below: m > 0` | `to-floor` (Approved) | GPU lower plane; Plan `depthMeters` |
+| SL2 Drawn | **Horizontal** inspection distance behind the vertical cut, measured along the visible-side normal, within the segment's extent | finite `depthMeters > 0` only | the distance to the far side of the Layout bounds at draw time, so the default shows everything behind | GPU predicate; depth ray |
+| SL3 Section | **Projection** depth of the measured Section | **required** finite `> 0`, taken from the drawn Slice | — (inherits SL2's value) | `SectionParameters.depthMeters`; `outside-depth` membership |
+
+- `to-floor` is **not a distance**: it means "no lower bound of the Slice's own". The GPU lower plane
+  is a no-op and Plan keeps `PLAN_DEFAULT_DEPTH_METERS`, exactly as Plan reads without a Slice. The
+  pill's depth menu shows it as **To the floor**. It never reaches SL2 or SL3: the type of a drawn arm
+  has no `to-floor`.
+- A Level `below` depth is a distance, so it travels with the cut while the Sheet moves (PLATE's
+  "depth"). A drawn depth is a distance along a horizontal normal and never interacts with the Sheet.
+- **Section requires finite depth** (layout.md); because a drawn arm can only hold a finite number,
+  `sectionParametersOf` is total over drawn readings and does not exist for Level readings (Approved:
+  Section and Face apply to a drawn Slice only).
 - `sliceHides(resolved, x, y, z, eps = 1e-4): boolean` is **the single truth** for "is this point
   hidden by the Slice". Display (GPU planes), picking, ghost choice, cap trimming and tests all derive
   from `ResolvedSlice`; the GPU realization is replaceable behind §2.1 without touching consumers.
+- `sliceHides` is defined over **hidden pieces**: `hiddenPiecesOf(resolved)` returns convex regions
+  whose union is the hidden region and which are pairwise separated by visible space. Level: `above
+  = {y > cutY}` and, when `lowerY !== null`, `below = {y < lowerY}`. Drawn (SL2): `extent ∩ nearSide`
+  and `extent ∩ beyondDepth`. `sliceHides(p) = some piece contains p`. The ghost test (§2.4) uses the
+  same pieces.
 - `planOverridesOf(resolved)` maps a Level slice to Layout's existing `PlanParameterOverrides`:
   `depthMeters = lowerY === null ? PLAN_DEFAULT_DEPTH_METERS : cutY − lowerY`. The cut height is
   already the Sheet's (Verified 2), so Plan and the Slice can never disagree about the cut.
@@ -163,7 +209,7 @@ export type ResolvedSlice =
 | Typed cut values, resolve, predicate, plan/section mapping | Stage host (session) | `authoring/stage/slice/slice-cut.ts` |
 | The one live reading | Stage host (session) | `authoring/stage/slice/slice-reading.svelte.ts` |
 | Cut / projected / hidden streams, membership, source refs | **Layout** | `layout.plan@1` (SL1, unchanged), `layout.section@1` (SL3, new) |
-| Clip realization on materials | Stage host, via a T2 store option | `authoring/stage/slice/stage-clip.ts` + `material-store.ts` option |
+| Clip realization on materials | Stage host, via a T2 store option; **one instance per Stage Canvas** (§2.1) | `authoring/stage/slice/stage-clip.ts` + `material-store.ts` option |
 | Cap / contour geometry | Stage host, from rendered meshes | `authoring/stage/slice/mesh-plane-section.ts` |
 | Yellow plane, caps, ghost (ink) | Stage shell | `authoring/stage/shell/StageSliceLayer.svelte` |
 | Face pose | **Camera** (A6 intent) | camera-core, unchanged |
@@ -187,26 +233,68 @@ stays Layout's and is consumed, never re-derived. Capability id `layout.slice` (
 
 ### 2.1 Clipping realization — native planes through the Stage store (Decided)
 
-- `createMaterialStore(options?: { clippingPlanes?: readonly Plane[] })`. When given, the store
-  assigns that **one shared array** to `material.clippingPlanes` on every colour material it
-  constructs (standard, basic, lambert, imported), except a descriptor marked `clip: false`. Depth and
-  distance kinds are untouched. `clipShadows` stays `false`. `provideRenderResources(options?)`
-  forwards the option. **Only `StageCanvas` passes it**; Preview's Canvas calls it as today.
-- `stage-clip.ts` owns that array: **constant length 2** (SL1), each plane a no-op at rest
-  (`normal (0, 1, 0)`, `constant = 1e9`). `setLevel(cutY, lowerY)` writes values only:
-  upper `normal (0, 1, 0), constant = −cutY` (discards `y > cutY`), lower `normal (0, −1, 0),
-  constant = lowerY` (discards `y < lowerY`), or no-op when `lowerY === null`. `setNone()` restores
-  no-ops. Every change calls `invalidate()`.
-- `StageCanvas` sets `renderer.localClippingEnabled = true` once at mount. Plane **count** never
-  changes at runtime, so entering, dragging and leaving a Slice **never recompiles a program**
-  (Verified 8); only uniforms change.
+**Plane values (Decided, from Verified 8: kept iff `n·p + c ≥ 0`).** To keep
+`lowerY ≤ y ≤ cutY`:
+
+| Plane | `normal` | `constant` | Kept | Discarded |
+|---|---|---|---|---|
+| Upper (cut) | `(0, −1, 0)` | `+cutY` | `y ≤ cutY` | `y > cutY` |
+| Lower (depth) | `(0, +1, 0)` | `−lowerY` | `y ≥ lowerY` | `y < lowerY` |
+| No-op (rest, or `lowerY === null`) | `(0, +1, 0)` | `+1e6` | `y ≥ −1e6` (everything) | nothing |
+
+`stage-clip.ts` builds these only through one helper, `keepBelow(y)` / `keepAbove(y)` /
+`keepAll()`, each documented with the kept inequality, and asserts at construction that
+`keepBelow(0).distanceToPoint((0, −1, 0)) > 0` so a sign flip fails loudly in every lane. The
+rendered fixture (test 14) proves the sign on a real GPU.
+
+**Instance ownership and integration (Decided).**
+
+- **Owner: `StageCanvas.svelte`.** It calls `createStageClip()` once in its script, *before*
+  `provideRenderResources({ clippingPlanes: stageClip.planes })`, so the store is born with the
+  array. Lifetime = the Stage Canvas. It publishes the instance through a Svelte context
+  (`setStageClip` / `useStageClip`, in `stage-clip.ts`) for `StageSliceLayer`,
+  `StageSelectionLayer`, `StageLiftLayer` and `StageSnapshotRenderer`. Nothing outside the Stage
+  Canvas tree can reach it; the route never holds it.
+- **The route owns the reading, not the planes.** It derives `resolvedSlice` once
+  (`resolveSlice(sliceReading.reading, sheet)`) and passes the same value to `StageCanvas` (prop) and
+  to the pick accessors (§2.5). `StageCanvas` applies it in one `$effect`:
+  `stageClip.apply(resolvedSlice)` then `invalidate()`. GPU and CPU therefore always read one value.
+- **Store integration.** `createMaterialStore(options?: { clippingPlanes?: Plane[] })`; when given,
+  the store sets `material.clippingPlanes = options.clippingPlanes` — **the same array reference,
+  never a copy** — on every colour material (standard, basic, lambert, imported) as the **last** step
+  of construction, i.e. *after* `source.clone()` on the imported path (Verified 8: `clone()` copies
+  planes into a new array). Descriptors with `clip: false` get `null`. Depth and distance kinds are
+  untouched; `clipShadows` stays `false`. `provideRenderResources(options?)` forwards the option;
+  Preview calls it as today.
+- **No other clone.** Code outside the store must not `clone()` a store material (it would freeze a
+  detached copy of the planes). Test 5 asserts reference identity for every kind; stop condition 7
+  covers a consumer that clones.
+- **Renderer.** `stageCanvasRenderer` (Verified 18) sets `renderer.localClippingEnabled = true` at
+  creation, so the first Stage frame compiles with clipping and no frame ever recompiles for it.
+  `previewCanvasRenderer` is untouched. Plane **count** is constant (2) for the Canvas's life, so
+  entering, dragging and leaving a Slice **never recompiles a program** (Verified 8).
 - **Ground exemption.** `BasicMaterialDescriptor` and `LambertMaterialDescriptor` gain an optional
   `clip?: false` (part of the canonical key; absent ≡ today's key). `WorldEnvironment`'s
   `FLAT_GROUND` and `LIT_GROUND` set it, so a finite depth never removes the world ground. Nothing
   else sets it in SL1.
-- **Snapshots are as-built.** `renderStageSnapshot` gains an optional `asBuilt?: <T>(render: () => T) => T`
-  seam that the Stage passes as `stageClip.asBuilt`, which swaps the planes to no-ops around the
-  render and restores them. Overlay ink (plane, caps, ghost) is already outside the snapshot mask.
+- **Snapshots are as-built, exception-safe.** `renderStageSnapshot` gains an optional
+  `asBuilt?: <T>(render: () => T) => T` seam; `StageSnapshotRenderer` passes `stageClip.asBuilt`
+  from context. `asBuilt` is:
+
+  ```ts
+  asBuilt<T>(render: () => T): T {
+    if (depth++ === 0) { saved = planes.map((p) => p.clone()); planes.forEach(keepAllInPlace); }
+    try { return render(); }
+    finally { if (--depth === 0) { planes.forEach((p, i) => p.copy(saved[i])); saved = null; } }
+  }
+  ```
+
+  It mutates the shared `Plane` instances in place (never swaps the array, which every material
+  holds by reference), is re-entrant, restores on throw and rethrows, and never calls
+  `invalidate()` (the restored values are the ones already on screen; invalidating from inside a
+  render would schedule a loop). `apply()` called during `asBuilt` (not expected: rendering is
+  synchronous) updates `saved`, not the live planes, so the newest reading wins on exit. Overlay
+  ink (plane, caps, ghost) is already outside the snapshot mask.
 - **Lighting is unchanged — proven, not assumed.** Shadow maps ignore local clipping when
   `clipShadows` is false (Verified 8), so every caster above the cut still casts exactly as built,
   and the Slice never calls shadow invalidation. Light objects, light descriptors and the light store
@@ -232,17 +320,55 @@ sectionMeshes(meshes: readonly SectionInput[], plane: { normal: Vec3; constant: 
   `StageSelectionLayer` finds its contours: Walls (`'wall'`) and Layout objects. Openings need no
   input of their own: a cut through a door or window is a **gap** in its Wall's section, bounded by
   the jamb faces, which is "Openings are shown cut".
-- Broad phase: skip a mesh whose world bounds do not straddle the plane. Triangle–plane intersection
-  emits segments; endpoints are welded on a 1e-4 m grid; segments are chained **across all Walls at
-  once**, so a Junction whose per-Wall meshes are open at the interface still closes into one poché
-  loop that matches the 3D miter exactly. Curved Walls, arches and pointed heads are already
-  tessellated, so they need nothing special.
-- **Fill:** closed loops → `ShapeGeometry` (outer + holes by signed area and containment) at the cut
-  plane, opaque paper-tone ink, `polygonOffset` toward the camera. **Edge:** every loop and chain as
-  a `Line2`, Slice yellow `#f2d000`, 2 px; the selected subject's edges draw gold, 3 px.
+**Robust assembly (Decided).** Endpoint welding alone does not close contours: at a T Junction the
+stem's side faces end at points that lie on (not at the ends of) the through-Wall's split face; at
+X/Y Junctions keel faces meet several Walls; two coincident faces can run in opposite directions;
+and overlapping-not-joined Walls (A5's "overlaps, not joined") cross each other. Per-Wall meshes are
+open at their Junction ends by design (Verified 19). The assembly therefore works on the **group's
+union**, not on per-mesh chains, in seven fixed steps:
+
+1. **Groups.** One *structure* group for every Wall-owned mesh of the Layout (Walls, bridges, keels:
+   together they are the closed solid the builder resolved), and one group per Layout object. Groups
+   are assembled independently, so a plinth flush against a Wall never cancels the Wall's boundary.
+2. **Section plane offset.** The section is taken at `cutY − 1e-4` m while the GPU clips at `cutY`.
+   Sheet ticks snap to found surfaces (sills, heads, Wall tops), so a cut *exactly* on a horizontal
+   face is the common case; the offset makes every triangle either straddle the plane or not, with no
+   coplanar or vertex-on-plane degeneracy. (The 0.1 mm is invisible: the cap is drawn at `cutY`.)
+3. **Oriented segments.** Each straddling triangle yields one segment, oriented so the solid is on
+   its left seen from above (direction `planeNormal × triangleNormal`), tagged with its identity.
+4. **Weld** endpoints in a spatial hash with tolerance `τ = 5e-5` m (half the offset).
+5. **Split** every segment at every welded vertex lying within `τ` of its interior (T-vertices) and at
+   every proper crossing with another segment of the same group.
+6. **Net multiplicity.** Merge equal undirected edges, summing `+1` per segment in one direction and
+   `−1` in the other. Net `0` (two coincident opposite faces) is dropped; net `±k` is kept with
+   multiplicity.
+7. **Union boundary and loops.** For each net edge compute the nonzero winding on its right by a
+   horizontal probe ray against the group's net edges (bucketed by y-strip); winding on its left is
+   right + net. Keep the edge iff exactly one side has winding `0`, oriented with the solid side on
+   its left. Stitch kept edges into loops with Paper's rule (Verified 20: at a touching point turn
+   clockwise from the way back). Counter-clockwise loops are outers, clockwise loops are holes, each
+   hole owned by the smallest outer that contains it. The result is a set of simple,
+   non-overlapping polygons with holes → `ShapeGeometry` (earcut-safe by construction).
+
+**Validity is checked, not assumed.** Before step 7 every vertex must balance (net in = net out). A
+closed input always balances after steps 4–6; an imbalance means the input was genuinely open.
+
+- **Layout groups (Walls, Layout objects) must balance.** The test catalogue (test 3) covers every
+  Junction kind and degenerate cut the builder produces; a failure there is a defect and an SL1 stop
+  (stop condition 3), never a fallback. At runtime an imbalanced Layout group still draws its edges,
+  **and** reports a `CapAssemblyIssue { group, identity, unmatchedVertices }` through a dev
+  diagnostic (`console.error` once per group and geometry revision, plus a counter that QA reads
+  through `window.__STAGE_SLICE_DIAGNOSTICS__` in dev builds). It is never silent and never throws.
+- Nothing else is capped in SL1 (A-2), so no other input can degrade.
+
+**Display.**
+
+- **Fill:** the polygons from step 7 at `cutY`, opaque paper-tone ink, `polygonOffset` toward the
+  camera. **Edge:** every loop as a `Line2`, Slice yellow `#f2d000`, 2 px; edges whose identity is
+  the selected subject draw gold, 3 px. Identity per edge survives steps 5–7 (a split edge keeps its
+  parent's identity; a kept edge whose net came from two identities takes the one on its solid side).
   (Approved: "yellow-edged cap"; X2 stubs are paper with an *ink* edge, so they stay distinct.)
-- **Open chains** (a mesh that is not closed): edge only, no fill, one `console.warn` in dev naming the
-  identity. Never throw.
+- **Broad phase:** skip a mesh whose world bounds do not straddle the section plane.
 - Scene models (`'model'`, artwork) are clipped by the planes but **not capped** in SL1 (see A-2).
 
 **Why not the alternatives:** Paper's `cutWallBandsOf` bands disagree with the 3D miters at corners
@@ -266,8 +392,31 @@ future mesh (regions, roofs, gable tops) for free.
 - `StageSelectionLayer` and `StageLiftLayer` gain the same planes on their `LineMaterial`s
   (`clippingPlanes = stageClip.planes`), so a gold contour or a Lift outline above the cut is cut
   with its subject.
-- **Wholly hidden selected subject** (every vertex of its rendered meshes satisfies `sliceHides`):
-  `StageSliceLayer` draws its meshes as a ghost — the rendered `BufferGeometry` by reference, one
+- **Wholly hidden — the test (Decided).** "Every vertex is hidden" is wrong: a column or Wall
+  running from below `lowerY` to above `cutY` has all its vertices hidden (some above, some below)
+  yet crosses the visible band. The test is defined on the hidden pieces of §1.1, which are convex
+  and pairwise separated by visible space:
+
+  > A **triangle** is wholly hidden iff **all three vertices lie in the same hidden piece**. A
+  > **subject** is wholly hidden iff it has at least one drawable triangle and every drawable
+  > triangle is wholly hidden.
+
+  It is exact: a triangle is the convex hull of its vertices, so it lies inside a convex piece iff
+  its vertices do; a triangle with vertices in two different pieces is connected, and the pieces are
+  separated by visible space, so it crosses that space and is visible. The same rule holds for SL2's
+  two pieces (`extent ∩ nearSide`, `extent ∩ beyondDepth`), which are separated by the visible slab.
+  - *Drawable triangles* are those of the subject's meshes the Stage camera draws (layer 0, all
+    ancestors `visible`), in world space. A lifted lid (layer 3) is not drawable; Lift's own ghost
+    covers it.
+  - Broad phase: if the subject's world AABB lies inside one piece, it is hidden (exact); if the AABB
+    lies inside the visible band, it is visible (exact); otherwise run the triangle test.
+  - **Conservative fallback** for geometry whose CPU positions do not match what is drawn (skinned,
+    morph-targeted or instanced meshes): decide by the mesh's world AABB with the same rule, and when
+    the AABB is in no single piece, treat the subject as **hidden** (draw the ghost). An unneeded
+    ghost over a visible stub is cosmetic; a missing ghost leaves a selected subject invisible, which
+    breaks the acceptance.
+  - Cost: only the selected subject(s), on selection, reading, Sheet or geometry change.
+- **Wholly hidden selected subject:** `StageSliceLayer` draws its meshes as a ghost — the rendered `BufferGeometry` by reference, one
   `MeshBasicMaterial` (hover neutral, opacity 0.18, `depthWrite: false`, no clipping), overlay layer,
   `raycast = () => {}` — and `StageSelectionLayer` draws that subject's gold contour **unclipped**.
   Handles and Instrument knobs are editor ink and stay where they are, so the subject is edited in
@@ -320,7 +469,10 @@ at runtime). X2 stubs keep paper + ink edge; yellow stays Slice's.
 
 - **`layout.section@1`**, a new analytic evaluator in layout-core beside `layout.plan@1`:
   `evaluateLayoutSection(compiled, SectionParameters)` with `SectionParameters = { origin, along,
-  normal, halfLength, depthMeters (required, finite), datumMeters, sourceKindFilter, reveal }`. It
+  normal, halfLength, depthMeters, datumMeters, sourceKindFilter, reveal }`, where `depthMeters`
+  is the **projection depth**: required, finite, `> 0`, and always the drawn Slice's own
+  `depthMeters` (§1.1); the evaluator refuses a non-finite or non-positive value rather than
+  defaulting. It
   emits the same stream names (cut / projected / hidden / symbol), `PlanSourceRef`-shaped refs
   (`{sourceId, sourceKind, generationId, stream, subRef?}`) and reasoned membership, adding
   `outside-crop` for sources beyond the segment's extent (the code `layout.md` already lists). No
@@ -346,22 +498,32 @@ evaluation or sits beside it.
 
 **Decided.**
 
-- Reading arm `{ kind: 'drawn', start, end, hidden, depth }` in plan coordinates; `hidden` is the
-  side toward the Camera when drawn (in Plan: the side the creator's view looked from, i.e. the
-  segment's right as drawn — SL2 confirms in QA); **Flip** toggles it.
+- Reading arm `{ kind: 'drawn', start, end, hidden, depthMeters }` in plan coordinates; `hidden` is
+  the side toward the Camera when drawn (in Plan: the side the creator's view looked from, i.e. the
+  segment's right as drawn — SL2 confirms in QA); **Flip** toggles it and keeps `depthMeters`.
+- **Depth is horizontal and always finite** (§1.1): the visible slab runs from the cut plane
+  `depthMeters` along the visible-side normal, within the segment's extent. Its default at draw time
+  is the distance from the line to the far side of the Layout bounds on the visible side (so it shows
+  everything behind); the depth ray edits it, clamped to `[0.1 m, that distance]`. It has no
+  `to-floor` and never reads the Sheet. SL3 consumes this number unchanged.
 - Drawing reuses the Wall draft gesture's 45° soft snap and length tag (the same helpers, not a copy);
   the draft is a cobalt proposal until release, then the reading replaces any live one.
 - Grammar handles (Approved): end points redraw, the line moves, a depth ray sets depth. These are
   reading edits, not history entries.
-- Caps: the same `mesh-plane-section` with a vertical plane, then trimmed to the segment's extent in
-  2D. Picking: `sliceHides` for the drawn arm; Layout pick clamps through the same predicate.
+- Caps: the same `mesh-plane-section` assembly (§2.2 steps 1–7) with a vertical plane offset 1e-4 m
+  toward the visible side, then the polygons are intersected with the segment's extent in the
+  plane's 2D frame. Picking: `sliceHides` for the drawn arm; Layout pick clamps through the same
+  predicate. Ghosts: §2.4's rule with the two drawn pieces.
 
 **SL2 spike — clipping (Assumption A-1).** The hidden region is *within the extent* **and** (*near
 side* **or** *beyond depth*). three's native union / intersection groups cannot express
 `E ∩ (N ∪ B)`. Expected realization: the Stage store, which constructs every colour material, adds one
 `onBeforeCompile` chunk testing the drawn predicate from uniforms, with a constant
-`customProgramCacheKey` so it compiles once. The SL2 plan proves it on the four material kinds and
-the imported kind before any UI work; if it fails, SL2 stops.
+`customProgramCacheKey` so it compiles once. **Owner ruling: this spike is SL2's first
+implementation gate.** The SL2 plan proves it, before any UI work, on the four colour kinds and the
+imported kind with a rendered fixture extending test 14 (kept/discarded pixels, shadows unchanged,
+stable program count); if it fails, SL2 stops. The predicate keeps the same sign discipline as §2.1:
+it is written as "kept iff", and the fixture asserts both sides.
 
 **SL2 acceptance gate:** implementation-prs.md SL2 rows, plus: no program recompile when drawing,
 moving or flipping (renderer `info.programs` count stable), and shadows identical (test 3b-style).
@@ -370,8 +532,12 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 
 - Plane moves: uniforms only, zero recompiles (Verified 8).
 - Cap rebuild runs on reading, Sheet height or geometry revision change, **coalesced to one per
-  animation frame** during a Sheet drag. Budget: ≤ 4 ms for 50 k candidate triangles (an 11-Room
-  exhibition is well under that); a dev-only timing log above budget. Broad phase by world bounds.
+  animation frame** during a Sheet drag. Budget: ≤ 4 ms for the whole §2.2 assembly over 50 k
+  candidate triangles (an 11-Room exhibition is well under that); a dev-only timing log above
+  budget. Broad phase by world bounds; welding, T-vertex and crossing splits through a uniform grid;
+  winding probes bucketed by y-strip — no all-pairs pass. Exceeding 2× the budget on the 11-Room
+  fixture is stop condition 9, not a reason to drop steps.
+- Plane edits mutate the shared `Plane` instances in place; no material is touched per frame.
 - No per-frame work when nothing changes (on-demand rendering preserved).
 - At rest (no Slice) the two no-op planes cost one dot product per fragment per plane; QA checks frame
   time at rest is unchanged within noise.
@@ -395,13 +561,15 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 | Shadows and lighting unchanged under clipping | Proven | r187 `WebGLClipping.setState`, `getDepthMaterial` (Verified 8); test 6 |
 | No recompiles on enter / drag / exit | Proven | `numClippingPlanes` in program key, constant length (Verified 8); test 7 + QA |
 | Preview and visitors untouched | Proven | separate store and Canvas (Verified 6); boundary tests |
-| Snapshot as built | Proven by test | `asBuilt` seam, test 9 |
-| Caps exact at Junctions and curves | Proven by test | global chaining over built meshes; tests 3–4 |
-| **A-1** SL2 needs an injected predicate | Assumption | SL2 spike, first step of SL2 |
-| **A-2** Scene models clipped without caps read well enough | Assumption | owner QA in SL1; fallback is a back-face cap shader, its own PR |
-| **A-3** The yellow plane stays readable while editing below it | Assumption | owner QA; fallback: plane drawn only while the Slice tool is armed, outline otherwise |
-| **A-4** Escape order (§9 step 9) | Assumption against PLATE's literal ladder | owner review on this PR |
-| **A-5** `clip: false` on two T2 descriptors is additive only | Assumption | T2 owner notified on the PR; no approval gate unless T2 objects |
+| Plane signs keep `lowerY ≤ y ≤ cutY` | Proven from source; proven on GPU by test | r187 chunks (Verified 8); test 1b (CPU mirror), test 14 (rendered) |
+| Snapshot as built, restored on throw | Proven by test | `asBuilt` seam, test 9 |
+| Ghost iff wholly hidden, including band-crossing geometry | Proven (convexity argument §2.4) and by test | test 15 |
+| Caps closed at every Junction kind and degenerate cut | Proven by test over the builder's output | §2.2 assembly; test 3 catalogue, zero issues required |
+| **A-1** SL2 needs an injected predicate | Assumption — **owner: SL2's first implementation gate** | SL2 spike with a rendered fixture |
+| **A-2** Scene models clipped without caps | **Accepted by owner** for SL1, subject to browser QA | QA 11; fallback is a back-face cap shader, its own PR |
+| **A-3** Persistent yellow plane while editing | **Accepted provisionally** | QA 12; if readability fails, outline-only when the Slice tool is not armed (pre-approved fallback, no new ruling needed) |
+| **A-4** Escape order `… selection → Lift → Slice` | **Accepted by owner** | test 12 |
+| **A-5** Additive T2 store option and `clip: false` | **Accepted by owner**, no separate approval unless a genuine contract conflict emerges | stop condition 2 defines "genuine conflict" |
 
 ## 9. SL1 — detailed implementation plan
 
@@ -411,9 +579,12 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 |---|---|
 | `apps/editor/src/lib/authoring/stage/slice/slice-cut.ts` | Types, `resolveSlice`, `sliceHides`, `planOverridesOf`, depth menu items |
 | `apps/editor/src/lib/authoring/stage/slice/slice-reading.svelte.ts` | The one live reading (module singleton, like `interior-lift-store`) |
-| `apps/editor/src/lib/authoring/stage/slice/stage-clip.ts` | Shared plane array, `setLevel` / `setNone` / `asBuilt` |
-| `apps/editor/src/lib/authoring/stage/slice/mesh-plane-section.ts` | Pure plane–mesh section with global chaining and loop fill input |
+| `apps/editor/src/lib/authoring/stage/slice/stage-clip.ts` | `createStageClip()`: shared plane array, `keepBelow` / `keepAbove` / `keepAll`, `apply(resolved)`, `asBuilt`; `setStageClip` / `useStageClip` context |
+| `apps/editor/src/lib/authoring/stage/slice/mesh-plane-section.ts` | Pure plane–mesh section and the §2.2 seven-step assembly, with `CapAssemblyIssue` |
+| `apps/editor/src/lib/authoring/stage/slice/slice-ghost.ts` | Pure wholly-hidden classification (§2.4) |
 | `apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte` | Yellow plane, depth outline, caps, ghost (editor ink) |
+| `apps/editor/perf/regressions/stage-clip-entry.ts` | Browser-only rendered fixture for test 14 (pattern of `renderer-lifetime-entry.ts`) |
+| `apps/editor/perf/flows/stage-clip.spec.ts` | Test 14, registered in `perf/playwright.config.ts` `testMatch` |
 
 ### Edited files
 
@@ -422,8 +593,9 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 | `render/resources/material-store.ts`, `render-resources.ts` | `clippingPlanes` option; skip `clip: false` |
 | `render/resources/material-descriptor.ts` | optional `clip?: false` on basic / lambert, in the key |
 | `render/WorldEnvironment.svelte` | ground descriptors `clip: false` |
-| `authoring/stage/shell/StageCanvas.svelte` | provide clip option, `localClippingEnabled`, mount `StageSliceLayer`, hide neutral cue under Slice, pass `asBuilt` |
-| `authoring/stage/shell/StageSnapshotRenderer.svelte` | `asBuilt` seam |
+| `render/canvas-renderers.ts` | `stageCanvasRenderer` sets `localClippingEnabled = true` |
+| `authoring/stage/shell/StageCanvas.svelte` | own the `StageClip` instance, provide it by context and to the store option, apply `resolvedSlice`, mount `StageSliceLayer`, hide neutral cue under Slice |
+| `authoring/stage/shell/StageSnapshotRenderer.svelte` | `asBuilt` seam from context |
 | `authoring/stage/shell/StageSelectionLayer.svelte`, `StageLiftLayer.svelte` | clipping on contour/outline materials; unclipped contour for a ghosted subject |
 | `authoring/layout/plan-pick-provider.ts` | `slice` accessor: clamp, cap surfaces, filters |
 | `authoring/scene/scene-pick-source.ts` | optional `hiddenAt` filter |
@@ -439,19 +611,24 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 
 ### Ordered steps
 
-1. **Pure core.** `slice-cut.ts` with tests 1–2. No UI.
-2. **Mesh section.** `mesh-plane-section.ts` with tests 3–4 over real `IndexedWallMesh` output
-   (straight, L-corner, T-junction, curved, arched opening, door gap).
-3. **Clip seam.** Store option + descriptor flag + `stage-clip.ts` + ground exemption; tests 5–7.
-   Wire `StageCanvas` (option, `localClippingEnabled`) with planes still no-op. **Checkpoint:** the
-   Stage at rest is unchanged (QA 1).
+1. **Pure core.** `slice-cut.ts` (types, hidden pieces, `sliceHides`, depth items) and
+   `slice-ghost.ts`; tests 1, 2, 15. No UI.
+2. **Mesh section.** `mesh-plane-section.ts` with the §2.2 assembly; tests 3–4 over real builder
+   output. **Gate:** the whole test 3 catalogue assembles with zero `CapAssemblyIssue`s before any
+   rendering work starts (else stop condition 3).
+3. **Clip seam.** `stage-clip.ts` (sign helpers, `apply`, re-entrant `asBuilt`, context), store
+   option + descriptor flag + ground exemption, `stageCanvasRenderer` clipping flag; tests 1b, 5–7, 9.
+   Then the rendered fixture, test 14, run locally against real WebGL. **Gate:** test 14 green before
+   step 5 (else stop condition 8). Wire `StageCanvas` (instance, context, store option) with planes
+   still no-op. **Checkpoint:** the Stage at rest is unchanged (QA 1).
 4. **Reading + dock.** `slice-reading.svelte.ts`; Slice host key replaces `unavailable-slice`;
    palette with the single item **Level** (checked); arming Slice with no reading creates
    `{ kind: 'level', depth: to-floor }` at once; choosing Level again replaces it. Remove the
    toolbar Axis/Offset stub and the drafting-control button. A press on the Stage with Slice armed
    refuses with **"Drag the Height Sheet to move the cut"** and changes nothing.
-5. **Render.** Route resolves the reading with the Sheet (`subscribe('slice', …)`) → `stageClip.setLevel`
-   + `invalidate`. `StageSliceLayer`: plane, depth outline, caps (rAF-coalesced), ghost.
+5. **Render.** Route derives `resolvedSlice` with the Sheet (`subscribe('slice', …)`) and passes it to
+   `StageCanvas`, whose effect calls `stageClip.apply` + `invalidate`. `StageSliceLayer`: plane,
+   depth outline, caps (rAF-coalesced), ghost (via `slice-ghost.ts`), dev diagnostics.
 6. **Pick.** `planOverridesOf` into `setPlanParameters`; `plan-pick-provider` slice accessor;
    `scene-pick-source` filter; tests 8, 10.
 7. **Selection/Lift ink clipping and ghost contour.** Test 11.
@@ -469,29 +646,72 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 
 ### Tests
 
-1. `slice-cut.test.ts` — resolve (datum offset, to-floor, distance, `lowerY ≤ datum` → null),
-   `sliceHides` boundaries with eps, `planOverridesOf`, depth items exclude ticks at/above the cut.
+1. `slice-cut.test.ts` — resolve (datum offset, to-floor, below, `lowerY ≤ datum` → null), hidden
+   pieces, `sliceHides` boundaries with eps (band inclusive), `planOverridesOf` (to-floor →
+   `PLAN_DEFAULT_DEPTH_METERS`), depth items exclude ticks at/above the cut; a drawn arm cannot be
+   typed with `to-floor` (type test).
+   - **1b. Sign mirror.** Reads r187's `clipping_planes_vertex` / `clipping_planes_fragment` chunk
+     text and asserts `vClipPosition = - mvPosition.xyz` and
+     `dot( vClipPosition, plane.xyz ) > plane.w` are present (a three upgrade that changes the rule
+     fails here). Then, for `stage-clip`'s planes after `apply({ cutY: 1.2, lowerY: 0.5 })`, evaluates
+     the same expression on CPU in view space (`projectPlanes` math with a non-identity camera) for
+     points at y = 0.49, 0.5, 1.2, 1.21 and asserts discarded / kept / kept / discarded; and kept for
+     every y under `keepAll`.
 2. `slice-reading.test.ts` — set replaces, putBack/clear, no history participant, never serialized
    (store absent from project serialization fixtures).
-3. `mesh-plane-section.test.ts` — box Wall → one rectangle loop; L and T Junctions → one merged loop
-   whose vertices equal the built miter; curved Wall → loop on the tessellation; door gap → two loops;
-   arch cut through its head → loop with the arch's chord; open mesh → chain, no throw.
-4. Identity: every output edge carries its source identity; selected identity edges isolated.
-5. `material-store` — option assigns the shared array to colour kinds only; `clip: false` skips and
-   keys separately; no option → `clippingPlanes` empty (Preview path unchanged).
+3. `mesh-plane-section.test.ts` — **catalogue over real builder output**, each asserting **zero**
+   `CapAssemblyIssue`s, simple non-overlapping output polygons, and area equal to the expected
+   analytic area within 1e-6 m²:
+   box Wall → one rectangle; closed ring Room → one outer + one hole; L miter and bevel (with bridge);
+   T Junction (stem side endpoints on the through face interior); X and Y Junctions with keels;
+   straight-to-curved continuation; curved Wall → loop on the tessellation; door at a Junction; door
+   gap mid-Wall → gap in the loop; arch cut through its head; cut **exactly** at a sill, a head and a
+   Wall top (offset rule); two **overlapping, not joined** Walls (crossing loops → one union);
+   duplicated coincident Wall (same direction, net 2) and two coincident opposite faces (net 0);
+   a plinth flush against a Wall (separate groups, both boundaries kept). Plus a deliberately open
+   mesh → edges drawn, one `CapAssemblyIssue`, no throw.
+4. Identity: every output edge carries its source identity through split and merge; the selected
+   identity's edges are isolated for gold.
+5. `material-store` — option assigns **the same array reference** to every colour kind including
+   `imported` (after `clone()`); `clip: false` gets `null` and keys separately; depth/distance kinds
+   untouched; no option → `clippingPlanes` null (Preview path unchanged).
 6. **Shadow contract** — fixture as X1 test 3b (two Rooms, Directional + Spot via the light store):
    with a Slice on, every material has `clipShadows === false`; the light store and every
    `castShadow` / `receiveShadow` / layer is identical before, during and after. Reads r187
    `WebGLClipping.js` and asserts the `renderingShadows && !clipShadows` rule text is present.
-7. **No recompile** — plane array length is 2 at rest and under any reading; `setLevel` mutates the
-   same `Plane` instances.
+7. **No recompile** — plane array length is 2 at rest and under any reading; `apply` and `asBuilt`
+   mutate the same `Plane` instances and never replace the array.
 8. `plan-pick-provider` — clamped faces, cap surface hit at `cutY`, hidden flats and openings dropped,
    depth band respected, no change without a slice.
-9. Snapshot — `renderStageSnapshot` with a Slice on renders with no-op planes and restores them.
+9. `asBuilt` — planes are no-ops inside the callback and restored after it; restored and rethrown
+   when the callback throws; nested calls restore only at the outermost; return value passes
+   through; `apply` during `asBuilt` wins on exit; no `invalidate` is called. `renderStageSnapshot`
+   with a Slice on calls the seam.
 10. `scene-pick-source` — `hiddenAt` skips to the next hit; absent filter behaves as today.
 11. Selection layer — clipped contour normally; unclipped for a wholly hidden selected subject.
 12. Keyboard — ladder order with palette, tool, selection, Lift and Slice combinations.
 13. Boundary suites unchanged and green: visitor/public/preview surface, material factory (new entry).
+14. **Rendered regression (real WebGL)** — `perf/flows/stage-clip.spec.ts` + its entry, built like
+    `renderer-lifetime` (Verified 20), using the real `createMaterialStore` with a `createStageClip`
+    instance and a real `stageCanvasRenderer`-equivalent renderer (`localClippingEnabled`). An
+    orthographic side camera looks at a column of horizontal colour bands (one per 0.25 m, from
+    −0.5 to 3 m) made with a standard, a lambert, a basic and an imported-clone material, plus the
+    `clip: false` ground. Assertions by pixel row:
+    - rest: every band drawn, and pixels identical to the same scene with no clip option;
+    - `cutY = 1.2`, to-floor: bands above 1.2 absent, all below present, ground present;
+    - `cutY = 1.2, lowerY = 0.5`: only the band rows within `[0.5, 1.2]` present; ground present;
+    - shadows: a `DirectionalLight` with a shadow map and a caster box spanning 1.0–2.5 m over a
+      receiver plane; the receiver's shadow pixels are identical with the Slice on and off;
+    - `renderer.info.programs.length` is unchanged across rest → slice → move → put back;
+    - `asBuilt(render)` under a Slice yields the rest image.
+    Run locally with the perf Playwright config; the output is attached to the PR. It is not a CI job
+    (the harness is owner-run, Verified 20); **the owner's review required it**, which is the
+    authorization for this one focused fixture.
+15. `slice-ghost.test.ts` — a Wall spanning `lowerY − 1` to `cutY + 1` with vertices only at its
+    ends is **visible**; a ceiling light above `cutY` is hidden; an object straddling `cutY` is
+    visible; an object wholly below `lowerY` is hidden; a triangle with one vertex above and two
+    below is visible; AABB fast paths agree with the triangle test; a skinned mesh uses the AABB
+    fallback and errs toward hidden; a subject with no drawable triangle is not ghosted.
 
 ### Browser QA (focused, not a full capture)
 
@@ -506,6 +726,11 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 8. Lighting: sun and spots throw the same shadows with and without the Slice (toggle and compare).
 9. Escape ladder; Put back; Plan ↔ 3D; Preview round trip; Lift together with Slice.
 10. A thumbnail/snapshot taken during the Slice is as built.
+11. (A-2) A Scene model crossing the cut: clipped, uncapped; judge legibility and report.
+12. (A-3) Edit for a minute below the persistent yellow plane; if it washes out the work, apply the
+    pre-approved outline-only fallback and record it on the PR.
+13. Cut exactly at a sill, a head and a Wall top (Sheet ticks): caps closed, no flicker; dev
+    diagnostics counter reads 0 across the 11-Room fixture and the Junction-heavy fixture.
 
 ### Acceptance (implementation-prs.md SL1, with checks)
 
@@ -513,12 +738,12 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 |---|---|
 | Plane appears at the Sheet height | QA 2 |
 | Dragging moves it and snaps | QA 3 |
-| Nothing above is drawn | QA 2; tests 5, 7 |
-| Cut Walls and Openings show a cap | QA 2; tests 3–4 |
+| Nothing above is drawn | QA 2; tests 1b, 5, 7, **14** |
+| Cut Walls and Openings show a cap | QA 2, 13; tests 3–4 |
 | Everything below stays selectable and editable | QA 5, 7; tests 8, 10 |
-| An Index-chosen hidden subject draws as a ghost | QA 6; test 11 |
+| An Index-chosen hidden subject draws as a ghost | QA 6; tests 11, 15 |
 | Put back and Escape remove the cut | QA 9; test 12 |
-| Lighting is unchanged | QA 8; test 6 |
+| Lighting is unchanged | QA 8; tests 6, **14** |
 | Session only; never in Preview, snapshot, release | QA 9–10; tests 2, 9, 13 |
 
 ### Refusals (with words)
@@ -531,10 +756,13 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 
 - **T2 churn on `material-store.ts` / descriptors** (T2 work is in flight): the edit is small and
   additive; rebase on conflict, never reshape T2's API.
-- **Cap cost on large or imported content:** caps are Layout-only in SL1; budget and coalescing §6.
-- **Non-closed Wall meshes in unusual Junctions:** edge-only fallback; tests 3 cover known shapes.
-- **Readability of yellow plane + gold selection on yellow edges:** A-3, owner QA.
-- **Escape order:** A-4, owner review.
+- **Cap cost:** the robust assembly costs more than chaining; budget, grid and coalescing §6, stop
+  condition 9.
+- **A Junction shape outside the test 3 catalogue** (a future builder case) could still produce an
+  open group: it is reported loudly (§2.2), never silent, and becomes a catalogue case.
+- **Gold on yellow edge contrast** for a selected Wall's cap: QA 6; gold width 3 px over 2 px yellow.
+- **The rendered fixture is owner-run, not CI:** test 1b guards the sign in every lane; test 14 is
+  re-run by any PR that touches `stage-clip.ts`, the store option or a three upgrade.
 
 ### Stop conditions
 
@@ -542,13 +770,22 @@ Stop and report (do not work around) if:
 
 1. three's clipping does not behave as Verified 8 in the Stage (shadows change, or programs recompile
    on plane moves).
-2. The ground exemption needs anything beyond `clip: false` on two descriptors, or T2 objects.
-3. Caps cannot be made exact at Junctions from the built meshes without changing the Wall builder.
+2. A **genuine T2 contract conflict**: the store option or `clip: false` would change an existing
+   descriptor key, a material T2 constructs, Preview, or a T2 test's expectations; or the ground
+   exemption needs more than `clip: false` on two descriptors. (Merge conflicts with in-flight T2
+   work are not a conflict: rebase.)
+3. Any test 3 catalogue case leaves a `CapAssemblyIssue` or a wrong area, or closing it would require
+   changing the Wall builder.
 4. The Height Sheet knob is not usable while Slice is armed, or `setPlanParameters` depth does not
    flow into Layout membership.
 5. Any requirement would need persistence, history, a format change, a new dock slot, shortcut or
    pill component, or a change visible in Preview.
 6. The work starts needing SL2/SL3 code (drawn cuts, section evaluation).
+7. Any code outside the material store clones a store material, or serializes one (`toJSON`,
+   exporters): the shared plane reference would be lost or leaked.
+8. Test 14 contradicts §2.1 (a sign, the ground, shadows, program count or `asBuilt`), or cannot run
+   on the local GPU stack.
+9. The §2.2 assembly exceeds 2× its budget on the 11-Room fixture.
 
 ## Implementation handoff prompt
 
@@ -557,4 +794,27 @@ Stop and report (do not work around) if:
 > current; re-check each against the code when you touch it and stop on any stop condition. Do not
 > implement SL2 or SL3. Commit per step with `feat(layout.slice): …` / `test(layout.slice): …`
 > messages and no agent footer. Run focused tests per step and the full editor lane before asking for
-> review; do focused browser QA §9 items 1–10 and attach evidence to the PR.
+> review; run the rendered fixture (test 14) locally with the perf Playwright config, do focused
+> browser QA §9 items 1–13 and attach evidence to the PR. Revision 2 of the plan is authoritative:
+> plane signs §2.1, cap assembly §2.2, ghost rule §2.4, depth semantics §1.1.
+
+## Revision log
+
+**Rev 2 — peer review on #362 (2026-11-16).** Findings independently verified against three r187
+source and the builder:
+
+1. *Accepted.* Clipping signs were reversed (`n·p + c < 0` is discarded). §2.1 now gives the
+   kept-inequality table, sign helpers, a CPU sign mirror (1b) and a real-WebGL fixture (14).
+2. *Accepted.* "Every vertex hidden" misclassified band-crossing geometry. §2.4 defines the exact
+   same-convex-piece rule, with a conservative AABB fallback that errs toward drawing the ghost.
+3. *Accepted.* Welding alone cannot close T/X Junctions, coincident or overlapping boundaries.
+   §2.2 specifies groups, a section offset for on-plane cuts, T-vertex and crossing splits, net
+   multiplicity, nonzero-winding union and Paper's stitching rule; Layout groups must balance and
+   an imbalance is loud.
+4. *Accepted.* The `StageClip` instance is owned by `StageCanvas`, shared by context, given to the
+   store by reference after any clone, enabled in the Stage renderer factory, with a re-entrant,
+   exception-safe `asBuilt`.
+5. *Accepted.* SL1's `to-floor` (no lower bound; vertical), SL2's finite horizontal inspection depth
+   and SL3's required finite projection depth are now distinct types and rules.
+
+Owner rulings recorded in §8: A-2, A-3 (provisional), A-4, A-5 accepted; A-1 is SL2's first gate.
