@@ -5,6 +5,7 @@ import type {
 	CompiledQueryPoint,
 	CompiledQueryPolygon,
 	CompiledQuerySpan,
+	CompiledRoom,
 	LayoutBounds2
 } from './layout-geometry-types';
 import { pointInPolygon } from './layout-geometry-objects';
@@ -79,4 +80,75 @@ export function findPolygonContaining(point: LayoutVec2, polygons: readonly Comp
 /** Flat compiled query records exposed for consumers + a future spatial index. */
 export function compiledQueryGeometry(geometry: CompiledLayoutGeometry) {
 	return geometry.queries;
+}
+
+/** Which overheads a session reading lifts: one Space's, or every Space's. */
+export type OverheadScope =
+	| { readonly kind: 'all' }
+	| { readonly kind: 'space'; readonly roomId: string };
+
+/**
+ * The stable identity of one overhead source.
+ *
+ * `room-lid` is today's only kind: the generated ceiling a closed Room derives
+ * from its boundary Walls. V1b adds an authored-region kind beside it; nothing
+ * that reads a source's subject, outline or elevation changes then, because all
+ * three are stated here rather than by the reader.
+ */
+export type OverheadSourceKey = { readonly kind: 'room-lid'; readonly roomId: string };
+
+export type OverheadSource = {
+	readonly key: OverheadSourceKey;
+	/** The selectable subject that owns this overhead. */
+	readonly subject: { readonly kind: 'room'; readonly id: string };
+	/** Closed plan loop, world XZ, no repeated last point. */
+	readonly outline: readonly LayoutVec2[];
+	/** World Y of the overhead's underside. */
+	readonly elevation: number;
+};
+
+/**
+ * The overheads a session reading may lift, for one scope.
+ *
+ * **One authority.** A lifted overhead is whatever this function names, never
+ * whatever a consumer decides by reading `CompiledRoom.ceilingElevation` itself,
+ * so V1's authored regions and SP1's open-to-sky Rooms join here — and only
+ * here. Layout owns the geometry and this representation of it; the shell owns
+ * only the temporary reading that asks for a scope.
+ *
+ * Pure: no caching, no Three objects, and the outline is a copy, so a caller
+ * that transforms it cannot write the compiled geometry.
+ */
+export function overheadSourcesOf(
+	compiled: CompiledLayoutGeometry,
+	scope: OverheadScope
+): readonly OverheadSource[] {
+	const rooms =
+		scope.kind === 'space'
+			? compiled.rooms.filter((room) => room.roomId === scope.roomId)
+			: compiled.rooms;
+	const sources: OverheadSource[] = [];
+	for (const room of rooms) {
+		const source = roomLidSource(room);
+		if (source !== null) sources.push(source);
+	}
+	// Deterministic order: callers and tests address sources by position, and a
+	// compile that reorders its Room list must not reorder the lifted set.
+	return sources.sort((left, right) =>
+		left.key.roomId < right.key.roomId ? -1 : left.key.roomId > right.key.roomId ? 1 : 0
+	);
+}
+
+/** One compiled Room's generated lid, or `null` when it has no overhead to lift. */
+function roomLidSource(room: CompiledRoom): OverheadSource | null {
+	// A Room with a degenerately small ceiling ring encloses no plan area, and an
+	// elevation the compiler could not resolve is not a place to draw an outline.
+	if (room.ceilingPolygon.length < 3) return null;
+	if (!Number.isFinite(room.ceilingElevation)) return null;
+	return {
+		key: { kind: 'room-lid', roomId: room.roomId },
+		subject: { kind: 'room', id: room.roomId },
+		outline: room.ceilingPolygon.map((point): LayoutVec2 => [point[0], point[1]]),
+		elevation: room.ceilingElevation
+	};
 }
