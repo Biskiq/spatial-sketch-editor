@@ -13,7 +13,8 @@
  */
 import {
 	SCENE_ENVIRONMENT_SET_KIND,
-	type SceneEnvironmentPreset
+	type SceneEnvironmentChoice,
+	type SceneSky
 } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import type {
@@ -64,8 +65,8 @@ const LIGHT_SHELF: LookLibraryShelf = {
 };
 
 export type LookAuthoringHost = {
-	/** The World's admitted environment preset; `paper` until one is saved. */
-	readonly environment: () => SceneEnvironmentPreset;
+	/** The World's admitted Sky; `null` is Paper, until one is saved. */
+	readonly sky: () => SceneSky | null;
 	/** The route's one adapter-services slot; null before the Stage is admitted. */
 	readonly services: () => StageAdapterServices | null;
 	/** The route's one notice line. */
@@ -76,14 +77,16 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 	let editOnPaper = $state(false);
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
 
-	const environment = $derived(host.environment());
-	/** The environment the Stage and visitor preview actually render. */
-	const stageEnvironment = $derived(editOnPaper ? 'paper' : environment);
+	const sky = $derived(host.sky());
+	/** The Sky the Stage and visitor preview actually render; `null` is Paper. */
+	const stageSky = $derived(editOnPaper ? null : sky);
 	const busy = $derived(environmentWrite !== null && environmentWrite === host.services());
 
-	async function setEnvironment(preset: SceneEnvironmentPreset): Promise<void> {
+	async function setEnvironment(preset: SceneEnvironmentChoice): Promise<void> {
 		const services = host.services();
-		if (services === null || environmentWrite === services || preset === environment) return;
+		// The current preset is deliberately allowed: on an edited Sky it is Reset,
+		// and the planner answers `no-change` when the Sky already equals its start.
+		if (services === null || environmentWrite === services) return;
 		environmentWrite = services;
 		try {
 			const outcome = await services.authoring.accept({
@@ -96,7 +99,10 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 				allocatedIds: [],
 				capturedInputs: []
 			});
-			if (host.services() === services && outcome.kind === 'refused') host.onNotice(outcome.message);
+			// `no-change` (the tile the World already shows) stays silent, as before Scene 8.
+			if (host.services() === services && outcome.kind === 'refused' && outcome.code !== 'no-change') {
+				host.onNotice(outcome.message);
+			}
 		} finally {
 			if (environmentWrite === services) environmentWrite = null;
 		}
@@ -136,11 +142,11 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 	}
 
 	return {
-		get environment() {
-			return environment;
+		get sky() {
+			return sky;
 		},
-		get stageEnvironment() {
-			return stageEnvironment;
+		get stageSky() {
+			return stageSky;
 		},
 		get editOnPaper() {
 			return editOnPaper;

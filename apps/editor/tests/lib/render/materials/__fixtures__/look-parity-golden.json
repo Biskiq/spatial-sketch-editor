@@ -1,0 +1,520 @@
+{
+  "version": 1,
+  "capturedFrom": "Scene 7 main (17d86b00), before the Scene 8 look schema",
+  "looks": [
+    {
+      "case": "catalogue:plaster-warm",
+      "material": {
+        "kind": "standard",
+        "color": "#c4b4a0",
+        "roughness": 0.92,
+        "metalness": 0.02,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v1fab86",
+        "slotUris": {
+          "map": "/textures/plaster-warm/map.png",
+          "roughnessMap": "/textures/plaster-warm/roughness.png"
+        },
+        "repeat": [
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "case": "catalogue:wood-walnut",
+      "material": {
+        "kind": "standard",
+        "color": "#3d2a1a",
+        "roughness": 0.78,
+        "metalness": 0.04,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "vbfd390",
+        "slotUris": {
+          "map": "/textures/wood-walnut/map.png",
+          "roughnessMap": "/textures/wood-walnut/roughness.png"
+        },
+        "repeat": [
+          2.3333333333333335,
+          0.8333333333333334
+        ]
+      }
+    },
+    {
+      "case": "catalogue:brass-aged",
+      "material": {
+        "kind": "standard",
+        "color": "#d6b35f",
+        "roughness": 0.45,
+        "metalness": 0.85,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "ve4acf4",
+        "slotUris": {
+          "map": "/textures/brass-aged/map.png"
+        },
+        "repeat": [
+          4,
+          4
+        ]
+      }
+    },
+    {
+      "case": "catalogue:marble-light",
+      "material": {
+        "kind": "standard",
+        "color": "#e8e4dc",
+        "roughness": 0.35,
+        "metalness": 0.08,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    {
+      "case": "catalogue:velvet-dark",
+      "material": {
+        "kind": "standard",
+        "color": "#3a1822",
+        "roughness": 0.95,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    {
+      "case": "catalogue:paper-aged",
+      "material": {
+        "kind": "standard",
+        "color": "#e2d2b0",
+        "roughness": 0.9,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    {
+      "case": "instance-scalars:plaster-warm",
+      "material": {
+        "kind": "standard",
+        "color": "#c4b4a0",
+        "roughness": 0.35,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "vab356b",
+        "slotUris": {
+          "map": "/textures/plaster-warm/map.png",
+          "roughnessMap": "/textures/plaster-warm/roughness.png"
+        },
+        "repeat": [
+          0.75,
+          0.75
+        ]
+      }
+    },
+    {
+      "case": "instance-scalars:wood-walnut",
+      "material": {
+        "kind": "standard",
+        "color": "#3d2a1a",
+        "roughness": 0.35,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v72213b",
+        "slotUris": {
+          "map": "/textures/wood-walnut/map.png",
+          "roughnessMap": "/textures/wood-walnut/roughness.png"
+        },
+        "repeat": [
+          1.5,
+          2.6666666666666665
+        ]
+      }
+    },
+    {
+      "case": "instance-scalars:brass-aged",
+      "material": {
+        "kind": "standard",
+        "color": "#d6b35f",
+        "roughness": 0.35,
+        "metalness": 0.6,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v97b2ae",
+        "slotUris": {
+          "map": "/textures/brass-aged/map.png"
+        },
+        "repeat": [
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "case": "instance-scalars:marble-light",
+      "material": {
+        "kind": "standard",
+        "color": "#e8e4dc",
+        "roughness": 0.35,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    {
+      "case": "instance-scalars:velvet-dark",
+      "material": {
+        "kind": "standard",
+        "color": "#3a1822",
+        "roughness": 0.35,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    {
+      "case": "instance-scalars:paper-aged",
+      "material": {
+        "kind": "standard",
+        "color": "#e2d2b0",
+        "roughness": 0.35,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    {
+      "case": "instance-map:plaster-warm",
+      "material": {
+        "kind": "standard",
+        "color": "#c4b4a0",
+        "roughness": 0.92,
+        "metalness": 0.02,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v89dbde",
+        "slotUris": {
+          "map": "/textures/wall-detail.webp",
+          "roughnessMap": "/textures/plaster-warm/roughness.png"
+        },
+        "repeat": [
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "case": "instance-map:wood-walnut",
+      "material": {
+        "kind": "standard",
+        "color": "#3d2a1a",
+        "roughness": 0.78,
+        "metalness": 0.04,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "vcc1af3",
+        "slotUris": {
+          "map": "/textures/wall-detail.webp",
+          "roughnessMap": "/textures/wood-walnut/roughness.png"
+        },
+        "repeat": [
+          0.5,
+          2
+        ]
+      }
+    },
+    {
+      "case": "instance-map:brass-aged",
+      "material": {
+        "kind": "standard",
+        "color": "#d6b35f",
+        "roughness": 0.45,
+        "metalness": 0.85,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "va51f1d",
+        "slotUris": {
+          "map": "/textures/wall-detail.webp"
+        },
+        "repeat": [
+          4,
+          4
+        ]
+      }
+    },
+    {
+      "case": "instance-map:marble-light",
+      "material": {
+        "kind": "standard",
+        "color": "#e8e4dc",
+        "roughness": 0.35,
+        "metalness": 0.08,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v6f46ef",
+        "slotUris": {
+          "map": "/textures/wall-detail.webp"
+        },
+        "repeat": [
+          0.625,
+          2.5
+        ]
+      }
+    },
+    {
+      "case": "instance-map:velvet-dark",
+      "material": {
+        "kind": "standard",
+        "color": "#3a1822",
+        "roughness": 0.95,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "vf447ef",
+        "slotUris": {
+          "map": "/textures/wall-detail.webp"
+        },
+        "repeat": [
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "case": "instance-map:paper-aged",
+      "material": {
+        "kind": "standard",
+        "color": "#e2d2b0",
+        "roughness": 0.9,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "vf44531",
+        "slotUris": {
+          "map": "/textures/wall-detail.webp"
+        },
+        "repeat": [
+          1.875,
+          7.5
+        ]
+      }
+    }
+  ],
+  "suns": [
+    {
+      "case": "visit:paper",
+      "descriptor": null
+    },
+    {
+      "case": "stage:paper",
+      "descriptor": null
+    },
+    {
+      "case": "visit:daylight",
+      "descriptor": {
+        "kind": "sun",
+        "color": "#fff6df",
+        "intensity": 1.9,
+        "position": [
+          5.9396567646471885,
+          16.970447898991967,
+          9.833746344445583
+        ],
+        "target": [
+          0,
+          0,
+          0.5
+        ],
+        "shadow": {
+          "mapSize": 2048,
+          "bias": -0.0004,
+          "normalBias": 0.02,
+          "radius": 3,
+          "camera": {
+            "left": -8.103277807866851,
+            "right": 8.103277807866851,
+            "top": 8.103277807866851,
+            "bottom": -8.103277807866851,
+            "near": 0.5,
+            "far": 48.6196668472011
+          }
+        }
+      }
+    },
+    {
+      "case": "stage:daylight",
+      "descriptor": {
+        "kind": "sun",
+        "color": "#fff6df",
+        "intensity": 1.9,
+        "position": [
+          5.24375503499782,
+          16.232157242850917,
+          8.740186483568005
+        ],
+        "target": [
+          0,
+          1.25,
+          0.5
+        ],
+        "shadow": {
+          "mapSize": 2048,
+          "bias": -0.0004,
+          "normalBias": 0.05,
+          "radius": 3,
+          "camera": {
+            "left": -7.153882032022076,
+            "right": 7.153882032022076,
+            "top": 7.153882032022076,
+            "bottom": -7.153882032022076,
+            "near": 0.5,
+            "far": 42.92329219213246
+          }
+        }
+      }
+    },
+    {
+      "case": "visit:golden-hour",
+      "descriptor": {
+        "kind": "sun",
+        "color": "#ffc985",
+        "intensity": 2.1,
+        "position": [
+          -18.001773206964113,
+          7.560744746924927,
+          5.900531962089233
+        ],
+        "target": [
+          0,
+          0,
+          0.5
+        ],
+        "shadow": {
+          "mapSize": 2048,
+          "bias": -0.0004,
+          "normalBias": 0.02,
+          "radius": 3,
+          "camera": {
+            "left": -8.103277807866851,
+            "right": 8.103277807866851,
+            "top": 8.103277807866851,
+            "bottom": -8.103277807866851,
+            "near": 0.5,
+            "far": 48.6196668472011
+          }
+        }
+      }
+    },
+    {
+      "case": "stage:golden-hour",
+      "descriptor": {
+        "kind": "sun",
+        "color": "#ffc985",
+        "intensity": 2.1,
+        "position": [
+          -15.892650473467896,
+          7.924913198856515,
+          5.267795142040368
+        ],
+        "target": [
+          0,
+          1.25,
+          0.5
+        ],
+        "shadow": {
+          "mapSize": 2048,
+          "bias": -0.0004,
+          "normalBias": 0.05,
+          "radius": 3,
+          "camera": {
+            "left": -7.153882032022076,
+            "right": 7.153882032022076,
+            "top": 7.153882032022076,
+            "bottom": -7.153882032022076,
+            "near": 0.5,
+            "far": 42.92329219213246
+          }
+        }
+      }
+    },
+    {
+      "case": "visit:dusk",
+      "descriptor": {
+        "kind": "sun",
+        "color": "#b9c3dd",
+        "intensity": 0.45,
+        "position": [
+          10.066377788308754,
+          7.046464451816127,
+          -15.606204461294006
+        ],
+        "target": [
+          0,
+          0,
+          0.5
+        ],
+        "shadow": {
+          "mapSize": 2048,
+          "bias": -0.0004,
+          "normalBias": 0.02,
+          "radius": 3,
+          "camera": {
+            "left": -8.103277807866851,
+            "right": 8.103277807866851,
+            "top": 8.103277807866851,
+            "bottom": -8.103277807866851,
+            "near": 0.5,
+            "far": 48.6196668472011
+          }
+        }
+      }
+    },
+    {
+      "case": "stage:dusk",
+      "descriptor": {
+        "kind": "sun",
+        "color": "#b9c3dd",
+        "intensity": 0.45,
+        "position": [
+          8.886981403675382,
+          7.470886982572766,
+          -13.719170245880612
+        ],
+        "target": [
+          0,
+          1.25,
+          0.5
+        ],
+        "shadow": {
+          "mapSize": 2048,
+          "bias": -0.0004,
+          "normalBias": 0.05,
+          "radius": 3,
+          "camera": {
+            "left": -7.153882032022076,
+            "right": 7.153882032022076,
+            "top": 7.153882032022076,
+            "bottom": -7.153882032022076,
+            "near": 0.5,
+            "far": 42.92329219213246
+          }
+        }
+      }
+    }
+  ]
+}

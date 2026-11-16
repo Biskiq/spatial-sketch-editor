@@ -27,7 +27,7 @@
 		environment = 'paper'
 	}: {
 		revision?: number;
-		/** The environment the Stage shows; a change owes every snapshot a new image. */
+		/** The Sky the Stage shows, by content (an edited Sky differs from its preset); a change owes every snapshot a new image. */
 		environment?: string;
 		bounds?: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] } | null;
 	} = $props();

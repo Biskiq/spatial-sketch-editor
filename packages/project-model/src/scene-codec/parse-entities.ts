@@ -34,6 +34,9 @@ import type {
 	SceneLightEntity,
 	SceneLightKind,
 	MaterialId,
+	SceneColor,
+	SceneFinishMaps,
+	SceneFinishMapping,
 	SceneModelEntity,
 	SceneMaterialInstance,
 	SceneObjectCluster,
@@ -49,6 +52,7 @@ import type { SceneDocumentIssue } from './index';
 import type { JsonRecord } from './readers';
 import {
 	HEX_COLOR_PATTERN,
+	LOWER_HEX_COLOR_PATTERN,
 	SCENE_LIGHT_KINDS,
 	SCENE_PRIMITIVE_KINDS,
 	addIssue,
@@ -67,6 +71,17 @@ import {
 type EntityParserOptions = {
 	allowMaterialInstance: boolean;
 } & ResolvedSceneValidationOptions;
+
+/** A project texture's `id` must equal the P20 asset its URI names. */
+const PROJECT_ASSET_URI_PATTERN = /^\/project-assets\/([^/]+)$/;
+
+const FINISH_MAP_KEYS = ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const;
+const FINISH_MAPPING_KEYS = ['tileMeters', 'rotation', 'offset'] as const;
+const FINISH_TILE_MIN_METERS = 0.01;
+const FINISH_TILE_MAX_METERS = 100;
+const FINISH_NORMAL_SCALE_MAX = 10;
+const FINISH_COLOR_SLOT_MAX_LENGTH = 64;
+const TWO_PI = Math.PI * 2;
 
 export function parseTextureAsset(
 	input: unknown,
@@ -91,8 +106,158 @@ export function parseTextureAsset(
 			'Texture URI must be a safe root-relative public path'
 		);
 	}
+	// One P20 image has exactly one texture record, so every Finish made from
+	// the same image shares it and release pinning keeps one URI handle.
+	const assetMatch = uri === undefined ? null : PROJECT_ASSET_URI_PATTERN.exec(uri);
+	if (id !== undefined && assetMatch !== null && assetMatch[1] !== id) {
+		addIssue(
+			issues,
+			`${path}.id`,
+			'texture_id_mismatch',
+			`A project texture's id must equal its asset id: ${assetMatch[1]}`
+		);
+		return undefined;
+	}
 	if (!id || !name || !uri || !safeUri) return undefined;
 	return { id, name, uri };
+}
+
+/**
+ * A finish colour: a lowercase `#rrggbb` literal or a `{ slot }` follower. The
+ * follower is closed against the palette by the unit validator, which is the
+ * only reader that holds the palette.
+ */
+export function parseSceneColor(
+	input: unknown,
+	path: string,
+	issues: SceneDocumentIssue[]
+): SceneColor | undefined {
+	if (typeof input === 'string') {
+		if (!LOWER_HEX_COLOR_PATTERN.test(input)) {
+			addIssue(issues, path, 'invalid_color', 'Expected a lowercase #rrggbb color string');
+			return undefined;
+		}
+		return input;
+	}
+	if (!isRecord(input)) {
+		addIssue(
+			issues,
+			path,
+			'invalid_type',
+			'Expected a lowercase #rrggbb color string or a palette slot reference'
+		);
+		return undefined;
+	}
+	assertAllowedKeys(input, ['slot'], path, issues);
+	const slot = readRequiredString(input, 'slot', path, issues);
+	if (slot === undefined) return undefined;
+	if (slot.length > FINISH_COLOR_SLOT_MAX_LENGTH) {
+		addIssue(
+			issues,
+			`${path}.slot`,
+			'invalid_value',
+			`A palette slot id is at most ${FINISH_COLOR_SLOT_MAX_LENGTH} characters`
+		);
+		return undefined;
+	}
+	return { slot };
+}
+
+/** One texture id per named slot; an empty object is returned and then dropped. */
+export function parseFinishMaps(
+	input: unknown,
+	path: string,
+	issues: SceneDocumentIssue[]
+): SceneFinishMaps | undefined {
+	if (!isRecord(input)) {
+		addIssue(issues, path, 'invalid_type', 'Expected a finish maps object');
+		return undefined;
+	}
+	assertAllowedKeys(input, FINISH_MAP_KEYS, path, issues);
+	const maps: Partial<Record<(typeof FINISH_MAP_KEYS)[number], string>> = {};
+	let valid = true;
+	for (const slot of FINISH_MAP_KEYS) {
+		if (!(slot in input)) continue;
+		const textureId = readRequiredString(input, slot, path, issues);
+		if (textureId === undefined) valid = false;
+		else maps[slot] = textureId;
+	}
+	return valid ? (maps as SceneFinishMaps) : undefined;
+}
+
+/** Two finite numbers; the caller applies the field's own range. */
+function readFinishPair(
+	input: unknown,
+	path: string,
+	slot: string,
+	issues: SceneDocumentIssue[]
+): [number, number] | undefined {
+	if (!Array.isArray(input) || input.length !== 2) {
+		addIssue(issues, path, 'invalid_type', `Expected ${slot} to be an array of exactly two numbers`);
+		return undefined;
+	}
+	const values: number[] = [];
+	for (const [index, candidate] of input.entries()) {
+		if (typeof candidate !== 'number' || !Number.isFinite(candidate)) {
+			addIssue(issues, `${path}[${index}]`, 'non_finite_number', 'Expected a finite number');
+			return undefined;
+		}
+		values.push(candidate);
+	}
+	return [values[0]!, values[1]!];
+}
+
+/** Tile size in metres, rotation in radians and offset in tile fractions. */
+export function parseFinishMapping(
+	input: unknown,
+	path: string,
+	issues: SceneDocumentIssue[]
+): SceneFinishMapping | undefined {
+	if (!isRecord(input)) {
+		addIssue(issues, path, 'invalid_type', 'Expected a finish mapping object');
+		return undefined;
+	}
+	assertAllowedKeys(input, FINISH_MAPPING_KEYS, path, issues);
+	let valid = true;
+	let tileMeters: [number, number] | undefined;
+	if ('tileMeters' in input) {
+		const pair = readFinishPair(input.tileMeters, `${path}.tileMeters`, 'tileMeters', issues);
+		if (pair === undefined) valid = false;
+		else if (
+			pair.some((value) => value < FINISH_TILE_MIN_METERS || value > FINISH_TILE_MAX_METERS)
+		) {
+			addIssue(
+				issues,
+				`${path}.tileMeters`,
+				'invalid_dimension',
+				`tileMeters must be within [${FINISH_TILE_MIN_METERS}, ${FINISH_TILE_MAX_METERS}] m`
+			);
+			valid = false;
+		} else tileMeters = pair;
+	}
+	let rotation: number | undefined;
+	if ('rotation' in input) {
+		const value = readRequiredNumber(input, 'rotation', path, issues);
+		if (value === undefined || value < 0 || value >= TWO_PI) {
+			addIssue(issues, `${path}.rotation`, 'invalid_value', 'rotation must be in [0, 2π) radians');
+			valid = false;
+		} else if (value !== 0) rotation = value;
+	}
+	let offset: [number, number] | undefined;
+	if ('offset' in input) {
+		const pair = readFinishPair(input.offset, `${path}.offset`, 'offset', issues);
+		if (pair === undefined) valid = false;
+		else if (pair.some((value) => value < 0 || value >= 1)) {
+			addIssue(issues, `${path}.offset`, 'invalid_value', 'offset must be in [0, 1) tile fractions');
+			valid = false;
+		} else if (pair[0] !== 0 || pair[1] !== 0) offset = pair;
+	}
+	if (!valid) return undefined;
+	return {
+		...(tileMeters === undefined ? {} : { tileMeters }),
+		...(rotation === undefined ? {} : { rotation }),
+		...(offset === undefined ? {} : { offset })
+	};
 }
 
 export function parseMaterialInstance(
@@ -107,7 +272,18 @@ export function parseMaterialInstance(
 	}
 	assertAllowedKeys(
 		input,
-		['id', 'name', 'baseMaterialId', 'baseTextureId', 'roughness', 'metalness'],
+		[
+			'id',
+			'name',
+			'baseMaterialId',
+			'color',
+			'roughness',
+			'metalness',
+			'maps',
+			'mapping',
+			'normalScale',
+			'normalFlipY'
+		],
 		path,
 		issues
 	);
@@ -126,16 +302,61 @@ export function parseMaterialInstance(
 			`Unknown material: ${baseMaterialIdRaw}`
 		);
 	}
-	const baseTextureId = readOptionalString(input, 'baseTextureId', path, issues);
+	const color = 'color' in input ? parseSceneColor(input.color, `${path}.color`, issues) : undefined;
 	const roughness = readUnitInterval(input, 'roughness', path, issues);
 	const metalness = readUnitInterval(input, 'metalness', path, issues);
+	const parsedMaps = 'maps' in input ? parseFinishMaps(input.maps, `${path}.maps`, issues) : undefined;
+	const maps = parsedMaps === undefined || Object.keys(parsedMaps).length === 0 ? undefined : parsedMaps;
+	const parsedMapping =
+		'mapping' in input ? parseFinishMapping(input.mapping, `${path}.mapping`, issues) : undefined;
+	const mapping =
+		parsedMapping === undefined || Object.keys(parsedMapping).length === 0
+			? undefined
+			: parsedMapping;
+	let normalScaleValid = true;
+	let normalScale: number | undefined;
+	if ('normalScale' in input) {
+		const value = readRequiredNumber(input, 'normalScale', path, issues);
+		if (value === undefined || value <= 0 || value > FINISH_NORMAL_SCALE_MAX) {
+			addIssue(
+				issues,
+				`${path}.normalScale`,
+				'invalid_value',
+				`normalScale must be in (0, ${FINISH_NORMAL_SCALE_MAX}]`
+			);
+			normalScaleValid = false;
+		} else if (value !== 1) normalScale = value;
+	}
+	let normalFlipYValid = true;
+	let normalFlipY: boolean | undefined;
+	if ('normalFlipY' in input) {
+		const value = readRequiredBoolean(input, 'normalFlipY', path, issues);
+		if (value === undefined) normalFlipYValid = false;
+		else if (value) normalFlipY = true;
+	}
+	// Both normal fields are meaningless without a normal map, so their presence
+	// is refused rather than silently dropped.
+	for (const key of ['normalScale', 'normalFlipY'] as const) {
+		if (key in input && parsedMaps?.normal === undefined) {
+			addIssue(
+				issues,
+				`${path}.${key}`,
+				'normal_map_required',
+				`${key} requires maps.normal`
+			);
+		}
+	}
 	if (
 		!id ||
 		!name ||
 		!baseMaterialId ||
-		('baseTextureId' in input && !baseTextureId) ||
+		('color' in input && color === undefined) ||
 		('roughness' in input && roughness === undefined) ||
-		('metalness' in input && metalness === undefined)
+		('metalness' in input && metalness === undefined) ||
+		('maps' in input && parsedMaps === undefined) ||
+		('mapping' in input && parsedMapping === undefined) ||
+		!normalScaleValid ||
+		!normalFlipYValid
 	) {
 		return undefined;
 	}
@@ -143,9 +364,13 @@ export function parseMaterialInstance(
 		id,
 		name,
 		baseMaterialId,
-		...(baseTextureId === undefined ? {} : { baseTextureId }),
+		...(color === undefined ? {} : { color }),
 		...(roughness === undefined ? {} : { roughness }),
-		...(metalness === undefined ? {} : { metalness })
+		...(metalness === undefined ? {} : { metalness }),
+		...(maps === undefined ? {} : { maps }),
+		...(mapping === undefined ? {} : { mapping }),
+		...(normalScale === undefined ? {} : { normalScale }),
+		...(normalFlipY === undefined ? {} : { normalFlipY })
 	};
 }
 export function readPositiveDimension(

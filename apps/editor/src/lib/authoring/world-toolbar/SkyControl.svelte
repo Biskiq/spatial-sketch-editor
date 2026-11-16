@@ -4,19 +4,24 @@
 	 * `scene-environment-set` controller with a forest-bar face; the hour slider is
 	 * visibly planned because the model stores a preset, not a clock.
 	 */
-	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+	import {
+		SCENE_SKY_PRESET_STARTS,
+		type SceneEnvironmentChoice,
+		type SceneSky,
+		type SceneSkyPreset
+	} from '@portfolio/project-model/units';
 	import { WORLD_ENVIRONMENT_CHOICES, worldEnvironmentLook } from '$lib/render/world-environment';
 	import WorldIcon from './WorldIcon.svelte';
 
 	let {
-		environment = 'paper',
+		sky = null,
 		onEnvironment,
 		editOnPaper = false,
 		onEditOnPaper,
 		busy = false
 	}: {
-		environment?: SceneEnvironmentPreset;
-		onEnvironment: (preset: SceneEnvironmentPreset) => void;
+		sky?: SceneSky | null;
+		onEnvironment: (preset: SceneEnvironmentChoice) => void;
 		editOnPaper?: boolean;
 		onEditOnPaper: (value: boolean) => void;
 		busy?: boolean;
@@ -25,19 +30,25 @@
 	let open = $state(false);
 	let root = $state<HTMLElement | undefined>(undefined);
 
-	const label = $derived(WORLD_ENVIRONMENT_CHOICES.find((choice) => choice.preset === environment)?.label ?? 'Paper');
+	const preset = $derived(sky?.preset ?? 'paper');
+	const label = $derived(WORLD_ENVIRONMENT_CHOICES.find((choice) => choice.preset === preset)?.label ?? 'Paper');
 	const hours: Readonly<Record<string, string>> = {
 		paper: '12:00',
 		daylight: '12:00',
 		'golden-hour': '17:40',
 		dusk: '19:20'
 	};
-	const hour = $derived(hours[environment] ?? '15:30');
+	const hour = $derived(hours[preset] ?? '15:30');
 
-	function swatch(preset: SceneEnvironmentPreset): string {
-		const look = worldEnvironmentLook(preset);
+	function swatch(value: SceneSky | null): string {
+		const look = worldEnvironmentLook(value);
 		if (look === null) return 'linear-gradient(var(--stage-paper), var(--stage-paper))';
 		return `linear-gradient(${look.sky[0]}, ${look.sky[1]} 55%, ${look.haze} 56%, ${look.ground})`;
+	}
+
+	/** A tile previews its preset start; the chip previews the World's own Sky. */
+	function tileSwatch(choice: SceneEnvironmentChoice): string {
+		return swatch(choice === 'paper' ? null : SCENE_SKY_PRESET_STARTS[choice as SceneSkyPreset]);
 	}
 
 	$effect(() => {
@@ -85,11 +96,11 @@
 						type="button"
 						class="preset"
 						data-environment={choice.preset}
-						aria-pressed={environment === choice.preset}
+						aria-pressed={preset === choice.preset}
 						disabled={busy}
 						onclick={() => onEnvironment(choice.preset)}
 					>
-						<i style:background={swatch(choice.preset)}></i>
+						<i style:background={tileSwatch(choice.preset)}></i>
 						<span>{choice.label}</span>
 					</button>
 				{/each}

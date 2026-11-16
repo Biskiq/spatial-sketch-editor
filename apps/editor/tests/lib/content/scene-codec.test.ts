@@ -660,7 +660,7 @@ describe('scene document codec', () => {
 				id: 'material-wall-detail',
 				name: 'Wall Detail',
 				baseMaterialId: 'plaster-warm',
-				baseTextureId: 'texture-wall-detail',
+				maps: { color: 'texture-wall-detail' },
 				roughness: 0.7,
 				metalness: 0.1
 			}
@@ -743,10 +743,10 @@ describe('scene document codec', () => {
 				id: 'unknown-texture-material',
 				name: 'Unknown Texture',
 				baseMaterialId: 'plaster-warm',
-				baseTextureId: 'missing-texture'
+				maps: { color: 'missing-texture' }
 			}
 		];
-		expectIssue(unknownTexture, 'unknown_texture', '$.materials[0].baseTextureId');
+		expectIssue(unknownTexture, 'unknown_texture', '$.materials[0].maps.color');
 
 		const unknownMaterial = cloneDocument();
 		(unknownMaterial.entities[0] as { materialInstanceId?: string }).materialInstanceId =
@@ -888,5 +888,119 @@ describe('world-local roomId discipline (P23.0 F0 review)', () => {
 		const document = worldDocument();
 		(document.navigationNodes[0] as Record<string, unknown>).roomId = undefined;
 		expect(validateSceneDocument(document).success).toBe(true);
+	});
+});
+
+describe('Scene 8 Finish fields', () => {
+	const WALL = { id: 'wall-detail', name: 'Wall Detail', uri: '/textures/wall-detail.webp' };
+	const NORMAL = { id: 'wall-normal', name: 'Wall Normal', uri: '/textures/wall-normal.png' };
+
+	function withMaterial(
+		material: Record<string, unknown>,
+		textures: SceneDocument['textures'] = [WALL, NORMAL]
+	) {
+		const document = cloneDocument();
+		document.textures = textures;
+		document.materials = [material as unknown as SceneDocument['materials'][number]];
+		return document;
+	}
+
+	function material(extra: Record<string, unknown> = {}) {
+		return { id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm', ...extra };
+	}
+
+	it('round-trips every Finish field and drops every default', () => {
+		const document = withMaterial(
+			material({
+				color: { slot: 'accent' },
+				maps: { color: WALL.id, normal: NORMAL.id },
+				mapping: { tileMeters: [0.5, 2], rotation: 0.25, offset: [0.1, 0.2] },
+				normalScale: 0.5,
+				normalFlipY: true
+			})
+		);
+		const result = validateSceneDocument(document);
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.document.materials[0]).toEqual(document.materials[0]);
+		expect(parseSceneDocumentJson(result.canonicalJson)).toEqual(result);
+
+		const defaults = validateSceneDocument(
+			withMaterial(material({ maps: {}, mapping: { rotation: 0, offset: [0, 0] } }))
+		);
+		expect(defaults.success).toBe(true);
+		if (!defaults.success) return;
+		expect(defaults.document.materials[0]).toEqual(material());
+
+		const normalDefaults = validateSceneDocument(
+			withMaterial(
+				material({
+					maps: { normal: NORMAL.id },
+					normalScale: 1,
+					normalFlipY: false
+				})
+			)
+		);
+		expect(normalDefaults.success).toBe(true);
+		if (!normalDefaults.success) return;
+		expect(normalDefaults.document.materials[0]).toEqual(
+			material({ maps: { normal: NORMAL.id } })
+		);
+	});
+
+	it('refuses the retired single colour map as an unknown key', () => {
+		expectIssue(
+			withMaterial(material({ baseTextureId: WALL.id })),
+			'unknown_property',
+			'$.materials[0].baseTextureId'
+		);
+	});
+
+	it('refuses a project texture whose id differs from its asset', () => {
+		const document = withMaterial(material(), [
+			{ id: 'tex-1', name: 'Pinned', uri: '/project-assets/asset-1' }
+		]);
+		expectIssue(document, 'texture_id_mismatch', '$.textures[0].id');
+	});
+
+	it.each(['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const)(
+		'refuses an unknown texture in maps.%s',
+		(slot) => {
+			expectIssue(
+				withMaterial(material({ maps: { [slot]: 'missing-texture' } }), [WALL]),
+				'unknown_texture',
+				`$.materials[0].maps.${slot}`
+			);
+		}
+	);
+
+	it.each(['normalScale', 'normalFlipY'] as const)(
+		'refuses %s without a normal map',
+		(field) => {
+			expectIssue(
+				withMaterial(material({ [field]: field === 'normalScale' ? 0.5 : true })),
+				'normal_map_required',
+				`$.materials[0].${field}`
+			);
+		}
+	);
+
+	it('refuses uppercase hex and every out-of-range mapping value', () => {
+		expectIssue(withMaterial(material({ color: '#AABBCC' })), 'invalid_color', '$.materials[0].color');
+		expectIssue(
+			withMaterial(material({ mapping: { offset: [1, 0] } })),
+			'invalid_value',
+			'$.materials[0].mapping.offset'
+		);
+		expectIssue(
+			withMaterial(material({ mapping: { rotation: Math.PI * 2 } })),
+			'invalid_value',
+			'$.materials[0].mapping.rotation'
+		);
+		expectIssue(
+			withMaterial(material({ mapping: { tileMeters: [0, 1] } })),
+			'invalid_dimension',
+			'$.materials[0].mapping.tileMeters'
+		);
 	});
 });

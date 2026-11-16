@@ -308,7 +308,7 @@
 		revealed: () => revealed,
 		roomLabels: () => ({ plan: shell.preferences.roomLabels2d, threeD: shell.preferences.roomLabels3d }),
 		groundReachMeters: () =>
-			!look.editOnPaper && look.environment !== 'paper'
+			!look.editOnPaper && look.sky !== null
 				? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS
 				: undefined,
 		nowSeconds,
@@ -395,7 +395,7 @@
 
 	const heightSheet = session.heightSheet();
 	const look = createLookAuthoring({
-		environment: () => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper',
+		sky: () => currentEnvelope?.units.scene.data.environment?.sky ?? null,
 		services: () => adapterServices,
 		onNotice: (message) => shell.setNotice(message)
 	});
@@ -988,7 +988,7 @@
 			datumMeters: boot.snapshot.domain.datumMeters,
 			get contentBounds() { return paperContentBounds; },
 			get snapshotBounds() { return stageContentBounds; },
-			get environment() { return look.stageEnvironment; },
+			get sky() { return look.stageSky; },
 			get framedViewport() { return experience.lookThroughActive() ? throughViewport : null; },
 			get selection() { return selection; },
 			get hover() { return shell.armedHostTool === 'erase' ? shell.eraseHover : stageInput.hoverSelection; },
@@ -1065,7 +1065,7 @@
 				guideSeconds: previewGuideStats.seconds,
 				viewLabels: previewViewLabels,
 				onExit: previewController.close,
-				environment: look.environment
+				sky: look.sky
 			},
 			active: preview !== null
 		};
@@ -1291,7 +1291,7 @@
 					},
 					sky: adapterServices !== null
 						? {
-							environment: look.environment,
+							sky: look.sky,
 							onEnvironment: (preset) => void look.setEnvironment(preset),
 							editOnPaper: look.editOnPaper,
 							onEditOnPaper: (value: boolean) => look.setEditOnPaper(value),

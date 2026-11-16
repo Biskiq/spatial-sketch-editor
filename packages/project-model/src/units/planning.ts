@@ -67,10 +67,11 @@ import {
 } from './acceptance';
 import { stageUnitResources, type StagedUnitResource } from './acceptance-staging';
 import { readExperienceText, readInvitation, readPresentationViews, readStaySeconds } from './validate';
+import { SCENE_SKY_PRESET_STARTS } from './sky-presets';
 import type { SceneConnection, ScenePathAnchor } from '../scene';
 import {
-	SCENE_ENVIRONMENT_PRESETS,
-	type SceneEnvironmentPreset,
+	SCENE_SKY_PRESETS,
+	type SceneEnvironmentChoice,
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_WELCOME_MAX_LENGTH,
 	EXPERIENCE_GUIDE_PACINGS,
@@ -2568,10 +2569,48 @@ export function createExperiencePresentationViewRemovePlanner(): DomainPlanner<P
 /** Experience review 1 — choose the World's environment preset. */
 export const SCENE_ENVIRONMENT_SET_KIND = 'scene-environment-set';
 
+/** The choices the one environment writer accepts: Paper or one Sky preset. */
+export const SCENE_ENVIRONMENT_CHOICES: readonly SceneEnvironmentChoice[] = [
+	'paper',
+	...SCENE_SKY_PRESETS
+];
+
+/** Key-order-independent structural equality, so a stored Sky compares by value. */
+function deepEqual(left: unknown, right: unknown): boolean {
+	if (left === right) return true;
+	if (typeof left !== 'object' || typeof right !== 'object' || left === null || right === null) {
+		return false;
+	}
+	if (Array.isArray(left) !== Array.isArray(right)) return false;
+	if (Array.isArray(left) && Array.isArray(right)) {
+		return left.length === right.length && left.every((entry, index) => deepEqual(entry, right[index]));
+	}
+	const leftKeys = Object.keys(left as Record<string, unknown>).sort();
+	const rightKeys = Object.keys(right as Record<string, unknown>).sort();
+	return (
+		leftKeys.length === rightKeys.length &&
+		leftKeys.every(
+			(key, index) =>
+				key === rightKeys[index] &&
+				deepEqual(
+					(left as Record<string, unknown>)[key],
+					(right as Record<string, unknown>)[key]
+				)
+		)
+	);
+}
+
+/** Structural equality over the preset starts and a stored Sky. */
+function sameSkyValue(left: { readonly sky?: unknown } | undefined, right: unknown): boolean {
+	if (left?.sky === undefined || right === undefined) return left?.sky === right;
+	return deepEqual(left.sky, right);
+}
+
 /**
- * Set the Scene's World environment to one fixed preset. No targets: the Scene
- * holds one environment. `paper` is written as the field's absence, so a World
- * that never chose one and a World set back to Paper are the same bytes.
+ * Set the Scene's World environment to Paper or one Sky preset. No targets: the
+ * Scene holds one environment. `paper` removes only the Sky, so a Treatment
+ * survives it; choosing the preset a Sky already equals is `no-change`, which
+ * makes the current tile act as Reset for an edited Sky.
  */
 export function createSceneEnvironmentSetPlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -2585,17 +2624,52 @@ export function createSceneEnvironmentSetPlanner(): DomainPlanner<ProjectEnvelop
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', ['preset'] as const);
 			const preset = payload === null ? null : payload.preset;
-			if (typeof preset !== 'string' || !(SCENE_ENVIRONMENT_PRESETS as readonly string[]).includes(preset)) {
+			if (
+				typeof preset !== 'string' ||
+				!(SCENE_ENVIRONMENT_CHOICES as readonly string[]).includes(preset)
+			) {
 				return refuse('invalid-payload', 'Choose one of the environment presets', reader.issues);
 			}
 			if (request.intent.targets.length !== 0) {
 				return refuse('unsupported-operation', 'scene-environment-set takes no targets');
 			}
 			const scene = envelope.units.scene.data;
-			const previous = scene.environment?.preset ?? 'paper';
-			if (previous === preset) return refuse('no-change', 'The World already uses this environment');
+			const previous = scene.environment;
+			const treatment = previous?.treatment;
+			if (preset === 'paper') {
+				if (previous?.sky === undefined) {
+					return refuse('no-change', 'The World already uses Paper');
+				}
+				const { environment: _previous, ...rest } = scene;
+				const data = {
+					...rest,
+					...(treatment === undefined ? {} : { environment: { treatment } })
+				};
+				const candidate: ProjectEnvelope = {
+					...envelope,
+					units: { ...envelope.units, scene: { header: { ...envelope.units.scene.header }, data } }
+				};
+				return prepared(
+					request,
+					candidate,
+					[{ kind: 'scene.environment.updated', subjectIds: [], fields: ['environment'] }],
+					[]
+				);
+			}
+			const choice = preset as Exclude<SceneEnvironmentChoice, 'paper'>;
+			const start = SCENE_SKY_PRESET_STARTS[choice];
+			if (sameSkyValue(previous, start)) {
+				return refuse('no-change', 'The World already uses this Sky');
+			}
 			const { environment: _previous, ...rest } = scene;
-			const data = preset === 'paper' ? rest : { ...rest, environment: { preset: preset as SceneEnvironmentPreset } };
+			const data = {
+				...rest,
+				environment: {
+					...(treatment === undefined ? {} : { treatment }),
+					// A fresh copy: the World never aliases the preset table.
+					sky: structuredClone(start)
+				}
+			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
 				units: { ...envelope.units, scene: { header: { ...envelope.units.scene.header }, data } }

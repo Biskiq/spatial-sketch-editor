@@ -285,6 +285,18 @@ export function prepareValidatedUnitRuntime(
 		// edit must not walk an unchanged resources unit.
 		const modelFootprints = modelFootprintsOf(envelope.units.resources.data);
 		if (modelFootprints.size > 0) runtimeScene = { ...runtimeScene, modelFootprints };
+		// The Look is the Scene unit's own world presentation: the internal
+		// world-local document deliberately does not carry it, so it is attached to
+		// the runtime value every surface shares. Reuse is keyed by this same unit,
+		// so a retained Scene already carries both.
+		const sceneUnit = envelope.units.scene.data;
+		if (sceneUnit.palette !== undefined || sceneUnit.environment !== undefined) {
+			runtimeScene = {
+				...runtimeScene,
+				...(sceneUnit.palette === undefined ? {} : { palette: sceneUnit.palette }),
+				...(sceneUnit.environment === undefined ? {} : { environment: sceneUnit.environment })
+			};
+		}
 	}
 
 	let graph = retainedNavigationOf(previous, envelope);

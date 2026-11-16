@@ -66,21 +66,21 @@ function payload(entities: readonly unknown[], formatVersion: number = SCENE_UNI
 	return { formatVersion, textures: [], materials: [], entities };
 }
 
-describe('Scene unit format 7', () => {
+describe('Scene unit format 8', () => {
 	it('is the one admitted Scene format', () => {
-		expect(SCENE_UNIT_FORMAT_VERSION).toBe(7);
+		expect(SCENE_UNIT_FORMAT_VERSION).toBe(8);
 	});
 
-	it('refuses a version-6 Scene payload strictly, even when its content is otherwise valid', () => {
-		const result = validateCameraFreeScenePayload(payload([POINT, SPOT], 6));
+	it('refuses a version-7 Scene payload strictly, even when its content is otherwise valid', () => {
+		const result = validateCameraFreeScenePayload(payload([POINT, SPOT], 7));
 		expect(result.success).toBe(false);
 		if (result.success) return;
 		expect(result.issues.map((issue) => issue.code)).toEqual(['unsupported_format_version']);
 		expect(result.issues[0]!.path).toBe('$.formatVersion');
 	});
 
-	it('refuses a version-6 payload carrying a Directional light as a format error, with no conversion', () => {
-		const result = validateCameraFreeScenePayload(payload([DIRECTIONAL], 6));
+	it('refuses a version-7 payload carrying a Directional light as a format error, with no conversion', () => {
+		const result = validateCameraFreeScenePayload(payload([DIRECTIONAL], 7));
 		expect(result.success).toBe(false);
 		if (result.success) return;
 		expect(result.issues.map((issue) => issue.code)).toEqual(['unsupported_format_version']);
@@ -145,7 +145,7 @@ describe('Point and Spot are unchanged', () => {
 		const result = validateCameraFreeScenePayload(payload([POINT, SPOT]));
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.value.formatVersion).toBe(7);
+		expect(result.value.formatVersion).toBe(8);
 		expect(result.value.entities).toEqual([POINT, SPOT]);
 	});
 
@@ -178,15 +178,15 @@ describe('Point and Spot are unchanged', () => {
 		const read = validateProjectEnvelope(JSON.parse(text));
 		expect(read.success).toBe(true);
 		if (!read.success) return;
-		expect(read.envelope.units.scene.header.formatVersion).toBe(7);
+		expect(read.envelope.units.scene.header.formatVersion).toBe(8);
 		expect(read.envelope.units.scene.data.entities).toEqual([POINT, SPOT]);
 
-		// The same envelope with its Scene unit stamped version 6 is refused whole.
+		// The same envelope with its Scene unit stamped version 7 is refused whole.
 		const stale = JSON.parse(text) as {
 			units: { scene: { header: { formatVersion: number }; data: { formatVersion: number } } };
 		};
-		stale.units.scene.header.formatVersion = 6;
-		stale.units.scene.data.formatVersion = 6;
+		stale.units.scene.header.formatVersion = 7;
+		stale.units.scene.data.formatVersion = 7;
 		const refused = validateProjectEnvelope(stale);
 		expect(refused.success).toBe(false);
 		if (refused.success) return;

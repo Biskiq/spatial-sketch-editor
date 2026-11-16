@@ -30,14 +30,20 @@ async function texturedProject(id: string, name: string, uri: string) {
 		name,
 		scene: {
 			formatVersion: SCENE_UNIT_FORMAT_VERSION,
-			textures: [{ id: 'tex-1', name: 'Pinned', uri }],
+			textures: [{ id: ASSET_ID, name: 'Pinned', uri }],
 			materials: [],
 			entities: []
 		},
 		resources: {
 			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
 			resources: [
-				{ kind: 'texture', id: 'tex-1', contentRevision: 'revision-tex-1', pin: null, unresolved: null }
+				{
+					kind: 'texture',
+					id: ASSET_ID,
+					contentRevision: 'revision-tex-1',
+					pin: null,
+					unresolved: null
+				}
 			]
 		}
 	});

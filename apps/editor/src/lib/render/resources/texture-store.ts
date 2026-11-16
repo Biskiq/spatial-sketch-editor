@@ -75,6 +75,9 @@ function scheduleDeferredFlush(): void {
  * microtask after the update that released it) and by tests that need a
  * deterministic ending; safe to call at any time.
  */
+/** A variant's default UV shift: the mapping's absence. */
+const DEFAULT_OFFSET: readonly [number, number] = [0, 0];
+
 export function flushDeferredTextureReleases(): void {
   for (const [key, entry] of variantCache) {
     if (!entry.pendingDispose || entry.refCount > 0) continue;
@@ -262,10 +265,11 @@ function variantKey(
   repeatX: number,
   repeatY: number,
   rotation: number,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): VariantKey {
   const id = scopeIdOf(scope);
-  const base = `${materialId}|${repeatX.toFixed(4)}|${repeatY.toFixed(4)}|${rotation.toFixed(4)}`;
+  const base = `${materialId}|${repeatX.toFixed(4)}|${repeatY.toFixed(4)}|${rotation.toFixed(4)}|${offset[0].toFixed(4)}|${offset[1].toFixed(4)}`;
   return id ? `${id}::${base}` : base;
 }
 
@@ -273,7 +277,8 @@ function cloneMaps(
   sources: LoadedTextureMaps,
   repeatX: number,
   repeatY: number,
-  rotation: number
+  rotation: number,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): LoadedTextureMaps {
   const maps: LoadedTextureMaps = {};
 
@@ -285,6 +290,7 @@ function cloneMaps(
     clone.colorSpace = source.colorSpace;
     clone.repeat.set(repeatX, repeatY);
     clone.rotation = rotation;
+    clone.offset.set(offset[0], offset[1]);
     clone.center.set(0.5, 0.5);
     clone.needsUpdate = true;
     maps[slot] = clone;
@@ -343,10 +349,11 @@ export function acquireMaterialVariant(
   repeatX: number,
   repeatY: number,
   rotation = 0,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): LoadedTextureMaps {
 	countWork('texture:variant-acquire');
-  const key = variantKey(definition.id, repeatX, repeatY, rotation, scope ?? null);
+  const key = variantKey(definition.id, repeatX, repeatY, rotation, scope ?? null, offset);
   const existing = variantCache.get(key);
   if (existing) {
     existing.refCount += 1;
@@ -358,7 +365,7 @@ export function acquireMaterialVariant(
     return existing.maps;
   }
 
-  const maps = cloneMaps(sourceMaps, repeatX, repeatY, rotation);
+  const maps = cloneMaps(sourceMaps, repeatX, repeatY, rotation, offset);
   variantCache.set(key, { maps, refCount: 1, pendingDispose: false });
   return maps;
 }
@@ -368,9 +375,10 @@ export function releaseMaterialVariant(
   repeatX: number,
   repeatY: number,
   rotation = 0,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ) {
-  const key = variantKey(materialId, repeatX, repeatY, rotation, scope ?? null);
+  const key = variantKey(materialId, repeatX, repeatY, rotation, scope ?? null, offset);
   const existing = variantCache.get(key);
   if (!existing) return;
   // A duplicate release is a caller bug, not a second claim: an already-zero
@@ -457,10 +465,11 @@ function effectiveVariantKey(
   rx: number,
   ry: number,
   rot: number,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): VariantKey {
   const id = scopeIdOf(scope);
-  const base = `eff|${seed}|${rx.toFixed(4)}|${ry.toFixed(4)}|${rot.toFixed(4)}`;
+  const base = `eff|${seed}|${rx.toFixed(4)}|${ry.toFixed(4)}|${rot.toFixed(4)}|${offset[0].toFixed(4)}|${offset[1].toFixed(4)}`;
   return id ? `${id}::${base}` : base;
 }
 
@@ -476,9 +485,10 @@ export function effectiveTextureVariantKey(
   repeatX: number,
   repeatY: number,
   rotation = 0,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): string {
-  return effectiveVariantKey(seed, repeatX, repeatY, rotation, scope ?? null);
+  return effectiveVariantKey(seed, repeatX, repeatY, rotation, scope ?? null, offset);
 }
 
 /** The published name of one catalogue-material variant, for a descriptor's key. */
@@ -487,9 +497,10 @@ export function materialTextureVariantKey(
   repeatX: number,
   repeatY: number,
   rotation = 0,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): string {
-  return variantKey(materialId, repeatX, repeatY, rotation, scope ?? null);
+  return variantKey(materialId, repeatX, repeatY, rotation, scope ?? null, offset);
 }
 
 export function acquireEffectiveVariant(
@@ -497,10 +508,11 @@ export function acquireEffectiveVariant(
   repeatX: number,
   repeatY: number,
   rotation = 0,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): LoadedTextureMaps {
 	countWork('texture:variant-acquire');
-  const key = effectiveVariantKey(effective.variantSeed, repeatX, repeatY, rotation, scope ?? null);
+  const key = effectiveVariantKey(effective.variantSeed, repeatX, repeatY, rotation, scope ?? null, offset);
   const existing = variantCache.get(key);
   if (existing) {
     existing.refCount += 1;
@@ -525,6 +537,7 @@ export function acquireEffectiveVariant(
     clone.colorSpace = source.colorSpace;
     clone.repeat.set(repeatX, repeatY);
     clone.rotation = rotation;
+    clone.offset.set(offset[0], offset[1]);
     clone.center.set(0.5, 0.5);
     clone.needsUpdate = true;
     maps[entrySlot] = clone;
@@ -538,9 +551,10 @@ export function releaseEffectiveVariant(
   repeatX: number,
   repeatY: number,
   rotation = 0,
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  offset: readonly [number, number] = DEFAULT_OFFSET
 ): void {
-  const key = effectiveVariantKey(seed, repeatX, repeatY, rotation, scope ?? null);
+  const key = effectiveVariantKey(seed, repeatX, repeatY, rotation, scope ?? null, offset);
   const existing = variantCache.get(key);
   if (!existing) return;
   if (existing.refCount <= 0) return;

@@ -129,7 +129,9 @@ function bindLook(look: ModelLook): {
 	readonly hold: VariantHold | null;
 } {
 	const base = { ...look.material };
-	if (look.texture === null) return { remap: base, maps: {}, hold: null };
+	// A Finish's normal strength and flip bind only with the normal map they scale.
+	const { normalScale: _normalScale, ...withoutNormalScale } = base;
+	if (look.texture === null) return { remap: withoutNormalScale, maps: {}, hold: null };
 	const { source, repeat, scope } = look.texture;
 	const [rx, ry] = repeat;
 	const loaded = acquireEffectiveVariant(source, rx, ry, 0, scope);
@@ -146,11 +148,11 @@ function bindLook(look: ModelLook): {
 	}
 	if (!bound) {
 		releaseEffectiveVariant(source.variantSeed, rx, ry, 0, scope);
-		return { remap: base, maps: {}, hold: null };
+		return { remap: withoutNormalScale, maps: {}, hold: null };
 	}
 	const textures: MaterialTextureKeys = keys;
 	return {
-		remap: { ...base, textures },
+		remap: { ...(maps.normalMap === undefined ? withoutNormalScale : base), textures },
 		maps,
 		hold: { seed: source.variantSeed, rx, ry, scope }
 	};

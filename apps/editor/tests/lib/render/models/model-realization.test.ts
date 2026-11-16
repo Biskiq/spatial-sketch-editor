@@ -265,6 +265,9 @@ describe('textured looks (E8/R2c)', () => {
 			metalness: 0,
 			color: '#ffffff',
 			defaultTileSizeMeters: [1, 1],
+			rotation: 0,
+			offset: [0, 0],
+			normalScale: null,
 			variantSeed: seed
 		};
 		return { effective, scope, loader };

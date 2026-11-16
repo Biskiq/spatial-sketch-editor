@@ -29,6 +29,7 @@ export type ModelSurfaceSource = TextureVariantSource & {
 	readonly color: string;
 	readonly roughness: number;
 	readonly metalness: number;
+	readonly normalScale?: readonly [number, number] | null;
 };
 
 const CONTROL = { nextId: 0 };
@@ -57,7 +58,12 @@ export function modelLookFor(
 	textured: boolean
 ): ModelLook {
 	return {
-		material: { color: effective.color, roughness: effective.roughness, metalness: effective.metalness },
+		material: {
+			color: effective.color,
+			roughness: effective.roughness,
+			metalness: effective.metalness,
+			...(effective.normalScale == null ? {} : { normalScale: effective.normalScale })
+		},
 		texture: textured ? { source: effective, repeat: [1, 1], scope } : null
 	};
 }

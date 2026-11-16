@@ -18,6 +18,9 @@ export * from './project-layout-semantics';
 export * from './project-types';
 export * from './scene';
 export * from './scene-codec';
+// The Sky preset starts are pure data over the Scene types, so they are safe on
+// the root barrel; the unit envelope itself stays behind its `./units` subpath.
+export * from './units/sky-presets';
 export * from './shipped-static';
 // Scene planning is F.2-native (it reads and replaces unit payloads), so it is the
 // explicit `./scene-planning` subpath. Exporting it here would drag the unit

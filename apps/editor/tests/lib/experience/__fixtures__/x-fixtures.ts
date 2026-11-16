@@ -25,6 +25,7 @@ import type { AuthoringIntent, ScenePrimitiveEntity } from '@portfolio/project-m
 import {
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceProfile,
+	SCENE_UNIT_FORMAT_VERSION,
 	serializeProjectEnvelope,
 	validateProjectEnvelope,
 	type	ExperienceTransitionKind,
@@ -112,7 +113,7 @@ async function authoring(projectId: string, name: string) {
 		id: projectId,
 		name,
 		layout,
-		scene: { formatVersion: 7, textures: [], materials: [], entities: [piano] }
+		scene: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [piano] }
 	});
 	const profile = createUnitAcceptanceProfile({ compound: true, sessionEpoch: 'x-fixtures' });
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({

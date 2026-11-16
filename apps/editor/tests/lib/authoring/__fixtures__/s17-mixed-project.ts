@@ -21,11 +21,12 @@ import type { SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '@portfo
 import {
 	creatorModelResourceEntry
 } from '@portfolio/project-model/scene-planning';
-import type {
-	DependencyLockEntry,
-	ProjectEnvelope,
-	ResourceUnitPayload,
-	TypedResource
+import {
+	SCENE_UNIT_FORMAT_VERSION,
+	type DependencyLockEntry,
+	type ProjectEnvelope,
+	type ResourceUnitPayload,
+	type TypedResource
 } from '@portfolio/project-model/units';
 import { getAssetById } from '$lib/content/assets';
 import { CATALOGUE_MODEL_CONTACT_RECORDS } from '$lib/authoring/scene/object-definition-policy';
@@ -274,7 +275,7 @@ export async function buildS17MixedProject(projectId = PROJECT_ID): Promise<{
 		id: projectId,
 		name: 'R217.S17 mixed scene and form project',
 		layout,
-		scene: { formatVersion: 7, textures: [], materials: [], entities: sceneEntities },
+		scene: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: sceneEntities },
 		resources
 	});
 	return {

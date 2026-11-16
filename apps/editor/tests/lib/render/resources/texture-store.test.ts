@@ -68,6 +68,9 @@ const effectiveA: EffectiveSceneMaterial = {
 	metalness: 0.02,
 	color: '#c4b4a0',
 	defaultTileSizeMeters: [2, 2],
+	rotation: 0,
+	offset: [0, 0],
+	normalScale: null,
 	variantSeed: 'vAABBCC'
 };
 
@@ -78,6 +81,9 @@ const effectiveB: EffectiveSceneMaterial = {
 	metalness: 0.02,
 	color: '#c4b4a0',
 	defaultTileSizeMeters: [2, 2],
+	rotation: 0,
+	offset: [0, 0],
+	normalScale: null,
 	variantSeed: 'vDDEEFF'
 };
 

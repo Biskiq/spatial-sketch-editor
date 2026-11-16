@@ -31,6 +31,7 @@ import {
 	RGBADepthPacking,
 	BasicDepthPacking,
 	ShadowMaterial,
+	Vector2,
 	type Material,
 	type Texture
 } from 'three';
@@ -181,6 +182,9 @@ function construct(
 					: { emissiveIntensity: descriptor.emissiveIntensity }),
 				...(descriptor.toneMapped === undefined ? {} : { toneMapped: descriptor.toneMapped }),
 				...(descriptor.wireframe === undefined ? {} : { wireframe: descriptor.wireframe }),
+				...(descriptor.normalScale === undefined
+					? {}
+					: { normalScale: new Vector2(descriptor.normalScale[0], descriptor.normalScale[1]) }),
 				...(bound === null ? {} : bound)
 			});
 		case 'basic':
