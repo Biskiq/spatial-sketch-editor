@@ -31,6 +31,12 @@
 		gesture.cancel();
 	}
 
+	// Focus moves on the next control's pointerdown, after that control has begun
+	// its own gesture, so a blur or pointercancel ends only the gesture it owns.
+	function cancelOwn(owner: string) {
+		if (gesture.owner === owner) cancel();
+	}
+
 	function dialMove(event: PointerEvent, owner: 'time' | 'heading') {
 		if (gesture.owner !== owner) return;
 		const rect = (event.currentTarget as SVGElement).getBoundingClientRect();
@@ -138,9 +144,15 @@
 		<input type="range" {min} {max} {step} {value} disabled={look.busy}
 			onpointerdown={() => gesture.begin(label)}
 			onpointerup={() => void gesture.commit(label)}
-			onpointercancel={cancel} onblur={cancel}
+			onpointercancel={() => cancelOwn(label)} onblur={() => cancelOwn(label)}
 			onkeydown={(event) => rangeKey(event, label)} onkeyup={(event) => keyRelease(event, label)}
 			oninput={(event) => rangeInput(event.currentTarget, label, change(event.currentTarget.valueAsNumber))}
+			{@attach (input) => {
+				// A cancelled native drag keeps its thumb where the pointer left it;
+				// outside its own gesture the thumb follows the Sky value.
+				const accepted = String(value);
+				if (gesture.owner !== label && input.value !== accepted) input.value = accepted;
+			}}
 		/>
 	</label>
 {/snippet}
@@ -152,7 +164,7 @@
 				onclick={(event) => colorOpen(event, label)}
 				oninput={(event) => { if (gesture.owner === label) gesture.move(label, change(event.currentTarget.value)); }}
 				onchange={(event) => colorChange(label, change(event.currentTarget.value))}
-				onblur={() => { if (gesture.owner === label) cancel(); }}
+				onblur={() => cancelOwn(label)}
 			/>
 	</label>
 {/snippet}
@@ -169,7 +181,7 @@
 				aria-valuetext={`${hhmm(sky.time)}, ${phaseName(sky.time)}`}
 				class:dim={fading && gesture.owner !== 'dial-time'}
 				onpointerdown={(event) => dialPress(event, 'time')} onpointermove={(event) => dialMove(event, 'time')}
-				onpointerup={(event) => dialRelease(event, 'time')} onpointercancel={cancel} onblur={cancel}
+				onpointerup={(event) => dialRelease(event, 'time')} onpointercancel={() => cancelOwn('time')} onblur={() => cancelOwn('time')}
 				onkeydown={(event) => dialKey(event, 'time')} onkeyup={(event) => keyRelease(event, 'time')}
 			>{@html timeDialSVG(sky, gesture.owner === 'time', id)}</svg>
 			<div>
@@ -184,7 +196,7 @@
 						aria-label="Sun direction at noon" aria-valuemin="0" aria-valuemax="360" aria-valuenow={sky.heading}
 						aria-valuetext={`${Math.round(sky.heading)} degrees`}
 						onpointerdown={(event) => dialPress(event, 'heading')} onpointermove={(event) => dialMove(event, 'heading')}
-						onpointerup={(event) => dialRelease(event, 'heading')} onpointercancel={cancel} onblur={cancel}
+						onpointerup={(event) => dialRelease(event, 'heading')} onpointercancel={() => cancelOwn('heading')} onblur={() => cancelOwn('heading')}
 						onkeydown={(event) => dialKey(event, 'heading')} onkeyup={(event) => keyRelease(event, 'heading')}
 					>{@html compassSVG(sky.heading)}</svg>
 					<span>Noon {Math.round(sky.heading)}°<br /><button type="button" class="link" disabled={look.busy} onclick={look.aimThroughWindows}>Aim through windows</button></span>
