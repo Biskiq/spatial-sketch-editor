@@ -68,6 +68,10 @@ Cloud file texture
 → existing SceneTextureAsset registration
 → existing drag/assignment/render path
 
+A project texture's Scene `id` is its logical asset id: a `/project-assets/{assetId}` texture must
+carry `id === assetId` (`texture_id_mismatch`). One image therefore has one Scene texture record, so
+Finish maps that share an image share one release pin.
+
 Project registry rows
 → currently texture/image focused
 → PNG/WebP/JPEG

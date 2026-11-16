@@ -9,19 +9,24 @@
 	 * change, so it is one Undo. "Plain Paper while editing" is a browser preference
 	 * and is never saved.
 	 */
-	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+	import {
+		SCENE_SKY_PRESET_STARTS,
+		type SceneEnvironmentChoice,
+		type SceneSky,
+		type SceneSkyPreset
+	} from '@portfolio/project-model/units';
 	import { WORLD_ENVIRONMENT_CHOICES, worldEnvironmentLook } from '$lib/render/world-environment';
 	import ShellIcon from './ShellIcon.svelte';
 
 	let {
-		environment = 'paper',
+		sky = null,
 		onEnvironment,
 		editOnPaper = false,
 		onEditOnPaper,
 		busy = false
 	}: {
-		environment?: SceneEnvironmentPreset;
-		onEnvironment: (preset: SceneEnvironmentPreset) => void;
+		sky?: SceneSky | null;
+		onEnvironment: (preset: SceneEnvironmentChoice) => void;
 		editOnPaper?: boolean;
 		onEditOnPaper: (value: boolean) => void;
 		busy?: boolean;
@@ -29,12 +34,17 @@
 
 	let open = $state<'pick' | 'panel' | null>(null);
 	let root = $state<HTMLElement | undefined>(undefined);
-	const label = $derived(WORLD_ENVIRONMENT_CHOICES.find((choice) => choice.preset === environment)?.label ?? 'Paper');
+	const label = $derived(WORLD_ENVIRONMENT_CHOICES.find((choice) => choice.preset === (sky?.preset ?? 'paper'))?.label ?? 'Paper');
 
-	function swatch(preset: SceneEnvironmentPreset): string {
-		const look = worldEnvironmentLook(preset);
+	function swatch(value: SceneSky | null): string {
+		const look = worldEnvironmentLook(value);
 		if (look === null) return 'linear-gradient(#e9ebe6, #e9ebe6)';
 		return `linear-gradient(${look.sky[0]}, ${look.sky[1]} 55%, ${look.haze} 56%, ${look.ground})`;
+	}
+
+	/** A tile previews its preset start; the chip previews the World's own Sky. */
+	function tileSwatch(preset: SceneEnvironmentChoice): string {
+		return swatch(preset === 'paper' ? null : SCENE_SKY_PRESET_STARTS[preset as SceneSkyPreset]);
 	}
 
 	// A press outside closes the quick pick or the panel.
@@ -68,7 +78,7 @@
 		data-environment-chip
 		onclick={() => (open = open === null ? 'pick' : null)}
 	>
-		<i class="env-swatch" style:background={swatch(environment)}></i>{label}<ShellIcon name="chevronDown" size={12} />
+		<i class="env-swatch" style:background={swatch(sky)}></i>{label}<ShellIcon name="chevronDown" size={12} />
 	</button>
 	{#if open === 'pick'}
 		<div class="env-pop" role="dialog" aria-label="Environment">
@@ -78,12 +88,12 @@
 					<button
 						type="button"
 						class="env-tile"
-						aria-pressed={environment === choice.preset}
+						aria-pressed={(sky?.preset ?? 'paper') === choice.preset}
 						data-environment={choice.preset}
 						disabled={busy}
 						onclick={() => onEnvironment(choice.preset)}
 					>
-						<i style:background={swatch(choice.preset)}></i>
+						<i style:background={tileSwatch(choice.preset)}></i>
 						<span>{choice.label}</span>
 					</button>
 				{/each}
@@ -110,11 +120,11 @@
 						<button
 							type="button"
 							class="env-tile"
-							aria-pressed={environment === choice.preset}
+							aria-pressed={(sky?.preset ?? 'paper') === choice.preset}
 							disabled={busy}
 							onclick={() => onEnvironment(choice.preset)}
 						>
-							<i style:background={swatch(choice.preset)}></i>
+							<i style:background={tileSwatch(choice.preset)}></i>
 							<span>{choice.label}</span>
 						</button>
 					{/each}

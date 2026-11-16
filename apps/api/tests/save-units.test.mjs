@@ -20,6 +20,7 @@ import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	RESOURCE_UNIT_FORMAT_VERSION,
+	SCENE_SKY_PRESET_STARTS,
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
@@ -35,7 +36,7 @@ import { registerAsset, uploadAsset } from '../dist/asset-persistence.js';
 import { prepareArtworkPins } from '../dist/artwork-persistence.js';
 import { memoryObjectStore } from './test-support.mjs';
 import { runMigrations } from '../dist/migrate.js';
-import { ProjectNotFoundError } from '../dist/project-persistence.js';
+import { ProjectNotFoundError, loadProject } from '../dist/project-persistence.js';
 import { saveAcceptedSource, saveAcceptedSourceWithHandler } from '../dist/save-persistence.js';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
@@ -68,9 +69,11 @@ async function unitEnvelope(projectId, label = 'S05 unit', options = {}) {
 			unitId: 'unit-scene',
 			data: {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: [],
-				materials: [],
+				textures: options.textures ?? [],
+				materials: options.materials ?? [],
 				entities: options.sceneEntities ?? [],
+				...(options.palette === undefined ? {} : { palette: options.palette }),
+				...(options.environment === undefined ? {} : { environment: options.environment }),
 				...(options.artworkLibrary === undefined ? {} : { artworkLibrary: options.artworkLibrary })
 			}
 		},
@@ -207,12 +210,12 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
 		[projectId]
 	);
-	// Scene format 7 is the only admitted format now, and Save stores exactly
+	// Scene format 8 is the only admitted format now, and Save stores exactly
 	// the captured canonical bytes — the form source is never re-derived.
-	assert.equal(SCENE_UNIT_FORMAT_VERSION, 7);
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 8);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
-	assert.equal(storedScene.header.formatVersion, 7);
+	assert.equal(storedScene.header.formatVersion, SCENE_UNIT_FORMAT_VERSION);
 	assert.deepEqual(storedScene.data.entities, canonicalScene.data.entities);
 	assert.deepEqual(storedScene.data.entities, [NATIVE_FORM]);
 });
@@ -511,6 +514,74 @@ test('a failure after version staging but before the pointer update leaves the p
 	assert.equal(state.rows[0].savedBaseToken, token);
 	const versions = await pool.query('SELECT count(*)::int AS count FROM project_versions WHERE project_id = $1', [projectId]);
 	assert.equal(versions.rows[0].count, 1);
+});
+
+test('release preparation pins a P20 texture that a Finish names only through a map slot, and a full Look survives save and reopen', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	const pending = await registerAsset(pool, owner, projectId, 'Normal.png', 'test');
+	const ready = await uploadAsset(pool, owner, projectId, pending.id, bytes.length, Readable.from([bytes]), store, 'test');
+	// Scene 8: a P20 texture record's id is its asset id, and a Finish names it by
+	// that id from `maps.normal`; no Artwork places it.
+	const envelope = await unitEnvelope(projectId, 'Mapped Finish', {
+		textures: [{ id: ready.id, name: 'Normal', uri: `/project-assets/${ready.id}` }],
+		// Every Scene 8 Look field at a non-default value, so save and reopen prove
+		// none is dropped: a palette follower, maps, mapping, normal strength and
+		// flip, and an environment with an edited Sky and a Treatment.
+		materials: [{
+			id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm',
+			color: { slot: 'accent' },
+			roughness: 0.4,
+			metalness: 0.1,
+			maps: { normal: ready.id },
+			mapping: { tileMeters: [0.5, 2], rotation: 0.25, offset: [0.1, 0.2] },
+			normalScale: 0.5,
+			normalFlipY: true
+		}],
+		palette: [{ id: 'accent', name: 'Accent', color: '#445566' }, { id: 'ground', name: 'Ground', color: '#ddccbb' }],
+		environment: {
+			sky: {
+				...SCENE_SKY_PRESET_STARTS['golden-hour'],
+				sun: { ...SCENE_SKY_PRESET_STARTS['golden-hour'].sun, softness: 0.8 },
+				haze: { color: '#ccbbaa', visibility: 400 }
+			},
+			treatment: 'clay'
+		},
+		resources: [{ kind: 'texture', id: ready.id, contentRevision: 'rev-normal', pin: null, unresolved: null }],
+		lockEntries: [{
+			domain: 'resource:texture', subjectKind: 'resource', subjectId: ready.id, instancePath: [],
+			contentRevision: 'rev-normal', requiredCapabilities: [], pin: null
+		}]
+	});
+	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
+	const saved = await saveAcceptedSource(pool, owner, request, store);
+	assert.equal(saved.version, 2);
+	const stored = await pool.query('SELECT document FROM project_versions WHERE project_id = $1 AND version = 2', [projectId]);
+	const storedScene = stored.rows[0].document.units.scene.data;
+	const authored = envelope.units.scene.data;
+	assert.deepEqual(storedScene.materials, authored.materials);
+	assert.deepEqual(storedScene.palette, authored.palette);
+	assert.deepEqual(storedScene.environment, authored.environment);
+	// Reopen: the loaded document is admitted again with every Look field intact.
+	const reopened = await loadProject(pool, owner, projectId);
+	const reread = await readUnitEnvelopeForSave(serializeProjectEnvelope(reopened.document));
+	assert.equal(reread.kind, 'read', JSON.stringify(reread));
+	assert.deepEqual(reread.envelope.units.scene.data.materials, authored.materials);
+	assert.deepEqual(reread.envelope.units.scene.data.palette, authored.palette);
+	assert.deepEqual(reread.envelope.units.scene.data.environment, authored.environment);
+	assert.equal(reread.envelope.units.scene.header.revision, stored.rows[0].document.units.scene.header.revision);
+	const pins = await prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release');
+	assert.deepEqual(pins.map((pin) => pin.assetId), [ready.id]);
+	// Without its bytes the mapped texture cannot be released.
+	store.objects.delete(pins[0].objectKey);
+	await assert.rejects(
+		prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release'),
+		(error) => error.path === '$.units.scene.data.textures[0].uri'
+	);
 });
 
 test('Artwork Save verifies project bytes and release preparation pins each placed image once', async () => {

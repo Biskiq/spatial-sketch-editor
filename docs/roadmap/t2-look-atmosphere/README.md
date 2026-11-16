@@ -471,7 +471,7 @@ for multi-PR, Tier 2 or invention-risking work, as the first commit of that work
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
 | **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | — | With T1 |
-| **S8 Catalogue and depth** | **S8a** manual map slots · **S8b** automatic set import · curated sets and fixture models · see-through and Glow as S0 allows | S4 · D8 · G1 for fixtures | — | **Yes** (licence) |
+| **S8 Catalogue and depth** | **S8a** manual map slots · **S8b** automatic set import · curated sets and fixture models · see-through and Glow as S0 allows | S4 · D8 · G1 for fixtures | **bump if see-through/Glow land** | **Yes** (licence) |
 
 ```text
 now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)

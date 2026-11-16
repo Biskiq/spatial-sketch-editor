@@ -134,6 +134,7 @@ type VariantLease = {
 	readonly rx: number;
 	readonly ry: number;
 	readonly rotation: number;
+	readonly offset: readonly [number, number];
 	readonly scope: TextureLoadScope | null;
 };
 
@@ -222,7 +223,8 @@ export function createSceneEntityRepresentation(
 				entry.variant.rx,
 				entry.variant.ry,
 				entry.variant.rotation,
-				entry.variant.scope
+				entry.variant.scope,
+				entry.variant.offset
 			);
 			entry.variant = null;
 		}
@@ -234,6 +236,7 @@ export function createSceneEntityRepresentation(
 		if (textures === null) return;
 		const scope = options.scope?.() ?? null;
 		const [rx, ry] = textures.repeat;
+		const { rotation, offset } = textures;
 		const generation = entry.generation;
 		const job: Promise<void> = loadEffectiveTextures(textures, scope)
 			.then((result) => {
@@ -241,17 +244,24 @@ export function createSceneEntityRepresentation(
 				// patched by a late arrival.
 				if (disposed || entry.generation !== generation) return;
 				if (result.status !== 'ready' && result.status !== 'partial') return;
-				const maps = acquireEffectiveVariant(textures, rx, ry, 0, scope);
-				const variantKey = effectiveTextureVariantKey(textures.variantSeed, rx, ry, 0, scope);
+				const maps = acquireEffectiveVariant(textures, rx, ry, rotation, scope, offset);
+				const variantKey = effectiveTextureVariantKey(
+					textures.variantSeed,
+					rx,
+					ry,
+					rotation,
+					scope,
+					offset
+				);
 				const descriptor = texturedDescriptor(item.material, maps, variantKey);
 				if (descriptor === null) {
-					releaseEffectiveVariant(textures.variantSeed, rx, ry, 0, scope);
+					releaseEffectiveVariant(textures.variantSeed, rx, ry, rotation, scope, offset);
 					return;
 				}
 				const next: MaterialLease = options.store.acquire(descriptor, maps as MaterialTextureMaps);
 				const base = entry.material;
 				entry.material = next;
-				entry.variant = { seed: textures.variantSeed, rx, ry, rotation: 0, scope };
+				entry.variant = { seed: textures.variantSeed, rx, ry, rotation, offset, scope };
 				entry.mesh.material = next.material;
 				// The untextured surface is no longer this item's look. Another entity
 				// still holding it keeps the instance alive.

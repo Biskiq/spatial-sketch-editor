@@ -12,7 +12,7 @@ runtime draw world content through the same modules, so editor and visitor canno
 ## Layers
 
 ```text
-Authored units        Layout 7 · Scene 7 · Camera · Experience
+Authored units        Layout 7 · Scene 8 · Camera · Experience
       │  one compiler; one Scene resolution, retained per unit
       ▼
 Derived descriptions  CompiledLayoutGeometry · resolved Scene content
@@ -70,6 +70,46 @@ The Canvas `LightStore` is the only constructor of a world Point, Spot or Sun li
 shrink-only allowlist. The Stage and the Preview lease from the Canvas store.
 
 **Guard:** `render/light-realizer-boundary`.
+
+### One look resolver
+
+`materials/scene-instance-material.ts` resolves every Scene Finish for every surface: the catalogue
+base, then per-slot `maps`, the colour literal or palette follower, roughness/metalness, `mapping`,
+normal scale/flip, and finally the World's Treatment. The resolved colour multiplies the colour map,
+so a catalogue or project map keeps its base tint (`wood-walnut` stays `#3d2a1a` over its map).
+`tileMeters` becomes UV repeat, `rotation` turns about the UV centre and `offset` shifts in tile
+fractions; all three are part of the texture variant identity, so two looks with different mapping
+never share a texture clone. Natural adds nothing to `variantSeed`; Flat colour and Clay change the
+resolved values, drop every map and therefore select a different variant. The Stage, Visitor Preview
+and a published visit run this one resolver over the same `RuntimeScene`, so their descriptors cannot
+drift.
+
+**Guards:** `materials/scene-instance-material`, `materials/look-parity-golden`.
+
+The Sky's Sun is the same one light: `softness` maps to `radius = 1 + 4·softness` shadow-map texels
+(the old fixed radius 3 is softness 0.5).
+
+**Haze** is stored now and rendered by S2. `visibility` is meteorological visibility: the distance at
+which a surface's contrast against `haze.color` falls to 2%. It renders as
+`FogExp2(haze.color, √(ln 50) / visibility)`; an absent `visibility` is clear air. S2 owns which
+world elements are exempt (sky background, ground disc, editor marks) and lands that rendering in the
+shared `WorldEnvironment` with its first writer, so the Stage and the visit change together. In S1
+every surface renders clear air alike.
+
+**Treatment** runs last inside the one resolver and never writes the document:
+
+| Treatment | Maps | Colour | Roughness | Metalness |
+| --- | --- | --- | --- | --- |
+| Natural (absent) | as resolved | as resolved | as resolved | as resolved |
+| `flat-colour` | none | resolved factor | `max(r, FLAT_MIN_ROUGHNESS)` | 0 |
+| `clay` | none | `CLAY_COLOR` | `CLAY_ROUGHNESS` | 0 |
+
+The constants live in `render/materials/treatment.ts` (`FLAT_MIN_ROUGHNESS = 0.6`,
+`CLAY_COLOR = '#d6d3cd'`, `CLAY_ROUGHNESS = 0.9`). They are tunable defaults until S6 exposes the
+control and frozen after, because a release renders through current code. Treatment reaches only
+resolver-routed surfaces — primitives, forms and models remapped by a Finish; Artwork, models that
+keep their own materials, default Layout surfaces and editor marks are untouched until S6 extends it.
+A model remap keeps the model's own UVs, so it ignores `mapping` but keeps normal strength and flip.
 
 ### Owned render identity
 

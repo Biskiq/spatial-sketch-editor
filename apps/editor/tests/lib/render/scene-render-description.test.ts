@@ -88,11 +88,19 @@ const MATERIALS: SceneMaterialInstance[] = [
 		id: LOOK_TEXTURED,
 		name: 'Textured',
 		baseMaterialId: 'plaster-warm',
-		baseTextureId: TEXTURE_ID,
+		maps: { color: TEXTURE_ID },
 		roughness: 0.65,
 		metalness: 0
 	}
 ];
+
+function deepFreeze<T>(value: T): T {
+	if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
+		Object.freeze(value);
+		for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+	}
+	return value;
+}
 
 function scene(entities: SceneEntity[]): RuntimeScene {
 	return { entities, materials: MATERIALS, textures: TEXTURES } as unknown as RuntimeScene;
@@ -237,5 +245,78 @@ describe('E7/R4 — resolved Scene description', () => {
 		expect(describeSceneRender(value, FORM_SUPPORT)).toBe(arrived);
 		// A support that cannot evaluate keeps the Form omitted.
 		expect(describeSceneRender(value, { evaluate: () => null }).items.map((item) => item.id)).toEqual(['box-a']);
+	});
+
+	it('resolves one RuntimeScene identically for the Stage and visitor, with and without Treatment', () => {
+		const entities = [
+			primitive('box-a', 'box', [0, 0, 0], LOOK_TEXTURED),
+			primitive('sphere-b', 'sphere', [2, 0, 0], LOOK_SECOND)
+		];
+		const source: RuntimeScene = {
+			...scene(entities),
+			palette: [{ id: 'accent', name: 'Accent', color: '#445566' }],
+			environment: {}
+		};
+
+		// The Stage and the cold visitor bundle each hold their own RuntimeScene
+		// value for the same stored unit; the description is a function of content,
+		// so two independent, deep-frozen copies carry equal keys, descriptors and
+		// texture specs, and resolving them mutates neither.
+		const stage = describeSceneRender(deepFreeze(structuredClone(source)));
+		const visitorSource = deepFreeze(structuredClone(source));
+		const visitor = describeSceneRender(visitorSource);
+		expect(visitor).not.toBe(stage);
+		expect(visitor.items.map((item) => item.key)).toEqual(stage.items.map((item) => item.key));
+		expect(visitor.items).toEqual(stage.items);
+		expect(visitorSource).toEqual(source);
+
+		const treatedSource = deepFreeze(structuredClone({ ...source, environment: { treatment: 'clay' as const } }));
+		const treated = describeSceneRender(treatedSource);
+		expect(describeSceneRender(deepFreeze(structuredClone(treatedSource))).items).toEqual(treated.items);
+		expect(treated.items).toHaveLength(stage.items.length);
+		for (const item of treated.items) {
+			expect(item.material.color).toBe('#d6d3cd');
+			expect(item.material.roughness).toBe(0.9);
+			expect(item.textures).toBeNull();
+		}
+		expect(treated.items[0]!.key).not.toBe(stage.items[0]!.key);
+	});
+	it('remaps a model to the Finish look, keeping its normal strength and flip but ignoring mapping', () => {
+		const normalId = 'texture-normal';
+		const finish: SceneMaterialInstance = {
+			id: 'look-model',
+			name: 'Model',
+			baseMaterialId: 'plaster-warm',
+			maps: { normal: normalId },
+			mapping: { tileMeters: [0.5, 0.5], rotation: 0.5, offset: [0.25, 0] },
+			normalScale: 0.5,
+			normalFlipY: true
+		};
+		const model = {
+			kind: 'model',
+			id: 'model-a',
+			name: 'model-a',
+			assetId: 'creator-model',
+			fallback: 'generic',
+			materialInstanceId: finish.id,
+			position: [0, 0, 0],
+			rotation: [0, 0, 0],
+			scale: 1
+		} as unknown as SceneEntity;
+		const value = {
+			entities: [model],
+			materials: [finish],
+			textures: [...TEXTURES, { id: normalId, name: 'Normal', uri: '/textures/normal.png' }],
+			objects: [],
+			modelFootprints: new Map([['creator-model', { width: 1, depth: 1 }]])
+		} as unknown as RuntimeScene;
+		const look = describeSceneRender(value).models[0]?.look;
+		expect(look).not.toBeNull();
+		expect(look!.normalScale).toEqual([0.5, -0.5]);
+		expect(look!.slotUris).toMatchObject({ normalMap: '/textures/normal.png' });
+		// A remap keeps the model's own UVs: no mapping field reaches the look.
+		expect(look).not.toHaveProperty('rotation');
+		expect(look).not.toHaveProperty('offset');
+		expect(look).not.toHaveProperty('defaultTileSizeMeters');
 	});
 });

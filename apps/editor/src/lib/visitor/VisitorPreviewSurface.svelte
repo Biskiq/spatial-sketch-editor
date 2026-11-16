@@ -25,7 +25,7 @@ import { PCFShadowMap } from 'three';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
 	import StoreMaterial from '$lib/render/resources/StoreMaterial.svelte';
 	import type { LambertMaterialDescriptor } from '$lib/render/resources/material-descriptor';
-	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+	import type { SceneSky } from '@portfolio/project-model/units';
 
 	let {
 		scene,
@@ -57,7 +57,7 @@ import { PCFShadowMap } from 'three';
 		guideSeconds = 0,
 		viewLabels = null,
 		onExit,
-		environment = 'paper'
+		sky = null
 	}: {
 		scene: RuntimeScene;
 		geometry: CompiledLayoutGeometry;
@@ -83,8 +83,8 @@ import { PCFShadowMap } from 'three';
 		guideSeconds?: number;
 		viewLabels?: ReadonlyMap<string, string> | null;
 		onExit?: () => void;
-		/** Experience review 1 — the Scene's World environment; Paper by default, never black. */
-		environment?: SceneEnvironmentPreset;
+		/** The Scene's stored Sky; `null` is Paper, never black. */
+		sky?: SceneSky | null;
 	} = $props();
 
 	/** One render-resource owner for the Preview Canvas; see `StageCanvas`. */
@@ -428,7 +428,7 @@ import { PCFShadowMap } from 'three';
 			toneMapping={CANVAS_TONE_MAPPING}
 			renderMode={active ? 'always' : 'on-demand'}
 		>
-			{#if environment === 'paper'}
+			{#if sky === null}
 				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
 				<T.Color attach="background" args={['#e9ebe6']} />
 				<T.AmbientLight intensity={0.45} />
@@ -440,7 +440,7 @@ import { PCFShadowMap } from 'three';
 				</T.Mesh>
 			{:else}
 				<T.AmbientLight intensity={0.12} />
-				<WorldEnvironment preset={environment} bounds={geometry.bounds ?? null} />
+				<WorldEnvironment {sky} bounds={geometry.bounds ?? null} />
 			{/if}
 			{#if visitorState}
 				<VisitorCameraDirector
@@ -464,7 +464,7 @@ import { PCFShadowMap } from 'three';
 				{textureScope}
 				{artworkScope}
 				{modelUrls}
-				includeLights={environment !== 'paper'}
+				includeLights={sky !== null}
 			/>
 			<!-- Renderer-observed first frame; inert unless the harness enables marks. -->
 			<VisitorFirstFrame {runEpoch} {active} />

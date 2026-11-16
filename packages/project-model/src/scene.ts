@@ -140,13 +140,111 @@ export type SceneTextureAsset = {
   uri: string;
 };
 
+/**
+ * A finish colour: a lowercase `#rrggbb` literal or a follower of one palette
+ * slot. A follower moves when its slot's colour changes; a literal never moves.
+ */
+export type SceneColor = string | { readonly slot: string };
+
+/**
+ * The colour-image slot map: each entry names a `SceneTextureAsset.id`, never a
+ * P20 asset id directly. A named slot replaces the base catalogue's texture for
+ * that slot; unnamed slots keep the base's.
+ */
+export type SceneFinishMaps = {
+	readonly color?: string;
+	readonly normal?: string;
+	readonly roughness?: string;
+	readonly occlusion?: string;
+	readonly metalness?: string;
+};
+
+/**
+ * One finish's texture mapping. Forms and Walls emit metre UVs, so `tileMeters`
+ * states one tile's real size; `rotation` is radians about the UV centre and
+ * `offset` shifts in tile fractions.
+ */
+export type SceneFinishMapping = {
+	readonly tileMeters?: readonly [number, number];
+	readonly rotation?: number;
+	readonly offset?: readonly [number, number];
+};
+
+/**
+ * A project Finish: a named look that references one curated catalogue Finish
+ * and optionally overrides its colour, PBR scalars, maps, mapping and normal.
+ * Scene 8 retires the single colour map: a colour map is now `maps.color`.
+ */
 export type SceneMaterialInstance = {
   id: string;
   name: string;
   baseMaterialId: MaterialId;
-  baseTextureId?: string;
+  color?: SceneColor;
   roughness?: number;
   metalness?: number;
+  maps?: SceneFinishMaps;
+  mapping?: SceneFinishMapping;
+  normalScale?: number;
+  normalFlipY?: boolean;
+};
+
+/** The most palette slots one World may carry. */
+export const SCENE_PALETTE_MAX_SLOTS = 8 as const;
+
+/**
+ * One ordered palette slot. The `id` is the follower's stable reference and is
+ * never shown or changed; `name` is the creator-facing label and may repeat.
+ */
+export type ScenePaletteSlot = {
+	readonly id: string;
+	readonly name: string;
+	readonly color: string;
+};
+
+/** The three Sky presets. A preset is provenance, never the stored look. */
+export const SCENE_SKY_PRESETS = ['daylight', 'golden-hour', 'dusk'] as const;
+export type SceneSkyPreset = (typeof SCENE_SKY_PRESETS)[number];
+
+/** The two Look treatments. `natural` is the absence of a treatment, never a tag. */
+export const SCENE_TREATMENTS = ['flat-colour', 'clay'] as const;
+export type SceneTreatment = (typeof SCENE_TREATMENTS)[number];
+
+/** The one Sun a Sky carries, as a direction and physical light values. */
+export type SceneSkySun = {
+	/** Radians from +Z toward +X, in [0, 2π). */
+	readonly azimuth: number;
+	/** Radians above the horizon, in [0, π/2]. */
+	readonly elevation: number;
+	readonly color: string;
+	readonly intensity: number;
+	/** Shadow blur, in [0, 1]: radius = 1 + 4·softness shadow-map texels. */
+	readonly softness: number;
+};
+
+/**
+ * The authored Sky: sun angles, colours and scalars. Absence of a Sky is Paper.
+ * Preset starts are copied into the World, so retuning a start never changes a
+ * saved World.
+ */
+export type SceneSky = {
+	/** Provenance: the Reset target, the label and the editor plate. */
+	readonly preset: SceneSkyPreset;
+	readonly sun: SceneSkySun;
+	readonly zenith: string;
+	readonly horizon: string;
+	readonly ground: string;
+	readonly haze: { readonly color: string; readonly visibility?: number };
+	readonly hemisphere: {
+		readonly skyColor: string;
+		readonly groundColor: string;
+		readonly intensity: number;
+	};
+};
+
+/** Authored world presentation: the Sky and the resolve-time Treatment. */
+export type SceneEnvironment = {
+	readonly sky?: SceneSky;
+	readonly treatment?: SceneTreatment;
 };
 
 export type ScenePrimitiveKind = 'box' | 'plane' | 'cylinder' | 'sphere';
@@ -454,6 +552,10 @@ export type RuntimeScene = {
   textures: SceneTextureAsset[];
   /** Material instances; rendering support lands in Phase 5.3. */
   materials: SceneMaterialInstance[];
+	/** The World's ordered palette, when it has one. */
+	readonly palette?: readonly ScenePaletteSlot[];
+	/** The World's authored Sky and Treatment, when it has any. */
+	readonly environment?: SceneEnvironment;
   /**
    * All scene entities with room-local transforms (cloned from the document).
    * MuseumEntities dispatches by `kind` for shared visitor/editor rendering.

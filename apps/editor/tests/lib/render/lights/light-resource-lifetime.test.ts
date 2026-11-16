@@ -34,6 +34,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { DirectionalLight, Light, PointLight, Scene, SpotLight, type Object3D } from 'three';
 import type { RuntimeScene, ScenePrimitiveEntity } from '@portfolio/project-model';
 import Harness, { type LightWorldHandle, type LightWorldProps } from '../fixtures/LightWorldHarness.svelte';
+import { SCENE_SKY_PRESET_STARTS } from '@portfolio/project-model/units';
 import { POINT_OPEN, POINT_RANGED, SPOT_AIMED, runtimeScene } from '../fixtures/light-parity-cases';
 
 const BOX: ScenePrimitiveEntity = {
@@ -75,7 +76,7 @@ function mountWorld(initial: Partial<LightWorldProps> = {}) {
 	const handle = {} as LightWorldHandle;
 	const props: LightWorldProps = {
 		scene: runtimeScene([POINT_RANGED, POINT_OPEN, SPOT_AIMED]),
-		preset: 'daylight',
+		sky: SCENE_SKY_PRESET_STARTS.daylight,
 		bounds: { min: [-4, 0, -4], max: [4, 3, 4] },
 		shadowBounds: null,
 		groundY: 0,
@@ -182,12 +183,12 @@ describe('E10 mounted: light identity across edits', () => {
 		flushSync();
 		expect(byType(world).get('DirectionalLight')![0]).toBe(sun);
 		expect(handle.resources.lights.stats().updated).toBe(1);
-		handle.set({ preset: 'paper' });
+		handle.set({ sky: null });
 		flushSync();
 		expect(byType(world).get('DirectionalLight')).toBeUndefined();
 		expect(target.parent).toBeNull();
 		expect(handle.resources.lights.stats()).toEqual({ live: 3, created: 4, disposed: 1, updated: 1 });
-		handle.set({ preset: 'dusk' });
+		handle.set({ sky: SCENE_SKY_PRESET_STARTS.dusk });
 		flushSync();
 		expect(byType(world).get('DirectionalLight')![0]).not.toBe(sun);
 		expect(handle.resources.lights.stats().live).toBe(4);

@@ -146,11 +146,50 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 			id: material.id,
 			name: material.name,
 			baseMaterialId: material.baseMaterialId,
-			...(material.baseTextureId === undefined
+			...(material.color === undefined
 				? {}
-				: { baseTextureId: material.baseTextureId }),
+				: {
+						color:
+							typeof material.color === 'string'
+								? material.color
+								: { slot: material.color.slot }
+					}),
 			...(material.roughness === undefined ? {} : { roughness: material.roughness }),
-			...(material.metalness === undefined ? {} : { metalness: material.metalness })
+			...(material.metalness === undefined ? {} : { metalness: material.metalness }),
+			...(material.maps === undefined
+				? {}
+				: {
+						maps: {
+							...(material.maps.color === undefined ? {} : { color: material.maps.color }),
+							...(material.maps.normal === undefined ? {} : { normal: material.maps.normal }),
+							...(material.maps.roughness === undefined
+								? {}
+								: { roughness: material.maps.roughness }),
+							...(material.maps.occlusion === undefined
+								? {}
+								: { occlusion: material.maps.occlusion }),
+							...(material.maps.metalness === undefined
+								? {}
+								: { metalness: material.maps.metalness })
+						}
+					}),
+			...(material.mapping === undefined
+				? {}
+				: {
+						mapping: {
+							...(material.mapping.tileMeters === undefined
+								? {}
+								: { tileMeters: [...material.mapping.tileMeters] }),
+							...(material.mapping.rotation === undefined
+								? {}
+								: { rotation: material.mapping.rotation }),
+							...(material.mapping.offset === undefined
+								? {}
+								: { offset: [...material.mapping.offset] })
+						}
+					}),
+			...(material.normalScale === undefined ? {} : { normalScale: material.normalScale }),
+			...(material.normalFlipY === undefined ? {} : { normalFlipY: material.normalFlipY })
 		})),
 		entities: document.entities.map(cloneEntity),
 		...(document.clusters === undefined ? {} : { clusters: document.clusters.map((cluster) => ({ id: cluster.id, name: cluster.name, memberIds: [...cluster.memberIds] })) }),

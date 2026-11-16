@@ -146,6 +146,10 @@ export type SceneTextureSpec = {
 	readonly variantSeed: string;
 	readonly slotUris: Readonly<Partial<Record<MaterialTextureSlotKey, string>>>;
 	readonly repeat: readonly [number, number];
+	/** Radians about the UV centre (0.5, 0.5). */
+	readonly rotation: number;
+	/** Shift in tile fractions, u then v. */
+	readonly offset: readonly [number, number];
 };
 
 export type SceneRenderItem = {
@@ -223,6 +227,8 @@ export type SceneModelLook = {
 	readonly metalness: number;
 	readonly variantSeed: string;
 	readonly slotUris: Readonly<Partial<Record<MaterialTextureSlotKey, string>>>;
+	/** The Finish's normal strength and flip; applied only while a normal map binds. */
+	readonly normalScale?: readonly [number, number];
 };
 
 /**

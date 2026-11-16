@@ -35,7 +35,6 @@ import { artworkFrameLayout, artworkHeight } from '@portfolio/project-model';
 import type {
 	RuntimeScene,
 	SceneArtworkEntity,
-	SceneDocument,
 	SceneFormEntity,
 	SceneFormSource,
 	SceneModelEntity,
@@ -176,7 +175,7 @@ function itemKey(
 		materialKey(material),
 		textures === null
 			? 'none'
-			: `${textures.variantSeed}@${textures.repeat[0]}x${textures.repeat[1]}`,
+			: `${textures.variantSeed}@${textures.repeat[0]}x${textures.repeat[1]}@${textures.rotation}@${textures.offset[0]}x${textures.offset[1]}`,
 		...transform.position,
 		...transform.rotation,
 		...transform.scale,
@@ -397,6 +396,7 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			look?.color ?? '-',
 			look?.roughness ?? '-',
 			look?.metalness ?? '-',
+			look?.normalScale?.join(',') ?? '-',
 			wireframe,
 			castShadow,
 			receiveShadow
@@ -418,16 +418,14 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 	};
 }
 
-function sceneModelItem(
-	entity: SceneModelEntity,
-	scene: RuntimeScene,
-	document: Pick<SceneDocument, 'materials' | 'textures'>
-): SceneModelItem {
+function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneModelItem {
 	// The resolved look a model's meshes are remapped to; without an instance the
 	// asset keeps its own materials. `paper-aged` is the catalogue fallback the
-	// per-entity renderer used for a model instance.
+	// per-entity renderer used for a model instance. A remap keeps the model's own
+	// UVs, so its mapping (rotation, offset, tile size) is ignored here; its normal
+	// strength and flip still apply.
 	const effective = entity.materialInstanceId
-		? resolveSceneMaterial(document, {
+		? resolveSceneMaterial(scene, {
 				materialInstanceId: entity.materialInstanceId,
 				fallbackCatalogueId: 'paper-aged'
 			})
@@ -440,7 +438,8 @@ function sceneModelItem(
 					roughness: effective.roughness,
 					metalness: effective.metalness,
 					variantSeed: effective.variantSeed,
-					slotUris: effective.slotUris
+					slotUris: effective.slotUris,
+					...(effective.normalScale === null ? {} : { normalScale: effective.normalScale })
 				};
 	const footprint = scene.modelFootprints?.get(entity.assetId);
 	return describeSceneModel({
@@ -460,17 +459,13 @@ export function describeSceneRender(
 	forms: SceneFormSupport | null = null
 ): SceneRenderDescription {
 	return cached(scene, forms, () => {
-		const document = {
-			materials: scene.materials,
-			textures: scene.textures
-		} as Pick<SceneDocument, 'materials' | 'textures'>;
 		const items: SceneRenderItem[] = [];
 		const artworks: SceneArtworkItem[] = [];
 		const models: SceneModelItem[] = [];
 
 		for (const entity of scene.entities) {
 			if (isSceneModelEntity(entity)) {
-				models.push(sceneModelItem(entity, scene, document));
+				models.push(sceneModelItem(entity, scene));
 				continue;
 			}
 			if (entity.kind === 'artwork') {
@@ -481,7 +476,7 @@ export function describeSceneRender(
 				const geometry = primitiveGeometry(entity);
 				const surface = primitiveSurface(entity);
 				const look = sceneLookFor(
-					document,
+					scene,
 					{
 						materialInstanceId: entity.materialInstanceId ?? null,
 						fallbackCatalogueId: entity.materialId
@@ -518,7 +513,7 @@ export function describeSceneRender(
 			const form = forms?.evaluate(entity.form) ?? null;
 			if (form === null) continue;
 			const look = sceneLookFor(
-				document,
+				scene,
 				{
 					materialInstanceId: entity.materialInstanceId ?? null,
 					fallbackCatalogueId: entity.materialId

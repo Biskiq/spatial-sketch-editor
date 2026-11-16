@@ -12,10 +12,10 @@
  * imported by the project-model root barrel: an F.2 envelope is reached through
  * its own package subpath.
  *
- * The Scene unit is Camera-free Scene 7: the world-local record grammar
- * (textures, materials, entities, clusters) with the navigation graph moved out
- * to the Camera and Experience units, and native forms admitted as entities.
- * The Camera unit keeps the
+ * The Scene unit is Camera-free Scene 8: the world-local record grammar
+ * (textures, materials, entities, clusters), the authored Look (palette, Sky and
+ * Treatment) with the navigation graph moved out to the Camera and Experience
+ * units, and native forms admitted as entities. The Camera unit keeps the
  * spatial half of the landed navigation records — views (eye/target/fov and
  * connectivity) and connections (path, view tracks, framing envelope, directed
  * timing) — while editorial order, holds, cycle entry and detour policy move to
@@ -34,9 +34,34 @@ import type {
 import type {
 	SceneConnection,
 	SceneEntity,
+	SceneEnvironment,
 	SceneMaterialInstance,
 	SceneObjectCluster,
+	ScenePaletteSlot,
+	SceneSkyPreset,
 	SceneTextureAsset
+} from '../scene';
+import {
+	SCENE_PALETTE_MAX_SLOTS,
+	SCENE_SKY_PRESETS,
+	SCENE_TREATMENTS
+} from '../scene';
+
+export {
+	SCENE_PALETTE_MAX_SLOTS,
+	SCENE_SKY_PRESETS,
+	SCENE_TREATMENTS
+};
+export type {
+	SceneColor,
+	SceneEnvironment,
+	SceneFinishMaps,
+	SceneFinishMapping,
+	ScenePaletteSlot,
+	SceneSky,
+	SceneSkyPreset,
+	SceneSkySun,
+	SceneTreatment
 } from '../scene';
 
 /** The envelope format this module implements. */
@@ -44,7 +69,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 7 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 8 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
@@ -135,8 +160,8 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 7: the world-local records without the navigation
- * graph, carrying native forms and optional world presentation. `formatVersion: 7` is the payload's own
+ * Camera-free Scene 8: the world-local records without the navigation
+ * graph, carrying native forms and optional world presentation. `formatVersion: 8` is the payload's own
  * version and matches the unit header. A model names a catalogue asset or a
  * `model` resource of the same envelope; the fallback vocabulary includes the
  * generic footprint box.
@@ -147,20 +172,23 @@ export type CameraFreeSceneDocument = {
 	materials: SceneMaterialInstance[];
 	entities: SceneEntity[];
 	artworkLibrary?: import('../artwork').ArtworkLibraryEntry[];
+	/** The World's ordered palette, when it has one. */
+	palette?: readonly ScenePaletteSlot[];
 	/** Editor-only hierarchy metadata; visitor rendering stays flat. */
 	clusters?: SceneObjectCluster[];
 	/**
-	 * Scene 5 — World presentation: the sky, horizon and light the World renders
-	 * in. Absent means `paper`, the Stage's own look. A fixed preset, never
-	 * per-value lighting.
+	 * The authored Look: the stored Sky and the resolve-time Treatment. Absent
+	 * means Paper (no Sky) and Natural (no treatment). The internal world-local
+	 * format-1 document keeps its envelope and does not carry this record.
 	 */
 	environment?: SceneEnvironment;
 };
 
-/** The fixed environment presets. */
-export const SCENE_ENVIRONMENT_PRESETS = ['paper', 'daylight', 'golden-hour', 'dusk'] as const;
-export type SceneEnvironmentPreset = (typeof SCENE_ENVIRONMENT_PRESETS)[number];
-export type SceneEnvironment = { readonly preset: SceneEnvironmentPreset };
+/**
+ * The environment a World can choose: Paper (the absence of a Sky) or one of the
+ * three Sky presets. A chosen preset copies its start into the World.
+ */
+export type SceneEnvironmentChoice = 'paper' | SceneSkyPreset;
 
 /** A Camera view: one eye/target/fov station plus its connectivity. */
 export type CameraView = {

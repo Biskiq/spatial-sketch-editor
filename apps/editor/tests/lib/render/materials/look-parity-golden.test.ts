@@ -15,7 +15,7 @@
  * parity test green.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { sceneLookFor } from '$lib/render/materials/scene-instance-material';
@@ -27,8 +27,11 @@ import {
 	lookCaseInstanceId,
 	sunCaseLook
 } from './fixtures/look-parity-cases';
+import { parityMismatches } from './fixtures/parity-compare';
 
-const GOLDEN_PATH = resolve(import.meta.dirname, '__fixtures__/look-parity-golden.json');
+const GOLDEN_PATH = fileURLToPath(
+	new URL('./__fixtures__/look-parity-golden.json', import.meta.url)
+);
 
 type LookGolden = {
 	readonly case: string;
@@ -76,6 +79,7 @@ function serialized(golden: LookParityGolden): string {
 	return `${JSON.stringify(golden, null, 2)}\n`;
 }
 
+
 describe('look parity golden', () => {
 	it('matches the descriptors captured from main before the Scene 8 change', () => {
 		const current = currentLookParityGolden();
@@ -83,7 +87,20 @@ describe('look parity golden', () => {
 			writeFileSync(GOLDEN_PATH, serialized(current));
 		}
 		const recorded = JSON.parse(readFileSync(GOLDEN_PATH, 'utf8')) as LookParityGolden;
-		expect(current).toEqual(recorded);
+		const mismatches: string[] = [];
+		parityMismatches(recorded, current, '$', mismatches);
+		expect(mismatches).toEqual([]);
+		// Scene 8 adds a mapping to every textured spec; no golden case authored
+		// one, so every recorded case must still draw at the identity mapping.
+		for (const look of current.looks) {
+			const textures = look.textures as {
+				readonly rotation?: number;
+				readonly offset?: readonly [number, number];
+			} | null;
+			if (textures === null) continue;
+			expect(textures.rotation, look.case).toBe(0);
+			expect(textures.offset, look.case).toEqual([0, 0]);
+		}
 	});
 
 	it('covers every catalogue id and every preset', () => {

@@ -1,19 +1,44 @@
 /**
- * Experience review 1 — the World environment presets.
+ * Experience review 1 — the World environment's resolved look.
  *
  * One runtime-safe table shared by the Stage, its snapshots, Preview and the
- * published visit: Scene stores only the preset id (`environment.preset`), and
- * every surface reads the same sky, horizon and light from here. No editor
- * module, no Three object; the renderer component builds from these values.
+ * published visit. The Scene stores the whole Sky (angles, colours, scalars);
+ * this module reads it into the values the renderer needs and supplies the
+ * presentation — label, subtitle and the Stage's plate — keyed by the Sky's
+ * `preset`. A preset is provenance, so an edited Sky keeps its preset's plate.
  *
- * `paper` is deliberately empty: a surface keeps its own neutral look (the
- * Stage's Paper and lights), so a World that never chose an environment renders
- * exactly as it did before presets existed.
+ * No editor module, no Three object; the renderer component builds from these
+ * values. An absent Sky is Paper: a surface keeps its own neutral look (the
+ * Stage's Paper and lights), so a World that never chose a Sky renders exactly
+ * as it did before presets existed.
  */
-import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+import {
+	sceneSunFrom,
+	sunShadowRadius,
+	type SceneEnvironmentChoice,
+	type SceneSky,
+	type SceneSkyPreset
+} from '@portfolio/project-model/units';
 import type { SunLightDescriptor } from './resources/light-descriptor';
 
 export const WORLD_ENVIRONMENT_GROUND_RADIUS_METERS = 400;
+
+/** The editor-facing identity of one preset: never a stored value. */
+export type WorldEnvironmentPresentation = {
+	readonly label: string;
+	readonly sub: string;
+	/** The editor Stage's bounded workspace plate under this light (it keeps Paper's grid). */
+	readonly plate: string;
+};
+
+/** Presentation only. Colours and light come from the stored Sky. */
+export const WORLD_ENVIRONMENT_PRESENTATIONS: Readonly<
+	Record<SceneSkyPreset, WorldEnvironmentPresentation>
+> = {
+	daylight: { label: 'Daylight', sub: 'Soft sky, noon sun', plate: '#e9ebe6' },
+	'golden-hour': { label: 'Golden hour', sub: 'Low warm sun', plate: '#efe5d3' },
+	dusk: { label: 'Dusk', sub: 'Your lamps carry it', plate: '#9a9c96' }
+};
 
 export type WorldEnvironmentLook = {
 	readonly label: string;
@@ -29,56 +54,64 @@ export type WorldEnvironmentLook = {
 	readonly hemisphere: readonly [string, string, number];
 	/** The one sun: a unit-ish direction it shines from, colour, intensity. */
 	readonly sun: { readonly from: readonly [number, number, number]; readonly color: string; readonly intensity: number };
-	/** Fog from near to far metres, in the haze colour. */
-	readonly fog: readonly [number, number];
+	/** Shadow blur, in [0, 1]; the shadow camera's radius is derived from it. */
+	readonly softness: number;
 };
 
-export const WORLD_ENVIRONMENT_LOOKS: Readonly<Record<Exclude<SceneEnvironmentPreset, 'paper'>, WorldEnvironmentLook>> = {
-	daylight: {
-		label: 'Daylight',
-		sub: 'Soft sky, noon sun',
-		sky: ['#b7cfcd', '#eef0e6'],
-		ground: '#e0e4d3',
-		haze: '#e8ebe1',
-		plate: '#e9ebe6',
-		hemisphere: ['#f4f7f2', '#b9b49c', 1.5],
-		sun: { from: [0.35, 1, 0.55], color: '#fff6df', intensity: 1.9 },
-		fog: [60, 220]
-	},
-	'golden-hour': {
-		label: 'Golden hour',
-		sub: 'Low warm sun',
-		sky: ['#e2a676', '#f8e4c2'],
-		ground: '#e2c99e',
-		haze: '#f4dbb2',
-		plate: '#efe5d3',
-		hemisphere: ['#ffe6c4', '#a07e58', 1.2],
-		sun: { from: [-1, 0.42, 0.3], color: '#ffc985', intensity: 2.1 },
-		fog: [50, 200]
-	},
-	dusk: {
-		label: 'Dusk',
-		sub: 'Your lamps carry it',
-		sky: ['#25313e', '#8b6e5d'],
-		ground: '#45473c',
-		haze: '#6e5e54',
-		plate: '#9a9c96',
-		hemisphere: ['#5b6884', '#3a342c', 0.7],
-		sun: { from: [0.5, 0.35, -0.8], color: '#b9c3dd', intensity: 0.45 },
-		fog: [40, 170]
-	}
-};
+/**
+ * A Sky is immutable stored data, so its resolved look is cached by identity.
+ * The renderer's effects depend on the returned value; a stable object means an
+ * unchanged Sky prop never rebuilds the background or updates the Sun.
+ */
+const LOOK_CACHE = new WeakMap<SceneSky, WorldEnvironmentLook>();
 
-export const WORLD_ENVIRONMENT_CHOICES: readonly { readonly preset: SceneEnvironmentPreset; readonly label: string; readonly sub: string }[] = [
-	{ preset: 'paper', label: 'Paper', sub: 'Default, as today' },
-	...(Object.entries(WORLD_ENVIRONMENT_LOOKS) as [Exclude<SceneEnvironmentPreset, 'paper'>, WorldEnvironmentLook][]).map(
-		([preset, look]) => ({ preset, label: look.label, sub: look.sub })
-	)
-];
-
-export function worldEnvironmentLook(preset: SceneEnvironmentPreset | null | undefined): WorldEnvironmentLook | null {
-	return preset === undefined || preset === null || preset === 'paper' ? null : WORLD_ENVIRONMENT_LOOKS[preset];
+/**
+ * The one resolved look for a stored Sky, or `null` for Paper. The presentation
+ * is read by `preset`; every appearance value is read from the Sky itself, so a
+ * retuned preset never changes a saved World.
+ */
+export function worldEnvironmentLook(
+	sky: SceneSky | null | undefined
+): WorldEnvironmentLook | null {
+	if (sky === null || sky === undefined) return null;
+	const cached = LOOK_CACHE.get(sky);
+	if (cached !== undefined) return cached;
+	const presentation = WORLD_ENVIRONMENT_PRESENTATIONS[sky.preset];
+	const look: WorldEnvironmentLook = {
+		label: presentation.label,
+		sub: presentation.sub,
+		plate: presentation.plate,
+		sky: [sky.zenith, sky.horizon],
+		ground: sky.ground,
+		haze: sky.haze.color,
+		hemisphere: [sky.hemisphere.skyColor, sky.hemisphere.groundColor, sky.hemisphere.intensity],
+		sun: {
+			from: sceneSunFrom(sky.sun),
+			color: sky.sun.color,
+			intensity: sky.sun.intensity
+		},
+		softness: sky.sun.softness
+	};
+	LOOK_CACHE.set(sky, look);
+	return look;
 }
+
+/** The tiles one environment control offers: Paper, then the three presets. */
+export const WORLD_ENVIRONMENT_CHOICES: readonly {
+	readonly preset: SceneEnvironmentChoice;
+	readonly label: string;
+	readonly sub: string;
+}[] = [
+	{ preset: 'paper', label: 'Paper', sub: 'Default, as today' },
+	...(Object.entries(WORLD_ENVIRONMENT_PRESENTATIONS) as [
+		SceneSkyPreset,
+		WorldEnvironmentPresentation
+	][]).map(([preset, presentation]) => ({
+		preset,
+		label: presentation.label,
+		sub: presentation.sub
+	}))
+];
 
 /** An axis-aligned World extent in metres. */
 export type WorldEnvironmentBounds = {
@@ -106,10 +139,10 @@ export function worldEnvironmentCenter(frame: Pick<WorldEnvironmentFrame, 'bound
 /**
  * The Sky's one Sun, resolved: a pure descriptor the Canvas light store
  * realizes. The Sun aims at the caster centre (the shadow bounds' centre, else
- * the ground centre), sits 2.5 reaches back along the preset's `from`
- * direction, and its orthographic shadow camera is a square of half-size
- * `reach` (half the extent's diagonal plus 2 m, at least 4 m) reaching 6 reaches
- * deep. `paper` has no Sky and so no Sun.
+ * the ground centre), sits 2.5 reaches back along the Sky's sun direction, and
+ * its orthographic shadow camera is a square of half-size `reach` (half the
+ * extent's diagonal plus 2 m, at least 4 m) reaching 6 reaches deep. Paper has
+ * no Sky and so no Sun.
  */
 export function resolveSkySun(
 	look: WorldEnvironmentLook | null,
@@ -153,7 +186,7 @@ export function resolveSkySun(
 			mapSize: 2048,
 			bias: -0.0004,
 			normalBias: frame.flatGround ? 0.05 : 0.02,
-			radius: 3,
+			radius: sunShadowRadius(look.softness),
 			camera: { left: -reach, right: reach, top: reach, bottom: -reach, near: 0.5, far: reach * 6 }
 		}
 	};

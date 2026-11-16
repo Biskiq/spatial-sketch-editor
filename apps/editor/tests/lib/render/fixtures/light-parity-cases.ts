@@ -9,6 +9,7 @@
  * resolved-light store and must read the identical snapshot at every step.
  */
 import type { RuntimeScene, SceneLightEntity } from '@portfolio/project-model';
+import { SCENE_SKY_PRESET_STARTS } from '@portfolio/project-model/units';
 
 type PointEntity = Extract<SceneLightEntity, { light: 'point' }>;
 type SpotEntity = Extract<SceneLightEntity, { light: 'spot' }>;
@@ -91,7 +92,7 @@ export const LIGHT_PARITY_CASES: readonly LightParityCase[] = [
 		name: 'stage daylight',
 		initial: {
 			scene: runtimeScene(ALL),
-			preset: 'daylight',
+			sky: SCENE_SKY_PRESET_STARTS.daylight,
 			bounds: STAGE_BOUNDS,
 			shadowBounds: STAGE_SHADOW_BOUNDS,
 			groundY: 0.3,
@@ -122,7 +123,7 @@ export const LIGHT_PARITY_CASES: readonly LightParityCase[] = [
 				}
 			},
 			{ name: 'shadow bounds moved', patch: { shadowBounds: { min: [-2, 0, -2], max: [3, 6, 2] }, groundY: 0 } },
-			{ name: 'preset changed', patch: { preset: 'golden-hour' } },
+			{ name: 'preset changed', patch: { sky: SCENE_SKY_PRESET_STARTS['golden-hour'] } },
 			{
 				name: 'kind replaced',
 				patch: {
@@ -133,8 +134,8 @@ export const LIGHT_PARITY_CASES: readonly LightParityCase[] = [
 				}
 			},
 			{ name: 'lights removed', patch: { scene: runtimeScene([]) } },
-			{ name: 'environment to paper', patch: { preset: 'paper' } },
-			{ name: 'environment back', patch: { preset: 'dusk', scene: runtimeScene(ALL) } }
+			{ name: 'environment to paper', patch: { sky: null } },
+			{ name: 'environment back', patch: { sky: SCENE_SKY_PRESET_STARTS.dusk, scene: runtimeScene(ALL) } }
 		]
 	},
 	{
@@ -142,7 +143,7 @@ export const LIGHT_PARITY_CASES: readonly LightParityCase[] = [
 		name: 'visitor golden hour',
 		initial: {
 			scene: runtimeScene(ALL),
-			preset: 'golden-hour',
+			sky: SCENE_SKY_PRESET_STARTS['golden-hour'],
 			bounds: VISITOR_BOUNDS,
 			shadowBounds: null,
 			groundY: 0,
@@ -152,7 +153,7 @@ export const LIGHT_PARITY_CASES: readonly LightParityCase[] = [
 		steps: [
 			{ name: 'bounds grew', patch: { bounds: { min: [-20, 0, -12], max: [14, 4, 18] } } },
 			{ name: 'bounds cleared', patch: { bounds: null } },
-			{ name: 'dusk', patch: { preset: 'dusk' } }
+			{ name: 'dusk', patch: { sky: SCENE_SKY_PRESET_STARTS.dusk } }
 		]
 	},
 	{
@@ -160,7 +161,7 @@ export const LIGHT_PARITY_CASES: readonly LightParityCase[] = [
 		name: 'paper',
 		initial: {
 			scene: runtimeScene(ALL),
-			preset: 'paper',
+			sky: null,
 			bounds: STAGE_BOUNDS,
 			shadowBounds: null,
 			groundY: 0,

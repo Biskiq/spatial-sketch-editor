@@ -1,7 +1,7 @@
 <script module lang="ts">
 	import type { Group as RootGroup, Scene as WorldScene } from 'three';
 	import type { RuntimeScene } from '@portfolio/project-model';
-	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+	import type { SceneSky } from '@portfolio/project-model/units';
 	import type { RenderResources } from '$lib/render/resources/render-resources';
 
 	export type LightBounds = {
@@ -11,7 +11,7 @@
 
 	export type LightWorldProps = {
 		scene: RuntimeScene;
-		preset: SceneEnvironmentPreset | null;
+		sky: SceneSky | null;
 		bounds: LightBounds | null;
 		shadowBounds: LightBounds | null;
 		groundY: number;
@@ -70,7 +70,7 @@
 
 <VisitorEntityGroups scene={current.scene} includeLights={current.includeLights} modelSupport={null} />
 <WorldEnvironment
-	preset={current.preset}
+	sky={current.sky}
 	bounds={current.bounds}
 	shadowBounds={current.shadowBounds}
 	groundY={current.groundY}

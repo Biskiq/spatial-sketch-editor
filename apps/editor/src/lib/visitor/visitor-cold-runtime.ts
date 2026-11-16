@@ -106,7 +106,7 @@ const COLD_SCENE_OPTIONS = {
  * Pure; no IO, no store reads beyond the supplied manifest map.
  */
 export function validateColdReleaseReferences(input: {
-	scene: { textures: Array<{ id: string; name: string; uri: string }>; materials: Array<{ id: string; baseMaterialId?: string; baseTextureId?: string }>; entities: Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }> };
+	scene: { textures: Array<{ id: string; name: string; uri: string }>; materials: Array<{ id: string; baseMaterialId?: string; maps?: Readonly<Record<string, string>> }>; entities: Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }> };
 	manifest: ColdReleaseManifest;
 }): ColdReleaseIssue[] {
 	const issues: ColdReleaseIssue[] = [];
@@ -139,8 +139,12 @@ export function validateColdReleaseReferences(input: {
 		if (material.baseMaterialId !== undefined && getShippedMaterialById(material.baseMaterialId) === undefined) {
 			issues.push({ path, message: `Unknown base material "${material.baseMaterialId}"` });
 		}
-		if (material.baseTextureId !== undefined && !textureById.has(material.baseTextureId)) {
-			issues.push({ path, message: `Unknown base texture "${material.baseTextureId}"` });
+		// Every map slot names a Scene texture record, so the release's texture
+		// reference set covers every Finish map through `maps.*`.
+		for (const [slot, textureId] of Object.entries(material.maps ?? {})) {
+			if (!textureById.has(textureId)) {
+				issues.push({ path: `${path}.maps.${slot}`, message: `Unknown finish map "${textureId}"` });
+			}
 		}
 	}
 

@@ -18,6 +18,7 @@
  */
 
 export * from './types';
+export * from './sky-presets';
 export * from './source';
 export * from './canonical';
 export * from './envelope';

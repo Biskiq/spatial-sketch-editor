@@ -148,6 +148,7 @@
 			{#key readyBundle.releaseId}
 				<VisitorPreviewSurface
 					scene={readyBundle.scene}
+					sky={readyBundle.scene.environment?.sky ?? null}
 					geometry={readyBundle.geometry}
 					graph={readyBundle.graph}
 					resolveTexture={readyBundle.textureScope.resolveTexture}

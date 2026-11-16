@@ -3,13 +3,14 @@
 	 * Experience review 1 — renders one World environment preset.
 	 *
 	 * Runtime-safe and shared: the Stage, its snapshots (same scene, world layer)
-	 * and the visitor surface mount this one component with the Scene's preset.
-	 * The sky is the scene background (a vertical gradient, so it never clips at
-	 * the camera's far plane), the ground is one disc fading into the horizon
-	 * haze, and the light is a hemisphere fill plus one sun whose shadow camera
-	 * fits the World's bounds. The Sun is resolved by `resolveSkySun` and realized
-	 * by the Canvas light store; this component constructs no light but
-	 * the hemisphere fill. `paper` renders nothing: the host keeps its own look.
+	 * and the visitor surface mount this one component with the Scene's stored
+	 * Sky. The sky is the scene background (a vertical gradient, so it never
+	 * clips at the camera's far plane), the ground is one disc fading into the
+	 * horizon haze, and the light is a hemisphere fill plus one sun whose shadow
+	 * camera fits the World's bounds. The Sun is resolved by `resolveSkySun` and
+	 * realized by the Canvas light store; this component constructs no light but
+	 * the hemisphere fill. An absent Sky is Paper and renders nothing: the host
+	 * keeps its own look.
 	 */
 	import { onDestroy } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
@@ -22,7 +23,7 @@
 		SRGBColorSpace,
 		type Texture
 	} from 'three';
-	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+	import type { SceneSky } from '@portfolio/project-model/units';
 	import {
 		WORLD_ENVIRONMENT_GROUND_RADIUS_METERS,
 		resolveSkySun,
@@ -51,13 +52,14 @@
 	type Bounds = WorldEnvironmentBounds;
 
 	let {
-		preset = 'paper',
+		sky = null,
 		bounds = null,
 		shadowBounds = null,
 		groundY = 0,
 		flatGround = false
 	}: {
-		preset?: SceneEnvironmentPreset | null;
+		/** The World's stored Sky; `null` is Paper. */
+		sky?: SceneSky | null;
 		bounds?: Bounds | null;
 		shadowBounds?: Bounds | null;
 		/** The floor datum the ground disc sits just under. */
@@ -70,7 +72,7 @@
 	} = $props();
 
 	const { scene, invalidate } = useThrelte();
-	const look = $derived(worldEnvironmentLook(preset));
+	const look = $derived(worldEnvironmentLook(sky));
 
 	const ground = new CircleGeometry(WORLD_ENVIRONMENT_GROUND_RADIUS_METERS, 64, 0, Math.PI * 2);
 	ground.setAttribute('color', new BufferAttribute(new Float32Array(ground.getAttribute('position').count * 3), 3));

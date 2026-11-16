@@ -50,7 +50,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
 	import { worldEnvironmentLook } from '$lib/render/world-environment';
-	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+	import type { SceneSky } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
 	import {
 		LIGHT_PREVIEW_CANDIDATE_ID,
@@ -83,7 +83,7 @@ import StageMatGround from './StageMatGround.svelte';
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
 		snapshotBounds = null,
-		environment = 'paper',
+		sky = null,
 		framedViewport = null,
 		/** The live candidate's extent; the sheet grows to include it. */
 		datumMeters = 0,
@@ -125,8 +125,8 @@ import StageMatGround from './StageMatGround.svelte';
 		contentBounds?: GridRect | null;
 		/** Layout ∪ Scene world bounds for the snapshot host's depth range. */
 		snapshotBounds?: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] } | null;
-		/** Experience review 1 — the environment the Stage shows (already `paper` while editing on Paper). */
-		environment?: SceneEnvironmentPreset;
+		/** The Sky the Stage shows; `null` is Paper (and is what editing on Paper passes). */
+		sky?: SceneSky | null;
 		/** A Look-through capture frame in Stage-local CSS; null draws the whole Stage. */
 		framedViewport?: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null;
 		/** The level datum the mat ground sits at. */
@@ -221,7 +221,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 	/** A Scene root or lazy body arriving or leaving changes what Paper may draw. */
 	let sceneRootRevision = $state(0);
-	const environmentShown = $derived(environment !== 'paper' && !paperCovers);
+	const environmentShown = $derived(sky !== null && !paperCovers);
 	const workspace = $derived(workspaceRectFor(contentBounds));
 	const shadowBounds = $derived({
 		min: [workspace.minX, Math.min(datumMeters, snapshotBounds?.min[1] ?? datumMeters), workspace.minZ] as const,
@@ -264,7 +264,7 @@ import StageMatGround from './StageMatGround.svelte';
 	{#if environmentShown}
 		<!-- The World's environment replaces the neutral lights, and the mat outside the plate. -->
 		<T.AmbientLight intensity={0.12} />
-		<WorldEnvironment preset={environment} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
+		<WorldEnvironment {sky} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
 		<T.AmbientLight intensity={0.45} />
 		<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
@@ -284,7 +284,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{gridVisible}
 			{contentBounds}
 			plateInk={paperInk3d}
-			litPlate={environmentShown ? (worldEnvironmentLook(environment)?.plate ?? null) : null}
+			litPlate={environmentShown ? (worldEnvironmentLook(sky)?.plate ?? null) : null}
 		/>
 	{/if}
 	{#if heightPlane !== null && !paperVisible && framedViewport === null}
@@ -332,7 +332,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{scenePick}
 		scene={entityScene}
 		{modelUrls}
-		includeLights={environment !== 'paper'}
+		includeLights={sky !== null}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
 		onEntityRoot={(id, root) =>
@@ -410,6 +410,6 @@ import StageMatGround from './StageMatGround.svelte';
 	<StageSnapshotRenderer
 		revision={sceneRootRevision + entityRenderRevision}
 		bounds={snapshotBounds}
-		environment={environmentShown ? environment : 'paper'}
+		environment={environmentShown && sky ? JSON.stringify(sky) : 'paper'}
 	/>
 </Canvas>

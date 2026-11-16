@@ -614,13 +614,17 @@ export function validateSemantics(
 	assertUnique(document.textures, 'texture asset', '$.textures', issues);
 	assertUnique(document.materials, 'material instance', '$.materials', issues);
 	const textureIds = new Set(document.textures.map((texture) => texture.id));
+	const FINISH_MAP_SLOTS = ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const;
 	for (const [index, material] of document.materials.entries()) {
-		if (material.baseTextureId && !textureIds.has(material.baseTextureId)) {
+		if (material.maps === undefined) continue;
+		for (const slot of FINISH_MAP_SLOTS) {
+			const textureId = material.maps[slot];
+			if (textureId === undefined || textureIds.has(textureId)) continue;
 			addIssue(
 				issues,
-				`$.materials[${index}].baseTextureId`,
+				`$.materials[${index}].maps.${slot}`,
 				'unknown_texture',
-				`Unknown texture asset: ${material.baseTextureId}`
+				`Unknown texture asset: ${textureId}`
 			);
 		}
 	}

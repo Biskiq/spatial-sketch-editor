@@ -28,6 +28,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { Group, Scene } from 'three';
+	import { SCENE_SKY_PRESET_STARTS } from '@portfolio/project-model/units';
 	import {
 		createDisposalContext,
 		createParentContext,
@@ -103,6 +104,6 @@
 	{onEntityRoot}
 />
 {#if environment}
-	<WorldEnvironment preset="daylight" {flatGround} />
+	<WorldEnvironment sky={SCENE_SKY_PRESET_STARTS.daylight} {flatGround} />
 	<GroundPlinth />
 {/if}

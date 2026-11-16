@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SCENE_ENVIRONMENT_SET_KIND, type SceneEnvironmentPreset } from '@portfolio/project-model/units';
+import {
+	SCENE_ENVIRONMENT_SET_KIND,
+	SCENE_SKY_PRESET_STARTS,
+	type SceneSky
+} from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	createLookAuthoring,
@@ -16,16 +20,16 @@ function services(accept: Accept): StageAdapterServices {
 }
 
 function harness(options: {
-	readonly preset?: SceneEnvironmentPreset;
+	readonly sky?: SceneSky | null;
 	readonly admitted?: boolean;
 	readonly accept?: Accept;
 } = {}) {
-	const preset = options.preset ?? 'paper';
+	const sky = options.sky === undefined ? SCENE_SKY_PRESET_STARTS.daylight : options.sky;
 	let notice = '';
 	const accept = vi.fn(options.accept ?? (async () => ({ kind: 'installed' })));
 	const current = options.admitted === false ? null : services(accept);
 	const look = createLookAuthoring({
-		environment: () => preset,
+		sky: () => sky,
 		services: () => current,
 		onNotice: (message) => {
 			notice = message;
@@ -35,8 +39,8 @@ function harness(options: {
 }
 
 describe('T2 P0 — the Look authoring seam', () => {
-	it('writes the saved Sky preset through the one acceptance host', async () => {
-		const host = harness({ preset: 'paper' });
+	it('writes the chosen Sky preset through the one acceptance host', async () => {
+		const host = harness({ sky: null });
 		await host.look.setEnvironment('golden-hour');
 		expect(host.accept).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -51,20 +55,16 @@ describe('T2 P0 — the Look authoring seam', () => {
 		);
 	});
 
-	it('keeps the existing guards: no services, the same preset, and one write at a time', async () => {
-		const missing = harness({ preset: 'paper', admitted: false });
+	it('keeps the no-services and one-write-at-a-time guards', async () => {
+		const missing = harness({ sky: null, admitted: false });
 		await missing.look.setEnvironment('dusk');
 		expect(missing.accept).not.toHaveBeenCalled();
-
-		const same = harness({ preset: 'dusk' });
-		await same.look.setEnvironment('dusk');
-		expect(same.accept).not.toHaveBeenCalled();
 
 		let settle: (outcome: unknown) => void = () => {};
 		const pending = new Promise<unknown>((resolve) => {
 			settle = resolve;
 		});
-		const first = harness({ preset: 'paper', accept: () => pending });
+		const first = harness({ sky: null, accept: () => pending });
 		const write = first.look.setEnvironment('dusk');
 		expect(first.look.busy).toBe(true);
 		const second = first.look.setEnvironment('daylight');
@@ -74,27 +74,44 @@ describe('T2 P0 — the Look authoring seam', () => {
 		expect(first.look.busy).toBe(false);
 	});
 
+	it('writes the current preset as a Reset so an edited Sky returns to its start', async () => {
+		const host = harness({ sky: SCENE_SKY_PRESET_STARTS.dusk });
+		await host.look.setEnvironment('dusk');
+		expect(host.accept).toHaveBeenCalledTimes(1);
+		expect(host.accept).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: SCENE_ENVIRONMENT_SET_KIND, payload: { preset: 'dusk' } })
+		);
+	});
+
 	it('reports a refusal on the route notice and leaves an installed write silent', async () => {
 		const refused = harness({
-			preset: 'paper',
+			sky: null,
 			accept: async () => ({ kind: 'refused', message: 'That Sky is unavailable.' })
 		});
 		await refused.look.setEnvironment('dusk');
 		expect(refused.notice()).toBe('That Sky is unavailable.');
 
-		const installed = harness({ preset: 'paper' });
+		// Choosing the tile the World already shows answers no-change and stays silent.
+		const unchanged = harness({
+			sky: null,
+			accept: async () => ({ kind: 'refused', code: 'no-change', message: 'The World already uses Paper' })
+		});
+		await unchanged.look.setEnvironment('paper');
+		expect(unchanged.notice()).toBe('');
+
+		const installed = harness({ sky: null });
 		await installed.look.setEnvironment('dusk');
 		expect(installed.notice()).toBe('');
 	});
 
 	it('keeps Plain Paper a session-only view and never rewrites the saved Sky', async () => {
-		const host = harness({ preset: 'dusk' });
-		expect(host.look.environment).toBe('dusk');
-		expect(host.look.stageEnvironment).toBe('dusk');
+		const host = harness({ sky: SCENE_SKY_PRESET_STARTS.dusk });
+		expect(host.look.sky).toEqual(SCENE_SKY_PRESET_STARTS.dusk);
+		expect(host.look.stageSky).toEqual(SCENE_SKY_PRESET_STARTS.dusk);
 		host.look.setEditOnPaper(true);
 		expect(host.look.editOnPaper).toBe(true);
-		expect(host.look.stageEnvironment).toBe('paper');
-		expect(host.look.environment).toBe('dusk');
+		expect(host.look.stageSky).toBeNull();
+		expect(host.look.sky).toEqual(SCENE_SKY_PRESET_STARTS.dusk);
 		expect(host.accept).not.toHaveBeenCalled();
 	});
 

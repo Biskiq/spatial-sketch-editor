@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { tagRenderIdentity } from '$lib/render/render-identity';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -110,6 +110,9 @@ describe('S03 recorded pre-change selection differential', () => {
 			for (const id of ['catalogue', 'primitive', 'form']) expect(ids.has(id), `${reading} includes ${id}`).toBe(true);
 		}
 		{
+			if (process.env.STAGE_PICK_BASELINE === 'write') {
+				writeFileSync(baselinePath, JSON.stringify(actual));
+			}
 			const expected = JSON.parse(readFileSync(baselinePath, 'utf8'));
 			// The 3D half is the historical pre-S03 capture. Plan was re-recorded for
 			// R217.S12: O3's basis fix is exactly Plan's 180° screen roll. Before the
@@ -136,6 +139,9 @@ describe('S03 recorded pre-change selection differential', () => {
 			// content revision, because Scene moves to format 7 and the source hash
 			// covers the header. Every winner, point and pick field is unchanged (266
 			// generationId values; 16 shared Scene contentRevision values).
+			// Scene 8 updates only generation IDs and the Scene content revision,
+			// because the Scene unit's header version moves to 8. Every winner, point
+			// and pick field is unchanged.
 			expect(actual).toEqual(expected);
 		}
 	});

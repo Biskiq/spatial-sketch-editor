@@ -218,7 +218,13 @@ describe('E7/R2b — texture variants on a retained Scene item', () => {
 		setDefaultTextureSourceLoader(async () => new Texture());
 		const { store, representation } = setup();
 		const textured = item('box-a', {
-			textures: { variantSeed: 'seed-1', slotUris: { map: '/textures/one.png' }, repeat: [0.6, 0.6] }
+			textures: {
+				variantSeed: 'seed-1',
+				slotUris: { map: '/textures/one.png' },
+				repeat: [0.6, 0.6],
+				rotation: 0,
+				offset: [0, 0]
+			}
 		});
 		const stats = representation.update(description(textured, { ...textured, id: 'box-b', key: 'box-b' }));
 		expect(stats.textured).toBe(2);
@@ -244,7 +250,13 @@ describe('E7/R2b — texture variants on a retained Scene item', () => {
 		representation.update(
 			description(
 				item('box-a', {
-					textures: { variantSeed: 'seed-1', slotUris: { map: '/textures/missing.png' }, repeat: [1, 1] }
+					textures: {
+					variantSeed: 'seed-1',
+					slotUris: { map: '/textures/missing.png' },
+					repeat: [1, 1],
+					rotation: 0,
+					offset: [0, 0]
+				}
 				})
 			)
 		);

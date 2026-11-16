@@ -427,7 +427,7 @@ the Scene types.
 | --- | --- | --- |
 | Material parity | `scene-instance-material.test.ts` against the step-0 golden | Every golden case is identical after the change, with `baseTextureId` re-expressed as `maps.color`. This includes the tinted map: `wood-walnut` keeps `#3d2a1a` over its map. |
 | Codec | `tests/lib/content/scene-codec.test.ts` | Each row of the field tables. `baseTextureId` is refused. Defaults are dropped, and parse(canonical(parse(x))) equals parse(x). `texture_id_mismatch`. `unknown_texture` for every map key. `normal_map_required` for both fields. Uppercase hex is refused. Offset of `1` is refused. |
-| Unit | `units-conformance`, `units-canonical-form` | Scene 7 is refused and 8 admitted. Palette bounds (0 or 9 entries refused; `[]` dropped), duplicate ids, name rules, `unknown_palette_slot`. Each environment bound (softness, visibility, elevation, `'natural'`). `environment: {}` dropped. Key order doesn't affect the canonical form. |
+| Unit | `units-conformance`, `units-canonical-form` | Scene 7 is refused and 8 admitted. Palette bounds (9 entries refused; `[]` dropped to absence, per the Palette table), duplicate ids, name rules, `unknown_palette_slot`. Each environment bound (softness, visibility, elevation, `'natural'`). `environment: {}` dropped. Key order doesn't affect the canonical form. |
 | Presets | new `sky-presets.test.ts` | `sceneSunFrom(start.sun)` equals today's normalized `from` within 1e-9. Colours and intensities equal the old table. `sunShadowRadius(0.5) === 3`. |
 | Sky parity | `world-environment.test.ts` against the golden | `resolveSkySun` descriptors are identical for every preset. Paper is still null. |
 | Planner | unit planner tests | Paper removes the Sky and keeps the treatment. A preset writes a fresh start and keeps the treatment. Reset of an edited Sky. `no-change`. |
@@ -444,7 +444,7 @@ These must all be refused:
 - Scene 7;
 - `baseTextureId`;
 - a follower naming a missing slot;
-- a palette with 0 or 9 slots, or with duplicate ids;
+- a palette with 9 slots, or with duplicate ids (an empty palette is dropped, not refused);
 - `normalScale` without a normal map;
 - `rotation = 2π`;
 - `offset = [1, 0]`;

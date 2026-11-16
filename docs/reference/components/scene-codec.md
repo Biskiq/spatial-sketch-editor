@@ -7,9 +7,18 @@
 
 ## Codec boundary
 
-Scene 7 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
+Scene 8 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
 by the Camera codec is not a second authored Scene authority. Camera and Experience are separate
 units today. Release readers do not consume authoring codecs. Compound acceptance belongs to F.4.
+
+Scene 8's Finish grammar is strict. `maps` names one texture id per slot; `mapping` carries
+`tileMeters`, `rotation` and `offset`; `normalScale` and `normalFlipY` are refused without
+`maps.normal`. A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec
+leaves follower closure to the unit validator, which is the only reader holding the palette. Every
+default (empty maps/mapping, `rotation: 0`, `offset: [0, 0]`, `normalScale: 1`, `normalFlipY:
+false`) is dropped from the parsed value, so canonical bytes hash the authored content only. The
+retired `baseTextureId` is an unknown key, and a `/project-assets/{assetId}` texture's Scene id must
+equal that asset id (`texture_id_mismatch`).
 
 ```text
 packages/project-model/src/scene-codec/

@@ -10,7 +10,7 @@ owner-controlled)
 
 ## Current implementation
 
-The live Scene is the world-local Scene 7 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 8 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
@@ -126,7 +126,31 @@ These are the codec's own rules, not a destination: `packages/project-model/src/
   `(0, π]`; `penumbra` in `[0, 1]`. Point lights reject `angle`/`penumbra`, and spot lights require `angle`. A `directional`
   light is refused with `unsupported_light_kind`; the Sky owns the only Sun.
 - **Material instances**: `baseMaterialId` must resolve to a known material; `roughness` and
-  `metalness` are unit-interval.
+  `metalness` are unit-interval. `color` is a lowercase `#rrggbb` literal or a `{slot}` follower of
+  the Scene's `palette` (`unknown_palette_slot` otherwise). `maps` names one texture id per slot
+  (`color`, `normal`, `roughness`, `occlusion`, `metalness`) and every id must resolve to a Scene
+  texture (`unknown_texture`); the retired single colour map is an unknown key. `mapping` carries
+  `tileMeters` in `[0.01, 100]`, `rotation` in `[0, 2π)` and `offset` in `[0, 1)` per axis;
+  `normalScale` is in `(0, 10]` and `normalScale`/`normalFlipY` require `maps.normal`
+  (`normal_map_required`). Empty/default values are dropped, so they never enter the canonical form.
+- **Palette**: at most eight ordered slots; `id` is a stable non-empty id (≤64 characters), `name`
+  a non-empty label (≤40) and `color` a lowercase literal. Duplicate ids refuse, an empty palette
+  normalizes to the field's absence, and a follower must name a slot in the same Scene. Writer rules
+  (S4/S6; no writer exists in S1): the write that creates the first follower also creates the
+  palette; deleting a slot converts its followers to literals holding the slot's last colour in the
+  same write, so `unknown_palette_slot` is unreachable from the UI; a curated Look's palette applies
+  **by position** (slot *n* takes colour *n*, names kept). Lights, Sky colours, Artwork and frames
+  are always literal.
+- **Curated Finish catalogue**: a Finish's `baseMaterialId` names a catalogue id. Versioning is a
+  rule, not a field: ids are append-only and each id's complete definition (`fallbackColor`,
+  roughness, metalness, `normalScale`, tile size, texture URIs) is immutable; a changed curated look
+  needs a new id and the old one stays resolvable. `tests/lib/content/materials.test.ts` pins every
+  definition.
+- **World presentation**: optional `environment`. `sky` stores the Sun `azimuth` in `[0, 2π)` and
+  `elevation` in `[0, π/2]`, Sun colour/intensity/`softness` in `[0, 1]`, zenith/horizon/ground,
+  `haze.color` with optional `visibility` in `[5, 100000]`, and the hemisphere fill. `treatment` is
+  `flat-colour` or `clay`; `natural` is the absence of a treatment, never a tag. An absent Sky is
+  Paper; `environment: {}` normalizes to absence.
 - **Texture URIs** must be safe root-relative public paths — no scheme, no `//`, no backslash, no
   query or fragment, no control characters, no `.`/`..` segment, and stable under repeated
   percent-decoding.
@@ -450,11 +474,10 @@ Materials (definitions/instances and shared-vs-unique already exist):
 
 Lights and environment:
 
-- Three light types exist. Gaps to close: truthful stored units, an editable
-  spot half-angle presented in degrees against canonical radians, and an
-  **explicit undoable repair** for legacy values outside the supported maximum —
-  never a silent load-time clamp or reinterpretation, and new publication blocked
-  until repaired.
+- Two light types exist (Point and Spot); the Sky owns the only Sun. Gaps to close: truthful stored
+  units, an editable spot half-angle presented in degrees against canonical radians, and an
+  **explicit undoable repair** for legacy values outside the supported maximum — never a silent
+  load-time clamp or reinterpretation, and new publication blocked until repaired.
 - Editor-only helpers are mounted for selected lights only and are never
   serialized. The emitter body has no scale control and no screen-space
   emitter-range gizmo; a selected Point light may show a derived reach ring,
@@ -462,10 +485,10 @@ Lights and environment:
   are line-only frustum instruments, not handles that scale the light or
   silently rewrite an authored field. Exact Reach remains a Card field (and the
   derived rim/ring follow it).
-- Authored environment is global Scene-level intent (asset id, intensity, Y
-  rotation, background mode) with the legacy implicit baseline preserved when
-  absent; an explicitly authored mode with no environment is valid. Rotation
-  affects image-based lighting and the environment background consistently.
+- Authored world presentation is the Scene's optional `environment`: a stored Sky and an optional
+  resolve-time Treatment. A preset is provenance; choosing one copies its start into the World, and
+  choosing the current preset on an edited Sky is Reset. Haze `visibility` is stored for S2, which
+  owns rendering it; S1 fixes its meaning only.
 - No hidden assist/baseline sum: any editor assist light is visibly session-only
   and off for comparisons and visitors. PMREM/environment caches are **derived
   renderer resources** with scope, reference counts and asynchronous

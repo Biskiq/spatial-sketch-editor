@@ -57,10 +57,14 @@ import {
 	MODEL_SOURCE_SET_MAX_BYTES,
 	RESOURCE_KINDS,
 	RESOURCE_UNIT_FORMAT_VERSION,
-	SCENE_ENVIRONMENT_PRESETS,
+	SCENE_PALETTE_MAX_SLOTS,
+	SCENE_SKY_PRESETS,
+	SCENE_TREATMENTS,
 	SCENE_UNIT_FORMAT_VERSION,
 	type SceneEnvironment,
-	type SceneEnvironmentPreset,
+	type ScenePaletteSlot,
+	type SceneSky,
+	type SceneTreatment,
 	UNIT_DOMAINS,
 	UNIT_ENVELOPE_FORMAT_VERSION,
 	type CameraFreeSceneDocument,
@@ -300,14 +304,252 @@ export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUni
 	return { success: true, value: result.document, ignoredOptionalExtensions: [] };
 }
 
+const TWO_PI = Math.PI * 2;
+const SKY_HAZE_VISIBILITY_MIN = 5;
+const SKY_HAZE_VISIBILITY_MAX = 100000;
+const PALETTE_NAME_MAX_LENGTH = 40;
+const PALETTE_ID_MAX_LENGTH = 64;
+const SCENE_HEX_COLOR = /^#[0-9a-f]{6}$/;
+
+function readSceneColor(reader: ShapeReader, input: unknown, path: string): string | null {
+	const value = reader.string(input, path);
+	if (value === null) return null;
+	if (!SCENE_HEX_COLOR.test(value)) {
+		reader.problem(path, 'invalid_color', `${path} must be a lowercase #rrggbb colour`);
+		return null;
+	}
+	return value;
+}
+
+function readSkyNumber(
+	reader: ShapeReader,
+	record: Record<string, unknown>,
+	key: string,
+	path: string,
+	min: number,
+	max: number,
+	inclusiveMax: boolean
+): number | null {
+	const value = reader.number(record[key], `${path}.${key}`);
+	if (value === null) return null;
+	if (value < min || (inclusiveMax ? value > max : value >= max)) {
+		reader.problem(
+			`${path}.${key}`,
+			'invalid_value',
+			`${path}.${key} must be ${inclusiveMax ? `within [${min}, ${max}]` : `within [${min}, ${max})`}`
+		);
+		return null;
+	}
+	return value;
+}
+
+function readSky(reader: ShapeReader, input: unknown, path: string): SceneSky | null {
+	const record = reader.object(input, path, [
+		'preset',
+		'sun',
+		'zenith',
+		'horizon',
+		'ground',
+		'haze',
+		'hemisphere'
+	]);
+	if (record === null) return null;
+	const presetRaw = record.preset;
+	if (typeof presetRaw !== 'string' || !(SCENE_SKY_PRESETS as readonly string[]).includes(presetRaw)) {
+		reader.problem(
+			`${path}.preset`,
+			'invalid_value',
+			`${path}.preset must be one of ${SCENE_SKY_PRESETS.join(', ')}`
+		);
+	}
+	const sun = reader.object(record.sun, `${path}.sun`, [
+		'azimuth',
+		'elevation',
+		'color',
+		'intensity',
+		'softness'
+	]);
+	const azimuth =
+		sun === null ? null : readSkyNumber(reader, sun, 'azimuth', `${path}.sun`, 0, TWO_PI, false);
+	const elevation =
+		sun === null
+			? null
+			: readSkyNumber(reader, sun, 'elevation', `${path}.sun`, 0, Math.PI / 2, true);
+	const sunColor = sun === null ? null : readSceneColor(reader, sun.color, `${path}.sun.color`);
+	const intensity =
+		sun === null
+			? null
+			: readSkyNumber(reader, sun, 'intensity', `${path}.sun`, 0, Number.MAX_VALUE, true);
+	const softness =
+		sun === null ? null : readSkyNumber(reader, sun, 'softness', `${path}.sun`, 0, 1, true);
+	const zenith = readSceneColor(reader, record.zenith, `${path}.zenith`);
+	const horizon = readSceneColor(reader, record.horizon, `${path}.horizon`);
+	const ground = readSceneColor(reader, record.ground, `${path}.ground`);
+	const haze = reader.object(record.haze, `${path}.haze`, ['color', 'visibility']);
+	const hazeColor = haze === null ? null : readSceneColor(reader, haze.color, `${path}.haze.color`);
+	let visibilityValid = true;
+	let visibility: number | undefined;
+	if (haze !== null && 'visibility' in haze) {
+		const value = readSkyNumber(
+			reader,
+			haze,
+			'visibility',
+			`${path}.haze`,
+			SKY_HAZE_VISIBILITY_MIN,
+			SKY_HAZE_VISIBILITY_MAX,
+			true
+		);
+		if (value === null) visibilityValid = false;
+		else visibility = value;
+	}
+	const hemisphere = reader.object(record.hemisphere, `${path}.hemisphere`, [
+		'skyColor',
+		'groundColor',
+		'intensity'
+	]);
+	const hemisphereSky =
+		hemisphere === null
+			? null
+			: readSceneColor(reader, hemisphere.skyColor, `${path}.hemisphere.skyColor`);
+	const hemisphereGround =
+		hemisphere === null
+			? null
+			: readSceneColor(reader, hemisphere.groundColor, `${path}.hemisphere.groundColor`);
+	const hemisphereIntensity =
+		hemisphere === null
+			? null
+			: readSkyNumber(
+					reader,
+					hemisphere,
+					'intensity',
+					`${path}.hemisphere`,
+					0,
+					Number.MAX_VALUE,
+					true
+				);
+	if (
+		typeof presetRaw !== 'string' ||
+		!(SCENE_SKY_PRESETS as readonly string[]).includes(presetRaw) ||
+		azimuth === null ||
+		elevation === null ||
+		sunColor === null ||
+		intensity === null ||
+		softness === null ||
+		zenith === null ||
+		horizon === null ||
+		ground === null ||
+		hazeColor === null ||
+		!visibilityValid ||
+		hemisphereSky === null ||
+		hemisphereGround === null ||
+		hemisphereIntensity === null
+	) {
+		return null;
+	}
+	return {
+		preset: presetRaw as SceneSky['preset'],
+		sun: { azimuth, elevation, color: sunColor, intensity, softness },
+		zenith,
+		horizon,
+		ground,
+		haze: { color: hazeColor, ...(visibility === undefined ? {} : { visibility }) },
+		hemisphere: { skyColor: hemisphereSky, groundColor: hemisphereGround, intensity: hemisphereIntensity }
+	};
+}
+
+function readEnvironment(reader: ShapeReader, input: unknown): SceneEnvironment | undefined {
+	const path = '$.environment';
+	const record = reader.object(input, path, ['sky', 'treatment']);
+	if (record === null) return undefined;
+	let sky: SceneSky | undefined;
+	if ('sky' in record) {
+		const parsed = readSky(reader, record.sky, `${path}.sky`);
+		if (parsed !== null) sky = parsed;
+	}
+	let treatment: SceneTreatment | undefined;
+	if ('treatment' in record) {
+		const raw = record.treatment;
+		if (typeof raw !== 'string' || !(SCENE_TREATMENTS as readonly string[]).includes(raw)) {
+			reader.problem(
+				`${path}.treatment`,
+				'invalid_value',
+				`${path}.treatment must be one of ${SCENE_TREATMENTS.join(', ')}`
+			);
+		} else treatment = raw as SceneTreatment;
+	}
+	if (sky === undefined && treatment === undefined) return undefined;
+	return { ...(sky === undefined ? {} : { sky }), ...(treatment === undefined ? {} : { treatment }) };
+}
+
+function readPalette(reader: ShapeReader, input: unknown): ScenePaletteSlot[] | undefined {
+	if (!Array.isArray(input)) {
+		reader.problem('$.palette', 'invalid_palette', '$.palette must be an array');
+		return undefined;
+	}
+	// An empty palette is the field's absence; only a real overrun is refused.
+	if (input.length === 0) return undefined;
+	if (input.length > SCENE_PALETTE_MAX_SLOTS) {
+		reader.problem(
+			'$.palette',
+			'invalid_palette',
+			`$.palette holds at most ${SCENE_PALETTE_MAX_SLOTS} slots`
+		);
+		return undefined;
+	}
+	const slots: ScenePaletteSlot[] = [];
+	const ids = new Set<string>();
+	let valid = true;
+	for (const [index, entry] of input.entries()) {
+		const path = `$.palette[${index}]`;
+		const record = reader.object(entry, path, ['id', 'name', 'color']);
+		if (record === null) {
+			valid = false;
+			continue;
+		}
+		let slotValid = true;
+		const id = typeof record.id === 'string' ? record.id : null;
+		if (id === null || id.trim() === '' || id.length > PALETTE_ID_MAX_LENGTH) {
+			reader.problem(
+				`${path}.id`,
+				'invalid_value',
+				`${path}.id must be a non-empty id of at most ${PALETTE_ID_MAX_LENGTH} characters`
+			);
+			slotValid = false;
+		} else if (ids.has(id)) {
+			reader.problem(`${path}.id`, 'duplicate_id', `Duplicate palette slot id: ${id}`);
+			slotValid = false;
+		} else ids.add(id);
+		const name = typeof record.name === 'string' ? record.name.trim() : '';
+		if (name === '' || name.length > PALETTE_NAME_MAX_LENGTH) {
+			reader.problem(
+				`${path}.name`,
+				'invalid_value',
+				`${path}.name must be a non-empty name of at most ${PALETTE_NAME_MAX_LENGTH} characters`
+			);
+			slotValid = false;
+		}
+		const color = readSceneColor(reader, record.color, `${path}.color`);
+		if (color === null) slotValid = false;
+		if (!slotValid || id === null) {
+			valid = false;
+			continue;
+		}
+		slots.push({ id, name, color: color! });
+	}
+	return valid ? slots : undefined;
+}
+
 /**
  * Strict read of the Camera-free Scene payload. Its shared entity grammar
  * uses the internal world-local projection with an empty Camera graph.
  * Artwork Library closure is checked only on the authored Scene unit.
+ *
+ * New Scene 8 defaults are dropped here, so the normalized value is what the
+ * canonical bytes and the content revision hash.
  */
 export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<CameraFreeSceneDocument> {
 	const reader = new ShapeReader();
-	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'clusters', 'environment', 'artworkLibrary']);
+	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'palette', 'clusters', 'environment', 'artworkLibrary']);
 	if (record === null) return failed(reader);
 	if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {
 		reader.problem(
@@ -317,16 +559,9 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 		);
 		return failed(reader);
 	}
-	let environment: SceneEnvironment | undefined;
-	if (record.environment !== undefined) {
-		const shape = reader.object(record.environment, '$.environment', ['preset']);
-		const preset = shape === null ? null : shape.preset;
-		if (typeof preset !== 'string' || !(SCENE_ENVIRONMENT_PRESETS as readonly string[]).includes(preset)) {
-			reader.problem('$.environment.preset', 'invalid_value', `$.environment.preset must be one of ${SCENE_ENVIRONMENT_PRESETS.join(', ')}`);
-		} else {
-			environment = { preset: preset as SceneEnvironmentPreset };
-		}
-	}
+	const palette = record.palette === undefined ? undefined : readPalette(reader, record.palette);
+	const environment =
+		record.environment === undefined ? undefined : readEnvironment(reader, record.environment);
 	if (reader.issues.length > 0) return failed(reader);
 	const delegated = validateSceneDocument({
 		formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
@@ -339,6 +574,21 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 	});
 	if (!delegated.success) return { success: false, issues: delegatedIssues(delegated.issues) };
 	const document = delegated.document;
+	// The follower check is the unit validator's because only this reader holds
+	// the palette; the Scene codec never sees it.
+	const paletteIds = new Set((palette ?? []).map((slot) => slot.id));
+	for (const [index, material] of document.materials.entries()) {
+		const color = material.color;
+		if (color === undefined || typeof color === 'string') continue;
+		if (!paletteIds.has(color.slot)) {
+			reader.problem(
+				`$.materials[${index}].color.slot`,
+				'unknown_palette_slot',
+				`Unknown palette slot: ${color.slot}`
+			);
+		}
+	}
+	if (reader.issues.length > 0) return failed(reader);
 	const { library, issues } = validateArtworkLibrary(record.artworkLibrary, document.entities);
 	if (issues.length > 0) return { success: false, issues: delegatedIssues(issues) };
 	return {
@@ -349,6 +599,7 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 			materials: document.materials,
 			entities: document.entities,
 			...(library.length === 0 ? {} : { artworkLibrary: library }),
+			...(palette === undefined ? {} : { palette }),
 			...(document.clusters === undefined ? {} : { clusters: document.clusters }),
 			...(environment === undefined ? {} : { environment })
 		},

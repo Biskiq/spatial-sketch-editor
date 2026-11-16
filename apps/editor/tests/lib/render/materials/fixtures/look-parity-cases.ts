@@ -8,7 +8,10 @@
  */
 import type { MaterialId } from '@portfolio/project-model';
 import type { SceneDocument } from '$lib/content/scene';
-import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
+import {
+	SCENE_SKY_PRESET_STARTS,
+	type SceneEnvironmentChoice
+} from '@portfolio/project-model/units';
 import type { WorldEnvironmentFrame, WorldEnvironmentLook } from '$lib/render/world-environment';
 import { worldEnvironmentLook } from '$lib/render/world-environment';
 
@@ -80,9 +83,8 @@ export function lookCaseInstanceId(lookCase: LookCase): string {
 }
 
 /**
- * The Scene input for one case. This is the only place the retired
- * `baseTextureId` is expressed; after the Scene 8 change it writes `maps.color`
- * and the expected output is unchanged.
+ * The Scene input for one case. The Scene 7 golden's colour map is expressed
+ * as Scene 8's `maps.color`; the expected output is unchanged.
  */
 export function lookCaseDocument(lookCase: LookCase): Pick<SceneDocument, 'materials' | 'textures'> {
 	const instance = lookCase.instance;
@@ -98,7 +100,7 @@ export function lookCaseDocument(lookCase: LookCase): Pick<SceneDocument, 'mater
 							baseMaterialId: lookCase.fallbackCatalogueId,
 							...(instance.mapTextureId === undefined
 								? {}
-								: { baseTextureId: instance.mapTextureId }),
+								: { maps: { color: instance.mapTextureId } }),
 							...(instance.roughness === undefined ? {} : { roughness: instance.roughness }),
 							...(instance.metalness === undefined ? {} : { metalness: instance.metalness })
 						}
@@ -109,7 +111,7 @@ export function lookCaseDocument(lookCase: LookCase): Pick<SceneDocument, 'mater
 /** The frame every Sun case resolves against. */
 export type SunCase = {
 	readonly id: string;
-	readonly preset: SceneEnvironmentPreset;
+	readonly preset: SceneEnvironmentChoice;
 	readonly frame: WorldEnvironmentFrame;
 };
 
@@ -133,9 +135,10 @@ export const SUN_CASES: readonly SunCase[] = (
 ]);
 
 /**
- * The resolved look one Sun case renders, or `null` for Paper. After the Scene 8
- * change this reads the stored Sky start instead of the preset id.
+ * The resolved look one Sun case renders, or `null` for Paper. Scene 8 reads a
+ * stored Sky, so the case supplies the named preset's start — the exact Sky the
+ * editor's environment writer copies into a World.
  */
-export function sunCaseLook(preset: SceneEnvironmentPreset): WorldEnvironmentLook | null {
-	return worldEnvironmentLook(preset);
+export function sunCaseLook(preset: SceneEnvironmentChoice): WorldEnvironmentLook | null {
+	return worldEnvironmentLook(preset === 'paper' ? null : SCENE_SKY_PRESET_STARTS[preset]);
 }

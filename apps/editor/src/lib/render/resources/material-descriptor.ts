@@ -75,6 +75,11 @@ export type StandardMaterialDescriptor = {
 	/** Absent means `false`, as Three's default. */
 	readonly wireframe?: boolean;
 	/**
+	 * The normal map's `(x, y)` scale; absent means Three's `(1, 1)`. A negative
+	 * `y` flips green, which is what the authored `normalFlipY` writes.
+	 */
+	readonly normalScale?: readonly [number, number];
+	/**
 	 * Bound texture variants by slot; absent means an untextured surface. A
 	 * descriptor that names a slot is constructed with that slot's maps, so an
 	 * untextured acquire can never stand in for a textured key.
@@ -239,6 +244,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`emissiveIntensity=${num(descriptor.emissiveIntensity ?? 1)}`,
 				`toneMapped=${bool(descriptor.toneMapped, true)}`,
 				`wireframe=${bool(descriptor.wireframe, false)}`,
+				`normalScale=${num(descriptor.normalScale?.[0] ?? 1)},${num(
+					descriptor.normalScale?.[1] ?? 1
+				)}`,
 				// Fixed slot order, `-` for an unbound slot: the key is a function of
 				// which variants are bound, not of how the record was spelled.
 				`textures=${MATERIAL_TEXTURE_SLOTS.map(

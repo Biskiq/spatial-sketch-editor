@@ -23,9 +23,10 @@ import {
 	type LayoutVec2,
 	type PlanEvaluation
 } from '@portfolio/layout-core';
-import type {
-	CameraFreeSceneDocument,
-	ProjectEnvelope
+import {
+	SCENE_UNIT_FORMAT_VERSION,
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import type {
 	SceneArtworkEntity,
@@ -247,7 +248,7 @@ export async function buildCountingSceneFixture(
 			id: TEXTURED_LOOK,
 			name: 'Textured plaster',
 			baseMaterialId: 'plaster-warm',
-			baseTextureId: COUNTING_TEXTURE_ID,
+			maps: { color: COUNTING_TEXTURE_ID },
 			roughness: 0.65,
 			metalness: 0
 		}
@@ -269,7 +270,7 @@ export async function buildCountingSceneFixture(
 	for (let index = 0; index < COUNTING_MODEL_INSTANCES; index += 1) entities.push(model(index));
 
 	const scene: CameraFreeSceneDocument = {
-		formatVersion: 7,
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
 		textures,
 		materials,
 		entities,

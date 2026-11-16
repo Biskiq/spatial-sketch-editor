@@ -32,7 +32,12 @@ import {
 	listShippedTextureUris,
 	listShippedModelFiles
 } from '$lib/visitor/shipped-static-registry';
-import { MODEL_RESOURCE_MIME, RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import {
+	MODEL_RESOURCE_MIME,
+	RESOURCE_UNIT_FORMAT_VERSION,
+	SCENE_SKY_PRESET_STARTS,
+	SCENE_UNIT_FORMAT_VERSION
+} from '@portfolio/project-model/units';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { Group, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 import type { Texture as ThreeTexture } from 'three';
@@ -48,6 +53,7 @@ function fakeTexture(id: string): ThreeTexture {
 		wrapT: 0,
 		repeat: { set() {}, x: 1, y: 1 },
 		rotation: 0,
+		offset: { set() {}, x: 0, y: 0 },
 		center: { set() {} },
 		clone(this: ThreeTexture) {
 			return { ...this, uuid: `${id}#clone` } as unknown as ThreeTexture;
@@ -88,6 +94,9 @@ describe('P22.1 cold runtime + asset seam', () => {
 			metalness: 0,
 			color: '#ffffff',
 			defaultTileSizeMeters: [1, 1],
+			rotation: 0,
+			offset: [0, 0],
+			normalScale: null,
 			variantSeed: 'vP20A'
 		};
 		const result = await loadEffectiveTextures(effective, scope);
@@ -108,6 +117,9 @@ describe('P22.1 cold runtime + asset seam', () => {
 			metalness: 0,
 			color: '#ffffff',
 			defaultTileSizeMeters: [1, 1] as [number, number],
+			rotation: 0,
+			offset: [0, 0] as [number, number],
+			normalScale: null,
 			variantSeed: 'vOVERRIDE1'
 		};
 		const loaded = await loadEffectiveTextures(effective, scope);
@@ -148,6 +160,9 @@ describe('P22.1 cold runtime + asset seam', () => {
 			metalness: 0,
 			color: '#ffffff',
 			defaultTileSizeMeters: [1, 1] as [number, number],
+			rotation: 0,
+			offset: [0, 0] as [number, number],
+			normalScale: null,
 			variantSeed: 'vSHARED'
 		};
 		const [a, b] = await Promise.all([
@@ -210,6 +225,20 @@ describe('P22.1 cold runtime + asset seam', () => {
 		expect(issues).toEqual([]);
 	});
 
+	it('blocks a Finish whose normal map is not a Scene texture record', () => {
+		const issues = validateColdReleaseReferences({
+			scene: {
+				textures: [],
+				materials: [{ id: 'm', baseMaterialId: 'plaster-warm', maps: { normal: 'missing' } }],
+				entities: []
+			},
+			manifest: { releaseId: 'r1', bytesByUri: new Map<string, ReleaseBytesEntry>() }
+		});
+		expect(issues).toEqual([
+			{ path: '$.scene.materials[0].maps.normal', message: 'Unknown finish map "missing"' }
+		]);
+	});
+
 	it('release reference validation rejects session-local, unknown, and missing sources', () => {
 		const bytes = new Map<string, ReleaseBytesEntry>();
 		expect(
@@ -235,7 +264,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 		expect(
 			validateColdReleaseReferences({
 				scene: {
-					textures: [{ id: 't1', name: 'Missing', uri: '/project-assets/gone' }],
+					textures: [{ id: 'gone', name: 'Missing', uri: '/project-assets/gone' }],
 					materials: [],
 					entities: []
 				},
@@ -341,7 +370,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 			name: 'Cold B',
 			scene: {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: [{ id: 'tex-1', name: 'Pinned', uri }],
+				textures: [{ id: 'pinned-1', name: 'Pinned', uri }],
 				materials: [],
 				entities: []
 			},
@@ -350,7 +379,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 			resources: {
 				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
 				resources: [
-					{ kind: 'texture', id: 'tex-1', contentRevision: 'revision-tex-1', pin: null, unresolved: null }
+					{ kind: 'texture', id: 'pinned-1', contentRevision: 'revision-pinned-1', pin: null, unresolved: null }
 				]
 			}
 		});
@@ -370,6 +399,61 @@ describe('P22.1 cold runtime + asset seam', () => {
 				manifest: { releaseId: `${project.id}@v4`, bytesByUri: new Map() }
 			})
 		).toThrow(/missing release bytes/i);
+	});
+
+	it('carries the stored Sky into the bundle and the public route passes it to the surface', async () => {
+		const start = structuredClone(SCENE_SKY_PRESET_STARTS['golden-hour']);
+		const project = await createUnitProject({
+			id: 'project:cold-sky',
+			name: 'Golden Sky',
+			scene: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [],
+				materials: [],
+				entities: [],
+				environment: { sky: start }
+			}
+		});
+		const bundle = composeColdReleaseBundle({
+			document: project,
+			manifest: { releaseId: `${project.id}@v1`, bytesByUri: new Map() }
+		});
+		expect(bundle.scene.environment?.sky).toEqual(start);
+		bundle.dispose();
+
+		const route = readFileSync(
+			resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/routes/p/[publicationId]/+page.svelte'),
+			'utf8'
+		);
+		expect(route).toContain('sky={readyBundle.scene.environment?.sky ?? null}');
+	});
+
+	it('needs release bytes for a map-named P20 texture', async () => {
+		const uri = '/project-assets/pinned-map';
+		const project = await createUnitProject({
+			id: 'project:cold-map',
+			name: 'Map Pinned',
+			scene: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [{ id: 'pinned-map', name: 'Pinned map', uri }],
+				materials: [
+					{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', maps: { color: 'pinned-map' } }
+				],
+				entities: []
+			},
+			resources: {
+				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+				resources: [
+					{ kind: 'texture', id: 'pinned-map', contentRevision: 'revision-pinned-map', pin: null, unresolved: null }
+				]
+			}
+		});
+		const manifest = { releaseId: `${project.id}@v1`, bytesByUri: new Map<string, ReleaseBytesEntry>() };
+		const issues = validateColdReleaseReferences({ scene: project.units.scene.data as never, manifest });
+		expect(issues).toContainEqual(
+			expect.objectContaining({ path: '$.scene.textures[0]' })
+		);
+		expect(() => composeColdReleaseBundle({ document: project, manifest })).toThrow(/missing release bytes/i);
 	});
 
 	it('failed scope creation releases partial URLs (no leak)', () => {
