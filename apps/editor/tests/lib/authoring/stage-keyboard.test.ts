@@ -58,6 +58,8 @@ function harness(overrides: Partial<StageKeyboardInput> = {}) {
 		lens: () => 'world',
 		selectionPresent: () => false,
 		closeSelection: () => calls.push('close-selection'),
+		liftActive: () => false,
+		putBackLift: () => calls.push('put-back-lift'),
 		...overrides
 	};
 	return { calls, facade, keyboard: createStageKeyboard(input) };
@@ -84,6 +86,58 @@ function keyEvent(
 }
 
 describe('stage keyboard arbitration', () => {
+	it('closes a selection first, then puts a temporary reading back', () => {
+		let selected = true;
+		let lift = true;
+		const { calls, keyboard } = harness({
+			selectionPresent: () => selected,
+			closeSelection: () => {
+				selected = false;
+				calls.push('close-selection');
+			},
+			liftActive: () => lift,
+			putBackLift: () => {
+				lift = false;
+				calls.push('put-back-lift');
+			}
+		});
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'close-selection']);
+		expect(lift).toBe(true);
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'close-selection', 'interrupt:escape', 'put-back-lift']);
+	});
+
+	it('never puts a reading back when the posture layer claims the unwind', () => {
+		let lift = true;
+		const { calls, keyboard } = harness({
+			activeLayer: () => ({ key: (_event: KeyboardEvent, kind: string) => (kind === 'unwind' ? 'claimed' : 'pass') }) as never,
+			selectionPresent: () => true,
+			liftActive: () => lift,
+			putBackLift: () => {
+				lift = false;
+				calls.push('put-back-lift');
+			}
+		});
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape']);
+		expect(lift).toBe(true);
+	});
+
+	it('lets an open task win before a temporary reading', () => {
+		const { calls, keyboard } = harness({
+			task: () => ({ kind: 'layout-ink' }) as never,
+			liftActive: () => true
+		});
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toContain('close-task');
+		expect(calls).not.toContain('put-back-lift');
+	});
+
 	it('gives an armed Artwork Escape before Preview and every shared unwind', () => {
 		const preview = vi.fn(() => true);
 		const { calls, keyboard } = harness({ artworkEscape: () => true, closePreview: preview });

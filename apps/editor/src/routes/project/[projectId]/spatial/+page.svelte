@@ -64,7 +64,10 @@
 	} from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import { wallFace } from '$lib/authoring/layout/wall-face-store';
-	import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
+	import {
+		initialLiftScope,
+		interiorLift
+	} from '$lib/authoring/layout/interior-lift-store.svelte';
 	import {
 		wallUnfoldShouldReturn,
 		wallUnfoldViewCentreStation
@@ -560,7 +563,9 @@
 		closeWorldPlate: () => shell.setWorldPlateOpen(false),
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
-		closeSelection: () => commands.closeSelection()
+		closeSelection: () => commands.closeSelection(),
+		liftActive: () => interiorLift.isActive(),
+		putBackLift: () => interiorLift.putBack()
 	});
 
 	const selectedCurvedWall = $derived.by(() =>
@@ -598,6 +603,80 @@
 		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
 	});
 	const liftedRoomIds = $derived(liftedSources.map((source) => source.subject.id));
+	/** The selected Room, when the selection is one: a lift is selected through its Room. */
+	const selectedLiftRoomId = $derived(
+		selection !== null &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind === 'room'
+			? selection.reference.subject.id
+			: null
+	);
+
+	/**
+	 * The entry rule, stated once: a Room selection wins, then the Room the eye is
+	 * inside in 3D, then everything. Plan has no eye to be occupied by, and the
+	 * reading never re-derives its scope after entry.
+	 */
+	function toggleLift(): void {
+		if (interiorLift.isActive()) {
+			interiorLift.putBack();
+			return;
+		}
+		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		interiorLift.lift(
+			initialLiftScope({
+				selectedRoomId: selectedLiftRoomId,
+				reading: evaluation?.renderedReading === 'plan' ? 'plan' : '3d',
+				eye: evaluation === null ? null : eyeOfInspectionPose(evaluation.pose),
+				compiled: boot.snapshot.domain.geometry
+			})
+		);
+	}
+
+	const liftControl = $derived({ active: interiorLift.isActive(), toggle: toggleLift });
+
+	/**
+	 * The Lift pill's reads. The scoped Room is named as its Card titles it, and the
+	 * menu's candidate is the same rule entry uses: selected Room, occupied Room,
+	 * then the Room already scoped. Everything else is Today's scope.
+	 */
+	const liftPill = $derived.by(() => {
+		const reading = interiorLift.reading;
+		if (reading === null) return null;
+		const scopeRoomId = reading.scope.kind === 'space' ? reading.scope.roomId : null;
+		const nameOf = (roomId: string | null): string | null =>
+			roomId === null
+				? null
+				: (currentEnvelope?.units.layout.data.rooms.find((room) => room.id === roomId)?.name ??
+					null);
+		const geometry = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.geometry : null;
+		const occupiedRoomId =
+			geometry === null || evaluation === null
+				? null
+				: (() => {
+						const occupied = initialLiftScope({
+							selectedRoomId: null,
+							reading: '3d',
+							eye: eyeOfInspectionPose(evaluation.pose),
+							compiled: geometry
+						});
+						return occupied.kind === 'space' ? occupied.roomId : null;
+					})();
+		const candidateId = selectedLiftRoomId ?? occupiedRoomId ?? scopeRoomId;
+		const candidateName = nameOf(candidateId);
+		return {
+			scopeRoomId,
+			scopeLabel: nameOf(scopeRoomId),
+			candidate:
+				candidateId === null || candidateName === null
+					? null
+					: { id: candidateId, label: candidateName },
+			onScope: (roomId: string | null) => {
+				interiorLift.setScope(roomId === null ? { kind: 'all' } : { kind: 'space', roomId });
+			},
+			onPutBack: () => interiorLift.putBack()
+		};
+	});
 
 	/**
 	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
@@ -1202,6 +1281,7 @@
 			viewEditTurn={experience.viewEdit?.moved && !experience.viewEdit.advanced && experience.viewEditPreview?.turn
 				? experience.viewEditPreview.turn
 				: null}
+			lift={liftPill}
 			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
 				? { bar: shell.draftingScaleBar, quiet: paperVisible }
 				: null}
@@ -1329,7 +1409,8 @@
 						reducedMotion: shell.reducedMotion,
 						onToggleReducedMotion: () => shell.toggleReducedMotion(),
 						motionSpeed: shell.preferences.motionSpeed,
-						onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed })
+						onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed }),
+						lift: liftControl
 					},
 					sky: adapterServices !== null
 						? {
