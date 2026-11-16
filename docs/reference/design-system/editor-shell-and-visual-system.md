@@ -1372,3 +1372,17 @@ repair, keyboard access and narrow viewports. Keep the ratified shared shell com
 material, typography, control metrics, state language, return and accessibility rules. A proposed
 departure is a named design decision for owner review. No full cross-feature layout needs to be
 frozen before the next engineering plans. The approved specimens inform design; mock mechanisms never become implementation authority.
+
+### Environment and Sky
+
+The World lens places Environment at the bottom-right of the Stage as focus stop 7.
+The Sky panel (7a) is the environment writer. It opens non-modally, focuses Time or the
+Studio preset, and stays open on outside Stage presses. At 860 CSS px or narrower, the
+panel is a bottom sheet and the control is a medallion. When the panel overlaps the Card
+lane, the Card yields to leave 12 px of clearance. The Card body scrolls and folds when
+there is less than 160 px of body height.
+
+Escape first cancels a live Sky gesture (rung 1). Escape at the Sky disclosure closes it
+and restores focus to Environment (rung 3a). Sky hides in the Experience lens and Preview.
+The Stage’s Celestial Dial is an idle instrument with selection grips taking priority.
+The **Look module** is the resolver. **Looks** are the S6 preset feature.

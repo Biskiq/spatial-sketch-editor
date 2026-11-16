@@ -84,14 +84,14 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 7, Scene 8, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 7, Scene 9, Camera 1, Experience 4 and resources 2.
 [Experience 4](experience.md#current-authoring-and-runtime-contract) defines linear Guides,
 entry Views, stays, invitations, outgoing transitions and Presentation naming. Earlier shapes
 are refused without conversion.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-**Scene 8** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
+**Scene 9** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
 optional `environment` and the project Artwork shelf. The shelf owns project-local image entries. Every
 Artwork source must resolve to a shelf entry with matching oriented dimensions. An Artwork may
 carry one optional frame record (`style`, Mat, colour); absent is the canonical no-frame/no-Mat
@@ -99,13 +99,18 @@ default, and generated frame dimensions are never stored. This additive record d
 Scene unit; a reader that predates it refuses a framed document at strict validation. Scene carries
 no Camera or editorial fields. Scene 4 introduced the `form` entity,
 whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
-Scene 8 stores world presentation as an optional `environment`: a `sky` (Sun azimuth/elevation,
-colours, haze, hemisphere fill and shadow softness) and an optional resolve-time `treatment`
-(`flat-colour` or `clay`). An absent Sky is Paper; a preset is provenance only, never the stored
-look. A Finish may name one texture id per `maps` slot, a `mapping` and a normal scale; a colour is
-a lowercase literal or a palette follower, and `palette` holds at most eight ordered slots. The
-retired single colour map is refused as an unknown key, and a Scene 7 unit is refused with
-`unsupported_format_version`, never converted. Scene 7 retired the authored `directional` Light
+Scene 9 stores world presentation as an optional `environment`. The Sky records time, noon
+heading, noon height, haze, exposure, softness, the shared shadow switch, Moon colour and strength,
+and Sky and Ground colours. The optional Treatment is `flat-colour` or `clay`. Absent Sky uses
+Studio light. A Finish may name one texture id per `maps` slot, a `mapping` and a normal scale.
+A colour is a lowercase literal or a palette follower, and `palette` holds at most eight ordered
+slots. The retired single colour map is refused as an unknown key.
+
+Scene 8 projects and releases are refused with `unsupported_format_version`. Scene 8 releases
+remain inaccessible under Scene 9. Authors must recreate their project in Scene 9 before they can
+publish it again. S2 provides no converter or automatic republish path.
+
+Scene 7 retired the authored `directional` Light
 kind (the Sky owns the only Sun): any `directional` entity is refused with a typed error, never
 converted or dropped. Generated geometry is never serialized, and a reader refuses older Scene formats rather
 than converting them. Camera carries Views and connections. Connection endpoints are generated,

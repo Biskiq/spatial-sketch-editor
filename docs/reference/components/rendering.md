@@ -12,7 +12,7 @@ runtime draw world content through the same modules, so editor and visitor canno
 ## Layers
 
 ```text
-Authored units        Layout 7 · Scene 8 · Camera · Experience
+Authored units        Layout 7 · Scene 9 · Camera · Experience
       │  one compiler; one Scene resolution, retained per unit
       ▼
 Derived descriptions  CompiledLayoutGeometry · resolved Scene content
@@ -86,15 +86,19 @@ drift.
 
 **Guards:** `materials/scene-instance-material`, `materials/look-parity-golden`.
 
-The Sky's Sun is the same one light: `softness` maps to `radius = 1 + 4·softness` shadow-map texels
-(the old fixed radius 3 is softness 0.5).
+The Stage, Preview and published visit share `WorldEnvironment` and `resolveSkyLook`.
+Time, noon heading and noon height determine Sun position from 06:30 to 19:30 and Moon
+position from 21:00 to 04:30. Dusk and dawn hold the boundary bearing with zero direct
+intensity. A single directional lease serves both bodies. **Sun shadows** applies to that
+lease at all hours, and softness sets the radius to `1 + 4·softness` shadow-map texels.
 
-**Haze** is stored now and rendered by S2. `visibility` is meteorological visibility: the distance at
-which a surface's contrast against `haze.color` falls to 2%. It renders as
-`FogExp2(haze.color, √(ln 50) / visibility)`; an absent `visibility` is clear air. S2 owns which
-world elements are exempt (sky background, ground disc, editor marks) and lands that rendering in the
-shared `WorldEnvironment` with its first writer, so the Stage and the visit change together. In S1
-every surface renders clear air alike.
+The Sky background uses one reusable cube texture with a world-bearing twilight glow.
+Exposure scales the Sky lights by `2^EV`. Haze uses `FogExp2` with the horizon colour and
+density `√(ln 50)/visibility`, where `visibility = 20000·(60/20000)^(haze/100)` metres.
+At haze zero the density is zero and the fog object remains mounted. World materials
+receive fog. The background and editor-only marks, grids and ghosts stay clear. Studio
+uses the neutral rig. Stage gestures render through the live preview. Snapshots, Visitor
+Preview and published visits read the accepted Sky.
 
 **Treatment** runs last inside the one resolver and never writes the document:
 
@@ -170,7 +174,7 @@ colour-pass texels and change the image.
 The Stage renders on demand: a settled Stage renders zero frames, and each relevant input change asks
 for exactly one. Shadow maps keep `autoUpdate = false` and re-render only when something they depend
 on changes — a new compiled `geometry` or resolved `scene` identity, a model's arrival or release on
-the caster channel, a playing animation (per frame only while one plays), or a fresh or restored
+the caster channel, a Sun or Moon shadow-camera change (one map), a playing animation (per frame only while one plays), or a fresh or restored
 context. An orbit, hover or selection renders no shadow pass, and a static model adds no per-frame
 trigger.
 
