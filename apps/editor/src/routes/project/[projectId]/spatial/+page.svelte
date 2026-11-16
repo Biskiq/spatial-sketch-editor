@@ -565,6 +565,12 @@
 		clearWorldTool: () => { shell.setLibraryOpen(false); shell.setActiveWorldTool('select'); },
 		worldPlateOpen: () => shell.worldPlateOpen,
 		closeWorldPlate: () => shell.setWorldPlateOpen(false),
+		dismissSky: () => {
+			if (!look.panelOpen) return false;
+			look.setPanelOpen(false);
+			document.querySelector<HTMLButtonElement>('[data-stage-environment-control]')?.focus();
+			return true;
+		},
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection()

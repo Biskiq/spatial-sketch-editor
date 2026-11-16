@@ -54,7 +54,10 @@
 
 	function escape(event: KeyboardEvent) {
 		if (event.key !== 'Escape' || !look.panelOpen || event.defaultPrevented) return;
-		if (look.gesture.owner?.startsWith('dial-')) return;
+		const owner = look.gesture.owner;
+		if (owner?.startsWith('dial-')) return;
+		if (owner === null && (!(event.target instanceof Node) ||
+			(!control?.contains(event.target) && !document.getElementById(id)?.contains(event.target)))) return;
 		const canceled = look.gesture.cancel();
 		// Let the platform dismiss its native picker as well.
 		if (!(event.target instanceof HTMLInputElement && event.target.type === 'color' && canceled)) event.preventDefault();
@@ -68,7 +71,7 @@
 <svelte:window onkeydowncapture={escape} />
 
 <button type="button" class="environment" class:compact bind:this={control}
-	aria-expanded={look.panelOpen} aria-controls={look.panelOpen ? id : undefined}
+	data-stage-environment-control aria-expanded={look.panelOpen} aria-controls={look.panelOpen ? id : undefined}
 	aria-label={`Environment · ${name}${look.edited ? ' · edited' : ''} · ${reading}`}
 	title={`${name} · ${reading}`}
 	onpointerdown={(event) => event.stopPropagation()}

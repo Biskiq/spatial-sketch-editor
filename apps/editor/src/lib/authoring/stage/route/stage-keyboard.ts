@@ -68,6 +68,7 @@ export type StageKeyboardInput = {
 	readonly clearWorldTool: () => void;
 	readonly worldPlateOpen: () => boolean;
 	readonly closeWorldPlate: () => void;
+	readonly dismissSky?: () => boolean;
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
@@ -267,6 +268,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				else if (input.activeWorldTool() !== 'select') { input.clearWorldTool(); }
 				// The plate is the last layer before Select: once the tool is clear,
 				// Escape folds the parchment instead of moving the selection.
+				else if (input.dismissSky?.()) { break; }
 				else if (input.lens() === 'world' && input.worldPlateOpen()) { input.closeWorldPlate(); }
 				else if (input.activeLayer()?.key(event, 'unwind') !== 'claimed' && input.selectionPresent()) input.closeSelection();
 				break;
