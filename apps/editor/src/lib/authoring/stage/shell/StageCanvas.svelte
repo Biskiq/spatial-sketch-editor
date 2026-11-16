@@ -310,7 +310,7 @@ import StageMatGround from './StageMatGround.svelte';
 	<!-- The preview projection is a shadow trigger too: an overridden or candidate
 		light must move its cast shadow with its illumination. -->
 	{#if dial}<StageCelestialDial {dial} />{/if}
-	<StageShadowTriggers sunKey={sunShadowKey(environmentShown ? worldEnvironmentLook(sky) : null, { bounds: snapshotBounds, shadowBounds, groundY: datumMeters, flatGround: true })} {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />
+	<StageShadowTriggers sunKey={sunShadowKey(environmentShown ? worldEnvironmentLook(sky) : null, { bounds: snapshotBounds, shadowBounds, groundY: datumMeters, flatGround: true })} {geometry} {scene} {lightPreview} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}

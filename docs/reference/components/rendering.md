@@ -173,10 +173,11 @@ colour-pass texels and change the image.
 
 The Stage renders on demand: a settled Stage renders zero frames, and each relevant input change asks
 for exactly one. Shadow maps keep `autoUpdate = false` and re-render only when something they depend
-on changes — a new compiled `geometry` or resolved `scene` identity, a model's arrival or release on
-the caster channel, a Sun or Moon shadow-camera change (one map), a playing animation (per frame only while one plays), or a fresh or restored
-context. An orbit, hover or selection renders no shadow pass, and a static model adds no per-frame
-trigger.
+on changes. Inputs include compiled geometry, accepted Scene caster content, a light preview, a
+model's arrival or release on the caster channel, and a fresh or restored context. A Sun or Moon
+shadow-camera change refreshes one directional map. Haze, exposure, colour, Moon strength and
+softness use the existing maps during preview and after acceptance. An orbit, hover or selection
+renders no shadow pass. An animated caster refreshes its map while playing.
 
 Gate C measured this contract on the reference laptop: **0 shadow maps per frame** in a 600-frame
 Stage orbit across the empty, small-room and gallery Worlds, and **1 map per frame** on the visitor
