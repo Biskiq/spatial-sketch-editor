@@ -67,6 +67,12 @@ and unroll amount. It is never serialized, never enters history and Undo never c
 is built from the same development map and samples as the Wall; Opening edits go through the
 existing canonical planners.
 
+Lift is the second **session reading**. It lifts a Room's generated overhead out of the view and the
+pointer and holds only its scope — Everything, or one Space — so the creator can read and edit
+inside. Like Unroll it is never serialized, never enters history and Undo never changes it; Plan
+keeps it, Preview never shows it, and a snapshot is drawn as built. The lifted overhead is selected
+through its Room, because a generated lid has no subject of its own.
+
 **Reference surface.** The development is isometric along the **centerline**. Stations, Opening
 offsets and widths, and Wall length are centerline quantities and read true at every amount. Wall
 faces at a signed offset are not isometric: at full flattening both face polylines take the

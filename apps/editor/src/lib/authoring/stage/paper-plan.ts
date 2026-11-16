@@ -42,6 +42,13 @@ import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
  */
 export const STAGE_WORLD_LAYER = 0;
 export const STAGE_OVERLAY_LAYER = 2;
+/**
+ * World content a session reading has lifted out of the Stage view: the Stage
+ * camera never enables it, and the snapshot camera does, so a snapshot stays
+ * as-built. The value and the shadow contract live in `$lib/render/render-layers`
+ * so a representation can name the layer without importing Paper.
+ */
+export { LIFTED_RENDER_LAYER as STAGE_LIFTED_LAYER } from '$lib/render/render-layers';
 
 /** PLATE §Semantic color / §Material and working surfaces reference calibrations. */
 export const PAPER_INK = SPATIAL_PAINT_ROLES.ink;

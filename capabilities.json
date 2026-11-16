@@ -101,6 +101,15 @@
       "review": null
     },
     {
+      "id": "layout.interior-reveal",
+      "area": "T1",
+      "summary": "Lift a Space's generated overhead out of the view and the pointer as a temporary reading, leaving a dashed outline that selects the Room, with the scope restorable in one press and nothing persisted",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.canonical-compiler",
       "area": "T1",
       "summary": "Architectural geometry and queries come from one canonical compiler, and Layout representation stays runtime-safe",

@@ -51,6 +51,7 @@
 	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
 		developmentPointAtStationFromBuffers,
+		overheadSourcesOf,
 		LAYOUT_DIMENSION_LIMIT_MESSAGE,
 		type PlanEvaluation
 	} from '@portfolio/layout-core';
@@ -63,6 +64,10 @@
 	} from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import { wallFace } from '$lib/authoring/layout/wall-face-store';
+	import {
+		initialLiftScope,
+		interiorLift
+	} from '$lib/authoring/layout/interior-lift-store.svelte';
 	import {
 		wallUnfoldShouldReturn,
 		wallUnfoldViewCentreStation
@@ -573,7 +578,9 @@
 		},
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
-		closeSelection: () => commands.closeSelection()
+		closeSelection: () => commands.closeSelection(),
+		liftActive: () => interiorLift.isActive(),
+		putBackLift: () => interiorLift.putBack()
 	});
 
 	const selectedCurvedWall = $derived.by(() =>
@@ -595,6 +602,111 @@
 
 	const paperVisible = $derived(isPaperPlanVisible(evaluation, shell.preferences.planAppearance));
 	const modelUrls = $derived(stageAssets.urls);
+
+	/**
+	 * The Rooms whose generated lids the live Lift reading has lifted.
+	 *
+	 * The route only maps Layout's overhead sources to the representation's ids:
+	 * which overheads a scope names is `overheadSourcesOf`'s answer, and V1's
+	 * authored regions will need their own representation instead of this list.
+	 * `VisitorPreviewSurface` never receives it, so Preview stays as-built.
+	 */
+	const liftedSources = $derived.by(() => {
+		const reading = interiorLift.reading;
+		if (reading === null) return [];
+		if (boot.status !== 'ready' && boot.status !== 'empty') return [];
+		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
+	});
+	const liftedRoomIds = $derived(liftedSources.map((source) => source.subject.id));
+	/** The selected Room, when the selection is one: a lift is selected through its Room. */
+	const selectedLiftRoomId = $derived(
+		selection !== null &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind === 'room'
+			? selection.reference.subject.id
+			: null
+	);
+
+	/**
+	 * The entry rule, stated once: a Room selection wins, then the Room the eye is
+	 * inside in 3D, then everything. Plan has no eye to be occupied by, and the
+	 * reading never re-derives its scope after entry.
+	 */
+	function toggleLift(): void {
+		if (interiorLift.isActive()) {
+			interiorLift.putBack();
+			return;
+		}
+		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		interiorLift.lift(
+			initialLiftScope({
+				selectedRoomId: selectedLiftRoomId,
+				reading: evaluation?.renderedReading === 'plan' ? 'plan' : '3d',
+				eye: evaluation === null ? null : eyeOfInspectionPose(evaluation.pose),
+				compiled: boot.snapshot.domain.geometry
+			})
+		);
+	}
+
+	const liftControl = $derived({ active: interiorLift.isActive(), toggle: toggleLift });
+
+	/**
+	 * The Lift pill's reads. The scoped Room is named as its Card titles it, and the
+	 * menu's candidate is the same rule entry uses: selected Room, occupied Room,
+	 * then the Room already scoped. Everything else is Today's scope.
+	 */
+	const liftPill = $derived.by(() => {
+		const reading = interiorLift.reading;
+		if (reading === null) return null;
+		const scopeRoomId = reading.scope.kind === 'space' ? reading.scope.roomId : null;
+		const nameOf = (roomId: string | null): string | null =>
+			roomId === null
+				? null
+				: (currentEnvelope?.units.layout.data.rooms.find((room) => room.id === roomId)?.name ??
+					null);
+		const geometry = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.geometry : null;
+		const occupiedRoomId =
+			geometry === null || evaluation === null
+				? null
+				: (() => {
+						const occupied = initialLiftScope({
+							selectedRoomId: null,
+							reading: '3d',
+							eye: eyeOfInspectionPose(evaluation.pose),
+							compiled: geometry
+						});
+						return occupied.kind === 'space' ? occupied.roomId : null;
+					})();
+		const candidateId = selectedLiftRoomId ?? occupiedRoomId ?? scopeRoomId;
+		const candidateName = nameOf(candidateId);
+		return {
+			scopeRoomId,
+			scopeLabel: nameOf(scopeRoomId),
+			candidate:
+				candidateId === null || candidateName === null
+					? null
+					: { id: candidateId, label: candidateName },
+			onScope: (roomId: string | null) => {
+				interiorLift.setScope(roomId === null ? { kind: 'all' } : { kind: 'space', roomId });
+			},
+			onPutBack: () => interiorLift.putBack()
+		};
+	});
+
+	/**
+	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
+	 * reading in words instead of leaving a pill pointing at nothing. This is a
+	 * read-side reconciliation: it writes no document and no history.
+	 */
+	$effect(() => {
+		const reading = interiorLift.reading;
+		if (reading === null || reading.scope.kind !== 'space') return;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		const roomId = reading.scope.roomId;
+		if (boot.snapshot.domain.geometry.rooms.some((room) => room.roomId === roomId)) return;
+		interiorLift.clear();
+		shell.setNotice('Lift ended: the Space is gone.');
+	});
 
 	function readStageContentBounds(stage: StageFacade): {
 		readonly min: [number, number, number];
@@ -637,7 +749,12 @@
 		return experience.lensState === 'world' && preview === null && wallUnfold.state === null;
 	}
 
-	$effect(() => () => { artworkInteraction.dispose(); stageAssets.disposeArtwork(); });
+	$effect(() => () => {
+		// Leaving the project ends the reading: Lift is never carried across routes.
+		interiorLift.clear();
+		artworkInteraction.dispose();
+		stageAssets.disposeArtwork();
+	});
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
 		if (!canPlaceArtwork()) {
@@ -714,8 +831,10 @@
 	projectSession.bindNavigation();
 
 	function resetViewContext(): void {
-		// A replaced project has no standpoint to put back into the new Camera.
+		// A replaced project has no standpoint to put back into the new Camera, and
+		// no overhead to keep lifted: Lift is session state, never a document value.
 		wallFace.clear();
+		interiorLift.clear();
 		selection = null;
 		shell.setTask(null);
 		revealed = [];
@@ -1038,6 +1157,8 @@
 			get selection() { return selection; },
 			get hover() { return shell.armedHostTool === 'erase' ? shell.eraseHover : stageInput.hoverSelection; },
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
+			get liftedRoomIds() { return liftedRoomIds; },
+			get liftSources() { return liftedSources; },
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
@@ -1206,6 +1327,7 @@
 			viewEditTurn={experience.viewEdit?.moved && !experience.viewEdit.advanced && experience.viewEditPreview?.turn
 				? experience.viewEditPreview.turn
 				: null}
+			lift={liftPill}
 			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
 				? { bar: shell.draftingScaleBar, quiet: paperVisible }
 				: null}
@@ -1292,7 +1414,8 @@
 							reducedMotion: shell.reducedMotion,
 							onToggleReducedMotion: () => shell.toggleReducedMotion(),
 							motionSpeed: shell.preferences.motionSpeed,
-							onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed })
+							onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed }),
+							lift: liftControl
 						}
 					}
 					: null}

@@ -101,7 +101,7 @@ describe('the snapshot host uses the shared writer', () => {
 		expect(host).toMatch(
 			/import \{ snapshotDataUrl \} from '\.\.\/snapshot-image'/
 		);
-		expect(host).toContain('return snapshotDataUrl(pixels, WIDTH, height);');
+		expect(host).toContain('return snapshotDataUrl(frame.pixels, frame.width, frame.height);');
 	});
 
 	it('writes no pixels itself', () => {

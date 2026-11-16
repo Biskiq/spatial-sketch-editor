@@ -35,6 +35,15 @@ The Canvas host — `StageCanvas.svelte` or `VisitorPreviewSurface.svelte` — c
 snapshot renderer draws the Stage's own scene with the Stage's renderer into an offscreen target, so
 it never creates a second context or store set.
 
+The per-object layers are the Stage camera's contract: layer 0 is world content, layer 2 is editor
+ink on the overlay (the selection contour, and Lift's dashed outline and ghost), and layer 3 is
+**lifted** — a Room's generated overhead while a Lift reading holds it out of the view, the pointer
+and every snapshot. Lift never writes `Object3D.visible`: the representation moves the lid to layer
+3, and the shadow pass sees it only when a light's own shadow camera asks for that layer (r187's
+rule), so the visitor canvas draws the project as built. A lifted overhead sits on
+`LIFTED_RENDER_LAYER`; the PR that first makes any overhead cast enables that layer on every
+light-store shadow camera, and `lift-shadow-eligibility.test.ts` refuses it otherwise.
+
 ## Rules and their guards
 
 Each rule is held by the named test under `apps/editor/tests/lib/`. Guards in the unconditional
