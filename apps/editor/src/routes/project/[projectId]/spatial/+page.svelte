@@ -69,6 +69,7 @@
 		interiorLift
 	} from '$lib/authoring/layout/interior-lift-store.svelte';
 	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
+	import { pickThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
 	import {
 		planOverridesOf,
 		resolveSlice,
@@ -149,6 +150,14 @@
 	const lightPreview = createStageLightPreview();
 	const scenePick = createScenePickSource();
 
+	/*
+	 * SL1: the Stage's one hit path, with the cut folded in. The reading is read on
+	 * the pointer rather than captured, so arming a Slice, dragging it and putting it
+	 * back change what a click can select without re-creating the facade or its
+	 * adapters. With no reading the wrapper is the unwrapped pick exactly.
+	 */
+	const stagePick = pickThroughSlice(scenePick, () => resolvedSlice);
+
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
@@ -167,7 +176,7 @@
 		createFacade: (snapshot) => createStageFacade({
 			snapshot,
 			session,
-			scenePick: scenePick.pick,
+			scenePick: stagePick,
 			sceneBounds: scenePick.bounds,
 			lightPreview
 		}),
@@ -527,7 +536,7 @@
 		dockToolArmed: () => shell.armedTool !== null,
 		planView: () => planView,
 		previewing: () => preview !== null,
-		pick: scenePick.pick,
+		pick: stagePick,
 		viewMarkAt: (event) => experience.viewMarkAt(event),
 		eraseHover: () => shell.eraseHover,
 		setEraseHover: (entry) => shell.setEraseHover(entry),
