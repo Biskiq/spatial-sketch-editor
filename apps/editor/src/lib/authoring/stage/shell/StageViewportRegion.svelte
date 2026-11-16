@@ -414,7 +414,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="mode-pill slice-pill"
-					class:with-through={lookThrough !== null}
+					class:with-lift={lift !== null}
 					data-slice-pill
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
@@ -733,6 +733,14 @@
 	}
 	.mode-pill.lift-pill.with-through {
 		top: 3.4rem;
+	}
+	/* The Slice pill takes the same row as Lift's for the same reason, and drops a
+	 * row when Lift is showing, so the two readings can both state their pose. */
+	.mode-pill.slice-pill {
+		top: 3.4rem;
+	}
+	.mode-pill.slice-pill.with-lift {
+		top: 6.1rem;
 	}
 	.lift-pill .chev {
 		margin-left: 5px;
