@@ -580,6 +580,201 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 	});
 });
 
+describe('T1 A7.2 — Card fixed-end choice on Wall length', () => {
+	/** A Junction's accepted point, read from the canonical document. */
+	function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): readonly [number, number] {
+		const junction = document.junctions.find((candidate) => candidate.id === junctionId);
+		if (junction === undefined) throw new Error(`the fixture has no Junction ${junctionId}`);
+		return junction.point;
+	}
+
+	/** Every other Wall incident to one Junction, with the far endpoint it keeps. */
+	function incidentWalls(
+		document: LayoutDocumentWallFirst,
+		wallId: string,
+		junctionId: string
+	): readonly { readonly id: string; readonly farJunctionId: string }[] {
+		return document.walls
+			.filter(
+				(candidate) =>
+					candidate.id !== wallId &&
+					(candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId)
+			)
+			.map((candidate) => ({
+				id: candidate.id,
+				farJunctionId:
+					candidate.startJunctionId === junctionId ? candidate.endJunctionId : candidate.startJunctionId
+			}));
+	}
+
+	it('switches the anchor without writing the document, history or a proposal', async () => {
+		const mounted = await mount();
+		selectWall(mounted.facade, mounted.wallId);
+		const accept = vi.fn(async () => ({ kind: 'no-op' } as const));
+		const instrument = createLayoutInstrument({
+			subject: { kind: 'wall', id: mounted.wallId },
+			document: mounted.document,
+			projectId: PROJECT_ID,
+			contentRevision: mounted.facade.snapshot().domain.unitRevisions.layout,
+			port: { accept, acceptedRevision: () => mounted.services.authoring.acceptedRevision() }
+		});
+		const before = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+
+		instrument.setFixedEndpoint('end');
+		expect(instrument.fixedEndpoint()).toBe('end');
+		instrument.setFixedEndpoint('start');
+		expect(instrument.fixedEndpoint()).toBe('start');
+
+		expect(accept).not.toHaveBeenCalled();
+		expect(instrument.proposalLive()).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('keeps Start fixed, moves End through its shared Junction, and preserves every identity', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const beforePoints = wallPoints(before, mounted.wallId);
+		const source = before.walls.find((wall) => wall.id === mounted.wallId)!;
+		const neighbours = incidentWalls(before, mounted.wallId, source.endJunctionId);
+		const openings = before.openings.map((opening) => ({
+			id: opening.id,
+			wallId: opening.wallId,
+			offset: opening.offset,
+			width: opening.width
+		}));
+		const rooms = before.rooms.map((room) => ({ id: room.id, boundary: room.boundary }));
+
+		instrument.setFixedEndpoint('start');
+		instrument.edit('length', '5');
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+
+		const after = acceptedLayout(mounted.facade);
+		const afterPoints = wallPoints(after, mounted.wallId);
+		// Start is untouched; End travelled the authored direction to 5 m.
+		expect(afterPoints.start[0]).toBeCloseTo(beforePoints.start[0], 9);
+		expect(afterPoints.start[1]).toBeCloseTo(beforePoints.start[1], 9);
+		expect(afterPoints.end[0]).toBeCloseTo(beforePoints.start[0] + 5, 9);
+		expect(afterPoints.end[1]).toBeCloseTo(beforePoints.start[1], 9);
+		expect(afterPoints.length).toBeCloseTo(5, 9);
+		// The moved Junction is shared: every incident Wall followed it, and each
+		// neighbour's far Junction stayed where it was.
+		expect(neighbours.length).toBeGreaterThan(0);
+		for (const neighbour of neighbours) {
+			const moved = junctionPoint(after, source.endJunctionId);
+			expect(moved[0]).toBeCloseTo(afterPoints.end[0], 9);
+			expect(moved[1]).toBeCloseTo(afterPoints.end[1], 9);
+			expect(junctionPoint(after, neighbour.farJunctionId)).toEqual(
+				junctionPoint(before, neighbour.farJunctionId)
+			);
+		}
+		expect(
+			after.openings.map((opening) => ({
+				id: opening.id,
+				wallId: opening.wallId,
+				offset: opening.offset,
+				width: opening.width
+			}))
+		).toEqual(openings);
+		expect(after.rooms.map((room) => ({ id: room.id, boundary: room.boundary }))).toEqual(rooms);
+		expect(after.walls.map((wall) => wall.id)).toEqual(before.walls.map((wall) => wall.id));
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('keeps End fixed, moves Start through its shared Junction, and preserves every identity', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const beforePoints = wallPoints(before, mounted.wallId);
+		const source = before.walls.find((wall) => wall.id === mounted.wallId)!;
+		const neighbours = incidentWalls(before, mounted.wallId, source.startJunctionId);
+		const openings = before.openings.map((opening) => ({
+			id: opening.id,
+			wallId: opening.wallId,
+			offset: opening.offset,
+			width: opening.width
+		}));
+		const roomIds = before.rooms.map((room) => room.id);
+
+		instrument.setFixedEndpoint('end');
+		instrument.edit('length', '5');
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+
+		const after = acceptedLayout(mounted.facade);
+		const afterPoints = wallPoints(after, mounted.wallId);
+		// End is untouched; Start travelled back along the authored direction.
+		expect(afterPoints.end[0]).toBeCloseTo(beforePoints.end[0], 9);
+		expect(afterPoints.end[1]).toBeCloseTo(beforePoints.end[1], 9);
+		expect(afterPoints.start[0]).toBeCloseTo(beforePoints.end[0] - 5, 9);
+		expect(afterPoints.start[1]).toBeCloseTo(beforePoints.end[1], 9);
+		expect(afterPoints.length).toBeCloseTo(5, 9);
+		expect(neighbours.length).toBeGreaterThan(0);
+		for (const neighbour of neighbours) {
+			const moved = junctionPoint(after, source.startJunctionId);
+			expect(moved[0]).toBeCloseTo(afterPoints.start[0], 9);
+			expect(moved[1]).toBeCloseTo(afterPoints.start[1], 9);
+			expect(junctionPoint(after, neighbour.farJunctionId)).toEqual(
+				junctionPoint(before, neighbour.farJunctionId)
+			);
+		}
+		expect(
+			after.openings.map((opening) => ({
+				id: opening.id,
+				wallId: opening.wallId,
+				offset: opening.offset,
+				width: opening.width
+			}))
+		).toEqual(openings);
+		expect(after.rooms.map((room) => room.id)).toEqual(roomIds);
+		expect(after.walls.map((wall) => wall.id)).toEqual(before.walls.map((wall) => wall.id));
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('refuses an End-fixed length that leaves the hosted Opening unfit, writing nothing', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const beforeJson = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+
+		instrument.setFixedEndpoint('end');
+		instrument.edit('length', '2');
+		const outcome = await instrument.commit('length');
+		// The host reports the planner's rejection and keeps the planner's words.
+		expect(outcome).toMatchObject({ kind: 'refused', code: 'planner-rejected' });
+		if (outcome.kind !== 'refused') throw new Error('the unfit Opening was not refused');
+		expect(outcome.message).toContain(`Opening '${mounted.openingId}' does not fit on Wall`);
+		// Atomic: the source, history and the creator's explicit anchor are untouched.
+		expect(acceptedLayout(mounted.facade)).toEqual(before);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeJson);
+		expect(mounted.host.history()).toEqual(history);
+		expect(instrument.fixedEndpoint()).toBe('end');
+	});
+
+	it('replays the End-fixed length through Undo and Redo with the same ids and bytes', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const baselineIds = acceptedLayout(mounted.facade).walls.map((wall) => wall.id);
+
+		instrument.setFixedEndpoint('end');
+		instrument.edit('length', '5');
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+		const committed = mounted.facade.snapshot().canonicalJson;
+		const committedLayout = acceptedLayout(mounted.facade);
+		expect(committedLayout.walls.map((wall) => wall.id)).toEqual(baselineIds);
+		expect(committedLayout.openings.some((opening) => opening.id === mounted.openingId)).toBe(true);
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(committed);
+		expect(acceptedLayout(mounted.facade)).toEqual(committedLayout);
+	});
+});
+
 describe('T1.P01.S05 — pointer Wall manipulation', () => {
 	it('commits the same document as the typed length, with one history entry', async () => {
 		const mounted = await mount();
