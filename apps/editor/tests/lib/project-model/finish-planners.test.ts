@@ -629,6 +629,23 @@ describe('the palette', () => {
 		expect(scene.materials[0]!.color).toEqual({ slot: 'slot-a' });
 	});
 
+	it('publishes preserved correspondence for untouched entities on a palette-only write', async () => {
+		const plan = await directPlan(
+			{
+				entities: [box('a', 'plaster-warm', 'p1'), box('b', 'plaster-warm', 'p1')],
+				materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', color: { slot: 'slot-a' } }],
+				palette: [{ id: 'slot-a', name: 'Accent', color: '#aabbcc' }]
+			},
+			'scene-palette-slot-set',
+			{ slotId: 'slot-a', color: '#112233' }
+		);
+		if (plan.kind !== 'prepared') throw new Error('expected a prepared palette write');
+		expect(plan.candidate.correspondence.map((entry) => [entry.before?.subject.id, entry.after?.subject.id])).toEqual([
+			['a', 'a'],
+			['b', 'b']
+		]);
+	});
+
 	it('removes a slot, literalises its followers and drops an empty palette', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1')],

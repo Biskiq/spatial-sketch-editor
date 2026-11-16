@@ -422,6 +422,13 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 	): Result => {
 		const finalized = finalizeSceneCandidate({ before, after, scope: { ...scope, ...grant } });
 		if (finalized.kind === 'rejected') return finalized;
+		// A palette-only write changes no entity, but it is still an accepted content
+		// change. Publish every surviving entity as preserved so the host can keep a
+		// live selection (and its Card) across the write; edits keep their narrower set.
+		const correspondenceIds =
+			(grant.changedEntityIds?.length ?? 0) > 0
+				? grant.changedEntityIds!
+				: after.entities.map((entity) => entity.id);
 		return {
 			kind: 'prepared',
 			candidate: {
@@ -430,7 +437,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				sourceVersion: request.snapshot.sourceVersion,
 				source: replaceUnitData(envelope, 'scene', finalized.scene),
 				changes: [{ kind, subjectIds, fields }],
-				correspondence: (grant.changedEntityIds ?? []).map((id) => ({
+				correspondence: correspondenceIds.map((id) => ({
 					relation: 'preserved' as const,
 					before: reference(id),
 					after: reference(id)
