@@ -41,8 +41,7 @@
 			gesture.move(owner, { time: snapTime(Math.atan2(-x, y) * 12 / Math.PI) });
 		} else {
 			const degrees = Math.atan2(x, -y) * 180 / Math.PI;
-			const step = event.altKey ? 1 : 15;
-			gesture.move(owner, { heading: wrap360(Math.round(degrees / step) * step) });
+			gesture.move(owner, { heading: wrap360(event.altKey ? degrees : Math.round(degrees / 15) * 15) });
 		}
 	}
 
@@ -67,7 +66,7 @@
 		let change: SceneSkyUpdatePayload;
 		if (owner === 'heading') {
 			if (step === null) return;
-			change = { heading: wrap360(Math.round(gesture.value.heading + step * (event.shiftKey ? 45 : 15))) };
+			change = { heading: wrap360(gesture.value.heading + step * (event.shiftKey ? 45 : 15)) };
 		} else if (step !== null) {
 			change = { time: snapTime(time + step * (event.shiftKey ? 1 : 0.25)) };
 		} else {
@@ -113,7 +112,7 @@
 			event.preventDefault();
 			return;
 		}
-		if (typeof CSS === 'undefined' || !CSS.supports('selector(input:open)')) return;
+		if (typeof CSS === 'undefined' || !CSS.supports?.('selector(input:open)')) return;
 		const input = event.currentTarget;
 		if (colorFrame !== undefined) cancelAnimationFrame(colorFrame);
 		const check = () => {

@@ -50,8 +50,8 @@ export function createSkyDialSession({ stage }: StageAdapterServices) {
 				const distance = (anchor[1] - ray.ray.origin[1]) / ray.ray.direction[1];
 				const x = ray.ray.origin[0] + distance * ray.ray.direction[0] - anchor[0];
 				const z = ray.ray.origin[2] + distance * ray.ray.direction[2] - anchor[2];
-				const step = intent.altKey ? 1 : 15;
-				gesture.move(owner, { heading: wrap360(Math.round((Math.atan2(x, -z) * 180 / Math.PI - 180) / step) * step) });
+				const bearing = Math.atan2(x, -z) * 180 / Math.PI - 180;
+				gesture.move(owner, { heading: wrap360(intent.altKey ? bearing : Math.round(bearing / 15) * 15) });
 			}
 		} else if (dial.body.phase === 'day' || dial.body.phase === 'night') {
 			const sky = gesture.value;
