@@ -69,6 +69,7 @@ import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { pointerWallRequest } from '$lib/authoring/adapters/layout/wall-gesture';
 import { resolveJunctionPointSnap, resolvePlanarDragSnap, snapWallDrag } from '$lib/authoring/adapters/layout/snap';
 import { STAGE_MARK_GLYPH_CSS } from '$lib/authoring/stage/stage-handles';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-s05';
@@ -282,6 +283,12 @@ async function activateFirstBendPoint(mounted: Mounted): Promise<void> {
  * tip is Stage-local CSS, so pressing it exercises the real mark tier rather
  * than passing a handle id around it.
  */
+/** The Wall's size chip reading as the Stage publishes it (A7.3). */
+function sizeChipReading(mounted: Mounted): string | undefined {
+	const chip = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-size-chip');
+	return chip?.descriptor.role === 'disclose' ? chip.descriptor.value : undefined;
+}
+
 /** The Wall's size disclosure is the one route to its length ray. */
 function revealWallSize(mounted: Mounted): void {
 	const chip = mounted.facade.marks().find(
@@ -577,6 +584,201 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 
 		expect(acceptedLayout(mounted.facade)).toEqual(before);
 		expect(mounted.host.history()).toEqual(historyAfterUndo);
+	});
+});
+
+describe('T1 A7.2 — Card fixed-end choice on Wall length', () => {
+	/** A Junction's accepted point, read from the canonical document. */
+	function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): readonly [number, number] {
+		const junction = document.junctions.find((candidate) => candidate.id === junctionId);
+		if (junction === undefined) throw new Error(`the fixture has no Junction ${junctionId}`);
+		return junction.point;
+	}
+
+	/** Every other Wall incident to one Junction, with the far endpoint it keeps. */
+	function incidentWalls(
+		document: LayoutDocumentWallFirst,
+		wallId: string,
+		junctionId: string
+	): readonly { readonly id: string; readonly farJunctionId: string }[] {
+		return document.walls
+			.filter(
+				(candidate) =>
+					candidate.id !== wallId &&
+					(candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId)
+			)
+			.map((candidate) => ({
+				id: candidate.id,
+				farJunctionId:
+					candidate.startJunctionId === junctionId ? candidate.endJunctionId : candidate.startJunctionId
+			}));
+	}
+
+	it('switches the anchor without writing the document, history or a proposal', async () => {
+		const mounted = await mount();
+		selectWall(mounted.facade, mounted.wallId);
+		const accept = vi.fn(async () => ({ kind: 'no-op' } as const));
+		const instrument = createLayoutInstrument({
+			subject: { kind: 'wall', id: mounted.wallId },
+			document: mounted.document,
+			projectId: PROJECT_ID,
+			contentRevision: mounted.facade.snapshot().domain.unitRevisions.layout,
+			port: { accept, acceptedRevision: () => mounted.services.authoring.acceptedRevision() }
+		});
+		const before = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+
+		instrument.setFixedEndpoint('end');
+		expect(instrument.fixedEndpoint()).toBe('end');
+		instrument.setFixedEndpoint('start');
+		expect(instrument.fixedEndpoint()).toBe('start');
+
+		expect(accept).not.toHaveBeenCalled();
+		expect(instrument.proposalLive()).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('keeps Start fixed, moves End through its shared Junction, and preserves every identity', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const beforePoints = wallPoints(before, mounted.wallId);
+		const source = before.walls.find((wall) => wall.id === mounted.wallId)!;
+		const neighbours = incidentWalls(before, mounted.wallId, source.endJunctionId);
+		const openings = before.openings.map((opening) => ({
+			id: opening.id,
+			wallId: opening.wallId,
+			offset: opening.offset,
+			width: opening.width
+		}));
+		const rooms = before.rooms.map((room) => ({ id: room.id, boundary: room.boundary }));
+
+		instrument.setFixedEndpoint('start');
+		instrument.edit('length', '5');
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+
+		const after = acceptedLayout(mounted.facade);
+		const afterPoints = wallPoints(after, mounted.wallId);
+		// Start is untouched; End travelled the authored direction to 5 m.
+		expect(afterPoints.start[0]).toBeCloseTo(beforePoints.start[0], 9);
+		expect(afterPoints.start[1]).toBeCloseTo(beforePoints.start[1], 9);
+		expect(afterPoints.end[0]).toBeCloseTo(beforePoints.start[0] + 5, 9);
+		expect(afterPoints.end[1]).toBeCloseTo(beforePoints.start[1], 9);
+		expect(afterPoints.length).toBeCloseTo(5, 9);
+		// The moved Junction is shared: every incident Wall followed it, and each
+		// neighbour's far Junction stayed where it was.
+		expect(neighbours.length).toBeGreaterThan(0);
+		for (const neighbour of neighbours) {
+			const moved = junctionPoint(after, source.endJunctionId);
+			expect(moved[0]).toBeCloseTo(afterPoints.end[0], 9);
+			expect(moved[1]).toBeCloseTo(afterPoints.end[1], 9);
+			expect(junctionPoint(after, neighbour.farJunctionId)).toEqual(
+				junctionPoint(before, neighbour.farJunctionId)
+			);
+		}
+		expect(
+			after.openings.map((opening) => ({
+				id: opening.id,
+				wallId: opening.wallId,
+				offset: opening.offset,
+				width: opening.width
+			}))
+		).toEqual(openings);
+		expect(after.rooms.map((room) => ({ id: room.id, boundary: room.boundary }))).toEqual(rooms);
+		expect(after.walls.map((wall) => wall.id)).toEqual(before.walls.map((wall) => wall.id));
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('keeps End fixed, moves Start through its shared Junction, and preserves every identity', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const beforePoints = wallPoints(before, mounted.wallId);
+		const source = before.walls.find((wall) => wall.id === mounted.wallId)!;
+		const neighbours = incidentWalls(before, mounted.wallId, source.startJunctionId);
+		const openings = before.openings.map((opening) => ({
+			id: opening.id,
+			wallId: opening.wallId,
+			offset: opening.offset,
+			width: opening.width
+		}));
+		const roomIds = before.rooms.map((room) => room.id);
+
+		instrument.setFixedEndpoint('end');
+		instrument.edit('length', '5');
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+
+		const after = acceptedLayout(mounted.facade);
+		const afterPoints = wallPoints(after, mounted.wallId);
+		// End is untouched; Start travelled back along the authored direction.
+		expect(afterPoints.end[0]).toBeCloseTo(beforePoints.end[0], 9);
+		expect(afterPoints.end[1]).toBeCloseTo(beforePoints.end[1], 9);
+		expect(afterPoints.start[0]).toBeCloseTo(beforePoints.end[0] - 5, 9);
+		expect(afterPoints.start[1]).toBeCloseTo(beforePoints.end[1], 9);
+		expect(afterPoints.length).toBeCloseTo(5, 9);
+		expect(neighbours.length).toBeGreaterThan(0);
+		for (const neighbour of neighbours) {
+			const moved = junctionPoint(after, source.startJunctionId);
+			expect(moved[0]).toBeCloseTo(afterPoints.start[0], 9);
+			expect(moved[1]).toBeCloseTo(afterPoints.start[1], 9);
+			expect(junctionPoint(after, neighbour.farJunctionId)).toEqual(
+				junctionPoint(before, neighbour.farJunctionId)
+			);
+		}
+		expect(
+			after.openings.map((opening) => ({
+				id: opening.id,
+				wallId: opening.wallId,
+				offset: opening.offset,
+				width: opening.width
+			}))
+		).toEqual(openings);
+		expect(after.rooms.map((room) => room.id)).toEqual(roomIds);
+		expect(after.walls.map((wall) => wall.id)).toEqual(before.walls.map((wall) => wall.id));
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('refuses an End-fixed length that leaves the hosted Opening unfit, writing nothing', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const beforeJson = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+
+		instrument.setFixedEndpoint('end');
+		instrument.edit('length', '2');
+		const outcome = await instrument.commit('length');
+		// The host reports the planner's rejection and keeps the planner's words.
+		expect(outcome).toMatchObject({ kind: 'refused', code: 'planner-rejected' });
+		if (outcome.kind !== 'refused') throw new Error('the unfit Opening was not refused');
+		expect(outcome.message).toContain(`Opening '${mounted.openingId}' does not fit on Wall`);
+		// Atomic: the source, history and the creator's explicit anchor are untouched.
+		expect(acceptedLayout(mounted.facade)).toEqual(before);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeJson);
+		expect(mounted.host.history()).toEqual(history);
+		expect(instrument.fixedEndpoint()).toBe('end');
+	});
+
+	it('replays the End-fixed length through Undo and Redo with the same ids and bytes', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const baselineIds = acceptedLayout(mounted.facade).walls.map((wall) => wall.id);
+
+		instrument.setFixedEndpoint('end');
+		instrument.edit('length', '5');
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+		const committed = mounted.facade.snapshot().canonicalJson;
+		const committedLayout = acceptedLayout(mounted.facade);
+		expect(committedLayout.walls.map((wall) => wall.id)).toEqual(baselineIds);
+		expect(committedLayout.openings.some((opening) => opening.id === mounted.openingId)).toBe(true);
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(committed);
+		expect(acceptedLayout(mounted.facade)).toEqual(committedLayout);
 	});
 });
 
@@ -1690,6 +1892,119 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(marks.some((mark) => mark.id === 'layout-wall-thickness' && mark.planner === LAYOUT_WALL_THICKNESS_KIND)).toBe(true);
 		// Arc length is not an exact-length writer; the chip must not advertise one.
 		expect(marks.some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+	});
+
+	it('publishes the curved Wall arc length as a read-only size-chip reading in Plan and 3D', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+
+		const frame = curvedWallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		const chord = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+		// A bent 6 m Wall is longer on its arc than its start-to-end chord, so the
+		// reading can never be the chord by accident.
+		expect(frame.length).toBeGreaterThan(chord + 0.01);
+		const expected = `Length (arc) ${frame.length.toFixed(3)} m`;
+		expect(sizeChipReading(mounted)).toBe(expected);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+
+		const bytes = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+
+		// The chip keeps its one disclosure job: thickness/height, never a length
+		// writer. Opening it changes no source and adds no history.
+		revealWallSize(mounted);
+		expect(sizeChipReading(mounted)).toBe(expected);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-thickness')).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-height')).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(bytes);
+		expect(mounted.host.history()).toEqual(history);
+
+		// Plan reads the same canonical value; it is not a second evaluation.
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, 0);
+		settle(mounted.facade, 4);
+		expect(mounted.facade.evaluation()?.settledReading).toBe('plan');
+		expect(sizeChipReading(mounted)).toBe(expected);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(bytes);
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('keeps the straight Wall length ray and publishes no size-chip reading', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+
+		expect(sizeChipReading(mounted)).toBeUndefined();
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+		revealWallSize(mounted);
+		const length = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-length')!;
+		expect(length.planner).toBe(LAYOUT_WALL_LENGTH_KIND);
+		expect(length.tag).toMatch(/^Length [0-9.]+ m$/);
+	});
+
+	it('re-reads the curved arc length after a Split, and the fragments sum to the source', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+		const before = acceptedLayout(mounted.facade);
+		const beforeLength = curvedWallFrame(before, mounted.wallId)!.length;
+		expect(sizeChipReading(mounted)).toBe(`Length (arc) ${beforeLength.toFixed(3)} m`);
+
+		const beforeIds = new Set(before.walls.map((wall) => wall.id));
+		const split = stageCardActions(mounted.facade, {
+			sourceId: mounted.wallId,
+			sourceKind: 'wall',
+			ref: null
+		}).find((action) => action.id === 'layout-wall-split')!;
+		expect((await split.run()).kind).toBe('accepted');
+
+		const after = acceptedLayout(mounted.facade);
+		const created = after.walls.find((wall) => !beforeIds.has(wall.id));
+		expect(created).toBeDefined();
+		const startSide = curvedWallFrame(after, mounted.wallId)!.length;
+		const endSide = curvedWallFrame(after, created!.id)!.length;
+		// Exact cubic subdivision: the two arc readings add back to the source.
+		expect(startSide + endSide).toBeCloseTo(beforeLength, 3);
+
+		// Each fragment's own chip reads its own canonical arc, not the source's.
+		for (const wallId of [mounted.wallId, created!.id]) {
+			selectWall(mounted.facade, wallId);
+			settle(mounted.facade, 4);
+			const frame = curvedWallFrame(acceptedLayout(mounted.facade), wallId)!;
+			expect(sizeChipReading(mounted)).toBe(`Length (arc) ${frame.length.toFixed(3)} m`);
+		}
+	});
+
+	it('withdraws the arc reading while its Unroll sheet is open and restores it on Put back', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+		const expected = sizeChipReading(mounted);
+		expect(expected).toBeDefined();
+		const compiled = mounted.facade
+			.snapshot()
+			.domain.geometry.walls.find((wall) => wall.wallId === mounted.wallId)!;
+		try {
+			wallUnfold.enter(compiled, 0);
+			// The Card's entry/exit path notifies the Stage so retained
+			// contributions are re-read against the open sheet.
+			mounted.facade.notifySurfaceChange();
+			settle(mounted.facade, 4);
+			// The sheet is the editing surface: the Wall's canonical marks,
+			// including the size chip and its reading, are withheld.
+			expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-size-chip')).toBe(false);
+		} finally {
+			wallUnfold.exit();
+		}
+		mounted.facade.notifySurfaceChange();
+		settle(mounted.facade, 5);
+		expect(sizeChipReading(mounted)).toBe(expected);
 	});
 
 	it('reads and edits a curved-host Opening station on the arc, not its chord', async () => {

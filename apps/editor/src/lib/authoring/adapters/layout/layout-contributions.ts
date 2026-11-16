@@ -262,6 +262,11 @@ export function createLayoutContributions({
 							anchor: [chipAt.point[0], y, chipAt.point[1]],
 							screen: { offset: [0, -22] },
 							label: 'Size',
+							// A curved Wall has no exact-length writer: `planExactWallLength`
+							// rejects a non-line centerline, so there is no honest length ray to
+							// publish. The canonical arc length is a reading, not an operation,
+							// and the chip's value is where the mark vocabulary carries one.
+							value: `Length (arc) ${curved.frame.length.toFixed(3)} m`,
 							// Arc length is not an exact-length writer on a curve, so the
 							// disclosure offers only the retained height/thickness scalars.
 							reveals: ['layout-wall-thickness', ...(planReading ? [] : ['layout-wall-height'])]
