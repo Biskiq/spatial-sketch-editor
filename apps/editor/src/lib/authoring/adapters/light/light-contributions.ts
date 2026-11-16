@@ -30,6 +30,7 @@ export type LightContributionKeys =
 	| 'subjects'
 	| 'pick'
 	| 'eraseAction'
+	| 'paintAnswer'
 	| 'keyIntent'
 	| 'handles'
 	| 'guides'
@@ -57,7 +58,11 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 		gesture.entity ?? selectedLight(adapterContext);
 
 	return {
-		hostTools: ['erase'],
+		hostTools: ['erase', 'paint'],
+		/** A Light emits; it has no Finish. */
+		paintAnswer() {
+			return { kind: 'refused' as const, message: 'Lights have no Finish.' };
+		},
 		pressWhenNoTask: true,
 		tasks: [
 			{

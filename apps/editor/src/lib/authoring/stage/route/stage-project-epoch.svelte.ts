@@ -48,6 +48,7 @@ import type { StageSession } from '../stage-session';
 import { stageEnvelope } from '../unit-stage-source';
 import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAssetLeases } from './stage-asset-leases.svelte';
+import type { FinishAuthoring } from '../../look/finish-authoring.svelte';
 
 /** The existing project-session API, narrowed to what the epoch composes. */
 export type StageProjectEpochProjectSession = {
@@ -95,6 +96,8 @@ export type StageProjectEpochInput = {
 	/** Deterministic test seams; production uses the existing owners. */
 	readonly createAcceptance?: typeof createStageAcceptanceHost;
 	readonly createServices?: typeof createStageAdapterServices;
+	/** The route's Finish service getter, shared with every replacement epoch. */
+	readonly finishes?: () => FinishAuthoring | null;
 	readonly mountAdapter?: typeof mountStageAdapter;
 };
 
@@ -215,7 +218,7 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		});
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
-		services = createServices(nextFacade, mounted);
+		services = createServices(nextFacade, mounted, input.finishes);
 		void input.assets.resolve(snapshot);
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			// A stale acceptance host cannot write through the newer epoch.
@@ -238,7 +241,7 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 			}
 			input.onAccepted();
 		});
-		for (const factory of input.adapterFactories) mountAdapter(nextFacade, mounted, factory);
+		for (const factory of input.adapterFactories) mountAdapter(nextFacade, mounted, factory, input.finishes);
 		// The previous epoch's controller belongs to its disposed coordinator; this
 		// epoch gets exactly one state machine over the new one.
 		projectSession.mountSave(mounted, snapshot);

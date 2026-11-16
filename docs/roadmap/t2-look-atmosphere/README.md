@@ -94,6 +94,12 @@ can judge by eye.
 A **Finish** is the project's reusable appearance (`SceneMaterialInstance`). The Card shows one
 row; depth opens in place.
 
+> **Implementation status (S4a, PR #360).** The Card Finish row, colour and project palette,
+> Sheen and Metal, Library › Finishes (curated and project), the shared-Finish Ask, Paint,
+> the semantic dropper and Model's own are landed. Paint is `B`, because `P` already arms Ink.
+> Image upload and mapping stay in S4b; Wall painting, per-face painting and Treatment stay in
+> S5, T5 and S6.
+
 | Level | Creator sees | Stored |
 | --- | --- | --- |
 | Pick | Library › Finishes: curated, **This project**, **+ From image** | Instance referencing a base and optional maps |

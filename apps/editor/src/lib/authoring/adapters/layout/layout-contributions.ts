@@ -798,7 +798,14 @@ export function createLayoutContributions({
 	}
 
 	const contributions = {
-		hostTools: ['erase', 'measure'],
+		hostTools: ['erase', 'measure', 'paint'],
+		/**
+		 * Walls, Openings and floors are Layout surfaces. S5 owns Wall painting, so
+		 * Paint refuses them in Layout's words rather than reaching an object behind.
+		 */
+		paintAnswer() {
+			return { kind: 'refused' as const, message: 'Walls are not painted yet.' };
+		},
 		guides,
 		/**
 		 * The Eraser reuses the Card's own delete for a Wall or an Opening — the

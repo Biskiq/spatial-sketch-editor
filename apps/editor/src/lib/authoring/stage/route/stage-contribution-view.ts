@@ -23,8 +23,10 @@ import type { StageTask } from '../stage-session';
 import type { StageEraseCandidate } from '../stage-eraser';
 import type { StageEraserController } from '../stage-eraser';
 import type { StageMeasureController } from '../stage-measure';
+import type { StagePaintCandidate, StagePaintController } from '../stage-painter';
 import { STAGE_ERASER_TASK } from '../stage-eraser';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
+import { STAGE_PAINT_TASK } from '../stage-painter';
 import {
 	SCALE_DETENTS
 } from '../stage-drafting';
@@ -162,12 +164,14 @@ export const HEAD_PROJECT_ENTRIES: readonly StageHeadFindEntry[] = [
 ];
 
 /** The armed host tool, read from the one task the session holds. */
-export function stageArmedHostTool(task: StageTask | null): 'measure' | 'erase' | null {
+export function stageArmedHostTool(task: StageTask | null): 'measure' | 'erase' | 'paint' | null {
 	return task?.kind === STAGE_MEASURE_TASK
 		? 'measure'
 		: task?.kind === STAGE_ERASER_TASK
 			? 'erase'
-			: null;
+			: task?.kind === STAGE_PAINT_TASK
+				? 'paint'
+				: null;
 }
 
 /**
@@ -176,7 +180,7 @@ export function stageArmedHostTool(task: StageTask | null): 'measure' | 'erase' 
  */
 export function stageArmedDockId(input: {
 	readonly task: StageTask | null;
-	readonly armedHostTool: 'measure' | 'erase' | null;
+	readonly armedHostTool: 'measure' | 'erase' | 'paint' | null;
 	readonly armedTool: { readonly id: string; readonly adapterId: string } | null;
 	readonly dockKeys: readonly StageDockKey[];
 }): string {
@@ -227,7 +231,7 @@ export function stageInactiveTask(input: {
 /** The instrument host's task view: the explicit target may differ from selection. */
 export function stageTaskHost(input: {
 	readonly task: StageTask | null;
-	readonly armedHostTool: 'measure' | 'erase' | null;
+	readonly armedHostTool: 'measure' | 'erase' | 'paint' | null;
 }): {
 	readonly kind: string;
 	readonly label: string;
@@ -270,19 +274,21 @@ export type StageHostToolOverlay = {
  */
 export function stageHostToolOverlay(input: {
 	readonly facade: StageFacade | null;
-	readonly armedHostTool: 'measure' | 'erase' | null;
+	readonly armedHostTool: 'measure' | 'erase' | 'paint' | null;
 	readonly measureTool: StageMeasureController | null;
 	readonly eraserTool: StageEraserController | null;
+	readonly paintTool: StagePaintController | null;
 	readonly rect: ViewportRect | null;
 	readonly measure: () => ViewportRect;
 }): {
 	readonly overlay: StageHostToolOverlay | null;
 	readonly eraseHover: StageSelectionEntry | null;
+	readonly paintHover: StageSelectionEntry | null;
 } {
 	const stage = input.facade;
 	const id = stage?.evaluationId() ?? null;
 	if (stage === null || id === null || input.armedHostTool === null) {
-		return { overlay: null, eraseHover: null };
+		return { overlay: null, eraseHover: null, paintHover: null };
 	}
 	const local = (point: readonly [number, number, number]): readonly [number, number] | null => {
 		const projected = stage.projectWorld([point[0], point[1], point[2]], id);
@@ -300,11 +306,16 @@ export function stageHostToolOverlay(input: {
 		}
 	}
 	const eraseNotice = input.armedHostTool === 'erase' ? (input.eraserTool?.notice() ?? null) : null;
-	const overlay: StageHostToolOverlay = { measure: measured, notice: eraseNotice };
-	const candidate: StageEraseCandidate | null =
-		input.armedHostTool === 'erase' ? (input.eraserTool?.candidate() ?? null) : null;
+	const paintNotice = input.armedHostTool === 'paint' ? (input.paintTool?.notice() ?? null) : null;
+	const overlay: StageHostToolOverlay = { measure: measured, notice: eraseNotice ?? paintNotice };
+	const candidate: StageEraseCandidate | StagePaintCandidate | null =
+		input.armedHostTool === 'erase'
+			? (input.eraserTool?.candidate() ?? null)
+			: input.armedHostTool === 'paint'
+				? (input.paintTool?.candidate() ?? null)
+				: null;
 	if (candidate === null || candidate.refusal !== null) {
-		return { overlay, eraseHover: null };
+		return { overlay, eraseHover: null, paintHover: null };
 	}
 	const hit: StageSourceHit = candidate.hit;
 	const representation =
@@ -319,9 +330,13 @@ export function stageHostToolOverlay(input: {
 			: undefined;
 	const reference =
 		hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
-	const eraseHover: StageSelectionEntry =
+	const hover: StageSelectionEntry =
 		representation === undefined ? { reference } : { reference, representation };
-	return { overlay, eraseHover };
+	return {
+		overlay,
+		eraseHover: input.armedHostTool === 'erase' ? hover : null,
+		paintHover: input.armedHostTool === 'paint' ? hover : null
+	};
 }
 
 /** Whether the Eraser's current winner is the one already shown. */

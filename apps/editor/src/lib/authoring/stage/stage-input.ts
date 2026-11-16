@@ -13,12 +13,13 @@ import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import type { ViewingIntent } from '@portfolio/camera-core';
 
 /** The dock's fixed keys, in dock order. */
-export type StageDockSlot = 'select' | 'ink' | 'measure' | 'erase' | 'library';
+export type StageDockSlot = 'select' | 'ink' | 'paint' | 'measure' | 'erase' | 'library';
 
 /** The one production key for each dock slot; the Keys list shows this map. */
 export const STAGE_DOCK_SHORTCUTS: Readonly<Record<StageDockSlot, string>> = {
 	select: 'V',
 	ink: 'P',
+	paint: 'B',
 	measure: 'M',
 	erase: 'E',
 	library: 'L'
@@ -75,6 +76,9 @@ export function stageKeyAction(key: string, options: { readonly pressing?: boole
 		case 'p':
 		case 'P':
 			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'ink' };
+		case 'b':
+		case 'B':
+			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'paint' };
 		case 'm':
 		case 'M':
 			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'measure' };

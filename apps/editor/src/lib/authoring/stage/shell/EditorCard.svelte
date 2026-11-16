@@ -81,7 +81,8 @@
 		kindLink = null,
 		menu = null,
 		back = null,
-		onBringIntoView = null
+		onBringIntoView = null,
+		onPaint = null
 	}: {
 		panelRects?: StagePanelRects;
 		identity: {
@@ -149,6 +150,8 @@
 		gesturing?: boolean;
 		/** Each increment opens the inline name editor (an Index row double-click). */
 		renameRequest?: number;
+		/** The landed whole-object Paint function, when this subject has one. */
+		onPaint?: (() => void) | null;
 	} = $props();
 
 	let cardNode = $state<HTMLElement>();
@@ -499,7 +502,11 @@
 				{#each dangerItems as item (item.id)}{@render menuItem(item, false)}{/each}
 			{:else if identity}
 				{#each subjectFunctions as name (name)}
-					<button type="button" class="soon" disabled title="Coming soon" data-card-function={name}>{name}<span class="soon-cue">Soon</span></button>
+					{#if name === 'Paint…' && onPaint}
+						<button type="button" data-card-function={name} onclick={() => { moreOpen = false; if (identity !== null) moreByKind.set(identity.kind, false); onPaint(); }}>{name}</button>
+					{:else}
+						<button type="button" class="soon" disabled title="Coming soon" data-card-function={name}>{name}<span class="soon-cue">Soon</span></button>
+					{/if}
 				{/each}
 			{/if}
 			{#if content}{@render content()}{/if}

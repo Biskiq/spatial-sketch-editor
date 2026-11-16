@@ -25,6 +25,7 @@
 	} from './object-marks';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import type { SceneEntity } from '@portfolio/project-model';
+	import SceneFinishRow from './SceneFinishRow.svelte';
 
 	let {
 		services,
@@ -50,7 +51,7 @@
 	 * re-sync the inputs; rebuilding it would discard every uncommitted draft.
 	 */
 	let controller = $state<SceneObjectCardController | null>(null);
-	let activeEntityId: string | null = null;
+	let activeEntityId = $state<string | null>(null);
 
 	let values = $state<Record<SceneObjectCardFieldId, string>>({
 		'position-x': '',
@@ -239,6 +240,7 @@
 {/snippet}
 {#if controller !== null}
 	<div class="object-fields" data-scene-object-card-fields aria-label="Scene object fields">
+		<SceneFinishRow {services} entityId={activeEntityId} />
 		<fieldset disabled={busy}>
 			{#each sizeIds as id (id)}{@render fieldRow(id)}{/each}
 		</fieldset>

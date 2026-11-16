@@ -354,6 +354,7 @@ export function createStageFacade(input: {
 		resolvePick: picking.resolvePick,
 		hostToolTarget: picking.hostToolTarget,
 		eraseAnswer: picking.eraseAnswer,
+		paintAnswer: picking.paintAnswer,
 		marks: contributions.marks,
 		hitMark: picking.hitMark,
 		idleHoverIntent(intent) {

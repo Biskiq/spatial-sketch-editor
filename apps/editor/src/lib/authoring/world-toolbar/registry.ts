@@ -280,7 +280,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     stage: 'landed',
     summary: 'Place point and spot lights from the Library.'
   },
-  { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'planned', after: 'T5', summary: 'Assign a material to a surface.' },
+  { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'landed', summary: 'Paint a whole object with a Finish.', shortcut: 'B' },
   { id: 'erase', label: 'Erase', icon: 'erase', family: null, stage: 'landed', summary: 'Remove a subject from the Stage.', shortcut: 'E' },
   { id: 'measure', label: 'Measure', icon: 'measure', family: null, stage: 'landed', summary: 'Measure between two points.', shortcut: 'M' },
   {
@@ -327,7 +327,7 @@ export const WORLD_FAMILIES: readonly WorldFamily[] = [
 
 export const WORLD_LIBRARY_CATEGORIES: readonly { id: WorldLibraryCategory; label: string }[] = [
   { id: 'objects', label: 'Objects' },
-  { id: 'materials', label: 'Materials' },
+  { id: 'materials', label: 'Finishes' },
   { id: 'my-objects', label: 'My objects' },
   { id: 'plants', label: 'Plants' },
   { id: 'buildings', label: 'Buildings' }

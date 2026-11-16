@@ -14,6 +14,7 @@
 import { STAGE_DOCK_SHORTCUTS, type StageDockSlot } from './stage-input';
 import { STAGE_ERASER_TASK } from './stage-eraser';
 import { STAGE_MEASURE_TASK } from './stage-measure';
+import { STAGE_PAINT_TASK } from './stage-painter';
 import type {
 	StageCardActionRecord,
 	StageCardFact,
@@ -66,8 +67,9 @@ export type StageDockKey = {
 	readonly icon?: string;
 };
 
-const HOST_DOCK_KEYS: Readonly<Record<'select' | 'measure' | 'erase', { id: string; label: string; taskKind: string | null }>> = {
+const HOST_DOCK_KEYS: Readonly<Record<'select' | 'paint' | 'measure' | 'erase', { id: string; label: string; taskKind: string | null }>> = {
 	select: { id: 'host-select', label: 'Select', taskKind: null },
+	paint: { id: STAGE_PAINT_TASK, label: 'Paint', taskKind: STAGE_PAINT_TASK },
 	measure: { id: STAGE_MEASURE_TASK, label: 'Measure', taskKind: STAGE_MEASURE_TASK },
 	erase: { id: STAGE_ERASER_TASK, label: 'Eraser', taskKind: STAGE_ERASER_TASK }
 };
@@ -77,7 +79,7 @@ const HOST_DOCK_KEYS: Readonly<Record<'select' | 'measure' | 'erase', { id: stri
  * missing contributed slot (no Library mounted) is simply absent, never an inert key.
  */
 export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDockKey[] {
-	const host = (slot: 'select' | 'measure' | 'erase'): StageDockKey => ({
+	const host = (slot: 'select' | 'paint' | 'measure' | 'erase'): StageDockKey => ({
 		...HOST_DOCK_KEYS[slot],
 		slot,
 		shortcut: STAGE_DOCK_SHORTCUTS[slot],
@@ -101,6 +103,7 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 	return [
 		host('select'),
 		...(ink === undefined ? [] : [contributed(ink)]),
+		host('paint'),
 		{
 			id: 'unavailable-slice',
 			slot: null,
@@ -114,18 +117,6 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 			unavailableReason: 'Slice is not available yet.'
 		},
 		host('erase'),
-		{
-			id: 'unavailable-brush',
-			slot: null,
-			label: 'Brush',
-			shortcut: null,
-			adapterId: 'host',
-			taskKind: null,
-			palette: false,
-			separated: false,
-			icon: 'paint',
-			unavailableReason: 'Brush is not available yet.'
-		},
 		host('measure'),
 		...others.map((tool) => contributed(tool)),
 		...(library === undefined ? [] : [contributed(library, true)])

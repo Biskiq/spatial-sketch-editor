@@ -123,6 +123,12 @@
 		type StageHeadFindEntry
 	} from '$lib/authoring/stage/route/stage-contribution-view';
 	import { createStageShellState } from '$lib/authoring/stage/route/stage-shell-state.svelte';
+	import {
+		createFinishAuthoring,
+		type FinishAuthoring
+	} from '$lib/authoring/look/finish-authoring.svelte';
+	import { withFinishPreviews } from '@portfolio/project-model/scene-planning';
+	import StagePaintPalette from '$lib/authoring/stage/shell/StagePaintPalette.svelte';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
@@ -154,6 +160,7 @@
 	const stageEpoch = createStageProjectEpoch({
 		session,
 		assets: stageAssets,
+		finishes: () => finishes,
 		projectSession: () => projectSession,
 		preview: () => previewController,
 		createFacade: (snapshot) => createStageFacade({
@@ -218,6 +225,8 @@
 
 	/** The Experience binding owns lens/View/Look Through; the shell state owns chrome. */
 	let experience!: StageExperienceBinding;
+	/** Paint's one Finish intent home, built after the commands it calls. */
+	let finishes!: FinishAuthoring;
 	const shell = createStageShellState({
 		session,
 		facade: () => facade,
@@ -226,7 +235,8 @@
 		measure: () => stageViewport.measure(),
 		previewing: () => preview !== null,
 		lens: () => experience.lensState,
-		selection: () => selection
+		selection: () => selection,
+		finishes: () => finishes
 	});
 	experience = createStageExperienceBinding({
 		session,
@@ -358,6 +368,16 @@
 	});
 
 	const selectionView = createStageSelectionView();
+	let finishAskSelectionKey = '';
+	$effect(() => {
+		const entry = selection;
+		const key = entry === null
+			? ''
+			: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
+		if (key === finishAskSelectionKey) return;
+		finishAskSelectionKey = key;
+		untrack(() => finishes.cancelAsk());
+	});
 	const sceneRooms = $derived(
 		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
 	);
@@ -375,6 +395,11 @@
 		scope: shell.worldScope
 	}));
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
+	const paintPalette = $derived(finishes.paintPalette());
+	const finishShelf = $derived.by(() => {
+		void shell.contributionsVersion;
+		return finishes.libraryShelf();
+	});
 	const dockKeys = $derived(dockView.keys);
 	const inactiveTask = $derived(stageInactiveTask({
 		facade,
@@ -461,6 +486,18 @@
 		showExperienceWelcome: () => experience.showWelcome()
 	});
 
+	finishes = createFinishAuthoring({
+		services: () => adapterServices,
+		onNotice: (message) => shell.setNotice(message),
+		openFinishes: () => {
+			shell.setLibraryOpen(true);
+			shell.requestLibraryCategory('materials');
+			shell.setActiveWorldTool('objects');
+			shell.setWorldPlateOpen(true);
+			shell.setPaletteOpen(false);
+		},
+		armPaint: () => commands.armWorldTool('paint')
+	});
 	artworkInteraction = createStageArtworkInteraction({
 		api,
 		services: () => adapterServices,
@@ -515,6 +552,7 @@
 		armedHostTool: () => shell.armedHostTool,
 		measureTool: () => shell.measureTool,
 		eraserTool: () => shell.eraserTool,
+		paintTool: () => shell.paintTool,
 		task: () => shell.task,
 		dockToolArmed: () => shell.armedTool !== null,
 		planView: () => planView,
@@ -523,6 +561,7 @@
 		viewMarkAt: (event) => experience.viewMarkAt(event),
 		eraseHover: () => shell.eraseHover,
 		setEraseHover: (entry) => shell.setEraseHover(entry),
+		setPaintHover: (entry) => shell.setPaintHover(entry),
 		onNotice: (message) => shell.setNotice(message),
 		onRefreshHostTools: () => shell.refreshHostTools(),
 		selectHit: (hit) => commands.selectHit(hit),
@@ -553,13 +592,16 @@
 		openCard: () => shell.setCardOpen(true),
 		pendingDelete: () => shell.pendingDelete !== null,
 		clearPendingDelete: () => { shell.setPendingDelete(null); shell.setNotice(''); },
+		cancelFinishAsk: () => finishes.cancelAsk(),
 		interrupt: interruptPress,
 		task: () => shell.task,
 		closeTask: () => commands.closeTask(),
 		armedHostTool: () => shell.armedHostTool,
 		measureTool: () => shell.measureTool,
 		eraserTool: () => shell.eraserTool,
+		paintTool: () => shell.paintTool,
 		clearEraseHover: () => shell.setEraseHover(null),
+		clearPaintHover: () => shell.setPaintHover(null),
 		refreshHostTools: () => shell.refreshHostTools(),
 		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
 		paletteOpen: () => shell.paletteOpen,
@@ -935,6 +977,7 @@
 	}
 
 	function setReading(reading: '3d' | 'plan'): void {
+		finishes.cancelAsk();
 		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
 		if (stageInput.drag !== null && session.gesture() === null) {
 			if (stageInput.drag.mode === 'adapter' && facade !== null) {
@@ -1137,7 +1180,13 @@
 			geometry: boot.snapshot.domain.geometry,
 			sourceContentId: boot.snapshot.sourceContentId,
 			layoutRevision: boot.snapshot.domain.unitRevisions.layout,
-			scene: boot.snapshot.domain.scene,
+			get scene() {
+				const accepted = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
+				if (accepted === null) return boot.snapshot.domain.scene;
+				return finishes.previewFinish.size === 0
+					? accepted
+					: withFinishPreviews(accepted, finishes.previewFinish);
+			},
 			get evaluation() { return evaluation; },
 			get ghosts() { return ghosts; },
 			get modelUrls() { return modelUrls; },
@@ -1155,7 +1204,13 @@
 			get sky() { return look.stageSky; },
 			get framedViewport() { return experience.lookThroughActive() ? throughViewport : null; },
 			get selection() { return selection; },
-			get hover() { return shell.armedHostTool === 'erase' ? shell.eraseHover : stageInput.hoverSelection; },
+			get hover() {
+				return shell.armedHostTool === 'erase'
+					? shell.eraseHover
+					: shell.armedHostTool === 'paint'
+						? shell.paintHover
+						: stageInput.hoverSelection;
+			},
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftSources() { return liftedSources; },
@@ -1254,8 +1309,8 @@
 			redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 			canUndo={historyState.canUndo}
 			canRedo={historyState.canRedo}
-			onUndo={() => void stageEpoch.undo()}
-			onRedo={() => void stageEpoch.redo()}
+			onUndo={() => { finishes.cancelAsk(); void stageEpoch.undo(); }}
+			onRedo={() => { finishes.cancelAsk(); void stageEpoch.redo(); }}
 			save={headSave}
 			onReloadRemote={(offer) => void applyReloadOffer(offer)}
 			saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
@@ -1444,11 +1499,14 @@
 						activeTool: shell.activeWorldTool,
 						libraryOpen: shell.libraryOpen,
 						plateOpen: shell.worldPlateOpen,
+						requestedCategory: shell.libraryCategoryRequest,
 						onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
 						onTool: (id) => commands.armWorldTool(id),
 						onLibrary: () => commands.toggleWorldLibrary(),
 						onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
 						onMaterialPick: look.pickMaterial,
+						finishShelf,
+						onFinishPick: (ref) => void finishes.pickFinish(ref),
 						lookShelf: look.libraryShelf,
 						artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
@@ -1529,7 +1587,13 @@
 				back: shownCard.back,
 				gesturing: shell.cardGesturing,
 				onClose: () => commands.closeCard(),
-				onBringIntoView: shownCard.bringIntoView
+				onBringIntoView: shownCard.bringIntoView,
+				onPaint: shownCard.identity !== null &&
+					!['wall', 'room', 'opening', 'light', 'artwork'].includes(
+						shownCard.identity.kind.toLowerCase()
+					)
+					? () => commands.armWorldTool('paint')
+					: null
 			}}
 			inactiveTask={preview === null && inactiveTask !== null ? { label: inactiveTask.label } : null}
 			onResumeTask={() => commands.resumeTask()}
@@ -1537,6 +1601,16 @@
 			keysOpen={shell.keysOpen}
 			onCloseKeys={() => shell.setKeysOpen(false)}
 		/>
+
+		{#if shell.armedHostTool === 'paint' && preview === null}
+			<StagePaintPalette
+				palette={paintPalette}
+				onPick={(key) => finishes.setActiveFromKey(key)}
+				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper(null))}
+				onCancel={() => commands.armWorldTool('select')}
+				onLibrary={() => finishes.openFinishes()}
+			/>
+		{/if}
 
 	</div>
 
