@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { createViewportCameraState, evaluateViewport, type Vec3 } from '@portfolio/camera-core';
 import { skyFromPreset } from '@portfolio/project-model/units';
-import { celestialDialModel, dialProject, dialRing, nearestT, placeCelestialDial } from '$lib/authoring/look/celestial-dial';
+import { celestialDialModel, dialProject, dialRing, dialStagePoint, nearestT, placeCelestialDial } from '$lib/authoring/look/celestial-dial';
 import { skyBodyAt } from '$lib/render/sky-time';
 
 const rect = { left: 0, top: 0, width: 1440, height: 900, devicePixelRatio: 1 };
@@ -46,4 +46,21 @@ it('places the shadow opposite the body, clamps its length, and follows the held
 	const moonPoint = dialProject(dialRing(placement, midMoon.az), view)!;
 	expect(nearestT(moonPoint, 23.75, 'night', 'glyph', placement, view, sky)).toBe(0.75);
 	expect(celestialDialModel({ ...sky, time: 20 }, placement).shadow).toBeNull();
+});
+
+it('draws and maps the dial in the stage-local frame of the overlay and pointer intents', () => {
+	const state = createViewportCameraState({
+		outputId: 'stage', sessionEpoch: 'session', sourceRevision: 'revision', reading: '3d', sceneRadiusMeters: 10,
+		pose: { target: origin, azimuthRadians: 0, elevationRadians: Math.PI / 3, targetPlaneHeightMeters: 10 }
+	});
+	const result = evaluateViewport(state, { left: 12, top: 44, width: 1440, height: 856, devicePixelRatio: 1 }, 0, 1);
+	if (result.kind !== 'evaluated') throw new Error('Expected a viewport evaluation');
+	const point: Vec3 = [0.5, 0, -0.25];
+	const viewport = dialProject(point, result.evaluation)!;
+	expect(dialStagePoint(point, result.evaluation)).toEqual([viewport[0] - 12, viewport[1] - 44]);
+	// The time grip resolves a stage-local pointer against the stage-local arc.
+	const sky = skyFromPreset('daylight', 0);
+	const placement = placeCelestialDial(origin, result.evaluation, [], clear, onFloor)!;
+	const sunset = dialStagePoint(dialRing(placement, skyBodyAt(19.5, sky.heading, sky.arcHeight).az), result.evaluation)!;
+	expect(nearestT(sunset, 12, 'day', 'glyph', placement, result.evaluation, sky)).toBe(19.5);
 });

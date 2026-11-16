@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Vec3, ViewportEvaluation } from '@portfolio/camera-core';
 	import { skyKind } from '$lib/render/sky-time';
-	import { dialProject, type CelestialDialModel } from '../../look/celestial-dial';
+	import { dialStagePoint, type CelestialDialModel } from '../../look/celestial-dial';
 	import { skyGlyph } from '../../environment/sky-glyphs';
 
 	let { dial, camera, haze, owner }: {
@@ -11,7 +11,7 @@
 		owner: string | null;
 	} = $props();
 
-	const project = (point: Vec3) => dialProject(point, camera);
+	const project = (point: Vec3) => dialStagePoint(point, camera);
 	const glyph = $derived(project(dial.glyph));
 	const shadow = $derived(dial.shadow ? project(dial.shadow) : null);
 	const noon = $derived(project(dial.noon));

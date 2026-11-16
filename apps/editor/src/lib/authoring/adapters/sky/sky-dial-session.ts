@@ -44,7 +44,8 @@ export function createSkyDialSession({ stage }: StageAdapterServices) {
 		if (!camera) return cancel();
 		const { grip, dial, gesture, owner, lease } = drag;
 		if (grip === 'noon') {
-			const ray = pointerRay(intent.css, camera, camera.token);
+			// Pointer intents are stage-local; the ray is cast from the viewport frame.
+			const ray = pointerRay([intent.css[0] + camera.rect.left, intent.css[1] + camera.rect.top], camera, camera.token);
 			if (ray.kind === 'ray' && Math.abs(ray.ray.direction[1]) > 1e-6) {
 				const anchor = dial.placement.anchor;
 				const distance = (anchor[1] - ray.ray.origin[1]) / ray.ray.direction[1];

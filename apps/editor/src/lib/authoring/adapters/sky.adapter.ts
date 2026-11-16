@@ -12,6 +12,10 @@ export const createAdapter: StageAdapterFactory = (services) => ({
 		const session = createSkyDialSession(services);
 		return {
 			idleHandles: () => skyHandles(skySession(services.stage.session)?.dial()),
+			// The Stage hit-tests idle marks only for a binding that reports an idle
+			// hover. The dial's grips are idle marks, so a shown dial always reports;
+			// the host's own hit test then decides whether a grip is under the pointer.
+			idleHoverIntent: (intent) => intent.phase === 'move' && Boolean(skySession(services.stage.session)?.dial()),
 			pressWhenNoTask: true,
 			pointerIntent: session.pointerIntent,
 			keyIntent: (intent) => intent.kind === 'cancel' && session.cancel(),

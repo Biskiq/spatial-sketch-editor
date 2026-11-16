@@ -14,6 +14,16 @@ export function dialProject(point: Vec3, camera: ViewportEvaluation): Point | nu
 		? projected.css : null;
 }
 
+/**
+ * The point in the Stage overlay's own frame: the overlay and the Stage's pointer
+ * intents are both stage-local, while `dialProject` is in the viewport frame that
+ * placement shares with the shell rectangles.
+ */
+export function dialStagePoint(point: Vec3, camera: ViewportEvaluation): Point | null {
+	const projected = dialProject(point, camera);
+	return projected === null ? null : [projected[0] - camera.rect.left, projected[1] - camera.rect.top];
+}
+
 export function dialRing(placement: DialPlacement, bearing: number, radius = 72): Vec3 {
 	const [x, , z] = skyDirection(bearing, 0);
 	const [a, y, b] = placement.anchor;
@@ -109,7 +119,7 @@ export function nearestT(
 	for (let step = 0; step <= (end - start) * 30; step++) {
 		const time = start + step / 30;
 		const body = skyBodyAt(Math.min(time, end - 1e-6), sky.heading, sky.arcHeight);
-		const target = dialProject(grip === 'glyph' ? dialRing(placement, body.az)
+		const target = dialStagePoint(grip === 'glyph' ? dialRing(placement, body.az)
 			: tip(placement, body.az, body.el), camera);
 		if (!target) continue;
 		const distance = (point[0] - target[0]) ** 2 + (point[1] - target[1]) ** 2;
