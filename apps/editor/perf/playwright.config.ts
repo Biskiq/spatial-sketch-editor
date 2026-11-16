@@ -33,6 +33,7 @@ export default defineConfig({
 		'lifecycle-regression.spec.ts',
 		'head-lifetime.spec.ts',
 		'renderer-lifetime.spec.ts',
+		'stage-clip.spec.ts',
 		'trace-unit.spec.ts',
 		'trace-gate-unit.spec.ts',
 		'core-closeout-live.spec.ts'
