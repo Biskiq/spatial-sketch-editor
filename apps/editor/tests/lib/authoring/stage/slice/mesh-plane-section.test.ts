@@ -20,6 +20,7 @@
  * not a restatement of the builder.
  */
 import { describe, expect, it } from 'vitest';
+import { deriveChainSpans } from '@portfolio/layout-core';
 import {
 	compileWallFirstLayoutGeometry,
 	legJoinsByWall,
@@ -169,7 +170,7 @@ function polygonArea(ring: Polygon): number {
 }
 
 /** Sutherland–Hodgman clipping of a convex subject by a convex, CCW clip polygon. */
-function clipPolygon(subject: Polygon, clip: Polygon): Polygon {
+function clipPolygon(subject: readonly SectionPoint[], clip: readonly SectionPoint[]): Polygon {
 	let output = [...subject];
 	for (let edge = 0; edge < clip.length && output.length > 0; edge += 1) {
 		const a = clip[edge]!;
@@ -363,12 +364,18 @@ describe('sectionMeshes — the SL1 cap catalogue', () => {
 		]);
 		// A curved Wall is compiled from a curved authored path; the section must be
 		// the tessellation's own loop, not a chord or a second derivation.
+		// A curve is a cubic chain: one knot above the chord is enough to prove the
+		// section follows the tessellation rather than the ends' chord.
 		const curved: LayoutDocumentWallFirst = {
 			...document,
-			junctions: [
-				{ id: 'j0', point: [0, 0], incoming: { kind: 'curve', control: [1, 1.2] } as never },
-				{ id: 'j1', point: [4, 0], incoming: { kind: 'curve', control: [3, 1.2] } as never }
-			]
+			walls: document.walls.map((wall) => ({
+				...wall,
+				centerline: {
+					kind: 'cubic-chain' as const,
+					knots: [{ id: 'arc-k0', point: [2, 1.2] as LayoutVec2 }],
+					spans: deriveChainSpans([[0, 0], [2, 1.2], [4, 0]])
+				}
+			}))
 		};
 		const inputs = wallInputs(curved);
 		const result = cut(inputs);

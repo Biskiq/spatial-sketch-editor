@@ -4,8 +4,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { describe, expect, it, vi } from 'vitest';
-import type { LineMaterial, Material } from 'three';
+import { describe, expect, it } from 'vitest';
+import type { Material } from 'three';
 import { createStageClip, materialUsesClip } from '$lib/authoring/stage/slice/stage-clip';
 import { subjectWhollyHidden, type SliceGhostSubject } from '$lib/authoring/stage/slice/slice-ghost';
 

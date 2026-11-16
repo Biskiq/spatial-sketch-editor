@@ -50,6 +50,7 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'mat ground' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: 1, owner: 'lift ink' },
+	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 2, owner: 'slice ink' },
 	'lib/authoring/stage/shell/StageWallDevelopment.svelte': { count: 1, owner: 'development overlay' },
 	'lib/authoring/stage/shell/StageCelestialDial.svelte': { count: 1, owner: 'Celestial Dial ink' },
 	'lib/authoring/stage/shell/StageWallPin.svelte': { count: 1, owner: 'pin gizmo' },
@@ -236,7 +237,10 @@ describe('material-factory-boundary: one factory for world materials', () => {
 			'lib/visitor/VisitorPreviewSurface.svelte'
 		]) {
 			const code = withoutComments(readFileSync(path.join(EDITOR_SRC, host), 'utf8'));
-			expect(code, host).toContain('provideRenderResources()');
+			// The Slice seam (T1 SL1) is the one option this call takes: the material
+			// store is born with the Stage's clipping array, so it cannot be disposed
+			// of and re-provided later. Ownership is unchanged.
+			expect(code, host).toContain('provideRenderResources(');
 			expect(code, host).toMatch(/resources\.dispose\(\)/);
 		}
 		const shell = withoutComments(readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorLayoutShell.svelte'), 'utf8'));

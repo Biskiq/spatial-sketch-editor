@@ -59,6 +59,8 @@ function harness(overrides: Partial<StageKeyboardInput> = {}) {
 		selectionPresent: () => false,
 		closeSelection: () => calls.push('close-selection'),
 		liftActive: () => false,
+		sliceActive: () => false,
+		putBackSlice: () => calls.push('put-back-slice'),
 		putBackLift: () => calls.push('put-back-lift'),
 		...overrides
 	};
@@ -303,4 +305,38 @@ describe('stage keyboard arbitration', () => {
 		world.keyboard.handleKey(keyEvent('v'));
 		expect(world.calls).toEqual(['tool:select']);
 	});
+
+	it('disarms the Slice tool first and keeps the cut, then puts it back', () => {
+		let tool: string = 'slice';
+		let slice = true;
+		const { calls, keyboard } = harness({
+			activeWorldTool: () => tool,
+			clearWorldTool: () => {
+				tool = 'select';
+				calls.push('clear-world-tool');
+			},
+			sliceActive: () => slice,
+			putBackSlice: () => {
+				slice = false;
+				calls.push('put-back-slice');
+			}
+		});
+
+		// A-4: the tool rung is the whole of the first Escape — the cut stays, so the
+		// creator can look at it from anywhere before deciding to put it back.
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'clear-world-tool']);
+		expect(slice).toBe(true);
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual([
+			'interrupt:escape',
+			'clear-world-tool',
+			'interrupt:escape',
+			'put-back-slice'
+		]);
+		expect(slice).toBe(false);
+	});
+
 });
+

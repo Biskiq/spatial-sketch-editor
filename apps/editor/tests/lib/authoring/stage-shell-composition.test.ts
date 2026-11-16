@@ -239,6 +239,10 @@ describe('Stage shell composition', () => {
 			// T1 X1's Lift ink: dashed outlines and the selected ghost. It owns no
 			// camera, control object or second renderer.
 			'apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte',
+			// T1 SL1's Slice ink: the yellow cut plane, its depth outline and the
+			// section caps. It owns no camera, control object or second renderer.
+			'apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte',
+			'apps/editor/src/lib/authoring/stage/slice/stage-clip.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageCelestialDial.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
