@@ -1,10 +1,22 @@
 # T2 S4 — Finishes & Object Painting: implementation plan
 
-**Status:** planning baseline for approval. This draft PR claims the capability slice **`T2.S4`**
-("Finishes & Object Painting"). The plan is its first commit. After the plan is approved, the same
-PR implements **S4a**. **S4b** is a second implementation PR cut from S4a's merge.
+**Status:** revision 2, with the owner's rulings (2026-11-15). The S4a/S4b split is approved, and
+D1–D5 are ruled (§14). This draft PR claims the capability slice **`T2.S4`** ("Finishes & Object
+Painting"). The plan is its first commit, and this same PR implements **S4a** with no further
+planning review unless a new architectural blocker is shown. **S4b** is a separate Tier 2 PR, cut
+from S4a's merge, with its own implementation review. Neither PR merges without owner acceptance.
 
 **Base:** `a7f672db`, the current `main` and the merge of PR #354 (T2.S1 Look schema, Scene 8).
+
+**Scene format.** S4 uses **the active Scene unit format** and never bumps it. Today that is
+Scene 8. S2 is reconciling Gallery UX revision 4 and may bump the unit to **Scene 9**. S4 therefore:
+
+- reads `SCENE_UNIT_FORMAT_VERSION` and never writes a literal `8` in code or tests;
+- relies only on the Finish contracts S1 landed: `SceneMaterialInstance` (`color`, `roughness`,
+  `metalness`, `maps`, `mapping`), the `scene.palette` array, `scene.textures` and the `texture`
+  resource closure. A Scene 9 bump must carry these unchanged, which §13 asks S2 to confirm;
+- rebases onto S2's bump if it lands first. If S4a lands first, S2 rebases onto S4's planners,
+  which add no persisted field.
 
 **Claim check (2026-11-15):** there were no open PRs. The open issues were #357, #353, #337, #336,
 #335, #334, #284, #280 and #273, and none of them claims `T2.S4`, Finishes or Paint. The worktree
@@ -52,7 +64,7 @@ A creator can give any Scene object a **Finish** and share it deliberately:
   object or to *All N*, with Cancel writing nothing.
 
 Stage, Preview and the published visit all render the same Finish through the one resolver that
-already exists. S4 adds **no Scene format** (it stays on Scene 8), **no new material system** and
+already exists. S4 adds **no Scene format** (it uses the active one), **no new material system** and
 no persisted field that S1 did not already land.
 
 ## 2. Scope
@@ -76,7 +88,8 @@ no persisted field that S1 did not already land.
 - a texture preview on Library tiles and in the Card;
 - the editor's authenticated project texture scope for Stage, Preview and the snapshot renderer;
 - release-delivery tests;
-- the primitive Scale correction (decision **D1**).
+- scale-aware primitive texture tiling (ruling **D1**), which intentionally changes how existing
+  scaled, textured primitives look and is tested as such.
 
 **Out of scope, with the slice that owns each item:**
 
@@ -84,7 +97,7 @@ no persisted field that S1 did not already land.
 | --- | --- |
 | Wall faces and Space painting | S5 |
 | Per-face painting on Forms | T5 |
-| Looks, palette adoption, palette rename and Treatment UI | S6 |
+| Looks, palette adoption, Treatment UI, and an image's average colour under Flat colour (D2) | S6 |
 | More › Maps, automatic set import, opacity and Glow | S8 |
 | New reflections and an environment map | E4 |
 | Artwork picking ([issue #353](https://github.com/Biskiq/spatial-sketch-editor/issues/353)) | its own fix; S4 neither absorbs it nor depends on it (§7.4) |
@@ -98,7 +111,7 @@ no persisted field that S1 did not already land.
 | **Project Finish** | a `SceneMaterialInstance` in `scene.materials` | Yes, through the S4 writers |
 | **Pristine instance** | a `SceneMaterialInstance` whose only keys are `id`, `name` and `baseMaterialId` | It renders exactly as its base does. It is treated as the curated Finish, and the shelf never lists it. |
 | **Model's own** | a model with no `materialInstanceId` | It is the model's authored GLB materials. |
-| **Palette** | `scene.palette.slots[]`, from 1 to 8 entries of `{id, name, color}` | Yes. A palette edit is always global. |
+| **Palette** | `scene.palette`, an ordered array (`readonly ScenePaletteSlot[]`) of 1 to 8 slots `{id, name, color}`. The field is absent when there are no slots, because the validator reads an empty array as absence. The `id` is stable and never shown. The `name` is free text of at most 40 characters and may repeat. There are no fixed roles. | Yes. A palette edit is always global. |
 
 **Effective Finish of an object** (`finishOf(entity)`, a pure helper in `project-model`):
 
@@ -235,12 +248,16 @@ another Scene object, not rendered pixels:
 
 - *Save to palette* adds the slot `{id: allocated, name: 'Colour n', color}` and turns the current
   literal into a follower in the same write.
-- Long-pressing or right-clicking a swatch opens a small popover with the slot's picker and
-  *Remove*. The popover states the reach, for example "Used by 4 objects."
+- Long-pressing or right-clicking a swatch opens a small popover with the slot's **name field**,
+  its picker and *Remove*. The popover states the reach, for example "Used by 4 objects."
 - Editing a slot's colour is **global by definition** and has no Ask.
+- **Rename** (ruling D4) commits on Enter or blur. The name is trimmed, may not be empty and is
+  at most 40 characters, the validator's limits. Escape restores the old name and writes nothing.
+  Rename changes only `name`; the slot's `id`, its position and every follower stay the same.
+  Swatches show the name as their accessible label and tooltip.
 - *Remove* converts every follower of that slot to a literal of the slot's colour in the same
   write (the S1 rule), so nothing changes visually.
-- Rename waits for S6 (decision **D4**).
+- Slots are free and ordered, and new slots are appended. S4 assigns no roles; S6 owns adoption.
 
 **Cancel and live preview.** Every control commits on its own gesture, which gives one Undo:
 
@@ -367,7 +384,7 @@ the guard which today refuses a write to `materials`, `textures` or `palette`. S
 ```ts
 materials?: { readonly added: readonly string[]; readonly changed: readonly string[]; readonly removed: readonly string[] };
 textures?: { readonly added: readonly string[] };       // S4b
-palette?: { readonly change: 'none' | 'slots' };         // 'slots' = add/edit/remove slots
+palette?: { readonly change: 'none' | 'slots' };         // 'slots' = add/recolour/rename/remove slots in the scene.palette array
 ```
 
 Under these grants:
@@ -388,9 +405,10 @@ refused instead of silently widening the edit. All new ids come through `allocat
 | --- | --- | --- | --- |
 | `scene-finish-assign` | `{finish: {curated: MaterialId} \| {project: id} \| 'model-own', entityIds: string[]}`; allocates at most one pristine instance id (models plus curated) | the assignment normal form (§3) for each entity, with pristine-instance garbage collection | `unknown-entity`, `not-paintable` (a light, or `model-own` on a primitive or Form), `unknown-finish`, `unknown-catalogue`, `no-change` (every target already has it) |
 | `scene-finish-edit` | `{entityId, from: FinishKey, reach: number, mode: 'just-this' \| 'all' \| 'in-place', edit: FinishEdit}`; allocates one instance id for `just-this` or for `all` from curated | §5 | `stale-reach` (users ≠ `reach`), `mode-mismatch` (for example `in-place` with N > 1, or `all` with N = 1), `not-editable` (`model-own`), `invalid-value`, `no-change` |
-| `scene-palette-slot-add` | `{color, adoptEntityId?: string}`; allocates the slot id and creates the palette if it is absent | appends `{id, name:'Colour n', color}`. With `adoptEntityId` plus `{reach, mode}`, it turns that entity's Finish literal (which must equal `color`) into the follower under the §5 rules, Ask included. Turning a literal into a follower is a Finish edit, so a shared Finish asks *Just this* / *All N* like any other edit. Cancel writes nothing, not even the slot. | `palette-full` (8 slots), `invalid-color`, `stale-reach`, `mode-mismatch` |
+| `scene-palette-slot-add` | `{color, adoptEntityId?: string}`; allocates the slot id and creates the `scene.palette` array if it is absent | appends `{id, name:'Colour n', color}`, where n is the first number not already used in a `Colour n` name. With `adoptEntityId` plus `{reach, mode}`, it turns that entity's Finish literal (which must equal `color`) into the follower under the §5 rules, Ask included. Turning a literal into a follower is a Finish edit, so a shared Finish asks *Just this* / *All N* like any other edit. Cancel writes nothing, not even the slot. | `palette-full` (8 slots), `invalid-color`, `stale-reach`, `mode-mismatch` |
 | `scene-palette-slot-set` | `{slotId, color}` | slot colour | `unknown-slot`, `invalid-color`, `no-change` |
-| `scene-palette-slot-remove` | `{slotId}` | removes the slot, converts its followers to literals in the same write, and removes `palette` when it would be empty | `unknown-slot` |
+| `scene-palette-slot-rename` | `{slotId, name}` | the slot's `name`, trimmed; nothing else | `unknown-slot`, `invalid-name` (empty, or more than 40 characters), `no-change` |
+| `scene-palette-slot-remove` | `{slotId}` | removes the slot from the `scene.palette` array, converts its followers to literals in the same write, and removes the `palette` field when the array would be empty | `unknown-slot` |
 | `scene-finish-from-image` *(S4b)* | `{name, texture: {assetId, pin: {hash,mime,size,locator}}, entityIds: string[], replaceFinishOf?: {entityId, reach, mode}}`; allocates an instance id | in one write: appends the texture `{id: assetId, name, uri:'/project-assets/'+assetId}` if it is absent, appends the `texture` resource `{kind:'texture', id: assetId, contentRevision: pin.hash, pin, unresolved:null}` if it is absent, and creates the Finish `{base:'paper-aged', color:'#ffffff', maps:{color: assetId}}`. It then either assigns it to `entityIds` (a Library pick) or, with `replaceFinishOf`, performs *More › Image › Replace* as a `finish-edit` whose edit is `maps.color` | `invalid-pin` (not sha256, the wrong mime, or a size over the cap), `texture-mismatch` (an existing texture record with the same id but a different URI, or a resource with a different pin), plus the edit's refusals |
 
 `FinishEdit` is a partial
@@ -491,7 +509,16 @@ steps stay the same:
 5. `registerAsset`, then `uploadAsset`;
 6. on failure, recover by re-listing.
 
-The Finish policy differs from Artwork only in its caps (decision **D3**). The result is the P20
+**Size policy (ruling D3):**
+
+- **No lower refusal.** An image whose short side is under 256 px is accepted. The tile and the
+  Card's Image line show the warning "Low resolution (180 × 120 px): it may look blurry or
+  visibly tiled." The warning is derived from the probed dimensions each time it is shown and is
+  never stored.
+- **A bounded upper limit.** Images over 4096 px on the long side, or over the existing Artwork
+  byte cap, are refused, with a message that names the limit. S4 never downscales.
+
+The Finish policy differs from Artwork only in these limits. The result is the P20
 asset id plus `{sha256, mime, byteSize}`, which become the resource pin
 `{hash:'sha256-'+hex, mime, size, locator}`. The locator uses the same form `prepareArtworkPins`
 expects. The texture record id **is** the asset id, as the contract requires for
@@ -508,13 +535,39 @@ second *From image* of the same file reuses them and creates only a new Finish. 
 | Choosing | the native file dialog | — |
 | Checking | a tile with a spinner and the filename, plus Cancel. Abort calls `signal.abort()` | — |
 | Uploading | the same tile with progress, plus Cancel | — |
-| Refused (too small or large, not decodable, unsupported) | a notice with the reason; the tile goes away | nothing |
+| Refused (over the upper limit, not decodable, unsupported type) | a notice with the reason; the tile goes away | nothing |
+| Low resolution (short side under 256 px) | continues to Done with the warning above | as Done |
 | Network failure | a notice "Upload failed" with *Try again*, which re-lists first so a completed upload is reused | nothing |
 | Done | one `scene-finish-from-image` intent (§6.2) | the texture, resource and Finish together, in one Undo |
 
-Undo removes the Finish, the texture record and the resource, because the intent added them. The
-uploaded P20 bytes stay in project assets, where the existing asset-retention rules apply. A
-cancelled or failed upload never writes Scene state.
+**Atomicity: two steps, only one of them undoable.**
+
+1. **The P20 upload** happens first, as project-asset I/O outside the Scene. It is not an F4
+   intent, it is never in the Undo history, and **Scene Undo never deletes it**.
+2. **The Scene write** is one `scene-finish-from-image` intent, and it is atomic. It adds the
+   texture record, the `texture` resource and the Finish, plus the assignment or replacement,
+   together or not at all. It is one Undo entry. Undo removes exactly what the intent added: the
+   Finish, plus the texture record and resource *only if this intent created them*. Redo restores
+   them with the same ids.
+
+A cancelled or failed upload writes no Scene state. An upload that succeeds but whose intent is
+refused (for example `stale-reach`) also writes no Scene state. The Card shows the refusal and
+offers to try again, reusing the asset.
+
+**Orphans and their handling:**
+
+| Orphan | How it arises | Handling in S4b |
+| --- | --- | --- |
+| **P20 asset with no Scene reference** | the intent was undone; the intent was refused after upload; the creator left before committing; a lost response was recovered by re-listing | It stays in project assets under P20's existing retention rules. It is **not** pinned in a release, because release pinning walks `scene.textures` only. A later *From image* of the same bytes reuses it through the sha256 dedupe, so there are no duplicate uploads. S4 adds no asset deletion. |
+| **Texture record and resource with no Finish** | a Finish's image was removed (*More › Image › Remove*), or a different image replaced it, so the texture record stays behind. Undo never produces this case, because Undo removes what its intent added. | It stays in `scene.textures` and in the resources unit. Closure stays valid, so the record keeps loading, and releases pin it. That costs bytes but is harmless. A later *From image* with the same bytes reuses it. Collecting it would need a `textures` *remove* grant, and that is deferred (§15). |
+| **Finish with no user** | a non-pristine Finish loses its last user | Kept by design (§3) and listed in *This project* |
+
+The atomicity tests cover:
+
+- Undo after *From image* leaves the Scene byte-identical to the state before the intent, while
+  `listAssets` still returns the asset.
+- A second import of the same file after Undo makes no new upload.
+- A refused intent after a successful upload leaves no Scene change.
 
 ### 8.2 Editor texture scope
 
@@ -560,16 +613,15 @@ S4b adds tests only, plus one documented gap:
 - **Save-mode gap:** save mode verifies only the artworkLibrary, not texture pins. The editor
   loader's digest check covers the editor. Adding save-mode verification is a follow-up (§15) and
   does not block S4b.
-- **Orphans:** a texture record left after its Finish is removed stays in the Scene and in the
-  release pins. This is harmless and is not garbage-collected in S4, because collecting it would
-  widen the record scope for no visible gain.
+- **Orphans:** §8.1 covers them. A P20 asset that no texture record references is never pinned.
+  A texture record whose Finish is gone is still pinned.
 
 ### 8.4 Mapping
 
 | Object | Scale | Direction | Notes |
 | --- | --- | --- | --- |
 | Form | exact. Its UVs are metres (surface `[1,1]`), so `tileMeters` is the real tile | exact | — |
-| Primitive | its UVs are 0..1 per face, and the repeat comes from `primitiveSurface`, which ignores the entity's uniform `scale` today. D1 recommends multiplying the surface by `entity.scale`. | exact (rotation about the UV origin) | Box sides use width×depth for every face. This is an existing approximation; the Card says "Scale is approximate on boxes" only for boxes. |
+| Primitive | its UVs are 0..1 per face, and the repeat comes from `primitiveSurface`, which ignores the entity's uniform `scale` today. **Ruling D1:** S4b multiplies the surface by `entity.scale`, so one tile keeps its metre size on a scaled primitive. | exact (rotation about the UV origin) | Box sides use width×depth for every face. This is an existing approximation; the Card says "Scale is approximate on boxes" only for boxes. |
 | Model | hidden | hidden | The model's own UVs; mapping is ignored (S1) |
 
 **Scale UI** is one field, "One tile = [1.20] m":
@@ -602,11 +654,11 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
 2. `src/scene-planning/record-scope.ts`: the `materials` and `palette` grants (§6.1). Tests cover
    granted, ungranted, reordered, appended and removed records.
 3. `src/scene-planning/finish-planners.ts`: `scene-finish-assign`, `scene-finish-edit` and
-   `scene-palette-slot-add/set/remove`, with payload readers following `intent-payload.ts`.
+   `scene-palette-slot-add/set/rename/remove`, with payload readers following `intent-payload.ts`.
 4. `src/scene-planning/index.ts`: register and export them.
 5. Tests in `finish-planners.test.ts`, covering each §5 row, each refusal, garbage collection,
    Undo and Redo restoring ids, `stale-reach`, palette removal converting followers, the first
-   follower write creating the palette, and Scene 8 validation passing on every output.
+   follower write creating the `scene.palette` array, rename, and active-format Scene validation (`SCENE_UNIT_FORMAT_VERSION`) passing on every output.
 
 **`apps/editor`**
 
@@ -663,7 +715,7 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
    snapshot renderer.
 6. `editor/render/resources/texture-store.ts`: `invalidateTextureSource`.
 7. `editor/render/scene-render-description.ts`: the primitive surface multiplied by `scale`, if
-   **D1** is approved.
+   ruled by **D1**. This is an intentional appearance change; see the D1 tests in §10.
 8. `SceneFinishRow.svelte`: Image, Scale and Direction, and the broken-image Retry line.
 9. `WorldToolbar.svelte`: + From image and image tiles.
 10. `api` tests: release pinning and tamper checks for a Finish image.
@@ -678,12 +730,14 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
 - `stale-reach` and `mode-mismatch`.
 - Garbage collection removes a pristine instance and never a customised one.
 - Assigning a curated Finish to a model reuses an existing pristine instance.
-- Palette: add to the cap, `palette-full`, removal converting followers, the palette removed when
-  it empties.
+- Palette: add to the cap, `palette-full`; rename keeps the id, the order and the followers;
+  `invalid-name`; removal converting followers; the `palette` field removed when the array empties.
 - Record scope: every ungranted carried field is still refused, including `environment`, which
   belongs to S2.
-- S4b: idempotent texture and resource creation, `texture-mismatch`, and closure validation passing
-  (`units/validate.ts` requires the `texture` resource).
+- S4b: idempotent texture and resource creation, `texture-mismatch`, closure validation passing
+  (`units/validate.ts` requires the `texture` resource), and the §8.1 atomicity and orphan tests.
+- S4b D1: the scaled-primitive tiling goldens and the unchanged-descriptor tests (§14).
+- S4b D3: an image under 256 px is accepted with the warning, and an image over the limit is refused.
 
 **Editor unit tests**
 
@@ -713,7 +767,7 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
 - An upload aborted mid-flight.
 - An upload that completed but whose response was lost, recovered by the re-list.
 - A missing texture record renders colour only and logs only in dev.
-- An image Finish under the Flat and Clay Treatments (see D2).
+- An image Finish under the Flat and Clay Treatments. Under Flat it renders its colour field, which is `#ffffff` for an untinted image; average colour is deferred to S6 (D2). The test pins today's behaviour so that S6's change is deliberate.
 
 ## 11. Browser QA (focused, manual; full Playwright needs owner authorisation)
 
@@ -727,7 +781,7 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
    - Undo reverts it, and *All 3* changes all three;
    - Cancel changes nothing, and nothing appears in Undo.
 3. Pick a free colour and *Save to palette*. Give a second object the swatch, then edit the slot
-   colour: both change without an Ask. Remove the slot: the colours stay as literals.
+   colour: both change without an Ask. Rename the slot: the swatch label changes, both objects still follow it, and one Undo reverts the name. Remove the slot: the colours stay as literals.
 4. Use the Card's colour dropper on another object, and the Paint dropper.
 5. Paint over a Wall standing in front of an object: the Wall is refused and nothing behind it is
    painted. Paint over Artwork does the same.
@@ -751,7 +805,7 @@ background. Its source is the lease's object URL, the same bytes the Stage uses,
 - The Ask outcomes match §5 exactly. Cancel and Esc write nothing.
 - There are no inert controls: Brush/Paint, FUNCTIONS › Paint… for objects and the registry Paint
   row are real, and nothing in the Finish row renders without an effect.
-- No Scene format change. Scene 8 validation passes for every planner output. S4b's outputs pass
+- No Scene format change from S4. Validation at the active format (Scene 8 today, Scene 9 if S2 bumps first) passes for every planner output. S4b's outputs pass
   resource closure.
 - Hit arbitration is unchanged (§7.4 tests). #353 is neither fixed nor worsened.
 - Stage, Preview and visit render identical descriptors (S4a), and the image renders on a
@@ -774,34 +828,43 @@ branch.
 | `StageCanvas.svelte`, `WorldEnvironment`, `world-environment.ts`, `SkyControl.svelte` | S2 owns them | S4 does not touch them |
 | `docs/reference/components/scene-content.md`, `rendering.md`, roadmap README | S2 adds Sky and Haze sections | S4 adds its own sections. README edits are single-row. |
 
-If S2 merges first, S4 rebases before each implementation push. Neither PR needs the other.
+| Scene unit format (`SCENE_UNIT_FORMAT_VERSION`, codec, validator, migration) | **may bump to Scene 9** while reconciling Gallery UX rev 4 | S4 bumps nothing. It reads the constant, and its tests build fixtures through the codec instead of hard-coding the version. **Ask of S2:** a Scene 9 bump must carry `materials`, `textures`, `palette` (the array) and the `texture` resource closure unchanged, or name the change in its PR so that S4 can adapt. |
 
-## 14. Owner decisions
+**Rebase protocol:**
 
-These are the only choices this plan cannot make on evidence. Each has a recommendation, and S4a
-needs only **D4** before coding starts.
+- Before each S4 implementation push, S4 fetches `origin/main`. If S2 has merged, S4 rebases and
+  reruns the planner and record-scope tests at the new format.
+- If S2 is still open when S4a is ready for acceptance, the S4a PR body names the seams it touches,
+  so S2's rebase is mechanical.
+- S4 never cherry-picks from, pushes to or edits S2's branch or worktree.
+- Neither PR depends on the other.
 
-- **D1 (S4b) — Primitive Scale.** Primitives ignore their uniform `scale` when computing texture
-  repeat, so a scaled box stretches its tiles. **Recommended:** multiply the surface by
-  `entity.scale` in S4b. This makes Scale honest on primitives. It also re-renders existing scaled,
-  textured primitives at the correct tile size, a visible change to existing projects. The
-  alternative is metre UVs for primitive geometry, a larger change that belongs to T5.
-- **D2 (S4b) — Image Finishes under Flat colour (roadmap Q7).** Flat turns images off. An image
-  Finish's colour is `#ffffff`, so under Flat it renders **white**. **Recommended:** under Flat,
-  use the image's average colour, computed render-side once per decoded texture and cached by
-  texture URI. This needs no schema change. The alternative is to accept white and document it.
-- **D3 (S4b) — Image quality floor (roadmap Q4).** **Recommended:**
-  - refuse below 256 px on the short side;
-  - accept up to 4096 px on the long side;
-  - downscale nothing in S4;
-  - use the existing Artwork byte cap;
-  - show no tiling warning in S4.
-- **D4 (S4a) — Palette slots (roadmap Q5).** **Recommended:** free swatches with automatic names
-  (*Colour 1…*) in S4, no rename, and fixed roles left to S6, which would decide on adoption. If
-  you prefer fixed roles, S4a's *Save to palette* needs a role picker, which adds about one day.
-- **D5 (S4a, confirm) — Imported models (roadmap Q3).** **Recommended:** keep whole-object
-  replacement, which is the landed renderer behaviour, plus *Use model's own*. "Tint and sheen
-  offset over the model's materials" would be a second material path, which S4 is barred from.
+## 14. Owner rulings (2026-11-15)
+
+All five are ruled. S4a needs nothing further before coding.
+
+- **D1 (S4b): scale-aware primitive tiling. Accepted.** The primitive repeat multiplies the
+  `primitiveSurface` size by the entity's uniform `scale`. This **intentionally** changes the look of
+  existing scaled primitives that have a textured Finish: their tiles become the authored metre size
+  instead of stretching. Tests cover it:
+  - a golden for one scaled box per textured catalogue Finish, where the repeat equals the
+    surface × scale ÷ the tile size;
+  - an unscaled primitive whose descriptor is unchanged;
+  - a Form whose descriptor is unchanged;
+  - a model whose descriptor is unchanged.
+
+  The PR notes the visible change for reviewers.
+- **D2: image average colour under Flat colour. Deferred to S6.** In S4b, Flat shows an image
+  Finish's colour field, which is white for an untinted image. This is documented in
+  `rendering.md` as a known limit, with S6 as the owner.
+- **D3 (S4b): size policy. Warn, never refuse, for small images; keep a bounded upper limit.**
+  - Under 256 px on the short side: a warning, and the image is accepted.
+  - Over 4096 px on the long side, or over the Artwork byte cap: refused.
+  - No downscaling (§8.1).
+- **D4 (S4a): free, ordered palette slots with stable ids, and rename in S4a.** There are no fixed
+  architectural roles. The `scene-palette-slot-rename` intent and its popover name field are in S4a
+  (§4.2, §6.2). Roles, if ever wanted, are S6's adoption question.
+- **D5 (S4a): whole-object model Finish replacement plus *Use model's own*. Accepted** (§3, §4.2).
 
 ## 15. Risks and follow-ups
 
@@ -819,16 +882,17 @@ needs only **D4** before coding starts.
 
 - Finish rename, delete and *Remove unused*;
 - save-mode texture pin verification;
-- orphan texture garbage collection;
+- garbage collection of orphan texture records, which needs a `textures` remove grant;
 - an Artwork `paint` refusal once #353 lands;
-- palette rename (S6).
+- an image's average colour under Flat colour (S6, D2);
+- deleting unreferenced P20 assets (P20 retention, not S4).
 
 ## 16. Effort
 
 | PR | Scope | Estimate |
 | --- | --- | --- |
-| **S4a** | model and planners (2 d), record scope (0.5 d), Finish service and Card row with Ask and preview (3 d), Painter, dropper and arbitration declarations (2 d), Library shelf, registry and dock (1 d), tests, docs and QA (1.5 d) | **about 10 days** |
-| **S4b** | upload generalisation and From-image flow (1.5 d), texture resource planner and grant (1 d), project texture scope, lease and retry (2 d), Image, Scale and Direction plus preview (1.5 d), D1 and D2 (1 d), release tests, docs and QA (1.5 d) | **about 8.5 days** |
+| **S4a** | model and planners (2 d), record scope (0.5 d), Finish service and Card row with Ask, preview and slot rename (3.5 d), Painter, dropper and arbitration declarations (2 d), Library shelf, registry and dock (1 d), tests, docs and QA (1.5 d) | **about 10.5 days** |
+| **S4b** | upload generalisation and From-image flow (1.5 d), texture resource planner and grant (1 d), project texture scope, lease and retry (2 d), Image, Scale and Direction plus preview (1.5 d), D1 tiling and its appearance tests (0.5 d), the D3 warning (0.25 d), release tests, docs and QA (1.5 d) | **about 8 days** |
 
 **Why this split:** the split recommended in the brief holds. S4b alone introduces creator bytes:
 resources, the editor texture scope and release delivery. S4a is complete and useful without them,
