@@ -1,0 +1,802 @@
+/**
+ * The Finish authoring service (T2.S4a).
+ *
+ * One service owns the creator's Finish intent outside the Scene document:
+ *
+ * - the **active** Finish Paint assigns and the session's five recents;
+ * - the shared-Finish **Ask**: one pending edit (or palette adoption), its
+ *   reach, *Just this* / *All N* / *Cancel*, and the optional "apply to all
+ *   edits while this is open" memory;
+ * - the transient colour **preview** the picker streams while the pointer is
+ *   down; it never writes and never enters Undo;
+ * - the semantic **dropper** target, which copies an authored Finish or colour
+ *   rather than rendered pixels.
+ *
+ * Every write is one F.4 intent through the route's one acceptance host. The
+ * service reads the live accepted snapshot each time, so the Card and the
+ * planner compute the same reach.
+ */
+import {
+	FINISH_SHEEN_STOPS,
+	PALETTE_NAME_MAX_LENGTH,
+	baseMaterialIdOf,
+	effectiveColorOf,
+	followerSlotOf,
+	finishOf,
+	finishRefOfKey,
+	isFinishPaintable,
+	isPristineInstance,
+	literalColorOf,
+	materialInstanceById,
+	metalReading,
+	paletteHasRoom,
+	sheenReading,
+	usersOfFinish,
+	type FinishKey,
+	type SceneFinishEdit,
+	type SceneFinishRef
+} from '@portfolio/project-model/scene-planning';
+import type { MaterialId, SceneColor, SceneEntity, SceneMaterialInstance } from '@portfolio/project-model';
+import { getMaterial, materials } from '$lib/content/materials';
+import type { StageAdapterServices } from '../stage/stage-adapter-host';
+
+export type FinishAuthoringHost = {
+	readonly services: () => StageAdapterServices | null;
+	readonly onNotice: (message: string) => void;
+	/** Open Library › Finishes, scrolled to the current tile. */
+	readonly openFinishes: () => void;
+	/** Arm the host Paint task, optionally in the Finish dropper. */
+	readonly armPaint: (mode: { readonly kind: 'paint' } | { readonly kind: 'dropper' }) => void;
+};
+
+export type FinishEntityView = {
+	readonly entityId: string;
+	readonly entityName: string;
+	readonly kind: 'primitive' | 'form' | 'model';
+	readonly key: FinishKey;
+	readonly ref: SceneFinishRef;
+	readonly label: string;
+	readonly users: number;
+	readonly editable: boolean;
+	readonly pristine: boolean;
+	readonly baseMaterialId: MaterialId | null;
+	readonly baseLabel: string;
+	readonly instance: SceneMaterialInstance | null;
+	readonly effectiveColor: string;
+	readonly literalColor: string | null;
+	readonly followerSlot: string | null;
+	readonly roughness: number;
+	readonly roughnessAuthored: boolean;
+	readonly sheenStop: ReturnType<typeof sheenReading>['stop'];
+	readonly sheenCaption: string;
+	readonly metalOn: boolean;
+	readonly metalCaption: string;
+	readonly hasColorImage: boolean;
+	readonly canSaveToPalette: boolean;
+	readonly paletteRoom: boolean;
+	readonly originalWritesWhite: boolean;
+};
+
+export type FinishPaletteView = {
+	readonly slots: readonly {
+		readonly id: string;
+		readonly name: string;
+		readonly color: string;
+		readonly users: number;
+	}[];
+	readonly room: boolean;
+};
+
+export type FinishPaintPalette = {
+	readonly active: { readonly key: FinishKey; readonly label: string; readonly color: string } | null;
+	readonly recents: readonly {
+		readonly key: FinishKey;
+		readonly label: string;
+		readonly color: string;
+	}[];
+	readonly dropper: boolean;
+};
+
+type PendingEdit = {
+	readonly kind: 'edit';
+	readonly entityId: string;
+	readonly from: FinishKey;
+	readonly edit: SceneFinishEdit;
+};
+
+type PendingPalette = {
+	readonly kind: 'palette-add';
+	readonly entityId: string;
+	readonly color: string;
+	readonly slotId: string;
+};
+
+export type FinishAsk = {
+	readonly kind: 'edit' | 'palette-add';
+	readonly entityId: string;
+	readonly label: string;
+	readonly reach: number;
+	readonly applyToAllEdits: boolean;
+};
+
+type Pending = PendingEdit | PendingPalette;
+
+const RECENTS_LIMIT = 5;
+
+function entityReference(services: StageAdapterServices, entityId: string) {
+	const snapshot = services.stage.snapshot();
+	return {
+		version: 1 as const,
+		domain: 'scene' as const,
+		revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.scene },
+		subject: { kind: 'entity' as const, id: entityId },
+		instancePath: [],
+		location: { kind: 'project-root' as const },
+		componentId: null,
+		capabilityId: null
+	};
+}
+
+function newId(kind: string, id: string) {
+	return { kind, id };
+}
+
+export function createFinishAuthoring(host: FinishAuthoringHost) {
+	let activeKey = $state.raw<string | null>(null);
+	let recents = $state.raw<readonly string[]>([]);
+	let ask = $state.raw<FinishAsk | null>(null);
+	let pending = $state.raw<Pending | null>(null);
+	let applyToAllEdits = $state(false);
+	/** The one remembered Ask choice for the open row, cleared by a subject change. */
+	let sticky = $state.raw<{ readonly key: string; readonly mode: 'just-this' | 'all' } | null>(null);
+	let preview = $state.raw<ReadonlyMap<string, string>>(new Map());
+	let dropper = $state.raw<{ readonly forEntityId: string | null } | null>(null);
+	let rowEntityId: string | null = null;
+	let busy = $state(false);
+
+	const servicesNow = (): StageAdapterServices | null => host.services();
+
+	function scene() {
+		return servicesNow()?.stage.snapshot().domain.scene ?? null;
+	}
+
+	function entityOf(entityId: string | null): SceneEntity | null {
+		if (entityId === null) return null;
+		return scene()?.entities.find((entity) => entity.id === entityId) ?? null;
+	}
+
+	function paintabilityNotice(entity: SceneEntity | null): string {
+		if (entity === null) return 'Select a Scene object first.';
+		if (entity.kind === 'light') return 'Lights have no Finish.';
+		if (entity.kind === 'artwork') return 'Artwork is not painted.';
+		return 'That subject cannot be painted.';
+	}
+
+	/**
+	 * Preview a colour on one object without writing. The map is a render-only
+	 * override the Stage consumes; it never enters the Scene, history or a planner.
+	 */
+	function previewColor(entityId: string, color: string): void {
+		const next = new Map(preview);
+		next.set(entityId, color);
+		preview = next;
+	}
+
+	function clearPreview(): void {
+		if (preview.size > 0) preview = new Map();
+	}
+
+	function remember(key: string): void {
+		activeKey = key;
+		recents = [key, ...recents.filter((entry) => entry !== key)].slice(0, RECENTS_LIMIT);
+	}
+
+	function labelOfKey(key: string): string {
+		const current = scene();
+		if (key === 'model-own') return "Model's own";
+		if (key.startsWith('curated:')) {
+			const id = key.slice('curated:'.length) as MaterialId;
+			return getMaterial(id).label;
+		}
+		const id = key.slice('project:'.length);
+		return current?.materials.find((material) => material.id === id)?.name ?? 'Finish';
+	}
+
+	function colorOfKey(key: string): string {
+		const current = scene();
+		if (current === null) return '#c4b4a0';
+		if (key === 'model-own') return '#c4b4a0';
+		if (key.startsWith('curated:')) {
+			return getMaterial(key.slice('curated:'.length) as MaterialId).fallbackColor;
+		}
+		const instance = current.materials.find((material) => material.id === key.slice('project:'.length));
+		if (instance === undefined) return '#c4b4a0';
+		const color = instance.color;
+		if (color === undefined) return getMaterial(instance.baseMaterialId).fallbackColor;
+		if (typeof color === 'string') return color;
+		return current.palette?.find((slot) => slot.id === color.slot)?.color ?? '#c4b4a0';
+	}
+
+	/**
+	 * One entity's whole Finish reading. The Card, the dropper and Paint all use
+	 * it, so a shared Finish's reach is the same number everywhere.
+	 */
+	function viewFor(entityId: string): FinishEntityView | null {
+		const current = scene();
+		const entity = entityOf(entityId);
+		if (current === null || entity === null || !isFinishPaintable(entity)) return null;
+		const key = finishOf(entity, current.materials);
+		if (key === null) return null;
+		const ref = finishRefOfKey(key);
+		if (ref === null) return null;
+		const instance = materialInstanceById(
+			current.materials,
+			(entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId
+		);
+		const baseMaterialId = baseMaterialIdOf(entity, current.materials);
+		const catalogue = baseMaterialId === null ? null : getMaterial(baseMaterialId);
+		const baseLabel = catalogue?.label ?? (baseMaterialId ?? 'Finish');
+		const roughness = instance?.roughness ?? catalogue?.roughness ?? 0.5;
+		const roughnessAuthored = instance?.roughness !== undefined;
+		const metalness = instance?.metalness ?? catalogue?.metalness ?? 0;
+		const sheen = sheenReading({ effectiveRoughness: roughness, authored: roughnessAuthored, baseLabel });
+		const metal = metalReading(metalness);
+		const effectiveColor =
+			effectiveColorOf(entity, current, (id) => getMaterial(id).fallbackColor) ?? '#c4b4a0';
+		const literal = literalColorOf(entity, current.materials);
+		const follower = followerSlotOf(entity, current.materials);
+		const users = usersOfFinish(current, key).length;
+		const isModelOwn = key === 'model-own';
+		const hasColorImage = Boolean(instance?.maps?.color ?? catalogue?.textures?.map);
+		const palette = current.palette ?? [];
+		return {
+			entityId,
+			entityName: entity.name,
+			kind: entity.kind as 'primitive' | 'form' | 'model',
+			key,
+			ref,
+			label: isModelOwn ? "Model's own" : key.startsWith('project:') ? (instance?.name ?? labelOfKey(key)) : baseLabel,
+			users,
+			editable: !isModelOwn,
+			pristine: instance !== undefined && isPristineInstance(instance),
+			baseMaterialId,
+			baseLabel,
+			instance: instance ?? null,
+			effectiveColor,
+			literalColor: literal,
+			followerSlot: follower,
+			roughness,
+			roughnessAuthored,
+			sheenStop: sheen.stop,
+			sheenCaption: sheen.caption,
+			metalOn: metal.on,
+			metalCaption: metal.caption,
+			hasColorImage,
+			canSaveToPalette:
+				literal !== null && paletteHasRoom(palette) && !palette.some((slot) => slot.color === literal),
+			paletteRoom: paletteHasRoom(palette),
+			originalWritesWhite: hasColorImage && instance?.maps?.color !== undefined
+		};
+	}
+
+	/** Library › Finishes: curated tiles, then the project's own Finishes. */
+	function libraryShelf(): {
+		readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
+		readonly project: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+	} {
+		const current = scene();
+		return {
+			curated: materials.map((material) => ({
+				id: material.id,
+				label: material.label,
+				color: material.fallbackColor
+			})),
+			project: (current?.materials ?? [])
+				.filter((instance) => !isPristineInstance(instance))
+				.map((instance) => ({
+					id: instance.id,
+					name: instance.name,
+					color: colorOfKey(`project:${instance.id}`)
+				}))
+		};
+	}
+
+	function paletteView(): FinishPaletteView {
+		const current = scene();
+		const slots = current?.palette ?? [];
+		return {
+			room: paletteHasRoom(slots),
+			slots: slots.map((slot) => ({
+				id: slot.id,
+				name: slot.name,
+				color: slot.color,
+				users: current?.materials.filter(
+					(material) =>
+						material.color !== undefined &&
+						typeof material.color !== 'string' &&
+						material.color.slot === slot.id
+				).length ?? 0
+			}))
+		};
+	}
+
+	function paintPalette(): FinishPaintPalette {
+		const resolve = (key: string) => ({ key, label: labelOfKey(key), color: colorOfKey(key) });
+		return {
+			active: activeKey === null ? null : resolve(activeKey),
+			recents: recents.map(resolve),
+			dropper: dropper !== null
+		};
+	}
+
+	function selectionEntityId(): string | null {
+		const services = servicesNow();
+		const primary = services?.stage.selectionState().primary;
+		return primary?.domain === 'scene' && primary.subject.kind === 'entity' ? primary.subject.id : null;
+	}
+
+	function selectionEntity(): SceneEntity | null {
+		return entityOf(selectionEntityId());
+	}
+
+	async function accept(input: {
+		kind: string;
+		payload: unknown;
+		entityIds?: readonly string[];
+		allocatedIds?: readonly { kind: string; id: string }[];
+	}): Promise<{ readonly kind: string; readonly code?: string; readonly message?: string }> {
+		const services = servicesNow();
+		if (services === null) return { kind: 'unavailable', message: 'The Stage is still opening.' };
+		const outcome = await services.authoring.accept({
+			version: 1,
+			kind: input.kind,
+			operationId: crypto.randomUUID(),
+			expectedRevision: services.stage.snapshot().acceptedRevision,
+			targets: (input.entityIds ?? []).map((id) => entityReference(services, id)),
+			payload: input.payload as never,
+			capturedInputs: [],
+			allocatedIds: input.allocatedIds ?? []
+		});
+		if (outcome.kind === 'refused' && outcome.code !== 'no-change') {
+			host.onNotice(outcome.message);
+		}
+		return outcome;
+	}
+
+	/** One Finish assignment for one or more objects. */
+	async function assign(entityIds: readonly string[], ref: SceneFinishRef): Promise<boolean> {
+		const current = scene();
+		if (current === null || entityIds.length === 0) return false;
+		const targets = entityIds
+			.map((id) => entityOf(id))
+			.filter((entity): entity is SceneEntity => entity !== null);
+		const notices = targets.filter((entity) => !isFinishPaintable(entity));
+		const paintable = targets.filter(isFinishPaintable);
+		if (paintable.length === 0) {
+			host.onNotice(paintabilityNotice(targets[0] ?? null));
+			return false;
+		}
+		if (ref === 'model-own' && paintable.some((entity) => entity.kind !== 'model')) {
+			host.onNotice("Model's own can only be painted onto a model.");
+			return false;
+		}
+		let allocations: { kind: string; id: string }[] = [];
+		if (typeof ref === 'object' && 'curated' in ref && paintable.some((entity) => entity.kind === 'model')) {
+			const reusable = current.materials.some(
+				(instance) => isPristineInstance(instance) && instance.baseMaterialId === ref.curated
+			);
+			if (!reusable) allocations = [newId('scene-finish', crypto.randomUUID())];
+		}
+		busy = true;
+		try {
+			const outcome = await accept({
+				kind: 'scene-finish-assign',
+				payload: { finish: ref, entityIds: paintable.map((entity) => entity.id) },
+				entityIds: paintable.map((entity) => entity.id),
+				allocatedIds: allocations
+			});
+			if (outcome.kind === 'accepted') {
+				if (notices.length > 0) {
+					host.onNotice(
+						`Painted ${paintable.length} object${paintable.length === 1 ? '' : 's'}; ` +
+							`${notices.length} subject${notices.length === 1 ? ' is' : 's are'} not painted.`
+					);
+				}
+				return true;
+			}
+			return false;
+		} finally {
+			busy = false;
+		}
+	}
+
+	function setActiveFromKey(key: string): void {
+		remember(key);
+		host.onNotice(`Paint · ${labelOfKey(key)}`);
+	}
+
+	/** A Library pick: assign to the selection, or arm Paint when nothing is selected. */
+	async function pickFinish(ref: SceneFinishRef): Promise<void> {
+		const key = typeof ref === 'object' && 'curated' in ref ? `curated:${ref.curated}` : typeof ref === 'object' ? `project:${ref.project}` : 'model-own';
+		const selected = selectionEntity();
+		if (selected === null) {
+			remember(key);
+			host.armPaint({ kind: 'paint' });
+			return;
+		}
+		if (!isFinishPaintable(selected)) {
+			host.onNotice(paintabilityNotice(selected));
+			return;
+		}
+		const assigned = await assign([selected.id], ref);
+		if (assigned) remember(key);
+	}
+
+	function stickyMode(key: string): 'just-this' | 'all' | null {
+		return sticky?.key === key ? sticky.mode : null;
+	}
+
+	async function applyEdit(
+		entityId: string,
+		edit: SceneFinishEdit,
+		mode: 'just-this' | 'all' | 'in-place'
+	): Promise<void> {
+		const view = viewFor(entityId);
+		if (view === null || !view.editable) {
+			host.onNotice(view === null ? paintabilityNotice(entityOf(entityId)) : "Model's own has no Finish to edit.");
+			return;
+		}
+		const needsNew = view.ref !== 'model-own' && ('curated' in view.ref || mode === 'just-this');
+		busy = true;
+		try {
+			const outcome = await accept({
+				kind: 'scene-finish-edit',
+				payload: {
+					entityId,
+					from: view.key,
+					reach: view.users,
+					mode,
+					edit
+				},
+				entityIds: [entityId],
+				allocatedIds: needsNew ? [newId('scene-finish', crypto.randomUUID())] : []
+			});
+			if (outcome.kind === 'accepted') {
+				clearPreview();
+				ask = null;
+				pending = null;
+				return;
+			}
+			clearPreview();
+			if (outcome.code === 'stale-reach') {
+				// The editor's reach was stale: recompute from the live source and ask
+				// again rather than widening the write.
+				pending = { kind: 'edit', entityId, from: view.key, edit };
+				const latest = viewFor(entityId);
+				if (latest !== null && latest.users > 1) {
+					ask = { kind: 'edit', entityId, label: latest.label, reach: latest.users, applyToAllEdits };
+					host.onNotice(`That Finish is now used by ${latest.users} objects.`);
+				} else {
+					ask = null;
+					pending = null;
+				}
+			}
+		} finally {
+			busy = false;
+		}
+	}
+
+	/** An edit gesture: writes at once, or opens the Ask for a shared Finish. */
+	async function edit(entityId: string, edit: SceneFinishEdit): Promise<void> {
+		const view = viewFor(entityId);
+		if (view === null) {
+			host.onNotice(paintabilityNotice(entityOf(entityId)));
+			return;
+		}
+		if (!view.editable) {
+			host.onNotice("Model's own has no Finish to edit.");
+			return;
+		}
+		if (view.users === 1) {
+			await applyEdit(entityId, edit, view.ref !== 'model-own' && 'curated' in view.ref ? 'just-this' : 'in-place');
+			return;
+		}
+		const remembered = stickyMode(view.key);
+		if (applyToAllEdits && remembered !== null) {
+			await applyEdit(entityId, edit, remembered);
+			return;
+		}
+		pending = { kind: 'edit', entityId, from: view.key, edit };
+		ask = { kind: 'edit', entityId, label: view.label, reach: view.users, applyToAllEdits };
+	}
+
+	/** Palette adoption: one slot append plus the follower edit. */
+	async function saveToPalette(entityId: string): Promise<void> {
+		const view = viewFor(entityId);
+		if (view === null || view.literalColor === null) {
+			host.onNotice('Only an authored colour can be saved to the palette.');
+			return;
+		}
+		if (!paletteHasRoom(scene()?.palette)) {
+			host.onNotice('The palette already holds eight colours.');
+			return;
+		}
+		const slotId = crypto.randomUUID();
+		if (view.users > 1) {
+			pending = { kind: 'palette-add', entityId, color: view.literalColor, slotId };
+			ask = {
+				kind: 'palette-add',
+				entityId,
+				label: view.label,
+				reach: view.users,
+				applyToAllEdits
+			};
+			return;
+		}
+		await applyPalette(entityId, view.literalColor, slotId, view.users, view.ref !== 'model-own' && 'curated' in view.ref ? 'just-this' : 'in-place');
+	}
+
+	async function applyPalette(
+		entityId: string,
+		color: string,
+		slotId: string,
+		reach: number,
+		mode: 'just-this' | 'all' | 'in-place'
+	): Promise<void> {
+		const view = viewFor(entityId);
+		if (view === null) return;
+		const needsFinish = view.ref !== 'model-own' && ('curated' in view.ref || mode === 'just-this');
+		const allocations = [
+			newId('scene-palette-slot', slotId),
+			...(needsFinish ? [newId('scene-finish', crypto.randomUUID())] : [])
+		];
+		busy = true;
+		try {
+			const outcome = await accept({
+				kind: 'scene-palette-slot-add',
+				payload: { color, adoptEntityId: entityId, reach, mode },
+				entityIds: [entityId],
+				allocatedIds: allocations
+			});
+			if (outcome.kind === 'accepted') {
+				ask = null;
+				pending = null;
+			}
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function resolveAsk(choice: 'just-this' | 'all' | 'cancel'): Promise<void> {
+		const current = pending;
+		const asked = ask;
+		if (choice === 'cancel' || current === null || asked === null) {
+			ask = null;
+			pending = null;
+			applyToAllEdits = false;
+			clearPreview();
+			return;
+		}
+		const mode = choice === 'all' ? 'all' : 'just-this';
+		ask = null;
+		pending = null;
+		if (applyToAllEdits && current.kind === 'edit') {
+			sticky = { key: current.from, mode };
+		}
+		if (current.kind === 'edit') {
+			await applyEdit(current.entityId, current.edit, mode);
+		} else {
+			await applyPalette(current.entityId, current.color, current.slotId, asked.reach, mode);
+		}
+	}
+
+	function setApplyToAllEdits(value: boolean): void {
+		applyToAllEdits = value;
+		if (ask !== null) ask = { ...ask, applyToAllEdits: value };
+	}
+
+	function noteRow(entityId: string | null): void {
+		if (rowEntityId === entityId) return;
+		rowEntityId = entityId;
+		sticky = null;
+		ask = null;
+		pending = null;
+		applyToAllEdits = false;
+		clearPreview();
+	}
+
+	function setColor(entityId: string, color: string | { readonly slot: string }): Promise<void> {
+		return edit(entityId, { color });
+	}
+
+	/** *Original*: delete a curated override, or write white over an image Finish. */
+	function setOriginal(entityId: string): Promise<void> {
+		const view = viewFor(entityId);
+		if (view === null) return Promise.resolve();
+		return edit(entityId, { color: view.originalWritesWhite ? '#ffffff' : null });
+	}
+
+	function setSheen(entityId: string, stopId: (typeof FINISH_SHEEN_STOPS)[number]['id']): Promise<void> {
+		const stop = FINISH_SHEEN_STOPS.find((candidate) => candidate.id === stopId);
+		return stop === undefined ? Promise.resolve() : edit(entityId, { roughness: stop.roughness });
+	}
+
+	function setRoughness(entityId: string, roughness: number): Promise<void> {
+		if (!Number.isFinite(roughness) || roughness < 0 || roughness > 1) {
+			host.onNotice('Roughness must be between 0 and 1.');
+			return Promise.resolve();
+		}
+		return edit(entityId, { roughness });
+	}
+
+	function setMetal(entityId: string, on: boolean): Promise<void> {
+		return edit(entityId, { metalness: on ? 1 : 0 });
+	}
+
+	function setPaletteSlotColor(slotId: string, color: string): Promise<void> {
+		return accept({
+			kind: 'scene-palette-slot-set',
+			payload: { slotId, color }
+		}).then(() => undefined);
+	}
+
+	function renamePaletteSlot(slotId: string, name: string): Promise<boolean> {
+		const trimmed = name.trim();
+		if (trimmed.length === 0 || trimmed.length > PALETTE_NAME_MAX_LENGTH) {
+			host.onNotice(`A palette name must be 1 to ${PALETTE_NAME_MAX_LENGTH} characters.`);
+			return Promise.resolve(false);
+		}
+		return accept({
+			kind: 'scene-palette-slot-rename',
+			payload: { slotId, name: trimmed }
+		}).then((outcome) => outcome.kind === 'accepted' || outcome.code === 'no-change');
+	}
+
+	function removePaletteSlot(slotId: string): Promise<void> {
+		return accept({ kind: 'scene-palette-slot-remove', payload: { slotId } }).then(() => undefined);
+	}
+
+	/**
+	 * Arm the semantic dropper. The Stage arms Paint in dropper mode; a click
+	 * copies an authored value and writes nothing until the Card applies it.
+	 */
+	function armDropper(forEntityId: string | null): void {
+		dropper = { forEntityId };
+		host.armPaint({ kind: 'dropper' });
+	}
+
+	function cancelDropper(): void {
+		dropper = null;
+	}
+
+	/** The dropper's one click: copy the target's Finish, or its authored colour. */
+	async function copyFrom(target: { readonly sourceId: string } | string): Promise<boolean> {
+		const targetId = typeof target === 'string' ? target : target.sourceId;
+		const view = viewFor(targetId);
+		const dropperState = dropper;
+		dropper = null;
+		if (view === null || view.key === 'model-own') {
+			host.onNotice('That has no Finish colour.');
+			return false;
+		}
+		if (dropperState?.forEntityId != null) {
+			const source: SceneColor =
+				view.followerSlot !== null
+					? { slot: view.followerSlot }
+					: view.literalColor ?? view.effectiveColor;
+			await edit(dropperState.forEntityId, { color: source });
+			return true;
+		}
+		remember(view.key);
+		host.onNotice(`Paint · ${view.label}`);
+		return true;
+	}
+
+	/** Paint commits one object. It never edits a Finish, so it never asks. */
+	async function paintEntity(entityId: string): Promise<'accepted' | 'already' | 'refused'> {
+		if (activeKey === null) {
+			host.onNotice('Choose a Finish first.');
+			return 'refused';
+		}
+		const view = viewFor(entityId);
+		if (view === null) {
+			host.onNotice(paintabilityNotice(entityOf(entityId)));
+			return 'refused';
+		}
+		if (view.key === activeKey) {
+			host.onNotice(`Already ${view.label}`);
+			return 'already';
+		}
+		if (activeKey === 'model-own' && view.kind !== 'model') {
+			host.onNotice("Model's own can only be painted onto a model.");
+			return 'refused';
+		}
+		const ref = finishRefOfKey(activeKey);
+		if (ref === null) {
+			host.onNotice('That Finish no longer exists.');
+			return 'refused';
+		}
+		const accepted = await assign([entityId], ref);
+		return accepted ? 'accepted' : 'refused';
+	}
+
+	function setActive(entityId: string): void {
+		const view = viewFor(entityId);
+		if (view === null || view.key === 'model-own') {
+			host.onNotice('That has no Finish colour.');
+			return;
+		}
+		remember(view.key);
+	}
+
+	function activeLabel(): string {
+		return activeKey === null ? 'No Finish' : labelOfKey(activeKey);
+	}
+
+	function activeIsAlready(entityId: string): boolean {
+		const view = viewFor(entityId);
+		return view !== null && activeKey !== null && view.key === activeKey;
+	}
+
+	function isAssignable(entityId: string): boolean {
+		const view = viewFor(entityId);
+		if (view === null || activeKey === null) return false;
+		if (activeKey === 'model-own') return view.kind === 'model';
+		return true;
+	}
+
+	return {
+		get activeKey() {
+			return activeKey;
+		},
+		get ask() {
+			return ask;
+		},
+		get previewFinish() {
+			return preview;
+		},
+		get dropperTarget() {
+			return dropper?.forEntityId ?? null;
+		},
+		get dropperArmed() {
+			return dropper !== null;
+		},
+		get busy() {
+			return busy;
+		},
+		viewFor,
+		libraryShelf,
+		paletteView,
+		paintPalette,
+		selectionEntityId,
+		pickFinish,
+		assign,
+		paintEntity,
+		edit,
+		setColor,
+		setOriginal,
+		setSheen,
+		setRoughness,
+		setMetal,
+		saveToPalette,
+		resolveAsk,
+		setApplyToAllEdits,
+		noteRow,
+		setPaletteSlotColor,
+		renamePaletteSlot,
+		removePaletteSlot,
+		previewColor,
+		clearPreview,
+		setActive,
+		setActiveFromKey,
+		activeLabel,
+		activeIsAlready,
+		isAssignable,
+		armDropper,
+		cancelDropper,
+		copyFrom,
+		openFinishes: () => host.openFinishes()
+	};
+}
+
+export type FinishAuthoring = ReturnType<typeof createFinishAuthoring>;

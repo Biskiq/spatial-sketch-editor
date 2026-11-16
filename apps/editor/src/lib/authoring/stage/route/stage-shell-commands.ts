@@ -23,6 +23,7 @@ import { primaryEntry, type StageSelectionEntry } from '../semantic-selection';
 import {
 	STAGE_ERASER_TASK
 } from '../stage-eraser';
+import { STAGE_PAINT_TASK } from '../stage-painter';
 import { STAGE_MEASURE_TASK } from '../stage-measure';
 import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
 import type { WorldToolId } from '$lib/authoring/world-toolbar/registry';
@@ -321,7 +322,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		shell.bumpContributions();
 	}
 
-	/** The host task an armed Measure or Eraser holds. It names no target. */
+	/** The host task an armed Measure, Eraser or Paint holds. It names no target. */
 	function hostToolTask(kind: string): StageTask | null {
 		if (kind === STAGE_MEASURE_TASK) {
 			return { kind, label: 'Measure', targetRef: null, target: null };
@@ -329,12 +330,15 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (kind === STAGE_ERASER_TASK) {
 			return { kind, label: 'Eraser', targetRef: null, target: null };
 		}
+		if (kind === STAGE_PAINT_TASK) {
+			return { kind, label: 'Paint', targetRef: null, target: null };
+		}
 		return null;
 	}
 
 	/**
-	 * Arm Measure or Eraser. Like every dock key it takes the lower column and
-	 * leaves the selection exactly as it was; it opens no adapter instrument.
+	 * Arm Measure, Eraser or Paint. Like every dock key it takes the lower column
+	 * and leaves the selection exactly as it was; it opens no adapter instrument.
 	 */
 	function armHostTool(kind: string): void {
 		const stage = input.facade();
@@ -376,7 +380,9 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			shell.setLibraryOpen(false);
 			selectTool();
 		} else if (key.adapterId === STAGE_HOST_ADAPTER_ID) {
-			shell.setActiveWorldTool(key.id === STAGE_MEASURE_TASK ? 'measure' : 'erase');
+			shell.setActiveWorldTool(
+				key.id === STAGE_MEASURE_TASK ? 'measure' : key.id === STAGE_PAINT_TASK ? 'paint' : 'erase'
+			);
 			shell.setLibraryOpen(false);
 			armHostTool(key.id);
 		} else if (key.slot === 'library') {
@@ -440,8 +446,14 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			shell.setPaletteOpen(false);
 			return;
 		}
-		if (id === 'measure' || id === 'erase') {
-			armHostTool(id === 'measure' ? STAGE_MEASURE_TASK : STAGE_ERASER_TASK);
+		if (id === 'measure' || id === 'erase' || id === 'paint') {
+			armHostTool(
+				id === 'measure'
+					? STAGE_MEASURE_TASK
+					: id === 'paint'
+						? STAGE_PAINT_TASK
+						: STAGE_ERASER_TASK
+			);
 			shell.setActiveWorldTool(id);
 			shell.setPaletteOpen(false);
 			return;

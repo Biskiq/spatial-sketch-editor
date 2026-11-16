@@ -91,6 +91,7 @@ export type SceneContributions = Required<
 		| 'subjects'
 		| 'hostTools'
 		| 'eraseAction'
+		| 'paintAnswer'
 		| 'pick'
 		| 'tasks'
 		| 'findEntries'
@@ -367,7 +368,21 @@ export function createSceneContributions(
 				reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
 				worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
 			})),
-		hostTools: ['erase', 'measure'],
+		hostTools: ['erase', 'measure', 'paint'],
+		/**
+		 * Paint assigns a whole Scene object. Artwork keeps its own surface, and a
+		 * Light is owned by the Light adapter, so neither is paintable here.
+		 */
+		paintAnswer(hit) {
+			if (hit.reference?.domain !== 'scene' || hit.sourceKind !== 'entity') {
+				return { kind: 'refused', message: 'That subject has no Finish.' };
+			}
+			const entity = source.entities.find((candidate) => candidate.id === hit.sourceId);
+			if (entity === undefined || entity.kind === 'light' || entity.kind === 'artwork') {
+				return { kind: 'refused', message: 'That subject has no Finish.' };
+			}
+			return { kind: 'paintable', entityId: entity.id };
+		},
 		/**
 		 * The Eraser reuses the Card's own delete for a model, primitive or form:
 		 * `delete-one`, one F4 entry, and Undo restores the same id. Lights are

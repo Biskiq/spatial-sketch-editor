@@ -42,6 +42,23 @@ import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
 export type SceneRecordScope = {
 	readonly operationKind: string;
 	readonly addedArtworkAssetIds?: readonly string[];
+	/**
+	 * The project Finish records this operation may touch. A record outside the
+	 * grant still compares exactly, and material order is preserved except for
+	 * appends: an added record is new and appended, a changed record keeps its
+	 * position, and a removed record disappears.
+	 */
+	readonly materials?: {
+		readonly added: readonly string[];
+		readonly changed: readonly string[];
+		readonly removed: readonly string[];
+	};
+	/**
+	 * The palette grant. `slots` admits add, recolour, rename and remove of
+	 * `scene.palette` slots; the unit validator still owns the array's shape,
+	 * its cap and follower closure. An absent grant compares the field exactly.
+	 */
+	readonly palette?: { readonly change: 'none' | 'slots' };
 	/** Existing entities this operation may replace in place (same id, same position). */
 	readonly changedEntityIds: readonly string[];
 	/**
@@ -124,7 +141,12 @@ export function checkSceneRecordScope(
 	// known fields) means a future Scene field is protected the day it lands
 	// instead of the day someone remembers to add it here.
 	const carriedFields = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
-		(field) => field !== 'entities' && field !== 'clusters' && field !== 'artworkLibrary'
+		(field) =>
+			field !== 'entities' &&
+			field !== 'clusters' &&
+			field !== 'artworkLibrary' &&
+			(field !== 'materials' || scope.materials === undefined) &&
+			(field !== 'palette' || scope.palette?.change !== 'slots')
 	);
 	for (const field of carriedFields) {
 		if (
@@ -152,6 +174,8 @@ export function checkSceneRecordScope(
 			message: 'Artwork Library may only add the asset records granted by the operation'
 		});
 	}
+
+	issues.push(...checkMaterialScope(before, after, scope));
 
 	const expectedIds = [
 		...before.entities.filter((entity) => !removed.has(entity.id)).map((entity) => entity.id),
@@ -227,6 +251,91 @@ export function checkSceneRecordScope(
 	}
 
 	issues.push(...checkClusterScope(before, after, { created, removed, scope }));
+	return issues;
+}
+
+function checkMaterialScope(
+	before: SceneDocument,
+	after: SceneDocument,
+	scope: SceneRecordScope
+): readonly ShapeIssue[] {
+	if (scope.materials === undefined) return [];
+	const issues: ShapeIssue[] = [];
+	const added = new Set(scope.materials.added);
+	const changed = new Set(scope.materials.changed);
+	const removed = new Set(scope.materials.removed);
+	const beforeById = new Map(before.materials.map((material) => [material.id, material]));
+	const afterById = new Map(after.materials.map((material) => [material.id, material]));
+
+	// Order is carried state: the accepted order minus removals, then the granted
+	// appends. A reorder is never a grant.
+	const expectedIds = [
+		...before.materials
+			.filter((material) => !removed.has(material.id))
+			.map((material) => material.id),
+		...after.materials
+			.filter((material) => added.has(material.id) && !beforeById.has(material.id))
+			.map((material) => material.id)
+	];
+	if (stableJson(expectedIds) !== stableJson(after.materials.map((material) => material.id))) {
+		issues.push({
+			path: '$.scene.materials',
+			code: 'record-scope-violation',
+			message: `Material order must be the accepted order minus removals plus the granted appends (expected ${JSON.stringify(expectedIds)})`
+		});
+	}
+	for (const id of added) {
+		if (beforeById.has(id)) {
+			issues.push({
+				path: `$.scene.materials.${id}`,
+				code: 'record-scope-violation',
+				message: `Added Finish "${id}" already exists in the accepted source`
+			});
+		}
+		if (!afterById.has(id)) {
+			issues.push({
+				path: `$.scene.materials.${id}`,
+				code: 'record-scope-violation',
+				message: `Granted Finish "${id}" was not added`
+			});
+		}
+	}
+	for (const id of changed) {
+		if (!beforeById.has(id) || !afterById.has(id)) {
+			issues.push({
+				path: `$.scene.materials.${id}`,
+				code: 'record-scope-violation',
+				message: `Changed Finish "${id}" must exist on both sides`
+			});
+		}
+	}
+	for (const id of removed) {
+		if (!beforeById.has(id)) {
+			issues.push({
+				path: `$.scene.materials.${id}`,
+				code: 'record-scope-violation',
+				message: `Removed Finish "${id}" was not part of the accepted source`
+			});
+		}
+		if (afterById.has(id)) {
+			issues.push({
+				path: `$.scene.materials.${id}`,
+				code: 'record-scope-violation',
+				message: `Removed Finish "${id}" is still present`
+			});
+		}
+	}
+	for (const material of after.materials) {
+		const previous = beforeById.get(material.id);
+		if (previous === undefined || added.has(material.id) || changed.has(material.id)) continue;
+		if (stableJson(previous) !== stableJson(material)) {
+			issues.push({
+				path: `$.scene.materials.${material.id}`,
+				code: 'record-scope-violation',
+				message: `Finish "${material.id}" is outside the ${scope.operationKind} operation's material grant but was modified`
+			});
+		}
+	}
 	return issues;
 }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ArtworkLibraryEntry } from '@portfolio/project-model';
+	import type { ArtworkLibraryEntry, MaterialId } from '@portfolio/project-model';
 	/**
 	 * The Living Draft World toolbar: the prototype's plate and dock.
 	 *
@@ -23,6 +23,7 @@
 		type WorldToolId
 	} from './registry';
 import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';
+	import type { SceneFinishRef } from '@portfolio/project-model/scene-planning';
 
 	let {
 		activeTool,
@@ -31,6 +32,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onLibrary,
 		onObjectPick,
 		onMaterialPick,
+		finishShelf = null,
+		onFinishPick = () => {},
 		lookShelf = null,
 		artworkShelf = null,
 		onArtworkPick = () => {},
@@ -38,7 +41,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onLookPick = () => {},
 		plate,
 		plateOpen = true,
-		onPlateOpen = () => {}
+		onPlateOpen = () => {},
+		requestedCategory = null
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -46,6 +50,12 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onLibrary: () => void;
 		onObjectPick: (assetId: string) => void;
 		onMaterialPick: (materialId: string) => void;
+		/** Library › Finishes: curated then project Finishes. */
+		finishShelf?: {
+			readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
+			readonly project: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+		} | null;
+		onFinishPick?: (ref: SceneFinishRef) => void;
 		/** The Look shelf; nothing is drawn while it is empty. */
 		lookShelf?: LookLibraryShelf | null;
 		artworkShelf?: readonly ArtworkLibraryEntry[] | null;
@@ -56,6 +66,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		/** The upper parchment plate is an intentional expanded/collapsed state. */
 		plateOpen?: boolean;
 		onPlateOpen?: (open: boolean) => void;
+		/** A route request to show one Library shelf (Library › Finishes). */
+		requestedCategory?: { readonly category: WorldLibraryCategory; readonly nonce: number } | null;
 	} = $props();
 
 	const plateId = $props.id();
@@ -81,6 +93,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	// arm the shelf uses, not a second placement controller.
 	$effect(() => {
 		if (libraryOpen && activeTool === 'lights') libraryCategory = 'look';
+	});
+	$effect(() => {
+		const request = requestedCategory;
+		if (request !== null) libraryCategory = request.category;
 	});
 
 	function pressFamily(family: WorldFamily): void {
@@ -218,13 +234,50 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 							{/each}
 						</div>
 					{:else if libraryCategory === 'materials'}
-						<div class="librow" aria-label="Materials">
-							{#each visibleMaterials as material (material.id)}
-								<button type="button" class="tile" title={material.label} onclick={() => onMaterialPick(material.id)}>
-									<i class="material" style:background={material.fallbackColor}></i>
-									<span class="tile-label">{material.label}</span>
-								</button>
-							{/each}
+						<div class="librow" aria-label="Finishes">
+							{#if finishShelf === null}
+								{#each visibleMaterials as material (material.id)}
+									<button type="button" class="tile" title={material.label} onclick={() => onMaterialPick(material.id)}>
+										<i class="material" style:background={material.fallbackColor}></i>
+										<span class="tile-label">{material.label}</span>
+									</button>
+								{/each}
+							{:else}
+								{#each finishShelf.curated as finish (finish.id)}
+									<button
+										type="button"
+										class="tile"
+										title={finish.label}
+										data-finish-tile={`curated:${finish.id}`}
+										onclick={() => onFinishPick({ curated: finish.id })}
+									>
+										<i class="material" style:background={finish.color}></i>
+										<span class="tile-label">{finish.label}</span>
+									</button>
+								{/each}
+								{#each finishShelf.project as finish (finish.id)}
+									<button
+										type="button"
+										class="tile"
+										title={finish.name}
+										data-finish-tile={`project:${finish.id}`}
+										onclick={() => onFinishPick({ project: finish.id })}
+									>
+										<i class="material" style:background={finish.color}></i>
+										<span class="tile-label">{finish.name}</span>
+									</button>
+								{/each}
+							{/if}
+							<button
+								type="button"
+								class="tile"
+								title="Model's own restores a model's imported material"
+								data-finish-tile="model-own"
+								onclick={() => onFinishPick('model-own')}
+							>
+								<i class="material model-own"></i>
+								<span class="tile-label">Model's own</span>
+							</button>
 						</div>
 					{:else if libraryCategory === 'my-objects'}
 						<div class="note">
@@ -636,6 +689,13 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		height: 28px;
 		border-radius: 4px;
 		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell-ink) 12%, transparent);
+	}
+	.material.model-own {
+		background: repeating-linear-gradient(
+			135deg,
+			var(--shell-hairline) 0 4px,
+			var(--shell-ink-light) 4px 8px
+		);
 	}
 	.planned-tile:disabled {
 		opacity: 0.58;

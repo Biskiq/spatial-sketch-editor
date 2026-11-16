@@ -72,6 +72,15 @@ export type StageEraseAnswer =
 	  }
 	| { readonly kind: 'refused'; readonly message: string };
 
+/**
+ * A binding's answer to Paint for one of its own winners. Paint assigns a whole
+ * object; it never edits the Finish, so this answer carries only eligibility and
+ * the entity id the Scene adapter already knows.
+ */
+export type StagePaintAnswer =
+	| { readonly kind: 'paintable'; readonly entityId: string }
+	| { readonly kind: 'refused'; readonly message: string };
+
 export type StageOverlayContribution = {
 	readonly id: string;
 	/**
@@ -531,6 +540,12 @@ export type StageAdapterBinding = {
 	 * optional; a binding that declares `erase` but answers `null` erases nothing.
 	 */
 	readonly eraseAction?: (hit: StageSourceHit) => StageEraseAnswer | null;
+	/**
+	 * Paint's one question to the winning domain: is this subject paintable, and
+	 * which Scene entity does the hit name? Additive and optional; a binding that
+	 * declares `paint` but answers `null` paints nothing.
+	 */
+	readonly paintAnswer?: (hit: StageSourceHit) => StagePaintAnswer | null;
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
 	 * the press from the host's navigation gesture; the same binding then receives

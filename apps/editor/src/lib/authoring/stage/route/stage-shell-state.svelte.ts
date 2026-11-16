@@ -35,6 +35,9 @@ import { STAGE_MEASURE_TASK } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
 import { createStageEraser } from '../stage-eraser';
 import { STAGE_ERASER_TASK } from '../stage-eraser';
+import type { StagePaintController } from '../stage-painter';
+import { createStagePainter } from '../stage-painter';
+import type { FinishAuthoring } from '$lib/authoring/look/finish-authoring.svelte';
 import {
 	applyDraftingPatch,
 	draftingSnapIncrementMeters,
@@ -46,7 +49,7 @@ import {
 } from '../stage-drafting';
 import { STAGE_DRAFTING_DEFAULTS } from '../stage-drafting';
 import type { WorldScope } from '../shell/world-index-model';
-import type { WorldToolId } from '$lib/authoring/world-toolbar/registry';
+import type { WorldLibraryCategory, WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import { worldTool } from '$lib/authoring/world-toolbar/registry';
 import {
 	sameEraseHover,
@@ -70,6 +73,8 @@ export type StageShellStateInput = {
 	readonly previewing: () => boolean;
 	readonly lens: () => 'world' | 'experience';
 	readonly selection: () => StageSelectionEntry | null;
+	/** The Finish service Paint consumes; `null` until the route has built it. */
+	readonly finishes: () => FinishAuthoring | null;
 };
 
 export function createStageShellState(input: StageShellStateInput) {
@@ -132,6 +137,11 @@ export function createStageShellState(input: StageShellStateInput) {
 	let worldPlateOpen = $state(false);
 	let libraryOpen = $state(false);
 	let toolBeforeLibrary = $state<WorldToolId>('select');
+	/** A one-shot Library shelf request; the World toolbar consumes the nonce. */
+	let libraryCategoryRequest = $state<{
+		readonly category: WorldLibraryCategory;
+		readonly nonce: number;
+	} | null>(null);
 	let inkReading = $state<'wall' | 'opening'>('wall');
 
 	/** The session's task, mirrored so the shell's chrome re-reads it. */
@@ -152,9 +162,12 @@ export function createStageShellState(input: StageShellStateInput) {
 	/** The host's own tools, bound to the live facade. */
 	let measureTool = $state.raw<StageMeasureController | null>(null);
 	let eraserTool = $state.raw<StageEraserController | null>(null);
+	let paintTool = $state.raw<StagePaintController | null>(null);
 	let hostToolOverlay = $state.raw<StageHostToolOverlay | null>(null);
 	/** The Eraser's winner, drawn with the erase treatment in place of hover. */
 	let eraseHover = $state.raw<StageSelectionEntry | null>(null);
+	/** Paint's winner, drawn with the paint treatment in place of hover. */
+	let paintHover = $state.raw<StageSelectionEntry | null>(null);
 
 	let heightMeters = $state(heightSheet.height());
 	let heightTicks = $state<readonly StageHeightTick[]>([]);
@@ -343,6 +356,19 @@ export function createStageShellState(input: StageShellStateInput) {
 	function bindFacade(next: StageFacade): void {
 		measureTool = createStageMeasure(next);
 		eraserTool = createStageEraser(next, () => refreshHostTools());
+		paintTool = createStagePainter(
+			next,
+			{
+				hasActive: () => (input.finishes()?.activeKey ?? null) !== null,
+				isAlready: (entityId) => input.finishes()?.activeIsAlready(entityId) ?? false,
+				assign: async (entityId) =>
+					(await input.finishes()?.paintEntity(entityId)) === 'accepted',
+				dropperArmed: () => input.finishes()?.dropperArmed ?? false,
+				copy: async (hit) => (await input.finishes()?.copyFrom(hit)) ?? false,
+				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish'
+			},
+			() => refreshHostTools()
+		);
 		drafting = next.drafting();
 		task = null;
 		contributedTaskId = null;
@@ -371,23 +397,30 @@ export function createStageShellState(input: StageShellStateInput) {
 			armedHostTool,
 			measureTool,
 			eraserTool,
+			paintTool,
 			rect: input.rect(),
 			measure: input.measure
 		});
 		hostToolOverlay = result.overlay;
 		if (result.eraseHover === null) {
 			if (eraseHover !== null) eraseHover = null;
-			return;
+		} else if (eraseHover === null || !sameEraseHover(eraseHover, result.eraseHover)) {
+			eraseHover = result.eraseHover;
 		}
-		if (eraseHover !== null && sameEraseHover(eraseHover, result.eraseHover)) return;
-		eraseHover = result.eraseHover;
+		if (result.paintHover === null) {
+			if (paintHover !== null) paintHover = null;
+		} else if (paintHover === null || !sameEraseHover(paintHover, result.paintHover)) {
+			paintHover = result.paintHover;
+		}
 	}
 
 	/** End both host tools' view state; the command that closes a task calls this first. */
 	function clearHostTools(): void {
 		measureTool?.clear();
 		eraserTool?.clear();
+		paintTool?.clear();
 		eraseHover = null;
+		paintHover = null;
 		hostToolOverlay = null;
 	}
 
@@ -656,6 +689,12 @@ export function createStageShellState(input: StageShellStateInput) {
 			return contributionsVersion;
 		},
 		bumpContributions,
+		get libraryCategoryRequest() {
+			return libraryCategoryRequest;
+		},
+		requestLibraryCategory(category: WorldLibraryCategory) {
+			libraryCategoryRequest = { category, nonce: (libraryCategoryRequest?.nonce ?? 0) + 1 };
+		},
 		get stagePickPresentationId() {
 			return stagePickPresentationId;
 		},
@@ -675,6 +714,9 @@ export function createStageShellState(input: StageShellStateInput) {
 		get eraserTool() {
 			return eraserTool;
 		},
+		get paintTool() {
+			return paintTool;
+		},
 		get armedHostTool() {
 			return armedHostTool;
 		},
@@ -684,8 +726,14 @@ export function createStageShellState(input: StageShellStateInput) {
 		get eraseHover() {
 			return eraseHover;
 		},
+		get paintHover() {
+			return paintHover;
+		},
 		setEraseHover(entry: StageSelectionEntry | null) {
 			eraseHover = entry;
+		},
+		setPaintHover(entry: StageSelectionEntry | null) {
+			paintHover = entry;
 		},
 		refreshHostTools,
 		clearHostTools,

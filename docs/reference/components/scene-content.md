@@ -463,9 +463,18 @@ was already owed.
 
 Materials (definitions/instances and shared-vs-unique already exist):
 
-- Gaps to close: instance tint and reset, metric tile size where the mapping path
-  supports it (no UV editor), approved PBR map sets, and atomic selected-subset
-  editing that protects unselected shared users by default.
+- S4a closes whole-object Finish authoring: a Card row writes colour (literal or
+  palette follower), Sheen as a view of roughness, exact roughness and Metal; the
+  Library lists curated and project Finishes; and the host Paint tool assigns one
+  whole object per click. Every shared-Finish edit asks *Just this* / *All N* and
+  is one planner intent, so one Undo restores it. Project Finishes follow the
+  assignment normal form: primitives and Forms carry no needless instance, a model
+  reaches a curated Finish through one pristine instance, and a pristine instance
+  with no user is collected in the same write. *Model's own* deletes the instance
+  and restores the imported material.
+- Remaining gaps: Finish image upload and mapping (S4b), per-face and Wall painting
+  (T5/S5), Treatment (S6), approved PBR map sets, and metric tile size where the
+  mapping path supports it (no UV editor).
 - A default edit clones once per shared instance for the selected subset and
   retains sharing inside it; an explicit "edit shared" path discloses the
   total/outside user count. Cancelled choice, unsupported target and failure write
