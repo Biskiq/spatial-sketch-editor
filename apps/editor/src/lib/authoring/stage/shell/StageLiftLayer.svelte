@@ -31,6 +31,7 @@
 	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { OverheadSource } from '@portfolio/layout-core';
+	import { LIFT_OUTLINE_DROP_METERS } from '../lift-ink';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { OUTLINE_DEPTH_BIAS } from './stage-outline';
 	import { STAGE_PAINT } from './stage-paint';
@@ -57,9 +58,6 @@
 		 */
 		reading?: '3d' | 'plan' | 'transition';
 	} = $props();
-
-	/** The dashed line sits just under the lid, clear of the Wall tops it traces. */
-	const OUTLINE_DROP_METERS = 0.01;
 
 	const { invalidate } = useThrelte();
 	const root = new Group();
@@ -91,7 +89,7 @@
 		const loop = [...source.outline, source.outline[0]!];
 		const geometry = new LineGeometry();
 		geometry.setPositions(
-			loop.flatMap(([x, z]) => [x, source.elevation - OUTLINE_DROP_METERS, z])
+			loop.flatMap(([x, z]) => [x, source.elevation - LIFT_OUTLINE_DROP_METERS, z])
 		);
 		const hovered = hoveredRoomId !== null && hoveredRoomId === source.subject.id;
 		const material = new LineMaterial({
