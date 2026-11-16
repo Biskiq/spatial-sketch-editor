@@ -106,7 +106,7 @@
 
 	function rangeInput(input: HTMLInputElement, owner: string, accepted: number, patch: SceneSkyUpdatePayload) {
 		if (gesture.owner === owner) gesture.move(owner, patch);
-		// Svelte sets `value` as a property, so `defaultValue` is empty and would
+		// Svelte sets `value` as a property, so the default value is empty and would
 		// sanitize to the midpoint; a refused input restores the accepted value.
 		else input.value = String(accepted);
 	}
