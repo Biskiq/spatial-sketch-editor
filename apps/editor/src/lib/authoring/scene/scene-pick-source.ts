@@ -5,6 +5,27 @@ import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
 import { renderIdentityOf, type LayoutIdentityIndex } from '$lib/render/render-identity';
 
+/**
+ * One drawn mesh as the Slice sees it: local positions, an optional index, and the
+ * world matrix that places it. `group` is the cap assembly's union group.
+ */
+export type SectionSource = {
+	readonly identity: string;
+	readonly group: string;
+	readonly positions: ArrayLike<number>;
+	readonly index: ArrayLike<number> | null;
+	readonly matrix: number[];
+};
+
+export type PickOptions = {
+	/**
+	 * Whether a world point is currently not drawn (a Slice hides it). A hidden hit is
+	 * skipped and the ray continues, so a click reaches what is visible behind it.
+	 * Absent means today's behaviour exactly.
+	 */
+	readonly hiddenAt?: (point: readonly [number, number, number]) => boolean;
+};
+
 export type SceneRenderedHit = {
 	readonly entityId: string | null;
 	readonly kind: 'entity' | 'floor' | 'layout';
@@ -181,7 +202,11 @@ export function createScenePickSource() {
 			listeners.add(listener);
 			return () => { listeners.delete(listener); };
 		},
-		pick(ray: PointerRay, expected: RuntimeScene): SceneRenderedHit | null {
+		pick(
+			ray: PointerRay,
+			expected: RuntimeScene,
+			options: PickOptions = {}
+		): SceneRenderedHit | null {
 			if (!prepare(ray, expected)) return null;
 			let result: SceneRenderedHit | null = null;
 			for (const target of targetsFor(expected)) {
@@ -197,11 +222,49 @@ export function createScenePickSource() {
 						if (!node.visible) { visible = false; break; }
 					}
 					if (!visible) continue;
+					// A Slice's cut is display geometry, not a document change: the point is
+					// still in the world, but it is not what the creator can see or aim at,
+					// so the ray continues to the next hit behind it (test 10).
+					if (options.hiddenAt?.(hit.point.toArray()) === true) continue;
 					result = nearest(describeHit(hit, target.id), result);
 					break;
 				}
 			}
 			return result;
+		},
+		/**
+		 * Every **drawn** mesh, as world-space section candidates.
+		 *
+		 * The Slice caps come from what is actually drawn — the same meshes the hit
+		 * path walks — so a door reveal, an arch head or a keel closes exactly as it
+		 * is built. This is a read: it writes no state, changes no visibility and is
+		 * never used by the hit path.
+		 */
+		sectionSources(): SectionSource[] {
+			const sources: SectionSource[] = [];
+			const visit = (root: Object3D | undefined, fallbackId: string | null): void => {
+				if (root === undefined) return;
+				root.updateWorldMatrix(true, true);
+				root.traverse((node) => {
+					if (!(node instanceof Mesh)) return;
+					if (!hasVisibleAncestor(node)) return;
+					const position = node.geometry.getAttribute('position');
+					if (position === undefined || position.count < 3) return;
+					const identity = renderIdentityOf(node);
+					const kind = identity?.kind ?? 'object';
+					const id = identity?.id ?? fallbackId ?? 'layout';
+					sources.push({
+						identity: `${kind}:${id}`,
+						group: kind === 'wall' || kind === 'wall-failure' || kind === 'floor' ? 'structure' : 'object',
+						positions: position.array as ArrayLike<number>,
+						index: node.geometry.getIndex()?.array ?? null,
+						matrix: node.matrixWorld.elements
+					});
+				});
+			};
+			visit(layoutRoot ?? undefined, null);
+			for (const [id, root] of roots) visit(root, id);
+			return sources;
 		},
 		/**
 		 * The nearest **visible** Layout face accepted by `accept`, refusing a face

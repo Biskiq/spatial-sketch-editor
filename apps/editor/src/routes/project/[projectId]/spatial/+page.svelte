@@ -68,6 +68,14 @@
 		initialLiftScope,
 		interiorLift
 	} from '$lib/authoring/layout/interior-lift-store.svelte';
+	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
+	import {
+		planOverridesOf,
+		resolveSlice,
+		sliceDepthItems,
+		type ResolvedSlice
+	} from '$lib/authoring/stage/slice/slice-cut';
+	import { PLAN_DEFAULT_DEPTH_METERS } from '$lib/authoring/stage/plan-parameters';
 	import {
 		wallUnfoldShouldReturn,
 		wallUnfoldViewCentreStation
@@ -580,7 +588,9 @@
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
 		liftActive: () => interiorLift.isActive(),
-		putBackLift: () => interiorLift.putBack()
+		putBackLift: () => interiorLift.putBack(),
+		sliceActive: () => sliceReading.isActive(),
+		putBackSlice
 	});
 
 	const selectedCurvedWall = $derived.by(() =>
@@ -692,6 +702,82 @@
 			onPutBack: () => interiorLift.putBack()
 		};
 	});
+
+	/**
+	 * The live Slice, resolved against the Sheet. World only: Preview is the visitor's
+	 * as-built world and never receives a cut.
+	 */
+	const resolvedSlice = $derived.by((): ResolvedSlice | null => {
+		const reading = sliceReading.reading;
+		if (reading === null) return null;
+		if (experience.lensState !== 'world') return null;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		return resolveSlice(reading, {
+			sheetHeight: shell.heightMeters,
+			datumMeters: boot.snapshot.domain.datumMeters
+		});
+	});
+
+	/** Plan's membership follows the cut: a finite depth narrows what Plan shows. */
+	$effect(() => {
+		const reading = resolvedSlice;
+		if (facade === null) return;
+		facade.setPlanParameters({
+			depthMeters:
+				reading === null ? PLAN_DEFAULT_DEPTH_METERS : planOverridesOf(reading).depthMeters
+		});
+	});
+
+	/**
+	 * The Slice pill: **Cut at {h} m · depth ▾ · Put back**. Its depth rows are the
+	 * Sheet's own ticks strictly below the cut, labelled as the Sheet labels them,
+	 * and there are no disabled rows: an item that could not be below the cut is not
+	 * offered at all.
+	 */
+	const slicePill = $derived.by(() => {
+		const reading = sliceReading.reading;
+		if (reading === null) return null;
+		const items = sliceDepthItems({
+			reading,
+			sheetHeightMeters: shell.heightMeters,
+			ticks: shell.heightTicks
+		});
+		const depth = reading.depth;
+		const current =
+			depth.kind === 'below'
+				? items.find(
+						(item) =>
+							item.kind === 'below' &&
+							Math.abs(item.meters - depth.meters) <= 1e-3
+					)
+				: undefined;
+		const depthLabel =
+			depth.kind === 'below'
+				? (current?.label ?? `${depth.meters.toFixed(2)} m below`)
+				: 'To the floor';
+		return {
+			cutLabel: shell.heightMeters.toFixed(2),
+			depthLabel,
+			items: items.map((item) =>
+				item.kind === 'below'
+					? { kind: item.kind, label: item.label, checked: item.checked, meters: item.meters }
+					: { kind: item.kind, label: item.label, checked: item.checked }
+			),
+			onDepth: (item: { readonly kind: 'to-floor' | 'below'; readonly meters?: number }) => {
+				sliceReading.setDepth(
+					item.kind === 'below' && item.meters !== undefined
+						? { kind: 'below', meters: item.meters }
+						: { kind: 'to-floor' }
+				);
+			},
+			onPutBack: () => putBackSlice()
+		};
+	});
+
+	function putBackSlice(): void {
+		sliceReading.putBack();
+		shell.setActiveWorldTool('select');
+	}
 
 	/**
 	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
@@ -1160,6 +1246,7 @@
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftSources() { return liftedSources; },
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
+			get resolvedSlice() { return resolvedSlice; },
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
 			get unfoldPinActive() { return unfoldGestures.sheetPinActive; },
@@ -1328,6 +1415,7 @@
 				? experience.viewEditPreview.turn
 				: null}
 			lift={liftPill}
+			slice={slicePill}
 			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
 				? { bar: shell.draftingScaleBar, quiet: paperVisible }
 				: null}

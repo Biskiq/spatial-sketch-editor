@@ -178,6 +178,25 @@ colour-pass texels and change the image.
 
 **Guard:** `render/renderer-portability-boundary`.
 
+### One clip seam (a Slice)
+
+A Slice's cut is display geometry: it changes no document, no material and no draw list membership.
+`createStageClip()` owns the one `clippingPlanes` array the renderer reads, and `StageCanvas` creates
+it inside the same effect that owns `provideRenderResources`; the Slice reading (`layout.slice`)
+resolves a world height and the Canvas writes a single `Plane` to that array (with
+`SECTION_OFFSET_METERS` already folded into its constant). No other component creates clipping
+planes, so "the cut is on" has exactly one owner.
+
+The snapshot pass must not inherit it: a saved or shared image is the building, not the author's
+current cut. `renderStageSnapshot` runs the world passes with an empty array and restores the live
+one afterwards, so the same Canvas can snapshot with a cut on and keep drawing it.
+
+**Guard:** `authoring/stage/slice/stage-clip`, `stage-clip-shadows` and the real-WebGL regression in
+`perf/flows/stage-clip.spec.ts`. three r187 clips shadow casters only when their material sets
+`clipShadows`; the Stage's materials never do, so a cut never hollows a cast shadow, and the
+regression pins the shadow pass as identical cut and put back. A cap is built on the tick after the
+cut moves, never inside the pointer frame, and a build over 4 ms logs its timing in development.
+
 ### On-demand frames and shadow invalidation
 
 The Stage renders on demand: a settled Stage renders zero frames, and each relevant input change asks

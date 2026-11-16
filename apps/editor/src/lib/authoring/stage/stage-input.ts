@@ -13,10 +13,15 @@ import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import type { ViewingIntent } from '@portfolio/camera-core';
 
 /** The dock's fixed keys, in dock order. */
-export type StageDockSlot = 'select' | 'ink' | 'measure' | 'erase' | 'library';
+export type StageDockSlot = 'select' | 'ink' | 'slice' | 'measure' | 'erase' | 'library';
 
-/** The one production key for each dock slot; the Keys list shows this map. */
-export const STAGE_DOCK_SHORTCUTS: Readonly<Record<StageDockSlot, string>> = {
+/**
+ * The one production key for each dock slot; the Keys list shows this map.
+ *
+ * `slice` has no shortcut: it is armed from the Build toolbar or Find, never by a
+ * letter, so the map is partial rather than inventing a key the input map does not own.
+ */
+export const STAGE_DOCK_SHORTCUTS: Readonly<Partial<Record<StageDockSlot, string>>> = {
 	select: 'V',
 	ink: 'P',
 	measure: 'M',

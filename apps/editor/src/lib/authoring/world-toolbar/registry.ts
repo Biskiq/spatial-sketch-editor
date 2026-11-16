@@ -152,13 +152,8 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     label: 'Slice',
     icon: 'slice',
     family: 'build',
-    stage: 'planned',
-    after: 'T1',
-    summary: 'Cut a section through the model.',
-    options: [
-      { label: 'Axis', options: [{ label: 'X' }, { label: 'Z' }] },
-      { label: 'Offset', options: [{ label: '0.0 m' }] }
-    ]
+    stage: 'landed',
+    summary: 'Cut a level section at the Height Sheet.'
   },
   {
     id: 'form',

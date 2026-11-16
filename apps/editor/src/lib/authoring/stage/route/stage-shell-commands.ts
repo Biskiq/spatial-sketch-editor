@@ -34,6 +34,7 @@ import {
 	type StageDockKey
 } from '../stage-contributions';
 import type { StageDockSlot } from '../stage-input';
+import { sliceReading } from '../slice/slice-reading.svelte';
 import type { StageShellState } from './stage-shell-state.svelte';
 import type { StageHeadFindEntry } from './stage-contribution-view';
 import { stageArmedDockId } from './stage-contribution-view';
@@ -371,6 +372,16 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** Arm one dock key (from the dock, its key or Find). */
 	function armDockKey(key: StageDockKey): void {
+		if (key.slot === 'slice') {
+			// Arming Slice opens the reading, not a task: SL1 has one mode (Level), so
+			// arming again is the same choice and replaces the reading.
+			shell.setLibraryOpen(false);
+			shell.setActiveWorldTool('slice');
+			shell.setPaletteOpen(false);
+			sliceReading.level();
+			input.notice('');
+			return;
+		}
 		if (key.slot === 'select') {
 			shell.setActiveWorldTool('select');
 			shell.setLibraryOpen(false);
@@ -444,6 +455,16 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			armHostTool(id === 'measure' ? STAGE_MEASURE_TASK : STAGE_ERASER_TASK);
 			shell.setActiveWorldTool(id);
 			shell.setPaletteOpen(false);
+			return;
+		}
+		if (id === 'slice') {
+			// The one mode SL1 offers. Choosing Slice again replaces the reading, which is
+			// what the palette's single checked item does.
+			closeTask();
+			shell.setActiveWorldTool('slice');
+			shell.setPaletteOpen(false);
+			sliceReading.level();
+			input.notice('');
 			return;
 		}
 		// A planned row is inspectable, but it writes nothing until its post-merge branch.

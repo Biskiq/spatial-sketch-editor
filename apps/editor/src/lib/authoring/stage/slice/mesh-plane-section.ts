@@ -760,7 +760,7 @@ function stitch(points: readonly SectionPoint[], edges: readonly NetEdge[]): Sec
 		let closed = false;
 		for (let guard = 0; guard <= edges.length; guard += 1) {
 			used[current] = true;
-			const edge = edges[current]!;
+			const edge: NetEdge = edges[current]!;
 			ids.push(edge.a);
 			identities.push(edge.identity);
 			// The closing edge is `first` and it is already used, so it must stay a
@@ -832,11 +832,11 @@ function openChains(points: readonly SectionPoint[], edges: readonly NetEdge[]):
 		let current: number | null = first;
 		while (current !== null) {
 			used[current] = true;
-			const edge = edges[current]!;
+			const edge: NetEdge = edges[current]!;
 			if (ids.length === 0) ids.push(edge.a);
 			ids.push(edge.b);
 			identities.push(edge.identity);
-			const next = (outgoing.get(edge.b) ?? []).find((index) => !used[index]);
+			const next: number | undefined = (outgoing.get(edge.b) ?? []).find((index) => !used[index]);
 			current = next ?? null;
 		}
 		if (ids.length >= 2) {

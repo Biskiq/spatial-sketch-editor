@@ -18,7 +18,14 @@
 	 * `NoToneMapping` (see `CANVAS_TONE_MAPPING`).
 	 */
 	import { Canvas, T } from '@threlte/core';
-	import { PCFShadowMap } from 'three';
+	import { PCFShadowMap, type Plane } from 'three';
+	import {
+		createStageClip,
+		setStageClip
+	} from '$lib/authoring/stage/slice/stage-clip';
+	import type { ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
+	import type { SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
+	import StageSliceLayer from './StageSliceLayer.svelte';
 	import { onDestroy } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 	import type { CompiledLayoutGeometry, OverheadSource, PlanEvaluation } from '@portfolio/layout-core';
@@ -109,7 +116,8 @@ import StageMatGround from './StageMatGround.svelte';
 		heightPlaneVisible = false,
 		unfoldPinHovered = false,
 		unfoldPinActive = false,
-		unfoldAnchorPin = null
+		unfoldAnchorPin = null,
+		resolvedSlice = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -159,6 +167,11 @@ import StageMatGround from './StageMatGround.svelte';
 		unfoldPinActive?: boolean;
 		/** The idle pin shown on a selected curved Wall, before Unroll. */
 		unfoldAnchorPin?: readonly [number, number, number] | null;
+		/**
+		 * The live Slice reading, or null. The Canvas owns the one clip instance and
+		 * applies this to it; Preview is a separate Canvas and never passes it.
+		 */
+		resolvedSlice?: ResolvedSlice | null;
 	} = $props();
 
 	/**
@@ -170,8 +183,25 @@ import StageMatGround from './StageMatGround.svelte';
 	 * Canvas. The shell and the representation release their leases when they are
 	 * destroyed; the stores free anything left here.
 	 */
-	const resources = provideRenderResources();
+	/**
+	 * The Canvas's one clip: created **before** the render resources, so the material
+	 * store is born holding this exact array by reference. The array length never
+	 * changes, so entering, dragging and leaving a Slice never recompiles a program.
+	 */
+	const stageClip = setStageClip(createStageClip());
+	const resources = provideRenderResources({ clippingPlanes: stageClip.planes as Plane[] });
 	onDestroy(() => resources.dispose());
+	/** The reading reaches the shared planes; the layer's own rebuild asks for a frame. */
+	$effect(() => {
+		stageClip.apply(resolvedSlice ?? null);
+	});
+	/** The drawn meshes, as the caps section them; a mount or an edit is a new read. */
+	const sectionInputs = $derived.by((): readonly SectionInput[] => {
+		layoutRevision;
+		sceneRootRevision;
+		entityRenderRevision;
+		return scenePick.sectionSources();
+	});
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
@@ -317,7 +347,7 @@ import StageMatGround from './StageMatGround.svelte';
 			litPlate={environmentShown ? (worldEnvironmentLook(sky)?.plate ?? null) : null}
 		/>
 	{/if}
-	{#if heightPlane !== null && !paperVisible && framedViewport === null}
+	{#if heightPlane !== null && !paperVisible && framedViewport === null && resolvedSlice === null}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
 		<T.Mesh
 			position={heightPlane.center}
@@ -413,6 +443,18 @@ import StageMatGround from './StageMatGround.svelte';
 			fade={1 - (paperReveal?.sheet ?? 0)}
 		/>
 		{/if}
+	{/if}
+	{#if !paperVisible && framedViewport === null}
+		<!--
+			The Slice's own ink: the yellow plane, the depth outline and the section caps.
+			Overlay-layer editor ink, never a pick root, never in a snapshot.
+		-->
+		<StageSliceLayer
+			resolved={resolvedSlice ?? null}
+			inputs={sectionInputs}
+			bounds={geometry.bounds ?? null}
+			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+		/>
 	{/if}
 	{#if framedViewport === null && evaluation !== null}
 		<!--
