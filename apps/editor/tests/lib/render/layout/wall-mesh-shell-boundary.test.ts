@@ -120,9 +120,10 @@ describe('G4 visitor shell boundary', () => {
 		// because it needs that renderer; the trigger set is the plan's D.6
 		// contract, and the camera is deliberately not one of them.
 		expect(stageCanvas()).toContain('StageShadowTriggers');
-		// The render projection, not only the accepted Scene, is the trigger: a
-		// previewed or candidate light must move its cast shadow with its light.
-		expect(stageCanvas()).toContain('{geometry} scene={renderScene} {modelUrls} {formRenderRevision} />');
+		// Caster content of the accepted Scene plus the light preview are the
+		// trigger: a previewed or candidate light must move its cast shadow with
+		// its light, and a Sky-only edit must not re-render the caster maps.
+		expect(stageCanvas()).toContain('{geometry} {scene} {lightPreview} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
 		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()}');
 		// E8/R5: a drawn model is the retained representation's arrival too; it reports

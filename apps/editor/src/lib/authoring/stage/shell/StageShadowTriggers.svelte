@@ -80,9 +80,15 @@
 	const overrides = $derived(lightPreview?.overrides.size ? lightPreview.overrides : null);
 	const sources = $derived([geometry, casterSceneKey, overrides, lightPreview?.candidate ?? null, modelUrls, formRenderRevision] as const);
 
+	// The tuple is rebuilt whenever any upstream signal settles, including an
+	// accepted Sky edit that leaves every caster input identical. Compare each
+	// element so only a real caster change renders the maps.
+	let previousSources: readonly unknown[] | null = null;
 	$effect(() => {
-		void sources;
-		shadows.invalidate();
+		const current = sources;
+		const changed = previousSources === null || current.some((value, index) => value !== previousSources![index]);
+		previousSources = current;
+		if (changed) shadows.invalidate();
 	});
 
 	$effect(() => {
