@@ -91,6 +91,12 @@ import StageMatGround from './StageMatGround.svelte';
 		hover = null,
 		hoverTone = 'hover',
 		scenePick,
+		/**
+		 * Display-only session overlay: the Rooms a Lift reading has lifted. Preview
+		 * is a separate Canvas and never passes it. `VisitorPreviewSurface` does not
+		 * even mount this component.
+		 */
+		liftedRoomIds = [],
 		/** The live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
@@ -137,6 +143,7 @@ import StageMatGround from './StageMatGround.svelte';
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase';
 		scenePick: ScenePickSource;
+		liftedRoomIds?: readonly string[];
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
 		/** The sheet pin is hovered or being dragged; the route owns both. */
@@ -311,6 +318,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			{liftedRoomIds}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	<!-- The unfolded Wall's own developed body. It is a Canvas child,

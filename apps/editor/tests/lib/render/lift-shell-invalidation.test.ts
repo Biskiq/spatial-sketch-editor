@@ -16,12 +16,6 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
-import {
-	compileWallFirstLayoutGeometry,
-	planWallChain,
-	createEmptyWallFirstLayoutDocument,
-	type CompiledLayoutGeometry
-} from '@portfolio/layout-core';
 
 const threlte = vi.hoisted(() => ({ invalidate: vi.fn() }));
 
@@ -36,41 +30,7 @@ vi.mock('@threlte/core', () => {
 
 import LiftShellProbe from './fixtures/LiftShellProbe.svelte';
 import { liftCell } from './fixtures/lift-cell.svelte';
-import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
-
-/** Two isolated, closed, opening-free Rooms: no door portal is mounted. */
-function twoRooms(): CompiledLayoutGeometry {
-	const base = createEmptyWallFirstLayoutDocument();
-	const first = planWallChain({
-		baseline: base,
-		points: [
-			[0, 0],
-			[6, 0],
-			[6, 4],
-			[0, 4]
-		],
-		close: true,
-		capture: freshCapture(),
-		levelId: base.floor.id
-	});
-	if (first.kind !== 'success') throw new Error(`the first Room was refused: ${first.rejection.message}`);
-	const second = planWallChain({
-		baseline: first.document,
-		points: [
-			[8, 0],
-			[14, 0],
-			[14, 4],
-			[8, 4]
-		],
-		close: true,
-		capture: freshCapture(),
-		levelId: base.floor.id
-	});
-	if (second.kind !== 'success') throw new Error(`the second Room was refused: ${second.rejection.message}`);
-	const geometry = compileWallFirstLayoutGeometry(second.document).geometry;
-	expect(geometry.rooms).toHaveLength(2);
-	return geometry;
-}
+import { twoRoomGeometry } from '../layout/__fixtures__/two-room-fixture';
 
 let mounted: ReturnType<typeof mount> | null = null;
 
@@ -82,7 +42,7 @@ afterEach(() => {
 
 describe('T1 X1 — the shell invalidates on a real lift change only', () => {
 	it('asks for one frame per changed set, none for a repeat, and none for Preview', () => {
-		const geometry = twoRooms();
+		const geometry = twoRoomGeometry();
 		const roomId = geometry.rooms[0]!.roomId;
 		const cell = liftCell([]);
 		const target = document.createElement('div');
