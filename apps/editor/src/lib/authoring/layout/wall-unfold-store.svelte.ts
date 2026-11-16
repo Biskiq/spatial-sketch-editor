@@ -206,8 +206,16 @@ class WallUnfoldStore {
 		this.exit(wall);
 	}
 
-	exit(wall?: CompiledPhysicalWall): void {
-		if (this.state === null) return;
+	/**
+	 * Fold the sheet. `onSettled` runs once the context is actually closed: a
+	 * curved Wall folds over one second, so a caller that must re-read a
+	 * contribution cannot notify at the call site (the state is still active).
+	 */
+	exit(wall?: CompiledPhysicalWall, onSettled?: () => void): void {
+		if (this.state === null) {
+			onSettled?.();
+			return;
+		}
 		this.#cancelSideFrame();
 		this.lastPick = null;
 		this.previewOpening = null;
@@ -217,9 +225,11 @@ class WallUnfoldStore {
 		if (wall !== undefined) {
 			this.animateTo(wall, 0, () => {
 				this.state = null;
+				onSettled?.();
 			});
 		} else {
 			this.state = null;
+			onSettled?.();
 		}
 	}
 

@@ -47,3 +47,70 @@ it('lets a press on the Size chip reach the Stage, and still activates it from t
 		target.remove();
 	}
 });
+
+/** The chip as the Stage projects it, with an optional published reading. */
+function readingChip(reading: string | undefined, state: { open?: boolean; hovered?: boolean }): StageMarkView {
+	return {
+		...chip,
+		label: 'Size',
+		tag: reading ?? '',
+		hovered: state.hovered ?? false,
+		open: state.open ?? false,
+		descriptor: {
+			id: 'layout-wall-size-chip',
+			kind: 'point',
+			role: 'disclose',
+			anchor: [100, 0, 80],
+			label: 'Size',
+			reveals: ['layout-wall-thickness'],
+			...(reading === undefined ? {} : { value: reading })
+		} as StageMarkView['descriptor']
+	};
+}
+
+async function renderChip(mark: StageMarkView): Promise<{
+	readonly tag: string | null;
+	readonly ariaLabel: string | null;
+	readonly title: string;
+}> {
+	const target = document.createElement('div');
+	document.body.append(target);
+	const component = mount(StageOverlay, { target, props: {
+		markers: [], marks: [mark], viewportWidth: 800, viewportHeight: 600
+	} });
+	try {
+		await tick();
+		const group = target.querySelector<SVGGElement>('g.mark[data-mark-id="layout-wall-size-chip"]')!;
+		return {
+			tag: group.querySelector('.tag text')?.textContent ?? null,
+			ariaLabel: group.getAttribute('aria-label'),
+			title: group.querySelector('title')?.textContent ?? ''
+		};
+	} finally {
+		await unmount(component);
+		target.remove();
+	}
+}
+
+// A7.3 — a disclosure's `value` is a read-only reading (the curved Wall's arc
+// length). It must appear in the one tag renderer, including on the tap path,
+// while a disclosure with no reading keeps today's tag-free chip.
+it('shows a disclosure reading only when it has one and is hovered or open', async () => {
+	const reading = 'Length (arc) 3.214 m';
+
+	const idle = await renderChip(readingChip(reading, {}));
+	expect(idle.tag).toBeNull();
+	expect(idle.ariaLabel).toBe(`Resize handles · ${reading}`);
+	expect(idle.title).toBe(`Size · ${reading}`);
+
+	const hovered = await renderChip(readingChip(reading, { hovered: true }));
+	expect(hovered.tag).toBe(reading);
+
+	// Open is the coarse-pointer path: a tap must reveal the reading.
+	const open = await renderChip(readingChip(reading, { open: true }));
+	expect(open.tag).toBe(reading);
+
+	const plain = await renderChip(readingChip(undefined, { hovered: true }));
+	expect(plain.tag).toBeNull();
+	expect(plain.ariaLabel).toBe('Resize handles');
+});

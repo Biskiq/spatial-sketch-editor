@@ -69,6 +69,7 @@ import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { pointerWallRequest } from '$lib/authoring/adapters/layout/wall-gesture';
 import { resolveJunctionPointSnap, resolvePlanarDragSnap, snapWallDrag } from '$lib/authoring/adapters/layout/snap';
 import { STAGE_MARK_GLYPH_CSS } from '$lib/authoring/stage/stage-handles';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-s05';
@@ -282,6 +283,12 @@ async function activateFirstBendPoint(mounted: Mounted): Promise<void> {
  * tip is Stage-local CSS, so pressing it exercises the real mark tier rather
  * than passing a handle id around it.
  */
+/** The Wall's size chip reading as the Stage publishes it (A7.3). */
+function sizeChipReading(mounted: Mounted): string | undefined {
+	const chip = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-size-chip');
+	return chip?.descriptor.role === 'disclose' ? chip.descriptor.value : undefined;
+}
+
 /** The Wall's size disclosure is the one route to its length ray. */
 function revealWallSize(mounted: Mounted): void {
 	const chip = mounted.facade.marks().find(
@@ -1885,6 +1892,119 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(marks.some((mark) => mark.id === 'layout-wall-thickness' && mark.planner === LAYOUT_WALL_THICKNESS_KIND)).toBe(true);
 		// Arc length is not an exact-length writer; the chip must not advertise one.
 		expect(marks.some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+	});
+
+	it('publishes the curved Wall arc length as a read-only size-chip reading in Plan and 3D', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+
+		const frame = curvedWallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		const chord = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+		// A bent 6 m Wall is longer on its arc than its start-to-end chord, so the
+		// reading can never be the chord by accident.
+		expect(frame.length).toBeGreaterThan(chord + 0.01);
+		const expected = `Length (arc) ${frame.length.toFixed(3)} m`;
+		expect(sizeChipReading(mounted)).toBe(expected);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+
+		const bytes = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+
+		// The chip keeps its one disclosure job: thickness/height, never a length
+		// writer. Opening it changes no source and adds no history.
+		revealWallSize(mounted);
+		expect(sizeChipReading(mounted)).toBe(expected);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-thickness')).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-height')).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(bytes);
+		expect(mounted.host.history()).toEqual(history);
+
+		// Plan reads the same canonical value; it is not a second evaluation.
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, 0);
+		settle(mounted.facade, 4);
+		expect(mounted.facade.evaluation()?.settledReading).toBe('plan');
+		expect(sizeChipReading(mounted)).toBe(expected);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(bytes);
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('keeps the straight Wall length ray and publishes no size-chip reading', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+
+		expect(sizeChipReading(mounted)).toBeUndefined();
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+		revealWallSize(mounted);
+		const length = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-length')!;
+		expect(length.planner).toBe(LAYOUT_WALL_LENGTH_KIND);
+		expect(length.tag).toMatch(/^Length [0-9.]+ m$/);
+	});
+
+	it('re-reads the curved arc length after a Split, and the fragments sum to the source', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+		const before = acceptedLayout(mounted.facade);
+		const beforeLength = curvedWallFrame(before, mounted.wallId)!.length;
+		expect(sizeChipReading(mounted)).toBe(`Length (arc) ${beforeLength.toFixed(3)} m`);
+
+		const beforeIds = new Set(before.walls.map((wall) => wall.id));
+		const split = stageCardActions(mounted.facade, {
+			sourceId: mounted.wallId,
+			sourceKind: 'wall',
+			ref: null
+		}).find((action) => action.id === 'layout-wall-split')!;
+		expect((await split.run()).kind).toBe('accepted');
+
+		const after = acceptedLayout(mounted.facade);
+		const created = after.walls.find((wall) => !beforeIds.has(wall.id));
+		expect(created).toBeDefined();
+		const startSide = curvedWallFrame(after, mounted.wallId)!.length;
+		const endSide = curvedWallFrame(after, created!.id)!.length;
+		// Exact cubic subdivision: the two arc readings add back to the source.
+		expect(startSide + endSide).toBeCloseTo(beforeLength, 3);
+
+		// Each fragment's own chip reads its own canonical arc, not the source's.
+		for (const wallId of [mounted.wallId, created!.id]) {
+			selectWall(mounted.facade, wallId);
+			settle(mounted.facade, 4);
+			const frame = curvedWallFrame(acceptedLayout(mounted.facade), wallId)!;
+			expect(sizeChipReading(mounted)).toBe(`Length (arc) ${frame.length.toFixed(3)} m`);
+		}
+	});
+
+	it('withdraws the arc reading while its Unroll sheet is open and restores it on Put back', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+		const expected = sizeChipReading(mounted);
+		expect(expected).toBeDefined();
+		const compiled = mounted.facade
+			.snapshot()
+			.domain.geometry.walls.find((wall) => wall.wallId === mounted.wallId)!;
+		try {
+			wallUnfold.enter(compiled, 0);
+			// The Card's entry/exit path notifies the Stage so retained
+			// contributions are re-read against the open sheet.
+			mounted.facade.notifySurfaceChange();
+			settle(mounted.facade, 4);
+			// The sheet is the editing surface: the Wall's canonical marks,
+			// including the size chip and its reading, are withheld.
+			expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-size-chip')).toBe(false);
+		} finally {
+			wallUnfold.exit();
+		}
+		mounted.facade.notifySurfaceChange();
+		settle(mounted.facade, 5);
+		expect(sizeChipReading(mounted)).toBe(expected);
 	});
 
 	it('reads and edits a curved-host Opening station on the arc, not its chord', async () => {
