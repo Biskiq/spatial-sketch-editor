@@ -202,6 +202,7 @@ function construct(
 				...(descriptor.opacity === undefined ? {} : { opacity: descriptor.opacity }),
 				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite }),
 				...(descriptor.vertexColors === undefined ? {} : { vertexColors: descriptor.vertexColors }),
+				...(descriptor.fog === false ? { fog: false } : {}),
 				...(bound === null ? {} : bound)
 			});
 		case 'depth':

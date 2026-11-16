@@ -168,6 +168,7 @@ export function createPaperScene(
 	const sheetGeometry = new PlaneGeometry(PAPER_SHEET_METERS, PAPER_SHEET_METERS);
 	sheetGeometry.rotateX(-Math.PI / 2);
 	const sheetMaterial = new MeshBasicMaterial({
+			fog: false,
 		color: new Color(PAPER_GROUND_INK).getHex(),
 		side: DoubleSide, transparent: true, opacity: 1,
 		depthTest: false, depthWrite: false, toneMapped: false,
@@ -205,6 +206,7 @@ export function createPaperScene(
 			const geometry = new LineSegmentsGeometry();
 			geometry.setPositions(positions);
 			const material = new LineMaterial({
+			fog: false,
 				color: new Color(style.ink).getHex(),
 				linewidth: style.widthCssPx,
 				transparent: true,
@@ -261,6 +263,7 @@ export function createPaperScene(
 		const geometry = createPaperFillGeometry(fills);
 		if (geometry === null) continue;
 		const material = new MeshBasicMaterial({
+			fog: false,
 			color: new Color(PAPER_FILL_INK[treatment]).getHex(),
 			side: DoubleSide, transparent: true, opacity: 1,
 			depthTest: false, depthWrite: false, toneMapped: false
@@ -274,6 +277,7 @@ export function createPaperScene(
 		addFade(material, 1, treatment === 'cut' ? 'poche' : 'sheet');
 		if (treatment !== 'cut') continue;
 		const holeMaterial = new MeshBasicMaterial({
+			fog: false,
 			side: DoubleSide, transparent: true, colorWrite: false,
 			depthTest: false, depthWrite: false,
 			stencilWrite: true, stencilRef: PAPER_SHEET_STENCIL,
@@ -304,6 +308,7 @@ export function createPaperScene(
 		geometry.setPositions(new Float32Array(positions));
 		const style = PAPER_LINE_STYLE.footprint;
 		const material = new LineMaterial({
+			fog: false,
 			color: new Color(style.ink).getHex(),
 			linewidth: style.widthCssPx,
 			transparent: true,

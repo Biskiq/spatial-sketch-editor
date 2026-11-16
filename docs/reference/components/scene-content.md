@@ -10,7 +10,7 @@ owner-controlled)
 
 ## Current implementation
 
-The live Scene is the world-local Scene 8 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 9 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
@@ -146,11 +146,15 @@ These are the codec's own rules, not a destination: `packages/project-model/src/
   roughness, metalness, `normalScale`, tile size, texture URIs) is immutable; a changed curated look
   needs a new id and the old one stays resolvable. `tests/lib/content/materials.test.ts` pins every
   definition.
-- **World presentation**: optional `environment`. `sky` stores the Sun `azimuth` in `[0, 2π)` and
-  `elevation` in `[0, π/2]`, Sun colour/intensity/`softness` in `[0, 1]`, zenith/horizon/ground,
-  `haze.color` with optional `visibility` in `[5, 100000]`, and the hemisphere fill. `treatment` is
-  `flat-colour` or `clay`; `natural` is the absence of a treatment, never a tag. An absent Sky is
-  Paper; `environment: {}` normalizes to absence.
+- **World presentation**: optional `environment`. Sky records provenance (`preset`), time in
+  `[0, 24)`, noon heading in `[0, 360)` clockwise from world −Z, and noon elevation
+  (`arcHeight`) in `[20, 80]`. Haze is a percentage in `[0, 100]`, exposure is EV in
+  `[-2, 2]`, and softness and Moon strength are in `[0, 1]`. `sunShadows` is a boolean
+  that controls the shared Sun/Moon light. `skyColor`, `groundColor` and `moon.color` are
+  lowercase `#rrggbb`. The Scene validator refuses invalid fields with `invalid_sky_field`
+  and unknown keys with `unknown-key`. Studio at its default heading and settings is
+  stored as an absent Sky. `treatment` admits `flat-colour` and `clay`. An empty environment
+  normalizes to absence.
 - **Texture URIs** must be safe root-relative public paths — no scheme, no `//`, no backslash, no
   query or fragment, no control characters, no `.`/`..` segment, and stable under repeated
   percent-decoding.
@@ -487,8 +491,7 @@ Lights and environment:
   derived rim/ring follow it).
 - Authored world presentation is the Scene's optional `environment`: a stored Sky and an optional
   resolve-time Treatment. A preset is provenance; choosing one copies its start into the World, and
-  choosing the current preset on an edited Sky is Reset. Haze `visibility` is stored for S2, which
-  owns rendering it; S1 fixes its meaning only.
+  choosing the current preset on an edited Sky is Reset. Every preset preserves the World’s noon heading.
 - No hidden assist/baseline sum: any editor assist light is visibly session-only
   and off for comparisons and visitors. PMREM/environment caches are **derived
   renderer resources** with scope, reference counts and asynchronous

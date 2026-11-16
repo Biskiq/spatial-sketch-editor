@@ -40,10 +40,10 @@ const STORE_SITES = { PointLight: 1, SpotLight: 1, DirectionalLight: 1 };
  */
 const HOST_LIGHTS: Record<string, { sites: Record<string, number>; owner: string }> = {
 	// Ambient under the Sky and under Paper; Paper's two-light neutral rig.
-	'lib/authoring/stage/shell/StageCanvas.svelte': { sites: { AmbientLight: 2, DirectionalLight: 2 }, owner: 'Stage host fill + Paper rig' },
-	'lib/visitor/VisitorPreviewSurface.svelte': { sites: { AmbientLight: 2, DirectionalLight: 2 }, owner: 'Preview host fill + Paper rig' },
+	'lib/authoring/stage/shell/StageCanvas.svelte': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'Stage host fill + Paper rig' },
+	'lib/visitor/VisitorPreviewSurface.svelte': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'Preview host fill + Paper rig' },
 	// The Sky's hemisphere fill. The Sun is the store's.
-	'lib/render/WorldEnvironment.svelte': { sites: { HemisphereLight: 1 }, owner: 'Sky hemisphere fill' },
+	'lib/render/WorldEnvironment.svelte': { sites: { HemisphereLight: 1, AmbientLight: 1 }, owner: 'Sky hemisphere fill' },
 	'routes/dev/assets/+page.svelte': { sites: { HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' },
 	'routes/dev/materials/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' }
 };
@@ -121,7 +121,7 @@ describe('light-realizer-boundary: one realizer for world lights', () => {
 	});
 
 	it('the Sky constructs no Sun and the retired component is gone', () => {
-		expect(HOST_LIGHTS['lib/render/WorldEnvironment.svelte']!.sites).toEqual({ HemisphereLight: 1 });
+		expect(HOST_LIGHTS['lib/render/WorldEnvironment.svelte']!.sites).toEqual({ HemisphereLight: 1, AmbientLight: 1 });
 		expect(existsSync(path.join(EDITOR_SRC, 'lib/museum/entities/EntityLight.svelte'))).toBe(false);
 	});
 

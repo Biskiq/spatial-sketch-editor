@@ -9,6 +9,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { Scene as ThreeScene } from 'three';
+import { skyFromPreset } from '@portfolio/project-model/units';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 vi.mock('@threlte/core', async () => import('../authoring/fixtures/threlte-counting-context'));
@@ -85,6 +86,25 @@ describe('G4 — exact shadow-update counts through the mounted wiring', () => {
 		const withModel = await begin(true);
 		frames(FRAMES);
 		expect(withModel.count()).toBe(0);
+	});
+
+	it('keeps accepted Sky-only changes out of the caster trigger', async () => {
+		const session = await begin(true);
+		probeInput.scene = {
+			...sceneWith(true, 'a'),
+			environment: { sky: { ...skyFromPreset('daylight', 0), haze: 65, exposure: 1 } }
+		};
+		flushSync();
+		frames(FRAMES);
+		expect(session.count()).toBe(0);
+	});
+
+	it('a rebuilt Canvas prop spread with unchanged shadow inputs renders nothing', async () => {
+		const session = await begin(true);
+		probeInput.rebuild += 1;
+		flushSync();
+		frames(FRAMES);
+		expect(session.count()).toBe(0);
 	});
 
 	it('a camera-only edit renders nothing: the camera is not a shadow input', async () => {

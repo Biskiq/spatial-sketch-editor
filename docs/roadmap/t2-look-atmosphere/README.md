@@ -54,7 +54,7 @@ control is shown before it works.
 | Environment | `environment.preset` in Scene 5; one runtime-safe table shared by Stage, snapshots, Preview and visit | Preset id only. Hour slider is inert. Two environment controls exist; only Sky is mounted |
 | Rendering | One Stage canvas, adapters shared with the visitor, `PCFShadowMap`, r187 | **No environment reflections.** Tone mapping, exposure and light units have never been audited as a set |
 | Artwork | P20 stores PNG / WebP / JPEG up to 25 MB and releases pin them | **No image object exists.** The only route today is a `plane` primitive with a textured material instance, which makes a painting a shared Finish that stretches when resized |
-| Shell wiring | World toolbar registry, self-contained Sky popover | The spatial route is **5,901 lines with 97 imports**; every look slice would edit it |
+| Shell wiring | World toolbar registry, Environment control and Sky panel | The spatial route is **5,901 lines with 97 imports**; every look slice would edit it |
 
 ## 2. Direction
 
@@ -68,7 +68,7 @@ The model never stores the label and never closes the list, so depth is added by
 the same model, not by building a second one. Three reveal levels, the same in every home:
 
 1. **Pick** — a curated tile (a Finish, a fixture, a Sky, a Look).
-2. **Adjust** — at most four named controls, in the Card or the Sky popover.
+2. **Adjust** — at most four named controls, in the Card or the Sky panel.
 3. **More** — exact values, images, mapping. Same writer, same undo, no new panel.
 
 Stylized and realistic remain **one pipeline at different settings** (§6).
@@ -85,7 +85,7 @@ can judge by eye.
 | **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Schema carries every PBR map slot, mapping, opacity and emission as open numeric fields. One material factory, so a new property is one resolver change | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
 | **Artwork** | Import PNG / JPEG / WebP as an **Artwork object**; place on a wall or free in 3D; size in real units with the aspect locked; transparency kept; four frame styles and a mat; **Light it** fitted to the frame; a derived *Lit by* reading; identical in Visitor Preview | Artwork `source` is a tagged union (image now, drawing later). Frame geometry is generated from parameters. Card-action and Library-entry slots that show nothing until a capability fills them | Trim (crop, straighten), wall labels, glazing, persistent hosting on a moving wall, SVG / video, the Artwork Studio |
 | **Light** | Bare emitters of all three kinds placed **free in space** and aimed like a camera; **frustum** beam handles; *Look through*; Lights in the Index; **Light it** | A fixture is an ordinary object grouped with an emitter. Lights are ordinary group members, so a saved rig is a saved group | Fixture models, articulated heads, saved rigs, live-linked rigs, area lights |
-| **Sky** | Presets as starts; Time, Direction, Haze, Brightness; sun mark; sky-derived reflections **if S0 passes** | Stored as sun angles, colours and scalars, never as a preset-shaped blob. One resolved-look module with a quality input | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
+| **Sky** | Six preset starts, Time dial, Sun direction, Haze, More and the Celestial Dial | Scene 9 stores time, heading and noon height. The shared atmosphere resolver derives the Sun and Moon | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
 | **Look** | Atmosphere + Treatment apply to **any** World; palette for followers; opt-in *Adopt palette* | A Look is data over the same fields; a Treatment is a resolve-time transform, never a rewrite | Outline / toon / bloom (post pass), look A/B snapshots |
 | **Rendering** | What S0 measures and nothing else | No slice builds a material or light outside the shared factory and resolved-look module | Transmission glass, probes, baked or cached shadows, post |
 
@@ -152,7 +152,7 @@ outlined volume, never a filled one, with its footprint traced on the surfaces i
 | --- | --- | --- | --- |
 | **Spot** (Picture spot, Wash, Downlight) | A cone frustum from the body to its far cap | **Target** (far-cap centre: drag across surfaces to aim, push or pull for distance) · **rim** of the far cap (Beam) · **inner ring** (soft edge) | Warmth · Brightness · Beam · Shadow |
 | **Point** (Bulb, Pendant, Lamp) | A reach sphere, drawn as its ring on the floor and a stem to the nearest surface | **Ring** (reach) · body | Warmth · Brightness · Reach · Shadow (off by default) |
-| **Directional** (the Sun; Fill, Moon) | A box frustum: direction and the area it shadows. The Sun stays the Sky's and moves by the sun mark | **Direction dial** at the World mark (compass ring + elevation arc) | Warmth · Brightness · Shadow |
+| **Directional** (the Sun; Fill, Moon) | A box frustum: direction and the area it shadows. The Sun stays the Sky's and moves by the Celestial Dial | **Direction dial** at the World mark (compass ring + elevation arc) | Warmth · Brightness · Shadow |
 
 **The guide is not the light.** The frustum says where a light *can* reach; the rendered picture
 says what it *does*. They must never be confused:
@@ -204,9 +204,10 @@ arrive for objects and lights together.
 
 ## 6. Sky and Looks
 
-**Sky** is unchanged in shape: preset tiles, then Time, Direction, Haze, Brightness, with sky and
-ground colours and shadow softness under More. Presets are starting points (*Golden hour · edited*,
-Reset). Stored as sun azimuth/elevation, colours and scalars; Time is a UI reading of elevation.
+**Sky** opens from the Environment control at the Stage’s bottom-right. The Sky panel holds
+the 24-hour Time dial, Sun direction, six presets, Haze and More. Scene 9 stores time,
+heading and noon height and derives Sun or Moon direction. Preset changes preserve heading.
+The Celestial Dial is the Stage instrument for time and noon bearing.
 
 **A Look has three layers, and the first two need no preparation:**
 
@@ -364,7 +365,7 @@ The measured shadow constants there are input to item 4's shadow budget.
 | Home (existing) | Owns | Never |
 | --- | --- | --- |
 | **Sky** chip → popover | The World's mood: preset, dials, More, the Looks row | Per-object facts. A second environment panel |
-| **Stage** marks | Spatial facts by direct manipulation: artwork corners and hang guides; a light's frustum, target, rim and ring; direction dial; sun mark | Numbers, lists, Apply |
+| **Stage** marks | Spatial facts by direct manipulation: artwork corners and hang guides; a light's frustum, target, rim and ring; direction dial; Celestial Dial | Numbers, lists, Apply |
 | **Card** | The selection's one writer: a **Finish** row (Adjust, More in place); a light's stratum; an artwork's **Size** and **Frame**; foot actions **Light it** and *Look through* | Browsing. The World's mood |
 | **Library** (Instrument) | Choosing and bringing in: **Artwork** (This project · Import), Finishes (curated · This project · From image), Lights (Light only · Fixtures), Looks | Editing |
 | **Paint** (dock tool + palette) | Applying a Finish by pointer, with scope, dropper, recents, palette | Editing the Finish itself |
@@ -375,7 +376,7 @@ The measured shadow constants there are input to item 4's shadow budget.
 select object ─▶ Card · Finish row ─▶ swatch ─▶ Library › Finishes ─▶ back on the Card ─▶ More
                  Card · Light it   ─▶ emitter appears, selected ─▶ drag its target on the Stage
 drop image files ─▶ Library › Artwork ─▶ place on a wall ─▶ Card · Frame ─▶ Card · Light it
-                 nothing selected  ─▶ Sky chip ─▶ drag Time or the sun mark ─▶ Looks row
+                 nothing selected  ─▶ Environment control ─▶ drag Time or the Celestial Dial ─▶ Looks row
 ```
 
 ## 10. Coordination
@@ -414,7 +415,7 @@ Counts are creator interactions after the geometry exists; each is on the review
 - **Product showcase (4).** Sky → *Paper* · select the product → Finish → *Brass* · **Light it ▾
   Showcase** (key, fill, rim, one undo) · Sheen → *Satin*. Honest limit: the brass reflects a
   neutral studio, not the plinth beside it.
-- **Architectural daylight (5).** Sky → *Daylight* · drag the sun mark until light rakes through
+- **Architectural daylight (5).** Sky → *Daylight* · drag the Sun along the Celestial Dial’s arc until light rakes through
   the opening · Time → 16:00 · Paint *Oak* at Space scope, then **+ From image** for the client's
   own brick, Scale 0.6 m · Shadows → *Soft*.
 - **Deliberately stylized, on an existing World (3).** Library › Looks → *Riso*: flat sky, tinted
@@ -466,7 +467,7 @@ for multi-PR, Tier 2 or invention-risking work, as the first commit of that work
 | **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — | No |
 | **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig | S3 | — | **Yes** (shell-wide selection behaviour) |
 | **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** | **Yes** (Tier 2) |
-| **S2 Sky dials** | Popover dials, sun mark, edited / Reset | P0 · S0 · S1 | — | No |
+| **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 | No |
 | **S4 Finish** | Card row, free colour, Sheen, Paint for objects; then From image, Scale, Direction | P0 · S0 · S1 | — | No; likely two PRs |
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
@@ -517,7 +518,7 @@ override and a surface identity.
 | S3, G1 | Spatial instrument grammar: light guides, the guide-versus-light rule, group selection. Scene content: clusters behave as one unit; lights aim by target |
 | A1 | Scene content: the Artwork entity kind and validation. Assets: an image referenced by an entity; release pinning |
 | S1, S5a | Scene content: material instance fields, palette, treatment, surface finishes. Layout: the published surface identity (T1's to write) |
-| S2 | Shell / PLATE: the Sky popover as the one environment writer; the unmounted panel retired |
+| S2 | Shell / PLATE: the Sky panel as the one environment writer; the unmounted panel retired |
 | S4, S8 | Scene content and Assets: Finish maps and their slots |
 | all | World toolbar registry: Paint and Lights stop reading as planned for a later theme |
 

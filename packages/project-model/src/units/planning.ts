@@ -66,9 +66,9 @@ import {
 	createUnitAcceptancePreparation
 } from './acceptance';
 import { stageUnitResources, type StagedUnitResource } from './acceptance-staging';
-import { readExperienceText, readInvitation, readPresentationViews, readStaySeconds } from './validate';
-import { SCENE_SKY_PRESET_STARTS } from './sky-presets';
-import type { SceneConnection, ScenePathAnchor } from '../scene';
+import { readExperienceText, readInvitation, readPresentationViews, readStaySeconds, validateSceneSky } from './validate';
+import { sameSky, SCENE_SKY_DEFAULT, skyFromPreset } from './sky-presets';
+import type { SceneConnection, ScenePathAnchor, SceneSky } from '../scene';
 import {
 	SCENE_SKY_PRESETS,
 	type SceneEnvironmentChoice,
@@ -2565,116 +2565,90 @@ export function createExperiencePresentationViewRemovePlanner(): DomainPlanner<P
 	};
 }
 
-/** Every planner a host registers for this slice's authored operations. */
-/** Experience review 1 — choose the World's environment preset. */
 export const SCENE_ENVIRONMENT_SET_KIND = 'scene-environment-set';
+export const SCENE_SKY_UPDATE_KIND = 'scene-sky-update';
+export const SCENE_ENVIRONMENT_CHOICES: readonly SceneEnvironmentChoice[] = SCENE_SKY_PRESETS;
 
-/** The choices the one environment writer accepts: Paper or one Sky preset. */
-export const SCENE_ENVIRONMENT_CHOICES: readonly SceneEnvironmentChoice[] = [
-	'paper',
-	...SCENE_SKY_PRESETS
-];
+export type SceneSkyUpdatePayload = Partial<Omit<SceneSky, 'preset' | 'moon'>> & {
+	moon?: Partial<SceneSky['moon']>;
+};
 
-/** Key-order-independent structural equality, so a stored Sky compares by value. */
-function deepEqual(left: unknown, right: unknown): boolean {
-	if (left === right) return true;
-	if (typeof left !== 'object' || typeof right !== 'object' || left === null || right === null) {
-		return false;
-	}
-	if (Array.isArray(left) !== Array.isArray(right)) return false;
-	if (Array.isArray(left) && Array.isArray(right)) {
-		return left.length === right.length && left.every((entry, index) => deepEqual(entry, right[index]));
-	}
-	const leftKeys = Object.keys(left as Record<string, unknown>).sort();
-	const rightKeys = Object.keys(right as Record<string, unknown>).sort();
-	return (
-		leftKeys.length === rightKeys.length &&
-		leftKeys.every(
-			(key, index) =>
-				key === rightKeys[index] &&
-				deepEqual(
-					(left as Record<string, unknown>)[key],
-					(right as Record<string, unknown>)[key]
-				)
-		)
-	);
-}
-
-/** Structural equality over the preset starts and a stored Sky. */
-function sameSkyValue(left: { readonly sky?: unknown } | undefined, right: unknown): boolean {
-	if (left?.sky === undefined || right === undefined) return left?.sky === right;
-	return deepEqual(left.sky, right);
-}
-
-/**
- * Set the Scene's World environment to Paper or one Sky preset. No targets: the
- * Scene holds one environment. `paper` removes only the Sky, so a Treatment
- * survives it; choosing the preset a Sky already equals is `no-change`, which
- * makes the current tile act as Reset for an edited Sky.
- */
 export function createSceneEnvironmentSetPlanner(): DomainPlanner<ProjectEnvelope> {
+	return createSkyPlanner(SCENE_ENVIRONMENT_SET_KIND);
+}
+
+export function createSceneSkyUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
+	return createSkyPlanner(SCENE_SKY_UPDATE_KIND);
+}
+
+function createSkyPlanner(
+	kind: typeof SCENE_ENVIRONMENT_SET_KIND | typeof SCENE_SKY_UPDATE_KIND
+): DomainPlanner<ProjectEnvelope> {
+	const settingPreset = kind === SCENE_ENVIRONMENT_SET_KIND;
 	return {
-		id: 'unit.scene-environment-set',
-		kind: SCENE_ENVIRONMENT_SET_KIND,
+		id: `unit.${kind}`,
+		kind,
 		admission: { domain: 'scene', compound: false, units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
-			const envelope = envelopeOf(request);
-			const reader = new ShapeReader();
-			const payload = reader.object(request.intent.payload, '$.payload', ['preset'] as const);
-			const preset = payload === null ? null : payload.preset;
-			if (
-				typeof preset !== 'string' ||
-				!(SCENE_ENVIRONMENT_CHOICES as readonly string[]).includes(preset)
-			) {
-				return refuse('invalid-payload', 'Choose one of the environment presets', reader.issues);
-			}
 			if (request.intent.targets.length !== 0) {
-				return refuse('unsupported-operation', 'scene-environment-set takes no targets');
+				return refuse('unsupported-operation', `${kind} takes no targets`);
 			}
-			const scene = envelope.units.scene.data;
-			const previous = scene.environment;
-			const treatment = previous?.treatment;
-			if (preset === 'paper') {
-				if (previous?.sky === undefined) {
-					return refuse('no-change', 'The World already uses Paper');
+			const envelope = envelopeOf(request);
+			const sceneUnit = envelope.units.scene;
+			const { environment, ...scene } = sceneUnit.data;
+			const previous = environment?.sky ?? SCENE_SKY_DEFAULT;
+			const reader = new ShapeReader();
+			const payload = reader.object(request.intent.payload, '$.payload', settingPreset
+				? ['preset']
+				: ['time', 'heading', 'arcHeight', 'haze', 'exposure', 'softness', 'sunShadows', 'moon', 'skyColor', 'groundColor']);
+			if (payload === null || Object.keys(payload).length === 0 || reader.issues.length !== 0) {
+				return refuse('invalid-payload', 'Choose a preset or supply a Sky change', reader.issues);
+			}
+
+			let next: unknown;
+			if (settingPreset) {
+				const preset = SCENE_SKY_PRESETS.find((choice) => choice === payload.preset);
+				if (preset === undefined) return refuse('invalid-payload', 'Choose one of the Sky presets');
+				next = skyFromPreset(preset, previous.heading);
+			} else {
+				if (previous.preset === 'studio' && Object.keys(payload).some((key) => key !== 'heading')) {
+					return refuse('unsupported-operation', 'Studio only accepts a heading change');
 				}
-				const { environment: _previous, ...rest } = scene;
-				const data = {
-					...rest,
-					...(treatment === undefined ? {} : { environment: { treatment } })
-				};
-				const candidate: ProjectEnvelope = {
-					...envelope,
-					units: { ...envelope.units, scene: { header: { ...envelope.units.scene.header }, data } }
-				};
-				return prepared(
-					request,
-					candidate,
-					[{ kind: 'scene.environment.updated', subjectIds: [], fields: ['environment'] }],
-					[]
-				);
+				let moon = previous.moon;
+				if ('moon' in payload) {
+					const patch = reader.object(payload.moon, '$.payload.moon', ['color', 'strength']);
+					if (patch === null || Object.keys(patch).length === 0 || reader.issues.length !== 0) {
+						return refuse('invalid-payload', 'Supply a Moon colour or strength', reader.issues);
+					}
+					moon = { ...moon, ...patch };
+				}
+				next = { ...previous, ...payload, moon };
 			}
-			const choice = preset as Exclude<SceneEnvironmentChoice, 'paper'>;
-			const start = SCENE_SKY_PRESET_STARTS[choice];
-			if (sameSkyValue(previous, start)) {
-				return refuse('no-change', 'The World already uses this Sky');
-			}
-			const { environment: _previous, ...rest } = scene;
+
+			const result = validateSceneSky(next);
+			if (!result.success) return refuse('invalid-payload', 'Invalid Sky settings', result.issues);
+			if (sameSky(previous, result.value)) return refuse('no-change', 'The World already uses this Sky');
+
+			const treatment = environment?.treatment;
+			const sky = sameSky(result.value, SCENE_SKY_DEFAULT) ? undefined : result.value;
 			const data = {
-				...rest,
-				environment: {
-					...(treatment === undefined ? {} : { treatment }),
-					// A fresh copy: the World never aliases the preset table.
-					sky: structuredClone(start)
-				}
+				...scene,
+				...(sky === undefined && treatment === undefined ? {} : {
+					environment: {
+						...(sky === undefined ? {} : { sky }),
+						...(treatment === undefined ? {} : { treatment })
+					}
+				})
 			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
-				units: { ...envelope.units, scene: { header: { ...envelope.units.scene.header }, data } }
+				units: { ...envelope.units, scene: { header: { ...sceneUnit.header }, data } }
 			};
-			return prepared(request, candidate, [{ kind: 'scene.environment.updated', subjectIds: [], fields: ['environment'] }], []);
+			return prepared(request, candidate, [{
+				kind: 'scene.environment.updated', subjectIds: [], fields: ['environment']
+			}], []);
 		}
 	};
 }
@@ -2682,6 +2656,7 @@ export function createSceneEnvironmentSetPlanner(): DomainPlanner<ProjectEnvelop
 export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): DomainPlanner<ProjectEnvelope>[] {
 	return [
 		createSceneEnvironmentSetPlanner(),
+		createSceneSkyUpdatePlanner(),
 		createCameraViewUpdatePlanner(),
 		createCameraConnectionCreatePlanner(),
 		createCameraConnectionUpdatePlanner(),

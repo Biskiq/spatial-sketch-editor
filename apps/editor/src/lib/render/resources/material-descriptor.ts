@@ -120,6 +120,8 @@ export type LambertMaterialDescriptor = {
 	readonly depthWrite?: boolean;
 	/** Absent means `false`. */
 	readonly vertexColors?: boolean;
+	/** Editor-only surfaces stay legible through atmospheric haze. */
+	readonly fog?: false;
 };
 
 /**
@@ -270,7 +272,8 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`transparent=${bool(descriptor.transparent, false)}`,
 				`opacity=${num(descriptor.opacity ?? 1)}`,
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
-				`vertexColors=${bool(descriptor.vertexColors, false)}`
+				`vertexColors=${bool(descriptor.vertexColors, false)}`,
+				...(descriptor.fog === false ? ['fog=0'] : [])
 			].join('|');
 		case 'depth':
 			return [

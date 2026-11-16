@@ -62,6 +62,7 @@
 
 	const sheetGeometry = new BufferGeometry();
 	const sheetMaterial = new MeshBasicMaterial({
+			fog: false,
 		color: 0xe9dfca,
 		side: DoubleSide,
 		toneMapped: false,
@@ -83,6 +84,7 @@
 
 	const gridGeometry = new BufferGeometry();
 	const gridMaterial = new LineBasicMaterial({
+			fog: false,
 		color: 0xb6a783,
 		toneMapped: false,
 		// A quiet elevation grid on the developed face, in the same wall-grid
@@ -100,6 +102,7 @@
 
 	const contourGeometry = new BufferGeometry();
 	const contourMaterial = new LineBasicMaterial({
+			fog: false,
 		color: 0x4d4a43,
 		toneMapped: false,
 		// The sheet is the working surface and stands alone; its contour must stay
@@ -117,6 +120,7 @@
 
 	const referenceGeometry = new BufferGeometry();
 	const referenceMaterial = new LineDashedMaterial({
+			fog: false,
 		color: 0x777b72,
 		toneMapped: false,
 		dashSize: 0.18,

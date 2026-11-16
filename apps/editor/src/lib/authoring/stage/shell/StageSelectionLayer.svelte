@@ -199,6 +199,7 @@
 		pivot.matrixWorldNeedsUpdate = true;
 
 		const maskMaterial = new MeshBasicMaterial({
+			fog: false,
 			colorWrite: false,
 			depthTest: false,
 			depthWrite: false,
@@ -215,6 +216,7 @@
 		mask.layers.set(2);
 
 		const outlineMaterial = new MeshBasicMaterial({
+			fog: false,
 			color: tone === 'selection' ? GOLD : NEUTRAL,
 			transparent: true,
 			opacity: 1,
@@ -274,6 +276,7 @@
 			const edgeGeometry = new LineGeometry();
 			edgeGeometry.setPositions(points);
 			const material = new LineMaterial({
+			fog: false,
 				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL),
 				linewidth: tone === 'selection' ? 3 : 2.5,
 				transparent: true,

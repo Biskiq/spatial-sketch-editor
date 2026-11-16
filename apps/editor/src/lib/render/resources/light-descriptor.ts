@@ -74,9 +74,10 @@ export type SunShadowDescriptor = {
 	};
 };
 
-/** The Sky's one Sun. It always casts; position and target are world space. */
+/** The Sky's shared Sun/Moon light; position and target are world space. */
 export type SunLightDescriptor = {
 	readonly kind: 'sun';
+	readonly castShadow: boolean;
 	readonly color: string;
 	/** Lux. */
 	readonly intensity: number;
@@ -110,6 +111,7 @@ export function lightKey(descriptor: LightDescriptor): string {
 				'sun',
 				descriptor.color,
 				descriptor.intensity,
+				descriptor.castShadow,
 				vec(descriptor.position),
 				vec(descriptor.target),
 				shadow.mapSize,

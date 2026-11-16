@@ -201,44 +201,31 @@ export type ScenePaletteSlot = {
 	readonly color: string;
 };
 
-/** The three Sky presets. A preset is provenance, never the stored look. */
-export const SCENE_SKY_PRESETS = ['daylight', 'golden-hour', 'dusk'] as const;
+/** The six Sky presets. A preset is provenance, never the stored look. */
+export const SCENE_SKY_PRESETS = ['studio', 'daylight', 'golden-hour', 'dusk', 'overcast', 'moonlit'] as const;
 export type SceneSkyPreset = (typeof SCENE_SKY_PRESETS)[number];
 
 /** The two Look treatments. `natural` is the absence of a treatment, never a tag. */
 export const SCENE_TREATMENTS = ['flat-colour', 'clay'] as const;
 export type SceneTreatment = (typeof SCENE_TREATMENTS)[number];
 
-/** The one Sun a Sky carries, as a direction and physical light values. */
-export type SceneSkySun = {
-	/** Radians from +Z toward +X, in [0, 2π). */
-	readonly azimuth: number;
-	/** Radians above the horizon, in [0, π/2]. */
-	readonly elevation: number;
-	readonly color: string;
-	readonly intensity: number;
-	/** Shadow blur, in [0, 1]: radius = 1 + 4·softness shadow-map texels. */
-	readonly softness: number;
-};
-
-/**
- * The authored Sky: sun angles, colours and scalars. Absence of a Sky is Paper.
- * Preset starts are copied into the World, so retuning a start never changes a
- * saved World.
- */
+/** Authored Sky settings. The Sun and Moon positions and lighting are derived. */
 export type SceneSky = {
-	/** Provenance: the Reset target, the label and the editor plate. */
+	/** Provenance and Reset target. */
 	readonly preset: SceneSkyPreset;
-	readonly sun: SceneSkySun;
-	readonly zenith: string;
-	readonly horizon: string;
-	readonly ground: string;
-	readonly haze: { readonly color: string; readonly visibility?: number };
-	readonly hemisphere: {
-		readonly skyColor: string;
-		readonly groundColor: string;
-		readonly intensity: number;
-	};
+	/** Solar hours in [0, 24). */
+	readonly time: number;
+	/** Noon bearing in degrees, clockwise from world −Z. */
+	readonly heading: number;
+	/** Noon elevation in degrees. */
+	readonly arcHeight: number;
+	readonly haze: number;
+	readonly exposure: number;
+	readonly softness: number;
+	readonly sunShadows: boolean;
+	readonly moon: { readonly color: string; readonly strength: number };
+	readonly skyColor: string;
+	readonly groundColor: string;
 };
 
 /** Authored world presentation: the Sky and the resolve-time Treatment. */

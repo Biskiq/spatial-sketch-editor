@@ -428,7 +428,7 @@ import { PCFShadowMap } from 'three';
 			toneMapping={CANVAS_TONE_MAPPING}
 			renderMode={active ? 'always' : 'on-demand'}
 		>
-			{#if sky === null}
+			{#if sky === null || sky.preset === 'studio'}
 				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
 				<T.Color attach="background" args={['#e9ebe6']} />
 				<T.AmbientLight intensity={0.45} />
@@ -439,7 +439,6 @@ import { PCFShadowMap } from 'three';
 					<StoreMaterial descriptor={PAPER_GROUND} />
 				</T.Mesh>
 			{:else}
-				<T.AmbientLight intensity={0.12} />
 				<WorldEnvironment {sky} bounds={geometry.bounds ?? null} />
 			{/if}
 			{#if visitorState}
@@ -464,7 +463,7 @@ import { PCFShadowMap } from 'three';
 				{textureScope}
 				{artworkScope}
 				{modelUrls}
-				includeLights={sky !== null}
+				includeLights={sky !== null && sky.preset !== 'studio'}
 			/>
 			<!-- Renderer-observed first frame; inert unless the harness enables marks. -->
 			<VisitorFirstFrame {runEpoch} {active} />

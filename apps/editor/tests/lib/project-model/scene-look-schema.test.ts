@@ -1,5 +1,5 @@
 /**
- * Scene 8's Look schema at the unit boundary.
+ * Scene 9's Look schema at the unit boundary.
  *
  * The Scene codec owns one document's strict shape. This suite covers what only
  * the unit reader knows: the palette, the follower check and the stored Sky and
@@ -8,7 +8,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	SCENE_ENVIRONMENT_SET_KIND,
-	SCENE_SKY_PRESET_STARTS,
+	SCENE_SKY_UPDATE_KIND,
+	SCENE_SKY_DEFAULT,
+	createSceneSkyUpdatePlanner,
+	skyFromPreset,
 	SCENE_UNIT_FORMAT_VERSION,
 	createSceneEnvironmentSetPlanner,
 	type CameraFreeSceneDocument,
@@ -43,10 +46,10 @@ function issues(input: unknown) {
 	return result.issues.map((issue) => ({ code: issue.code, path: issue.path }));
 }
 
-describe('Scene 8 unit payload', () => {
-	it('admits format 8 and refuses format 7 strictly', () => {
+describe('Scene 9 unit payload', () => {
+	it('admits format 9 and refuses format 8 strictly', () => {
 		expect(validateCameraFreeScenePayload(payload()).success).toBe(true);
-		expect(issues({ ...payload(), formatVersion: 7 })).toContainEqual(
+		expect(issues({ ...payload(), formatVersion: 8 })).toContainEqual(
 			expect.objectContaining({ code: 'unsupported_format_version', path: '$.formatVersion' })
 		);
 	});
@@ -120,37 +123,28 @@ describe('Scene 8 unit payload', () => {
 	});
 
 	it('admits the full stored Sky and refuses every out-of-bounds field', () => {
-		const start = structuredClone(SCENE_SKY_PRESET_STARTS.dusk);
+		const start = structuredClone(skyFromPreset('dusk', 0));
 		const admitted = validateCameraFreeScenePayload(payload({ environment: { sky: start } }));
 		expect(admitted.success).toBe(true);
 		if (admitted.success) expect(admitted.value.environment?.sky).toEqual(start);
 
-		const tooSoft = { ...start, sun: { ...start.sun, softness: 1.5 } };
-		expect(issues(payload({ environment: { sky: tooSoft } }))).toContainEqual(
-			expect.objectContaining({ code: 'invalid_value', path: '$.environment.sky.sun.softness' })
-		);
+		const cases = [
+			['time', { time: 24 }], ['heading', { heading: 360 }],
+			['arcHeight', { arcHeight: 19 }], ['arcHeight', { arcHeight: 81 }],
+			['haze', { haze: -1 }], ['haze', { haze: 101 }],
+			['exposure', { exposure: -2.1 }], ['exposure', { exposure: 2.1 }],
+			['softness', { softness: Infinity }], ['skyColor', { skyColor: '#ABCDEF' }],
+			['sunShadows', { sunShadows: 1 }], ['moon.color', { moon: { strength: 0.1 } }]
+		] as const;
+		for (const [field, patch] of cases) {
+			expect(issues(payload({ environment: { sky: { ...start, ...patch } } }))).toContainEqual({
+				code: 'invalid_sky_field', path: `$.environment.sky.${field}`
+			});
+		}
+		expect(issues(payload({ environment: { sky: { ...start, sun: {} } } }))).toContainEqual({
+			code: 'unknown-key', path: '$.environment.sky.sun'
+		});
 
-		const tooHigh = { ...start, sun: { ...start.sun, elevation: Math.PI / 2 + 0.01 } };
-		expect(issues(payload({ environment: { sky: tooHigh } }))).toContainEqual(
-			expect.objectContaining({ code: 'invalid_value', path: '$.environment.sky.sun.elevation' })
-		);
-
-		const unreadable = { ...start, haze: { color: start.haze.color, visibility: 1 } };
-		expect(issues(payload({ environment: { sky: unreadable } }))).toContainEqual(
-			expect.objectContaining({ code: 'invalid_value', path: '$.environment.sky.haze.visibility' })
-		);
-
-		const missingHaze = structuredClone(start) as unknown as { haze: Record<string, unknown> };
-		delete missingHaze.haze.color;
-		expect(issues(payload({ environment: { sky: missingHaze } }))).toContainEqual(
-			expect.objectContaining({ path: '$.environment.sky.haze.color' })
-		);
-
-		const missingSoftness = structuredClone(start) as unknown as { sun: Record<string, unknown> };
-		delete missingSoftness.sun.softness;
-		expect(issues(payload({ environment: { sky: missingSoftness } }))).toContainEqual(
-			expect.objectContaining({ path: '$.environment.sky.sun.softness' })
-		);
 	});
 
 	it('admits Flat colour and Clay, and refuses natural as a tag', () => {
@@ -180,10 +174,10 @@ describe('Scene 8 unit payload', () => {
 			],
 			entities: [],
 			palette: [{ id: 'accent', name: 'Accent', color: '#112233' }],
-			environment: { treatment: 'clay' as const, sky: structuredClone(SCENE_SKY_PRESET_STARTS.daylight) }
+			environment: { treatment: 'clay' as const, sky: structuredClone(skyFromPreset('daylight', 0)) }
 		};
 		const sceneB: CameraFreeSceneDocument = {
-			environment: { sky: structuredClone(SCENE_SKY_PRESET_STARTS.daylight), treatment: 'clay' },
+			environment: { sky: structuredClone(skyFromPreset('daylight', 0)), treatment: 'clay' },
 			palette: [{ color: '#112233', name: 'Accent', id: 'accent' }],
 			entities: [],
 			materials: [
@@ -255,7 +249,7 @@ function request(
 	};
 }
 
-async function plan(preset: 'paper' | 'daylight' | 'golden-hour' | 'dusk', environment?: SceneEnvironment) {
+async function plan(preset: 'paper' | 'studio' | 'daylight' | 'golden-hour' | 'dusk', environment?: SceneEnvironment) {
 	const snapshot = await snapshotOf(environment);
 	const intent = request(snapshot, { preset });
 	return createSceneEnvironmentSetPlanner().prepare({
@@ -267,28 +261,27 @@ async function plan(preset: 'paper' | 'daylight' | 'golden-hour' | 'dusk', envir
 }
 
 describe('scene-environment-set', () => {
-	it('writes a fresh preset start', async () => {
-		const outcome = await plan('golden-hour');
+	it('writes a fresh preset start, preserving the Studio heading', async () => {
+		const outcome = await plan('golden-hour', { sky: skyFromPreset('studio', 137) });
 		expect(outcome.kind).toBe('prepared');
 		if (outcome.kind !== 'prepared') return;
 		const sky = outcome.candidate.source.units.scene.data.environment?.sky;
-		expect(sky).toEqual(SCENE_SKY_PRESET_STARTS['golden-hour']);
-		expect(sky).not.toBe(SCENE_SKY_PRESET_STARTS['golden-hour']);
+		expect(sky).toEqual(skyFromPreset('golden-hour', 137));
 	});
 
-	it('keeps the Treatment through a preset write and through Paper', async () => {
+	it('keeps the Treatment through a preset write and through Studio', async () => {
 		const dusk = await plan('dusk', { treatment: 'clay' });
 		expect(dusk.kind).toBe('prepared');
 		if (dusk.kind === 'prepared') {
 			expect(dusk.candidate.source.units.scene.data.environment).toEqual({
 				treatment: 'clay',
-				sky: SCENE_SKY_PRESET_STARTS.dusk
+				sky: skyFromPreset('dusk', 0)
 			});
 		}
 
-		const paper = await plan('paper', {
+		const paper = await plan('studio', {
 			treatment: 'clay',
-			sky: structuredClone(SCENE_SKY_PRESET_STARTS.dusk)
+			sky: structuredClone(skyFromPreset('dusk', 0))
 		});
 		expect(paper.kind).toBe('prepared');
 		if (paper.kind === 'prepared') {
@@ -296,37 +289,81 @@ describe('scene-environment-set', () => {
 		}
 	});
 
-	it('removes the environment entirely when Paper drops the last field', async () => {
-		const paper = await plan('paper', { sky: structuredClone(SCENE_SKY_PRESET_STARTS.daylight) });
+	it('removes the environment entirely when Studio drops the last field', async () => {
+		const paper = await plan('studio', { sky: structuredClone(skyFromPreset('daylight', 0)) });
 		expect(paper.kind).toBe('prepared');
 		if (paper.kind === 'prepared') {
 			expect('environment' in paper.candidate.source.units.scene.data).toBe(false);
 		}
 	});
 
-	it('answers no-change for Paper on Paper and for a Sky equal to its start', async () => {
-		const paper = await plan('paper');
+	it('answers no-change for Studio on Studio and for a Sky equal to its start', async () => {
+		const paper = await plan('studio');
 		expect(paper).toMatchObject({ kind: 'rejected', code: 'no-change' });
 
-		const same = await plan('daylight', { sky: structuredClone(SCENE_SKY_PRESET_STARTS.daylight) });
+		const same = await plan('daylight', { sky: structuredClone(skyFromPreset('daylight', 0)) });
 		expect(same).toMatchObject({ kind: 'rejected', code: 'no-change' });
 	});
 
 	it('treats the current preset as Reset on an edited Sky', async () => {
-		const base = SCENE_SKY_PRESET_STARTS.daylight;
+		const base = skyFromPreset('daylight', 0);
 		const edited = {
 			...base,
-			zenith: '#010101',
-			sun: { ...base.sun, intensity: 1.05 }
+			skyColor: '#010101',
+			exposure: 1.05
 		};
 		const reset = await plan('daylight', { sky: edited });
 		expect(reset.kind).toBe('prepared');
 		if (reset.kind !== 'prepared') return;
 		expect(reset.candidate.source.units.scene.data.environment?.sky).toEqual(
-			SCENE_SKY_PRESET_STARTS.daylight
+			skyFromPreset('daylight', 0)
 		);
 		expect(reset.candidate.changes).toEqual([
 			{ kind: 'scene.environment.updated', subjectIds: [], fields: ['environment'] }
 		]);
+	});
+});
+
+describe('Scene 9 Sky patch planner', () => {
+	async function update(patch: unknown, environment?: SceneEnvironment) {
+		const snapshot = await snapshotOf(environment);
+		const intent = {
+			...request(snapshot, patch as AuthoringIntent['payload']),
+			kind: SCENE_SKY_UPDATE_KIND
+		};
+		return createSceneSkyUpdatePlanner().prepare({
+			snapshot, intent, capturedInputs: intent.capturedInputs, allocatedIds: intent.allocatedIds
+		});
+	}
+
+	it('normalizes Studio at heading zero only', () => {
+		const validate = (heading: number) => validateCameraFreeScenePayload(payload({
+			environment: { sky: { ...SCENE_SKY_DEFAULT, heading } }
+		}));
+		const empty = validate(0);
+		const aimed = validate(90);
+		expect(empty.success && empty.value.environment).toBeUndefined();
+		expect(aimed.success && aimed.value.environment?.sky?.heading).toBe(90);
+	});
+
+	it('refuses the retired Paper choice and admits only heading edits in Studio', async () => {
+		expect(await plan('paper')).toMatchObject({ kind: 'rejected', code: 'invalid-payload' });
+		expect(await update({ time: 12 })).toMatchObject({ kind: 'rejected', code: 'unsupported-operation' });
+		const result = await update({ heading: 45 });
+		expect(result.kind === 'prepared' && result.candidate.source.units.scene.data.environment?.sky)
+			.toEqual(skyFromPreset('studio', 45));
+	});
+
+	it('merges one nested Moon field and validates the merged Sky', async () => {
+		const sky = skyFromPreset('moonlit', 151);
+		const environment = { sky, treatment: 'clay' } as const;
+		const result = await update({ moon: { strength: 0.6 } }, environment);
+		expect(result.kind === 'prepared' && result.candidate.source.units.scene.data.environment).toEqual({
+			sky: { ...sky, moon: { ...sky.moon, strength: 0.6 } }, treatment: 'clay'
+		});
+		for (const patch of [{}, { moon: {} }, { preset: 'dusk' }, { time: 24 }, { moon: { color: '#FFFFFF' } }]) {
+			expect(await update(patch, environment)).toMatchObject({ kind: 'rejected', code: 'invalid-payload' });
+		}
+		expect(await update({ heading: 151 }, environment)).toMatchObject({ kind: 'rejected', code: 'no-change' });
 	});
 });
