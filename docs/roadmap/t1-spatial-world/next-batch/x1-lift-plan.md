@@ -86,6 +86,36 @@ open-to-sky, any document-format change, any generalized visibility system.
     `material-factory-boundary.test.ts` holds an exact per-file EDITOR_INK allowlist.
 14. **Name clash.** The route already has an Index "Reveal" (`revealed` / `toggleReveal`) for
     depth/crop. X1 never uses the word Reveal in code identifiers; it is `lift` throughout.
+15. **The Stage renders on demand.** Threlte's default scheduler draws a frame only when asked.
+    Shell ink that mutates retained objects asks itself: `StageSelectionLayer.svelte` (L98, L378)
+    and `StageWallDevelopment.svelte` (L57, L231) call `useThrelte().invalidate()`.
+    `VisitorLayoutShell.svelte` does not call `useThrelte` at all. `StageShadowTriggers.svelte`
+    re-renders shadow maps only on a new `geometry`, `scene`, `modelUrls` or form revision, never
+    on a session reading. Preview's Canvas uses `renderMode="always"` only while active
+    (`VisitorPreviewSurface.svelte` L429).
+16. **Shadow eligibility in r187** (`three/src/renderers/webgl/WebGLShadowMap.js` L293, L524):
+    `const layers = (shadow.camera.layers.mask & 0xFFFFFFFE) !== 0 ? shadow.camera.layers : camera.layers;`
+    and a caster is drawn into the map only if `object.layers.test(layers)`. `castShadow` is
+    necessary, never sufficient: a mesh with `castShadow = true` on a layer the effective
+    shadow-camera mask lacks casts nothing.
+17. **Snapshots are cached by pose and source revision** (`stage-snapshots.ts` `snapshotKey`,
+    `requestStageSnapshot`, `clearStageSnapshotCache`). An image rendered while Lift is on would
+    be kept and reused after Put back, so it must already be as-built.
+
+## Proposed new files
+
+These files **do not exist on `main`**. Each is named here once, by its existing parent
+directory and its exact proposed filename. Everywhere else, this plan names them by filename
+only.
+
+| Proposed filename | Existing parent directory | Holds |
+|---|---|---|
+| `render-layers.ts` | `apps/editor/src/lib/render/` | `LIFTED_RENDER_LAYER` |
+| `interior-lift-store.svelte.ts` | `apps/editor/src/lib/authoring/layout/` | the Lift reading, `liftedSourcesNow` |
+| `StageLiftLayer.svelte` | `apps/editor/src/lib/authoring/stage/shell/` | outline and ghost ink |
+| `layout-overhead-sources.test.ts` | `apps/editor/tests/lib/layout/` | test 1 |
+| `lift-shadow-eligibility.test.ts` | `apps/editor/tests/lib/render/` | test 3b, the T2 contract |
+| `lift-snapshot-as-built.test.ts` | `apps/editor/tests/lib/authoring/` | test 9 |
 
 ## Architecture
 
@@ -94,10 +124,10 @@ open-to-sky, any document-format change, any generalized visibility system.
 | Concern | Owner | Module |
 |---|---|---|
 | Which overheads exist, their outline and elevation | layout-core (pure) | `packages/layout-core/src/layout-geometry-queries.ts` → `overheadSourcesOf` |
-| The reading: on/off and scope | shell session (Layout lane) | new `apps/editor/src/lib/authoring/layout/interior-lift-store.svelte.ts` |
+| The reading: on/off and scope | shell session (Layout lane) | new `interior-lift-store.svelte.ts` |
 | Drawing the lid lifted (gone from view and rays) | Layout representation | `render/layout-room-representation.ts` → `setLifted` |
-| The lifted layer number | render | new `apps/editor/src/lib/render/render-layers.ts` |
-| Dashed outline and selected ghost | Stage shell editor ink | new `apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte` |
+| The lifted layer number | render | new `render-layers.ts` |
+| Dashed outline and selected ghost | Stage shell editor ink | new `StageLiftLayer.svelte` |
 | Clicking an outline | Layout adapter pick | `authoring/layout/plan-pick-provider.ts` |
 | Entry, pill, Escape | shell | `StageDraftingControl`, `StageToolbars`, `StageViewportRegion`, `stage-keyboard.ts`, route |
 | Room Card action | Layout adapter | `authoring/adapters/layout/layout-contributions.ts` |
@@ -195,7 +225,7 @@ ties broken by smallest `roomId`; else `all`. The eye is
 
 **Decided.** Lifting moves each lifted lid mesh off the world layer onto an unused render layer.
 
-- New `apps/editor/src/lib/render/render-layers.ts`:
+- New `render-layers.ts` (see [Proposed new files](#proposed-new-files)):
   `export const LIFTED_RENDER_LAYER = 3;` with a doc comment: "World content a session reading has
   lifted out of the Stage view and out of rays. Snapshot cameras include it; the Stage camera and
   the default Raycaster do not."
@@ -210,13 +240,29 @@ ties broken by smallest `roomId`; else `all`. The eye is
 - `VisitorLayoutShell.svelte` gains `liftedRoomIds?: readonly string[] = []`, documented as
   "display-only session overlay, never persisted, never passed by Preview", applied in its own
   `$effect` next to the `walls.setHidden` effect: `rooms.setLifted(new Set(liftedRoomIds))`.
+- **Immediate visual invalidation (required).** A layer change on a retained mesh is not a
+  Threlte prop change, and the Stage renders on demand (Verified 15), so without a request the
+  ceiling stays drawn (or stays gone) until something unrelated asks for a frame.
+  - `setLifted` returns `boolean`: `true` when at least one mesh changed layer.
+  - `VisitorLayoutShell.svelte` takes `const { invalidate } = useThrelte();` and, in the lift
+    effect, calls `invalidate()` when `setLifted` returns `true`. It does not invalidate on a no-op.
+  - A rebuild needs no extra call: `rooms.update(geometry)` runs only on a new `geometry`, and a
+    new `geometry` already requests a frame through `StageShadowTriggers` (Verified 15). A Room
+    born lifted is drawn correctly in that frame.
+  - `StageLiftLayer.svelte` calls `invalidate()` after every rebuild and after disposal, as
+    `StageSelectionLayer` does.
+  - Lift **never** calls the shadow invalidation (`createShadowInvalidation`). Lift must not
+    change any shadow map, and re-rendering the maps would hide a violation of that rule rather
+    than catch it. The T2 contract test (3b) catches it instead.
 - `StageCanvas.svelte` passes `liftedRoomIds` from a prop the route provides. The route derives it:
   `interiorLift.reading === null ? [] : overheadSourcesOf(compiled, scope)` → `room-lid` keys →
   `roomId[]`. **`VisitorPreviewSurface` never passes it.**
 - `StageSnapshotRenderer.svelte` L92 becomes
   `camera.layers.set(STAGE_WORLD_LAYER); camera.layers.enable(STAGE_LIFTED_LAYER);` with the
   comment "Snapshots are as-built: a lifted overhead is world content." Snapshots invalidate on
-  `revision`; Lift does not bump it and must not (the image does not change).
+  `revision`; Lift does not bump it and must not (the image does not change). Because snapshots
+  are cached (Verified 17), "as-built during Lift" is proven by test 9 and QA 7, not just by the
+  mask.
 
 Why this works, from the Verified facts: the Stage camera does not render layer 3, so the lid
 disappears from the view; the default `Raycaster` (layer 0) misses it, so every `pickScene` /
@@ -248,17 +294,29 @@ props `{ sources: readonly OverheadSource[]; selectedRoomId: string | null; hove
   in `material-factory-boundary.test.ts`, with `N` the exact number of material constructions in
   the file (expected 2: one `LineMaterial`, one `MeshBasicMaterial`).
 
-**Approved vs Decided on "editable".** Approved: a selected lifted overhead draws as a ghost and
-stays editable. Decided: for a generated lid, "editable" means the selection is the ordinary Room
-selection, so the Room Card and every existing Room edit work unchanged while lifted. There are no
-lid handles today and X1 adds none; region handles are V1c (§5.9). Selection semantics are
-unchanged.
+**What "editable" means in X1.**
+
+- **Approved:** a selected lifted overhead draws as a ghost and stays editable (README: "editable
+  in place"; J11: "a ghost with handles (after V1)").
+- **Verified:** today's only overhead is the generated Room ceiling. It is derived, unpersisted,
+  has no identity tag and no subject of its own (Verified 1–2; `layout.md` slab/ceiling
+  ownership).
+- **Decided:**
+  - The generated ceiling is selected **through its Room**: an outline click or the Room's Index
+    row selects the Room subject `{ kind: 'room', id }`, the same subject a floor click selects.
+  - X1 **preserves** whatever Room edits the Room Card offers on `main`. They keep working while
+    the Room is lifted and selected, and none of them ends Lift.
+  - X1 **adds no ceiling-specific editing controls**: no ceiling handles, no ceiling height or
+    thickness field, no ceiling subject kind, no new Card section.
+  - "Editable in place" with handles on the overhead itself arrives with V1 authored overheads
+    (V1c, v-plan §5.9). Those join through `overheadSourcesOf` with their own subject.
+  - Selection semantics are unchanged.
 
 ### 5. Clicking the outline — in Layout's pick
 
 **Decided.** `createPlanPickProvider(planFor, liftedOutlines = () => [])` gains a second accessor
 returning the current `OverheadSource[]` (empty when Lift is off). `layout.adapter.ts` passes
-`() => liftedSourcesNow()`, a small exported function in `interior-lift-store.svelte.ts` that reads
+`() => liftedSourcesNow()`, a small exported function in the proposed `interior-lift-store.svelte.ts` that reads
 the store and the adapter's current compiled geometry through `overheadSourcesOf`.
 
 In the provider, only when `evaluation.renderedReading !== 'plan'` and
@@ -347,40 +405,85 @@ still takes Escape before the Stage. The route wires `liftActive: () => interior
 **Approved (T2 README §10):** "a surface hidden from the camera still casts and blocks light… T1
 owns how."
 
-**Conflict.** The layer mechanism hides a mesh from the Stage camera *and* from the Stage's shadow
-pass: r187 shadow cameras with an untouched mask render the viewing camera's layers (Verified 5).
-Today no lid casts (Verified 4), so Lift changes no light or shadow, and the acceptance
-("every light and shadow identical before, during and after") holds. If T2 or V1 ever makes a lid
-or region cast, a lifted one would silently stop casting in the Stage.
+**Two different facts (Verified 16).** Whether a mesh shadows anything depends on two separate
+things:
+
+- **Caster state:** `mesh.castShadow`. It is set by the representation that builds the mesh.
+- **Effective shadow-camera layer eligibility:** whether `mesh.layers` intersects the layers the
+  shadow pass actually uses. In r187 those are the light's `shadow.camera.layers` when that mask
+  has any bit other than 0, and otherwise the **viewing camera's** layers.
+
+A mesh shadows only when both hold. Lift changes the second fact for lid meshes and never the
+first.
+
+**Conflict.** On the Stage, `light-store.ts` never sets shadow-camera layers, so every shadow pass
+uses the Stage camera's mask `[0, 2]` (Verified 5). A lid moved to layer 3 becomes ineligible for
+every Stage shadow pass even if its `castShadow` were `true`. Today no lid casts (Verified 4), so
+Lift changes no light or shadow and the acceptance ("every light and shadow identical before,
+during and after") holds. The day V1 or T2 makes an overhead cast, a lifted one would silently
+stop shadowing in the Stage, with `castShadow` still reading `true`. That breaks T2 §10.
 
 **Smallest compatible resolution (Decided).**
 
 1. X1 does not edit `light-store.ts` (T2/E10's) and does not set `castShadow` on lids.
-2. X1 adds a test that pins the contract: for a built room representation, `setLifted` leaves
-   every mesh's `castShadow` / `receiveShadow` unchanged, and the set of `castShadow` meshes under
-   the layout root is identical before and after `setLifted` (no lid casts).
-3. The doc comment on `LIFTED_RENDER_LAYER` states the handoff, and `rendering.md` gets one
-   sentence under Layers: "A lifted overhead is on `LIFTED_RENDER_LAYER`. Any light whose shadow
-   must include world casters enables that layer on its shadow camera
-   (`shadow.camera.layers.enable(LIFTED_RENDER_LAYER)`); the light store owns that line when the
-   first overhead becomes a caster."
+2. X1 adds the **shadow-contract regression test** (test 3b, the proposed
+   `lift-shadow-eligibility.test.ts`). It tests effective eligibility, not `castShadow` alone:
+   - Fixture: the two-Room geometry built by the room, wall and object representations under
+     one root. One `DirectionalLight` and one `SpotLight` are realized through the light store
+     exactly as the Stage realizes them (the light store's existing test setup). The viewing camera
+     is a `PerspectiveCamera` with the Stage mask from `stageCameraLayerMask(false)`.
+   - Helper `effectiveShadowLayers(light, viewingCamera)`, local to the test, implements the r187
+     rule quoted in Verified 16. A second assertion reads `three/src/renderers/webgl/WebGLShadowMap.js`
+     and requires that rule's source text to be present, so a three upgrade that changes the rule
+     fails here instead of silently.
+   - `shadowedSet(light)`: every mesh under the root with `castShadow === true`, an all-`visible`
+     ancestor chain, and `mesh.layers.test(effectiveShadowLayers(light, camera))`.
+   - **Assertion A (identity):** for each light, `shadowedSet` is identical with Lift off, with
+     Lift on `all`, with Lift on one Space, and after Put back. `castShadow` and `receiveShadow`
+     are unchanged on every mesh.
+   - **Assertion B (the trigger):** for every lid mesh with `castShadow === true`, each
+     shadow-casting light's effective layers include `LIFTED_RENDER_LAYER`. Today no lid casts, so B
+     passes vacuously. The failure message names this section and the one-line fix.
+   - **Assertion C (the tripwire is live):** on a scratch copy of the fixture, one lid mesh is
+     given `castShadow = true`.
+     - With the unmodified light store, lifting it removes it from `shadowedSet`, and B's
+       predicate reports that lid.
+     - With `LIFTED_RENDER_LAYER` enabled on the shadow cameras, lifting it leaves `shadowedSet`
+       unchanged, and B's predicate reports nothing.
 
-That one line is T2's to add, at the time it makes overheads cast. No T2 code changes in X1.
+     This proves A and B detect the failure and accept the one-line fix. It does not change
+     production code.
+3. **Mandatory integration trigger for V1 and T2.** Any PR that makes an overhead mesh cast,
+   whether a V1 slab or region, a generated lid, or a T2 caster policy, must, in the same PR:
+   - enable `LIFTED_RENDER_LAYER` on every shadow camera the light store realizes
+     (`shadow.camera.layers.enable(LIFTED_RENDER_LAYER)`), keeping layer 0, and
+   - keep test 3b green with Assertion B no longer vacuous.
+
+   Test 3b's Assertion B enforces this mechanically: such a PR cannot pass CI without the light
+   store line. X1 writes the trigger into the `LIFTED_RENDER_LAYER` doc comment and into
+   `rendering.md` under Layers, as one sentence: "A lifted overhead sits on `LIFTED_RENDER_LAYER`;
+   the PR that first makes any overhead cast enables that layer on every light-store shadow camera,
+   and `lift-shadow-eligibility.test.ts` refuses it otherwise."
+4. **T2 acknowledgement, not a T2 code change.** X1 asks the T2 owner to acknowledge, on the X1
+   PR, three things:
+   - that §10 is met by this contract;
+   - that the light-store line is T2's to add when the trigger fires;
+   - that T2 will not add shadow-camera layer masks that drop layer 0 or 3 without updating
+     test 3b.
+
+   No T2 file changes in X1. If T2 declines, that is a stop condition.
 
 ## Files
 
-New:
+New: the six files in [Proposed new files](#proposed-new-files).
 
-- `packages/layout-core/src/layout-geometry-queries.ts` — `overheadSourcesOf` + types (edit of an
-  existing file).
-- `apps/editor/src/lib/render/render-layers.ts` — `LIFTED_RENDER_LAYER`.
-- `apps/editor/src/lib/authoring/layout/interior-lift-store.svelte.ts` — store, `liftedSourcesNow`.
-- `apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte` — outline and ghost ink.
+Edited (all exist on `main`):
 
-Edited:
-
-- `apps/editor/src/lib/render/layout-room-representation.ts` — `setLifted`.
-- `apps/editor/src/lib/visitor/VisitorLayoutShell.svelte` — `liftedRoomIds` prop and effect.
+- `packages/layout-core/src/layout-geometry-queries.ts` — `overheadSourcesOf` and its types.
+- `apps/editor/src/lib/render/layout-room-representation.ts` — `setLifted` (returns whether a
+  layer changed).
+- `apps/editor/src/lib/visitor/VisitorLayoutShell.svelte` — `liftedRoomIds` prop, lift effect,
+  `invalidate()`.
 - `apps/editor/src/lib/authoring/stage/paper-plan.ts` — re-export `STAGE_LIFTED_LAYER`.
 - `apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte` — enable the lifted layer.
 - `apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte` — pass `liftedRoomIds`, mount `StageLiftLayer`.
@@ -393,7 +496,7 @@ Edited:
 - `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` — wiring, `initialScope`,
   `resetViewContext` / teardown `clear()`, scoped-Room-gone effect.
 - `apps/editor/tests/lib/render/material-factory-boundary.test.ts` — allowlist entry.
-- `docs/reference/components/rendering.md` — the one Layers sentence (T2 handoff).
+- `docs/reference/components/rendering.md` — the one Layers sentence (the T2 integration trigger).
 - `docs/reference/components/layout.md` — one line under session readings: Lift is a Layout
   session reading, not persisted.
 
@@ -406,7 +509,8 @@ Fast lane unless noted. Fixtures: the existing two-Room wall-first fixture used 
 `layout-room-representation.test.ts` and the Face adapter test (one Room "Gallery" beside a second
 Room), plus a plinth object inside Gallery.
 
-1. **`overheadSourcesOf`** (new `apps/editor/tests/lib/layout/layout-overhead-sources.test.ts`, beside `layout-geometry.test.ts`): `all` returns one source per Room, sorted,
+1. **`overheadSourcesOf`** (proposed `layout-overhead-sources.test.ts`, beside
+   `layout-geometry.test.ts`): `all` returns one source per Room, sorted,
    outline = `ceilingPolygon`, elevation = `ceilingElevation`; `space` returns one; unknown Room →
    `[]`; a degenerate Room (< 3 points) is absent.
 2. **Lid pin (first, before any change):** in `layout-room-representation.test.ts`, a ray from
@@ -415,7 +519,13 @@ Room), plus a plinth object inside Gallery.
 3. **`setLifted`:** lifted ceiling mesh `layers.mask === 1 << 3`; floor and `floorShadow` on 0; an
    upward ray from inside now misses the ceiling; `visible` untouched everywhere; a rebuild by
    `update` with a new `cacheKey` is born lifted; `setLifted(new Set())` restores layer 0;
-   `castShadow`/`receiveShadow` unchanged and the caster set identical (T2 pin).
+   `setLifted` returns `true` on a change and `false` on a repeat of the same set.
+3a. **Invalidation:** a `VisitorLayoutShell` component test with a spy `invalidate` (the Threlte
+   context mock the shell tests already use, or `vi.mock('@threlte/core')`). Changing
+   `liftedRoomIds` from `[]` to `['gallery']` calls `invalidate` exactly once. Back to `[]` calls
+   it once more. Setting the same set again calls it zero times. Preview (no prop) never calls it.
+3b. **Shadow contract:** the proposed `lift-shadow-eligibility.test.ts`, specified in
+   [T2 boundary](#t2-boundary--the-one-real-conflict), with Assertions A, B and C.
 4. **Store:** `lift`/`setScope`/`putBack`/`clear`; `setScope` inactive no-op; never touches
    anything else (no history, no document).
 5. **Pick:** `plan-pick-provider` test with a lifted Gallery in 3D: a click within 8 CSS px of the
@@ -431,7 +541,27 @@ Room), plus a plinth object inside Gallery.
    `interior-lift-store` is unreachable from visitor/release/preview entry points; assert
    `VisitorPreviewSurface.svelte` does not mention `liftedRoomIds`; `render-layer-boundary` still
    passes with `render-layers.ts` importing nothing from authoring.
-9. **Snapshot:** `StageSnapshotRenderer` (or its helper) camera mask includes layers 0 and 3 only.
+9. **Snapshot as built during active Lift:** the proposed `lift-snapshot-as-built.test.ts`. The
+   mask check is part of it, not all of it.
+   - Extract the camera setup and the draw call from `StageSnapshotRenderer.svelte` into an
+     exported `renderStageSnapshot(renderer, scene, request, bounds)` in the same component's
+     `<script module>`. That is the smallest testable seam; the component's instance `render` calls
+     it, and its behavior is unchanged.
+   - Drive it with a recording renderer: a stub whose `render(scene, camera)` traverses `scene` and
+     records every mesh three would draw, meaning an all-`visible` ancestor chain and
+     `object.layers.test(camera.layers)`. It also records each mesh's material and world matrix.
+   - Scene: the real room, wall and object representations for the two-Room fixture, built under
+     one root as `VisitorLayoutShell` builds them. Add a dashed `Line2` and a ghost `Mesh` on
+     `STAGE_OVERLAY_LAYER`, standing in for `StageLiftLayer` ink.
+   - Assertions, with Lift **on** (`all`), compared with the same request made with Lift off:
+     - the recorded draw set is identical, mesh by mesh, with identical materials and matrices;
+     - it contains every `VisitorCeiling:<id>` mesh;
+     - it contains no outline or ghost object;
+     - the camera's mask is exactly layers 0 and 3.
+   - A request made during Lift and then served from the cache after Put back returns that same
+     image. Use `requestStageSnapshot` with a stub renderer registered through
+     `registerStageSnapshotRenderer`, and assert one render for the two requests.
+   - Pixels are proven in QA 7, because the unit lane has no WebGL context.
 10. **Composition:** `stage-shell-composition.test.ts` — the Lift item exists only behind the ▾,
     the pill appears exactly while active, Put back removes both.
 
@@ -439,15 +569,33 @@ Room), plus a plinth object inside Gallery.
 
 On the two-Room fixture in the dev editor:
 
-1. Inside Gallery at eye level: ▾ → Lift. Pill reads `Lift · Gallery ▾ · Put back`. The ceiling is
-   gone; a dashed neutral outline sits at the wall tops; the Camera did not move (compare
-   `stage.evaluation()` pose before/after); lights and shadows look identical.
-2. Click a plinth through where the lid was: the plinth selects. Click the outline: Gallery
-   selects, the translucent ghost appears, the Room Card is open and its edits work.
-3. Escape: selection closes. Escape again: Lift puts back, pill gone, ceiling back.
+1. Inside Gallery at eye level, with the pointer held still and no Camera motion: ▾ → Lift.
+   - Pill reads `Lift · Gallery ▾ · Put back`.
+   - **In the same frame the pill appears**, the ceiling is gone and a dashed neutral outline sits
+     at the wall tops. Nothing else (a hover, an orbit, a resize) should be needed to see it.
+   - The Camera did not move: compare the `stage.evaluation()` pose before and after.
+   - Lights and shadows look identical.
+2. Click a plinth through where the lid was: the plinth selects. Click the outline: Gallery is
+   selected as a Room, and the translucent ghost appears. The Room Card is open; its existing
+   Room edits work and do not end Lift. There are no ceiling handles or ceiling fields (by design).
+3. Escape: selection closes. Escape again: Lift puts back, pill gone. **The ceiling returns
+   immediately**, again with no other input.
 4. From above: Lift from the Room Card → same pill; switch to Plan and back → still lifted.
 5. Pill ▾ → Everything → both Rooms lifted. Open Preview → ceilings as built; close → still lifted.
-6. Undo/Redo a Wall move while lifted → Lift unchanged. Reload → Lift gone.
+6. Undo/Redo a Wall move while lifted → Lift unchanged, and the rebuilt Room is still lifted in
+   the first frame after the edit. Reload → Lift gone.
+7. **Snapshot pixels during Lift.** Use an authored View posed inside Gallery and looking up, so
+   the ceiling fills part of the frame. From above, the ceiling is back-face culled and would prove
+   nothing.
+   - In the dev console, import the same module instance:
+     `const s = await import('/src/lib/authoring/stage/stage-snapshots.ts')`.
+   - With Lift off: `s.clearStageSnapshotCache()`, request the View's snapshot → image A.
+   - Lift on (`Everything`): `s.clearStageSnapshotCache()`, request it again → image B.
+   - Decode both to pixels on a 2D canvas. Pass when every channel differs by at most 1. A diff
+     image or the max-difference number is the evidence.
+   - Meanwhile the live Stage at that pose shows no ceiling. Screenshot it, to prove Lift was in
+     effect while B rendered.
+   - Put back; the cached B is served unchanged (no re-render).
 
 ## Ordered steps
 
@@ -455,9 +603,10 @@ Each step ends green on `npm run check` and the step's tests.
 
 1. **Pin.** Test 2 (lid from above/below). Completion: passes on unmodified code.
 2. **layout-core.** `overheadSourcesOf` + test 1. Completion: the new layout test and `layout-geometry.test.ts` pass.
-3. **Render.** `render-layers.ts`, `setLifted`, `VisitorLayoutShell` prop, paper-plan re-export,
-   snapshot mask; tests 3 and 9. Completion: `test:fast` render suites and `test:arch`
-   render guards pass.
+3. **Render.** `render-layers.ts`, `setLifted`, the `VisitorLayoutShell` prop, effect and
+   `invalidate()`, the paper-plan re-export, the snapshot mask and the `renderStageSnapshot`
+   seam; tests 3, 3a, 3b and 9. Completion: `test:fast` render suites and `test:arch` render
+   guards pass, and test 3b's Assertion C proves the tripwire.
 4. **Store.** `interior-lift-store.svelte.ts` + test 4; route wiring for `liftedRoomIds`,
    `resetViewContext`, teardown, scoped-Room-gone effect. Completion: a dev-console
    `interiorLift.lift({kind:'all'})` lifts every lid.
@@ -465,7 +614,7 @@ Each step ends green on `npm run check` and the step's tests.
    outline and ghost visible in QA step 1/2.
 6. **Pick.** Outline pick + test 5. Completion: existing pick suites unchanged and green.
 7. **Entry and exit.** ▾ item, Room Card action, pill, Escape; tests 6, 7, 10. Completion: QA
-   steps 1–6.
+   steps 1–7.
 8. **Isolation and docs.** Test 8, the two reference-doc sentences. Completion: `npm run test:arch`,
    `npm run test:fast`, docs-references test green.
 
@@ -476,25 +625,33 @@ Each step ends green on `npm run check` and the step's tests.
 | Entered from the reading control and from a Room/Space/overhead Card | tests 6, 10; QA 1, 4 |
 | Lifts the selected or occupied Space, or everything | `initialScope` unit test in the route helper; QA 1, 5 |
 | Each lifted overhead leaves a dashed outline that selects it | test 5; QA 2 |
-| A selected lifted overhead is a ghost and stays editable | QA 2 |
-| Put back and Escape exit | tests 7, 10; QA 3 |
-| Camera pose, every light and shadow identical | no Camera intent (grep); test 3 T2 pin; QA 1 |
+| A selected lifted overhead is a ghost and stays editable (today: through its Room; no ceiling-specific controls) | QA 2 |
+| Put back and Escape exit, visibly at once | tests 3a, 7, 10; QA 1, 3 |
+| Camera pose, every light and shadow identical | no Camera intent (grep); test 3b; QA 1 |
 | Survives 2D/3D; not reload | test 4; QA 4, 6 |
-| Never in history, Preview, snapshot, release | tests 4, 8, 9; QA 5, 6 |
+| Never in history, Preview, snapshot, release | tests 4, 8, 9; QA 5, 6, 7 |
 
 ## Risks
 
-1. **Shadow coupling (T2).** Handled above; the pin test fails loudly if a lid starts casting.
-2. **Outline vs Wall top edge.** The outline sits on the inner Wall face top; the 0.05 m outline
+1. **Shadow coupling (T2).** Lift changes layer eligibility, not `castShadow`. Test 3b fails the
+   first PR that makes an overhead cast without the light-store line. T2's acknowledgement is
+   still outstanding until given on the X1 PR.
+2. **Stale frame.** If an `invalidate()` call is missed, Lift or Put back shows only on the next
+   unrelated frame. Test 3a and QA 1/3 cover it; the Stage's on-demand rendering makes this the
+   likeliest visible bug.
+3. **Outline vs Wall top edge.** The outline sits on the inner Wall face top; the 0.05 m outline
    band (§5) favors the outline within tolerance. Risk: clicking a Wall's top edge while lifted
    selects the Room. Accepted: the creator is in Lift and the outline is what is drawn there.
-3. **Fragment eligibility.** The outline hit reuses the Room's `room-floor` fragment; if a Room's
+4. **Fragment eligibility.** The outline hit reuses the Room's `room-floor` fragment; if a Room's
    floor fragment is ever ineligible, its outline is not clickable (Index row still works).
-4. **Z-fighting of the dashed line.** `elevation - 0.01` plus `OUTLINE_DEPTH_BIAS` should suffice;
+5. **Z-fighting of the dashed line.** `elevation - 0.01` plus `OUTLINE_DEPTH_BIAS` should suffice;
    if it flickers in QA, raise the offset to 0.02, nothing else.
-5. **V1/SP1 drift.** Both join only through `overheadSourcesOf`; if V1b lands first, its query
+6. **V1/SP1 drift.** Both join only through `overheadSourcesOf`; if V1b lands first, its query
    module wins the file location and X1 adds `overheadSourcesOf` beside `regionsOverSpace`.
-6. **Escape ladder regressions.** Covered by test 7 and the existing keyboard suite.
+7. **Escape ladder regressions.** Covered by test 7 and the existing keyboard suite.
+8. **Snapshot seam.** Moving the snapshot draw into a `<script module>` function is the one
+   structural change outside Lift itself. It must be a pure move, and `stage-snapshots.test.ts`
+   and `experience-snapshot.test.ts` must stay green unchanged.
 
 ## Stop conditions
 
@@ -503,7 +660,12 @@ Stop and report instead of improvising if any of these arises:
 - Any document-format, project-model or history change looks necessary.
 - `light-store.ts`, camera-core, `StageCamera` or `stageCameraLayerMask` would need an edit.
 - A lid turns out to cast a shadow on `main`, or any light/shadow difference shows in QA.
-- Selection semantics must change (a new subject kind, or the Room Card cannot edit while lifted).
+- Test 3b cannot be built against the light store's real realization without editing
+  `light-store.ts`.
+- The T2 owner declines the handoff in [T2 boundary](#t2-boundary--the-one-real-conflict) item 4.
+- QA 7 shows any pixel difference above 1 between the Lift-off and Lift-on snapshots.
+- Selection semantics must change (a new subject kind, or the Room Card cannot edit while lifted),
+  or a ceiling-specific control seems needed.
 - The outline pick cannot be placed in `plan-pick-provider.ts` without changing `StageDomainPick`
   or `resolveStagePick`.
 - SP1 or V1 code has landed and changes what an overhead is.
@@ -526,7 +688,8 @@ Setup: branch `feat/t1-x1-lift` from the latest `main`. Confirm `main` still has
 differs, stop (see Stop conditions in the plan).
 
 Execute the plan's "Ordered steps" 1→8 in order, one commit per step, each green before the next:
-  1 pin the lid ray test  2 overheadSourcesOf  3 render layer + setLifted + snapshot mask
+  1 pin the lid ray test  2 overheadSourcesOf
+  3 render layer + setLifted + invalidate + snapshot mask and seam (tests 3, 3a, 3b, 9)
   4 interior-lift-store + route wiring  5 StageLiftLayer ink + allowlist  6 outline pick
   7 ▾ Lift item, Room Card action, pill, Escape  8 isolation tests + two doc sentences
 
@@ -535,16 +698,22 @@ Checks before opening the PR:
   npm run test:arch
   npm run test:fast
   the docs-references test
-  focused browser QA: the plan's "Browser QA" steps 1–6 (inside the Room and from above).
+  focused browser QA: the plan's "Browser QA" steps 1–7 (inside the Room and from above).
   Record Camera pose before/after Lift in QA step 1 and confirm it is identical.
+  Confirm Lift and Put back show in the same frame, with no other input (QA 1, 3).
+  QA 7: compare Lift-off and Lift-on snapshot pixels for a View looking up inside the Room;
+  report the max channel difference (must be <= 1).
 
 Constraints: no document-format change, no history participation, no edits to light-store.ts,
 camera-core, StageCamera or stageCameraLayerMask, no changes to VisitorPreviewSurface, no
 generalized visibility system, no X2/SL1/#357 work, no speculative refactoring. Never write
-Object3D.visible for Lift. Commit messages carry no agent footer (AGENTS.md rule 10).
+Object3D.visible for Lift. Never call the shadow invalidation for Lift. The generated ceiling
+is selected through its Room: keep existing Room edits working and add no ceiling-specific
+controls. Commit messages carry no agent footer (AGENTS.md rule 10).
 
 Stop and report, without working around it, on any of the plan's Stop conditions.
 
 Deliver: a PR titled "feat(layout.interior-reveal): T1 X1 Lift" with the acceptance table from
-the plan filled in (check → result), the QA notes, and any deviation stated plainly. Do not merge.
+the plan filled in (check → result), the QA notes, and any deviation stated plainly. In the PR
+body, ask the T2 owner to acknowledge the handoff (plan, T2 boundary item 4). Do not merge.
 ```
