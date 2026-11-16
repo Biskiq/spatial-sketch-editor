@@ -9,7 +9,7 @@
 import type { MaterialId } from '@portfolio/project-model';
 import type { SceneDocument } from '$lib/content/scene';
 import {
-	SCENE_SKY_PRESET_STARTS,
+	skyFromPreset,
 	type SceneEnvironmentChoice
 } from '@portfolio/project-model/units';
 import type { WorldEnvironmentFrame, WorldEnvironmentLook } from '$lib/render/world-environment';
@@ -120,7 +120,7 @@ const SHADOW_BOUNDS = { min: [-4, 0, -2.5], max: [4, 2.5, 3.5] } as const;
 
 /** The three presets plus Paper, on the visit frame and the editor Stage frame. */
 export const SUN_CASES: readonly SunCase[] = (
-	['paper', 'daylight', 'golden-hour', 'dusk'] as const
+	['studio', 'daylight', 'golden-hour', 'dusk', 'overcast', 'moonlit'] as const
 ).flatMap((preset): SunCase[] => [
 	{
 		id: `visit:${preset}`,
@@ -140,5 +140,5 @@ export const SUN_CASES: readonly SunCase[] = (
  * editor's environment writer copies into a World.
  */
 export function sunCaseLook(preset: SceneEnvironmentChoice): WorldEnvironmentLook | null {
-	return worldEnvironmentLook(preset === 'paper' ? null : SCENE_SKY_PRESET_STARTS[preset]);
+	return worldEnvironmentLook(skyFromPreset(preset, 0));
 }

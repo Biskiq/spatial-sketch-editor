@@ -114,12 +114,20 @@ function apply(light: RealizedLight, descriptor: LightDescriptor): void {
 			const sun = light as DirectionalLight;
 			const { shadow } = descriptor;
 			sun.position.set(...descriptor.position);
-			sun.castShadow = true;
+			sun.castShadow = descriptor.castShadow;
 			sun.shadow.mapSize.set(shadow.mapSize, shadow.mapSize);
 			sun.shadow.bias = shadow.bias;
 			sun.shadow.normalBias = shadow.normalBias;
 			sun.shadow.radius = shadow.radius;
 			const camera = sun.shadow.camera;
+			const fromY = descriptor.position[1] - descriptor.target[1];
+			const distance = Math.hypot(
+				descriptor.position[0] - descriptor.target[0],
+				fromY,
+				descriptor.position[2] - descriptor.target[2]
+			);
+			const vertical = distance > 0 && Math.abs(fromY / distance) > 0.999;
+			camera.up.set(0, vertical ? 0 : 1, vertical ? 1 : 0);
 			camera.left = shadow.camera.left;
 			camera.right = shadow.camera.right;
 			camera.top = shadow.camera.top;
@@ -129,7 +137,6 @@ function apply(light: RealizedLight, descriptor: LightDescriptor): void {
 			camera.updateProjectionMatrix();
 			sun.target.position.set(...descriptor.target);
 			sun.target.updateMatrixWorld();
-			sun.shadow.needsUpdate = true;
 			return;
 		}
 	}

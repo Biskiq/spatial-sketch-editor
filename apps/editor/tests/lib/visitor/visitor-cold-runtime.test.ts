@@ -35,7 +35,7 @@ import {
 import {
 	MODEL_RESOURCE_MIME,
 	RESOURCE_UNIT_FORMAT_VERSION,
-	SCENE_SKY_PRESET_STARTS,
+	skyFromPreset,
 	SCENE_UNIT_FORMAT_VERSION
 } from '@portfolio/project-model/units';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
@@ -402,7 +402,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 	});
 
 	it('carries the stored Sky into the bundle and the public route passes it to the surface', async () => {
-		const start = structuredClone(SCENE_SKY_PRESET_STARTS['golden-hour']);
+		const start = structuredClone(skyFromPreset('golden-hour', 0));
 		const project = await createUnitProject({
 			id: 'project:cold-sky',
 			name: 'Golden Sky',

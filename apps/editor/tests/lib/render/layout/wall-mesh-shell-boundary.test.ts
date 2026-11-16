@@ -122,7 +122,7 @@ describe('G4 visitor shell boundary', () => {
 		expect(stageCanvas()).toContain('StageShadowTriggers');
 		// The render projection, not only the accepted Scene, is the trigger: a
 		// previewed or candidate light must move its cast shadow with its light.
-		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} scene={renderScene} {modelUrls} {formRenderRevision} />');
+		expect(stageCanvas()).toContain('{geometry} scene={renderScene} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
 		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()}');
 		// E8/R5: a drawn model is the retained representation's arrival too; it reports

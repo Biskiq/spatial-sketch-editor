@@ -19,6 +19,7 @@
  *   depth-affecting material change**: the same identities, since every mesh the
  *   Stage draws is derived from `geometry` or `scene`;
  * - a **Scene light** added, removed or changed: `scene` identity again;
+ * - a **Sun/Moon shadow camera** change: re-render that map alone;
  * - a **model arrival, release or drawn-state change**: a GLB parses after its URL
  *   is known, so no identity observes it. The Canvas's caster channel reports it
  *   and the owner invalidates once per event;
@@ -49,7 +50,7 @@ export type ShadowMapLike = {
 };
 
 /** The slice of a light this module needs, for counting. */
-export type ShadowCasterLight = { readonly castShadow?: boolean; readonly isPointLight?: boolean };
+export type ShadowCasterLight = { readonly castShadow?: boolean; readonly isPointLight?: boolean; readonly isDirectionalLight?: boolean };
 
 export type ShadowInvalidationStats = {
 	/** Shadow passes that actually rendered (not the no-op calls three skips). */
@@ -79,6 +80,7 @@ export type ShadowInvalidationOptions = {
 export type ShadowInvalidation = {
 	/** Report that something a shadow map depends on changed. Coalesces per frame. */
 	invalidate(): void;
+	invalidateSun(): void;
 	/**
 	 * Switch between "render on change" and today's per-frame updates. Switching
 	 * back re-renders once, because the last frame under per-frame updates is not
@@ -112,6 +114,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	let maps = 0;
 	let invalidations = 0;
 	let disposed = false;
+	let sunOnly = false;
 
 	// three skips the whole pass when `autoUpdate` is off and nothing asked for
 	// an update, but the call itself still happens. Count only a pass that
@@ -121,7 +124,10 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 		// A disabled shadow map renders nothing however the flags stand, so counting
 		// it would overstate the oracle.
 		const active = shadowMap.enabled !== false && (shadowMap.autoUpdate || shadowMap.needsUpdate);
-		const casting = active ? lights.filter((light) => light.castShadow) : [];
+		const selected = sunOnly && !shadowMap.autoUpdate
+			? lights.filter((light) => light.isDirectionalLight) : lights;
+		sunOnly = false;
+		const casting = active ? selected.filter((light) => light.castShadow) : [];
 		if (casting.length > 0) {
 			passes += 1;
 			// The work counter mirrors `stats().passes`: one shadow-map update that
@@ -129,7 +135,9 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 			countWork('render:shadow-update');
 			for (const light of casting) maps += light.isPointLight ? 6 : 1;
 		}
-		originalRender.call(shadowMap, lights, scene, camera);
+		originalRender.call(shadowMap, selected, scene, camera);
+		// Three exits before consuming needsUpdate when there are no shadow lights.
+		if (active && selected.length === 0) shadowMap.needsUpdate = false;
 	};
 
 	shadowMap.autoUpdate = alwaysUpdate;
@@ -138,6 +146,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	shadowMap.needsUpdate = true;
 
 	const restored = (): void => {
+		sunOnly = false;
 		// The context's textures and shadow maps are gone; every map must render
 		// again before the image is correct.
 		shadowMap.needsUpdate = true;
@@ -146,8 +155,16 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	canvas?.addEventListener('webglcontextrestored', restored);
 
 	const controller: ShadowInvalidation = {
+		invalidateSun() {
+			if (disposed || alwaysUpdate || shadowMap.needsUpdate) return;
+			sunOnly = true;
+			invalidations += 1;
+			shadowMap.needsUpdate = true;
+			requestFrame?.();
+		},
 		invalidate() {
 			if (disposed || alwaysUpdate) return;
+			sunOnly = false;
 			invalidations += 1;
 			shadowMap.needsUpdate = true;
 			requestFrame?.();
@@ -155,6 +172,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 		setAlwaysUpdate(next) {
 			if (disposed || next === alwaysUpdate) return;
 			alwaysUpdate = next;
+			sunOnly = false;
 			shadowMap.autoUpdate = next;
 			// One render after either switch: leaving per-frame mode must not leave
 			// the map from the last frame, and entering it does no harm.
