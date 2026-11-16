@@ -60,7 +60,6 @@ export type {
 	ScenePaletteSlot,
 	SceneSky,
 	SceneSkyPreset,
-	SceneSkySun,
 	SceneTreatment
 } from '../scene';
 
@@ -69,7 +68,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 8 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 9 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
@@ -184,11 +183,7 @@ export type CameraFreeSceneDocument = {
 	environment?: SceneEnvironment;
 };
 
-/**
- * The environment a World can choose: Paper (the absence of a Sky) or one of the
- * three Sky presets. A chosen preset copies its start into the World.
- */
-export type SceneEnvironmentChoice = 'paper' | SceneSkyPreset;
+export type SceneEnvironmentChoice = SceneSkyPreset;
 
 /** A Camera view: one eye/target/fov station plus its connectivity. */
 export type CameraView = {

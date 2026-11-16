@@ -1,3 +1,4 @@
+import { sameSky, SCENE_SKY_DEFAULT } from './sky-presets';
 import { hasOwnedFrozenJsonProof, rememberOwnedFrozenJson } from '../json-immutability';
 /**
  * Strict validation for F.2 `unit-envelope-v1` (AM-2).
@@ -304,9 +305,6 @@ export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUni
 	return { success: true, value: result.document, ignoredOptionalExtensions: [] };
 }
 
-const TWO_PI = Math.PI * 2;
-const SKY_HAZE_VISIBILITY_MIN = 5;
-const SKY_HAZE_VISIBILITY_MAX = 100000;
 const PALETTE_NAME_MAX_LENGTH = 40;
 const PALETTE_ID_MAX_LENGTH = 64;
 const SCENE_HEX_COLOR = /^#[0-9a-f]{6}$/;
@@ -321,140 +319,56 @@ function readSceneColor(reader: ShapeReader, input: unknown, path: string): stri
 	return value;
 }
 
-function readSkyNumber(
-	reader: ShapeReader,
-	record: Record<string, unknown>,
-	key: string,
-	path: string,
-	min: number,
-	max: number,
-	inclusiveMax: boolean
-): number | null {
-	const value = reader.number(record[key], `${path}.${key}`);
-	if (value === null) return null;
-	if (value < min || (inclusiveMax ? value > max : value >= max)) {
-		reader.problem(
-			`${path}.${key}`,
-			'invalid_value',
-			`${path}.${key} must be ${inclusiveMax ? `within [${min}, ${max}]` : `within [${min}, ${max})`}`
-		);
-		return null;
-	}
-	return value;
-}
-
 function readSky(reader: ShapeReader, input: unknown, path: string): SceneSky | null {
+	const firstIssue = reader.issues.length;
 	const record = reader.object(input, path, [
-		'preset',
-		'sun',
-		'zenith',
-		'horizon',
-		'ground',
-		'haze',
-		'hemisphere'
+		'preset', 'time', 'heading', 'arcHeight', 'haze', 'exposure', 'softness',
+		'sunShadows', 'moon', 'skyColor', 'groundColor'
 	]);
 	if (record === null) return null;
-	const presetRaw = record.preset;
-	if (typeof presetRaw !== 'string' || !(SCENE_SKY_PRESETS as readonly string[]).includes(presetRaw)) {
-		reader.problem(
-			`${path}.preset`,
-			'invalid_value',
-			`${path}.preset must be one of ${SCENE_SKY_PRESETS.join(', ')}`
-		);
+
+	const preset = SCENE_SKY_PRESETS.find((choice) => choice === record.preset);
+	if (preset === undefined) {
+		reader.problem(`${path}.preset`, 'invalid_sky_field', `${path}.preset must be one of ${SCENE_SKY_PRESETS.join(', ')}`);
 	}
-	const sun = reader.object(record.sun, `${path}.sun`, [
-		'azimuth',
-		'elevation',
-		'color',
-		'intensity',
-		'softness'
-	]);
-	const azimuth =
-		sun === null ? null : readSkyNumber(reader, sun, 'azimuth', `${path}.sun`, 0, TWO_PI, false);
-	const elevation =
-		sun === null
-			? null
-			: readSkyNumber(reader, sun, 'elevation', `${path}.sun`, 0, Math.PI / 2, true);
-	const sunColor = sun === null ? null : readSceneColor(reader, sun.color, `${path}.sun.color`);
-	const intensity =
-		sun === null
-			? null
-			: readSkyNumber(reader, sun, 'intensity', `${path}.sun`, 0, Number.MAX_VALUE, true);
-	const softness =
-		sun === null ? null : readSkyNumber(reader, sun, 'softness', `${path}.sun`, 0, 1, true);
-	const zenith = readSceneColor(reader, record.zenith, `${path}.zenith`);
-	const horizon = readSceneColor(reader, record.horizon, `${path}.horizon`);
-	const ground = readSceneColor(reader, record.ground, `${path}.ground`);
-	const haze = reader.object(record.haze, `${path}.haze`, ['color', 'visibility']);
-	const hazeColor = haze === null ? null : readSceneColor(reader, haze.color, `${path}.haze.color`);
-	let visibilityValid = true;
-	let visibility: number | undefined;
-	if (haze !== null && 'visibility' in haze) {
-		const value = readSkyNumber(
-			reader,
-			haze,
-			'visibility',
-			`${path}.haze`,
-			SKY_HAZE_VISIBILITY_MIN,
-			SKY_HAZE_VISIBILITY_MAX,
-			true
-		);
-		if (value === null) visibilityValid = false;
-		else visibility = value;
+	function number(input: unknown, field: string, min: number, max: number, inclusiveMax = true): number {
+		if (typeof input === 'number' && Number.isFinite(input) &&
+			input >= min && (inclusiveMax ? input <= max : input < max)) return input;
+		reader.problem(`${path}.${field}`, 'invalid_sky_field', `${path}.${field} must be within [${min}, ${max}${inclusiveMax ? ']' : ')'}`);
+		return min;
 	}
-	const hemisphere = reader.object(record.hemisphere, `${path}.hemisphere`, [
-		'skyColor',
-		'groundColor',
-		'intensity'
-	]);
-	const hemisphereSky =
-		hemisphere === null
-			? null
-			: readSceneColor(reader, hemisphere.skyColor, `${path}.hemisphere.skyColor`);
-	const hemisphereGround =
-		hemisphere === null
-			? null
-			: readSceneColor(reader, hemisphere.groundColor, `${path}.hemisphere.groundColor`);
-	const hemisphereIntensity =
-		hemisphere === null
-			? null
-			: readSkyNumber(
-					reader,
-					hemisphere,
-					'intensity',
-					`${path}.hemisphere`,
-					0,
-					Number.MAX_VALUE,
-					true
-				);
-	if (
-		typeof presetRaw !== 'string' ||
-		!(SCENE_SKY_PRESETS as readonly string[]).includes(presetRaw) ||
-		azimuth === null ||
-		elevation === null ||
-		sunColor === null ||
-		intensity === null ||
-		softness === null ||
-		zenith === null ||
-		horizon === null ||
-		ground === null ||
-		hazeColor === null ||
-		!visibilityValid ||
-		hemisphereSky === null ||
-		hemisphereGround === null ||
-		hemisphereIntensity === null
-	) {
-		return null;
+	function color(input: unknown, field: string): string {
+		if (typeof input === 'string' && SCENE_HEX_COLOR.test(input)) return input;
+		reader.problem(`${path}.${field}`, 'invalid_sky_field', `${path}.${field} must be a lowercase #rrggbb colour`);
+		return '';
 	}
-	return {
-		preset: presetRaw as SceneSky['preset'],
-		sun: { azimuth, elevation, color: sunColor, intensity, softness },
-		zenith,
-		horizon,
-		ground,
-		haze: { color: hazeColor, ...(visibility === undefined ? {} : { visibility }) },
-		hemisphere: { skyColor: hemisphereSky, groundColor: hemisphereGround, intensity: hemisphereIntensity }
+
+	const moon = reader.object(record.moon, `${path}.moon`, ['color', 'strength']);
+	if (typeof record.sunShadows !== 'boolean') {
+		reader.problem(`${path}.sunShadows`, 'invalid_sky_field', `${path}.sunShadows must be a boolean`);
+	}
+	const sky: SceneSky = {
+		preset: preset ?? 'studio',
+		time: number(record.time, 'time', 0, 24, false),
+		heading: number(record.heading, 'heading', 0, 360, false),
+		arcHeight: number(record.arcHeight, 'arcHeight', 20, 80),
+		haze: number(record.haze, 'haze', 0, 100),
+		exposure: number(record.exposure, 'exposure', -2, 2),
+		softness: number(record.softness, 'softness', 0, 1),
+		sunShadows: record.sunShadows === true,
+		moon: { color: color(moon?.color, 'moon.color'), strength: number(moon?.strength, 'moon.strength', 0, 1) },
+		skyColor: color(record.skyColor, 'skyColor'),
+		groundColor: color(record.groundColor, 'groundColor')
 	};
+	return reader.issues.length === firstIssue ? sky : null;
+}
+
+export function validateSceneSky(input: unknown, path = '$.environment.sky'): ShapeValidation<SceneSky> {
+	const reader = new ShapeReader();
+	const value = readSky(reader, input, path);
+	return value === null
+		? { success: false, issues: reader.issues }
+		: { success: true, value, ignoredOptionalExtensions: [] };
 }
 
 function readEnvironment(reader: ShapeReader, input: unknown): SceneEnvironment | undefined {
@@ -464,7 +378,7 @@ function readEnvironment(reader: ShapeReader, input: unknown): SceneEnvironment 
 	let sky: SceneSky | undefined;
 	if ('sky' in record) {
 		const parsed = readSky(reader, record.sky, `${path}.sky`);
-		if (parsed !== null) sky = parsed;
+		if (parsed !== null && !sameSky(parsed, SCENE_SKY_DEFAULT)) sky = parsed;
 	}
 	let treatment: SceneTreatment | undefined;
 	if ('treatment' in record) {
@@ -1437,7 +1351,9 @@ function readUnitHeader(
 		reader.problem(
 			`${path}.formatVersion`,
 			'unsupported_format_version',
-			`${path}.formatVersion must be ${ADMITTED_UNIT_VERSIONS[domain]} for the ${domain} unit`
+			domain === 'scene' && record.formatVersion === 8
+				? 'Scene 8 projects and releases require re-authoring in Scene 9 before publishing again.'
+				: `${path}.formatVersion must be ${ADMITTED_UNIT_VERSIONS[domain]} for the ${domain} unit`
 		);
 		return null;
 	}

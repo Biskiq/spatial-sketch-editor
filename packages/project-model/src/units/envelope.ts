@@ -65,6 +65,7 @@ export async function createEmptyUnitEnvelope(input: {
 	readonly name: string;
 	readonly acceptedRevision: ProjectEnvelope['acceptedRevision'];
 	readonly layout?: LayoutUnitPayload;
+	readonly scene?: CameraFreeSceneDocument;
 }): Promise<ProjectEnvelope> {
 	return createProjectEnvelope({
 		id: input.id,
@@ -75,7 +76,7 @@ export async function createEmptyUnitEnvelope(input: {
 			unitId: `${input.id}:layout`,
 			data: input.layout ?? createEmptyWallFirstLayoutDocument()
 		},
-		scene: { unitId: `${input.id}:scene`, data: createEmptyUnitSceneDocument() },
+		scene: { unitId: `${input.id}:scene`, data: input.scene ?? createEmptyUnitSceneDocument() },
 		camera: { unitId: `${input.id}:camera`, data: createEmptyCameraPayload() },
 		experience: { unitId: `${input.id}:experience`, data: createEmptyExperiencePayload() },
 		resources: { unitId: `${input.id}:resources`, data: createEmptyResourcePayload() }
