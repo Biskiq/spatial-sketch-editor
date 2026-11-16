@@ -33,7 +33,7 @@ import {
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
 	SCENE_ENVIRONMENT_SET_KIND,
-	SCENE_SKY_PRESET_STARTS
+	skyFromPreset
 } from '@portfolio/project-model/units';
 import {
 	cameraConnectionCreateIntent,
@@ -666,7 +666,7 @@ describe('R217.S29 Camera paths', () => {
 		} as Parameters<typeof accept>[0]);
 		if (environment.kind !== 'accepted') throw new Error(JSON.stringify(environment).slice(0, 600));
 		expect(coordinator.acceptedSnapshot().domain.source.units.scene.data.environment).toEqual({
-			sky: SCENE_SKY_PRESET_STARTS.daylight
+			sky: skyFromPreset('daylight', 0)
 		});
 	});
 

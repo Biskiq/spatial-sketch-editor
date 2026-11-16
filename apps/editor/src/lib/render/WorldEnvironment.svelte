@@ -1,35 +1,22 @@
 <script lang="ts">
-	/**
-	 * Experience review 1 — renders one World environment preset.
-	 *
-	 * Runtime-safe and shared: the Stage, its snapshots (same scene, world layer)
-	 * and the visitor surface mount this one component with the Scene's stored
-	 * Sky. The sky is the scene background (a vertical gradient, so it never
-	 * clips at the camera's far plane), the ground is one disc fading into the
-	 * horizon haze, and the light is a hemisphere fill plus one sun whose shadow
-	 * camera fits the World's bounds. The Sun is resolved by `resolveSkySun` and
-	 * realized by the Canvas light store; this component constructs no light but
-	 * the hemisphere fill. An absent Sky is Paper and renders nothing: the host
-	 * keeps its own look.
-	 */
 	import { onDestroy } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
 	import {
 		BufferAttribute,
-		CanvasTexture,
 		CircleGeometry,
 		Color,
-		Group,
-		SRGBColorSpace,
-		type Texture
+		FogExp2,
+		Group
 	} from 'three';
 	import type { SceneSky } from '@portfolio/project-model/units';
 	import {
 		WORLD_ENVIRONMENT_GROUND_RADIUS_METERS,
+		colorHex,
 		resolveSkySun,
 		worldEnvironmentCenter,
 		worldEnvironmentLook
 	} from './world-environment';
+	import { createSkyBackground } from './sky-background';
 	import { useRenderResources } from './resources/render-resources';
 	import type { LightLease } from './resources/light-store';
 	import type { WorldEnvironmentBounds } from './world-environment';
@@ -77,29 +64,12 @@
 	const ground = new CircleGeometry(WORLD_ENVIRONMENT_GROUND_RADIUS_METERS, 64, 0, Math.PI * 2);
 	ground.setAttribute('color', new BufferAttribute(new Float32Array(ground.getAttribute('position').count * 3), 3));
 
-	function skyTexture(top: string, bottom: string): Texture | null {
-		if (typeof document === 'undefined') return null;
-		const canvas = document.createElement('canvas');
-		canvas.width = 2;
-		canvas.height = 256;
-		const context = canvas.getContext('2d');
-		if (context === null) return null;
-		const gradient = context.createLinearGradient(0, 0, 0, 256);
-		gradient.addColorStop(0, top);
-		gradient.addColorStop(1, bottom);
-		context.fillStyle = gradient;
-		context.fillRect(0, 0, 2, 256);
-		const texture = new CanvasTexture(canvas);
-		texture.colorSpace = SRGBColorSpace;
-		return texture;
-	}
-
-	// Ground colours: the preset's ground near the World, its haze at the rim.
+	const groundKey = $derived(look ? [...look.ground, ...look.groundFar].join('|') : null);
 	$effect(() => {
-		const current = look;
-		if (current === null) return;
-		const near = new Color(current.ground);
-		const far = new Color(current.haze);
+		if (groundKey === null) return;
+		const [r, g, b, farR, farG, farB] = groundKey.split('|').map(Number);
+		const near = new Color(r!, g!, b!);
+		const far = new Color(farR!, farG!, farB!);
 		const positions = ground.getAttribute('position');
 		const colors = ground.getAttribute('color') as BufferAttribute;
 		const mixed = new Color();
@@ -112,19 +82,37 @@
 		invalidate();
 	});
 
-	// The sky is the scene background; the previous background comes back on leave.
-	let installed: Texture | null = null;
 	const previousBackground = scene.background;
+	const previousFog = scene.fog;
+	const fog = new FogExp2(0xffffff, 0);
+	const background = typeof document === 'undefined' ? null : createSkyBackground();
+	const backgroundKey = $derived(look ? JSON.stringify({
+		zenith: look.zenith, horizon: look.horizon, glow: look.glow
+	}) : null);
+
 	$effect(() => {
-		const current = look;
-		installed?.dispose();
-		installed = current === null ? null : skyTexture(current.sky[0], current.sky[1]);
-		scene.background = installed ?? previousBackground;
+		if (!background || backgroundKey === null) {
+			if (scene.background === background?.texture) scene.background = previousBackground;
+			return;
+		}
+		background.update(JSON.parse(backgroundKey));
+		scene.background = background.texture;
+		invalidate();
+	});
+	$effect(() => {
+		if (look === null) {
+			if (scene.fog === fog) scene.fog = previousFog;
+			return;
+		}
+		fog.color.setRGB(...look.fog.color);
+		fog.density = look.fog.density;
+		scene.fog = fog;
 		invalidate();
 	});
 	onDestroy(() => {
-		if (scene.background === installed) scene.background = previousBackground;
-		installed?.dispose();
+		if (scene.background === background?.texture) scene.background = previousBackground;
+		if (scene.fog === fog) scene.fog = previousFog;
+		background?.texture.dispose();
 		ground.dispose();
 	});
 
@@ -167,7 +155,8 @@
 </script>
 
 {#if look !== null}
-	<T.HemisphereLight args={[look.hemisphere[0], look.hemisphere[1], look.hemisphere[2]]} />
+	<T.HemisphereLight color={colorHex(look.hemisphere.skyColor)} groundColor={colorHex(look.hemisphere.groundColor)} intensity={look.hemisphere.intensity} />
+	<T.AmbientLight intensity={look.ambient} />
 	<T is={sunHolder} />
 	<T.Mesh geometry={ground} rotation.x={-Math.PI / 2} position={[center[0], groundY - (flatGround ? 0.05 : 0.02), center[2]]} renderOrder={flatGround ? -1 : 0} receiveShadow={!flatGround}>
 		<StoreMaterial descriptor={flatGround ? FLAT_GROUND : LIT_GROUND} />

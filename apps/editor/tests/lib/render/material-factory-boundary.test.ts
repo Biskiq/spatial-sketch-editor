@@ -51,6 +51,7 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: 1, owner: 'lift ink' },
 	'lib/authoring/stage/shell/StageWallDevelopment.svelte': { count: 1, owner: 'development overlay' },
+	'lib/authoring/stage/shell/StageCelestialDial.svelte': { count: 1, owner: 'Celestial Dial ink' },
 	'lib/authoring/stage/shell/StageWallPin.svelte': { count: 1, owner: 'pin gizmo' },
 	'routes/dev/assets/+page.svelte': { count: 1, owner: 'dev bench' },
 	'routes/dev/materials/+page.svelte': { count: 1, owner: 'dev bench' }

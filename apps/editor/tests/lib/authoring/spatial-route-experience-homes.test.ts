@@ -773,18 +773,20 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(pickers).toHaveLength(0);
 	});
 
-	it('authors the World environment before opening Experience and reads it in both lenses', async () => {
-		const chip = () => target.querySelector<HTMLButtonElement>('[data-environment-chip]')!;
-		expect(chip().textContent).toContain('Paper');
-		chip().click();
+	it('keeps the authored Sky across the lenses and offers its controls only in World', async () => {
+		const button = () => target.querySelector<HTMLButtonElement>('button[aria-label^="Environment"]');
+		expect(button()?.ariaLabel).toContain('Studio');
+		button()?.click();
 		await frame();
-		target.querySelector<HTMLButtonElement>('[data-environment="golden-hour"]')!.click();
-		await vi.waitFor(() => expect(chip().textContent).toContain('Golden hour'));
+		target.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Golden hour"]')!.click();
+		await vi.waitFor(() => expect(button()?.ariaLabel).toContain('Golden hour'));
 
 		await enterExperience();
-		expect(chip().textContent).toContain('Golden hour');
+		expect(button()).toBeNull();
 		expect((await acceptance().undo()).kind).toBe('installed');
-		await vi.waitFor(() => expect(chip().textContent).toContain('Paper'));
+		control('World').click();
+		await vi.waitFor(() => expect(button()?.ariaLabel).toContain('Studio'));
+
 	});
 
 	it('shows the ready draft and the list + when no Experience exists, and the dock keys', async () => {

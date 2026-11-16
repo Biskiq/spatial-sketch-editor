@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { sceneLookFor } from '$lib/render/materials/scene-instance-material';
+import { SCENE_SKY_PRESETS, skyFromPreset } from '@portfolio/project-model/units';
+import { resolveSkyLook } from '$lib/render/sky-atmosphere';
 import { resolveSkySun } from '$lib/render/world-environment';
 import {
 	LOOK_CASES,
@@ -46,6 +48,7 @@ type SunGolden = {
 
 export type LookParityGolden = {
 	readonly version: 1;
+	readonly skies: readonly { case: string; look: unknown }[];
 	readonly capturedFrom: string;
 	readonly looks: readonly LookGolden[];
 	readonly suns: readonly SunGolden[];
@@ -55,7 +58,13 @@ export type LookParityGolden = {
 export function currentLookParityGolden(): LookParityGolden {
 	return {
 		version: 1,
-		capturedFrom: 'Scene 7 main (17d86b00), before the Scene 8 look schema',
+		capturedFrom: 'Finish from Scene 7 main (17d86b00). Sky from Scene 9.',
+		skies: [
+			...SCENE_SKY_PRESETS.map((preset) => ({ case: preset, look: resolveSkyLook(skyFromPreset(preset, 0)) })),
+			...[0.75, 5.5, 6.5, 9, 16, 19.5].map((time) => ({
+				case: `daylight:${time}`, look: resolveSkyLook({ ...skyFromPreset('daylight', 0), time })
+			}))
+		],
 		looks: LOOK_CASES.map((lookCase) => {
 			const look = sceneLookFor(
 				lookCaseDocument(lookCase),
@@ -81,10 +90,11 @@ function serialized(golden: LookParityGolden): string {
 
 
 describe('look parity golden', () => {
-	it('matches the descriptors captured from main before the Scene 8 change', () => {
+	it('matches Finish and Scene 9 Sky descriptors', () => {
 		const current = currentLookParityGolden();
 		if (process.env.LOOK_PARITY_GOLDEN === 'write') {
-			writeFileSync(GOLDEN_PATH, serialized(current));
+			const previous = JSON.parse(readFileSync(GOLDEN_PATH, 'utf8')) as LookParityGolden;
+			writeFileSync(GOLDEN_PATH, serialized({ ...current, looks: previous.looks }));
 		}
 		const recorded = JSON.parse(readFileSync(GOLDEN_PATH, 'utf8')) as LookParityGolden;
 		const mismatches: string[] = [];

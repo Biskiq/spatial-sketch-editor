@@ -20,7 +20,7 @@ import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	RESOURCE_UNIT_FORMAT_VERSION,
-	SCENE_SKY_PRESET_STARTS,
+	skyFromPreset,
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
@@ -210,9 +210,9 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
 		[projectId]
 	);
-	// Scene format 8 is the only admitted format now, and Save stores exactly
+	// Scene format 9 is the only admitted format now, and Save stores exactly
 	// the captured canonical bytes — the form source is never re-derived.
-	assert.equal(SCENE_UNIT_FORMAT_VERSION, 8);
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 9);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
 	assert.equal(storedScene.header.formatVersion, SCENE_UNIT_FORMAT_VERSION);
@@ -545,9 +545,9 @@ test('release preparation pins a P20 texture that a Finish names only through a 
 		palette: [{ id: 'accent', name: 'Accent', color: '#445566' }, { id: 'ground', name: 'Ground', color: '#ddccbb' }],
 		environment: {
 			sky: {
-				...SCENE_SKY_PRESET_STARTS['golden-hour'],
-				sun: { ...SCENE_SKY_PRESET_STARTS['golden-hour'].sun, softness: 0.8 },
-				haze: { color: '#ccbbaa', visibility: 400 }
+				...skyFromPreset('golden-hour', 135),
+				softness: 0.8,
+				haze: 50
 			},
 			treatment: 'clay'
 		},

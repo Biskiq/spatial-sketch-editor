@@ -316,6 +316,7 @@ export function createPaperMarkScene(
 			const lineGeometry = new LineGeometry();
 			lineGeometry.setPositions(new Float32Array(positions));
 			const material = new LineMaterial({
+			fog: false,
 				color: new Color(ink).getHex(),
 				linewidth: widthCssPx,
 				transparent: true,
@@ -351,6 +352,7 @@ export function createPaperMarkScene(
 	const roomHoverGeometry = hoveredRoom.contours.length > 0 ? createPaperFillGeometry(marks.hover.fills) : null;
 	if (roomHoverGeometry !== null) {
 		const material = new MeshBasicMaterial({
+			fog: false,
 			color: new Color(PAPER_MARK_HALO_INK).getHex(),
 			side: DoubleSide, transparent: true, opacity: 0.08,
 			depthTest: false, depthWrite: false, toneMapped: false
@@ -370,6 +372,7 @@ export function createPaperMarkScene(
 	);
 	if (tintGeometry !== null) {
 		const material = new MeshBasicMaterial({
+			fog: false,
 			color: new Color(PAPER_SELECTION_INK).getHex(),
 			side: DoubleSide, transparent: true, opacity: 0.22,
 			depthTest: false, depthWrite: false, toneMapped: false
@@ -387,6 +390,7 @@ export function createPaperMarkScene(
 	const cutGeometry = createPaperFillGeometry(marks.selection.cutFills ?? []);
 	if (cutGeometry !== null) {
 		const material = new MeshBasicMaterial({
+			fog: false,
 			color: new Color(PAPER_SELECTION_INK).getHex(),
 			side: DoubleSide,
 			transparent: true,

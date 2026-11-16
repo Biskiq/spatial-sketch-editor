@@ -1,21 +1,11 @@
 // @vitest-environment jsdom
 /**
- * E10/R6 — exact light parity with the pre-E10 components.
- *
- * `fixtures/light-parity-baseline.json` was recorded on the E8 merge commit
- * (30301614) from the components this packet retired — `EntityLight.svelte`
- * (authored Point/Spot through Threlte) and the Sun `T.DirectionalLight` in
- * `WorldEnvironment.svelte` — by replaying `LIGHT_PARITY_CASES` through the real
- * `VisitorEntityGroups` and `WorldEnvironment`. Each case now replays through
- * the resolved descriptors and the Canvas light store, and every step must read
- * the identical snapshot: kind, colour, intensity, range, decay, cone, shadow
- * flag, the full shadow configuration and shadow-camera projection, world
- * placement and target.
- *
- * The baseline is frozen evidence. Re-record it only for an approved lighting
- * change, from the revision whose lighting is the reference, never to make this
- * test pass.
+ * Mounted Canvas parity for authored lights and the shared Scene 9 Sky. The
+ * authored light snapshots come from E8 (30301614). The Sky snapshots reflect S2.
+ * Regenerate with LIGHT_PARITY_GOLDEN=write from the editor workspace.
  */
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.hoisted(() => {
@@ -39,7 +29,10 @@ import baseline from '../fixtures/light-parity-baseline.json';
 
 const BASELINE = baseline as Record<string, Record<string, unknown>>;
 
-describe('E10 light parity: the store realizes exactly what the retired components did', () => {
+const regeneration = process.env.LIGHT_PARITY_GOLDEN === 'write';
+const regenerated: Record<string, Record<string, unknown>> = {};
+
+describe('Canvas light realization parity', () => {
 	it('the baseline covers every case and step', () => {
 		expect(Object.keys(BASELINE)).toEqual(LIGHT_PARITY_CASES.map((parity) => parity.name));
 		for (const parity of LIGHT_PARITY_CASES) {
@@ -54,6 +47,14 @@ describe('E10 light parity: the store realizes exactly what the retired componen
 	for (const parity of LIGHT_PARITY_CASES) {
 		it(`${parity.name}: every step reads the recorded lights`, () => {
 			const record = runLightParityCase(parity, threlte);
+			if (regeneration) {
+				regenerated[parity.name] = record;
+				if (Object.keys(regenerated).length === LIGHT_PARITY_CASES.length) {
+					writeFileSync(resolve('tests/lib/render/fixtures/light-parity-baseline.json'),
+						JSON.stringify(regenerated, null, 2) + '\n');
+				}
+				return;
+			}
 			for (const [step, lights] of Object.entries(record)) {
 				expect(lights, `${parity.name} / ${step}`).toEqual(BASELINE[parity.name]![step]);
 			}

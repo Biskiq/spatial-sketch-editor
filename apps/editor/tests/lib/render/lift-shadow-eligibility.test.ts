@@ -59,6 +59,8 @@ import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/l
 /** The Sun the Sky realizes: it always casts, with its complete shadow configuration. */
 const SUN: SunLightDescriptor = {
 	kind: 'sun',
+	// T2's Sky can retire the Sun's shadow; this contract is stated on the casting case.
+	castShadow: true,
 	color: '#fff4e2',
 	intensity: 3.2,
 	position: [6, 12, 8],

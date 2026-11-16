@@ -191,7 +191,7 @@ function openViewingSettings(): void {
 }
 
 function reduceMotionControl(): HTMLInputElement {
-	const control = target.querySelector<HTMLInputElement>('[data-stage-viewing-panel] input[type="checkbox"]');
+	const control = target.querySelector<HTMLInputElement>('[data-stage-viewing-panel] input[data-reduce-motion]');
 	if (control === null) throw new Error('no Reduce motion control');
 	return control;
 }
