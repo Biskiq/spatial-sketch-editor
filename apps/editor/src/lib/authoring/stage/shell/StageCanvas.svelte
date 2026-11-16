@@ -21,7 +21,7 @@
 	import { PCFShadowMap } from 'three';
 	import { onDestroy } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
-	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry, OverheadSource, PlanEvaluation } from '@portfolio/layout-core';
 	import type { RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
@@ -43,6 +43,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
+	import StageLiftLayer from './StageLiftLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
@@ -97,6 +98,8 @@ import StageMatGround from './StageMatGround.svelte';
 		 * even mount this component.
 		 */
 		liftedRoomIds = [],
+		/** The overheads a Lift reading lifts, as Layout names them (display-only). */
+		liftSources = [],
 		/** The live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
@@ -144,6 +147,7 @@ import StageMatGround from './StageMatGround.svelte';
 		hoverTone?: 'hover' | 'erase';
 		scenePick: ScenePickSource;
 		liftedRoomIds?: readonly string[];
+		liftSources?: readonly OverheadSource[];
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
 		/** The sheet pin is hovered or being dragged; the route owns both. */
@@ -187,6 +191,22 @@ import StageMatGround from './StageMatGround.svelte';
 	);
 	/** The display sheet owns the canonical body while a Wall is unfolded. */
 	const unfoldedWallId = $derived(wallUnfold.state?.wallId ?? null);
+	/**
+	 * A lifted overhead is selected through its Room, so the Lift ink reads the same
+	 * subject a floor click selects. No ceiling-specific selection exists in X1.
+	 */
+	const liftSelectedRoomId = $derived(
+		selection !== null &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind === 'room'
+			? selection.reference.subject.id
+			: null
+	);
+	const liftHoveredRoomId = $derived(
+		hover !== null && hover.reference.domain === 'layout' && hover.reference.subject.kind === 'room'
+			? hover.reference.subject.id
+			: null
+	);
 	const paperReveal = $derived(paperComposition.reveal);
 	const paperVisible = $derived(paperComposition.visible);
 	const paperCovers = $derived(paperComposition.covers);
@@ -389,6 +409,21 @@ import StageMatGround from './StageMatGround.svelte';
 			fade={1 - (paperReveal?.sheet ?? 0)}
 		/>
 		{/if}
+	{/if}
+	{#if framedViewport === null && evaluation !== null}
+		<!--
+			The lifted overheads' dashed outlines, and the selected one's ghost. Editor
+			ink on the overlay layer: never a pick root, never lit, never in a snapshot.
+			It draws nothing in Plan and is absent from a Look-through capture frame.
+		-->
+		<StageLiftLayer
+			sources={liftSources}
+			selectedRoomId={liftSelectedRoomId}
+			hoveredRoomId={liftHoveredRoomId}
+			width={evaluation.rect.width}
+			height={evaluation.rect.height}
+			reading={evaluation.renderedReading}
+		/>
 	{/if}
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent

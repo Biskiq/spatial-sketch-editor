@@ -591,14 +591,13 @@
 	 * authored regions will need their own representation instead of this list.
 	 * `VisitorPreviewSurface` never receives it, so Preview stays as-built.
 	 */
-	const liftedRoomIds = $derived.by((): readonly string[] => {
+	const liftedSources = $derived.by(() => {
 		const reading = interiorLift.reading;
 		if (reading === null) return [];
 		if (boot.status !== 'ready' && boot.status !== 'empty') return [];
-		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope).map(
-			(source) => source.subject.id
-		);
+		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
 	});
+	const liftedRoomIds = $derived(liftedSources.map((source) => source.subject.id));
 
 	/**
 	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
@@ -1035,6 +1034,7 @@
 			get hover() { return shell.armedHostTool === 'erase' ? shell.eraseHover : stageInput.hoverSelection; },
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
 			get liftedRoomIds() { return liftedRoomIds; },
+			get liftSources() { return liftedSources; },
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
