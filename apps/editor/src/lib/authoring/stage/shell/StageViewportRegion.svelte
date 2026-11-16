@@ -646,11 +646,14 @@
 		font-weight: 600;
 	}
 	/*
-	 * Lift follows Look through when both are present: same row of chrome, one line
-	 * under, so neither pill covers the other or the capture frame's corner marks.
+	 * Lift takes the row under the reading bar: the bar is `z-index: 8` and spans the
+	 * Stage's centre, so the shared `0.75rem` row is painted underneath it and the pill
+	 * is not visible at all. Look through's pill keeps that row because the bar is gone
+	 * while it shows; when both pills are present, Lift is already one line under it.
 	 */
 	.mode-pill.lift-pill {
 		padding-left: 12px;
+		top: 3.4rem;
 	}
 	.mode-pill.lift-pill.with-through {
 		top: 3.4rem;

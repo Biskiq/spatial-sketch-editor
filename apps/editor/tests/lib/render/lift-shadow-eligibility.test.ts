@@ -18,10 +18,16 @@
  * `LIFTED_RENDER_LAYER` on every light-store shadow camera, and Assertion B
  * refuses it until it does.
  *
- * **V1 obligation.** The lids below are enumerated through `overheadSourcesOf`,
- * so authored overhead regions must be added to that function (V1b) and this
- * suite covers them with no edit here. A V1 region whose mesh casts and is
- * lifted is subject to exactly this contract.
+ * **V1 obligation — fixture work, not automatic coverage.** The *sources* below
+ * are enumerated through `overheadSourcesOf`, so V1's authored overhead regions
+ * must join that function (V1b) and this suite's subject list follows with no
+ * edit here. Its *fixture* does not follow: every mesh this file tests is found
+ * by name inside the Room representation's generated lid
+ * (`VisitorCeiling:<roomId>`), and a V1 region will be built by its own
+ * representation. The PR that adds one must extend this fixture to build that
+ * representation's mesh (its `castShadow` and its lifted layer) and keep
+ * Assertions A–C green for it. Claiming automatic coverage would overstate what
+ * this file proves.
  */
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
