@@ -1,14 +1,18 @@
 /**
- * The one live **Slice** reading.
+ * The one live Slice reading.
  *
- * Slice is session state: the creator arms it, moves it with the Height Sheet,
- * and puts it back. It is never authored, never saved, never a history entry,
- * never seen by Preview or a release, and Undo never touches it. One reading
- * exists at a time: `set` replaces whatever was live.
+ * Temporary **session** state, not a document: one reading at a time, replaced when
+ * the creator arms Slice again, ended by Put back, Escape, a replaced project, a
+ * route teardown or the lens leaving World. It survives tool changes, selection,
+ * Plan ↔ 3D, a Preview round trip, Lift and Undo/Redo — because none of those are
+ * the reading's owner.
  *
- * The store holds **only** the typed reading. Where the cut is comes from the
- * Height Sheet (`resolveSlice`), what it means is Layout's, and how it is drawn
- * belongs to the Stage shell.
+ * It is never serialized, creates no history entry and is never read by visitor or
+ * release code: the module lives under `authoring/`, which the visitor boundary tests
+ * already exclude, and it exports no writer other than the store.
+ *
+ * **SL1 only.** A reading is `{ kind: 'level', depth }`; SL2 replaces it with a drawn
+ * arm through `set`, and nothing here knows what a drawn cut is.
  */
 import type { LevelDepth, SliceReading } from './slice-cut';
 
@@ -23,14 +27,21 @@ class SliceReadingStore {
 		return this.#reading !== null;
 	}
 
-	/** Start a reading, or replace the live one (one Slice at a time). */
+	/** Replace any live reading: there is one Slice at a time. */
 	set(reading: SliceReading): void {
 		this.#reading = reading;
 	}
 
-	/** Start the Level arm at `depth`, replacing any live reading. */
-	level(depth: LevelDepth): void {
+	/** Arm Level: no reading becomes To the floor; an existing one is replaced. */
+	level(depth: LevelDepth = { kind: 'to-floor' }): void {
 		this.#reading = { kind: 'level', depth };
+	}
+
+	/** Narrow or widen the live Level reading's depth. A no-op when Slice is off. */
+	setDepth(depth: LevelDepth): void {
+		const reading = this.#reading;
+		if (reading === null) return;
+		this.#reading = { ...reading, depth };
 	}
 
 	/** Put back: end the reading. Named for the control the creator presses. */

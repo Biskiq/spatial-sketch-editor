@@ -1,256 +1,164 @@
 /**
- * Whether a subject is **wholly hidden** by the Slice, and so must be drawn as a
- * ghost when it is selected.
+ * Wholly-hidden classification for the Slice ghost.
  *
- * "Every vertex is hidden" is the wrong rule: a Wall running from below the
- * lower bound to above the cut has all of its vertices hidden (some above, some
- * below) yet crosses the visible band. The exact rule is defined on the hidden
- * *pieces* of `slice-cut.ts`, which are convex and pairwise separated by visible
- * space:
+ * Pure and Three-free: buffers in, one boolean out. The rule is the plan's §2.4
+ * and it is **exact**, not a heuristic:
  *
- * > A **triangle** is wholly hidden iff all three vertices lie in the same
- * > hidden piece. A **subject** is wholly hidden iff it has at least one
- * > drawable triangle and every drawable triangle is wholly hidden.
+ * > A triangle is wholly hidden iff all three vertices lie in the **same** hidden
+ * > piece. A subject is wholly hidden iff it has at least one drawable triangle and
+ * > every drawable triangle is wholly hidden.
  *
- * A triangle is the convex hull of its vertices, so it lies inside a convex
- * piece iff its vertices do. A triangle whose vertices sit in two different
- * pieces is connected and the pieces are separated by visible space, so it
- * visibly crosses that space.
+ * "Every vertex is hidden" is wrong, and the defect it causes is visible: a Wall
+ * running from below the lower bound to above the cut has all of its vertices
+ * hidden yet crosses the visible band, so a per-vertex test would ghost a subject
+ * the creator can see.
  *
- * Broad phase: a subject AABB wholly inside one piece is hidden (exact); an AABB
- * wholly inside the visible band is visible (exact); anything else runs the
- * triangle test. Geometry whose CPU positions do not match what is drawn
- * (skinned, morph-targeted or instanced meshes) uses the AABB fallback and, when
- * the AABB is in no single piece, errs toward **hidden**: an unneeded ghost over
- * a visible stub is cosmetic, while a missing ghost would leave a selected
- * subject invisible.
+ * The reason the same-piece rule is exact: a hidden piece is a convex half-space,
+ * so a triangle (the convex hull of its vertices) lies inside one iff its vertices
+ * do; a triangle with vertices in two different pieces is connected, and the
+ * pieces are separated by visible space, so it necessarily crosses that space.
  *
- * Pure and editor-only — no Svelte, no Three. Callers pass world-space or
- * model-space positions with an optional matrix; nothing here reads the scene.
+ * **Conservative fallback.** Geometry whose CPU positions do not match what is
+ * drawn (skinned, morph-targeted, instanced) cannot be tested per triangle. It is
+ * decided by its world bounds, and when the bounds lie in no single piece the
+ * subject is treated as **hidden**. An unneeded ghost over a visible stub is
+ * cosmetic; a missing ghost leaves a selected subject invisible.
  */
-import { hiddenPieceIndexAt, type ResolvedSlice } from './slice-cut';
+import { hiddenPiecesOf, pieceContains, type HiddenPiece, type ResolvedSlice } from './slice-cut';
 
-export type GhostBox = {
-	readonly min: readonly [number, number, number];
-	readonly max: readonly [number, number, number];
+export type SlicePoint3 = readonly [number, number, number];
+
+export type SliceBounds = {
+	readonly min: SlicePoint3;
+	readonly max: SlicePoint3;
 };
 
-/** One drawable mesh's geometry, as the ghost test reads it. */
-export type GhostMeshInput = {
-	/** Model-space XYZ positions. */
+/**
+ * One drawable triangle buffer in **world** space.
+ *
+ * The caller bakes the mesh's world matrix into `positions` (or passes an indexed
+ * buffer whose vertices are already world-space), so this module needs no matrix
+ * maths and no Three `Matrix4`.
+ */
+export type SliceTriangleBuffer = {
 	readonly positions: ArrayLike<number>;
-	/** Triangle indices; absent means consecutive triples are triangles. */
 	readonly index?: ArrayLike<number> | null;
-	/** Column-major 4×4 world matrix; absent means identity. */
-	readonly matrixWorld?: ArrayLike<number> | null;
-	/** A precomputed world box, when the caller already has one. */
-	readonly bounds?: GhostBox | null;
+};
+
+export type SliceGhostSubject = {
+	/** Every drawable triangle of the subject, across its meshes. */
+	readonly triangles: readonly SliceTriangleBuffer[];
+	/** World AABB, when the caller has one: it makes the common cases exact and cheap. */
+	readonly bounds?: SliceBounds | null;
 	/**
-	 * The CPU positions do not match what is drawn (skinned, morph-targeted or
-	 * instanced): use the box fallback and err toward hidden.
+	 * The CPU positions do not describe what is drawn (skinned, morph, instanced).
+	 * The bounds decide, erring toward drawing the ghost.
 	 */
-	readonly conservative?: boolean;
+	readonly approximate?: boolean;
 };
 
-export type GhostSubjectInput = {
-	readonly meshes: readonly GhostMeshInput[];
-	/** A precomputed subject box, when the caller already has one. */
-	readonly bounds?: GhostBox | null;
-};
+type PieceId = HiddenPiece['kind'];
 
-export type GhostReason =
-	| 'no-drawable-triangle'
-	| 'bounds-hidden'
-	| 'bounds-visible'
-	| 'triangles-hidden'
-	| 'triangles-visible'
-	| 'conservative-hidden'
-	| 'conservative-visible';
-
-export type GhostClassification = {
-	readonly ghost: boolean;
-	readonly reason: GhostReason;
-	/** Drawable triangles examined (a conservative mesh counts as one surface). */
-	readonly triangleCount: number;
-};
-
-const IDENTITY_MATRIX: readonly number[] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-
-function worldPointAt(
-	mesh: GhostMeshInput,
-	vertex: number,
-	out: [number, number, number]
-): boolean {
-	const positions = mesh.positions;
-	if (vertex * 3 + 2 >= positions.length) return false;
-	const x = positions[vertex * 3]!;
-	const y = positions[vertex * 3 + 1]!;
-	const z = positions[vertex * 3 + 2]!;
-	if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
-	const m = mesh.matrixWorld ?? IDENTITY_MATRIX;
-	if (m.length < 16) {
-		out[0] = x;
-		out[1] = y;
-		out[2] = z;
-		return true;
-	}
-	out[0] = m[0]! * x + m[4]! * y + m[8]! * z + m[12]!;
-	out[1] = m[1]! * x + m[5]! * y + m[9]! * z + m[13]!;
-	out[2] = m[2]! * x + m[6]! * y + m[10]! * z + m[14]!;
-	return true;
+function pieceIdOf(y: number, pieces: readonly HiddenPiece[]): PieceId | null {
+	for (const piece of pieces) if (pieceContains(piece, y, 0)) return piece.kind;
+	return null;
 }
 
-/** The world box of one mesh's drawable vertices. */
-export function meshBoundsOf(mesh: GhostMeshInput): GhostBox | null {
-	if (mesh.bounds !== undefined && mesh.bounds !== null) return mesh.bounds;
-	const positions = mesh.positions;
+/** The one hidden piece a bounds' vertical span lies inside, or `null`. */
+function boundsPiece(bounds: SliceBounds, pieces: readonly HiddenPiece[]): PieceId | null {
+	const above = pieces.find((piece) => piece.kind === 'above');
+	if (above !== undefined && pieceContains(above, bounds.min[1], 0)) return 'above';
+	const below = pieces.find((piece) => piece.kind === 'below');
+	if (below !== undefined && pieceContains(below, bounds.max[1], 0)) return 'below';
+	return null;
+}
+
+/** Whether the bounds lie wholly inside the visible band (shown at every point). */
+function boundsFullyVisible(bounds: SliceBounds, resolved: ResolvedSlice): boolean {
+	const notAbove = bounds.max[1] <= resolved.cutY;
+	const notBelow = resolved.lowerY === null || bounds.min[1] >= resolved.lowerY!;
+	return notAbove && notBelow;
+}
+
+function countTriangles(subject: SliceGhostSubject): number {
+	let count = 0;
+	for (const buffer of subject.triangles) {
+		const positions = buffer.positions;
+		const vertices = Math.floor(positions.length / 3);
+		count += buffer.index == null ? Math.floor(vertices / 3) : Math.floor(buffer.index.length / 3);
+	}
+	return count;
+}
+
+function boundsOf(subject: SliceGhostSubject): SliceBounds | null {
+	if (subject.bounds != null) return subject.bounds;
 	let minX = Infinity;
 	let minY = Infinity;
 	let minZ = Infinity;
 	let maxX = -Infinity;
 	let maxY = -Infinity;
 	let maxZ = -Infinity;
-	const point: [number, number, number] = [0, 0, 0];
-	const count = Math.floor(positions.length / 3);
-	for (let vertex = 0; vertex < count; vertex += 1) {
-		if (!worldPointAt(mesh, vertex, point)) continue;
-		minX = Math.min(minX, point[0]);
-		minY = Math.min(minY, point[1]);
-		minZ = Math.min(minZ, point[2]);
-		maxX = Math.max(maxX, point[0]);
-		maxY = Math.max(maxY, point[1]);
-		maxZ = Math.max(maxZ, point[2]);
+	for (const buffer of subject.triangles) {
+		const positions = buffer.positions;
+		for (let i = 0; i + 2 < positions.length; i += 3) {
+			const x = positions[i]!;
+			const y = positions[i + 1]!;
+			const z = positions[i + 2]!;
+			if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+			if (x < minX) minX = x;
+			if (y < minY) minY = y;
+			if (z < minZ) minZ = z;
+			if (x > maxX) maxX = x;
+			if (y > maxY) maxY = y;
+			if (z > maxZ) maxZ = z;
+		}
 	}
-	if (!(minX <= maxX && minY <= maxY && minZ <= maxZ)) return null;
+	if (!(minX <= maxX)) return null;
 	return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
 }
 
-/** Whether a mesh can contribute a drawable triangle at all. */
-function hasDrawableTriangle(mesh: GhostMeshInput): boolean {
-	if (mesh.conservative === true && mesh.bounds !== undefined && mesh.bounds !== null) return true;
-	if (mesh.positions.length < 9) return false;
-	const index = mesh.index;
-	return index === null || index === undefined || index.length >= 3;
-}
-
-/** The union box of a subject's meshes. */
-export function subjectBoundsOf(subject: GhostSubjectInput): GhostBox | null {
-	if (subject.bounds !== undefined && subject.bounds !== null) return subject.bounds;
-	let bounds: GhostBox | null = null;
-	for (const mesh of subject.meshes) {
-		const box = meshBoundsOf(mesh);
-		if (box === null) continue;
-		if (bounds === null) {
-			bounds = { min: [...box.min], max: [...box.max] };
-			continue;
-		}
-		bounds = {
-			min: [
-				Math.min(bounds.min[0], box.min[0]),
-				Math.min(bounds.min[1], box.min[1]),
-				Math.min(bounds.min[2], box.min[2])
-			],
-			max: [
-				Math.max(bounds.max[0], box.max[0]),
-				Math.max(bounds.max[1], box.max[1]),
-				Math.max(bounds.max[2], box.max[2])
-			]
-		};
-	}
-	return bounds;
-}
-
-/** The one hidden piece that wholly contains this box, or `null`. */
-function hiddenPieceOfBox(resolved: ResolvedSlice, box: GhostBox): number | null {
-	if (box.min[1] > resolved.cutY) return 0;
-	if (resolved.lowerY !== null && box.max[1] < resolved.lowerY) return 1;
-	return null;
-}
-
-/** Whether the box lies wholly inside the visible band. */
-function boxIsVisible(resolved: ResolvedSlice, box: GhostBox): boolean {
-	if (box.max[1] > resolved.cutY) return false;
-	if (resolved.lowerY !== null && box.min[1] < resolved.lowerY) return false;
-	return true;
-}
-
 /**
- * Classify one selected subject.
+ * Whether every drawable triangle of `subject` is wholly hidden.
  *
- * `ghost: true` means: draw the subject's meshes as a ghost and leave its gold
- * contour unclipped. `ghost: false` means the usual clipped ink.
+ * A subject with no drawable triangle is **not** ghosted: there is nothing to
+ * ghost, and drawing an empty ghost would hide the fact that the subject has no
+ * body.
  */
-export function classifySliceGhost(
-	resolved: ResolvedSlice,
-	subject: GhostSubjectInput
-): GhostClassification {
-	if (subject.meshes.length === 0 || !subject.meshes.some(hasDrawableTriangle)) {
-		return { ghost: false, reason: 'no-drawable-triangle', triangleCount: 0 };
+export function subjectWhollyHidden(resolved: ResolvedSlice, subject: SliceGhostSubject): boolean {
+	const pieces = hiddenPiecesOf(resolved);
+	const bounds = boundsOf(subject);
+	if (subject.approximate === true || countTriangles(subject) === 0) {
+		if (countTriangles(subject) === 0) return false;
+		// Fallback: bounds decide; anything not provably visible is hidden.
+		if (bounds === null) return true;
+		const piece = boundsPiece(bounds, pieces);
+		if (piece !== null) return true;
+		return !boundsFullyVisible(bounds, resolved);
 	}
-	const subjectBox = subjectBoundsOf(subject);
-	if (subjectBox !== null) {
-		if (hiddenPieceOfBox(resolved, subjectBox) !== null) {
-			return { ghost: true, reason: 'bounds-hidden', triangleCount: 0 };
-		}
-		if (boxIsVisible(resolved, subjectBox)) {
-			return { ghost: false, reason: 'bounds-visible', triangleCount: 0 };
-		}
+	if (bounds !== null) {
+		if (boundsPiece(bounds, pieces) !== null) return true;
+		if (boundsFullyVisible(bounds, resolved)) return false;
 	}
-
-	let triangleCount = 0;
-	const points: [number, number, number][] = [
-		[0, 0, 0],
-		[0, 0, 0],
-		[0, 0, 0]
-	];
-	let conservativeVisible = false;
-	let conservativeHidden = false;
-
-	for (const mesh of subject.meshes) {
-		if (mesh.conservative === true) {
-			const box = meshBoundsOf(mesh);
-			if (box === null) continue;
-			triangleCount += 1;
-			if (hiddenPieceOfBox(resolved, box) !== null) {
-				conservativeHidden = true;
-				continue;
-			}
-			if (boxIsVisible(resolved, box)) {
-				conservativeVisible = true;
-				continue;
-			}
-			// The box straddles a boundary and the CPU geometry cannot be trusted:
-			// draw the ghost rather than leave a selected subject invisible.
-			return { ghost: true, reason: 'conservative-hidden', triangleCount };
-		}
-
-		const index = mesh.index;
-		const total = index !== null && index !== undefined ? index.length : Math.floor(mesh.positions.length / 3);
-		for (let offset = 0; offset + 2 < total; offset += 3) {
-			const a = index !== null && index !== undefined ? Number(index[offset]) : offset;
-			const b = index !== null && index !== undefined ? Number(index[offset + 1]) : offset + 1;
-			const c = index !== null && index !== undefined ? Number(index[offset + 2]) : offset + 2;
-			if (!worldPointAt(mesh, a, points[0]!)) continue;
-			if (!worldPointAt(mesh, b, points[1]!)) continue;
-			if (!worldPointAt(mesh, c, points[2]!)) continue;
-			triangleCount += 1;
-			const pieceA = hiddenPieceIndexAt(resolved, points[0]![1], 0);
-			const pieceB = hiddenPieceIndexAt(resolved, points[1]![1], 0);
-			const pieceC = hiddenPieceIndexAt(resolved, points[2]![1], 0);
-			if (pieceA === null || pieceA !== pieceB || pieceA !== pieceC) {
-				return { ghost: false, reason: 'triangles-visible', triangleCount };
-			}
+	let sawTriangle = false;
+	for (const buffer of subject.triangles) {
+		const positions = buffer.positions;
+		const index = buffer.index;
+		const triangleCount = Math.floor((index == null ? positions.length / 3 : index.length) / 3);
+		for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+			const a = index == null ? triangle * 3 : index[triangle * 3]!;
+			const b = index == null ? triangle * 3 + 1 : index[triangle * 3 + 1]!;
+			const c = index == null ? triangle * 3 + 2 : index[triangle * 3 + 2]!;
+			const ya = positions[a * 3 + 1]!;
+			const yb = positions[b * 3 + 1]!;
+			const yc = positions[c * 3 + 1]!;
+			if (!Number.isFinite(ya) || !Number.isFinite(yb) || !Number.isFinite(yc)) continue;
+			sawTriangle = true;
+			const first = pieceIdOf(ya, pieces);
+			if (first === null) return false;
+			if (pieceIdOf(yb, pieces) !== first) return false;
+			if (pieceIdOf(yc, pieces) !== first) return false;
 		}
 	}
-
-	if (triangleCount === 0) {
-		return { ghost: false, reason: 'no-drawable-triangle', triangleCount: 0 };
-	}
-	if (conservativeVisible) {
-		return { ghost: false, reason: 'conservative-visible', triangleCount };
-	}
-	if (conservativeHidden) {
-		return { ghost: true, reason: 'conservative-hidden', triangleCount };
-	}
-	return { ghost: true, reason: 'triangles-hidden', triangleCount };
+	// No finite triangle survived: nothing provably hidden, so do not ghost it.
+	return sawTriangle;
 }

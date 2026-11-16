@@ -96,6 +96,14 @@ export type BasicMaterialDescriptor = {
 	readonly vertexColors?: boolean;
 	/** Absent means `true`, as Three's default. */
 	readonly depthWrite?: boolean;
+	/**
+	 * `false` exempts the surface from the Canvas's slice clipping planes.
+	 *
+	 * It exists for the environment ground, which is not part of the model a Slice
+	 * inspects: a finite depth must never remove the world under the creator's feet.
+	 * Absent means the surface is clipped like every other world surface.
+	 */
+	readonly clip?: false;
 };
 
 /**
@@ -122,6 +130,8 @@ export type LambertMaterialDescriptor = {
 	readonly vertexColors?: boolean;
 	/** Editor-only surfaces stay legible through atmospheric haze. */
 	readonly fog?: false;
+	/** `false` exempts the surface from the Canvas's slice clipping planes. */
+	readonly clip?: false;
 };
 
 /**
@@ -262,7 +272,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`wireframe=${bool(descriptor.wireframe, false)}`,
 				`toneMapped=${bool(descriptor.toneMapped, true)}`,
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
-				`depthWrite=${bool(descriptor.depthWrite, true)}`
+				`depthWrite=${bool(descriptor.depthWrite, true)}`,
+				// Absent keeps today's key exactly; `clip: false` is a distinct surface.
+				...(descriptor.clip === false ? ['clip=0'] : [])
 			].join('|');
 		case 'lambert':
 			return [
@@ -273,7 +285,8 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`opacity=${num(descriptor.opacity ?? 1)}`,
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
-				...(descriptor.fog === false ? ['fog=0'] : [])
+				...(descriptor.fog === false ? ['fog=0'] : []),
+				...(descriptor.clip === false ? ['clip=0'] : [])
 			].join('|');
 		case 'depth':
 			return [

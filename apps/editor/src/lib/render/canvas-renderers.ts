@@ -28,12 +28,18 @@ import { createManagedWebGLRenderer } from './managed-webgl-renderer';
  */
 export const CANVAS_TONE_MAPPING = NoToneMapping;
 
-/** Stage's persistent Canvas: stencil for the picking pass, counted as Stage frames. */
+/**
+ * Stage's persistent Canvas: stencil for the picking pass, counted as Stage frames.
+ *
+ * `localClippingEnabled` is set at creation, not when a Slice starts: the first Stage
+ * frame already compiles with the two plane slots, so entering, dragging and leaving
+ * a Slice never recompiles a program. The plane *count* is constant for the Canvas's
+ * life; only the plane *values* change, which is a uniform update.
+ */
 export function stageCanvasRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
-	return perfRenderer(
-		createManagedWebGLRenderer(canvas, { stencil: true, surface: 'stage' }),
-		'stage'
-	);
+	const renderer = createManagedWebGLRenderer(canvas, { stencil: true, surface: 'stage' });
+	renderer.localClippingEnabled = true;
+	return perfRenderer(renderer, 'stage');
 }
 
 /** Visitor Preview's Canvas, counted under its own surface name. */

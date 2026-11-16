@@ -1,100 +1,87 @@
 /**
- * The typed SL1 Level cut: one contract for display, picking, ghosts and tests.
+ * The typed cut — one contract for the three Slice readings.
  *
- * Pure and editor-only — no Svelte, no Three. A `SliceReading` is what the
- * creator asked for (a Level cut at the Height Sheet, and how far below it stays
- * shown); a `ResolvedSlice` is that reading measured against live view state, in
- * world metres. Every consumer — GPU planes, picking, the ghost test, caps and
- * tests — reads the resolved value, so none of them can disagree about where the
- * cut is.
+ * Pure, editor-only: no Svelte, no Three, no Layout import. A reading stores
+ * **what kind of cut** the creator asked for; `resolveSlice` resolves it against
+ * live view state into world metres, and `ResolvedSlice` is the only input every
+ * consumer (GPU planes, caps, ghosts, picking, tests) shares. Nothing here
+ * re-derives a cut from geometry: Layout's own plan streams answer what is cut.
  *
- * **A Level reading stores no elevation.** Its elevation *is* the Height Sheet
- * (Approved: "the plane appears at the Sheet height; dragging the Sheet moves
- * it"). Only the depth travels with the reading, and a `below` depth is a
- * distance, so it follows the cut as the Sheet moves.
+ * **SL1 is the Level arm.** Its elevation is not stored — it *is* the Height
+ * Sheet, so dragging the Sheet moves the plane and Plan and the Slice can never
+ * disagree. `depth` is the vertical extent **below** the cut that stays shown:
+ * `to-floor` means "no lower bound of the Slice's own" (not a distance), and a
+ * finite `below` distance travels with the cut while the Sheet moves.
  *
- * **Three depths, three meanings.** SL1's depth is the vertical extent below the
- * horizontal cut. `to-floor` is not a distance at all: it means "no lower bound
- * of the Slice's own", so the GPU lower plane is a no-op and Plan keeps its
- * calibrated default depth. SL2's horizontal inspection distance and SL3's
- * projection depth are different types with different rules.
+ * SL2's drawn arm is deliberately absent: it adds a horizontal inspection depth
+ * and a segment, which is a different type with no `to-floor` at all. SL3's
+ * Section consumes a drawn reading and is likewise absent. Adding either must not
+ * change the Level arm.
  */
-import { PLAN_DEFAULT_DEPTH_METERS, type PlanParameterOverrides } from '../plan-parameters';
+import type { PlanParameterOverrides } from '../plan-parameters';
+import { PLAN_DEFAULT_DEPTH_METERS } from '../plan-parameters';
+import type { StageHeightTick } from '../stage-height-sheet';
 
-/** SL1: how far *below* a horizontal cut stays shown. Vertical. */
+/**
+ * How far below a Level cut stays shown.
+ *
+ * `to-floor` is **not** a distance: it means no lower bound of the Slice's own,
+ * so the GPU lower plane is a no-op and Plan keeps its own default depth.
+ */
 export type LevelDepth =
 	| { readonly kind: 'to-floor' }
 	| { readonly kind: 'below'; readonly meters: number };
 
-/**
- * The one live reading.
- *
- * SL2 adds a `drawn` arm here without changing the level arm; this module
- * deliberately defines only the arm SL1 implements.
- */
-export type SliceReading = {
-	readonly kind: 'level';
-	readonly depth: LevelDepth;
-};
+/** The one live reading's value. SL1 can only hold a Level reading. */
+export type SliceReading = { readonly kind: 'level'; readonly depth: LevelDepth };
 
 /** A reading resolved against live view state, in world metres. */
 export type ResolvedSlice = {
 	readonly kind: 'level';
-	/** The world elevation of the cut plane. */
+	/** The plane's world Y: the Height Sheet's height above the level datum. */
 	readonly cutY: number;
-	/** The world elevation below which content is hidden, or `null` for to-floor. */
+	/** The lowest shown world Y, or `null` when the reading has no lower bound. */
 	readonly lowerY: number | null;
 };
 
-/** The two live values a Level reading resolves against. */
-export type SliceViewState = {
-	/** The Height Sheet's height above the level datum, in metres. */
-	readonly sheetHeight: number;
-	/** The level datum, in world metres. */
-	readonly datumMeters: number;
-};
-
 /**
- * How far outside the visible band a point must be to count as hidden.
- *
- * The band is inclusive: content exactly on the cut is still drawn, so the
- * predicate needs a tolerance rather than a bare comparison. The same value is
- * the cap section's plane offset in `mesh-plane-section.ts`.
- */
-export const SLICE_HIDE_EPSILON_METERS = 1e-4;
-
-/** The default depth a new Level reading starts with (Approved). */
-export const SLICE_DEFAULT_DEPTH: LevelDepth = { kind: 'to-floor' };
-
-/**
- * Resolve a Level reading against the Sheet and the datum.
- *
- * A computed `lowerY` at or below the datum is normalised to `to-floor`: the
- * Slice's own lower bound can never reach past the floor it is measuring from,
- * and Plan never receives a depth that could hide the floor itself.
- */
-export function resolveSlice(reading: SliceReading, view: SliceViewState): ResolvedSlice {
-	const cutY = view.datumMeters + view.sheetHeight;
-	if (reading.depth.kind === 'to-floor') return { kind: 'level', cutY, lowerY: null };
-	const meters = reading.depth.meters;
-	if (!Number.isFinite(meters) || meters <= 0) return { kind: 'level', cutY, lowerY: null };
-	const lowerY = cutY - meters;
-	return { kind: 'level', cutY, lowerY: lowerY <= view.datumMeters ? null : lowerY };
-}
-
-/**
- * One convex region of the hidden set.
- *
- * The pieces are convex and pairwise separated by the visible band, which is
- * what makes the ghost rule exact: a triangle lies inside a convex piece iff its
- * three vertices do, and a triangle with vertices in two pieces necessarily
- * crosses the visible space between them.
+ * One convex region the Slice hides. Level has at most two — above the cut and,
+ * with a finite depth, below the lower bound — and they are pairwise separated by
+ * the visible band, which is what makes the ghost rule in `slice-ghost.ts` exact.
  */
 export type HiddenPiece =
 	| { readonly kind: 'above'; readonly cutY: number }
 	| { readonly kind: 'below'; readonly lowerY: number };
 
-/** The hidden regions of a resolved Level slice, in a stable order. */
+/** The boundary tolerance every CPU predicate shares. Display stays exact. */
+export const SLICE_HIDE_EPSILON_METERS = 1e-4;
+
+/** The sheet height and the level datum a Level reading resolves against. */
+export type SliceResolveInput = {
+	readonly sheetHeight: number;
+	readonly datumMeters: number;
+};
+
+/**
+ * Resolve a reading into world metres.
+ *
+ * A `below` depth that is not a finite positive number is treated as `to-floor`:
+ * a non-distance is never allowed to become a lower bound. A computed lower bound
+ * at or under the datum is normalised to `null`, because below the floor nothing
+ * is shown anyway and a plane there would be a second, invisible cut.
+ */
+export function resolveSlice(reading: SliceReading, input: SliceResolveInput): ResolvedSlice {
+	const sheetHeight = Number.isFinite(input.sheetHeight) ? Math.max(0, input.sheetHeight) : 0;
+	const datumMeters = Number.isFinite(input.datumMeters) ? input.datumMeters : 0;
+	const cutY = datumMeters + sheetHeight;
+	if (reading.depth.kind === 'below' && Number.isFinite(reading.depth.meters) && reading.depth.meters > 0) {
+		const lowerY = cutY - reading.depth.meters;
+		return { kind: 'level', cutY, lowerY: lowerY > datumMeters ? lowerY : null };
+	}
+	return { kind: 'level', cutY, lowerY: null };
+}
+
+/** The hidden regions of a resolved reading, in world metres. */
 export function hiddenPiecesOf(resolved: ResolvedSlice): readonly HiddenPiece[] {
 	const pieces: HiddenPiece[] = [{ kind: 'above', cutY: resolved.cutY }];
 	if (resolved.lowerY !== null) pieces.push({ kind: 'below', lowerY: resolved.lowerY });
@@ -102,45 +89,44 @@ export function hiddenPiecesOf(resolved: ResolvedSlice): readonly HiddenPiece[] 
 }
 
 /**
- * Which hidden piece a world height lies in, or `null` when it is in the visible
- * band. `eps` widens the band: a point within `eps` of a boundary is visible.
+ * Whether `y` lies inside one hidden piece, given a tolerance.
+ *
+ * The band is **inclusive**: a point on the cut plane or on the lower bound is
+ * shown, so a point is hidden only when it is hidden by more than `eps`. The same
+ * convention as the GPU planes (kept iff `lowerY ≤ y ≤ cutY`), kept against
+ * float round-off in picking.
  */
-export function hiddenPieceIndexAt(
-	resolved: ResolvedSlice,
-	y: number,
-	eps = 0
-): number | null {
-	if (!Number.isFinite(y)) return null;
-	if (y > resolved.cutY + eps) return 0;
-	if (resolved.lowerY !== null && y < resolved.lowerY - eps) return 1;
-	return null;
+export function pieceContains(piece: HiddenPiece, y: number, eps: number = SLICE_HIDE_EPSILON_METERS): boolean {
+	return piece.kind === 'above' ? y > piece.cutY + eps : y < piece.lowerY - eps;
 }
 
 /**
- * **The single truth** for "is this point hidden by the Slice".
+ * The single truth for "is this point hidden by the Slice".
  *
- * Display, picking, ghost choice, cap trimming and tests all derive from this
- * predicate or from the same `ResolvedSlice`; the GPU realization is
- * replaceable without touching any consumer. A Level cut is purely vertical, so
- * `x` and `z` are part of the signature only so every Slice kind answers the
- * same question.
+ * Display derives its planes from `ResolvedSlice`, picking and the ghost test
+ * call this, and the tests assert both sides of every boundary. `x`/`z` are part
+ * of the signature because SL2's drawn arm needs them; a Level cut is horizontal
+ * and ignores them.
  */
 export function sliceHides(
 	resolved: ResolvedSlice,
 	_x: number,
 	y: number,
 	_z: number,
-	eps = SLICE_HIDE_EPSILON_METERS
+	eps: number = SLICE_HIDE_EPSILON_METERS
 ): boolean {
-	return hiddenPieceIndexAt(resolved, y, eps) !== null;
+	for (const piece of hiddenPiecesOf(resolved)) {
+		if (pieceContains(piece, y, eps)) return true;
+	}
+	return false;
 }
 
 /**
- * Plan's existing parameters for this reading.
+ * The Plan parameters a Level slice implies.
  *
- * The cut height is already the Sheet's (the Plan cut follows it), so only depth
- * is mapped. `to-floor` keeps Plan's calibrated default exactly as Plan reads
- * without a Slice, and a finite depth narrows it to the same band the GPU draws.
+ * The cut height is already the Sheet's (the host subscribes Plan to it), so only
+ * the depth is overridden: `to-floor` keeps Plan's own calibrated default, exactly
+ * as Plan reads without a Slice, and a finite depth narrows the band Plan shows.
  */
 export function planOverridesOf(resolved: ResolvedSlice): PlanParameterOverrides {
 	return {
@@ -149,62 +135,64 @@ export function planOverridesOf(resolved: ResolvedSlice): PlanParameterOverrides
 	};
 }
 
-/** One height the depth menu can offer, as the Height Sheet names it. */
-export type SliceDepthTick = {
-	readonly heightMeters: number;
-	readonly label: string;
-};
+/** One row of the pill's depth menu. There are no disabled rows. */
+export type SliceDepthItem =
+	| { readonly kind: 'to-floor'; readonly label: string; readonly checked: boolean }
+	| {
+			readonly kind: 'below';
+			readonly meters: number;
+			readonly label: string;
+			readonly checked: boolean;
+	  };
 
-/** One depth-menu item. The first item is always `to-floor`. */
-export type SliceDepthItem = {
-	readonly id: string;
-	readonly label: string;
-	readonly depth: LevelDepth;
-};
+/** Two depths closer than this are the same menu row, not a stack. */
+export const SLICE_DEPTH_ITEM_TOLERANCE_METERS = 1e-3;
 
 /**
- * The depth menu's items: **To the floor** and each Sheet tick strictly below
- * the cut and above the datum.
+ * The depth menu: **To the floor** and every Sheet tick strictly below the cut
+ * and above the datum.
  *
- * A tick that would not be below the cut is never offered (there are no disabled
- * items), and a datum tick is not a bound. Duplicate heights collapse to their
- * first label, exactly as the Sheet merges ticks.
+ * A Level reading stores no elevation — the cut *is* the Sheet — so the caller
+ * passes the Sheet's height. A tick at or above the cut would ask for a depth of
+ * zero or a band that inverts, and a tick at the datum is "To the floor", so
+ * neither is offered: the menu has no disabled rows. Tick labels are the Sheet's
+ * own words, so the menu and the rail cannot name one height two ways.
  */
-export function depthMenuItems(
-	resolved: ResolvedSlice,
-	ticks: readonly SliceDepthTick[],
-	datumMeters = 0
-): readonly SliceDepthItem[] {
+export function sliceDepthItems(input: {
+	readonly reading: SliceReading;
+	readonly sheetHeightMeters: number;
+	readonly ticks: readonly StageHeightTick[];
+}): readonly SliceDepthItem[] {
+	const sheetHeight = Number.isFinite(input.sheetHeightMeters)
+		? Math.max(0, input.sheetHeightMeters)
+		: 0;
+	const current =
+		input.reading.depth.kind === 'below' &&
+		Number.isFinite(input.reading.depth.meters) &&
+		input.reading.depth.meters > 0
+			? input.reading.depth.meters
+			: null;
 	const items: SliceDepthItem[] = [
-		{ id: 'to-floor', label: 'To the floor', depth: { kind: 'to-floor' } }
+		{ kind: 'to-floor', label: 'To the floor', checked: current === null }
 	];
-	const seen = new Set<number>();
-	for (const tick of [...ticks].sort((a, b) => a.heightMeters - b.heightMeters)) {
+	const rows: number[] = [];
+	for (const tick of input.ticks) {
 		if (!Number.isFinite(tick.heightMeters)) continue;
-		const worldY = datumMeters + tick.heightMeters;
-		if (worldY <= datumMeters) continue;
-		if (worldY >= resolved.cutY) continue;
-		const key = Math.round(worldY * 1e6);
-		if (seen.has(key)) continue;
-		seen.add(key);
+		if (tick.heightMeters <= 0) continue;
+		if (tick.heightMeters >= sheetHeight) continue;
+		if (rows.some((row) => Math.abs(row - tick.heightMeters) <= SLICE_DEPTH_ITEM_TOLERANCE_METERS)) continue;
+		rows.push(tick.heightMeters);
+	}
+	rows.sort((a, b) => b - a);
+	for (const height of rows) {
+		const tick = input.ticks.find((candidate) => candidate.heightMeters === height);
+		const meters = sheetHeight - height;
 		items.push({
-			id: `below:${key}`,
-			label: tick.label,
-			// Rounded so a Sheet tick produces the metre value it names, not its
-			// binary round-off (`1.0999999999999999`).
-			depth: { kind: 'below', meters: Math.round((resolved.cutY - worldY) * 1e9) / 1e9 }
+			kind: 'below',
+			meters,
+			label: tick?.label ?? `${height.toFixed(2)} m`,
+			checked: current !== null && Math.abs(current - meters) <= SLICE_DEPTH_ITEM_TOLERANCE_METERS
 		});
 	}
 	return items;
-}
-
-/** Whether a depth is the one a resolved slice is currently showing. */
-export function depthMatches(
-	resolved: ResolvedSlice,
-	depth: LevelDepth,
-	eps = 1e-6
-): boolean {
-	if (depth.kind === 'to-floor') return resolved.lowerY === null;
-	if (resolved.lowerY === null) return false;
-	return Math.abs(resolved.cutY - resolved.lowerY - depth.meters) <= eps;
 }

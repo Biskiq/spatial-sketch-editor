@@ -1,630 +1,774 @@
 /**
- * A plane section of what is **actually drawn**, assembled into cap polygons.
+ * The cap: a plane section of what is actually drawn.
  *
- * The Slice's cap cannot come from Plan's wall bands (they approximate the 3D
- * miters at a Junction, `cutWallBandsOf`), from a stencil pass (the stencil is
- * already spent on Paper and selection) or from a second analytic Wall model.
- * It comes from the rendered Wall meshes themselves: exactly the surfaces the
- * creator sees, so the cap is exact by construction and extends to any future
- * mesh.
+ * Pure typed-array maths — no Three, no Svelte, no editor state — so the whole
+ * assembly can be exercised over real builder output in a unit lane. The Stage
+ * feeds it the **rendered** meshes it already owns (found by identity tag, exactly
+ * as the selection layer finds its contours) and draws the loops it returns.
  *
- * Endpoint welding alone cannot close the section. At a T Junction the stem's
- * side faces end at points that lie on, not at the ends of, the through Wall's
- * split face; at X/Y Junctions keel and bridge faces meet several Walls; two
- * coincident faces can run in opposite directions; and overlapping-not-joined
- * Walls cross each other. Per-Wall meshes are open at their Junction ends by
- * design. The assembly therefore works on a **group's union** in seven fixed
- * steps: groups, section offset, oriented segments, weld, split, net
- * multiplicity, and nonzero-winding union with Paper's stitching rule.
+ * ## Why the assembly is not "chain the per-mesh segments"
  *
- * Pure — typed arrays in, plain geometry out. No Svelte, no scene, no renderer.
+ * Endpoint welding alone does not close a contour:
+ *
+ * - at a **T Junction** the stem's side faces end at points that lie on (not at
+ *   the ends of) the through-Wall's split face;
+ * - at **X and Y Junctions** keel faces meet several Walls;
+ * - two coincident faces can run in opposite directions;
+ * - overlapping, not-joined Walls cross each other.
+ *
+ * Per-Wall meshes are also open at their Junction ends by design. The assembly
+ * therefore works on the **group's union** in seven fixed steps:
+ *
+ * 1. **Groups.** One structure group for every Wall-owned mesh (Walls, bridges and
+ *    keels are together the closed solid the builder resolved), one group per
+ *    Layout object. A plinth flush against a Wall therefore never cancels the
+ *    Wall's boundary.
+ * 2. **Section offset.** The caller offsets the plane by 0.1 mm toward the solid
+ *    (see `SectionPlane.sectionOffsetMeters`) so a cut exactly on a horizontal
+ *    face — the common case, because Sheet ticks snap to sills, heads and Wall
+ *    tops — makes every triangle either straddle or not, with no coplanar or
+ *    vertex-on-plane degeneracy.
+ * 3. **Oriented segments.** Each straddling triangle yields one segment, oriented
+ *    so the solid is on its left in the plane's own 2D frame.
+ * 4. **Weld** endpoints in a spatial hash with tolerance τ.
+ * 5. **Split** every segment at every welded vertex lying within τ of its interior
+ *    (T-vertices) and at every proper crossing with another segment of the group.
+ * 6. **Net multiplicity.** Merge equal undirected edges, summing `+1`/`−1`. Net
+ *    zero (two coincident opposite faces) is dropped; net `±k` is kept.
+ * 7. **Union boundary.** For each net edge compute the nonzero winding on its right
+ *    by a horizontal probe against the group's net edges, bucketed by v-strip; the
+ *    winding on its left is right + net. Keep the edge iff exactly one side is
+ *    zero, then stitch with Paper's rule (at a touching point turn clockwise from
+ *    the way back). Counter-clockwise loops are outers, clockwise loops are holes.
+ *
+ * **Validity is checked, not assumed.** Before step 7 every vertex must balance
+ * (net in = net out). A closed input always balances after steps 4–6; an imbalance
+ * means the input was genuinely open, and is reported as a `CapAssemblyIssue`
+ * rather than hidden behind a fallback. The caller draws the edges it has and
+ * reports the issue loudly.
  */
 
-export type SectionIdentity = {
-	readonly kind: string;
-	readonly id: string;
-};
+export type SectionPoint = readonly [number, number];
 
-/** One rendered mesh to section. Positions are world-space unless a matrix is given. */
-export type SectionInput = {
-	readonly identity: SectionIdentity;
-	/**
-	 * Meshes that form one closed solid assemble together. All Wall-owned meshes
-	 * of a Layout share one structure group; each Layout object is its own group,
-	 * so a plinth flush against a Wall never cancels the Wall's boundary.
-	 */
-	readonly group: string;
-	readonly positions: ArrayLike<number>;
-	readonly index?: ArrayLike<number> | null;
-	/** Column-major 4×4 world matrix; absent means the positions are already world-space. */
-	readonly matrixWorld?: ArrayLike<number> | null;
-};
+export type SectionVec3 = readonly [number, number, number];
 
-/** A horizontal plane, in the sign convention the GPU uses: kept iff `n·p + c ≥ 0`. */
+/**
+ * The plane to section, with the kept half-space stated once: a point is kept iff
+ * `normal · p + constant ≥ 0`.
+ *
+ * `sectionOffsetMeters` moves the plane **into the kept half-space** by that
+ * distance before straddling is tested; the returned loops are still in the drawn
+ * plane's frame (the caller draws at the GPU plane, 0.1 mm above the section).
+ * Three's own clipping keeps `normal · p + constant ≥ 0`, so one sign convention
+ * is shared with the GPU planes.
+ */
 export type SectionPlane = {
-	readonly normal: readonly [number, number, number];
+	readonly normal: SectionVec3;
 	readonly constant: number;
+	readonly sectionOffsetMeters?: number;
 };
 
-/**
- * Two section endpoints closer than this are one vertex.
- *
- * The builder's shared Junction vertices agree to floating round-off (~1e-11), and
- * distinct features (an Opening jamb beside a face) can legitimately sit a few
- * hundredths of a millimetre apart. The plan's 5e-5 was too coarse for those
- * features: it merged them and shifted the assembled area by 4e-6 m², past the
- * catalogue's 1e-6 m² budget. Ten micrometres still absorbs every round-off and
- * stays an order of magnitude under the section offset.
- */
-export const SECTION_WELD_TOLERANCE_METERS = 1e-5;
-/**
- * The section is taken this far below the cut while the GPU clips exactly at the
- * cut. Sheet ticks snap to found surfaces, so a cut exactly on a horizontal face
- * is the common case; the offset leaves every triangle either straddling the
- * plane or not, never coplanar or vertex-on-plane. The cap is drawn at the cut.
- */
-export const SECTION_PLANE_OFFSET_METERS = 1e-4;
-
-/** The cap section plane for a cut at `cutY`: horizontal, `y ≤ cutY - 1e-4` kept. */
-export function capSectionPlane(cutY: number): SectionPlane {
-	return {
-		normal: [0, -1, 0],
-		constant: cutY - SECTION_PLANE_OFFSET_METERS
-	};
-}
-
-export type SectionPoint = {
-	/** Plan X, metres. */
-	readonly u: number;
-	/** Plan Z, metres. */
-	readonly v: number;
-};
-
-export type SectionEdge = {
-	readonly identity: SectionIdentity;
+export type SectionInput = {
+	/** The identity the drawn edge attributes to (e.g. `wall:w-1`). */
+	readonly identity: string;
+	/** The assembly group; defaults to the identity. Walls share `'structure'`. */
+	readonly group?: string;
+	/** Local-space XYZ positions. */
+	readonly positions: ArrayLike<number>;
+	/** Optional triangle indices into `positions`. */
+	readonly index?: ArrayLike<number> | null;
+	/** Optional world matrix (16, column-major, Three's `.elements`). */
+	readonly matrix?: ArrayLike<number> | null;
+	/** Optional world AABB, for the broad phase. */
+	readonly bounds?: { readonly min: SectionVec3; readonly max: SectionVec3 } | null;
 };
 
 export type SectionLoop = {
-	/** Outer rings are counter-clockwise, holes clockwise; the last point closes to the first. */
+	/** Counter-clockwise loops are outers, clockwise loops are holes. */
+	readonly role: 'outer' | 'hole';
+	/** Plane-local metres, in the basis `SectionResult` returns. */
 	readonly points: readonly SectionPoint[];
-	/** `edges[i]` is the identity of `points[i] → points[i + 1]`. */
-	readonly edges: readonly SectionEdge[];
-	readonly hole: boolean;
-	/** For a hole, the index of its smallest containing outer; `-1` for an outer. */
-	readonly outerIndex: number;
+	/** One identity per edge: edge `i` runs `points[i] → points[i+1]`. */
+	readonly edgeIdentities: readonly string[];
+	readonly signedArea: number;
 };
 
 export type SectionChain = {
 	readonly points: readonly SectionPoint[];
-	readonly edges: readonly SectionEdge[];
+	readonly edgeIdentities: readonly string[];
 };
 
-/** A group whose net boundary does not balance: the input was genuinely open. */
+/** A group that did not balance: its input was open. */
 export type CapAssemblyIssue = {
 	readonly group: string;
-	readonly identity: SectionIdentity | null;
+	readonly identity: string;
 	readonly unmatchedVertices: number;
 };
 
-export type SectionResult = {
+export type SectionGroupResult = {
+	readonly group: string;
 	readonly loops: readonly SectionLoop[];
-	readonly openChains: readonly SectionChain[];
+	readonly chains: readonly SectionChain[];
+	readonly issue: CapAssemblyIssue | null;
+	/** Every identity that contributed a drawn edge or fill to this group. */
+	readonly identities: readonly string[];
+};
+
+/** The plane's frame: `world = origin + u * U + v * V`, and `(U, V, normal)` is right-handed. */
+export type SectionBasis = {
+	readonly normal: SectionVec3;
+	readonly origin: SectionVec3;
+	readonly u: SectionVec3;
+	readonly v: SectionVec3;
+};
+
+export type SectionResult = {
+	readonly groups: readonly SectionGroupResult[];
 	readonly issues: readonly CapAssemblyIssue[];
+	readonly basis: SectionBasis;
+	/** How many triangles the broad phase and straddle test considered. */
+	readonly candidateTriangles: number;
 };
 
 export type SectionOptions = {
+	/** Weld tolerance in metres. Half the section offset, by default. */
 	readonly weldToleranceMeters?: number;
+	/** Hard cap on triangles read, for a bounded worst case. */
+	readonly maxCandidateTriangles?: number;
 };
 
-type Vertex = { readonly x: number; readonly z: number };
+/** The default weld tolerance: half the 0.1 mm section offset. */
+export const SECTION_WELD_TOLERANCE_METERS = 5e-5;
+/** The default offset toward the solid. */
+export const SECTION_OFFSET_METERS = 1e-4;
 
+type Vec3 = [number, number, number];
+
+function dot(a: SectionVec3, b: SectionVec3): number {
+	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function cross(a: SectionVec3, b: SectionVec3): Vec3 {
+	return [
+		a[1] * b[2] - a[2] * b[1],
+		a[2] * b[0] - a[0] * b[2],
+		a[0] * b[1] - a[1] * b[0]
+	];
+}
+
+function normalize(v: SectionVec3): Vec3 {
+	const length = Math.hypot(v[0], v[1], v[2]);
+	return length > 0 ? [v[0] / length, v[1] / length, v[2] / length] : [0, 1, 0];
+}
+
+/** An orthonormal basis with `U × V = normal`. */
+function basisOf(normal: SectionVec3, constant: number): SectionBasis {
+	const n = normalize(normal);
+	const helper: SectionVec3 = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+	const u = normalize(cross(helper, n));
+	const v = cross(n, u);
+	const d = -constant;
+	const origin: Vec3 = [n[0] * d, n[1] * d, n[2] * d];
+	return { normal: n, origin, u, v };
+}
+
+const GEOMETRY_EPSILON = 1e-9;
+/** How many split passes a group may take before it is reported as unruly. */
+const SPLIT_PASS_LIMIT = 4;
+
+/** A spatial hash of the group's welded 2D vertices. */
+class Welder {
+	readonly points: SectionPoint[] = [];
+	readonly #cells = new Map<string, number[]>();
+	readonly #cell: number;
+
+	constructor(cell: number) {
+		this.#cell = cell;
+	}
+
+	#key(cx: number, cz: number): string {
+		return `${cx},${cz}`;
+	}
+
+	add(point: SectionPoint): number {
+		const cx = Math.floor(point[0] / this.#cell);
+		const cz = Math.floor(point[1] / this.#cell);
+		for (let ix = cx - 1; ix <= cx + 1; ix += 1) {
+			for (let iz = cz - 1; iz <= cz + 1; iz += 1) {
+				for (const id of this.#cells.get(this.#key(ix, iz)) ?? []) {
+					const known = this.points[id]!;
+					if (Math.hypot(known[0] - point[0], known[1] - point[1]) <= this.#cell) return id;
+				}
+			}
+		}
+		const id = this.points.length;
+		this.points.push(point);
+		const key = this.#key(cx, cz);
+		const cell = this.#cells.get(key);
+		if (cell === undefined) this.#cells.set(key, [id]);
+		else cell.push(id);
+		return id;
+	}
+}
+
+/** One oriented section segment, endpoints welded. */
 type Segment = {
-	readonly a: number;
-	readonly b: number;
-	readonly identity: SectionIdentity;
+	a: number;
+	b: number;
+	identity: string;
 };
 
 type NetEdge = {
-	readonly a: number;
-	readonly b: number;
-	readonly net: number;
-	readonly identity: SectionIdentity;
+	a: number;
+	b: number;
+	/** Signed multiplicity along a → b. */
+	net: number;
+	/** The identity with the largest contribution on its solid side. */
+	identity: string;
 };
 
-type DirectedEdge = {
-	readonly from: number;
-	readonly to: number;
-	readonly identity: SectionIdentity;
-};
-
-const EPSILON = 1e-12;
-
-function worldPointAt(
-	positions: ArrayLike<number>,
-	vertex: number,
-	matrix: ArrayLike<number> | null | undefined,
-	out: [number, number, number]
-): boolean {
-	const offset = vertex * 3;
-	if (offset + 2 >= positions.length) return false;
-	const x = positions[offset]!;
-	const y = positions[offset + 1]!;
-	const z = positions[offset + 2]!;
-	if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
-	if (matrix === null || matrix === undefined || matrix.length < 16) {
-		out[0] = x;
-		out[1] = y;
-		out[2] = z;
-		return true;
+function signedArea(points: readonly SectionPoint[]): number {
+	let twice = 0;
+	for (let index = 0; index < points.length; index += 1) {
+		const a = points[index]!;
+		const b = points[(index + 1) % points.length]!;
+		twice += a[0] * b[1] - a[1] * b[0];
 	}
-	out[0] = matrix[0]! * x + matrix[4]! * y + matrix[8]! * z + matrix[12]!;
-	out[1] = matrix[1]! * x + matrix[5]! * y + matrix[9]! * z + matrix[13]!;
-	out[2] = matrix[2]! * x + matrix[6]! * y + matrix[10]! * z + matrix[14]!;
-	return true;
+	return twice / 2;
 }
 
-function indexAt(index: ArrayLike<number> | null | undefined, offset: number): number {
-	return index === null || index === undefined ? offset : Number(index[offset]);
+function pointInPolygon2(point: SectionPoint, ring: readonly SectionPoint[]): boolean {
+	let inside = false;
+	for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+		const a = ring[i]!;
+		const b = ring[j]!;
+		const crosses =
+			a[1] > point[1] !== b[1] > point[1] &&
+			point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / (b[1] - a[1]) + a[0];
+		if (crosses) inside = !inside;
+	}
+	return inside;
 }
 
-/**
- * Section `inputs` at `plane` and assemble each group's union boundary.
- *
- * Groups are independent: the structure group (every Wall-owned mesh) and each
- * Layout object answer separately. The result is simple, non-overlapping
- * polygons — counter-clockwise outers with clockwise holes assigned to the
- * smallest containing outer — plus any open chains and the issues that explain
- * them.
- */
+/** Classic winding number of `point` against directed weighted edges. */
+class WindingIndex {
+	readonly #points: readonly SectionPoint[];
+	readonly #edges: readonly NetEdge[];
+	readonly #strips: number[][];
+	readonly #minV: number;
+	readonly #stripHeight: number;
+
+	constructor(points: readonly SectionPoint[], edges: readonly NetEdge[]) {
+		this.#points = points;
+		this.#edges = edges;
+		let minV = Infinity;
+		let maxV = -Infinity;
+		for (const point of points) {
+			if (point[1] < minV) minV = point[1];
+			if (point[1] > maxV) maxV = point[1];
+		}
+		if (!(minV <= maxV)) {
+			minV = 0;
+			maxV = 0;
+		}
+		const stripCount = Math.max(1, Math.min(128, Math.ceil(Math.sqrt(Math.max(1, edges.length)))));
+		this.#minV = minV;
+		this.#stripHeight = Math.max(1e-6, (maxV - minV) / stripCount);
+		this.#strips = Array.from({ length: stripCount + 1 }, () => []);
+		edges.forEach((edge, index) => {
+			const a = points[edge.a]!;
+			const b = points[edge.b]!;
+			const first = this.#stripOf(Math.min(a[1], b[1]));
+			const last = this.#stripOf(Math.max(a[1], b[1]));
+			for (let strip = first; strip <= last; strip += 1) this.#strips[strip]!.push(index);
+		});
+	}
+
+	#stripOf(v: number): number {
+		const raw = Math.floor((v - this.#minV) / this.#stripHeight);
+		return Math.max(0, Math.min(this.#strips.length - 1, raw));
+	}
+
+	at(point: SectionPoint): number {
+		let winding = 0;
+		for (const index of this.#strips[this.#stripOf(point[1])] ?? []) {
+			const edge = this.#edges[index]!;
+			const a = this.#points[edge.a]!;
+			const b = this.#points[edge.b]!;
+			const weight = Math.abs(edge.net);
+			const left = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
+			if (a[1] <= point[1]) {
+				if (b[1] > point[1] && left > 0) winding += weight;
+			} else if (b[1] <= point[1] && left < 0) {
+				winding -= weight;
+			}
+		}
+		return winding;
+	}
+}
+
+/** Transform one local position by an optional column-major matrix. */
+function worldPoint(
+	x: number,
+	y: number,
+	z: number,
+	matrix: ArrayLike<number> | null | undefined
+): Vec3 {
+	if (matrix == null) return [x, y, z];
+	const e = matrix;
+	return [
+		e[0]! * x + e[4]! * y + e[8]! * z + e[12]!,
+		e[1]! * x + e[5]! * y + e[9]! * z + e[13]!,
+		e[2]! * x + e[6]! * y + e[10]! * z + e[14]!
+	];
+}
+
+type LocalTriangle = {
+	/** Plane-local (u, v) per vertex. */
+	readonly local: readonly [SectionPoint, SectionPoint, SectionPoint];
+	/** Signed distance per vertex: kept iff ≥ 0. */
+	readonly distance: readonly [number, number, number];
+	/** The triangle's outward geometric normal, in world space. */
+	readonly normal: SectionVec3;
+};
+
 export function sectionMeshes(
 	inputs: readonly SectionInput[],
 	plane: SectionPlane,
 	options: SectionOptions = {}
 ): SectionResult {
-	const tolerance = options.weldToleranceMeters ?? SECTION_WELD_TOLERANCE_METERS;
+	const offset = plane.sectionOffsetMeters ?? SECTION_OFFSET_METERS;
+	// Moving the plane into the kept half-space means lowering the constant.
+	const constant = plane.constant - offset;
+	const basis = basisOf(plane.normal, constant);
+	const weld = options.weldToleranceMeters ?? Math.max(SECTION_WELD_TOLERANCE_METERS, offset / 2);
+	const maxTriangles = options.maxCandidateTriangles ?? Number.POSITIVE_INFINITY;
+
+	// Step 1 — groups, in first-appearance order.
+	const order: string[] = [];
 	const byGroup = new Map<string, SectionInput[]>();
 	for (const input of inputs) {
-		const list = byGroup.get(input.group);
-		if (list === undefined) byGroup.set(input.group, [input]);
-		else list.push(input);
+		const group = input.group ?? input.identity;
+		const list = byGroup.get(group);
+		if (list === undefined) {
+			byGroup.set(group, [input]);
+			order.push(group);
+		} else list.push(input);
 	}
 
-	const loops: SectionLoop[] = [];
-	const openChains: SectionChain[] = [];
+	let candidateTriangles = 0;
+	const groups: SectionGroupResult[] = [];
 	const issues: CapAssemblyIssue[] = [];
 
-	for (const [group, groupInputs] of byGroup) {
-		const assembled = assembleGroup(group, groupInputs, plane, tolerance);
-		loops.push(...assembled.loops);
-		openChains.push(...assembled.openChains);
-		issues.push(...assembled.issues);
+	for (const group of order) {
+		const members = byGroup.get(group)!;
+		const welder = new Welder(weld);
+		const segments: Segment[] = [];
+		const identities: string[] = [];
+
+		for (const input of members) {
+			if (candidateTriangles >= maxTriangles) break;
+			// Broad phase: a mesh whose whole world box is on one side of the plane
+			// contributes nothing to the section.
+			if (input.bounds != null) {
+				const { min, max } = input.bounds;
+				let lowest = Infinity;
+				let highest = -Infinity;
+				for (let corner = 0; corner < 8; corner += 1) {
+					const point: Vec3 = [
+						corner & 1 ? max[0] : min[0],
+						corner & 2 ? max[1] : min[1],
+						corner & 4 ? max[2] : min[2]
+					];
+					const distance = dot(basis.normal, point) + constant;
+					if (distance < lowest) lowest = distance;
+					if (distance > highest) highest = distance;
+				}
+				if (lowest >= 0 || highest < 0) continue;
+			}
+			const positions = input.positions;
+			const index = input.index ?? null;
+			const count = Math.floor((index == null ? positions.length / 3 : index.length) / 3);
+			identities.push(input.identity);
+			for (let triangle = 0; triangle < count; triangle += 1) {
+				if (candidateTriangles >= maxTriangles) break;
+				candidateTriangles += 1;
+				const ia = index == null ? triangle * 3 : index[triangle * 3]!;
+				const ib = index == null ? triangle * 3 + 1 : index[triangle * 3 + 1]!;
+				const ic = index == null ? triangle * 3 + 2 : index[triangle * 3 + 2]!;
+				const world = [
+					worldPoint(positions[ia * 3]!, positions[ia * 3 + 1]!, positions[ia * 3 + 2]!, input.matrix),
+					worldPoint(positions[ib * 3]!, positions[ib * 3 + 1]!, positions[ib * 3 + 2]!, input.matrix),
+					worldPoint(positions[ic * 3]!, positions[ic * 3 + 1]!, positions[ic * 3 + 2]!, input.matrix)
+				] as const;
+				const local = world.map(
+					(point) =>
+						[dot(point, basis.u), dot(point, basis.v)] as SectionPoint
+				) as unknown as readonly [SectionPoint, SectionPoint, SectionPoint];
+				const distance = world.map((point) => dot(basis.normal, point) + constant) as unknown as readonly [number, number, number];
+				const min = Math.min(distance[0], distance[1], distance[2]);
+				const max = Math.max(distance[0], distance[1], distance[2]);
+				// Wholly kept or wholly discarded: no crossing, no section.
+				if (min >= 0 || max < 0) continue;
+				const edge1: Vec3 = [
+					world[1][0] - world[0][0],
+					world[1][1] - world[0][1],
+					world[1][2] - world[0][2]
+				];
+				const edge2: Vec3 = [
+					world[2][0] - world[0][0],
+					world[2][1] - world[0][1],
+					world[2][2] - world[0][2]
+				];
+				const normal = cross(edge1, edge2);
+				if (Math.hypot(normal[0], normal[1], normal[2]) <= GEOMETRY_EPSILON) continue;
+				// Solid on the left: direction = n × t, in the right-handed (u, v, n) frame.
+				const direction = cross(basis.normal, normalize(normal));
+				const localDirection: SectionPoint = [dot(direction, basis.u), dot(direction, basis.v)];
+
+				const crossings: SectionPoint[] = [];
+				for (let edge = 0; edge < 3; edge += 1) {
+					const first = edge;
+					const second = (edge + 1) % 3;
+					const dFirst = distance[first]!;
+					const dSecond = distance[second]!;
+					if (dFirst >= 0 && dSecond >= 0) continue;
+					if (dFirst < 0 && dSecond < 0) continue;
+					const t = dFirst / (dFirst - dSecond);
+					if (!Number.isFinite(t)) continue;
+					const a = local[first]!;
+					const b = local[second]!;
+					crossings.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+				}
+				if (crossings.length !== 2) continue;
+				let [start, end] = crossings as [SectionPoint, SectionPoint];
+				if (Math.hypot(end[0] - start[0], end[1] - start[1]) <= GEOMETRY_EPSILON) continue;
+				const along =
+					(end[0] - start[0]) * localDirection[0] + (end[1] - start[1]) * localDirection[1];
+				if (along < 0) [start, end] = [end, start];
+				const a = welder.add(start);
+				const b = welder.add(end);
+				if (a === b) continue;
+				segments.push({ a, b, identity: input.identity });
+			}
+		}
+
+		groups.push(assembleGroup(group, welder, segments, identities, weld));
 	}
 
-	return { loops, openChains, issues };
+	for (const group of groups) if (group.issue !== null) issues.push(group.issue);
+	return { groups, issues, basis, candidateTriangles };
 }
 
+/** Steps 5–7 for one group. */
 function assembleGroup(
 	group: string,
-	inputs: readonly SectionInput[],
-	plane: SectionPlane,
+	welder: Welder,
+	segments: Segment[],
+	identities: string[],
 	tolerance: number
-): SectionResult {
-	// --- steps 3–4: oriented segments, welded endpoints -----------------------
-	const vertices: Vertex[] = [];
-	const vertexCells = new Map<string, number[]>();
-	const cellKey = (x: number, z: number): string =>
-		`${Math.floor(x / tolerance)},${Math.floor(z / tolerance)}`;
-
-	function weld(x: number, z: number): number {
-		const cx = Math.floor(x / tolerance);
-		const cz = Math.floor(z / tolerance);
-		for (let dx = -1; dx <= 1; dx += 1) {
-			for (let dz = -1; dz <= 1; dz += 1) {
-				const cell = vertexCells.get(`${cx + dx},${cz + dz}`);
-				if (cell === undefined) continue;
-				for (const id of cell) {
-					const vertex = vertices[id]!;
-					if (Math.hypot(vertex.x - x, vertex.z - z) <= tolerance) return id;
-				}
-			}
-		}
-		const id = vertices.length;
-		vertices.push({ x, z });
-		const key = cellKey(x, z);
-		const cell = vertexCells.get(key);
-		if (cell === undefined) vertexCells.set(key, [id]);
-		else cell.push(id);
-		return id;
+): SectionGroupResult {
+	const points = welder.points;
+	// Step 5 — split at welded vertices on a segment's interior (T-vertices) and at
+	// proper crossings. Both create new welded vertices, and a point created by one
+	// can lie on a third segment's interior (three faces meeting at a door jamb, a
+	// keel point, a corner), so the pass repeats until it adds nothing.
+	let split = segments;
+	for (let pass = 0; pass < SPLIT_PASS_LIMIT; pass += 1) {
+		const next = splitPass(split, points, welder, tolerance);
+		split = next.segments;
+		if (!next.added) break;
 	}
 
-	const segments: Segment[] = [];
-	const point: [number, number, number] = [0, 0, 0];
-	const planeNormal = plane.normal;
-	const nx = planeNormal[0];
-	const ny = planeNormal[1];
-	const nz = planeNormal[2];
-
-	for (const input of inputs) {
-		const index = input.index;
-		const total = index !== null && index !== undefined ? index.length : Math.floor(input.positions.length / 3);
-		for (let offset = 0; offset + 2 < total; offset += 3) {
-			const ia = indexAt(index, offset);
-			const ib = indexAt(index, offset + 1);
-			const ic = indexAt(index, offset + 2);
-			const a: [number, number, number] = [0, 0, 0];
-			const b: [number, number, number] = [0, 0, 0];
-			const c: [number, number, number] = [0, 0, 0];
-			if (!worldPointAt(input.positions, ia, input.matrixWorld, a)) continue;
-			if (!worldPointAt(input.positions, ib, input.matrixWorld, b)) continue;
-			if (!worldPointAt(input.positions, ic, input.matrixWorld, c)) continue;
-			const da = nx * a[0] + ny * a[1] + nz * a[2] + plane.constant;
-			const db = nx * b[0] + ny * b[1] + nz * b[2] + plane.constant;
-			const dc = nx * c[0] + ny * c[1] + nz * c[2] + plane.constant;
-			// A triply-signed triangle straddles the plane; any zero or same-sign
-			// triangle contributes no section area.
-			if (!((da > 0 && db < 0) || (da < 0 && db > 0) || (db > 0 && dc < 0) || (db < 0 && dc > 0) || (dc > 0 && da < 0) || (dc < 0 && da > 0))) {
-				continue;
-			}
-			const crossings: Array<[number, number, number]> = [];
-			const addCrossing = (
-				p: [number, number, number],
-				q: [number, number, number],
-				dp: number,
-				dq: number
-			): void => {
-				if (!((dp > 0 && dq < 0) || (dp < 0 && dq > 0))) return;
-				const t = dp / (dp - dq);
-				crossings.push([
-					p[0] + (q[0] - p[0]) * t,
-					p[1] + (q[1] - p[1]) * t,
-					p[2] + (q[2] - p[2]) * t
-				]);
-			};
-			addCrossing(a, b, da, db);
-			addCrossing(b, c, db, dc);
-			addCrossing(c, a, dc, da);
-			if (crossings.length !== 2) continue;
-
-			// The section direction that puts the solid on its left, seen from
-			// above: `planeNormal × triangleNormal`, projected to the plan.
-			const ux = b[0] - a[0];
-			const uy = b[1] - a[1];
-			const uz = b[2] - a[2];
-			const vx = c[0] - a[0];
-			const vy = c[1] - a[1];
-			const vz = c[2] - a[2];
-			const tnx = uy * vz - uz * vy;
-			const tny = uz * vx - ux * vz;
-			const tnz = ux * vy - uy * vx;
-			const dirX = ny * tnz - nz * tny;
-			const dirZ = nx * tny - ny * tnx;
-			if (Math.abs(dirX) + Math.abs(dirZ) < EPSILON) continue;
-
-			const first = crossings[0]!;
-			const second = crossings[1]!;
-			const along = (second[0] - first[0]) * dirX + (second[2] - first[2]) * dirZ;
-			if (Math.abs(along) < EPSILON) continue;
-			const start = along > 0 ? first : second;
-			const end = along > 0 ? second : first;
-			const idA = weld(start[0], start[2]);
-			const idB = weld(end[0], end[2]);
-			if (idA === idB) continue;
-			segments.push({ a: idA, b: idB, identity: input.identity });
-		}
-	}
-
-	if (segments.length === 0) return { loops: [], openChains: [], issues: [] };
-
-	// --- step 5: split at T-vertices and proper crossings ---------------------
-	const splitPoints = new Map<number, Map<number, number>>();
-	function addSplit(segmentIndex: number, t: number): void {
-		if (!(t > 1e-9 && t < 1 - 1e-9)) return;
-		let list = splitPoints.get(segmentIndex);
-		if (list === undefined) {
-			list = new Map();
-			splitPoints.set(segmentIndex, list);
-		}
-		// One split per parameter, whatever discovered it.
-		for (const known of list.keys()) {
-			if (Math.abs(known - t) <= 1e-9) return;
-		}
-		list.set(t, t);
-	}
-
-	// Vertex grid for T-vertices. A coarser cell than the weld tolerance keeps the
-	// scan bounded; each candidate is still tested against the exact tolerance.
-	const vertexGridCell = Math.max(0.5, tolerance * 1000);
-	const vertexGrid = new Map<string, number[]>();
-	function gridKey(x: number, z: number): string {
-		return `${Math.floor(x / vertexGridCell)},${Math.floor(z / vertexGridCell)}`;
-	}
-	vertices.forEach((vertex, id) => {
-		const key = gridKey(vertex.x, vertex.z);
-		const cell = vertexGrid.get(key);
-		if (cell === undefined) vertexGrid.set(key, [id]);
-		else cell.push(id);
-	});
-
-	const segmentGridCell = Math.max(0.5, vertexGridCell);
-	const segmentGrid = new Map<string, number[]>();
-	function segmentCells(ax: number, az: number, bx: number, bz: number): string[] {
-		const minX = Math.floor(Math.min(ax, bx) / segmentGridCell);
-		const maxX = Math.floor(Math.max(ax, bx) / segmentGridCell);
-		const minZ = Math.floor(Math.min(az, bz) / segmentGridCell);
-		const maxZ = Math.floor(Math.max(az, bz) / segmentGridCell);
-		const keys: string[] = [];
-		for (let cx = minX; cx <= maxX; cx += 1) {
-			for (let cz = minZ; cz <= maxZ; cz += 1) keys.push(`${cx},${cz}`);
-		}
-		return keys;
-	}
-	segments.forEach((segment, segmentIndex) => {
-		const a = vertices[segment.a]!;
-		const b = vertices[segment.b]!;
-		for (const key of segmentCells(a.x, a.z, b.x, b.z)) {
-			const cell = segmentGrid.get(key);
-			if (cell === undefined) segmentGrid.set(key, [segmentIndex]);
-			else cell.push(segmentIndex);
-		}
-	});
-
-	// T-vertices: a welded vertex lying in a segment's interior.
-	segments.forEach((segment, segmentIndex) => {
-		const a = vertices[segment.a]!;
-		const b = vertices[segment.b]!;
-		const dx = b.x - a.x;
-		const dz = b.z - a.z;
-		const lengthSq = dx * dx + dz * dz;
-		if (lengthSq <= EPSILON) return;
-		const seen = new Set<number>();
-		const minX = Math.floor((Math.min(a.x, b.x) - tolerance) / vertexGridCell);
-		const maxX = Math.floor((Math.max(a.x, b.x) + tolerance) / vertexGridCell);
-		const minZ = Math.floor((Math.min(a.z, b.z) - tolerance) / vertexGridCell);
-		const maxZ = Math.floor((Math.max(a.z, b.z) + tolerance) / vertexGridCell);
-		for (let cx = minX; cx <= maxX; cx += 1) {
-			for (let cz = minZ; cz <= maxZ; cz += 1) {
-				const cell = vertexGrid.get(`${cx},${cz}`);
-				if (cell === undefined) continue;
-				for (const id of cell) {
-					if (id === segment.a || id === segment.b || seen.has(id)) continue;
-					seen.add(id);
-					const vertex = vertices[id]!;
-					const t = ((vertex.x - a.x) * dx + (vertex.z - a.z) * dz) / lengthSq;
-					if (!(t > 1e-9 && t < 1 - 1e-9)) continue;
-					const px = a.x + dx * t;
-					const pz = a.z + dz * t;
-					if (Math.hypot(vertex.x - px, vertex.z - pz) <= tolerance) addSplit(segmentIndex, t);
-				}
-			}
-		}
-	});
-
-	// Proper crossings between two segments of the same group.
-	const tested = new Set<string>();
-	segments.forEach((first, firstIndex) => {
-		const a = vertices[first.a]!;
-		const b = vertices[first.b]!;
-		const candidates = new Set<number>();
-		for (const key of segmentCells(a.x, a.z, b.x, b.z)) {
-			const cell = segmentGrid.get(key);
-			if (cell === undefined) continue;
-			for (const index of cell) if (index !== firstIndex) candidates.add(index);
-		}
-		for (const secondIndex of candidates) {
-			const pairKey = firstIndex < secondIndex ? `${firstIndex}:${secondIndex}` : `${secondIndex}:${firstIndex}`;
-			if (tested.has(pairKey)) continue;
-			tested.add(pairKey);
-			const second = segments[secondIndex]!;
-			const c = vertices[second.a]!;
-			const d = vertices[second.b]!;
-			const rX = b.x - a.x;
-			const rZ = b.z - a.z;
-			const sX = d.x - c.x;
-			const sZ = d.z - c.z;
-			const denominator = rX * sZ - rZ * sX;
-			if (Math.abs(denominator) < EPSILON) continue;
-			const qpx = c.x - a.x;
-			const qpz = c.z - a.z;
-			const t = (qpx * sZ - qpz * sX) / denominator;
-			const u = (qpx * rZ - qpz * rX) / denominator;
-			if (!(t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9)) continue;
-			addSplit(firstIndex, t);
-			addSplit(secondIndex, u);
-		}
-	});
-
-	// Rebuild segments with every split point welded to one vertex.
-	const splitSegments: Segment[] = [];
-	segments.forEach((segment, segmentIndex) => {
-		const a = vertices[segment.a]!;
-		const b = vertices[segment.b]!;
-		const params: Array<{ t: number; id: number }> = [];
-		const splits = splitPoints.get(segmentIndex);
-		if (splits !== undefined) {
-			for (const t of [...splits.keys()].sort((left, right) => left - right)) {
-				const x = a.x + (b.x - a.x) * t;
-				const z = a.z + (b.z - a.z) * t;
-				params.push({ t, id: weld(x, z) });
-			}
-		}
-		let previousId = segment.a;
-		for (const entry of params) {
-			if (entry.id !== previousId) {
-				splitSegments.push({ a: previousId, b: entry.id, identity: segment.identity });
-				previousId = entry.id;
-			}
-		}
-		if (segment.b !== previousId) {
-			splitSegments.push({ a: previousId, b: segment.b, identity: segment.identity });
-		}
-	});
-
-	// --- step 6: net multiplicity --------------------------------------------
-	const netMap = new Map<string, NetEdge>();
-	const identityCounts = new Map<string, Map<string, { identity: SectionIdentity; signed: number }>>();
-	function identityKey(identity: SectionIdentity): string {
-		return `${identity.kind}\u0000${identity.id}`;
-	}
-	for (const segment of splitSegments) {
+	// Step 6 — net multiplicity per undirected edge.
+	type Net = { a: number; b: number; net: number; contributions: Map<string, number> };
+	const nets = new Map<string, Net>();
+	for (const segment of split) {
+		if (segment.a === segment.b) continue;
 		const forward = segment.a < segment.b;
-		const low = forward ? segment.a : segment.b;
-		const high = forward ? segment.b : segment.a;
-		const key = `${low}:${high}`;
-		const signed = forward ? 1 : -1;
-		const existing = netMap.get(key);
-		if (existing === undefined) {
-			netMap.set(key, { a: low, b: high, net: signed, identity: segment.identity });
-		} else {
-			netMap.set(key, { ...existing, net: existing.net + signed });
+		const a = forward ? segment.a : segment.b;
+		const b = forward ? segment.b : segment.a;
+		const edgeKey = `${a}:${b}`;
+		let net = nets.get(edgeKey);
+		if (net === undefined) {
+			net = { a, b, net: 0, contributions: new Map() };
+			nets.set(edgeKey, net);
 		}
-		let counts = identityCounts.get(key);
-		if (counts === undefined) {
-			counts = new Map();
-			identityCounts.set(key, counts);
-		}
-		const identityId = identityKey(segment.identity);
-		const entry = counts.get(identityId);
-		if (entry === undefined) counts.set(identityId, { identity: segment.identity, signed });
-		else entry.signed += signed;
+		net.net += forward ? 1 : -1;
+		net.contributions.set(segment.identity, (net.contributions.get(segment.identity) ?? 0) + (forward ? 1 : -1));
 	}
-
-	const netEdges: NetEdge[] = [];
-	for (const [key, edge] of netMap) {
-		if (edge.net === 0) continue;
-		// The kept edge's identity is the one with the largest positive count on
-		// the solid side; ties break deterministically by kind then id.
-		const counts = identityCounts.get(key) ?? new Map();
-		let best: { identity: SectionIdentity; signed: number } | null = null;
-		const wantedSign = Math.sign(edge.net);
-		for (const entry of counts.values()) {
-			const contribution = entry.signed * wantedSign;
-			if (contribution <= 0) continue;
-			if (
-				best === null ||
-				contribution > best.signed ||
-				(contribution === best.signed &&
-					`${entry.identity.kind}:${entry.identity.id}` < `${best.identity.kind}:${best.identity.id}`)
-			) {
-				best = { identity: entry.identity, signed: contribution };
+	const keptNets: NetEdge[] = [];
+	for (const net of nets.values()) {
+		if (net.net === 0) continue;
+		let identity = '';
+		let best = -Infinity;
+		for (const [candidate, contribution] of net.contributions) {
+			if (Math.abs(contribution) > best) {
+				best = Math.abs(contribution);
+				identity = candidate;
 			}
 		}
-		const identity = best?.identity ?? edge.identity;
-		netEdges.push({ a: edge.a, b: edge.b, net: edge.net, identity });
-	}
-
-	// --- step 7: nonzero-winding union boundary ------------------------------
-	// Directed edges with multiplicity for the winding probes.
-	const directed: DirectedEdge[] = [];
-	for (const edge of netEdges) {
-		const direction = edge.net > 0 ? { from: edge.a, to: edge.b } : { from: edge.b, to: edge.a };
-		const repeat = Math.abs(edge.net);
-		for (let index = 0; index < repeat; index += 1) {
-			directed.push({ ...direction, identity: edge.identity });
-		}
-	}
-	const windingGrid = buildWindingGrid(vertices, directed);
-
-	const windingAt = (x: number, z: number): number =>
-		windingNumber(vertices, directed, windingGrid, x, z);
-
-	const kept: DirectedEdge[] = [];
-	for (const edge of netEdges) {
-		const a = vertices[edge.a]!;
-		const b = vertices[edge.b]!;
-		const dx = b.x - a.x;
-		const dz = b.z - a.z;
-		const length = Math.hypot(dx, dz);
-		if (length <= EPSILON) continue;
-		const direction = edge.net > 0 ? { from: edge.a, to: edge.b } : { from: edge.b, to: edge.a };
-		const start = vertices[direction.from]!;
-		const end = vertices[direction.to]!;
-		const ex = end.x - start.x;
-		const ez = end.z - start.z;
-		const exLength = Math.hypot(ex, ez);
-		const midX = (start.x + end.x) / 2;
-		const midZ = (start.z + end.z) / 2;
-		// The left normal of `(dx, dz)` in the plan `(x, z)` frame is `(-dz, dx)`.
-		const leftX = -ez / exLength;
-		const leftZ = ex / exLength;
-		const offset = 1e-6;
-		const right = windingAt(midX - leftX * offset, midZ - leftZ * offset);
-		const left = windingAt(midX + leftX * offset, midZ + leftZ * offset);
-		const rightInside = right !== 0;
-		const leftInside = left !== 0;
-		if (rightInside === leftInside) continue;
-		if (leftInside) kept.push({ from: direction.from, to: direction.to, identity: edge.identity });
-		else kept.push({ from: direction.to, to: direction.from, identity: edge.identity });
-	}
-
-	// **Validity is checked on the union boundary, not on the raw net edges.**
-	// The builder deliberately leaves an interface face on one side of a T (the
-	// stem's end is interior to the through Wall's material), so the raw surface
-	// set can carry an unpaired internal diaphragm. That diaphragm has winding on
-	// both sides and is dropped by step 7; it is not an open solid. A genuinely
-	// open input leaves its boundary unmatched *after* the union, which is the
-	// defect this check must report.
-	const balance = new Map<number, number>();
-	for (const edge of kept) {
-		balance.set(edge.from, (balance.get(edge.from) ?? 0) + 1);
-		balance.set(edge.to, (balance.get(edge.to) ?? 0) - 1);
-	}
-	let unmatched = 0;
-	for (const value of balance.values()) if (Math.abs(value) > 1e-9) unmatched += 1;
-	const issues: CapAssemblyIssue[] = [];
-	if (unmatched > 0) {
-		issues.push({
-			group,
-			identity: inputs[0]?.identity ?? null,
-			unmatchedVertices: unmatched
+		keptNets.push({
+			a: net.net > 0 ? net.a : net.b,
+			b: net.net > 0 ? net.b : net.a,
+			net: net.net,
+			identity
 		});
 	}
 
-	// Paper's stitch: at a touching point, turn clockwise from the way back.
-	const outgoing = new Map<number, number[]>();
-	kept.forEach((edge, index) => {
-		const list = outgoing.get(edge.from);
-		if (list === undefined) outgoing.set(edge.from, [index]);
-		else list.push(index);
-	});
-
-	function nextEdge(incomingIndex: number): number | null {
-		const incoming = kept[incomingIndex]!;
-		const vertex = vertices[incoming.to]!;
-		const previous = vertices[incoming.from]!;
-		const back = Math.atan2(previous.z - vertex.z, previous.x - vertex.x);
-		let best: number | null = null;
-		let bestTurn = Infinity;
-		for (const candidate of outgoing.get(incoming.to) ?? []) {
-			const edge = kept[candidate]!;
-			const target = vertices[edge.to]!;
-			const forward = Math.atan2(target.z - vertex.z, target.x - vertex.x);
-			let turn = (back - forward) % (Math.PI * 2);
-			if (turn < 0) turn += Math.PI * 2;
-			if (turn <= 1e-12) turn = Math.PI * 2;
-			if (turn < bestTurn) {
-				best = candidate;
-				bestTurn = turn;
-			}
-		}
-		return best;
+	// Balance: net in must equal net out at every vertex, or the input was open.
+	const balance = new Map<number, number>();
+	for (const edge of keptNets) {
+		const weight = Math.abs(edge.net);
+		balance.set(edge.a, (balance.get(edge.a) ?? 0) + weight);
+		balance.set(edge.b, (balance.get(edge.b) ?? 0) - weight);
+	}
+	let unmatched = 0;
+	for (const value of balance.values()) if (value !== 0) unmatched += 1;
+	if (unmatched > 0) {
+		// Draw what there is (open chains), and say so: never silent, never throws.
+		const chains = openChains(points, keptNets);
+		return {
+			group,
+			loops: [],
+			chains,
+			issue: { group, identity: identities[0] ?? group, unmatchedVertices: unmatched },
+			identities: [...new Set(identities)]
+		};
 	}
 
-	const used = new Array<boolean>(kept.length).fill(false);
+	// Step 7 — union boundary, then loops.
+	const winding = new WindingIndex(points, keptNets);
+	const boundary: NetEdge[] = [];
+	for (const edge of keptNets) {
+		const a = points[edge.a]!;
+		const b = points[edge.b]!;
+		const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+		if (!(length > 0)) continue;
+		const dx = (b[0] - a[0]) / length;
+		const dz = (b[1] - a[1]) / length;
+		const probeOffset = Math.min(Math.max(10 * tolerance, length * 0.01), length * 0.25);
+		// Right of a → b is (dz, -dx).
+		const probe: SectionPoint = [
+			(a[0] + b[0]) / 2 + dz * probeOffset,
+			(a[1] + b[1]) / 2 - dx * probeOffset
+		];
+		const right = winding.at(probe);
+		// The emitted direction is the majority direction, so crossing it from right
+		// to left adds its multiplicity — the sign of `net` is bookkeeping only.
+		const left = right + Math.abs(edge.net);
+		if (right !== 0 && left !== 0) continue;
+		if (right === 0) boundary.push(edge);
+		else boundary.push({ ...edge, a: edge.b, b: edge.a, net: -edge.net });
+	}
+
+	const loops = stitch(points, boundary);
+	if (keptNets.length > 0 && boundary.length === 0) {
+		// The winding probe is offset by ~10 weld tolerances, so a feature narrower
+		// than that (a cut within a millimetre of an arch apex) resolves to nothing.
+		// Draw nothing rather than something wrong, and say so.
+		return {
+			group,
+			loops: [],
+			chains: [],
+			issue: { group, identity: identities[0] ?? group, unmatchedVertices: 0 },
+			identities: [...new Set(identities)]
+		};
+	}
+	if (boundary.length > 0 && loops.length === 0) {
+		return {
+			group,
+			loops: [],
+			chains: openChains(points, boundary),
+			issue: { group, identity: identities[0] ?? group, unmatchedVertices: boundary.length },
+			identities: [...new Set(boundary.map((edge) => edge.identity))]
+		};
+	}
+	return {
+		group,
+		loops: loops.sort((a, b) => (a.role === b.role ? 0 : a.role === 'outer' ? -1 : 1)),
+		chains: [],
+		issue: null,
+		identities: [...new Set(boundary.map((edge) => edge.identity))]
+	};
+}
+
+/**
+ * One split pass over a group's segments: T-vertices first, then proper crossings.
+ * Returns the split set and whether it split anything, so the caller can repeat.
+ */
+function splitPass(
+	segments: readonly Segment[],
+	points: readonly SectionPoint[],
+	welder: Welder,
+	tolerance: number
+): { segments: Segment[]; added: boolean } {
+	if (segments.length === 0) return { segments: [], added: false };
+	const extra: number[][] = segments.map(() => []);
+	const cell = Math.max(0.02, tolerance * 8);
+	const key = (x: number, z: number): string => `${x},${z}`;
+	const cellsOfSegment = (segment: Segment): [number, number, number, number] => {
+		const a = points[segment.a]!;
+		const b = points[segment.b]!;
+		return [
+			Math.floor((Math.min(a[0], b[0]) - tolerance) / cell),
+			Math.floor((Math.max(a[0], b[0]) + tolerance) / cell),
+			Math.floor((Math.min(a[1], b[1]) - tolerance) / cell),
+			Math.floor((Math.max(a[1], b[1]) + tolerance) / cell)
+		];
+	};
+	const segmentCells = new Map<string, number[]>();
+	segments.forEach((segment, index) => {
+		const [x0, x1, z0, z1] = cellsOfSegment(segment);
+		for (let x = x0; x <= x1; x += 1) {
+			for (let z = z0; z <= z1; z += 1) {
+				const cellKey = key(x, z);
+				const list = segmentCells.get(cellKey);
+				if (list === undefined) segmentCells.set(cellKey, [index]);
+				else list.push(index);
+			}
+		}
+	});
+
+	// T-vertices: a welded vertex that is an endpoint of some segment, lying on
+	// another segment's interior.
+	const endpointIds = new Set<number>();
+	for (const segment of segments) {
+		endpointIds.add(segment.a);
+		endpointIds.add(segment.b);
+	}
+	const pointCells = new Map<string, number[]>();
+	for (const id of endpointIds) {
+		const point = points[id]!;
+		const cellKey = key(Math.floor(point[0] / cell), Math.floor(point[1] / cell));
+		const list = pointCells.get(cellKey);
+		if (list === undefined) pointCells.set(cellKey, [id]);
+		else list.push(id);
+	}
+	segments.forEach((segment, index) => {
+		const [x0, x1, z0, z1] = cellsOfSegment(segment);
+		const seen = new Set<number>();
+		for (let x = x0; x <= x1; x += 1) {
+			for (let z = z0; z <= z1; z += 1) {
+				for (const id of pointCells.get(key(x, z)) ?? []) {
+					if (seen.has(id)) continue;
+					seen.add(id);
+					if (id === segment.a || id === segment.b) continue;
+					const amount = amountAlong(segment, id, points, tolerance);
+					if (amount === null || amount <= 0 || amount >= 1) continue;
+					extra[index]!.push(amount);
+				}
+			}
+		}
+	});
+
+	// Proper crossings, cell by cell: no all-pairs pass.
+	const tested = new Set<string>();
+	for (const list of segmentCells.values()) {
+		for (let i = 0; i < list.length; i += 1) {
+			for (let j = i + 1; j < list.length; j += 1) {
+				const first = list[i]!;
+				const second = list[j]!;
+				const pairKey = first < second ? `${first}:${second}` : `${second}:${first}`;
+				if (tested.has(pairKey)) continue;
+				tested.add(pairKey);
+				const crossing = properCrossing(segments[first]!, segments[second]!, points);
+				if (crossing === null) continue;
+				extra[first]!.push(crossing.first);
+				extra[second]!.push(crossing.second);
+			}
+		}
+	}
+
+	let added = false;
+	const next: Segment[] = [];
+	segments.forEach((segment, index) => {
+		const amounts = [...new Set([...extra[index]!, 0, 1].filter((amount) => amount >= 0 && amount <= 1))];
+		amounts.sort((a, b) => a - b);
+		if (amounts.length > 2) added = true;
+		let previous = welder.add(points[segment.a]!);
+		for (const amount of amounts) {
+			if (amount === 0) continue;
+			const a = points[segment.a]!;
+			const b = points[segment.b]!;
+			const at: SectionPoint = [a[0] + (b[0] - a[0]) * amount, a[1] + (b[1] - a[1]) * amount];
+			const id = amount >= 1 ? welder.add(points[segment.b]!) : welder.add(at);
+			if (id !== previous) next.push({ a: previous, b: id, identity: segment.identity });
+			previous = id;
+		}
+	});
+	return { segments: next, added };
+}
+
+/** Where on `segment` the welded vertex `id` sits, or null when it is not on it. */
+function amountAlong(
+	segment: Segment,
+	id: number,
+	points: readonly SectionPoint[],
+	tolerance: number
+): number | null {
+	const a = points[segment.a]!;
+	const b = points[segment.b]!;
+	const point = points[id]!;
+	const dx = b[0] - a[0];
+	const dz = b[1] - a[1];
+	const lengthSquared = dx * dx + dz * dz;
+	if (!(lengthSquared > 0)) return null;
+	const amount = ((point[0] - a[0]) * dx + (point[1] - a[1]) * dz) / lengthSquared;
+	if (!Number.isFinite(amount)) return null;
+	const nearest: SectionPoint = [a[0] + dx * amount, a[1] + dz * amount];
+	const distance = Math.hypot(nearest[0] - point[0], nearest[1] - point[1]);
+	// The vertex must actually lie on the segment, within the weld tolerance.
+	return distance <= Math.max(tolerance, Math.hypot(dx, dz) * 1e-6) ? amount : null;
+}
+
+function properCrossing(
+	first: Segment,
+	second: Segment,
+	points: readonly SectionPoint[]
+): { first: number; second: number } | null {
+	if (first.a === second.a || first.a === second.b || first.b === second.a || first.b === second.b) {
+		return null;
+	}
+	const p = points[first.a]!;
+	const q = points[first.b]!;
+	const r = points[second.a]!;
+	const s = points[second.b]!;
+	const denominator = (q[0] - p[0]) * (s[1] - r[1]) - (q[1] - p[1]) * (s[0] - r[0]);
+	if (Math.abs(denominator) <= 1e-12) return null;
+	const t = ((r[0] - p[0]) * (s[1] - r[1]) - (r[1] - p[1]) * (s[0] - r[0])) / denominator;
+	const u = ((r[0] - p[0]) * (q[1] - p[1]) - (r[1] - p[1]) * (q[0] - p[0])) / denominator;
+	if (!(t > 0 && t < 1 && u > 0 && u < 1)) return null;
+	return { first: t, second: u };
+}
+
+/** Stitch directed edges into loops, turning clockwise from the way back at a branch. */
+function stitch(points: readonly SectionPoint[], edges: readonly NetEdge[]): SectionLoop[] {
+	const outgoing = new Map<number, number[]>();
+	edges.forEach((edge, index) => {
+		const list = outgoing.get(edge.a);
+		if (list === undefined) outgoing.set(edge.a, [index]);
+		else list.push(index);
+	});
+	const used = edges.map(() => false);
 	const loops: SectionLoop[] = [];
-	const openChains: SectionChain[] = [];
-	for (let first = 0; first < kept.length; first += 1) {
+	for (let first = 0; first < edges.length; first += 1) {
 		if (used[first]) continue;
-		const pointList: SectionPoint[] = [];
-		const edgeList: SectionEdge[] = [];
+		const ids: number[] = [];
+		const identities: string[] = [];
 		let current = first;
 		let closed = false;
-		for (;;) {
-			if (used[current]) break;
+		for (let guard = 0; guard <= edges.length; guard += 1) {
 			used[current] = true;
-			const edge = kept[current]!;
-			pointList.push({ u: vertices[edge.from]!.x, v: vertices[edge.from]!.z });
-			edgeList.push({ identity: edge.identity });
-			const next = nextEdge(current);
+			const edge = edges[current]!;
+			ids.push(edge.a);
+			identities.push(edge.identity);
+			// The closing edge is `first` and it is already used, so it must stay a
+			// candidate: filtering it out is what leaves every ring unclosed.
+			const candidates = (outgoing.get(edge.b) ?? []).filter(
+				(index) => index === first || !used[index]
+			);
+			const next = chooseNext(edge, candidates, edges, points);
 			if (next === null) break;
 			if (next === first) {
 				closed = true;
@@ -632,127 +776,104 @@ function assembleGroup(
 			}
 			current = next;
 		}
-		if (closed && pointList.length >= 3) {
-			loops.push({ points: pointList, edges: edgeList, hole: false, outerIndex: -1 });
-		} else if (pointList.length >= 2) {
-			// The final chain edge ends where the walk stopped.
-			const last = kept[current]!;
-			pointList.push({ u: vertices[last.to]!.x, v: vertices[last.to]!.z });
-			openChains.push({ points: pointList, edges: edgeList });
+		if (!closed || ids.length < 3) continue;
+		const ring = ids.map((id) => points[id]!);
+		const area = signedArea(ring);
+		loops.push({
+			role: area > 0 ? 'outer' : 'hole',
+			points: ring,
+			edgeIdentities: identities,
+			signedArea: area
+		});
+	}
+	return loops;
+}
+
+function chooseNext(
+	from: NetEdge,
+	candidates: readonly number[],
+	edges: readonly NetEdge[],
+	points: readonly SectionPoint[]
+): number | null {
+	if (candidates.length === 0) return null;
+	if (candidates.length === 1) return candidates[0]!;
+	const vertex = points[from.b]!;
+	const back = Math.atan2(points[from.a]![1] - vertex[1], points[from.a]![0] - vertex[0]);
+	let best: number | null = null;
+	let bestTurn = Infinity;
+	for (const candidate of candidates) {
+		const target = points[edges[candidate]!.b]!;
+		const forward = Math.atan2(target[1] - vertex[1], target[0] - vertex[0]);
+		let turn = (back - forward) % (Math.PI * 2);
+		if (turn < 0) turn += Math.PI * 2;
+		if (turn <= 1e-12) turn = Math.PI * 2;
+		if (turn < bestTurn) {
+			best = candidate;
+			bestTurn = turn;
 		}
 	}
+	return best;
+}
 
-	// Outer rings are counter-clockwise, holes clockwise; each hole belongs to
-	// the smallest outer that contains it.
-	const classified: SectionLoop[] = loops.map((loop) => {
-		const area = signedArea(loop.points);
-		return area >= 0
-			? loop
-			: { ...loop, hole: true };
+/** Walk edges into maximal open chains (an imbalanced group still draws). */
+function openChains(points: readonly SectionPoint[], edges: readonly NetEdge[]): SectionChain[] {
+	const chains: SectionChain[] = [];
+	const used = edges.map(() => false);
+	const outgoing = new Map<number, number[]>();
+	edges.forEach((edge, index) => {
+		const list = outgoing.get(edge.a);
+		if (list === undefined) outgoing.set(edge.a, [index]);
+		else list.push(index);
 	});
-	const outers = classified.filter((loop) => !loop.hole);
-	const holes = classified.filter((loop) => loop.hole);
-	const withParents: SectionLoop[] = outers.map((loop) => ({ ...loop, outerIndex: -1 }));
+	for (let first = 0; first < edges.length; first += 1) {
+		if (used[first]) continue;
+		const ids: number[] = [];
+		const identities: string[] = [];
+		let current: number | null = first;
+		while (current !== null) {
+			used[current] = true;
+			const edge = edges[current]!;
+			if (ids.length === 0) ids.push(edge.a);
+			ids.push(edge.b);
+			identities.push(edge.identity);
+			const next = (outgoing.get(edge.b) ?? []).find((index) => !used[index]);
+			current = next ?? null;
+		}
+		if (ids.length >= 2) {
+			chains.push({
+				points: ids.map((id) => points[id]!),
+				edgeIdentities: identities
+			});
+		}
+	}
+	return chains;
+}
+
+/** Fill polygons from loops: each outer with the holes that lie inside it. */
+export function loopsToPolygons(loops: readonly SectionLoop[]): readonly {
+	readonly outer: readonly SectionPoint[];
+	readonly holes: readonly (readonly SectionPoint[])[];
+}[] {
+	const outers = loops.filter((loop) => loop.role === 'outer');
+	const holes = loops.filter((loop) => loop.role === 'hole');
+	const parents = outers.map(() => [] as SectionPoint[][]);
 	for (const hole of holes) {
-		const probe = midpointOf(hole.points);
+		// A point on the hole's own boundary is strictly inside the outer that
+		// contains it, which is all the containment question asks.
+		const probe: SectionPoint = hole.points[0]!;
 		let parent = -1;
-		let parentArea = Infinity;
+		let bestArea = Infinity;
 		outers.forEach((outer, index) => {
-			const area = Math.abs(signedArea(outer.points));
-			if (area < parentArea && pointInRing(probe, outer.points)) {
+			const area = Math.abs(outer.signedArea);
+			if (area < bestArea && pointInPolygon2(probe, outer.points)) {
 				parent = index;
-				parentArea = area;
+				bestArea = area;
 			}
 		});
-		withParents.push({ ...hole, outerIndex: parent });
+		if (parent >= 0) parents[parent]!.push(hole.points as unknown as SectionPoint[]);
 	}
-
-	return { loops: withParents, openChains, issues };
-}
-
-function signedArea(points: readonly SectionPoint[]): number {
-	let twice = 0;
-	for (let index = 0; index < points.length; index += 1) {
-		const a = points[index]!;
-		const b = points[(index + 1) % points.length]!;
-		twice += a.u * b.v - b.u * a.v;
-	}
-	return twice / 2;
-}
-
-function midpointOf(points: readonly SectionPoint[]): SectionPoint {
-	const a = points[0]!;
-	const b = points[1] ?? points[0]!;
-	return { u: (a.u + b.u) / 2, v: (a.v + b.v) / 2 };
-}
-
-function pointInRing(point: SectionPoint, ring: readonly SectionPoint[]): boolean {
-	let inside = false;
-	for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
-		const current = ring[index]!;
-		const prior = ring[previous]!;
-		const crosses =
-			(current.v > point.v) !== (prior.v > point.v) &&
-			point.u <
-				((prior.u - current.u) * (point.v - current.v)) / (prior.v - current.v) + current.u;
-		if (crosses) inside = !inside;
-	}
-	return inside;
-}
-
-/** A y-strip bucket of the directed edges, so a winding probe scans one strip. */
-type WindingGrid = {
-	readonly cell: number;
-	readonly buckets: Map<number, number[]>;
-};
-
-function buildWindingGrid(vertices: readonly Vertex[], edges: readonly DirectedEdge[]): WindingGrid {
-	let minZ = Infinity;
-	let maxZ = -Infinity;
-	for (const edge of edges) {
-		minZ = Math.min(minZ, vertices[edge.from]!.z, vertices[edge.to]!.z);
-		maxZ = Math.max(maxZ, vertices[edge.from]!.z, vertices[edge.to]!.z);
-	}
-	const cell = Math.max(0.25, (maxZ - minZ) / Math.max(1, Math.sqrt(edges.length)));
-	const buckets = new Map<number, number[]>();
-	edges.forEach((edge, index) => {
-		const a = vertices[edge.from]!;
-		const b = vertices[edge.to]!;
-		const low = Math.floor(Math.min(a.z, b.z) / cell);
-		const high = Math.floor(Math.max(a.z, b.z) / cell);
-		for (let strip = low; strip <= high; strip += 1) {
-			const bucket = buckets.get(strip);
-			if (bucket === undefined) buckets.set(strip, [index]);
-			else bucket.push(index);
-		}
-	});
-	return { cell, buckets };
-}
-
-/**
- * The nonzero winding number of the directed section edges about a plan point.
- * A horizontal +U ray; edges are visited only from their own y-strip.
- */
-function windingNumber(
-	vertices: readonly Vertex[],
-	edges: readonly DirectedEdge[],
-	grid: WindingGrid,
-	x: number,
-	z: number
-): number {
-	const bucket = grid.buckets.get(Math.floor(z / grid.cell));
-	if (bucket === undefined) return 0;
-	let winding = 0;
-	for (const index of bucket) {
-		const edge = edges[index]!;
-		const a = vertices[edge.from]!;
-		const b = vertices[edge.to]!;
-		const side = (b.x - a.x) * (z - a.z) - (x - a.x) * (b.z - a.z);
-		if (a.z <= z) {
-			if (b.z > z && side > 0) winding += 1;
-		} else if (b.z <= z && side < 0) {
-			winding -= 1;
-		}
-	}
-	return winding;
+	return outers.map((outer, index) => ({
+		outer: outer.points,
+		holes: parents[index]!
+	}));
 }

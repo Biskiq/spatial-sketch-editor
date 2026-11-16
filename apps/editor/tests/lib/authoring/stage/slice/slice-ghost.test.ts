@@ -1,153 +1,160 @@
 /**
- * T1 SL1 — when a selected subject becomes a ghost.
- *
- * The failure this suite catches is a subject that **crosses** the Slice with
- * every vertex hidden: a Wall from below the lower bound to above the cut has
- * no visible vertex, yet it plainly crosses the visible band. The exact
- * same-convex-piece rule and its AABB fallback are pinned here; a regression to
- * "every vertex is hidden" makes the first case fail.
+ * SL1 tests 2, 9 and 11 — the reading, the snapshot seam and the selection ink — plus
+ * the ghost rule's own catalogue (test 15).
  */
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { describe, expect, it, vi } from 'vitest';
+import type { LineMaterial, Material } from 'three';
+import { createStageClip, materialUsesClip } from '$lib/authoring/stage/slice/stage-clip';
+import { subjectWhollyHidden, type SliceGhostSubject } from '$lib/authoring/stage/slice/slice-ghost';
 
-import { classifySliceGhost, meshBoundsOf, subjectBoundsOf, type GhostBox, type GhostMeshInput } from '$lib/authoring/stage/slice/slice-ghost';
-import { resolveSlice, type ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
-
-const BAND: ResolvedSlice = resolveSlice({ kind: 'level', depth: { kind: 'below', meters: 0.5 } }, { sheetHeight: 1.2, datumMeters: 0 });
-
-function box(min: readonly [number, number, number], max: readonly [number, number, number]): GhostMeshInput {
-	const [x0, y0, z0] = min;
-	const [x1, y1, z1] = max;
-	const positions = new Float32Array([
-		x0, y0, z0,
-		x1, y0, z0,
-		x1, y0, z1,
-		x0, y0, z1,
-		x0, y1, z0,
-		x1, y1, z0,
-		x1, y1, z1,
-		x0, y1, z1
-	]);
-	const index = new Uint32Array([
-		0, 2, 1, 0, 3, 2,
-		4, 5, 6, 4, 6, 7,
-		0, 1, 5, 0, 5, 4,
-		1, 2, 6, 1, 6, 5,
-		2, 3, 7, 2, 7, 6,
-		3, 0, 4, 3, 4, 7
-	]);
-	return { positions, index };
+function path(...segments: string[]): string {
+	const require = createRequire(import.meta.url);
+	return require.resolve(segments.join('/'));
 }
 
-function quadSpanning(yLow: number, yHigh: number): GhostMeshInput {
-	// Two triangles with vertices only at the two ends: no vertex in the band.
-	return {
-		positions: new Float32Array([0, yLow, 0, 4, yLow, 0, 4, yHigh, 0, 0, yHigh, 0]),
-		index: new Uint32Array([0, 1, 2, 0, 2, 3])
-	};
-}
-
-describe('T1 SL1 — wholly hidden classification', () => {
-	it('does not ghost a Wall that crosses the band with vertices only at its ends', () => {
-		const verdict = classifySliceGhost(BAND, { meshes: [quadSpanning(0.2, 2.2)] });
-		expect(verdict.ghost).toBe(false);
-		expect(verdict.reason).toBe('triangles-visible');
-	});
-
-	it('ghosts a ceiling light wholly above the cut', () => {
-		expect(classifySliceGhost(BAND, { meshes: [box([0, 2, 0], [0.4, 2.2, 0.4])] })).toMatchObject({
-			ghost: true,
-			reason: 'bounds-hidden'
+describe('snapshot seam (test 9)', () => {
+	it('is a no-op inside the callback and restores afterwards', () => {
+		const clip = createStageClip();
+		clip.apply({ kind: 'level', cutY: 1.2, lowerY: 0.5 });
+		const captured = clip.planes.map((plane) => plane.clone());
+		const inside = clip.asBuilt(() => clip.planes.map((plane) => plane.clone()));
+		// Every plane is a no-op: a point far above the cut is kept by all of them.
+		for (const plane of inside) expect(plane.distanceToPoint({ x: 0, y: 400, z: 0 } as never)).toBeGreaterThan(0);
+		clip.planes.forEach((plane, index) => {
+			expect(plane.normal.toArray()).toEqual(captured[index]!.normal.toArray());
+			expect(plane.constant).toBe(captured[index]!.constant);
 		});
 	});
 
-	it('keeps an object straddling the cut visible', () => {
-		const verdict = classifySliceGhost(BAND, { meshes: [box([0, 1.0, 0], [0.4, 1.4, 0.4])] });
-		expect(verdict.ghost).toBe(false);
+	it('is re-entrant and restores only at the outermost level', () => {
+		const clip = createStageClip();
+		clip.apply({ kind: 'level', cutY: 2, lowerY: null });
+		const outer = clip.asBuilt(() => {
+			const middle = clip.asBuilt(() => clip.planes[0]!.constant);
+			// Still no-op after the inner call returned.
+			expect(clip.planes[0]!.distanceToPoint({ x: 0, y: 500, z: 0 } as never)).toBeGreaterThan(0);
+			return middle;
+		});
+		expect(outer).toBeGreaterThan(0);
+		expect(clip.planes[0]!.distanceToPoint({ x: 0, y: 500, z: 0 } as never)).toBeLessThan(0);
 	});
 
-	it('ghosts an object wholly below the lower bound', () => {
-		expect(classifySliceGhost(BAND, { meshes: [box([0, 0.1, 0], [0.4, 0.4, 0.4])] })).toMatchObject({
-			ghost: true,
-			reason: 'bounds-hidden'
-		});
-	});
-
-	it('keeps a triangle with one vertex above and two below visible', () => {
-		const triangle: GhostMeshInput = {
-			positions: new Float32Array([0, 0.6, 0, 1, 1.0, 0, 0.5, 1.4, 1])
-		};
-		expect(classifySliceGhost(BAND, { meshes: [triangle] })).toMatchObject({
-			ghost: false,
-			reason: 'triangles-visible'
-		});
-	});
-
-	it('agrees between the AABB fast paths and the exact triangle test', () => {
-		const above = box([0, 2, 0], [1, 3, 1]);
-		const inside = box([0, 0.8, 0], [1, 1.1, 1]);
-		const boundsAbove: GhostBox = { min: [0, 2, 0], max: [1, 3, 1] };
-		const boundsInside: GhostBox = { min: [0, 0.8, 0], max: [1, 1.1, 1] };
-
-		// The same subject answered by the box fast path and by triangles.
-		expect(subjectBoundsOf({ meshes: [above], bounds: boundsAbove })).toEqual(boundsAbove);
-		expect(classifySliceGhost(BAND, { meshes: [above] })).toMatchObject({ ghost: true });
-		expect(classifySliceGhost(BAND, { meshes: [above], bounds: boundsAbove })).toMatchObject({
-			ghost: true,
-			reason: 'bounds-hidden'
-		});
-		expect(classifySliceGhost(BAND, { meshes: [inside], bounds: boundsInside })).toMatchObject({
-			ghost: false,
-			reason: 'bounds-visible'
-		});
-	});
-
-	it('uses the conservative AABB fallback and errs toward hidden', () => {
-		const skinned: GhostMeshInput = {
-			...box([0, 1.15, 0], [1, 1.25, 1]),
-			conservative: true
-		};
-		// A box straddling the cut cannot be trusted from CPU vertices: ghost it.
-		expect(classifySliceGhost(BAND, { meshes: [skinned] })).toMatchObject({
-			ghost: true,
-			reason: 'conservative-hidden'
-		});
-		// A visible conservative mesh beside an above-cut one: the subject's own
-		// box straddles the cut, so the conservative verdict decides.
-		expect(
-			classifySliceGhost(BAND, {
-				meshes: [
-					box([0, 2, 0], [1, 2.5, 1]),
-					{ ...box([0, 0.8, 0], [1, 1.0, 1]), conservative: true }
-				]
+	it('restores and rethrows when the render throws, and passes values through', () => {
+		const clip = createStageClip();
+		clip.apply({ kind: 'level', cutY: 1.2, lowerY: 0.5 });
+		const before = clip.planes.map((plane) => plane.constant);
+		expect(clip.asBuilt(() => 'frame')).toBe('frame');
+		expect(() =>
+			clip.asBuilt(() => {
+				throw new Error('readback failed');
 			})
-		).toMatchObject({ ghost: false, reason: 'conservative-visible' });
+		).toThrow('readback failed');
+		expect(clip.planes.map((plane) => plane.constant)).toEqual(before);
+	});
+
+	it('lets an apply during the render win on exit', () => {
+		const clip = createStageClip();
+		clip.apply({ kind: 'level', cutY: 1.2, lowerY: null });
+		clip.asBuilt(() => {
+			clip.apply({ kind: 'level', cutY: 0.8, lowerY: null });
+		});
+		expect(clip.planes[0]!.constant).toBeCloseTo(0.8, 9);
+	});
+
+	it('never replaces the plane array or its instances', () => {
+		const clip = createStageClip();
+		const array = clip.planes;
+		const instances = [...clip.planes];
+		clip.apply({ kind: 'level', cutY: 1.2, lowerY: 0.5 });
+		clip.apply(null);
+		clip.asBuilt(() => undefined);
+		expect(clip.planes).toBe(array);
+		expect(clip.planes.every((plane, index) => plane === instances[index])).toBe(true);
+	});
+
+	it('is reachable from a material only by reference', () => {
+		const clip = createStageClip();
+		const material = { clippingPlanes: clip.planes } as unknown as Material;
+		expect(materialUsesClip(material, clip)).toBe(true);
+		const detached = { clippingPlanes: clip.planes.map((plane) => plane.clone()) } as unknown as Material;
+		expect(materialUsesClip(detached, clip)).toBe(false);
+	});
+});
+
+describe('ghost rule (test 15)', () => {
+	const resolved = { kind: 'level' as const, cutY: 1.2, lowerY: 0.5 };
+
+	function triangle(a: readonly [number, number, number], b: readonly [number, number, number], c: readonly [number, number, number]): SliceGhostSubject {
+		return {
+			triangles: [{ positions: new Float32Array([...a, ...b, ...c]) }]
+		};
+	}
+
+	it('keeps a Wall spanning the whole band visible, even with only end vertices', () => {
+		// Seven metres tall both ways: every vertex is hidden (some above, some below),
+		// yet the face crosses the visible band, so it is visible — the very case a
+		// per-vertex test gets wrong.
+		const wall = triangle([0, -1, 0], [1, 2.2, 0], [1, -1, 0]);
+		expect(subjectWhollyHidden(resolved, wall)).toBe(false);
+	});
+
+	it('ghosts geometry wholly above the cut or wholly below the bound', () => {
+		expect(subjectWhollyHidden(resolved, triangle([0, 2, 0], [1, 2, 0], [1, 2.2, 0]))).toBe(true);
+		expect(subjectWhollyHidden(resolved, triangle([0, 0, 0], [1, 0, 0], [1, 0.2, 0]))).toBe(true);
+	});
+
+	it('keeps a triangle that straddles the cut or the lower bound', () => {
+		expect(subjectWhollyHidden(resolved, triangle([0, 1.1, 0], [1, 1.3, 0], [1, 1.1, 0]))).toBe(false);
+		expect(subjectWhollyHidden(resolved, triangle([0, 0.4, 0], [1, 0.6, 0], [1, 0.4, 0]))).toBe(false);
+	});
+
+	it('keeps a triangle with one vertex above and two below', () => {
+		expect(subjectWhollyHidden(resolved, triangle([0, 2.4, 0], [1, 0.8, 0], [1, 1.0, 0]))).toBe(false);
+	});
+
+	it('reads a finite approximate subject from its bounds, erring toward hidden', () => {
+		const skinned: SliceGhostSubject = {
+			triangles: [{ positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]) }],
+			roughBounds: undefined,
+			bounds: { min: [0, 1.3, 0], max: [1, 2, 0] },
+			approximate: true
+		} as SliceGhostSubject;
+		expect(subjectWhollyHidden(resolved, skinned)).toBe(true);
+		const banded: SliceGhostSubject = {
+			triangles: [{ positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]) }],
+			bounds: { min: [0, 0.9, 0], max: [1, 5, 0] },
+			approximate: true
+		};
+		expect(subjectWhollyHidden(resolved, banded)).toBe(true);
+		const visible: SliceGhostSubject = {
+			triangles: [{ positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]) }],
+			bounds: { min: [0, 0.8, 0], max: [1, 1.0, 0] },
+			approximate: true
+		};
+		expect(subjectWhollyHidden(resolved, visible)).toBe(false);
 	});
 
 	it('does not ghost a subject with no drawable triangle', () => {
-		expect(classifySliceGhost(BAND, { meshes: [] })).toMatchObject({
-			ghost: false,
-			reason: 'no-drawable-triangle'
-		});
+		expect(subjectWhollyHidden(resolved, { triangles: [] })).toBe(false);
 		expect(
-			classifySliceGhost(BAND, { meshes: [{ positions: new Float32Array([0, 3, 0]) }] })
-		).toMatchObject({ ghost: false, reason: 'no-drawable-triangle' });
+			subjectWhollyHidden(resolved, { triangles: [{ positions: new Float32Array([0, 0, 0]) }] })
+		).toBe(false);
 	});
 
-	it('keeps a subject visible when any of its meshes is visible', () => {
-		expect(
-			classifySliceGhost(BAND, {
-				meshes: [box([0, 2, 0], [1, 2.5, 1]), box([0, 0.8, 0], [1, 1.0, 1])]
-			})
-		).toMatchObject({ ghost: false });
-	});
-
-	it('applies the mesh world matrix before classifying', () => {
-		const translated = box([0, 0, 0], [1, 0.2, 1]);
-		// Column-major +Y translation of 2 m.
-		const matrixWorld = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1];
-		expect(meshBoundsOf({ ...translated, matrixWorld })?.min[1]).toBeCloseTo(2, 12);
-		expect(
-			classifySliceGhost(BAND, { meshes: [{ ...translated, matrixWorld }] })
-		).toMatchObject({ ghost: true, reason: 'bounds-hidden' });
+	it('agrees between the AABB fast path and the triangle test', () => {
+		const above = triangle([0, 2, 0], [1, 2, 0], [1, 2.2, 0]);
+		const withBounds: SliceGhostSubject = {
+			...above,
+			bounds: { min: [0, 2, 0], max: [1, 2.2, 0] }
+		};
+		expect(subjectWhollyHidden(resolved, withBounds)).toBe(subjectWhollyHidden(resolved, above));
+		const banded = triangle([0, -1, 0], [1, 2.2, 0], [1, -1, 0]);
+		const bandedBounds: SliceGhostSubject = {
+			...banded,
+			bounds: { min: [0, -1, 0], max: [1, 2.2, 0] }
+		};
+		expect(subjectWhollyHidden(resolved, bandedBounds)).toBe(false);
 	});
 });

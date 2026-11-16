@@ -21,8 +21,9 @@
  * anything still held. No lease can free a resource another Canvas owns.
  */
 import { getContext, setContext } from 'svelte';
+import type { Plane } from 'three';
 import { createGeometryStore, type GeometryStore } from './geometry-store';
-import { createMaterialStore, type MaterialStore } from './material-store';
+import { createMaterialStore, type MaterialStore, type MaterialStoreOptions } from './material-store';
 import { createCasterChannel, type CasterChannel } from './caster-channel';
 import { createLightStore, type LightStore } from './light-store';
 
@@ -45,9 +46,13 @@ const KEY = Symbol('biskiq.render-resources');
  * Create the Canvas's stores and publish them to its subtree.
  *
  * Call during component initialisation, in the component that owns the Canvas.
+ *
+ * `options.clippingPlanes` is the Stage's slice clipping array, forwarded to the
+ * material store so every colour material shares it by reference. The Preview
+ * Canvas passes nothing, so its store never clips.
  */
-export function provideRenderResources(): RenderResources {
-	const materials = createMaterialStore();
+export function provideRenderResources(options: MaterialStoreOptions = {}): RenderResources {
+	const materials = createMaterialStore(options);
 	const geometry = createGeometryStore();
 	const casters = createCasterChannel();
 	const lights = createLightStore();
