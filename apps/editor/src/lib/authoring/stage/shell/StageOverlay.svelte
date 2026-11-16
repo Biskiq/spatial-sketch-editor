@@ -264,6 +264,13 @@
 		{@const tail = mark.tail}
 		{@const emphasised = mark.hovered || mark.active}
 		{@const label = refusalAtPointer || candidates.some(candidate => candidate.labels.length > 0) ? '' : mark.refusal ?? mark.tag}
+		<!-- A disclosure's published value is a read-only reading (the curved Wall's
+		     arc length), not a live drag. It keeps the chip's tag on hover or while open,
+		     which is also the tap path on a coarse pointer. -->
+		{@const reading = mark.descriptor?.role === 'disclose' ? mark.descriptor?.value : undefined}
+		{@const showTag = label !== '' && (mark.role === 'disclose'
+			? reading !== undefined && (emphasised || mark.open)
+			: emphasised)}
 		{#if !mark.hidden}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 		<g
@@ -277,12 +284,14 @@
 			data-glyph={mark.glyph ?? undefined}
 			role={mark.role === 'disclose' ? 'button' : undefined}
 			tabindex={mark.role === 'disclose' ? 0 : undefined}
-			aria-label={mark.role === 'disclose' ? 'Resize handles' : undefined}
+			aria-label={mark.role === 'disclose'
+				? reading === undefined ? 'Resize handles' : `Resize handles · ${reading}`
+				: undefined}
 			aria-pressed={mark.role === 'disclose' ? mark.open : undefined}
 			onclick={mark.role === 'disclose' ? event => { event.stopPropagation(); onActivateDisclosure(mark.id); } : undefined}
 			onkeydown={mark.role === 'disclose' ? (event) => onDisclosureKey(event, mark.id) : undefined}
 		>
-			<title>{mark.label}</title>
+			<title>{reading === undefined ? mark.label : `${mark.label} · ${reading}`}</title>
 			{#if mark.role === 'disclose'}
 				<!-- The W·D·H chip: a press shows the size grips; a drag scales (where the domain allows).
 				     Both arrive through the Stage resolver; here the chip only paints and takes keyboard focus. -->
@@ -330,7 +339,7 @@
 				<StageSticker kind="point" at={mark.anchor} {emphasised} held={mark.active} />
 			{/if}
 
-			{#if emphasised && label !== '' && mark.role !== 'disclose'}
+			{#if showTag}
 				{@const width = tagWidth(label)}
 				<g class="tag" class:bad={mark.refusal !== null} transform={`translate(${tip[0] + 14} ${tip[1] - 12})`}>
 					<rect {width} height="20" rx="3" />

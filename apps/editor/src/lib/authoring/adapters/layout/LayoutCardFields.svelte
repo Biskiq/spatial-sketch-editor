@@ -197,7 +197,11 @@
 		const wall = selectedHostWall;
 		if (wall === null || isStraightCompiledWall(wall)) return;
 		if (wallUnfold.state?.wallId === wall.wallId) {
-			wallUnfold.exit(wall);
+			// The sheet replaces the Wall's canonical editing surface, so the
+			// Stage must re-read its contributions (the Wall's marks are withheld
+			// while its development is open). A curved Wall folds over one second:
+			// notify when the context has closed, not while the sheet is still up.
+			wallUnfold.exit(wall, () => services.stage.notifySurfaceChange());
 			return;
 		}
 		const stage = services.stage;
@@ -232,6 +236,7 @@
 				pinnedOpeningId: wallUnfoldOpeningAtStation(wall, anchor)
 			}
 		);
+		services.stage.notifySurfaceChange();
 	}
 
 	const instrument = $derived.by(() => {
@@ -476,6 +481,7 @@
 				wallName={sessionWallName}
 				roomName={sessionRoomName}
 				contextual={sessionContextual}
+				onclosed={() => services.stage.notifySurfaceChange()}
 			/>
 		{/if}
 		{#if paused !== null}

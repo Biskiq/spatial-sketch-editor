@@ -15,12 +15,15 @@
 		wall,
 		wallName = null,
 		roomName = null,
-		contextual = false
+		contextual = false,
+		onclosed = null
 	}: {
 		wall: CompiledPhysicalWall;
 		wallName?: string | null;
 		roomName?: string | null;
 		contextual?: boolean;
+		/** Runs once the sheet has folded; the Card re-reads the Wall's Stage marks. */
+		onclosed?: (() => void) | null;
 	} = $props();
 	const state = $derived(wallUnfold.state?.wallId === wall.wallId ? wallUnfold.state : null);
 	const percent = $derived(state === null ? 0 : Math.round(state.u * 100));
@@ -74,7 +77,12 @@
 				<span class="wall-name">{wallName ?? 'Wall'}</span>
 				{#if roomName}<span class="room">{roomName}</span>{/if}
 			</div>
-			<button type="button" class="put" data-wall-unroll-put-back onclick={() => wallUnfold.exit(wall)}>
+			<button
+				type="button"
+				class="put"
+				data-wall-unroll-put-back
+				onclick={() => wallUnfold.exit(wall, () => onclosed?.())}
+			>
 				Put back
 			</button>
 		</div>
