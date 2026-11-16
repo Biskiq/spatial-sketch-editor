@@ -31,17 +31,21 @@ import {
 } from '@portfolio/layout-core';
 
 import { getMaterial } from '$lib/content/materials';
+import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import type { MaterialStore } from '$lib/render/resources/material-store';
 import type { MaterialDescriptor } from '$lib/render/resources/material-descriptor';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 
-/** One retained Room: what it was built from, its group, its buffers and its floor mesh. */
+/** One retained Room: what it was built from, its group, its buffers and its two queried meshes. */
 type RetainedRoom = {
 	readonly key: string;
+	readonly roomId: string;
 	readonly group: Group;
 	/** The mesh the identity index returns for this Room. */
 	readonly floor: Mesh;
+	/** The generated lid. Its render layer is the only thing a Lift reading writes. */
+	readonly ceiling: Mesh;
 	readonly geometry: readonly BufferGeometry[];
 };
 
@@ -69,6 +73,17 @@ export type RoomRepresentation = {
 	objectOf(roomId: string): Object3D | null;
 	/** Hide exactly these Rooms; work is proportional to the ids that changed state. */
 	setHidden(roomIds: ReadonlySet<string>): void;
+	/**
+	 * Lift exactly these Rooms' generated lids out of the Stage view and out of
+	 * rays, by moving each lid mesh off the world layer onto
+	 * `LIFTED_RENDER_LAYER`. Returns whether any retained mesh changed layer, so a
+	 * host that renders on demand can ask for exactly one frame.
+	 *
+	 * It never writes `visible` (which stays the pick source's "mounted and
+	 * eligible" flag), the floor, the shadow catcher, a material, geometry or
+	 * `castShadow`.
+	 */
+	setLifted(roomIds: ReadonlySet<string>): boolean;
 	/** Release every retained Room and its material leases. Idempotent. */
 	dispose(): void;
 };
@@ -132,6 +147,11 @@ export function createRoomRepresentation(store: MaterialStore): RoomRepresentati
 	const materialKeys = new Set([floorLease.key, shadowLease.key, ceilingLease.key]);
 	let disposed = false;
 	let hidden: ReadonlySet<string> = new Set();
+	/** The remembered reading: a Room built later is born lifted. */
+	let lifted: ReadonlySet<string> = new Set();
+
+	/** The museum layer a lid sits on for one lifted state. */
+	const layerOf = (isLifted: boolean): number => (isLifted ? LIFTED_RENDER_LAYER : 0);
 
 	/**
 	 * Attach `group` at `index`.
@@ -151,6 +171,7 @@ export function createRoomRepresentation(store: MaterialStore): RoomRepresentati
 	function build(room: CompiledRoom): {
 		group: Group;
 		floor: Mesh;
+		ceiling: Mesh;
 		geometry: readonly BufferGeometry[];
 	} {
 		const group = new Group();
@@ -180,9 +201,12 @@ export function createRoomRepresentation(store: MaterialStore): RoomRepresentati
 		ceiling.name = `VisitorCeiling:${room.roomId}`;
 		ceiling.position.set(0, room.ceilingElevation, 0);
 		ceiling.rotation.set(Math.PI / 2, 0, 0);
+		// A Room rebuilt mid-Lift is born lifted: the reading is remembered above,
+		// exactly as the hidden set is, and the rebuild's own frame draws it so.
+		ceiling.layers.set(layerOf(lifted.has(room.roomId)));
 
 		group.add(floor, floorShadow, ceiling);
-		return { group, floor, geometry: [floorGeometry, ceilingGeometry] };
+		return { group, floor, ceiling, geometry: [floorGeometry, ceilingGeometry] };
 	}
 
 	return {
@@ -215,7 +239,7 @@ export function createRoomRepresentation(store: MaterialStore): RoomRepresentati
 				} else {
 					object3d.add(next.group);
 				}
-				retained.set(room.roomId, { key: room.cacheKey, ...next });
+				retained.set(room.roomId, { key: room.cacheKey, roomId: room.roomId, ...next });
 				built += 1;
 			}
 
@@ -252,10 +276,31 @@ export function createRoomRepresentation(store: MaterialStore): RoomRepresentati
 			});
 		},
 
+		setLifted(roomIds) {
+			if (disposed) throw new Error('the layout room representation has been disposed');
+			let changed = false;
+			// Work is proportional to the ids that changed state, and only a mesh that
+			// actually moved layer is a change: an id with no retained Room is
+			// remembered for the build that follows, not counted here.
+			const apply = (roomId: string, isLifted: boolean): void => {
+				const entry = retained.get(roomId);
+				if (entry === undefined) return;
+				if (entry.ceiling.layers.mask === 1 << layerOf(isLifted)) return;
+				countWork('representation:layer-write');
+				entry.ceiling.layers.set(layerOf(isLifted));
+				changed = true;
+			};
+			for (const roomId of lifted) if (!roomIds.has(roomId)) apply(roomId, false);
+			for (const roomId of roomIds) if (!lifted.has(roomId)) apply(roomId, true);
+			lifted = new Set(roomIds);
+			return changed;
+		},
+
 		dispose() {
 			if (disposed) return;
 			disposed = true;
 			hidden = new Set();
+			lifted = new Set();
 			for (const entry of retained.values()) {
 				entry.group.removeFromParent();
 				for (const buffer of entry.geometry) buffer.dispose();

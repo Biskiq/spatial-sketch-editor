@@ -40,6 +40,7 @@ import {
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
+import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { startStageCounting } from '../../helpers/stage-counts';
@@ -347,6 +348,119 @@ describe('T1 X1 — the generated Room lid: ray behaviour and caster state', () 
 		representation.dispose();
 		store.dispose();
 	}, 60_000);
+});
+
+/**
+ * T1 X1 — lifting a lid is a **layer** change, never `visible`.
+ *
+ * `visible` is the pick source's "mounted and eligible" flag, and writing it for
+ * appearance would quietly make a lifted Room unpickable and a put-back Room
+ * appear. The layer moves the lid out of the Stage camera's mask and out of the
+ * default `Raycaster`'s, which is exactly the two effects Lift needs and nothing
+ * else: the floor, the shadow catcher, the materials, the geometry and
+ * `castShadow` are untouched.
+ */
+describe('T1 X1 — lifting a lid', () => {
+	it('moves only the lid to the lifted layer, reports the change once, and restores it', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const store = createMaterialStore();
+		const representation = createRoomRepresentation(store);
+		representation.update(geometry);
+		const room = geometry.rooms[0]!;
+		const other = geometry.rooms[1]!;
+		const group = rooms(representation).get(`VisitorRoom:${room.roomId}`)!;
+		const floor = meshNamed(group, `VisitorFloor:${room.roomId}`);
+		const floorShadow = meshNamed(group, `VisitorFloorShadow:${room.roomId}`);
+		const ceiling = meshNamed(group, `VisitorCeiling:${room.roomId}`);
+		const otherCeiling = meshNamed(
+			rooms(representation).get(`VisitorRoom:${other.roomId}`)!,
+			`VisitorCeiling:${other.roomId}`
+		);
+		const castShadow = ceiling.castShadow;
+
+		expect(representation.setLifted(new Set([room.roomId]))).toBe(true);
+		expect(ceiling.layers.mask).toBe(1 << LIFTED_RENDER_LAYER);
+		// The Room's other meshes, and every other Room, stay where they were.
+		expect(floor.layers.mask).toBe(1);
+		expect(floorShadow.layers.mask).toBe(1);
+		expect(otherCeiling.layers.mask).toBe(1);
+		// Appearance never writes `visible`.
+		expect(ceiling.visible).toBe(true);
+		expect(floor.visible).toBe(true);
+		expect(floorShadow.visible).toBe(true);
+		expect(group.visible).toBe(true);
+		expect(ceiling.castShadow).toBe(castShadow);
+
+		// A repeat of the same reading is not a frame: nothing moved.
+		expect(representation.setLifted(new Set([room.roomId]))).toBe(false);
+
+		expect(representation.setLifted(new Set())).toBe(true);
+		expect(ceiling.layers.mask).toBe(1);
+		expect(representation.setLifted(new Set())).toBe(false);
+
+		representation.dispose();
+		store.dispose();
+	});
+
+	it('takes the lifted lid out of an upward ray while the floor stays pickable from above', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const store = createMaterialStore();
+		const representation = createRoomRepresentation(store);
+		representation.update(geometry);
+		const room = geometry.rooms[0]!;
+		const group = rooms(representation).get(`VisitorRoom:${room.roomId}`)!;
+		const floor = meshNamed(group, `VisitorFloor:${room.roomId}`);
+		const inside = insideFloor(floor);
+		const up = new Vector3(0, 1, 0);
+		const down = new Vector3(0, -1, 0);
+		const fromInside = () =>
+			hitsAlong(group, new Vector3(inside.x, room.floorElevation + 1, inside.z), up);
+		const fromAbove = () =>
+			hitsAlong(group, new Vector3(inside.x, room.ceilingElevation + 2, inside.z), down);
+
+		expect(fromInside()[0]).toBe(`VisitorCeiling:${room.roomId}`);
+
+		representation.setLifted(new Set([room.roomId]));
+		expect(fromInside()).toEqual([]);
+		// The default `Raycaster` keeps its layer-0 mask, so every interior pick
+		// reaches what is under the lid instead of the lid.
+		expect(fromAbove()[0]).toBe(`VisitorFloor:${room.roomId}`);
+
+		representation.setLifted(new Set());
+		expect(fromInside()[0]).toBe(`VisitorCeiling:${room.roomId}`);
+
+		representation.dispose();
+		store.dispose();
+	});
+
+	it('births a Room rebuilt mid-Lift already lifted', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const store = createMaterialStore();
+		const representation = createRoomRepresentation(store);
+		representation.update(geometry);
+		const room = geometry.rooms[0]!;
+		representation.setLifted(new Set([room.roomId]));
+
+		// A changed `cacheKey` is the representation's own rebuild trigger.
+		const rebuilt = {
+			...geometry,
+			rooms: geometry.rooms.map((candidate) =>
+				candidate.roomId === room.roomId
+					? { ...candidate, cacheKey: `${candidate.cacheKey}:edited` }
+					: candidate
+			)
+		};
+		const stats = representation.update(rebuilt);
+		expect(stats.built).toBe(1);
+		const ceiling = meshNamed(
+			rooms(representation).get(`VisitorRoom:${room.roomId}`)!,
+			`VisitorCeiling:${room.roomId}`
+		);
+		expect(ceiling.layers.mask).toBe(1 << LIFTED_RENDER_LAYER);
+
+		representation.dispose();
+		store.dispose();
+	});
 });
 
 describe('E6/R3 — Room materials, release and identity', () => {
