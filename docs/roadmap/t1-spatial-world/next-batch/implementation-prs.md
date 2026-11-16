@@ -71,7 +71,7 @@ Core only, on fixtures, no editor change. Tier 0.
 | Slice | Delivers | Boundary | Needs | Tier |
 | --- | --- | --- | --- | --- |
 | **X0** | A written account, with screenshots, of what the Stage shows for a closed Room from outside and from above, and whether any near-wall cutaway exists. PLATE's sentence made true or corrected | Inspection and a focused browser check; a docs fix at most | – | 0 |
-| **X1** | **Lift**, with its pill and Put back | Session state beside the Unroll session. Short plan first | X0 | 1 |
+| **X1** | **Lift**, with its pill and Put back | Session state beside the Unroll session. Short plan first: [x1-lift-plan.md](x1-lift-plan.md) | X0 | 1 |
 | **X2** | **Near walls: Cut \| Whole**, and hold-to-see-whole. Builds the automatic cutaway if X0 found none | A pure function of Camera pose and compiled geometry. No pill, no pinning | X1, SL1 | 1 |
 
 **Acceptance.**
