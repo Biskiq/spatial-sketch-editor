@@ -64,3 +64,22 @@ it('draws and maps the dial in the stage-local frame of the overlay and pointer 
 	const sunset = dialStagePoint(dialRing(placement, skyBodyAt(19.5, sky.heading, sky.arcHeight).az), result.evaluation)!;
 	expect(nearestT(sunset, 12, 'day', 'glyph', placement, result.evaluation, sky)).toBe(19.5);
 });
+
+it('tests shell obstacles in the client frame of the dial projection', () => {
+	// The route passes client rects; a stage-local obstacle would sit one header
+	// height above the dial it should block (independent review, 2026-11-16).
+	const state = createViewportCameraState({
+		outputId: 'stage', sessionEpoch: 'session', sourceRevision: 'revision', reading: '3d', sceneRadiusMeters: 10,
+		pose: { target: origin, azimuthRadians: 0, elevationRadians: Math.PI / 3, targetPlaneHeightMeters: 10 }
+	});
+	const result = evaluateViewport(state, { left: 12, top: 44, width: 1440, height: 856, devicePixelRatio: 1 }, 0, 1);
+	if (result.kind !== 'evaluated') throw new Error('Expected a viewport evaluation');
+	const free = placeCelestialDial(origin, result.evaluation, [], clear, onFloor)!;
+	const ring = Array.from({ length: 48 }, (_, index) => dialProject(dialRing(free, index * 7.5, 72 * 1.2), result.evaluation)!);
+	const box = {
+		left: Math.min(...ring.map(([x]) => x)), right: Math.max(...ring.map(([x]) => x)),
+		top: Math.min(...ring.map(([, y]) => y)), bottom: Math.max(...ring.map(([, y]) => y))
+	};
+	const blocked = placeCelestialDial(origin, result.evaluation, [box], clear, onFloor);
+	expect(blocked?.anchor).not.toEqual(free.anchor);
+});

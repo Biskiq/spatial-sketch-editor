@@ -12,13 +12,16 @@ export type ShadowProbeInput = {
 	scene: RuntimeScene;
 	modelUrls: ReadonlyMap<string, string> | null;
 	formRenderRevision: number;
+	/** Bumped to rebuild the spread props with unchanged values. */
+	rebuild: number;
 };
 
 export const probeInput = $state<ShadowProbeInput>({
 	geometry: {} as CompiledLayoutGeometry,
 	scene: { entities: [] } as unknown as RuntimeScene,
 	modelUrls: null,
-	formRenderRevision: 0
+	formRenderRevision: 0,
+	rebuild: 0
 });
 
 /** Non-reactive handle the probe fills with the resources it provides. */

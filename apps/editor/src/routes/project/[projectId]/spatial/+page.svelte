@@ -993,11 +993,11 @@
 				return bounds ? [bounds] : [];
 			})
 		];
-		const stage = skyRects.stage;
+		// Client rects: placement tests them against `dialProject`, which is in the
+		// viewport frame (`camera.rect`), not the stage-local frame of the marks.
 		const obstacles = [skyRects.panel, skyRects.dock, ...skyRects.fixed].flatMap((rect) => {
-			if (!rect || !stage || rect.width <= 0) return [];
-			return [{ left: rect.left - stage.left, right: rect.right - stage.left,
-				top: rect.top - stage.top, bottom: rect.bottom - stage.top }];
+			if (!rect || rect.width <= 0) return [];
+			return [{ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }];
 		});
 		const origin = sunMarkAnchor({ bounds: stageContentBounds, groundY: datum + 0.008 });
 		return placeCelestialDial(origin, evaluation, obstacles, ([x, , z]) => boxes.some(({ min, max }) =>

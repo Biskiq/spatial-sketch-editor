@@ -99,6 +99,14 @@ describe('G4 — exact shadow-update counts through the mounted wiring', () => {
 		expect(session.count()).toBe(0);
 	});
 
+	it('a rebuilt Canvas prop spread with unchanged shadow inputs renders nothing', async () => {
+		const session = await begin(true);
+		probeInput.rebuild += 1;
+		flushSync();
+		frames(FRAMES);
+		expect(session.count()).toBe(0);
+	});
+
 	it('a camera-only edit renders nothing: the camera is not a shadow input', async () => {
 		const session = await begin(true);
 		// An orbit moves the view; the scene and its casters do not change.

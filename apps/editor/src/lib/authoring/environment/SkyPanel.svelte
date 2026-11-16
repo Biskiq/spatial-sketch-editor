@@ -104,9 +104,11 @@
 		else event.preventDefault();
 	}
 
-	function rangeInput(input: HTMLInputElement, owner: string, patch: SceneSkyUpdatePayload) {
+	function rangeInput(input: HTMLInputElement, owner: string, accepted: number, patch: SceneSkyUpdatePayload) {
 		if (gesture.owner === owner) gesture.move(owner, patch);
-		else input.value = input.defaultValue;
+		// Svelte sets `value` as a property, so `defaultValue` is empty and would
+		// sanitize to the midpoint; a refused input restores the accepted value.
+		else input.value = String(accepted);
 	}
 
 	$effect(() => () => {
@@ -146,7 +148,7 @@
 			onpointerup={() => void gesture.commit(label)}
 			onpointercancel={() => cancelOwn(label)} onblur={() => cancelOwn(label)}
 			onkeydown={(event) => rangeKey(event, label)} onkeyup={(event) => keyRelease(event, label)}
-			oninput={(event) => rangeInput(event.currentTarget, label, change(event.currentTarget.valueAsNumber))}
+			oninput={(event) => rangeInput(event.currentTarget, label, value, change(event.currentTarget.valueAsNumber))}
 			{@attach (input) => {
 				// A cancelled native drag keeps its thumb where the pointer left it;
 				// outside its own gesture the thumb follows the Sky value.

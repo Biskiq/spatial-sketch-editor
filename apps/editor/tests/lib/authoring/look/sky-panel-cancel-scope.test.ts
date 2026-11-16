@@ -16,4 +16,8 @@ it('ends only the Sky gesture the blurred or cancelled control owns', () => {
 		expect(panel).toContain(`onblur={() => cancelOwn(${owner})}`);
 	}
 	expect(panel).toContain('if (gesture.owner === owner) cancel();');
+	// A refused range input restores the accepted value; `defaultValue` is empty
+	// under Svelte's property binding and would jump the thumb to the midpoint.
+	expect(panel).toContain('else input.value = String(accepted);');
+	expect(panel).not.toContain('defaultValue');
 });
