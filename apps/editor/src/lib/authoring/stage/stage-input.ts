@@ -205,6 +205,21 @@ export function isStageDrag(
 	return Math.hypot(point.x - origin.x, point.y - origin.y) > STAGE_CLICK_TOLERANCE_CSS_PX;
 }
 
+/**
+ * The one Slice refusal (§9), in the plan's words.
+ *
+ * It is conditioned on the Slice **tool** being armed, never on a reading existing: a
+ * cut is a reading, and the creator returns to Select and keeps editing everything
+ * below it. Gating this on `sliceReading.isActive()` blocked every Stage selection and
+ * drag for as long as the cut was on.
+ */
+export const SLICE_PRESS_REFUSAL = 'Drag the Height Sheet to move the cut.';
+
+/** The notice for a Stage press, or `null` when the press is ordinary. */
+export function slicePressRefusal(sliceToolArmed: boolean): string | null {
+	return sliceToolArmed ? SLICE_PRESS_REFUSAL : null;
+}
+
 /** Whether this pointer got the press, or must be ignored because another one owns it. */
 export type StagePressOwnership = 'owned' | 'refused';
 

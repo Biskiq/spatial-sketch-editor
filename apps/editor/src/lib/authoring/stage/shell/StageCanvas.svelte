@@ -214,6 +214,12 @@ import StageMatGround from './StageMatGround.svelte';
 	 * walks the subject's own triangles, never the scene.
 	 */
 	const ghostSubject = $derived.by(() => {
+		// A representation rebuild changes the drawn body without changing the object, so
+		// the bake follows the revisions as well as the selection. Without these reads the
+		// cached subject kept an outdated pose or classification after an edit.
+		layoutRevision;
+		sceneRootRevision;
+		entityRenderRevision;
 		if (selection === null || selection === undefined) return null;
 		const objects = selectionObjectsOf(scenePick, selection);
 		if (objects.length === 0) return null;

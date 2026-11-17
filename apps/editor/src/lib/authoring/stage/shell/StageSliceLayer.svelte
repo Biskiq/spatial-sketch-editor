@@ -38,8 +38,8 @@
 		type Material,
 		type Object3D
 	} from 'three';
-	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+	import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+	import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import {
@@ -51,6 +51,7 @@
 	import { capFillsOf } from '../slice/slice-cap-shapes';
 	import { SLICE_INK } from '../slice/slice-ink';
 	import { decideCapAssembly, type CapAssemblyState } from '../slice/slice-cap-schedule';
+	import { sectionEdgeSegments, type SectionEdgeSegment } from '../slice/slice-edges';
 	import { reportCapIssues } from '../slice/slice-diagnostics';
 	import type { ResolvedSlice } from '../slice/slice-cut';
 	import { drawnMeshesOf } from './stage-selection-source';
@@ -107,6 +108,15 @@
 	root.add(ghostRoot);
 
 	type Inked = { readonly object: Object3D; readonly parent: Group; dispose(): void };
+	/** The section's edges live apart: a selection change re-inks them without a section. */
+	const edgeRoot = new Group();
+	root.add(edgeRoot);
+	let edgeInk: Inked[] = [];
+	/** One independent segment per entry, so a style change never concatenates loops. */
+	let edges: SectionEdgeSegment[] = [];
+	let openEdges: number[] = [];
+	/** The identity the current edge ink was drawn for. */
+	let drawnIdentity: string | null = null;
 	let inked: Inked[] = [];
 	let ghosts: Inked[] = [];
 	/** Materials shared by a group's cap meshes; disposed with the rest. */
@@ -120,11 +130,19 @@
 			entry.dispose();
 		}
 	}
+	function clearEdges(): void {
+		drop(edgeInk);
+		edgeInk = [];
+		edges = [];
+		openEdges = [];
+		drawnIdentity = null;
+	}
 	function releaseAll(): void {
 		drop(inked);
 		for (const material of shared) material.dispose();
 		inked = [];
 		shared = [];
+		clearEdges();
 	}
 	function clearGhosts(): void {
 		drop(ghosts);
@@ -265,42 +283,53 @@
 	}
 
 	/**
-	 * The section's own edges: 2 px yellow, a selected identity's edges 3 px gold over
-	 * them, an open chain in warning ink. The plan's test 4 — every edge carries its
-	 * source identity, and the selected identity's edges are isolable — is only true
-	 * on screen if this draws them apart, so the identity is not merely computed.
+	 * Collect the section's edges as **independent segments**, each with its identity.
+	 *
+	 * They are deliberately not one polyline: `LineGeometry` (drawn by `Line2`) treats
+	 * its input as connected, so two disconnected loops — two Walls across a gap — gain
+	 * a diagonal between them. `LineSegmentsGeometry` takes independent pairs, which is
+	 * what a section's outline is.
 	 */
-	function addSectionLines(
+	function collectEdges(
 		loops: readonly SectionLoop[],
 		chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
 		basis: { readonly u: readonly [number, number, number]; readonly v: readonly [number, number, number] },
 		y: number,
 		originXZ: readonly [number, number]
 	): void {
+		const open: number[] = [];
 		const world = ([u, v]: readonly [number, number]): [number, number, number] => [
 			originXZ[0] + u * basis.u[0] + v * basis.v[0],
 			y,
 			originXZ[1] + u * basis.u[2] + v * basis.v[2]
 		];
-		const plain: number[] = [];
-		const selected: number[] = [];
-		for (const loop of loops) {
-			loop.points.forEach((point, index) => {
-				const next = loop.points[(index + 1) % loop.points.length]!;
-				const target = loop.edgeIdentities[index] === selectedIdentity ? selected : plain;
-				target.push(...world(point), ...world(next));
-			});
-		}
-		const open: number[] = [];
 		for (const chain of chains) {
 			for (let index = 0; index + 1 < chain.points.length; index += 1) {
 				open.push(...world(chain.points[index]!), ...world(chain.points[index + 1]!));
 			}
 		}
-		const build = (positions: number[], color: number, widthPx: number): void => {
+		edges = sectionEdgeSegments(loops, basis, y, originXZ);
+		openEdges = open;
+	}
+
+	/**
+	 * Draw the cached segments: 2 px yellow, a selected identity's 3 px gold over them,
+	 * an open chain in warning ink. Cost is the segments, not the section — a selection
+	 * change re-inks the existing `edges` and never re-runs `sectionMeshes`.
+	 */
+	function drawEdges(): void {
+		drop(edgeInk);
+		edgeInk = [];
+		drawnIdentity = selectedIdentity ?? null;
+		const plain: number[] = [];
+		const selected: number[] = [];
+		for (const segment of edges) {
+			(segment.identity === drawnIdentity ? selected : plain).push(...segment.positions);
+		}
+		const build = (positions: readonly number[], color: number, widthPx: number): void => {
 			if (positions.length === 0) return;
-			const geometry = new LineGeometry();
-			geometry.setPositions(positions);
+			const geometry = new LineSegmentsGeometry();
+			geometry.setPositions(positions as number[]);
 			const material = new LineMaterial({
 				color,
 				linewidth: widthPx,
@@ -308,17 +337,24 @@
 				toneMapped: false,
 				resolution: new Vector2(Math.max(1, width), Math.max(1, height))
 			});
-			const line = new Line2(geometry, material);
-			line.computeLineDistances();
+			const line = new LineSegments2(geometry, material);
 			line.renderOrder = 4;
-			keep(line, () => {
-				geometry.dispose();
-				material.dispose();
+			line.layers.set(STAGE_OVERLAY_LAYER);
+			line.raycast = () => {};
+			line.frustumCulled = false;
+			edgeRoot.add(line);
+			edgeInk.push({
+				object: line,
+				parent: edgeRoot,
+				dispose: () => {
+					geometry.dispose();
+					material.dispose();
+				}
 			});
 		};
 		build(plain, SLICE_PLANE_INK, SLICE_INK.edgeWidth);
 		build(selected, SLICE_INK.gold, SLICE_INK.selectedEdgeWidth);
-		build(open, SLICE_WARNING_INK, SLICE_INK.edgeWidth);
+		build(openEdges, SLICE_WARNING_INK, SLICE_INK.edgeWidth);
 	}
 
 	/**
@@ -362,7 +398,9 @@
 	function ghostKeyOf(): string | null {
 		const selection = ghostSelection;
 		if (selection === null || selection.length === 0) return null;
-		return `${selection.length}:${selection[0]?.id ?? ''}:${selection[0]?.uuid ?? ''}`;
+		// The revision is part of the key: an edit can move or re-shape the selected
+		// object without changing its identity, and the ghost must follow it.
+		return `${revision}:${selection.length}:${selection[0]?.id ?? ''}:${selection[0]?.uuid ?? ''}`;
 	}
 	function drawGhost(): void {
 		clearGhosts();
@@ -411,8 +449,9 @@
 		const originXZ: readonly [number, number] = [result.basis.origin[0], result.basis.origin[2]];
 		for (const group of result.groups) {
 			addCap(group.loops, result.basis, reading.cutY, originXZ);
-			addSectionLines(group.loops, group.chains, result.basis, reading.cutY, originXZ);
+			collectEdges(group.loops, group.chains, result.basis, reading.cutY, originXZ);
 		}
+		drawEdges();
 		if (ghostKeyOf() !== drawnGhostKey) drawGhost();
 		// The state on screen, not the state requested: a cancelled timer used to leave
 		// this naming a section that was never assembled.
@@ -487,6 +526,12 @@
 		}
 		if (ghostKey !== drawnGhostKey) {
 			drawGhost();
+			invalidate();
+		}
+		// The gold follows the selection, and only the ink: no section is recomputed.
+		const identity = selectedIdentity ?? null;
+		if (identity !== drawnIdentity && edges.length > 0) {
+			drawEdges();
 			invalidate();
 		}
 		const next: CapAssemblyState = {
