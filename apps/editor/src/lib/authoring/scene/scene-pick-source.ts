@@ -5,6 +5,33 @@ import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
 import { renderIdentityOf, type LayoutIdentityIndex } from '$lib/render/render-identity';
 
+/**
+ * The union group every Wall-owned Layout mesh shares (Walls, bridges, keels: one
+ * closed solid, assembled together). A Layout object gets a group of its own.
+ */
+export const LAYOUT_STRUCTURE_GROUP = 'layout-structure';
+
+/**
+ * One drawn mesh as the Slice sees it: local positions, an optional index, and the
+ * world matrix that places it. `group` is the cap assembly's union group.
+ */
+export type SectionSource = {
+	readonly identity: string;
+	readonly group: string;
+	readonly positions: ArrayLike<number>;
+	readonly index: ArrayLike<number> | null;
+	readonly matrix: number[];
+};
+
+export type PickOptions = {
+	/**
+	 * Whether a world point is currently not drawn (a Slice hides it). A hidden hit is
+	 * skipped and the ray continues, so a click reaches what is visible behind it.
+	 * Absent means today's behaviour exactly.
+	 */
+	readonly hiddenAt?: (point: readonly [number, number, number]) => boolean;
+};
+
 export type SceneRenderedHit = {
 	readonly entityId: string | null;
 	readonly kind: 'entity' | 'floor' | 'layout';
@@ -181,7 +208,11 @@ export function createScenePickSource() {
 			listeners.add(listener);
 			return () => { listeners.delete(listener); };
 		},
-		pick(ray: PointerRay, expected: RuntimeScene): SceneRenderedHit | null {
+		pick(
+			ray: PointerRay,
+			expected: RuntimeScene,
+			options: PickOptions = {}
+		): SceneRenderedHit | null {
 			if (!prepare(ray, expected)) return null;
 			let result: SceneRenderedHit | null = null;
 			for (const target of targetsFor(expected)) {
@@ -197,11 +228,67 @@ export function createScenePickSource() {
 						if (!node.visible) { visible = false; break; }
 					}
 					if (!visible) continue;
+					// A Slice's cut is display geometry, not a document change: the point is
+					// still in the world, but it is not what the creator can see or aim at,
+					// so the ray continues to the next hit behind it (test 10).
+					if (options.hiddenAt?.(hit.point.toArray()) === true) continue;
 					result = nearest(describeHit(hit, target.id), result);
 					break;
 				}
 			}
 			return result;
+		},
+		/**
+		 * Every **drawn Layout** mesh that is a cap candidate, as world-space section
+		 * inputs.
+		 *
+		 * The Slice caps come from what is actually drawn — the same Layout meshes the
+		 * hit path walks — so a door reveal, an arch head or a keel closes exactly as
+		 * it is built. This is a read: it writes no state, changes no visibility and is
+		 * never used by the hit path.
+		 *
+		 * **Scope is decided by identity, not by what happens to be mounted** (§2.2):
+		 *
+		 * - Scene models are clipped by the planes and **never capped** (owner A-2), so
+		 *   no Scene root is visited. An imported model must also never enter a Wall
+		 *   union: its triangles are open in arbitrary places and would either break the
+		 *   group's balance or fabricate a cap through it.
+		 * - Walls and Wall failure surfaces share one structure group — together they
+		 *   are the closed solid the builder resolved.
+		 * - **Each Layout object gets its own group.** Grouping every object as `object`
+		 *   unioned unrelated plinths, so one object's section could eat another's.
+		 * - A floor is not a cap candidate: it is a horizontal slab at the datum, and in
+		 *   the structure group it would weld into every Wall's bottom edge and close
+		 *   their boundaries where the builder had a real end.
+		 * - An untagged mesh (a derived ceiling, the floor's shadow catcher) is not
+		 *   identified as a Layout cap source and is skipped rather than guessed at.
+		 */
+		sectionSources(): SectionSource[] {
+			const sources: SectionSource[] = [];
+			const root = layoutRoot;
+			if (root === null) return sources;
+			root.updateWorldMatrix(true, true);
+			root.traverse((node) => {
+				if (!(node instanceof Mesh)) return;
+				if (!hasVisibleAncestor(node)) return;
+				const position = node.geometry.getAttribute('position');
+				if (position === undefined || position.count < 3) return;
+				const identity = renderIdentityOf(node);
+				if (identity === null) return;
+				if (identity.kind === 'floor') return;
+				// A Wall failure surface is the *fallback* body the builder produced for a
+				// Wall it could not close. Capping it would draw a solid paper section over
+				// a defect and read as a resolved Wall; its edges already say what happened.
+				if (identity.kind === 'wall-failure') return;
+				sources.push({
+					identity: `${identity.kind}:${identity.id}`,
+					group: identity.kind === 'object' ? `layout-object:${identity.id}` : LAYOUT_STRUCTURE_GROUP,
+					positions: position.array as ArrayLike<number>,
+					index: node.geometry.getIndex()?.array ?? null,
+					matrix: node.matrixWorld.elements
+				});
+			});
+			return sources;
 		},
 		/**
 		 * The nearest **visible** Layout face accepted by `accept`, refusing a face
@@ -214,7 +301,8 @@ export function createScenePickSource() {
 		pickVisibleFace(
 			ray: PointerRay,
 			expected: RuntimeScene,
-			accept: (hit: SceneRenderedHit) => boolean
+			accept: (hit: SceneRenderedHit) => boolean,
+			options: PickOptions = {}
 		): SceneRenderedHit | null {
 			if (!prepare(ray, expected)) return null;
 			let accepted: SceneRenderedHit | null = null;
@@ -230,6 +318,11 @@ export function createScenePickSource() {
 						if (!node.visible) { visible = false; break; }
 					}
 					if (!visible) continue;
+					// Artwork placement and Layout's occlusion test aim where the creator
+					// looks: a face a Slice does not draw is not a place to hang anything,
+					// and it must not block the face behind it either (test 10's rule,
+					// applied to the placement ray rather than to selection).
+					if (options.hiddenAt?.(hit.point.toArray()) === true) continue;
 					const candidate = describeHit(hit, target.id);
 					if (accept(candidate)) accepted = nearest(candidate, accepted);
 					else if (candidate.kind === 'entity' || candidate.kind === 'floor') {

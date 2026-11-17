@@ -344,6 +344,8 @@ export type SceneModelInput = {
 	readonly rotation: SceneVec3;
 	readonly scale: number;
 	readonly look: SceneModelLook | null;
+	/** A resolve-time Treatment for the asset's own materials; a remap carries its own. */
+	readonly treatment?: 'flat-colour' | 'clay';
 	readonly wireframe?: boolean;
 	readonly shadows?: boolean;
 	readonly visible?: boolean;
@@ -414,6 +416,7 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			look?.roughness ?? '-',
 			look?.metalness ?? '-',
 			look?.normalScale?.join(',') ?? '-',
+			input.treatment ?? '-',
 			wireframe,
 			castShadow,
 			receiveShadow
@@ -429,6 +432,7 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			receiveShadow: fallbackReceive
 		},
 		look,
+		...(input.treatment === undefined ? {} : { treatment: input.treatment }),
 		wireframe,
 		castShadow,
 		receiveShadow
@@ -467,7 +471,10 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 		position: [entity.position[0], entity.position[1], entity.position[2]],
 		rotation: [entity.rotation[0], entity.rotation[1], entity.rotation[2]],
 		scale: entity.scale ?? 1,
-		look
+		look,
+		...(scene.environment?.treatment === undefined
+			? {}
+			: { treatment: scene.environment.treatment })
 	});
 }
 

@@ -1386,3 +1386,13 @@ Escape first cancels a live Sky gesture (rung 1). Escape at the Sky disclosure c
 and restores focus to Environment (rung 3a). Sky hides in the Experience lens and Preview.
 The Stage’s Celestial Dial is an idle instrument with selection grips taking priority.
 The **Look module** is the resolver. **Looks** are the S6 preset feature.
+
+The panel carries two tabs, **Sky** and **Looks**, with one roving tab stop (arrows and
+Home/End move between them). Looks shows curated tiles (pressed only on an exact
+match; pressing the active tile re-applies it), the Treatment segmented control
+with a one-line reading, and Previous only when a Look apply captured an
+environment. The palette row names its target: an existing project palette takes
+precedence, and a Look's palette hint appears only on an unpaletted World. Adopt
+opens an inline preview (literal → slot, Finish and object counts, skipped tints
+named) and writes only on Adopt; Cancel and Escape write nothing. A World with no
+palette shows a line, never an inert button.

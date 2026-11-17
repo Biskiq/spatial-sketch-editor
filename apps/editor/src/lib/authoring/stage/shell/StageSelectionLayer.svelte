@@ -34,7 +34,8 @@
 		ReplaceStencilOp,
 		Vector2,
 		Vector3,
-		type Object3D
+		type Object3D,
+		type Plane
 	} from 'three';
 	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
@@ -43,6 +44,8 @@
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { compiledOpeningFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
+	import { useStageClip } from '../slice/stage-clip';
+	import { selectionObjectsOf } from './stage-selection-source';
 	import { STAGE_PAINT } from './stage-paint';
 	import { renderIdentityOf } from '$lib/render/render-identity';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
@@ -65,7 +68,8 @@
 		width = 1,
 		height = 1,
 		fade = 1,
-		eye = [0, 10, 10]
+		eye = [0, 10, 10],
+		unclippedSelection = false
 	}: {
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
@@ -73,6 +77,13 @@
 		hoverTone?: 'hover' | 'erase';
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;
+		/**
+		 * The selected subject is wholly hidden by the Slice and drawn as a ghost:
+		 * its gold contour is the one contour the planes must not cut. Every other tone
+		 * — hover, erase, and the rim ink of a visible subject — stays clipped, so ink
+		 * never implies a body above the cut (§2.4).
+		 */
+		unclippedSelection?: boolean;
 		/** Viewport CSS size; fat-line width is in CSS pixels at this resolution. */
 		width?: number;
 		height?: number;
@@ -96,6 +107,19 @@
 			? 'stencil'
 			: 'contour';
 	const { invalidate } = useThrelte();
+	/** The Canvas's one clip array, by reference: a Slice cuts this ink with its subject. */
+	const stageClip = useStageClip();
+	/**
+	 * The planes a tone draws through, or `undefined` for "not clipped".
+	 *
+	 * The array is the Canvas's own, never a copy: a material created here must share
+	 * the clip the world materials hold, so a moved plane moves this ink too.
+	 */
+	function clipFor(tone: 'selection' | 'hover' | 'erase' | 'rim'): Plane[] | undefined {
+		if (stageClip === null) return undefined;
+		if (tone === 'selection' && unclippedSelection) return undefined;
+		return stageClip.planes as Plane[];
+	}
 
 	const root = new Group();
 	root.name = 'StageSelectionInk';
@@ -117,23 +141,18 @@
 	type Source = { readonly objects: Object3D[]; readonly dispose: () => void };
 	const NO_SOURCE: Source = { objects: [], dispose: () => {} };
 
-	/** Every rendered mesh the selected subject owns. */
+	/**
+	 * Every rendered object the selected subject owns.
+	 *
+	 * Resolved by the shared `selectionObjectsOf`, the same resolver the Slice's
+	 * ghost uses: one answer to "what draws this subject" keeps the gold contour and
+	 * the ghost from disagreeing about which body is selected. A failed Wall is still
+	 * readable as its failure surface, so the creator can see that the selected
+	 * identity is the one the compiler refused.
+	 */
 	function sourceMeshes(entry: StageSelectionEntry): Source {
-		const id = entry.reference.subject.id;
-		const domain = entry.reference.domain;
-		if (domain === 'layout') {
-			const kind = entry.reference.subject.kind;
-			// A failed Wall is still readable as its failure surface, so the creator
-			// can see that the selected identity is the one the compiler refused.
-			const owned =
-				kind === 'wall' ? scenePick.layoutObjectOf('wall', id)
-				: kind === 'object' ? scenePick.layoutObjectOf('object', id)
-				: kind === 'room' ? scenePick.layoutObjectOf('floor', id)
-				: null;
-			return owned === null ? NO_SOURCE : { objects: [owned], dispose: () => {} };
-		}
-		const entity = scenePick.entityObject(id);
-		return entity === null ? NO_SOURCE : { objects: [entity], dispose: () => {} };
+		const objects = selectionObjectsOf(scenePick, entry);
+		return objects.length === 0 ? NO_SOURCE : { objects, dispose: () => {} };
 	}
 
 	function openingContour(openingId: string): number[] {
@@ -198,8 +217,10 @@
 		pivot.matrix.copy(mesh.matrixWorld);
 		pivot.matrixWorldNeedsUpdate = true;
 
+		const silhouettePlanes = clipFor(tone);
 		const maskMaterial = new MeshBasicMaterial({
 			fog: false,
+			...(silhouettePlanes === undefined ? {} : { clippingPlanes: silhouettePlanes }),
 			colorWrite: false,
 			depthTest: false,
 			depthWrite: false,
@@ -217,6 +238,7 @@
 
 		const outlineMaterial = new MeshBasicMaterial({
 			fog: false,
+			...(silhouettePlanes === undefined ? {} : { clippingPlanes: silhouettePlanes }),
 			color: tone === 'selection' ? GOLD : NEUTRAL,
 			transparent: true,
 			opacity: 1,
@@ -275,8 +297,10 @@
 		for (const points of contourPolylines(contour)) {
 			const edgeGeometry = new LineGeometry();
 			edgeGeometry.setPositions(points);
+						const planes = clipFor(tone);
 			const material = new LineMaterial({
-			fog: false,
+				fog: false,
+				...(planes === undefined ? {} : { clippingPlanes: planes }),
 				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL),
 				linewidth: tone === 'selection' ? 3 : 2.5,
 				transparent: true,
@@ -389,6 +413,7 @@
 		width;
 		height;
 		eye;
+		unclippedSelection;
 		rebuild();
 		const stop = scenePick.onRenderRootsChanged(rebuild);
 		return () => {

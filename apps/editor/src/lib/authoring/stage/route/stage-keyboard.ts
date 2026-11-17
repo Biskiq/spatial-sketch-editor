@@ -79,6 +79,9 @@ export type StageKeyboardInput = {
 	/** A temporary reading is on (X1: Lift), and Escape puts it back. */
 	readonly liftActive: () => boolean;
 	readonly putBackLift: () => void;
+	/** A Slice cut is on, and Escape exits it after every earlier rung. */
+	readonly sliceActive: () => boolean;
+	readonly putBackSlice: () => void;
 };
 
 export type StageKeyboard = { handleKey(event: KeyboardEvent): void };
@@ -286,6 +289,9 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 					const claimed = input.activeLayer()?.key(event, 'unwind') === 'claimed';
 					if (!claimed && input.selectionPresent()) input.closeSelection();
 					else if (!claimed && input.liftActive()) input.putBackLift();
+					// A-4: the tool rung above already returned the creator to Select with the
+					// cut kept, so this next Escape is the one that puts the cut back.
+					else if (!claimed && input.sliceActive()) input.putBackSlice();
 				}
 				break;
 			}

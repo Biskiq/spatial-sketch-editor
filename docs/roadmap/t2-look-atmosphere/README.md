@@ -490,6 +490,18 @@ now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 G
                                              └─▶ S5a Wall faces ─▶ S5b Floors / overheads (T1)
 ```
 
+**S6 Looks — delivered.** The catalogue carries **Riso** (daylight base, flat-colour
+surfaces, Coral/Ink/Gold palette) and **Clay** (neutral overcast, one matte clay
+surface, no palette). A Look is pure data: identity is an exact Sky + Treatment
+match, applying one never rewrites a Finish assignment or a light, and its
+palette seeds only an unpaletted World. Treatment covers resolver surfaces,
+imported models that keep their own materials, and default Layout floors,
+ceilings and walls; Artwork, Sky, lights, plinth, door frames and editor marks are
+out. Adopt palette previews a CIE Lab nearest-slot mapping and writes followers
+in one Undo; Previous is session-scoped A/B, cleared by any other environment
+write or a project-epoch change. The import rule preserves alpha-relevant
+structure and counts unsupported material classes; Natural is unchanged.
+
 **Group behaviour is its own slice, after the milestone.** Because *Light it* no longer groups,
 the first milestone needs no group machinery at all. G1 then changes selection for every object
 kind at once, which is why it is planned on its own rather than hidden inside Lights.

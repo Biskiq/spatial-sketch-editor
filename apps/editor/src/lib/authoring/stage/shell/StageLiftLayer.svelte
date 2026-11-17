@@ -25,7 +25,8 @@
 		Shape,
 		ShapeGeometry,
 		Vector2,
-		type Object3D
+		type Object3D,
+		type Plane
 	} from 'three';
 	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
@@ -33,6 +34,7 @@
 	import type { OverheadSource } from '@portfolio/layout-core';
 	import { LIFT_OUTLINE_DROP_METERS } from '../lift-ink';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
+	import { useStageClip } from '../slice/stage-clip';
 	import { OUTLINE_DEPTH_BIAS } from './stage-outline';
 	import { STAGE_PAINT } from './stage-paint';
 
@@ -60,6 +62,17 @@
 	} = $props();
 
 	const { invalidate } = useThrelte();
+	/**
+	 * The Canvas's one clip array, by reference.
+	 *
+	 * A lifted lid above the cut is already clipped out of the world; its outline and
+	 * ghost are clipped with it, so Lift ink never claims a place the Slice removed
+	 * (§2.4). The array is shared, never copied, so a moved plane moves this ink.
+	 */
+	const stageClip = useStageClip();
+	const clipPlanes = (): Plane[] | undefined =>
+		stageClip === null ? undefined : (stageClip.planes as Plane[]);
+
 	const root = new Group();
 	root.name = 'StageLiftInk';
 
@@ -92,7 +105,9 @@
 			loop.flatMap(([x, z]) => [x, source.elevation - LIFT_OUTLINE_DROP_METERS, z])
 		);
 		const hovered = hoveredRoomId !== null && hoveredRoomId === source.subject.id;
+		const planes = clipPlanes();
 		const material = new LineMaterial({
+			...(planes === undefined ? {} : { clippingPlanes: planes }),
 			color: STAGE_PAINT.hover,
 			linewidth: hovered ? 3 : 2,
 			dashed: true,
@@ -124,7 +139,9 @@
 
 	function addGhost(source: OverheadSource): void {
 		const geometry = new ShapeGeometry(shapeOf(source.outline));
+		const planes = clipPlanes();
 		const material = new MeshBasicMaterial({
+			...(planes === undefined ? {} : { clippingPlanes: planes }),
 			color: STAGE_PAINT.hover,
 			transparent: true,
 			opacity: 0.18,

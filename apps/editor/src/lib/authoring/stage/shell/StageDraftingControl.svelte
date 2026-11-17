@@ -278,16 +278,6 @@
 		>
 			<ShellIcon name="measure" size={15} />
 		</button>
-		<button
-			type="button"
-			class="icon"
-			data-view-slice
-			disabled
-			aria-label="Slice, planned"
-			title="Slice is planned for T1"
-		>
-			<ShellIcon name="slice" size={15} />
-		</button>
 	</div>
 
 

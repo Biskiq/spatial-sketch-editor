@@ -493,6 +493,10 @@
 	const skyRects = createStagePanelRects();
 	const look = createLookAuthoring({
 		sky: () => currentEnvelope?.units.scene.data.environment?.sky ?? null,
+		scene: () => currentEnvelope?.units.scene.data ?? null,
+		sessionKey: () => boot.status === 'ready' || boot.status === 'empty'
+			? boot.snapshot.sessionEpoch
+			: '',
 		services: () => adapterServices,
 		windowHeading: () => facade ? aimThroughWindows(facade.snapshot().domain.geometry) : null,
 		onNotice: (message) => shell.setNotice(message)

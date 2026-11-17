@@ -33,6 +33,10 @@ export default defineConfig({
 		'lifecycle-regression.spec.ts',
 		'head-lifetime.spec.ts',
 		'renderer-lifetime.spec.ts',
+		'stage-clip.spec.ts',
+		// T1 SL1: the ghost, the clipped contour and the cap fill, on real WebGL.
+		// Owner-run with the clip seam's fixture; not a CI job.
+		'slice-ink.spec.ts',
 		'trace-unit.spec.ts',
 		'trace-gate-unit.spec.ts',
 		'core-closeout-live.spec.ts'

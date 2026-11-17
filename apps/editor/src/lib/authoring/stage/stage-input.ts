@@ -13,10 +13,15 @@ import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import type { ViewingIntent } from '@portfolio/camera-core';
 
 /** The dock's fixed keys, in dock order. */
-export type StageDockSlot = 'select' | 'ink' | 'paint' | 'measure' | 'erase' | 'library';
+export type StageDockSlot = 'select' | 'ink' | 'paint' | 'slice' | 'measure' | 'erase' | 'library';
 
-/** The one production key for each dock slot; the Keys list shows this map. */
-export const STAGE_DOCK_SHORTCUTS: Readonly<Record<StageDockSlot, string>> = {
+/**
+ * The one production key for each dock slot; the Keys list shows this map.
+ *
+ * `slice` has no shortcut: it is armed from the Build toolbar or Find, never by a
+ * letter, so the map is partial rather than inventing a key the input map does not own.
+ */
+export const STAGE_DOCK_SHORTCUTS: Readonly<Partial<Record<StageDockSlot, string>>> = {
 	select: 'V',
 	ink: 'P',
 	paint: 'B',
@@ -198,6 +203,21 @@ export function isStageDrag(
 	point: { readonly x: number; readonly y: number }
 ): boolean {
 	return Math.hypot(point.x - origin.x, point.y - origin.y) > STAGE_CLICK_TOLERANCE_CSS_PX;
+}
+
+/**
+ * The one Slice refusal (§9), in the plan's words.
+ *
+ * It is conditioned on the Slice **tool** being armed, never on a reading existing: a
+ * cut is a reading, and the creator returns to Select and keeps editing everything
+ * below it. Gating this on `sliceReading.isActive()` blocked every Stage selection and
+ * drag for as long as the cut was on.
+ */
+export const SLICE_PRESS_REFUSAL = 'Drag the Height Sheet to move the cut.';
+
+/** The notice for a Stage press, or `null` when the press is ordinary. */
+export function slicePressRefusal(sliceToolArmed: boolean): string | null {
+	return sliceToolArmed ? SLICE_PRESS_REFUSAL : null;
 }
 
 /** Whether this pointer got the press, or must be ignored because another one owns it. */

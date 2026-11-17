@@ -89,7 +89,12 @@ async function mounted(rect: typeof RECT = RECT) {
 	const services = createStageAdapterServices(facade, host);
 	const skyOf = (): SceneSky | null => stageScene(facade.snapshot()).environment?.sky ?? null;
 	const notices: string[] = [];
-	const look = createLookAuthoring({ sky: skyOf, services: () => services, onNotice: (message) => notices.push(message) });
+	const look = createLookAuthoring({
+		sky: skyOf,
+		scene: () => null,
+		services: () => services,
+		onNotice: (message) => notices.push(message)
+	});
 	const camera = facade.camera.evaluation()!;
 	const placement = placeCelestialDial([3.5, 0, 3], camera, [], () => false, () => true);
 	if (placement === null) throw new Error('sky dial did not place');

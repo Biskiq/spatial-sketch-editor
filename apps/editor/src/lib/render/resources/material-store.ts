@@ -33,14 +33,19 @@ import {
 	ShadowMaterial,
 	Vector2,
 	type Material,
+	type Plane,
 	type Texture
 } from 'three';
 import {
+	CLAY_COLOR,
+	CLAY_ROUGHNESS,
+	FLAT_MIN_ROUGHNESS,
 	MATERIAL_TEXTURE_SLOTS,
 	materialKey,
 	type ImportedMaterialDescriptor,
 	type MaterialDescriptor,
-	type MaterialTextureSlotKey
+	type MaterialTextureSlotKey,
+	type MaterialTreatment
 } from './material-descriptor';
 
 /**
@@ -76,6 +81,10 @@ export type MaterialStoreStats = {
 	readonly disposed: number;
 	/** Leases taken, monotone. */
 	readonly acquired: number;
+	/** Imported materials built with a Treatment, monotone. */
+	readonly treated: number;
+	/** Imported materials left as authored because their class cannot take one. */
+	readonly treatmentSkipped: number;
 };
 
 export type MaterialStore = {
@@ -160,6 +169,81 @@ function constructImported(
 	return clone;
 }
 
+/**
+ * Tune one cloned imported material for a Treatment, in place. Only the fields a
+ * stylised surface owns change: colour, roughness, metalness and, when it cannot
+ * carry alpha, the base colour map. Transparency, opacity, alpha test, side,
+ * depth flags, vertex colours, other maps and skinning survive untouched, so an
+ * alpha-masked silhouette is exactly as authored.
+ *
+ * A material class that has no colour (Shader, RawShader, Normal, Matcap) is
+ * unsupported and left as authored; the store counts it.
+ */
+/** Appearance maps a neutral Treatment suppresses. Geometry and alpha maps are not here. */
+const APPEARANCE_MAPS = [
+	'normalMap',
+	'bumpMap',
+	'roughnessMap',
+	'metalnessMap',
+	'aoMap',
+	'emissiveMap',
+	'lightMap',
+	'specularMap',
+	'specularColorMap',
+	'specularIntensityMap',
+	'clearcoatMap',
+	'clearcoatNormalMap',
+	'clearcoatRoughnessMap',
+	'sheenColorMap',
+	'sheenRoughnessMap',
+	'transmissionMap',
+	'thicknessMap',
+	'iridescenceMap',
+	'iridescenceThicknessMap',
+	'anisotropyMap'
+] as const;
+
+function tuneImported(material: Material, treatment: MaterialTreatment): boolean {
+	if (!('color' in material)) return false;
+	const target = material as Material & {
+		color: { set(value: string): void };
+		roughness?: number;
+		metalness?: number;
+		map?: Texture | null;
+		alphaMap?: Texture | null;
+		alphaTest?: number;
+		transparent?: boolean;
+		emissive?: { set(value: number): void };
+		emissiveIntensity?: number;
+	};
+	if (treatment === 'clay') {
+		target.color.set(CLAY_COLOR);
+		if (typeof target.roughness === 'number') target.roughness = CLAY_ROUGHNESS;
+	} else if (typeof target.roughness === 'number') {
+		target.roughness = Math.max(target.roughness, FLAT_MIN_ROUGHNESS);
+	}
+	if (typeof target.metalness === 'number') target.metalness = 0;
+	if (target.emissive !== undefined) target.emissive.set(0x000000);
+	if (typeof target.emissiveIntensity === 'number') target.emissiveIntensity = 0;
+
+	// A stylised surface is not a textured one. Only maps that carry geometry or
+	// alpha survive: displacement moves the silhouette, alphaMap and a base colour
+	// map that carries alphaTest/transparency keep the mask. Everything else is an
+	// appearance channel this Treatment replaces.
+	for (const key of APPEARANCE_MAPS) {
+		if (key in target) (target as unknown as Record<string, unknown>)[key] = null;
+	}
+	if (
+		target.map !== undefined &&
+		target.map !== null &&
+		(target.alphaTest ?? 0) === 0 &&
+		target.transparent !== true
+	) {
+		target.map = null;
+	}
+	return true;
+}
+
 function construct(
 	descriptor: MaterialDescriptor,
 	maps: MaterialTextureMaps | undefined,
@@ -231,11 +315,34 @@ function construct(
 	}
 }
 
-export function createMaterialStore(): MaterialStore {
+export type MaterialStoreOptions = {
+	/**
+	 * The Canvas's slice clipping planes, **shared by reference** by every colour
+	 * material.
+	 *
+	 * The array is assigned, never copied: the Stage clip mutates its `Plane`
+	 * instances in place for the Canvas's whole life, so a material holding a clone
+	 * would stop following the cut. A descriptor with `clip: false` (the environment
+	 * ground) gets `null` instead. Depth and distance materials are untouched — they
+	 * realize shadows, which are rendered from the unclipped world (`clipShadows`
+	 * stays `false`). Absent means no clipping, which is the Preview Canvas.
+	 */
+	readonly clippingPlanes?: Plane[];
+};
+
+/** Whether this descriptor's material takes the Canvas's clipping planes. */
+function clipsWithStore(descriptor: MaterialDescriptor): boolean {
+	if (descriptor.kind === 'depth' || descriptor.kind === 'distance' || descriptor.kind === 'shadow') return false;
+	return !('clip' in descriptor && descriptor.clip === false);
+}
+
+export function createMaterialStore(options: MaterialStoreOptions = {}): MaterialStore {
 	const entries = new Map<string, Entry>();
 	let created = 0;
 	let disposedCount = 0;
 	let acquired = 0;
+	let treated = 0;
+	let treatmentSkipped = 0;
 	let disposed = false;
 
 	return {
@@ -244,7 +351,22 @@ export function createMaterialStore(): MaterialStore {
 			const key = materialKey(descriptor);
 			let entry = entries.get(key);
 			if (entry === undefined) {
-				entry = { descriptor, material: construct(descriptor, maps, source), refCount: 0 };
+				const material = construct(descriptor, maps, source);
+				if (
+					descriptor.kind === 'imported' &&
+					descriptor.remap === undefined &&
+					descriptor.treatment !== undefined
+				) {
+					if (tuneImported(material, descriptor.treatment)) treated += 1;
+					else treatmentSkipped += 1;
+				}
+				// **After** any `source.clone()`: `Material.copy` clones each plane into a
+				// new array, so a material cloned by the imported path would otherwise
+				// keep a detached copy that never follows the cut.
+				if (options.clippingPlanes !== undefined) {
+					material.clippingPlanes = clipsWithStore(descriptor) ? options.clippingPlanes : null;
+				}
+				entry = { descriptor, material, refCount: 0 };
 				entries.set(key, entry);
 				created += 1;
 			}
@@ -273,7 +395,14 @@ export function createMaterialStore(): MaterialStore {
 		},
 
 		stats() {
-			return { live: entries.size, created, disposed: disposedCount, acquired };
+			return {
+				live: entries.size,
+				created,
+				disposed: disposedCount,
+				acquired,
+				treated,
+				treatmentSkipped
+			};
 		},
 
 		dispose() {

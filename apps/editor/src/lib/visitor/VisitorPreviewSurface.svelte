@@ -457,7 +457,11 @@ import { PCFShadowMap } from 'three';
 					onLook={(value) => (lookingAround = value)}
 				/>
 			{/if}
-			<VisitorLayoutShell {geometry} textureScope={textureScope} />
+			<VisitorLayoutShell
+				{geometry}
+				textureScope={textureScope}
+				treatment={scene.environment?.treatment}
+			/>
 			<VisitorEntities
 				scene={scene}
 				{textureScope}

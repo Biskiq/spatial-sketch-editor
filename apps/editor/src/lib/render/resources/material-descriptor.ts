@@ -32,6 +32,18 @@
 /** A colour as Three accepts it at the constructor: a packed RGB number or `#rgb`/`#rrggbb`. */
 export type MaterialColor = number | string;
 
+/** A resolve-time Treatment, render-local so a representation reads no authored truth. */
+export type MaterialTreatment = 'flat-colour' | 'clay';
+
+/**
+ * The frozen Treatment constants. They live in this dependency-free module so the
+ * one material store can apply them without importing the resolver or a content
+ * barrel; `render/materials/treatment.ts` re-exports them for resolve-time use.
+ */
+export const FLAT_MIN_ROUGHNESS = 0.6;
+export const CLAY_COLOR = '#d6d3cd';
+export const CLAY_ROUGHNESS = 0.9;
+
 /**
  * The texture slots a world surface may bind, in the one order every key uses.
  *
@@ -96,6 +108,14 @@ export type BasicMaterialDescriptor = {
 	readonly vertexColors?: boolean;
 	/** Absent means `true`, as Three's default. */
 	readonly depthWrite?: boolean;
+	/**
+	 * `false` exempts the surface from the Canvas's slice clipping planes.
+	 *
+	 * It exists for the environment ground, which is not part of the model a Slice
+	 * inspects: a finite depth must never remove the world under the creator's feet.
+	 * Absent means the surface is clipped like every other world surface.
+	 */
+	readonly clip?: false;
 };
 
 /**
@@ -122,6 +142,8 @@ export type LambertMaterialDescriptor = {
 	readonly vertexColors?: boolean;
 	/** Editor-only surfaces stay legible through atmospheric haze. */
 	readonly fog?: false;
+	/** `false` exempts the surface from the Canvas's slice clipping planes. */
+	readonly clip?: false;
 };
 
 /**
@@ -169,6 +191,12 @@ export type ShadowMaterialDescriptor = {
  */
 export type ImportedMaterialDescriptor = {
 	readonly kind: 'imported';
+	/**
+	 * The resolve-time Treatment the store applies to this asset's own material.
+	 * Absent is Natural and exactly today's key, clone and lease counts. A `remap`
+	 * carries its Treatment in the resolved look instead, so it is never set here.
+	 */
+	readonly treatment?: MaterialTreatment;
 	/** The approved asset bytes' identity (the URL the loader was given). */
 	readonly asset: string;
 	/** The mesh's index in the source hierarchy's depth-first Mesh order. */
@@ -262,7 +290,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`wireframe=${bool(descriptor.wireframe, false)}`,
 				`toneMapped=${bool(descriptor.toneMapped, true)}`,
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
-				`depthWrite=${bool(descriptor.depthWrite, true)}`
+				`depthWrite=${bool(descriptor.depthWrite, true)}`,
+				// Absent keeps today's key exactly; `clip: false` is a distinct surface.
+				...(descriptor.clip === false ? ['clip=0'] : [])
 			].join('|');
 		case 'lambert':
 			return [
@@ -273,7 +303,8 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`opacity=${num(descriptor.opacity ?? 1)}`,
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
-				...(descriptor.fog === false ? ['fog=0'] : [])
+				...(descriptor.fog === false ? ['fog=0'] : []),
+				...(descriptor.clip === false ? ['clip=0'] : [])
 			].join('|');
 		case 'depth':
 			return [
@@ -301,6 +332,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`mesh=${num(descriptor.mesh)}`,
 				`slot=${num(descriptor.slot)}`,
 				`wireframe=${bool(descriptor.wireframe, false)}`,
+				// Appended only when present: a Natural imported surface keeps the
+				// exact pre-S6 canonical key.
+				...(descriptor.treatment === undefined ? [] : [`treatment=${descriptor.treatment}`]),
 				`remap=${remap}`
 			].join('|');
 		}

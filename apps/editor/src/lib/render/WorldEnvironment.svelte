@@ -27,14 +27,18 @@
 	 * The ground's two looks, from the Canvas store. The colours are the
 	 * disc's vertex colours, so one descriptor serves every preset.
 	 */
+	// `clip: false`: the ground is the world the model stands on, not part of the model
+	// a Slice inspects, so a finite Slice depth must never remove it. This is the one
+	// exemption in SL1, and it is part of the canonical key.
 	const FLAT_GROUND: BasicMaterialDescriptor = {
 		kind: 'basic',
 		color: 0xffffff,
 		vertexColors: true,
 		toneMapped: false,
-		depthWrite: false
+		depthWrite: false,
+		clip: false
 	};
-	const LIT_GROUND: LambertMaterialDescriptor = { kind: 'lambert', vertexColors: true };
+	const LIT_GROUND: LambertMaterialDescriptor = { kind: 'lambert', vertexColors: true, clip: false };
 
 	type Bounds = WorldEnvironmentBounds;
 

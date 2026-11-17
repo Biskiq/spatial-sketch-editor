@@ -30,7 +30,7 @@
 		{@const armed = key.id === armedId}
 		{#if key.separated}<span class="separator" aria-hidden="true"></span>{/if}
 		<span class="key-slot">
-			{#if armed && paletteOpen && key.slot === 'ink' && palette}<div class="palette-anchor">
+			{#if armed && paletteOpen && key.palette && palette}<div class="palette-anchor">
 					{@render palette()}
 				</div>{/if}
 			<button
@@ -142,8 +142,8 @@
 		cursor: default;
 	}
 	.key[data-dock-slot='ink']::after,
+	.key[data-dock-slot='slice']::after,
 	.key[data-dock-slot='erase']::after,
-	.key[data-dock-tool='unavailable-slice']::after,
 	.key[data-dock-tool='unavailable-brush']::after {
 		content: '';
 		position: absolute;
@@ -157,8 +157,8 @@
 	.key[data-dock-slot='erase']::after {
 		background: var(--stage-erase);
 	}
-	.key[data-dock-tool='unavailable-slice']::after {
-		background: var(--shell-ink-quiet);
+	.key[data-dock-slot='slice']::after {
+		background: var(--slice-plane, #e8c14a);
 	}
 	.key[data-dock-tool='unavailable-brush']::after {
 		background: var(--shell-ink-quiet);

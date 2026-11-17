@@ -43,13 +43,27 @@ import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-materi
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import type { MaterialStore } from '$lib/render/resources/material-store';
-import type { BasicMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import type {
+	BasicMaterialDescriptor,
+	MaterialTreatment
+} from '$lib/render/resources/material-descriptor';
+
+type WallMaterialFactory = ReturnType<typeof createVisitorWallMaterialFactory>['factory'];
 
 /** One retained Wall: what it was built from and how to release it. */
 type RetainedWall = {
 	readonly key: string;
 	readonly object: Object3D;
 	readonly release: () => void;
+	/**
+	 * Re-resolve this Wall's materials onto the retained mesh, without rebuilding
+	 * its buffers; null for failure ink. The target is explicit because the
+	 * incremental patch path copies a rebuilt mesh into the retained object, so a
+	 * closure over the temporary object would write to a detached mesh.
+	 */
+	readonly rematerialize:
+		| ((factory: WallMaterialFactory, target: Mesh) => readonly Material[])
+		| null;
 };
 
 /** What one update did, as counts — tests read these, never a stopwatch. */
@@ -82,6 +96,12 @@ export type WallRepresentation = {
 	 * born hidden, and a rebuilt Wall keeps its state.
 	 */
 	setHidden(wallIds: ReadonlySet<string>): void;
+	/**
+	 * Swap the resolve-time Treatment of every Wall surface. Returns whether any
+	 * material changed, so a host that renders on demand can ask for one frame.
+	 * The old factory's leases are released only after the new meshes hold theirs.
+	 */
+	setTreatment(treatment: MaterialTreatment | undefined): boolean;
 	/** Release every retained mesh and material. Idempotent. */
 	dispose(): void;
 };
@@ -160,7 +180,10 @@ function endKeysByWall(geometry: CompiledLayoutGeometry): Map<string, string> {
 	return keys;
 }
 
-export function createWallRepresentation(store: MaterialStore): WallRepresentation {
+export function createWallRepresentation(
+	store: MaterialStore,
+	initialTreatment: MaterialTreatment | undefined = undefined
+): WallRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutWalls';
 	const retained = new Map<string, RetainedWall>();
@@ -170,13 +193,19 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 	let disposed = false;
 	let previousGeometry: CompiledLayoutGeometry | undefined;
 	let hidden: ReadonlySet<string> = new Set();
+	let treatment: MaterialTreatment | undefined = initialTreatment;
 
 	// A physical Wall belongs to no Room: the mesh builder resolves its surface
 	// with the Wall's own id as `roomId`, so the tint is always the default
 	// Wall colour. Keeping it constant is what lets the factory outlive every compile (a
 	// Room-tinted lookup would also make the representation depend on Room
 	// presentation, an input no Wall mesh reads).
-	const factory = createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE);
+	let factory = createVisitorWallMaterialFactory(
+		store,
+		() => DEFAULT_WALL_COLOR,
+		DEFAULT_WALL_UNLIT_SHARE,
+		treatment
+	);
 	const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
 		const resolved = factory.factory(surfaceKey, mesh);
 		materialsSeen.add(resolved.material);
@@ -187,7 +216,13 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 		wall: CompiledPhysicalWall,
 		elevation: number,
 		ends: Parameters<typeof buildStandaloneWallMesh>[2]
-	): { object: Object3D; release: () => void } {
+	): {
+		object: Object3D;
+		release: () => void;
+		rematerialize:
+			| ((factory: WallMaterialFactory, target: Mesh) => readonly Material[])
+			| null;
+	} {
 		const result = buildStandaloneWallMesh(wall, elevation, ends ?? null, { classifySurface: () => 'wall' });
 		if (!result.mesh) {
 			// The explicit failure surface the shell has always drawn: a magenta
@@ -207,7 +242,8 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 				release: () => {
 					geometry.dispose();
 					lease.release();
-				}
+				},
+				rematerialize: null
 			};
 		}
 		const adapted = toWallBufferGeometry(result.mesh, resolveMaterial);
@@ -216,15 +252,24 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 		tagRenderIdentity(mesh, 'wall', wall.wallId);
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
-		return { object: mesh, release: adapted.dispose };
+		// The compiled surface groups are geometry-stable: a Treatment swap only
+		// re-resolves these materials, never the buffers or the mesh object.
+		const groups = result.mesh.materialGroups;
+		const source = result.mesh;
+		const rematerialize = (
+			next: WallMaterialFactory,
+			target: Mesh = mesh
+		): readonly Material[] => {
+			const materials = groups.map((group) => next(group.surfaceKey, source).material);
+			target.material = [...materials];
+			return materials;
+		};
+		return { object: mesh, release: adapted.dispose, rematerialize };
 	}
 
-	return {
-		object3d,
-
-		update(geometry) {
-			if (disposed) throw new Error('the layout wall representation has been disposed');
-			const patches = previousGeometry ? diffCompiledWalls(previousGeometry, geometry) : undefined;
+	function update(geometry: CompiledLayoutGeometry): WallRepresentationStats {
+		if (disposed) throw new Error('the layout wall representation has been disposed');
+		const patches = previousGeometry ? diffCompiledWalls(previousGeometry, geometry) : undefined;
 			if (patches !== undefined) {
 				let built = 0;
 				for (const patch of patches) {
@@ -242,7 +287,12 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 					// `copy` resets visibility with the rest of the transform state.
 					previous.object.visible = !hidden.has(patch.wall.wallId);
 					previous.release();
-					retained.set(patch.wall.wallId, { key, object: previous.object, release: next.release });
+					retained.set(patch.wall.wallId, {
+						key,
+						object: previous.object,
+						release: next.release,
+						rematerialize: next.rematerialize
+					});
 					built += 1;
 				}
 				previousGeometry = geometry;
@@ -272,7 +322,12 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 					endsByWall.get(wall.wallId) ?? null
 				);
 				next.object.visible = !hidden.has(wall.wallId);
-				const entry: RetainedWall = { key, object: next.object, release: next.release };
+				const entry: RetainedWall = {
+					key,
+					object: next.object,
+					release: next.release,
+					rematerialize: next.rematerialize
+				};
 				if (previous) {
 					// Swap in place so draw order follows the compiled Wall order.
 					countWork('representation:child-array-scan-bound', object3d.children.length);
@@ -305,6 +360,36 @@ export function createWallRepresentation(store: MaterialStore): WallRepresentati
 				released,
 				materials: materialsSeen.size
 			};
+	}
+
+	return {
+		object3d,
+
+		update(geometry) {
+			return update(geometry);
+		},
+
+		setTreatment(next) {
+			if (disposed) throw new Error('the layout wall representation has been disposed');
+			if (next === treatment) return false;
+			const previousFactory = factory;
+			treatment = next;
+			factory = createVisitorWallMaterialFactory(
+				store,
+				() => DEFAULT_WALL_COLOR,
+				DEFAULT_WALL_UNLIT_SHARE,
+				treatment
+			);
+			// Material-only swap: every geometry stays attached and untouched. The new
+			// leases are taken before the superseded factory gives its own back.
+			for (const entry of retained.values()) {
+				if (entry.rematerialize === null) continue;
+				for (const material of entry.rematerialize(factory.factory, entry.object as Mesh)) {
+					materialsSeen.add(material);
+				}
+			}
+			previousFactory.dispose();
+			return true;
 		},
 
 		objectOf(wallId) {
