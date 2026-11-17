@@ -47,3 +47,45 @@ export function sectionEdgeSegments(
 	}
 	return segments;
 }
+
+/** One group's open (unclosed) chain positions, as independent pairs. */
+export function openChainSegments(
+	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
+	basis: SectionBasis,
+	y: number,
+	originXZ: readonly [number, number]
+): number[] {
+	const world = ([u, v]: readonly [number, number]): [number, number, number] => [
+		originXZ[0] + u * basis.u[0] + v * basis.v[0],
+		y,
+		originXZ[1] + u * basis.u[2] + v * basis.v[2]
+	];
+	const positions: number[] = [];
+	for (const chain of chains) {
+		for (let index = 0; index + 1 < chain.points.length; index += 1) {
+			positions.push(...world(chain.points[index]!), ...world(chain.points[index + 1]!));
+		}
+	}
+	return positions;
+}
+
+/**
+ * Add **one group's** edges to a collection that spans every cap group.
+ *
+ * The section has one group per independent solid: the Wall structure union and one
+ * per Layout object. Each group fills its own cap, and each group's outline must
+ * survive the next group's collection — replacing the collection instead of appending
+ * left only the last group's outline (and dropped an earlier group's open warning
+ * edges with it).
+ */
+export function appendSectionEdges(
+	collection: { readonly segments: SectionEdgeSegment[]; readonly open: number[] },
+	loops: readonly SectionLoop[],
+	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
+	basis: SectionBasis,
+	y: number,
+	originXZ: readonly [number, number]
+): void {
+	collection.segments.push(...sectionEdgeSegments(loops, basis, y, originXZ));
+	collection.open.push(...openChainSegments(chains, basis, y, originXZ));
+}

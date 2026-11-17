@@ -51,7 +51,7 @@
 	import { capFillsOf } from '../slice/slice-cap-shapes';
 	import { SLICE_INK } from '../slice/slice-ink';
 	import { decideCapAssembly, type CapAssemblyState } from '../slice/slice-cap-schedule';
-	import { sectionEdgeSegments, type SectionEdgeSegment } from '../slice/slice-edges';
+	import { appendSectionEdges, type SectionEdgeSegment } from '../slice/slice-edges';
 	import { reportCapIssues } from '../slice/slice-diagnostics';
 	import type { ResolvedSlice } from '../slice/slice-cut';
 	import { drawnMeshesOf } from './stage-selection-source';
@@ -297,19 +297,10 @@
 		y: number,
 		originXZ: readonly [number, number]
 	): void {
-		const open: number[] = [];
-		const world = ([u, v]: readonly [number, number]): [number, number, number] => [
-			originXZ[0] + u * basis.u[0] + v * basis.v[0],
-			y,
-			originXZ[1] + u * basis.u[2] + v * basis.v[2]
-		];
-		for (const chain of chains) {
-			for (let index = 0; index + 1 < chain.points.length; index += 1) {
-				open.push(...world(chain.points[index]!), ...world(chain.points[index + 1]!));
-			}
-		}
-		edges = sectionEdgeSegments(loops, basis, y, originXZ);
-		openEdges = open;
+		// Append, never replace: the section has one group per independent solid (the
+		// Wall structure union plus one per Layout object), and each one's outline —
+		// and an open group's warning edges — must survive the next group.
+		appendSectionEdges({ segments: edges, open: openEdges }, loops, chains, basis, y, originXZ);
 	}
 
 	/**
