@@ -11,6 +11,9 @@ export default defineConfig({
 	...svelteTestSetup,
 	test: {
 		include: ARCH_FILES,
-		environment: 'node'
+		environment: 'node',
+		// These guards walk the whole source tree; a cold worktree can take
+		// several seconds per scan, so a 5 s default would fail on timing alone.
+		testTimeout: 20_000
 	}
 });

@@ -374,10 +374,31 @@ export type SliceClipUniforms = {
 	readonly along: VectorUniform;
 	readonly halfLength: ScalarUniform;
 	readonly depth: ScalarUniform;
+	/**
+	 * The X2 cutaway top: a **live** uniform owned by `StageClip`. Every material
+	 * outside the cutaway twin set is bound to {@link NEVER_CUT_UNIFORM} instead,
+	 * which is why one program serves both and a cut costs no compile.
+	 */
+	readonly cutawayTopY: ScalarUniform;
 };
 
 /** The fixed suffix on every patched program's cache key. */
-export const SLICE_CLIP_PROGRAM_KEY = 'biskiq.slice-clip@1';
+export const SLICE_CLIP_PROGRAM_KEY = 'biskiq.slice-clip@2';
+
+/**
+ * The height a never-cut material discards above: above every Stage point, so the
+ * added fragment test is a no-op for anything outside the cutaway twin set.
+ */
+export const NEVER_CUT_TOP_Y = 1e6;
+
+/**
+ * The one constant uniform every non-twin patched material binds **by reference**.
+ *
+ * It is created once and never written: a normal surface's binding cannot follow a
+ * cut because there is nothing to follow, and a twin writes only its own live
+ * `cutawayTopY`.
+ */
+export const NEVER_CUT_UNIFORM: ScalarUniform = Object.freeze({ value: NEVER_CUT_TOP_Y });
 
 export function createSliceClipUniforms(): SliceClipUniforms {
 	return {
@@ -386,7 +407,8 @@ export function createSliceClipUniforms(): SliceClipUniforms {
 		normal: { value: new Vector3(0, 1, 0) },
 		along: { value: new Vector3(1, 0, 0) },
 		halfLength: { value: 0 },
-		depth: { value: 0.1 }
+		depth: { value: 0.1 },
+		cutawayTopY: { value: NEVER_CUT_TOP_Y }
 	};
 }
 
@@ -429,6 +451,7 @@ export function snapshotSliceClipUniforms(uniforms: SliceClipUniforms): {
 	readonly along: [number, number, number];
 	readonly halfLength: number;
 	readonly depth: number;
+	readonly cutawayTopY: number;
 } {
 	return {
 		mode: uniforms.mode.value,
@@ -436,7 +459,8 @@ export function snapshotSliceClipUniforms(uniforms: SliceClipUniforms): {
 		normal: uniforms.normal.value.toArray() as [number, number, number],
 		along: uniforms.along.value.toArray() as [number, number, number],
 		halfLength: uniforms.halfLength.value,
-		depth: uniforms.depth.value
+		depth: uniforms.depth.value,
+		cutawayTopY: uniforms.cutawayTopY.value
 	};
 }
 
@@ -450,6 +474,7 @@ export function restoreSliceClipUniforms(
 	uniforms.along.value.fromArray(state.along);
 	uniforms.halfLength.value = state.halfLength;
 	uniforms.depth.value = state.depth;
+	uniforms.cutawayTopY.value = state.cutawayTopY;
 }
 
 /** A patch is installed once; a second store option must not wrap it twice. */
@@ -464,6 +489,7 @@ const FRAGMENT_DECLARATION = [
 	'uniform vec3 uSliceClipAlong;',
 	'uniform float uSliceClipHalfLength;',
 	'uniform float uSliceClipDepth;',
+	'uniform float uCutawayTopY;',
 	''
 ].join('\n');
 
@@ -501,21 +527,32 @@ if ( uSliceClipMode > 0.5 ) {
 		if ( sliceClipB > 0.0 || sliceClipB < -uSliceClipDepth ) discard;
 	}
 }
+if ( vSliceWorldPosition.y > uCutawayTopY ) discard;
 `;
 
 /**
  * Install the predicate on a colour material, preserving any compile hook it
  * already had (an imported glTF material may carry one).
  *
+ * `options.cutaway` selects the **twin** binding: the fragment test reads the
+ * StageClip's live `cutawayTopY` instead of the shared never-cut constant. The
+ * shader source and cache key are identical either way, so a twin is the same
+ * program as its normal sibling — which is what keeps a cut compile-free.
+ *
  * Returns `false` for a shader whose chunk layout this patch does not recognize;
  * the material is left untouched rather than half-patched. The store treats that as
  * a diagnostic, not a reason to add a fallback clipping path.
  */
-export function applySliceClipShader(material: Material, uniforms: SliceClipUniforms): boolean {
+export function applySliceClipShader(
+	material: Material,
+	uniforms: SliceClipUniforms,
+	options: { readonly cutaway?: boolean } = {}
+): boolean {
 	const target = material as Material & { [PATCHED]?: boolean };
 	if (target[PATCHED] === true) return true;
 	const baseCompile = material.onBeforeCompile;
 	const baseKey = material.customProgramCacheKey();
+	const cutawayTop = options.cutaway === true ? uniforms.cutawayTopY : NEVER_CUT_UNIFORM;
 	material.onBeforeCompile = function (shader, renderer) {
 		baseCompile.call(this, shader, renderer);
 		const world = shader.vertexShader.includes('#include <project_vertex>');
@@ -529,6 +566,7 @@ export function applySliceClipShader(material: Material, uniforms: SliceClipUnif
 		shader.uniforms.uSliceClipAlong = uniforms.along;
 		shader.uniforms.uSliceClipHalfLength = uniforms.halfLength;
 		shader.uniforms.uSliceClipDepth = uniforms.depth;
+		shader.uniforms.uCutawayTopY = cutawayTop;
 		shader.vertexShader =
 			VERTEX_DECLARATION +
 			(world
@@ -591,7 +629,9 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 					material.clippingPlanes = clips ? options.clippingPlanes : null;
 				}
 				if (clips && options.sliceClip !== undefined) {
-					applySliceClipShader(material, options.sliceClip);
+					applySliceClipShader(material, options.sliceClip, {
+						cutaway: 'cutaway' in descriptor && descriptor.cutaway === true
+					});
 				}
 				entry = { descriptor, material, refCount: 0 };
 				entries.set(key, entry);

@@ -39,7 +39,8 @@
 		paperTone2d = 'current',
 		paperTone3d = 'current',
 		onViewPreference = () => {},
-		lift = null
+		lift = null,
+		nearWalls = null
 	}: {
 		drafting: StageDraftingState;
 		/** The settled reading the segmented control reports. */
@@ -75,6 +76,12 @@
 		 * carries exactly one item and no disabled or planned ones. Null hides the ▾.
 		 */
 		lift?: { readonly active: boolean; toggle(): void } | null;
+		/**
+		 * X2's `Near walls: Cut | Whole`, under Lift in the same ▾. It is a two-way
+		 * item group with a default of Cut — never a pill, never a reading, and never
+		 * in the Escape ladder. Null hides it.
+		 */
+		nearWalls?: { readonly mode: 'cut' | 'whole'; set(mode: 'cut' | 'whole'): void } | null;
 	} = $props();
 
 	/** One Paper tray open at a time; it stays open until its row is pressed again. */
@@ -207,6 +214,31 @@
 						<span>Lift</span>
 						{#if lift.active}<span class="check" aria-hidden="true">✓</span>{/if}
 					</button>
+					{#if nearWalls !== null}
+						<div class="menu-group" role="group" aria-label="Near walls">
+							<span class="menu-title">Near walls</span>
+							<button
+								type="button"
+								role="menuitemradio"
+								aria-checked={nearWalls.mode === 'cut'}
+								data-near-walls="cut"
+								onclick={() => { nearWalls.set('cut'); closeLift(true); }}
+							>
+								<span>Cut</span>
+								{#if nearWalls.mode === 'cut'}<span class="check" aria-hidden="true">✓</span>{/if}
+							</button>
+							<button
+								type="button"
+								role="menuitemradio"
+								aria-checked={nearWalls.mode === 'whole'}
+								data-near-walls="whole"
+								onclick={() => { nearWalls.set('whole'); closeLift(true); }}
+							>
+								<span>Whole</span>
+								{#if nearWalls.mode === 'whole'}<span class="check" aria-hidden="true">✓</span>{/if}
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -531,6 +563,18 @@
 	}
 	.reading-menu .check {
 		color: var(--shell-leaf);
+	}
+	.reading-menu .menu-group {
+		display: grid;
+		gap: 1px;
+		margin-top: 4px;
+		padding-top: 4px;
+		border-top: 1px solid var(--shell-hairline);
+	}
+	.reading-menu .menu-title {
+		padding: 2px 7px 3px;
+		color: var(--shell-ink-quiet);
+		font: var(--shell-text-control) var(--shell-sans);
 	}
 	.viewing-slot .gear {
 		min-width: 28px;

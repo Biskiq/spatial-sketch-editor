@@ -73,6 +73,8 @@
 		initialLiftScope,
 		interiorLift
 	} from '$lib/authoring/layout/interior-lift-store.svelte';
+	import { nearWallCutaway } from '$lib/authoring/stage/cutaway/near-wall-cutaway.svelte';
+	import { setResolvedCutaway } from '$lib/authoring/stage/cutaway/cutaway-resolved';
 	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
 	import { createSliceDraw } from '$lib/authoring/stage/slice/slice-draw.svelte';
 	import { pickThroughSlice, pickVisibleFaceThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
@@ -90,7 +92,9 @@
 	} from '$lib/layout/wall-unfold';
 	import {
 		createStagePressTracker,
-		readingIntentClockSeconds
+		readingIntentClockSeconds,
+		stageKeyFromControl,
+		stageKeyFromTextEntry
 	} from '$lib/authoring/stage/stage-input';
 	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 	import '$lib/authoring/stage/shell/shell-roles.css';
@@ -101,6 +105,8 @@
 	import StageToolbars from '$lib/authoring/stage/shell/StageToolbars.svelte';
 	import StageViewportRegion from '$lib/authoring/stage/shell/StageViewportRegion.svelte';
 	import { artworkHangingGuides, snapArtworkHeight, activeArtworkHangGuide } from '$lib/authoring/artwork/artwork-hanging';
+	import { artworkBackWallHit } from '$lib/authoring/artwork/artwork-wall-move';
+	import { isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
 	import { artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
@@ -739,7 +745,8 @@
 		sliceDraftActive: () => sliceDraw.hasDraft(),
 		cancelSliceDraft: () => sliceDraw.cancelDraft(),
 		sliceActive: () => sliceReading.isActive(),
-		putBackSlice
+		putBackSlice,
+		setCutawayHeld: (held) => nearWallCutaway.setHeld(held)
 	});
 
 	const selectedCurvedWall = $derived.by(() =>
@@ -809,6 +816,17 @@
 
 	const liftControl = $derived({ active: interiorLift.isActive(), toggle: toggleLift });
 
+	/** X2's two-way switch, under Lift in the reading control's ▾ (never a pill). */
+	const nearWallsControl = $derived({
+		mode: nearWallCutaway.mode,
+		set: (mode: 'cut' | 'whole') => nearWallCutaway.setMode(mode)
+	});
+
+	// Preview is an isolated visitor run: a held `W` never leaks into it.
+	$effect(() => {
+		if (preview !== null) nearWallCutaway.setHeld(false);
+	});
+
 	/**
 	 * The Lift pill's reads. The scoped Room is named as its Card titles it, and the
 	 * menu's candidate is the same rule entry uses: selected Room, occupied Room,
@@ -877,6 +895,109 @@
 	 */
 	$effect(() => {
 		setResolvedSlice(resolvedSlice);
+	});
+
+	/**
+	 * X2 — the selection's host Walls (D9).
+	 *
+	 * A selected Wall, a selected Opening's host Wall, and a selected hung
+	 * Artwork's **derived** host (O-1 keeps Scene objects as built; the derived host
+	 * is what the as-built back-wall ray finds within 1 cm). These Walls are exempt
+	 * from the cutaway so the thing the creator selected keeps its whole body.
+	 */
+	const cutawaySelectionHosts = $derived.by((): ReadonlySet<string> => {
+		const hosts = new Set<string>();
+		const entry = selection;
+		const geometry =
+			boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.geometry : null;
+		if (entry === null || geometry === null) return hosts;
+		if (entry.reference.domain === 'layout') {
+			const subject = entry.reference.subject;
+			if (subject.kind === 'wall') hosts.add(subject.id);
+			else if (subject.kind === 'opening') {
+				for (const wall of geometry.walls) {
+					if (wall.openings.some((opening) => opening.openingId === subject.id)) hosts.add(wall.wallId);
+				}
+			}
+		}
+		const artwork = selectionViewView.selectedArtwork;
+		const stage = facade;
+		if (artwork !== null && stage !== null && experience.lensState === 'world') {
+			const snapshot = stage.snapshot();
+			// An as-built query, never the display predicate: a host is a document fact
+			// (plan §3.6 step 8).
+			const hit = artworkBackWallHit(artwork.position, artwork.rotation[1], (ray) =>
+				scenePick.pickVisibleFace(ray, snapshot.domain.scene, (candidate) =>
+					isArtworkWallFace(candidate, snapshot.domain.geometry)
+				)
+			);
+			if (hit !== null && hit.wallId !== undefined && hit.distanceMeters <= 0.01) hosts.add(hit.wallId);
+		}
+		return hosts;
+	});
+
+	/** D12: Walls whose cap component failed close to whole until the next decision. */
+	let cutawayFailedIds = $state<ReadonlySet<string>>(new Set());
+
+	const cutawayEffective = $derived.by((): ReadonlySet<string> => {
+		// Read the decision so the mask re-evaluates when classification changes.
+		nearWallCutaway.classified;
+		const effective = nearWallCutaway.effective(cutawaySelectionHosts);
+		if (cutawayFailedIds.size === 0) return effective;
+		const next = new Set<string>();
+		for (const wallId of effective) if (!cutawayFailedIds.has(wallId)) next.add(wallId);
+		return next;
+	});
+	const cutawayWallIds = $derived.by(() => {
+		const unfolded = wallUnfold.state?.wallId ?? null;
+		return [...cutawayEffective].filter((wallId) => wallId !== unfolded).sort();
+	});
+	const cutawayStubTopY = $derived(nearWallCutaway.stubTopY);
+
+	/**
+	 * The one classification write (§3.3). Pose, geometry revision, reading and press
+	 * state are the only inputs; selection, mode and hold are presentation masks.
+	 */
+	$effect(() => {
+		const stage = facade;
+		const current = evaluation;
+		const snapshot = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null;
+		if (stage === null || snapshot === null || current === null) {
+			if (nearWallCutaway.decision !== null) nearWallCutaway.reset();
+			return;
+		}
+		const geometry = snapshot.domain.geometry;
+		const reading =
+			experience.lensState === 'world' && current.renderedReading === '3d'
+				? '3d'
+				: experience.lensState === 'world' && current.renderedReading === 'plan'
+					? 'plan'
+					: 'transition';
+		const changed = nearWallCutaway.evaluate({
+			eye: eyeOfInspectionPose(current.pose),
+			target: current.pose.target,
+			rooms: geometry.rooms,
+			walls: geometry.walls,
+			floors: geometry.floors,
+			renderedReading: reading,
+			geometryRevision: snapshot.domain.unitRevisions.layout,
+			pressing: stageInput.drag !== null
+		});
+		// A new decision is the moment a D12 failure is retried.
+		if (changed && cutawayFailedIds.size > 0) cutawayFailedIds = new Set();
+	});
+
+	$effect(() => {
+		nearWallCutaway.setSelectionHosts(cutawaySelectionHosts);
+	});
+
+	/** Publish the effective set to the plain pick providers (the Slice mirror's shape). */
+	$effect(() => {
+		const ids = cutawayWallIds;
+		const top = cutawayStubTopY;
+		setResolvedCutaway(
+			ids.length > 0 && top !== null ? { wallIds: new Set(ids), stubTopY: top } : null
+		);
 	});
 
 	/** Plan's membership follows the cut: a finite depth narrows what Plan shows. */
@@ -1018,6 +1139,8 @@
 		sliceDraw.disarm();
 		sliceReading.clear();
 		setResolvedSlice(null);
+		nearWallCutaway.reset();
+		setResolvedCutaway(null);
 		finishes?.cancelImage();
 		artworkInteraction.dispose();
 		stageAssets.disposeArtwork();
@@ -1120,6 +1243,10 @@
 		sliceDraw.disarm();
 		sliceReading.clear();
 		setResolvedSlice(null);
+		// X2 is session state too: a replaced project starts at Cut with no memory.
+		nearWallCutaway.reset();
+		setResolvedCutaway(null);
+		cutawayFailedIds = new Set();
 		selection = null;
 		shell.setTask(null);
 		revealed = [];
@@ -1355,8 +1482,12 @@
 		};
 		const onReleaseSnap = (event: KeyboardEvent) => {
 			if (event.key === 'Alt') shell.suspendSnap(false);
+			stageKeyboard.handleKeyUp(event);
 		};
-		const onWindowBlur = () => shell.suspendSnap(false);
+		const onWindowBlur = () => {
+			shell.suspendSnap(false);
+			nearWallCutaway.setHeld(false);
+		};
 		window.addEventListener('keydown', onKey);
 		window.addEventListener('keyup', onReleaseSnap);
 		window.addEventListener('blur', onWindowBlur);
@@ -1375,6 +1506,8 @@
 			window.removeEventListener('keydown', onKey);
 			window.removeEventListener('keyup', onReleaseSnap);
 			window.removeEventListener('blur', onWindowBlur);
+			nearWallCutaway.setHeld(false);
+			setResolvedCutaway(null);
 			removeInterruptions();
 			stageEpoch.dispose();
 		};
@@ -1471,6 +1604,11 @@
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftSources() { return liftedSources; },
+			get cutawayWallIds() { return cutawayWallIds; },
+			get cutawayStubTopY() { return cutawayStubTopY; },
+			onCutawayFailure: (wallIds: readonly string[]) => {
+				cutawayFailedIds = new Set([...cutawayFailedIds, ...wallIds]);
+			},
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
 			get resolvedSlice() { return resolvedSlice; },
 			get sliceDraft() { return sliceDraftWorld; },
@@ -1798,7 +1936,8 @@
 							onToggleReducedMotion: () => shell.toggleReducedMotion(),
 							motionSpeed: shell.preferences.motionSpeed,
 							onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed }),
-							lift: liftControl
+							lift: liftControl,
+							nearWalls: nearWallsControl
 						}
 					}
 					: null}

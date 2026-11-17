@@ -13,19 +13,28 @@
  * putting the cut back need no re-wiring: there is one wrapped pick for the
  * session and it is always current.
  */
+import type { Object3D } from 'three';
 import type { PointerRay } from '@portfolio/camera-core';
 import type { RuntimeScene } from '@portfolio/project-model';
 import type { ScenePickSource } from '../../scene/scene-pick-source';
 import { sliceHides, type ResolvedSlice } from './slice-cut';
+import { cutawayHides } from '../cutaway/cutaway-pick';
+import { resolvedCutawayNow, type ResolvedCutaway } from '../cutaway/cutaway-resolved';
 
 /** What the Stage facade and its adapters call; the options stay internal. */
 export type SlicePick = (ray: PointerRay, scene: RuntimeScene) => ReturnType<ScenePickSource['pick']>;
 
 export function pickThroughSlice(
 	source: ScenePickSource,
-	resolved: () => ResolvedSlice | null
+	resolved: () => ResolvedSlice | null,
+	/**
+	 * The live effective cutaway (X2), read on the pointer. The default is the
+	 * route's own mirror — the same set the Canvas cuts — so a caller that only
+	 * knows about Slice still cannot select a cut Wall above its stub.
+	 */
+	cutaway: () => ResolvedCutaway | null = resolvedCutawayNow
 ): SlicePick {
-	return (ray, scene) => source.pick(ray, scene, hiddenAtOf(resolved));
+	return (ray, scene) => source.pick(ray, scene, hiddenAtOf(resolved, cutaway));
 }
 
 /** The same filter for the face-placement ray (artwork hanging, Layout occlusion). */
@@ -45,17 +54,26 @@ export type SliceFacePick = (
  */
 export function pickVisibleFaceThroughSlice(
 	source: ScenePickSource,
-	resolved: () => ResolvedSlice | null
+	resolved: () => ResolvedSlice | null,
+	cutaway: () => ResolvedCutaway | null = resolvedCutawayNow
 ): SliceFacePick {
-	return (ray, scene, accept) => source.pickVisibleFace(ray, scene, accept, hiddenAtOf(resolved));
+	return (ray, scene, accept) => source.pickVisibleFace(ray, scene, accept, hiddenAtOf(resolved, cutaway));
 }
 
-/** One predicate, shared by both rays: a point is hidden when the reading hides it. */
-function hiddenAtOf(resolved: () => ResolvedSlice | null): { hiddenAt(point: readonly [number, number, number]): boolean } {
+/**
+ * One predicate, shared by both rays: a point is hidden when **either** display
+ * cut hides it. Slice and cutaway compose as a union (§5), so a Wall face removed
+ * by either is not a place to aim at or hang on.
+ */
+function hiddenAtOf(
+	resolved: () => ResolvedSlice | null,
+	cutaway: () => ResolvedCutaway | null
+): { hiddenAt(point: readonly [number, number, number], object: Object3D): boolean } {
 	return {
-		hiddenAt: (point) => {
+		hiddenAt: (point, object) => {
 			const cut = resolved();
-			return cut !== null && sliceHides(cut, point[0], point[1], point[2]);
+			if (cut !== null && sliceHides(cut, point[0], point[1], point[2])) return true;
+			return cutawayHides(point, object, cutaway());
 		}
 	};
 }

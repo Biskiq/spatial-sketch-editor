@@ -14,6 +14,10 @@ import {
 	segmentIntervalInHalfPlanes
 } from '../stage/slice/slice-clip-2d';
 import { resolvedSliceNow } from '../stage/slice/slice-resolved';
+import {
+	resolvedCutawayNow,
+	type ResolvedCutaway
+} from '../stage/cutaway/cutaway-resolved';
 import type { PlanEvaluationResult } from '@portfolio/layout-core';
 
 /** The aperture faces and the reveals between them are pickable, but never drawn. */
@@ -137,6 +141,38 @@ export function flatDrawn(surface: StagePickSurface, slice: ResolvedSlice | null
 
 /** A plan sub-span shorter than this is not a surface a pointer can land on. */
 const SLICE_EMPTY_SPAN_METERS = 1e-6;
+
+/**
+ * A Wall face **clamped to its stub** (X2, §3.6 step 4).
+ *
+ * The face is the compiled solid's vertical extent, which is right at rest. Under
+ * the cutaway the part above `stubTopY` is not drawn, so it must not be selectable
+ * either: a click on the air above a stub would otherwise take a Wall the creator
+ * cannot see. Composing with the Slice's own clamp lets the lower bound win per
+ * Wall without a second rule.
+ */
+export function clampFaceToCutaway(
+	surface: StagePickSurface,
+	cutaway: ResolvedCutaway | null
+): StagePickSurface | null {
+	if (cutaway === null || surface.kind !== 'face') return surface;
+	const topMeters = Math.min(surface.topMeters, cutaway.stubTopY);
+	return topMeters <= surface.bottomMeters + SLICE_EMPTY_BAND_METERS
+		? null
+		: { ...surface, topMeters };
+}
+
+/** The surfaces a pick may test after the cutaway: a cut Wall stops at its stub. */
+export function clipSurfaceToCutaway(
+	surface: StagePickSurface,
+	cutaway: ResolvedCutaway | null
+): StagePickSurface[] {
+	if (cutaway === null) return [surface];
+	// Only Wall faces are removed: floors, objects and Opening symbols are not part
+	// of X2 (owner ruling O-1 leaves Scene objects as built).
+	const clamped = clampFaceToCutaway(surface, cutaway);
+	return clamped === null ? [] : [clamped];
+}
 
 /**
  * The shown parts of one plan segment under a drawn cut, as `[t0, t1]` intervals.
@@ -268,7 +304,8 @@ function pickSurfacesOf(
 	fragment: PlanFragment,
 	geometry: CompiledLayoutGeometry,
 	datumMeters: number,
-	slice: ResolvedSlice | null = null
+	slice: ResolvedSlice | null = null,
+	cutaway: ResolvedCutaway | null = null
 ): readonly StagePickSurface[] {
 	const flat: StagePickSurface = {
 		kind: 'flat',
@@ -314,7 +351,37 @@ function pickSurfacesOf(
 		bottomMeters: datumMeters + span.bottomY,
 		topMeters: datumMeters + span.topY
 	}));
-	return [...faces, ...capSurfacesOf(fragment, wall, slice, interval)];
+	const stubTopY = cutaway !== null && cutaway.wallIds.has(wall.wallId) ? cutaway.stubTopY : null;
+	return [
+		...faces,
+		...(stubTopY === null ? [] : cutawayCapSurfacesOf(wall, stubTopY, datumMeters)),
+		...capSurfacesOf(fragment, wall, slice, interval)
+	];
+}
+
+/**
+ * The stub's horizontal top as a pick surface (X2 §3.6).
+ *
+ * A ray that lands on the cap from above selects the Wall, exactly like a ray on
+ * the stub's face. The band is `cutWallBandsOf` — the same compiled centreline and
+ * thickness Paper's cut uses — over the spans solid at the stub height; it is
+ * never drawn here.
+ */
+function cutawayCapSurfacesOf(
+	wall: NonNullable<ReturnType<typeof indexedCompiledWall>>,
+	stubTopY: number,
+	datumMeters: number
+): readonly StagePickSurface[] {
+	const localStub = stubTopY - datumMeters;
+	const spans: CutWallSpan[] = wall.solidSpans
+		.filter((span) => span.bottomY <= localStub + 1e-6 && localStub <= span.topY - 1e-6)
+		.map((span) => ({ startDistance: span.startDistance, endDistance: span.endDistance }));
+	if (spans.length === 0) return [];
+	return cutWallBandsOf(wall, spans).map((polygon) => ({
+		kind: 'flat' as const,
+		elevationMeters: stubTopY,
+		geometry: { kind: 'polygon' as const, polygon }
+	}));
 }
 
 /**
@@ -540,7 +607,13 @@ export function createPlanPickProvider(
 	 * reading every surface, cap and hidden-point test below is exactly today's
 	 * behaviour, which is what keeps ordinary picking unchanged when Slice is off.
 	 */
-	sliceOf: () => ResolvedSlice | null = resolvedSliceNow
+	sliceOf: () => ResolvedSlice | null = resolvedSliceNow,
+	/**
+	 * The live effective cutaway (X2), read on the pointer. Its default is the
+	 * route's mirror — the same set the Canvas cuts — so the adapter needs no new
+	 * wiring and the provider can never hold a cut the Stage is not showing.
+	 */
+	cutawayOf: () => ResolvedCutaway | null = resolvedCutawayNow
 ) {
 	/**
 	 * The retained pick index for one Plan evaluation.
@@ -580,6 +653,8 @@ export function createPlanPickProvider(
 
 	const openingTargets = new WeakMap<RetainedPickIndex, readonly {
 		fragment: PlanFragment;
+		/** The host Wall, so the cutaway's stub filter can answer per Opening. */
+		wallId: string;
 		faces: Vector3[][];
 		bounds: Box3;
 	}[]>();
@@ -595,7 +670,7 @@ export function createPlanPickProvider(
 			if (fragment === undefined) return [];
 			const faces = compiledOpeningFaceLoops(wall, opening, elevations.get(wall.floorId) ?? 0)
 				.map((face) => face.map((point) => new Vector3(...point)));
-			return [{ fragment, faces, bounds: new Box3().setFromPoints(faces.flat()) }];
+			return [{ fragment, wallId: wall.wallId, faces, bounds: new Box3().setFromPoints(faces.flat()) }];
 		}));
 		openingTargets.set(retained, targets);
 		return targets;
@@ -804,6 +879,7 @@ export function createPlanPickProvider(
 		};
 		const retained = pickIndexFor(result.plan, context);
 		const slice = sliceOf();
+		const cutaway = cutawayOf();
 		const erasing = query.purpose === 'tool' && query.tool?.kind === 'erase';
 		const pickOpeningIn3D = evaluation.renderedReading !== 'plan' &&
 			(query.purpose !== 'tool' || erasing) && (query.tool === null || erasing);
@@ -813,13 +889,16 @@ export function createPlanPickProvider(
 				const { origin, direction } = rayResult.ray;
 				const ray = new Ray(new Vector3(...origin), new Vector3(...direction));
 				let nearest: StageDomainPick | null = null;
-				for (const { fragment, faces, bounds } of openingTargetsFor(retained, context.snapshot.domain.geometry)) {
+				for (const { fragment, wallId, faces, bounds } of openingTargetsFor(retained, context.snapshot.domain.geometry)) {
 					if (!ray.intersectsBox(bounds)) continue;
 					const point = openingRayHit(ray, faces);
 					if (point === null) continue;
 					// A reveal the cut removes is not a place to aim at, and it must not
 					// answer for the opening's visible part either.
 					if (slice !== null && sliceHides(slice, point.x, point.y, point.z)) continue;
+					// An Opening above a cut Wall's stub is not selectable: its host is
+					// not drawn there, and the ray must reach the interior behind it.
+					if (cutaway !== null && cutaway.wallIds.has(wallId) && point.y > cutaway.stubTopY + 1e-4) continue;
 					const depthMeters = ray.origin.distanceTo(point);
 					if (depthMeters >= (nearest?.depthMeters ?? Infinity)) continue;
 					nearest = {
@@ -845,8 +924,10 @@ export function createPlanPickProvider(
 				fragment,
 				context.snapshot.domain.geometry,
 				context.snapshot.domain.datumMeters,
-				slice
+				slice,
+				cutaway
 			)
+				.flatMap((surface) => clipSurfaceToCutaway(surface, cutaway))
 				.flatMap((surface) => clipSurfaceToSlice(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;

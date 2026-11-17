@@ -102,6 +102,16 @@ export type WallRepresentation = {
 	 * The old factory's leases are released only after the new meshes hold theirs.
 	 */
 	setTreatment(treatment: MaterialTreatment | undefined): boolean;
+	/**
+	 * X2's display overlay: exactly these Walls draw through the cutaway twin
+	 * material. Work is proportional to the ids that changed state, the set is
+	 * remembered so a rebuilt Wall is born cut, and the twin is a store lease per
+	 * tint — never a second material system and never a buffer rebuild.
+	 *
+	 * Failure surfaces are never twinned: a Wall that could not close is not a
+	 * surface a cut may present as resolved.
+	 */
+	setCutaway(wallIds: ReadonlySet<string>): boolean;
 	/** Release every retained mesh and material. Idempotent. */
 	dispose(): void;
 };
@@ -193,6 +203,8 @@ export function createWallRepresentation(
 	let disposed = false;
 	let previousGeometry: CompiledLayoutGeometry | undefined;
 	let hidden: ReadonlySet<string> = new Set();
+	/** The Walls drawn through the cutaway twin; a display mask, never authored. */
+	let cutaway: ReadonlySet<string> = new Set();
 	let treatment: MaterialTreatment | undefined = initialTreatment;
 
 	// A physical Wall belongs to no Room: the mesh builder resolves its surface
@@ -206,16 +218,34 @@ export function createWallRepresentation(
 		DEFAULT_WALL_UNLIT_SHARE,
 		treatment
 	);
-	const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
-		const resolved = factory.factory(surfaceKey, mesh);
-		materialsSeen.add(resolved.material);
-		return resolved;
-	};
+	/**
+	 * The cutaway twin factory, created on first use.
+	 *
+	 * Twin materials are leased per tint/finish exactly as normal ones are, so the
+	 * store holds at most one twin per distinct Wall material, and a cut that
+	 * changes walls only swaps material references — no buffer upload.
+	 */
+	let cutawayFactory: ReturnType<typeof createVisitorWallMaterialFactory> | null = null;
+	function twinFactory(): ReturnType<typeof createVisitorWallMaterialFactory> {
+		cutawayFactory ??= createVisitorWallMaterialFactory(
+			store,
+			() => DEFAULT_WALL_COLOR,
+			DEFAULT_WALL_UNLIT_SHARE,
+			treatment,
+			{ cutaway: true }
+		);
+		return cutawayFactory;
+	}
+
+	function factoryFor(wallId: string): WallMaterialFactory {
+		return cutaway.has(wallId) ? twinFactory().factory : factory.factory;
+	}
 
 	function buildWall(
 		wall: CompiledPhysicalWall,
 		elevation: number,
-		ends: Parameters<typeof buildStandaloneWallMesh>[2]
+		ends: Parameters<typeof buildStandaloneWallMesh>[2],
+		cutawayNow: boolean
 	): {
 		object: Object3D;
 		release: () => void;
@@ -246,6 +276,12 @@ export function createWallRepresentation(
 				rematerialize: null
 			};
 		}
+		const surfaceFactory = cutawayNow ? twinFactory().factory : factory.factory;
+		const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
+			const resolved = surfaceFactory(surfaceKey, mesh);
+			materialsSeen.add(resolved.material);
+			return resolved;
+		};
 		const adapted = toWallBufferGeometry(result.mesh, resolveMaterial);
 		const mesh = new Mesh(adapted.geometry, adapted.materials);
 		mesh.name = `VisitorPhysicalWall:${wall.wallId}`;
@@ -279,7 +315,7 @@ export function createWallRepresentation(
 					if (previous?.key === key) continue;
 					const ends: NonNullable<Parameters<typeof buildStandaloneWallMesh>[2]> = {};
 					for (const join of patch.joins) ends[join.end] = join;
-					const next = buildWall(patch.wall, patch.elevation, ends);
+					const next = buildWall(patch.wall, patch.elevation, ends, cutaway.has(patch.wall.wallId));
 					if (!previous) throw new Error('compiled Wall membership proof did not match representation');
 					// Keep the attached mesh and its child-array slot. Mesh.copy(false)
 					// replaces buffers/material/transform without scanning or splicing N children.
@@ -319,7 +355,8 @@ export function createWallRepresentation(
 				const next = buildWall(
 					wall,
 					elevationByFloor.get(wall.floorId) ?? 0,
-					endsByWall.get(wall.wallId) ?? null
+					endsByWall.get(wall.wallId) ?? null,
+					cutaway.has(wall.wallId)
 				);
 				next.object.visible = !hidden.has(wall.wallId);
 				const entry: RetainedWall = {
@@ -373,6 +410,7 @@ export function createWallRepresentation(
 			if (disposed) throw new Error('the layout wall representation has been disposed');
 			if (next === treatment) return false;
 			const previousFactory = factory;
+			const previousCutawayFactory = cutawayFactory;
 			treatment = next;
 			factory = createVisitorWallMaterialFactory(
 				store,
@@ -380,16 +418,46 @@ export function createWallRepresentation(
 				DEFAULT_WALL_UNLIT_SHARE,
 				treatment
 			);
+			// The twin is rebuilt lazily with the same Treatment, so a cut Wall never
+			// keeps a material of the previous finish.
+			cutawayFactory = null;
 			// Material-only swap: every geometry stays attached and untouched. The new
-			// leases are taken before the superseded factory gives its own back.
-			for (const entry of retained.values()) {
+			// leases are taken before the superseded factories give their own back.
+			for (const [wallId, entry] of retained) {
 				if (entry.rematerialize === null) continue;
-				for (const material of entry.rematerialize(factory.factory, entry.object as Mesh)) {
+				for (const material of entry.rematerialize(factoryFor(wallId), entry.object as Mesh)) {
 					materialsSeen.add(material);
 				}
 			}
 			previousFactory.dispose();
+			previousCutawayFactory?.dispose();
 			return true;
+		},
+
+		setCutaway(wallIds) {
+			if (disposed) throw new Error('the layout wall representation has been disposed');
+			const next = new Set(wallIds);
+			let changed = false;
+			for (const wallId of cutaway) {
+				if (next.has(wallId)) continue;
+				changed = true;
+				const entry = retained.get(wallId);
+				if (entry?.rematerialize === null || entry === undefined) continue;
+				for (const material of entry.rematerialize(factory.factory, entry.object as Mesh)) {
+					materialsSeen.add(material);
+				}
+			}
+			for (const wallId of next) {
+				if (cutaway.has(wallId)) continue;
+				changed = true;
+				const entry = retained.get(wallId);
+				if (entry?.rematerialize === null || entry === undefined) continue;
+				for (const material of entry.rematerialize(twinFactory().factory, entry.object as Mesh)) {
+					materialsSeen.add(material);
+				}
+			}
+			cutaway = next;
+			return changed;
 		},
 
 		objectOf(wallId) {
@@ -410,12 +478,15 @@ export function createWallRepresentation(
 			disposed = true;
 			previousGeometry = undefined;
 			hidden = new Set();
+			cutaway = new Set();
 			for (const entry of retained.values()) {
 				entry.object.removeFromParent();
 				entry.release();
 			}
 			retained.clear();
 			factory.dispose();
+			cutawayFactory?.dispose();
+			cutawayFactory = null;
 			// The failure-surface leases are owned per mesh and released above;
 			// clearing the record keeps the set from pinning them.
 			materialsSeen.clear();
