@@ -36,7 +36,7 @@
 	import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 	import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-	import type { CompiledJunction, CompiledPhysicalWall } from '@portfolio/layout-core';
+	import { countWork, type CompiledJunction, type CompiledPhysicalWall } from '@portfolio/layout-core';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { SLICE_INK } from '../slice/slice-ink';
 	import { STAGE_PAINT } from '../shell/stage-paint';
@@ -231,6 +231,7 @@
 		// itself is visually inert there, so no paper is drawn above the cut.
 		const capsVisible = sliceCutY === null || sliceCutY > top + 1e-6;
 		const started = performance.now();
+		countWork('cutaway:cap-assembly');
 		const assembly = assembleCutawayCaps({
 			cut: new Set(wallIds),
 			stubTopY: top,

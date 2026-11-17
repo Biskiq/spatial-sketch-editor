@@ -396,13 +396,15 @@ function fixture() {
 			id: `orbit-r${room}`,
 			name: `Orbit Room ${room + 1}`,
 			boundary,
+			virtualEdges: [],
+			overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		});
 	}
 	const orbitDocument: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 7,
+		formatVersion: 8,
 		floor: { id: 'orbit-floor', name: 'Orbit Floor', elevation: 0 },
 		junctions: orbitJunctions,
 		walls: orbitWalls,
