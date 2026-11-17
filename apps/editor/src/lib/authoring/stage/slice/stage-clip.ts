@@ -44,6 +44,7 @@ import { Plane, Vector3, type Material } from 'three';
 import { getContext, setContext } from 'svelte';
 import type { ResolvedSlice } from './slice-cut';
 import {
+	applySliceClipShader,
 	createSliceClipUniforms,
 	restoreSliceClipUniforms,
 	snapshotSliceClipUniforms,
@@ -128,6 +129,14 @@ export type StageClip = {
 	asBuilt<T>(render: () => T): T;
 	/** Whether a Slice is live. */
 	isActive(): boolean;
+	/**
+	 * Cut an ink material with its subject: the native planes (Level) **and** the
+	 * drawn predicate. Selection, hover and Lift ink hold the planes by reference;
+	 * without the patch a drawn cut would leave their contours floating over what it
+	 * removed (§2.4). Installed once, before the material's first compile, so drawing
+	 * and editing a cut still only write uniforms.
+	 */
+	clipInk<M extends Material>(material: M): M;
 };
 
 export function createStageClip(): StageClip {
@@ -188,7 +197,12 @@ export function createStageClip(): StageClip {
 				}
 			}
 		},
-		isActive: () => active
+		isActive: () => active,
+		clipInk(material) {
+			material.clippingPlanes = planes;
+			applySliceClipShader(material, sliceUniforms);
+			return material;
+		}
 	};
 }
 

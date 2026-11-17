@@ -27,7 +27,9 @@
  * subject is treated as **hidden**. An unneeded ghost over a visible stub is
  * cosmetic; a missing ghost leaves a selected subject invisible.
  */
+import { segmentIntervalInHalfPlanes, type ClipPoint } from './slice-clip-2d';
 import {
+	drawnHiddenPlanCells,
 	hiddenPiecesOf,
 	pieceContainsPoint,
 	sliceHides,
@@ -96,8 +98,33 @@ function boundsPiece(bounds: SliceBounds, pieces: readonly HiddenPiece[]): Piece
 	return first;
 }
 
-/** Whether the bounds are shown at every corner and at their centre. */
+/**
+ * Whether the bounds are shown everywhere.
+ *
+ * Level's hidden pieces are horizontal slabs, so the corners decide exactly. A drawn
+ * cut's shown region is **not** convex: a box can have every corner and its centre
+ * shown and still cross a hidden piece (a subject with parts on both sides of the
+ * shown slab). Its pieces do not read `y` and are unbounded convex plan cells, so the
+ * box's plan rectangle meets a piece iff one of its four edges does — an exact test,
+ * closed so that touching counts and the triangle test decides.
+ */
 function boundsFullyVisible(bounds: SliceBounds, resolved: ResolvedSlice): boolean {
+	if (resolved.kind === 'drawn') {
+		const rectangle: ClipPoint[] = [
+			[bounds.min[0], bounds.min[2]],
+			[bounds.max[0], bounds.min[2]],
+			[bounds.max[0], bounds.max[2]],
+			[bounds.min[0], bounds.max[2]]
+		];
+		for (const cell of drawnHiddenPlanCells(resolved)) {
+			for (let index = 0; index < 4; index += 1) {
+				if (segmentIntervalInHalfPlanes(rectangle[index]!, rectangle[(index + 1) % 4]!, cell) !== null) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
 	const center: SliceVec3 = [
 		(bounds.min[0] + bounds.max[0]) / 2,
 		(bounds.min[1] + bounds.max[1]) / 2,

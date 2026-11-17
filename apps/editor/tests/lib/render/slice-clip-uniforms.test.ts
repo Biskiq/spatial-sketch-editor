@@ -81,3 +81,38 @@ describe('slice clip shader patch', () => {
 		expect(uniforms.mode.value).toBe(0);
 	});
 });
+
+describe('slice clip shader patch on ink (no project_vertex chunk)', () => {
+	it('recovers the world point from view space where the native planes clip', () => {
+		const material = new MeshBasicMaterial();
+		const uniforms = createSliceClipUniforms();
+		applySliceClipShader(material, uniforms);
+		const shader = {
+			uniforms: {} as Record<string, unknown>,
+			vertexShader: 'void main() {\nvec4 mvPosition = start;\n#include <clipping_planes_vertex>\n}',
+			fragmentShader: 'void main() {\n#include <clipping_planes_fragment>\n}'
+		};
+		material.onBeforeCompile(shader as never, {} as WebGLRenderer);
+		expect(shader.vertexShader).toContain('#include <clipping_planes_vertex>');
+		expect(shader.vertexShader).toContain('inverse( viewMatrix ) * vec4( mvPosition.xyz, 1.0 )');
+		expect(shader.fragmentShader).toContain('sliceClipB < -uSliceClipDepth');
+		expect(shader.uniforms.uSliceClipMode).toBe(uniforms.mode);
+		material.dispose();
+	});
+
+	it('patches the real LineMaterial the selection and Lift ink draw with', async () => {
+		const { LineMaterial } = await import('three/examples/jsm/lines/LineMaterial.js');
+		const material = new LineMaterial();
+		const uniforms = createSliceClipUniforms();
+		applySliceClipShader(material, uniforms);
+		const shader = {
+			uniforms: {} as Record<string, unknown>,
+			vertexShader: material.vertexShader,
+			fragmentShader: material.fragmentShader
+		};
+		material.onBeforeCompile(shader as never, {} as WebGLRenderer);
+		expect(shader.vertexShader).toContain('vSliceWorldPosition = ( inverse( viewMatrix )');
+		expect(shader.fragmentShader).toContain('if ( uSliceClipMode > 0.5 )');
+		material.dispose();
+	});
+});

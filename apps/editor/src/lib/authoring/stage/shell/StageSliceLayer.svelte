@@ -346,8 +346,8 @@
 		});
 	}
 
-	/** The live proposal: a dashed cobalt line and two endpoint dots. */
-	function drawDraft(): void {
+	/** Remove and dispose the proposal's ink. Never draws: teardown calls it. */
+	function clearDraft(): void {
 		drop(
 			draftInk.map((object) => ({
 				object,
@@ -361,6 +361,11 @@
 			}))
 		);
 		draftInk = [];
+	}
+
+	/** The live proposal: a dashed cobalt line and two endpoint dots. */
+	function drawDraft(): void {
+		clearDraft();
 		if (draft === null) return;
 		const y = draft.start[1] + 0.03;
 		const geometry = new BufferGeometry();
@@ -756,7 +761,9 @@
 		drawnGhostKey = null;
 		releaseAll();
 		clearGhosts();
-		drawDraft();
+		// Dispose only: redrawing here would rebuild the proposal from a
+		// still-set `draft` prop after the layer is gone.
+		clearDraft();
 		invalidate();
 	});
 </script>

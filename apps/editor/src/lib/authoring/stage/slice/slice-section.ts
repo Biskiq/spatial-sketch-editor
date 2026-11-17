@@ -14,13 +14,22 @@
  */
 import {
 	sectionMeshes,
+	type CapAssemblyIssue,
 	type SectionBasis,
 	type SectionChain,
+	type SectionGroupResult,
 	type SectionInput,
 	type SectionLoop,
 	type SectionResult
 } from './mesh-plane-section';
 import type { DrawnResolvedSlice, ResolvedSlice } from './slice-cut';
+import {
+	clipRegionToHalfPlanes,
+	pointOnSegment,
+	ringSignedArea,
+	segmentIntervalInHalfPlanes,
+	type ClipHalfPlane
+} from './slice-clip-2d';
 
 export type SliceSection = {
 	readonly result: SectionResult;
@@ -39,96 +48,69 @@ function basisUOf(basis: SectionBasis, point: readonly [number, number, number])
 	);
 }
 
-function signedArea(points: readonly (readonly [number, number])[]): number {
-	let sum = 0;
-	for (let index = 0; index < points.length; index += 1) {
-		const [ax, ay] = points[index]!;
-		const [bx, by] = points[(index + 1) % points.length]!;
-		sum += ax * by - bx * ay;
-	}
-	return sum / 2;
+/** The two half-planes of a segment extent, in the section's `(u, v)` frame. */
+function extentHalfPlanes(uMin: number, uMax: number): readonly ClipHalfPlane[] {
+	return [
+		{ nx: -1, ny: 0, c: -uMin },
+		{ nx: 1, ny: 0, c: uMax }
+	];
 }
 
-function clipHalf(
-	points: readonly (readonly [number, number])[],
-	identities: readonly string[],
-	inside: (point: readonly [number, number]) => boolean,
-	intersect: (
-		a: readonly [number, number],
-		b: readonly [number, number]
-	) => readonly [number, number]
-): { points: (readonly [number, number])[]; identities: string[] } {
-	const outPoints: (readonly [number, number])[] = [];
-	const outIdentities: string[] = [];
-	for (let index = 0; index < points.length; index += 1) {
-		const current = points[index]!;
-		const next = points[(index + 1) % points.length]!;
-		const id = identities[index] ?? '';
-		const currentIn = inside(current);
-		const nextIn = inside(next);
-		if (currentIn) {
-			outPoints.push(current);
-			outIdentities.push(id);
-		}
-		if (currentIn !== nextIn) {
-			outPoints.push(intersect(current, next));
-			outIdentities.push(id);
-		}
-	}
-	return { points: outPoints, identities: outIdentities };
-}
-
-/** A polygon clipped to `uMin ≤ u ≤ uMax`; edge identities travel with their edges. */
-export function clipLoopToExtent(
-	loop: SectionLoop,
+/**
+ * A group's loops cropped to `uMin ≤ u ≤ uMax` **as a region**.
+ *
+ * A concave outer can meet the extent in several disjoint islands, and a hole that
+ * crosses the crop opens into its outer; both come out as valid, separate contours
+ * (outers counter-clockwise, holes clockwise) that `capFillsOf` can fill. Edge
+ * identities travel with their edges; an edge along the crop line takes the identity
+ * of the edge that left the extent there.
+ *
+ * `null` means the loops were not a valid region (they crossed each other), which
+ * the caller reports rather than filling something wrong.
+ */
+export function clipLoopsToExtent(
+	loops: readonly SectionLoop[],
 	uMin: number,
 	uMax: number
-): SectionLoop | null {
-	const atMin = (
-		a: readonly [number, number],
-		b: readonly [number, number]
-	): readonly [number, number] => {
-		const t = (uMin - a[0]) / (b[0] - a[0]);
-		return [uMin, a[1] + (b[1] - a[1]) * t];
-	};
-	const atMax = (
-		a: readonly [number, number],
-		b: readonly [number, number]
-	): readonly [number, number] => {
-		const t = (uMax - a[0]) / (b[0] - a[0]);
-		return [uMax, a[1] + (b[1] - a[1]) * t];
-	};
-	let clipped = clipHalf(loop.points, loop.edgeIdentities, (point) => point[0] >= uMin, atMin);
-	clipped = clipHalf(clipped.points, clipped.identities, (point) => point[0] <= uMax, atMax);
-	if (clipped.points.length < 3) return null;
-	const area = signedArea(clipped.points);
-	if (!Number.isFinite(area) || Math.abs(area) <= 1e-12) return null;
-	return {
-		role: area >= 0 ? 'outer' : 'hole',
-		points: clipped.points,
-		edgeIdentities: clipped.identities,
-		signedArea: area
-	};
+): SectionLoop[] | null {
+	if (!(uMax > uMin)) return [];
+	const result = clipRegionToHalfPlanes(
+		loops.map((loop) => ({ points: loop.points, tags: loop.edgeIdentities })),
+		extentHalfPlanes(uMin, uMax)
+	);
+	if (result.kind === 'invalid') return null;
+	return result.rings.map((ring) => {
+		const area = ringSignedArea(ring.points);
+		return {
+			role: area > 0 ? 'outer' : 'hole',
+			points: ring.points,
+			edgeIdentities: ring.tags,
+			signedArea: area
+		};
+	});
 }
 
-/** An open chain clipped to the same extent, as independent two-point runs. */
+/**
+ * An open chain clipped to the same extent, as independent two-point runs.
+ *
+ * Inclusive, and parallel-safe: a segment along the crop direction (constant `u`)
+ * inside the extent is kept whole. An open chain is a warning, and a warning edge
+ * that silently disappears hides the very defect it reports.
+ */
 export function clipChainToExtent(
 	chain: SectionChain,
 	uMin: number,
 	uMax: number
 ): SectionChain[] {
+	const halves = extentHalfPlanes(uMin, uMax);
 	const out: SectionChain[] = [];
 	for (let index = 0; index + 1 < chain.points.length; index += 1) {
 		const a = chain.points[index]!;
 		const b = chain.points[index + 1]!;
-		if (a[0] === b[0]) continue;
-		const low = Math.max(uMin, Math.min(a[0], b[0]));
-		const high = Math.min(uMax, Math.max(a[0], b[0]));
-		if (!(high > low)) continue;
-		const t0 = (low - a[0]) / (b[0] - a[0]);
-		const t1 = (high - a[0]) / (b[0] - a[0]);
-		const p0: readonly [number, number] = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0];
-		const p1: readonly [number, number] = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1];
+		const interval = segmentIntervalInHalfPlanes(a, b, halves);
+		if (interval === null) continue;
+		const p0 = pointOnSegment(a, b, interval[0]);
+		const p1 = pointOnSegment(a, b, interval[1]);
 		if (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) <= 1e-9) continue;
 		out.push({
 			points: [p0, p1],
@@ -136,6 +118,14 @@ export function clipChainToExtent(
 		});
 	}
 	return out;
+}
+
+/** A group's loops as open chains, for a group whose crop could not be filled. */
+function loopsAsChains(loops: readonly SectionLoop[]): SectionChain[] {
+	return loops.map((loop) => ({
+		points: [...loop.points, loop.points[0]!],
+		edgeIdentities: [...loop.edgeIdentities]
+	}));
 }
 
 /** The kept half-space is what is shown: `b ≤ 0` in the cut's own coordinates. */
@@ -180,15 +170,31 @@ export function sectionForSlice(
 	const uEnd = basisUOf(result.basis, resolved.end);
 	const uMin = Math.min(uStart, uEnd);
 	const uMax = Math.max(uStart, uEnd);
-	const groups = result.groups.map((group) => ({
-		...group,
-		loops: group.loops
-			.map((loop) => clipLoopToExtent(loop, uMin, uMax))
-			.filter((loop): loop is SectionLoop => loop !== null),
-		chains: group.chains.flatMap((chain) => clipChainToExtent(chain, uMin, uMax))
-	}));
+	const issues: CapAssemblyIssue[] = [...result.issues];
+	const groups = result.groups.map((group): SectionGroupResult => {
+		const chains = group.chains.flatMap((chain) => clipChainToExtent(chain, uMin, uMax));
+		const loops = clipLoopsToExtent(group.loops, uMin, uMax);
+		if (loops !== null) return { ...group, loops, chains };
+		// Not a valid region: draw its cropped edges as warning ink, fill nothing, and
+		// say so — exactly how an unbalanced group is treated.
+		const issue: CapAssemblyIssue = group.issue ?? {
+			group: group.group,
+			identity: group.identities[0] ?? group.group,
+			unmatchedVertices: 0
+		};
+		if (group.issue === null) issues.push(issue);
+		return {
+			...group,
+			loops: [],
+			chains: [
+				...chains,
+				...loopsAsChains(group.loops).flatMap((chain) => clipChainToExtent(chain, uMin, uMax))
+			],
+			issue
+		};
+	});
 	return {
-		result: { ...result, groups },
+		result: { ...result, groups, issues },
 		basis: result.basis,
 		extent: { min: uMin, max: uMax }
 	};

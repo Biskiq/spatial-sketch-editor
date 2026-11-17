@@ -25,6 +25,7 @@
 		Shape,
 		ShapeGeometry,
 		Vector2,
+		type Material,
 		type Object3D,
 		type Plane
 	} from 'three';
@@ -72,6 +73,9 @@
 	const stageClip = useStageClip();
 	const clipPlanes = (): Plane[] | undefined =>
 		stageClip === null ? undefined : (stageClip.planes as Plane[]);
+	/** Lift ink is cut by the drawn predicate as well as the planes (§2.4). */
+	const cutInk = <M extends Material>(material: M, planes: Plane[] | undefined): M =>
+		planes === undefined || stageClip === null ? material : stageClip.clipInk(material);
 
 	const root = new Group();
 	root.name = 'StageLiftInk';
@@ -106,7 +110,7 @@
 		);
 		const hovered = hoveredRoomId !== null && hoveredRoomId === source.subject.id;
 		const planes = clipPlanes();
-		const material = new LineMaterial({
+		const material = cutInk(new LineMaterial({
 			...(planes === undefined ? {} : { clippingPlanes: planes }),
 			color: STAGE_PAINT.hover,
 			linewidth: hovered ? 3 : 2,
@@ -120,7 +124,7 @@
 			depthWrite: false,
 			...OUTLINE_DEPTH_BIAS,
 			resolution: new Vector2(width, height)
-		});
+		}), planes);
 		const line = new Line2(geometry, material);
 		line.computeLineDistances();
 		line.renderOrder = 19;
@@ -140,7 +144,7 @@
 	function addGhost(source: OverheadSource): void {
 		const geometry = new ShapeGeometry(shapeOf(source.outline));
 		const planes = clipPlanes();
-		const material = new MeshBasicMaterial({
+		const material = cutInk(new MeshBasicMaterial({
 			...(planes === undefined ? {} : { clippingPlanes: planes }),
 			color: STAGE_PAINT.hover,
 			transparent: true,
@@ -149,7 +153,7 @@
 			depthWrite: false,
 			depthTest: true,
 			toneMapped: false
-		});
+		}), planes);
 		const ghost = new Mesh(geometry, material);
 		ghost.name = `StageLiftGhost:${source.subject.id}`;
 		// The lid's own placement: the same rotation and elevation the representation

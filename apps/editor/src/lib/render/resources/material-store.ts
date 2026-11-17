@@ -479,6 +479,18 @@ sliceClipWorld = instanceMatrix * sliceClipWorld;
 vSliceWorldPosition = ( modelMatrix * sliceClipWorld ).xyz;
 `;
 
+/**
+ * The same varying for a shader with no `project_vertex` chunk — `LineMaterial`, the
+ * selection and Lift ink. Every Three vertex shader that clips has `mvPosition` in
+ * view space where `clipping_planes_vertex` is included (native planes clip from it),
+ * so the world point is recovered there. A fat line's `mvPosition` is its segment
+ * endpoint, the same approximation Three's own plane clipping makes for it.
+ */
+const VERTEX_SAMPLE_FROM_VIEW = `
+#include <clipping_planes_vertex>
+vSliceWorldPosition = ( inverse( viewMatrix ) * vec4( mvPosition.xyz, 1.0 ) ).xyz;
+`;
+
 const FRAGMENT_TEST = `
 #include <clipping_planes_fragment>
 if ( uSliceClipMode > 0.5 ) {
@@ -506,10 +518,9 @@ export function applySliceClipShader(material: Material, uniforms: SliceClipUnif
 	const baseKey = material.customProgramCacheKey();
 	material.onBeforeCompile = function (shader, renderer) {
 		baseCompile.call(this, shader, renderer);
-		if (
-			!shader.vertexShader.includes('#include <project_vertex>') ||
-			!shader.fragmentShader.includes('#include <clipping_planes_fragment>')
-		) {
+		const world = shader.vertexShader.includes('#include <project_vertex>');
+		const view = !world && shader.vertexShader.includes('#include <clipping_planes_vertex>');
+		if ((!world && !view) || !shader.fragmentShader.includes('#include <clipping_planes_fragment>')) {
 			return;
 		}
 		shader.uniforms.uSliceClipMode = uniforms.mode;
@@ -520,7 +531,9 @@ export function applySliceClipShader(material: Material, uniforms: SliceClipUnif
 		shader.uniforms.uSliceClipDepth = uniforms.depth;
 		shader.vertexShader =
 			VERTEX_DECLARATION +
-			shader.vertexShader.replace('#include <project_vertex>', VERTEX_SAMPLE);
+			(world
+				? shader.vertexShader.replace('#include <project_vertex>', VERTEX_SAMPLE)
+				: shader.vertexShader.replace('#include <clipping_planes_vertex>', VERTEX_SAMPLE_FROM_VIEW));
 		shader.fragmentShader =
 			FRAGMENT_DECLARATION +
 			shader.fragmentShader.replace('#include <clipping_planes_fragment>', FRAGMENT_TEST);

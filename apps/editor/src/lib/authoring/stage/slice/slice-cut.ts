@@ -23,6 +23,7 @@
 import type { PlanParameterOverrides } from '../plan-parameters';
 import { PLAN_DEFAULT_DEPTH_METERS } from '../plan-parameters';
 import type { StageHeightTick } from '../stage-height-sheet';
+import type { ClipHalfPlane } from './slice-clip-2d';
 
 export type SliceVec2 = readonly [number, number];
 export type SliceVec3 = readonly [number, number, number];
@@ -303,6 +304,65 @@ export function sliceHides(
 		if (pieceContains(piece, y, eps)) return true;
 	}
 	return false;
+}
+
+/** `kx * x + kz * z <= c` for the drawn frame's `s` or `b` coordinate bound. */
+function drawnPlanBound(
+	resolved: DrawnResolvedSlice,
+	axis: SliceVec3,
+	sense: 'max' | 'min',
+	value: number
+): ClipHalfPlane {
+	const offset = axis[0] * resolved.origin[0] + axis[2] * resolved.origin[2];
+	return sense === 'max'
+		? { nx: axis[0], ny: axis[2], c: value + offset }
+		: { nx: -axis[0], ny: -axis[2], c: -value - offset };
+}
+
+/**
+ * The **shown** plan region of a drawn cut as convex cells, in plan `(x, z)`.
+ *
+ * The drawn predicate does not read `y`, so what is shown is a plan region: outside
+ * the finite extent on either end, or inside it within the shown depth band. Those
+ * are three convex cells whose union is exactly `!sliceHides` (with the same shared
+ * tolerance), so a consumer can clip geometry to what the GPU draws instead of
+ * sampling it. Picking uses this; a zero-extent cut shows everything (one empty
+ * cell list, i.e. the whole plane).
+ */
+export function drawnShownPlanCells(
+	resolved: DrawnResolvedSlice,
+	eps: number = SLICE_HIDE_EPSILON_METERS
+): readonly (readonly ClipHalfPlane[])[] {
+	if (resolved.halfLength <= 0) return [[]];
+	const extent = resolved.halfLength + eps;
+	return [
+		[drawnPlanBound(resolved, resolved.along, 'max', -extent)],
+		[drawnPlanBound(resolved, resolved.along, 'min', extent)],
+		[
+			drawnPlanBound(resolved, resolved.along, 'min', -extent),
+			drawnPlanBound(resolved, resolved.along, 'max', extent),
+			drawnPlanBound(resolved, resolved.hiddenNormal, 'max', eps),
+			drawnPlanBound(resolved, resolved.hiddenNormal, 'min', -resolved.depthMeters - eps)
+		]
+	];
+}
+
+/**
+ * The **hidden** pieces of a drawn cut as closed convex plan cells (no tolerance).
+ *
+ * Closed on purpose: a consumer asking "does this touch a hidden piece?" (the ghost's
+ * fully-visible shortcut) must err toward the exact test, never away from it.
+ */
+export function drawnHiddenPlanCells(resolved: DrawnResolvedSlice): readonly (readonly ClipHalfPlane[])[] {
+	if (resolved.halfLength <= 0) return [];
+	const extent = [
+		drawnPlanBound(resolved, resolved.along, 'min', -resolved.halfLength),
+		drawnPlanBound(resolved, resolved.along, 'max', resolved.halfLength)
+	];
+	return [
+		[...extent, drawnPlanBound(resolved, resolved.hiddenNormal, 'min', 0)],
+		[...extent, drawnPlanBound(resolved, resolved.hiddenNormal, 'max', -resolved.depthMeters)]
+	];
 }
 
 /**

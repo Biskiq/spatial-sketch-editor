@@ -183,3 +183,33 @@ describe('test 9 — a snapshot renders the world as built', () => {
 		expect(clip.isActive()).toBe(false);
 	});
 });
+
+describe('clipInk: editor ink is cut by both realizations', () => {
+	it('shares the plane array and installs the drawn patch once', async () => {
+		const { MeshBasicMaterial } = await import('three');
+		const { hasSliceClipShader } = await import('$lib/render/resources/material-store');
+		const { createStageClip, materialUsesClip } = await import('$lib/authoring/stage/slice/stage-clip');
+		const clip = createStageClip();
+		const material = clip.clipInk(new MeshBasicMaterial());
+		expect(materialUsesClip(material, clip)).toBe(true);
+		expect(hasSliceClipShader(material)).toBe(true);
+		const key = material.customProgramCacheKey();
+		clip.clipInk(material);
+		expect(material.customProgramCacheKey()).toBe(key);
+		material.dispose();
+	});
+});
+
+describe('the selection and Lift layers cut their clipped ink with clipInk', () => {
+	it('routes every clipped ink material through clipInk', async () => {
+		const { readFileSync } = await import('node:fs');
+		for (const file of ['StageSelectionLayer.svelte', 'StageLiftLayer.svelte']) {
+			const source = readFileSync(`src/lib/authoring/stage/shell/${file}`, 'utf8');
+			const planeSites = (source.match(/clippingPlanes: (planes|silhouettePlanes)/g) ?? []).length;
+			const cutSites = (source.match(/cutInk\(new /g) ?? []).length;
+			expect(planeSites, file).toBeGreaterThan(0);
+			expect(cutSites, file).toBe(planeSites);
+			expect(source, file).toContain('stageClip.clipInk(material)');
+		}
+	});
+});

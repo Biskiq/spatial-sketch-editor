@@ -20,6 +20,7 @@ import {
 	Color,
 	DirectionalLight,
 	Mesh,
+	MeshBasicMaterial,
 	MeshStandardMaterial,
 	OrthographicCamera,
 	PerspectiveCamera,
@@ -28,6 +29,9 @@ import {
 	type Material,
 	type WebGLRenderer
 } from 'three';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { createManagedWebGLRenderer } from '../../src/lib/render/managed-webgl-renderer';
 import { createMaterialStore, type MaterialLease } from '../../src/lib/render/resources/material-store';
 import { createStageClip } from '../../src/lib/authoring/stage/slice/stage-clip';
@@ -228,6 +232,31 @@ function fixture() {
 	const drawnCamera = new OrthographicCamera(-2, 2, TOP, BOTTOM, 0.1, 20);
 	drawnCamera.position.set(0, 0, 6);
 	drawnCamera.lookAt(0, 0, 0);
+	// Editor ink (selection / Lift): a fat LineMaterial — whose shader has no
+	// `project_vertex` chunk — and a basic ghost mesh, both cut through `clipInk`. Two
+	// horizontal strokes across the whole extent: one on the hidden side (z = 0.5) and
+	// one on the shown side (z = −0.1); the ghost quad sits on the hidden side.
+	const inkScene = new Scene();
+	inkScene.background = BACKGROUND;
+	const inkLineMaterial = clip.clipInk(new LineMaterial({ color: 0xffffff, linewidth: 8 }));
+	inkLineMaterial.resolution.set(WIDTH, HEIGHT);
+	const inkGhostMaterial = clip.clipInk(new MeshBasicMaterial({ color: 0x40ff40 }));
+	const INK_Y: Record<number, number> = { [0.5]: 2.4, [-0.1]: 1.4 };
+	for (const z of [0.5, -0.1]) {
+		const geometry = new LineGeometry();
+		geometry.setPositions([-1.8, INK_Y[z]!, z, 1.8, INK_Y[z]!, z]);
+		geometries.push(geometry);
+		const line = new Line2(geometry, inkLineMaterial);
+		line.computeLineDistances();
+		inkScene.add(line);
+	}
+	const inkGhostGeometry = new PlaneGeometry(3.6, 0.3);
+	geometries.push(inkGhostGeometry);
+	const inkGhost = new Mesh(inkGhostGeometry, inkGhostMaterial);
+	inkGhost.position.set(0, 0.2, 0.5);
+	inkScene.add(inkGhost);
+	geometries.push(inkLineMaterial, inkGhostMaterial);
+
 	const drawnReading = (depthMeters: number, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice => ({
 		kind: 'drawn',
 		origin: [0, 0, 0],
@@ -337,6 +366,38 @@ function fixture() {
 				const report = this.drawn(reading);
 				return { hash: report.hash, programs: report.programs, error: report.error };
 			});
+		},
+		/** Editor ink under a reading: colour at x = 0.5 (inside) and 1.5 (outside). */
+		ink(reading: ResolvedSlice | null): {
+			samples: Record<string, string>;
+			background: string;
+			programs: number;
+			error: number;
+		} {
+			clip.apply(reading);
+			renderer.render(inkScene, drawnCamera);
+			const gl = renderer.getContext();
+			gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			const at = (x: number, y: number): string => {
+				const px = Math.round(((x + 2) / 4) * WIDTH);
+				const py = Math.round(((y - BOTTOM) / (TOP - BOTTOM)) * HEIGHT);
+				const index = (py * WIDTH + px) * 4;
+				return `#${[pixels[index]!, pixels[index + 1]!, pixels[index + 2]!]
+					.map((value) => value.toString(16).padStart(2, '0'))
+					.join('')}`;
+			};
+			const samples: Record<string, string> = {};
+			for (const x of [0.5, 1.5]) {
+				samples[`hiddenLine@${x}`] = at(x, INK_Y[0.5]!);
+				samples[`shownLine@${x}`] = at(x, INK_Y[-0.1]!);
+				samples[`ghost@${x}`] = at(x, 0.2);
+			}
+			return {
+				samples,
+				background: at(-1.95, 2.9),
+				programs: renderer.info.programs?.length ?? 0,
+				error: gl.getError()
+			};
 		},
 		/** Put the planes back and report what the renderer still holds. */
 		rest(): { programs: number; planes: number; radius: number } {

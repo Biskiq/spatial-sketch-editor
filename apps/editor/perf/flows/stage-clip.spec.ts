@@ -201,6 +201,35 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 		const shadowDrawnCut = await page.evaluate((reading) => window.__STAGE_CLIP__.shadow(reading as never), drawnCut(5));
 		expect(shadowDrawnCut.hash).toBe(shadowDrawnRest.hash);
 
+		// 8. Editor ink is cut with its subject: the fat-line shader (no project_vertex
+		//    chunk) compiles, discards inside the extent on the hidden side only, and
+		//    neither ink material recompiles across cut → move → Flip → put back.
+		const inkRest = await page.evaluate(() => window.__STAGE_CLIP__.ink(null));
+		expect(inkRest.error).toBe(0);
+		for (const [name, color] of Object.entries(inkRest.samples)) expect(color, `ink at rest ${name}`).not.toBe(inkRest.background);
+		const inkCut = await page.evaluate((reading) => window.__STAGE_CLIP__.ink(reading as never), drawnCut(0.15));
+		expect(inkCut.error).toBe(0);
+		expect(inkCut.samples['hiddenLine@0.5']).toBe(inkCut.background);
+		expect(inkCut.samples['ghost@0.5']).toBe(inkCut.background);
+		expect(inkCut.samples['hiddenLine@1.5']).toBe(inkRest.samples['hiddenLine@1.5']);
+		expect(inkCut.samples['ghost@1.5']).toBe(inkRest.samples['ghost@1.5']);
+		expect(inkCut.samples['shownLine@0.5']).toBe(inkRest.samples['shownLine@0.5']);
+		await page.screenshot({ path: testInfo.outputPath('ink-drawn-cut.png') });
+		const inkFlipped = await page.evaluate((reading) => window.__STAGE_CLIP__.ink(reading as never), drawnCut(0.6, 'left'));
+		expect(inkFlipped.samples['hiddenLine@0.5']).toBe(inkRest.samples['hiddenLine@0.5']);
+		expect(inkFlipped.samples['shownLine@0.5']).toBe(inkFlipped.background);
+		const inkLevel = await page.evaluate(() => window.__STAGE_CLIP__.ink({ kind: 'level', cutY: 2, lowerY: null } as never));
+		expect(inkLevel.samples['hiddenLine@1.5']).toBe(inkLevel.background);
+		expect(inkLevel.samples['shownLine@1.5']).toBe(inkRest.samples['shownLine@1.5']);
+		const inkBack = await page.evaluate(() => window.__STAGE_CLIP__.ink(null));
+		expect([inkCut.programs, inkFlipped.programs, inkLevel.programs, inkBack.programs]).toEqual([
+			inkRest.programs,
+			inkRest.programs,
+			inkRest.programs,
+			inkRest.programs
+		]);
+		expect(inkBack.samples).toEqual(inkRest.samples);
+
 		console.log(
 			`stage clip: ${JSON.stringify({
 				programs: rest.programs,
@@ -210,7 +239,8 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 				drawnHash: drawn.hash,
 				drawnRestHash: drawnRest.hash,
 				shadow: shadowRest.hash,
-				shadowDrawn: shadowDrawnRest.hash
+				shadowDrawn: shadowDrawnRest.hash,
+				inkPrograms: inkRest.programs
 			})}`
 		);
 		await page.evaluate(() => window.__STAGE_CLIP__?.close());

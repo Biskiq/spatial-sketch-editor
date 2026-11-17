@@ -13,7 +13,7 @@ import {
 	sliceHides,
 	type DrawnResolvedSlice
 } from '$lib/authoring/stage/slice/slice-cut';
-import { clipChainToExtent, clipLoopToExtent } from '$lib/authoring/stage/slice/slice-section';
+import { clipChainToExtent, clipLoopsToExtent } from '$lib/authoring/stage/slice/slice-section';
 import { subjectWhollyHidden } from '$lib/authoring/stage/slice/slice-ghost';
 
 function resolved(depth = 1, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice {
@@ -130,8 +130,8 @@ describe('finite cap clipping', () => {
 	};
 
 	it('clips a loop to the segment extent and keeps its edge identities', () => {
-		const clipped = clipLoopToExtent(square, -1, 1);
-		expect(clipped).not.toBeNull();
+		const [clipped] = clipLoopsToExtent([square], -1, 1)!;
+		expect(clipped).toBeDefined();
 		expect(clipped!.points).toHaveLength(4);
 		expect(clipped!.signedArea).toBeCloseTo(4, 9);
 		expect(clipped!.edgeIdentities.every((id) => id.length > 0)).toBe(true);
@@ -139,7 +139,7 @@ describe('finite cap clipping', () => {
 	});
 
 	it('drops a loop wholly outside the extent', () => {
-		expect(clipLoopToExtent(square, 3, 4)).toBeNull();
+		expect(clipLoopsToExtent([square], 3, 4)).toEqual([]);
 	});
 
 	it('clips an open chain to independent runs', () => {
@@ -180,5 +180,28 @@ describe('the ghost rule on drawn pieces', () => {
 				triangles: [{ positions: [3, 1, 0.5, 4, 1, 0.5, 3.5, 2, 0.5] }]
 			})
 		).toBe(false);
+	});
+});
+
+describe('the ghost rule on drawn pieces: the bounds shortcut is exact', () => {
+	const cut = resolved(1);
+
+	it('ghosts a subject split across both hidden pieces, even when its box corners are all shown', () => {
+		// One sliver in the near piece (z > 0) and one in the far slab (z < −1), both
+		// inside the extent x ∈ [0, 2]. The box spans x ∈ [−1, 3] at its extreme
+		// y-less corners, so every corner is outside the extent, and its centre sits in
+		// the shown band: the old corner+centre shortcut called it fully shown.
+		const near = { positions: [0.9, 1, 0.5, 1.1, 1, 0.5, 1, 2, 0.6] };
+		const far = { positions: [0.9, 1, -2, 1.1, 1, -2, 1, 2, -2.1] };
+		const bounds = { min: [-1, 1, -2.1] as const, max: [3, 2, 0.6] as const };
+		expect(sliceHides(cut, -1, 1, -2.1)).toBe(false);
+		expect(sliceHides(cut, 3, 2, 0.6)).toBe(false);
+		expect(sliceHides(cut, 1, 1.5, -0.75)).toBe(false);
+		expect(subjectWhollyHidden(cut, { triangles: [near, far], bounds })).toBe(true);
+	});
+
+	it('still short-cuts a box wholly outside both pieces', () => {
+		const bounds = { min: [3, 0, -3] as const, max: [4, 2, 3] as const };
+		expect(subjectWhollyHidden(cut, { triangles: [{ positions: [3, 0, 0, 4, 0, 0, 3.5, 2, 0] }], bounds })).toBe(false);
 	});
 });
