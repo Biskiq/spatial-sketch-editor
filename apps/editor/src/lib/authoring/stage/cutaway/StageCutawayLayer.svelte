@@ -217,6 +217,7 @@
 	}
 
 	function rebuild(): void {
+		countWork('cutaway:rebuild-check');
 		const top = stubTopY;
 		const signature = signatureOf(wallIds, top, revision, sliceCutY);
 		if (signature === builtKey) return;

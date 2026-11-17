@@ -33,6 +33,7 @@ import { createMaterialStore } from '$lib/render/resources/material-store';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import StageCutawayLayer from '$lib/authoring/stage/cutaway/StageCutawayLayer.svelte';
+import { reactiveCell } from '../../__fixtures__/reactive-cell.svelte';
 
 const threlte = vi.hoisted(() => ({ invalidate: vi.fn() }));
 const clip = vi.hoisted(() => ({
@@ -114,15 +115,20 @@ describe('X2 stationary work', () => {
 		expect(built.mesh).toBeDefined();
 
 		let capBuilds = 0;
+		let rebuildChecks = 0;
 		const previous = setWorkObserver({
 			span() {},
 			count(name) {
 				if (name === 'cutaway:cap-assembly') capBuilds += 1;
+				if (name === 'cutaway:rebuild-check') rebuildChecks += 1;
 			}
 		});
 		restoreObserver = () => setWorkObserver(previous);
 
-		const wallIds = { value: ['w1'] as readonly string[] };
+		// Real Svelte state, not a plain object: each set reruns the mounted
+		// component's effect exactly as the host's own reactive props do.
+		const wallIds = reactiveCell<readonly string[]>(['w1']);
+		const revision = reactiveCell('r1');
 		const issues: unknown[] = [];
 		const failures: string[][] = [];
 		mounted = mount(StageCutawayLayer, {
@@ -142,7 +148,9 @@ describe('X2 stationary work', () => {
 						index: built.mesh!.indices
 					}
 				],
-				revision: 'r1',
+				get revision() {
+					return revision.value;
+				},
 				width: 800,
 				height: 600,
 				onIssues: (next) => issues.push(...next),
@@ -157,14 +165,28 @@ describe('X2 stationary work', () => {
 		expect(clip.setCutawayTop).toHaveBeenLastCalledWith(1);
 		expect(threlte.invalidate).toHaveBeenCalledTimes(1);
 
+		// Positive control: a reactive revision change must reach the component.
 		capBuilds = 0;
+		rebuildChecks = 0;
+		threlte.invalidate.mockClear();
+		clip.setCutawayTop.mockClear();
+		revision.value = 'r2';
+		flushSync();
+		expect(rebuildChecks).toBe(1);
+		expect(capBuilds).toBe(1);
+		expect(threlte.invalidate).toHaveBeenCalledTimes(1);
+		expect(clip.setCutawayTop).toHaveBeenLastCalledWith(1);
+
+		// A fresh array with the same ids reruns the effect but moves no signature.
+		capBuilds = 0;
+		rebuildChecks = 0;
 		threlte.invalidate.mockClear();
 		clip.setCutawayTop.mockClear();
 		for (let frame = 0; frame < 120; frame += 1) {
-			// A fresh array with the same ids: the effect runs, the signature does not move.
 			wallIds.value = ['w1'];
 			flushSync();
 		}
+		expect(rebuildChecks).toBe(120);
 		expect(capBuilds).toBe(0);
 		expect(threlte.invalidate).not.toHaveBeenCalled();
 		expect(clip.setCutawayTop).not.toHaveBeenCalled();
