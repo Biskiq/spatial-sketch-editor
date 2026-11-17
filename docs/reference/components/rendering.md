@@ -185,7 +185,11 @@ A Slice's cut is display geometry: it changes no document, no material and no dr
 it inside the same effect that owns `provideRenderResources`; the Slice reading (`layout.slice`)
 resolves a world height and the Canvas writes a single `Plane` to that array (with
 `SECTION_OFFSET_METERS` already folded into its constant). No other component creates clipping
-planes, so "the cut is on" has exactly one owner.
+planes, so "the cut is on" has exactly one owner. The Stage's own ink joins that owner rather than
+having its own: the selection contours and the Lift outline hold the Canvas's array by reference, so a
+gold contour or a dashed lid is cut with the body it stands for. The one exemption is a selected
+subject the cut hides wholly — it is drawn as an unclipped ghost, and its gold contour is deliberately
+left uncut, because a selection the creator can reach from the Index must stay visible.
 
 The snapshot pass must not inherit it: a saved or shared image is the building, not the author's
 current cut. `renderStageSnapshot` runs the world passes with an empty array and restores the live
@@ -196,6 +200,10 @@ one afterwards, so the same Canvas can snapshot with a cut on and keep drawing i
 `clipShadows`; the Stage's materials never do, so a cut never hollows a cast shadow, and the
 regression pins the shadow pass as identical cut and put back. A cap is built on the tick after the
 cut moves, never inside the pointer frame, and a build over 4 ms logs its timing in development.
+Caps come from **Layout meshes only**, one union for the Walls and one group per Layout object; Scene
+models are clipped and never capped, and a floor is never a cap source. A group that fails to balance
+is drawn open and reported: one `console.error` per group per geometry revision, plus
+`window.__STAGE_SLICE_DIAGNOSTICS__` in a development build.
 
 ### On-demand frames and shadow invalidation
 
