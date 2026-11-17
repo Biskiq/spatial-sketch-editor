@@ -14,6 +14,7 @@ import {
 	planDeleteWall,
 	planDeleteWalls,
 	planDissolveJunction,
+	planDuplicateIsolatedRoom,
 	planExactRectangleDimensions,
 	planRemoveRoom,
 	planRemoveSpace,
@@ -254,6 +255,23 @@ describe('SP1b — Wall removal lifecycle', () => {
 		expect(area).toBeCloseTo(12, 6);
 	});
 
+	it('open + open merge splices both Spaces after a second outside Wall is erased', () => {
+		const document = sharedWallPair();
+		const plan = planDeleteWalls(
+			document,
+			['m', 'right-right'],
+			capture('sp1b-open-open'),
+			document.floor.id,
+			{ openSpaces: 'keep' }
+		);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left']);
+		// Both erased Walls are virtual; the shared Wall's reverse pair collapsed.
+		expect(plan.document.rooms[0]!.virtualEdges).toHaveLength(2);
+		expect(plan.retiredRoomIds).toEqual(['room-right']);
+	});
+
 	it('open merge refuses conflicting thicknesses and keeps the survivor overhead', () => {
 		const conflicting = sharedWallPair();
 		conflicting.rooms[1]!.floorThickness = 0.3;
@@ -412,6 +430,26 @@ describe('SP1b — adjacent operations', () => {
 		const moved = new Map(plan.document.junctions.map((junction) => [junction.id, junction.point]));
 		expect(moved.get('j-a')).toEqual([1, 2]);
 		expect(moved.get('j-c')).toEqual([5, 5]);
+	});
+
+	it('duplicates an isolated open Space with remapped virtual edges', () => {
+		const document = threeWallOpenSpace();
+		const plan = planDuplicateIsolatedRoom(
+			document,
+			{ roomId: 'room-open', delta: [10, 0] },
+			capture('sp1b-duplicate'),
+			document.floor.id
+		);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(2);
+		const copy = plan.document.rooms[1]!;
+		expect(copy.virtualEdges).toHaveLength(1);
+		expect(copy.virtualEdges[0]!.startJunctionId).not.toBe('j-d');
+		// Source is untouched and both Spaces compile with equal area.
+		expect(plan.document.rooms[0]!.virtualEdges).toEqual(document.rooms[0]!.virtualEdges);
+		const compiled = compileWallFirstLayoutGeometry(plan.document);
+		expect(compiled.geometry.rooms).toHaveLength(2);
 	});
 
 	it('exact rectangle resize refuses an open Space explicitly', () => {
