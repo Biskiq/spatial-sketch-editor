@@ -151,6 +151,41 @@ describe('project texture scope', () => {
 		expect(onFailure).toHaveBeenCalledWith(URI, 'The image bytes do not match the saved project.');
 	});
 
+	it('stops preparing after disposal so a later URI is not cached as a failure', async () => {
+		const assetB = '00000000-0000-4000-8000-0000000000bb';
+		const uriB = `/project-assets/${assetB}`;
+		pins.set(assetB, { hash: digest, mime: 'image/png', size: PNG.length });
+		let finishA!: (value: { bytes: Uint8Array; mime: 'image/png' }) => void;
+		const load = vi.fn((assetId: string) => {
+			if (assetId === ASSET) {
+				return new Promise<{ bytes: Uint8Array; mime: 'image/png' }>((resolve) => (finishA = resolve));
+			}
+			return Promise.resolve({ bytes: PNG, mime: 'image/png' as const });
+		});
+		const first = createProjectTextureScope({
+			scopeId: 'project:dispose-mid-prepare',
+			load,
+			pins: () => pins,
+			onFailure
+		});
+		const preparing = first.prepare([URI, uriB]);
+		await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+		first.dispose();
+		finishA({ bytes: PNG, mime: 'image/png' });
+		await preparing;
+
+		const second = createProjectTextureScope({
+			scopeId: 'project:dispose-mid-prepare',
+			load,
+			pins: () => pins,
+			onSuccess
+		});
+		await second.prepare([uriB]);
+		expect(onSuccess).toHaveBeenCalledWith(uriB);
+		expect(second.dimensionsOf(assetB)).toEqual({ width: 1, height: 1 });
+		second.dispose();
+	});
+
 	it('drops cached failures on dispose so the next scope with the same id loads again', async () => {
 		let calls = 0;
 		const load = vi.fn(async () => {

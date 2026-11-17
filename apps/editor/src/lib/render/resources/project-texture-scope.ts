@@ -190,6 +190,9 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		prepare: async (uris) => {
 			if (disposed) return;
 			for (const uri of uris) {
+				// A dispose during an earlier awaited load must stop the whole list,
+				// not start the next URI and cache its closed-scope failure.
+				if (disposed) return;
 				requested.add(uri);
 				const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
 				const pinHash = assetId === null ? null : (input.pins().get(assetId)?.hash ?? null);
