@@ -360,15 +360,11 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		const faceOfC = faces.find((face) =>
 			face.boundary.some((ref) => ref.wallId === 'c-a1')
 		)!;
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-k')).toBe(
-			authorization.faceComponentKeyByKey.get(faceOfK.key)
-		);
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-k')).not.toBe(
-			authorization.faceComponentKeyByKey.get(faceOfC.key)
-		);
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-c')).not.toBe(
-			authorization.predecessorComponentKeyByRoomId.get('room-k')
-		);
+		const keyOfK = authorization.faceComponentKeyByKey.get(faceOfK.key)!;
+		const keyOfC = authorization.faceComponentKeyByKey.get(faceOfC.key)!;
+		expect(authorization.predecessorComponentKeysByRoomId.get('room-k')?.has(keyOfK)).toBe(true);
+		expect(authorization.predecessorComponentKeysByRoomId.get('room-k')?.has(keyOfC)).toBe(false);
+		expect(authorization.predecessorComponentKeysByRoomId.get('room-c')?.has(keyOfK)).toBe(false);
 	});
 });
 
@@ -577,8 +573,8 @@ describe('P23B.3a S3a — the D-12 fallback on coherent inputs, and reachable bo
 			faces: extraction.faces
 		});
 		// `room-k` keeps authored identity in the candidate graph; `room-c` does not.
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-k')).toBeDefined();
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-c')).toBeUndefined();
+		expect(authorization.predecessorComponentKeysByRoomId.get('room-k')).toBeDefined();
+		expect(authorization.predecessorComponentKeysByRoomId.get('room-c')).toBeUndefined();
 		// A face extracted from the candidate ALWAYS resolves (every candidate Wall is
 		// labelled), which is why the one-sided denial is the branch that fires here
 		// and the defensive neither-resolves branch is not what this proves.

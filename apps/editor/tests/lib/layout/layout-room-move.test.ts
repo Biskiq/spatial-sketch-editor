@@ -315,8 +315,8 @@ describe('P23.6a S2 — canonical boundary-cycle key', () => {
 				point: [junction.point[0] + 100, junction.point[1]] as LayoutVec2
 			}))
 		};
-		const before = roomBoundaryCycleKey(document.rooms.find((r) => r.id === roomId)!);
-		const after = roomBoundaryCycleKey(translated.rooms.find((r) => r.id === roomId)!);
+		const before = roomBoundaryCycleKey(document, document.rooms.find((r) => r.id === roomId)!);
+		const after = roomBoundaryCycleKey(translated, translated.rooms.find((r) => r.id === roomId)!);
 		expect(after).toBe(before);
 		// The persisted Room cycle IS a canonical candidate-face key.
 		expect(extractBoundaryCandidateFaces(document).faces[0]!.key).toBe(before);
@@ -354,7 +354,9 @@ describe('P23.6a — isolated Room rigid move', () => {
 		const room = plan.document.rooms[0]!;
 		expect(room.id).toBe('room-1');
 		expect(room.name).toBe('Alone');
-		expect(roomBoundaryCycleKey(room)).toBe(roomBoundaryCycleKey(document.rooms[0]!));
+		expect(roomBoundaryCycleKey(plan.document, room)).toBe(
+			roomBoundaryCycleKey(document, document.rooms[0]!)
+		);
 	});
 
 	it('preserves Wall identity, role, thickness and authored height exactly', () => {
@@ -494,7 +496,7 @@ describe('P23.6a amendment A — the movable unit is the connected Room group', 
 		for (const room of document.rooms) {
 			const moved = plan.document.rooms.find((candidate) => candidate.id === room.id)!;
 			expect(moved.name).toBe(room.name);
-			expect(roomBoundaryCycleKey(moved)).toBe(roomBoundaryCycleKey(room));
+			expect(roomBoundaryCycleKey(plan.document, moved)).toBe(roomBoundaryCycleKey(document, room));
 		}
 	});
 
@@ -844,7 +846,7 @@ function roomOf(
 	boundary: readonly { wallId: string; direction: 'forward' | 'reverse' }[]
 ): string {
 	const key = canonicalBoundaryCycleKey(boundary);
-	const room = document.rooms.find((candidate) => roomBoundaryCycleKey(candidate) === key);
+	const room = document.rooms.find((candidate) => roomBoundaryCycleKey(document, candidate) === key);
 	return room?.id ?? 'missing';
 }
 
@@ -902,8 +904,8 @@ describe('planWallFirstRoomRotation — the same motion, rigidly rotated', () =>
 		);
 		// The Room's boundary lineage is the same cycle: the key is Wall ids and
 		// directions, so an orientation-preserving motion cannot change it.
-		expect(roomBoundaryCycleKey(plan.document.rooms[0]!)).toBe(
-			roomBoundaryCycleKey(baseline.rooms[0]!)
+		expect(roomBoundaryCycleKey(plan.document, plan.document.rooms[0]!)).toBe(
+			roomBoundaryCycleKey(baseline, baseline.rooms[0]!)
 		);
 		// Only the unit's own boundary Walls moved: the roomless partition far to the
 		// right is not part of the resolved moving set and is never touched.

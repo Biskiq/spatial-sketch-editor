@@ -73,6 +73,8 @@ export type DissolveSpecificRejectionCode =
 	| 'non_tangent_curved_pair'
 	| 'room_reconciliation_rejected'
 	| 'room_identity_lost'
+	/** The Junction must survive because an open side ends there. */
+	| 'open_side_ends_here'
 	| 'opening_set_invalid'
 	| 'portal_relation_invalid'
 	| 'wall_height_below_opening'
@@ -147,6 +149,22 @@ export function planDissolveJunction(
 		});
 	}
 	const junctionPoint: LayoutVec2 = [junction.point[0], junction.point[1]];
+
+	// An open side's end is an ordinary Junction that must survive (I8): join
+	// would dissolve it and leave the Space's virtual edge dangling.
+	const virtualEdgeOwner = document.rooms.find((room) =>
+		room.virtualEdges.some(
+			(edge) => edge.startJunctionId === junctionId || edge.endJunctionId === junctionId
+		)
+	);
+	if (virtualEdgeOwner) {
+		return reject({
+			code: 'open_side_ends_here',
+			message: 'An open side ends here',
+			junctionIds: [junctionId],
+			roomIds: [virtualEdgeOwner.id]
+		});
+	}
 
 	// A self-connected Wall is one canonical loop. Check it before degree:
 	// the loop is the only incident Wall, so a generic degree-2 diagnostic would
@@ -446,6 +464,8 @@ export function planDissolveJunction(
 				}),
 				predecessorWitnesses,
 				predecessorPolygons,
+				// Join is non-removal: an open Space is carried, never retired.
+				spacePolicy: { openSpaces: 'keep' },
 				allocator: createAuthoringRoomAllocator(capture)
 			});
 		} catch (error) {

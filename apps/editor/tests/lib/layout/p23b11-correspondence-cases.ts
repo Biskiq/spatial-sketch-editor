@@ -605,11 +605,11 @@ export function classifyPairs(options: {
 	for (const face of options.faces) {
 		const faceKey = authorization.faceComponentKeyByKey.get(face.key);
 		for (const room of options.baseline.rooms) {
-			const roomKey = authorization.predecessorComponentKeyByRoomId.get(room.id);
+			const roomKeys = authorization.predecessorComponentKeysByRoomId.get(room.id);
 			const pairClass: P23B11PairClass =
-				faceKey === undefined || roomKey === undefined
+				faceKey === undefined || roomKeys === undefined
 					? 'undefined'
-					: faceKey === roomKey
+					: roomKeys.has(faceKey)
 						? 'same-group'
 						: 'cross-group';
 			pairs.push({ faceKey: face.key, roomId: room.id, class: pairClass });

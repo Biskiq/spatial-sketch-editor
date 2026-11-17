@@ -95,7 +95,10 @@ Evaluation order, exactly SP-plan §5:
 
 1. Face components run unchanged; a predecessor claimed by a face gets that face's boundary and
    `virtualEdges: []`.
-2. `retireRoomIds` retires by intent (reason `explicit-remove`).
+2. `retireRoomIds` retires by intent (reason `explicit-remove`) and is applied **before** face
+   classification: a forced predecessor is removed from every component, so it never survives on a
+   face it would otherwise claim. If removing it leaves a candidate face with no predecessor, the
+   command rejects `unsupported_component` rather than birthing a replacement Room.
 3. If `openSpaces === 'retire'`, every remaining unclaimed predecessor retires as today.
 4. **Carry.** For each remaining predecessor, compose its baseline boundary. Each Wall edge whose
    `wallId` is in `removedWalls` is replaced, in place, by one virtual edge between that ref's
@@ -161,7 +164,8 @@ out of one path. The carry rule never runs for a space a face claimed.
 | File | Change |
 | --- | --- |
 | `packages/layout-core/src/layout-room-reconciliation.ts` | policy + result fields; F2 claim-map filter; F3 component-key set; carry rule; open merge; support; outline gate; `space_outline_invalid` rejection code; docs for the new order. `RoomBoundaryLookup` unchanged. |
-| `packages/layout-core/src/layout-space-placement.ts` | export a small `spaceOutlineIssue(room, document)` helper returning `null \| { code, message }` so reconciliation and the compiler share one predicate (compiler keeps its current issue shape). No new geometry rule. |
+| `packages/layout-core/src/layout-space-outline.ts` | **new** home for the pure outline predicates (`spaceOutlineSignedArea`, `spaceOutlineSelfIntersects`, `polygonContainsPolygon`, `spacePairIssue`). It imports only coordinates, face predicates and robust orientation, so `layout-room-reconciliation.ts` can use it without importing `layout-space-placement.ts`. |
+| `packages/layout-core/src/layout-space-placement.ts` | keeps the document-level `spacePlacementIssues`/`isOpenSpace` and re-exports the moved predicates, so the SP1a public surface is unchanged. It imports the outline module and `roomBoundaryPolygon`; nothing imports it from reconciliation. |
 | `packages/layout-core/src/layout-wall-topology-ops.ts` | `planDeleteWall(..., options?: { openSpaces })`; new `planDeleteWalls(document, wallIds, capture, levelId, options?)`; removal pipeline reconciles before pruning; junction pruning includes final virtual edges; `planRemoveRoom(..., options?)` passes `retireRoomIds` and `invalidOutline: 'reject'`; `planDeleteWall` passes `invalidOutline: 'retire'`; `RoomMetadataPatch.overhead`; new `planRemoveSpace`; plan results carry `spaceRetirements`; rejection codes `not_open_space`, `space_outline_invalid`. |
 | `packages/layout-core/src/layout-wall-chain.ts` | `reconcileRooms` call passes `{ openSpaces: 'keep' }` (non-removal). No public option, no behaviour change for enclosed docs. |
 | `packages/layout-core/src/layout-wall-dissolve.ts` | refuse when the dissolved Junction is the start or end of any `virtualEdges` entry: new code `open_side_ends_here`, message **An open side ends here**; reconcile passes `keep`; open predecessors are carried, not faced. |
@@ -171,7 +175,7 @@ out of one path. The carry rule never runs for a space a face claimed.
 | `packages/layout-core/src/layout-wall-first-precision.ts` | reconcile passes `keep` and skips open rooms in the declared 1→1 components (they are carried); identity assertion counts carried Rooms and compares composed keys; `validateWallFirstTopology` composes an open Room's boundary instead of requiring a Wall-only chain, and its short-boundary gate uses the composed polygon; `planExactRectangleDimensions` refuses any open Space with `unsupported_geometry`; `PrecisionRejection` gains `space_outline_invalid`. |
 | `packages/layout-core/src/layout-duplicate.ts` | no record-copy change (SP1a); isolation now supplies virtual-edge Junctions, so the existing remap is complete. |
 | `apps/editor/tests/lib/layout/sp1b-open-spaces-lifecycle.test.ts` | **new** lifecycle suite (§5). |
-| `apps/editor/tests/lib/layout/spikes/s2-space-conversion.test.ts`, `…/s2-space-conversion.ts` | **deleted** once their production cases live in the SP1b/SP1a suites (SP-plan §13 acceptance). |
+| The two S2 spike files under `apps/editor/tests/lib/layout/spikes/` (`s2-space-conversion.*`) | **deleted** once their production cases live in the SP1b/SP1a suites (SP-plan §13 acceptance). |
 | existing tests | mechanical updates only where the F3 authorization shape and the `roomBoundaryCycleKey` signature changed. |
 
 No change: codec, geometry compiler, geometry delta, world index (already delegates), plan
@@ -299,3 +303,19 @@ plan approves them as written.
   straight chord equals its Wall.
 - **Rollback.** Revert SP1b alone: the option disappears and the default behaviour is already today's,
   so no saved format-8 document becomes unreadable.
+
+## 9. Owner clarifications (approved)
+
+Two constraints were added at approval. Both are incorporated above; neither changes scope.
+
+1. **Forced retirement overrides a face claim.** `retireRoomIds` is applied before component
+   classification, so a predecessor the operation explicitly retires cannot be preserved by a
+   candidate face (a 2→1 component becomes 1→1 in favour of the other predecessor). Regression
+   coverage includes `planRemoveRoom` on a Room that shares a Wall, plus the case where the target
+   and a neighbour would both claim one face. A face left with no predecessor refuses
+   `unsupported_component`; the operation never silently births a Room in place of the removed one.
+2. **One outline authority, no dependency cycle.** The pure outline predicates move to
+   `layout-space-outline.ts`; `layout-room-reconciliation.ts` imports only that module, and
+   `layout-space-placement.ts` keeps the document-level gate and re-exports the moved API. The
+   import direction stays `placement → reconciliation → outline → face predicates`; no module
+   imports its consumer.

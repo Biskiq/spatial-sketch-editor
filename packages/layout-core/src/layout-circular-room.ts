@@ -243,6 +243,8 @@ export function planCreateCircularRoom(options: {
 			components,
 			predecessorWitnesses,
 			predecessorPolygons,
+			// Creating a circle is non-removal: preserve an existing open Space.
+			spacePolicy: { openSpaces: 'keep' },
 			allocator: createAuthoringRoomAllocator(capture, options.roomNamePrefix ?? 'Draft Room')
 		});
 		if ('rejection' in result) {

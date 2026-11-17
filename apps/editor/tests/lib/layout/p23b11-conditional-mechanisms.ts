@@ -250,9 +250,13 @@ export function chainAffectedExtent(options: {
 	}
 	const affectedRoomIdSet = new Set(affectedRoomIds);
 	for (const room of baseline.rooms) {
+		const baselineLabels = baselineAuthorization.predecessorComponentKeysByRoomId.get(room.id);
+		const candidateLabels = candidateAuthorization.predecessorComponentKeysByRoomId.get(room.id);
 		const labelChanged =
-			baselineAuthorization.predecessorComponentKeyByRoomId.get(room.id) !==
-			candidateAuthorization.predecessorComponentKeyByRoomId.get(room.id);
+			baselineLabels === undefined || candidateLabels === undefined
+				? baselineLabels !== candidateLabels
+				: baselineLabels.size !== candidateLabels.size ||
+					[...baselineLabels].some((key) => !candidateLabels.has(key));
 		if (labelChanged && !affectedRoomIdSet.has(room.id)) {
 			affectedRoomIdSet.add(room.id);
 			affectedRoomIds.push(room.id);
@@ -311,7 +315,9 @@ export function pairInputs(options: {
 				predecessorPolygon: JSON.stringify(polygon ?? null),
 				witness: JSON.stringify(witness ?? null),
 				facePolygon: JSON.stringify(face.polygon),
-				roomLabel: authorization.predecessorComponentKeyByRoomId.get(room.id) ?? null,
+				roomLabel: JSON.stringify(
+					[...(authorization.predecessorComponentKeysByRoomId.get(room.id) ?? [])].sort()
+				),
 				faceLabel: authorization.faceComponentKeyByKey.get(face.key) ?? null
 			});
 		}
