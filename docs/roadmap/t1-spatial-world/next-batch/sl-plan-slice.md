@@ -542,7 +542,8 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
   measured linear rate 50 k triangles is ≈ 200 ms. **Owner-sanctioned resolution (2026-11-17):** keep
   the rebuild off the interaction frame and record the budget as unmet rather than fold the geometry
   rewrite into SL1; the bucketed T-vertex/crossing lookup remains the performance change's work. The
-  measurement test prints the 50 k projection and holds a loose 120 ms regression ceiling.
+  measurement test prints the 50 k projection and holds a loose **250 ms** regression ceiling,
+  which is a regression tripwire, not the budget — the 4 ms target stays unmet and marked so.
 - Broad phase by world bounds; welding, T-vertex and crossing splits through a uniform grid; winding
   probes bucketed by y-strip — no all-pairs pass. A dev-only timing log above the budget.
 - Plane edits mutate the shared `Plane` instances in place; no material is touched per frame.
