@@ -584,6 +584,51 @@ test('release preparation pins a P20 texture that a Finish names only through a 
 	);
 });
 
+test('release preparation pins the colour image of a Finish and reopen keeps its map', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	const pending = await registerAsset(pool, owner, projectId, 'Brick.png', 'test');
+	const ready = await uploadAsset(pool, owner, projectId, pending.id, bytes.length, Readable.from([bytes]), store, 'test');
+	// A Finish image names the P20 texture only through `maps.color`; no Artwork
+	// places it, so closure and release must find the record itself.
+	const finish = {
+		id: 'brick', name: 'Brick wall', baseMaterialId: 'paper-aged',
+		color: '#ffffff', maps: { color: ready.id }
+	};
+	// The planner's shape: a real pin, the pin hash as the content revision and
+	// no dependency-lock entry. Texture resources are closed by their record.
+	assert.equal(ready.mime, 'image/png');
+	assert.ok(ready.sha256);
+	assert.ok(ready.byteSize);
+	const pin = {
+		hash: ready.sha256, mime: ready.mime, size: ready.byteSize,
+		locator: `/project-assets/${ready.id}`
+	};
+	const envelope = await unitEnvelope(projectId, 'Finish colour image', {
+		textures: [{ id: ready.id, name: 'Brick wall', uri: `/project-assets/${ready.id}` }],
+		materials: [finish],
+		resources: [{ kind: 'texture', id: ready.id, contentRevision: pin.hash, pin, unresolved: null }]
+	});
+	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
+	const saved = await saveAcceptedSource(pool, owner, request, store);
+	assert.equal(saved.version, 2);
+	const reopened = await loadProject(pool, owner, projectId);
+	assert.deepEqual(reopened.document.units.scene.data.materials, [finish]);
+	assert.deepEqual(reopened.document.units.scene.data.textures, envelope.units.scene.data.textures);
+	const pins = await prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release');
+	assert.deepEqual(pins.map((pin) => pin.assetId), [ready.id]);
+	// A missing colour image is a named release refusal, not a silent fallback.
+	store.objects.delete(pins[0].objectKey);
+	await assert.rejects(
+		prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release'),
+		(error) => error.path === '$.units.scene.data.textures[0].uri'
+	);
+});
+
 test('Artwork Save verifies project bytes and release preparation pins each placed image once', async () => {
 	const projectId = nextProjectId();
 	createdProjects.push(projectId);

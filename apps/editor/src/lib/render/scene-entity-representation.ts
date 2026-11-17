@@ -123,6 +123,13 @@ export type SceneEntityRepresentation = {
 	objectOf(id: string): Object3D | null;
 	/** A model's load status, or null when no model has this id. */
 	modelStateOf(id: string): SceneModelState | null;
+	/**
+	 * Retry the textures that failed, without rebuilding any item. A creator's
+	 * targeted Retry drops the failed source entry first, then calls this: every
+	 * item whose images did not arrive asks again, and items that already bound
+	 * their variant are left untouched.
+	 */
+	reloadTextures(): void;
 	/** Resolves when no texture variant is still arriving. Observation only. */
 	idle(): Promise<void>;
 	/** Release every retained item, its leases and its pick registration. Idempotent. */
@@ -140,11 +147,14 @@ type VariantLease = {
 
 type RetainedItem = {
 	readonly key: string;
+	readonly item: SceneRenderItem;
 	readonly group: Group;
 	readonly mesh: Mesh;
 	readonly geometry: GeometryLease;
 	material: MaterialLease;
 	readonly textures: boolean;
+	/** Whether a texture variant has been bound; a failed load stays false. */
+	texturesReady: boolean;
 	variant: VariantLease | null;
 	/** Bumped whenever the item is rebuilt or released, so a late load cannot patch it. */
 	generation: number;
@@ -262,6 +272,7 @@ export function createSceneEntityRepresentation(
 				const base = entry.material;
 				entry.material = next;
 				entry.variant = { seed: textures.variantSeed, rx, ry, rotation, offset, scope };
+				entry.texturesReady = true;
 				entry.mesh.material = next.material;
 				// The untextured surface is no longer this item's look. Another entity
 				// still holding it keeps the instance alive.
@@ -297,11 +308,13 @@ export function createSceneEntityRepresentation(
 
 		const entry: RetainedItem = {
 			key: item.key,
+			item,
 			group,
 			mesh,
 			geometry,
 			material,
 			textures: item.textures !== null,
+			texturesReady: false,
 			variant: null,
 			generation: 0,
 			unregister: options.onRoot?.(item.id, group) ?? null
@@ -381,6 +394,15 @@ export function createSceneEntityRepresentation(
 					artworks: artworkStats,
 					models: modelStats
 				};
+		},
+
+		reloadTextures() {
+			if (disposed) return;
+			for (const entry of retained.values()) {
+				if (!entry.textures || entry.texturesReady) continue;
+				entry.generation += 1;
+				loadTextures(entry, entry.item);
+			}
 		},
 
 		objectOf(id) {

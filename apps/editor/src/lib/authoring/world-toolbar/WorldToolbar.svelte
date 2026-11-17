@@ -24,6 +24,7 @@
 	} from './registry';
 import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';
 	import type { SceneFinishRef } from '@portfolio/project-model/scene-planning';
+	import type { FinishImageState } from '$lib/authoring/look/finish-image.svelte';
 
 	let {
 		activeTool,
@@ -34,6 +35,11 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onMaterialPick,
 		finishShelf = null,
 		onFinishPick = () => {},
+		finishImage = null,
+		onFinishImageImport = () => {},
+		onFinishImageCancel = () => {},
+		onFinishImageRetry = () => {},
+		onFinishImageReset = () => {},
 		lookShelf = null,
 		artworkShelf = null,
 		onArtworkPick = () => {},
@@ -53,9 +59,21 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		/** Library › Finishes: curated then project Finishes. */
 		finishShelf?: {
 			readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
-			readonly project: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+			readonly project: readonly {
+				readonly id: string;
+				readonly name: string;
+				readonly color: string;
+				readonly imageUri: string | null;
+				readonly warning: string | null;
+			}[];
 		} | null;
 		onFinishPick?: (ref: SceneFinishRef) => void;
+		/** *+ From image*: the one upload state machine shared with the Card. */
+		finishImage?: FinishImageState | null;
+		onFinishImageImport?: (file: File) => void;
+		onFinishImageCancel?: () => void;
+		onFinishImageRetry?: () => void;
+		onFinishImageReset?: () => void;
 		/** The Look shelf; nothing is drawn while it is empty. */
 		lookShelf?: LookLibraryShelf | null;
 		artworkShelf?: readonly ArtworkLibraryEntry[] | null;
@@ -72,6 +90,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 
 	const plateId = $props.id();
 	let artworkFileInput = $state<HTMLInputElement>();
+	let finishFileInput = $state<HTMLInputElement>();
 	let libraryCategory = $state<WorldLibraryCategory | 'look' | 'artwork'>('objects');
 	let remembered = $state<Record<WorldFamily['id'], WorldToolId>>({
 		build: 'walls',
@@ -259,14 +278,70 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 									<button
 										type="button"
 										class="tile"
-										title={finish.name}
+										title={finish.warning ?? finish.name}
 										data-finish-tile={`project:${finish.id}`}
 										onclick={() => onFinishPick({ project: finish.id })}
 									>
-										<i class="material" style:background={finish.color}></i>
+										{#if finish.imageUri !== null}
+											<i
+												class="material image"
+												style={`background-color:${finish.color};background-image:url("${finish.imageUri}")`}
+											></i>
+										{:else}
+											<i class="material" style:background={finish.color}></i>
+										{/if}
 										<span class="tile-label">{finish.name}</span>
 									</button>
 								{/each}
+								<input
+									type="file"
+									accept="image/png,image/jpeg,image/webp"
+									hidden
+									bind:this={finishFileInput}
+									onchange={() => {
+										const file = finishFileInput?.files?.[0] ?? null;
+										if (finishFileInput) finishFileInput.value = '';
+										if (file !== null) onFinishImageImport(file);
+								}}
+								/>
+								{#if finishImage !== null && finishImage.phase !== 'idle'}
+									<div class="finish-image-state" data-finish-image-phase={finishImage.phase}>
+										{#if finishImage.phase === 'checking' || finishImage.phase === 'uploading'}
+											<span class="spinner" aria-hidden="true"></span>
+											<span>{finishImage.phase === 'checking' ? 'Checking' : 'Uploading'} {finishImage.fileName}…</span>
+											<button type="button" class="act" data-finish-image-cancel onclick={onFinishImageCancel}>Cancel</button>
+										{:else if finishImage.phase === 'saving'}
+											<span class="spinner" aria-hidden="true"></span>
+											<span>Saving {finishImage.fileName}…</span>
+										{:else if finishImage.phase === 'failed'}
+											<span class="finish-image-message">{finishImage.message ?? 'Upload failed.'}</span>
+											{#if finishImage.message !== null && finishImage.fileName !== null}
+												<button type="button" class="act" data-finish-image-retry onclick={onFinishImageRetry}>Try again</button>
+											{/if}
+											<button type="button" class="act" onclick={onFinishImageReset}>Dismiss</button>
+										{:else if finishImage.phase === 'refused'}
+											<span class="finish-image-message">{finishImage.message}</span>
+											<button type="button" class="act" onclick={onFinishImageReset}>Dismiss</button>
+										{:else}
+											<span class="finish-image-message">Image added.</span>
+											<button type="button" class="act" onclick={onFinishImageReset}>Dismiss</button>
+										{/if}
+										{#if finishImage.warning !== null}
+											<span class="finish-image-warning">{finishImage.warning}</span>
+										{/if}
+									</div>
+								{:else}
+									<button
+										type="button"
+										class="tile"
+										title="Make a Finish from a PNG, JPEG or WebP"
+										data-finish-image-add
+										onclick={() => finishFileInput?.click()}
+									>
+										<i class="material from-image" aria-hidden="true">+</i>
+										<span class="tile-label">From image</span>
+									</button>
+								{/if}
 							{/if}
 							<button
 								type="button"
@@ -683,6 +758,47 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	.material.image {
+		background-position: center;
+		background-size: cover;
+		background-blend-mode: multiply;
+	}
+	.material.from-image {
+		display: grid;
+		place-items: center;
+		color: var(--shell-ink-quiet);
+		font-size: 1rem;
+	}
+	.finish-image-state {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.35rem;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 0.35rem;
+		font-size: var(--shell-text-utility);
+	}
+	.finish-image-message {
+		max-width: 14rem;
+	}
+	.finish-image-warning {
+		flex-basis: 100%;
+		color: var(--shell-ink-quiet);
+	}
+	.spinner {
+		width: 0.75rem;
+		height: 0.75rem;
+		border: 2px solid var(--shell-hairline);
+		border-top-color: var(--stage-selection);
+		border-radius: 50%;
+		animation: finish-image-spin 0.8s linear infinite;
+	}
+	@keyframes finish-image-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	.material {
 		width: 100%;

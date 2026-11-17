@@ -474,7 +474,7 @@ for multi-PR, Tier 2 or invention-risking work, as the first commit of that work
 | **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig | S3 | — | **Yes** (shell-wide selection behaviour) |
 | **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** | **Yes** (Tier 2) |
 | **S2 Sky dials** | Environment control, Sky panel, Celestial Dial, edited / Reset | P0 · S0 · S1 | Scene 9 | No |
-| **S4 Finish** | Card row, free colour, Sheen, Paint for objects; then From image, Scale, Direction | P0 · S0 · S1 | — | No; likely two PRs |
+| **S4 Finish** | Card row, free colour, Sheen, Paint for objects (S4a, landed); From image, Scale, Direction, creator-image delivery (S4b, in review) | P0 · S0 · S1 | — | No; two PRs |
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
 | **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | — | With T1 |

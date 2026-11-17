@@ -128,17 +128,34 @@ function primitiveGeometry(entity: ScenePrimitiveEntity): {
 	}
 }
 
+/**
+ * The primitive's tiling surface in **metres**, including the entity's uniform
+ * scale (owner ruling D1).
+ *
+ * A primitive's UVs are 0..1 per face, so without this a scaled primitive's
+ * tiles stretch with it. The surface is the authored size times `scale`, which
+ * keeps one tile at its authored metre size on a scaled object. This is an
+ * intentional appearance change for existing scaled, textured primitives.
+ *
+ * **Box approximation:** a box uses width × depth for every face, so its side
+ * faces tile as if they were as deep as the box. This is the existing
+ * behaviour and S4b keeps it; the Card says "Scale is approximate on boxes".
+ */
 function primitiveSurface(entity: ScenePrimitiveEntity): [number, number] {
-	switch (entity.primitive) {
-		case 'box':
-			return [entity.dimensions.width, entity.dimensions.depth];
-		case 'plane':
-			return [entity.dimensions.width, entity.dimensions.height];
-		case 'cylinder':
-			return [entity.dimensions.radius * 2, entity.dimensions.height];
-		case 'sphere':
-			return [entity.dimensions.radius * 2, entity.dimensions.radius * 2];
-	}
+	const scale = entity.scale ?? 1;
+	const surface: [number, number] = (() => {
+		switch (entity.primitive) {
+			case 'box':
+				return [entity.dimensions.width, entity.dimensions.depth];
+			case 'plane':
+				return [entity.dimensions.width, entity.dimensions.height];
+			case 'cylinder':
+				return [entity.dimensions.radius * 2, entity.dimensions.height];
+			case 'sphere':
+				return [entity.dimensions.radius * 2, entity.dimensions.radius * 2];
+		}
+	})();
+	return [surface[0] * scale, surface[1] * scale];
 }
 
 function entityTransform(

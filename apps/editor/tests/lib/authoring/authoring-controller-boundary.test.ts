@@ -64,6 +64,7 @@ const ACCEPTED_READ = path.join(STAGE_DIR, 'accepted-read.ts');
 const PERF_MARKS = path.join(EDITOR_LIB, 'platform/perf-marks.ts');
 const MODEL_BYTES = path.join(EDITOR_LIB, 'authoring/scene/model-bytes.ts');
 const ARTWORK_SCOPE = path.join(EDITOR_LIB, 'render/artwork/artwork-scope.ts');
+const PROJECT_TEXTURE_SCOPE = path.join(EDITOR_LIB, 'render/resources/project-texture-scope.ts');
 
 /**
  * The owner modules each extracted controller is allowed to execute.
@@ -85,6 +86,7 @@ const APPROVED_BOUNDARIES: Readonly<Record<string, ReadonlySet<string>>> = {
 	[ASSETS]: new Set([
 		MODEL_BYTES,
 		ARTWORK_SCOPE,
+		PROJECT_TEXTURE_SCOPE,
 		STAGE_SESSION,
 		UNIT_STAGE_SOURCE,
 		ACCEPTED_READ
@@ -286,8 +288,14 @@ describe('authoring controller boundary (X1/X2)', () => {
 
 		const renderTargets = editable
 			.map((edge) => relativeToRepo(edge.target))
-			.filter((file) => under(file, 'apps/editor/src/lib/render'));
-		expect(renderTargets).toEqual(['apps/editor/src/lib/render/artwork/artwork-scope.ts']);
+			.filter((file) => under(file, 'apps/editor/src/lib/render'))
+			.sort();
+		// The asset leases execute only the two route-lifetime acquisition owners:
+		// catalogue/artwork bytes and the verified project texture scope.
+		expect(renderTargets).toEqual([
+			'apps/editor/src/lib/render/artwork/artwork-scope.ts',
+			'apps/editor/src/lib/render/resources/project-texture-scope.ts'
+		]);
 	});
 
 	it('keeps the X2 owners on the existing policy, planner and command boundaries', () => {

@@ -291,14 +291,31 @@ export function metalReading(effectiveMetalness: number): MetalReading {
 	return { on, caption, metalness: rounded };
 }
 
-/** The value form one `scene-finish-edit` changes. */
+/**
+ * The value form one `scene-finish-edit` changes.
+ *
+ * S4a owned colour, Sheen and Metal. S4b adds the image and its mapping:
+ * `colorMap` names a `scene.textures` record (or `null` to remove the image),
+ * `tileMeters` is one tile's real size and `rotation` is radians about the UV
+ * origin. `null` deletes the key, so a Finish can return to its base's rule.
+ */
 export type SceneFinishEdit = {
 	readonly color?: SceneColor | null;
 	readonly roughness?: number | null;
 	readonly metalness?: 0 | 1 | null;
+	readonly colorMap?: string | null;
+	readonly tileMeters?: readonly [number, number] | null;
+	readonly rotation?: number | null;
 };
 
-/** Apply one validated edit to an instance copy; `null` deletes a key. */
+/**
+ * Apply one validated edit to an instance copy; `null` deletes a key.
+ *
+ * Removing the colour image also removes the white tint S4b wrote to keep the
+ * image untinted, **when the image was the Finish's only map**: the base's own
+ * colour rule then applies again. If another map remains the tint is kept,
+ * because it still multiplies that map exactly as before.
+ */
 export function applyFinishEdit(
 	instance: SceneMaterialInstance,
 	edit: SceneFinishEdit
@@ -316,7 +333,37 @@ export function applyFinishEdit(
 		if (edit.metalness === null) delete next.metalness;
 		else next.metalness = edit.metalness;
 	}
+	if ('colorMap' in edit) {
+		const maps = { ...((next.maps as Record<string, string> | undefined) ?? {}) };
+		const colorMap = edit.colorMap;
+		if (colorMap === null || colorMap === undefined) delete maps.color;
+		else maps.color = colorMap;
+		if (Object.keys(maps).length === 0) delete next.maps;
+		else next.maps = maps;
+		if ((colorMap === null || colorMap === undefined) && next.maps === undefined && next.color === '#ffffff') {
+			delete next.color;
+		}
+	}
+	if ('tileMeters' in edit || 'rotation' in edit) {
+		const mapping = { ...((next.mapping as Record<string, unknown> | undefined) ?? {}) };
+		if ('tileMeters' in edit) {
+			const tileMeters = edit.tileMeters;
+			if (tileMeters === null || tileMeters === undefined) delete mapping.tileMeters;
+			else mapping.tileMeters = [tileMeters[0], tileMeters[1]];
+		}
+		if ('rotation' in edit) {
+			if (edit.rotation === null) delete mapping.rotation;
+			else mapping.rotation = edit.rotation;
+		}
+		if (Object.keys(mapping).length === 0) delete next.mapping;
+		else next.mapping = mapping;
+	}
 	return next as unknown as SceneMaterialInstance;
+}
+
+/** The colour-map texture id a Finish binds, or `null` for no colour image. */
+export function colorMapOf(instance: SceneMaterialInstance | undefined): string | null {
+	return instance?.maps?.color ?? null;
 }
 
 /** Whether an edit would change nothing on the given instance. */

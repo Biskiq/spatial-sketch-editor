@@ -224,6 +224,44 @@ describe('E7/R4 — resolved Scene description', () => {
 		expect(items[1]!.textures).toBeNull();
 	});
 
+	it('D1 — a primitive’s texture repeat follows its object scale, not just its authored size', () => {
+		const unscaled = describeSceneRender(
+			scene([primitive('box-textured', 'box', [0, 0, 0], LOOK_TEXTURED)])
+		).items[0]!;
+		const scaled = describeSceneRender(
+			scene([primitive('box-textured', 'box', [0, 0, 0], LOOK_TEXTURED, { scale: 2 })])
+		).items[0]!;
+		// 0.6 m box × 2 = 1.2 m surface; the 2 m plaster tile repeats 0.6 times.
+		expect(scaled.textures!.repeat).toEqual([0.6, 0.6]);
+		expect(scaled.transform.scale).toEqual([2, 2, 2]);
+		expect(scaled.key).not.toBe(unscaled.key);
+		// An absent scale is 1: this golden pins the S2/S4a appearance for every
+		// unscaled primitive, so the only change D1 introduces is the scaled case.
+		expect(unscaled.textures!.repeat).toEqual([0.3, 0.3]);
+	});
+
+	it('scales a plane’s repeat by object scale and leaves a mapped tile size authoritative', () => {
+		// `mapping.tileMeters` divides the already-scaled surface: one tile is
+		// 0.5 m, so a 1.2 m plane (0.6 × 2) repeats 2.4 times.
+		const mapped: SceneMaterialInstance = {
+			id: 'look-mapped',
+			name: 'Mapped',
+			baseMaterialId: 'plaster-warm',
+			maps: { color: TEXTURE_ID },
+			mapping: { tileMeters: [0.5, 0.5] }
+		};
+		const value = {
+			entities: [
+				primitive('plane-scaled', 'plane', [0, 0, 0], 'look-mapped', { scale: 2 })
+			],
+			materials: [...MATERIALS, mapped],
+			textures: TEXTURES
+		} as unknown as RuntimeScene;
+		const item = describeSceneRender(value).items[0]!;
+		expect(item.textures!.repeat[0]).toBeCloseTo(2.4, 10);
+		expect(item.textures!.repeat[1]).toBeCloseTo(2.4, 10);
+	});
+
 	it('omits Forms until the lazy kernel arrives, then carries the kernel mesh', () => {
 		const value = scene([primitive('box-a', 'box', [0, 0, 0], LOOK_SHARED), FORM_ENTITY]);
 		const before = describeSceneRender(value);

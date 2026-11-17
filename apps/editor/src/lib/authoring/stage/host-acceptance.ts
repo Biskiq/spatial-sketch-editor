@@ -83,6 +83,8 @@ export type StageAcceptOutcome =
 	| {
 			readonly kind: 'refused';
 			readonly code: string;
+			/** The planner/domain refusal code when one exists, e.g. `no-change`. */
+			readonly reason?: string | null;
 			readonly message: string;
 			/**
 			 * What happened to the coordinator step that was committed before the Stage
@@ -600,7 +602,9 @@ export function createStageAcceptanceHost(options: {
 			try {
 				const result = await coordinator.accept(intent);
 				if (result.kind === 'no-op') return { kind: 'no-op', revision: result.revision };
-				if (result.kind === 'rejected') return { kind: 'refused', code: result.code, message: result.message };
+				if (result.kind === 'rejected') {
+					return { kind: 'refused', code: result.code, reason: result.reason, message: result.message };
+				}
 				const preparedCow = consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout, key: canonicalUnitJson(intent) });
 				const acceptedLayout = result.snapshot.domain.source.units.layout.data;
 				let preparedLayout: NonNullable<Parameters<typeof install>[2]>['preparedLayout'];
