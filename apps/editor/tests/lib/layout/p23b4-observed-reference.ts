@@ -91,8 +91,12 @@ export const OBSERVED_REFERENCE: Record<string, ObservedFixtureEntry> = {
 		topologyTranslate: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=3 checksum=98830ea9fc3b9f3de5450f7a5a86dad533eee6b3a231447a7e6b2f721a5fcec0', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
 		faces: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
 		openings: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
-		compile: { wallCalls: 'n=3 checksum=c15f471f2d25ee5fc371cc07ec5a93ce96a06acdd0fc8c49683ff9852f933938', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=9 checksum=55c4fbd21228474879551e706bfc436567389cb9c54c1eb3e097a2e8cf178912' },
-		planner: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=3 checksum=b744c253f7177e2a40cb27bca1de4bc5c5f62ddc2264a83d2a9aea10d0e6576f', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+		// Format 8 preflight refuses the unstated open boundary before any Room
+		// source is built, so the compiler no longer samples its three Walls.
+		compile: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=3 checksum=f6622dcdc622a0b9a3bb10dd73cc19075ed14fcbbf5b8552f9ee3dd3e18d0473' },
+		planner: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+		// HISTORY: the pre-format-8 planner refusal. The CODE CUTOVER's value is
+		// `PLANNER_VERDICT_EXPECTATION` below; the delta test names this row.
 		plannerVerdict: 'rejected:topology_invalid:56625da9666d088f799ccba081de1c4d11d7d01ab3a032c5ead0ad0cc940572c'
 	},
 	'class4-self-intersection-v1': {
@@ -275,25 +279,32 @@ export const PLANNER_WORK_REDUCED_FIXTURES: readonly string[] = ['N-2', 'bend-10
  * the accepted document's `formatVersion`, so every success digest moved again;
  * all 15 success rows were re-derived from the live planner. The four
  * early-reject rows still hash their rejection messages and are unchanged.
+ *
+ * C3 FORMAT 8 RE-DERIVATION (2026-11-17). Layout 8 adds `virtualEdges` and
+ * `overhead` to every Room, so all 15 success rows moved again and were
+ * re-derived from the live planner. `class4-open-room-boundary-v1` also moved:
+ * the codec now refuses its open Wall boundary as `space_boundary_open`, and the
+ * planner reports `geometry_invalid` instead of the old topology refusal. The
+ * remaining early-reject rows are unchanged.
  */
 export const PLANNER_VERDICT_EXPECTATION: Record<string, string> = {
-	'p23b-12-wall-straight-v1': 'success:168b552923b79605a9e62c7b6bb46ce06992a9bd577f5d53248d7e1efdd8839b',
-	'p23b-12-wall-target-curved-v1': 'success:5ae06ec3e56bc47cc4d8621ba178624d02335a3a488a3fe1a4be640c7a5d06c6',
-	'p23b-12-wall-all-curved-v1': 'success:347c8cdf2e82a3d81f6a40305cc8fcdc1fd7376ecc9fe72f512858aadbb7161e',
-	'p23b-40-wall-straight-v1': 'success:49f786335aa4366c06f86f4242e929b484afba6127e284d44cd2a489730a8889',
-	'p23b-40-wall-target-curved-v1': 'success:aa797ff984cb25f670d788571bf7f8becfaded587e23e8f6df4d2abd64f19afc',
-	'p23b-40-wall-all-curved-v1': 'success:24918ceb721bc624186af92db85a4273011c422447123de1a2a50699f3c2dc4c',
-	'bend-10-wall-openings': 'success:2aab6954d50bbf43b7f47c510a351a94f6a971fdd8d1da2c884419d3f7c22c0c',
-	'bend-3-room-openings': 'success:4785f83a80cef92bba903bd19f3afaad053b894fa6234cf7285ffd2816a5f20f',
-	'd12-exact-coincidence-v1': 'success:43d7b14fb85f77f0d20b601ebbab693e70bad488603b58a809b2404f5d7f4bde',
-	'd12-partial-overlap-v1': 'success:200cea1d88ca162b0bdae544abd9358a49c725cafd0050a3a621b8211d562750',
-	'd12-full-containment-v1': 'success:08c244b0b8efd109a2e2817e3f67909118ff9f0827554098050c31969bb9717f',
-	'N-2': 'success:9c870e46e3d194a2e7a3ccd152067ce1ff9e303a080b8193817e667b9cc0abd0',
+	'p23b-12-wall-straight-v1': 'success:5504d448976c01a6c312606d26779579774484cd2ecb9f9f0949b230670915d8',
+	'p23b-12-wall-target-curved-v1': 'success:e13b25702c73d00bedf9d495d7aabf093323381836cdec0b50d5bc2d64c6ac32',
+	'p23b-12-wall-all-curved-v1': 'success:8d91760d79f6657c423335431b57436c1a2785537ff90bc94840b9b3c3777031',
+	'p23b-40-wall-straight-v1': 'success:c6f5a962a8f2502878aaf54d1ef980596b44012208472d7acfe1b3f27b11e7a5',
+	'p23b-40-wall-target-curved-v1': 'success:34c666fc04634fbd841ac804d71e6516c369f5217d22126bd053723e00c2b243',
+	'p23b-40-wall-all-curved-v1': 'success:3672d646575d61081fa4d92f1cbdeb47ef0a47c59e5e58b4393325b42250a35a',
+	'bend-10-wall-openings': 'success:a711aabdeb85b198282d882396b623ba881b40b53b6e39280b65fab04df18bbb',
+	'bend-3-room-openings': 'success:b66c92a8f3f70b987f8d62a7496927e2735d8580226f8a5061f3a634e8442f6a',
+	'd12-exact-coincidence-v1': 'success:2209e5e9c783e40119a12faf278f581bf00d8fecd1d5f248a9275a0f33156ac4',
+	'd12-partial-overlap-v1': 'success:4e0195686a53f2011c5434ee6af4771aadb0e2b83d005c8ff6d4c53cf71816bc',
+	'd12-full-containment-v1': 'success:59432d8373ba6f069d9b0dbe3b1613f27a81d9a7bb880a19a1f9f0ca753d6e39',
+	'N-2': 'success:4cf09a66f12a6cee6339eba6a4dd7a7eaf35451462b477f130369a02b341d69b',
 	'N-2i': 'rejected:topology_invalid:a634c2998b8e8fea9b5001983ed9ca107577c951da39e26ec1427a59a719dec6',
 	'class4-self-intersection-v1': 'rejected:topology_invalid:8ef8659198189cc04b92753ebaceae6c9750ab8dc1561a0faed4bef928fc6e05',
-	'class4-zero-length-wall-v1': 'success:21d334aea06a7096a09789402bfd9a70513bae679267d9a7cd617f17e329d900',
-	'class4-open-room-boundary-v1': 'rejected:topology_invalid:56625da9666d088f799ccba081de1c4d11d7d01ab3a032c5ead0ad0cc940572c',
+	'class4-zero-length-wall-v1': 'success:2ef0e479f72de632f039676654a8825a01a91f1355189b63cc45f1d8b2d6d56d',
+	'class4-open-room-boundary-v1': 'rejected:geometry_invalid:40da63309bfb1398e045bcbf48a0d1f4178d44dd0600227a596cd6dd36facb25',
 	'class4-component-duplicate-junction-v1': 'rejected:topology_invalid:0219e2ac250159dcbd0cada333baa6f0563b949682e2d3419a10348a0b8f9efe',
-	'wild-room-curved-v1': 'success:3342c2987428c9f4994399e7437130a2928415fe0ad0f680886210ccbc22ff42',
-	'wild-shared-curved-v1': 'success:9f60887a239a6c8162a534693eac2f2eefb96a0f375e77702ae202c85c850414',
+	'wild-room-curved-v1': 'success:b4d277a01fa540b73942e736d9a2f97bec4d573c0a8ec73ac22749efe1ee359b',
+	'wild-shared-curved-v1': 'success:c17e026c173774cacb8a79e744eff3eb9bbfd13aca0d2f6dafc285a5ab526b05',
 };

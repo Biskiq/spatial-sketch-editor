@@ -1,14 +1,15 @@
 /**
  * The retained Room representation.
  *
- * Every compiled Room's floor, floor-shadow catcher and ceiling are owned here
- * imperatively, on the same terms as the Wall and object representations, rather
- * than mounted per Room through Svelte:
+ * Every compiled Room's floor and floor-shadow catcher, and each closed Room's
+ * ceiling, are owned here imperatively, on the same terms as the Wall and object
+ * representations, rather than mounted per Room through Svelte:
  *
  * - **Retained by the Room's own `cacheKey`.** A Room whose key did not move
- *   keeps its group, its two geometries, its transforms and its meshes.
- * - **Two geometries per Room.** One floor triangulation, shared by the floor
- *   and the floor-shadow mesh, and one ceiling triangulation.
+ *   keeps its group, its geometries, its transforms and its meshes.
+ * - **One or two geometries per Room.** One floor triangulation, shared by the
+ *   floor and the floor-shadow mesh; a closed Room adds one ceiling
+ *   triangulation, while `open-to-sky` has no lid mesh to build.
  * - **Three materials for every Room.** Acquired once from the Canvas's
  *   `MaterialStore`: the unlit ground-coloured floor, the shadow catcher and the
  *   dark plaster ceiling. Equal descriptors share one instance, so 196 Rooms draw
@@ -41,15 +42,15 @@ import type {
 import { applyTreatment } from '$lib/render/materials/treatment';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 
-/** One retained Room: what it was built from, its group, its buffers and its two queried meshes. */
+/** One retained Room: what it was built from, its group, its buffers and its floor/lid meshes. */
 type RetainedRoom = {
 	readonly key: string;
 	readonly roomId: string;
 	readonly group: Group;
 	/** The mesh the identity index returns for this Room. */
 	readonly floor: Mesh;
-	/** The generated lid. Its render layer is the only thing a Lift reading writes. */
-	readonly ceiling: Mesh;
+	/** The generated lid, or `null` for `open-to-sky`. */
+	readonly ceiling: Mesh | null;
 	readonly geometry: readonly BufferGeometry[];
 };
 
@@ -198,8 +199,9 @@ export function createRoomRepresentation(
 	function build(room: CompiledRoom): {
 		group: Group;
 		floor: Mesh;
-		ceiling: Mesh;
+		ceiling: Mesh | null;
 		geometry: readonly BufferGeometry[];
+		triangulations: number;
 	} {
 		const group = new Group();
 		group.name = `VisitorRoom:${room.roomId}`;
@@ -207,7 +209,6 @@ export function createRoomRepresentation(
 		// One floor triangulation, drawn twice: the unlit ground and the shadow
 		// catcher that keeps the floor eligible for an authored light's shadow.
 		const floorGeometry = new ShapeGeometry(polygonShape(room.floorPolygon));
-		const ceilingGeometry = new ShapeGeometry(polygonShape(room.ceilingPolygon, false));
 
 		const floor = new Mesh(floorGeometry, floorLease.material);
 		floor.name = `VisitorFloor:${room.roomId}`;
@@ -224,16 +225,23 @@ export function createRoomRepresentation(
 		floorShadow.receiveShadow = true;
 		floorShadow.raycast = () => {};
 
-		const ceiling = new Mesh(ceilingGeometry, ceilingLease.material);
-		ceiling.name = `VisitorCeiling:${room.roomId}`;
-		ceiling.position.set(0, room.ceilingElevation, 0);
-		ceiling.rotation.set(Math.PI / 2, 0, 0);
-		// A Room rebuilt mid-Lift is born lifted: the reading is remembered above,
-		// exactly as the hidden set is, and the rebuild's own frame draws it so.
-		ceiling.layers.set(layerOf(lifted.has(room.roomId)));
+		group.add(floor, floorShadow);
+		const geometry: BufferGeometry[] = [floorGeometry];
+		let ceiling: Mesh | null = null;
+		if (room.overhead !== 'open-to-sky') {
+			const ceilingGeometry = new ShapeGeometry(polygonShape(room.ceilingPolygon, false));
+			ceiling = new Mesh(ceilingGeometry, ceilingLease.material);
+			ceiling.name = `VisitorCeiling:${room.roomId}`;
+			ceiling.position.set(0, room.ceilingElevation, 0);
+			ceiling.rotation.set(Math.PI / 2, 0, 0);
+			// A Room rebuilt mid-Lift is born lifted: the reading is remembered above,
+			// exactly as the hidden set is, and the rebuild's own frame draws it so.
+			ceiling.layers.set(layerOf(lifted.has(room.roomId)));
+			group.add(ceiling);
+			geometry.push(ceilingGeometry);
+		}
 
-		group.add(floor, floorShadow, ceiling);
-		return { group, floor, ceiling, geometry: [floorGeometry, ceilingGeometry] };
+		return { group, floor, ceiling, geometry, triangulations: ceiling ? 2 : 1 };
 	}
 
 	return {
@@ -243,6 +251,7 @@ export function createRoomRepresentation(
 			if (disposed) throw new Error('the layout room representation has been disposed');
 			let built = 0;
 			let kept = 0;
+			let triangulations = 0;
 			const present = new Set<string>();
 
 			for (const room of geometry.rooms) {
@@ -268,6 +277,7 @@ export function createRoomRepresentation(
 				}
 				retained.set(room.roomId, { key: room.cacheKey, roomId: room.roomId, ...next });
 				built += 1;
+				triangulations += next.triangulations;
 			}
 
 			let released = 0;
@@ -285,7 +295,7 @@ export function createRoomRepresentation(
 				built,
 				retained: kept,
 				released,
-				triangulations: built * 2,
+				triangulations,
 				materials: materialKeys.size
 			};
 		},
@@ -312,7 +322,7 @@ export function createRoomRepresentation(
 			const nextCeiling = store.acquire(nextDescriptors.ceiling);
 			for (const entry of retained.values()) {
 				entry.floor.material = nextFloor.material;
-				entry.ceiling.material = nextCeiling.material;
+				if (entry.ceiling) entry.ceiling.material = nextCeiling.material;
 			}
 			const previousFloor = floorLease;
 			const previousCeiling = ceilingLease;
@@ -335,7 +345,7 @@ export function createRoomRepresentation(
 			// remembered for the build that follows, not counted here.
 			const apply = (roomId: string, isLifted: boolean): void => {
 				const entry = retained.get(roomId);
-				if (entry === undefined) return;
+				if (entry === undefined || entry.ceiling === null) return;
 				if (entry.ceiling.layers.mask === 1 << layerOf(isLifted)) return;
 				countWork('representation:layer-write');
 				entry.ceiling.layers.set(layerOf(isLifted));

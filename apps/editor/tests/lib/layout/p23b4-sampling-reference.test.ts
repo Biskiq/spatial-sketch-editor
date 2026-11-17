@@ -233,7 +233,9 @@ function compiledDigest(document: LayoutDocumentWallFirst): string {
 			resolution: withoutExposedEnds(rest.resolution),
 			legs: legs.map(({ role: _legRole, ...leg }) => leg)
 		})),
-		rooms: geometry.rooms,
+		// Format 8 adds authored `overhead` to each compiled Room; the geometry
+		// projection keeps the pre-format-8 digest comparable.
+		rooms: geometry.rooms.map(({ overhead: _overhead, ...rest }) => rest),
 		queries: geometry.queries
 	};
 	return sha(JSON.stringify(payload));

@@ -44,6 +44,7 @@ function squareDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'w3', direction: 'forward' },
 				{ wallId: 'w4', direction: 'forward' }
 			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}],
@@ -111,6 +112,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			{ wallId: 'w5', direction: 'reverse' },
 			{ wallId: 'w2', direction: 'reverse' }
 		],
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	});
@@ -445,6 +447,7 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 		expect(result.document.rooms[0]).toMatchObject({
 			id: 'room',
 			name: 'Room',
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		});
@@ -572,6 +575,8 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 					wallId,
 					direction: 'forward' as const
 				})),
+				virtualEdges: [],
+				overhead: 'closed' as const,
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			});

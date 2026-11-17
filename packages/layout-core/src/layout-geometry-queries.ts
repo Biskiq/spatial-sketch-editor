@@ -77,6 +77,47 @@ export function findPolygonContaining(point: LayoutVec2, polygons: readonly Comp
 	return null;
 }
 
+/**
+ * Resolve the compiled Space that owns a plan point.
+ *
+ * The compiled `floorPolygon` is the geometry authority: this query never
+ * recomposes an authored boundary and never reads the query-record copy as a
+ * second source of truth. Among every Space containing the point, the smallest
+ * floor area wins. Equal areas break by authored Room id, so array order is
+ * never authority. Enclosed and open Spaces participate identically.
+ *
+ * `findPolygonContaining` remains the reverse-order query for consumers that
+ * have not migrated to Space identity.
+ */
+export function spaceAtPoint(point: LayoutVec2, spaces: readonly CompiledRoom[]): CompiledRoom | null {
+	let best: CompiledRoom | null = null;
+	let bestArea = Infinity;
+	for (const space of spaces) {
+		if (space.floorPolygon.length < 3) continue;
+		if (!pointInPolygon(point, space.floorPolygon)) continue;
+		const area = Math.abs(signedPolygonArea(space.floorPolygon));
+		if (
+			area < bestArea ||
+			(area === bestArea && best !== null && space.roomId < best.roomId)
+		) {
+			best = space;
+			bestArea = area;
+		}
+	}
+	return best;
+}
+
+/** Signed shoelace area in world X/Z. */
+function signedPolygonArea(polygon: readonly LayoutVec2[]): number {
+	let twiceArea = 0;
+	for (let index = 0; index < polygon.length; index += 1) {
+		const current = polygon[index]!;
+		const next = polygon[(index + 1) % polygon.length]!;
+		twiceArea += current[0] * next[1] - next[0] * current[1];
+	}
+	return twiceArea / 2;
+}
+
 /** Flat compiled query records exposed for consumers + a future spatial index. */
 export function compiledQueryGeometry(geometry: CompiledLayoutGeometry) {
 	return geometry.queries;
@@ -141,8 +182,10 @@ export function overheadSourcesOf(
 
 /** One compiled Room's generated lid, or `null` when it has no overhead to lift. */
 function roomLidSource(room: CompiledRoom): OverheadSource | null {
-	// A Room with a degenerately small ceiling ring encloses no plan area, and an
-	// elevation the compiler could not resolve is not a place to draw an outline.
+	// `open-to-sky` has no generated lid to lift, and a Room with a degenerately
+	// small ceiling ring encloses no plan area; an elevation the compiler could
+	// not resolve is not a place to draw an outline.
+	if (room.overhead === 'open-to-sky') return null;
 	if (room.ceilingPolygon.length < 3) return null;
 	if (!Number.isFinite(room.ceilingElevation)) return null;
 	return {

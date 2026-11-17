@@ -137,6 +137,7 @@ function enclosure(prefix: string, x: number, z: number, width: number, depth: n
 		id: `room-${prefix}`,
 		name: `Room ${prefix}`,
 		boundary: walls.map((wall) => ({ wallId: wall.id, direction: 'forward' as const })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};
@@ -267,6 +268,7 @@ const ROOM_FAILURE_BEHIND_A_CLEAN_COMPONENT = documentOf({
 				{ wallId: 'thin-1', direction: 'forward' },
 				{ wallId: 'thin-2', direction: 'forward' }
 			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}
@@ -379,6 +381,7 @@ const TWO_ROOMS_SHARED_COMPONENT = documentOf({
 				{ wallId: 'room-north-left', direction: 'forward' },
 				{ wallId: 'room-west', direction: 'forward' }
 			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		},
@@ -391,6 +394,8 @@ const TWO_ROOMS_SHARED_COMPONENT = documentOf({
 				{ wallId: 'room-north-right', direction: 'forward' },
 				{ wallId: 'room-shared', direction: 'reverse' }
 			],
+			virtualEdges: [],
+			overhead: 'closed' as const,
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}

@@ -52,6 +52,7 @@ export function buildWildRoomFixture(): LayoutDocumentWallFirst {
 			{
 				id: 'room-wild',
 				name: 'Wild',
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1,
 				boundary: [
@@ -89,6 +90,7 @@ export function buildWildSharedFixture(): LayoutDocumentWallFirst {
 			{
 				id: 'room-east',
 				name: 'East',
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1,
 				boundary: [

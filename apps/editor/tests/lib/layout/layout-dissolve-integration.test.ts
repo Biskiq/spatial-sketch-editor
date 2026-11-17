@@ -26,7 +26,7 @@ const dissolve = (document: LayoutDocumentWallFirst, junctionId: string) =>
 function seed(): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 7,
+		formatVersion: 8,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] as LayoutVec2 },
@@ -53,6 +53,7 @@ function seed(): LayoutDocumentWallFirst {
 					{ wallId: 'w3', direction: 'forward' },
 					{ wallId: 'w4', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}

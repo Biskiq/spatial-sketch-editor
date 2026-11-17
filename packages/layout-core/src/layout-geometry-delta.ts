@@ -50,6 +50,7 @@ import {
 import type {
 	LayoutDerivedWallRole,
 	LayoutDocumentWallFirst,
+	LayoutJunction,
 	LayoutObject,
 	LayoutWall,
 	LayoutWallOpening
@@ -119,6 +120,7 @@ export type CanonicalDeltaBuilders = {
 		document: LayoutDocumentWallFirst,
 		roomIndex: number,
 		pointById: ReadonlyMap<string, LayoutVec2>,
+		junctionById: ReadonlyMap<string, LayoutJunction>,
 		wallById: ReadonlyMap<string, LayoutWall>,
 		openingsByHostWallId: ReadonlyMap<string, readonly LayoutWallOpening[]>,
 		openingOrderById: ReadonlyMap<string, number>,
@@ -198,6 +200,7 @@ export type RetainedCompileWorld = {
 	readonly defaultWallThickness: number;
 	readonly hydratedWithoutSources: boolean;
 	pointById: ReadonlyMap<string, LayoutVec2>;
+	junctionById: ReadonlyMap<string, LayoutJunction>;
 	readonly junctionDocIndexById: Map<string, number>;
 	wallById: ReadonlyMap<string, LayoutWall>;
 	readonly wallDocIndexById: Map<string, number>;
@@ -207,6 +210,8 @@ export type RetainedCompileWorld = {
 	readonly openingIndicesByHostWallId: ReadonlyMap<string, readonly number[]>;
 	readonly documentRoomIds: Set<string>;
 	readonly roomIndicesByWallId: Map<string, number[]>;
+	/** Open-side Junctions can move without touching a Wall; they dirty their Space. */
+	readonly roomIndicesByJunctionId: Map<string, number[]>;
 	readonly wallIdsByJunctionId: Map<string, string[]>;
 	readonly derivedWallRoles: ReadonlyMap<string, LayoutDerivedWallRole>;
 	roomSlots: PersistentVector<RoomSlot, ChunkSummary>;
@@ -285,6 +290,7 @@ function compileSourceViews(document: LayoutDocumentWallFirst, indexes: Pick<Ret
  const hosted = new Map<string, LayoutWallOpening[]>();
  return {
   pointById: mappedReadonlyMap(junctionDocIndexById, (index) => layoutItem(document, 'junctions', index)!.point),
+  junctionById: mappedReadonlyMap(junctionDocIndexById, (index) => layoutItem(document, 'junctions', index)!),
   wallById: mappedReadonlyMap(wallDocIndexById, (index) => layoutItem(document, 'walls', index)!),
   openingById: mappedReadonlyMap(openingOrderById, (index) => layoutItem(document, 'openings', index)!),
   openingsByHostWallId: mappedReadonlyMap(openingIndicesByHostWallId, (indices, id) => {
@@ -374,17 +380,25 @@ export function buildRetainedCompileWorldFromPass(input: {
 	}
 	const documentRoomIds = new Set<string>();
 	const roomIndicesByWallId = new Map<string, number[]>();
+	const roomIndicesByJunctionId = new Map<string, number[]>();
+	const pushRoomIndex = (map: Map<string, number[]>, key: string, rIdx: number): void => {
+		const list = map.get(key);
+		if (list) {
+			if (list[list.length - 1] !== rIdx && !list.includes(rIdx)) list.push(rIdx);
+		} else {
+			map.set(key, [rIdx]);
+		}
+	};
 	for (let rIdx = 0; rIdx < layoutLength(document, 'rooms'); rIdx += 1) {
 		const room = layoutItem(document, 'rooms', rIdx)!;
 		documentRoomIds.add(room.id);
 		for (let bIdx = 0; bIdx < room.boundary.length; bIdx += 1) {
-			const wId = room.boundary[bIdx]!.wallId;
-			const list = roomIndicesByWallId.get(wId);
-			if (list) {
-				if (list[list.length - 1] !== rIdx && !list.includes(rIdx)) list.push(rIdx);
-			} else {
-				roomIndicesByWallId.set(wId, [rIdx]);
-			}
+			pushRoomIndex(roomIndicesByWallId, room.boundary[bIdx]!.wallId, rIdx);
+		}
+		for (let eIdx = 0; eIdx < room.virtualEdges.length; eIdx += 1) {
+			const edge = room.virtualEdges[eIdx]!;
+			pushRoomIndex(roomIndicesByJunctionId, edge.startJunctionId, rIdx);
+			pushRoomIndex(roomIndicesByJunctionId, edge.endJunctionId, rIdx);
 		}
 	}
 
@@ -414,6 +428,7 @@ export function buildRetainedCompileWorldFromPass(input: {
 		openingOrderById,
 		documentRoomIds,
 		roomIndicesByWallId,
+		roomIndicesByJunctionId,
 		wallIdsByJunctionId,
 		derivedWallRoles: input.derivedWallRoles,
 		roomSlots: summarizedVector(input.roomSlots, (slot) => ({ bounds3: slot.stripped ? slot.bounds3 : null, issues: slot.issues.length, rooms: slot.stripped ? 1 : 0 })),
@@ -961,6 +976,12 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			for (let i = 0; i < roomIndices.length; i += 1) dirtyRoomIndexSet.add(roomIndices[i]!);
 		}
 	}
+	for (const jId of changedJunctionIds) {
+		const roomIndices = world.roomIndicesByJunctionId.get(jId);
+		if (roomIndices) {
+			for (let i = 0; i < roomIndices.length; i += 1) dirtyRoomIndexSet.add(roomIndices[i]!);
+		}
+	}
 	if (dirtyRoomIndexSet.size > 0) {
 		const sortedDirtyRooms = [...dirtyRoomIndexSet].sort((a, b) => a - b);
 		for (let i = 0; i < sortedDirtyRooms.length; i += 1) {
@@ -970,6 +991,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				document,
 				rIdx,
 				world.pointById,
+				world.junctionById,
 				world.wallById,
 				world.openingsByHostWallId,
 				world.openingOrderById,
@@ -1001,7 +1023,12 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 							w ? world.pointById.get(w.endJunctionId) ?? null : null,
 							world.openingsByHostWallId.get(ref.wallId) ?? null
 						];
-					})
+					}),
+					...room.virtualEdges.map((edge) => [
+						edge,
+						world.pointById.get(edge.startJunctionId) ?? null,
+						world.pointById.get(edge.endJunctionId) ?? null
+					])
 				];
 				reuse.roomSources.set(room.id, { authored: retentionKey, source: unit.source });
 				reuse.roomCompiles.set(unit.source, {

@@ -32,7 +32,7 @@ const LINE = { kind: 'line' } as const;
 function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 	const base: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 7,
+		formatVersion: 8,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] },
@@ -56,6 +56,7 @@ function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 					{ wallId: 'w3', direction: 'forward' },
 					{ wallId: 'w4', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}

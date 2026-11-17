@@ -88,7 +88,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 7 as const,
+		formatVersion: 8 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -117,6 +117,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		id,
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	});
@@ -169,7 +170,7 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 7 as const,
+		formatVersion: 8 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -198,6 +199,7 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 		id,
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	});

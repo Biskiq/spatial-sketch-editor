@@ -84,7 +84,10 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 7, Scene 9, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 8, Scene 9, Camera 1, Experience 4 and resources 2.
+Layout's envelope unit version is not a second number: `LAYOUT_UNIT_FORMAT_VERSION` is the Layout
+`formatVersion` itself (`LAYOUT_WALL_FIRST_FORMAT_VERSION`), so one authority governs the unit
+header and the payload.
 [Experience 4](experience.md#current-authoring-and-runtime-contract) defines linear Guides,
 entry Views, stays, invitations, outgoing transitions and Presentation naming. Earlier shapes
 are refused without conversion.
@@ -120,7 +123,7 @@ executable resource closure. The Stage discloses diagnostics and closure for ins
 inventing resources; closure refuses F4 acceptance, Save and release. An unresolved View remains
 repairable authored state and disables the affected visitor behavior.
 
-**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 7`, the only
+**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 8`, the only
 recognised version): one floor datum, junctions → walls → reconciled rooms → openings → layout
 objects, project/world-local. The former versionless shape (floors → rooms each carrying a finite
 `frame.origin: [x, z]` plus a normalized radian `frame.yaw`) is **no longer decoded**, and
@@ -139,8 +142,19 @@ isolated closed Wall, not a second shape kind. Its `cubic-chain` is exactly 16 s
 spans (15 interior bend points) and the single Junction is the persisted seam; the reader refuses
 a closed Wall in any other shape. A closed host is periodic: an authored Opening keeps one
 `offset` in `[0, circumference)` and one canonical id, and may compile to two intervals across the
-seam without becoming two entities. Format 6 and every other declared version are refused, with no
-migration or dual reader. Unroll and its development map are display-only session state and never
+seam without becoming two entities. Format 7 and every other declared version are refused, with no
+migration or dual reader.
+
+**Layout open Spaces (format 8):** every Room carries required `virtualEdges` and `overhead`.
+`boundary` remains the ordered Wall-side cycle; `virtualEdges` are stated straight segments
+between existing Junctions that close the gaps between consecutive Walls, and `overhead` is
+`closed` or `open-to-sky`. The codec composes one closed cycle and refuses a gap without enough
+virtual edges, a virtual edge where no gap exists, a chain that starts twice at one Junction, and
+a Wall side used by two Spaces. The compiler certifies a simple positive outline, derives area and
+floor from it, keeps virtual edges out of compiled Walls and Openings, and blocks overlap or
+containment except an open Space lying wholly inside an enclosed one. An enclosed Room's geometry
+and cache keys are unchanged; `open-to-sky` removes only the generated lid and the ceiling
+thickness from the Room bounds. Unroll and its development map are display-only session state and never
 appear in persisted Layout.
 
 **Layout geometry envelope (2026-10-31):** authored Wall height/thickness, Opening offset/width/height/sill height, and each Wall span are limited to 1,000 m. A straight Wall is measured by its chord; a curved Wall by its control-polygon length, which bounds its arc length. Junction positions are not dimensions, so rigid translation remains unrestricted. Exactly 1,000 m is accepted; an over-limit edit is refused without changing source or history, and canonical reads refuse an imported Layout before compilation or Stage admission with a subject-specific issue. This measured boundary keeps the authoring path within the tested geometry-cost envelope; the implementation records the measurement basis in `packages/layout-core/src/layout-geometry-limits.ts`.

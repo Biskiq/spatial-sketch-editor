@@ -81,6 +81,7 @@ function rectangleDocument(options: { elevation?: number; wallHeight?: number } 
 					{ wallId: 'w3', direction: 'forward' },
 					{ wallId: 'w4', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}

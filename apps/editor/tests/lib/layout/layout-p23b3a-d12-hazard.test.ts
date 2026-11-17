@@ -124,6 +124,8 @@ function enclosure(options: Enclosure) {
 			{ wallId: `${prefix}-c1`, direction: 'forward' as const },
 			{ wallId: `${prefix}-d1`, direction: 'forward' as const }
 		],
+					virtualEdges: [], overhead: 'closed' as const,
+
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};
