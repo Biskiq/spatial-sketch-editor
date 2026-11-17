@@ -485,7 +485,8 @@ function unitLayout(): LayoutUnitPayload {
 	layout.junctions = [
 		{ id: 'junction-1', point: [0, 0] },
 		{ id: 'junction-2', point: [5, 0] },
-		{ id: 'junction-3', point: [5, 4] }
+		{ id: 'junction-3', point: [5, 4] },
+		{ id: 'junction-4', point: [0, 4] }
 	];
 	layout.walls = [
 		{
@@ -506,13 +507,35 @@ function unitLayout(): LayoutUnitPayload {
 			height: 3,
 			centerline: { kind: 'line' },
 			name: 'wall-1'
+		},
+		{
+			id: 'wall-3',
+			startJunctionId: 'junction-3',
+			endJunctionId: 'junction-4',
+			thickness: 0.2,
+			height: 3,
+			centerline: { kind: 'line' }
+		},
+		{
+			id: 'wall-4',
+			startJunctionId: 'junction-4',
+			endJunctionId: 'junction-1',
+			thickness: 0.2,
+			height: 3,
+			centerline: { kind: 'line' }
 		}
 	];
 	layout.rooms = [
 		{
 			id: 'room-1',
 			name: 'Room',
-			boundary: [{ wallId: 'wall-1', direction: 'forward' }],
+			boundary: [
+				{ wallId: 'wall-1', direction: 'forward' },
+				{ wallId: 'wall-2', direction: 'forward' },
+				{ wallId: 'wall-3', direction: 'forward' },
+				{ wallId: 'wall-4', direction: 'forward' }
+			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}

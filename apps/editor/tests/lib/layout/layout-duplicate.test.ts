@@ -58,6 +58,7 @@ function roomFromFace(
 		id,
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};
@@ -507,17 +508,36 @@ describe('P23.4 isolated Room duplicate', () => {
 					connectsRoomIds: ['room-1', 'room-other']
 				}
 			],
-			// room-other exists only as the relation's far endpoint; its boundary
-			// references the roomless partition wall's junctions is not possible
-			// (one wall cannot close a face), so give it a minimal real boundary
-			// is unnecessary: the codec only checks that referenced walls exist,
-			// not that the room face closes. Reuse wall-rl (it exists).
+			// room-other exists only as the relation's far endpoint. Format 8
+			// requires every Room's boundary to compose, so give it its own far
+			// square rather than sharing room-1's Walls (which would make room-1
+			// non-isolated and mask the relation rejection).
+			junctions: [
+				...farRoomDocument.junctions,
+				{ id: 'j-o1', point: [30, 0] as LayoutVec2 },
+				{ id: 'j-o2', point: [34, 0] as LayoutVec2 },
+				{ id: 'j-o3', point: [34, 4] as LayoutVec2 },
+				{ id: 'j-o4', point: [30, 4] as LayoutVec2 }
+			],
+			walls: [
+				...farRoomDocument.walls,
+				{ id: 'wall-o1', startJunctionId: 'j-o1', endJunctionId: 'j-o2', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o2', startJunctionId: 'j-o2', endJunctionId: 'j-o3', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o3', startJunctionId: 'j-o3', endJunctionId: 'j-o4', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o4', startJunctionId: 'j-o4', endJunctionId: 'j-o1', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
+			],
 			rooms: [
 				...farRoomDocument.rooms,
 				{
 					id: 'room-other',
 					name: 'Far',
-					boundary: [{ wallId: 'wall-rl', direction: 'forward' }],
+					boundary: [
+						{ wallId: 'wall-o1', direction: 'forward' },
+						{ wallId: 'wall-o2', direction: 'forward' },
+						{ wallId: 'wall-o3', direction: 'forward' },
+						{ wallId: 'wall-o4', direction: 'forward' }
+					],
+					virtualEdges: [], overhead: 'closed',
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}

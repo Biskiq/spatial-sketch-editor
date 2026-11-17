@@ -74,7 +74,9 @@ function neutralCompiledDigest(geometry: ReturnType<typeof compileWallFirstLayou
 			...rest,
 			legs: legs.map(({ role: _legRole, ...leg }) => leg)
 		})),
-		rooms: geometry.rooms,
+		// Format 8 adds authored `overhead` to each compiled Room; the geometry
+		// projection keeps the pre-format-8 digest comparable.
+		rooms: geometry.rooms.map(({ overhead: _overhead, ...rest }) => rest),
 		queries: geometry.queries
 	};
 	return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
@@ -202,11 +204,13 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 		}
 	});
 
-	it('records the format-6/7 verdict delta exactly, instead of editing history', () => {
+	it('records the format-6/7/8 verdict delta exactly, instead of editing history', () => {
 		// Format 6 removed the authored Wall `role`; format 7 bumps the canonical
-		// `formatVersion`. Each cutover moved every SUCCESS row's digest (which
-		// hashes the accepted document's canonical JSON), while the four early-reject
-		// rows hash their rejection message and did not. The
+		// `formatVersion`; format 8 adds `virtualEdges`/`overhead`. Each cutover
+		// moved every SUCCESS row's digest (which hashes the accepted document's
+		// canonical JSON). Format 8 also moves the open-boundary negative row: the
+		// codec now refuses it before the topology gate, so its rejection code
+		// changed. The
 		// frozen history column is left alone; this list is the whole allowed
 		// delta. A row that moves for any other reason fails here rather than being
 		// absorbed by an edited `OBSERVED_REFERENCE` value.
@@ -218,6 +222,7 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 				'N-2',
 				'bend-10-wall-openings',
 				'bend-3-room-openings',
+				'class4-open-room-boundary-v1',
 				'class4-zero-length-wall-v1',
 				'd12-exact-coincidence-v1',
 				'd12-full-containment-v1',
@@ -233,6 +238,12 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 			].sort()
 		);
 		for (const id of moved) {
+			if (id === 'class4-open-room-boundary-v1') {
+				expect(PLANNER_VERDICT_EXPECTATION[id], `${id} moved to the format-8 refusal`).toMatch(
+					/^rejected:geometry_invalid:/
+				);
+				continue;
+			}
 			expect(PLANNER_VERDICT_EXPECTATION[id], `${id} is a moved SUCCESS row`).toMatch(/^success:/);
 		}
 		// Everything else is byte-identical to history: the expectation adds no

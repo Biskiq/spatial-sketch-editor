@@ -267,9 +267,18 @@ export function applyOpenRoomPolicy(
 			continue;
 		}
 		openedRoomIds.push(room.id);
-		keptRooms.push({
+		const kept: LayoutWallFirstRoom = {
 			...room,
 			boundary: survivingBoundary.map((ref) => ({ ...ref }))
+		};
+		// Format 8 persists the gap as virtual edges; the R0 derivation is the
+		// same information the composer reads back.
+		keptRooms.push({
+			...kept,
+			virtualEdges: deriveVirtualEdges(productionPlan.document, kept).map((edge) => ({
+				startJunctionId: edge.startJunctionId,
+				endJunctionId: edge.endJunctionId
+			}))
 		});
 	}
 

@@ -111,7 +111,7 @@ const MODEL_SNAPSHOT = attachUnitStageSource(
 	{
 		units: {
 			layout: {
-				header: { formatVersion: 7, contentRevision: 'sha256-layout' },
+				header: { formatVersion: 8, contentRevision: 'sha256-layout' },
 				data: { rooms: [] }
 			},
 			scene: {

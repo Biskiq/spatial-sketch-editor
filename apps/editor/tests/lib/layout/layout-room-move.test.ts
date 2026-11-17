@@ -79,6 +79,7 @@ function roomFromFace(
 		id,
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};
@@ -160,7 +161,12 @@ function twoRoomDocument(extra?: {
 			['j-c', 4, 4],
 			['j-d', 0, 4],
 			...(extra?.thirdRoom
-				? ([['j-x', 40, 0], ['j-y', 40, 4]] as Array<[string, number, number]>)
+				? ([
+						['j-x', 40, 0],
+						['j-y', 44, 0],
+						['j-z', 44, 4],
+						['j-w', 40, 4]
+					] as Array<[string, number, number]>)
 				: [])
 		],
 		walls: [
@@ -173,11 +179,10 @@ function twoRoomDocument(extra?: {
 			{ id: 'wall-d', start: 'j-d', end: 'j-a' },
 			...(extra?.thirdRoom
 				? [
-						{
-							id: 'wall-rl',
-							start: 'j-x',
-							end: 'j-y'
-						}
+						{ id: 'wall-o1', start: 'j-x', end: 'j-y' },
+						{ id: 'wall-o2', start: 'j-y', end: 'j-z' },
+						{ id: 'wall-o3', start: 'j-z', end: 'j-w' },
+						{ id: 'wall-o4', start: 'j-w', end: 'j-x' }
 					]
 				: [])
 		],
@@ -198,7 +203,13 @@ function twoRoomDocument(extra?: {
 						{
 							id: 'room-other',
 							name: 'Far',
-							boundary: [{ wallId: 'wall-rl', direction: 'forward' as const }],
+							boundary: [
+								{ wallId: 'wall-o1', direction: 'forward' as const },
+								{ wallId: 'wall-o2', direction: 'forward' as const },
+								{ wallId: 'wall-o3', direction: 'forward' as const },
+								{ wallId: 'wall-o4', direction: 'forward' as const }
+							],
+							virtualEdges: [], overhead: 'closed' as const,
 							floorThickness: 0.1,
 							ceilingThickness: 0.1
 						}
@@ -627,12 +638,32 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 					connectsRoomIds: ['room-1', 'room-other']
 				}
 			],
+			junctions: [
+				...document.junctions,
+				{ id: 'j-o1', point: [30, 0] },
+				{ id: 'j-o2', point: [34, 0] },
+				{ id: 'j-o3', point: [34, 4] },
+				{ id: 'j-o4', point: [30, 4] }
+			],
+			walls: [
+				...document.walls,
+				{ id: 'wall-o1', startJunctionId: 'j-o1', endJunctionId: 'j-o2', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o2', startJunctionId: 'j-o2', endJunctionId: 'j-o3', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o3', startJunctionId: 'j-o3', endJunctionId: 'j-o4', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+				{ id: 'wall-o4', startJunctionId: 'j-o4', endJunctionId: 'j-o1', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
+			],
 			rooms: [
 				...document.rooms,
 				{
 					id: 'room-other',
 					name: 'Far',
-					boundary: [{ wallId: 'wall-rl', direction: 'forward' }],
+					boundary: [
+						{ wallId: 'wall-o1', direction: 'forward' },
+						{ wallId: 'wall-o2', direction: 'forward' },
+						{ wallId: 'wall-o3', direction: 'forward' },
+						{ wallId: 'wall-o4', direction: 'forward' }
+					],
+					virtualEdges: [], overhead: 'closed',
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}

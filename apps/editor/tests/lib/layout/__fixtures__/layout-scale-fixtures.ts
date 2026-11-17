@@ -197,6 +197,7 @@ function appendRoom(
 		id: roomId,
 		name: `Room ${index}`,
 		boundary: wallIds.map((wallId) => ({ wallId, direction: 'forward' as const })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: FLOOR_THICKNESS,
 		ceilingThickness: CEILING_THICKNESS
 	});

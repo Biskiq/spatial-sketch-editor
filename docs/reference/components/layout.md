@@ -7,15 +7,40 @@ reconstructs a second topology or navigation authority.
 
 ## Current contract
 
-Layout format 7 is wall-first. Wall role is derived; every closed ring encloses. A free-standing
+Layout format 8 is wall-first. Wall role is derived; every closed ring encloses. A free-standing
 Wall encloses nothing; a dividing Wall creates reconciled Room topology. Room identity is persistent
 through reconciliation, while Room geometry remains derived and is never directly editable.
 Authored placement is world-local with explicit internal frames, without mandatory Room ownership.
 [Editing-path rules](layout-performance.md) govern previews, commit and retained roots.
 
-Format 7 is the only recognized version. It adds the isolated closed Wall to the previous
-wall-first shape; the reader refuses every other declared version strictly, with no migration and
-no second decoder.
+Format 8 is the only recognized version. Every Room carries the required `virtualEdges` and
+`overhead` fields; an enclosed Room has no virtual edges, and an open Space states the straight
+segments that close its Wall gaps. The reader refuses every other declared version strictly, with
+no migration and no second decoder: a format-7 payload fails as `unsupported_format_version`.
+
+## Open Spaces
+
+One persistent Room record is the product's **Space**. A Space is enclosed when `virtualEdges` is
+empty, and open when it states virtual edges between existing Junctions. Wall order stays persisted;
+`composeSpaceBoundary` is the only place the mixed Wall/virtual order is parsed, and its cycle key
+equals today's boundary-cycle key for an enclosed Space. Virtual edges have no ids, height,
+thickness, Opening or surface and never take part in noding or connectivity.
+
+The compiler builds the outline from Wall samples plus the virtual edges' Junction endpoints. Floor
+polygon, area and bounds come from that composed outline; compiled Walls, Openings, Wall bounds and
+Wall query records come from the Walls only. The codec and compiler refuse a gap without enough virtual edges,
+an unmotivated virtual edge, a repeated Junction origin, a non-positive or self-crossing outline,
+and an overlap or containment that I7 forbids (an open Space wholly inside an enclosed Room is the
+one admitted nesting).
+
+`overhead: 'open-to-sky'` removes the generated lid and the ceiling thickness from Room bounds and
+nothing else: Wall heights, the derived `ceilingElevation`, the floor and every Wall record stay.
+A `closed` Space keeps its full lid over the whole outline. Enclosed Rooms retain their compiled
+geometry and cache keys.
+
+The collection and type keep the name Room; `LayoutObject.roomId` and draft `connectsRoomIds`
+references are unchanged. An open Space's Wall rows keep their `room:` relation. SP1a changes the
+format and the compiler only: no creator-facing operation produces an open Space yet.
 
 ## Closed circular Walls
 
@@ -289,7 +314,7 @@ editor-only and single-floor restrictions are superseded.
 authored primitive. Creators draw spatial geometry; whether a Wall bounds an
 enclosure, divides a room or stands free is derived from the resulting topology
 and explained, never chosen before drawing. Rooms stay derived, and dividing a
-room is drawing a Wall across it. Layout format 7 derives roles and every closed ring encloses; a self-connected Wall is the isolated circular case; the creator-facing expression
+room is drawing a Wall across it. Layout format 8 derives roles and every closed ring encloses; a self-connected Wall is the isolated circular case; the creator-facing expression
 is [PLATE §0.8.4](../design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 
 `LayoutRoom` is the current enclosed-region minimum, not the universal spatial

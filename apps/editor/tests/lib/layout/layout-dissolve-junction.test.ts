@@ -110,6 +110,7 @@ function splitRectDocument(): LayoutDocumentWallFirst {
 					{ wallId: 'w3', direction: 'forward' },
 					{ wallId: 'w4', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}
@@ -440,6 +441,7 @@ describe('straight dissolve', () => {
 						{ wallId: 'wall-e', direction: 'reverse' },
 						{ wallId: 'wall-s2', direction: 'forward' }
 					],
+					virtualEdges: [], overhead: 'closed',
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				},
@@ -448,10 +450,12 @@ describe('straight dissolve', () => {
 					name: 'Right',
 					boundary: [
 						{ wallId: 'wall-s1', direction: 'forward' },
-						{ wallId: 'wall-e1', direction: 'forward' },
+						{ wallId: 'wall-e', direction: 'forward' },
 						{ wallId: 'wall-n2', direction: 'forward' },
-						{ wallId: 'wall-e', direction: 'forward' }
+						{ wallId: 'wall-e1', direction: 'forward' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -527,6 +531,8 @@ describe('straight dissolve', () => {
 						{ wallId: 'wall-ea', direction: 'reverse' },
 						{ wallId: 'wall-s2', direction: 'forward' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				},
@@ -535,11 +541,13 @@ describe('straight dissolve', () => {
 					name: 'Right',
 					boundary: [
 						{ wallId: 'wall-s1', direction: 'forward' },
-						{ wallId: 'wall-e1', direction: 'forward' },
-						{ wallId: 'wall-n2', direction: 'forward' },
 						{ wallId: 'wall-ea', direction: 'forward' },
-						{ wallId: 'wall-eb', direction: 'forward' }
+						{ wallId: 'wall-eb', direction: 'forward' },
+						{ wallId: 'wall-n2', direction: 'forward' },
+						{ wallId: 'wall-e1', direction: 'forward' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -635,6 +643,8 @@ describe('dissolve round trips', () => {
 						{ wallId: 'w3', direction: 'forward' },
 						{ wallId: 'w4', direction: 'forward' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -702,6 +712,8 @@ describe('dissolve room tripwire and codec round trip', () => {
 			id: 'ghost',
 			name: 'Ghost',
 			boundary: document.rooms[0]!.boundary.map((ref) => ({ ...ref })),
+			virtualEdges: [],
+			overhead: 'closed' as const,
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		});

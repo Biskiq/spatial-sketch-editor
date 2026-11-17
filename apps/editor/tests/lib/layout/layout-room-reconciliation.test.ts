@@ -115,6 +115,8 @@ function room(
 		id,
 		name,
 		boundary,
+		virtualEdges: [],
+		overhead: 'closed' as const,
 		floorThickness: 0.1,
 		ceilingThickness: 0.1,
 		...overrides

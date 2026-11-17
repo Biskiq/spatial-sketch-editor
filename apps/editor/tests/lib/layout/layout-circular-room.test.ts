@@ -52,7 +52,7 @@ function awaitEmptyDocument(): LayoutDocumentWallFirst {
 	// A zero-Wall current-format document: the same shape the editor boots.
 	return {
 		units: 'meters',
-		formatVersion: 7,
+		formatVersion: 8,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [],
 		walls: [],

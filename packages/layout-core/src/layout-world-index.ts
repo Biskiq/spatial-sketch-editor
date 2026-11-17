@@ -59,6 +59,13 @@ import type {
 	LayoutWallOpening
 } from './layout-wall-first-types';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
+import { composeSpaceBoundary, spaceBoundaryPolygonFromEdges } from './layout-room-reconciliation';
+import {
+	isOpenSpace,
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePlacementIssues
+} from './layout-space-placement';
 import {
 	classifyWallIntersection,
 	sampledWallExtentsOverlap,
@@ -139,6 +146,9 @@ export type DocumentWorldIndex = {
 	readonly pointById: ReadonlyMap<string, LayoutVec2>;
 	readonly incidentWallIdsByJunctionId: ReadonlyMap<string, readonly string[]>;
 	readonly roomsByWallId: ReadonlyMap<string, readonly string[]>;
+	/** Walls and Junctions on an open Space's boundary. Their deltas go cold. */
+	readonly openRoomWallIdSet: ReadonlySet<string>;
+	readonly openRoomJunctionIdSet: ReadonlySet<string>;
 	readonly openingsByWallId: ReadonlyMap<string, readonly IndexedOpeningEntry[]>;
 	readonly openingIndicesByWallId: ReadonlyMap<string, readonly number[]>;
 	readonly componentKeyByJunctionId: ReadonlyMap<string, string | symbol>;
@@ -928,6 +938,14 @@ export function verifySweptBoundsGeometryDelta(options: {
 	const { baseline, candidate, changedJunctionIds, changedWallIds, sampling } = options;
 	const worldIndex = ensureLayoutWorldIndex(baseline);
 	if (!worldIndex) return 'delegate-cold';
+	// Open Spaces are certified by their composed outline and the placement
+	// gate, which this swept-bounds proof knows nothing about. Any changed Wall
+	// or Junction on an open boundary therefore delegates to the canonical cold
+	// gate instead of being certified incrementally.
+	if (changedWallIds.some((id) => worldIndex.openRoomWallIdSet.has(id))) return 'delegate-cold';
+	if (changedJunctionIds.some((id) => worldIndex.openRoomJunctionIdSet.has(id))) {
+		return 'delegate-cold';
+	}
 
 	// Guard against in-place mutation of non-frozen test baselines on touched entities.
 	for (const jId of changedJunctionIds) {
@@ -1449,11 +1467,15 @@ function buildCertifiedWorldIndex(
 	const roomById = new Map<string, LayoutWallFirstRoom>();
 	const roomIndexById = new Map<string, number>();
 	const roomsByWallMutable = new Map<string, string[]>();
+	const openRoomWallIdSet = new Set<string>();
+	const openRoomJunctionIdSet = new Set<string>();
 	for (let i = 0; i < layoutLength(document, 'rooms'); i += 1) {
 		const r = layoutItem(document, 'rooms', i)!;
-		// One self-connected Wall and a two-Wall curved lens are both valid Room
-		// boundaries; closure below is the structural gate for every short boundary.
-		if (r.boundary.length < 2) return undefined;
+		// Enclosed one-Wall Rooms keep their preexisting certification behaviour:
+		// this guard is deliberately unchanged for a closed Space. An open Space
+		// is certified by its composed outline instead, which the checks below
+		// require to have at least three vertices.
+		if (r.virtualEdges.length === 0 && r.boundary.length < 2) return undefined;
 		roomById.set(r.id, r);
 		roomIndexById.set(r.id, i);
 		let prevEnd: string | undefined;
@@ -1466,7 +1488,9 @@ function buildCertifiedWorldIndex(
 			const s = ref.direction === 'forward' ? w.startJunctionId : w.endJunctionId;
 			const e = ref.direction === 'forward' ? w.endJunctionId : w.startJunctionId;
 			if (b === 0) firstStart = s;
-			if (prevEnd !== undefined && prevEnd !== s) return undefined;
+			// Enclosed Spaces chain Wall-to-Wall. An open Space's gaps are the
+			// composer's job, not a reason to reject it here.
+			if (r.virtualEdges.length === 0 && prevEnd !== undefined && prevEnd !== s) return undefined;
 			prevEnd = e;
 			if (!seenOnRoom.has(ref.wallId)) {
 				seenOnRoom.add(ref.wallId);
@@ -1475,8 +1499,35 @@ function buildCertifiedWorldIndex(
 				else roomsByWallMutable.set(ref.wallId, [r.id]);
 			}
 		}
-		if (prevEnd !== firstStart) return undefined;
+		if (r.virtualEdges.length === 0 && prevEnd !== firstStart) return undefined;
+		if (!isOpenSpace(r)) continue;
+		// I4/I5 — an open Space is certified by its composed outline, never by a
+		// Wall face. The composer proves one closed cycle that consumes every
+		// virtual edge; this certifier proves positive simple area.
+		const composed = composeSpaceBoundary(document, r);
+		if (composed.kind === 'failed') return undefined;
+		const outline = spaceBoundaryPolygonFromEdges(composed.edges, document);
+		if (!outline) return undefined;
+		const signedArea = spaceOutlineSignedArea(outline);
+		if (!Number.isFinite(signedArea) || signedArea <= POINT_EPSILON) return undefined;
+		if (spaceOutlineSelfIntersects(outline)) return undefined;
+		for (const edge of r.virtualEdges) {
+			const start = pointById.get(edge.startJunctionId);
+			const end = pointById.get(edge.endJunctionId);
+			if (!start || !end) return undefined;
+			if (!(Math.hypot(end[0] - start[0], end[1] - start[1]) > POINT_EPSILON)) return undefined;
+			openRoomJunctionIdSet.add(edge.startJunctionId);
+			openRoomJunctionIdSet.add(edge.endJunctionId);
+		}
+		for (const ref of r.boundary) {
+			openRoomWallIdSet.add(ref.wallId);
+			const wall = wallById.get(ref.wallId)!;
+			openRoomJunctionIdSet.add(wall.startJunctionId);
+			openRoomJunctionIdSet.add(wall.endJunctionId);
+		}
 	}
+	// I7 — the one placement gate, shared with the compiler.
+	if (spacePlacementIssues(document).length > 0) return undefined;
 
 	const openingsByWallMutable = new Map<string, IndexedOpeningEntry[]>();
 	const openingIndexById = new Map<string, number>();
@@ -1614,6 +1665,8 @@ function buildCertifiedWorldIndex(
 		openingIndexById: PersistentMap.from(openingIndexById),
 		incidentWallIdsByJunctionId: incidentMutable,
 		roomsByWallId: roomsByWallMutable,
+		openRoomWallIdSet,
+		openRoomJunctionIdSet,
 		openingIndicesByWallId,
 		componentKeyByJunctionId,
 		componentKeyByWallId,
@@ -1810,15 +1863,17 @@ function buildPlanarCombinatorialMap(
 		}
 	}
 
-	// Every positive bounded face must map 1-to-1 to a Room in `layoutCollectionRef(document, 'rooms')`,
-	// and each Room's stored `boundary` must already match the canonical walk
-	// sequence element-for-element (so `reconcileRooms` produces the exact same
-	// `boundary` array without rotating elements).
-	if (positiveFaceBoundaryByKey.size !== layoutLength(document, 'rooms')) {
+	// Every positive bounded face must map 1-to-1 to an ENCLOSED Space (I5),
+	// and each enclosed Space's stored `boundary` must already match the
+	// canonical walk sequence element-for-element (so `reconcileRooms` produces
+	// the exact same `boundary` array without rotating elements). An open Space
+	// is not a face and is certified by its composer outline above.
+	const enclosedRooms = document.rooms.filter((room) => !isOpenSpace(room));
+	if (positiveFaceBoundaryByKey.size !== enclosedRooms.length) {
 		return undefined;
 	}
 	const claimedFaceKeys = new Set<string>();
-	for (const room of document.rooms) {
+	for (const room of enclosedRooms) {
 		const roomKey = canonicalBoundaryCycleKey(room.boundary);
 		if (claimedFaceKeys.has(roomKey)) return undefined;
 		const canonicalBoundary = positiveFaceBoundaryByKey.get(roomKey);
