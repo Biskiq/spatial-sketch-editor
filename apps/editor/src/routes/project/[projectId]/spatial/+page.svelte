@@ -582,6 +582,7 @@
 		eraseHover: () => shell.eraseHover,
 		setEraseHover: (entry) => shell.setEraseHover(entry),
 		setPaintHover: (entry) => shell.setPaintHover(entry),
+		sliceActive: () => sliceReading.isActive(),
 		onNotice: (message) => shell.setNotice(message),
 		onRefreshHostTools: () => shell.refreshHostTools(),
 		selectHit: (hit) => commands.selectHit(hit),
@@ -902,10 +903,22 @@
 	}
 
 	$effect(() => () => {
-		// Leaving the project ends the reading: Lift is never carried across routes.
+		// Leaving the project ends the reading: neither Lift nor the Slice is carried
+		// across routes. The reading is a module singleton, so a cut left here would
+		// reappear in the next project.
 		interiorLift.clear();
+		sliceReading.clear();
+		setResolvedSlice(null);
 		artworkInteraction.dispose();
 		stageAssets.disposeArtwork();
+	});
+	$effect(() => {
+		if (experience.lensState === 'world') return;
+		// The Slice reads the world Stage: leaving the lens ends it exactly as a replaced
+		// project does, or the pill would offer a cut over an uncut Stage.
+		if (!sliceReading.isActive()) return;
+		sliceReading.clear();
+		setResolvedSlice(null);
 	});
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
@@ -987,6 +1000,8 @@
 		// no overhead to keep lifted: Lift is session state, never a document value.
 		wallFace.clear();
 		interiorLift.clear();
+		sliceReading.clear();
+		setResolvedSlice(null);
 		selection = null;
 		shell.setTask(null);
 		revealed = [];

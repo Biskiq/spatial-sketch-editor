@@ -16,8 +16,11 @@
  *   Canvas's plane array, one without (the ghost's exemption) — so the difference
  *   between "clipped with its subject" and "left uncut" is visible side by side.
  *
- * It also answers the cap **pick**: a downward ray at the wall column must hit the
- * cap at `cutY`, and only while a cut exists.
+ * It also shows where the cap's **geometry** is: a downward ray at the wall column
+ * meets the drawn cap at `cutY`, and only while a cut exists. This is placement, not
+ * the shipped pick path — the Stage's cap pick is `cutWallBandsOf`'s band surface in
+ * `plan-pick-provider` and is covered by its own unit suite; a ray against this
+ * fixture's meshes would not exercise it.
  */
 import {
 	AmbientLight,
@@ -290,7 +293,7 @@ function fixture() {
 		else releaseCaps();
 	}
 
-	/** A downward ray at the Wall's own column: it must land on the cap, if any. */
+	/** The drawn cap's height under the Wall's column, if a cut drew one. */
 	function capPick(): number | null {
 		const raycaster = new Raycaster(new Vector3(WALL.x, 5, 0), new Vector3(0, -1, 0), 0, 50);
 		const hits = raycaster.intersectObjects(caps, false);

@@ -48,8 +48,11 @@ describe('the Canvas decides the ghost, the Layer draws it', () => {
 	const layer = source('StageSliceLayer.svelte');
 
 	it('classifies the selection against the live reading', () => {
-		expect(canvas).toContain('subjectWhollyHidden(cut, subject)');
+		expect(canvas).toContain('subjectWhollyHidden(cut, subject.subject)');
 		expect(canvas).toContain('ghostSubjectOf(objects)');
+		// The bake is cached behind the selection and the geometry: a Sheet step must
+		// re-run the triangle test, not re-bake the subject's world positions.
+		expect(canvas).toContain('const ghostSubject = $derived.by(');
 	});
 
 	it('passes the ghost to the Slice layer and the unclipped flag to selection', () => {
@@ -63,8 +66,10 @@ describe('the Canvas decides the ghost, the Layer draws it', () => {
 		expect(ghost).toContain('opacity: SLICE_INK.ghostOpacity');
 		// A clipped ghost would be invisible, which is the whole failure mode.
 		expect(ghost).not.toContain('clippingPlanes');
-		// `keep()` sets the overlay layer, removes the raycast and adds it to the root.
-		expect(ghost).toContain('keep(mesh, () => {})');
+		// It is added to its own group, so a moved reading never removes it.
+		expect(ghost).toContain('ghostRoot.add(mesh)');
+		expect(ghost).toContain('mesh.layers.set(STAGE_OVERLAY_LAYER)');
+		expect(ghost).toContain('mesh.raycast = () => {}');
 	});
 });
 
@@ -77,10 +82,27 @@ describe('the section stays off the Sheet-drag frame', () => {
 	});
 
 	it('draws only the plane while the reading moves', () => {
-		const move = layer.slice(layer.indexOf('function moveReadingOnly'), layer.indexOf('$effect(() => {'));
+		const move = layer.slice(layer.indexOf('function moveReadingOnly'), layer.indexOf('function cancelTimers'));
 		expect(move).toContain('addPlane(reading.cutY');
 		// The expensive path must not appear on the drag frame.
 		expect(move).not.toContain('sectionMeshes(');
+		// The ghost is cheap and stays: a selected hidden subject vanishing mid-drag is
+		// the failure §2.4 exists to prevent.
+		expect(move).not.toContain('clearGhosts()');
+	});
+
+	it('records what was assembled only when the assembly actually ran', () => {
+		const rebuild = layer.slice(layer.indexOf('function rebuild'), layer.indexOf('function scheduleRebuild'));
+		expect(rebuild).toContain('assembled = {');
+		// Svelte runs a cleanup before every re-run: cancel there and a drag ends with
+		// no caps at all (the defect the review named).
+		expect(layer).not.toContain('return clearTimers');
+	});
+
+	it('keeps the ghost out of the section key and redraws it on its own', () => {
+		const key = layer.slice(layer.indexOf('function geometryKeyOf'), layer.indexOf('function rebuild'));
+		expect(key).not.toContain('ghostSelection');
+		expect(layer).toContain('if (ghostKey !== drawnGhostKey)');
 	});
 });
 

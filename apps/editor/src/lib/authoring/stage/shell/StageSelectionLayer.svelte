@@ -218,7 +218,7 @@
 		pivot.matrixWorldNeedsUpdate = true;
 
 		const silhouettePlanes = clipFor(tone);
-	const maskMaterial = new MeshBasicMaterial({
+		const maskMaterial = new MeshBasicMaterial({
 			fog: false,
 			...(silhouettePlanes === undefined ? {} : { clippingPlanes: silhouettePlanes }),
 			colorWrite: false,

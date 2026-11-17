@@ -187,18 +187,27 @@ colour-pass texels and change the image.
 
 A Slice's cut is display geometry: it changes no document, no material and no draw list membership.
 `createStageClip()` owns the one `clippingPlanes` array the renderer reads, and `StageCanvas` creates
-it inside the same effect that owns `provideRenderResources`; the Slice reading (`layout.slice`)
-resolves a world height and the Canvas writes a single `Plane` to that array (with
-`SECTION_OFFSET_METERS` already folded into its constant). No other component creates clipping
-planes, so "the cut is on" has exactly one owner. The Stage's own ink joins that owner rather than
-having its own: the selection contours and the Lift outline hold the Canvas's array by reference, so a
-gold contour or a dashed lid is cut with the body it stands for. The one exemption is a selected
-subject the cut hides wholly — it is drawn as an unclipped ghost, and its gold contour is deliberately
-left uncut, because a selection the creator can reach from the Index must stay visible.
+it **before** it provides the render resources, so the material store is born holding that exact array
+by reference. The array always holds **two** planes, entered, dragged and left without a replacement:
+the upper keeps `y ≤ cutY` (`normal (0,−1,0)`, `constant +cutY`) and the lower keeps `y ≥ lowerY`
+(`normal (0,1,0)`, `constant −lowerY`); with no finite depth the lower is parked at its keep-all
+constant. The GPU therefore clips at exactly `cutY` — there is no offset folded into a constant, and
+no single-plane special case. `StageClipPlanes`, mounted inside the Canvas, is the one writer: it
+applies the resolved reading and asks for a frame, which is also what repaints after Put back while
+the ink layer is unmounted.
+
+No other component creates clipping planes, so "the cut is on" has exactly one owner. The Stage's own
+ink joins that owner rather than having its own: the selection contours and the Lift outline hold the
+Canvas's array by reference, so a gold contour or a dashed lid is cut with the body it stands for. The
+one exemption is a selected subject the cut hides wholly — it is drawn as an unclipped ghost, and its
+gold contour is deliberately left uncut, because a selection the creator can reach from the Index must
+stay visible.
 
 The snapshot pass must not inherit it: a saved or shared image is the building, not the author's
-current cut. `renderStageSnapshot` runs the world passes with an empty array and restores the live
-one afterwards, so the same Canvas can snapshot with a cut on and keep drawing it.
+current cut. `asBuilt(render)` **parks each plane in place** at its keep-all value for the duration of
+the snapshot and writes the live constants back in `finally` — re-entrant and exception safe. It never
+swaps the array: a different array would break every material's shared reference and force the
+recompile the constant plane count exists to avoid.
 
 **Guard:** `authoring/stage/slice/stage-clip`, `stage-clip-shadows` and the real-WebGL regression in
 `perf/flows/stage-clip.spec.ts`. three r187 clips shadow casters only when their material sets

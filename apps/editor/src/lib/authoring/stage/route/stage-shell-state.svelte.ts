@@ -235,6 +235,10 @@ export function createStageShellState(input: StageShellStateInput) {
 			// A planned row is inspectable without a task; only a landed tool that has
 			// just completed belongs back at Select.
 			if (worldTool(activeWorldTool).stage === 'planned') return;
+			// Slice is landed but opens no task: it is a **reading**, and the reading is
+			// its own state. Without this it bounced straight back to Select on arming,
+			// which would also have emptied the A-4 tool rung.
+			if (activeWorldTool === 'slice') return;
 			activeWorldTool = 'select';
 			worldPlateOpen = false;
 			return;

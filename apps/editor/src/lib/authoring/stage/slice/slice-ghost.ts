@@ -120,15 +120,17 @@ function boundsOf(subject: SliceGhostSubject): SliceBounds | null {
 /**
  * Whether every drawable triangle of `subject` is wholly hidden.
  *
- * A subject with no drawable triangle is **not** ghosted: there is nothing to
- * ghost, and drawing an empty ghost would hide the fact that the subject has no
- * body.
+ * A subject with no drawable triangle and no bounds is **not** ghosted: there is
+ * nothing to ghost, and drawing an empty ghost would hide the fact that the subject
+ * has no body. A subject made only of driven geometry (skinned or instanced) is
+ * `approximate` with bounds, and the bounds rule decides it.
  */
 export function subjectWhollyHidden(resolved: ResolvedSlice, subject: SliceGhostSubject): boolean {
 	const pieces = hiddenPiecesOf(resolved);
+	const triangles = countTriangles(subject);
 	const bounds = boundsOf(subject);
-	if (subject.approximate === true || countTriangles(subject) === 0) {
-		if (countTriangles(subject) === 0) return false;
+	if (subject.approximate !== true && triangles === 0) return false;
+	if (subject.approximate === true || triangles === 0) {
 		// Fallback: bounds decide; anything not provably visible is hidden.
 		if (bounds === null) return true;
 		const piece = boundsPiece(bounds, pieces);

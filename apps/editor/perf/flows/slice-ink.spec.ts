@@ -7,8 +7,10 @@
  * `createStageClip`, the material store) and samples the pixels, so each of the three
  * claims is answered by what the frame shows rather than by a source assertion:
  *
- * - **the cap** — the removed Wall's exposed section is paper at `cutY`, and a
- *   downward ray at the Wall's column hits it exactly at the cut (and not at rest);
+ * - **the cap** — the removed Wall's exposed section is paper at `cutY`, and the drawn
+ *   cap geometry sits exactly at the cut (a downward ray meets it there, and at rest
+ *   there is no cap). The Stage's own cap *pick* is `plan-pick-provider`'s band
+ *   surface, which is unit-tested; this fixture does not claim to drive it;
  * - **the ghost** — a wholly hidden subject is drawn where its body is clipped away,
  *   and drawn *translucent* (a lighter presence than the same ghost opaque);
  * - **the clipped ink** — a contour holding the Canvas's planes is gone above the cut
@@ -90,8 +92,9 @@ test('the ghost, the clipped contour and the cap fill are actually drawn', async
 		expect(distance(cut.pixels.cap, '#f0e7d2'), `cap pixel ${cut.pixels.cap}`).toBeLessThan(48);
 		expect(distance(cut.pixels.cap, rest.pixels.wallAbove)).toBeGreaterThan(12);
 
-		// 2. The cap is a real surface at the cut, not a picture of one: a downward ray
-		//    at the Wall's column lands on it, and there was nothing there at rest.
+		// 2. The cap is drawn geometry at the cut, not a picture of one: a downward ray
+		//    at the Wall's column lands on it at exactly cutY, and there is nothing to
+		//    land on at rest. (The shipped pick is the provider's band surface, unit-tested.)
 		expect(cut.capPickY).not.toBeNull();
 		expect(Math.abs(cut.capPickY! - CUT.cutY)).toBeLessThan(1e-3);
 

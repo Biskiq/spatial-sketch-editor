@@ -26,6 +26,7 @@
 	import type { ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
 	import type { SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
 	import StageSliceLayer from './StageSliceLayer.svelte';
+	import StageClipPlanes from './StageClipPlanes.svelte';
 	import { onDestroy } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 	import type { CompiledLayoutGeometry, OverheadSource, PlanEvaluation } from '@portfolio/layout-core';
@@ -193,10 +194,6 @@ import StageMatGround from './StageMatGround.svelte';
 	const stageClip = setStageClip(createStageClip());
 	const resources = provideRenderResources({ clippingPlanes: stageClip.planes as Plane[] });
 	onDestroy(() => resources.dispose());
-	/** The reading reaches the shared planes; the layer's own rebuild asks for a frame. */
-	$effect(() => {
-		stageClip.apply(resolvedSlice ?? null);
-	});
 	/**
 	 * The selected subject **when the cut hides all of it**, or null.
 	 *
@@ -209,15 +206,33 @@ import StageMatGround from './StageMatGround.svelte';
 	 * Recomputed on selection, reading or geometry change only — `subjectWhollyHidden`
 	 * walks the subject's own triangles, never the scene.
 	 */
-	const sliceGhostSelection = $derived.by((): readonly Object3D[] | null => {
-		const cut = resolvedSlice ?? null;
-		if (cut === null || selection === null || selection === undefined) return null;
+	const ghostSubject = $derived.by(() => {
+		if (selection === null || selection === undefined) return null;
 		const objects = selectionObjectsOf(scenePick, selection);
 		if (objects.length === 0) return null;
 		const subject = ghostSubjectOf(objects);
-		if (subject === null) return null;
-		return subjectWhollyHidden(cut, subject) ? objects : null;
+		return subject === null ? null : { objects, subject };
 	});
+	/**
+	 * Classification only. It reads `ghostSubject` (cached by Svelte against the
+	 * selection and the drawn geometry), so a Sheet step re-runs one triangle test over
+	 * the already-baked buffers instead of baking the subject again.
+	 */
+	const sliceGhostSelection = $derived.by((): readonly Object3D[] | null => {
+		const cut = resolvedSlice ?? null;
+		const subject = ghostSubject;
+		if (cut === null || subject === null) return null;
+		return subjectWhollyHidden(cut, subject.subject) ? subject.objects : null;
+	});
+	/** The selected Layout identity, for the section's gold edge (plan test 4). */
+	const sliceSelectedIdentity = $derived(
+		selection !== null &&
+			selection !== undefined &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind !== 'room'
+			? `${selection.reference.subject.kind}:${selection.reference.subject.id}`
+			: null
+	);
 	/** The drawn meshes, as the caps section them; a mount or an edit is a new read. */
 	const sectionInputs = $derived.by((): readonly SectionInput[] => {
 		layoutRevision;
@@ -340,6 +355,8 @@ import StageMatGround from './StageMatGround.svelte';
 	shadows={PCFShadowMap}
 	toneMapping={CANVAS_TONE_MAPPING}
 >
+	<!-- The one writer of the shared planes, and the frame request that follows. -->
+	<StageClipPlanes clip={stageClip} reading={resolvedSlice ?? null} />
 	<!--
 		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is
@@ -479,6 +496,9 @@ import StageMatGround from './StageMatGround.svelte';
 			bounds={geometry.bounds ?? null}
 			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
 			ghostSelection={sliceGhostSelection}
+			selectedIdentity={sliceSelectedIdentity}
+			width={evaluation?.rect.width ?? 0}
+			height={evaluation?.rect.height ?? 0}
 		/>
 	{/if}
 	{#if framedViewport === null && evaluation !== null}

@@ -8,11 +8,17 @@
 	 * reveals — the section of the meshes actually drawn — so a door reads as a gap
 	 * and a Wall reads as a filled section rather than a hollow shell.
 	 *
-	 * The assembly is **kept off the Sheet-drag frame**: a Sheet drag draws the plane
-	 * (which is exact by construction — the cut is the GPU's planes) and assembles the
-	 * section once the drag rests. It is also timed in development against §6's 4 ms
-	 * budget, over which it logs; measured on an eleven-Room fixture it is ~30 ms, which
-	 * is why the rebuild waits for the settle rather than running every frame.
+	 * **The section is kept off the Sheet-drag frame.** A drag draws the plane (exact
+	 * by construction — the cut is the GPU's planes) and the ghost, and assembles the
+	 * section once the drag rests; the elapsed time is logged in development against
+	 * §6's 4 ms budget. Measured on an eleven-Room fixture one assembly is ~30 ms, so
+	 * assembling per frame would drop frames for the whole drag.
+	 *
+	 * The scheduling rule is `decideCapAssembly`, tested on its own. The two details
+	 * that make it true in Svelte: the effect returns **no cleanup**, so a re-run
+	 * cannot cancel the pending rAF or settle timer, and `assembled` is recorded only
+	 * inside `rebuild()` — the state it names is the state on screen, not the state
+	 * requested.
 	 */
 	import { T, useThrelte } from '@threlte/core';
 	import {
@@ -26,11 +32,15 @@
 		PlaneGeometry,
 		Shape,
 		ShapeGeometry,
+		Vector2,
 		Vector3,
 		MeshBasicMaterial,
 		type Material,
 		type Object3D
 	} from 'three';
+	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import {
 		sectionMeshes,
@@ -51,6 +61,9 @@
 		bounds = null,
 		revision = 0,
 		ghostSelection = null,
+		selectedIdentity = null,
+		width = 0,
+		height = 0,
 		onIssues
 	}: {
 		resolved: ResolvedSlice | null;
@@ -70,6 +83,11 @@
 		 * J12 step 3). Empty or null means nothing is ghosted.
 		 */
 		ghostSelection?: readonly Object3D[] | null;
+		/** The selected Layout identity (`wall:w-1`), for its gold section edge. */
+		selectedIdentity?: string | null;
+		/** The viewport in CSS pixels: fat lines need it to size 2/3 px edges. */
+		width?: number;
+		height?: number;
 		/** Extra observer for the assembly's issues; the dev report runs regardless. */
 		onIssues?: (issues: readonly CapAssemblyIssue[]) => void;
 	} = $props();
@@ -83,36 +101,52 @@
 	const { invalidate } = useThrelte();
 	const root = new Group();
 	root.name = 'StageSliceInk';
+	/** The ghost lives apart from the section, so a reading move never removes it. */
+	const ghostRoot = new Group();
+	ghostRoot.name = 'StageSliceGhost';
+	root.add(ghostRoot);
 
-	type Inked = { readonly object: Object3D; dispose(): void };
+	type Inked = { readonly object: Object3D; readonly parent: Group; dispose(): void };
 	let inked: Inked[] = [];
+	let ghosts: Inked[] = [];
 	/** Materials shared by a group's cap meshes; disposed with the rest. */
 	let shared: Material[] = [];
+	/** The ghost's own material, owned by the ghost group rather than by a rebuild. */
+	let ghostMaterials: Material[] = [];
 
-	function releaseAll(): void {
-		for (const entry of inked) {
-			root.remove(entry.object);
+	function drop(entries: Inked[]): void {
+		for (const entry of entries) {
+			entry.parent.remove(entry.object);
 			entry.dispose();
 		}
+	}
+	function releaseAll(): void {
+		drop(inked);
 		for (const material of shared) material.dispose();
 		inked = [];
 		shared = [];
 	}
+	function clearGhosts(): void {
+		drop(ghosts);
+		for (const material of ghostMaterials) material.dispose();
+		ghosts = [];
+		ghostMaterials = [];
+	}
 
-	function keep(object: Object3D, dispose: () => void): void {
+	function keep(object: Object3D, dispose: () => void, parent: Group = root): void {
 		object.layers.set(STAGE_OVERLAY_LAYER);
 		object.raycast = () => {};
 		object.frustumCulled = false;
-		root.add(object);
-		inked.push({ object, dispose });
+		parent.add(object);
+		inked.push({ object, parent, dispose });
 	}
 
 	/** The plane's own quad, one per reading: the yellow sheet the creator reads. */
 	function addPlane(y: number, tolerance: number): void {
 		if (bounds === null) return;
-		const width = Math.max(0.1, bounds.max[0] - bounds.min[0]);
+		const planeWidth = Math.max(0.1, bounds.max[0] - bounds.min[0]);
 		const depth = Math.max(0.1, bounds.max[2] - bounds.min[2]);
-		const geometry = new PlaneGeometry(width + tolerance * 2, depth + tolerance * 2);
+		const geometry = new PlaneGeometry(planeWidth + tolerance * 2, depth + tolerance * 2);
 		const material = new MeshBasicMaterial({
 			color: SLICE_PLANE_INK,
 			transparent: true,
@@ -230,7 +264,12 @@
 		}
 	}
 
-	/** The section's own edge: yellow for a closed loop, warning ink for an open one. */
+	/**
+	 * The section's own edges: 2 px yellow, a selected identity's edges 3 px gold over
+	 * them, an open chain in warning ink. The plan's test 4 — every edge carries its
+	 * source identity, and the selected identity's edges are isolable — is only true
+	 * on screen if this draws them apart, so the identity is not merely computed.
+	 */
 	function addSectionLines(
 		loops: readonly SectionLoop[],
 		chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
@@ -243,11 +282,13 @@
 			y,
 			originXZ[1] + u * basis.u[2] + v * basis.v[2]
 		];
-		const closed: number[] = [];
+		const plain: number[] = [];
+		const selected: number[] = [];
 		for (const loop of loops) {
 			loop.points.forEach((point, index) => {
 				const next = loop.points[(index + 1) % loop.points.length]!;
-				closed.push(...world(point), ...world(next));
+				const target = loop.edgeIdentities[index] === selectedIdentity ? selected : plain;
+				target.push(...world(point), ...world(next));
 			});
 		}
 		const open: number[] = [];
@@ -256,20 +297,28 @@
 				open.push(...world(chain.points[index]!), ...world(chain.points[index + 1]!));
 			}
 		}
-		const build = (positions: number[], color: number): void => {
+		const build = (positions: number[], color: number, widthPx: number): void => {
 			if (positions.length === 0) return;
-			const geometry = new BufferGeometry();
-			geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-			const material = new LineBasicMaterial({ color, depthWrite: false, toneMapped: false });
-			const lines = new LineSegments(geometry, material);
-			lines.renderOrder = 4;
-			keep(lines, () => {
+			const geometry = new LineGeometry();
+			geometry.setPositions(positions);
+			const material = new LineMaterial({
+				color,
+				linewidth: widthPx,
+				depthWrite: false,
+				toneMapped: false,
+				resolution: new Vector2(Math.max(1, width), Math.max(1, height))
+			});
+			const line = new Line2(geometry, material);
+			line.computeLineDistances();
+			line.renderOrder = 4;
+			keep(line, () => {
 				geometry.dispose();
 				material.dispose();
 			});
 		};
-		build(closed, SLICE_PLANE_INK);
-		build(open, SLICE_WARNING_INK);
+		build(plain, SLICE_PLANE_INK, SLICE_INK.edgeWidth);
+		build(selected, SLICE_INK.gold, SLICE_INK.selectedEdgeWidth);
+		build(open, SLICE_WARNING_INK, SLICE_INK.edgeWidth);
 	}
 
 	/**
@@ -290,7 +339,9 @@
 			depthWrite: false,
 			toneMapped: false
 		});
-		shared.push(material);
+		// Not `shared`: a section rebuild must never dispose the material the ghost is
+		// still drawn with (the ghost outlives a drag by design).
+		ghostMaterials.push(material);
 		for (const source of meshes) {
 			source.updateWorldMatrix(true, false);
 			const mesh = new Mesh(source.geometry, material);
@@ -298,8 +349,25 @@
 			mesh.matrix.copy(source.matrixWorld);
 			mesh.matrixWorldNeedsUpdate = true;
 			mesh.renderOrder = 2;
-			keep(mesh, () => {});
+			mesh.layers.set(STAGE_OVERLAY_LAYER);
+			mesh.raycast = () => {};
+			mesh.frustumCulled = false;
+			ghostRoot.add(mesh);
+			ghosts.push({ object: mesh, parent: ghostRoot, dispose: () => {} });
 		}
+	}
+
+	/** What the ghost currently shows, so a no-op effect run redraws nothing. */
+	let drawnGhostKey: string | null = null;
+	function ghostKeyOf(): string | null {
+		const selection = ghostSelection;
+		if (selection === null || selection.length === 0) return null;
+		return `${selection.length}:${selection[0]?.id ?? ''}:${selection[0]?.uuid ?? ''}`;
+	}
+	function drawGhost(): void {
+		clearGhosts();
+		drawnGhostKey = ghostKeyOf();
+		if (ghostSelection !== null && ghostSelection.length > 0) addGhost(ghostSelection);
 	}
 
 	/**
@@ -318,13 +386,21 @@
 	let pending = 0;
 	/** The settle timer; `undefined` when the Sheet is at rest. */
 	let settle: ReturnType<typeof setTimeout> | undefined;
-	/** What the ink currently reflects; `decideCapAssembly` compares against it. */
+	/** What is on screen; written only by `rebuild()`. */
 	let assembled: CapAssemblyState | null = null;
+
+	function cutKeyOf(reading: ResolvedSlice): string {
+		return `${reading.cutY}:${reading.lowerY ?? 'floor'}`;
+	}
+	function geometryKeyOf(): string {
+		return `${revision}:${inputs.length}`;
+	}
 
 	function rebuild(): void {
 		releaseAll();
 		const reading = resolved;
 		if (reading === null) {
+			assembled = null;
 			invalidate();
 			return;
 		}
@@ -337,7 +413,10 @@
 			addCap(group.loops, result.basis, reading.cutY, originXZ);
 			addSectionLines(group.loops, group.chains, result.basis, reading.cutY, originXZ);
 		}
-		if (ghostSelection !== null && ghostSelection.length > 0) addGhost(ghostSelection);
+		if (ghostKeyOf() !== drawnGhostKey) drawGhost();
+		// The state on screen, not the state requested: a cancelled timer used to leave
+		// this naming a section that was never assembled.
+		assembled = { geometryKey: geometryKeyOf(), cutKey: cutKeyOf(reading) };
 		if (import.meta.env.DEV) {
 			const elapsed = performance.now() - started;
 			if (elapsed > 4) {
@@ -368,48 +447,61 @@
 	 * The plane is one quad and the walls are clipped by the shared GPU planes, so the
 	 * cut being *shown* costs nothing; what is expensive is the section. Drawing a
 	 * stale section under a moved plane would be a lie, so the section is removed for
-	 * the duration of the drag and assembled once when the Sheet rests.
+	 * the duration of the drag and assembled once when the Sheet rests. The ghost is
+	 * **not** removed: it is cheap, and a selected hidden subject disappearing for the
+	 * length of a drag is the failure §2.4 exists to prevent.
 	 */
 	function moveReadingOnly(reading: ResolvedSlice): void {
 		releaseAll();
 		addPlane(reading.cutY, 0.4);
 		if (reading.lowerY !== null) addDepthOutline(reading.lowerY);
+		if (ghostKeyOf() !== drawnGhostKey) drawGhost();
 		invalidate();
+	}
+
+	function cancelTimers(): void {
+		if (pending !== 0) {
+			cancelAnimationFrame(pending);
+			pending = 0;
+		}
+		if (settle !== undefined) {
+			clearTimeout(settle);
+			settle = undefined;
+		}
 	}
 
 	$effect(() => {
 		const reading = resolved;
-		// A new geometry, a new input set or a new selection is a new section: assemble
-		// now. The ghost is part of that key, so selecting another hidden subject never
-		// waits for a settle.
-		const geometryKey = `${revision}:${inputs.length}:${ghostSelection?.length ?? 0}:${ghostSelection?.[0]?.id ?? 'none'}`;
-		const clearTimers = (): void => {
-			if (pending !== 0) {
-				cancelAnimationFrame(pending);
-				pending = 0;
-			}
+		// Read the ghost so a classification flip redraws it; it is never part of the
+		// section's key, because a ghost appearing mid-drag must not cost a rebuild.
+		const ghostKey = ghostKeyOf();
+		if (reading === null) {
+			const hadInk = assembled !== null || inked.length > 0 || ghosts.length > 0;
+			assembled = null;
+			drawnGhostKey = null;
+			cancelTimers();
+			releaseAll();
+			clearGhosts();
+			if (hadInk) invalidate();
+			return;
+		}
+		if (ghostKey !== drawnGhostKey) {
+			drawGhost();
+			invalidate();
+		}
+		const next: CapAssemblyState = {
+			geometryKey: geometryKeyOf(),
+			cutKey: cutKeyOf(reading)
+		};
+		const decision = decideCapAssembly(assembled, next);
+		if (decision === 'none' || decision === 'clear') return;
+		if (decision === 'rebuild') {
 			if (settle !== undefined) {
 				clearTimeout(settle);
 				settle = undefined;
 			}
-		};
-		if (reading === null) {
-			assembled = null;
-			clearTimers();
-			releaseAll();
-			invalidate();
-			return clearTimers;
-		}
-		const next: CapAssemblyState = {
-			geometryKey,
-			cutKey: `${reading.cutY}:${reading.lowerY ?? 'floor'}`
-		};
-		const decision = decideCapAssembly(assembled, next);
-		if (decision === 'none' || decision === 'clear') return clearTimers;
-		assembled = next;
-		if (decision === 'rebuild') {
 			scheduleRebuild();
-			return clearTimers;
+			return;
 		}
 		// A moved reading: one frame per drag step, and no assembly on it. The plane is
 		// exact on every frame anyway; the section waits for the Sheet to rest.
@@ -419,16 +511,16 @@
 			settle = undefined;
 			scheduleRebuild();
 		}, SETTLE_MILLISECONDS);
-		return clearTimers;
+		// No cleanup is returned on purpose: Svelte runs a cleanup before every re-run,
+		// and cancelling the pending assembly there was how a drag ended with no caps.
 	});
 
 	$effect(() => () => {
-		if (pending !== 0) cancelAnimationFrame(pending);
-		if (settle !== undefined) clearTimeout(settle);
-		pending = 0;
-		settle = undefined;
+		cancelTimers();
 		assembled = null;
+		drawnGhostKey = null;
 		releaseAll();
+		clearGhosts();
 		invalidate();
 	});
 </script>

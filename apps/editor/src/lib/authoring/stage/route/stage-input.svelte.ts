@@ -85,6 +85,8 @@ export type StageInputArbiterInput = {
 	readonly eraseHover: () => StageSelectionEntry | null;
 	readonly setEraseHover: (entry: StageSelectionEntry | null) => void;
 	readonly setPaintHover: (entry: StageSelectionEntry | null) => void;
+	/** Whether a Slice reading is live: a press is then a refusal, not a selection. */
+	readonly sliceActive: () => boolean;
 	readonly onNotice: (message: string) => void;
 	readonly onRefreshHostTools: () => void;
 	readonly selectHit: (hit: StageSourceHit) => void;
@@ -347,6 +349,14 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		// creator can still orbit the sheet.
 		if (event.button === 0 && !event.shiftKey && input.unfold.pointerPress(event)) return;
 		if (input.activeLayer()?.pointerDown(event, input.viewMarkAt(event)) === 'claimed') return;
+		if (input.sliceActive()) {
+			// §9's one Slice refusal, in words. Slice is a reading, not a drawing tool: a
+			// Stage press has nothing to place, and it must not select or start a gesture
+			// either. The press is refused so its click cannot select through it.
+			input.press.refuse(event.pointerId);
+			input.onNotice('Drag the Height Sheet to move the cut.');
+			return;
+		}
 		// The adapters get the press first: the binding that owns an open task (a
 		// Scene transform, an armed Ink chain) may claim it, and so may a binding
 		// that offers direct manipulation with no task at all (a selected Wall's

@@ -131,9 +131,22 @@ describe('cap assembly cost over an eleven-Room fixture', () => {
 		const best = samples[0]!;
 		const worst = samples[samples.length - 1]!;
 
+		// §6's budget is set over 50 k candidate triangles; this fixture is 7,040 and all
+		// isolated Rooms (no T/X junctions), so the projection — not the fixture figure —
+		// is what an exhibition-scale project pays. Stated on every run so the PR and the
+		// next performance change both start from the real scale.
+		const projected50k = (median / warm.candidateTriangles) * 50_000;
 		console.info(
 			`slice cap assembly: ${ROOMS} rooms / ${inputs.length} walls / ${warm.candidateTriangles} candidate triangles — ` +
-				`best ${best.toFixed(2)} ms, median ${median.toFixed(2)} ms, worst ${worst.toFixed(2)} ms (budget 4 ms)`
+				`best ${best.toFixed(2)} ms, median ${median.toFixed(2)} ms, worst ${worst.toFixed(2)} ms ` +
+				`(budget 4 ms; ≈${projected50k.toFixed(0)} ms projected at 50 k)`
+		);
+		// A loose ceiling, not the budget: a regression that multiplies the assembly fails
+		// here instead of only appearing in a log nobody reads. The measured best is
+		// ~29 ms isolated and reaches ~97 ms with the whole suite running in parallel,
+		// so 250 ms catches an order-of-magnitude regression without flapping.
+		expect(best, `assembly best ${best.toFixed(1)} ms over ${warm.candidateTriangles} triangles`).toBeLessThan(
+			250
 		);
 
 		// Scaling evidence: the same assembly at 1, 3, 6 and 11 rooms. If the cost were

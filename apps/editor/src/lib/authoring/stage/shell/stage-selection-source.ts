@@ -93,6 +93,10 @@ export function ghostSubjectOf(objects: readonly Object3D[]): SliceGhostSubject 
 		const drawnElsewhere = mesh as Mesh & { isSkinnedMesh?: boolean; isInstancedMesh?: boolean };
 		if (drawnElsewhere.isSkinnedMesh === true || drawnElsewhere.isInstancedMesh === true) {
 			approximate = true;
+			// Its CPU positions do not follow the drawn body, but its world AABB does: the
+			// bounds rule needs one, and without it a subject made only of driven meshes
+			// resolved to null and never ghosted (§2.4's conservative fallback).
+			box.expandByObject(mesh);
 			continue;
 		}
 		// `BufferGeometry.morphAttributes` is always an object; only a non-empty one
@@ -102,8 +106,10 @@ export function ghostSubjectOf(objects: readonly Object3D[]): SliceGhostSubject 
 		const buffer = trianglesOf(mesh, box);
 		if (buffer !== null) triangles.push(buffer);
 	}
-	if (triangles.length === 0) return null;
 	const bounds = box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
+	// Nothing to test and nothing to bound: no body to ghost. An approximate subject
+	// with bounds **is** a subject the bounds rule can decide.
+	if (triangles.length === 0 && (bounds === null || approximate !== true)) return null;
 	const min = bounds === null ? [0, 0, 0] : [...(bounds.min as [number, number, number])];
 	const max = bounds === null ? [0, 0, 0] : [...(bounds.max as [number, number, number])];
 	return {

@@ -35,6 +35,9 @@ export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> 
 	'apps/editor/src/lib/authoring/stage/paper-scene.ts': ['webgl-only-three-path'],
 	'apps/editor/src/lib/authoring/stage/paper-marks.ts': ['webgl-only-three-path'],
 	'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte': ['webgl-only-three-path'],
+	// 2 px / 3 px section edges are `Line2`, whose geometry and material live on the
+	// examples path. Editor Stage ink only: never exported, never in a snapshot.
+	'apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte': ['webgl-only-three-path'],
 	// T1 X1's Lift outline is the same editor-only fat-line family as the selection
 	// contour; Three ships a WebGPU line variant.
 	'apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte': ['webgl-only-three-path'],

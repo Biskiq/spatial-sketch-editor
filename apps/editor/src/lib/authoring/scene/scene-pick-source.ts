@@ -276,6 +276,10 @@ export function createScenePickSource() {
 				const identity = renderIdentityOf(node);
 				if (identity === null) return;
 				if (identity.kind === 'floor') return;
+				// A Wall failure surface is the *fallback* body the builder produced for a
+				// Wall it could not close. Capping it would draw a solid paper section over
+				// a defect and read as a resolved Wall; its edges already say what happened.
+				if (identity.kind === 'wall-failure') return;
 				sources.push({
 					identity: `${identity.kind}:${identity.id}`,
 					group: identity.kind === 'object' ? `layout-object:${identity.id}` : LAYOUT_STRUCTURE_GROUP,

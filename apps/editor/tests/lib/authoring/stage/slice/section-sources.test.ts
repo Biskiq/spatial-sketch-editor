@@ -85,7 +85,7 @@ describe('Slice cap sources: Layout identity decides the scope', () => {
 		expect(sources.length).toBe(3);
 	});
 
-	it('gives a Wall and its failure surface the same structure union', () => {
+	it('caps a Wall but never its failure surface', () => {
 		const root = new Group();
 		const wall = tagRenderIdentity(box([0, 1.5, 0], [4, 3, 0.2]), 'wall', 'w1');
 		const failure = tagRenderIdentity(box([8, 1.5, 0], [4, 3, 0.2]), 'wall-failure', 'w2');
@@ -95,11 +95,11 @@ describe('Slice cap sources: Layout identity decides the scope', () => {
 
 		const sources = pick.sectionSources();
 
-		expect(sources.map((source) => source.group)).toEqual([
-			LAYOUT_STRUCTURE_GROUP,
-			LAYOUT_STRUCTURE_GROUP
-		]);
-		expect(sources.map((source) => source.identity)).toEqual(['wall:w1', 'wall-failure:w2']);
+		// A failure surface is the builder's fallback body for a Wall it could not
+		// close. Capping it would draw a solid paper section over a defect and read as
+		// a resolved Wall, so it keeps its edges and contributes no cap source.
+		expect(sources.map((source) => source.identity)).toEqual(['wall:w1']);
+		expect(sources.map((source) => source.group)).toEqual([LAYOUT_STRUCTURE_GROUP]);
 	});
 });
 
