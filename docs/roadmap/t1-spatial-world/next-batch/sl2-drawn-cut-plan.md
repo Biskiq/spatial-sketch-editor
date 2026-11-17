@@ -1,8 +1,8 @@
 # SL2 — Drawn Cut implementation plan
 
-Status: implementing. Extends SL1 (`layout.slice`, PR #362) on the shipped
-`ResolvedSlice`, `StageClip`, `StageSliceLayer` and Slice pill seams. No SL3
-analytic Section and no second clipping architecture.
+Status: implemented on `t1/sl2-drawn-cut`. Extends SL1 (`layout.slice`, PR #362)
+on the shipped `ResolvedSlice`, `StageClip`, `StageSliceLayer` and Slice pill
+seams. No SL3 analytic Section and no second clipping architecture.
 
 ## 1. One session reading
 
@@ -88,3 +88,40 @@ predicate, geometry and picking logic live in their Stage owners.
 Stop if the shader cannot be made finite/stable without a T2 contract change or
 a second clipping path; record the evidence and alternatives instead of
 shipping a fallback architecture.
+
+## 7. Implementation notes (seams as built)
+
+- The GLSL patch lives **inside** `render/resources/material-store.ts`, beside the
+  store that owns the materials. It is not a second render module: the render
+  layer's import closure stays store + descriptor, and the only new renderer-site
+  allowlist entry is that store's `onBeforeCompile`. A WebGPU port needs the TSL
+  node-material equivalent.
+- `slice-clip` uniforms are created by `stage-clip.ts`, one object per Canvas,
+  and handed to the store at construction. `customProgramCacheKey` is the fixed
+  `biskiq.slice-clip@1`, so entering, drawing, moving, flipping and depth-changing
+  add no programs. Real-WebGL fixture: 4 programs at rest, 9 drawn, unchanged
+  through all four edits, with every colour-material lease patched — including
+  the imported clone.
+- The drawn section is the vertical plane through the segment, clipped to the
+  planar extent by a Sutherland–Hodgman pass over each loop and a segment run
+  pass over each open chain. Only the primary cut plane is capped; the depth
+  boundary is a display limit (SL3).
+- Plan picking treats a face as drawn if any part of its linear plan span lies
+  outside the finite extent or inside the shown depth band; a large flat fragment
+  is sampled across its vertices, edge midpoints and centroid. The old
+  midpoint/first-point tests would have dropped a face or floor that visibly
+  crosses the cut.
+- The depth grip resolves against its own press point, so grabbing anywhere in
+  its hit radius and dragging outward deepens the slab rather than jumping to an
+  absolute pointer distance. The line grip outranks the depth grip at the 0.1 m
+  minimum, where the two marks overlap.
+- Measured cap assembly on the eleven-Room / 7,040-triangle fixture (loaded
+  editor lane): drawn best 8.59 ms, median 18.21 ms, worst 19.91 ms; SL1's
+  horizontal assembly measured 76–97 ms in the same loaded pass (29–32 ms when
+  isolated). Both remain over the 4 ms budget and are kept off continuous
+  gestures by the 120 ms settle. No drag-end hitch measurement was taken on a
+  real display; that is a limitation, not a passed budget.
+- Not run: authenticated browser QA in Plan/3D against a live project (the cloud
+  workspace has no signed-in project). The mounted route test covers the plate,
+  Level→Drawn, one finite commit, Flip and Put back; the real-WebGL fixture
+  covers the pixels, program counts, shadows and as-built snapshot.

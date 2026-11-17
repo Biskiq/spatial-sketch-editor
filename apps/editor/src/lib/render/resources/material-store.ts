@@ -32,6 +32,7 @@ import {
 	BasicDepthPacking,
 	ShadowMaterial,
 	Vector2,
+	Vector3,
 	type Material,
 	type Plane,
 	type Texture
@@ -328,7 +329,216 @@ export type MaterialStoreOptions = {
 	 * stays `false`). Absent means no clipping, which is the Preview Canvas.
 	 */
 	readonly clippingPlanes?: Plane[];
+	/**
+	 * The drawn Slice's shared uniforms. Colour materials get the finite-segment
+	 * discard patch once, at construction; depth/distance/shadow materials never do,
+	 * because shadows are rendered from the unclipped world. Grade and other
+	 * `clip: false` surfaces stay unpatched too.
+	 */
+	readonly sliceClip?: SliceClipUniforms;
 };
+
+/**
+ * The drawn Slice's GPU predicate, installed once per colour material.
+ *
+ * SL1 realized a Level cut with two native clipping planes. A drawn cut needs a
+ * **finite segment** as well: only the points within the segment's planar extent
+ * are cut. Three's plane count is constant, so a second clipping architecture would
+ * either recompile on every draw or clip the whole infinite plane. This module keeps
+ * SL1's two planes and adds one uniform-driven discard:
+ *
+ * ```
+ * s = dot(p - origin, along)
+ * b = dot(p - origin, hiddenNormal)
+ * hidden = |s| <= halfLength && (b > 0 || b < -depth)
+ * ```
+ *
+ * The patch is installed when the material is constructed, before its first
+ * compile. The mode uniform is `0` for Level/off, so drawing, Flip and depth changes
+ * only write uniforms and never change the program. `customProgramCacheKey` includes
+ * a fixed tag so the program cache cannot confuse a patched material with its
+ * unpatched twin.
+ *
+ * Depth/distance/shadow materials are deliberately not patched: shadows are rendered
+ * from the unclipped world and must stay identical (SL1's `clipShadows: false`).
+ */
+
+export type ScalarUniform = { value: number };
+export type VectorUniform = { value: Vector3 };
+
+/** The uniform object every patched material shares by reference. */
+export type SliceClipUniforms = {
+	readonly mode: ScalarUniform;
+	readonly origin: VectorUniform;
+	readonly normal: VectorUniform;
+	readonly along: VectorUniform;
+	readonly halfLength: ScalarUniform;
+	readonly depth: ScalarUniform;
+};
+
+/** The fixed suffix on every patched program's cache key. */
+export const SLICE_CLIP_PROGRAM_KEY = 'biskiq.slice-clip@1';
+
+export function createSliceClipUniforms(): SliceClipUniforms {
+	return {
+		mode: { value: 0 },
+		origin: { value: new Vector3(0, 0, 0) },
+		normal: { value: new Vector3(0, 1, 0) },
+		along: { value: new Vector3(1, 0, 0) },
+		halfLength: { value: 0 },
+		depth: { value: 0.1 }
+	};
+}
+
+/** Write a resolved reading into the shared uniforms. `null`/Level turns the patch off. */
+export type SliceClipSource = {
+	readonly origin: readonly [number, number, number];
+	readonly hiddenNormal: readonly [number, number, number];
+	readonly along: readonly [number, number, number];
+	readonly halfLength: number;
+	readonly depthMeters: number;
+} | null;
+
+/** Write a drawn cut into the shared uniforms. `null` turns the patch off. */
+export function writeSliceClipUniforms(
+	uniforms: SliceClipUniforms,
+	source: SliceClipSource
+): void {
+	if (source === null) {
+		uniforms.mode.value = 0;
+		uniforms.halfLength.value = 0;
+		return;
+	}
+	uniforms.mode.value = 1;
+	uniforms.origin.value.set(source.origin[0], source.origin[1], source.origin[2]);
+	uniforms.normal.value.set(
+		source.hiddenNormal[0],
+		source.hiddenNormal[1],
+		source.hiddenNormal[2]
+	);
+	uniforms.along.value.set(source.along[0], source.along[1], source.along[2]);
+	uniforms.halfLength.value = source.halfLength;
+	uniforms.depth.value = source.depthMeters;
+}
+
+/** A plain snapshot of the values, for the as-built render's `finally`. */
+export function snapshotSliceClipUniforms(uniforms: SliceClipUniforms): {
+	readonly mode: number;
+	readonly origin: [number, number, number];
+	readonly normal: [number, number, number];
+	readonly along: [number, number, number];
+	readonly halfLength: number;
+	readonly depth: number;
+} {
+	return {
+		mode: uniforms.mode.value,
+		origin: uniforms.origin.value.toArray() as [number, number, number],
+		normal: uniforms.normal.value.toArray() as [number, number, number],
+		along: uniforms.along.value.toArray() as [number, number, number],
+		halfLength: uniforms.halfLength.value,
+		depth: uniforms.depth.value
+	};
+}
+
+export function restoreSliceClipUniforms(
+	uniforms: SliceClipUniforms,
+	state: ReturnType<typeof snapshotSliceClipUniforms>
+): void {
+	uniforms.mode.value = state.mode;
+	uniforms.origin.value.fromArray(state.origin);
+	uniforms.normal.value.fromArray(state.normal);
+	uniforms.along.value.fromArray(state.along);
+	uniforms.halfLength.value = state.halfLength;
+	uniforms.depth.value = state.depth;
+}
+
+/** A patch is installed once; a second store option must not wrap it twice. */
+const PATCHED = Symbol('biskiq.slice-clip-patched');
+
+const VERTEX_DECLARATION = 'varying vec3 vSliceWorldPosition;\n';
+const FRAGMENT_DECLARATION = [
+	'varying vec3 vSliceWorldPosition;',
+	'uniform float uSliceClipMode;',
+	'uniform vec3 uSliceClipOrigin;',
+	'uniform vec3 uSliceClipNormal;',
+	'uniform vec3 uSliceClipAlong;',
+	'uniform float uSliceClipHalfLength;',
+	'uniform float uSliceClipDepth;',
+	''
+].join('\n');
+
+const VERTEX_SAMPLE = `
+#include <project_vertex>
+vec4 sliceClipWorld = vec4( transformed, 1.0 );
+#ifdef USE_BATCHING
+sliceClipWorld = batchingMatrix * sliceClipWorld;
+#endif
+#ifdef USE_INSTANCING
+sliceClipWorld = instanceMatrix * sliceClipWorld;
+#endif
+vSliceWorldPosition = ( modelMatrix * sliceClipWorld ).xyz;
+`;
+
+const FRAGMENT_TEST = `
+#include <clipping_planes_fragment>
+if ( uSliceClipMode > 0.5 ) {
+	vec3 sliceClipRel = vSliceWorldPosition - uSliceClipOrigin;
+	float sliceClipS = dot( sliceClipRel, uSliceClipAlong );
+	if ( abs( sliceClipS ) <= uSliceClipHalfLength ) {
+		float sliceClipB = dot( sliceClipRel, uSliceClipNormal );
+		if ( sliceClipB > 0.0 || sliceClipB < -uSliceClipDepth ) discard;
+	}
+}
+`;
+
+/**
+ * Install the predicate on a colour material, preserving any compile hook it
+ * already had (an imported glTF material may carry one).
+ *
+ * Returns `false` for a shader whose chunk layout this patch does not recognize;
+ * the material is left untouched rather than half-patched. The store treats that as
+ * a diagnostic, not a reason to add a fallback clipping path.
+ */
+export function applySliceClipShader(material: Material, uniforms: SliceClipUniforms): boolean {
+	const target = material as Material & { [PATCHED]?: boolean };
+	if (target[PATCHED] === true) return true;
+	const baseCompile = material.onBeforeCompile;
+	const baseKey = material.customProgramCacheKey();
+	material.onBeforeCompile = function (shader, renderer) {
+		baseCompile.call(this, shader, renderer);
+		if (
+			!shader.vertexShader.includes('#include <project_vertex>') ||
+			!shader.fragmentShader.includes('#include <clipping_planes_fragment>')
+		) {
+			return;
+		}
+		shader.uniforms.uSliceClipMode = uniforms.mode;
+		shader.uniforms.uSliceClipOrigin = uniforms.origin;
+		shader.uniforms.uSliceClipNormal = uniforms.normal;
+		shader.uniforms.uSliceClipAlong = uniforms.along;
+		shader.uniforms.uSliceClipHalfLength = uniforms.halfLength;
+		shader.uniforms.uSliceClipDepth = uniforms.depth;
+		shader.vertexShader =
+			VERTEX_DECLARATION +
+			shader.vertexShader.replace('#include <project_vertex>', VERTEX_SAMPLE);
+		shader.fragmentShader =
+			FRAGMENT_DECLARATION +
+			shader.fragmentShader.replace('#include <clipping_planes_fragment>', FRAGMENT_TEST);
+	};
+	material.customProgramCacheKey = function () {
+		return `${baseKey}|${SLICE_CLIP_PROGRAM_KEY}`;
+	};
+	// A store material compiles on its first draw, after this call; no `needsUpdate`
+	// is needed, and setting it would only mark a fresh material dirty.
+	target[PATCHED] = true;
+	return true;
+}
+
+/** Whether this material carries the patch (diagnostics/tests). */
+export function hasSliceClipShader(material: Material): boolean {
+	return (material as Material & { [PATCHED]?: boolean })[PATCHED] === true;
+}
+
 
 /** Whether this descriptor's material takes the Canvas's clipping planes. */
 function clipsWithStore(descriptor: MaterialDescriptor): boolean {
@@ -363,8 +573,12 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 				// **After** any `source.clone()`: `Material.copy` clones each plane into a
 				// new array, so a material cloned by the imported path would otherwise
 				// keep a detached copy that never follows the cut.
+				const clips = clipsWithStore(descriptor);
 				if (options.clippingPlanes !== undefined) {
-					material.clippingPlanes = clipsWithStore(descriptor) ? options.clippingPlanes : null;
+					material.clippingPlanes = clips ? options.clippingPlanes : null;
+				}
+				if (clips && options.sliceClip !== undefined) {
+					applySliceClipShader(material, options.sliceClip);
 				}
 				entry = { descriptor, material, refCount: 0 };
 				entries.set(key, entry);

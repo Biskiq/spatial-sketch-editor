@@ -17,6 +17,31 @@ declare global {
 
 type Report = ReturnType<StageClipFixture['report']>;
 type Reading = { kind: 'level'; cutY: number; lowerY: number | null };
+type Drawn = {
+	kind: 'drawn';
+	origin: [number, number, number];
+	along: [number, number, number];
+	hiddenNormal: [number, number, number];
+	halfLength: number;
+	depthMeters: number;
+	hidden: 'left' | 'right';
+	start: [number, number, number];
+	end: [number, number, number];
+};
+
+function drawnCut(depthMeters: number, hidden: 'left' | 'right' = 'right'): Drawn {
+	return {
+		kind: 'drawn',
+		origin: [0, 0, 0],
+		along: [1, 0, 0],
+		hiddenNormal: hidden === 'left' ? [0, 0, -1] : [0, 0, 1],
+		halfLength: 0.9,
+		depthMeters,
+		hidden,
+		start: [-0.9, 0, 0],
+		end: [0.9, 0, 0]
+	};
+}
 
 /** The band centres the fixture draws, in metres. */
 function bandCentre(index: number): number {
@@ -122,12 +147,70 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 		const live = await page.evaluate(() => window.__STAGE_CLIP__.report({ kind: 'level', cutY: 1.2, lowerY: null }));
 		expect(live.hash).toBe(cut.hash);
 
+		// 7. The drawn arm: finite segment, finite depth, Flip and a stable program
+		//    count on the same real GPU, including the imported material column.
+		const drawnRest = await page.evaluate(() => window.__STAGE_CLIP__.drawn(null));
+		expect(drawnRest.error).toBe(0);
+		const drawnBaseline = drawnRest.programs;
+		const cellOf = (cells: typeof drawnRest.cells, x: number, z: number): string =>
+			cells.find((cell) => cell.x === x && cell.z === z)!.color;
+		// At rest every cell and the ground are drawn.
+		for (const cell of drawnRest.cells) expect(cell.color).not.toBe(drawnRest.background);
+
+		const drawn = await page.evaluate((reading) => window.__STAGE_CLIP__.drawn(reading as never), drawnCut(0.15));
+		expect(drawn.error).toBe(0);
+		for (const cell of drawn.cells) {
+			const hidden = Math.abs(cell.x) <= 0.9 && (cell.z > 0 || cell.z < -0.15);
+			if (hidden) expect(cell.color, `drawn cell ${cell.x}/${cell.z}`).toBe(drawn.background);
+			else expect(cell.color, `drawn cell ${cell.x}/${cell.z}`).toBe(cellOf(drawnRest.cells, cell.x, cell.z));
+		}
+		expect(drawn.programs).toBe(drawnBaseline);
+
+		// The depth ray: 0.5 m uncovers the −0.4 m layer, 0.1 m stays in the shown band.
+		const deeper = await page.evaluate((reading) => window.__STAGE_CLIP__.drawn(reading as never), drawnCut(0.5));
+		expect(deeper.programs).toBe(drawnBaseline);
+		expect(cellOf(deeper.cells, 0.7, -0.4)).toBe(cellOf(drawnRest.cells, 0.7, -0.4));
+					expect(cellOf(deeper.cells, 0.7, -0.1)).toBe(cellOf(drawnRest.cells, 0.7, -0.1));
+		expect(cellOf(deeper.cells, 0.7, 0.5)).toBe(deeper.background);
+
+		// Flip: the shown/removed sides exchange, at the same program count.
+		const flipped = await page.evaluate((reading) => window.__STAGE_CLIP__.drawn(reading as never), drawnCut(0.6, 'left'));
+		expect(flipped.programs).toBe(drawnBaseline);
+		expect(cellOf(flipped.cells, 0.7, -0.4)).toBe(flipped.background);
+		expect(cellOf(flipped.cells, 0.7, 0.5)).toBe(cellOf(drawnRest.cells, 0.7, 0.5));
+
+		// Moving the segment (a different midpoint/extent) does not recompile.
+		const movedDrawn = await page.evaluate(
+			(reading) => window.__STAGE_CLIP__.drawn(reading as never),
+			{ ...drawnCut(0.15), origin: [0.25, 0, 0], start: [-0.65, 0, 0], end: [1.15, 0, 0] }
+		);
+		expect(movedDrawn.programs).toBe(drawnBaseline);
+		// Moving the extent left keeps the old left column outside the new cut.
+		expect(cellOf(movedDrawn.cells, -1.5, 0.5)).toBe(cellOf(drawnRest.cells, -1.5, 0.5));
+
+		// A snapshot in the middle of the drawn cut renders as built, then restores.
+		const drawnAsBuilt = await page.evaluate((reading) => window.__STAGE_CLIP__.drawnAsBuilt(reading as never), drawnCut(0.15));
+		expect(drawnAsBuilt.hash).toBe(drawnRest.hash);
+		const drawnLive = await page.evaluate((reading) => window.__STAGE_CLIP__.drawn(reading as never), drawnCut(0.15));
+		expect(drawnLive.hash).toBe(drawn.hash);
+
+		// Shadows remain rendered from the unclipped world with a drawn reading.
+		const shadowDrawnRest = await page.evaluate(() => window.__STAGE_CLIP__.shadow(null));
+		// Deep enough that the whole receiver is on the shown side: this isolates the
+		// shadow map from the colour cut, which is what the assertion is about.
+		const shadowDrawnCut = await page.evaluate((reading) => window.__STAGE_CLIP__.shadow(reading as never), drawnCut(5));
+		expect(shadowDrawnCut.hash).toBe(shadowDrawnRest.hash);
+
 		console.log(
 			`stage clip: ${JSON.stringify({
 				programs: rest.programs,
+				drawnPrograms: drawnBaseline,
 				cutHash: cut.hash,
 				restHash: rest.hash,
-				shadow: shadowRest.hash
+				drawnHash: drawn.hash,
+				drawnRestHash: drawnRest.hash,
+				shadow: shadowRest.hash,
+				shadowDrawn: shadowDrawnRest.hash
 			})}`
 		);
 		await page.evaluate(() => window.__STAGE_CLIP__?.close());

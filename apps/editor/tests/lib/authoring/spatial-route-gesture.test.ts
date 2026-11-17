@@ -91,6 +91,7 @@ import {
 /** The starter keeps its fixed captured identity across every boot. */
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
+import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import { wallStationFrame } from '$lib/authoring/adapters/layout/precision';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
@@ -311,6 +312,52 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 describe('mounted Stage pointer lifecycle', () => {
+	it('arms Drawn from the Slice plate and commits one finite reading', async () => {
+		worldKey('Build').click();
+		await settled();
+		const sliceTool = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .tier .sub')].find(
+			(node) => node.textContent?.trim() === 'Slice'
+		);
+		if (sliceTool === undefined) throw new Error('the Build family offers no Slice tool');
+		sliceTool.click();
+		await settled();
+		expect(sliceReading.reading).toMatchObject({ kind: 'level' });
+		expect(target.querySelector('[data-slice-plate]')).not.toBeNull();
+
+		button('Drawn cut').click();
+		await settled();
+		expect(button('Drawn cut').getAttribute('aria-pressed')).toBe('true');
+
+		const start = projected([0, 0, -4]);
+		const end = projected([4, 0, -4]);
+		pointer('pointerdown', start);
+		await frame();
+		pointer('pointermove', end);
+		await frame();
+		pointer('pointerup', end);
+		await settled();
+
+		const reading = sliceReading.reading;
+		if (reading?.kind !== 'drawn') throw new Error('the drawn gesture did not commit');
+		expect(reading.start[0]).toBeCloseTo(0, 6);
+		expect(reading.start[1]).toBeCloseTo(-4, 6);
+		expect(reading.end[0]).toBeCloseTo(4, 6);
+		expect(reading.end[1]).toBeCloseTo(-4, 6);
+		// The route probe's Canvas does not publish content bounds, so this is the
+		// minimum; the real Canvas defaults to the far-side distance.
+		expect(reading.depthMeters).toBeGreaterThanOrEqual(0.1);
+		expect(target.querySelector('[data-slice-pill]')?.textContent).toContain('Drawn cut');
+
+		button('Flip').click();
+		await settled();
+		expect(sliceReading.reading).toMatchObject({ hidden: 'left' });
+
+		target.querySelector<HTMLButtonElement>('[data-slice-put-back]')!.click();
+		await settled();
+		expect(sliceReading.reading).toBeNull();
+	});
+
+
 	it('moves every registered task entry to Find or the dock and leaves the Index a locator', () => {
 		// The host's own dock keys (Select, Paint, Measure, Eraser) are Find entries too.
 		const registered = [

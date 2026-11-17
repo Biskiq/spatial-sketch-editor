@@ -45,6 +45,7 @@ import type { StageSession, StageTask } from '../stage-session';
 import type { StageMeasureController } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
 import type { StagePaintController } from '../stage-painter';
+import type { SliceDrawController } from '../slice/slice-draw.svelte';
 import { stageResizeCursorCss } from '../stage-glyphs';
 import {
 	layoutSelectionReference,
@@ -87,6 +88,8 @@ export type StageInputArbiterInput = {
 	readonly setPaintHover: (entry: StageSelectionEntry | null) => void;
 	/** Whether the Slice **tool** is armed: a press is then a refusal, not a selection. */
 	readonly sliceToolArmed: () => boolean;
+	/** The drawn Slice gesture, when Drawn is armed. */
+	readonly sliceDraw: () => SliceDrawController | null;
 	readonly onNotice: (message: string) => void;
 	readonly onRefreshHostTools: () => void;
 	readonly selectHit: (hit: StageSourceHit) => void;
@@ -100,7 +103,7 @@ export type StageInputArbiterInput = {
 export type StageInputArbiter = ReturnType<typeof createStageInputArbiter>;
 
 export function createStageInputArbiter(input: StageInputArbiterInput) {
-	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null>(null);
+	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' | 'slice-draw' } | null>(null);
 	let hoverSelection = $state<StageSelectionEntry | null>(null);
 	let hoverMove = $state(false);
 	let stageCursor = $state<string | null>(null);
@@ -161,6 +164,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	 */
 	function abortGesture(): void {
 		input.press.abort();
+		if (drag?.mode === 'slice-draw') input.sliceDraw()?.cancel();
 		endPinch();
 		endGesture();
 	}
@@ -315,6 +319,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			input.paintTool()?.cancel();
 			input.onRefreshHostTools();
 		}
+		if (drag.mode === 'slice-draw') input.sliceDraw()?.cancel();
 		abortGesture();
 		clearHover();
 		const stageEl = input.stageElement();
@@ -349,6 +354,34 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		// creator can still orbit the sheet.
 		if (event.button === 0 && !event.shiftKey && input.unfold.pointerPress(event)) return;
 		if (input.activeLayer()?.pointerDown(event, input.viewMarkAt(event)) === 'claimed') return;
+		// Drawn Slice has its own gesture: a press either places the finite segment or
+		// grabs an endpoint/line/depth grip. It must run before the Slice refusal,
+		// which exists for the Level tool whose press has nothing to place.
+		const sliceDrawTool = input.sliceDraw();
+		if (sliceDrawTool !== null) {
+			const pointerEvaluationId = stage.evaluationId();
+			if (pointerEvaluationId !== null) {
+				const css = input.stageCss(event);
+				const claimed = sliceDrawTool.down({
+					css,
+					evaluationId: pointerEvaluationId,
+					coarse: event.pointerType !== 'mouse'
+				});
+				if (claimed) {
+					if (!input.capturePointer(event.currentTarget as HTMLElement, event.pointerId)) {
+						sliceDrawTool.cancel();
+						return;
+					}
+					if (input.press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+						sliceDrawTool.cancel();
+						return;
+					}
+					adapterEvaluationId = pointerEvaluationId;
+					drag = { x: event.clientX, y: event.clientY, mode: 'slice-draw' };
+					return;
+				}
+			}
+		}
 		const sliceRefusal = slicePressRefusal(input.sliceToolArmed());
 		if (sliceRefusal !== null) {
 			// §9's one Slice refusal, in words. A press has nothing to place while the
@@ -530,6 +563,15 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			input.onRefreshHostTools();
 			return;
 		}
+		if (drag.mode === 'slice-draw') {
+			if (!input.press.ownsPointer(event.pointerId)) return;
+			const id = input.facade()?.evaluationId() ?? null;
+			const tool = input.sliceDraw();
+			if (id === null || tool === null) return;
+			tool.move({ css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' });
+			drag = { x: event.clientX, y: event.clientY, mode: 'slice-draw' };
+			return;
+		}
 		if (drag.mode === 'adapter') {
 			if (!input.press.ownsPointer(event.pointerId)) return;
 			// A reading change cancels the adapter's gesture lease before the next
@@ -577,6 +619,18 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		// ended, not aborted. Only the owning pointer may end it — a refused second
 		// pointer's release must not release the first pointer's lease.
 		if (!input.press.end(event.pointerId)) return;
+		if (drag?.mode === 'slice-draw') {
+			// The press's own command; the release never selects through it.
+			input.press.claim(event.pointerId);
+			const id = input.facade()?.evaluationId() ?? null;
+			const tool = input.sliceDraw();
+			drag = null;
+			adapterEvaluationId = null;
+			if (tool !== null && id !== null) {
+				tool.up({ css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' });
+			}
+			return;
+		}
 		if (drag?.mode === 'host') {
 			// The host tool's tap is its own command, never a selection.
 			input.press.claim(event.pointerId);

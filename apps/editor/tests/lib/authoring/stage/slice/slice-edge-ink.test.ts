@@ -124,7 +124,7 @@ describe('the layer renders segments with the segment class', () => {
 
 			it('accumulates groups rather than replacing the collection', () => {
 			expect(layer).toContain(
-				'appendSectionEdges({ segments: edges, open: openEdges }'
+				'appendSectionEdgesWorld({ segments: edges, open: openEdges }'
 			);
 		});
 

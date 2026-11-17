@@ -98,7 +98,10 @@ const SLICE_EMPTY_BAND_METERS = 1e-6;
  * drops the surface entirely instead of leaving a degenerate one.
  */
 export function clampFaceToSlice(surface: StagePickSurface, slice: ResolvedSlice | null): StagePickSurface | null {
-	if (slice === null || surface.kind !== 'face') return surface;
+	// A drawn cut removes a vertical side, not a horizontal band: the face's compiled
+	// vertical extent is unchanged, and `faceDrawn` decides whether its visible part
+	// survives.
+	if (slice === null || slice.kind === 'drawn' || surface.kind !== 'face') return surface;
 	const bottomMeters = Math.max(surface.bottomMeters, slice.lowerY ?? Number.NEGATIVE_INFINITY);
 	const topMeters = Math.min(surface.topMeters, slice.cutY);
 	return topMeters <= bottomMeters + SLICE_EMPTY_BAND_METERS ? null : { ...surface, bottomMeters, topMeters };
@@ -111,11 +114,83 @@ function firstPlanPoint(geometry: PlanFragmentGeometry): LayoutVec2 {
 	return geometry.polygon[0] ?? [0, 0];
 }
 
-/** Whether a flat fragment is drawn at all under the cut (its elevation is hidden). */
+/**
+ * Every plan point a fragment can be sampled at: its vertices, edge midpoints and
+ * centroid. A drawn cut hides a band, and a large floor can cross that band with all
+ * of its own corners on the hidden side; the edge/centre samples are what keep the
+ * visible strip selectable.
+ */
+function planSamples(geometry: PlanFragmentGeometry): LayoutVec2[] {
+	const points = planSegments(geometry).flatMap(([start, end]) => [start, end]);
+	const unique = [...new Map(points.map((point) => [`${point[0]}:${point[1]}`, point])).values()];
+	if (unique.length === 0) return [];
+	const samples = [...unique];
+	for (let index = 0; index < unique.length; index += 1) {
+		const from = unique[index]!;
+		const to = unique[(index + 1) % unique.length]!;
+		samples.push([(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]);
+	}
+	samples.push([
+		unique.reduce((sum, point) => sum + point[0], 0) / unique.length,
+		unique.reduce((sum, point) => sum + point[1], 0) / unique.length
+	]);
+	return samples;
+}
+
+/**
+ * Whether a flat fragment is drawn at all under the cut.
+ *
+ * Level keeps SL1's first-point rule: its cut hides a horizontal band, so one
+ * representative point is exact for a fragment at a single elevation. A drawn cut is
+ * a vertical slab, so the fragment is sampled across its own plan extent instead.
+ */
 export function flatDrawn(surface: StagePickSurface, slice: ResolvedSlice | null): boolean {
 	if (slice === null || surface.kind !== 'flat') return true;
-	const point = firstPlanPoint(surface.geometry);
-	return !sliceHides(slice, point[0], surface.elevationMeters, point[1]);
+	if (slice.kind !== 'drawn') {
+		const point = firstPlanPoint(surface.geometry);
+		return !sliceHides(slice, point[0], surface.elevationMeters, point[1]);
+	}
+	return planSamples(surface.geometry).some(
+		(point) => !sliceHides(slice, point[0], surface.elevationMeters, point[1])
+	);
+}
+
+/** The parameter interval of a linear value inside `[min, max]`, or null. */
+function rangeInterval(
+	from: number,
+	to: number,
+	min: number,
+	max: number
+): readonly [number, number] | null {
+	const delta = to - from;
+	if (Math.abs(delta) < 1e-12) return from >= min && from <= max ? [0, 1] : null;
+	const a = (min - from) / delta;
+	const b = (max - from) / delta;
+	const lo = Math.max(0, Math.min(a, b));
+	const hi = Math.min(1, Math.max(a, b));
+	return lo <= hi ? [lo, hi] : null;
+}
+
+/** Whether any part of a vertical Wall face is drawn where the pointer can land. */
+export function faceDrawn(surface: StagePickSurface, slice: ResolvedSlice | null): boolean {
+	if (slice === null || slice.kind !== 'drawn' || surface.kind !== 'face') return true;
+	// The face is a straight segment in plan. Solve the two linear constraints —
+	// inside the finite extent, and inside the shown depth band — instead of sampling:
+	// a face can cross the whole shown slab with both endpoints and its midpoint in the
+	// hidden regions, which a three-station sample would incorrectly reject.
+	const relative = (point: LayoutVec2): readonly [number, number] => [
+		(point[0] - slice.origin[0]) * slice.along[0] + (point[1] - slice.origin[2]) * slice.along[2],
+		(point[0] - slice.origin[0]) * slice.hiddenNormal[0] +
+			(point[1] - slice.origin[2]) * slice.hiddenNormal[2]
+	];
+	const [s0, b0] = relative(surface.start);
+	const [s1, b1] = relative(surface.end);
+	const extent = rangeInterval(s0, s1, -slice.halfLength, slice.halfLength);
+	if (extent === null) return true;
+	// Any part of the face outside the finite segment is always drawn.
+	if (extent[0] > 0 || extent[1] < 1) return true;
+	const depth = rangeInterval(b0, b1, -slice.depthMeters, 0);
+	return depth !== null;
 }
 
 function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
@@ -221,7 +296,7 @@ function capSurfacesOf(
 	slice: ResolvedSlice | null,
 	interval: { readonly start: number; readonly end: number } | null
 ): readonly StagePickSurface[] {
-	if (slice === null) return [];
+	if (slice === null || slice.kind === 'drawn') return [];
 	if (fragment.ref.stream !== 'cut') return [];
 	if (interval === null) return [];
 	const span: CutWallSpan = { startDistance: interval.start, endDistance: interval.end };
@@ -737,7 +812,7 @@ export function createPlanPickProvider(
 				slice
 			)
 				.map((surface) => clampFaceToSlice(surface, slice))
-				.filter((surface): surface is StagePickSurface => surface !== null && flatDrawn(surface, slice));
+				.filter((surface): surface is StagePickSurface => surface !== null && flatDrawn(surface, slice) && faceDrawn(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 			if (winner === null) {

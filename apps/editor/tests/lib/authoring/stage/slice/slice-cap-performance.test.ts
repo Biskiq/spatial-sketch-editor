@@ -25,6 +25,8 @@ import { compileWallFirstLayoutGeometry, legJoinsByWall, type LayoutDocumentWall
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { LAYOUT_STRUCTURE_GROUP } from '$lib/authoring/scene/scene-pick-source';
 import { sectionMeshes, type SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
+import { sectionForSlice } from '$lib/authoring/stage/slice/slice-section';
+import type { DrawnResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
 
 const ROOMS = 11;
 const WIDTH = 6;
@@ -166,5 +168,35 @@ describe('cap assembly cost over an eleven-Room fixture', () => {
 			scaling.push(`${rooms} rooms: ${runs[2]!.toFixed(2)} ms`);
 		}
 		console.info(`slice cap assembly scaling — ${scaling.join(', ')}`);
+
+		// SL2: the same fixture through the finite vertical plane. This is the
+		// drag-end settle cost, not a frame cost; the number is printed for the PR.
+		const drawn: DrawnResolvedSlice = {
+			kind: 'drawn',
+			origin: [ROOMS * (WIDTH + 4) * 0.5, 0, DEPTH / 2],
+			along: [1, 0, 0],
+			hiddenNormal: [0, 0, 1],
+			halfLength: ROOMS * (WIDTH + 4),
+			depthMeters: 100,
+			hidden: 'right',
+			start: [-10, 0, DEPTH / 2],
+			end: [ROOMS * (WIDTH + 4) + 10, 0, DEPTH / 2]
+		};
+		const drawnWarm = sectionForSlice(inputs, drawn);
+		expect(drawnWarm.result.issues).toEqual([]);
+		const drawnSamples: number[] = [];
+		for (let run = 0; run < 7; run += 1) {
+			const started = performance.now();
+			sectionForSlice(inputs, drawn);
+			drawnSamples.push(performance.now() - started);
+		}
+		drawnSamples.sort((left, right) => left - right);
+		const drawnMedian = drawnSamples[Math.floor(drawnSamples.length / 2)]!;
+		console.info(
+			`slice drawn cap assembly: ${ROOMS} rooms / ${drawnWarm.result.candidateTriangles} candidate triangles — ` +
+				`best ${drawnSamples[0]!.toFixed(2)} ms, median ${drawnMedian.toFixed(2)} ms, worst ${drawnSamples.at(-1)!.toFixed(2)} ms ` +
+				`(budget 4 ms; finite extent ${drawn.halfLength.toFixed(1)} m)`
+		);
+		expect(drawnSamples[0]!).toBeLessThan(250);
 	});
 });

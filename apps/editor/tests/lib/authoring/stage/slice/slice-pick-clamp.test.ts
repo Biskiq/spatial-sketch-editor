@@ -23,6 +23,7 @@ import { evaluateLayoutPlan, type CompiledLayoutGeometry, type LayoutVec2, type 
 import {
 	clampFaceToSlice,
 	createPlanPickProvider,
+	faceDrawn,
 	flatDrawn,
 	type StagePickSurface
 } from '$lib/authoring/layout/plan-pick-provider';
@@ -32,6 +33,17 @@ import { twoRoomGeometry, FIRST_ROOM_STANDING_POINT } from '../../../layout/__fi
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const CUT: ResolvedSlice = { kind: 'level', cutY: 1.2, lowerY: null };
+const DRAWN: ResolvedSlice = {
+	kind: 'drawn',
+	origin: [0, 0, 0],
+	along: [1, 0, 0],
+	hiddenNormal: [0, 0, 1],
+	halfLength: 2,
+	depthMeters: 1,
+	hidden: 'right',
+	start: [-2, 0, 0],
+	end: [2, 0, 0]
+};
 
 function planOf(geometry: CompiledLayoutGeometry): PlanEvaluation {
 	const bounds = geometry.bounds!;
@@ -102,6 +114,25 @@ describe('clampFaceToSlice: a face answers only where it is drawn', () => {
 			geometry: { kind: 'polygon', polygon: [[0, 0], [1, 0], [1, 1]] }
 		};
 		expect(clampFaceToSlice(flat, CUT)).toBe(flat);
+	});
+
+	it('keeps a face that crosses the drawn slab even when all three stations are hidden', () => {
+		// z from −2 (beyond the 1 m depth) to 2.1 (near side); the shown band −1…0
+		// lies wholly between the endpoints and the midpoint.
+		const crossing: StagePickSurface = { kind: 'face', start: [1, -2], end: [1, 2.1], bottomMeters: 0, topMeters: 3 };
+		expect(faceDrawn(crossing, DRAWN)).toBe(true);
+		expect(faceDrawn({ ...crossing, start: [1, 2], end: [1, 4] }, DRAWN)).toBe(false);
+		// Outside the finite extent both sides remain pickable.
+		expect(faceDrawn({ ...crossing, start: [3, -2], end: [3, 2] }, DRAWN)).toBe(true);
+	});
+
+	it('keeps a large flat fragment whose corners are hidden but whose centre is shown', () => {
+		const floor: StagePickSurface = {
+			kind: 'flat',
+			elevationMeters: 0,
+			geometry: { kind: 'polygon', polygon: [[-3, -2], [3, -2], [3, 2], [-3, 2]] }
+		};
+		expect(flatDrawn(floor, DRAWN)).toBe(true);
 	});
 
 	it('drops a flat fragment whose elevation the cut hides', () => {

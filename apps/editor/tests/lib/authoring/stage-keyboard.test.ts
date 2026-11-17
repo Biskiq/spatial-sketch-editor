@@ -112,6 +112,30 @@ describe('stage keyboard arbitration', () => {
 		expect(calls).toEqual(['interrupt:escape', 'close-selection', 'interrupt:escape', 'put-back-lift']);
 	});
 
+	it('cancels a live drawn draft before it puts the cut back', () => {
+		let draft = true;
+		let slice = true;
+		const { calls, keyboard } = harness({
+			sliceDraftActive: () => draft,
+			cancelSliceDraft: () => {
+				draft = false;
+				calls.push('cancel-slice-draft');
+			},
+			sliceActive: () => slice,
+			putBackSlice: () => {
+				slice = false;
+				calls.push('put-back-slice');
+			}
+		});
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'cancel-slice-draft']);
+		expect(slice).toBe(true);
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'cancel-slice-draft', 'interrupt:escape', 'put-back-slice']);
+	});
+
 	it('never puts a reading back when the posture layer claims the unwind', () => {
 		let lift = true;
 		const { calls, keyboard } = harness({

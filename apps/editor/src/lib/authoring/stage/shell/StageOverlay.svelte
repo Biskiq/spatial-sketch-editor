@@ -38,6 +38,7 @@
 		viewportHeight = 0,
 		tracePreview = null,
 		hostTools = null,
+		sliceDraft = null,
 		lightGround = false,
 		onActivateDisclosure = () => {}
 	}: {
@@ -57,6 +58,8 @@
 			readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string;
 			} | null;
 		} | null;
+		/** The drawn Slice proposal's length tag, in Stage-local CSS. */
+		sliceDraft?: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string } | null;
 		onActivateDisclosure?: (id: string) => void;
 		lightGround?: boolean;
 	} = $props();
@@ -392,6 +395,19 @@
 			>
 				<rect width={tagWidth(dimension.label)} height="20" rx="5" />
 				<text x="5" y="12">{dimension.label}</text>
+			</g>
+		</g>
+	{/if}
+
+	{#if sliceDraft !== null}
+		{@const draft = sliceDraft}
+		{@const middle = [(draft.from[0] + draft.to[0]) / 2, (draft.from[1] + draft.to[1]) / 2]}
+		<g class="mark dimension" data-slice-draft-label={draft.label}>
+			<line class="halo" x1={draft.from[0]} y1={draft.from[1]} x2={draft.to[0]} y2={draft.to[1]} />
+			<line class="dimension-line" x1={draft.from[0]} y1={draft.from[1]} x2={draft.to[0]} y2={draft.to[1]} />
+			<g class="tag" transform={`translate(${middle[0] + 8} ${middle[1] - 22})`}>
+				<rect width={tagWidth(draft.label)} height="20" rx="5" />
+				<text x="5" y="12">{draft.label}</text>
 			</g>
 		</g>
 	{/if}

@@ -29,6 +29,10 @@ const RULES: readonly TokenRule[] = [
 export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {
 	// The WebGL shim: the DFG lookup lifecycle wraps onBeforeCompile. The only renderer-specific module.
 	'apps/editor/src/lib/render/managed-webgl-renderer.ts': ['onBeforeCompile'],
+	// T1 SL2's finite drawn cut: a fixed, uniform-driven GLSL discard installed on the
+	// built-in materials. Editor Stage only (never a snapshot/Preview surface). This is
+	// the one world-material site; a WebGPU port needs a TSL node material equivalent.
+	'apps/editor/src/lib/render/resources/material-store.ts': ['onBeforeCompile'],
 	// Editor-only GLSL for the mat and grid; a node material when a port happens.
 	'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts': ['ShaderMaterial'],
 	// Editor-only fat lines; Three ships a WebGPU line variant.

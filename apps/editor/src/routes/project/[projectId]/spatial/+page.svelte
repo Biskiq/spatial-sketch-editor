@@ -69,6 +69,7 @@
 		interiorLift
 	} from '$lib/authoring/layout/interior-lift-store.svelte';
 	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
+	import { createSliceDraw } from '$lib/authoring/stage/slice/slice-draw.svelte';
 	import { pickThroughSlice, pickVisibleFaceThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
 	import { setResolvedSlice } from '$lib/authoring/stage/slice/slice-resolved';
 	import {
@@ -468,6 +469,7 @@
 
 	let artworkInteraction!: ReturnType<typeof createStageArtworkInteraction>;
 	let unfoldGestures!: ReturnType<typeof createStageUnfoldGestures>;
+	let sliceDraw!: ReturnType<typeof createSliceDraw>;
 	let stageInput!: ReturnType<typeof createStageInputArbiter>;
 	let stageKeyboard!: ReturnType<typeof createStageKeyboard>;
 
@@ -510,7 +512,8 @@
 			requestReplacement: (kind) => requestReplacement(kind),
 			downloadSourceJson: () => downloadSourceJson()
 		},
-		showExperienceWelcome: () => experience.showWelcome()
+		showExperienceWelcome: () => experience.showWelcome(),
+		disarmSliceDraw: () => sliceDraw.disarm()
 	});
 
 	finishes = createFinishAuthoring({
@@ -578,6 +581,16 @@
 		onNotice: (message) => shell.setNotice(message)
 	});
 
+	sliceDraw = createSliceDraw({
+		facade: () => facade,
+		evaluationId: () => facade?.evaluationId() ?? null,
+		renderedReading: () => (evaluation?.renderedReading === 'plan' ? 'plan' : evaluation?.renderedReading === '3d' ? '3d' : null),
+		eye: () => (evaluation === null ? null : eyeOfInspectionPose(evaluation.pose)),
+		bounds: () => stageContentBounds,
+		datumMeters: () => boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0,
+		notice: (message) => shell.setNotice(message)
+	});
+
 	stageInput = createStageInputArbiter({
 		facade: () => facade,
 		evaluation: () => evaluation,
@@ -606,7 +619,8 @@
 		setPaintHover: (entry) => shell.setPaintHover(entry),
 		// The refusal belongs to the armed Slice **tool**, not to a live cut: back on
 		// Select, the creator selects and drags everything below the cut.
-		sliceToolArmed: () => shell.activeWorldTool === 'slice',
+		sliceToolArmed: () => shell.activeWorldTool === 'slice' && !sliceDraw.armed,
+		sliceDraw: () => (sliceDraw.armed ? sliceDraw : null),
 		onNotice: (message) => shell.setNotice(message),
 		onRefreshHostTools: () => shell.refreshHostTools(),
 		selectHit: (hit) => commands.selectHit(hit),
@@ -668,6 +682,8 @@
 		closeSelection: () => commands.closeSelection(),
 		liftActive: () => interiorLift.isActive(),
 		putBackLift: () => interiorLift.putBack(),
+		sliceDraftActive: () => sliceDraw.hasDraft(),
+		cancelSliceDraft: () => sliceDraw.cancelDraft(),
 		sliceActive: () => sliceReading.isActive(),
 		putBackSlice
 	});
@@ -815,7 +831,9 @@
 		if (facade === null) return;
 		facade.setPlanParameters({
 			depthMeters:
-				reading === null ? PLAN_DEFAULT_DEPTH_METERS : planOverridesOf(reading).depthMeters
+				reading === null
+					? PLAN_DEFAULT_DEPTH_METERS
+					: (planOverridesOf(reading).depthMeters ?? PLAN_DEFAULT_DEPTH_METERS)
 		});
 	});
 
@@ -828,6 +846,17 @@
 	const slicePill = $derived.by(() => {
 		const reading = sliceReading.reading;
 		if (reading === null) return null;
+		if (reading.kind === 'drawn') {
+			return {
+				mode: 'drawn' as const,
+				cutLabel: 'Drawn cut',
+				depthLabel: `${reading.depthMeters.toFixed(2)} m`,
+				items: [],
+				onDepth: () => {},
+				onFlip: () => sliceDraw.flip(),
+				onPutBack: () => putBackSlice()
+			};
+		}
 		const items = sliceDepthItems({
 			reading,
 			sheetHeightMeters: shell.heightMeters,
@@ -866,6 +895,7 @@
 	});
 
 	function putBackSlice(): void {
+		sliceDraw.disarm();
 		sliceReading.putBack();
 		shell.setActiveWorldTool('select');
 	}
@@ -931,6 +961,7 @@
 		// across routes. The reading is a module singleton, so a cut left here would
 		// reappear in the next project.
 		interiorLift.clear();
+		sliceDraw.disarm();
 		sliceReading.clear();
 		setResolvedSlice(null);
 		finishes?.cancelImage();
@@ -942,8 +973,14 @@
 		// The Slice reads the world Stage: leaving the lens ends it exactly as a replaced
 		// project does, or the pill would offer a cut over an uncut Stage.
 		if (!sliceReading.isActive()) return;
+		sliceDraw.disarm();
 		sliceReading.clear();
 		setResolvedSlice(null);
+	});
+	$effect(() => {
+		// Changing the World row away from Slice ends the drawn gesture; the cut
+		// itself stays and is edited after Put back or under Select as usual.
+		if (shell.activeWorldTool !== 'slice' && sliceDraw.armed) sliceDraw.disarm();
 	});
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
@@ -1025,6 +1062,7 @@
 		// no overhead to keep lifted: Lift is session state, never a document value.
 		wallFace.clear();
 		interiorLift.clear();
+		sliceDraw.disarm();
 		sliceReading.clear();
 		setResolvedSlice(null);
 		selection = null;
@@ -1370,11 +1408,34 @@
 			get liftSources() { return liftedSources; },
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
 			get resolvedSlice() { return resolvedSlice; },
+			get sliceDraft() { return sliceDraftWorld; },
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
 			get unfoldPinActive() { return unfoldGestures.sheetPinActive; },
 			unfoldAnchorPin: unfoldGestures.idlePin?.point ?? null
 		};
+	});
+
+	/** The live drawn proposal in both worlds: one for the ink, one for the tag. */
+	const sliceDraftWorld = $derived.by(() => {
+		const draft = sliceDraw.view().draft;
+		return draft === null ? null : { start: draft.start, end: draft.end };
+	});
+	const sliceDraftOverlay = $derived.by(() => {
+		const draft = sliceDraw.view().draft;
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		const rect = evaluation?.rect ?? null;
+		if (draft === null || stage === null || id === null || rect === null) return null;
+		const project = (point: readonly [number, number, number]): readonly [number, number] | null => {
+			const projected = stage.projectWorld(point, id);
+			return projected.kind === 'projected'
+				? [projected.css[0] - rect.left, projected.css[1] - rect.top]
+				: null;
+		};
+		const from = project(draft.start);
+		const to = project(draft.end);
+		return from === null || to === null ? null : { from, to, label: draft.label };
 	});
 
 	const overlay = $derived({
@@ -1388,6 +1449,7 @@
 		viewportHeight: rect?.height ?? 0,
 		tracePreview,
 		hostTools: shell.hostToolOverlay,
+		sliceDraft: sliceDraftOverlay,
 		lightGround: paperVisible || evaluation?.renderedReading === '3d'
 	});
 
@@ -1674,8 +1736,12 @@
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
 						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
 						onLookPick: look.pickLibraryEntry,
-						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : null,
+						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 						inkReading: shell.inkReading,
+						sliceMode: sliceReading.reading?.kind ?? null,
+						sliceDrawing: sliceDraw.armed,
+						onSliceLevel: () => { sliceDraw.disarm(); sliceReading.level(); },
+						onSliceDrawn: () => { sliceDraw.arm(); shell.setActiveWorldTool('slice'); },
 						onTogglePalette: () => shell.togglePalette()
 					}
 					: null}

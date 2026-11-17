@@ -71,6 +71,8 @@ export type StageShellCommandInput = {
 		readonly downloadSourceJson: () => void;
 	};
 	readonly showExperienceWelcome: () => void;
+	/** End a drawn gesture when Slice is re-armed as Level. */
+	readonly disarmSliceDraw?: () => void;
 };
 
 export function createStageShellCommands(input: StageShellCommandInput) {
@@ -377,11 +379,12 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	/** Arm one dock key (from the dock, its key or Find). */
 	function armDockKey(key: StageDockKey): void {
 		if (key.slot === 'slice') {
-			// Arming Slice opens the reading, not a task: SL1 has one mode (Level), so
-			// arming again is the same choice and replaces the reading.
+			// Arming Slice opens the reading, not a task. Level is the immediate SL1
+			// reading; the plate's Drawn arm replaces it with the finite gesture.
 			shell.setLibraryOpen(false);
 			shell.setActiveWorldTool('slice');
 			shell.setPaletteOpen(false);
+			input.disarmSliceDraw?.();
 			sliceReading.level();
 			input.notice('');
 			return;
@@ -470,11 +473,12 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			return;
 		}
 		if (id === 'slice') {
-			// The one mode SL1 offers. Choosing Slice again replaces the reading, which is
-			// what the palette's single checked item does.
+			// Level is the immediate SL1 reading; the plate's Drawn arm replaces it
+			// with the finite gesture. Choosing Slice again returns to Level.
 			closeTask();
 			shell.setActiveWorldTool('slice');
 			shell.setPaletteOpen(false);
+			input.disarmSliceDraw?.();
 			sliceReading.level();
 			input.notice('');
 			return;

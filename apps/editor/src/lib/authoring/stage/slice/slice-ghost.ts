@@ -11,12 +11,15 @@
  * "Every vertex is hidden" is wrong, and the defect it causes is visible: a Wall
  * running from below the lower bound to above the cut has all of its vertices
  * hidden yet crosses the visible band, so a per-vertex test would ghost a subject
- * the creator can see.
+ * the creator can see. The same defect appears on a body crossing a drawn cut: its
+ * vertices may sit on the removed side and the far slab while its middle remains
+ * visible.
  *
- * The reason the same-piece rule is exact: a hidden piece is a convex half-space,
- * so a triangle (the convex hull of its vertices) lies inside one iff its vertices
- * do; a triangle with vertices in two different pieces is connected, and the
- * pieces are separated by visible space, so it necessarily crosses that space.
+ * The reason the same-piece rule is exact: every hidden piece — Level's half-spaces
+ * and both of SL2's drawn pieces — is convex, so a triangle (the convex hull of its
+ * vertices) lies inside one iff its vertices do; a triangle with vertices in two
+ * different pieces is connected, and the pieces are separated by visible space, so
+ * it necessarily crosses that space.
  *
  * **Conservative fallback.** Geometry whose CPU positions do not match what is
  * drawn (skinned, morph-targeted, instanced) cannot be tested per triangle. It is
@@ -24,9 +27,16 @@
  * subject is treated as **hidden**. An unneeded ghost over a visible stub is
  * cosmetic; a missing ghost leaves a selected subject invisible.
  */
-import { hiddenPiecesOf, pieceContains, type HiddenPiece, type ResolvedSlice } from './slice-cut';
+import {
+	hiddenPiecesOf,
+	pieceContainsPoint,
+	sliceHides,
+	type HiddenPiece,
+	type ResolvedSlice,
+	type SliceVec3
+} from './slice-cut';
 
-export type SlicePoint3 = readonly [number, number, number];
+export type SlicePoint3 = SliceVec3;
 
 export type SliceBounds = {
 	readonly min: SlicePoint3;
@@ -59,25 +69,44 @@ export type SliceGhostSubject = {
 
 type PieceId = HiddenPiece['kind'];
 
-function pieceIdOf(y: number, pieces: readonly HiddenPiece[]): PieceId | null {
-	for (const piece of pieces) if (pieceContains(piece, y, 0)) return piece.kind;
+function pieceIdOf(x: number, y: number, z: number, pieces: readonly HiddenPiece[]): PieceId | null {
+	for (const piece of pieces) if (pieceContainsPoint(piece, x, y, z, 0)) return piece.kind;
 	return null;
 }
 
-/** The one hidden piece a bounds' vertical span lies inside, or `null`. */
+/** Eight corners of a bounds, the points that make a convex box test exact. */
+function cornersOf(bounds: SliceBounds): SliceVec3[] {
+	const corners: SliceVec3[] = [];
+	for (const x of [bounds.min[0], bounds.max[0]]) {
+		for (const y of [bounds.min[1], bounds.max[1]]) {
+			for (const z of [bounds.min[2], bounds.max[2]]) corners.push([x, y, z]);
+		}
+	}
+	return corners;
+}
+
+/** The one hidden piece a bounds lies wholly inside, or `null`. */
 function boundsPiece(bounds: SliceBounds, pieces: readonly HiddenPiece[]): PieceId | null {
-	const above = pieces.find((piece) => piece.kind === 'above');
-	if (above !== undefined && pieceContains(above, bounds.min[1], 0)) return 'above';
-	const below = pieces.find((piece) => piece.kind === 'below');
-	if (below !== undefined && pieceContains(below, bounds.max[1], 0)) return 'below';
-	return null;
+	const corners = cornersOf(bounds);
+	const first = pieceIdOf(corners[0]![0], corners[0]![1], corners[0]![2], pieces);
+	if (first === null) return null;
+	for (const corner of corners) {
+		if (pieceIdOf(corner[0], corner[1], corner[2], pieces) !== first) return null;
+	}
+	return first;
 }
 
-/** Whether the bounds lie wholly inside the visible band (shown at every point). */
+/** Whether the bounds are shown at every corner and at their centre. */
 function boundsFullyVisible(bounds: SliceBounds, resolved: ResolvedSlice): boolean {
-	const notAbove = bounds.max[1] <= resolved.cutY;
-	const notBelow = resolved.lowerY === null || bounds.min[1] >= resolved.lowerY!;
-	return notAbove && notBelow;
+	const center: SliceVec3 = [
+		(bounds.min[0] + bounds.max[0]) / 2,
+		(bounds.min[1] + bounds.max[1]) / 2,
+		(bounds.min[2] + bounds.max[2]) / 2
+	];
+	for (const point of [...cornersOf(bounds), center]) {
+		if (sliceHides(resolved, point[0], point[1], point[2], 0)) return false;
+	}
+	return true;
 }
 
 function countTriangles(subject: SliceGhostSubject): number {
@@ -150,15 +179,21 @@ export function subjectWhollyHidden(resolved: ResolvedSlice, subject: SliceGhost
 			const a = index == null ? triangle * 3 : index[triangle * 3]!;
 			const b = index == null ? triangle * 3 + 1 : index[triangle * 3 + 1]!;
 			const c = index == null ? triangle * 3 + 2 : index[triangle * 3 + 2]!;
-			const ya = positions[a * 3 + 1]!;
-			const yb = positions[b * 3 + 1]!;
-			const yc = positions[c * 3 + 1]!;
-			if (!Number.isFinite(ya) || !Number.isFinite(yb) || !Number.isFinite(yc)) continue;
+			const ax = positions[a * 3]!;
+			const ay = positions[a * 3 + 1]!;
+			const az = positions[a * 3 + 2]!;
+			const bx = positions[b * 3]!;
+			const by = positions[b * 3 + 1]!;
+			const bz = positions[b * 3 + 2]!;
+			const cx = positions[c * 3]!;
+			const cy = positions[c * 3 + 1]!;
+			const cz = positions[c * 3 + 2]!;
+			if (![ax, ay, az, bx, by, bz, cx, cy, cz].every(Number.isFinite)) continue;
 			sawTriangle = true;
-			const first = pieceIdOf(ya, pieces);
+			const first = pieceIdOf(ax, ay, az, pieces);
 			if (first === null) return false;
-			if (pieceIdOf(yb, pieces) !== first) return false;
-			if (pieceIdOf(yc, pieces) !== first) return false;
+			if (pieceIdOf(bx, by, bz, pieces) !== first) return false;
+			if (pieceIdOf(cx, cy, cz, pieces) !== first) return false;
 		}
 	}
 	// No finite triangle survived: nothing provably hidden, so do not ghost it.

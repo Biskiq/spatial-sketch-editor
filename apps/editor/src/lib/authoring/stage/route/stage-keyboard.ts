@@ -38,7 +38,7 @@ export type StageKeyboardInput = {
 	readonly closePreview: () => void;
 	readonly activeLayer: () => StagePostureLayer | null;
 	readonly pressing: () => boolean;
-	readonly dragMode: () => 'pan' | 'orbit' | 'adapter' | 'host' | null;
+	readonly dragMode: () => 'pan' | 'orbit' | 'adapter' | 'host' | 'slice-draw' | null;
 	readonly facade: () => StageFacade | null;
 	readonly reducedMotion: () => boolean;
 	readonly nowSeconds: () => number;
@@ -79,6 +79,9 @@ export type StageKeyboardInput = {
 	/** A temporary reading is on (X1: Lift), and Escape puts it back. */
 	readonly liftActive: () => boolean;
 	readonly putBackLift: () => void;
+	/** A drawn draft or handle edit is live; Escape cancels it before the cut. */
+	readonly sliceDraftActive?: () => boolean;
+	readonly cancelSliceDraft?: () => void;
 	/** A Slice cut is on, and Escape exits it after every earlier rung. */
 	readonly sliceActive: () => boolean;
 	readonly putBackSlice: () => void;
@@ -273,6 +276,9 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				if (armedHostTool === 'measure' && input.measureTool()?.clear()) { input.refreshHostTools(); break; }
 				if (armedHostTool === 'erase' && input.eraserTool()?.clear()) { input.clearEraseHover(); input.refreshHostTools(); break; }
 				if (armedHostTool === 'paint' && input.paintTool?.()?.clear()) { input.clearPaintHover?.(); input.refreshHostTools(); break; }
+				// A live drawn draft/edit is not the cut itself: Escape returns the cut to
+				// its last committed segment first, and only a later Escape puts it back.
+				if (input.sliceDraftActive?.() === true) { input.cancelSliceDraft?.(); break; }
 				const armedKey = input.armedDockKey();
 				if (input.task() !== null && armedKey?.palette === true && input.paletteOpen()) { input.closePalette(); break; }
 				if (input.libraryOpen()) { input.toggleLibrary(); break; }

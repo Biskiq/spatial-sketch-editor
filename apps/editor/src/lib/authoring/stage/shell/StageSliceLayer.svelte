@@ -35,6 +35,8 @@
 		Vector2,
 		Vector3,
 		MeshBasicMaterial,
+		LineDashedMaterial,
+		SphereGeometry,
 		type Material,
 		type Object3D
 	} from 'three';
@@ -43,17 +45,18 @@
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import {
-		sectionMeshes,
 		type CapAssemblyIssue,
+		type SectionBasis,
 		type SectionInput,
 		type SectionLoop
 	} from '../slice/mesh-plane-section';
 	import { capFillsOf } from '../slice/slice-cap-shapes';
 	import { SLICE_INK } from '../slice/slice-ink';
 	import { decideCapAssembly, type CapAssemblyState } from '../slice/slice-cap-schedule';
-	import { appendSectionEdges, type SectionEdgeSegment } from '../slice/slice-edges';
+	import { appendSectionEdgesWorld, type SectionEdgeSegment } from '../slice/slice-edges';
 	import { reportCapIssues } from '../slice/slice-diagnostics';
-	import type { ResolvedSlice } from '../slice/slice-cut';
+	import { sectionForSlice } from '../slice/slice-section';
+	import type { DrawnResolvedSlice, ResolvedSlice } from '../slice/slice-cut';
 	import { drawnMeshesOf } from './stage-selection-source';
 
 	let {
@@ -65,6 +68,7 @@
 		selectedIdentity = null,
 		width = 0,
 		height = 0,
+		draft = null,
 		onIssues
 	}: {
 		resolved: ResolvedSlice | null;
@@ -89,6 +93,8 @@
 		/** The viewport in CSS pixels: fat lines need it to size 2/3 px edges. */
 		width?: number;
 		height?: number;
+		/** The live drawn proposal, before it becomes a reading. */
+		draft?: { readonly start: readonly [number, number, number]; readonly end: readonly [number, number, number] } | null;
 		/** Extra observer for the assembly's issues; the dev report runs regardless. */
 		onIssues?: (issues: readonly CapAssemblyIssue[]) => void;
 	} = $props();
@@ -106,6 +112,10 @@
 	const ghostRoot = new Group();
 	ghostRoot.name = 'StageSliceGhost';
 	root.add(ghostRoot);
+	/** The live drawn proposal is independent of the assembled section. */
+	const draftRoot = new Group();
+	draftRoot.name = 'StageSliceDraft';
+	root.add(draftRoot);
 
 	type Inked = { readonly object: Object3D; readonly parent: Group; dispose(): void };
 	/** The section's edges live apart: a selection change re-inks them without a section. */
@@ -119,6 +129,7 @@
 	let drawnIdentity: string | null = null;
 	let inked: Inked[] = [];
 	let ghosts: Inked[] = [];
+	let draftInk: Object3D[] = [];
 	/** Materials shared by a group's cap meshes; disposed with the rest. */
 	let shared: Material[] = [];
 	/** The ghost's own material, owned by the ghost group rather than by a rebuild. */
@@ -223,6 +234,176 @@
 		});
 	}
 
+	/** The drawn cut's finite plane: vertical, exactly the segment's width. */
+	function addDrawnPlane(reading: DrawnResolvedSlice): void {
+		const length = reading.halfLength * 2;
+		if (length <= 0) return;
+		const top = Math.max(bounds?.max[1] ?? 1, reading.origin[1] + 1);
+		const height = Math.max(0.2, top - reading.origin[1] + 0.2);
+		const geometry = new PlaneGeometry(length, height);
+		const material = new MeshBasicMaterial({
+			color: SLICE_PLANE_INK,
+			transparent: true,
+			opacity: SLICE_INK.planeOpacity,
+			side: DoubleSide,
+			depthWrite: false,
+			toneMapped: false
+		});
+		const mesh = new Mesh(geometry, material);
+		mesh.matrixAutoUpdate = false;
+		// The plane's local +Y stays world up and local +X runs along the segment;
+		// the normal is their cross product (either way, it is DoubleSide ink).
+		mesh.matrix
+			.makeBasis(
+				new Vector3(reading.along[0], reading.along[1], reading.along[2]),
+				new Vector3(0, 1, 0),
+				new Vector3().crossVectors(
+					new Vector3(reading.along[0], reading.along[1], reading.along[2]),
+					new Vector3(0, 1, 0)
+				)
+			)
+			.setPosition(reading.origin[0], reading.origin[1] + height / 2, reading.origin[2]);
+		mesh.renderOrder = 1;
+		keep(mesh, () => {
+			geometry.dispose();
+			material.dispose();
+		});
+	}
+
+	/** A rectangle outline on the visible-side depth boundary, plus its ray. */
+	function addDrawnDepth(reading: DrawnResolvedSlice): void {
+		const visible: [number, number, number] = [
+			-reading.hiddenNormal[0],
+			-reading.hiddenNormal[1],
+			-reading.hiddenNormal[2]
+		];
+		const x = reading.origin[0] + visible[0] * reading.depthMeters;
+		const z = reading.origin[2] + visible[2] * reading.depthMeters;
+		const half = reading.halfLength;
+		const y0 = reading.origin[1] + 0.02;
+		const top = Math.max(bounds?.max[1] ?? 1, reading.origin[1] + 1) + 0.1;
+		const ax = reading.along[0] * half;
+		const az = reading.along[2] * half;
+		const corners: Array<readonly [number, number, number]> = [
+			[x - ax, y0, z - az],
+			[x + ax, y0, z + az],
+			[x + ax, top, z + az],
+			[x - ax, top, z - az]
+		];
+		const positions: number[] = [];
+		for (let index = 0; index < corners.length; index += 1) {
+			positions.push(...corners[index]!, ...corners[(index + 1) % corners.length]!);
+		}
+		positions.push(reading.origin[0], y0, reading.origin[2], x, y0, z);
+		const geometry = new BufferGeometry();
+		geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+		const material = new LineBasicMaterial({
+			color: SLICE_PLANE_INK,
+			transparent: true,
+			opacity: 0.55,
+			depthWrite: false,
+			toneMapped: false
+		});
+		const lines = new LineSegments(geometry, material);
+		lines.renderOrder = 2;
+		keep(lines, () => {
+			geometry.dispose();
+			material.dispose();
+		});
+	}
+
+	/** Endpoint, centre and depth grips: the handles the pointer edits. */
+	function addDrawnHandles(reading: DrawnResolvedSlice): void {
+		const visible: [number, number, number] = [
+			-reading.hiddenNormal[0],
+			-reading.hiddenNormal[1],
+			-reading.hiddenNormal[2]
+		];
+		const points: Array<readonly [number, number, number]> = [
+			reading.start,
+			reading.origin,
+			reading.end,
+			[
+				reading.origin[0] + visible[0] * reading.depthMeters,
+				reading.origin[1],
+				reading.origin[2] + visible[2] * reading.depthMeters
+			]
+		];
+		points.forEach((point, index) => {
+			const geometry = new SphereGeometry(index === 1 ? 0.085 : 0.07, 12, 8);
+			const material = new MeshBasicMaterial({
+				color: index === 3 ? SLICE_WARNING_INK : SLICE_PLANE_INK,
+				depthWrite: false,
+				toneMapped: false
+			});
+			const mesh = new Mesh(geometry, material);
+			mesh.position.set(point[0], point[1] + 0.02, point[2]);
+			mesh.renderOrder = 6;
+			keep(mesh, () => {
+				geometry.dispose();
+				material.dispose();
+			});
+		});
+	}
+
+	/** The live proposal: a dashed cobalt line and two endpoint dots. */
+	function drawDraft(): void {
+		drop(
+			draftInk.map((object) => ({
+				object,
+				parent: draftRoot,
+				dispose: () => {
+					const mesh = object as Mesh;
+					mesh.geometry.dispose();
+					if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+					else mesh.material.dispose();
+				}
+			}))
+		);
+		draftInk = [];
+		if (draft === null) return;
+		const y = draft.start[1] + 0.03;
+		const geometry = new BufferGeometry();
+		geometry.setAttribute(
+			'position',
+			new Float32BufferAttribute(
+				[draft.start[0], y, draft.start[2], draft.end[0], y, draft.end[2]],
+				3
+			)
+		);
+		const material = new LineDashedMaterial({
+			color: 0x2448c8,
+			dashSize: 0.18,
+			gapSize: 0.1,
+			depthWrite: false,
+			toneMapped: false
+		});
+		const line = new LineSegments(geometry, material);
+		line.computeLineDistances();
+		line.renderOrder = 7;
+		line.layers.set(STAGE_OVERLAY_LAYER);
+		line.raycast = () => {};
+		line.frustumCulled = false;
+		draftRoot.add(line);
+		draftInk.push(line);
+		for (const point of [draft.start, draft.end]) {
+			const dotGeometry = new SphereGeometry(0.06, 10, 6);
+			const dotMaterial = new MeshBasicMaterial({
+				color: 0x2448c8,
+				depthWrite: false,
+				toneMapped: false
+			});
+			const dot = new Mesh(dotGeometry, dotMaterial);
+			dot.position.set(point[0], point[1] + 0.03, point[2]);
+			dot.renderOrder = 7;
+			dot.layers.set(STAGE_OVERLAY_LAYER);
+			dot.raycast = () => {};
+			dot.frustumCulled = false;
+			draftRoot.add(dot);
+			draftInk.push(dot);
+		}
+	}
+
 	/** A closed path in the plane's own basis, for a hole. */
 	function pathOfLoop(points: SectionLoop['points']): Shape {
 		const path = new Shape();
@@ -244,9 +425,7 @@
 	 */
 	function addCap(
 		loops: readonly SectionLoop[],
-		basis: { readonly u: readonly [number, number, number]; readonly v: readonly [number, number, number]; readonly normal: readonly [number, number, number] },
-		y: number,
-		originXZ: readonly [number, number]
+		basis: SectionBasis
 	): void {
 		const fills = capFillsOf(loops);
 		if (fills.length === 0) return;
@@ -276,7 +455,7 @@
 					new Vector3(...basis.v),
 					new Vector3(...basis.normal)
 				)
-				.setPosition(originXZ[0], y, originXZ[1]);
+				.setPosition(basis.origin[0], basis.origin[1], basis.origin[2]);
 			mesh.renderOrder = 3;
 			keep(mesh, () => geometry.dispose());
 		}
@@ -293,14 +472,12 @@
 	function collectEdges(
 		loops: readonly SectionLoop[],
 		chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
-		basis: { readonly u: readonly [number, number, number]; readonly v: readonly [number, number, number] },
-		y: number,
-		originXZ: readonly [number, number]
+		basis: SectionBasis
 	): void {
 		// Append, never replace: the section has one group per independent solid (the
 		// Wall structure union plus one per Layout object), and each one's outline —
 		// and an open group's warning edges — must survive the next group.
-		appendSectionEdges({ segments: edges, open: openEdges }, loops, chains, basis, y, originXZ);
+		appendSectionEdgesWorld({ segments: edges, open: openEdges }, loops, chains, basis);
 	}
 
 	/**
@@ -419,7 +596,9 @@
 	let assembled: CapAssemblyState | null = null;
 
 	function cutKeyOf(reading: ResolvedSlice): string {
-		return `${reading.cutY}:${reading.lowerY ?? 'floor'}`;
+		return reading.kind === 'level'
+			? `level:${reading.cutY}:${reading.lowerY ?? 'floor'}`
+			: `drawn:${reading.origin.join(',')}:${reading.along.join(',')}:${reading.halfLength}:${reading.depthMeters}:${reading.hidden}`;
 	}
 	function geometryKeyOf(): string {
 		return `${revision}:${inputs.length}`;
@@ -434,13 +613,19 @@
 			return;
 		}
 		const started = performance.now();
-		const result = sectionMeshes(inputs, { normal: [0, -1, 0], constant: reading.cutY });
-		addPlane(reading.cutY, 0.4);
-		if (reading.lowerY !== null) addDepthOutline(reading.lowerY);
-		const originXZ: readonly [number, number] = [result.basis.origin[0], result.basis.origin[2]];
+		const section = sectionForSlice(inputs, reading);
+		const result = section.result;
+		if (reading.kind === 'level') {
+			addPlane(reading.cutY, 0.4);
+			if (reading.lowerY !== null) addDepthOutline(reading.lowerY);
+		} else {
+			addDrawnPlane(reading);
+			addDrawnDepth(reading);
+			addDrawnHandles(reading);
+		}
 		for (const group of result.groups) {
-			addCap(group.loops, result.basis, reading.cutY, originXZ);
-			collectEdges(group.loops, group.chains, result.basis, reading.cutY, originXZ);
+			addCap(group.loops, section.basis);
+			collectEdges(group.loops, group.chains, section.basis);
 		}
 		drawEdges();
 		if (ghostKeyOf() !== drawnGhostKey) drawGhost();
@@ -483,8 +668,14 @@
 	 */
 	function moveReadingOnly(reading: ResolvedSlice): void {
 		releaseAll();
-		addPlane(reading.cutY, 0.4);
-		if (reading.lowerY !== null) addDepthOutline(reading.lowerY);
+		if (reading.kind === 'level') {
+			addPlane(reading.cutY, 0.4);
+			if (reading.lowerY !== null) addDepthOutline(reading.lowerY);
+		} else {
+			addDrawnPlane(reading);
+			addDrawnDepth(reading);
+			addDrawnHandles(reading);
+		}
 		if (ghostKeyOf() !== drawnGhostKey) drawGhost();
 		invalidate();
 	}
@@ -551,12 +742,21 @@
 		// and cancelling the pending assembly there was how a drag ended with no caps.
 	});
 
+	// The proposal is drawn independently of the settled section. It is never part
+	// of the cap scheduler: a drag's samples cost one line and two dots.
+	$effect(() => {
+		draft;
+		drawDraft();
+		invalidate();
+	});
+
 	$effect(() => () => {
 		cancelTimers();
 		assembled = null;
 		drawnGhostKey = null;
 		releaseAll();
 		clearGhosts();
+		drawDraft();
 		invalidate();
 	});
 </script>
