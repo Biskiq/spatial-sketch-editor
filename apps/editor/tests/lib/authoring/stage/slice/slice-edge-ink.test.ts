@@ -15,7 +15,7 @@ import { BoxGeometry, Group, Mesh, Vector3 } from 'three';
 import { tagRenderIdentity } from '$lib/render/render-identity';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { sectionMeshes } from '$lib/authoring/stage/slice/mesh-plane-section';
-import { sectionEdgeSegments } from '$lib/authoring/stage/slice/slice-edges';
+import { appendSectionEdges, sectionEdgeSegments, type SectionEdgeSegment } from '$lib/authoring/stage/slice/slice-edges';
 
 function boxAt(x: number): Mesh {
 	const mesh = new Mesh(new BoxGeometry(1, 3, 1));
@@ -57,6 +57,55 @@ describe('sectionEdgeSegments', () => {
 	});
 });
 
+describe('appendSectionEdges keeps every cap group', () => {
+	it('accumulates each group’s segments and open edges', () => {
+		const wall = tagRenderIdentity(boxAt(-4), 'wall', 'w1');
+		const plinthA = tagRenderIdentity(boxAt(0), 'object', 'o1');
+		const plinthB = tagRenderIdentity(boxAt(4), 'object', 'o2');
+		const root = new Group();
+		root.add(wall, plinthA, plinthB);
+		const pick = createScenePickSource();
+		pick.registerLayout(root);
+
+		const result = sectionMeshes(pick.sectionSources(), { normal: [0, -1, 0], constant: 1.2 });
+		// Walls union plus one group per Layout object: three independent solids.
+		expect(result.groups.length).toBeGreaterThanOrEqual(3);
+		const originXZ = [result.basis.origin[0], result.basis.origin[2]] as const;
+
+		const collection: { segments: SectionEdgeSegment[]; open: number[] } = { segments: [], open: [] };
+		for (const group of result.groups) {
+			appendSectionEdges(collection, group.loops, group.chains, result.basis, 1.2, originXZ);
+		}
+
+		// Every group's edges survive the next group's collection.
+		const expected = result.groups.reduce(
+			(total, group) => total + group.loops.reduce((count, loop) => count + loop.points.length, 0),
+			0
+		);
+		expect(collection.segments).toHaveLength(expected);
+		const identities = new Set(collection.segments.map((segment) => segment.identity.split(':')[0]));
+		expect(identities.has('wall')).toBe(true);
+		expect(identities.has('object')).toBe(true);
+
+		// An earlier group's warning edges are not erased by a later group either.
+		const withOpen = { segments: [] as SectionEdgeSegment[], open: [] as number[] };
+		appendSectionEdges(
+			withOpen,
+			result.groups[0]!.loops,
+			[{ points: [[0, 0], [1, 0]] }],
+			result.basis,
+			1.2,
+			originXZ
+		);
+		const openAfterFirst = withOpen.open.length;
+		expect(openAfterFirst).toBeGreaterThan(0);
+		for (const group of result.groups.slice(1)) {
+			appendSectionEdges(withOpen, group.loops, group.chains, result.basis, 1.2, originXZ);
+		}
+		expect(withOpen.open.length).toBe(openAfterFirst);
+	});
+});
+
 describe('the layer renders segments with the segment class', () => {
 	const layer = readFileSync(
 		path.join(process.cwd(), 'src/lib/authoring/stage/shell/StageSliceLayer.svelte'),
@@ -72,6 +121,12 @@ describe('the layer renders segments with the segment class', () => {
 		expect(layer).not.toContain('new LineGeometry()');
 		expect(layer).not.toContain("from 'three/examples/jsm/lines/Line2.js'");
 	});
+
+			it('accumulates groups rather than replacing the collection', () => {
+			expect(layer).toContain(
+				'appendSectionEdges({ segments: edges, open: openEdges }'
+			);
+		});
 
 	it('keeps the plan’s widths', () => {
 		expect(layer).toContain('SLICE_INK.edgeWidth');
