@@ -364,7 +364,8 @@ closed input always balances after steps 4–6; an imbalance means the input was
 **Display.**
 
 - **Fill:** the polygons from step 7 at `cutY`, opaque paper-tone ink, `polygonOffset` toward the
-  camera. **Edge:** every loop as a `Line2`, Slice yellow `#f2d000`, 2 px; edges whose identity is
+  camera. **Edge:** every loop edge as an independent segment (`LineSegments2`; `Line2` is a
+  polyline and would connect disconnected groups), Slice yellow `#f2d000`, 2 px; edges whose identity is
   the selected subject draw gold, 3 px. Identity per edge survives steps 5–7 (a split edge keeps its
   parent's identity; a kept edge whose net came from two identities takes the one on its solid side).
   (Approved: "yellow-edged cap"; X2 stubs are paper with an *ink* edge, so they stay distinct.)
@@ -826,7 +827,7 @@ deviation:
    redrawn only when the classification changes, and its world bake is cached against the selection
    and geometry.
 5. *Recorded deviation, now closed.* Ink had drifted from §2.2: the plane is back to **#f2d000 at
-   0.14**, and section edges are `Line2` — 2 px yellow, with a selected identity's edges 3 px gold
+   0.14**, and section edges are `LineSegments2` — 2 px yellow, with a selected identity's edges 3 px gold
    from the shared selection tone (test 4 is now drawn, not only computed).
 6. *Accepted.* Cap sources exclude **Wall failure surfaces** (a fallback body must not read as a
    resolved Wall), and the ghost's conservative fallback covers subjects made only of skinned or
