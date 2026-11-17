@@ -103,6 +103,7 @@ describe('the controller drops a transfer when the posture changes', () => {
 	const form = (id: string): StudioEntityRead => ({ id, name: `Form ${id}`, kind: 'form' });
 	function harness(entities: StudioEntityRead[], placeCopy: StudioPorts['placeCopy']) {
 		const state = { entities, selected: null as string | null };
+		const calls = { navigate: vi.fn(), notice: vi.fn() };
 		const ports: StudioPorts = {
 			entities: () => state.entities,
 			selectedEntityId: () => state.selected,
@@ -110,10 +111,10 @@ describe('the controller drops a transfer when the posture changes', () => {
 			setScope: () => {}, captureView: () => null, restoreView: () => true,
 			rootBounds: () => null, fit: () => true, contentBounds: () => null, fitAll: () => {},
 			armCreation: () => {}, closeCreation: () => {}, settlePending: () => true,
-			notice: () => {}, syncUrl: () => {}, navigate: () => {}, focusReturn: () => {},
+			notice: calls.notice, syncUrl: () => {}, navigate: calls.navigate, focusReturn: () => {},
 			placeCopy
 		};
-		return { studio: createStudioController(ports), state };
+		return { studio: createStudioController(ports), state, calls };
 	}
 	async function staleAfter(change: (h: ReturnType<typeof harness>) => void) {
 		let current: () => boolean = () => true;
@@ -129,6 +130,26 @@ describe('the controller drops a transfer when the posture changes', () => {
 		await run;
 		return { stale, h };
 	}
+	it('on Back to Projects, so a delayed success or failure cannot redirect the creator', async () => {
+		for (const outcome of [true, false]) {
+			let current: () => boolean = () => true;
+			const gate = deferred<boolean>();
+			const h = harness([form('a')], async (_root, isCurrent) => { current = isCurrent; return gate.promise; });
+			h.studio.openFromEntry({ objectId: 'a', minted: false });
+			const run = h.studio.placeCopyInWorld();
+			expect(current()).toBe(true);
+			h.studio.backToProjects();
+			expect(h.calls.navigate).toHaveBeenCalledTimes(1);
+			expect(h.calls.navigate).toHaveBeenCalledWith('/projects');
+			expect(current()).toBe(false);
+			expect(h.studio.placingCopy).toBe(false);
+			gate.resolve(outcome);
+			expect(await run).toBe(outcome);
+			// The accepted navigation is the only one; a late result adds nothing.
+			expect(h.calls.navigate).toHaveBeenCalledTimes(1);
+			expect(h.calls.notice).not.toHaveBeenCalled();
+		}
+	});
 	it('on a root switch', async () => {
 		const { stale, h } = await staleAfter(({ studio }) => studio.chooseRoot('b'));
 		expect(stale).toBe(true);

@@ -407,6 +407,15 @@ export function createStudioController(ports: StudioPorts) {
 		backToProjects(): void {
 			if (phase.kind === 'inactive') return;
 			if (!ports.settlePending()) return;
+			// Once navigation is accepted it owns the frame. Drop the transfer here,
+			// synchronously, so a delayed Save/library result cannot reopen a chooser
+			// over the page we are leaving. The in-flight journey asks `current()`
+			// after every await and now sees false; its `finally` no longer owns the
+			// busy flag (we reset it here). Every other exit reaches the same drop
+			// through `applyScope`; this one leaves without changing scope, so it
+			// must invalidate explicitly.
+			transfer = null;
+			placingCopy = false;
 			ports.navigate('/projects');
 		},
 

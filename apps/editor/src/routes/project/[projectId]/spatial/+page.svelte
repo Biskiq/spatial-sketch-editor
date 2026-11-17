@@ -171,7 +171,7 @@
 		studioProjectUrl
 	} from '$lib/platform/studio-entry';
 	import { requestFormCopyIntake } from '$lib/authoring/adapters/scene/library/intake';
-	import { beginFormCopyTransfer, endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
+	import { beginFormCopyTransfer, copyLanded, endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
 	import { runPlaceCopy } from '$lib/authoring/studio/place-copy-journey';
 
 	installPerfWorkObserver();
@@ -790,7 +790,12 @@
 				isDirty: () => headSave?.isDirty() === true,
 				saveFirst: () => projectSession.saveBeforeSwitch(),
 				saveToLibrary: (entity) => saveFormCopyToMyObjects(entity),
-				beginTransfer: (itemId, name) => beginFormCopyTransfer({ sourceProjectId: projectId, objectId: rootId, objectName: name, itemId }),
+				beginTransfer: (itemId, name) => beginFormCopyTransfer({
+					sourceProjectId: projectId, objectId: rootId, objectName: name, itemId,
+					// Mint the exact entity the copy will occupy; it travels through the
+					// intake to place-form-copy and identifies this insertion at settlement.
+					entityId: `entity-${crypto.randomUUID()}`
+				}),
 				openChooser: (itemId) => goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`),
 				notice: (message) => shell.setNotice(message)
 			});
@@ -1261,12 +1266,11 @@
 			? peekFormCopyTransfer()
 			: null
 	);
-	let transferBaseline: ReadonlySet<string> | null = null;
-	/** The copy landed (a new form entered the accepted source): the journey is complete. */
+	/** The intended copy landed: its exact minted entity id is in the accepted source. */
 	function settleTransfer(): void {
-		if (transfer === null || transferBaseline === null) return;
+		if (transfer === null) return;
 		const entities = facade?.snapshot().domain.scene.entities ?? [];
-		if (!entities.some((entity) => !transferBaseline!.has(entity.id))) return;
+		if (!copyLanded(transfer, entities)) return;
 		transfer = null;
 		endFormCopyTransfer();
 	}
@@ -1283,8 +1287,7 @@
 		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
 		if (!dockKeys.some((key) => key.slot === 'library')) return;
 		placeCopyArmed = true;
-		transferBaseline = new Set((facade?.snapshot().domain.scene.entities ?? []).map((entity) => entity.id));
-		requestFormCopyIntake(projectId, { itemId: placeCopyItem, mode: 'arm' });
+		requestFormCopyIntake(projectId, { itemId: placeCopyItem, mode: 'arm', entityId: transfer?.entityId });
 		untrack(() => commands.armWorldTool('objects'));
 		// One-shot: a reload must not re-arm a copy the creator already placed or dismissed.
 		const url = new URL(window.location.href);

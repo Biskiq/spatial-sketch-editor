@@ -16,6 +16,12 @@ export type FormCopyTransfer = {
 	readonly objectName: string;
 	/** The My Objects item that carries the copy to the destination. */
 	readonly itemId: string;
+	/**
+	 * The exact Scene entity id the copy will occupy at the destination. Minted
+	 * with the transfer and handed through the intake to `place-form-copy`, so the
+	 * destination can tell this insertion from any other new entity.
+	 */
+	readonly entityId: string;
 };
 
 const KEY = 'biskiq.studio.transfer';
@@ -24,7 +30,7 @@ let memory: FormCopyTransfer | null = null;
 function valid(value: unknown): value is FormCopyTransfer {
 	if (typeof value !== 'object' || value === null) return false;
 	const record = value as Record<string, unknown>;
-	return ['sourceProjectId', 'objectId', 'objectName', 'itemId'].every(
+	return ['sourceProjectId', 'objectId', 'objectName', 'itemId', 'entityId'].every(
 		(field) => typeof record[field] === 'string' && record[field] !== ''
 	);
 }
@@ -50,4 +56,22 @@ export function peekFormCopyTransfer(): FormCopyTransfer | null {
 export function endFormCopyTransfer(): void {
 	memory = null;
 	try { sessionStorage.removeItem(KEY); } catch { /* nothing to clear */ }
+}
+
+/**
+ * Has the intended copy actually landed in the accepted source?
+ *
+ * The transfer mints the exact entity id the copy will occupy and hands it to
+ * `place-form-copy`, so completion is tied to that one insertion: the accepted
+ * source contains the transferred entity id. A changed entity count — or even a
+ * same-named form — is not enough: an unrelated primitive, artwork or restored
+ * entity must leave the way back intact so the creator can still reach **Return
+ * to object**. Nothing here writes; it only decides whether this session-only
+ * transfer can be forgotten.
+ */
+export function copyLanded(
+	transfer: FormCopyTransfer,
+	entities: readonly { readonly id: string }[]
+): boolean {
+	return entities.some((entity) => entity.id === transfer.entityId);
 }

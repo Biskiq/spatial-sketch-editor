@@ -13,6 +13,12 @@ export type FormCopyIntake = {
 	readonly itemId: string;
 	/** `arm` waits for the creator's click; `datum` places at X/Z 0 with yaw 0. */
 	readonly mode: 'arm' | 'datum';
+	/**
+	 * The exact entity id a cross-project transfer copy must occupy, so its
+	 * accepted insertion can be told from any other new entity. Omitted for
+	 * Open editable copy, which mints its own id.
+	 */
+	readonly entityId?: string;
 };
 
 const pending = new Map<string, FormCopyIntake>();

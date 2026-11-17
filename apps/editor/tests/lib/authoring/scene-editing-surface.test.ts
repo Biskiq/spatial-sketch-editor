@@ -634,6 +634,39 @@ describe('Scene placement session', () => {
 		expect(session.placedEntityId()).toBe(intent.allocatedIds[0]!.id);
 	});
 
+	it('allocates a cross-project transfer copy under the exact id the transfer minted', async () => {
+		const { session, port } = await sessionFor([boxEntity()]);
+		const item = canonicalFormLibraryPayload({
+			formatVersion: 1,
+			kind: 'form',
+			name: 'Shape',
+			form: {
+				generator: {
+					kind: 'extrude',
+					plane: 'plan',
+					outline: [
+						{ key: 1, u: 0, v: 0, smooth: false },
+						{ key: 2, u: 1, v: 0, smooth: false },
+						{ key: 3, u: 1, v: 1, smooth: false }
+					],
+					extent: 0.5
+				},
+				scale: [1, 1, 1],
+				nextKey: 4
+			},
+			materialId: 'wood-walnut',
+			castShadow: true,
+			receiveShadow: true
+		});
+		const entityId = 'entity-transfer-copy';
+		session.setArmedFormCopy({ itemId: 'library-item-transfer', item, contactMinY: 0, entityId });
+		expect(await session.place('box', 1, 2)).toEqual({ kind: 'committed' });
+		// The transfer's minted id is the allocated entity, so settlement can tie
+		// completion to this one insertion and not any other new entity.
+		expect(port.intents[0]!.allocatedIds).toEqual([{ kind: 'scene-entity', id: entityId }]);
+		expect(session.placedEntityId()).toBe(entityId);
+	});
+
 	it('places the armed copy through typed coordinates instead of the primitive', async () => {
 		const { session, port } = await sessionFor([boxEntity()]);
 		const item = canonicalFormLibraryPayload({

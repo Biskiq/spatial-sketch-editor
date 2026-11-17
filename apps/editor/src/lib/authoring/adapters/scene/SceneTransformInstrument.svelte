@@ -673,7 +673,13 @@
 				message = 'That saved object cannot be evaluated, so it cannot be placed.';
 				return;
 			}
-			if (projectIdNow() !== projectId || !armFormCopy({ itemId: listed.id, item: payload, contactMinY: contact })) {
+			const armed: ArmedFormCopy = {
+				itemId: listed.id,
+				item: payload,
+				contactMinY: contact,
+				...(intake.entityId === undefined ? {} : { entityId: intake.entityId })
+			};
+			if (projectIdNow() !== projectId || !armFormCopy(armed)) {
 				message = 'The Stage changed before the copy could be armed. Choose it again from My Objects.';
 				return;
 			}

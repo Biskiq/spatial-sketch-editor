@@ -478,12 +478,20 @@ before a cross-project switch (kept in place if Save fails). The destination is 
 new project, and a cancelled placement, a destination that fails to load or a refresh offers
 **Return to object**.
 
-**Landed deviation, pending owner approval:** the journey specification transports the object as a
-frozen session payload with no library item. The landed capability carries it through a My Objects
-item (the existing verified payload, codec and Place path) because that reuses the form library
-instead of adding a second transport, at the cost of one durable library item per Place copy that the
-creator can remove from My Objects. Moving to a session payload later changes only
-`studio/place-copy-journey.ts` and the intake; no source format is involved.
+**Temporary deviation — owner-approved for T5.1:** the journey specification transports the object
+as a frozen session payload with no library item. The landed capability carries it through a My
+Objects item (the existing verified payload, codec and Place path) because that reuses the form
+library instead of adding a second transport. This is recorded as an explicit temporary deviation
+from `object-studio-design.md`, with these ruled bounds:
+
+- Each **Place copy in World creates one durable My Objects item**, removable from My Objects.
+- **Session-only transfer** (the way-back record and armed insertion) is **later cleanup, not a
+  T5.2 prerequisite**; `studio.profile-revision` does not depend on replacing this carrier.
+- **Transport is not redesigned in this PR.** Moving to a frozen session payload later changes only
+  `studio/place-copy-journey.ts` and the intake; no source format is involved.
+
+The way back, cancel, refresh and "not one transaction" contract are unchanged — only the carrier
+differs.
 
 The [journey specification](./object-studio-design.md) fixes visible actions, pending-edit policy,
 same-project and cross-project placement, direct URL behavior, scope and responsive acceptance.
