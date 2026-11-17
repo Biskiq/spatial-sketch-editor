@@ -25,11 +25,37 @@ export function pickThroughSlice(
 	source: ScenePickSource,
 	resolved: () => ResolvedSlice | null
 ): SlicePick {
-	return (ray, scene) =>
-		source.pick(ray, scene, {
-			hiddenAt: (point) => {
-				const cut = resolved();
-				return cut !== null && sliceHides(cut, point[0], point[1], point[2]);
-			}
-		});
+	return (ray, scene) => source.pick(ray, scene, hiddenAtOf(resolved));
+}
+
+/** The same filter for the face-placement ray (artwork hanging, Layout occlusion). */
+export type SliceFacePick = (
+	ray: PointerRay,
+	scene: RuntimeScene,
+	accept: Parameters<ScenePickSource['pickVisibleFace']>[2]
+) => ReturnType<ScenePickSource['pickVisibleFace']>;
+
+/**
+ * The face ray, with the cut folded in.
+ *
+ * Artwork placement asks a different question than selection — which **face** may
+ * receive a body — but it asks it of the same drawn world. A face the Slice removes
+ * must not accept a hang and must not block the face behind it, so the filter is the
+ * same predicate, applied in the source's own walk rather than after the fact.
+ */
+export function pickVisibleFaceThroughSlice(
+	source: ScenePickSource,
+	resolved: () => ResolvedSlice | null
+): SliceFacePick {
+	return (ray, scene, accept) => source.pickVisibleFace(ray, scene, accept, hiddenAtOf(resolved));
+}
+
+/** One predicate, shared by both rays: a point is hidden when the reading hides it. */
+function hiddenAtOf(resolved: () => ResolvedSlice | null): { hiddenAt(point: readonly [number, number, number]): boolean } {
+	return {
+		hiddenAt: (point) => {
+			const cut = resolved();
+			return cut !== null && sliceHides(cut, point[0], point[1], point[2]);
+		}
+	};
 }

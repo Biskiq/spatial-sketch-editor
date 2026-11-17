@@ -5,7 +5,9 @@ import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type Compil
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
-import { fragmentLayer } from '../stage/paper-plan';
+import { cutWallBandsOf, fragmentLayer, type CutWallSpan } from '../stage/paper-plan';
+import { sliceHides, type ResolvedSlice } from '../stage/slice/slice-cut';
+import { resolvedSliceNow } from '../stage/slice/slice-resolved';
 import type { PlanEvaluationResult } from '@portfolio/layout-core';
 
 /** The aperture faces and the reveals between them are pickable, but never drawn. */
@@ -80,6 +82,42 @@ type StagePickSurface =
 
 type StagePick = { readonly distanceCss: number; readonly surface: StagePickSurface };
 
+/** The surface kinds, for the Slice-aware tests (they never need the whole type graph). */
+export type { StagePickSurface };
+
+/** A band thinner than this is not a surface a pointer can land on. */
+const SLICE_EMPTY_BAND_METERS = 1e-6;
+
+/**
+ * A Wall face **clamped to what the Slice draws** (§2.5).
+ *
+ * The face is the compiled solid's vertical extent, which is right at rest. Under a
+ * cut the part above `cutY` (and, with a finite depth, the part below `lowerY`) is
+ * not drawn, so it must not be selectable either: a click on the sky between two
+ * cut Walls would otherwise take a Wall height the creator cannot see. An empty band
+ * drops the surface entirely instead of leaving a degenerate one.
+ */
+export function clampFaceToSlice(surface: StagePickSurface, slice: ResolvedSlice | null): StagePickSurface | null {
+	if (slice === null || surface.kind !== 'face') return surface;
+	const bottomMeters = Math.max(surface.bottomMeters, slice.lowerY ?? Number.NEGATIVE_INFINITY);
+	const topMeters = Math.min(surface.topMeters, slice.cutY);
+	return topMeters <= bottomMeters + SLICE_EMPTY_BAND_METERS ? null : { ...surface, bottomMeters, topMeters };
+}
+
+/** The first plan point of a flat surface, for the hidden-point question. */
+function firstPlanPoint(geometry: PlanFragmentGeometry): LayoutVec2 {
+	if (geometry.kind === 'span') return geometry.start;
+	if (geometry.kind === 'polyline') return geometry.polyline[0] ?? [0, 0];
+	return geometry.polygon[0] ?? [0, 0];
+}
+
+/** Whether a flat fragment is drawn at all under the cut (its elevation is hidden). */
+export function flatDrawn(surface: StagePickSurface, slice: ResolvedSlice | null): boolean {
+	if (slice === null || surface.kind !== 'flat') return true;
+	const point = firstPlanPoint(surface.geometry);
+	return !sliceHides(slice, point[0], surface.elevationMeters, point[1]);
+}
+
 function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
 	const segments: (readonly [LayoutVec2, LayoutVec2])[] = [];
 	if (geometry.kind === 'span') {
@@ -118,7 +156,8 @@ function sameSpanDistance(left: number, right: number): boolean {
 function pickSurfacesOf(
 	fragment: PlanFragment,
 	geometry: CompiledLayoutGeometry,
-	datumMeters: number
+	datumMeters: number,
+	slice: ResolvedSlice | null = null
 ): readonly StagePickSurface[] {
 	const flat: StagePickSurface = {
 		kind: 'flat',
@@ -157,12 +196,39 @@ function pickSurfacesOf(
 		// for a place this fragment does not name.
 		return faceAtWallHeight();
 	}
-	return matching.map((span) => ({
+	const faces: StagePickSurface[] = matching.map((span) => ({
 		kind: 'face' as const,
 		start: span.start,
 		end: span.end,
 		bottomMeters: datumMeters + span.bottomY,
 		topMeters: datumMeters + span.topY
+	}));
+	return [...faces, ...capSurfacesOf(fragment, wall, slice, interval)];
+}
+
+/**
+ * The **cap surface** a cut Wall fragment adds: a flat band at `cutY` (§2.5 step 2).
+ *
+ * The cut reveals a filled section, so the exposed top of the Wall is the surface the
+ * creator points at. Its plan band comes from `cutWallBandsOf` — the same band Paper
+ * draws with — which is accurate enough for a hit test and is never drawn here. Not a
+ * second geometric derivation of the Wall: it is the compiled centreline and
+ * thickness, which is what the paper cut is.
+ */
+function capSurfacesOf(
+	fragment: PlanFragment,
+	wall: NonNullable<ReturnType<typeof indexedCompiledWall>>,
+	slice: ResolvedSlice | null,
+	interval: { readonly start: number; readonly end: number } | null
+): readonly StagePickSurface[] {
+	if (slice === null) return [];
+	if (fragment.ref.stream !== 'cut') return [];
+	if (interval === null) return [];
+	const span: CutWallSpan = { startDistance: interval.start, endDistance: interval.end };
+	return cutWallBandsOf(wall, [span]).map((polygon) => ({
+		kind: 'flat' as const,
+		elevationMeters: slice.cutY,
+		geometry: { kind: 'polygon' as const, polygon }
 	}));
 }
 
@@ -355,7 +421,15 @@ export function createPlanPickProvider(
 	 * The overheads the live Lift reading lifts, named by Layout for the geometry in
 	 * the pick context. No accessor means Lift is off: this test adds no hit.
 	 */
-	liftedOutlines: (geometry: CompiledLayoutGeometry) => readonly OverheadSource[] = () => []
+	liftedOutlines: (geometry: CompiledLayoutGeometry) => readonly OverheadSource[] = () => [],
+	/**
+	 * The live Slice, read on the pointer (§2.5). The default reads the route's own
+	 * mirror — the same value the Canvas draws with — so the adapter needs no new
+	 * wiring and the provider cannot hold a cut the Stage is not showing. With no
+	 * reading every surface, cap and hidden-point test below is exactly today's
+	 * behaviour, which is what keeps ordinary picking unchanged when Slice is off.
+	 */
+	sliceOf: () => ResolvedSlice | null = resolvedSliceNow
 ) {
 	/**
 	 * The retained pick index for one Plan evaluation.
@@ -524,7 +598,8 @@ export function createPlanPickProvider(
 		evaluation: ViewportEvaluation,
 		token: ViewportEvaluationToken,
 		context: LayoutPickContext,
-		retained: RetainedPickIndex
+		retained: RetainedPickIndex,
+		slice: ResolvedSlice | null
 	): StageDomainPick | null {
 		const sources = liftedOutlines(context.snapshot.domain.geometry);
 		if (sources.length === 0) return null;
@@ -562,6 +637,8 @@ export function createPlanPickProvider(
 					elevation,
 					start[1] + (end[1] - start[1]) * closest.amount
 				];
+				// A lid the cut has removed is not an outline the creator can aim at.
+				if (slice !== null && sliceHides(slice, worldPoint[0], worldPoint[1], worldPoint[2])) continue;
 				// Depth along the pointer's own ray, so an outline and a surface are
 				// compared on one axis.
 				const depthMeters =
@@ -615,6 +692,7 @@ export function createPlanPickProvider(
 			return projected.kind === 'projected' && projected.visibility !== 'behind' ? projected.css : null;
 		};
 		const retained = pickIndexFor(result.plan, context);
+		const slice = sliceOf();
 		const erasing = query.purpose === 'tool' && query.tool?.kind === 'erase';
 		const pickOpeningIn3D = evaluation.renderedReading !== 'plan' &&
 			(query.purpose !== 'tool' || erasing) && (query.tool === null || erasing);
@@ -628,6 +706,9 @@ export function createPlanPickProvider(
 					if (!ray.intersectsBox(bounds)) continue;
 					const point = openingRayHit(ray, faces);
 					if (point === null) continue;
+					// A reveal the cut removes is not a place to aim at, and it must not
+					// answer for the opening's visible part either.
+					if (slice !== null && sliceHides(slice, point.x, point.y, point.z)) continue;
 					const depthMeters = ray.origin.distanceTo(point);
 					if (depthMeters >= (nearest?.depthMeters ?? Infinity)) continue;
 					nearest = {
@@ -649,7 +730,14 @@ export function createPlanPickProvider(
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
 			if (fragment === undefined || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
-			const surfaces = pickSurfacesOf(fragment, context.snapshot.domain.geometry, context.snapshot.domain.datumMeters);
+			const surfaces = pickSurfacesOf(
+				fragment,
+				context.snapshot.domain.geometry,
+				context.snapshot.domain.datumMeters,
+				slice
+			)
+				.map((surface) => clampFaceToSlice(surface, slice))
+				.filter((surface): surface is StagePickSurface => surface !== null && flatDrawn(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 			if (winner === null) {
@@ -673,7 +761,7 @@ export function createPlanPickProvider(
 				winner === null
 					? null
 					: surfaceDepth(outlineRay.kind === 'ray' ? outlineRay.ray : null, winner.pick.surface);
-			const outline = liftOutlinePick(css, evaluation, token, context, retained);
+			const outline = liftOutlinePick(css, evaluation, token, context, retained, slice);
 			if (
 				outline !== null &&
 				(winnerDepth === null ||

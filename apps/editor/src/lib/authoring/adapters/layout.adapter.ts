@@ -50,7 +50,7 @@ import { createCurveGestureSession } from './layout/curve-gesture-session';
 import { createJunctionGestureSession } from './layout/junction-gesture-session';
 import { createOpeningGestureSession } from './layout/opening-gesture-session';
 import { createRoomGestureSession } from './layout/room-gesture-session';
-import { liftedSourcesNow } from '../layout/interior-lift-store.svelte';
+	import { liftedSourcesNow } from '../layout/interior-lift-store.svelte';
 import { createLayoutContributions } from './layout/layout-contributions';
 
 export const createAdapter: StageAdapterFactory = (services) => {

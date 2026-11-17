@@ -18,7 +18,7 @@
 	 * `NoToneMapping` (see `CANVAS_TONE_MAPPING`).
 	 */
 	import { Canvas, T } from '@threlte/core';
-	import { PCFShadowMap, type Plane } from 'three';
+	import { PCFShadowMap, type Object3D, type Plane } from 'three';
 	import {
 		createStageClip,
 		setStageClip
@@ -52,6 +52,8 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageLiftLayer from './StageLiftLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
+	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
+	import { subjectWhollyHidden } from '../slice/slice-ghost';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
 	import StageCelestialDial from './StageCelestialDial.svelte';
@@ -194,6 +196,27 @@ import StageMatGround from './StageMatGround.svelte';
 	/** The reading reaches the shared planes; the layer's own rebuild asks for a frame. */
 	$effect(() => {
 		stageClip.apply(resolvedSlice ?? null);
+	});
+	/**
+	 * The selected subject **when the cut hides all of it**, or null.
+	 *
+	 * The Index can select anything, including a body the Slice removes from the frame
+	 * entirely (a ceiling light above the cut). That selection must stay visible and
+	 * editable, so the Slice layer draws it as a ghost and the selection ink draws its
+	 * gold contour unclipped (§2.4). A partly cut subject is **not** ghosted: its stub
+	 * and cap are visible and pickable already.
+	 *
+	 * Recomputed on selection, reading or geometry change only — `subjectWhollyHidden`
+	 * walks the subject's own triangles, never the scene.
+	 */
+	const sliceGhostSelection = $derived.by((): readonly Object3D[] | null => {
+		const cut = resolvedSlice ?? null;
+		if (cut === null || selection === null || selection === undefined) return null;
+		const objects = selectionObjectsOf(scenePick, selection);
+		if (objects.length === 0) return null;
+		const subject = ghostSubjectOf(objects);
+		if (subject === null) return null;
+		return subjectWhollyHidden(cut, subject) ? objects : null;
 	});
 	/** The drawn meshes, as the caps section them; a mount or an edit is a new read. */
 	const sectionInputs = $derived.by((): readonly SectionInput[] => {
@@ -441,6 +464,7 @@ import StageMatGround from './StageMatGround.svelte';
 			width={evaluation?.rect.width ?? 1}
 			height={evaluation?.rect.height ?? 1}
 			fade={1 - (paperReveal?.sheet ?? 0)}
+			unclippedSelection={sliceGhostSelection !== null}
 		/>
 		{/if}
 	{/if}
@@ -454,6 +478,7 @@ import StageMatGround from './StageMatGround.svelte';
 			inputs={sectionInputs}
 			bounds={geometry.bounds ?? null}
 			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+			ghostSelection={sliceGhostSelection}
 		/>
 	{/if}
 	{#if framedViewport === null && evaluation !== null}

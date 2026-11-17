@@ -36,17 +36,21 @@
 		type SectionInput,
 		type SectionLoop
 	} from '../slice/mesh-plane-section';
+	import { capFillsOf } from '../slice/slice-cap-shapes';
+	import { reportCapIssues } from '../slice/slice-diagnostics';
 	import type { ResolvedSlice } from '../slice/slice-cut';
+	import { drawnMeshesOf } from './stage-selection-source';
 
 	let {
 		resolved = null,
 		inputs = [],
 		bounds = null,
 		revision = 0,
+		ghostSelection = null,
 		onIssues
 	}: {
 		resolved: ResolvedSlice | null;
-		/** The drawn meshes, in world space, as the hit path sees them. */
+		/** The drawn Layout meshes, in world space, as the hit path sees them. */
 		inputs: readonly SectionInput[];
 		/** Layout ∪ Scene bounds; the plane and the depth outline span them. */
 		bounds: {
@@ -55,12 +59,22 @@
 		} | null;
 		/** Bumped when the drawn geometry changes; the caps follow an edit. */
 		revision?: string | number;
+		/**
+		 * The selected subject's rendered objects **when the Slice hides all of it**.
+		 * A wholly hidden subject is drawn here as a ghost instead of vanishing: the
+		 * Index can select it, and the creator must still see what they selected (§2.4,
+		 * J12 step 3). Empty or null means nothing is ghosted.
+		 */
+		ghostSelection?: readonly Object3D[] | null;
+		/** Extra observer for the assembly's issues; the dev report runs regardless. */
 		onIssues?: (issues: readonly CapAssemblyIssue[]) => void;
 	} = $props();
 
 	const SLICE_PLANE_INK = 0xe8c14a;
 	const SLICE_CAP_INK = 0xf0e7d2;
 	const SLICE_WARNING_INK = 0xc2643f;
+	/** The hover tone, at ghost opacity: a hidden subject is a silhouette, not a cap. */
+	const SLICE_GHOST_INK = 0x8c8578;
 
 	const { invalidate } = useThrelte();
 	const root = new Group();
@@ -153,37 +167,37 @@
 		});
 	}
 
-	function shapeOfLoop(loop: SectionLoop): Shape {
-		const shape = new Shape();
-		loop.points.forEach(([u, v], index) => {
-			if (index === 0) shape.moveTo(u, v);
-			else shape.lineTo(u, v);
+	/** A closed path in the plane's own basis, for a hole. */
+	function pathOfLoop(points: SectionLoop['points']): Shape {
+		const path = new Shape();
+		points.forEach(([u, v], index) => {
+			if (index === 0) path.moveTo(u, v);
+			else path.lineTo(u, v);
 		});
-		shape.closePath();
-		return shape;
+		path.closePath();
+		return path;
 	}
 
-	/** One filled cap per group, with its holes, in the plane's own basis. */
+	/**
+	 * One filled cap per polygon, each with **its own** holes.
+	 *
+	 * The containment mapping is `loopsToPolygons`' job (`capFillsOf`): a hole belongs
+	 * to the smallest outer that contains it. Adding every hole to every outer — which
+	 * this used to do — gave two disjoint solids each other's holes, so a filled cap
+	 * grew a void outside its own face and disagreed with the section's edges.
+	 */
 	function addCap(
 		loops: readonly SectionLoop[],
 		basis: { readonly u: readonly [number, number, number]; readonly v: readonly [number, number, number]; readonly normal: readonly [number, number, number] },
 		y: number,
 		originXZ: readonly [number, number]
 	): void {
-		const outer = loops.filter((loop) => loop.role === 'outer');
-		if (outer.length === 0) return;
+		const fills = capFillsOf(loops);
+		if (fills.length === 0) return;
 		const shapes: Shape[] = [];
-		for (const loop of outer) {
-			const shape = shapeOfLoop(loop);
-			for (const hole of loops.filter((candidate) => candidate.role === 'hole')) {
-				const path = new Shape();
-				hole.points.forEach(([u, v], index) => {
-					if (index === 0) path.moveTo(u, v);
-					else path.lineTo(u, v);
-				});
-				path.closePath();
-				shape.holes.push(path);
-			}
+		for (const fill of fills) {
+			const shape = pathOfLoop(fill.outer as SectionLoop['points']);
+			for (const hole of fill.holes) shape.holes.push(pathOfLoop(hole as SectionLoop['points']));
 			shapes.push(shape);
 		}
 		const material = new MeshBasicMaterial({
@@ -254,6 +268,36 @@
 		build(open, SLICE_WARNING_INK);
 	}
 
+	/**
+	 * The ghost of a wholly hidden selected subject.
+	 *
+	 * The rendered geometry **by reference**, one flat material, no clipping: the
+	 * whole point is that the planes would otherwise delete the selected thing from
+	 * the frame entirely. Overlay layer, no raycast — the Index selects it, the
+	 * pointer does not (§2.5 step 4).
+	 */
+	function addGhost(objects: readonly Object3D[]): void {
+		const meshes = drawnMeshesOf(objects);
+		if (meshes.length === 0) return;
+		const material = new MeshBasicMaterial({
+			color: SLICE_GHOST_INK,
+			transparent: true,
+			opacity: 0.18,
+			depthWrite: false,
+			toneMapped: false
+		});
+		shared.push(material);
+		for (const source of meshes) {
+			source.updateWorldMatrix(true, false);
+			const mesh = new Mesh(source.geometry, material);
+			mesh.matrixAutoUpdate = false;
+			mesh.matrix.copy(source.matrixWorld);
+			mesh.matrixWorldNeedsUpdate = true;
+			mesh.renderOrder = 2;
+			keep(mesh, () => {});
+		}
+	}
+
 	let pending = 0;
 	let lastKey = '';
 
@@ -273,6 +317,7 @@
 			addCap(group.loops, result.basis, reading.cutY, originXZ);
 			addSectionLines(group.loops, group.chains, result.basis, reading.cutY, originXZ);
 		}
+		if (ghostSelection !== null && ghostSelection.length > 0) addGhost(ghostSelection);
 		if (import.meta.env.DEV) {
 			const elapsed = performance.now() - started;
 			if (elapsed > 4) {
@@ -280,6 +325,9 @@
 					`slice: cap assembly took ${elapsed.toFixed(1)} ms over ${result.candidateTriangles} candidate triangles`
 				);
 			}
+			// Reported here, not only through the optional callback: a Canvas that forgot
+			// to pass one must not make an open group silent (§2.2).
+			reportCapIssues(result.issues, revision);
 		}
 		onIssues?.(result.issues);
 		// These objects are added and removed imperatively; ask for exactly one frame.
@@ -288,7 +336,9 @@
 
 	$effect(() => {
 		// One assembly per animation frame, however many times a Sheet drag bumps these.
-		const key = `${resolved === null ? 'none' : `${resolved.cutY}:${resolved.lowerY ?? 'floor'}`}:${revision}:${inputs.length}`;
+		// The ghost is part of the assembly's key: a new selection is a new ghost even
+		// when the geometry, the reading and every input are unchanged.
+		const key = `${resolved === null ? 'none' : `${resolved.cutY}:${resolved.lowerY ?? 'floor'}`}:${revision}:${inputs.length}:${ghostSelection?.length ?? 0}:${ghostSelection?.[0]?.id ?? 'none'}`;
 		if (key !== lastKey) {
 			lastKey = key;
 			if (pending !== 0) return;

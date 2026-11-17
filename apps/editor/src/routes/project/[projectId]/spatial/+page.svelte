@@ -69,7 +69,8 @@
 		interiorLift
 	} from '$lib/authoring/layout/interior-lift-store.svelte';
 	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
-	import { pickThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
+	import { pickThroughSlice, pickVisibleFaceThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
+	import { setResolvedSlice } from '$lib/authoring/stage/slice/slice-resolved';
 	import {
 		planOverridesOf,
 		resolveSlice,
@@ -489,7 +490,9 @@
 		rect: () => rect,
 		measure: () => stageViewport.measure(),
 		stageElement: () => stageEl,
-		pickVisibleFace: scenePick.pickVisibleFace,
+		// Artwork hangs on a **drawn** face: the cut's filter applies to the placement
+		// ray too, so a click through a removed Wall reaches the one behind it.
+		pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => resolvedSlice),
 		press,
 		capturePointer,
 		onNotice: (message) => shell.setNotice(message),
@@ -725,6 +728,18 @@
 			sheetHeight: shell.heightMeters,
 			datumMeters: boot.snapshot.domain.datumMeters
 		});
+	});
+
+	/**
+	 * Publish the resolved reading to the plain-module pick providers.
+	 *
+	 * `layout.adapter.ts` is created by an adapter factory, not by a component, so it
+	 * reads the same value through this mirror (the shape `liftedSourcesNow` already
+	 * uses). Written here — the one place the value is derived — so no consumer can
+	 * hold a cut the Canvas is not drawing.
+	 */
+	$effect(() => {
+		setResolvedSlice(resolvedSlice);
 	});
 
 	/** Plan's membership follows the cut: a finite depth narrows what Plan shows. */
