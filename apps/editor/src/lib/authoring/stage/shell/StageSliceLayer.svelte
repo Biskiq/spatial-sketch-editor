@@ -8,9 +8,11 @@
 	 * reveals — the section of the meshes actually drawn — so a door reads as a gap
 	 * and a Wall reads as a filled section rather than a hollow shell.
 	 *
-	 * The assembly is coalesced to one per animation frame during a Sheet drag, and
-	 * timed in development against §6's 4 ms / 50 k-triangle budget: over budget is a
-	 * log, never a dropped step.
+	 * The assembly is **kept off the Sheet-drag frame**: a Sheet drag draws the plane
+	 * (which is exact by construction — the cut is the GPU's planes) and assembles the
+	 * section once the drag rests. It is also timed in development against §6's 4 ms
+	 * budget, over which it logs; measured on an eleven-Room fixture it is ~30 ms, which
+	 * is why the rebuild waits for the settle rather than running every frame.
 	 */
 	import { T, useThrelte } from '@threlte/core';
 	import {
@@ -37,6 +39,8 @@
 		type SectionLoop
 	} from '../slice/mesh-plane-section';
 	import { capFillsOf } from '../slice/slice-cap-shapes';
+	import { SLICE_INK } from '../slice/slice-ink';
+	import { decideCapAssembly, type CapAssemblyState } from '../slice/slice-cap-schedule';
 	import { reportCapIssues } from '../slice/slice-diagnostics';
 	import type { ResolvedSlice } from '../slice/slice-cut';
 	import { drawnMeshesOf } from './stage-selection-source';
@@ -70,11 +74,11 @@
 		onIssues?: (issues: readonly CapAssemblyIssue[]) => void;
 	} = $props();
 
-	const SLICE_PLANE_INK = 0xe8c14a;
-	const SLICE_CAP_INK = 0xf0e7d2;
-	const SLICE_WARNING_INK = 0xc2643f;
+	const SLICE_PLANE_INK = SLICE_INK.plane;
+	const SLICE_CAP_INK = SLICE_INK.cap;
+	const SLICE_WARNING_INK = SLICE_INK.warning;
 	/** The hover tone, at ghost opacity: a hidden subject is a silhouette, not a cap. */
-	const SLICE_GHOST_INK = 0x8c8578;
+	const SLICE_GHOST_INK = SLICE_INK.ghost;
 
 	const { invalidate } = useThrelte();
 	const root = new Group();
@@ -112,7 +116,7 @@
 		const material = new MeshBasicMaterial({
 			color: SLICE_PLANE_INK,
 			transparent: true,
-			opacity: 0.1,
+			opacity: SLICE_INK.planeOpacity,
 			side: DoubleSide,
 			depthWrite: false,
 			toneMapped: false
@@ -282,7 +286,7 @@
 		const material = new MeshBasicMaterial({
 			color: SLICE_GHOST_INK,
 			transparent: true,
-			opacity: 0.18,
+			opacity: SLICE_INK.ghostOpacity,
 			depthWrite: false,
 			toneMapped: false
 		});
@@ -298,8 +302,24 @@
 		}
 	}
 
+	/**
+	 * How long the Sheet must be still before the section is assembled again.
+	 *
+	 * Measured, not guessed: on an eleven-Room fixture (44 Walls, 7,040 candidate
+	 * triangles) one assembly costs ~30 ms here and the plan's budget is 4 ms, so
+	 * assembling per animation frame would drop frames for the whole drag. The drag
+	 * frame therefore draws only the plane — the cut itself is the GPU's planes and is
+	 * already exact — and the caps return this long after the last change. `120 ms` is
+	 * below the pause a person makes between two deliberate drags and above a
+	 * double-click.
+	 */
+	const SETTLE_MILLISECONDS = 120;
+
 	let pending = 0;
-	let lastKey = '';
+	/** The settle timer; `undefined` when the Sheet is at rest. */
+	let settle: ReturnType<typeof setTimeout> | undefined;
+	/** What the ink currently reflects; `decideCapAssembly` compares against it. */
+	let assembled: CapAssemblyState | null = null;
 
 	function rebuild(): void {
 		releaseAll();
@@ -334,30 +354,80 @@
 		invalidate();
 	}
 
+	function scheduleRebuild(): void {
+		if (pending !== 0) return;
+		pending = requestAnimationFrame(() => {
+			pending = 0;
+			rebuild();
+		});
+	}
+
+	/**
+	 * The reading moved and nothing else did: keep the plane exact, drop the section.
+	 *
+	 * The plane is one quad and the walls are clipped by the shared GPU planes, so the
+	 * cut being *shown* costs nothing; what is expensive is the section. Drawing a
+	 * stale section under a moved plane would be a lie, so the section is removed for
+	 * the duration of the drag and assembled once when the Sheet rests.
+	 */
+	function moveReadingOnly(reading: ResolvedSlice): void {
+		releaseAll();
+		addPlane(reading.cutY, 0.4);
+		if (reading.lowerY !== null) addDepthOutline(reading.lowerY);
+		invalidate();
+	}
+
 	$effect(() => {
-		// One assembly per animation frame, however many times a Sheet drag bumps these.
-		// The ghost is part of the assembly's key: a new selection is a new ghost even
-		// when the geometry, the reading and every input are unchanged.
-		const key = `${resolved === null ? 'none' : `${resolved.cutY}:${resolved.lowerY ?? 'floor'}`}:${revision}:${inputs.length}:${ghostSelection?.length ?? 0}:${ghostSelection?.[0]?.id ?? 'none'}`;
-		if (key !== lastKey) {
-			lastKey = key;
-			if (pending !== 0) return;
-			pending = requestAnimationFrame(() => {
-				pending = 0;
-				rebuild();
-			});
-		}
-		return () => {
+		const reading = resolved;
+		// A new geometry, a new input set or a new selection is a new section: assemble
+		// now. The ghost is part of that key, so selecting another hidden subject never
+		// waits for a settle.
+		const geometryKey = `${revision}:${inputs.length}:${ghostSelection?.length ?? 0}:${ghostSelection?.[0]?.id ?? 'none'}`;
+		const clearTimers = (): void => {
 			if (pending !== 0) {
 				cancelAnimationFrame(pending);
 				pending = 0;
 			}
+			if (settle !== undefined) {
+				clearTimeout(settle);
+				settle = undefined;
+			}
 		};
+		if (reading === null) {
+			assembled = null;
+			clearTimers();
+			releaseAll();
+			invalidate();
+			return clearTimers;
+		}
+		const next: CapAssemblyState = {
+			geometryKey,
+			cutKey: `${reading.cutY}:${reading.lowerY ?? 'floor'}`
+		};
+		const decision = decideCapAssembly(assembled, next);
+		if (decision === 'none' || decision === 'clear') return clearTimers;
+		assembled = next;
+		if (decision === 'rebuild') {
+			scheduleRebuild();
+			return clearTimers;
+		}
+		// A moved reading: one frame per drag step, and no assembly on it. The plane is
+		// exact on every frame anyway; the section waits for the Sheet to rest.
+		moveReadingOnly(reading);
+		if (settle !== undefined) clearTimeout(settle);
+		settle = setTimeout(() => {
+			settle = undefined;
+			scheduleRebuild();
+		}, SETTLE_MILLISECONDS);
+		return clearTimers;
 	});
 
 	$effect(() => () => {
 		if (pending !== 0) cancelAnimationFrame(pending);
+		if (settle !== undefined) clearTimeout(settle);
 		pending = 0;
+		settle = undefined;
+		assembled = null;
 		releaseAll();
 		invalidate();
 	});

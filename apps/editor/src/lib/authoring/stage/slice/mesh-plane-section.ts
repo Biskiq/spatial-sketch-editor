@@ -396,30 +396,24 @@ export function sectionMeshes(
 				const ia = index == null ? triangle * 3 : index[triangle * 3]!;
 				const ib = index == null ? triangle * 3 + 1 : index[triangle * 3 + 1]!;
 				const ic = index == null ? triangle * 3 + 2 : index[triangle * 3 + 2]!;
-				const world = [
-					worldPoint(positions[ia * 3]!, positions[ia * 3 + 1]!, positions[ia * 3 + 2]!, input.matrix),
-					worldPoint(positions[ib * 3]!, positions[ib * 3 + 1]!, positions[ib * 3 + 2]!, input.matrix),
-					worldPoint(positions[ic * 3]!, positions[ic * 3 + 1]!, positions[ic * 3 + 2]!, input.matrix)
-				] as const;
-				const local = world.map(
-					(point) =>
-						[dot(point, basis.u), dot(point, basis.v)] as SectionPoint
-				) as unknown as readonly [SectionPoint, SectionPoint, SectionPoint];
-				const distance = world.map((point) => dot(basis.normal, point) + constant) as unknown as readonly [number, number, number];
-				const min = Math.min(distance[0], distance[1], distance[2]);
-				const max = Math.max(distance[0], distance[1], distance[2]);
+				// Written out rather than mapped: this loop runs over every candidate
+				// triangle of every group, and three throwaway arrays per triangle were a
+				// fifth of the assembly's time (profiled on the eleven-Room fixture).
+				const w0 = worldPoint(positions[ia * 3]!, positions[ia * 3 + 1]!, positions[ia * 3 + 2]!, input.matrix);
+				const w1 = worldPoint(positions[ib * 3]!, positions[ib * 3 + 1]!, positions[ib * 3 + 2]!, input.matrix);
+				const w2 = worldPoint(positions[ic * 3]!, positions[ic * 3 + 1]!, positions[ic * 3 + 2]!, input.matrix);
+				const l0: SectionPoint = [dot(w0, basis.u), dot(w0, basis.v)];
+				const l1: SectionPoint = [dot(w1, basis.u), dot(w1, basis.v)];
+				const l2: SectionPoint = [dot(w2, basis.u), dot(w2, basis.v)];
+				const d0 = dot(basis.normal, w0) + constant;
+				const d1 = dot(basis.normal, w1) + constant;
+				const d2 = dot(basis.normal, w2) + constant;
+				const min = Math.min(d0, d1, d2);
+				const max = Math.max(d0, d1, d2);
 				// Wholly kept or wholly discarded: no crossing, no section.
 				if (min >= 0 || max < 0) continue;
-				const edge1: Vec3 = [
-					world[1][0] - world[0][0],
-					world[1][1] - world[0][1],
-					world[1][2] - world[0][2]
-				];
-				const edge2: Vec3 = [
-					world[2][0] - world[0][0],
-					world[2][1] - world[0][1],
-					world[2][2] - world[0][2]
-				];
+				const edge1: Vec3 = [w1[0] - w0[0], w1[1] - w0[1], w1[2] - w0[2]];
+				const edge2: Vec3 = [w2[0] - w0[0], w2[1] - w0[1], w2[2] - w0[2]];
 				const normal = cross(edge1, edge2);
 				if (Math.hypot(normal[0], normal[1], normal[2]) <= GEOMETRY_EPSILON) continue;
 				// Solid on the left: direction = n × t, in the right-handed (u, v, n) frame.
@@ -430,14 +424,14 @@ export function sectionMeshes(
 				for (let edge = 0; edge < 3; edge += 1) {
 					const first = edge;
 					const second = (edge + 1) % 3;
-					const dFirst = distance[first]!;
-					const dSecond = distance[second]!;
+					const dFirst = edge === 0 ? d0 : edge === 1 ? d1 : d2;
+					const dSecond = edge === 0 ? d1 : edge === 1 ? d2 : d0;
 					if (dFirst >= 0 && dSecond >= 0) continue;
 					if (dFirst < 0 && dSecond < 0) continue;
 					const t = dFirst / (dFirst - dSecond);
 					if (!Number.isFinite(t)) continue;
-					const a = local[first]!;
-					const b = local[second]!;
+					const a = edge === 0 ? l0 : edge === 1 ? l1 : l2;
+					const b = edge === 0 ? l1 : edge === 1 ? l2 : l0;
 					crossings.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
 				}
 				if (crossings.length !== 2) continue;
@@ -617,9 +611,12 @@ function splitPass(
 			Math.floor((Math.max(a[1], b[1]) + tolerance) / cell)
 		];
 	};
+	// One cell span per segment, reused by the grid and by the T-vertex walk (it was
+	// computed twice per segment per split pass).
+	const segmentBounds = segments.map(cellsOfSegment);
 	const segmentCells = new Map<string, number[]>();
 	segments.forEach((segment, index) => {
-		const [x0, x1, z0, z1] = cellsOfSegment(segment);
+		const [x0, x1, z0, z1] = segmentBounds[index]!;
 		for (let x = x0; x <= x1; x += 1) {
 			for (let z = z0; z <= z1; z += 1) {
 				const cellKey = key(x, z);
@@ -646,7 +643,7 @@ function splitPass(
 		else list.push(id);
 	}
 	segments.forEach((segment, index) => {
-		const [x0, x1, z0, z1] = cellsOfSegment(segment);
+		const [x0, x1, z0, z1] = segmentBounds[index]!;
 		const seen = new Set<number>();
 		for (let x = x0; x <= x1; x += 1) {
 			for (let z = z0; z <= z1; z += 1) {
