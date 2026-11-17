@@ -100,6 +100,7 @@ function controllerWith(
 	const controller = createStageAssetLeases({
 		session,
 		apiOrigin: '',
+		projectId: 'project-test',
 		resolveArtwork: async () => ({ bytes: new Uint8Array([1]), mime: 'image/png' }),
 		notice: {
 			read: () => shown,
@@ -123,12 +124,74 @@ function controllerWith(
 	};
 }
 
+function envelopeWithTextures(used: string, unused: string): ProjectEnvelope {
+	return {
+		units: {
+			scene: {
+				data: {
+					formatVersion: 1,
+					textures: [
+						{ id: used, name: 'Used', uri: `/project-assets/${used}` },
+						{ id: unused, name: 'Unused', uri: `/project-assets/${unused}` }
+					],
+					materials: [
+						{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', maps: { color: used } }
+					],
+					entities: []
+				}
+			},
+			resources: {
+				data: {
+					resources: [
+						{
+							id: used,
+							kind: 'texture',
+							pin: { hash: 'sha256-used', mime: 'image/png', size: 1 },
+							unresolved: null
+						},
+						{
+							id: unused,
+							kind: 'texture',
+							pin: { hash: 'sha256-unused', mime: 'image/png', size: 1 },
+							unresolved: null
+						}
+					]
+				}
+			}
+		}
+	} as unknown as ProjectEnvelope;
+}
+
 const A = snapshotWith(envelopeWith([{ assetId: 'model-a', hash: HASH_A }]), 'a');
 const B = snapshotWith(envelopeWith([{ assetId: 'model-b', hash: HASH_B }]), 'b');
 const C = snapshotWith(envelopeWith([{ assetId: 'model-c', hash: 'sha256-c' }]), 'c');
 const D = snapshotWith(envelopeWith([{ assetId: 'model-d', hash: 'sha256-d' }]), 'd');
 
 describe('approved asset leases', () => {
+	it('prepares only the textures a material actually maps', async () => {
+		const prepare = vi.fn(async (_uris: readonly string[]) => {});
+		const textureScope = {
+			scopeId: 'project:texture-test',
+			loader: vi.fn(),
+			prepare,
+			retry: vi.fn(),
+			dimensionsOf: () => null,
+			aspectOf: () => null,
+			previewUriOf: () => null,
+			dispose: vi.fn()
+		};
+		const subject = controllerWith({
+			resolveModels: vi.fn(async () => approvedSources({})) as unknown as StageAssetLeaseInput['resolveModels'],
+			createTextureScope: (() => textureScope) as unknown as StageAssetLeaseInput['createTextureScope']
+		});
+
+		await subject.controller.resolve(snapshotWith(envelopeWithTextures('used', 'unused'), 'textures'));
+
+		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(prepare.mock.calls[0][0]).toEqual(['/project-assets/used']);
+		subject.controller.dispose();
+	});
+
 	it('retains the exact URL map when an accept leaves the pins unchanged', async () => {
 		const first = approvedSources({ 'model-a': 'blob:a' });
 		const resolveModels = vi.fn(async () => first) as unknown as StageAssetLeaseInput['resolveModels'];

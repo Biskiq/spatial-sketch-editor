@@ -472,9 +472,21 @@ Materials (definitions/instances and shared-vs-unique already exist):
   reaches a curated Finish through one pristine instance, and a pristine instance
   with no user is collected in the same write. *Model's own* deletes the instance
   and restores the imported material.
-- Remaining gaps: Finish image upload and mapping (S4b), per-face and Wall painting
-  (T5/S5), Treatment (S6), approved PBR map sets, and metric tile size where the
-  mapping path supports it (no UV editor).
+- S4b adds one colour image per Finish through P20, the Finish's Scale in
+  metres and Direction. The image is a `scene.textures` record plus one pinned
+  `texture` resource, created with the Finish in one write; Cancel, refusal or
+  Undo leaves the uploaded asset under P20 retention and writes no Scene state.
+  Mapping is per object kind: a Form's UVs are metres, a primitive's repeat is
+  its authored face size × the entity's uniform scale (D1; box sides use
+  width × depth and say so), and a model hides Scale and Direction because its
+  own UVs are authoritative. Scale writes `tileMeters [s, s × h/w]` from the
+  image aspect, or `[s, s]` with no aspect; Direction writes radians normalised
+  to [0, 2π). A map-less Finish shows neither field. Both follow the ordinary
+  shared-Finish Ask, and *Remove* deletes the image and restores the base's
+  colour rule. Under Flat colour the image renders its colour field; S6 owns
+  its average colour (D2).
+- Remaining gaps: per-face and Wall painting (T5/S5), Treatment (S6), approved
+  PBR map sets, and save-mode verification of Finish texture pins.
 - A default edit clones once per shared instance for the selected subset and
   retains sharing inside it; an explicit "edit shared" path discloses the
   total/outside user count. Cancelled choice, unsupported target and failure write

@@ -17,10 +17,13 @@
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import type { SceneModelSupport } from '$lib/render/scene-model-representation';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
 
 	let {
 		scene,
+		textureScope = null,
+		textureRevision = 0,
 		artworkScope = null,
 		onArtworkError,
 		modelUrls = null,
@@ -31,6 +34,10 @@
 		includeLights = true
 	}: {
 		scene: RuntimeScene;
+		/** The route's authenticated project texture scope (S4b). */
+		textureScope?: TextureLoadScope | null;
+		/** Bumped by a targeted texture Retry. */
+		textureRevision?: number;
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		artworkScope?: ArtworkScope | null;
 		onArtworkError?: (message: string) => void;
@@ -72,4 +79,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()} onEntityRoot={onEntityRoot ?? scenePick.register} />
+<VisitorEntityGroups {scene} {textureScope} {textureRevision} {artworkScope} {onArtworkError} {modelUrls} {onFormRendererReady} {includeLights} {modelSupport} onModelDrawn={() => onEntityRenderable?.()} onEntityRoot={onEntityRoot ?? scenePick.register} />

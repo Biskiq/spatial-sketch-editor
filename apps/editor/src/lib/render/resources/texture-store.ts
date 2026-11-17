@@ -30,7 +30,8 @@ export type MaterialTexturesResult =
   | { status: 'failed'; error: string; maps?: LoadedTextureMaps };
 
 type SourceEntry = {
-  promise: Promise<ThreeTexture>;
+  /** Assigned immediately after construction, before the first await. */
+  promise: Promise<ThreeTexture> | null;
   texture?: ThreeTexture;
   error?: string;
 };
@@ -177,16 +178,22 @@ function loadSource(
   if (existing) {
     if (existing.error) return Promise.reject(new Error(existing.error));
     if (existing.texture) return Promise.resolve(existing.texture);
-    return existing.promise;
+    if (existing.promise !== null) return existing.promise;
+    return Promise.reject(new Error('Texture load is not available.'));
   }
 
+  // The entry is the identity a late completion must still own. A Retry, a pin
+  // change or a disposed scope replaces the entry; an older promise must not
+  // write its result into the newer one.
+  const entry: SourceEntry = { promise: null };
   const promise = scope
-    ? loadViaScopedLoader(key, url, slot, materialId, scope.loader)
+    ? loadViaScopedLoader(key, url, slot, materialId, scope.loader, entry)
     : defaultSourceLoader
-      ? loadViaDefaultSourceLoader(key, url, slot, materialId)
-      : loadViaTextureLoader(key, url, slot, materialId);
+      ? loadViaDefaultSourceLoader(key, url, slot, materialId, entry)
+      : loadViaTextureLoader(key, url, slot, materialId, entry);
 
-  sourceCache.set(key, { promise });
+  entry.promise = promise;
+  sourceCache.set(key, entry);
   return promise;
 }
 
@@ -194,23 +201,22 @@ function loadViaTextureLoader(
   key: string,
   url: string,
   slot: MaterialTextureSlot,
-  materialId: string
+  materialId: string,
+  entry: SourceEntry
 ): Promise<ThreeTexture> {
   return new Promise<ThreeTexture>((resolve, reject) => {
     loader.load(
       url,
       (texture) => {
         applySourceDefaults(texture, slot);
-        const entry = sourceCache.get(key);
-        if (entry) entry.texture = texture;
+        if (sourceCache.get(key) === entry) entry.texture = texture;
         resolve(texture);
       },
       undefined,
       (event) => {
         const message = `Failed to load texture for material "${materialId}": ${url}`;
         console.warn(message, event);
-        const entry = sourceCache.get(key);
-        if (entry) entry.error = message;
+        if (sourceCache.get(key) === entry) entry.error = message;
         reject(new Error(message));
       }
     );
@@ -221,19 +227,18 @@ async function loadViaDefaultSourceLoader(
   key: string,
   url: string,
   slot: MaterialTextureSlot,
-  materialId: string
+  materialId: string,
+  entry: SourceEntry
 ): Promise<ThreeTexture> {
   try {
     const texture = await defaultSourceLoader!(url, slot);
     applySourceDefaults(texture, slot);
-    const entry = sourceCache.get(key);
-    if (entry) entry.texture = texture;
+    if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
     const message = `Failed to load texture for material "${materialId}": ${url}`;
     console.warn(message, event);
-    const entry = sourceCache.get(key);
-    if (entry) entry.error = message;
+    if (sourceCache.get(key) === entry) entry.error = message;
     throw new Error(message);
   }
 }
@@ -243,19 +248,18 @@ async function loadViaScopedLoader(
   url: string,
   slot: MaterialTextureSlot,
   materialId: string,
-  scoped: TextureSourceLoader
+  scoped: TextureSourceLoader,
+  entry: SourceEntry
 ): Promise<ThreeTexture> {
   try {
     const texture = await scoped(url, slot);
     applySourceDefaults(texture, slot);
-    const entry = sourceCache.get(key);
-    if (entry) entry.texture = texture;
+    if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
     const message = `Failed to load texture for material "${materialId}": ${url}`;
     console.warn(message, event);
-    const entry = sourceCache.get(key);
-    if (entry) entry.error = message;
+    if (sourceCache.get(key) === entry) entry.error = message;
     throw new Error(message);
   }
 }
@@ -391,6 +395,36 @@ export function releaseMaterialVariant(
   existing.pendingDispose = true;
   pendingVariantDisposals += 1;
   scheduleDeferredFlush();
+}
+
+/**
+ * Drop one cached source failure (or a loaded source) so the next load retries.
+ *
+ * The source cache remembers a failed load permanently, which is right for an
+ * immutable catalogue path but wrong for a creator image: a blocked request, a
+ * replaced pin or a creator's explicit Retry must be able to ask again. Only
+ * the named scope's entry is dropped; every other Canvas keeps its lease.
+ */
+/** @returns whether a cached texture was disposed here. */
+export function invalidateTextureSource(scopeId: string | null, url: string): boolean {
+  const key = sourceKey(scopeId === null ? null : { scopeId }, url);
+  const entry = sourceCache.get(key);
+  if (entry === undefined) return false;
+  sourceCache.delete(key);
+  entry.texture?.dispose();
+  return entry.texture !== undefined;
+}
+
+/**
+ * Drop a scope's material-level results so a Retry (or a new route) runs the
+ * material loader again instead of replaying a cached failure. The source cache
+ * remains the byte cache; successes reload from it without another fetch.
+ */
+export function invalidateScopedMaterialLoads(scopeId: string): void {
+  const prefix = `${scopeId}::`;
+  for (const key of materialLoadPromises.keys()) {
+    if (key.startsWith(prefix)) materialLoadPromises.delete(key);
+  }
 }
 
 /** Test helper: clear in-memory caches (does not dispose GPU sources still referenced). */

@@ -25,6 +25,9 @@
 	let paletteOpen = $state(false);
 	let renaming = $state<string | null>(null);
 	let renameDraft = $state('');
+	let imageFileInput = $state<HTMLInputElement>();
+	let customDirection = $state(false);
+	let directionDraft = $state('0');
 
 	$effect(() => {
 		return services.stage.onAdaptersChanged(() => {
@@ -47,9 +50,24 @@
 	});
 	const sharedAsk = $derived(ask !== null && ask.entityId === entityId);
 	const hex = $derived(row?.literalColor ?? row?.effectiveColor ?? '#000000');
+	const imageFlow = $derived(finishes?.image ?? null);
+	const directionDegrees = $derived(row === null ? 0 : (row.rotation * 180) / Math.PI);
+	const directionPreset = $derived.by(() => {
+		const value = directionDegrees;
+		if (Math.abs(value) < 0.5 || Math.abs(value - 360) < 0.5) return 0;
+		if (Math.abs(value - 90) < 0.5) return 90;
+		return null;
+	});
 
 	$effect(() => {
 		finishes?.noteRow(entityId);
+	});
+
+	// Custom Direction is this Card's draft, not the Finish's value: selecting
+	// another object must not leave its input open here.
+	$effect(() => {
+		void entityId;
+		customDirection = false;
 	});
 
 	function preview(color: string): void {
@@ -109,6 +127,40 @@
 	function armDropper(): void {
 		if (entityId === null || finishes === null) return;
 		finishes.armDropper(entityId);
+	}
+
+	function chooseImage(file: File | null): void {
+		if (file === null || entityId === null || finishes === null) return;
+		void finishes.replaceImage(entityId, file);
+	}
+
+	function removeImage(): void {
+		if (entityId === null || finishes === null) return;
+		void finishes.removeImage(entityId);
+	}
+
+	function setTileSize(event: Event): void {
+		if (entityId === null || finishes === null) return;
+		const value = Number((event.currentTarget as HTMLInputElement).value);
+		void finishes.setTileSize(entityId, value);
+	}
+
+	function setDirection(preset: number): void {
+		if (entityId === null || finishes === null) return;
+		customDirection = false;
+		void finishes.setDirection(entityId, preset);
+	}
+
+	function commitDirection(event: Event): void {
+		if (entityId === null || finishes === null) return;
+		const value = Number((event.currentTarget as HTMLInputElement).value);
+		if (!Number.isFinite(value)) return;
+		void finishes.setDirection(entityId, value);
+	}
+
+	function retryImage(): void {
+		if (finishes === null || row?.colorMapId === null || row?.colorMapId === undefined) return;
+		finishes.retryImage(row.colorMapId);
 	}
 
 	function answer(choice: 'just-this' | 'all' | 'cancel'): void {
@@ -320,6 +372,127 @@
 							<span>Metal</span>
 							<span class="reading">{row.metalCaption}</span>
 						</label>
+						<p class="hint">Metal shows its colour in highlights; reflections come later.</p>
+
+						{#if row.canEditMapping}
+							<div class="image" data-finish-image>
+								<span class="label">Image</span>
+								{#if row.colorMapUri !== null}
+									<span
+										class="image-thumb"
+										data-finish-image-preview
+										style={`background-color:${row.effectiveColor};background-image:url("${row.colorMapUri}")`}
+										aria-hidden="true"
+									></span>
+								{:else}
+									<span class="reading">No image</span>
+								{/if}
+								<input
+									type="file"
+									accept="image/png,image/jpeg,image/webp"
+									hidden
+									bind:this={imageFileInput}
+									onchange={() => {
+										const file = imageFileInput?.files?.[0] ?? null;
+										if (imageFileInput) imageFileInput.value = '';
+										chooseImage(file);
+									}}
+								/>
+								<button type="button" data-finish-image-replace onclick={() => imageFileInput?.click()}>
+									{row.colorMapId === null ? 'Choose…' : 'Replace…'}
+								</button>
+								{#if row.colorMapId !== null}
+									<button type="button" data-finish-image-remove onclick={removeImage}>Remove</button>
+								{/if}
+								{#if imageFlow !== null && imageFlow.phase !== 'idle' && imageFlow.phase !== 'done'}
+									<span class="reading" data-finish-image-flow={imageFlow.phase}>
+										{#if imageFlow.phase === 'checking'}
+											Checking…
+										{:else if imageFlow.phase === 'uploading'}
+											Uploading…
+										{:else if imageFlow.phase === 'saving'}
+											Saving…
+										{:else}
+											{imageFlow.message}
+										{/if}
+									</span>
+									{#if imageFlow.phase === 'checking' || imageFlow.phase === 'uploading'}
+										<button type="button" onclick={() => finishes?.cancelImage()}>Cancel</button>
+									{:else if imageFlow.phase === 'failed' && finishes?.imageCanRetry}
+										<button type="button" data-finish-image-retry onclick={() => void finishes?.retryImageUpload()}>Try again</button>
+									{/if}
+								{/if}
+								{#if row.colorMapFailed}
+									<span class="reading image-broken" data-finish-image-broken>
+										Image could not load
+										<button type="button" data-finish-image-broken-retry onclick={retryImage}>Retry</button>
+									</span>
+								{/if}
+							</div>
+
+							{#if row.tileSizeAvailable}
+								<label class="scale" data-finish-scale>
+									<span>One tile =</span>
+									<input
+										type="number"
+										min="0.01"
+										max="100"
+										step="0.01"
+										value={row.tileMeters?.[0] ?? row.defaultTileMeters[0]}
+										onchange={setTileSize}
+										aria-label="One tile in metres"
+									/>
+									<span>m</span>
+									{#if row.scaleApproximate}<span class="reading">Scale is approximate on boxes</span>{/if}
+								</label>
+							{/if}
+
+							{#if row.directionAvailable}
+								<div class="direction" role="group" aria-label="Direction">
+									<span class="label">Direction</span>
+									{#each [0, 90] as preset (preset)}
+										<button
+											type="button"
+											class:active={!customDirection && directionPreset === preset}
+											aria-pressed={!customDirection && directionPreset === preset}
+											data-finish-direction={preset}
+											onclick={() => setDirection(preset)}
+										>
+											{preset}°
+										</button>
+									{/each}
+									<button
+										type="button"
+										class:active={customDirection || directionPreset === null}
+										aria-pressed={customDirection || directionPreset === null}
+										data-finish-direction="custom"
+										onclick={() => {
+											customDirection = true;
+											directionDraft = String(Math.round(directionDegrees));
+										}}
+									>
+										Custom…
+									</button>
+									{#if customDirection}
+										<input
+											type="number"
+											step="1"
+											class="direction-input"
+											bind:value={directionDraft}
+											aria-label="Direction in degrees"
+											onchange={commitDirection}
+										/>
+										<span class="reading">degrees</span>
+									{/if}
+								</div>
+							{/if}
+
+							{#if row.colorMapWarning !== null}
+								<p class="hint" data-finish-image-warning>{row.colorMapWarning}</p>
+							{/if}
+						{:else}
+							<p class="model-own">This model uses its own texture layout.</p>
+						{/if}
 					</div>
 				{/if}
 
@@ -329,6 +502,8 @@
 							This Finish is shared by {ask.reach} objects.
 							{#if ask.kind === 'palette-add'}
 								Save its colour to the palette
+							{:else if ask.kind === 'image-replace'}
+								Replace the image on this object, or on all {ask.reach}?
 							{:else}
 								Edit only this object, or all {ask.reach}?
 							{/if}
@@ -608,5 +783,71 @@
 		margin: 0;
 		color: var(--shell-ink-quiet);
 		font-size: var(--shell-text-utility);
+	}
+	.image,
+	.scale,
+	.direction {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: var(--shell-text-utility);
+	}
+	.image .label,
+	.direction .label {
+		width: 2.6rem;
+		color: var(--shell-ink-quiet);
+	}
+	.image-thumb {
+		width: 1.6rem;
+		height: 1.6rem;
+		border: 1px solid rgb(0 0 0 / 25%);
+		border-radius: 0.2rem;
+		background-position: center;
+		background-size: cover;
+		background-blend-mode: multiply;
+	}
+	.image button,
+	.direction button {
+		min-height: var(--shell-control-height);
+		padding: 0 0.4rem;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 0.25rem;
+		background: transparent;
+		color: inherit;
+		font-size: var(--shell-text-utility);
+	}
+	.direction button.active {
+		border-color: var(--stage-selection);
+		background: var(--stage-selection);
+		color: var(--shell-forest);
+	}
+	.direction-input {
+		width: 4.2rem;
+		min-height: var(--shell-control-height);
+		padding: 0 0.3rem;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 0.25rem;
+		background: transparent;
+		color: inherit;
+	}
+	.scale input {
+		width: 4.6rem;
+		min-height: var(--shell-control-height);
+		padding: 0 0.3rem;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 0.25rem;
+		background: transparent;
+		color: inherit;
+		font-family: var(--shell-mono);
+	}
+	.image-broken {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.image-broken button {
+		min-height: 0;
+		padding: 0 0.3rem;
 	}
 </style>

@@ -13,6 +13,7 @@ import type {
 	SceneMaterialInstance
 } from '@portfolio/project-model';
 import {
+	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
@@ -28,7 +29,13 @@ import {
 	isPristineInstance,
 	withFinishPreviews
 } from '@portfolio/project-model/scene-planning';
-import { createUnitCoordinator, createUnitProject, admitUnitProject, unitRevision } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import {
+	admitUnitContent,
+	admitUnitProject,
+	createUnitCoordinator,
+	createUnitProject,
+	unitRevision
+} from '../authoring/__fixtures__/unit-envelope-fixtures';
 
 const LABELS: Record<string, string> = {
 	'wood-walnut': 'Walnut Wood',
@@ -43,6 +50,8 @@ type SceneInput = {
 	readonly entities: readonly SceneEntity[];
 	readonly materials?: readonly SceneMaterialInstance[];
 	readonly palette?: readonly ScenePaletteSlot[];
+	readonly textures?: CameraFreeSceneDocument['textures'];
+	readonly resources?: ProjectEnvelope['units']['resources']['data'];
 };
 
 function box(id: string, materialId = 'plaster-warm', instanceId?: string): SceneEntity {
@@ -91,7 +100,7 @@ function light(id: string): SceneEntity {
 function sceneDocument(input: SceneInput): CameraFreeSceneDocument {
 	return {
 		formatVersion: SCENE_UNIT_FORMAT_VERSION,
-		textures: [],
+		textures: [...(input.textures ?? [])],
 		materials: [...(input.materials ?? [])],
 		entities: [...input.entities],
 		...(input.palette === undefined ? {} : { palette: input.palette })
@@ -102,7 +111,8 @@ async function sceneEnvelope(input: SceneInput): Promise<ProjectEnvelope> {
 	return createUnitProject({
 		id: 'project-finish',
 		name: 'Finish',
-		scene: sceneDocument(input)
+		scene: sceneDocument(input),
+		...(input.resources === undefined ? {} : { resources: input.resources })
 	});
 }
 
@@ -164,7 +174,8 @@ async function boot(input: SceneInput) {
 	const project = await createUnitProject({
 		id: 'project-finish',
 		name: 'Finish',
-		scene: sceneDocument(input)
+		scene: sceneDocument(input),
+		...(input.resources === undefined ? {} : { resources: input.resources })
 	});
 	const revision = unitRevision(project.id);
 	const admitted = await admitUnitProject(project, revision);
@@ -763,5 +774,358 @@ describe('record scope', () => {
 				materials: { added: ['p2'], changed: [], removed: [] }
 			}).length
 		).toBeGreaterThan(0);
+	});
+});
+
+/**
+ * T2.S4b — `scene-finish-from-image` and the texture grant.
+ *
+ * The upload is outside the Scene; this write adds the texture record, its
+ * pinned `texture` resource and the Finish together, or nothing. Undo removes
+ * exactly what the intent added, and the same bytes always reuse the same two
+ * records.
+ */
+const IMAGE_ASSET = '00000000-0000-4000-8000-0000000000aa';
+const IMAGE_PIN = {
+	hash: `sha256-${'a'.repeat(64)}`,
+	mime: 'image/png',
+	size: 1024,
+	locator: `/project-assets/${IMAGE_ASSET}`
+};
+const IMAGE_URI = `/project-assets/${IMAGE_ASSET}`;
+
+function fromImagePayload(entityIds: readonly string[], name = 'Brick') {
+	return { name, texture: { assetId: IMAGE_ASSET, pin: IMAGE_PIN }, entityIds };
+}
+
+function acceptedSnapshot(result: Awaited<ReturnType<typeof accept>>) {
+	if (result.kind !== 'accepted') throw new Error('expected an accepted result');
+	return result.snapshot;
+}
+
+function resourcesOf(result: Awaited<ReturnType<typeof accept>>) {
+	return acceptedSnapshot(result).domain.source.units.resources.data.resources;
+}
+
+describe('scene-finish-from-image', () => {
+	it('adds the texture record, the pinned resource, the Finish and its assignment in one intent', async () => {
+		const coordinator = await boot({ entities: [box('a')] });
+		const result = await accept(
+			coordinator,
+			intentOf(
+				coordinator,
+				'scene-finish-from-image',
+				fromImagePayload(['a']),
+				['a'],
+				[{ kind: 'scene-finish', id: 'finish-image' }]
+			)
+		);
+		const scene = acceptedScene(result);
+		expect(scene.textures).toEqual([{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }]);
+		expect(scene.materials).toEqual([
+			{
+				id: 'finish-image',
+				name: 'Brick',
+				baseMaterialId: 'paper-aged',
+				color: '#ffffff',
+				maps: { color: IMAGE_ASSET }
+			}
+		]);
+		expect(finishKeyOf(scene, 'a')).toBe('project:finish-image');
+		expect(scene.entities[0]).toMatchObject({ materialId: 'paper-aged', materialInstanceId: 'finish-image' });
+		// The resource's content revision is its byte identity, and a texture needs
+		// no dependency-lock entry (unlike an approved model).
+		expect(resourcesOf(result)).toEqual([
+			{ kind: 'texture', id: IMAGE_ASSET, contentRevision: IMAGE_PIN.hash, pin: IMAGE_PIN, unresolved: null }
+		]);
+		const snapshot = acceptedSnapshot(result);
+		expect(snapshot.domain.source.dependencyLock.entries ?? []).toEqual([]);
+		// The candidate passes source admission, so the texture resource really
+		// closes the Scene's new texture record.
+		expect((await admitUnitContent(snapshot.domain.source)).kind).toBe('admitted');
+	});
+
+	it('is one Undo: the Scene returns byte-identical and the texture records disappear together', async () => {
+		const coordinator = await boot({ entities: [box('a')] });
+		const before = structuredClone(sourceScene(coordinator));
+		const result = await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-from-image', fromImagePayload(['a']), ['a'], [
+				{ kind: 'scene-finish', id: 'finish-image' }
+			])
+		);
+		expect(acceptedScene(result).textures).toHaveLength(1);
+		const undone = await coordinator.undo();
+		expect(undone.kind).toBe('restored');
+		expect(sourceScene(coordinator)).toEqual(before);
+		expect(coordinator.current().source.units.resources.data.resources).toEqual([]);
+		const redone = await coordinator.redo();
+		expect(redone.kind).toBe('restored');
+		// Redo restores the allocated id and both records exactly.
+		expect(sourceScene(coordinator).textures).toEqual([{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }]);
+		expect(finishKeyOf(sourceScene(coordinator), 'a')).toBe('project:finish-image');
+	});
+
+	it('reuses the image records for a second Finish and never duplicates them', async () => {
+		const coordinator = await boot({ entities: [box('a'), box('b')] });
+		await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-from-image', fromImagePayload(['a']), ['a'], [
+				{ kind: 'scene-finish', id: 'finish-one' }
+			])
+		);
+		const second = await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-from-image', { ...fromImagePayload(['b'], 'Brick 3') }, ['b'], [
+				{ kind: 'scene-finish', id: 'finish-two' }
+			])
+		);
+		const scene = acceptedScene(second);
+		expect(scene.textures).toHaveLength(1);
+		expect(scene.materials.map((material) => material.id)).toEqual(['finish-one', 'finish-two']);
+		expect(scene.materials[1]).toMatchObject({ name: 'Brick 3', maps: { color: IMAGE_ASSET } });
+		expect(resourcesOf(second)).toHaveLength(1);
+		expect(finishKeyOf(scene, 'a')).toBe('project:finish-one');
+		expect(finishKeyOf(scene, 'b')).toBe('project:finish-two');
+	});
+
+	it('refuses a texture record with the same id but another URI', async () => {
+		const coordinator = await boot({
+			entities: [box('a')],
+			textures: [{ id: IMAGE_ASSET, name: 'Brick', uri: '/textures/brick.png' }],
+			resources: {
+				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+				resources: [
+					{
+						kind: 'texture',
+						id: IMAGE_ASSET,
+						contentRevision: IMAGE_PIN.hash,
+						pin: { ...IMAGE_PIN, locator: '/textures/brick.png' },
+						unresolved: null
+					}
+				]
+			}
+		});
+		const result = await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-from-image', fromImagePayload(['a']), ['a'], [
+				{ kind: 'scene-finish', id: 'finish-image' }
+			])
+		);
+		expect(result.kind).toBe('rejected');
+		if (result.kind === 'rejected') expect(result.reason).toBe('texture-mismatch');
+		expect(sourceScene(coordinator).textures).toEqual([{ id: IMAGE_ASSET, name: 'Brick', uri: '/textures/brick.png' }]);
+	});
+
+	it('refuses a pin that names another locator', async () => {
+		const coordinator = await boot({ entities: [box('a')] });
+		const result = await accept(
+			coordinator,
+			intentOf(
+				coordinator,
+				'scene-finish-from-image',
+				{
+					...fromImagePayload(['a']),
+					texture: { assetId: IMAGE_ASSET, pin: { ...IMAGE_PIN, locator: '/project-assets/another' } }
+				},
+				['a'],
+				[{ kind: 'scene-finish', id: 'finish-image' }]
+			)
+		);
+		expect(result.kind).toBe('rejected');
+		if (result.kind === 'rejected') expect(result.reason).toBe('invalid-pin');
+		expect(sourceScene(coordinator).textures).toEqual([]);
+	});
+
+	it('creates a Finish with no user when the Library had no selection', async () => {
+		const coordinator = await boot({ entities: [box('a')] });
+		const result = await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-from-image', fromImagePayload([]), [], [
+				{ kind: 'scene-finish', id: 'finish-image' }
+			])
+		);
+		const scene = acceptedScene(result);
+		expect(scene.materials.map((material) => material.id)).toEqual(['finish-image']);
+		expect(finishKeyOf(scene, 'a')).toBe('curated:plaster-warm');
+	});
+
+	it('replaces an image through the Finish edit rules: Just this clones and All N edits in place', async () => {
+		const coordinator = await boot({
+			entities: [box('a'), box('b')],
+			materials: [
+				{ id: 'shared', name: 'Shared', baseMaterialId: 'plaster-warm', roughness: 0.4 },
+				{ id: 'single', name: 'Single', baseMaterialId: 'wood-walnut' }
+			]
+		});
+		await accept(coordinator, intentOf(coordinator, 'scene-finish-assign', { finish: { project: 'shared' }, entityIds: ['a', 'b'] }, ['a', 'b']));
+		// A replacement on the shared Finish asks for a clone and addresses only `a`.
+		const cloned = await accept(
+			coordinator,
+			intentOf(
+				coordinator,
+				'scene-finish-from-image',
+				{
+					...fromImagePayload([], 'Brick'),
+					replaceFinishOf: { entityId: 'a', reach: 2, mode: 'just-this' }
+				},
+				['a'],
+				[{ kind: 'scene-finish', id: 'shared-clone' }]
+			)
+		);
+		const scene = acceptedScene(cloned);
+		expect(scene.textures).toEqual([{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }]);
+		expect(scene.materials.find((material) => material.id === 'shared')).toMatchObject({ roughness: 0.4 });
+		expect(scene.materials.find((material) => material.id === 'shared-clone')).toMatchObject({
+			name: 'Shared 2',
+			maps: { color: IMAGE_ASSET }
+		});
+		expect(finishKeyOf(scene, 'a')).toBe('project:shared-clone');
+		expect(finishKeyOf(scene, 'b')).toBe('project:shared');
+		// The same bytes on the other user edit the shared Finish in place.
+		const replaced = await accept(
+			coordinator,
+			intentOf(
+				coordinator,
+				'scene-finish-from-image',
+				{
+					...fromImagePayload([], 'Brick'),
+					replaceFinishOf: { entityId: 'b', reach: 1, mode: 'in-place' }
+				},
+				['b'],
+				[]
+			)
+		);
+		const replacedScene = acceptedScene(replaced);
+		expect(replacedScene.materials.find((material) => material.id === 'shared')).toMatchObject({
+			maps: { color: IMAGE_ASSET }
+		});
+		expect(replacedScene.textures).toHaveLength(1);
+	});
+
+	it('removes the image, restores the base colour rule and keeps the orphan texture record', async () => {
+		const coordinator = await boot({
+			entities: [box('a')],
+			materials: [
+				{ id: 'image-finish', name: 'Brick', baseMaterialId: 'paper-aged', color: '#ffffff', maps: { color: IMAGE_ASSET } }
+			],
+			textures: [{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }],
+			resources: {
+				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+				resources: [
+					{ kind: 'texture', id: IMAGE_ASSET, contentRevision: IMAGE_PIN.hash, pin: IMAGE_PIN, unresolved: null }
+				]
+			}
+		});
+		await accept(coordinator, intentOf(coordinator, 'scene-finish-assign', { finish: { project: 'image-finish' }, entityIds: ['a'] }, ['a']));
+		const removed = await accept(
+			coordinator,
+			intentOf(
+				coordinator,
+				'scene-finish-edit',
+				{ entityId: 'a', from: 'project:image-finish', reach: 1, mode: 'in-place', edit: { colorMap: null } },
+				['a']
+			)
+		);
+		const scene = acceptedScene(removed);
+		const instance = scene.materials.find((material) => material.id === 'image-finish')!;
+		expect(instance.maps).toBeUndefined();
+		// The white tint was only there to let the image through; removing it lets
+		// the base material's own colour rule return.
+		expect(instance.color).toBeUndefined();
+		// Orphan textures follow the asset's retention; the Scene write never
+		// deletes bytes it cannot see.
+		expect(scene.textures).toHaveLength(1);
+	});
+});
+
+describe('scene-finish-edit — Scale and Direction', () => {
+	it('writes tileMetres and a normalised rotation through the ordinary Ask rules', async () => {
+		const coordinator = await boot({
+			entities: [box('a', 'plaster-warm', 'p')],
+			materials: [{ id: 'p', name: 'P', baseMaterialId: 'plaster-warm', roughness: 0.5 }]
+		});
+		const result = await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-edit', {
+				entityId: 'a',
+				from: 'project:p',
+				reach: 1,
+				mode: 'in-place',
+				edit: { tileMeters: [0.5, 0.25], rotation: -Math.PI / 2 }
+			}, ['a'])
+		);
+		const scene = acceptedScene(result);
+		const instance = scene.materials.find((material) => material.id === 'p')!;
+		expect(instance.mapping?.tileMeters).toEqual([0.5, 0.25]);
+		expect(instance.mapping?.rotation).toBeCloseTo((3 * Math.PI) / 2, 10);
+	});
+
+	it('deletes the mapping when a null edit leaves nothing', async () => {
+		const coordinator = await boot({
+			entities: [box('a', 'plaster-warm', 'p')],
+			materials: [
+				{ id: 'p', name: 'P', baseMaterialId: 'plaster-warm', mapping: { tileMeters: [1, 2] } }
+			]
+		});
+		const result = await accept(
+			coordinator,
+			intentOf(coordinator, 'scene-finish-edit', {
+				entityId: 'a',
+				from: 'project:p',
+				reach: 1,
+				mode: 'in-place',
+				edit: { tileMeters: null }
+			}, ['a'])
+		);
+		const instance = acceptedScene(result).materials.find((material) => material.id === 'p')!;
+		expect(instance.mapping).toBeUndefined();
+	});
+});
+
+describe('the textures record-scope grant', () => {
+	const operationKind = 'probe-textures';
+	const baseScope = {
+		operationKind,
+		changedEntityIds: [],
+		changedEntityFields: [],
+		createdEntityIds: [],
+		removedEntityIds: [],
+		allowClusterCleanup: false
+	} as const;
+
+	const before = (): CameraFreeSceneDocument => ({
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
+		textures: [{ id: 'one', name: 'One', uri: '/textures/one.png' }],
+		materials: [],
+		entities: []
+	});
+
+	it('admits an append and keeps the accepted order', () => {
+		const after = {
+			...before(),
+			textures: [
+				...before().textures,
+				{ id: 'two', name: 'Two', uri: '/textures/two.png' }
+			]
+		};
+		expect(checkSceneRecordScope(before(), after, { ...baseScope, textures: { added: ['two'] } })).toEqual([]);
+	});
+
+	it('refuses a grant-less change and a changed existing record', () => {
+		const appended = { ...before(), textures: [...before().textures, { id: 'two', name: 'Two', uri: '/textures/two.png' }] };
+		expect(checkSceneRecordScope(before(), appended, baseScope).length).toBeGreaterThan(0);
+		const changed = { ...before(), textures: [{ id: 'one', name: 'Changed', uri: '/textures/one.png' }] };
+		expect(checkSceneRecordScope(before(), changed, { ...baseScope, textures: { added: [] } }).length).toBeGreaterThan(0);
+	});
+
+	it('refuses removal and reordering', () => {
+		const removed = { ...before(), textures: [] };
+		expect(checkSceneRecordScope(before(), removed, { ...baseScope, textures: { added: [] } }).length).toBeGreaterThan(0);
+		const reordered = {
+			...before(),
+			textures: [{ id: 'two', name: 'Two', uri: '/textures/two.png' }, ...before().textures]
+		};
+		expect(checkSceneRecordScope(before(), reordered, { ...baseScope, textures: { added: ['two'] } }).length).toBeGreaterThan(0);
 	});
 });

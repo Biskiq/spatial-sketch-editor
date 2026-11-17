@@ -218,6 +218,35 @@ describe('resolveSceneMaterial', () => {
 		expect(flat.slotUris).toEqual({});
 	});
 
+	it('shows an image Finish colour field under Flat and Clay (D2)', () => {
+		const image = doc(
+			[
+				{
+					id: 'm',
+					name: 'Image',
+					baseMaterialId: 'plaster-warm',
+					color: '#ffffff',
+					maps: { color: 'wall-detail' }
+				}
+			],
+			undefined,
+			{ environment: { treatment: 'flat-colour' } }
+		);
+		const flat = resolveSceneMaterial(image, {
+			materialInstanceId: 'm',
+			fallbackCatalogueId: 'plaster-warm'
+		});
+		expect(flat.color).toBe('#ffffff');
+		expect(flat.slotUris).toEqual({});
+
+		const clay = resolveSceneMaterial(
+			{ ...image, environment: { treatment: 'clay' } },
+			{ materialInstanceId: 'm', fallbackCatalogueId: 'plaster-warm' }
+		);
+		expect(clay.color).toBe(CLAY_COLOR);
+		expect(clay.slotUris).toEqual({});
+	});
+
 	it('uses instance overrides for roughness and metalness when set', () => {
 		const result = resolveSceneMaterial(
 			doc([

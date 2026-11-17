@@ -20,11 +20,18 @@
  * admit.
  */
 import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
-import type { MaterialId, SceneColor, SceneEntity, SceneMaterialInstance, ScenePaletteSlot } from '../scene';
+import type {
+	MaterialId,
+	SceneColor,
+	SceneEntity,
+	SceneMaterialInstance,
+	ScenePaletteSlot,
+	SceneTextureAsset
+} from '../scene';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
-import type { CameraFreeSceneDocument as SceneDocument, ProjectEnvelope } from '../units/types';
+import type { CameraFreeSceneDocument as SceneDocument, ProjectEnvelope, TypedResource } from '../units/types';
 import {
 	applyFinishEdit,
 	finishEditIsNoop,
@@ -46,6 +53,13 @@ import {
 } from './finish-model';
 import { sceneEntityTargetProblem } from './intent-payload';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
+import {
+	finishTextureResource,
+	finishTextureUri,
+	sameFinishTexturePin,
+	withFinishTextureResource,
+	type FinishTexturePin
+} from './texture-resource';
 
 export const SCENE_FINISH_ASSIGN = 'scene-finish-assign';
 export const SCENE_FINISH_EDIT = 'scene-finish-edit';
@@ -53,10 +67,12 @@ export const SCENE_PALETTE_SLOT_ADD = 'scene-palette-slot-add';
 export const SCENE_PALETTE_SLOT_SET = 'scene-palette-slot-set';
 export const SCENE_PALETTE_SLOT_RENAME = 'scene-palette-slot-rename';
 export const SCENE_PALETTE_SLOT_REMOVE = 'scene-palette-slot-remove';
+export const SCENE_FINISH_FROM_IMAGE = 'scene-finish-from-image';
 
 const kinds = [
 	SCENE_FINISH_ASSIGN,
 	SCENE_FINISH_EDIT,
+	SCENE_FINISH_FROM_IMAGE,
 	SCENE_PALETTE_SLOT_ADD,
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_PALETTE_SLOT_RENAME,
@@ -314,10 +330,35 @@ function readFinishRef(reader: ShapeReader, raw: unknown, path: string): SceneFi
 	return { curated: materialId as MaterialId };
 }
 
+const TILE_MIN_METERS = 0.01;
+const TILE_MAX_METERS = 100;
+const TWO_PI = Math.PI * 2;
+const FINISH_NAME_MAX_LENGTH = 120;
+
+/** Normalise radians into the Scene format's [0, 2π) domain. */
+function normalizeRotation(value: number): number {
+	const wrapped = value % TWO_PI;
+	return wrapped < 0 ? wrapped + TWO_PI : wrapped;
+}
+
 function readFinishEdit(reader: ShapeReader, raw: unknown, path: string): SceneFinishEdit | null {
-	const record = reader.object(raw, path, ['color', 'roughness', 'metalness']);
+	const record = reader.object(raw, path, [
+		'color',
+		'roughness',
+		'metalness',
+		'colorMap',
+		'tileMeters',
+		'rotation'
+	]);
 	if (record === null) return null;
-	const edit: { color?: SceneColor | null; roughness?: number | null; metalness?: 0 | 1 | null } = {};
+	const edit: {
+		color?: SceneColor | null;
+		roughness?: number | null;
+		metalness?: 0 | 1 | null;
+		colorMap?: string | null;
+		tileMeters?: readonly [number, number] | null;
+		rotation?: number | null;
+	} = {};
 	if ('color' in record) {
 		if (record.color === null) edit.color = null;
 		else {
@@ -348,11 +389,92 @@ function readFinishEdit(reader: ShapeReader, raw: unknown, path: string): SceneF
 			edit.metalness = value;
 		}
 	}
-	if (!('color' in edit) && !('roughness' in edit) && !('metalness' in edit)) {
+	if ('colorMap' in record) {
+		if (record.colorMap === null) edit.colorMap = null;
+		else {
+			const textureId = reader.opaqueId(record.colorMap, `${path}.colorMap`);
+			if (textureId === null) return null;
+			edit.colorMap = textureId;
+		}
+	}
+	if ('tileMeters' in record) {
+		if (record.tileMeters === null) edit.tileMeters = null;
+		else {
+			if (!Array.isArray(record.tileMeters) || record.tileMeters.length !== 2) {
+				reader.problem(`${path}.tileMeters`, 'invalid-value', `${path}.tileMeters must be a [width, height] pair`);
+				return null;
+			}
+			const width = reader.number(record.tileMeters[0], `${path}.tileMeters[0]`);
+			const height = reader.number(record.tileMeters[1], `${path}.tileMeters[1]`);
+			if (width === null || height === null) return null;
+			if (
+				width < TILE_MIN_METERS || width > TILE_MAX_METERS ||
+				height < TILE_MIN_METERS || height > TILE_MAX_METERS
+			) {
+				reader.problem(
+					`${path}.tileMeters`,
+					'invalid-value',
+					`${path}.tileMeters must be within [${TILE_MIN_METERS}, ${TILE_MAX_METERS}] m`
+				);
+				return null;
+			}
+			edit.tileMeters = [width, height];
+		}
+	}
+	if ('rotation' in record) {
+		if (record.rotation === null) edit.rotation = null;
+		else {
+			const value = reader.number(record.rotation, `${path}.rotation`);
+			if (value === null) return null;
+			if (!Number.isFinite(value)) {
+				reader.problem(`${path}.rotation`, 'invalid-value', `${path}.rotation must be finite`);
+				return null;
+			}
+			edit.rotation = normalizeRotation(value);
+		}
+	}
+	if (
+		!('color' in edit) && !('roughness' in edit) && !('metalness' in edit) &&
+		!('colorMap' in edit) && !('tileMeters' in edit) && !('rotation' in edit)
+	) {
 		reader.problem(path, 'invalid-value', `${path} must change at least one Finish value`);
 		return null;
 	}
 	return edit;
+}
+
+function readTexturePin(reader: ShapeReader, raw: unknown, path: string): FinishTexturePin | null {
+	const record = reader.object(raw, path, ['hash', 'mime', 'size', 'locator']);
+	if (record === null) return null;
+	const hash = reader.string(record.hash, `${path}.hash`);
+	const mime = reader.string(record.mime, `${path}.mime`);
+	const size = reader.integerAtLeast(record.size, `${path}.size`, 1);
+	const locator = reader.string(record.locator, `${path}.locator`);
+	if (hash === null || mime === null || size === null || locator === null) return null;
+	return { hash, mime, size, locator };
+}
+
+function readEntityIdList(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string,
+	allowEmpty: boolean
+): string[] | null {
+	if (!Array.isArray(raw) || (!allowEmpty && raw.length === 0)) {
+		reader.problem(path, 'invalid-value', `${path} must be ${allowEmpty ? 'an' : 'a non-empty'} array of Scene entity ids`);
+		return null;
+	}
+	const ids: string[] = [];
+	for (const [index, entry] of raw.entries()) {
+		const id = reader.opaqueId(entry, `${path}[${index}]`);
+		if (id === null) return null;
+		if (ids.includes(id)) {
+			reader.problem(`${path}[${index}]`, 'duplicate-id', `${path} must not repeat an entity id`);
+			return null;
+		}
+		ids.push(id);
+	}
+	return ids;
 }
 
 function readMaterialIdList(reader: ShapeReader, raw: unknown, path: string): string[] | null {
@@ -418,10 +540,19 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		after: SceneDocument,
 		grant: Partial<SceneRecordScope>,
 		subjectIds: readonly string[],
-		fields: string[]
+		fields: string[],
+		textureResource?: TypedResource
 	): Result => {
 		const finalized = finalizeSceneCandidate({ before, after, scope: { ...scope, ...grant } });
 		if (finalized.kind === 'rejected') return finalized;
+		let candidateSource = replaceUnitData(envelope, 'scene', finalized.scene);
+		if (textureResource !== undefined) {
+			const withResource = withFinishTextureResource(candidateSource, textureResource);
+			if (withResource === null) {
+				return refuse('The Finish image resource could not be added to the candidate.', 'texture-mismatch');
+			}
+			candidateSource = withResource;
+		}
 		// A palette-only write changes no entity, but it is still an accepted content
 		// change. Publish every surviving entity as preserved so the host can keep a
 		// live selection (and its Card) across the write; edits keep their narrower set.
@@ -435,7 +566,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				operationId: request.intent.operationId,
 				sourceKind: request.snapshot.sourceKind,
 				sourceVersion: request.snapshot.sourceVersion,
-				source: replaceUnitData(envelope, 'scene', finalized.scene),
+				source: candidateSource,
 				changes: [{ kind, subjectIds, fields }],
 				correspondence: correspondenceIds.map((id) => ({
 					relation: 'preserved' as const,
@@ -613,7 +744,223 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				})
 			},
 			planned.subjectIds,
-			['finish', 'color', 'roughness', 'metalness', 'materials']
+			['finish', 'color', 'roughness', 'metalness', 'maps', 'mapping', 'materials']
+		);
+	}
+
+	if (kind === SCENE_FINISH_FROM_IMAGE) {
+		// The one Finish write that stages creator bytes. The P20 upload happened
+		// before this intent and is never part of Undo; this write adds only the
+		// Scene records that name those bytes, together or not at all.
+		const payload = reader.object(request.intent.payload, '$.payload', [
+			'name',
+			'texture',
+			'entityIds',
+			'replaceFinishOf'
+		]);
+		const rawName = payload === null ? null : reader.string(payload.name, '$.payload.name');
+		const texturePayload =
+			payload === null ? null : reader.object(payload.texture, '$.payload.texture', ['assetId', 'pin']);
+		const assetId =
+			texturePayload === null
+				? null
+				: reader.opaqueId(texturePayload.assetId, '$.payload.texture.assetId');
+		const pin =
+			texturePayload === null
+				? null
+				: readTexturePin(reader, texturePayload.pin, '$.payload.texture.pin');
+		const entityIds =
+			payload === null
+				? null
+				: readEntityIdList(reader, payload.entityIds, '$.payload.entityIds', true);
+		if (rawName === null || assetId === null || pin === null || entityIds === null || reader.issues.length > 0) {
+			return refuse(reader.issues[0]?.message ?? 'A Finish image needs a name, a verified pin and its objects.', 'invalid-pin');
+		}
+		const name = rawName.trim();
+		if (name.length === 0 || name.length > FINISH_NAME_MAX_LENGTH) {
+			return refuse(`A Finish name must be 1 to ${FINISH_NAME_MAX_LENGTH} characters.`, 'invalid-value');
+		}
+		const textureResource = finishTextureResource({ assetId, pin });
+		if (textureResource === null) {
+			return refuse('A Finish image needs a sha256 pin for a PNG, JPEG or WebP within the Artwork byte cap.', 'invalid-pin');
+		}
+		const uri = finishTextureUri(assetId);
+
+		let replace: {
+			readonly entityId: string;
+			readonly reach: number;
+			readonly mode: 'just-this' | 'all' | 'in-place';
+		} | null = null;
+		if (payload !== null && payload.replaceFinishOf !== undefined) {
+			const record = reader.object(payload.replaceFinishOf, '$.payload.replaceFinishOf', [
+				'entityId',
+				'reach',
+				'mode'
+			]);
+			const replaceEntityId = record === null ? null : reader.opaqueId(record.entityId, '$.payload.replaceFinishOf.entityId');
+			const replaceReach =
+				record === null ? null : reader.integerAtLeast(record.reach, '$.payload.replaceFinishOf.reach', 1);
+			const replaceMode =
+				record === null
+					? null
+					: reader.tag(record.mode, '$.payload.replaceFinishOf.mode', ['just-this', 'all', 'in-place']);
+			if (replaceEntityId === null || replaceReach === null || replaceMode === null || reader.issues.length > 0) {
+				return refuse(reader.issues[0]?.message ?? 'The image replacement is incomplete.');
+			}
+			replace = {
+				entityId: replaceEntityId,
+				reach: replaceReach,
+				mode: replaceMode as 'just-this' | 'all' | 'in-place'
+			};
+		}
+
+		if (replace === null) {
+			// An empty selection is the Library's *arm Paint* case: the Finish and
+			// its image are created with no user yet, exactly as a project Finish
+			// that loses its last user is kept rather than silently deleted.
+			if (request.intent.targets.length !== entityIds.length) {
+				return refuse('A Finish image must address exactly the objects it names.');
+			}
+		} else {
+			if (entityIds.length > 0) return refuse('An image replacement addresses one object, not a selection.');
+			if (request.intent.targets.length !== 1) return refuse('An image replacement addresses exactly one object.');
+			const problem = sceneEntityTargetProblem(
+				request.intent.targets[0]!,
+				replace.entityId,
+				header.contentRevision
+			);
+			if (problem !== null) return refuse(problem.message);
+		}
+		for (const [index, id] of entityIds.entries()) {
+			const problem = sceneEntityTargetProblem(request.intent.targets[index]!, id, header.contentRevision);
+			if (problem !== null) return refuse(problem.message);
+			const entity = before.entities.find((candidate) => candidate.id === id);
+			if (entity === undefined) return refuse(`No Scene object "${id}" is in the current revision.`, 'unknown-entity');
+			if (!isFinishPaintable(entity)) return refuse('That subject cannot carry a Finish.', 'not-paintable');
+		}
+
+		// The texture record is idempotent: the same bytes always name the same
+		// record, and an existing record with another URI is a tampered answer.
+		const existingTexture = before.textures.find((texture) => texture.id === assetId);
+		if (existingTexture !== undefined && existingTexture.uri !== uri) {
+			return refuse('That image is already registered under a different URI.', 'texture-mismatch');
+		}
+		const textures: SceneTextureAsset[] =
+			existingTexture === undefined
+				? [...before.textures, { id: assetId, name, uri }]
+				: before.textures;
+		const texturesAdded = existingTexture === undefined;
+
+		// The typed resource is idempotent too; a record with another pin means the
+		// Scene and the registry disagree, which no write may paper over.
+		const resources = envelope.units.resources.data.resources;
+		const existingResource = resources.find(
+			(resource) => resource.kind === 'texture' && resource.id === assetId
+		);
+		if (
+			existingResource !== undefined &&
+			(existingResource.pin === null ||
+				existingResource.unresolved !== null ||
+				!sameFinishTexturePin(existingResource.pin, textureResource.pin))
+		) {
+			return refuse('That image\u2019s pinned bytes disagree with the project registry.', 'texture-mismatch');
+		}
+		const resourceToAdd = existingResource === undefined ? textureResource : undefined;
+
+		let scene: SceneDocument;
+		let changedEntityIds: readonly string[];
+		let subjectIds: readonly string[];
+		let addedMaterials: readonly string[] = [];
+		let changedMaterials: readonly string[] = [];
+		let removedMaterials: readonly string[] = [];
+
+		if (replace === null) {
+			const allocations = request.allocatedIds;
+			if (allocations.length !== 1 || !['scene-finish', 'scene-material'].includes(allocations[0]!.kind)) {
+				return refuse('A Finish image needs one allocated Finish id.', 'missing-allocation');
+			}
+			const finishId = allocations[0]!.id;
+			if (before.materials.some((material) => material.id === finishId)) {
+				return refuse('That Finish id is already in use.', 'unexpected-allocation');
+			}
+			const created: SceneMaterialInstance = {
+				id: finishId,
+				name,
+				baseMaterialId: 'paper-aged',
+				// The base is `#e2d2b0`; white keeps the image untinted (S1's writer rule).
+				color: '#ffffff',
+				maps: { color: assetId }
+			};
+			const materials = [...before.materials, created];
+			const entities = before.entities.map((entity) =>
+				entityIds.includes(entity.id)
+					? assignOne(entity, { project: finishId }, materials, () => {
+							throw new Error('a project Finish needs no pristine instance');
+						})
+					: entity
+			);
+			const collected = collectPristine(materials, entities);
+			scene = { ...before, textures, materials: collected, entities };
+			changedEntityIds = entityIds;
+			subjectIds = [...entityIds, finishId];
+			addedMaterials = [finishId];
+			removedMaterials = materials
+				.filter((instance) => !collected.some((candidate) => candidate.id === instance.id))
+				.map((instance) => instance.id);
+		} else {
+			const target = before.entities.find((entity) => entity.id === replace!.entityId);
+			if (target === undefined) return refuse('That object is not in the current revision.', 'unknown-entity');
+			if (!isFinishPaintable(target)) return refuse('That object has no Finish.', 'not-paintable');
+			const key = finishOf(target, before.materials);
+			if (key === null || key === 'model-own') {
+				return refuse("A model's own materials are not a Finish. Choose a Finish first.", 'not-editable');
+			}
+			const ref = finishRefOfKey(key);
+			if (ref === null || ref === 'model-own') return refuse('That Finish no longer exists.', 'unknown-finish');
+			const needsNew = 'curated' in ref || replace.mode === 'just-this';
+			const allocations = request.allocatedIds;
+			if (needsNew) {
+				if (allocations.length !== 1 || !['scene-finish', 'scene-material'].includes(allocations[0]!.kind)) {
+					return refuse('This image replacement needs one allocated Finish id.', 'missing-allocation');
+				}
+			} else if (allocations.length !== 0) {
+				return refuse('This image replacement creates no Finish id.', 'unexpected-allocation');
+			}
+			const workingScene: SceneDocument = { ...before, textures };
+			const planned = planEdit(workingScene, {
+				entityId: replace.entityId,
+				from: key,
+				reach: replace.reach,
+				mode: replace.mode,
+				edit: { colorMap: assetId },
+				allocateId: needsNew ? allocations[0]!.id : null,
+				options
+			});
+			if (planned.kind === 'rejected') return refuse(planned.message, planned.code);
+			scene = planned.scene;
+			changedEntityIds = planned.changedEntityIds;
+			subjectIds = [assetId, ...planned.subjectIds];
+			addedMaterials = planned.addedMaterials;
+			changedMaterials = planned.changedMaterials;
+			removedMaterials = planned.removedMaterials;
+		}
+
+		const grant: Partial<SceneRecordScope> = {
+			changedEntityIds,
+			changedEntityFields: ['materialId', 'materialInstanceId'],
+			materials: materialGrant({
+				added: addedMaterials,
+				changed: changedMaterials,
+				removed: removedMaterials
+			}),
+			...(texturesAdded ? { textures: { added: [assetId] } } : {})
+		};
+		return complete(
+			scene,
+			grant,
+			subjectIds,
+			['finish', 'texture', 'resource', 'maps', 'materials'],
+			resourceToAdd
 		);
 	}
 
@@ -790,7 +1137,15 @@ export function createFinishPlanners(
 	return kinds.map((kind) => ({
 		id: `scene.${kind}`,
 		kind,
-		admission: { domain: 'scene', compound: false, units: false, resources: false },
+		// `scene-finish-from-image` is the one Finish planner that stages a typed
+		// resource: the texture record and its pin are added with the Finish. Every
+		// other Finish write stays Scene-only.
+		admission: {
+			domain: 'scene' as const,
+			compound: false,
+			units: false,
+			resources: kind === SCENE_FINISH_FROM_IMAGE
+		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare: (request) => prepare(request, kind, options)

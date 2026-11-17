@@ -59,6 +59,14 @@ export type SceneRecordScope = {
 	 * its cap and follower closure. An absent grant compares the field exactly.
 	 */
 	readonly palette?: { readonly change: 'none' | 'slots' };
+	/**
+	 * The `scene.textures` grant (T2.S4b). A texture record may only be
+	 * **appended** on an id the accepted scene did not carry: an existing record
+	 * compares exactly and order is preserved. A texture is never removed by a
+	 * Finish write, because collecting an orphan record would need a remove grant
+	 * this slice deliberately does not add.
+	 */
+	readonly textures?: { readonly added: readonly string[] };
 	/** Existing entities this operation may replace in place (same id, same position). */
 	readonly changedEntityIds: readonly string[];
 	/**
@@ -146,6 +154,7 @@ export function checkSceneRecordScope(
 			field !== 'clusters' &&
 			field !== 'artworkLibrary' &&
 			(field !== 'materials' || scope.materials === undefined) &&
+			(field !== 'textures' || scope.textures === undefined) &&
 			(field !== 'palette' || scope.palette?.change !== 'slots')
 	);
 	for (const field of carriedFields) {
@@ -176,6 +185,7 @@ export function checkSceneRecordScope(
 	}
 
 	issues.push(...checkMaterialScope(before, after, scope));
+	issues.push(...checkTextureScope(before, after, scope));
 
 	const expectedIds = [
 		...before.entities.filter((entity) => !removed.has(entity.id)).map((entity) => entity.id),
@@ -335,6 +345,76 @@ function checkMaterialScope(
 				message: `Finish "${material.id}" is outside the ${scope.operationKind} operation's material grant but was modified`
 			});
 		}
+	}
+	return issues;
+}
+
+function checkTextureScope(
+	before: SceneDocument,
+	after: SceneDocument,
+	scope: SceneRecordScope
+): readonly ShapeIssue[] {
+	if (scope.textures === undefined) return [];
+	const issues: ShapeIssue[] = [];
+	const added = new Set(scope.textures.added);
+	const beforeById = new Map(before.textures.map((texture) => [texture.id, texture]));
+	const afterById = new Map(after.textures.map((texture) => [texture.id, texture]));
+
+	// Order is carried state: the accepted order, then the granted appends. A
+	// texture record is immutable once it exists, so a reorder is never a grant.
+	const expectedIds = [
+		...before.textures.map((texture) => texture.id),
+		...after.textures.filter((texture) => added.has(texture.id) && !beforeById.has(texture.id)).map((texture) => texture.id)
+	];
+	if (stableJson(expectedIds) !== stableJson(after.textures.map((texture) => texture.id))) {
+		issues.push({
+			path: '$.scene.textures',
+			code: 'record-scope-violation',
+			message: `Texture order must be the accepted order plus the granted appends (expected ${JSON.stringify(expectedIds)})`
+		});
+	}
+	for (const id of added) {
+		if (beforeById.has(id)) {
+			issues.push({
+				path: `$.scene.textures.${id}`,
+				code: 'record-scope-violation',
+				message: `Added texture \"${id}\" already exists in the accepted source`
+			});
+		}
+		if (!afterById.has(id)) {
+			issues.push({
+				path: `$.scene.textures.${id}`,
+				code: 'record-scope-violation',
+				message: `Granted texture \"${id}\" was not added`
+			});
+		}
+	}
+	for (const texture of after.textures) {
+		if (added.has(texture.id)) continue;
+		const previous = beforeById.get(texture.id);
+		if (previous === undefined) {
+			issues.push({
+				path: `$.scene.textures.${texture.id}`,
+				code: 'record-scope-violation',
+				message: `Texture \"${texture.id}\" is new but was not granted by the operation`
+			});
+			continue;
+		}
+		if (stableJson(previous) !== stableJson(texture)) {
+			issues.push({
+				path: `$.scene.textures.${texture.id}`,
+				code: 'record-scope-violation',
+				message: `Texture \"${texture.id}\" is outside the ${scope.operationKind} operation's texture grant but was modified`
+			});
+		}
+	}
+	for (const texture of before.textures) {
+		if (afterById.has(texture.id)) continue;
+		issues.push({
+			path: `$.scene.textures.${texture.id}`,
+			code: 'record-scope-violation',
+			message: `Texture \"${texture.id}\" may not be removed by the ${scope.operationKind} operation`
+		});
 	}
 	return issues;
 }
