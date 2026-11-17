@@ -144,7 +144,11 @@
 	function tabKey(event: KeyboardEvent) {
 		if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
 		event.preventDefault();
-		const next = look.panelTab === 'sky' ? 'looks' : 'sky';
+		const next = event.key === 'Home'
+			? 'sky'
+			: event.key === 'End'
+				? 'looks'
+				: look.panelTab === 'sky' ? 'looks' : 'sky';
 		look.setPanelTab(next);
 		const tablist = (event.currentTarget as HTMLElement).closest('[role=tablist]');
 		queueMicrotask(() => tablist?.querySelector<HTMLElement>(`[data-tab="${next}"]`)?.focus());

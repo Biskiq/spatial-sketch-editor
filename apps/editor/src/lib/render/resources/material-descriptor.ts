@@ -332,7 +332,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`mesh=${num(descriptor.mesh)}`,
 				`slot=${num(descriptor.slot)}`,
 				`wireframe=${bool(descriptor.wireframe, false)}`,
-				`treatment=${descriptor.treatment ?? '-'}`,
+				// Appended only when present: a Natural imported surface keeps the
+				// exact pre-S6 canonical key.
+				...(descriptor.treatment === undefined ? [] : [`treatment=${descriptor.treatment}`]),
 				`remap=${remap}`
 			].join('|');
 		}

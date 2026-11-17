@@ -46,6 +46,15 @@ describe('T2.S6 — imported-model materials', () => {
 		store.dispose();
 	});
 
+	it('keeps the exact pre-S6 canonical key for Natural', () => {
+		expect(materialKey(identity())).toBe(
+			'imported|asset=%2Fmodels%2Fchair.glb|mesh=0|slot=0|wireframe=0|remap=-'
+		);
+		expect(materialKey(identity({ treatment: 'clay' }))).toBe(
+			'imported|asset=%2Fmodels%2Fchair.glb|mesh=0|slot=0|wireframe=0|treatment=clay|remap=-'
+		);
+	});
+
 	it('tunes Flat colour and Clay, and keys each distinct from Natural', () => {
 		const store = createMaterialStore();
 		const source = new MeshStandardMaterial({ color: '#aa3311', roughness: 0.35, metalness: 0.8 });
@@ -73,8 +82,19 @@ describe('T2.S6 — imported-model materials', () => {
 	it('keeps an alpha-masked silhouette: map, alphaTest, transparency and side survive', () => {
 		const store = createMaterialStore();
 		const map = new Texture();
+		const displacement = new Texture();
+		const alpha = new Texture();
 		const source = new MeshStandardMaterial({
 			map,
+			normalMap: new Texture(),
+			roughnessMap: new Texture(),
+			metalnessMap: new Texture(),
+			aoMap: new Texture(),
+			emissiveMap: new Texture(),
+			displacementMap: displacement,
+			alphaMap: alpha,
+			emissive: '#ff0000',
+			emissiveIntensity: 2,
 			alphaTest: 0.5,
 			transparent: false,
 			side: DoubleSide,
@@ -83,6 +103,16 @@ describe('T2.S6 — imported-model materials', () => {
 		const clay = store.acquire(identity({ treatment: 'clay' }), undefined, source)
 			.material as MeshStandardMaterial;
 		expect(clay.map).toBe(map);
+		expect(clay.alphaMap).toBe(alpha);
+		expect(clay.displacementMap).toBe(displacement);
+		// Appearance channels are replaced; geometry and alpha are not.
+		expect(clay.normalMap).toBeNull();
+		expect(clay.roughnessMap).toBeNull();
+		expect(clay.metalnessMap).toBeNull();
+		expect(clay.aoMap).toBeNull();
+		expect(clay.emissiveMap).toBeNull();
+		expect(clay.emissive.getHexString()).toBe('000000');
+		expect(clay.emissiveIntensity).toBe(0);
 		expect(clay.alphaTest).toBe(0.5);
 		expect(clay.transparent).toBe(false);
 		expect(clay.side).toBe(DoubleSide);
@@ -93,6 +123,13 @@ describe('T2.S6 — imported-model materials', () => {
 		const flat = store.acquire(identity({ treatment: 'flat-colour' }), undefined, plain)
 			.material as MeshStandardMaterial;
 		expect(flat.map).toBeNull();
+
+		// An alphaMap alone preserves the mask; the base colour map goes.
+		const masked = new MeshStandardMaterial({ map: new Texture(), alphaMap: new Texture() });
+		const maskedFlat = store.acquire(identity({ mesh: 3, treatment: 'flat-colour' }), undefined, masked)
+			.material as MeshStandardMaterial;
+		expect(maskedFlat.map).toBeNull();
+		expect(maskedFlat.alphaMap).toBe(masked.alphaMap);
 		store.dispose();
 	});
 
@@ -120,10 +157,14 @@ describe('T2.S6 — default Layout surfaces', () => {
 		const meshOf = (): import('three').Mesh => walls.objectOf(wallId) as import('three').Mesh;
 		const materialOf = (target: import('three').Mesh): MeshStandardMaterial =>
 			(Array.isArray(target.material) ? target.material[0] : target.material) as MeshStandardMaterial;
-		const natural = materialOf(meshOf());
+		const before = meshOf();
+		const natural = materialOf(before);
 		const naturalColor = natural.color.getHexString();
 
 		expect(walls.setTreatment('clay')).toBe(true);
+		// A material-only swap: the mesh object and its buffers never move.
+		expect(meshOf()).toBe(before);
+		expect(meshOf().geometry).toBe(before.geometry);
 		const clay = materialOf(meshOf());
 		expect(clay).not.toBe(natural);
 		expect(clay.color.getHexString()).toBe(CLAY_COLOR.slice(1));

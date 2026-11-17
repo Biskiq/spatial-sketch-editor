@@ -499,7 +499,10 @@ Materials (definitions/instances and shared-vs-unique already exist):
   `scene-palette-adopt` moves literals to followers. Each is one record, so each
   is one Undo. Treatment covers resolver surfaces, imported models that keep
   their own materials, and default Layout floors, ceilings and walls; it never
-  reaches Artwork, the Sky, lights, the plinth, door frames or editor marks.
+  reaches Artwork, the Sky, lights, the plinth, door frames or editor marks. On
+  an imported material it suppresses appearance maps and emissive while keeping
+  displacement, alpha maps and every alpha/transparency flag, and a Natural
+  model keeps its exact pre-S6 material key, clone and lease counts.
 - Remaining gaps: per-face and Wall painting (T5/S5), approved PBR map sets, and
   save-mode verification of Finish texture pins.
 - A default edit clones once per shared instance for the selected subset and

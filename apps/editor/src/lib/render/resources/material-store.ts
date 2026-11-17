@@ -179,6 +179,30 @@ function constructImported(
  * A material class that has no colour (Shader, RawShader, Normal, Matcap) is
  * unsupported and left as authored; the store counts it.
  */
+/** Appearance maps a neutral Treatment suppresses. Geometry and alpha maps are not here. */
+const APPEARANCE_MAPS = [
+	'normalMap',
+	'bumpMap',
+	'roughnessMap',
+	'metalnessMap',
+	'aoMap',
+	'emissiveMap',
+	'lightMap',
+	'specularMap',
+	'specularColorMap',
+	'specularIntensityMap',
+	'clearcoatMap',
+	'clearcoatNormalMap',
+	'clearcoatRoughnessMap',
+	'sheenColorMap',
+	'sheenRoughnessMap',
+	'transmissionMap',
+	'thicknessMap',
+	'iridescenceMap',
+	'iridescenceThicknessMap',
+	'anisotropyMap'
+] as const;
+
 function tuneImported(material: Material, treatment: MaterialTreatment): boolean {
 	if (!('color' in material)) return false;
 	const target = material as Material & {
@@ -189,6 +213,8 @@ function tuneImported(material: Material, treatment: MaterialTreatment): boolean
 		alphaMap?: Texture | null;
 		alphaTest?: number;
 		transparent?: boolean;
+		emissive?: { set(value: number): void };
+		emissiveIntensity?: number;
 	};
 	if (treatment === 'clay') {
 		target.color.set(CLAY_COLOR);
@@ -197,14 +223,21 @@ function tuneImported(material: Material, treatment: MaterialTreatment): boolean
 		target.roughness = Math.max(target.roughness, FLAT_MIN_ROUGHNESS);
 	}
 	if (typeof target.metalness === 'number') target.metalness = 0;
-	// The base map may only go when no alpha rides on it; otherwise it stays and
-	// the treated colour tints it.
+	if (target.emissive !== undefined) target.emissive.set(0x000000);
+	if (typeof target.emissiveIntensity === 'number') target.emissiveIntensity = 0;
+
+	// A stylised surface is not a textured one. Only maps that carry geometry or
+	// alpha survive: displacement moves the silhouette, alphaMap and a base colour
+	// map that carries alphaTest/transparency keep the mask. Everything else is an
+	// appearance channel this Treatment replaces.
+	for (const key of APPEARANCE_MAPS) {
+		if (key in target) (target as unknown as Record<string, unknown>)[key] = null;
+	}
 	if (
 		target.map !== undefined &&
 		target.map !== null &&
 		(target.alphaTest ?? 0) === 0 &&
-		target.transparent !== true &&
-		target.alphaMap == null
+		target.transparent !== true
 	) {
 		target.map = null;
 	}

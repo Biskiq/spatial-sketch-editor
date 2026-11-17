@@ -139,18 +139,23 @@ floors, ceilings and walls**. Artwork, the Sky, authored lights, the ground/plin
 editor marks are not treated. A model remap keeps the model's own UVs, so it ignores `mapping` but
 keeps normal strength and flip.
 
-The Wall and Room representations expose `setTreatment`: a change builds the new surfaces first,
-leases them from the store, swaps the retained meshes and only then releases the superseded factory
-leases. No shared material is mutated in place, so a Stage, Visitor Preview and published visit keep
-the same structure and cannot disagree.
+The Wall and Room representations expose `setTreatment`. Walls take a **material-only swap**: each
+retained mesh keeps its object and buffers, re-resolves one material per compiled surface group
+from the new factory, and only then releases the superseded leases. Rooms take new floor/ceiling
+leases, assign them to the retained meshes and release the old ones. No shared material is mutated
+in place and no Wall geometry is rebuilt, so changing a Look costs materials, not a rebuild, and a
+Stage, Visitor Preview and published visit keep the same structure and cannot disagree.
 
 **Imported models.** `ImportedMaterialDescriptor.treatment` is read only when the model keeps its
 own material (no remap). `constructImported` remains the one path: the store clones the source and
 tunes it in place. Clay sets `CLAY_COLOR`/`CLAY_ROUGHNESS`; Flat colour keeps the authored colour
-and raises roughness to at least `FLAT_MIN_ROUGHNESS`; both set metalness to 0. The base colour map
-is dropped only when no alpha can depend on it (`alphaTest === 0`, not transparent, no `alphaMap`);
-transparency, opacity, alpha test, side, depth flags, vertex colours, other maps and skinning all
-survive, so an alpha-masked silhouette is exactly as authored. A colour-tunable but non-PBR class
+and raises roughness to at least `FLAT_MIN_ROUGHNESS`; both set metalness and emissive to 0. Every
+appearance map is suppressed (normal, bump, roughness, metalness, AO, emissive, light, specular,
+clearcoat, sheen, transmission, thickness, iridescence, anisotropy). Only maps that carry geometry
+or alpha survive: `displacementMap`, `alphaMap`, and the base colour map when `alphaTest > 0` or the
+material is transparent. Transparency, opacity, alpha test, side, depth flags, vertex colours and
+skinning all survive, and the clone leaves the asset's own material untouched, so an alpha-masked
+silhouette is exactly as authored. A colour-tunable but non-PBR class
 (`MeshBasicMaterial`) takes the colour only. Shader, RawShader, Normal and Matcap materials cannot
 take a colour and stay as authored; the store counts them in `stats().treatmentSkipped`. With no
 `treatment` the imported key, clone and lease counts are exactly Natural's, which the regression
