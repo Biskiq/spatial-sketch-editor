@@ -54,16 +54,18 @@ describe('a Stage press while Slice is armed is refused in words', () => {
 	const input = read('src/lib/authoring/stage/route/stage-input.svelte.ts');
 
 	it('uses the plan’s sentence and leaves the document alone', () => {
-		expect(input).toContain("'Drag the Height Sheet to move the cut.'");
-		// Refused, so the click cannot select through the press and no gesture starts.
-		const at = input.indexOf('input.sliceActive()');
-		const window = input.slice(at, at + 400);
+		// The sentence is the predicate's, and the predicate is the armed tool — a live
+		// cut under Select must stay editable (see `slice-press-refusal.test.ts`).
+		const at = input.indexOf('slicePressRefusal(input.sliceToolArmed())');
+		const window = input.slice(at, at + 500);
 		expect(window).toContain('input.press.refuse(event.pointerId)');
+		expect(window).toContain('input.onNotice(sliceRefusal)');
 		expect(window).not.toContain('pointerIntent');
+		expect(input).not.toContain('sliceActive()');
 	});
 
 	it('is asked before any adapter or host tool sees the press', () => {
-		const sliceAt = input.indexOf('input.sliceActive()');
+		const sliceAt = input.indexOf('slicePressRefusal(input.sliceToolArmed())');
 		const adapterAt = input.indexOf('const claimAdapterPress');
 		expect(sliceAt).toBeGreaterThan(0);
 		expect(adapterAt).toBeGreaterThan(sliceAt);

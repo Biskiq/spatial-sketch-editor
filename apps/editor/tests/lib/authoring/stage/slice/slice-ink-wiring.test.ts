@@ -103,6 +103,15 @@ describe('the section stays off the Sheet-drag frame', () => {
 		const key = layer.slice(layer.indexOf('function geometryKeyOf'), layer.indexOf('function rebuild'));
 		expect(key).not.toContain('ghostSelection');
 		expect(layer).toContain('if (ghostKey !== drawnGhostKey)');
+		// An edit can move the selected body without changing its identity.
+		expect(layer).toContain('return `${revision}:${selection.length}');
+	});
+
+	it('re-inks the selected edges without re-sectioning', () => {
+		// The gold is drawn from cached segments, outside rebuild().
+		const draw = layer.slice(layer.indexOf('function drawEdges'), layer.indexOf('function addGhost'));
+		expect(draw).not.toContain('sectionMeshes(');
+		expect(layer).toContain('if (identity !== drawnIdentity && edges.length > 0)');
 	});
 });
 
