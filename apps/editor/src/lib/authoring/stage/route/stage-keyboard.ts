@@ -21,6 +21,7 @@ import type { StagePostureLayer } from '../stage-adapter-host';
 import type { StageTask } from '../stage-session';
 import type { StageMeasureController } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
+import type { StagePaintController } from '../stage-painter';
 import {
 	readingIntentClockSeconds,
 	stageKeyAction,
@@ -51,13 +52,16 @@ export type StageKeyboardInput = {
 	readonly openCard: () => void;
 	readonly pendingDelete: () => boolean;
 	readonly clearPendingDelete: () => void;
+	readonly cancelFinishAsk?: () => boolean;
 	readonly interrupt: (reason: StageInterruptionReason) => void;
 	readonly task: () => StageTask | null;
 	readonly closeTask: () => void;
 	readonly armedHostTool: () => string | null;
 	readonly measureTool: () => StageMeasureController | null;
 	readonly eraserTool: () => StageEraserController | null;
+	readonly paintTool?: () => StagePaintController | null;
 	readonly clearEraseHover: () => void;
+	readonly clearPaintHover?: () => void;
 	readonly refreshHostTools: () => void;
 	readonly armedDockKey: () => { readonly palette?: boolean } | undefined;
 	readonly paletteOpen: () => boolean;
@@ -250,6 +254,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 					input.clearPendingDelete();
 					break;
 				}
+				if (input.cancelFinishAsk?.() === true) break;
 				const stage = input.facade();
 				// A live mark writer cancels first, then an open disclosure closes; neither
 				// is a task, and neither may reach the task/selection unwinding below.
@@ -267,6 +272,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				const armedHostTool = input.armedHostTool();
 				if (armedHostTool === 'measure' && input.measureTool()?.clear()) { input.refreshHostTools(); break; }
 				if (armedHostTool === 'erase' && input.eraserTool()?.clear()) { input.clearEraseHover(); input.refreshHostTools(); break; }
+				if (armedHostTool === 'paint' && input.paintTool?.()?.clear()) { input.clearPaintHover?.(); input.refreshHostTools(); break; }
 				const armedKey = input.armedDockKey();
 				if (input.task() !== null && armedKey?.palette === true && input.paletteOpen()) { input.closePalette(); break; }
 				if (input.libraryOpen()) { input.toggleLibrary(); break; }

@@ -40,10 +40,12 @@ import {
 	nativePlacementDefinition
 } from '$lib/authoring/scene/object-definition-policy';
 import {
+	createFinishPlanners,
 	createScenePlanners,
 	createArtworkPlanners,
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
+import { getMaterial } from '$lib/content/materials';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import { armedModelDefinition, creatorDefinitions } from './scene/import/definitions';
@@ -70,7 +72,10 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 	// else. Built-in catalogue models enter this set only after their r186 contact
 	// verification is recorded; approved creator models remain project-scoped.
 	const admitted: NormalizedPlacementDefinition[] = [];
-	const planners = [...createArtworkPlanners(), ...createScenePlanners({
+	const planners = [
+		...createArtworkPlanners(),
+		...createFinishPlanners({ labelForMaterial: (id) => getMaterial(id).label }),
+		...createScenePlanners({
 		definitions: () => {
 			// The approved model a creator has armed is an admitted definition even
 			// before its first placement installs the resource. A rebind (a drawing

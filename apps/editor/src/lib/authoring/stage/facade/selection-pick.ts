@@ -118,6 +118,17 @@ export function createSelectionPick(input: SelectionPickPort) {
 			return null;
 		}
 	};
+	const paintAnswer: StageFacade['paintAnswer'] = (adapterId, hit) => {
+		if (!isLive()) return null;
+		const entry = adapters.get(adapterId);
+		if (entry === undefined || !entry.contributions.hostTools?.includes('paint')) return null;
+		try {
+			return entry.contributions.paintAnswer?.(hit) ?? null;
+		} catch {
+			// A throwing contributor paints nothing, as everywhere else in this host.
+			return null;
+		}
+	};
 	const hitMark: StageFacade['hitMark'] = (query) => {
 		return hitStageMark(input.selectionMarks(), query);
 	};
@@ -126,6 +137,7 @@ export function createSelectionPick(input: SelectionPickPort) {
 		resolvePick,
 		hostToolTarget,
 		eraseAnswer,
+		paintAnswer,
 		hitMark,
 		hitIdleMark: (css: readonly [number, number]) => hitStageMark(input.idleMarks(), { css, coarse: false }),
 	};

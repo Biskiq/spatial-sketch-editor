@@ -312,11 +312,12 @@ afterEach(() => {
 });
 describe('mounted Stage pointer lifecycle', () => {
 	it('moves every registered task entry to Find or the dock and leaves the Index a locator', () => {
-		// The host's own dock keys (Select, Measure, Eraser) are Find entries too.
+		// The host's own dock keys (Select, Paint, Measure, Eraser) are Find entries too.
 		const registered = [
 			...facade().findEntries().map((entry) => `${entry.adapterId}:${entry.id}`),
 			'project-replacement:starter',
 			'host:host-select',
+			'host:host-paint',
 			'host:host-measure',
 			'host:host-erase',
 			// T1 SL1: Slice is a dock tool, so its host key is a Find entry too.

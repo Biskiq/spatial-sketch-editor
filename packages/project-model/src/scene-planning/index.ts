@@ -26,4 +26,6 @@ export * from './intent-payload';
 export * from './model-resource';
 export * from './planners';
 
+export * from './finish-model';
+export * from './finish-planners';
 export * from './artwork-planners';

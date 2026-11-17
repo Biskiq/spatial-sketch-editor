@@ -3,6 +3,7 @@ import type { DomainPlanner, RegistrationOutcome } from '@portfolio/project-mode
 import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';
+import type { FinishAuthoring } from '../look/finish-authoring.svelte';
 
 /** Public Stage values used by adapter contributions; implementation remains in Stage. */
 export { evaluationIdOf } from './camera-session';
@@ -48,6 +49,12 @@ export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
 	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & { registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome };
+	/**
+	 * The route's Finish service, filled once the route has built it. A port keeps
+	 * the service and the adapter epoch from depending on each other's creation
+	 * order; the Card reads `current` at render time.
+	 */
+	readonly finishes?: { readonly current: FinishAuthoring | null };
 };
 
 export type StageAdapterFactory = (services: StageAdapterServices) => StageAdapter;
@@ -95,9 +102,18 @@ export type StagePostureLayer = {
  * facade and host is safe: it is access, not state, so a lens surface and the
  * adapter mount edit through the same Stage and the same F.4 boundary.
  */
-export function createStageAdapterServices(stage: StageFacade, host: StageAcceptanceHost): StageAdapterServices {
+export function createStageAdapterServices(
+	stage: StageFacade,
+	host: StageAcceptanceHost,
+	finishes?: () => FinishAuthoring | null
+): StageAdapterServices {
 	return {
 		stage,
+		finishes: {
+			get current() {
+				return finishes?.() ?? null;
+			}
+		},
 		authoring: {
 			registerPlanner: (planner) => host.registerPlanner(planner),
 			accept: (intent) => host.accept(intent),
@@ -109,7 +125,8 @@ export function createStageAdapterServices(stage: StageFacade, host: StageAccept
 export function mountStageAdapter(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
-	factory: StageAdapterFactory
+	factory: StageAdapterFactory,
+	finishes?: () => FinishAuthoring | null
 ): StageAdapterRegistration {
-	return stage.registerStageAdapter(factory(createStageAdapterServices(stage, host)));
+	return stage.registerStageAdapter(factory(createStageAdapterServices(stage, host, finishes)));
 }

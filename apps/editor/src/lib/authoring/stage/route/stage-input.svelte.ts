@@ -44,6 +44,7 @@ import type {
 import type { StageSession, StageTask } from '../stage-session';
 import type { StageMeasureController } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
+import type { StagePaintController } from '../stage-painter';
 import { stageResizeCursorCss } from '../stage-glyphs';
 import {
 	layoutSelectionReference,
@@ -74,6 +75,7 @@ export type StageInputArbiterInput = {
 	readonly armedHostTool: () => string | null;
 	readonly measureTool: () => StageMeasureController | null;
 	readonly eraserTool: () => StageEraserController | null;
+	readonly paintTool: () => StagePaintController | null;
 	readonly task: () => StageTask | null;
 	readonly dockToolArmed: () => boolean;
 	readonly planView: () => PlanEvaluation | null;
@@ -82,6 +84,7 @@ export type StageInputArbiterInput = {
 	readonly viewMarkAt: (event: MouseEvent) => StagePostureMark | null;
 	readonly eraseHover: () => StageSelectionEntry | null;
 	readonly setEraseHover: (entry: StageSelectionEntry | null) => void;
+	readonly setPaintHover: (entry: StageSelectionEntry | null) => void;
 	readonly onNotice: (message: string) => void;
 	readonly onRefreshHostTools: () => void;
 	readonly selectHit: (hit: StageSourceHit) => void;
@@ -173,7 +176,9 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (drag?.mode !== 'host') {
 			input.measureTool()?.hover(null);
 			input.eraserTool()?.hover(null);
+			input.paintTool()?.hover(null);
 			input.setEraseHover(null);
+			input.setPaintHover(null);
 		}
 	}
 
@@ -192,7 +197,8 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 			const toolInput = { css: sample.css, evaluationId: id, coarse: sample.coarse };
 			if (armedHostTool === 'measure') input.measureTool()?.hover(toolInput);
-			else input.eraserTool()?.hover(toolInput);
+			else if (armedHostTool === 'erase') input.eraserTool()?.hover(toolInput);
+			else input.paintTool()?.hover(toolInput);
 			input.session.setHover(null);
 			hoverSelection = null;
 			hoverMove = false;
@@ -304,6 +310,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		if (drag.mode === 'host') {
 			input.measureTool()?.cancel();
 			input.eraserTool()?.cancel();
+			input.paintTool()?.cancel();
 			input.onRefreshHostTools();
 		}
 		abortGesture();
@@ -351,7 +358,13 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			// An armed host tool asks every declaring domain for its winner.
 			// A press that names nothing to measure or erase stays the host's navigation.
 			const armedHostTool = input.armedHostTool();
-			const hostTool = armedHostTool === 'measure' ? input.measureTool() : armedHostTool === 'erase' ? input.eraserTool() : null;
+			const hostTool = armedHostTool === 'measure'
+				? input.measureTool()
+				: armedHostTool === 'erase'
+					? input.eraserTool()
+					: armedHostTool === 'paint'
+						? input.paintTool()
+						: null;
 			if (hostTool !== null) {
 				const claimed = hostTool.down({ css, evaluationId: pointerEvaluationId, coarse });
 				input.onRefreshHostTools();
@@ -497,8 +510,10 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			const id = input.facade()?.evaluationId() ?? null;
 			if (id === null) return;
 			const toolInput = { css: input.stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' };
-			if (input.armedHostTool() === 'measure') input.measureTool()?.move(toolInput);
-			else input.eraserTool()?.move(toolInput);
+			const armed = input.armedHostTool();
+			if (armed === 'measure') input.measureTool()?.move(toolInput);
+			else if (armed === 'erase') input.eraserTool()?.move(toolInput);
+			else input.paintTool()?.move(toolInput);
 			drag = { x: event.clientX, y: event.clientY, mode: 'host' };
 			input.onRefreshHostTools();
 			return;
@@ -558,7 +573,14 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			const id = input.facade()?.evaluationId() ?? null;
 			drag = null;
 			adapterEvaluationId = null;
-			const tool = input.armedHostTool() === 'measure' ? input.measureTool() : input.eraserTool();
+			const armed = input.armedHostTool();
+			const tool = armed === 'measure'
+				? input.measureTool()
+				: armed === 'erase'
+					? input.eraserTool()
+					: armed === 'paint'
+						? input.paintTool()
+						: null;
 			if (tool === null) return;
 			if (input.session.gesture() === null || id === null) {
 				tool.cancel();

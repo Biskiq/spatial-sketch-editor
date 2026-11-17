@@ -123,10 +123,10 @@
 			<div><dt>F</dt><dd>Fit</dd></div>
 			<div>
 				<dt>
-					{STAGE_DOCK_SHORTCUTS.select} · {STAGE_DOCK_SHORTCUTS.ink} · {STAGE_DOCK_SHORTCUTS.measure} ·
-					{STAGE_DOCK_SHORTCUTS.erase} · {STAGE_DOCK_SHORTCUTS.library}
+					{STAGE_DOCK_SHORTCUTS.select} · {STAGE_DOCK_SHORTCUTS.ink} · {STAGE_DOCK_SHORTCUTS.paint} ·
+					{STAGE_DOCK_SHORTCUTS.measure} · {STAGE_DOCK_SHORTCUTS.erase} · {STAGE_DOCK_SHORTCUTS.library}
 				</dt>
-				<dd>Select · Ink · Measure · Eraser · Objects</dd>
+				<dd>Select · Ink · Paint · Measure · Eraser · Objects</dd>
 			</div>
 			<div><dt>Esc</dt><dd>Cancel the current step</dd></div>
 		</dl>

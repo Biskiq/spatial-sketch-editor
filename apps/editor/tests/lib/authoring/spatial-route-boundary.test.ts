@@ -121,8 +121,9 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('stageEpoch.activate(snapshot)');
 		expect(code).toContain('stageEpoch.markTornDown()');
 		expect(code).toContain('stageEpoch.dispose()');
-		expect(code).toContain('onUndo={() => void stageEpoch.undo()}');
-		expect(code).toContain('onRedo={() => void stageEpoch.redo()}');
+		// S4a cancels a pending shared-Finish Ask before delegating to the same epoch history owner.
+		expect(code).toMatch(/onUndo=\{\(\) => \{\s*finishes\.cancelAsk\(\);\s*void stageEpoch\.undo\(\);\s*\}\}/);
+		expect(code).toMatch(/onRedo=\{\(\) => \{\s*finishes\.cancelAsk\(\);\s*void stageEpoch\.redo\(\);\s*\}\}/);
 		expect(code).toMatch(/get artworkScope\(\)\s*\{\s*return stageAssets\.artworkScope\s*;/);
 	});
 
