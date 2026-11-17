@@ -60,11 +60,27 @@ describe('the Canvas decides the ghost, the Layer draws it', () => {
 	it('draws the ghost with no planes and no raycast', () => {
 		const ghost = layer.slice(layer.indexOf('function addGhost'), layer.indexOf('let pending = 0'));
 		expect(ghost).toContain('source.geometry');
-		expect(ghost).toContain('opacity: 0.18');
+		expect(ghost).toContain('opacity: SLICE_INK.ghostOpacity');
 		// A clipped ghost would be invisible, which is the whole failure mode.
 		expect(ghost).not.toContain('clippingPlanes');
 		// `keep()` sets the overlay layer, removes the raycast and adds it to the root.
 		expect(ghost).toContain('keep(mesh, () => {})');
+	});
+});
+
+describe('the section stays off the Sheet-drag frame', () => {
+	const layer = source('StageSliceLayer.svelte');
+
+	it('decides through the tested rule, not a timer of its own', () => {
+		expect(layer).toContain('decideCapAssembly(assembled, next)');
+		expect(layer).toContain('SETTLE_MILLISECONDS');
+	});
+
+	it('draws only the plane while the reading moves', () => {
+		const move = layer.slice(layer.indexOf('function moveReadingOnly'), layer.indexOf('$effect(() => {'));
+		expect(move).toContain('addPlane(reading.cutY');
+		// The expensive path must not appear on the drag frame.
+		expect(move).not.toContain('sectionMeshes(');
 	});
 });
 

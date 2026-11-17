@@ -11,6 +11,14 @@
  * in a shared suite is a flaky gate on a loaded machine. The measured figures are
  * printed (`console.info`) so the PR can quote them, and a broken assembly still
  * fails here through the zero-issue gate.
+ *
+ * **The number below is the settle cost, not a frame cost.** The measured assembly is
+ * far over §6's 4 ms budget on this fixture (~30 ms against 4 ms, profiled: triangle
+ * to segment 9.5 ms, split pass 23 ms, winding 2 ms), so the Stage keeps the rebuild
+ * off the Sheet-drag frame — the drag draws the plane, and the section assembles once
+ * the Sheet rests (`slice-cap-schedule.ts`). What this file guards is that the settle
+ * stays a single bounded pass with a correct result, and that the figure stays
+ * visible to whoever picks up the performance work.
  */
 import { describe, expect, it } from 'vitest';
 import { compileWallFirstLayoutGeometry, legJoinsByWall, type LayoutDocumentWallFirst, type LayoutVec2, type LayoutWall } from '@portfolio/layout-core';
