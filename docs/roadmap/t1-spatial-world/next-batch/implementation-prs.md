@@ -92,7 +92,7 @@ Core only, on fixtures, no editor change. Tier 0.
 
 | Slice | Delivers | Boundary | Needs | Tier |
 | --- | --- | --- | --- | --- |
-| **SL1** | **Level cut** at the Height Sheet's height, with its pill, depth and Put back. Aligns the toolbar stub with PLATE | Session state. Cap generation is the implementer's choice. Plan first | – | 1 |
+| **SL1** | **Level cut** at the Height Sheet's height, with its pill, depth and Put back. Aligns the toolbar stub with PLATE | Session state. Cap generation is the implementer's choice. Plan first: [sl-plan-slice.md](sl-plan-slice.md) (integrated SL1–SL3 architecture) | – | 1 |
 | **SL2** | **Drawn cut**: segment, depth ray, Flip, Put back | Same session; one Slice at a time | SL1 | 1 |
 | **SL3** | **Face the cut** and **Section** | Face reuses A6's intent. Section consumes Layout's typed cut and projected streams. Own plan | SL2, A6 | 2 |
 

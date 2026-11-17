@@ -63,7 +63,13 @@
 		scene: Scene,
 		request: SnapshotRequest,
 		bounds: StageSnapshotBounds | null,
-		reuse: WebGLRenderTarget | null = null
+		reuse: WebGLRenderTarget | null = null,
+		/**
+		 * The Stage's clip seam, when the host has one. A snapshot is **as built**: the
+		 * seam parks every plane for the duration of the draw and puts the live reading
+		 * back afterwards, so a thumbnail taken during a Slice is the world, not the cut.
+		 */
+		asBuilt: (<T>(render: () => T) => T) | null = null
 	): StageSnapshotFrame | null {
 		const pose = inspectionPoseFromView({
 			eye: [request.pose.eye[0], request.pose.eye[1], request.pose.eye[2]],
@@ -136,7 +142,8 @@
 			renderer.setClearColor(PAPER_GROUND_INK, 1);
 			renderer.autoClear = true;
 			renderer.clear();
-			renderer.render(scene, camera);
+			if (asBuilt === null) renderer.render(scene, camera);
+			else asBuilt(() => renderer.render(scene, camera));
 			const pixels = new Uint8Array(SNAPSHOT_WIDTH * height * 4);
 			renderer.readRenderTargetPixels(target, 0, 0, SNAPSHOT_WIDTH, height, pixels);
 			return { camera, width: SNAPSHOT_WIDTH, height, pixels, target };
@@ -167,6 +174,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { useThrelte } from '@threlte/core';
 	import { snapshotDataUrl } from '../snapshot-image';
+	import { useStageClip } from '../slice/stage-clip';
 	import { invalidateStageSnapshots, registerStageSnapshotRenderer } from '../stage-snapshots';
 	// The module script above is this file's other half: `renderStageSnapshot`,
 	// `StageSnapshotBounds`, `SnapshotRequest` and `WebGLRenderTarget` are in scope
@@ -185,10 +193,19 @@
 	} = $props();
 
 	const { scene, renderer } = useThrelte();
+	/** The Canvas's clip, or null outside a Stage Canvas. */
+	const stageClip = useStageClip();
 	let target: WebGLRenderTarget | null = null;
 
 	async function render(request: SnapshotRequest): Promise<string | null> {
-		const frame = renderStageSnapshot(renderer, scene, request, bounds, target);
+		const frame = renderStageSnapshot(
+			renderer,
+			scene,
+			request,
+			bounds,
+			target,
+			stageClip === null ? null : (render) => stageClip.asBuilt(render)
+		);
 		if (frame === null) return null;
 		target = frame.target;
 		// The target renders linear bytes (r187 ignores a non-XR target's texture

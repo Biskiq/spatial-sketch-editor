@@ -52,7 +52,7 @@ import {
 	sameReference,
 	type StageSelectionEntry
 } from '../semantic-selection';
-import { isStageDrag, type StagePressTracker } from '../stage-input';
+import { isStageDrag, slicePressRefusal, type StagePressTracker } from '../stage-input';
 import { stageWheelZoom } from '../stage-wheel-zoom';
 import type { StageInterruptionReason } from '../stage-interruption';
 import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
@@ -85,6 +85,8 @@ export type StageInputArbiterInput = {
 	readonly eraseHover: () => StageSelectionEntry | null;
 	readonly setEraseHover: (entry: StageSelectionEntry | null) => void;
 	readonly setPaintHover: (entry: StageSelectionEntry | null) => void;
+	/** Whether the Slice **tool** is armed: a press is then a refusal, not a selection. */
+	readonly sliceToolArmed: () => boolean;
 	readonly onNotice: (message: string) => void;
 	readonly onRefreshHostTools: () => void;
 	readonly selectHit: (hit: StageSourceHit) => void;
@@ -347,6 +349,16 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		// creator can still orbit the sheet.
 		if (event.button === 0 && !event.shiftKey && input.unfold.pointerPress(event)) return;
 		if (input.activeLayer()?.pointerDown(event, input.viewMarkAt(event)) === 'claimed') return;
+		const sliceRefusal = slicePressRefusal(input.sliceToolArmed());
+		if (sliceRefusal !== null) {
+			// §9's one Slice refusal, in words. A press has nothing to place while the
+			// tool is armed, and it must not select or start a gesture either; the press
+			// is refused so its click cannot select through it. A live cut under Select
+			// is **not** a refusal: the creator edits below it as usual.
+			input.press.refuse(event.pointerId);
+			input.onNotice(sliceRefusal);
+			return;
+		}
 		// The adapters get the press first: the binding that owns an open task (a
 		// Scene transform, an armed Ink chain) may claim it, and so may a binding
 		// that offers direct manipulation with no task at all (a selected Wall's

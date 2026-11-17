@@ -68,6 +68,16 @@
 		initialLiftScope,
 		interiorLift
 	} from '$lib/authoring/layout/interior-lift-store.svelte';
+	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
+	import { pickThroughSlice, pickVisibleFaceThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
+	import { setResolvedSlice } from '$lib/authoring/stage/slice/slice-resolved';
+	import {
+		planOverridesOf,
+		resolveSlice,
+		sliceDepthItems,
+		type ResolvedSlice
+	} from '$lib/authoring/stage/slice/slice-cut';
+	import { PLAN_DEFAULT_DEPTH_METERS } from '$lib/authoring/stage/plan-parameters';
 	import {
 		wallUnfoldShouldReturn,
 		wallUnfoldViewCentreStation
@@ -147,6 +157,14 @@
 	const lightPreview = createStageLightPreview();
 	const scenePick = createScenePickSource();
 
+	/*
+	 * SL1: the Stage's one hit path, with the cut folded in. The reading is read on
+	 * the pointer rather than captured, so arming a Slice, dragging it and putting it
+	 * back change what a click can select without re-creating the facade or its
+	 * adapters. With no reading the wrapper is the unwrapped pick exactly.
+	 */
+	const stagePick = pickThroughSlice(scenePick, () => resolvedSlice);
+
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
@@ -171,7 +189,7 @@
 		createFacade: (snapshot) => createStageFacade({
 			snapshot,
 			session,
-			scenePick: scenePick.pick,
+			scenePick: stagePick,
 			sceneBounds: scenePick.bounds,
 			lightPreview
 		}),
@@ -527,7 +545,9 @@
 		rect: () => rect,
 		measure: () => stageViewport.measure(),
 		stageElement: () => stageEl,
-		pickVisibleFace: scenePick.pickVisibleFace,
+		// Artwork hangs on a **drawn** face: the cut's filter applies to the placement
+		// ray too, so a click through a removed Wall reaches the one behind it.
+		pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => resolvedSlice),
 		press,
 		capturePointer,
 		onNotice: (message) => shell.setNotice(message),
@@ -575,11 +595,14 @@
 		dockToolArmed: () => shell.armedTool !== null,
 		planView: () => planView,
 		previewing: () => preview !== null,
-		pick: scenePick.pick,
+		pick: stagePick,
 		viewMarkAt: (event) => experience.viewMarkAt(event),
 		eraseHover: () => shell.eraseHover,
 		setEraseHover: (entry) => shell.setEraseHover(entry),
 		setPaintHover: (entry) => shell.setPaintHover(entry),
+		// The refusal belongs to the armed Slice **tool**, not to a live cut: back on
+		// Select, the creator selects and drags everything below the cut.
+		sliceToolArmed: () => shell.activeWorldTool === 'slice',
 		onNotice: (message) => shell.setNotice(message),
 		onRefreshHostTools: () => shell.refreshHostTools(),
 		selectHit: (hit) => commands.selectHit(hit),
@@ -640,7 +663,9 @@
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
 		liftActive: () => interiorLift.isActive(),
-		putBackLift: () => interiorLift.putBack()
+		putBackLift: () => interiorLift.putBack(),
+		sliceActive: () => sliceReading.isActive(),
+		putBackSlice
 	});
 
 	const selectedCurvedWall = $derived.by(() =>
@@ -754,6 +779,94 @@
 	});
 
 	/**
+	 * The live Slice, resolved against the Sheet. World only: Preview is the visitor's
+	 * as-built world and never receives a cut.
+	 */
+	const resolvedSlice = $derived.by((): ResolvedSlice | null => {
+		const reading = sliceReading.reading;
+		if (reading === null) return null;
+		if (experience.lensState !== 'world') return null;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		return resolveSlice(reading, {
+			sheetHeight: shell.heightMeters,
+			datumMeters: boot.snapshot.domain.datumMeters
+		});
+	});
+
+	/**
+	 * Publish the resolved reading to the plain-module pick providers.
+	 *
+	 * `layout.adapter.ts` is created by an adapter factory, not by a component, so it
+	 * reads the same value through this mirror (the shape `liftedSourcesNow` already
+	 * uses). Written here — the one place the value is derived — so no consumer can
+	 * hold a cut the Canvas is not drawing.
+	 */
+	$effect(() => {
+		setResolvedSlice(resolvedSlice);
+	});
+
+	/** Plan's membership follows the cut: a finite depth narrows what Plan shows. */
+	$effect(() => {
+		const reading = resolvedSlice;
+		if (facade === null) return;
+		facade.setPlanParameters({
+			depthMeters:
+				reading === null ? PLAN_DEFAULT_DEPTH_METERS : planOverridesOf(reading).depthMeters
+		});
+	});
+
+	/**
+	 * The Slice pill: **Cut at {h} m · depth ▾ · Put back**. Its depth rows are the
+	 * Sheet's own ticks strictly below the cut, labelled as the Sheet labels them,
+	 * and there are no disabled rows: an item that could not be below the cut is not
+	 * offered at all.
+	 */
+	const slicePill = $derived.by(() => {
+		const reading = sliceReading.reading;
+		if (reading === null) return null;
+		const items = sliceDepthItems({
+			reading,
+			sheetHeightMeters: shell.heightMeters,
+			ticks: shell.heightTicks
+		});
+		const depth = reading.depth;
+		const current =
+			depth.kind === 'below'
+				? items.find(
+						(item) =>
+							item.kind === 'below' &&
+							Math.abs(item.meters - depth.meters) <= 1e-3
+					)
+				: undefined;
+		const depthLabel =
+			depth.kind === 'below'
+				? (current?.label ?? `${depth.meters.toFixed(2)} m below`)
+				: 'To the floor';
+		return {
+			cutLabel: shell.heightMeters.toFixed(2),
+			depthLabel,
+			items: items.map((item) =>
+				item.kind === 'below'
+					? { kind: item.kind, label: item.label, checked: item.checked, meters: item.meters }
+					: { kind: item.kind, label: item.label, checked: item.checked }
+			),
+			onDepth: (item: { readonly kind: 'to-floor' | 'below'; readonly meters?: number }) => {
+				sliceReading.setDepth(
+					item.kind === 'below' && item.meters !== undefined
+						? { kind: 'below', meters: item.meters }
+						: { kind: 'to-floor' }
+				);
+			},
+			onPutBack: () => putBackSlice()
+		};
+	});
+
+	function putBackSlice(): void {
+		sliceReading.putBack();
+		shell.setActiveWorldTool('select');
+	}
+
+	/**
 	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
 	 * reading in words instead of leaving a pill pointing at nothing. This is a
 	 * read-side reconciliation: it writes no document and no history.
@@ -810,11 +923,23 @@
 	}
 
 	$effect(() => () => {
-		// Leaving the project ends the reading: Lift is never carried across routes.
+		// Leaving the project ends the reading: neither Lift nor the Slice is carried
+		// across routes. The reading is a module singleton, so a cut left here would
+		// reappear in the next project.
 		interiorLift.clear();
+		sliceReading.clear();
+		setResolvedSlice(null);
 		finishes?.cancelImage();
 		artworkInteraction.dispose();
 		stageAssets.disposeArtwork();
+	});
+	$effect(() => {
+		if (experience.lensState === 'world') return;
+		// The Slice reads the world Stage: leaving the lens ends it exactly as a replaced
+		// project does, or the pill would offer a cut over an uncut Stage.
+		if (!sliceReading.isActive()) return;
+		sliceReading.clear();
+		setResolvedSlice(null);
 	});
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
@@ -896,6 +1021,8 @@
 		// no overhead to keep lifted: Lift is session state, never a document value.
 		wallFace.clear();
 		interiorLift.clear();
+		sliceReading.clear();
+		setResolvedSlice(null);
 		selection = null;
 		shell.setTask(null);
 		revealed = [];
@@ -1238,6 +1365,7 @@
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftSources() { return liftedSources; },
 			get heightMeters() { return experience.lensState === 'world' ? shell.heightMeters : null; },
+			get resolvedSlice() { return resolvedSlice; },
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
 			get unfoldPinActive() { return unfoldGestures.sheetPinActive; },
@@ -1407,6 +1535,7 @@
 				? experience.viewEditPreview.turn
 				: null}
 			lift={liftPill}
+			slice={slicePill}
 			scaleBar={experience.lensState === 'world' && evaluation?.projectionKind === 'plan-orthographic'
 				? { bar: shell.draftingScaleBar, quiet: paperVisible }
 				: null}

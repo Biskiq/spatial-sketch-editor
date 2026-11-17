@@ -18,7 +18,15 @@
 	 * `NoToneMapping` (see `CANVAS_TONE_MAPPING`).
 	 */
 	import { Canvas, T } from '@threlte/core';
-	import { PCFShadowMap } from 'three';
+	import { PCFShadowMap, type Object3D, type Plane } from 'three';
+	import {
+		createStageClip,
+		setStageClip
+	} from '$lib/authoring/stage/slice/stage-clip';
+	import type { ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
+	import type { SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
+	import StageSliceLayer from './StageSliceLayer.svelte';
+	import StageClipPlanes from './StageClipPlanes.svelte';
 	import { onDestroy } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 	import type { CompiledLayoutGeometry, OverheadSource, PlanEvaluation } from '@portfolio/layout-core';
@@ -46,6 +54,8 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageLiftLayer from './StageLiftLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
+	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
+	import { subjectWhollyHidden } from '../slice/slice-ghost';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageWallPin from './StageWallPin.svelte';
 	import StageCelestialDial from './StageCelestialDial.svelte';
@@ -112,7 +122,8 @@ import StageMatGround from './StageMatGround.svelte';
 		heightPlaneVisible = false,
 		unfoldPinHovered = false,
 		unfoldPinActive = false,
-		unfoldAnchorPin = null
+		unfoldAnchorPin = null,
+		resolvedSlice = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -166,6 +177,11 @@ import StageMatGround from './StageMatGround.svelte';
 		unfoldPinActive?: boolean;
 		/** The idle pin shown on a selected curved Wall, before Unroll. */
 		unfoldAnchorPin?: readonly [number, number, number] | null;
+		/**
+		 * The live Slice reading, or null. The Canvas owns the one clip instance and
+		 * applies this to it; Preview is a separate Canvas and never passes it.
+		 */
+		resolvedSlice?: ResolvedSlice | null;
 	} = $props();
 
 	/**
@@ -177,8 +193,66 @@ import StageMatGround from './StageMatGround.svelte';
 	 * Canvas. The shell and the representation release their leases when they are
 	 * destroyed; the stores free anything left here.
 	 */
-	const resources = provideRenderResources();
+	/**
+	 * The Canvas's one clip: created **before** the render resources, so the material
+	 * store is born holding this exact array by reference. The array length never
+	 * changes, so entering, dragging and leaving a Slice never recompiles a program.
+	 */
+	const stageClip = setStageClip(createStageClip());
+	const resources = provideRenderResources({ clippingPlanes: stageClip.planes as Plane[] });
 	onDestroy(() => resources.dispose());
+	/**
+	 * The selected subject **when the cut hides all of it**, or null.
+	 *
+	 * The Index can select anything, including a body the Slice removes from the frame
+	 * entirely (a ceiling light above the cut). That selection must stay visible and
+	 * editable, so the Slice layer draws it as a ghost and the selection ink draws its
+	 * gold contour unclipped (§2.4). A partly cut subject is **not** ghosted: its stub
+	 * and cap are visible and pickable already.
+	 *
+	 * Recomputed on selection, reading or geometry change only — `subjectWhollyHidden`
+	 * walks the subject's own triangles, never the scene.
+	 */
+	const ghostSubject = $derived.by(() => {
+		// A representation rebuild changes the drawn body without changing the object, so
+		// the bake follows the revisions as well as the selection. Without these reads the
+		// cached subject kept an outdated pose or classification after an edit.
+		layoutRevision;
+		sceneRootRevision;
+		entityRenderRevision;
+		if (selection === null || selection === undefined) return null;
+		const objects = selectionObjectsOf(scenePick, selection);
+		if (objects.length === 0) return null;
+		const subject = ghostSubjectOf(objects);
+		return subject === null ? null : { objects, subject };
+	});
+	/**
+	 * Classification only. It reads `ghostSubject` (cached by Svelte against the
+	 * selection and the drawn geometry), so a Sheet step re-runs one triangle test over
+	 * the already-baked buffers instead of baking the subject again.
+	 */
+	const sliceGhostSelection = $derived.by((): readonly Object3D[] | null => {
+		const cut = resolvedSlice ?? null;
+		const subject = ghostSubject;
+		if (cut === null || subject === null) return null;
+		return subjectWhollyHidden(cut, subject.subject) ? subject.objects : null;
+	});
+	/** The selected Layout identity, for the section's gold edge (plan test 4). */
+	const sliceSelectedIdentity = $derived(
+		selection !== null &&
+			selection !== undefined &&
+			selection.reference.domain === 'layout' &&
+			selection.reference.subject.kind !== 'room'
+			? `${selection.reference.subject.kind}:${selection.reference.subject.id}`
+			: null
+	);
+	/** The drawn meshes, as the caps section them; a mount or an edit is a new read. */
+	const sectionInputs = $derived.by((): readonly SectionInput[] => {
+		layoutRevision;
+		sceneRootRevision;
+		entityRenderRevision;
+		return scenePick.sectionSources();
+	});
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
@@ -294,6 +368,8 @@ import StageMatGround from './StageMatGround.svelte';
 	shadows={PCFShadowMap}
 	toneMapping={CANVAS_TONE_MAPPING}
 >
+	<!-- The one writer of the shared planes, and the frame request that follows. -->
+	<StageClipPlanes clip={stageClip} reading={resolvedSlice ?? null} />
 	<!--
 		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is
@@ -324,7 +400,7 @@ import StageMatGround from './StageMatGround.svelte';
 			litPlate={environmentShown ? (worldEnvironmentLook(sky)?.plate ?? null) : null}
 		/>
 	{/if}
-	{#if heightPlane !== null && !paperVisible && framedViewport === null}
+	{#if heightPlane !== null && !paperVisible && framedViewport === null && resolvedSlice === null}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
 		<T.Mesh
 			position={heightPlane.center}
@@ -420,8 +496,25 @@ import StageMatGround from './StageMatGround.svelte';
 			width={evaluation?.rect.width ?? 1}
 			height={evaluation?.rect.height ?? 1}
 			fade={1 - (paperReveal?.sheet ?? 0)}
+			unclippedSelection={sliceGhostSelection !== null}
 		/>
 		{/if}
+	{/if}
+	{#if !paperVisible && framedViewport === null}
+		<!--
+			The Slice's own ink: the yellow plane, the depth outline and the section caps.
+			Overlay-layer editor ink, never a pick root, never in a snapshot.
+		-->
+		<StageSliceLayer
+			resolved={resolvedSlice ?? null}
+			inputs={sectionInputs}
+			bounds={geometry.bounds ?? null}
+			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+			ghostSelection={sliceGhostSelection}
+			selectedIdentity={sliceSelectedIdentity}
+			width={evaluation?.rect.width ?? 0}
+			height={evaluation?.rect.height ?? 0}
+		/>
 	{/if}
 	{#if framedViewport === null && evaluation !== null}
 		<!--

@@ -48,6 +48,7 @@
 		lookThrough = null,
 		pendingViewWrite = null,
 		lift = null,
+		slice = null,
 		welcome = false,
 		hanging = null,
 		artwork = null,
@@ -107,6 +108,19 @@
 			onScope: (roomId: string | null) => void;
 			onPutBack: () => void;
 		} | null;
+		/**
+		 * The Slice pill, or null when no cut is on. Cut at {h} m · depth ▾ · Put back.
+		 * The rows are the Sheet's own ticks; an item that could not sit below the cut is
+		 * never offered, so there are no disabled rows.
+		 */
+		readonly slice?: {
+			readonly cutLabel: string;
+			readonly depthLabel: string;
+			
+			readonly items: readonly SlicePillItem[];
+			onDepth: (item: SlicePillItem) => void;
+			onPutBack: () => void;
+		} | null;
 		readonly pendingViewWrite?: { readonly alsoIn: readonly string[] } | null;
 		readonly welcome?: boolean;
 		readonly hanging?: HangingProps | null;
@@ -150,8 +164,19 @@
 		throughFrameElement?: HTMLElement;
 	} = $props();
 
+/** One row of the Slice pill's depth menu. There are no disabled rows. */
+	type SlicePillItem = {
+		readonly kind: 'to-floor' | 'below';
+		readonly label: string;
+		readonly checked: boolean;
+		/** Present for a finite depth: how far below the cut it shows. */
+		readonly meters?: number;
+	};
+
 	/** The Lift scope menu's own open flag; a choice or Put back closes it. */
 	let liftMenuOpen = $state(false);
+	/** The Slice depth menu's own open flag, on the same terms. */
+	let sliceMenuOpen = $state(false);
 
 	function chooseLiftScope(roomId: string | null): void {
 		liftMenuOpen = false;
@@ -377,6 +402,57 @@
 						onclick={() => {
 							liftMenuOpen = false;
 							lift.onPutBack();
+						}}>Put back</button
+					>
+				</div>
+			{/if}
+			{#if slice !== null && !previewing}
+				<!--
+					The Slice pill, after Lift's: Cut at {h} m · depth ▾ · Put back. The height is
+					the Sheet's live value, so dragging the Sheet moves the pill with the cut.
+				-->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="mode-pill slice-pill"
+					class:with-lift={lift !== null}
+					data-slice-pill
+					onclick={(event) => event.stopPropagation()}
+					onpointerdown={(event) => event.stopPropagation()}
+				>
+					<span>Cut at {slice.cutLabel} m</span>
+					<button
+						type="button"
+						data-slice-depth
+						aria-haspopup="menu"
+						aria-expanded={sliceMenuOpen}
+						title="Choose what the Slice shows"
+						onclick={() => (sliceMenuOpen = !sliceMenuOpen)}
+					>
+						{slice.depthLabel}<span class="chev" aria-hidden="true">▾</span>
+					</button>
+					{#if sliceMenuOpen}
+						<div class="lift-menu" role="menu" aria-label="Slice depth">
+							{#each slice.items as item (item.kind === 'to-floor' ? 'to-floor' : item.label)}
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={item.checked}
+									data-slice-depth-item
+									onclick={() => {
+										sliceMenuOpen = false;
+										slice.onDepth(item);
+									}}>{item.label}</button
+								>
+							{/each}
+						</div>
+					{/if}
+					<button
+						type="button"
+						class="pill-primary"
+						data-slice-put-back
+						onclick={() => {
+							sliceMenuOpen = false;
+							slice.onPutBack();
 						}}>Put back</button
 					>
 				</div>
@@ -657,6 +733,14 @@
 	}
 	.mode-pill.lift-pill.with-through {
 		top: 3.4rem;
+	}
+	/* The Slice pill takes the same row as Lift's for the same reason, and drops a
+	 * row when Lift is showing, so the two readings can both state their pose. */
+	.mode-pill.slice-pill {
+		top: 3.4rem;
+	}
+	.mode-pill.slice-pill.with-lift {
+		top: 6.1rem;
 	}
 	.lift-pill .chev {
 		margin-left: 5px;

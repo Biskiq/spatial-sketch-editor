@@ -33,6 +33,7 @@ import {
 	ShadowMaterial,
 	Vector2,
 	type Material,
+	type Plane,
 	type Texture
 } from 'three';
 import {
@@ -231,7 +232,28 @@ function construct(
 	}
 }
 
-export function createMaterialStore(): MaterialStore {
+export type MaterialStoreOptions = {
+	/**
+	 * The Canvas's slice clipping planes, **shared by reference** by every colour
+	 * material.
+	 *
+	 * The array is assigned, never copied: the Stage clip mutates its `Plane`
+	 * instances in place for the Canvas's whole life, so a material holding a clone
+	 * would stop following the cut. A descriptor with `clip: false` (the environment
+	 * ground) gets `null` instead. Depth and distance materials are untouched — they
+	 * realize shadows, which are rendered from the unclipped world (`clipShadows`
+	 * stays `false`). Absent means no clipping, which is the Preview Canvas.
+	 */
+	readonly clippingPlanes?: Plane[];
+};
+
+/** Whether this descriptor's material takes the Canvas's clipping planes. */
+function clipsWithStore(descriptor: MaterialDescriptor): boolean {
+	if (descriptor.kind === 'depth' || descriptor.kind === 'distance' || descriptor.kind === 'shadow') return false;
+	return !('clip' in descriptor && descriptor.clip === false);
+}
+
+export function createMaterialStore(options: MaterialStoreOptions = {}): MaterialStore {
 	const entries = new Map<string, Entry>();
 	let created = 0;
 	let disposedCount = 0;
@@ -244,7 +266,14 @@ export function createMaterialStore(): MaterialStore {
 			const key = materialKey(descriptor);
 			let entry = entries.get(key);
 			if (entry === undefined) {
-				entry = { descriptor, material: construct(descriptor, maps, source), refCount: 0 };
+				const material = construct(descriptor, maps, source);
+				// **After** any `source.clone()`: `Material.copy` clones each plane into a
+				// new array, so a material cloned by the imported path would otherwise
+				// keep a detached copy that never follows the cut.
+				if (options.clippingPlanes !== undefined) {
+					material.clippingPlanes = clipsWithStore(descriptor) ? options.clippingPlanes : null;
+				}
+				entry = { descriptor, material, refCount: 0 };
 				entries.set(key, entry);
 				created += 1;
 			}

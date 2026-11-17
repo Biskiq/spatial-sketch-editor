@@ -82,7 +82,7 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 	const host = (slot: 'select' | 'paint' | 'measure' | 'erase'): StageDockKey => ({
 		...HOST_DOCK_KEYS[slot],
 		slot,
-		shortcut: STAGE_DOCK_SHORTCUTS[slot],
+		shortcut: STAGE_DOCK_SHORTCUTS[slot] ?? null,
 		adapterId: STAGE_HOST_ADAPTER_ID,
 		palette: false,
 		separated: false
@@ -91,7 +91,7 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 		id: tool.id,
 		slot: tool.slot ?? null,
 		label: tool.label,
-		shortcut: tool.slot === undefined ? null : STAGE_DOCK_SHORTCUTS[tool.slot],
+		shortcut: tool.slot === undefined ? null : (STAGE_DOCK_SHORTCUTS[tool.slot] ?? null),
 		adapterId: tool.adapterId,
 		taskKind: tool.taskKind,
 		palette: true,
@@ -104,17 +104,18 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 		host('select'),
 		...(ink === undefined ? [] : [contributed(ink)]),
 		host('paint'),
+		// Slice is a **reading**, not a task: arming it opens no contributed task, and
+		// its palette carries SL1's one mode. It has no shortcut (see STAGE_DOCK_SHORTCUTS).
 		{
-			id: 'unavailable-slice',
-			slot: null,
+			id: 'host-slice',
+			slot: 'slice',
 			label: 'Slice',
 			shortcut: null,
 			adapterId: 'host',
 			taskKind: null,
-			palette: false,
+			palette: true,
 			separated: false,
-			icon: 'slice',
-			unavailableReason: 'Slice is not available yet.'
+			icon: 'slice'
 		},
 		host('erase'),
 		host('measure'),
