@@ -17,8 +17,10 @@
 import {
 	AmbientLight,
 	BoxGeometry,
+	BufferGeometry,
 	Color,
 	DirectionalLight,
+	Float32BufferAttribute,
 	Mesh,
 	MeshBasicMaterial,
 	MeshStandardMaterial,
@@ -26,9 +28,18 @@ import {
 	PerspectiveCamera,
 	PlaneGeometry,
 	Scene,
+	Uint32BufferAttribute,
 	type Material,
 	type WebGLRenderer
 } from 'three';
+import {
+	compileWallFirstLayoutGeometry,
+	legJoinsByWall,
+	type LayoutDocumentWallFirst,
+	type LayoutVec2,
+	type LayoutWall
+} from '@portfolio/layout-core';
+import { buildStandaloneWallMesh } from '../../src/lib/layout/wall-mesh-builder';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -349,11 +360,58 @@ function fixture() {
 	cutawayShadowCamera.position.set(3.4, 3.2, 6.4);
 	cutawayShadowCamera.lookAt(0, 0.4, 0);
 
-	// X2 §10.2: eleven Rooms / 44 Wall twins, all sharing the standard program.
-	// The orbit swaps the cut set from Room to Room; only visibility and the cut
-	// uniform change, so a per-cut-set material compile would show up as a new
-	// program. Caps and the shadow pass are covered by the smaller real fixtures.
+	// X2 §10.2: eleven L-shaped Rooms (66 compiled Walls) with a whole/cut twin
+	// pair per Wall, all sharing the standard program. The orbit swaps the cut set
+	// from Room to Room; only visibility and the cut uniform change, so a
+	// per-cut-set material compile would show up as a new program. Caps and the
+	// shadow pass are covered by the smaller real fixtures.
 	const ORBIT_ROOMS = 11;
+	const ORBIT_PITCH = 10;
+	const orbitJunctions: Array<{ id: string; point: LayoutVec2 }> = [];
+	const orbitWalls: LayoutWall[] = [];
+	const orbitRoomWallIds: string[][] = [];
+	const orbitRooms: LayoutDocumentWallFirst['rooms'] = [];
+	for (let room = 0; room < ORBIT_ROOMS; room += 1) {
+		const x = room * ORBIT_PITCH;
+		const points: LayoutVec2[] = [
+			[x, 0], [x + 6, 0], [x + 6, 4], [x + 3, 4], [x + 3, 7], [x, 7]
+		];
+		const ids = points.map((_, index) => `orbit-r${room}-j${index}`);
+		points.forEach((point, index) => orbitJunctions.push({ id: ids[index]!, point }));
+		const boundary: Array<{ wallId: string; direction: 'forward' }> = [];
+		for (let index = 0; index < points.length; index += 1) {
+			const wallId = `orbit-r${room}-w${index}`;
+			orbitWalls.push({
+				id: wallId,
+				startJunctionId: ids[index]!,
+				endJunctionId: ids[(index + 1) % points.length]!,
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			});
+			boundary.push({ wallId, direction: 'forward' });
+		}
+		orbitRoomWallIds.push(boundary.map((entry) => entry.wallId));
+		orbitRooms.push({
+			id: `orbit-r${room}`,
+			name: `Orbit Room ${room + 1}`,
+			boundary,
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		});
+	}
+	const orbitDocument: LayoutDocumentWallFirst = {
+		units: 'meters',
+		formatVersion: 7,
+		floor: { id: 'orbit-floor', name: 'Orbit Floor', elevation: 0 },
+		junctions: orbitJunctions,
+		walls: orbitWalls,
+		rooms: orbitRooms,
+		openings: [],
+		objects: []
+	};
+	const orbitCompilation = compileWallFirstLayoutGeometry(orbitDocument);
+	const orbitEnds = legJoinsByWall(orbitCompilation.geometry.junctions);
 	const orbitStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
 	stores.push(orbitStore);
 	const orbitScene = new Scene();
@@ -362,38 +420,33 @@ function fixture() {
 	const orbitSun = new DirectionalLight(0xffffff, 1.4);
 	orbitSun.position.set(30, 40, 20);
 	orbitScene.add(orbitSun);
-	const orbitGeometry = new BoxGeometry(6, 3, 0.16);
-	geometries.push(orbitGeometry);
 	type OrbitTwin = { wallId: string; whole: Mesh; cut: Mesh };
 	const orbitTwins: OrbitTwin[] = [];
 	const orbitRoomWalls: string[][] = [];
 	for (let room = 0; room < ORBIT_ROOMS; room += 1) {
-		const x = room * 10;
-		const walls: Array<{ id: string; position: [number, number, number]; rotation: number }> = [
-			{ id: `${room}-s`, position: [x + 3, 1.5, -3], rotation: 0 },
-			{ id: `${room}-n`, position: [x + 3, 1.5, 3], rotation: 0 },
-			{ id: `${room}-w`, position: [x, 1.5, 0], rotation: Math.PI / 2 },
-			{ id: `${room}-e`, position: [x + 6, 1.5, 0], rotation: Math.PI / 2 }
-		];
-		orbitRoomWalls.push(walls.map((wall) => wall.id));
-		for (const wall of walls) {
-			const tint = '#b8a88a';
-			const wholeLease = orbitStore.acquire({ kind: 'standard', color: tint, roughness: 1, metalness: 0 });
-			const cutLease = orbitStore.acquire({ kind: 'standard', color: tint, roughness: 1, metalness: 0, cutaway: true });
+		const roomWallIds = new Set(orbitRoomWallIds[room]);
+		const roomWalls = orbitCompilation.geometry.walls.filter((wall) => roomWallIds.has(wall.wallId));
+		orbitRoomWalls.push(roomWalls.map((wall) => wall.wallId));
+		for (const compiled of roomWalls) {
+			const built = buildStandaloneWallMesh(compiled, 0, orbitEnds.get(compiled.wallId) ?? { start: null, end: null });
+			if (built.mesh === undefined) throw new Error(`orbit wall ${compiled.wallId} did not compile`);
+			const geometry = new BufferGeometry();
+			geometry.setAttribute('position', new Float32BufferAttribute(built.mesh.positions, 3));
+			geometry.setAttribute('normal', new Float32BufferAttribute(built.mesh.normals, 3));
+			geometry.setIndex(new Uint32BufferAttribute(built.mesh.indices, 1));
+			geometries.push(geometry);
+			const wholeLease = orbitStore.acquire({ kind: 'standard', color: '#b8a88a', roughness: 1, metalness: 0 });
+			const cutLease = orbitStore.acquire({ kind: 'standard', color: '#b8a88a', roughness: 1, metalness: 0, cutaway: true });
 			leases.push(wholeLease, cutLease);
-			const whole = new Mesh(orbitGeometry, wholeLease.material);
-			const cut = new Mesh(orbitGeometry, cutLease.material);
-			for (const mesh of [whole, cut]) {
-				mesh.position.set(...wall.position);
-				mesh.rotation.y = wall.rotation;
-				orbitScene.add(mesh);
-			}
+			const whole = new Mesh(geometry, wholeLease.material);
+			const cut = new Mesh(geometry, cutLease.material);
 			cut.visible = false;
-			orbitTwins.push({ wallId: wall.id, whole, cut });
+			orbitScene.add(whole, cut);
+			orbitTwins.push({ wallId: compiled.wallId, whole, cut });
 		}
 	}
 	const orbitCamera = new PerspectiveCamera(42, WIDTH / HEIGHT, 0.1, 300);
-	const orbitCentreX = ((ORBIT_ROOMS - 1) * 10) / 2 + 3;
+	const orbitCentreX = ((ORBIT_ROOMS - 1) * ORBIT_PITCH) / 2 + 3;
 
 	const drawnReading = (depthMeters: number, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice => ({
 		kind: 'drawn',
@@ -645,6 +698,8 @@ function fixture() {
 		 * the whole-scene baseline.
 		 */
 		cutawayOrbit(stepsPerRoom: number): {
+			rooms: number;
+			walls: number;
 			baseline: number;
 			distinctPrograms: number[];
 			frames: number;
@@ -690,6 +745,8 @@ function fixture() {
 				twin.cut.visible = false;
 			}
 			return {
+				rooms: ORBIT_ROOMS,
+				walls: orbitTwins.length,
 				baseline,
 				distinctPrograms: [...programs],
 				frames,

@@ -280,6 +280,7 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 		//     Room. The whole-scene baseline is taken first; cutting must not add a
 		//     program at any of the 66 orbit frames.
 		const orbit = await page.evaluate(() => window.__STAGE_CLIP__.cutawayOrbit(6));
+		expect([orbit.rooms, orbit.walls]).toEqual([11, 66]);
 		expect(orbit.frames).toBe(66);
 		expect(orbit.errors).toEqual([0]);
 		expect(orbit.baseline).toBeGreaterThan(0);
