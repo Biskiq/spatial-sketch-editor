@@ -16,10 +16,10 @@
  * through the replacement's Camera.
  */
 import { fovYDegreesOf, type PointerRay, type Vec3 } from '@portfolio/camera-core';
-import type { StageAdapterServices } from '../../stage/stage-adapter-host';
-import type { StageFacade } from '../../stage/stage-facade';
-import { acceptFormCommand } from '../scene/form-card-command';
-import { sceneEntityReference } from '../scene/placement';
+import type { StageAdapterServices } from '../stage-adapter-host';
+import type { StageFacade } from '../stage-facade';
+import { acceptFormCommand } from '../../adapters/scene/form-card-command';
+import { sceneEntityReference } from '../../adapters/scene/placement';
 import {
 	aimTarget,
 	LIGHT_AIM_GUIDE_METERS,
@@ -33,7 +33,7 @@ import {
 	spotInnerRadius
 } from '../../look/light-presentation';
 import { radiansToDegrees } from '../../look/light-units';
-import { lightById, lightRange, type Light } from './light-subjects';
+import { lightById, lightRange, type Light } from '../../adapters/light/light-subjects';
 
 /** The Camera presentation id every Spot inspection names; never an authored View. */
 export const LIGHT_LOOK_THROUGH_PRESENTATION = 'light-inspection';
@@ -87,7 +87,7 @@ function sub(left: Vec3, right: Vec3): Vec3 {
 	return [left[0] - right[0], left[1] - right[1], left[2] - right[2]];
 }
 
-function scale(value: Vec3, amount: number): Vec3 {
+function scaledBy(value: Vec3, amount: number): Vec3 {
 	return [value[0] * amount, value[1] * amount, value[2] * amount];
 }
 
@@ -128,7 +128,10 @@ function ringFor(
 	for (let index = 0; index < segments; index += 1) {
 		const angle = (index / segments) * Math.PI * 2;
 		ring.push(
-			add(center, add(scale(right, Math.cos(angle) * radius), scale(up, Math.sin(angle) * radius)))
+			add(
+				center,
+				add(scaledBy(right, Math.cos(angle) * radius), scaledBy(up, Math.sin(angle) * radius))
+			)
 		);
 	}
 	return ring;
@@ -154,7 +157,7 @@ export function lookThroughCone(light: Light): LightLookThroughCone {
 	}
 	const direction = normalize(lightForward(light.rotation));
 	const distance = lightRange(light) ?? LIGHT_SPOT_TARGET_FALLBACK_METERS;
-	const center = add(light.position, scale(direction, distance));
+	const center = add(light.position, scaledBy(direction, distance));
 	// S3a draws every stored angle above 80° at its guide limit. Reuse the same
 	// drawable angle so a near-90° beam cannot project an enormous polygon that
 	// disagrees with the selected Spot's guide.

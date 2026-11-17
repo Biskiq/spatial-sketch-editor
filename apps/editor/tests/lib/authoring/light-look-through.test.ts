@@ -20,7 +20,7 @@ import { LIGHT_GUIDE_MAX_ANGLE } from '$lib/authoring/look/light-presentation';
 import { acceptFormCommand } from '$lib/authoring/adapters/scene/form-card-command';
 import { lightCardActions, lightLookThroughAction } from '$lib/authoring/adapters/light/light-actions';
 import { lightById } from '$lib/authoring/adapters/light/light-subjects';
-import { createLightLookThrough, lookThroughCone } from '$lib/authoring/adapters/light/light-look-through.svelte';
+import { createLightLookThrough, lookThroughCone } from '$lib/authoring/stage/route/light-look-through.svelte';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';

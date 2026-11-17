@@ -34,7 +34,7 @@
 	import {
 		createLightLookThrough,
 		lookThroughCone
-	} from '$lib/authoring/adapters/light/light-look-through.svelte';
+	} from '$lib/authoring/stage/route/light-look-through.svelte';
 	import { lightById } from '$lib/authoring/adapters/light/light-subjects';
 	import {
 		createStageFacade,
