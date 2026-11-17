@@ -96,6 +96,7 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'wall-c2', direction: 'reverse' },
 				{ wallId: 'wall-d', direction: 'reverse' }
 			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		},
@@ -108,6 +109,8 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'wall-c1', direction: 'forward' },
 				{ wallId: 'wall-e', direction: 'reverse' }
 			],
+			virtualEdges: [],
+			overhead: 'closed' as const,
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}

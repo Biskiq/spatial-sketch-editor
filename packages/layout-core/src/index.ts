@@ -22,6 +22,7 @@ export * from './layout-room-isolation';
 export * from './layout-topology-components';
 export * from './layout-room-move';
 export * from './layout-room-reconciliation';
+export * from './layout-space-placement';
 export * from './layout-robust-orientation';
 export * from './layout-coordinates';
 export * from './layout-path';

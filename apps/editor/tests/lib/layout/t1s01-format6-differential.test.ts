@@ -69,7 +69,10 @@ const canonical = (value: unknown): string => {
 	if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
 	if (value !== null && typeof value === 'object') {
 		const entries = Object.entries(value as Record<string, unknown>)
-			.filter(([key, entry]) => key !== 'cacheKey' && entry !== undefined)
+			.filter(
+				([key, entry]) =>
+					key !== 'cacheKey' && key !== 'virtualEdges' && key !== 'overhead' && entry !== undefined
+			)
 			.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
 		return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`).join(',')}}`;
 	}
@@ -117,6 +120,7 @@ function dividedRoomsFixture(): LayoutDocumentWallFirst {
 			id: 'room-a',
 			name: 'Room A',
 			boundary: [forward('wall-a-south'), forward('wall-divider'), forward('wall-a-north'), forward('wall-a-west')],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		},
@@ -124,6 +128,8 @@ function dividedRoomsFixture(): LayoutDocumentWallFirst {
 			id: 'room-b',
 			name: 'Room B',
 			boundary: [forward('wall-b-south'), forward('wall-b-east'), forward('wall-b-north'), reverse('wall-divider')],
+			virtualEdges: [],
+			overhead: 'closed' as const,
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}

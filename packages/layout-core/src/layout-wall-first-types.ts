@@ -66,15 +66,17 @@ export type LayoutObject = {
  * dividing or free-standing because of the topology it is part of, never because a
  * field says so.
  *
- * **`7` is the only recognized version, and there is no `6` decoder.** Format 7
- * adds the canonical self-connected Wall: one Wall whose start and end
- * Junction IDs are equal, carrying exactly 16 cubic spans. The change is
- * pre-baseline (`docs/reference/north-star.md` → *Development-stage schema
- * compatibility (pre-baseline)*), so there is no migration, no dual reader and
- * no negotiation: a payload declaring `6` (or any other number) fails as
+ * **`8` is the only recognized version, and there is no `7` decoder.** Format
+ * 8 adds open Spaces: a Room keeps its ordered Wall references and gains the
+ * required `virtualEdges` and `overhead` fields. An open Space's outline is the
+ * composed cycle of its Walls and its stated straight virtual edges; an
+ * enclosed Space has no virtual edges. The change is pre-baseline
+ * (`docs/reference/north-star.md` → *Development-stage schema compatibility
+ * (pre-baseline)*), so there is no migration, no dual reader and no
+ * negotiation: a payload declaring `7` (or any other number) fails as
  * `unsupported_format_version` instead of being silently reinterpreted.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 7 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 8 as const;
 
 /**
  * The approved closed-Wall representation is exactly 16 symmetric cubic
@@ -272,18 +274,54 @@ export type LayoutWallFirstFloor = {
 };
 
 /**
- * Persistent semantic Room over a derived candidate face. `boundary` holds
- * oriented Wall references (derived/reconciled by Room reconciliation — this codec only
- * validates the reference structure). Surface thicknesses stay Room metadata;
- * wall thickness belongs to Walls.
+ * Persistent semantic Room over a derived candidate face, or an open Space whose
+ * composed outline is a Wall chain plus stated virtual edges. `boundary` holds
+ * oriented Wall references (derived/reconciled by Room reconciliation — this
+ * codec only validates the reference structure). Surface thicknesses stay Room
+ * metadata; wall thickness belongs to Walls.
+ *
+ * An "open Space" is still one Room record: the product word is Space, the
+ * collection and type keep the name Room, and `virtualEdges` is the only
+ * derived reading that separates the two states.
  */
 export type LayoutWallFirstRoom = {
   id: string;
   name: string;
+  /** Wall sides only, in cycle order. At least one. */
   boundary: OrientedWallRef[];
+  /**
+   * Stated straight segments that close the gaps between consecutive boundary
+   * Walls, in cycle order. Empty exactly when the Space is enclosed by its
+   * Walls. A virtual edge is a handle, not a subject: it has no id, no height,
+   * no thickness and no Opening, and it never takes part in noding or
+   * connectivity.
+   */
+  virtualEdges: LayoutSpaceVirtualEdge[];
+  /** Authored overhead intent. Geometry never changes it. */
+  overhead: LayoutSpaceOverhead;
   floorThickness: number;
   ceilingThickness: number;
 };
+
+/**
+ * One stated straight segment between two Junctions, in a Space's boundary
+ * cycle. Endpoints are Junctions only: there are no coordinates and no ids, so
+ * a moved Wall end and its open side cannot drift apart.
+ */
+export type LayoutSpaceVirtualEdge = {
+  startJunctionId: string;
+  endJunctionId: string;
+};
+
+/**
+ * Authored overhead intent.
+ *
+ * `closed` is the lid a Room has always had. `open-to-sky` removes the
+ * generated lid and nothing else: Wall heights, the derived ceiling elevation,
+ * the floor and every Wall record are unchanged. `ceilingThickness` is kept
+ * under `open-to-sky` so switching back restores the lid.
+ */
+export type LayoutSpaceOverhead = 'closed' | 'open-to-sky';
 
 /**
  * The entity collections a reference can be allocated for. These are

@@ -269,6 +269,7 @@ describe('compileWallFirstLayoutGeometry', () => {
 						{ wallId: 'wall-c', direction: 'forward' },
 						{ wallId: 'wall-d', direction: 'forward' }
 					],
+					virtualEdges: [], overhead: 'closed',
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				},
@@ -282,6 +283,8 @@ describe('compileWallFirstLayoutGeometry', () => {
 						{ wallId: 'wall-c', direction: 'reverse' },
 						{ wallId: 'wall-b', direction: 'reverse' }
 					],
+					virtualEdges: [],
+					overhead: 'closed',
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -387,6 +390,8 @@ describe('compileWallFirstLayoutGeometry', () => {
 						{ wallId: 'wall-c', direction: 'forward' },
 						{ wallId: 'wall-d', direction: 'forward' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				},
@@ -394,6 +399,8 @@ describe('compileWallFirstLayoutGeometry', () => {
 					id: 'room-broken',
 					name: 'Broken Room',
 					boundary: [{ wallId: 'wall-missing', direction: 'forward' }],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				},
@@ -401,6 +408,8 @@ describe('compileWallFirstLayoutGeometry', () => {
 					id: 'room-empty',
 					name: 'Empty Room',
 					boundary: [],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -416,10 +425,18 @@ describe('compileWallFirstLayoutGeometry', () => {
 		for (const room of geometry.rooms) {
 			expect(room.ceilingElevation).toBeGreaterThan(0);
 		}
-		// Both malformed Rooms block by name.
-		const ceilingIssues = issues.filter((issue) => issue.code === 'room_ceiling_undefined');
-		expect(ceilingIssues.map((issue) => issue.targetId).sort()).toEqual(['room-broken', 'room-empty']);
-		for (const issue of ceilingIssues) expect(issue.severity).not.toBe('warning');
+		// Both malformed Rooms block by name. Format 8 validates the boundary
+		// before the shared core can derive a ceiling, so the specific preflight
+		// code names the defect instead of a missing ceiling.
+		const blockingIssues = issues.filter(
+			(issue) => issue.targetId === 'room-broken' || issue.targetId === 'room-empty'
+		);
+		expect(blockingIssues.map((issue) => issue.targetId).sort()).toEqual(['room-broken', 'room-empty']);
+		expect(blockingIssues.map((issue) => issue.code).sort()).toEqual([
+			'missing_reference',
+			'room_boundary_empty'
+		]);
+		for (const issue of blockingIssues) expect(issue.severity).not.toBe('warning');
 	});
 });
 

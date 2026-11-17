@@ -42,6 +42,7 @@ function squareDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'w3', direction: 'forward' },
 				{ wallId: 'w4', direction: 'forward' }
 			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}],
@@ -156,7 +157,15 @@ describe('P23.1 wall-first precise semantic operations', () => {
 		expect(planExactWallThickness(baseline, 'w1', 0.2)).toMatchObject({ kind: 'rejected', rejection: { code: 'no_op' } });
 
 		const shared = squareDocument();
-		shared.rooms.push({ ...shared.rooms[0]!, id: 'room-2', name: 'Room 2' });
+		shared.rooms.push({
+			...shared.rooms[0]!,
+			id: 'room-2',
+			name: 'Room 2',
+			boundary: [...shared.rooms[0]!.boundary].reverse().map((ref) => ({
+				wallId: ref.wallId,
+				direction: ref.direction === 'forward' ? ('reverse' as const) : ('forward' as const)
+			}))
+		});
 		expect(planExactRectangleDimensions(shared, 'room', 6, 2)).toMatchObject({ kind: 'rejected', rejection: { code: 'shared_boundary_resize_ambiguous' } });
 		expect(baseline.junctions.find((junction) => junction.id === 'B')?.point).toEqual([4, 0]);
 	});
@@ -197,7 +206,15 @@ describe('P23.1 wall-first precise semantic operations', () => {
 
 	it('reparents a LayoutObject only to an existing Room and deletes through the planner', () => {
 		const document = squareDocument();
-		document.rooms.push({ ...document.rooms[0]!, id: 'room-2', name: 'Room 2' });
+		document.rooms.push({
+			...document.rooms[0]!,
+			id: 'room-2',
+			name: 'Room 2',
+			boundary: [...document.rooms[0]!.boundary].reverse().map((ref) => ({
+				wallId: ref.wallId,
+				direction: ref.direction === 'forward' ? ('reverse' as const) : ('forward' as const)
+			}))
+		});
 		const reparented = planExactLayoutObjectTransform(document, 'chair', { roomId: 'room-2' });
 
 		expect(reparented.kind).toBe('success');

@@ -7,6 +7,8 @@
 | Term | Meaning |
 | --- | --- |
 | **Layout** | Architectural authority: floors, junctions, walls, rooms, openings, levels, placed structures and validated alternatives. Persisted as a versioned unit; code in `packages/layout-core`. |
+| **Space** | The product word for one persistent Room record. An enclosed Space has no `virtualEdges`; an open Space states straight virtual edges between existing Junctions to close its Wall gaps. The collection and type keep the name Room. |
+| **Virtual edge** | One stated straight open side between two existing Junctions, in a Space's boundary cycle. It has no id, height, thickness, Opening or surface, and never takes part in noding or connectivity. |
 | **Scene** | Object-composition authority: entities, materials, textures, lights, native forms, world presentation. Persisted as a versioned unit; no Camera or editorial fields. |
 | **Camera** | Viewing authority: Views, connectivity, paths, framing, projection and evaluation. One evaluator serves World inspection and Experience playback. |
 | **Experience** | Visitor-facing editorial authority: Presentations, Guides, Stops, pacing, invitations, detours and the run program. Experience owns meaning and order, not Camera geometry. |

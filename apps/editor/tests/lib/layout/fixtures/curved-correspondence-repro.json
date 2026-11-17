@@ -1,6 +1,6 @@
 {
   "units": "meters",
-  "formatVersion": 7,
+  "formatVersion": 8,
   "floor": {
     "id": "floor",
     "name": "Floor",
@@ -232,7 +232,9 @@
         }
       ],
       "floorThickness": 0.1,
-      "ceilingThickness": 0.1
+      "ceilingThickness": 0.1,
+      "virtualEdges": [],
+      "overhead": "closed"
     },
     {
       "id": "room.5:4:face18:wall-chain-1.4-b-F14:wall-chain-1-F16:wall-chain-1.5-F16:wall-chain-1.6-F",
@@ -256,7 +258,9 @@
         }
       ],
       "floorThickness": 0.1,
-      "ceilingThickness": 0.1
+      "ceilingThickness": 0.1,
+      "virtualEdges": [],
+      "overhead": "closed"
     }
   ],
   "openings": [],

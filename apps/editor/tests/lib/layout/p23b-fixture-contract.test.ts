@@ -92,13 +92,27 @@ describe('P23B durable fixture contracts', () => {
 		for (const spec of P23B_CORRECTNESS_SPECS) {
 			const verdict = p23bCorrectnessVerdict(spec.id);
 			const document = buildP23BCorrectnessFixture(spec);
-			const canonical = serializeWallFirstLayoutDocument(document);
 			const codec = validateWallFirstLayoutDocument(document);
 			const topology = validateWallFirstTopology(document);
 			const compiled = compileWallFirstLayoutGeometry(document);
 			visited.push(spec.id);
 
+			if (spec.id === 'class4-open-room-boundary-v1') {
+				// Format 8 closed the format-7 hole: an open Wall boundary without
+				// stated virtual edges is now refused by the codec, so this negative
+				// fixture never reaches the compiler as a canonical document.
+				expect(codec.success, spec.id).toBe(false);
+				if (!codec.success) {
+					expect(codec.issues.map((issue) => issue.code), spec.id).toContain('space_boundary_open');
+				}
+				expect(shape(document), spec.id).toEqual(verdict.shape);
+				expect(topology?.code ?? 'admitted', spec.id).toBe(verdict.topology);
+				expect(compiled.issues.map((issue) => issue.code), spec.id).toEqual(verdict.compilerIssues);
+				continue;
+			}
+
 			expect(codec.success, spec.id).toBe(true);
+			const canonical = serializeWallFirstLayoutDocument(document);
 			expect(shape(document), spec.id).toEqual(verdict.shape);
 			expect(sha256(canonical), spec.id).toBe(verdict.canonicalSha256);
 			// The shipped gate this row pins: `admitted`, or the rejection code.
@@ -131,11 +145,7 @@ describe('P23B durable fixture contracts', () => {
 				expect(compiled.issues, spec.id).toEqual([]);
 				continue;
 			}
-			if (
-				spec.id === 'N-2i' ||
-				spec.id === 'class4-self-intersection-v1' ||
-				spec.id === 'class4-open-room-boundary-v1'
-			) {
+			if (spec.id === 'N-2i' || spec.id === 'class4-self-intersection-v1') {
 				expect(topology?.code, spec.id).toBe('unsupported_wall_topology');
 			} else if (spec.id === 'class4-component-duplicate-junction-v1') {
 				expect(topology?.code, spec.id).toBe('duplicate_junction_point');

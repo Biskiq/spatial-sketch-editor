@@ -19,13 +19,18 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 			{ id: 'j-a', point: [0, 0] },
 			{ id: 'j-b', point: [6, 0] },
 			{ id: 'j-c', point: [6, 4] },
-			{ id: 'j-d', point: [0, 4] }
+			{ id: 'j-d', point: [0, 4] },
+			{ id: 'j-e', point: [0, -4] },
+			{ id: 'j-f', point: [6, -4] }
 		],
 		walls: [
 			{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
 			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
 			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
-			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
+			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+			{ id: 'wall-e', startJunctionId: 'j-f', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+			{ id: 'wall-f', startJunctionId: 'j-e', endJunctionId: 'j-f', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+			{ id: 'wall-g', startJunctionId: 'j-a', endJunctionId: 'j-e', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
 		],
 		rooms: [
 			{
@@ -37,6 +42,7 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 					{ wallId: 'wall-c', direction: 'forward' },
 					{ wallId: 'wall-d', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			},
@@ -45,7 +51,14 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 				name: 'Second Room',
 				// Shares wall-a with room-main in the opposite direction — the
 				// valid undirected-reuse (shared physical wall) case.
-				boundary: [{ wallId: 'wall-a', direction: 'reverse' }],
+				boundary: [
+					{ wallId: 'wall-a', direction: 'reverse' },
+					{ wallId: 'wall-g', direction: 'forward' },
+					{ wallId: 'wall-f', direction: 'forward' },
+					{ wallId: 'wall-e', direction: 'forward' }
+				],
+				virtualEdges: [],
+				overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}

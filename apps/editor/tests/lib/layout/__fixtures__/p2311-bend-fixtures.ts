@@ -60,7 +60,15 @@ export function p2311Fixture(spec: BendFixtureSpec): LayoutDocumentWallFirst {
 				ids.push(id);
 				document.walls.push({ id, startJunctionId: aId, endJunctionId: bId, thickness: 0.2, height: 3, centerline: { kind: 'line' } });
 			}
-			document.rooms.push({ id: `room${roomIndex}`, name: `Room ${roomIndex}`, boundary: ids.map((wallId) => ({ wallId, direction: 'forward' })), floorThickness: 0.1, ceilingThickness: 0.1 });
+			document.rooms.push({
+				id: `room${roomIndex}`,
+				name: `Room ${roomIndex}`,
+				boundary: ids.map((wallId) => ({ wallId, direction: 'forward' })),
+				virtualEdges: [],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			});
 		}
 	} else {
 		makeWall(0, [0, 0], [12, 0]);

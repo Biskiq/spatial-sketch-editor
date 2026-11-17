@@ -113,6 +113,7 @@ function rectangleDocument(options: {
 					{ wallId: 'w3', direction: 'forward' },
 					{ wallId: 'w4', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}
@@ -385,7 +386,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 			'unsupported_format_version'
 		);
 		expect(() => serializeWallFirstLayoutDocument(historical)).toThrowError(
-			/Canonical Layout Save requires formatVersion 7/
+			/Canonical Layout Save requires formatVersion 8/
 		);
 		// A canonical document round-trips through the same writer unchanged.
 		expect(serializeWallFirstLayoutDocument(rectangleDocument())).toContain(
