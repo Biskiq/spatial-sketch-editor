@@ -68,24 +68,31 @@ export function stageFindView(input: {
 	readonly query: string;
 	readonly worldIndex: WorldIndexModel;
 	readonly dockKeys: readonly StageDockKey[];
+	/** Object Studio's Find vocabulary; absent in a plain World. */
+	readonly studio?: StudioFindState | null;
 }): { readonly contributions: readonly StageContributionRow[]; readonly entries: readonly StageHeadFindEntry[] } {
 	void input.revision;
 	const contributions = stageFindEntries(input.facade);
 	const needle = input.query.trim().toLowerCase();
+	const studio = input.studio ?? null;
+	const inStudio = studio !== null && studio.active;
 	const entries: StageHeadFindEntry[] = [
-		{ id: 'starter', adapterId: 'project-replacement', label: 'Use enclosed room starter', verb: 'Replace' },
+		...(studio === null ? [] : studioFindEntries(studio)),
+		// Object Studio keeps to one object: a starter replacement, the World's rooms
+		// and its other locators are the World's own and are not offered here.
+		...(inStudio ? [] : [{ id: 'starter', adapterId: 'project-replacement', label: 'Use enclosed room starter', verb: 'Replace' }]),
 		...input.worldIndex.rows.map((row) => ({
 			id: row.sourceId,
 			adapterId: 'subject',
 			label: row.label,
 			verb: 'Select'
 		})),
-		...input.worldIndex.contexts.map((context) => ({
+		...(inStudio ? [] : input.worldIndex.contexts.map((context) => ({
 			id: context.id,
 			adapterId: 'scope',
 			label: context.label,
 			verb: 'Go to'
-		})),
+		}))),
 		...['Zoom in', 'Zoom out', 'Fit'].map((label, index) => ({
 			id: String(index),
 			adapterId: 'view-command',
@@ -127,6 +134,40 @@ export function stageFindView(input: {
 		contributions,
 		entries: needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle))
 	};
+}
+
+/** What Find needs to know of Object Studio: its own entries and its narrowed list. */
+export type StudioFindState = {
+	readonly active: boolean;
+	readonly origin: 'world' | 'standalone';
+	readonly context: 'world' | 'mat';
+	/** A native form is selected and Studio can open it. */
+	readonly canEdit: boolean;
+	readonly rootCount: number;
+};
+
+/** Find's Object Studio entries: the same commands the strip offers, by name. */
+function studioFindEntries(studio: StudioFindState): readonly StageHeadFindEntry[] {
+	if (!studio.active) {
+		return [
+			...(studio.canEdit ? [{ id: 'edit', adapterId: 'studio', label: 'Edit in Studio', verb: 'Open' }] : []),
+			{ id: 'new-object-project', adapterId: 'studio', label: 'New object', verb: 'Create' }
+		];
+	}
+	return [
+		studio.origin === 'world'
+			? { id: 'back-to-world', adapterId: 'studio', label: 'Back to World', verb: 'Return' }
+			: { id: 'back-to-projects', adapterId: 'studio', label: 'Back to Projects', verb: 'Return' },
+		...(studio.origin === 'standalone'
+			? [{ id: 'open-in-world', adapterId: 'studio', label: 'Open in World', verb: 'Open' }]
+			: []),
+		{ id: 'new-object-here', adapterId: 'studio', label: 'New object here', verb: 'Create' },
+		...(studio.rootCount > 1 ? [{ id: 'choose-object', adapterId: 'studio', label: 'Choose object', verb: 'Choose' }] : []),
+		studio.context === 'world'
+			? { id: 'context-mat', adapterId: 'studio', label: 'Studio context: Mat', verb: 'Set' }
+			: { id: 'context-world', adapterId: 'studio', label: 'Studio context: World', verb: 'Set' },
+		{ id: 'new-object-project', adapterId: 'studio', label: 'New object project', verb: 'Create' }
+	];
 }
 
 export type StageHeadFindEntry = {

@@ -24,6 +24,8 @@ export function resolveStagePick(
 			if (query.tool.scope === 'host' && !binding.hostTools?.includes(query.tool.kind)) continue;
 		}
 		const pick = binding.pick?.(query, context);
+		// Object Studio's scope is applied by each domain to its own candidates, so
+		// arbitration here sees only reachable winners and stays exactly as it was.
 		if (pick != null) winners.push({ adapterId, pick });
 	}
 	if (winners.length === 0) return null;

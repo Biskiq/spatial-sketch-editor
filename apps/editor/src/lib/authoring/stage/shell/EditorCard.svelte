@@ -197,8 +197,8 @@
 	 * A writer that owns its primary actions shows them in the foot: Duplicate and
 	 * Delete sit beside Advanced instead of inside the subject menu.
 	 */
-	const footerActions = $derived(writer?.inlineActions === true ? actions : []);
-	const overflowActions = $derived(writer?.inlineActions === true ? [] : actions);
+	const footerActions = $derived(actions.filter((action) => writer?.inlineActions === true || action.inline === true));
+	const overflowActions = $derived(actions.filter((action) => !(writer?.inlineActions === true || action.inline === true)));
 	/** `•••` is shown only when the subject has a function or an action to hold. */
 	const hasSubjectActions = $derived(
 		(menu !== null ? menu.length > 0 : subjectFunctions.length > 0) || overflowActions.length > 0

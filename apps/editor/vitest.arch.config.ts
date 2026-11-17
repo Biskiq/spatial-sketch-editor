@@ -11,6 +11,9 @@ export default defineConfig({
 	...svelteTestSetup,
 	test: {
 		include: ARCH_FILES,
-		environment: 'node'
+		environment: 'node',
+		// Each boundary test walks and parses the whole source tree. That costs about five
+		// seconds on a loaded runner, so the 5s default fails on timing, not on a boundary.
+		testTimeout: 30_000
 	}
 });

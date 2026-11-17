@@ -49,6 +49,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import StageEntities from './StageEntities.svelte';
+	import StageStudioMute from './StageStudioMute.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
@@ -124,7 +125,8 @@ import StageMatGround from './StageMatGround.svelte';
 		unfoldPinActive = false,
 		unfoldAnchorPin = null,
 		resolvedSlice = null,
-		sliceDraft = null
+		sliceDraft = null,
+		studio = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -185,6 +187,13 @@ import StageMatGround from './StageMatGround.svelte';
 		resolvedSlice?: ResolvedSlice | null;
 		/** The live drawn proposal, before it commits to the reading. */
 		sliceDraft?: { readonly start: readonly [number, number, number]; readonly end: readonly [number, number, number] } | null;
+		/**
+		 * Object Studio's display posture, or null. `mat` draws only the scoped root on the
+		 * bare mat (the Layout shell and every other entity are unmounted, so they cannot
+		 * be hit); `world` keeps the room drawn but quiet. Display only: the pick scope is
+		 * set separately on the facade, and nothing here writes source.
+		 */
+		studio?: { readonly rootId: string | null; readonly context: 'world' | 'mat' } | null;
 	} = $props();
 
 	/**
@@ -275,6 +284,15 @@ import StageMatGround from './StageMatGround.svelte';
 		artworkGhost === null || !renderScene.entities.some((entity) => entity.id === artworkGhost.id)
 			? renderScene
 			: { ...renderScene, entities: renderScene.entities.filter((entity) => entity.id !== artworkGhost.id) }
+	);
+	/** The architectural shell's group: Studio's World context mutes it like the other bodies. */
+	let layoutGroup = $state.raw<Object3D | null>(null);
+	/** The Studio mat unmounts everything but the scoped root: unmounted roots cannot be picked. */
+	const matStudio = $derived(studio?.context === 'mat');
+	const drawnScene = $derived(
+		matStudio
+			? { ...entityScene, entities: entityScene.entities.filter((entity) => entity.id === studio?.rootId) }
+			: entityScene
 	);
 	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
 	const paperComposition = $derived(
@@ -427,7 +445,12 @@ import StageMatGround from './StageMatGround.svelte';
 		light must move its cast shadow with its illumination. -->
 	{#if dial}<StageCelestialDial {dial} />{/if}
 	<StageShadowTriggers sunKey={sunShadowKey(environmentShown ? worldEnvironmentLook(sky) : null, { bounds: snapshotBounds, shadowBounds, groundY: datumMeters, flatGround: true })} {geometry} {scene} {lightPreview} {modelUrls} {formRenderRevision} />
-	<T.Group oncreate={scenePick.registerLayout}>
+	{#if !matStudio}
+	<T.Group oncreate={(group) => {
+		layoutGroup = group;
+		const release = scenePick.registerLayout(group);
+		return () => { if (layoutGroup === group) layoutGroup = null; release?.(); };
+	}}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
 			treatment={scene.environment?.treatment}
@@ -435,6 +458,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{liftedRoomIds}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
+	{/if}
 	<!-- The unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
 	<StageWallDevelopment {geometry} {datumMeters} {layoutRevision}
@@ -448,13 +472,22 @@ import StageMatGround from './StageMatGround.svelte';
 	{#if artworkGhost !== null}
 		<StageArtworkGhost entity={artworkGhost} scope={artworkScope} onError={onArtworkError} />
 	{/if}
+	{#if studio?.context === 'world'}
+		<StageStudioMute
+			{scenePick}
+			entityIds={entityScene.entities.map((entity) => entity.id)}
+			scopedId={studio.rootId}
+			contextRoots={layoutGroup === null ? [] : [layoutGroup]}
+			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+		/>
+	{/if}
 	<StageEntities
 		{textureScope}
 		{textureRevision}
 		{artworkScope}
 		{onArtworkError}
 		{scenePick}
-		scene={entityScene}
+		scene={drawnScene}
 		{modelUrls}
 		includeLights={sky !== null}
 		onFormRendererReady={formRendererReady}

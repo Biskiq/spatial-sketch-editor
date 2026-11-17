@@ -32,7 +32,7 @@
  * renderer store.
  */
 import type { StageReadSnapshot } from '../accepted-read';
-import type { StageAdapterFactory, StageLightInspection } from '../stage-adapter-host';
+import type { StageAdapterFactory, StageLightInspection, StageObjectStudio } from '../stage-adapter-host';
 import {
 	createStageAdapterServices,
 	mountStageAdapter
@@ -80,6 +80,8 @@ export type StageProjectEpochInput = {
 	 * read lazily because the route's controller is created around this epoch.
 	 */
 	readonly lightInspection?: () => StageLightInspection | null;
+	/** The route's Object Studio posture, offered to a form's Card. */
+	readonly objectStudio?: () => StageObjectStudio | null;
 	/** Clear old hover and interrupt the old gesture before the session swaps. */
 	readonly interruptInput: () => void;
 	readonly resetFocus: () => void;
@@ -225,8 +227,10 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		acceptance = mounted;
 		const createdServices = createServices(nextFacade, mounted, input.finishes);
 		const inspection = input.lightInspection?.() ?? null;
-		const mountedServices =
+		const studio = input.objectStudio?.() ?? null;
+		const withInspection =
 			inspection === null ? createdServices : { ...createdServices, lightInspection: inspection };
+		const mountedServices = studio === null ? withInspection : { ...withInspection, objectStudio: studio };
 		services = mountedServices;
 		void input.assets.resolve(snapshot);
 		unsubscribeAcceptance = mounted.onChanged(() => {

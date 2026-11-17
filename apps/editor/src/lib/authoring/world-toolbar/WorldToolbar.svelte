@@ -48,7 +48,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		plate,
 		plateOpen = true,
 		onPlateOpen = () => {},
-		requestedCategory = null
+		requestedCategory = null,
+		studio = false
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -86,6 +87,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onPlateOpen?: (open: boolean) => void;
 		/** A route request to show one Library shelf (Library › Finishes). */
 		requestedCategory?: { readonly category: WorldLibraryCategory; readonly nonce: number } | null;
+		/** Object Studio's dock: Select, Objects, Measure and Eraser only. */
+		studio?: boolean;
 	} = $props();
 
 	const plateId = $props.id();
@@ -99,7 +102,13 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		furnish: 'objects'
 	});
 
-	const activeToolData = $derived(worldTool(activeTool));
+	const baseToolData = $derived(worldTool(activeTool));
+	/** Studio words its own Objects row: the Library's furniture and models stay in the World. */
+	const activeToolData = $derived(
+		studio && activeTool === 'objects'
+			? { ...baseToolData, summary: 'Add a new object to this scene.' }
+			: baseToolData
+	);
 	const activeFamily = $derived(familyOf(activeTool));
 	const activeFamilyTools = $derived(activeFamily === null ? [] : familyTools(activeFamily));
 
@@ -157,7 +166,11 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 
 	const approvedAssets = assets.filter((asset) => asset.status === 'approved').slice(0, 8);
 	const visibleMaterials = materials.slice(0, 6);
-	const directTools = $derived([dockToolFor('paint'), dockToolFor('erase')]);
+	const directTools = $derived(
+		studio
+			? [dockToolFor('objects'), dockToolFor('measure'), dockToolFor('erase')]
+			: [dockToolFor('paint'), dockToolFor('erase')]
+	);
 </script>	<section
 		class="world-toolbar"
 		class:folded={!plateOpen || activeTool === 'select'}
@@ -191,7 +204,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 							onclick={() => (libraryCategory = 'look')}
 						>{lookShelf.label}</button>
 					{/if}
-				{:else if activeFamily !== null}
+				{:else if activeFamily !== null && !studio}
 					<div class="subs" aria-label={`${activeFamily.label} tools`}>
 						{#each activeFamilyTools as tool (tool.id)}
 							<button
@@ -407,7 +420,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	</div>
 	{/if}
 
-	<nav class="dock" aria-label="World tool families">
+	<nav class="dock" aria-label={studio ? 'Object Studio tools' : 'World tool families'} data-studio-dock={studio ? 'true' : undefined}>
 		<button
 			type="button"
 			class="key"
@@ -421,7 +434,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			<kbd class="kk">V</kbd>
 		</button>
 		<i class="sep" aria-hidden="true"></i>
-		{#each WORLD_FAMILIES as family (family.id)}
+		{#each studio ? [] : WORLD_FAMILIES as family (family.id)}
 			<button
 				type="button"
 				class="key family"
@@ -456,6 +469,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 				{#if tool.shortcut}<kbd class="kk">{tool.shortcut}</kbd>{/if}
 			</button>
 		{/each}
+		{#if !studio}
 		<i class="sep" aria-hidden="true"></i>
 		<button
 			type="button"
@@ -471,6 +485,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			<span class="kl">Library</span>
 			<kbd class="kk">L</kbd>
 		</button>
+		{/if}
 	</nav>
 </section>
 

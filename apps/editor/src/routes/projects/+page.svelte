@@ -6,6 +6,8 @@
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { isSavedBaseToken } from '@portfolio/project-model/save';
 	import { createProjectAuth, createProjectId, ProjectPersistenceError } from '$lib/platform/project-identity';
+	import { PLACE_COPY_PARAM, placeCopyFromSearch, placeCopyNewProjectUrl, placeCopyProjectUrl, studioProjectUrl } from '$lib/platform/studio-entry';
+	import { endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
 	import {
 		createProjectApi,
 		type PreparedProjectLifecycle,
@@ -25,6 +27,49 @@
 	let busy = $state(false);
 	let lifecycleBusyIds = $state<Set<string>>(new Set());
 	let noticeElement = $state<HTMLElement | null>(null);
+	/** A saved object waiting for a destination project (Place copy in World). */
+	const placingItem = $derived(placeCopyFromSearch(page.url.searchParams));
+	/** The saved object project this placement came from, when it came from Place copy in World. */
+	let transfer = $state<FormCopyTransfer | null>(peekFormCopyTransfer());
+	/** A New project destination: a fresh World with the copy armed. */
+	async function placeInNewProject(itemId: string): Promise<void> {
+		await goto(placeCopyNewProjectUrl(createProjectId(), itemId));
+	}
+	/** Return to object: reopen the saved source project and root in Object Studio. */
+	async function returnToObject(): Promise<void> {
+		if (transfer === null) return;
+		const back = transfer;
+		await goto(studioProjectUrl(back.sourceProjectId, { load: true, object: back.objectId }));
+		endFormCopyTransfer();
+	}
+	type SavedObject = { readonly id: string; readonly name: string; readonly usable: boolean };
+	let objects = $state<readonly SavedObject[] | null>(null);
+	let objectsStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
+	let objectsNotice = $state('');
+
+	/** My Objects, read through the same verified client the editor uses; loaded only once signed in. */
+	async function loadObjects(): Promise<void> {
+		if (!apiOrigin || objectsStatus === 'loading') return;
+		objectsStatus = 'loading';
+		objectsNotice = '';
+		try {
+			const [{ createFormLibraryClient }, { FORM_LIBRARY_PAYLOAD_FORMAT_VERSION }] = await Promise.all([
+				import('$lib/authoring/adapters/scene/library/client'),
+				import('@portfolio/project-model/library')
+			]);
+			const listed = await createFormLibraryClient({ apiOrigin }).list();
+			objects = listed.map((item) => ({ id: item.id, name: item.name, usable: item.formatVersion === FORM_LIBRARY_PAYLOAD_FORMAT_VERSION }));
+			objectsStatus = 'ready';
+		} catch (error) {
+			objectsStatus = 'error';
+			objectsNotice = error instanceof Error && error.message !== '' ? error.message : 'My Objects could not be loaded.';
+		}
+	}
+
+	/** Open editable copy: a new project in Object Studio with the saved object placed at the datum. */
+	async function openEditableCopy(item: SavedObject): Promise<void> {
+		await goto(studioProjectUrl(createProjectId(), { create: true, copy: item.id }));
+	}
 
 	/**
 	 * The spatial route for one project, with its explicit entry flags.
@@ -43,6 +88,11 @@
 
 	async function startCreating(): Promise<void> {
 		await goto(projectUrl(createProjectId(), { create: true }));
+	}
+
+	/** A new object opens the same project route in the Object Studio posture. */
+	async function startObject(): Promise<void> {
+		await goto(studioProjectUrl(createProjectId(), { create: true }));
 	}
 
 	async function signIn(): Promise<void> {
@@ -195,6 +245,7 @@
 				return;
 			}
 			sessionStatus = 'authenticated';
+			void loadObjects();
 			const listed = await api.listProjects(signal);
 			// Strict Hub: owned cloud projects by last modification descending.
 			projects = [...listed].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
@@ -238,7 +289,26 @@
 	<section class="hub-card" aria-labelledby="projects-title">
 		<p class="eyebrow">Project Hub</p>
 		<h1 id="projects-title">Projects</h1>
-		<button type="button" class="primary new-project" onclick={() => void startCreating()}>New Project</button>
+		{#if placingItem !== null}
+			<p class="status placing" role="status" data-placing-copy>
+				Choose where to place your saved object. It opens in the World, ready to click into position.
+				<button type="button" data-place-new-project onclick={() => void placeInNewProject(placingItem!)}>New project</button>
+				{#if transfer !== null}
+					<button type="button" data-transfer-action="return" onclick={() => void returnToObject()}>Return to object</button>
+				{/if}
+				<a href="/projects">Cancel</a>
+			</p>
+		{:else if transfer !== null}
+			<p class="status placing" role="status" data-transfer-pending>
+				Placing <strong>{transfer.objectName}</strong> was cancelled. Your saved object is unchanged.
+				<button type="button" data-transfer-action="return" onclick={() => void returnToObject()}>Return to object</button>
+				<button type="button" data-transfer-action="dismiss" onclick={() => { transfer = null; endFormCopyTransfer(); }}>Stay here</button>
+			</p>
+		{/if}
+		<div class="new-actions">
+			<button type="button" class="primary" onclick={() => void startCreating()}>New Project</button>
+			<button type="button" data-new-object onclick={() => void startObject()}>New object</button>
+		</div>
 
 		{#if sessionStatus === 'checking'}
 			<p class="status" role="status">Checking sign-in…</p>
@@ -259,7 +329,11 @@
 						<li>
 							<span><strong>{project.name}</strong><small>v{project.version} · {modified} · Cloud</small></span>
 							<div class="row-actions">
+								{#if placingItem !== null && project.id !== transfer?.sourceProjectId}
+									<a href={placeCopyProjectUrl(project.id, placingItem)} class="place-here" data-place-copy-here aria-label={`Place the saved object in ${project.name}`}>Place here</a>
+								{/if}
 								<a href={projectUrl(project.id, { load: true })}>Open</a>
+								<a href={studioProjectUrl(project.id, { load: true })} data-open-in-studio aria-label={`Open ${project.name} in Object Studio`}>Open in Studio</a>
 								<ProjectLifecycleActions
 									projectId={project.id}
 									projectName={project.name}
@@ -277,9 +351,32 @@
 					{/each}
 				</ul>
 			{/if}
+			<h2>My Objects</h2>
+			{#if objectsStatus === 'loading' || objectsStatus === 'idle'}
+				<p class="muted" role="status">Loading My Objects…</p>
+			{:else if objectsStatus === 'error'}
+				<p class="status" role="alert">{objectsNotice} <button type="button" onclick={() => void loadObjects()}>Try again</button></p>
+			{:else if objects === null || objects.length === 0}
+				<p class="muted">Nothing saved yet. Save an object to My Objects from its Card in Object Studio or the World.</p>
+			{:else}
+				<ul data-my-objects-list>
+					{#each objects as item (item.id)}
+						<li>
+							<span><strong>{item.name}</strong><small>{item.usable ? 'Saved object' : 'Saved in an older format'}</small></span>
+							<div class="row-actions">
+								<button type="button" disabled={!item.usable} data-open-editable-copy onclick={() => void openEditableCopy(item)}>Open editable copy</button>
+								<button type="button" disabled={!item.usable} data-place-in-project onclick={() => void goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(item.id)}`)}>Place in a project</button>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		{:else if sessionStatus === 'error'}
 			<p class="status" role="alert">{notice || 'Could not load projects.'}</p>
-			<button type="button" class="primary new-project" onclick={() => void startCreating()}>New Project</button>
+			<div class="new-actions">
+				<button type="button" class="primary" onclick={() => void startCreating()}>New Project</button>
+				<button type="button" data-new-object onclick={() => void startObject()}>New object</button>
+			</div>
 		{:else}
 			<p class="muted">Your work stays in a temporary session until you sign in. No drafts are kept here.</p>
 			<button type="button" disabled={!auth} onclick={() => void signIn()}>Sign in</button>
@@ -301,7 +398,7 @@
 	button:hover:not(:disabled), li a:hover { border-color: #c9a9ff; }
 	button:disabled { cursor: default; opacity: 0.45; }
 	.primary { border-color: #b997f2; background: #8f69c8; color: var(--shell-white); }
-	.new-project { margin-top: 1.25rem; }
+	.new-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.25rem; }
 	.muted, .status { color: #bcb5c4; line-height: 1.45; }
 	.status { color: #e3c4c4; }
 	ul { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }

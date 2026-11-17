@@ -15,17 +15,19 @@
  */
 import type { PointerRay } from '@portfolio/camera-core';
 import type { RuntimeScene } from '@portfolio/project-model';
-import type { ScenePickSource } from '../../scene/scene-pick-source';
+import type { PickOptions, ScenePickSource } from '../../scene/scene-pick-source';
 import { sliceHides, type ResolvedSlice } from './slice-cut';
+import type { SubjectScope } from '../subject-scope';
 
 /** What the Stage facade and its adapters call; the options stay internal. */
 export type SlicePick = (ray: PointerRay, scene: RuntimeScene) => ReturnType<ScenePickSource['pick']>;
 
 export function pickThroughSlice(
 	source: ScenePickSource,
-	resolved: () => ResolvedSlice | null
+	resolved: () => ResolvedSlice | null,
+	scope: () => SubjectScope | null = () => null
 ): SlicePick {
-	return (ray, scene) => source.pick(ray, scene, hiddenAtOf(resolved));
+	return (ray, scene) => source.pick(ray, scene, optionsOf(resolved, scope));
 }
 
 /** The same filter for the face-placement ray (artwork hanging, Layout occlusion). */
@@ -45,9 +47,17 @@ export type SliceFacePick = (
  */
 export function pickVisibleFaceThroughSlice(
 	source: ScenePickSource,
-	resolved: () => ResolvedSlice | null
+	resolved: () => ResolvedSlice | null,
+	scope: () => SubjectScope | null = () => null
 ): SliceFacePick {
-	return (ray, scene, accept) => source.pickVisibleFace(ray, scene, accept, hiddenAtOf(resolved));
+	return (ray, scene, accept) => source.pickVisibleFace(ray, scene, accept, optionsOf(resolved, scope));
+}
+
+/** The cut plus Object Studio's scope: one options value for both rays. */
+function optionsOf(resolved: () => ResolvedSlice | null, scope: () => SubjectScope | null): PickOptions {
+	const current = scope();
+	const hidden = hiddenAtOf(resolved);
+	return current === null ? hidden : { ...hidden, only: current.entityId };
 }
 
 /** One predicate, shared by both rays: a point is hidden when the reading hides it. */

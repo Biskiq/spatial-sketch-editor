@@ -30,6 +30,12 @@ export type PickOptions = {
 	 * Absent means today's behaviour exactly.
 	 */
 	readonly hiddenAt?: (point: readonly [number, number, number]) => boolean;
+	/**
+	 * Object Studio's scope: when defined, only this entity is walked and the Layout
+	 * shell is skipped, so a ray passes through muted bodies to the scoped one.
+	 * `null` walks nothing. Absent means today's behaviour exactly.
+	 */
+	readonly only?: string | null;
 };
 
 export type SceneRenderedHit = {
@@ -145,7 +151,11 @@ export function createScenePickSource() {
 		raycaster.ray.direction.set(...ray.direction);
 		return true;
 	}
-	function targetsFor(expected: RuntimeScene): Array<{ id: string | null; root: Object3D | undefined }> {
+	function targetsFor(expected: RuntimeScene, only?: string | null): Array<{ id: string | null; root: Object3D | undefined }> {
+		if (only !== undefined) {
+			const scoped = only === null ? undefined : expected.entities.find((entity) => entity.id === only);
+			return scoped === undefined ? [] : [{ id: scoped.id as string | null, root: roots.get(scoped.id) }];
+		}
 		const targets = expected.entities.map((entity) => ({ id: entity.id as string | null, root: roots.get(entity.id) }));
 		if (layoutRoot !== null) targets.push({ id: null, root: layoutRoot });
 		return targets;
@@ -215,7 +225,7 @@ export function createScenePickSource() {
 		): SceneRenderedHit | null {
 			if (!prepare(ray, expected)) return null;
 			let result: SceneRenderedHit | null = null;
-			for (const target of targetsFor(expected)) {
+			for (const target of targetsFor(expected, options.only)) {
 				const root = target.root;
 				if (root === undefined) continue;
 				// Exact hierarchy/matrix/geometry stamps invalidate conservative bounds
@@ -307,7 +317,7 @@ export function createScenePickSource() {
 			if (!prepare(ray, expected)) return null;
 			let accepted: SceneRenderedHit | null = null;
 			let blockedAt: number | null = null;
-			for (const target of targetsFor(expected)) {
+			for (const target of targetsFor(expected, options.only)) {
 				const root = target.root;
 				if (root === undefined) continue;
 				if (!raycaster.ray.intersectsBox(boundsOf(root))) continue;

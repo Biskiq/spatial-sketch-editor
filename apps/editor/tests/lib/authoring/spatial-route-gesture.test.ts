@@ -368,7 +368,9 @@ describe('mounted Stage pointer lifecycle', () => {
 			'host:host-measure',
 			'host:host-erase',
 			// T1 SL1: Slice is a dock tool, so its host key is a Find entry too.
-			'host:host-slice'
+			'host:host-slice',
+			// T5.1: Object Studio's route-level entry (a new object in its own project).
+			'studio:new-object-project'
 		].sort();
 		const reachable = [...target.querySelectorAll<HTMLElement>('[data-head-find] [data-find-id]')]
 			.filter((entry) => !['subject','scope','view-command'].includes(entry.dataset.findAdapter??''))

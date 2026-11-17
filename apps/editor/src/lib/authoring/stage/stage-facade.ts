@@ -7,11 +7,13 @@ import { createAdapterBindings, SKIP_REBIND_CONTROL } from './facade/adapter-bin
 import { createContributionView } from './facade/contribution-view';
 import { createPlanView } from './facade/plan-view';
 import { adapterForSelection, createSelectionPick } from './facade/selection-pick';
+import type { StageSubject } from './facade/adapter-contract';
 import type { StageFacade } from './facade/view-contract';
 import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from './plan-parameters';
 import { primaryEntry, type StageSelectionChange, type StageSelectionState } from './semantic-selection';
 import type { StageLightPreview } from './stage-light-preview.svelte';
 import type { StageSelection, StageSession, StageTask } from './stage-session';
+import { SCOPE_HOST_OWNER, scopeAdmitsCardAction, scopeAdmitsEntity, scopeAdmitsOperation, type SubjectScope, type SubjectScopeCell } from './subject-scope';
 
 export { HOST_STAGE_CAPABILITIES, SKIP_REBIND_CONTROL } from './facade/adapter-bindings';
 export { datumWorkingPlane } from './facade/selection-pick';
@@ -31,6 +33,8 @@ export function createStageFacade(input: {
 	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
 	/** The session-only light preview the editor shell merges into its render. */
 	readonly lightPreview?: StageLightPreview | null;
+	/** Object Studio's session-only pick scope; absent leaves picking unscoped. */
+	readonly subjectScope?: SubjectScopeCell;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -70,6 +74,7 @@ export function createStageFacade(input: {
 		cameraState: camera.state,
 		pickScene: input.scenePick,
 		sceneBounds: input.sceneBounds,
+		subjectScope: () => input.subjectScope?.get() ?? null,
 		selection: session.selection,
 		selectionState: session.selectionState,
 		drafting: session.drafting,
@@ -102,7 +107,8 @@ export function createStageFacade(input: {
 		lens: session.lens,
 		resizeHandles: session.resizeHandles,
 		setResizeHandles: session.setResizeHandles,
-		adapterForSelection: (entry) => adapterForSelection(adapters, entry)
+		adapterForSelection: (entry) => adapterForSelection(adapters, entry),
+		admitsCardAction: (adapterId, subjectId) => scopeAdmitsCardAction(input.subjectScope?.get() ?? null, adapterId, subjectId)
 	});
 	const picking = createSelectionPick({
 		adapters,
@@ -124,6 +130,8 @@ export function createStageFacade(input: {
 
 	function select(selection: StageSelection | null): void {
 		if (!isLive()) return;
+		// A source selection (a Layout fragment) is never inside Object Studio's scope.
+		if (selection !== null && (input.subjectScope?.get() ?? null) !== null) return;
 		session.select(selection);
 		contributions.syncDisclosureSelection();
 		bindings.echoSelection();
@@ -132,6 +140,11 @@ export function createStageFacade(input: {
 
 	function setSelection(value: StageSelectionState): StageSelectionChange {
 		if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+		const scope = input.subjectScope?.get() ?? null;
+		if (scope !== null && value.ordered.some((entry) =>
+			!scopeAdmitsEntity(scope, entry.reference.domain === 'scene' ? entry.reference.subject.id : null))) {
+			return { kind: 'refused', code: 'out-of-scope', message: 'That is outside Object Studio. Go back to the World to select it.' };
+		}
 		const result = session.setSelection(value);
 		if (result.kind === 'selected') { contributions.syncDisclosureSelection(); bindings.echoSelection(); notifyAdaptersChanged(); }
 		return result;
@@ -148,6 +161,61 @@ export function createStageFacade(input: {
 		bindings.notifyTaskClosed();
 	}
 
+	/**
+	 * Object Studio narrows the published subject list to the scoped root; unscoped it
+	 * is the contributions' own array. Memoized per source array and scope so a read
+	 * does not rebuild on every display frame.
+	 */
+	let scopedFrom: readonly StageSubject[] | null = null;
+	let scopedFor: string | null | undefined;
+	let scopedSubjectsCache: readonly StageSubject[] = [];
+	const scopedSubjects: StageFacade['subjects'] = () => {
+		const all = contributions.subjects();
+		const scope = input.subjectScope?.get() ?? null;
+		if (scope === null) return all;
+		if (scopedFrom !== all || scopedFor !== scope.entityId) {
+			scopedFrom = all;
+			scopedFor = scope.entityId;
+			scopedSubjectsCache = all.filter((subject) =>
+				scopeAdmitsEntity(scope, subject.reference.domain === 'scene' ? subject.reference.subject.id : null));
+		}
+		return scopedSubjectsCache;
+	};
+	/** The operations Object Studio offers; unscoped, the contributions' own arrays. */
+	function scopedOperations<T extends { readonly adapterId: string; readonly id: string }>(
+		read: () => readonly T[]
+	): () => readonly T[] {
+		let from: readonly T[] | null = null;
+		let admits: SubjectScope['admitsOperation'] | undefined;
+		let cached: readonly T[] = [];
+		return () => {
+			const all = read();
+			const scope = input.subjectScope?.get() ?? null;
+			if (scope === null || scope.admitsOperation === undefined) return all;
+			if (from !== all || admits !== scope.admitsOperation) {
+				from = all;
+				admits = scope.admitsOperation;
+				cached = all.filter((entry) => scopeAdmitsOperation(scope, entry.adapterId, entry.id));
+			}
+			return cached;
+		};
+	}
+	const scopedTasks: StageFacade['tasks'] = scopedOperations(contributions.tasks);
+	// A Find entry is admitted when the task it opens is: the task is the operation.
+	const scopedFindEntries: StageFacade['findEntries'] = () => {
+		const entries = contributions.findEntries();
+		const scope = input.subjectScope?.get() ?? null;
+		if (scope === null || scope.admitsOperation === undefined) return entries;
+		const tasks = contributions.tasks();
+		return entries.filter((entry) => tasks.some((task) =>
+			task.adapterId === entry.adapterId && task.taskKind === entry.taskKind &&
+			scopeAdmitsOperation(scope, task.adapterId, task.id)));
+	};
+	const outsideScope = (): { readonly kind: 'refused'; readonly code: 'unknown-task'; readonly message: string } => ({
+		kind: 'refused',
+		code: 'unknown-task',
+		message: 'That is not part of Object Studio. Go back to the World to use it.'
+	});
 	const facade: StageFacade = {
 		snapshot: () => currentSnapshot,
 		lightPreview: () => input.lightPreview ?? null,
@@ -414,7 +482,13 @@ export function createStageFacade(input: {
 		selectionState: () => session.selectionState(),
 		setSelection,
 		select,
-		openTask: (task) => { if (!isLive()) return false; contributedTaskOwner = null; return session.openTask(task); },
+		openTask: (task) => {
+			if (!isLive()) return false;
+			// A host tool is an operation too: Object Studio offers only some of them.
+			if (!scopeAdmitsOperation(input.subjectScope?.get() ?? null, SCOPE_HOST_OWNER, task.kind)) return false;
+			contributedTaskOwner = null;
+			return session.openTask(task);
+		},
 		closeTask: () => {
 			if (!isLive()) return false;
 			contributedTaskOwner = null;
@@ -458,7 +532,7 @@ export function createStageFacade(input: {
 		candidatePreviews: contributions.candidatePreviews,
 		graphics: contributions.graphics,
 		ghosts: contributions.ghosts,
-		tasks: contributions.tasks,
+		tasks: scopedTasks,
 		inkReadings: contributions.inkReadings,
 		openInkReading(id, adapterId) {
 			if (!isLive()) return null;
@@ -525,6 +599,8 @@ export function createStageFacade(input: {
 			const entry = contributions.findEntriesOf().find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
 			const tasks = contributions.tasksOf().filter((candidate) => candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind);
 			if (tasks.length !== 1) return { kind: 'refused', code: 'unknown-task', message: 'Find requires one task of the declared kind in its owning adapter' };
+			// The task is the operation: refuse before the entry's own side effect runs.
+			if (!scopeAdmitsOperation(input.subjectScope?.get() ?? null, adapterId, tasks[0]!.id)) return outsideScope();
 			entry?.onInvoke?.();
 			return facade.openContributedTask(tasks[0]!.id, adapterId);
 		},
@@ -534,6 +610,7 @@ export function createStageFacade(input: {
 			}
 			ensureBindings();
 			const entry = contributions.tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
+			if (entry !== undefined && !scopeAdmitsOperation(input.subjectScope?.get() ?? null, entry.adapterId, entry.id)) return outsideScope();
 			if (entry === undefined) {
 				return { kind: 'refused', code: 'unknown-task', message: `no adapter contributes a task "${id}"` };
 			}
@@ -564,8 +641,8 @@ export function createStageFacade(input: {
 			const instrument = facade.instrumentForTask(id, entry.adapterId);
 			return { kind: 'opened', taskId: entry.id, task, adapterId: entry.adapterId, instrument };
 		},
-		subjects: contributions.subjects,
-		findEntries: contributions.findEntries,
+		subjects: scopedSubjects,
+		findEntries: scopedFindEntries,
 		cardFacts: contributions.cardFacts,
 		pointerIntent(intent) {
 			if (!isLive()) return { claimed: false, adapterId: null };
@@ -715,6 +792,7 @@ export function createStageFacade(input: {
 		notifySurfaceChange() {
 			if (isLive()) notifyAdaptersChanged();
 		},
+		postureScoped: () => (input.subjectScope?.get() ?? null) !== null,
 		cardWriter: contributions.cardWriter,
 		cardActions: contributions.cardActions,
 		cardNameWriter: contributions.cardNameWriter,

@@ -112,6 +112,24 @@ describe('stage keyboard arbitration', () => {
 		expect(calls).toEqual(['interrupt:escape', 'close-selection', 'interrupt:escape', 'put-back-lift']);
 	});
 
+	it('leaves Object Studio after every pending rung, before the selection closes', () => {
+		let inStudio = true;
+		const { keyboard, calls } = harness({
+			selectionPresent: () => true,
+			leaveStudio: () => {
+				if (!inStudio) return false;
+				inStudio = false;
+				calls.push('leave-studio');
+				return true;
+			}
+		});
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'leave-studio']);
+		// Out of Studio (or a standalone Studio that declines), the ordinary unwind resumes.
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls.slice(2)).toEqual(['interrupt:escape', 'close-selection']);
+	});
+
 	it('cancels a live drawn draft before it puts the cut back', () => {
 		let draft = true;
 		let slice = true;
