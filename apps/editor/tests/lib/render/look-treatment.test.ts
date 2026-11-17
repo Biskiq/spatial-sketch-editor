@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DoubleSide,
+	Mesh,
 	MeshBasicMaterial,
 	MeshNormalMaterial,
 	MeshStandardMaterial,
@@ -22,7 +23,12 @@ import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-materi
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import {
+	compileWallFirstLayoutGeometry,
+	createLayoutCompileSession,
+	planRigidWallMove,
+	withLayoutCompileSession
+} from '@portfolio/layout-core';
 
 const identity = (over: Partial<ImportedMaterialDescriptor> = {}): ImportedMaterialDescriptor => ({
 	kind: 'imported',
@@ -175,6 +181,48 @@ describe('T2.S6 — default Layout surfaces', () => {
 
 		expect(walls.setTreatment(undefined)).toBe(true);
 		expect(materialOf(meshOf()).color.getHexString()).toBe(naturalColor);
+		walls.dispose();
+		store.dispose();
+	});
+
+	it('targets the retained mesh after an incremental Wall edit, then cycles every Treatment', () => {
+		const store = createMaterialStore();
+		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
+		const session = createLayoutCompileSession();
+		const base = session.compile(document).geometry;
+		const target = document.walls[0]!.id;
+		const walls = createWallRepresentation(store);
+		walls.update(base);
+		const retained = walls.objectOf(target) as Mesh;
+
+		// A planned move reaches the incremental patch path, which copies the
+		// rebuilt mesh into the retained object and keeps that object attached.
+		const plan = withLayoutCompileSession(session, () =>
+			planRigidWallMove(document, { wallId: target, delta: [0, 0.01] })
+		);
+		if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+		const stats = walls.update(plan.acceptance!.geometry);
+		expect(stats.built).toBeGreaterThan(0);
+		expect(walls.objectOf(target)).toBe(retained);
+
+		const materialOf = (mesh: Mesh): MeshStandardMaterial =>
+			(Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as MeshStandardMaterial;
+		const natural = materialOf(retained);
+		const naturalColor = natural.color.getHexString();
+		let disposed = false;
+		natural.addEventListener('dispose', () => { disposed = true; });
+
+		expect(walls.setTreatment('clay')).toBe(true);
+		expect(materialOf(retained).color.getHexString()).toBe(CLAY_COLOR.slice(1));
+		// The visible Wall held the old lease; it must not be released underneath it.
+		expect(disposed).toBe(true);
+		expect(store.stats().live).toBe(1);
+
+		expect(walls.setTreatment('flat-colour')).toBe(true);
+		expect(materialOf(retained).roughness).toBeGreaterThanOrEqual(FLAT_MIN_ROUGHNESS);
+		expect(walls.setTreatment(undefined)).toBe(true);
+		expect(materialOf(retained).color.getHexString()).toBe(naturalColor);
+		expect(store.stats().live).toBe(1);
 		walls.dispose();
 		store.dispose();
 	});

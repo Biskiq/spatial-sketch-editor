@@ -55,8 +55,15 @@ type RetainedWall = {
 	readonly key: string;
 	readonly object: Object3D;
 	readonly release: () => void;
-	/** Re-resolve this Wall's materials without rebuilding its buffers; null for failure ink. */
-	readonly rematerialize: ((factory: WallMaterialFactory) => readonly Material[]) | null;
+	/**
+	 * Re-resolve this Wall's materials onto the retained mesh, without rebuilding
+	 * its buffers; null for failure ink. The target is explicit because the
+	 * incremental patch path copies a rebuilt mesh into the retained object, so a
+	 * closure over the temporary object would write to a detached mesh.
+	 */
+	readonly rematerialize:
+		| ((factory: WallMaterialFactory, target: Mesh) => readonly Material[])
+		| null;
 };
 
 /** What one update did, as counts — tests read these, never a stopwatch. */
@@ -212,7 +219,9 @@ export function createWallRepresentation(
 	): {
 		object: Object3D;
 		release: () => void;
-		rematerialize: ((factory: WallMaterialFactory) => readonly Material[]) | null;
+		rematerialize:
+			| ((factory: WallMaterialFactory, target: Mesh) => readonly Material[])
+			| null;
 	} {
 		const result = buildStandaloneWallMesh(wall, elevation, ends ?? null, { classifySurface: () => 'wall' });
 		if (!result.mesh) {
@@ -247,9 +256,12 @@ export function createWallRepresentation(
 		// re-resolves these materials, never the buffers or the mesh object.
 		const groups = result.mesh.materialGroups;
 		const source = result.mesh;
-		const rematerialize = (next: WallMaterialFactory): readonly Material[] => {
+		const rematerialize = (
+			next: WallMaterialFactory,
+			target: Mesh = mesh
+		): readonly Material[] => {
 			const materials = groups.map((group) => next(group.surfaceKey, source).material);
-			mesh.material = [...materials];
+			target.material = [...materials];
 			return materials;
 		};
 		return { object: mesh, release: adapted.dispose, rematerialize };
@@ -372,7 +384,9 @@ export function createWallRepresentation(
 			// leases are taken before the superseded factory gives its own back.
 			for (const entry of retained.values()) {
 				if (entry.rematerialize === null) continue;
-				for (const material of entry.rematerialize(factory.factory)) materialsSeen.add(material);
+				for (const material of entry.rematerialize(factory.factory, entry.object as Mesh)) {
+					materialsSeen.add(material);
+				}
 			}
 			previousFactory.dispose();
 			return true;

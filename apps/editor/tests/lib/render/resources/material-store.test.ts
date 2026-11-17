@@ -125,7 +125,14 @@ describe('the material store', () => {
 		const second = store.acquire({ ...WALL });
 		expect(second.material).toBe(first.material);
 		expect(second.key).toBe(first.key);
-		expect(store.stats()).toEqual({ live: 1, created: 1, disposed: 0, acquired: 2 });
+		expect(store.stats()).toEqual({
+			live: 1,
+			created: 1,
+			disposed: 0,
+			acquired: 2,
+			treated: 0,
+			treatmentSkipped: 0
+		});
 		first.release();
 		expect(store.stats()).toMatchObject({ live: 1, disposed: 0 });
 		second.release();
