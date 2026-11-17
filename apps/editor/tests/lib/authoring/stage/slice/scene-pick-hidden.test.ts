@@ -6,6 +6,8 @@
  * selected. Absent the filter the source behaves exactly as today, which is the
  * other half of the contract (Preview and every non-Slice caller).
  */
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BoxGeometry, Mesh, MeshBasicMaterial } from 'three';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
@@ -49,5 +51,37 @@ describe('scene pick — a hidden hit is skipped', () => {
 		// Everything hidden: no hit at all, rather than a silent nearest.
 		expect(source.pick(RAY, data, { hiddenAt: () => true })).toBeNull();
 		dispose();
+	});
+});
+
+describe('the face ray — artwork placement aims at what is drawn', () => {
+	const acceptNear = (hit: { readonly entityId: string | null }): boolean => hit.entityId === 'near';
+
+	it('accepts the near body when no filter is given', () => {
+		const { source, data, dispose } = scene();
+		expect(source.pickVisibleFace(RAY, data, acceptNear)?.entityId).toBe('near');
+		dispose();
+	});
+
+	it('refuses a hidden face and does not let it block the one behind', () => {
+		const { source, data, dispose } = scene();
+		// The near body's own face is what the creator hangs on; a cut removes it.
+		const hidden = (point: readonly [number, number, number]): boolean => point[2] > -1.5;
+
+		expect(source.pickVisibleFace(RAY, data, acceptNear, { hiddenAt: hidden })).toBeNull();
+		// The far body is not hidden, so the same ray can still place on it: a removed
+		// face occludes nothing.
+		expect(
+			source.pickVisibleFace(RAY, data, (hit) => hit.entityId === 'far', { hiddenAt: hidden })?.entityId
+		).toBe('far');
+		dispose();
+	});
+
+	it('is the predicate the route gives artwork placement', () => {
+		const route = readFileSync(
+			path.join(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'),
+			'utf8'
+		);
+		expect(route).toContain('pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => resolvedSlice)');
 	});
 });

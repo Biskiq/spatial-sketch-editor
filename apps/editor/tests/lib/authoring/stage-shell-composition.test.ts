@@ -249,6 +249,10 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts',
+			// T1 SL1: the shared resolver of "which meshes draw this subject", used by the
+			// selection ink and the ghost. Pure Three reads, no camera, control object or
+			// second renderer.
+			'apps/editor/src/lib/authoring/stage/shell/stage-selection-source.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageFormGhost.svelte',
 			// C3 checkpoint 5 — the unfolded Wall sheet. It draws the checkpoint-4
 			// developed mesh on the existing Canvas and owns no camera or pick root.

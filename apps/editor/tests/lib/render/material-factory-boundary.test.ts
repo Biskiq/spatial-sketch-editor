@@ -50,7 +50,7 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'mat ground' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: 1, owner: 'lift ink' },
-	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 2, owner: 'slice ink' },
+	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 3, owner: 'slice ink' },
 	'lib/authoring/stage/shell/StageWallDevelopment.svelte': { count: 1, owner: 'development overlay' },
 	'lib/authoring/stage/shell/StageCelestialDial.svelte': { count: 1, owner: 'Celestial Dial ink' },
 	'lib/authoring/stage/shell/StageWallPin.svelte': { count: 1, owner: 'pin gizmo' },
@@ -237,12 +237,29 @@ describe('material-factory-boundary: one factory for world materials', () => {
 			'lib/visitor/VisitorPreviewSurface.svelte'
 		]) {
 			const code = withoutComments(readFileSync(path.join(EDITOR_SRC, host), 'utf8'));
-			// The Slice seam (T1 SL1) is the one option this call takes: the material
-			// store is born with the Stage's clipping array, so it cannot be disposed
-			// of and re-provided later. Ownership is unchanged.
-			expect(code, host).toContain('provideRenderResources(');
+			// Exactly one provider per Canvas, and the host never constructs a store of
+			// its own: ownership is the Canvas's, wherever the options come from.
+			expect(code.match(/provideRenderResources\(/g)?.length, host).toBe(1);
+			expect(code, host).not.toContain('createMaterialStore');
 			expect(code, host).toMatch(/resources\.dispose\(\)/);
 		}
+		// The Slice seam (T1 SL1) is the **one** option this call takes, and it is the
+		// Stage's own plane array: the store is born holding that exact reference so a
+		// cut never recompiles a program. Anything else passed here would be a second
+		// ownership decision smuggled in as an option.
+		const stage = withoutComments(
+			readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8')
+		);
+		expect(stage).toMatch(/provideRenderResources\(\{\s*clippingPlanes: stageClip\.planes as Plane\[\]\s*\}\)/);
+		// The clip is created **before** the resources, so the store is born with it.
+		expect(stage.indexOf('setStageClip(createStageClip())')).toBeLessThan(
+			stage.indexOf('provideRenderResources(')
+		);
+		// The Preview Canvas is the visitor's as-built world: no clip, no options.
+		const preview = withoutComments(
+			readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorPreviewSurface.svelte'), 'utf8')
+		);
+		expect(preview).toMatch(/provideRenderResources\(\)/);
 		const shell = withoutComments(readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorLayoutShell.svelte'), 'utf8'));
 		expect(shell).toContain('useRenderResources()');
 		expect(shell).not.toContain('createMaterialStore');

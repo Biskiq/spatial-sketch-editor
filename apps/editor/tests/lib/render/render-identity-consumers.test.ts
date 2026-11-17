@@ -78,12 +78,19 @@ describe('the selection layer resolves through the registered index', () => {
 
 	it('the layer and the pick source read no name', () => {
 		const layer = read('lib/authoring/stage/shell/StageSelectionLayer.svelte');
-		expect(layer).toContain("scenePick.layoutObjectOf('wall'");
-		expect(layer).toContain("scenePick.layoutObjectOf('object'");
-		expect(layer).toContain("scenePick.layoutObjectOf('floor'");
+		// T1 SL1: the selection ink and the Slice's ghost resolve the subject through
+		// one shared resolver, so the index reads live there rather than being copied
+		// into a second component. The rule is unchanged: identity, never a name.
+		const resolver = read('lib/authoring/stage/shell/stage-selection-source.ts');
+		expect(layer).toContain('selectionObjectsOf(scenePick, entry)');
+		expect(resolver).toContain("scenePick.layoutObjectOf('wall'");
+		expect(resolver).toContain("scenePick.layoutObjectOf('object'");
+		expect(resolver).toContain("scenePick.layoutObjectOf('floor'");
 		expect(layer).toContain("renderIdentityOf(meshes[0]!)?.kind === 'wall'");
 		expect(layer).not.toContain('getObjectByName');
+		expect(resolver).not.toContain('getObjectByName');
 		expect(layer).not.toMatch(/\.name\.startsWith/);
+		expect(resolver).not.toMatch(/\.name\.startsWith/);
 		expect(read('lib/authoring/scene/scene-pick-source.ts')).not.toMatch(/\.name\.startsWith/);
 	});
 });
