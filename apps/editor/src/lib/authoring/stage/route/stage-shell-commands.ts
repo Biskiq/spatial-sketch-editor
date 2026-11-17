@@ -40,6 +40,7 @@ import type { StageShellState } from './stage-shell-state.svelte';
 import type { StageHeadFindEntry } from './stage-contribution-view';
 import { stageArmedDockId } from './stage-contribution-view';
 import type { WorldScope } from '../shell/world-index-model';
+import { isStudioWorldTool } from '../../studio/studio-model';
 
 export type StageShellCommandInput = {
 	readonly facade: () => StageFacade | null;
@@ -73,10 +74,23 @@ export type StageShellCommandInput = {
 	readonly showExperienceWelcome: () => void;
 	/** End a drawn gesture when Slice is re-armed as Level. */
 	readonly disarmSliceDraw?: () => void;
+	/**
+	 * Object Studio scopes the tools to Select, Measure, Eraser and Objects. Read live:
+	 * a refused arm says so in words and changes nothing, so a shortcut cannot reach a
+	 * tool the Studio dock does not show.
+	 */
+	readonly studioActive?: () => boolean;
 };
 
 export function createStageShellCommands(input: StageShellCommandInput) {
 	const shell = input.shell;
+
+	/** `true` (and a word) when Object Studio does not offer this tool. */
+	function studioRefuses(allowed: boolean): boolean {
+		if (allowed || input.studioActive?.() !== true) return false;
+		input.notice('That tool is not part of Object Studio. Go back to the World to use it.');
+		return true;
+	}
 
 	/**
 	 * Mirror a selection the host or an adapter made canonically.
@@ -378,6 +392,10 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** Arm one dock key (from the dock, its key or Find). */
 	function armDockKey(key: StageDockKey): void {
+		if (studioRefuses(
+			key.slot === 'select' || key.slot === 'library' ||
+			(key.adapterId === STAGE_HOST_ADAPTER_ID && key.id !== STAGE_PAINT_TASK)
+		)) return;
 		if (key.slot === 'slice') {
 			// Arming Slice opens the reading, not a task. Level is the immediate SL1
 			// reading; the plate's Drawn arm replaces it with the finite gesture.
@@ -415,6 +433,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** The Living Draft row's one bridge into the existing dock/host controllers. */
 	function armWorldTool(id: WorldToolId): void {
+		if (studioRefuses(isStudioWorldTool(id))) return;
 		input.cancelArtwork();
 		shell.setWorldPlateOpen(id !== 'select');
 		if (id === 'library') {
@@ -490,6 +509,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	}
 
 	function toggleWorldLibrary(): void {
+		if (studioRefuses(false)) return;
 		if (shell.libraryOpen) {
 			shell.setLibraryOpen(false);
 			shell.setActiveWorldTool(

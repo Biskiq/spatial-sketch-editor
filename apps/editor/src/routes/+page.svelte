@@ -9,6 +9,7 @@
 		type ProjectLoginIntent,
 		ProjectPersistenceError
 	} from '$lib/platform/project-identity';
+	import { studioProjectUrl } from '$lib/platform/studio-entry';
 
 	const apiOrigin = env.PUBLIC_API_ORIGIN;
 	const auth = apiOrigin ? createProjectAuth(apiOrigin) : null;
@@ -33,6 +34,11 @@
 
 	async function startCreating(): Promise<void> {
 		await goto(projectUrl(createProjectId(), { create: true }));
+	}
+
+	/** A new object opens the same project route in the Object Studio posture. */
+	async function startObject(): Promise<void> {
+		await goto(studioProjectUrl(createProjectId(), { create: true }));
 	}
 
 	async function signIn(intent: ProjectLoginIntent = 'projects'): Promise<void> {
@@ -118,8 +124,8 @@
 	</svg>
 	<section class="entry-card" aria-labelledby="entry-title">
 		<p class="eyebrow">Biskiq Editor</p>
-		<h1 id="entry-title">Start a project</h1>
-		<p class="lede">Create in Spatial. Sign in when you want cloud projects.</p>
+		<h1 id="entry-title">Start creating</h1>
+		<p class="lede">Lay out a whole project, or shape a single object. Sign in when you want cloud projects.</p>
 		{#if redirecting}
 			<p class="status" role="status">Returning to your project…</p>
 		{:else if authStatus === 'cancelled' || authStatus === 'failed'}
@@ -134,9 +140,11 @@
 			</div>
 		{:else}
 			<div class="actions">
-				<button type="button" class="primary" onclick={() => void startCreating()}>Start creating</button>
+				<button type="button" class="primary" onclick={() => void startCreating()}>New project</button>
+				<button type="button" data-new-object onclick={() => void startObject()}>New object</button>
 				<button type="button" disabled={!auth} onclick={() => void signIn('projects')}>Sign in</button>
 			</div>
+			<p class="choice-hint">A project is a space to lay out. An object is one form to model on its own.</p>
 		{/if}
 		{#if notice && authStatus !== 'cancelled' && authStatus !== 'failed'}
 			<p class="status" role="alert">{notice}</p>
@@ -238,6 +246,12 @@
 	button:focus-visible {
 		outline: 2px solid var(--shell-gold);
 		outline-offset: 2px;
+	}
+	.choice-hint {
+		margin: 0.9rem 0 0;
+		color: #cdd8d1;
+		font-size: 0.82rem;
+		line-height: 1.4;
 	}
 	.status {
 		margin: 1rem 0 0;

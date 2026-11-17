@@ -331,7 +331,26 @@ export function createSceneContributions(
 		// The object's exact fields are on the Card; the existing
 		// immediate commands stay beside them, so the creator does not have to
 		// open Compose to duplicate or delete the selected object.
+		const studio = services.objectStudio;
 		return [
+			// Studio edits a native form only; imported models and primitives have no Studio.
+			...(entity.kind === 'form' && studio !== undefined && studio.available()
+				? [
+						{
+							id: 'scene-object-edit-in-studio',
+							label: 'Edit in Studio',
+							compactLabel: 'Studio',
+							group: 'primary' as const,
+							detail: `Open ${entity.name} in Object Studio. Nothing changes until you edit.`,
+							async run() {
+								const outcome = studio.edit(entity.id);
+								return outcome.kind === 'entered'
+									? { kind: 'accepted' as const }
+									: { kind: 'refused' as const, message: outcome.message };
+							}
+						}
+					]
+				: []),
 			{
 				id: 'scene-object-duplicate',
 				label: 'Duplicate',

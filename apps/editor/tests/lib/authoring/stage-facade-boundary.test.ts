@@ -23,7 +23,9 @@ const allowed = new Map<string, Record<string, readonly string[]>>([
 		'./facade/plan-view': ['createPlanView'],
 		'./facade/selection-pick': ['adapterForSelection', 'createSelectionPick', 'datumWorkingPlane'],
 		'./plan-parameters': ['PLAN_DEFAULT_CUT_HEIGHT_METERS'],
-		'./semantic-selection': ['primaryEntry']
+		'./semantic-selection': ['primaryEntry'],
+		// Object Studio's pick scope: one pure predicate over a session-only cell.
+		'./subject-scope': ['scopeAdmitsEntity']
 	}],
 	[owner('adapter-bindings'), {
 		[camera]: ['intersectWorkingPlane', 'pointerRay', 'projectWorld'],
@@ -79,7 +81,7 @@ const kernelEntries = new Set([
 ].map((specifier) => moduleTarget(facade, specifier)));
 const sharedHelpers = new Set([
 	'../plan-parameters', '../semantic-selection', '../stage-drafting', '../stage-handles',
-	'../stage-height-sheet', '../stage-pick', '$lib/platform/perf-marks'
+	'../stage-height-sheet', '../stage-pick', '../subject-scope', '$lib/platform/perf-marks'
 ].map((specifier) => moduleTarget(owner('selection-pick'), specifier)));
 
 function forbiddenClosure(root: string, sourceOf = read): string[] {

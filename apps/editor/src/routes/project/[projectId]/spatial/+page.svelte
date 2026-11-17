@@ -20,6 +20,7 @@
 	 */
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
+	import { goto, replaceState } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
 	import type { AppPreferences } from '$lib/platform/app-preferences';
 	import { perfMark } from '$lib/platform/perf-marks';
@@ -151,12 +152,26 @@
 		type StageExperienceBinding
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
-	import type { StageLightInspection } from '$lib/authoring/stage/stage-adapter-host';
+	import type { StageLightInspection, StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
+	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
+	import StudioScopeStrip from '$lib/authoring/studio/StudioScopeStrip.svelte';
+	import StudioRootPanel from '$lib/authoring/studio/StudioRootPanel.svelte';
+	import { createSubjectScope } from '$lib/authoring/stage/subject-scope';
+	import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
+	import {
+		STUDIO_ENTRY_PARAM,
+		STUDIO_ENTRY_VALUE,
+		STUDIO_OBJECT_PARAM,
+		studioEntryFromSearch
+	} from '$lib/platform/studio-entry';
 
 	installPerfWorkObserver();
 
 	const projectId = decodeURIComponent(page.params.projectId ?? '');
 	const intent: BootIntent = bootIntentFromSearch(page.url.searchParams);
+	/** Object Studio is a posture named by `entry=studio`; it is never source. */
+	const studioEntry = studioEntryFromSearch(page.url.searchParams);
+	const subjectScope = createSubjectScope();
 
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
 	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
@@ -170,7 +185,7 @@
 	 * back change what a click can select without re-creating the facade or its
 	 * adapters. With no reading the wrapper is the unwrapped pick exactly.
 	 */
-	const stagePick = pickThroughSlice(scenePick, () => resolvedSlice);
+	const stagePick = pickThroughSlice(scenePick, () => resolvedSlice, subjectScope.get);
 
 	const stageAssets = createStageAssetLeases({
 		session,
@@ -188,6 +203,19 @@
 	});
 
 	/** The route's one Spot Look-through session; created with the Stage wiring. */
+	/** Object Studio's one session value, created once the commands it calls exist. */
+	let studio!: StudioController;
+	let studioRevision = $state(0);
+	let studioArmPending = $state(false);
+	const objectStudioPort: StageObjectStudio = {
+		available: () =>
+			studio !== undefined && !studio.active && experience.lensState === 'world' && preview === null,
+		edit: (entityId) =>
+			studio.enterFromWorld(entityId, 'edit-in-studio')
+				? { kind: 'entered' }
+				: { kind: 'refused', message: 'That object cannot be edited in Object Studio.' }
+	};
+
 	let lightInspection: ReturnType<typeof createLightLookThrough> | null = null;
 	const lightInspectionPort: StageLightInspection = {
 		enter: (lightId) =>
@@ -202,6 +230,7 @@
 		assets: stageAssets,
 		finishes: () => finishes,
 		lightInspection: () => lightInspectionPort,
+		objectStudio: () => objectStudioPort,
 		projectSession: () => projectSession,
 		preview: () => previewController,
 		createFacade: (snapshot) => createStageFacade({
@@ -209,7 +238,8 @@
 			session,
 			scenePick: stagePick,
 			sceneBounds: scenePick.bounds,
-			lightPreview
+			lightPreview,
+			subjectScope
 		}),
 		adapterFactories: stageAdapterFactories,
 		interruptInput: interruptForReplacement,
@@ -442,6 +472,8 @@
 
 	function changeLens(next: 'world' | 'experience'): void {
 		lightInspection?.cancel();
+		// Experience is the visitor's reading of the same source: Studio's posture ends.
+		if (next !== 'world') studio?.end();
 		experience.changeLens(next);
 	}
 
@@ -567,7 +599,143 @@
 			downloadSourceJson: () => downloadSourceJson()
 		},
 		showExperienceWelcome: () => experience.showWelcome(),
-		disarmSliceDraw: () => sliceDraw.disarm()
+		disarmSliceDraw: () => sliceDraw.disarm(),
+		studioActive: () => studio?.active === true
+	});
+
+	studio = createStudioController({
+		entities: () =>
+			(facade?.snapshot().domain.scene.entities ?? []).map((entity) => ({
+				id: entity.id,
+				name: entity.name,
+				kind: entity.kind
+			})),
+		selectedEntityId: () =>
+			selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null,
+		select: (entityId) => {
+			const stage = facade;
+			if (stage === null) return false;
+			if (entityId === null) {
+				commands.closeSelection();
+				return true;
+			}
+			commands.selectStageReference(
+				sceneEntityReference(entityId, stage.snapshot().domain.unitRevisions.scene)
+			);
+			return true;
+		},
+		setScope: (scope) => {
+			subjectScope.set(scope);
+			clearHover();
+			shell.bumpContributions();
+			facade?.notifySurfaceChange();
+			studioRevision += 1;
+		},
+		captureView: () => {
+			const camera = facade?.camera.state();
+			if (camera === undefined) return null;
+			return {
+				reading: camera.reading,
+				eye: eyeOfInspectionPose(camera.pose),
+				target: camera.pose.target,
+				fovYDegrees: fovYDegreesOf(camera.pose),
+				targetPlaneHeightMeters: camera.pose.targetPlaneHeightMeters
+			};
+		},
+		restoreView: (record) => {
+			const result = submit(
+				{
+					kind: 'set-view',
+					eye: [record.eye[0], record.eye[1], record.eye[2]],
+					target: [record.target[0], record.target[1], record.target[2]],
+					fovYDegrees: record.fovYDegrees,
+					transition: !shell.reducedMotion
+				},
+				nowSeconds()
+			);
+			if (result?.kind !== 'accepted') return false;
+			if (record.reading === 'plan') {
+				submit({ kind: 'set-reading', reading: 'plan' }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
+			}
+			return true;
+		},
+		rootBounds: (entityId) => facade?.sceneBounds(entityId) ?? null,
+		fit: (bounds) => {
+			if (facade === null || rect === null) return false;
+			return submit(
+				{
+					kind: 'fit',
+					bounds: { min: [...bounds.min], max: [...bounds.max] },
+					rect,
+					// A lone object is framed with room around it, not edge to edge.
+					paddingFraction: 0.3
+				},
+				nowSeconds()
+			)?.kind === 'accepted';
+		},
+		contentBounds: () => (facade === null ? null : readStageContentBounds(facade)),
+		fitAll: () => {
+			const bounds = facade === null ? null : readStageContentBounds(facade);
+			if (bounds === null || rect === null) return;
+			submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect, paddingFraction: 0.25 }, nowSeconds());
+		},
+		armCreation: () => {
+			// The dock's Objects key appears once the adapters have bound: wait for it
+			// instead of refusing a creation the creator just asked for.
+			if (dockKeys.some((key) => key.slot === 'library')) commands.armWorldTool('objects');
+			else studioArmPending = true;
+		},
+		closeCreation: () => {
+			const close = (): void => {
+				// The placement task stays armed for repeat placing: Studio has its root now.
+				commands.closeTask();
+				if (shell.activeWorldTool === 'objects' || shell.libraryOpen) commands.armWorldTool('select');
+				shell.setWorldPlateOpen(false);
+				shell.setLibraryOpen(false);
+			};
+			close();
+			// Placement settles its own tray after the accepted source: close it once more then.
+			setTimeout(() => {
+				if (studio.active && !studio.creating) close();
+			}, 0);
+		},
+		settlePending: () => {
+			if (session.gesture() !== null) {
+				shell.setNotice('Finish or cancel the current gesture first.');
+				return false;
+			}
+			finishes.cancelAsk();
+			artworkInteraction.cancel();
+			commands.armWorldTool('select');
+			return true;
+		},
+		notice: (message) => shell.setNotice(message),
+		syncUrl: (state) => {
+			try {
+				const url = new URL(window.location.href);
+				if (state === null) {
+					url.searchParams.delete(STUDIO_ENTRY_PARAM);
+					url.searchParams.delete(STUDIO_OBJECT_PARAM);
+				} else {
+					url.searchParams.set(STUDIO_ENTRY_PARAM, STUDIO_ENTRY_VALUE);
+					if (state.objectId === null) url.searchParams.delete(STUDIO_OBJECT_PARAM);
+					else url.searchParams.set(STUDIO_OBJECT_PARAM, state.objectId);
+				}
+				replaceState(`${url.pathname}${url.search}`, {});
+			} catch {
+				// The address is a courtesy: a router that is not ready keeps the posture.
+			}
+		},
+		navigate: (href) => void goto(href),
+		focusReturn: () => {
+			setTimeout(() => {
+				const card = document.querySelector<HTMLElement>('[data-editor-card], .card');
+				const target = card?.querySelector<HTMLElement>('button, [tabindex]') ?? stageEl ?? null;
+				target?.focus({ preventScroll: true });
+			}, 0);
+		},
+		indexOpen: () => shell.indexOpen,
+		setIndexOpen: (open) => shell.setIndexOpen(open)
 	});
 
 	finishes = createFinishAuthoring({
@@ -993,6 +1161,35 @@
 
 	let renderRootsRevision = $state(0);
 	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
+	// A frame that waited for the scoped body to mount is retried as bodies change.
+	$effect(() => {
+		void renderRootsRevision;
+		untrack(() => studio.retryFrame());
+	});
+	// Open the posture named by the address once, when the project is on the Stage.
+	let studioOpened = false;
+	$effect(() => {
+		if (!studioEntry.studio || studioOpened) return;
+		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
+		studioOpened = true;
+		untrack(() => studio.openFromEntry({ objectId: studioEntry.objectId, minted: intent === 'create' }));
+	});
+	$effect(() => {
+		if (!studioArmPending) return;
+		if (!studio.active) {
+			studioArmPending = false;
+			return;
+		}
+		if (!dockKeys.some((key) => key.slot === 'library')) return;
+		studioArmPending = false;
+		untrack(() => commands.armWorldTool('objects'));
+	});
+	// A creation gesture that ends with no new form returns the creator to the scoped root.
+	$effect(() => {
+		if (!studio.creating || studioArmPending) return;
+		if (shell.task !== null || shell.activeWorldTool === 'objects' || shell.libraryOpen) return;
+		untrack(() => studio.cancelCreation());
+	});
 	const stageContentBounds = $derived.by(() => {
 		void renderRootsRevision;
 		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
@@ -1115,6 +1312,7 @@
 		// A replaced project has no standpoint to put back into the new Camera, and
 		// no overhead to keep lifted: Lift is session state, never a document value.
 		lightInspection?.cancel();
+		studio?.end();
 		wallFace.clear();
 		interiorLift.clear();
 		sliceDraw.disarm();
@@ -1166,6 +1364,7 @@
 		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
 		commands.syncContributedTask();
 		stageViewport.invalidatePlan();
+		studio?.reconcile();
 		refresh();
 	}
 
@@ -1180,6 +1379,7 @@
 		// changed or disappeared.
 		lightInspection?.reconcile();
 		stageViewport.invalidatePlan();
+		studio?.reconcile();
 	}
 
 	function nowSeconds(): number {
@@ -1450,7 +1650,11 @@
 			get artworkScope() { return stageAssets.artworkScope; },
 			get artworkGhost() { return artworkInteraction.resizeGhost ?? artworkInteraction.ghost; },
 			onArtworkError: (message: string) => shell.setNotice(message),
-			get plan() { return planView; },
+			get plan() { return studio.active && studio.context === 'mat' ? null : planView; },
+			get studio() {
+				void studioRevision;
+				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
+			},
 			get planAppearance() { return shell.preferences.planAppearance; },
 			get paperInk2d() { return PAPER_TONES[shell.preferences.paperTone2d].ink; },
 			get paperInk3d() { return PAPER_TONES[shell.preferences.paperTone3d].ink; },
@@ -1682,6 +1886,37 @@
 		style={`--lower-column-height: ${shell.lowerColumnHeight}px; ${experience.lensState === 'experience' ? '--card-right: 10px; ' : ''}${experience.lensState === 'experience' && !experience.guideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${shell.sheetLaneRight}px; --sheet-lane-left: ${shell.sheetLaneLeft}px`}
 		data-index-open={preview === null && shell.indexOpen}
 	>
+		{#if preview === null && experience.lensState === 'world' && studio.active}
+			<StudioScopeStrip
+				phase={studio.phase}
+				origin={studio.origin}
+				context={studio.context}
+				name={studio.rootName}
+				rootCount={studio.roots.length}
+				onContext={(next) => studio.setContext(next)}
+				onNewObject={() => studio.newObjectHere()}
+				onChoose={() => studio.openChooser()}
+				onBackToWorld={() => studio.backToWorld()}
+				onBackToProjects={() => studio.backToProjects()}
+				onOpenInWorld={() => studio.openInWorld()}
+			/>
+			<StudioRootPanel
+				phase={studio.phase}
+				roots={studio.roots}
+				origin={studio.origin}
+				canUndo={historyState.canUndo}
+				creating={studio.creating}
+				onChoose={(id) => studio.chooseRoot(id)}
+				onOpenChooser={() => studio.openChooser()}
+				onNewObject={() => studio.newObjectHere()}
+				onUndo={() => { finishes.cancelAsk(); void stageEpoch.undo(); }}
+				onBackToWorld={() => studio.backToWorld()}
+				onBackToProjects={() => studio.backToProjects()}
+				onOpenInWorld={() => studio.openInWorld()}
+				onCancelCreation={() => studio.cancelCreation()}
+			/>
+		{/if}
+
 		<StageViewportRegion
 			previewing={preview !== null}
 			{canvas}
@@ -1824,6 +2059,7 @@
 					: null}
 				world={preview === null && experience.lensState === 'world'
 					? {
+						studio: studio.active,
 						activeTool: shell.activeWorldTool,
 						libraryOpen: shell.libraryOpen,
 						plateOpen: shell.worldPlateOpen,

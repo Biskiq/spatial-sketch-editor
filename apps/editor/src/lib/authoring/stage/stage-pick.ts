@@ -1,3 +1,4 @@
+import { scopeAdmitsEntity, type SubjectScope } from './subject-scope';
 import type { StageAdapterBinding, StageAdapterContext, StageDomainPick, StagePickQuery } from './facade/adapter-contract';
 
 /** A binding supplies exactly one winner, after applying its own policy. */
@@ -14,7 +15,8 @@ export function resolveStagePick(
 	providers: readonly StagePickProvider[],
 	context: StageAdapterContext,
 	reading: 'plan' | '3d',
-	toolOwner: string | null = null
+	toolOwner: string | null = null,
+	scope: SubjectScope | null = null
 ): StagePickWinner | null {
 	const winners: StagePickWinner[] = [];
 	for (const { adapterId, binding } of providers) {
@@ -24,7 +26,11 @@ export function resolveStagePick(
 			if (query.tool.scope === 'host' && !binding.hostTools?.includes(query.tool.kind)) continue;
 		}
 		const pick = binding.pick?.(query, context);
-		if (pick != null) winners.push({ adapterId, pick });
+		if (pick == null) continue;
+		// Object Studio's scope removes everything outside the scoped root from the
+		// answer, whichever adapter produced it (Layout, Light, plan sources).
+		if (scope !== null && !scopeAdmitsEntity(scope, pick.hit.reference?.domain === 'scene' ? pick.hit.reference.subject.id : null)) continue;
+		winners.push({ adapterId, pick });
 	}
 	if (winners.length === 0) return null;
 	// Determine the spatial front first, then apply the tie policy. This avoids

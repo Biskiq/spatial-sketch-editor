@@ -7,11 +7,13 @@ import { createAdapterBindings, SKIP_REBIND_CONTROL } from './facade/adapter-bin
 import { createContributionView } from './facade/contribution-view';
 import { createPlanView } from './facade/plan-view';
 import { adapterForSelection, createSelectionPick } from './facade/selection-pick';
+import type { StageSubject } from './facade/adapter-contract';
 import type { StageFacade } from './facade/view-contract';
 import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from './plan-parameters';
 import { primaryEntry, type StageSelectionChange, type StageSelectionState } from './semantic-selection';
 import type { StageLightPreview } from './stage-light-preview.svelte';
 import type { StageSelection, StageSession, StageTask } from './stage-session';
+import { scopeAdmitsEntity, type SubjectScopeCell } from './subject-scope';
 
 export { HOST_STAGE_CAPABILITIES, SKIP_REBIND_CONTROL } from './facade/adapter-bindings';
 export { datumWorkingPlane } from './facade/selection-pick';
@@ -31,6 +33,8 @@ export function createStageFacade(input: {
 	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
 	/** The session-only light preview the editor shell merges into its render. */
 	readonly lightPreview?: StageLightPreview | null;
+	/** Object Studio's session-only pick scope; absent leaves picking unscoped. */
+	readonly subjectScope?: SubjectScopeCell;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -113,7 +117,8 @@ export function createStageFacade(input: {
 		idOf: evaluationIdOf,
 		selectionMarks: contributions.selectionMarks,
 		idleMarks: contributions.idleMarks,
-		toolOwner: () => contributedTaskOwner?.adapterId ?? null
+		toolOwner: () => contributedTaskOwner?.adapterId ?? null,
+		subjectScope: () => input.subjectScope?.get() ?? null
 	});
 	const planView = createPlanView({
 		snapshot: () => currentSnapshot,
@@ -148,6 +153,26 @@ export function createStageFacade(input: {
 		bindings.notifyTaskClosed();
 	}
 
+	/**
+	 * Object Studio narrows the published subject list to the scoped root; unscoped it
+	 * is the contributions' own array. Memoized per source array and scope so a read
+	 * does not rebuild on every display frame.
+	 */
+	let scopedFrom: readonly StageSubject[] | null = null;
+	let scopedFor: string | null | undefined;
+	let scopedSubjectsCache: readonly StageSubject[] = [];
+	const scopedSubjects: StageFacade['subjects'] = () => {
+		const all = contributions.subjects();
+		const scope = input.subjectScope?.get() ?? null;
+		if (scope === null) return all;
+		if (scopedFrom !== all || scopedFor !== scope.entityId) {
+			scopedFrom = all;
+			scopedFor = scope.entityId;
+			scopedSubjectsCache = all.filter((subject) =>
+				scopeAdmitsEntity(scope, subject.reference.domain === 'scene' ? subject.reference.subject.id : null));
+		}
+		return scopedSubjectsCache;
+	};
 	const facade: StageFacade = {
 		snapshot: () => currentSnapshot,
 		lightPreview: () => input.lightPreview ?? null,
@@ -564,7 +589,7 @@ export function createStageFacade(input: {
 			const instrument = facade.instrumentForTask(id, entry.adapterId);
 			return { kind: 'opened', taskId: entry.id, task, adapterId: entry.adapterId, instrument };
 		},
-		subjects: contributions.subjects,
+		subjects: scopedSubjects,
 		findEntries: contributions.findEntries,
 		cardFacts: contributions.cardFacts,
 		pointerIntent(intent) {

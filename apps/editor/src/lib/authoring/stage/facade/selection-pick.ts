@@ -3,6 +3,7 @@ import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 import { hitStageMark, type StageMarkView } from '../stage-handles';
 import { resolveStagePick } from '../stage-pick';
+import type { SubjectScope } from '../subject-scope';
 import type { AdapterContextHandle, BoundAdapter } from './adapter-bindings';
 import type { ResolvedStageHit, StageFacade } from './view-contract';
 
@@ -50,6 +51,8 @@ type SelectionPickPort = {
 	readonly selectionMarks: () => readonly StageMarkView[];
 	readonly idleMarks: () => readonly StageMarkView[];
 	readonly toolOwner: () => string | null;
+	/** Object Studio's pick scope; absent or `null` leaves the pick path as it was. */
+	readonly subjectScope?: () => SubjectScope | null;
 };
 
 /** Qualify hits against the live viewport and the current domain pick providers. */
@@ -72,7 +75,7 @@ export function createSelectionPick(input: SelectionPickPort) {
 				const mark = hitStageMark(input.selectionMarks(), { css: query.css, coarse: query.coarse === true });
 				if (mark !== null) return result = { kind: 'mark', mark: mark.mark };
 			}
-			const winner = resolveStagePick(query, [...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })), handle.context, evaluation.renderedReading === 'plan' ? 'plan' : '3d', toolOwner ?? input.toolOwner() ?? null);
+			const winner = resolveStagePick(query, [...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })), handle.context, evaluation.renderedReading === 'plan' ? 'plan' : '3d', toolOwner ?? input.toolOwner() ?? null, input.subjectScope?.() ?? null);
 			if (winner === null) return result;
 			return result = winner.pick.refusal === null
 				? { kind: 'resolved', hit: winner.pick.hit }
@@ -99,7 +102,9 @@ export function createSelectionPick(input: SelectionPickPort) {
 				{ evaluationId: query.evaluationId, css: query.css, purpose: 'tool', tool: { kind: query.tool, scope: 'host' }, ...(query.coarse === undefined ? {} : { coarse: query.coarse }) },
 				[...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })),
 				context,
-				evaluation.renderedReading === 'plan' ? 'plan' : '3d'
+				evaluation.renderedReading === 'plan' ? 'plan' : '3d',
+				null,
+				input.subjectScope?.() ?? null
 			);
 			if (winner === null) return { kind: 'none', datumPoint };
 			return { kind: 'hit', adapterId: winner.adapterId, hit: winner.pick.hit, refusal: winner.pick.refusal, datumPoint };

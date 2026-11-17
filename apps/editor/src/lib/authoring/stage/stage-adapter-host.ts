@@ -49,6 +49,15 @@ export type StageAdapterPort = Pick<StageFacade,
  * T2.S3b: the route's session-only light inspection, offered to the Light Card.
  * Entry uses the one Camera's inspection posture; it writes no document value.
  */
+export type StageObjectStudio = {
+	/** Whether the posture can open now (World lens, not already in Studio). */
+	available(): boolean;
+	/** Enter Object Studio on one native form. Writes no document value. */
+	edit(entityId: string):
+		| { readonly kind: 'entered' }
+		| { readonly kind: 'refused'; readonly message: string };
+};
+
 export type StageLightInspection = {
 	enter(lightId: string):
 		| { readonly kind: 'entered' }
@@ -64,6 +73,11 @@ export type StageAdapterServices = {
 	 * that offers no inspection, so the Light Card simply omits its action.
 	 */
 	readonly lightInspection?: StageLightInspection;
+	/**
+	 * The route's Object Studio posture, offered to a form's Card as *Edit in Studio*.
+	 * Absent in tests and hosts that offer no Studio, so the Card simply omits it.
+	 */
+	readonly objectStudio?: StageObjectStudio;
 	/**
 	 * The route's Finish service, filled once the route has built it. A port keeps
 	 * the service and the adapter epoch from depending on each other's creation

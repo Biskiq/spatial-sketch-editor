@@ -6,6 +6,7 @@
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { isSavedBaseToken } from '@portfolio/project-model/save';
 	import { createProjectAuth, createProjectId, ProjectPersistenceError } from '$lib/platform/project-identity';
+	import { studioProjectUrl } from '$lib/platform/studio-entry';
 	import {
 		createProjectApi,
 		type PreparedProjectLifecycle,
@@ -43,6 +44,11 @@
 
 	async function startCreating(): Promise<void> {
 		await goto(projectUrl(createProjectId(), { create: true }));
+	}
+
+	/** A new object opens the same project route in the Object Studio posture. */
+	async function startObject(): Promise<void> {
+		await goto(studioProjectUrl(createProjectId(), { create: true }));
 	}
 
 	async function signIn(): Promise<void> {
@@ -238,7 +244,10 @@
 	<section class="hub-card" aria-labelledby="projects-title">
 		<p class="eyebrow">Project Hub</p>
 		<h1 id="projects-title">Projects</h1>
-		<button type="button" class="primary new-project" onclick={() => void startCreating()}>New Project</button>
+		<div class="new-actions">
+			<button type="button" class="primary" onclick={() => void startCreating()}>New Project</button>
+			<button type="button" data-new-object onclick={() => void startObject()}>New object</button>
+		</div>
 
 		{#if sessionStatus === 'checking'}
 			<p class="status" role="status">Checking sign-in…</p>
@@ -279,7 +288,10 @@
 			{/if}
 		{:else if sessionStatus === 'error'}
 			<p class="status" role="alert">{notice || 'Could not load projects.'}</p>
-			<button type="button" class="primary new-project" onclick={() => void startCreating()}>New Project</button>
+			<div class="new-actions">
+				<button type="button" class="primary" onclick={() => void startCreating()}>New Project</button>
+				<button type="button" data-new-object onclick={() => void startObject()}>New object</button>
+			</div>
 		{:else}
 			<p class="muted">Your work stays in a temporary session until you sign in. No drafts are kept here.</p>
 			<button type="button" disabled={!auth} onclick={() => void signIn()}>Sign in</button>
@@ -301,7 +313,7 @@
 	button:hover:not(:disabled), li a:hover { border-color: #c9a9ff; }
 	button:disabled { cursor: default; opacity: 0.45; }
 	.primary { border-color: #b997f2; background: #8f69c8; color: var(--shell-white); }
-	.new-project { margin-top: 1.25rem; }
+	.new-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.25rem; }
 	.muted, .status { color: #bcb5c4; line-height: 1.45; }
 	.status { color: #e3c4c4; }
 	ul { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
