@@ -6,7 +6,8 @@
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { isSavedBaseToken } from '@portfolio/project-model/save';
 	import { createProjectAuth, createProjectId, ProjectPersistenceError } from '$lib/platform/project-identity';
-	import { PLACE_COPY_PARAM, placeCopyFromSearch, placeCopyProjectUrl, studioProjectUrl } from '$lib/platform/studio-entry';
+	import { PLACE_COPY_PARAM, placeCopyFromSearch, placeCopyNewProjectUrl, placeCopyProjectUrl, studioProjectUrl } from '$lib/platform/studio-entry';
+	import { endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
 	import {
 		createProjectApi,
 		type PreparedProjectLifecycle,
@@ -27,7 +28,20 @@
 	let lifecycleBusyIds = $state<Set<string>>(new Set());
 	let noticeElement = $state<HTMLElement | null>(null);
 	/** A saved object waiting for a destination project (Place copy in World). */
-	const placingItem = placeCopyFromSearch(page.url.searchParams);
+	const placingItem = $derived(placeCopyFromSearch(page.url.searchParams));
+	/** The saved object project this placement came from, when it came from Place copy in World. */
+	let transfer = $state<FormCopyTransfer | null>(peekFormCopyTransfer());
+	/** A New project destination: a fresh World with the copy armed. */
+	async function placeInNewProject(itemId: string): Promise<void> {
+		await goto(placeCopyNewProjectUrl(createProjectId(), itemId));
+	}
+	/** Return to object: reopen the saved source project and root in Object Studio. */
+	async function returnToObject(): Promise<void> {
+		if (transfer === null) return;
+		const back = transfer;
+		await goto(studioProjectUrl(back.sourceProjectId, { load: true, object: back.objectId }));
+		endFormCopyTransfer();
+	}
 	type SavedObject = { readonly id: string; readonly name: string; readonly usable: boolean };
 	let objects = $state<readonly SavedObject[] | null>(null);
 	let objectsStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -277,8 +291,18 @@
 		<h1 id="projects-title">Projects</h1>
 		{#if placingItem !== null}
 			<p class="status placing" role="status" data-placing-copy>
-				Choose the project to place your saved object in. It opens in the World, ready to click into position.
+				Choose where to place your saved object. It opens in the World, ready to click into position.
+				<button type="button" data-place-new-project onclick={() => void placeInNewProject(placingItem!)}>New project</button>
+				{#if transfer !== null}
+					<button type="button" data-transfer-action="return" onclick={() => void returnToObject()}>Return to object</button>
+				{/if}
 				<a href="/projects">Cancel</a>
+			</p>
+		{:else if transfer !== null}
+			<p class="status placing" role="status" data-transfer-pending>
+				Placing <strong>{transfer.objectName}</strong> was cancelled. Your saved object is unchanged.
+				<button type="button" data-transfer-action="return" onclick={() => void returnToObject()}>Return to object</button>
+				<button type="button" data-transfer-action="dismiss" onclick={() => { transfer = null; endFormCopyTransfer(); }}>Stay here</button>
 			</p>
 		{/if}
 		<div class="new-actions">
@@ -305,7 +329,7 @@
 						<li>
 							<span><strong>{project.name}</strong><small>v{project.version} · {modified} · Cloud</small></span>
 							<div class="row-actions">
-								{#if placingItem !== null}
+								{#if placingItem !== null && project.id !== transfer?.sourceProjectId}
 									<a href={placeCopyProjectUrl(project.id, placingItem)} class="place-here" data-place-copy-here aria-label={`Place the saved object in ${project.name}`}>Place here</a>
 								{/if}
 								<a href={projectUrl(project.id, { load: true })}>Open</a>
@@ -341,7 +365,7 @@
 							<span><strong>{item.name}</strong><small>{item.usable ? 'Saved object' : 'Saved in an older format'}</small></span>
 							<div class="row-actions">
 								<button type="button" disabled={!item.usable} data-open-editable-copy onclick={() => void openEditableCopy(item)}>Open editable copy</button>
-								<a href={`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(item.id)}`} aria-disabled={!item.usable}>Place in a project</a>
+								<button type="button" disabled={!item.usable} data-place-in-project onclick={() => void goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(item.id)}`)}>Place in a project</button>
 							</div>
 						</li>
 					{/each}

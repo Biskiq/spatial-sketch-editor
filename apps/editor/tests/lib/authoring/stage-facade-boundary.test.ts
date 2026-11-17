@@ -25,7 +25,7 @@ const allowed = new Map<string, Record<string, readonly string[]>>([
 		'./plan-parameters': ['PLAN_DEFAULT_CUT_HEIGHT_METERS'],
 		'./semantic-selection': ['primaryEntry'],
 		// Object Studio's pick scope: one pure predicate over a session-only cell.
-		'./subject-scope': ['SCOPE_HOST_OWNER', 'scopeAdmitsEntity', 'scopeAdmitsOperation']
+		'./subject-scope': ['SCOPE_HOST_OWNER', 'scopeAdmitsCardAction', 'scopeAdmitsEntity', 'scopeAdmitsOperation']
 	}],
 	[owner('adapter-bindings'), {
 		[camera]: ['intersectWorkingPlane', 'pointerRay', 'projectWorld'],

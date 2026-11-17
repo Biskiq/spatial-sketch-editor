@@ -154,9 +154,10 @@
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 	import type { StageLightInspection, StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
-	import { isStudioOperation } from '$lib/authoring/studio/studio-model';
+	import { isStudioOperation, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
 	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
 	import StudioScopeStrip from '$lib/authoring/studio/StudioScopeStrip.svelte';
+	import StudioTransferStrip from '$lib/authoring/studio/StudioTransferStrip.svelte';
 	import StudioRootPanel from '$lib/authoring/studio/StudioRootPanel.svelte';
 	import { createSubjectScope } from '$lib/authoring/stage/subject-scope';
 	import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
@@ -166,9 +167,12 @@
 		STUDIO_OBJECT_PARAM,
 		PLACE_COPY_PARAM,
 		placeCopyFromSearch,
-		studioEntryFromSearch
+		studioEntryFromSearch,
+		studioProjectUrl
 	} from '$lib/platform/studio-entry';
 	import { requestFormCopyIntake } from '$lib/authoring/adapters/scene/library/intake';
+	import { beginFormCopyTransfer, endFormCopyTransfer, peekFormCopyTransfer, type FormCopyTransfer } from '$lib/authoring/adapters/scene/library/transfer';
+	import { runPlaceCopy } from '$lib/authoring/studio/place-copy-journey';
 
 	installPerfWorkObserver();
 
@@ -673,7 +677,7 @@
 			return true;
 		},
 		setScope: (scope) => {
-			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation });
+			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation, admitsCardAction: (adapterId, subjectId) => studioAdmitsCardAction(scope.entityId, adapterId, subjectId) });
 			clearHover();
 			shell.bumpContributions();
 			facade?.notifySurfaceChange();
@@ -775,33 +779,22 @@
 			}
 		},
 		navigate: (href) => void goto(href),
-		placeCopy: async (rootId) => {
-			const entity = facade?.snapshot().domain.scene.entities.find((entry) => entry.id === rootId);
-			if (entity?.kind !== 'form') {
-				shell.setNotice('That object is no longer in the project; nothing was saved.');
-				return false;
-			}
-			// Save the project first so leaving costs nothing; a failed Save stops here with the
-			// work intact and nothing sent to My Objects.
-			if (headSave?.isDirty()) {
-				const saved = await projectSession.saveBeforeSwitch();
-				if (saved.kind !== 'saved') {
-					shell.setNotice(
-						saved.kind === 'refused' || saved.kind === 'error'
-							? `The project could not be saved: ${saved.message} Nothing was moved; you are still in Object Studio.`
-							: 'The project could not be saved, so nothing was moved. Save it from the Head and try again.'
-					);
-					return false;
-				}
-			}
+		placeCopy: async (rootId, current) => {
 			const { saveFormCopyToMyObjects } = await import('$lib/authoring/adapters/scene/library/save');
-			const result = await saveFormCopyToMyObjects(entity);
-			if (result.kind !== 'saved') {
-				shell.setNotice(`${result.message} The project is saved; try Place copy in World again.`);
-				return false;
-			}
-			await goto(`/projects?place-copy=${encodeURIComponent(result.itemId)}`);
-			return true;
+			if (!current()) return false;
+			const outcome = await runPlaceCopy(rootId, current, {
+				entity: (id) => {
+					const entry = facade?.snapshot().domain.scene.entities.find((candidate) => candidate.id === id);
+					return entry?.kind === 'form' ? entry : null;
+				},
+				isDirty: () => headSave?.isDirty() === true,
+				saveFirst: () => projectSession.saveBeforeSwitch(),
+				saveToLibrary: (entity) => saveFormCopyToMyObjects(entity),
+				beginTransfer: (itemId, name) => beginFormCopyTransfer({ sourceProjectId: projectId, objectId: rootId, objectName: name, itemId }),
+				openChooser: (itemId) => goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`),
+				notice: (message) => shell.setNotice(message)
+			});
+			return outcome === 'navigated';
 		},
 		focusReturn: () => {
 			setTimeout(() => {
@@ -1259,11 +1252,38 @@
 	// Place copy in World: arm the saved copy once the project is on the Stage; the creator
 	// then clicks where it goes, through the same Place session as My Objects.
 	let placeCopyArmed = false;
+	/**
+	 * The way back from a cross-project Place copy, while one is pending. Read once: it
+	 * belongs to this arrival, and a different project's visit never inherits it.
+	 */
+	let transfer = $state<FormCopyTransfer | null>(
+		placeCopyItem !== null && peekFormCopyTransfer()?.itemId === placeCopyItem && peekFormCopyTransfer()?.sourceProjectId !== projectId
+			? peekFormCopyTransfer()
+			: null
+	);
+	let transferBaseline: ReadonlySet<string> | null = null;
+	/** The copy landed (a new form entered the accepted source): the journey is complete. */
+	function settleTransfer(): void {
+		if (transfer === null || transferBaseline === null) return;
+		const entities = facade?.snapshot().domain.scene.entities ?? [];
+		if (!entities.some((entity) => !transferBaseline!.has(entity.id))) return;
+		transfer = null;
+		endFormCopyTransfer();
+	}
+	function returnToObject(): void {
+		if (transfer === null) return;
+		const back = transfer;
+		void goto(studioProjectUrl(back.sourceProjectId, { load: true, object: back.objectId })).then(() => {
+			endFormCopyTransfer();
+		});
+	}
+	const transferArmed = $derived(shell.task !== null || shell.activeWorldTool === 'objects' || shell.libraryOpen);
 	$effect(() => {
 		if (placeCopyItem === null || placeCopyArmed || studioEntry.studio) return;
 		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
 		if (!dockKeys.some((key) => key.slot === 'library')) return;
 		placeCopyArmed = true;
+		transferBaseline = new Set((facade?.snapshot().domain.scene.entities ?? []).map((entity) => entity.id));
 		requestFormCopyIntake(projectId, { itemId: placeCopyItem, mode: 'arm' });
 		untrack(() => commands.armWorldTool('objects'));
 		// One-shot: a reload must not re-arm a copy the creator already placed or dismissed.
@@ -1388,10 +1408,8 @@
 			nameWriter: worldCard.nameWriter,
 			writer: worldCard.writer,
 			// Studio offers only what it owns: no World functions (Paint, Section, Present),
-			// no Look recipes, and no Duplicate/Delete of the root being edited.
-			actions: studio.active
-				? worldCard.actions.filter((action) => action.adapterId === 'scene' && selectionViewView.cardIdentity?.sourceId !== studio.rootId)
-				: worldCard.actions,
+			// no Look recipes; the facade withholds Duplicate/Delete of the root being edited.
+			actions: worldCard.actions,
 			functions: studio.active ? [] : null,
 			kindLink: null,
 			menu: null,
@@ -1468,6 +1486,7 @@
 		commands.syncContributedTask();
 		stageViewport.invalidatePlan();
 		studio?.reconcile();
+		settleTransfer();
 		refresh();
 	}
 
@@ -1989,6 +2008,14 @@
 		style={`--lower-column-height: ${shell.lowerColumnHeight}px; ${experience.lensState === 'experience' ? '--card-right: 10px; ' : ''}${experience.lensState === 'experience' && !experience.guideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${shell.sheetLaneRight}px; --sheet-lane-left: ${shell.sheetLaneLeft}px`}
 		data-index-open={preview === null && shell.indexOpen}
 	>
+		{#if preview === null && experience.lensState === 'world' && transfer !== null && !studio.active && (boot.status === 'ready' || boot.status === 'empty')}
+			<StudioTransferStrip
+				name={transfer.objectName}
+				armed={transferArmed}
+				onReturn={returnToObject}
+				onDismiss={() => { transfer = null; endFormCopyTransfer(); }}
+			/>
+		{/if}
 		{#if preview === null && experience.lensState === 'world' && studio.active}
 			<StudioScopeStrip
 				phase={studio.phase}
@@ -2339,6 +2366,13 @@
 			{:else if boot.status === 'error'}
 				<h1>Project unavailable</h1>
 				<p>{boot.message}</p>
+			{/if}
+			{#if transfer !== null && boot.status !== 'loading'}
+				<!-- A destination that will not load never strands the saved object. -->
+				<p>Your copy of <strong>{transfer.objectName}</strong> is saved in My Objects.</p>
+				<button type="button" onclick={() => window.location.reload()}>Try again</button>
+				<button type="button" class="primary" data-transfer-action="return" onclick={returnToObject}>Return to object</button>
+				<a href="/projects">Back to Projects</a>
 			{/if}
 		</div>
 	{/if}

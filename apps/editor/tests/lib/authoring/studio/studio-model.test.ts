@@ -82,3 +82,13 @@ describe('studio entry addresses', () => {
 		expect(studioEntryFromSearch(new URLSearchParams('entry=other'))).toEqual({ studio: false, objectId: null, copyId: null });
 	});
 });
+
+describe('studioAdmitsCardAction', () => {
+	it('keeps the protected root and every non-Scene owner out, and admits nothing without a root', async () => {
+		const { studioAdmitsCardAction } = await import('../../../../src/lib/authoring/studio/studio-model');
+		expect(studioAdmitsCardAction('root', 'scene', 'root')).toBe(false);
+		expect(studioAdmitsCardAction('root', 'light', 'other')).toBe(false);
+		expect(studioAdmitsCardAction('root', 'scene', 'other')).toBe(true);
+		expect(studioAdmitsCardAction(null, 'scene', 'other')).toBe(false);
+	});
+});

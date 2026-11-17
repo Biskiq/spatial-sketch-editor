@@ -81,6 +81,15 @@ export function isStudioOperation(adapterId: string, id: string): boolean {
 	return STUDIO_OPERATIONS.has(`${adapterId}:${id}`);
 }
 
+/**
+ * The Card actions Object Studio offers a subject: only the Scene's own, and never on
+ * the root being edited (Duplicate and Delete would end or fork the session's subject;
+ * the root leaves Studio only through its own return paths). With no root, none.
+ */
+export function studioAdmitsCardAction(rootId: string | null, adapterId: string, subjectId: string): boolean {
+	return rootId !== null && adapterId === 'scene' && subjectId !== rootId;
+}
+
 /** Eligible roots, in source order. Imported models and primitives are not forms. */
 export function studioRoots(entities: readonly StudioEntityRead[]): readonly StudioRoot[] {
 	return entities

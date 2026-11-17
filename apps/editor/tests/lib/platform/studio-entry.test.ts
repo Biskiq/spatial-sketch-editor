@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { placeCopyFromSearch, placeCopyProjectUrl, studioEntryFromSearch, studioProjectUrl } from '../../../src/lib/platform/studio-entry';
+import { placeCopyFromSearch, placeCopyNewProjectUrl, placeCopyProjectUrl, studioEntryFromSearch, studioProjectUrl } from '../../../src/lib/platform/studio-entry';
 
 const SRC = join(__dirname, '..', '..', '..', 'src');
 
@@ -47,5 +47,11 @@ describe('saved-copy addresses', () => {
 		expect(placeCopyProjectUrl('p', 'i/1')).toBe('/project/p/spatial?load=1&place-copy=i%2F1');
 		expect(placeCopyFromSearch(new URLSearchParams('place-copy=i1'))).toBe('i1');
 		expect(placeCopyFromSearch(new URLSearchParams('place-copy='))).toBeNull();
+	});
+});
+
+describe('new-project Place copy destination', () => {
+	it('mints a fresh World with the copy named, and no source bytes in the address', () => {
+		expect(placeCopyNewProjectUrl('p:1', 'item 1')).toBe('/project/p%3A1/spatial?create=1&place-copy=item%201');
 	});
 });

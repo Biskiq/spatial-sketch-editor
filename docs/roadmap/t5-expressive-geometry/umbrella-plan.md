@@ -474,7 +474,16 @@ placement on entry/return. This deliberately proves the full lifecycle before ne
 Landed as one capability: World-origin scope and direct empty-project entry, `Open in Studio` on
 project rows with explicit root choice, `Open editable copy` from My Objects, and `Place copy in
 World` using the existing immutable form payload and placement path, with the source project saved
-before a cross-project switch (kept in place if Save fails).
+before a cross-project switch (kept in place if Save fails). The destination is an existing or a
+new project, and a cancelled placement, a destination that fails to load or a refresh offers
+**Return to object**.
+
+**Landed deviation, pending owner approval:** the journey specification transports the object as a
+frozen session payload with no library item. The landed capability carries it through a My Objects
+item (the existing verified payload, codec and Place path) because that reuses the form library
+instead of adding a second transport, at the cost of one durable library item per Place copy that the
+creator can remove from My Objects. Moving to a session payload later changes only
+`studio/place-copy-journey.ts` and the intake; no source format is involved.
 
 The [journey specification](./object-studio-design.md) fixes visible actions, pending-edit policy,
 same-project and cross-project placement, direct URL behavior, scope and responsive acceptance.

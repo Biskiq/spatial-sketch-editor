@@ -46,6 +46,11 @@ export function placeCopyProjectUrl(projectId: string, itemId: string): string {
 	return `/project/${encodeURIComponent(projectId)}/spatial?load=1&${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`;
 }
 
+/** A brand-new project's World with one saved copy armed (Place copy in World → New project). */
+export function placeCopyNewProjectUrl(projectId: string, itemId: string): string {
+	return `/project/${encodeURIComponent(projectId)}/spatial?create=1&${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`;
+}
+
 export type StudioEntryRequest = {
 	/** `entry=studio` is present: open in the Studio posture. */
 	readonly studio: boolean;

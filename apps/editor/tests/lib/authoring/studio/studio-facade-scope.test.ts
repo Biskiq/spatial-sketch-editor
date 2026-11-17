@@ -7,7 +7,7 @@ import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createSubjectScope } from '$lib/authoring/stage/subject-scope';
-import { isStudioOperation } from '$lib/authoring/studio/studio-model';
+import { isStudioOperation, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
 import { FIXTURE_PROJECT_ID, buildCurrentSourceFixture } from '../__fixtures__/f4-current-source-fixtures';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -91,6 +91,42 @@ describe('selection scope at the facade', () => {
 			ordered: [{ reference: { domain: 'scene', subject: { kind: 'entity', id: 'other' } } }]
 		} as never);
 		expect(result).toMatchObject({ kind: 'refused', code: 'out-of-scope' });
+		facade.dispose();
+	});
+});
+
+describe('Card action scope at the facade', () => {
+	const subject = (sourceId: string) => ({ sourceId, sourceKind: 'entity', ref: null });
+	async function withActions() {
+		const mounted = await mount();
+		const ran: string[] = [];
+		mounted.facade.registerStageAdapter({
+			id: 'scene',
+			cardActions: (s) => [{
+				id: 'delete', label: 'Delete', destructive: true, detail: 'x',
+				run: async () => { ran.push(s.sourceId); return { kind: 'accepted' as const }; }
+			}],
+			instrument: () => ({ summary: 'scene' })
+		});
+		return { ...mounted, ran };
+	}
+
+	it('offers the actions unscoped', async () => {
+		const { facade, ran } = await withActions();
+		const [action] = facade.cardActions(subject('root'));
+		expect(action?.id).toBe('delete');
+		await action!.run();
+		expect(ran).toEqual(['root']);
+		facade.dispose();
+	});
+
+	it('withholds the protected root’s actions and refuses a record held from before', async () => {
+		const { facade, subjectScope, ran } = await withActions();
+		const [held] = facade.cardActions(subject('root'));
+		subjectScope.set({ entityId: 'root', admitsCardAction: (adapter, id) => studioAdmitsCardAction('root', adapter, id) });
+		expect(facade.cardActions(subject('root'))).toEqual([]);
+		expect(await held!.run()).toMatchObject({ kind: 'refused' });
+		expect(ran).toEqual([]);
 		facade.dispose();
 	});
 });

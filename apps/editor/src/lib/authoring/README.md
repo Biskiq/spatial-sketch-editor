@@ -28,7 +28,14 @@ The spatial route composes the Stage, its adapters and the Experience authoring 
   - **Cross-project reuse uses the library.** *Open editable copy* and *Place copy in World* move an
     immutable form payload through the form library and the Place instrument's ordinary typed
     Place (`adapters/scene/library/intake.ts`); the source project is saved before the switch, and a
-    failed Save or library write keeps the creator in place with a retry message.
+    failed Save or library write keeps the creator in place with a retry message. The journey
+    (`studio/place-copy-journey.ts`) asks the controller's `current()` after every await, so a
+    transfer the creator has moved on from neither navigates nor reports. The destination may be an
+    existing or a new project; `adapters/scene/library/transfer.ts` keeps ids only (tab session
+    storage) so a cancelled placement, a destination that fails to load or a refresh always offers
+    **Return to object**. Contributed Card actions are scoped at the facade
+    (`SubjectScope.admitsCardAction`), so the Card, the Delete key and a held record agree: the root
+    being edited is never duplicated or deleted from inside its own Studio.
 
 Editor machinery must not enter visitor or public chunks. See
 [`docs/reference/architecture.md`](../../../../../docs/reference/architecture.md) and

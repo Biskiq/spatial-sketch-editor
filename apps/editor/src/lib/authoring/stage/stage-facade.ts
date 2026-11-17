@@ -13,7 +13,7 @@ import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from './plan-parameters';
 import { primaryEntry, type StageSelectionChange, type StageSelectionState } from './semantic-selection';
 import type { StageLightPreview } from './stage-light-preview.svelte';
 import type { StageSelection, StageSession, StageTask } from './stage-session';
-import { SCOPE_HOST_OWNER, scopeAdmitsEntity, scopeAdmitsOperation, type SubjectScope, type SubjectScopeCell } from './subject-scope';
+import { SCOPE_HOST_OWNER, scopeAdmitsCardAction, scopeAdmitsEntity, scopeAdmitsOperation, type SubjectScope, type SubjectScopeCell } from './subject-scope';
 
 export { HOST_STAGE_CAPABILITIES, SKIP_REBIND_CONTROL } from './facade/adapter-bindings';
 export { datumWorkingPlane } from './facade/selection-pick';
@@ -107,7 +107,8 @@ export function createStageFacade(input: {
 		lens: session.lens,
 		resizeHandles: session.resizeHandles,
 		setResizeHandles: session.setResizeHandles,
-		adapterForSelection: (entry) => adapterForSelection(adapters, entry)
+		adapterForSelection: (entry) => adapterForSelection(adapters, entry),
+		admitsCardAction: (adapterId, subjectId) => scopeAdmitsCardAction(input.subjectScope?.get() ?? null, adapterId, subjectId)
 	});
 	const picking = createSelectionPick({
 		adapters,

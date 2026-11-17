@@ -249,7 +249,7 @@ describe('place copy in World', () => {
 		release(true);
 		expect(await first).toBe(true);
 		expect(placeCopy).toHaveBeenCalledTimes(1);
-		expect(placeCopy).toHaveBeenCalledWith('a');
+		expect(placeCopy).toHaveBeenCalledWith('a', expect.any(Function));
 		expect(studio.placingCopy).toBe(false);
 	});
 	it('clears the busy state when the journey fails, so the creator can retry', async () => {

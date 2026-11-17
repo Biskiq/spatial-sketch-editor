@@ -64,8 +64,12 @@ export type StudioPorts = {
 	 * Place copy in World: Save the project if needed, save the root to My Objects, and
 	 * open the destination chooser. Reports its own failures through `notice` and
 	 * resolves `true` only when it navigated.
+	 *
+	 * `current()` answers whether this very transfer is still the creator's intent: it
+	 * turns false the moment the root, the posture or the session changes. The port asks
+	 * after every await and never navigates, or reports, for a transfer that is not current.
 	 */
-	placeCopy?(rootId: string): Promise<boolean>;
+	placeCopy?(rootId: string, current: () => boolean): Promise<boolean>;
 	/** Mirror the posture into the address (replaceState); `null` removes it. */
 	syncUrl(state: { readonly objectId: string | null } | null): void;
 	/** Navigate away through the route's existing unsaved guard. */
@@ -97,6 +101,8 @@ export function createStudioController(ports: StudioPorts) {
 	let creating = $state(false);
 	/** A Place-copy journey is saving; the strip shows it and refuses a second start. */
 	let placingCopy = $state(false);
+	/** The one transfer in flight; any posture change drops it so a late result cannot navigate. */
+	let transfer: object | null = null;
 	/** A frame that waited for the root's body to mount; retried on render changes. */
 	let framePending: string | null = null;
 	let creation: CreationRecord | null = null;
@@ -113,6 +119,10 @@ export function createStudioController(ports: StudioPorts) {
 	}
 
 	function applyScope(next: StudioPhase): void {
+		if (transfer !== null && !(next.kind === 'active' && phase.kind === 'active' && next.rootId === phase.rootId)) {
+			transfer = null;
+			placingCopy = false;
+		}
 		phase = next;
 		ports.setScope(pickScopeOf(next));
 	}
@@ -407,11 +417,17 @@ export function createStudioController(ports: StudioPorts) {
 		async placeCopyInWorld(): Promise<boolean> {
 			if (phase.kind !== 'active' || placingCopy || ports.placeCopy === undefined) return false;
 			if (!ports.settlePending()) return false;
+			const mine = {};
+			transfer = mine;
 			placingCopy = true;
 			try {
-				return await ports.placeCopy(phase.rootId);
+				return await ports.placeCopy(phase.rootId, () => transfer === mine);
 			} finally {
-				placingCopy = false;
+				// A transfer that was dropped already reset the flag; a newer one owns it now.
+				if (transfer === mine) {
+					transfer = null;
+					placingCopy = false;
+				}
 			}
 		},
 
