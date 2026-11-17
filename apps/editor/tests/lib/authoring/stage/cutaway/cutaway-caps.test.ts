@@ -149,15 +149,24 @@ describe('X2 cap/seam catalogue', () => {
 				const label = `${fixture.name} cut={${cutIds.join(',')}}`;
 
 				// A T/X where two legs at one Junction are both cut can leave a
-				// partial-overlap collinear T-junction that `sectionMeshes` cannot net;
-				// only the trimmed branch legs close to whole (D12), never the through
-				// leg, and never an open stub.
+				// partial-overlap collinear T-junction that `sectionMeshes` cannot net.
+				// The retry keeps the trimmed branch (the near Wall) cut and closes the
+				// core legs at that Junction to whole; only an untrimmed leg may be
+				// dropped, never the branch and never an open stub.
 				const trimmed = new Set(
 					(geometry.junctions ?? []).flatMap((junction) =>
 						junction.resolution.joins.filter((join) => (join.clipDistance ?? 0) > 0).map((join) => join.wallId)
 					)
 				);
-				for (const wallId of assembly.failedWallIds) expect(trimmed.has(wallId), label).toBe(true);
+				for (const wallId of assembly.failedWallIds) expect(trimmed.has(wallId), label).toBe(false);
+				for (const wallId of cutIds) {
+					if (trimmed.has(wallId)) {
+						expect(
+							assembly.components.some((component) => component.wallIds.includes(wallId)),
+							`${label} keeps the cut branch ${wallId}`
+						).toBe(true);
+					}
+				}
 				expect(assembly.issues, label).toEqual([]);
 				expect(assembly.components.length, label).toBeGreaterThan(0);
 				for (const component of assembly.components) {

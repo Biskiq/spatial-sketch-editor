@@ -201,13 +201,6 @@ export function assembleCutawayCaps(input: {
 		const wall = input.walls.find((candidate) => candidate.wallId === wallId);
 		return wall === undefined ? 0 : (elevationByFloor.get(wall.floorId) ?? 0);
 	};
-	const seamResult = cutawaySeams({
-		junctions: input.junctions,
-		walls: input.walls,
-		cut: input.cut,
-		stubTopY,
-		elevationOfWall
-	});
 	const sourceByWall = new Map<string, SectionInput>();
 	for (const source of input.sources) {
 		const wallId = wallIdOfIdentity(source.identity);
@@ -228,6 +221,15 @@ export function assembleCutawayCaps(input: {
 	}
 
 	function buildComponent(group: string, members: ReadonlySet<string>) {
+		// Seams follow the **attempted** cut set: a leg dropped to whole in a
+		// retry becomes the neighbour its former partner closes against.
+		const seamResult = cutawaySeams({
+			junctions: input.junctions,
+			walls: input.walls,
+			cut: members,
+			stubTopY,
+			elevationOfWall
+		});
 		const sources: SectionInput[] = [];
 		for (const wallId of members) {
 			const source = sourceByWall.get(wallId);
@@ -256,18 +258,27 @@ export function assembleCutawayCaps(input: {
 		const group = `cutaway:${root}`;
 		let active = new Set(wallIds);
 		let attempt = buildComponent(group, active);
-		let trimmed: string[] = [];
+		let dropped: string[] = [];
 		if (attempt?.groupResult?.issue !== null && attempt?.groupResult !== undefined) {
 			// A T/X where two legs at the same Junction are both cut can leave the
 			// section's collinear edges partially overlapping: the branch's end is
-			// a sub-segment of the through Wall's side. `sectionMeshes` does not split
-			// that T-junction, so the component cannot balance. Keep the through leg
-			// cut and close only the trimmed branch legs to whole (D12), never an open
-			// stub and never the whole component when a large part is valid.
-			trimmed = wallIds.filter((wallId) => (trimByWall.get(wallId) ?? 0) > 0);
-			if (trimmed.length > 0 && trimmed.length < active.size) {
-				active = new Set(wallIds.filter((wallId) => !trimmed.includes(wallId)));
-				attempt = buildComponent(group, active);
+			// a sub-segment of the through Wall's side, and `sectionMeshes` does not
+			// split that T-junction. Keep the trimmed branch (the near Wall) cut and
+			// close the core legs at that junction to whole; their body then gives
+			// the branch a seam face, so the stub is closed rather than open.
+			const core = wallIds.filter((wallId) => (trimByWall.get(wallId) ?? 0) === 0);
+			const trimmed = wallIds.filter((wallId) => (trimByWall.get(wallId) ?? 0) > 0);
+			const candidates: string[][] = [core, trimmed];
+			for (const drop of candidates) {
+				if (drop.length === 0 || drop.length >= active.size) continue;
+				const retry = new Set(wallIds.filter((wallId) => !drop.includes(wallId)));
+				const retried = buildComponent(group, retry);
+				if (retried !== null && retried.groupResult !== undefined && retried.groupResult.issue === null) {
+					active = retry;
+					attempt = retried;
+					dropped = drop;
+					break;
+				}
 			}
 		}
 		if (attempt === null || attempt === undefined || attempt.groupResult === undefined) {
@@ -282,7 +293,7 @@ export function assembleCutawayCaps(input: {
 			issues.push(groupResult.issue);
 			continue;
 		}
-		for (const wallId of trimmed) failedWallIds.add(wallId);
+		for (const wallId of dropped) failedWallIds.add(wallId);
 		components.push({
 			group,
 			wallIds: [...active],
