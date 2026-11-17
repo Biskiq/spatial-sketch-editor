@@ -147,6 +147,31 @@ export function lightItAction(
 	};
 }
 
+/**
+ * T2.S3b: the Spot's fixed-eye inspection. Entry is session posture, not a
+ * document write; the route's one Camera session owns the viewpoint. The action
+ * is absent for a Point (no beam), and for a host that offers no inspection port.
+ */
+export function lightLookThroughAction(
+	services: StageAdapterServices,
+	light: Light
+): StageCardAction | null {
+	if (light.light !== 'spot' || services.lightInspection === undefined) return null;
+	return {
+		id: 'light-look-through',
+		label: 'Look through',
+		compactLabel: 'Look through',
+		detail:
+			'Stand at this Spot’s eye and aim its cone. Done writes one aim change; Exit writes nothing.',
+		async run() {
+			const outcome = services.lightInspection!.enter(light.id);
+			return outcome.kind === 'entered'
+				? { kind: 'accepted' as const }
+				: { kind: 'refused' as const, message: outcome.message };
+		}
+	};
+}
+
 export function duplicateLightAction(
 	services: StageAdapterServices,
 	light: Light
@@ -218,7 +243,14 @@ export function lightCardActions(
 	if (subject.reference?.domain !== 'scene') return [];
 	const snapshot = services.stage.snapshot();
 	const light = lightById(snapshot, subject.sourceId);
-	if (light !== null) return [duplicateLightAction(services, light), deleteLightAction(services, light)];
+	if (light !== null) {
+		const lookThrough = lightLookThroughAction(services, light);
+		return [
+			...(lookThrough === null ? [] : [lookThrough]),
+			duplicateLightAction(services, light),
+			deleteLightAction(services, light)
+		];
+	}
 	const lightIt = lightItAction(services, subject);
 	return lightIt === null ? [] : [lightIt];
 }

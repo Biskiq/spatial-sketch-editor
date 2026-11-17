@@ -45,10 +45,25 @@ export type StageAdapterPort = Pick<StageFacade,
 	'lightPreview'
 > & { readonly session: StageTaskPort };
 
+/**
+ * T2.S3b: the route's session-only light inspection, offered to the Light Card.
+ * Entry uses the one Camera's inspection posture; it writes no document value.
+ */
+export type StageLightInspection = {
+	enter(lightId: string):
+		| { readonly kind: 'entered' }
+		| { readonly kind: 'refused'; readonly message: string };
+};
+
 export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
 	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & { registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome };
+	/**
+	 * The route's one Spot Look-through session. Absent in tests and in a host
+	 * that offers no inspection, so the Light Card simply omits its action.
+	 */
+	readonly lightInspection?: StageLightInspection;
 	/**
 	 * The route's Finish service, filled once the route has built it. A port keeps
 	 * the service and the adapter epoch from depending on each other's creation
@@ -126,7 +141,15 @@ export function mountStageAdapter(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
 	factory: StageAdapterFactory,
-	finishes?: () => FinishAuthoring | null
+	finishes?: () => FinishAuthoring | null,
+	/**
+	 * The epoch's one services value, when the caller already composed it (the
+	 * route fills `lightInspection` there). A fresh value is only for a direct
+	 * test mount that has no route-owned ports to carry.
+	 */
+	services?: StageAdapterServices
 ): StageAdapterRegistration {
-	return stage.registerStageAdapter(factory(createStageAdapterServices(stage, host, finishes)));
+	return stage.registerStageAdapter(
+		factory(services ?? createStageAdapterServices(stage, host, finishes))
+	);
 }
