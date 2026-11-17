@@ -20,7 +20,9 @@
 		onChoose,
 		onBackToWorld,
 		onBackToProjects,
-		onOpenInWorld
+		onOpenInWorld,
+		onPlaceCopy,
+		placingCopy = false
 	}: {
 		phase: StudioPhase;
 		origin: StudioOrigin;
@@ -33,6 +35,9 @@
 		onBackToWorld: () => void;
 		onBackToProjects: () => void;
 		onOpenInWorld: () => void;
+		/** Standalone only: send a copy of this object to another project's World. */
+		onPlaceCopy?: () => void;
+		placingCopy?: boolean;
 	} = $props();
 
 	const title = $derived(
@@ -72,6 +77,11 @@
 			</button>
 		{:else}
 			<button type="button" data-studio-action="open-in-world" onclick={onOpenInWorld}>Open in World</button>
+			{#if onPlaceCopy !== undefined && phase.kind === 'active'}
+				<button type="button" data-studio-action="place-copy" disabled={placingCopy} onclick={onPlaceCopy}>
+					{placingCopy ? 'Saving…' : 'Place copy in World'}
+				</button>
+			{/if}
 			<button type="button" class="primary" data-studio-action="back-to-projects" onclick={onBackToProjects}>
 				Back to Projects
 			</button>
@@ -164,7 +174,10 @@
 		}
 	}
 	@media (max-width: 640px) {
+		/* A phone's Card owns the top: the strip rides above the dock instead of covering it. */
 		.studio-strip {
+			top: auto;
+			bottom: calc(76px + env(safe-area-inset-bottom, 0px));
 			width: calc(100% - 1rem);
 		}
 		.actions {

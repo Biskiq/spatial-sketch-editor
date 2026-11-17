@@ -62,6 +62,25 @@ export function isStudioWorldTool(id: string): boolean {
 	return STUDIO_WORLD_TOOLS.includes(id);
 }
 
+/**
+ * The operations Object Studio offers, by owning adapter and operation id: placing a
+ * form, the root's own Compose commands (resize, duplicate, delete), Measure and the
+ * Eraser. Everything else — Layout, Lights, model import, Paint, Slice — stays in the
+ * World. These are the contributed task ids of the Scene adapter and the host tools;
+ * the facade that opens operations refuses the rest, and a test pins each spelling to
+ * its owner's constant so a rename cannot silently widen the scope.
+ */
+const STUDIO_OPERATIONS: ReadonlySet<string> = new Set([
+	'scene:scene-place',
+	'scene:scene-compose',
+	'host:host-measure',
+	'host:host-erase'
+]);
+
+export function isStudioOperation(adapterId: string, id: string): boolean {
+	return STUDIO_OPERATIONS.has(`${adapterId}:${id}`);
+}
+
 /** Eligible roots, in source order. Imported models and primitives are not forms. */
 export function studioRoots(entities: readonly StudioEntityRead[]): readonly StudioRoot[] {
 	return entities

@@ -341,6 +341,12 @@ export type StageFacade = {
 	 * document change.
 	 */
 	notifySurfaceChange(): void;
+	/**
+	 * Whether a session posture (Object Studio) has scoped the Stage. An instrument
+	 * hides what the posture does not offer; the facade still refuses it at the
+	 * owning command boundary.
+	 */
+	postureScoped(): boolean;
 	acquireGesture(request: {
 		owner: string;
 		evaluationId: string;

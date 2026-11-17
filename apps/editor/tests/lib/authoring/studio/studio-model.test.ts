@@ -77,8 +77,8 @@ describe('studio entry addresses', () => {
 		expect(studioProjectUrl('p1', { load: true, object: 'a b' })).toBe('/project/p1/spatial?load=1&entry=studio&object=a%20b');
 	});
 	it('reads the posture only when entry=studio, and the object only with it', () => {
-		expect(studioEntryFromSearch(new URLSearchParams('entry=studio&object=x'))).toEqual({ studio: true, objectId: 'x' });
-		expect(studioEntryFromSearch(new URLSearchParams('object=x'))).toEqual({ studio: false, objectId: null });
-		expect(studioEntryFromSearch(new URLSearchParams('entry=other'))).toEqual({ studio: false, objectId: null });
+		expect(studioEntryFromSearch(new URLSearchParams('entry=studio&object=x'))).toEqual({ studio: true, objectId: 'x', copyId: null });
+		expect(studioEntryFromSearch(new URLSearchParams('object=x'))).toEqual({ studio: false, objectId: null, copyId: null });
+		expect(studioEntryFromSearch(new URLSearchParams('entry=other'))).toEqual({ studio: false, objectId: null, copyId: null });
 	});
 });

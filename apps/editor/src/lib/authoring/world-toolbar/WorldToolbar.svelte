@@ -102,7 +102,13 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		furnish: 'objects'
 	});
 
-	const activeToolData = $derived(worldTool(activeTool));
+	const baseToolData = $derived(worldTool(activeTool));
+	/** Studio words its own Objects row: the Library's furniture and models stay in the World. */
+	const activeToolData = $derived(
+		studio && activeTool === 'objects'
+			? { ...baseToolData, summary: 'Add a new object to this scene.' }
+			: baseToolData
+	);
 	const activeFamily = $derived(familyOf(activeTool));
 	const activeFamilyTools = $derived(activeFamily === null ? [] : familyTools(activeFamily));
 

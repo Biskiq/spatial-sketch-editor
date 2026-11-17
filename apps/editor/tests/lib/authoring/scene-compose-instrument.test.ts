@@ -194,7 +194,10 @@ function servicesFor(
 			evaluationId: () => EVALUATION_ID,
 			session: { task: () => ({ kind: taskKind }) },
 			notifySurfaceChange: notify,
-			setSelection: vi.fn()
+			setSelection: vi.fn(),
+			// Object Studio posture: the World (unscoped) posture this suite exercises.
+			postureScoped: () => false,
+			onAdaptersChanged: () => () => {}
 		}
 	} as unknown as StageAdapterServices;
 	return { services, select: (id) => { selected = id; }, notify };

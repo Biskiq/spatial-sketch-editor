@@ -137,7 +137,8 @@
 		stageFindView,
 		stageInactiveTask,
 		stageTaskHost,
-		type StageHeadFindEntry
+		type StageHeadFindEntry,
+		type StudioFindState
 	} from '$lib/authoring/stage/route/stage-contribution-view';
 	import { createStageShellState } from '$lib/authoring/stage/route/stage-shell-state.svelte';
 	import {
@@ -153,6 +154,7 @@
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 	import type { StageLightInspection, StageObjectStudio } from '$lib/authoring/stage/stage-adapter-host';
+	import { isStudioOperation } from '$lib/authoring/studio/studio-model';
 	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
 	import StudioScopeStrip from '$lib/authoring/studio/StudioScopeStrip.svelte';
 	import StudioRootPanel from '$lib/authoring/studio/StudioRootPanel.svelte';
@@ -162,8 +164,11 @@
 		STUDIO_ENTRY_PARAM,
 		STUDIO_ENTRY_VALUE,
 		STUDIO_OBJECT_PARAM,
+		PLACE_COPY_PARAM,
+		placeCopyFromSearch,
 		studioEntryFromSearch
 	} from '$lib/platform/studio-entry';
+	import { requestFormCopyIntake } from '$lib/authoring/adapters/scene/library/intake';
 
 	installPerfWorkObserver();
 
@@ -171,6 +176,8 @@
 	const intent: BootIntent = bootIntentFromSearch(page.url.searchParams);
 	/** Object Studio is a posture named by `entry=studio`; it is never source. */
 	const studioEntry = studioEntryFromSearch(page.url.searchParams);
+	/** A My Objects item to arm for placing in this project's World (Place copy in World). */
+	const placeCopyItem = placeCopyFromSearch(page.url.searchParams);
 	const subjectScope = createSubjectScope();
 
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
@@ -257,7 +264,14 @@
 
 	const projectSession = createProjectSession({
 		projectId, intent, api, auth, session,
-		url: () => page.url,
+		// Shallow `replaceState` (Studio mirrors its root into the address) does not move
+		// `page.url`; the session rewrites this address when a Save consumes `create=1`, so it
+		// must start from the address actually shown or it would erase the mirrored root.
+		url: () => {
+			if (typeof window === 'undefined') return page.url;
+			const shown = new URL(window.location.href);
+			return shown.pathname === page.url.pathname ? shown : page.url;
+		},
 		acceptance: () => stageEpoch.acceptance,
 		tornDown: () => stageEpoch.tornDown,
 		activate: (snapshot) => stageEpoch.activate(snapshot),
@@ -471,9 +485,10 @@
 	});
 
 	function changeLens(next: 'world' | 'experience'): void {
+		// Experience is the visitor's reading of the same source: Studio's pending task
+		// is resolved and its posture ends first, or the lens stays where it is.
+		if (next !== 'world' && studio !== undefined && !studio.leaveForLens()) return;
 		lightInspection?.cancel();
-		// Experience is the visitor's reading of the same source: Studio's posture ends.
-		if (next !== 'world') studio?.end();
 		experience.changeLens(next);
 	}
 
@@ -500,10 +515,28 @@
 		envelope: currentEnvelope,
 		sceneRooms,
 		selection,
-		planView,
+		// Object Studio's Index is the root alone: the World's rooms and walls are not offered.
+		planView: studio?.active ? null : planView,
 		subjects: locatedSubjects,
 		scope: shell.worldScope
 	}));
+	/** What Find knows of Object Studio: the selected form it can open, and its own entries. */
+	const studioFind = $derived.by((): StudioFindState | null => {
+		if (experience.lensState !== 'world' || preview !== null) return null;
+		void studioRevision;
+		const selectedId =
+			selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null;
+		const selectedForm =
+			selectedId !== null &&
+			(facade?.snapshot().domain.scene.entities ?? []).some((entity) => entity.id === selectedId && entity.kind === 'form');
+		return {
+			active: studio?.active === true,
+			origin: studio?.origin ?? 'world',
+			context: studio?.context ?? 'world',
+			canEdit: selectedForm && studio?.active !== true,
+			rootCount: studio?.roots.length ?? 0
+		};
+	});
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
 	const paintPalette = $derived(finishes.paintPalette());
 	const finishShelf = $derived.by(() => {
@@ -537,7 +570,8 @@
 		lens: experience.lensState,
 		query: shell.findQuery,
 		worldIndex: selectionViewView.worldIndex,
-		dockKeys
+		dockKeys,
+		studio: studioFind
 	}));
 
 	const heightSheet = session.heightSheet();
@@ -600,7 +634,21 @@
 		},
 		showExperienceWelcome: () => experience.showWelcome(),
 		disarmSliceDraw: () => sliceDraw.disarm(),
-		studioActive: () => studio?.active === true
+		studioActive: () => studio?.active === true,
+		runStudioEntry: (id) => {
+			if (id === 'edit') {
+				const selectedId =
+					selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null;
+				if (selectedId !== null) void objectStudioPort.edit(selectedId);
+			} else if (id === 'back-to-world') studio.backToWorld();
+			else if (id === 'back-to-projects') studio.backToProjects();
+			else if (id === 'open-in-world') studio.openInWorld();
+			else if (id === 'new-object-here') studio.newObjectHere();
+			else if (id === 'choose-object') studio.openChooser();
+			else if (id === 'context-world') studio.setContext('world');
+			else if (id === 'context-mat') studio.setContext('mat');
+			else if (id === 'new-object-project') void goto('/studio');
+		}
 	});
 
 	studio = createStudioController({
@@ -625,7 +673,7 @@
 			return true;
 		},
 		setScope: (scope) => {
-			subjectScope.set(scope);
+			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation });
 			clearHover();
 			shell.bumpContributions();
 			facade?.notifySurfaceChange();
@@ -727,6 +775,34 @@
 			}
 		},
 		navigate: (href) => void goto(href),
+		placeCopy: async (rootId) => {
+			const entity = facade?.snapshot().domain.scene.entities.find((entry) => entry.id === rootId);
+			if (entity?.kind !== 'form') {
+				shell.setNotice('That object is no longer in the project; nothing was saved.');
+				return false;
+			}
+			// Save the project first so leaving costs nothing; a failed Save stops here with the
+			// work intact and nothing sent to My Objects.
+			if (headSave?.isDirty()) {
+				const saved = await projectSession.saveBeforeSwitch();
+				if (saved.kind !== 'saved') {
+					shell.setNotice(
+						saved.kind === 'refused' || saved.kind === 'error'
+							? `The project could not be saved: ${saved.message} Nothing was moved; you are still in Object Studio.`
+							: 'The project could not be saved, so nothing was moved. Save it from the Head and try again.'
+					);
+					return false;
+				}
+			}
+			const { saveFormCopyToMyObjects } = await import('$lib/authoring/adapters/scene/library/save');
+			const result = await saveFormCopyToMyObjects(entity);
+			if (result.kind !== 'saved') {
+				shell.setNotice(`${result.message} The project is saved; try Place copy in World again.`);
+				return false;
+			}
+			await goto(`/projects?place-copy=${encodeURIComponent(result.itemId)}`);
+			return true;
+		},
 		focusReturn: () => {
 			setTimeout(() => {
 				const card = document.querySelector<HTMLElement>('[data-editor-card], .card');
@@ -902,6 +978,7 @@
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
+		leaveStudio: () => studio.active && studio.backToWorld(),
 		liftActive: () => interiorLift.isActive(),
 		putBackLift: () => interiorLift.putBack(),
 		sliceDraftActive: () => sliceDraw.hasDraft(),
@@ -1172,7 +1249,29 @@
 		if (!studioEntry.studio || studioOpened) return;
 		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
 		studioOpened = true;
+		// Open editable copy: only a freshly minted project takes it, at the datum, through
+		// the Place instrument's ordinary typed Place.
+		if (studioEntry.copyId !== null && intent === 'create') {
+			requestFormCopyIntake(projectId, { itemId: studioEntry.copyId, mode: 'datum' });
+		}
 		untrack(() => studio.openFromEntry({ objectId: studioEntry.objectId, minted: intent === 'create' }));
+	});
+	// Place copy in World: arm the saved copy once the project is on the Stage; the creator
+	// then clicks where it goes, through the same Place session as My Objects.
+	let placeCopyArmed = false;
+	$effect(() => {
+		if (placeCopyItem === null || placeCopyArmed || studioEntry.studio) return;
+		if ((boot.status !== 'ready' && boot.status !== 'empty') || facade === null) return;
+		if (!dockKeys.some((key) => key.slot === 'library')) return;
+		placeCopyArmed = true;
+		requestFormCopyIntake(projectId, { itemId: placeCopyItem, mode: 'arm' });
+		untrack(() => commands.armWorldTool('objects'));
+		// One-shot: a reload must not re-arm a copy the creator already placed or dismissed.
+		const url = new URL(window.location.href);
+		if (url.searchParams.has(PLACE_COPY_PARAM)) {
+			url.searchParams.delete(PLACE_COPY_PARAM);
+			replaceState(`${url.pathname}${url.search}`, {});
+		}
 	});
 	$effect(() => {
 		if (!studioArmPending) return;
@@ -1288,8 +1387,12 @@
 			facts: worldCard.facts,
 			nameWriter: worldCard.nameWriter,
 			writer: worldCard.writer,
-			actions: worldCard.actions,
-			functions: null,
+			// Studio offers only what it owns: no World functions (Paint, Section, Present),
+			// no Look recipes, and no Duplicate/Delete of the root being edited.
+			actions: studio.active
+				? worldCard.actions.filter((action) => action.adapterId === 'scene' && selectionViewView.cardIdentity?.sourceId !== studio.rootId)
+				: worldCard.actions,
+			functions: studio.active ? [] : null,
 			kindLink: null,
 			menu: null,
 			back: null,
@@ -1899,6 +2002,8 @@
 				onBackToWorld={() => studio.backToWorld()}
 				onBackToProjects={() => studio.backToProjects()}
 				onOpenInWorld={() => studio.openInWorld()}
+				onPlaceCopy={() => void studio.placeCopyInWorld()}
+				placingCopy={studio.placingCopy}
 			/>
 			<StudioRootPanel
 				phase={studio.phase}

@@ -11,7 +11,16 @@
  *
  * `null` is "not scoped". `{ entityId: null }` reaches nothing.
  */
-export type SubjectScope = { readonly entityId: string | null };
+export type SubjectScope = {
+	readonly entityId: string | null;
+	/**
+	 * The operations the posture offers, by owning adapter and operation id (a task, a
+	 * Find entry or a host tool). Absent means every operation. The Stage facade — the
+	 * owner of opening them — refuses the rest, so a shortcut, Find or a stale button
+	 * cannot reach what the dock does not show.
+	 */
+	readonly admitsOperation?: (adapterId: string, id: string) => boolean;
+};
 
 export type SubjectScopeCell = {
 	get(): SubjectScope | null;
@@ -30,3 +39,15 @@ export function createSubjectScope(): SubjectScopeCell {
 export function scopeAdmitsEntity(scope: SubjectScope | null, entityId: string | null): boolean {
 	return scope === null || (scope.entityId !== null && scope.entityId === entityId);
 }
+
+/** Whether an operation (task, Find entry or host tool) is inside the scope. */
+export function scopeAdmitsOperation(scope: SubjectScope | null, adapterId: string, id: string): boolean {
+	return scope === null || scope.admitsOperation === undefined || scope.admitsOperation(adapterId, id);
+}
+
+/**
+ * The owner name host tools (Measure, Eraser, Paint) carry in `admitsOperation`. It
+ * is the host adapter's id, spelled here because the facade may not import the
+ * contribution module; a test pins the two together.
+ */
+export const SCOPE_HOST_OWNER = 'host';

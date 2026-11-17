@@ -29,6 +29,7 @@ import type {
 import {
 	PAPER_LAYER,
 	datumWorkingPlane,
+	scopeAdmitsEntity,
 	stageEnvelope,
 	stageScene
 } from '$lib/authoring/stage/stage-adapter-host';
@@ -341,6 +342,8 @@ export function createSceneContributions(
 							label: 'Edit in Studio',
 							compactLabel: 'Studio',
 							group: 'primary' as const,
+							// Directly discoverable in the Card foot, not only behind the overflow.
+							inline: true,
 							detail: `Open ${entity.name} in Object Studio. Nothing changes until you edit.`,
 							async run() {
 								const outcome = studio.edit(entity.id);
@@ -424,6 +427,10 @@ export function createSceneContributions(
 			const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
 			const ray = live.ray(css);
 			if (ray === null) return null;
+			// Object Studio's scope is this domain's own policy: candidates outside it are
+			// never offered, so a valid hit behind a muted body is still the answer.
+			const scope = live.subjectScope?.() ?? null;
+			const admitted = (id: string): boolean => scopeAdmitsEntity(scope, id);
 			const drawn = live.pickScene(ray);
 			if (drawn?.kind === 'layout' || drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan') return null;
 			// Measure admits rendered bounds corners independently of a surface hit.
@@ -433,7 +440,7 @@ export function createSceneContributions(
 				let nearest = 8;
 				let cornerHit: StageDomainPick | null = null;
 				for (const entity of source.entities) {
-					if (entity.kind === 'light') continue;
+					if (entity.kind === 'light' || !admitted(entity.id)) continue;
 					const bounds = live.sceneBounds(entity.id);
 					if (bounds === null) continue;
 					for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
@@ -461,7 +468,7 @@ export function createSceneContributions(
 				if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
 				const point: [number, number] = [hit.worldPoint[0], hit.worldPoint[2]];
 				const planHit = pickPlanSceneSubject({
-					footprints,
+					footprints: scope === null ? footprints : footprints.filter((footprint) => admitted(footprint.entityId)),
 					point,
 					edgeHaloMeters: 6 * live.evaluation.targetPlaneMetersPerCssPixel,
 					datumMeters: live.snapshot.domain.datumMeters,

@@ -227,7 +227,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			const binding: StageAdapterBinding = {
-				pick,
+				// Object Studio scopes picking to one Scene root; Layout's walls, surfaces and
+				// openings are the muted architectural context there, so it offers no candidate.
+				pick: (query, adapterContext) => (adapterContext.subjectScope?.() != null ? null : pick(query, adapterContext)),
 				...contributions,
 				keyIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.key(intent, adapterContext);

@@ -383,10 +383,12 @@ describe('the editor host boots into exactly one named state', () => {
 				minted: 'projectUrl(createProjectId(), { create: true })',
 				flags: 2
 			},
+			// The hub's third mint is "Open editable copy": a new Studio project that carries one
+			// saved My Objects item to place at the datum.
 			{
 				file: join(EDITOR_SRC, 'routes', 'projects', '+page.svelte'),
 				minted: 'projectUrl(createProjectId(), { create: true })',
-				flags: 2
+				flags: 3
 			},
 			// The standalone launcher mints exactly one Studio-posture project.
 			{

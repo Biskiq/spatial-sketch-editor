@@ -13,6 +13,7 @@ export { roomLabelFacts } from './room-labels';
 export { axisTravelFromRay } from './stage-axis-travel';
 export { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingCoordinate, snapDraftingPlacement, snapDraftingPoint } from './stage-drafting';
 export { isStageDrag } from './stage-input';
+export { scopeAdmitsEntity } from './subject-scope';
 export { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from './unit-stage-source';
 export { PAPER_LAYER, buildPaperPlan, unionOutline } from './paper-plan';
 export { compactMeasure } from './shell/compact-measure';
@@ -41,7 +42,7 @@ export type StageAdapterPort = Pick<StageFacade,
 	'snapshot' | 'evaluation' | 'evaluationId' | 'plan' | 'heightSheet' | 'heightTicks' |
 	'resolvePick' | 'hitMark' | 'selection' | 'selectionState' | 'setSelection' | 'select' |
 	'drafting' | 'sceneBounds' | 'onAdaptersChanged' | 'inkReadings' | 'openInkReading' |
-	'openContributedTask' | 'closeTask' | 'notifySurfaceChange' | 'acquireGesture' |
+	'openContributedTask' | 'closeTask' | 'notifySurfaceChange' | 'postureScoped' | 'acquireGesture' |
 	'lightPreview'
 > & { readonly session: StageTaskPort };
 

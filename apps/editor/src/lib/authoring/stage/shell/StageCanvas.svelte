@@ -285,6 +285,8 @@ import StageMatGround from './StageMatGround.svelte';
 			? renderScene
 			: { ...renderScene, entities: renderScene.entities.filter((entity) => entity.id !== artworkGhost.id) }
 	);
+	/** The architectural shell's group: Studio's World context mutes it like the other bodies. */
+	let layoutGroup = $state.raw<Object3D | null>(null);
 	/** The Studio mat unmounts everything but the scoped root: unmounted roots cannot be picked. */
 	const matStudio = $derived(studio?.context === 'mat');
 	const drawnScene = $derived(
@@ -444,7 +446,11 @@ import StageMatGround from './StageMatGround.svelte';
 	{#if dial}<StageCelestialDial {dial} />{/if}
 	<StageShadowTriggers sunKey={sunShadowKey(environmentShown ? worldEnvironmentLook(sky) : null, { bounds: snapshotBounds, shadowBounds, groundY: datumMeters, flatGround: true })} {geometry} {scene} {lightPreview} {modelUrls} {formRenderRevision} />
 	{#if !matStudio}
-	<T.Group oncreate={scenePick.registerLayout}>
+	<T.Group oncreate={(group) => {
+		layoutGroup = group;
+		const release = scenePick.registerLayout(group);
+		return () => { if (layoutGroup === group) layoutGroup = null; release?.(); };
+	}}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
 			treatment={scene.environment?.treatment}
@@ -471,7 +477,8 @@ import StageMatGround from './StageMatGround.svelte';
 			{scenePick}
 			entityIds={entityScene.entities.map((entity) => entity.id)}
 			scopedId={studio.rootId}
-			revision={sceneRootRevision + entityRenderRevision}
+			contextRoots={layoutGroup === null ? [] : [layoutGroup]}
+			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
 		/>
 	{/if}
 	<StageEntities

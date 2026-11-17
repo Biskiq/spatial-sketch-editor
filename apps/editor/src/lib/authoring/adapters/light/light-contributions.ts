@@ -83,6 +83,8 @@ export function createLightContributions(deps: LightContributionDeps): LightCont
 			worldPoint: entity.position
 		})),
 		pick(candidate, live) {
+			// A Light is not a form root: Object Studio's scope reaches no Light.
+			if (live.subjectScope?.() != null) return null;
 			const nearest = lightGlyphAt(candidate.css, live);
 			if (nearest === null) return null;
 			return {

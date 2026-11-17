@@ -11,10 +11,24 @@ The spatial route composes the Stage, its adapters and the Experience authoring 
   respective domains; shared domain semantics belong in the corresponding packages.
 - `f4/` owns editor acceptance and history; authored edits pass through that authority.
 - `studio/` is Object Studio: a session-only posture over the same Stage, Camera, selection, history
-  and Save. It scopes picking to one native form (`stage/subject-scope.ts`) and mutes or hides the
-  rest; it owns no source, Camera, history or document and serializes nothing. Entry is
+  and Save. It owns no source, Camera, history or document and serializes nothing. Entry is
   `…/spatial?entry=studio&object=<id>` (`lib/platform/studio-entry.ts`, import-free so `/`, `/projects`
-  and `/studio` stay Three-free). Cross-project placement and the full resume/library journeys are T5.2.
+  and `/studio` stay Three-free). Rules that hold for every Studio change:
+  - **Scope has owning boundaries.** One `SubjectScope` (`stage/subject-scope.ts`) is read, never
+    copied: each domain adapter drops its own out-of-scope pick candidates (the host adds no
+    post-filter, so a valid hit behind muted context is still reached and arbitration is
+    unchanged); the facade refuses out-of-scope tasks, Find entries, host tools and selections
+    (`out-of-scope`), so Find, ⌘K and the dock cannot reach what the posture hides. Instruments read
+    the posture through `services.stage.postureScoped()`, never through a route service.
+  - **Presentation is session-only.** World context mutes others with cloned materials, Mat context
+    unmounts them; shared render resources are never mutated.
+  - **Pending work settles or refuses before any transition** (root switch, lens change, return,
+    navigation); nothing is silently dropped. Escape unwinds gesture, task and tool first, then a
+    World-entered Studio; a standalone Studio leaves through Back to Projects.
+  - **Cross-project reuse uses the library.** *Open editable copy* and *Place copy in World* move an
+    immutable form payload through the form library and the Place instrument's ordinary typed
+    Place (`adapters/scene/library/intake.ts`); the source project is saved before the switch, and a
+    failed Save or library write keeps the creator in place with a retry message.
 
 Editor machinery must not enter visitor or public chunks. See
 [`docs/reference/architecture.md`](../../../../../docs/reference/architecture.md) and

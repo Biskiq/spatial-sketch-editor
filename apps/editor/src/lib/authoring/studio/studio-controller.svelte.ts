@@ -60,6 +60,12 @@ export type StudioPorts = {
 	/** Settle or discard uncommitted input before leaving; `false` blocks the exit. */
 	settlePending(): boolean;
 	notice(message: string): void;
+	/**
+	 * Place copy in World: Save the project if needed, save the root to My Objects, and
+	 * open the destination chooser. Reports its own failures through `notice` and
+	 * resolves `true` only when it navigated.
+	 */
+	placeCopy?(rootId: string): Promise<boolean>;
 	/** Mirror the posture into the address (replaceState); `null` removes it. */
 	syncUrl(state: { readonly objectId: string | null } | null): void;
 	/** Navigate away through the route's existing unsaved guard. */
@@ -89,6 +95,8 @@ export function createStudioController(ports: StudioPorts) {
 	let origin = $state<StudioOrigin>('standalone');
 	let context = $state<StudioContext>('mat');
 	let creating = $state(false);
+	/** A Place-copy journey is saving; the strip shows it and refuses a second start. */
+	let placingCopy = $state(false);
 	/** A frame that waited for the root's body to mount; retried on render changes. */
 	let framePending: string | null = null;
 	let creation: CreationRecord | null = null;
@@ -158,12 +166,24 @@ export function createStudioController(ports: StudioPorts) {
 		}
 	}
 
+	function endPosture(): void {
+		if (phase.kind === 'inactive') return;
+		creating = false;
+		creation = null;
+		framePending = null;
+		returning = null;
+		lastRoot = null;
+		applyScope({ kind: 'inactive' });
+		ports.syncUrl(null);
+	}
+
 	return {
 		get phase(): StudioPhase { return phase; },
 		get active(): boolean { return phase.kind !== 'inactive'; },
 		get origin(): StudioOrigin { return origin; },
 		get context(): StudioContext { return context; },
 		get creating(): boolean { return creating; },
+		get placingCopy(): boolean { return placingCopy; },
 		get rootId(): string | null { return phase.kind === 'active' ? phase.rootId : null; },
 		get rootName(): string | null { return phase.kind === 'active' ? rootName(phase.rootId) : null; },
 		get roots(): readonly StudioRoot[] { return rootList; },
@@ -184,6 +204,9 @@ export function createStudioController(ports: StudioPorts) {
 				return false;
 			}
 			if (phase.kind !== 'inactive') return false;
+			// Finish or cancel a pending stroke or manipulation first: entry changes scope,
+			// not source, and must not carry a gesture into the new posture.
+			if (!ports.settlePending()) return false;
 			origin = 'world';
 			context = 'world';
 			returning = {
@@ -377,6 +400,21 @@ export function createStudioController(ports: StudioPorts) {
 			ports.navigate('/projects');
 		},
 
+		/**
+		 * Standalone origin: send a copy of the scoped object to another project's World.
+		 * Pending input settles first; a second press while saving does nothing.
+		 */
+		async placeCopyInWorld(): Promise<boolean> {
+			if (phase.kind !== 'active' || placingCopy || ports.placeCopy === undefined) return false;
+			if (!ports.settlePending()) return false;
+			placingCopy = true;
+			try {
+				return await ports.placeCopy(phase.rootId);
+			} finally {
+				placingCopy = false;
+			}
+		},
+
 		/** Standalone origin: continue in the ordinary World with the same project. */
 		openInWorld(): boolean {
 			if (phase.kind === 'inactive') return false;
@@ -394,17 +432,19 @@ export function createStudioController(ports: StudioPorts) {
 			return true;
 		},
 
-		/** The Experience lens, a replaced project or a refused load ends the posture. */
-		end(): void {
-			if (phase.kind === 'inactive') return;
-			creating = false;
-			creation = null;
-			framePending = null;
-			returning = null;
-			lastRoot = null;
-			applyScope({ kind: 'inactive' });
-			ports.syncUrl(null);
-		}
+		/**
+		 * Choosing the Experience lens: resolve the pending task first, then end the
+		 * posture. `false` means a gesture is still running and the lens must not change.
+		 */
+		leaveForLens(): boolean {
+			if (phase.kind === 'inactive') return true;
+			if (!ports.settlePending()) return false;
+			endPosture();
+			return true;
+		},
+
+		/** A replaced project or a refused load ends the posture. */
+		end: endPosture
 	};
 }
 

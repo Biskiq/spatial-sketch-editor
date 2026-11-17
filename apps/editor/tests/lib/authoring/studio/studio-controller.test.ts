@@ -205,3 +205,66 @@ describe('forms added from inside Studio', () => {
 		expect(calls.fit).not.toHaveBeenCalled();
 	});
 });
+
+describe('pending work at the boundaries', () => {
+	it('refuses to enter Studio from the World while a gesture cannot settle, and stays in the World', () => {
+		const { studio, state, calls } = harness([form('a')]);
+		state.pending = false;
+		expect(studio.enterFromWorld('a', 'card-edit')).toBe(false);
+		expect(studio.active).toBe(false);
+		expect(state.scope).toBeNull();
+		expect(calls.fit).not.toHaveBeenCalled();
+	});
+	it('leaves for another lens only when pending work settles, then ends the posture without moving the view', () => {
+		const { studio, state, calls } = harness([form('a')]);
+		studio.enterFromWorld('a', null);
+		state.pending = false;
+		expect(studio.leaveForLens()).toBe(false);
+		expect(studio.active).toBe(true);
+		state.pending = true;
+		expect(studio.leaveForLens()).toBe(true);
+		expect(studio.active).toBe(false);
+		expect(state.scope).toBeNull();
+		expect(calls.restore).not.toHaveBeenCalled();
+	});
+	it('is a no-op success when Studio is not active', () => {
+		const { studio } = harness([form('a')]);
+		expect(studio.leaveForLens()).toBe(true);
+	});
+});
+
+describe('place copy in World', () => {
+	it('settles first, sends the active root once, and ignores a second press while saving', async () => {
+		let release: (value: boolean) => void = () => {};
+		const placeCopy = vi.fn(() => new Promise<boolean>((resolve) => { release = resolve; }));
+		const { studio, state } = harness([form('a')], { placeCopy });
+		studio.openFromEntry({ objectId: 'a', minted: false });
+		state.pending = false;
+		expect(await studio.placeCopyInWorld()).toBe(false);
+		expect(placeCopy).not.toHaveBeenCalled();
+		state.pending = true;
+		const first = studio.placeCopyInWorld();
+		expect(studio.placingCopy).toBe(true);
+		expect(await studio.placeCopyInWorld()).toBe(false);
+		release(true);
+		expect(await first).toBe(true);
+		expect(placeCopy).toHaveBeenCalledTimes(1);
+		expect(placeCopy).toHaveBeenCalledWith('a');
+		expect(studio.placingCopy).toBe(false);
+	});
+	it('clears the busy state when the journey fails, so the creator can retry', async () => {
+		const placeCopy = vi.fn(async () => false);
+		const { studio } = harness([form('a')], { placeCopy });
+		studio.openFromEntry({ objectId: 'a', minted: false });
+		expect(await studio.placeCopyInWorld()).toBe(false);
+		expect(studio.placingCopy).toBe(false);
+		expect(await studio.placeCopyInWorld()).toBe(false);
+		expect(placeCopy).toHaveBeenCalledTimes(2);
+	});
+	it('does nothing without an active root', async () => {
+		const placeCopy = vi.fn(async () => true);
+		const { studio } = harness([], { placeCopy });
+		expect(await studio.placeCopyInWorld()).toBe(false);
+		expect(placeCopy).not.toHaveBeenCalled();
+	});
+});

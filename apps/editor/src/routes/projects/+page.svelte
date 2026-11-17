@@ -6,7 +6,7 @@
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { isSavedBaseToken } from '@portfolio/project-model/save';
 	import { createProjectAuth, createProjectId, ProjectPersistenceError } from '$lib/platform/project-identity';
-	import { studioProjectUrl } from '$lib/platform/studio-entry';
+	import { PLACE_COPY_PARAM, placeCopyFromSearch, placeCopyProjectUrl, studioProjectUrl } from '$lib/platform/studio-entry';
 	import {
 		createProjectApi,
 		type PreparedProjectLifecycle,
@@ -26,6 +26,36 @@
 	let busy = $state(false);
 	let lifecycleBusyIds = $state<Set<string>>(new Set());
 	let noticeElement = $state<HTMLElement | null>(null);
+	/** A saved object waiting for a destination project (Place copy in World). */
+	const placingItem = placeCopyFromSearch(page.url.searchParams);
+	type SavedObject = { readonly id: string; readonly name: string; readonly usable: boolean };
+	let objects = $state<readonly SavedObject[] | null>(null);
+	let objectsStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
+	let objectsNotice = $state('');
+
+	/** My Objects, read through the same verified client the editor uses; loaded only once signed in. */
+	async function loadObjects(): Promise<void> {
+		if (!apiOrigin || objectsStatus === 'loading') return;
+		objectsStatus = 'loading';
+		objectsNotice = '';
+		try {
+			const [{ createFormLibraryClient }, { FORM_LIBRARY_PAYLOAD_FORMAT_VERSION }] = await Promise.all([
+				import('$lib/authoring/adapters/scene/library/client'),
+				import('@portfolio/project-model/library')
+			]);
+			const listed = await createFormLibraryClient({ apiOrigin }).list();
+			objects = listed.map((item) => ({ id: item.id, name: item.name, usable: item.formatVersion === FORM_LIBRARY_PAYLOAD_FORMAT_VERSION }));
+			objectsStatus = 'ready';
+		} catch (error) {
+			objectsStatus = 'error';
+			objectsNotice = error instanceof Error && error.message !== '' ? error.message : 'My Objects could not be loaded.';
+		}
+	}
+
+	/** Open editable copy: a new project in Object Studio with the saved object placed at the datum. */
+	async function openEditableCopy(item: SavedObject): Promise<void> {
+		await goto(studioProjectUrl(createProjectId(), { create: true, copy: item.id }));
+	}
 
 	/**
 	 * The spatial route for one project, with its explicit entry flags.
@@ -201,6 +231,7 @@
 				return;
 			}
 			sessionStatus = 'authenticated';
+			void loadObjects();
 			const listed = await api.listProjects(signal);
 			// Strict Hub: owned cloud projects by last modification descending.
 			projects = [...listed].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
@@ -244,6 +275,12 @@
 	<section class="hub-card" aria-labelledby="projects-title">
 		<p class="eyebrow">Project Hub</p>
 		<h1 id="projects-title">Projects</h1>
+		{#if placingItem !== null}
+			<p class="status placing" role="status" data-placing-copy>
+				Choose the project to place your saved object in. It opens in the World, ready to click into position.
+				<a href="/projects">Cancel</a>
+			</p>
+		{/if}
 		<div class="new-actions">
 			<button type="button" class="primary" onclick={() => void startCreating()}>New Project</button>
 			<button type="button" data-new-object onclick={() => void startObject()}>New object</button>
@@ -268,7 +305,11 @@
 						<li>
 							<span><strong>{project.name}</strong><small>v{project.version} · {modified} · Cloud</small></span>
 							<div class="row-actions">
+								{#if placingItem !== null}
+									<a href={placeCopyProjectUrl(project.id, placingItem)} class="place-here" data-place-copy-here aria-label={`Place the saved object in ${project.name}`}>Place here</a>
+								{/if}
 								<a href={projectUrl(project.id, { load: true })}>Open</a>
+								<a href={studioProjectUrl(project.id, { load: true })} data-open-in-studio aria-label={`Open ${project.name} in Object Studio`}>Open in Studio</a>
 								<ProjectLifecycleActions
 									projectId={project.id}
 									projectName={project.name}
@@ -281,6 +322,26 @@
 									onComplete={(result) => lifecycleCompleted(project.id, result)}
 									onRefreshRemote={async () => { await bootstrap(new AbortController().signal); }}
 								/>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			<h2>My Objects</h2>
+			{#if objectsStatus === 'loading' || objectsStatus === 'idle'}
+				<p class="muted" role="status">Loading My Objects…</p>
+			{:else if objectsStatus === 'error'}
+				<p class="status" role="alert">{objectsNotice} <button type="button" onclick={() => void loadObjects()}>Try again</button></p>
+			{:else if objects === null || objects.length === 0}
+				<p class="muted">Nothing saved yet. Save an object to My Objects from its Card in Object Studio or the World.</p>
+			{:else}
+				<ul data-my-objects-list>
+					{#each objects as item (item.id)}
+						<li>
+							<span><strong>{item.name}</strong><small>{item.usable ? 'Saved object' : 'Saved in an older format'}</small></span>
+							<div class="row-actions">
+								<button type="button" disabled={!item.usable} data-open-editable-copy onclick={() => void openEditableCopy(item)}>Open editable copy</button>
+								<a href={`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(item.id)}`} aria-disabled={!item.usable}>Place in a project</a>
 							</div>
 						</li>
 					{/each}

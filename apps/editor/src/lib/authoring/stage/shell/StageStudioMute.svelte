@@ -19,14 +19,17 @@
 		scenePick,
 		entityIds,
 		scopedId,
+		contextRoots = [],
 		revision
 	}: {
 		scenePick: ScenePickSource;
 		/** Every entity id the Scene draws; the scoped root is skipped. */
 		entityIds: readonly string[];
 		scopedId: string | null;
+		/** Non-entity context drawn quiet too: the architectural shell (walls, floors, openings). */
+		contextRoots?: readonly Object3D[];
 		/** Bumped when a root or its lazy body arrives; applies the mute to new meshes. */
-		revision: number;
+		revision: number | string;
 	} = $props();
 
 	const { invalidate } = useThrelte();
@@ -79,6 +82,10 @@
 				muted.add(root);
 				apply(root);
 			}
+		}
+		for (const root of contextRoots) {
+			muted.add(root);
+			apply(root);
 		}
 		// A body that became the scoped root (or unmounted) is released.
 		for (const [mesh, record] of [...applied]) {

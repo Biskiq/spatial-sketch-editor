@@ -16,6 +16,29 @@ import type { SceneFormEntity } from '@portfolio/project-model';
 import type { StageCardActionOutcome } from '$lib/authoring/stage/stage-adapter-host';
 import { FormLibraryClientError, createFormLibraryClient, type FormLibraryClient } from './client';
 
+/**
+ * The same save, reporting the saved item so a journey can name it (Place copy in
+ * World). Never throws: a refusal is words, and a lost response never claims nothing
+ * was stored.
+ */
+export async function saveFormCopyToMyObjects(
+	entity: SceneFormEntity,
+	options: { readonly client?: FormLibraryClient } = {}
+): Promise<
+	| { readonly kind: 'saved'; readonly itemId: string; readonly name: string }
+	| { readonly kind: 'refused'; readonly message: string }
+> {
+	const client =
+		options.client ?? createFormLibraryClient({ apiOrigin: env.PUBLIC_API_ORIGIN ?? '' });
+	try {
+		const summary = await client.save(formLibraryPayloadFromEntity(entity));
+		return { kind: 'saved', itemId: summary.id, name: summary.name };
+	} catch (cause) {
+		if (cause instanceof FormLibraryClientError) return { kind: 'refused', message: cause.message };
+		return { kind: 'refused', message: 'The save could not be confirmed; refresh My Objects before retrying.' };
+	}
+}
+
 export async function saveFormToMyObjects(
 	entity: SceneFormEntity,
 	options: { readonly client?: FormLibraryClient } = {}

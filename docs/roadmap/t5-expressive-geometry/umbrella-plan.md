@@ -471,18 +471,10 @@ core creator journey for `studio.solid-combine` or any other product capability.
 reuses it in another project, and edits an existing World form without changing its identity or
 placement on entry/return. This deliberately proves the full lifecycle before new geometry.
 
-Implement in two small PRs if needed, keeping this capability incomplete until both journeys pass:
-
-1. World-origin scope and direct empty-project entry. Add a lazy Studio controller, explicit
-   session entry target and origin, shared chrome gating, non-pickable context, Camera framing and
-   validated return. Expose only existing form commands and creation gestures. Direct `/studio`
-   creates an empty-Layout project through the normal create intent; opening uses the normal load
-   path. The query posture never changes source admission. Add explicit New object here and Choose
-   object within the same project; capture root scope and restore it on cancelled creation.
-2. Resume and copy journeys. Add `Open in Studio` on project rows, explicit root choice for projects
-   with multiple forms, `Open editable copy` from My Objects and `Place copy in World` using the
-   existing immutable form payload and destination placement path. Save the source project before
-   a cross-project switch or retain it in place if Save fails; cancellation loses no accepted work.
+Landed as one capability: World-origin scope and direct empty-project entry, `Open in Studio` on
+project rows with explicit root choice, `Open editable copy` from My Objects, and `Place copy in
+World` using the existing immutable form payload and placement path, with the source project saved
+before a cross-project switch (kept in place if Save fails).
 
 The [journey specification](./object-studio-design.md) fixes visible actions, pending-edit policy,
 same-project and cross-project placement, direct URL behavior, scope and responsive acceptance.
@@ -496,9 +488,9 @@ Scene adapter supply the existing controls. A new authoring-only Studio module o
 and gesture cleanup. `form-card-command.ts`, Scene planners, `host-acceptance.ts`, Head Save and
 the form-library client remain the writers. Reuse the import/placement capture pattern, not the
 model-import schema. Avoid growing another all-purpose host inside the already large route.
-Build on the pre-Studio foundation PR: Studio is a second route-local posture layer beside the
-Experience lens, the host gains a session-only subject scope whose domains drop out-of-scope pick
-candidates themselves (no host post-filter), and PR 2's save-before-switch calls the project-session controller.
+Studio is a route-local posture beside the Experience lens; the host has a session-only subject
+scope whose domains drop out-of-scope pick candidates themselves (no host post-filter), and
+save-before-switch calls the project-session controller.
 
 **Core acceptance:** zero-Room direct entry → Box/Free → size/name → one Undo/Redo → Save → cold
 reopen via `Open in Studio`; World form → Edit in Studio → size → Back to World with same root and

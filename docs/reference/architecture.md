@@ -8,7 +8,7 @@ invariant requires owner judgment; current shell limitations do not amend a desi
 
 Core Product Stability is accepted. The editor supports room/shape creation, direct manipulation,
 Camera/Experience authoring and isolated visitor Preview. Future requirements are labeled below;
-public prepared publication and general Object Studio are not implemented.
+public prepared publication is not implemented. Object Studio's dual entry (create, size, Save, resume and copy reuse of native forms) is implemented; later Studio capabilities are not.
 
 ## Product and frozen lanes (current)
 

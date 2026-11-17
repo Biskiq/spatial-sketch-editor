@@ -80,6 +80,8 @@ export type StageShellCommandInput = {
 	 * tool the Studio dock does not show.
 	 */
 	readonly studioActive?: () => boolean;
+	/** Run one of Find's Object Studio entries by its id. */
+	readonly runStudioEntry?: (id: string) => void;
 };
 
 export function createStageShellCommands(input: StageShellCommandInput) {
@@ -666,6 +668,10 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			if (entry.id === '0') input.view.zoomIn();
 			else if (entry.id === '1') input.view.zoomOut();
 			else input.view.fit();
+			return;
+		}
+		if (entry.adapterId === 'studio') {
+			input.runStudioEntry?.(entry.id);
 			return;
 		}
 		if (entry.adapterId === 'subject') {

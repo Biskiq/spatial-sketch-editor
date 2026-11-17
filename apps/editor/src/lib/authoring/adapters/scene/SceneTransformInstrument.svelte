@@ -21,6 +21,7 @@
 	import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-adapter-host';
 	import { choosePrimitive, clearArmedModel, rememberArmedModel, peekArmedModel } from './import/definitions';
 	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
+	import { peekFormCopyIntake, takeFormCopyIntake } from './library/intake';
 	import { SHAPE_KINDS } from './shape/outline';
 	import {
 		armTile,
@@ -131,7 +132,16 @@
 	 * needs its asset resource in the envelope, which only a project that already
 	 * carries it has; listing the others would offer a placement that always refuses.
 	 */
+	/** Object Studio offers no model import and no World Library; read at each surface change. */
+	let inStudio = $state(untrack(() => services.stage.postureScoped()));
+	$effect(() => {
+		inStudio = untrack(() => services.stage.postureScoped());
+		return services.stage.onAdaptersChanged?.(() => {
+			inStudio = services.stage.postureScoped();
+		});
+	});
 	const catalogueModels = $derived.by(() => {
+		if (inStudio) return [];
 		const snapshot = services.stage.snapshot();
 		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return admittedCatalogueModelAssets();
 		const held = stageEnvelope(snapshot).units.resources.data.resources;
@@ -633,6 +643,62 @@
 		message = 'The saved copy is no longer armed.';
 	}
 
+	/**
+	 * A saved copy handed in by a journey (Open editable copy, Place copy in World).
+	 *
+	 * It is taken exactly once, read through the same verified client as the My Objects
+	 * section, and armed on this Place session; `datum` then places it at X/Z 0 through
+	 * the ordinary typed Place, so the one planner, acceptance and history path decide.
+	 * A failure is said here, and the saved item stays in My Objects to try again.
+	 */
+	async function consumeIntake(projectId: string): Promise<void> {
+		const intake = takeFormCopyIntake(projectId);
+		if (intake === null) return;
+		message = 'Reading your saved object…';
+		try {
+			const [{ createFormLibraryClient }, { env }, { evaluateFormMesh }] = await Promise.all([
+				import('./library/client'),
+				import('$env/dynamic/public'),
+				import('$lib/content/form-evaluation')
+			]);
+			const client = createFormLibraryClient({ apiOrigin: env.PUBLIC_API_ORIGIN ?? '' });
+			const listed = (await client.list()).find((item) => item.id === intake.itemId);
+			if (listed === undefined) {
+				message = 'That saved object is no longer in My Objects.';
+				return;
+			}
+			const { payload } = await client.read(listed);
+			const contact = evaluateFormMesh(payload.form)?.contactMinY;
+			if (contact === undefined) {
+				message = 'That saved object cannot be evaluated, so it cannot be placed.';
+				return;
+			}
+			if (projectIdNow() !== projectId || !armFormCopy({ itemId: listed.id, item: payload, contactMinY: contact })) {
+				message = 'The Stage changed before the copy could be armed. Choose it again from My Objects.';
+				return;
+			}
+			if (intake.mode === 'datum') {
+				x = '0';
+				z = '0';
+				await place();
+			}
+		} catch (cause) {
+			message = cause instanceof Error && cause.message !== ''
+				? `The saved object could not be opened: ${cause.message}`
+				: 'The saved object could not be opened. Check your connection and try again from My Objects.';
+		}
+	}
+	$effect(() => {
+		void services;
+		if (!placeTask) return;
+		const projectId = untrack(() => projectIdNow());
+		if (peekFormCopyIntake(projectId) === null) return;
+		untrack(() => {
+			if (ensureSession() === null) return;
+			void consumeIntake(projectId);
+		});
+	});
+
 	// The task's instrument mounts with a live session so the adapter's pointer
 	// claim, the overlay and typed entry read the same candidate.
 	$effect(() => {
@@ -800,7 +866,7 @@
 					</ul>
 				</div>
 			{/if}
-			{#if placeTask}
+			{#if placeTask && !inStudio}
 				<MyObjectsSectionLazy
 					armedCopy={armedFormCopy}
 					onArm={armFormCopy}
