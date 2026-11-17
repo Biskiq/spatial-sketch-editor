@@ -990,6 +990,9 @@
 	}
 
 	function refreshAcceptedPresentation(): void {
+		// An accepted source can delete or move the Spot under inspection. End the
+		// idle session now instead of waiting for the next pointer action.
+		lightInspection?.reconcile();
 		shell.setTask(facade?.session.task() ?? null);
 		commands.syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
 		commands.syncContributedTask();
@@ -1004,6 +1007,9 @@
 		if (outcome.selectionClearedReason !== null) {
 			shell.setNotice('The selected subject no longer exists in the restored source.');
 		}
+		// Undo/Redo installs an accepted source too; the inspected Spot may have
+		// changed or disappeared.
+		lightInspection?.reconcile();
 		stageViewport.invalidatePlan();
 	}
 

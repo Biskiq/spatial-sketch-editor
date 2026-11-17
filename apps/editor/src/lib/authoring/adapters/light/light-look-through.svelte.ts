@@ -27,6 +27,7 @@ import {
 	rotationForLightDirection
 } from '../../look/light-aim';
 import {
+	drawableSpotAngle,
 	LIGHT_SPOT_TARGET_FALLBACK_METERS,
 	spotFootprintRadius,
 	spotInnerRadius
@@ -134,12 +135,13 @@ function ringFor(
 }
 
 /**
- * The Spot's authored cone as two world-space rings.
+ * The Spot cone as two world-space rings.
  *
  * `capRing` is the authored cutoff (or the same 3 m guide reach an unbounded Spot
  * already uses). `innerRing` is the full-brightness edge the renderer uses. The
- * authored half-angle is used — not the Camera's FOV — so the Stage can show the
- * beam truthfully however the inspection lens is cropped.
+ * ring angle is S3a's drawable angle — the stored angle up to its 80° guide limit
+ * — never the Camera FOV, so the Stage can show the beam truthfully however the
+ * inspection lens is cropped. `halfAngleDegrees` reports the stored angle.
  */
 export function lookThroughCone(light: Light): LightLookThroughCone {
 	if (light.light !== 'spot') {
@@ -153,10 +155,14 @@ export function lookThroughCone(light: Light): LightLookThroughCone {
 	const direction = normalize(lightForward(light.rotation));
 	const distance = lightRange(light) ?? LIGHT_SPOT_TARGET_FALLBACK_METERS;
 	const center = add(light.position, scale(direction, distance));
-	const capRadius = spotFootprintRadius(distance, light.angle);
+	// S3a draws every stored angle above 80° at its guide limit. Reuse the same
+	// drawable angle so a near-90° beam cannot project an enormous polygon that
+	// disagrees with the selected Spot's guide.
+	const drawAngle = drawableSpotAngle(light.angle);
+	const capRadius = spotFootprintRadius(distance, drawAngle);
 	const penumbra = light.penumbra ?? 0;
 	const innerRadius =
-		penumbra > 0.001 ? spotInnerRadius(distance, light.angle, penumbra) : 0;
+		penumbra > 0.001 ? spotInnerRadius(distance, drawAngle, penumbra) : 0;
 	return {
 		capRing: capRadius > 1e-6 ? ringFor(center, direction, capRadius) : [],
 		innerRing: innerRadius > 1e-4 ? ringFor(center, direction, innerRadius) : null,
@@ -260,6 +266,17 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 	function currentLight(): Light | null {
 		const current = session;
 		return current === null ? null : lightById(current.stage.snapshot(), current.lightId);
+	}
+
+	/**
+	 * Reconcile an idle session with the mounted accepted source. The route calls
+	 * this when an accepted revision or history install lands, so an external
+	 * deletion, move or aim change ends the inspection without waiting for the
+	 * next pointer action. A pending Done owns its own acceptance.
+	 */
+	function reconcile(): void {
+		if (session === null || busy) return;
+		assertCurrent();
 	}
 
 	function enter(lightId: string): LightLookThroughEnter {
@@ -552,7 +569,10 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 			if (session === null) return 'pass' as const;
 			if (event.key === 'Escape') {
 				event.preventDefault();
-				exitInternal();
+				// Escape obeys the Exit button's policy: once Done has submitted its
+				// one write, let acceptance resolve instead of claiming a cancel that
+				// the in-flight intent can still overwrite.
+				if (!busy) exitInternal();
 				return 'claimed' as const;
 			}
 			// Editing keys must not delete or rename the light under inspection.
@@ -567,7 +587,9 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 			return 'claimed' as const;
 		},
 		deactivate() {
-			if (session !== null) exitInternal();
+			// A lens change waits for a pending Done just as Exit does. The route's
+			// explicit replacement/teardown cancel still owns the destructive path.
+			if (session !== null && !busy) exitInternal();
 		},
 		dispose
 	};
@@ -582,6 +604,7 @@ export function createLightLookThrough(host: LightLookThroughHost) {
 		stepLens,
 		finish,
 		exit,
+		reconcile,
 		cancel,
 		dispose,
 		moved,

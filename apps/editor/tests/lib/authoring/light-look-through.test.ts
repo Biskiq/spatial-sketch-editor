@@ -16,6 +16,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
 import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
+import { LIGHT_GUIDE_MAX_ANGLE } from '$lib/authoring/look/light-presentation';
 import { acceptFormCommand } from '$lib/authoring/adapters/scene/form-card-command';
 import { lightCardActions, lightLookThroughAction } from '$lib/authoring/adapters/light/light-actions';
 import { lightById } from '$lib/authoring/adapters/light/light-subjects';
@@ -268,7 +269,26 @@ describe('S3b Spot Look through', () => {
 		expect(host.history().depth).toBe(1);
 	});
 
-	it('ends without writing when the inspected light is deleted', async () => {
+	it('clamps the projected cap to the S3a wide-beam guide limit', () => {
+		const wide = { ...spotAt([0, 2, 0]), angle: (89 * Math.PI) / 180 };
+		const cone = lookThroughCone(wide);
+		const centre: Vec3 = [0, wide.position[1] - 3, 0];
+		const capRadius = Math.hypot(
+			cone.capRing[0]![0] - centre[0],
+			cone.capRing[0]![1] - centre[1],
+			cone.capRing[0]![2] - centre[2]
+		);
+		// The stored angle is still reported, but the projected cap is drawn at
+		// the same 80° limit S3a uses for a wide Spot's guide.
+		expect(cone.halfAngleDegrees).toBeCloseTo(89, 8);
+		expect(capRadius).toBeCloseTo(
+			3 * Math.tan((LIGHT_GUIDE_MAX_ANGLE * Math.PI) / 180),
+			6
+		);
+		expect(capRadius).toBeLessThan(3 * Math.tan((85 * Math.PI) / 180));
+	});
+
+	it('ends immediately on an accepted deletion, without a pointer action', async () => {
 		const { facade, host, services } = await mounted([spotAt([0, 2, 0])]);
 		const light = requiredLight(facade, 'light-existing');
 		const notices: string[] = [];
@@ -279,17 +299,17 @@ describe('S3b Spot Look through', () => {
 			entityId: light.id
 		});
 		expect(deleted.kind).toBe('installed');
-		await waitFor(() => lightById(facade.snapshot(), light.id) === null);
+		expect(lightById(facade.snapshot(), light.id)).toBeNull();
 		const depth = host.history().depth;
 
-		expect(controller.turn(0.1, 0)).toBe(false);
+		controller.reconcile();
 		expect(controller.active()).toBe(false);
 		expect(facade.camera.lookThrough()).toBeNull();
 		expect(host.history().depth).toBe(depth);
 		expect(notices.at(-1)).toContain('no longer in this project');
 	});
 
-	it('ends without writing when the light is aimed outside the session', async () => {
+	it('ends immediately on an accepted external aim change, without a pointer action', async () => {
 		const { facade, host, services } = await mounted([spotAt([0, 2, 0])]);
 		const light = requiredLight(facade, 'light-existing');
 		const notices: string[] = [];
@@ -301,14 +321,12 @@ describe('S3b Spot Look through', () => {
 			rotation: rotationForLightDirection([1, -0.2, 0])
 		});
 		expect(changed.kind).toBe('installed');
-		await waitFor(
-			() => !requiredLight(facade, light.id).rotation.every(
-				(component, index) => Math.abs(component - light.rotation[index]!) < 1e-6
-			)
+		expect(requiredLight(facade, light.id).rotation).toEqual(
+			rotationForLightDirection([1, -0.2, 0])
 		);
 		const depth = host.history().depth;
 
-		expect(controller.turn(0.1, 0)).toBe(false);
+		controller.reconcile();
 		expect(controller.active()).toBe(false);
 		expect(host.history().depth).toBe(depth);
 		expect(notices.at(-1)).toContain('changed while you were looking through');
@@ -349,6 +367,56 @@ describe('S3b Spot Look through', () => {
 		expect(controller.active()).toBe(false);
 		expect(facade.camera.state()).toEqual(entry);
 		expect(host.history()).toEqual(before);
+	});
+
+	it('keeps an in-flight Done alive through Escape and deactivation, then installs it', async () => {
+		const { facade, host, services } = await mounted([spotAt([0, 2, 0])]);
+		const light = requiredLight(facade, 'light-existing');
+		const notices: string[] = [];
+		const controller = controllerFor(facade, services, notices);
+		settlePaper(facade);
+		const entryRotation = [...light.rotation] as Vec3;
+		const before = host.history();
+		const deferred: { start: (() => void) | null } = { start: null };
+		const realAccept = host.accept.bind(host);
+		vi.spyOn(host, 'accept').mockImplementationOnce(
+			(intent) =>
+				new Promise<StageAcceptOutcome>((resolve, reject) => {
+					deferred.start = () => {
+						void realAccept(intent).then(resolve, reject);
+					};
+				})
+		);
+
+		expect(controller.enter(light.id)).toEqual({ kind: 'entered' });
+		expect(controller.turn(0.2, 0)).toBe(true);
+		const done = controller.finish();
+		await waitFor(() => deferred.start !== null);
+		expect(controller.busy()).toBe(true);
+
+		const escape = { key: 'Escape', preventDefault: vi.fn() } as unknown as KeyboardEvent;
+		expect(controller.posture.key(escape)).toBe('claimed');
+		expect(escape.preventDefault).toHaveBeenCalledOnce();
+		expect(controller.active()).toBe(true);
+		expect(facade.camera.lookThrough()).not.toBeNull();
+
+		controller.posture.deactivate();
+		expect(controller.active()).toBe(true);
+		expect(controller.busy()).toBe(true);
+		// The route's accepted-source reconciliation must not treat Done's own
+		// pending write as an external change.
+		controller.reconcile();
+		expect(controller.active()).toBe(true);
+
+		const start = deferred.start;
+		if (start === null) throw new Error('the Done write was not deferred');
+		start();
+		await expect(done).resolves.toEqual({ kind: 'written' });
+		expect(controller.active()).toBe(false);
+		expect(facade.camera.lookThrough()).toBeNull();
+		expect(requiredLight(facade, light.id).rotation).not.toEqual(entryRotation);
+		expect(host.history().position).toBe(before.position + 1);
+		expect(notices).toEqual([]);
 	});
 
 	it('cancels on replacement and disposes idempotently without touching a newer Camera', async () => {
