@@ -4,6 +4,7 @@
 	import { adjacentPhaseStart, hhmm, phaseName, skyBodyAt, snapTime, wrap360, SUNRISE, SUNSET } from '$lib/render/sky-time';
 	import type { LookAuthoring } from '../look/look-authoring.svelte';
 	import { compassSVG, skyGlyph, timeDialSVG } from './sky-glyphs';
+	import LooksPanel from './LooksPanel.svelte';
 
 	let { look, fading = false }: { look: LookAuthoring; fading?: boolean } = $props();
 	const id = $props.id();
@@ -138,6 +139,16 @@
 		gesture.move(owner, patch);
 		void gesture.commit(owner);
 	}
+
+	/** Two tabs, one tab stop: arrows and Home/End move between Sky and Looks. */
+	function tabKey(event: KeyboardEvent) {
+		if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+		event.preventDefault();
+		const next = look.panelTab === 'sky' ? 'looks' : 'sky';
+		look.setPanelTab(next);
+		const tablist = (event.currentTarget as HTMLElement).closest('[role=tablist]');
+		queueMicrotask(() => tablist?.querySelector<HTMLElement>(`[data-tab="${next}"]`)?.focus());
+	}
 </script>
 
 {#snippet range(label: string, value: number, min: number, max: number, step: number, readout: string, change: (value: number) => SceneSkyUpdatePayload)}
@@ -172,6 +183,16 @@
 {/snippet}
 
 <div class="sky">
+	<div class="tabs" role="tablist" aria-label="Environment">
+		<button type="button" role="tab" data-tab="sky" aria-selected={look.panelTab === 'sky'}
+			tabindex={look.panelTab === 'sky' ? 0 : -1}
+			onclick={() => look.setPanelTab('sky')} onkeydown={tabKey}>Sky</button>
+		<button type="button" role="tab" data-tab="looks" aria-selected={look.panelTab === 'looks'}
+			tabindex={look.panelTab === 'looks' ? 0 : -1}
+			onclick={() => look.setPanelTab('looks')} onkeydown={tabKey}>Looks</button>
+	</div>
+	{#if look.panelTab === 'sky'}
+	<div class="panel" role="tabpanel" aria-label="Sky">
 	<header><strong>Sky</strong><span>{presentation.label}</span>
 		{#if look.edited}<span class="edited">edited · <button type="button" class="link" disabled={look.busy} onclick={look.resetSky}>Reset</button></span>{/if}
 	</header>
@@ -239,6 +260,10 @@
 			</details>
 		{/if}
 	</div>
+	</div>
+	{:else}
+	<div class="panel" role="tabpanel" aria-label="Looks"><LooksPanel {look} /></div>
+	{/if}
 </div>
 
 <style>
@@ -270,4 +295,8 @@
 	.color input[type=color] { width: 42px; height: 26px; }
 	.dim { opacity: .2; }
 	p { margin: 8px 0 0; }
+	.tabs { display: flex; gap: 2px; margin: -4px 0 2px; border-bottom: 1px solid var(--shell-hairline); }
+	.tabs button { padding: 4px 8px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--shell-ink-2); font: 11px var(--shell-sans); cursor: pointer; }
+	.tabs button[aria-selected=true] { color: var(--shell-ink); border-bottom-color: var(--shell-forest); }
+	.panel { display: grid; gap: 8px; }
 </style>

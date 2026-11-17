@@ -37,11 +37,15 @@ import {
 	type Texture
 } from 'three';
 import {
+	CLAY_COLOR,
+	CLAY_ROUGHNESS,
+	FLAT_MIN_ROUGHNESS,
 	MATERIAL_TEXTURE_SLOTS,
 	materialKey,
 	type ImportedMaterialDescriptor,
 	type MaterialDescriptor,
-	type MaterialTextureSlotKey
+	type MaterialTextureSlotKey,
+	type MaterialTreatment
 } from './material-descriptor';
 
 /**
@@ -77,6 +81,10 @@ export type MaterialStoreStats = {
 	readonly disposed: number;
 	/** Leases taken, monotone. */
 	readonly acquired: number;
+	/** Imported materials built with a Treatment, monotone. */
+	readonly treated: number;
+	/** Imported materials left as authored because their class cannot take one. */
+	readonly treatmentSkipped: number;
 };
 
 export type MaterialStore = {
@@ -159,6 +167,48 @@ function constructImported(
 	const clone = source.clone();
 	if ('wireframe' in clone) (clone as Material & { wireframe: boolean }).wireframe = descriptor.wireframe;
 	return clone;
+}
+
+/**
+ * Tune one cloned imported material for a Treatment, in place. Only the fields a
+ * stylised surface owns change: colour, roughness, metalness and, when it cannot
+ * carry alpha, the base colour map. Transparency, opacity, alpha test, side,
+ * depth flags, vertex colours, other maps and skinning survive untouched, so an
+ * alpha-masked silhouette is exactly as authored.
+ *
+ * A material class that has no colour (Shader, RawShader, Normal, Matcap) is
+ * unsupported and left as authored; the store counts it.
+ */
+function tuneImported(material: Material, treatment: MaterialTreatment): boolean {
+	if (!('color' in material)) return false;
+	const target = material as Material & {
+		color: { set(value: string): void };
+		roughness?: number;
+		metalness?: number;
+		map?: Texture | null;
+		alphaMap?: Texture | null;
+		alphaTest?: number;
+		transparent?: boolean;
+	};
+	if (treatment === 'clay') {
+		target.color.set(CLAY_COLOR);
+		if (typeof target.roughness === 'number') target.roughness = CLAY_ROUGHNESS;
+	} else if (typeof target.roughness === 'number') {
+		target.roughness = Math.max(target.roughness, FLAT_MIN_ROUGHNESS);
+	}
+	if (typeof target.metalness === 'number') target.metalness = 0;
+	// The base map may only go when no alpha rides on it; otherwise it stays and
+	// the treated colour tints it.
+	if (
+		target.map !== undefined &&
+		target.map !== null &&
+		(target.alphaTest ?? 0) === 0 &&
+		target.transparent !== true &&
+		target.alphaMap == null
+	) {
+		target.map = null;
+	}
+	return true;
 }
 
 function construct(
@@ -258,6 +308,8 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 	let created = 0;
 	let disposedCount = 0;
 	let acquired = 0;
+	let treated = 0;
+	let treatmentSkipped = 0;
 	let disposed = false;
 
 	return {
@@ -267,6 +319,14 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 			let entry = entries.get(key);
 			if (entry === undefined) {
 				const material = construct(descriptor, maps, source);
+				if (
+					descriptor.kind === 'imported' &&
+					descriptor.remap === undefined &&
+					descriptor.treatment !== undefined
+				) {
+					if (tuneImported(material, descriptor.treatment)) treated += 1;
+					else treatmentSkipped += 1;
+				}
 				// **After** any `source.clone()`: `Material.copy` clones each plane into a
 				// new array, so a material cloned by the imported path would otherwise
 				// keep a detached copy that never follows the cut.
@@ -302,7 +362,14 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 		},
 
 		stats() {
-			return { live: entries.size, created, disposed: disposedCount, acquired };
+			return {
+				live: entries.size,
+				created,
+				disposed: disposedCount,
+				acquired,
+				treated,
+				treatmentSkipped
+			};
 		},
 
 		dispose() {

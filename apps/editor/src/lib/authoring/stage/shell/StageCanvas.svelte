@@ -424,6 +424,7 @@ import StageMatGround from './StageMatGround.svelte';
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} plinth={false} doorFrames={false}
+			treatment={scene.environment?.treatment}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
 			{liftedRoomIds}
 			onIdentity={scenePick.registerLayoutIdentity} />

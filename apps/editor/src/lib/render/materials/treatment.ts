@@ -11,12 +11,17 @@
  * because a release renders through current code and a changed look needs a new
  * treatment id.
  */
-import type { SceneTreatment } from '$lib/content/scene';
 import type { MaterialTextureSlot } from '$lib/types/materials';
+import {
+	CLAY_COLOR,
+	CLAY_ROUGHNESS,
+	FLAT_MIN_ROUGHNESS,
+	type MaterialTreatment
+} from '$lib/render/resources/material-descriptor';
 
-export const FLAT_MIN_ROUGHNESS = 0.6;
-export const CLAY_COLOR = '#d6d3cd';
-export const CLAY_ROUGHNESS = 0.9;
+// The frozen values live in the dependency-free descriptor module so the one
+// material store can read them; resolve-time callers import them from here.
+export { CLAY_COLOR, CLAY_ROUGHNESS, FLAT_MIN_ROUGHNESS };
 
 /** One Finish's resolved render values, before and after a Treatment. */
 export type TreatmentSubject = {
@@ -34,7 +39,7 @@ export type TreatmentSubject = {
  * textured one.
  */
 export function applyTreatment(
-	treatment: SceneTreatment | undefined,
+	treatment: MaterialTreatment | undefined,
 	subject: TreatmentSubject
 ): TreatmentSubject {
 	if (treatment === undefined) return subject;

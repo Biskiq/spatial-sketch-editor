@@ -135,12 +135,15 @@ These are the codec's own rules, not a destination: `packages/project-model/src/
   (`normal_map_required`). Empty/default values are dropped, so they never enter the canonical form.
 - **Palette**: at most eight ordered slots; `id` is a stable non-empty id (≤64 characters), `name`
   a non-empty label (≤40) and `color` a lowercase literal. Duplicate ids refuse, an empty palette
-  normalizes to the field's absence, and a follower must name a slot in the same Scene. Writer rules
-  (S4/S6; no writer exists in S1): the write that creates the first follower also creates the
-  palette; deleting a slot converts its followers to literals holding the slot's last colour in the
-  same write, so `unknown_palette_slot` is unreachable from the UI; a curated Look's palette applies
-  **by position** (slot *n* takes colour *n*, names kept). Lights, Sky colours, Artwork and frames
-  are always literal.
+  normalizes to the field's absence, and a follower must name a slot in the same Scene.   Writer rules (S4/S6): the write that creates the first follower also creates the palette;
+  deleting a slot converts its followers to literals holding the slot's last colour in the same
+  write, so `unknown_palette_slot` is unreachable from the UI. A curated Look **seeds** a palette
+  only when the World has none: an existing palette always wins and no Finish assignment changes.
+  **Adopt palette** is the only colour mover — every literal Finish without an image tint becomes
+  a follower of the nearest slot in CIE Lab ΔE76, in one undoable write. It revalidates each
+  literal, slot id and slot colour against its recomputed plan, so a slot edited after the preview
+  refuses as `stale-adoption`. Image tints and inherited colours are counted, never rewritten.
+  Lights, Sky colours, Artwork and frames are always literal.
 - **Curated Finish catalogue**: a Finish's `baseMaterialId` names a catalogue id. Versioning is a
   rule, not a field: ids are append-only and each id's complete definition (`fallbackColor`,
   roughness, metalness, `normalScale`, tile size, texture URIs) is immutable; a changed curated look
@@ -483,10 +486,22 @@ Materials (definitions/instances and shared-vs-unique already exist):
   image aspect, or `[s, s]` with no aspect; Direction writes radians normalised
   to [0, 2π). A map-less Finish shows neither field. Both follow the ordinary
   shared-Finish Ask, and *Remove* deletes the image and restores the base's
-  colour rule. Under Flat colour the image renders its colour field; S6 owns
-  its average colour (D2).
-- Remaining gaps: per-face and Wall painting (T5/S5), Treatment (S6), approved
-  PBR map sets, and save-mode verification of Finish texture pins.
+  colour rule. Under Flat colour the image keeps its authored colour field and
+  drops its base map; there is no average colour (Q7 closed, D2).
+- S6 adds **Looks**: curated Atmosphere + Treatment tiles in the Environment
+  popover, a Natural / Flat colour / Clay switch, and an explicit palette
+  adoption. A Look is **not stored**: identity is an exact `(sky, treatment)`
+  match with the noon heading ignored. `scene-look-apply` writes the Look's Sky
+  at the World heading, its Treatment and its palette only when the World has
+  none; `scene-treatment-set` changes the resolve-time tag alone;
+  `scene-look-restore` puts back the environment captured by the previous Look
+  apply (session-scoped A/B; any other environment write clears it);
+  `scene-palette-adopt` moves literals to followers. Each is one record, so each
+  is one Undo. Treatment covers resolver surfaces, imported models that keep
+  their own materials, and default Layout floors, ceilings and walls; it never
+  reaches Artwork, the Sky, lights, the plinth, door frames or editor marks.
+- Remaining gaps: per-face and Wall painting (T5/S5), approved PBR map sets, and
+  save-mode verification of Finish texture pins.
 - A default edit clones once per shared instance for the selected subset and
   retains sharing inside it; an explicit "edit shared" path discloses the
   total/outside user count. Cancelled choice, unsupported target and failure write
@@ -512,7 +527,10 @@ Lights and environment:
   derived rim/ring follow it).
 - Authored world presentation is the Scene's optional `environment`: a stored Sky and an optional
   resolve-time Treatment. A preset is provenance; choosing one copies its start into the World, and
-  choosing the current preset on an edited Sky is Reset. Every preset preserves the World’s noon heading.
+  choosing the current preset on an edited Sky is Reset. Every preset preserves the World’s noon
+  heading. Applying a Look keeps that heading, writes its Treatment and seeds a palette only when
+  the World has none; the active Look tile is pressed only on an exact match, so any Sky edit falls
+  back to the preset label. Previous is session memory, never document state.
 - No hidden assist/baseline sum: any editor assist light is visibly session-only
   and off for comparisons and visitors. PMREM/environment caches are **derived
   renderer resources** with scope, reference counts and asynchronous

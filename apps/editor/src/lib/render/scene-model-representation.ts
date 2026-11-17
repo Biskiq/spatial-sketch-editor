@@ -197,6 +197,7 @@ type Arrival = {
 type Presentation = {
 	readonly key: string;
 	readonly look: SceneModelLook | null;
+	readonly treatment?: 'flat-colour' | 'clay';
 	readonly scope: TextureLoadScope | null;
 	readonly wireframe: boolean;
 	readonly castShadow: boolean;
@@ -333,6 +334,7 @@ export function createSceneModelRepresentation(
 		if (!entry.gate.accepts(current.token)) return;
 		const style: ModelStyle = {
 			look: look.look === null ? null : modelLookFor(look.look, look.scope, textured),
+			...(look.treatment === undefined ? {} : { treatment: look.treatment }),
 			wireframe: look.wireframe,
 			castShadow: look.castShadow,
 			receiveShadow: look.receiveShadow
@@ -375,6 +377,7 @@ export function createSceneModelRepresentation(
 		const look: Presentation = {
 			key: entry.style,
 			look: entry.item.look,
+			...(entry.item.treatment === undefined ? {} : { treatment: entry.item.treatment }),
 			scope: entry.scope,
 			wireframe: entry.item.wireframe,
 			castShadow: entry.item.castShadow,

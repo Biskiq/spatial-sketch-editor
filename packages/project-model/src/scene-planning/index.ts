@@ -28,5 +28,6 @@ export * from './planners';
 
 export * from './finish-model';
 export * from './finish-planners';
+export * from './palette-adoption';
 export * from './texture-resource';
 export * from './artwork-planners';

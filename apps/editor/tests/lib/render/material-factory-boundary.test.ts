@@ -263,9 +263,9 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		const shell = withoutComments(readFileSync(path.join(EDITOR_SRC, 'lib/visitor/VisitorLayoutShell.svelte'), 'utf8'));
 		expect(shell).toContain('useRenderResources()');
 		expect(shell).not.toContain('createMaterialStore');
-		expect(shell).toContain('createWallRepresentation(materials)');
+		expect(shell).toContain('createWallRepresentation(materials, treatment)');
 		expect(shell).toContain('createObjectRepresentation(materials, resources.geometry)');
-		expect(shell).toContain('createRoomRepresentation(materials)');
+		expect(shell).toContain('createRoomRepresentation(materials, treatment)');
 		// The representations release their leases; the Canvas frees what is left.
 		expect(shell).not.toMatch(/materials\.dispose\(\)/);
 	});

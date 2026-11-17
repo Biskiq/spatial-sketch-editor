@@ -270,6 +270,8 @@ export type SceneModelItem = {
 	};
 	/** The resolved remap, or null to keep the asset's own materials. */
 	readonly look: SceneModelLook | null;
+	/** The resolve-time Treatment for the asset's own materials (ignored with a remap). */
+	readonly treatment?: 'flat-colour' | 'clay';
 	readonly wireframe: boolean;
 	/** The drawn instance's shadow flags. */
 	readonly castShadow: boolean;

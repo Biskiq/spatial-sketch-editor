@@ -52,6 +52,7 @@ import {
 	type SceneFinishRef
 } from './finish-model';
 import { sceneEntityTargetProblem } from './intent-payload';
+import { planPaletteAdoption } from './palette-adoption';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import {
 	finishTextureResource,
@@ -67,6 +68,7 @@ export const SCENE_PALETTE_SLOT_ADD = 'scene-palette-slot-add';
 export const SCENE_PALETTE_SLOT_SET = 'scene-palette-slot-set';
 export const SCENE_PALETTE_SLOT_RENAME = 'scene-palette-slot-rename';
 export const SCENE_PALETTE_SLOT_REMOVE = 'scene-palette-slot-remove';
+export const SCENE_PALETTE_ADOPT = 'scene-palette-adopt';
 export const SCENE_FINISH_FROM_IMAGE = 'scene-finish-from-image';
 
 const kinds = [
@@ -76,7 +78,8 @@ const kinds = [
 	SCENE_PALETTE_SLOT_ADD,
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_PALETTE_SLOT_RENAME,
-	SCENE_PALETTE_SLOT_REMOVE
+	SCENE_PALETTE_SLOT_REMOVE,
+	SCENE_PALETTE_ADOPT
 ] as const;
 type Kind = (typeof kinds)[number];
 type Result = PlannerOutcome<ProjectEnvelope>;
@@ -303,6 +306,38 @@ function readColor(
 	const slot = record === null ? null : reader.opaqueId(record.slot, `${path}.slot`);
 	if (slot === null) return { ok: false };
 	return { ok: true, value: { slot } };
+}
+
+type AdoptionMappingEntry = {
+	readonly color: string;
+	readonly slotId: string;
+	readonly slotColor: string;
+};
+
+function readAdoptionMapping(
+	reader: ShapeReader,
+	raw: unknown
+): AdoptionMappingEntry[] | null {
+	if (!Array.isArray(raw)) {
+		reader.problem('$.payload.mapping', 'invalid-value', '$.payload.mapping must be a list');
+		return null;
+	}
+	const entries: AdoptionMappingEntry[] = [];
+	for (const [index, item] of raw.entries()) {
+		const path = `$.payload.mapping[${index}]`;
+		const record = reader.object(item, path, ['color', 'slotId', 'slotColor']);
+		if (record === null) return null;
+		const color = reader.string(record.color, `${path}.color`);
+		const slotId = reader.opaqueId(record.slotId, `${path}.slotId`);
+		const slotColor = reader.string(record.slotColor, `${path}.slotColor`);
+		if (color === null || slotId === null || slotColor === null) return null;
+		if (!HEX_COLOR.test(color) || !HEX_COLOR.test(slotColor)) {
+			reader.problem(path, 'invalid-color', `${path} must name lowercase #rrggbb colours`);
+			return null;
+		}
+		entries.push({ color, slotId, slotColor });
+	}
+	return entries;
 }
 
 function readFinishRef(reader: ShapeReader, raw: unknown, path: string): SceneFinishRef | null {
@@ -1099,6 +1134,57 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			entry.id === slotId ? { ...entry, name } : entry
 		);
 		return complete({ ...before, palette }, { palette: { change: 'slots' } }, [], ['palette']);
+	}
+
+	if (kind === SCENE_PALETTE_ADOPT) {
+		const payload = reader.object(request.intent.payload, '$.payload', ['mapping']);
+		const mapping = payload === null ? null : readAdoptionMapping(reader, payload.mapping);
+		if (payload === null || mapping === null || reader.issues.length > 0) {
+			return refuse(reader.issues[0]?.message ?? 'An adoption mapping is required.');
+		}
+		if (request.intent.targets.length !== 0) return refuse('Adoption addresses no Scene subject.');
+		if (before.palette === undefined || before.palette.length === 0) {
+			return refuse('This World has no palette to adopt.', 'no-palette');
+		}
+		const plan = planPaletteAdoption(before);
+		const rows = new Map(plan.rows.map((row) => [row.color, row]));
+		const seen = new Set<string>();
+		for (const entry of mapping) {
+			if (seen.has(entry.color)) return refuse('That adoption mapping repeats a colour.', 'stale-adoption');
+			seen.add(entry.color);
+			const row = rows.get(entry.color);
+			if (row === undefined) return refuse('The palette changed since this preview was made.', 'stale-adoption');
+			const slot = before.palette.find((candidate) => candidate.id === entry.slotId);
+			if (slot === undefined) return refuse('That palette colour no longer exists.', 'unknown-slot');
+			if (
+				row.slotId !== entry.slotId ||
+				row.slotColor !== entry.slotColor ||
+				slot.color.toLowerCase() !== entry.slotColor
+			) {
+				return refuse('The palette changed since this preview was made.', 'stale-adoption');
+			}
+		}
+		if (seen.size !== plan.rows.length) {
+			return refuse('The palette changed since this preview was made.', 'stale-adoption');
+		}
+
+		const targets = new Map(mapping.map((entry) => [entry.color, entry.slotId]));
+		const changedMaterials: string[] = [];
+		const materials = before.materials.map((instance) => {
+			const color = instance.color;
+			if (typeof color !== 'string' || instance.maps?.color !== undefined) return instance;
+			const slotId = targets.get(color.toLowerCase());
+			if (slotId === undefined) return instance;
+			changedMaterials.push(instance.id);
+			return { ...instance, color: { slot: slotId } };
+		});
+		if (changedMaterials.length === 0) return refuse('Every Finish already follows the palette.', 'no-change');
+		return complete(
+			{ ...before, materials },
+			{ materials: materialGrant({ changed: changedMaterials }) },
+			[],
+			['materials']
+		);
 	}
 
 	// scene-palette-slot-remove
