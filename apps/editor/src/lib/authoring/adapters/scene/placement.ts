@@ -174,6 +174,12 @@ export type ArmedFormCopy = {
 	readonly itemId: string;
 	readonly item: FormLibraryPayload;
 	readonly contactMinY: number;
+	/**
+	 * Caller-supplied entity id for a cross-project transfer copy. The transfer
+	 * mints it so the destination can tie settlement to this exact insertion; a
+	 * normal My Objects copy leaves it absent and the planner allocates one.
+	 */
+	readonly entityId?: string;
 };
 
 export type SceneSessionOutcome =
@@ -1060,7 +1066,7 @@ export function createSceneSession(input: {
 		worldXZ: readonly [number, number],
 		choice?: SceneSupportChoice
 	): Promise<SceneSessionOutcome> {
-		const allocatedId = `entity-${mint()}`;
+		const allocatedId = copy.entityId ?? `entity-${mint()}`;
 		const intentToAccept: AuthoringIntent = {
 			version: 1,
 			kind: 'place-form-copy',

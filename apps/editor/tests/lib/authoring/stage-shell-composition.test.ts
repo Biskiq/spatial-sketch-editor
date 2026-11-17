@@ -255,6 +255,9 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte',
+			// T5.1: Object Studio's mute — per-mesh cloned transparent materials on the
+			// already-rendered bodies. No camera, control object, pick root or renderer.
+			'apps/editor/src/lib/authoring/stage/shell/StageStudioMute.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts',
 			// T1 SL1: the shared resolver of "which meshes draw this subject", used by the
 			// selection ink and the ghost. Pure Three reads, no camera, control object or

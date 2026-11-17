@@ -239,7 +239,7 @@
 				{#if world.plateKind === 'ink'}
 					<InkPlate reading={world.inkReading} onMore={() => world.onTogglePalette()} />
 				{:else if world.plateKind === 'objects'}
-					<ObjectsPlate onOpen={world.onObjectPick} />
+					<ObjectsPlate onOpen={world.onObjectPick} studio={world.studio === true} />
 				{:else if world.plateKind === 'slice'}
 					<SlicePlate
 						mode={world.sliceMode}

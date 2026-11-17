@@ -377,14 +377,23 @@ describe('the editor host boots into exactly one named state', () => {
 			},
 			// The public entry's "Start creating" and the hub's "New Project" pass the
 			// flag to the URL helper that turns it into the same marker.
+			// Each also mints for "New object": the same spatial route in the Studio posture.
 			{
 				file: join(EDITOR_SRC, 'routes', '+page.svelte'),
 				minted: 'projectUrl(createProjectId(), { create: true })',
-				flags: 1
+				flags: 2
 			},
+			// The hub's third mint is "Open editable copy": a new Studio project that carries one
+			// saved My Objects item to place at the datum.
 			{
 				file: join(EDITOR_SRC, 'routes', 'projects', '+page.svelte'),
 				minted: 'projectUrl(createProjectId(), { create: true })',
+				flags: 3
+			},
+			// The standalone launcher mints exactly one Studio-posture project.
+			{
+				file: join(EDITOR_SRC, 'routes', 'studio', '+page.svelte'),
+				minted: 'studioProjectUrl(createProjectId(), { create: true })',
 				flags: 1
 			}
 		];

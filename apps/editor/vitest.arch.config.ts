@@ -12,8 +12,8 @@ export default defineConfig({
 	test: {
 		include: ARCH_FILES,
 		environment: 'node',
-		// These guards walk the whole source tree; a cold worktree can take
-		// several seconds per scan, so a 5 s default would fail on timing alone.
-		testTimeout: 20_000
+		// Each boundary test walks and parses the whole source tree. That costs about five
+		// seconds on a loaded runner, so the 5s default fails on timing, not on a boundary.
+		testTimeout: 30_000
 	}
 });

@@ -132,6 +132,21 @@ the object project open; a failed destination load leaves a visible retry/return
 cross-project Save/insertion is one distributed transaction. The first payload is the existing
 single-form payload; assembly transfer waits for its canonical library/closure capability.
 
+**Temporary deviation (owner-approved for T5.1):** the frozen session payload above stays the
+destination contract, but T5.1 deliberately carries the copy through a **My Objects item** instead,
+reusing the verified library payload/codec, the `place-form-copy` planner and the one Place session.
+This is an explicit, temporary deviation — not a new transport and not a redesign of transport in
+this PR. Its bounds, as ruled for T5.1:
+
+- Every **Place copy in World creates one durable My Objects item** — an immutable snapshot the
+  creator can remove from My Objects. No source format, scratch store or second transport is added.
+- **Session-only transfer** (the way-back record in tab session storage and the armed insertion) is
+  recorded as **later cleanup, not a T5.2 prerequisite**; `studio.profile-revision` does not depend
+  on replacing this carrier.
+- The way back, cancel and refresh behavior, destination revalidation and "not one transaction"
+  rule above all still hold; only the carrier differs. Moving to a frozen session payload later
+  changes only the journey and the intake, not the planner or the planner's committed entity.
+
 Opening a single-form snapshot uses `place-form-copy` in the new empty project's datum at X/Z zero
 and yaw zero, with captured evaluated contact and a fresh entity ID. This retains the library's
 shape source; it does not claim to recover a world pose that payload 1 never stored.

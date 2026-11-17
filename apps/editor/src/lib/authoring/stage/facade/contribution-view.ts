@@ -25,6 +25,8 @@ type ContributionViewPort = Pick<StageSession, 'selectionState' | 'hover' | 'tas
 	readonly adapterContext: () => AdapterContextHandle | null;
 	readonly ensureBindings: () => void;
 	readonly adapterForSelection: (entry: StageSelectionEntry) => BoundAdapter | undefined;
+	/** Whether the session's scope offers this subject's Card action, read live (Studio narrows them). */
+	readonly admitsCardAction?: (adapterId: string, subjectId: string) => boolean;
 };
 
 /** Retained projections of the current adapter contributions and mark view state. */
@@ -523,7 +525,17 @@ export function createContributionView(input: ContributionViewPort) {
 		for (const [adapterId, entry] of adapters.entries()) {
 			let contributed: readonly StageCardAction[] = [];
 			try { contributed = entry.contributions.cardActions?.(subject) ?? []; } catch { contributed = []; }
-			for (const action of contributed) actions.push({ ...action, adapterId });
+			for (const action of contributed) {
+				if (input.admitsCardAction?.(adapterId, subject.sourceId) === false) continue;
+				// A held record re-asks at run time: a stale button or key cannot outlive the scope.
+				actions.push({
+					...action,
+					adapterId,
+					run: async () => input.admitsCardAction?.(adapterId, subject.sourceId) === false
+						? { kind: 'refused', message: 'This is not offered here: the object being edited is protected while Object Studio is open.' }
+						: action.run()
+				});
+			}
 		}
 		return actions.sort((a, b) => {
 			if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;

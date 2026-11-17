@@ -7,8 +7,14 @@
 	import WorldIcon from './WorldIcon.svelte';
 	import { assets } from '$lib/content/assets';
 
-	let { onOpen }: { onOpen: (assetId: string) => void } = $props();
-	const approved = assets.filter((asset) => asset.status === 'approved').slice(0, 5);
+	/**
+	 * Object Studio edits native forms: the Library's models are not offered there,
+	 * only the Objects panel that places a form.
+	 */
+	let { onOpen, studio = false }: { onOpen: (assetId: string) => void; studio?: boolean } = $props();
+	const approved = $derived(
+		studio ? [] : assets.filter((asset) => asset.status === 'approved').slice(0, 5)
+	);
 </script>
 
 <div class="objects-plate" data-objects-plate>

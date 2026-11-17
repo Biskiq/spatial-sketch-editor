@@ -1,3 +1,4 @@
+import type { SubjectScope } from '../subject-scope';
 import { intersectWorkingPlane, pointerRay, projectWorld, type ViewportEvaluation } from '@portfolio/camera-core';
 import type { StageReadSnapshot } from '../accepted-read';
 import { EMPTY_SELECTION } from '../semantic-selection';
@@ -43,6 +44,7 @@ type AdapterBindingsPort = Pick<StageAdapterContext,
 	readonly cameraState: () => Extract<StageIntentResult, { kind: 'superseded' }>['state'];
 	readonly pickScene?: (ray: Parameters<StageAdapterContext['pickScene']>[0], scene: StageReadSnapshot['domain']['scene']) => ReturnType<StageAdapterContext['pickScene']>;
 	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => ReturnType<StageAdapterContext['sceneBounds']>;
+	readonly subjectScope?: () => SubjectScope | null;
 	readonly isLive: () => boolean;
 	readonly isDisposed: () => boolean;
 	readonly registrationRemoved: (id: string) => void;
@@ -146,6 +148,7 @@ export function createAdapterBindings(input: AdapterBindingsPort) {
 			},
 			pickScene: (ray) => hasLiveEvaluation() ? input.pickScene?.(ray, boundSnapshot.domain.scene) ?? null : null,
 			sceneBounds: (id) => hasLiveEvaluation() ? input.sceneBounds?.(id, boundSnapshot.domain.scene) ?? null : null,
+			subjectScope: () => (contextIsLive() ? input.subjectScope?.() ?? null : null),
 			selection: () => contextIsLive() ? input.selection() : null,
 			selectionState: () => contextIsLive() ? input.selectionState() : EMPTY_SELECTION,
 			setSelection: (value) => contextIsLive() ? input.setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },

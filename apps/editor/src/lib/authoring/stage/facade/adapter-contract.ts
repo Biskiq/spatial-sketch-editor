@@ -1,3 +1,4 @@
+import type { SubjectScope } from '../subject-scope';
 import type { Component, Snippet } from 'svelte';
 import type { PointerRay, Vec3, ViewingIntent, ViewingIntentResult, ViewportCameraState, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core';
 import type { PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef } from '@portfolio/layout-core';
@@ -273,6 +274,12 @@ export type StageAdapterContext = {
 	ray(css: readonly [number, number]): PointerRay | null;
 	pickScene(ray: PointerRay): SceneRenderedHit | null;
 	sceneBounds(id: string): { readonly min: Vec3; readonly max: Vec3 } | null;
+	/**
+	 * Object Studio's session-only pick scope. A domain applies it to its own pick
+	 * candidates so a valid hit behind a muted body is still found; the host never
+	 * filters a domain's winner afterwards. Absent or `null` is unscoped.
+	 */
+	subjectScope?(): SubjectScope | null;
 	intersect(ray: PointerRay, plane: WorkingPlane): WorkingPlaneHit;
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
@@ -435,6 +442,11 @@ export type StageCardAction = {
 	 * secondary action such as Duplicate never looks dangerous.
 	 */
 	readonly group?: 'primary' | 'secondary';
+	/**
+	 * Show this one action in the Card foot beside Advanced, where the writer renders
+	 * the foot, instead of in the subject menu. Other actions stay where they are.
+	 */
+	readonly inline?: boolean;
 	run(): Promise<StageCardActionOutcome>;
 };
 

@@ -76,6 +76,12 @@ export type StageKeyboardInput = {
 	readonly lens: () => 'world' | 'experience';
 	readonly selectionPresent: () => boolean;
 	readonly closeSelection: () => void;
+	/**
+	 * Object Studio's own rung: after every pending gesture, task and tool has unwound,
+	 * Escape leaves a World-entered Studio. Returns whether it left (false: not in
+	 * Studio, a standalone Studio whose way out is Back to Projects, or pending work refused).
+	 */
+	readonly leaveStudio?: () => boolean;
 	/** A temporary reading is on (X1: Lift), and Escape puts it back. */
 	readonly liftActive: () => boolean;
 	readonly putBackLift: () => void;
@@ -314,6 +320,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 					// first, then the next Escape puts the reading back (X1: Lift). A claimed
 					// unwind does neither, and every earlier rung has already won.
 					const claimed = input.activeLayer()?.key(event, 'unwind') === 'claimed';
+					if (!claimed && input.leaveStudio?.() === true) break;
 					if (!claimed && input.selectionPresent()) input.closeSelection();
 					else if (!claimed && input.liftActive()) input.putBackLift();
 					// A-4: the tool rung above already returned the creator to Select with the
