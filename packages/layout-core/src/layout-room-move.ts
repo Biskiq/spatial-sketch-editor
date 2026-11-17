@@ -540,6 +540,7 @@ function finalizeRoomUnitMotion(
 		components,
 		// A rigid move preserves every existing Space.
 		spacePolicy: { openSpaces: 'keep' },
+		candidateRooms: candidateDocument.rooms,
 		allocator: guardedAllocator(attemptedAllocation)
 	});
 	// `RoomReconciliation` has no `kind`, so narrow through an explicit

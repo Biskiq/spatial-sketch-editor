@@ -100,14 +100,20 @@ Evaluation order, exactly SP-plan §5:
    face it would otherwise claim. If removing it leaves a candidate face with no predecessor, the
    command rejects `unsupported_component` rather than birthing a replacement Room.
 3. If `openSpaces === 'retire'`, every remaining unclaimed predecessor retires as today.
-4. **Carry.** For each remaining predecessor, compose its baseline boundary. Each Wall edge whose
-   `wallId` is in `removedWalls` is replaced, in place, by one virtual edge between that ref's
-   oriented ends; existing virtual edges stay in their gap order. Surviving Wall refs keep their
+4. **Carry.** For each remaining predecessor, compose its boundary. For a removal that is the
+   baseline record; a non-removal operation supplies `candidateRooms`, so a split/joined/moved
+   boundary is carried as the operation wrote it rather than restored from baseline. Each Wall edge
+   whose `wallId` is in `removedWalls` is replaced, in place, by one virtual edge between that ref's
+   oriented ends; existing virtual edges stay in their gap order. The mixed sequence is rotated to
+   begin at a surviving Wall before its boundary/virtual arrays are separated, because the composer
+   consumes virtual edges only in the gaps after the first Wall. Surviving Wall refs keep their
    persisted order and directions. This is one pure function over the composer, so adjacent erased
    Walls keep the intermediate Junction (R0 is not reintroduced).
 5. **Open merge.** If a removed Wall is referenced by two carried predecessors, splice their cycles
-   at that Wall's ends into one Space (§3.4). A Wall referenced by three or more carried Spaces
-   rejects `unsupported_component` (parity with today's 3+→1).
+   at that Wall's ends into one Space (§3.4). Each carried entry tracks the original predecessors
+   folded into it: joining more than two Spaces across the whole removal set rejects
+   `unsupported_component` (parity with today's 3+→1), and a Wall referenced by three or more
+   carried Spaces rejects for the same reason.
 6. **Support.** A carried Space with no surviving Wall ref retires (`last-boundary-wall`); its
    virtual edges and any Junction only it referenced go.
 7. **Outline gate.** Provisional candidate rooms = face results + carried results. Each **carried**
@@ -133,6 +139,9 @@ Given carried Spaces A and B sharing removed Wall W (A traverses W `p→q`, B `q
   Overhead conflict: the survivor's value wins (ratified default; the consequence line is SP1c).
 - The survivor emits a `merge-survivor` lineage record, so object associations and door relations
   remap through the existing maps; the retired predecessor gets reason `merged`.
+- If the survivor itself later retires (support or outline gate), its lineage record is dropped:
+  predecessors then remap as retired-without-successor, so associations clear instead of naming a
+  Room the final document does not contain.
 
 ### 3.5 Overhead
 
@@ -163,16 +172,16 @@ out of one path. The carry rule never runs for a space a face claimed.
 
 | File | Change |
 | --- | --- |
-| `packages/layout-core/src/layout-room-reconciliation.ts` | policy + result fields; F2 claim-map filter; F3 component-key set; carry rule; open merge; support; outline gate; `space_outline_invalid` rejection code; docs for the new order. `RoomBoundaryLookup` unchanged. |
+| `packages/layout-core/src/layout-room-reconciliation.ts` | policy + result fields; optional `candidateRooms` for non-removal boundary rewrites; F2 claim-map filter; F3 component-key set; carry rule (rotation, merge predecessor tracking, successor cleanup); open merge; support; outline gate; `space_outline_invalid` rejection code; docs for the new order. `RoomBoundaryLookup` unchanged. |
 | `packages/layout-core/src/layout-space-outline.ts` | **new** home for the pure outline predicates (`spaceOutlineSignedArea`, `spaceOutlineSelfIntersects`, `polygonContainsPolygon`, `spacePairIssue`). It imports only coordinates, face predicates and robust orientation, so `layout-room-reconciliation.ts` can use it without importing `layout-space-placement.ts`. |
 | `packages/layout-core/src/layout-space-placement.ts` | keeps the document-level `spacePlacementIssues`/`isOpenSpace` and re-exports the moved predicates, so the SP1a public surface is unchanged. It imports the outline module and `roomBoundaryPolygon`; nothing imports it from reconciliation. |
 | `packages/layout-core/src/layout-wall-topology-ops.ts` | `planDeleteWall(..., options?: { openSpaces })`; new `planDeleteWalls(document, wallIds, capture, levelId, options?)`; removal pipeline reconciles before pruning; junction pruning includes final virtual edges; `planRemoveRoom(..., options?)` passes `retireRoomIds` and `invalidOutline: 'reject'`; `planDeleteWall` passes `invalidOutline: 'retire'`; `RoomMetadataPatch.overhead`; new `planRemoveSpace`; plan results carry `spaceRetirements`; rejection codes `not_open_space`, `space_outline_invalid`. |
 | `packages/layout-core/src/layout-wall-chain.ts` | `reconcileRooms` call passes `{ openSpaces: 'keep' }` (non-removal). No public option, no behaviour change for enclosed docs. |
-| `packages/layout-core/src/layout-wall-dissolve.ts` | refuse when the dissolved Junction is the start or end of any `virtualEdges` entry: new code `open_side_ends_here`, message **An open side ends here**; reconcile passes `keep`; open predecessors are carried, not faced. |
+| `packages/layout-core/src/layout-wall-dissolve.ts` | refuse when the dissolved Junction is the start or end of any `virtualEdges` entry: new code `open_side_ends_here`, message **An open side ends here**; reconcile passes `keep` plus `candidateRooms`; an open Room's two incident refs are rewritten to the joined Wall (direction from cycle order); open predecessors are carried, not faced. |
 | `packages/layout-core/src/layout-circular-room.ts` | reconcile call passes `{ openSpaces: 'keep' }`. |
 | `packages/layout-core/src/layout-room-isolation.ts` | `collectBoundaryGraph` validates and includes every virtual-edge endpoint in `junctionIds`; `connectedRoomIds` treats those Junctions as part of the Room's connectivity, so a group move takes them and a stationary Wall touching one refuses isolation. |
-| `packages/layout-core/src/layout-room-move.ts` | `roomBoundaryCycleKey(document, room)` switches to `spaceBoundaryCycleKey`; components skip open rooms; identity assertion counts `carriedRoomIds` and compares composed keys + virtual edges for carried Rooms; reconcile passes `keep`. |
-| `packages/layout-core/src/layout-wall-first-precision.ts` | reconcile passes `keep` and skips open rooms in the declared 1→1 components (they are carried); identity assertion counts carried Rooms and compares composed keys; `validateWallFirstTopology` composes an open Room's boundary instead of requiring a Wall-only chain, and its short-boundary gate uses the composed polygon; `planExactRectangleDimensions` refuses any open Space with `unsupported_geometry`; `PrecisionRejection` gains `space_outline_invalid`. |
+| `packages/layout-core/src/layout-room-move.ts` | `roomBoundaryCycleKey(document, room)` switches to `spaceBoundaryCycleKey`; components skip open rooms; identity assertion counts `carriedRoomIds` and compares composed keys + virtual edges for carried Rooms; reconcile passes `keep` and the translated `candidateRooms`. |
+| `packages/layout-core/src/layout-wall-first-precision.ts` | reconcile passes `keep` plus `candidateRooms` and skips open rooms in the declared 1→1 components (they are carried); identity assertion counts carried Rooms and compares composed keys; `validateWallFirstTopology` composes an open Room's boundary instead of requiring a Wall-only chain, and its short-boundary gate uses the composed polygon; `planExactRectangleDimensions` refuses any open Space with `unsupported_geometry`; `PrecisionRejection` gains `space_outline_invalid`. |
 | `packages/layout-core/src/layout-duplicate.ts` | no record-copy change (SP1a); isolation now supplies virtual-edge Junctions, so the existing remap is complete. |
 | `apps/editor/tests/lib/layout/sp1b-open-spaces-lifecycle.test.ts` | **new** lifecycle suite (§5). |
 | The two S2 spike files under `apps/editor/tests/lib/layout/spikes/` (`s2-space-conversion.*`) | **deleted** once their production cases live in the SP1b/SP1a suites (SP-plan §13 acceptance). |

@@ -919,6 +919,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 					// The chain is non-removal: an already-open Space is preserved,
 					// never retired by an unrelated stroke.
 					spacePolicy: { openSpaces: 'keep' },
+					candidateRooms: candidate.rooms,
 					allocator: createAuthoringRoomAllocator(options.capture, options.roomNamePrefix)
 				})
 			);

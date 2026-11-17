@@ -20,10 +20,12 @@ import {
 	planRemoveSpace,
 	planRoomMetadataUpdate,
 	planWallFirstRoomMove,
+	planWallSubdivision,
 	reconcileRooms,
 	roomBoundaryPolygon,
 	type LayoutDocumentWallFirst,
-	type LayoutVec2
+	type LayoutVec2,
+	type NodingIdAllocator
 } from '@portfolio/layout-core';
 import { captureFor } from './__fixtures__/layout-id-capture';
 import { twoRoomDocument } from './__fixtures__/two-room-fixture';
@@ -167,6 +169,77 @@ function capture(name: string) {
 	return captureFor(name);
 }
 
+/** Three open-ish 2×3 rectangles in a row sharing m1 and m2. */
+function threeRoomRow(): LayoutDocumentWallFirst {
+	return {
+		...createEmptyWallFirstLayoutDocument(),
+		junctions: [
+			junction('j-a', [0, 0]),
+			junction('j-b', [2, 0]),
+			junction('j-c', [2, 3]),
+			junction('j-d', [0, 3]),
+			junction('j-e', [4, 0]),
+			junction('j-f', [4, 3]),
+			junction('j-g', [6, 0]),
+			junction('j-h', [6, 3])
+		],
+		walls: [
+			wall('b0', 'j-a', 'j-b'),
+			wall('m1', 'j-b', 'j-c'),
+			wall('t0', 'j-c', 'j-d'),
+			wall('b1', 'j-b', 'j-e'),
+			wall('m2', 'j-e', 'j-f'),
+			wall('t1', 'j-f', 'j-c'),
+			wall('b2', 'j-e', 'j-g'),
+			wall('right', 'j-g', 'j-h'),
+			wall('t2', 'j-h', 'j-f')
+		],
+		rooms: [
+			{
+				id: 'room-left',
+				name: 'Left',
+				boundary: [
+					{ wallId: 'b0', direction: 'forward' },
+					{ wallId: 'm1', direction: 'forward' },
+					{ wallId: 't0', direction: 'forward' }
+				],
+				virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			},
+			{
+				id: 'room-middle',
+				name: 'Middle',
+				boundary: [
+					{ wallId: 'b1', direction: 'forward' },
+					{ wallId: 'm2', direction: 'forward' },
+					{ wallId: 't1', direction: 'forward' },
+					{ wallId: 'm1', direction: 'reverse' }
+				],
+				virtualEdges: [],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			},
+			{
+				id: 'room-right',
+				name: 'Right',
+				boundary: [
+					{ wallId: 'b2', direction: 'forward' },
+					{ wallId: 'right', direction: 'forward' },
+					{ wallId: 't2', direction: 'forward' },
+					{ wallId: 'm2', direction: 'reverse' }
+				],
+				virtualEdges: [],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			}
+		]
+	};
+}
+
 describe('SP1b — Wall removal lifecycle', () => {
 	it('retires an open Space by default and carries it with openSpaces: keep', () => {
 		const document = threeWallOpenSpace();
@@ -189,6 +262,34 @@ describe('SP1b — Wall removal lifecycle', () => {
 		const compiled = compileWallFirstLayoutGeometry(carried.document);
 		expect(compiled.geometry.rooms).toHaveLength(1);
 		expect(compiled.geometry.rooms[0]!.floorPolygon.length).toBeGreaterThan(3);
+	});
+
+	it('carries a Space whose FIRST boundary Wall was erased', () => {
+		const document = threeWallOpenSpace();
+		const plan = planDeleteWall(document, 'wall-a', capture('sp1b-first-wall'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.document.rooms[0]!.boundary.map((ref) => ref.wallId)).toEqual(['wall-b', 'wall-c']);
+		expect(plan.document.rooms[0]!.virtualEdges).toHaveLength(2);
+		expect(plan.retiredRoomIds).toEqual([]);
+	});
+
+	it('carries a Space after opposite boundary Walls are erased together', () => {
+		const document = enclosedRectangle();
+		const plan = planDeleteWalls(document, ['wall-a', 'wall-c'], capture('sp1b-opposite'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.document.rooms[0]!.boundary.map((ref) => ref.wallId).sort()).toEqual([
+			'wall-b',
+			'wall-d'
+		]);
+		expect(plan.document.rooms[0]!.virtualEdges).toHaveLength(2);
 	});
 
 	it('an erased outside Wall carries an enclosed Room as an open Space with its metadata', () => {
@@ -270,6 +371,17 @@ describe('SP1b — Wall removal lifecycle', () => {
 		// Both erased Walls are virtual; the shared Wall's reverse pair collapsed.
 		expect(plan.document.rooms[0]!.virtualEdges).toHaveLength(2);
 		expect(plan.retiredRoomIds).toEqual(['room-right']);
+	});
+
+	it('a removal set that would join three Spaces refuses as a whole', () => {
+		const document = threeRoomRow();
+		const plan = planDeleteWalls(document, ['m1', 'm2'], capture('sp1b-three-join'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind === 'rejected') {
+			expect(plan.rejection.message).toContain('joining three or more is unsupported');
+		}
 	});
 
 	it('open merge refuses conflicting thicknesses and keeps the survivor overhead', () => {
@@ -362,6 +474,31 @@ describe('SP1b — Wall removal lifecycle', () => {
 });
 
 describe('SP1b — Remove space and metadata', () => {
+	it('a merged Space that then retires clears the object instead of remapping to a missing Room', () => {
+		const document = sharedWallPair();
+		document.objects = [
+			{
+				id: 'obj-1',
+				kind: 'box',
+				position: [1, 0, 1],
+				rotation: [0, 0, 0],
+				dimensions: [1, 1, 1],
+				roomId: 'room-left'
+			}
+		];
+		const plan = planDeleteWalls(
+			document,
+			document.walls.map((candidate) => candidate.id),
+			capture('sp1b-all-walls'),
+			document.floor.id,
+			{ openSpaces: 'keep' }
+		);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toEqual([]);
+		expect(plan.document.objects[0]!.roomId).toBeUndefined();
+	});
+
 	it('Remove space deletes only the record, its released anchors and object association', () => {
 		const document = oneWallOpenSpace();
 		document.objects = [
@@ -430,6 +567,41 @@ describe('SP1b — adjacent operations', () => {
 		const moved = new Map(plan.document.junctions.map((junction) => [junction.id, junction.point]));
 		expect(moved.get('j-a')).toEqual([1, 2]);
 		expect(moved.get('j-c')).toEqual([5, 5]);
+	});
+
+	it('splits a boundary Wall of an open Space without losing identity or virtual edges', () => {
+		const document = threeWallOpenSpace();
+		const allocator: NodingIdAllocator = {
+			nextWallId: (_document, seed) => `${seed}-split`,
+			nextJunctionId: (_document, seed) => `${seed}-split-junction`
+		};
+		const plan = planWallSubdivision(document, 'wall-b', 1.5, allocator);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.document.rooms[0]!.id).toBe('room-open');
+		expect(plan.document.rooms[0]!.virtualEdges).toEqual(document.rooms[0]!.virtualEdges);
+		expect(plan.document.rooms[0]!.boundary).toHaveLength(4);
+	});
+
+	it('joins two boundary Walls away from a virtual end and keeps the Space', () => {
+		const document = threeWallOpenSpace();
+		// wall-b and wall-c meet at j-c; give b a midpoint so the junction is degree 2.
+		document.junctions.push(junction('j-mid', [4, 1.5]));
+		document.walls = document.walls.filter((candidate) => candidate.id !== 'wall-b');
+		document.walls.push(wall('wall-b1', 'j-b', 'j-mid'), wall('wall-b2', 'j-mid', 'j-c'));
+		document.rooms[0]!.boundary = [
+			{ wallId: 'wall-a', direction: 'forward' },
+			{ wallId: 'wall-b1', direction: 'forward' },
+			{ wallId: 'wall-b2', direction: 'forward' },
+			{ wallId: 'wall-c', direction: 'forward' }
+		];
+		const plan = planDissolveJunction(document, 'j-mid', capture('sp1b-join-mid'), document.floor.id);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.document.rooms[0]!.id).toBe('room-open');
+		expect(plan.document.rooms[0]!.virtualEdges).toEqual(document.rooms[0]!.virtualEdges);
 	});
 
 	it('duplicates an isolated open Space with remapped virtual edges', () => {

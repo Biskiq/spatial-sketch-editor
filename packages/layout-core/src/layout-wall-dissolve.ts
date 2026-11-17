@@ -426,6 +426,27 @@ export function planDissolveJunction(
 		}),
 		openings
 	};
+	// An open Space has no candidate face to rewrite its boundary, so the join
+	// must update its record here: the two incident refs become the joined Wall.
+	// The direction follows which side the cycle traverses first (survivor→other
+	// means joinedStart→joinedEnd).
+	candidate.rooms = document.rooms.map((room) => {
+		if (room.virtualEdges.length === 0) return room;
+		const survivorIndex = room.boundary.findIndex((ref) => ref.wallId === survivor.id);
+		const otherIndex = room.boundary.findIndex((ref) => ref.wallId === other.id);
+		if (survivorIndex < 0 || otherIndex < 0) return room;
+		const forward = (survivorIndex + 1) % room.boundary.length === otherIndex;
+		return {
+			...room,
+			boundary: room.boundary
+				.filter((ref) => ref.wallId !== other.id)
+				.map((ref) =>
+					ref.wallId === survivor.id
+						? { wallId: survivor.id, direction: forward ? 'forward' : 'reverse' }
+						: ref
+				)
+		};
+	});
 
 	// Room correspondence: predecessor evidence comes from the BASELINE rooms,
 	// faces extract from the joined graph, and reconcileRooms owns the final
@@ -466,6 +487,7 @@ export function planDissolveJunction(
 				predecessorPolygons,
 				// Join is non-removal: an open Space is carried, never retired.
 				spacePolicy: { openSpaces: 'keep' },
+				candidateRooms: candidate.rooms,
 				allocator: createAuthoringRoomAllocator(capture)
 			});
 		} catch (error) {
