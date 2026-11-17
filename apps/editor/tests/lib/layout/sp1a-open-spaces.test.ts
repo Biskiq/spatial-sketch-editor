@@ -18,6 +18,7 @@ import {
 	createClosedWallCircleDocument,
 	createEmptyWallFirstLayoutDocument,
 	ensureLayoutWorldIndex,
+	findPolygonContaining,
 	hasBlockingLayoutIssues,
 	isOpenSpace,
 	mintLayoutIdCapture,
@@ -27,6 +28,7 @@ import {
 	polygonContainsPolygon,
 	roomBoundaryPolygon,
 	serializeWallFirstLayoutDocument,
+	spaceAtPoint,
 	spaceBoundaryCycleKey,
 	spaceBoundaryPolygonFromEdges,
 	spaceOpenSideCount,
@@ -503,6 +505,48 @@ describe('SP1a — invariants and refusals', () => {
 		const refused = compileWallFirstLayoutGeometry(overlap);
 		expect(refused.geometry.rooms).toEqual([]);
 		expect(overlap).toEqual(overlapBefore);
+	});
+});
+
+describe('SP1a — canonical Space point ownership', () => {
+	it('spaceAtPoint selects a nested open Space over its enclosing Room and excludes outside points', () => {
+		const document = merge(enclosedRectangleAt('hall', 0, 0, 10, 6), openRectangleAt('booth', 2, 1));
+		const compiled = compileWallFirstLayoutGeometry(document);
+		expect(hasBlockingLayoutIssues(compiled.issues)).toBe(false);
+		expect(compiled.geometry.rooms).toHaveLength(2);
+
+		// [3, 2] is inside both the 60 m² hall and the 12 m² booth.
+		expect(spaceAtPoint([3, 2], compiled.geometry.rooms)?.roomId).toBe('booth-room');
+		// [8, 4] is inside the hall only.
+		expect(spaceAtPoint([8, 4], compiled.geometry.rooms)?.roomId).toBe('hall-room');
+		// Outside every compiled Space.
+		expect(spaceAtPoint([12, 7], compiled.geometry.rooms)).toBeNull();
+	});
+
+	it('spaceAtPoint breaks equal-area ties by Room identity, not input order', () => {
+		const left = compiledRoom(openRectangleAt('tie-a', 0, 0)).room;
+		const right = compiledRoom(openRectangleAt('tie-b', 2, 0)).room;
+		// Both 4×3 floors contain [2.5, 1] and have the same area.
+		const point: LayoutVec2 = [2.5, 1];
+		expect(spaceAtPoint(point, [left, right])?.roomId).toBe('tie-a-room');
+		expect(spaceAtPoint(point, [right, left])?.roomId).toBe('tie-a-room');
+	});
+
+	it('spaceAtPoint preserves enclosed-only parity with findPolygonContaining', () => {
+		const compiled = compileWallFirstLayoutGeometry(twoRoomDocument());
+		expect(hasBlockingLayoutIssues(compiled.issues)).toBe(false);
+		const roomPolygons = compiled.geometry.queries.polygons.filter(
+			(polygon) => polygon.kind === 'room-floor'
+		);
+		for (const point of [
+			[3, 2],
+			[11, 2],
+			[7, 2]
+		] satisfies LayoutVec2[]) {
+			const canonical = spaceAtPoint(point, compiled.geometry.rooms);
+			const legacy = findPolygonContaining(point, roomPolygons);
+			expect(canonical?.roomId ?? null).toBe(legacy?.roomId ?? null);
+		}
 	});
 });
 

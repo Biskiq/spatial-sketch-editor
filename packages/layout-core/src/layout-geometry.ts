@@ -286,6 +286,26 @@ function buildWallFirstRoomSource(
 	};
 }
 
+/** True when an enclosed Room's Wall references already form one closed chain. */
+function closedRoomBoundaryChains(
+	room: Pick<LayoutWallFirstRoom, 'boundary'>,
+	wallById: ReadonlyMap<string, LayoutWall>
+): boolean {
+	if (room.boundary.length < 2) return false;
+	let firstStart: string | undefined;
+	let previousEnd: string | undefined;
+	for (const ref of room.boundary) {
+		const wall = wallById.get(ref.wallId);
+		if (!wall) return false;
+		const start = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
+		const end = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
+		if (firstStart === undefined) firstStart = start;
+		if (previousEnd !== undefined && previousEnd !== start) return false;
+		previousEnd = end;
+	}
+	return previousEnd === firstStart;
+}
+
 /**
  * Blocking Space checks that run before the shared core: the composed outline
  * must be positive, simple, and free of I7 conflicts. A failing Room compiles
@@ -297,8 +317,14 @@ function spacePreflight(document: LayoutDocumentWallFirst): {
 } {
 	const issues: LayoutGeometryIssue[] = [];
 	const invalidRoomIds = new Set<string>();
+	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 	document.rooms.forEach((room, index) => {
 		const path = `floors[0].rooms[${index}]`;
+		// A structurally closed Room keeps the shared core's established
+		// Wall-chain validation and never enters the Space composer. A closed
+		// boundary that does not chain still falls through so the composer's
+		// existing missing-reference/empty-boundary diagnoses are preserved.
+		if (room.virtualEdges.length === 0 && closedRoomBoundaryChains(room, wallById)) return;
 		const composed = composeSpaceBoundary(document, room);
 		if (composed.kind === 'failed') {
 			// The codec names the specific composition failure. The compiler keeps

@@ -61,7 +61,7 @@ import type { LayoutObject } from './layout-wall-first-types';
  * Validation result carrying the wall-first document type, not the legacy one.
  *
  * A success is **always** the canonical current-format document. There is one
- * recognized version (`7`) and no historical variant: a payload declaring anything
+ * recognized version (`8`) and no historical variant: a payload declaring anything
  * else fails as `unsupported_format_version`.
  */
 export type WallFirstLayoutValidationResult =
@@ -272,6 +272,25 @@ export function serializeWallFirstLayoutDocument(document: unknown): string {
 	return result.canonicalJson;
 }
 
+/** True when oriented Wall references form one closed chain. */
+function closedBoundaryChains(
+	boundary: readonly OrientedWallRef[],
+	wallById: ReadonlyMap<string, LayoutWall>
+): boolean {
+	let firstStart: string | undefined;
+	let previousEnd: string | undefined;
+	for (const ref of boundary) {
+		const wall = wallById.get(ref.wallId);
+		if (!wall) return false;
+		const start = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
+		const end = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
+		if (firstStart === undefined) firstStart = start;
+		if (previousEnd !== undefined && previousEnd !== start) return false;
+		previousEnd = end;
+	}
+	return boundary.length > 0 && previousEnd === firstStart;
+}
+
 function parseDocument(
 	input: unknown,
 	path: string,
@@ -456,6 +475,12 @@ function parseDocument(
 			}
 		}
 		if (!referencesResolve) continue;
+		// I2/I3 are open-Space rules. A structurally closed Room keeps the
+		// compiler/shared-core Wall-chain contract, as it was at format 7, so
+		// validation does not re-compose every enclosed Room. A closed boundary
+		// that does not chain still enters the composer so its established
+		// `space_boundary_open` diagnosis and message are preserved.
+		if (room.virtualEdges.length === 0 && closedBoundaryChains(room.boundary, wallById)) continue;
 		// I2/I3 — one closed cycle that consumes every virtual edge. The
 		// composer is the one parser; the codec never re-implements its order.
 		const composed = composeSpaceBoundary({ junctions, walls }, room);

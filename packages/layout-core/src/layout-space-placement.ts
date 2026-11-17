@@ -12,6 +12,7 @@
  */
 import type { LayoutVec2 } from './layout-coordinates';
 import { pointStrictlyInsidePolygon, polygonsShareInteriorArea } from './layout-face-extraction';
+import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
 import { orientXZ } from './layout-robust-orientation';
 import { roomBoundaryPolygon } from './layout-room-reconciliation';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from './layout-wall-first-types';
@@ -143,20 +144,25 @@ export function polygonContainsPolygon(
 export function spacePlacementIssues(document: LayoutDocumentWallFirst): SpacePlacementIssue[] {
 	const openRooms = document.rooms.filter((room) => room.virtualEdges.length > 0);
 	if (openRooms.length === 0) return [];
-	const polygons = new Map<string, readonly LayoutVec2[]>();
+	// Compose each resolvable outline once, then prune the room pairs by their
+	// plan boxes. A pair whose boxes do not overlap cannot share interior area,
+	// so the predicate still sees every pair it could accept. This uses the
+	// existing plan-box index that already owns the other pair gates; it is not
+	// a second membership authority and not a new spatial index.
+	const indexedRooms: Array<{ room: LayoutWallFirstRoom; polygon: readonly LayoutVec2[]; box: PlanBox }> = [];
 	for (const room of document.rooms) {
 		const polygon = roomBoundaryPolygon(document, room.id);
-		if (polygon) polygons.set(room.id, polygon);
+		if (polygon) indexedRooms.push({ room, polygon, box: polygonPlanBox(polygon) });
 	}
+	const boxIndex = createPlanBoxIndex(indexedRooms.map((entry) => entry.box));
 	const issues: SpacePlacementIssue[] = [];
-	for (let first = 0; first < document.rooms.length; first += 1) {
-		const a = document.rooms[first]!;
-		const polygonA = polygons.get(a.id);
-		if (!polygonA) continue;
-		for (let second = first + 1; second < document.rooms.length; second += 1) {
-			const b = document.rooms[second]!;
-			const polygonB = polygons.get(b.id);
-			if (!polygonB) continue;
+	for (let first = 0; first < indexedRooms.length; first += 1) {
+		const a = indexedRooms[first]!.room;
+		const polygonA = indexedRooms[first]!.polygon;
+		for (const second of boxIndex.overlaps(indexedRooms[first]!.box)) {
+			if (second <= first) continue;
+			const b = indexedRooms[second]!.room;
+			const polygonB = indexedRooms[second]!.polygon;
 			const aOpen = isOpenSpace(a);
 			const bOpen = isOpenSpace(b);
 			if (!aOpen && !bOpen) continue;
@@ -182,6 +188,20 @@ export function spacePlacementIssues(document: LayoutDocumentWallFirst): SpacePl
 		}
 	}
 	return issues;
+}
+
+function polygonPlanBox(polygon: readonly LayoutVec2[]): PlanBox {
+	let minX = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxZ = -Infinity;
+	for (const [x, z] of polygon) {
+		minX = Math.min(minX, x);
+		minZ = Math.min(minZ, z);
+		maxX = Math.max(maxX, x);
+		maxZ = Math.max(maxZ, z);
+	}
+	return { minX, minZ, maxX, maxZ };
 }
 
 /** A Space is open when it states virtual edges; `open-to-sky` is an overhead reading, not topology. */
