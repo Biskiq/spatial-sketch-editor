@@ -37,7 +37,13 @@ import {
 	type SceneFinishEdit,
 	type SceneFinishRef
 } from '@portfolio/project-model/scene-planning';
-import type { MaterialId, SceneColor, SceneEntity, SceneMaterialInstance } from '@portfolio/project-model';
+import type {
+	AcceptedRevision,
+	MaterialId,
+	SceneColor,
+	SceneEntity,
+	SceneMaterialInstance
+} from '@portfolio/project-model';
 import { getMaterial, materials } from '$lib/content/materials';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
@@ -157,6 +163,12 @@ type PendingPalette = {
 	readonly slotId: string;
 };
 
+/** The Stage and revision an upload began in; a write may not outlive either. */
+type ImageWriteContext = {
+	readonly services: StageAdapterServices;
+	readonly acceptedRevision: AcceptedRevision;
+};
+
 /**
  * A Replace that has already uploaded its bytes and now needs the shared-Finish
  * decision. The asset stays in P20 storage whatever the answer; the planner
@@ -168,6 +180,7 @@ type PendingImageReplace = {
 	readonly reach: number;
 	readonly image: ImportedProjectImage;
 	readonly warning: string | null;
+	readonly context: ImageWriteContext;
 };
 
 export type FinishAsk = {
@@ -223,6 +236,29 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	});
 
 	const servicesNow = (): StageAdapterServices | null => host.services();
+
+	function captureImageWrite(): ImageWriteContext | null {
+		const services = servicesNow();
+		if (services === null) return null;
+		return { services, acceptedRevision: services.stage.snapshot().acceptedRevision };
+	}
+
+	function sameAcceptedRevision(left: AcceptedRevision, right: AcceptedRevision): boolean {
+		return left.projectId === right.projectId && left.revisionId === right.revisionId;
+	}
+
+	/**
+	 * An upload is project I/O, not a Scene write. If the Stage or the accepted
+	 * revision changed while the bytes were in flight, the completion is stale
+	 * and must not write into the replacement source.
+	 */
+	function imageWriteIsCurrent(context: ImageWriteContext): boolean {
+		if (servicesNow() !== context.services) return false;
+		return sameAcceptedRevision(
+			context.services.stage.snapshot().acceptedRevision,
+			context.acceptedRevision
+		);
+	}
 
 	function scene() {
 		return servicesNow()?.stage.snapshot().domain.scene ?? null;
@@ -462,25 +498,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		payload: unknown;
 		entityIds?: readonly string[];
 		allocatedIds?: readonly { kind: string; id: string }[];
-	}): Promise<{
+	}, context?: ImageWriteContext): Promise<{
 		readonly kind: string;
 		readonly code?: string;
 		readonly reason?: string | null;
 		readonly message?: string;
 	}> {
-		const services = servicesNow();
+		const services = context?.services ?? servicesNow();
 		if (services === null) return { kind: 'unavailable', message: 'The Stage is still opening.' };
+		if (context !== undefined && !imageWriteIsCurrent(context)) return { kind: 'no-op' };
 		const outcome = await services.authoring.accept({
 			version: 1,
 			kind: input.kind,
 			operationId: crypto.randomUUID(),
-			expectedRevision: services.stage.snapshot().acceptedRevision,
+			expectedRevision: context?.acceptedRevision ?? services.stage.snapshot().acceptedRevision,
 			targets: (input.entityIds ?? []).map((id) => entityReference(services, id)),
 			payload: input.payload as never,
 			capturedInputs: [],
 			allocatedIds: input.allocatedIds ?? []
 		});
-		if (outcome.kind === 'refused' && outcome.code !== 'no-change') {
+		if (outcome.kind === 'refused' && outcome.code !== 'no-change' && outcome.reason !== 'no-change') {
 			host.onNotice(outcome.message);
 		}
 		return outcome;
@@ -719,7 +756,14 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (current.kind === 'edit') {
 			await applyEdit(current.entityId, current.edit, mode);
 		} else if (current.kind === 'image-replace') {
-			await applyImageReplace(current.entityId, current.image, asked.reach, mode, current.warning);
+			await applyImageReplace(
+				current.entityId,
+				current.image,
+				asked.reach,
+				mode,
+				current.warning,
+				current.context
+			);
 		} else {
 			await applyPalette(current.entityId, current.color, current.slotId, asked.reach, mode);
 		}
@@ -812,8 +856,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		image: ImportedProjectImage,
 		reach: number,
 		mode: 'just-this' | 'all' | 'in-place',
-		warning: string | null
+		warning: string | null,
+		context: ImageWriteContext
 	): Promise<FinishImageOutcome> {
+		if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
 		const view = viewFor(entityId);
 		if (view === null || !view.editable) {
 			return { kind: 'refused', message: "Model's own has no Finish to edit." };
@@ -831,7 +877,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				},
 				entityIds: [entityId],
 				allocatedIds: needsNew ? [newId('scene-finish', crypto.randomUUID())] : []
-			});
+			}, context);
 			if (outcome.kind === 'accepted') {
 				if (warning !== null) host.onNotice(warning);
 				return { kind: 'accepted' };
@@ -857,18 +903,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	 * the uploaded asset (P20 retention) and writes no Scene state.
 	 */
 	function replaceImage(entityId: string, file: File): Promise<void> {
+		const context = captureImageWrite();
 		const view = viewFor(entityId);
-		if (view === null || !view.editable) {
-			host.onNotice(view === null ? paintabilityNotice(entityOf(entityId)) : "Model's own has no Finish to edit.");
+		if (context === null || view === null || !view.editable) {
+			host.onNotice(
+				context === null
+					? 'The Stage is still opening.'
+					: view === null
+						? paintabilityNotice(entityOf(entityId))
+						: "Model's own has no Finish to edit."
+			);
 			return Promise.resolve();
 		}
 		return imageFlow.begin(file, async (image, warning) => {
+			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
 			const latest = viewFor(entityId);
 			if (latest === null || !latest.editable) {
 				return { kind: 'refused', message: "Model's own has no Finish to edit." };
 			}
 			if (latest.users > 1) {
-				pending = { kind: 'image-replace', entityId, reach: latest.users, image, warning };
+				pending = { kind: 'image-replace', entityId, reach: latest.users, image, warning, context };
 				ask = {
 					kind: 'image-replace',
 					entityId,
@@ -880,7 +934,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			}
 			const mode =
 				latest.ref !== 'model-own' && 'curated' in latest.ref ? 'just-this' : 'in-place';
-			return applyImageReplace(entityId, image, latest.users, mode, warning);
+			return applyImageReplace(entityId, image, latest.users, mode, warning, context);
 		});
 	}
 
@@ -890,14 +944,19 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	 * with it, exactly as a Library pick does.
 	 */
 	function addFromImage(file: File): Promise<void> {
+		const context = captureImageWrite();
 		const selected = selectionEntity();
+		if (context === null) {
+			host.onNotice('The Stage is still opening.');
+			return Promise.resolve();
+		}
 		if (selected !== null && !isFinishPaintable(selected)) {
 			host.onNotice(paintabilityNotice(selected));
 			return Promise.resolve();
 		}
 		return imageFlow.begin(file, async (image, warning, label) => {
-			const current = scene();
-			if (current === null) return { kind: 'refused', message: 'The Stage is still opening.' };
+			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
+			const current = context.services.stage.snapshot().domain.scene;
 			const entityIds = selected === null ? [] : [selected.id];
 			const finishId = crypto.randomUUID();
 			// The planner bounds a Finish name at 120; keep the suffix inside it.
@@ -911,7 +970,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				},
 				entityIds,
 				allocatedIds: [newId('scene-finish', finishId)]
-			});
+			}, context);
 			if (outcome.kind === 'accepted') {
 				remember(`project:${finishId}`);
 				if (warning !== null) host.onNotice(warning);

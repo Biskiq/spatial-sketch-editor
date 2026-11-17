@@ -27,6 +27,7 @@
 import { TextureLoader, type Texture as ThreeTexture } from 'three';
 import { probeArtworkImage } from '@portfolio/project-model';
 import {
+	invalidateScopedMaterialLoads,
 	invalidateTextureSource,
 	loadSourceTexture,
 	type TextureLoadScope
@@ -87,10 +88,17 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 	const prepared = new Set<string>();
 	/** The pin each prepared URI was loaded under, so a changed pin invalidates it. */
 	const preparedPins = new Map<string, string>();
+	/** Every URI this scope has asked the shared cache to load, including failures. */
+	const requested = new Set<string>();
+	/** Per-URI load generation; a late completion from an older one is discarded. */
+	const generations = new Map<string, number>();
 	let disposed = false;
 
 	/** Drop one URI's decoded texture, source cache, dimensions and preview. */
 	function forget(uri: string): void {
+		requested.add(uri);
+		generations.set(uri, (generations.get(uri) ?? 0) + 1);
+		invalidateScopedMaterialLoads(scope.scopeId);
 		const cached = invalidateTextureSource(scope.scopeId, uri);
 		const texture = loaded.get(uri);
 		if (texture !== undefined) {
@@ -108,7 +116,10 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		preparedPins.delete(uri);
 	}
 
-	async function loadProjectImage(assetId: string): Promise<ThreeTexture> {
+	async function loadProjectImage(
+		assetId: string,
+		isCurrent: () => boolean = () => true
+	): Promise<ThreeTexture> {
 		const pin = input.pins().get(assetId);
 		if (pin === undefined) throw new Error('The image is not registered in this project.');
 		const content = await input.load(assetId, abort.signal);
@@ -127,7 +138,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		const url = URL.createObjectURL(blob);
 		try {
 			const texture = await loader.loadAsync(url);
-			if (disposed) {
+			if (disposed || !isCurrent()) {
 				texture.dispose();
 				throw new Error('The project texture scope is closed.');
 			}
@@ -151,20 +162,35 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 	const scope: ProjectTextureScope = {
 		scopeId: input.scopeId,
 		loader: async (uri) => {
+			if (disposed) throw new Error('The project texture scope is closed.');
+			requested.add(uri);
+			const generation = (generations.get(uri) ?? 0) + 1;
+			generations.set(uri, generation);
 			const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
 			try {
-				const texture = assetId === null ? await loadCatalogue(uri) : await loadProjectImage(assetId);
+				const texture =
+					assetId === null
+						? await loadCatalogue(uri)
+						: await loadProjectImage(assetId, () => generations.get(uri) === generation);
+				if (disposed || generations.get(uri) !== generation) {
+					texture.dispose();
+					throw new Error('That texture load was superseded.');
+				}
 				loaded.set(uri, texture);
 				input.onSuccess?.(uri);
 				return texture;
 			} catch (error) {
-				const message = error instanceof Error ? error.message : 'The image could not load.';
-				input.onFailure?.(uri, message);
+				if (!disposed && generations.get(uri) === generation) {
+					const message = error instanceof Error ? error.message : 'The image could not load.';
+					input.onFailure?.(uri, message);
+				}
 				throw error;
 			}
 		},
 		prepare: async (uris) => {
+			if (disposed) return;
 			for (const uri of uris) {
+				requested.add(uri);
 				const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
 				const pinHash = assetId === null ? null : (input.pins().get(assetId)?.hash ?? null);
 				// A resource pin is immutable in a valid Scene, but a restored or
@@ -185,6 +211,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			}
 		},
 		retry: (uri) => {
+			if (disposed) return;
 			forget(uri);
 			void scope.prepare([uri]);
 		},
@@ -198,16 +225,23 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			if (disposed) return;
 			disposed = true;
 			abort.abort();
-			for (const [uri, texture] of loaded) {
-				// Invalidation already disposes the cached texture; only a direct
-				// `loader` result needs this second call.
-				if (!invalidateTextureSource(scope.scopeId, uri)) texture.dispose();
+			// Invalidate every requested URI, not only the successes: a cached
+			// failure or an aborted in-flight load otherwise outlives this route and
+			// the next scope with the same id never asks again.
+			for (const uri of requested) {
+				const cached = invalidateTextureSource(scope.scopeId, uri);
+				const texture = loaded.get(uri);
+				if (texture !== undefined && !cached) texture.dispose();
 			}
+			invalidateScopedMaterialLoads(scope.scopeId);
 			loaded.clear();
+			requested.clear();
+			generations.clear();
 			for (const url of previewUris.values()) URL.revokeObjectURL(url);
 			previewUris.clear();
 			dimensions.clear();
 			prepared.clear();
+			preparedPins.clear();
 		}
 	};
 	return scope;

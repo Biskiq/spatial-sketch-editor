@@ -599,10 +599,19 @@ test('release preparation pins the colour image of a Finish and reopen keeps its
 		id: 'brick', name: 'Brick wall', baseMaterialId: 'paper-aged',
 		color: '#ffffff', maps: { color: ready.id }
 	};
+	// The planner's shape: a real pin, the pin hash as the content revision and
+	// no dependency-lock entry. Texture resources are closed by their record.
+	assert.equal(ready.mime, 'image/png');
+	assert.ok(ready.sha256);
+	assert.ok(ready.byteSize);
+	const pin = {
+		hash: ready.sha256, mime: ready.mime, size: ready.byteSize,
+		locator: `/project-assets/${ready.id}`
+	};
 	const envelope = await unitEnvelope(projectId, 'Finish colour image', {
 		textures: [{ id: ready.id, name: 'Brick wall', uri: `/project-assets/${ready.id}` }],
 		materials: [finish],
-		resources: [{ kind: 'texture', id: ready.id, contentRevision: 'rev-colour', pin: null, unresolved: null }]
+		resources: [{ kind: 'texture', id: ready.id, contentRevision: pin.hash, pin, unresolved: null }]
 	});
 	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
 	const saved = await saveAcceptedSource(pool, owner, request, store);

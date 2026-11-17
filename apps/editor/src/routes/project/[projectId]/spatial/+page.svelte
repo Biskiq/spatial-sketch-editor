@@ -812,6 +812,7 @@
 	$effect(() => () => {
 		// Leaving the project ends the reading: Lift is never carried across routes.
 		interiorLift.clear();
+		finishes?.cancelImage();
 		artworkInteraction.dispose();
 		stageAssets.disposeArtwork();
 	});
@@ -911,6 +912,8 @@
 	function interruptForReplacement(): void {
 		clearHover();
 		interruptPress('replacement');
+		// An image upload from the old source must not complete into the new one.
+		finishes?.cancelImage();
 	}
 
 	function resetPresentationBeforeSwap(): void {

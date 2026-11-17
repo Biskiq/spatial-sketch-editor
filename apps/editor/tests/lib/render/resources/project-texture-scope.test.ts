@@ -151,6 +151,66 @@ describe('project texture scope', () => {
 		expect(onFailure).toHaveBeenCalledWith(URI, 'The image bytes do not match the saved project.');
 	});
 
+	it('drops cached failures on dispose so the next scope with the same id loads again', async () => {
+		let calls = 0;
+		const load = vi.fn(async () => {
+			calls += 1;
+			return calls === 1
+				? { bytes: Uint8Array.from([1, 2]), mime: 'image/png' as const }
+				: { bytes: PNG, mime: 'image/png' as const };
+		});
+		const first = createProjectTextureScope({
+			scopeId: 'project:reused-id',
+			load,
+			pins: () => pins,
+			onFailure
+		});
+		await first.prepare([URI]);
+		expect(onFailure).toHaveBeenCalledTimes(1);
+		first.dispose();
+
+		const second = createProjectTextureScope({
+			scopeId: 'project:reused-id',
+			load,
+			pins: () => pins,
+			onSuccess
+		});
+		await second.prepare([URI]);
+		expect(load).toHaveBeenCalledTimes(2);
+		expect(onSuccess).toHaveBeenCalledWith(URI);
+		expect(second.dimensionsOf(ASSET)).toEqual({ width: 1, height: 1 });
+		second.dispose();
+	});
+
+	it('does not let a late failure poison a retried load', async () => {
+		let finishFirst!: (value: { bytes: Uint8Array; mime: 'image/png' }) => void;
+		let calls = 0;
+		const load = vi.fn(() => {
+			calls += 1;
+			if (calls === 1) return new Promise<{ bytes: Uint8Array; mime: 'image/png' }>((resolve) => (finishFirst = resolve));
+			return Promise.resolve({ bytes: PNG, mime: 'image/png' as const });
+		});
+		const product = createProjectTextureScope({
+			scopeId: 'project:late-failure',
+			load,
+			pins: () => pins,
+			onFailure,
+			onSuccess
+		});
+		const first = product.prepare([URI]);
+		await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+		product.retry(URI);
+		await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+
+		finishFirst({ bytes: Uint8Array.from([1, 2]), mime: 'image/png' });
+		await first;
+		await Promise.resolve();
+		expect(onFailure).not.toHaveBeenCalled();
+		await expect(loadSourceTexture(URI, 'map', product)).resolves.toBeTruthy();
+		expect(product.dimensionsOf(ASSET)).toEqual({ width: 1, height: 1 });
+		product.dispose();
+	});
+
 	it('dispose aborts loads and drops loaded textures and dimensions', async () => {
 		const product = scope();
 		const texture = await loadSourceTexture(URI, 'map', product);

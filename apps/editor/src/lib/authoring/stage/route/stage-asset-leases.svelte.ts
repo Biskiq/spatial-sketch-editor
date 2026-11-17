@@ -143,8 +143,17 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		// loader checks; unrelated accepts keep it.
 		const scene = envelope.units.scene?.data;
 		if (scene !== undefined) {
+			// Only textures a material actually binds are worth fetching. Removed or
+			// replaced Finish images leave their records behind by design (§8.1);
+			// eagerly loading the whole history would cost a decode and preview per
+			// orphan on every route open.
+			const usedTextureIds = new Set<string>();
+			for (const material of scene.materials) {
+				for (const textureId of Object.values(material.maps ?? {})) usedTextureIds.add(textureId);
+			}
 			const pinsByUri = new Map<string, ProjectTexturePin>();
 			for (const texture of scene.textures) {
+				if (!usedTextureIds.has(texture.id)) continue;
 				if (!texture.uri.startsWith('/project-assets/')) continue;
 				const resource = envelope.units.resources.data.resources.find(
 					(candidate) => candidate.kind === 'texture' && candidate.id === texture.id
