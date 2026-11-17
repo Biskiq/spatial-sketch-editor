@@ -9,24 +9,30 @@ import {
 	buildCorrespondenceComponents,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
+	deriveChainSpans,
 	extractBoundaryCandidateFaces,
 	interiorWitness,
 	planDeleteWall,
 	planDeleteWalls,
 	planDissolveJunction,
 	planDuplicateIsolatedRoom,
+	planExactJunctionMove,
 	planExactRectangleDimensions,
 	planRemoveRoom,
 	planRemoveSpace,
 	planRoomMetadataUpdate,
+	planWallChain,
 	planWallFirstRoomMove,
 	planWallSubdivision,
 	reconcileRooms,
 	roomBoundaryPolygon,
+	serializeWallFirstLayoutDocument,
+	wallCubicChain,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
+import { AuthoringHistory, type HistoryState } from '$lib/authoring/f4/history';
 import { captureFor } from './__fixtures__/layout-id-capture';
 import { twoRoomDocument } from './__fixtures__/two-room-fixture';
 
@@ -167,6 +173,147 @@ function enclosedSharedWallPair(): LayoutDocumentWallFirst {
 
 function capture(name: string) {
 	return captureFor(name);
+}
+
+function historyState(
+	document: LayoutDocumentWallFirst,
+	operationId: string
+): HistoryState<LayoutDocumentWallFirst> {
+	return {
+		source: document,
+		canonicalJson: serializeWallFirstLayoutDocument(document),
+		sourceContentId: `sp1b:${operationId}`,
+		operationId,
+		blockingIssues: [],
+		correspondence: []
+	};
+}
+
+/**
+ * B1 fixture: one enclosed Room whose curved south Wall dips below a deep
+ * north notch. The authored curve is a simple outline; the straight chord that
+ * replaces it on erase crosses both notch Walls, so destructive erase and a
+ * non-erase edit reach the same self-crossing predicate.
+ */
+function curvedChasmRoom(): LayoutDocumentWallFirst {
+	const points = {
+		'j-a': [0, 0],
+		'j-b': [8, 0],
+		'j-c': [8, 6],
+		'j-d': [5, 6],
+		'j-e': [5, -1],
+		'j-f': [3, -1],
+		'j-g': [3, 6],
+		'j-h': [0, 6]
+	} as const satisfies Record<string, LayoutVec2>;
+	return {
+		...createEmptyWallFirstLayoutDocument(),
+		junctions: Object.entries(points).map(([id, point]) => junction(id, point)),
+		walls: [
+			{
+				id: 'wall-curved',
+				startJunctionId: 'j-a',
+				endJunctionId: 'j-b',
+				thickness: 0.2,
+				height: 3,
+				centerline: wallCubicChain(
+					[{ id: 'wall-curved:knot:1', point: [4, -2] }],
+					deriveChainSpans([points['j-a'], [4, -2], points['j-b']])
+				)
+			},
+			wall('wall-bc', 'j-b', 'j-c'),
+			wall('wall-cd', 'j-c', 'j-d'),
+			wall('wall-de', 'j-d', 'j-e'),
+			wall('wall-ef', 'j-e', 'j-f'),
+			wall('wall-fg', 'j-f', 'j-g'),
+			wall('wall-gh', 'j-g', 'j-h'),
+			wall('wall-ha', 'j-h', 'j-a')
+		],
+		rooms: [
+			{
+				id: 'room-chasm',
+				name: 'Chasm',
+				boundary: [
+					'wall-curved',
+					'wall-bc',
+					'wall-cd',
+					'wall-de',
+					'wall-ef',
+					'wall-fg',
+					'wall-gh',
+					'wall-ha'
+				].map((wallId) => ({ wallId, direction: 'forward' as const })),
+				virtualEdges: [],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			}
+		]
+	};
+}
+
+/**
+ * The same chasm Walls as {@link curvedChasmRoom}, but open with an A→X→B
+ * detour around the notch. Dragging X onto the A–B chord reproduces exactly
+ * the outline the erase's straight chord would produce.
+ */
+function curvedChasmOpenDetour(): LayoutDocumentWallFirst {
+	const document = curvedChasmRoom();
+	document.junctions.push(junction('j-x', [4, -2]));
+	document.walls = document.walls.filter((candidate) => candidate.id !== 'wall-curved');
+	document.rooms[0]!.boundary = document.rooms[0]!.boundary.filter(
+		(ref) => ref.wallId !== 'wall-curved'
+	);
+	document.rooms[0]!.virtualEdges = [
+		{ startJunctionId: 'j-a', endJunctionId: 'j-x' },
+		{ startJunctionId: 'j-x', endJunctionId: 'j-b' }
+	];
+	return document;
+}
+
+/** A separate open Space plus a pre-existing unreferenced Junction. */
+function distantOpenSpaceAndStrayJunction(): LayoutDocumentWallFirst {
+	const document = enclosedRectangle();
+	document.junctions.push(
+		junction('j-p', [20, 0]),
+		junction('j-q', [24, 0]),
+		junction('j-r', [24, 3]),
+		junction('j-s', [20, 3]),
+		junction('j-stray', [50, 50])
+	);
+	document.walls.push(wall('b-wall', 'j-p', 'j-q'));
+	document.rooms.push({
+		id: 'room-open-b',
+		name: 'Open B',
+		boundary: [{ wallId: 'b-wall', direction: 'forward' }],
+		virtualEdges: [
+			{ startJunctionId: 'j-q', endJunctionId: 'j-r' },
+			{ startJunctionId: 'j-r', endJunctionId: 'j-s' },
+			{ startJunctionId: 'j-s', endJunctionId: 'j-p' }
+		],
+		overhead: 'closed',
+		floorThickness: 0.1,
+		ceilingThickness: 0.1
+	});
+	return document;
+}
+
+function expectNoOrphanAnchors(document: LayoutDocumentWallFirst, allowed: readonly string[]): void {
+	const referenced = new Set<string>();
+	for (const candidate of document.walls) {
+		referenced.add(candidate.startJunctionId);
+		referenced.add(candidate.endJunctionId);
+	}
+	for (const room of document.rooms) {
+		for (const edge of room.virtualEdges) {
+			referenced.add(edge.startJunctionId);
+			referenced.add(edge.endJunctionId);
+		}
+	}
+	const orphans = document.junctions
+		.filter((candidate) => !referenced.has(candidate.id) && !allowed.includes(candidate.id))
+		.map((candidate) => candidate.id);
+	expect(orphans).toEqual([]);
 }
 
 /** Three open-ish 2×3 rectangles in a row sharing m1 and m2. */
@@ -542,6 +689,176 @@ describe('SP1b — Remove space and metadata', () => {
 		const noOp = planRoomMetadataUpdate(document, 'room-open', { overhead: 'closed' });
 		expect(noOp.kind).toBe('rejected');
 		if (noOp.kind === 'rejected') expect(noOp.rejection.code).toBe('no_op');
+	});
+});
+
+describe('SP1b — §5.2 acceptance', () => {
+	it('B1 vs §5.4: a self-crossing outline retires on erase and refuses a Junction move', () => {
+		const document = curvedChasmRoom();
+		const baselineJson = serializeWallFirstLayoutDocument(document);
+
+		const erased = planDeleteWall(document, 'wall-curved', capture('sp1b-b1-erase'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(erased.kind).toBe('success');
+		if (erased.kind !== 'success') return;
+		expect(erased.document.walls.some((candidate) => candidate.id === 'wall-curved')).toBe(false);
+		expect(erased.document.rooms).toEqual([]);
+		expect(erased.spaceRetirements).toEqual([
+			{ roomId: 'room-chasm', reason: 'outline-self-intersects' }
+		]);
+		expectNoOrphanAnchors(erased.document, []);
+
+		// The same chord reached by a non-erase edit is an atomic refusal: drag the
+		// open detour's virtual Junction X onto the A–B line.
+		const moveBaseline = curvedChasmOpenDetour();
+		const moveBaselineJson = serializeWallFirstLayoutDocument(moveBaseline);
+		const moveHistory = new AuthoringHistory(historyState(moveBaseline, 'baseline'));
+		const moved = planExactJunctionMove(moveBaseline, 'j-x', [4, 0]);
+		expect(moved.kind).toBe('rejected');
+		if (moved.kind !== 'rejected') return;
+		expect(moved.rejection.code).toBe('space_outline_invalid');
+		expect(moved.rejection.message).toContain("Space 'Chasm'");
+		expect(moved.rejection.message).toContain('crosses itself');
+		// Nothing was written and a refusal adds no history entry.
+		expect(serializeWallFirstLayoutDocument(moveBaseline)).toBe(moveBaselineJson);
+		expect(moveHistory.depth).toBe(1);
+		// B1's destructive route did erase the Wall (the creator never loses the erase).
+		expect(serializeWallFirstLayoutDocument(document)).toBe(baselineJson);
+	});
+
+	it('I8: erase → open → last Wall → Remove space leaves no orphan anchor and spares an unrelated Junction', () => {
+		const document = distantOpenSpaceAndStrayJunction();
+		expectNoOrphanAnchors(document, ['j-stray']);
+
+		const opened = planDeleteWall(document, 'wall-b', capture('sp1b-i8-open'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(opened.kind).toBe('success');
+		if (opened.kind !== 'success') return;
+		expect(opened.document.rooms.map((room) => room.id)).toEqual(['room-open', 'room-open-b']);
+		expectNoOrphanAnchors(opened.document, ['j-stray']);
+
+		// Erase the rest of the first Space's boundary: the support rule retires it.
+		const lastWall = planDeleteWalls(
+			opened.document,
+			['wall-a', 'wall-c', 'wall-d'],
+			capture('sp1b-i8-last'),
+			opened.document.floor.id,
+			{ openSpaces: 'keep' }
+		);
+		expect(lastWall.kind).toBe('success');
+		if (lastWall.kind !== 'success') return;
+		expect(lastWall.document.rooms.map((room) => room.id)).toEqual(['room-open-b']);
+		expect(lastWall.spaceRetirements).toContainEqual({
+			roomId: 'room-open',
+			reason: 'last-boundary-wall'
+		});
+		expect(lastWall.document.junctions.some((candidate) => candidate.id === 'j-stray')).toBe(true);
+		expectNoOrphanAnchors(lastWall.document, ['j-stray']);
+
+		// Remove space releases only the second Space's virtual anchors.
+		const removed = planRemoveSpace(lastWall.document, 'room-open-b', lastWall.document.floor.id);
+		expect(removed.kind).toBe('success');
+		if (removed.kind !== 'success') return;
+		expect(removed.document.junctions.map((candidate) => candidate.id).sort()).toEqual([
+			'j-p',
+			'j-q',
+			'j-stray'
+		]);
+		expect(removed.document.junctions.some((candidate) => candidate.id === 'j-stray')).toBe(true);
+		expectNoOrphanAnchors(removed.document, ['j-stray']);
+	});
+
+	it('Undo/Redo restores exact canonical bytes through erase → open → redraw', () => {
+		const baseline = enclosedRectangle();
+		const eraseCapture = capture('sp1b-history-erase');
+		const redrawCapture = capture('sp1b-history-redraw');
+		const erased = planDeleteWall(baseline, 'wall-b', eraseCapture, baseline.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(erased.kind).toBe('success');
+		if (erased.kind !== 'success') return;
+		const redrawn = planWallChain({
+			baseline: erased.document,
+			points: [
+				[4, 0],
+				[4, 3]
+			],
+			close: false,
+			capture: redrawCapture,
+			levelId: erased.document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-b' },
+				{ pointIndex: 1, junctionId: 'j-c' }
+			]
+		});
+		expect(redrawn.kind).toBe('success');
+		if (redrawn.kind !== 'success') return;
+		expect(redrawn.document.rooms.map((room) => room.id)).toEqual(['room-open']);
+		expect(redrawn.document.rooms[0]!.virtualEdges).toEqual([]);
+
+		const history = new AuthoringHistory(historyState(baseline, 'baseline'));
+		history.push(historyState(erased.document, 'erase'));
+		history.push(historyState(redrawn.document, 'redraw'));
+		const baselineJson = historyState(baseline, 'baseline').canonicalJson;
+		const erasedJson = historyState(erased.document, 'erase').canonicalJson;
+		const redrawnJson = historyState(redrawn.document, 'redraw').canonicalJson;
+
+		expect(serializeWallFirstLayoutDocument(history.current.source)).toBe(redrawnJson);
+		history.undo();
+		expect(serializeWallFirstLayoutDocument(history.current.source)).toBe(erasedJson);
+		history.undo();
+		expect(serializeWallFirstLayoutDocument(history.current.source)).toBe(baselineJson);
+		history.redo();
+		expect(serializeWallFirstLayoutDocument(history.current.source)).toBe(erasedJson);
+		history.redo();
+		expect(serializeWallFirstLayoutDocument(history.current.source)).toBe(redrawnJson);
+
+		// Replay with the same captures is byte-identical.
+		const replayErase = planDeleteWall(baseline, 'wall-b', eraseCapture, baseline.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(replayErase.kind).toBe('success');
+		if (replayErase.kind !== 'success') return;
+		const replayRedraw = planWallChain({
+			baseline: replayErase.document,
+			points: [
+				[4, 0],
+				[4, 3]
+			],
+			close: false,
+			capture: redrawCapture,
+			levelId: replayErase.document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-b' },
+				{ pointIndex: 1, junctionId: 'j-c' }
+			]
+		});
+		expect(replayRedraw.kind).toBe('success');
+		if (replayRedraw.kind !== 'success') return;
+		expect(serializeWallFirstLayoutDocument(replayRedraw.document)).toBe(redrawnJson);
+
+		// A different capture keeps the Space but derives different new Wall ids.
+		const alternate = planWallChain({
+			baseline: replayErase.document,
+			points: [
+				[4, 0],
+				[4, 3]
+			],
+			close: false,
+			capture: capture('sp1b-history-redraw-alt'),
+			levelId: replayErase.document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-b' },
+				{ pointIndex: 1, junctionId: 'j-c' }
+			]
+		});
+		expect(alternate.kind).toBe('success');
+		if (alternate.kind !== 'success') return;
+		expect(alternate.document.rooms.map((room) => room.id)).toEqual(['room-open']);
+		expect(alternate.document.rooms[0]!.virtualEdges).toEqual([]);
+		expect(serializeWallFirstLayoutDocument(alternate.document)).not.toBe(redrawnJson);
 	});
 });
 
