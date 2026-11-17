@@ -35,6 +35,7 @@
 	let {
 		scene,
 		textureScope = null,
+		textureRevision = 0,
 		artworkScope = null,
 		onArtworkError,
 		modelUrls = null,
@@ -47,6 +48,12 @@
 	}: {
 		scene: RuntimeScene;
 		textureScope?: TextureLoadScope | null;
+		/**
+		 * Bumped after a targeted texture Retry. A changed value asks only the
+		 * items whose textures did not arrive to load them again; a bound look is
+		 * left alone.
+		 */
+		textureRevision?: number;
 		artworkScope?: ArtworkScope | null;
 		onArtworkError?: (message: string) => void;
 		/** Runtime-safe approved model bytes: model resource id → derivative URL. */
@@ -136,6 +143,20 @@
 		const models = stats.models;
 		// Built, moved, replaced or released models changed the frame imperatively.
 		if (models.built + models.moved + models.replaced + models.refallbacked + models.released > 0) invalidate();
+	});
+
+	/** The revision whose retry has already been applied; the first effect run is a no-op. */
+	let seenTextureRevision: number | null = null;
+	$effect(() => {
+		// Read the revision so a creator's Retry re-runs this effect. The initial
+		// mount already asked for every item's textures in the update effect above.
+		if (seenTextureRevision === null) {
+			seenTextureRevision = textureRevision;
+			return;
+		}
+		if (textureRevision === seenTextureRevision) return;
+		seenTextureRevision = textureRevision;
+		entities.reloadTextures();
 	});
 
 	$effect(() => () => entities.dispose());

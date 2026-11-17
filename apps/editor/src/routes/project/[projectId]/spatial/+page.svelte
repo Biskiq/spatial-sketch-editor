@@ -150,9 +150,14 @@
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
+		projectId,
 		resolveArtwork: async (image, signal) => {
 			if (api === null) throw new Error('Artwork storage is unavailable.');
 			return readVerifiedArtwork(api, projectId, image, signal);
+		},
+		resolveTexture: async (assetId, signal) => {
+			if (api === null) throw new Error('Finish image storage is unavailable.');
+			return api.loadAssetContent(projectId, assetId, signal);
 		},
 		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
@@ -488,6 +493,19 @@
 
 	finishes = createFinishAuthoring({
 		services: () => adapterServices,
+		api: () => api,
+		projectId: () => projectId,
+		canEdit: canPlaceArtwork,
+		isSaved: () => headSave?.snapshot().savedBaseToken != null,
+		imageAspect: (textureId) => stageAssets.textureAspect(textureId),
+		imageDimensions: (textureId) => stageAssets.textureDimensions(textureId),
+		textureUri: (textureId) => {
+			const scene = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
+			return scene?.textures.find((texture) => texture.id === textureId)?.uri ?? null;
+		},
+		texturePreviewUri: (textureId) => stageAssets.texturePreviewUri(textureId),
+		textureFailed: (uri) => stageAssets.textureFailed(uri),
+		retryTexture: (uri) => stageAssets.retryTexture(uri),
 		onNotice: (message) => shell.setNotice(message),
 		openFinishes: () => {
 			shell.setLibraryOpen(true);
@@ -1190,6 +1208,8 @@
 			get evaluation() { return evaluation; },
 			get ghosts() { return ghosts; },
 			get modelUrls() { return modelUrls; },
+			get textureScope() { return stageAssets.textureScope; },
+			get textureRevision() { return stageAssets.textureRevision; },
 			get artworkScope() { return stageAssets.artworkScope; },
 			get artworkGhost() { return artworkInteraction.resizeGhost ?? artworkInteraction.ghost; },
 			onArtworkError: (message: string) => shell.setNotice(message),
@@ -1278,6 +1298,7 @@
 				active: preview !== null,
 				resolveTexture: (uri: string) => isAllowedShippedTextureUri(uri) ? uri : null,
 				modelUrls,
+				textureScope: stageAssets.textureScope,
 				artworkScope: previewController.artworkScope,
 				reducedMotion: shell.reducedMotion,
 				title: entry?.title ?? null,
@@ -1507,6 +1528,11 @@
 						onMaterialPick: look.pickMaterial,
 						finishShelf,
 						onFinishPick: (ref) => void finishes.pickFinish(ref),
+						finishImage: finishes.image,
+						onFinishImageImport: (file: File) => void finishes.addFromImage(file),
+						onFinishImageCancel: () => finishes.cancelImage(),
+						onFinishImageRetry: () => void finishes.retryImageUpload(),
+						onFinishImageReset: () => finishes.resetImage(),
 						lookShelf: look.libraryShelf,
 						artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },

@@ -38,6 +38,7 @@ import StageGrid from './StageGrid.svelte';
 import StageMatGround from './StageMatGround.svelte';
 	import StageArtworkGhost from './StageArtworkGhost.svelte';
 	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
+	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
@@ -74,6 +75,8 @@ import StageMatGround from './StageMatGround.svelte';
 		evaluation,
 		ghosts = [],
 		modelUrls = null,
+		textureScope = null,
+		textureRevision = 0,
 		artworkScope = null,
 		artworkGhost = null,
 		onArtworkError,
@@ -121,6 +124,10 @@ import StageMatGround from './StageMatGround.svelte';
 		ghosts?: readonly StageGhostMesh[];
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** The route's authenticated project texture scope (S4b). */
+		textureScope?: TextureLoadScope | null;
+		/** Bumped by a targeted texture Retry. */
+		textureRevision?: number;
 		artworkScope?: ArtworkScope | null;
 		artworkGhost?: SceneArtworkEntity | null;
 		onArtworkError?: (message: string) => void;
@@ -359,6 +366,8 @@ import StageMatGround from './StageMatGround.svelte';
 		<StageArtworkGhost entity={artworkGhost} scope={artworkScope} onError={onArtworkError} />
 	{/if}
 	<StageEntities
+		{textureScope}
+		{textureRevision}
 		{artworkScope}
 		{onArtworkError}
 		{scenePick}

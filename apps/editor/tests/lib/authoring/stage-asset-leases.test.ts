@@ -100,6 +100,7 @@ function controllerWith(
 	const controller = createStageAssetLeases({
 		session,
 		apiOrigin: '',
+		projectId: 'project-test',
 		resolveArtwork: async () => ({ bytes: new Uint8Array([1]), mime: 'image/png' }),
 		notice: {
 			read: () => shown,

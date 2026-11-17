@@ -393,6 +393,24 @@ export function releaseMaterialVariant(
   scheduleDeferredFlush();
 }
 
+/**
+ * Drop one cached source failure (or a loaded source) so the next load retries.
+ *
+ * The source cache remembers a failed load permanently, which is right for an
+ * immutable catalogue path but wrong for a creator image: a blocked request, a
+ * replaced pin or a creator's explicit Retry must be able to ask again. Only
+ * the named scope's entry is dropped; every other Canvas keeps its lease.
+ */
+/** @returns whether a cached texture was disposed here. */
+export function invalidateTextureSource(scopeId: string | null, url: string): boolean {
+  const key = sourceKey(scopeId === null ? null : { scopeId }, url);
+  const entry = sourceCache.get(key);
+  if (entry === undefined) return false;
+  sourceCache.delete(key);
+  entry.texture?.dispose();
+  return entry.texture !== undefined;
+}
+
 /** Test helper: clear in-memory caches (does not dispose GPU sources still referenced). */
 export function resetTextureCachesForTests() {
   for (const entry of variantCache.values()) {

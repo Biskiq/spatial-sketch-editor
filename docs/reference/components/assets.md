@@ -97,6 +97,35 @@ asset ID. Unplaced shelf entries stay outside delivery. The detached visitor ver
 bytes against the digest and Artwork dimensions before loading the visitor scope. T4 owns
 prepared public reader activation and the retained delivery package.
 
+## Finish images (T2.S4b)
+
+A Finish colour image is the same P20 ready image as Artwork, imported by the one shared
+`importProjectImage` procedure: static PNG, JPEG or WebP, 25 MiB and 4096 px per edge, sha256
+dedupe against the project's assets, and no downscaling. A Finish image below 256 px on its short
+side is accepted with a warning; a larger original is never refused for being small.
+
+The Scene carries two records that always agree: a `scene.textures` record whose `id` is the P20
+asset id and whose URI is `/project-assets/{assetId}`, and a `texture` typed resource that pins
+those bytes (hash, MIME, size and the same canonical locator). A texture resource needs no
+dependency-lock entry; the unit validator's closure check requires the resource, and release
+pinning walks `scene.textures`, so one image shared by several Finishes is pinned once. Both records
+are created by the one `scene-finish-from-image` write; an existing record is reused only when its
+URI and pin are identical, otherwise the write refuses (`texture-mismatch`).
+
+The editor loads creator bytes through the route's project texture scope. It resolves the pin from
+the accepted Scene, verifies MIME, size and sha256 before decoding, hands Three an object URL and
+revokes it immediately, and keeps the decoded dimensions for the mapping aspect and the low-
+resolution warning. A failed or tampered image falls back to the Finish colour; the Card offers a
+targeted *Retry* that invalidates only that URI. Catalogue textures keep their static path.
+
+**Save-mode gap:** Save verifies the Artwork shelf, not Finish texture pins. The editor loader's
+verification covers authoring; save-mode texture verification is a follow-up. Release preparation
+pins and verifies the bytes for delivery.
+
+An uploaded image whose write was cancelled, refused or undone stays in project assets under P20
+retention. The Scene never puts bytes in Undo and never deletes them; an asset no texture record
+references is not pinned, while a texture record whose Finish is gone is still pinned.
+
 ## My Objects form library scope
 
 The first consumer of the ratified **library scope**, implemented, is one typed `form` item,

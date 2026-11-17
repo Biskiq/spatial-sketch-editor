@@ -88,7 +88,12 @@ normal scale/flip, and finally the World's Treatment. The resolved colour multip
 so a catalogue or project map keeps its base tint (`wood-walnut` stays `#3d2a1a` over its map).
 `tileMeters` becomes UV repeat, `rotation` turns about the UV centre and `offset` shifts in tile
 fractions; all three are part of the texture variant identity, so two looks with different mapping
-never share a texture clone. Natural adds nothing to `variantSeed`; Flat colour and Clay change the
+never share a texture clone. A primitive's repeat surface is its authored face size **times the
+entity's uniform scale** (D1), so a curated tile keeps its metre size when the object is scaled;
+Forms use their metre UVs and models keep their own UVs. Under Flat colour an image Finish renders
+its colour field (white for an untinted image); its average colour is deferred to S6 (D2). Natural
+adds nothing to `variantSeed`;
+Flat colour and Clay change the
 resolved values, drop every map and therefore select a different variant. The Stage, Visitor Preview
 and a published visit run this one resolver over the same `RuntimeScene`, so their descriptors cannot
 drift.

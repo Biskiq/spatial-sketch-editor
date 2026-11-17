@@ -33,6 +33,13 @@ import {
 	type ApprovedModelSources
 } from '$lib/authoring/scene/model-bytes';
 import {
+	createProjectTextureScope,
+	type ProjectTexturePin,
+	type ProjectTextureResolution,
+	type ProjectTextureScope,
+	type TextureDimensions
+} from '$lib/render/resources/project-texture-scope';
+import {
 	createArtworkScope,
 	type ArtworkBytes,
 	type ArtworkScope
@@ -54,11 +61,15 @@ export type StageAssetLeaseNotice = {
 export type StageAssetLeaseInput = {
 	readonly session: StageSession;
 	readonly apiOrigin: string;
+	readonly projectId: string;
 	readonly resolveArtwork: (image: ArtworkImage, signal: AbortSignal) => Promise<ArtworkBytes>;
+	/** Authenticated project texture bytes for a Finish image (S4b). */
+	readonly resolveTexture?: (assetId: string, signal: AbortSignal) => Promise<ProjectTextureResolution>;
 	readonly notice: StageAssetLeaseNotice;
 	/** Deterministic test seams; production uses the existing modules. */
 	readonly resolveModels?: typeof resolveApprovedModels;
 	readonly createScope?: typeof createArtworkScope;
+	readonly createTextureScope?: typeof createProjectTextureScope;
 };
 
 export type StageAssetLeases = ReturnType<typeof createStageAssetLeases>;
@@ -66,6 +77,35 @@ export type StageAssetLeases = ReturnType<typeof createStageAssetLeases>;
 export function createStageAssetLeases(input: StageAssetLeaseInput) {
 	const resolveModels = input.resolveModels ?? resolveApprovedModels;
 	const artworkScope = (input.createScope ?? createArtworkScope)(input.resolveArtwork);
+	/** Pins from the accepted Scene's `texture` resources; never from a client hint. */
+	let texturePins = new Map<string, ProjectTexturePin>();
+	let texturePinsSignature = '';
+	let textureFailures = $state.raw<ReadonlyMap<string, string>>(new Map());
+	let textureRevision = $state(0);
+	/** Bumped after a decode so a Card reading dimensions/a preview re-renders. */
+	let textureAssetsRevision = $state(0);
+	let textureDisposed = false;
+	const textureScope: ProjectTextureScope = (input.createTextureScope ?? createProjectTextureScope)({
+		scopeId: `project:${input.projectId}`,
+		load: (assetId, signal) =>
+			input.resolveTexture === undefined
+				? Promise.reject(new Error('Finish image storage is unavailable.'))
+				: input.resolveTexture(assetId, signal),
+		pins: () => texturePins,
+		onFailure: (uri, message) => {
+			if (textureFailures.has(uri) && textureFailures.get(uri) === message) return;
+			const next = new Map(textureFailures);
+			next.set(uri, message);
+			textureFailures = next;
+		},
+		onSuccess: (uri) => {
+			textureAssetsRevision += 1;
+			if (!textureFailures.has(uri)) return;
+			const next = new Map(textureFailures);
+			next.delete(uri);
+			textureFailures = next;
+		}
+	});
 
 	let modelUrls = $state.raw<ReadonlyMap<string, string>>(new Map());
 	let modelFailures = $state.raw<ReadonlyMap<string, string>>(new Map());
@@ -98,6 +138,36 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 	async function resolve(snapshot: StageReadSnapshot): Promise<void> {
 		if (disposed) return;
 		const envelope = stageEnvelope(snapshot);
+		// Texture pins are derived the same way release derives them, from the
+		// accepted Scene's resource records. A changed pin set replaces the map the
+		// loader checks; unrelated accepts keep it.
+		const scene = envelope.units.scene?.data;
+		if (scene !== undefined) {
+			const pinsByUri = new Map<string, ProjectTexturePin>();
+			for (const texture of scene.textures) {
+				if (!texture.uri.startsWith('/project-assets/')) continue;
+				const resource = envelope.units.resources.data.resources.find(
+					(candidate) => candidate.kind === 'texture' && candidate.id === texture.id
+				);
+				if (resource === undefined || resource.pin === null || resource.unresolved !== null) continue;
+				pinsByUri.set(texture.uri, {
+					hash: resource.pin.hash,
+					mime: resource.pin.mime,
+					size: resource.pin.size
+				});
+			}
+			const textureSignature = [...pinsByUri]
+				.sort(([left], [right]) => left.localeCompare(right))
+				.map(([uri, pin]) => `${uri}@${pin.hash}`)
+				.join('|');
+			if (textureSignature !== texturePinsSignature) {
+				texturePinsSignature = textureSignature;
+				const byAsset = new Map<string, ProjectTexturePin>();
+				for (const [uri, pin] of pinsByUri) byAsset.set(uri.slice('/project-assets/'.length), pin);
+				texturePins = byAsset;
+				void textureScope.prepare([...pinsByUri.keys()]);
+			}
+		}
 		const pins = approvedModelPins(envelope);
 		// An edit that does not change the approved pins keeps the URLs it already
 		// has: revoking and re-downloading every derivative on each accepted command
@@ -190,6 +260,27 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 	}
 
 	/** Release every lease this controller acquired. Idempotent. */
+	/**
+	 * One targeted texture Retry: drop that source failure, reload the URI and ask
+	 * the Stage to re-bind the items whose textures never arrived.
+	 */
+	function retryTexture(uri: string): void {
+		if (textureDisposed) return;
+		textureScope.retry(uri);
+		if (textureFailures.has(uri)) {
+			const next = new Map(textureFailures);
+			next.delete(uri);
+			textureFailures = next;
+		}
+		textureRevision += 1;
+	}
+
+	function disposeTextures(): void {
+		if (textureDisposed) return;
+		textureDisposed = true;
+		textureScope.dispose();
+	}
+
 	function dispose(): void {
 		if (disposed) return;
 		disposed = true;
@@ -203,6 +294,7 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		installedModelSignature = '';
 		modelNotice = null;
 		disposeArtwork();
+		disposeTextures();
 	}
 
 	return {
@@ -215,6 +307,31 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 		get artworkScope(): ArtworkScope {
 			return artworkScope;
 		},
+		get textureScope(): ProjectTextureScope {
+			return textureScope;
+		},
+		get textureRevision(): number {
+			return textureRevision;
+		},
+		get textureFailures(): ReadonlyMap<string, string> {
+			return textureFailures;
+		},
+		textureDimensions(assetId: string): TextureDimensions | null {
+			void textureAssetsRevision;
+			return textureScope.dimensionsOf(assetId);
+		},
+		textureAspect(assetId: string): number | null {
+			void textureAssetsRevision;
+			return textureScope.aspectOf(assetId);
+		},
+		texturePreviewUri(assetId: string): string | null {
+			void textureAssetsRevision;
+			return textureScope.previewUriOf(assetId);
+		},
+		textureFailed(uri: string): boolean {
+			return textureFailures.has(uri);
+		},
+		retryTexture,
 		resolve,
 		disposeArtwork,
 		dispose

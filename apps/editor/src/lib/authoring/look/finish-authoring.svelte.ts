@@ -29,6 +29,7 @@ import {
 	literalColorOf,
 	materialInstanceById,
 	metalReading,
+	nextFinishName,
 	paletteHasRoom,
 	sheenReading,
 	usersOfFinish,
@@ -38,7 +39,17 @@ import {
 } from '@portfolio/project-model/scene-planning';
 import type { MaterialId, SceneColor, SceneEntity, SceneMaterialInstance } from '@portfolio/project-model';
 import { getMaterial, materials } from '$lib/content/materials';
+import type { ProjectApi } from '$lib/platform/project-persistence';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
+import {
+	createFinishImageFlow,
+	finishImagePin,
+	finishImageWarning,
+	type FinishImageFlow,
+	type FinishImageOutcome,
+	type FinishImageState
+} from './finish-image.svelte';
+import type { ImportedProjectImage } from '../artwork/project-artwork';
 
 export type FinishAuthoringHost = {
 	readonly services: () => StageAdapterServices | null;
@@ -47,6 +58,25 @@ export type FinishAuthoringHost = {
 	readonly openFinishes: () => void;
 	/** Arm the host Paint task, optionally in the Finish dropper. */
 	readonly armPaint: (mode: { readonly kind: 'paint' } | { readonly kind: 'dropper' }) => void;
+	/**
+	 * S4b's creator-bytes seam. These are absent in a route with no cloud project;
+	 * *+ From image* then refuses with the same words Artwork uses.
+	 */
+	readonly api?: () => ProjectApi | null;
+	readonly projectId?: () => string | null;
+	readonly canEdit?: () => boolean;
+	readonly isSaved?: () => boolean;
+	/** Decoded width ÷ height of a project texture, or `null` until it loads. */
+	readonly imageAspect?: (textureId: string) => number | null;
+	/** Decoded pixel size, for the D3 low-resolution warning. */
+	readonly imageDimensions?: (textureId: string) => { readonly width: number; readonly height: number } | null;
+	/** The texture record's URI, if the image is a project texture. */
+	readonly textureUri?: (textureId: string) => string | null;
+	/** A retained, verified preview URL for that project texture (CSS only). */
+	readonly texturePreviewUri?: (textureId: string) => string | null;
+	readonly textureFailed?: (uri: string) => boolean;
+	/** Targeted Retry: drop one source failure and reload that image. */
+	readonly retryTexture?: (uri: string) => void;
 };
 
 export type FinishEntityView = {
@@ -72,6 +102,22 @@ export type FinishEntityView = {
 	readonly metalOn: boolean;
 	readonly metalCaption: string;
 	readonly hasColorImage: boolean;
+	/** The colour map's texture id, or `null` when the image is the catalogue's. */
+	readonly colorMapId: string | null;
+	readonly colorMapUri: string | null;
+	readonly colorMapFailed: boolean;
+	readonly colorMapWarning: string | null;
+	readonly tileMeters: readonly [number, number] | null;
+	/** The catalogue's own tile size, the field's starting value before an edit. */
+	readonly defaultTileMeters: readonly [number, number];
+	readonly rotation: number;
+	/** Scale is offered only when the Finish has a map to scale (D18). */
+	readonly tileSizeAvailable: boolean;
+	readonly directionAvailable: boolean;
+	/** Scale/Direction are Floor/Form ideas; a model keeps its own UVs. */
+	readonly canEditMapping: boolean;
+	/** Box sides approximate their tiling with width × depth (existing rule). */
+	readonly scaleApproximate: boolean;
 	readonly canSaveToPalette: boolean;
 	readonly paletteRoom: boolean;
 	readonly originalWritesWhite: boolean;
@@ -111,15 +157,28 @@ type PendingPalette = {
 	readonly slotId: string;
 };
 
+/**
+ * A Replace that has already uploaded its bytes and now needs the shared-Finish
+ * decision. The asset stays in P20 storage whatever the answer; the planner
+ * reuses it, so Cancel costs no upload and writes nothing.
+ */
+type PendingImageReplace = {
+	readonly kind: 'image-replace';
+	readonly entityId: string;
+	readonly reach: number;
+	readonly image: ImportedProjectImage;
+	readonly warning: string | null;
+};
+
 export type FinishAsk = {
-	readonly kind: 'edit' | 'palette-add';
+	readonly kind: 'edit' | 'palette-add' | 'image-replace';
 	readonly entityId: string;
 	readonly label: string;
 	readonly reach: number;
 	readonly applyToAllEdits: boolean;
 };
 
-type Pending = PendingEdit | PendingPalette;
+type Pending = PendingEdit | PendingPalette | PendingImageReplace;
 
 const RECENTS_LIMIT = 5;
 
@@ -153,6 +212,15 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let dropper = $state.raw<{ readonly forEntityId: string | null } | null>(null);
 	let rowEntityId: string | null = null;
 	let busy = $state(false);
+
+	/** The one From-image flow: upload states, cancellation and retry. */
+	const imageFlow: FinishImageFlow = createFinishImageFlow({
+		api: () => host.api?.() ?? null,
+		projectId: () => host.projectId?.() ?? null,
+		canEdit: () => host.canEdit?.() ?? true,
+		isSaved: () => host.isSaved?.() ?? true,
+		onNotice: (message) => host.onNotice(message)
+	});
 
 	const servicesNow = (): StageAdapterServices | null => host.services();
 
@@ -247,7 +315,22 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const follower = followerSlotOf(entity, current.materials);
 		const users = usersOfFinish(current, key).length;
 		const isModelOwn = key === 'model-own';
-		const hasColorImage = Boolean(instance?.maps?.color ?? catalogue?.textures?.map);
+		const colorMapId = instance?.maps?.color ?? null;
+		const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);
+		// A project texture is authenticated bytes: CSS cannot fetch the Scene URI
+		// from the editor origin, so the preview uses the scope's retained URL.
+		const colorMapUri =
+			colorMapId === null
+				? (catalogue?.textures?.map ?? null)
+				: textureRecordUri !== null && textureRecordUri.startsWith('/project-assets/')
+					? (host.texturePreviewUri?.(colorMapId) ?? null)
+					: textureRecordUri;
+		const imageDimensions = colorMapId === null ? null : (host.imageDimensions?.(colorMapId) ?? null);
+		const hasColorImage = Boolean(colorMapId ?? catalogue?.textures?.map);
+		const tileSizeAvailable = Boolean(
+			(instance?.maps !== undefined && Object.keys(instance.maps).length > 0) ||
+				(catalogue?.textures !== undefined && Object.keys(catalogue.textures).length > 0)
+		);
 		const palette = current.palette ?? [];
 		return {
 			entityId,
@@ -272,6 +355,20 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			metalOn: metal.on,
 			metalCaption: metal.caption,
 			hasColorImage,
+			colorMapId,
+			colorMapUri,
+			colorMapFailed: textureRecordUri !== null && (host.textureFailed?.(textureRecordUri) ?? false),
+			colorMapWarning:
+				imageDimensions === null
+					? null
+					: finishImageWarning(imageDimensions.width, imageDimensions.height),
+			tileMeters: instance?.mapping?.tileMeters ?? null,
+			defaultTileMeters: catalogue?.defaultTileSizeMeters ?? [1, 1],
+			rotation: instance?.mapping?.rotation ?? 0,
+			tileSizeAvailable,
+			directionAvailable: hasColorImage,
+			canEditMapping: entity.kind !== 'model',
+			scaleApproximate: entity.kind === 'primitive' && entity.primitive === 'box',
 			canSaveToPalette:
 				literal !== null && paletteHasRoom(palette) && !palette.some((slot) => slot.color === literal),
 			paletteRoom: paletteHasRoom(palette),
@@ -282,7 +379,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	/** Library › Finishes: curated tiles, then the project's own Finishes. */
 	function libraryShelf(): {
 		readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
-		readonly project: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+		readonly project: readonly {
+			readonly id: string;
+			readonly name: string;
+			readonly color: string;
+			readonly imageUri: string | null;
+			readonly warning: string | null;
+		}[];
 	} {
 		const current = scene();
 		return {
@@ -293,11 +396,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			})),
 			project: (current?.materials ?? [])
 				.filter((instance) => !isPristineInstance(instance))
-				.map((instance) => ({
-					id: instance.id,
-					name: instance.name,
-					color: colorOfKey(`project:${instance.id}`)
-				}))
+				.map((instance) => {
+					const colorMapId = instance.maps?.color ?? null;
+					const dimensions = colorMapId === null ? null : (host.imageDimensions?.(colorMapId) ?? null);
+					const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);
+					return {
+						id: instance.id,
+						name: instance.name,
+						color: colorOfKey(`project:${instance.id}`),
+						imageUri:
+							colorMapId === null
+								? null
+								: textureRecordUri !== null && textureRecordUri.startsWith('/project-assets/')
+									? (host.texturePreviewUri?.(colorMapId) ?? null)
+									: textureRecordUri,
+						warning:
+							dimensions === null
+								? null
+								: finishImageWarning(dimensions.width, dimensions.height)
+					};
+				})
 		};
 	}
 
@@ -344,7 +462,12 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		payload: unknown;
 		entityIds?: readonly string[];
 		allocatedIds?: readonly { kind: string; id: string }[];
-	}): Promise<{ readonly kind: string; readonly code?: string; readonly message?: string }> {
+	}): Promise<{
+		readonly kind: string;
+		readonly code?: string;
+		readonly reason?: string | null;
+		readonly message?: string;
+	}> {
 		const services = servicesNow();
 		if (services === null) return { kind: 'unavailable', message: 'The Stage is still opening.' };
 		const outcome = await services.authoring.accept({
@@ -595,6 +718,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 		if (current.kind === 'edit') {
 			await applyEdit(current.entityId, current.edit, mode);
+		} else if (current.kind === 'image-replace') {
+			await applyImageReplace(current.entityId, current.image, asked.reach, mode, current.warning);
 		} else {
 			await applyPalette(current.entityId, current.color, current.slotId, asked.reach, mode);
 		}
@@ -641,6 +766,170 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	function setMetal(entityId: string, on: boolean): Promise<void> {
 		return edit(entityId, { metalness: on ? 1 : 0 });
+	}
+
+	/**
+	 * One tile's metre size. With an image bound the pair keeps its aspect
+	 * (`[s, s × h/w]`); a map-less Finish has no aspect to keep and is not offered
+	 * the field at all.
+	 */
+	function tileFor(entityId: string, metres: number): [number, number] {
+		const view = viewFor(entityId);
+		const aspect =
+			view?.colorMapId === null || view?.colorMapId === undefined
+				? null
+				: (host.imageAspect?.(view.colorMapId) ?? null);
+		return aspect !== null && Number.isFinite(aspect) && aspect > 0 ? [metres, metres / aspect] : [metres, metres];
+	}
+
+	/** More › Scale: one tile in metres, written through the normal Finish edit. */
+	function setTileSize(entityId: string, metres: number): Promise<void> {
+		if (!Number.isFinite(metres) || metres < 0.01 || metres > 100) {
+			host.onNotice('One tile must be between 0.01 m and 100 m.');
+			return Promise.resolve();
+		}
+		return edit(entityId, { tileMeters: tileFor(entityId, metres) });
+	}
+
+	/** More › Direction: degrees are shown; radians are stored, normalised to [0, 2π). */
+	function setDirection(entityId: string, degrees: number): Promise<void> {
+		if (!Number.isFinite(degrees)) {
+			host.onNotice('Direction must be a number of degrees.');
+			return Promise.resolve();
+		}
+		const radians = (degrees * Math.PI) / 180;
+		return edit(entityId, { rotation: radians });
+	}
+
+	/** More › Image › Remove: delete `maps.color`, restoring the base's rule. */
+	function removeImage(entityId: string): Promise<void> {
+		return edit(entityId, { colorMap: null });
+	}
+
+	/** The one Scene write an imported image performs when replacing a Finish. */
+	async function applyImageReplace(
+		entityId: string,
+		image: ImportedProjectImage,
+		reach: number,
+		mode: 'just-this' | 'all' | 'in-place',
+		warning: string | null
+	): Promise<FinishImageOutcome> {
+		const view = viewFor(entityId);
+		if (view === null || !view.editable) {
+			return { kind: 'refused', message: "Model's own has no Finish to edit." };
+		}
+		const needsNew = view.ref !== 'model-own' && ('curated' in view.ref || mode === 'just-this');
+		busy = true;
+		try {
+			const outcome = await accept({
+				kind: 'scene-finish-from-image',
+				payload: {
+					name: image.name,
+					texture: { assetId: image.assetId, pin: finishImagePin(image) },
+					entityIds: [],
+					replaceFinishOf: { entityId, reach, mode }
+				},
+				entityIds: [entityId],
+				allocatedIds: needsNew ? [newId('scene-finish', crypto.randomUUID())] : []
+			});
+			if (outcome.kind === 'accepted') {
+				if (warning !== null) host.onNotice(warning);
+				return { kind: 'accepted' };
+			}
+			if (outcome.kind === 'refused') {
+				// Re-choosing the bytes already on this Finish is not a failure: the
+				// asset was reused and the Scene already says exactly this.
+				if (outcome.reason === 'no-change' || outcome.code === 'no-change') {
+					host.onNotice('That image is already applied.');
+					return { kind: 'accepted' };
+				}
+				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
+			}
+			return { kind: 'no-op' };
+		} finally {
+			busy = false;
+		}
+	}
+
+	/**
+	 * More › Image › Replace. The upload runs first; a shared Finish then raises
+	 * the ordinary Ask in this row, and the answer is the one Write. Cancel keeps
+	 * the uploaded asset (P20 retention) and writes no Scene state.
+	 */
+	function replaceImage(entityId: string, file: File): Promise<void> {
+		const view = viewFor(entityId);
+		if (view === null || !view.editable) {
+			host.onNotice(view === null ? paintabilityNotice(entityOf(entityId)) : "Model's own has no Finish to edit.");
+			return Promise.resolve();
+		}
+		return imageFlow.begin(file, async (image, warning) => {
+			const latest = viewFor(entityId);
+			if (latest === null || !latest.editable) {
+				return { kind: 'refused', message: "Model's own has no Finish to edit." };
+			}
+			if (latest.users > 1) {
+				pending = { kind: 'image-replace', entityId, reach: latest.users, image, warning };
+				ask = {
+					kind: 'image-replace',
+					entityId,
+					label: latest.label,
+					reach: latest.users,
+					applyToAllEdits: false
+				};
+				return { kind: 'no-op' };
+			}
+			const mode =
+				latest.ref !== 'model-own' && 'curated' in latest.ref ? 'just-this' : 'in-place';
+			return applyImageReplace(entityId, image, latest.users, mode, warning);
+		});
+	}
+
+	/**
+	 * Library › Finishes › + From image. With a selection the new Finish is
+	 * assigned to it; with nothing selected the Finish is created and Paint arms
+	 * with it, exactly as a Library pick does.
+	 */
+	function addFromImage(file: File): Promise<void> {
+		const selected = selectionEntity();
+		if (selected !== null && !isFinishPaintable(selected)) {
+			host.onNotice(paintabilityNotice(selected));
+			return Promise.resolve();
+		}
+		return imageFlow.begin(file, async (image, warning, label) => {
+			const current = scene();
+			if (current === null) return { kind: 'refused', message: 'The Stage is still opening.' };
+			const entityIds = selected === null ? [] : [selected.id];
+			const finishId = crypto.randomUUID();
+			// The planner bounds a Finish name at 120; keep the suffix inside it.
+			const name = nextFinishName(label, current.materials).slice(0, 120);
+			const outcome = await accept({
+				kind: 'scene-finish-from-image',
+				payload: {
+					name,
+					texture: { assetId: image.assetId, pin: finishImagePin(image) },
+					entityIds
+				},
+				entityIds,
+				allocatedIds: [newId('scene-finish', finishId)]
+			});
+			if (outcome.kind === 'accepted') {
+				remember(`project:${finishId}`);
+				if (warning !== null) host.onNotice(warning);
+				if (entityIds.length === 0) host.armPaint({ kind: 'paint' });
+				return { kind: 'accepted' };
+			}
+			if (outcome.kind === 'refused') {
+				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
+			}
+			return { kind: 'no-op' };
+		});
+	}
+
+	/** Targeted Retry for a broken image: reload only that texture. */
+	function retryImage(textureId: string): void {
+		const uri = host.textureUri?.(textureId) ?? null;
+		if (uri === null) return;
+		host.retryTexture?.(uri);
 	}
 
 	function setPaletteSlotColor(slotId: string, color: string): Promise<void> {
@@ -774,6 +1063,15 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		get busy() {
 			return busy;
 		},
+		get image(): FinishImageState {
+			return imageFlow.state;
+		},
+		get imageBusy(): boolean {
+			return imageFlow.busy;
+		},
+		get imageCanRetry(): boolean {
+			return imageFlow.canRetry;
+		},
 		viewFor,
 		libraryShelf,
 		paletteView,
@@ -788,6 +1086,15 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		setSheen,
 		setRoughness,
 		setMetal,
+		setTileSize,
+		setDirection,
+		removeImage,
+		addFromImage,
+		replaceImage,
+		retryImage,
+		retryImageUpload: () => imageFlow.retry(),
+		cancelImage: () => imageFlow.cancel(),
+		resetImage: () => imageFlow.reset(),
 		saveToPalette,
 		resolveAsk,
 		cancelAsk,
