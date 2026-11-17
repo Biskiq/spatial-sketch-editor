@@ -531,12 +531,20 @@ moving or flipping (renderer `info.programs` count stable), and shadows identica
 ## 6. Performance (Decided budgets; measured in QA)
 
 - Plane moves: uniforms only, zero recompiles (Verified 8).
-- Cap rebuild runs on reading, Sheet height or geometry revision change, **coalesced to one per
-  animation frame** during a Sheet drag. Budget: ≤ 4 ms for the whole §2.2 assembly over 50 k
-  candidate triangles (an 11-Room exhibition is well under that); a dev-only timing log above
-  budget. Broad phase by world bounds; welding, T-vertex and crossing splits through a uniform grid;
-  winding probes bucketed by y-strip — no all-pairs pass. Exceeding 2× the budget on the 11-Room
-  fixture is stop condition 9, not a reason to drop steps.
+- **The cap rebuild never runs on a Sheet-drag frame.** The cut is a uniform update — the plane
+  follows every frame for free — so a drag draws the plane and the section assembles once the Sheet
+  rests (120 ms settle; a geometry or selection change assembles immediately). During the drag the
+  section is removed rather than drawn stale under a moved plane. The rule is `decideCapAssembly`.
+- Budget: ≤ 4 ms for the whole §2.2 assembly over 50 k candidate triangles. **Stop condition 9 has
+  fired**: the eleven-Room fixture (44 Walls, 7,040 candidate triangles, all isolated — no T/X
+  Junctions) measures ~29 ms best / ~32 ms median, and the profile is flat across the pass (split
+  23 ms, triangle→segment 9.5 ms, winding 2 ms), so constant-factor work cannot reach 4 ms. At the
+  measured linear rate 50 k triangles is ≈ 200 ms. **Owner-sanctioned resolution (2026-11-17):** keep
+  the rebuild off the interaction frame and record the budget as unmet rather than fold the geometry
+  rewrite into SL1; the bucketed T-vertex/crossing lookup remains the performance change's work. The
+  measurement test prints the 50 k projection and holds a loose 120 ms regression ceiling.
+- Broad phase by world bounds; welding, T-vertex and crossing splits through a uniform grid; winding
+  probes bucketed by y-strip — no all-pairs pass. A dev-only timing log above the budget.
 - Plane edits mutate the shared `Plane` instances in place; no material is touched per frame.
 - No per-frame work when nothing changes (on-demand rendering preserved).
 - At rest (no Slice) the two no-op planes cost one dot product per fragment per plane; QA checks frame
@@ -799,6 +807,35 @@ Stop and report (do not work around) if:
 > plane signs §2.1, cap assembly §2.2, ghost rule §2.4, depth semantics §1.1.
 
 ## Revision log
+
+**Rev 3 — implementation review on #362 (2026-11-17).** Accepted findings and the one recorded
+deviation:
+
+1. *Accepted.* The reading was never cleared: `sliceReading.clear()` now runs with Lift at route
+   teardown and on a replaced project, and a lens effect ends it (with the pick mirror) when the lens
+   leaves World. Lifecycle text in §1.3 is now enforced by `slice-lifecycle.test.ts`.
+2. *Accepted.* The §9 refusal was missing: a Stage press while Slice is armed now refuses the press
+   and says **Drag the Height Sheet to move the cut.** in the shell's notice.
+3. *Accepted.* The section could be lost or stale: the effect returned a cleanup, which Svelte runs
+   before every re-run, and `assembled` was recorded before the assembly ran. `assembled` is now
+   written only by `rebuild()`, the effect returns no cleanup, and timers are cancelled on destroy or
+   when a newer schedule replaces them.
+4. *Accepted.* The drag frame still assembled when the ghost's classification flipped, and a ghost
+   was removed for the length of a drag. The ghost is out of the section key, drawn in its own group,
+   redrawn only when the classification changes, and its world bake is cached against the selection
+   and geometry.
+5. *Recorded deviation, now closed.* Ink had drifted from §2.2: the plane is back to **#f2d000 at
+   0.14**, and section edges are `Line2` — 2 px yellow, with a selected identity's edges 3 px gold
+   from the shared selection tone (test 4 is now drawn, not only computed).
+6. *Accepted.* Cap sources exclude **Wall failure surfaces** (a fallback body must not read as a
+   resolved Wall), and the ghost's conservative fallback covers subjects made only of skinned or
+   instanced meshes through their world bounds.
+7. *Accepted.* Evidence claims were narrowed: the rendered fixture proves the cap's geometry sits at
+   `cutY` and that the cap is drawn, not that the shipped pick surface was exercised (the provider's
+   `cutWallBandsOf` surface is unit-tested); the ink fixture's ray is described as such.
+8. *Accepted.* §6's schedule and budget status now match the code, and the stale `rendering.md`
+   paragraph (one plane, offset folded in, empty array for snapshots) was rewritten to the two-plane,
+   parks-in-place seam.
 
 **Rev 2 — peer review on #362 (2026-11-16).** Findings independently verified against three r187
 source and the builder:
