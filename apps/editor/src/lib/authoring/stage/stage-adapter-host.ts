@@ -12,7 +12,7 @@ export { angleDeltaLabel, planarDeltaLabel, signed, sizeDeltaLabel } from './ges
 export { roomLabelFacts } from './room-labels';
 export { axisTravelFromRay } from './stage-axis-travel';
 export { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingCoordinate, snapDraftingPlacement, snapDraftingPoint } from './stage-drafting';
-export { isStageDrag } from './stage-input';
+export { isStageDrag, readingIntentClockSeconds } from './stage-input';
 export { scopeAdmitsEntity } from './subject-scope';
 export { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from './unit-stage-source';
 export { PAPER_LAYER, buildPaperPlan, unionOutline } from './paper-plan';
@@ -23,7 +23,8 @@ export type {
 	StageAdapter, StageAdapterBinding, StageAdapterContext, StageCardAction,
 	StageCardActionOutcome, StageCardFact, StageCardSubject, StageCandidatePreview,
 	StageDomainPick, StageGhostMesh, StageGuideContribution, StageInkReadingRecord,
-	StageInkReadingSession, StageKeyboardIntent, StageOverlayContribution, StagePointerIntent
+	StageInkReadingSession, StageInstrumentContent, StageKeyboardIntent, StageOverlayContribution,
+	StagePointerIntent
 } from './stage-facade';
 export type { StageHandleDescriptor } from './stage-handles';
 export type { GestureAcquisition, GestureLease, ProposalLease } from './stage-session';

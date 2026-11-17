@@ -384,7 +384,7 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the fifteen Scene operations as single-domain planners', () => {
+	it('registers exactly the sixteen Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(
 			planners.flatMap((planner) =>
@@ -398,6 +398,7 @@ describe('scene operation planners — registration', () => {
 			'create-form',
 			'place-form-copy',
 			'set-form-size',
+			'set-form-profile',
 			'move-horizontal',
 			'set-yaw',
 			'place-on-floor',
@@ -2340,5 +2341,82 @@ describe('scene operation planners — lift and name (review pass 2)', () => {
 			})
 		);
 		expect(blank.kind).toBe('rejected');
+	});
+
+	it('revises an existing outline and extent in place, compensating the resting Y', async () => {
+		const entity = formEntity('form-1', { plane: 'elevation', position: [3, 1, 2] });
+		const snapshot = await snapshotOf(await projectWith(sceneWith([entity])));
+		const target = entityTarget(sceneTargetRevision(snapshot), 'form-1');
+		const revisedOutline = [
+			{ key: 1, u: -1.5, v: -1.5, smooth: false },
+			{ key: 2, u: 1.5, v: -1.5, smooth: false },
+			{ key: 3, u: 1.5, v: 1.5, smooth: false },
+			{ key: 4, u: -1.5, v: 1.5, smooth: true }
+		];
+		const result = prepare(
+			'set-form-profile',
+			snapshot,
+			intent({
+				kind: 'set-form-profile',
+				operationId: 'profile-form',
+				snapshot,
+				targets: [target],
+				payload: { entityId: 'form-1', outline: revisedOutline, extent: 2.5 }
+			})
+		);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const revised = result.candidate.source.units.scene.data.entities[0]!;
+		expect(revised.kind).toBe('form');
+		if (revised.kind !== 'form') return;
+		// Exactly the accepted generator changes; every key, `nextKey`, scale,
+		// material and non-Y position component is preserved.
+		expect(revised.form.generator.outline).toEqual(revisedOutline);
+		expect(revised.form.generator.extent).toBe(2.5);
+		expect(revised.form.nextKey).toBe(5);
+		expect(revised.form.scale).toEqual([1, 1, 1]);
+		expect(revised.materialId).toBe('wood-walnut');
+		expect(revised.position[0]).toBe(3);
+		expect(revised.position[2]).toBe(2);
+		// Elevation minV -1.5 moves the body up so its base still rests at 0.
+		expect(revised.position[1]).toBe(1.5);
+		expect(result.candidate.changes[0]?.fields).toEqual(['form', 'position']);
+	});
+
+	it('refuses anchor count, key order, an invalid ring, an extent outside the limits and a no-op', async () => {
+		const entity = formEntity('form-1');
+		const snapshot = await snapshotOf(await projectWith(sceneWith([entity])));
+		const target = entityTarget(sceneTargetRevision(snapshot), 'form-1');
+		const outline = entity.form.generator.outline;
+		const revise = (payload: Record<string, unknown>) =>
+			prepare(
+				'set-form-profile',
+				snapshot,
+				intent({
+					kind: 'set-form-profile',
+					operationId: `profile-${String(payload.extent)}-${payload.outline === undefined ? 'default' : 'custom'}`,
+					snapshot,
+					targets: [target],
+					payload: { entityId: 'form-1', extent: 2, ...payload }
+				})
+			);
+		expect(revise({ outline: outline.slice(0, 3) }).kind).toBe('rejected');
+		expect(
+			revise({ outline: [outline[1]!, outline[0]!, outline[2]!, outline[3]!] }).kind
+		).toBe('rejected');
+		expect(
+			revise({
+				outline: [
+					{ key: 1, u: 0, v: 0, smooth: false },
+					{ key: 2, u: 0, v: 0, smooth: false },
+					{ key: 3, u: 1, v: 0, smooth: false },
+					{ key: 4, u: 0, v: 1, smooth: false }
+				]
+			}).kind
+		).toBe('rejected');
+		expect(revise({ extent: 0 }).kind).toBe('rejected');
+		const noOp = revise({ outline, extent: entity.form.generator.extent });
+		expect(noOp.kind).toBe('rejected');
+		if (noOp.kind === 'rejected') expect(noOp.code).toBe('no_op');
 	});
 });

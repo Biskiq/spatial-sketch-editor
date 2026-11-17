@@ -125,3 +125,41 @@ None. No capability label carries `needs-decision`, `needs-ux`, `needs-research`
   stable; the profile codec still owns validity and refuses a drag that crosses or collapses.
 - **Large outlines.** The instrument renders one row per existing anchor (3–256 by the landed
   limit); no virtualization is added and no new count limit is claimed.
+
+## Outcome
+
+Implemented as the plan describes: `set-form-profile` (with its strict payload reader and
+`form.generator` + `position[1]` scope grant), the `scene-profile-revision` task and Card, the
+Studio-only `Edit outline` action, the extent field's writer omission, and per-action Studio
+admission. The task test found that a contributed task's `targetRef` is captured when the binding
+is built, while Studio selects through `setSelection` (whose convenience `selection()` view is
+null); the instrument now resolves the **live canonical selected root** from `selectionState()`,
+and the object Card uses the same check to decide which extent field it omits. Without that, the
+Card action opened an empty Card after any selection made after the binding was built.
+
+Verification run in this worktree:
+
+- `npm run check:project-model`, `npm run check:geometry-core` — pass (geometry-core unchanged).
+- editor `npm run check` — 0 errors, 18 pre-existing warnings.
+- `npm run test:arch` — 349 tests pass.
+- Focused suites (107 tests): planner, acceptance, `profile-revision` journey, Studio model,
+  native-form Paper agreement, Scene adapter lifecycle. The new journey opens the task from a
+  selected form, settles Camera in Plan, previews typed anchors/extent with no source or history
+  change, applies one F4 entry, checks preserved keys/`nextKey`/plane/scale/position, Undo/Redo,
+  repeated revision, discard, crossed-outline refusal and no-op.
+- The acceptance suite serializes and re-admits the revised source; the existing Paper agreement
+  suite passes with the same evaluator. No separate revised-source Paper test was added.
+
+Browser QA was **not completed**. In the local editor no native form could be created or reached:
+Studio's Objects action answered "Objects is not available in this project" for both an empty
+baseline and a saved starter Room opened with `?load=1&entry=studio`, so there was no form whose
+Card could offer `Edit outline`. The task path above is exercised headlessly through the production
+Scene adapter, acceptance host and Card controller instead. No Card screenshot or visual check was
+made.
+
+Deviations:
+
+- Elevation forms use Camera's `face` intent because Camera has no elevation reading, as recorded
+  in Risks; no third reading was added.
+- No independent reviewer subagent was available. The plan and this implementation received a
+  cold self-review only; the workflow's required independent review remains outstanding.

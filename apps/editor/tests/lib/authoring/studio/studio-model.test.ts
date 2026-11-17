@@ -84,11 +84,15 @@ describe('studio entry addresses', () => {
 });
 
 describe('studioAdmitsCardAction', () => {
-	it('keeps the protected root and every non-Scene owner out, and admits nothing without a root', async () => {
+	it('keeps the protected root and every non-Scene owner out, admitting only the root outline action', async () => {
 		const { studioAdmitsCardAction } = await import('../../../../src/lib/authoring/studio/studio-model');
 		expect(studioAdmitsCardAction('root', 'scene', 'root')).toBe(false);
-		expect(studioAdmitsCardAction('root', 'light', 'other')).toBe(false);
-		expect(studioAdmitsCardAction('root', 'scene', 'other')).toBe(true);
+		expect(studioAdmitsCardAction('root', 'scene', 'root', 'scene-object-delete')).toBe(false);
+		expect(studioAdmitsCardAction('root', 'scene', 'root', 'scene-object-duplicate')).toBe(false);
+		expect(studioAdmitsCardAction('root', 'scene', 'root', 'scene-object-edit-in-studio')).toBe(false);
+		expect(studioAdmitsCardAction('root', 'scene', 'root', 'scene-object-edit-outline')).toBe(true);
+		expect(studioAdmitsCardAction('root', 'light', 'other', 'scene-object-edit-outline')).toBe(false);
+		expect(studioAdmitsCardAction('root', 'scene', 'other', 'scene-object-edit-outline')).toBe(true);
 		expect(studioAdmitsCardAction(null, 'scene', 'other')).toBe(false);
 	});
 });

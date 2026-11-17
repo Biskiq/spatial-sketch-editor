@@ -34,6 +34,10 @@ import type {
 	StageAdapterBinding
 } from '$lib/authoring/stage/stage-adapter-host';
 import {
+	createProfileRevisionBinding,
+	publishProfileRevision
+} from './scene/profile-revision';
+import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	admittedCatalogueModelAssets,
 	catalogueModelDefinition,
@@ -60,7 +64,12 @@ import { createObjectMarkSession } from './scene/object-mark-session';
 import { liveProjectId } from './scene/object-readings';
 import { createPlacementBinding } from './scene/placement-binding';
 import { createSceneContributions } from './scene/scene-contributions';
-import { SCENE_COMPOSE_TASK, SCENE_IMPORT_KIND, SCENE_PLACE_KIND } from './scene/scene-task-ids';
+import {
+	SCENE_COMPOSE_TASK,
+	SCENE_IMPORT_KIND,
+	SCENE_PLACE_KIND,
+	SCENE_PROFILE_REVISION_KIND
+} from './scene/scene-task-ids';
 
 export const createAdapter: StageAdapterFactory = (services: StageAdapterServices) => {
 	// Every planner is registered once, and the placement planner's definitions
@@ -115,6 +124,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 			const placement = createPlacementBinding(services, context);
 			const marks = createObjectMarkSession(services);
 			const contributions = createSceneContributions(services, context, marks);
+			const profile = createProfileRevisionBinding(services);
 
 			function resetPlacementAndMarks(): void {
 				marks.reset();
@@ -128,6 +138,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				// A refused clamp or a missing selection refuses the claim rather than
 				// starting a drag.
 				pointerIntent(intent, adapterContext) {
+					if (profile.active()) return profile.pointer(intent, adapterContext);
 					if (placement.pointerPrelude(intent)) return true;
 					const taskKind = placement.taskKind();
 					// Compose is a typed command surface. It claims no pointer: a press over
@@ -150,6 +161,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					return placement.taskKind() === null && marks.key(intent);
 				},
 				hoverIntent(intent, adapterContext) {
+					// The outline task owns the surface; placement proposes no placement.
+					if (profile.active()) return false;
 					return placement.hover(intent, adapterContext);
 				},
 				selectionChanged() {
@@ -159,10 +172,15 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
 				taskClosed() {
+					if (profile.active()) {
+						profile.taskClosed();
+						publishProfileRevision(null, profile.session);
+					}
 					resetPlacementAndMarks();
 					placement.taskClosed();
 				},
 				candidatePreview(adapterContext): readonly StageCandidatePreview[] {
+					if (profile.active()) return profile.candidatePreview();
 					if (placement.drawing()) {
 						return presentDrawnCandidate(
 							placement.drawPreview(adapterContext),
@@ -185,12 +203,17 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
+					if (profile.active()) return [];
 					if (placement.drawing()) return placement.drawOverlay(adapterContext);
 					return presentOverlay(adapterContext, placement.view(adapterContext));
 				},
 				// The candidate is drawn as the object's own body at the captured pose,
 				// in the one Canvas, so Plan and 3D show what Commit will install.
 				ghosts(adapterContext): readonly StageGhostMesh[] {
+					if (profile.active()) {
+						const candidate = profile.ghost();
+						return candidate === null ? [] : [candidate];
+					}
 					const object = marks.ghost(adapterContext);
 					const leading: StageGhostMesh[] = [];
 					if (placement.drawing()) leading.push(...placement.drawGhosts());
@@ -198,6 +221,24 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 					return presentGhosts(adapterContext, placement.view(adapterContext), leading);
 				},
 				instrument(task) {
+					if (task.kind === SCENE_PROFILE_REVISION_KIND) {
+						// The Card action opens this task for the **live** selected form. A
+						// contributed task's targetRef was captured when the binding was built,
+						// and a later selection does not rebuild every contribution; the
+						// selection at the moment of opening is the target that was acted on.
+						// `selectionState()` is the canonical selection and is populated by both
+						// selection paths; the convenience `selection()` view is null when the
+						// caller used `setSelection` without a plan representation.
+						const primary = context.selectionState().primary;
+						const liveTarget = primary?.domain === 'scene' ? primary.subject.id : null;
+						const content = profile.open(liveTarget ?? task.targetRef?.sourceId ?? null, context);
+						publishProfileRevision(content === null ? null : profile.session, profile.session);
+						return content;
+					}
+					if (profile.active()) {
+						profile.taskClosed();
+						publishProfileRevision(null, profile.session);
+					}
 					placement.openTask(task.kind);
 					if (task.kind === SCENE_IMPORT_KIND) {
 						return {
@@ -218,6 +259,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 				dispose() {
 					marks.reset();
 					placement.dispose();
+					profile.dispose();
+					publishProfileRevision(null, profile.session);
 				}
 			};
 		}

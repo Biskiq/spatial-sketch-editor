@@ -22,3 +22,12 @@ export const SCENE_COMPOSE_TASK = 'scene-compose';
  */
 export const SCENE_IMPORT_TASK = 'scene-import';
 export const SCENE_IMPORT_KIND = 'import-model';
+/**
+ * The native form's generator revision: existing anchors, their smooth flag and
+ * the extrusion extent, reviewed as one pending candidate. Object Studio opens
+ * it from the scoped root's Card.
+ */
+export const SCENE_PROFILE_REVISION_TASK = 'scene-profile-revision';
+export const SCENE_PROFILE_REVISION_KIND = 'revise-form-profile';
+/** The Card action that opens it; the Studio scope admits this root action. */
+export const SCENE_PROFILE_REVISION_ACTION = 'scene-object-edit-outline';
