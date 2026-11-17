@@ -467,7 +467,7 @@ function assembleGroup(
 	// proper crossings. Both create new welded vertices, and a point created by one
 	// can lie on a third segment's interior (three faces meeting at a door jamb, a
 	// keel point, a corner), so the pass repeats until it adds nothing.
-	let split = segments;
+	let split: readonly Segment[] = segments;
 	for (let pass = 0; pass < SPLIT_PASS_LIMIT; pass += 1) {
 		const next = splitPass(split, points, welder, tolerance);
 		split = next.segments;
@@ -596,10 +596,14 @@ function splitPass(
 	points: readonly SectionPoint[],
 	welder: Welder,
 	tolerance: number
-): { segments: Segment[]; added: boolean } {
+): { segments: readonly Segment[]; added: boolean } {
 	if (segments.length === 0) return { segments: [], added: false };
 	const extra: number[][] = segments.map(() => []);
-	const cell = Math.max(0.02, tolerance * 8);
+	// The grid is a broad phase, not the weld tolerance: a 2 cm cell made a 6 m Wall
+	// span 300 cells, and nearly all of the split pass was map churn. A quarter-metre
+	// cell still covers every endpoint/crossing (bounds are expanded by tolerance),
+	// while cutting the cell count by an order of magnitude.
+	const cell = Math.max(0.25, tolerance * 8);
 	const key = (x: number, z: number): string => `${x},${z}`;
 	const cellsOfSegment = (segment: Segment): [number, number, number, number] => {
 		const a = points[segment.a]!;
@@ -634,6 +638,7 @@ function splitPass(
 		endpointIds.add(segment.a);
 		endpointIds.add(segment.b);
 	}
+	let anyExtra = false;
 	const pointCells = new Map<string, number[]>();
 	for (const id of endpointIds) {
 		const point = points[id]!;
@@ -654,6 +659,7 @@ function splitPass(
 					const amount = amountAlong(segment, id, points, tolerance);
 					if (amount === null || amount <= 0 || amount >= 1) continue;
 					extra[index]!.push(amount);
+					anyExtra = true;
 				}
 			}
 		}
@@ -673,9 +679,14 @@ function splitPass(
 				if (crossing === null) continue;
 				extra[first]!.push(crossing.first);
 				extra[second]!.push(crossing.second);
+				anyExtra = true;
 			}
 		}
 	}
+	// The common case is a group whose section already meets at existing vertices:
+	// no T-vertex or crossing was found. Every segment and endpoint was welded on
+	// construction, so returning the input avoids re-welding the whole group.
+	if (!anyExtra) return { segments, added: false };
 
 	let added = false;
 	const next: Segment[] = [];

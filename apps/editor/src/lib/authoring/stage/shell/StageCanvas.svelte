@@ -26,6 +26,7 @@
 	import type { ResolvedSlice } from '$lib/authoring/stage/slice/slice-cut';
 	import type { SectionInput } from '$lib/authoring/stage/slice/mesh-plane-section';
 	import StageSliceLayer from './StageSliceLayer.svelte';
+	import StageCutawayLayer from '../cutaway/StageCutawayLayer.svelte';
 	import StageClipPlanes from './StageClipPlanes.svelte';
 	import { onDestroy } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
@@ -126,6 +127,9 @@ import StageMatGround from './StageMatGround.svelte';
 		unfoldAnchorPin = null,
 		resolvedSlice = null,
 		sliceDraft = null,
+		cutawayWallIds = [],
+		cutawayStubTopY = null,
+		onCutawayFailure,
 		studio = null
 	}: {
 		geometry: CompiledLayoutGeometry;
@@ -187,6 +191,14 @@ import StageMatGround from './StageMatGround.svelte';
 		resolvedSlice?: ResolvedSlice | null;
 		/** The live drawn proposal, before it commits to the reading. */
 		sliceDraft?: { readonly start: readonly [number, number, number]; readonly end: readonly [number, number, number] } | null;
+		/**
+		 * X2's effective cut set and stub height. Display-only session state: Preview
+		 * is a separate Canvas that never passes them, so a release is as built.
+		 */
+		cutawayWallIds?: readonly string[];
+		cutawayStubTopY?: number | null;
+		/** Walls whose cap component failed; the route closes them to whole (D12). */
+		onCutawayFailure?: (wallIds: readonly string[]) => void;
 		/**
 		 * Object Studio's display posture, or null. `mat` draws only the scoped root on the
 		 * bare mat (the Layout shell and every other entity are unmounted, so they cannot
@@ -456,6 +468,7 @@ import StageMatGround from './StageMatGround.svelte';
 			treatment={scene.environment?.treatment}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
 			{liftedRoomIds}
+			{cutawayWallIds}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	{/if}
@@ -528,6 +541,7 @@ import StageMatGround from './StageMatGround.svelte';
 		-->
 		<StageSelectionLayer
 			eye={evaluation ? [evaluation.inverseViewMatrix[12]!, evaluation.inverseViewMatrix[13]!, evaluation.inverseViewMatrix[14]!] : [0, 10, 10]}
+			{cutawayWallIds}
 			{selection}
 			{hover}
 			{hoverTone}
@@ -555,6 +569,23 @@ import StageMatGround from './StageMatGround.svelte';
 			width={evaluation?.rect.width ?? 0}
 			height={evaluation?.rect.height ?? 0}
 			draft={sliceDraft}
+		/>
+		<!--
+			X2's cutaway ink: the live stub top and its paper caps. Overlay-layer
+			editor ink, never a pick root and never in a snapshot.
+		-->
+		<StageCutawayLayer
+			wallIds={cutawayWallIds}
+			stubTopY={cutawayStubTopY}
+			junctions={geometry.junctions ?? []}
+			walls={geometry.walls ?? []}
+			floors={geometry.floors}
+			inputs={sectionInputs}
+			revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+			sliceCutY={resolvedSlice?.kind === 'level' ? resolvedSlice.cutY : null}
+			width={evaluation?.rect.width ?? 0}
+			height={evaluation?.rect.height ?? 0}
+			onFailure={onCutawayFailure}
 		/>
 	{/if}
 	{#if framedViewport === null && evaluation !== null}

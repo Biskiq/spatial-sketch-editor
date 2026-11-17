@@ -236,6 +236,9 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 		// animation/browser APIs.
 		const layoutFiles = ALL_SOURCE_FILES.filter((file) => file.startsWith(`${libRoot}/layout/`));
 		expect(layoutFiles.map((file) => file.slice(libRoot.length + 1))).toEqual([
+			// X2's pure Junction seam derivation: compiled geometry in, seam faces out.
+			// No renderer, editor state or browser API.
+			'layout/wall-cutaway-seams.ts',
 			'layout/wall-face.ts',
 			'layout/wall-mesh-builder.ts',
 			'layout/wall-unfold-opening-drag.ts',

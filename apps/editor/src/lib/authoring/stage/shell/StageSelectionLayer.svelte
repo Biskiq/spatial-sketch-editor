@@ -70,7 +70,8 @@
 		height = 1,
 		fade = 1,
 		eye = [0, 10, 10],
-		unclippedSelection = false
+		unclippedSelection = false,
+		cutawayWallIds = []
 	}: {
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
@@ -91,6 +92,12 @@
 		/** Hands off to Paper's own marks as the sheet arrives during a flip. */
 		fade?: number;
 		eye?: readonly [number, number, number];
+		/**
+		 * X2's effective cut set. Hover/rim ink of a cut Wall is drawn through
+		 * `cutawayInk` so its contour matches the stub; selection ink never is,
+		 * because a selected Wall is exempt from the cutaway (D9).
+		 */
+		cutawayWallIds?: readonly string[];
 	} = $props();
 
 	const GOLD = STAGE_PAINT.selection;
@@ -126,9 +133,19 @@
 	 * drawn cut parks the planes at keep-all, so without this the gold contour would
 	 * float over the part of its subject the cut removed (§2.4).
 	 */
-	function cutInk<M extends Material>(material: M, planes: Plane[] | undefined): M {
-		return planes === undefined || stageClip === null ? material : stageClip.clipInk(material);
+	function cutInk<M extends Material>(
+		material: M,
+		planes: Plane[] | undefined,
+		tone: 'selection' | 'hover' | 'erase' | 'rim'
+	): M {
+		if (planes === undefined || stageClip === null) return material;
+		// A cut Wall's hover/rim contour follows its stub; the selection contour is
+		// whole because the selected Wall is exempt from the cutaway (D9).
+		if (drawingCutawayWall && tone !== 'selection') return stageClip.cutawayInk(material);
+		return stageClip.clipInk(material);
 	}
+	/** Set while drawing ink for a Wall that is in the effective cut set. */
+	let drawingCutawayWall = false;
 
 	const root = new Group();
 	root.name = 'StageSelectionInk';
@@ -238,7 +255,7 @@
 			stencilRef: 1,
 			stencilFunc: AlwaysStencilFunc,
 			stencilZPass: ReplaceStencilOp
-		}), silhouettePlanes);
+		}), silhouettePlanes, tone);
 		const mask = new Mesh(geometry, maskMaterial);
 		mask.name = 'StageWallStencilMask';
 		mask.frustumCulled = false;
@@ -262,7 +279,7 @@
 			stencilWrite: true,
 			stencilRef: 1,
 			stencilFunc: NotEqualStencilFunc
-		}), silhouettePlanes);
+		}), silhouettePlanes, tone);
 		// p' = s(p - c) + c: the shell is scaled about the accepted mesh's own
 		// centre, not the world origin.
 		const scaleGroup = new Group();
@@ -323,7 +340,7 @@
 				...OUTLINE_DEPTH_BIAS,
 				resolution: new Vector2(width, height),
 				...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
-			}), planes);
+			}), planes, tone);
 			const line = new Line2(edgeGeometry, material);
 			if (tone === 'erase') line.computeLineDistances();
 			line.frustumCulled = false;
@@ -352,8 +369,17 @@
 		) {
 			return;
 		}
+		// Mark a Wall that the cutaway removes above its stub: its hover/rim ink is
+		// bound to the live top, so the contour stops where the Wall stops. The
+		// selection tone is deliberately excluded — the selected Wall is exempt (D9).
+		drawingCutawayWall =
+			tone !== 'selection' &&
+			entry.reference.domain === 'layout' &&
+			entry.reference.subject.kind === 'wall' &&
+			cutawayWallSet.has(entry.reference.subject.id);
 		if (entry.reference.domain === 'layout' && entry.reference.subject.kind === 'opening') {
 			addContour(openingContour(entry.reference.subject.id), tone);
+			drawingCutawayWall = false;
 			return;
 		}
 		const source = sourceMeshes(entry);
@@ -389,6 +415,7 @@
 
 		} finally {
 			source.dispose();
+			drawingCutawayWall = false;
 		}
 	}
 
@@ -414,6 +441,9 @@
 		invalidate();
 	}
 
+	/** The effective cut set as a membership test; rebuilt with the effect run. */
+	let cutawayWallSet: ReadonlySet<string> = new Set();
+
 	$effect(() => {
 		selection;
 		hover;
@@ -423,6 +453,7 @@
 		height;
 		eye;
 		unclippedSelection;
+		cutawayWallSet = new Set(cutawayWallIds);
 		rebuild();
 		const stop = scenePick.onRenderRootsChanged(rebuild);
 		return () => {

@@ -65,6 +65,7 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 	});
 	try {
 		const { page } = session;
+		page.on('pageerror', (error) => console.error('STAGE_CLIP_PAGEERROR', error.message));
 		await page.setContent('<!doctype html><body style="margin:0">');
 		await page.addScriptTag({ content: compiled.outputFiles[0]!.text });
 		await page.waitForFunction(() => 'undefined' !== typeof window.__STAGE_CLIP__);
@@ -230,6 +231,67 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 		]);
 		expect(inkBack.samples).toEqual(inkRest.samples);
 
+		// 9. X2: the cutaway twin on the same GPU. Whole → cut removes exactly the
+		//    above-stub pixels, the paper cap is present, and no program appears; a
+		//    twin caster's shadow image and 120 stationary frames are unchanged.
+		const cutawayWhole = await page.evaluate(() => window.__STAGE_CLIP__.cutaway(null));
+		expect(cutawayWhole.error).toBe(0);
+		const cutawayCut = await page.evaluate(() => window.__STAGE_CLIP__.cutaway(1));
+		expect(cutawayCut.error).toBe(0);
+		expect(cutawayWhole.above).not.toBe(cutawayWhole.background);
+		expect(cutawayCut.above).toBe(cutawayCut.background);
+		expect(cutawayCut.below).toBe(cutawayWhole.below);
+		expect(cutawayWhole.cap).not.toBe(cutawayWhole.background);
+		expect(cutawayCut.cap).toBe(cutawayWhole.cap);
+		expect(cutawayCut.programs).toBe(cutawayWhole.programs);
+
+		const cutawayShadowWhole = await page.evaluate(() => window.__STAGE_CLIP__.cutawayShadow(null));
+		const cutawayShadowCut = await page.evaluate(() => window.__STAGE_CLIP__.cutawayShadow(1));
+		expect(cutawayShadowWhole.error).toBe(0);
+		expect(cutawayShadowCut.error).toBe(0);
+		expect(cutawayShadowCut.hash).toBe(cutawayShadowWhole.hash);
+		await page.screenshot({ path: testInfo.outputPath('cutaway-twin.png') });
+
+		// A Slice reading must not clear X2's independently owned top. Both a Level
+		// and a Drawn reading are applied while the stub is cut; each must leave the
+		// above-stub pixels hidden and the cap in place.
+		const farLevel = { kind: 'level' as const, cutY: 6, lowerY: null };
+		const farDrawn = {
+			kind: 'drawn' as const,
+			origin: [100, 0, 100] as [number, number, number],
+			along: [1, 0, 0] as [number, number, number],
+			hiddenNormal: [0, 0, 1] as [number, number, number],
+			halfLength: 0.1,
+			depthMeters: 0.1,
+			hidden: 'right' as const,
+			start: [100, 0, 100] as [number, number, number],
+			end: [100.2, 0, 100] as [number, number, number]
+		};
+		for (const reading of [farLevel, farDrawn]) {
+			const mixed = await page.evaluate((value) => window.__STAGE_CLIP__.cutawaySlice(value as never), reading);
+			expect(mixed.error).toBe(0);
+			expect(mixed.above).toBe(mixed.background);
+			expect(mixed.below).not.toBe(mixed.background);
+			expect(mixed.cap).not.toBe(mixed.background);
+			expect(mixed.programs).toBe(cutawayWhole.programs);
+		}
+
+		// 10. X2 §10.2: orbit eleven Rooms while the cut set moves from Room to
+		//     Room. The whole-scene baseline is taken first; cutting must not add a
+		//     program at any of the 66 orbit frames.
+		const orbit = await page.evaluate(() => window.__STAGE_CLIP__.cutawayOrbit(6));
+		expect([orbit.rooms, orbit.walls]).toEqual([11, 66]);
+		expect(orbit.frames).toBe(66);
+		expect(orbit.errors).toEqual([0]);
+		expect(orbit.baseline).toBeGreaterThan(0);
+		expect(orbit.distinctPrograms).toEqual([orbit.baseline]);
+
+		const stationary = await page.evaluate(() => window.__STAGE_CLIP__.cutawayStationary(120));
+		expect(stationary.distinctHashes).toBe(1);
+		expect(stationary.distinctPrograms).toBe(1);
+		expect(stationary.first).toBe(stationary.last);
+		expect(stationary.error).toBe(0);
+
 		console.log(
 			`stage clip: ${JSON.stringify({
 				programs: rest.programs,
@@ -240,7 +302,8 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 				drawnRestHash: drawnRest.hash,
 				shadow: shadowRest.hash,
 				shadowDrawn: shadowDrawnRest.hash,
-				inkPrograms: inkRest.programs
+				inkPrograms: inkRest.programs,
+				orbitPrograms: orbit.distinctPrograms
 			})}`
 		);
 		await page.evaluate(() => window.__STAGE_CLIP__?.close());

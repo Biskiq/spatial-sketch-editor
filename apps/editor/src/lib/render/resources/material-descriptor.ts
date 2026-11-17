@@ -97,6 +97,16 @@ export type StandardMaterialDescriptor = {
 	 * untextured acquire can never stand in for a textured key.
 	 */
 	readonly textures?: MaterialTextureKeys;
+	/**
+	 * The descriptor of X2's **cutaway twin**: the same surface, driven by the
+	 * StageClip's live cutaway top instead of the constant never-cut value.
+	 *
+	 * The flag participates in the canonical key exactly like `clip: false`, so a
+	 * twin and its normal sibling can never share one instance. It is not a second
+	 * material system: the shader program is the same (`biskiq.slice-clip@2`), and
+	 * the only difference is which uniform object the fragment test reads.
+	 */
+	readonly cutaway?: true;
 };
 
 export type BasicMaterialDescriptor = {
@@ -116,6 +126,8 @@ export type BasicMaterialDescriptor = {
 	 * Absent means the surface is clipped like every other world surface.
 	 */
 	readonly clip?: false;
+	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
+	readonly cutaway?: true;
 };
 
 /**
@@ -144,6 +156,8 @@ export type LambertMaterialDescriptor = {
 	readonly fog?: false;
 	/** `false` exempts the surface from the Canvas's slice clipping planes. */
 	readonly clip?: false;
+	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
+	readonly cutaway?: true;
 };
 
 /**
@@ -281,7 +295,10 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				// which variants are bound, not of how the record was spelled.
 				`textures=${MATERIAL_TEXTURE_SLOTS.map(
 					(slot) => `${slot}:${descriptor.textures?.[slot] ?? '-'}`
-				).join(';')}`
+				).join(';')}`,
+				// Absent keeps the normal surface's key exactly; a twin is a distinct
+				// lease, never a second use of the same instance.
+				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
 			].join('|');
 		case 'basic':
 			return [
@@ -292,7 +309,8 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
 				// Absent keeps today's key exactly; `clip: false` is a distinct surface.
-				...(descriptor.clip === false ? ['clip=0'] : [])
+				...(descriptor.clip === false ? ['clip=0'] : []),
+				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
 			].join('|');
 		case 'lambert':
 			return [
@@ -304,7 +322,8 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
 				...(descriptor.fog === false ? ['fog=0'] : []),
-				...(descriptor.clip === false ? ['clip=0'] : [])
+				...(descriptor.clip === false ? ['clip=0'] : []),
+				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
 			].join('|');
 		case 'depth':
 			return [

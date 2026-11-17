@@ -25,11 +25,13 @@ export type SectionSource = {
 
 export type PickOptions = {
 	/**
-	 * Whether a world point is currently not drawn (a Slice hides it). A hidden hit is
-	 * skipped and the ray continues, so a click reaches what is visible behind it.
+	 * Whether a world point is currently not drawn (a Slice or X2's cutaway hides it).
+	 * A hidden hit is skipped and the ray continues, so a click reaches what is
+	 * visible behind it. `object` is the hit's own mesh, which lets the cutaway
+	 * answer per Wall rather than per point. Existing callers ignore it.
 	 * Absent means today's behaviour exactly.
 	 */
-	readonly hiddenAt?: (point: readonly [number, number, number]) => boolean;
+	readonly hiddenAt?: (point: readonly [number, number, number], object: Object3D) => boolean;
 	/**
 	 * Object Studio's scope: when defined, only this entity is walked and the Layout
 	 * shell is skipped, so a ray passes through muted bodies to the scoped one.
@@ -241,7 +243,7 @@ export function createScenePickSource() {
 					// A Slice's cut is display geometry, not a document change: the point is
 					// still in the world, but it is not what the creator can see or aim at,
 					// so the ray continues to the next hit behind it (test 10).
-					if (options.hiddenAt?.(hit.point.toArray()) === true) continue;
+					if (options.hiddenAt?.(hit.point.toArray(), hit.object) === true) continue;
 					result = nearest(describeHit(hit, target.id), result);
 					break;
 				}
@@ -332,7 +334,7 @@ export function createScenePickSource() {
 					// looks: a face a Slice does not draw is not a place to hang anything,
 					// and it must not block the face behind it either (test 10's rule,
 					// applied to the placement ray rather than to selection).
-					if (options.hiddenAt?.(hit.point.toArray()) === true) continue;
+					if (options.hiddenAt?.(hit.point.toArray(), hit.object) === true) continue;
 					const candidate = describeHit(hit, target.id);
 					if (accept(candidate)) accepted = nearest(candidate, accepted);
 					else if (candidate.kind === 'entity' || candidate.kind === 'floor') {

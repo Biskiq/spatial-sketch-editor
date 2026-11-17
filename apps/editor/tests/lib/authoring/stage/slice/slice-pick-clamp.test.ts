@@ -225,7 +225,11 @@ describe('the pick provider under a cut: nothing above is selectable', () => {
 		return [projected.css[0] - view.rect.left, projected.css[1] - view.rect.top];
 	}
 
-	function pick(css: readonly [number, number], slice: ResolvedSlice | null): StageDomainPick | null {
+	function pick(
+		css: readonly [number, number],
+		slice: ResolvedSlice | null,
+		cutaway: { readonly wallIds: ReadonlySet<string>; readonly stubTopY: number } | null = null
+	): StageDomainPick | null {
 		const context = {
 			snapshot: { domain: { geometry, datumMeters: 0 } },
 			evaluation: view,
@@ -238,7 +242,7 @@ describe('the pick provider under a cut: nothing above is selectable', () => {
 			purpose: 'select',
 			tool: null
 		} as StagePickQuery;
-		return createPlanPickProvider(planFor, () => [], () => slice)(query, context);
+		return createPlanPickProvider(planFor, () => [], () => slice, () => cutaway)(query, context);
 	}
 
 	/** A Wall's own centreline midpoint: a face the camera can see from this pose. */
@@ -278,6 +282,28 @@ describe('the pick provider under a cut: nothing above is selectable', () => {
 
 		expect(hit).not.toBeNull();
 		expect(hit!.hit.worldPoint[1]).toBeCloseTo(CUT.cutY, 5);
+	});
+
+	describe('X2 cutaway: only the cut Wall loses its upper pick quad', () => {
+		const cutaway = { wallIds: new Set([wall.wallId]), stubTopY: 1 };
+		const other = geometry.walls[1]!;
+		const otherSample = other.samples[Math.floor(other.samples.length / 2)]!;
+		const otherStation: readonly [number, number] = [otherSample.point[0], otherSample.point[1]];
+
+		it('still selects a whole Wall above the shared stub height', () => {
+			const hit = pick(cssOf([otherStation[0], 2.6, otherStation[1]]), null, cutaway);
+			expect(hit?.hit.sourceId).toBe(other.wallId);
+			expect(hit!.hit.worldPoint[1]).toBeGreaterThan(1);
+		});
+
+		it('removes the cut Wall above its stub and keeps it below', () => {
+			const above = pick(cssOf([station[0], 2.6, station[1]]), null, cutaway);
+			expect(above?.hit.sourceId).not.toBe(wall.wallId);
+
+			const below = pick(cssOf([station[0], 0.5, station[1]]), null, cutaway);
+			expect(below?.hit.sourceId).toBe(wall.wallId);
+			expect(below!.hit.worldPoint[1]).toBeLessThanOrEqual(1 + 1e-6);
+		});
 	});
 });
 

@@ -235,6 +235,13 @@ describe('Stage shell composition', () => {
 			)
 		);
 		expect(threeImporters.sort()).toEqual([
+			// X2's cap layer draws the stub caps, seam faces and edge ink; it owns
+			// no camera, control object or second renderer.
+			'apps/editor/src/lib/authoring/stage/cutaway/StageCutawayLayer.svelte',
+			// X2's picking composes the cutaway predicate from Three intersections.
+			'apps/editor/src/lib/authoring/stage/cutaway/cutaway-pick.ts',
+			// X2 extended SL1's pick provider with the cutaway union; pure Three reads.
+			'apps/editor/src/lib/authoring/stage/slice/stage-slice-pick.ts',
 			'apps/editor/src/lib/authoring/stage/shell/stage-grid-scene.ts',
 			// T1 X1's Lift ink: dashed outlines and the selected ghost. It owns no
 			// camera, control object or second renderer.

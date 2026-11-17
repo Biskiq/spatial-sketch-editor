@@ -20,6 +20,7 @@
 		doorFrames = true,
 		hiddenWallIds = [],
 		liftedRoomIds = [],
+		cutawayWallIds = [],
 		onIdentity
 	}: {
 		geometry: CompiledLayoutGeometry;
@@ -40,6 +41,12 @@
 		 * Preview — its Canvas draws the same world as built.
 		 */
 		liftedRoomIds?: readonly string[];
+		/**
+		 * X2's display-only cutaway overlay: the Walls drawn through the cutaway twin
+		 * material. Never authored, never persisted, and never passed by Preview — its
+		 * Canvas draws the same world as built.
+		 */
+		cutawayWallIds?: readonly string[];
 		/**
 		 * Receives the shell's identity index once, on mount: id → the object that draws
 		 * it. The host resolves picks and selection through it instead of searching the
@@ -89,6 +96,12 @@
 	// representation remembers it and applies it to whatever it rebuilds).
 	$effect(() => {
 		walls.setHidden(new Set(hiddenWallIds));
+	});
+	// The cutaway is a material swap, not a visibility write: a cut Wall still
+	// casts exactly the shadow it did as built, and a Whole/hold mask costs one
+	// uniform write through the clip instead of a second swap.
+	$effect(() => {
+		if (walls.setCutaway(new Set(cutawayWallIds))) invalidate();
 	});
 
 	/**

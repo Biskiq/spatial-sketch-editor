@@ -29,10 +29,10 @@
  *
  * ## Snapshots are as built
  *
- * `asBuilt(render)` parks the native planes at no-op and the shader mode at `0` for
- * the duration of a snapshot, then restores both in `finally` — re-entrant,
- * exception safe, and never invalidating. Overlay ink is outside the snapshot mask
- * already, so the image is the world as built.
+ * `asBuilt(render)` parks the native planes at no-op, the shader mode at `0` and
+ * X2's cutaway top at never-cut for the duration of a snapshot, then restores them
+ * in `finally` — re-entrant, exception safe, and never invalidating. Overlay ink is
+ * outside the snapshot mask already, so the image is the world as built.
  *
  * ## Shadows
  *
@@ -46,6 +46,7 @@ import type { ResolvedSlice } from './slice-cut';
 import {
 	applySliceClipShader,
 	createSliceClipUniforms,
+	NEVER_CUT_TOP_Y,
 	restoreSliceClipUniforms,
 	snapshotSliceClipUniforms,
 	writeSliceClipUniforms,
@@ -137,6 +138,24 @@ export type StageClip = {
 	 * and editing a cut still only write uniforms.
 	 */
 	clipInk<M extends Material>(material: M): M;
+	/**
+	 * The X2 cutaway top applied to the one live uniform, or `null` for never cut.
+	 *
+	 * Whole, the hold key, Plan, Preview and snapshots all write `null` here: the
+	 * twin materials stay leased and the cut simply stops discarding, so returning
+	 * to Cut costs a uniform write rather than a material swap.
+	 */
+	setCutawayTop(y: number | null): void;
+	/** The live cutaway top, for diagnostics and the fixture. */
+	cutawayTop(): number;
+	/**
+	 * Cut an ink material with the live cutaway top as well as the Slice: a hover or
+	 * rim contour of a cut Wall matches its stub instead of floating above it.
+	 *
+	 * A **selected** Wall is exempt from the cutaway (D9), so its gold contour uses
+	 * `clipInk` and stays whole.
+	 */
+	cutawayInk<M extends Material>(material: M): M;
 };
 
 export function createStageClip(): StageClip {
@@ -169,11 +188,17 @@ export function createStageClip(): StageClip {
 			// state instead of the live one.
 			if (depth > 0 && savedPlanes !== null && savedShader !== null) {
 				write(savedPlanes, native);
-				savedShader = shader;
+				// A reading change never moves the cutaway top; keep the parked value.
+				savedShader = { ...shader, cutawayTopY: savedShader.cutawayTopY };
 				return;
 			}
 			write(planes, native);
+			// X2 owns the cutaway top independently of the Slice reading. `shader` is a
+			// fresh state for the reading (never-cut by default), so restore it around
+			// the write rather than letting a Level/Drawn edit silently show every Wall.
+			const cutawayTopY = sliceUniforms.cutawayTopY.value;
 			writeShader(shader);
+			sliceUniforms.cutawayTopY.value = cutawayTopY;
 		},
 		asBuilt(render) {
 			if (depth === 0) {
@@ -181,6 +206,8 @@ export function createStageClip(): StageClip {
 				savedShader = snapshotSliceClipUniforms(sliceUniforms);
 				planes.forEach((plane) => plane.copy(keepAll()));
 				sliceUniforms.mode.value = 0;
+				// X2's cutaway is a viewing state too: a snapshot is the world as built.
+				sliceUniforms.cutawayTopY.value = NEVER_CUT_TOP_Y;
 			}
 			depth += 1;
 			try {
@@ -201,6 +228,21 @@ export function createStageClip(): StageClip {
 		clipInk(material) {
 			material.clippingPlanes = planes;
 			applySliceClipShader(material, sliceUniforms);
+			return material;
+		},
+		setCutawayTop(y) {
+			const value = y === null ? NEVER_CUT_TOP_Y : y;
+			if (depth > 0 && savedShader !== null) {
+				// The newest value must win when the snapshot exits.
+				savedShader = { ...savedShader, cutawayTopY: value };
+				return;
+			}
+			sliceUniforms.cutawayTopY.value = value;
+		},
+		cutawayTop: () => sliceUniforms.cutawayTopY.value,
+		cutawayInk(material) {
+			material.clippingPlanes = planes;
+			applySliceClipShader(material, sliceUniforms, { cutaway: true });
 			return material;
 		}
 	};

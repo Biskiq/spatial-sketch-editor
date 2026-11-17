@@ -17,8 +17,10 @@
 import {
 	AmbientLight,
 	BoxGeometry,
+	BufferGeometry,
 	Color,
 	DirectionalLight,
+	Float32BufferAttribute,
 	Mesh,
 	MeshBasicMaterial,
 	MeshStandardMaterial,
@@ -26,9 +28,18 @@ import {
 	PerspectiveCamera,
 	PlaneGeometry,
 	Scene,
+	Uint32BufferAttribute,
 	type Material,
 	type WebGLRenderer
 } from 'three';
+import {
+	compileWallFirstLayoutGeometry,
+	legJoinsByWall,
+	type LayoutDocumentWallFirst,
+	type LayoutVec2,
+	type LayoutWall
+} from '@portfolio/layout-core';
+import { buildStandaloneWallMesh } from '../../src/lib/layout/wall-mesh-builder';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -257,6 +268,188 @@ function fixture() {
 	inkScene.add(inkGhost);
 	geometries.push(inkLineMaterial, inkGhostMaterial);
 
+		// X2: one cutaway twin wall, its paper cap and a shadow caster. The twin is the
+	// same program as the standard surface; only its `uCutawayTopY` binding follows
+	// the live cut, so whole → cut must not add a compile.
+	const CUTAWAY_TOP = 1;
+	const cutawayStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(cutawayStore);
+	const cutawayScene = new Scene();
+	cutawayScene.background = BACKGROUND;
+	cutawayScene.add(new AmbientLight(0xffffff, 1));
+	const cutawayWallGeometry = new BoxGeometry(3, 3, 0.2);
+	geometries.push(cutawayWallGeometry);
+	const cutawayWallLease = cutawayStore.acquire({
+		kind: 'standard',
+		color: '#b8a88a',
+		roughness: 1,
+		metalness: 0,
+		cutaway: true
+	});
+	leases.push(cutawayWallLease);
+	const cutawayWall = new Mesh(cutawayWallGeometry, cutawayWallLease.material);
+	cutawayWall.position.set(0, 1.5, 0);
+	cutawayScene.add(cutawayWall);
+	// Centred on y = 1.5 so the frustum covers world y 0…3; the sampler below
+	// maps that range directly to framebuffer rows.
+	const cutawayCamera = new OrthographicCamera(-2, 2, 1.5, -1.5, 0.1, 20);
+	cutawayCamera.position.set(0, 1.5, 6);
+	cutawayCamera.lookAt(0, 1.5, 0);
+
+	// The cap is the StageCutawayLayer's horizontal paper, sampled from above so an
+	// edge-on camera cannot hide it.
+	const cutawayCapScene = new Scene();
+	cutawayCapScene.background = BACKGROUND;
+	const cutawayCapGeometry = new PlaneGeometry(3, 0.2);
+	geometries.push(cutawayCapGeometry);
+	const cutawayCapLease = cutawayStore.acquire({ kind: 'basic', color: '#f0d8b0' });
+	leases.push(cutawayCapLease);
+	const cutawayCap = new Mesh(cutawayCapGeometry, cutawayCapLease.material);
+	cutawayCap.rotation.x = -Math.PI / 2;
+	cutawayCap.position.set(0, CUTAWAY_TOP, 0);
+	cutawayCapScene.add(cutawayCap);
+	const cutawayTopCamera = new OrthographicCamera(-2, 2, 2, 0, 0.1, 20);
+	cutawayTopCamera.position.set(0, 6, 0);
+	cutawayTopCamera.up.set(0, 0, -1);
+	cutawayTopCamera.lookAt(0, 0, 0);
+
+	// A twin caster with colour writing off: only the receiver and its shadow are
+	// sampled, so an unchanged hash proves the depth pass ignored the cut.
+	const cutawayShadowStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(cutawayShadowStore);
+	const cutawayShadowScene = new Scene();
+	cutawayShadowScene.background = BACKGROUND;
+	cutawayShadowScene.add(new AmbientLight(0xffffff, 0.4));
+	const cutawayReceiverGeometry = new PlaneGeometry(2, 2);
+	geometries.push(cutawayReceiverGeometry);
+	const cutawayReceiverLease = cutawayShadowStore.acquire({ kind: 'lambert', color: '#b8b0a4' });
+	leases.push(cutawayReceiverLease);
+	const cutawayReceiver = new Mesh(cutawayReceiverGeometry, cutawayReceiverLease.material);
+	cutawayReceiver.rotation.x = -Math.PI / 2;
+	cutawayReceiver.position.set(-0.5, 0, -1.5);
+	cutawayReceiver.receiveShadow = true;
+	cutawayShadowScene.add(cutawayReceiver);
+	const cutawayCasterLease = cutawayShadowStore.acquire({
+		kind: 'standard',
+		color: '#ffffff',
+		roughness: 1,
+		metalness: 0,
+		cutaway: true
+	});
+	leases.push(cutawayCasterLease);
+	const cutawayCaster = new Mesh(cutawayWallGeometry, cutawayCasterLease.material);
+	cutawayCaster.position.set(0.4, 1.75, 0.2);
+	cutawayCaster.scale.set(0.27, 0.5, 4);
+	cutawayCaster.castShadow = true;
+	(cutawayCaster.material as MeshStandardMaterial).colorWrite = false;
+	(cutawayCaster.material as MeshStandardMaterial).depthWrite = false;
+	cutawayShadowScene.add(cutawayCaster);
+	const cutawaySun = new DirectionalLight(0xffffff, 2.4);
+	cutawaySun.position.set(2.4, 5, 3.2);
+	cutawaySun.castShadow = true;
+	cutawaySun.shadow.mapSize.set(512, 512);
+	cutawaySun.shadow.camera.left = -4;
+	cutawaySun.shadow.camera.right = 4;
+	cutawaySun.shadow.camera.top = 4;
+	cutawaySun.shadow.camera.bottom = -4;
+	cutawaySun.shadow.camera.near = 0.5;
+	cutawaySun.shadow.camera.far = 20;
+	cutawaySun.shadow.bias = -0.0005;
+	cutawayShadowScene.add(cutawaySun, cutawaySun.target);
+	const cutawayShadowCamera = new PerspectiveCamera(42, WIDTH / HEIGHT, 0.1, 40);
+	cutawayShadowCamera.position.set(3.4, 3.2, 6.4);
+	cutawayShadowCamera.lookAt(0, 0.4, 0);
+
+	// X2 §10.2: eleven L-shaped Rooms (66 compiled Walls) with a whole/cut twin
+	// pair per Wall, all sharing the standard program. The orbit swaps the cut set
+	// from Room to Room; only visibility and the cut uniform change, so a
+	// per-cut-set material compile would show up as a new program. Caps and the
+	// shadow pass are covered by the smaller real fixtures.
+	const ORBIT_ROOMS = 11;
+	const ORBIT_PITCH = 10;
+	const orbitJunctions: Array<{ id: string; point: LayoutVec2 }> = [];
+	const orbitWalls: LayoutWall[] = [];
+	const orbitRoomWallIds: string[][] = [];
+	const orbitRooms: LayoutDocumentWallFirst['rooms'] = [];
+	for (let room = 0; room < ORBIT_ROOMS; room += 1) {
+		const x = room * ORBIT_PITCH;
+		const points: LayoutVec2[] = [
+			[x, 0], [x + 6, 0], [x + 6, 4], [x + 3, 4], [x + 3, 7], [x, 7]
+		];
+		const ids = points.map((_, index) => `orbit-r${room}-j${index}`);
+		points.forEach((point, index) => orbitJunctions.push({ id: ids[index]!, point }));
+		const boundary: Array<{ wallId: string; direction: 'forward' }> = [];
+		for (let index = 0; index < points.length; index += 1) {
+			const wallId = `orbit-r${room}-w${index}`;
+			orbitWalls.push({
+				id: wallId,
+				startJunctionId: ids[index]!,
+				endJunctionId: ids[(index + 1) % points.length]!,
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			});
+			boundary.push({ wallId, direction: 'forward' });
+		}
+		orbitRoomWallIds.push(boundary.map((entry) => entry.wallId));
+		orbitRooms.push({
+			id: `orbit-r${room}`,
+			name: `Orbit Room ${room + 1}`,
+			boundary,
+			virtualEdges: [],
+			overhead: 'closed',
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		});
+	}
+	const orbitDocument: LayoutDocumentWallFirst = {
+		units: 'meters',
+		formatVersion: 8,
+		floor: { id: 'orbit-floor', name: 'Orbit Floor', elevation: 0 },
+		junctions: orbitJunctions,
+		walls: orbitWalls,
+		rooms: orbitRooms,
+		openings: [],
+		objects: []
+	};
+	const orbitCompilation = compileWallFirstLayoutGeometry(orbitDocument);
+	const orbitEnds = legJoinsByWall(orbitCompilation.geometry.junctions);
+	const orbitStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(orbitStore);
+	const orbitScene = new Scene();
+	orbitScene.background = BACKGROUND;
+	orbitScene.add(new AmbientLight(0xffffff, 1));
+	const orbitSun = new DirectionalLight(0xffffff, 1.4);
+	orbitSun.position.set(30, 40, 20);
+	orbitScene.add(orbitSun);
+	type OrbitTwin = { wallId: string; whole: Mesh; cut: Mesh };
+	const orbitTwins: OrbitTwin[] = [];
+	const orbitRoomWalls: string[][] = [];
+	for (let room = 0; room < ORBIT_ROOMS; room += 1) {
+		const roomWallIds = new Set(orbitRoomWallIds[room]);
+		const roomWalls = orbitCompilation.geometry.walls.filter((wall) => roomWallIds.has(wall.wallId));
+		orbitRoomWalls.push(roomWalls.map((wall) => wall.wallId));
+		for (const compiled of roomWalls) {
+			const built = buildStandaloneWallMesh(compiled, 0, orbitEnds.get(compiled.wallId) ?? { start: null, end: null });
+			if (built.mesh === undefined) throw new Error(`orbit wall ${compiled.wallId} did not compile`);
+			const geometry = new BufferGeometry();
+			geometry.setAttribute('position', new Float32BufferAttribute(built.mesh.positions, 3));
+			geometry.setAttribute('normal', new Float32BufferAttribute(built.mesh.normals, 3));
+			geometry.setIndex(new Uint32BufferAttribute(built.mesh.indices, 1));
+			geometries.push(geometry);
+			const wholeLease = orbitStore.acquire({ kind: 'standard', color: '#b8a88a', roughness: 1, metalness: 0 });
+			const cutLease = orbitStore.acquire({ kind: 'standard', color: '#b8a88a', roughness: 1, metalness: 0, cutaway: true });
+			leases.push(wholeLease, cutLease);
+			const whole = new Mesh(geometry, wholeLease.material);
+			const cut = new Mesh(geometry, cutLease.material);
+			cut.visible = false;
+			orbitScene.add(whole, cut);
+			orbitTwins.push({ wallId: compiled.wallId, whole, cut });
+		}
+	}
+	const orbitCamera = new PerspectiveCamera(42, WIDTH / HEIGHT, 0.1, 300);
+	const orbitCentreX = ((ORBIT_ROOMS - 1) * ORBIT_PITCH) / 2 + 3;
+
 	const drawnReading = (depthMeters: number, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice => ({
 		kind: 'drawn',
 		origin: [0, 0, 0],
@@ -270,6 +463,40 @@ function fixture() {
 	});
 
 	const pixels = new Uint8Array(WIDTH * HEIGHT * 4);
+
+	/** Render one scene and read the framebuffer with a world-space sampler. */
+	function readScene(scene: Scene, view: OrthographicCamera | PerspectiveCamera) {
+		renderer.render(scene, view);
+		const gl = renderer.getContext();
+		gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+		const at = (px: number, py: number): string => {
+			const x = Math.min(WIDTH - 1, Math.max(0, Math.round(px)));
+			const y = Math.min(HEIGHT - 1, Math.max(0, Math.round(py)));
+			const index = (y * WIDTH + x) * 4;
+			return `#${[pixels[index]!, pixels[index + 1]!, pixels[index + 2]!]
+				.map((value) => value.toString(16).padStart(2, '0'))
+				.join('')}`;
+		};
+		let hash = 2166136261;
+		let nonBackground: string | null = null;
+		for (let index = 0; index < pixels.length; index += 4) {
+			const red = pixels[index]!;
+			const green = pixels[index + 1]!;
+			const blue = pixels[index + 2]!;
+			const rgb = (red << 16) | (green << 8) | blue;
+			hash = Math.imul(hash ^ rgb, 16777619) >>> 0;
+			if (nonBackground === null && (red !== 0x10 || green !== 0x18 || blue !== 0x20)) {
+				nonBackground = `#${[red, green, blue].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+			}
+		}
+		return {
+			at,
+			nonBackground,
+			hash: hash.toString(16),
+			programs: renderer.info.programs?.length ?? 0,
+			error: gl.getError()
+		};
+	}
 
 	/** Render, and read the default framebuffer before it is composited away. */
 	function draw(scene: Scene, view: OrthographicCamera | PerspectiveCamera): Report {
@@ -398,6 +625,160 @@ function fixture() {
 				programs: renderer.info.programs?.length ?? 0,
 				error: gl.getError()
 			};
+		},
+		/**
+		 * X2's cutaway twin on a real GPU: the same mesh whole and cut above 1 m.
+		 * `above`/`below` are front-view samples; `cap` is a paper cap seen from
+		 * directly above; `programs` must not move across the cut.
+		 */
+		cutaway(top: number | null): {
+			above: string;
+			below: string;
+			background: string;
+			cap: string;
+			hash: string;
+			programs: number;
+			error: number;
+		} {
+			clip.setCutawayTop(top);
+			const front = readScene(cutawayScene, cutawayCamera);
+			// Read every front sample before the cap render reuses the shared pixel
+			// buffer; a later `at` would answer from the wrong image.
+			const world = (x: number, y: number): string =>
+				front.at(((x + 2) / 4) * WIDTH, (y / 3) * HEIGHT);
+			const above = world(0, 2);
+			const below = world(0, 0.5);
+			const background = world(-1.9, 2.5);
+			const capShot = readScene(cutawayCapScene, cutawayTopCamera);
+			const cap = capShot.nonBackground ?? capShot.at(WIDTH / 2, HEIGHT / 2);
+			clip.setCutawayTop(null);
+			return {
+				above,
+				below,
+				background,
+				cap,
+				hash: front.hash,
+				programs: front.programs,
+				error: front.error
+			};
+		},
+		/** The twin caster's shadow image under a cut top; it must be unchanged. */
+		cutawayShadow(top: number | null): { hash: string; programs: number; error: number } {
+			clip.setCutawayTop(top);
+			const shot = readScene(cutawayShadowScene, cutawayShadowCamera);
+			clip.setCutawayTop(null);
+			return { hash: shot.hash, programs: shot.programs, error: shot.error };
+		},
+		/**
+		 * X2 + Slice coexistence: applying a Level or Drawn reading must not clear the
+		 * cutaway top, so the stub stays cut until X2 itself is turned off.
+		 */
+		cutawaySlice(reading: ResolvedSlice | null): {
+			above: string;
+			below: string;
+			background: string;
+			cap: string;
+			programs: number;
+			error: number;
+		} {
+			clip.setCutawayTop(CUTAWAY_TOP);
+			clip.apply(reading);
+			const front = readScene(cutawayScene, cutawayCamera);
+			const world = (x: number, y: number): string =>
+				front.at(((x + 2) / 4) * WIDTH, (y / 3) * HEIGHT);
+			const above = world(0, 2);
+			const below = world(0, 0.5);
+			const background = world(-1.9, 2.5);
+			const cap = readScene(cutawayCapScene, cutawayTopCamera).nonBackground;
+			clip.apply(null);
+			clip.setCutawayTop(null);
+			return { above, below, background, cap: cap ?? background, programs: front.programs, error: front.error };
+		},
+		/**
+		 * X2 §10.2: orbit the 11-Room / 44-Wall twin scene while the cut set moves
+		 * from Room to Room. Returns every program count observed; they must all be
+		 * the whole-scene baseline.
+		 */
+		cutawayOrbit(stepsPerRoom: number): {
+			rooms: number;
+			walls: number;
+			baseline: number;
+			distinctPrograms: number[];
+			frames: number;
+			errors: number;
+		} {
+			const programs = new Set<number>();
+			const errors: number[] = [];
+			clip.setCutawayTop(null);
+			for (const twin of orbitTwins) {
+				twin.whole.visible = true;
+				twin.cut.visible = false;
+			}
+			orbitCamera.position.set(orbitCentreX, 18, 42);
+			orbitCamera.lookAt(orbitCentreX, 1.2, 0);
+			programs.add(readScene(orbitScene, orbitCamera).programs);
+			const baseline = [...programs][0]!;
+			clip.setCutawayTop(1);
+			let frames = 0;
+			for (let room = 0; room < ORBIT_ROOMS; room += 1) {
+				const cutWalls = new Set(orbitRoomWalls[room]);
+				for (const twin of orbitTwins) {
+					const cut = cutWalls.has(twin.wallId);
+					twin.whole.visible = !cut;
+					twin.cut.visible = cut;
+				}
+				for (let step = 0; step < stepsPerRoom; step += 1) {
+					const angle = ((room * stepsPerRoom + step) / (ORBIT_ROOMS * stepsPerRoom)) * Math.PI * 2;
+					orbitCamera.position.set(
+						orbitCentreX + Math.cos(angle) * 58,
+						8 + 4 * Math.sin(angle * 2),
+						Math.sin(angle) * 58
+					);
+					orbitCamera.lookAt(orbitCentreX, 1.2, 0);
+					const shot = readScene(orbitScene, orbitCamera);
+					programs.add(shot.programs);
+					errors.push(shot.error);
+					frames += 1;
+				}
+			}
+			clip.setCutawayTop(null);
+			for (const twin of orbitTwins) {
+				twin.whole.visible = true;
+				twin.cut.visible = false;
+			}
+			return {
+				rooms: ORBIT_ROOMS,
+				walls: orbitTwins.length,
+				baseline,
+				distinctPrograms: [...programs],
+				frames,
+				errors: [...new Set(errors)]
+			};
+		},
+		/** 120 stationary frames: one image and one program count, no rebuild. */
+		cutawayStationary(frames: number): {
+			distinctHashes: number;
+			distinctPrograms: number;
+			first: string;
+			last: string;
+			error: number;
+		} {
+			clip.setCutawayTop(CUTAWAY_TOP);
+			const hashes = new Set<string>();
+			const programs = new Set<number>();
+			let first = '';
+			let last = '';
+			let error = 0;
+			for (let frame = 0; frame < frames; frame += 1) {
+				const shot = readScene(cutawayScene, cutawayCamera);
+				hashes.add(shot.hash);
+				programs.add(shot.programs);
+				if (frame === 0) first = shot.hash;
+				last = shot.hash;
+				error = shot.error;
+			}
+			clip.setCutawayTop(null);
+			return { distinctHashes: hashes.size, distinctPrograms: programs.size, first, last, error };
 		},
 		/** Put the planes back and report what the renderer still holds. */
 		rest(): { programs: number; planes: number; radius: number } {

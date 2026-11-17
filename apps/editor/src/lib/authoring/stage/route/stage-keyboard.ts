@@ -91,9 +91,14 @@ export type StageKeyboardInput = {
 	/** A Slice cut is on, and Escape exits it after every earlier rung. */
 	readonly sliceActive: () => boolean;
 	readonly putBackSlice: () => void;
+	/** X2's hold-to-show-whole-Walls override. Session-only; released on keyup/blur. */
+	readonly setCutawayHeld?: (held: boolean) => void;
 };
 
-export type StageKeyboard = { handleKey(event: KeyboardEvent): void };
+export type StageKeyboard = {
+	handleKey(event: KeyboardEvent): void;
+	handleKeyUp(event: KeyboardEvent): void;
+};
 
 export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 	function setReading(reading: '3d' | 'plan'): void {
@@ -106,6 +111,22 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 	}
 
 	function handleKey(event: KeyboardEvent): void {
+		// X2's `W` hold belongs to this map, not a second route listener. Text
+		// entry, a focused control and a live press keep their precedence; a
+		// printable key a gesture has claimed is left alone.
+		if (
+			(event.key === 'w' || event.key === 'W') &&
+			!event.repeat &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			!event.shiftKey &&
+			!stageKeyFromTextEntry(event.target) &&
+			!stageKeyFromControl(event.target) &&
+			!input.pressing()
+		) {
+			input.setCutawayHeld?.(true);
+		}
 		if (event.key === 'Escape' && input.artworkEscape()) {
 			event.preventDefault();
 			return;
@@ -313,5 +334,9 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		}
 	}
 
-	return { handleKey };
+	function handleKeyUp(event: KeyboardEvent): void {
+		if (event.key === 'w' || event.key === 'W') input.setCutawayHeld?.(false);
+	}
+
+	return { handleKey, handleKeyUp };
 }

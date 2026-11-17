@@ -34,7 +34,13 @@ export function createVisitorWallMaterialFactory(
 	 */
 	emissiveIntensity = 0,
 	/** The World's resolve-time Treatment; Natural is absent and changes nothing. */
-	treatment: MaterialTreatment | undefined = undefined
+	treatment: MaterialTreatment | undefined = undefined,
+	/**
+	 * Build X2's cutaway twins instead of the normal surface. The descriptor only
+	 * carries the flag: the surface, rough/metal/emissive values and lease sharing
+	 * are identical, and the store binds the twin to the StageClip's live top.
+	 */
+	options: { readonly cutaway?: true } = {}
 ): {
 	factory: WallMeshMaterialFactory;
 	dispose: () => void;
@@ -59,7 +65,8 @@ export function createVisitorWallMaterialFactory(
 				metalness: treated.metalness,
 				emissive: treated.color,
 				emissiveIntensity,
-				toneMapped: emissiveIntensity === 0
+				toneMapped: emissiveIntensity === 0,
+				...(options.cutaway === true ? { cutaway: true as const } : {})
 			};
 			lease = store.acquire(descriptor);
 			leases.set(tint, lease);
