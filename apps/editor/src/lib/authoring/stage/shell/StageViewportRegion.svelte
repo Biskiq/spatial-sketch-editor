@@ -46,6 +46,7 @@
 		scaleBar = null,
 		heightSheet = null,
 		lookThrough = null,
+		lightCoverage = null,
 		pendingViewWrite = null,
 		lift = null,
 		slice = null,
@@ -84,14 +85,30 @@
 		} | null;
 		readonly heightSheet?: HeightSheetProps | null;
 		readonly lookThrough?: {
+			/**
+			 * A View inspection keeps Update View/Capture; a Spot inspection writes the
+			 * light's aim with Done and has no authored View to update or capture.
+			 */
+			readonly mode: 'view' | 'light';
 			readonly label: string;
 			readonly moved: boolean;
-			readonly confirm: readonly string[] | null;
+			readonly confirm?: readonly string[] | null;
 			readonly canUpdate: boolean;
+			/** The Spot's authored beam, context for the crop — never the Camera FOV. */
+			readonly beam?: { readonly halfAngleDegrees: number; readonly reachMeters: number | null } | null;
 			onUpdate: () => void;
 			onExit: () => void;
-			onCapture: () => void;
-			onClearConfirm: () => void;
+			onCapture?: () => void;
+			onClearConfirm?: () => void;
+		} | null;
+		/**
+		 * The inspected Spot's actual cone, projected through the one Camera. It is
+		 * the same world geometry the Light guide publishes; the inspection lens only
+		 * crops it. Stage-local CSS points.
+		 */
+		readonly lightCoverage?: {
+			readonly capRing: readonly (readonly [number, number])[];
+			readonly innerRing: readonly (readonly [number, number])[] | null;
 		} | null;
 		/**
 		 * The Lift reading's pill, or null when Lift is off. The pill and the reading
@@ -188,6 +205,11 @@
 
 	let homesController = $state.raw<ExperienceController | null>(null);
 	let laneElement = $state<HTMLElement | null>(null);
+
+	/** One projected world ring as an SVG polygon; the overlay is not a projection. */
+	function ringPoints(points: readonly (readonly [number, number])[]): string {
+		return points.map((point) => `${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(' ');
+	}
 
 	$effect(() => {
 		onExperienceController?.(
@@ -301,34 +323,64 @@
 				<div class="through-slot" bind:this={throughFrameElement} data-through-frame>
 					<div class="through-frame" aria-hidden="true"></div>
 					<div class="through-safe" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+					{#if lightCoverage !== null}
+						<!-- The real Spot cone, projected by the same evaluation the render
+						     uses. A ring outside the frame is the truthful answer that the
+						     beam is wider than this lens, never a FOV-shaped beam claim. -->
+						<svg class="light-coverage" aria-hidden="true">
+							{#if lightCoverage.innerRing !== null}
+								<polygon class="inner" points={ringPoints(lightCoverage.innerRing)} />
+							{/if}
+							<polygon class="cap" points={ringPoints(lightCoverage.capRing)} />
+						</svg>
+					{/if}
 				</div>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="mode-pill through-pill"
+					class:light={lookThrough.mode === 'light'}
 					data-look-through-pill
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
 					<span class="live-dot" aria-hidden="true"></span>
 					<span>Looking through <b>{lookThrough.label}</b></span>
+					{#if lookThrough.mode === 'light' && lookThrough.beam}
+						<span class="beam"
+							>Beam {Math.round(lookThrough.beam.halfAngleDegrees)}°{lookThrough.beam.reachMeters === null
+								? ''
+								: ` · ${lookThrough.beam.reachMeters.toFixed(2)} m`}</span
+						>
+					{/if}
 					{#if lookThrough.moved}<span class="moved">moved</span>{/if}
-					<button
-						type="button"
-						class="pill-primary"
-						disabled={!lookThrough.moved || !lookThrough.canUpdate}
-						title={lookThrough.moved
-							? 'Write the provisional pose back to this View'
-							: 'Adjust the camera or lens first'}
-						onclick={() => lookThrough.onUpdate()}>Update View</button
-					>
-					<button type="button" onclick={() => lookThrough.onExit()}>Exit View Esc</button>
-					<button
-						type="button"
-						title="Capture this provisional pose as a new View"
-						onclick={() => lookThrough.onCapture()}>Capture</button
-					>
+					{#if lookThrough.mode === 'light'}
+						<button
+							type="button"
+							class="pill-primary"
+							disabled={!lookThrough.canUpdate}
+							title="Write the Spot’s aim as one change"
+							onclick={() => lookThrough.onUpdate()}>Done</button
+						>
+						<button type="button" onclick={() => lookThrough.onExit()}>Exit Esc</button>
+					{:else}
+						<button
+							type="button"
+							class="pill-primary"
+							disabled={!lookThrough.moved || !lookThrough.canUpdate}
+							title={lookThrough.moved
+								? 'Write the provisional pose back to this View'
+								: 'Adjust the camera or lens first'}
+							onclick={() => lookThrough.onUpdate()}>Update View</button
+						>
+						<button type="button" onclick={() => lookThrough.onExit()}>Exit View Esc</button>
+						<button
+							type="button"
+							title="Capture this provisional pose as a new View"
+							onclick={() => lookThrough.onCapture?.()}>Capture</button
+						>
+					{/if}
 				</div>
-				{#if lookThrough.confirm !== null}
+				{#if lookThrough.mode === 'view' && lookThrough.confirm != null}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						class="through-confirm"
@@ -345,7 +397,7 @@
 								class="pill-primary"
 								onclick={() => lookThrough.onUpdate()}>Update View</button
 							>
-							<button type="button" onclick={() => lookThrough.onClearConfirm()}>Cancel</button>
+							<button type="button" onclick={() => lookThrough.onClearConfirm?.()}>Cancel</button>
 						</div>
 					</div>
 				{/if}
@@ -733,6 +785,36 @@
 		color: var(--shell-leaf-soft);
 		font-weight: 600;
 	}
+	.mode-pill .beam {
+		color: var(--shell-ink-light);
+		font: 10.5px var(--shell-mono);
+		opacity: 0.78;
+	}
+	/* The real Spot cone: a line-only coverage ring over the rendered picture. */
+	.light-coverage {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	.light-coverage .cap {
+		fill: none;
+		stroke: var(--shell-gold-ink);
+		stroke-width: 1.5;
+		stroke-dasharray: 6 4;
+		stroke-linecap: round;
+		opacity: 0.92;
+	}
+	.light-coverage .inner {
+		fill: none;
+		stroke: var(--shell-ink-light);
+		stroke-width: 1;
+		stroke-dasharray: 2 4;
+		stroke-linecap: round;
+		opacity: 0.64;
+	}
 	/*
 	 * Lift takes the row under the reading bar: the bar is `z-index: 8` and spans the
 	 * Stage's centre, so the shared `0.75rem` row is painted underneath it and the pill
@@ -795,6 +877,10 @@
 		max-width: calc(100% - var(--through-index-cover) - 1.5rem);
 		flex-wrap: wrap;
 		justify-content: center;
+	}
+	/* A light pill is wider than a View's: keep it out of the Stage viewing toolbar. */
+	.mode-pill.through-pill.light {
+		top: 3.4rem;
 	}
 	@media (width <= 1100px) {
 		.editor-body[data-index-open='true'] .through-pill {

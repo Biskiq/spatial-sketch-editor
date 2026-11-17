@@ -20,7 +20,11 @@ import { describe, expect, it, vi, type Mock } from 'vitest';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '@portfolio/project-model/units';
 import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
-import type { StageAdapterFactory, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageAdapterFactory,
+	StageAdapterServices,
+	StageLightInspection
+} from '$lib/authoring/stage/stage-adapter-host';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import type {
 	StageAcceptanceHost,
@@ -114,6 +118,8 @@ function harness() {
 		dispose: () => log.push('session.dispose')
 	};
 	let controller: StageProjectEpoch | null = null;
+	const inspection: StageLightInspection = { enter: vi.fn(() => ({ kind: 'entered' as const })) };
+	const mounts: StageAdapterServices[] = [];
 
 	function fakeFacade(id: number, snapshot: StageReadSnapshot): FakeFacade {
 		let subscribed = false;
@@ -224,6 +230,7 @@ function harness() {
 			log.push(`acceptance${acceptances.length + 1}:create`);
 			return fakeAcceptance(acceptances.length + 1) as unknown as StageAcceptanceHost;
 		},
+		lightInspection: () => inspection,
 		createServices: () => {
 			log.push('services.create');
 			return {
@@ -231,8 +238,9 @@ function harness() {
 				authoring: {} as never
 			} as StageAdapterServices;
 		},
-		mountAdapter: () => {
+		mountAdapter: (_stage, _host, _factory, _finishes, services) => {
 			log.push('adapter.mount');
+			if (services !== undefined) mounts.push(services);
 			return {} as never;
 		}
 	});
@@ -242,7 +250,9 @@ function harness() {
 		preview,
 		projectSession,
 		acceptances,
-		facades
+		facades,
+		inspection,
+		mounts
 	};
 }
 
@@ -280,6 +290,11 @@ describe('project epoch activation and replacement', () => {
 		expect(subject.controller.facade).toBe(subject.facades[0]);
 		expect(subject.controller.acceptance).toBe(subject.acceptances[0]);
 		expect(subject.controller.history).toEqual(EMPTY_HISTORY);
+		// The adapter mount reads the epoch's composed services, never a fresh
+		// value missing the route-owned inspection port.
+		expect(subject.mounts).toHaveLength(1);
+		expect(subject.mounts[0]).toBe(subject.controller.services);
+		expect(subject.mounts[0]?.lightInspection).toBe(subject.inspection);
 
 		subject.controller.activate(B);
 		expect(take(subject.log)).toEqual([
@@ -310,6 +325,9 @@ describe('project epoch activation and replacement', () => {
 		expect(subject.facades[0]!.wasSubscribed()).toBe(false);
 		expect(subject.controller.facade).toBe(subject.facades[1]);
 		expect(subject.controller.acceptance).toBe(subject.acceptances[1]);
+		expect(subject.mounts).toHaveLength(2);
+		expect(subject.mounts[1]).toBe(subject.controller.services);
+		expect(subject.mounts[1]?.lightInspection).toBe(subject.inspection);
 	});
 
 	it('runs the acceptance notification against the mounted epoch only', () => {
