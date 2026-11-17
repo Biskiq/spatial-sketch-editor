@@ -50,7 +50,7 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'mat ground' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: 1, owner: 'lift ink' },
-	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 3, owner: 'slice ink' },
+	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 6, owner: 'slice ink (SL1 plane/outline/ghost + SL2 drawn plane/depth/draft)' },
 	'lib/authoring/stage/shell/StageWallDevelopment.svelte': { count: 1, owner: 'development overlay' },
 	'lib/authoring/stage/shell/StageCelestialDial.svelte': { count: 1, owner: 'Celestial Dial ink' },
 	'lib/authoring/stage/shell/StageWallPin.svelte': { count: 1, owner: 'pin gizmo' },
@@ -243,14 +243,17 @@ describe('material-factory-boundary: one factory for world materials', () => {
 			expect(code, host).not.toContain('createMaterialStore');
 			expect(code, host).toMatch(/resources\.dispose\(\)/);
 		}
-		// The Slice seam (T1 SL1) is the **one** option this call takes, and it is the
-		// Stage's own plane array: the store is born holding that exact reference so a
-		// cut never recompiles a program. Anything else passed here would be a second
-		// ownership decision smuggled in as an option.
+		// The Slice seam is the **one** ownership option this call takes: the Stage's
+		// own plane array and, for SL2, the one uniform object the drawn patch reads.
+		// The store is born holding those exact references so a cut never recompiles a
+		// program. Anything else passed here would be a second ownership decision
+		// smuggled in as an option.
 		const stage = withoutComments(
 			readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8')
 		);
-		expect(stage).toMatch(/provideRenderResources\(\{\s*clippingPlanes: stageClip\.planes as Plane\[\]\s*\}\)/);
+		expect(stage).toMatch(
+			/provideRenderResources\(\{\s*clippingPlanes: stageClip\.planes as Plane\[\],\s*sliceClip: stageClip\.sliceUniforms\s*\}\)/
+		);
 		// The clip is created **before** the resources, so the store is born with it.
 		expect(stage.indexOf('setStageClip(createStageClip())')).toBeLessThan(
 			stage.indexOf('provideRenderResources(')

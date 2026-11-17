@@ -34,6 +34,7 @@
 		ReplaceStencilOp,
 		Vector2,
 		Vector3,
+		type Material,
 		type Object3D,
 		type Plane
 	} from 'three';
@@ -119,6 +120,14 @@
 		if (stageClip === null) return undefined;
 		if (tone === 'selection' && unclippedSelection) return undefined;
 		return stageClip.planes as Plane[];
+	}
+	/**
+	 * A clipped tone is cut by the drawn predicate too, not only the native planes: a
+	 * drawn cut parks the planes at keep-all, so without this the gold contour would
+	 * float over the part of its subject the cut removed (§2.4).
+	 */
+	function cutInk<M extends Material>(material: M, planes: Plane[] | undefined): M {
+		return planes === undefined || stageClip === null ? material : stageClip.clipInk(material);
 	}
 
 	const root = new Group();
@@ -218,7 +227,7 @@
 		pivot.matrixWorldNeedsUpdate = true;
 
 		const silhouettePlanes = clipFor(tone);
-		const maskMaterial = new MeshBasicMaterial({
+		const maskMaterial = cutInk(new MeshBasicMaterial({
 			fog: false,
 			...(silhouettePlanes === undefined ? {} : { clippingPlanes: silhouettePlanes }),
 			colorWrite: false,
@@ -229,14 +238,14 @@
 			stencilRef: 1,
 			stencilFunc: AlwaysStencilFunc,
 			stencilZPass: ReplaceStencilOp
-		});
+		}), silhouettePlanes);
 		const mask = new Mesh(geometry, maskMaterial);
 		mask.name = 'StageWallStencilMask';
 		mask.frustumCulled = false;
 		mask.renderOrder = 20;
 		mask.layers.set(2);
 
-		const outlineMaterial = new MeshBasicMaterial({
+		const outlineMaterial = cutInk(new MeshBasicMaterial({
 			fog: false,
 			...(silhouettePlanes === undefined ? {} : { clippingPlanes: silhouettePlanes }),
 			color: tone === 'selection' ? GOLD : NEUTRAL,
@@ -253,7 +262,7 @@
 			stencilWrite: true,
 			stencilRef: 1,
 			stencilFunc: NotEqualStencilFunc
-		});
+		}), silhouettePlanes);
 		// p' = s(p - c) + c: the shell is scaled about the accepted mesh's own
 		// centre, not the world origin.
 		const scaleGroup = new Group();
@@ -298,7 +307,7 @@
 			const edgeGeometry = new LineGeometry();
 			edgeGeometry.setPositions(points);
 						const planes = clipFor(tone);
-			const material = new LineMaterial({
+			const material = cutInk(new LineMaterial({
 				fog: false,
 				...(planes === undefined ? {} : { clippingPlanes: planes }),
 				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL),
@@ -314,7 +323,7 @@
 				...OUTLINE_DEPTH_BIAS,
 				resolution: new Vector2(width, height),
 				...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
-			});
+			}), planes);
 			const line = new Line2(edgeGeometry, material);
 			if (tone === 'erase') line.computeLineDistances();
 			line.frustumCulled = false;

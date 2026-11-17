@@ -24,6 +24,51 @@ export type SectionBasis = {
 	readonly v: readonly [number, number, number];
 };
 
+/** A basis that also knows the world point its `(0, 0)` names. */
+export type SectionWorldBasis = SectionBasis & {
+	readonly origin: readonly [number, number, number];
+};
+
+function worldInBasis(basis: SectionWorldBasis, [u, v]: readonly [number, number]): [number, number, number] {
+	return [
+		basis.origin[0] + u * basis.u[0] + v * basis.v[0],
+		basis.origin[1] + u * basis.u[1] + v * basis.v[1],
+		basis.origin[2] + u * basis.u[2] + v * basis.v[2]
+	];
+}
+
+/** Independent world-space edge pairs through a full section basis (SL2). */
+export function sectionEdgeSegmentsWorld(
+	loops: readonly SectionLoop[],
+	basis: SectionWorldBasis
+): SectionEdgeSegment[] {
+	const segments: SectionEdgeSegment[] = [];
+	for (const loop of loops) {
+		loop.points.forEach((point, index) => {
+			const next = loop.points[(index + 1) % loop.points.length]!;
+			segments.push({
+				identity: loop.edgeIdentities[index] ?? '',
+				positions: [...worldInBasis(basis, point), ...worldInBasis(basis, next)]
+			});
+		});
+	}
+	return segments;
+}
+
+/** Open chain pairs through a full section basis (SL2). */
+export function openChainSegmentsWorld(
+	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
+	basis: SectionWorldBasis
+): number[] {
+	const positions: number[] = [];
+	for (const chain of chains) {
+		for (let index = 0; index + 1 < chain.points.length; index += 1) {
+			positions.push(...worldInBasis(basis, chain.points[index]!), ...worldInBasis(basis, chain.points[index + 1]!));
+		}
+	}
+	return positions;
+}
+
 export function sectionEdgeSegments(
 	loops: readonly SectionLoop[],
 	basis: SectionBasis,
@@ -78,6 +123,17 @@ export function openChainSegments(
  * left only the last group's outline (and dropped an earlier group's open warning
  * edges with it).
  */
+/** Append one group's edges through a full basis: the SL2 renderer path. */
+export function appendSectionEdgesWorld(
+	collection: { readonly segments: SectionEdgeSegment[]; readonly open: number[] },
+	loops: readonly SectionLoop[],
+	chains: readonly { readonly points: readonly (readonly [number, number])[] }[],
+	basis: SectionWorldBasis
+): void {
+	collection.segments.push(...sectionEdgeSegmentsWorld(loops, basis));
+	collection.open.push(...openChainSegmentsWorld(chains, basis));
+}
+
 export function appendSectionEdges(
 	collection: { readonly segments: SectionEdgeSegment[]; readonly open: number[] },
 	loops: readonly SectionLoop[],

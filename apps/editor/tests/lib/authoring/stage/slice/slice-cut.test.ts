@@ -25,26 +25,36 @@ import {
 } from '$lib/authoring/stage/slice/stage-clip';
 import { PLAN_DEFAULT_DEPTH_METERS } from '$lib/authoring/stage/plan-parameters';
 
-const LEVEL_TO_FLOOR: SliceReading = { kind: 'level', depth: { kind: 'to-floor' } };
-const levelBelow = (meters: number): SliceReading => ({
+const LEVEL_TO_FLOOR: Extract<SliceReading, { kind: 'level' }> = { kind: 'level', depth: { kind: 'to-floor' } };
+const levelBelow = (meters: number): Extract<SliceReading, { kind: 'level' }> => ({
 	kind: 'level',
 	depth: { kind: 'below', meters }
 });
 
+/** Narrowed so SL1 expectations stay readable while the union grows. */
+function resolveLevel(
+	reading: Extract<SliceReading, { kind: 'level' }>,
+	input: { readonly sheetHeight: number; readonly datumMeters: number }
+) {
+	const resolved = resolveSlice(reading, input);
+	if (resolved.kind !== 'level') throw new Error('expected a Level reading');
+	return resolved;
+}
+
 describe('resolveSlice', () => {
 	it('puts the plane at the Sheet height above the datum', () => {
-		expect(resolveSlice(LEVEL_TO_FLOOR, { sheetHeight: 1.2, datumMeters: 0 })).toEqual({
+		expect(resolveLevel(LEVEL_TO_FLOOR, { sheetHeight: 1.2, datumMeters: 0 })).toEqual({
 			kind: 'level',
 			cutY: 1.2,
 			lowerY: null
 		});
-		const offset = resolveSlice(LEVEL_TO_FLOOR, { sheetHeight: 1.2, datumMeters: 0.6 });
+		const offset = resolveLevel(LEVEL_TO_FLOOR, { sheetHeight: 1.2, datumMeters: 0.6 });
 		expect(offset.cutY).toBeCloseTo(1.8, 12);
 		expect(offset.lowerY).toBeNull();
 	});
 
 	it('turns a finite depth into a lower bound that travels with the cut', () => {
-		expect(resolveSlice(levelBelow(0.7), { sheetHeight: 1.2, datumMeters: 0 })).toEqual({
+		expect(resolveLevel(levelBelow(0.7), { sheetHeight: 1.2, datumMeters: 0 })).toEqual({
 			kind: 'level',
 			cutY: 1.2,
 			lowerY: 0.5
@@ -52,14 +62,14 @@ describe('resolveSlice', () => {
 	});
 
 	it('normalises a lower bound at or under the datum to none', () => {
-		expect(resolveSlice(levelBelow(1.2), { sheetHeight: 1.2, datumMeters: 0 }).lowerY).toBeNull();
-		expect(resolveSlice(levelBelow(9), { sheetHeight: 1.2, datumMeters: 0 }).lowerY).toBeNull();
+		expect(resolveLevel(levelBelow(1.2), { sheetHeight: 1.2, datumMeters: 0 }).lowerY).toBeNull();
+		expect(resolveLevel(levelBelow(9), { sheetHeight: 1.2, datumMeters: 0 }).lowerY).toBeNull();
 	});
 
 	it('treats a non-distance as To the floor', () => {
-		expect(resolveSlice(levelBelow(Number.POSITIVE_INFINITY), { sheetHeight: 1, datumMeters: 0 }).lowerY).toBeNull();
-		expect(resolveSlice(levelBelow(0), { sheetHeight: 1, datumMeters: 0 }).lowerY).toBeNull();
-		expect(resolveSlice(levelBelow(-2), { sheetHeight: 1, datumMeters: 0 }).lowerY).toBeNull();
+		expect(resolveLevel(levelBelow(Number.POSITIVE_INFINITY), { sheetHeight: 1, datumMeters: 0 }).lowerY).toBeNull();
+		expect(resolveLevel(levelBelow(0), { sheetHeight: 1, datumMeters: 0 }).lowerY).toBeNull();
+		expect(resolveLevel(levelBelow(-2), { sheetHeight: 1, datumMeters: 0 }).lowerY).toBeNull();
 	});
 });
 
@@ -85,7 +95,7 @@ describe('hidden pieces and sliceHides', () => {
 	});
 
 	it('hides everything above a To-the-floor cut and nothing below it', () => {
-		const floor = resolveSlice(LEVEL_TO_FLOOR, { sheetHeight: 1.2, datumMeters: 0 });
+		const floor = resolveLevel(LEVEL_TO_FLOOR, { sheetHeight: 1.2, datumMeters: 0 });
 		expect(sliceHides(floor, 0, 5, 0)).toBe(true);
 		expect(sliceHides(floor, 0, 0, 0)).toBe(false);
 		expect(sliceHides(floor, 0, -3, 0)).toBe(false);
@@ -132,13 +142,15 @@ describe('sliceDepthItems', () => {
 	});
 });
 
-describe('the drawn arm cannot be typed with To the floor (type test)', () => {
-	it('keeps SL1’s reading the only arm', () => {
-		// SL2 adds `{ kind: 'drawn', … }` to this union and SL3 adds the section; until
-		// then a drawn reading is not part of the type at all, and a finite depth is
-		// the only shape a drawn arm may ever hold.
-		// @ts-expect-error — a drawn arm does not exist in the SL1 union.
+describe('the drawn arm has a finite depth, never To the floor', () => {
+	it('accepts the finite segment arm', () => {
 		const drawn: SliceReading = { kind: 'drawn', start: [0, 0], end: [1, 0], hidden: 'left', depthMeters: 1 };
+		expect(drawn).toBeDefined();
+	});
+
+	it('rejects a drawn arm that names To the floor', () => {
+		// @ts-expect-error — a drawn arm has no `depth` reading, only depthMeters.
+		const drawn: SliceReading = { kind: 'drawn', start: [0, 0], end: [1, 0], hidden: 'left', depth: { kind: 'to-floor' } };
 		expect(drawn).toBeDefined();
 	});
 });

@@ -131,11 +131,14 @@
 		 * never offered, so there are no disabled rows.
 		 */
 		readonly slice?: {
+			readonly mode?: 'level' | 'drawn';
 			readonly cutLabel: string;
 			readonly depthLabel: string;
 			
 			readonly items: readonly SlicePillItem[];
 			onDepth: (item: SlicePillItem) => void;
+			/** Drawn only: reverse which side is removed. */
+			onFlip?: () => void;
 			onPutBack: () => void;
 		} | null;
 		readonly pendingViewWrite?: { readonly alsoIn: readonly string[] } | null;
@@ -471,32 +474,41 @@
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
-					<span>Cut at {slice.cutLabel} m</span>
-					<button
-						type="button"
-						data-slice-depth
-						aria-haspopup="menu"
-						aria-expanded={sliceMenuOpen}
-						title="Choose what the Slice shows"
-						onclick={() => (sliceMenuOpen = !sliceMenuOpen)}
-					>
-						{slice.depthLabel}<span class="chev" aria-hidden="true">▾</span>
-					</button>
-					{#if sliceMenuOpen}
-						<div class="lift-menu" role="menu" aria-label="Slice depth">
-							{#each slice.items as item (item.kind === 'to-floor' ? 'to-floor' : item.label)}
-								<button
-									type="button"
-									role="menuitemradio"
-									aria-checked={item.checked}
-									data-slice-depth-item
-									onclick={() => {
-										sliceMenuOpen = false;
-										slice.onDepth(item);
-									}}>{item.label}</button
-								>
-							{/each}
-						</div>
+					<span>{slice.mode === 'drawn' ? slice.cutLabel : `Cut at ${slice.cutLabel} m`}</span>
+					{#if slice.mode === 'drawn'}
+						<span class="slice-depth-read" data-slice-depth title="Drag the depth grip on the cut to change it">
+							{slice.depthLabel}
+						</span>
+						<button type="button" data-slice-flip title="Reverse which side is removed" onclick={() => slice.onFlip?.()}>
+							Flip
+						</button>
+					{:else}
+						<button
+							type="button"
+							data-slice-depth
+							aria-haspopup="menu"
+							aria-expanded={sliceMenuOpen}
+							title="Choose what the Slice shows"
+							onclick={() => (sliceMenuOpen = !sliceMenuOpen)}
+						>
+							{slice.depthLabel}<span class="chev" aria-hidden="true">▾</span>
+						</button>
+						{#if sliceMenuOpen}
+							<div class="lift-menu" role="menu" aria-label="Slice depth">
+								{#each slice.items as item (item.kind === 'to-floor' ? 'to-floor' : item.label)}
+									<button
+										type="button"
+										role="menuitemradio"
+										aria-checked={item.checked}
+										data-slice-depth-item
+										onclick={() => {
+											sliceMenuOpen = false;
+											slice.onDepth(item);
+										}}>{item.label}</button
+									>
+								{/each}
+							</div>
+						{/if}
 					{/if}
 					<button
 						type="button"

@@ -6,7 +6,13 @@ import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './pla
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
 import { cutWallBandsOf, fragmentLayer, type CutWallSpan } from '../stage/paper-plan';
-import { sliceHides, type ResolvedSlice } from '../stage/slice/slice-cut';
+import { drawnShownPlanCells, sliceHides, type DrawnResolvedSlice, type ResolvedSlice } from '../stage/slice/slice-cut';
+import {
+	clipRegionToHalfPlanes,
+	pointOnSegment,
+	ringSignedArea,
+	segmentIntervalInHalfPlanes
+} from '../stage/slice/slice-clip-2d';
 import { resolvedSliceNow } from '../stage/slice/slice-resolved';
 import type { PlanEvaluationResult } from '@portfolio/layout-core';
 
@@ -98,7 +104,9 @@ const SLICE_EMPTY_BAND_METERS = 1e-6;
  * drops the surface entirely instead of leaving a degenerate one.
  */
 export function clampFaceToSlice(surface: StagePickSurface, slice: ResolvedSlice | null): StagePickSurface | null {
-	if (slice === null || surface.kind !== 'face') return surface;
+	// A drawn cut removes a vertical side, not a horizontal band: the face's compiled
+	// vertical extent is unchanged, and `clipSurfaceToSlice` keeps its shown spans.
+	if (slice === null || slice.kind === 'drawn' || surface.kind !== 'face') return surface;
 	const bottomMeters = Math.max(surface.bottomMeters, slice.lowerY ?? Number.NEGATIVE_INFINITY);
 	const topMeters = Math.min(surface.topMeters, slice.cutY);
 	return topMeters <= bottomMeters + SLICE_EMPTY_BAND_METERS ? null : { ...surface, bottomMeters, topMeters };
@@ -111,11 +119,114 @@ function firstPlanPoint(geometry: PlanFragmentGeometry): LayoutVec2 {
 	return geometry.polygon[0] ?? [0, 0];
 }
 
-/** Whether a flat fragment is drawn at all under the cut (its elevation is hidden). */
+/**
+ * Whether a flat fragment is drawn at all under the cut.
+ *
+ * Level keeps SL1's first-point rule: its cut hides a horizontal band, so one
+ * representative point is exact for a fragment at a single elevation. A drawn cut is
+ * a plan region, so the answer is whether any of the fragment survives clipping to it.
+ */
 export function flatDrawn(surface: StagePickSurface, slice: ResolvedSlice | null): boolean {
 	if (slice === null || surface.kind !== 'flat') return true;
-	const point = firstPlanPoint(surface.geometry);
-	return !sliceHides(slice, point[0], surface.elevationMeters, point[1]);
+	if (slice.kind !== 'drawn') {
+		const point = firstPlanPoint(surface.geometry);
+		return !sliceHides(slice, point[0], surface.elevationMeters, point[1]);
+	}
+	return clipSurfaceToSlice(surface, slice).length > 0;
+}
+
+/** A plan sub-span shorter than this is not a surface a pointer can land on. */
+const SLICE_EMPTY_SPAN_METERS = 1e-6;
+
+/**
+ * The shown parts of one plan segment under a drawn cut, as `[t0, t1]` intervals.
+ *
+ * Each shown cell is convex, so a segment meets it in one interval; the cells only
+ * touch along their boundaries, so adjacent intervals are merged.
+ */
+function shownSegmentIntervals(
+	start: LayoutVec2,
+	end: LayoutVec2,
+	slice: DrawnResolvedSlice
+): (readonly [number, number])[] {
+	const intervals = drawnShownPlanCells(slice)
+		.map((cell) => segmentIntervalInHalfPlanes(start, end, cell))
+		.filter((interval): interval is readonly [number, number] => interval !== null)
+		.sort((left, right) => left[0] - right[0]);
+	const merged: [number, number][] = [];
+	for (const [lo, hi] of intervals) {
+		const last = merged[merged.length - 1];
+		if (last !== undefined && lo <= last[1] + 1e-12) last[1] = Math.max(last[1], hi);
+		else merged.push([lo, hi]);
+	}
+	const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
+	return merged.filter(([lo, hi]) => (hi - lo) * length > SLICE_EMPTY_SPAN_METERS || length === 0);
+}
+
+/**
+ * The surfaces a pick may test **after** the Slice: exactly what is drawn.
+ *
+ * Level clamps a face's vertical band and drops a flat fragment whose elevation is
+ * hidden (SL1, unchanged). A drawn cut does not read `y`, so its shown region is a
+ * plan region — three convex cells whose union is `!sliceHides` — and every surface
+ * is **clipped** to it: a Wall face becomes its shown sub-spans, a floor or footprint
+ * becomes its shown polygons (disjoint islands included), a line its shown pieces.
+ * The pick then measures the pointer against geometry the GPU actually drew, so a
+ * click on a clipped-away part of a Wall or floor misses it, and a narrow shown strip
+ * of a large fragment is still found. No sampling: a fragment whose every vertex and
+ * midpoint is hidden can still cross the shown band.
+ */
+export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSlice | null): StagePickSurface[] {
+	if (slice === null) return [surface];
+	if (slice.kind !== 'drawn') {
+		const clamped = clampFaceToSlice(surface, slice);
+		return clamped !== null && flatDrawn(clamped, slice) ? [clamped] : [];
+	}
+	if (slice.halfLength <= 0) return [surface];
+	if (surface.kind === 'face') {
+		return shownSegmentIntervals(surface.start, surface.end, slice).map(([lo, hi]) => ({
+			...surface,
+			start: pointOnSegment(surface.start, surface.end, lo) as LayoutVec2,
+			end: pointOnSegment(surface.start, surface.end, hi) as LayoutVec2
+		}));
+	}
+	const geometry = surface.geometry;
+	if (geometry.kind !== 'polygon') {
+		const pieces: StagePickSurface[] = [];
+		for (const [start, end] of planSegments(geometry)) {
+			for (const [lo, hi] of shownSegmentIntervals(start, end, slice)) {
+				pieces.push({
+					kind: 'flat',
+					elevationMeters: surface.elevationMeters,
+					geometry: {
+						kind: 'span',
+						start: pointOnSegment(start, end, lo) as LayoutVec2,
+						end: pointOnSegment(start, end, hi) as LayoutVec2
+					}
+				} as StagePickSurface);
+			}
+		}
+		return pieces;
+	}
+	if (geometry.polygon.length < 3) return [];
+	// The region clip expects its interior on the left: a Layout polygon may arrive
+	// in either winding.
+	const ring = ringSignedArea(geometry.polygon) >= 0 ? [...geometry.polygon] : [...geometry.polygon].reverse();
+	const pieces: StagePickSurface[] = [];
+	for (const cell of drawnShownPlanCells(slice)) {
+		const result = clipRegionToHalfPlanes([{ points: ring, tags: ring.map(() => '') }], cell);
+		// A self-crossing footprint is not a region; keep SL1's whole-surface answer for
+		// it rather than invent a clip (Layout's own polygons are simple).
+		if (result.kind === 'invalid') return [surface];
+		for (const piece of result.rings) {
+			pieces.push({
+				kind: 'flat',
+				elevationMeters: surface.elevationMeters,
+				geometry: { kind: 'polygon', polygon: piece.points as LayoutVec2[] }
+			} as StagePickSurface);
+		}
+	}
+	return pieces;
 }
 
 function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
@@ -221,7 +332,7 @@ function capSurfacesOf(
 	slice: ResolvedSlice | null,
 	interval: { readonly start: number; readonly end: number } | null
 ): readonly StagePickSurface[] {
-	if (slice === null) return [];
+	if (slice === null || slice.kind === 'drawn') return [];
 	if (fragment.ref.stream !== 'cut') return [];
 	if (interval === null) return [];
 	const span: CutWallSpan = { startDistance: interval.start, endDistance: interval.end };
@@ -736,8 +847,7 @@ export function createPlanPickProvider(
 				context.snapshot.domain.datumMeters,
 				slice
 			)
-				.map((surface) => clampFaceToSlice(surface, slice))
-				.filter((surface): surface is StagePickSurface => surface !== null && flatDrawn(surface, slice));
+				.flatMap((surface) => clipSurfaceToSlice(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 			if (winner === null) {

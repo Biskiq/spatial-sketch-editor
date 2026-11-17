@@ -99,3 +99,20 @@ describe('the planes are applied with a frame request', () => {
 		expect(applier).toContain('invalidate()');
 	});
 });
+
+describe('the drawn proposal is disposed, never redrawn, at teardown', () => {
+	const layer = read('src/lib/authoring/stage/shell/StageSliceLayer.svelte');
+
+	it('the destroy effect clears the draft ink instead of drawing it again', () => {
+		const at = layer.indexOf('$effect(() => () => {');
+		expect(at).toBeGreaterThan(0);
+		const teardown = layer.slice(at, layer.indexOf('});', at));
+		expect(teardown).toContain('clearDraft()');
+		expect(teardown).not.toContain('drawDraft()');
+	});
+
+	it('drawDraft starts by clearing, so a prop change never leaks the previous proposal', () => {
+		const at = layer.indexOf('function drawDraft(): void {');
+		expect(layer.slice(at, at + 120)).toContain('clearDraft();');
+	});
+});

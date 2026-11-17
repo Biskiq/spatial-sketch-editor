@@ -123,7 +123,8 @@ import StageMatGround from './StageMatGround.svelte';
 		unfoldPinHovered = false,
 		unfoldPinActive = false,
 		unfoldAnchorPin = null,
-		resolvedSlice = null
+		resolvedSlice = null,
+		sliceDraft = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -182,6 +183,8 @@ import StageMatGround from './StageMatGround.svelte';
 		 * applies this to it; Preview is a separate Canvas and never passes it.
 		 */
 		resolvedSlice?: ResolvedSlice | null;
+		/** The live drawn proposal, before it commits to the reading. */
+		sliceDraft?: { readonly start: readonly [number, number, number]; readonly end: readonly [number, number, number] } | null;
 	} = $props();
 
 	/**
@@ -199,7 +202,10 @@ import StageMatGround from './StageMatGround.svelte';
 	 * changes, so entering, dragging and leaving a Slice never recompiles a program.
 	 */
 	const stageClip = setStageClip(createStageClip());
-	const resources = provideRenderResources({ clippingPlanes: stageClip.planes as Plane[] });
+	const resources = provideRenderResources({
+		clippingPlanes: stageClip.planes as Plane[],
+		sliceClip: stageClip.sliceUniforms
+	});
 	onDestroy(() => resources.dispose());
 	/**
 	 * The selected subject **when the cut hides all of it**, or null.
@@ -515,6 +521,7 @@ import StageMatGround from './StageMatGround.svelte';
 			selectedIdentity={sliceSelectedIdentity}
 			width={evaluation?.rect.width ?? 0}
 			height={evaluation?.rect.height ?? 0}
+			draft={sliceDraft}
 		/>
 	{/if}
 	{#if framedViewport === null && evaluation !== null}

@@ -20,6 +20,7 @@ import {
 	Color,
 	DirectionalLight,
 	Mesh,
+	MeshBasicMaterial,
 	MeshStandardMaterial,
 	OrthographicCamera,
 	PerspectiveCamera,
@@ -28,10 +29,13 @@ import {
 	type Material,
 	type WebGLRenderer
 } from 'three';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { createManagedWebGLRenderer } from '../../src/lib/render/managed-webgl-renderer';
 import { createMaterialStore, type MaterialLease } from '../../src/lib/render/resources/material-store';
 import { createStageClip } from '../../src/lib/authoring/stage/slice/stage-clip';
-import type { ResolvedSlice } from '../../src/lib/authoring/stage/slice/slice-cut';
+import type { DrawnResolvedSlice, ResolvedSlice } from '../../src/lib/authoring/stage/slice/slice-cut';
 
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -87,7 +91,9 @@ function fixture() {
 	const geometries: Array<{ dispose(): void }> = [];
 
 	function makeScene(withClipOption: boolean) {
-		const store = createMaterialStore(withClipOption ? { clippingPlanes: clip.planes as never } : {});
+		const store = createMaterialStore(
+			withClipOption ? { clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms } : {}
+		);
 		stores.push(store);
 		const scene = new Scene();
 		scene.background = BACKGROUND;
@@ -140,17 +146,20 @@ function fixture() {
 
 	// Shadow scene: the receiver is a clipped Lambert surface, the caster a Standard
 	// box spanning 1.0–2.5 m, drawn colour-invisible but still casting.
-	const shadowStore = createMaterialStore({ clippingPlanes: clip.planes as never });
+	const shadowStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
 	stores.push(shadowStore);
 	const shadow = new Scene();
 	shadow.background = BACKGROUND;
 	shadow.add(new AmbientLight(0xffffff, 0.4));
-	const receiverGeometry = new PlaneGeometry(8, 8);
+	// Kept wholly on the shown side of the drawn seam, under the caster's shadow,
+	// so the colour image proves the shadow pass rather than the receiver's clip.
+	const receiverGeometry = new PlaneGeometry(2, 2);
 	geometries.push(receiverGeometry);
 	const receiverLease = shadowStore.acquire({ kind: 'lambert', color: '#b8b0a4' });
 	leases.push(receiverLease);
 	const receiver = new Mesh(receiverGeometry, receiverLease.material);
 	receiver.rotation.x = -Math.PI / 2;
+	receiver.position.set(-0.5, 0, -1.5);
 	receiver.receiveShadow = true;
 	shadow.add(receiver);
 	const casterGeometry = new BoxGeometry(0.8, 1.5, 0.8);
@@ -178,6 +187,87 @@ function fixture() {
 	const shadowCamera = new PerspectiveCamera(42, WIDTH / HEIGHT, 0.1, 40);
 	shadowCamera.position.set(3.4, 3.2, 6.4);
 	shadowCamera.lookAt(0, 0.4, 0);
+
+	// The drawn seam: four material kinds on a grid of cells at three z layers.
+	// A segment along x, hidden side +z, half-length 0.9 m and depth 0.15 m makes
+	// every cell's expected state a pure predicate question, and the row at x=1.5
+	// proves the segment's finite extent (the GPU never sees an infinite plane).
+	const DRAWN_X = [-1.5, -0.7, 0.7, 1.5] as const;
+	const DRAWN_Z = [-0.4, -0.1, 0.5] as const;
+	const DRAWN_Y: Record<number, number> = { [-0.4]: 0.2, [-0.1]: 1, [0.5]: 1.8 };
+	const DRAWN_COLORS = ['#e8534a', '#4ac3e8', '#dfe84a', '#c04ae8'] as const;
+	const drawnStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(drawnStore);
+	const drawnScene = new Scene();
+	drawnScene.background = BACKGROUND;
+	drawnScene.add(new AmbientLight(0xffffff, 1));
+	const drawnGeometry = new PlaneGeometry(0.32, 0.32);
+	geometries.push(drawnGeometry);
+	DRAWN_X.forEach((x, column) => {
+		const descriptor: Parameters<typeof drawnStore.acquire>[0] =
+			column === 0
+				? { kind: 'standard', color: DRAWN_COLORS[column], roughness: 1, metalness: 0 }
+				: column === 1
+					? { kind: 'lambert', color: DRAWN_COLORS[column] }
+					: column === 2
+						? { kind: 'basic', color: DRAWN_COLORS[column] }
+						: { kind: 'imported', asset: 'drawn.glb', mesh: 0, slot: 0, wireframe: false };
+		const source = column === 3 ? new MeshStandardMaterial({ color: DRAWN_COLORS[column] }) : undefined;
+		const lease = drawnStore.acquire(descriptor, undefined, source);
+		leases.push(lease);
+		source?.dispose();
+		for (const z of DRAWN_Z) {
+			const mesh = new Mesh(drawnGeometry, lease.material);
+			mesh.position.set(x, DRAWN_Y[z]!, z);
+			drawnScene.add(mesh);
+		}
+	});
+	const drawnGroundGeometry = new PlaneGeometry(3.8, 0.16);
+	geometries.push(drawnGroundGeometry);
+	const drawnGround = drawnStore.acquire({ kind: 'lambert', color: '#3c4a52', clip: false });
+	leases.push(drawnGround);
+	const drawnGroundMesh = new Mesh(drawnGroundGeometry, drawnGround.material);
+	drawnGroundMesh.position.set(0, -0.72, -0.4);
+	drawnScene.add(drawnGroundMesh);
+	const drawnCamera = new OrthographicCamera(-2, 2, TOP, BOTTOM, 0.1, 20);
+	drawnCamera.position.set(0, 0, 6);
+	drawnCamera.lookAt(0, 0, 0);
+	// Editor ink (selection / Lift): a fat LineMaterial — whose shader has no
+	// `project_vertex` chunk — and a basic ghost mesh, both cut through `clipInk`. Two
+	// horizontal strokes across the whole extent: one on the hidden side (z = 0.5) and
+	// one on the shown side (z = −0.1); the ghost quad sits on the hidden side.
+	const inkScene = new Scene();
+	inkScene.background = BACKGROUND;
+	const inkLineMaterial = clip.clipInk(new LineMaterial({ color: 0xffffff, linewidth: 8 }));
+	inkLineMaterial.resolution.set(WIDTH, HEIGHT);
+	const inkGhostMaterial = clip.clipInk(new MeshBasicMaterial({ color: 0x40ff40 }));
+	const INK_Y: Record<number, number> = { [0.5]: 2.4, [-0.1]: 1.4 };
+	for (const z of [0.5, -0.1]) {
+		const geometry = new LineGeometry();
+		geometry.setPositions([-1.8, INK_Y[z]!, z, 1.8, INK_Y[z]!, z]);
+		geometries.push(geometry);
+		const line = new Line2(geometry, inkLineMaterial);
+		line.computeLineDistances();
+		inkScene.add(line);
+	}
+	const inkGhostGeometry = new PlaneGeometry(3.6, 0.3);
+	geometries.push(inkGhostGeometry);
+	const inkGhost = new Mesh(inkGhostGeometry, inkGhostMaterial);
+	inkGhost.position.set(0, 0.2, 0.5);
+	inkScene.add(inkGhost);
+	geometries.push(inkLineMaterial, inkGhostMaterial);
+
+	const drawnReading = (depthMeters: number, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice => ({
+		kind: 'drawn',
+		origin: [0, 0, 0],
+		along: [1, 0, 0],
+		hiddenNormal: hidden === 'left' ? [0, 0, -1] : [0, 0, 1],
+		halfLength: 0.9,
+		depthMeters,
+		hidden,
+		start: [-0.9, 0, 0],
+		end: [0.9, 0, 0]
+	});
 
 	const pixels = new Uint8Array(WIDTH * HEIGHT * 4);
 
@@ -231,6 +321,83 @@ function fixture() {
 			clip.apply(reading);
 			const report = draw(shadow, shadowCamera);
 			return { hash: report.hash, programs: report.programs, error: report.error };
+		},
+		/** The drawn seam: per-cell colour and the whole-image hash/program count. */
+		drawn(reading: ResolvedSlice | null): {
+			cells: Array<{ x: number; z: number; color: string }>;
+			background: string;
+			hash: string;
+			programs: number;
+			error: number;
+		} {
+			clip.apply(reading);
+			renderer.render(drawnScene, drawnCamera);
+			const gl = renderer.getContext();
+			gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			const at = (x: number, y: number): string => {
+				const px = Math.min(WIDTH - 1, Math.max(0, Math.round(x)));
+				const py = Math.min(HEIGHT - 1, Math.max(0, Math.round(y)));
+				const index = (py * WIDTH + px) * 4;
+				return `#${[pixels[index]!, pixels[index + 1]!, pixels[index + 2]!]
+					.map((value) => value.toString(16).padStart(2, '0'))
+					.join('')}`;
+			};
+			const columnPixel = (x: number): number => ((x + 2) / 4) * WIDTH;
+			const rowPixel = (y: number): number => ((y - BOTTOM) / (TOP - BOTTOM)) * HEIGHT;
+			let hash = 2166136261;
+			for (let index = 0; index < pixels.length; index += 4) {
+				const rgb = (pixels[index]! << 16) | (pixels[index + 1]! << 8) | pixels[index + 2]!;
+				hash = Math.imul(hash ^ rgb, 16777619) >>> 0;
+			}
+			return {
+				cells: DRAWN_X.flatMap((x) =>
+					DRAWN_Z.map((z) => ({ x, z, color: at(columnPixel(x), rowPixel(DRAWN_Y[z]!)) }))
+				),
+				background: at(2, rowPixel(2.9)),
+				hash: hash.toString(16),
+				programs: renderer.info.programs?.length ?? 0,
+				error: gl.getError()
+			};
+		},
+		/** The drawn image with its clip parked as built for a snapshot. */
+		drawnAsBuilt(reading: ResolvedSlice | null): { hash: string; programs: number; error: number } {
+			clip.apply(reading);
+			return clip.asBuilt(() => {
+				const report = this.drawn(reading);
+				return { hash: report.hash, programs: report.programs, error: report.error };
+			});
+		},
+		/** Editor ink under a reading: colour at x = 0.5 (inside) and 1.5 (outside). */
+		ink(reading: ResolvedSlice | null): {
+			samples: Record<string, string>;
+			background: string;
+			programs: number;
+			error: number;
+		} {
+			clip.apply(reading);
+			renderer.render(inkScene, drawnCamera);
+			const gl = renderer.getContext();
+			gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			const at = (x: number, y: number): string => {
+				const px = Math.round(((x + 2) / 4) * WIDTH);
+				const py = Math.round(((y - BOTTOM) / (TOP - BOTTOM)) * HEIGHT);
+				const index = (py * WIDTH + px) * 4;
+				return `#${[pixels[index]!, pixels[index + 1]!, pixels[index + 2]!]
+					.map((value) => value.toString(16).padStart(2, '0'))
+					.join('')}`;
+			};
+			const samples: Record<string, string> = {};
+			for (const x of [0.5, 1.5]) {
+				samples[`hiddenLine@${x}`] = at(x, INK_Y[0.5]!);
+				samples[`shownLine@${x}`] = at(x, INK_Y[-0.1]!);
+				samples[`ghost@${x}`] = at(x, 0.2);
+			}
+			return {
+				samples,
+				background: at(-1.95, 2.9),
+				programs: renderer.info.programs?.length ?? 0,
+				error: gl.getError()
+			};
 		},
 		/** Put the planes back and report what the renderer still holds. */
 		rest(): { programs: number; planes: number; radius: number } {

@@ -23,6 +23,7 @@
 	import StageInstrumentHost from './StageInstrumentHost.svelte';
 	import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
 	import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
+	import SlicePlate from '$lib/authoring/world-toolbar/SlicePlate.svelte';
 	import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
 
 	type DraftingProps = ComponentProps<typeof StageDraftingControl>;
@@ -63,8 +64,12 @@
 			readonly onShowAll: () => void;
 		} | null;
 		readonly world?: (WorldProps & {
-			readonly plateKind: 'ink' | 'objects' | null;
+			readonly plateKind: 'ink' | 'objects' | 'slice' | null;
 			readonly inkReading: 'wall' | 'opening';
+			readonly sliceMode: 'level' | 'drawn' | null;
+			readonly sliceDrawing: boolean;
+			onSliceLevel: () => void;
+			onSliceDrawn: () => void;
 			readonly onTogglePalette: () => void;
 		}) | null;
 		readonly instrument?: InstrumentProps | null;
@@ -235,6 +240,13 @@
 					<InkPlate reading={world.inkReading} onMore={() => world.onTogglePalette()} />
 				{:else if world.plateKind === 'objects'}
 					<ObjectsPlate onOpen={world.onObjectPick} />
+				{:else if world.plateKind === 'slice'}
+					<SlicePlate
+						mode={world.sliceMode}
+						drawing={world.sliceDrawing}
+						onLevel={world.onSliceLevel}
+						onDrawn={world.onSliceDrawn}
+					/>
 				{/if}
 			{/snippet}
 		</WorldToolbar>
