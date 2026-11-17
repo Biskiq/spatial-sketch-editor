@@ -100,6 +100,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		id,
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	});

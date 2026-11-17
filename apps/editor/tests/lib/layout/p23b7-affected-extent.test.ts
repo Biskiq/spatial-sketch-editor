@@ -92,6 +92,7 @@ function twoComponentDocument(): LayoutDocumentWallFirst {
 			{ wallId: 'a3', direction: 'forward' },
 			{ wallId: 'a4', direction: 'forward' }
 		],
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};
@@ -104,6 +105,8 @@ function twoComponentDocument(): LayoutDocumentWallFirst {
 			{ wallId: 'b3', direction: 'forward' },
 			{ wallId: 'b4', direction: 'forward' }
 		],
+		virtualEdges: [],
+		overhead: 'closed' as const,
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};

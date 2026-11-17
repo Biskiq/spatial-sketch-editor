@@ -66,7 +66,7 @@ function snapshotOf(entity: SceneArtworkEntity): StageReadSnapshot {
 		{
 			units: {
 				layout: {
-					header: { formatVersion: 7, contentRevision: 'sha256-layout' },
+					header: { formatVersion: 8, contentRevision: 'sha256-layout' },
 					data: createEmptyWallFirstLayoutDocument()
 				},
 				scene: {

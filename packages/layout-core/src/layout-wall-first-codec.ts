@@ -2,10 +2,10 @@ import { countWork } from './p2311-perf';
 import { hasImmutableJsonProof } from './immutable-json';
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
- * `LayoutDocument` (`formatVersion: 7`), shared by the precision operations and the
- * canonical project Save boundary. Format 7 adds the canonical self-connected
- * Wall (one Wall with equal endpoint Junction IDs and 16 cubic spans); a closed
- * Wall in any other representation is refused.
+ * `LayoutDocument` (`formatVersion: 8`), shared by the precision operations and the
+ * canonical project Save boundary. Format 8 adds open Spaces: every Room
+ * carries required `virtualEdges` and `overhead`, and its composed Wall/virtual
+ * boundary must be one closed cycle.
  *
  * The codec intentionally provides:
  *
@@ -28,6 +28,7 @@ import type {
 	LayoutIdentityFamily,
 	LayoutIdentityLedger,
 	LayoutJunction,
+	LayoutSpaceVirtualEdge,
 	LayoutWall,
 	LayoutWallCenterline,
 	LayoutWallCubicSpan,
@@ -37,6 +38,7 @@ import type {
 	LayoutWallOpening,
 	OrientedWallRef
 } from './layout-wall-first-types';
+import { composeSpaceBoundary } from './layout-room-reconciliation';
 import {
 	CLOSED_WALL_CIRCLE_KNOT_COUNT,
 	CLOSED_WALL_CIRCLE_SPAN_COUNT,
@@ -112,7 +114,17 @@ const WALL_KEYS = [
 const WALL_CURVE_KNOT_KEYS = ['id', 'point'] as const;
 /** One cubic span of a Wall `cubic-chain` centerline: controls only. */
 const WALL_CURVE_SPAN_KEYS = ['handleOut', 'handleIn'] as const;
-const ROOM_KEYS = ['id', 'name', 'boundary', 'floorThickness', 'ceilingThickness'] as const;
+const ROOM_KEYS = [
+	'id',
+	'name',
+	'boundary',
+	'virtualEdges',
+	'overhead',
+	'floorThickness',
+	'ceilingThickness'
+] as const;
+const VIRTUAL_EDGE_KEYS = ['startJunctionId', 'endJunctionId'] as const;
+const SPACE_OVERHEAD_VALUES = ['closed', 'open-to-sky'] as const;
 const WALL_REF_KEYS = ['wallId', 'direction'] as const;
 const OPENING_KEYS = [
 	'id',
@@ -376,9 +388,14 @@ function parseDocument(
 		}
 	}
 
+	const wallById = new Map(walls.map((wall) => [wall.id, wall] as const));
+	/** Wall side → the first Room that referenced it (I6). */
+	const wallSideOwner = new Map<string, string>();
 	for (const [index, room] of rooms.entries()) {
+		let referencesResolve = true;
 		for (const [refIndex, ref] of room.boundary.entries()) {
 			if (!wallIds.has(ref.wallId)) {
+				referencesResolve = false;
 				addIssue(
 					issues,
 					`${path}.rooms[${index}].boundary[${refIndex}].wallId`,
@@ -397,6 +414,60 @@ function parseDocument(
 				'duplicate_boundary_reference',
 				'A Room boundary may not reference the same Wall in the same direction twice'
 			);
+		}
+		// I6 — a Wall side belongs to at most one Space. Unlike today's
+		// per-Room check this is document-global, so two Rooms can never both
+		// claim the same face direction.
+		for (const [refIndex, ref] of room.boundary.entries()) {
+			const sideKey = `${ref.wallId}:${ref.direction}`;
+			const owner = wallSideOwner.get(sideKey);
+			if (owner === undefined) {
+				wallSideOwner.set(sideKey, room.id);
+			} else if (owner !== room.id) {
+				addIssue(
+					issues,
+					`${path}.rooms[${index}].boundary[${refIndex}]`,
+					'duplicate_wall_side_reference',
+					`Wall side '${sideKey}' is already referenced by Room '${owner}'`
+				);
+			}
+		}
+		// I8 — every virtual end is an existing Junction. The composer
+		// below adds I2/I3; endpoint resolution is reported here so the path
+		// names the exact field.
+		for (const [edgeIndex, edge] of room.virtualEdges.entries()) {
+			if (!junctionIds.has(edge.startJunctionId)) {
+				referencesResolve = false;
+				addIssue(
+					issues,
+					`${path}.rooms[${index}].virtualEdges[${edgeIndex}].startJunctionId`,
+					'missing_reference',
+					`Unknown junctionId '${edge.startJunctionId}'`
+				);
+			}
+			if (!junctionIds.has(edge.endJunctionId)) {
+				referencesResolve = false;
+				addIssue(
+					issues,
+					`${path}.rooms[${index}].virtualEdges[${edgeIndex}].endJunctionId`,
+					'missing_reference',
+					`Unknown junctionId '${edge.endJunctionId}'`
+				);
+			}
+		}
+		if (!referencesResolve) continue;
+		// I2/I3 — one closed cycle that consumes every virtual edge. The
+		// composer is the one parser; the codec never re-implements its order.
+		const composed = composeSpaceBoundary({ junctions, walls }, room);
+		if (composed.kind === 'failed') {
+			const issue = composed.issue;
+			const issuePath =
+				issue.code === 'space_virtual_edge_unconsumed' || issue.code === 'duplicate_virtual_edge_origin'
+					? `${path}.rooms[${index}].virtualEdges`
+					: issue.code === 'space_virtual_edge_degenerate'
+						? `${path}.rooms[${index}].virtualEdges[${issue.index ?? 0}]`
+						: `${path}.rooms[${index}].boundary`;
+			addIssue(issues, issuePath, issue.code, issue.message);
 		}
 	}
 
@@ -864,6 +935,16 @@ function parseRoom(
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readNonEmptyString(record.name, `${path}.name`, issues);
 	const boundary = parseBoundaryRefs(record.boundary, `${path}.boundary`, issues);
+	// Both fields are required on every record: format 8 has no defaulting and
+	// no missing-field tolerance. An absent field is `invalid_type`, exactly as
+	// an absent `centerline` is on a Wall.
+	const virtualEdges = parseVirtualEdges(record.virtualEdges, `${path}.virtualEdges`, issues);
+	const overhead = readEnum(
+		record.overhead,
+		`${path}.overhead`,
+		SPACE_OVERHEAD_VALUES,
+		issues
+	);
 	// A canonical Room with zero boundary references is not a
 	// degenerate architecture, it is invalid state: the codec previously accepted
 	// `boundary: []` because an empty array parses cleanly, which let a Room with
@@ -883,12 +964,43 @@ function parseRoom(
 		!id ||
 		!name ||
 		!boundary ||
+		!virtualEdges ||
+		!overhead ||
 		floorThickness === undefined ||
 		ceilingThickness === undefined
 	) {
 		return undefined;
 	}
-	return { id, name, boundary, floorThickness, ceilingThickness };
+	return { id, name, boundary, virtualEdges, overhead, floorThickness, ceilingThickness };
+}
+
+function parseVirtualEdges(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): LayoutSpaceVirtualEdge[] | undefined {
+	if (!Array.isArray(input)) {
+		addIssue(issues, path, 'invalid_type', 'Expected an array');
+		return undefined;
+	}
+	const edges = input.map((value, index) =>
+		parseVirtualEdge(value, `${path}[${index}]`, issues)
+	);
+	return edges.every((edge) => edge !== undefined) ? edges : undefined;
+}
+
+function parseVirtualEdge(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): ParsedValue<LayoutSpaceVirtualEdge> {
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	assertAllowedKeys(record, VIRTUAL_EDGE_KEYS, path, issues);
+	const startJunctionId = readId(record.startJunctionId, `${path}.startJunctionId`, issues);
+	const endJunctionId = readId(record.endJunctionId, `${path}.endJunctionId`, issues);
+	if (!startJunctionId || !endJunctionId) return undefined;
+	return { startJunctionId, endJunctionId };
 }
 
 function parseBoundaryRefs(

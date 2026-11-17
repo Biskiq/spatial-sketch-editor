@@ -232,12 +232,34 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 				{ id: 'r2-west', startJunctionId: 'b3', endJunctionId: 'a2', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 			);
 			doc.rooms.push(
-				{ id: 'room-1', name: 'SW', floorThickness: 0.1, ceilingThickness: 0.1, boundary: [
-					{ wallId: 'r1-south', direction: 'forward' }, { wallId: 'r1-east', direction: 'forward' },
-					{ wallId: 'r1-north', direction: 'forward' }, { wallId: 'r1-west', direction: 'forward' } ] },
-				{ id: 'room-2', name: 'NE', floorThickness: 0.1, ceilingThickness: 0.1, boundary: [
-					{ wallId: 'r2-south', direction: 'forward' }, { wallId: 'r2-east', direction: 'forward' },
-					{ wallId: 'r2-north', direction: 'forward' }, { wallId: 'r2-west', direction: 'forward' } ] }
+				{
+					id: 'room-1',
+					name: 'SW',
+					boundary: [
+						{ wallId: 'r1-south', direction: 'forward' },
+						{ wallId: 'r1-east', direction: 'forward' },
+						{ wallId: 'r1-north', direction: 'forward' },
+						{ wallId: 'r1-west', direction: 'forward' }
+					],
+					virtualEdges: [],
+					overhead: 'closed',
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				},
+				{
+					id: 'room-2',
+					name: 'NE',
+					boundary: [
+						{ wallId: 'r2-south', direction: 'forward' },
+						{ wallId: 'r2-east', direction: 'forward' },
+						{ wallId: 'r2-north', direction: 'forward' },
+						{ wallId: 'r2-west', direction: 'forward' }
+					],
+					virtualEdges: [],
+					overhead: 'closed',
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				}
 			);
 			return doc;
 		};

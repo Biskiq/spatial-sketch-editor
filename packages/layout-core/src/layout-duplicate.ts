@@ -601,6 +601,11 @@ function cloneRoomEnclosure(
 			wallId: wallIdMap.get(ref.wallId)!,
 			direction: ref.direction
 		})),
+		virtualEdges: source.virtualEdges.map((edge) => ({
+			startJunctionId: junctionIdMap.get(edge.startJunctionId)!,
+			endJunctionId: junctionIdMap.get(edge.endJunctionId)!
+		})),
+		overhead: source.overhead,
 		floorThickness: source.floorThickness,
 		ceilingThickness: source.ceilingThickness
 	};

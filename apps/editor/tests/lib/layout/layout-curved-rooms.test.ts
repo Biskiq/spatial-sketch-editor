@@ -106,6 +106,7 @@ function rectangularRoom(centerline: LayoutWall['centerline'] = LINE): LayoutDoc
 					{ wallId: 'wall-c', direction: 'forward' },
 					{ wallId: 'wall-d', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}
@@ -161,6 +162,7 @@ describe('P23.11 slice 3 — curved Room face polygons', () => {
 						{ wallId: 'wall-top', direction: 'reverse' },
 						{ wallId: 'wall-bottom', direction: 'reverse' }
 					],
+					virtualEdges: [], overhead: 'closed',
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -196,6 +198,8 @@ describe('P23.11 slice 3 — curved Room face polygons', () => {
 						{ wallId: 'wall-top', direction: 'reverse' },
 						{ wallId: 'wall-bottom', direction: 'reverse' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -226,6 +230,8 @@ describe('P23.11 slice 3 — curved Room face polygons', () => {
 						{ wallId: 'wall-top', direction: 'reverse' },
 						{ wallId: 'wall-bottom', direction: 'reverse' }
 					],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}

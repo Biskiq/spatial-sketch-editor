@@ -94,6 +94,8 @@ export type CompilerRoomShell = {
 	wallThickness: number;
 	floorThickness: number;
 	ceilingThickness: number;
+	/** Authored overhead intent; absent keeps the closed lid. */
+	overhead?: 'closed' | 'open-to-sky';
 };
 
 /** One Room's worth of compiler input: shell, boundary chain and its Openings. */
@@ -101,6 +103,12 @@ export type CompilerRoomSource = {
 	room: CompilerRoomShell;
 	boundary: CompilerBoundarySource;
 	openings: readonly CompilerOpening[];
+	/**
+	 * Boundary segment ids that are stated virtual edges, not Walls. Their
+	 * segments contribute to the outline, floor polygon and area, but never to
+	 * compiled `walls`, Wall bounds, Openings or Wall query records.
+	 */
+	virtualSegmentIds?: readonly string[];
 	/**
 	 * Per-wall thickness override keyed by boundary segment id (wall
 	 * thickness is Wall-owned in the wall-first schema). Absent keeps the
@@ -220,6 +228,8 @@ export type CompiledWall = CompiledIdentity & {
 
 export type CompiledRoom = CompiledIdentity & {
 	roomId: string;
+	/** Authored overhead intent of this Space. */
+	overhead: 'closed' | 'open-to-sky';
 	floorElevation: number;
 	ceilingElevation: number;
 	floorThickness: number;

@@ -50,36 +50,44 @@ function documentWithRooms(count: number): LayoutDocumentWallFirst {
 		id: `room-${index + 1}`,
 		name: `Room ${index + 1}`,
 		boundary: [{ wallId: `wall-${index + 1}`, direction: 'forward' as const }],
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	}));
 	return document;
 }
 
-/** A structurally valid document with `count` enclosed Rooms (one Wall each). */
+/** A structurally valid document with `count` enclosed rectangular Rooms. */
 function validDocumentWithRooms(count: number): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();
 	const rooms = [];
 	for (let index = 0; index < count; index += 1) {
-		const start = `junction-${index * 2 + 1}`;
-		const end = `junction-${index * 2 + 2}`;
-		const wallId = `wall-${index + 1}`;
+		const x = index * 6;
+		const ids = [1, 2, 3, 4].map((n) => `junction-${index * 4 + n}`);
 		document.junctions.push(
-			{ id: start, point: [index * 5, 0] },
-			{ id: end, point: [index * 5 + 4, 0] }
+			{ id: ids[0]!, point: [x, 0] },
+			{ id: ids[1]!, point: [x + 4, 0] },
+			{ id: ids[2]!, point: [x + 4, 4] },
+			{ id: ids[3]!, point: [x, 4] }
 		);
-		document.walls.push({
-			id: wallId,
-			startJunctionId: start,
-			endJunctionId: end,
-			thickness: 0.16,
-			height: 2.6,
-			centerline: { kind: 'line' }
-		});
+		for (let side = 0; side < 4; side += 1) {
+			document.walls.push({
+				id: `wall-${index * 4 + side + 1}`,
+				startJunctionId: ids[side]!,
+				endJunctionId: ids[(side + 1) % 4]!,
+				thickness: 0.16,
+				height: 2.6,
+				centerline: { kind: 'line' }
+			});
+		}
 		rooms.push({
 			id: `room-${index + 1}`,
 			name: `Room ${index + 1}`,
-			boundary: [{ wallId, direction: 'forward' as const }],
+			boundary: [1, 2, 3, 4].map((side) => ({
+				wallId: `wall-${index * 4 + side}`,
+				direction: 'forward' as const
+			})),
+			virtualEdges: [], overhead: 'closed' as const,
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		});
@@ -212,6 +220,7 @@ describe('P23.12 allocation and ledger', () => {
 					id: 'room-1',
 					name: 'Room 3',
 					boundary: [{ wallId: 'wall-9', direction: 'forward' }],
+					virtualEdges: [], overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -242,6 +251,8 @@ describe('P23.12 allocation and ledger', () => {
 					id: 'room-1',
 					name: 'B',
 					boundary: [{ wallId: 'wall-1', direction: 'forward' }],
+					virtualEdges: [],
+					overhead: 'closed' as const,
 					floorThickness: 0.1,
 					ceilingThickness: 0.1
 				}
@@ -371,23 +382,10 @@ describe('P23.12 authored fingerprint', () => {
 
 describe('P23.12 codec round trip', () => {
 	it('keeps the ledger and the names through validation and serialization (C1)', () => {
+		const valid = validDocumentWithRooms(1);
 		const document = withLayoutIdentity({
-			...documentWithRooms(1),
-			junctions: [
-				{ id: 'junction-1', point: [0, 0] },
-				{ id: 'junction-2', point: [4, 0] }
-			],
-			walls: [
-				{
-					id: 'wall-1',
-					startJunctionId: 'junction-1',
-					endJunctionId: 'junction-2',
-					thickness: 0.16,
-					height: 2.6,
-					centerline: { kind: 'line' },
-					name: 'North wall'
-				}
-			],
+			...valid,
+			walls: [{ ...valid.walls[0]!, name: 'North wall' }, ...valid.walls.slice(1)],
 			openings: [
 				{
 					id: 'opening-1',

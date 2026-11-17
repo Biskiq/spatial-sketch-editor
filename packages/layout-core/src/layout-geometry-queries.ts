@@ -141,8 +141,10 @@ export function overheadSourcesOf(
 
 /** One compiled Room's generated lid, or `null` when it has no overhead to lift. */
 function roomLidSource(room: CompiledRoom): OverheadSource | null {
-	// A Room with a degenerately small ceiling ring encloses no plan area, and an
-	// elevation the compiler could not resolve is not a place to draw an outline.
+	// `open-to-sky` has no generated lid to lift, and a Room with a degenerately
+	// small ceiling ring encloses no plan area; an elevation the compiler could
+	// not resolve is not a place to draw an outline.
+	if (room.overhead === 'open-to-sky') return null;
 	if (room.ceilingPolygon.length < 3) return null;
 	if (!Number.isFinite(room.ceilingElevation)) return null;
 	return {

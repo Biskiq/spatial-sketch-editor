@@ -100,6 +100,7 @@ function roomFromFace(
 		id,
 		name,
 		boundary: faceBoundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.15,
 		ceilingThickness: 0.12
 	};
@@ -305,20 +306,20 @@ describe('S2-1 opened Room keeps identity, content and intended boundary', () =>
 		// PRODUCTION VERDICTS: each is captured separately. The harness does not
 		// infer validity from a polygon-producing compile.
 		expect(verdicts.codec.success).toBe(true);
-		// The compiler does not synthesize the missing boundary segment; it
-		// produces no Room at all. A polygon-producing compile would not have
-		// been enough evidence either.
-		expect(verdicts.compiler.blocking).toBe(true);
-		expect(verdicts.compiler.issueCodes).toEqual(['disconnected_boundary']);
-		expect(verdicts.compiler.roomCount).toBe(0);
+		// Format 8 composes the virtual edge into the outline: the compiler emits
+		// the Room instead of rejecting a disconnected Wall boundary.
+		expect(verdicts.compiler.blocking).toBe(false);
+		expect(verdicts.compiler.issueCodes).toEqual([]);
+		expect(verdicts.compiler.roomCount).toBe(1);
+		// Faces stay Wall-only: an open Space is not a face.
 		expect(verdicts.faceCount).toBe(0);
-		// The existing production polygon helper assumes contiguous refs and
-		// produces a wrong triangle (12 m²) instead of the intended 24 m².
-		expect(verdicts.roomBoundaryPolygonArea).toBeCloseTo(12, 9);
+		// The production polygon helper now wraps the composer, so it reports the
+		// intended 24 m² outline rather than S2's 12 m² triangle.
+		expect(verdicts.roomBoundaryPolygonArea).toBeCloseTo(24, 9);
 		expect(verdicts.composedBoundaryArea).toBeCloseTo(24, 9);
-		// The certified index still requires every Room to be an exact positive
-		// face; this is a second independent production touchpoint.
-		expect(verdicts.worldIndex.certified).toBe(false);
+		// The certified index now admits the open Space by its composed outline.
+		expect(verdicts.worldIndex.certified).toBe(true);
+		expect(verdicts.worldIndex.roomCount).toBe(1);
 	});
 });
 
@@ -462,12 +463,12 @@ describe('S2-5 Undo/Redo snapshots and reconciliation replay', () => {
 describe('S2-6 representation probes — R0 versus explicit edges', () => {
 	it('records the codec verdict for an explicit virtualEdges Room field', () => {
 		const opened = openedGallery();
-		// PRODUCTION VERDICT: the current Room key set is exact.
+		// PRODUCTION VERDICT: format 8 admits the explicit field and composes it.
 		const verdict = probeExplicitVirtualEdges(opened.document, 'room-gallery', [
 			{ startJunctionId: 'j-b', endJunctionId: 'j-c' }
 		]);
-		expect(verdict.success).toBe(false);
-		expect(verdict.issueCodes).toContain('unknown_key');
+		expect(verdict.success).toBe(true);
+		expect(verdict.issueCodes).toEqual([]);
 	});
 
 	it('shows R0 collapsing a corner when two adjacent exterior Walls are erased', () => {
@@ -530,10 +531,10 @@ describe('S2-6 representation probes — R0 versus explicit edges', () => {
 		expect(movedEdges).toHaveLength(1);
 		expect(boundaryIsClosed(composeSpaceBoundary(moved, 'room-gallery'))).toBe(true);
 		expect(polygonArea(moved, 'room-gallery')).toBeCloseTo(26, 9);
-		// The existing production helper still loses the two Wall endpoints.
+		// Production reads the same composed outline as the harness.
 		const movedProductionPolygon = roomBoundaryPolygon(moved, 'room-gallery');
 		expect(movedProductionPolygon).not.toBeNull();
-		expect(faceArea({ polygon: movedProductionPolygon! })).toBeCloseTo(13, 9);
+		expect(faceArea({ polygon: movedProductionPolygon! })).toBeCloseTo(26, 9);
 		expect(validateWallFirstLayoutDocument(moved).success).toBe(true);
 
 		// SIMULATION: one end knob slides along its adjacent Wall.
@@ -542,7 +543,7 @@ describe('S2-6 representation probes — R0 versus explicit edges', () => {
 		expect(polygonArea(slid, 'room-gallery')).toBeCloseTo(25, 9);
 		const slidProductionPolygon = roomBoundaryPolygon(slid, 'room-gallery');
 		expect(slidProductionPolygon).not.toBeNull();
-		expect(faceArea({ polygon: slidProductionPolygon! })).toBeCloseTo(12, 9);
+		expect(faceArea({ polygon: slidProductionPolygon! })).toBeCloseTo(25, 9);
 		expect(validateWallFirstLayoutDocument(slid).success).toBe(true);
 	});
 });

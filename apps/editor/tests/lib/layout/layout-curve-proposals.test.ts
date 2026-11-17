@@ -157,6 +157,7 @@ function curvedBoundaryHostDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'wall-top', direction: 'forward' },
 				{ wallId: 'wall-left', direction: 'forward' }
 			],
+			virtualEdges: [], overhead: 'closed',
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
 		}

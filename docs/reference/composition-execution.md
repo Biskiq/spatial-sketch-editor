@@ -8,7 +8,7 @@ interface; do not append amendment histories. Incompatible semantic changes requ
 versioning. Numeric tolerances and calibration remain provider conformance parameters unless fixed
 here. Implementation grows incrementally; an accepted future contract is not proof of readiness.
 
-Current source versions: envelope 1, Layout 7, Scene 9, Camera 1, Experience 4, resources 2;
+Current source versions: envelope 1, Layout 8, Scene 9, Camera 1, Experience 4, resources 2;
 ExecutionProgram 4. Strict readers reject other versions without conversion. F.1–F.4 are implemented;
 F.5 prepared publication remains future work. [Experience](components/experience.md) owns the current
 Guide/Stop model and runtime semantics.

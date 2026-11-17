@@ -38,6 +38,7 @@ function roomFromFace(
 		id,
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
+		virtualEdges: [], overhead: 'closed',
 		floorThickness: 0.1,
 		ceilingThickness: 0.1
 	};

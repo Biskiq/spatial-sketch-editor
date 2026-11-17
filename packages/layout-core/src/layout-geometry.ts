@@ -6,10 +6,18 @@ import type { LayoutVec2 } from './layout-coordinates';
 import type {
 	LayoutDerivedWallRole,
 	LayoutDocumentWallFirst,
+	LayoutJunction,
 	LayoutObject,
 	LayoutWall,
+	LayoutWallFirstRoom,
 	LayoutWallOpening
 } from './layout-wall-first-types';
+import { composeSpaceBoundary, spaceBoundaryPolygonFromEdges } from './layout-room-reconciliation';
+import {
+	spaceOutlineSelfIntersects,
+	spaceOutlineSignedArea,
+	spacePlacementIssues
+} from './layout-space-placement';
 import type {
 	CompilerFloorEntry,
 	CompilerFloorSource,
@@ -82,6 +90,7 @@ import {
 import {
 	archProfileTopAt,
 	buildArchProfile,
+	LAYOUT_GEOMETRY_EPSILON,
 	splitSampledWallAroundOpenings,
 	wallPolylinesAroundOpenings
 } from './layout-geometry-openings';
@@ -131,6 +140,233 @@ export function compileWallFirstLayoutGeometryFresh(
 ): CompiledLayoutGeometryResult {
 	countWork('compile');
 	return compileSessionlessOnce(document, sampling);
+}
+
+/** Maps a Room source is assembled from; one shape serves full and delta compiles. */
+type WallFirstRoomSourceMaps = {
+	readonly junctionById: ReadonlyMap<string, LayoutJunction>;
+	readonly pointById: ReadonlyMap<string, LayoutVec2>;
+	readonly wallById: ReadonlyMap<string, LayoutWall>;
+	readonly openingsByHostWallId: ReadonlyMap<string, readonly LayoutWallOpening[]>;
+	readonly openingOrderById: ReadonlyMap<string, number>;
+	readonly wallThicknessBySegmentId: Readonly<Record<string, number>>;
+	readonly openingHeightLimitBySegmentId: Readonly<Record<string, number>>;
+	readonly defaultWallThickness: number;
+	readonly sampling?: WallSamplingDerivation;
+	readonly preSampled?: Map<SampleableSegment, SampledSegment>;
+};
+
+/** Stable, non-Wall segment id for one stated open side. */
+function virtualBoundarySegmentId(roomId: string, index: number): string {
+	return `#virtual:${roomId}:${index}`;
+}
+
+/**
+ * Assemble one Room's compiler source from its **composed** boundary.
+ *
+ * Wall edges keep their authored Wall id as the segment id, so every compiled
+ * Wall record, Opening join and Wall query record is unchanged. Virtual edges
+ * become plain line segments with a reserved id, marked in
+ * `virtualSegmentIds`, so the shared core can keep them in the outline and
+ * floor polygon while excluding them from `walls`, Wall bounds and Openings.
+ */
+function buildWallFirstRoomSource(
+	document: LayoutDocumentWallFirst,
+	room: LayoutWallFirstRoom,
+	maps: WallFirstRoomSourceMaps
+): { source: CompilerRoomSource } | { issue: LayoutGeometryIssue } {
+	const composed = composeSpaceBoundary(document, room, {
+		junctionById: maps.junctionById,
+		wallById: maps.wallById
+	});
+	if (composed.kind === 'failed') {
+		return {
+			issue: {
+				path: `rooms.${room.id}.${composed.issue.code === 'space_virtual_edge_unconsumed' || composed.issue.code === 'duplicate_virtual_edge_origin' ? 'virtualEdges' : 'boundary'}`,
+				code: composed.issue.code,
+				message: composed.issue.message,
+				targetId: room.id
+			}
+		};
+	}
+
+	const segments: SampleableSegment[] = [];
+	const virtualSegmentIds: string[] = [];
+	const roomOpenings: CompilerOpening[] = [];
+	// Reverse-ref Opening offsets mirror by the **sampled arc length** of the
+	// host Wall's canonical centerline, never the Euclidean chord.
+	const arcLengthByWallId = new Map<string, number>();
+	const traversalByWallId = new Map<string, 'forward' | 'reverse'>();
+	for (const edge of composed.edges) {
+		if (edge.kind === 'virtual') {
+			const start = maps.pointById.get(edge.startJunctionId);
+			const end = maps.pointById.get(edge.endJunctionId);
+			if (!start || !end) continue; // reference integrity is the codec's job
+			const id = virtualBoundarySegmentId(room.id, edge.index);
+			segments.push({ id, kind: 'line', start: [...start] as LayoutVec2, end: [...end] as LayoutVec2 });
+			virtualSegmentIds.push(id);
+			continue;
+		}
+		const wall = maps.wallById.get(edge.wallId);
+		if (!wall) continue; // reference integrity is the codec's job
+		const start = maps.pointById.get(wall.startJunctionId);
+		const end = maps.pointById.get(wall.endJunctionId);
+		if (!start || !end) continue;
+		const reversed = edge.direction === 'reverse';
+		const segment = wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward');
+		segments.push(segment);
+		if (maps.sampling) {
+			const pre = maps.sampling.samples(wall, start, end, reversed ? 'reverse' : 'forward');
+			if (pre) maps.preSampled?.set(segment, pre);
+		}
+		if (!arcLengthByWallId.has(wall.id)) {
+			const sampled = maps.sampling
+				? maps.sampling.samples(wall, start, end, 'forward')
+				: wallCenterlineSamples(wall, start, end, 'forward');
+			if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
+			traversalByWallId.set(wall.id, reversed ? 'reverse' : 'forward');
+		}
+	}
+	// The Opening join visits exactly this Room's own boundary Walls.
+	for (const ref of room.boundary) {
+		const hosted = maps.openingsByHostWallId.get(ref.wallId);
+		const traversal = traversalByWallId.get(ref.wallId);
+		if (!hosted || traversal === undefined) continue;
+		countWork('pairs:room-opening', hosted.length);
+		if (traversal === 'forward') {
+			for (const opening of hosted) roomOpenings.push({ ...opening, segmentId: opening.wallId });
+			continue;
+		}
+		const length = arcLengthByWallId.get(ref.wallId);
+		if (length === undefined) continue;
+		for (const opening of hosted) {
+			roomOpenings.push({
+				...opening,
+				segmentId: opening.wallId,
+				offset: length - (opening.offset + opening.width)
+			});
+		}
+	}
+	roomOpenings.sort(
+		(left, right) =>
+			(maps.openingOrderById.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+			(maps.openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+	);
+
+	const heights: number[] = [];
+	let resolved = room.boundary.length > 0;
+	for (const ref of room.boundary) {
+		const wall = maps.wallById.get(ref.wallId);
+		if (!wall || !Number.isFinite(wall.height)) {
+			resolved = false;
+			break;
+		}
+		heights.push(wall.height);
+	}
+	const derivedCeiling =
+		resolved && heights.length > 0 ? document.floor.elevation + Math.max(...heights) : undefined;
+
+	return {
+		source: {
+			room: {
+				id: room.id,
+				wallThickness: maps.defaultWallThickness,
+				floorThickness: room.floorThickness,
+				ceilingThickness: room.ceilingThickness,
+				overhead: room.overhead
+			},
+			boundary: { closed: true, segments },
+			openings: roomOpenings,
+			...(virtualSegmentIds.length > 0 ? { virtualSegmentIds } : {}),
+			...(maps.sampling && maps.preSampled ? { preSampled: maps.preSampled } : {}),
+			wallThicknessBySegmentId: maps.wallThicknessBySegmentId,
+			openingHeightLimitBySegmentId: maps.openingHeightLimitBySegmentId,
+			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
+		}
+	};
+}
+
+/**
+ * Blocking Space checks that run before the shared core: the composed outline
+ * must be positive, simple, and free of I7 conflicts. A failing Room compiles
+ * nothing, so an invalid Space never acquires a floor or a lid.
+ */
+function spacePreflight(document: LayoutDocumentWallFirst): {
+	issues: LayoutGeometryIssue[];
+	invalidRoomIds: Set<string>;
+} {
+	const issues: LayoutGeometryIssue[] = [];
+	const invalidRoomIds = new Set<string>();
+	document.rooms.forEach((room, index) => {
+		const path = `floors[0].rooms[${index}]`;
+		const composed = composeSpaceBoundary(document, room);
+		if (composed.kind === 'failed') {
+			// The codec names the specific composition failure. The compiler keeps
+			// its long-standing `disconnected_boundary` code for a boundary that
+			// does not chain, so callers that compile authored-but-unvalidated
+			// documents see the same compiler issue as before the Space format.
+			const code =
+				composed.issue.code === 'space_boundary_open'
+					? 'disconnected_boundary'
+					: composed.issue.code;
+			issues.push({
+				path: `${path}.${code === 'space_virtual_edge_unconsumed' || code === 'duplicate_virtual_edge_origin' ? 'virtualEdges' : 'boundary'}`,
+				code,
+				message: composed.issue.message,
+				targetId: room.id
+			});
+			invalidRoomIds.add(room.id);
+			return;
+		}
+		if (room.virtualEdges.length === 0) return;
+		const polygon = spaceBoundaryPolygonFromEdges(composed.edges, document);
+		if (!polygon || spaceOutlineSignedArea(polygon) <= LAYOUT_GEOMETRY_EPSILON) {
+			issues.push({
+				path: `${path}.boundary`,
+				code: 'space_outline_not_positive',
+				message: `Space '${room.name}' must enclose positive area in the face orientation`,
+				targetId: room.id
+			});
+			invalidRoomIds.add(room.id);
+			return;
+		}
+		if (spaceOutlineSelfIntersects(polygon)) {
+			issues.push({
+				path: `${path}.boundary`,
+				code: 'space_outline_self_intersects',
+				message: `Space '${room.name}' has an outline that crosses itself`,
+				targetId: room.id
+			});
+			invalidRoomIds.add(room.id);
+			return;
+		}
+		for (const [edgeIndex, edge] of room.virtualEdges.entries()) {
+			const start = document.junctions.find((junction) => junction.id === edge.startJunctionId)?.point;
+			const end = document.junctions.find((junction) => junction.id === edge.endJunctionId)?.point;
+			if (!start || !end) continue;
+			if (Math.hypot(end[0] - start[0], end[1] - start[1]) <= LAYOUT_GEOMETRY_EPSILON) {
+				issues.push({
+					path: `${path}.virtualEdges[${edgeIndex}]`,
+					code: 'space_virtual_edge_degenerate',
+					message: `Space '${room.name}' has an open side with no length`,
+					targetId: room.id
+				});
+				invalidRoomIds.add(room.id);
+				return;
+			}
+		}
+	});
+	for (const placement of spacePlacementIssues(document)) {
+		issues.push({
+			path: `rooms.${placement.roomIds[0]}`,
+			code: placement.code,
+			message: placement.message,
+			targetId: placement.roomIds[0]
+		});
+		invalidRoomIds.add(placement.roomIds[0]);
+		invalidRoomIds.add(placement.roomIds[1]);
+	}
+	return { issues, invalidRoomIds };
 }
 
 /**
@@ -246,7 +482,11 @@ function compileWallFirstLayoutGeometryOnce(
 	reuse?: LayoutCompileReuse
 ): CompiledLayoutGeometryResult {
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
+	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+	// Open-Space outline and placement gates run before any Room geometry is
+	// built: a failing Space is skipped whole, never compiled partially.
+	const preflight = spacePreflight(document);
 
 	const wallThicknessBySegmentId: Record<string, number> = {};
 	// The same canonical per-Wall loop also supplies the Opening
@@ -303,7 +543,7 @@ function compileWallFirstLayoutGeometryOnce(
 	// The Room-input pass is its own span, because in an
 	// incremental compile it is the O(R) comparison term rather than the O(k)
 	// evaluation term, and the two must stay separable in an attribution.
-	const rooms: CompilerRoomSource[] = p2311Measure('incremental:room-inputs', () => document.rooms.map((room) => {
+	const rooms: CompilerRoomSource[] = p2311Measure('incremental:room-inputs', () => document.rooms.filter((room) => !preflight.invalidRoomIds.has(room.id)).map((room) => {
 		// The retained Room **input** is compared before it
 		// is rebuilt. Everything below derives from the Room's own authored
 		// fields, its boundary Walls' authored centerlines and endpoint
@@ -339,7 +579,14 @@ function compileWallFirstLayoutGeometryOnce(
 							wall ? pointById.get(wall.endJunctionId) ?? null : null,
 							openingsByHostWallId.get(ref.wallId) ?? null
 						];
-					})
+					}),
+					// A virtual endpoint can move without changing a Wall record, so
+					// its resolved point is part of the Room's authored input too.
+					...room.virtualEdges.map((edge) => [
+						edge,
+						pointById.get(edge.startJunctionId) ?? null,
+						pointById.get(edge.endJunctionId) ?? null
+					])
 				]
 			: undefined;
 		if (reuse && retentionKey) {
@@ -353,97 +600,37 @@ function compileWallFirstLayoutGeometryOnce(
 				return retained.source;
 			}
 		}
-		const segments: SampleableSegment[] = [];
-		const roomOpenings: CompilerOpening[] = [];
-		// Reverse-ref Opening offsets mirror by the **sampled arc
-		// length** of the host Wall's canonical centerline, never the Euclidean
-		// chord (straight Walls keep the identical chord value).
-		const arcLengthByWallId = new Map<string, number>();
-		// First reference per Wall, which is the reference the Opening join used
-		// when it scanned the boundary per Opening.
-		const traversalByWallId = new Map<string, 'forward' | 'reverse'>();
-		for (const ref of room.boundary) {
-			const wall = wallById.get(ref.wallId);
-			if (!wall) continue; // reference integrity is the codec's job
-			const start = pointById.get(wall.startJunctionId);
-			const end = pointById.get(wall.endJunctionId);
-			if (!start || !end) continue;
-			// The Room boundary chain must connect ref-to-ref, so the segment
-			// follows the ref's traversal direction (reverse swaps endpoints).
-			// The shared compiler core measures opening offsets from each
-			// boundary segment's start, so reverse refs also mirror offsets
-			// (o' = L − (o + w)) to keep them measured from the canonical
-			// Wall start downstream. The centerline adapter supplies
-			// the segment, so curved Walls flow through the curve kernel
-			// unchanged (no second sampling path).
-			const reversed = ref.direction === 'reverse';
-			// Canonical endpoints + traversal flag: the adapter alone decides the
-			// walk direction, so a reversed ref cannot pair the chain with the
-			// wrong knot order.
-			const segment = wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward');
-			segments.push(segment);
-			if (sampling) {
-				// Serve the room-validation sampling below from the
-				// shared derivation (same key the face/topology gates use). Omitted
-				// from the map when the seam yields undefined so the core keeps its
-				// sampling-failed issue path exactly.
-				const pre = sampling.samples(wall, start, end, reversed ? 'reverse' : 'forward');
-				if (pre) preSampled.set(segment, pre);
-			}
-			if (!arcLengthByWallId.has(wall.id)) {
-				// Mirroring always measures along the CANONICAL traversal: an
-				// Opening offset is authored from the Wall's own start Junction.
-				// The arc-length site keeps 'forward' — a change here is a behaviour
-				// change, so the shared derivation is keyed forward like the seam.
-				const sampled = sampling
-					? sampling.samples(wall, start, end, 'forward')
-					: wallCenterlineSamples(wall, start, end, 'forward');
-				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
-				traversalByWallId.set(wall.id, reversed ? 'reverse' : 'forward');
-			}
-		}
-		// The join visits exactly the pairs it reads: this Room's own Openings.
-		for (const ref of room.boundary) {
-			const hosted = openingsByHostWallId.get(ref.wallId);
-			const traversal = traversalByWallId.get(ref.wallId);
-			if (!hosted || traversal === undefined) continue;
-			countWork('pairs:room-opening', hosted.length);
-			if (traversal === 'forward') {
-				for (const opening of hosted) roomOpenings.push({ ...opening, segmentId: opening.wallId });
-				continue;
-			}
-			const length = arcLengthByWallId.get(ref.wallId);
-			if (length === undefined) continue;
-			for (const opening of hosted) {
-				roomOpenings.push({
-					...opening,
-					segmentId: opening.wallId,
-					offset: length - (opening.offset + opening.width)
-				});
-			}
-		}
-		// Document order, with a repeated boundary Wall keeping both appearances
-		// exactly as the per-Opening scan did. `sort` is stable, so openings the
-		// index does not know (it cannot happen for a validated document) keep
-		// their relative order instead of moving to the front.
-		roomOpenings.sort(
-			(left, right) => (openingOrderById.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-		);
-		const derivedCeiling = ceilingElevationByRoomId.get(room.id);
-		const source: CompilerRoomSource = {
-			room: {
-				id: room.id,
-				wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
-				floorThickness: room.floorThickness,
-				ceilingThickness: room.ceilingThickness
-			},
-			boundary: { closed: true, segments },
-			openings: roomOpenings,
-			...(sampling ? { preSampled } : {}),
+		// One source builder serves the full and delta compiles, so a virtual
+		// edge can never reach one path and not the other. The composer owns the
+		// mixed order; this adapter only realizes it as sampleable segments.
+		const built = buildWallFirstRoomSource(document, room, {
+			junctionById,
+			pointById,
+			wallById,
+			openingsByHostWallId,
+			openingOrderById,
 			wallThicknessBySegmentId,
 			openingHeightLimitBySegmentId,
-			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
-		};
+			defaultWallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
+			...(sampling ? { sampling, preSampled } : {})
+		});
+		if ('issue' in built) {
+			// Unreachable: `spacePreflight` applied the same composer and removed
+			// this Room. Returning an empty source keeps the map total without
+			// inventing geometry; the preflight issue is already recorded.
+			return {
+				room: {
+					id: room.id,
+					wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
+					floorThickness: room.floorThickness,
+					ceilingThickness: room.ceilingThickness,
+					overhead: room.overhead
+				},
+				boundary: { closed: true, segments: [] },
+				openings: []
+			};
+		}
+		const source = built.source;
 		if (reuse && retentionKey) reuse.roomSources.set(room.id, { authored: retentionKey, source });
 		return source;
 	}));
@@ -451,10 +638,12 @@ function compileWallFirstLayoutGeometryOnce(
 	// Ceiling resolution is enforced inside the shared core: a Room with no derived ceiling is
 	// skipped there with a blocking `room_ceiling_undefined` issue, so no
 	// post-hoc issue append is needed here.
-	return compileWallFirstWithPhysicalWalls(document, {
+	const result = compileWallFirstWithPhysicalWalls(document, {
 		floors: [{ floor: document.floor, rooms }],
 		objects: document.objects
 	}, sampling, reuse);
+	if (preflight.issues.length === 0) return result;
+	return { geometry: result.geometry, issues: [...preflight.issues, ...result.issues] };
 }
 
 /** The Floor datum of a wall-first document (one Floor by format contract). */
@@ -1686,6 +1875,15 @@ function compileRoom(
 ): CompiledRoom {
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
+	const overhead = room.overhead ?? 'closed';
+	const virtualSegmentIds = new Set(roomSource.virtualSegmentIds ?? []);
+	// Physical Wall segments only: a stated open side contributes to the
+	// outline, floor polygon and area, never to compiled Walls, Wall bounds,
+	// Openings or Wall query records.
+	const physicalBoundary: CompilerBoundarySource = {
+		closed: roomSource.boundary.closed,
+		segments: roomSource.boundary.segments.filter((segment) => !virtualSegmentIds.has(segment.id))
+	};
 	// A wall-first Room carries its derived ceiling (`floor.elevation +
 	// max(boundary Wall heights)`); a source that supplies no derived ceiling
 	// keeps the storey-derived one, and no format-6 source supplies a storey
@@ -1700,7 +1898,11 @@ function compileRoom(
 		if (segment.kind === 'line') return [[...segment.start] as LayoutVec2];
 		return samples.slice(0, -1).map((sample) => [...sample.point] as LayoutVec2);
 	});
-	const ceilingPolygon = floorPolygon.map(([x, z]) => [x, z] as LayoutVec2);
+	// `open-to-sky` removes the generated lid and nothing else: the ceiling
+	// elevation and Wall records stay, and the lid ring is empty so no consumer
+	// can draw or lift it.
+	const ceilingPolygon =
+		overhead === 'open-to-sky' ? [] : floorPolygon.map(([x, z]) => [x, z] as LayoutVec2);
 
 	let walls: CompiledWall[] = [];
 	let roomOpenings: CompiledOpening[] = [];
@@ -1710,7 +1912,8 @@ function compileRoom(
 		// `physical-wall` strips room-derived `walls` and `openings` in favor of
 		// the canonical physical-Wall collection; only segment bounds feed the
 		// Room's `bounds2` and `bounds3`.
-		wallBoundsOnly = roomSource.boundary.segments.map((segment, index) => {
+		wallBoundsOnly = physicalBoundary.segments.map((segment) => {
+			const index = roomSource.boundary.segments.indexOf(segment);
 			const sampled = sampledSegments[index]!;
 			const wallThickness = roomSource.wallThicknessBySegmentId?.[segment.id] ?? room.wallThickness;
 			return {
@@ -1726,7 +1929,8 @@ function compileRoom(
 			openingsBySegment.set(opening.segmentId, openings);
 		}
 
-		walls = roomSource.boundary.segments.map((segment, index) => {
+		walls = physicalBoundary.segments.map((segment) => {
+			const index = roomSource.boundary.segments.indexOf(segment);
 			const sampled = sampledSegments[index]!;
 			const openings = openingsBySegment.get(segment.id) ?? [];
 			// Wall thickness is Wall-owned in the wall-first schema. The
@@ -1779,12 +1983,20 @@ function compileRoom(
 	}
 
 	const roomBounds2 = roomBounds2FromWalls(wallBoundsOnly, floorPolygon);
-	const roomBounds3 = roomBounds3FromParts(floorPolygon, wallBoundsOnly, floorElevation, ceilingElevation, room.floorThickness, room.ceilingThickness);
+	const roomBounds3 = roomBounds3FromParts(
+		floorPolygon,
+		wallBoundsOnly,
+		floorElevation,
+		ceilingElevation,
+		room.floorThickness,
+		room.ceilingThickness,
+		overhead
+	);
 
 	emitRoomQueryRecords(
 		queryBuilder,
 		floor,
-		{ id: room.id, boundary: roomSource.boundary },
+		{ id: room.id, boundary: physicalBoundary },
 		walls,
 		floorPolygon,
 		roomBounds3,
@@ -1803,6 +2015,9 @@ function compileRoom(
 			room.wallThickness,
 			room.floorThickness,
 			room.ceilingThickness,
+			// A closed lid is format 8's default and stays out of the key, so an
+			// enclosed Space's cache key is byte-identical to format 7's.
+			...(overhead === 'open-to-sky' ? ['open-to-sky'] : []),
 			roomSource.openings,
 			// Only the thicknesses this Room's own segments
 			// read. Embedding the whole-document per-Wall thickness map in every
@@ -1816,6 +2031,7 @@ function compileRoom(
 				: [])
 		]),
 		roomId: room.id,
+		overhead,
 		floorElevation,
 		ceilingElevation,
 		floorThickness: room.floorThickness,
@@ -2159,12 +2375,15 @@ function roomBounds3FromParts(
 	floorElevation: number,
 	ceilingElevation: number,
 	floorThickness: number,
-	ceilingThickness: number
+	ceilingThickness: number,
+	overhead: 'closed' | 'open-to-sky' = 'closed'
 ): LayoutBounds3 {
 	const min: Vec3 = [Infinity, Infinity, Infinity];
 	const max: Vec3 = [-Infinity, -Infinity, -Infinity];
 	for (const [x, z] of floorPolygon) includeBounds3(min, max, [x, floorElevation - floorThickness, z]);
-	for (const [x, z] of floorPolygon) includeBounds3(min, max, [x, ceilingElevation + ceilingThickness, z]);
+	for (const [x, z] of floorPolygon) {
+		includeBounds3(min, max, [x, ceilingElevation + (overhead === 'open-to-sky' ? 0 : ceilingThickness), z]);
+	}
 	for (const wall of walls) includeBounds3(min, max, wall.bounds3.min, wall.bounds3.max);
 	return finiteBounds3(min, max) ?? { min: [0, floorElevation, 0], max: [0, ceilingElevation, 0] };
 }
@@ -2390,6 +2609,7 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		document,
 		roomIndex,
 		pointById,
+		junctionById,
 		wallById,
 		openingsByHostWallId,
 		openingOrderById,
@@ -2399,82 +2619,36 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		const floor = document.floor;
 		const wallThicknessBySegmentId: Record<string, number> = {};
 		const openingHeightLimitBySegmentId: Record<string, number> = {};
-		const heights: number[] = [];
-		let resolved = room.boundary.length > 0;
-		for (const ref of room.boundary) {
-			const wall = wallById.get(ref.wallId);
-			if (wall) {
-				wallThicknessBySegmentId[wall.id] = wall.thickness;
-				openingHeightLimitBySegmentId[wall.id] = wall.height;
-			}
-			if (!wall || !Number.isFinite(wall.height)) {
-				resolved = false;
-			} else if (resolved) {
-				heights.push(wall.height);
-			}
-		}
-		const derivedCeiling =
-			resolved && heights.length > 0 ? floor.elevation + Math.max(...heights) : undefined;
-
-		const segments: SampleableSegment[] = [];
-		const roomOpenings: CompilerOpening[] = [];
-		const arcLengthByWallId = new Map<string, number>();
-		const traversalByWallId = new Map<string, 'forward' | 'reverse'>();
 		for (const ref of room.boundary) {
 			const wall = wallById.get(ref.wallId);
 			if (!wall) continue;
-			const start = pointById.get(wall.startJunctionId);
-			const end = pointById.get(wall.endJunctionId);
-			if (!start || !end) continue;
-			const reversed = ref.direction === 'reverse';
-			const segment = wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward');
-			segments.push(segment);
-			if (!arcLengthByWallId.has(wall.id)) {
-				const sampled = wallCenterlineSamples(wall, start, end, 'forward');
-				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
-				traversalByWallId.set(wall.id, reversed ? 'reverse' : 'forward');
-			}
+			wallThicknessBySegmentId[wall.id] = wall.thickness;
+			openingHeightLimitBySegmentId[wall.id] = wall.height;
 		}
-		for (const ref of room.boundary) {
-			const hosted = openingsByHostWallId.get(ref.wallId);
-			const traversal = traversalByWallId.get(ref.wallId);
-			if (!hosted || traversal === undefined) continue;
-			countWork('pairs:room-opening', hosted.length);
-			if (traversal === 'forward') {
-				for (const opening of hosted) roomOpenings.push({ ...opening, segmentId: opening.wallId });
-				continue;
-			}
-			const length = arcLengthByWallId.get(ref.wallId);
-			if (length === undefined) continue;
-			for (const opening of hosted) {
-				roomOpenings.push({
-					...opening,
-					segmentId: opening.wallId,
-					offset: length - (opening.offset + opening.width)
-				});
-			}
-		}
-		roomOpenings.sort(
-			(left, right) =>
-				(openingOrderById.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-				(openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-		);
-
-		const source: CompilerRoomSource = {
-			room: {
-				id: room.id,
-				wallThickness: defaultWallThickness,
-				floorThickness: room.floorThickness,
-				ceilingThickness: room.ceilingThickness
-			},
-			boundary: { closed: true, segments },
-			openings: roomOpenings,
+		const built = buildWallFirstRoomSource(document, room, {
+			junctionById,
+			pointById,
+			wallById,
+			openingsByHostWallId,
+			openingOrderById,
 			wallThicknessBySegmentId,
 			openingHeightLimitBySegmentId,
-			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
-		};
-
+			defaultWallThickness
+		});
 		const path = `floors[0].rooms[${roomIndex}]`;
+		if ('issue' in built) {
+			return {
+				hasValidCeiling: false,
+				source: null,
+				compiled: null,
+				stripped: null,
+				polygons: [],
+				aabbs: [],
+				issues: [built.issue],
+				bounds3: null
+			};
+		}
+		const source = built.source;
 		if (source.ceilingElevation === undefined) {
 			return {
 				hasValidCeiling: false,

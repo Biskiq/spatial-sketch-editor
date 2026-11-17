@@ -118,6 +118,7 @@ function roomDocument(wallHeights: [number, number, number, number]): LayoutDocu
 					{ wallId: 'w3', direction: 'forward' },
 					{ wallId: 'w4', direction: 'forward' }
 				],
+				virtualEdges: [], overhead: 'closed',
 				floorThickness: 0.1,
 				ceilingThickness: 0.1
 			}
