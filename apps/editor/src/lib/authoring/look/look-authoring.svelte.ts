@@ -1,26 +1,50 @@
 /**
  * The Look authoring seam.
  *
- * The spatial route constructs this module once. It owns the two look wirings
- * that exist today — the World's saved Sky preset and the Library's material
- * pick — and publishes the three Look strata: the Card stratum, the Stage mark
- * layer and the Library shelf. The Library shelf holds the light entries; the
- * Card stratum and the mark layer are deliberately empty, so no control is drawn
- * before it works.
+ * The spatial route constructs this module once. It owns the World's Sky, its
+ * resolve-time Treatment, the curated Look catalogue and palette adoption, and
+ * publishes the three Look strata: the Card stratum, the Stage mark layer and
+ * the Library shelf. The Library shelf holds the light entries; the Card stratum
+ * and the mark layer are deliberately empty, so no control is drawn before it
+ * works.
+ *
+ * A Look is never stored. It is the exact `(sky, treatment)` pair a World
+ * matches, so applying one writes the Sky (keeping the World's noon heading) and
+ * the Treatment, and seeds a palette only when the World has none. Adopting the
+ * palette is a separate, previewed write.
+ *
+ * Previous is a session-scoped A/B: a Look apply captures the accepted
+ * environment immediately before it, and Previous restores that environment and
+ * captures the one it leaves. Any other environment write clears it, and a
+ * project-epoch change makes it unreadable.
  *
  * This module owns no route, selection, source or Camera state. Every write
  * still goes through the route's one acceptance host.
  */
 import {
 	SCENE_ENVIRONMENT_SET_KIND,
+	SCENE_LOOK_APPLY_KIND,
+	SCENE_LOOK_RESTORE_KIND,
+	SCENE_LOOK_STARTS,
 	SCENE_SKY_UPDATE_KIND,
 	SCENE_SKY_DEFAULT,
+	SCENE_TREATMENT_SET_KIND,
+	sceneLookOf,
 	skyIsEdited,
-	type SceneSkyUpdatePayload,
+	type SceneEnvironment,
 	type SceneEnvironmentChoice,
-	type SceneSky
+	type SceneLookId,
+	type SceneLookStart,
+	type SceneSky,
+	type SceneSkyUpdatePayload,
+	type SceneTreatment
 } from '@portfolio/project-model/units';
+import {
+	planPaletteAdoption,
+	type PaletteAdoptionPlan
+} from '@portfolio/project-model/scene-planning';
 import type { AcceptedRevision, AuthoringIntent } from '@portfolio/project-model';
+import { SCENE_PALETTE_ADOPT } from '@portfolio/project-model/scene-planning';
 import { createSkyGesture } from './sky-gesture.svelte';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import type {
@@ -70,15 +94,34 @@ const LIGHT_SHELF: LookLibraryShelf = {
 	]
 };
 
+/** One environment captured for Previous, tied to the project epoch it came from. */
+type CapturedEnvironment = {
+	readonly sky: SceneSky | null;
+	readonly treatment: SceneTreatment | undefined;
+	readonly sessionKey: string;
+};
+
+/** What a write does to Previous once it is accepted. */
+type PreviousBehaviour = 'keep' | 'clear' | 'capture';
+
+/** The scene data adoption reads: the accepted Scene document. */
+export type LookScene = Parameters<typeof planPaletteAdoption>[0];
+
 export type LookAuthoringHost = {
 	/** The World's admitted Sky; `null` is Paper, until one is saved. */
 	readonly sky: () => SceneSky | null;
+	/** The accepted Scene document: environment, palette and every Finish. */
+	readonly scene: () => LookScene | null;
 	/** The route's one adapter-services slot; null before the Stage is admitted. */
 	readonly services: () => StageAdapterServices | null;
 	/** The route's one notice line. */
 	readonly onNotice: (message: string) => void;
 	readonly windowHeading?: () => number | null;
+	/** The project epoch Previous is scoped to; a change makes a capture unreadable. */
+	readonly sessionKey?: () => string;
 };
+
+export type LookPanelTab = 'sky' | 'looks';
 
 export function createLookAuthoring(host: LookAuthoringHost) {
 	const preferenceKey = 'biskiq:edit-on-paper';
@@ -90,16 +133,46 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
 	let previewSky = $state.raw<SceneSky | null>(null);
 	let panelOpen = $state(false);
+	let panelTab = $state<LookPanelTab>('sky');
+	let previous = $state.raw<CapturedEnvironment | null>(null);
+	/** The plan frozen when Adopt opened; null while the preview is closed. */
+	let adoption = $state.raw<PaletteAdoptionPlan | null>(null);
 
+	const scene = $derived(host.scene());
+	const environment = $derived(scene?.environment);
 	const sky = $derived(host.sky());
 	const shownSky = $derived(previewSky ?? sky ?? SCENE_SKY_DEFAULT);
 	const stageSky = $derived(studioWhileEditing ? null : previewSky ?? sky);
 	const busy = $derived(environmentWrite !== null && environmentWrite === host.services());
 	const revision = () => host.services()?.stage.snapshot().acceptedRevision;
+	const sessionKey = $derived(host.sessionKey?.() ?? '');
+	const previousEnvironment = $derived(
+		previous !== null && previous.sessionKey === sessionKey ? previous : null
+	);
+	const treatment = $derived(environment?.treatment);
+	const activeLook = $derived(sceneLookOf(environment));
+	const adoptionPlan = $derived(scene === null ? null : planPaletteAdoption(scene));
+	const canAdopt = $derived(
+		adoptionPlan !== null && adoptionPlan.slots > 0 && adoptionPlan.rows.length > 0
+	);
 
-	async function write(kind: string, payload: AuthoringIntent['payload'], expectedRevision = revision()): Promise<void> {
+	function capture(): CapturedEnvironment {
+		return {
+			sky: environment?.sky ?? null,
+			treatment: environment?.treatment,
+			sessionKey
+		};
+	}
+
+	async function write(
+		kind: string,
+		payload: AuthoringIntent['payload'],
+		expectedRevision = revision(),
+		previousBehaviour: PreviousBehaviour = 'keep'
+	): Promise<boolean> {
 		const services = host.services();
-		if (services === null || expectedRevision === undefined || environmentWrite === services) return;
+		if (services === null || expectedRevision === undefined || environmentWrite === services) return false;
+		const before = capture();
 		environmentWrite = services;
 		try {
 			const outcome = await services.authoring.accept({
@@ -112,34 +185,96 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 				allocatedIds: [],
 				capturedInputs: []
 			});
-			if (host.services() === services && outcome.kind === 'refused' && outcome.code !== 'no-change') {
-				host.onNotice(outcome.message);
+			if (host.services() !== services) return false;
+			if (outcome.kind === 'refused') {
+				if (outcome.code !== 'no-change') host.onNotice(outcome.message);
+				return false;
 			}
+			if (previousBehaviour === 'capture') previous = before;
+			else if (previousBehaviour === 'clear') previous = null;
+			return true;
 		} finally {
 			if (environmentWrite === services) environmentWrite = null;
 		}
 	}
 
-	function updateSky(patch: SceneSkyUpdatePayload, expectedRevision?: AcceptedRevision): Promise<void> {
-		return write(SCENE_SKY_UPDATE_KIND, patch, expectedRevision);
+	function updateSky(patch: SceneSkyUpdatePayload, expectedRevision?: AcceptedRevision): Promise<boolean> {
+		return write(SCENE_SKY_UPDATE_KIND, patch, expectedRevision, 'clear');
 	}
 	const gesture = createSkyGesture({
 		sky: () => sky ?? SCENE_SKY_DEFAULT,
 		revision,
 		busy: () => busy,
 		preview: (value) => { previewSky = value; },
-		update: updateSky
+		update: async (patch, expected) => { await updateSky(patch, expected); }
 	});
 
-	function setEnvironment(preset: SceneEnvironmentChoice): Promise<void> {
+	function setEnvironment(preset: SceneEnvironmentChoice): Promise<boolean> {
 		gesture.cancel();
-		return write(SCENE_ENVIRONMENT_SET_KIND, { preset });
+		return write(SCENE_ENVIRONMENT_SET_KIND, { preset }, revision(), 'clear');
 	}
 
 	function aimThroughWindows(): void {
 		const heading = host.windowHeading?.() ?? null;
 		if (heading === null) host.onNotice('No outside windows to aim through');
 		else void updateSky({ heading });
+	}
+
+	/** Apply one curated Look: its Sky at the World's heading, its Treatment, and a seed palette. */
+	async function applyLook(id: SceneLookId): Promise<void> {
+		gesture.cancel();
+		await write(SCENE_LOOK_APPLY_KIND, { look: id }, revision(), 'capture');
+	}
+
+	/** Natural, Flat colour or Clay. The Sky and every Finish assignment stay put. */
+	async function setTreatment(next: 'natural' | SceneTreatment): Promise<void> {
+		gesture.cancel();
+		await write(SCENE_TREATMENT_SET_KIND, { treatment: next }, revision(), 'clear');
+	}
+
+	/** Put back the environment captured by the last Look apply; a true A/B. */
+	async function restorePrevious(): Promise<void> {
+		const captured = previousEnvironment;
+		if (captured === null) return;
+		gesture.cancel();
+		await write(
+			SCENE_LOOK_RESTORE_KIND,
+			{
+				sky: captured.sky,
+				...(captured.treatment === undefined ? {} : { treatment: captured.treatment })
+			},
+			revision(),
+			'capture'
+		);
+	}
+
+	/** Open the adoption preview on the accepted plan. Writes nothing. */
+	function beginAdoption(): void {
+		if (!canAdopt) return;
+		adoption = adoptionPlan;
+	}
+
+	function cancelAdoption(): void {
+		adoption = null;
+	}
+
+	/** Adopt the previewed mapping in one write; stale plans are refused by the writer. */
+	async function adoptPalette(): Promise<void> {
+		const plan = adoption;
+		if (plan === null) return;
+		const accepted = await write(
+			SCENE_PALETTE_ADOPT,
+			{
+				mapping: plan.rows.map((row) => ({
+					color: row.color,
+					slotId: row.slotId,
+					slotColor: row.slotColor
+				}))
+			},
+			revision(),
+			'keep'
+		);
+		if (accepted) adoption = null;
 	}
 
 	/**
@@ -176,6 +311,12 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 	}
 
 	return {
+		get scene() {
+			return scene;
+		},
+		get environment(): SceneEnvironment | undefined {
+			return environment;
+		},
 		get sky() {
 			return sky;
 		},
@@ -189,10 +330,19 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		get panelOpen() { return panelOpen; },
 		setPanelOpen(open: boolean) {
 			panelOpen = open;
-			if (!open) gesture.cancel();
+			if (!open) {
+				gesture.cancel();
+				cancelAdoption();
+			}
+		},
+		get panelTab() {
+			return panelTab;
+		},
+		setPanelTab(tab: LookPanelTab) {
+			panelTab = tab;
 		},
 		gesture,
-		resetSky: () => setEnvironment(shownSky.preset),
+		resetSky: () => { void setEnvironment(shownSky.preset); },
 		updateSky,
 		aimThroughWindows,
 		get busy() {
@@ -209,7 +359,37 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		get libraryShelf(): LookLibraryShelf {
 			return LIGHT_SHELF;
 		},
+		get looks(): readonly SceneLookStart[] {
+			return SCENE_LOOK_STARTS;
+		},
+		get activeLook(): SceneLookStart | null {
+			return activeLook;
+		},
+		get treatment(): SceneTreatment | undefined {
+			return treatment;
+		},
+		get previousEnvironment(): CapturedEnvironment | null {
+			return previousEnvironment;
+		},
+		get palette() {
+			return scene?.palette ?? [];
+		},
+		get adoptionPlan(): PaletteAdoptionPlan | null {
+			return adoptionPlan;
+		},
+		get adoptionPreview(): PaletteAdoptionPlan | null {
+			return adoption;
+		},
+		get canAdopt() {
+			return canAdopt;
+		},
 		setEnvironment,
+		applyLook,
+		setTreatment,
+		restorePrevious,
+		beginAdoption,
+		cancelAdoption,
+		adoptPalette,
 		setStudioWhileEditing(value: boolean) {
 			studioWhileEditing = value;
 			try { localStorage.setItem(preferenceKey, String(value)); }

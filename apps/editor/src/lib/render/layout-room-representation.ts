@@ -34,7 +34,11 @@ import { getMaterial } from '$lib/content/materials';
 import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import type { MaterialStore } from '$lib/render/resources/material-store';
-import type { MaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import type {
+	MaterialDescriptor,
+	MaterialTreatment
+} from '$lib/render/resources/material-descriptor';
+import { applyTreatment } from '$lib/render/materials/treatment';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 
 /** One retained Room: what it was built from, its group, its buffers and its two queried meshes. */
@@ -74,6 +78,12 @@ export type RoomRepresentation = {
 	/** Hide exactly these Rooms; work is proportional to the ids that changed state. */
 	setHidden(roomIds: ReadonlySet<string>): void;
 	/**
+	 * Swap the resolve-time Treatment of the default floor and ceiling. New leases
+	 * are taken before the old ones go back, so no surface is briefly unleased.
+	 * Returns whether any material changed.
+	 */
+	setTreatment(treatment: MaterialTreatment | undefined): boolean;
+	/**
 	 * Lift exactly these Rooms' generated lids out of the Stage view and out of
 	 * rays, by moving each lid mesh off the world layer onto
 	 * `LIFTED_RENDER_LAYER`. Returns whether any retained mesh changed layer, so a
@@ -108,14 +118,28 @@ function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
 }
 
 /** The three Layout Room surfaces, as plain data. The ceiling reads the catalogue's plaster values. */
-function roomDescriptors(): {
+function roomDescriptors(treatment: MaterialTreatment | undefined): {
 	readonly floor: MaterialDescriptor;
 	readonly floorShadow: MaterialDescriptor;
 	readonly ceiling: MaterialDescriptor;
 } {
 	const plaster = getMaterial('plaster-warm');
+	const floor = applyTreatment(treatment, {
+		color: DEFAULT_FLOOR_COLOR,
+		roughness: 1,
+		metalness: 0,
+		slotUris: {},
+		normalScale: null
+	});
+	const ceiling = applyTreatment(treatment, {
+		color: '#111018',
+		roughness: plaster.roughness,
+		metalness: plaster.metalness,
+		slotUris: {},
+		normalScale: null
+	});
 	return {
-		floor: { kind: 'basic', color: DEFAULT_FLOOR_COLOR, toneMapped: false },
+		floor: { kind: 'basic', color: floor.color, toneMapped: false },
 		floorShadow: {
 			kind: 'shadow',
 			opacity: 0.3,
@@ -126,9 +150,9 @@ function roomDescriptors(): {
 		},
 		ceiling: {
 			kind: 'standard',
-			color: '#111018',
-			roughness: plaster.roughness,
-			metalness: plaster.metalness,
+			color: ceiling.color,
+			roughness: ceiling.roughness,
+			metalness: ceiling.metalness,
 			// `CatalogueMaterial` defaults `receiveLighting`, and with `textures="off"`
 			// it draws a plain untoned-free standard surface: `toneMapped = true`.
 			toneMapped: true
@@ -136,14 +160,17 @@ function roomDescriptors(): {
 	};
 }
 
-export function createRoomRepresentation(store: MaterialStore): RoomRepresentation {
+export function createRoomRepresentation(
+	store: MaterialStore,
+	treatment: MaterialTreatment | undefined = undefined
+): RoomRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutRooms';
 	const retained = new Map<string, RetainedRoom>();
-	const descriptors = roomDescriptors();
-	const floorLease = store.acquire(descriptors.floor);
+	const descriptors = roomDescriptors(treatment);
+	let floorLease = store.acquire(descriptors.floor);
 	const shadowLease = store.acquire(descriptors.floorShadow);
-	const ceilingLease = store.acquire(descriptors.ceiling);
+	let ceilingLease = store.acquire(descriptors.ceiling);
 	const materialKeys = new Set([floorLease.key, shadowLease.key, ceilingLease.key]);
 	let disposed = false;
 	let hidden: ReadonlySet<string> = new Set();
@@ -274,6 +301,30 @@ export function createRoomRepresentation(store: MaterialStore): RoomRepresentati
 				const entry = retained.get(roomId);
 				if (entry !== undefined) entry.group.visible = !isHidden;
 			});
+		},
+
+		setTreatment(next) {
+			if (disposed) throw new Error('the layout room representation has been disposed');
+			if (next === treatment) return false;
+			treatment = next;
+			const nextDescriptors = roomDescriptors(treatment);
+			const nextFloor = store.acquire(nextDescriptors.floor);
+			const nextCeiling = store.acquire(nextDescriptors.ceiling);
+			for (const entry of retained.values()) {
+				entry.floor.material = nextFloor.material;
+				entry.ceiling.material = nextCeiling.material;
+			}
+			const previousFloor = floorLease;
+			const previousCeiling = ceilingLease;
+			floorLease = nextFloor;
+			ceilingLease = nextCeiling;
+			materialKeys.delete(previousFloor.key);
+			materialKeys.delete(previousCeiling.key);
+			materialKeys.add(nextFloor.key);
+			materialKeys.add(nextCeiling.key);
+			previousFloor.release();
+			previousCeiling.release();
+			return true;
 		},
 
 		setLifted(roomIds) {

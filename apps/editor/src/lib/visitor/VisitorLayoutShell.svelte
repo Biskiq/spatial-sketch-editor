@@ -8,12 +8,14 @@
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
+	import type { SceneTreatment } from '$lib/content/scene';
 	import RoomPortal from '$lib/render/layout/RoomPortal.svelte';
 	import GroundPlinth from '$lib/render/layout/GroundPlinth.svelte';
 
 	let {
 		geometry,
 		textureScope = null,
+		treatment = undefined,
 		plinth = true,
 		doorFrames = true,
 		hiddenWallIds = [],
@@ -22,6 +24,8 @@
 	}: {
 		geometry: CompiledLayoutGeometry;
 		textureScope?: TextureLoadScope | null;
+		/** The World's resolve-time Treatment for default floors, ceilings and walls. */
+		treatment?: SceneTreatment;
 		/**
 		 * The visitor's dark ground plinth. A host with its own ground surface (the
 		 * editor Stage's mat) turns it off, so the two grounds never overlap.
@@ -63,6 +67,7 @@
 	 */
 	const resources = useRenderResources();
 	const materials = resources.materials;
+	const { invalidate } = useThrelte();
 
 	/**
 	 * The retained Wall representation: one imperative subtree for every compiled
@@ -70,7 +75,7 @@
 	 * `cacheKey` or whose Junction end geometry moved and releases a superseded
 	 * buffer in the same update.
 	 */
-	const walls = createWallRepresentation(materials);
+	const walls = createWallRepresentation(materials, treatment);
 
 	// Update and teardown are separate effects on purpose: Svelte runs a
 	// returned cleanup before each re-run of the same effect, and `geometry`
@@ -103,10 +108,20 @@
 	 * three materials for every Room. The shell mounts its root once — there is no
 	 * per-Room component, geometry component or material component left.
 	 */
-	const rooms = createRoomRepresentation(materials);
+	const rooms = createRoomRepresentation(materials, treatment);
 
 	$effect(() => {
 		rooms.update(geometry);
+	});
+
+	// A Treatment is a resolve-time choice: swapping it re-leases the default
+	// surfaces, never rewrites the document. Both representations answer whether a
+	// material moved so the on-demand Stage draws exactly one frame.
+	$effect(() => {
+		if (walls.setTreatment(treatment)) invalidate();
+	});
+	$effect(() => {
+		if (rooms.setTreatment(treatment)) invalidate();
 	});
 
 	/**
@@ -116,7 +131,6 @@
 	 * representation answers whether a mesh actually moved, so a repeated set and
 	 * Preview's default empty one cost no frame.
 	 */
-	const { invalidate } = useThrelte();
 	$effect(() => {
 		if (rooms.setLifted(new Set(liftedRoomIds))) invalidate();
 	});

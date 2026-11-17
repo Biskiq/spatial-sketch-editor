@@ -32,6 +32,18 @@
 /** A colour as Three accepts it at the constructor: a packed RGB number or `#rgb`/`#rrggbb`. */
 export type MaterialColor = number | string;
 
+/** A resolve-time Treatment, render-local so a representation reads no authored truth. */
+export type MaterialTreatment = 'flat-colour' | 'clay';
+
+/**
+ * The frozen Treatment constants. They live in this dependency-free module so the
+ * one material store can apply them without importing the resolver or a content
+ * barrel; `render/materials/treatment.ts` re-exports them for resolve-time use.
+ */
+export const FLAT_MIN_ROUGHNESS = 0.6;
+export const CLAY_COLOR = '#d6d3cd';
+export const CLAY_ROUGHNESS = 0.9;
+
 /**
  * The texture slots a world surface may bind, in the one order every key uses.
  *
@@ -179,6 +191,12 @@ export type ShadowMaterialDescriptor = {
  */
 export type ImportedMaterialDescriptor = {
 	readonly kind: 'imported';
+	/**
+	 * The resolve-time Treatment the store applies to this asset's own material.
+	 * Absent is Natural and exactly today's key, clone and lease counts. A `remap`
+	 * carries its Treatment in the resolved look instead, so it is never set here.
+	 */
+	readonly treatment?: MaterialTreatment;
 	/** The approved asset bytes' identity (the URL the loader was given). */
 	readonly asset: string;
 	/** The mesh's index in the source hierarchy's depth-first Mesh order. */
@@ -314,6 +332,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`mesh=${num(descriptor.mesh)}`,
 				`slot=${num(descriptor.slot)}`,
 				`wireframe=${bool(descriptor.wireframe, false)}`,
+				// Appended only when present: a Natural imported surface keeps the
+				// exact pre-S6 canonical key.
+				...(descriptor.treatment === undefined ? [] : [`treatment=${descriptor.treatment}`]),
 				`remap=${remap}`
 			].join('|');
 		}

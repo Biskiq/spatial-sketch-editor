@@ -401,7 +401,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 		).toThrow(/missing release bytes/i);
 	});
 
-	it('carries the stored Sky into the bundle and the public route passes it to the surface', async () => {
+	it('carries the stored Sky and Treatment, and palette followers, into a cold public visit', async () => {
 		const start = structuredClone(skyFromPreset('golden-hour', 0));
 		const project = await createUnitProject({
 			id: 'project:cold-sky',
@@ -409,16 +409,26 @@ describe('P22.1 cold runtime + asset seam', () => {
 			scene: {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
 				textures: [],
-				materials: [],
+				materials: [
+					{
+						id: 'finish-coral',
+						name: 'Coral',
+						baseMaterialId: 'plaster-warm',
+						color: { slot: 'coral' }
+					}
+				],
 				entities: [],
-				environment: { sky: start }
+				palette: [{ id: 'coral', name: 'Coral', color: '#ee6c4d' }],
+				environment: { sky: start, treatment: 'clay' }
 			}
 		});
 		const bundle = composeColdReleaseBundle({
 			document: project,
 			manifest: { releaseId: `${project.id}@v1`, bytesByUri: new Map() }
 		});
-		expect(bundle.scene.environment?.sky).toEqual(start);
+		expect(bundle.scene.environment).toEqual({ sky: start, treatment: 'clay' });
+		expect(bundle.scene.materials[0]).toMatchObject({ color: { slot: 'coral' } });
+		expect(bundle.scene.palette?.[0]).toMatchObject({ id: 'coral', color: '#ee6c4d' });
 		bundle.dispose();
 
 		const route = readFileSync(
@@ -426,6 +436,12 @@ describe('P22.1 cold runtime + asset seam', () => {
 			'utf8'
 		);
 		expect(route).toContain('sky={readyBundle.scene.environment?.sky ?? null}');
+		expect(route).toContain('scene={readyBundle.scene}');
+		const surface = readFileSync(
+			resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/lib/visitor/VisitorPreviewSurface.svelte'),
+			'utf8'
+		);
+		expect(surface).toContain('treatment={scene.environment?.treatment}');
 	});
 
 	it('needs release bytes for a map-named P20 texture', async () => {

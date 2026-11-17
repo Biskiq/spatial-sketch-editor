@@ -45,17 +45,19 @@ describe('the default Wall surface', () => {
 		store.dispose();
 	});
 
-	it('reaches both the Stage and Preview through the one representation', () => {
+			it('reaches both the Stage and Preview through the one representation', () => {
 		expect(source('src/lib/render/layout-wall-representation.ts')).toContain(
-			'createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE)'
+			'createVisitorWallMaterialFactory('
 		);
-		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain('createWallRepresentation(materials)');
+		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain(
+			'createWallRepresentation(materials, treatment)'
+		);
 	});
 
 	it('draws the default Room floor as the ground: same colour, unlit and untoned', () => {
 		expect(DEFAULT_FLOOR_COLOR).toBe(PAPER_GROUND_INK);
 		expect(source('src/lib/render/layout-room-representation.ts')).toContain(
-			"floor: { kind: 'basic', color: DEFAULT_FLOOR_COLOR, toneMapped: false }"
+			"floor: { kind: 'basic', color: floor.color, toneMapped: false }"
 		);
 	});
 

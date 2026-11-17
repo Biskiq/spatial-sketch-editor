@@ -1,7 +1,11 @@
 import { getMaterial } from '$lib/content/materials';
+import { applyTreatment } from '$lib/render/materials/treatment';
 import type { WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
 import type { MaterialStore } from '$lib/render/resources/material-store';
-import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+import type {
+	MaterialTreatment,
+	StandardMaterialDescriptor
+} from '$lib/render/resources/material-descriptor';
 
 /**
  * Imperative visitor wall-material factory — the Wall surface's descriptor.
@@ -28,7 +32,9 @@ export function createVisitorWallMaterialFactory(
 	 * How much of the tint a surface shows unlit, so it holds under dim lights.
 	 * Above zero the tint is also left untoned: AgX greys a pale colour.
 	 */
-	emissiveIntensity = 0
+	emissiveIntensity = 0,
+	/** The World's resolve-time Treatment; Natural is absent and changes nothing. */
+	treatment: MaterialTreatment | undefined = undefined
 ): {
 	factory: WallMeshMaterialFactory;
 	dispose: () => void;
@@ -39,12 +45,19 @@ export function createVisitorWallMaterialFactory(
 	function leaseForTint(tint: string) {
 		let lease = leases.get(tint);
 		if (!lease) {
-			const descriptor: StandardMaterialDescriptor = {
-				kind: 'standard',
+			const treated = applyTreatment(treatment, {
 				color: tint,
 				roughness: definition.roughness,
 				metalness: definition.metalness,
-				emissive: tint,
+				slotUris: {},
+				normalScale: null
+			});
+			const descriptor: StandardMaterialDescriptor = {
+				kind: 'standard',
+				color: treated.color,
+				roughness: treated.roughness,
+				metalness: treated.metalness,
+				emissive: treated.color,
 				emissiveIntensity,
 				toneMapped: emissiveIntensity === 0
 			};

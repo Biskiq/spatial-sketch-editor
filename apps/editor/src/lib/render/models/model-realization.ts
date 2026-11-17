@@ -58,6 +58,11 @@ export {
 export type ModelStyle = {
 	/** The resolved look, or null to keep the asset's own materials. */
 	readonly look: ModelLook | null;
+	/**
+	 * The resolve-time Treatment for the asset's own materials. A resolved look
+	 * already carries its Treatment, so this is read only when `look` is null.
+	 */
+	readonly treatment?: 'flat-colour' | 'clay';
 	readonly wireframe: boolean;
 	readonly castShadow: boolean;
 	readonly receiveShadow: boolean;
@@ -178,15 +183,18 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		slot: number,
 		templateMaterial: Material,
 		bound: ReturnType<typeof bindLook> | null,
-		wireframe: boolean
+		wireframe: boolean,
+		treatment: 'flat-colour' | 'clay' | undefined
 	): MaterialLease {
 		const identity = {
 			kind: 'imported' as const,
 			asset: options.asset,
 			mesh: meshIndex,
 			slot,
-			wireframe
+			wireframe,
+			...(treatment === undefined ? {} : { treatment })
 		};
+		// Natural (treatment absent) is exactly today's key, clone and lease count.
 		if (bound === null) return options.store.acquire(identity, undefined, templateMaterial);
 		return options.store.acquire({ ...identity, remap: bound.remap }, bound.maps);
 	}
@@ -198,6 +206,8 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 	function apply(style: ModelStyle): void {
 		applyShadows(style);
 		const bound = style.look === null ? null : bindLook(style.look);
+		// A remap already carries its Treatment through the resolver.
+		const treatment = style.look === null ? style.treatment : undefined;
 		const next: SurfaceHold[] = [];
 		templateMeshes.forEach((templateMesh, meshIndex) => {
 			const drawn = drawnMeshes[meshIndex];
@@ -207,7 +217,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 					next.push({
 						mesh: drawn,
 						slot,
-						lease: surfaceFor(meshIndex, slot, templateMaterial, bound, style.wireframe)
+						lease: surfaceFor(meshIndex, slot, templateMaterial, bound, style.wireframe, treatment)
 					});
 				});
 				return;
@@ -215,7 +225,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 			next.push({
 				mesh: drawn,
 				slot: -1,
-				lease: surfaceFor(meshIndex, 0, templateMesh.material, bound, style.wireframe)
+				lease: surfaceFor(meshIndex, 0, templateMesh.material, bound, style.wireframe, treatment)
 			});
 		});
 		for (const hold of next) {
@@ -240,6 +250,7 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 
 	apply({
 		look: options.look,
+		...(options.treatment === undefined ? {} : { treatment: options.treatment }),
 		wireframe: options.wireframe,
 		castShadow: options.castShadow,
 		receiveShadow: options.receiveShadow
