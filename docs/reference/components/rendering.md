@@ -198,8 +198,12 @@ one afterwards, so the same Canvas can snapshot with a cut on and keep drawing i
 **Guard:** `authoring/stage/slice/stage-clip`, `stage-clip-shadows` and the real-WebGL regression in
 `perf/flows/stage-clip.spec.ts`. three r187 clips shadow casters only when their material sets
 `clipShadows`; the Stage's materials never do, so a cut never hollows a cast shadow, and the
-regression pins the shadow pass as identical cut and put back. A cap is built on the tick after the
-cut moves, never inside the pointer frame, and a build over 4 ms logs its timing in development.
+regression pins the shadow pass as identical cut and put back. A cap is **never built on a drag
+frame**: the plane and the clipping move for free (they are the plane array), and the section waits
+for the Sheet to rest (`slice-cap-schedule.ts`, 120 ms after the last change). Measured on an
+eleven-Room fixture one assembly is ~30 ms against the 4 ms budget, so assembling per frame would
+drop frames for the whole drag; the figure and the profile belong to that file's measurement test,
+and a build over 4 ms logs its timing in development.
 Caps come from **Layout meshes only**, one union for the Walls and one group per Layout object; Scene
 models are clipped and never capped, and a floor is never a cap source. A group that fails to balance
 is drawn open and reported: one `console.error` per group per geometry revision, plus
