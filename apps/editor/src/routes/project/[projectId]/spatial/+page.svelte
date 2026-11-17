@@ -32,6 +32,11 @@
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
 	import { createStageSession } from '$lib/authoring/stage/stage-session';
 	import {
+		createLightLookThrough,
+		lookThroughCone
+	} from '$lib/authoring/adapters/light/light-look-through.svelte';
+	import { lightById } from '$lib/authoring/adapters/light/light-subjects';
+	import {
 		createStageFacade,
 		type StageFacade,
 		type StageIntentResult,
@@ -135,6 +140,7 @@
 		type StageExperienceBinding
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
+	import type { StageLightInspection } from '$lib/authoring/stage/stage-adapter-host';
 
 	installPerfWorkObserver();
 
@@ -162,10 +168,21 @@
 		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
 
+	/** The route's one Spot Look-through session; created with the Stage wiring. */
+	let lightInspection: ReturnType<typeof createLightLookThrough> | null = null;
+	const lightInspectionPort: StageLightInspection = {
+		enter: (lightId) =>
+			lightInspection?.enter(lightId) ?? {
+				kind: 'refused',
+				message: 'The Stage is still opening; try again in a moment.'
+			}
+	};
+
 	const stageEpoch = createStageProjectEpoch({
 		session,
 		assets: stageAssets,
 		finishes: () => finishes,
+		lightInspection: () => lightInspectionPort,
 		projectSession: () => projectSession,
 		preview: () => previewController,
 		createFacade: (snapshot) => createStageFacade({
@@ -284,7 +301,12 @@
 		focus: () => experienceFocus.read(),
 		setProblem: (problem) => shell.setPreviewProblem(problem as ExperienceProblem | null),
 		stage: () => facade,
-		stopAndRestore: () => experience.stopAndRestore(),
+		stopAndRestore: () => {
+			// Preview takes the one Camera output: the light inspection restores its
+			// entry standpoint synchronously before the ticket moves.
+			lightInspection?.cancel();
+			experience.stopAndRestore();
+		},
 		snapSuspended: () => shell.drafting.snapSuspended,
 		patchDrafting: (patch) => shell.patchDrafting(patch),
 		notice: (message) => shell.setNotice(message),
@@ -324,11 +346,27 @@
 	const adapterServices = $derived(stageEpoch.services);
 	const press = createStagePressTracker();
 
+	/** The one Look-through predicate: a View inspection or a Spot inspection. */
+	function lookThroughActiveNow(): boolean {
+		return experience.lookThroughActive() || lightInspection?.active() === true;
+	}
+
+	lightInspection = createLightLookThrough({
+		stage: () => facade,
+		services: () => adapterServices,
+		lens: () => experience.lensState,
+		notice: (message) => shell.setNotice(message),
+		refresh: () => refresh(),
+		absoluteCss,
+		capturePointer,
+		stageElement: () => stageEl
+	});
+
 	const stageViewport = createStageViewport({
 		facade: () => facade,
 		stageElement: () => stageEl,
 		throughFrameElement: () => throughFrameEl ?? null,
-		lookThroughActive: () => experience.lookThroughActive(),
+		lookThroughActive: lookThroughActiveNow,
 		previewing: () => preview !== null,
 		lens: () => experience.lensState,
 		revealed: () => revealed,
@@ -364,13 +402,29 @@
 	const experienceFloorDatum = $derived.by(() =>
 		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
 	);
-	const activeLayer = $derived(experience.posture);
+	const activeLayer = $derived(
+		experience.posture ?? (lightInspection?.active() ? lightInspection.posture : null)
+	);
 	// `bind:this` lands after the first look-through refresh; measure it then.
 	$effect(() => {
 		const frame = throughFrameEl;
-		const current = experience.lookThroughSession();
-		if (frame !== undefined && current !== null) untrack(() => refresh());
+		const currentView = experience.lookThroughSession();
+		const currentLight = lightInspection?.session() ?? null;
+		if (frame !== undefined && (currentView !== null || currentLight !== null)) untrack(() => refresh());
 	});
+	// A lens switch and a Preview takeover both replace the Stage's posture; the
+	// Spot inspection must restore its entry before either can present another.
+	$effect(() => {
+		if (experience.lensState !== 'world') lightInspection?.cancel();
+	});
+	$effect(() => {
+		if (preview !== null) lightInspection?.cancel();
+	});
+
+	function changeLens(next: 'world' | 'experience'): void {
+		lightInspection?.cancel();
+		experience.changeLens(next);
+	}
 
 	const selectionView = createStageSelectionView();
 	let finishAskSelectionKey = '';
@@ -894,6 +948,7 @@
 	function resetViewContext(): void {
 		// A replaced project has no standpoint to put back into the new Camera, and
 		// no overhead to keep lifted: Lift is session state, never a document value.
+		lightInspection?.cancel();
 		wallFace.clear();
 		interiorLift.clear();
 		selection = null;
@@ -910,6 +965,9 @@
 	}
 
 	function interruptForReplacement(): void {
+		// The old facade is about to be disposed; its inspection restores the entry
+		// standpoint now, never through the replacement's Camera.
+		lightInspection?.cancel();
 		clearHover();
 		interruptPress('replacement');
 		// An image upload from the old source must not complete into the new one.
@@ -1133,6 +1191,7 @@
 
 		return () => {
 			unfoldGestures.dispose();
+			lightInspection?.dispose();
 			experience.dispose();
 			stageEpoch.markTornDown();
 			stageViewport.dispose();
@@ -1158,7 +1217,7 @@
 		pointerLeave: () => { clearHover(); artworkInteraction.leave(); },
 		dragOver: (event: DragEvent) => { if (artworkInteraction.acceptsDrop(event.dataTransfer)) event.preventDefault(); },
 		drop: (event: DragEvent) => artworkInteraction.drop(event),
-		contextMenu: (event: MouseEvent) => { if (experience.lookThroughActive()) event.preventDefault(); }
+		contextMenu: (event: MouseEvent) => { if (lookThroughActiveNow()) event.preventDefault(); }
 	};
 
 	const dialPlacement = $derived.by(() => {
@@ -1225,7 +1284,7 @@
 			get contentBounds() { return paperContentBounds; },
 			get snapshotBounds() { return stageContentBounds; },
 			get sky() { return look.stageSky; },
-			get framedViewport() { return experience.lookThroughActive() ? throughViewport : null; },
+			get framedViewport() { return lookThroughActiveNow() ? throughViewport : null; },
 			get selection() { return selection; },
 			get hover() {
 				return shell.armedHostTool === 'erase'
@@ -1262,7 +1321,7 @@
 	const stageCursor = $derived(
 		experience.viewEdit !== null ? (experience.viewEdit.kind === 'turn' ? 'turn' : 'grabbing')
 			: stageInput.drag?.mode === 'pan' || stageInput.drag?.mode === 'orbit' || (stageInput.drag?.mode === 'adapter' && shell.task === null) ? 'grabbing'
-				: experience.lookThroughActive() ? 'look'
+				: lookThroughActiveNow() ? 'look'
 					: experience.experienceTool === 'place' ? 'place-view'
 						: stageInput.hoverMove ? 'move'
 							: shell.task?.kind === 'layout-ink' || shell.armedHostTool !== null ? 'draw'
@@ -1270,18 +1329,61 @@
 	);
 
 	const viewportLookThrough = $derived.by(() => {
+		const controller = lightInspection;
+		const inspection = controller?.session() ?? null;
+		if (controller !== null && inspection !== null) {
+			return {
+				mode: 'light' as const,
+				label: inspection.label,
+				moved: controller.moved(),
+				canUpdate: !controller.busy(),
+				beam: controller.beam(),
+				onUpdate: (): void => void controller.finish(),
+				onExit: (): boolean => controller.exit()
+			};
+		}
 		const current = experience.lookThroughSession();
 		if (current === null) return null;
 		return {
+			mode: 'view' as const,
 			label: current.label,
 			moved: experience.lookThroughMoved(),
 			confirm: experience.lookThroughConfirm(),
 			canUpdate: !(experience.active?.busy ?? false),
-			onUpdate: () => void experience.updateLookThrough(experience.lookThroughConfirm() !== null),
-			onExit: () => experience.exitLookThrough(),
-			onCapture: () => void experience.captureProvisional(),
-			onClearConfirm: () => experience.clearLookThroughConfirm()
+			onUpdate: (): void => void experience.updateLookThrough(experience.lookThroughConfirm() !== null),
+			onExit: (): void => experience.exitLookThrough(),
+			onCapture: (): void => void experience.captureProvisional(),
+			onClearConfirm: (): void => experience.clearLookThroughConfirm()
 		};
+	});
+
+	/** The inspected Spot's real cone, projected by the one evaluation. */
+	const lightCoverage = $derived.by(() => {
+		const inspection = lightInspection?.session() ?? null;
+		const stage = facade;
+		const current = evaluation;
+		if (inspection === null || stage === null || current === null) return null;
+		const light = lightById(stage.snapshot(), inspection.lightId);
+		if (light === null || light.light !== 'spot') return null;
+		const evaluationId = stage.evaluationId();
+		if (evaluationId === null) return null;
+		const projectRing = (points: readonly (readonly [number, number, number])[]) => {
+			const projected: [number, number][] = [];
+			for (const point of points) {
+				const result = stage.projectWorld(point, evaluationId);
+				if (result.kind !== 'projected') return null;
+				projected.push([
+					result.css[0] - current.rect.left,
+					result.css[1] - current.rect.top
+				]);
+			}
+			return projected;
+		};
+		const cone = lookThroughCone(light);
+		const capRing = projectRing(cone.capRing);
+		if (capRing === null || capRing.length === 0) return null;
+		const innerRing = cone.innerRing === null ? null : projectRing(cone.innerRing);
+		return { capRing, innerRing };
 	});
 
 	const viewportPreview = $derived.by(() => {
@@ -1325,7 +1427,7 @@
 			{projectId}
 			projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : 'Loading project'}
 			lens={experience.lensState}
-			onLens={experience.changeLens}
+			onLens={changeLens}
 			canDownloadSource={activeProject()}
 			onDownloadSource={downloadSourceJson}
 			onOpenSource={() => requestReplacement('source')}
@@ -1426,10 +1528,11 @@
 				}
 				: null}
 			lookThrough={viewportLookThrough}
+			{lightCoverage}
 			pendingViewWrite={experience.pendingViewWrite}
 			onResolvePendingViewWrite={() => void experience.confirmPendingViewWrite()}
 			onCancelPendingViewWrite={() => experience.clearPendingViewWrite()}
-			welcome={experience.lensState === 'experience' && experience.welcome && !experience.lookThroughActive() && experience.experienceTool === 'select'}
+			welcome={experience.lensState === 'experience' && experience.welcome && !lookThroughActiveNow() && experience.experienceTool === 'select'}
 			onDismissWelcome={() => experience.dismissWelcome()}
 			hanging={facade !== null && evaluation?.renderedReading === '3d' && hangingGuides.length > 0
 				? { guides: hangingGuides, stage: facade, evaluation, activeGuideId: activeHangingGuide }
@@ -1507,7 +1610,7 @@
 						paths: shell.showPaths,
 						labels: shell.showLabels,
 						offCount: shell.showOffCount,
-						hidden: experience.lookThroughActive(),
+						hidden: lookThroughActiveNow(),
 						onToggle: () => shell.setShowOpen(!shell.showOpen),
 						onClose: () => shell.setShowOpen(false),
 						onMode: (mode) => shell.setShowMode(mode),

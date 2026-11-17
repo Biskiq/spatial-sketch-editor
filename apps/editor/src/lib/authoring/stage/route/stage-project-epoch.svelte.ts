@@ -32,7 +32,7 @@
  * renderer store.
  */
 import type { StageReadSnapshot } from '../accepted-read';
-import type { StageAdapterFactory } from '../stage-adapter-host';
+import type { StageAdapterFactory, StageLightInspection } from '../stage-adapter-host';
 import {
 	createStageAdapterServices,
 	mountStageAdapter
@@ -75,6 +75,11 @@ export type StageProjectEpochInput = {
 	readonly preview: () => StageProjectEpochPreview;
 	readonly createFacade: (snapshot: StageReadSnapshot) => StageFacade;
 	readonly adapterFactories: readonly StageAdapterFactory[];
+	/**
+	 * The route's one Spot Look-through session, offered to the Light Card. It is
+	 * read lazily because the route's controller is created around this epoch.
+	 */
+	readonly lightInspection?: () => StageLightInspection | null;
 	/** Clear old hover and interrupt the old gesture before the session swaps. */
 	readonly interruptInput: () => void;
 	readonly resetFocus: () => void;
@@ -218,7 +223,11 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		});
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
-		services = createServices(nextFacade, mounted, input.finishes);
+		const createdServices = createServices(nextFacade, mounted, input.finishes);
+		const inspection = input.lightInspection?.() ?? null;
+		const mountedServices =
+			inspection === null ? createdServices : { ...createdServices, lightInspection: inspection };
+		services = mountedServices;
 		void input.assets.resolve(snapshot);
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			// A stale acceptance host cannot write through the newer epoch.
@@ -241,7 +250,11 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 			}
 			input.onAccepted();
 		});
-		for (const factory of input.adapterFactories) mountAdapter(nextFacade, mounted, factory, input.finishes);
+		// The adapters read the epoch's services, not a second value: the Light Card's
+		// inspection port is session state the route owns, so every adapter mount
+		// must see the same value.
+		for (const factory of input.adapterFactories)
+			mountAdapter(nextFacade, mounted, factory, input.finishes, mountedServices);
 		// The previous epoch's controller belongs to its disposed coordinator; this
 		// epoch gets exactly one state machine over the new one.
 		projectSession.mountSave(mounted, snapshot);
