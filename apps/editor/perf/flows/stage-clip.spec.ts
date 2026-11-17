@@ -65,6 +65,7 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 	});
 	try {
 		const { page } = session;
+		page.on('pageerror', (error) => console.error('STAGE_CLIP_PAGEERROR', error.message));
 		await page.setContent('<!doctype html><body style="margin:0">');
 		await page.addScriptTag({ content: compiled.outputFiles[0]!.text });
 		await page.waitForFunction(() => 'undefined' !== typeof window.__STAGE_CLIP__);
@@ -275,6 +276,15 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 			expect(mixed.programs).toBe(cutawayWhole.programs);
 		}
 
+		// 10. X2 §10.2: orbit eleven Rooms while the cut set moves from Room to
+		//     Room. The whole-scene baseline is taken first; cutting must not add a
+		//     program at any of the 66 orbit frames.
+		const orbit = await page.evaluate(() => window.__STAGE_CLIP__.cutawayOrbit(6));
+		expect(orbit.frames).toBe(66);
+		expect(orbit.errors).toEqual([0]);
+		expect(orbit.baseline).toBeGreaterThan(0);
+		expect(orbit.distinctPrograms).toEqual([orbit.baseline]);
+
 		const stationary = await page.evaluate(() => window.__STAGE_CLIP__.cutawayStationary(120));
 		expect(stationary.distinctHashes).toBe(1);
 		expect(stationary.distinctPrograms).toBe(1);
@@ -291,7 +301,8 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 				drawnRestHash: drawnRest.hash,
 				shadow: shadowRest.hash,
 				shadowDrawn: shadowDrawnRest.hash,
-				inkPrograms: inkRest.programs
+				inkPrograms: inkRest.programs,
+				orbitPrograms: orbit.distinctPrograms
 			})}`
 		);
 		await page.evaluate(() => window.__STAGE_CLIP__?.close());

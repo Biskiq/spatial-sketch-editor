@@ -349,6 +349,52 @@ function fixture() {
 	cutawayShadowCamera.position.set(3.4, 3.2, 6.4);
 	cutawayShadowCamera.lookAt(0, 0.4, 0);
 
+	// X2 §10.2: eleven Rooms / 44 Wall twins, all sharing the standard program.
+	// The orbit swaps the cut set from Room to Room; only visibility and the cut
+	// uniform change, so a per-cut-set material compile would show up as a new
+	// program. Caps and the shadow pass are covered by the smaller real fixtures.
+	const ORBIT_ROOMS = 11;
+	const orbitStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(orbitStore);
+	const orbitScene = new Scene();
+	orbitScene.background = BACKGROUND;
+	orbitScene.add(new AmbientLight(0xffffff, 1));
+	const orbitSun = new DirectionalLight(0xffffff, 1.4);
+	orbitSun.position.set(30, 40, 20);
+	orbitScene.add(orbitSun);
+	const orbitGeometry = new BoxGeometry(6, 3, 0.16);
+	geometries.push(orbitGeometry);
+	type OrbitTwin = { wallId: string; whole: Mesh; cut: Mesh };
+	const orbitTwins: OrbitTwin[] = [];
+	const orbitRoomWalls: string[][] = [];
+	for (let room = 0; room < ORBIT_ROOMS; room += 1) {
+		const x = room * 10;
+		const walls: Array<{ id: string; position: [number, number, number]; rotation: number }> = [
+			{ id: `${room}-s`, position: [x + 3, 1.5, -3], rotation: 0 },
+			{ id: `${room}-n`, position: [x + 3, 1.5, 3], rotation: 0 },
+			{ id: `${room}-w`, position: [x, 1.5, 0], rotation: Math.PI / 2 },
+			{ id: `${room}-e`, position: [x + 6, 1.5, 0], rotation: Math.PI / 2 }
+		];
+		orbitRoomWalls.push(walls.map((wall) => wall.id));
+		for (const wall of walls) {
+			const tint = '#b8a88a';
+			const wholeLease = orbitStore.acquire({ kind: 'standard', color: tint, roughness: 1, metalness: 0 });
+			const cutLease = orbitStore.acquire({ kind: 'standard', color: tint, roughness: 1, metalness: 0, cutaway: true });
+			leases.push(wholeLease, cutLease);
+			const whole = new Mesh(orbitGeometry, wholeLease.material);
+			const cut = new Mesh(orbitGeometry, cutLease.material);
+			for (const mesh of [whole, cut]) {
+				mesh.position.set(...wall.position);
+				mesh.rotation.y = wall.rotation;
+				orbitScene.add(mesh);
+			}
+			cut.visible = false;
+			orbitTwins.push({ wallId: wall.id, whole, cut });
+		}
+	}
+	const orbitCamera = new PerspectiveCamera(42, WIDTH / HEIGHT, 0.1, 300);
+	const orbitCentreX = ((ORBIT_ROOMS - 1) * 10) / 2 + 3;
+
 	const drawnReading = (depthMeters: number, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice => ({
 		kind: 'drawn',
 		origin: [0, 0, 0],
@@ -592,6 +638,63 @@ function fixture() {
 			clip.apply(null);
 			clip.setCutawayTop(null);
 			return { above, below, background, cap: cap ?? background, programs: front.programs, error: front.error };
+		},
+		/**
+		 * X2 §10.2: orbit the 11-Room / 44-Wall twin scene while the cut set moves
+		 * from Room to Room. Returns every program count observed; they must all be
+		 * the whole-scene baseline.
+		 */
+		cutawayOrbit(stepsPerRoom: number): {
+			baseline: number;
+			distinctPrograms: number[];
+			frames: number;
+			errors: number;
+		} {
+			const programs = new Set<number>();
+			const errors: number[] = [];
+			clip.setCutawayTop(null);
+			for (const twin of orbitTwins) {
+				twin.whole.visible = true;
+				twin.cut.visible = false;
+			}
+			orbitCamera.position.set(orbitCentreX, 18, 42);
+			orbitCamera.lookAt(orbitCentreX, 1.2, 0);
+			programs.add(readScene(orbitScene, orbitCamera).programs);
+			const baseline = [...programs][0]!;
+			clip.setCutawayTop(1);
+			let frames = 0;
+			for (let room = 0; room < ORBIT_ROOMS; room += 1) {
+				const cutWalls = new Set(orbitRoomWalls[room]);
+				for (const twin of orbitTwins) {
+					const cut = cutWalls.has(twin.wallId);
+					twin.whole.visible = !cut;
+					twin.cut.visible = cut;
+				}
+				for (let step = 0; step < stepsPerRoom; step += 1) {
+					const angle = ((room * stepsPerRoom + step) / (ORBIT_ROOMS * stepsPerRoom)) * Math.PI * 2;
+					orbitCamera.position.set(
+						orbitCentreX + Math.cos(angle) * 58,
+						8 + 4 * Math.sin(angle * 2),
+						Math.sin(angle) * 58
+					);
+					orbitCamera.lookAt(orbitCentreX, 1.2, 0);
+					const shot = readScene(orbitScene, orbitCamera);
+					programs.add(shot.programs);
+					errors.push(shot.error);
+					frames += 1;
+				}
+			}
+			clip.setCutawayTop(null);
+			for (const twin of orbitTwins) {
+				twin.whole.visible = true;
+				twin.cut.visible = false;
+			}
+			return {
+				baseline,
+				distinctPrograms: [...programs],
+				frames,
+				errors: [...new Set(errors)]
+			};
 		},
 		/** 120 stationary frames: one image and one program count, no rebuild. */
 		cutawayStationary(frames: number): {
