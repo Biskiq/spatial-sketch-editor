@@ -568,6 +568,31 @@ function fixture() {
 			clip.setCutawayTop(null);
 			return { hash: shot.hash, programs: shot.programs, error: shot.error };
 		},
+		/**
+		 * X2 + Slice coexistence: applying a Level or Drawn reading must not clear the
+		 * cutaway top, so the stub stays cut until X2 itself is turned off.
+		 */
+		cutawaySlice(reading: ResolvedSlice | null): {
+			above: string;
+			below: string;
+			background: string;
+			cap: string;
+			programs: number;
+			error: number;
+		} {
+			clip.setCutawayTop(CUTAWAY_TOP);
+			clip.apply(reading);
+			const front = readScene(cutawayScene, cutawayCamera);
+			const world = (x: number, y: number): string =>
+				front.at(((x + 2) / 4) * WIDTH, (y / 3) * HEIGHT);
+			const above = world(0, 2);
+			const below = world(0, 0.5);
+			const background = world(-1.9, 2.5);
+			const cap = readScene(cutawayCapScene, cutawayTopCamera).nonBackground;
+			clip.apply(null);
+			clip.setCutawayTop(null);
+			return { above, below, background, cap: cap ?? background, programs: front.programs, error: front.error };
+		},
 		/** 120 stationary frames: one image and one program count, no rebuild. */
 		cutawayStationary(frames: number): {
 			distinctHashes: number;

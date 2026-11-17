@@ -16,8 +16,33 @@ import {
 	type LayoutWall
 } from '@portfolio/layout-core';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
-import { assembleCutawayCaps } from '$lib/authoring/stage/cutaway/cutaway-caps';
+import { assembleCutawayCaps, type CutawayComponent } from '$lib/authoring/stage/cutaway/cutaway-caps';
 import { capFillsOf } from '$lib/authoring/stage/slice/slice-cap-shapes';
+
+/** Every cap boundary edge in world plan coordinates, via the section basis. */
+function capBoundary(component: CutawayComponent): Array<readonly [LayoutVec2, LayoutVec2]> {
+	const { u, v, origin } = component.basis;
+	const world = (point: readonly [number, number]): LayoutVec2 => [
+		origin[0] + u[0] * point[0] + v[0] * point[1],
+		origin[2] + u[2] * point[0] + v[2] * point[1]
+	];
+	return component.loops.flatMap((loop) =>
+		loop.points.map((point, index) => [world(point), world(loop.points[(index + 1) % loop.points.length]!)] as const)
+	);
+}
+
+function onCapBoundary(point: LayoutVec2, boundary: ReturnType<typeof capBoundary>): boolean {
+	return boundary.some(([a, b]) => {
+		const dx = b[0] - a[0];
+		const dz = b[1] - a[1];
+		const length = Math.hypot(dx, dz);
+		if (!(length > 1e-9)) return false;
+		const off = Math.abs(dx * (point[1] - a[1]) - dz * (point[0] - a[0])) / length;
+		if (off > 1e-4) return false;
+		const t = ((point[0] - a[0]) * dx + (point[1] - a[1]) * dz) / (length * length);
+		return t >= -1e-6 && t <= 1 + 1e-6;
+	});
+}
 
 type WallSeed = {
 	readonly id: string;
@@ -171,6 +196,14 @@ describe('X2 cap/seam catalogue', () => {
 				expect(assembly.components.length, label).toBeGreaterThan(0);
 				for (const component of assembly.components) {
 					expect(capFillsOf(component.loops).length, label).toBeGreaterThan(0);
+					// Watertight closure: every seam that closes the stub must land on
+					// the cap's boundary. An open T/X would leave a seam endpoint in the
+					// interior and fail here even when the section had no issue.
+					const boundary = capBoundary(component);
+					for (const seam of component.seams.filter((candidate) => candidate.closesStub)) {
+						expect(onCapBoundary(seam.from, boundary), `${label} seam ${seam.identity} from`).toBe(true);
+						expect(onCapBoundary(seam.to, boundary), `${label} seam ${seam.identity} to`).toBe(true);
+					}
 				}
 
 			}

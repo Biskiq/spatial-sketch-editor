@@ -162,14 +162,20 @@ export function clampFaceToCutaway(
 		: { ...surface, topMeters };
 }
 
-/** The surfaces a pick may test after the cutaway: a cut Wall stops at its stub. */
+/**
+ * The surfaces a pick may test after the cutaway: a **cut** Wall stops at its stub.
+ *
+ * `wallId` is the fragment's own Wall. It is required: a cut near Wall must not
+ * shorten the pick quad of another Wall that is still drawn in full. Only Wall
+ * faces are removed; floors, objects and Opening symbols are not part of X2
+ * (owner ruling O-1 leaves Scene objects as built).
+ */
 export function clipSurfaceToCutaway(
 	surface: StagePickSurface,
-	cutaway: ResolvedCutaway | null
+	cutaway: ResolvedCutaway | null,
+	wallId: string | null = null
 ): StagePickSurface[] {
-	if (cutaway === null) return [surface];
-	// Only Wall faces are removed: floors, objects and Opening symbols are not part
-	// of X2 (owner ruling O-1 leaves Scene objects as built).
+	if (cutaway === null || wallId === null || !cutaway.wallIds.has(wallId)) return [surface];
 	const clamped = clampFaceToCutaway(surface, cutaway);
 	return clamped === null ? [] : [clamped];
 }
@@ -354,7 +360,7 @@ function pickSurfacesOf(
 	const stubTopY = cutaway !== null && cutaway.wallIds.has(wall.wallId) ? cutaway.stubTopY : null;
 	return [
 		...faces,
-		...(stubTopY === null ? [] : cutawayCapSurfacesOf(wall, stubTopY, datumMeters)),
+		...(stubTopY === null ? [] : cutawayCapSurfacesOf(wall, matching, stubTopY, datumMeters)),
 		...capSurfacesOf(fragment, wall, slice, interval)
 	];
 }
@@ -369,11 +375,13 @@ function pickSurfacesOf(
  */
 function cutawayCapSurfacesOf(
 	wall: NonNullable<ReturnType<typeof indexedCompiledWall>>,
+	/** The fragment's own compiled spans, so a cap cannot answer for a sibling interval. */
+	matching: NonNullable<ReturnType<typeof indexedCompiledWall>>['solidSpans'],
 	stubTopY: number,
 	datumMeters: number
 ): readonly StagePickSurface[] {
 	const localStub = stubTopY - datumMeters;
-	const spans: CutWallSpan[] = wall.solidSpans
+	const spans: CutWallSpan[] = matching
 		.filter((span) => span.bottomY <= localStub + 1e-6 && localStub <= span.topY - 1e-6)
 		.map((span) => ({ startDistance: span.startDistance, endDistance: span.endDistance }));
 	if (spans.length === 0) return [];
@@ -927,7 +935,13 @@ export function createPlanPickProvider(
 				slice,
 				cutaway
 			)
-				.flatMap((surface) => clipSurfaceToCutaway(surface, cutaway))
+				.flatMap((surface) =>
+					clipSurfaceToCutaway(
+						surface,
+						cutaway,
+						fragment.ref.sourceKind === 'wall' ? fragment.ref.sourceId : null
+					)
+				)
 				.flatMap((surface) => clipSurfaceToSlice(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;

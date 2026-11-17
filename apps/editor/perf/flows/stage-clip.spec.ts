@@ -251,6 +251,30 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 		expect(cutawayShadowCut.hash).toBe(cutawayShadowWhole.hash);
 		await page.screenshot({ path: testInfo.outputPath('cutaway-twin.png') });
 
+		// A Slice reading must not clear X2's independently owned top. Both a Level
+		// and a Drawn reading are applied while the stub is cut; each must leave the
+		// above-stub pixels hidden and the cap in place.
+		const farLevel = { kind: 'level' as const, cutY: 6, lowerY: null };
+		const farDrawn = {
+			kind: 'drawn' as const,
+			origin: [100, 0, 100] as [number, number, number],
+			along: [1, 0, 0] as [number, number, number],
+			hiddenNormal: [0, 0, 1] as [number, number, number],
+			halfLength: 0.1,
+			depthMeters: 0.1,
+			hidden: 'right' as const,
+			start: [100, 0, 100] as [number, number, number],
+			end: [100.2, 0, 100] as [number, number, number]
+		};
+		for (const reading of [farLevel, farDrawn]) {
+			const mixed = await page.evaluate((value) => window.__STAGE_CLIP__.cutawaySlice(value as never), reading);
+			expect(mixed.error).toBe(0);
+			expect(mixed.above).toBe(mixed.background);
+			expect(mixed.below).not.toBe(mixed.background);
+			expect(mixed.cap).not.toBe(mixed.background);
+			expect(mixed.programs).toBe(cutawayWhole.programs);
+		}
+
 		const stationary = await page.evaluate(() => window.__STAGE_CLIP__.cutawayStationary(120));
 		expect(stationary.distinctHashes).toBe(1);
 		expect(stationary.distinctPrograms).toBe(1);

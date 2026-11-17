@@ -193,7 +193,12 @@ export function createStageClip(): StageClip {
 				return;
 			}
 			write(planes, native);
+			// X2 owns the cutaway top independently of the Slice reading. `shader` is a
+			// fresh state for the reading (never-cut by default), so restore it around
+			// the write rather than letting a Level/Drawn edit silently show every Wall.
+			const cutawayTopY = sliceUniforms.cutawayTopY.value;
 			writeShader(shader);
+			sliceUniforms.cutawayTopY.value = cutawayTopY;
 		},
 		asBuilt(render) {
 			if (depth === 0) {

@@ -15,6 +15,7 @@ import {
 	STAGE_CLIP_KEEP_ALL_CONSTANT,
 	STAGE_CLIP_PLANE_COUNT
 } from '$lib/authoring/stage/slice/stage-clip';
+import { NEVER_CUT_TOP_Y } from '$lib/render/resources/material-store';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { materialKey } from '$lib/render/resources/material-descriptor';
 
@@ -89,6 +90,32 @@ describe('test 5 — the store takes the Canvas clip by reference', () => {
 });
 
 describe('test 7 — a reading never recompiles a program', () => {
+	it('never resets the independently owned cutaway top', () => {
+		const clip = createStageClip();
+		clip.setCutawayTop(1);
+		const readings = [
+			{ kind: 'level' as const, cutY: 1.2, lowerY: null },
+			{
+				kind: 'drawn' as const,
+				origin: [0, 0, 0] as [number, number, number],
+				along: [1, 0, 0] as [number, number, number],
+				hiddenNormal: [0, 0, 1] as [number, number, number],
+				halfLength: 2,
+				depthMeters: 1,
+				hidden: 'right' as const,
+				start: [-2, 0, 0] as [number, number, number],
+				end: [2, 0, 0] as [number, number, number]
+			},
+			null
+		];
+		for (const reading of readings) {
+			clip.apply(reading as never);
+			expect(clip.cutawayTop()).toBe(1);
+		}
+		clip.setCutawayTop(null);
+		expect(clip.cutawayTop()).toBe(NEVER_CUT_TOP_Y);
+	});
+
 	it('keeps one array of two Plane instances at rest and under every reading', () => {
 		const clip = createStageClip();
 		const planes = clip.planes as Plane[];

@@ -7,7 +7,7 @@
  * and Wall) and the exclusions (interior content, low Walls, no Room).
  */
 import { describe, expect, it } from 'vitest';
-import type { CompiledPhysicalWall, CompiledRoom, LayoutVec2 } from '@portfolio/layout-core';
+import { pointInPolygon, type CompiledPhysicalWall, type CompiledRoom, type LayoutVec2 } from '@portfolio/layout-core';
 import {
 	classifyNearWalls,
 	inspectedSpace,
@@ -244,5 +244,15 @@ describe('hysteresis', () => {
 		const polygon: LayoutVec2[] = [[0, 0], [4, 0], [4, 4], [0, 4]];
 		expect(insetDistance([2, 2], polygon)).toBeCloseTo(2, 6);
 		expect(insetDistance([-1, 2], polygon)).toBeCloseTo(-1, 6);
+	});
+
+	it('keeps every sight sample inside a strongly concave Space', () => {
+		// The vertex mean (1.67, 1.67) lies in the missing quadrant, outside this L.
+		const polygon: LayoutVec2[] = [[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4]];
+		const samples = sightSamples(room('room', polygon));
+		expect(samples.length).toBeGreaterThan(0);
+		for (const [x, , z] of samples) {
+			expect(pointInPolygon([x, z], polygon), `sample ${x}/${z}`).toBe(true);
+		}
 	});
 });

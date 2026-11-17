@@ -198,7 +198,10 @@ export function inspectedSpace(input: InspectedSpaceInput): CompiledRoom | null 
 /** The inspected Space's interior sight samples (§3.2). */
 export function sightSamples(space: Pick<CompiledRoom, 'floorPolygon' | 'floorElevation'>): readonly [number, number, number][] {
 	const centroid = floorCentroid(space.floorPolygon);
-	const candidates: LayoutVec2[] = [centroid];
+	// The vertex mean is not guaranteed to be inside a concave Space. Only use it
+	// when it is; otherwise the inset vertex samples must supply the interior. With
+	// none, the plan's no-valid-sample rule applies: no samples, so nothing is cut.
+	const candidates: LayoutVec2[] = pointInPolygon(centroid, space.floorPolygon) ? [centroid] : [];
 	for (const vertex of space.floorPolygon) {
 		const dx = centroid[0] - vertex[0];
 		const dz = centroid[1] - vertex[1];
@@ -219,8 +222,6 @@ export function sightSamples(space: Pick<CompiledRoom, 'floorPolygon' | 'floorEl
 		const point = candidates[index]!;
 		kept.push([point[0], space.floorElevation + SAMPLE_HEIGHT_METERS, point[1]]);
 	}
-	// The centroid is always the first sample and the space's own interior.
-	if (kept.length === 0) kept.push([centroid[0], space.floorElevation + SAMPLE_HEIGHT_METERS, centroid[1]]);
 	return kept;
 }
 
