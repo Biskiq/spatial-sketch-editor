@@ -257,6 +257,98 @@ function fixture() {
 	inkScene.add(inkGhost);
 	geometries.push(inkLineMaterial, inkGhostMaterial);
 
+		// X2: one cutaway twin wall, its paper cap and a shadow caster. The twin is the
+	// same program as the standard surface; only its `uCutawayTopY` binding follows
+	// the live cut, so whole → cut must not add a compile.
+	const CUTAWAY_TOP = 1;
+	const cutawayStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(cutawayStore);
+	const cutawayScene = new Scene();
+	cutawayScene.background = BACKGROUND;
+	cutawayScene.add(new AmbientLight(0xffffff, 1));
+	const cutawayWallGeometry = new BoxGeometry(3, 3, 0.2);
+	geometries.push(cutawayWallGeometry);
+	const cutawayWallLease = cutawayStore.acquire({
+		kind: 'standard',
+		color: '#b8a88a',
+		roughness: 1,
+		metalness: 0,
+		cutaway: true
+	});
+	leases.push(cutawayWallLease);
+	const cutawayWall = new Mesh(cutawayWallGeometry, cutawayWallLease.material);
+	cutawayWall.position.set(0, 1.5, 0);
+	cutawayScene.add(cutawayWall);
+	// Centred on y = 1.5 so the frustum covers world y 0…3; the sampler below
+	// maps that range directly to framebuffer rows.
+	const cutawayCamera = new OrthographicCamera(-2, 2, 1.5, -1.5, 0.1, 20);
+	cutawayCamera.position.set(0, 1.5, 6);
+	cutawayCamera.lookAt(0, 1.5, 0);
+
+	// The cap is the StageCutawayLayer's horizontal paper, sampled from above so an
+	// edge-on camera cannot hide it.
+	const cutawayCapScene = new Scene();
+	cutawayCapScene.background = BACKGROUND;
+	const cutawayCapGeometry = new PlaneGeometry(3, 0.2);
+	geometries.push(cutawayCapGeometry);
+	const cutawayCapLease = cutawayStore.acquire({ kind: 'basic', color: '#f0d8b0' });
+	leases.push(cutawayCapLease);
+	const cutawayCap = new Mesh(cutawayCapGeometry, cutawayCapLease.material);
+	cutawayCap.rotation.x = -Math.PI / 2;
+	cutawayCap.position.set(0, CUTAWAY_TOP, 0);
+	cutawayCapScene.add(cutawayCap);
+	const cutawayTopCamera = new OrthographicCamera(-2, 2, 2, 0, 0.1, 20);
+	cutawayTopCamera.position.set(0, 6, 0);
+	cutawayTopCamera.up.set(0, 0, -1);
+	cutawayTopCamera.lookAt(0, 0, 0);
+
+	// A twin caster with colour writing off: only the receiver and its shadow are
+	// sampled, so an unchanged hash proves the depth pass ignored the cut.
+	const cutawayShadowStore = createMaterialStore({ clippingPlanes: clip.planes as never, sliceClip: clip.sliceUniforms });
+	stores.push(cutawayShadowStore);
+	const cutawayShadowScene = new Scene();
+	cutawayShadowScene.background = BACKGROUND;
+	cutawayShadowScene.add(new AmbientLight(0xffffff, 0.4));
+	const cutawayReceiverGeometry = new PlaneGeometry(2, 2);
+	geometries.push(cutawayReceiverGeometry);
+	const cutawayReceiverLease = cutawayShadowStore.acquire({ kind: 'lambert', color: '#b8b0a4' });
+	leases.push(cutawayReceiverLease);
+	const cutawayReceiver = new Mesh(cutawayReceiverGeometry, cutawayReceiverLease.material);
+	cutawayReceiver.rotation.x = -Math.PI / 2;
+	cutawayReceiver.position.set(-0.5, 0, -1.5);
+	cutawayReceiver.receiveShadow = true;
+	cutawayShadowScene.add(cutawayReceiver);
+	const cutawayCasterLease = cutawayShadowStore.acquire({
+		kind: 'standard',
+		color: '#ffffff',
+		roughness: 1,
+		metalness: 0,
+		cutaway: true
+	});
+	leases.push(cutawayCasterLease);
+	const cutawayCaster = new Mesh(cutawayWallGeometry, cutawayCasterLease.material);
+	cutawayCaster.position.set(0.4, 1.75, 0.2);
+	cutawayCaster.scale.set(0.27, 0.5, 4);
+	cutawayCaster.castShadow = true;
+	(cutawayCaster.material as MeshStandardMaterial).colorWrite = false;
+	(cutawayCaster.material as MeshStandardMaterial).depthWrite = false;
+	cutawayShadowScene.add(cutawayCaster);
+	const cutawaySun = new DirectionalLight(0xffffff, 2.4);
+	cutawaySun.position.set(2.4, 5, 3.2);
+	cutawaySun.castShadow = true;
+	cutawaySun.shadow.mapSize.set(512, 512);
+	cutawaySun.shadow.camera.left = -4;
+	cutawaySun.shadow.camera.right = 4;
+	cutawaySun.shadow.camera.top = 4;
+	cutawaySun.shadow.camera.bottom = -4;
+	cutawaySun.shadow.camera.near = 0.5;
+	cutawaySun.shadow.camera.far = 20;
+	cutawaySun.shadow.bias = -0.0005;
+	cutawayShadowScene.add(cutawaySun, cutawaySun.target);
+	const cutawayShadowCamera = new PerspectiveCamera(42, WIDTH / HEIGHT, 0.1, 40);
+	cutawayShadowCamera.position.set(3.4, 3.2, 6.4);
+	cutawayShadowCamera.lookAt(0, 0.4, 0);
+
 	const drawnReading = (depthMeters: number, hidden: 'left' | 'right' = 'right'): DrawnResolvedSlice => ({
 		kind: 'drawn',
 		origin: [0, 0, 0],
@@ -270,6 +362,40 @@ function fixture() {
 	});
 
 	const pixels = new Uint8Array(WIDTH * HEIGHT * 4);
+
+	/** Render one scene and read the framebuffer with a world-space sampler. */
+	function readScene(scene: Scene, view: OrthographicCamera | PerspectiveCamera) {
+		renderer.render(scene, view);
+		const gl = renderer.getContext();
+		gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+		const at = (px: number, py: number): string => {
+			const x = Math.min(WIDTH - 1, Math.max(0, Math.round(px)));
+			const y = Math.min(HEIGHT - 1, Math.max(0, Math.round(py)));
+			const index = (y * WIDTH + x) * 4;
+			return `#${[pixels[index]!, pixels[index + 1]!, pixels[index + 2]!]
+				.map((value) => value.toString(16).padStart(2, '0'))
+				.join('')}`;
+		};
+		let hash = 2166136261;
+		let nonBackground: string | null = null;
+		for (let index = 0; index < pixels.length; index += 4) {
+			const red = pixels[index]!;
+			const green = pixels[index + 1]!;
+			const blue = pixels[index + 2]!;
+			const rgb = (red << 16) | (green << 8) | blue;
+			hash = Math.imul(hash ^ rgb, 16777619) >>> 0;
+			if (nonBackground === null && (red !== 0x10 || green !== 0x18 || blue !== 0x20)) {
+				nonBackground = `#${[red, green, blue].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+			}
+		}
+		return {
+			at,
+			nonBackground,
+			hash: hash.toString(16),
+			programs: renderer.info.programs?.length ?? 0,
+			error: gl.getError()
+		};
+	}
 
 	/** Render, and read the default framebuffer before it is composited away. */
 	function draw(scene: Scene, view: OrthographicCamera | PerspectiveCamera): Report {
@@ -398,6 +524,74 @@ function fixture() {
 				programs: renderer.info.programs?.length ?? 0,
 				error: gl.getError()
 			};
+		},
+		/**
+		 * X2's cutaway twin on a real GPU: the same mesh whole and cut above 1 m.
+		 * `above`/`below` are front-view samples; `cap` is a paper cap seen from
+		 * directly above; `programs` must not move across the cut.
+		 */
+		cutaway(top: number | null): {
+			above: string;
+			below: string;
+			background: string;
+			cap: string;
+			hash: string;
+			programs: number;
+			error: number;
+		} {
+			clip.setCutawayTop(top);
+			const front = readScene(cutawayScene, cutawayCamera);
+			// Read every front sample before the cap render reuses the shared pixel
+			// buffer; a later `at` would answer from the wrong image.
+			const world = (x: number, y: number): string =>
+				front.at(((x + 2) / 4) * WIDTH, (y / 3) * HEIGHT);
+			const above = world(0, 2);
+			const below = world(0, 0.5);
+			const background = world(-1.9, 2.5);
+			const capShot = readScene(cutawayCapScene, cutawayTopCamera);
+			const cap = capShot.nonBackground ?? capShot.at(WIDTH / 2, HEIGHT / 2);
+			clip.setCutawayTop(null);
+			return {
+				above,
+				below,
+				background,
+				cap,
+				hash: front.hash,
+				programs: front.programs,
+				error: front.error
+			};
+		},
+		/** The twin caster's shadow image under a cut top; it must be unchanged. */
+		cutawayShadow(top: number | null): { hash: string; programs: number; error: number } {
+			clip.setCutawayTop(top);
+			const shot = readScene(cutawayShadowScene, cutawayShadowCamera);
+			clip.setCutawayTop(null);
+			return { hash: shot.hash, programs: shot.programs, error: shot.error };
+		},
+		/** 120 stationary frames: one image and one program count, no rebuild. */
+		cutawayStationary(frames: number): {
+			distinctHashes: number;
+			distinctPrograms: number;
+			first: string;
+			last: string;
+			error: number;
+		} {
+			clip.setCutawayTop(CUTAWAY_TOP);
+			const hashes = new Set<string>();
+			const programs = new Set<number>();
+			let first = '';
+			let last = '';
+			let error = 0;
+			for (let frame = 0; frame < frames; frame += 1) {
+				const shot = readScene(cutawayScene, cutawayCamera);
+				hashes.add(shot.hash);
+				programs.add(shot.programs);
+				if (frame === 0) first = shot.hash;
+				last = shot.hash;
+				error = shot.error;
+			}
+			clip.setCutawayTop(null);
+			return { distinctHashes: hashes.size, distinctPrograms: programs.size, first, last, error };
 		},
 		/** Put the planes back and report what the renderer still holds. */
 		rest(): { programs: number; planes: number; radius: number } {

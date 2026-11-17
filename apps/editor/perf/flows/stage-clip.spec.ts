@@ -230,6 +230,33 @@ test('the clip seam discards exactly what the reading says, and nothing else', a
 		]);
 		expect(inkBack.samples).toEqual(inkRest.samples);
 
+		// 9. X2: the cutaway twin on the same GPU. Whole → cut removes exactly the
+		//    above-stub pixels, the paper cap is present, and no program appears; a
+		//    twin caster's shadow image and 120 stationary frames are unchanged.
+		const cutawayWhole = await page.evaluate(() => window.__STAGE_CLIP__.cutaway(null));
+		expect(cutawayWhole.error).toBe(0);
+		const cutawayCut = await page.evaluate(() => window.__STAGE_CLIP__.cutaway(1));
+		expect(cutawayCut.error).toBe(0);
+		expect(cutawayWhole.above).not.toBe(cutawayWhole.background);
+		expect(cutawayCut.above).toBe(cutawayCut.background);
+		expect(cutawayCut.below).toBe(cutawayWhole.below);
+		expect(cutawayWhole.cap).not.toBe(cutawayWhole.background);
+		expect(cutawayCut.cap).toBe(cutawayWhole.cap);
+		expect(cutawayCut.programs).toBe(cutawayWhole.programs);
+
+		const cutawayShadowWhole = await page.evaluate(() => window.__STAGE_CLIP__.cutawayShadow(null));
+		const cutawayShadowCut = await page.evaluate(() => window.__STAGE_CLIP__.cutawayShadow(1));
+		expect(cutawayShadowWhole.error).toBe(0);
+		expect(cutawayShadowCut.error).toBe(0);
+		expect(cutawayShadowCut.hash).toBe(cutawayShadowWhole.hash);
+		await page.screenshot({ path: testInfo.outputPath('cutaway-twin.png') });
+
+		const stationary = await page.evaluate(() => window.__STAGE_CLIP__.cutawayStationary(120));
+		expect(stationary.distinctHashes).toBe(1);
+		expect(stationary.distinctPrograms).toBe(1);
+		expect(stationary.first).toBe(stationary.last);
+		expect(stationary.error).toBe(0);
+
 		console.log(
 			`stage clip: ${JSON.stringify({
 				programs: rest.programs,
