@@ -142,24 +142,58 @@ Verification run in this worktree:
 - `npm run check:project-model`, `npm run check:geometry-core` — pass (geometry-core unchanged).
 - editor `npm run check` — 0 errors, 18 pre-existing warnings.
 - `npm run test:arch` — 349 tests pass.
-- Focused suites (107 tests): planner, acceptance, `profile-revision` journey, Studio model,
+- Focused suites (109 tests): planner, acceptance, `profile-revision` journey, Studio model,
   native-form Paper agreement, Scene adapter lifecycle. The new journey opens the task from a
   selected form, settles Camera in Plan, previews typed anchors/extent with no source or history
   change, applies one F4 entry, checks preserved keys/`nextKey`/plane/scale/position, Undo/Redo,
-  repeated revision, discard, crossed-outline refusal and no-op.
+  repeated revision, discard, crossed-outline refusal, no-op and the re-read of a live session.
 - The acceptance suite serializes and re-admits the revised source; the existing Paper agreement
   suite passes with the same evaluator. No separate revised-source Paper test was added.
 
-Browser QA was **not completed**. In the local editor no native form could be created or reached:
-Studio's Objects action answered "Objects is not available in this project" for both an empty
-baseline and a saved starter Room opened with `?load=1&entry=studio`, so there was no form whose
-Card could offer `Edit outline`. The task path above is exercised headlessly through the production
-Scene adapter, acceptance host and Card controller instead. No Card screenshot or visual check was
-made.
+### Browser QA
+
+Completed in Chromium against the local editor (`npm run dev:local`, ports 5174/50941) through the
+documented Object Studio entry: the landing page's **New object**, the Objects palette's Box tile, a
+mat click that installs the form through the normal Place task, then the form Card's **Outline**
+action. A Playwright script drove the same path and asserted each Stage-visible fact:
+
+- The Studio-minted project arms Objects; the form's Card shows Width/Height/Depth before the task.
+- Opening `Edit outline` mounts the task with 4 anchors, `data-profile-plane="plan"`, extent 1 m and
+  Camera in **Plan**. The Card drops **Height** while the task owns that writer.
+- Typing A1 U `-0.8` and extent `1.4` leaves the accepted source and history untouched; Undo is
+  refused with "Apply or discard the outline revision first." and Apply enables.
+- Apply closes the task, restores the Card's Height field at 1.4 m (Width 1.3 m from the widened
+  outline, Depth 1 m), and enables Undo. Undo returns Height to 1 m; Redo returns it to 1.4 m.
+- Reopening shows A1 U `-0.8` and extent `1.4` from the accepted source, with Height hidden again;
+  Discard closes the task and restores the Card field at 1.4 m. No page errors were logged.
+
+A visual check at 1440×900 shows the Plan reading with the A1 anchor label, the task's four anchor
+rows, extent field and slider, Apply/Discard and the Card's Width/Depth-only size row. At 800×600
+the Studio strip and dock overlap the task panel until it is scrolled, so the Apply button is not
+comfortably reachable at that width; no responsive claim is made.
+
+Two defects the headless journey could not see were found and fixed in the same PR:
+
+- `instrumentForTask` is re-read on every surface change, and the session notifies one from inside
+  that read. Re-capturing there released the proposal, discarded typed anchors and, after an
+  install, registered a second proposal from inside the read, which hung the editor. The binding
+  now keeps answering with the task's own Card until it closes.
+- The object Card computed the omitted extent id correctly, but rendered its size row from a fixed
+  per-kind list, so Height never left the screen. The row now follows the controller's live fields.
+
+Studio's Objects action still answers "Objects is not available in this project" when a
+`?create=1&entry=studio` address is loaded directly (or after a full reload) rather than reached
+from the landing page's New object. On that boot the Scene adapter contributes no Find entries, so
+the dock has no `library` slot for `armWorldTool('objects')` to arm; Find's own "Objects" entry is
+absent too. This branch does not touch that path (`scene-contributions` find entries, dock keys,
+`stage-contribution-view`, `scopedFindEntries`); it is the existing T5.1 boot/scope behaviour, and
+the Studio entry above works, so it is recorded rather than fixed here.
 
 Deviations:
 
 - Elevation forms use Camera's `face` intent because Camera has no elevation reading, as recorded
   in Risks; no third reading was added.
+- The task panel is not responsive at 800×600: the Studio strip and dock overlap it as recorded
+  above; no layout change was made.
 - No independent reviewer subagent was available. The plan and this implementation received a
   cold self-review only; the workflow's required independent review remains outstanding.
