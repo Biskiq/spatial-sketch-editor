@@ -2190,7 +2190,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 				rowMore.click();
 				await settled();
 			}
-			const settings = target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]');
+			const settings = target.querySelector<HTMLButtonElement>('[aria-label="Ink settings"]');
 			if (settings === null) throw new Error(`Missing ${selector} and the Ink settings control`);
 			if (settings.getAttribute('aria-expanded') !== 'true') {
 				settings.click();

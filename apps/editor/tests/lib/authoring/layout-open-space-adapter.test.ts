@@ -27,7 +27,7 @@ import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/author
 import { createStageAdapterServices, mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import { stageCardActions, stageCardFacts } from '$lib/authoring/stage/stage-contributions';
-import { wallChainCommitIntent } from '$lib/authoring/adapters/layout/drawing-planners';
+import { layoutSubjectReference, wallChainCommitIntent } from '$lib/authoring/adapters/layout/drawing-planners';
 import { inkSurface, LAYOUT_INK_TASK } from '$lib/authoring/adapters/layout/ink';
 import { spaceCreateIntent } from '$lib/authoring/adapters/layout/space-create-planners';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
@@ -352,6 +352,88 @@ describe('Room Ink and accepted Open Space creation', () => {
 		expect(facade.keyboardIntent({ kind: 'finish' }).claimed).toBe(true);
 		await vi.waitFor(() => expect(acceptedLayout(facade).rooms).toHaveLength(1));
 		expect(acceptedLayout(facade).rooms[0]!.virtualEdges).toHaveLength(3);
+	});
+
+	it('preserves the Room and Opening references when accepting a shared Wall split', async () => {
+		const baseline = gallery(false);
+		const opening = {
+			id: 'door-gallery', wallId: 'wall-a', kind: 'door' as const, profile: 'rectangular' as const,
+			offset: 3.25, width: 0.5, height: 2, sillHeight: 0
+		};
+		baseline.openings.push(opening);
+		const onCreated = vi.fn();
+		const { facade, host } = await mount(baseline, onCreated);
+		const coordinator = host.coordinator();
+		const accept = vi.spyOn(coordinator, 'accept');
+		const beforeContentId = facade.snapshot().sourceContentId;
+		armRoom(facade);
+		inkSurface()!.controller.drawOpenSide?.();
+		for (const point of [[1, 0], [1, -2], [2.5, -2], [2.5, 0]] as LayoutVec2[]) tap(facade, point);
+		expect(inkSurface()!.snapshot().room?.canCreate).toBe(true);
+		expect(facade.keyboardIntent({ kind: 'finish' }).claimed).toBe(true);
+		await vi.waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
+		expect(accept).toHaveBeenCalledTimes(1);
+		const result = await accept.mock.results[0]!.value;
+		if (result.kind !== 'accepted') throw new Error(`Expected an accepted split, got ${result.kind}`);
+
+		const created = acceptedLayout(facade);
+		const booth = created.rooms.find(({ id }) => id !== 'room-gallery')!;
+		const sharedWallId = booth.boundary[0]!.wallId;
+		const openingWallId = created.openings[0]!.wallId;
+		const findJunction = (x: number, z: number) => created.junctions.find(({ point }) =>
+			Math.abs(point[0] - x) < 1e-6 && Math.abs(point[1] - z) < 1e-6
+		)!.id;
+		const splitStart = findJunction(1, 0);
+		const splitEnd = findJunction(2.5, 0);
+		const firstCorner = findJunction(1, -2);
+		const secondCorner = findJunction(2.5, -2);
+		expect(created.rooms[0]).toEqual({
+			...baseline.rooms[0],
+			boundary: [
+				{ wallId: 'wall-a', direction: 'forward' },
+				{ wallId: sharedWallId, direction: 'forward' },
+				{ wallId: openingWallId, direction: 'forward' },
+				...baseline.rooms[0]!.boundary.slice(1)
+			]
+		});
+		expect(booth.boundary).toEqual([{ wallId: sharedWallId, direction: 'reverse' }]);
+		expect(created.walls.find(({ id }) => id === 'wall-a')).toMatchObject({ endJunctionId: splitStart });
+		expect(created.walls.find(({ id }) => id === sharedWallId)).toMatchObject({
+			startJunctionId: splitStart, endJunctionId: splitEnd
+		});
+		expect(created.walls.find(({ id }) => id === openingWallId)).toMatchObject({
+			startJunctionId: splitEnd, endJunctionId: 'j-b'
+		});
+		expect(created.openings).toEqual([{ ...opening, wallId: openingWallId, offset: expect.closeTo(0.75) }]);
+
+		const reference = (kind: string, id: string, contentRevision: string) =>
+			layoutSubjectReference({ kind, id, contentRevision, levelId: baseline.floor.id });
+		const afterContentId = facade.snapshot().sourceContentId;
+		const births = [
+			['room', booth.id], ['junction', splitStart], ['junction', splitEnd],
+			['junction', firstCorner], ['junction', secondCorner], ['wall', sharedWallId], ['wall', openingWallId]
+		] as const;
+		const survivors = [['wall', 'wall-a'], ['room', 'room-gallery'], ['opening', opening.id]] as const;
+		const expectedCorrespondence = [
+			...births.map(([kind, id]) => ({ relation: 'created', before: null, after: reference(kind, id, afterContentId) })),
+			...survivors.map(([kind, id]) => ({
+				relation: 'preserved', before: reference(kind, id, beforeContentId), after: reference(kind, id, afterContentId)
+			}))
+		];
+		expect(result.correspondence).toHaveLength(expectedCorrespondence.length);
+		expect(result.correspondence).toEqual(expect.arrayContaining(expectedCorrespondence));
+		expect(result.changes.map(({ kind, fields, subjectIds }) => ({ kind, fields, subjectIds: [...subjectIds].sort() }))).toEqual([{
+			kind: 'layout-open-space-create', fields: ['rooms', 'junctions', 'walls', 'openings'],
+			subjectIds: [...births, ...survivors].map(([, id]) => id).sort()
+		}]);
+		expect(coordinator.history()).toMatchObject({ depth: 2, position: 1 });
+		expect((await host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(facade)).toEqual(baseline);
+		expect(facade.snapshot().sourceContentId).toBe(beforeContentId);
+		expect((await host.redo()).kind).toBe('installed');
+		expect(acceptedLayout(facade)).toEqual(created);
+		expect(facade.snapshot().sourceContentId).toBe(afterContentId);
+		expect(accept).toHaveBeenCalledTimes(1);
 	});
 
 	it('undoes and restores a divided remainder separately from the closed named Room', async () => {
