@@ -23,6 +23,7 @@ import {
 	allocateCapturedId,
 	mintLayoutIdCapture,
 	planSpaceOpenSideEndSlide,
+	planSpaceOpenSideOffset,
 	proposeSpaceOpenSideOffset,
 	roomBoundaryPolygon,
 	spaceOpenSideFrames,
@@ -83,6 +84,8 @@ type OffsetGesture = {
 	offset: number;
 	snap: LayoutSnapWinner | null;
 	refusal: string | null;
+	/** The attempted document used for the live candidate. */
+	preview: LayoutDocumentWallFirst | null;
 };
 
 type SlideGesture = {
@@ -167,6 +170,31 @@ function attemptedRefusal(
 	if (placement === undefined) return null;
 	const name = otherSpaceName(attempted, roomId, placement.roomIds);
 	return openSideRefusalWords(placement.code, placement.message, name);
+}
+
+/** The other Space a placement message names, for the release refusal. */
+function otherSpaceNameInMessage(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	message: string
+): string | null {
+	const own = document.rooms.find((room) => room.id === roomId)?.name;
+	return (
+		[...message.matchAll(/Space '([^']+)'/g)]
+			.map((match) => match[1]!)
+			.find((name) => name !== own) ?? null
+	);
+}
+
+/** A snap is only shown when the constrained handle actually reaches it. */
+function constrainedSnap(
+	winner: LayoutSnapWinner | null,
+	point: LayoutVec2
+): LayoutSnapWinner | null {
+	if (winner === null) return null;
+	return Math.hypot(winner.point[0] - point[0], winner.point[1] - point[1]) <= 1e-6
+		? winner
+		: null;
 }
 
 function refusalForSlideRejection(
@@ -391,7 +419,8 @@ export function createOpenSideGestureSession({
 			lease,
 			offset: 0,
 			snap: null,
-			refusal: null
+			refusal: null,
+			preview: null
 		};
 		services.stage.notifySurfaceChange();
 		return true;
@@ -492,14 +521,32 @@ export function createOpenSideGestureSession({
 				(snapped.point[1] - frame.midpoint[1]) * frame.normal[1]
 		);
 		current.offset = Math.abs(offset) <= 1e-9 ? 0 : offset;
-		current.snap = current.offset === 0 ? null : snapped.winner;
-		current.refusal =
-			current.offset === 0
-				? null
-				: attemptedRefusal(
-						proposeSpaceOpenSideOffset(document, frame, current.offset),
-						current.roomId
-					);
+		current.preview = null;
+		current.snap = null;
+		current.refusal = null;
+		if (current.offset !== 0) {
+			const attempted = proposeSpaceOpenSideOffset(document, frame, current.offset);
+			const plan = planSpaceOpenSideOffset(
+				document,
+				current.roomId,
+				frame.startJunctionId,
+				frame.endJunctionId,
+				current.offset
+			);
+			if (plan.kind === 'success') {
+				current.preview = plan.document;
+				current.refusal = attemptedRefusal(plan.document, current.roomId);
+			} else {
+				current.preview = attempted;
+				current.refusal = openSideRefusalWords(
+					plan.rejection.code,
+					plan.rejection.message,
+					otherSpaceName(document, current.roomId, plan.rejection.targetIds ?? [])
+				);
+			}
+		}
+		const at = movedMidpoint(current);
+		current.snap = constrainedSnap(snapped.winner, at);
 		services.stage.notifySurfaceChange();
 	}
 
@@ -535,7 +582,7 @@ export function createOpenSideGestureSession({
 		if (at === null) return;
 		current.station = station;
 		current.point = [at.point[0], at.point[1]];
-		current.snap = snapped.winner;
+		current.snap = constrainedSnap(snapped.winner, current.point);
 		current.preview = null;
 		current.refusal = null;
 		if (station <= 1e-9 || station >= current.stationFrame.length - 1e-9) {
@@ -604,6 +651,8 @@ export function createOpenSideGestureSession({
 		}
 		// Release: one captured intent, one history entry.
 		if (current.kind === 'offset') {
+			// A release can name a position no move event delivered.
+			moveOffset(current, intent, ctx);
 			const moved = Math.abs(current.offset) > 1e-9 && isPointerDrag(current.pressCss, intent.css);
 			const refusal = current.refusal;
 			const at = movedMidpoint(current);
@@ -613,6 +662,7 @@ export function createOpenSideGestureSession({
 			services.stage.notifySurfaceChange();
 			return true;
 		}
+		moveSlide(current, intent, ctx);
 		const moved =
 			Math.abs(current.station - current.endpointStation) > 1e-9 &&
 			isPointerDrag(current.pressCss, intent.css);
@@ -663,7 +713,11 @@ export function createOpenSideGestureSession({
 			settleAtRoom(
 				current.roomId,
 				movedMidpoint(current),
-				openSideRefusalWords(outcome.code, outcome.message)
+				openSideRefusalWords(
+					outcome.code,
+					outcome.message,
+					otherSpaceNameInMessage(document, current.roomId, outcome.message)
+				)
 			);
 		}
 		services.stage.notifySurfaceChange();
@@ -695,7 +749,11 @@ export function createOpenSideGestureSession({
 			settleAtRoom(
 				current.roomId,
 				current.point,
-				openSideRefusalWords(outcome.code, outcome.message)
+				openSideRefusalWords(
+					outcome.code,
+					outcome.message,
+					otherSpaceNameInMessage(document, current.roomId, outcome.message)
+				)
 			);
 		}
 		services.stage.notifySurfaceChange();
@@ -706,7 +764,6 @@ export function createOpenSideGestureSession({
 		if (current === null) return null;
 		if (current.kind === 'offset') {
 			if (current.offset === 0) return [];
-			const attempted = proposeSpaceOpenSideOffset(document, current.frame, current.offset);
 			const at = movedMidpoint(current);
 			const label = {
 				world: [at[0], y, at[1]] as [number, number, number],
@@ -716,7 +773,10 @@ export function createOpenSideGestureSession({
 				candidatePreviewOf({
 					id: PREVIEW_ID,
 					role: current.refusal === null ? 'subject' : 'refused',
-					geometry: { polygons: [previewPolygon(attempted, current.roomId, y)], segments: [] },
+					geometry: {
+						polygons: [previewPolygon(current.preview ?? document, current.roomId, y)],
+						segments: []
+					},
 					labels: [label],
 					snap:
 						current.snap === null

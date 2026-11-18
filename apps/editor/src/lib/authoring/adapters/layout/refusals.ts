@@ -38,6 +38,16 @@ export function openSideRefusalWords(
 	if (code === 'unknown_open_side') return 'That open side has changed. Select the Space again.';
 	if (code === 'no_op') return 'The open side is already there.';
 	if (code === 'split_distance_out_of_range') return 'Slide the open side inside its Wall.';
+	if (code === 'opening_on_released_stub') {
+		return 'The released Wall piece still holds an Opening. Slide the other way or move the Opening first.';
+	}
+	if (
+		code === 'split_through_opening_interior' ||
+		code === 'split_at_existing_endpoint' ||
+		code === 'closed_wall_isolated'
+	) {
+		return wallSplitRefusalWords(code, message);
+	}
 	return wallRefusalWords(code, message);
 }
 

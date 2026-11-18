@@ -334,7 +334,7 @@ describe('SP1d — end-knob slide and split at release', () => {
 		]);
 	});
 
-	it('refuses a station outside the Wall and a split through an Opening', () => {
+	it('refuses a station outside the Wall', () => {
 		const document = openSpaceWithOutsideRoom();
 		const outside = planSpaceOpenSideEndSlide(
 			document,
@@ -350,6 +350,57 @@ describe('SP1d — end-knob slide and split at release', () => {
 		expect(outside.kind).toBe('rejected');
 		if (outside.kind === 'rejected') {
 			expect(outside.rejection.code).toBe('split_distance_out_of_range');
+		}
+	});
+
+	it('derives a straight split from its station, never a stray caller point', () => {
+		const plan = planSpaceOpenSideEndSlide(
+			openSpaceWithOutsideRoom(),
+			'room-open',
+			'j-d',
+			'j-a',
+			'end',
+			'wall-a',
+			1.5,
+			[5, 0],
+			capturedAllocator(captureFor('sp1d-slide-stray-point'))
+		);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.junctions.find((entry) => entry.id === plan.splitJunctionId)!.point).toEqual([
+			1.5, 0
+		]);
+	});
+
+	it('refuses to release a stub that still hosts an Opening', () => {
+		const document = openSpaceWithOutsideRoom();
+		document.openings = [
+			{
+				id: 'door-stub',
+				wallId: 'wall-a',
+				kind: 'door',
+				offset: 0.5,
+				width: 0.6,
+				height: 2,
+				sillHeight: 0,
+				profile: 'rectangular'
+			}
+		];
+		const plan = planSpaceOpenSideEndSlide(
+			document,
+			'room-open',
+			'j-d',
+			'j-a',
+			'end',
+			'wall-a',
+			1.5,
+			[1.5, 0],
+			capturedAllocator(captureFor('sp1d-slide-stub-opening'))
+		);
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind === 'rejected') {
+			expect(plan.rejection.code).toBe('opening_on_released_stub');
+			expect(plan.rejection.targetIds).toEqual(expect.arrayContaining(['door-stub']));
 		}
 	});
 });

@@ -170,6 +170,11 @@ function preparedOpenSideCandidate(input: {
 	readonly roomId: string;
 	readonly document: LayoutDocumentWallFirst;
 	readonly changedWallIds: readonly string[];
+	readonly changedJunctionIds?: readonly string[];
+	/** Every Room whose boundary names a changed Wall, including the target. */
+	readonly affectedRoomIds?: readonly string[];
+	/** Openings whose host Wall is changed by the candidate. */
+	readonly affectedOpeningIds?: readonly string[];
 	/** Walls that existed before and still exist; defaults to every changed Wall. */
 	readonly preservedWallIds?: readonly string[];
 	readonly createdWallIds?: readonly string[];
@@ -181,6 +186,11 @@ function preparedOpenSideCandidate(input: {
 	const room = layoutReference(input.request.snapshot, { kind: 'room', id: input.roomId }, contentRevision, levelId);
 	const createdWallIds = input.createdWallIds ?? [];
 	const createdJunctionIds = input.createdJunctionIds ?? [];
+	const changedJunctionIds = [...new Set(input.changedJunctionIds ?? [])];
+	const affectedRoomIds = [...new Set(input.affectedRoomIds ?? [])].filter(
+		(roomId) => roomId !== input.roomId
+	);
+	const affectedOpeningIds = [...new Set(input.affectedOpeningIds ?? [])];
 	const preservedWallIds = [...new Set(input.preservedWallIds ?? input.changedWallIds)].filter(
 		(wallId) => !createdWallIds.includes(wallId)
 	);
@@ -202,15 +212,34 @@ function preparedOpenSideCandidate(input: {
 					...new Set([
 						input.roomId,
 						...input.changedWallIds,
+							...changedJunctionIds,
+							...affectedRoomIds,
+							...affectedOpeningIds,
 						...createdJunctionIds,
 						...createdWallIds
 					])
 				],
-				fields: ['rooms', 'walls', 'junctions']
+					fields: [
+						'rooms',
+						'walls',
+						'junctions',
+						...(affectedOpeningIds.length === 0 ? [] : ['openings'])
+					]
 			}
 		],
 		correspondence: [
 			{ relation: 'preserved', before: room, after: room },
+				...changedJunctionIds
+					.filter((junctionId) => !createdJunctionIds.includes(junctionId))
+					.map((junctionId) => {
+						const reference = layoutSubjectReference({
+							kind: 'junction',
+							id: junctionId,
+							contentRevision,
+							levelId
+						});
+						return { relation: 'preserved' as const, before: reference, after: reference };
+					}),
 			...preservedWallIds.map((wallId) => {
 				const reference = layoutReference(
 					input.request.snapshot,
@@ -220,6 +249,24 @@ function preparedOpenSideCandidate(input: {
 				);
 				return { relation: 'preserved' as const, before: reference, after: reference };
 			}),
+				...affectedRoomIds.map((roomId) => {
+					const reference = layoutReference(
+						input.request.snapshot,
+						{ kind: 'room' as const, id: roomId },
+						contentRevision,
+						levelId
+					);
+					return { relation: 'preserved' as const, before: reference, after: reference };
+				}),
+				...affectedOpeningIds.map((openingId) => {
+					const reference = layoutReference(
+						input.request.snapshot,
+						{ kind: 'opening' as const, id: openingId },
+						contentRevision,
+						levelId
+					);
+					return { relation: 'preserved' as const, before: reference, after: reference };
+				}),
 			...createdJunctionIds.map((id) => ({
 				relation: 'created' as const,
 				before: null,
@@ -257,7 +304,14 @@ function openSideOffsetPlanner(): DomainPlanner<ProjectEnvelope> {
 			kind: LAYOUT_OPEN_SIDE_OFFSET_KIND,
 			roomId: payload.roomId,
 			document: plan.document,
-			changedWallIds: plan.changedWallIds
+			changedWallIds: plan.changedWallIds,
+			changedJunctionIds: plan.changedJunctionIds,
+			affectedRoomIds: request.snapshot.domain.source.units.layout.data.rooms
+				.filter((room) => room.boundary.some((ref) => plan.changedWallIds.includes(ref.wallId)))
+				.map((room) => room.id),
+			affectedOpeningIds: request.snapshot.domain.source.units.layout.data.openings
+				.filter((opening) => plan.changedWallIds.includes(opening.wallId))
+				.map((opening) => opening.id)
 		});
 	});
 }
@@ -302,6 +356,13 @@ function openSideSlidePlanner(): DomainPlanner<ProjectEnvelope> {
 			roomId: payload.roomId,
 			document: plan.document,
 			changedWallIds: [payload.wallId, createdWallId],
+			changedJunctionIds: plan.changedJunctionIds,
+			affectedRoomIds: baseline.rooms
+				.filter((room) => room.boundary.some((ref) => ref.wallId === payload.wallId))
+				.map((room) => room.id),
+			affectedOpeningIds: baseline.openings
+				.filter((opening) => opening.wallId === payload.wallId)
+				.map((opening) => opening.id),
 			preservedWallIds: [payload.wallId],
 			createdWallIds: [createdWallId],
 			createdJunctionIds: [plan.splitJunctionId]

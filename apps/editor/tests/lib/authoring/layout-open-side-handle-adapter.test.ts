@@ -427,6 +427,32 @@ describe('SP1d — end knob slides and splits at release', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 		mounted.facade.dispose();
 	});
+
+	it('uses the release position even when no move event preceded it', async () => {
+		const mounted = await mount(gallery());
+		const room = acceptedLayout(mounted.facade).rooms[0]!;
+		selectRoom(mounted.facade, room.id);
+		settle(mounted.facade);
+		const before = mounted.facade.snapshot().canonicalJson;
+		const from = stageCss(mounted.facade, [0, 0]);
+		const to = stageCss(mounted.facade, [1.5, 0]);
+		const evaluationId = mounted.facade.evaluationId()!;
+		mounted.facade.pointerIntent({ phase: 'down', handleId: END, css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await committed(mounted, before);
+		settle(mounted.facade);
+		const accepted = acceptedLayout(mounted.facade);
+		expect(accepted.walls.length).toBe(4);
+		expect(
+			accepted.junctions.find(
+				(entry) =>
+					entry.point[0] === 1.5 &&
+					entry.point[1] === 0 &&
+					entry.id !== 'j-a'
+			)
+		).toBeDefined();
+		mounted.facade.dispose();
+	});
 });
 
 describe('SP1d — the handles are editor-only', () => {

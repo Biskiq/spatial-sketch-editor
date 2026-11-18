@@ -276,7 +276,9 @@ export type PrecisionRejection = {
 		/** The moved open side would share interior area with another Space. */
 		| 'space_overlap'
 		/** The moved open side would contain, or be contained by, another Space. */
-		| 'space_contains_space';
+		| 'space_contains_space'
+		/** An end slide would release a fragment that still hosts an Opening. */
+		| 'opening_on_released_stub';
 	message: string;
 	targetIds?: readonly string[];
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];
@@ -573,7 +575,37 @@ export function planSpaceOpenSideEndSlide(
 			}
 		};
 	}
-	const split = planWallSplitAtPoint(document, wallId, station, point, allocator);
+	if (
+		!Array.isArray(point) ||
+		point.length !== 2 ||
+		!Number.isFinite(point[0]) ||
+		!Number.isFinite(point[1])
+	) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'invalid_value',
+				message: 'A slide point must be two finite coordinates.',
+				targetIds: [wallId]
+			}
+		};
+	}
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (wall === undefined) {
+		return { kind: 'rejected', rejection: { code: 'unknown_wall', message: `Unknown Wall '${wallId}'`, targetIds: [wallId] } };
+	}
+	// A straight Wall's station is authoritative. A caller-supplied coordinate
+	// must never move the split off the centerline; curved Walls already ignore
+	// the override in planWallSplitAtPoint.
+	const endpoints = wall.centerline.kind === 'line' ? wallEndpoints(document, wall) : undefined;
+	const splitPoint: LayoutVec2 =
+		endpoints === undefined
+			? point
+			: [
+					endpoints.start[0] + ((endpoints.end[0] - endpoints.start[0]) * station) / endpoints.length,
+					endpoints.start[1] + ((endpoints.end[1] - endpoints.start[1]) * station) / endpoints.length
+				];
+	const split = planWallSplitAtPoint(document, wallId, station, splitPoint, allocator);
 	if (split.kind === 'rejected') {
 		return {
 			kind: 'rejected',
@@ -597,6 +629,17 @@ export function planSpaceOpenSideEndSlide(
 	);
 	if (stub === undefined) {
 		return { kind: 'rejected', rejection: { code: 'geometry_invalid', message: 'The Wall split lost the open side corner.', targetIds: [wallId] } };
+	}
+	const releasedOpenings = split.document.openings.filter((opening) => opening.wallId === stub.id);
+	if (releasedOpenings.length > 0) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'opening_on_released_stub',
+				message: `The released Wall fragment '${stub.id}' still hosts an Opening`,
+				targetIds: [stub.id, ...releasedOpenings.map((opening) => opening.id)]
+			}
+		};
 	}
 	const keptWallId = stub.id === wallId ? createdWallId : wallId;
 	const splitRoom = split.document.rooms.find((room) => room.id === roomId);
