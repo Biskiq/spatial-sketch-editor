@@ -24,8 +24,9 @@ export type SubjectScope = {
 	 * Which contributed Card actions a subject offers. Absent means every action. The
 	 * facade that publishes actions applies it, so the Card, the Delete key and a stale
 	 * record all meet the same answer; the protected root cannot be duplicated or deleted.
+	 * The action id lets a scope admit one root action without admitting the rest.
 	 */
-	readonly admitsCardAction?: (adapterId: string, subjectId: string) => boolean;
+	readonly admitsCardAction?: (adapterId: string, subjectId: string, actionId?: string) => boolean;
 };
 
 export type SubjectScopeCell = {
@@ -59,6 +60,11 @@ export function scopeAdmitsOperation(scope: SubjectScope | null, adapterId: stri
 export const SCOPE_HOST_OWNER = 'host';
 
 /** Whether a subject's contributed Card action is inside the scope (always, when unscoped). */
-export function scopeAdmitsCardAction(scope: SubjectScope | null, adapterId: string, subjectId: string): boolean {
-	return scope === null || scope.admitsCardAction === undefined || scope.admitsCardAction(adapterId, subjectId);
+export function scopeAdmitsCardAction(
+	scope: SubjectScope | null,
+	adapterId: string,
+	subjectId: string,
+	actionId?: string
+): boolean {
+	return scope === null || scope.admitsCardAction === undefined || scope.admitsCardAction(adapterId, subjectId, actionId);
 }

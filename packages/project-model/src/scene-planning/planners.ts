@@ -46,6 +46,7 @@ import {
 	planMoveHorizontal,
 	planPlaceOnFloor,
 	planResizeOnFloor,
+	planSetFormProfile,
 	planSetFormSize,
 	planSetLift,
 	planSetName,
@@ -730,6 +731,15 @@ function planOperation(
 				context,
 				entityId,
 				scale: payload.scale,
+				...(payload.choice === undefined ? {} : { choice: payload.choice })
+			});
+		case 'set-form-profile':
+			if (payload.kind !== 'set-form-profile') return payloadMismatch(kind);
+			return planSetFormProfile({
+				context,
+				entityId,
+				outline: payload.outline,
+				extent: payload.extent,
 				...(payload.choice === undefined ? {} : { choice: payload.choice })
 			});
 		case 'resize-on-floor':

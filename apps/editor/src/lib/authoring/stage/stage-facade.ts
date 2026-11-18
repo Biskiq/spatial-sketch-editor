@@ -108,7 +108,8 @@ export function createStageFacade(input: {
 		resizeHandles: session.resizeHandles,
 		setResizeHandles: session.setResizeHandles,
 		adapterForSelection: (entry) => adapterForSelection(adapters, entry),
-		admitsCardAction: (adapterId, subjectId) => scopeAdmitsCardAction(input.subjectScope?.get() ?? null, adapterId, subjectId)
+		admitsCardAction: (adapterId, subjectId, actionId) =>
+			scopeAdmitsCardAction(input.subjectScope?.get() ?? null, adapterId, subjectId, actionId)
 	});
 	const picking = createSelectionPick({
 		adapters,

@@ -62,6 +62,18 @@ export type SceneOperationPayload =
 			readonly choice?: SceneSupportChoice;
 	  }
 	| {
+			readonly kind: 'set-form-profile';
+			readonly entityId: string;
+			readonly outline: readonly {
+				readonly key: number;
+				readonly u: number;
+				readonly v: number;
+				readonly smooth: boolean;
+			}[];
+			readonly extent: number;
+			readonly choice?: SceneSupportChoice;
+	  }
+	| {
 			readonly kind: 'place-object';
 			readonly definitionKey: string;
 			readonly metadataContentId: string;
@@ -165,6 +177,8 @@ export function readSceneOperationPayload(
 			return readPlaceFormCopyPayload(reader, raw);
 		case 'set-form-size':
 			return readSetFormSizePayload(reader, raw);
+		case 'set-form-profile':
+			return readSetFormProfilePayload(reader, raw);
 		case 'place-object':
 			return readPlaceObjectPayload(reader, raw);
 		case 'move-horizontal':
@@ -344,6 +358,58 @@ function readSetFormSizePayload(reader: ShapeReader, raw: unknown): SceneOperati
 		kind: 'set-form-size',
 		entityId,
 		scale,
+		...(choice.choice === undefined ? {} : { choice: choice.choice })
+	};
+}
+
+/**
+ * The complete replacement outline and extent a profile revision carries.
+ *
+ * Keys are read as positive safe integers, so a payload cannot smuggle in a
+ * fresh or fractional identity; the planner separately proves the captured key
+ * sequence is the accepted one. Plane, scale and `nextKey` are deliberately
+ * absent: this intent cannot change them.
+ */
+function readSetFormProfilePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, ['entityId', 'outline', 'extent', 'supportChoice']);
+	if (record === null) return null;
+	const entityId = reader.opaqueId(record.entityId, `${path}.entityId`);
+	const extent = reader.number(record.extent, `${path}.extent`);
+	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	let outline: { key: number; u: number; v: number; smooth: boolean }[] | null = null;
+	if (!Array.isArray(record.outline)) {
+		reader.problem(`${path}.outline`, 'not-an-array', `${path}.outline must be an array`);
+	} else {
+		const parsed: { key: number; u: number; v: number; smooth: boolean }[] = [];
+		let valid = true;
+		for (const [index, entry] of record.outline.entries()) {
+			const anchorPath = `${path}.outline[${index}]`;
+			const anchor = reader.object(entry, anchorPath, ['key', 'u', 'v', 'smooth']);
+			if (anchor === null) {
+				valid = false;
+				break;
+			}
+			const key = reader.integerAtLeast(anchor.key, `${anchorPath}.key`, 1);
+			const u = reader.number(anchor.u, `${anchorPath}.u`);
+			const v = reader.number(anchor.v, `${anchorPath}.v`);
+			const smooth = reader.boolean(anchor.smooth, `${anchorPath}.smooth`);
+			if (key === null || u === null || v === null || smooth === null) {
+				valid = false;
+				break;
+			}
+			parsed.push({ key, u, v, smooth });
+		}
+		if (valid) outline = parsed;
+	}
+	if (entityId === null || outline === null || extent === null || choice === undefined) {
+		return null;
+	}
+	return {
+		kind: 'set-form-profile',
+		entityId,
+		outline,
+		extent,
 		...(choice.choice === undefined ? {} : { choice: choice.choice })
 	};
 }

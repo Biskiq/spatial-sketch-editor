@@ -65,7 +65,18 @@
 	});
 	/** The selected entity's kind decides its size row and whether Save is offered. */
 	let entityKind = $state<SceneEntity['kind'] | null>(null);
-	const sizeIds = $derived(entityKind === null ? [] : sceneObjectSizeFieldIds(entityKind));
+	/**
+	 * The fields the controller currently offers. The outline task omits the
+	 * extent dimension from `fields()`, and the size row must follow that answer:
+	 * reading it from a fixed per-kind list kept the row on screen because no
+	 * other component state changed when the task opened.
+	 */
+	let presentFields = $state<readonly SceneObjectCardFieldId[]>([]);
+	const sizeIds = $derived(
+		entityKind === null
+			? []
+			: sceneObjectSizeFieldIds(entityKind).filter((id) => presentFields.includes(id))
+	);
 	let saveBusy = $state(false);
 	let saveMessage = $state('');
 	let saveRefused = $state(false);
@@ -82,7 +93,9 @@
 	function sync(): void {
 		const current = controller;
 		if (current === null) return;
-		for (const field of current.fields()) {
+		const fields = current.fields();
+		presentFields = fields.map((field) => field.id);
+		for (const field of fields) {
 			values[field.id] = field.text;
 			errors[field.id] = field.error;
 		}

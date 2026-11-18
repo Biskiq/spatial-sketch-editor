@@ -35,6 +35,7 @@ import {
 } from './object-marks';
 import { localContactMinY, sceneEntityReference, sceneModelContactMinY } from './placement';
 import { formSizeMeasurement, previewFormSize } from './shape/form-size';
+import { SCENE_PROFILE_REVISION_KIND } from './scene-task-ids';
 import type { FormLibraryClient } from './library/client';
 
 const FORM_SIZE_AXIS = { width: 0, height: 1, depth: 2 } as const;
@@ -119,6 +120,27 @@ export function sceneObjectCardController(
 		const contactMinY = contactOf(live);
 		if (live === null || contactMinY === null) return null;
 		return sceneEntityLift(contextOf(), live, contactMinY)?.lift ?? null;
+	}
+
+	/**
+	 * The one Size field the open outline task owns.
+	 *
+	 * The task's extent writes the profile plane's own dimension through
+	 * `set-form-profile`; the Card must not offer a second writer for it while the
+	 * task is open. A plan profile's extent is the Y dimension (`height`), an
+	 * elevation profile's is the Z dimension (`depth`). This is why the scope
+	 * admits `Edit outline` on the root but still refuses every other root action:
+	 * the Card stays the surface, with exactly one writer per fact.
+	 */
+	function profileExtentField(live: ReturnType<typeof liveEntity>): SceneObjectCardFieldId | null {
+		if (live === null || live.kind !== 'form') return null;
+		const task = services.stage.session.task();
+		if (task?.kind !== SCENE_PROFILE_REVISION_KIND) return null;
+		// The task's target is the live selected root; a contributed targetRef is a
+		// bind-time snapshot and can be absent or stale after a later selection.
+		const primary = services.stage.selectionState().primary;
+		if (primary?.domain !== 'scene' || primary.subject.id !== live.id) return null;
+		return live.form.generator.plane === 'plan' ? 'height' : 'depth';
 	}
 
 	function acceptedText(id: SceneObjectCardFieldId): string {
@@ -230,12 +252,15 @@ export function sceneObjectCardController(
 		fields() {
 			const live = liveEntity();
 			if (live === null) return [];
-			return sceneObjectCardFields(live, liftOf(live)).map((field) => {
+			const hidden = profileExtentField(live);
+			return sceneObjectCardFields(live, liftOf(live))
+				.filter((field) => field.id !== hidden)
+				.map((field) => {
 				const draft = drafts.get(field.id);
-				return draft === undefined
-					? { ...field, error: null }
-					: { ...field, text: draft.text, error: draft.error };
-			});
+					return draft === undefined
+						? { ...field, error: null }
+						: { ...field, text: draft.text, error: draft.error };
+				});
 		},
 		edit(id, text) {
 			if (!SCENE_OBJECT_CARD_FIELD_IDS.includes(id)) return;

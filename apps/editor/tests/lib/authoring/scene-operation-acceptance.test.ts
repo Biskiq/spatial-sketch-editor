@@ -361,7 +361,7 @@ function acceptedForm(coordinator: AcceptanceCoordinator<ProjectEnvelope>, entit
 }
 
 describe('Scene operations through the F.4 coordinator', () => {
-	it('registers the fifteen Scene planners beside the conformance Layout planner', async () => {
+	it('registers the sixteen Scene planners beside the conformance Layout planner', async () => {
 		const { coordinator } = await boot();
 		expect(coordinator.planners().map((planner) => planner.kind).sort()).toEqual(
 			[
@@ -369,6 +369,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 				'place-form-copy',
 				'create-form',
 				'set-form-size',
+				'set-form-profile',
 				'move-horizontal',
 				'set-yaw',
 				'place-on-floor',
@@ -577,6 +578,84 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(formMeshDigest(evaluateSceneForm(reopenedForm.form))).toBe(
 			formMeshDigest(evaluateSceneForm(liveForm.form))
 		);
+	});
+
+	it('revises an existing form outline as one entry, with exact Undo/Redo and a refused no-op', async () => {
+		const { coordinator } = await boot();
+		const bootState = now(coordinator);
+		const created = await coordinator.accept(
+			createFormIntent({
+				intentRevision: bootState.intentRevision,
+				operationId: 'op-create-profile-form',
+				entityId: 'entity-form',
+				payload: {
+					plane: 'plan',
+					outline: [
+						{ u: 0, v: 0, smooth: false },
+						{ u: 2, v: 0, smooth: false },
+						{ u: 2, v: 1, smooth: false },
+						{ u: 0, v: 1, smooth: false }
+					],
+					extent: 0.8,
+					position: [3, 0, 2],
+					yaw: 0,
+					materialId: 'plaster-warm',
+					name: 'Drawn plinth'
+				}
+			})
+		);
+		expect(created.kind).toBe('accepted');
+		if (created.kind !== 'accepted') return;
+		const original = acceptedForm(coordinator, 'entity-form');
+		const outline = original.form.generator.outline.map((anchor, index) =>
+			index === 0 ? { ...anchor, u: anchor.u + 0.5 } : { ...anchor }
+		);
+
+		const state = now(coordinator);
+		const revised = await coordinator.accept(
+			sceneIntent({
+				kind: 'set-form-profile',
+				operationId: 'op-profile-form',
+				intentRevision: state.intentRevision,
+				contentId: state.contentId,
+				entityId: 'entity-form',
+				payload: { entityId: 'entity-form', outline, extent: 1.1 }
+			})
+		);
+		expect(revised.kind).toBe('accepted');
+		if (revised.kind !== 'accepted') return;
+		expect(coordinator.history().depth).toBe(3);
+		const revisedForm = acceptedForm(coordinator, 'entity-form');
+		expect(revisedForm.form.generator.outline).toEqual(outline);
+		expect(revisedForm.form.generator.extent).toBe(1.1);
+		// Keys, the next key and the placement are the form's own preserved facts.
+		expect(revisedForm.form.nextKey).toBe(original.form.nextKey);
+		expect(revisedForm.position).toEqual(original.position);
+		const afterRevision = coordinator.current();
+
+		const undo = await coordinator.undo();
+		expect(undo.kind).toBe('restored');
+		expect(acceptedForm(coordinator, 'entity-form').form.generator.outline).toEqual(
+			original.form.generator.outline
+		);
+		const redo = await coordinator.redo();
+		expect(redo.kind).toBe('restored');
+		expect(coordinator.current().canonicalJson).toBe(afterRevision.canonicalJson);
+
+		const noopState = now(coordinator);
+		const noop = await coordinator.accept(
+			sceneIntent({
+				kind: 'set-form-profile',
+				operationId: 'op-profile-form-noop',
+				intentRevision: noopState.intentRevision,
+				contentId: noopState.contentId,
+				entityId: 'entity-form',
+				payload: { entityId: 'entity-form', outline, extent: 1.1 }
+			})
+		);
+		expect(noop.kind).toBe('no-op');
+		expect(coordinator.history().depth).toBe(3);
+		expect(coordinator.current().canonicalJson).toBe(afterRevision.canonicalJson);
 	});
 
 	it('undoes chronologically across Layout and Scene through one stack (L1→S1→L2)', async () => {
