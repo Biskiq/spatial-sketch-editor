@@ -475,6 +475,7 @@ export function createInkSession(
 			splitWallIds: [],
 			createdRoomIds: [...plan.createdRoomIds],
 			retiredRoomIds: [],
+			absorbedRoomIds: [],
 			consequence: { kind: 'encloses', summary: 'Creates one circular Room on finish.' }
 		};
 	}
@@ -1282,7 +1283,10 @@ export function createInkSession(
 		const points = 'points' in live ? live.points : draft.points;
 		if (inkPreview?.kind === 'planned') {
 			const closesRoom = !boxMode && live.closed && inkPreview.createdRoomIds.length > 0;
-			const subjectIds = new Set(closesRoom ? inkPreview.createdRoomIds : []);
+			const subjectIds = new Set([
+				...(closesRoom ? inkPreview.createdRoomIds : []),
+				...inkPreview.absorbedRoomIds
+			]);
 			const affectedIds = new Set(inkPreview.splitWallIds);
 			const built = subjectIds.size > 0 || affectedIds.size > 0
 				? ports.candidatePaper(inkPreview.document, y, subjectIds, affectedIds)

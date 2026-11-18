@@ -1192,7 +1192,7 @@ describe('SP1b — §5.1 transition matrix', () => {
 		expect(compiledFloorAreas(plan.document)).toEqual([12]);
 	});
 
-	it('a stroke along part of a virtual edge stays free-standing and leaves the Space unchanged', () => {
+	it('SP1d supersedes the old partial-edge row: the Wall joins the boundary', () => {
 		const document = threeWallOpenSpace();
 		const plan = planWallChain({
 			baseline: document,
@@ -1207,7 +1207,15 @@ describe('SP1b — §5.1 transition matrix', () => {
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
-		expect(plan.document.rooms).toEqual(document.rooms);
+		expect(plan.absorbedRoomIds).toEqual(['room-open']);
+		const room = plan.document.rooms[0]!;
+		expect(room).toMatchObject({ id: 'room-open', name: 'Open', overhead: 'closed' });
+		expect(room.boundary).toHaveLength(4);
+		expect(room.virtualEdges).toHaveLength(1);
+		expect(room.virtualEdges[0]!.startJunctionId).toBe('j-d');
+		expect(
+			plan.document.junctions.find((entry) => entry.id === room.virtualEdges[0]!.endJunctionId)!.point
+		).toEqual([0, 1.5]);
 		expect(plan.document.walls).toHaveLength(document.walls.length + 1);
 		expect(compiledFloorAreas(plan.document)).toEqual([12]);
 	});

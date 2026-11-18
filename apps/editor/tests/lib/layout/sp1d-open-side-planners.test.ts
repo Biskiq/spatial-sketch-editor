@@ -16,6 +16,7 @@ import {
 	parseWallFirstLayoutDocumentJson,
 	planSpaceOpenSideEndSlide,
 	planSpaceOpenSideOffset,
+	planWallSegment,
 	roomBoundaryPolygon,
 	serializeWallFirstLayoutDocument,
 	spaceOpenSideFrame,
@@ -402,5 +403,76 @@ describe('SP1d — end-knob slide and split at release', () => {
 			expect(plan.rejection.code).toBe('opening_on_released_stub');
 			expect(plan.rejection.targetIds).toEqual(expect.arrayContaining(['door-stub']));
 		}
+	});
+});
+
+describe('SP1d — partial-Wall absorption', () => {
+	function absorb(from: LayoutVec2, to: LayoutVec2, captureName: string) {
+		const document = openSpaceWithOutsideRoom();
+		const plan = planWallSegment({
+			baseline: document,
+			start: from,
+			end: to,
+			capture: captureFor(captureName),
+			levelId: document.floor.id,
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: from[1] === 0 ? 'j-a' : 'j-d' }]
+		});
+		return { document, plan };
+	}
+
+	it('absorbs a Wall from the end knob orientation and shortens the open side', () => {
+		const { plan } = absorb([0, 0], [0, 1.5], 'sp1d-absorb-end');
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.absorbedRoomIds).toEqual(['room-open']);
+		const room = plan.document.rooms.find((entry) => entry.id === 'room-open')!;
+		expect(room).toMatchObject({ name: 'Gallery', overhead: 'closed' });
+		expect(room.virtualEdges).toHaveLength(1);
+		const remaining = room.virtualEdges[0]!;
+		expect(remaining.startJunctionId).toBe('j-d');
+		expect(plan.document.junctions.find((entry) => entry.id === remaining.endJunctionId)!.point).toEqual([0, 1.5]);
+		const newWallId = plan.createdWallIds[0]!;
+		const newWall = plan.document.walls.find((wall) => wall.id === newWallId);
+		expect(newWall).toBeDefined();
+		expect(newWall!.centerline).toEqual({ kind: 'line' });
+		expect(room.boundary.map((ref) => ref.wallId)).toContain(newWallId);
+		expect(area(plan.document, 'room-open')).toBeCloseTo(12, 9);
+		const json = serializeWallFirstLayoutDocument(plan.document);
+		const reopened = parseWallFirstLayoutDocumentJson(json);
+		expect(reopened.success).toBe(true);
+		if (!reopened.success) return;
+		expect(serializeWallFirstLayoutDocument(reopened.document)).toBe(json);
+		expect(reopened.document.rooms.find((entry) => entry.id === 'room-open')!.virtualEdges).toEqual(
+			room.virtualEdges
+		);
+		const replay = absorb([0, 0], [0, 1.5], 'sp1d-absorb-end');
+		expect(replay.plan.kind).toBe('success');
+		if (replay.plan.kind !== 'success') return;
+		expect(serializeWallFirstLayoutDocument(replay.plan.document)).toBe(json);
+	});
+
+	it('absorbs from the start-knob orientation with the other virtual direction', () => {
+		const { plan } = absorb([0, 3], [0, 1.5], 'sp1d-absorb-start');
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.absorbedRoomIds).toEqual(['room-open']);
+		const room = plan.document.rooms.find((entry) => entry.id === 'room-open')!;
+		expect(room.virtualEdges).toHaveLength(1);
+		const remaining = room.virtualEdges[0]!;
+		expect(remaining.endJunctionId).toBe('j-a');
+		expect(plan.document.junctions.find((entry) => entry.id === remaining.startJunctionId)!.point).toEqual([0, 1.5]);
+		expect(room.boundary).toHaveLength(4);
+		expect(room.boundary.map((ref) => ref.wallId)).toContain(plan.createdWallIds[0]);
+		expect(area(plan.document, 'room-open')).toBeCloseTo(12, 9);
+	});
+
+	it('leaves a non-collinear stroke free-standing and the Space unchanged', () => {
+		const { document, plan } = absorb([0, 0], [0.2, 1.5], 'sp1d-absorb-free');
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.absorbedRoomIds).toEqual([]);
+		const room = plan.document.rooms.find((entry) => entry.id === 'room-open')!;
+		expect(room.virtualEdges).toEqual(document.rooms[0]!.virtualEdges);
+		expect(room.boundary).toEqual(document.rooms[0]!.boundary);
 	});
 });

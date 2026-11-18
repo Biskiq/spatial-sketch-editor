@@ -25,6 +25,7 @@ import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/author
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
+import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -174,6 +175,12 @@ function settle(facade: StageFacade, clockSeconds = 2): void {
 	if (result.kind !== 'evaluated') throw new Error(`the viewport did not evaluate: ${result.reason}`);
 	facade.overlays();
 	facade.tasks();
+}
+
+function armInk(facade: StageFacade): void {
+	const opened = facade.openContributedTask('layout-ink');
+	if (opened.kind !== 'opened') throw new Error(`Ink did not arm: ${opened.message}`);
+	if (inkSurface() === null) throw new Error('Ink published no surface');
 }
 
 function acceptedLayout(facade: StageFacade): LayoutDocumentWallFirst {
@@ -491,5 +498,76 @@ describe('SP1d — the handles are editor-only', () => {
 			id: room.id
 		});
 		mounted.facade.dispose();
+	});
+});
+
+describe('SP1d — partial-Wall absorption through Ink', () => {
+	it('absorbs a Wall drawn from the end knob and replays one history entry', async () => {
+		const mounted = await mount(gallery());
+		const before = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade);
+		const from = stageCss(mounted.facade, [0, 0]);
+		const to = stageCss(mounted.facade, [0, 1.5]);
+		const evaluationId = mounted.facade.evaluationId()!;
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(inkSurface()!.snapshot().consequence).toContain('Extends Gallery');
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await committed(mounted, before);
+		settle(mounted.facade);
+		const accepted = acceptedLayout(mounted.facade);
+		const room = accepted.rooms.find((entry) => entry.id === 'room-gallery')!;
+		expect(room.boundary).toHaveLength(4);
+		expect(room.virtualEdges).toHaveLength(1);
+		const remaining = room.virtualEdges[0]!;
+		expect(remaining.startJunctionId).toBe('j-d');
+		expect(accepted.junctions.find((entry) => entry.id === remaining.endJunctionId)!.point).toEqual([0, 1.5]);
+		expect(accepted.walls).toHaveLength(4);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		const acceptedJson = mounted.facade.snapshot().canonicalJson;
+		await mounted.host.undo();
+		settle(mounted.facade);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		await mounted.host.redo();
+		settle(mounted.facade);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(acceptedJson);
+		mounted.facade.dispose();
+	});
+
+	it('absorbs from the start knob and leaves a non-collinear stroke free-standing', async () => {
+		const start = await mount(gallery());
+		armInk(start.facade);
+		const startFrom = stageCss(start.facade, [0, 3]);
+		const startTo = stageCss(start.facade, [0, 1.5]);
+		const startEval = start.facade.evaluationId()!;
+		start.facade.pointerIntent({ phase: 'down', css: startFrom, evaluationId: startEval });
+		start.facade.pointerIntent({ phase: 'move', css: startTo, evaluationId: startEval });
+		start.facade.pointerIntent({ phase: 'up', css: startTo, evaluationId: startEval });
+		await expect.poll(() => start.host.history().position).toBe(1);
+		settle(start.facade);
+		const startRoom = acceptedLayout(start.facade).rooms.find((entry) => entry.id === 'room-gallery')!;
+		expect(startRoom.virtualEdges).toHaveLength(1);
+		expect(startRoom.virtualEdges[0]!.endJunctionId).toBe('j-a');
+		expect(
+			acceptedLayout(start.facade).junctions.find(
+				(entry) => entry.id === startRoom.virtualEdges[0]!.startJunctionId
+			)!.point
+		).toEqual([0, 1.5]);
+		start.facade.dispose();
+
+		const free = await mount(gallery());
+		armInk(free.facade);
+		const freeFrom = stageCss(free.facade, [0, 0]);
+		const freeTo = stageCss(free.facade, [1, 1]);
+		const freeEval = free.facade.evaluationId()!;
+		free.facade.pointerIntent({ phase: 'down', css: freeFrom, evaluationId: freeEval });
+		free.facade.pointerIntent({ phase: 'move', css: freeTo, evaluationId: freeEval });
+		free.facade.pointerIntent({ phase: 'up', css: freeTo, evaluationId: freeEval });
+		await expect.poll(() => free.host.history().position).toBe(1);
+		settle(free.facade);
+		const freeRoom = acceptedLayout(free.facade).rooms.find((entry) => entry.id === 'room-gallery')!;
+		expect(freeRoom.virtualEdges).toEqual([{ startJunctionId: 'j-d', endJunctionId: 'j-a' }]);
+		expect(freeRoom.boundary).toHaveLength(3);
+		free.facade.dispose();
 	});
 });
