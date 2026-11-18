@@ -311,7 +311,7 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 			changes: [
 				{
 					kind: LAYOUT_WALL_CHAIN_COMMIT_KIND,
-					subjectIds: [...plan.createdWallIds],
+					subjectIds: [...plan.createdWallIds, ...plan.absorbedRoomIds],
 					fields: ['walls', 'junctions', 'rooms']
 				}
 			],
@@ -329,6 +329,11 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 				...createdRoomIds.map((roomId) => ({
 					relation: 'created' as const,
 					before: null,
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+				})),
+				...plan.absorbedRoomIds.map((roomId) => ({
+					relation: 'preserved' as const,
+					before: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId }),
 					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
 				})),
 				...plan.retiredRoomIds.map((roomId) => ({

@@ -197,7 +197,7 @@ export function chainPlanRequest(
 
 /** The planner-derived consequence of one chain, in the creator's words. */
 export type ChainConsequence = {
-	readonly kind: 'free-standing' | 'encloses' | 'divides' | 'closes';
+	readonly kind: 'free-standing' | 'encloses' | 'divides' | 'closes' | 'absorbs';
 	readonly summary: string;
 };
 
@@ -214,6 +214,8 @@ export type ChainPlanPreview =
 			readonly retiredRoomIds: readonly string[];
 			/** Open Spaces this chain re-closes into Rooms. */
 			readonly closedRoomIds?: readonly string[];
+			/** Open Spaces this chain extended by joining part of an open side. */
+			readonly absorbedRoomIds: readonly string[];
 			readonly consequence: ChainConsequence;
 	  }
 	| {
@@ -244,7 +246,8 @@ function consequenceOf(
 	retiredRoomIds: readonly string[],
 	splitWallIds: readonly string[],
 	baselineRooms: number,
-	closedSpaces: readonly ClosedSpaceFacts[] = []
+	closedSpaces: readonly ClosedSpaceFacts[] = [],
+	absorbedSpaceNames: readonly string[] = []
 ): ChainConsequence {
 	// Re-close is named for the Space it happens to: the identity the creator
 	// already sees, never a newly minted Room they have to rediscover. A stroke
@@ -263,13 +266,16 @@ function consequenceOf(
 		return `Closes ${space.name} — every side is a Wall again.${changed}`;
 	});
 	const closeNote = closeLines.length > 0 ? ` ${closeLines.join(' ')}` : '';
+	const absorbNote = absorbedSpaceNames.length > 0
+		? ` Extends ${absorbedSpaceNames.join(' and ')} — the Wall joins the open side.`
+		: '';
 	if (buildingRoomIds.length > 0 && baselineRooms === 0) {
 		return {
 			kind: 'encloses',
 			summary:
 				(buildingRoomIds.length === 1
 					? 'Encloses one Room on finish.'
-					: `Encloses ${buildingRoomIds.length} Rooms on finish.`) + closeNote
+					: `Encloses ${buildingRoomIds.length} Rooms on finish.`) + closeNote + absorbNote
 		};
 	}
 	if (buildingRoomIds.length > 0) {
@@ -277,7 +283,8 @@ function consequenceOf(
 			kind: 'divides',
 			summary:
 				`Divides a Room — one accepted finish creates ${buildingRoomIds.length} Room${buildingRoomIds.length === 1 ? '' : 's'}.` +
-				closeNote
+				closeNote +
+				absorbNote
 		};
 	}
 	const hostNote =
@@ -291,7 +298,16 @@ function consequenceOf(
 	if (closeLines.length > 0) {
 		// A re-closing stroke is named for the closure, never as a free-standing
 		// Wall: the chain did close a ring even though it minted no new Room id.
-		return { kind: 'closes', summary: `${closeLines.join(' ')}${hostNote}${mergeNote}` };
+		return {
+			kind: 'closes',
+			summary: `${closeLines.join(' ')}${hostNote}${mergeNote}${absorbNote}`
+		};
+	}
+	if (absorbedSpaceNames.length > 0) {
+		return {
+			kind: 'absorbs',
+			summary: `${absorbNote.trim()}${hostNote}${mergeNote}`
+		};
 	}
 	return {
 		kind: 'free-standing',
@@ -368,6 +384,10 @@ export function planChainDraft(options: {
 	const closedRoomIds = options.document.rooms
 		.filter((room) => room.virtualEdges.length > 0 && (resultRoomById.get(room.id)?.virtualEdges.length ?? -1) === 0)
 		.map((room) => room.id);
+	const absorbedRoomIds = plan.absorbedRoomIds;
+	const absorbedSpaceNames = absorbedRoomIds.map(
+		(roomId) => options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId
+	);
 	const areaOf = (document: LayoutDocumentWallFirst, roomId: string): number | null => {
 		const polygon = roomBoundaryPolygon(document, roomId);
 		return polygon === null ? null : faceArea({ polygon });
@@ -387,12 +407,14 @@ export function planChainDraft(options: {
 		createdRoomIds,
 		retiredRoomIds: plan.retiredRoomIds,
 		closedRoomIds,
+		absorbedRoomIds,
 		consequence: consequenceOf(
 			createdRoomIds,
 			plan.retiredRoomIds,
 			plan.splitWallIds,
 			options.document.rooms.length,
-			closedSpaces
+			closedSpaces,
+			absorbedSpaceNames
 		)
 	};
 }

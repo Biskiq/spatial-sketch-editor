@@ -265,7 +265,7 @@ export function layoutPlanner(
  * could edit one Wall while its correspondence claims another survived, and the
  * accepted selection would requalify the wrong entry.
  */
-function addressedSubject(
+export function addressedSubject(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: LayoutSubjectKind | 'room',
 	id: string

@@ -56,6 +56,7 @@ import {
 	LAYOUT_WALL_DELETE_KIND
 } from '$lib/authoring/adapters/layout/drawing-planners';
 import { createOpeningPlanners } from '$lib/authoring/adapters/layout/opening-planners';
+import { createOpenSidePlanners } from '$lib/authoring/adapters/layout/open-side-planners';
 import {
 	createRoomDuplicatePlanners,
 	LAYOUT_ROOM_DUPLICATE_KIND
@@ -164,6 +165,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 				createSplitPlanners().length +
 				createJoinPlanners().length +
 				createRoomDuplicatePlanners().length +
+				createOpenSidePlanners().length +
 				createOpeningPlanners().length +
 				createOpeningRepeatPlanners().length
 		);

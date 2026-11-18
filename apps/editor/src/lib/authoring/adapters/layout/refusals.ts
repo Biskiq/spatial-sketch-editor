@@ -19,6 +19,38 @@ import {
 
 const CLOSED_WALL_CONTACT_WORDS = 'This would touch or cross a circular Wall. Move it clear of the circle.';
 
+/**
+ * SP1d — the open-side handles' refusals.
+ *
+ * A placement conflict is stated as **Stops at *Space name***, because the
+ * creator's question is which Space it hit, not which pair code the compiler
+ * chose. A split station that is not inside its Wall is a slide constraint, not
+ * a bend, so it keeps the handle's own verb.
+ */
+export function openSideRefusalWords(
+	code: string,
+	message = '',
+	otherSpaceName: string | null = null
+): string {
+	if (code === 'space_overlap' || code === 'space_contains_space') {
+		return otherSpaceName === null ? 'Stops at another Space' : `Stops at ${otherSpaceName}`;
+	}
+	if (code === 'unknown_open_side') return 'That open side has changed. Select the Space again.';
+	if (code === 'no_op') return 'The open side is already there.';
+	if (code === 'split_distance_out_of_range') return 'Slide the open side inside its Wall.';
+	if (code === 'opening_on_released_stub') {
+		return 'The released Wall piece still holds an Opening. Slide the other way or move the Opening first.';
+	}
+	if (
+		code === 'split_through_opening_interior' ||
+		code === 'split_at_existing_endpoint' ||
+		code === 'closed_wall_isolated'
+	) {
+		return wallSplitRefusalWords(code, message);
+	}
+	return wallRefusalWords(code, message);
+}
+
 export function wallRefusalWords(code: string, message = ''): string {
 	if (message.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
 	switch (code) {
