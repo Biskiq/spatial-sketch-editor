@@ -190,7 +190,7 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 				expect(specifier.startsWith('$lib/museum')).toBe(false);
 				expect(specifier).not.toMatch(/^(svelte|three|@threlte|\$app)/);
 				if (specifier.startsWith('.') || specifier.startsWith('$lib/types')) continue;
-				expect(approvedExternal.has(specifier)).toBe(true);
+				expect(approvedExternal.has(specifier), `${fileName} imports '${specifier}'`).toBe(true);
 			}
 		}
 	});

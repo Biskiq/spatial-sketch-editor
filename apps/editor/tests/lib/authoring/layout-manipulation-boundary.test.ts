@@ -76,6 +76,21 @@ const allowed = new Map<string, readonly string[]>([
 		]
 	],
 	[
+		path.join(layout, 'open-side-gesture-session.ts'),
+		[
+			host,
+			'@portfolio/camera-core',
+			'./candidate-preview',
+			'./manipulation-support',
+			'./open-side-planners',
+			'./precision',
+			'./refusals',
+			'./snap',
+			'./stage-pointer',
+			core
+		]
+	],
+	[
 		path.join(layout, 'room-gesture-session.ts'),
 		[
 			host,
@@ -166,6 +181,8 @@ const allowed = new Map<string, readonly string[]>([
 			'./layout/layout-contributions',
 			'./layout/layout-subjects',
 			'./layout/manipulation-support',
+			'./layout/open-side-gesture-session',
+			'./layout/open-side-planners',
 			'./layout/opening-gesture-session',
 			'./layout/opening-placement-session',
 			'./layout/opening-planners',

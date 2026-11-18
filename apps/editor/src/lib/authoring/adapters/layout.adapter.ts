@@ -50,6 +50,8 @@ import { createCurveGestureSession } from './layout/curve-gesture-session';
 import { createJunctionGestureSession } from './layout/junction-gesture-session';
 import { createOpeningGestureSession } from './layout/opening-gesture-session';
 import { createRoomGestureSession } from './layout/room-gesture-session';
+import { createOpenSideGestureSession } from './layout/open-side-gesture-session';
+import { createOpenSidePlanners } from './layout/open-side-planners';
 import { liftedSourcesNow } from '../layout/interior-lift-store.svelte';
 import { createLayoutContributions } from './layout/layout-contributions';
 
@@ -66,6 +68,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createSplitPlanners(),
 		...createJoinPlanners(),
 		...createRoomDuplicatePlanners(),
+		...createOpenSidePlanners(),
 		...createOpeningPlanners(),
 		// Repeat is one retained planner beside the other Opening
 		// operations, on the same registry, admission and coordinator.
@@ -148,6 +151,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			});
 			const curve = createCurveGestureSession({ ...manipulation, candidatePaper });
 			const room = createRoomGestureSession(manipulation);
+			const openSide = createOpenSideGestureSession(manipulation);
 			const {
 				markDescriptors: projectMarks,
 				settledPreviews,
@@ -186,6 +190,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				wall.endGesture();
 				junction.endJunctionGesture();
 				existingOpening.endOpeningGesture();
+				openSide.endGesture();
 			}
 			/**
 			 * The Opening and Ink one-operation controllers. Both are binding-scoped:
@@ -233,6 +238,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				...contributions,
 				keyIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.key(intent, adapterContext);
+					if (openSide.key(intent)) return true;
 					if (wall.scalarKey(intent)) return true;
 					if (room.roomMoveKey(intent)) return true;
 					const active = wall.active
@@ -300,6 +306,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return [
 						...marks,
 						...room.roomMoveDescriptors(adapterContext),
+						...openSide.descriptors(adapterContext),
 						...wall.scalarDescriptors(adapterContext)
 					];
 				},
@@ -341,6 +348,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					if (wall.scalarPointer(intent, adapterContext)) return true;
 					if (room.roomMovePointer(intent, adapterContext)) return true;
+					if (openSide.pointer(intent, adapterContext)) return true;
 
 					if (intent.phase === 'down') {
 						if (wall.active) wall.endGesture();
@@ -558,6 +566,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const y = adapterContext.snapshot.domain.datumMeters;
 				const priority = room.previews(adapterContext, y) ?? wall.scalarPreviews(y);
 				if (priority !== null) return priority;
+				const openSidePreview = openSide.previews(y);
+				if (openSidePreview !== null) return openSidePreview;
 				if (
 					!wall.active &&
 					!junction.active &&
