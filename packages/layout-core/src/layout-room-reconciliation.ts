@@ -1115,7 +1115,18 @@ export function buildCorrespondenceComponents(options: {
 /** One mixed boundary edge while the carry rule assembles a Space. */
 type CarriedSpaceEdge =
 	| { kind: 'wall'; wallId: string; direction: 'forward' | 'reverse' }
-	| { kind: 'virtual'; startJunctionId: string; endJunctionId: string };
+	| {
+			kind: 'virtual';
+			startJunctionId: string;
+			endJunctionId: string;
+			/**
+			 * The removed Wall this edge replaced, when the carry rule created it.
+			 * Authored virtual edges never set it: two Spaces may legitimately have
+			 * coincident open sides, so endpoint positions alone can never prove that
+			 * an edge came from a deleted Wall.
+			 */
+			replacedWallId?: string;
+	  };
 
 /**
  * Compose a predecessor's boundary and replace every erased Wall edge with the
@@ -1144,7 +1155,8 @@ function carriedBoundaryEdges(
 			edges.push({
 				kind: 'virtual',
 				startJunctionId: edge.startJunctionId,
-				endJunctionId: edge.endJunctionId
+				endJunctionId: edge.endJunctionId,
+				replacedWallId: edge.wallId
 			});
 			continue;
 		}
@@ -1153,15 +1165,20 @@ function carriedBoundaryEdges(
 	return { kind: 'ok', edges };
 }
 
-/** Drop a reverse virtual-edge pair: the two sides of one already-spliced shared Wall. */
+/**
+ * Drop a reverse virtual-edge pair created by carry: the two sides of one
+ * already-spliced shared Wall. Only replacement edges qualify — an authored
+ * open side that merely coincides with one is a real boundary of its own Space
+ * and must survive (the provenance rule the merge owners use).
+ */
 function normalizeCarriedEdges(edges: readonly CarriedSpaceEdge[]): CarriedSpaceEdge[] {
 	const dropped = new Set<number>();
 	for (let first = 0; first < edges.length; first += 1) {
 		const a = edges[first]!;
-		if (a.kind !== 'virtual' || dropped.has(first)) continue;
+		if (a.kind !== 'virtual' || a.replacedWallId === undefined || dropped.has(first)) continue;
 		for (let second = first + 1; second < edges.length; second += 1) {
 			const b = edges[second]!;
-			if (b.kind !== 'virtual' || dropped.has(second)) continue;
+			if (b.kind !== 'virtual' || b.replacedWallId === undefined || dropped.has(second)) continue;
 			if (a.startJunctionId === b.endJunctionId && a.endJunctionId === b.startJunctionId) {
 				dropped.add(first);
 				dropped.add(second);
@@ -1211,7 +1228,10 @@ function spliceCarriedEdges(
 	wall: LayoutWall
 ): CarriedSpaceEdge[] | null {
 	const matches = (edge: CarriedSpaceEdge, start: string, end: string): boolean =>
-		edge.kind === 'virtual' && edge.startJunctionId === start && edge.endJunctionId === end;
+		edge.kind === 'virtual' &&
+		edge.replacedWallId === wall.id &&
+		edge.startJunctionId === start &&
+		edge.endJunctionId === end;
 	let firstIndex = first.findIndex((edge) => matches(edge, wall.startJunctionId, wall.endJunctionId));
 	let secondIndex = second.findIndex((edge) => matches(edge, wall.endJunctionId, wall.startJunctionId));
 	if (firstIndex < 0 || secondIndex < 0) {
@@ -1615,14 +1635,13 @@ export function reconcileRooms(options: {
 		for (const removedWallId of policy.removedWalls ?? []) {
 			const wall = wallById.get(removedWallId);
 			if (!wall) continue;
+			// Ownership is deleted-Wall PROVENANCE, never endpoint coincidence: an
+			// authored virtual edge may lie exactly where this Wall was without ever
+			// referencing it, and splicing on that coincidence would merge two
+			// Spaces the operation did not join and retire the wrong identity.
 			const owners = carried.filter((entry) =>
 				entry.edges.some(
-					(edge) =>
-						edge.kind === 'virtual' &&
-						((edge.startJunctionId === wall.startJunctionId &&
-							edge.endJunctionId === wall.endJunctionId) ||
-							(edge.startJunctionId === wall.endJunctionId &&
-								edge.endJunctionId === wall.startJunctionId))
+					(edge) => edge.kind === 'virtual' && edge.replacedWallId === removedWallId
 				)
 			);
 			if (owners.length > 2) {
