@@ -29,6 +29,12 @@ import {
 	type P23B11FrozenCase
 } from './p23b11-correspondence-cases';
 import { P23B11_OR1_REFERENCE } from './p23b11-correspondence-reference';
+import {
+	P23B11_PRODUCTION_CARRY_IDS,
+	P23B11_PRODUCTION_CARRY_REFERENCE,
+	productionCarryRow
+} from './p23b11-production-carry';
+import { captureFor } from './__fixtures__/layout-id-capture';
 
 /** Every case, analysed and reduced once for the whole file. */
 const liveRows: P23B11FrozenCase[] = frozenCaseRows();
@@ -117,6 +123,54 @@ describe('P23B.11 S2 — the properties the S3 differential reads', () => {
 			}
 			expect(row.fidelity, `${row.id} must reproduce the planner’s document`).toBe(true);
 		}
+	});
+
+	it('the production default-carry rebuild reproduces the planner for every planned row', { timeout: 120000 }, () => {
+		// SP1c changed the planner's default from retire to carry. The historical
+		// reference above still rebuilds retirement on purpose; this property is the
+		// equivalent required coverage for the operation creators actually run. It
+		// must hold for EVERY planned row, not only the four historical exceptions.
+		const planned = P23B11_CORRESPONDENCE_CASES.filter((entry) => {
+			const row = frozenById.get(entry.id);
+			return row !== undefined && row.fidelity !== null;
+		});
+		expect(planned.length).toBe(20);
+		// The mirrored D-12 row is the pre-existing deletion-pruning exception (its
+		// rebuilt candidate does not carry the deleted Wall's opening removals), not
+		// a carry mismatch: SP1c must not widen that exception or hide behind it.
+		const DELETION_EXCEPTION = 'f-d12-full-containment-mirror-role-change';
+		for (const entry of planned) {
+			const analysis = analyzeCorrespondenceCase(
+				entry,
+				captureFor(`p23b11-${entry.id}`),
+				'production-carry'
+			);
+			expect(analysis.fidelity, `${entry.id} production-carry fidelity`).toBe(
+				entry.id === DELETION_EXCEPTION ? false : true
+			);
+		}
+	});
+
+	it('freezes the production-carry rebuild for the four historical retirement rows', { timeout: 120000 }, () => {
+		// The historical rows intentionally model pre-SP1c retirement. These four
+		// are the only planned rows where the two contracts diverge, so their
+		// production-carry outcome is frozen too: preserving history must not leave
+		// the new production path unproven.
+		expect(P23B11_PRODUCTION_CARRY_REFERENCE.map((row) => row.id)).toEqual([
+			...P23B11_PRODUCTION_CARRY_IDS
+		]);
+		const rows = P23B11_PRODUCTION_CARRY_IDS.map((id) => {
+			const entry = P23B11_CORRESPONDENCE_CASES.find((candidate) => candidate.id === id);
+			if (entry === undefined) throw new Error(`missing case '${id}'`);
+			return productionCarryRow(
+				analyzeCorrespondenceCase(
+					entry,
+					captureFor(`p23b11-${entry.id}`),
+					'production-carry'
+				)
+			);
+		});
+		expect(rows).toEqual(P23B11_PRODUCTION_CARRY_REFERENCE);
 	});
 
 	it('today evaluates BOTH predicates for EVERY pair (OR-6 baseline)', () => {

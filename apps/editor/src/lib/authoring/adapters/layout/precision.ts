@@ -29,6 +29,7 @@
  */
 
 import {
+	composeSpaceBoundary,
 	materializeLayoutSourceForCapture,
 	deriveLayoutWallRole,
 	isClosedWall,
@@ -1442,6 +1443,31 @@ export function formatMeters(value: number): string {
 }
 
 /**
+ * The Card's count of open sides: **maximal runs** of consecutive virtual
+ * edges around the composed boundary, never the raw virtual-edge array length.
+ *
+ * Erasing two adjacent outside Walls leaves two consecutive virtual edges but
+ * one open side (SP-plan §5.1); gaps on opposite sides remain two. When the
+ * boundary cannot compose, the raw edges are the only evidence left, so they
+ * are counted individually rather than reporting a false single run.
+ */
+export function openSideRunCount(
+	document: LayoutDocumentWallFirst,
+	room: LayoutDocumentWallFirst['rooms'][number]
+): number {
+	const composed = composeSpaceBoundary(document, room);
+	if (composed.kind === 'failed') return room.virtualEdges.length;
+	const edges = composed.edges;
+	let runs = 0;
+	for (let index = 0; index < edges.length; index += 1) {
+		if (edges[index]!.kind !== 'virtual') continue;
+		const previous = edges[(index - 1 + edges.length) % edges.length]!;
+		if (previous.kind !== 'virtual') runs += 1;
+	}
+	return runs;
+}
+
+/**
  * The Room Card's facts. Area is read from the compiled floor polygon, never
  * recomputed from the authored boundary; the kind word and the open-side count
  * are derived readings of one Space record.
@@ -1454,7 +1480,7 @@ export function layoutRoomFacts(
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (room === undefined) return [];
 	const compiled = geometry.rooms.find((candidate) => candidate.roomId === roomId);
-	const openSides = room.virtualEdges.length;
+	const openSides = openSideRunCount(document, room);
 	const walls = room.boundary.length;
 	return [
 		{ label: 'Kind', value: openSides > 0 ? 'Open space' : 'Room', fieldId: 'kind' },

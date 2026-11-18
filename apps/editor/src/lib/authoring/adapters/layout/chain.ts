@@ -24,8 +24,10 @@ import { drawingRefusalWords } from './refusals';
 import {
 	coincidesAsJunction,
 	detectUnsupportedChainConnections,
+	faceArea,
 	JUNCTION_COINCIDENCE_EPSILON,
 	planWallChain,
+	roomBoundaryPolygon,
 	wallCenterlineCarriesPoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
@@ -195,7 +197,7 @@ export function chainPlanRequest(
 
 /** The planner-derived consequence of one chain, in the creator's words. */
 export type ChainConsequence = {
-	readonly kind: 'free-standing' | 'encloses' | 'divides';
+	readonly kind: 'free-standing' | 'encloses' | 'divides' | 'closes';
 	readonly summary: string;
 };
 
@@ -230,19 +232,37 @@ export type ChainPlanPreview =
 			}[];
 	  };
 
+/** The area facts of a Space this chain re-closes, measured before and after. */
+type ClosedSpaceFacts = {
+	readonly name: string;
+	readonly areaBefore: number;
+	readonly areaAfter: number;
+};
+
 function consequenceOf(
 	buildingRoomIds: readonly string[],
 	retiredRoomIds: readonly string[],
 	splitWallIds: readonly string[],
 	baselineRooms: number,
-	closedRoomNames: readonly string[] = []
+	closedSpaces: readonly ClosedSpaceFacts[] = []
 ): ChainConsequence {
 	// Re-close is named for the Space it happens to: the identity the creator
-	// already sees, never a newly minted Room they have to rediscover.
-	const closeNote =
-		closedRoomNames.length > 0
-			? ` Closes ${closedRoomNames.join(' and ')} — every side is a Wall again.`
+	// already sees, never a newly minted Room they have to rediscover. A stroke
+	// that leaves part of the old outline outside the new Room says how much
+	// ground is left (ratified B3); any other area change is stated as the new
+	// area. This is derived from the baseline and candidate outlines, never from
+	// the number of Rooms that happened to be born.
+	const closeLines = closedSpaces.map((space) => {
+		const leftOutside = space.areaBefore - space.areaAfter;
+		if (leftOutside > 0.005) {
+			return `${space.name} becomes a room · ${leftOutside.toFixed(2)} m² left outside.`;
+		}
+		const changed = Math.abs(leftOutside) > 0.005
+			? ` Area is now ${space.areaAfter.toFixed(2)} m².`
 			: '';
+		return `Closes ${space.name} — every side is a Wall again.${changed}`;
+	});
+	const closeNote = closeLines.length > 0 ? ` ${closeLines.join(' ')}` : '';
 	if (buildingRoomIds.length > 0 && baselineRooms === 0) {
 		return {
 			kind: 'encloses',
@@ -268,9 +288,14 @@ function consequenceOf(
 		retiredRoomIds.length > 0
 			? ` Merges ${retiredRoomIds.length} existing Room${retiredRoomIds.length === 1 ? '' : 's'}.`
 			: '';
+	if (closeLines.length > 0) {
+		// A re-closing stroke is named for the closure, never as a free-standing
+		// Wall: the chain did close a ring even though it minted no new Room id.
+		return { kind: 'closes', summary: `${closeLines.join(' ')}${hostNote}${mergeNote}` };
+	}
 	return {
 		kind: 'free-standing',
-		summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}${closeNote}`
+		summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}`
 	};
 }
 
@@ -343,6 +368,15 @@ export function planChainDraft(options: {
 	const closedRoomIds = options.document.rooms
 		.filter((room) => room.virtualEdges.length > 0 && (resultRoomById.get(room.id)?.virtualEdges.length ?? -1) === 0)
 		.map((room) => room.id);
+	const areaOf = (document: LayoutDocumentWallFirst, roomId: string): number | null => {
+		const polygon = roomBoundaryPolygon(document, roomId);
+		return polygon === null ? null : faceArea({ polygon });
+	};
+	const closedSpaces = closedRoomIds.map((roomId) => ({
+		name: options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId,
+		areaBefore: areaOf(options.document, roomId) ?? 0,
+		areaAfter: areaOf(plan.document, roomId) ?? 0
+	}));
 	return {
 		kind: 'planned',
 		document: plan.document,
@@ -358,9 +392,7 @@ export function planChainDraft(options: {
 			plan.retiredRoomIds,
 			plan.splitWallIds,
 			options.document.rooms.length,
-			closedRoomIds.map(
-				(roomId) => options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId
-			)
+			closedSpaces
 		)
 	};
 }

@@ -619,6 +619,14 @@ export function classifyPairs(options: {
 }
 
 /**
+ * Which Space lifecycle contract the rebuilt pass models. The historical
+ * reference rows freeze `historical-retire` (the pre-SP1c planner default);
+ * `production-carry` is the current default and has its own frozen comparison
+ * so the differential proves parity for the operation creators actually run.
+ */
+export type P23B11SpacePolicy = 'historical-retire' | 'production-carry';
+
+/**
  * THE SHARED ANALYSIS — the one function both the S2 freeze and the S3
  * differential call. It performs the pass exactly as `planWallChain` does, and
  * reports the planner verdict and (where a planner ran) the fidelity of the
@@ -630,7 +638,8 @@ export function analyzeCorrespondenceCase(
 	// planner minted, and the frozen rows stay stable across runs. A caller may
 	// pass another capture to prove that only identity-bearing content depends on
 	// it (the nonce-locality property in the freeze test).
-	capture: LayoutIdCapture = captureFor(`p23b11-${entry.id}`)
+	capture: LayoutIdCapture = captureFor(`p23b11-${entry.id}`),
+	spacePolicy: P23B11SpacePolicy = 'historical-retire'
 ): P23B11PassAnalysis {
 	const baseline = entry.baseline();
 	let operation: P23B11PassAnalysis['operation'] = {
@@ -709,11 +718,19 @@ export function analyzeCorrespondenceCase(
 		components,
 		predecessorWitnesses,
 		predecessorPolygons,
-		// The frozen rows measure correspondence mechanics under the pre-SP1c
-		// retirement contract. Production Wall deletion changed to carry in SP1c,
-		// which the SP1c tests own; keeping the reference explicit keeps this table
-		// a comparison of the same reconstruction.
-		spacePolicy: { invalidOutline: 'retire' },
+		// The historical rows measure correspondence mechanics under the pre-SP1c
+		// retirement contract (no carried virtual edges). Production Wall deletion
+		// names the removed Walls so the carry rule can turn their sides into
+		// virtual edges; the production-carry pass below (and its frozen
+		// comparison) proves the same rebuild against the planner creators run.
+		spacePolicy: spacePolicy === 'production-carry'
+			? {
+					removedWalls: baseline.walls
+						.filter((wall) => !candidate.walls.some((entry) => entry.id === wall.id))
+						.map((wall) => wall.id),
+					invalidOutline: 'retire' as const
+				}
+			: { invalidOutline: 'retire' as const },
 		allocator: createAuthoringRoomAllocator(capture)
 	});
 	const reconciliation: P23B11PassOutcome =

@@ -29,6 +29,8 @@ import { findPlanHitRoom } from '$lib/authoring/layout/plan-hit';
 import { innermostRoomId } from '$lib/authoring/adapters/scene/room-membership';
 import { layoutKindWord } from '$lib/authoring/stage/shell/index-labels';
 import { captureFor } from './__fixtures__/layout-id-capture';
+import { buildP23B11ConnectedCase } from './__fixtures__/p23b11-connected-case';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from './__fixtures__/p23b-fixtures';
 
 function wall(id: string, start: string, end: string): LayoutDocumentWallFirst['walls'][number] {
 	return {
@@ -179,6 +181,139 @@ describe('SP1c — Wall deletion consequence lines name the Space', () => {
 		);
 		expect(last.summary).toContain('It removes Open — its last Wall is gone.');
 		expect(last.document.rooms).toEqual([]);
+	});
+
+	it('counts two adjacent virtual edges as one open side and opposite gaps as two', () => {
+		const first = planWallDeletion({
+			document: enclosedRectangle(),
+			wallId: 'wall-b',
+			capture: captureFor('sp1c-runs-adjacent-first'),
+			levelId: enclosedRectangle().floor.id
+		});
+		if (first.kind !== 'planned') throw new Error('the first adjacent deletion did not plan');
+		const adjacent = planWallDeletion({
+			document: first.document,
+			wallId: 'wall-c',
+			capture: captureFor('sp1c-runs-adjacent-second'),
+			levelId: first.document.floor.id
+		});
+		if (adjacent.kind !== 'planned') throw new Error('the second adjacent deletion did not plan');
+		const adjacentRoom = adjacent.document.rooms[0]!;
+		// The raw data stays two edges; only the Card's reading is a run.
+		expect(adjacentRoom.virtualEdges).toHaveLength(2);
+		const adjacentGeometry = compileWallFirstLayoutGeometry(adjacent.document).geometry;
+		expect(
+			layoutRoomFacts(adjacent.document, adjacentGeometry, adjacentRoom.id).find(
+				(fact) => fact.fieldId === 'bounds'
+			)?.value
+		).toBe('2 Walls · 1 open side');
+
+		const oppositeFirst = planWallDeletion({
+			document: enclosedRectangle(),
+			wallId: 'wall-b',
+			capture: captureFor('sp1c-runs-opposite-first'),
+			levelId: enclosedRectangle().floor.id
+		});
+		if (oppositeFirst.kind !== 'planned') throw new Error('the first opposite deletion did not plan');
+		const opposite = planWallDeletion({
+			document: oppositeFirst.document,
+			wallId: 'wall-d',
+			capture: captureFor('sp1c-runs-opposite-second'),
+			levelId: oppositeFirst.document.floor.id
+		});
+		if (opposite.kind !== 'planned') throw new Error('the second opposite deletion did not plan');
+		const oppositeRoom = opposite.document.rooms[0]!;
+		expect(oppositeRoom.virtualEdges).toHaveLength(2);
+		const oppositeGeometry = compileWallFirstLayoutGeometry(opposite.document).geometry;
+		expect(
+			layoutRoomFacts(opposite.document, oppositeGeometry, oppositeRoom.id).find(
+				(fact) => fact.fieldId === 'bounds'
+			)?.value
+		).toBe('2 Walls · 2 open sides');
+	});
+
+	it('states the changed area when a curved Wall leaves its straight chord', () => {
+		const spec = P23B_MATRIX_SPECS.find((candidate) => candidate.id === 'p23b-12-wall-all-curved-v1');
+		if (spec === undefined) throw new Error('the curved fixture is missing');
+		const document = buildP23BMatrixFixture(spec);
+		const plan = planWallDeletion({
+			document,
+			wallId: 'room-0:wall-0',
+			capture: captureFor('sp1c-curved-erase'),
+			levelId: document.floor.id
+		});
+		if (plan.kind !== 'planned') throw new Error('the curved outer-Wall deletion did not plan');
+		expect(plan.summary).toMatch(/Its area is now \d+\.\d{2} m²\./);
+	});
+
+	it('names the survivor’s overhead when an open merge overrules it', () => {
+		const enclosed = buildP23B11ConnectedCase();
+		// Open room-0-0 first, then merge it with its enclosed neighbour across
+		// the shared Wall. The two overheads differ, so the survivor's must be named.
+		const opened = planWallDeletion({
+			document: enclosed,
+			wallId: 'grid:h-0-0',
+			capture: captureFor('sp1c-overhead-merge-open'),
+			levelId: enclosed.floor.id
+		});
+		if (opened.kind !== 'planned') throw new Error('the opening deletion did not plan');
+		const document = opened.document;
+		for (const room of document.rooms) {
+			if (room.id === 'grid:room-1-0') room.overhead = 'open-to-sky';
+		}
+		const plan = planWallDeletion({
+			document,
+			wallId: 'grid:v-1-0',
+			capture: captureFor('sp1c-overhead-merge'),
+			levelId: document.floor.id
+		});
+		if (plan.kind !== 'planned') throw new Error('the shared-Wall deletion did not plan');
+		const merged = plan.spaceNotes.find((note) => note.reason === 'merged');
+		expect(merged).toBeDefined();
+		expect(merged?.successorOverhead).toBeDefined();
+		expect(merged?.successorName).toBeDefined();
+		const label = merged!.successorOverhead === 'open-to-sky' ? 'Open to sky' : 'Closed';
+		expect(plan.summary).toContain(`${merged!.successorName}'s ${label} overhead wins`);
+	});
+
+	it('names a re-closing stroke for its closure, never as a free-standing Wall', () => {
+		const document = threeWallOpenSpace();
+		const redrawn = planChainDraft({
+			document,
+			draft: {
+				points: [
+					{ point: [0, 3], target: { kind: 'junction', junctionId: 'j-d' } },
+					{ point: [0, 0], target: { kind: 'junction', junctionId: 'j-a' } }
+				],
+				closed: false
+			},
+			capture: captureFor('sp1c-reclose-not-free-standing'),
+			levelId: document.floor.id
+		});
+		if (redrawn.kind !== 'planned') throw new Error('the re-close did not plan');
+		expect(redrawn.consequence.kind).toBe('closes');
+		expect(redrawn.consequence.summary).toContain('Closes Open — every side is a Wall again.');
+		expect(redrawn.consequence.summary).not.toContain('Free-standing Wall');
+	});
+
+	it('states the enclosed part and the ground left outside when a stroke divides an open Space', () => {
+		const document = threeWallOpenSpace();
+		const divided = planChainDraft({
+			document,
+			draft: {
+				points: [
+					{ point: [2, 0], target: { kind: 'host', wallId: 'wall-a' } },
+					{ point: [2, 3], target: { kind: 'host', wallId: 'wall-c' } }
+				],
+				closed: false
+			},
+			capture: captureFor('sp1c-b3-division'),
+			levelId: document.floor.id
+		});
+		if (divided.kind !== 'planned') throw new Error('the dividing stroke did not plan');
+		expect(divided.closedRoomIds).toEqual(['room-open']);
+		expect(divided.document.rooms.find((room) => room.id === 'room-open')?.virtualEdges).toEqual([]);
+		expect(divided.consequence.summary).toContain('Open becomes a room · 6.00 m² left outside.');
 	});
 
 	it('re-closes an open Space by redrawing its missing side and names the Room', () => {

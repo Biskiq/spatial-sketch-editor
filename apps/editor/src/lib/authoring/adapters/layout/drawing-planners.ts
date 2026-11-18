@@ -21,6 +21,7 @@ import { drawingRefusalWords } from './refusals';
  */
 import {
 	detectUnsupportedChainConnections,
+	faceArea,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	materializeLayoutSourceForCapture,
@@ -32,6 +33,7 @@ import {
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
 	recordPreparedCowCandidate,
+	roomBoundaryPolygon,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutVec2,
@@ -348,6 +350,8 @@ export type SpaceLifecycleNote = {
 	readonly reason: string;
 	readonly otherNames?: readonly string[];
 	readonly successorName?: string;
+	/** The survivor's overhead when an open merge overrules the merged Space's. */
+	readonly successorOverhead?: 'closed' | 'open-to-sky';
 };
 
 /** What one Wall deletion does, derived from the canonical planner (never guessed). */
@@ -398,24 +402,45 @@ export function planWallDeletion(options: {
 	const keptOpenRoomIds = options.document.rooms
 		.filter((room) => room.virtualEdges.length > 0 && resultRoomById.has(room.id))
 		.map((room) => room.id);
-	const spaceNotes = (plan.spaceRetirements ?? []).map((retirement) => ({
-		roomId: retirement.roomId,
-		name: baselineRoomById.get(retirement.roomId)?.name ?? retirement.roomId,
-		reason: retirement.reason,
-		...(retirement.otherRoomIds === undefined
-			? {}
-			: {
-					otherNames: retirement.otherRoomIds.map(
-						(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
-					)
-				}),
-		...(retirement.successorRoomId === undefined
-			? {}
-			: {
-					successorName:
-						baselineRoomById.get(retirement.successorRoomId)?.name ?? retirement.successorRoomId
-				})
-	}));
+	const spaceNotes = (plan.spaceRetirements ?? []).map((retirement) => {
+		const merged = baselineRoomById.get(retirement.roomId);
+		const successor = retirement.successorRoomId === undefined
+			? undefined
+			: baselineRoomById.get(retirement.successorRoomId);
+		return {
+			roomId: retirement.roomId,
+			name: merged?.name ?? retirement.roomId,
+			reason: retirement.reason,
+			...(retirement.otherRoomIds === undefined
+				? {}
+				: {
+						otherNames: retirement.otherRoomIds.map(
+							(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
+						)
+					}),
+			...(retirement.successorRoomId === undefined
+				? {}
+				: {
+						successorName: successor?.name ?? retirement.successorRoomId
+					}),
+			...(merged !== undefined && successor !== undefined && merged.overhead !== successor.overhead
+				? { successorOverhead: successor.overhead }
+				: {})
+		};
+	});
+	const areaOf = (document: LayoutDocumentWallFirst, roomId: string): number | null => {
+		const polygon = roomBoundaryPolygon(document, roomId);
+		return polygon === null ? null : faceArea({ polygon });
+	};
+	const areaChanges = [...openedRoomIds, ...keptOpenRoomIds].flatMap((roomId) => {
+		const before = areaOf(options.document, roomId);
+		const after = areaOf(plan.document, roomId);
+		if (before === null || after === null || Math.abs(after - before) <= 0.005) return [];
+		return [{
+			name: baselineRoomById.get(roomId)?.name ?? roomId,
+			areaAfter: after
+		}];
+	});
 	const summary = wallDeletionSummary({
 		hostedOpeningIds,
 		createdRoomIds,
@@ -426,7 +451,8 @@ export function planWallDeletion(options: {
 		keptOpenRoomNames: keptOpenRoomIds.map(
 			(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
 		),
-		spaceNotes
+		spaceNotes,
+		areaChanges
 	});
 	return {
 		kind: 'planned',
@@ -462,6 +488,7 @@ export function wallDeletionSummary(input: {
 	readonly openedRoomNames?: readonly string[];
 	readonly keptOpenRoomNames?: readonly string[];
 	readonly spaceNotes?: readonly SpaceLifecycleNote[];
+	readonly areaChanges?: readonly { readonly name: string; readonly areaAfter: number }[];
 }): string {
 	const removals = ['the Wall'];
 	if (input.hostedOpeningIds.length > 0) {
@@ -475,10 +502,13 @@ export function wallDeletionSummary(input: {
 	}
 	for (const note of input.spaceNotes ?? []) {
 		if (note.reason === 'merged') {
+			const overhead = note.successorOverhead === undefined
+				? ''
+				: `; ${note.successorName ?? 'the survivor'}'s ${note.successorOverhead === 'open-to-sky' ? 'Open to sky' : 'Closed'} overhead wins`;
 			spaceSentences.push(
 				note.successorName === undefined
-					? `It merges ${note.name}.`
-					: `It merges ${note.name} into ${note.successorName}.`
+					? `It merges ${note.name}${overhead}.`
+					: `It merges ${note.name} into ${note.successorName}${overhead}.`
 			);
 			continue;
 		}
@@ -499,6 +529,12 @@ export function wallDeletionSummary(input: {
 	const keptOpen = [...new Set(input.keptOpenRoomNames ?? [])];
 	if (keptOpen.length > 0) {
 		spaceSentences.push(`It keeps ${keptOpen.join(' and ')} open.`);
+	}
+	const areaChanges = input.areaChanges ?? [];
+	for (const change of areaChanges) {
+		spaceSentences.push(
+			`${areaChanges.length === 1 ? 'Its' : `${change.name}'s`} area is now ${change.areaAfter.toFixed(2)} m².`
+		);
 	}
 	const rooms =
 		spaceSentences.length > 0

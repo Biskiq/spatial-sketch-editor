@@ -941,6 +941,20 @@ export function createPlanPickProvider(
 			readonly roomArea: number | null;
 		};
 		let winner: Ranked | null = null;
+		// A Room floor is the last source rank, so it can never outrank a Wall,
+		// Opening or object. It is tracked separately: two floors that both contain
+		// the pointer must be compared (innermost wins), and the first floor must
+		// not end the scan before that comparison can run.
+		let floorWinner: Ranked | null = null;
+		const innermost = (candidate: Ranked, incumbent: Ranked): boolean => {
+			if (candidate.roomArea === null || incumbent.roomArea === null) return false;
+			if (candidate.pick.distanceCss > incumbent.pick.distanceCss + 1e-9) return false;
+			return (
+				candidate.roomArea < incumbent.roomArea - 1e-9 ||
+				(Math.abs(candidate.roomArea - incumbent.roomArea) <= 1e-9 &&
+					candidate.fragment.ref.sourceId < incumbent.fragment.ref.sourceId)
+			);
+		};
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
 			if (fragment === undefined || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
@@ -963,23 +977,17 @@ export function createPlanPickProvider(
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 			const roomArea =
 				fragment.ref.sourceKind === 'room-floor' ? roomAreaOf(fragment.ref.sourceId) : null;
+			if (roomArea !== null) {
+				// Two Room floors can both contain the pointer at the same depth. The
+				// innermost Space wins: a booth inside a hall selects the booth.
+				const ranked = { fragment, pick, roomArea };
+				if (floorWinner === null || innermost(ranked, floorWinner)) floorWinner = ranked;
+				continue;
+			}
 			if (winner === null) {
 				winner = { fragment, pick, roomArea };
 				// Plan Select and Eraser name an Opening over its own host Wall.
 				if (!openingOverHost || fragment.ref.sourceKind !== 'wall') break;
-				continue;
-			}
-			// Two Room floors can both contain the pointer at the same depth. The
-			// innermost Space wins: a booth inside a hall selects the booth.
-			if (
-				roomArea !== null &&
-				winner.roomArea !== null &&
-				pick.distanceCss <= winner.pick.distanceCss + 1e-9 &&
-				(roomArea < winner.roomArea - 1e-9 ||
-					(Math.abs(roomArea - winner.roomArea) <= 1e-9 &&
-						fragment.ref.sourceId < winner.fragment.ref.sourceId))
-			) {
-				winner = { fragment, pick, roomArea };
 				continue;
 			}
 			if (fragment.ref.sourceKind === 'opening' && winner.fragment.ref.sourceKind === 'wall'
@@ -989,6 +997,7 @@ export function createPlanPickProvider(
 				break;
 			}
 		}
+		if (winner === null) winner = floorWinner;
 		// A lifted overhead is only reachable in the 3D reading and only by the pointer's
 		// own verbs: a tool (Eraser, Measure) still works on what it can see.
 		if (evaluation.renderedReading !== 'plan' && query.purpose !== 'tool') {
