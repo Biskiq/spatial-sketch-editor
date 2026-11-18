@@ -19,10 +19,12 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	ensureLayoutWorldIndex,
 	findPolygonContaining,
+	findSpaceCreationOutline,
 	hasBlockingLayoutIssues,
 	isOpenSpace,
 	mintLayoutIdCapture,
 	parseWallFirstLayoutDocumentJson,
+	planCreateOpenSpace,
 	planFirstEnclosureCreation,
 	planWallChain,
 	polygonContainsPolygon,
@@ -699,15 +701,26 @@ describe('SP1a — R-2 persistence version ownership', () => {
 	});
 
 	it('T19 keeps virtual edges out of visitor geometry and releases the open Space', async () => {
-		const project = await projectWithOpenSpace();
+		const baseline = { ...openDocument('three-wall'), rooms: [] };
+		const outline = findSpaceCreationOutline(baseline, baseline.floor.id, [3, 2]);
+		if (outline.kind !== 'outline') throw new Error('Expected a Room tool proposal.');
+		const plan = planCreateOpenSpace({
+			baseline, cycle: outline.cycle, levelId: baseline.floor.id, capture: captureFor('visitor-room-birth')
+		});
+		if (plan.kind !== 'planned') throw new Error(plan.message);
+		const project = await createUnitProject({ id: 'room-tool-visitor', name: 'Room tool visitor', layout: plan.document });
+		const loaded = validateProjectEnvelope(JSON.parse(serializeProjectEnvelope(project)));
+		if (!loaded.success) throw new Error('The Room tool project could not reopen.');
+		expect(loaded.envelope.units.layout.data.rooms).toEqual(plan.document.rooms);
 		const bundle = composeColdReleaseBundle({
-			document: project,
+			document: loaded.envelope,
 			manifest: { releaseId: 'sp1a-open@v1', bytesByUri: new Map() }
 		});
 		try {
 			expect(bundle.geometry.rooms).toHaveLength(1);
 			expect(polygonArea(bundle.geometry.rooms[0]!.floorPolygon)).toBeCloseTo(24, 9);
 			expect(bundle.geometry.walls).toHaveLength(3);
+			expect(bundle.geometry.rooms[0]).toMatchObject({ roomId: plan.roomId, overhead: 'open-to-sky', ceilingPolygon: [] });
 			// Drawable visitor records only: virtual segments never enter compiled
 			// Walls, query spans or the released Room's wall list. The Room cache key
 			// may name them internally; it is not a drawable primitive.

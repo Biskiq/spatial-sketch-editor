@@ -4,6 +4,7 @@
 	 * It never writes geometry itself; every command goes through the adapter's
 	 * published controller.
 	 */
+	import RoomInkControls from '../adapters/layout/RoomInkControls.svelte';
 	import WorldIcon from './WorldIcon.svelte';
 	import { inkSurface, inkSurfaceRevision, type InkPaletteSnapshot } from '../adapters/layout/ink';
 
@@ -11,7 +12,7 @@
 		reading,
 		onMore
 	}: {
-		reading: 'wall' | 'opening';
+		reading: 'wall' | 'opening' | 'room';
 		onMore: () => void;
 	} = $props();
 
@@ -57,7 +58,7 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	let appliedReading: 'wall' | 'opening' | null = null;
+	let appliedReading: 'wall' | 'opening' | 'room' | null = null;
 	$effect(() => {
 		const surface = inkSurface();
 		if (surface === null) return;
@@ -117,7 +118,7 @@
 	);
 </script>
 
-<div class="ink-plate" data-ink-plate data-ink-reading={reading}>
+<div class="ink-plate" class:room-plate={reading === 'room'} data-ink-plate data-ink-reading={reading}>
 	{#if reading === 'wall'}
 		<div class="pg">
 			<span class="gl" title="Shape">{shapeName}</span>
@@ -176,6 +177,8 @@
 				{/each}
 			</div>
 		</div>
+	{:else if reading === 'room'}
+		<RoomInkControls room={snapshot.room} />
 	{:else}
 		<div class="pg">
 			<span class="gl" title="Kind">{kindName}</span>
@@ -229,6 +232,7 @@
 		</div>
 	{/if}
 
+	{#if reading !== 'room'}
 	<div class="pg end">
 		<span class="gl"></span>
 		<div class="opts ink-actions">
@@ -238,8 +242,9 @@
 			<button type="button" class="act" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>Close ring</button>
 		</div>
 	</div>
-	{#if snapshot.refusal !== null}
-		<span class="refusal" role="status">{snapshot.refusal}</span>
+	{/if}
+	{#if snapshot.room?.refusal || snapshot.refusal !== null}
+		<span class="refusal" role="status">{snapshot.room?.refusal ?? snapshot.refusal}</span>
 	{/if}
 </div>
 
@@ -253,6 +258,7 @@
 		min-width: max-content;
 		height: 100%;
 	}
+	.room-plate { min-width: 0; gap: 4px; }
 	.pg {
 		display: grid;
 		flex: none;

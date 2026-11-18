@@ -27,7 +27,7 @@
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
-	import { primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
+	import { primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import { bootIntentFromSearch, type BootIntent } from '$lib/authoring/stage/boot-state';
 	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
@@ -248,6 +248,15 @@
 		finishes: () => finishes,
 		lightInspection: () => lightInspectionPort,
 		objectStudio: () => objectStudioPort,
+		openSpaceCreated: (reference) => {
+			const stage = facade;
+			if (stage === null) return;
+			const selected = primaryEntry(stage.selectionState());
+			if (selected === null || !sameReference(selected.reference, reference)) return;
+			commands.armWorldTool('select');
+			commands.syncPrimarySelection(selected);
+			shell.requestCardRename(reference);
+		},
 		projectSession: () => projectSession,
 		preview: () => previewController,
 		createFacade: (snapshot) => createStageFacade({
@@ -615,6 +624,15 @@
 		URL.revokeObjectURL(url);
 	}
 
+	$effect(() => {
+		const target = shell.cardRenameTarget;
+		const primary = facade?.selectionState().primary;
+		if (target && (primary == null || !sameReference(primary, target) ||
+			(selection !== null && !sameReference(selection.reference, target)))) {
+			shell.consumeCardRename(shell.cardRenameRequest);
+		}
+	});
+
 	const commands = createStageShellCommands({
 		facade: () => facade,
 		planView: () => planView,
@@ -912,6 +930,7 @@
 		paintTool: () => shell.paintTool,
 		task: () => shell.task,
 		dockToolArmed: () => shell.armedTool !== null,
+		adapterTapOnly: () => shell.activeWorldTool === 'room',
 		planView: () => planView,
 		previewing: () => preview !== null,
 		pick: stagePick,
@@ -2355,7 +2374,7 @@
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
 						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
 						onLookPick: look.pickLibraryEntry,
-						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
+						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 						inkReading: shell.inkReading,
 						sliceMode: sliceReading.reading?.kind ?? null,
 						sliceDrawing: sliceDraw.armed,
@@ -2425,7 +2444,9 @@
 				identity: preview === null && shell.cardOpen ? shownCard.identity : null,
 				facts: shownCard.facts,
 				nameWriter: shownCard.nameWriter,
-				renameRequest: shell.cardRenameRequest,
+				renameRequest: shell.cardRenameTarget === null || (selection !== null && sameReference(selection.reference, shell.cardRenameTarget))
+					? shell.cardRenameRequest : 0,
+				onRenameRequestConsumed: shell.consumeCardRename,
 				writer: shownCard.writer as StageCardWriterRecord | null,
 				actions: shownCard.actions as readonly StageCardActionRecord[],
 				functions: shownCard.functions,

@@ -120,7 +120,7 @@ function cumulativeLengths(path: readonly (readonly [number, number])[]): number
  * arc-length offset. One implementation serves the CSS hit test, the world
  * centerline point and the Opening offset, so they can never disagree.
  */
-function closestOnPolyline(input: {
+export function closestOnPolyline(input: {
 	readonly point: readonly [number, number];
 	readonly path: readonly (readonly [number, number])[];
 }): {
@@ -309,7 +309,8 @@ export function classifyOpeningHost(input: {
  * One reading the one Pen offers. `wall` and `opening` are Layout's built-ins;
  * any other id is a reading another domain contributed through the Stage host.
  */
-export type InkReading = 'wall' | 'opening' | (string & {});
+export type BuiltInInkReading = 'wall' | 'opening' | 'room';
+export type InkReading = BuiltInInkReading | (string & {});
 
 /** One reading row as the palette renders it. */
 export type InkPaletteReading = {
@@ -368,6 +369,17 @@ export type InkArcSnapshot = {
 };
 
 /** What the Ink palette renders. Everything here is read from the live draft. */
+export type RoomInkSnapshot = {
+	readonly mode: 'hover' | 'draw' | 'follow' | 'choose';
+	readonly hint: string;
+	readonly canFollow: boolean;
+	readonly canDraw: boolean;
+	readonly canCreate: boolean;
+	readonly confirmationId: string | null;
+	readonly canBacktrack: boolean;
+	readonly refusal: string | null;
+};
+
 export type InkPaletteSnapshot = {
 	readonly options?: {
 		readonly thickness: number | null;
@@ -384,6 +396,7 @@ export type InkPaletteSnapshot = {
 	readonly readings: readonly InkPaletteReading[];
 	/** The Opening candidate while that reading is armed; `null` for the Wall reading. */
 	readonly opening: InkOpeningSnapshot | null;
+	readonly room?: RoomInkSnapshot;
 	readonly points: readonly LayoutVec2[];
 	readonly closed: boolean;
 	readonly canFinish: boolean;
@@ -406,6 +419,8 @@ export type InkPaletteSnapshot = {
 export type InkController = {
 	/** Switch the one Ink tool between its supported readings. */
 	readonly setReading: (reading: InkReading) => void;
+	readonly drawOpenSide?: () => void;
+	readonly followWall?: () => void;
 	/** Switch the Wall reading between Line, Arc, Box and Circle; refused while a chain is live. */
 	readonly setWallMode: (mode: InkWallMode) => void;
 	/** Remember the next Opening's kind and exact metrics. */

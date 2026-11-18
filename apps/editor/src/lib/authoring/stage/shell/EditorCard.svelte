@@ -77,6 +77,7 @@
 		onClose,
 		gesturing = false,
 		renameRequest = 0,
+		onRenameRequestConsumed,
 		functions = null,
 		kindLink = null,
 		menu = null,
@@ -150,6 +151,7 @@
 		gesturing?: boolean;
 		/** Each increment opens the inline name editor (an Index row double-click). */
 		renameRequest?: number;
+		onRenameRequestConsumed?: (request: number) => void;
 		/** The landed whole-object Paint function, when this subject has one. */
 		onPaint?: (() => void) | null;
 	} = $props();
@@ -215,9 +217,11 @@
 	// Declared after the subject reset, so a request arriving with a new
 	// selection is honoured after that reset rather than cleared by it.
 	$effect(() => {
-		if (renameRequest === 0) return;
+		const request = renameRequest;
+		if (request === 0 || identity === null || nameWriter === null) return;
 		untrack(() => {
-			if (nameWriter !== null) startRename();
+			startRename();
+			onRenameRequestConsumed?.(request);
 		});
 	});
 	function toggleMore(): void {

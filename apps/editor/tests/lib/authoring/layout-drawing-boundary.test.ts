@@ -1,5 +1,5 @@
 /**
- * X5 — Layout drawing and Opening placement ownership (`layout-drawing-boundary`).
+ * X5 — Layout drawing and placement ownership (`layout-drawing-boundary`).
  *
  * The Ink drawing controller and the Opening placement controller own the
  * one-operation state machines (draft, capture, in-flight guard, press lease,
@@ -29,6 +29,7 @@ const LAYOUT_DIR = path.join(ADAPTERS, 'layout');
 const ADAPTER = path.join(ADAPTERS, 'layout.adapter.ts');
 const INK = path.join(LAYOUT_DIR, 'ink-session.ts');
 const OPENING = path.join(LAYOUT_DIR, 'opening-placement-session.ts');
+const ROOM = path.join(LAYOUT_DIR, 'space-create-session.ts');
 const PORTS = path.join(LAYOUT_DIR, 'session-ports.ts');
 const POINTER = path.join(LAYOUT_DIR, 'stage-pointer.ts');
 
@@ -42,6 +43,7 @@ const ALLOWED_IMPORTS: Readonly<Record<string, ReadonlySet<string>>> = {
 		'./drawing-planners',
 		'./ink',
 		'./opening-placement-session',
+		'./space-create-session',
 		'./precision',
 		'./session-ports',
 		'./snap',
@@ -56,6 +58,19 @@ const ALLOWED_IMPORTS: Readonly<Record<string, ReadonlySet<string>>> = {
 		'./layout-subjects',
 		'./precision',
 		'./session-ports',
+		'./stage-pointer'
+	]),
+	[ROOM]: new Set([
+		'@portfolio/layout-core',
+		'@portfolio/project-model',
+		'$lib/authoring/stage/stage-adapter-host',
+		'./candidate-preview',
+		'./drawing-planners',
+		'./ink',
+		'./precision',
+		'./session-ports',
+		'./snap',
+		'./space-create-planners',
 		'./stage-pointer'
 	]),
 	[PORTS]: new Set([
@@ -102,7 +117,7 @@ const RETIRED_IN_ADAPTER = [
 ] as const;
 
 /** Planner entries the controllers alone call to author a drawing or an Opening. */
-const CONTROLLER_ONLY_PLANNERS = ['wallChainCommitIntent', 'circleRoomCreateIntent', 'openingCreateIntent'] as const;
+const CONTROLLER_ONLY_PLANNERS = ['wallChainCommitIntent', 'circleRoomCreateIntent', 'openingCreateIntent', 'spaceCreateIntent'] as const;
 
 const read = (file: string) => fs.readFileSync(file, 'utf8');
 const edgesOf = (file: string, source = read(file)): readonly ModuleBindingEdge[] => moduleBindingEdges(file, source);
@@ -131,11 +146,13 @@ describe('layout-drawing-boundary', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it('never lets Opening placement reach the Ink controller, nor Ink execute the Opening controller', () => {
-		expect(moduleEdgesOf(OPENING).some((edge) => edge.specifier === './ink-session')).toBe(false);
-		const inkToOpening = moduleEdgesOf(INK).filter((edge) => edge.specifier === './opening-placement-session');
-		expect(inkToOpening.length).toBeGreaterThan(0);
-		expect(inkToOpening.every((edge) => 'typeOnly' in edge && edge.typeOnly === true)).toBe(true);
+	it('keeps Ink and its placement controllers from constructing each other', () => {
+		for (const [file, specifier] of [[OPENING, './opening-placement-session'], [ROOM, './space-create-session']] as const) {
+			expect(moduleEdgesOf(file).some((edge) => edge.specifier === './ink-session')).toBe(false);
+			const edges = moduleEdgesOf(INK).filter((edge) => edge.specifier === specifier);
+			expect(edges.length).toBeGreaterThan(0);
+			expect(edges.every((edge) => 'typeOnly' in edge && edge.typeOnly === true)).toBe(true);
+		}
 	});
 
 	it('leaves no retired drawing or Opening state machine in the adapter', () => {
@@ -167,6 +184,7 @@ describe('layout-drawing-boundary', () => {
 		const adapterSource = stripComments(read(ADAPTER));
 		expect(adapterSource.match(/\bcreateInkSession\(/g)?.length).toBe(1);
 		expect(adapterSource.match(/\bcreateOpeningPlacementSession\(/g)?.length).toBe(1);
+		expect(adapterSource.match(/\bcreateSpaceCreateSession\(/g)?.length).toBe(1);
 	});
 
 	it('keeps adapter-lifetime defaults in the adapter and captured state in the bindings', () => {
@@ -176,10 +194,11 @@ describe('layout-drawing-boundary', () => {
 		expect(memoryAt).toBeGreaterThan(-1);
 		expect(bindAt).toBeGreaterThan(memoryAt);
 		expect(adapterSource.match(/\bcreateInkMemory\(/g)?.length).toBe(1);
-		for (const file of [INK, OPENING]) expect(wordIn(read(file), 'createInkMemory')).toBe(false);
+		for (const file of [INK, OPENING, ROOM]) expect(wordIn(read(file), 'createInkMemory')).toBe(false);
 		// The sessions are created per binding, so each is built after `bind(`.
 		expect(adapterSource.indexOf('createInkSession(')).toBeGreaterThan(bindAt);
 		expect(adapterSource.indexOf('createOpeningPlacementSession(')).toBeGreaterThan(bindAt);
+		expect(adapterSource.indexOf('createSpaceCreateSession(')).toBeGreaterThan(bindAt);
 	});
 
 	it('fails a regrown state machine, a stray import and a controller that executes its sibling', () => {

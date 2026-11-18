@@ -7,9 +7,14 @@
  * the Closed | Open to sky toggle, Remove space for an open Space only, and
  * exact Undo/Redo through the accepted source.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
+	findSpaceCreationOutline,
+	mintLayoutIdCapture,
+	layoutWorkingLevelInput,
+	parseWallFirstLayoutDocumentJson,
+	serializeWallFirstLayoutDocument,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -19,9 +24,12 @@ import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
-import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+import { createStageAdapterServices, mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import { stageEnvelope, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import { stageCardActions, stageCardFacts } from '$lib/authoring/stage/stage-contributions';
+import { wallChainCommitIntent } from '$lib/authoring/adapters/layout/drawing-planners';
+import { inkSurface, LAYOUT_INK_TASK } from '$lib/authoring/adapters/layout/ink';
+import { spaceCreateIntent } from '$lib/authoring/adapters/layout/space-create-planners';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
@@ -87,7 +95,10 @@ function gallery(open: boolean): LayoutDocumentWallFirst {
 	return document;
 }
 
-async function mount(document: LayoutDocumentWallFirst): Promise<Mounted> {
+async function mount(
+	document: LayoutDocumentWallFirst,
+	openSpaceCreated?: StageAdapterServices['openSpaceCreated']
+): Promise<Mounted> {
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'SP1c open space',
@@ -119,7 +130,7 @@ async function mount(document: LayoutDocumentWallFirst): Promise<Mounted> {
 	const registration = mountStageAdapter(facade, host, (port) => {
 		services = port;
 		return createAdapter(port);
-	});
+	}, undefined, { ...createStageAdapterServices(facade, host), openSpaceCreated });
 	if (registration.kind !== 'registered' || services === undefined) {
 		throw new Error('Layout adapter did not mount');
 	}
@@ -228,5 +239,171 @@ describe('SP1c — Open Space Card and lifecycle', () => {
 		expect(restored.id).toBe('room-gallery');
 		expect(restored.name).toBe('Gallery');
 		expect(restored.virtualEdges).toEqual([{ startJunctionId: 'j-d', endJunctionId: 'j-a' }]);
+	});
+});
+
+function armRoom(facade: StageFacade) {
+	expect(facade.openContributedTask(LAYOUT_INK_TASK, 'layout').kind).toBe('opened');
+	const surface = inkSurface()!;
+	surface.controller.setReading('room');
+	expect(inkSurface()!.snapshot().reading).toBe('room');
+}
+
+function stagePoint(facade: StageFacade, [x, z]: LayoutVec2) {
+	const evaluationId = facade.evaluationId()!;
+	const projected = facade.projectWorld([x, ELEVATION, z], evaluationId);
+	if (projected.kind !== 'projected') throw new Error('Fixture is past the working plane');
+	return { css: projected.css, evaluationId };
+}
+
+function tap(facade: StageFacade, point: LayoutVec2, coarse = false) {
+	const target = stagePoint(facade, point);
+	expect(facade.pointerIntent({ phase: 'down', ...target, coarse }).claimed).toBe(true);
+	expect(facade.pointerIntent({ phase: 'up', ...target, coarse }).claimed).toBe(true);
+}
+
+describe('Room Ink and accepted Open Space creation', () => {
+	it('previews a one-gap outline, selects the new Space, and keeps rename as its own history entry', async () => {
+		const baseline = { ...gallery(true), rooms: [] };
+		const renamed = vi.fn();
+		const { facade, host } = await mount(baseline, renamed);
+		armRoom(facade);
+		const point = stagePoint(facade, [2, 1.5]);
+		expect(facade.hoverIntent({ phase: 'move', ...point })).toBe(true);
+		expect(facade.candidatePreviews().flatMap(({ labels }) => labels.map(({ text }) => text)))
+			.toContain('Open space · 12.0 m² · Click to name');
+		tap(facade, [2, 1.5]);
+		await vi.waitFor(() => expect(renamed).toHaveBeenCalledTimes(1));
+		const created = acceptedLayout(facade);
+		const room = created.rooms[0]!;
+		expect(room).toMatchObject({ name: 'Open Space 1', overhead: 'open-to-sky' });
+		expect(facade.selectionState().primary).toEqual(renamed.mock.calls[0]![0]);
+		expect(facade.selectionState().primary?.subject).toEqual({ kind: 'room', id: room.id });
+		expect(facade.session.task()).toBeNull();
+		settle(facade);
+		const writer = facade.cardNameWriter({ sourceId: room.id, sourceKind: 'room', ref: null })!;
+		expect((await writer.commit('  Booth  ')).kind).toBe('accepted');
+		const named = acceptedLayout(facade);
+		expect(named.rooms[0]!.name).toBe('Booth');
+		expect(parseWallFirstLayoutDocumentJson(serializeWallFirstLayoutDocument(named)))
+			.toMatchObject({ success: true, document: named });
+		expect((await host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(facade)).toEqual(created);
+		expect((await host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(facade)).toEqual(baseline);
+		for (const expected of [created, named]) {
+			expect((await host.redo()).kind).toBe('installed');
+			expect(acceptedLayout(facade)).toEqual(expected);
+		}
+		expect(renamed).toHaveBeenCalledTimes(1);
+		expect(facade.session.task()).toBeNull();
+	});
+
+	it('requires a displayed outline on touch and drops a press after a change to projection', async () => {
+		const { facade } = await mount({ ...gallery(true), rooms: [] });
+		armRoom(facade);
+		tap(facade, [2, 1.5], true);
+		expect(acceptedLayout(facade).rooms).toEqual([]);
+		const press = stagePoint(facade, [2, 1.5]);
+		expect(facade.pointerIntent({ phase: 'down', ...press, coarse: true }).claimed).toBe(true);
+		const evaluated = facade.camera.evaluate({ ...RECT, width: RECT.width + 20 }, 2);
+		expect(evaluated.kind).toBe('evaluated');
+		facade.pointerIntent({ phase: 'up', ...press, coarse: true });
+		expect(acceptedLayout(facade).rooms).toEqual([]);
+		tap(facade, [2, 1.5], true);
+		expect(acceptedLayout(facade).rooms).toEqual([]);
+		tap(facade, [2, 1.5], true);
+		await vi.waitFor(() => expect(acceptedLayout(facade).rooms).toHaveLength(1));
+	});
+
+	it('drops a pressed outline on drag or lost capture, even when the pointer returns to the same point', async () => {
+		const { facade } = await mount({ ...gallery(true), rooms: [] });
+		armRoom(facade);
+		const target = stagePoint(facade, [2, 1.5]);
+		for (const phase of ['move', 'cancel'] as const) {
+			facade.hoverIntent({ phase: 'move', ...target });
+			expect(facade.pointerIntent({ phase: 'down', ...target }).claimed).toBe(true);
+			const interrupted = phase === 'move' ? stagePoint(facade, [1, 1.5]) : target;
+			facade.pointerIntent({ phase, ...interrupted });
+			facade.pointerIntent({ phase: 'up', ...target });
+			expect(facade.session.gesture()).toBeNull();
+			expect(acceptedLayout(facade).rooms).toEqual([]);
+		}
+	});
+
+	it('keeps a drawn gap editable, cancels before shell Escape, and requires confirmation', async () => {
+		const baseline = gallery(true);
+		baseline.rooms = [];
+		baseline.walls = baseline.walls.slice(0, 1);
+		baseline.junctions = baseline.junctions.slice(0, 2);
+		const { facade } = await mount(baseline);
+		armRoom(facade);
+		inkSurface()!.controller.drawOpenSide?.();
+		expect(inkSurface()!.snapshot().room?.mode).toBe('draw');
+		tap(facade, [4, 0]);
+		tap(facade, [4, 3]);
+		expect(facade.keyboardIntent({ kind: 'cancel' }).claimed).toBe(true);
+		expect(inkSurface()!.snapshot().room?.mode).toBe('hover');
+		expect(facade.keyboardIntent({ kind: 'cancel' }).claimed).toBe(false);
+		inkSurface()!.controller.drawOpenSide?.();
+		for (const point of [[4, 0], [4, 3], [0, 3], [0, 0]] as LayoutVec2[]) tap(facade, point);
+		expect(acceptedLayout(facade).rooms).toEqual([]);
+		expect(inkSurface()!.snapshot().room?.canCreate).toBe(true);
+		expect(facade.keyboardIntent({ kind: 'finish' }).claimed).toBe(true);
+		await vi.waitFor(() => expect(acceptedLayout(facade).rooms).toHaveLength(1));
+		expect(acceptedLayout(facade).rooms[0]!.virtualEdges).toHaveLength(3);
+	});
+
+	it('undoes and restores a divided remainder separately from the closed named Room', async () => {
+		const baseline = gallery(true);
+		const { facade, host } = await mount(baseline);
+		const snapshot = facade.snapshot();
+		const divided = await host.accept(wallChainCommitIntent({
+			...snapshot.acceptedRevision, contentRevision: stageUnitRevision(snapshot, 'layout'),
+			levelId: baseline.floor.id, capture: mintLayoutIdCapture(), operationId: 'divide-open-gallery',
+			payload: {
+				points: [[2, 0], [2, 3]], close: false, junctionSnaps: [],
+				hostSnaps: [{ pointIndex: 0, wallId: 'wall-a' }, { pointIndex: 1, wallId: 'wall-c' }],
+				thickness: null, height: null
+			}
+		}));
+		expect(divided.kind).toBe('installed');
+		const closed = acceptedLayout(facade);
+		expect(closed.rooms[0]).toMatchObject({ id: 'room-gallery', name: 'Gallery', virtualEdges: [] });
+		settle(facade);
+		armRoom(facade);
+		expect(facade.hoverIntent({ phase: 'move', ...stagePoint(facade, [1, 1.5]) })).toBe(true);
+		tap(facade, [1, 1.5]);
+		await vi.waitFor(() => expect(acceptedLayout(facade).rooms).toHaveLength(2));
+		const remainder = acceptedLayout(facade);
+		expect(remainder.rooms[0]).toEqual(closed.rooms[0]);
+		expect(remainder.rooms[1]).toMatchObject({ name: 'Open Space 1', overhead: 'open-to-sky', virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }] });
+		for (const expected of [closed, baseline]) {
+			expect((await host.undo()).kind).toBe('installed');
+			expect(acceptedLayout(facade)).toEqual(expected);
+		}
+		for (const expected of [closed, remainder]) {
+			expect((await host.redo()).kind).toBe('installed');
+			expect(acceptedLayout(facade)).toEqual(expected);
+		}
+	});
+
+	it('rejects a forged target set and a stale revision through acceptance', async () => {
+		const baseline = { ...gallery(true), rooms: [] };
+		const { facade, host } = await mount(baseline);
+		const outline = findSpaceCreationOutline(baseline, baseline.floor.id, [2, 1.5]);
+		if (outline.kind !== 'outline') throw new Error('Expected an outline');
+		const snapshot = facade.snapshot();
+		const intent = spaceCreateIntent({
+			cycle: outline.cycle, capture: mintLayoutIdCapture(), operationId: 'room-test-intent',
+			...snapshot.acceptedRevision, levelId: baseline.floor.id, contentRevision: stageUnitRevision(snapshot, 'layout')
+		});
+		expect((await host.accept({ ...intent, targets: intent.targets.slice(1) })).kind).toBe('refused');
+		expect((await host.accept({ ...intent, expectedRevision: { ...intent.expectedRevision, revisionId: 'stale' } })).kind).toBe('refused');
+		expect(acceptedLayout(facade)).toEqual(baseline);
+		expect((await host.accept({
+			...intent, capturedInputs: [intent.capturedInputs[0]!, layoutWorkingLevelInput('different-floor')]
+		})).kind).toBe('refused');
+		expect((await host.accept(intent)).kind).toBe('installed');
 	});
 });

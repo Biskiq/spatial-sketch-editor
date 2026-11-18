@@ -27,6 +27,8 @@ import {
 	LAYOUT_ROOM_DUPLICATE_KIND
 } from './layout/room-duplicate-planners';
 import { LAYOUT_INK_TASK } from './layout/ink';
+import { createSpaceCreatePlanner } from './layout/space-create-planners';
+import { createSpaceCreateSession } from './layout/space-create-session';
 import { createInkSession } from './layout/ink-session';
 import { createOpeningPlacementSession } from './layout/opening-placement-session';
 import { createInkMemory } from './layout/session-ports';
@@ -69,6 +71,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createJoinPlanners(),
 		...createRoomDuplicatePlanners(),
 		...createOpenSidePlanners(),
+		createSpaceCreatePlanner(),
 		...createOpeningPlanners(),
 		// Repeat is one retained planner beside the other Opening
 		// operations, on the same registry, admission and coordinator.
@@ -212,7 +215,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				publish: () => ink.publish(),
 				select: selectLayoutSubject
 			});
-			const ink = createInkSession({ ...sessionPorts, opening });
+			const spaceCreate = createSpaceCreateSession({
+				...sessionPorts,
+				publish: () => ink.publish(),
+				planCandidate: (body) => compileContext.plan(document, body)
+			});
+			const ink = createInkSession({ ...sessionPorts, opening, room: spaceCreate });
 
 			/** Install one created Opening as the selection, by id, on the fresh source. */
 			function selectLayoutSubject(sourceKind: 'wall' | 'opening', sourceId: string): void {
@@ -532,6 +540,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					curve.cancel();
 					room.endRoomDuplicate();
 					ink.release();
+					spaceCreate.dispose();
 				}
 			};
 			return binding;

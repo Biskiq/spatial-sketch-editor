@@ -11,6 +11,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
+	findSpaceCreationOutline,
+	planCreateOpenSpace,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -20,6 +22,7 @@ import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
+import { captureFor } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -172,15 +175,24 @@ function cssAt(mounted: Mounted, world: readonly [number, number, number]): [num
 }
 
 describe('SP1c — production Plan pick provider', () => {
-	it('picks the Booth floor inside the Hall floor, innermost first', async () => {
-		const mounted = await mount(hallAndBooth());
+	it('picks a Room-tool Booth inside the Hall and gives physical Walls priority', async () => {
+		const baseline = hallAndBooth();
+		baseline.walls.pop();
+		baseline.rooms.pop();
+		const outline = findSpaceCreationOutline(baseline, baseline.floor.id, [20, 20]);
+		if (outline.kind !== 'outline') throw new Error('Expected the Booth outline.');
+		const plan = planCreateOpenSpace({
+			baseline, levelId: baseline.floor.id, capture: captureFor('nested-booth-pick'), cycle: outline.cycle
+		});
+		if (plan.kind !== 'planned') throw new Error(plan.message);
+		const mounted = await mount(plan.document);
 		const booth = mounted.facade.resolvePick({
 			css: cssAt(mounted, [20, ELEVATION, 20]),
 			evaluationId: mounted.evaluationId,
 			purpose: 'select',
 			tool: null
 		});
-		expect(booth).toMatchObject({ kind: 'resolved', hit: { sourceKind: 'room-floor', sourceId: 'room-booth' } });
+		expect(booth).toMatchObject({ kind: 'resolved', hit: { sourceKind: 'room-floor', sourceId: plan.roomId } });
 
 		const hall = mounted.facade.resolvePick({
 			css: cssAt(mounted, [5, ELEVATION, 5]),
@@ -189,6 +201,14 @@ describe('SP1c — production Plan pick provider', () => {
 			tool: null
 		});
 		expect(hall).toMatchObject({ kind: 'resolved', hit: { sourceKind: 'room-floor', sourceId: 'room-hall' } });
+
+		const wall = mounted.facade.resolvePick({
+			css: cssAt(mounted, [20, ELEVATION + 1.5, 15]),
+			evaluationId: mounted.evaluationId,
+			purpose: 'select',
+			tool: null
+		});
+		expect(wall).toMatchObject({ kind: 'resolved', hit: { sourceKind: 'wall', sourceId: 'booth-wall-a' } });
 	});
 
 	it('lets the Eraser reach a Wall whose Room floor also answers under the pointer', async () => {
