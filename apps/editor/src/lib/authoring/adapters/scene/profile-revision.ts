@@ -254,6 +254,18 @@ export function createProfileRevisionBinding(services: StageAdapterServices): Pr
 		session,
 		active: () => active,
 		open(entityId, context) {
+			if (active) {
+				// The host reads this contribution again on every surface change, and the
+				// session notifies one from inside the read. Re-capturing here would
+				// release the proposal, discard typed anchors and — after an install,
+				// when the session has already closed — register a second proposal and
+				// notify again from inside the same read. The task owns this Card until
+				// it closes, so keep answering with it; the session itself may be empty.
+				return {
+					summary: 'Edit outline',
+					view: { component: SceneProfileRevisionInstrument, services }
+				};
+			}
 			active = true;
 			if (!session.open(entityId)) {
 				active = false;

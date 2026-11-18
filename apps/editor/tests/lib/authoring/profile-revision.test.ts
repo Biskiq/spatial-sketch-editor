@@ -218,6 +218,40 @@ describe('studio.profile-revision — outline task', () => {
 		expect(host.history()).toEqual(acceptedHistory);
 	});
 
+	it('re-reads the Card without recapturing a live draft', async () => {
+		const { facade } = await mounted();
+		const session = await openOutline(facade);
+		session.setAnchor(0, { u: -0.8 });
+		const draft = session.state()?.anchors[0];
+		// The host calls `instrumentForTask` again on every surface change; each call
+		// must return the same captured session rather than reopen it.
+		for (let read = 0; read < 3; read += 1) {
+			const content = facade.instrumentForTask(SCENE_PROFILE_REVISION_TASK, 'scene');
+			expect(content?.summary).toBe('Edit outline');
+			expect(profileRevisionSession()).toBe(session);
+			expect(session.state()?.anchors[0]).toEqual(draft);
+		}
+		session.discard();
+		facade.closeTask();
+	});
+
+	it('does not recapture after an install closes the session', async () => {
+		const { facade } = await mounted();
+		const session = await openOutline(facade);
+		session.setAnchor(0, { u: -0.8 });
+		expect(await session.apply()).toEqual({ kind: 'installed' });
+		// The install closed the session while the task is still closing. A read in
+		// that window must keep the task's own Card and must not start a second
+		// capture (and a second proposal) from inside the read, which would make
+		// Apply never settle in the host.
+		const content = facade.instrumentForTask(SCENE_PROFILE_REVISION_TASK, 'scene');
+		// The install may already have closed the task; either way the read must not
+		// capture a second session, and any content it does answer with is this Card.
+		expect(content === null || content.summary === 'Edit outline').toBe(true);
+		expect(profileRevisionSession()).toBeNull();
+		facade.closeTask();
+	});
+
 	it('refuses a crossed outline in the task and writes nothing', async () => {
 		const { facade, host } = await mounted();
 		const session = await openOutline(facade);
