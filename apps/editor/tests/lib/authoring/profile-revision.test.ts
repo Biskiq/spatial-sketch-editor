@@ -45,7 +45,8 @@ import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-profile-revision';
 const FORM_ID = 'entity-profile-form';
-const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+// Non-zero insets keep page-space projections distinct from Stage-local intents.
+const RECT = { left: 80, top: 40, width: 1280, height: 720, devicePixelRatio: 1 };
 
 function elevationForm(): Extract<SceneEntity, { kind: 'form' }> {
 	return {
@@ -260,8 +261,13 @@ describe('studio.profile-revision — outline task', () => {
 		expect(revised.position).toEqual([4, 0, 3]);
 		expect(revised.rotation).toEqual([0, 0, 0]);
 		expect(host.history()).toMatchObject({ depth: beforeHistory.depth + 1, position: beforeHistory.position + 1 });
-		// Closing the task restores the Card's own extent writer.
+		// Closing the task restores the Card's own extent writer and its measured
+		// values follow the accepted outline, not the pre-task size.
 		expect(fieldsOf(services)).toContain('height');
+		const widthField = sceneObjectCardController(services, FORM_ID)
+			?.fields()
+			.find((field) => field.id === 'width');
+		expect(Number(widthField?.text)).toBeCloseTo(1.2 * 1.3, 6);
 
 		const revisedJson = facade.snapshot().canonicalJson;
 		await host.undo();

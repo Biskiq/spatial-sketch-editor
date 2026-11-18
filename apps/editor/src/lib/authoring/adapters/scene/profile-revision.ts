@@ -531,12 +531,16 @@ export function createProfileRevisionSession(
 			if (intent.phase === 'down') {
 				if (press !== null) return false;
 				const projected: { index: number; distance: number }[] = [];
+				// `project` answers page CSS; a pointer intent is stage-local. Compare
+				// both in the Stage's own space so a header or Card inset cannot move
+				// every handle out of press reach.
+				const rect = adapterContext.evaluation.rect;
 				for (const [index, anchor] of anchors.entries()) {
 					const css = adapterContext.project(anchorWorld(entity, anchor));
 					if (css === null) continue;
 					projected.push({
 						index,
-						distance: Math.hypot(css[0] - intent.css[0], css[1] - intent.css[1])
+						distance: Math.hypot(css[0] - rect.left - intent.css[0], css[1] - rect.top - intent.css[1])
 					});
 				}
 				const nearest = projected.sort((left, right) => left.distance - right.distance)[0];
