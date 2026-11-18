@@ -335,11 +335,11 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		// The words the creator reads before accepting name the real consequences:
 		// the hosted Opening, in the same undo step, and what happens to the Room.
 		expect(action.detail).toContain('1 hosted Opening in the same undo step');
-		expect(action.detail).toContain('retires 1 Room');
+		expect(action.detail).toContain('It opens Draft Room 1; one side is now open.');
 		// Two sentences, no repeated verb and no second "and" clause: the disclosure
 		// reads as prose because the creator has to read it before confirming.
 		expect(action.detail).toBe(
-			'This deletes the Wall and 1 hosted Opening in the same undo step. It opens the enclosure and retires 1 Room.'
+			'This deletes the Wall and 1 hosted Opening in the same undo step. It opens Draft Room 1; one side is now open.'
 		);
 
 		const outcome = await action.run();
@@ -347,7 +347,9 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		const layout = acceptedLayout(mounted.facade);
 		expect(layout.walls.some((wall) => wall.id === mounted.wallId)).toBe(false);
 		expect(layout.openings.some((opening) => opening.id === mounted.openingId)).toBe(false);
-		expect(layout.rooms).toHaveLength(0);
+		// SP1c carries the Room as an open Space with one released side.
+		expect(layout.rooms).toHaveLength(1);
+		expect(layout.rooms[0]!.virtualEdges).toHaveLength(1);
 		// The Card is now describing a subject that no longer exists: it contributes
 		// no writer for it rather than a half-editable panel.
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });

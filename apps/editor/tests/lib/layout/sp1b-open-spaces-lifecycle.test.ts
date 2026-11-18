@@ -456,17 +456,9 @@ function threeRoomRow(): LayoutDocumentWallFirst {
 }
 
 describe('SP1b — Wall removal lifecycle', () => {
-	it('retires an open Space by default and carries it with openSpaces: keep', () => {
+	it('carries an open Space when one of its boundary Walls is erased', () => {
 		const document = threeWallOpenSpace();
-		const retired = planDeleteWall(document, 'wall-b', capture('sp1b-retire'), document.floor.id);
-		expect(retired.kind).toBe('success');
-		if (retired.kind !== 'success') return;
-		expect(retired.document.rooms).toEqual([]);
-		expect(retired.retiredRoomIds).toEqual(['room-open']);
-
-		const carried = planDeleteWall(document, 'wall-b', capture('sp1b-keep'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const carried = planDeleteWall(document, 'wall-b', capture('sp1b-keep'), document.floor.id);
 		expect(carried.kind).toBe('success');
 		if (carried.kind !== 'success') return;
 		expect(carried.document.rooms).toHaveLength(1);
@@ -481,9 +473,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 	it('carries a Space whose FIRST boundary Wall was erased', () => {
 		const document = threeWallOpenSpace();
-		const plan = planDeleteWall(document, 'wall-a', capture('sp1b-first-wall'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWall(document, 'wall-a', capture('sp1b-first-wall'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.rooms).toHaveLength(1);
@@ -494,9 +484,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 	it('carries a Space after opposite boundary Walls are erased together', () => {
 		const document = enclosedRectangle();
-		const plan = planDeleteWalls(document, ['wall-a', 'wall-c'], capture('sp1b-opposite'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWalls(document, ['wall-a', 'wall-c'], capture('sp1b-opposite'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.rooms).toHaveLength(1);
@@ -509,9 +497,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 	it('an erased outside Wall carries an enclosed Room as an open Space with its metadata', () => {
 		const document = enclosedRectangle();
-		const plan = planDeleteWall(document, 'wall-b', capture('sp1b-enclosed-open'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWall(document, 'wall-b', capture('sp1b-enclosed-open'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		const room = plan.document.rooms[0]!;
@@ -528,17 +514,11 @@ describe('SP1b — Wall removal lifecycle', () => {
 			return sum + point[0] * next[1] - next[0] * point[1];
 		}, 0) / 2;
 		expect(area).toBeCloseTo(12, 6);
-
-		const retired = planDeleteWall(document, 'wall-b', capture('sp1b-enclosed-retire'), document.floor.id);
-		expect(retired.kind).toBe('success');
-		if (retired.kind === 'success') expect(retired.document.rooms).toEqual([]);
 	});
 
 	it('support rule: removing the last Wall retires the Space with last-boundary-wall', () => {
 		const document = oneWallOpenSpace();
-		const plan = planDeleteWall(document, 'wall-a', capture('sp1b-last-wall'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWall(document, 'wall-a', capture('sp1b-last-wall'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.rooms).toEqual([]);
@@ -547,9 +527,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 	it('open merge: deleting the shared Wall splices two Spaces into the lexical survivor', () => {
 		const document = sharedWallPair();
-		const plan = planDeleteWalls(document, ['m'], capture('sp1b-merge'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWalls(document, ['m'], capture('sp1b-merge'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left']);
@@ -577,8 +555,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 			document,
 			['m', 'right-right'],
 			capture('sp1b-open-open'),
-			document.floor.id,
-			{ openSpaces: 'keep' }
+			document.floor.id
 		);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -590,9 +567,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 	it('a removal set that would join three Spaces refuses as a whole', () => {
 		const document = threeRoomRow();
-		const plan = planDeleteWalls(document, ['m1', 'm2'], capture('sp1b-three-join'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWalls(document, ['m1', 'm2'], capture('sp1b-three-join'), document.floor.id);
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind === 'rejected') {
 			expect(plan.rejection.message).toContain('joining three or more is unsupported');
@@ -602,9 +577,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 	it('open merge refuses conflicting thicknesses and keeps the survivor overhead', () => {
 		const conflicting = sharedWallPair();
 		conflicting.rooms[1]!.floorThickness = 0.3;
-		const refused = planDeleteWalls(conflicting, ['m'], capture('sp1b-thickness'), conflicting.floor.id, {
-			openSpaces: 'keep'
-		});
+		const refused = planDeleteWalls(conflicting, ['m'], capture('sp1b-thickness'), conflicting.floor.id);
 		expect(refused.kind).toBe('rejected');
 		if (refused.kind === 'rejected') {
 			expect(refused.rejection.message).toContain('floorThickness');
@@ -612,9 +585,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 		const overhead = sharedWallPair();
 		overhead.rooms[1]!.overhead = 'open-to-sky';
-		const survivor = planDeleteWalls(overhead, ['m'], capture('sp1b-overhead'), overhead.floor.id, {
-			openSpaces: 'keep'
-		});
+		const survivor = planDeleteWalls(overhead, ['m'], capture('sp1b-overhead'), overhead.floor.id);
 		expect(survivor.kind).toBe('success');
 		if (survivor.kind === 'success') {
 			expect(survivor.document.rooms[0]!.id).toBe('room-left');
@@ -656,7 +627,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 			components,
 			predecessorWitnesses,
 			predecessorPolygons,
-			spacePolicy: { openSpaces: 'retire', retireRoomIds: ['room-left'] },
+			spacePolicy: { retireRoomIds: ['room-left'] },
 			allocator: {
 				nextRoomId: () => {
 					throw new Error('forced retirement must not allocate');
@@ -676,9 +647,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 
 	it('Remove Room on a Room sharing a Wall retires it and preserves the neighbour', () => {
 		const document = sharedWallPair();
-		const plan = planRemoveRoom(document, 'room-left', capture('sp1b-remove-room'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planRemoveRoom(document, 'room-left', capture('sp1b-remove-room'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-right']);
@@ -705,8 +674,7 @@ describe('SP1b — Remove space and metadata', () => {
 			document,
 			document.walls.map((candidate) => candidate.id),
 			capture('sp1b-all-walls'),
-			document.floor.id,
-			{ openSpaces: 'keep' }
+			document.floor.id
 		);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -765,9 +733,7 @@ describe('SP1b — §5.2 acceptance', () => {
 		const document = curvedChasmRoom();
 		const baselineJson = serializeWallFirstLayoutDocument(document);
 
-		const erased = planDeleteWall(document, 'wall-curved', capture('sp1b-b1-erase'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const erased = planDeleteWall(document, 'wall-curved', capture('sp1b-b1-erase'), document.floor.id);
 		expect(erased.kind).toBe('success');
 		if (erased.kind !== 'success') return;
 		expect(erased.document.walls.some((candidate) => candidate.id === 'wall-curved')).toBe(false);
@@ -799,9 +765,7 @@ describe('SP1b — §5.2 acceptance', () => {
 		const document = distantOpenSpaceAndStrayJunction();
 		expectNoOrphanAnchors(document, ['j-stray']);
 
-		const opened = planDeleteWall(document, 'wall-b', capture('sp1b-i8-open'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const opened = planDeleteWall(document, 'wall-b', capture('sp1b-i8-open'), document.floor.id);
 		expect(opened.kind).toBe('success');
 		if (opened.kind !== 'success') return;
 		expect(opened.document.rooms.map((room) => room.id)).toEqual(['room-open', 'room-open-b']);
@@ -812,8 +776,7 @@ describe('SP1b — §5.2 acceptance', () => {
 			opened.document,
 			['wall-a', 'wall-c', 'wall-d'],
 			capture('sp1b-i8-last'),
-			opened.document.floor.id,
-			{ openSpaces: 'keep' }
+			opened.document.floor.id
 		);
 		expect(lastWall.kind).toBe('success');
 		if (lastWall.kind !== 'success') return;
@@ -842,9 +805,7 @@ describe('SP1b — §5.2 acceptance', () => {
 		const baseline = enclosedRectangle();
 		const eraseCapture = capture('sp1b-history-erase');
 		const redrawCapture = capture('sp1b-history-redraw');
-		const erased = planDeleteWall(baseline, 'wall-b', eraseCapture, baseline.floor.id, {
-			openSpaces: 'keep'
-		});
+		const erased = planDeleteWall(baseline, 'wall-b', eraseCapture, baseline.floor.id);
 		expect(erased.kind).toBe('success');
 		if (erased.kind !== 'success') return;
 		const redrawn = planWallChain({
@@ -884,9 +845,7 @@ describe('SP1b — §5.2 acceptance', () => {
 		expect(serializeWallFirstLayoutDocument(history.current.source)).toBe(redrawnJson);
 
 		// Replay with the same captures is byte-identical.
-		const replayErase = planDeleteWall(baseline, 'wall-b', eraseCapture, baseline.floor.id, {
-			openSpaces: 'keep'
-		});
+		const replayErase = planDeleteWall(baseline, 'wall-b', eraseCapture, baseline.floor.id);
 		expect(replayErase.kind).toBe('success');
 		if (replayErase.kind !== 'success') return;
 		const replayRedraw = planWallChain({
@@ -1023,9 +982,7 @@ describe('SP1b — adjacent operations', () => {
 describe('SP1b — open merge provenance', () => {
 	it('coincident virtual edges do not splice two Spaces on a deleted Wall', () => {
 		const document = coincidentVirtualSidePair();
-		const plan = planDeleteWall(document, 'shared', capture('sp1b-coincident'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const plan = planDeleteWall(document, 'shared', capture('sp1b-coincident'), document.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.walls.some((candidate) => candidate.id === 'shared')).toBe(false);
@@ -1052,17 +1009,14 @@ describe('SP1b — open merge provenance', () => {
 describe('SP1b — §5.1 transition matrix', () => {
 	it('erasing a second outside Wall adjacent keeps the corner anchor and one open side', () => {
 		const document = enclosedRectangle();
-		const first = planDeleteWall(document, 'wall-a', capture('sp1b-adjacent-first'), document.floor.id, {
-			openSpaces: 'keep'
-		});
+		const first = planDeleteWall(document, 'wall-a', capture('sp1b-adjacent-first'), document.floor.id);
 		expect(first.kind).toBe('success');
 		if (first.kind !== 'success') return;
 		const second = planDeleteWall(
 			first.document,
 			'wall-b',
 			capture('sp1b-adjacent-second'),
-			first.document.floor.id,
-			{ openSpaces: 'keep' }
+			first.document.floor.id
 		);
 		expect(second.kind).toBe('success');
 		if (second.kind !== 'success') return;
@@ -1296,8 +1250,7 @@ describe('SP1b — §5.1 transition matrix', () => {
 			document,
 			['wall-a', 'wall-c'],
 			capture('sp1b-rotate-erase'),
-			document.floor.id,
-			{ openSpaces: 'keep' }
+			document.floor.id
 		);
 		expect(erased.kind).toBe('success');
 		if (erased.kind !== 'success') return;
@@ -1334,8 +1287,7 @@ describe('SP1b — §5.1 transition matrix', () => {
 			document,
 			['wall-a', 'wall-c'],
 			capture('sp1b-f2b-erase'),
-			document.floor.id,
-			{ openSpaces: 'keep' }
+			document.floor.id
 		);
 		expect(erased.kind).toBe('success');
 		if (erased.kind !== 'success') return;

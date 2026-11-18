@@ -486,7 +486,6 @@ export function planDissolveJunction(
 				predecessorWitnesses,
 				predecessorPolygons,
 				// Join is non-removal: an open Space is carried, never retired.
-				spacePolicy: { openSpaces: 'keep' },
 				candidateRooms: candidate.rooms,
 				allocator: createAuthoringRoomAllocator(capture)
 			});

@@ -226,10 +226,23 @@ export type CompiledWall = CompiledIdentity & {
 	bounds3: LayoutBounds3;
 };
 
+/** One stated open side of a Space, in composer order. Never a subject, never connectivity. */
+export type CompiledSpaceEdge = {
+	start: LayoutVec2;
+	end: LayoutVec2;
+};
+
 export type CompiledRoom = CompiledIdentity & {
 	roomId: string;
 	/** Authored overhead intent of this Space. */
 	overhead: 'closed' | 'open-to-sky';
+	/**
+	 * The Space's stated open sides. They contribute to the outline and area but
+	 * are never Walls, never pick targets and never visitor geometry; an editor
+	 * surface reads them for its dashed open-side ink. Absent on an enclosed Room
+	 * so its compiled reading keeps the pre-SP1c shape.
+	 */
+	openSides?: CompiledSpaceEdge[];
 	floorElevation: number;
 	ceilingElevation: number;
 	floorThickness: number;

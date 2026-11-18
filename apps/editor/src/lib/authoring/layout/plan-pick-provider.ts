@@ -923,8 +923,38 @@ export function createPlanPickProvider(
 			}
 		}
 		const openingOverHost = erasing || (evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
-		type Ranked = { readonly fragment: PlanFragment; readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>> };
+		const roomAreaOf = (roomId: string): number | null => {
+			const room = context.snapshot.domain.geometry.rooms.find((candidate) => candidate.roomId === roomId);
+			if (room === undefined) return null;
+			let twice = 0;
+			for (let index = 0; index < room.floorPolygon.length; index += 1) {
+				const current = room.floorPolygon[index]!;
+				const next = room.floorPolygon[(index + 1) % room.floorPolygon.length]!;
+				twice += current[0] * next[1] - next[0] * current[1];
+			}
+			return Math.abs(twice) / 2;
+		};
+		type Ranked = {
+			readonly fragment: PlanFragment;
+			readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>>;
+			/** A Room floor's compiled area, for innermost containment. */
+			readonly roomArea: number | null;
+		};
 		let winner: Ranked | null = null;
+		// A Room floor is the last source rank, so it can never outrank a Wall,
+		// Opening or object. It is tracked separately: two floors that both contain
+		// the pointer must be compared (innermost wins), and the first floor must
+		// not end the scan before that comparison can run.
+		let floorWinner: Ranked | null = null;
+		const innermost = (candidate: Ranked, incumbent: Ranked): boolean => {
+			if (candidate.roomArea === null || incumbent.roomArea === null) return false;
+			if (candidate.pick.distanceCss > incumbent.pick.distanceCss + 1e-9) return false;
+			return (
+				candidate.roomArea < incumbent.roomArea - 1e-9 ||
+				(Math.abs(candidate.roomArea - incumbent.roomArea) <= 1e-9 &&
+					candidate.fragment.ref.sourceId < incumbent.fragment.ref.sourceId)
+			);
+		};
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
 			if (fragment === undefined || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
@@ -945,8 +975,17 @@ export function createPlanPickProvider(
 				.flatMap((surface) => clipSurfaceToSlice(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
+			const roomArea =
+				fragment.ref.sourceKind === 'room-floor' ? roomAreaOf(fragment.ref.sourceId) : null;
+			if (roomArea !== null) {
+				// Two Room floors can both contain the pointer at the same depth. The
+				// innermost Space wins: a booth inside a hall selects the booth.
+				const ranked = { fragment, pick, roomArea };
+				if (floorWinner === null || innermost(ranked, floorWinner)) floorWinner = ranked;
+				continue;
+			}
 			if (winner === null) {
-				winner = { fragment, pick };
+				winner = { fragment, pick, roomArea };
 				// Plan Select and Eraser name an Opening over its own host Wall.
 				if (!openingOverHost || fragment.ref.sourceKind !== 'wall') break;
 				continue;
@@ -954,10 +993,11 @@ export function createPlanPickProvider(
 			if (fragment.ref.sourceKind === 'opening' && winner.fragment.ref.sourceKind === 'wall'
 				&& context.snapshot.domain.geometry.walls?.some((wall) => wall.wallId === winner!.fragment.ref.sourceId
 					&& wall.openings.some((opening) => opening.openingId === fragment.ref.sourceId))) {
-				winner = { fragment, pick };
+				winner = { fragment, pick, roomArea };
 				break;
 			}
 		}
+		if (winner === null) winner = floorWinner;
 		// A lifted overhead is only reachable in the 3D reading and only by the pointer's
 		// own verbs: a tool (Eraser, Measure) still works on what it can see.
 		if (evaluation.renderedReading !== 'plan' && query.purpose !== 'tool') {

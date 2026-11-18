@@ -2255,7 +2255,6 @@ function finalizeWallGeometryCandidate(options: {
 		components,
 		// Direct geometry edits never retire an open Space; it is carried from its
 		// candidate record, which may already carry a split or joined boundary.
-		spacePolicy: { openSpaces: 'keep' },
 		candidateRooms: document.rooms,
 		allocator: guardedRoomAllocator(allocationAttempted)
 	}));

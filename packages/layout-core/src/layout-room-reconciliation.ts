@@ -112,14 +112,12 @@ export type SpaceRetirement = {
 /**
  * How one reconciliation pass treats Spaces that are not claimed by a face.
  *
- * `retire` is the shipped behaviour and the SP1b default: an unclaimed
- * predecessor disappears, so no operation creates an open Space yet. `keep`
- * runs the carry rule (SP-plan §5). Only a Wall removal can open a Space, so
- * the public planner option lives on the removal entry points; every other
- * planner passes `keep` to preserve a Space it did not open.
+ * Every pass runs the carry rule (SP-plan §5): a Space that survives the edit
+ * keeps its identity, and only a genuine loss of support or an invalid outline
+ * retires it. Wall ids this operation removes are named so the carry rule can
+ * turn each released Wall side into a virtual edge.
  */
 export type SpaceLifecyclePolicy = {
-	openSpaces: 'retire' | 'keep';
 	/** Wall ids this operation removes, resolvable in `baseline`. */
 	removedWalls?: readonly string[];
 	/** Predecessors the operation retires by intent, before face claims. */
@@ -1311,7 +1309,7 @@ export function reconcileRooms(options: {
 	allocator: RoomIdAllocator;
 }): ReconciliationResult {
 	const { baseline, candidateDocument, extraction, components, allocator } = options;
-	const policy: SpaceLifecyclePolicy = options.spacePolicy ?? { openSpaces: 'retire' };
+	const policy: SpaceLifecyclePolicy = options.spacePolicy ?? { invalidOutline: 'reject' };
 	const forcedRetireIds = new Set(policy.retireRoomIds ?? []);
 	const predecessorWitnesses = options.predecessorWitnesses ?? new Map<string, LayoutVec2>();
 	const predecessorPolygons =
@@ -1599,7 +1597,7 @@ export function reconcileRooms(options: {
 
 	const carriedRoomIds: string[] = [];
 	const carriedRooms: LayoutWallFirstRoom[] = [];
-	if (policy.openSpaces === 'keep') {
+	{
 		const removedWallIds = new Set(policy.removedWalls ?? []);
 		const wallById = new Map(baseline.walls.map((wall) => [wall.id, wall]));
 		const carried: Array<{
@@ -1779,13 +1777,6 @@ export function reconcileRooms(options: {
 		}
 		for (const room of carriedRooms) {
 			if (carriedRoomIds.includes(room.id)) finalRooms.push(room);
-		}
-	} else {
-		// Default policy: today's room-disappearance behaviour, byte-identical.
-		for (const room of baseline.rooms) {
-			if (!survivingPredecessors.has(room.id) && !forcedRetireIds.has(room.id)) {
-				retiredRoomIds.push(room.id);
-			}
 		}
 	}
 

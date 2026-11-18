@@ -418,7 +418,7 @@ reconciliation change is reviewable alone. One format-changing slice is in fligh
 | Slice | Delivers | Needs | Tier |
 | --- | --- | --- | --- |
 | **SP1a** Format and compile | §3.1–3.3, §4, §6 (data and compile only), §7, §8, the SP1a rows of §10. No planner produces an open Space yet | This plan approved | 2 |
-| **SP1b** Lifecycle | §5 in full, behind a planner option `openSpaces: 'retire' \| 'keep'` defaulting to `retire` so the editor is unchanged | SP1a | 2 |
+| **SP1b** Lifecycle | §5 in full at the lifecycle level; the editor still retires an opened Space until SP1c wires the surfaces | SP1a | 2 |
 | **SP1c** Editor and visitor parity | Flips to `keep` and **deletes the option**; §11; consequence lines; **Remove space**; Overhead control | SP1b | 1 |
 | **SP1d** Open-side handles | Mid-grip, end knobs, **Stops at *name***, red-dash refusal, partial-Wall absorption. An end that slides along a Wall splits that Wall at release (B2) | SP1c | 1 |
 | **SP2** Room tool | Space from partial Walls. Reuses the composer, I1–I8 and the overlap gate. Must decide how a booth uses a hall's own Wall side (I6 forbids sharing it) and may revisit whether dividing an open Space yields two Spaces (B3 settles SP1 only) | SP1d | 1 |

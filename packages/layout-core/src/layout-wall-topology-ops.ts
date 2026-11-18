@@ -331,7 +331,6 @@ function planWallRemovalSet(
 	wallIds: readonly string[],
 	capture: LayoutIdCapture,
 	options: {
-		openSpaces: 'retire' | 'keep';
 		invalidOutline: 'retire' | 'reject';
 		retireRoomIds?: readonly string[];
 	}
@@ -400,7 +399,6 @@ function planWallRemovalSet(
 			predecessorWitnesses,
 			predecessorPolygons,
 			spacePolicy: {
-				openSpaces: options.openSpaces,
 				removedWalls: [...removalSet],
 				...(options.retireRoomIds ? { retireRoomIds: options.retireRoomIds } : {}),
 				invalidOutline: options.invalidOutline
@@ -431,9 +429,19 @@ function planWallRemovalSet(
 		spaceRetirements = result.spaceRetirements;
 	}
 
-	// I8 — prune only Junctions the operation released. A released endpoint is
-	// kept when a surviving Wall OR any final Space's virtual edge references
-	// it; everything else keeps today's reference-only rule.
+	// I8 — prune Junctions the operation released. A released endpoint is kept
+	// when a surviving Wall OR any final Space's virtual edge references it.
+	// Anchors that were kept alive by a baseline Space's virtual edge and whose
+	// Space now retires are released by that retirement, even if the Wall that
+	// first exposed them was erased in an earlier operation. A never-referenced
+	// stray Junction is not in this set and keeps today's rule.
+	const baselineVirtualJunctionIds = new Set<string>();
+	for (const room of document.rooms) {
+		for (const edge of room.virtualEdges) {
+			baselineVirtualJunctionIds.add(edge.startJunctionId);
+			baselineVirtualJunctionIds.add(edge.endJunctionId);
+		}
+	}
 	const survivingJunctionIds = new Set<string>();
 	for (const wall of candidate.walls) {
 		survivingJunctionIds.add(wall.startJunctionId);
@@ -446,7 +454,9 @@ function planWallRemovalSet(
 		}
 	}
 	candidate.junctions = document.junctions.filter(
-		(junction) => !removedEndpointIds.has(junction.id) || survivingJunctionIds.has(junction.id)
+		(junction) =>
+			survivingJunctionIds.has(junction.id) ||
+			(!removedEndpointIds.has(junction.id) && !baselineVirtualJunctionIds.has(junction.id))
 	);
 
 	return validateAndCompile(candidate, reject, (committed) => ({
@@ -467,8 +477,7 @@ export function planDeleteWall(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	capture: LayoutIdCapture,
-	levelId: string,
-	options: { openSpaces?: 'retire' | 'keep' } = {}
+	levelId: string
 ): WallFirstOpPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
@@ -486,10 +495,7 @@ export function planDeleteWall(
 		};
 	}
 	try {
-		return planWallRemovalSet(document, [wallId], capture, {
-			openSpaces: options.openSpaces ?? 'retire',
-			invalidOutline: 'retire'
-		});
+		return planWallRemovalSet(document, [wallId], capture, { invalidOutline: 'retire' });
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
 			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: [wallId] } };
@@ -507,8 +513,7 @@ export function planDeleteWalls(
 	document: LayoutDocumentWallFirst,
 	wallIds: readonly string[],
 	capture: LayoutIdCapture,
-	levelId: string,
-	options: { openSpaces?: 'retire' | 'keep' } = {}
+	levelId: string
 ): WallFirstOpPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
@@ -531,10 +536,7 @@ export function planDeleteWalls(
 		};
 	}
 	try {
-		return planWallRemovalSet(document, unique, capture, {
-			openSpaces: options.openSpaces ?? 'retire',
-			invalidOutline: 'retire'
-		});
+		return planWallRemovalSet(document, unique, capture, { invalidOutline: 'retire' });
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
 			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: unique } };
@@ -897,8 +899,7 @@ export function planRemoveRoom(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	capture: LayoutIdCapture,
-	levelId: string,
-	options: { openSpaces?: 'retire' | 'keep' } = {}
+	levelId: string
 ): WallFirstOpPlan {
 	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
@@ -941,7 +942,6 @@ export function planRemoveRoom(
 	}
 	try {
 		return planWallRemovalSet(document, exclusiveWallIds, capture, {
-			openSpaces: options.openSpaces ?? 'retire',
 			invalidOutline: 'reject',
 			retireRoomIds: [roomId]
 		});

@@ -35,7 +35,11 @@ export function createWorldIndexModel() {
 		if (layout) {
 			contexts.push({ id: 'free', label: 'Free objects', parent: 'project' });
 			for (const room of layout.rooms)
-				contexts.push({ id: `room:${room.id}`, label: room.name || 'Room', parent: 'project' });
+				contexts.push({
+					id: `room:${room.id}`,
+					label: room.name || (room.virtualEdges.length > 0 ? 'Open space' : 'Room'),
+					parent: 'project'
+				});
 		}
 		if (layout !== previous || relations === undefined) {
 			const roomsByWall = new Map<string, string[]>();

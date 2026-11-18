@@ -47,6 +47,7 @@ export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> 
 	// T1 X1's Lift outline is the same editor-only fat-line family as the selection
 	// contour; Three ships a WebGPU line variant.
 	'apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte': ['webgl-only-three-path'],
+	'apps/editor/src/lib/authoring/stage/shell/StageOpenSideLayer.svelte': ['webgl-only-three-path'],
 	// The generic RenderTarget when a port happens.
 	'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte': ['WebGLRenderTarget'],
 	// World code, retained R5 exception (E9): alphaTest on the surface would give the same shadow
