@@ -79,6 +79,7 @@ export type StageInputArbiterInput = {
 	readonly paintTool: () => StagePaintController | null;
 	readonly task: () => StageTask | null;
 	readonly dockToolArmed: () => boolean;
+	readonly adapterTapOnly?: () => boolean;
 	readonly planView: () => PlanEvaluation | null;
 	readonly previewing: () => boolean;
 	readonly pick: ScenePickSource['pick'];
@@ -169,7 +170,12 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		endGesture();
 	}
 
-	function clearHover(): void {
+	function clearHover(clearAdapterHover = true): void {
+		if (clearAdapterHover && input.adapterTapOnly?.()) {
+			const stage = input.facade();
+			const evaluationId = stage?.evaluationId();
+			if (evaluationId != null) stage?.hoverIntent({ phase: 'cancel', css: [0, 0], evaluationId });
+		}
 		if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
 		hoverFrame = null;
 		hoverSample = null;
@@ -259,7 +265,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			return;
 		}
 		stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
-		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) {
+		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift, coarse: sample.coarse })) {
 			input.session.setHover(null);
 			hoverSelection = null;
 			hoverMove = false;
@@ -329,7 +335,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 	function pointerDown(event: PointerEvent): void {
 		const stage = input.facade();
 		if (stage === null || input.evaluation() === null) return;
-		clearHover();
+		clearHover(false);
 		const firstId = input.press.owner();
 		if (firstId !== null && firstId !== event.pointerId && drag !== null) {
 			if (input.activeLayer()?.pinch(event) === 'claimed') return;
@@ -438,6 +444,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 				return;
 			}
 			const claimAdapterPress = (handleId?: string, handleAdapterId?: string): boolean => {
+				if (input.adapterTapOnly?.() && (event.button !== 0 || event.shiftKey)) return false;
 				const claimed = stage.pointerIntent({
 					phase: 'down',
 					css,
@@ -585,11 +592,23 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			const stage = input.facade();
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			if (stage === null || id === null) return;
+			if (input.adapterTapOnly?.() && isStageDrag(drag, { x: event.clientX, y: event.clientY })) {
+				stage.pointerIntent({ phase: 'cancel', css: input.stageCss(event), evaluationId: id });
+				const navigation = stage.acquireGesture({
+					owner: 'stage-pointer', evaluationId: stage.evaluationId() ?? id,
+					policy: 'continue-after-revalidation', navigation: true
+				});
+				if (navigation.kind !== 'granted') { interrupt('reading-change'); return; }
+				adapterEvaluationId = null;
+				input.pan(event.clientX - drag.x, event.clientY - drag.y);
+				drag = { x: event.clientX, y: event.clientY, mode: 'pan' };
+				return;
+			}
 			// One monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
 			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
 			stage.pointerIntent({ phase: 'move', css: input.stageCss(event), evaluationId: id, shift: event.shiftKey, altKey: event.altKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
-			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
+			if (!input.adapterTapOnly?.()) drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
 		}
 		// Movement is the one thing a refused pointer still produces. Its samples are at

@@ -157,7 +157,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 	it('registers one planner per writable fact and contributes only through the AM-5 surface', async () => {
 		const { facade, host, services, wallId } = await mount();
 		// The precision set S05 shipped plus S02's two drawing operations, S03's
-		// two Opening operations and A4's Room duplicate, on the one registry,
+		// two Opening operations, A4's Room duplicate and SP2's Room tool, on the one registry,
 		// admission and coordinator: no family owns a second acceptance path.
 		expect(host.coordinator().planners()).toHaveLength(
 			createLayoutPlanners().length +
@@ -167,8 +167,10 @@ describe('T1.P01.S04 — Layout precision', () => {
 				createRoomDuplicatePlanners().length +
 				createOpenSidePlanners().length +
 				createOpeningPlanners().length +
-				createOpeningRepeatPlanners().length
+				createOpeningRepeatPlanners().length +
+				1
 		);
+		expect(host.coordinator().planners().map(({ kind }) => kind)).toContain('layout-open-space-create');
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',
 			'layout-junction-move',

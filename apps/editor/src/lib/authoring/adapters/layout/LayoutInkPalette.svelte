@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RoomInkControls from './RoomInkControls.svelte';
 	/**
 	 * The Ink palette: the one lower-column reading the dock arms.
 	 *
@@ -181,14 +182,17 @@
 	data-layout-ink-palette
 	data-ink-points={snapshot.points.length}
 	onkeydown={(event) => {
-		if (event.key === 'Escape' && disclosed !== null) {
+		if (event.key === 'Escape' && snapshot.reading !== 'room' && disclosed !== null) {
 			event.preventDefault();
 			event.stopPropagation();
 			disclosed = null;
 		}
 	}}
 >
-	{#if disclosed === 'pens'}
+	{#if snapshot.reading === 'room'}
+		<RoomInkControls room={snapshot.room} />
+		{#if snapshot.room?.refusal}<span role="status">{snapshot.room.refusal}</span>{/if}
+	{:else if disclosed === 'pens'}
 		<div class="panel" aria-label="Ink settings">
 			{#if snapshot.reading !== 'opening'}<button
 					type="button"
@@ -313,11 +317,12 @@
 		<p class="arc-facts" role="status" data-ink-arc-facts>{arcFactsText}</p>
 	{/if}
 
+	{#if snapshot.reading !== 'room'}
 	<div class="keys">
 		<button
 			type="button"
 			class="key more"
-			aria-label="Ink settings and Opening"
+			aria-label="Ink settings"
 			aria-expanded={disclosed === 'pens'}
 			onclick={() => toggle('pens')}
 			><ShellIcon name="more" size={14} />
@@ -352,6 +357,7 @@
 			>
 		{/if}
 	</div>
+	{/if}
 </div>
 
 <style>

@@ -192,6 +192,8 @@ const allowed = new Map<string, readonly string[]>([
 			'./layout/room-gesture-session',
 			'./layout/session-ports',
 			'./layout/split-planners',
+			'./layout/space-create-planners',
+			'./layout/space-create-session',
 			'./layout/wall-gesture-session',
 			core
 		]

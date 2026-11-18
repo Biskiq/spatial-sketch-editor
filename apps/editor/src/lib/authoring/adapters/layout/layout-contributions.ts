@@ -763,30 +763,34 @@ export function createLayoutContributions({
 			summary:
 				contributed !== null
 					? `Ink · ${contributed.label}`
-					: reading === 'opening'
-						? 'Ink · Opening'
-						: 'Ink',
+					: reading === 'room'
+						? 'Ink · Room'
+						: reading === 'opening'
+							? 'Ink · Opening'
+							: 'Ink',
 			facts:
 				contributed !== null
 					? [
 							{ label: 'Reading', value: contributed.label },
 							{ label: 'Meaning', value: contributed.summary }
 						]
-					: reading === 'opening'
-						? [
-								{ label: 'Reading', value: 'Opening on a Wall face' },
-								{
-									label: 'Host',
-									value: 'Aim at a Wall; a selected host wins a tie'
-								}
-							]
-						: [
-								{ label: 'Reading', value: 'Straight Wall' },
-								{
-									label: 'Finish',
-									value: 'Enter · Close ring from the start point · Esc cancels the chain'
-								}
-							],
+					: reading === 'room'
+						? [{ label: 'Reading', value: 'Open Space from partial Walls' }]
+						: reading === 'opening'
+							? [
+									{ label: 'Reading', value: 'Opening on a Wall face' },
+									{
+										label: 'Host',
+										value: 'Aim at a Wall; a selected host wins a tie'
+									}
+								]
+							: [
+									{ label: 'Reading', value: 'Straight Wall' },
+									{
+										label: 'Finish',
+										value: 'Enter · Close ring from the start point · Esc cancels the chain'
+									}
+								],
 			view: { component: LayoutInkPalette, services }
 		};
 	}

@@ -79,6 +79,7 @@ import {
 import type { OpeningPlacementSession } from './opening-placement-session';
 import { openWallFrame, parsePlacementXZ } from './precision';
 import type { LayoutSessionPorts } from './session-ports';
+import type { createSpaceCreateSession } from './space-create-session';
 import { resolveInkPointSnap, type LayoutSnapWinner } from './snap';
 import { pointerDatumPoint, projectedScene } from './stage-pointer';
 
@@ -117,9 +118,9 @@ export type InkSession = {
 };
 
 export function createInkSession(
-	ports: Omit<LayoutSessionPorts, 'publish' | 'select'> & { readonly opening: OpeningPlacementSession }
+	ports: Omit<LayoutSessionPorts, 'publish' | 'select'> & { readonly opening: OpeningPlacementSession; readonly room: ReturnType<typeof createSpaceCreateSession> }
 ): InkSession {
-	const { services, document, levelId, presenter, memory, opening } = ports;
+	const { services, document, levelId, presenter, memory, opening, room } = ports;
 
 	/**
 	 * The contributed reading this binding is carrying, if any. Ink stays one
@@ -168,7 +169,7 @@ export function createInkSession(
 
 	/** The contributed reading currently selected, or `null` for a built-in. */
 	function contributedReading(): StageInkReadingRecord | null {
-		if (memory.reading === 'wall' || memory.reading === 'opening') return null;
+		if (memory.reading === 'wall' || memory.reading === 'opening' || memory.reading === 'room') return null;
 		return (
 			services.stage.inkReadings().find((reading) => reading.id === memory.reading) ?? null
 		);
@@ -584,6 +585,7 @@ export function createInkSession(
 				label: 'Opening',
 				summary: 'A straight door or window on one Wall face.'
 			},
+			{ id: 'room', label: 'Room', summary: 'Create an Open Space from partial Walls.' },
 			...services.stage.inkReadings().map((reading) => ({
 				id: reading.id,
 				label: reading.label,
@@ -633,6 +635,7 @@ export function createInkSession(
 			box,
 			readings: paletteReadings(),
 			opening: memory.reading === 'opening' ? opening.paletteView() : null,
+			...(memory.reading === 'room' ? { room: room.paletteView() } : {}),
 			points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 			closed: effective.closed,
 			canFinish: !boxMode && !circleMode && !arcMode && draft.points.length >= 2,
@@ -725,6 +728,7 @@ export function createInkSession(
 				}
 				// A contributed reading's session lives only while it is selected.
 				endContributedSession();
+				room.clear();
 				if (next === 'opening') opening.captureHost();
 				memory.reading = next;
 				inkNotice = null;
@@ -738,6 +742,8 @@ export function createInkSession(
 				services.stage.notifySurfaceChange();
 				publish();
 			},
+			drawOpenSide: () => { if (memory.reading === 'room') room.changeMode('draw'); },
+			followWall: () => { if (memory.reading === 'room') room.changeMode('follow'); },
 			setWallMode: (mode: InkWallMode) => {
 				if (mode === memory.wallMode) return;
 				if (draft.points.length > 0 || inkPress !== null) {
@@ -757,6 +763,7 @@ export function createInkSession(
 			setOpeningOptions: (options) => opening.setOptions(options),
 			placeOpening: (offsetText) => opening.placeAtOffset(offsetText),
 			finish: () => {
+				if (memory.reading === 'room') { room.finish(); return; }
 				if (memory.reading === 'wall' && memory.wallMode === 'arc') {
 					if (draft.points.length < 2 || inkArcApex === null) {
 						inkNotice = 'An Arc needs a start, an end and a bulge.';
@@ -781,8 +788,8 @@ export function createInkSession(
 					publish();
 				}
 			},
-			backtrack: () => backtrackChain(),
-			cancel: () => clearChain(),
+			backtrack: () => { if (memory.reading === 'room') room.backtrack(); else backtrackChain(); },
+			cancel: () => { if (memory.reading === 'room') room.key({ kind: 'cancel' }); else clearChain(); },
 			typePoint: (xText: string, zText: string) => {
 				const parsed = parsePlacementXZ(xText, zText);
 				if (!parsed.ok) {
@@ -1147,6 +1154,7 @@ export function createInkSession(
 		const world = (point: readonly [number, number], elevation = y): [number, number, number] => [point[0], elevation, point[1]];
 		const snapOf = (winner: LayoutSnapWinner | null) =>
 			winner === null ? undefined : { world: world(winner.point), name: winner.name };
+		if (memory.reading === 'room') return room.previews(adapterContext, y);
 		if (memory.reading === 'opening') return opening.previews(adapterContext, y);
 
 		// A3 — Arc's preview is the canonical cubic the third activation commits.
@@ -1371,6 +1379,9 @@ export function createInkSession(
 
 	/** The Ink hover: a contributed reading's, the Opening's, or the live chain's. */
 	function hover(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+		if (memory.reading === 'room') { const claimed = room.hover(intent, adapterContext);
+			if (claimed) { services.stage.notifySurfaceChange(); publish(); }
+			return claimed; }
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			const session = ensureContributedSession();
 			if (session === null) return false;
@@ -1396,6 +1407,9 @@ export function createInkSession(
 
 	/** The pointer contract across readings: contributed, Opening, then Wall. */
 	function pointer(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+		if (memory.reading === 'room') { const claimed = room.pointer(intent, adapterContext);
+			if (claimed) { services.stage.notifySurfaceChange(); publish(); }
+			return claimed; }
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			const session = ensureContributedSession();
 			if (session === null) {
@@ -1412,6 +1426,7 @@ export function createInkSession(
 	}
 
 	function key(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
+		if (memory.reading === 'room') { return room.key(intent); }
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			const session = ensureContributedSession();
 			if (session === null) return false;
@@ -1438,6 +1453,7 @@ export function createInkSession(
 	}
 
 	function overlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
+		if (memory.reading === 'room') { return []; }
 		if (memory.reading !== 'wall' && memory.reading !== 'opening') {
 			return contributedSession?.session.overlay?.(adapterContext) ?? [];
 		}
@@ -1448,7 +1464,7 @@ export function createInkSession(
 	}
 
 	function ghosts(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['ghosts']>> {
-		if (memory.reading === 'wall' || memory.reading === 'opening') return [];
+		if (memory.reading === 'wall' || memory.reading === 'opening' || memory.reading === 'room') return [];
 		return contributedSession?.session.ghosts?.(adapterContext) ?? [];
 	}
 
@@ -1466,6 +1482,7 @@ export function createInkSession(
 			endInkPress();
 			clearChain();
 			opening.clear();
+			room.clear();
 			endContributedSession();
 			publishInkSurface(null);
 		}

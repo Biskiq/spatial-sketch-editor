@@ -16,6 +16,7 @@
  * `start()` installs the browser media listeners once and `dispose()` removes
  * them exactly once, so the route keeps one ordered teardown.
  */
+import type { SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 import {
 	DEFAULT_APP_PREFERENCES,
@@ -118,8 +119,10 @@ export function createStageShellState(input: StageShellStateInput) {
 
 	/** The contextual Card's disclosure; closing it never clears selection. */
 	let cardOpen = $state(true);
-	/** Bumped by an Index double-click: the Card opens its inline name editor. */
+	/** One pending request to open the Card name editor, optionally qualified by selection. */
 	let cardRenameRequest = $state(0);
+	let cardRenameSequence = 0;
+	let cardRenameTarget = $state.raw<SemanticReference | null>(null);
 	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades. */
 	let cardGesturing = $state(false);
 
@@ -142,7 +145,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		readonly category: WorldLibraryCategory;
 		readonly nonce: number;
 	} | null>(null);
-	let inkReading = $state<'wall' | 'opening'>('wall');
+	let inkReading = $state<'wall' | 'opening' | 'room'>('wall');
 
 	/** The session's task, mirrored so the shell's chrome re-reads it. */
 	let task = $state.raw<StageTask | null>(null);
@@ -351,9 +354,16 @@ export function createStageShellState(input: StageShellStateInput) {
 		pendingDelete = next;
 	}
 
-	function requestCardRename(): void {
+	function requestCardRename(target: SemanticReference | null = null): void {
 		cardOpen = true;
-		cardRenameRequest += 1;
+		cardRenameTarget = target;
+		cardRenameRequest = ++cardRenameSequence;
+	}
+
+	function consumeCardRename(request: number): void {
+		if (cardRenameRequest !== request) return;
+		cardRenameRequest = 0;
+		cardRenameTarget = null;
 	}
 
 	/** The new facade exists: bind the host tools and re-read session view state. */
@@ -632,7 +642,9 @@ export function createStageShellState(input: StageShellStateInput) {
 		get cardRenameRequest() {
 			return cardRenameRequest;
 		},
+		get cardRenameTarget() { return cardRenameTarget; },
 		requestCardRename,
+		consumeCardRename,
 		get cardGesturing() {
 			return cardGesturing;
 		},
@@ -678,7 +690,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		get inkReading() {
 			return inkReading;
 		},
-		setInkReading(value: 'wall' | 'opening') {
+		setInkReading(value: 'wall' | 'opening' | 'room') {
 			inkReading = value;
 		},
 		get task() {

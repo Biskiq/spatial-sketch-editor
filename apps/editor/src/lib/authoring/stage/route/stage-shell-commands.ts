@@ -16,6 +16,7 @@
  * disclosures and mirrors, and the route supplies the existing command
  * callbacks it composes (view commands, replacement, download, Welcome).
  */
+import { inkSurface } from '../../adapters/layout/ink';
 import { planFragmentOf, type PlanEvaluation } from '@portfolio/layout-core';
 import type { StageCardActionRecord, StageFacade, StageSourceHit } from '../stage-facade';
 import type { StageSelection, StageSession, StageTask } from '../stage-session';
@@ -424,7 +425,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			shell.setLibraryOpen(false);
 			armDockTool({ id: key.id, adapterId: key.adapterId });
 		} else if (key.slot === 'ink') {
-			shell.setActiveWorldTool(shell.inkReading === 'opening' ? 'opening' : 'walls');
+			shell.setActiveWorldTool(shell.inkReading === 'wall' ? 'walls' : shell.inkReading);
 			shell.setLibraryOpen(false);
 			armDockTool({ id: key.id, adapterId: key.adapterId });
 			shell.setPaletteOpen(false);
@@ -448,14 +449,16 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			selectTool();
 			return;
 		}
-		if (id === 'walls' || id === 'opening') {
+		if (id === 'walls' || id === 'opening' || id === 'room') {
 			const key = input.dockKeys().find((candidate) => candidate.slot === 'ink');
 			if (key === undefined) {
 				input.notice('Ink is not available in this project.');
 				return;
 			}
-			shell.setInkReading(id === 'opening' ? 'opening' : 'wall');
+			const reading = id === 'walls' ? 'wall' : id;
+			shell.setInkReading(reading);
 			armDockTool({ id: key.id, adapterId: key.adapterId });
+			inkSurface()?.controller.setReading(reading);
 			shell.setActiveWorldTool(id);
 			shell.setPaletteOpen(false);
 			return;
@@ -618,7 +621,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			// The install briefly closed the task, so the task/chrome sync reset the
 			// World tool to Select. Keep the re-armed Ink row attached to its task.
 			if (armed.id === 'layout-ink') {
-				shell.setActiveWorldTool(shell.inkReading === 'opening' ? 'opening' : 'walls');
+				shell.setActiveWorldTool(shell.inkReading === 'wall' ? 'walls' : shell.inkReading);
 				shell.setWorldPlateOpen(true);
 			}
 			return;
@@ -629,7 +632,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (!stillContributed) return;
 		invokeContribution(armed.adapterId, armed.id, false);
 		if (armed.id === 'layout-ink') {
-			shell.setActiveWorldTool(shell.inkReading === 'opening' ? 'opening' : 'walls');
+			shell.setActiveWorldTool(shell.inkReading === 'wall' ? 'walls' : shell.inkReading);
 			shell.setWorldPlateOpen(true);
 		}
 	}

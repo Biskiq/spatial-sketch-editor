@@ -1,5 +1,5 @@
 /** Public editor-only composition seam. Domain factories never receive host internals. */
-import type { DomainPlanner, RegistrationOutcome } from '@portfolio/project-model';
+import type { DomainPlanner, RegistrationOutcome, SemanticReference } from '@portfolio/project-model';
 import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';
@@ -13,6 +13,7 @@ export { roomLabelFacts } from './room-labels';
 export { axisTravelFromRay } from './stage-axis-travel';
 export { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingCoordinate, snapDraftingPlacement, snapDraftingPoint } from './stage-drafting';
 export { isStageDrag, readingIntentClockSeconds } from './stage-input';
+export { sameSubject } from './semantic-selection';
 export { scopeAdmitsEntity } from './subject-scope';
 export { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from './unit-stage-source';
 export { PAPER_LAYER, buildPaperPlan, unionOutline } from './paper-plan';
@@ -68,6 +69,8 @@ export type StageLightInspection = {
 
 export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
+	/** Open the Card for a freshly installed and selected Space. */
+	readonly openSpaceCreated?: (reference: SemanticReference) => void;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
 	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & { registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome };
 	/**

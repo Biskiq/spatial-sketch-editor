@@ -24,6 +24,7 @@ export * from './layout-room-move';
 export * from './layout-room-reconciliation';
 export * from './layout-space-placement';
 export * from './layout-space-open-side';
+export * from './layout-space-create';
 export * from './layout-robust-orientation';
 export * from './layout-coordinates';
 export * from './layout-path';

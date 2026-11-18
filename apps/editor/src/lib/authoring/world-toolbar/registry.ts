@@ -139,13 +139,8 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     label: 'Room',
     icon: 'room',
     family: 'build',
-    stage: 'planned',
-    after: 'T1',
-    summary: 'Draw a named room.',
-    options: [
-      { label: 'Type', options: [{ label: 'Living' }, { label: 'Bedroom' }, { label: 'Service' }] },
-      { label: 'Floor', options: [{ label: 'Timber' }, { label: 'Stone' }] }
-    ]
+    stage: 'landed',
+    summary: 'Create an Open Space from partial Walls.'
   },
   {
     id: 'slice',

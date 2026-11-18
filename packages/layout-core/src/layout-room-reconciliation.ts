@@ -45,7 +45,7 @@ import type {
 import { geometryId } from './layout-geometry-types';
 import type { LayoutVec2 } from './layout-coordinates';
 import { countWork } from './p2311-perf';
-import { wallCenterlineSamples } from './layout-wall-centerline';
+import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
 import { spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePairIssue } from './layout-space-outline';
 import {
@@ -371,7 +371,8 @@ export function spaceBoundaryCycleKey(
 export function spaceBoundaryPolygonFromEdges(
 	edges: readonly SpaceBoundaryEdge[],
 	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
-	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>
+	lookup?: Pick<RoomBoundaryLookup, 'junctionById' | 'wallById'>,
+	sampling?: WallSamplingDerivation
 ): readonly LayoutVec2[] | null {
 	const junctionById = lookup?.junctionById ?? new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = lookup?.wallById ?? new Map(document.walls.map((wall) => [wall.id, wall]));
@@ -400,7 +401,9 @@ export function spaceBoundaryPolygonFromEdges(
 		const canonicalStart = junctionById.get(wall.startJunctionId)?.point;
 		const canonicalEnd = junctionById.get(wall.endJunctionId)?.point;
 		if (!canonicalStart || !canonicalEnd) return null;
-		const sampled = wallCenterlineSamples(wall, canonicalStart, canonicalEnd, edge.direction);
+		const sampled = sampling === undefined
+			? wallCenterlineSamples(wall, canonicalStart, canonicalEnd, edge.direction)
+			: sampling.samples(wall, canonicalStart, canonicalEnd, edge.direction);
 		if (!sampled) return null;
 		for (const sample of sampled.samples.slice(1, -1)) {
 			polygon.push([...sample.point] as LayoutVec2);
@@ -432,13 +435,14 @@ export function spaceOpenSideCount(edges: readonly SpaceBoundaryEdge[]): number 
 export function roomBoundaryPolygon(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	lookup?: RoomBoundaryLookup
+	lookup?: RoomBoundaryLookup,
+	sampling?: WallSamplingDerivation
 ): readonly LayoutVec2[] | null {
 	const room = lookup ? lookup.roomById.get(roomId) : document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return null;
 	const composed = composeSpaceBoundary(document, room, lookup);
 	if (composed.kind === 'failed') return null;
-	return spaceBoundaryPolygonFromEdges(composed.edges, document, lookup);
+	return spaceBoundaryPolygonFromEdges(composed.edges, document, lookup, sampling);
 }
 
 /**

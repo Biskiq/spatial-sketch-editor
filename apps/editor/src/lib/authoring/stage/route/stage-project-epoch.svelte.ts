@@ -93,6 +93,7 @@ export type StageProjectEpochInput = {
 	readonly onFacadeMounted: (facade: StageFacade) => void;
 	readonly onAdaptersChanged: () => void;
 	readonly onAccepted: () => void;
+	readonly openSpaceCreated?: ReturnType<typeof createStageAdapterServices>['openSpaceCreated'];
 	readonly onHistoryInstalled: (
 		outcome: Extract<StageHistoryCommandOutcome, { kind: 'installed' }>
 	) => void;
@@ -228,9 +229,17 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		const createdServices = createServices(nextFacade, mounted, input.finishes);
 		const inspection = input.lightInspection?.() ?? null;
 		const studio = input.objectStudio?.() ?? null;
-		const withInspection =
-			inspection === null ? createdServices : { ...createdServices, lightInspection: inspection };
-		const mountedServices = studio === null ? withInspection : { ...withInspection, objectStudio: studio };
+		const openSpaceCreated = input.openSpaceCreated;
+		const mountedServices = {
+			...createdServices,
+			...(inspection === null ? {} : { lightInspection: inspection }),
+			...(studio === null ? {} : { objectStudio: studio }),
+			...(openSpaceCreated === undefined ? {} : {
+				openSpaceCreated: (reference: Parameters<typeof openSpaceCreated>[0]) => {
+					if (acceptance === mounted && !tornDown) openSpaceCreated(reference);
+				}
+			})
+		};
 		services = mountedServices;
 		void input.assets.resolve(snapshot);
 		unsubscribeAcceptance = mounted.onChanged(() => {

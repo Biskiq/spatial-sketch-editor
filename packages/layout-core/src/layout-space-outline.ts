@@ -15,6 +15,7 @@
 import type { LayoutVec2 } from './layout-coordinates';
 import { pointStrictlyInsidePolygon, polygonsShareInteriorArea } from './layout-face-extraction';
 import { orientXZ } from './layout-robust-orientation';
+import { classifyWallIntersection } from './layout-wall-topology';
 
 /** Signed shoelace area of a composed outline in X/Z (positive = face orientation). */
 export function spaceOutlineSignedArea(polygon: readonly LayoutVec2[]): number {
@@ -28,7 +29,7 @@ export function spaceOutlineSignedArea(polygon: readonly LayoutVec2[]): number {
 }
 
 /** Point lies exactly on the closed ring (robust collinearity). */
-function pointOnRing(polygon: readonly LayoutVec2[], point: LayoutVec2): boolean {
+export function pointOnRing(polygon: readonly LayoutVec2[], point: LayoutVec2): boolean {
 	for (let index = 0; index < polygon.length; index += 1) {
 		const a = polygon[index]!;
 		const b = polygon[(index + 1) % polygon.length]!;
@@ -89,6 +90,11 @@ export function spaceOutlineSelfIntersects(polygon: readonly LayoutVec2[]): bool
 			const d = polygon[(second + 1) % count]!;
 			if (segmentsCrossProperly(a, b, c, d)) return true;
 			if (collinearOverlap(a, b, c, d)) return true;
+			const contact = classifyWallIntersection(
+				{ id: 'first', start: a, end: b },
+				{ id: 'second', start: c, end: d }
+			);
+			if (contact.kind === 'endpoint-on-interior') return true;
 		}
 	}
 	for (let first = 0; first < count; first += 1) {
