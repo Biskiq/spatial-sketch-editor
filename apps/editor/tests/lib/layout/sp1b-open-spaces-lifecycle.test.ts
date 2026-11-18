@@ -1139,6 +1139,81 @@ describe('SP1b — §5.1 transition matrix', () => {
 		expect(compiledFloorAreas(plan.document)).toEqual([6]);
 	});
 
+	it('one stroke encloses two Rooms inside an open Space and keeps the survivor', () => {
+		const document = threeWallOpenSpace();
+		// The stroke starts on the east Wall, runs through the north-west corner
+		// and finishes along the open side: one gesture both closes the Space and
+		// divides it. Both resulting faces are enclosed, so this is a 1→2 split of
+		// an open predecessor, not a closure and not a divider.
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[4, 1.5],
+				[0, 0],
+				[0, 3]
+			],
+			close: false,
+			capture: capture('sp1b-two-faces'),
+			levelId: document.floor.id,
+			endpointHostSnaps: [{ pointIndex: 0, wallId: 'wall-b' }],
+			endpointJunctionSnaps: [
+				{ pointIndex: 1, junctionId: 'j-a' },
+				{ pointIndex: 2, junctionId: 'j-d' }
+			]
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.retiredRoomIds).toEqual([]);
+		expect(plan.document.rooms).toHaveLength(2);
+
+		// The larger face keeps the Space's id, name and authored surface fields
+		// as an enclosed Room.
+		const survivor = plan.document.rooms.find((room) => room.id === 'room-open');
+		expect(survivor).toBeDefined();
+		expect(survivor).toMatchObject({
+			name: 'Open',
+			virtualEdges: [],
+			overhead: 'closed',
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		});
+		expect(survivor!.boundary.map((ref) => ref.wallId)).toEqual(
+			expect.arrayContaining(['wall-c'])
+		);
+		expect(survivor!.boundary).toHaveLength(4);
+
+		// The smaller face is the stroke's one descendant: a real Room with its
+		// own boundary, the predecessor's surface fields and no virtual edges.
+		const descendant = plan.document.rooms.find((room) => room.id !== 'room-open')!;
+		expect(descendant.id).not.toBe('room-open');
+		expect(descendant.name).toBe('Draft Room 1');
+		expect(descendant.virtualEdges).toEqual([]);
+		expect(descendant).toMatchObject({
+			overhead: 'closed',
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		});
+		expect(descendant.boundary.map((ref) => ref.wallId)).toEqual(
+			expect.arrayContaining(['wall-a'])
+		);
+		expect(descendant.boundary).toHaveLength(3);
+		expect(plan.lineage).toHaveLength(1);
+		expect(plan.lineage[0]).toMatchObject({ roomId: descendant.id, kind: 'created' });
+		expect(plan.lineage[0]!.faceKey).toBeTypeOf('string');
+
+		// Both faces compile as Rooms: 3 m² + 9 m² = the former 12 m² Space,
+		// and the id stayed on the larger face.
+		const compiled = compileWallFirstLayoutGeometry(plan.document);
+		expect(compiled.geometry.rooms).toHaveLength(2);
+		const areas = compiledFloorAreas(plan.document);
+		expect(areas).toHaveLength(2);
+		expect(areas.reduce((sum, area) => sum + area, 0)).toBeCloseTo(12, 9);
+		const roomIndex = (roomId: string) =>
+			plan.document.rooms.findIndex((room) => room.id === roomId);
+		expect(areas[roomIndex('room-open')]).toBeCloseTo(9, 9);
+		expect(areas[roomIndex(descendant.id)]).toBeCloseTo(3, 9);
+	});
+
 	it('drawing exactly along a virtual edge closes the Space and keeps its identity', () => {
 		const document = threeWallOpenSpace();
 		const plan = planWallChain({
