@@ -23,6 +23,7 @@ import {
 	planRoomMetadataUpdate,
 	planWallChain,
 	planWallFirstRoomMove,
+	planWallFirstRoomRotation,
 	planWallSubdivision,
 	reconcileRooms,
 	roomBoundaryPolygon,
@@ -317,6 +318,73 @@ function expectNoOrphanAnchors(document: LayoutDocumentWallFirst, allowed: reado
 }
 
 /** Three open-ish 2×3 rectangles in a row sharing m1 and m2. */
+/** Signed area of each compiled floor polygon, in compiled Room order. */
+function compiledFloorAreas(document: LayoutDocumentWallFirst): number[] {
+	const compiled = compileWallFirstLayoutGeometry(document);
+	return compiled.geometry.rooms.map(
+		(room) =>
+			room.floorPolygon.reduce((sum, point, index, polygon) => {
+				const next = polygon[(index + 1) % polygon.length]!;
+				return sum + point[0] * next[1] - next[0] * point[1];
+			}, 0) / 2
+	);
+}
+
+/**
+ * Two open Spaces with coincident boundary edges but no shared ownership: the
+ * west Space states an authored virtual edge exactly along the east Space's
+ * `shared` Wall. Erasing that Wall must carry each Space on its own provenance
+ * and never splice by endpoint coincidence.
+ */
+function coincidentVirtualSidePair(): LayoutDocumentWallFirst {
+	return {
+		...createEmptyWallFirstLayoutDocument(),
+		junctions: [
+			junction('j-west-bottom', [0, 0]),
+			junction('j-west-top', [0, 3]),
+			junction('j-shared-bottom', [2, 0]),
+			junction('j-shared-top', [2, 3]),
+			junction('j-east-bottom', [4, 0]),
+			junction('j-east-top', [4, 3])
+		],
+		walls: [
+			wall('west-edge', 'j-west-top', 'j-west-bottom'),
+			wall('shared', 'j-shared-top', 'j-shared-bottom'),
+			wall('east-edge', 'j-east-bottom', 'j-east-top')
+		],
+		rooms: [
+			{
+				id: 'room-west',
+				name: 'West',
+				boundary: [{ wallId: 'west-edge', direction: 'forward' }],
+				virtualEdges: [
+					{ startJunctionId: 'j-west-bottom', endJunctionId: 'j-shared-bottom' },
+					{ startJunctionId: 'j-shared-bottom', endJunctionId: 'j-shared-top' },
+					{ startJunctionId: 'j-shared-top', endJunctionId: 'j-west-top' }
+				],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			},
+			{
+				id: 'room-east',
+				name: 'East',
+				boundary: [
+					{ wallId: 'east-edge', direction: 'forward' },
+					{ wallId: 'shared', direction: 'forward' }
+				],
+				virtualEdges: [
+					{ startJunctionId: 'j-east-top', endJunctionId: 'j-shared-top' },
+					{ startJunctionId: 'j-shared-bottom', endJunctionId: 'j-east-bottom' }
+				],
+				overhead: 'closed',
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			}
+		]
+	};
+}
+
 function threeRoomRow(): LayoutDocumentWallFirst {
 	return {
 		...createEmptyWallFirstLayoutDocument(),
@@ -949,5 +1017,294 @@ describe('SP1b — adjacent operations', () => {
 			expect(plan.rejection.code).toBe('unsupported_geometry');
 			expect(plan.rejection.message).toContain('enclosed Rooms only');
 		}
+	});
+});
+
+describe('SP1b — open merge provenance', () => {
+	it('coincident virtual edges do not splice two Spaces on a deleted Wall', () => {
+		const document = coincidentVirtualSidePair();
+		const plan = planDeleteWall(document, 'shared', capture('sp1b-coincident'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.walls.some((candidate) => candidate.id === 'shared')).toBe(false);
+		// Ownership is the deleted Wall itself, never the endpoint pair: both
+		// Spaces survive with their own ids and no merge retirement.
+		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-west', 'room-east']);
+		expect(plan.retiredRoomIds).toEqual([]);
+		expect(plan.spaceRetirements).toEqual([]);
+		const west = plan.document.rooms.find((room) => room.id === 'room-west')!;
+		const east = plan.document.rooms.find((room) => room.id === 'room-east')!;
+		expect(west).toEqual(document.rooms.find((room) => room.id === 'room-west'));
+		expect(east.virtualEdges).toEqual([
+			{ startJunctionId: 'j-east-top', endJunctionId: 'j-shared-top' },
+			{ startJunctionId: 'j-shared-top', endJunctionId: 'j-shared-bottom' },
+			{ startJunctionId: 'j-shared-bottom', endJunctionId: 'j-east-bottom' }
+		]);
+		expect(
+			plan.document.rooms.some((room) => room.boundary.some((ref) => ref.wallId === 'shared'))
+		).toBe(false);
+		expect(compiledFloorAreas(plan.document).sort((a, b) => a - b)).toEqual([6, 6]);
+	});
+});
+
+describe('SP1b — §5.1 transition matrix', () => {
+	it('erasing a second outside Wall adjacent keeps the corner anchor and one open side', () => {
+		const document = enclosedRectangle();
+		const first = planDeleteWall(document, 'wall-a', capture('sp1b-adjacent-first'), document.floor.id, {
+			openSpaces: 'keep'
+		});
+		expect(first.kind).toBe('success');
+		if (first.kind !== 'success') return;
+		const second = planDeleteWall(
+			first.document,
+			'wall-b',
+			capture('sp1b-adjacent-second'),
+			first.document.floor.id,
+			{ openSpaces: 'keep' }
+		);
+		expect(second.kind).toBe('success');
+		if (second.kind !== 'success') return;
+		const room = second.document.rooms[0]!;
+		expect(room.id).toBe('room-open');
+		expect(room.virtualEdges).toEqual([
+			{ startJunctionId: 'j-a', endJunctionId: 'j-b' },
+			{ startJunctionId: 'j-b', endJunctionId: 'j-c' }
+		]);
+		// The corner Junction survives with no Wall of its own.
+		expect(second.document.junctions.some((candidate) => candidate.id === 'j-b')).toBe(true);
+		expect(
+			second.document.walls.some(
+				(candidate) => candidate.id === 'wall-a' || candidate.id === 'wall-b'
+			)
+		).toBe(false);
+		expect(second.retiredRoomIds).toEqual([]);
+		expect(compiledFloorAreas(second.document)).toEqual([12]);
+	});
+
+	it('drawing an alternate enclosing path replaces the open side with the larger face', () => {
+		const document = threeWallOpenSpace();
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[0, 0],
+				[-2, 0],
+				[-2, 3],
+				[0, 3]
+			],
+			close: false,
+			capture: capture('sp1b-alternate-path'),
+			levelId: document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-a' },
+				{ pointIndex: 3, junctionId: 'j-d' }
+			]
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		const room = plan.document.rooms[0]!;
+		expect(room.id).toBe('room-open');
+		expect(room.name).toBe('Open');
+		expect(room.virtualEdges).toEqual([]);
+		expect(room.boundary.map((ref) => ref.wallId)).toEqual(
+			expect.arrayContaining(['wall-a', 'wall-b', 'wall-c'])
+		);
+		expect(compiledFloorAreas(plan.document)).toEqual([18]);
+	});
+
+	it('drawing a divider encloses one part of an open Space and leaves the remainder unowned', () => {
+		const document = threeWallOpenSpace();
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[2, 0],
+				[2, 3]
+			],
+			close: false,
+			capture: capture('sp1b-divide'),
+			levelId: document.floor.id,
+			endpointHostSnaps: [
+				{ pointIndex: 0, wallId: 'wall-a' },
+				{ pointIndex: 1, wallId: 'wall-c' }
+			]
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		const room = plan.document.rooms[0]!;
+		expect(room.id).toBe('room-open');
+		expect(room.virtualEdges).toEqual([]);
+		expect(compiledFloorAreas(plan.document)).toEqual([6]);
+	});
+
+	it('drawing exactly along a virtual edge closes the Space and keeps its identity', () => {
+		const document = threeWallOpenSpace();
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[0, 3],
+				[0, 0]
+			],
+			close: false,
+			capture: capture('sp1b-close'),
+			levelId: document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-d' },
+				{ pointIndex: 1, junctionId: 'j-a' }
+			]
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.document.rooms[0]!.id).toBe('room-open');
+		expect(plan.document.rooms[0]!.virtualEdges).toEqual([]);
+		expect(compiledFloorAreas(plan.document)).toEqual([12]);
+	});
+
+	it('a stroke along part of a virtual edge stays free-standing and leaves the Space unchanged', () => {
+		const document = threeWallOpenSpace();
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[0, 0],
+				[0, 1.5]
+			],
+			close: false,
+			capture: capture('sp1b-partial-edge'),
+			levelId: document.floor.id,
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-a' }]
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toEqual(document.rooms);
+		expect(plan.document.walls).toHaveLength(document.walls.length + 1);
+		expect(compiledFloorAreas(plan.document)).toEqual([12]);
+	});
+
+	it('a stroke across a virtual edge without touching its ends leaves the Space unchanged', () => {
+		const document = threeWallOpenSpace();
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[1, 1.5],
+				[-1, 1.5]
+			],
+			close: false,
+			capture: capture('sp1b-cross-edge'),
+			levelId: document.floor.id
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toEqual(document.rooms);
+		expect(plan.document.walls).toHaveLength(document.walls.length + 1);
+		expect(compiledFloorAreas(plan.document)).toEqual([12]);
+	});
+
+	it('moving a Junction on an open boundary is allowed and updates the outline', () => {
+		const document = threeWallOpenSpace();
+		const plan = planExactJunctionMove(document, 'j-d', [0, 4]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.document.rooms[0]!.id).toBe('room-open');
+		expect(plan.document.rooms[0]!.virtualEdges).toEqual(document.rooms[0]!.virtualEdges);
+		const moved = plan.document.junctions.find((candidate) => candidate.id === 'j-d')!;
+		expect(moved.point).toEqual([0, 4]);
+		expect(compiledFloorAreas(plan.document)).toEqual([14]);
+	});
+
+	it('rotating a two-component open Space moves every Wall and virtual-edge Junction', () => {
+		const document = enclosedRectangle();
+		const erased = planDeleteWalls(
+			document,
+			['wall-a', 'wall-c'],
+			capture('sp1b-rotate-erase'),
+			document.floor.id,
+			{ openSpaces: 'keep' }
+		);
+		expect(erased.kind).toBe('success');
+		if (erased.kind !== 'success') return;
+		const before = new Map(
+			erased.document.junctions.map((candidate) => [candidate.id, candidate.point])
+		);
+		const plan = planWallFirstRoomRotation(erased.document, 'room-open', [0, 0], Math.PI / 2);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.rooms).toHaveLength(1);
+		const room = plan.document.rooms[0]!;
+		expect(room.id).toBe('room-open');
+		expect(room.boundary.map((ref) => ref.wallId).sort()).toEqual(['wall-b', 'wall-d']);
+		expect(room.virtualEdges).toEqual(erased.document.rooms[0]!.virtualEdges);
+		const after = new Map(
+			plan.document.junctions.map((candidate) => [candidate.id, candidate.point])
+		);
+		expect(after.get('j-a')).toEqual([0, 0]);
+		for (const junctionId of ['j-b', 'j-c', 'j-d']) {
+			expect(after.get(junctionId)).not.toEqual(before.get(junctionId));
+		}
+		const distance = (points: ReadonlyMap<string, LayoutVec2>): number =>
+			Math.hypot(
+				points.get('j-b')![0] - points.get('j-d')![0],
+				points.get('j-b')![1] - points.get('j-d')![1]
+			);
+		expect(distance(after)).toBeCloseTo(distance(before), 9);
+		expect(compiledFloorAreas(plan.document)).toEqual([12]);
+	});
+
+	it('F2(b): opposite Walls redrawn one after the other keep the same Space id', () => {
+		const document = enclosedRectangle();
+		const erased = planDeleteWalls(
+			document,
+			['wall-a', 'wall-c'],
+			capture('sp1b-f2b-erase'),
+			document.floor.id,
+			{ openSpaces: 'keep' }
+		);
+		expect(erased.kind).toBe('success');
+		if (erased.kind !== 'success') return;
+		expect(erased.document.rooms[0]!.id).toBe('room-open');
+		expect(erased.document.rooms[0]!.virtualEdges).toHaveLength(2);
+
+		const first = planWallChain({
+			baseline: erased.document,
+			points: [
+				[0, 0],
+				[4, 0]
+			],
+			close: false,
+			capture: capture('sp1b-f2b-redraw-a'),
+			levelId: erased.document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-a' },
+				{ pointIndex: 1, junctionId: 'j-b' }
+			]
+		});
+		expect(first.kind).toBe('success');
+		if (first.kind !== 'success') return;
+		expect(first.document.rooms).toHaveLength(1);
+		expect(first.document.rooms[0]!.id).toBe('room-open');
+
+		const second = planWallChain({
+			baseline: first.document,
+			points: [
+				[0, 3],
+				[4, 3]
+			],
+			close: false,
+			capture: capture('sp1b-f2b-redraw-c'),
+			levelId: first.document.floor.id,
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-d' },
+				{ pointIndex: 1, junctionId: 'j-c' }
+			]
+		});
+		expect(second.kind).toBe('success');
+		if (second.kind !== 'success') return;
+		expect(second.document.rooms).toHaveLength(1);
+		expect(second.document.rooms[0]!.id).toBe('room-open');
+		expect(second.document.rooms[0]!.virtualEdges).toEqual([]);
+		expect(compiledFloorAreas(second.document)).toEqual([12]);
 	});
 });
