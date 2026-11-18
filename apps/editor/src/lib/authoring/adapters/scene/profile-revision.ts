@@ -142,10 +142,17 @@ function generatorPlane(entity: SceneFormEntity): WorkingPlane {
 	};
 }
 
+/**
+ * One source anchor's world point. The stored scale is part of the generator's
+ * coordinate conversion: `extrudeProfile` builds the body at `u × scale.x` and
+ * `v × scale.z` (plan) or `v × scale.y` (elevation), so the handle must use the
+ * same product or it drifts off the rendered form after any ordinary Size edit.
+ */
 function anchorWorld(entity: SceneFormEntity, anchor: ProfileRevisionAnchor): Vec3 {
+	const [scaleX, scaleY, scaleZ] = entity.form.scale;
 	return entity.form.generator.plane === 'plan'
-		? localToWorld(entity, [anchor.u, 0, anchor.v])
-		: localToWorld(entity, [anchor.u, anchor.v, 0]);
+		? localToWorld(entity, [anchor.u * scaleX, 0, anchor.v * scaleZ])
+		: localToWorld(entity, [anchor.u * scaleX, anchor.v * scaleY, 0]);
 }
 
 /** The extent axis: a plan form extrudes along local Y, an elevation form along Z. */
@@ -156,6 +163,41 @@ function extentAxis(entity: SceneFormEntity): 1 | 2 {
 function sameAnchor(left: ProfileRevisionAnchor, right: ProfileRevisionAnchor): boolean {
 	return left.key === right.key && left.u === right.u && left.v === right.v && left.smooth === right.smooth;
 }
+
+const STALE_SOURCE_MESSAGE =
+	'The accepted source changed while the outline task was open. Discard and reopen it.';
+
+/**
+ * Whether the captured form is still the accepted one this draft was opened
+ * against. The task holds a revision identity from entry, not the latest
+ * snapshot: another install, a re-admitted source or an external change must
+ * refuse the draft rather than apply it to a newer body.
+ */
+function sameCapturedSource(left: SceneFormEntity, right: SceneFormEntity): boolean {
+	if (
+		left.id !== right.id ||
+		left.position.some((value, axis) => value !== right.position[axis]) ||
+		left.rotation.some((value, axis) => value !== right.rotation[axis]) ||
+		left.form.generator.plane !== right.form.generator.plane ||
+		left.form.generator.kind !== right.form.generator.kind ||
+		left.form.generator.extent !== right.form.generator.extent ||
+		left.form.nextKey !== right.form.nextKey ||
+		left.form.scale.some((value, axis) => value !== right.form.scale[axis])
+	) {
+		return false;
+	}
+	const leftOutline = left.form.generator.outline;
+	const rightOutline = right.form.generator.outline;
+	return (
+		leftOutline.length === rightOutline.length &&
+		leftOutline.every((anchor, index) => sameAnchor(anchor, rightOutline[index]!))
+	);
+}
+
+type CapturedSource = {
+	readonly revision: { readonly projectId: string; readonly revisionId: string };
+	readonly sceneRevision: string;
+};
 
 let current: ProfileRevisionSession | null = null;
 
@@ -303,6 +345,7 @@ export function createProfileRevisionSession(
 	services: StageAdapterServices
 ): ProfileRevisionSession {
 	let base: SceneFormEntity | null = null;
+	let captured: CapturedSource | null = null;
 	let anchors: ProfileRevisionAnchor[] = [];
 	let extent = 0;
 	let refusal: string | null = null;
@@ -331,6 +374,21 @@ export function createProfileRevisionSession(
 		return entity?.kind === 'form' ? entity : null;
 	}
 
+	function staleReason(): string | null {
+		if (base === null || captured === null) return null;
+		const snapshot = services.stage.snapshot();
+		if (
+			snapshot.acceptedRevision.projectId !== captured.revision.projectId ||
+			snapshot.acceptedRevision.revisionId !== captured.revision.revisionId ||
+			snapshot.domain.unitRevisions.scene !== captured.sceneRevision
+		) {
+			return STALE_SOURCE_MESSAGE;
+		}
+		const live = liveEntity();
+		if (live === null) return 'The object is no longer in the accepted source.';
+		return sameCapturedSource(base, live) ? null : STALE_SOURCE_MESSAGE;
+	}
+
 	function dirty(): boolean {
 		if (base === null) return false;
 		if (extent !== base.form.generator.extent) return true;
@@ -340,6 +398,14 @@ export function createProfileRevisionSession(
 
 	function replan(): void {
 		const entity = base;
+		const stale = staleReason();
+		if (stale !== null) {
+			candidate = null;
+			refusal = stale;
+			notify();
+			services.stage.notifySurfaceChange();
+			return;
+		}
 		const operationContext = context();
 		if (entity === null || operationContext === null) {
 			candidate = null;
@@ -376,6 +442,7 @@ export function createProfileRevisionSession(
 		if (proposal !== null && proposal.active) proposal.release();
 		proposal = null;
 		base = null;
+		captured = null;
 		anchors = [];
 		extent = 0;
 		refusal = null;
@@ -391,6 +458,14 @@ export function createProfileRevisionSession(
 			if (entity?.kind !== 'form') return false;
 			if (base !== null) close();
 			base = entity;
+			const opening = services.stage.snapshot();
+			captured = {
+				revision: {
+					projectId: opening.acceptedRevision.projectId,
+					revisionId: opening.acceptedRevision.revisionId
+				},
+				sceneRevision: opening.domain.unitRevisions.scene
+			};
 			anchors = entity.form.generator.outline.map((anchor) => ({
 				key: anchor.key,
 				u: anchor.u,
@@ -509,9 +584,13 @@ export function createProfileRevisionSession(
 			if (ray === null) return true;
 			const hit = adapterContext.intersect(ray, generatorPlane(entity));
 			if (hit.kind !== 'intersected') return true;
+			const [scaleX, scaleY, scaleZ] = entity.form.scale;
+			const plan = entity.form.generator.plane === 'plan';
+			const scaleV = plan ? scaleZ : scaleY;
+			if (!(scaleX > 0) || !(scaleV > 0)) return true;
 			const local = worldToLocal(entity, hit.worldPoint as Vec3);
-			const u = quantize(local[0]);
-			const v = quantize(entity.form.generator.plane === 'plan' ? local[2] : local[1]);
+			const u = quantize(local[0] / scaleX);
+			const v = quantize((plan ? local[2] : local[1]) / scaleV);
 			if (
 				!Number.isFinite(u) ||
 				!Number.isFinite(v) ||
@@ -562,6 +641,13 @@ export function createProfileRevisionSession(
 		async apply() {
 			if (base === null) return { kind: 'closed' };
 			if (!dirty()) return { kind: 'no-op' };
+			const stale = staleReason();
+			if (stale !== null) {
+				refusal = stale;
+				notify();
+				services.stage.notifySurfaceChange();
+				return { kind: 'refused', message: stale };
+			}
 			const operationContext = context();
 			if (operationContext === null) {
 				refusal = 'The object is no longer in the accepted source.';
@@ -581,13 +667,14 @@ export function createProfileRevisionSession(
 				return { kind: 'refused', message: refusal ?? 'The revision is not valid yet.' };
 			}
 			const entityId = base.id;
-			const snapshot = services.stage.snapshot();
+			const opening = captured;
+			if (opening === null) return { kind: 'refused', message: STALE_SOURCE_MESSAGE };
 			const outcome = await services.authoring.accept({
 				version: 1,
 				kind: 'set-form-profile',
 				operationId: globalThis.crypto.randomUUID(),
-				expectedRevision: snapshot.acceptedRevision,
-				targets: [sceneEntityReference(entityId, snapshot.domain.unitRevisions.scene)],
+				expectedRevision: { ...opening.revision },
+				targets: [sceneEntityReference(entityId, opening.sceneRevision)],
 				payload: {
 					entityId,
 					outline: anchors.map((anchor) => ({ ...anchor })),
@@ -622,6 +709,7 @@ export function createProfileRevisionSession(
 			if (proposal !== null && proposal.active) proposal.release();
 			proposal = null;
 			base = null;
+			captured = null;
 			anchors = [];
 			candidate = null;
 			refusal = null;
