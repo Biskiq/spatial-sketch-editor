@@ -683,7 +683,7 @@
 			return true;
 		},
 		setScope: (scope) => {
-			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation, admitsCardAction: (adapterId, subjectId) => studioAdmitsCardAction(scope.entityId, adapterId, subjectId) });
+			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation, admitsCardAction: (adapterId, subjectId, actionId) => studioAdmitsCardAction(scope.entityId, adapterId, subjectId, actionId) });
 			clearHover();
 			shell.bumpContributions();
 			facade?.notifySurfaceChange();

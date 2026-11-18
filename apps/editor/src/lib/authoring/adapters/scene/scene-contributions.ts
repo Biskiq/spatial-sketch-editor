@@ -72,7 +72,10 @@ import {
 	SCENE_IMPORT_KIND,
 	SCENE_IMPORT_TASK,
 	SCENE_PLACE_KIND,
-	SCENE_PLACE_TASK
+	SCENE_PLACE_TASK,
+	SCENE_PROFILE_REVISION_ACTION,
+	SCENE_PROFILE_REVISION_KIND,
+	SCENE_PROFILE_REVISION_TASK
 } from './scene-task-ids';
 
 const FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX = 24;
@@ -334,6 +337,29 @@ export function createSceneContributions(
 		// open Compose to duplicate or delete the selected object.
 		const studio = services.objectStudio;
 		return [
+			// The scoped root's generator revision is a Studio task; the World offers
+			// the same form's Edit in Studio action instead.
+			...(entity.kind === 'form' && services.stage.postureScoped()
+				? [
+						{
+							id: SCENE_PROFILE_REVISION_ACTION,
+							label: 'Edit outline',
+							compactLabel: 'Outline',
+							group: 'primary' as const,
+							inline: true,
+							detail: `Revise ${entity.name}'s existing outline anchors and extent. Nothing changes until Apply.`,
+							async run() {
+								const opened = services.stage.openContributedTask(
+									SCENE_PROFILE_REVISION_TASK,
+									'scene'
+								);
+								return opened.kind === 'opened'
+									? { kind: 'accepted' as const }
+									: { kind: 'refused' as const, message: opened.message };
+							}
+						}
+					]
+				: []),
 			// Studio edits a native form only; imported models and primitives have no Studio.
 			...(entity.kind === 'form' && studio !== undefined && studio.available()
 				? [
@@ -508,6 +534,13 @@ export function createSceneContributions(
 				label: 'Compose',
 				targetRef: context.selection()?.ref ?? null,
 				order: 5
+			},
+			{
+				id: SCENE_PROFILE_REVISION_TASK,
+				taskKind: SCENE_PROFILE_REVISION_KIND,
+				label: 'Edit outline',
+				targetRef: context.selection()?.ref ?? null,
+				order: 6
 			},
 			{
 				id: SCENE_IMPORT_TASK,

@@ -2423,6 +2423,8 @@ describe('Scene adapter registration', () => {
 		const tasks = facade.tasks().filter((task) => task.adapterId === 'scene');
 		expect(tasks.map((task) => task.taskKind)).toEqual([
 			'scene-compose',
+			// T5.2: the Studio-only outline revision, opened from the root's Card.
+			'revise-form-profile',
 			'place-object',
 			'import-model'
 		]);

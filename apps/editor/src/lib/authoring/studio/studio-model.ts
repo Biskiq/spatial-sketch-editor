@@ -73,6 +73,7 @@ export function isStudioWorldTool(id: string): boolean {
 const STUDIO_OPERATIONS: ReadonlySet<string> = new Set([
 	'scene:scene-place',
 	'scene:scene-compose',
+	'scene:scene-profile-revision',
 	'host:host-measure',
 	'host:host-erase'
 ]);
@@ -82,12 +83,23 @@ export function isStudioOperation(adapterId: string, id: string): boolean {
 }
 
 /**
- * The Card actions Object Studio offers a subject: only the Scene's own, and never on
- * the root being edited (Duplicate and Delete would end or fork the session's subject;
- * the root leaves Studio only through its own return paths). With no root, none.
+ * What the scoped root's Card may run.
+ *
+ * Studio's root is one object and must stay one: Duplicate, Delete and the
+ * World's Studio entry all refuse. The generator revision is the exception —
+ * `Edit outline` is the one root action the scope admits, because revising the
+ * root's own outline is the task this scope exists for. Other adapters and
+ * other subjects keep the established rule.
  */
-export function studioAdmitsCardAction(rootId: string | null, adapterId: string, subjectId: string): boolean {
-	return rootId !== null && adapterId === 'scene' && subjectId !== rootId;
+export function studioAdmitsCardAction(
+	rootId: string | null,
+	adapterId: string,
+	subjectId: string,
+	actionId?: string
+): boolean {
+	if (rootId === null || adapterId !== 'scene') return false;
+	if (subjectId !== rootId) return true;
+	return actionId === 'scene-object-edit-outline';
 }
 
 /** Eligible roots, in source order. Imported models and primitives are not forms. */

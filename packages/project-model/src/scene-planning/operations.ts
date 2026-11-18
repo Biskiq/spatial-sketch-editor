@@ -70,6 +70,7 @@ export const SCENE_OPERATION_KINDS = [
 	'create-form',
 	'place-form-copy',
 	'set-form-size',
+	'set-form-profile',
 	'move-horizontal',
 	'set-yaw',
 	'place-on-floor',
@@ -177,6 +178,12 @@ export const YAW_SCOPE_FIELD = 'rotation[1]';
  * The size planner owns exactly this nested field and the resting Y.
  */
 export const FORM_SCALE_SCOPE_FIELD = 'form.scale';
+
+/**
+ * A profile revision owns the generator — its keyed outline and extent — while
+ * `form.scale` and `form.nextKey` still compare exactly.
+ */
+export const FORM_GENERATOR_SCOPE_FIELD = 'form.generator';
 
 export function planMoveHorizontal(input: {
 	readonly context: SceneOperationContext;
@@ -680,6 +687,173 @@ export function planSetFormSize(input: {
 		},
 		correspondence: [{ relation: 'preserved', entityId: entity.id }],
 		support: support.support
+	});
+}
+
+/**
+ * `set-form-profile` — revise the existing outline and extrusion extent.
+ *
+ * The generator is edited in place: every captured anchor keeps the key and the
+ * ring position the accepted source already gave it, and the extent stays a
+ * positive source value. The planner validates the whole candidate with the one
+ * profile/extrusion evaluator at the current per-axis scale, then preserves the
+ * resting elevation exactly as `set-form-size` does: an elevation form's
+ * evaluated contact is reapplied, a plan form rests at its local zero, and a
+ * lifted form keeps its declared lift above the support beneath it. Plane,
+ * rotation, whole-form scale, `nextKey` and the entity identity are untouched.
+ *
+ * Adding, removing or reordering anchors and changing the generator's plane are
+ * later capabilities; a payload that tries either refuses instead of allocating
+ * a key or inventing a new source.
+ */
+export function planSetFormProfile(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly outline: readonly {
+		readonly key: number;
+		readonly u: number;
+		readonly v: number;
+		readonly smooth: boolean;
+	}[];
+	readonly extent: number;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneOperationResult {
+	const target = readObject(input.context.scene, input.entityId);
+	if (target.kind !== 'object') return target;
+	if (target.entity.kind !== 'form') {
+		return refusal(
+			'unsupported-transform',
+			`Entity "${input.entityId}" is not a native form; only a form has an editable outline.`,
+			[input.entityId]
+		);
+	}
+	const entity = target.entity;
+	const existingOutline = entity.form.generator.outline;
+	if (!Array.isArray(input.outline) || input.outline.length !== existingOutline.length) {
+		return invalid(
+			`A profile revision keeps the form's ${existingOutline.length} existing anchors; adding or removing anchors is later work.`,
+			['outline', 'anchor-count']
+		);
+	}
+	for (let index = 0; index < input.outline.length; index += 1) {
+		const anchor = input.outline[index];
+		const existing = existingOutline[index]!;
+		if (
+			anchor === null ||
+			typeof anchor !== 'object' ||
+			anchor.key !== existing.key
+		) {
+			return invalid(
+				'A profile revision keeps every existing outline key in its existing ring order; keys are never added, removed or reordered.',
+				['outline', 'keys']
+			);
+		}
+	}
+	if (
+		!Number.isFinite(input.extent) ||
+		input.extent < PROFILE_LIMITS.minExtentMeters ||
+		input.extent > PROFILE_LIMITS.maxExtentMeters
+	) {
+		return invalid(
+			`A form extent must be finite and within [${PROFILE_LIMITS.minExtentMeters}, ${PROFILE_LIMITS.maxExtentMeters}] m.`,
+			['extent']
+		);
+	}
+
+	const outline: ProfileAnchor[] = input.outline.map((anchor) => ({
+		key: anchor.key,
+		u: anchor.u,
+		v: anchor.v,
+		smooth: anchor.smooth
+	}));
+	if (
+		input.extent === entity.form.generator.extent &&
+		outline.every((anchor, index) => {
+			const existing = existingOutline[index]!;
+			return (
+				anchor.u === existing.u &&
+				anchor.v === existing.v &&
+				anchor.smooth === existing.smooth
+			);
+		})
+	) {
+		return refusal(
+			'no_op',
+			`Entity "${entity.id}" already has this outline and extent.`,
+			['outline', 'extent']
+		);
+	}
+
+	const issues = validateProfile(outline);
+	if (issues.length > 0) {
+		const first = issues[0]!;
+		return invalid(`The form outline refuses: ${first.code}.`, [
+			first.code,
+			...first.anchorKeys.map((key) => String(key))
+		]);
+	}
+	let profile;
+	try {
+		profile = evaluateProfile(outline);
+		extrudeProfile({
+			profile,
+			extent: input.extent,
+			scale: entity.form.scale,
+			plane: entity.form.generator.plane
+		});
+	} catch (error) {
+		return invalid(
+			error instanceof GeometryCoreError
+				? error.message
+				: 'The revised form body is outside the admitted limits.',
+			['outline', 'extent']
+		);
+	}
+
+	const plane = entity.form.generator.plane;
+	const currentContact = sceneFormContactMinY(entity.form);
+	if (currentContact === null) {
+		return refusal(
+			'unsupported-transform',
+			`Entity "${entity.id}" has no honest floor contact, so a profile revision cannot own its placement.`,
+			[entity.id]
+		);
+	}
+	const nextContact =
+		plane === 'plan' ? 0 : profile.bounds.minV * entity.form.scale[1];
+	const rest = restSupport(input.context, entity, currentContact, input.choice);
+	if (rest.kind !== 'resolved') return rest;
+
+	const next: SceneEntity = {
+		...entity,
+		position: [
+			entity.position[0],
+			rest.support.elevation + rest.lift - nextContact,
+			entity.position[2]
+		],
+		form: {
+			...entity.form,
+			generator: {
+				...entity.form.generator,
+				outline: outline.map((anchor) => ({ ...anchor })),
+				extent: input.extent
+			}
+		}
+	};
+	return finalize({
+		context: input.context,
+		operationKind: 'set-form-profile',
+		next,
+		fields: ['form', 'position'],
+		scope: {
+			changedEntityIds: [entity.id],
+			changedEntityFields: [FORM_GENERATOR_SCOPE_FIELD, 'position[1]'],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		},
+		correspondence: [{ relation: 'preserved', entityId: entity.id }],
+		support: rest.support
 	});
 }
 
