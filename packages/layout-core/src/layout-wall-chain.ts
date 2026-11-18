@@ -916,6 +916,10 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 					components,
 					predecessorWitnesses,
 					predecessorPolygons,
+					// The chain is non-removal: an already-open Space is preserved,
+					// never retired by an unrelated stroke.
+					spacePolicy: { openSpaces: 'keep' },
+					candidateRooms: candidate.rooms,
 					allocator: createAuthoringRoomAllocator(options.capture, options.roomNamePrefix)
 				})
 			);
@@ -1122,9 +1126,17 @@ function validateEndpointHostSnaps(input: {
 		if (key !== undefined) declarationComponentKeys.add(key);
 	}
 	if (declarationComponentKeys.size > 1) {
-		return invalid(
-			'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
-		);
+		// F3 — one open Space is one authored group even when its surviving Walls
+		// sit in several topology components (an opposite-Wall erase). A chain that
+		// declares only that Space's own boundary Junctions/Walls re-closes the
+		// Space; it is not the deferred class-4 join of two independent structures.
+		const declaredJunctionIds = [...declaredJunctionByPointIndex.values()];
+		const declaredHostWallIds = [...declaredHostByPointIndex.values()];
+		if (!declarationsRecloseOneOpenSpace(baseline, declaredJunctionIds, declaredHostWallIds)) {
+			return invalid(
+				'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
+			);
+		}
 	}
 
 	// "Already-declared connection to its component": a declaration that does not
@@ -1149,6 +1161,41 @@ function validateEndpointHostSnaps(input: {
 		return invalid(`Declared host Wall '${wallId}' is unrelated to draft point ${pointIndex}`);
 	}
 	return { declaredHostByPointIndex };
+}
+
+/**
+ * True when every declared Junction and host Wall belongs to the SAME open
+ * Space's authored boundary. Such declarations re-close that one Space even
+ * though its surviving Walls may sit in different topology components: F3
+ * makes the Space, not the component labelling, the authored group.
+ */
+function declarationsRecloseOneOpenSpace(
+	baseline: LayoutDocumentWallFirst,
+	declaredJunctionIds: readonly string[],
+	declaredHostWallIds: readonly string[]
+): boolean {
+	const junctionIds = new Set(declaredJunctionIds);
+	const hostWallIds = new Set(declaredHostWallIds);
+	for (const room of baseline.rooms) {
+		if (room.virtualEdges.length === 0) continue;
+		const roomJunctionIds = new Set<string>();
+		const roomWallIds = new Set<string>();
+		for (const ref of room.boundary) {
+			roomWallIds.add(ref.wallId);
+			const wall = wallById(baseline, ref.wallId);
+			if (!wall) continue;
+			roomJunctionIds.add(wall.startJunctionId);
+			roomJunctionIds.add(wall.endJunctionId);
+		}
+		for (const edge of room.virtualEdges) {
+			roomJunctionIds.add(edge.startJunctionId);
+			roomJunctionIds.add(edge.endJunctionId);
+		}
+		if (![...junctionIds].every((junctionId) => roomJunctionIds.has(junctionId))) continue;
+		if (![...hostWallIds].every((wallId) => roomWallIds.has(wallId))) continue;
+		return true;
+	}
+	return false;
 }
 
 /**

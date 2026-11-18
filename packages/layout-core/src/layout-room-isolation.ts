@@ -168,6 +168,7 @@ function collectBoundaryGraph(
 	rooms: readonly LayoutWallFirstRoom[]
 ): { kind: 'success'; graph: BoundaryGraph } | { kind: 'rejected'; rejection: RoomIsolationRejection } {
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+	const junctionIdInDocument = new Set(document.junctions.map((junction) => junction.id));
 	const wallIds: string[] = [];
 	const wallIdSet = new Set<string>();
 	const junctionIds: string[] = [];
@@ -189,6 +190,26 @@ function collectBoundaryGraph(
 			}
 			const wall = wallById.get(ref.wallId)!;
 			for (const junctionId of [wall.startJunctionId, wall.endJunctionId]) {
+				if (junctionIdSet.has(junctionId)) continue;
+				junctionIdSet.add(junctionId);
+				junctionIds.push(junctionId);
+			}
+		}
+		// Virtual-edge ends are part of the Room's graph: an isolated duplicate
+		// or a group move must carry them, and a stationary Wall touching one is
+		// an attachment the operation would tear off.
+		const missingVirtualJunctions = room.virtualEdges
+			.flatMap((edge) => [edge.startJunctionId, edge.endJunctionId])
+			.filter((junctionId) => !junctionIdInDocument.has(junctionId));
+		if (missingVirtualJunctions.length > 0) {
+			return reject(
+				'invalid_reference',
+				`Room '${room.id}' has unresolved open-side Junctions`,
+				[room.id, ...missingVirtualJunctions]
+			);
+		}
+		for (const edge of room.virtualEdges) {
+			for (const junctionId of [edge.startJunctionId, edge.endJunctionId]) {
 				if (junctionIdSet.has(junctionId)) continue;
 				junctionIdSet.add(junctionId);
 				junctionIds.push(junctionId);
@@ -273,6 +294,10 @@ export function connectedRoomIds(
 			junctions.add(wall.startJunctionId);
 			junctions.add(wall.endJunctionId);
 		}
+		for (const edge of room.virtualEdges) {
+			junctions.add(edge.startJunctionId);
+			junctions.add(edge.endJunctionId);
+		}
 		for (const junctionId of junctions) {
 			const members = junctionToRooms.get(junctionId);
 			if (members) members.push(room.id);
@@ -290,6 +315,15 @@ export function connectedRoomIds(
 			const wall = wallById.get(ref.wallId);
 			if (!wall) continue;
 			for (const junctionId of [wall.startJunctionId, wall.endJunctionId]) {
+				for (const neighbour of junctionToRooms.get(junctionId) ?? []) {
+					if (seen.has(neighbour)) continue;
+					seen.add(neighbour);
+					queue.push(neighbour);
+				}
+			}
+		}
+		for (const edge of room.virtualEdges) {
+			for (const junctionId of [edge.startJunctionId, edge.endJunctionId]) {
 				for (const neighbour of junctionToRooms.get(junctionId) ?? []) {
 					if (seen.has(neighbour)) continue;
 					seen.add(neighbour);

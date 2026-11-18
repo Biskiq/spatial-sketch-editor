@@ -41,7 +41,7 @@ import { registerCowDocumentDelta } from './layout-world-index';
  * dependence, no allocation.
  */
 import type { LayoutDocumentIssue } from './layout-issue';
-import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
+import { extractBoundaryCandidateFaces } from './layout-face-extraction';
 import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './layout-geometry';
 import type { LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
@@ -50,6 +50,7 @@ import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { resolveIsolatedRoomGroupSubgraph } from './layout-room-isolation';
 import {
 	reconcileRooms,
+	spaceBoundaryCycleKey,
 	type ComponentLineage,
 	type ReconciliationFailure,
 	type ReconciliationResult,
@@ -132,9 +133,18 @@ function reject(
 	};
 }
 
-/** Boundary-cycle key of a persisted Room (its canonical `boundary` cycle). */
-export function roomBoundaryCycleKey(room: Pick<LayoutWallFirstRoom, 'boundary'>): string {
-	return canonicalBoundaryCycleKey(room.boundary);
+/**
+ * Boundary-cycle key of a persisted Room. Enclosed Rooms keep the shipped
+ * direction-only key; open Spaces append their virtual-edge tokens so identity
+ * stays exact through a rigid move (SP-plan §6).
+ */
+export function roomBoundaryCycleKey(
+	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
+	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>
+): string {
+	// The shared key is identical to `canonicalBoundaryCycleKey` for an enclosed
+	// Room and appends virtual-edge tokens for an open one.
+	return spaceBoundaryCycleKey(document, room) ?? `unresolved:${room.id}`;
 }
 
 /**
@@ -514,16 +524,23 @@ function finalizeRoomUnitMotion(
 	// resolve identically. That the key is DIRECTION-only is what makes it hold for
 	// a rotation too: a rotation is orientation-preserving, so no Wall flips.
 	const extraction = extractBoundaryCandidateFaces(candidateDocument as LayoutDocumentWallFirst);
-	const components: ComponentLineage[] = document.rooms.map((room) => ({
-		candidateFaceKeys: [roomBoundaryCycleKey(room)],
-		predecessorRoomIds: [room.id]
-	}));
+	// An open Space has no candidate face to claim; it is carried through the
+	// move and asserted separately below.
+	const components: ComponentLineage[] = document.rooms
+		.filter((room) => room.virtualEdges.length === 0)
+		.map((room) => ({
+			candidateFaceKeys: [roomBoundaryCycleKey(document, room)],
+			predecessorRoomIds: [room.id]
+		}));
 	const attemptedAllocation = { value: false };
 	const reconciliation = reconcileRooms({
 		baseline: document,
 		candidateDocument,
 		extraction,
 		components,
+		// A rigid move preserves every existing Space.
+		spacePolicy: { openSpaces: 'keep' },
+		candidateRooms: candidateDocument.rooms,
 		allocator: guardedAllocator(attemptedAllocation)
 	});
 	// `RoomReconciliation` has no `kind`, so narrow through an explicit
@@ -649,6 +666,8 @@ function assertRoomIdentityPreserved(
 			kind: 'preserved' | 'split-survivor' | 'merge-survivor' | 'created';
 		}[];
 		retiredRoomIds: readonly string[];
+		carriedRoomIds: readonly string[];
+		spaceRetirements: readonly { roomId: string }[];
 	},
 	options: { roomId: string; allocationAttempted: boolean }
 ): { code: RoomMoveRejectionCode; message: string; targetIds?: readonly string[] } | null {
@@ -666,12 +685,22 @@ function assertRoomIdentityPreserved(
 			targetIds: [...reconciliation.retiredRoomIds]
 		};
 	}
-	if (reconciliation.lineage.length !== baseline.rooms.length) {
+	const carriedRoomIds = new Set(reconciliation.carriedRoomIds);
+	if (reconciliation.lineage.length + carriedRoomIds.size !== baseline.rooms.length) {
 		return {
 			code: 'room_identity_lost',
-			message: `Room move produced ${reconciliation.lineage.length} lineage record(s) for ${baseline.rooms.length} Room(s)`,
+			message: `Room move produced ${reconciliation.lineage.length} lineage record(s) and ${carriedRoomIds.size} carried Space(s) for ${baseline.rooms.length} Room(s)`,
 			targetIds: [options.roomId]
 		};
+	}
+	for (const room of baseline.rooms) {
+		if (room.virtualEdges.length > 0 && !carriedRoomIds.has(room.id)) {
+			return {
+				code: 'room_identity_lost',
+				message: `Open Space '${room.id}' was not carried by the move`,
+				targetIds: [room.id]
+			};
+		}
 	}
 	const finalByRoomId = new Map(reconciliation.document.rooms.map((room) => [room.id, room]));
 	for (const record of reconciliation.lineage) {
@@ -692,8 +721,8 @@ function assertRoomIdentityPreserved(
 				targetIds: [room.id]
 			};
 		}
-		const expectedKey = roomBoundaryCycleKey(room);
-		const actualKey = roomBoundaryCycleKey(finalRoom);
+		const expectedKey = roomBoundaryCycleKey(baseline, room);
+		const actualKey = roomBoundaryCycleKey(reconciliation.document, finalRoom);
 		if (expectedKey !== actualKey) {
 			return {
 				code: 'room_identity_lost',

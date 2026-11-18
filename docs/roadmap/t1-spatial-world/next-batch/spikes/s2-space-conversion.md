@@ -13,12 +13,12 @@ merged PR #290 (`d812afe9`). The approved plan named `d037fe0f`; `main` advanced
 **Scope:** test-only harness and this report. No production code, schema/format change, editor
 integration, UI, SP1 implementation or approved-roadmap edit. No T2-owned file was touched.
 
-**Evidence:** `apps/editor/tests/lib/layout/spikes/s2-space-conversion.test.ts` and its test-only
-harness `s2-space-conversion.ts`. Run:
+**Evidence (historical):** the test-only S2 spike files were deleted once SP1b moved every
+production case into the lifecycle suite. Run the production successor:
 
 ```sh
 cd apps/editor
-npx vitest run tests/lib/layout/spikes/s2-space-conversion.test.ts
+npx vitest run tests/lib/layout/sp1b-open-spaces-lifecycle.test.ts
 ```
 
 Result on this branch: **13 tests passed, 0 failed**.

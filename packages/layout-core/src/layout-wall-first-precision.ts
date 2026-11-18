@@ -51,6 +51,7 @@ import { layoutWorkingLevelIssue } from './layout-id-capture';
 import { validateWallFirstOpeningSet, validateWallFirstOpeningSubset } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import {
+	composeSpaceBoundary,
 	reconcileRooms,
 	roomBoundaryPolygon,
 	type ComponentLineage,
@@ -232,6 +233,8 @@ export type PrecisionRejection = {
 		| 'unknown_curve_anchor'
 		| 'shared_boundary_resize_ambiguous'
 		| 'topology_invalid'
+		/** A carried Space's new outline would be invalid; the edit is refused. */
+		| 'space_outline_invalid'
 		/**
 		 * The geometry edit could not map every baseline Room to exactly
 		 * one candidate face through explicit boundary-cycle lineage. Direct
@@ -1764,7 +1767,8 @@ export function planExactRectangleDimensions(
 ): PrecisionPlan {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
-	if (!finitePositive(width) || !finitePositive(depth)) return reject('invalid_value', 'Rectangle width and depth must be finite and greater than zero', [roomId]);
+			if (!finitePositive(width) || !finitePositive(depth)) return reject('invalid_value', 'Rectangle width and depth must be finite and greater than zero', [roomId]);
+	if (room.virtualEdges.length > 0) return reject('unsupported_geometry', 'Exact rectangle dimensions apply to enclosed Rooms only', [roomId]);
 	if (room.boundary.length !== 4) return reject('unsupported_geometry', 'Exact rectangle dimensions require four straight boundary Walls', [roomId]);
 
 	const resolved = resolveRectangle(document, roomId, options);
@@ -2235,6 +2239,8 @@ function finalizeWallGeometryCandidate(options: {
 		if (!candidateRoom) {
 			return reject('room_identity_lost', `Room '${room.id}' has no candidate boundary`, [room.id]);
 		}
+		// An open Space has no candidate face; it is carried and asserted below.
+		if (room.virtualEdges.length > 0 || candidateRoom.virtualEdges.length > 0) continue;
 		components.push({
 			candidateFaceKeys: [canonicalBoundaryCycleKey(candidateRoom.boundary)],
 			predecessorRoomIds: [room.id]
@@ -2247,11 +2253,19 @@ function finalizeWallGeometryCandidate(options: {
 		candidateDocument: document,
 		extraction,
 		components,
+		// Direct geometry edits never retire an open Space; it is carried from its
+		// candidate record, which may already carry a split or joined boundary.
+		spacePolicy: { openSpaces: 'keep' },
+		candidateRooms: document.rooms,
 		allocator: guardedRoomAllocator(allocationAttempted)
 	}));
 	if (isReconciliationFailure(reconciliation)) {
 		const { rejection } = reconciliation;
-		return reject('room_identity_lost', rejection.message, rejection.roomIds);
+		return reject(
+			rejection.code === 'space_outline_invalid' ? 'space_outline_invalid' : 'room_identity_lost',
+			rejection.message,
+			rejection.roomIds
+		);
 	}
 
 	const identityIssue = assertWallGeometryRoomIdentityPreserved(
@@ -2354,6 +2368,8 @@ function assertWallGeometryRoomIdentityPreserved(
 			kind: 'preserved' | 'split-survivor' | 'merge-survivor' | 'created';
 		}[];
 		retiredRoomIds: readonly string[];
+		carriedRoomIds: readonly string[];
+		spaceRetirements: readonly { roomId: string }[];
 	},
 	allocationAttempted: boolean
 ): { message: string; targetIds?: readonly string[] } | null {
@@ -2368,10 +2384,16 @@ function assertWallGeometryRoomIdentityPreserved(
 			targetIds: [...reconciliation.retiredRoomIds]
 		};
 	}
-	if (reconciliation.lineage.length !== baseline.rooms.length) {
+	const carriedRoomIds = new Set(reconciliation.carriedRoomIds);
+	if (reconciliation.lineage.length + carriedRoomIds.size !== baseline.rooms.length) {
 		return {
-			message: `Geometry edit produced ${reconciliation.lineage.length} lineage record(s) for ${baseline.rooms.length} Room(s)`
+			message: `Geometry edit produced ${reconciliation.lineage.length} lineage record(s) and ${carriedRoomIds.size} carried Space(s) for ${baseline.rooms.length} Room(s)`
 		};
+	}
+	for (const room of baseline.rooms) {
+		if (room.virtualEdges.length > 0 && !carriedRoomIds.has(room.id)) {
+			return { message: `Open Space '${room.id}' was not carried by the geometry edit`, targetIds: [room.id] };
+		}
 	}
 	for (const record of reconciliation.lineage) {
 		if (record.kind !== 'preserved' || record.predecessorRoomIds.length !== 1) {
@@ -2399,7 +2421,8 @@ function assertWallGeometryRoomIdentityPreserved(
 		const declared = candidateById.get(room.id);
 		if (
 			!declared ||
-			canonicalBoundaryCycleKey(finalRoom.boundary) !== canonicalBoundaryCycleKey(declared.boundary)
+			canonicalBoundaryCycleKey(finalRoom.boundary) !== canonicalBoundaryCycleKey(declared.boundary) ||
+			JSON.stringify(finalRoom.virtualEdges) !== JSON.stringify(declared.virtualEdges)
 		) {
 			return {
 				message: `Room '${room.id}' boundary lineage changed during the geometry edit`,
@@ -2871,6 +2894,21 @@ function validateWallFirstTopologyPass(
 	}
 
 	for (const room of subject && !subject.evaluateRooms ? [] : document.rooms) {
+		// An open Space's cycle is Walls + virtual edges; its closure is proven by
+		// composing that mixed sequence, not by the Wall-only chain below.
+		if (room.virtualEdges.length > 0) {
+			const composed = composeSpaceBoundary(document, room);
+			if (composed.kind === 'failed') {
+				return topologyFailure(room.id, undefined, composed.issue.message);
+			}
+			if (composed.edges.length < 3) {
+				return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary edges`);
+			}
+			if (!roomBoundaryPolygon(document, room.id)) {
+				return topologyFailure(room.id, undefined, `Room '${room.id}' has no resolvable outline`);
+			}
+			continue;
+		}
 		// A closed Wall contributes ONE oriented ref but many sampled vertices, and
 		// a two-Wall curved lens contributes TWO refs and a bounded polygon. The
 		// floor is resolved vertices, not Wall-ref count. Resolve the polygon before

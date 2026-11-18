@@ -47,6 +47,7 @@ import type { LayoutVec2 } from './layout-coordinates';
 import { countWork } from './p2311-perf';
 import { wallCenterlineSamples } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
+import { spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePairIssue } from './layout-space-outline';
 import {
 	canonicalBoundaryCycleKey,
 	type DerivedCandidateFace,
@@ -65,7 +66,9 @@ export type ReconciliationRejection = {
 		| 'unsupported_component'
 		| 'metadata_merge_conflict'
 		| 'unresolved_portal_remap'
-		| 'unresolved_room_reference';
+		| 'unresolved_room_reference'
+		/** A carried Space would fail I4 or I7 and the operation may not retire it. */
+		| 'space_outline_invalid';
 	message: string;
 	faceKey?: string;
 	roomIds?: string[];
@@ -82,6 +85,47 @@ export type RoomReconciliation = {
 	document: LayoutDocumentWallFirst;
 	lineage: readonly RoomLineageRecord[];
 	retiredRoomIds: readonly string[];
+	/** Open predecessors preserved by the carry rule, in baseline document order. */
+	carriedRoomIds: readonly string[];
+	/** Why an open Space left the document (SP-plan §5.4). */
+	spaceRetirements: readonly SpaceRetirement[];
+};
+
+/** Why an open Space retired; stable machine codes for consequence lines (SP1c). */
+export type SpaceRetirementReason =
+	| 'explicit-remove'
+	| 'last-boundary-wall'
+	| 'merged'
+	| 'outline-not-positive'
+	| 'outline-self-intersects'
+	| 'overlaps'
+	| 'contains';
+
+export type SpaceRetirement = {
+	roomId: string;
+	reason: SpaceRetirementReason;
+	/** The other Space involved (merge survivor, overlap or containment). */
+	otherRoomIds?: readonly string[];
+	successorRoomId?: string;
+};
+
+/**
+ * How one reconciliation pass treats Spaces that are not claimed by a face.
+ *
+ * `retire` is the shipped behaviour and the SP1b default: an unclaimed
+ * predecessor disappears, so no operation creates an open Space yet. `keep`
+ * runs the carry rule (SP-plan §5). Only a Wall removal can open a Space, so
+ * the public planner option lives on the removal entry points; every other
+ * planner passes `keep` to preserve a Space it did not open.
+ */
+export type SpaceLifecyclePolicy = {
+	openSpaces: 'retire' | 'keep';
+	/** Wall ids this operation removes, resolvable in `baseline`. */
+	removedWalls?: readonly string[];
+	/** Predecessors the operation retires by intent, before face claims. */
+	retireRoomIds?: readonly string[];
+	/** What a carried Space failing I4/I7 does. Default `reject`. */
+	invalidOutline?: 'retire' | 'reject';
 };
 
 export type ReconciliationFailure = {
@@ -455,7 +499,12 @@ function polygonCentroid(points: readonly LayoutVec2[]): LayoutVec2 {
  */
 export type CorrespondenceAuthorization = {
 	faceComponentKeyByKey: ReadonlyMap<string, string>;
-	predecessorComponentKeyByRoomId: ReadonlyMap<string, string>;
+	/**
+	 * Every component key of a predecessor's surviving boundary Walls. A Space
+	 * whose opposite Walls were erased has Walls in two components; either one
+	 * may authorize its closure (SP-plan F3).
+	 */
+	predecessorComponentKeysByRoomId: ReadonlyMap<string, ReadonlySet<string>>;
 };
 
 /**
@@ -489,17 +538,16 @@ export function correspondenceAuthorization(options: {
 			}
 		}
 	}
-	const predecessorComponentKeyByRoomId = new Map<string, string>();
+	const predecessorComponentKeysByRoomId = new Map<string, ReadonlySet<string>>();
 	for (const room of options.baselineRooms) {
+		const keys = new Set<string>();
 		for (const ref of room.boundary) {
 			const key = keyByWallId.get(ref.wallId);
-			if (key !== undefined) {
-				predecessorComponentKeyByRoomId.set(room.id, key);
-				break;
-			}
+			if (key !== undefined) keys.add(key);
 		}
+		if (keys.size > 0) predecessorComponentKeysByRoomId.set(room.id, keys);
 	}
-	return { faceComponentKeyByKey, predecessorComponentKeyByRoomId };
+	return { faceComponentKeyByKey, predecessorComponentKeysByRoomId };
 }
 
 /**
@@ -530,11 +578,11 @@ function unionAuthorized(
 	predecessorRoomId: string,
 	faceKey: string
 ): boolean {
-	const predecessorKey = authorization.predecessorComponentKeyByRoomId.get(predecessorRoomId);
+	const predecessorKeys = authorization.predecessorComponentKeysByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
-	if (predecessorKey === undefined && faceKeyValue === undefined) return true;
-	if (predecessorKey === undefined || faceKeyValue === undefined) return false;
-	return predecessorKey === faceKeyValue;
+	if (predecessorKeys === undefined && faceKeyValue === undefined) return true;
+	if (predecessorKeys === undefined || faceKeyValue === undefined) return false;
+	return predecessorKeys.has(faceKeyValue);
 }
 
 /**
@@ -777,10 +825,10 @@ function correspondencePairClassOf(
 	predecessorRoomId: string,
 	faceKey: string
 ): CorrespondencePairClass {
-	const predecessorKey = authorization.predecessorComponentKeyByRoomId.get(predecessorRoomId);
+	const predecessorKeys = authorization.predecessorComponentKeysByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
-	if (predecessorKey === undefined || faceKeyValue === undefined) return 'undefined';
-	return predecessorKey === faceKeyValue ? 'same-group' : 'cross-group';
+	if (predecessorKeys === undefined || faceKeyValue === undefined) return 'undefined';
+	return predecessorKeys.has(faceKeyValue) ? 'same-group' : 'cross-group';
 }
 
 function recordObservationPairClass(
@@ -907,6 +955,11 @@ export function buildCorrespondenceComponents(options: {
 		const faceKeySet = new Set(faces.map((face) => face.key));
 		const claimantRoomIdsByFaceKey = new Map<string, string[]>();
 		for (const room of options.baselineRooms) {
+			// F2 — only an ENCLOSED predecessor may claim a face by key. An open
+			// Space's Wall-only cycle key says nothing about its virtual edges, so a
+			// surviving key would prove the wrong geometry; it must reach the
+			// geometric proof instead. (SP-plan §5, F2.)
+			if (room.virtualEdges.length > 0) continue;
 			const key = canonicalBoundaryCycleKey(room.boundary);
 			if (!faceKeySet.has(key)) continue;
 			claimFaceKeyByRoomId.set(room.id, key);
@@ -1059,6 +1112,184 @@ export function buildCorrespondenceComponents(options: {
  * operation. `baseline` is the pre-operation document (its rooms are the
  * predecessor rooms); `extraction` is the candidate face output.
  */
+/** One mixed boundary edge while the carry rule assembles a Space. */
+type CarriedSpaceEdge =
+	| { kind: 'wall'; wallId: string; direction: 'forward' | 'reverse' }
+	| {
+			kind: 'virtual';
+			startJunctionId: string;
+			endJunctionId: string;
+			/**
+			 * The removed Wall this edge replaced, when the carry rule created it.
+			 * Authored virtual edges never set it: two Spaces may legitimately have
+			 * coincident open sides, so endpoint positions alone can never prove that
+			 * an edge came from a deleted Wall.
+			 */
+			replacedWallId?: string;
+	  };
+
+/**
+ * Compose a predecessor's boundary and replace every erased Wall edge with the
+ * stated straight segment between that ref's oriented ends. Existing virtual
+ * edges keep their gap order, so adjacent erasures retain the intermediate
+ * Junction (SP-plan §5, and R0's regression is refused).
+ */
+function carriedBoundaryEdges(
+	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
+	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>,
+	removedWallIds: ReadonlySet<string>
+): { kind: 'ok'; edges: CarriedSpaceEdge[] } | { kind: 'failed'; message: string } {
+	const composed = composeSpaceBoundary(document, room);
+	if (composed.kind === 'failed') return { kind: 'failed', message: composed.issue.message };
+	const edges: CarriedSpaceEdge[] = [];
+	for (const edge of composed.edges) {
+		if (edge.kind === 'virtual') {
+			edges.push({
+				kind: 'virtual',
+				startJunctionId: edge.startJunctionId,
+				endJunctionId: edge.endJunctionId
+			});
+			continue;
+		}
+		if (removedWallIds.has(edge.wallId)) {
+			edges.push({
+				kind: 'virtual',
+				startJunctionId: edge.startJunctionId,
+				endJunctionId: edge.endJunctionId,
+				replacedWallId: edge.wallId
+			});
+			continue;
+		}
+		edges.push({ kind: 'wall', wallId: edge.wallId, direction: edge.direction });
+	}
+	return { kind: 'ok', edges };
+}
+
+/**
+ * Drop a reverse virtual-edge pair created by carry: the two sides of one
+ * already-spliced shared Wall. Only replacement edges qualify — an authored
+ * open side that merely coincides with one is a real boundary of its own Space
+ * and must survive (the provenance rule the merge owners use).
+ */
+function normalizeCarriedEdges(edges: readonly CarriedSpaceEdge[]): CarriedSpaceEdge[] {
+	const dropped = new Set<number>();
+	for (let first = 0; first < edges.length; first += 1) {
+		const a = edges[first]!;
+		if (a.kind !== 'virtual' || a.replacedWallId === undefined || dropped.has(first)) continue;
+		for (let second = first + 1; second < edges.length; second += 1) {
+			const b = edges[second]!;
+			if (b.kind !== 'virtual' || b.replacedWallId === undefined || dropped.has(second)) continue;
+			if (a.startJunctionId === b.endJunctionId && a.endJunctionId === b.startJunctionId) {
+				dropped.add(first);
+				dropped.add(second);
+				break;
+			}
+		}
+	}
+	return edges.filter((_, index) => !dropped.has(index));
+}
+
+function carriedBoundaryParts(edges: readonly CarriedSpaceEdge[]): {
+	boundary: OrientedWallRef[];
+	virtualEdges: LayoutSpaceVirtualEdge[];
+} {
+	// `composeSpaceBoundary` starts at a boundary Wall and consumes virtual
+	// edges only in the gaps AFTER it. If the first Wall was erased, the cycle
+	// now starts with that virtual edge; rotate to a surviving Wall so the two
+	// arrays describe the same cycle instead of an unconsumed leading gap.
+	const firstWall = edges.findIndex((edge) => edge.kind === 'wall');
+	const ordered = firstWall < 0
+		? []
+		: edges.map((_, offset) => edges[(firstWall + offset) % edges.length]!);
+	const boundary: OrientedWallRef[] = [];
+	const virtualEdges: LayoutSpaceVirtualEdge[] = [];
+	for (const edge of ordered) {
+		if (edge.kind === 'wall') {
+			boundary.push({ wallId: edge.wallId, direction: edge.direction });
+		} else {
+			virtualEdges.push({
+				startJunctionId: edge.startJunctionId,
+				endJunctionId: edge.endJunctionId
+			});
+		}
+	}
+	return { boundary, virtualEdges };
+}
+
+/**
+ * Splice two carried cycles at one removed Wall's ends. A traverses the Wall
+ * `p→q`; B traverses it `q→p`. A's surviving chain from `q` back to `p`, then
+ * B's from `p` back to `q`, form one closed cycle with no stated edge where the
+ * Wall was (SP-plan §5.3).
+ */
+function spliceCarriedEdges(
+	first: readonly CarriedSpaceEdge[],
+	second: readonly CarriedSpaceEdge[],
+	wall: LayoutWall
+): CarriedSpaceEdge[] | null {
+	const matches = (edge: CarriedSpaceEdge, start: string, end: string): boolean =>
+		edge.kind === 'virtual' &&
+		edge.replacedWallId === wall.id &&
+		edge.startJunctionId === start &&
+		edge.endJunctionId === end;
+	let firstIndex = first.findIndex((edge) => matches(edge, wall.startJunctionId, wall.endJunctionId));
+	let secondIndex = second.findIndex((edge) => matches(edge, wall.endJunctionId, wall.startJunctionId));
+	if (firstIndex < 0 || secondIndex < 0) {
+		firstIndex = first.findIndex((edge) => matches(edge, wall.endJunctionId, wall.startJunctionId));
+		secondIndex = second.findIndex((edge) => matches(edge, wall.startJunctionId, wall.endJunctionId));
+	}
+	if (firstIndex < 0 || secondIndex < 0) return null;
+	const rotate = (edges: readonly CarriedSpaceEdge[], start: number): CarriedSpaceEdge[] =>
+		edges.map((_, offset) => edges[(start + offset) % edges.length]!);
+	// Everything except the removed Wall, starting at the edge after it.
+	const firstChain = rotate(first, firstIndex + 1).slice(0, first.length - 1);
+	const secondChain = rotate(second, secondIndex + 1).slice(0, second.length - 1);
+	return [...firstChain, ...secondChain];
+}
+
+/** Composed outline of an assembled carried boundary; `null` when it cannot compose. */
+function carriedCyclePolygon(
+	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
+	roomId: string,
+	edges: readonly CarriedSpaceEdge[]
+): readonly LayoutVec2[] | null {
+	const composed = composeSpaceBoundary(document, { id: roomId, ...carriedBoundaryParts(edges) });
+	if (composed.kind === 'failed') return null;
+	return spaceBoundaryPolygonFromEdges(composed.edges, document);
+}
+
+/** Composed outline of a Room record, for the provisional placement gate. */
+function roomOutlinePolygon(
+	document: Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'>,
+	room: Pick<LayoutWallFirstRoom, 'id' | 'boundary' | 'virtualEdges'>
+): readonly LayoutVec2[] | null {
+	const composed = composeSpaceBoundary(document, room);
+	if (composed.kind === 'failed') return null;
+	return spaceBoundaryPolygonFromEdges(composed.edges, document);
+}
+
+/** Merge thickness policy: conflicting authored surface fields reject, never choose. */
+function mergeFieldConflict(
+	first: LayoutWallFirstRoom,
+	second: LayoutWallFirstRoom
+): ReconciliationFailure | null {
+	if (first.floorThickness !== second.floorThickness) {
+		return failure({
+			code: 'metadata_merge_conflict',
+			message: `Merged spaces disagree on floorThickness (${first.id}: ${first.floorThickness}, ${second.id}: ${second.floorThickness})`,
+			roomIds: [first.id, second.id]
+		});
+	}
+	if (first.ceilingThickness !== second.ceilingThickness) {
+		return failure({
+			code: 'metadata_merge_conflict',
+			message: `Merged spaces disagree on ceilingThickness (${first.id}: ${first.ceilingThickness}, ${second.id}: ${second.ceilingThickness})`,
+			roomIds: [first.id, second.id]
+		});
+	}
+	return null;
+}
+
 export function reconcileRooms(options: {
 	baseline: LayoutDocumentWallFirst;
 	candidateDocument: Omit<LayoutDocumentWallFirst, 'rooms'>;
@@ -1069,14 +1300,58 @@ export function reconcileRooms(options: {
 	predecessorWitnesses?: ReadonlyMap<string, LayoutVec2>;
 	/** Predecessor boundary polygons by roomId (temporary overlap evidence). */
 	predecessorPolygons?: ReadonlyMap<string, readonly LayoutVec2[]>;
+	/** Lifecycle policy; omitted keeps the shipped `retire` behaviour. */
+	spacePolicy?: SpaceLifecyclePolicy;
+	/**
+	 * Candidate Room records before reconciliation. Non-removal operations may
+	 * rewrite an open Room's boundary (split, join, move); the carry rule reads
+	 * that rewrite instead of restoring the baseline reference list.
+	 */
+	candidateRooms?: readonly LayoutWallFirstRoom[];
 	allocator: RoomIdAllocator;
 }): ReconciliationResult {
 	const { baseline, candidateDocument, extraction, components, allocator } = options;
+	const policy: SpaceLifecyclePolicy = options.spacePolicy ?? { openSpaces: 'retire' };
+	const forcedRetireIds = new Set(policy.retireRoomIds ?? []);
 	const predecessorWitnesses = options.predecessorWitnesses ?? new Map<string, LayoutVec2>();
 	const predecessorPolygons =
 		options.predecessorPolygons ?? new Map<string, readonly LayoutVec2[]>();
 	const predecessorRooms = new Map(baseline.rooms.map((room) => [room.id, room]));
 	const facesByKey = new Map(extraction.faces.map((face) => [face.key, face]));
+	for (const roomId of forcedRetireIds) {
+		if (!predecessorRooms.has(roomId)) {
+			return failure({
+				code: 'unsupported_component',
+				message: `Retire list references unknown predecessor room '${roomId}'`,
+				roomIds: [roomId]
+			});
+		}
+	}
+	// Owner clarification: explicit retirement outranks a face claim. A forced
+	// predecessor is removed from every component BEFORE classification, so no
+	// candidate face can preserve it (a 2→1 component becomes 1→1 in favour of
+	// the other predecessor). If that leaves a face with no predecessor the
+	// command refuses rather than birthing a replacement Room.
+	const effectiveComponents: ComponentLineage[] = [];
+	for (const component of components) {
+		const predecessors = component.predecessorRoomIds.filter((id) => !forcedRetireIds.has(id));
+		if (
+			component.predecessorRoomIds.length > 0 &&
+			predecessors.length === 0 &&
+			component.candidateFaceKeys.length > 0
+		) {
+			return failure({
+				code: 'unsupported_component',
+				message: `Room(s) ${component.predecessorRoomIds.join(', ')} are retired by intent but still claim candidate face(s); no replacement Room is born`,
+				roomIds: [...component.predecessorRoomIds]
+			});
+		}
+		if (predecessors.length === 0 && component.candidateFaceKeys.length === 0) continue;
+		effectiveComponents.push({
+			candidateFaceKeys: component.candidateFaceKeys,
+			predecessorRoomIds: predecessors
+		});
+	}
 
 	const claimedFaces = new Set<string>();
 	const claimedPredecessors = new Set<string>();
@@ -1087,7 +1362,7 @@ export function reconcileRooms(options: {
 	// during multi-component operations must never reuse a pre-existing name.
 	const takenNames = new Set(baseline.rooms.map((room) => room.name));
 
-	for (const component of components) {
+	for (const component of effectiveComponents) {
 		for (const faceKey of component.candidateFaceKeys) {
 			if (!facesByKey.has(faceKey)) {
 				return failure({
@@ -1135,7 +1410,7 @@ export function reconcileRooms(options: {
 		}
 	}
 
-	for (const component of components) {
+	for (const component of effectiveComponents) {
 		const predecessorCount = component.predecessorRoomIds.length;
 		const candidateCount = component.candidateFaceKeys.length;
 
@@ -1293,16 +1568,227 @@ export function reconcileRooms(options: {
 		});
 	}
 
-	// --- room disappearance -------------------------------------------------
+	// --- Space lifecycle: forced retire, carry, merge, support, outline gate --
 	const survivingPredecessors = new Set<string>();
-	for (const component of components) {
+	for (const component of effectiveComponents) {
 		for (const id of component.predecessorRoomIds) survivingPredecessors.add(id);
 	}
-	for (const room of baseline.rooms) {
-		if (!survivingPredecessors.has(room.id)) {
-			retiredRoomIds.push(room.id);
+	const retiredForSpaceIds = new Set<string>();
+	const spaceRetirements: SpaceRetirement[] = [];
+	const retireSpace = (
+		roomId: string,
+		reason: SpaceRetirementReason,
+		extra: { otherRoomIds?: readonly string[]; successorRoomId?: string } = {}
+	): void => {
+		if (!retiredForSpaceIds.has(roomId)) {
+			retiredForSpaceIds.add(roomId);
+			spaceRetirements.push({ roomId, reason, ...extra });
+		}
+		if (!retiredRoomIds.includes(roomId)) retiredRoomIds.push(roomId);
+		// A successor that itself retires cannot receive object/portal remaps.
+		// Dropping its record makes the remap see a retired predecessor with no
+		// successor and clear the association instead of naming a missing Room.
+		for (let index = lineage.length - 1; index >= 0; index -= 1) {
+			if (lineage[index]!.roomId === roomId) lineage.splice(index, 1);
+		}
+	};
+	// Forced retirement outranks any face claim (owner clarification): the
+	// predecessors were removed from every component above, so no candidate
+	// face can preserve them.
+	for (const roomId of forcedRetireIds) retireSpace(roomId, 'explicit-remove');
+
+	const carriedRoomIds: string[] = [];
+	const carriedRooms: LayoutWallFirstRoom[] = [];
+	if (policy.openSpaces === 'keep') {
+		const removedWallIds = new Set(policy.removedWalls ?? []);
+		const wallById = new Map(baseline.walls.map((wall) => [wall.id, wall]));
+		const carried: Array<{
+			room: LayoutWallFirstRoom;
+			edges: CarriedSpaceEdge[];
+			/** Original Spaces folded into this entry by open merge. */
+			predecessorRoomIds: string[];
+		}> = [];
+		for (const room of baseline.rooms) {
+			if (survivingPredecessors.has(room.id) || forcedRetireIds.has(room.id)) continue;
+			// Removals must compose the baseline boundary (the candidate records
+			// still name the erased Walls). Non-removal edits use the candidate
+			// record, which may already carry a split/joined boundary.
+			const candidateRoom = removedWallIds.size === 0
+				? options.candidateRooms?.find((record) => record.id === room.id)
+				: undefined;
+			const result = candidateRoom
+				? carriedBoundaryEdges(candidateDocument, candidateRoom, removedWallIds)
+				: carriedBoundaryEdges(baseline, room, removedWallIds);
+			if (result.kind === 'failed') {
+				return failure({
+					code: 'unsupported_component',
+					message: `Predecessor Space '${room.id}' cannot carry its boundary: ${result.message}`,
+					roomIds: [room.id]
+				});
+			}
+			carried.push({ room: candidateRoom ?? room, edges: result.edges, predecessorRoomIds: [room.id] });
+		}
+
+		// Open merge (ratified extended merge rule): a removed Wall referenced by
+		// two carried predecessors splices their cycles at its ends into one
+		// Space. Three or more refuses with today's 3+→1 parity.
+		for (const removedWallId of policy.removedWalls ?? []) {
+			const wall = wallById.get(removedWallId);
+			if (!wall) continue;
+			// Ownership is deleted-Wall PROVENANCE, never endpoint coincidence: an
+			// authored virtual edge may lie exactly where this Wall was without ever
+			// referencing it, and splicing on that coincidence would merge two
+			// Spaces the operation did not join and retire the wrong identity.
+			const owners = carried.filter((entry) =>
+				entry.edges.some(
+					(edge) => edge.kind === 'virtual' && edge.replacedWallId === removedWallId
+				)
+			);
+			if (owners.length > 2) {
+				return failure({
+					code: 'unsupported_component',
+					message: `Wall '${removedWallId}' is shared by ${owners.length} Spaces; joining three or more is unsupported`,
+					roomIds: owners.map((owner) => owner.room.id)
+				});
+			}
+			if (owners.length !== 2) continue;
+			const first = owners[0]!;
+			const second = owners[1]!;
+			const mergedPredecessorIds = [...new Set([...first.predecessorRoomIds, ...second.predecessorRoomIds])];
+			if (mergedPredecessorIds.length > 2) {
+				return failure({
+					code: 'unsupported_component',
+					message: `Deleting this Wall set would join ${mergedPredecessorIds.length} Spaces in one operation; joining three or more is unsupported`,
+					roomIds: mergedPredecessorIds
+				});
+			}
+			const spliced = spliceCarriedEdges(first.edges, second.edges, wall);
+			if (!spliced) {
+				return failure({
+					code: 'unsupported_component',
+					message: `Wall '${removedWallId}' does not fall between the same two carried Spaces`,
+					roomIds: [first.room.id, second.room.id]
+				});
+			}
+			const thicknessConflict = mergeFieldConflict(first.room, second.room);
+			if (thicknessConflict) return thicknessConflict;
+			const mergedPolygon = carriedCyclePolygon(candidateDocument, first.room.id, spliced) ?? [];
+			const winner = chooseMergeSurvivor({
+				predecessors: [first.room, second.room],
+				face: { polygon: mergedPolygon },
+				overlapPolygons: predecessorPolygons
+			});
+			if (!winner) {
+				return failure({
+					code: 'ambiguous_room_correspondence',
+					message: `Merge of Spaces '${first.room.id}' and '${second.room.id}' has no deterministic survivor`,
+					roomIds: [first.room.id, second.room.id]
+				});
+			}
+			const winnerEntry = winner.id === first.room.id ? first : second;
+			const loser = winner.id === first.room.id ? second : first;
+			winnerEntry.edges = spliced;
+			winnerEntry.predecessorRoomIds = mergedPredecessorIds;
+			const firstIndex = carried.indexOf(first);
+			const secondIndex = carried.indexOf(second);
+			carried[firstIndex] = winnerEntry;
+			carried.splice(secondIndex, 1);
+			lineage.push({
+				faceKey: geometryId(['space-merge', ...mergedPredecessorIds.slice().sort()]),
+				roomId: winner.id,
+				predecessorRoomIds: mergedPredecessorIds,
+				kind: 'merge-survivor'
+			});
+			// The survivor's overhead wins (ratified default); thicknesses were
+			// checked above.
+			retireSpace(loser.room.id, 'merged', {
+				otherRoomIds: [winner.id],
+				successorRoomId: winner.id
+			});
+		}
+
+		const baselineIndex = new Map(baseline.rooms.map((room, index) => [room.id, index]));
+		const orderedCarried = [...carried].sort(
+			(a, b) => (baselineIndex.get(a.room.id) ?? 0) - (baselineIndex.get(b.room.id) ?? 0)
+		);
+		for (const entry of orderedCarried) {
+			const parts = carriedBoundaryParts(normalizeCarriedEdges(entry.edges));
+			if (parts.boundary.length === 0) {
+				// Support rule: the last Wall stands or the Space goes.
+				retireSpace(entry.room.id, 'last-boundary-wall');
+				continue;
+			}
+			carriedRooms.push({ ...entry.room, boundary: parts.boundary, virtualEdges: parts.virtualEdges });
+		}
+
+		// Outline gate (I4/I7) over the provisional candidate. Carried Spaces are
+		// evaluated in baseline document order; a retired failure leaves the
+		// provisional set before the next is checked, so the outcome is
+		// deterministic.
+		const provisional = [...finalRooms, ...carriedRooms];
+		const polygonCache = new Map<string, readonly LayoutVec2[] | null>();
+				const polygonOf = (room: LayoutWallFirstRoom): readonly LayoutVec2[] | null => {
+			if (!polygonCache.has(room.id)) {
+				polygonCache.set(room.id, roomOutlinePolygon(candidateDocument, room));
+			}
+			return polygonCache.get(room.id) ?? null;
+		};
+		for (const room of carriedRooms) {
+			const polygon = polygonOf(room);
+			let failureReason: SpaceRetirementReason | null = null;
+			let otherRoomId: string | undefined;
+			let message = '';
+			if (!polygon || spaceOutlineSignedArea(polygon) <= 1e-9) {
+				failureReason = 'outline-not-positive';
+				message = `Space '${room.name}' would have no positive outline`;
+			} else if (spaceOutlineSelfIntersects(polygon)) {
+				failureReason = 'outline-self-intersects';
+				message = `Space '${room.name}' would have an outline that crosses itself`;
+			} else {
+				for (const other of provisional) {
+					if (other.id === room.id) continue;
+					const otherPolygon = polygonOf(other);
+					if (!otherPolygon) continue;
+					const issue = spacePairIssue(polygon, otherPolygon, true, other.virtualEdges.length > 0);
+					if (!issue) continue;
+					failureReason = issue === 'space_overlap' ? 'overlaps' : 'contains';
+					otherRoomId = other.id;
+					message =
+						issue === 'space_overlap'
+							? `Space '${room.name}' would overlap Space '${other.name}'`
+							: `Space '${room.name}' would contain Space '${other.name}'`;
+					break;
+				}
+			}
+			if (!failureReason) {
+				carriedRoomIds.push(room.id);
+				continue;
+			}
+			if (policy.invalidOutline === 'retire') {
+				const index = provisional.indexOf(room);
+				if (index >= 0) provisional.splice(index, 1);
+				polygonCache.delete(room.id);
+				retireSpace(room.id, failureReason, otherRoomId ? { otherRoomIds: [otherRoomId] } : {});
+				continue;
+			}
+			return failure({
+				code: 'space_outline_invalid',
+				message,
+				roomIds: otherRoomId ? [room.id, otherRoomId] : [room.id]
+			});
+		}
+		for (const room of carriedRooms) {
+			if (carriedRoomIds.includes(room.id)) finalRooms.push(room);
+		}
+	} else {
+		// Default policy: today's room-disappearance behaviour, byte-identical.
+		for (const room of baseline.rooms) {
+			if (!survivingPredecessors.has(room.id) && !forcedRetireIds.has(room.id)) {
+				retiredRoomIds.push(room.id);
+			}
 		}
 	}
+
 
 	// --- layout-object semantic associations ------------------------
 	const roomIdMap = new Map<string, string>();
@@ -1369,7 +1855,9 @@ export function reconcileRooms(options: {
 			openings: portalResult.openings
 		},
 		lineage,
-		retiredRoomIds
+		retiredRoomIds,
+		carriedRoomIds,
+		spaceRetirements
 	};
 }
 
@@ -1414,7 +1902,7 @@ function chooseSplitSurvivor(options: {
  */
 function predecessorPolygonOverlap(
 	predecessor: LayoutWallFirstRoom,
-	face: DerivedCandidateFace,
+	face: { polygon: readonly LayoutVec2[] },
 	overlapPolygons: ReadonlyMap<string, readonly LayoutVec2[]>
 ): number {
 	const polygon = overlapPolygons.get(predecessor.id);
@@ -1425,7 +1913,7 @@ function predecessorPolygonOverlap(
 /** Greatest-contributor merge survivor with room-ID tie. */
 function chooseMergeSurvivor(options: {
 	predecessors: LayoutWallFirstRoom[];
-	face: DerivedCandidateFace;
+	face: { polygon: readonly LayoutVec2[] };
 	overlapPolygons: ReadonlyMap<string, readonly LayoutVec2[]>;
 }): LayoutWallFirstRoom | undefined {
 	const { predecessors, face } = options;

@@ -43,7 +43,8 @@ import {
 	roomBoundaryPolygon,
 	ROOM_CREATION_DEFAULTS,
 	type ComponentLineage,
-	type RoomIdAllocator
+	type RoomIdAllocator,
+	type SpaceRetirement
 } from './layout-room-reconciliation';
 import type { LayoutDocumentIssue } from './layout-issue';
 import type { LayoutVec2 } from './layout-coordinates';
@@ -94,7 +95,10 @@ export type WallFirstOpRejectionCode =
 	| 'invalid_value'
 	| 'wall_not_in_room_boundary'
 	| 'ambiguous_room_removal'
-	| 'captured_id_in_use';
+	| 'captured_id_in_use'
+	/* SP1b lifecycle. */
+	| 'not_open_space'
+	| 'space_outline_invalid';
 
 export type WallFirstOpRejection = {
 	code: WallFirstOpRejectionCode;
@@ -122,6 +126,8 @@ export type WallFirstOpPlan =
 				kind: 'created';
 			}>;
 			retiredRoomIds: readonly string[];
+			/** Why an open Space retired; SP1c reads these for consequence lines. */
+			spaceRetirements?: readonly SpaceRetirement[];
 	  }
 	| {
 			kind: 'rejected';
@@ -323,7 +329,12 @@ export function planFirstEnclosureCreation(options: {
 function planWallRemovalSet(
 	document: LayoutDocumentWallFirst,
 	wallIds: readonly string[],
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	options: {
+		openSpaces: 'retire' | 'keep';
+		invalidOutline: 'retire' | 'reject';
+		retireRoomIds?: readonly string[];
+	}
 ): WallFirstOpPlan {
 	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
 	const removalSet = new Set(wallIds);
@@ -337,24 +348,15 @@ function planWallRemovalSet(
 		walls: document.walls.filter((wall) => !removalSet.has(wall.id)),
 		openings: document.openings.filter((opening) => !removalSet.has(opening.wallId))
 	};
-	// Reference-based Junction cleanup, scoped to the removed Walls' own
-	// endpoints: a pre-existing unreferenced Junction elsewhere in the
-	// document is untouched — an endpoint prunes only when no surviving Wall
-	// references it. No coordinate healing, no spatial merging, no
-	// document-wide orphan sweep.
-	const survivingJunctionIds = new Set<string>();
-	for (const surviving of candidate.walls) {
-		survivingJunctionIds.add(surviving.startJunctionId);
-		survivingJunctionIds.add(surviving.endJunctionId);
-	}
+	// Junction cleanup is deliberately DEFERRED until after reconciliation: a
+	// carried open Space keeps an erased Wall's end Junction as a virtual-edge
+	// anchor, so the reference set is only complete once the final Rooms are
+	// known (I8). A pre-existing unreferenced Junction elsewhere is untouched.
 	const removedEndpointIds = new Set<string>();
 	for (const wall of removedWalls) {
 		removedEndpointIds.add(wall.startJunctionId);
 		removedEndpointIds.add(wall.endJunctionId);
 	}
-	candidate.junctions = document.junctions.filter(
-		(junction) => !removedEndpointIds.has(junction.id) || survivingJunctionIds.has(junction.id)
-	);
 
 	// --- room reconciliation -------------------------------------------------
 	// Same correspondence as the chain engine and the role change: predecessor
@@ -364,6 +366,7 @@ function planWallRemovalSet(
 	// nothing (no faces, no rooms) and leaves Room topology untouched.
 	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
 	let retiredRoomIds: readonly string[] = [];
+	let spaceRetirements: readonly SpaceRetirement[] = [];
 	const extraction = extractBoundaryCandidateFaces(candidate);
 	if (extraction.faces.length > 0 || document.rooms.length > 0) {
 		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
@@ -396,11 +399,20 @@ function planWallRemovalSet(
 			components,
 			predecessorWitnesses,
 			predecessorPolygons,
+			spacePolicy: {
+				openSpaces: options.openSpaces,
+				removedWalls: [...removalSet],
+				...(options.retireRoomIds ? { retireRoomIds: options.retireRoomIds } : {}),
+				invalidOutline: options.invalidOutline
+			},
 			allocator: createAuthoringRoomAllocator(capture)
 		});
 		if ('rejection' in result) {
 			return reject({
-				code: 'room_reconciliation_rejected',
+				code:
+					result.rejection.code === 'space_outline_invalid'
+						? 'space_outline_invalid'
+						: 'room_reconciliation_rejected',
 				message: result.rejection.message,
 				...(result.rejection.roomIds ? { roomIds: result.rejection.roomIds } : {}),
 				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {})
@@ -416,13 +428,33 @@ function planWallRemovalSet(
 			.filter((record) => record.kind === 'created')
 			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
 		retiredRoomIds = [...result.retiredRoomIds];
+		spaceRetirements = result.spaceRetirements;
 	}
+
+	// I8 — prune only Junctions the operation released. A released endpoint is
+	// kept when a surviving Wall OR any final Space's virtual edge references
+	// it; everything else keeps today's reference-only rule.
+	const survivingJunctionIds = new Set<string>();
+	for (const wall of candidate.walls) {
+		survivingJunctionIds.add(wall.startJunctionId);
+		survivingJunctionIds.add(wall.endJunctionId);
+	}
+	for (const room of candidate.rooms) {
+		for (const edge of room.virtualEdges) {
+			survivingJunctionIds.add(edge.startJunctionId);
+			survivingJunctionIds.add(edge.endJunctionId);
+		}
+	}
+	candidate.junctions = document.junctions.filter(
+		(junction) => !removedEndpointIds.has(junction.id) || survivingJunctionIds.has(junction.id)
+	);
 
 	return validateAndCompile(candidate, reject, (committed) => ({
 		kind: 'success',
 		document: committed,
 		lineage,
-		retiredRoomIds
+		retiredRoomIds,
+		spaceRetirements
 	}));
 }
 
@@ -435,7 +467,8 @@ export function planDeleteWall(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
+	options: { openSpaces?: 'retire' | 'keep' } = {}
 ): WallFirstOpPlan {
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
 	if (levelIssue !== null) {
@@ -453,10 +486,58 @@ export function planDeleteWall(
 		};
 	}
 	try {
-		return planWallRemovalSet(document, [wallId], capture);
+		return planWallRemovalSet(document, [wallId], capture, {
+			openSpaces: options.openSpaces ?? 'retire',
+			invalidOutline: 'retire'
+		});
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
 			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: [wallId] } };
+		}
+		throw error;
+	}
+}
+
+/**
+ * Canonical deletion of a SET of physical Walls through the same pipeline as
+ * {@link planDeleteWall}. The set form is what can join three or more Spaces at
+ * once, which the lifecycle refuses as `unsupported_component`.
+ */
+export function planDeleteWalls(
+	document: LayoutDocumentWallFirst,
+	wallIds: readonly string[],
+	capture: LayoutIdCapture,
+	levelId: string,
+	options: { openSpaces?: 'retire' | 'keep' } = {}
+): WallFirstOpPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) {
+		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue, wallIds: [...wallIds] } };
+	}
+	const unique = [...new Set(wallIds)];
+	if (unique.length === 0) {
+		return { kind: 'rejected', rejection: { code: 'no_op', message: 'No Walls were named for deletion' } };
+	}
+	const known = new Set(document.walls.map((wall) => wall.id));
+	const unknown = unique.filter((wallId) => !known.has(wallId));
+	if (unknown.length > 0) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'unknown_wall',
+				message: `Unknown wall(s) ${unknown.join(', ')}`,
+				wallIds: unknown
+			}
+		};
+	}
+	try {
+		return planWallRemovalSet(document, unique, capture, {
+			openSpaces: options.openSpaces ?? 'retire',
+			invalidOutline: 'retire'
+		});
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) {
+			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: unique } };
 		}
 		throw error;
 	}
@@ -482,6 +563,8 @@ export function planDeleteWall(
  */
 export type RoomMetadataPatch = {
 	name?: string;
+	/** Authored overhead intent; `closed` generates the lid, `open-to-sky` removes it. */
+	overhead?: 'closed' | 'open-to-sky';
 	floorThickness?: number;
 	ceilingThickness?: number;
 };
@@ -507,12 +590,12 @@ export function planRoomMetadataUpdate(
 			roomIds: [roomId]
 		});
 	}
-	const allowedKeys = new Set(['name', 'floorThickness', 'ceilingThickness']);
+	const allowedKeys = new Set(['name', 'overhead', 'floorThickness', 'ceilingThickness']);
 	const unknownKeys = Object.keys(patch).filter((key) => !allowedKeys.has(key));
 	if (unknownKeys.length > 0) {
 		return reject({
 			code: 'invalid_patch',
-			message: `Room metadata patch cannot change ${unknownKeys.join(', ')}; the boundary is correspondence-owned`,
+			message: `Room metadata patch cannot change ${unknownKeys.join(', ')}; the boundary and virtual edges are correspondence-owned`,
 			roomIds: [roomId]
 		});
 	}
@@ -540,8 +623,19 @@ export function planRoomMetadataUpdate(
 		}
 		nextRoom[field] = value;
 	}
+	if (patch.overhead !== undefined) {
+		if (patch.overhead !== 'closed' && patch.overhead !== 'open-to-sky') {
+			return reject({
+				code: 'invalid_value',
+				message: "Room overhead must be 'closed' or 'open-to-sky'",
+				roomIds: [roomId]
+			});
+		}
+		nextRoom.overhead = patch.overhead;
+	}
 	if (
 		nextRoom.name === room.name &&
+		nextRoom.overhead === room.overhead &&
 		nextRoom.floorThickness === room.floorThickness &&
 		nextRoom.ceilingThickness === room.ceilingThickness
 	) {
@@ -803,7 +897,8 @@ export function planRemoveRoom(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
 	capture: LayoutIdCapture,
-	levelId: string
+	levelId: string,
+	options: { openSpaces?: 'retire' | 'keep' } = {}
 ): WallFirstOpPlan {
 	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
 	const levelIssue = layoutWorkingLevelIssue(document, levelId);
@@ -845,13 +940,87 @@ export function planRemoveRoom(
 		});
 	}
 	try {
-		return planWallRemovalSet(document, exclusiveWallIds, capture);
+		return planWallRemovalSet(document, exclusiveWallIds, capture, {
+			openSpaces: options.openSpaces ?? 'retire',
+			invalidOutline: 'reject',
+			retireRoomIds: [roomId]
+		});
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {
 			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: exclusiveWallIds, roomIds: [roomId] } };
 		}
 		throw error;
 	}
+}
+
+/**
+ * Canonical **Remove space**: remove one open Space record without demolishing
+ * its Walls. Objects lose the association, door relations naming it are
+ * cleared, and only the anchors the operation released are pruned (I8/T16).
+ * No face extraction and no reconciliation run: the candidate has no topology
+ * change, so it only passes the canonical codec + compile gate.
+ */
+export function planRemoveSpace(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	levelId: string
+): WallFirstOpPlan {
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
+	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	if (!room) {
+		return reject({ code: 'unknown_room', message: `Unknown room '${roomId}'`, roomIds: [roomId] });
+	}
+	if (room.virtualEdges.length === 0) {
+		return reject({
+			code: 'not_open_space',
+			message: `Room '${roomId}' is enclosed; Remove space applies to open Spaces only`,
+			roomIds: [roomId]
+		});
+	}
+
+	const releasedJunctionIds = new Set<string>();
+	for (const edge of room.virtualEdges) {
+		releasedJunctionIds.add(edge.startJunctionId);
+		releasedJunctionIds.add(edge.endJunctionId);
+	}
+	const openings = document.openings.map((opening) => {
+		if (!opening.connectsRoomIds?.includes(roomId)) return opening;
+		const cleared = { ...opening };
+		delete cleared.connectsRoomIds;
+		return cleared;
+	});
+	const candidate: LayoutDocumentWallFirst = {
+		...document,
+		rooms: document.rooms.filter((candidate) => candidate.id !== roomId),
+		objects: document.objects.map((object) =>
+			object.roomId === roomId ? { ...object, roomId: undefined } : object
+		),
+		openings
+	};
+	const referencedJunctionIds = new Set<string>();
+	for (const wall of candidate.walls) {
+		referencedJunctionIds.add(wall.startJunctionId);
+		referencedJunctionIds.add(wall.endJunctionId);
+	}
+	for (const other of candidate.rooms) {
+		for (const edge of other.virtualEdges) {
+			referencedJunctionIds.add(edge.startJunctionId);
+			referencedJunctionIds.add(edge.endJunctionId);
+		}
+	}
+	candidate.junctions = document.junctions.filter(
+		(junction) => !releasedJunctionIds.has(junction.id) || referencedJunctionIds.has(junction.id)
+	);
+
+	return validateAndCompile(candidate, reject, (committed) => ({
+		kind: 'success',
+		document: committed,
+		lineage: [],
+		retiredRoomIds: [roomId],
+		spaceRetirements: [{ roomId, reason: 'explicit-remove' }]
+	}));
 }
 
 /**

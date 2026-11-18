@@ -73,6 +73,8 @@ export type DissolveSpecificRejectionCode =
 	| 'non_tangent_curved_pair'
 	| 'room_reconciliation_rejected'
 	| 'room_identity_lost'
+	/** The Junction must survive because an open side ends there. */
+	| 'open_side_ends_here'
 	| 'opening_set_invalid'
 	| 'portal_relation_invalid'
 	| 'wall_height_below_opening'
@@ -147,6 +149,22 @@ export function planDissolveJunction(
 		});
 	}
 	const junctionPoint: LayoutVec2 = [junction.point[0], junction.point[1]];
+
+	// An open side's end is an ordinary Junction that must survive (I8): join
+	// would dissolve it and leave the Space's virtual edge dangling.
+	const virtualEdgeOwner = document.rooms.find((room) =>
+		room.virtualEdges.some(
+			(edge) => edge.startJunctionId === junctionId || edge.endJunctionId === junctionId
+		)
+	);
+	if (virtualEdgeOwner) {
+		return reject({
+			code: 'open_side_ends_here',
+			message: 'An open side ends here',
+			junctionIds: [junctionId],
+			roomIds: [virtualEdgeOwner.id]
+		});
+	}
 
 	// A self-connected Wall is one canonical loop. Check it before degree:
 	// the loop is the only incident Wall, so a generic degree-2 diagnostic would
@@ -408,6 +426,27 @@ export function planDissolveJunction(
 		}),
 		openings
 	};
+	// An open Space has no candidate face to rewrite its boundary, so the join
+	// must update its record here: the two incident refs become the joined Wall.
+	// The direction follows which side the cycle traverses first (survivor→other
+	// means joinedStart→joinedEnd).
+	candidate.rooms = document.rooms.map((room) => {
+		if (room.virtualEdges.length === 0) return room;
+		const survivorIndex = room.boundary.findIndex((ref) => ref.wallId === survivor.id);
+		const otherIndex = room.boundary.findIndex((ref) => ref.wallId === other.id);
+		if (survivorIndex < 0 || otherIndex < 0) return room;
+		const forward = (survivorIndex + 1) % room.boundary.length === otherIndex;
+		return {
+			...room,
+			boundary: room.boundary
+				.filter((ref) => ref.wallId !== other.id)
+				.map((ref) =>
+					ref.wallId === survivor.id
+						? { wallId: survivor.id, direction: forward ? 'forward' : 'reverse' }
+						: ref
+				)
+		};
+	});
 
 	// Room correspondence: predecessor evidence comes from the BASELINE rooms,
 	// faces extract from the joined graph, and reconcileRooms owns the final
@@ -446,6 +485,9 @@ export function planDissolveJunction(
 				}),
 				predecessorWitnesses,
 				predecessorPolygons,
+				// Join is non-removal: an open Space is carried, never retired.
+				spacePolicy: { openSpaces: 'keep' },
+				candidateRooms: candidate.rooms,
 				allocator: createAuthoringRoomAllocator(capture)
 			});
 		} catch (error) {
