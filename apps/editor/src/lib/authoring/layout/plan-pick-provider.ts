@@ -923,7 +923,23 @@ export function createPlanPickProvider(
 			}
 		}
 		const openingOverHost = erasing || (evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
-		type Ranked = { readonly fragment: PlanFragment; readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>> };
+		const roomAreaOf = (roomId: string): number | null => {
+			const room = context.snapshot.domain.geometry.rooms.find((candidate) => candidate.roomId === roomId);
+			if (room === undefined) return null;
+			let twice = 0;
+			for (let index = 0; index < room.floorPolygon.length; index += 1) {
+				const current = room.floorPolygon[index]!;
+				const next = room.floorPolygon[(index + 1) % room.floorPolygon.length]!;
+				twice += current[0] * next[1] - next[0] * current[1];
+			}
+			return Math.abs(twice) / 2;
+		};
+		type Ranked = {
+			readonly fragment: PlanFragment;
+			readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>>;
+			/** A Room floor's compiled area, for innermost containment. */
+			readonly roomArea: number | null;
+		};
 		let winner: Ranked | null = null;
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
@@ -945,16 +961,31 @@ export function createPlanPickProvider(
 				.flatMap((surface) => clipSurfaceToSlice(surface, slice));
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
+			const roomArea =
+				fragment.ref.sourceKind === 'room-floor' ? roomAreaOf(fragment.ref.sourceId) : null;
 			if (winner === null) {
-				winner = { fragment, pick };
+				winner = { fragment, pick, roomArea };
 				// Plan Select and Eraser name an Opening over its own host Wall.
 				if (!openingOverHost || fragment.ref.sourceKind !== 'wall') break;
+				continue;
+			}
+			// Two Room floors can both contain the pointer at the same depth. The
+			// innermost Space wins: a booth inside a hall selects the booth.
+			if (
+				roomArea !== null &&
+				winner.roomArea !== null &&
+				pick.distanceCss <= winner.pick.distanceCss + 1e-9 &&
+				(roomArea < winner.roomArea - 1e-9 ||
+					(Math.abs(roomArea - winner.roomArea) <= 1e-9 &&
+						fragment.ref.sourceId < winner.fragment.ref.sourceId))
+			) {
+				winner = { fragment, pick, roomArea };
 				continue;
 			}
 			if (fragment.ref.sourceKind === 'opening' && winner.fragment.ref.sourceKind === 'wall'
 				&& context.snapshot.domain.geometry.walls?.some((wall) => wall.wallId === winner!.fragment.ref.sourceId
 					&& wall.openings.some((opening) => opening.openingId === fragment.ref.sourceId))) {
-				winner = { fragment, pick };
+				winner = { fragment, pick, roomArea };
 				break;
 			}
 		}

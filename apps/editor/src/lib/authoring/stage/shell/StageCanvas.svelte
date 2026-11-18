@@ -55,6 +55,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageLiftLayer from './StageLiftLayer.svelte';
+	import StageOpenSideLayer from './StageOpenSideLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
 	import { subjectWhollyHidden } from '../slice/slice-ghost';
@@ -328,6 +329,16 @@ import StageMatGround from './StageMatGround.svelte';
 			? hover.reference.subject.id
 			: null
 	);
+	/** The compiled virtual boundaries the open-side ink draws; no authored re-composition. */
+	const openSideSources = $derived(
+		geometry.rooms
+			.filter((room) => (room.openSides?.length ?? 0) > 0)
+			.map((room) => ({
+				roomId: room.roomId,
+				elevation: room.floorElevation,
+				edges: room.openSides ?? []
+			}))
+	);
 	const paperReveal = $derived(paperComposition.reveal);
 	const paperVisible = $derived(paperComposition.visible);
 	const paperCovers = $derived(paperComposition.covers);
@@ -598,6 +609,17 @@ import StageMatGround from './StageMatGround.svelte';
 			sources={liftSources}
 			selectedRoomId={liftSelectedRoomId}
 			hoveredRoomId={liftHoveredRoomId}
+			width={evaluation.rect.width}
+			height={evaluation.rect.height}
+			reading={evaluation.renderedReading}
+		/>
+		<!--
+			Open sides are dashed in Plan and, in 3D, only for the selected Space.
+			They are virtual boundaries: editor ink, never a pick root.
+		-->
+		<StageOpenSideLayer
+			sources={openSideSources}
+			selectedRoomId={liftSelectedRoomId}
 			width={evaluation.rect.width}
 			height={evaluation.rect.height}
 			reading={evaluation.renderedReading}

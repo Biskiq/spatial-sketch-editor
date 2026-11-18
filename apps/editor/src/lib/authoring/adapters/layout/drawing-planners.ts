@@ -341,12 +341,27 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/** One open Space the deletion changed, named for the creator-facing summary. */
+export type SpaceLifecycleNote = {
+	readonly roomId: string;
+	readonly name: string;
+	readonly reason: string;
+	readonly otherNames?: readonly string[];
+	readonly successorName?: string;
+};
+
 /** What one Wall deletion does, derived from the canonical planner (never guessed). */
 export type WallDeletionSummary = {
 	readonly wallId: string;
 	readonly hostedOpeningIds: readonly string[];
 	readonly createdRoomIds: readonly string[];
 	readonly retiredRoomIds: readonly string[];
+	/** Enclosed predecessors this deletion turns into open Spaces. */
+	readonly openedRoomIds: readonly string[];
+	/** Open predecessors this deletion carries unchanged. */
+	readonly keptOpenRoomIds: readonly string[];
+	/** Why an open Space retired, with the names the consequence line reads. */
+	readonly spaceNotes: readonly SpaceLifecycleNote[];
 	readonly summary: string;
 };
 
@@ -375,10 +390,43 @@ export function planWallDeletion(options: {
 		.filter((opening) => opening.wallId === options.wallId)
 		.map((opening) => opening.id);
 	const createdRoomIds = plan.lineage.map((record) => record.roomId);
+	const baselineRoomById = new Map(options.document.rooms.map((room) => [room.id, room] as const));
+	const resultRoomById = new Map(plan.document.rooms.map((room) => [room.id, room] as const));
+	const openedRoomIds = options.document.rooms
+		.filter((room) => room.virtualEdges.length === 0 && (resultRoomById.get(room.id)?.virtualEdges.length ?? 0) > 0)
+		.map((room) => room.id);
+	const keptOpenRoomIds = options.document.rooms
+		.filter((room) => room.virtualEdges.length > 0 && resultRoomById.has(room.id))
+		.map((room) => room.id);
+	const spaceNotes = (plan.spaceRetirements ?? []).map((retirement) => ({
+		roomId: retirement.roomId,
+		name: baselineRoomById.get(retirement.roomId)?.name ?? retirement.roomId,
+		reason: retirement.reason,
+		...(retirement.otherRoomIds === undefined
+			? {}
+			: {
+					otherNames: retirement.otherRoomIds.map(
+						(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
+					)
+				}),
+		...(retirement.successorRoomId === undefined
+			? {}
+			: {
+					successorName:
+						baselineRoomById.get(retirement.successorRoomId)?.name ?? retirement.successorRoomId
+				})
+	}));
 	const summary = wallDeletionSummary({
 		hostedOpeningIds,
 		createdRoomIds,
-		retiredRoomIds: plan.retiredRoomIds
+		retiredRoomIds: plan.retiredRoomIds,
+		openedRoomNames: openedRoomIds.map(
+			(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
+		),
+		keptOpenRoomNames: keptOpenRoomIds.map(
+			(roomId) => baselineRoomById.get(roomId)?.name ?? roomId
+		),
+		spaceNotes
 	});
 	return {
 		kind: 'planned',
@@ -387,6 +435,9 @@ export function planWallDeletion(options: {
 		hostedOpeningIds,
 		createdRoomIds,
 		retiredRoomIds: [...plan.retiredRoomIds],
+		openedRoomIds,
+		keptOpenRoomIds,
+		spaceNotes,
 		summary
 	};
 }
@@ -408,19 +459,57 @@ export function wallDeletionSummary(input: {
 	readonly hostedOpeningIds: readonly string[];
 	readonly createdRoomIds: readonly string[];
 	readonly retiredRoomIds: readonly string[];
+	readonly openedRoomNames?: readonly string[];
+	readonly keptOpenRoomNames?: readonly string[];
+	readonly spaceNotes?: readonly SpaceLifecycleNote[];
 }): string {
 	const removals = ['the Wall'];
 	if (input.hostedOpeningIds.length > 0) {
 		removals.push(`${counted(input.hostedOpeningIds.length, 'hosted Opening')} in the same undo step`);
 	}
+	const spaceSentences: string[] = [];
+	if ((input.openedRoomNames ?? []).length > 0) {
+		spaceSentences.push(
+			`It opens ${[...new Set(input.openedRoomNames)].join(' and ')}; one side is now open.`
+		);
+	}
+	for (const note of input.spaceNotes ?? []) {
+		if (note.reason === 'merged') {
+			spaceSentences.push(
+				note.successorName === undefined
+					? `It merges ${note.name}.`
+					: `It merges ${note.name} into ${note.successorName}.`
+			);
+			continue;
+		}
+		const reason =
+			note.reason === 'outline-self-intersects'
+				? 'its outline would cross itself'
+				: note.reason === 'outline-not-positive'
+					? 'its outline would have no area'
+					: note.reason === 'overlaps'
+						? `it would overlap ${note.otherNames?.[0] ?? 'another Space'}`
+						: note.reason === 'contains'
+							? `it would contain ${note.otherNames?.[0] ?? 'another Space'}`
+							: note.reason === 'last-boundary-wall'
+								? 'its last Wall is gone'
+								: 'it was removed';
+		spaceSentences.push(`It removes ${note.name} — ${reason}.`);
+	}
+	const keptOpen = [...new Set(input.keptOpenRoomNames ?? [])];
+	if (keptOpen.length > 0) {
+		spaceSentences.push(`It keeps ${keptOpen.join(' and ')} open.`);
+	}
 	const rooms =
-		input.retiredRoomIds.length > 0 && input.createdRoomIds.length > 0
-			? `It merges ${counted(input.retiredRoomIds.length, 'Room')}.`
-			: input.retiredRoomIds.length > 0
-				? `It opens the enclosure and retires ${counted(input.retiredRoomIds.length, 'Room')}.`
-				: input.createdRoomIds.length > 0
-					? `It creates ${counted(input.createdRoomIds.length, 'Room')}.`
-					: 'It changes no Room.';
+		spaceSentences.length > 0
+			? spaceSentences.join(' ')
+			: input.retiredRoomIds.length > 0 && input.createdRoomIds.length > 0
+				? `It merges ${counted(input.retiredRoomIds.length, 'Room')}.`
+				: input.retiredRoomIds.length > 0
+					? `It opens the enclosure and retires ${counted(input.retiredRoomIds.length, 'Room')}.`
+					: input.createdRoomIds.length > 0
+						? `It creates ${counted(input.createdRoomIds.length, 'Room')}.`
+						: 'It changes no Room.';
 	return `This deletes ${removals.join(' and ')}. ${rooms}`;
 }
 

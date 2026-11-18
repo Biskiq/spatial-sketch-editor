@@ -240,10 +240,11 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		// Now the two coincident Rooms never share a correspondence component, so the
-		// unrelated Room keeps its id/name and the operation's own Room retires as its
-		// boundary stops enclosing.
-		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
-		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		// unrelated Room keeps its id/name. SP1c carries the operation's own Room as an
+		// open Space once its boundary stops enclosing.
+		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
+		expect(plan.document.rooms.some((room) => room.id === 'room-c')).toBe(true);
+		expect(plan.retiredRoomIds).toEqual([]);
 		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
 		expect(plan.document.openings.map((opening) => [opening.id, opening.wallId])).toEqual([
 			['opening:k:door:1', 'k-a1']
@@ -255,9 +256,9 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		// The face is attributed to its own predecessor here, so `room-k` keeps its
-		// id, its name and its object, and the operation's own Room is the one that
-		// retires — a legitimate lineage effect of the operation, not a D-12 defect.
-		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
+		// id, its name and its object. The operation's own Room retires — a
+		// legitimate lineage effect, not a D-12 defect.
+		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
 		expect(plan.retiredRoomIds).toEqual(['room-c']);
 		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
 	});
@@ -268,8 +269,9 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		if (plan.kind !== 'success') return;
 		// Recorded so the hazard is not over-claimed: containing the operated Room
 		// does not by itself reassign the unrelated Room's identity or ownership.
-		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
-		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
+		expect(plan.document.rooms.some((room) => room.id === 'room-c')).toBe(true);
+		expect(plan.retiredRoomIds).toEqual([]);
 		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
 	});
 
@@ -313,11 +315,12 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		const plan = operateOnOperatedRoom(FULL_CONTAINMENT);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
-		// The operation's own boundary Wall becomes a partition, so its Room may
-		// retire under its existing contract. Spatial containment does not transfer
-		// that identity or its associated state to the unrelated Room.
-		expect(plan.retiredRoomIds).toEqual(['room-c']);
-		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
+		// The operation's own boundary Wall becomes a partition, so its Room is
+		// carried open by SP1c. Spatial containment does not transfer that identity
+		// or its associated state to the unrelated Room.
+		expect(plan.retiredRoomIds).toEqual([]);
+		expect(plan.document.rooms.some((room) => room.id === 'room-c')).toBe(true);
+		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
 		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
 		expect(plan.document.openings.map((opening) => [opening.id, opening.wallId])).toEqual([
 			['opening:k:door:1', 'k-a1']
@@ -431,7 +434,8 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'role change');
-		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		expect(plan.retiredRoomIds).toEqual([]);
+		expect(plan.document.rooms.some((room) => room.id === 'room-c')).toBe(true);
 	});
 
 	it('OR-D12-6 dissolve — dissolving the OPERATED Room\'s Junction leaves the unrelated Room intact', () => {
@@ -598,6 +602,10 @@ describe('P23B.3a S3a — the D-12 fallback on coherent inputs, and reachable bo
 			components,
 			predecessorWitnesses,
 			predecessorPolygons,
+			// This measurement owns the identity-less predecessor's documented
+			// retirement, so it asks for that policy explicitly. SP1c's carry default
+			// is covered by its own tests.
+			spacePolicy: { invalidOutline: 'retire' },
 			allocator: createAuthoringRoomAllocator(HAZARD_CAPTURE)
 		});
 		expect('kind' in result && result.kind === 'rejected').toBe(false);

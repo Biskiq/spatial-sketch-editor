@@ -110,7 +110,12 @@ export function reconcileFixture(baseline: Layout, candidateDocument: Layout) {
 		predecessorWitnesses, predecessorPolygons, candidateDocument, baselineRooms: baseline.rooms
 	});
 	const result = reconcileRooms({
-		baseline, candidateDocument, extraction, components, predecessorWitnesses, predecessorPolygons,
+		baseline, candidateDocument, extraction, components, 		predecessorWitnesses,
+		predecessorPolygons,
+		// This fixture measures the pre-SP1c correspondence-loss finding, so it
+		// asks for the retirement contract explicitly; SP1c's carry default has
+		// its own regression coverage.
+		spacePolicy: { invalidOutline: 'retire' },
 		allocator: createAuthoringRoomAllocator(capture('reconcile'))
 	});
 	if ('rejection' in result) throw new Error(JSON.stringify(result.rejection));
@@ -182,9 +187,22 @@ export function attach(state: State, hostId: string, index: number) {
 export function stripAnnex(layout: Layout, roomId: string): Layout {
 	const ring = new Set(boundary(layout, roomId).map((ref) => ref.wallId));
 	const outside = layout.walls.filter((entry) => !ring.has(entry.id));
-	return outside.reduce((current, entry, index) => accepted(
+	const stripped = outside.reduce((current, entry, index) => accepted(
 		planDeleteWall(current, entry.id, capture(`detach-${index}`), current.floor.id)
 	).document, layout);
+	// SP1c carries an opened annex as a Space; this staging fixture wants the
+	// historical stripped state, so it drops the annex records without touching
+	// the target Room's ring.
+	const annexRoomIds = new Set(stripped.rooms.filter((room) => room.id !== roomId).map((room) => room.id));
+	return {
+		...stripped,
+		rooms: stripped.rooms.filter((room) => room.id === roomId),
+		objects: stripped.objects.map((object) =>
+			object.roomId !== undefined && annexRoomIds.has(object.roomId)
+				? { ...object, roomId: undefined }
+				: object
+		)
+	};
 }
 
 /** Fixture repack after the production Wall deletions. The fixture has uniform

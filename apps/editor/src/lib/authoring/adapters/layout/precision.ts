@@ -53,6 +53,7 @@ import {
 	planExactWallLength,
 	planExactWallThickness,
 	planOpeningMetadataUpdate,
+	planRemoveSpace,
 	planRigidWallMove,
 	planWallFirstRoomMove,
 	planUpdateWallFirstOpening,
@@ -60,6 +61,8 @@ import {
 	planWallMetadataUpdate,
 	projectPointToWallCenterline,
 	wallCenterlineSamples,
+	faceArea,
+	type CompiledLayoutGeometry,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
@@ -86,6 +89,10 @@ export const LAYOUT_WALL_HEIGHT_KIND = 'layout-wall-height';
 export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
 export const LAYOUT_OPENING_MEASURE_KIND = 'layout-opening-measure';
 export const LAYOUT_ENTITY_NAME_KIND = 'layout-entity-name';
+/** Authored overhead intent: Closed or open to the sky. */
+export const LAYOUT_ROOM_OVERHEAD_KIND = 'layout-room-overhead';
+/** Remove an open Space record without demolishing its Walls. */
+export const LAYOUT_SPACE_REMOVE_KIND = 'layout-space-remove';
 export const LAYOUT_PLINTH_PLACE_KIND = 'layout-plinth-place';
 /** Exact straight-Wall length, keeping one explicit endpoint fixed. */
 export const LAYOUT_WALL_LENGTH_KIND = 'layout-wall-length';
@@ -148,6 +155,8 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_JUNCTION_MOVE_KIND]: ['wallId', 'junctionId', 'x', 'z'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
 	[LAYOUT_ENTITY_NAME_KIND]: ['subjectKind', 'subjectId', 'name'],
+	[LAYOUT_ROOM_OVERHEAD_KIND]: ['roomId', 'overhead'],
+	[LAYOUT_SPACE_REMOVE_KIND]: ['roomId'],
 	[LAYOUT_PLINTH_PLACE_KIND]: ['point', 'floorElevation', 'objectId']
 };
 
@@ -304,7 +313,11 @@ export function preparedLayoutCandidate(
 	subject: LayoutSubject | LayoutRoomSubject,
 	document: LayoutDocumentWallFirst,
 	fields: readonly string[],
-	options: { readonly created?: boolean; readonly id?: string } = {}
+	options: {
+		readonly created?: boolean;
+		readonly retired?: boolean;
+		readonly id?: string;
+	} = {}
 ): PlannerOutcome<ProjectEnvelope> {
 	const level = capturedWorkingLevel(request);
 	if ('kind' in level) return level;
@@ -326,7 +339,9 @@ export function preparedLayoutCandidate(
 		correspondence: [
 			options.created
 				? { relation: 'created', before: null, after: reference }
-				: { relation: 'preserved', before: reference, after: reference }
+				: options.retired
+					? { relation: 'retired', before: reference, after: null }
+					: { relation: 'preserved', before: reference, after: reference }
 		],
 		diagnostics: []
 	};
@@ -696,6 +711,76 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/**
+ * Overhead is authored intent, never geometry: `planRoomMetadataUpdate` owns the
+ * patch, so this planner cannot smuggle in a boundary or virtual-edge change.
+ * One accepted intent is one history entry, and Undo restores the lid exactly.
+ */
+function roomOverheadPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_ROOM_OVERHEAD_KIND, (request) => {
+		const payload = readPayload(LAYOUT_ROOM_OVERHEAD_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { roomId, overhead } = payload.value;
+		if (!opaqueId(roomId) || (overhead !== 'closed' && overhead !== 'open-to-sky')) {
+			return rejected(
+				'invalid-value',
+				"A Room overhead edit needs one Room id and either 'closed' or 'open-to-sky'."
+			);
+		}
+		const addressed = addressedSubject(request, 'room', roomId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planRoomMetadataUpdate(
+			request.snapshot.domain.source.units.layout.data,
+			roomId,
+			{ overhead }
+		);
+		if (plan.kind === 'rejected') {
+			return rejected(plan.rejection.code, plan.rejection.message);
+		}
+		return preparedLayoutCandidate(
+			request,
+			LAYOUT_ROOM_OVERHEAD_KIND,
+			{ kind: 'room', id: roomId },
+			plan.document,
+			['overhead']
+		);
+	});
+}
+
+/**
+ * Remove space is the open-Space-only command: the record goes, its Walls stay,
+ * objects lose the association and the released anchors are pruned. The
+ * canonical planner owns that meaning; this adapter only prepares its intent.
+ */
+function spaceRemovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_SPACE_REMOVE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_SPACE_REMOVE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { roomId } = payload.value;
+		if (!opaqueId(roomId)) return rejected('invalid-value', 'Remove space needs one Room id.');
+		const addressed = addressedSubject(request, 'room', roomId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const level = capturedWorkingLevel(request);
+		if ('kind' in level) return level;
+		const plan = planRemoveSpace(
+			request.snapshot.domain.source.units.layout.data,
+			roomId,
+			level.levelId
+		);
+		if (plan.kind === 'rejected') {
+			return rejected(plan.rejection.code, plan.rejection.message);
+		}
+		return preparedLayoutCandidate(
+			request,
+			LAYOUT_SPACE_REMOVE_KIND,
+			{ kind: 'room', id: roomId },
+			plan.document,
+			['rooms', 'objects', 'openings', 'junctions'],
+			{ retired: true }
+		);
+	});
+}
+
 function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_PLINTH_PLACE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_PLINTH_PLACE_KIND, request.intent.payload);
@@ -795,6 +880,8 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		junctionMovePlanner(),
 		openingMeasurePlanner(),
 		entityNamePlanner(),
+		roomOverheadPlanner(),
+		spaceRemovePlanner(),
 		plinthPlanner()
 	];
 }
@@ -1352,6 +1439,42 @@ export function previewWallStraighten(
  */
 export function formatMeters(value: number): string {
 	return `${value} m`;
+}
+
+/**
+ * The Room Card's facts. Area is read from the compiled floor polygon, never
+ * recomputed from the authored boundary; the kind word and the open-side count
+ * are derived readings of one Space record.
+ */
+export function layoutRoomFacts(
+	document: LayoutDocumentWallFirst,
+	geometry: CompiledLayoutGeometry,
+	roomId: string
+): readonly LayoutFact[] {
+	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	if (room === undefined) return [];
+	const compiled = geometry.rooms.find((candidate) => candidate.roomId === roomId);
+	const openSides = room.virtualEdges.length;
+	const walls = room.boundary.length;
+	return [
+		{ label: 'Kind', value: openSides > 0 ? 'Open space' : 'Room', fieldId: 'kind' },
+		{ label: 'Name', value: room.name ?? '(unnamed)', fieldId: 'name' },
+		{
+			label: 'Area',
+			value: compiled === undefined ? '—' : `${faceArea({ polygon: compiled.floorPolygon }).toFixed(2)} m²`,
+			fieldId: 'area'
+		},
+		{
+			label: 'Overhead',
+			value: room.overhead === 'open-to-sky' ? 'Open to sky' : 'Closed',
+			fieldId: 'overhead'
+		},
+		{
+			label: 'Bounds',
+			value: `${walls} ${walls === 1 ? 'Wall' : 'Walls'} · ${openSides} open ${openSides === 1 ? 'side' : 'sides'}`,
+			fieldId: 'bounds'
+		}
+	];
 }
 
 /** Every settled writable/read-only fact the Dimensions instrument shows. */

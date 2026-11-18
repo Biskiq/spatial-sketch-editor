@@ -1,6 +1,6 @@
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import type { CompiledLayoutQueryGeometry, CompiledQuerySpan } from '@portfolio/layout-core';
-import { findPolygonContaining, projectPointToSpans } from '@portfolio/layout-core';
+import { findPolygonContaining, pointInPolygon, projectPointToSpans } from '@portfolio/layout-core';
 
 /**
  * Pure Plan hit resolution. Resolves a world-space plan point against the
@@ -423,23 +423,46 @@ export function resolvePlanHit(
 	return room ? { kind: 'room', roomId: room.roomId } : null;
 }
 
+/** The shoelace area of one planar ring, always positive. */
+function ringArea(points: readonly LayoutVec2[]): number {
+	let twice = 0;
+	for (let index = 0; index < points.length; index += 1) {
+		const current = points[index]!;
+		const next = points[(index + 1) % points.length]!;
+		twice += current[0] * next[1] - next[0] * current[1];
+	}
+	return Math.abs(twice) / 2;
+}
+
 /**
  * Room containment only — no vertex/anchor/opening/object/wall priority. Used by
  * primitive placement so a point near a wall still resolves to the containing
  * room, unlike the full selection priority in `resolvePlanHit`.
+ *
+ * The **innermost** containing Space wins: a booth inside a hall must belong to
+ * the booth, not to the hall that also contains the point. Equal areas break by
+ * Room id, so query-array order is never authority.
  */
 export function findPlanHitRoom(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
 	options?: { allowedRoomIds?: ReadonlySet<string> }
 ): { roomId: string } | null {
-	const roomPolygons = options?.allowedRoomIds
-		? queries.polygons.filter(
-				(polygon) => polygon.kind === 'room-floor' && polygon.roomId && options.allowedRoomIds!.has(polygon.roomId)
-			)
-		: queries.polygons.filter((polygon) => polygon.kind === 'room-floor');
-	const roomPolygon = findPolygonContaining(point, roomPolygons);
-	return roomPolygon?.roomId ? { roomId: roomPolygon.roomId } : null;
+	let best: { roomId: string; area: number } | null = null;
+	for (const polygon of queries.polygons) {
+		if (polygon.kind !== 'room-floor' || polygon.roomId === undefined) continue;
+		if (options?.allowedRoomIds !== undefined && !options.allowedRoomIds.has(polygon.roomId)) continue;
+		if (!pointInPolygon(point, polygon.polygon)) continue;
+		const area = ringArea(polygon.polygon);
+		if (
+			best === null ||
+			area < best.area - 1e-9 ||
+			(Math.abs(area - best.area) <= 1e-9 && polygon.roomId < best.roomId)
+		) {
+			best = { roomId: polygon.roomId, area };
+		}
+	}
+	return best === null ? null : { roomId: best.roomId };
 }
 
 /**

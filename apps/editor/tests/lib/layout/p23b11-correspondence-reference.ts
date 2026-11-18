@@ -1281,9 +1281,11 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(d) + OR-1(h)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'a7c930b5ae556b7f9b506140a31723ebdd045b1c80c0a55e4ed5d9878193414d'
+			// SP1c carries the opened Space; the reconciliation-only reference below
+			// stays on the pre-SP1c retirement contract (recorded exception).
+			documentSha256: '36ddadd441dfce297617ba46ae0bfce07768722619de358a9fe3583b74dc333b'
 		},
-		fidelity: true,
+		fidelity: false,
 		counts: {
 			faces: 3,
 			predecessors: 4,
@@ -1369,9 +1371,9 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(d)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '9750f96fdc17fb506f26ba9738e4156a92bdc98194166254edf286d577912e73'
+			documentSha256: '4a78f54886b4a29d697718ea5e0318d3bd5342a88d814c0038b2fdde189428ba'
 		},
-		fidelity: true,
+		fidelity: false,
 		counts: {
 			faces: 2,
 			predecessors: 3,
@@ -1652,9 +1654,9 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94'
 		},
-		fidelity: true,
+		fidelity: false,
 		counts: {
 			faces: 1,
 			predecessors: 2,
@@ -1756,9 +1758,9 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94'
 		},
-		fidelity: true,
+		fidelity: false,
 		counts: {
 			faces: 1,
 			predecessors: 2,

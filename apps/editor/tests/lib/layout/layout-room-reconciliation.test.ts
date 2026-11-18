@@ -354,6 +354,9 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 			candidateDocument: { ...RECT, objects: baseline.objects },
 			extraction: extractBoundaryCandidateFaces({ ...RECT, rooms: [] }),
 			components: [{ candidateFaceKeys: [RECT_FACE.key], predecessorRoomIds: ['room-keep'] }],
+			// This test owns the disappearance/retirement path, so it names that
+			// policy explicitly; SP1c's carry default is covered in its own tests.
+			spacePolicy: { invalidOutline: 'retire' },
 			allocator: allocator()
 		});
 		if (!('document' in result)) throw new Error('expected success');
@@ -416,6 +419,7 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 			candidateDocument: { ...RECT, openings: baseline.openings },
 			extraction: extractBoundaryCandidateFaces({ ...RECT, rooms: [] }),
 			components: [{ candidateFaceKeys: [RECT_FACE.key], predecessorRoomIds: ['room-keep'] }],
+			spacePolicy: { invalidOutline: 'retire' },
 			allocator: allocator()
 		});
 		expect(result).toEqual({

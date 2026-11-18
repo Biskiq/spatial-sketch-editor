@@ -37,6 +37,7 @@ import type {
 	CompiledQueryAabb,
 	CompiledRoom,
 	CompiledSolidSpan,
+	CompiledSpaceEdge,
 	CompiledWall,
 	CompiledWallSection,
 	CompilerBoundarySource,
@@ -1903,6 +1904,18 @@ function compileRoom(
 	const floorElevation = floor.elevation;
 	const overhead = room.overhead ?? 'closed';
 	const virtualSegmentIds = new Set(roomSource.virtualSegmentIds ?? []);
+	// The stated open sides keep their own compiled reading: an editor surface
+	// draws them as dashed ink, while the visitor never receives them as geometry.
+	const openSides: CompiledSpaceEdge[] = roomSource.boundary.segments.flatMap((segment) =>
+		segment.kind === 'line' && virtualSegmentIds.has(segment.id)
+			? [
+					{
+						start: [...segment.start] as LayoutVec2,
+						end: [...segment.end] as LayoutVec2
+					}
+				]
+			: []
+	);
 	// Physical Wall segments only: a stated open side contributes to the
 	// outline, floor polygon and area, never to compiled Walls, Wall bounds,
 	// Openings or Wall query records.
@@ -2058,6 +2071,7 @@ function compileRoom(
 		]),
 		roomId: room.id,
 		overhead,
+		...(openSides.length === 0 ? {} : { openSides }),
 		floorElevation,
 		ceilingElevation,
 		floorThickness: room.floorThickness,

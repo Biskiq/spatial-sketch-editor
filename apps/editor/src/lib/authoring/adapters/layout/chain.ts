@@ -210,6 +210,8 @@ export type ChainPlanPreview =
 			readonly splitWallIds: readonly string[];
 			readonly createdRoomIds: readonly string[];
 			readonly retiredRoomIds: readonly string[];
+			/** Open Spaces this chain re-closes into Rooms. */
+			readonly closedRoomIds?: readonly string[];
 			readonly consequence: ChainConsequence;
 	  }
 	| {
@@ -232,21 +234,30 @@ function consequenceOf(
 	buildingRoomIds: readonly string[],
 	retiredRoomIds: readonly string[],
 	splitWallIds: readonly string[],
-	baselineRooms: number
+	baselineRooms: number,
+	closedRoomNames: readonly string[] = []
 ): ChainConsequence {
+	// Re-close is named for the Space it happens to: the identity the creator
+	// already sees, never a newly minted Room they have to rediscover.
+	const closeNote =
+		closedRoomNames.length > 0
+			? ` Closes ${closedRoomNames.join(' and ')} — every side is a Wall again.`
+			: '';
 	if (buildingRoomIds.length > 0 && baselineRooms === 0) {
 		return {
 			kind: 'encloses',
 			summary:
-				buildingRoomIds.length === 1
+				(buildingRoomIds.length === 1
 					? 'Encloses one Room on finish.'
-					: `Encloses ${buildingRoomIds.length} Rooms on finish.`
+					: `Encloses ${buildingRoomIds.length} Rooms on finish.`) + closeNote
 		};
 	}
 	if (buildingRoomIds.length > 0) {
 		return {
 			kind: 'divides',
-			summary: `Divides a Room — one accepted finish creates ${buildingRoomIds.length} Room${buildingRoomIds.length === 1 ? '' : 's'}.`
+			summary:
+				`Divides a Room — one accepted finish creates ${buildingRoomIds.length} Room${buildingRoomIds.length === 1 ? '' : 's'}.` +
+				closeNote
 		};
 	}
 	const hostNote =
@@ -257,7 +268,10 @@ function consequenceOf(
 		retiredRoomIds.length > 0
 			? ` Merges ${retiredRoomIds.length} existing Room${retiredRoomIds.length === 1 ? '' : 's'}.`
 			: '';
-	return { kind: 'free-standing', summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}` };
+	return {
+		kind: 'free-standing',
+		summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}${closeNote}`
+	};
 }
 
 /** Convert a canonical rejection into the one refusal shape, retaining its evidence. */
@@ -325,6 +339,10 @@ export function planChainDraft(options: {
 	});
 	if (plan.kind === 'rejected') return refusedChainPreview(plan.rejection);
 	const createdRoomIds = plan.lineage.map((record) => record.roomId);
+	const resultRoomById = new Map(plan.document.rooms.map((room) => [room.id, room] as const));
+	const closedRoomIds = options.document.rooms
+		.filter((room) => room.virtualEdges.length > 0 && (resultRoomById.get(room.id)?.virtualEdges.length ?? -1) === 0)
+		.map((room) => room.id);
 	return {
 		kind: 'planned',
 		document: plan.document,
@@ -334,11 +352,15 @@ export function planChainDraft(options: {
 		splitWallIds: plan.splitWallIds,
 		createdRoomIds,
 		retiredRoomIds: plan.retiredRoomIds,
+		closedRoomIds,
 		consequence: consequenceOf(
 			createdRoomIds,
 			plan.retiredRoomIds,
 			plan.splitWallIds,
-			options.document.rooms.length
+			options.document.rooms.length,
+			closedRoomIds.map(
+				(roomId) => options.document.rooms.find((room) => room.id === roomId)?.name ?? roomId
+			)
 		)
 	};
 }

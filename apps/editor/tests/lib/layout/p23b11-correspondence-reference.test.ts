@@ -84,6 +84,18 @@ describe('P23B.11 S2 — the properties the S3 differential reads', () => {
 		// model, so that one row honestly records `fidelity: false`. The property
 		// still forbids an UNEXPLAINED mismatch: every other planned row must
 		// reproduce the planner's document, and the exception is named here.
+		// SP1c changes the PLANNER's default from retire to carry. These four rows
+		// plan a deletion or role change through the production planner, then rebuild
+		// the pass on the reference's explicit pre-SP1c retirement contract. The row
+		// records the operation's new carried document and `fidelity: false`; the
+		// reconciliation half still pins the old contract, so the exception cannot
+		// hide a change in the rebuilt correspondence itself.
+		const CARRY_EXCEPTIONS = new Set([
+			'd-connected-outer-wall-retire',
+			'd-straight-12-outer-wall-retire',
+			'f-d12-exact-coincidence-role-change',
+			'f-d12-full-containment-role-change'
+		]);
 		const DELETION_EXCEPTION = 'f-d12-full-containment-mirror-role-change';
 		// The four rows whose case runs no planner pass, pinned BY NAME: `null`
 		// removes a row from `planned`, so an unnamed null would be a way to widen
@@ -99,8 +111,8 @@ describe('P23B.11 S2 — the properties the S3 differential reads', () => {
 		const planned = liveRows.filter((row) => row.fidelity !== null);
 		expect(planned).toHaveLength(20);
 		for (const row of planned) {
-			if (row.id === DELETION_EXCEPTION) {
-				expect(row.fidelity, `${row.id} records the deletion-pruning exception`).toBe(false);
+			if (row.id === DELETION_EXCEPTION || CARRY_EXCEPTIONS.has(row.id)) {
+				expect(row.fidelity, `${row.id} records a named fidelity exception`).toBe(false);
 				continue;
 			}
 			expect(row.fidelity, `${row.id} must reproduce the planner’s document`).toBe(true);

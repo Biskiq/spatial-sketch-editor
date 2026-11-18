@@ -167,12 +167,15 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 		expect(junctionIds).toContain('j-n');
 	});
 
-	it('deletes an outer boundary Wall and retires the opened Room deterministically', () => {
+	it('deletes an outer boundary Wall and carries the opened Room deterministically', () => {
 		const plan = success(deleteWall(BASE, 'wall-b'));
 		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-b');
-		// The right enclosure opened: room-right retired, room-left untouched.
-		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left']);
-		expect(plan.retiredRoomIds).toEqual(['room-right']);
+		// SP1c: the right enclosure opens; its Room keeps its identity with one
+		// released side, while room-left is untouched.
+		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left', 'room-right']);
+		expect(plan.retiredRoomIds).toEqual([]);
+		const opened = plan.document.rooms.find((room) => room.id === 'room-right')!;
+		expect(opened.virtualEdges).toHaveLength(1);
 		expect(plan.document.rooms[0]!.boundary.map((ref) => ref.wallId)).toEqual([
 			'wall-a1',
 			'wall-e',

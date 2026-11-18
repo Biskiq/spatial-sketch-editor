@@ -210,9 +210,15 @@ export function createStageSelectionView() {
 		};
 
 		const layoutKindWordOf = (sourceKind: string, sourceId: string): string => {
-			if (sourceKind !== 'opening') return layoutKindWord(sourceKind);
-			const opening = layoutPayload?.openings.find((candidate) => candidate.id === sourceId);
-			return layoutKindWord(sourceKind, opening?.kind);
+			if (sourceKind === 'opening') {
+				const opening = layoutPayload?.openings.find((candidate) => candidate.id === sourceId);
+				return layoutKindWord(sourceKind, opening?.kind);
+			}
+			if (sourceKind === 'room-floor' || sourceKind === 'room') {
+				const room = layoutPayload?.rooms.find((candidate) => candidate.id === sourceId);
+				return layoutKindWord(sourceKind, undefined, (room?.virtualEdges.length ?? 0) > 0);
+			}
+			return layoutKindWord(sourceKind);
 		};
 
 		const sceneEntityOf = (entityId: string) =>

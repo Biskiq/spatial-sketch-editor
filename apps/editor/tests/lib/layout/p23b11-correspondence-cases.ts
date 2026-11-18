@@ -709,6 +709,11 @@ export function analyzeCorrespondenceCase(
 		components,
 		predecessorWitnesses,
 		predecessorPolygons,
+		// The frozen rows measure correspondence mechanics under the pre-SP1c
+		// retirement contract. Production Wall deletion changed to carry in SP1c,
+		// which the SP1c tests own; keeping the reference explicit keeps this table
+		// a comparison of the same reconstruction.
+		spacePolicy: { invalidOutline: 'retire' },
 		allocator: createAuthoringRoomAllocator(capture)
 	});
 	const reconciliation: P23B11PassOutcome =

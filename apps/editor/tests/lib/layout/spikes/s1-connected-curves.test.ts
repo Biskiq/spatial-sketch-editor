@@ -308,7 +308,10 @@ describe('T1 S1 connected curves evidence', () => {
 		expect(divided.rooms).toHaveLength(3);
 		expect(divided.rooms.some((room) => room.id === roomId)).toBe(true);
 		const opened = accepted(planDeleteWall(layout, wallId, capture('open'), layout.floor.id)).document;
-		expect(opened.rooms.some((room) => room.id === roomId)).toBe(false);
+		// SP1c keeps the Room's identity as an open Space when its boundary opens.
+		const carried = opened.rooms.find((room) => room.id === roomId);
+		expect(carried).toBeDefined();
+		expect(carried?.virtualEdges.length).toBeGreaterThan(0);
 		expect(opened.walls.some((entry) => entry.id === wallId)).toBe(false);
 		for (const [step, changed] of [['divide', divided], ['open', opened], ['release', layout]] as const) {
 			const next = clearRound({ ...state, layout: changed }, roomId);

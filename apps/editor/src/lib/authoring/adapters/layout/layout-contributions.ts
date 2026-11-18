@@ -43,6 +43,7 @@ import {
 } from './opening-planners';
 import {
 	LAYOUT_CIRCLE_RADIUS_KIND,
+	layoutSubjectReference,
 	planWallDeletion,
 	wallDeleteIntent,
 	type WallDeletionPreview
@@ -63,7 +64,11 @@ import {
 	LAYOUT_WALL_LENGTH_KIND,
 	LAYOUT_WALL_MOVE_KIND,
 	LAYOUT_WALL_BEND_KIND,
+	LAYOUT_ROOM_OVERHEAD_KIND,
+	LAYOUT_SPACE_REMOVE_KIND,
+	buildLayoutIntent,
 	layoutFacts,
+	layoutRoomFacts,
 	layoutCardFieldIds,
 	layoutSubjectOf,
 	wallStationFrame,
@@ -828,7 +833,9 @@ export function createLayoutContributions({
 				preview?.kind === 'planned' &&
 				(preview.hostedOpeningIds.length > 0 ||
 					preview.retiredRoomIds.length > 0 ||
-					preview.createdRoomIds.length > 0);
+					preview.createdRoomIds.length > 0 ||
+					preview.openedRoomIds.length > 0 ||
+					preview.keptOpenRoomIds.length > 0);
 			return { kind: 'action', action, confirm };
 		},
 		tasks: [
@@ -876,6 +883,9 @@ export function createLayoutContributions({
 			}
 		],
 		cardFacts(cardSubject: StageCardSubject) {
+			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
+				return layoutRoomFacts(document, context.snapshot.domain.geometry, cardSubject.sourceId);
+			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
 				sourceId: cardSubject.sourceId
@@ -990,6 +1000,8 @@ export function createLayoutContributions({
 						'The copy starts clear of its source; move the pointer, then click to place it.'
 					].join(' ');
 				}
+				const openSpace = room.virtualEdges.length > 0;
+				const nextOverhead = room.overhead === 'open-to-sky' ? 'closed' : 'open-to-sky';
 				return [
 					roomLiftAction(services, roomId, room.name),
 					{
@@ -1006,7 +1018,78 @@ export function createLayoutContributions({
 							}
 							return requestRoomDuplicate(roomId);
 						}
-					}
+					},
+					{
+						id: 'layout-room-overhead',
+						label: nextOverhead === 'open-to-sky' ? 'Open to sky' : 'Close overhead',
+						group: 'secondary',
+						detail:
+							nextOverhead === 'open-to-sky'
+								? 'Removes the generated lid over this Space; its Walls, floor and area stay.'
+								: 'Restores the generated lid over this Space; its Walls, floor and area stay.',
+						run: async () => {
+							const snapshot = services.stage.snapshot();
+							const contentRevision = stageUnitRevision(snapshot, 'layout');
+							const levelId = snapshot.domain.layoutLevelId;
+							const outcome = await services.authoring.accept(
+								buildLayoutIntent({
+									kind: LAYOUT_ROOM_OVERHEAD_KIND,
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision,
+									levelId,
+									targets: [
+										layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+									],
+									payload: { roomId, overhead: nextOverhead }
+								})
+							);
+							if (outcome.kind === 'refused') {
+								return { kind: 'refused', message: outcome.message };
+							}
+							services.stage.notifySurfaceChange();
+							return outcome.kind === 'no-op'
+								? { kind: 'no-op', message: 'The overhead already had that value.' }
+								: { kind: 'accepted' };
+						}
+					},
+					...(openSpace
+						? [
+								{
+									id: 'layout-space-remove',
+									label: 'Remove space',
+									detail: `Removes ${room.name} and its open sides; its Walls stay. Objects keep their place and lose the association.`,
+									destructive: true,
+									run: async (): Promise<StageCardActionOutcome> => {
+										const snapshot = services.stage.snapshot();
+										const contentRevision = stageUnitRevision(snapshot, 'layout');
+										const levelId = snapshot.domain.layoutLevelId;
+										const outcome = await services.authoring.accept(
+											buildLayoutIntent({
+												kind: LAYOUT_SPACE_REMOVE_KIND,
+												operationId: globalThis.crypto.randomUUID(),
+												projectId: snapshot.acceptedRevision.projectId,
+												revisionId: services.authoring.acceptedRevision().revisionId,
+												contentRevision,
+												levelId,
+												targets: [
+													layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+												],
+												payload: { roomId }
+											})
+										);
+										if (outcome.kind === 'refused') {
+											return { kind: 'refused', message: outcome.message };
+										}
+										services.stage.notifySurfaceChange();
+										return outcome.kind === 'no-op'
+											? { kind: 'no-op', message: 'The Space was already gone.' }
+											: { kind: 'accepted' };
+									}
+								}
+							]
+						: [])
 				];
 			}
 			if (cardSubject.sourceKind === 'opening') {

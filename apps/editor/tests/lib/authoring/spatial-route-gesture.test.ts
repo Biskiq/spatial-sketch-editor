@@ -1260,8 +1260,8 @@ describe('mounted Stage drawing and deletion', () => {
 			.map((node) => node.textContent ?? '')
 			.join(' ');
 		expect(notice).toContain('Delete Wall');
-		// The disclosure is the planner's own words: this Wall closes the enclosure.
-		expect(notice).toContain('retires 1 Room');
+		// The disclosure is the planner's own words: this Wall opens the Space.
+		expect(notice).toContain('It opens Draft Room 1; one side is now open.');
 		expect(facade().snapshot().canonicalJson).toBe(canonical);
 
 		// Escape keeps the Wall and spends the offer.

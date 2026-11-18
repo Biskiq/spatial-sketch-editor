@@ -539,7 +539,6 @@ function finalizeRoomUnitMotion(
 		extraction,
 		components,
 		// A rigid move preserves every existing Space.
-		spacePolicy: { openSpaces: 'keep' },
 		candidateRooms: candidateDocument.rooms,
 		allocator: guardedAllocator(attemptedAllocation)
 	});

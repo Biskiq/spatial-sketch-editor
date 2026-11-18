@@ -67,7 +67,7 @@ function gap(document: LayoutDocumentWallFirst, startId: string, endId: string) 
 }
 
 describe('T1.P02.S01 §1 — captured identity guards', () => {
-	it('delete then recreate a Wall, an Opening and a Room-birthing chain: no identity returns', () => {
+	it('delete then recreate a Wall, an Opening and a Room-birthing chain: captured ids never return', () => {
 		const first = enclosure(freshCapture());
 		const roomId = first.document.rooms[0]!.id;
 		const deletedWallId = first.createdWallIds[0]!;
@@ -75,11 +75,14 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 		const deletedStart = deletedWall.startJunctionId;
 		const deletedEnd = deletedWall.endJunctionId;
 
-		// Delete one boundary Wall; its Room retires.
+		// Delete one boundary Wall; SP1c carries its Room as an open Space, so the
+		// identity the creator already sees survives and the rebuilt Wall re-closes it.
 		const deleted = planDeleteWall(first.document, deletedWallId, freshCapture(), first.document.floor.id);
 		expect(deleted.kind).toBe('success');
 		if (deleted.kind !== 'success') return;
-		expect(deleted.document.rooms.find((room) => room.id === roomId)).toBeUndefined();
+		const carried = deleted.document.rooms.find((room) => room.id === roomId);
+		expect(carried).toBeDefined();
+		expect(carried?.virtualEdges).toHaveLength(1);
 
 		// Recreate the Wall and let the ring birth a Room again — both operations
 		// carry fresh captures, so neither the Wall/Junction ids nor the Room id
@@ -106,7 +109,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 			expect.arrayContaining([deletedStart, deletedEnd])
 		);
 		expect(rebuilt.document.rooms).toHaveLength(1);
-		expect(rebuilt.document.rooms[0]!.id).not.toBe(roomId);
+		expect(rebuilt.document.rooms[0]!.id).toBe(roomId);
+		expect(rebuilt.document.rooms[0]!.virtualEdges).toEqual([]);
 
 		// The same gap rebuilt WITHOUT snaps: independent placement mints both
 		// endpoints, so the minted ids can actually be compared with the deleted
