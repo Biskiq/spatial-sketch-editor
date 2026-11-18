@@ -373,7 +373,7 @@ describe('Room Ink and accepted Open Space creation', () => {
 		expect(facade.keyboardIntent({ kind: 'finish' }).claimed).toBe(true);
 		await vi.waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
 		expect(accept).toHaveBeenCalledTimes(1);
-		const result = await accept.mock.results[0]!.value;
+		const result: Awaited<ReturnType<typeof coordinator.accept>> = await accept.mock.results[0]!.value;
 		if (result.kind !== 'accepted') throw new Error(`Expected an accepted split, got ${result.kind}`);
 
 		const created = acceptedLayout(facade);
