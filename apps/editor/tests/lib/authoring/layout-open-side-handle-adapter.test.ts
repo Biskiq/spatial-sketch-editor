@@ -346,6 +346,25 @@ describe('SP1d — mid-grip moves the open side square to itself', () => {
 		mounted.facade.dispose();
 	});
 
+	it('uses the mid-grip release position without a preceding move', async () => {
+		const mounted = await mount(gallery());
+		const room = acceptedLayout(mounted.facade).rooms[0]!;
+		selectRoom(mounted.facade, room.id);
+		settle(mounted.facade);
+		const before = mounted.facade.snapshot().canonicalJson;
+		const from = stageCss(mounted.facade, [0, 1.5]);
+		const to = stageCss(mounted.facade, [0.5, 1.5]);
+		const evaluationId = mounted.facade.evaluationId()!;
+		mounted.facade.pointerIntent({ phase: 'down', handleId: MID, css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await committed(mounted, before);
+		settle(mounted.facade);
+		const moved = acceptedLayout(mounted.facade);
+		expect(moved.junctions.find((entry) => entry.id === 'j-a')!.point).toEqual([0.5, 0]);
+		expect(moved.junctions.find((entry) => entry.id === 'j-d')!.point).toEqual([0.5, 3]);
+		mounted.facade.dispose();
+	});
+
 	it('writes nothing on Escape', async () => {
 		const mounted = await mount(gallery());
 		const room = acceptedLayout(mounted.facade).rooms[0]!;
