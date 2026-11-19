@@ -1043,7 +1043,12 @@
 		const reading = interiorLift.reading;
 		if (reading === null) return [];
 		if (boot.status !== 'ready' && boot.status !== 'empty') return [];
-		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
+		// Region Lift arrives with V1c; until then the representation addresses
+		// Room lids only, so the route narrows Layout's output the same way
+		// `liftedSourcesNow` does.
+		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope).filter(
+			(source) => source.key.kind === 'room-lid'
+		);
 	});
 	const liftedRoomIds = $derived(liftedSources.map((source) => source.subject.id));
 	/** The selected Room, when the selection is one: a lift is selected through its Room. */

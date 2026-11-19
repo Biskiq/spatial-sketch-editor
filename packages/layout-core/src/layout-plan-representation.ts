@@ -67,7 +67,7 @@ import type {
 	CompiledRoom,
 	LayoutBounds2
 } from './layout-geometry-types';
-import { LAYOUT_SLICE_CONTACT_METERS } from './layout-region';
+import { LAYOUT_SLICE_CONTACT_METERS } from './layout-region-validation';
 import type { CompiledRegion } from './layout-geometry-types';
 import type { LayoutVec2 } from './layout-coordinates';
 

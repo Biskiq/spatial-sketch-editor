@@ -10,7 +10,7 @@ import {
 	type LayoutBounds3,
 	type LayoutGeometryIssue
 } from './layout-geometry-types';
-import { regionGeometryIssues, regionVerticalBand } from './layout-region';
+import { regionGeometryIssues, regionVerticalBand } from './layout-region-validation';
 import type { LayoutDocumentWallFirst, LayoutRegion } from './layout-wall-first-types';
 
 export type RetainedRegion = {

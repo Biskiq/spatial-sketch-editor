@@ -53,7 +53,7 @@ import {
 } from './layout-identity';
 import type { LayoutDocumentIssue } from './layout-issue';
 import { LayoutDocumentValidationError } from './layout-issue';
-import { MAX_LAYOUT_REGION_POINTS, regionGeometryIssues } from './layout-region';
+import { MAX_LAYOUT_REGION_POINTS, regionGeometryIssues } from './layout-region-validation';
 import { MAX_LAYOUT_DIMENSION_METERS, layoutDimensionLimitIssues } from './layout-geometry-limits';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';

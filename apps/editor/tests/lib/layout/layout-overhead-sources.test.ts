@@ -17,8 +17,14 @@ import { describe, expect, it } from 'vitest';
 import {
 	compileWallFirstLayoutGeometry,
 	overheadSourcesOf,
-	type CompiledLayoutGeometry
+	type CompiledLayoutGeometry,
+	type OverheadSource
 } from '@portfolio/layout-core';
+
+function lidRoomId(source: OverheadSource): string {
+	if (source.key.kind !== 'room-lid') throw new Error('expected a Room lid');
+	return source.key.roomId;
+}
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
@@ -33,7 +39,7 @@ describe('T1 X1 — overhead sources', () => {
 		const sources = overheadSourcesOf(geometry, { kind: 'all' });
 
 		expect(sources).toHaveLength(geometry.rooms.length);
-		expect(sources.map((source) => source.key.roomId)).toEqual(
+		expect(sources.map(lidRoomId)).toEqual(
 			geometry.rooms.map((room) => room.roomId).slice().sort((left, right) =>
 				left < right ? -1 : left > right ? 1 : 0
 			)
@@ -41,7 +47,7 @@ describe('T1 X1 — overhead sources', () => {
 
 		const roomById = new Map(geometry.rooms.map((room) => [room.roomId, room] as const));
 		for (const source of sources) {
-			const room = roomById.get(source.key.roomId)!;
+			const room = roomById.get(lidRoomId(source))!;
 			expect(source.key).toEqual({ kind: 'room-lid', roomId: room.roomId });
 			// The lid is selected through its Room: one subject, never a ceiling
 			// subject of its own.
@@ -58,7 +64,7 @@ describe('T1 X1 — overhead sources', () => {
 
 		const scoped = overheadSourcesOf(geometry, { kind: 'space', roomId });
 		expect(scoped).toHaveLength(1);
-		expect(scoped[0]!.key.roomId).toBe(roomId);
+		expect(lidRoomId(scoped[0]!)).toBe(roomId);
 		expect(scoped[0]!.elevation).toBe(geometry.rooms[2]!.ceilingElevation);
 
 		expect(overheadSourcesOf(geometry, { kind: 'space', roomId: 'no-such-room' })).toEqual([]);
@@ -78,7 +84,7 @@ describe('T1 X1 — overhead sources', () => {
 
 		const all = overheadSourcesOf(pruned, { kind: 'all' });
 		expect(all).toHaveLength(geometry.rooms.length - 1);
-		expect(all.some((source) => source.key.roomId === degenerate.roomId)).toBe(false);
+		expect(all.some((source) => lidRoomId(source) === degenerate.roomId)).toBe(false);
 		expect(overheadSourcesOf(pruned, { kind: 'space', roomId: degenerate.roomId })).toEqual([]);
 	});
 

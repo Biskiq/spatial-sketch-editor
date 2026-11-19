@@ -5,9 +5,11 @@ import type {
 	CompiledQueryPoint,
 	CompiledQueryPolygon,
 	CompiledQuerySpan,
+	CompiledRegion,
 	CompiledRoom,
 	LayoutBounds2
 } from './layout-geometry-types';
+import { polygonsShareInteriorArea } from './layout-face-extraction';
 import { pointInPolygon } from './layout-geometry-objects';
 
 export type { CompiledQueryPoint, CompiledQuerySpan, CompiledQueryPolygon, CompiledQueryAabb };
@@ -136,12 +138,16 @@ export type OverheadScope =
  * that reads a source's subject, outline or elevation changes then, because all
  * three are stated here rather than by the reader.
  */
-export type OverheadSourceKey = { readonly kind: 'room-lid'; readonly roomId: string };
+export type OverheadSourceKey =
+	| { readonly kind: 'room-lid'; readonly roomId: string }
+	| { readonly kind: 'region'; readonly regionId: string };
 
 export type OverheadSource = {
 	readonly key: OverheadSourceKey;
 	/** The selectable subject that owns this overhead. */
-	readonly subject: { readonly kind: 'room'; readonly id: string };
+	readonly subject:
+		| { readonly kind: 'room'; readonly id: string }
+		| { readonly kind: 'region'; readonly id: string };
 	/** Closed plan loop, world XZ, no repeated last point. */
 	readonly outline: readonly LayoutVec2[];
 	/** World Y of the overhead's underside. */
@@ -168,16 +174,70 @@ export function overheadSourcesOf(
 		scope.kind === 'space'
 			? compiled.rooms.filter((room) => room.roomId === scope.roomId)
 			: compiled.rooms;
-	const sources: OverheadSource[] = [];
+	const lidSources: OverheadSource[] = [];
 	for (const room of rooms) {
 		const source = roomLidSource(room);
-		if (source !== null) sources.push(source);
+		if (source !== null) lidSources.push(source);
 	}
-	// Deterministic order: callers and tests address sources by position, and a
-	// compile that reorders its Room list must not reorder the lifted set.
-	return sources.sort((left, right) =>
-		left.key.roomId < right.key.roomId ? -1 : left.key.roomId > right.key.roomId ? 1 : 0
+	// Deterministic order: callers and tests address lifts by position, and a
+	// compile that reorders its Room list must not reorder the lifted set. Lid
+	// order is unchanged; authored overhead regions follow, by region id.
+	lidSources.sort((left, right) =>
+		left.key.kind !== 'room-lid' || right.key.kind !== 'room-lid'
+			? 0
+			: left.key.roomId < right.key.roomId
+				? -1
+				: left.key.roomId > right.key.roomId
+					? 1
+					: 0
 	);
+	const regions = (
+		scope.kind === 'space'
+			? regionsOverSpace(compiled, scope.roomId)
+			: compiled.regions
+	)
+		.filter((region) => region.role === 'overhead')
+		.filter(regionFootprintUsable)
+		.sort((left, right) =>
+			left.regionId < right.regionId ? -1 : left.regionId > right.regionId ? 1 : 0
+		);
+	const regionSources = regions.flatMap((region): OverheadSource[] => {
+		const source = regionUndersideSource(region);
+		return source === null ? [] : [source];
+	});
+	return [...lidSources, ...regionSources];
+}
+
+/**
+ * Authored regions whose footprint shares positive interior area with a
+ * compiled Space, ordered by region id. Both roles participate: this is the
+ * association query, not a lift list.
+ *
+ * A Room that is not part of the compile (or has no usable floor polygon) has no
+ * regions over it. Overlap is the only rule: containment, shared edges and
+ * coincident projections do not count as positive interior area.
+ */
+export function regionsOverSpace(
+	compiled: CompiledLayoutGeometry,
+	roomId: string
+): readonly CompiledRegion[] {
+	const room = compiled.rooms.find((candidate) => candidate.roomId === roomId);
+	if (room === undefined || room.floorPolygon.length < 3) return [];
+	const bounds = polygonBounds2(room.floorPolygon);
+	if (bounds === null) return [];
+	return compiled.regions
+		.filter((region) => regionFootprintUsable(region))
+		.filter((region) => {
+			const regionBounds = region.bounds2;
+			if (
+				regionBounds.max[0] <= bounds.min[0] || bounds.max[0] <= regionBounds.min[0] ||
+				regionBounds.max[1] <= bounds.min[1] || bounds.max[1] <= regionBounds.min[1]
+			) return false;
+			return polygonsShareInteriorArea(region.footprint, room.floorPolygon);
+		})
+		.sort((left, right) =>
+			left.regionId < right.regionId ? -1 : left.regionId > right.regionId ? 1 : 0
+		);
 }
 
 /** One compiled Room's generated lid, or `null` when it has no overhead to lift. */
@@ -193,5 +253,20 @@ function roomLidSource(room: CompiledRoom): OverheadSource | null {
 		subject: { kind: 'room', id: room.roomId },
 		outline: room.ceilingPolygon.map((point): LayoutVec2 => [point[0], point[1]]),
 		elevation: room.ceilingElevation
+	};
+}
+
+function regionFootprintUsable(region: CompiledRegion): boolean {
+	return region.footprint.length >= 3 && Number.isFinite(region.bottomY);
+}
+
+/** One compiled overhead region's authored underside, or `null` when unusable. */
+function regionUndersideSource(region: CompiledRegion): OverheadSource | null {
+	if (!regionFootprintUsable(region)) return null;
+	return {
+		key: { kind: 'region', regionId: region.regionId },
+		subject: { kind: 'region', id: region.regionId },
+		outline: region.footprint.map((point): LayoutVec2 => [point[0], point[1]]),
+		elevation: region.bottomY
 	};
 }

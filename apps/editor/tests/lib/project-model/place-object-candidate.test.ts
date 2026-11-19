@@ -65,12 +65,13 @@ function support(elevation: number, generationId = GENERATION): FloorSupportCand
 		generationId,
 		witnesses: [
 			{
+				source: { kind: 'room', roomId: 'room-1' },
 				floorId: 'floor-1',
-				roomId: 'room-1',
 				recordId: 'record-1',
 				cacheKey: 'record-1:cache',
 				sourceId: 'record-1:source',
-				orderKey: 'record-1:order'
+				orderKey: 'record-1:order',
+				elevation
 			}
 		],
 		orderKey: 'record-1:order',
@@ -511,7 +512,10 @@ describe('placement source and support qualification', () => {
 	});
 	it('retains every equivalent witness as an exact F1 derived source reference', () => {
 		const chosen = support(0);
-		chosen.witnesses = [chosen.witnesses[0]!, { ...chosen.witnesses[0]!, roomId: 'room-2', recordId: 'record-2', sourceId: 'room-2' }];
+		chosen.witnesses = [
+			chosen.witnesses[0]!,
+			{ ...chosen.witnesses[0]!, source: { kind: 'room', roomId: 'room-2' }, recordId: 'record-2', sourceId: 'room-2' }
+		];
 		const result = preparePlaceObjectCandidate(placeInput({ support: { kind: 'resolved', support: chosen } }));
 		expect(result.kind).toBe('candidate');
 		if (result.kind !== 'candidate') return;
@@ -520,7 +524,11 @@ describe('placement source and support qualification', () => {
 		expect(result.candidate.support.fragments).toHaveLength(2);
 		for (const [index, fragment] of result.candidate.support.fragments.entries()) {
 			expect(validateDerivedSourceRef(fragment).success).toBe(true);
-			expect(fragment.source.subject).toEqual({ kind: 'room', id: chosen.witnesses[index]!.roomId });
+			const witness = chosen.witnesses[index]!;
+			expect(fragment.source.subject).toEqual({
+				kind: 'room',
+				id: witness.source.kind === 'room' ? witness.source.roomId : ''
+			});
 			expect(fragment.source.revision).toEqual({ kind: 'exact', contentRevision: SNAPSHOT.sourceContentId });
 			expect(fragment.generationId).toBe(GENERATION);
 		}

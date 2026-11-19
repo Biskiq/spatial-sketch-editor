@@ -1229,11 +1229,18 @@ function resolveSupport(
 				elevation: resolution.support.elevation,
 				generationId: resolution.generationId,
 				orderKey: resolution.support.orderKey,
-				witnesses: resolution.support.witnesses.map((witness) => ({
-					floorId: witness.floorId,
-					roomId: witness.roomId,
-					recordId: witness.recordId
-				}))
+				// Scene evidence stays Room-qualified until V1d admits region
+				// support into placement. Region witnesses cannot reach this path
+				// because the Scene snapshot narrows to `room-floor` records.
+				witnesses: resolution.support.witnesses.flatMap((witness) =>
+					witness.source.kind === 'room'
+						? [{
+							floorId: witness.floorId,
+							roomId: witness.source.roomId,
+							recordId: witness.recordId
+						}]
+						: []
+				)
 			}
 		};
 	}
