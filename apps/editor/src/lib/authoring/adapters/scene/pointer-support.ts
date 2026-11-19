@@ -95,18 +95,34 @@ export function pointerFloorSupport(
 	);
 }
 
+/**
+ * The pointer ray's point on one horizontal plane, even when support refuses it.
+ *
+ * A body gesture on a raised object belongs to that object's own base plane: a
+ * datum-plane grab would sit several metres away in 3D and throw the object
+ * toward the camera on the first move. The plane's own height is the returned Y,
+ * so the caller reads the same point the creator sees under the cursor.
+ */
+export function pointerPlanePoint(
+	context: StageAdapterContext,
+	css: readonly [number, number],
+	elevationMeters: number
+): Vec3 | null {
+	if (!Number.isFinite(elevationMeters)) return null;
+	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
+	if (ray === null || Math.abs(ray.direction[1]) < 1e-8) return null;
+	const hit = context.intersect(ray, datumWorkingPlane(elevationMeters));
+	if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
+	const point: Vec3 = [hit.worldPoint[0], elevationMeters, hit.worldPoint[2]];
+	return point.every(Number.isFinite) ? point : null;
+}
+
 /** The pointer ray's datum-plane point, even when support refuses it. */
 export function pointerDatumPoint(
 	context: StageAdapterContext,
 	css: readonly [number, number]
 ): Vec3 | null {
-	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
-	if (ray === null || Math.abs(ray.direction[1]) < 1e-8) return null;
-	const datum = context.snapshot.domain.datumMeters;
-	const hit = context.intersect(ray, datumWorkingPlane(datum));
-	if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
-	const point: Vec3 = [hit.worldPoint[0], datum, hit.worldPoint[2]];
-	return point.every(Number.isFinite) ? point : null;
+	return pointerPlanePoint(context, css, context.snapshot.domain.datumMeters);
 }
 
 /** Apply the Stage's shared CSS-pixel click/drag boundary to a captured body press. */

@@ -69,12 +69,9 @@ export const interiorLift = new InteriorLiftStore();
 export function liftedSourcesNow(compiled: CompiledLayoutGeometry): readonly OverheadSource[] {
 	const reading = interiorLift.reading;
 	if (reading === null) return [];
-	// V1b publishes authored region undersides beside Room lids, but the Lift
-	// representation consumes Room lids only until V1c wires region Lift. The
-	// filter is the shell's half of that sequencing decision.
-	return overheadSourcesOf(compiled, reading.scope).filter(
-		(source) => source.key.kind === 'room-lid'
-	);
+	// V1c: Room lids and authored region undersides are both overheads Lift can
+	// take away; the scope query already publishes both kinds.
+	return overheadSourcesOf(compiled, reading.scope);
 }
 
 /**

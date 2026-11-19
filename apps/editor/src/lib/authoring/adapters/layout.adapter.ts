@@ -31,7 +31,7 @@ import { createSpaceCreatePlanner } from './layout/space-create-planners';
 import { createSpaceCreateSession } from './layout/space-create-session';
 import { createInkSession } from './layout/ink-session';
 import { createOpeningPlacementSession } from './layout/opening-placement-session';
-import { createInkMemory } from './layout/session-ports';
+import { createInkMemory, createRegionEdgePick } from './layout/session-ports';
 import {
 	planNumericEntryInput,
 	planNumericEntryKey,
@@ -52,6 +52,8 @@ import { createCurveGestureSession } from './layout/curve-gesture-session';
 import { createJunctionGestureSession } from './layout/junction-gesture-session';
 import { createOpeningGestureSession } from './layout/opening-gesture-session';
 import { createRoomGestureSession } from './layout/room-gesture-session';
+import { createRegionGestureSession } from './layout/region-gesture-session';
+import { createRegionPlanners } from './layout/region-planners';
 import { createOpenSideGestureSession } from './layout/open-side-gesture-session';
 import { createOpenSidePlanners } from './layout/open-side-planners';
 import { liftedSourcesNow } from '../layout/interior-lift-store.svelte';
@@ -73,6 +75,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createOpenSidePlanners(),
 		createSpaceCreatePlanner(),
 		...createOpeningPlanners(),
+		// V1c — Terrace and Flat Roof authoring through the same planners the
+		// Card and the direct marks use.
+		...createRegionPlanners(),
 		// Repeat is one retained planner beside the other Opening
 		// operations, on the same registry, admission and coordinator.
 		...createOpeningRepeatPlanners()
@@ -154,6 +159,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			});
 			const curve = createCurveGestureSession({ ...manipulation, candidatePaper });
 			const room = createRoomGestureSession(manipulation);
+			const regionEdgePick = createRegionEdgePick();
+			const region = createRegionGestureSession({ ...manipulation, edgePick: regionEdgePick });
 			const openSide = createOpenSideGestureSession(manipulation);
 			const {
 				markDescriptors: projectMarks,
@@ -170,7 +177,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				selectLayoutSubject,
 				readActiveKnot: () => curve.activeKnot,
 				requestRoomDuplicate: room.requestDuplicate,
-				removeSelectedKnot: curve.removeSelectedKnot
+				removeSelectedKnot: curve.removeSelectedKnot,
+				regionEdgePick
 			});
 
 			function markDescriptors(adapterContext: StageAdapterContext) {
@@ -194,6 +202,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				junction.endJunctionGesture();
 				existingOpening.endOpeningGesture();
 				openSide.endGesture();
+				region.endGesture();
 			}
 			/**
 			 * The Opening and Ink one-operation controllers. Both are binding-scoped:
@@ -220,10 +229,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				publish: () => ink.publish(),
 				planCandidate: (body) => compileContext.plan(document, body)
 			});
-			const ink = createInkSession({ ...sessionPorts, opening, room: spaceCreate });
+			const ink = createInkSession({
+				...sessionPorts,
+				opening,
+				room: spaceCreate,
+				select: selectLayoutSubject
+			});
 
 			/** Install one created Opening as the selection, by id, on the fresh source. */
-			function selectLayoutSubject(sourceKind: 'wall' | 'opening', sourceId: string): void {
+			function selectLayoutSubject(
+				sourceKind: 'wall' | 'opening' | 'region',
+				sourceId: string
+			): void {
 				const fresh = services.stage.snapshot();
 				services.stage.select({
 					sourceId,
@@ -246,6 +263,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				...contributions,
 				keyIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.key(intent, adapterContext);
+					if (region.key(intent)) return true;
 					if (openSide.key(intent)) return true;
 					if (wall.scalarKey(intent)) return true;
 					if (room.roomMoveKey(intent)) return true;
@@ -313,13 +331,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (openTaskKind !== null || services.stage.session.task() !== null) return marks;
 					return [
 						...marks,
+						...region.descriptors(adapterContext),
 						...room.roomMoveDescriptors(adapterContext),
 						...openSide.descriptors(adapterContext),
 						...wall.scalarDescriptors(adapterContext)
 					];
 				},
 				idleHandles(adapterContext) {
-					return junction.idleJunctionHandles(adapterContext, openTaskKind !== null, refusal);
+					return [
+						...junction.idleJunctionHandles(adapterContext, openTaskKind !== null, refusal),
+						...region.edgeHandles(adapterContext)
+					];
 				},
 				hoverIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND)
@@ -329,6 +351,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				idleHoverIntent(intent, adapterContext) {
 					const blocked = openTaskKind !== null || wall.active || existingOpening.active;
 					if (junction.updateIdleJunctionHover(intent, adapterContext, blocked)) {
+						curve.clearBendHint();
+						return true;
+					}
+					if (region.updateEdgeHover(intent, adapterContext, blocked || junction.active || wall.hasScalar)) {
 						curve.clearBendHint();
 						return true;
 					}
@@ -344,6 +370,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'down' && curve.clearBendHint()) services.stage.notifySurfaceChange();
 					if (openTaskKind === LAYOUT_INK_TASK) return ink.pointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
+					if (region.pointer(intent, adapterContext)) return true;
 					if (curve.circleRadiusPointer(intent, adapterContext)) return true;
 					if (curve.circleTranslatePointer(intent, adapterContext)) return true;
 					if (
@@ -365,6 +392,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						wall.replacePaused(adapterContext.snapshot.domain.unitRevisions.layout);
 						refusal = null;
 						settledRefusal = null;
+						// A selected region's body is the one press surface for its move:
+						// there is no glyph to aim at, and the selected subject owns the press.
+						if (region.beginBody(intent, adapterContext)) return true;
 						if (intent.handleId === 'layout-junction-hover')
 							return junction.begin(intent, adapterContext);
 						// A curved open Wall has no straight `WallFrame`; its body still moves
@@ -573,7 +603,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
-				const priority = room.previews(adapterContext, y) ?? wall.scalarPreviews(y);
+				const priority =
+					room.previews(adapterContext, y) ??
+					region.previews(adapterContext, y) ??
+					wall.scalarPreviews(y);
 				if (priority !== null) return priority;
 				const openSidePreview = openSide.previews(y);
 				if (openSidePreview !== null) return openSidePreview;

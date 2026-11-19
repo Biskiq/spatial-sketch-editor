@@ -1,5 +1,6 @@
 <script lang="ts">
 	import RoomInkControls from './RoomInkControls.svelte';
+	import RegionInkControls from './RegionInkControls.svelte';
 	/**
 	 * The Ink palette: the one lower-column reading the dock arms.
 	 *
@@ -189,7 +190,9 @@
 		}
 	}}
 >
-	{#if snapshot.reading === 'room'}
+	{#if snapshot.region !== undefined}
+		<RegionInkControls region={snapshot.region} />
+	{:else if snapshot.reading === 'room'}
 		<RoomInkControls room={snapshot.room} />
 		{#if snapshot.room?.refusal}<span role="status">{snapshot.room.refusal}</span>{/if}
 	{:else if disclosed === 'pens'}
@@ -317,7 +320,7 @@
 		<p class="arc-facts" role="status" data-ink-arc-facts>{arcFactsText}</p>
 	{/if}
 
-	{#if snapshot.reading !== 'room'}
+	{#if snapshot.reading !== 'room' && snapshot.region === undefined}
 	<div class="keys">
 		<button
 			type="button"

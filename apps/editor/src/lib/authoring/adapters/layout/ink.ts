@@ -309,7 +309,7 @@ export function classifyOpeningHost(input: {
  * One reading the one Pen offers. `wall` and `opening` are Layout's built-ins;
  * any other id is a reading another domain contributed through the Stage host.
  */
-export type BuiltInInkReading = 'wall' | 'opening' | 'room';
+export type BuiltInInkReading = 'wall' | 'opening' | 'room' | 'terrace' | 'roof';
 export type InkReading = BuiltInInkReading | (string & {});
 
 /** One reading row as the palette renders it. */
@@ -397,6 +397,16 @@ export type InkPaletteSnapshot = {
 	/** The Opening candidate while that reading is armed; `null` for the Wall reading. */
 	readonly opening: InkOpeningSnapshot | null;
 	readonly room?: RoomInkSnapshot;
+	/** V1c — the Terrace/Flat Roof draft, read from the region drawing session. */
+	readonly region?: {
+		readonly role: 'floor' | 'overhead';
+		readonly mode: 'box' | 'line';
+		readonly points: readonly LayoutVec2[];
+		readonly elevation: number;
+		readonly thickness: number;
+		readonly hint: string;
+		readonly refusal: string | null;
+	};
 	readonly points: readonly LayoutVec2[];
 	readonly closed: boolean;
 	readonly canFinish: boolean;
@@ -423,6 +433,8 @@ export type InkController = {
 	readonly followWall?: () => void;
 	/** Switch the Wall reading between Line, Arc, Box and Circle; refused while a chain is live. */
 	readonly setWallMode: (mode: InkWallMode) => void;
+	/** Terrace and Flat Roof draw with the same Box/Line grammar. */
+	readonly setRegionMode: (mode: 'box' | 'line') => void;
 	/** Remember the next Opening's kind and exact metrics. */
 	readonly setOpeningOptions: (options: InkOpeningOptions | null) => void;
 	/**

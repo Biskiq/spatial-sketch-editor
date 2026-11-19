@@ -137,6 +137,7 @@ export type SettledLayoutRefusal = {
 		| { readonly kind: 'wall'; readonly wallId: string }
 		| { readonly kind: 'opening'; readonly openingId: string }
 		| { readonly kind: 'room'; readonly roomId: string }
+		| { readonly kind: 'region'; readonly regionId: string }
 		| { readonly kind: 'junction' };
 	readonly contentRevision: string;
 	readonly point: LayoutVec2;

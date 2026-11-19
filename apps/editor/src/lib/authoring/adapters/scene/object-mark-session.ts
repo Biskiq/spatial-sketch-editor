@@ -33,7 +33,11 @@ import {
 } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneFormEntity } from '$lib/content/scene';
 import type { Vec3 } from '@portfolio/project-model';
-import { sceneEntityLift } from '@portfolio/project-model/scene-planning';
+import {
+	sceneEntityLift,
+	sceneSupportGenerationId,
+	type SceneSupportChoice
+} from '@portfolio/project-model/scene-planning';
 import { perfMark } from '$lib/platform/perf-marks';
 import { candidateGhost } from './candidate-ghost';
 import { acceptFormCommand } from './form-card-command';
@@ -57,7 +61,12 @@ import {
 	sizePlannerContext
 } from './object-readings';
 import type { SceneCandidate } from './placement';
-import { isStagePointerDrag, moveSupportRefusal, pointerDatumPoint, pointerFloorSupport } from './pointer-support';
+import {
+	isStagePointerDrag,
+	moveSupportRefusal,
+	pointerFloorSupport,
+	pointerPlanePoint
+} from './pointer-support';
 import {
 	SCENE_FORM_MARK,
 	axisTravelFromRay,
@@ -112,6 +121,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 		readonly bounds: SceneObjectBounds | null;
 		readonly startYaw: number;
 		readonly startScale: number;
+		/** The visible support a Move drag last stood on, pinned for its release. */
+		moveChoice: SceneSupportChoice | null;
 		/** World-space pointer-to-origin offset captured on the Move press. */
 		readonly moveGrabOffset: readonly [number, number] | null;
 		/** The ring's floor-plane elevation, shared by press and every move. */
@@ -358,8 +369,10 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 			objectMarkRefusal = null;
 			const ringY =
 				entity.position[1] + sceneObjectScale(entity) * contactMinY;
-			// A body press keeps the pointer's offset on the datum; a Move grip
-			// press (drawn off the origin for a form) keeps it on the floor.
+			// A body press keeps the pointer's offset on the object's own base
+			// plane: on a raised Terrace a datum-plane grab would sit metres away in
+			// 3D and throw the object toward the camera. A Move grip press (drawn off
+			// the origin for a form) keeps its offset on the visible floor.
 			const movePressSupport =
 				markId === SCENE_OBJECT_MARK.move && !bodyPress
 					? pointerFloorSupport(adapterContext, intent.css, entity.id)
@@ -368,7 +381,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 				markId !== SCENE_OBJECT_MARK.move
 					? null
 					: bodyPress
-						? pointerDatumPoint(adapterContext, intent.css)
+						? pointerPlanePoint(adapterContext, intent.css, ringY)
 						: movePressSupport?.kind === 'floor'
 							? movePressSupport.worldPoint
 							: null;
@@ -412,6 +425,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 				bounds,
 				startYaw: entity.rotation[1],
 				startScale: sceneObjectScale(entity),
+				moveChoice: null,
 				moveGrabOffset:
 					pressPoint === null
 						? null
@@ -495,6 +509,7 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 				const support = pointerFloorSupport(adapterContext, intent.css, gesture.entityId);
 				if (support.kind !== 'floor') {
 					gesture.candidate = null;
+					gesture.moveChoice = null;
 					const refusal = moveSupportRefusal(support);
 					gesture.refusal = refusal.kind === 'refused'
 						? refusal.message
@@ -510,6 +525,14 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 						[support.worldPoint[0] - grabOffset[0], support.worldPoint[2] - grabOffset[1]],
 						step
 					);
+					// The face the creator visibly points at is the support this move
+					// re-seats on: a raised terrace is one of several elevations at the
+					// same X/Z, so the release needs the witness it saw, not a guess.
+					gesture.moveChoice = {
+						kind: 'elevation',
+						elevation: support.worldPoint[1],
+						generationId: sceneSupportGenerationId(adapterContext.snapshot.sourceContentId)
+					};
 					applyObjectMarkPlan(
 						gesture,
 						planSceneObjectMark({
@@ -517,7 +540,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 							context: sizePlannerContext(adapterContext),
 							entityId: gesture.entityId,
 							contactMinY: gesture.contactMinY,
-							worldXZ: [snapped.x, snapped.z]
+							worldXZ: [snapped.x, snapped.z],
+							choice: gesture.moveChoice
 						})
 					);
 				}
@@ -651,7 +675,8 @@ export function createObjectMarkSession(services: StageAdapterServices): ObjectM
 								markId: SCENE_OBJECT_MARK.move,
 								entityId: preview.entityId,
 								contactMinY: preview.contactMinY,
-								worldXZ: preview.candidate.worldXZ
+								worldXZ: preview.candidate.worldXZ,
+								...(preview.moveChoice === null ? {} : { choice: preview.moveChoice })
 							} as const
 						: preview.markId === SCENE_OBJECT_MARK.turn
 							? {

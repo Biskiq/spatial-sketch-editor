@@ -51,6 +51,11 @@ export function regionWallTopRangeY(
 	return { minY: topY, maxY: topY };
 }
 
+export type RegionWallMeasureSegment = {
+	readonly from: readonly [number, number, number];
+	readonly to: readonly [number, number, number];
+};
+
 export type RegionWallRelation = {
 	readonly wallId: string;
 	readonly planClass: Exclude<RegionWallPlanClass, 'none'>;
@@ -59,6 +64,12 @@ export type RegionWallRelation = {
 	readonly measureMeters: number | null;
 	/** Which dimension a gap measures; `null` unless the reading is a gap. */
 	readonly measureAxis: 'vertical' | 'horizontal' | null;
+	/**
+	 * The two surfaces the gap measures between, at the same Y for a horizontal
+	 * gap and the same X/Z for a vertical one. The cue draws this segment, so its
+	 * length is `measureMeters` rather than a chord between unrelated samples.
+	 */
+	readonly measureSegment: RegionWallMeasureSegment | null;
 	/** True when the authored region marks this Wall's gap as intended. */
 	readonly intended: boolean;
 	/** The one-shot fit this gap offers, or `null` (including every intended gap). */
@@ -102,7 +113,8 @@ export function regionWallPlanClass(
 	if (footprintWithinBodyStrip(footprint, wall, left, right, half)) {
 		return { planClass: 'edge', distanceMeters: 0 };
 	}
-	const distance = bodyStripDistance(footprint, left, right, wall);
+	const nearest = nearestBodyStripPair(footprint, left, right, wall);
+	const distance = nearest?.distance ?? Infinity;
 	if (distance <= REGION_WALL_RELATION_EPSILON) return { planClass: 'edge', distanceMeters: distance };
 	if (distance <= REGION_WALL_RELATION_REACH_METERS) return { planClass: 'near', distanceMeters: distance };
 	return { planClass: 'none', distanceMeters: distance };
@@ -158,6 +170,18 @@ export function regionWallRelations(
 			reading: reading.reading,
 			measureMeters: reading.measureMeters,
 			measureAxis: reading.measureAxis,
+			measureSegment: regionWallMeasureSegment(
+				reading,
+				nearestBodyStripPair(
+					compiledRegion.footprint,
+					facePolyline(wall, wall.thickness / 2),
+					facePolyline(wall, -wall.thickness / 2),
+					wall
+				),
+				compiledRegion,
+				floor.elevation + wall.height,
+				region.role
+			),
 			intended,
 			fit: intended ? null : reading.fit
 		});
@@ -169,6 +193,29 @@ export function regionWallRelations(
 		slabBottomY: compiledRegion.bottomY,
 		slabTopY: compiledRegion.topY,
 		relations
+	};
+}
+
+/** The relation's measurement endpoints, from the same pair the measure is read from. */
+function regionWallMeasureSegment(
+	reading: Reading,
+	pair: { readonly distance: number; readonly region: LayoutVec2; readonly wall: LayoutVec2 } | null,
+	region: Pick<CompiledRegion, 'bottomY' | 'topY'>,
+	wallTopY: number,
+	role: LayoutRegion['role']
+): RegionWallMeasureSegment | null {
+	if (reading.reading !== 'gap' || reading.measureAxis === null || pair === null) return null;
+	if (reading.measureAxis === 'vertical') {
+		return {
+			from: [pair.region[0], wallTopY, pair.region[1]],
+			to: [pair.region[0], region.bottomY, pair.region[1]]
+		};
+	}
+	// A horizontal gap is a plan distance; draw it on the face the slab shows.
+	const y = role === 'floor' ? region.topY : region.bottomY;
+	return {
+		from: [pair.region[0], y, pair.region[1]],
+		to: [pair.wall[0], y, pair.wall[1]]
 	};
 }
 
@@ -395,12 +442,13 @@ function oppositeSigns(left: number, right: number): boolean {
 	return (left > 1e-12 && right < -1e-12) || (left < -1e-12 && right > 1e-12);
 }
 
-function bodyStripDistance(
+/** The nearest footprint-boundary and Wall-body points, with their separation. */
+function nearestBodyStripPair(
 	footprint: readonly LayoutVec2[],
 	left: readonly ProjectedPoint[],
 	right: readonly ProjectedPoint[],
 	wall: Pick<CompiledPhysicalWall, 'samples' | 'startJunctionId' | 'endJunctionId'>
-): number {
+): { readonly distance: number; readonly region: LayoutVec2; readonly wall: LayoutVec2 } | null {
 	const stripSegments: Array<[LayoutVec2, LayoutVec2]> = [];
 	for (const face of [left, right]) {
 		for (let index = 0; index + 1 < face.length; index++) {
@@ -411,16 +459,80 @@ function bodyStripDistance(
 		stripSegments.push([left[0]!.point, right[0]!.point]);
 		stripSegments.push([left.at(-1)!.point, right.at(-1)!.point]);
 	}
-	let minimum = Infinity;
+	let best: { distance: number; region: LayoutVec2; wall: LayoutVec2 } | null = null;
 	for (let index = 0; index < footprint.length; index++) {
 		const a = footprint[index]!;
 		const b = footprint[(index + 1) % footprint.length]!;
 		for (const [c, d] of stripSegments) {
-			minimum = Math.min(minimum, segmentDistance(a, b, c, d));
-			if (minimum === 0) return 0;
+			const pair = closestPointsOnSegments(a, b, c, d);
+			if (best === null || pair.distance < best.distance) best = pair;
+			if (best.distance === 0) return best;
 		}
 	}
-	return minimum;
+	return best;
+}
+
+function closestPointsOnSegments(
+	a: LayoutVec2,
+	b: LayoutVec2,
+	c: LayoutVec2,
+	d: LayoutVec2
+): { readonly distance: number; readonly region: LayoutVec2; readonly wall: LayoutVec2 } {
+	const crossing = segmentIntersectionPoint(a, b, c, d);
+	if (crossing !== null) return { distance: 0, region: crossing, wall: crossing };
+	const candidates: Array<{ region: LayoutVec2; wall: LayoutVec2 }> = [
+		{ region: a, wall: projectPointOnSegment(a, c, d) },
+		{ region: b, wall: projectPointOnSegment(b, c, d) },
+		{ region: projectPointOnSegment(c, a, b), wall: c },
+		{ region: projectPointOnSegment(d, a, b), wall: d }
+	];
+	let best = candidates[0]!;
+	let bestDistance = distanceBetween(best.region, best.wall);
+	for (const candidate of candidates.slice(1)) {
+		const distance = distanceBetween(candidate.region, candidate.wall);
+		if (distance < bestDistance) {
+			best = candidate;
+			bestDistance = distance;
+		}
+	}
+	return { distance: bestDistance, ...best };
+}
+
+function segmentIntersectionPoint(
+	a: LayoutVec2,
+	b: LayoutVec2,
+	c: LayoutVec2,
+	d: LayoutVec2
+): LayoutVec2 | null {
+	const r: LayoutVec2 = [b[0] - a[0], b[1] - a[1]];
+	const s: LayoutVec2 = [d[0] - c[0], d[1] - c[1]];
+	const denominator = cross(r, s);
+	if (Math.abs(denominator) <= 1e-12) {
+		if (Math.abs(cross([c[0] - a[0], c[1] - a[1]], r)) > 1e-12) return null;
+		const point = projectPointOnSegment(c, a, b);
+		return distanceBetween(point, c) <= 1e-12 ? point : null;
+	}
+	const difference: LayoutVec2 = [c[0] - a[0], c[1] - a[1]];
+	const t = cross(difference, s) / denominator;
+	const u = cross(difference, r) / denominator;
+	if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+	return [a[0] + r[0] * t, a[1] + r[1] * t];
+}
+
+function projectPointOnSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): LayoutVec2 {
+	const dx = end[0] - start[0];
+	const dz = end[1] - start[1];
+	const squared = dx * dx + dz * dz;
+	if (!(squared > 0)) return [start[0], start[1]];
+	const t = Math.min(
+		1,
+		Math.max(0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared)
+	);
+	return [start[0] + dx * t, start[1] + dz * t];
+}
+
+function distanceBetween(a: LayoutVec2, b: LayoutVec2): number {
+	return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
 function pointNearBoundary(footprint: readonly LayoutVec2[], point: LayoutVec2, tolerance: number): boolean {
@@ -430,16 +542,6 @@ function pointNearBoundary(footprint: readonly LayoutVec2[], point: LayoutVec2, 
 		if (distancePointSegment(point, a, b) <= tolerance) return true;
 	}
 	return false;
-}
-
-function segmentDistance(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): number {
-	if (segmentsIntersect(a, b, c, d)) return 0;
-	return Math.min(
-		distancePointSegment(a, c, d),
-		distancePointSegment(b, c, d),
-		distancePointSegment(c, a, b),
-		distancePointSegment(d, a, b)
-	);
 }
 
 function segmentsIntersect(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {

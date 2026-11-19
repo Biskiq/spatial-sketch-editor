@@ -59,6 +59,7 @@
 		{ id: 'room-floor', label: 'Rooms', icon: 'plan' },
 		{ id: 'wall', label: 'Walls', icon: 'wall' },
 		{ id: 'opening', label: 'Openings', icon: 'opening' },
+		{ id: 'region', label: 'Regions', icon: 'terrace' },
 		{ id: 'objects', label: 'Objects', icon: 'object' },
 		{ id: 'lights', label: 'Lights', icon: 'light' }
 	];

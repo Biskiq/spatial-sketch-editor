@@ -1,6 +1,8 @@
-import { selectedRoomLabel } from './layout-subjects';
+import { selectedRegion, selectedRoomLabel } from './layout-subjects';
 import { previewCoordinates, type SettledLayoutRefusal } from './manipulation-support';
+import { regionWallRelations } from '@portfolio/layout-core';
 import { candidatePreviewOf } from './candidate-preview';
+import { restingObjectsOnFloorRegion } from './region-resting';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -34,6 +36,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import LayoutInkPalette from './LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './LayoutPlacementInstrument.svelte';
 import LayoutCardFields from './LayoutCardFields.svelte';
+import LayoutRegionCard from './LayoutRegionCard.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
@@ -57,6 +60,13 @@ import {
 } from './drawing-planners';
 import { wallSplitIntent } from './split-planners';
 import { LAYOUT_ROOM_DUPLICATE_KIND } from './room-duplicate-planners';
+import {
+	LAYOUT_REGION_FOOTPRINT_KIND,
+	LAYOUT_REGION_REMOVE_KIND,
+	layoutRegionNameTarget,
+	regionEditIntent
+} from './region-planners';
+import type { RegionEdgePick } from './session-ports';
 import { LAYOUT_INK_ENTRY, LAYOUT_INK_TASK } from './ink';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -151,6 +161,7 @@ type ContributionPorts = {
 	readonly removeSelectedKnot: (
 		wallId: string
 	) => Promise<StageCardActionOutcome> | StageCardActionOutcome;
+	readonly regionEdgePick: RegionEdgePick;
 };
 
 /**
@@ -194,7 +205,8 @@ export function createLayoutContributions({
 	selectLayoutSubject,
 	readActiveKnot,
 	requestRoomDuplicate,
-	removeSelectedKnot
+	removeSelectedKnot,
+	regionEdgePick
 }: ContributionPorts) {
 	/**
 	 * A5 — the derived **overlaps, not joined** cue. One query over this
@@ -869,7 +881,7 @@ export function createLayoutContributions({
 		 * Layout subject was already refused, in Layout's words, by the pick.
 		 */
 		eraseAction(hit): ReturnType<NonNullable<StageAdapterBinding['eraseAction']>> {
-			if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening') {
+			if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening' && hit.sourceKind !== 'region') {
 				return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
 			}
 			const action = contributions
@@ -880,13 +892,20 @@ export function createLayoutContributions({
 			// A Wall that hosts Openings or changes Rooms has consequences beyond
 			// itself; its existing disclosure is read before the second click runs it.
 			const preview = hit.sourceKind === 'wall' ? deletionPreview(hit.sourceId) : null;
+			// A floor region's derived resting-object count is disclosed before the
+			// second click; it is a read, never a Scene write.
+			const regionResting =
+				hit.sourceKind === 'region'
+					? restingObjectsOnFloorRegion(context.snapshot, hit.sourceId)
+					: 0;
 			const confirm =
-				preview?.kind === 'planned' &&
-				(preview.hostedOpeningIds.length > 0 ||
-					preview.retiredRoomIds.length > 0 ||
-					preview.createdRoomIds.length > 0 ||
-					preview.openedRoomIds.length > 0 ||
-					preview.keptOpenRoomIds.length > 0);
+				regionResting > 0 ||
+				(preview?.kind === 'planned' &&
+					(preview.hostedOpeningIds.length > 0 ||
+						preview.retiredRoomIds.length > 0 ||
+						preview.createdRoomIds.length > 0 ||
+						preview.openedRoomIds.length > 0 ||
+						preview.keptOpenRoomIds.length > 0));
 			return { kind: 'action', action, confirm };
 		},
 		tasks: [
@@ -981,6 +1000,9 @@ export function createLayoutContributions({
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
 				return layoutRoomNameTarget(services, cardSubject.sourceId);
 			}
+			if (cardSubject.sourceKind === 'region') {
+				return layoutRegionNameTarget(services, cardSubject.sourceId);
+			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
 				sourceId: cardSubject.sourceId
@@ -995,6 +1017,13 @@ export function createLayoutContributions({
 		 * Dimensions task and its Find/keyboard route are retired in this cutover.
 		 */
 		cardWriter(cardSubject: StageCardSubject) {
+			if (cardSubject.sourceKind === 'region') {
+				return {
+					summary: 'Region fields',
+					fieldIds: ['elevation', 'thickness', 'width', 'depth'],
+					view: { component: LayoutRegionCard, services }
+				};
+			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
 				sourceId: cardSubject.sourceId
@@ -1202,6 +1231,94 @@ export function createLayoutContributions({
 							services.stage.notifySurfaceChange();
 							return outcome.kind === 'no-op'
 								? { kind: 'no-op', message: 'The Opening was already gone.' }
+								: { kind: 'accepted' };
+						}
+					}
+				];
+			}
+			if (cardSubject.sourceKind === 'region') {
+				const region = document.regions.find((entry) => entry.id === cardSubject.sourceId);
+				if (region === undefined) return [];
+				const resting = restingObjectsOnFloorRegion(context.snapshot, region.id);
+				const kind = region.role === 'overhead' ? 'Flat Roof' : 'Terrace';
+				const edge = regionEdgePick.read();
+				const picked = edge !== null && edge.regionId === region.id ? edge.index : null;
+				const addCorner: StageCardAction | null =
+					picked === null || picked < 0 || picked >= region.footprint.points.length
+						? null
+						: {
+								id: 'layout-region-add-corner',
+								label: 'Add corner here',
+								detail: `Adds a corner at the midpoint of edge ${picked + 1}. The Region, its elevation and its thickness stay.`,
+								run: async (): Promise<StageCardActionOutcome> => {
+									const points = region.footprint.points.map(([x, z]): LayoutVec2 => [x, z]);
+									if (points.length >= 1024) {
+										return {
+											kind: 'refused',
+											message: 'A region footprint can store at most 1024 corners.'
+										};
+									}
+									const start = points[picked]!;
+									const end = points[(picked + 1) % points.length]!;
+									points.splice(picked + 1, 0, [
+										(start[0] + end[0]) / 2,
+										(start[1] + end[1]) / 2
+									]);
+									const snapshot = services.stage.snapshot();
+									const outcome = await services.authoring.accept(
+										regionEditIntent({
+											kind: LAYOUT_REGION_FOOTPRINT_KIND,
+											regionId: region.id,
+											payload: { points },
+											operationId: globalThis.crypto.randomUUID(),
+											projectId: snapshot.acceptedRevision.projectId,
+											revisionId: services.authoring.acceptedRevision().revisionId,
+											contentRevision: stageUnitRevision(snapshot, 'layout'),
+											levelId
+										})
+									);
+									if (outcome.kind === 'refused') {
+										return { kind: 'refused', message: outcome.message };
+									}
+									regionEdgePick.write(null);
+									services.stage.notifySurfaceChange();
+									return { kind: 'accepted' };
+								}
+							};
+				return [
+					...(addCorner === null ? [] : [addCorner]),
+					{
+						id: 'layout-region-delete',
+						label: `Delete ${kind}`,
+						destructive: true,
+						detail: [
+							region.role !== 'floor'
+								? 'Removes this slab in one undo step; the Rooms and objects under it stay.'
+								: resting === 1
+									? '1 object rests on this platform and stays where it is when the platform is gone.'
+									: `${resting} objects rest on this platform and stay where they are when the platform is gone.`,
+							'Walls are unchanged.'
+						].join(' '),
+						run: async (): Promise<StageCardActionOutcome> => {
+							const snapshot = services.stage.snapshot();
+							const outcome = await services.authoring.accept(
+								regionEditIntent({
+									kind: LAYOUT_REGION_REMOVE_KIND,
+									regionId: region.id,
+									payload: { regionId: region.id },
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision: stageUnitRevision(snapshot, 'layout'),
+									levelId: snapshot.domain.layoutLevelId
+								})
+							);
+							if (outcome.kind === 'refused') {
+								return { kind: 'refused', message: outcome.message };
+							}
+							services.stage.notifySurfaceChange();
+							return outcome.kind === 'no-op'
+								? { kind: 'no-op', message: `The ${kind} was already gone.` }
 								: { kind: 'accepted' };
 						}
 					}
@@ -1449,6 +1566,18 @@ export function createLayoutContributions({
 		heightTicks(): readonly StageHeightTick[] {
 			const datum = context.snapshot.domain.datumMeters;
 			const ticks: StageHeightTick[] = [{ kind: 'datum', heightMeters: 0, label: 'Floor' }];
+			// Authored regions are drawn surfaces: a Terrace's top and a Flat Roof's
+			// underside are real heights a later region or a Wall can snap to.
+			for (const region of context.snapshot.domain.geometry.regions) {
+				const authored = document.regions.find((candidate) => candidate.id === region.regionId);
+				const heightMeters = (region.role === 'floor' ? region.topY : region.bottomY) - datum;
+				if (!Number.isFinite(heightMeters) || heightMeters <= 0) continue;
+				ticks.push({
+					kind: 'found',
+					heightMeters,
+					label: `${region.role === 'floor' ? 'Terrace' : 'Flat Roof'} ${authored?.name ?? region.regionId}`
+				});
+			}
 			for (const object of document.objects) {
 				if (object.kind !== 'box' && object.kind !== 'cylinder') continue;
 				// A top tilted away from horizontal is not a surface the Plan cut can
@@ -1466,6 +1595,64 @@ export function createLayoutContributions({
 			return ticks;
 		}
 	} satisfies Partial<StageAdapterBinding>;
+	/**
+	 * The selected Region's measured gaps.
+	 *
+	 * Relations are the derived authority and already carry the measure; this
+	 * function only places the ink. A gap is a dimension between the footprint's
+	 * nearest corner and the related Wall's nearest compiled sample, at the slab's
+	 * own elevation (horizontal) or across the vertical clearance. An unselected
+	 * Region draws no cue, which is why this reads the selection first.
+	 */
+	function regionGapPreviews(
+		adapterContext: StageAdapterContext
+	): readonly StageCandidatePreview[] | null {
+		const selected = selectedRegion(document, adapterContext);
+		if (selected === null) return null;
+		const geometry = adapterContext.snapshot.domain.geometry;
+		const relations = regionWallRelations(geometry, selected.region);
+		if (relations.kind !== 'relations') return null;
+		const gaps = relations.relations.filter(
+			(relation) => relation.reading === 'gap' && relation.measureMeters !== null
+		);
+		if (gaps.length === 0) return null;
+		const previews: StageCandidatePreview[] = [];
+		for (const relation of gaps) {
+			// The relation owns the pair its measure is read from: a corner-to-centerline
+			// chord would be longer than the labelled Wall-body gap, and a vertical
+			// segment from the slab top would be longer than the underside measure.
+			const segment = relation.measureSegment;
+			if (segment === null) continue;
+			const text = `Gap ${relation.measureMeters!.toFixed(2)} m${relation.intended ? ' · intended' : ''}`;
+			previews.push(
+				candidatePreviewOf({
+					id: `layout-region-gap:${relation.wallId}`,
+					role: 'affected',
+					geometry: {
+					polygons: [],
+					segments: [
+						[
+							[segment.from[0], segment.from[1], segment.from[2]],
+							[segment.to[0], segment.to[1], segment.to[2]]
+						]
+					]
+				},
+					labels: [
+						{
+							world: [
+								(segment.from[0] + segment.to[0]) / 2,
+								(segment.from[1] + segment.to[1]) / 2,
+								(segment.from[2] + segment.to[2]) / 2
+							],
+							text
+						}
+					]
+				})
+			);
+		}
+		return previews.length === 0 ? null : previews;
+	}
+
 	function settledPreviews(
 		adapterContext: StageAdapterContext,
 		y: number,
@@ -1482,7 +1669,9 @@ export function createLayoutContributions({
 					? selectedWall(adapterContext)?.frame.wallId === settledRefusal.subject.wallId
 					: settledRefusal.subject.kind === 'room'
 						? selectedRoomLabel(adapterContext)?.roomId === settledRefusal.subject.roomId
-						: selectedOpening(document, adapterContext)?.openingId === settledRefusal.subject.openingId))
+						: settledRefusal.subject.kind === 'region'
+							? selectedRegion(document, adapterContext)?.region.id === settledRefusal.subject.regionId
+							: selectedOpening(document, adapterContext)?.openingId === settledRefusal.subject.openingId))
 		) {
 			return [
 				candidatePreviewOf({
@@ -1494,6 +1683,8 @@ export function createLayoutContributions({
 			];
 		}
 
+		const gaps = regionGapPreviews(adapterContext);
+		if (gaps !== null) return gaps;
 		return null;
 	}
 

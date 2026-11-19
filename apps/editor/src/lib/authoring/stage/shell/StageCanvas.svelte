@@ -116,6 +116,7 @@ import StageMatGround from './StageMatGround.svelte';
 		 * even mount this component.
 		 */
 		liftedRoomIds = [],
+		liftedRegionIds = [],
 		/** The overheads a Lift reading lifts, as Layout names them (display-only). */
 		liftSources = [],
 		dial = null,
@@ -177,6 +178,7 @@ import StageMatGround from './StageMatGround.svelte';
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
 		liftedRoomIds?: readonly string[];
+		liftedRegionIds?: readonly string[];
 		liftSources?: readonly OverheadSource[];
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
@@ -320,12 +322,14 @@ import StageMatGround from './StageMatGround.svelte';
 	const liftSelectedRoomId = $derived(
 		selection !== null &&
 			selection.reference.domain === 'layout' &&
-			selection.reference.subject.kind === 'room'
+			(selection.reference.subject.kind === 'room' || selection.reference.subject.kind === 'region')
 			? selection.reference.subject.id
 			: null
 	);
 	const liftHoveredRoomId = $derived(
-		hover !== null && hover.reference.domain === 'layout' && hover.reference.subject.kind === 'room'
+		hover !== null &&
+			hover.reference.domain === 'layout' &&
+			(hover.reference.subject.kind === 'room' || hover.reference.subject.kind === 'region')
 			? hover.reference.subject.id
 			: null
 	);
@@ -479,6 +483,7 @@ import StageMatGround from './StageMatGround.svelte';
 			treatment={scene.environment?.treatment}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
 			{liftedRoomIds}
+			{liftedRegionIds}
 			{cutawayWallIds}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>

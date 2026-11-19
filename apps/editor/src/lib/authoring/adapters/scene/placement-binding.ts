@@ -337,7 +337,12 @@ export function createPlacementBinding(
 	 */
 	function applyPendingArm(session: ScenePlacementSession): void {
 		// An install replaces the session; the Sphere tile stays what is armed.
-		if (armedTile(liveProjectId(services)) === 'sphere') session.setPlacePrimitive('sphere');
+		// Re-applying it to the session already carrying it is skipped: this runs
+		// on every surface refresh, and a no-op arm must not clear the support the
+		// gesture's displayed candidate was resolved against.
+		if (armedTile(liveProjectId(services)) === 'sphere' && session.placePrimitive() !== 'sphere') {
+			session.setPlacePrimitive('sphere');
+		}
 		if (session.armedModel() !== null) return;
 		const pending = peekArmedModel(liveProjectId(services));
 		if (pending !== null) session.setArmedModel(pending);

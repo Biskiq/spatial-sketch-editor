@@ -1014,6 +1014,39 @@ describe('T1.P01.S07 — selection requalification through accepted corresponden
 		expect(outcome).toEqual({ kind: 'cleared', reason: 'subject-retired' });
 	});
 
+	it('keeps a Region selected through its edge stream component', () => {
+		// A Region's Plan fragment names a compiled stream component (`edge`), not
+		// an F.1 component: `layoutSelectionReference` stores no component for it,
+		// and the accepted edit must requalify the Region rather than retire it.
+		const before = {
+			...layoutObjectReference('content-before', 'region-1'),
+			subject: { kind: 'region' as const, id: 'region-1' }
+		};
+		const regionSelection: StageSelection = {
+			...selection,
+			sourceId: 'region-1',
+			sourceKind: 'region',
+			ref: {
+				...selection.ref,
+				sourceId: 'region-1',
+				sourceKind: 'region',
+				subRef: { kind: 'component', componentId: 'edge' }
+			}
+		};
+		const outcome = requalifySelection(
+			regionSelection,
+			[
+				{
+					relation: 'preserved',
+					before,
+					after: { ...before, revision: { kind: 'exact', contentRevision: 'content-after' } }
+				}
+			],
+			{ generationId: 'compile:after' }
+		);
+		expect(outcome).toMatchObject({ kind: 'requalified' });
+	});
+
 	it('clears a component-qualified selection when the component does not survive', () => {
 		const componentSelection: StageSelection = {
 			...selection,

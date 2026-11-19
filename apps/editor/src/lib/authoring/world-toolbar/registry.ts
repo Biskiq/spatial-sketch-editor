@@ -168,26 +168,18 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     label: 'Roof',
     icon: 'roof',
     family: 'form',
-    stage: 'planned',
-    after: 'T1',
-    summary: 'Set a roof or parapet.',
-    options: [
-      { label: 'Kind', options: [{ label: 'Flat' }, { label: 'Pitch' }, { label: 'Shed' }] },
-      { label: 'Pitch', options: [{ label: '15°' }, { label: '30°' }, { label: '45°' }] }
-    ]
+    stage: 'landed',
+    summary: 'Set a Flat Roof region.',
+    options: [{ label: 'Kind', options: [{ label: 'Flat' }] }]
   },
   {
     id: 'terrace',
     label: 'Terrace',
     icon: 'terrace',
     family: 'form',
-    stage: 'planned',
-    after: 'T5',
+    stage: 'landed',
     summary: 'A raised outdoor platform.',
-    options: [
-      { label: 'Edge', options: [{ label: 'Straight' }, { label: 'Curved' }] },
-      { label: 'Height', options: [{ label: '0.15 m' }, { label: '0.3 m' }] }
-    ]
+    options: [{ label: 'Shape', options: [{ label: 'Box' }, { label: 'Line' }] }]
   },
   {
     id: 'ground',

@@ -30,11 +30,35 @@ export type InkMemory = {
 	reading: InkReading;
 	/** Line, Arc, Box or Circle for the Wall reading; adapter memory for the same reason. */
 	wallMode: InkWallMode;
+	/** Box or Line for the Terrace and Flat Roof readings. */
+	regionMode: 'box' | 'line';
 	/** The next Opening's kind and exact defaults. */
 	openingOptions: Required<InkOpeningOptions>;
 	/** The palette's fields are currently valid; pointer placement must honour that. */
 	openingOptionsValid: boolean;
 };
+
+/**
+ * The one session-scoped footprint edge a creator has picked.
+ *
+ * Picking the edge writes no document: the Region Card's scoped **Add corner
+ * here** action reads this value and is the only writer. The value dies with
+ * the binding, so a new accepted source never inherits a stale edge index.
+ */
+export type RegionEdgePick = {
+	read(): { readonly regionId: string; readonly index: number } | null;
+	write(next: { readonly regionId: string; readonly index: number } | null): void;
+};
+
+export function createRegionEdgePick(): RegionEdgePick {
+	let value: { readonly regionId: string; readonly index: number } | null = null;
+	return {
+		read: () => value,
+		write: (next) => {
+			value = next;
+		}
+	};
+}
 
 export function createInkMemory(): InkMemory {
 	return {
@@ -42,6 +66,7 @@ export function createInkMemory(): InkMemory {
 		height: null,
 		reading: 'wall',
 		wallMode: 'line',
+		regionMode: 'box',
 		openingOptions: { kind: 'door', profile: 'rectangular', width: 0.9, height: 2.1, sillHeight: 0 },
 		openingOptionsValid: true
 	};
@@ -61,7 +86,7 @@ export type LayoutSessionPorts = {
 	/** Publish the palette's chapter (the binding's own live state). */
 	readonly publish: () => void;
 	/** Install one created Layout subject as the selection, by id, on the fresh source. */
-	readonly select: (sourceKind: 'wall' | 'opening', sourceId: string) => void;
+	readonly select: (sourceKind: 'wall' | 'opening' | 'region', sourceId: string) => void;
 	/** The filtered Paper drawing for one planner candidate document. */
 	readonly candidatePaper: (
 		document: LayoutDocumentWallFirst,

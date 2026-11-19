@@ -44,6 +44,19 @@ export type SelectionRequalificationResult =
 	  };
 
 /**
+ * The F.1 component qualifier a selection names.
+ *
+ * A Region's Plan fragment names a compiled stream component (`edge`), not an
+ * F.1 component: `layoutSelectionReference` stores no component for a Region, so
+ * its representation `subRef` is not an identity qualifier. Reading it as one
+ * clears a live Region selection after every accepted edit.
+ */
+function f1ComponentOf(selection: StageSelection): string | null {
+	if (selection.sourceKind === 'region') return null;
+	return selection.ref.subRef?.kind === 'component' ? selection.ref.subRef.componentId : null;
+}
+
+/**
  * Requalify one selection against the correspondence of the change that produced
  * the newly installed source.
  *
@@ -56,7 +69,7 @@ export function requalifySelection(
 	correspondence: readonly CorrespondenceEntry[],
 	context: { readonly generationId: string }
 ): SelectionRequalificationResult {
-	const componentId = selection.ref.subRef?.kind === 'component' ? selection.ref.subRef.componentId : null;
+	const componentId = f1ComponentOf(selection);
 	for (const entry of correspondence) {
 		const before = entry.before;
 		if (before === null) continue;
@@ -75,7 +88,7 @@ export function requalifySelection(
 			return { kind: 'cleared', reason: 'subject-retired' };
 		}
 		const subRef = selection.ref.subRef;
-		if (subRef?.kind === 'component') {
+		if (subRef?.kind === 'component' && selection.sourceKind !== 'region') {
 			// The selection named a component of the previous subject. It survives only
 			// with **that** component: comparing the entry's two component ids would let a
 			// subject-level entry (both `null`) silently keep a component the new compile
@@ -144,7 +157,14 @@ export function requalifySelectionEntry(entry: StageSelectionEntry, corresponden
 	const reference = canonicalReference(resolved.subject);
 	let representation = entry.representation;
 	if (representation) {
-		if (representation.subRef?.kind === 'component' && reference.componentId !== representation.subRef.componentId ||
+		// A Region's Plan fragment names a stream component (`edge`), not an F.1
+		// component: `layoutSelectionReference` stores no component for a Region, so
+		// its representation subRef is not an identity qualifier.
+		const representationComponent =
+			entry.reference.subject.kind !== 'region' && representation.subRef?.kind === 'component'
+				? representation.subRef.componentId
+				: null;
+		if (representationComponent !== null && reference.componentId !== representationComponent ||
 			representation.subRef?.kind === 'interval' && reference.subject.id !== entry.reference.subject.id) return { kind: 'cleared', reason: 'subject-retired' };
 		representation = { ...representation, sourceId: reference.subject.id, generationId: next.compileGeneration };
 	}

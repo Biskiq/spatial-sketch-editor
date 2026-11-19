@@ -76,6 +76,7 @@ import {
 import { createSplitPlanners } from '$lib/authoring/adapters/layout/split-planners';
 import { createJoinPlanners } from '$lib/authoring/adapters/layout/join-planners';
 import { createOpeningRepeatPlanners } from '$lib/authoring/adapters/layout/opening-repeat';
+import { createRegionPlanners } from '$lib/authoring/adapters/layout/region-planners';
 import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -181,6 +182,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 				createOpenSidePlanners().length +
 				createOpeningPlanners().length +
 				createOpeningRepeatPlanners().length +
+				createRegionPlanners().length +
 				1
 		);
 		expect(registeredPlanners.every((planner) =>

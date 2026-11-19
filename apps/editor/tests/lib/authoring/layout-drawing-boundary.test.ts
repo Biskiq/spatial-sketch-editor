@@ -45,6 +45,7 @@ const ALLOWED_IMPORTS: Readonly<Record<string, ReadonlySet<string>>> = {
 		'./opening-placement-session',
 		'./space-create-session',
 		'./precision',
+		'./region-ink-session',
 		'./session-ports',
 		'./snap',
 		'./stage-pointer'

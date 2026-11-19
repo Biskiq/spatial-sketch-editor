@@ -176,6 +176,31 @@ describe('T-V4 — region Wall relations', () => {
 			fit: 'fit-roof-to-walls'
 		});
 		expect(relation.measureMeters).toBeCloseTo(0.2, 9);
+		const segment = relation.measureSegment!;
+		expect(segment.from[1]).toBeCloseTo(3, 9);
+		expect(segment.to[1]).toBeCloseTo(3.2, 9);
+		expect(Math.abs(segment.from[1] - segment.to[1])).toBeCloseTo(0.2, 9);
+	});
+
+	it('measures a Terrace gap to the slab underside, not its top', () => {
+		const base = enclosure();
+		const wall = wallBetween(base, [0, 0], [8, 0]);
+		const { document, regionId } = added(base, {
+			role: 'floor',
+			footprint: [[2, -1], [6, -1], [6, 1], [2, 1]],
+			elevation: 3.2,
+			thickness: 0.1
+		});
+		const relation = relationFor(compile(document), document, regionId, wall.id);
+		expect(relation).toMatchObject({
+			planClass: 'through',
+			reading: 'gap',
+			measureAxis: 'vertical'
+		});
+		expect(relation.measureMeters).toBeCloseTo(0.1, 9);
+		const segment = relation.measureSegment!;
+		expect(segment.to[1]).toBeCloseTo(3.1, 9);
+		expect(Math.abs(segment.from[1] - segment.to[1])).toBeCloseTo(0.1, 9);
 	});
 
 	it('reads an edge touching a slab below its top as meets, never crosses', () => {
@@ -208,6 +233,10 @@ describe('T-V4 — region Wall relations', () => {
 			fit: 'meet-wall'
 		});
 		expect(relation.measureMeters).toBeCloseTo(0.2, 9);
+		const segment = relation.measureSegment!;
+		expect(segment.from[1]).toBeCloseTo(segment.to[1], 9);
+		expect(Math.hypot(segment.to[0] - segment.from[0], segment.to[2] - segment.from[2])).toBeCloseTo(0.2, 9);
+		expect(segment.to[2]).toBeCloseTo(0.1, 9);
 	});
 
 	it('reports no relation when a near Wall top sits wholly below the slab', () => {

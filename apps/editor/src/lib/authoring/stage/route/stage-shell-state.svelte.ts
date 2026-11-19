@@ -145,7 +145,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		readonly category: WorldLibraryCategory;
 		readonly nonce: number;
 	} | null>(null);
-	let inkReading = $state<'wall' | 'opening' | 'room'>('wall');
+	let inkReading = $state<'wall' | 'opening' | 'room' | 'terrace' | 'roof'>('wall');
 
 	/** The session's task, mirrored so the shell's chrome re-reads it. */
 	let task = $state.raw<StageTask | null>(null);
@@ -699,7 +699,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		get inkReading() {
 			return inkReading;
 		},
-		setInkReading(value: 'wall' | 'opening' | 'room') {
+		setInkReading(value: 'wall' | 'opening' | 'room' | 'terrace' | 'roof') {
 			inkReading = value;
 		},
 		get task() {
