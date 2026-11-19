@@ -26,6 +26,7 @@
  * (`{survivorId}:knot.{nonce}`) so a replay reproduces it exactly and
  * occupancy never decides it.
  */
+import { carryRegionWallIntents } from './layout-region';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWall,
@@ -424,7 +425,8 @@ export function planDissolveJunction(
 			if (wall.id === survivor.id) return [joinedWall];
 			return [wall];
 		}),
-		openings
+		openings,
+		regions: carryRegionWallIntents(document.regions, new Map([[other.id, [survivor.id]]]))
 	};
 	// An open Space has no candidate face to rewrite its boundary, so the join
 	// must update its record here: the two incident refs become the joined Wall.

@@ -83,7 +83,8 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 	const extraction = extractBoundaryCandidateFaces({ ...shell, rooms: [] });
 	const leftFace = extraction.faces.find((face) =>
@@ -101,8 +102,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 	return {
 		...shell,

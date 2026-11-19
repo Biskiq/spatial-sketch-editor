@@ -117,8 +117,6 @@ function appendRoom(
 		name: `Room ${roomIndex}`,
 		boundary: wallIds.map((wallId) => ({ wallId, direction: 'forward' })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 }
 
@@ -161,8 +159,6 @@ function appendRectangle(
 		name: `Room ${prefix}`,
 		boundary: wallIds.map((wallId) => ({ wallId, direction: 'forward' })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 }
 
@@ -248,7 +244,6 @@ function buildOpenRoomBoundaryFixture(): LayoutDocumentWallFirst {
 	document.rooms.push({
 		id: 'room-open', name: 'Open Room', boundary: wallIds.map((wallId) => ({ wallId, direction: 'forward' })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1, ceilingThickness: 0.1
 	});
 	return document;
 }
@@ -274,7 +269,6 @@ function buildComponentDuplicateJunctionFixture(): LayoutDocumentWallFirst {
 	document.rooms.push({
 		id: 'room-p', name: 'Room p', boundary: boundaryWalls.map(([wallId]) => ({ wallId, direction: 'forward' })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1, ceilingThickness: 0.1
 	});
 	return document;
 }

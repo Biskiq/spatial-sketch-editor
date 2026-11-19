@@ -536,8 +536,6 @@ function unitLayout(): LayoutUnitPayload {
 				{ wallId: 'wall-4', direction: 'forward' }
 			],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	layout.openings = [

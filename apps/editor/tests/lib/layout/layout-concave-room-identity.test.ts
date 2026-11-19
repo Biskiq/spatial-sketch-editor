@@ -105,7 +105,7 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 		// is a genuine reconciled cycle, exactly as the editor produces it.
 		const shell = {
 			units: 'meters' as const,
-			formatVersion: 8 as const,
+			formatVersion: 9 as const,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j1', point: p(0, 0) },
@@ -133,7 +133,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 					dimensions: [0.5, 0.5, 0.5],
 					roomId: 'room-l'
 				}
-			]
+			],
+			regions: []
 		} satisfies Omit<LayoutDocumentWallFirst, 'rooms'>;
 
 		const polygon = narrowLRoomPolygon();
@@ -150,8 +151,6 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 						direction: 'forward' as const
 					})),
 					virtualEdges: [], overhead: 'closed',
-					floorThickness: 0.23,
-					ceilingThickness: 0.37
 				}
 			]
 		};
@@ -205,8 +204,6 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 		expect(room).toMatchObject({
 			id: 'room-l',
 			name: 'Narrow L Gallery',
-			floorThickness: 0.23,
-			ceilingThickness: 0.37
 		});
 		expect(closed.document.objects).toEqual(baseline.objects);
 		// No retirement of the untouched Room in the plan result.

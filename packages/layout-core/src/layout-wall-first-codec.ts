@@ -2,10 +2,9 @@ import { countWork } from './p2311-perf';
 import { hasImmutableJsonProof } from './immutable-json';
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
- * `LayoutDocument` (`formatVersion: 8`), shared by the precision operations and the
- * canonical project Save boundary. Format 8 adds open Spaces: every Room
- * carries required `virtualEdges` and `overhead`, and its composed Wall/virtual
- * boundary must be one closed cycle.
+ * `LayoutDocument`, shared by precision operations and the canonical project Save
+ * boundary. Format 9 adds independent Horizontal Regions and removes the two
+ * Room padding keys. Every Room still states its virtual edges and overhead.
  *
  * The codec intentionally provides:
  *
@@ -28,6 +27,7 @@ import type {
 	LayoutIdentityFamily,
 	LayoutIdentityLedger,
 	LayoutJunction,
+	LayoutRegion,
 	LayoutSpaceVirtualEdge,
 	LayoutWall,
 	LayoutWallCenterline,
@@ -53,7 +53,8 @@ import {
 } from './layout-identity';
 import type { LayoutDocumentIssue } from './layout-issue';
 import { LayoutDocumentValidationError } from './layout-issue';
-import { layoutDimensionLimitIssues } from './layout-geometry-limits';
+import { MAX_LAYOUT_REGION_POINTS, regionGeometryIssues } from './layout-region';
+import { MAX_LAYOUT_DIMENSION_METERS, layoutDimensionLimitIssues } from './layout-geometry-limits';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';
 
@@ -91,10 +92,11 @@ const ROOT_KEYS = [
 	'rooms',
 	'openings',
 	'objects',
+	'regions',
 	'identity'
 ] as const;
 /** The reference ledger's key set. */
-const IDENTITY_KEYS = ['cursor', 'rooms', 'junctions', 'walls', 'openings'] as const;
+const IDENTITY_KEYS = ['cursor', 'rooms', 'junctions', 'walls', 'openings', 'regions'] as const;
 /**
  * Canonical Floor key set. The current Floor has no vertical extent, so a
  * present `height` is `unknown_key`.
@@ -119,9 +121,7 @@ const ROOM_KEYS = [
 	'name',
 	'boundary',
 	'virtualEdges',
-	'overhead',
-	'floorThickness',
-	'ceilingThickness'
+	'overhead'
 ] as const;
 const VIRTUAL_EDGE_KEYS = ['startJunctionId', 'endJunctionId'] as const;
 const SPACE_OVERHEAD_VALUES = ['closed', 'open-to-sky'] as const;
@@ -159,6 +159,7 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 		rooms: [],
 		openings: [],
 		objects: [],
+		regions: [],
 		// The canonical writers always emit the ledger; it stays optional
 		// on read because documents written before the ledger lack it.
 		identity: emptyLayoutIdentityLedger()
@@ -195,6 +196,7 @@ export function validateWallFirstLayoutDocument(
 	// source is refused here, before the compiler, Paper drawing or Camera ever
 	// samples it. The limit and its measurement live in layout-geometry-limits.
 	const limitIssues = layoutDimensionLimitIssues(parsed);
+	if (parsed.regions.length) limitIssues.push(...regionGeometryIssues(parsed.regions));
 	if (limitIssues.length > 0) {
 		return { success: false, issues: limitIssues };
 	}
@@ -306,6 +308,7 @@ function parseDocument(
 	}
 
 	const formatVersion = readFormatVersion(record.formatVersion, `${path}.formatVersion`, issues);
+	if (formatVersion === undefined) return undefined;
 	// One Floor key set only: no vertical extent, so a present `height`
 	// is `unknown_key`.
 	const floor =
@@ -318,6 +321,7 @@ function parseDocument(
 	const rooms = parseArray(record.rooms, `${path}.rooms`, issues, parseRoom);
 	const openings = parseArray(record.openings, `${path}.openings`, issues, parseOpening);
 	const objects = parseArray(record.objects, `${path}.objects`, issues, parseObject);
+	const regions = parseArray(record.regions, `${path}.regions`, issues, parseRegion);
 	// The reference ledger is optional on read (pre-P23.12 documents and
 	// already-published releases have none) but strict when present: malformed
 	// tokens and duplicate values reject.
@@ -329,7 +333,8 @@ function parseDocument(
 		!walls ||
 		!rooms ||
 		!openings ||
-		!objects
+		!objects ||
+		!regions
 	) {
 		return undefined;
 	}
@@ -343,6 +348,18 @@ function parseDocument(
 	const junctionIds = new Set(junctions.map((junction) => junction.id));
 	const wallIds = new Set(walls.map((wall) => wall.id));
 	const roomIds = new Set(rooms.map((room) => room.id));
+	if (regions.length) {
+		const occupied = new Set([floor.id, ...junctionIds, ...wallIds, ...roomIds]);
+		for (const subject of [...openings, ...objects]) occupied.add(subject.id);
+		for (const [index, region] of regions.entries()) {
+			const regionPath = `${path}.regions[${index}]`;
+			if (occupied.has(region.id)) addIssue(issues, `${regionPath}.id`, 'duplicate_id', `Duplicate Layout id '${region.id}'`);
+			occupied.add(region.id);
+			for (const [gapIndex, id] of region.intendedGaps.entries()) {
+				if (!wallIds.has(id)) addIssue(issues, `${regionPath}.intendedGaps[${gapIndex}]`, 'missing_reference', `Unknown wallId '${id}'`);
+			}
+		}
+	}
 
 	// H3 minimum invariant: duplicate Walls between the same two Junctions are
 	// invalid — in either direction (a reversed pair is the same physical wall
@@ -555,6 +572,7 @@ function parseDocument(
 		rooms,
 		openings,
 		objects,
+		regions,
 		...(identity ? { identity } : {})
 	};
 }
@@ -592,7 +610,8 @@ function parseIdentityLedger(
 		rooms: {},
 		junctions: {},
 		walls: {},
-		openings: {}
+		openings: {},
+		regions: {}
 	};
 	let failed = false;
 	for (const family of LAYOUT_IDENTITY_FAMILIES) {
@@ -960,7 +979,7 @@ function parseRoom(
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readNonEmptyString(record.name, `${path}.name`, issues);
 	const boundary = parseBoundaryRefs(record.boundary, `${path}.boundary`, issues);
-	// Both fields are required on every record: format 8 has no defaulting and
+	// Both fields are required on every record: the strict reader has no defaulting and
 	// no missing-field tolerance. An absent field is `invalid_type`, exactly as
 	// an absent `centerline` is on a Wall.
 	const virtualEdges = parseVirtualEdges(record.virtualEdges, `${path}.virtualEdges`, issues);
@@ -983,20 +1002,49 @@ function parseRoom(
 			'A canonical Room boundary must reference at least one Wall'
 		);
 	}
-	const floorThickness = readPositiveNumber(record.floorThickness, `${path}.floorThickness`, issues);
-	const ceilingThickness = readPositiveNumber(record.ceilingThickness, `${path}.ceilingThickness`, issues);
-	if (
-		!id ||
-		!name ||
-		!boundary ||
-		!virtualEdges ||
-		!overhead ||
-		floorThickness === undefined ||
-		ceilingThickness === undefined
-	) {
+	if (!id || !name || !boundary || !virtualEdges || !overhead) return undefined;
+	return { id, name, boundary, virtualEdges, overhead };
+}
+
+function parseRegion(input: unknown, path: string, issues: LayoutDocumentIssue[]): ParsedValue<LayoutRegion> {
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	assertAllowedKeys(record, ['id', 'role', 'footprint', 'elevation', 'thickness', 'form', 'intendedGaps', 'name'], path, issues);
+	const id = readId(record.id, `${path}.id`, issues);
+	const role = readEnum(record.role, `${path}.role`, ['floor', 'overhead'], issues);
+	const elevation = readNumber(record.elevation, `${path}.elevation`, issues);
+	const thickness = readPositiveNumber(record.thickness, `${path}.thickness`, issues);
+	const footprint = readRecord(record.footprint, `${path}.footprint`, issues);
+	const form = readRecord(record.form, `${path}.form`, issues);
+	if (form) {
+		assertAllowedKeys(form, ['kind'], `${path}.form`, issues);
+		readEnum(form.kind, `${path}.form.kind`, ['flat'], issues);
+	}
+	if (!footprint) return undefined;
+	assertAllowedKeys(footprint, ['kind', 'points'], `${path}.footprint`, issues);
+	readEnum(footprint.kind, `${path}.footprint.kind`, ['polygon'], issues);
+	if (Array.isArray(footprint.points) &&
+		(footprint.points.length < 3 || footprint.points.length > MAX_LAYOUT_REGION_POINTS)) {
+		addIssue(issues, `${path}.footprint.points`, 'region_point_count', 'A region requires 3 to 1024 footprint points');
 		return undefined;
 	}
-	return { id, name, boundary, virtualEdges, overhead, floorThickness, ceilingThickness };
+	const points = parseArray(footprint.points, `${path}.footprint.points`, issues, readVec2);
+	const intendedGaps = parseArray(record.intendedGaps, `${path}.intendedGaps`, issues, readId);
+	const name = parseOptionalName(record.name, `${path}.name`, issues);
+	if (!id || !role || elevation === undefined || thickness === undefined || !points || !intendedGaps || !form) return undefined;
+	if (Math.abs(elevation) > MAX_LAYOUT_DIMENSION_METERS || thickness > MAX_LAYOUT_DIMENSION_METERS) {
+		addIssue(issues, path, 'dimension_out_of_range', 'Region elevation and thickness are limited to 1000 m');
+	}
+	if (elevation < 0 || (role === 'overhead' && elevation === 0)) {
+		addIssue(issues, `${path}.elevation`, 'invalid_value', 'Floor elevation must be nonnegative and overhead elevation must be positive');
+	}
+	if (intendedGaps.some((wallId, index) => index > 0 && wallId <= intendedGaps[index - 1]!)) {
+		addIssue(issues, `${path}.intendedGaps`, 'invalid_value', 'Wall ids must be in ordinal order and unique');
+	}
+	return {
+		id, role, footprint: { kind: 'polygon', points }, elevation, thickness, form: { kind: 'flat' },
+		intendedGaps, ...(name === undefined ? {} : { name })
+	};
 }
 
 function parseVirtualEdges(

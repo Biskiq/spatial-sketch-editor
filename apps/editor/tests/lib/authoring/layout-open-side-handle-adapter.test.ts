@@ -97,8 +97,6 @@ function gallery(neighbour = false): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			...(neighbour
 				? [
@@ -113,8 +111,6 @@ function gallery(neighbour = false): LayoutDocumentWallFirst {
 							],
 							virtualEdges: [],
 							overhead: 'closed' as const,
-							floorThickness: 0.1,
-							ceilingThickness: 0.1
 						}
 					]
 				: [])

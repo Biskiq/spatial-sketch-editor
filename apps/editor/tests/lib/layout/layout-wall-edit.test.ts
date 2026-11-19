@@ -45,13 +45,12 @@ function squareDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'w4', direction: 'forward' }
 			],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}],
 		openings: [{
 			id: 'door', wallId: 'w1', kind: 'door', offset: 1, width: 1, height: 2, sillHeight: 0, profile: 'rectangular'
 		}],
-		objects: [{ id: 'chair', kind: 'box', position: [1, 0.5, 1], rotation: [0, 0, 0], dimensions: [1, 1, 1] }]
+		objects: [{ id: 'chair', kind: 'box', position: [1, 0.5, 1], rotation: [0, 0, 0], dimensions: [1, 1, 1] }],
+		regions: []
 	};
 }
 
@@ -113,8 +112,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			{ wallId: 'w2', direction: 'reverse' }
 		],
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 	return document;
 }
@@ -448,8 +445,6 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 			id: 'room',
 			name: 'Room',
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 		expect(result.document.rooms[0]!.boundary).toEqual(baseline.rooms[0]!.boundary);
 		expect(JSON.stringify(baseline)).toBe(JSON.stringify(squareDocument()));
@@ -577,8 +572,6 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 				})),
 				virtualEdges: [],
 				overhead: 'closed' as const,
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			});
 			document.openings = [{
 				id: 'door',

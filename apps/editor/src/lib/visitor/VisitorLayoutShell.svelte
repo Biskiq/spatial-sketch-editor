@@ -2,6 +2,7 @@
 	import { T, useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
+	import { createRegionRepresentation } from '$lib/render/layout-region-representation';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 	import { createRoomRepresentation } from '$lib/render/layout-room-representation';
@@ -122,6 +123,8 @@
 	 * per-Room component, geometry component or material component left.
 	 */
 	const rooms = createRoomRepresentation(materials, treatment);
+	const regions = createRegionRepresentation(materials);
+	$effect(() => { if (regions.update(geometry)) invalidate(); });
 
 	$effect(() => {
 		rooms.update(geometry);
@@ -150,8 +153,10 @@
 
 	/** Every owned id → the object that draws it. Floors resolve through the Rooms. */
 	const identity: LayoutIdentityIndex = {
+		regionMeshes: regions.meshes,
 		objectOf(kind, id) {
 			if (kind === 'wall') return walls.objectOf(id);
+			if (kind === 'region') return regions.objectOf(id);
 			if (kind === 'object') return objects.objectOf(id);
 			return rooms.objectOf(id);
 		}
@@ -164,6 +169,7 @@
 	$effect(
 		() => () => {
 			rooms.dispose();
+			regions.dispose();
 			walls.dispose();
 			objects.dispose();
 		}
@@ -184,6 +190,7 @@
 		rather than the shell re-creating a component per Room.
 	-->
 	<T is={rooms.object3d} />
+	<T is={regions.object3d} />
 	<!--
 		The retained physical-Wall subtree. It is one object for the shell's whole
 		lifetime; `update` patches meshes inside it rather than the shell re-creating

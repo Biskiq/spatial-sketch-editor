@@ -66,8 +66,6 @@ export function p2311Fixture(spec: BendFixtureSpec): LayoutDocumentWallFirst {
 				boundary: ids.map((wallId) => ({ wallId, direction: 'forward' })),
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			});
 		}
 	} else {

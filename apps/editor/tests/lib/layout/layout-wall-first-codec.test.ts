@@ -43,8 +43,6 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 					{ wallId: 'wall-d', direction: 'forward' }
 				],
 				virtualEdges: [], overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			{
 				id: 'room-second',
@@ -59,8 +57,6 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		],
 		openings: [
@@ -85,7 +81,8 @@ function wallFirstDocument(): LayoutDocumentWallFirst {
 				dimensions: [1, 1, 1],
 				roomId: 'room-main'
 			}
-		]
+		],
+		regions: []
 	};
 }
 

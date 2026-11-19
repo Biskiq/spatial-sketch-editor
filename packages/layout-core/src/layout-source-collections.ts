@@ -7,7 +7,7 @@
 import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
 import { PersistentVector } from './persistent-store';
 
-export type LayoutCollectionKey = 'junctions' | 'walls' | 'rooms' | 'openings' | 'objects';
+export type LayoutCollectionKey = 'junctions' | 'walls' | 'rooms' | 'openings' | 'objects' | 'regions';
 type Item<K extends LayoutCollectionKey> = LayoutDocumentWallFirst[K][number];
 type Entry = { root: PersistentVector<unknown>; flat?: unknown[] };
 const COLLECTIONS = new WeakMap<LayoutDocumentWallFirst, Partial<Record<LayoutCollectionKey, Entry>>>();
@@ -46,7 +46,7 @@ export function layoutVector<K extends LayoutCollectionKey>(document: LayoutDocu
 }
 /** Run during cold world-index construction, never deferred to the first edit. */
 export function seedLayoutVectors(document: LayoutDocumentWallFirst): void {
-	for (const key of ['junctions', 'walls', 'rooms', 'openings', 'objects'] as const) layoutVector(document, key);
+	for (const key of ['junctions', 'walls', 'rooms', 'openings', 'objects', 'regions'] as const) layoutVector(document, key);
 }
 export function withLayoutVectors(
 	baseline: LayoutDocumentWallFirst,
@@ -56,7 +56,7 @@ export function withLayoutVectors(
 		units: baseline.units, formatVersion: baseline.formatVersion, floor: baseline.floor
 	} as LayoutDocumentWallFirst;
 	const entries: Partial<Record<LayoutCollectionKey, Entry>> = {};
-	for (const key of ['junctions', 'walls', 'rooms', 'openings', 'objects'] as const) {
+	for (const key of ['junctions', 'walls', 'rooms', 'openings', 'objects', 'regions'] as const) {
 		const inherited = COLLECTIONS.get(baseline)?.[key];
 		const root = overrides[key] ?? inherited?.root;
 		if (!root) { Object.defineProperty(result, key, { enumerable: true, configurable: true, writable: true, value: baseline[key] }); continue; }
@@ -94,7 +94,7 @@ export function mappedReadonlyMap<K, V, R>(source: ReadonlyMap<K, V>, project: (
 export function materializeLayoutSourceForCapture(document: LayoutDocumentWallFirst): void {
  const entries = COLLECTIONS.get(document);
  if (!entries) return;
- for (const key of ['junctions', 'walls', 'rooms', 'openings', 'objects'] as const) {
+ for (const key of ['junctions', 'walls', 'rooms', 'openings', 'objects', 'regions'] as const) {
   const entry = entries[key]; if (!entry) continue;
   const value = entry.flat ??= entry.root.toArray(`source-${key}`);
   Object.defineProperty(document, key, { value, enumerable: true, configurable: true, writable: true });

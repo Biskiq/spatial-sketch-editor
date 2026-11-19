@@ -75,6 +75,7 @@ export type MaterialTextureKeys = Readonly<Partial<Record<MaterialTextureSlotKey
 
 export type StandardMaterialDescriptor = {
 	readonly kind: 'standard';
+	readonly polygonOffset?: readonly [factor: number, units: number];
 	readonly color: MaterialColor;
 	readonly roughness: number;
 	readonly metalness: number;
@@ -298,6 +299,7 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				).join(';')}`,
 				// Absent keeps the normal surface's key exactly; a twin is a distinct
 				// lease, never a second use of the same instance.
+				...(descriptor.polygonOffset ? [`polygonOffset=${descriptor.polygonOffset.map(num).join(',')}`] : []),
 				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
 			].join('|');
 		case 'basic':

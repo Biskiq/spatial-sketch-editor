@@ -841,8 +841,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			rooms: enclosure.document.rooms.map((room) => ({
 				...room,
 				name: 'Custom',
-				floorThickness: 0.2,
-				ceilingThickness: 0.3
 			}))
 		};
 		const survivorId = withMeta.rooms[0]!.id;
@@ -868,8 +866,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		expect(ids.filter((id) => id === survivorId)).toHaveLength(1);
 		// Both children inherit non-default predecessor metadata (not birth defaults).
 		for (const room of divider.document.rooms) {
-			expect(room.floorThickness).toBe(0.2);
-			expect(room.ceilingThickness).toBe(0.3);
 		}
 		expect(divider.document.rooms.find((room) => room.id === survivorId)!.name).toBe('Custom');
 		// Authored provenance excludes host fragments.

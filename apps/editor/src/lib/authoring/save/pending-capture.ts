@@ -11,6 +11,8 @@
  */
 import {
 	clearPendingCloudSave,
+	discardIncompatiblePendingCloudSave,
+	type IncompatiblePendingCloudSave,
 	readPendingCloudSave,
 	writePendingCloudSave,
 	type PendingCloudSaveResult
@@ -30,4 +32,16 @@ export function readPendingCapture(): PendingCloudSaveResult {
 /** Drop the capture once the creator resolved it (completed, conflicted or dismissed). */
 export function discardPendingCapture(): void {
 	clearPendingCloudSave();
+}
+
+export { discardIncompatiblePendingCloudSave as discardIncompatiblePendingCapture };
+export type { IncompatiblePendingCloudSave };
+
+export function downloadPendingCapture(capture: IncompatiblePendingCloudSave): void {
+	const url = URL.createObjectURL(new Blob([capture.raw], { type: 'application/json' }));
+	const anchor = document.createElement('a');
+	anchor.href = url;
+	anchor.download = 'pending-save-recovery.json';
+	anchor.click();
+	URL.revokeObjectURL(url);
 }

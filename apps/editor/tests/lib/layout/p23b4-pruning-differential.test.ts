@@ -243,8 +243,6 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 					],
 					virtualEdges: [],
 					overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				},
 				{
 					id: 'room-2',
@@ -257,8 +255,6 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 					],
 					virtualEdges: [],
 					overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			);
 			return doc;

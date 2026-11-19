@@ -36,7 +36,8 @@ type WallSeed = {
 		})),
 		rooms: [],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 
@@ -153,7 +154,8 @@ function curvedDepartureDocument(): LayoutDocumentWallFirst {
 		],
 		rooms: [],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 

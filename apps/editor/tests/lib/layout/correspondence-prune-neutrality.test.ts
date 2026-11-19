@@ -492,8 +492,6 @@ function runSynthetic(
 			name: roomId,
 			boundary: roomBoundary,
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	const candidateDocument: Pick<LayoutDocumentWallFirst, 'walls' | 'junctions'> = {

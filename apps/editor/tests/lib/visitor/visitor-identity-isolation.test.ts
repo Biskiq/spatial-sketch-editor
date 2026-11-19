@@ -32,7 +32,7 @@ const LINE = { kind: 'line' } as const;
 function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 	const base: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 8,
+		formatVersion: 9,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] },
@@ -57,12 +57,11 @@ function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 					{ wallId: 'w4', direction: 'forward' }
 				],
 				virtualEdges: [], overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 	if (!withMetadata) return base;
 	return {
@@ -72,7 +71,7 @@ function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 			rooms: { room: 'R-2QUS' },
 			junctions: { A: 'J-5AEX', B: 'J-7V24', C: 'J-AEM9', D: 'J-CZ7E' },
 			walls: { w1: 'W-FJSK', w2: 'W-J5CR', w3: 'W-MPXW', w4: 'W-Q9J3' },
-			openings: {}
+			openings: {}, regions: {}
 		},
 		walls: base.walls.map((wall, index) => ({ ...wall, name: index === 0 ? 'North' : undefined }))
 	};

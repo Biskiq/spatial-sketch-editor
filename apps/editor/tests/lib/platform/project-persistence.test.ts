@@ -22,6 +22,7 @@ import {
 	LEGACY_PENDING_CLOUD_SAVE_KEY,
 	PENDING_CLOUD_SAVE_KEY,
 	clearPendingCloudSave,
+	discardIncompatiblePendingCloudSave,
 	readPendingCloudSave,
 	writePendingCloudSave
 } from '$lib/platform/project-pending-save';
@@ -396,6 +397,30 @@ describe('pending cloud Save draft', () => {
 		expect(pending.project.id).toBe(PROJECT_ID);
 		expect(pending.project).toEqual(project);
 		expect(pending.save).toEqual(request);
+	});
+
+	it('recovers the exact outgoing Layout 8 capture after expiration and protects it from replacement', async () => {
+		const { request, project } = await fixture();
+		const old = JSON.parse(JSON.stringify(project));
+		old.units.layout.header.formatVersion = old.units.layout.data.formatVersion = 8;
+		delete old.units.layout.data.regions;
+		delete old.units.layout.data.identity.regions;
+		const legacy = {
+			...request,
+			capture: { ...request.capture, canonicalJson: JSON.stringify(old, null, 2) + '\n' }
+		};
+		const raw = JSON.stringify({ createdAt: 1000, save: legacy }, null, 2);
+		const storage = memoryStorage();
+		storage.setItem(PENDING_CLOUD_SAVE_KEY, raw);
+		const now = 1000 + 16 * 60 * 1000;
+		const recovery = readPendingCloudSave(storage, now);
+		expect(recovery).toEqual({ status: 'incompatible-layout', projectId: PROJECT_ID, raw });
+		expect(writePendingCloudSave(request, storage, now)).toBe(false);
+		clearPendingCloudSave(storage);
+		expect(storage.getItem(PENDING_CLOUD_SAVE_KEY)).toBe(raw);
+		if (recovery.status !== 'incompatible-layout') throw new Error('Expected recovery');
+		expect(discardIncompatiblePendingCloudSave(recovery, storage)).toBe(true);
+		expect(storage.getItem(PENDING_CLOUD_SAVE_KEY)).toBeNull();
 	});
 
 	it('reads a legacy v1 document entry as invalid and clears it', () => {

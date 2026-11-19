@@ -198,8 +198,6 @@ function appendRoom(
 		name: `Room ${index}`,
 		boundary: wallIds.map((wallId) => ({ wallId, direction: 'forward' as const })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: FLOOR_THICKNESS,
-		ceilingThickness: CEILING_THICKNESS
 	});
 
 	appendOpenings(document, roomId, corners, wallIds, isBezier, random, spec);

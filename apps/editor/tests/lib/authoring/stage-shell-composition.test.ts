@@ -382,7 +382,7 @@ describe('Stage shell composition', () => {
 		// evaluation the hit path uses.
 		const paper = codeOf('apps/editor/src/lib/authoring/stage/shell/StagePaper.svelte');
 		expect(paper).toContain("from '../paper-plan'");
-		expect(paper).toContain('buildPaperPlan(plan, compiled, footprints');
+		expect(paper).toContain('buildPaperPlan(clipPlanRegionFragments(plan, resolvedSlice), compiled, footprints');
 
 		// The representation drives eligibility and the Index, through the facade's
 		// own evaluation — the same call the hit path makes.

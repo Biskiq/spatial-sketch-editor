@@ -9,7 +9,7 @@
  * Three dependency) for a route that only lists or opens projects.
  */
 import { serializeProjectEnvelope, validateProjectEnvelope } from '@portfolio/project-model/units/validate';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { UNIT_ENVELOPE_FORMAT_VERSION, LAYOUT_UNIT_FORMAT_VERSION, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { readSaveRequest, type SaveRequest } from '@portfolio/project-model/save';
 import type { SessionStorageLike } from './project-persistence';
 
@@ -23,9 +23,16 @@ export const PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v2';
 export const LEGACY_PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v1';
 export const PENDING_CLOUD_SAVE_MAX_AGE_MS = 15 * 60 * 1000;
 
+export type IncompatiblePendingCloudSave = {
+	status: 'incompatible-layout';
+	projectId: string;
+	raw: string;
+};
+
 export type PendingCloudSaveResult =
 	| { status: 'missing' }
 	| { status: 'invalid' | 'expired' }
+	| IncompatiblePendingCloudSave
 	/** `project` keeps the `/` route's existing reader shape compatible. */
 	| { status: 'ready'; project: ProjectEnvelope; save: SaveRequest };
 
@@ -77,6 +84,7 @@ export function writePendingCloudSave(
 	// resume a different write than the creator captured.
 	if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) return false;
 	try {
+		if (inspectPendingCloudSave(storage, createdAt, false).status === 'incompatible-layout') return false;
 		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
 	} catch {
@@ -88,12 +96,25 @@ export function readPendingCloudSave(
 	storage: SessionStorageLike | null = browserSessionStorage(),
 	now = Date.now()
 ): PendingCloudSaveResult {
+	return inspectPendingCloudSave(storage, now, true);
+}
+
+function inspectPendingCloudSave(
+	storage: SessionStorageLike | null,
+	now: number,
+	cleanup: boolean
+): PendingCloudSaveResult {
 	if (!storage) return { status: 'missing' };
-	const raw = storage.getItem(PENDING_CLOUD_SAVE_KEY);
+	let raw: string | null;
+	try {
+		raw = storage.getItem(PENDING_CLOUD_SAVE_KEY);
+	} catch {
+		return { status: 'invalid' };
+	}
 	if (!raw) {
 		// A v1 entry held only a document and cannot become a conditional Save.
 		// Read it as invalid (and clear it) rather than pretending it is absent.
-		if (storage.getItem(LEGACY_PENDING_CLOUD_SAVE_KEY) !== null) {
+		if (cleanup && storage.getItem(LEGACY_PENDING_CLOUD_SAVE_KEY) !== null) {
 			safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
 			return { status: 'invalid' };
 		}
@@ -108,16 +129,20 @@ export function readPendingCloudSave(
 		) {
 			throw new Error('invalid handoff');
 		}
-		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt) || value.createdAt > now) {
-			throw new Error('invalid timestamp');
-		}
-		if (now - value.createdAt > PENDING_CLOUD_SAVE_MAX_AGE_MS) {
-			storage.removeItem(PENDING_CLOUD_SAVE_KEY);
-			return { status: 'expired' };
-		}
 		const parsed = readSaveRequest(value.save);
 		if (parsed.kind === 'invalid') throw new Error('invalid capture');
-		const validation = validateProjectEnvelope(JSON.parse(parsed.request.capture.canonicalJson));
+		const capture = parsed.request.capture;
+		const envelope: unknown = JSON.parse(capture.canonicalJson);
+		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt)) throw new Error('invalid timestamp');
+		if (describesIncompatibleLayout(envelope, capture)) {
+			return { status: 'incompatible-layout', projectId: capture.projectId, raw };
+		}
+		if (value.createdAt > now) throw new Error('invalid timestamp');
+		if (now - value.createdAt > PENDING_CLOUD_SAVE_MAX_AGE_MS) {
+			if (cleanup) safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
+			return { status: 'expired' };
+		}
+		const validation = validateProjectEnvelope(envelope);
 		if (!validation.success) throw new Error('invalid envelope');
 		// Same rule on the read side: the capture, its stamped revision and the
 		// canonical document must describe one write, or the entry is invalid and
@@ -131,13 +156,40 @@ export function readPendingCloudSave(
 			save: parsed.request
 		};
 	} catch {
-		safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
+		if (cleanup) safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
 		return { status: 'invalid' };
 	}
 }
 
+/** Inspect only the wire stamps. The current reader cannot validate outgoing Layout data. */
+function describesIncompatibleLayout(envelope: unknown, capture: SaveRequest['capture']): boolean {
+	if (!isRecord(envelope) || envelope.formatVersion !== UNIT_ENVELOPE_FORMAT_VERSION ||
+		envelope.id !== capture.projectId || !isRecord(envelope.acceptedRevision) ||
+		envelope.acceptedRevision.projectId !== capture.acceptedRevision.projectId ||
+		envelope.acceptedRevision.revisionId !== capture.acceptedRevision.revisionId ||
+		!isRecord(envelope.units) || !isRecord(envelope.units.layout)) return false;
+	const { header, data } = envelope.units.layout;
+	if (!isRecord(header) || header.domain !== 'layout' || !isRecord(data)) return false;
+	const stamps = [header.formatVersion, data.formatVersion];
+	return stamps.every(Number.isSafeInteger) && stamps.some((version) => version !== LAYOUT_UNIT_FORMAT_VERSION);
+}
+
+/** Only the explicit recovery action may clear the exact incompatible capture it offered. */
+export function discardIncompatiblePendingCloudSave(
+	capture: IncompatiblePendingCloudSave,
+	storage: SessionStorageLike | null = browserSessionStorage()
+): boolean {
+	try {
+		if (!storage || storage.getItem(PENDING_CLOUD_SAVE_KEY) !== capture.raw) return false;
+		storage.removeItem(PENDING_CLOUD_SAVE_KEY);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export function clearPendingCloudSave(storage: SessionStorageLike | null = browserSessionStorage()): void {
-	safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
+	if (inspectPendingCloudSave(storage, Date.now(), false).status !== 'incompatible-layout') safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
 	safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
 }
 

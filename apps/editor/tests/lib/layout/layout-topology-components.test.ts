@@ -97,8 +97,6 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'wall-d', direction: 'reverse' }
 			],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		},
 		{
 			id: 'room-right',
@@ -111,8 +109,6 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 			],
 			virtualEdges: [],
 			overhead: 'closed' as const,
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	return base;

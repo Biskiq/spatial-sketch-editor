@@ -85,12 +85,12 @@ function neutralCompiledDigest(geometry: ReturnType<typeof compileWallFirstLayou
 const WILD_OUTPUTS: Record<string, { faces: string; compiled: string; topology: string }> = {
 	'wild-room-curved-v1': {
 		faces: 'faces=1 checksum=5666de32e3fa631649637e3e62d5750c69f7e4691c2ff1e594a65d50e6ec0a68',
-		compiled: '1999efc14efdd2951795884c24740eabeb59d5a4eca6c992846afb680bcab42b',
+		compiled: '730e6c406ae99f8cf084ffece2871228dcce3a6c9af7960cdadc36a02fe9f159',
 		topology: 'admitted'
 	},
 	'wild-shared-curved-v1': {
 		faces: 'faces=2 checksum=09ae15d1214baf17010acf91243e915571b5c2408174644f1ce885a127ffdb91',
-		compiled: '2c25ca622de202d05f65c6bf46e36400582b360a43f9aa35799f17782143a5be',
+		compiled: '5a0189b80a3f6f609d2681af20ca156bb792bcf6fc895dc89974c6ea04d442c3',
 		topology: 'admitted'
 	}
 };

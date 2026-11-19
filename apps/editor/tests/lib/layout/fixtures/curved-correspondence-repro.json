@@ -1,6 +1,6 @@
 {
   "units": "meters",
-  "formatVersion": 8,
+  "formatVersion": 9,
   "floor": {
     "id": "floor",
     "name": "Floor",
@@ -231,8 +231,7 @@
           "direction": "reverse"
         }
       ],
-      "floorThickness": 0.1,
-      "ceilingThickness": 0.1,
+
       "virtualEdges": [],
       "overhead": "closed"
     },
@@ -257,12 +256,12 @@
           "direction": "forward"
         }
       ],
-      "floorThickness": 0.1,
-      "ceilingThickness": 0.1,
+
       "virtualEdges": [],
       "overhead": "closed"
     }
   ],
   "openings": [],
-  "objects": []
+  "objects": [],
+  "regions": []
 }

@@ -8,6 +8,7 @@
 	 * (`Resume`, `Discard`, `Show`, `Copy details`). It owns no source, Save or
 	 * selection state and never repairs a finding.
 	 */
+	import { downloadPendingCapture, type IncompatiblePendingCloudSave } from '$lib/authoring/save/pending-capture';
 	import type { ExperienceProblem } from '$lib/authoring/experience/experience-problems';
 
 	export type StageSourceFindings = {
@@ -17,6 +18,8 @@
 
 	let {
 		resumeOffer = false,
+		recoveryOffer = null,
+		onDiscardRecovery,
 		onResume,
 		onDiscard,
 		sourceFindings = null,
@@ -25,6 +28,8 @@
 		onShowProblem
 	}: {
 		readonly resumeOffer?: boolean;
+		readonly recoveryOffer?: IncompatiblePendingCloudSave | null;
+		readonly onDiscardRecovery?: () => void;
 		readonly onResume?: () => void;
 		readonly onDiscard?: () => void;
 		readonly sourceFindings?: StageSourceFindings | null;
@@ -38,7 +43,13 @@
 	);
 </script>
 
-{#if resumeOffer}
+{#if recoveryOffer !== null}
+	<div class="resume-offer" role="region" aria-label="Pending Save recovery">
+		<p>This pending Save uses a different Layout format. Download the capture to recover it with its original reader.</p>
+		<button type="button" class="primary" onclick={() => recoveryOffer && downloadPendingCapture(recoveryOffer)}>Download captured Save</button>
+		<button type="button" onclick={onDiscardRecovery}>Discard captured Save</button>
+	</div>
+{:else if resumeOffer}
 	<div class="resume-offer" role="region" aria-label="Pending cloud save">
 		<p>
 			A cloud Save was captured before sign-in. Resuming mounts your captured work and

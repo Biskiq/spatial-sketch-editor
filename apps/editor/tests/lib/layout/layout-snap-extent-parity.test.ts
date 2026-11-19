@@ -217,6 +217,7 @@ function geometryOf(spans: CompiledQuerySpan[], points: CompiledLayoutGeometry['
 		rooms: [],
 		walls: [],
 		objects: [],
+		regions: [],
 		queries: { points, spans, polygons: [], aabbs: [] },
 		bounds: null
 	};

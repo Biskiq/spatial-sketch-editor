@@ -2155,6 +2155,8 @@
 
 	<StageProjectNotices
 		resumeOffer={resumeOffer !== null}
+		recoveryOffer={projectSession.recoveryOffer}
+		onDiscardRecovery={projectSession.dismissRecoveryOffer}
 		onResume={() => void resumePendingSave()}
 		onDiscard={dismissResumeOffer}
 		{sourceFindings}

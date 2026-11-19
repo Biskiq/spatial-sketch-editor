@@ -244,8 +244,7 @@ describe('Room tool outlines and Open Space creation', () => {
 	it('supports independent nesting and refuses use of the Hall’s occupied Wall side', () => {
 		const hall = run('hall', [[0, 0], [12, 0], [12, 8], [0, 8]], true);
 		hall.rooms.push({
-			id: 'hall', name: 'Hall', overhead: 'closed', floorThickness: 0.1, ceilingThickness: 0.1,
-			boundary: hall.walls.map(({ id }) => ({ wallId: id, direction: 'forward' })), virtualEdges: []
+			id: 'hall', name: 'Hall', overhead: 'closed',  			boundary: hall.walls.map(({ id }) => ({ wallId: id, direction: 'forward' })), virtualEdges: []
 		});
 		const booth = run('booth', [[2, 5], [2, 2], [5, 2], [5, 5]]);
 		const plan = at(withRuns(hall, booth), [3, 3]);
@@ -278,8 +277,7 @@ describe('Room tool outlines and Open Space creation', () => {
 		const forged: LayoutDocumentWallFirst = {
 			...baseline, junctions: [...baseline.junctions, ...junctions],
 			rooms: [{
-				id: 'pinched', name: 'Pinched', overhead: 'open-to-sky', floorThickness: 0.1, ceilingThickness: 0.1,
-				boundary: [{ wallId: 'wallw1', direction: 'forward' }],
+				id: 'pinched', name: 'Pinched', overhead: 'open-to-sky',  				boundary: [{ wallId: 'wallw1', direction: 'forward' }],
 				virtualEdges: keys.slice(1).map((id, i) => ({ startJunctionId: keys[i]!, endJunctionId: id }))
 			}]
 		};

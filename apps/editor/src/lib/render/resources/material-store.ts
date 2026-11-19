@@ -256,6 +256,11 @@ function construct(
 		case 'standard':
 			return new MeshStandardMaterial({
 				color: descriptor.color,
+				...(descriptor.polygonOffset ? {
+					polygonOffset: true,
+					polygonOffsetFactor: descriptor.polygonOffset[0],
+					polygonOffsetUnits: descriptor.polygonOffset[1]
+				} : {}),
 				roughness: descriptor.roughness,
 				metalness: descriptor.metalness,
 				// Three's own defaults for the rest: an unset emissive is black and

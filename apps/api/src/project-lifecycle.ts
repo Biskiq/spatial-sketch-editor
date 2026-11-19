@@ -32,6 +32,21 @@ export type RenameProjectRequest = { name: string; precondition: ProjectLifecycl
 export type DeleteProjectRequest = { precondition: ProjectLifecyclePrecondition };
 export type DeleteProjectAcknowledgement = { projectId: string; cleanup: 'complete' | 'pending' };
 
+export const UNSUPPORTED_LAYOUT_FORMAT = 'unsupported_layout_format';
+export const UNSUPPORTED_LAYOUT_MESSAGE =
+	'This project was saved in a different Layout format. Open it with its original reader to recover the source.';
+
+export function hasUnsupportedLayoutFormat(issues: readonly { path: string; code: string }[]): boolean {
+	return issues.some(({ path, code }) => code === 'unsupported_format_version' &&
+		(path === '$.units.layout.header.formatVersion' || path === '$.units.layout.data.formatVersion'));
+}
+
+export class UnsupportedLayoutFormatError extends Error {
+	constructor() {
+		super(UNSUPPORTED_LAYOUT_MESSAGE);
+	}
+}
+
 export class ProjectLifecycleInputError extends Error {
 	readonly statusCode = 400;
 	readonly code: 'invalid_body' | 'invalid_project_name';
@@ -123,6 +138,7 @@ export async function renameProject(
 	const loaded = await loadProject(pool, ownerId, projectId);
 	const validation = validateProjectEnvelope(loaded.document);
 	if (!validation.success || validation.envelope.id !== projectId) {
+		if (!validation.success && hasUnsupportedLayoutFormat(validation.issues)) throw new UnsupportedLayoutFormatError();
 		throw new Error('Stored project failed validation');
 	}
 	const envelope = validation.envelope;

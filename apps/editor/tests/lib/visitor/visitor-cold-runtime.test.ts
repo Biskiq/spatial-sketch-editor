@@ -346,6 +346,19 @@ describe('P22.1 cold runtime + asset seam', () => {
 		).toThrow(/Native forms are not admitted for publication/);
 	});
 
+	it('refuses outgoing Layout source through the cold release reader', async () => {
+		const current = await createUnitProject({ id: 'project:outgoing-layout', name: 'Outgoing source' });
+		const outgoing = structuredClone(current);
+		const oldLayout = {
+			header: { ...outgoing.units.layout.header, formatVersion: 8 },
+			data: { ...outgoing.units.layout.data, formatVersion: 8 }
+		};
+		expect(() => composeColdReleaseBundle({
+			document: { ...outgoing, units: { ...outgoing.units, layout: oldLayout } },
+			manifest: { releaseId: `${outgoing.id}@v1`, bytesByUri: new Map() }
+		})).toThrow('$.units.layout.header.formatVersion must be 9 for the layout unit');
+	});
+
 	it('composes an empty project store-free and disposes cleanly', async () => {
 		setDefaultTextureSourceLoader(null);
 		const project = await createUnitProject({ id: 'project:cold-a', name: 'Cold A' });

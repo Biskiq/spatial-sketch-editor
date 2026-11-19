@@ -5,7 +5,7 @@ import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type Compil
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
-import { cutWallBandsOf, fragmentLayer, type CutWallSpan } from '../stage/paper-plan';
+import { cutWallBandsOf, fragmentLayer, PAPER_LAYER, type CutWallSpan } from '../stage/paper-plan';
 import { drawnShownPlanCells, sliceHides, type DrawnResolvedSlice, type ResolvedSlice } from '../stage/slice/slice-cut';
 import {
 	clipRegionToHalfPlanes,
@@ -270,6 +270,27 @@ export function clipSurfaceToSlice(surface: StagePickSurface, slice: ResolvedSli
 	}
 	return pieces;
 }
+
+export function clipPlanRegionFragments(plan: PlanEvaluation, slice: ResolvedSlice | null): PlanEvaluation {
+	if (slice === null || !plan.fragments.some((fragment) => fragment.ref.sourceKind === 'region')) return plan;
+	const clip = (fragment: PlanFragment): PlanFragment[] => {
+		if (fragment.ref.sourceKind !== 'region') return [fragment];
+		return clipSurfaceToSlice({
+			kind: 'flat', elevationMeters: fragment.elevationMeters, geometry: fragment.geometry
+		}, slice).flatMap((surface) => surface.kind === 'flat' ? [{ ...fragment, geometry: surface.geometry }] : []);
+	};
+	return {
+		...plan,
+		fragments: plan.fragments.flatMap(clip),
+		streams: {
+			cut: plan.streams.cut.flatMap(clip),
+			projected: plan.streams.projected.flatMap(clip),
+			hidden: plan.streams.hidden.flatMap(clip),
+			symbol: plan.streams.symbol
+		}
+	};
+}
+
 
 function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
 	const segments: (readonly [LayoutVec2, LayoutVec2])[] = [];
@@ -767,7 +788,8 @@ export function createPlanPickProvider(
 	 * Eraser refuses them here rather than skipping to a subject behind them.
 	 */
 	const eraseRefusal = (sourceKind: string): string | null =>
-		sourceKind === 'room-floor'
+		sourceKind === 'region' ? 'Regions are read-only.'
+			: sourceKind === 'room-floor'
 			? 'A Room floor cannot be erased.'
 			: sourceKind === 'object'
 				? 'A plinth cannot be erased; Layout has no delete for its objects.'
@@ -922,6 +944,22 @@ export function createPlanPickProvider(
 				}
 			}
 		}
+		if (evaluation.renderedReading !== 'plan' && context.snapshot.domain.geometry.regions.length > 0) {
+			const ray = pointerRay(css, evaluation, token);
+			const drawn = ray.kind === 'ray' ? context.pickScene(ray.ray) : null;
+			if (drawn?.region) {
+				return {
+					hit: {
+						sourceId: drawn.region.regionId, sourceKind: 'region',
+						generationId: context.snapshot.compileGeneration, stream: 'projected',
+						subRef: { kind: 'component', componentId: drawn.region.surface },
+						worldPoint: drawn.worldPoint
+					},
+					refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' ? eraseRefusal('region') : null,
+					depthMeters: drawn.distanceMeters, planLayer: PAPER_LAYER.projected, cssDistance: 0
+				};
+			}
+		}
 		const openingOverHost = erasing || (evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
 		const roomAreaOf = (roomId: string): number | null => {
 			const room = context.snapshot.domain.geometry.rooms.find((candidate) => candidate.roomId === roomId);
@@ -957,7 +995,7 @@ export function createPlanPickProvider(
 		};
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
-			if (fragment === undefined || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
+			if (fragment === undefined || (fragment.ref.sourceKind === 'region' && evaluation.renderedReading !== 'plan') || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
 			const surfaces = pickSurfacesOf(
 				fragment,
 				context.snapshot.domain.geometry,

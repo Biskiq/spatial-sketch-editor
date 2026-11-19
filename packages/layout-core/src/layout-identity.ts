@@ -77,11 +77,12 @@ export const LAYOUT_REFERENCE_PREFIX: Record<LayoutIdentityFamily, string> = {
 	rooms: 'R',
 	junctions: 'J',
 	walls: 'W',
-	openings: 'O'
+	openings: 'O',
+	regions: 'H'
 };
 
 /** One reference: family prefix, `-`, four unambiguous characters. */
-export const LAYOUT_REFERENCE_PATTERN = /^[RJWO]-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/;
+export const LAYOUT_REFERENCE_PATTERN = /^[RJWOH]-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/;
 
 /** Named failure code for a document that has exhausted its allocation space. */
 export const LAYOUT_IDENTITY_EXHAUSTED_CODE = 'identity_space_exhausted';
@@ -113,7 +114,8 @@ const FAMILY_BY_PREFIX: Record<string, LayoutIdentityFamily> = {
 	R: 'rooms',
 	J: 'junctions',
 	W: 'walls',
-	O: 'openings'
+	O: 'openings',
+	H: 'regions'
 };
 
 /**
@@ -177,7 +179,7 @@ export function indexOfReference(token: string): number | undefined {
 
 /** An empty ledger: no assignment, cursor at the start of the space. */
 export function emptyLayoutIdentityLedger(): LayoutIdentityLedger {
-	return { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} };
+	return { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {}, regions: {} };
 }
 
 /** The document's allocation cursor; `0` when the document carries no ledger. */
@@ -209,7 +211,8 @@ function liveIdsByFamily(
 		rooms: document.rooms.map((room) => room.id),
 		junctions: document.junctions.map((junction) => junction.id),
 		walls: document.walls.map((wall) => wall.id),
-		openings: document.openings.map((opening) => opening.id)
+		openings: document.openings.map((opening) => opening.id),
+		regions: document.regions.map((region) => region.id)
 	};
 }
 
@@ -323,7 +326,7 @@ type MintOptions = {
  * Compute the resolved ledger for a document: keep every existing assignment,
  * prune entries whose canonical ID is no longer live, and mint for entities that
  * have none — in the documented fixed order (rooms → junctions → walls →
- * openings), in document order within each family.
+ * openings → regions), in document order within each family.
  *
  * Copy-on-write: returns the input object itself when nothing changed, so the
  * transient path is free.

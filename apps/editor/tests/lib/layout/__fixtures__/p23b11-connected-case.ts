@@ -131,8 +131,6 @@ export function buildP23B11ConnectedCase(): LayoutDocumentWallFirst {
 					{ wallId: verticalWallId(column, row), direction: 'reverse' }
 				],
 				virtualEdges: [], overhead: 'closed',
-				floorThickness: FLOOR_THICKNESS,
-				ceilingThickness: CEILING_THICKNESS
 			});
 		}
 	}

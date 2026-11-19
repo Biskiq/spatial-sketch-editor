@@ -109,7 +109,8 @@ function roomlessDocument(
 		walls,
 		rooms: [],
 		openings: [],
-		objects: [] as LayoutDocumentWallFirst['objects']
+		objects: [] as LayoutDocumentWallFirst['objects'],
+		regions: []
 	};
 }
 
@@ -427,14 +428,13 @@ describe('curve dissolve', () => {
 						{ wallId: 'w4', direction: 'forward' }
 					],
 					virtualEdges: [], overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			],
 			openings: [
 				{ id: 'door', wallId: 'w1', kind: 'door', offset: 2.6, width: 0.9, height: 2, sillHeight: 0, profile: 'rectangular' }
 			],
-			objects: [] as LayoutDocumentWallFirst['objects']
+			objects: [] as LayoutDocumentWallFirst['objects'],
+			regions: []
 		};
 		const curved = planConvertWallToCurve(document, 'w1');
 		expect(curved.kind).toBe('success');

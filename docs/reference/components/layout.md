@@ -7,16 +7,17 @@ reconstructs a second topology or navigation authority.
 
 ## Current contract
 
-Layout format 8 is wall-first. Wall role is derived; every closed ring encloses. A free-standing
+Layout format 9 is wall-first. Wall role is derived. Every closed ring encloses. A free-standing
 Wall encloses nothing; a dividing Wall creates reconciled Room topology. Room identity is persistent
 through reconciliation, while Room geometry remains derived and is never directly editable.
 Authored placement is world-local with explicit internal frames, without mandatory Room ownership.
 [Editing-path rules](layout-performance.md) govern previews, commit and retained roots.
 
-Format 8 is the only recognized version. Every Room carries the required `virtualEdges` and
+Format 9 is the only recognized version. Source always includes a `regions` collection and a
+`regions` map in the identity ledger whenever the ledger is present. Every Room carries the required `virtualEdges` and
 `overhead` fields; an enclosed Room has no virtual edges, and an open Space states the straight
 segments that close its Wall gaps. The reader refuses every other declared version strictly, with
-no migration and no second decoder: a format-7 payload fails as `unsupported_format_version`.
+no migration and no second decoder: a format-8 payload fails as `unsupported_format_version`.
 
 ## Open Spaces
 
@@ -33,10 +34,11 @@ an unmotivated virtual edge, a repeated Junction origin, a non-positive or self-
 and an overlap or containment that I7 forbids (an open Space wholly inside an enclosed Room is the
 one admitted nesting).
 
-`overhead: 'open-to-sky'` removes the generated lid and the ceiling thickness from Room bounds and
-nothing else: Wall heights, the derived `ceilingElevation`, the floor and every Wall record stay.
-A `closed` Space keeps its full lid over the whole outline. Enclosed Rooms retain their compiled
-geometry and cache keys.
+`overhead: 'open-to-sky'` omits the generated Room lid. Wall heights, the derived
+`ceilingElevation`, the floor and every Wall record stay. A `closed` Space keeps its lid over
+the whole outline. The generated Room floor and lid are zero-thickness planes. Room
+and query bounds span their elevations without slab padding. Open, re-close, split, duplicate
+and merge preserve their existing Space identity, association and overhead rules.
 
 The collection and type keep the name Room; `LayoutObject.roomId` and draft `connectsRoomIds`
 references are unchanged. An open Space's Wall rows keep their `room:` relation. SP1a changes the
@@ -252,13 +254,9 @@ by choosing a nearby entity.
 
 ## Focused mechanisms carried forward
 
-- **D2 — ceiling closure, coverage and datum.** Independent closure/suspended regions retained;
-  decide Floor-relative versus world-fixed authored overhead under datum change, with measured
-  world height shown clearly either way. Generated fallback only for uncovered enclosure; no
-  duplicate authored closure overlap. Open.
-- **D3 — fit/gap and intentional openings.** Prefer explicit one-shot fixes with previews and
-  **no automatic following**; decide the representation of intentional Wall/ceiling gaps
-  alongside closure intent. Persistent fit constraints deferred. Open.
+- **D2 and D3 — datum and intentional gaps.** The Horizontal Region format records the slab's
+  world elevation and explicit Wall lineage for intentional gaps. Fit and relation authoring
+  follow the [verticality plan](../../roadmap/t1-spatial-world/next-batch/v-plan-verticality.md).
 - **D5 — crop, cut-only, seam and ambiguous inverse.** The closed-Wall display cut is settled:
   opposite the anchor, moved to the nearest solid Wall gap when it would fall inside an Opening,
   with the canonical seam at station 0. Any remaining presentation or recovery rule for an
@@ -270,17 +268,20 @@ by choosing a nearby entity.
   thresholds are tunable. Open.
 
 
-## Slab and ceiling ownership kept open
+## Horizontal Regions
 
-F names slab/ceiling ownership as an **open mechanism**, so it stays open: an independent
-CeilingRegion owns footprint, height/profile, thickness and closure/suspended meaning; a Room
-may seed or overlap a footprint but **never owns the region**. Default generated Room closure is
-preserved where no authored closure overrides coverage, suspended regions do not erase
-enclosure, and an ambiguous overlapping-closure surface is **refused pending an explicit joint
-rule** rather than double-rendered. Generated fallback stays derived and unpersisted; converting
-it to an authored region is an explicit command. Persistent fit-to-overhead is not a
-prerequisite for truthful relations or one-shot fixes.
+A Horizontal Region is an independent, flat Layout slab with a counterclockwise polygon
+footprint, datum-relative elevation and positive thickness. A floor region's elevation is its top.
+An overhead region's elevation is its underside. A Region can span Spaces or sit outside
+them. Its volume can touch another region at a boundary. Slabs with overlapping
+footprint interiors and elevation intervals are refused. Generated Room planes remain
+derived at their own elevations and may coincide with a Region surface.
 
+Layout compiles each Region once into bounds, Plan records and a closed slab shared by
+the Stage and Visitor representations. Top, underside and boundary edges have
+stable surface references. A Region wins a coincident generated floor pick. Declared
+intentional gaps keep their Wall references through topology splits and dissolves and
+lose the reference when that Wall is removed. No Room edit creates a Region.
 
 ## Input and validation
 

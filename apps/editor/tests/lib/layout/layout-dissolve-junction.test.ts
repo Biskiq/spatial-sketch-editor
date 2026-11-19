@@ -74,7 +74,8 @@ function buildDocument(options: {
 		),
 		rooms: options.rooms ?? [],
 		openings: options.openings ?? [],
-		objects: [] as LayoutDocumentWallFirst['objects']
+		objects: [] as LayoutDocumentWallFirst['objects'],
+		regions: []
 	};
 }
 
@@ -111,8 +112,6 @@ function splitRectDocument(): LayoutDocumentWallFirst {
 					{ wallId: 'w4', direction: 'forward' }
 				],
 				virtualEdges: [], overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		],
 		openings: [
@@ -442,8 +441,6 @@ describe('straight dissolve', () => {
 						{ wallId: 'wall-s2', direction: 'forward' }
 					],
 					virtualEdges: [], overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				},
 				{
 					id: 'right',
@@ -456,8 +453,6 @@ describe('straight dissolve', () => {
 					],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			],
 			openings: [
@@ -533,8 +528,6 @@ describe('straight dissolve', () => {
 					],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				},
 				{
 					id: 'right',
@@ -548,8 +541,6 @@ describe('straight dissolve', () => {
 					],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			],
 			openings: [
@@ -645,8 +636,6 @@ describe('dissolve round trips', () => {
 					],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			],
 			openings: [
@@ -714,8 +703,6 @@ describe('dissolve room tripwire and codec round trip', () => {
 			boundary: document.rooms[0]!.boundary.map((ref) => ({ ...ref })),
 			virtualEdges: [],
 			overhead: 'closed' as const,
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 		const before = JSON.stringify(document);
 		const plan = dissolve(document, 'M');

@@ -45,6 +45,7 @@ export function selectionObjectsOf(scenePick: ScenePickSource, entry: StageSelec
 		const owned =
 			kind === 'wall' ? scenePick.layoutObjectOf('wall', id)
 			: kind === 'object' ? scenePick.layoutObjectOf('object', id)
+			: kind === 'region' ? scenePick.layoutObjectOf('region', id)
 			: kind === 'room' ? scenePick.layoutObjectOf('floor', id)
 			: null;
 		return owned === null ? [] : [owned];

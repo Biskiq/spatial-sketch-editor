@@ -46,7 +46,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 8,
+		formatVersion: 9,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -64,7 +64,8 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 		openings: (walls.flatMap((wall) =>
 			wall.opening ? [{ ...wall.opening, wallId: wall.id, kind: 'door' as const, sillHeight: 0, profile: 'rectangular' as const }] : []
 		) as LayoutDocumentWallFirst['openings']),
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 

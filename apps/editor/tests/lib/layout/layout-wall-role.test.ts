@@ -54,8 +54,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'v-0', direction: 'reverse' }
 			],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		},
 		{
 			id: 'room-right',
@@ -68,8 +66,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			],
 			virtualEdges: [],
 			overhead: 'closed' as const,
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	return document;

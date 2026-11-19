@@ -275,7 +275,7 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 		{
 			id: 'unit.layout@1',
 			domain: 'layout',
-			subjectKinds: ['level', 'room', 'wall', 'opening', 'junction', 'object'],
+			subjectKinds: ['level', 'room', 'wall', 'opening', 'junction', 'object', 'region'],
 			owner: 'layout',
 			resolve(reference, request) {
 				const accepted = request.context.snapshot.acceptedRevision;
@@ -288,6 +288,7 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 					[
 						{ kind: 'level', id: levelId, instancePath: [], revision: layoutRevision },
 						...layout.rooms.map((room) => ({ kind: 'room', id: room.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
+						...layout.regions.map((region) => ({ kind: 'region', id: region.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
 						...layout.walls.map((wall) => ({ kind: 'wall', id: wall.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
 						...layout.openings.map((opening) => ({ kind: 'opening', id: opening.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
 						...layout.junctions.map((junction) => ({ kind: 'junction', id: junction.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),

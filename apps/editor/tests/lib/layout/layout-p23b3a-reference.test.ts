@@ -147,7 +147,8 @@ function documentOf(options: {
 		),
 		rooms: options.rooms ?? [],
 		openings: options.openings ?? [],
-		objects: options.objects ?? []
+		objects: options.objects ?? [],
+		regions: []
 	};
 }
 
@@ -170,8 +171,6 @@ function roomFromFace(
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 }
 

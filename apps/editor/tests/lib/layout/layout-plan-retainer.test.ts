@@ -109,15 +109,14 @@ function document(
 								{ wallId: 'w4', direction: 'forward' }
 							],
 							virtualEdges: [], overhead: 'closed',
-							floorThickness: 0.1,
-							ceilingThickness: 0.1
 						}
 					],
 		openings:
 			options.door === null || options.door === undefined
 				? []
 				: [{ id: 'door-1', wallId: 'w1', kind: 'door' as const, profile: 'rectangular' as const, ...options.door }],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 

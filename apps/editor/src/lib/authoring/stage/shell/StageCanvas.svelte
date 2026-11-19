@@ -534,6 +534,7 @@ import StageMatGround from './StageMatGround.svelte';
 			height={evaluation.rect.height}
 			reveal={paperReveal}
 			isFootprintMounted={footprintMounted}
+			{resolvedSlice}
 			{datumMeters}
 			{selection}
 			{hover}

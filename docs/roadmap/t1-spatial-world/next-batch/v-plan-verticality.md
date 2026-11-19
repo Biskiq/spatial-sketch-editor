@@ -1,12 +1,11 @@
 # T1 V-plan — Architectural Volume and Verticality
 
-**Status:** proposed architecture, Tier 2, awaiting owner review. Planning only: no production
-code, schema, fixture or approved-roadmap edit is in this PR, and nothing here is production
-acceptance. Each slice still opens its own PR. Eight owner decisions are listed in §16 with a
-recommended answer each; V1a can be authorised once OD-1, OD-2 and OD-3 are answered.
+**Status:** V1a implementation plan, first commit of the `layout.horizontal-region` draft PR,
+for owner review before code. V1b–V1d are separate implementation slices. V2/V3 remain planned
+extensions. Production cutover is subject to §9.
 
-**Capabilities:** `layout.horizontal-region` *new* (V1, V3), `layout.wall-top-profile` *new* (V2).
-**Base:** `main` at `6e1b7bc5`.
+**Capabilities:** `layout.horizontal-region` (V1, V3), `layout.wall-top-profile` (V2).
+**Base audited:** `main` at `d251445c` (SP2, #377).
 
 **Authority:** the approved [T1 next batch](./README.md#architectural-volume-and-verticality)
 (PR #290; decisions Q7, Q8, Q9, Q10, Q16), its [slices](./implementation-prs.md#lane-d-depth),
@@ -18,11 +17,8 @@ mechanisms D2 and D3), [persistence](../../../reference/components/persistence.m
 [editing-path rules](../../../reference/components/layout-performance.md) and the T2 proposal's
 [coordination section](../../t2-look-atmosphere/README.md#10-coordination).
 
-**Evidence limit.** "Observed" means read from code at the base commit and cited as `file:line`.
-Nothing was run in the editor. "Assumed" marks what was not read or cannot be known until an
-earlier slice lands; each assumption names the slice that must check it. SP1, C1 and X1 are not
-implemented at the base commit: Layout is still format 7 and no Lift reading exists in
-`apps/editor/src/lib/authoring`.
+**Evidence:** repository code, contracts and tests at the audited base. Deployed project and release
+inventories require the cutover evidence in §9.
 
 ## 1. Verdict
 
@@ -34,54 +30,31 @@ implemented at the base commit: Layout is still format 7 and no Lift reading exi
    appearance and no Space ownership. A Space's generated floor and lid stay derived from its
    outline and depend only on the Space's `overhead` intent (SP-plan I11). The P26 words "closure
    versus suspended" are superseded by Q8 and leave the Layout contract when V1a merges.
-3. **Remove `floorThickness` and `ceilingThickness` from the Room record in V1a**, subject to OD-1.
+3. **Remove `floorThickness` and `ceilingThickness` from the Room record in V1a** (OD-1, §9).
    A Space owns identity, boundary and overhead intent. Its generated floor and lid are surfaces.
    The physical thickness of an authored floor or overhead belongs to its region (§5.2).
 4. **A Wall keeps `height` and gains one required `top`.** `height` is the lowest point of the
-   top; `top` adds rise above it: `level`, `slope` or `gable`. Every reader of `wall.height`
-   stays correct, and a level Wall compiles to exactly today's output, cache keys included.
+   top; `top` adds rise above it: `level`, `slope` or `gable`. Readers that need the actual top switch to `wallTopAt`/
+   `wallTopRange` in V2. A level Wall compiles to today's output, cache keys included.
 5. **Shed and gable are forms of an overhead region**, defined as one or two planes over the
    footprint. No hips, valleys or extra profile joints.
 6. **Relations are derived readings; fits are one-shot planners.** The only authored relation fact
    is a per-region list of Walls whose gap is intended. Two fit planners serve V1 and V3 with the
    same definitions: *Fit Roof to Walls* stops at first contact, *Fit Walls to Roof* seals.
-7. **Five format bumps cross this batch, not three:** SP1a, V1a, C1, V2a, V3a. One is in flight at
-   a time and numbers are taken at merge (§9, OD-3).
+7. **Five format bumps across the batch:** SP1a has landed. V1a, C1, V2a and V3a follow in
+   that order (§9, OD-3).
 
-## 2. Observed, and assumed
+## 2. Landed baseline
 
-### Observed at `6e1b7bc5`
-
-| # | Fact | Where |
-| --- | --- | --- |
-| O1 | Layout is format 7; the Layout unit version in the F2 envelope is the same constant, not a second number | `layout-wall-first-types.ts:82`; `packages/project-model/src/units/types.ts:46` |
-| O2 | A Room record is `id`, `name`, `boundary`, `floorThickness`, `ceilingThickness` | `layout-wall-first-types.ts:285`; `layout-wall-first-codec.ts:115` |
-| O3 | The codec accepts any positive finite Room thicknesses. Births use 0.1 m for both. The metadata planner can edit them, split and duplicate carry them, unequal values refuse a merge, and the compiler uses them in Room records, cache keys and bounds | `layout-wall-first-codec.ts:880`; `layout-room-reconciliation.ts:113`, `:990`, `:1027`; `layout-wall-topology-ops.ts:485`, `:531`; `layout-duplicate.ts:601`; `layout-geometry.ts:1752`, `:1774`, `:1791`, `:2187` |
-| O4 | The editor's Room metadata intent writes the name only. The shared visitor shell draws the generated floor and lid as planes at their compiled elevations, with a lid on every Room at this base | `apps/editor/src/lib/authoring/adapters/layout/precision.ts:712`; `VisitorLayoutShell.svelte:209`–`:231` |
-| O5 | A Room's ceiling is `floor.elevation + max(boundary Wall heights)`; its floor polygon follows Wall centerlines | `layout-geometry.ts:237`–`:254`, `:1668` |
-| O6 | A Wall's vertical extent is one scalar. Sections, Junction legs, endpoint bands, bounds and cache keys all take `wall.height` | `layout-geometry.ts:606`, `:607`, `:617`, `:1025`; `layout-geometry-openings.ts:149` |
-| O7 | `CompiledWallSection.topY` is a scalar; the mesh builder draws one level top face per section and already handles sloped *bottoms* for arches | `layout-geometry-types.ts:163`; `wall-mesh-builder.ts:1009`, `:1043`, `:1059`, `:1096` |
-| O8 | Opening fit compares `sill + height` with `wall.height`; the height planner is `planExactWallHeight` | `layout-opening-set.ts:260`; `layout-wall-first-precision.ts:554` |
-| O9 | The Wall mesh carries `(station, offset, height)` on every vertex and the development map moves vertices by that attribution; the separate sheet mesh takes a scalar `height` | `layout-wall-development.ts:196`, `:709` |
-| O10 | Unroll entry is disabled on a straight Wall | Layout contract, "Wall development and the Unroll reading" |
-| O11 | The support query reads only `room-floor` polygons, requires a `roomId` and cross-checks the Floor datum; Scene qualifies a witness as subject `room`, stream `layout:room-floor` | `layout-floor-support.ts:274`, `:295`, `:331`; `packages/project-model/src/scene-planning/place-object.ts:262` |
-| O12 | Compiled query polygons are `room-floor` or `object-footprint`; Plan emits one `room-floor` candidate per Room | `layout-geometry-types.ts:316`; `layout-plan-representation.ts:490` |
-| O13 | The identity ledger has four families and a reference pattern fixed to `R`, `J`, `W`, `O` | `layout-wall-first-types.ts:298`; `layout-identity.ts:77`, `:84` |
-| O14 | Document bounds feed the Camera session on every source rebase | `apps/editor/src/lib/authoring/stage/stage-facade.ts:1830` |
-| O15 | The toolbar registers **Roof** (`roofline`, planned, "after T1", options Flat / Pitch / Shed) and **Terrace** (planned, "after T5") | `apps/editor/src/lib/authoring/world-toolbar/registry.ts:177`–`:195` |
-| O16 | The Height Sheet takes found surfaces from each owning adapter | `layout.adapter.ts:5244`; `scene.adapter.ts:1695` |
-| O17 | The authored-dimension envelope is 1,000 m | `layout-geometry-limits.ts` |
-
-### Assumed, with the slice that must check it
-
-| # | Assumption | Checked by |
-| --- | --- | --- |
-| A1 | SP1a lands the Room fields `virtualEdges` and `overhead`, `composeSpaceBoundary`, `spaceAtPoint` and `CompiledRoom.overhead` as its plan states | V1a, before it starts |
-| A2 | The Plan evaluation context exposes a cut height a candidate can be classified against | V1a; fallback rule in §5.8 |
-| A3 | Scene placement can resolve one support when two elevations exist at a point (a platform over a floor) from the surface under the pointer, without asking | V1d, first check |
-| A4 | A Scene object keeps its world pose when its Layout support moves; nothing re-seats it silently | V1d, first check |
-| A5 | X1 Lift takes its overhead set from a Layout function, not from a hard-coded Room lid | X1's plan; handoff H-1 |
-| A6 | A6's `face` viewing intent exists when V3c starts | V3c; fallback in §7.4 |
+| Area | State at `d251445c` and implication for V1 |
+| --- | --- |
+| Layout 8 and SP1 | `layout-wall-first-types.ts` and `layout-wall-first-codec.ts` admit required `virtualEdges` and `overhead`, and positive finite Room thicknesses. `composeSpaceBoundary`, `spaceAtPoint` and `CompiledRoom.overhead` are live. Open to sky keeps the floor and identity and removes the rendered lid. Both merge paths, split, duplicate and Room birth still carry the thickness rules. |
+| SP2 | `space-create-session.ts` → `space-create-planners.ts` → `layout-space-create*.ts` and `layout-room-reconciliation.ts` implement Room tool claims and virtual closure in format 8. Preserve their planner, selection and F4 behavior through §5.2. SP1d's open-side handles remain Room/Space behavior. |
+| Stage and Lift | `stage-facade.ts` rebases Camera from compiled document bounds. X1 is live: `interior-lift-store.svelte.ts` reads `overheadSourcesOf`, and the shell and Stage ink/picking still address Room lids by Room id. X2 is live and Wall-only. |
+| Plan and Slice | `layout-plan-representation.ts` already evaluates datum-relative cut, depth, span and reveal in cold and retained paths. SL1/SL2 are live: `slice-cut.ts` supplies the resolved Level/Drawn cut, and Stage clipping, section mesh collection and Plan pick clipping apply it. §5.8 integrates regions with those paths. |
+| Shared draw path | `StageCanvas.svelte` and `VisitorPreviewSurface.svelte` both mount `VisitorLayoutShell.svelte`, which owns retained Wall, Room and Layout-object representations. A Room floor is a plane plus a shadow catcher. The generated lid is a plane at maximum boundary Wall height, and exists in the shell only for `closed`. |
+| Scene support | `layout-floor-support.ts` validates Room-floor witnesses against the Floor datum and merges equal-elevation witnesses. Scene's pointer path currently intersects the datum and checks occlusion first, then resolves support at snapped X/Z. It needs the visible raised-top path in §5.6. Scene source remains world-local. |
+| Storage and public | F2 uses the Layout constant for both admitted versions. Save is conditional and append-only. Load/rename validate the latest row, whereas listing checks the F2 epoch. Preview consumes the active accepted snapshot. Product public reads are in the T4 publication gap (§9). |
 
 ## 3. Model
 
@@ -133,20 +106,25 @@ type LayoutDocumentWallFirst = {
 };
 ```
 
-`LayoutWallFirstRoom` loses `floorThickness` and `ceilingThickness` in V1a (OD-1). Every new field
-is required, following the fresh-authority rule already applied to `centerline`: no defaulting, no
-missing-field tolerance.
+`LayoutWallFirstRoom` loses `floorThickness` and `ceilingThickness` in V1a. `name` is optional and
+follows the existing Wall/Opening nonblank-name rule. Every other new region/root field is
+required. The existing optional ledger rule stays in effect at the document root. When a ledger
+is present, require its `regions` map. Canonical writers emit it, using the existing global cursor
+and allocation order with `regions` appended and `H-xxxx` references. Existing assignments and
+cursor/high-water semantics are preserved. A region id is unique across selectable Layout
+collections and the Floor datum. Keep region order on write and sort `intendedGaps` by the same
+ordinal string comparison used to check it on read.
 
 ### 3.2 Region invariants
 
 | # | Invariant | Enforced by |
 | --- | --- | --- |
-| G1 | The footprint is a simple polygon of 3 to 1,024 points, positive area in the orientation of a compiled floor polygon, no edge shorter than the point epsilon or longer than 1,000 m, no holes | Codec (count, finiteness, envelope); compiler, blocking (`region_footprint_self_intersects`, `region_footprint_not_positive`) |
+| G1 | The footprint is a simple polygon of 3 to 1,024 points, positive signed area in world X/Z, distinct vertices, every edge longer than `LAYOUT_GEOMETRY_EPSILON` and at most 1,000 m, no holes. Exactly 1,000 m is allowed and world translation is unrestricted | Codec (shape, count, finiteness, edge dimension); shared Layout admission/compiler check (repeated vertex, self-intersection and nonpositive area report distinct blocking issues) |
 | G2 | `elevation` is finite, within ±1,000 m; a floor region's is ≥ 0, an overhead region's is > 0 | Codec |
 | G3 | `thickness` is finite, > 0 and ≤ 1,000 m | Codec |
 | G4 | `role` never changes after birth | Planners: no intent writes it |
-| G5 | Two regions share no interior volume: plan interiors share area **and** their vertical bands overlap by more than the relation epsilon. Touching and exact stacking are allowed | Compiler, blocking (`region_overlap`) |
-| G6 | Every `intendedGaps` entry names an existing Wall; the list is sorted and unique | Codec (`missing_reference`, `invalid_value`); the Wall-lineage helper (§5.5) |
+| G5 | Two regions share no interior volume: plan interiors share area **and** their vertical bands overlap by more than the relation epsilon. Touching and exact stacking are allowed | Shared Layout admission/compiler check, blocking (`region_overlap`) |
+| G6 | Every `intendedGaps` entry names an existing Wall; the list is sorted and unique | Codec (`missing_reference`, `invalid_value`); existing Wall writers carry lineage from V1a (§5.5) |
 | G7 | A non-flat form requires `role: 'overhead'` (V3) | Codec (`region_form_requires_overhead`) |
 | G8 | No Wall, Junction, Opening or Layout object references a region. A Room references one only through SP3's follow relation | Types |
 | G9 | A region carries no appearance, no closure intent and no stored transform. Its points are project-world X/Z | Types |
@@ -189,14 +167,14 @@ so.
 | # | Question | Resolution |
 | --- | --- | --- |
 | 1 | Authored regions versus derived Space surfaces | Separate, never merged. A Space's floor and lid are generated from its outline and are not persisted. A region is authored and independent. A region never suppresses, trims or replaces a generated surface; only the Space's `overhead` intent removes a lid. Association between the two is the derived query `regionsOverSpace` (§5.6) |
-| 2 | `floorThickness`, `ceilingThickness` | Remove the authored fields and their compiled copies, cache inputs and bounds padding in V1a, subject to OD-1. Keep the generated surfaces and their source references (§5.2, §5.7). |
+| 2 | `floorThickness`, `ceilingThickness` | Remove the authored fields and their compiled copies, cache inputs and bounds padding in V1a (OD-1, §9). Keep the generated surfaces and their source references (§5.2, §5.7). |
 | 3 | Region identity and references | A captured document-global id; a fifth ledger family `regions`. Surface references are the region id plus `top`, `underside` or `edge`, never minted per compile. Region edits keep the id. §5.7 |
 | 4 | Footprint and sloped-top geometry | G1–G5 for footprints; forms are one or two planes parameterised by `rise`, `azimuth` and `ridgeOffset` over the footprint's own extent (§7.1); Wall tops are P1–P8 |
 | 5 | SP1's `overhead: closed \| open-to-sky` | Untouched and still the only thing that decides a lid. A region reads and writes no intent. The Card readout "Open to sky · under *name*" is `overhead` plus `regionsOverSpace` |
 | 6 | Shared-Wall profiles, intersections, Openings, clearance | A Wall has one top for both of its sides. A Wall may pass through a region: it reads **crosses** and nothing is cut. Regions may not interpenetrate each other (G5). Openings must fit under the top over their interval (P7). Clearance is the first downward-facing surface above a point, from the overhead support query |
 | 7 | Layout, Scene, Camera, Experience | §8 |
 | 8 | Format sequencing | One format-changing slice in flight; numbers taken at merge; five bumps in the batch. §9 |
-| 9 | Lift | V1c, the first slice in which a creator can make an overhead, does not merge before X1. V1a and V1b may (OD-2) |
+| 9 | Lift | X1 has landed. V1c, the first creator-facing authoring slice, ships with region Lift and Put back (OD-2) |
 | 10 | T2's J/S5a and S5b | Layout-local resolvers and queries ship in V1. The published wire type, finish storage and inheritance, unresolved-reference behaviour, persistent attachment and cross-unit history stay with J/S5. §14 |
 
 ## 5. V1 — flat horizontal regions
@@ -209,14 +187,9 @@ floor region      top = datum face          bottom = top - thickness
 overhead region   underside = datum face    top    = underside + thickness
 ```
 
-The Card shows the Floor-relative value and the world value together (Q7). A floor region at
-elevation 0 is legal: it is a paved area on the datum. Where it lies in the plane of a generated
-Space floor, the authored region draws over the generated surface; that priority is a stated rule
-of the Layout representation and is identical for the visitor. V1a specifies a deterministic
-coplanar presentation mechanism that retains both source identities without z-fighting or
-duplicate shadow artifacts. V1c gives the authored region picking priority over the generated
-floor at coincident pixels in Plan and 3D; this does not change the merged support witnesses
-in T-V8. Editor and visitor presentation must agree.
+The Card shows both Floor-relative and world elevation (Q7). A floor region at elevation 0 is
+legal. When its top is coplanar with a generated Space floor, §5.8 governs draw and pick priority.
+T-V8 still requires both witnesses for coincident support.
 
 ### 5.2 Generated surfaces and regions
 
@@ -240,17 +213,18 @@ single thickness scalar.
 V1a removes the Room metadata writes and the thickness-only merge refusal on both the enclosed
 and open merge paths. Preserve the existing survivor, overhead, identity, associations and
 surface-reference rules. Switching back to **Closed** regenerates the lid at its derived
-elevation. Room bounds enclose the generated planes that are present and the physical Walls.
-Floor and document bounds can contract where the removed padding was extremal. Its amount comes
-from the stored values (0.1 m is the birth default). This changes inputs to Camera framing and
-depth evaluation (O14). Verify the new bounds through both cold and retained compilation and
-exercise Camera framing with them. The generated floor and lid retain their support and finish
-reference semantics.
+elevation. Room bounds enclose the floor plane, the lid plane if closed, and the physical boundary
+Walls. Use the compiled floor and ceiling polygons at their own elevations. Floor and document bounds
+can contract where padding was extremal. The delta depends on the stored values (0.1 m is the
+birth default). Test cold and retained bounds, default Camera framing and source rebase (T-V1).
+Generated floor/lid elevation, support and surface identity retain their existing meanings.
+SP2's Room tool, SP1's open-side lifecycle and associations use the resulting Room shape.
 
 ### 5.3 Planners
 
-All in `layout-region.ts`, all returning one validated candidate or one typed refusal, all one
-history entry. None changes topology, so none calls `reconcileRooms`.
+The region planners in `layout-region.ts` return one validated candidate or one typed refusal.
+V1c installs accepted candidates through F4. Geometry-neutral edits keep current ids, source
+order and flags. A region-only operation never calls `reconcileRooms`.
 
 | Planner | Does | Refuses |
 | --- | --- | --- |
@@ -293,7 +267,7 @@ stations concerned:
 `ε` is 1e-6 m, the support query's coplanar tolerance. The 1.0 m reach is a named constant. The
 principle behind the table: *a Wall meets a region when their solids touch or overlap with no
 visible gap and the Wall does not come out the other side.* That is why a footprint drawn to Wall
-centerlines, as a generated floor is (O5), reads **meets**.
+centerlines, as a generated floor is reads **meets**.
 
 A **gap** whose Wall id is in `intendedGaps` reads **intended** and still shows its measure. It
 offers no fix. Marking is `planSetRegionIntendedGap`.
@@ -310,38 +284,50 @@ geometry only. After a fit the two subjects are independent and the next reading
 | **Fit roof to walls** | `planFitRegionToWalls` | Changes `elevation` only, to first contact with the highest chosen Wall top: flat case `slabBottom = max wallTop` |
 | **Fit walls to roof** | `planFitWallsToRegion` | Sets each chosen Wall's top to the region's lower face: flat case `height = slabBottom − floor.elevation` through `planExactWallHeight`'s gates |
 
-The last two are the flat, level case of the general definitions in §7.3. V1 implements them with
-those signatures so V3 extends rather than replaces them.
+The last two are for overhead regions and specialize §7.3 to flat, level geometry. Use the same
+region id and explicit Wall set inputs in V1 and V3. Fit roof uses only chosen Walls whose compiled
+body touches or overlaps the footprint. Fit walls requires each eligible Wall's entire centerline
+inside or on the footprint. List partly covered Walls as skipped, refuse when none qualify, and
+validate all height and Opening gates together against the same baseline before one acceptance.
+Use compiled geometry, with no write at all if any eligible Wall fails. Preserve the existing
+empty/no-op result convention.
 
-**Wall lineage for `intendedGaps`.** One helper, `carryRegionWallIntents(regions, correspondence)`:
-a Wall born from a source inherits the source's entries; a Wall retired into a survivor hands its
-entries to the survivor; a Wall retired with no successor drops them. It is called by every planner
-that changes the set of Wall ids: split and noding, dissolve and join, removal, chain commits that
-node, and C's attach, repack and release. G6 in the codec is the backstop, and test T-V9 enumerates
-the call sites. A1 and A2 already owe a stated lineage rule; this consumes it.
+**Wall lineage for `intendedGaps`.** V1a admits imported region source, so existing Wall writers
+must preserve it from the format cutover. A single `carryRegionWallIntents(regions, correspondence)`
+handles split/noding (including the retained segment and SP2 Room-tool noding), dissolve/join,
+removal and noding chain commits. A split fans out to all descendants, a join unions flags into its
+survivor, retirement without successor drops the id, and independent Wall births (including
+duplicate) inherit none. Use the actual planner correspondence before canonical validation and
+keep unchanged arrays by identity. G6 is the backstop. V1b adds the authoring planner that marks
+or clears the flag. C's later attach, repack and release add their call sites (T-V9, H-5).
 
 ### 5.6 Support, clearance and association
 
-- **Upward support.** `queryFloorSupports` gains `region-top` polygons for `role: 'floor'`
-  regions. A witness's source becomes `{ kind: 'room', roomId } | { kind: 'region', regionId }`,
-  replacing the bare `roomId`; the datum cross-check (O11) applies to Room witnesses only, and a
-  region's elevation is its compiled top. Coincident supports already merge into one candidate and
-  different elevations already return `choice-required`; neither rule changes.
-- **Downward support.** A new `queryOverheadSupports(snapshot, { generationId, x, z,
-  aboveElevation? })` in the same module, with the same generation, tolerance and choice
-  contract. Candidates are the undersides of overhead regions and the lids of `closed` Spaces,
-  ascending by elevation, each with its downward normal and source witness.
-- **Clearance** above a point is the first candidate of that query minus the starting elevation.
-  It is a reading; nothing is refused for lack of headroom.
-- An overhead region's top and a floor region's underside give no support in V1. A floor region at
-  height is the J9 mezzanine probe; a light under it is not served.
-- **`regionsOverSpace(compiled, roomId)`**: regions whose footprint shares interior area with the
-  Space's outline, ordered by id. Derived, never stored. It feeds the Card readout, Lift's Space
-  scope and T2's Space paint scope.
-- **`overheadSourcesOf(compiled, scope)`**: closed-Space lids plus overhead regions, each with its
-  outline and elevation. This is the function A5 assumes X1 calls.
-- **Surface key** for SP-plan I7: `{ kind: 'datum' } | { kind: 'region'; regionId }`. Every Space
-  is on `datum` until SP3 lands a Space that follows a region.
+- **Upward support (V1b).** `queryFloorSupports` gains `region-top` for floor-role regions.
+  Witness source becomes `{ kind: 'room', roomId } | { kind: 'region', regionId }`. Keep Room
+  datum cross-checks, generation checks, coplanar witness merging and distinct-elevation
+  `choice-required`. A region witness must match compiled region id, role and top elevation.
+- **Downward support (V1b).** `queryOverheadSupports(snapshot, { generationId, x, z, aboveElevation? })`
+  mirrors upward support's validation, tolerance and witness merging. It returns closed-Space lids
+  and overhead-region undersides, sorted by increasing elevation, with downward normals and typed
+  source witnesses. If supplied, `aboveElevation` selects faces more than the coplanar tolerance above that height. Clearance reads the first result minus the starting elevation. Only the top
+  of a floor region and the underside of an overhead region offer support.
+- **Pointer placement (V1d).** Extend the existing Scene Place pointer path to find the nearest
+  visible upward support along the actual ray, using compiled footprints, current reading visibility
+  and the existing occluder test. A nearer solid side, underside, Wall or Scene body still blocks;
+  only a floor-role top can win as a new support. Use the hit's world X/Z for snap, requery at the
+  snapped point and pin that elevation and generation with the existing `SceneSupportChoice`.
+  If snap invalidates that candidate, refuse rather than select another height. Without pointer
+  evidence, preserve explicit choice for ambiguous elevations, existing datum fallback when no
+  authored floor support covers the point, and required-elevation rules for Move. One candidate with
+  both Room and region witnesses still resolves once.
+- **Association (V1b).** `regionsOverSpace(compiled, roomId)` returns regions whose footprint
+  shares positive interior area with the compiled Space, ordered by id. Lift uses this overlap
+  rule for Space scope; T2's separate paint scope is H-8. Add `region` alongside `room-lid` in
+  the existing `overheadSourcesOf`, sharing underside facts with the downward query. The `all`
+  scope returns all lids and overhead regions, with existing lid order and stable region-id order.
+- **SP3 surface key.** `{ kind: 'datum' } | { kind: 'region'; regionId }`. Every Space is on
+  `datum` until SP3 provides the follow relation (§14).
 
 ### 5.7 Surface references
 
@@ -358,11 +344,11 @@ type LayoutSpaceSurfaceRef  = { roomId: string;  surface: 'floor' | 'lid' };
 - Lineage: every region edit keeps the id, so all three references survive move, rotate,
   footprint, elevation, thickness and every fit. Duplicate creates three new references from the
   source's three. Removal leaves them unresolved. There is no region split or merge.
-- Proposed qualification above layout-core: subject kind `region` in the Layout domain, with the
-  surface as `componentId`. J/S5a ratifies or replaces it (§14).
-- V1d's region support witness may cross into project-model for placement, but is **not** a
-  published surface-finish key. The Layout-local surface resolver does not establish T2's wire
-  type or storage contract; those remain jointly ratified in J/S5a (§14, H-8).
+- V1a qualifies the Stage's selected subject as Layout `region` through the existing unit
+  resolver. The representation can use the surface as a component sub-reference. V1d qualifies
+  floor support evidence through F1 and exposes the Layout-local surface resolver. The evidence
+  lives in the prepared placement result. T2's published finish key and storage stay with J/S5
+  (§14, H-8).
 
 ### 5.8 Compiled output and presentation
 
@@ -381,25 +367,52 @@ type CompiledRegion = CompiledIdentity & {
 };
 ```
 
-- `CompiledLayoutGeometry.regions` is required and empty when there are none. Query output gains
-  polygons `region-top` and `region-underside` and an aabb kind `region`. Document bounds include
-  region bounds.
-- A region's cache key names its own record and `floor.elevation`, and nothing else. A Wall edit
-  recompiles no region and a region edit recompiles no Wall or Room. `layout-geometry-delta.ts`
-  and `layout-geometry-reuse.ts` gain the region family on those terms.
-- G5 runs in the compiler over region aabbs first, then `polygonsShareInteriorArea`.
-- **Mesh.** A new runtime-safe builder beside `wall-mesh-builder.ts` triangulates each compiled
-  face and tags every triangle with `{ kind: 'region', regionId, surface }`. A retained
-  representation beside the Wall and object representations reconciles by cache key and is mounted
-  once in `VisitorLayoutShell.svelte`, so editor and visitor share one path. Regions cast and
-  receive shadow. Material is the neutral floor tone on `top` and the neutral ceiling tone on
-  `underside` and `edge` until T2 finishes exist.
-- **Plan.** One candidate per region, `sourceKind: 'region'`, `subRef` naming the surface. A
-  region whose slab is wholly above the Plan cut height is on the `hidden` stream (dashed
-  outline); otherwise `projected` (outline, and a tint for a floor region). If the context has no
-  cut height (A2), overhead regions are `hidden` and floor regions `projected`.
-- **Picking.** 3D resolves from the triangle tag; Plan from the pick index. Both select the
-  canonical region. No nearest-face heuristic.
+- **Compile.** `CompiledLayoutGeometry.regions` is required, in document order. Emit `region-top`
+  for floor role, `region-underside` for overhead role and one `region` query AABB per region.
+  Query records carry source id and Floor id. Keep existing query record ordering, appending region
+  records after the existing subject records and before the summary Floor/document AABBs. Include
+  region extents in Floor/world and document bounds without assigning regions to a Room.
+- **Validation and reuse.** Share G1/G5 predicates between canonical source admission and the
+  compiler's blocking diagnostics, so Save and Stage agree. Reuse `polygonsShareInteriorArea`
+  after an AABB rejection, then apply the G5 vertical-band rule. Check the common unchanged-empty
+  path without a region scan. Retain each region by id, Floor datum and its own geometry inputs
+  (role, footprint, elevation, thickness, form), excluding name and intended gaps from geometry
+  keys. In `layout-geometry-delta.ts` preserve the retained region query/bounds unit on normal
+  Wall/Junction edits. A region change may use the existing full retained entry point and reuse
+  unchanged Wall/Room units. Cold compile, retained fallback and certified delta must agree on
+  arrays, query records, plan/reuse indexing and bounds. The certified route must prove that
+  its region inputs are unchanged before carrying the unit forward.
+- **Mesh and coplanarity.** A runtime-safe builder triangulates the compiler's outward planar
+  faces and retains the mapping from `faceIndex` to `top`, `underside` or `edge`. For a positive X/Z
+  loop, the compiler reverses the upper polygon for its upward normal, keeps the original order
+  on the underside and winds the side quads outward. The closed mesh gives Slice the full solid.
+  A shared retained region representation mounts once in `VisitorLayoutShell.svelte`, leases the Canvas's material resources, and uses floor
+  and ceiling tones for top and underside/edge respectively until T2. Regions cast and receive
+  shadows. For the floor-role top at the Floor datum, use a dedicated opaque top material with
+  depth bias toward the viewer (polygon offset factor/units `-2/-2`, ahead of the Room's
+  catcher at `-1/-1`). Draw it after the Room opaque floor so the later catcher fails depth
+  in the overlap. Preserve canonical vertex Y, shadow-caster geometry and both source records.
+  Check the overlap with the Stage mat, the Preview ground and an authored casting light.
+- **Plan.** Feed one candidate per region to `evaluateLayoutPlan` and `createPlanRetainer` using
+  the same builder. Classify against `datumMeters + cutHeightMeters`: wholly above is a
+  `hidden` dashed outline in normal Plan, a plane strictly through the slab is `cut` at cut
+  Y, and a slab below or merely tangent is `projected` at the visible face. Share the landed
+  Slice contact tolerance (1e-4 m) from layout-core. Tint projected floors and outline projected
+  overheads. Keep the existing depth, span, filter and reveal contracts. Use `component` subRefs
+  with stable face roles. Assign the cut polygon to `edge` and the above-cut outline to
+  `underside` for overheads or `top` for floor regions. Keep existing Wall/Opening/object/Room stream behavior.
+- **Slice.** Level Slice hides slabs wholly above the cut or below its depth window; it uses the
+  same footprint for section ink through the interior and clips hits at the same resolved limits.
+  Drawn Slice clips the same rendered mesh and the same Plan polygon using the existing clip
+  cells. In `scene-pick-source.ts` register each region's closed mesh under a section group
+  `layout-region:<id>`, separate from Walls and other regions. Reuse the existing cap and exact
+  pick filters and existing selected-hidden ghost policy. Stage clip/ink/picks must agree at
+  either boundary, across drawn depth/Flip, and at zero-area tangency.
+- **Picking.** Reuse the retained identity index and production hit providers. In a 3D distance
+  tie within the coplanar tolerance, a region top outranks a coincident generated floor. In Plan
+  the same floor tie is resolved above the Room fill; dashed overhead footprints are outline
+  hits only. Preserve existing Wall/Opening and Scene arbitration. Plan and mesh hits qualify
+  to the same region subject; Preview shares as-built geometry and component attribution.
 
 ### 5.9 Editor surface (V1c)
 
@@ -408,8 +421,8 @@ tools. Anything not listed here is not designed and is not built.
 
 - **Create.** **Terrace** makes a floor region; **Roof › Flat** makes an overhead region. Both
   draw like Walls: Box (two corners) or Line (click, click, close). Elevation is the Height
-  Sheet's height; an overhead at datum height takes the Wall creation default instead. The
-  registry stubs are aligned in the same PR (Terrace's "after T5", Roof's Pitch options).
+  Sheet's height. An overhead at datum takes the Wall creation default, and regions start at
+  0.10 m thick. Enable Terrace and Roof › Flat in the registry, with Pitch options deferred to V3.
 - **Edit.** Corner knobs move points; dragging a corner onto the line between its neighbours
   removes it, as a bend point is removed; **Add corner here** is a scoped-list action on an edge.
   The height ray sets elevation. Body drag moves; the turn mark rotates. Thickness, exact size
@@ -421,8 +434,12 @@ tools. Anything not listed here is not designed and is not built.
   unselected region.
 - **Index.** One group, **Regions**. A Space's Card lists the regions over it and reads
   "Open to sky · under *name*" when that applies.
-- **Lift.** Overhead regions join the lifted set through `overheadSourcesOf`; a lifted, selected
-  region is a ghost with working handles (X1's acceptance already says so).
+- **Lift.** Consume the typed `OverheadSourceKey`/subject in the Lift store, `StageCanvas`, the
+  Stage Lift ink and Plan/3D outline pick paths. Pass typed keys from Stage to the shared shell.
+  The retained region representation switches visual layers using X1's layer mechanism. Preserve
+  caster eligibility in the actual Stage shadow pass for every relevant light (including sun and
+  authored spot/point), and draw the selected ghost/handles only in the editor. Put back restores
+  the as-built view. Preview and Look-through draw as built and carry no Lift reading.
 - **Height Sheet.** Region tops and undersides are found-surface ticks from the Layout adapter.
 - **Erase.** The Eraser removes a region. It asks nothing in Layout; Scene consequences are §8.
 
@@ -456,12 +473,12 @@ makes both Walls at a corner evaluate exactly their end height, so corner seams 
   local facts, unchanged.
 - `wall-mesh-builder.ts`: apex distances join the clip knots; the top vertex of each face is
   `wallTopAt` at the vertex's station; the top face is a ruled quad with its normal from geometry;
-  band clamping gains the mirror of the sloped-bottom rule it already has (O7). With no
+  band clamping gains the mirror of the Wall mesh's sloped-bottom rule. With no
   `topProfile` the builder takes today's code path untouched.
 - Room ceilings stay `max(boundary Wall heights)`, the eave heights. A gable does not raise a lid.
 - Openings: `opening_exceeds_wall_height` compares against `wallTopRange(...).min` over the
   Opening's interval, with the existing epsilon. An arch is tested by its bounding height.
-- Development: the Wall mesh develops through its vertex attribution with no change (O9). The
+- Development: the Wall mesh develops through its existing station/offset/height attribution. The
   sheet mesh options gain `topProfile`; face frames use the peak.
 
 ### 6.3 Planners
@@ -486,7 +503,7 @@ makes both Walls at a corner evaluate exactly their end height, so corner seams 
   `(station, height)` through the development map of the current reading. On an unrolled Wall they
   are on the sheet. On a Wall that is not unrolled they are on the Wall's own face, which is the
   same map at amount 0. This is how a straight gable end is edited although its Unroll entry is
-  disabled (O10, OD-6).
+  disabled (OD-6).
 - Top edits are height-family edits and stay allowed while a Wall is unrolled, as Wall height is.
 - Nothing in Plan changes.
 
@@ -548,7 +565,7 @@ top(p) = underside(p) + thickness
   eaves were level. A gable shows no **＋**. Exact joint values are Card fields. The ridge ray and
   the eave ray of the grammar write `rise` and `elevation`.
 - The reading control's **3D | Section** segment uses A6's `face` intent with a direction Layout
-  supplies. If A6 has not landed (A6), V3c ships Edit shape in 3D only and Section follows it.
+  supplies. If the Face slice A6 has yet to land, V3c ships Edit shape in 3D and Section follows.
 
 ### 7.3 The two fits, in general
 
@@ -610,116 +627,206 @@ normal. G5 uses the conservative band (§3.2).
 | --- | --- | --- |
 | **Layout** | Region and Wall-top geometry; identity; compile; relations; fits; support and clearance queries; surface references; Plan and mesh representation | Store a colour, material, light, object, attachment or Camera fact. Move anything in another unit |
 | **Scene** | Finishes keyed by a published surface reference (T2 D1); object and light placement that *reads* Layout support; any persistent attachment | Derive a surface from Room shape; write Layout |
-| **Camera** | Views and framing, reading Layout bounds as today (O14) | Treat a region as a navigation surface. A View on a platform is an authored pose |
+| **Camera** | Views and framing, reading Layout bounds as today | Treat a region as a navigation surface. A View on a platform is an authored pose |
 | **Experience** | Nothing new | Target a region in this batch |
 | **Editor session** | Lift, ghosts, relation cues, fit proposals, Edit shape's section reading | Persist or publish any of them |
 
-**Scene objects do not ride with a region in V1.** Moving or raising a region is a Layout edit;
-Scene poses are unchanged and the object may be left in the air (A4). A change spanning Layout and
-Scene in one history entry is the question J already owns (the roadmap's verify-first item 7). The
-V1c Card states the count of Scene objects resting on a region before a move or erase when the
-adapter can read it, and changes nothing. OD-4.
+**OD-4.** Region edit and Erase are Layout-only and preserve Scene bytes. Before either action on a
+floor region, the V1c Card counts the Scene roots whose contact point and base height resolve to
+that region's upward witness on the accepted snapshot (V1d). Count each root once, including
+coincident Room-floor witnesses. Use the existing Scene definition/model contact rules and count
+zero on overheads. The count is derived from the baseline and creates no attachment.
 
 ## 9. Format, sequencing and rollback
 
-- **Rule.** A format slice claims the baton by opening its draft PR with the capability id in the
-  title. No second format-changing PR carries code while one is open. Each takes the next
-  admitted version at merge; no plan fixes a number. `LAYOUT_WALL_FIRST_FORMAT_VERSION` is the one
-  constant, and it is also the envelope's Layout unit version (O1), so each bump is one number in
-  one place.
-- **Each bump:** strict refusal of the previous version, no migration, no dual reader, no
-  defaulting of new fields, every maintained fixture regenerated through canonical builders.
-- **V1a cutover gate (OD-1):** identify any accepted trial projects using the outgoing Layout
-  format, including any non-default Room thickness values, and confirm whether deployed public
-  snapshots need preservation under their separate release contract. Record the result and the
-  owner-approved cutover disposition in the V1a PR before activation. Old source retains its
-  values in the old format. If accepted source needs preservation in the new format, bring an
-  explicit pre-baseline exception to the owner under the persistence contract. Fixture regeneration
-  drops the legacy fields and creates no slabs from their values.
+| Order | Slice | Layout source change |
+| --- | --- | --- |
+| 1 | SP1a, landed (#371) | 7 → 8, adds `virtualEdges` and `overhead` |
+| 2 | **V1a** | 8 → 9 on the audited base. Adds required `regions` and the region ledger map, removes Room thickness |
+| 3 | C1 | Next admitted version after V1a. Adds Room `round` using the V1a Room shape |
+| 4 | **V2a** | Next admitted version after C1. Requires Wall `top` |
+| 5 | **V3a** | Next admitted version after V2a. Admits shed and gable forms |
 
-| Order | Slice | Changes | Must follow |
-| --- | --- | --- | --- |
-| 1 | SP1a | Room `virtualEdges`, `overhead` | – |
-| 2 | **V1a** | `regions`; ledger family `regions`; Room thickness fields removed | SP1a–SP1c |
-| 3 | C1 | Room `round` | SP1a–SP1c |
-| 4 | **V2a** | Wall `top` | V1a; C1 if it is open |
-| 5 | **V3a** | `shed` and `gable` admitted in `form` | V2a |
+**Serialization.** V1a owns the next Layout format slot (OD-3). Keep one format-changing
+implementation in flight, and verify the preceding admitted format against `main` at acceptance.
+`LAYOUT_WALL_FIRST_FORMAT_VERSION` also defines the F2 Layout unit's admitted version. Bump it once.
+The F2 envelope version, Postgres `source_format = 'unit-envelope-v1'` epoch and all sibling
+unit versions stay current. Every format slice ships one strict reader, rejects the outgoing
+format at both Layout and envelope headers, and regenerates maintained fixtures, starter/demo
+sources and authored test snapshots with canonical builders. Keep frozen outgoing samples for
+refusal and cutover/recovery tests.
 
-- V1a and C1 both become eligible when SP1c merges and both edit the Room parser. Recommended:
-  V1a first, because SP3 and T2's S5b wait on region identity while C1 unblocks only C2–C4
-  (OD-3). C-plan's "format 9" then reads "the next admitted version", which that plan already
-  allows.
-- V1a carries `form: { kind: 'flat' }` so that V3a widens a union instead of adding a field. It is
-  still a bump: a reader before V3a cannot read a gable.
-- **Rollback.** Reverting a format slice restores the previous reader and refuses anything saved
-  since. V1a, V2a and V3a ship no creator-reachable producer, so reverting a later slice of the
-  same phase leaves every saved document valid. Once V1c, V2c or V3c has shipped, reverting its
-  format slice loses regions, tops or forms saved meanwhile; that is accepted under the standing
-  pre-baseline rule and is stated in each of those PRs.
-- **Publication.** Unchanged. The API's publication write still answers
-  `prepared-reader-required` (C-plan §6); parity is proved through Preview and runtime fixtures.
-- **Docs promoted at the implementing merges, not here:** the Layout contract's current-contract
-  paragraph and its sections "Head-fixed arch rise and independent overhead-region intent", D2,
-  D3 and "Slab and ceiling ownership kept open" (replaced by the rules of §4–§7 as each lands);
-  persistence's Layout paragraphs; the glossary. This plan is deleted when V3c merges.
+### Stored source and activation
+
+- `apps/api/src/project-persistence.ts` lists by storage epoch and loads
+  `projects.latest_version` from `project_versions`. Both Layout versions use the same
+  `source_format` fence. Consequently old heads stay listed and fail Load on the new reader.
+  `app.ts` currently sends a generic storage error for this case. V1a gives owner-scoped
+  Load and Rename an explicit `422 unsupported_layout_format` for a Layout version mismatch, using
+  the existing Scene-mismatch pattern. Keep canonical issue details on Save refusal and preserve
+  local draft and saved-base state on Open/Reload/Resume failure. Keep list visibility and the
+  failed Load state. The client offers recovery before any replacement Save.
+- The storage contract keeps immutable versions. `save-persistence.ts` also retains each
+  acknowledged operation's exact request identity and saved-base provenance. A new-format reader
+  cannot replay an old-format pending capture simply because its commit may already exist.
+  `platform/project-pending-save.ts` currently clears captures that fail envelope validation.
+  For a structurally valid capture with a Layout version mismatch, return a typed incompatibility
+  before ordinary expiration/invalid cleanup. Keep the raw capture available for download from
+  the recovery prompt, including when cloud Load itself refuses. Preserve it until explicit user
+  disposition and prevent a new sign-in handoff from overwriting it. Retain the operation receipt
+  on the server. Reconcile against the outgoing reader or the recovery path below. Fence mixed
+  old/new writers and preserve owner scoping and conditional writes.
+- **Activation evidence (owner/environment gate).** Before enabling any deployment of the new
+  reader over existing storage, inventory each environment and owner/trial project in authorized
+  read-only access. Enumerate **every stored revision** by both
+  `document.units.layout.header.formatVersion` and `document.units.layout.data.formatVersion`,
+  separate latest heads from history, and report mixed/missing stamps. Inspect Room thickness
+  values in all affected revisions, including latent values under open sky. Inventory known
+  distributed editable files and local/pending work through the trial owners, and separately
+  verify deployed publication pointers/snapshots. Record aggregate counts, owners' dispositions
+  and recovery proof on the PR or its private cutover runbook. Repository evidence establishes
+  reader behavior. Actual deployed counts and dispositions are open at planning.
+- **Disposition.** If the inventory finds only disposable fixtures, keep the result and proceed
+  with the strict format. Any real accepted trial project, promised editable source or durable
+  release needs its named pre-baseline disposition under
+  [persistence](../../../reference/components/persistence.md#release-and-source-baselines).
+  For accepted source, the default exception shape is a bounded, owner-approved offline
+  conversion. Back up the original envelope/JSONB for every affected revision, accepted
+  revision ids, dependency locks, referenced assets and receipts with a checksum and a tested
+  outgoing-reader restore. Export pending captures as their exact bytes. If thickness carries
+  user meaning or a promise requires in-product historical revision access, bring that concrete
+  conflict to the owner before activation. Keep both values recoverable per original Room and
+  revision, including non-default values. A conversion creates no slab from those values.
+- **Recovery and conversion proof.** Dry-run against a restored copy using the outgoing
+  validator, rebuild the edited Layout through the current F2 builder, and validate the whole
+  candidate with canonical source admission and cold compile. Preserve project/owner ids,
+  existing Layout subject ids and ledger assignments, topology, Room intent, sibling units,
+  pins and dependency lock meaning. Recompute affected content identities from canonical bytes.
+  Append a fresh accepted head through conditional Save under a writer fence. Existing version
+  rows and receipts remain intact, with old-to-new head provenance recorded. Keep a usable
+  export/restore for historical revisions; any requirement for those revisions to open in the
+  new app belongs to the approved exception. Verify restore, current Load, stale/ambiguous
+  Save behavior, and that a failed validation/write leaves the prior head and receipt state
+  intact. Retire the temporary tool after the covered heads and recovery evidence are verified.
+  No migration 005 rerun, database reset, bulk deletion, tolerant live reader, or implicit
+  rewrite of the old revision.
+- **Rollback.** Before switching readers, preserve new-format heads, history, pending captures
+  and pin closure as well as outgoing data. A code rollback alone cannot open a new-format head,
+  even if it contains zero regions. Exercise restoring to a separate copy (or roll forward with
+  the new reader), with an explicit owner disposition for any writes accepted after the switch.
+  Apply this same rule to C1, V2a and V3a, then to all later authored shapes.
+- **Publication.** On the audited tree, the API refuses Publish with
+  `501 prepared-reader-required` and both public document and asset endpoints return 404.
+  The dormant `/p/[publicationId]` client still has an F2 cold-bundle fixture seam via
+  `composeColdReleaseBundle`. Its outgoing-format fixture refuses through the same strict
+  reader. Prove as-built parity in Preview and shared runtime fixtures. Preserve the public guard
+  and release ABI. If the inventory finds durable snapshots, preserve their reader, pins and
+  provenance under the release contract.
+
+Promote enduring rules when their slices land, including the indicated Layout and persistence
+paragraphs, glossary and SP/C handoffs. Keep the remainder of this plan for V2/V3, then retire it
+after V3c.
 
 ## 10. Affected modules
 
-| Area | Module | Change | Slice |
-| --- | --- | --- | --- |
-| Source | `packages/layout-core/src/layout-wall-first-types.ts` | `LayoutRegion`, `regions`, family `regions`; Room thickness fields removed; later `top`, forms | V1a, V2a, V3a |
-| | `packages/layout-core/src/layout-wall-first-codec.ts` | Region parser and reference pass; `ROOM_KEYS`; later `top` and forms | V1a, V2a, V3a |
-| | `packages/layout-core/src/layout-identity.ts` | Fifth family with its own prefix; the reference pattern | V1a |
-| | `packages/layout-core/src/layout-geometry-limits.ts` | Region dimensions in the envelope | V1a |
-| Regions | new `layout-region.ts`, `layout-region-relations.ts` | §5.3–§5.6, §7 | V1a (validation, accessors), V1b, V3b |
-| Wall tops | new `layout-wall-top.ts` | §6.1, §6.3 arithmetic | V2a, V2b |
-| Compile | `packages/layout-core/src/layout-geometry-types.ts`, `layout-geometry.ts`, `layout-geometry-delta.ts`, `layout-geometry-reuse.ts`, `layout-geometry-openings.ts` | `CompiledRegion`, query kinds, bounds, keys; thickness removal; later `topProfile` and section splits | V1a, V2a, V3a |
-| Queries | `packages/layout-core/src/layout-floor-support.ts`, `layout-geometry-queries.ts` | Witness source; overhead query; `regionsOverSpace`; `overheadSourcesOf` | V1b |
-| Topology | `layout-wall-noding.ts`, `layout-wall-dissolve.ts`, `layout-wall-topology-ops.ts`, `layout-wall-chain.ts`, `layout-room-reconciliation.ts`, `layout-duplicate.ts` | `carryRegionWallIntents` call sites; thickness removal; later top arithmetic on split and join | V1a (thickness), V1b, V2b |
-| | `packages/layout-core/src/layout-opening-set.ts`, `layout-wall-first-precision.ts` | Opening fit against the top; `planExactWallHeight` reuse | V2a, V2b |
-| Representation | `packages/layout-core/src/layout-plan-representation.ts`, `layout-wall-development.ts` | Region candidates; sheet `topProfile` | V1a, V2a |
-| Mesh | `apps/editor/src/lib/layout/wall-mesh-builder.ts`; a new region builder beside it; a new region representation in `apps/editor/src/lib/render` | Sloped tops; region faces; retained meshes | V1a, V2a, V3a |
-| Visitor | `apps/editor/src/lib/visitor/VisitorLayoutShell.svelte` | Mount the region representation | V1a |
-| Project model | `packages/project-model/src/units/validate.ts`, `packages/project-model/src/scene-planning/support.ts`, `place-object.ts`, the Layout reference resolver | Inherit the format; region witnesses; subject kind `region` | V1a, V1d |
-| Authoring | `apps/editor/src/lib/authoring/adapters/layout.adapter.ts` and `adapters/layout/*`, `layout/plan-hit.ts`, `layout/plan-pick-provider.ts`, `stage/semantic-selection.ts`, `stage/shell/world-index-model.ts`, `world-toolbar/registry.ts`, `adapters/layout/LayoutCardFields.svelte` | Intents, picking, selection, Index, Card, tools | V1c, V2c, V3c |
+Paths in the table are relative to the named workspace's `src/`.
+
+| Slice | Owner and touchpoints |
+| --- | --- |
+| **V1a · source** | Layout core: `layout-wall-first-{types,codec}.ts`, `layout-identity.ts`, `layout-geometry-limits.ts`, new `layout-region.ts`, current source builders and persistent collection/materialization helpers where required. Remove Room thickness from `layout-room-reconciliation.ts`, `layout-wall-topology-ops.ts`, `layout-duplicate.ts` and callers. Add §5.5 lineage beside the existing split/noding, dissolve/join, removal and chain/Room-tool writers, using their correspondence. |
+| **V1a · compile and Stage** | Layout core: `layout-geometry{,-types,-delta,-reuse,-queries}.ts`, `layout-plan-representation.ts`. Editor: shared `layout/` mesh builder, `render/` retained representation, render identity and material resources, `visitor/VisitorLayoutShell.svelte`. Authoring: `scene-pick-source.ts`, `plan-hit.ts`, `plan-pick-provider.ts`, Plan ink/surfaces, `stage/semantic-selection.ts` and Stage Slice wiring. Project model: region subject admission via `references/unit-resolution.ts`. |
+| **V1a · persistence** | Project model: `units/{types,validate}.ts` and source/Save capture entry points inherit the Layout change. API: `app.ts`, `project-lifecycle.ts` and existing Save validation/receipts. Editor: `stage/source-admission.ts`, `project-session/project-session.svelte.ts` and `platform/project-pending-save.ts` for incompatible pending captures. |
+| **V1b · planning and queries** | Layout core: `layout-region.ts`, new `layout-region-relations.ts`, `layout-floor-support.ts`, `layout-geometry-queries.ts`, existing height/Opening gates. Update typed callers at the witness and overhead-source seams without changing their producer workflows. |
+| **V1c · authoring** | Editor: `authoring/adapters/layout.adapter.ts` and `adapters/layout/*`, F4 acceptance/history, `world-toolbar/registry.ts`, `stage/shell/world-index-model.ts`, Card, Height Sheet, `interior-lift-store.svelte.ts`, `StageCanvas.svelte`, `StageLiftLayer.svelte`, Lift outline picks and shared shell display input. |
+| **V1d · consumers** | Project model: `scene-planning/{support,place-object,operations}.ts`. Editor: `adapters/scene/{pointer-support,support-occlusion,room-membership}.ts` and Scene adapter placement callers. Layout core exports its local resolver and support queries. |
+| **V2/V3** | Wall-top evaluation in new `layout-wall-top.ts`, Wall compiler/mesh, Opening validation, precision and topology planners, `layout-wall-development.ts`, and the V1 region compiler/planner/render seams as specified in §§6–7. |
 
 ## 11. Slices
 
-Every slice inherits the batch rules: one gesture is one history entry; Undo and Redo replay
-captured ids; a refusal has words and writes nothing; session readings are never saved.
+Every creator edit uses one chronological F4 entry with captured identity. Undo/Redo restores
+authored bytes and assignments, preserving the existing cursor high-water semantics. Refusals
+leave source and history intact. Ownership and code entry points are in §10. Tests use the
+existing repository lanes and colocate with the suites named below.
 
-| Slice | Delivers | Needs | Tier |
-| --- | --- | --- | --- |
-| **V1a** Format and compile | §3.1 (regions), §3.2, §5.1, §5.8, thickness cutover (§5.2, §9, H-3, H-5), the format bump. Hand-built region fixtures compile, draw and pick in editor and visitor. No planner creates a region | This plan approved with OD-1–OD-3; SP1a–SP1c merged | 2 |
-| **V1b** Planners and queries | §5.3–§5.6 in layout-core only: planners, relations, the four fits (flat and level case), support and clearance queries, Wall lineage. No editor intent | V1a | 1 |
-| **V1c** Authoring and parity | §5.9; F4 wiring; Lift registration; visitor parity; focused browser QA of J7 and J11 | V1b; **X1 merged** | 1 |
-| **V1d** Support and reference seam | Region witnesses qualified in project-model so an object rests on a floor region; `queryOverheadSupports` exported for T2's light magnet; Layout-local surface-reference resolver (not T2's published finish key). A3 and A4 are its first checks | V1b. Independent of V1c. Reviewed from T2 | 1 |
-| **V2a** Format and compile | §3.1 (`top`), §3.3, §6.1, §6.2, the bump. Hand-built tops compile and draw. No planner writes one | V1c merged (Q9, product order); the baton | 2 |
-| **V2b** Planners | §6.3, including split, join, dissolve and C's rules | V2a; A1, A2 core | 1 |
-| **V2c** Authoring and parity | §6.4; F4; visitor parity; focused browser QA | V2b | 1 |
-| **V3a** Format and compile | §7.1, §7.4, the bump. Hand-built forms compile and draw | V2a; the baton | 2 |
-| **V3b** Planners | §7.2 planners, §7.3 both fits in general | V3a, V2b | 1 |
-| **V3c** Authoring and parity | Roof › Shed and Gable, Edit shape, both fits; focused browser QA of J8 | V3b; A6 for the Section segment | 1 |
+### V1a · format, compile and read-only selection (Tier 2)
 
-### Acceptance
+- **Dependency and result.** SP1/SP2 have landed. Carry the next Layout version on this draft once
+  the owner reviews the plan. Deliver §§3.1–3.2, 5.1–5.2, the admitted-source lineage from §5.5,
+  and §5.8 through normal Stage, Preview and Save/Load entry points. Region selection is read-only
+  in Stage. Pass §9 before enabling new-format readers over existing storage.
+- **Tests and gate.** T-V1–T-V3, T-V9, the draw/pick portion of T-V11 and T-V14. Extend
+  `layout-geometry.test.ts`, `layout-plan-representation.test.ts`, `layout-plan-retainer.test.ts`,
+  SP1a–SP1d/SP2 lifecycle and parity suites, the Stage source-admission/Save suites and the
+  Camera framing/rebase coverage. Verify that Load, Rename, Save and pending-capture refusal
+  preserve old data and receipts and that capture recovery exports the original bytes. Use
+  hand-built raised floor, canopy and dropped ceiling fixtures, a coplanar terrace with a casting
+  light, concavity, touching/stacking, a mixed
+  Room/Wall/region delta edit and Level/Drawn Slice cases. Exercise F2 acceptance from Open and
+  Preview and the DB-backed API's Save/Load/refusal and publication gates. Existing architecture
+  suites prove both visitor boundaries. A fixture with gaps survives each existing topology
+  writer, and regions draw and select with the same identity through the retained shell.
+- **Exclusions.** Region CRUD/fits, support behavior, Lift controls or region authoring UI.
+  Existing Room/Wall editing remains available on region-bearing source. C1, SP3 and V2/V3
+  producer and schema work stay in their own changes.
 
-- **V1a.** The previous format is refused through the codec, `units/validate.ts` and the visitor
-  release path. With no regions, compiled output equals the pre-bump output except for the listed
-  differences of T-V1. T-V14 and the §9 cutover gate cover removed Room thickness fields and the
-  SP/C preservation handoffs. Each of G1–G7 has a refusing fixture. A hand-built canopy, dropped
-  ceiling and raised floor compile to the faces of §5.8, draw identically in the Stage and in
-  Preview, and select the region from 3D and from Plan. A region edit recompiles no Wall and a Wall edit
-  recompiles no region (T-V3). The persistence contract names one Layout number.
-- **V1b.** Every planner of §5.3 and §5.5 has a core test through the real planner, with a
-  refusing case. Every row of the two tables in §5.4 has a fixture. T-V4 to T-V10 pass.
-- **V1c.** The approved V1 sentences hold in the running editor: a canopy, a dropped ceiling and a
-  raised floor can each be drawn, moved, resized and set in height; a region over an open-to-sky
-  Space reads "Open to sky · under *name*" and changes no intent; each relation reads meets, gap
-  with its measure, or intended; nothing follows after a fit. J11 steps 1, 2 and 4 pass with Lift.
-- **V1d.** An object placed on a floor region rests at its top and records a region witness; the
-  overhead query returns the underside under a canopy and the lid in a closed Room. The PR states
-  what it found for A3 and A4. **Creator-facing V1 acceptance requires both V1c and V1d merged
-  and verified**; they remain independently implementable, but V1c alone is not the product gate.
+### V1b · planners and queries (Tier 1)
+
+- **Dependency and result.** After V1a. Implement §5.3, the relation/fit planners in §§5.4–5.5,
+  and the Layout-owned queries of §5.6. Use the current level Wall fields through a small
+  evaluator seam. V2 supplies profiled evaluation; V3 expands the existing form/fit contract.
+  Keep current Scene placement and X1 behavior until their consuming slices. Narrow existing
+  Scene queries to Room-floor records at the snapshot adapter until V1d updates placement, and
+  narrow the editor Lift query to existing Room-lid keys until V1c wires region Lift.
+- **Tests and gate.** T-V4–T-V10 through real planners and query entry points, with an accepted,
+  no-op or refused result as applicable. Cover concave footprints, Room/Space outline fit,
+  horizontal versus vertical gaps, Opening and geometry refusal, query qualification, stable
+  ordering, and an overhead under both closed and open-to-sky Space scopes. Cover existing
+  Walls and Rooms before and after fits. Treat the known closed-circle certification defect
+  [#370](https://github.com/Biskiq/spatial-sketch-editor/issues/370) as an existing limitation.
+  Fit to Space requires a valid compiled outline, including for curved Spaces.
+- **Exclusions.** Creator tool/gesture wiring, Scene elevation selection, finish keys and
+  Scene mutation, persistent follow, Wall top profiles, roof forms.
+
+### V1c · authoring, Lift and Stage parity (Tier 1)
+
+- **Dependency and result.** After V1b and the V1d support/contact seam. X1 and Slice already
+  exist on `main`. Implement §5.9. Region candidate creation, exact edits, move, rotate,
+  corner edits, duplicate, fits, gap marking and Erase use layout-core planners on release
+  and F4 for acceptance/history. Use proposal-only geometry for pointer moves and register
+  region Lift with the existing shadow-preserving path.
+- **Tests and gate.** T-V5, T-V7 and T-V11–T-V13. Mounted F4 coverage verifies capture, exact
+  Undo/Redo, stale/refused commit, Escape and one history entry per valid gesture. Render and
+  pick coverage uses the existing Lift/section-source and Stage tests, including shadow
+  eligibility, Put back, and as-built Preview/Look-through. Focused QA exercises J7 and the
+  applicable J11 steps 1, 2 and 4. Canopy, dropped ceiling and raised floor create, move, resize
+  and change height. Fits stay one-shot and a floor move/erase reports the count from §8.
+- **Exclusions.** Ink reading chips, new control grammar, multi-level/stair behavior, T2 finish
+  or light UI and region attachments.
+
+### V1d · Scene support and reference seam (Tier 1)
+
+- **Dependency and result.** After V1b, can be implemented independently of V1c's UI. Land before
+  V1c exposes authoring. Wire §5.6 into production Scene Place (preview and commit) and qualify
+  F1 support evidence using a `region` subject and `layout:region-top` stream. Update support
+  witness consumers with the discriminant. Room membership filters to Room witnesses and keeps
+  its current geometric checks. Provide the Layout-local resolver of §5.7 and the exported
+  overhead and contact queries for T2/V1c. Source keeps the placed object pose only.
+- **Tests and gate.** T-V8 and T-V10 plus production Scene support tests. Place under overlapping
+  floor/terrace projections and prove the visible top, snapped X/Z and planner-revalidated
+  elevation match. Test explicit ambiguity, stale evidence, an occluding Wall/Scene body,
+  snapping off a raised top, and the unchanged datum/Room behavior. Verify that subsequent
+  region move/erase leaves Scene bytes identical and the derived count follows current contact.
+  Resolve each local region face through geometry changes, then refuse a removed region and an
+  open-to-sky lid. Floor-region placement and the downward-query proof satisfy OD-8.
+- **Exclusions.** T2's magnet/finish wiring, Scene format changes, persistent attachment and
+  auto-ride.
+
+### V2/V3 acceptance carried forward
+
+V2a follows completed V1 and the format order in §9. V2b depends on V2a and the landed Wall
+lineage; V2c follows V2b. V3a follows V2a and the format order; V3b follows V3a and V2b.
+V3c follows V3b, with the Face dependency scoped to the Section segment in §7.2.
+
 - **V2a.** The previous format is refused. T-P1 passes. Hand-built slope and gable Walls render
   with closed corners at every Junction degree in the fixture set, with and without Openings.
 - **V2b.** Each row of §6.3 has a core test. T-P2 to T-P6 pass.
@@ -737,7 +844,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | --- | --- | --- |
 | T-V1 | With no regions, compare pre- and post-bump fixtures (including non-default thickness values and `closed`/`open-to-sky` Spaces). Allow only `regions: []`, the removed compiled fields and Room key inputs, and the new unpadded Room/query, Floor and document bounds. Cold and retained compiles agree. Check Camera's default framing and source rebase against those bounds, with authored Views and the current inspection pose preserved on rebase | The renderer looks the same but compiled extents or a bounds consumer still assumes Room slab padding |
 | T-V2 | A footprint that self-crosses, is clockwise, has a repeated point or exceeds the envelope: each refuses with its own code | The triangulator accepts it and draws garbage |
-| T-V3 | Compile counters: a region move rebuilds one region and no Wall or Room; a Junction move rebuilds no region | Regions are keyed on the whole document |
+| T-V3 | Compile counters: a region move rebuilds one region and no Wall or Room; a Junction move rebuilds no region. Exercise a certified delta over region-bearing source and prove query, bounds and Plan parity against a cold compile | Regions are keyed on the whole document |
 | T-V4 | Each row of §5.4, including a footprint drawn to Wall centerlines (meets) and a Wall rising through a canopy (crosses) | Relations are computed from centerlines only and call the generated-floor case a crossing |
 | T-V5 | Fit, then move the Wall, raise it, and move the region: the other subject is byte-identical and the reading is a gap again | A fit left a stored link |
 | T-V6 | Two regions made to interpenetrate by create, move, rotate, elevation, thickness or any fit that edits a region: refused, document byte-identical, no history entry. Exact stacking and edge contact accepted | G5 is checked on create only |
@@ -746,9 +853,9 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | T-V9 | For each planner that changes the Wall id set (split, join, dissolve, removal, noded chain, and C's when present): an intended gap survives onto the right Wall and no dangling id is written | Flags are pruned, or one planner was missed |
 | T-V10 | `queryOverheadSupports` under a canopy inside a closed Room returns the canopy then the lid; under open sky, none; clearance equals the difference | Lids are forgotten, or order is not by elevation |
 | T-V11 | Visitor primitives for the V1 fixtures equal the editor's with editor-only streams removed; no relation cue, handle or ghost is present; a lifted overhead is still drawn and still casts shadow in Preview. A region coplanar with a generated floor has stable drawing priority without z-fighting or duplicate shadows, retains both identities, and wins coincident surface picking in Plan and 3D; support witnesses still follow T-V8 | Lift state leaks, regions are drawn by an editor-only path, or coincident floors render and pick nondeterministically |
-| T-V12 | Undo and Redo of create, each edit, each fit and Erase restore exact canonical bytes; Redo reuses the captured region id | Redo allocates a new id |
+| T-V12 | Undo and Redo of create, each edit, each fit and Erase restore canonical authored bytes and keep the existing ledger high-water behavior. Redo reuses the captured region id | Redo allocates a new id |
 | T-V13 | Mounted gesture boundary: a corner drag and a body drag show a preview with no full compile and no history write; release installs the same proposal once; Escape restores | The adapter calls a planner per pointer move |
-| T-V14 | The new codec rejects either legacy Room key in an otherwise current payload. Save/Load round-trips the new shape with authored region thickness. Open/re-close and the lid toggle preserve identity and the existing association and surface-reference rules. Split and duplicate keep their lineage and overhead behavior. Run the enclosed and open thickness-conflict merge fixtures in the new shape and assert the existing survivor and overhead rules, with exact Undo. No operation synthesizes a physical region from Room metadata | The cutover drops unrelated Space behavior, leaves an obsolete refusal or turns generated planes into physical slabs |
+| T-V14 | The new codec rejects either legacy Room key in an otherwise current payload. Save/Load round-trips the new shape with authored region thickness. Open/re-close and the lid toggle preserve identity and the existing association and surface-reference rules. Split and duplicate keep their lineage and overhead behavior. SP2 Room creation/claim and SP1d open-side edits preserve the new source, associations and F4 lifecycle. Run the enclosed and open thickness-conflict merge fixtures in the new shape and assert the existing survivor and overhead rules, with exact Undo. No operation synthesizes a physical region from Room metadata | The cutover drops unrelated Space behavior, leaves an obsolete refusal or turns generated planes into physical slabs |
 | T-P1 | For every existing fixture, with every Wall `level`: compiled Walls, Junctions, cache keys and Wall mesh buffers are byte-identical to the pre-bump output | The new code path is taken for level Walls, or the key gained a field |
 | T-P2 | A gable Wall split off its apex, at its apex, and rejoined: tops are exact at every cut and the round trip restores the original bytes | Split re-interpolates, or join compares gradients loosely |
 | T-P3 | Corners where a sloped Wall meets a level, a taller and another sloped Wall, at degree 2, 3 and 4: the mesh is watertight and winding agrees with normals | Top heights at mitre vertices are extrapolated |
@@ -774,7 +881,7 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 - **Editor.** Shell roles and coarse-pointer targets from PLATE; refusal wording through
   `adapters/layout/refusals.ts`; no control shown before it works.
 - **Save/Load.** One codec and one canonical byte form through editor Save, API persistence and
-  the release path. A saved document reloads byte-identically at the stated version.
+  source admission. A saved document reloads byte-identically at the stated version (§9).
 - **F4 and history.** One accepted candidate per gesture through the acceptance coordinator, with
   the identity delta for region births and retirements and selection correspondence for subject
   kind `region`. Fits that touch several Walls are still one entry.
@@ -788,15 +895,15 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 
 | # | To | Requirement |
 | --- | --- | --- |
-| H-1 | **X1 Lift** | Take the overhead set from `overheadSourcesOf` (lids now, regions after V1b). Until V1b exists X1 may compute lids itself behind that one function name |
-| H-2 | **SL1 Level cut** | A region whose slab is above the plane is not drawn; one the plane passes through is cut at its footprint; Wall caps under a profile use `wallTopAt` |
-| H-3 | **SP1** | Preserve thickness through SP1. At the OD-1 cutover, supersede the field carry in SP-plan §§3.1 and 5.1–5.2, the thickness-only merge refusal in §5.1 and the §15 defaults, and the lid-restore/padding wording in §§3.1 and 6. Keep the overhead setting, derived lid restoration, survivor policy, associations and surface references. Update the affected lifecycle and parity tests in V1a (T-V1, T-V14) |
-| H-4 | **SP3** | Gets: region id, footprint accessor, the surface key, and region planners that report affected region ids so I7 can be gated. SP3 owns the follow relation, the rule that a following Space generates no floor of its own, and the retirement rule |
-| H-5 | **C** | If V1a merges first, C1 takes the next admitted version and uses the admitted Room shape. At the cutover, retire the Room-thickness portion of C-plan §3 Attach's preservation list and any corresponding fixture expectation. Preserve Wall dimensions and all other Round/Room facts, identity, associations and overhead. C2/C3 acceptance follows the admitted shape. The Round rules of §6.3 apply once V2b lands |
-| H-6 | **A1, A2** | Their stated lineage is what `carryRegionWallIntents` and the split and join arithmetic of §6.3 consume |
-| H-7 | **R Unroll the room** | A strip's top edge follows each Wall's top; no further change |
-| H-8 | **J / S5a, S5b (T2)** | **Proposed, not ratified:** the region and Space surface references of §5.7 and their qualification; `regionsOverSpace` as the answer to Space paint scope for regions; duplicate carries the same shared Finish; a removed region and an `open-to-sky` lid are unresolved references. **Left to J:** the wire type, where a finish is stored, what an unresolved reference does, finish inheritance, and one history entry across Layout and Scene |
-| H-9 | **T2 lights** | `queryOverheadSupports` is the magnet's source. Wiring the light gesture to it is T2's. Persistent attachment of a light or object to a region is a Scene support question and is not decided here |
+| H-1 | **X1 Lift / X2 cutaway** | Use the landed `overheadSourcesOf` seam (§§5.6, 5.9). X2 continues to classify Walls independently. |
+| H-2 | **SL1 Level / SL2 Drawn Slice** | Apply §5.8 to regions through existing clip, cap and exact pick paths. V2 switches profile-dependent Wall caps to `wallTopAt`. |
+| H-3 | **SP1/SP2** | Apply §5.2 to the landed Space lifecycle and Room tool. Update the thickness/padding clauses in SP-plan at cutover. Keep the Room tool's claims, virtual edges, existing overhead, associations, survivor, lineage and source references. |
+| H-4 | **SP3** | Gets region identity, compiled footprint, surface key and affected region ids from planners so I7 can be gated. SP3 owns follow intent and the resulting floor generation and retirement rules. |
+| H-5 | **C1–C3** | C1 consumes the next version and V1a Room shape. Drop the Room-thickness entry in C-plan's Attach preservation list. Preserve Wall dimensions, Round facts, Room identity, associations and overhead. C's writers consume §5.5 lineage and §6.3 top rules as those land. |
+| H-6 | **A1 and A2** | Landed topology correspondence supplies gap lineage. |
+| H-7 | **R** | Unroll's top follows the Wall evaluator when V2 lands. |
+| H-8 | **J / S5a, S5b (T2)** | The [draft J contract #368](https://github.com/Biskiq/spatial-sketch-editor/pull/368) proposes an authored-id-plus-role `region-face`, a containment rule for paint scope, and dormant/retired handling. V1 supplies Layout-local identity/resolution (§5.7), positive-area overlap for the Space readout/Lift, and region edit/birth/retirement facts. S5b consumes these and owns J's ratified paint-scope policy, finish inheritance (including duplicate), storage, unresolved lifecycle, Scene version and compound F4. Keep J's draft policy out of the V1 association query. |
+| H-9 | **T2 lights** | T1 delivers downward support and clearance (§5.6). T2 wires the magnet, including its gesture and acceptance. Persistent attachments are a separate Scene support decision. |
 
 ## 15. Rejected alternatives
 
@@ -824,18 +931,24 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 | **Persistent meets constraints** | Outside scope by decision; P26 D3 already prefers one-shot fixes |
 | **Relations compiled on every edit** | Cost on every Wall edit for a reading shown for one selected region |
 
-## 16. Owner decisions
+## 16. Owner-authorized defaults
 
-| # | Decision | Recommended answer | Blocks |
-| --- | --- | --- | --- |
-| **OD-1** | What becomes of `floorThickness` and `ceilingThickness` | **Remove both in V1a**, with the cutover gate in §9 and the SP/C handoffs in §14. Regions own physical thickness. Generated surfaces keep their elevations and source references. Bounds and framing inputs can change, and the thickness-only merge refusal goes (§5.2) | V1a |
-| **OD-2** | Does "V1 does not merge before Lift" bind V1a | **No. It binds V1c**, the first slice in which a creator can author an overhead. V1a and V1b create nothing a creator can reach | V1a start |
-| **OD-3** | Bump order and count | **V1a before C1; five bumps in the batch**, numbers taken at merge. The roadmap's risk 9 counted three | V1a start |
-| **OD-4** | Scene objects on a region that moves | **They stay where they are in V1**, with the count shown before the edit. Riding along needs J's cross-unit transaction | V1c |
-| **OD-5** | A closed Room under an authored roof | **It keeps its flat lid at eave height**, which is a ceiling under a pitched roof. A cathedral ceiling is **Open to sky**, read as "Open to sky · under Roof 1". The owner may prefer other words for that readout when a region covers the whole Space; the model does not change | V3c |
-| **OD-6** | Where a straight Wall's top is edited, given its Unroll entry is disabled | **On the Wall's own face**, through the same marks and the same map at amount 0. The Unroll entry stays disabled for straight Walls | V2c |
-| **OD-7** | What the two fits mean | **Fit roof to walls moves the roof to first contact. Fit walls to roof seals within the slab thickness or refuses atomically** (§7.3). Two explicit steps for J8 | V1b |
-| **OD-8** | "A light mounts under an overhead region" in V1's acceptance | **T1 delivers the query (V1d); T2 wires the magnet.** V1 is accepted on the query and on an object resting on a floor region | V1d |
+| # | Decision incorporated | Governing section |
+| --- | --- | --- |
+| OD-1 | Remove Room thickness in V1a, subject to the source-preservation activation gate | §§5.2, 9 |
+| OD-2 | Lift gates creator access in V1c. X1 has landed. | §5.9 |
+| OD-3 | V1a before C1. Five total Layout bumps including landed SP1a. | §9 |
+| OD-4 | Preserve Scene poses and report the resting-object count before a region move or erase. | §8 |
+| OD-5 | Keep the flat lid of a closed Room. Open to sky is the cathedral case. | §5.2 |
+| OD-6 | Straight Wall tops edit on the Wall face, through the development map at amount 0. | §6.4 |
+| OD-7 | Roof fit reaches first contact. Wall fit seals within the slab or refuses atomically. | §§5.5, 7.3 |
+| OD-8 | T1 delivers floor placement and overhead support evidence. T2 owns the light magnet. | §5.6, H-9 |
+
+All eight defaults are adopted. V1a carries the existing Wall writers' gap lineage at the first
+readable format, because imported regions can reach Stage before V1b adds region planners. V1d
+lands before V1c exposes authoring, so a first creator can both stand an object on a platform
+and see the exact move/erase consequence. These sequence choices follow the admitted source and
+acceptance paths.
 
 ## 17. Risks and limits
 
@@ -849,13 +962,12 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
    outside this batch.
 5. **Footprints are straight-edged.** Over a round Room, Fit to space writes a many-pointed
    polygon that is awkward to edit by hand.
-6. **Objects do not ride with regions** (OD-4), and a floor region's underside holds no light.
-7. **The 1.0 m relation reach and the 1,024-point cap are chosen numbers.** Each is one named
+6. **The 1.0 m relation reach and the 1,024-point cap are chosen numbers.** Each is one named
    constant with a test at its edge.
-8. **`apexOffset` in metres** means a resized gable Wall is off centre until **Centre apex** or a
+7. **`apexOffset` in metres** means a resized gable Wall is off centre until **Centre apex** or a
    fit.
-9. **Five bumps cost calendar time**, and each regenerates the fixture set.
-10. **V1's editor surface is minimal by design.** Ink's reading chip ("Raised platform", "Canopy
+8. **Format cutover** requires a stored-revision disposition and recovery proof (§9).
+9. **V1's editor surface is minimal by design.** Ink's reading chip ("Raised platform", "Canopy
     roof") is not built here.
-11. **Nothing here was run.** Line references were read at `6e1b7bc5` and will drift; A1–A6 are
-    unverified until their slices check them.
+10. **Closed circular Room certification** remains tracked in #370. V1 uses valid compiled Space
+    outlines and carries the existing certification case unchanged.

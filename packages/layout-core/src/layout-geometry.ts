@@ -1,3 +1,4 @@
+import { compileRegions } from './layout-region-compile';
 import { isCanonicalWallSampling } from './layout-wall-centerline';
 import { restoreImmutableCompileSnapshot, restoreImmutableCompileBaseline, registerDeferredGeneratedField } from './layout-geometry-delta';
 import { layoutItem, layoutLength } from './layout-source-collections';
@@ -120,7 +121,6 @@ import { hasAnySamplingTestObserver } from './layout-world-index';
 
 export { readPassiveCompiledGeometry } from './layout-geometry-delta';
 export { recordPassiveCompiledGeometry };
-
 
 function compileSessionlessOnce(document: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): CompiledLayoutGeometryResult {
 	countWork('compile:walls', layoutLength(document, 'walls'));
@@ -272,8 +272,7 @@ function buildWallFirstRoomSource(
 			room: {
 				id: room.id,
 				wallThickness: maps.defaultWallThickness,
-				floorThickness: room.floorThickness,
-				ceilingThickness: room.ceilingThickness,
+
 				overhead: room.overhead
 			},
 			boundary: { closed: true, segments },
@@ -419,7 +418,7 @@ export function compileWallFirstLayoutGeometry(
 	// which a later default derivation might accidentally inherit.
 	if (reuse && !isCanonicalWallSampling(sampling)) {
 		countWork('compile:custom-sampling-global-reset', reuse.walls.size + reuse.junctions.size + reuse.roomSources.size + reuse.objects.size);
-		reuse.walls.clear(); reuse.junctions.clear(); reuse.roomSources.clear(); reuse.objects.clear();
+		reuse.walls.clear(); reuse.junctions.clear(); reuse.roomSources.clear(); reuse.objects.clear(); reuse.regions.clear();
 		reuse.world = null; reuse.retainedFloor = null; reuse.retainedDocAabb = null;
 		beginLayoutCompile(reuse);
 		const result = compileWallFirstLayoutGeometry(document, sampling);
@@ -427,6 +426,7 @@ export function compileWallFirstLayoutGeometry(
 		reuse.counters.junctionsEvaluated = result.geometry.junctions?.length ?? 0;
 		reuse.counters.roomsEvaluated = result.geometry.rooms.length;
 		reuse.counters.objectsEvaluated = result.geometry.objects.length;
+		reuse.counters.regionsEvaluated = result.geometry.regions.length;
 		reuse.counters.openingsEvaluated = layoutLength(document, 'openings');
 		finishLayoutCompile(reuse, true);
 		return result;
@@ -458,6 +458,7 @@ export function compileWallFirstLayoutGeometry(
 		reuse.junctions.size === 0 &&
 		reuse.roomSources.size === 0 &&
 		reuse.objects.size === 0 &&
+		reuse.regions.size === 0 &&
 		reuse.world === null;
 	beginLayoutCompile(reuse);
 	const deltaResult = !cold
@@ -649,8 +650,7 @@ function compileWallFirstLayoutGeometryOnce(
 				room: {
 					id: room.id,
 					wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
-					floorThickness: room.floorThickness,
-					ceilingThickness: room.ceilingThickness,
+
 					overhead: room.overhead
 				},
 				boundary: { closed: true, segments: [] },
@@ -1008,6 +1008,10 @@ function compileWallFirstWithPhysicalWalls(
 			});
 		}
 	}
+	const regionUnit = compileRegions(document, reuse);
+	queryBuilder.polygons.push(...regionUnit.polygons);
+	queryBuilder.aabbs.push(...regionUnit.aabbs);
+	if (regionUnit.bounds3) includePhysicalBounds(regionUnit.bounds3.min, regionUnit.bounds3.max);
 	const bounds = documentMin && documentMax ? finiteBounds3(documentMin, documentMax) : null;
 	// Strip room-path wall detail for wall-first documents: rooms keep
 	// identity, floor/ceiling semantics, floor polygons and bounds, but their
@@ -1048,6 +1052,7 @@ function compileWallFirstWithPhysicalWalls(
 	};
 	for (const wall of physicalWalls) includeFloorBounds(wall.bounds3.min, wall.bounds3.max);
 	for (const junction of junctions) includeFloorBounds(junction.bounds3.min, junction.bounds3.max);
+	if (regionUnit.bounds3) includeFloorBounds(regionUnit.bounds3.min, regionUnit.bounds3.max);
 	const floorBounds = floorMin && floorMax ? finiteBounds3(floorMin, floorMax) : null;
 	const aabbs = queryBuilder.aabbs.filter((aabb) => aabb.kind !== 'floor' && aabb.kind !== 'document');
 	let floors: CompiledFloor[];
@@ -1103,6 +1108,7 @@ function compileWallFirstWithPhysicalWalls(
 	return {
 		geometry: {
 			...geometry,
+			regions: regionUnit.regions,
 			floors,
 			rooms,
 			walls: physicalWalls,
@@ -1115,7 +1121,7 @@ function compileWallFirstWithPhysicalWalls(
 			},
 			bounds
 		},
-		issues: [...result.issues, ...wallIssues]
+		issues: [...result.issues, ...wallIssues, ...regionUnit.issues]
 	};
 }
 
@@ -1596,6 +1602,7 @@ export function createLayoutCompileSession(): LayoutCompileSession {
 				store.counters.junctionsReused = world.sortedJunctions.length;
 				store.counters.roomsReused = world.validCeilingRoomCount;
 				store.counters.objectsReused = world.objectUnit.compiledObjects.length;
+				store.counters.regionsReused = world.regionUnit.regions.length;
 				finishLayoutCompile(store, false); releasedUnits = 0; return restored;
 			}
 			if (isCanonicalWallSampling(sampling)) restoreImmutableCompileBaseline(document, store);
@@ -1860,6 +1867,7 @@ export function compileLayoutGeometrySource(
 	}
 
 	const geometry: CompiledLayoutGeometry = {
+		regions: [],
 		floors,
 		rooms,
 		walls: [],
@@ -2024,11 +2032,11 @@ function compileRoom(
 	const roomBounds2 = roomBounds2FromWalls(wallBoundsOnly, floorPolygon);
 	const roomBounds3 = roomBounds3FromParts(
 		floorPolygon,
+		ceilingPolygon,
 		wallBoundsOnly,
 		floorElevation,
 		ceilingElevation,
-		room.floorThickness,
-		room.ceilingThickness,
+
 		overhead
 	);
 
@@ -2052,8 +2060,7 @@ function compileRoom(
 			room.id,
 			roomSource.boundary,
 			room.wallThickness,
-			room.floorThickness,
-			room.ceilingThickness,
+
 			// A closed lid is format 8's default and stays out of the key, so an
 			// enclosed Space's cache key is byte-identical to format 7's.
 			...(overhead === 'open-to-sky' ? ['open-to-sky'] : []),
@@ -2074,8 +2081,7 @@ function compileRoom(
 		...(openSides.length === 0 ? {} : { openSides }),
 		floorElevation,
 		ceilingElevation,
-		floorThickness: room.floorThickness,
-		ceilingThickness: room.ceilingThickness,
+
 		wallThickness: room.wallThickness,
 		floorPolygon,
 		ceilingPolygon,
@@ -2132,7 +2138,6 @@ function compileOpening(
 		...(opening.connectsRoomIds ? { connectsRoomIds: opening.connectsRoomIds } : {})
 	};
 }
-
 
 function buildSolidSpans(samples: readonly CompiledCurveSample[], sections: readonly CompiledWallSection[]): CompiledSolidSpan[] {
 	const spans: CompiledSolidSpan[] = [];
@@ -2411,18 +2416,18 @@ function roomBounds2FromWalls(
 
 function roomBounds3FromParts(
 	floorPolygon: readonly LayoutVec2[],
+	ceilingPolygon: readonly LayoutVec2[],
 	walls: readonly { readonly bounds3: LayoutBounds3 }[],
 	floorElevation: number,
 	ceilingElevation: number,
-	floorThickness: number,
-	ceilingThickness: number,
+
 	overhead: 'closed' | 'open-to-sky' = 'closed'
 ): LayoutBounds3 {
 	const min: Vec3 = [Infinity, Infinity, Infinity];
 	const max: Vec3 = [-Infinity, -Infinity, -Infinity];
-	for (const [x, z] of floorPolygon) includeBounds3(min, max, [x, floorElevation - floorThickness, z]);
-	for (const [x, z] of floorPolygon) {
-		includeBounds3(min, max, [x, ceilingElevation + (overhead === 'open-to-sky' ? 0 : ceilingThickness), z]);
+	for (const [x, z] of floorPolygon) includeBounds3(min, max, [x, floorElevation, z]);
+	if (overhead === 'closed') for (const [x, z] of ceilingPolygon) {
+		includeBounds3(min, max, [x, ceilingElevation, z]);
 	}
 	for (const wall of walls) includeBounds3(min, max, wall.bounds3.min, wall.bounds3.max);
 	return finiteBounds3(min, max) ?? { min: [0, floorElevation, 0], max: [0, ceilingElevation, 0] };

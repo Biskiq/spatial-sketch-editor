@@ -129,7 +129,7 @@ Feed the partition and exact Junction snaps into ordinary Wall-chain/noding and 
 once against the accepted pre-gesture baseline. No intermediate ring is installed. Later
 off-seam attachments use the existing exact open split and keep each fragment's start-side
 ID. Existing rim Junctions are reused as-is. One gesture may attach at both ends. Keep the
-rotunda's ID, name, thicknesses, associations and overhead intent when its full boundary
+rotunda's ID, name, associations and overhead intent when its full boundary
 survives through split lineage. A born gallery receives ordinary Room data. A valid chord
 across the interior is a divide and takes the clearing path below.
 

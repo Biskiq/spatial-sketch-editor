@@ -22,6 +22,7 @@
  * writers and the editor's wall-first transaction path after the F0 gate;
  * The precision operations use the same candidate/validation discipline.
  */
+import { carryRegionWallIntents } from './layout-region';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWall,
@@ -41,7 +42,6 @@ import {
 	interiorWitness,
 	reconcileRooms,
 	roomBoundaryPolygon,
-	ROOM_CREATION_DEFAULTS,
 	type ComponentLineage,
 	type RoomIdAllocator,
 	type SpaceRetirement
@@ -345,6 +345,7 @@ function planWallRemovalSet(
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
 		walls: document.walls.filter((wall) => !removalSet.has(wall.id)),
+		regions: carryRegionWallIntents(document.regions, new Map(wallIds.map((id) => [id, []]))),
 		openings: document.openings.filter((opening) => !removalSet.has(opening.wallId))
 	};
 	// Junction cleanup is deliberately DEFERRED until after reconciliation: a
@@ -557,8 +558,6 @@ export function planDeleteWalls(
  *   carries it (or any unrecognized/legacy field) rejects `invalid_patch`;
  * - `name` is trimmed and must be non-empty (duplicate names are legal — `id`
  *   is identity, mirroring legacy behavior);
- * - `floorThickness`/`ceilingThickness` use the existing canonical numeric
- *   rule only (strictly positive finite — exactly what the wall-first codec
  *   requires), with no invented tolerance or range;
  * - a patch that changes nothing rejects `no_op`, so callers write zero
  *   history.
@@ -567,8 +566,8 @@ export type RoomMetadataPatch = {
 	name?: string;
 	/** Authored overhead intent; `closed` generates the lid, `open-to-sky` removes it. */
 	overhead?: 'closed' | 'open-to-sky';
-	floorThickness?: number;
-	ceilingThickness?: number;
+
+
 };
 
 export function planRoomMetadataUpdate(
@@ -592,7 +591,7 @@ export function planRoomMetadataUpdate(
 			roomIds: [roomId]
 		});
 	}
-	const allowedKeys = new Set(['name', 'overhead', 'floorThickness', 'ceilingThickness']);
+	const allowedKeys = new Set(['name', 'overhead']);
 	const unknownKeys = Object.keys(patch).filter((key) => !allowedKeys.has(key));
 	if (unknownKeys.length > 0) {
 		return reject({
@@ -613,18 +612,6 @@ export function planRoomMetadataUpdate(
 		}
 		nextRoom.name = patch.name.trim();
 	}
-	for (const field of ['floorThickness', 'ceilingThickness'] as const) {
-		const value = patch[field];
-		if (value === undefined) continue;
-		if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-			return reject({
-				code: 'invalid_value',
-				message: `Room ${field} must be a finite number greater than zero`,
-				roomIds: [roomId]
-			});
-		}
-		nextRoom[field] = value;
-	}
 	if (patch.overhead !== undefined) {
 		if (patch.overhead !== 'closed' && patch.overhead !== 'open-to-sky') {
 			return reject({
@@ -637,9 +624,7 @@ export function planRoomMetadataUpdate(
 	}
 	if (
 		nextRoom.name === room.name &&
-		nextRoom.overhead === room.overhead &&
-		nextRoom.floorThickness === room.floorThickness &&
-		nextRoom.ceilingThickness === room.ceilingThickness
+		nextRoom.overhead === room.overhead
 	) {
 		return reject({
 			code: 'no_op',
@@ -1055,6 +1040,4 @@ export function closedChainWalls(options: {
 	};
 }
 
-/** Room creation defaults re-export (P23.8 0.1 m floor/ceiling). */
-export { ROOM_CREATION_DEFAULTS };
 export type { LayoutWallFirstRoom };

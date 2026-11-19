@@ -37,7 +37,8 @@ import {
 	parseRenameProjectRequest,
 	ProjectDeletionBusyError,
 	ProjectLifecycleInputError,
-	renameProject as renameProjectLifecycle
+	renameProject as renameProjectLifecycle,
+	hasUnsupportedLayoutFormat, UnsupportedLayoutFormatError, UNSUPPORTED_LAYOUT_FORMAT, UNSUPPORTED_LAYOUT_MESSAGE
 } from './project-lifecycle.js';
 import {
 	approveModelImport,
@@ -386,6 +387,9 @@ export function createApp({
 		} catch (error) {
 			if (error instanceof ProjectNotFoundError) return notFound(reply);
 			if (error instanceof SaveRefusalError) return saveRefusal(reply, error);
+			if (error instanceof UnsupportedLayoutFormatError) {
+				return reply.code(422).send(errorBody(UNSUPPORTED_LAYOUT_FORMAT, error.message));
+			}
 			if (error instanceof ProjectLifecycleInputError) {
 				return reply.code(error.statusCode).send(errorBody(error.code, error.message));
 			}
@@ -440,6 +444,9 @@ export function createApp({
 			const loaded = await loadProject(pool, userId, projectId);
 			const validation = validateProjectEnvelope(loaded.document);
 			if (!validation.success || validation.envelope.id !== projectId) {
+				if (!validation.success && hasUnsupportedLayoutFormat(validation.issues)) {
+					return reply.code(422).send(errorBody(UNSUPPORTED_LAYOUT_FORMAT, UNSUPPORTED_LAYOUT_MESSAGE));
+				}
 				if (!validation.success && validation.issues.some((issue) =>
 					issue.code === 'unsupported_format_version' && issue.path.startsWith('$.units.scene.'))) {
 					return reply.code(422).send(errorBody('unsupported_scene_format', 'This project was saved in an incompatible Scene format.'));

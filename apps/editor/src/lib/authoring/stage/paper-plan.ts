@@ -110,10 +110,11 @@ export const PAPER_LINE_STYLE: {
 	footprint: { ink: PAPER_INK, widthCssPx: 1.25, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 }
 };
 
-export const PAPER_FILL_INK: { readonly cut: string; readonly 'room-floor': string;
+export const PAPER_FILL_INK: { readonly cut: string; readonly 'room-floor': string; readonly 'region-floor': string;
 } = {
 	cut: PAPER_INK,
-	'room-floor': PAPER_GROUND_INK
+	'room-floor': PAPER_GROUND_INK,
+	'region-floor': '#d1d8ca'
 };
 
 export type PaperSegment = readonly [LayoutVec2, LayoutVec2];
@@ -133,8 +134,8 @@ export type PaperLineDraw = {
 export type PaperFillDraw = {
 	readonly key: string;
 	readonly sourceId: string;
-	readonly layer: typeof PAPER_LAYER.roomFloor | typeof PAPER_LAYER.cut;
-	readonly treatment: 'room-floor' | 'cut';
+	readonly layer: typeof PAPER_LAYER.roomFloor | typeof PAPER_LAYER.cut | typeof PAPER_LAYER.projected;
+	readonly treatment: 'room-floor' | 'region-floor' | 'cut';
 	readonly elevationMeters: number;
 	readonly polygons: readonly (readonly LayoutVec2[])[];
 };
@@ -670,6 +671,12 @@ export function buildPaperPlan(
 				});
 			}
 			return;
+		}
+		if (fragment.ref.sourceKind === 'region' && treatment === 'projected' && fragment.geometry.kind === 'polygon') {
+			fills.push({
+				key, sourceId: fragment.ref.sourceId, layer: PAPER_LAYER.projected, treatment: 'region-floor',
+				elevationMeters: fragment.elevationMeters, polygons: [fragment.geometry.polygon]
+			});
 		}
 		if (treatment === 'cut') {
 			const interval = fragment.ref.subRef?.kind === 'interval' ? fragment.ref.subRef : null;

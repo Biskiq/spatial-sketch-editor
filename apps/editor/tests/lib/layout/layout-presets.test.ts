@@ -42,7 +42,8 @@ function emptyDocument(elevation = 0): LayoutDocumentWallFirst {
 		walls: [],
 		rooms: [],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 

@@ -114,12 +114,11 @@ function rectangleDocument(options: {
 					{ wallId: 'w4', direction: 'forward' }
 				],
 				virtualEdges: [], overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 
@@ -386,7 +385,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 			'unsupported_format_version'
 		);
 		expect(() => serializeWallFirstLayoutDocument(historical)).toThrowError(
-			/Canonical Layout Save requires formatVersion 8/
+			/Canonical Layout Save requires formatVersion 9/
 		);
 		// A canonical document round-trips through the same writer unchanged.
 		expect(serializeWallFirstLayoutDocument(rectangleDocument())).toContain(
@@ -397,7 +396,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 	it('still rejects an unknown format version by name', () => {
 		const unknown = validateWallFirstLayoutDocument({
 			...rectangleDocument(),
-			formatVersion: 9
+			formatVersion: 10
 		});
 		expect(unknown.success).toBe(false);
 		if (unknown.success) return;

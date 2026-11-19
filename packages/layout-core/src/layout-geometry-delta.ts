@@ -1,3 +1,4 @@
+import { regionUnitBounds, type CompiledRegionUnit } from './layout-region-compile';
 import { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';
 /**
  * `layout-geometry-delta.ts` — persistent retained compile roots and local delta
@@ -223,6 +224,7 @@ export type RetainedCompileWorld = {
 	readonly junctionLegOrderById: Map<string, number>;
 	junctionIssuesByOrder: PersistentMap<number, readonly LayoutGeometryIssue[]>;
 	objectUnit: CompiledObjectsUnit;
+	readonly regionUnit: CompiledRegionUnit;
 };
 
 type PassiveCompileRecord = {
@@ -339,6 +341,7 @@ export function buildRetainedCompileWorldFromPass(input: {
 	readonly junctionLegOrderById: Map<string, number>;
 	junctionIssuesById: Map<string, readonly LayoutGeometryIssue[]>;
 	readonly objectUnit: CompiledObjectsUnit;
+	readonly regionUnit: CompiledRegionUnit;
 	readonly derivedWallRoles: ReadonlyMap<string, LayoutDerivedWallRole>;
 }): RetainedCompileWorld {
 	const { document } = input;
@@ -439,7 +442,8 @@ export function buildRetainedCompileWorldFromPass(input: {
 		junctionSortedIndexById,
 		junctionLegOrderById: input.junctionLegOrderById,
 		junctionIssuesByOrder: PersistentMap.from([...input.junctionIssuesById].map(([id, issues]) => [input.junctionLegOrderById.get(id)!, issues] as const)),
-		objectUnit: input.objectUnit
+		objectUnit: input.objectUnit,
+		regionUnit: input.regionUnit
 	};
 }
 
@@ -659,6 +663,8 @@ export function seedReuseFromPassiveCompile(
 		}
 	}
 
+	const regionAabbs = allAabbs.slice(aCursor, aCursor + geometry.regions.length);
+	aCursor += regionAabbs.length;
 	// 5. Recover Floor & Document trailing AABBs + leg insertion order.
 	let floorAabb: CompiledQueryAabb | null = null;
 	let docAabb: CompiledQueryAabb | null = null;
@@ -711,6 +717,13 @@ export function seedReuseFromPassiveCompile(
 		junctionLegOrderById,
 		junctionIssuesById: new Map(),
 		objectUnit,
+		regionUnit: {
+			regions: geometry.regions,
+			polygons: geometry.queries.polygons.slice(objCount + roomCount),
+			aabbs: regionAabbs,
+			bounds3: regionUnitBounds(geometry.regions),
+			issues: []
+		},
 		derivedWallRoles
 	});
 	reuse.world = { ...built, hydratedWithoutSources: true };
@@ -848,6 +861,8 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 	if (hasAnySamplingTestObserver() || !isCanonicalWallSampling(sampling)) return null;
 	let world = reuse.world as RetainedCompileWorld | null;
 	if (!world) return null;
+	if (document.regions !== world.document.regions &&
+		(document.regions.length !== 0 || world.document.regions.length !== 0)) return null;
 
 	const defaultWallThickness = layoutItem(document, 'walls', 0)?.thickness ?? 0.1;
 	if (
@@ -1201,6 +1216,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		}
 	}
 
+	reuse.counters.regionsReused += world.regionUnit.regions.length;
 	world.document = document;
 	reuse.counters.entities =
 		reuse.counters.wallsEvaluated +
@@ -1218,10 +1234,12 @@ function compileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompi
  floorBounds = mergeBounds3Into(floorBounds, world.objectUnit.floorRoomBounds3);
  floorBounds = mergeBounds3Into(floorBounds, world.wallSlots.summary.bounds3);
  floorBounds = mergeBounds3Into(floorBounds, world.sortedJunctions.summary.bounds3);
+ floorBounds = mergeBounds3Into(floorBounds, world.regionUnit.bounds3);
  let bounds = mergeBounds3Into(null, world.roomSlots.summary.bounds3);
  bounds = mergeBounds3Into(bounds, world.objectUnit.bounds3);
  bounds = mergeBounds3Into(bounds, world.wallSlots.summary.bounds3);
  bounds = mergeBounds3Into(bounds, world.sortedJunctions.summary.bounds3);
+ bounds = mergeBounds3Into(bounds, world.regionUnit.bounds3);
  const floorRoomIds = reuse.retainedFloor?.roomIds ?? collectChunks(world.roomSlots, (c) => c.stripped ? [c.roomId] : []);
  const { floor, floorAabb, docAabb } = builders.buildFloorAndAabbs(document.floor, floorRoomIds, floorBounds, bounds, reuse);
  const sealState: LazySealState = { sealed: false, sealers: [] };
@@ -1230,14 +1248,15 @@ function compileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompi
  const junctions = lazyArray('compiled-junctions', () => world.sortedJunctions.toArray(null), sealState);
  const points = lazyArray('query-points', () => collectChunks(world.wallSlots, (c) => c.baseRecords.points), sealState);
  const spans = lazyArray('query-spans', () => collectChunks(world.wallSlots, (c) => c.baseRecords.spans), sealState);
- const polygons = lazyArray('query-polygons', () => [...world.objectUnit.polygons, ...collectChunks(world.roomSlots, (c) => c.polygons)], sealState);
- const aabbs = lazyArray('query-aabbs', () => [...world.objectUnit.aabbs, ...collectChunks(world.roomSlots, (c) => c.aabbs), ...collectChunks(world.wallSlots, (c) => [...c.baseRecords.aabbs, ...(c.wallAabb ? [c.wallAabb] : [])]), ...(floorAabb ? [floorAabb] : []), ...(docAabb ? [docAabb] : [])], sealState);
+ const polygons = lazyArray('query-polygons', () => [...world.objectUnit.polygons, ...collectChunks(world.roomSlots, (c) => c.polygons), ...world.regionUnit.polygons], sealState);
+ const aabbs = lazyArray('query-aabbs', () => [...world.objectUnit.aabbs, ...collectChunks(world.roomSlots, (c) => c.aabbs), ...collectChunks(world.wallSlots, (c) => [...c.baseRecords.aabbs, ...(c.wallAabb ? [c.wallAabb] : [])]), ...world.regionUnit.aabbs, ...(floorAabb ? [floorAabb] : []), ...(docAabb ? [docAabb] : [])], sealState);
  const issues = lazyArray('issues', () => {
   const out = [...world.objectUnit.issues, ...collectChunks(world.roomSlots, (c) => c.issues), ...collectChunks(world.wallSlots, (c) => c.issues)];
   for (const list of world.junctionIssuesByOrder.values()) out.push(...list);
   return out;
  }, sealState);
  const geometry: CompiledLayoutGeometry = {
+  regions: world.regionUnit.regions,
   floors: [floor], get rooms() { return rooms(); }, get walls() { return walls(); },
   objects: world.objectUnit.compiledObjects,
   queries: { get points() { return points(); }, get spans() { return spans(); }, get polygons() { return polygons(); }, get aabbs() { return aabbs(); } },
@@ -1245,7 +1264,7 @@ function compileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompi
  };
  LAZY_GEOMETRY_SEAL.set(geometry, () => {
   freezeGeneratedGraph(floor); freezeGeneratedGraph(floorAabb); freezeGeneratedGraph(docAabb);
-  freezeGeneratedGraph(geometry.floors); freezeGeneratedGraph(geometry.objects); freezeGeneratedGraph(bounds);
+  freezeGeneratedGraph(geometry.floors); freezeGeneratedGraph(geometry.objects); freezeGeneratedGraph(world.regionUnit); freezeGeneratedGraph(bounds);
   sealState.sealed = true; for (const seal of sealState.sealers) seal();
   Object.freeze(geometry.queries); Object.freeze(geometry);
  });
@@ -1377,6 +1396,8 @@ export function diffCompiledSources(
 	const previous = COMPILE_WORLD_BY_GEOMETRY.get(before);
 	const current = COMPILE_WORLD_BY_GEOMETRY.get(after);
 	if (!previous || !current || previous === current) return undefined;
+	if (previous.regionUnit.regions !== current.regionUnit.regions &&
+		(previous.regionUnit.regions.length || current.regionUnit.regions.length)) return undefined;
 	// A different length is an insertion or a removal: every later slot shifts, so the
 	// roots can no longer be compared position by position.
 	if (previous.sortedWalls.length !== current.sortedWalls.length) return undefined;

@@ -126,8 +126,6 @@ function enclosure(options: Enclosure) {
 		],
 					virtualEdges: [], overhead: 'closed' as const,
 
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 	return { junctions, walls, room };
 }
