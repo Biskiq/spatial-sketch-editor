@@ -842,24 +842,36 @@ export function createLayoutContributions({
 	const contributions = {
 		hostTools: ['erase', 'measure', 'paint'],
 		/**
-		 * Face Paint names the Wall-side identity from the exact 3D triangle or
-		 * Layout's signed lateral reading of a Plan hit. Space membership is also
-		 * Layout-owned; S5a expands it to Wall sides only (OD-J5 keeps floor/lid UI
-		 * for S5b).
+		 * Face Paint names the surface identity from the exact 3D triangle, the
+		 * Region face it carries, or Layout's signed lateral reading of a Plan Wall
+		 * hit. Space membership is also Layout-owned and expands to every member
+		 * surface: Wall sides, floor, a present lid and wholly-contained Regions.
 		 */
 		paintAnswer(hit, reading): StagePaintAnswer {
-			if (hit.sourceKind !== 'wall') {
-				return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
+			let surface: LayoutSurfaceRef | null = null;
+			if (hit.sourceKind === 'wall') {
+				const componentId = hit.subRef?.kind === 'component' ? hit.subRef.componentId : null;
+				const taggedSide = componentId?.match(/^side:(left|right)$/)?.[1];
+				const side = taggedSide === 'left' || taggedSide === 'right'
+					? taggedSide
+					: reading === 'plan'
+						? wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [hit.worldPoint[0], hit.worldPoint[2]])
+						: null;
+				if (side === null) return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
+				surface = { kind: 'wall-side', wallId: hit.sourceId, side };
+			} else if (hit.sourceKind === 'room-floor') {
+				surface = { kind: 'room-floor', roomId: hit.sourceId };
+			} else if (hit.sourceKind === 'room-lid') {
+				surface = { kind: 'room-lid', roomId: hit.sourceId };
+			} else if (hit.sourceKind === 'region') {
+				const face = hit.subRef?.kind === 'component' ? hit.subRef.componentId : null;
+				if (face !== 'top' && face !== 'underside') {
+					return { kind: 'refused', message: 'This part of a region can’t be painted.' };
+				}
+				surface = { kind: 'region-face', regionId: hit.sourceId, face };
+			} else {
+				return { kind: 'refused', message: 'That surface can’t be painted.' };
 			}
-			const componentId = hit.subRef?.kind === 'component' ? hit.subRef.componentId : null;
-			const taggedSide = componentId?.match(/^side:(left|right)$/)?.[1];
-			const side = taggedSide === 'left' || taggedSide === 'right'
-				? taggedSide
-				: reading === 'plan'
-					? wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [hit.worldPoint[0], hit.worldPoint[2]])
-					: null;
-			if (side === null) return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
-			const surface: LayoutSurfaceRef = { kind: 'wall-side', wallId: hit.sourceId, side };
 			if (resolveLayoutSurface(document, surface) !== 'present') {
 				return { kind: 'refused', message: 'That surface changed. Try again.' };
 			}
@@ -869,7 +881,6 @@ export function createLayoutContributions({
 					? {
 							kind: 'unique', roomId: membership.roomId,
 							surfaces: surfacesOfSpace(document, membership.roomId).surfaces
-								.filter((candidate) => candidate.kind === 'wall-side')
 						}
 					: membership;
 			return { kind: 'paintable-surface', surface, space };

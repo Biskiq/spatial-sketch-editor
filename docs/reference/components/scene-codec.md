@@ -1,22 +1,22 @@
 # Scene codec layout
 
 **Read when:** working inside `packages/project-model/src/scene-codec/` or the app Scene seam.
-**Last reviewed:** 2026-11-03 (S29 Camera-unit connectivity context)
+**Last reviewed:** 2026-11-19 (S5b Region face references and Scene 11)
 
 ---
 
 ## Codec boundary
 
-Scene 10 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
+Scene 11 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
 by the Camera codec is not a second authored Scene authority. Camera and Experience are separate
 units today. Release readers do not consume authoring codecs. Compound acceptance belongs to F.4.
 
-Scene 10 stores the authored Sky. Its Sun and Moon positions are derived from time,
+Scene 11 stores the authored Sky. Its Sun and Moon positions are derived from time,
 heading and noon height. The all-default Studio Sky normalizes to absence, as does an empty
-environment. Scene 9 source and release payloads are refused with `unsupported_format_version`.
-Publishing again requires a re-authored Scene 10 project.
+environment. Scene 10 and earlier source and release payloads are refused with
+`unsupported_format_version`. Publishing again requires a re-authored Scene 11 project.
 
-Scene 10's Finish grammar is strict. `maps` names one texture id per slot; `mapping` carries
+Scene 11's Finish grammar is strict. `maps` names one texture id per slot; `mapping` carries
 `tileMeters`, `rotation` and `offset`; `normalScale` and `normalFlipY` are refused without
 `maps.normal`. A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec
 leaves follower closure to the unit validator, which is the only reader holding the palette. Every
@@ -26,9 +26,10 @@ retired `baseTextureId` is an unknown key, and a `/project-assets/{assetId}` tex
 equal that asset id (`texture_id_mismatch`).
 
 Optional `surfaceFinishes` is a nonempty, sorted and unique array of assignments to canonical Layout
-`wall-side`, `room-floor` or `room-lid` references. Each assignment names exactly one curated
-`materialId` or non-pristine `materialInstanceId`; an empty field is omitted and `region-face` is
-not admitted in Scene 10. Unknown reference kinds, duplicate identities, unsorted records and
+`wall-side`, `room-floor`, `room-lid` or `region-face` references. A Region face must be `top` or
+`underside`; `edge` is refused with `unknown_surface_face`, because a perimeter strip has no Finish
+face. Each assignment names exactly one curated `materialId` or non-pristine `materialInstanceId`;
+an empty field is omitted. Unknown reference kinds, duplicate identities, unsorted records and
 non-normal Finish references are refused. Cross-unit validation reports a retired Layout identity
 as `unresolved-surface`; it is retained on read for recovery and resolved to the Layout default.
 

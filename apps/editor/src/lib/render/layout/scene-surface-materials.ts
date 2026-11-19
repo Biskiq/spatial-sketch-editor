@@ -24,7 +24,7 @@ type Variant = {
 };
 
 /** Lease Scene-resolved floor/lid looks through the Canvas material store. */
-export function createRoomSurfaceMaterials(input: {
+export function createSceneSurfaceMaterials(input: {
 	readonly store: MaterialStore;
 	readonly scope: TextureLoadScope | null;
 	readonly onMaterialChange: () => void;

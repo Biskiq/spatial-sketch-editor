@@ -405,7 +405,7 @@ describe('R217.S10 — Eraser', () => {
 
 
 describe('T2.S4a — Paint', () => {
-	it('paints one Wall face or all Wall faces in its Space, and still refuses a Light', async () => {
+	it('paints one Wall face or every surface in its Space, and still refuses a Light', async () => {
 		const { facade } = await mount('plan', [LIGHT], undefined, false, true);
 		const { assign, assignSurface, options } = paintOptions();
 		const painter = createStagePainter(facade, options);
@@ -425,17 +425,21 @@ describe('T2.S4a — Paint', () => {
 		await painter.up({ css: wall, evaluationId });
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(assignSurface.mock.calls[0]![0]).toEqual([face]);
-		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster · 1 Wall face' });
+		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster · 1 surface' });
 
 		assignSurface.mockClear();
 		painter.setSurfaceScope('space');
 		expect(painter.down({ css: wall, evaluationId })).toBe(true);
-		expect(painter.candidate()?.assignmentSurfaces).toHaveLength(4);
-		expect(painter.candidate()?.consequence).toBe('Paint 4 Wall faces in this Space');
+		const expanded = painter.candidate()?.assignmentSurfaces ?? [];
+		expect(expanded).toHaveLength(6);
+		expect(expanded.filter((surface) => surface.kind === 'wall-side')).toHaveLength(4);
+		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-floor' }));
+		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-lid' }));
+		expect(painter.candidate()?.consequence).toBe('Paint 6 surfaces in this Space');
 		await painter.up({ css: wall, evaluationId });
 		expect(assignSurface).toHaveBeenCalledTimes(1);
-		expect(assignSurface.mock.calls[0]![0]).toHaveLength(4);
-		expect(assignSurface.mock.calls[0]![0].every((surface) => surface.kind === 'wall-side')).toBe(true);
+		expect(assignSurface.mock.calls[0]![0]).toHaveLength(6);
+		expect(assignSurface.mock.calls[0]![0]).toEqual(expanded);
 
 		const light = css(facade, LIGHT.position);
 		expect(painter.down({ css: light, evaluationId })).toBe(true);

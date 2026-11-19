@@ -4,7 +4,7 @@ import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type Viewpo
 import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSourceKind, type PlanSubRef } from '@portfolio/layout-core';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
-import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
+import type { StageAdapterContext, StageDomainPick, StageHitSourceKind, StagePickQuery } from '../stage/stage-facade';
 import { cutWallBandsOf, fragmentLayer, PAPER_LAYER, type CutWallSpan } from '../stage/paper-plan';
 import { drawnShownPlanCells, sliceHides, type DrawnResolvedSlice, type ResolvedSlice } from '../stage/slice/slice-cut';
 import {
@@ -921,7 +921,7 @@ export function createPlanPickProvider(
 			const ray = pointerRay(css, evaluation, token);
 			const drawn = ray.kind === 'ray' ? context.pickScene(ray.ray) : null;
 			if (drawn === null || drawn.entityId !== null || drawn.layoutId === undefined || drawn.layoutKind === undefined) return null;
-			let sourceKind: PlanSourceKind;
+			let sourceKind: StageHitSourceKind;
 			let sourceId = drawn.layoutId;
 			let subRef: PlanSubRef | null = null;
 			if (drawn.layoutKind === 'wall' || drawn.layoutKind === 'wall-failure') {
@@ -930,6 +930,8 @@ export function createPlanPickProvider(
 				if (drawn.wallSide !== undefined) subRef = { kind: 'component', componentId: `side:${drawn.wallSide}` };
 			} else if (drawn.layoutKind === 'floor') {
 				sourceKind = 'room-floor';
+			} else if (drawn.layoutKind === 'lid') {
+				sourceKind = 'room-lid';
 			} else if (drawn.layoutKind === 'region') {
 				sourceKind = 'region';
 				if (drawn.region !== undefined) subRef = { kind: 'component', componentId: drawn.region.face };

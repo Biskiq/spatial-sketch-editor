@@ -99,7 +99,7 @@ describe('the Stage pick through a Slice', () => {
 		const floor = new Mesh(new PlaneGeometry(4, 4), material);
 		floor.rotateX(-Math.PI / 2);
 		tagRenderIdentity(floor, 'floor', 'room-floor');
-		const slab = new Mesh(buildRegionMeshGeometry(geometry.regions[0]!), [material, material]);
+		const slab = new Mesh(buildRegionMeshGeometry(geometry.regions[0]!), [material, material, material]);
 		tagRenderIdentity(slab, 'region', 'terrace');
 		root.add(floor, slab);
 		source.registerLayout(root);

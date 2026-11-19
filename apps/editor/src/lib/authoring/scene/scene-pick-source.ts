@@ -47,7 +47,7 @@ export type SceneRenderedHit = {
 	readonly kind: 'entity' | 'floor' | 'layout';
 	/** The owned Layout subject under this mesh hit, when it has one. */
 	readonly layoutId?: string;
-	readonly layoutKind?: 'wall' | 'wall-failure' | 'object' | 'floor' | 'region';
+	readonly layoutKind?: 'wall' | 'wall-failure' | 'object' | 'floor' | 'lid' | 'region';
 	readonly wallId?: string;
 	/** A qualified exterior Wall side, only on paintable front/back face strips. */
 	readonly wallSide?: 'left' | 'right';
@@ -309,7 +309,9 @@ export function createScenePickSource() {
 				if (position === undefined || position.count < 3) return;
 				const identity = renderIdentityOf(node);
 				if (identity === null) return;
-				if (identity.kind === 'floor') return;
+				// Generated horizontal planes are not section caps: a floor is the
+				// ground the Walls stand on, and a lid is a derived ceiling.
+				if (identity.kind === 'floor' || identity.kind === 'lid') return;
 				// A Wall failure surface is the *fallback* body the builder produced for a
 				// Wall it could not close. Capping it would draw a solid paper section over
 				// a defect and read as a resolved Wall; its edges already say what happened.

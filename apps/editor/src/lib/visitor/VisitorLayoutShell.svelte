@@ -132,7 +132,7 @@
 	 * per-Room component, geometry component or material component left.
 	 */
 	const rooms = createRoomRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook);
-	const regions = createRegionRepresentation(materials);
+	const regions = createRegionRepresentation(materials, null, () => invalidate(), resolveSurfaceLook);
 	$effect(() => { if (regions.update(geometry)) invalidate(); });
 
 	$effect(() => {
@@ -153,6 +153,12 @@
 	});
 	$effect(() => {
 		if (rooms.setScene(scene, textureScope)) invalidate();
+	});
+	$effect(() => {
+		if (regions.setScene(scene, textureScope)) invalidate();
+	});
+	$effect(() => {
+		if (regions.setTreatment(treatment)) invalidate();
 	});
 
 	/**

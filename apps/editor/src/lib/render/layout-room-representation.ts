@@ -19,9 +19,9 @@
  *
  * Deliberately unchanged: the world placement of each surface (floor
  * `-π/2` at `floorElevation`, ceiling `+π/2` at `ceilingElevation`), the
- * shadow-catcher's `raycast` opt-out (it is never picked), the ceiling's absence
- * of a render-identity tag (a ceiling hit is Layout, not a floor), and the framed
- * door portals, which stay with the shell.
+ * shadow-catcher's `raycast` opt-out (it is never picked), and the framed door
+ * portals, which stay with the shell. The lid carries its own `lid` identity so
+ * Paint can name `room-lid`; selection still resolves a Room through its floor.
  */
 import { Group, Mesh, Shape, ShapeGeometry, type BufferGeometry, type Object3D } from 'three';
 import {
@@ -42,7 +42,7 @@ import type {
 import { applyTreatment } from '$lib/render/materials/treatment';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 import type { TextureLoadScope } from '$lib/render/resources/texture-store';
-import { createRoomSurfaceMaterials } from '$lib/render/layout/room-surface-materials';
+import { createSceneSurfaceMaterials } from '$lib/render/layout/scene-surface-materials';
 import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 
 /** One retained Room: what it was built from, its group, its buffers and its floor/lid meshes. */
@@ -185,7 +185,7 @@ export function createRoomRepresentation(
 	let disposed = false;
 	let activeScene = initialScene;
 	let activeScope = initialScope;
-	let surfaceMaterials = createRoomSurfaceMaterials({
+	let surfaceMaterials = createSceneSurfaceMaterials({
 		store, scope: activeScope, onMaterialChange: refreshSurfaceMaterials, resolveSurfaceLook
 	});
 	let hidden: ReadonlySet<string> = new Set();
@@ -215,7 +215,7 @@ export function createRoomRepresentation(
 	}
 
 	function replaceSurfaceMaterials(): void {
-		const next = createRoomSurfaceMaterials({
+		const next = createSceneSurfaceMaterials({
 			store, scope: activeScope, onMaterialChange: refreshSurfaceMaterials, resolveSurfaceLook
 		});
 		const previous = surfaceMaterials;
@@ -277,6 +277,7 @@ export function createRoomRepresentation(
 			const lidMaterial = surfaceMaterials.materialFor({ kind: 'room-lid', roomId: room.roomId }) ?? ceilingLease.material;
 			ceiling = new Mesh(ceilingGeometry, lidMaterial);
 			ceiling.name = `VisitorCeiling:${room.roomId}`;
+			tagRenderIdentity(ceiling, 'lid', room.roomId);
 			ceiling.position.set(0, room.ceilingElevation, 0);
 			ceiling.rotation.set(Math.PI / 2, 0, 0);
 			// A Room rebuilt mid-Lift is born lifted: the reading is remembered above,

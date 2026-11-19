@@ -396,7 +396,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 	it('still rejects an unknown format version by name', () => {
 		const unknown = validateWallFirstLayoutDocument({
 			...rectangleDocument(),
-			formatVersion: 10
+			formatVersion: 11
 		});
 		expect(unknown.success).toBe(false);
 		if (unknown.success) return;

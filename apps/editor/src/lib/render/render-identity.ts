@@ -18,7 +18,7 @@
 import type { Object3D } from 'three';
 
 /** The kinds of Layout render item whose identity is owned by a representation. */
-export type RenderIdentityKind = 'wall' | 'wall-failure' | 'object' | 'floor' | 'region';
+export type RenderIdentityKind = 'wall' | 'wall-failure' | 'object' | 'floor' | 'lid' | 'region';
 
 /** The tag recorded on an object's `userData`. Plain data: it must stay JSON-cloneable. */
 export type RenderIdentity = {

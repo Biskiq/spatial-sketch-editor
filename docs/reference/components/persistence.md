@@ -84,7 +84,7 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 9, Scene 10, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 9, Scene 11, Camera 1, Experience 4 and resources 2.
 Layout's envelope unit version is not a second number: `LAYOUT_UNIT_FORMAT_VERSION` is the Layout
 `formatVersion` itself (`LAYOUT_WALL_FIRST_FORMAT_VERSION`), so one authority governs the unit
 header and the payload.
@@ -103,26 +103,26 @@ of heads, revisions, pending captures and releases, a tested restore with the ou
 and the owner's approved disposition for every affected source. See the
 [verticality cutover gate](../../roadmap/t1-spatial-world/next-batch/v-plan-verticality.md#stored-source-and-activation).
 
-**Scene 10** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
+**Scene 11** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
 optional `environment`, optional `surfaceFinishes`, and the project Artwork shelf. `surfaceFinishes`
-contains one assignment per qualified Layout Wall-side, Space-floor or Space-lid reference; Layout
-does not store appearance. The shelf owns project-local image entries. Every
+contains one assignment per qualified Layout Wall-side, Space-floor, Space-lid or Region
+`top`/`underside` reference; a Region `edge` has no Finish. Layout does not store appearance. The shelf owns project-local image entries. Every
 Artwork source must resolve to a shelf entry with matching oriented dimensions. An Artwork may
 carry one optional frame record (`style`, Mat, colour); absent is the canonical no-frame/no-Mat
 default, and generated frame dimensions are never stored. This additive record does not bump the
 Scene unit; a reader that predates it refuses a framed document at strict validation. Scene carries
 no Camera or editorial fields. Scene 4 introduced the `form` entity,
 whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
-Scene 10 stores world presentation as an optional `environment`. The Sky records time, noon
+Scene 11 stores world presentation as an optional `environment`. The Sky records time, noon
 heading, noon height, haze, exposure, softness, the shared shadow switch, Moon colour and strength,
 and Sky and Ground colours. The optional Treatment is `flat-colour` or `clay`. Absent Sky uses
 Studio light. A Finish may name one texture id per `maps` slot, a `mapping` and a normal scale.
 A colour is a lowercase literal or a palette follower, and `palette` holds at most eight ordered
 slots. The retired single colour map is refused as an unknown key.
 
-Scene 9 projects and releases are refused with `unsupported_format_version`. Scene 9 releases
-remain inaccessible under Scene 10. Authors must recreate their project in Scene 10 before they can
-publish it again. S2 and S5a provide no converter or automatic republish path.
+Scene 10 projects and releases are refused with `unsupported_format_version`. Scene 10 releases
+remain inaccessible under Scene 11. Authors must recreate their project in Scene 11 before they can
+publish it again. S2, S5a and S5b provide no converter or automatic republish path.
 
 Scene 7 retired the authored `directional` Light
 kind (the Sky owns the only Sun): any `directional` entity is refused with a typed error, never

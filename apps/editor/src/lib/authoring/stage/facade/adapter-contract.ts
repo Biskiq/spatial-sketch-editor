@@ -40,6 +40,9 @@ export type StageDomainPick = {
 	readonly cssDistance: number;
 };
 
+/** The Stage hit vocabulary: Plan sources plus the 3D-only Room lid. */
+export type StageHitSourceKind = PlanSourceKind | 'room-lid';
+
 export type StageSourceHit = {
 	readonly reference: SemanticReference;
 	readonly sourceId: string;
@@ -48,7 +51,7 @@ export type StageSourceHit = {
 } | {
 	readonly reference?: undefined;
 	readonly sourceId: string;
-	readonly sourceKind: PlanSourceKind;
+	readonly sourceKind: StageHitSourceKind;
 	readonly generationId: string;
 	readonly stream: PlanStream;
 	readonly subRef: PlanSubRef | null;

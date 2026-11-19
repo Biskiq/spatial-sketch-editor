@@ -14,6 +14,7 @@ import {
 	sameReference,
 	type StageSelectionEntry
 } from '../semantic-selection';
+import { planSourceKindOf } from './plan-source-kind';
 import type {
 	StageFacade,
 	StageInstrumentContent,
@@ -359,11 +360,17 @@ export function stageHostToolOverlay(input: {
 		return { overlay, eraseHover: null, paintHover: null };
 	}
 	const hit: StageSourceHit = candidate.hit;
+	const planKind = hit.reference === undefined ? planSourceKindOf(hit.sourceKind) : null;
+	// A lid is a Paint-only surface face; the selection ink resolves a Room
+	// through its floor, so no second highlight is fabricated for the lid.
+	if (hit.reference === undefined && planKind === null) {
+		return { overlay, eraseHover: null, paintHover: null };
+	}
 	const representation =
 		hit.reference === undefined
 			? {
 					sourceId: hit.sourceId,
-					sourceKind: hit.sourceKind,
+					sourceKind: planKind!,
 					generationId: hit.generationId,
 					stream: hit.stream,
 					subRef: hit.subRef

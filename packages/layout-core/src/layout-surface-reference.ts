@@ -109,6 +109,20 @@ export function roomSurfaceLineage(records: readonly {
 	return result;
 }
 
+/**
+ * Duplicate a Region slab while preserving shared Finish identity. Only the
+ * two paintable faces inherit; `edge` is a perimeter strip with no Finish.
+ */
+export function duplicateRegionSurfaceLineage(
+	sourceRegionId: string,
+	createdRegionId: string
+): LayoutSurfaceLineage {
+	return (['top', 'underside'] as const).map((face) => ({
+		to: { kind: 'region-face', regionId: createdRegionId, face },
+		from: [{ kind: 'region-face', regionId: sourceRegionId, face }]
+	}));
+}
+
 /** Duplicate a Room island while preserving shared Finish identity. */
 export function duplicateRoomSurfaceLineage(
 	wallIdMap: ReadonlyMap<string, string>,
@@ -387,6 +401,16 @@ export type SurfacesOfSpace = {
 	readonly excluded: readonly SpaceSurfaceExclusion[];
 };
 
+/** The one containment rule shared by Region membership and Space scope. */
+function regionFootprintWhollyInsideSpace(
+	outline: readonly LayoutVec2[],
+	footprint: readonly LayoutVec2[]
+): boolean {
+	return footprint.length >= 3 && outline.length >= 3 &&
+		polygonContainsPolygon(outline, footprint) &&
+		footprint.every((point) => pointStrictlyInsidePolygon(outline, point));
+}
+
 /** Expand the Wall sides and face identities owned by one authored Space. */
 export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: string): SurfacesOfSpace {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
@@ -407,10 +431,7 @@ export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: strin
 			face: region.role === 'floor' ? 'top' : 'underside'
 		};
 		const footprint = region.footprint.points;
-		const contained = footprint.length >= 3 && outline.length >= 3 &&
-			polygonContainsPolygon(outline, footprint) &&
-			footprint.every((point) => pointStrictlyInsidePolygon(outline, point));
-		if (contained) surfaces.push(reference);
+		if (regionFootprintWhollyInsideSpace(outline, footprint)) surfaces.push(reference);
 		else if (footprint.length >= 3 && outline.length >= 3 && polygonIntersectionArea(outline, footprint) > 1e-9) {
 			excluded.push({ ref: reference, reason: 'spans-spaces' });
 		}
@@ -423,9 +444,29 @@ export type SpaceOfSurface =
 	| { readonly kind: 'unique'; readonly roomId: string }
 	| { readonly kind: 'ambiguous'; readonly roomIds: readonly string[] };
 
-/** Find Spaces whose boundary owns this specific Wall side. */
+/**
+ * Find the one Space whose scope owns this surface: a Wall side by the oriented
+ * boundary, a Space plane by its own Space, and a Region face by the same
+ * whole-footprint containment rule Space scope uses. Two containing Spaces are
+ * reported ambiguous rather than guessed.
+ */
 export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: LayoutSurfaceRef): SpaceOfSurface {
-	if (reference.kind !== 'wall-side') return { kind: 'none' };
+	if (reference.kind === 'room-floor' || reference.kind === 'room-lid') {
+		return document.rooms.some((room) => room.id === reference.roomId)
+			? { kind: 'unique', roomId: reference.roomId }
+			: { kind: 'none' };
+	}
+	if (reference.kind === 'region-face') {
+		const region = document.regions.find((candidate) => candidate.id === reference.regionId);
+		if (region === undefined) return { kind: 'none' };
+		const compiled = compileWallFirstLayoutGeometry(document).geometry;
+		const roomIds = compiled.rooms
+			.filter((room) => regionFootprintWhollyInsideSpace(room.floorPolygon, region.footprint.points))
+			.map((room) => room.roomId);
+		if (roomIds.length === 0) return { kind: 'none' };
+		if (roomIds.length > 1) return { kind: 'ambiguous', roomIds };
+		return { kind: 'unique', roomId: roomIds[0]! };
+	}
 	const roomIds = document.rooms.filter((room) => room.boundary.some((boundary) =>
 		boundary.wallId === reference.wallId &&
 		reference.side === (boundary.direction === 'forward' ? 'left' : 'right')

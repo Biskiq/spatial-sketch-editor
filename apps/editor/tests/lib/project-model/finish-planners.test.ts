@@ -124,17 +124,45 @@ function wallLayout(ids: readonly string[] = ['wall-a']): LayoutDocumentWallFirs
 }
 
 function wallSideTarget(project: ProjectEnvelope, wallId: string, side: 'left' | 'right'): SemanticReference {
+	return surfaceTarget(project, { kind: 'wall-side', wallId, side });
+}
+
+function surfaceTarget(project: ProjectEnvelope, surface: LayoutSurfaceRef): SemanticReference {
 	const layout = project.units.layout.data;
+	const subject = surface.kind === 'wall-side'
+		? { kind: 'wall' as const, id: surface.wallId }
+		: surface.kind === 'region-face'
+			? { kind: 'region' as const, id: surface.regionId }
+			: { kind: 'room' as const, id: surface.roomId };
+	const componentId = surface.kind === 'wall-side'
+		? `side:${surface.side}`
+		: surface.kind === 'region-face'
+			? surface.face
+			: surface.kind === 'room-floor' ? 'floor' : 'lid';
 	return {
 		version: 1,
 		domain: 'layout',
 		revision: { kind: 'exact', contentRevision: project.units.layout.header.contentRevision },
-		subject: { kind: 'wall', id: wallId },
+		subject,
 		instancePath: [],
 		location: { kind: 'layout-location', levelId: layout.floor.id, structureInstancePath: [] },
-		componentId: `side:${side}`,
+		componentId,
 		capabilityId: null
 	};
+}
+
+function regionLayout(): LayoutDocumentWallFirst {
+	const layout = g1DocumentWithRooms([g1RoomPolygon('paint-space', [[0, 0], [6, 0], [6, 4], [0, 4]])]);
+	layout.regions.push({
+		id: 'terrace',
+		role: 'floor',
+		footprint: { kind: 'polygon', points: [[1, 1], [5, 1], [5, 3], [1, 3]] },
+		elevation: 0.2,
+		thickness: 0.2,
+		form: { kind: 'flat' },
+		intendedGaps: []
+	});
+	return layout;
 }
 
 function sceneDocument(input: SceneInput): CameraFreeSceneDocument {
@@ -328,23 +356,22 @@ describe('scene-surface-finish-assign', () => {
 		);
 	});
 
-	it('assigns a Space-expanded Wall-side set in one byte-exact Undo/Redo entry', async () => {
-		const layout = g1DocumentWithRooms([
-			g1RoomPolygon('paint-space', [[0, 0], [6, 0], [6, 4], [0, 4]])
-		]);
+	it('assigns a Space-expanded Wall, floor, lid and Region set in one byte-exact Undo/Redo entry', async () => {
+		const layout = regionLayout();
 		const room = layout.rooms[0]!;
-		const surfaces = surfacesOfSpace(layout, room.id).surfaces.filter(
-			(surface): surface is Extract<LayoutSurfaceRef, { readonly kind: 'wall-side' }> => surface.kind === 'wall-side'
-		);
+		const surfaces = surfacesOfSpace(layout, room.id).surfaces;
+		expect(surfaces).toContainEqual({ kind: 'room-floor', roomId: room.id });
+		expect(surfaces).toContainEqual({ kind: 'room-lid', roomId: room.id });
+		expect(surfaces).toContainEqual({ kind: 'region-face', regionId: 'terrace', face: 'top' });
 		const coordinator = await boot({ entities: [], layout });
 		const source = coordinator.current().source;
 		const beforeBytes = serializeProjectEnvelope(source);
 		const result = await accept(coordinator, {
 			version: 1,
 			kind: SCENE_SURFACE_FINISH_ASSIGN,
-			operationId: 'space-paint-all-wall-faces',
+			operationId: 'space-paint-all-surfaces',
 			expectedRevision: coordinator.acceptedRevision(),
-			targets: surfaces.map((surface) => wallSideTarget(source, surface.wallId, surface.side)),
+			targets: surfaces.map((surface) => surfaceTarget(source, surface)),
 			payload: { finish: { curated: 'velvet-dark' }, surfaces },
 			capturedInputs: [],
 			allocatedIds: []
@@ -362,6 +389,70 @@ describe('scene-surface-finish-assign', () => {
 		expect(sourceScene(coordinator).surfaceFinishes).toBeUndefined();
 		expect((await coordinator.redo()).kind).toBe('restored');
 		expect(serializeProjectEnvelope(coordinator.current().source)).toBe(paintedBytes);
+	});
+
+	it('paints a Region top and underside in separate exact entries with Undo/Redo', async () => {
+		const layout = regionLayout();
+		const coordinator = await boot({ entities: [], layout });
+		const paint = async (surface: LayoutSurfaceRef, curated: string) => {
+			const source = coordinator.current().source;
+			return accept(coordinator, {
+				version: 1,
+				kind: SCENE_SURFACE_FINISH_ASSIGN,
+				operationId: `paint-${surface.kind}`,
+				expectedRevision: coordinator.acceptedRevision(),
+				targets: [surfaceTarget(source, surface)],
+				payload: { finish: { curated }, surfaces: [surface] },
+				capturedInputs: [],
+				allocatedIds: []
+			});
+		};
+		const top = { kind: 'region-face', regionId: 'terrace', face: 'top' } as const;
+		const underside = { kind: 'region-face', regionId: 'terrace', face: 'underside' } as const;
+		expect(await paint(top, 'velvet-dark')).toMatchObject({ kind: 'accepted' });
+		expect(sourceScene(coordinator).surfaceFinishes).toEqual([
+			{ surface: top, finish: { materialId: 'velvet-dark' } }
+		]);
+		expect(await paint(underside, 'marble-light')).toMatchObject({ kind: 'accepted' });
+		const painted = sourceScene(coordinator).surfaceFinishes;
+		expect(painted).toEqual([
+			{ surface: top, finish: { materialId: 'velvet-dark' } },
+			{ surface: underside, finish: { materialId: 'marble-light' } }
+		]);
+		expect(await coordinator.undo()).toMatchObject({ kind: 'restored' });
+		expect(sourceScene(coordinator).surfaceFinishes).toEqual([
+			{ surface: top, finish: { materialId: 'velvet-dark' } }
+		]);
+		expect(await coordinator.undo()).toMatchObject({ kind: 'restored' });
+		expect(sourceScene(coordinator).surfaceFinishes).toBeUndefined();
+		expect(await coordinator.redo()).toMatchObject({ kind: 'restored' });
+		expect(await coordinator.redo()).toMatchObject({ kind: 'restored' });
+		expect(sourceScene(coordinator).surfaceFinishes).toEqual(painted);
+	});
+
+	it('refuses an open-to-sky lid and a Region edge without writing Scene', async () => {
+		const layout = regionLayout();
+		layout.rooms[0]!.overhead = 'open-to-sky';
+		const lid = { kind: 'room-lid', roomId: layout.rooms[0]!.id } as const;
+		const dormant = await directPlan(
+			{ entities: [], layout },
+			SCENE_SURFACE_FINISH_ASSIGN,
+			{ finish: { curated: 'velvet-dark' }, surfaces: [lid] },
+			[], [],
+			(project) => [surfaceTarget(project, lid)]
+		);
+		expect(dormant).toMatchObject({ kind: 'rejected', code: 'surface_not_present' });
+
+		const edge = { kind: 'region-face', regionId: 'terrace', face: 'edge' } as const;
+		const unbounded = await directPlan(
+			{ entities: [], layout: regionLayout() },
+			SCENE_SURFACE_FINISH_ASSIGN,
+			{ finish: { curated: 'velvet-dark' }, surfaces: [edge] },
+			[], [],
+			(project) => [surfaceTarget(project, edge)]
+		);
+		expect(unbounded.kind).toBe('rejected');
+		if (unbounded.kind === 'rejected') expect(unbounded.message).toContain("'top' or 'underside'");
 	});
 
 	it('refuses stale or mismatched component targets without writing Scene', async () => {

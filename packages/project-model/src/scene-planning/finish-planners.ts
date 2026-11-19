@@ -33,6 +33,7 @@ import type {
 	SceneMaterialInstance,
 	ScenePaletteSlot,
 	SceneSurfaceFinish,
+	SceneSurfaceRef,
 	SceneTextureAsset
 } from '../scene';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
@@ -292,7 +293,7 @@ function planEdit(
 		const index = materials.findIndex((instance) => instance.id === project.id);
 		materials[index] = updated;
 		changedMaterials.push(updated.id);
-		// Scene 10 does not store pristine instances as surface Finishes. If this
+		// Scene 11 does not store pristine instances as surface Finishes. If this
 		// shared edit removes the last override, preserve every assignment's
 		// effective base material (including dormant or retired loaded records).
 		if (isPristineInstance(updated) && base.surfaceFinishes !== undefined) {
@@ -575,33 +576,69 @@ function readMaterialIdList(reader: ShapeReader, raw: unknown, path: string): st
 	return ids;
 }
 
-type WallSideSurfaceRef = Extract<LayoutSurfaceRef, { readonly kind: 'wall-side' }>;
-
-function readWallSideRefs(reader: ShapeReader, raw: unknown, path: string): WallSideSurfaceRef[] | null {
+function readSurfaceRefs(reader: ShapeReader, raw: unknown, path: string): SceneSurfaceRef[] | null {
 	if (!Array.isArray(raw) || raw.length === 0) {
-		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of Wall-side references`);
+		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of surface references`);
 		return null;
 	}
-	const refs: WallSideSurfaceRef[] = [];
+	const refs: SceneSurfaceRef[] = [];
 	const seen = new Set<string>();
 	for (const [index, item] of raw.entries()) {
 		const at = `${path}[${index}]`;
-		const record = reader.object(item, at, ['kind', 'wallId', 'side']);
+		if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+			reader.problem(at, 'invalid_type', `${at} must be a tagged Layout surface reference`);
+			continue;
+		}
+		const kind = (item as Record<string, unknown>).kind;
+		if (kind !== 'wall-side' && kind !== 'room-floor' && kind !== 'room-lid' && kind !== 'region-face') {
+			reader.problem(`${at}.kind`, 'unknown_surface_kind', `${at}.kind is not admitted by Scene 11`);
+			continue;
+		}
+		const record = reader.object(
+			item,
+			at,
+			kind === 'wall-side' ? ['kind', 'wallId', 'side']
+				: kind === 'region-face' ? ['kind', 'regionId', 'face']
+					: ['kind', 'roomId']
+		);
 		if (record === null) continue;
-		const kind = reader.tag(record.kind, `${at}.kind`, ['wall-side']);
-		const wallId = reader.opaqueId(record.wallId, `${at}.wallId`);
-		const side = reader.tag(record.side, `${at}.side`, ['left', 'right']);
-		if (kind === null || wallId === null || side === null) continue;
-		const ref: WallSideSurfaceRef = { kind: 'wall-side', wallId, side: side as 'left' | 'right' };
+		let ref: SceneSurfaceRef | null = null;
+		if (kind === 'wall-side') {
+			const wallId = reader.opaqueId(record.wallId, `${at}.wallId`);
+			const side = reader.tag(record.side, `${at}.side`, ['left', 'right']);
+			if (wallId !== null && side !== null) ref = { kind, wallId, side: side as 'left' | 'right' };
+		} else if (kind === 'region-face') {
+			const regionId = reader.opaqueId(record.regionId, `${at}.regionId`);
+			const rawFace = record.face;
+			const face = rawFace === 'top' || rawFace === 'underside' ? rawFace : null;
+			if (face === null) {
+				reader.problem(`${at}.face`, 'unknown_surface_face', `${at}.face must be 'top' or 'underside'; a region edge has no Finish`);
+			}
+			if (regionId !== null && face !== null) ref = { kind, regionId, face };
+		} else {
+			const roomId = reader.opaqueId(record.roomId, `${at}.roomId`);
+			if (roomId !== null) ref = { kind, roomId };
+		}
+		if (ref === null) continue;
 		const key = surfaceKey(ref);
 		if (seen.has(key)) {
-			reader.problem(at, 'duplicate-surface', `${path} must not repeat a Wall side`);
+			reader.problem(at, 'duplicate-surface', `${path} must not repeat a surface`);
 			continue;
 		}
 		seen.add(key);
 		refs.push(ref);
 	}
 	return reader.issues.length > 0 ? null : refs;
+}
+
+/** The qualified F.1 target a Scene-owned surface assignment must address. */
+function surfaceTargetComponent(surface: SceneSurfaceRef): { kind: 'wall' | 'room' | 'region'; id: string; componentId: string } {
+	switch (surface.kind) {
+		case 'wall-side': return { kind: 'wall', id: surface.wallId, componentId: `side:${surface.side}` };
+		case 'room-floor': return { kind: 'room', id: surface.roomId, componentId: 'floor' };
+		case 'room-lid': return { kind: 'room', id: surface.roomId, componentId: 'lid' };
+		case 'region-face': return { kind: 'region', id: surface.regionId, componentId: surface.face };
+	}
 }
 
 function sameSequence(left: readonly string[], right: readonly string[]): boolean {
@@ -810,19 +847,19 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 	if (kind === SCENE_SURFACE_FINISH_ASSIGN) {
 		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'surfaces']);
 		const finish = payload === null ? null : readFinishRef(reader, payload.finish, '$.payload.finish');
-		const surfaces = payload === null ? null : readWallSideRefs(reader, payload.surfaces, '$.payload.surfaces');
+		const surfaces = payload === null ? null : readSurfaceRefs(reader, payload.surfaces, '$.payload.surfaces');
 		if (finish === null || surfaces === null || reader.issues.length > 0) {
-			return refuse(reader.issues[0]?.message ?? 'Paint needs one Finish and at least one Wall side.');
+			return refuse(reader.issues[0]?.message ?? 'Paint needs one Finish and at least one surface.');
 		}
-		if (finish === 'model-own') return refuse("Model's own cannot be painted onto a Wall side.", 'not-paintable');
-		if (request.allocatedIds.length > 0) return refuse('Painting Wall sides needs no allocated id.', 'unexpected-allocation');
+		if (finish === 'model-own') return refuse("Model's own cannot be painted onto a Layout surface.", 'not-paintable');
+		if (request.allocatedIds.length > 0) return refuse('Painting Layout surfaces needs no allocated id.', 'unexpected-allocation');
 		const curated = 'curated' in finish ? finish.curated : null;
 		const project = 'project' in finish ? before.materials.find((entry) => entry.id === finish.project) : undefined;
 		if (curated !== null && !MATERIAL_ID.test(curated)) return refuse('That curated Finish does not exist.', 'unknown-catalogue');
 		if ('project' in finish && (project === undefined || isPristineInstance(project))) {
 			return refuse('That project Finish no longer exists.', 'unknown-finish');
 		}
-		if (request.intent.targets.length !== surfaces.length) return refuse('Paint must address exactly the Wall sides it names.');
+		if (request.intent.targets.length !== surfaces.length) return refuse('Paint must address exactly the surfaces it names.');
 		const layoutUnit = envelope.units.layout;
 		const layout = layoutUnit.data;
 		const existing = new Map((before.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
@@ -834,15 +871,15 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			: { materialInstanceId: finish.project };
 		for (const [index, surface] of surfaces.entries()) {
 			const target = request.intent.targets[index]!;
-			const componentId = `side:${surface.side}`;
+			const expected = surfaceTargetComponent(surface);
 			if (
-				target.domain !== 'layout' || target.subject.kind !== 'wall' || target.subject.id !== surface.wallId ||
-				target.componentId !== componentId || target.capabilityId !== null || target.instancePath.length !== 0 ||
+				target.domain !== 'layout' || target.subject.kind !== expected.kind || target.subject.id !== expected.id ||
+				target.componentId !== expected.componentId || target.capabilityId !== null || target.instancePath.length !== 0 ||
 				target.revision.kind !== 'exact' || target.revision.contentRevision !== layoutUnit.header.contentRevision ||
 				target.location.kind !== 'layout-location' || target.location.levelId !== layout.floor.id ||
 				target.location.structureInstancePath.length !== 0
 			) {
-				return refuse('Paint needs an exact qualified reference to each Wall side.', 'invalid-target');
+				return refuse('Paint needs an exact qualified reference to each surface.', 'invalid-target');
 			}
 			if (resolveLayoutSurface(layout, surface) !== 'present') {
 				return refuse('That surface changed. Try again.', 'surface_not_present');
@@ -860,7 +897,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
 		});
 		const after: SceneDocument = { ...before, surfaceFinishes: assignments };
-		if (sameSceneValues(before, after)) return refuse('Every chosen Wall side already has that Finish.', 'no-change');
+		if (sameSceneValues(before, after)) return refuse('Every chosen surface already has that Finish.', 'no-change');
 		return complete(
 			after,
 			{

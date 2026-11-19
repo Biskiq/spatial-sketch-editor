@@ -18,18 +18,28 @@ import { surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
 import type { StagePaintSpaceScope } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 
-type WallSideRef = Extract<LayoutSurfaceRef, { readonly kind: 'wall-side' }>;
+type PaintableSurface = LayoutSurfaceRef;
 
 export const STAGE_PAINT_TASK = 'host-paint';
+
+/** The words a Paint answer uses for one surface identity. */
+function surfaceNoun(surface: LayoutSurfaceRef): string {
+	switch (surface.kind) {
+		case 'wall-side': return 'Wall face';
+		case 'room-floor': return 'floor';
+		case 'room-lid': return 'lid';
+		case 'region-face': return `Region ${surface.face}`;
+	}
+}
 
 export type StagePaintCandidate = {
 	readonly adapterId: string;
 	readonly hit: StageSourceHit;
 	readonly entityId: string | null;
-	readonly surface: WallSideRef | null;
+	readonly surface: PaintableSurface | null;
 	readonly space: StagePaintSpaceScope | null;
 	/** The immutable gesture-time expansion a Face/Space Paint will assign. */
-	readonly assignmentSurfaces: readonly WallSideRef[];
+	readonly assignmentSurfaces: readonly PaintableSurface[];
 	readonly consequence: string | null;
 	/** The domain's refusal in its own words; `null` when this can be painted. */
 	readonly refusal: string | null;
@@ -52,11 +62,11 @@ export type StagePaintOptions = {
 	readonly hasActive: () => boolean;
 	readonly isAlready: (entityId: string) => boolean;
 	readonly assign: (entityId: string) => Promise<boolean>;
-	readonly isSurfaceAlready: (surfaces: readonly WallSideRef[]) => boolean;
-	readonly assignSurface: (surfaces: readonly WallSideRef[]) => Promise<boolean>;
+	readonly isSurfaceAlready: (surfaces: readonly PaintableSurface[]) => boolean;
+	readonly assignSurface: (surfaces: readonly PaintableSurface[]) => Promise<boolean>;
 	readonly dropperArmed: () => boolean;
 	readonly copy: (hit: StageSourceHit) => Promise<boolean>;
-	readonly copySurface: (surface: WallSideRef) => Promise<boolean>;
+	readonly copySurface: (surface: PaintableSurface) => Promise<boolean>;
 	readonly surfaceScope?: () => 'face' | 'space';
 	readonly setSurfaceScope?: (scope: 'face' | 'space') => void;
 	readonly activeLabel: () => string;
@@ -147,34 +157,31 @@ export function createStagePainter(
 			};
 		}
 		if (answer.kind === 'paintable-surface') {
-			if (answer.surface.kind !== 'wall-side') {
-				return {
-					adapterId: target.adapterId, hit: target.hit, entityId: null, surface: null, space: answer.space,
-					assignmentSurfaces: [], consequence: null, refusal: 'This part of a wall can’t be painted.'
-				};
-			}
+			const surface = answer.surface;
 			const space = answer.space;
 			const assignmentSurfaces = scope === 'face'
-				? [answer.surface]
-				: space.kind === 'unique' ? space.surfaces.filter((surface): surface is WallSideRef => surface.kind === 'wall-side') : [];
+				? [surface]
+				: space.kind === 'unique' ? space.surfaces : [];
 			const refusal = scope === 'space'
 				? space.kind === 'none'
-					? 'This side isn’t inside a space.'
+					? 'That surface isn’t inside a space.'
 					: space.kind === 'ambiguous'
-						? 'This wall side belongs to two rooms.'
-						: assignmentSurfaces.length === 0 ? 'That space has no paintable wall faces.' : null
+						? surface.kind === 'wall-side'
+							? 'This wall side belongs to two rooms.'
+							: 'That surface belongs to more than one space.'
+						: assignmentSurfaces.length === 0 ? 'That space has no paintable surfaces.' : null
 				: null;
-			const hit: StageSourceHit = answer.surface.kind === 'wall-side' && target.hit.reference === undefined
-				? { ...target.hit, subRef: { kind: 'component', componentId: `side:${answer.surface.side}` } }
+			const hit: StageSourceHit = surface.kind === 'wall-side' && target.hit.reference === undefined
+				? { ...target.hit, subRef: { kind: 'component', componentId: `side:${surface.side}` } }
 				: target.hit;
 			const consequence = scope === 'space' && space.kind === 'unique'
-				? `Paint ${assignmentSurfaces.length} Wall face${assignmentSurfaces.length === 1 ? '' : 's'} in this Space`
-				: `Paint this Wall face`;
+				? `Paint ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space`
+				: `Paint this ${surfaceNoun(surface)}`;
 			return {
 				adapterId: target.adapterId,
 				hit,
 				entityId: null,
-				surface: answer.surface,
+				surface,
 				space,
 				assignmentSurfaces,
 				consequence,
@@ -241,7 +248,7 @@ export function createStagePainter(
 			syncSource();
 			if (generation !== uiGeneration) return;
 			notice = accepted
-				? { kind: 'accepted', message: `Painted ${options.activeLabel()}${surfaceTarget ? ` · ${assignedSurfaces.length} Wall face${assignedSurfaces.length === 1 ? '' : 's'}` : ''}`, css }
+				? { kind: 'accepted', message: `Painted ${options.activeLabel()}${surfaceTarget ? ` · ${assignedSurfaces.length} surface${assignedSurfaces.length === 1 ? '' : 's'}` : ''}`, css }
 				: null;
 		} catch {
 			if (generation === uiGeneration) {
