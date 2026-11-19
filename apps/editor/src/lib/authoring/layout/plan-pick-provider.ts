@@ -788,7 +788,8 @@ export function createPlanPickProvider(
 	 * Eraser refuses them here rather than skipping to a subject behind them.
 	 */
 	const eraseRefusal = (sourceKind: string): string | null =>
-		sourceKind === 'region' ? 'Regions are read-only.'
+		sourceKind === 'region'
+			? null
 			: sourceKind === 'room-floor'
 			? 'A Room floor cannot be erased.'
 			: sourceKind === 'object'
@@ -805,9 +806,9 @@ export function createPlanPickProvider(
 	 * pointer is the line that answers.
 	 *
 	 * The surface under the pointer keeps the final say: an outline behind a nearer
-	 * Wall is not editable through that Wall. The hit names the Room's own floor
-	 * fragment, because X1 lifts a generated lid and the Room is the subject it
-	 * stands for; no ceiling-specific selection model exists to name instead.
+	 * Wall is not editable through that Wall. The hit names the subject the
+	 * overhead belongs to: a Room's floor fragment for a generated lid, or the
+	 * region fragment for an authored slab (V1c).
 	 */
 	function liftOutlinePick(
 		css: readonly [number, number],
@@ -862,10 +863,12 @@ export function createPlanPickProvider(
 					(worldPoint[1] - origin[1]) * direction[1] +
 					(worldPoint[2] - origin[2]) * direction[2];
 				if (!(depthMeters > 0)) continue;
-				const fragment = retained.fragments.find(
-					(candidate) =>
-						candidate.ref.sourceKind === 'room-floor' &&
-						candidate.ref.sourceId === source.subject.id
+				const fragment = retained.fragments.find((candidate) =>
+					source.key.kind === 'region'
+						? candidate.ref.sourceKind === 'region' &&
+							candidate.ref.sourceId === source.subject.id
+						: candidate.ref.sourceKind === 'room-floor' &&
+							candidate.ref.sourceId === source.subject.id
 				);
 				if (fragment === undefined) continue;
 				best = { fragment, worldPoint, depthMeters, cssDistance: closest.distance };

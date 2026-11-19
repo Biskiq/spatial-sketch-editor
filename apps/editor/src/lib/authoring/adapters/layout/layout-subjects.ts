@@ -3,7 +3,9 @@ import {
 	readClosedWallCircle,
 	isClosedWall,
 	type LayoutDocumentWallFirst,
-	type LayoutVec2
+	type LayoutRegion,
+	type LayoutVec2,
+	type CompiledRegion
 } from '@portfolio/layout-core';
 
 import { type StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
@@ -98,6 +100,21 @@ export function selectedOpening(
 		offset: opening.offset,
 		width: opening.width
 	};
+}
+/** The selected authored region, with its compiled facts, or `null`. */
+export function selectedRegion(
+	document: LayoutDocumentWallFirst,
+	adapterContext: StageAdapterContext
+): { readonly region: LayoutRegion; readonly compiled: CompiledRegion } | null {
+	const primary = adapterContext.selectionState().primary;
+	if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'region') return null;
+	const region = document.regions.find((candidate) => candidate.id === primary.subject.id);
+	if (region === undefined) return null;
+	const compiled = adapterContext.snapshot.domain.geometry.regions.find(
+		(candidate) => candidate.regionId === region.id
+	);
+	if (compiled === undefined) return null;
+	return { region, compiled };
 }
 export function selectedRoomLabel(
 	ctx: StageAdapterContext

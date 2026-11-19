@@ -290,8 +290,9 @@ describe('T1 X1 / T2 §10 — Lift changes no light and no shadow', () => {
 			for (const set of shadowed) expect(set).toContain(lidName);
 			expect(unshadowableCastingLids(scene.lights[0]!, camera, lids)).toEqual([]);
 
-			// 1. The unmodified light store: lifting the caster removes it from every
-			//    shadow pass while `castShadow` still reads true.
+			// 1. A light store that has not enabled the lifted layer: lifting the caster
+			//    removes it from every shadow pass while `castShadow` still reads true.
+			for (const light of scene.lights) light.shadow.camera.layers.disable(LIFTED_RENDER_LAYER);
 			scene.rooms.setLifted(new Set([target.roomId]));
 			scene.lights.forEach((light, index) => {
 				expect(shadowedSet(light, camera, scene.root)).not.toContain(lidName);

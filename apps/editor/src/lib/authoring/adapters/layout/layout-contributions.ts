@@ -1,6 +1,9 @@
-import { selectedRoomLabel } from './layout-subjects';
+import { selectedRegion, selectedRoomLabel } from './layout-subjects';
 import { previewCoordinates, type SettledLayoutRefusal } from './manipulation-support';
+import { regionWallRelations } from '@portfolio/layout-core';
 import { candidatePreviewOf } from './candidate-preview';
+import { countSceneRootsOnFloorRegion, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
+import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -27,6 +30,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import LayoutInkPalette from './LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './LayoutPlacementInstrument.svelte';
 import LayoutCardFields from './LayoutCardFields.svelte';
+import LayoutRegionCard from './LayoutRegionCard.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
@@ -50,6 +54,11 @@ import {
 } from './drawing-planners';
 import { wallSplitIntent } from './split-planners';
 import { LAYOUT_ROOM_DUPLICATE_KIND } from './room-duplicate-planners';
+import {
+	LAYOUT_REGION_REMOVE_KIND,
+	layoutRegionNameTarget,
+	regionEditIntent
+} from './region-planners';
 import { LAYOUT_INK_ENTRY, LAYOUT_INK_TASK } from './ink';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -155,6 +164,21 @@ type ContributionPorts = {
  * starts here. The label follows the live scope, so the same button offers the
  * way back.
  */
+/** The nearest authored corner and compiled Wall sample, for placing gap ink. */
+function nearestFootprintWallPair(
+	footprint: readonly LayoutVec2[],
+	samples: readonly LayoutVec2[]
+): { readonly region: LayoutVec2; readonly wall: LayoutVec2 } | null {
+	let best: { region: LayoutVec2; wall: LayoutVec2; distance: number } | null = null;
+	for (const region of footprint) {
+		for (const wall of samples) {
+			const distance = (region[0] - wall[0]) ** 2 + (region[1] - wall[1]) ** 2;
+			if (best === null || distance < best.distance) best = { region, wall, distance };
+		}
+	}
+	return best === null ? null : { region: best.region, wall: best.wall };
+}
+
 function roomLiftAction(
 	services: StageAdapterServices,
 	roomId: string,
@@ -806,6 +830,29 @@ export function createLayoutContributions({
 		};
 	}
 
+	/**
+	 * The derived count of Scene roots resting on a floor region. It reads the
+	 * accepted Scene through the V1d support seam and writes nothing: the Card and
+	 * the Eraser disclose this number before a move or a delete is accepted.
+	 */
+	function restingObjectsOnFloorRegion(
+		adapterContext: StageAdapterContext,
+		regionId: string
+	): number {
+		const region = document.regions.find((candidate) => candidate.id === regionId);
+		if (region === undefined || region.role !== 'floor') return 0;
+		try {
+			return countSceneRootsOnFloorRegion({
+				geometry: adapterContext.snapshot.domain.geometry,
+				generationId: sceneSupportGenerationId(adapterContext.snapshot.sourceContentId),
+				scene: stageEnvelope(adapterContext.snapshot).units.scene.data,
+				regionId
+			});
+		} catch {
+			return 0;
+		}
+	}
+
 	const contributions = {
 		hostTools: ['erase', 'measure', 'paint'],
 		/**
@@ -822,7 +869,7 @@ export function createLayoutContributions({
 		 * Layout subject was already refused, in Layout's words, by the pick.
 		 */
 		eraseAction(hit): ReturnType<NonNullable<StageAdapterBinding['eraseAction']>> {
-			if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening') {
+			if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening' && hit.sourceKind !== 'region') {
 				return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
 			}
 			const action = contributions
@@ -833,13 +880,20 @@ export function createLayoutContributions({
 			// A Wall that hosts Openings or changes Rooms has consequences beyond
 			// itself; its existing disclosure is read before the second click runs it.
 			const preview = hit.sourceKind === 'wall' ? deletionPreview(hit.sourceId) : null;
+			// A floor region's derived resting-object count is disclosed before the
+			// second click; it is a read, never a Scene write.
+			const regionResting =
+				hit.sourceKind === 'region'
+					? restingObjectsOnFloorRegion(context, hit.sourceId)
+					: 0;
 			const confirm =
-				preview?.kind === 'planned' &&
-				(preview.hostedOpeningIds.length > 0 ||
-					preview.retiredRoomIds.length > 0 ||
-					preview.createdRoomIds.length > 0 ||
-					preview.openedRoomIds.length > 0 ||
-					preview.keptOpenRoomIds.length > 0);
+				regionResting > 0 ||
+				(preview?.kind === 'planned' &&
+					(preview.hostedOpeningIds.length > 0 ||
+						preview.retiredRoomIds.length > 0 ||
+						preview.createdRoomIds.length > 0 ||
+						preview.openedRoomIds.length > 0 ||
+						preview.keptOpenRoomIds.length > 0));
 			return { kind: 'action', action, confirm };
 		},
 		tasks: [
@@ -934,6 +988,9 @@ export function createLayoutContributions({
 			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
 				return layoutRoomNameTarget(services, cardSubject.sourceId);
 			}
+			if (cardSubject.sourceKind === 'region') {
+				return layoutRegionNameTarget(services, cardSubject.sourceId);
+			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
 				sourceId: cardSubject.sourceId
@@ -948,6 +1005,13 @@ export function createLayoutContributions({
 		 * Dimensions task and its Find/keyboard route are retired in this cutover.
 		 */
 		cardWriter(cardSubject: StageCardSubject) {
+			if (cardSubject.sourceKind === 'region') {
+				return {
+					summary: 'Region fields',
+					fieldIds: ['elevation', 'thickness', 'width', 'depth'],
+					view: { component: LayoutRegionCard, services }
+				};
+			}
 			const subject = layoutSubjectOf({
 				sourceKind: cardSubject.sourceKind,
 				sourceId: cardSubject.sourceId
@@ -1155,6 +1219,49 @@ export function createLayoutContributions({
 							services.stage.notifySurfaceChange();
 							return outcome.kind === 'no-op'
 								? { kind: 'no-op', message: 'The Opening was already gone.' }
+								: { kind: 'accepted' };
+						}
+					}
+				];
+			}
+			if (cardSubject.sourceKind === 'region') {
+				const region = document.regions.find((entry) => entry.id === cardSubject.sourceId);
+				if (region === undefined) return [];
+				const resting = restingObjectsOnFloorRegion(context, region.id);
+				const kind = region.role === 'overhead' ? 'Flat Roof' : 'Terrace';
+				return [
+					{
+						id: 'layout-region-delete',
+						label: `Delete ${kind}`,
+						destructive: true,
+						detail: [
+							region.role !== 'floor'
+								? 'Removes this slab in one undo step; the Rooms and objects under it stay.'
+								: resting === 1
+									? '1 object rests on this platform and keeps its Scene support when the platform is gone.'
+									: `${resting} objects rest on this platform and keep their Scene support when the platform is gone.`,
+							'Walls are unchanged.'
+						].join(' '),
+						run: async (): Promise<StageCardActionOutcome> => {
+							const snapshot = services.stage.snapshot();
+							const outcome = await services.authoring.accept(
+								regionEditIntent({
+									kind: LAYOUT_REGION_REMOVE_KIND,
+									regionId: region.id,
+									payload: { regionId: region.id },
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision: stageUnitRevision(snapshot, 'layout'),
+									levelId: snapshot.domain.layoutLevelId
+								})
+							);
+							if (outcome.kind === 'refused') {
+								return { kind: 'refused', message: outcome.message };
+							}
+							services.stage.notifySurfaceChange();
+							return outcome.kind === 'no-op'
+								? { kind: 'no-op', message: `The ${kind} was already gone.` }
 								: { kind: 'accepted' };
 						}
 					}
@@ -1402,6 +1509,18 @@ export function createLayoutContributions({
 		heightTicks(): readonly StageHeightTick[] {
 			const datum = context.snapshot.domain.datumMeters;
 			const ticks: StageHeightTick[] = [{ kind: 'datum', heightMeters: 0, label: 'Floor' }];
+			// Authored regions are drawn surfaces: a Terrace's top and a Flat Roof's
+			// underside are real heights a later region or a Wall can snap to.
+			for (const region of context.snapshot.domain.geometry.regions) {
+				const authored = document.regions.find((candidate) => candidate.id === region.regionId);
+				const heightMeters = (region.role === 'floor' ? region.topY : region.bottomY) - datum;
+				if (!Number.isFinite(heightMeters) || heightMeters <= 0) continue;
+				ticks.push({
+					kind: 'found',
+					heightMeters,
+					label: `${region.role === 'floor' ? 'Terrace' : 'Flat Roof'} ${authored?.name ?? region.regionId}`
+				});
+			}
 			for (const object of document.objects) {
 				if (object.kind !== 'box' && object.kind !== 'cylinder') continue;
 				// A top tilted away from horizontal is not a surface the Plan cut can
@@ -1419,6 +1538,79 @@ export function createLayoutContributions({
 			return ticks;
 		}
 	} satisfies Partial<StageAdapterBinding>;
+	/**
+	 * The selected Region's measured gaps.
+	 *
+	 * Relations are the derived authority and already carry the measure; this
+	 * function only places the ink. A gap is a dimension between the footprint's
+	 * nearest corner and the related Wall's nearest compiled sample, at the slab's
+	 * own elevation (horizontal) or across the vertical clearance. An unselected
+	 * Region draws no cue, which is why this reads the selection first.
+	 */
+	function regionGapPreviews(
+		adapterContext: StageAdapterContext,
+		y: number
+	): readonly StageCandidatePreview[] | null {
+		const selected = selectedRegion(document, adapterContext);
+		if (selected === null) return null;
+		const geometry = adapterContext.snapshot.domain.geometry;
+		const relations = regionWallRelations(geometry, selected.region);
+		if (relations.kind !== 'relations') return null;
+		const gaps = relations.relations.filter(
+			(relation) => relation.reading === 'gap' && relation.measureMeters !== null
+		);
+		if (gaps.length === 0) return null;
+		const slabY = selected.region.role === 'floor' ? relations.slabTopY : relations.slabBottomY;
+		const floorY = geometry.floors[0]?.elevation ?? adapterContext.snapshot.domain.datumMeters;
+		const { world } = previewCoordinates(y);
+		const previews: StageCandidatePreview[] = [];
+		for (const relation of gaps) {
+			const wall = geometry.walls.find((candidate) => candidate.wallId === relation.wallId);
+			if (wall === undefined || wall.samples.length === 0) continue;
+			const pair = nearestFootprintWallPair(
+				selected.region.footprint.points,
+				wall.samples.map((sample) => sample.point)
+			);
+			if (pair === null) continue;
+			const text = `Gap ${relation.measureMeters!.toFixed(2)} m${relation.intended ? ' · intended' : ''}`;
+			if (relation.measureAxis === 'vertical') {
+				const wallTop = floorY + wall.height;
+				const from: [number, number, number] = [pair.wall[0], slabY, pair.wall[1]];
+				const to: [number, number, number] = [pair.wall[0], wallTop, pair.wall[1]];
+				previews.push(
+					candidatePreviewOf({
+						id: `layout-region-gap:${relation.wallId}`,
+						role: 'affected',
+						geometry: { polygons: [], segments: [[from, to]] },
+						labels: [
+							{
+								world: [pair.wall[0], (slabY + wallTop) / 2, pair.wall[1]],
+								text
+							}
+						]
+					})
+				);
+			} else {
+				const from: [number, number, number] = [pair.region[0], slabY, pair.region[1]];
+				const to: [number, number, number] = [pair.wall[0], slabY, pair.wall[1]];
+				previews.push(
+					candidatePreviewOf({
+						id: `layout-region-gap:${relation.wallId}`,
+						role: 'affected',
+						geometry: { polygons: [], segments: [[from, to]] },
+						labels: [
+							{
+								world: [(pair.region[0] + pair.wall[0]) / 2, slabY, (pair.region[1] + pair.wall[1]) / 2],
+								text
+							}
+						]
+					})
+				);
+			}
+		}
+		return previews.length === 0 ? null : previews;
+	}
+
 	function settledPreviews(
 		adapterContext: StageAdapterContext,
 		y: number,
@@ -1435,7 +1627,9 @@ export function createLayoutContributions({
 					? selectedWall(adapterContext)?.frame.wallId === settledRefusal.subject.wallId
 					: settledRefusal.subject.kind === 'room'
 						? selectedRoomLabel(adapterContext)?.roomId === settledRefusal.subject.roomId
-						: selectedOpening(document, adapterContext)?.openingId === settledRefusal.subject.openingId))
+						: settledRefusal.subject.kind === 'region'
+							? selectedRegion(document, adapterContext)?.region.id === settledRefusal.subject.regionId
+							: selectedOpening(document, adapterContext)?.openingId === settledRefusal.subject.openingId))
 		) {
 			return [
 				candidatePreviewOf({
@@ -1447,6 +1641,8 @@ export function createLayoutContributions({
 			];
 		}
 
+		const gaps = regionGapPreviews(adapterContext, y);
+		if (gaps !== null) return gaps;
 		return null;
 	}
 

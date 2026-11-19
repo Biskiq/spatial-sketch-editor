@@ -61,6 +61,7 @@ import {
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
 	projectPointToWallCenterline,
+	regionsOverSpace,
 	wallCenterlineSamples,
 	faceArea,
 	type CompiledLayoutGeometry,
@@ -127,7 +128,7 @@ export const LAYOUT_JUNCTION_MOVE_KIND = 'layout-junction-move';
 /** The one opening field each edit owns; the UI never sends a combined patch. */
 export type LayoutOpeningField = 'offset' | 'width' | 'height' | 'sillHeight';
 
-export type LayoutSubjectKind = 'wall' | 'opening' | 'object';
+export type LayoutSubjectKind = 'wall' | 'opening' | 'object' | 'region';
 
 export type LayoutSubject = {
 	readonly kind: LayoutSubjectKind;
@@ -895,6 +896,7 @@ export function layoutSubjectOf(
 	if (selection.sourceKind === 'wall') return { kind: 'wall', id: selection.sourceId };
 	if (selection.sourceKind === 'opening') return { kind: 'opening', id: selection.sourceId };
 	if (selection.sourceKind === 'object') return { kind: 'object', id: selection.sourceId };
+	if (selection.sourceKind === 'region') return { kind: 'region', id: selection.sourceId };
 	return null;
 }
 
@@ -1482,6 +1484,15 @@ export function layoutRoomFacts(
 	const compiled = geometry.rooms.find((candidate) => candidate.roomId === roomId);
 	const openSides = openSideRunCount(document, room);
 	const walls = room.boundary.length;
+	// SP1's `overhead` is the only thing that decides a lid. An authored overhead
+	// region never closes or opens a Space; it is named as a derived readout.
+	const overlying = regionsOverSpace(geometry, roomId);
+	const overheadRegion = overlying.find((region) => region.role === 'overhead');
+	const overheadName =
+		overheadRegion === undefined
+			? null
+			: (document.regions.find((region) => region.id === overheadRegion.regionId)?.name ??
+				overheadRegion.regionId);
 	return [
 		{ label: 'Kind', value: openSides > 0 ? 'Open space' : 'Room', fieldId: 'kind' },
 		{ label: 'Name', value: room.name ?? '(unnamed)', fieldId: 'name' },
@@ -1492,9 +1503,28 @@ export function layoutRoomFacts(
 		},
 		{
 			label: 'Overhead',
-			value: room.overhead === 'open-to-sky' ? 'Open to sky' : 'Closed',
+			value:
+				room.overhead === 'open-to-sky'
+					? overheadName === null
+						? 'Open to sky'
+						: `Open to sky · under ${overheadName}`
+					: 'Closed',
 			fieldId: 'overhead'
 		},
+		...(overlying.length === 0
+			? []
+			: [
+					{
+						label: 'Regions',
+						value: overlying
+							.map(
+								(region) =>
+									`${document.regions.find((candidate) => candidate.id === region.regionId)?.name ?? region.regionId} (${region.role === 'floor' ? 'floor' : 'overhead'})`
+							)
+							.join(' · '),
+						fieldId: 'regions'
+					} as const
+				]),
 		{
 			label: 'Bounds',
 			value: `${walls} ${walls === 1 ? 'Wall' : 'Walls'} · ${openSides} open ${openSides === 1 ? 'side' : 'sides'}`,
@@ -1547,6 +1577,35 @@ export function layoutFacts(
 			{ label: 'Width', value: formatMeters(opening.width), fieldId: 'width' },
 			{ label: 'Height', value: formatMeters(opening.height), fieldId: 'height' },
 			{ label: 'Sill', value: formatMeters(opening.sillHeight), fieldId: 'sillHeight' }
+		];
+	}
+	if (subject.kind === 'region') {
+		const region = document.regions.find((candidate) => candidate.id === subject.id);
+		if (region === undefined) return [];
+		let twice = 0;
+		const points = region.footprint.points;
+		for (let index = 0; index < points.length; index++) {
+			const [x, z] = points[index]!;
+			const [nx, nz] = points[(index + 1) % points.length]!;
+			twice += x * nz - nx * z;
+		}
+		const world =
+			region.role === 'overhead'
+				? document.floor.elevation + region.elevation
+				: document.floor.elevation + region.elevation;
+		return [
+			{
+				label: 'Kind',
+				value: region.role === 'overhead' ? 'Flat Roof' : 'Terrace',
+				fieldId: 'regionKind'
+			},
+			{ label: 'Name', value: region.name ?? '(unnamed)', fieldId: 'name' },
+			{ label: 'Area', value: `${(Math.abs(twice) / 2).toFixed(2)} m²`, fieldId: 'area' },
+			{
+				label: region.role === 'overhead' ? 'Underside (world)' : 'Top (world)',
+				value: `${world.toFixed(3)} m`,
+				fieldId: 'regionWorldElevation'
+			}
 		];
 	}
 	const object = lookupIndexedObject(document, subject.id);

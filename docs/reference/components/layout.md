@@ -183,7 +183,7 @@ outside the copy, and that dropped relation is named before the copy is placed.
 ## Accepted future requirements and open mechanisms
 
 The requirements below preserve approved spatial depth. They are not claims that Section,
-arbitrary top profiles, independent overhead regions or multi-level authoring are implemented.
+arbitrary top profiles or multi-level authoring are implemented.
 Encoding and unresolved choices remain explicit; current shell limits do not narrow approved
 design. Prototype mechanisms are evidence, not schemas.
 
@@ -282,6 +282,36 @@ the Stage and Visitor representations. Top, underside and boundary edges have
 stable surface references. A Region wins a coincident generated floor pick. Declared
 intentional gaps keep their Wall references through topology splits and dissolves and
 lose the reference when that Wall is removed. No Room edit creates a Region.
+
+### Authoring a Region
+
+**Terrace** creates a floor region and **Roof › Flat** an overhead region; the Roof options
+other than Flat are deferred. Both use the existing Ink grammar: **Box** names two plan corners,
+and **Line** takes corner points until Finish closes the ring. The Height Sheet supplies the
+elevation, an overhead drawn at the Floor datum takes the Wall creation default (3 m), and a new
+Region starts 0.10 m thick. Creation is one captured, accepted Layout operation with the
+region's id derived from that capture; Undo removes it and Redo reuses the id.
+
+A selected Region's Card is its editor surface: kind, name, floor-relative and world elevation,
+thickness, exact Width and Depth (scaled about the footprint's bounds centre), Area, and the
+derived **Relations** list. Each related Wall reads **Meets**, **Crosses**, or a measured **Gap**,
+with that gap's one-shot fit and **Mark intended**; intentional gaps keep their Wall reference
+through topology edits. The selected edge's scoped actions offer **Add corner here**; the Card
+offers both Space and Wall fits where they apply, and **Duplicate**. Corner knobs move footprint points and
+dragging one onto its neighbours' chord removes it; the body drags to move, the turn mark
+rotates, and the height ray sets elevation. A release is one accepted intent and one history
+entry; a refused or no-op release changes no document. Erase removes a Region and, for a floor
+Region, first discloses the derived count of Scene roots resting on it — a read, never a Scene
+write.
+
+The selected Region's gaps are measured dimensions on the Stage; an unselected Region draws no
+cue. **Lift** consumes the typed overhead sources, so a Flat Roof is lifted with Room lids,
+retains its identity, and is addressed through its own outline in Plan and 3D. A lifted Region
+stays on `LIFTED_RENDER_LAYER`, and every point, spot and sun shadow camera includes that layer,
+so Lift changes what the Stage camera draws without removing the overhead's shadow. Put back
+ends the reading, and Preview and Look-through render as built with no Lift state. The Index
+groups Regions, and a Space's Card lists the Regions over it and reads **Open to sky · under
+*name*** where a Flat Roof applies. Height Sheet ticks expose Region tops and undersides.
 
 `resolveLayoutSurfaceReference` is the Layout-local resolver for those references:
 a region `top`, `underside` or `edge`, or a Space `floor` or `lid`. It resolves the

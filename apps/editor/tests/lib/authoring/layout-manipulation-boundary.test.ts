@@ -138,6 +138,7 @@ const allowed = new Map<string, readonly string[]>([
 			'$lib/layout/wall-unfold',
 			'$lib/layout/wall-face',
 			'./LayoutCardFields.svelte',
+			'./LayoutRegionCard.svelte',
 			'./LayoutInkPalette.svelte',
 			'./LayoutPlacementInstrument.svelte',
 			'./adapter-support',
@@ -149,11 +150,15 @@ const allowed = new Map<string, readonly string[]>([
 			'./opening-planners',
 			'./precision',
 			'./refusals',
+			'./region-planners',
 			'./room-duplicate-planners',
 			'./room-overlap-cue',
 			'./session-ports',
 			'./split-planners',
 			'./wall-gesture',
+			// T1 V1c — Erase and the Region Card disclose the derived resting-object
+			// count; it is a read, never a Scene write.
+			'@portfolio/project-model/scene-planning',
 			core
 		]
 	],
@@ -186,6 +191,8 @@ const allowed = new Map<string, readonly string[]>([
 			'./layout/opening-gesture-session',
 			'./layout/opening-placement-session',
 			'./layout/opening-planners',
+			'./layout/region-gesture-session',
+			'./layout/region-planners',
 			'./layout/opening-repeat',
 			'./layout/precision',
 			'./layout/room-duplicate-planners',

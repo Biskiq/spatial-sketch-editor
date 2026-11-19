@@ -30,6 +30,8 @@ export type InkMemory = {
 	reading: InkReading;
 	/** Line, Arc, Box or Circle for the Wall reading; adapter memory for the same reason. */
 	wallMode: InkWallMode;
+	/** Box or Line for the Terrace and Flat Roof readings. */
+	regionMode: 'box' | 'line';
 	/** The next Opening's kind and exact defaults. */
 	openingOptions: Required<InkOpeningOptions>;
 	/** The palette's fields are currently valid; pointer placement must honour that. */
@@ -42,6 +44,7 @@ export function createInkMemory(): InkMemory {
 		height: null,
 		reading: 'wall',
 		wallMode: 'line',
+		regionMode: 'box',
 		openingOptions: { kind: 'door', profile: 'rectangular', width: 0.9, height: 2.1, sillHeight: 0 },
 		openingOptionsValid: true
 	};
@@ -61,7 +64,7 @@ export type LayoutSessionPorts = {
 	/** Publish the palette's chapter (the binding's own live state). */
 	readonly publish: () => void;
 	/** Install one created Layout subject as the selection, by id, on the fresh source. */
-	readonly select: (sourceKind: 'wall' | 'opening', sourceId: string) => void;
+	readonly select: (sourceKind: 'wall' | 'opening' | 'region', sourceId: string) => void;
 	/** The filtered Paper drawing for one planner candidate document. */
 	readonly candidatePaper: (
 		document: LayoutDocumentWallFirst,

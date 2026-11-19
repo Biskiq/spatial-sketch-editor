@@ -30,6 +30,7 @@
  */
 import { DirectionalLight, PointLight, SpotLight } from 'three';
 import { lightKey, type LightDescriptor, type LightKind } from './light-descriptor';
+import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';
 
 /** The realized light for each descriptor kind. */
 export type RealizedLight<K extends LightKind = LightKind> = K extends 'point'
@@ -99,6 +100,7 @@ function apply(light: RealizedLight, descriptor: LightDescriptor): void {
 			point.distance = descriptor.distance;
 			point.decay = descriptor.decay;
 			point.castShadow = descriptor.castShadow;
+			point.shadow.camera.layers.enable(LIFTED_RENDER_LAYER);
 			return;
 		}
 		case 'spot': {
@@ -108,6 +110,7 @@ function apply(light: RealizedLight, descriptor: LightDescriptor): void {
 			spot.angle = descriptor.angle;
 			spot.penumbra = descriptor.penumbra;
 			spot.castShadow = descriptor.castShadow;
+			spot.shadow.camera.layers.enable(LIFTED_RENDER_LAYER);
 			return;
 		}
 		case 'sun': {
@@ -135,6 +138,9 @@ function apply(light: RealizedLight, descriptor: LightDescriptor): void {
 			camera.near = shadow.camera.near;
 			camera.far = shadow.camera.far;
 			camera.updateProjectionMatrix();
+			// T2 §10: a lifted overhead is still a caster. Without this, moving it to
+			// LIFTED_RENDER_LAYER would silently remove its shadow as well.
+			camera.layers.enable(LIFTED_RENDER_LAYER);
 			sun.target.position.set(...descriptor.target);
 			sun.target.updateMatrixWorld();
 			return;

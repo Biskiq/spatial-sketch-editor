@@ -21,6 +21,7 @@
 		doorFrames = true,
 		hiddenWallIds = [],
 		liftedRoomIds = [],
+		liftedRegionIds = [],
 		cutawayWallIds = [],
 		onIdentity
 	}: {
@@ -42,6 +43,8 @@
 		 * Preview — its Canvas draws the same world as built.
 		 */
 		liftedRoomIds?: readonly string[];
+		/** Authored slabs the same Lift reading has lifted. */
+		liftedRegionIds?: readonly string[];
 		/**
 		 * X2's display-only cutaway overlay: the Walls drawn through the cutaway twin
 		 * material. Never authored, never persisted, and never passed by Preview — its
@@ -149,6 +152,9 @@
 	 */
 	$effect(() => {
 		if (rooms.setLifted(new Set(liftedRoomIds))) invalidate();
+	});
+	$effect(() => {
+		if (regions.setLifted(new Set(liftedRegionIds))) invalidate();
 	});
 
 	/** Every owned id → the object that draws it. Floors resolve through the Rooms. */

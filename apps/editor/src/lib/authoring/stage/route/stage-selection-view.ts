@@ -206,6 +206,9 @@ export function createStageSelectionView() {
 			if (sourceKind === 'room-floor' || sourceKind === 'room') {
 				return layoutPayload.rooms.find((room) => room.id === sourceId)?.name ?? null;
 			}
+			if (sourceKind === 'region') {
+				return layoutPayload.regions.find((region) => region.id === sourceId)?.name ?? null;
+			}
 			return null;
 		};
 

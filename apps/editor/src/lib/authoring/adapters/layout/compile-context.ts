@@ -27,8 +27,10 @@
  */
 import {
 	compileWallFirstLayoutGeometry,
+	compileWallFirstLayoutGeometryFresh,
 	createLayoutCompileSession,
 	withLayoutCompileSession,
+	type CompiledLayoutGeometry,
 	type CompiledLayoutGeometryResult,
 	type LayoutCompileSession,
 	type LayoutDocumentWallFirst
@@ -125,6 +127,21 @@ export function createLayoutCompileContext(): LayoutCompileContext {
 			session.reset();
 		}
 	};
+}
+
+/**
+ * The relation oracle for a rare planner gate.
+ *
+ * Planner requests carry the prior source, not derived geometry. A fit or a gap
+ * mark must read the same compiled relations the Card shows, and it is rare
+ * enough that the cold compile is the honest answer rather than a second cache.
+ * The compile itself stays in this seam so no planner module reaches a compiler
+ * (E4); callers receive only compiled geometry.
+ */
+export function compileLayoutGeometryNow(
+	document: LayoutDocumentWallFirst
+): CompiledLayoutGeometry {
+	return compileWallFirstLayoutGeometryFresh(document).geometry;
 }
 
 /** The same planner with each `prepare` run through `context.plan`. */

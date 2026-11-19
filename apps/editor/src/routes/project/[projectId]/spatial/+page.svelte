@@ -1032,25 +1032,27 @@
 	const modelUrls = $derived(stageAssets.urls);
 
 	/**
-	 * The Rooms whose generated lids the live Lift reading has lifted.
-	 *
-	 * The route only maps Layout's overhead sources to the representation's ids:
-	 * which overheads a scope names is `overheadSourcesOf`'s answer, and V1's
-	 * authored regions will need their own representation instead of this list.
-	 * `VisitorPreviewSurface` never receives it, so Preview stays as-built.
+	 * The overheads the live Lift reading has lifted: Room lids **and** authored
+	 * region slabs. The route only maps Layout's sources to representation ids;
+	 * which overheads a scope names is `overheadSourcesOf`'s answer.
+	 * `VisitorPreviewSurface` never receives either list, so Preview stays as-built.
 	 */
 	const liftedSources = $derived.by(() => {
 		const reading = interiorLift.reading;
 		if (reading === null) return [];
 		if (boot.status !== 'ready' && boot.status !== 'empty') return [];
-		// Region Lift arrives with V1c; until then the representation addresses
-		// Room lids only, so the route narrows Layout's output the same way
-		// `liftedSourcesNow` does.
-		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope).filter(
-			(source) => source.key.kind === 'room-lid'
-		);
+		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
 	});
-	const liftedRoomIds = $derived(liftedSources.map((source) => source.subject.id));
+	const liftedRoomIds = $derived(
+		liftedSources
+			.filter((source) => source.key.kind === 'room-lid')
+			.map((source) => source.subject.id)
+	);
+	const liftedRegionIds = $derived(
+		liftedSources
+			.filter((source) => source.key.kind === 'region')
+			.map((source) => source.subject.id)
+	);
 	/** The selected Room, when the selection is one: a lift is selected through its Room. */
 	const selectedLiftRoomId = $derived(
 		selection !== null &&
@@ -1956,6 +1958,7 @@
 			},
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
 			get liftedRoomIds() { return liftedRoomIds; },
+			get liftedRegionIds() { return liftedRegionIds; },
 			get liftSources() { return liftedSources; },
 			get cutawayWallIds() { return cutawayWallIds; },
 			get cutawayStubTopY() { return cutawayStubTopY; },

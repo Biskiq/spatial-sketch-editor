@@ -151,8 +151,15 @@ describe('light-realizer-boundary: layer direction', () => {
 		expect(withoutComments(read(DESCRIPTOR))).not.toMatch(/\bnew\s+\w/);
 	});
 
-	it('the store imports only Three and its descriptor', () => {
-		expect(parseModuleSpecifiers(read(STORE)).sort()).toEqual(['./light-descriptor', 'three']);
+	it('the store imports only Three, its descriptor and the one render layer it must cover', () => {
+		// T2 §10 / X1: a lifted overhead still casts. The shadow camera must enable
+		// the same layer a representation uses to lift it, so the store names that
+		// layer; it still never imports a representation or a Stage drawing module.
+		expect(parseModuleSpecifiers(read(STORE)).sort()).toEqual([
+			'$lib/render/render-layers',
+			'./light-descriptor',
+			'three'
+		]);
 	});
 
 	it('the authored-light description is portable: no Three, no store', () => {

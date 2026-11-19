@@ -12,7 +12,7 @@
 		reading,
 		onMore
 	}: {
-		reading: 'wall' | 'opening' | 'room';
+		reading: 'wall' | 'opening' | 'room' | 'terrace' | 'roof';
 		onMore: () => void;
 	} = $props();
 
@@ -58,7 +58,7 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	let appliedReading: 'wall' | 'opening' | 'room' | null = null;
+	let appliedReading: 'wall' | 'opening' | 'room' | 'terrace' | 'roof' | null = null;
 	$effect(() => {
 		const surface = inkSurface();
 		if (surface === null) return;
@@ -179,6 +179,25 @@
 		</div>
 	{:else if reading === 'room'}
 		<RoomInkControls room={snapshot.room} />
+	{:else if reading === 'terrace' || reading === 'roof'}
+		<div class="pg">
+			<span class="gl" title="Elevation from the Height Sheet">
+				{reading === 'roof' ? 'Flat Roof' : 'Terrace'} · {(snapshot.region?.elevation ?? 0).toFixed(2)} m
+			</span>
+			<div class="opts" role="group" aria-label="Shape">
+				{#each ['box', 'line'] as const as mode}
+					<button
+						type="button"
+						class="opt"
+						aria-label={mode === 'box' ? 'Box' : 'Line'}
+						aria-pressed={snapshot.region?.mode === mode}
+						title={mode === 'box' ? 'Box' : 'Line'}
+						onclick={() => inkSurface()?.controller.setRegionMode(mode)}
+					><WorldIcon name={mode === 'box' ? 'shape-box' : 'shape-line'} size={19} /></button
+					>
+				{/each}
+			</div>
+		</div>
 	{:else}
 		<div class="pg">
 			<span class="gl" title="Kind">{kindName}</span>

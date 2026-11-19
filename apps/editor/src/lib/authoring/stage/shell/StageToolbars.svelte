@@ -65,7 +65,7 @@
 		} | null;
 		readonly world?: (WorldProps & {
 			readonly plateKind: 'ink' | 'objects' | 'slice' | null;
-			readonly inkReading: 'wall' | 'opening' | 'room';
+			readonly inkReading: 'wall' | 'opening' | 'room' | 'terrace' | 'roof';
 			readonly sliceMode: 'level' | 'drawn' | null;
 			readonly sliceDrawing: boolean;
 			onSliceLevel: () => void;
