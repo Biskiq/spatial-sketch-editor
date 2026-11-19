@@ -25,12 +25,28 @@ export function pointerDatumPoint(
 	context: StageAdapterContext,
 	css: readonly [number, number]
 ): readonly [number, number] | null {
+	return pointerWorkingPlanePoint(context, css, context.snapshot.domain.datumMeters);
+}
+
+/**
+ * The point a Stage-local pointer names on the plane at `elevationMeters`.
+ *
+ * Plan is a projected view, not a symbol drawing: a raised subject is drawn
+ * away from the floor-datum point under the same pixel. A gesture that edits
+ * a Region at its own elevation must therefore project onto that elevation's
+ * plane, or the subject trails the pointer by the elevation's parallax.
+ */
+export function pointerWorkingPlanePoint(
+	context: StageAdapterContext,
+	css: readonly [number, number],
+	elevationMeters: number
+): readonly [number, number] | null {
 	const ray = context.ray([
 		css[0] + context.evaluation.rect.left,
 		css[1] + context.evaluation.rect.top
 	]);
 	if (ray === null) return null;
-	const hit = context.intersect(ray, datumWorkingPlane(context.snapshot.domain.datumMeters));
+	const hit = context.intersect(ray, datumWorkingPlane(elevationMeters));
 	return hit.kind === 'intersected' ? [hit.worldPoint[0], hit.worldPoint[2]] : null;
 }
 

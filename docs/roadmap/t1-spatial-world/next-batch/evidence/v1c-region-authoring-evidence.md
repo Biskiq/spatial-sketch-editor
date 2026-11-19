@@ -1,11 +1,13 @@
 # V1c — Region authoring, Lift and Stage parity
 
 **Status:** correctness recovery and automated acceptance complete; real-browser QA is **partial**.
-This round fixed the body-drag selection loss and verified it in Chromium, and added J7
-open-to-sky/association/intended gaps, J11 Lift/height edit/Put back, 3D Region picking and
-Slice. Corner removal, Line creation, primitive/approved-model placement, as-built Preview and
-the complete J7/J11 scripts remain unexecuted (see **Browser QA gaps**). No production
-deployment was made, and this evidence does not declare the PR ready for review.
+This round fixed the body-drag selection loss and the unreachable corner removal, and verified
+both in Chromium alongside J7 open-to-sky/association/intended gaps, J11 Lift/height edit/Put
+back, 3D Region picking, Slice, Terrace **Line** creation and a Space fit with exact Undo/Redo.
+Raised-platform object placement and an Erase with a non-zero resting count remain unverified,
+as do approved-model placement, as-built Preview and the complete J7/J11 scripts (see **Browser
+QA gaps**). No production deployment was made, and this evidence does not declare the PR ready
+for review.
 
 ## What was implemented
 
@@ -55,7 +57,16 @@ deployment was made, and this evidence does not declare the PR ready for review.
    	`region-ink-session` now acquires `layout-region-draw` with
    `cancel-on-reading-change`, publishes a refusal when another owner holds the pointer, and
    releases the lease idempotently on clear/up.
-5. **Region Card closed when a body move was released.** Requalifying the selection after the
+5. **Corner removal was unreachable on a raised Region.** Two causes compounded. The pointer
+   mapped onto the **floor datum** (`pointerDatumPoint`), while a Region's corner is drawn at
+   `datum + elevation`; a raised corner therefore trailed the cursor by the elevation's
+   parallax, so a visibly-on-chord pointer never named the chord in the footprint's world
+   coordinates. Second, removal measured the **snapped** corner, while the bend rule measures
+   the raw pointer, so the 0.5 m Snap could hold the corner outside the 0.12 m zone. A new
+   `pointerWorkingPlanePoint` maps a pointer at an explicit elevation; corner press and move use
+   `datumMeters + region.elevation`, and removal measures the raw pointer. Regression coverage:
+   `layout-region-authoring.test.ts` removes a corner in one entry and Undo/Redo restores it.
+6. **Region Card closed when a body move was released.** Requalifying the selection after the
    accepted edit treated the Region's Plan fragment as an F.1 component. A Region's fragment
    names the compiled `edge` stream, while `layoutSelectionReference` intentionally stores
    `componentId: null`, so the comparison `null !== 'edge'` retired the subject and the shell
@@ -77,13 +88,14 @@ runs; no diagnostic `console.log`, `console.error` or catch was left in the sour
 | T-V7 | V1b `layout-regions.test.ts`, `layout-room-lift-action.test.ts`; `layout-region-authoring.test.ts` Space association, Card delete/Undo and Lift sources (a floor Terrace is not lifted) |
 | T-V11 | `lift-shadow-eligibility.test.ts` (lifted layer on point/spot/sun shadow cameras, negative control), `scene-region-support.test.ts`, `layout-outline-pick.test.ts`, `layout-region-authoring.test.ts` Lift/Put back and floor-Region retention |
 | T-V12 | `layout-region-authoring.test.ts`: body move, corner and height accept/Undo/Redo; birth Undo/Redo with captured id; Card delete Undo; refused birth adds no history; Esc adds no history |
-| T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner click and degenerate corner are no-ops; stale intent refused; Esc restores; a Region selected from its `edge` stream keeps its selection and Card across an accepted body move |
+| T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner removal on the neighbours' chord in one entry; corner click and degenerate corner are no-ops; stale intent refused; Esc restores; a Region selected from its `edge` stream keeps its selection and Card across an accepted body move |
 
-Focused coverage in `layout-region-authoring.test.ts` is **15 tests**:
+Focused coverage in `layout-region-authoring.test.ts` is **16 tests**:
 
 - every retained region planner and the Card surface;
 - body move in one history entry with Undo/Redo;
 - a Region selected through its `edge` stream stays selected after an accepted body move;
+- corner removal on the neighbours' chord in one entry, with exact Undo/Redo;
 - corner preview equals the installed footprint, with zero Layout compiles and zero history
   writes during the drag, then exact Undo/Redo;
 - body preview equals the installed footprint, with no compile/history before release;
@@ -104,10 +116,10 @@ Commands run from `apps/editor` on the final tree:
 
 - `npm run check` — 0 errors, 18 pre-existing warnings.
 - `npm run test:arch` — 38 files, 350 tests passed.
-- `npm run test:fast` — 433 files, 5354 tests passed.
+- `npm run test:fast` — 433 files, 5355 tests passed.
 - `npm run test:heavy` — 11 files, 138 tests passed.
 - `npm run test -- tests/lib/authoring/layout-region-authoring.test.ts tests/lib/authoring/stage-host-acceptance.test.ts`
-  — 53 tests passed (15 and 38).
+  — 54 tests passed (16 and 38).
 - `npm run build` — passed.
 - `node tools/harness/check-docs.mjs` — passed.
 - `node tools/harness/guards.mjs --base cd5222fc --head HEAD` — no unapproved check or bug-state
@@ -121,8 +133,9 @@ Commands run from `apps/editor` on the final tree:
   keyboard input, page reloads and screenshots. No mounted test was used as browser evidence.
 - QA account: local `t1v1c-qa-2026`. Two saved projects were used:
   `project:7e8c49a2-2a49-4ca9-b7d9-6e9f453ec139` (the original Terrace-only project) and
-  `project:96cdddf3-8455-4c93-8605-0a0cb68d6f98` (created empty this round: a 4-Wall Room,
-  24.0 m² at 3 m, plus a Flat Roof `Canopy 1` at 1.20 m).
+  `project:96cdddf3-8455-4c93-8605-0a0cb68d6f98` (created empty in the previous round: a
+  4-Wall Room, 24.0 m² at 3 m, plus a Flat Roof at 1.20 m; this round added a three-corner
+  Line Terrace fitted to the Room and a Scene Box on the floor).
 - Viewport: 1200 × 627 CSS px at device scale 2. Stage handle positions were read from
   `[data-mark-id]` `getBoundingClientRect()` before each pointer sequence; screenshots are 1.6×
   the CSS viewport.
@@ -213,23 +226,47 @@ Commands run from `apps/editor` on the final tree:
 - **Look-through is not exposed in this build:** the More readings menu contains only Lift and
   Near walls **Cut/Whole**, so there is no control to exercise the journey.
 
+### Corner removal, Line creation and a Space fit
+
+- **Corner removal.** On the raised Flat Roof (`1.20 m`), dragging the top-left corner onto the
+  chord between its neighbours showed `Remove corner`; release halved the area `6.70 → 3.35 m²`
+  and left three corners and eight marks (`41-corner-removed.png`). Undo restored `6.70 m²` and
+  ten marks; Redo returned `3.35 m²` and eight (`42-corner-redone.png`).
+- **Terrace Line.** `Form › Terrace › Line` placed three Plan points; Enter closed the ring
+  (the plate's Finish control sat under the tool nav at this viewport) and created `Region 2`, a
+  Terrace reading elevation `1.20 m`, area `4.01 m²`, with its Card open
+  (`45-line-created.png`).
+- **Fit to space.** After a real body drag moved the Line Terrace inside the Room, the Card's
+  **Fit to space** became enabled. It expanded the terrace from `4.01` to `24.00 m²`, Width
+  `6.00 m`, Depth `4.00 m`, and the relations changed to all four Walls `Meets`
+  (`47-space-fit.png`). Undo restored `4.01 m²`; Redo returned `24.00 m²`.
+
+### Raised-platform placement and resting Erase (blocked)
+
+- A Scene **Box** placed on the bare floor was created and selected (`50-resting.png`), so Scene
+  primitive placement itself works.
+- A Box dropped over the raised Terrace is created on the **ground plane**, not on the terrace
+  top: the Terrace Card stayed `0 objects rest on this platform`. Setting the Box's Advanced
+  Elevation to `1.2 m` and dragging its move mark did not bring it onto the platform — the shape
+  ended left of the Room and remained at `0` resting objects (`51-resting2.png`).
+- Consequently **Erase with a non-zero resting-object disclosure was not exercised**; erasing a
+  Region with a genuinely resting object is still unverified. This is a product gap in
+  raised-platform placement/projection, not a missing QA step.
+
 ## Browser QA gaps
 
 The following required journeys were **not executed acceptably** and are not claimed:
 
-- **Corner removal.** Repeated real-pointer drags of a corner past the removal threshold and
-  onto the neighbour chord did move the corner (area `6.70 → 3.68 m²`) but never presented the
-  removal state or reduced the corner count; mounted coverage remains the only evidence. This
-  may be a product defect and is not claimed as a pass.
-- **Line creation** for Terrace and Flat Roof (Box creation is covered).
-- **Primitive/approved-model placement** on a raised Region: Library → Piano arms the `objects`
-  tool with `Choose the object in the Objects panel to place it.`, but presses on the raised
-  Terrace created nothing; no approved model is provisioned in the QA project. Resting-object
-  disclosures with a non-zero count, authored world-pose retention and saved-form placement are
-  therefore unverified in the browser.
-- One-shot fits, rotation, Duplicate, Erase with a non-zero resting count, and persistence after
-  this round's fix were not re-executed (earlier runs covered rotation, Duplicate, Erase at
-  count `0` and save/reload thickness).
+- **Raised-platform object placement:** Scene placement resolves the ground, so a primitive
+  dropped over a raised Terrace is not placed on its top; raising it through Advanced Elevation
+  and moving it with its move mark did not put it on the platform (`51-resting2.png`). This is
+  the same class of datum-versus-elevation pointer defect fixed for Region corners, now in the
+  Scene adapter. Until it is fixed, an Erase with a non-zero resting count, approved-model
+  placement, authored world-pose retention and saved-form placement cannot be verified.
+- **Flat Roof Line** creation (Terrace Line is covered; Roof creation used Box).
+- Rotation, Duplicate, Erase at a non-zero resting count, and persistence after this round's
+  fixes were not re-executed (earlier runs covered rotation, Duplicate, Erase at count `0` and
+  save/reload thickness).
 - As-built **Preview** (blocked by the missing Experience) and **Look-through** (no control).
 - Coplanar Region/Room-floor priority and the visitor-output leak check.
 - The complete J7 and J11 scripts.

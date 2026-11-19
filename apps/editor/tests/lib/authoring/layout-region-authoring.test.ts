@@ -45,6 +45,8 @@ import { startStageCounting, type StageCounting } from '../../helpers/stage-coun
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-t1-v1c-region-authoring';
 const ELEVATION = 0.5;
+/** The fixture Terrace's world top: the floor datum plus its own elevation. */
+const TERRACE_TOP = ELEVATION + 0.4;
 const MODEL_ASSET_ID = 't1-v1c-terrace-model';
 
 /** One approved creator model, with its resource contact at the instance origin. */
@@ -246,32 +248,42 @@ function stageCss(mounted: Mounted, point: readonly [number, number], y = ELEVAT
 	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
 }
 
-function press(mounted: Mounted, point: readonly [number, number], handleId?: string) {
+function press(
+	mounted: Mounted,
+	point: readonly [number, number],
+	handleId?: string,
+	y = ELEVATION
+) {
 	return mounted.facade.pointerIntent({
 		phase: 'down',
-		css: stageCss(mounted, point),
+		css: stageCss(mounted, point, y),
 		evaluationId: mounted.facade.evaluationId()!,
 		...(handleId === undefined ? {} : { handleId })
 	});
 }
 
-function moveTo(mounted: Mounted, point: readonly [number, number], from?: readonly [number, number]): void {
+function moveTo(
+	mounted: Mounted,
+	point: readonly [number, number],
+	from?: readonly [number, number],
+	y = ELEVATION
+): void {
 	mounted.facade.pointerIntent({
 		phase: 'move',
-		css: stageCss(mounted, from ?? point),
+		css: stageCss(mounted, from ?? point, y),
 		evaluationId: mounted.facade.evaluationId()!
 	});
 	mounted.facade.pointerIntent({
 		phase: 'move',
-		css: stageCss(mounted, point),
+		css: stageCss(mounted, point, y),
 		evaluationId: mounted.facade.evaluationId()!
 	});
 }
 
-function releaseAt(mounted: Mounted, point: readonly [number, number]): void {
+function releaseAt(mounted: Mounted, point: readonly [number, number], y = ELEVATION): void {
 	mounted.facade.pointerIntent({
 		phase: 'up',
-		css: stageCss(mounted, point),
+		css: stageCss(mounted, point, y),
 		evaluationId: mounted.facade.evaluationId()!
 	});
 }
@@ -382,6 +394,33 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		expect(mounted.facade.selectionState().ordered).toHaveLength(1);
 	});
 
+	it('removes a corner on its neighbours\' chord even when snap moves the corner off it', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		const before = acceptedLayout(mounted);
+		const depth = mounted.host.history().depth;
+
+		// Removal reads the raw pointer, as the bend rule does. The pointer is
+		// 0.11 m from the chord, so the corner is removed; the corner itself sits
+		// on the Terrace's own plane, not on the floor datum below it.
+		expect(press(mounted, [1, 1], 'layout-region-corner:0', TERRACE_TOP).claimed).toBe(true);
+		moveTo(mounted, [0.5, 0.5], [1, 1], TERRACE_TOP);
+		moveTo(mounted, [2.1, 1.75], undefined, TERRACE_TOP);
+		releaseAt(mounted, [2.1, 1.75], TERRACE_TOP);
+		await eventually(() => regionOf(mounted, mounted.terraceId)?.footprint.points.length === 3);
+
+		const removed = regionOf(mounted, mounted.terraceId)!;
+		expect(removed.footprint.points).toHaveLength(3);
+		expect(mounted.host.history().depth).toBe(depth + 1);
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toEqual(
+			before.regions[0]!.footprint.points
+		);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toHaveLength(3);
+	});
+
 	it('installs the exact corner preview in one entry, with no compile or history during the drag', async () => {
 		const mounted = await mount();
 		selectRegion(mounted, mounted.terraceId);
@@ -484,17 +523,17 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		const depth = mounted.host.history().depth;
 
 		// A press without travel is a click, not an edit.
-		expect(press(mounted, [1, 1], 'layout-region-corner:0').claimed).toBe(true);
-		releaseAt(mounted, [1, 1]);
+		expect(press(mounted, [1, 1], 'layout-region-corner:0', TERRACE_TOP).claimed).toBe(true);
+		releaseAt(mounted, [1, 1], TERRACE_TOP);
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(acceptedLayout(mounted)).toEqual(before);
 		expect(mounted.host.history().depth).toBe(depth);
 
 		// Dragging a corner onto another corner makes a degenerate footprint; the
 		// release refuses in words and writes neither document nor history.
-		expect(press(mounted, [1, 1], 'layout-region-corner:0').claimed).toBe(true);
-		moveTo(mounted, [3, 3], [1, 1]);
-		releaseAt(mounted, [3, 3]);
+		expect(press(mounted, [1, 1], 'layout-region-corner:0', TERRACE_TOP).claimed).toBe(true);
+		moveTo(mounted, [3, 3], [1, 1], TERRACE_TOP);
+		releaseAt(mounted, [3, 3], TERRACE_TOP);
 		await eventually(() =>
 			mounted.facade
 				.candidatePreviews()

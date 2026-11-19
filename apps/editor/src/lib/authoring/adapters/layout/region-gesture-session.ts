@@ -18,7 +18,7 @@ import {
 } from './manipulation-support';
 import { datumSnapDistance, isPointerDrag, previewCoordinates } from './manipulation-support';
 import { resolvePlanarDragSnap, type LayoutSnapWinner } from './snap';
-import { pointerDatumPoint } from './stage-pointer';
+import { pointerDatumPoint, pointerWorkingPlanePoint } from './stage-pointer';
 import { candidatePreviewOf } from './candidate-preview';
 import { selectedRegion } from './layout-subjects';
 import {
@@ -386,7 +386,16 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		index: number
 	): boolean {
 		const selected = selectedRegion(document, ctx);
-		const point = pointerDatumPoint(ctx, intent.css);
+		// A Region's corner is drawn at the Region's world elevation, not on the
+		// floor datum; the press must name the same plane or a raised corner misses.
+		const point =
+			selected === null
+				? null
+				: pointerWorkingPlanePoint(
+						ctx,
+						intent.css,
+						ctx.snapshot.domain.datumMeters + selected.region.elevation
+					);
 		if (
 			selected === null ||
 			selected.region.id !== regionId ||
@@ -534,7 +543,13 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		ctx: StageAdapterContext,
 		intent: StagePointerIntent
 	): void {
-		const point = pointerDatumPoint(ctx, intent.css);
+		const region = document.regions.find((candidate) => candidate.id === current.regionId);
+		if (region === undefined) return;
+		const point = pointerWorkingPlanePoint(
+			ctx,
+			intent.css,
+			ctx.snapshot.domain.datumMeters + region.elevation
+		);
 		if (point === null) return;
 		const snapped = resolvePlanarDragSnap(current.pressPoint, point, ctx.drafting(), (from, to) =>
 			datumSnapDistance(ctx, from, to)
@@ -549,8 +564,11 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 			(current.index - 1 + current.baseline.length) % current.baseline.length
 		]!;
 		const next = current.baseline[(current.index + 1) % current.baseline.length]!;
+		// Removal reads the **pointer**, not the snapped corner: the bend rule does
+		// the same, so a 0.5 m snap cannot hold the pointer outside the 0.12 m band
+		// and make the gesture unreachable.
 		const distance = distanceToChord(
-			[snapped.point[0], snapped.point[1]],
+			[point[0], point[1]],
 			[previous[0], previous[1]],
 			[next[0], next[1]]
 		);
