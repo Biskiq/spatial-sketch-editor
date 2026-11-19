@@ -314,6 +314,10 @@ filters and photo retouching are a different product and stay out.
 
 ## 8. Rendering truth: S0 is a gate, not a foundation we assume
 
+The [approved WebGPU direction and migration plan](./webgpu-renderer-migration/implementation-plan.md)
+supersede the earlier two-renderer trial direction below. The product uses native WebGL until the
+complete Stage, Preview and published cutover clears both backend gates. The cutover precedes S8.
+
 Revision 1 treated sky-derived reflections as settled. They are a hypothesis until measured, and
 they have known limits that the UI must not paper over:
 
