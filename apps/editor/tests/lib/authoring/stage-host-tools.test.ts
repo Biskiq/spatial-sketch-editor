@@ -405,7 +405,7 @@ describe('R217.S10 — Eraser', () => {
 
 
 describe('T2.S4a — Paint', () => {
-	it('paints one Wall face or all Wall faces in its Space, and still refuses a Light', async () => {
+	it('paints one Wall face or every surface in its Space, and still refuses a Light', async () => {
 		const { facade } = await mount('plan', [LIGHT], undefined, false, true);
 		const { assign, assignSurface, options } = paintOptions();
 		const painter = createStagePainter(facade, options);
@@ -425,17 +425,21 @@ describe('T2.S4a — Paint', () => {
 		await painter.up({ css: wall, evaluationId });
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(assignSurface.mock.calls[0]![0]).toEqual([face]);
-		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster · 1 Wall face' });
+		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster · 1 surface' });
 
 		assignSurface.mockClear();
 		painter.setSurfaceScope('space');
 		expect(painter.down({ css: wall, evaluationId })).toBe(true);
-		expect(painter.candidate()?.assignmentSurfaces).toHaveLength(4);
-		expect(painter.candidate()?.consequence).toBe('Paint 4 Wall faces in this Space');
+		const expanded = painter.candidate()?.assignmentSurfaces ?? [];
+		expect(expanded).toHaveLength(6);
+		expect(expanded.filter((surface) => surface.kind === 'wall-side')).toHaveLength(4);
+		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-floor' }));
+		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-lid' }));
+		expect(painter.candidate()?.consequence).toBe('Paint 6 surfaces in this Space');
 		await painter.up({ css: wall, evaluationId });
 		expect(assignSurface).toHaveBeenCalledTimes(1);
-		expect(assignSurface.mock.calls[0]![0]).toHaveLength(4);
-		expect(assignSurface.mock.calls[0]![0].every((surface) => surface.kind === 'wall-side')).toBe(true);
+		expect(assignSurface.mock.calls[0]![0]).toHaveLength(6);
+		expect(assignSurface.mock.calls[0]![0]).toEqual(expanded);
 
 		const light = css(facade, LIGHT.position);
 		expect(painter.down({ css: light, evaluationId })).toBe(true);
@@ -450,6 +454,44 @@ describe('T2.S4a — Paint', () => {
 		expect(assign).not.toHaveBeenCalled();
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(facade.snapshot().canonicalJson).toBe(before);
+	});
+
+	it('names a straddling Region that Space scope skips', () => {
+		// A controller seam: the Layout answer is the only input that matters here.
+		const snapshot = {};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => ({
+				kind: 'paintable-surface' as const,
+				surface: { kind: 'room-floor' as const, roomId: 'room' },
+				space: {
+					kind: 'unique' as const,
+					roomId: 'room',
+					surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }],
+					excluded: [{
+						ref: { kind: 'region-face' as const, regionId: 'straddler', face: 'top' as const },
+						reason: 'spans-spaces' as const
+					}]
+				}
+			})
+		} as unknown as StageFacade;
+		const painter = createStagePainter(facade, paintOptions().options);
+		const evaluationId = 'generation-1';
+		painter.setSurfaceScope('space');
+		painter.hover({ css: [0, 0], evaluationId });
+		expect(painter.candidate()?.consequence).toBe(
+			'Paint 1 surface in this Space · 1 Region spans two Spaces, skipped'
+		);
 	});
 
 	it('does not paint a Scene object through the Light in front of it', async () => {

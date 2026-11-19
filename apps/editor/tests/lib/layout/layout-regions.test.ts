@@ -129,7 +129,7 @@ describe('Layout 9 horizontal regions', () => {
 		const { geometry } = compileWallFirstLayoutGeometryFresh({ ...createEmptyWallFirstLayoutDocument(), regions: [region] });
 		const geometryBuffer = buildRegionMeshGeometry(geometry.regions[0]!);
 		const material = new MeshBasicMaterial();
-		const mesh = new Mesh(geometryBuffer, [material, material]);
+		const mesh = new Mesh(geometryBuffer, [material, material, material]);
 		for (const [origin, direction, face] of [
 			[[0.5, 2, 2], [0, -1, 0], 'top'],
 			[[0.5, 0, 2], [0, 1, 0], 'underside'],

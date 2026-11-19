@@ -1,7 +1,7 @@
 import type { SubjectScope } from '../subject-scope';
 import type { Component, Snippet } from 'svelte';
 import type { PointerRay, Vec3, ViewingIntent, ViewingIntentResult, ViewportCameraState, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core';
-import type { LayoutSurfaceRef, PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef } from '@portfolio/layout-core';
+import type { LayoutSurfaceRef, PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef, SpaceSurfaceExclusion } from '@portfolio/layout-core';
 import type { CameraOutputRefusal, F4JsonValue, SceneFormSource, SemanticReference } from '@portfolio/project-model';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import type { StageReadSnapshot } from '../accepted-read';
@@ -40,6 +40,9 @@ export type StageDomainPick = {
 	readonly cssDistance: number;
 };
 
+/** The Stage hit vocabulary: Plan sources plus the 3D-only Room lid. */
+export type StageHitSourceKind = PlanSourceKind | 'room-lid';
+
 export type StageSourceHit = {
 	readonly reference: SemanticReference;
 	readonly sourceId: string;
@@ -48,7 +51,7 @@ export type StageSourceHit = {
 } | {
 	readonly reference?: undefined;
 	readonly sourceId: string;
-	readonly sourceKind: PlanSourceKind;
+	readonly sourceKind: StageHitSourceKind;
 	readonly generationId: string;
 	readonly stream: PlanStream;
 	readonly subRef: PlanSubRef | null;
@@ -83,7 +86,13 @@ export type StageEraseAnswer =
  * the identity the owning domain already knows.
  */
 export type StagePaintSpaceScope =
-	| { readonly kind: 'unique'; readonly roomId: string; readonly surfaces: readonly LayoutSurfaceRef[] }
+	| {
+			readonly kind: 'unique';
+			readonly roomId: string;
+			readonly surfaces: readonly LayoutSurfaceRef[];
+			/** Region faces the one containment rule skipped, so Paint can name them. */
+			readonly excluded: readonly SpaceSurfaceExclusion[];
+	  }
 	| { readonly kind: 'none' }
 	| { readonly kind: 'ambiguous'; readonly roomIds: readonly string[] };
 

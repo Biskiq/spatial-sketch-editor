@@ -125,9 +125,6 @@ export function applySurfaceLineage(input: {
 		}
 		assignments.delete(targetKey);
 		if (winner !== undefined) {
-			if (entry.to.kind === 'region-face') {
-				return { kind: 'rejected', code: 'surface_lineage_invalid', message: 'Scene 10 does not admit region-face Finish assignments.' };
-			}
 			assignments.set(targetKey, { surface: entry.to, finish: winner.finish });
 			for (const source of entry.from) {
 				if (beforeByKey.has(surfaceKey(source))) movedFrom.add(surfaceKey(source));

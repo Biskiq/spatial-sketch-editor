@@ -29,7 +29,7 @@ export function buildRegionMeshGeometry(
 			normals.push(...normal, ...normal, ...normal);
 			surfaceByTriangle.push(surface);
 		}
-		geometry.addGroup(start, positions.length / 3 - start, surface === 'top' ? 0 : 1);
+		geometry.addGroup(start, positions.length / 3 - start, surface === 'top' ? 0 : surface === 'underside' ? 1 : 2);
 	}
 	geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 	geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3));

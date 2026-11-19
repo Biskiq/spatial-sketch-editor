@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
+	duplicateRegionSurfaceLineage,
 	duplicateRoomSurfaceLineage,
 	joinWallSurfaceLineage,
 	normalizeLayoutSurfaceLineage,
@@ -13,7 +14,9 @@ import {
 	surfacesOfSpace,
 	wallSideAt,
 	planWallChain,
+	resolveLayoutSurface,
 	type LayoutDocumentWallFirst,
+	type LayoutRegion,
 	type LayoutSurfaceRef
 } from '@portfolio/layout-core';
 import {
@@ -41,6 +44,18 @@ function wallLayout(ids: readonly string[]): LayoutDocumentWallFirst {
 
 function scene(assignments: CameraFreeSceneDocument['surfaceFinishes'] = []): CameraFreeSceneDocument {
 	return { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [], surfaceFinishes: assignments };
+}
+
+function slab(id: string, role: 'floor' | 'overhead', points: readonly [number, number][]): LayoutRegion {
+	return {
+		id,
+		role,
+		footprint: { kind: 'polygon', points: points.map(([x, z]) => [x, z]) },
+		elevation: 0.2,
+		thickness: 0.2,
+		form: { kind: 'flat' },
+		intendedGaps: []
+	};
 }
 
 describe('Layout surface identity and lineage', () => {
@@ -297,6 +312,122 @@ describe('Layout surface identity and lineage', () => {
 		expect(wallSideAt(compiled, 'room:wall:0', [3, 1])).toBe('left');
 		expect(wallSideAt(compiled, 'room:wall:0', [3, -1])).toBe('right');
 		expect(wallSideAt(compiled, 'room:wall:0', [3, 0])).toBeNull();
+	});
+
+	it('names a floor, lid and wholly-contained Region face in the one Space that owns them', () => {
+		const document = g1DocumentWithRooms([g1RoomPolygon('room', [[0, 0], [6, 0], [6, 4], [0, 4]])]);
+		document.regions.push(slab('terrace', 'floor', [[1, 1], [5, 1], [5, 3], [1, 3]]));
+		const floor = { kind: 'room-floor', roomId: 'room' } as const;
+		const lid = { kind: 'room-lid', roomId: 'room' } as const;
+		const top = { kind: 'region-face', regionId: 'terrace', face: 'top' } as const;
+		expect(surfacesOfSpace(document, 'room').surfaces).toContainEqual(floor);
+		expect(surfacesOfSpace(document, 'room').surfaces).toContainEqual(lid);
+		expect(surfacesOfSpace(document, 'room').surfaces).toContainEqual(top);
+		expect(spaceOfSurface(document, floor)).toEqual({ kind: 'unique', roomId: 'room' });
+		expect(spaceOfSurface(document, lid)).toEqual({ kind: 'unique', roomId: 'room' });
+		expect(spaceOfSurface(document, top)).toEqual({ kind: 'unique', roomId: 'room' });
+		expect(spaceOfSurface(document, { kind: 'region-face', regionId: 'missing', face: 'top' })).toEqual({ kind: 'none' });
+	});
+
+	it('duplicates a painted Region top and underside by shared Finish identity', () => {
+		const beforeLayout = g1DocumentWithRooms([g1RoomPolygon('room', [[0, 0], [6, 0], [6, 4], [0, 4]])]);
+		beforeLayout.regions.push(slab('canopy', 'overhead', [[1, 1], [5, 1], [5, 3], [1, 3]]));
+		const afterLayout: LayoutDocumentWallFirst = {
+			...beforeLayout,
+			regions: [...beforeLayout.regions, slab('canopy-copy', 'overhead', [[2, 1], [6, 1], [6, 3], [2, 3]])]
+		};
+		const shared = { materialInstanceId: 'shared-finish' } as const;
+		const sourceTop = { kind: 'region-face', regionId: 'canopy', face: 'top' } as const;
+		const sourceUnderside = { kind: 'region-face', regionId: 'canopy', face: 'underside' } as const;
+		const lineage = duplicateRegionSurfaceLineage('canopy', 'canopy-copy');
+		expect(lineage).toEqual([
+			{ to: { kind: 'region-face', regionId: 'canopy-copy', face: 'top' }, from: [sourceTop] },
+			{ to: { kind: 'region-face', regionId: 'canopy-copy', face: 'underside' }, from: [sourceUnderside] }
+		]);
+		const result = applySurfaceLineage({
+			beforeScene: scene([
+				{ surface: sourceTop, finish: shared },
+				{ surface: sourceUnderside, finish: shared }
+			]),
+			beforeLayout,
+			afterLayout,
+			lineage
+		});
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.scene.surfaceFinishes).toEqual([
+			{ surface: sourceTop, finish: shared },
+			{ surface: sourceUnderside, finish: shared },
+			{ surface: { kind: 'region-face', regionId: 'canopy-copy', face: 'top' }, finish: shared },
+			{ surface: { kind: 'region-face', regionId: 'canopy-copy', face: 'underside' }, finish: shared }
+		]);
+		expect(result.scene.materials).toEqual([]);
+	});
+
+	it('prunes a retired Region face and keeps a dormant lid through an open-to-sky edit', () => {
+		const beforeLayout = g1DocumentWithRooms([g1RoomPolygon('room', [[0, 0], [6, 0], [6, 4], [0, 4]])]);
+		beforeLayout.regions.push(slab('terrace', 'floor', [[1, 1], [5, 1], [5, 3], [1, 3]]));
+		const top = { kind: 'region-face', regionId: 'terrace', face: 'top' } as const;
+		const lid = { kind: 'room-lid', roomId: 'room' } as const;
+		const removed = applySurfaceLineage({
+			beforeScene: scene([{ surface: top, finish: { materialId: 'marble-light' } }]),
+			beforeLayout,
+			afterLayout: { ...beforeLayout, regions: [] },
+			lineage: []
+		});
+		expect(removed.kind).toBe('ready');
+		if (removed.kind === 'ready') {
+			expect(removed.scene.surfaceFinishes).toBeUndefined();
+			expect(removed.report.dropped).toEqual([top]);
+		}
+
+		const openToSky: LayoutDocumentWallFirst = {
+			...beforeLayout,
+			rooms: beforeLayout.rooms.map((room) => ({ ...room, overhead: 'open-to-sky' }))
+		};
+		expect(resolveLayoutSurface(openToSky, lid)).toBe('dormant');
+		const dormant = applySurfaceLineage({
+			beforeScene: scene([{ surface: lid, finish: { materialId: 'velvet-dark' } }]),
+			beforeLayout,
+			afterLayout: openToSky,
+			lineage: []
+		});
+		expect(dormant.kind).toBe('ready');
+		if (dormant.kind === 'ready') {
+			expect(dormant.scene.surfaceFinishes).toEqual([{ surface: lid, finish: { materialId: 'velvet-dark' } }]);
+			expect(dormant.report.dropped).toEqual([]);
+		}
+		expect(newlyRetiredSurfaceReferenceKeys({
+			beforeScene: scene([{ surface: lid, finish: { materialId: 'velvet-dark' } }]),
+			beforeLayout,
+			afterScene: scene([{ surface: lid, finish: { materialId: 'velvet-dark' } }]),
+			afterLayout: openToSky
+		})).toEqual([]);
+	});
+
+	it('keeps a Region face assignment across an edit that preserves the id', () => {
+		const beforeLayout = g1DocumentWithRooms([g1RoomPolygon('room', [[0, 0], [6, 0], [6, 4], [0, 4]])]);
+		beforeLayout.regions.push(slab('terrace', 'floor', [[1, 1], [5, 1], [5, 3], [1, 3]]));
+		const afterLayout: LayoutDocumentWallFirst = {
+			...beforeLayout,
+			regions: beforeLayout.regions.map((region) => ({
+				...region,
+				elevation: 0.5,
+				thickness: 0.3,
+				footprint: { kind: 'polygon', points: [[1.5, 1.5], [4.5, 1.5], [4.5, 2.5], [1.5, 2.5]] }
+			}))
+		};
+		const top = { kind: 'region-face', regionId: 'terrace', face: 'top' } as const;
+		const result = applySurfaceLineage({
+			beforeScene: scene([{ surface: top, finish: { materialId: 'marble-light' } }]),
+			beforeLayout,
+			afterLayout,
+			lineage: []
+		});
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.scene.surfaceFinishes).toEqual([{ surface: top, finish: { materialId: 'marble-light' } }]);
+		expect(result.report.dropped).toEqual([]);
 	});
 
 	it('excludes a Region whose vertices fit a concave Space but whose edge crosses its notch', () => {

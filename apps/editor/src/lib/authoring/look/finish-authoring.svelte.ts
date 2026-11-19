@@ -48,7 +48,26 @@ import type {
 	SemanticReference
 } from '@portfolio/project-model';
 import { surfaceKey } from '@portfolio/layout-core';
-type PaintableWallSide = Extract<SceneSurfaceRef, { readonly kind: 'wall-side' }>;
+type PaintableSurface = SceneSurfaceRef;
+
+/** The F.1 subject one surface identity names; the component carries the face. */
+function surfaceTargetSubject(surface: PaintableSurface): { kind: 'wall' | 'room' | 'region'; id: string } {
+	switch (surface.kind) {
+		case 'wall-side': return { kind: 'wall', id: surface.wallId };
+		case 'room-floor':
+		case 'room-lid': return { kind: 'room', id: surface.roomId };
+		case 'region-face': return { kind: 'region', id: surface.regionId };
+	}
+}
+
+function surfaceTargetComponent(surface: PaintableSurface): string {
+	switch (surface.kind) {
+		case 'wall-side': return `side:${surface.side}`;
+		case 'room-floor': return 'floor';
+		case 'room-lid': return 'lid';
+		case 'region-face': return surface.face;
+	}
+}
 import { getMaterial, materials } from '$lib/content/materials';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
@@ -1086,18 +1105,18 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return accepted ? 'accepted' : 'refused';
 	}
 
-	/** Paint one or more stable Wall sides in one Scene acceptance. */
-	async function paintSurface(surfaces: readonly PaintableWallSide[]): Promise<boolean> {
+	/** Paint one or more stable Layout surfaces in one Scene acceptance. */
+	async function paintSurface(surfaces: readonly PaintableSurface[]): Promise<boolean> {
 		if (activeKey === null) {
 			host.onNotice('Choose a Finish first.');
 			return false;
 		}
-		if (surfaces.length === 0 || surfaces.some((surface) => surface.kind !== 'wall-side')) {
-			host.onNotice('Paint needs one or more Wall faces.');
+		if (surfaces.length === 0 || surfaces.some((surface) => surface.kind === 'region-face' && surface.face === 'edge')) {
+			host.onNotice('Paint needs one or more paintable surfaces.');
 			return false;
 		}
 		if (activeKey === 'model-own') {
-			host.onNotice("Model's own cannot be painted onto a Wall side.");
+			host.onNotice("Model's own cannot be painted onto a Layout surface.");
 			return false;
 		}
 		const ref = finishRefOfKey(activeKey);
@@ -1115,10 +1134,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			version: 1,
 			domain: 'layout',
 			revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
-			subject: { kind: 'wall', id: surface.wallId },
+			subject: surfaceTargetSubject(surface),
 			instancePath: [],
 			location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
-			componentId: `side:${surface.side}`,
+			componentId: surfaceTargetComponent(surface),
 			capabilityId: null
 		}));
 		busy = true;
@@ -1134,7 +1153,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 	}
 
-	function activeSurfaceIsAlready(surfaces: readonly PaintableWallSide[]): boolean {
+	function activeSurfaceIsAlready(surfaces: readonly PaintableSurface[]): boolean {
 		const current = scene();
 		if (current === null || activeKey === null || surfaces.length === 0) return false;
 		const assignments = new Map((current.surfaceFinishes ?? []).map((assignment) => [surfaceKey(assignment.surface), assignment]));
@@ -1144,12 +1163,12 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		});
 	}
 
-	/** Copy the authored Finish from a Wall face; unpainted faces have no colour to copy. */
-	async function copySurface(surface: PaintableWallSide): Promise<boolean> {
+	/** Copy the authored Finish from a Layout surface; an unpainted surface has nothing to copy. */
+	async function copySurface(surface: PaintableSurface): Promise<boolean> {
 		const current = scene();
 		const dropperState = dropper;
 		dropper = null;
-		if (current === null || surface.kind !== 'wall-side') {
+		if (current === null) {
 			host.onNotice('That has no Finish colour.');
 			return false;
 		}

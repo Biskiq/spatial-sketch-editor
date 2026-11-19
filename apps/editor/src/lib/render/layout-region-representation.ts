@@ -1,27 +1,104 @@
-import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+import type { CompiledLayoutGeometry, CompiledRegion } from '@portfolio/layout-core';
 import { Group, Mesh, type Material } from 'three';
 import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
+import { createSceneSurfaceMaterials } from '$lib/render/layout/scene-surface-materials';
+import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
+import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 import { tagRenderIdentity } from './render-identity';
 import { LIFTED_RENDER_LAYER } from './render-layers';
 import type { MaterialStore } from './resources/material-store';
+import type { MaterialTreatment } from './resources/material-descriptor';
+import { applyTreatment } from './materials/treatment';
 
 /** One retained mesh per slab, mounted by both Stage and Preview. */
-export function createRegionRepresentation(store: MaterialStore) {
+export function createRegionRepresentation(
+	store: MaterialStore,
+	textureScope: TextureLoadScope | null = null,
+	onMaterialChange: () => void = () => {},
+	resolveSurfaceLook?: SceneSurfaceLookResolver,
+	treatment: MaterialTreatment | undefined = undefined
+) {
 	const object3d = new Group();
 	object3d.name = 'LayoutRegions';
-	const floor = { kind: 'standard', color: DEFAULT_FLOOR_COLOR, roughness: 1, metalness: 0 } as const;
-	const entries = new Map<string, { cacheKey: string; mesh: Mesh }>();
+	/**
+	 * The unpainted defaults, in the one order every reader uses:
+	 * `[floor top, dark underside/edge, datum-biased top]`. A floor Region whose
+	 * top sits on the datum takes the biased top so its plane cannot z-fight the
+	 * compiled floor; an overhead Region's top is the dark slab material, never
+	 * the floor's. A Treatment is resolve-time, so it re-leases these descriptors
+	 * exactly as a Room re-leases its floor and ceiling.
+	 */
+	function defaultDescriptors(active: MaterialTreatment | undefined) {
+		const floor = applyTreatment(active, {
+			color: DEFAULT_FLOOR_COLOR, roughness: 1, metalness: 0, slotUris: {}, normalScale: null
+		});
+		const slab = applyTreatment(active, {
+			color: '#111018', roughness: 0.9, metalness: 0, slotUris: {}, normalScale: null
+		});
+		const top = {
+			kind: 'standard', color: floor.color, roughness: floor.roughness, metalness: floor.metalness
+		} as const;
+		return {
+			top,
+			slab: {
+				kind: 'standard', color: slab.color, roughness: slab.roughness, metalness: slab.metalness
+			} as const,
+			datumTop: { ...top, polygonOffset: [-2, -2] as const }
+		};
+	}
+	type RetainedRegion = {
+		readonly cacheKey: string;
+		readonly mesh: Mesh;
+		readonly role: CompiledRegion['role'];
+		/** A floor Region whose top sits exactly on the datum. */
+		readonly atDatum: boolean;
+	};
+	const entries = new Map<string, RetainedRegion>();
 	let leases: ReturnType<MaterialStore['acquire']>[] = [];
+	let scene: object | null = null;
+	let activeScope: TextureLoadScope | null = textureScope;
+	let activeTreatment = treatment;
 	/** Session Lift: a lifted slab moves off the Stage camera and out of rays. */
 	let lifted = new Set<string>();
 	function materials() {
-		if (leases.length === 0) leases = [
-			store.acquire(floor),
-			store.acquire({ kind: 'standard', color: '#111018', roughness: 0.9, metalness: 0 }),
-			store.acquire({ ...floor, polygonOffset: [-2, -2] })
-		];
+		if (leases.length === 0) {
+			const descriptors = defaultDescriptors(activeTreatment);
+			leases = [
+				store.acquire(descriptors.top),
+				store.acquire(descriptors.slab),
+				store.acquire(descriptors.datumTop)
+			];
+		}
 		return leases;
+	}
+	/** One slab's three face materials: a painted face wins, else its role default. */
+	function faceMaterials(id: string, role: CompiledRegion['role'], atDatum: boolean): Material[] {
+		const [top, slab, datumTop] = materials();
+		const defaultTop = role === 'floor' ? (atDatum ? datumTop!.material : top!.material) : slab!.material;
+		return [
+			surfaceMaterials.materialFor({ kind: 'region-face', regionId: id, face: 'top' }) ?? defaultTop,
+			surfaceMaterials.materialFor({ kind: 'region-face', regionId: id, face: 'underside' }) ?? slab!.material,
+			slab!.material
+		];
+	}
+	let surfaceMaterials = createSceneSurfaceMaterials({
+		store, scope: textureScope, onMaterialChange: refreshSurfaceMaterials, resolveSurfaceLook
+	});
+	function refreshSurfaceMaterials(): void {
+		if (entries.size === 0) return;
+		for (const [id, entry] of entries) {
+			entry.mesh.material = faceMaterials(id, entry.role, entry.atDatum);
+		}
+		onMaterialChange();
+	}
+	function replaceSurfaceMaterials(): void {
+		const previous = surfaceMaterials;
+		surfaceMaterials = createSceneSurfaceMaterials({
+			store, scope: activeScope, onMaterialChange: refreshSurfaceMaterials, resolveSurfaceLook
+		});
+		refreshSurfaceMaterials();
+		previous.dispose();
 	}
 	function remove(id: string): void {
 		const entry = entries.get(id);
@@ -49,12 +126,13 @@ export function createRegionRepresentation(store: MaterialStore) {
 				live.add(id);
 				if (entries.get(id)?.cacheKey === region.cacheKey) continue;
 				remove(id);
-				const [floorTop, edge, datumTop] = materials();
 				const biased = region.role === 'floor' && region.topY === datum;
-				const top = region.role === 'floor' ? (biased ? datumTop : floorTop) : edge;
 				const [x, z] = region.footprint[0]!;
 				const origin: [number, number, number] = [x, region.bottomY, z];
-				const mesh = new Mesh(buildRegionMeshGeometry(region, origin), [top!.material, edge!.material] as Material[]);
+				const mesh = new Mesh(
+					buildRegionMeshGeometry(region, origin),
+					faceMaterials(id, region.role, biased) as Material[]
+				);
 				mesh.position.set(...origin);
 				mesh.name = `LayoutRegion:${id}`;
 				mesh.renderOrder = biased ? 1 : 0;
@@ -62,7 +140,7 @@ export function createRegionRepresentation(store: MaterialStore) {
 				mesh.layers.set(lifted.has(id) ? LIFTED_RENDER_LAYER : 0);
 				tagRenderIdentity(mesh, 'region', id);
 				object3d.add(mesh);
-				entries.set(id, { cacheKey: region.cacheKey, mesh });
+				entries.set(id, { cacheKey: region.cacheKey, mesh, role: region.role, atDatum: biased });
 				changed = true;
 			}
 			for (const id of entries.keys()) {
@@ -90,9 +168,31 @@ export function createRegionRepresentation(store: MaterialStore) {
 			return changed;
 		},
 		objectOf(id: string) { return entries.get(id)?.mesh ?? null; },
+		/** Re-resolve Scene-owned Region faces without rebuilding geometry. */
+		setScene(next: object | null, scope: TextureLoadScope | null): boolean {
+			if (next === scene && scope === activeScope) return false;
+			scene = next;
+			activeScope = scope;
+			replaceSurfaceMaterials();
+			return true;
+		},
+		/** A Treatment is resolve-time: re-resolve painted Region faces like Rooms. */
+		setTreatment(next: MaterialTreatment | undefined): boolean {
+			if (next === activeTreatment) return false;
+			activeTreatment = next;
+			treatment = next;
+			// Re-lease the solid defaults as well as the painted faces, so an
+			// unpainted Region responds to the Look exactly like a Room does.
+			const previous = leases;
+			leases = [];
+			replaceSurfaceMaterials();
+			for (const lease of previous) lease.release();
+			return true;
+		},
 		*meshes() { for (const { mesh } of entries.values()) yield mesh; },
 		dispose() {
 			for (const id of entries.keys()) remove(id);
+			surfaceMaterials.dispose();
 			releaseUnused();
 			compiled = undefined;
 			lifted = new Set();

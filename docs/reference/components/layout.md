@@ -327,7 +327,9 @@ The authored `resolveLayoutSurface` reads identity lifecycle only. A move, footp
 elevation or thickness edit keeps a stable reference; deleting the subject retires it
 rather than redirecting it to a coincident successor. A closed Space lid resolves; an
 open-to-sky lid is dormant while its floor remains present. `surfacesOfSpace` and
-`spaceOfSurface` read the oriented authored boundary for per-surface membership.
+`spaceOfSurface` read the oriented authored boundary for Wall-side membership, each Space's own
+floor and present lid, and the same whole-footprint containment rule for Region faces (a face in
+several Spaces is ambiguous, and a straddling Region is excluded and named).
 `queryOverheadSupports` remains the matching downward geometry query, reporting closed
 lids and overhead-region undersides and treating open-to-sky as no lid.
 

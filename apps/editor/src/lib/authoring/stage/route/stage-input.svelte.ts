@@ -36,6 +36,7 @@ import {
 	perfMarksEnabled
 } from '$lib/platform/perf-marks';
 import type { StagePostureLayer, StagePostureMark } from '../stage-adapter-host';
+import { planSourceKindOf } from './plan-source-kind';
 import type {
 	StageFacade,
 	StageIntentResult,
@@ -279,8 +280,17 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			return;
 		}
 		const hit = result.hit;
+		const planKind = hit.reference === undefined ? planSourceKindOf(hit.sourceKind) : null;
+		// The 3D Room lid is a Paint-only hit; selection and hover resolve a Room
+		// through its floor and never name the lid.
+		if (hit.reference === undefined && planKind === null) {
+			input.session.setHover(null);
+			hoverSelection = null;
+			hoverMove = false;
+			return;
+		}
 		const representation = hit.reference === undefined
-			? { sourceId: hit.sourceId, sourceKind: hit.sourceKind, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
+			? { sourceId: hit.sourceId, sourceKind: planKind!, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
 			: undefined;
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 		input.session.setHover({ reference });

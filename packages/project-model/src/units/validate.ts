@@ -484,14 +484,16 @@ function readSurfaceFinishes(
 		}
 		const rawSurface = assignment.surface as Record<string, unknown>;
 		const kind = rawSurface.kind;
-		if (kind !== 'wall-side' && kind !== 'room-floor' && kind !== 'room-lid') {
-			reader.problem(`${path}.surface.kind`, 'unknown_surface_kind', `${path}.surface.kind is not admitted by Scene 10`);
+		if (kind !== 'wall-side' && kind !== 'room-floor' && kind !== 'room-lid' && kind !== 'region-face') {
+			reader.problem(`${path}.surface.kind`, 'unknown_surface_kind', `${path}.surface.kind is not admitted by Scene 11`);
 			continue;
 		}
 		const surfaceRecord = reader.object(
 			rawSurface,
 			`${path}.surface`,
-			kind === 'wall-side' ? ['kind', 'wallId', 'side'] : ['kind', 'roomId']
+			kind === 'wall-side' ? ['kind', 'wallId', 'side']
+				: kind === 'region-face' ? ['kind', 'regionId', 'face']
+					: ['kind', 'roomId']
 		);
 		if (surfaceRecord === null) continue;
 		let surface: SceneSurfaceRef | null = null;
@@ -499,6 +501,14 @@ function readSurfaceFinishes(
 			const wallId = reader.opaqueId(surfaceRecord.wallId, `${path}.surface.wallId`);
 			const side = reader.tag(surfaceRecord.side, `${path}.surface.side`, ['left', 'right']);
 			if (wallId !== null && side !== null) surface = { kind, wallId, side: side as 'left' | 'right' };
+		} else if (kind === 'region-face') {
+			const regionId = reader.opaqueId(surfaceRecord.regionId, `${path}.surface.regionId`);
+			const rawFace = surfaceRecord.face;
+			const face = rawFace === 'top' || rawFace === 'underside' ? rawFace : null;
+			if (face === null) {
+				reader.problem(`${path}.surface.face`, 'unknown_surface_face', `${path}.surface.face must be 'top' or 'underside'; a region edge has no Finish`);
+			}
+			if (regionId !== null && face !== null) surface = { kind, regionId, face };
 		} else {
 			const roomId = reader.opaqueId(surfaceRecord.roomId, `${path}.surface.roomId`);
 			if (roomId !== null) surface = { kind, roomId };

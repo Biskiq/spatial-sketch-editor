@@ -1,6 +1,11 @@
 # J — Surface references and lineage (T1 × T2), first commit of S5a
 
 **Status:** Owner-approved for S5a implementation on 2026-11-17 (six OD-J rulings, PR #368).
+**S5b closeout (2026-11-19):** Scene 11 admits `region-face` `top`/`underside` (an `edge` is
+refused with `unknown_surface_face`), Paint reaches Room floors, present lids and Region faces,
+and Region duplicate carries top/underside lineage by shared Finish identity. OD-J2's containment
+rule, OD-J3's plane inheritance and OD-J4's dormant/retired split are applied unchanged; no new
+surface identity or material path was introduced.
 This preserved first commit remains the planning authority; implementation and the V1d
 reconciliation are recorded in follow-up commits on the same draft PR.
 **Capabilities:** `look.surface-finish` *new* (S5a, S5b). T1 obligations are recorded against

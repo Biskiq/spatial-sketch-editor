@@ -16,8 +16,8 @@ export type MaterialId =
   | 'velvet-dark'
   | 'paper-aged';
 
-/** Scene 10 assignments; region faces stay outside this admitted subset. */
-export type SceneSurfaceRef = Exclude<LayoutSurfaceRef, { readonly kind: 'region-face' }>;
+/** Scene 11 assignments: every canonical Layout surface identity. */
+export type SceneSurfaceRef = LayoutSurfaceRef;
 export type SceneSurfaceFinish = {
   readonly surface: SceneSurfaceRef;
   readonly finish: { readonly materialId: MaterialId } | { readonly materialInstanceId: string };

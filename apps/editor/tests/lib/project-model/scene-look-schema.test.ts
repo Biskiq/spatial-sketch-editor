@@ -1,5 +1,5 @@
 /**
- * Scene 10's Look schema at the unit boundary.
+ * Scene 11's Look schema at the unit boundary.
  *
  * The Scene codec owns one document's strict shape. This suite covers what only
  * the unit reader knows: the palette, the follower check and the stored Sky and
@@ -46,26 +46,30 @@ function issues(input: unknown) {
 	return result.issues.map((issue) => ({ code: issue.code, path: issue.path }));
 }
 
-describe('Scene 10 unit payload', () => {
-	it('admits format 10 and refuses format 9 strictly', () => {
+describe('Scene 11 unit payload', () => {
+	it('admits format 11 and refuses format 10 strictly', () => {
 		expect(validateCameraFreeScenePayload(payload()).success).toBe(true);
-		expect(issues({ ...payload(), formatVersion: 9 })).toContainEqual(
+		expect(issues({ ...payload(), formatVersion: 10 })).toContainEqual(
 			expect.objectContaining({ code: 'unsupported_format_version', path: '$.formatVersion' })
 		);
 	});
 
-	it('admits one normalized Wall-side Finish and refuses non-normal surface assignments', () => {
+	it('admits Wall-side and Region-face Finishes and refuses non-normal surface assignments', () => {
 		const left = { surface: { kind: 'wall-side', wallId: 'a-wall', side: 'left' }, finish: { materialId: 'marble-light' } };
 		const right = { surface: { kind: 'wall-side', wallId: 'z-wall', side: 'right' }, finish: { materialId: 'velvet-dark' } };
-		const admitted = validateCameraFreeScenePayload(payload({ surfaceFinishes: [left, right] }));
+		const top = { surface: { kind: 'region-face', regionId: 'r', face: 'top' }, finish: { materialId: 'marble-light' } };
+		const underside = { surface: { kind: 'region-face', regionId: 'r', face: 'underside' }, finish: { materialId: 'velvet-dark' } };
+		const admitted = validateCameraFreeScenePayload(payload({ surfaceFinishes: [top, underside, left, right] }));
 		expect(admitted.success).toBe(true);
-		if (admitted.success) expect(admitted.value.surfaceFinishes).toEqual([left, right]);
+		if (admitted.success) expect(admitted.value.surfaceFinishes).toEqual([top, underside, left, right]);
 
 		const cases: Array<{ readonly assignments: unknown[]; readonly code: string }> = [
 			{ assignments: [right, left], code: 'surface_finish_not_normal' },
 			{ assignments: [left, left], code: 'duplicate_surface_finish' },
 			{ assignments: [{ ...left, surface: { ...left.surface, side: 'top' } }], code: 'unknown-tag' },
-			{ assignments: [{ ...left, surface: { kind: 'region-face', regionId: 'r', face: 'top' } }], code: 'unknown_surface_kind' },
+			{ assignments: [{ ...top, surface: { ...top.surface, face: 'edge' } }], code: 'unknown_surface_face' },
+			{ assignments: [{ ...top, surface: { ...top.surface, face: 'side' } }], code: 'unknown_surface_face' },
+			{ assignments: [{ ...top, surface: { kind: 'region' } }], code: 'unknown_surface_kind' },
 			{
 				assignments: [{ surface: left.surface, finish: { materialInstanceId: 'pristine' } }],
 				code: 'surface_finish_not_normal'

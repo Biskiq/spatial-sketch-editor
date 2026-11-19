@@ -18,6 +18,7 @@
  */
 import { inkSurface } from '../../adapters/layout/ink';
 import { planFragmentOf, type PlanEvaluation } from '@portfolio/layout-core';
+import { planSourceKindOf } from './plan-source-kind';
 import type { StageCardActionRecord, StageFacade, StageSourceHit } from '../stage-facade';
 import type { StageSelection, StageSession, StageTask } from '../stage-session';
 import { primaryEntry, type StageSelectionEntry } from '../semantic-selection';
@@ -157,6 +158,9 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			void input.experience.active()?.linkPresentation(pick, hit.reference.subject.id);
 			return;
 		}
+		const planKind = hit.reference === undefined ? planSourceKindOf(hit.sourceKind) : null;
+		// A Room lid is a Paint-only hit: selection stays on the Plan floor.
+		if (hit.reference === undefined && planKind === null) return;
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			input.setSelection(primaryEntry(stage.selectionState()));
@@ -166,11 +170,11 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		}
 		const selected: StageSelection = {
 			sourceId: hit.sourceId,
-			sourceKind: hit.sourceKind,
+			sourceKind: planKind!,
 			generationId: hit.generationId,
 			ref: {
 				sourceId: hit.sourceId,
-				sourceKind: hit.sourceKind,
+				sourceKind: planKind!,
 				generationId: hit.generationId,
 				stream: hit.stream,
 				subRef: hit.subRef

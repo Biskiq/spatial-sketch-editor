@@ -41,7 +41,7 @@ function row(assetId: string, sha256: string): ProjectAssetMetadata {
 
 function scene(): CameraFreeSceneDocument {
 	return {
-		formatVersion: 10,
+		formatVersion: 11,
 		textures: [],
 		materials: [],
 		artworkLibrary: [

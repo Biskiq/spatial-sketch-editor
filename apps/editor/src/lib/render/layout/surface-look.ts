@@ -2,8 +2,8 @@ import type { LayoutSurfaceRef } from '@portfolio/layout-core';
 import type { SceneTextureSpec } from '$lib/render/resources/scene-render-item';
 import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
 
-/** Scene-admitted subset of the canonical Layout surface identity. */
-export type SceneSurfaceRef = Exclude<LayoutSurfaceRef, { readonly kind: 'region-face' }>;
+/** The canonical Layout surface identity Scene admits. */
+export type SceneSurfaceRef = LayoutSurfaceRef;
 
 /** Plain resolved look passed from the Scene resolver into retained representations. */
 export type SceneSurfaceLook = {

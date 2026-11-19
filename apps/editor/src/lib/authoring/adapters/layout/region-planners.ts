@@ -12,6 +12,7 @@
  */
 import {
 	allocateCapturedId,
+	duplicateRegionSurfaceLineage,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	readLayoutIdCapture,
@@ -34,6 +35,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutRegion,
+	type LayoutSurfaceLineage,
 	type LayoutVec2,
 	type RegionPlan
 } from '@portfolio/layout-core';
@@ -234,6 +236,7 @@ function regionPlanOutcome(
 		readonly created?: boolean;
 		readonly retired?: boolean;
 		readonly id?: string;
+		readonly surfaceLineage?: LayoutSurfaceLineage;
 	} = {}
 ): PlannerOutcome<ProjectEnvelope> {
 	if (plan.kind === 'rejected') {
@@ -250,9 +253,9 @@ function regionPlanOutcome(
 			...(options.created === true ? { created: true } : {}),
 			...(options.retired === true ? { retired: true } : {}),
 			id: regionId,
-			// Region faces are authored identities, not Scene Finish subjects: no
-			// assignment survives a Region topology edit, so their lineage is empty.
-			surfaceLineage: []
+			// Edits keep their ids and removal is pruned by the Scene applicator.
+			// Duplicate is the one operation that carries a shared Finish.
+			surfaceLineage: options.surfaceLineage ?? []
 		}
 	);
 }
@@ -607,7 +610,8 @@ function regionDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 		);
 		return regionPlanOutcome(request, LAYOUT_REGION_DUPLICATE_KIND, plan, ['regions'], {
 			created: true,
-			id: expected
+			id: expected,
+			surfaceLineage: duplicateRegionSurfaceLineage(sourceRegionId, expected)
 		});
 	});
 }

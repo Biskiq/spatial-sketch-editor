@@ -139,9 +139,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// content revision, because Scene moves to format 7 and the source hash
 			// covers the header. Every winner, point and pick field is unchanged (266
 			// generationId values; 16 shared Scene contentRevision values).
-			// Scene 10 updates generation IDs and Scene content revisions because
-			// the Scene unit format moves from 9 to 10. Every winner, point and
-			// pick field is unchanged.
+			// Scene 11 updates generation IDs and Scene content revisions because
+			// the Scene unit format moves from 10 to 11. Every winner, point and
+			// pick field is unchanged (266 generationId values; 16 shared Scene
+			// contentRevision values).
 			expect(actual).toEqual(expected);
 		}
 	});
