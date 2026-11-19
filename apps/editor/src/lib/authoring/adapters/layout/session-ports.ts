@@ -38,6 +38,28 @@ export type InkMemory = {
 	openingOptionsValid: boolean;
 };
 
+/**
+ * The one session-scoped footprint edge a creator has picked.
+ *
+ * Picking the edge writes no document: the Region Card's scoped **Add corner
+ * here** action reads this value and is the only writer. The value dies with
+ * the binding, so a new accepted source never inherits a stale edge index.
+ */
+export type RegionEdgePick = {
+	read(): { readonly regionId: string; readonly index: number } | null;
+	write(next: { readonly regionId: string; readonly index: number } | null): void;
+};
+
+export function createRegionEdgePick(): RegionEdgePick {
+	let value: { readonly regionId: string; readonly index: number } | null = null;
+	return {
+		read: () => value,
+		write: (next) => {
+			value = next;
+		}
+	};
+}
+
 export function createInkMemory(): InkMemory {
 	return {
 		thickness: null,

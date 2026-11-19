@@ -18,7 +18,8 @@ import {
 } from './manipulation-support';
 import { datumSnapDistance, isPointerDrag, previewCoordinates } from './manipulation-support';
 import { resolvePlanarDragSnap, type LayoutSnapWinner } from './snap';
-import { pointerDatumPoint, pointerWorkingPlanePoint } from './stage-pointer';
+import { pointerWorkingPlanePoint, pointerViewportRay } from './stage-pointer';
+import type { RegionEdgePick } from './session-ports';
 import { candidatePreviewOf } from './candidate-preview';
 import { selectedRegion } from './layout-subjects';
 import {
@@ -52,6 +53,8 @@ const TURN_MARK = 'layout-region-turn-mark';
 const HEIGHT_MARK = 'layout-region-height';
 const CORNER_PREFIX = 'layout-region-corner:';
 const EDGE_PREFIX = 'layout-region-edge:';
+/** A hover within this many Stage pixels of an edge offers its picker. */
+const EDGE_HOVER_CSS = 12;
 
 type CornerGesture = {
 	readonly mode: 'corner';
@@ -77,6 +80,8 @@ type MoveGesture = {
 	readonly revision: string;
 	readonly pressCss: readonly [number, number];
 	readonly pressPoint: LayoutVec2;
+	/** The slab face the body is drawn on; the press and every sample aim here. */
+	readonly elevation: number;
 	readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
 	readonly baseline: readonly LayoutVec2[];
 	delta: LayoutVec2;
@@ -92,6 +97,8 @@ type RotateGesture = {
 	readonly pressCss: readonly [number, number];
 	readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
 	readonly pivot: LayoutVec2;
+	/** The slab face the turn mark is drawn on. */
+	readonly elevation: number;
 	readonly pressAngle: number;
 	angle: number;
 	refusal: string | null;
@@ -156,9 +163,12 @@ function edgeMidpoint(points: readonly LayoutVec2[], index: number): LayoutVec2 
 	return [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
 }
 
-export function createRegionGestureSession(ports: LayoutManipulationPorts) {
-	const { services, document, levelId, contentRevision } = ports;
+export function createRegionGestureSession(
+	ports: LayoutManipulationPorts & { readonly edgePick: RegionEdgePick }
+) {
+	const { services, document, levelId, contentRevision, edgePick } = ports;
 	let gesture: RegionGesture | null = null;
+	let edgeHover: { readonly regionId: string; readonly index: number } | null = null;
 
 	function endGesture(): void {
 		const current = gesture;
@@ -214,23 +224,6 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 						: `X ${point[0].toFixed(2)} · Z ${point[1].toFixed(2)} m`
 					: 'Drag onto the edge to remove',
 				refusal: cornerActive ? live.refusal : null
-			});
-			marks.push({
-				id: `${EDGE_PREFIX}${index}`,
-				kind: 'point',
-				role: 'edit',
-				anchor: [
-					edgeMidpoint(points, index)[0],
-					y + elevation,
-					edgeMidpoint(points, index)[1]
-				],
-				axis: [1, 0, 0],
-				draw: { pointRadius: 3.6, hollow: true },
-				label: 'Add corner here',
-				fact: 'corner',
-				verb: 'Add corner',
-				planner: LAYOUT_REGION_FOOTPRINT_KIND,
-				value: 'Press to add a corner'
 			});
 		});
 		const centroid = centroidOf(points);
@@ -312,7 +305,14 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 			}
 			if (intent.handleId?.startsWith(EDGE_PREFIX)) {
 				const index = Number(intent.handleId.slice(EDGE_PREFIX.length));
-				return addCorner(intent, ctx, region.id, index);
+				if (!Number.isInteger(index) || index < 0 || index >= region.footprint.points.length) {
+					return false;
+				}
+				// Picking the edge is not an edit: the footprint changes only when the
+				// Card's scoped Add corner here action runs.
+				edgePick.write({ regionId: region.id, index });
+				services.stage.notifySurfaceChange();
+				return true;
 			}
 			if (intent.handleId === TURN_MARK) return beginRotate(intent, ctx, region.id);
 			if (intent.handleId === HEIGHT_MARK) return beginHeight(intent, ctx, region.id);
@@ -357,8 +357,12 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		regionId: string
 	): boolean {
 		const selected = selectedRegion(document, ctx);
-		const point = pointerDatumPoint(ctx, intent.css);
-		if (selected === null || selected.region.id !== regionId || point === null) return false;
+		if (selected === null || selected.region.id !== regionId) return false;
+		// The body is drawn on the slab's face, not the floor datum: in perspective
+		// a datum press grabs a point metres behind the Region and scales the drag.
+		const elevation = ctx.snapshot.domain.datumMeters + selected.region.elevation;
+		const point = pointerWorkingPlanePoint(ctx, intent.css, elevation);
+		if (point === null) return false;
 		const lease = leaseFor('layout-region-move', intent);
 		if (lease === null) return false;
 		ports.settleRefusal(null);
@@ -369,6 +373,7 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 			revision: services.authoring.acceptedRevision().revisionId,
 			pressCss: intent.css,
 			pressPoint: [point[0], point[1]],
+			elevation,
 			lease,
 			baseline: pointsOf(selected.region.footprint.points),
 			delta: [0, 0],
@@ -429,25 +434,90 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		return true;
 	}
 
-	/** A press on an edge midpoint inserts its corner in one accepted footprint write. */
-	function addCorner(
+	/** The selected Region's edge picker, shown only for the edge under the pointer. */
+	function edgeHandles(ctx: StageAdapterContext): readonly StageHandleDescriptor[] {
+		if (services.stage.session.task() !== null || edgeHover === null) return [];
+		const selected = selectedRegion(document, ctx);
+		if (selected === null || selected.region.id !== edgeHover.regionId) return [];
+		const index = edgeHover.index;
+		if (index < 0 || index >= selected.region.footprint.points.length) return [];
+		const midpoint = edgeMidpoint(selected.region.footprint.points, index);
+		return [
+			{
+				id: `${EDGE_PREFIX}${index}`,
+				kind: 'point',
+				role: 'edit',
+				anchor: [
+					midpoint[0],
+					ctx.snapshot.domain.datumMeters + selected.region.elevation,
+					midpoint[1]
+				],
+				axis: [1, 0, 0],
+				draw: { pointRadius: 4.2, hollow: true },
+				label: `Edge ${index + 1}`,
+				fact: 'edge',
+				verb: 'Pick edge',
+				planner: LAYOUT_REGION_FOOTPRINT_KIND,
+				value: 'Press to pick this edge'
+			}
+		];
+	}
+
+	/** Track the edge under the pointer; picking it is the Stage half of the action. */
+	function updateEdgeHover(
 		intent: StagePointerIntent,
 		ctx: StageAdapterContext,
-		regionId: string,
-		index: number
+		blocked: boolean
 	): boolean {
+		if (blocked || intent.phase === 'cancel') {
+			edgeHover = null;
+			return false;
+		}
 		const selected = selectedRegion(document, ctx);
-		if (selected === null || selected.region.id !== regionId) return false;
-		const points = pointsOf(selected.region.footprint.points);
-		if (!Number.isInteger(index) || index < 0 || index >= points.length) return false;
-		if (points.length >= 1024) {
-			ports.publishRefusal('A region footprint can store at most 1024 corners.');
+		if (selected === null) {
+			edgeHover = null;
+			return false;
+		}
+		const y = ctx.snapshot.domain.datumMeters + selected.region.elevation;
+		const points = selected.region.footprint.points.map((point) => {
+			const projected = ctx.project([point[0], y, point[1]]);
+			return projected === null
+				? null
+				: [
+						projected[0] - ctx.evaluation.rect.left,
+						projected[1] - ctx.evaluation.rect.top
+					] as const;
+		});
+		let best: { index: number; distance: number } | null = null;
+		for (let index = 0; index < points.length; index++) {
+			const start = points[index];
+			const end = points[(index + 1) % points.length];
+			if (start === null || end === null) continue;
+			const distance = distanceToCssSegment(intent.css, start, end);
+			if (best === null || distance < best.distance) best = { index, distance };
+		}
+		if (best !== null && best.distance <= EDGE_HOVER_CSS) {
+			edgeHover = { regionId: selected.region.id, index: best.index };
 			return true;
 		}
-		const inserted = [...points];
-		inserted.splice(index + 1, 0, edgeMidpoint(points, index));
-		void acceptFootprint(regionId, inserted);
-		return true;
+		edgeHover = null;
+		return false;
+	}
+
+	function distanceToCssSegment(
+		point: readonly [number, number],
+		start: readonly [number, number],
+		end: readonly [number, number]
+	): number {
+		const dx = end[0] - start[0];
+		const dy = end[1] - start[1];
+		const squared = dx * dx + dy * dy;
+		if (!(squared > 0)) return Math.hypot(point[0] - start[0], point[1] - start[1]);
+		const t = Math.min(
+			1,
+			Math.max(0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared)
+		);
+		return Math.hypot(point[0] - (start[0] + dx * t), point[1] - (start[1] + dy * t));
 	}
 
 	function beginRotate(
@@ -456,8 +526,10 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		regionId: string
 	): boolean {
 		const selected = selectedRegion(document, ctx);
-		const point = pointerDatumPoint(ctx, intent.css);
-		if (selected === null || selected.region.id !== regionId || point === null) return false;
+		if (selected === null || selected.region.id !== regionId) return false;
+		const elevation = ctx.snapshot.domain.datumMeters + selected.region.elevation;
+		const point = pointerWorkingPlanePoint(ctx, intent.css, elevation);
+		if (point === null) return false;
 		const pivot = centroidOf(selected.region.footprint.points);
 		if (pivot === null) return false;
 		const lease = leaseFor('layout-region-rotate', intent);
@@ -471,6 +543,7 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 			pressCss: intent.css,
 			lease,
 			pivot,
+			elevation,
 			pressAngle: Math.atan2(point[1] - pivot[1], point[0] - pivot[0]),
 			angle: 0,
 			refusal: null
@@ -487,7 +560,7 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		const selected = selectedRegion(document, ctx);
 		if (selected === null || selected.region.id !== regionId) return false;
 		const centroid = centroidOf(selected.region.footprint.points);
-		const ray = ctx.ray(intent.css);
+		const ray = pointerViewportRay(ctx, intent.css);
 		if (centroid === null || ray === null) return false;
 		const travel = axisTravelFromRay({
 			origin: [centroid[0], ctx.snapshot.domain.datumMeters, centroid[1]],
@@ -526,7 +599,7 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 			current.snap = null;
 			return;
 		}
-		const point = pointerDatumPoint(ctx, intent.css);
+		const point = pointerWorkingPlanePoint(ctx, intent.css, current.elevation);
 		if (point === null) return;
 		const snapped = resolvePlanarDragSnap(current.pressPoint, point, ctx.drafting(), (from, to) =>
 			datumSnapDistance(ctx, from, to)
@@ -582,7 +655,7 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		ctx: StageAdapterContext,
 		intent: StagePointerIntent
 	): void {
-		const point = pointerDatumPoint(ctx, intent.css);
+		const point = pointerWorkingPlanePoint(ctx, intent.css, current.elevation);
 		if (point === null) return;
 		const angle = Math.atan2(point[1] - current.pivot[1], point[0] - current.pivot[0]);
 		current.angle = Number(normalizeAngle(angle - current.pressAngle).toFixed(9));
@@ -593,7 +666,7 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		ctx: StageAdapterContext,
 		intent: StagePointerIntent
 	): void {
-		const ray = ctx.ray(intent.css);
+		const ray = pointerViewportRay(ctx, intent.css);
 		if (ray === null) return;
 		const travel = axisTravelFromRay({
 			origin: [current.anchor[0], ctx.snapshot.domain.datumMeters, current.anchor[1]],
@@ -752,7 +825,12 @@ export function createRegionGestureSession(ports: LayoutManipulationPorts) {
 		];
 	}
 
-	return { descriptors, pointer, beginBody, key, previews, endGesture };
+		return {
+		descriptors,
+		edgeHandles,
+		updateEdgeHover,
+		pointer,
+		beginBody, key, previews, endGesture };
 }
 
 export type RegionGestureSession = ReturnType<typeof createRegionGestureSession>;

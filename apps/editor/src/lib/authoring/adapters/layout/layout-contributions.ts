@@ -54,10 +54,12 @@ import {
 import { wallSplitIntent } from './split-planners';
 import { LAYOUT_ROOM_DUPLICATE_KIND } from './room-duplicate-planners';
 import {
+	LAYOUT_REGION_FOOTPRINT_KIND,
 	LAYOUT_REGION_REMOVE_KIND,
 	layoutRegionNameTarget,
 	regionEditIntent
 } from './region-planners';
+import type { RegionEdgePick } from './session-ports';
 import { LAYOUT_INK_ENTRY, LAYOUT_INK_TASK } from './ink';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -151,6 +153,7 @@ type ContributionPorts = {
 	readonly removeSelectedKnot: (
 		wallId: string
 	) => Promise<StageCardActionOutcome> | StageCardActionOutcome;
+	readonly regionEdgePick: RegionEdgePick;
 };
 
 /**
@@ -163,21 +166,6 @@ type ContributionPorts = {
  * starts here. The label follows the live scope, so the same button offers the
  * way back.
  */
-/** The nearest authored corner and compiled Wall sample, for placing gap ink. */
-function nearestFootprintWallPair(
-	footprint: readonly LayoutVec2[],
-	samples: readonly LayoutVec2[]
-): { readonly region: LayoutVec2; readonly wall: LayoutVec2 } | null {
-	let best: { region: LayoutVec2; wall: LayoutVec2; distance: number } | null = null;
-	for (const region of footprint) {
-		for (const wall of samples) {
-			const distance = (region[0] - wall[0]) ** 2 + (region[1] - wall[1]) ** 2;
-			if (best === null || distance < best.distance) best = { region, wall, distance };
-		}
-	}
-	return best === null ? null : { region: best.region, wall: best.wall };
-}
-
 function roomLiftAction(
 	services: StageAdapterServices,
 	roomId: string,
@@ -209,7 +197,8 @@ export function createLayoutContributions({
 	selectLayoutSubject,
 	readActiveKnot,
 	requestRoomDuplicate,
-	removeSelectedKnot
+	removeSelectedKnot,
+	regionEdgePick
 }: ContributionPorts) {
 	/**
 	 * A5 — the derived **overlaps, not joined** cue. One query over this
@@ -1205,7 +1194,52 @@ export function createLayoutContributions({
 				if (region === undefined) return [];
 				const resting = restingObjectsOnFloorRegion(context.snapshot, region.id);
 				const kind = region.role === 'overhead' ? 'Flat Roof' : 'Terrace';
+				const edge = regionEdgePick.read();
+				const picked = edge !== null && edge.regionId === region.id ? edge.index : null;
+				const addCorner: StageCardAction | null =
+					picked === null || picked < 0 || picked >= region.footprint.points.length
+						? null
+						: {
+								id: 'layout-region-add-corner',
+								label: 'Add corner here',
+								detail: `Adds a corner at the midpoint of edge ${picked + 1}. The Region, its elevation and its thickness stay.`,
+								run: async (): Promise<StageCardActionOutcome> => {
+									const points = region.footprint.points.map(([x, z]): LayoutVec2 => [x, z]);
+									if (points.length >= 1024) {
+										return {
+											kind: 'refused',
+											message: 'A region footprint can store at most 1024 corners.'
+										};
+									}
+									const start = points[picked]!;
+									const end = points[(picked + 1) % points.length]!;
+									points.splice(picked + 1, 0, [
+										(start[0] + end[0]) / 2,
+										(start[1] + end[1]) / 2
+									]);
+									const snapshot = services.stage.snapshot();
+									const outcome = await services.authoring.accept(
+										regionEditIntent({
+											kind: LAYOUT_REGION_FOOTPRINT_KIND,
+											regionId: region.id,
+											payload: { points },
+											operationId: globalThis.crypto.randomUUID(),
+											projectId: snapshot.acceptedRevision.projectId,
+											revisionId: services.authoring.acceptedRevision().revisionId,
+											contentRevision: stageUnitRevision(snapshot, 'layout'),
+											levelId
+										})
+									);
+									if (outcome.kind === 'refused') {
+										return { kind: 'refused', message: outcome.message };
+									}
+									regionEdgePick.write(null);
+									services.stage.notifySurfaceChange();
+									return { kind: 'accepted' };
+								}
+							};
 				return [
+					...(addCorner === null ? [] : [addCorner]),
 					{
 						id: 'layout-region-delete',
 						label: `Delete ${kind}`,
@@ -1214,8 +1248,8 @@ export function createLayoutContributions({
 							region.role !== 'floor'
 								? 'Removes this slab in one undo step; the Rooms and objects under it stay.'
 								: resting === 1
-									? '1 object rests on this platform and keeps its Scene support when the platform is gone.'
-									: `${resting} objects rest on this platform and keep their Scene support when the platform is gone.`,
+									? '1 object rests on this platform and stays where it is when the platform is gone.'
+									: `${resting} objects rest on this platform and stay where they are when the platform is gone.`,
 							'Walls are unchanged.'
 						].join(' '),
 						run: async (): Promise<StageCardActionOutcome> => {
@@ -1524,8 +1558,7 @@ export function createLayoutContributions({
 	 * Region draws no cue, which is why this reads the selection first.
 	 */
 	function regionGapPreviews(
-		adapterContext: StageAdapterContext,
-		y: number
+		adapterContext: StageAdapterContext
 	): readonly StageCandidatePreview[] | null {
 		const selected = selectedRegion(document, adapterContext);
 		if (selected === null) return null;
@@ -1536,53 +1569,39 @@ export function createLayoutContributions({
 			(relation) => relation.reading === 'gap' && relation.measureMeters !== null
 		);
 		if (gaps.length === 0) return null;
-		const slabY = selected.region.role === 'floor' ? relations.slabTopY : relations.slabBottomY;
-		const floorY = geometry.floors[0]?.elevation ?? adapterContext.snapshot.domain.datumMeters;
-		const { world } = previewCoordinates(y);
 		const previews: StageCandidatePreview[] = [];
 		for (const relation of gaps) {
-			const wall = geometry.walls.find((candidate) => candidate.wallId === relation.wallId);
-			if (wall === undefined || wall.samples.length === 0) continue;
-			const pair = nearestFootprintWallPair(
-				selected.region.footprint.points,
-				wall.samples.map((sample) => sample.point)
-			);
-			if (pair === null) continue;
+			// The relation owns the pair its measure is read from: a corner-to-centerline
+			// chord would be longer than the labelled Wall-body gap, and a vertical
+			// segment from the slab top would be longer than the underside measure.
+			const segment = relation.measureSegment;
+			if (segment === null) continue;
 			const text = `Gap ${relation.measureMeters!.toFixed(2)} m${relation.intended ? ' · intended' : ''}`;
-			if (relation.measureAxis === 'vertical') {
-				const wallTop = floorY + wall.height;
-				const from: [number, number, number] = [pair.wall[0], slabY, pair.wall[1]];
-				const to: [number, number, number] = [pair.wall[0], wallTop, pair.wall[1]];
-				previews.push(
-					candidatePreviewOf({
-						id: `layout-region-gap:${relation.wallId}`,
-						role: 'affected',
-						geometry: { polygons: [], segments: [[from, to]] },
-						labels: [
-							{
-								world: [pair.wall[0], (slabY + wallTop) / 2, pair.wall[1]],
-								text
-							}
+			previews.push(
+				candidatePreviewOf({
+					id: `layout-region-gap:${relation.wallId}`,
+					role: 'affected',
+					geometry: {
+					polygons: [],
+					segments: [
+						[
+							[segment.from[0], segment.from[1], segment.from[2]],
+							[segment.to[0], segment.to[1], segment.to[2]]
 						]
-					})
-				);
-			} else {
-				const from: [number, number, number] = [pair.region[0], slabY, pair.region[1]];
-				const to: [number, number, number] = [pair.wall[0], slabY, pair.wall[1]];
-				previews.push(
-					candidatePreviewOf({
-						id: `layout-region-gap:${relation.wallId}`,
-						role: 'affected',
-						geometry: { polygons: [], segments: [[from, to]] },
-						labels: [
-							{
-								world: [(pair.region[0] + pair.wall[0]) / 2, slabY, (pair.region[1] + pair.wall[1]) / 2],
-								text
-							}
-						]
-					})
-				);
-			}
+					]
+				},
+					labels: [
+						{
+							world: [
+								(segment.from[0] + segment.to[0]) / 2,
+								(segment.from[1] + segment.to[1]) / 2,
+								(segment.from[2] + segment.to[2]) / 2
+							],
+							text
+						}
+					]
+				})
+			);
 		}
 		return previews.length === 0 ? null : previews;
 	}
@@ -1617,7 +1636,7 @@ export function createLayoutContributions({
 			];
 		}
 
-		const gaps = regionGapPreviews(adapterContext, y);
+		const gaps = regionGapPreviews(adapterContext);
 		if (gaps !== null) return gaps;
 		return null;
 	}

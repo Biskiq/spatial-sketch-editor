@@ -12,6 +12,7 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	planCreateRegion,
 	planWallChain,
+	regionWallRelations,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import type { AuthoringIntent, SceneEntity } from '@portfolio/project-model';
@@ -43,6 +44,7 @@ import { captureFor } from '../layout/__fixtures__/layout-id-capture';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+const OFFSET_RECT = { left: 352, top: 119, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-t1-v1c-region-authoring';
 const ELEVATION = 0.5;
 /** The fixture Terrace's world top: the floor datum plus its own elevation. */
@@ -105,8 +107,12 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; terraceId: stri
 
 async function mount(
 	fixture = fixtureDocument(),
-	options: { readonly withCreatorModel?: boolean } = {}
+	options: {
+		readonly withCreatorModel?: boolean;
+		readonly rect?: typeof RECT;
+	} = {}
 ) {
+	const rect = options.rect ?? RECT;
 	const { document, terraceId, canopyId } = fixture;
 	const compiledTerrace = compileWallFirstLayoutGeometryFresh(document).geometry.regions.find(
 		(region) => region.regionId === terraceId
@@ -155,7 +161,7 @@ async function mount(
 	session.replace(snapshot);
 	const facade = createStageFacade({ snapshot, session });
 	facade.acquireInspection('exclusive');
-	facade.camera.evaluate(RECT, 1);
+	facade.camera.evaluate(rect, 1);
 	const host = createStageAcceptanceHost({
 		facade,
 		sessionEpoch: snapshot.sessionEpoch,
@@ -193,6 +199,7 @@ async function mount(
 		terraceId,
 		canopyId,
 		modelId: model?.id ?? null,
+		rect,
 		intents
 	};
 }
@@ -206,7 +213,7 @@ const regionOf = (mounted: Mounted, id: string) =>
 	acceptedLayout(mounted).regions.find((region) => region.id === id);
 
 function settle(mounted: Mounted, clockSeconds = 6): void {
-	const result = mounted.facade.camera.evaluate(RECT, clockSeconds);
+	const result = mounted.facade.camera.evaluate(mounted.rect, clockSeconds);
 	if (result.kind !== 'evaluated') throw new Error(`the viewport did not evaluate: ${result.reason}`);
 	mounted.facade.overlays();
 	mounted.facade.tasks();
@@ -240,12 +247,19 @@ function selectRegion(mounted: Mounted, regionId: string, componentId: string | 
 	settle(mounted);
 }
 
-function stageCss(mounted: Mounted, point: readonly [number, number], y = ELEVATION): readonly [number, number] {
+function worldCss(
+	mounted: Mounted,
+	point: readonly [number, number, number]
+): readonly [number, number] {
 	const evaluationId = mounted.facade.evaluationId();
 	if (evaluationId === null) throw new Error('the mounted fixture has no evaluation');
-	const projected = mounted.facade.projectWorld([point[0], y, point[1]], evaluationId);
+	const projected = mounted.facade.projectWorld(point, evaluationId);
 	if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
-	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
+	return [projected.css[0] - mounted.rect.left, projected.css[1] - mounted.rect.top];
+}
+
+function stageCss(mounted: Mounted, point: readonly [number, number], y = ELEVATION): readonly [number, number] {
+	return worldCss(mounted, [point[0], y, point[1]]);
 }
 
 function press(
@@ -485,6 +499,78 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		});
 	});
 
+	it('maps the height ray through an offset Stage rect', async () => {
+		const gesture = async (rect: typeof RECT): Promise<number> => {
+			const mounted = await mount(fixtureDocument(), { rect });
+			selectRegion(mounted, mounted.terraceId);
+			expect(press(mounted, [2, 2], 'layout-region-height').claimed).toBe(true);
+			moveTo(mounted, [2, 1.2], [2, 2]);
+			releaseAt(mounted, [2, 1.2]);
+			await eventually(
+				() => (regionOf(mounted, mounted.terraceId)?.elevation ?? 0) > 0.4
+			);
+			return regionOf(mounted, mounted.terraceId)!.elevation;
+		};
+
+		// The same world-space gesture must read the same height whether the Stage
+		// starts at the viewport origin or is offset by the Index beside it.
+		expect(await gesture(OFFSET_RECT)).toBeCloseTo(await gesture(RECT), 9);
+	});
+
+	it('projects raised body and turn drags on the slab face in 3D', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'set-view',
+				eye: [8, 2.2, 8],
+				target: [2, 0.9, 2],
+				fovYDegrees: 50
+			},
+			2
+		);
+		settle(mounted, 2);
+		const faceY = ELEVATION + 0.4;
+
+		expect(press(mounted, [2, 2], undefined, faceY).claimed).toBe(true);
+		moveTo(mounted, [3, 2], [2, 2], faceY);
+		releaseAt(mounted, [3, 2], faceY);
+		await eventually(() => regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0] !== 1);
+		settle(mounted);
+		const moved = regionOf(mounted, mounted.terraceId)!;
+		expect(moved.footprint.points[0]![0]).toBeCloseTo(2, 6);
+		expect(moved.footprint.points[0]![1]).toBeCloseTo(1, 6);
+
+		// The turn mark is drawn on the same face: its angular reference is the
+		// slab point under the pointer, not the datum point behind it.
+		const pivot: readonly [number, number] = [3, 2];
+		const radius = Math.SQRT2 + 0.5;
+		const startLocal: readonly [number, number] = [pivot[0] + radius, pivot[1]];
+		const target: readonly [number, number] = [
+			pivot[0] + radius * Math.cos(Math.PI / 4),
+			pivot[1] + radius * Math.sin(Math.PI / 4)
+		];
+		const beforeAngle = Math.atan2(
+			moved.footprint.points[0]![1] - pivot[1],
+			moved.footprint.points[0]![0] - pivot[0]
+		);
+		expect(press(mounted, startLocal, 'layout-region-turn-mark', faceY).claimed).toBe(true);
+		moveTo(mounted, target, startLocal, faceY);
+		releaseAt(mounted, target, faceY);
+		await eventually(() => {
+			const current = regionOf(mounted, mounted.terraceId);
+			return current !== undefined && current.footprint.points[0]![1] !== moved.footprint.points[0]![1];
+		});
+		settle(mounted);
+		const turned = regionOf(mounted, mounted.terraceId)!;
+		const afterAngle = Math.atan2(
+			turned.footprint.points[0]![1] - pivot[1],
+			turned.footprint.points[0]![0] - pivot[0]
+		);
+		const delta = Math.atan2(Math.sin(afterAngle - beforeAngle), Math.cos(afterAngle - beforeAngle));
+		expect(Math.abs(delta)).toBeCloseTo(Math.PI / 4, 2);
+	});
+
 	it('raises a Region by its height ray in one exact previewed history entry', async () => {
 		const mounted = await mount();
 		selectRegion(mounted, mounted.terraceId);
@@ -704,6 +790,72 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		expect(gaps.every((gap) => gap.segments.length === 1)).toBe(true);
 		expect(gaps.map((gap) => gap.labels[0]!.text)).toEqual(
 			expect.arrayContaining([expect.stringMatching(/^Gap 0\.90 m$/)])
+		);
+		// The cue projects the relation's own measurement endpoints, not a
+		// corner-to-centerline chord that would be longer than the label.
+		const horizontal = gaps.find((gap) => gap.labels[0]!.text === 'Gap 0.90 m')!;
+		const geometry = compileWallFirstLayoutGeometryFresh(acceptedLayout(mounted)).geometry;
+		const relations = regionWallRelations(geometry, regionOf(mounted, mounted.terraceId)!);
+		expect(relations.kind).toBe('relations');
+		if (relations.kind !== 'relations') return;
+		const relation = relations.relations.find(
+			(candidate) => candidate.reading === 'gap' && candidate.measureAxis === 'horizontal'
+		)!;
+		const segment = relation.measureSegment!;
+		const [from, to] = horizontal.segments[0]!;
+		const expectedFrom = worldCss(mounted, segment.from);
+		const expectedTo = worldCss(mounted, segment.to);
+		expect(from[0]).toBeCloseTo(expectedFrom[0], 1);
+		expect(from[1]).toBeCloseTo(expectedFrom[1], 1);
+		expect(to[0]).toBeCloseTo(expectedTo[0], 1);
+		expect(to[1]).toBeCloseTo(expectedTo[1], 1);
+	});
+
+	it('adds a corner through the picked edge’s scoped action, not a midpoint press', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		const before = acceptedLayout(mounted);
+		const depth = mounted.host.history().depth;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const midpoint = stageCss(mounted, [2, 1], ELEVATION + 0.4);
+		const mark = mounted.facade.idleHoverIntent({
+			phase: 'move',
+			css: midpoint,
+			evaluationId,
+			coarse: false
+		});
+		expect(mark?.id).toBe('layout-region-edge:0');
+
+		// Picking the edge is not an edit: no document and no history until the
+		// Card's scoped action runs.
+		expect(
+			mounted.facade.pointerIntent({
+				phase: 'down',
+				css: midpoint,
+				evaluationId,
+				handleId: mark!.id,
+				handleAdapterId: mark!.adapterId
+			}).claimed
+		).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: midpoint, evaluationId });
+		settle(mounted);
+		expect(acceptedLayout(mounted)).toEqual(before);
+		expect(mounted.host.history().depth).toBe(depth);
+
+		const subject = { sourceId: mounted.terraceId, sourceKind: 'region' } as never;
+		const add = stageCardActions(mounted.facade, subject).find(
+			(action) => action.id === 'layout-region-add-corner'
+		);
+		expect(add?.detail).toContain('edge 1');
+		expect(await add!.run()).toEqual({ kind: 'accepted' });
+		await eventually(
+			() => (regionOf(mounted, mounted.terraceId)?.footprint.points.length ?? 0) === 5
+		);
+		settle(mounted);
+		expect(mounted.host.history().depth).toBe(depth + 1);
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toEqual(
+			before.regions.find((region) => region.id === mounted.terraceId)!.footprint.points
 		);
 	});
 

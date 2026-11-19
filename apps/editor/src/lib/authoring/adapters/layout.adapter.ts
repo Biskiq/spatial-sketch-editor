@@ -31,7 +31,7 @@ import { createSpaceCreatePlanner } from './layout/space-create-planners';
 import { createSpaceCreateSession } from './layout/space-create-session';
 import { createInkSession } from './layout/ink-session';
 import { createOpeningPlacementSession } from './layout/opening-placement-session';
-import { createInkMemory } from './layout/session-ports';
+import { createInkMemory, createRegionEdgePick } from './layout/session-ports';
 import {
 	planNumericEntryInput,
 	planNumericEntryKey,
@@ -159,7 +159,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			});
 			const curve = createCurveGestureSession({ ...manipulation, candidatePaper });
 			const room = createRoomGestureSession(manipulation);
-			const region = createRegionGestureSession(manipulation);
+			const regionEdgePick = createRegionEdgePick();
+			const region = createRegionGestureSession({ ...manipulation, edgePick: regionEdgePick });
 			const openSide = createOpenSideGestureSession(manipulation);
 			const {
 				markDescriptors: projectMarks,
@@ -176,7 +177,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				selectLayoutSubject,
 				readActiveKnot: () => curve.activeKnot,
 				requestRoomDuplicate: room.requestDuplicate,
-				removeSelectedKnot: curve.removeSelectedKnot
+				removeSelectedKnot: curve.removeSelectedKnot,
+				regionEdgePick
 			});
 
 			function markDescriptors(adapterContext: StageAdapterContext) {
@@ -336,7 +338,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					];
 				},
 				idleHandles(adapterContext) {
-					return junction.idleJunctionHandles(adapterContext, openTaskKind !== null, refusal);
+					return [
+						...junction.idleJunctionHandles(adapterContext, openTaskKind !== null, refusal),
+						...region.edgeHandles(adapterContext)
+					];
 				},
 				hoverIntent(intent, adapterContext) {
 					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND)
@@ -346,6 +351,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				idleHoverIntent(intent, adapterContext) {
 					const blocked = openTaskKind !== null || wall.active || existingOpening.active;
 					if (junction.updateIdleJunctionHover(intent, adapterContext, blocked)) {
+						curve.clearBendHint();
+						return true;
+					}
+					if (region.updateEdgeHover(intent, adapterContext, blocked || junction.active || wall.hasScalar)) {
 						curve.clearBendHint();
 						return true;
 					}

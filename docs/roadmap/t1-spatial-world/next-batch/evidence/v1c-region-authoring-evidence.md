@@ -6,9 +6,12 @@ body-drag selection loss, the unreachable corner removal, raised-platform primit
 the 3D body-drag plane and the Region's resting-copy grammar, and verified placement, movement
 and Erase at a non-zero resting count in Chromium alongside J7 open-to-sky/association/intended
 gaps, J11 Lift/height edit/Put back, 3D Region picking, Slice, Terrace **Line** creation and a
-Space fit with exact Undo/Redo. Approved-model placement, as-built Preview and the complete
-J7/J11 scripts remain unverified (see **Browser QA gaps**). No production deployment was made,
-and this evidence does not declare the PR ready for review.
+Space fit with exact Undo/Redo. A later review follow-up (uncommitted) fixed the Stage-local
+height ray, the raised body/turn plane, the gap-cue endpoints, the Erase wording and the
+edge-add control grammar; its changes are covered by the automated runs below. Approved-model
+placement, as-built Preview and the complete J7/J11 scripts remain unverified (see **Browser QA
+gaps**). No production deployment was made, and this evidence does not declare the PR ready for
+review.
 
 ## What was implemented
 
@@ -17,8 +20,9 @@ and this evidence does not declare the PR ready for review.
   Elevation is the Height Sheet's height, an overhead at the Floor datum takes the Wall creation
   default (3 m), and new Regions start at 0.10 m. Birth is one captured planner intent; Undo
   removes it and Redo reuses the captured id.
-- **Edit.** Corner knobs, corner removal on the chord, edge **Add corner here**, body move,
-  rotation, elevation ray, Card thickness and exact Width/Depth, thumbnail-free duplicate,
+- **Edit.** Corner knobs, corner removal on the chord, edge pick then the Card's scoped
+  **Add corner here**, body move, rotation, elevation ray, Card thickness and exact Width/Depth,
+  thumbnail-free duplicate,
   measured relations, one-shot fits, intended gaps and Erase all use retained region planners
   through F4. A release is one history entry; a refused or no-op release writes no document.
 - **Card, relations and index.** `LayoutRegionCard.svelte` writes kind, name, both elevation
@@ -106,19 +110,50 @@ and this evidence does not declare the PR ready for review.
 Temporary instrumentation used to diagnose the browser blockers was removed before the final
 runs; no diagnostic `console.log`, `console.error` or catch was left in the source.
 
+## Review follow-up (P2/P3)
+
+10. **Height rays used Stage-local CSS as viewport CSS.** `beginHeight` and `moveHeight` passed
+    `intent.css` straight to `ctx.ray`, which subtracts the evaluation rect; on an offset Stage
+    the gesture tracked a different ray from the pointer. A new `pointerViewportRay` applies the
+    one translation, and both height samples use it. `layout-region-authoring.test.ts` runs the
+    same height gesture at a zero-origin and an offset rect and asserts the same accepted
+    elevation.
+11. **Raised body and turn drags aimed at the datum.** Both gestures intersected y=0 while the
+    slab and turn mark are drawn at `datum + elevation`. They now store the Region face plane at
+    press and project every sample there, matching the corner gesture. The mounted 3D test
+    presses and drags on the 1.10 m terrace face; the body delta is `+1.0 m` in X and the turn
+    target produces a 45° rotation.
+12. **Gap cues did not use the measured surfaces.** The cue connected a footprint corner to a
+    Wall centerline sample while the label measured to the Wall body, and a vertical Terrace
+    gap started at the slab top (the label measures to the underside). `RegionWallRelation` now
+    owns `measureSegment`; `regionWallRelations` computes it from the same nearest footprint/
+    Wall-body pair the measure reads, using `slabBottomY` for a vertical gap. The mounted test
+    asserts the projected cue equals the relation's endpoints; `layout-region-planners.test.ts`
+    asserts horizontal length `0.20 m` to the body face and a floor vertical gap of `0.10 m` to
+    the underside.
+13. **Erase disclosed a support that is not preserved.** The copy now says the counted objects
+    **stay where they are** when the platform is gone, so the creator can judge that the
+    authored world pose may be left suspended.
+14. **Add corner was a persistent midpoint handle that wrote on press.** Section 5.9 asks for an
+    edge-scoped list action. Region edges now expose one hover-only picker; pressing it only
+    records the edge and writes nothing. The selected Region's Card action list then offers
+    **Add corner here**, which inserts the midpoint through the same one-entry footprint
+    planner. The mounted test asserts no document or history change on the pick and one exact
+    entry on the action, with Undo restoring the footprint.
+
 ## Automated evidence
 
 | Acceptance | Evidence |
 | --- | --- |
-| T-V5 | `layout-region-planners.test.ts` fit/relation/refusal coverage; `layout-region-authoring.test.ts` Card surfaces, measured selected gaps and no cue when unselected |
+| T-V5 | `layout-region-planners.test.ts` fit/relation/refusal coverage, including the relation's measurement endpoints against the Wall body and slab underside; `layout-region-authoring.test.ts` Card surfaces, measured selected gaps and no cue when unselected |
 | T-V7 | V1b `layout-regions.test.ts`, `layout-room-lift-action.test.ts`; `layout-region-authoring.test.ts` Space association, Card delete/Undo and Lift sources (a floor Terrace is not lifted) |
 | T-V11 | `lift-shadow-eligibility.test.ts` (lifted layer on point/spot/sun shadow cameras, negative control), `scene-region-support.test.ts`, `layout-outline-pick.test.ts`, `layout-region-authoring.test.ts` Lift/Put back and floor-Region retention; `scene-editing-surface.test.ts` raised-support placement and 3D body-drag support retention |
 | T-V12 | `layout-region-authoring.test.ts`: body move, corner and height accept/Undo/Redo; birth Undo/Redo with captured id; Card delete Undo; refused birth adds no history; Esc adds no history |
-| T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner removal on the neighbours' chord in one entry; corner click and degenerate corner are no-ops; stale intent refused; Esc restores; a Region selected from its `edge` stream keeps its selection and Card across an accepted body move |
+| T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; an edge pick writes nothing and the Card's scoped Add corner action is the one entry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner removal on the neighbours' chord in one entry; corner click and degenerate corner are no-ops; stale intent refused; Esc restores; a Region selected from its `edge` stream keeps its selection and Card across an accepted body move |
 
 `scene-editing-surface.test.ts` is now **79 tests**, including the two raised-support
 regressions above (pinned support across a re-arm, and a 3D body drag over a terrace) and the
-Scene Move/Mark suites. Focused coverage in `layout-region-authoring.test.ts` is **16 tests**:
+Scene Move/Mark suites. Focused coverage in `layout-region-authoring.test.ts` is **19 tests**:
 
 - every retained region planner and the Card surface;
 - body move in one history entry with Undo/Redo;
@@ -128,6 +163,10 @@ Scene Move/Mark suites. Focused coverage in `layout-region-authoring.test.ts` is
   writes during the drag, then exact Undo/Redo;
 - body preview equals the installed footprint, with no compile/history before release;
 - height-ray preview equals the installed footprint, one entry, exact Undo/Redo;
+- the same height gesture reads the same elevation through an offset Stage rect;
+- a 3D raised body drag stays on the slab face and the turn mark rotates at the face's rate;
+- picking an edge writes nothing, and the Card's scoped Add corner action inserts one corner
+  in one entry with Undo;
 - click and degenerate corner are no-ops, and a stale edit intent is refused;
 - Esc during corner drag writes no document and no history;
 - Terrace Box at the Height Sheet with Undo;
@@ -144,16 +183,20 @@ Commands run from `apps/editor` on the final tree:
 
 - `npm run check` — 0 errors, 18 pre-existing warnings.
 - `npm run test:arch` — 38 files, 350 tests passed.
-- `npm run test:fast` — 433 files, 5357 tests passed.
+- `npm run test:fast` — 433 files, 5361 tests passed.
 - `npm run test:heavy` — 11 files, 138 tests passed.
 - `npm run test -- tests/lib/authoring/scene-editing-surface.test.ts tests/lib/authoring/layout-region-authoring.test.ts`
-  — 95 tests passed (79 and 16).
+  — 98 tests passed (79 and 19).
+- `npm run test -- tests/lib/layout/layout-region-planners.test.ts` — 35 tests passed,
+  including the relation measurement endpoints.
 - `npm run build` — passed.
 - `node tools/harness/check-docs.mjs` (repository root) — passed.
 - `node tools/harness/guards.mjs --base cd5222fc --head HEAD` — no unapproved check or bug-state
   change (earlier round).
 - `node tools/harness/guards.mjs --base cd427bdc --head HEAD` — no unapproved check or
   bug-state change (this round). CI remains the authority for the merge gate and `linux-x64`.
+- The review follow-up is **uncommitted**: the guard and CI results above describe `d9e37e56`,
+  not the working tree with these fixes.
 
 ## Browser environment and project setup
 
@@ -287,10 +330,12 @@ Commands run from `apps/editor` on the final tree:
   **Unsaved changes**, and selecting `Region 1` again still read `1 object rests on this
   platform` (`53-3d-moved.png`). `Save changes` then read **Saved**.
 - With `Region 1` selected, pressing `E` armed Erase and one real press on the terrace top
-  produced the non-zero disclosure **`1 object rests on this platform and keeps its Scene
-  support when the platform is gone. Walls are unchanged. Click again to erase.`**
-  (`54-erase-disclosure.png`). Escape cancelled the armed erase without deleting the Region;
-  the disclosure names the count rather than performing the erase.
+  produced the non-zero disclosure (`54-erase-disclosure.png`); the text at capture time read
+  `1 object rests on this platform and keeps its Scene support when the platform is gone. Walls
+  are unchanged. Click again to erase.` The review follow-up changes that sentence to **stays
+  where it is**; the screenshot predates the wording and was not re-captured. Escape cancelled
+  the armed erase without deleting the Region; the disclosure names the count rather than
+  performing the erase.
 
 ## Browser QA gaps
 
