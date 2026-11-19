@@ -543,9 +543,9 @@ export function createPlacementBinding(
 					if (copy !== null) {
 						session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice, snapStep);
 					} else if (armed === null) {
-						session.previewPlace(primitive, support.x, support.z, support.elevation, snapStep);
+						session.previewPlace(primitive, support.x, support.z, support.elevation, snapStep, support.choice);
 					} else {
-						session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep);
+						session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep, support.choice);
 					}
 					return true;
 				}
@@ -617,10 +617,11 @@ export function createPlacementBinding(
 						support.x,
 						support.z,
 						support.elevation,
-						snapStep
+						snapStep,
+						support.choice
 					);
 				} else {
-					session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep);
+					session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep, support.choice);
 				}
 				return true;
 			}

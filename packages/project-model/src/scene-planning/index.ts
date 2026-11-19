@@ -18,6 +18,7 @@ export * from './frame';
 export * from './metadata-identity';
 export * from './place-object';
 export * from './support';
+export * from './region-contact';
 export * from './record-scope';
 export * from './form';
 export * from './operations';

@@ -2,28 +2,36 @@
  * Floor support, resolved against the geometry the Stage draws.
  *
  * The datum plane alone is not evidence of floor support: a pointer aimed at a
- * Wall, a plinth or another object would still intersect the floor plane behind
- * it and report a pose the creator cannot see. This module builds occluders from
- * the **compiled** Layout (the same solid spans the shared wall-mesh builder
- * consumes, and the compiled Layout objects) plus the resolved Scene's primitive
- * entities and evaluated forms, and intersects the pointer ray with them before accepting the datum
- * hit.
+ * Wall, a plinth, a region slab or another object would still intersect the
+ * floor plane behind it and report a pose the creator cannot see. This module
+ * builds occluders from the **compiled** Layout (the same solid spans the shared
+ * wall-mesh builder consumes, compiled Layout objects and horizontal regions)
+ * plus the resolved Scene's primitive entities and evaluated forms, and
+ * intersects the pointer ray with them before accepting a support face.
+ *
+ * Supported faces are the drawn upward surfaces: every compiled Room floor and
+ * every floor-role region top. An overhead region's top is never a support; its
+ * slab still occludes. The nearest visible authored face wins. When no authored
+ * face covers the ray, the Layout datum is the support of last resort, exactly
+ * as before.
  *
  * It is deliberately framework-free and renderer-free: the ray is the one the
  * viewport evaluation produced, the geometry is the one the renderer draws, and
- * the arithmetic is boxes/cylinders/spheres plus exact form triangles, so the behaviour is provable
- * in the fast lane instead of only in a WebGL session.
+ * the arithmetic is boxes/cylinders/spheres/polygon prisms plus exact form
+ * triangles, so the behaviour is provable in the fast lane instead of only in a
+ * WebGL session.
  *
- * Conservative by construction: a hit on any occluder nearer than the floor is
- * `occluded`, even if an Opening would have let the ray through a Wall's gap —
- * the compiled solid spans already exclude openings, so this is the drawn body,
- * not its bounding box. Unverified shapes are not invented: a model entity has
- * no verified dimensions or contact metadata here and contributes no occluder,
- * which means a model never *fakes* floor support; it can only fail to block
- * one.
+ * Conservative by construction: a hit on any occluder nearer than the selected
+ * support is `occluded`, even if an Opening would have let the ray through a
+ * Wall's gap — the compiled solid spans already exclude openings, so this is the
+ * drawn body, not its bounding box. Unverified shapes are not invented: a model
+ * entity has no verified dimensions or contact metadata here and contributes no
+ * occluder, which means a model never *fakes* floor support; it can only fail to
+ * block one.
  */
 
-import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core';
+import { polygonContainsWithTolerance } from '@portfolio/layout-core';
 import type { PointerRay } from '@portfolio/camera-core';
 import type { FormMesh } from '@portfolio/geometry-core';
 import type { RuntimeScene, SceneEntity, Vec3 } from '@portfolio/project-model';
@@ -54,12 +62,80 @@ export type SupportOccluder =
 			readonly center: Vec3;
 			readonly rotation: Vec3;
 			readonly mesh: FormMesh;
+	  }
+	| {
+			/**
+			 * A compiled horizontal region's closed slab. Its top may also be a
+			 * support face; the strict "nearer than" occlusion rule leaves the top
+			 * hit itself unblocked while its sides and underside block what is
+			 * behind them.
+			 */
+			readonly id: string;
+			readonly kind: 'polygon-prism';
+			readonly polygon: readonly LayoutVec2[];
+			readonly bottomY: number;
+			readonly topY: number;
 	  };
 
+/** Where a visible upward support came from. */
+export type FloorSupportSurface =
+	| { readonly kind: 'room-floor'; readonly roomId: string }
+	| { readonly kind: 'region-top'; readonly regionId: string }
+	| { readonly kind: 'datum' };
+
+/** One compiled upward face a pointer ray may stand on. */
+export type UpwardSupportFace = {
+	readonly id: string;
+	readonly kind: 'room-floor' | 'region-top';
+	readonly polygon: readonly LayoutVec2[];
+	readonly elevation: number;
+	readonly roomId?: string;
+	readonly regionId?: string;
+};
+
 export type FloorSupport =
-	| { readonly kind: 'floor'; readonly worldPoint: Vec3; readonly distanceMeters: number }
+	| {
+			readonly kind: 'floor';
+			readonly worldPoint: Vec3;
+			readonly distanceMeters: number;
+			readonly surface: FloorSupportSurface;
+	  }
 	| { readonly kind: 'occluded'; readonly occluderId: string; readonly distanceMeters: number }
 	| { readonly kind: 'none'; readonly reason: 'parallel' | 'behind' | 'degenerate' };
+
+/**
+ * The compiled upward faces of one Layout, in no priority order.
+ *
+ * Only a Room floor and a floor-role region top offer upward support. A face
+ * with no usable boundary is skipped rather than guessed at.
+ */
+export function upwardSupportFaces(
+	geometry: CompiledLayoutGeometry
+): readonly UpwardSupportFace[] {
+	const faces: UpwardSupportFace[] = [];
+	for (const room of geometry.rooms) {
+		if (room.floorPolygon.length < 3 || !Number.isFinite(room.floorElevation)) continue;
+		faces.push({
+			id: `room-floor:${room.roomId}`,
+			kind: 'room-floor',
+			polygon: room.floorPolygon,
+			elevation: room.floorElevation,
+			roomId: room.roomId
+		});
+	}
+	for (const region of geometry.regions) {
+		if (region.role !== 'floor') continue;
+		if (region.footprint.length < 3 || !Number.isFinite(region.topY)) continue;
+		faces.push({
+			id: `region-top:${region.regionId}`,
+			kind: 'region-top',
+			polygon: region.footprint,
+			elevation: region.topY,
+			regionId: region.regionId
+		});
+	}
+	return faces;
+}
 
 /** The yaw that turns a box's local +X onto a horizontal span. */
 function spanYaw(start: readonly [number, number], end: readonly [number, number]): number {
@@ -178,6 +254,23 @@ export function supportOccluders(
 			center: [...object.position] as Vec3,
 			halfExtents: [object.dimensions[0] / 2, object.dimensions[1] / 2, object.dimensions[2] / 2],
 			yaw: object.rotation[1]
+		});
+	}
+	for (const region of geometry.regions) {
+		if (
+			region.footprint.length < 3 ||
+			!Number.isFinite(region.bottomY) ||
+			!Number.isFinite(region.topY) ||
+			!(region.topY - region.bottomY > EPSILON)
+		) {
+			continue;
+		}
+		occluders.push({
+			id: `layout-region:${region.regionId}`,
+			kind: 'polygon-prism',
+			polygon: region.footprint,
+			bottomY: region.bottomY,
+			topY: region.topY
 		});
 	}
 	for (const entity of scene.entities) {
@@ -317,6 +410,65 @@ function hitCylinder(ray: PointerRay, occluder: Extract<SupportOccluder, { kind:
 }
 
 /**
+ * First entry into a closed vertical prism.
+ *
+ * The top and underside are tested as polygons; the sides as exact quads. A ray
+ * that starts inside blocks immediately. This is the drawn region slab, so a
+ * side or underside nearer than a floor behind it is real occlusion — while the
+ * top hit at a support's own distance is not.
+ */
+function hitPolygonPrism(
+	ray: PointerRay,
+	occluder: Extract<SupportOccluder, { kind: 'polygon-prism' }>
+): number | null {
+	let nearest: number | null = null;
+	const consider = (t: number) => {
+		if (t >= 0 && (nearest === null || t < nearest)) nearest = t;
+	};
+	const { origin, direction } = ray;
+	if (
+		origin[1] >= occluder.bottomY - EPSILON &&
+		origin[1] <= occluder.topY + EPSILON &&
+		polygonContainsWithTolerance([origin[0], origin[2]], occluder.polygon)
+	) {
+		return 0;
+	}
+	if (Math.abs(direction[1]) >= EPSILON) {
+		for (const y of [occluder.bottomY, occluder.topY]) {
+			const t = (y - origin[1]) / direction[1];
+			if (t < 0) continue;
+			const x = origin[0] + direction[0] * t;
+			const z = origin[2] + direction[2] * t;
+			if (polygonContainsWithTolerance([x, z], occluder.polygon)) consider(t);
+		}
+	}
+	const polygon = occluder.polygon;
+	for (let index = 0; index < polygon.length; index += 1) {
+		const a = polygon[index]!;
+		const b = polygon[(index + 1) % polygon.length]!;
+		const ex = b[0] - a[0];
+		const ez = b[1] - a[1];
+		const lengthSquared = ex * ex + ez * ez;
+		if (!(lengthSquared > EPSILON * EPSILON)) continue;
+		// A vertical plane through the edge; the polygon is the segment between a
+		// and b, and the finite y band is the slab's height.
+		const nx = ez;
+		const nz = -ex;
+		const denominator = direction[0] * nx + direction[2] * nz;
+		if (Math.abs(denominator) < EPSILON) continue;
+		const t = ((a[0] - origin[0]) * nx + (a[1] - origin[2]) * nz) / denominator;
+		if (t < 0) continue;
+		const y = origin[1] + direction[1] * t;
+		if (y < occluder.bottomY - EPSILON || y > occluder.topY + EPSILON) continue;
+		const x = origin[0] + direction[0] * t;
+		const z = origin[2] + direction[2] * t;
+		const along = ((x - a[0]) * ex + (z - a[1]) * ez) / lengthSquared;
+		if (along >= -EPSILON && along <= 1 + EPSILON) consider(t);
+	}
+	return nearest;
+}
+
+/**
  * Conservative ray/bounds rejection in the form's own local space.
  *
  * Every triangle lies inside the canonical bounds, so a ray that misses the
@@ -411,32 +563,91 @@ function hitOccluder(ray: PointerRay, occluder: SupportOccluder): number | null 
 			return hitCylinder(ray, occluder);
 		case 'form-mesh':
 			return hitFormMesh(ray, occluder);
+		case 'polygon-prism':
+			return hitPolygonPrism(ray, occluder);
 	}
 }
+
+type SupportCandidate = {
+	readonly distance: number;
+	readonly worldPoint: Vec3;
+	readonly surface: FloorSupportSurface;
+};
 
 /**
  * The floor point the pointer supports, or the drawn body that hides it.
  *
- * A hit strictly nearer than the datum intersection is occlusion; a tie (a Wall
- * standing exactly on the datum) is not, so a pointer on the floor beside a Wall
- * still lands on the floor.
+ * Authored Room-floor and floor-region-top faces are tested first: the ray must
+ * approach the upward face from above and cross its compiled footprint. The
+ * nearest such face wins unless a solid body is strictly nearer. Only when no
+ * authored face is visible does the Layout datum act as the support of last
+ * resort, preserving the pre-region behavior outside enclosure.
+ *
+ * A hit strictly nearer than the selected support is occlusion; a tie (a Wall
+ * standing exactly on the datum, or the slab top that *is* the support) is not,
+ * so a pointer on the floor beside a Wall still lands on the floor.
  */
 export function floorSupport(
 	ray: PointerRay,
 	datumMeters: number,
-	occluders: readonly SupportOccluder[]
+	occluders: readonly SupportOccluder[],
+	supportFaces: readonly UpwardSupportFace[] = []
 ): FloorSupport {
 	if (Math.abs(ray.direction[1]) < EPSILON) return { kind: 'none', reason: 'parallel' };
-	const distance = (datumMeters - ray.origin[1]) / ray.direction[1];
-	if (!(distance > 0)) return { kind: 'none', reason: 'behind' };
-	let nearest: { id: string; distance: number } | null = null;
+	let nearestOccluder: { id: string; distance: number } | null = null;
 	for (const occluder of occluders) {
 		const hit = hitOccluder(ray, occluder);
-		if (hit === null || !(hit >= 0 && hit < distance - EPSILON)) continue;
-		if (nearest === null || hit < nearest.distance) nearest = { id: occluder.id, distance: hit };
+		if (hit === null || !(hit >= 0)) continue;
+		if (nearestOccluder === null || hit < nearestOccluder.distance) {
+			nearestOccluder = { id: occluder.id, distance: hit };
+		}
 	}
-	if (nearest !== null) {
-		return { kind: 'occluded', occluderId: nearest.id, distanceMeters: nearest.distance };
+
+	const candidates: SupportCandidate[] = [];
+	// An upward face is visible only from above: a ray climbing from below meets
+	// the slab's underside, not the top a creator can stand on.
+	if (ray.direction[1] < -EPSILON) {
+		for (const face of supportFaces) {
+			const distance = (face.elevation - ray.origin[1]) / ray.direction[1];
+			if (!(distance > 0)) continue;
+			const x = ray.origin[0] + ray.direction[0] * distance;
+			const z = ray.origin[2] + ray.direction[2] * distance;
+			if (!polygonContainsWithTolerance([x, z], face.polygon)) continue;
+			candidates.push({
+				distance,
+				worldPoint: [x, face.elevation, z],
+				surface:
+					face.kind === 'room-floor'
+						? { kind: 'room-floor', roomId: face.roomId! }
+						: { kind: 'region-top', regionId: face.regionId! }
+			});
+		}
+		candidates.sort((left, right) => left.distance - right.distance);
+	}
+	for (const candidate of candidates) {
+		if (
+			nearestOccluder !== null &&
+			nearestOccluder.distance < candidate.distance - EPSILON
+		) {
+			// Candidates are ordered, so every remaining face is farther still.
+			break;
+		}
+		return {
+			kind: 'floor',
+			worldPoint: candidate.worldPoint,
+			distanceMeters: candidate.distance,
+			surface: candidate.surface
+		};
+	}
+
+	const distance = (datumMeters - ray.origin[1]) / ray.direction[1];
+	if (!(distance > 0)) {
+		return nearestOccluder !== null
+			? { kind: 'occluded', occluderId: nearestOccluder.id, distanceMeters: nearestOccluder.distance }
+			: { kind: 'none', reason: 'behind' };
+	}
+	if (nearestOccluder !== null && nearestOccluder.distance < distance - EPSILON) {
+		return { kind: 'occluded', occluderId: nearestOccluder.id, distanceMeters: nearestOccluder.distance };
 	}
 	return {
 		kind: 'floor',
@@ -445,6 +656,7 @@ export function floorSupport(
 			datumMeters,
 			ray.origin[2] + ray.direction[2] * distance
 		],
-		distanceMeters: distance
+		distanceMeters: distance,
+		surface: { kind: 'datum' }
 	};
 }

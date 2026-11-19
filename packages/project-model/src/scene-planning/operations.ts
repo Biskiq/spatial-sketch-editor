@@ -121,9 +121,12 @@ export type SceneOperationSupportEvidence = {
 	readonly elevation: number;
 	readonly generationId: string;
 	readonly orderKey: string;
+	/** Every equivalent compiled witness, discriminated by its source. */
 	readonly witnesses: readonly {
+		readonly source:
+			| { readonly kind: 'room'; readonly roomId: string }
+			| { readonly kind: 'region'; readonly regionId: string };
 		readonly floorId: string;
-		readonly roomId: string;
 		readonly recordId: string;
 	}[];
 };
@@ -1229,18 +1232,14 @@ function resolveSupport(
 				elevation: resolution.support.elevation,
 				generationId: resolution.generationId,
 				orderKey: resolution.support.orderKey,
-				// Scene evidence stays Room-qualified until V1d admits region
-				// support into placement. Region witnesses cannot reach this path
-				// because the Scene snapshot narrows to `room-floor` records.
-				witnesses: resolution.support.witnesses.flatMap((witness) =>
-					witness.source.kind === 'room'
-						? [{
-							floorId: witness.floorId,
-							roomId: witness.source.roomId,
-							recordId: witness.recordId
-						}]
-						: []
-				)
+				witnesses: resolution.support.witnesses.map((witness) => ({
+					source:
+						witness.source.kind === 'room'
+							? { kind: 'room', roomId: witness.source.roomId }
+							: { kind: 'region', regionId: witness.source.regionId },
+					floorId: witness.floorId,
+					recordId: witness.recordId
+				}))
 			}
 		};
 	}

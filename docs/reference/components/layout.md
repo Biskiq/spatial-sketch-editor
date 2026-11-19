@@ -283,6 +283,16 @@ stable surface references. A Region wins a coincident generated floor pick. Decl
 intentional gaps keep their Wall references through topology splits and dissolves and
 lose the reference when that Wall is removed. No Room edit creates a Region.
 
+`resolveLayoutSurfaceReference` is the Layout-local resolver for those references:
+a region `top`, `underside` or `edge`, or a Space `floor` or `lid`. It resolves the
+authored identity plus face against canonical compiled output, so move, footprint,
+elevation and thickness edits keep the same reference valid; deleting the subject
+leaves it unresolved (`missing-region`/`missing-space`) rather than resolving a
+coincident successor. A closed Space's generated lid resolves; an open-to-sky lid is
+`open-to-sky` while its floor still resolves. The matching downward query is
+`queryOverheadSupports`, which reports closed lids and overhead-region undersides and
+treats open-to-sky as no lid.
+
 ## Input and validation
 
 Exact numeric fields must never announce invalidity for a legal value because their step base and

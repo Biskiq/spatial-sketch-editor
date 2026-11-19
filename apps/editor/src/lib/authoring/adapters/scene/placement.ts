@@ -239,7 +239,10 @@ export type ScenePlacementSession = {
 		x: number,
 		z: number,
 		supportElevation: number,
-		snappedStep?: number | null
+		/** The increment the caller already applied; omission reports none. */
+		snappedStep?: number | null,
+		/** The support the pointer preview showed, pinned for this commit. */
+		choice?: SceneSupportChoice
 	): SceneSessionOutcome;
 	previewMove(x: number, z: number): SceneSessionOutcome;
 	previewYaw(radians: number): SceneSessionOutcome;
@@ -271,7 +274,9 @@ export type ScenePlacementSession = {
 		z: number,
 		supportElevation: number,
 		/** The increment the caller already applied; omission reports none. */
-		snappedStep?: number | null
+		snappedStep?: number | null,
+		/** The support the pointer preview showed, pinned for this commit. */
+		choice?: SceneSupportChoice
 	): SceneSessionOutcome;
 	/**
 	 * Withdraw the displayed candidate without ending the subject or the lease: a
@@ -572,6 +577,8 @@ export function createSceneSession(input: {
 	let candidateFormCopy: ArmedFormCopy | null = null;
 	/** The support the pointer preview showed, pinned for this commit. */
 	let candidateFormCopyChoice: SceneSupportChoice | null = null;
+	/** The support a native primitive or model pointer preview stood on. */
+	let candidatePlaceChoice: SceneSupportChoice | null = null;
 	let placementCommitted: ((placedEntityId: string | null) => void) | null = null;
 
 	/**
@@ -789,6 +796,7 @@ export function createSceneSession(input: {
 		candidate = null;
 		candidateModel = null;
 		candidateFormCopy = null;
+		candidatePlaceChoice = null;
 		entryError = null;
 	}
 
@@ -798,6 +806,7 @@ export function createSceneSession(input: {
 		x: number,
 		z: number,
 		supportElevation: number,
+		choice: SceneSupportChoice | undefined,
 		snappedStep: number | null
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
@@ -812,6 +821,8 @@ export function createSceneSession(input: {
 		const worldXZ: [number, number] = [x, z];
 		const contactMinY = nativePlacementContactMinY(primitive);
 		candidateFormCopy = null;
+		candidateFormCopyChoice = null;
+		candidatePlaceChoice = choice ?? null;
 		const next: SceneCandidate = {
 			kind: 'place',
 			entityId: null,
@@ -893,11 +904,13 @@ export function createSceneSession(input: {
 		x: number,
 		z: number,
 		supportElevation: number,
+		choice: SceneSupportChoice | undefined,
 		snappedStep: number | null
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
 			candidateModel = null;
+			candidatePlaceChoice = null;
 			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
 		}
 		// One rounding layer: the caller's X/Z is the pose support was resolved
@@ -905,6 +918,8 @@ export function createSceneSession(input: {
 		const step = snappedStep !== null && snappedStep > 0 ? snappedStep : null;
 		const worldXZ: [number, number] = [x, z];
 		candidateFormCopy = null;
+		candidateFormCopyChoice = null;
+		candidatePlaceChoice = choice ?? null;
 		const next: SceneCandidate = {
 			kind: 'place',
 			entityId: null,
@@ -959,7 +974,8 @@ export function createSceneSession(input: {
 	/** The one F4 placement intent, captured from an exact world X/Z and definition. */
 	async function acceptPlacement(
 		primitive: NativePlacementPrimitive,
-		worldXZ: readonly [number, number]
+		worldXZ: readonly [number, number],
+		choice?: SceneSupportChoice
 	): Promise<SceneSessionOutcome> {
 		const definition = await nativePlacementDefinition(primitive).catch(() => null);
 		if (definition === null) {
@@ -981,7 +997,8 @@ export function createSceneSession(input: {
 				worldXZ: [worldXZ[0], worldXZ[1]],
 				yaw: 0,
 				frame: FRAME,
-				frameReference: PROJECT_WORLD
+				frameReference: PROJECT_WORLD,
+				...(choice === undefined ? {} : { supportChoice: choice })
 			},
 			capturedInputs: [],
 			allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
@@ -1011,7 +1028,8 @@ export function createSceneSession(input: {
 	 */
 	async function acceptModelPlacement(
 		model: ArmedModelPlacement,
-		worldXZ: readonly [number, number]
+		worldXZ: readonly [number, number],
+		choice?: SceneSupportChoice
 	): Promise<SceneSessionOutcome> {
 		const definition = model.definition;
 		if (definition.creationDefaults.kind !== 'model') {
@@ -1034,6 +1052,7 @@ export function createSceneSession(input: {
 				yaw: 0,
 				frame: FRAME,
 				frameReference: PROJECT_WORLD,
+				...(choice === undefined ? {} : { supportChoice: choice }),
 				...(model.resource === null ? {} : { modelResource: creatorModelResourcePayload(model.resource) })
 			},
 			capturedInputs: [],
@@ -1143,6 +1162,7 @@ export function createSceneSession(input: {
 			baseline = { position: [...entity.position] as Vec3, rotation: [...entity.rotation] as Vec3 };
 			entry = { x: String(entity.position[0]), z: String(entity.position[2]), yaw: String(entity.rotation[1]) };
 			candidate = null;
+			candidatePlaceChoice = null;
 			return { kind: 'idle' };
 		},
 		previewResize(scale) {
@@ -1219,6 +1239,7 @@ export function createSceneSession(input: {
 			baseline = { position: [...entity.position] as Vec3, rotation: [...entity.rotation] as Vec3 };
 			entry = { x: String(entity.position[0]), z: String(entity.position[2]), yaw: String(entity.rotation[1]) };
 			candidate = null;
+			candidatePlaceChoice = null;
 			return { kind: 'idle' };
 		},
 		beginPlace(primitive) {
@@ -1228,6 +1249,7 @@ export function createSceneSession(input: {
 			// substitutes itself.
 			armedModelPlacement = null;
 			candidateModel = null;
+			candidatePlaceChoice = null;
 			armedFormCopyPlacement = null;
 			candidateFormCopy = null;
 			lease = input.port.acquireGesture({
@@ -1257,12 +1279,14 @@ export function createSceneSession(input: {
 			// or saved copy.
 			armedModelPlacement = null;
 			candidateModel = null;
+			candidatePlaceChoice = null;
 			armedFormCopyPlacement = null;
 			candidateFormCopy = null;
 		},
 		setArmedModel(model) {
 			armedModelPlacement = model;
 			candidateModel = null;
+			candidatePlaceChoice = null;
 			// Choosing another object is an explicit replacement of an armed copy.
 			if (model !== null) {
 				armedFormCopyPlacement = null;
@@ -1272,6 +1296,7 @@ export function createSceneSession(input: {
 		setArmedFormCopy(copy) {
 			armedFormCopyPlacement = copy;
 			candidateFormCopy = null;
+			candidatePlaceChoice = null;
 			// Choosing a saved copy is an explicit replacement of an armed model.
 			if (copy !== null) {
 				armedModelPlacement = null;
@@ -1287,6 +1312,7 @@ export function createSceneSession(input: {
 			if (outcome.kind === 'refused') return outcome;
 			armedFormCopyPlacement = copy;
 			candidateFormCopyChoice = null;
+			candidatePlaceChoice = null;
 			mode = 'place';
 			return outcome;
 		},
@@ -1306,6 +1332,7 @@ export function createSceneSession(input: {
 				candidate = null;
 				candidateFormCopy = null;
 				candidateFormCopyChoice = null;
+				candidatePlaceChoice = null;
 				armedFormCopyPlacement = null;
 				notifyPlacementCommitted();
 			}
@@ -1318,14 +1345,15 @@ export function createSceneSession(input: {
 			// purpose (an explicit primitive replaces it).
 			const outcome = session.beginPlace('box');
 			if (outcome.kind === 'refused') return outcome;
+			candidatePlaceChoice = null;
 			armedModelPlacement = model;
 			mode = 'place';
 			return outcome;
 		},
-		previewPlaceModel(model, x, z, supportElevation, snappedStep = null) {
+		previewPlaceModel(model, x, z, supportElevation, snappedStep = null, choice) {
 			mode = 'place';
 			armedModelPlacement = model;
-			return placeModelCandidate(model, x, z, supportElevation, snappedStep);
+			return placeModelCandidate(model, x, z, supportElevation, choice, snappedStep);
 		},
 		previewMove(x, z) {
 			return moveCandidate(x, z, snap !== null);
@@ -1333,10 +1361,10 @@ export function createSceneSession(input: {
 		previewYaw(radians) {
 			return yawCandidate(radians);
 		},
-		previewPlace(primitive, x, z, supportElevation, snappedStep = null) {
+		previewPlace(primitive, x, z, supportElevation, snappedStep = null, choice) {
 			mode = 'place';
 			placePrimitive = primitive;
-			return placeCandidate(primitive, x, z, supportElevation, snappedStep);
+			return placeCandidate(primitive, x, z, supportElevation, choice, snappedStep);
 		},
 		invalidatePreview() {
 			// The expression the creator is now pointing at has no valid support. The
@@ -1344,6 +1372,7 @@ export function createSceneSession(input: {
 			// being committable; the lease and the armed tool stay as they are.
 			candidate = null;
 			candidateFormCopy = null;
+			candidatePlaceChoice = null;
 			entryError = null;
 		},
 		abortGesture() {
@@ -1353,6 +1382,7 @@ export function createSceneSession(input: {
 			entityId = null;
 			candidate = null;
 			candidateFormCopy = null;
+			candidatePlaceChoice = null;
 			entryError = null;
 		},
 		setEntry(kind, text) {
@@ -1488,13 +1518,14 @@ export function createSceneSession(input: {
 			const model = candidateModel;
 			const copy = candidateFormCopy;
 			const copyChoice = candidateFormCopyChoice ?? undefined;
+			const placeChoice = candidatePlaceChoice ?? undefined;
 			const outcome = copy !== null
 				? await acceptFormCopyPlacement(copy, worldXZ, copyChoice)
 				: model === null
 					? candidate.primitive === null
 						? { kind: 'refused' as const, code: 'no-candidate', message: 'Preview a valid placement before committing.' }
-						: await acceptPlacement(candidate.primitive, worldXZ)
-					: await acceptModelPlacement(model, worldXZ);
+						: await acceptPlacement(candidate.primitive, worldXZ, placeChoice)
+					: await acceptModelPlacement(model, worldXZ, placeChoice);
 			if (outcome.kind !== 'committed') {
 				withdraw();
 				return outcome;
@@ -1509,6 +1540,7 @@ export function createSceneSession(input: {
 			armedModelPlacement = null;
 			candidateFormCopy = null;
 			candidateFormCopyChoice = null;
+			candidatePlaceChoice = null;
 			armedFormCopyPlacement = null;
 			notifyPlacementCommitted();
 			return { kind: 'committed' };
@@ -1533,6 +1565,8 @@ export function createSceneSession(input: {
 					: await acceptModelPlacement(model, worldXZ);
 			if (outcome.kind === 'committed') {
 				candidate = null;
+				candidatePlaceChoice = null;
+				candidateFormCopyChoice = null;
 				// The model or copy is consumed by its placement; a failed attempt keeps
 				// the arm so the creator can retry the same object.
 				if (model !== null) {
@@ -1566,6 +1600,7 @@ export function createSceneSession(input: {
 			entityId = null;
 			candidate = null;
 			candidateFormCopy = null;
+			candidatePlaceChoice = null;
 			entryError = null;
 			// Esc/Select disarms Place per the editing-surface contract, and the armed
 			// creator model or saved copy returns to rest with it.

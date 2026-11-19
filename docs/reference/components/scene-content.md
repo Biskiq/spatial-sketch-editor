@@ -61,10 +61,24 @@ fully supported in the model, in saved projects and on the Card, but the Stage d
 until T1's face-frame query arrives.
 
 **Support.** Every Scene planner resolves support through `resolveSceneSupport`: the compiled Room
-floor that covers the point, otherwise the Layout's explicit horizontal datum. Placement therefore
-needs no enclosure, and an operation that must keep another resting elevation refuses rather than
-moving vertically. A verified catalogue model is offered only where the envelope holds its asset
-resource, because the entity cannot close without it.
+floor or floor-region top that covers the point, otherwise the Layout's explicit horizontal datum.
+Placement therefore needs no enclosure, and an operation that must keep another resting elevation
+refuses rather than moving vertically. A verified catalogue model is offered only where the envelope
+holds its asset resource, because the entity cannot close without it.
+
+Pointer Place resolves the nearest **visible** upward face along the actual ray: a Room floor or a
+floor-region top. Walls, Scene bodies and a region slab's sides and underside occlude it; an overhead
+region is never upward support. The hit's world X/Z is snapped and the canonical Layout query is
+repeated there, so the accepted elevation and its generation come from that query — never from a
+mesh hit's Y. If snapping moves the pose off the chosen surface, Place refuses instead of silently
+dropping to another elevation. The accepted choice is pinned through the candidate and commit, and an
+ambiguous point asks the creator rather than picking one.
+
+F1 placement evidence names the witness that actually supported the pose: `layout:room-floor` for a
+Room floor and `layout:region-top` for a region, with the region or Room subject, generation and
+sub-reference. A coplanar Room floor and region top merge into one support with both witnesses. Region
+move and Erase remain Layout-only writes: Scene bytes do not change, and
+`countSceneRootsOnFloorRegion` supplies V1c with the derived contact count on demand.
 
 Once present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a
 full per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
