@@ -17,7 +17,7 @@
 
 import { datumWorkingPlane, isStageDrag } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterContext } from '$lib/authoring/stage/stage-adapter-host';
-import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+import { DATUM_SUPPORT_ORDER_KEY, type CompiledLayoutGeometry } from '@portfolio/layout-core';
 import type { Vec3 } from '@portfolio/project-model';
 import {
 	resolveSceneSupportOnGeometry,
@@ -30,6 +30,7 @@ import {
 	supportOccluders,
 	upwardSupportFaces,
 	type FloorSupport,
+	type FloorSupportSurface,
 	type SupportOccluder,
 	type UpwardSupportFace
 } from './support-occlusion';
@@ -141,6 +142,13 @@ export function moveSupportRefusal(
  * pinned choice; the ray hit's own height never enters the candidate. If the
  * snapped point resolves no support at that elevation, the caller refuses
  * rather than silently dropping to a different surface.
+ *
+ * Elevation alone is not enough: two disjoint regions can share one elevation,
+ * or a region can be coplanar with the Room floor. The hit's own witness
+ * identity therefore has to survive the snap. The resolved candidate must still
+ * name the same Room or region; a hit on the datum stays on the datum. Coplanar
+ * merging still passes because the visible witness remains one of the merged
+ * witnesses.
  */
 export function snappedPlaceSupport(input: {
 	readonly geometry: CompiledLayoutGeometry;
@@ -148,6 +156,7 @@ export function snappedPlaceSupport(input: {
 	readonly hitElevation: number;
 	readonly hitX: number;
 	readonly hitZ: number;
+	readonly hitSurface: FloorSupportSurface;
 	readonly snapStep: number | null;
 }): {
 	readonly x: number;
@@ -167,12 +176,36 @@ export function snappedPlaceSupport(input: {
 		requiredElevation: input.hitElevation
 	});
 	if (resolved.kind !== 'resolved') return null;
+	if (!hitSurfaceSurvives(input.hitSurface, resolved.support.witnesses, resolved.support.orderKey)) {
+		return null;
+	}
 	return {
 		x: snapped.x,
 		z: snapped.z,
 		elevation: resolved.support.elevation,
 		choice: { kind: 'elevation', elevation: resolved.support.elevation, generationId: input.generationId }
 	};
+}
+
+/** Whether the support the creator actually saw is still one of the witnesses. */
+function hitSurfaceSurvives(
+	hitSurface: FloorSupportSurface,
+	witnesses: readonly { readonly source: { readonly kind: 'room'; readonly roomId: string } | { readonly kind: 'region'; readonly regionId: string } }[],
+	orderKey: string
+): boolean {
+	switch (hitSurface.kind) {
+		case 'room-floor':
+			return witnesses.some(
+				(witness) => witness.source.kind === 'room' && witness.source.roomId === hitSurface.roomId
+			);
+		case 'region-top':
+			return witnesses.some(
+				(witness) =>
+					witness.source.kind === 'region' && witness.source.regionId === hitSurface.regionId
+			);
+		case 'datum':
+			return witnesses.length === 0 && orderKey === DATUM_SUPPORT_ORDER_KEY;
+	}
 }
 
 /**
@@ -203,6 +236,7 @@ export function pointerPlaceSupport(
 		hitElevation: visible.worldPoint[1],
 		hitX: visible.worldPoint[0],
 		hitZ: visible.worldPoint[2],
+		hitSurface: visible.surface,
 		snapStep
 	});
 }

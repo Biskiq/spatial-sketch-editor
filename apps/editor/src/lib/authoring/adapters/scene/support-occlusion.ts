@@ -27,7 +27,8 @@
  * drawn body, not its bounding box. Unverified shapes are not invented: a model
  * entity has no verified dimensions or contact metadata here and contributes no
  * occluder, which means a model never *fakes* floor support; it can only fail to
- * block one.
+ * block one. Imported model meshes remain excluded from this occluder set: this
+ * seam does not ray-test model geometry or add imported-mesh intersection.
  */
 
 import type { CompiledLayoutGeometry, LayoutVec2 } from '@portfolio/layout-core';

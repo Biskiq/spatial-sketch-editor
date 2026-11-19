@@ -67,8 +67,10 @@ refuses rather than moving vertically. A verified catalogue model is offered onl
 holds its asset resource, because the entity cannot close without it.
 
 Pointer Place resolves the nearest **visible** upward face along the actual ray: a Room floor or a
-floor-region top. Walls, Scene bodies and a region slab's sides and underside occlude it; an overhead
-region is never upward support. The hit's world X/Z is snapped and the canonical Layout query is
+floor-region top. Walls, Layout objects, Scene primitives/forms and a region slab's sides and
+underside occlude it; an overhead region is never upward support. Imported model meshes and model
+placements remain outside the existing occluder implementation — this seam does not ray-test model
+geometry or add imported-mesh intersection — so a pointer ray can pass through an unoccluded model. The hit's world X/Z is snapped and the canonical Layout query is
 repeated there, so the accepted elevation and its generation come from that query — never from a
 mesh hit's Y. If snapping moves the pose off the chosen surface, Place refuses instead of silently
 dropping to another elevation. The accepted choice is pinned through the candidate and commit, and an

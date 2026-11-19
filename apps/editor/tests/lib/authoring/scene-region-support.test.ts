@@ -264,6 +264,7 @@ describe('V1d snapped Place support', () => {
 			hitElevation: 0.6,
 			hitX: 3.4,
 			hitZ: 2.6,
+			hitSurface: { kind: 'region-top', regionId },
 			snapStep: 1
 		});
 		expect(support).toEqual({
@@ -306,6 +307,7 @@ describe('V1d snapped Place support', () => {
 				hitElevation: 0.6,
 				hitX: 3.85,
 				hitZ: 2.5,
+				hitSurface: { kind: 'region-top', regionId: withRegion.regionId },
 				snapStep: 1
 			})
 		).toBeNull();
@@ -313,6 +315,7 @@ describe('V1d snapped Place support', () => {
 
 	it('keeps the datum and Room placement unchanged outside the terrace', () => {
 		const { geometry } = terraceLayout();
+		const roomId = geometry.rooms[0]!.roomId;
 		expect(
 			snappedPlaceSupport({
 				geometry,
@@ -320,6 +323,7 @@ describe('V1d snapped Place support', () => {
 				hitElevation: 0,
 				hitX: 1.2,
 				hitZ: 1.4,
+				hitSurface: { kind: 'room-floor', roomId },
 				snapStep: null
 			})
 		).toMatchObject({ x: 1.2, z: 1.4, elevation: 0, choice: { kind: 'elevation', elevation: 0 } });
@@ -330,9 +334,114 @@ describe('V1d snapped Place support', () => {
 				hitElevation: 0,
 				hitX: 30,
 				hitZ: 30,
+				hitSurface: { kind: 'datum' },
 				snapStep: null
 			})
 		).toMatchObject({ elevation: 0, choice: { kind: 'elevation', elevation: 0 } });
+	});
+
+	it('refuses a snap that lands on a different floor region at the same elevation', () => {
+		let baseline = createEmptyWallFirstLayoutDocument();
+		const first = addRegion(baseline, {
+			footprint: [
+				[2, 1],
+				[3.9, 1],
+				[3.9, 4],
+				[2, 4]
+			],
+			elevation: 0.6
+		});
+		baseline = first.document;
+		const second = addRegion(baseline, {
+			footprint: [
+				[3.9, 1],
+				[5.9, 1],
+				[5.9, 4],
+				[3.9, 4]
+			],
+			elevation: 0.6
+		});
+		const geometry = compileWallFirstLayoutGeometry(second.document).geometry;
+
+		// The hit is on the first region; a 1 m snap moves it onto the second at
+		// the same elevation. The query at the snapped point still resolves, but
+		// the visible witness is gone, so the preview must refuse.
+		const snapped = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [4, 2.5],
+			requiredElevation: 0.6
+		});
+		expect(snapped.kind).toBe('resolved');
+		if (snapped.kind !== 'resolved') return;
+		expect(snapped.support.witnesses).toContainEqual(
+			expect.objectContaining({ source: { kind: 'region', regionId: second.regionId } })
+		);
+		expect(
+			snappedPlaceSupport({
+				geometry,
+				generationId: GENERATION,
+				hitElevation: 0.6,
+				hitX: 3.85,
+				hitZ: 2.5,
+				hitSurface: { kind: 'region-top', regionId: first.regionId },
+				snapStep: 1
+			})
+		).toBeNull();
+
+		// The same hit without the edge-crossing snap remains valid.
+		expect(
+			snappedPlaceSupport({
+				geometry,
+				generationId: GENERATION,
+				hitElevation: 0.6,
+				hitX: 3.2,
+				hitZ: 2.5,
+				hitSurface: { kind: 'region-top', regionId: first.regionId },
+				snapStep: null
+			})
+		).toMatchObject({ elevation: 0.6 });
+	});
+
+	it('refuses a snap from a coplanar region onto the Room floor at the same elevation', () => {
+		const withRegion = addRegion(enclosure(), {
+			footprint: [
+				[2, 1],
+				[3.9, 1],
+				[3.9, 4],
+				[2, 4]
+			],
+			elevation: 0
+		});
+		const geometry = compileWallFirstLayoutGeometry(withRegion.document).geometry;
+		const roomId = geometry.rooms[0]!.roomId;
+
+		const snapped = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [4, 2.5],
+			requiredElevation: 0
+		});
+		expect(snapped.kind).toBe('resolved');
+		if (snapped.kind !== 'resolved') return;
+		expect(snapped.support.witnesses).toContainEqual(
+			expect.objectContaining({ source: { kind: 'room', roomId } })
+		);
+		expect(snapped.support.witnesses).not.toContainEqual(
+			expect.objectContaining({ source: { kind: 'region', regionId: withRegion.regionId } })
+		);
+
+		expect(
+			snappedPlaceSupport({
+				geometry,
+				generationId: GENERATION,
+				hitElevation: 0,
+				hitX: 3.85,
+				hitZ: 2.5,
+				hitSurface: { kind: 'region-top', regionId: withRegion.regionId },
+				snapStep: 1
+			})
+		).toBeNull();
 	});
 });
 
