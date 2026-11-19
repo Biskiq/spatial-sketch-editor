@@ -82,8 +82,6 @@ function openSpaceWithOutsideRoom(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			{
 				id: 'room-booth',
@@ -96,8 +94,6 @@ function openSpaceWithOutsideRoom(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};

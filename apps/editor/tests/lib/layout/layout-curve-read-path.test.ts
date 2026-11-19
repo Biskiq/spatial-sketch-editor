@@ -176,8 +176,6 @@ function enclosureDocument(
 							{ wallId: 'wall-a', direction: 'reverse' }
 						],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	document.openings = [

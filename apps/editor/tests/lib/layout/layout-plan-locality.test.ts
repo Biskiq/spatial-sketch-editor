@@ -285,6 +285,7 @@ describe('Plan locality against the compiler roots', () => {
 					]
 				}
 			],
+			regions: [],
 			queries: { points: [], spans: [], polygons: [], aabbs: [] },
 			bounds: null
 		};

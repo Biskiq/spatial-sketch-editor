@@ -1,5 +1,5 @@
 /**
- * SP1a — open Spaces: format 8, composition, compilation, certification and
+ * SP1a — open Spaces: format 9, composition, compilation, certification and
  * persistence ownership.
  *
  * R-1 is pinned here: a closed circular Room keeps the preexisting `< 2` refs
@@ -119,8 +119,6 @@ function openDocument(shape: OpenShape, overhead: 'closed' | 'open-to-sky' = 'cl
 				boundary: boundaryIds.map((wallId) => ({ wallId, direction: 'forward' as const })),
 				virtualEdges,
 				overhead,
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -151,8 +149,6 @@ function openRectangleAt(prefix: string, x: number, z: number): LayoutDocumentWa
 					{ startJunctionId: ids[3]!, endJunctionId: ids[0]! }
 				],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -187,8 +183,6 @@ function enclosedRectangleAt(prefix: string, x: number, z: number, width: number
 				],
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -226,26 +220,22 @@ function compiledRoom(document: LayoutDocumentWallFirst) {
 	return { compiled, room };
 }
 
-describe('SP1a — format 8 and canonical composition', () => {
-	it('T1 compiles an enclosed format-8 document byte-identically to the format-7 baseline', () => {
+describe('SP1a — format 9 and canonical composition', () => {
+	it('T1 compiles an enclosed Space with the Layout 9 generated-surface bounds', () => {
 		const document = twoRoomDocument();
 		expect(document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(8);
+		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(9);
 		const compiled = compileWallFirstLayoutGeometry(document);
 		expect(hasBlockingLayoutIssues(compiled.issues)).toBe(false);
 		expect(compiled.geometry.rooms).toHaveLength(2);
 		expect(compiled.geometry.rooms.every((room) => room.overhead === 'closed')).toBe(true);
-		// Captured at the base commit `c0a7c92e` from the same fixture through
-		// the format-7 compiler. `overhead` is the one new compiled field; the
-		// closed lid, bounds, walls, openings, floor polygons and cache keys are
-		// unrepresented here only because they are unchanged and remain in the
-		// digest below with the new field removed.
+		// Layout 9 removes Room padding. The digest covers the resulting compiled geometry.
 		const withoutNewField = {
 			...compiled.geometry,
 			rooms: compiled.geometry.rooms.map(({ overhead: _overhead, ...room }) => room)
 		};
 		const digest = createHash('sha256').update(JSON.stringify(withoutNewField)).digest('hex');
-		expect(digest).toBe('77734d4ae9b73d34603460a791835aa83143d1a5006c01b0721ed8326a02d49a');
+		expect(digest).toBe('7bfbe343b10d07549129d29c1a7aa2c81c5aa8e5db55bb5573a54accfd97b490');
 		expect(ensureLayoutWorldIndex(document)).toBeDefined();
 	});
 
@@ -298,7 +288,7 @@ describe('SP1a — format 8 and canonical composition', () => {
 		expect(isOpenSpace(document.rooms[0]!)).toBe(true);
 	});
 
-	it('canonically round-trips an open Space at format 8', () => {
+	it('canonically round-trips an open Space at format 9', () => {
 		const document = openDocument('three-wall');
 		const json = serializeWallFirstLayoutDocument(document);
 		const parsed = parseWallFirstLayoutDocumentJson(json);
@@ -323,7 +313,7 @@ describe('SP1a — format 8 and canonical composition', () => {
 		expect(open.room.bounds2).toEqual(closed.room.bounds2);
 		expect(open.room.bounds3.min).toEqual(closed.room.bounds3.min);
 		expect(open.room.bounds3.max[1]).toBe(open.room.ceilingElevation);
-		expect(closed.room.bounds3.max[1]).toBe(closed.room.ceilingElevation + closed.room.ceilingThickness);
+		expect(closed.room.bounds3.max[1]).toBe(closed.room.ceilingElevation);
 		expect(open.compiled.geometry.walls).toEqual(closed.compiled.geometry.walls);
 		expect(open.room.cacheKey).not.toBe(closed.room.cacheKey);
 	});
@@ -416,8 +406,6 @@ describe('SP1a — invariants and refusals', () => {
 						{ startJunctionId: 'j-d', endJunctionId: 'j-a' }
 					],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			]
 		};
@@ -451,8 +439,6 @@ describe('SP1a — invariants and refusals', () => {
 						{ startJunctionId: 'j-4', endJunctionId: 'j-0' }
 					],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			]
 		};
@@ -651,32 +637,32 @@ describe('SP1a — R-2 persistence version ownership', () => {
 		});
 	}
 
-	it('has one authority: the Layout unit header and payload are both format 8', async () => {
+	it('has one authority: the Layout unit header and payload are both format 9', async () => {
 		const project = await projectWithOpenSpace();
-		expect(project.units.layout.header.formatVersion).toBe(8);
-		expect(project.units.layout.data.formatVersion).toBe(8);
+		expect(project.units.layout.header.formatVersion).toBe(9);
+		expect(project.units.layout.data.formatVersion).toBe(9);
 		expect(LAYOUT_UNIT_FORMAT_VERSION).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(8);
+		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(9);
 	});
 
-	it('Save then Load round-trips byte-identically at format 8', async () => {
+	it('Save then Load round-trips byte-identically at format 9', async () => {
 		const project = await projectWithOpenSpace();
 		const saved = serializeProjectEnvelope(project);
 		const loaded = validateProjectEnvelope(JSON.parse(saved));
 		expect(loaded.success).toBe(true);
 		if (!loaded.success) return;
-		expect(loaded.envelope.units.layout.data.formatVersion).toBe(8);
+		expect(loaded.envelope.units.layout.data.formatVersion).toBe(9);
 		expect(loaded.envelope.units.layout.data.rooms[0]!.virtualEdges).toHaveLength(1);
 		expect(serializeProjectEnvelope(loaded.envelope)).toBe(saved);
 	});
 
-	it('refuses a format-7 Layout through project-model and the visitor release path', async () => {
+	it('refuses a format-8 Layout through project-model and the visitor release path', async () => {
 		const project = await projectWithOpenSpace();
 		const old = structuredClone(project) as unknown as {
 			units: { layout: { header: { formatVersion: number }; data: { formatVersion: number } } };
 		};
-		old.units.layout.header.formatVersion = 7;
-		old.units.layout.data.formatVersion = 7;
+		old.units.layout.header.formatVersion = 8;
+		old.units.layout.data.formatVersion = 8;
 		expect(validateLayoutPayload(old.units.layout.data).success).toBe(false);
 		const direct = validateLayoutPayload(old.units.layout.data);
 		if (!direct.success) {

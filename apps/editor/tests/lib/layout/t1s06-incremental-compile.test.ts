@@ -221,7 +221,6 @@ describe('T1.P02.S06 H1 — incremental canonical compile', () => {
 		const other = clone(first);
 		other.floor.elevation = 2.5;
 		other.floor.id = 'floor-mezzanine';
-		for (const room of other.rooms) room.ceilingThickness = 0.35;
 
 		const compiled = session.compile(other);
 		expect(JSON.stringify(compiled.geometry)).toBe(exactCompiled(other));

@@ -91,5 +91,5 @@ export function layoutSelectionReference(ref: PlanSourceRef, snapshot: StageRead
 		// The authored level, not the compiled floor list: a source with objects and no
 		// enclosure compiles to no floors and its Layout subjects still resolve.
 		location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
-		componentId: ref.subRef?.kind === 'component' ? ref.subRef.componentId : null, capabilityId: null };
+		componentId: ref.sourceKind !== 'region' && ref.subRef?.kind === 'component' ? ref.subRef.componentId : null, capabilityId: null };
 }

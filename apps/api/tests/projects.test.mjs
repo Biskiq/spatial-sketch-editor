@@ -46,7 +46,7 @@ function oversizedProjectDocument(projectId) {
 	const document = projectDocument('Oversized project', { id: projectId });
 	const layout = {
 		units: 'meters',
-		formatVersion: 8,
+		formatVersion: 9,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'j-1', point: [0, 0] },
@@ -64,7 +64,8 @@ function oversizedProjectDocument(projectId) {
 		],
 		rooms: [],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 	document.units.layout = {
 		header: {
@@ -349,4 +350,54 @@ test('project payload just under 2 MiB is accepted', async () => {
 	});
 	assert.equal(response.statusCode, 200, JSON.stringify(response.json()));
 	assert.equal(response.json().version, 1);
+});
+
+test('Layout 9 regions round-trip and an outgoing Layout head remains listed and recoverable', async () => {
+	const projectId = track(nextProjectId());
+	const owner = await sessionCookie(app, 'google:v1a-owner');
+	const outsider = await sessionCookie(app, 'google:v1a-outsider');
+	const current = projectDocument('Raised platform', { id: projectId });
+	current.units.layout.data.regions.push({
+		id: 'platform', role: 'floor', footprint: { kind: 'polygon', points: [[0, 0], [2, 0], [2, 3], [0, 3]] },
+		elevation: 0.45, thickness: 0.18, form: { kind: 'flat' }, intendedGaps: []
+	});
+	const request = await saveRequestBody(current);
+	const saved = await save(projectId, owner, request);
+	assert.equal(saved.statusCode, 200, saved.body);
+	const read = (cookie) => app.inject({ method: 'GET', url: `/projects/${projectId}`, headers: { cookie } });
+	const loaded = await read(owner);
+	assert.equal(loaded.statusCode, 200, loaded.body);
+	assert.deepEqual(loaded.json().document, JSON.parse(request.capture.canonicalJson));
+
+	// Restore an outgoing-reader fixture in the isolated test database at its accepted head.
+	const outgoing = JSON.parse(request.capture.canonicalJson);
+	outgoing.units.layout.header.formatVersion = outgoing.units.layout.data.formatVersion = 8;
+	delete outgoing.units.layout.data.regions;
+	delete outgoing.units.layout.data.identity.regions;
+	outgoing.units.layout.header.contentRevision =
+		`sha256-${createHash('sha256').update(canonicalUnitJson(outgoing.units.layout.data)).digest('hex')}`;
+	await pool.query('UPDATE project_versions SET document = $2 WHERE project_id = $1', [projectId, outgoing]);
+	const storageState = async () => ({
+		revisions: (await pool.query('SELECT * FROM project_versions WHERE project_id = $1', [projectId])).rows,
+		receipts: (await pool.query('SELECT * FROM save_receipts WHERE project_id = $1', [projectId])).rows
+	});
+	const beforeRefusal = await storageState();
+	const refused = await read(owner);
+	assert.equal(refused.statusCode, 422);
+	assert.equal(refused.json().error.code, 'unsupported_layout_format');
+	assert.equal((await read(outsider)).statusCode, 404);
+	const list = await app.inject({ method: 'GET', url: '/projects', headers: { cookie: owner } });
+	assert.ok(list.json().projects.some((project) => project.id === projectId));
+	const rename = await app.inject({
+		method: 'PATCH', url: `/projects/${projectId}`, headers: { cookie: owner },
+		payload: { name: 'Refused rename', precondition: { kind: 'expected-saved-base', token: saved.json().savedBaseToken } }
+	});
+	assert.equal(rename.statusCode, 422, rename.body);
+	assert.equal(rename.json().error.code, 'unsupported_layout_format');
+	const oldSave = await save(projectId, owner, {
+		...request, capture: { ...request.capture, canonicalJson: JSON.stringify(outgoing, null, 2) + '\n' }
+	});
+	assert.equal(oldSave.statusCode, 400, oldSave.body);
+	assert.ok(oldSave.json().issues.some((issue) => issue.code === 'unsupported_format_version'));
+	assert.deepEqual(await storageState(), beforeRefusal);
 });

@@ -7,7 +7,7 @@ import { coincidesAsJunction, JUNCTION_COINCIDENCE_EPSILON } from './layout-junc
 import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
 import { orientXZ } from './layout-robust-orientation';
 import {
-	composeSpaceBoundary, createRoomBoundaryLookup, ROOM_CREATION_DEFAULTS, roomBoundaryPolygon,
+	composeSpaceBoundary, createRoomBoundaryLookup, roomBoundaryPolygon,
 	spaceBoundaryCycleKey, spaceBoundaryPolygonFromEdges
 } from './layout-room-reconciliation';
 import { pointOnRing, spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePairIssue } from './layout-space-outline';
@@ -205,7 +205,7 @@ function roomFromSpans(
 	const firstWall = cycle.findIndex((span) => span.kind === 'wall');
 	if (firstWall < 0) return refuse('invalid-cycle', 'Start on a Wall');
 	const room: LayoutWallFirstRoom = {
-		id, name, ...ROOM_CREATION_DEFAULTS, overhead: 'open-to-sky', boundary: [], virtualEdges: []
+		id, name, overhead: 'open-to-sky', boundary: [], virtualEdges: []
 	};
 	const used = new Set<string>();
 	const ordered = [...cycle.slice(firstWall), ...cycle.slice(0, firstWall)];

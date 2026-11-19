@@ -64,7 +64,8 @@ function documentOf(input: {
 		),
 		rooms: input.rooms ?? [],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 
@@ -93,8 +94,6 @@ function twoComponentDocument(): LayoutDocumentWallFirst {
 			{ wallId: 'a4', direction: 'forward' }
 		],
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 	const enclosureB: LayoutWallFirstRoom = {
 		id: 'room-b',
@@ -107,8 +106,6 @@ function twoComponentDocument(): LayoutDocumentWallFirst {
 		],
 		virtualEdges: [],
 		overhead: 'closed' as const,
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 	return documentOf({
 		junctions: [

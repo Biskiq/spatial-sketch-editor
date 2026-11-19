@@ -66,17 +66,12 @@ export type LayoutObject = {
  * dividing or free-standing because of the topology it is part of, never because a
  * field says so.
  *
- * **`8` is the only recognized version, and there is no `7` decoder.** Format
- * 8 adds open Spaces: a Room keeps its ordered Wall references and gains the
- * required `virtualEdges` and `overhead` fields. An open Space's outline is the
- * composed cycle of its Walls and its stated straight virtual edges; an
- * enclosed Space has no virtual edges. The change is pre-baseline
- * (`docs/reference/north-star.md` → *Development-stage schema compatibility
- * (pre-baseline)*), so there is no migration, no dual reader and no
- * negotiation: a payload declaring `7` (or any other number) fails as
- * `unsupported_format_version` instead of being silently reinterpreted.
+ * **`9` is the only recognized version.** Format 8 introduced open Spaces.
+ * Format 9 keeps their Wall, virtual-edge and overhead fields, removes Room
+ * padding, and adds independently authored Horizontal Regions and their names.
+ * Other versions fail as `unsupported_format_version`.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 8 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 9 as const;
 
 /**
  * The approved closed-Wall representation is exactly 16 symmetric cubic
@@ -277,8 +272,7 @@ export type LayoutWallFirstFloor = {
  * Persistent semantic Room over a derived candidate face, or an open Space whose
  * composed outline is a Wall chain plus stated virtual edges. `boundary` holds
  * oriented Wall references (derived/reconciled by Room reconciliation — this
- * codec only validates the reference structure). Surface thicknesses stay Room
- * metadata; wall thickness belongs to Walls.
+ * codec only validates the reference structure).
  *
  * An "open Space" is still one Room record: the product word is Space, the
  * collection and type keep the name Room, and `virtualEdges` is the only
@@ -299,8 +293,8 @@ export type LayoutWallFirstRoom = {
   virtualEdges: LayoutSpaceVirtualEdge[];
   /** Authored overhead intent. Geometry never changes it. */
   overhead: LayoutSpaceOverhead;
-  floorThickness: number;
-  ceilingThickness: number;
+
+
 };
 
 /**
@@ -318,8 +312,7 @@ export type LayoutSpaceVirtualEdge = {
  *
  * `closed` is the lid a Room has always had. `open-to-sky` removes the
  * generated lid and nothing else: Wall heights, the derived ceiling elevation,
- * the floor and every Wall record are unchanged. `ceilingThickness` is kept
- * under `open-to-sky` so switching back restores the lid.
+ * the floor and every Wall record are unchanged.
  */
 export type LayoutSpaceOverhead = 'closed' | 'open-to-sky';
 
@@ -328,14 +321,15 @@ export type LayoutSpaceOverhead = 'closed' | 'open-to-sky';
  * the ledger keys, and they are the **only** families: a Junction is never
  * named, and Door/Window share the `openings` family because kind is mutable.
  */
-export type LayoutIdentityFamily = 'rooms' | 'junctions' | 'walls' | 'openings';
+export type LayoutIdentityFamily = 'rooms' | 'junctions' | 'walls' | 'openings' | 'regions';
 
 /** Ledger key order for allocation and for canonical serialization. */
 export const LAYOUT_IDENTITY_FAMILIES = [
 	'rooms',
 	'junctions',
 	'walls',
-	'openings'
+	'openings',
+	'regions'
 ] as const satisfies readonly LayoutIdentityFamily[];
 
 /**
@@ -358,6 +352,7 @@ export type LayoutIdentityLedger = {
 	junctions: Record<string, string>;
 	walls: Record<string, string>;
 	openings: Record<string, string>;
+	regions: Record<string, string>;
 };
 
 /**
@@ -388,5 +383,24 @@ export type LayoutIdentityLedger = {
   rooms: LayoutWallFirstRoom[];
   openings: LayoutWallOpening[];
   objects: LayoutObject[];
+  regions: LayoutRegion[];
   identity?: LayoutIdentityLedger;
+};
+
+/** Independent slab geometry on the project X/Z plane. */
+export type LayoutRegion = {
+  id: string;
+  role: 'floor' | 'overhead';
+  footprint: { kind: 'polygon'; points: LayoutVec2[] };
+  /** Floor-relative top (floor role) or underside (overhead role), in metres. */
+  elevation: number;
+  thickness: number;
+  form: { kind: 'flat' };
+  intendedGaps: string[];
+  name?: string;
+};
+
+export type LayoutRegionSurfaceRef = {
+  regionId: string;
+  surface: 'top' | 'underside' | 'edge';
 };

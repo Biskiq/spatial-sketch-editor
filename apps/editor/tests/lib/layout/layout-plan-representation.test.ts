@@ -82,12 +82,11 @@ function rectangleDocument(options: { elevation?: number; wallHeight?: number } 
 					{ wallId: 'w4', direction: 'forward' }
 				],
 				virtualEdges: [], overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 
@@ -148,6 +147,7 @@ function constructed(parts: Partial<CompiledLayoutGeometry>): CompiledLayoutGeom
 		rooms: [],
 		walls: [],
 		objects: [],
+		regions: [],
 		queries: { points: [], spans: [], polygons: [], aabbs: [] },
 		bounds: null,
 		...parts

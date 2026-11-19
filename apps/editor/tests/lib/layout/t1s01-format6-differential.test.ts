@@ -31,7 +31,9 @@ import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-f
  *   the exclusion is applied uniformly rather than per level so the digest has
  *   one rule, at the cost of not also guarding the role-free Wall/Opening keys.
  *   Compiled ids, geometry, faces, Rooms, queries and portal facts are all
- *   included.
+ *   included. V1a retired Room slab padding. For these closed, level fixtures,
+ *   the digest projects the old 0.1 m padding over Layout 9's compiled planes
+ *   before comparing, keeping the historical reference values unchanged.
  *
  * The comparison is therefore a pre/post differential: the expected values were
  * produced by the base revision's code through the procedure below, not by the
@@ -121,8 +123,6 @@ function dividedRoomsFixture(): LayoutDocumentWallFirst {
 			name: 'Room A',
 			boundary: [forward('wall-a-south'), forward('wall-divider'), forward('wall-a-north'), forward('wall-a-west')],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		},
 		{
 			id: 'room-b',
@@ -130,8 +130,6 @@ function dividedRoomsFixture(): LayoutDocumentWallFirst {
 			boundary: [forward('wall-b-south'), forward('wall-b-east'), forward('wall-b-north'), reverse('wall-divider')],
 			virtualEdges: [],
 			overhead: 'closed' as const,
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	);
 	document.openings.push({
@@ -158,10 +156,20 @@ function formatNeutralDigest(document: LayoutDocumentWallFirst): string {
 		...rest,
 		legs: legs.map(({ role: _legRole, ...leg }) => leg)
 	}));
+	// Historical comparison only. Every fixture in this corpus has closed Rooms
+	// with 0.1 m padding and no Layout objects or physical slabs.
+	const pad = 0.1;
+	const rooms = geometry.rooms.map((room) => {
+		const { min, max } = room.bounds3;
+		return {
+			...room, floorThickness: pad, ceilingThickness: pad,
+			bounds3: { min: [min[0], room.floorElevation - pad, min[2]], max: [max[0], room.ceilingElevation + pad, max[2]] }
+		};
+	});
 	const payload = {
 		geometry: {
 			walls,
-			rooms: geometry.rooms,
+			rooms,
 			junctions,
 			queries: geometry.queries
 		},
@@ -171,7 +179,7 @@ function formatNeutralDigest(document: LayoutDocumentWallFirst): string {
 			polygon: face.polygon,
 			signedArea: face.signedArea
 		})),
-		rooms: document.rooms,
+		rooms: document.rooms.map((room) => ({ ...room, floorThickness: pad, ceilingThickness: pad })),
 		portals: {
 			issues: validateWallFirstPortalRelations(document),
 			adjacency: document.walls.map((wall) => [

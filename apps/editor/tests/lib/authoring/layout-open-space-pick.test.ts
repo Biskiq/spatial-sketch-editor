@@ -117,8 +117,6 @@ function hallAndBooth(): LayoutDocumentWallFirst {
 			],
 			virtualEdges: [],
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		},
 		{
 			id: 'room-booth',
@@ -131,8 +129,6 @@ function hallAndBooth(): LayoutDocumentWallFirst {
 			],
 			virtualEdges: [],
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	document.floor.elevation = ELEVATION;
@@ -160,8 +156,6 @@ function lastWallOpenSpace(): LayoutDocumentWallFirst {
 				{ startJunctionId: 'j-d', endJunctionId: 'j-a' }
 			],
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}
 	];
 	document.floor.elevation = ELEVATION;

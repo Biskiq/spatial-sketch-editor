@@ -20,7 +20,7 @@ import {
 	type ViewportEvaluation
 } from '@portfolio/camera-core';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
-import { createCameraSession, sceneRadiusOf } from '$lib/authoring/stage/camera-session';
+import { createCameraSession, initialInspectionPose, sceneRadiusOf } from '$lib/authoring/stage/camera-session';
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -790,6 +790,25 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 				}
 			}
 		}
+	});
+
+	it('frames the unpadded Room at birth and keeps the inspection pose when slab bounds expand', async () => {
+		const snapshot = await enclosureSnapshot();
+		const bounds = snapshot.domain.geometry.bounds!;
+		const room = snapshot.domain.geometry.rooms[0]!;
+		expect(bounds.min[1]).toBe(room.floorElevation);
+		expect(bounds.max[1]).toBe(room.ceilingElevation);
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:slab-bounds' });
+		const rect = { left: 0, top: 0, width: 1440, height: 900, devicePixelRatio: 1 };
+		const before = camera.evaluate(rect, 0);
+		if (before.kind !== 'evaluated') throw new Error('before rebase did not evaluate');
+		expect(camera.state().pose).toEqual(initialInspectionPose(bounds));
+		const radius = camera.state().sceneRadiusMeters;
+		camera.rebaseSource('revision-slab-bounds', { min: bounds.min, max: [bounds.max[0], 20, bounds.max[2]] });
+		const after = camera.evaluate(rect, 0);
+		if (after.kind !== 'evaluated') throw new Error('after rebase did not evaluate');
+		expect(after.evaluation.pose).toEqual(before.evaluation.pose);
+		expect(camera.state().sceneRadiusMeters).toBeGreaterThan(radius);
 	});
 
 	it('rebases the session datum with the source, never refitting the pose', async () => {

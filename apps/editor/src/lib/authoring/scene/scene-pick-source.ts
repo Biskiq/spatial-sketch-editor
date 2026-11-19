@@ -1,5 +1,7 @@
 /** Mounted Scene geometry is data for the Stage hit provider, never a selection authority. */
 import { Box3, Matrix3, Mesh, Raycaster, type Intersection, type Object3D } from 'three';
+import { LAYOUT_SLICE_CONTACT_METERS, type LayoutRegionSurfaceRef } from '@portfolio/layout-core';
+import { regionSurfaceOf } from '$lib/render/layout/region-mesh-builder';
 import type { PointerRay } from '@portfolio/camera-core';
 import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
@@ -44,6 +46,7 @@ export type SceneRenderedHit = {
 	readonly entityId: string | null;
 	readonly kind: 'entity' | 'floor' | 'layout';
 	readonly wallId?: string;
+	readonly region?: LayoutRegionSurfaceRef;
 	readonly wallNormal?: [number, number, number];
 	readonly distanceMeters: number;
 	readonly worldPoint: [number, number, number];
@@ -137,12 +140,16 @@ export function createScenePickSource() {
 		const faceNormal = hit.face
 			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld)).toArray() as [number, number, number]
 			: undefined;
+		const identity = renderIdentityOf(object);
+		const surface = identity?.kind === 'region' && hit.faceIndex != null
+			? regionSurfaceOf(object.geometry, hit.faceIndex) : undefined;
 		return {
+			...(surface ? { region: { regionId: identity!.id, surface } } : {}),
 			...(face?.kind === 'wall' ? { wallId: face.segmentId } : {}),
 			...(normal === null ? {} : { wallNormal: normal.toArray() }),
 			...(faceNormal === undefined ? {} : { normal: faceNormal }),
 			entityId,
-			kind: entityId !== null ? 'entity' : renderIdentityOf(object)?.kind === 'floor' ? 'floor' : 'layout',
+			kind: entityId !== null ? 'entity' : identity?.kind === 'floor' ? 'floor' : 'layout',
 			distanceMeters: hit.distance,
 			worldPoint: hit.point.toArray()
 		};
@@ -164,6 +171,10 @@ export function createScenePickSource() {
 	}
 	function nearest(candidate: SceneRenderedHit, current: SceneRenderedHit | null): SceneRenderedHit {
 		if (current === null) return candidate;
+		if (Math.abs(candidate.distanceMeters - current.distanceMeters) <= LAYOUT_SLICE_CONTACT_METERS) {
+			if (candidate.region?.surface === 'top' && current.kind === 'floor') return candidate;
+			if (current.region?.surface === 'top' && candidate.kind === 'floor') return current;
+		}
 		if (candidate.distanceMeters < current.distanceMeters) return candidate;
 		if (candidate.distanceMeters === current.distanceMeters && (candidate.entityId ?? '') < (current.entityId ?? '')) return candidate;
 		return current;
@@ -209,7 +220,7 @@ export function createScenePickSource() {
 			return () => { if (layoutIdentity === index) { layoutIdentity = null; notify(); } };
 		},
 		/** The object that draws this Layout item, resolved through the owner's index. */
-		layoutObjectOf(kind: 'wall' | 'object' | 'floor', id: string): Object3D | null {
+		layoutObjectOf(kind: 'wall' | 'object' | 'floor' | 'region', id: string): Object3D | null {
 			return layoutIdentity?.objectOf(kind, id) ?? null;
 		},
 		entityObject(id: string): Object3D | null {
@@ -233,7 +244,9 @@ export function createScenePickSource() {
 				// Exact hierarchy/matrix/geometry stamps invalidate conservative bounds
 				// after lazy arrivals, transforms and source edits; no guessed model box.
 				if (!raycaster.ray.intersectsBox(boundsOf(root))) continue;
+				let closest: SceneRenderedHit | null = null;
 				for (const hit of raycaster.intersectObject(root, true)) {
+					if (closest && hit.distance - closest.distanceMeters > LAYOUT_SLICE_CONTACT_METERS) break;
 					if (!(hit.object instanceof Mesh)) continue;
 					let visible = true;
 					for (let node: Object3D | null = hit.object; node !== null; node = node.parent) {
@@ -244,9 +257,12 @@ export function createScenePickSource() {
 					// still in the world, but it is not what the creator can see or aim at,
 					// so the ray continues to the next hit behind it (test 10).
 					if (options.hiddenAt?.(hit.point.toArray(), hit.object) === true) continue;
-					result = nearest(describeHit(hit, target.id), result);
-					break;
+					const candidate = describeHit(hit, target.id);
+					if (closest && candidate.region?.surface !== 'top') continue;
+					closest = nearest(candidate, closest);
+					if (closest.kind !== 'floor' || target.id !== null) break;
 				}
+				if (closest) result = nearest(closest, result);
 			}
 			return result;
 		},
@@ -275,12 +291,11 @@ export function createScenePickSource() {
 		 * - An untagged mesh (a derived ceiling, the floor's shadow catcher) is not
 		 *   identified as a Layout cap source and is skipped rather than guessed at.
 		 */
-		sectionSources(): SectionSource[] {
+		sectionSources(onlyRegions = false): SectionSource[] {
 			const sources: SectionSource[] = [];
 			const root = layoutRoot;
 			if (root === null) return sources;
-			root.updateWorldMatrix(true, true);
-			root.traverse((node) => {
+			const collect = (node: Object3D) => {
 				if (!(node instanceof Mesh)) return;
 				if (!hasVisibleAncestor(node)) return;
 				const position = node.geometry.getAttribute('position');
@@ -294,12 +309,21 @@ export function createScenePickSource() {
 				if (identity.kind === 'wall-failure') return;
 				sources.push({
 					identity: `${identity.kind}:${identity.id}`,
-					group: identity.kind === 'object' ? `layout-object:${identity.id}` : LAYOUT_STRUCTURE_GROUP,
+					group: identity.kind === 'region' ? `layout-region:${identity.id}` : identity.kind === 'object' ? `layout-object:${identity.id}` : LAYOUT_STRUCTURE_GROUP,
 					positions: position.array as ArrayLike<number>,
 					index: node.geometry.getIndex()?.array ?? null,
 					matrix: node.matrixWorld.elements
 				});
-			});
+			};
+			if (onlyRegions) {
+				for (const mesh of layoutIdentity?.regionMeshes?.() ?? []) {
+					mesh.updateWorldMatrix(true, false);
+					collect(mesh);
+				}
+			} else {
+				root.updateWorldMatrix(true, true);
+				root.traverse(collect);
+			}
 			return sources;
 		},
 		/**

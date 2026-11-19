@@ -606,8 +606,8 @@ function cloneRoomEnclosure(
 			endJunctionId: junctionIdMap.get(edge.endJunctionId)!
 		})),
 		overhead: source.overhead,
-		floorThickness: source.floorThickness,
-		ceilingThickness: source.ceilingThickness
+
+
 	};
 
 	// Associated Layout objects only: explicit roomId equals the source Room.

@@ -119,8 +119,8 @@ describe('compileWallFirstLayoutGeometry', () => {
 		expect(room.floorElevation).toBe(2.5);
 		// The datum plus the 4 m boundary Wall height.
 		expect(room.ceilingElevation).toBe(6.5);
-		expect(geometry.bounds!.min[1]).toBeCloseTo(2.5 - room.floorThickness, 9);
-		expect(geometry.bounds!.max[1]).toBeCloseTo(6.5 + room.ceilingThickness, 9);
+		expect(geometry.bounds!.min[1]).toBeCloseTo(2.5, 9);
+		expect(geometry.bounds!.max[1]).toBeCloseTo(6.5, 9);
 	});
 
 	it('emits an object-targeted issue and omits invalid objects', () => {
@@ -270,8 +270,6 @@ describe('compileWallFirstLayoutGeometry', () => {
 						{ wallId: 'wall-d', direction: 'forward' }
 					],
 					virtualEdges: [], overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				},
 				{
 					id: 'room-second',
@@ -285,12 +283,11 @@ describe('compileWallFirstLayoutGeometry', () => {
 					],
 					virtualEdges: [],
 					overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			],
 			openings: [],
-			objects: []
+			objects: [],
+			regions: []
 		};
 		const { geometry } = compileWallFirstLayoutGeometry(document);
 		// One canonical wall per document Wall, unique IDs covering all four.
@@ -328,7 +325,8 @@ describe('compileWallFirstLayoutGeometry', () => {
 			],
 			rooms: [],
 			openings: [],
-			objects: []
+			objects: [],
+			regions: []
 		};
 		const { geometry } = compileWallFirstLayoutGeometry(document);
 		expect(geometry.walls).toHaveLength(1);
@@ -392,8 +390,6 @@ describe('compileWallFirstLayoutGeometry', () => {
 					],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				},
 				{
 					id: 'room-broken',
@@ -401,8 +397,6 @@ describe('compileWallFirstLayoutGeometry', () => {
 					boundary: [{ wallId: 'wall-missing', direction: 'forward' }],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				},
 				{
 					id: 'room-empty',
@@ -410,12 +404,11 @@ describe('compileWallFirstLayoutGeometry', () => {
 					boundary: [],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			],
 			openings: [],
-			objects: []
+			objects: [],
+			regions: []
 		};
 		const { geometry, issues } = compileWallFirstLayoutGeometry(document);
 		// Only the resolvable Room compiles, with its derived ceiling.
@@ -457,7 +450,7 @@ describe('compileLayoutGeometrySource floor loop', () => {
 			[x, z + depth]
 		];
 		return {
-			room: { id, wallThickness: 0.16, floorThickness: 0.1, ceilingThickness: 0.1 },
+			room: { id, wallThickness: 0.16 },
 			boundary: {
 				closed: true,
 				segments: corners.map((start, index) => ({
@@ -479,7 +472,7 @@ describe('compileLayoutGeometrySource floor loop', () => {
 			end
 		});
 		return {
-			room: { id, wallThickness: 0.16, floorThickness: 0.1, ceilingThickness: 0.1 },
+			room: { id, wallThickness: 0.16 },
 			boundary: {
 				closed: true,
 				segments: [
@@ -520,7 +513,7 @@ describe('compileLayoutGeometrySource floor loop', () => {
 
 		// Document bounds span both floors.
 		expect(geometry.bounds).not.toBeNull();
-		expect(geometry.bounds!.max[1]).toBeCloseTo(6.1, 9);
+		expect(geometry.bounds!.max[1]).toBeCloseTo(6, 9);
 	});
 
 	it('keeps issue paths floor-indexed when a later floor has a bad room (B1)', () => {

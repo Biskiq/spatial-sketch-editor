@@ -12,6 +12,7 @@
  * second cut, and SL3's analytic Section is out of scope. The primary cut plane is
  * capped exactly once, from the same drawn meshes SL1 uses.
  */
+import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core';
 import {
 	sectionMeshes,
 	type CapAssemblyIssue,
@@ -146,8 +147,28 @@ function drawnPlane(resolved: DrawnResolvedSlice): {
 			normal[1] * resolved.origin[1] +
 			normal[2] * resolved.origin[2]
 		),
-		sectionOffsetMeters: 1e-4
+		sectionOffsetMeters: LAYOUT_SLICE_CONTACT_METERS
 	};
+}
+
+/** A slab that only touches the actual cut plane contributes no cap. */
+function slabStraddlesSection(input: SectionInput, normal: readonly [number, number, number], constant: number): boolean {
+	if (!input.group?.startsWith('layout-region:')) return true;
+	const m = input.matrix;
+	const [x, y, z] = normal;
+	const dx = m ? x * m[0]! + y * m[1]! + z * m[2]! : x;
+	const dy = m ? x * m[4]! + y * m[5]! + z * m[6]! : y;
+	const dz = m ? x * m[8]! + y * m[9]! + z * m[10]! : z;
+	const origin = m ? constant + x * m[12]! + y * m[13]! + z * m[14]! : constant;
+	let shown = false;
+	let hidden = false;
+	for (let i = 0; i < input.positions.length; i += 3) {
+		const distance = origin + dx * input.positions[i]! + dy * input.positions[i + 1]! + dz * input.positions[i + 2]!;
+		shown ||= distance > LAYOUT_SLICE_CONTACT_METERS;
+		hidden ||= distance < -LAYOUT_SLICE_CONTACT_METERS;
+		if (shown && hidden) return true;
+	}
+	return false;
 }
 
 /**
@@ -162,10 +183,12 @@ export function sectionForSlice(
 	resolved: ResolvedSlice
 ): SliceSection {
 	if (resolved.kind === 'level') {
-		const result = sectionMeshes(inputs, { normal: [0, -1, 0], constant: resolved.cutY });
+		const normal = [0, -1, 0] as const;
+		const result = sectionMeshes(inputs.filter((input) => slabStraddlesSection(input, normal, resolved.cutY)), { normal, constant: resolved.cutY });
 		return { result, basis: result.basis, extent: null };
 	}
-	const result = sectionMeshes(inputs, drawnPlane(resolved));
+	const plane = drawnPlane(resolved);
+	const result = sectionMeshes(inputs.filter((input) => slabStraddlesSection(input, plane.normal, plane.constant)), plane);
 	const uStart = basisUOf(result.basis, resolved.start);
 	const uEnd = basisUOf(result.basis, resolved.end);
 	const uMin = Math.min(uStart, uEnd);

@@ -92,8 +92,8 @@ export type CompilerFloorSource = {
 export type CompilerRoomShell = {
 	id: string;
 	wallThickness: number;
-	floorThickness: number;
-	ceilingThickness: number;
+
+
 	/** Authored overhead intent; absent keeps the closed lid. */
 	overhead?: 'closed' | 'open-to-sky';
 };
@@ -245,8 +245,8 @@ export type CompiledRoom = CompiledIdentity & {
 	openSides?: CompiledSpaceEdge[];
 	floorElevation: number;
 	ceilingElevation: number;
-	floorThickness: number;
-	ceilingThickness: number;
+
+
 	wallThickness: number;
 	floorPolygon: LayoutVec2[];
 	ceilingPolygon: LayoutVec2[];
@@ -335,7 +335,8 @@ export type CompiledQuerySpan = CompiledIdentity & {
 	wallKey?: string;
 };
 export type CompiledQueryPolygon = CompiledIdentity & {
-	kind: 'room-floor' | 'object-footprint';
+	kind: 'room-floor' | 'object-footprint' | 'region-top' | 'region-underside';
+	elevation?: number;
 	polygon: LayoutVec2[];
 	aabb: LayoutBounds2;
 	sourceId: string;
@@ -344,7 +345,9 @@ export type CompiledQueryPolygon = CompiledIdentity & {
 	objectId?: string;
 };
 export type CompiledQueryAabb = CompiledIdentity & {
-	kind: 'room' | 'wall' | 'opening' | 'object' | 'floor' | 'document';
+	kind: 'room' | 'wall' | 'opening' | 'object' | 'floor' | 'document' | 'region';
+	floorId?: string;
+	bounds3?: LayoutBounds3;
 	aabb: LayoutBounds2;
 	sourceId: string;
 };
@@ -589,7 +592,19 @@ export type CompiledJunction = CompiledIdentity & {
 	bounds3: LayoutBounds3;
 };
 
+export type CompiledRegion = CompiledIdentity & {
+	regionId: string;
+	role: 'floor' | 'overhead';
+	footprint: LayoutVec2[];
+	bottomY: number;
+	topY: number;
+	faces: { surface: 'top' | 'underside' | 'edge'; polygon: Vec3[]; normal: Vec3 }[];
+	bounds2: LayoutBounds2;
+	bounds3: LayoutBounds3;
+};
+
 export type CompiledLayoutGeometry = {
+	regions: CompiledRegion[];
 	floors: CompiledFloor[];
 	rooms: CompiledRoom[];
 	/**

@@ -863,6 +863,7 @@ function buildCowWrapper(
 		rooms: overrides.rooms ?? baseline.rooms,
 		openings: overrides.openings ?? baseline.openings,
 		objects: overrides.objects ?? baseline.objects,
+		regions: baseline.regions,
 		...(baseline.identity !== undefined ? { identity: baseline.identity } : {})
 	};
 }

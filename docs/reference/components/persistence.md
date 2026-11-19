@@ -84,7 +84,7 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 8, Scene 9, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 9, Scene 9, Camera 1, Experience 4 and resources 2.
 Layout's envelope unit version is not a second number: `LAYOUT_UNIT_FORMAT_VERSION` is the Layout
 `formatVersion` itself (`LAYOUT_WALL_FIRST_FORMAT_VERSION`), so one authority governs the unit
 header and the payload.
@@ -93,6 +93,15 @@ entry Views, stays, invitations, outgoing transitions and Presentation naming. E
 are refused without conversion.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
+
+Layout 8 source is refused at Open, Load and Save. Opening refused source preserves the
+current editor session. A refused Save leaves the stored head and receipt untouched.
+A pending Save with a recognizable incompatible Layout stamp keeps its exact stored bytes
+and remains available for download or explicit discard. A new sign-in handoff cannot
+overwrite that capture. Activation against existing storage remains gated on an inventory
+of heads, revisions, pending captures and releases, a tested restore with the outgoing reader,
+and the owner's approved disposition for every affected source. See the
+[verticality cutover gate](../../roadmap/t1-spatial-world/next-batch/v-plan-verticality.md#stored-source-and-activation).
 
 **Scene 9** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
 optional `environment` and the project Artwork shelf. The shelf owns project-local image entries. Every

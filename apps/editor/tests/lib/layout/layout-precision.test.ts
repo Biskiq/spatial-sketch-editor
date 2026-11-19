@@ -43,13 +43,12 @@ function squareDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'w4', direction: 'forward' }
 			],
 			virtualEdges: [], overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		}],
 		openings: [{
 			id: 'door', wallId: 'w1', kind: 'door', offset: 1, width: 1, height: 2, sillHeight: 0, profile: 'rectangular'
 		}],
-		objects: [{ id: 'chair', kind: 'box', position: [1, 0.5, 1], rotation: [0, 0, 0], dimensions: [1, 1, 1] }]
+		objects: [{ id: 'chair', kind: 'box', position: [1, 0.5, 1], rotation: [0, 0, 0], dimensions: [1, 1, 1] }],
+		regions: []
 	};
 }
 

@@ -45,7 +45,8 @@ function shell(options: {
 		})),
 		rooms: [] as LayoutWallFirstRoom[],
 		openings: options.openings ?? [],
-		objects: options.objects ?? []
+		objects: options.objects ?? [],
+		regions: []
 	};
 }
 
@@ -59,8 +60,6 @@ function roomFromFace(
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 }
 
@@ -428,8 +427,8 @@ describe('P23.4 isolated Room duplicate', () => {
 		const clone = plan.document.rooms.find((room) => room.id === capturedId(capture, 'room-1-copy'))!;
 		expect(clone).toBeDefined();
 		expect(clone.name).toBe('Alone copy');
-		expect(clone.floorThickness).toBe(0.1);
-		expect(clone.ceilingThickness).toBe(0.1);
+
+
 		const cloneWallIds = new Set(plan.createdWallIds);
 		for (const ref of clone.boundary) {
 			expect(cloneWallIds.has(ref.wallId)).toBe(true);
@@ -538,8 +537,6 @@ describe('P23.4 isolated Room duplicate', () => {
 						{ wallId: 'wall-o4', direction: 'forward' }
 					],
 					virtualEdges: [], overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			]
 		};

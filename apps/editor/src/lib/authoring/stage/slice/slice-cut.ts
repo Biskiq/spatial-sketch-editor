@@ -20,6 +20,7 @@
  * `slice-ghost.ts` treats exactly. SL3's analytic Section is not part of this
  * contract.
  */
+import { LAYOUT_SLICE_CONTACT_METERS } from '@portfolio/layout-core';
 import type { PlanParameterOverrides } from '../plan-parameters';
 import { PLAN_DEFAULT_DEPTH_METERS } from '../plan-parameters';
 import type { StageHeightTick } from '../stage-height-sheet';
@@ -107,7 +108,7 @@ export type HiddenPiece =
 	  };
 
 /** The boundary tolerance every CPU predicate shares. Display stays exact. */
-export const SLICE_HIDE_EPSILON_METERS = 1e-4;
+export const SLICE_HIDE_EPSILON_METERS = LAYOUT_SLICE_CONTACT_METERS;
 
 /** The nearest a drawn depth may come to its cut plane. */
 export const SLICE_MIN_DRAWN_DEPTH_METERS = 0.1;

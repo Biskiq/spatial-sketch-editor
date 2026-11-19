@@ -30,13 +30,14 @@ function layout(
 ): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 8,
+		formatVersion: 9,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: Object.entries(points).map(([id, point]) => ({ id, point })),
 		walls,
 		rooms: [],
 		openings,
-		objects: []
+		objects: [],
+		regions: []
 	} as unknown as LayoutDocumentWallFirst;
 }
 

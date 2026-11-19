@@ -30,7 +30,8 @@ function documentWith(
 		walls,
 		rooms: [],
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 

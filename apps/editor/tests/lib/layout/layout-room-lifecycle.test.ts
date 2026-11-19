@@ -4,8 +4,7 @@
  * PR #115 (§7.2 category D extraction) removed the editor shell, so this file
  * calls `layout-core` directly and keeps the planner contract verbatim:
  *
- * - `planRoomMetadataUpdate` edits `name` / `floorThickness` /
- *   `ceilingThickness` on a canonical Room **without** topology
+ * - `planRoomMetadataUpdate` edits `name` or `overhead` on a canonical Room **without** topology
  *   reconciliation (metadata is not topology), rejects `boundary`/legacy
  *   patches (`invalid_patch`), empty names and non-positive/non-finite
  *   thicknesses (`invalid_value`), and no-op patches (`no_op`) so callers
@@ -88,7 +87,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 8 as const,
+		formatVersion: 9 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -100,7 +99,8 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [] as LayoutDocumentWallFirst['openings'],
-		objects: [] as LayoutDocumentWallFirst['objects']
+		objects: [] as LayoutDocumentWallFirst['objects'],
+		regions: []
 	};
 	const extraction = extractBoundaryCandidateFaces({ ...shell, rooms: [] });
 	const leftFace = extraction.faces.find((face) =>
@@ -118,8 +118,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 	return {
 		...shell,
@@ -170,7 +168,7 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 8 as const,
+		formatVersion: 9 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -182,7 +180,8 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [] as LayoutDocumentWallFirst['openings'],
-		objects: [] as LayoutDocumentWallFirst['objects']
+		objects: [] as LayoutDocumentWallFirst['objects'],
+		regions: []
 	};
 	const extraction = extractBoundaryCandidateFaces({ ...shell, rooms: [] });
 	const outerFace = extraction.faces.find((face) =>
@@ -200,8 +199,6 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 	return {
 		...shell,
@@ -241,39 +238,19 @@ describe('P23.6d planRoomMetadataUpdate — metadata is not topology', () => {
 		expect(validateWallFirstLayoutDocument(plan.document).success).toBe(true);
 	});
 
-	it('updates floor/ceiling thickness through the canonical numeric rule only', () => {
-		const plan = success(
-			planRoomMetadataUpdate(BASE, 'room-left', { floorThickness: 0.25, ceilingThickness: 0.3 })
-		);
-		const room = plan.document.rooms.find((candidate) => candidate.id === 'room-left')!;
-		expect(room.floorThickness).toBe(0.25);
-		expect(room.ceilingThickness).toBe(0.3);
-		// The unrelated room is untouched.
-		expect(plan.document.rooms.find((candidate) => candidate.id === 'room-right')).toEqual(
-			BASE.rooms.find((candidate) => candidate.id === 'room-right')
-		);
-	});
-
 	it('allows duplicate names (id is identity, mirroring legacy behavior)', () => {
 		const plan = success(planRoomMetadataUpdate(BASE, 'room-right', { name: 'Left' }));
 		expect(plan.document.rooms.map((room) => room.name).sort()).toEqual(['Left', 'Left']);
 	});
 
-	it('rejects an empty/blank/non-string name and non-positive thicknesses', () => {
+	it('rejects an empty/blank/non-string name', () => {
 		expect(rejection(planRoomMetadataUpdate(BASE, 'room-left', { name: '   ' })).code).toBe(
 			'invalid_value'
 		);
 		expect(
 			rejection(planRoomMetadataUpdate(BASE, 'room-left', { name: 5 as unknown as string })).code
 		).toBe('invalid_value');
-		for (const value of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
-			expect(
-				rejection(planRoomMetadataUpdate(BASE, 'room-left', { floorThickness: value })).code
-			).toBe('invalid_value');
-			expect(
-				rejection(planRoomMetadataUpdate(BASE, 'room-left', { ceilingThickness: value })).code
-			).toBe('invalid_value');
-		}
+
 	});
 
 	it('rejects boundary and legacy patches with invalid_patch', () => {
@@ -306,7 +283,7 @@ describe('P23.6d planRoomMetadataUpdate — metadata is not topology', () => {
 		);
 		expect(rejection(planRoomMetadataUpdate(BASE, 'room-left', {})).code).toBe('no_op');
 		expect(
-			rejection(planRoomMetadataUpdate(BASE, 'room-left', { floorThickness: 0.1, name: 'Left' })).code
+			rejection(planRoomMetadataUpdate(BASE, 'room-left', { name: 'Left' })).code
 		).toBe('no_op');
 	});
 

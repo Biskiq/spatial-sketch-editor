@@ -43,10 +43,10 @@ export const P23B11_PRODUCTION_CARRY_IDS = [
 export const P23B11_PRODUCTION_CARRY_REFERENCE: readonly P23B11ProductionCarryRow[] = [
 	{
 		id: 'd-connected-outer-wall-retire',
-		operationDocumentSha256: '36ddadd441dfce297617ba46ae0bfce07768722619de358a9fe3583b74dc333b',
+		operationDocumentSha256: '9560eec6d5768ab3a79722f8b44b22b498c069f84648b6befd5a83f3ed1dfa45',
 		fidelity: true,
 		reconciliation: {
-			documentSha256: '36ddadd441dfce297617ba46ae0bfce07768722619de358a9fe3583b74dc333b',
+			documentSha256: '9560eec6d5768ab3a79722f8b44b22b498c069f84648b6befd5a83f3ed1dfa45',
 			retiredRoomIds: [],
 			rooms: [
 				{ id: 'grid:room-0-1', name: 'Grid Room 0-1' },
@@ -75,10 +75,10 @@ export const P23B11_PRODUCTION_CARRY_REFERENCE: readonly P23B11ProductionCarryRo
 	},
 	{
 		id: 'd-straight-12-outer-wall-retire',
-		operationDocumentSha256: '4a78f54886b4a29d697718ea5e0318d3bd5342a88d814c0038b2fdde189428ba',
+		operationDocumentSha256: '0e8d313d61c41cd9438c466e2193a948e501cb8eb01c5c99e830b2983b20574c',
 		fidelity: true,
 		reconciliation: {
-			documentSha256: '4a78f54886b4a29d697718ea5e0318d3bd5342a88d814c0038b2fdde189428ba',
+			documentSha256: '0e8d313d61c41cd9438c466e2193a948e501cb8eb01c5c99e830b2983b20574c',
 			retiredRoomIds: [],
 			rooms: [
 				{ id: 'room-1', name: 'Room 1' },
@@ -101,10 +101,10 @@ export const P23B11_PRODUCTION_CARRY_REFERENCE: readonly P23B11ProductionCarryRo
 	},
 	{
 		id: 'f-d12-exact-coincidence-role-change',
-		operationDocumentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94',
+		operationDocumentSha256: 'be2e1bebe718ec466fb47acf5b9c84768be79ce9ab13dcf7cc4858468eeaa240',
 		fidelity: true,
 		reconciliation: {
-			documentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94',
+			documentSha256: 'be2e1bebe718ec466fb47acf5b9c84768be79ce9ab13dcf7cc4858468eeaa240',
 			retiredRoomIds: [],
 			rooms: [
 				{ id: 'room-k', name: 'Room k' },
@@ -121,10 +121,10 @@ export const P23B11_PRODUCTION_CARRY_REFERENCE: readonly P23B11ProductionCarryRo
 	},
 	{
 		id: 'f-d12-full-containment-role-change',
-		operationDocumentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94',
+		operationDocumentSha256: 'be2e1bebe718ec466fb47acf5b9c84768be79ce9ab13dcf7cc4858468eeaa240',
 		fidelity: true,
 		reconciliation: {
-			documentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94',
+			documentSha256: 'be2e1bebe718ec466fb47acf5b9c84768be79ce9ab13dcf7cc4858468eeaa240',
 			retiredRoomIds: [],
 			rooms: [
 				{ id: 'room-k', name: 'Room k' },

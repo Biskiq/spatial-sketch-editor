@@ -66,7 +66,8 @@ function shell(options: {
 		})),
 		rooms: options.rooms ?? [],
 		openings: options.openings ?? [],
-		objects: options.objects ?? []
+		objects: options.objects ?? [],
+		regions: []
 	};
 }
 
@@ -80,8 +81,6 @@ function roomFromFace(
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 }
 
@@ -210,8 +209,6 @@ function twoRoomDocument(extra?: {
 								{ wallId: 'wall-o4', direction: 'forward' as const }
 							],
 							virtualEdges: [], overhead: 'closed' as const,
-							floorThickness: 0.1,
-							ceilingThickness: 0.1
 						}
 					]
 				: [])
@@ -666,8 +663,6 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 						{ wallId: 'wall-o4', direction: 'forward' }
 					],
 					virtualEdges: [], overhead: 'closed',
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			]
 		};

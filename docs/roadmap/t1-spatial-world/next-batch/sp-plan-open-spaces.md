@@ -1,5 +1,10 @@
 # T1 SP-plan — Open Spaces architecture
 
+V1a supersedes this plan's Layout 8 encoding and Room padding. Current Space writes
+use Layout 9, and open and enclosed merges apply the existing survivor and overhead
+rules with the current Room fields. See the [Layout contract](../../../reference/components/layout.md).
+
+
 **Status:** owner-approved architecture, Tier 2. Decisions B1–B4 and the extended merge rule are
 ratified (§15). Planning only: no production code, schema, fixture or approved-roadmap edit is in
 this PR, and nothing here is production acceptance. Each slice still opens its own PR.

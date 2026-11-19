@@ -398,19 +398,18 @@ function fixture() {
 			boundary,
 			virtualEdges: [],
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 	}
 	const orbitDocument: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 8,
+		formatVersion: 9,
 		floor: { id: 'orbit-floor', name: 'Orbit Floor', elevation: 0 },
 		junctions: orbitJunctions,
 		walls: orbitWalls,
 		rooms: orbitRooms,
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 	const orbitCompilation = compileWallFirstLayoutGeometry(orbitDocument);
 	const orbitEnds = legJoinsByWall(orbitCompilation.geometry.junctions);

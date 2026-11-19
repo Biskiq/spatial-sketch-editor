@@ -64,7 +64,6 @@ export type ReconciliationRejection = {
 	code:
 		| 'ambiguous_room_correspondence'
 		| 'unsupported_component'
-		| 'metadata_merge_conflict'
 		| 'unresolved_portal_remap'
 		| 'unresolved_room_reference'
 		/** A carried Space would fail I4 or I7 and the operation may not retire it. */
@@ -151,12 +150,6 @@ export type RoomIdAllocator = {
 	/** Deterministic default room name; `existingNames` holds all taken names. */
 	nextRoomName(existingNames: readonly string[]): string;
 };
-
-/** Current Room creation defaults. */
-export const ROOM_CREATION_DEFAULTS = {
-	floorThickness: 0.1,
-	ceilingThickness: 0.1
-} as const;
 
 /**
  * Predecessor Room boundary as an ordered X/Z polygon, resolved against a
@@ -1270,28 +1263,6 @@ function roomOutlinePolygon(
 	return spaceBoundaryPolygonFromEdges(composed.edges, document);
 }
 
-/** Merge thickness policy: conflicting authored surface fields reject, never choose. */
-function mergeFieldConflict(
-	first: LayoutWallFirstRoom,
-	second: LayoutWallFirstRoom
-): ReconciliationFailure | null {
-	if (first.floorThickness !== second.floorThickness) {
-		return failure({
-			code: 'metadata_merge_conflict',
-			message: `Merged spaces disagree on floorThickness (${first.id}: ${first.floorThickness}, ${second.id}: ${second.floorThickness})`,
-			roomIds: [first.id, second.id]
-		});
-	}
-	if (first.ceilingThickness !== second.ceilingThickness) {
-		return failure({
-			code: 'metadata_merge_conflict',
-			message: `Merged spaces disagree on ceilingThickness (${first.id}: ${first.ceilingThickness}, ${second.id}: ${second.ceilingThickness})`,
-			roomIds: [first.id, second.id]
-		});
-	}
-	return null;
-}
-
 export function reconcileRooms(options: {
 	baseline: LayoutDocumentWallFirst;
 	candidateDocument: Omit<LayoutDocumentWallFirst, 'rooms'>;
@@ -1434,8 +1405,8 @@ export function reconcileRooms(options: {
 					boundary: [...face.boundary],
 					virtualEdges: [],
 					overhead: 'closed',
-					floorThickness: ROOM_CREATION_DEFAULTS.floorThickness,
-					ceilingThickness: ROOM_CREATION_DEFAULTS.ceilingThickness
+
+
 				});
 				lineage.push({ faceKey, roomId, predecessorRoomIds: [], kind: 'created' });
 			}
@@ -1497,8 +1468,8 @@ export function reconcileRooms(options: {
 				boundary: [...loser.boundary],
 				virtualEdges: [],
 				overhead: predecessor.overhead,
-				floorThickness: predecessor.floorThickness,
-				ceilingThickness: predecessor.ceilingThickness
+
+
 			});
 			lineage.push({
 				faceKey: winner.key,
@@ -1532,22 +1503,6 @@ export function reconcileRooms(options: {
 				});
 			}
 			const retired = predecessors.find((room) => room.id !== winner.id)!;
-			// Field-level metadata policy: conflicting authored surface fields
-			// reject rather than silently choosing.
-			if (predecessors[0]!.floorThickness !== predecessors[1]!.floorThickness) {
-				return failure({
-					code: 'metadata_merge_conflict',
-					message: `Merged rooms disagree on floorThickness (${predecessors[0]!.id}: ${predecessors[0]!.floorThickness}, ${predecessors[1]!.id}: ${predecessors[1]!.floorThickness})`,
-					roomIds: [predecessors[0]!.id, predecessors[1]!.id]
-				});
-			}
-			if (predecessors[0]!.ceilingThickness !== predecessors[1]!.ceilingThickness) {
-				return failure({
-					code: 'metadata_merge_conflict',
-					message: `Merged rooms disagree on ceilingThickness (${predecessors[0]!.id}: ${predecessors[0]!.ceilingThickness}, ${predecessors[1]!.id}: ${predecessors[1]!.ceilingThickness})`,
-					roomIds: [predecessors[0]!.id, predecessors[1]!.id]
-				});
-			}
 		finalRooms.push({
 			...winner,
 			boundary: [...face.boundary],
@@ -1672,8 +1627,6 @@ export function reconcileRooms(options: {
 					roomIds: [first.room.id, second.room.id]
 				});
 			}
-			const thicknessConflict = mergeFieldConflict(first.room, second.room);
-			if (thicknessConflict) return thicknessConflict;
 			const mergedPolygon = carriedCyclePolygon(candidateDocument, first.room.id, spliced) ?? [];
 			const winner = chooseMergeSurvivor({
 				predecessors: [first.room, second.room],

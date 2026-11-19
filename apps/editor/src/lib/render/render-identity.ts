@@ -18,7 +18,7 @@
 import type { Object3D } from 'three';
 
 /** The kinds of Layout render item whose identity is owned by a representation. */
-export type RenderIdentityKind = 'wall' | 'wall-failure' | 'object' | 'floor';
+export type RenderIdentityKind = 'wall' | 'wall-failure' | 'object' | 'floor' | 'region';
 
 /** The tag recorded on an object's `userData`. Plain data: it must stay JSON-cloneable. */
 export type RenderIdentity = {
@@ -54,7 +54,8 @@ export type LayoutIdentityIndex = {
 	 * released, or disposed). A Wall that failed to build resolves to its failure
 	 * surface; read {@link renderIdentityOf} to tell the two apart.
 	 */
-	objectOf(kind: 'wall' | 'object' | 'floor', id: string): Object3D | null;
+	objectOf(kind: 'wall' | 'object' | 'floor' | 'region', id: string): Object3D | null;
+	regionMeshes?(): Iterable<Object3D>;
 };
 
 /**

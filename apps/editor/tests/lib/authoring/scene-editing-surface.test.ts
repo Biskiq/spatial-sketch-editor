@@ -892,8 +892,8 @@ describe('Scene adapter registration', () => {
 		const floor = new Mesh(new PlaneGeometry(7, 6), new MeshBasicMaterial());
 		floor.name = 'VisitorFloor:test'; tagRenderIdentity(floor, 'floor', 'test'); floor.position.set(3.5, 0, 3); floor.rotation.x = -Math.PI / 2;
 		const root = new Group(); root.add(floor);
-		const wall = new Mesh(new BoxGeometry(1, 2, 1), new MeshBasicMaterial());
-		wall.position.set(4, 2, 3.5); root.add(wall);
+		const wall = new Mesh(new BoxGeometry(1.5, 2, 1), new MeshBasicMaterial());
+		wall.position.set(3.8, 2, 3.5); root.add(wall);
 		rendered.registerLayout(root);
 		function at(point: Vec3) {
 			const css = facade.projectWorld(point, facade.evaluationId()!);

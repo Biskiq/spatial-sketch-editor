@@ -22,6 +22,7 @@
  * - X crossings split both walls against one shared new Junction, processed
  *   in stable Wall-ID order.
  */
+import { carryRegionWallIntents } from './layout-region';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutJunction,
@@ -308,6 +309,7 @@ function planWallSplitInternal(
 			junctions,
 			walls,
 			rooms,
+			regions: carryRegionWallIntents(document.regions, new Map([[wallId, [wallId, newWallId]]])),
 			openings
 		},
 		junctionId,

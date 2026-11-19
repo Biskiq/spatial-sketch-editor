@@ -4,7 +4,6 @@ import type { LayoutVec2 } from '@portfolio/layout-core';
 import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
 import {
 	reconcileRooms,
-	ROOM_CREATION_DEFAULTS,
 	type ComponentLineage,
 	type RoomIdAllocator
 } from '@portfolio/layout-core';
@@ -37,7 +36,8 @@ function document(
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 }
 
@@ -109,7 +109,6 @@ function room(
 	id: string,
 	name: string,
 	boundary: Array<{ wallId: string; direction: 'forward' | 'reverse' }>,
-	overrides: Partial<{ floorThickness: number; ceilingThickness: number }> = {}
 ) {
 	return {
 		id,
@@ -117,9 +116,6 @@ function room(
 		boundary,
 		virtualEdges: [],
 		overhead: 'closed' as const,
-		floorThickness: 0.1,
-		ceilingThickness: 0.1,
-		...overrides
 	};
 }
 
@@ -136,10 +132,7 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 			throw new Error('expected success');
 		}
 		expect(result.document.rooms).toHaveLength(1);
-		expect(result.document.rooms[0]!.floorThickness).toBe(ROOM_CREATION_DEFAULTS.floorThickness);
-		expect(result.document.rooms[0]!.ceilingThickness).toBe(
-			ROOM_CREATION_DEFAULTS.ceilingThickness
-		);
+		expect(result.document.regions).toEqual([]);
 		expect(result.lineage[0]!.kind).toBe('created');
 		expect(result.retiredRoomIds).toEqual([]);
 	});
@@ -148,9 +141,7 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 		const baseline: LayoutDocumentWallFirst = {
 			...RECT,
 			rooms: [
-				room('room-main', 'Main', RECT_FACE.boundary.map((ref) => ({ ...ref })), {
-					floorThickness: 0.15
-				})
+				room('room-main', 'Main', RECT_FACE.boundary.map((ref) => ({ ...ref })))
 			]
 		};
 		const result = reconcileRooms({
@@ -166,7 +157,6 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 		const preserved = result.document.rooms[0]!;
 		expect(preserved.id).toBe('room-main');
 		expect(preserved.name).toBe('Main');
-		expect(preserved.floorThickness).toBe(0.15);
 		expect(result.lineage[0]!.kind).toBe('preserved');
 	});
 
@@ -196,7 +186,6 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 		const survivor = result.document.rooms.find((entry) => entry.id === 'room-main')!;
 		expect(survivor.boundary).toEqual(SPLIT_LEFT_FACE.boundary.map((ref) => ({ ...ref })));
 		const newborn = result.document.rooms.find((entry) => entry.id !== 'room-main')!;
-		expect(newborn.floorThickness).toBe(0.1); // inherited from predecessor
 		expect(result.lineage.map((record) => record.kind).sort()).toEqual(['created', 'split-survivor']);
 		expect(result.retiredRoomIds).toEqual([]);
 	});
@@ -284,14 +273,12 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 		expect(result.lineage[0]!.kind).toBe('merge-survivor');
 	});
 
-	it('rejects a merge whose authored surface metadata conflicts (H5 §6.4)', () => {
+	it('merges the enclosed pair using the survivor’s generated surfaces', () => {
 		const baseline: LayoutDocumentWallFirst = {
 			...SPLIT_CANDIDATE,
 			rooms: [
 				room('room-left', 'Left', SPLIT_LEFT_FACE.boundary.map((ref) => ({ ...ref }))),
-				room('room-right', 'Right', SPLIT_RIGHT_FACE.boundary.map((ref) => ({ ...ref })), {
-					floorThickness: 0.2
-				})
+				room('room-right', 'Right', SPLIT_RIGHT_FACE.boundary.map((ref) => ({ ...ref })))
 			]
 		};
 		const result = reconcileRooms({
@@ -306,10 +293,11 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 			],
 			allocator: allocator()
 		});
-		expect(result).toEqual({
-			kind: 'rejected',
-			rejection: expect.objectContaining({ code: 'metadata_merge_conflict' })
-		});
+		if (!('document' in result)) throw new Error('Expected enclosed merge');
+		expect(result.document.rooms.map(({ id, overhead }) => ({ id, overhead }))).toEqual([
+			{ id: 'room-left', overhead: 'closed' }
+		]);
+		expect(result.document.regions).toEqual([]);
 	});
 
 	it('retires rooms outside every component and clears their dangling associations', () => {
@@ -718,7 +706,6 @@ describe('Room reconciliation — rejection guards', () => {
 		expect(newborns).toHaveLength(2);
 		expect(new Set(newborns.map((entry) => entry.id)).size).toBe(2);
 		expect(new Set(newborns.map((entry) => entry.name)).size).toBe(2);
-		expect(newborns.every((entry) => entry.floorThickness === ROOM_CREATION_DEFAULTS.floorThickness)).toBe(true);
 		expect(result.lineage.find((record) => record.roomId === 'room-main')!.kind).toBe('preserved');
 		expect(result.retiredRoomIds).toEqual([]);
 	});

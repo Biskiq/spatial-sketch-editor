@@ -51,8 +51,6 @@ function documentWithRooms(count: number): LayoutDocumentWallFirst {
 		name: `Room ${index + 1}`,
 		boundary: [{ wallId: `wall-${index + 1}`, direction: 'forward' as const }],
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	}));
 	return document;
 }
@@ -88,8 +86,6 @@ function validDocumentWithRooms(count: number): LayoutDocumentWallFirst {
 				direction: 'forward' as const
 			})),
 			virtualEdges: [], overhead: 'closed' as const,
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 	}
 	document.rooms = rooms;
@@ -221,8 +217,6 @@ describe('P23.12 allocation and ledger', () => {
 					name: 'Room 3',
 					boundary: [{ wallId: 'wall-9', direction: 'forward' }],
 					virtualEdges: [], overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			]
 		};
@@ -253,8 +247,6 @@ describe('P23.12 allocation and ledger', () => {
 					boundary: [{ wallId: 'wall-1', direction: 'forward' }],
 					virtualEdges: [],
 					overhead: 'closed' as const,
-					floorThickness: 0.1,
-					ceilingThickness: 0.1
 				}
 			]
 		};

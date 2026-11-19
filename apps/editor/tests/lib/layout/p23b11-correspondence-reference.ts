@@ -118,7 +118,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(a)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '492b6d0ac20f93977ec6b96de220dddeacd691a83272715d340115acd73e8318'
+			documentSha256: '08ae811e96b21fa60815d613b1ec49a40e6a3db60601711d8984cdbfae65060a'
 		},
 		fidelity: true,
 		counts: {
@@ -322,7 +322,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room 9'
 				}
 			],
-			documentSha256: '492b6d0ac20f93977ec6b96de220dddeacd691a83272715d340115acd73e8318'
+			documentSha256: '08ae811e96b21fa60815d613b1ec49a40e6a3db60601711d8984cdbfae65060a'
 		}
 	},
 	{
@@ -330,7 +330,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(a)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '492b6d0ac20f93977ec6b96de220dddeacd691a83272715d340115acd73e8318'
+			documentSha256: '08ae811e96b21fa60815d613b1ec49a40e6a3db60601711d8984cdbfae65060a'
 		},
 		fidelity: true,
 		counts: {
@@ -534,7 +534,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room 9'
 				}
 			],
-			documentSha256: '492b6d0ac20f93977ec6b96de220dddeacd691a83272715d340115acd73e8318'
+			documentSha256: '08ae811e96b21fa60815d613b1ec49a40e6a3db60601711d8984cdbfae65060a'
 		}
 	},
 	{
@@ -542,7 +542,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(b)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '329f46226ae33f7cadb477613eda586e12e543929a6b946979e5c4707e7490c1',
+			documentSha256: '42480b035e02ae968ac463faeb3f11db0c74e2d833f2a65dafc66746f6d192ee',
 		},
 		fidelity: true,
 		counts: {
@@ -762,7 +762,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Draft Room 1',
 				},
 			],
-			documentSha256: '329f46226ae33f7cadb477613eda586e12e543929a6b946979e5c4707e7490c1',
+			documentSha256: '42480b035e02ae968ac463faeb3f11db0c74e2d833f2a65dafc66746f6d192ee',
 		},
 	},
 	{
@@ -770,7 +770,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(b)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'c807fe6d4e3eba45e72d5ce51193452eed28c71d2d87b394352385d4f1de586e',
+			documentSha256: '7cc53c1bec792d8b9969d2b445eb5e14f17ef994d6b46e9cd20b69d903101b51',
 		},
 		fidelity: true,
 		counts: {
@@ -990,7 +990,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Draft Room 1',
 				},
 			],
-			documentSha256: 'c807fe6d4e3eba45e72d5ce51193452eed28c71d2d87b394352385d4f1de586e',
+			documentSha256: '7cc53c1bec792d8b9969d2b445eb5e14f17ef994d6b46e9cd20b69d903101b51',
 		},
 	},
 	{
@@ -998,7 +998,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(c)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '78e474ed1058bb8980b6a297d6dc1a9269c2e2596e7c0f6b606af5b4f0a7a59d',
+			documentSha256: '8cc87c4788e7f1c61021c7612e4a7c763f580e957a6d85c72f53ef398092c74e',
 		},
 		fidelity: true,
 		counts: {
@@ -1087,7 +1087,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room 2',
 				},
 			],
-			documentSha256: '78e474ed1058bb8980b6a297d6dc1a9269c2e2596e7c0f6b606af5b4f0a7a59d',
+			documentSha256: '8cc87c4788e7f1c61021c7612e4a7c763f580e957a6d85c72f53ef398092c74e',
 		},
 	},
 	{
@@ -1095,7 +1095,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(c)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'ecc4a93852eb272f18140481148273595e691ce87471be6a29ed47852d7cf5b6',
+			documentSha256: '4692b0a7609fbe9555e3050613e14cf01fd8fff7ad04ed1cac76a069550fa4dc',
 		},
 		fidelity: true,
 		counts: {
@@ -1184,7 +1184,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room 2',
 				},
 			],
-			documentSha256: 'ecc4a93852eb272f18140481148273595e691ce87471be6a29ed47852d7cf5b6',
+			documentSha256: '4692b0a7609fbe9555e3050613e14cf01fd8fff7ad04ed1cac76a069550fa4dc',
 		},
 	},
 	{
@@ -1192,7 +1192,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(d) + OR-1(h)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'c74d1ae961d3b4331c46b1a904cdd7fafc3a57a7feb5303ea3829cea7bb251c8'
+			documentSha256: '1f2b52be105c316967be5b2d6e6152a83f19048ad503db937524ff155c940ee2'
 		},
 		fidelity: true,
 		counts: {
@@ -1273,7 +1273,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Grid Room 1-0'
 				}
 			],
-			documentSha256: 'c74d1ae961d3b4331c46b1a904cdd7fafc3a57a7feb5303ea3829cea7bb251c8'
+			documentSha256: '1f2b52be105c316967be5b2d6e6152a83f19048ad503db937524ff155c940ee2'
 		}
 	},
 	{
@@ -1283,7 +1283,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			verdict: 'success',
 			// SP1c carries the opened Space; the reconciliation-only reference below
 			// stays on the pre-SP1c retirement contract (recorded exception).
-			documentSha256: '36ddadd441dfce297617ba46ae0bfce07768722619de358a9fe3583b74dc333b'
+			documentSha256: '9560eec6d5768ab3a79722f8b44b22b498c069f84648b6befd5a83f3ed1dfa45'
 		},
 		fidelity: false,
 		counts: {
@@ -1363,7 +1363,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Grid Room 1-1'
 				}
 			],
-			documentSha256: 'a7c930b5ae556b7f9b506140a31723ebdd045b1c80c0a55e4ed5d9878193414d'
+			documentSha256: '1a10fb40812da4a9a333867ad302301fcce6cd62931953b4bcf6245f4187c97a'
 		}
 	},
 	{
@@ -1371,7 +1371,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(d)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '4a78f54886b4a29d697718ea5e0318d3bd5342a88d814c0038b2fdde189428ba'
+			documentSha256: '0e8d313d61c41cd9438c466e2193a948e501cb8eb01c5c99e830b2983b20574c'
 		},
 		fidelity: false,
 		counts: {
@@ -1433,7 +1433,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room 2'
 				}
 			],
-			documentSha256: '9750f96fdc17fb506f26ba9738e4156a92bdc98194166254edf286d577912e73'
+			documentSha256: '9cd44c827b29450f34723e38abf63f612268b4487ef227e5d12bbb0386dcd0c9'
 		}
 	},
 	{
@@ -1441,7 +1441,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(d)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '525bfdf5317d0f339ebde16bcdc7ac40610e2f0fc6fa242f439649905453cedd'
 		},
 		fidelity: true,
 		counts: {
@@ -1485,7 +1485,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k'
 				}
 			],
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '525bfdf5317d0f339ebde16bcdc7ac40610e2f0fc6fa242f439649905453cedd'
 		}
 	},
 	{
@@ -1493,7 +1493,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(e)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '85251572250bceea656387b58edd4661c5380a53178c284ca7c7e937777a9c7e'
+			documentSha256: '9141ee7dd66ff6ae2857b66af247d4644c2033c6d42f54c12ac67266ea51f580'
 		},
 		fidelity: true,
 		counts: {
@@ -1553,7 +1553,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k'
 				}
 			],
-			documentSha256: '85251572250bceea656387b58edd4661c5380a53178c284ca7c7e937777a9c7e'
+			documentSha256: '9141ee7dd66ff6ae2857b66af247d4644c2033c6d42f54c12ac67266ea51f580'
 		}
 	},
 	{
@@ -1561,7 +1561,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(e)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '85251572250bceea656387b58edd4661c5380a53178c284ca7c7e937777a9c7e'
+			documentSha256: '9141ee7dd66ff6ae2857b66af247d4644c2033c6d42f54c12ac67266ea51f580'
 		},
 		fidelity: true,
 		counts: {
@@ -1621,7 +1621,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k'
 				}
 			],
-			documentSha256: '85251572250bceea656387b58edd4661c5380a53178c284ca7c7e937777a9c7e'
+			documentSha256: '9141ee7dd66ff6ae2857b66af247d4644c2033c6d42f54c12ac67266ea51f580'
 		}
 	},
 	{
@@ -1654,7 +1654,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94'
+			documentSha256: 'be2e1bebe718ec466fb47acf5b9c84768be79ce9ab13dcf7cc4858468eeaa240'
 		},
 		fidelity: false,
 		counts: {
@@ -1698,7 +1698,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k'
 				}
 			],
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '525bfdf5317d0f339ebde16bcdc7ac40610e2f0fc6fa242f439649905453cedd'
 		}
 	},
 	{
@@ -1706,7 +1706,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '525bfdf5317d0f339ebde16bcdc7ac40610e2f0fc6fa242f439649905453cedd'
 		},
 		fidelity: true,
 		counts: {
@@ -1750,7 +1750,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k'
 				}
 			],
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '525bfdf5317d0f339ebde16bcdc7ac40610e2f0fc6fa242f439649905453cedd'
 		}
 	},
 	{
@@ -1758,7 +1758,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '7a3481ed82760f17c4fcf400304b6d0475de487d3bdcb799cc2cf84880b18e94'
+			documentSha256: 'be2e1bebe718ec466fb47acf5b9c84768be79ce9ab13dcf7cc4858468eeaa240'
 		},
 		fidelity: false,
 		counts: {
@@ -1802,7 +1802,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k'
 				}
 			],
-			documentSha256: '0436d89e05f58c28b7c38154371e8283ff45ec713be4708748aa39ec61112d84'
+			documentSha256: '525bfdf5317d0f339ebde16bcdc7ac40610e2f0fc6fa242f439649905453cedd'
 		}
 	},
 	{
@@ -1810,7 +1810,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '51bfb757e21be0feb2a30e2720ecebd5f12d1f6f1a2cef11d31278ab7d71210b',
+			documentSha256: 'd577100b2f027fe922eff2f06624ff733d142547fe06de107c2729428bbe022a',
 		},
 		fidelity: false,
 		counts: {
@@ -1854,7 +1854,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room c',
 				},
 			],
-			documentSha256: 'dec8592675287bea24a6e43ed7e642092fc983c59804897ba8b1b888e8a82f96',
+			documentSha256: '9ba1d02f60d491ed64d6b88f99315c829cf07c20c418f918257ec90e10fe3935',
 		},
 	},
 	{
@@ -1922,7 +1922,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Room k',
 				},
 			],
-			documentSha256: '64d6bddb42cd60b6a8e198f01255381a0b6f5756a525b8d5b68aefd071560787',
+			documentSha256: 'b5f68af4db50cf8c78034365a06ad774c6864449e9b747c31fd92e0c05e7a086',
 		},
 	},
 	{
@@ -1930,7 +1930,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(g)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '38ec58b70f27332bd1936d75ce9daee28caf972f7231f4ce715d59ece3da26f3',
+			documentSha256: '036e4ec06e48d97d952b63ea88494df8883ee9bee507022204711c08dc0e6aab',
 		},
 		fidelity: true,
 		counts: {
@@ -1970,7 +1970,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Draft Room 1',
 				},
 			],
-			documentSha256: '38ec58b70f27332bd1936d75ce9daee28caf972f7231f4ce715d59ece3da26f3',
+			documentSha256: '036e4ec06e48d97d952b63ea88494df8883ee9bee507022204711c08dc0e6aab',
 		},
 	},
 	{
@@ -1978,7 +1978,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(g)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '3841bf93d2dba5db6be240df994a65fbec33e2e9a80bdad6703ff04407321ab0',
+			documentSha256: 'ae3378fec7a081e7c1738bdc9e0f4cdb108fc8267b12e4e7d64c4b1a6becf9fe',
 		},
 		fidelity: true,
 		counts: {
@@ -2018,7 +2018,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Draft Room 1',
 				},
 			],
-			documentSha256: '3841bf93d2dba5db6be240df994a65fbec33e2e9a80bdad6703ff04407321ab0',
+			documentSha256: 'ae3378fec7a081e7c1738bdc9e0f4cdb108fc8267b12e4e7d64c4b1a6becf9fe',
 		},
 	},
 	{
@@ -2026,7 +2026,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(h)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '49d9c9bf0309bac006e0046daf07508b2958a59fffe70040d1e74181e857819e'
+			documentSha256: '50cef1891b2a7bc62c4e6bc594b0858f791651f541efef61015d98f9f5bf8a2a'
 		},
 		fidelity: true,
 		counts: {
@@ -2122,7 +2122,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Grid Room 1-1'
 				}
 			],
-			documentSha256: '49d9c9bf0309bac006e0046daf07508b2958a59fffe70040d1e74181e857819e'
+			documentSha256: '50cef1891b2a7bc62c4e6bc594b0858f791651f541efef61015d98f9f5bf8a2a'
 		}
 	},
 	{
@@ -2130,7 +2130,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(c) + OR-1(h)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'a08dceec623d6b3d98c0d3f9e899964a49cb9528f407bab4f749e8cadb359747',
+			documentSha256: '8cea165302e66df1a79f484b7eaa10ad1c208ec970f17b304c5e23f0cc36aac5',
 		},
 		fidelity: true,
 		counts: {
@@ -2237,7 +2237,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 					name: 'Grid Room 1-0',
 				},
 			],
-			documentSha256: 'a08dceec623d6b3d98c0d3f9e899964a49cb9528f407bab4f749e8cadb359747',
+			documentSha256: '8cea165302e66df1a79f484b7eaa10ad1c208ec970f17b304c5e23f0cc36aac5',
 		},
 	},
 	{
@@ -2245,7 +2245,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(h)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '642877ecfc417656d5c1ef35bfad816cba9d751bbe19061eb331cc27cc4942e2'
+			documentSha256: '593b582c710ad19f05405d3ddb7f16735a8538a6469b335237ac318151a3815c'
 		},
 		fidelity: null,
 		counts: {

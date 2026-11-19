@@ -61,7 +61,8 @@ async function wallFirstPayload() {
 			openings: [
 				{ id: 'door-1', wallId: 'wall-a', kind: 'door' as const, offset: 1, width: 0.9, height: 2.1, sillHeight: 0, profile: 'rectangular' as const }
 			],
-			objects: []
+			objects: [],
+			regions: []
 		},
 		capture: freshCapture(),
 		levelId: 'floor-1'

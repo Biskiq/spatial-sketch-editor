@@ -2,7 +2,7 @@
 import { beforeNavigate, goto, replaceState } from '$app/navigation';
 import { ProjectPersistenceError, type ProjectApi, type ProjectAuth, type PreparedProjectLifecycle, type ProjectLifecycleActionResult, type ProjectLifecyclePrepareResult } from '$lib/platform/project-persistence';
 import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
-import { discardPendingCapture, persistPendingCapture, readPendingCapture } from '$lib/authoring/save/pending-capture';
+import { discardIncompatiblePendingCapture, discardPendingCapture, persistPendingCapture, readPendingCapture, type IncompatiblePendingCloudSave } from '$lib/authoring/save/pending-capture';
 import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/save';
 import { serializeProjectEnvelope, validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 import { verifyArtworkLibrary } from '$lib/authoring/artwork/project-artwork';
@@ -31,6 +31,7 @@ export function createProjectSession(host: {
 	let headSave = $state.raw<HeadSave | null>(null);
 	let resumeOffer = $state.raw<{ readonly save: SaveRequest; readonly project: ProjectEnvelope } | null>(null);
 	let resumeSource: SaveRequest | null = null;
+	let recoveryOffer = $state.raw<IncompatiblePendingCloudSave | null>(null);
 	let remoteSavedCanonicalJson: string | null = null;
 	let headSaveVersion = $state(0);
 	let unsubscribeHeadSave: (() => void) | null = null;
@@ -66,6 +67,7 @@ export function createProjectSession(host: {
 				// without that draft would lose the operation, so storage failure keeps
 				// the creator here with a visible reason instead of signing in.
 				if (!persistPendingCapture(request)) {
+					if (offerPendingRecovery()) return;
 					host.notice =
 						'The pending Save could not be stored in this browser; sign-in was not started. Retry when browser storage is available.';
 					return;
@@ -161,6 +163,7 @@ export function createProjectSession(host: {
 		remoteSavedCanonicalJson = null;
 		headSave = null;
 		boot = initialBootState(projectIdToLoad, requestedIntent);
+		offerPendingRecovery();
 		// A minted identity is a local editing intent, not a request to discover
 		// whether the cloud happens to be reachable. Admit the empty baseline through
 		// the same source path as every other mounted Stage and leave Save create-only.
@@ -228,10 +231,24 @@ export function createProjectSession(host: {
 	 * must remain resumable. The draft's exact operation identity and precondition
 	 * are preserved; mounting and retrying it are both explicit creator actions.
 	 */
+	function offerPendingRecovery(): boolean {
+		const pending = readPendingCapture();
+		recoveryOffer = pending.status === 'incompatible-layout' ? pending : null;
+		return recoveryOffer !== null;
+	}
+
+	function dismissRecoveryOffer(): void {
+		if (recoveryOffer && discardIncompatiblePendingCapture(recoveryOffer)) recoveryOffer = null;
+	}
+
 	function offerResumeSave(options: { readonly createOnly: boolean }): void {
 		const url = new URL(host.url());
 		if (url.searchParams.get('resume-save') !== '1') return;
 		const pending = readPendingCapture();
+		if (pending.status === 'incompatible-layout') {
+			recoveryOffer = pending;
+			return;
+		}
 		if (pending.status !== 'ready' || pending.project.id !== projectId) {
 			// Consume the flag only once a draft was actually considered, so a direct
 			// visit cannot leave a stale flag that re-offers a later draft by accident.
@@ -968,6 +985,8 @@ export function createProjectSession(host: {
 		get boot() { return boot; },
 		get headSave() { return headSave; },
 		get resumeOffer() { return resumeOffer; },
+		get recoveryOffer() { return recoveryOffer; },
+		dismissRecoveryOffer,
 		get pendingReplacement() { return pendingReplacement; },
 		get projectActionBusy() { return projectActionBusy; },
 		setProjectActionBusy(value: boolean) { projectActionBusy = value; },

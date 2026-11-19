@@ -39,8 +39,6 @@ function roomFromFace(
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 }
 
@@ -87,7 +85,8 @@ function sharedWallDocument(withDoor = false): LayoutDocumentWallFirst {
 					}
 				]
 			: [],
-		objects: []
+		objects: [],
+		regions: []
 	};
 	const extraction = extractBoundaryCandidateFaces(base);
 	const left = extraction.faces.find((candidate) =>

@@ -17,6 +17,7 @@
 	let authIntent = $state(page.url.searchParams.get('intent'));
 
 	let notice = $state('');
+	let recovery = $state.raw<import('$lib/authoring/save/pending-capture').IncompatiblePendingCloudSave | null>(null);
 	let pendingDraft = $state(false);
 	let redirecting = $state(false);
 
@@ -58,7 +59,9 @@
 	async function readPendingDraft() {
 		try {
 			const { readPendingCapture } = await import('$lib/authoring/save/pending-capture');
-			return readPendingCapture();
+			const pending = readPendingCapture();
+			if (pending.status === 'incompatible-layout') recovery = pending;
+			return pending;
 		} catch {
 			return null;
 		}
@@ -76,6 +79,20 @@
 		authStatus = null;
 		authIntent = null;
 		replaceState('/', {});
+	}
+
+	async function downloadRecovery(): Promise<void> {
+		if (!recovery) return;
+		const { downloadPendingCapture } = await import('$lib/authoring/save/pending-capture');
+		if (recovery) downloadPendingCapture(recovery);
+	}
+
+	async function discardRecovery(): Promise<void> {
+		const { discardIncompatiblePendingCapture } = await import('$lib/authoring/save/pending-capture');
+		if (recovery && discardIncompatiblePendingCapture(recovery)) {
+			recovery = null;
+			await discardDraft();
+		}
 	}
 
 	onMount(() => {
@@ -96,6 +113,10 @@
 			}
 
 			const pending = await readPendingDraft();
+			if (pending?.status === 'incompatible-layout') {
+				redirecting = false;
+				return;
+			}
 			if (pending === null || pending.status !== 'ready') {
 				redirecting = false;
 				notice = pending?.status === 'expired' ? 'The saved draft expired' : 'The saved draft is unavailable';
@@ -126,7 +147,13 @@
 		<p class="eyebrow">Biskiq Editor</p>
 		<h1 id="entry-title">Start creating</h1>
 		<p class="lede">Lay out a whole project, or shape a single object. Sign in when you want cloud projects.</p>
-		{#if redirecting}
+		{#if recovery !== null}
+			<p class="status" role="alert">This pending Save uses a different Layout format. Download the capture to recover it with its original reader.</p>
+			<div class="actions">
+				<button type="button" class="primary" onclick={() => void downloadRecovery()}>Download captured Save</button>
+				<button type="button" onclick={() => void discardRecovery()}>Discard captured Save</button>
+			</div>
+		{:else if redirecting}
 			<p class="status" role="status">Returning to your project…</p>
 		{:else if authStatus === 'cancelled' || authStatus === 'failed'}
 			<p class="status" role="alert">{notice}</p>

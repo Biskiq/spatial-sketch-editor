@@ -74,8 +74,6 @@ function threeWallOpenSpace(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -128,8 +126,6 @@ function sharedWallPair(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			{
 				id: 'room-right',
@@ -142,8 +138,6 @@ function sharedWallPair(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -246,8 +240,6 @@ function curvedChasmRoom(): LayoutDocumentWallFirst {
 				].map((wallId) => ({ wallId, direction: 'forward' as const })),
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -293,8 +285,6 @@ function distantOpenSpaceAndStrayJunction(): LayoutDocumentWallFirst {
 			{ startJunctionId: 'j-s', endJunctionId: 'j-p' }
 		],
 		overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 	return document;
 }
@@ -363,8 +353,6 @@ function coincidentVirtualSidePair(): LayoutDocumentWallFirst {
 					{ startJunctionId: 'j-shared-top', endJunctionId: 'j-west-top' }
 				],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			{
 				id: 'room-east',
@@ -378,8 +366,6 @@ function coincidentVirtualSidePair(): LayoutDocumentWallFirst {
 					{ startJunctionId: 'j-shared-bottom', endJunctionId: 'j-east-bottom' }
 				],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -420,8 +406,6 @@ function threeRoomRow(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			{
 				id: 'room-middle',
@@ -434,8 +418,6 @@ function threeRoomRow(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			},
 			{
 				id: 'room-right',
@@ -448,8 +430,6 @@ function threeRoomRow(): LayoutDocumentWallFirst {
 				],
 				virtualEdges: [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
@@ -504,8 +484,6 @@ describe('SP1b — Wall removal lifecycle', () => {
 		expect(room.id).toBe('room-open');
 		expect(room.name).toBe('Open');
 		expect(room.overhead).toBe('closed');
-		expect(room.floorThickness).toBe(0.1);
-		expect(room.ceilingThickness).toBe(0.1);
 		expect(room.virtualEdges).toEqual([{ startJunctionId: 'j-b', endJunctionId: 'j-c' }]);
 		const compiled = compileWallFirstLayoutGeometry(plan.document);
 		expect(compiled.geometry.rooms).toHaveLength(1);
@@ -574,15 +552,7 @@ describe('SP1b — Wall removal lifecycle', () => {
 		}
 	});
 
-	it('open merge refuses conflicting thicknesses and keeps the survivor overhead', () => {
-		const conflicting = sharedWallPair();
-		conflicting.rooms[1]!.floorThickness = 0.3;
-		const refused = planDeleteWalls(conflicting, ['m'], capture('sp1b-thickness'), conflicting.floor.id);
-		expect(refused.kind).toBe('rejected');
-		if (refused.kind === 'rejected') {
-			expect(refused.rejection.message).toContain('floorThickness');
-		}
-
+	it('open merge preserves survivor and overhead with generated surfaces', () => {
 		const overhead = sharedWallPair();
 		overhead.rooms[1]!.overhead = 'open-to-sky';
 		const survivor = planDeleteWalls(overhead, ['m'], capture('sp1b-overhead'), overhead.floor.id);
@@ -1128,8 +1098,6 @@ describe('SP1b — §5.1 transition matrix', () => {
 			name: 'Open',
 			virtualEdges: [],
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 		expect(survivor!.boundary.map((ref) => ref.wallId)).toEqual(
 			expect.arrayContaining(['wall-c'])
@@ -1144,8 +1112,6 @@ describe('SP1b — §5.1 transition matrix', () => {
 		expect(descendant.virtualEdges).toEqual([]);
 		expect(descendant).toMatchObject({
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 		expect(descendant.boundary.map((ref) => ref.wallId)).toEqual(
 			expect.arrayContaining(['wall-a'])

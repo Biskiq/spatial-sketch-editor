@@ -81,7 +81,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 8 as const,
+		formatVersion: 9 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
@@ -93,7 +93,8 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			centerline: { kind: 'line' } as const,
 		})),
 		openings: [] as LayoutDocumentWallFirst['openings'],
-		objects: [] as LayoutDocumentWallFirst['objects']
+		objects: [] as LayoutDocumentWallFirst['objects'],
+		regions: []
 	};
 	const extraction = extractBoundaryCandidateFaces({ ...shell, rooms: [] });
 	const leftFace = extraction.faces.find((face) =>
@@ -111,8 +112,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		name,
 		boundary: boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	});
 	return {
 		...shell,

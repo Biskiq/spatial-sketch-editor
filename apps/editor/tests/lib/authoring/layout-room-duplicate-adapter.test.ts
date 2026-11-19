@@ -149,8 +149,6 @@ function roomFromFace(
 		name,
 		boundary: face.boundary.map((ref) => ({ ...ref })),
 		virtualEdges: [], overhead: 'closed',
-		floorThickness: 0.1,
-		ceilingThickness: 0.1
 	};
 }
 
@@ -436,8 +434,6 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		const copiedRoom = after.rooms.find((room) => room.id.includes(`${fixture.roomId}-copy`))!;
 		expect(copiedRoom).toBeDefined();
 		expect(copiedRoom.name).toBe(`${before.rooms[0]!.name} copy`);
-		expect(copiedRoom.floorThickness).toBe(before.rooms[0]!.floorThickness);
-		expect(copiedRoom.ceilingThickness).toBe(before.rooms[0]!.ceilingThickness);
 		const copiedWallIds = new Set(after.walls.filter((wall) => wall.id.includes('-copy')).map((wall) => wall.id));
 		expect(copiedRoom.boundary.every((ref) => copiedWallIds.has(ref.wallId))).toBe(true);
 

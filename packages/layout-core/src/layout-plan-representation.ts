@@ -67,6 +67,8 @@ import type {
 	CompiledRoom,
 	LayoutBounds2
 } from './layout-geometry-types';
+import { LAYOUT_SLICE_CONTACT_METERS } from './layout-region';
+import type { CompiledRegion } from './layout-geometry-types';
 import type { LayoutVec2 } from './layout-coordinates';
 
 /** The four plan streams. Every emitted fragment belongs to exactly one. */
@@ -75,7 +77,7 @@ export const PLAN_STREAMS = ['cut', 'projected', 'hidden', 'symbol'] as const;
 export type PlanStream = (typeof PLAN_STREAMS)[number];
 
 /** The source kinds this representation can place in a stream. */
-export const PLAN_SOURCE_KINDS = ['wall', 'opening', 'object', 'room-floor'] as const;
+export const PLAN_SOURCE_KINDS = ['wall', 'opening', 'object', 'room-floor', 'region'] as const;
 
 export type PlanSourceKind = (typeof PLAN_SOURCE_KINDS)[number];
 
@@ -240,6 +242,8 @@ type Candidate = {
 	readonly subRef: PlanSubRef | null;
 	/** A symbol-only source (an Opening) never contributes a cut/projected/hidden stroke. */
 	readonly symbolOnly: boolean;
+	readonly regionRole?: CompiledRegion['role'];
+	readonly regionKey?: string;
 };
 
 /** One candidate after the membership stages: measurement plus the placement it earned. */
@@ -422,6 +426,13 @@ function boundsOf(fragments: readonly PlanFragment[]): LayoutBounds2 | null {
  */
 function streamFor(candidate: Candidate, cutElevation: number): Exclude<PlanStream, 'symbol'> {
 	if (candidate.sourceKind === 'room-floor') return 'projected';
+	if (candidate.regionRole) {
+		const { minY, maxY } = candidate.extent;
+		const tolerance = LAYOUT_SLICE_CONTACT_METERS;
+		if (minY > cutElevation + tolerance) return 'hidden';
+		if (minY < cutElevation - tolerance && maxY > cutElevation + tolerance) return 'cut';
+		return 'projected';
+	}
 	const extent = candidate.extent;
 	if (extent.minY < cutElevation && cutElevation <= extent.maxY) return 'cut';
 	return extent.minY >= cutElevation ? 'projected' : 'hidden';
@@ -495,6 +506,19 @@ function roomFloorCandidate(room: CompiledRoom): Candidate {
 		plan: { kind: 'polygon', polygon: room.floorPolygon },
 		subRef: null,
 		symbolOnly: false
+	};
+}
+
+function regionCandidate(region: CompiledRegion): Candidate {
+	return {
+		sourceKind: 'region',
+		sourceId: region.regionId,
+		extent: { minY: region.bottomY, maxY: region.topY },
+		plan: { kind: 'polygon', polygon: region.footprint },
+		subRef: null,
+		symbolOnly: false,
+		regionRole: region.role,
+		regionKey: region.cacheKey
 	};
 }
 
@@ -675,7 +699,7 @@ function measureCandidate(candidate: Candidate, context: MeasurementContext): Ev
 	let reason: PlanMembershipReason = 'included';
 	if (context.filter !== null && !context.filter.has(candidate.sourceKind)) {
 		reason = 'filtered-type';
-	} else if (depthBelowCut !== null && depthBelowCut > context.depthMeters) {
+	} else if (depthBelowCut !== null && depthBelowCut > context.depthMeters + (candidate.regionRole ? LAYOUT_SLICE_CONTACT_METERS : 0)) {
 		reason = 'outside-depth';
 	} else if (
 		context.lateralSpanHalfWidthMeters !== null &&
@@ -704,10 +728,26 @@ function measureCandidate(candidate: Candidate, context: MeasurementContext): Ev
 					elevationMeters:
 						stream === 'cut'
 							? context.cutElevation
+							: candidate.regionRole
+								? (stream === 'hidden' ? candidate.extent.minY : candidate.extent.maxY)
 							: stream === 'projected'
 								? candidate.extent.minY
 								: candidate.extent.maxY
 				};
+	if (candidate.regionRole && stream !== null) {
+		const face = stream === 'cut' ? 'edge'
+			: candidate.regionRole === 'overhead' && (stream === 'hidden' || context.cutElevation <= candidate.extent.minY + LAYOUT_SLICE_CONTACT_METERS)
+				? 'underside' : 'top';
+		const plan = candidate.plan;
+		const outlined = stream === 'hidden' || (stream === 'projected' && candidate.regionRole === 'overhead');
+		candidate = {
+			...candidate,
+			subRef: { kind: 'component', componentId: face },
+			plan: outlined && plan.kind === 'polygon'
+				? { kind: 'polyline', polyline: [...plan.polygon, plan.polygon[0]!] } : plan
+		};
+		if (placement && face === 'underside') placement.elevationMeters = candidate.extent.minY;
+	}
 	return { candidate, reason, depthBelowCut, lateralDistance, eligible, revealed, placement };
 }
 
@@ -768,7 +808,8 @@ export function evaluateLayoutPlan(
 		...wallCandidates(compiled, context.datumMeters),
 		...openingCandidates(compiled, context.datumMeters),
 		...objectCandidates(compiled),
-		...roomFloorCandidates(compiled)
+		...roomFloorCandidates(compiled),
+		...compiled.regions.map(regionCandidate).sort(compareSourceIds((candidate) => candidate.sourceId))
 	];
 
 	const fragments: PlanFragment[] = [];
@@ -945,6 +986,7 @@ export function planFragmentOf(plan: PlanEvaluation, sourceId: string): PlanFrag
  * describes, without re-deriving it (see `wallUnchanged` and friends).
  */
 type PlanEntry = {
+	readonly regionKey?: string;
 	readonly reason: PlanMembershipReason;
 	readonly subRef: PlanSubRef | null;
 	readonly plan: SourcePlan;
@@ -1261,6 +1303,7 @@ export function createPlanRetainer(): PlanRetainer {
 		const measured = candidates.map((candidate) => measureCandidate(candidate, measurement));
 		const entries: PlanEntry[] = measured.map((entry) => ({
 			reason: entry.reason,
+			regionKey: entry.candidate.regionKey,
 			subRef: entry.candidate.subRef,
 			plan: entry.candidate.plan,
 			extent: entry.candidate.extent,
@@ -1628,11 +1671,16 @@ export function createPlanRetainer(): PlanRetainer {
 		const openingsAdded = walls === null ? null : reconcileKind<CompiledOpening>('opening', (visit) => { for (const opening of openingList) visit(opening); }, (opening) => opening.openingId, (opening) => [openingCandidate(opening, measurement.datumMeters)], (previous, opening) => openingUnchanged(previous, opening, measurement.datumMeters), measurement, rederive);
 		const objectsAdded = openingsAdded === null ? null : reconcileKind<CompiledLayoutObject>('object', (visit) => { for (const object of compiled.objects) visit(object); }, (object) => object.objectId, (object) => [objectCandidate(object)], objectUnchanged, measurement, rederive);
 		const roomsAdded = objectsAdded === null ? null : reconcileKind<CompiledRoom>('room-floor', (visit) => walkRooms(compiled, visit), (room) => room.roomId, (room) => [roomFloorCandidate(room)], roomFloorUnchanged, measurement, rederive);
+		const regionsAdded = roomsAdded === null ? null : reconcileKind<CompiledRegion>(
+			'region', (visit) => compiled.regions.forEach(visit), (region) => region.regionId,
+			(region) => [regionCandidate(region)], (entries, region) => entries[0]?.regionKey === region.cacheKey,
+			measurement, rederive
+		);
 		// A source id shared by two kinds is merged into one membership row by the
 		// reference and by nothing else; ask it rather than modelling that here.
-		const addedIds = [...(walls ?? []), ...(openingsAdded ?? []), ...(objectsAdded ?? []), ...(roomsAdded ?? [])];
+		const addedIds = [...(walls ?? []), ...(openingsAdded ?? []), ...(objectsAdded ?? []), ...(roomsAdded ?? []), ...(regionsAdded ?? [])];
 		return (
-			roomsAdded !== null &&
+			regionsAdded !== null &&
 			!addedIds.some((id) => {
 				let kinds = 0;
 				for (const kind of PLAN_SOURCE_KINDS) if (indexes.get(kind)!.byId.has(id)) kinds += 1;

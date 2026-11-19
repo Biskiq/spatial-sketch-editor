@@ -84,7 +84,7 @@ export function transformObjectPoint(point: Vec3, object: LayoutObject): Vec3 {
 	];
 }
 
-export function pointInPolygon(point: LayoutVec2, polygon: readonly LayoutVec2[]): boolean {
+export function pointInPolygon(point: Readonly<LayoutVec2>, polygon: readonly Readonly<LayoutVec2>[]): boolean {
 	let inside = false;
 	for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
 		const currentPoint = polygon[index]!;

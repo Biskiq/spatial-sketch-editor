@@ -14,6 +14,8 @@
 	 * drawing rather than a second Plan. The drawing stays stable across selection: the scene hides the selected Opening's
 	 * instance runs instead of Paper rebuilding a filtered copy.
 	 */
+	import { clipPlanRegionFragments } from '../../layout/plan-pick-provider';
+	import type { ResolvedSlice } from '../slice/slice-cut';
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
 	import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
@@ -35,6 +37,7 @@
 		height,
 		reveal,
 		isFootprintMounted = () => true,
+		resolvedSlice = null,
 		datumMeters = 0,
 		selection = null,
 		hover = null,
@@ -51,6 +54,7 @@
 		reveal: PaperReveal;
 		/** A footprint is drawn only for a mounted, visible body; the pick path agrees. */
 		isFootprintMounted?: (entityId: string) => boolean;
+		resolvedSlice?: ResolvedSlice | null;
 		/** The level datum the Plan is drawn on; footprints sit on the same plane. */
 		datumMeters?: number;
 		/** The canonical primary selection; its Paper ink is a re-stroke, never a pick root. */
@@ -73,7 +77,7 @@
 		// The revision is an input, not a value: a late Scene root must redraw Paper even
 		// though the Plan and the footprint projection are unchanged.
 		void revision;
-		return buildPaperPlan(plan, compiled, footprints, { isFootprintMounted, datumMeters });
+		return buildPaperPlan(clipPlanRegionFragments(plan, resolvedSlice), compiled, footprints, { isFootprintMounted, datumMeters });
 	});
 	// The selection is a filter over the drawing Paper already owns; a pan does not
 	// rebuild it, and the entries can never disagree with what is drawn underneath.

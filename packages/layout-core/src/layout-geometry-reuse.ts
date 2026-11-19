@@ -1,3 +1,4 @@
+import type { RetainedRegion } from './layout-region-compile';
 import { layoutLength } from './layout-source-collections';
 /**
  * `layout-geometry-reuse.ts` — retained compile units for the incremental Layout
@@ -180,6 +181,8 @@ export type LayoutCompileStats = {
 	readonly junctionsReused: number;
 	readonly roomsEvaluated: number;
 	readonly roomsReused: number;
+	readonly regionsEvaluated: number;
+	readonly regionsReused: number;
 	readonly objectsEvaluated: number;
 	readonly objectsReused: number;
 	/** Structural authored-input comparisons taken to decide the above. */
@@ -201,6 +204,8 @@ const EMPTY_STATS: LayoutCompileStats = {
 	junctionsReused: 0,
 	roomsEvaluated: 0,
 	roomsReused: 0,
+	regionsEvaluated: 0,
+	regionsReused: 0,
 	objectsEvaluated: 0,
 	objectsReused: 0,
 	signatureVisits: 0,
@@ -228,6 +233,7 @@ export type LayoutCompileReuse = {
 	/** Core-level Room compiles, keyed by the identity of a retained `source`. */
 	roomCompiles: WeakMap<CompilerRoomSource, RetainedRoom>;
 	objects: Map<string, RetainedObject>;
+	regions: Map<string, RetainedRegion>;
 	/** Per-session historical roots; reset discards the entire weak directory. */
 	readonly snapshots: WeakMap<LayoutDocumentWallFirst, unknown>;
 	retainedFloor: RetainedCompiledFloor | null;
@@ -249,6 +255,8 @@ export type MutableStats = {
 	junctionsReused: number;
 	roomsEvaluated: number;
 	roomsReused: number;
+	regionsEvaluated: number;
+	regionsReused: number;
 	objectsEvaluated: number;
 	objectsReused: number;
 	signatureVisits: number;
@@ -264,7 +272,9 @@ function freshCounters(): MutableStats {
 		junctionsReused: 0,
 		roomsEvaluated: 0,
 		roomsReused: 0,
-		objectsEvaluated: 0,
+		regionsEvaluated: 0,
+	regionsReused: 0,
+	objectsEvaluated: 0,
 		objectsReused: 0,
 		signatureVisits: 0,
 		entities: 0
@@ -279,6 +289,7 @@ export function createLayoutCompileReuse(): LayoutCompileReuse {
 		roomSources: new Map(),
 		roomCompiles: new WeakMap(),
 		objects: new Map(),
+		regions: new Map(),
 		snapshots: new WeakMap(),
 		retainedFloor: null,
 		retainedDocAabb: null,
@@ -303,6 +314,8 @@ export function beginLayoutCompile(reuse: LayoutCompileReuse): void {
 	counters.roomsEvaluated = 0;
 	counters.roomsReused = 0;
 	counters.objectsEvaluated = 0;
+	counters.regionsEvaluated = 0;
+	counters.regionsReused = 0;
 	counters.objectsReused = 0;
 	counters.signatureVisits = 0;
 	counters.entities = 0;
@@ -320,6 +333,8 @@ export function finishLayoutCompile(reuse: LayoutCompileReuse, cold: boolean): L
 		roomsEvaluated: counters.roomsEvaluated,
 		roomsReused: counters.roomsReused,
 		objectsEvaluated: counters.objectsEvaluated,
+		regionsEvaluated: counters.regionsEvaluated,
+		regionsReused: counters.regionsReused,
 		objectsReused: counters.objectsReused,
 		signatureVisits: counters.signatureVisits,
 		cold,

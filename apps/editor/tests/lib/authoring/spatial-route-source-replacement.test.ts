@@ -491,7 +491,7 @@ describe('spatial route source replacement', () => {
 		const originalCanvas = stageCanvas();
 		const layout: LayoutDocumentWallFirst = {
 			units: 'meters',
-			formatVersion: 8,
+			formatVersion: 9,
 			floor: { id: 'floor', name: 'Floor', elevation: 0 },
 			junctions: [
 				{ id: 'j-1', point: [0, 0] },
@@ -509,7 +509,8 @@ describe('spatial route source replacement', () => {
 			],
 			rooms: [],
 			openings: [],
-			objects: []
+			objects: [],
+			regions: []
 		};
 		const project = await createUnitProject({ id: 'project-1', name: 'Oversized' });
 		const imported = {

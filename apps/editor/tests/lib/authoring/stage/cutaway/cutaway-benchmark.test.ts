@@ -57,8 +57,6 @@ function document(): LayoutDocumentWallFirst {
 			boundary: corners.map((_, index) => ({ wallId: `r${room}-w${index}`, direction: 'forward' as const })),
 			virtualEdges: [],
 			overhead: 'closed',
-			floorThickness: 0.1,
-			ceilingThickness: 0.1
 		});
 	}
 	return layout;

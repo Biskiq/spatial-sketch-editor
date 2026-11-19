@@ -64,3 +64,5 @@ export * from './layout-preset-explicit';
 export { materializeLayoutSourceForCapture } from './layout-source-collections';
 
 export { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';
+
+export { LAYOUT_SLICE_CONTACT_METERS } from './layout-region';

@@ -82,8 +82,6 @@ function gallery(open: boolean): LayoutDocumentWallFirst {
 				],
 				virtualEdges: open ? [{ startJunctionId: 'j-d', endJunctionId: 'j-a' }] : [],
 				overhead: 'closed',
-				floorThickness: 0.1,
-				ceilingThickness: 0.1
 			}
 		]
 	};
