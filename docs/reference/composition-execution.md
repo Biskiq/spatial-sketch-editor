@@ -8,7 +8,7 @@ interface; do not append amendment histories. Incompatible semantic changes requ
 versioning. Numeric tolerances and calibration remain provider conformance parameters unless fixed
 here. Implementation grows incrementally; an accepted future contract is not proof of readiness.
 
-Current source versions: envelope 1, Layout 8, Scene 9, Camera 1, Experience 4, resources 2;
+Current source versions: envelope 1, Layout 9, Scene 10, Camera 1, Experience 4, resources 2;
 ExecutionProgram 4. Strict readers reject other versions without conversion. F.1–F.4 are implemented;
 F.5 prepared publication remains future work. [Experience](components/experience.md) owns the current
 Guide/Stop model and runtime semantics.
@@ -161,8 +161,8 @@ generic object bag admits hidden domains or renderer/session state.
 | `DependencyLock` | `{formatVersion, entries}`: deterministic set keyed by qualified identity/instance scope; exact unit/resource content revisions and required capability/version per entry; external bytes additionally pin hash/MIME/size/immutable locator. |
 | `UnresolvedBinding` | Typed authored diagnostic retaining the original F.1 reference and repair status in the owning domain — never a fabricated resolved pin. Executable closure is distinguished from structural failure. |
 
-Admitted unit versions at the current landed cutover: envelope format 1; Layout payload 6;
-Scene 9 (Camera-free); Camera 1; Experience 4; typed resources 2. The source-content digest
+Admitted unit versions at the current landed cutover: envelope format 1; Layout payload 9;
+Scene 10 (Camera-free); Camera 1; Experience 4; typed resources 2. The source-content digest
 excludes acceptedRevision and session/history/receipt metadata; unit contentRevision hashes
 canonical domain data only. The Camera codec split and Experience order cutover landed together
 (one ownership split); source admission uses only the current units.

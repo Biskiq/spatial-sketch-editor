@@ -183,6 +183,11 @@ export type PlannerRequest<Source> = {
 export type PlannerAdmission = {
 	/** The one domain this planner produces changes in. */
 	readonly domain: SemanticDomain;
+	/**
+	 * Additional domains a planner may read through qualified intent targets.
+	 * These are reference inputs only; they do not widen the planner's write set.
+	 */
+	readonly referenceDomains?: readonly SemanticDomain[];
 	/** Compound (multi-domain) acceptance, e.g. a Camera View + Presentation. */
 	readonly compound: boolean;
 	/**

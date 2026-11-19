@@ -399,8 +399,3 @@ export type LayoutRegion = {
   intendedGaps: string[];
   name?: string;
 };
-
-export type LayoutRegionSurfaceRef = {
-  regionId: string;
-  surface: 'top' | 'underside' | 'edge';
-};

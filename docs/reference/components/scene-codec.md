@@ -7,16 +7,16 @@
 
 ## Codec boundary
 
-Scene 9 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
+Scene 10 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
 by the Camera codec is not a second authored Scene authority. Camera and Experience are separate
 units today. Release readers do not consume authoring codecs. Compound acceptance belongs to F.4.
 
-Scene 9 stores the authored Sky. Its Sun and Moon positions are derived from time,
+Scene 10 stores the authored Sky. Its Sun and Moon positions are derived from time,
 heading and noon height. The all-default Studio Sky normalizes to absence, as does an empty
-environment. Scene 8 source and release payloads are refused with `unsupported_format_version`.
-Publishing again requires a re-authored Scene 9 project.
+environment. Scene 9 source and release payloads are refused with `unsupported_format_version`.
+Publishing again requires a re-authored Scene 10 project.
 
-Scene 9's Finish grammar is strict. `maps` names one texture id per slot; `mapping` carries
+Scene 10's Finish grammar is strict. `maps` names one texture id per slot; `mapping` carries
 `tileMeters`, `rotation` and `offset`; `normalScale` and `normalFlipY` are refused without
 `maps.normal`. A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec
 leaves follower closure to the unit validator, which is the only reader holding the palette. Every
@@ -24,6 +24,13 @@ default (empty maps/mapping, `rotation: 0`, `offset: [0, 0]`, `normalScale: 1`, 
 false`) is dropped from the parsed value, so canonical bytes hash the authored content only. The
 retired `baseTextureId` is an unknown key, and a `/project-assets/{assetId}` texture's Scene id must
 equal that asset id (`texture_id_mismatch`).
+
+Optional `surfaceFinishes` is a nonempty, sorted and unique array of assignments to canonical Layout
+`wall-side`, `room-floor` or `room-lid` references. Each assignment names exactly one curated
+`materialId` or non-pristine `materialInstanceId`; an empty field is omitted and `region-face` is
+not admitted in Scene 10. Unknown reference kinds, duplicate identities, unsorted records and
+non-normal Finish references are refused. Cross-unit validation reports a retired Layout identity
+as `unresolved-surface`; it is retained on read for recovery and resolved to the Layout default.
 
 ```text
 packages/project-model/src/scene-codec/

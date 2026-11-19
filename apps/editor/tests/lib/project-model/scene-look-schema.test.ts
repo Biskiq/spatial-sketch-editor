@@ -1,5 +1,5 @@
 /**
- * Scene 9's Look schema at the unit boundary.
+ * Scene 10's Look schema at the unit boundary.
  *
  * The Scene codec owns one document's strict shape. This suite covers what only
  * the unit reader knows: the palette, the follower check and the stored Sky and
@@ -46,11 +46,41 @@ function issues(input: unknown) {
 	return result.issues.map((issue) => ({ code: issue.code, path: issue.path }));
 }
 
-describe('Scene 9 unit payload', () => {
-	it('admits format 9 and refuses format 8 strictly', () => {
+describe('Scene 10 unit payload', () => {
+	it('admits format 10 and refuses format 9 strictly', () => {
 		expect(validateCameraFreeScenePayload(payload()).success).toBe(true);
-		expect(issues({ ...payload(), formatVersion: 8 })).toContainEqual(
+		expect(issues({ ...payload(), formatVersion: 9 })).toContainEqual(
 			expect.objectContaining({ code: 'unsupported_format_version', path: '$.formatVersion' })
+		);
+	});
+
+	it('admits one normalized Wall-side Finish and refuses non-normal surface assignments', () => {
+		const left = { surface: { kind: 'wall-side', wallId: 'a-wall', side: 'left' }, finish: { materialId: 'marble-light' } };
+		const right = { surface: { kind: 'wall-side', wallId: 'z-wall', side: 'right' }, finish: { materialId: 'velvet-dark' } };
+		const admitted = validateCameraFreeScenePayload(payload({ surfaceFinishes: [left, right] }));
+		expect(admitted.success).toBe(true);
+		if (admitted.success) expect(admitted.value.surfaceFinishes).toEqual([left, right]);
+
+		const cases: Array<{ readonly assignments: unknown[]; readonly code: string }> = [
+			{ assignments: [right, left], code: 'surface_finish_not_normal' },
+			{ assignments: [left, left], code: 'duplicate_surface_finish' },
+			{ assignments: [{ ...left, surface: { ...left.surface, side: 'top' } }], code: 'unknown-tag' },
+			{ assignments: [{ ...left, surface: { kind: 'region-face', regionId: 'r', face: 'top' } }], code: 'unknown_surface_kind' },
+			{
+				assignments: [{ surface: left.surface, finish: { materialInstanceId: 'pristine' } }],
+				code: 'surface_finish_not_normal'
+			}
+		];
+		for (const item of cases) {
+			const materials = JSON.stringify(item.assignments).includes('pristine')
+				? [{ id: 'pristine', name: 'Pristine', baseMaterialId: 'plaster-warm' }]
+				: [];
+			expect(issues(payload({ surfaceFinishes: item.assignments, materials }))).toContainEqual(
+				expect.objectContaining({ code: item.code })
+			);
+		}
+		expect(issues(payload({ surfaceFinishes: [] }))).toContainEqual(
+			expect.objectContaining({ code: 'surface_finish_not_normal' })
 		);
 	});
 

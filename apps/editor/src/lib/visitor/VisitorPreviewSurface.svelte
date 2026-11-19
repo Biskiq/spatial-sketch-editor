@@ -459,6 +459,7 @@ import { PCFShadowMap } from 'three';
 			{/if}
 			<VisitorLayoutShell
 				{geometry}
+				{scene}
 				textureScope={textureScope}
 				treatment={scene.environment?.treatment}
 			/>

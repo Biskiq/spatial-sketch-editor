@@ -4,6 +4,7 @@ import {
 } from './scene-codec';
 import type { SceneValidationOptions } from './scene-validation';
 import type { ArtworkFrame } from './artwork-frame';
+import type { LayoutSurfaceRef } from '@portfolio/layout-core';
 
 export type Vec3 = [number, number, number];
 export type AssetId = string;
@@ -14,6 +15,14 @@ export type MaterialId =
   | 'marble-light'
   | 'velvet-dark'
   | 'paper-aged';
+
+/** Scene 10 assignments; region faces stay outside this admitted subset. */
+export type SceneSurfaceRef = Exclude<LayoutSurfaceRef, { readonly kind: 'region-face' }>;
+export type SceneSurfaceFinish = {
+  readonly surface: SceneSurfaceRef;
+  readonly finish: { readonly materialId: MaterialId } | { readonly materialInstanceId: string };
+};
+
 export type SceneObjectFallback =
   | 'piano'
   | 'chair'
@@ -539,6 +548,8 @@ export type RuntimeScene = {
   textures: SceneTextureAsset[];
   /** Material instances; rendering support lands in Phase 5.3. */
   materials: SceneMaterialInstance[];
+	/** Scene-owned shared Finish assignments for Layout-authored faces. */
+	readonly surfaceFinishes?: readonly SceneSurfaceFinish[];
 	/** The World's ordered palette, when it has one. */
 	readonly palette?: readonly ScenePaletteSlot[];
 	/** The World's authored Sky and Treatment, when it has any. */

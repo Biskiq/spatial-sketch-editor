@@ -30,6 +30,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutVec2,
+	type LayoutSurfaceLineage,
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
 import {
@@ -48,7 +49,7 @@ import type {
 } from '@portfolio/project-model';
 
 import { layoutSubjectReference } from './drawing-planners';
-import { addressedSubject, layoutPlanner, layoutReference, wallStationFrame } from './precision';
+import { addressedSubject, layoutPlanner, layoutReference, registerLayoutSurfaceLineage, wallStationFrame } from './precision';
 
 export const LAYOUT_OPEN_SIDE_OFFSET_KIND = 'layout-open-side-offset';
 export const LAYOUT_OPEN_SIDE_SLIDE_KIND = 'layout-open-side-slide';
@@ -179,6 +180,7 @@ function preparedOpenSideCandidate(input: {
 	readonly preservedWallIds?: readonly string[];
 	readonly createdWallIds?: readonly string[];
 	readonly createdJunctionIds?: readonly string[];
+	readonly surfaceLineage: LayoutSurfaceLineage;
 }): PlannerOutcome<ProjectEnvelope> {
 	const levelId = capturedLevel(input.request);
 	if (typeof levelId !== 'string') return levelId;
@@ -280,6 +282,7 @@ function preparedOpenSideCandidate(input: {
 		],
 		diagnostics: []
 	};
+	registerLayoutSurfaceLineage(candidate, input.surfaceLineage);
 	return { kind: 'prepared', candidate };
 }
 
@@ -311,7 +314,8 @@ function openSideOffsetPlanner(): DomainPlanner<ProjectEnvelope> {
 				.map((room) => room.id),
 			affectedOpeningIds: request.snapshot.domain.source.units.layout.data.openings
 				.filter((opening) => plan.changedWallIds.includes(opening.wallId))
-				.map((opening) => opening.id)
+				.map((opening) => opening.id),
+			surfaceLineage: []
 		});
 	});
 }
@@ -365,7 +369,8 @@ function openSideSlidePlanner(): DomainPlanner<ProjectEnvelope> {
 				.map((opening) => opening.id),
 			preservedWallIds: [payload.wallId],
 			createdWallIds: [createdWallId],
-			createdJunctionIds: [plan.splitJunctionId]
+			createdJunctionIds: [plan.splitJunctionId],
+			surfaceLineage: plan.surfaceLineage
 		});
 	});
 }

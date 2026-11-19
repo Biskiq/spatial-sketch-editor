@@ -12,6 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+	createEmptyWallFirstLayoutDocument,
 	planDissolveJunction as planDissolveJunctionWithCapture,
 	validateWallFirstLayoutDocument
 } from '@portfolio/layout-core';
@@ -79,6 +80,42 @@ describe('planDissolveJunction — kernel output', () => {
 		expect(after.rooms.map((room) => room.id)).toEqual(['room']);
 		expect(after.openings).toHaveLength(1);
 		expect(after.openings[0]).toMatchObject({ id: 'door', wallId: 'w1a', offset: 0.5 });
+	});
+
+	it('maps a reversed survivor’s left/right before Join Finish precedence', () => {
+		const document = createEmptyWallFirstLayoutDocument();
+		document.junctions = [
+			{ id: 'west', point: [-3, 0] },
+			{ id: 'joint', point: [0, 0] },
+			{ id: 'east', point: [3, 0] }
+		];
+		// Both stored walls start at the joint. The smaller-id Wall survives, and
+		// the joined Wall starts at its far end, reversing that survivor in place.
+		document.walls = [
+			{ id: 'a-survivor', startJunctionId: 'joint', endJunctionId: 'west', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'b-absorbed', startJunctionId: 'joint', endJunctionId: 'east', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+		];
+		const plan = dissolve(document, 'joint');
+		if (plan.kind !== 'success') throw new Error(`expected reversed join to succeed: ${JSON.stringify(plan)}`);
+		expect(plan.document.walls.find((wall) => wall.id === 'a-survivor')).toMatchObject({
+			startJunctionId: 'west', endJunctionId: 'east'
+		});
+		expect(plan.surfaceLineage).toEqual([
+			{
+				to: { kind: 'wall-side', wallId: 'a-survivor', side: 'left' },
+				from: [
+					{ kind: 'wall-side', wallId: 'a-survivor', side: 'right' },
+					{ kind: 'wall-side', wallId: 'b-absorbed', side: 'left' }
+				]
+			},
+			{
+				to: { kind: 'wall-side', wallId: 'a-survivor', side: 'right' },
+				from: [
+					{ kind: 'wall-side', wallId: 'a-survivor', side: 'left' },
+					{ kind: 'wall-side', wallId: 'b-absorbed', side: 'right' }
+				]
+			}
+		]);
 	});
 
 	it('rejects a repeated dissolve of the retired Junction', () => {

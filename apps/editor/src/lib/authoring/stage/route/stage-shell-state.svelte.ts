@@ -36,7 +36,7 @@ import { STAGE_MEASURE_TASK } from '../stage-measure';
 import type { StageEraserController } from '../stage-eraser';
 import { createStageEraser } from '../stage-eraser';
 import { STAGE_ERASER_TASK } from '../stage-eraser';
-import type { StagePaintController } from '../stage-painter';
+import type { StagePaintCandidate, StagePaintController } from '../stage-painter';
 import { createStagePainter } from '../stage-painter';
 import type { FinishAuthoring } from '$lib/authoring/look/finish-authoring.svelte';
 import {
@@ -166,6 +166,8 @@ export function createStageShellState(input: StageShellStateInput) {
 	let measureTool = $state.raw<StageMeasureController | null>(null);
 	let eraserTool = $state.raw<StageEraserController | null>(null);
 	let paintTool = $state.raw<StagePaintController | null>(null);
+	let paintScope = $state<'face' | 'space'>('face');
+	let paintCandidate = $state.raw<StagePaintCandidate | null>(null);
 	let hostToolOverlay = $state.raw<StageHostToolOverlay | null>(null);
 	/** The Eraser's winner, drawn with the erase treatment in place of hover. */
 	let eraseHover = $state.raw<StageSelectionEntry | null>(null);
@@ -377,8 +379,13 @@ export function createStageShellState(input: StageShellStateInput) {
 				isAlready: (entityId) => input.finishes()?.activeIsAlready(entityId) ?? false,
 				assign: async (entityId) =>
 					(await input.finishes()?.paintEntity(entityId)) === 'accepted',
+				isSurfaceAlready: (surfaces) => input.finishes()?.activeSurfaceIsAlready(surfaces) ?? false,
+				assignSurface: async (surfaces) => (await input.finishes()?.paintSurface(surfaces)) ?? false,
 				dropperArmed: () => input.finishes()?.dropperArmed ?? false,
 				copy: async (hit) => (await input.finishes()?.copyFrom(hit)) ?? false,
+				copySurface: async (surface) => (await input.finishes()?.copySurface(surface)) ?? false,
+				surfaceScope: () => paintScope,
+				setSurfaceScope: (scope) => { paintScope = scope; },
 				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish'
 			},
 			() => refreshHostTools()
@@ -406,6 +413,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	);
 
 	function refreshHostTools(): void {
+		paintCandidate = paintTool?.candidate() ?? null;
 		const result = stageHostToolOverlay({
 			facade: input.facade(),
 			armedHostTool,
@@ -433,6 +441,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		measureTool?.clear();
 		eraserTool?.clear();
 		paintTool?.clear();
+		paintCandidate = null;
 		eraseHover = null;
 		paintHover = null;
 		hostToolOverlay = null;
@@ -733,6 +742,9 @@ export function createStageShellState(input: StageShellStateInput) {
 		get paintTool() {
 			return paintTool;
 		},
+		get paintCandidate() {
+			return paintCandidate;
+		},
 		get armedHostTool() {
 			return armedHostTool;
 		},
@@ -750,6 +762,7 @@ export function createStageShellState(input: StageShellStateInput) {
 		},
 		setPaintHover(entry: StageSelectionEntry | null) {
 			paintHover = entry;
+			if (entry === null) paintCandidate = null;
 		},
 		refreshHostTools,
 		clearHostTools,

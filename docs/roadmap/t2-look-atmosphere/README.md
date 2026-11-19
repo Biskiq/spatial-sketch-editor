@@ -85,7 +85,7 @@ can judge by eye.
 | **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Schema carries every PBR map slot, mapping, opacity and emission as open numeric fields. One material factory, so a new property is one resolver change | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
 | **Artwork** | Import PNG / JPEG / WebP as an **Artwork object**; place on a wall or free in 3D; size in real units with the aspect locked; transparency kept; four frame styles and a mat; **Light it** fitted to the frame; a derived *Lit by* reading; identical in Visitor Preview | Artwork `source` is a tagged union (image now, drawing later). Frame geometry is generated from parameters. Card-action and Library-entry slots that show nothing until a capability fills them | Trim (crop, straighten), wall labels, glazing, persistent hosting on a moving wall, SVG / video, the Artwork Studio |
 | **Light** | Bare emitters of all three kinds placed **free in space** and aimed like a camera; **frustum** beam handles; *Look through*; Lights in the Index; **Light it** | A fixture is an ordinary object grouped with an emitter. Lights are ordinary group members, so a saved rig is a saved group | Fixture models, articulated heads, saved rigs, live-linked rigs, area lights |
-| **Sky** | Six preset starts, Time dial, Sun direction, Haze, More and the Celestial Dial | Scene 9 stores time, heading and noon height. The shared atmosphere resolver derives the Sun and Moon | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
+| **Sky** | Six preset starts, Time dial, Sun direction, Haze, More and the Celestial Dial | Scene 10 stores time, heading and noon height. The shared atmosphere resolver derives the Sun and Moon | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
 | **Look** | Atmosphere + Treatment apply to **any** World; palette for followers; opt-in *Adopt palette* | A Look is data over the same fields; a Treatment is a resolve-time transform, never a rewrite | Outline / toon / bloom (post pass), look A/B snapshots |
 | **Rendering** | What S0 measures and nothing else | No slice builds a material or light outside the shared factory and resolved-look module | Transmission glass, probes, baked or cached shadows, post |
 
@@ -211,7 +211,7 @@ arrive for objects and lights together.
 ## 6. Sky and Looks
 
 **Sky** opens from the Environment control at the Stage’s bottom-right. The Sky panel holds
-the 24-hour Time dial, Sun direction, six presets, Haze and More. Scene 9 stores time,
+the 24-hour Time dial, Sun direction, six presets, Haze and More. Scene 10 stores time,
 heading and noon height and derives Sun or Moon direction. Preset changes preserve heading.
 The Celestial Dial is the Stage instrument for time and noon bearing.
 

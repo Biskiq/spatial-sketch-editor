@@ -22,7 +22,7 @@ export { indexLabels } from './shell/index-labels';
 export { default as ShellIcon } from './shell/ShellIcon.svelte';
 export type {
 	StageAdapter, StageAdapterBinding, StageAdapterContext, StageCardAction,
-	StageCardActionOutcome, StageCardFact, StageCardSubject, StageCandidatePreview,
+	StageCardActionOutcome, StageCardFact, StageCardSubject, StageCandidatePreview, StagePaintAnswer, StagePaintSpaceScope,
 	StageDomainPick, StageGhostMesh, StageGuideContribution, StageInkReadingRecord,
 	StageInkReadingSession, StageInstrumentContent, StageKeyboardIntent, StageOverlayContribution,
 	StagePointerIntent

@@ -180,6 +180,19 @@ export function createPlannerRegistry<Source>(
 					`planner "${planner.id}" declares compound acceptance and must declare the other unit domains it writes (\`writes\`, at least one)`
 				);
 			}
+			const referenceDomains = planner.admission.referenceDomains ?? [];
+			const invalidReferenceDomain = referenceDomains.find(
+				(domain, index) =>
+					domain === planner.admission.domain ||
+					referenceDomains.indexOf(domain) !== index ||
+					!(admission.domains as readonly string[]).includes(domain)
+			);
+			if (invalidReferenceDomain !== undefined) {
+				return registrationRefusal(
+					'unsupported-domain',
+					`planner "${planner.id}" declares reference domain "${invalidReferenceDomain}", which must be distinct from "${planner.admission.domain}" and admitted by this profile (${admission.domains.join(', ')})`
+				);
+			}
 			const writes = planner.admission.writes ?? [];
 			const invalidWrite = writes.find(
 				(write, index) =>
@@ -338,7 +351,11 @@ export function prepareIntent<Source>(
 		return refusal('unsupported-operation', null, `No planner is registered for operation kind "${valid.kind}"`, []);
 	}
 	const plannerDomain: SemanticDomain = planner.admission.domain;
-	if (scope.domains.length === 1 && scope.domains[0] !== plannerDomain) {
+	if (
+		scope.domains.length === 1 &&
+		scope.domains[0] !== plannerDomain &&
+		!(planner.admission.referenceDomains ?? []).includes(scope.domains[0]!)
+	) {
 		// A planner registered for one domain planning another domain's subjects is
 		// a wiring defect, not a caller error: refuse rather than let it try.
 		return refusal(

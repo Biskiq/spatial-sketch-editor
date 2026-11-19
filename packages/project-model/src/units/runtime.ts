@@ -290,11 +290,12 @@ export function prepareValidatedUnitRuntime(
 		// the runtime value every surface shares. Reuse is keyed by this same unit,
 		// so a retained Scene already carries both.
 		const sceneUnit = envelope.units.scene.data;
-		if (sceneUnit.palette !== undefined || sceneUnit.environment !== undefined) {
+		if (sceneUnit.palette !== undefined || sceneUnit.environment !== undefined || sceneUnit.surfaceFinishes !== undefined) {
 			runtimeScene = {
 				...runtimeScene,
 				...(sceneUnit.palette === undefined ? {} : { palette: sceneUnit.palette }),
-				...(sceneUnit.environment === undefined ? {} : { environment: sceneUnit.environment })
+				...(sceneUnit.environment === undefined ? {} : { environment: sceneUnit.environment }),
+				...(sceneUnit.surfaceFinishes === undefined ? {} : { surfaceFinishes: sceneUnit.surfaceFinishes })
 			};
 		}
 	}

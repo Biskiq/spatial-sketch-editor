@@ -602,20 +602,20 @@ describe('V1d place-object support evidence', () => {
 describe('V1d Layout surface references', () => {
 	it('resolves region top, underside and the whole edge from authored identity', () => {
 		const { geometry, regionId } = terraceLayout();
-		expect(resolveLayoutSurfaceReference(geometry, { regionId, surface: 'top' })).toMatchObject({
+		expect(resolveLayoutSurfaceReference(geometry, { kind: 'region-face', regionId, face: 'top' })).toMatchObject({
 			kind: 'resolved',
 			subject: { kind: 'region', id: regionId },
 			elevation: 0.6,
 			faces: [expect.objectContaining({ surface: 'top', normal: [0, 1, 0] })]
 		});
-		const underside = resolveLayoutSurfaceReference(geometry, { regionId, surface: 'underside' });
+		const underside = resolveLayoutSurfaceReference(geometry, { kind: 'region-face', regionId, face: 'underside' });
 		expect(underside).toMatchObject({
 			kind: 'resolved',
 			faces: [expect.objectContaining({ surface: 'underside', normal: [0, -1, 0] })]
 		});
 		if (underside.kind !== 'resolved') return;
 		expect(underside.elevation).toBeCloseTo(0.4, 9);
-		const edge = resolveLayoutSurfaceReference(geometry, { regionId, surface: 'edge' });
+		const edge = resolveLayoutSurfaceReference(geometry, { kind: 'region-face', regionId, face: 'edge' });
 		expect(edge).toMatchObject({ kind: 'resolved', elevation: null });
 		if (edge.kind !== 'resolved') return;
 		expect(edge.faces).toHaveLength(4);
@@ -628,8 +628,9 @@ describe('V1d Layout surface references', () => {
 		if (moved.kind !== 'success') return;
 		const movedGeometry = compileWallFirstLayoutGeometry(moved.document).geometry;
 		const movedTop = resolveLayoutSurfaceReference(movedGeometry, {
+			kind: 'region-face',
 			regionId: start.regionId,
-			surface: 'top'
+			face: 'top'
 		});
 		expect(movedTop).toMatchObject({ kind: 'resolved', elevation: 0.6 });
 		if (movedTop.kind !== 'resolved') return;
@@ -640,11 +641,12 @@ describe('V1d Layout surface references', () => {
 		if (raised.kind !== 'success') return;
 		const raisedGeometry = compileWallFirstLayoutGeometry(raised.document).geometry;
 		expect(
-			resolveLayoutSurfaceReference(raisedGeometry, { regionId: start.regionId, surface: 'top' })
+			resolveLayoutSurfaceReference(raisedGeometry, { kind: 'region-face', regionId: start.regionId, face: 'top' })
 		).toMatchObject({ kind: 'resolved', elevation: 1.2 });
 		const raisedUnderside = resolveLayoutSurfaceReference(raisedGeometry, {
+			kind: 'region-face',
 			regionId: start.regionId,
-			surface: 'underside'
+			face: 'underside'
 		});
 		expect(raisedUnderside).toMatchObject({ kind: 'resolved' });
 		if (raisedUnderside.kind !== 'resolved') return;
@@ -655,7 +657,7 @@ describe('V1d Layout surface references', () => {
 		if (removed.kind !== 'success') return;
 		const removedGeometry = compileWallFirstLayoutGeometry(removed.document).geometry;
 		expect(
-			resolveLayoutSurfaceReference(removedGeometry, { regionId: start.regionId, surface: 'top' })
+			resolveLayoutSurfaceReference(removedGeometry, { kind: 'region-face', regionId: start.regionId, face: 'top' })
 		).toMatchObject({ kind: 'unresolved', code: 'missing-region' });
 	});
 
@@ -665,12 +667,12 @@ describe('V1d Layout surface references', () => {
 		const closed = compileWallFirstLayoutGeometry(layout).geometry;
 		const room = closed.rooms.find((candidate) => candidate.roomId === roomId);
 		expect(room).toBeDefined();
-		expect(resolveLayoutSurfaceReference(closed, { roomId, surface: 'floor' })).toMatchObject({
+		expect(resolveLayoutSurfaceReference(closed, { kind: 'room-floor', roomId })).toMatchObject({
 			kind: 'resolved',
 			elevation: room!.floorElevation,
 			faces: [expect.objectContaining({ surface: 'floor', normal: [0, 1, 0] })]
 		});
-		expect(resolveLayoutSurfaceReference(closed, { roomId, surface: 'lid' })).toMatchObject({
+		expect(resolveLayoutSurfaceReference(closed, { kind: 'room-lid', roomId })).toMatchObject({
 			kind: 'resolved',
 			elevation: room!.ceilingElevation,
 			faces: [expect.objectContaining({ surface: 'lid', normal: [0, -1, 0] })]
@@ -680,11 +682,11 @@ describe('V1d Layout surface references', () => {
 		expect(open.kind).toBe('success');
 		if (open.kind !== 'success') return;
 		const openGeometry = compileWallFirstLayoutGeometry(open.document).geometry;
-		expect(resolveLayoutSurfaceReference(openGeometry, { roomId, surface: 'lid' })).toMatchObject({
+		expect(resolveLayoutSurfaceReference(openGeometry, { kind: 'room-lid', roomId })).toMatchObject({
 			kind: 'unresolved',
 			code: 'open-to-sky'
 		});
-		expect(resolveLayoutSurfaceReference(openGeometry, { roomId, surface: 'floor' })).toMatchObject({
+		expect(resolveLayoutSurfaceReference(openGeometry, { kind: 'room-floor', roomId })).toMatchObject({
 			kind: 'resolved',
 			elevation: room!.floorElevation
 		});
@@ -693,10 +695,10 @@ describe('V1d Layout surface references', () => {
 	it('reports missing authored subjects rather than resolving by coincidence', () => {
 		const { geometry } = terraceLayout();
 		expect(
-			resolveLayoutSurfaceReference(geometry, { regionId: 'missing-region', surface: 'top' })
+			resolveLayoutSurfaceReference(geometry, { kind: 'region-face', regionId: 'missing-region', face: 'top' })
 		).toMatchObject({ kind: 'unresolved', code: 'missing-region' });
 		expect(
-			resolveLayoutSurfaceReference(geometry, { roomId: 'missing-room', surface: 'floor' })
+			resolveLayoutSurfaceReference(geometry, { kind: 'room-floor', roomId: 'missing-room' })
 		).toMatchObject({ kind: 'unresolved', code: 'missing-space' });
 	});
 });

@@ -210,9 +210,9 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
 		[projectId]
 	);
-	// Scene format 9 is the only admitted format now, and Save stores exactly
+	// Scene format 10 is the only admitted format now, and Save stores exactly
 	// the captured canonical bytes — the form source is never re-derived.
-	assert.equal(SCENE_UNIT_FORMAT_VERSION, 9);
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 10);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
 	assert.equal(storedScene.header.formatVersion, SCENE_UNIT_FORMAT_VERSION);

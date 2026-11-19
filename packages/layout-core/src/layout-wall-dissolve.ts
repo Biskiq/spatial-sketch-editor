@@ -62,6 +62,7 @@ import {
 } from './layout-wall-topology-ops';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
+import { joinWallSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
 
 /** Dissolve-only rejection codes; stable machine codes per operation. */
 export type DissolveSpecificRejectionCode =
@@ -110,6 +111,8 @@ export type DissolvePlan =
 			retiredWallId: string;
 			/** The dissolved Junction. */
 			retiredJunctionId: string;
+			/** Orientation-mapped precedence for the joined Wall sides. */
+			surfaceLineage: LayoutSurfaceLineage;
 			/** Fresh interior knot at the former Junction (curve joins only). */
 			createdKnotId?: string;
 	  }
@@ -553,6 +556,12 @@ export function planDissolveJunction(
 			survivorWallId: survivor.id,
 			retiredWallId: other.id,
 			retiredJunctionId: junctionId,
+			surfaceLineage: joinWallSurfaceLineage({
+				survivorWallId: survivor.id,
+				absorbedWallId: other.id,
+				survivorForward,
+				absorbedForward: otherForward
+			}),
 			...(createdKnotId !== undefined ? { createdKnotId } : {})
 		})
 	);

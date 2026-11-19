@@ -32,6 +32,8 @@ import {
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
+import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
@@ -114,6 +116,25 @@ function collinearPair(overrides: { readonly wa?: Partial<WallSpec>; readonly wb
 			{ id: 'wb', start: 'j', end: 'e2', ...overrides.wb }
 		]
 	);
+}
+
+/** Smaller-id survivor begins at the Joint, so a correct Join reverses it. */
+function reversedSurvivorPair(): {
+	readonly document: LayoutDocumentWallFirst;
+	readonly survivorWallId: string;
+	readonly retiredWallId: string;
+} {
+	return {
+		document: documentOf(
+			[['west', point(0, 0)], ['joint', point(3, 0)], ['east', point(6, 0)]],
+			[
+				{ id: 'a-survivor', start: 'joint', end: 'west' },
+				{ id: 'b-absorbed', start: 'joint', end: 'east' }
+			]
+		),
+		survivorWallId: 'a-survivor',
+		retiredWallId: 'b-absorbed'
+	};
 }
 
 /**
@@ -200,12 +221,16 @@ function threeWallJointFixture(): LayoutDocumentWallFirst {
 	);
 }
 
-async function mount(document: LayoutDocumentWallFirst, name = 'A2 join walls'): Promise<Mounted> {
+async function mount(
+	document: LayoutDocumentWallFirst,
+	name = 'A2 join walls',
+	scene?: CameraFreeSceneDocument
+): Promise<Mounted> {
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name,
 		layout: document,
-		scene: {
+		scene: scene ?? {
 			formatVersion: 1,
 			textures: [],
 			materials: [],
@@ -214,6 +239,7 @@ async function mount(document: LayoutDocumentWallFirst, name = 'A2 join walls'):
 			connections: []
 		}
 	});
+
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-a2-join',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
@@ -337,6 +363,48 @@ async function eventually(predicate: () => boolean, label = 'the fixture did not
 }
 
 describe('T1 A2 — Join walls', () => {
+	it('maps reversed-survivor sides before Finish precedence in one exact Undo/Redo entry', async () => {
+		const fixture = reversedSurvivorPair();
+		const scene: CameraFreeSceneDocument = {
+			formatVersion: SCENE_UNIT_FORMAT_VERSION,
+			textures: [], materials: [], entities: [],
+			surfaceFinishes: [
+				{ surface: { kind: 'wall-side', wallId: fixture.survivorWallId, side: 'left' }, finish: { materialId: 'marble-light' } },
+				{ surface: { kind: 'wall-side', wallId: fixture.retiredWallId, side: 'left' }, finish: { materialId: 'velvet-dark' } },
+				{ surface: { kind: 'wall-side', wallId: fixture.retiredWallId, side: 'right' }, finish: { materialId: 'brass-aged' } }
+			]
+		};
+		const mounted = await mount(fixture.document, 'A2 join wall Finishes', scene);
+		settle(mounted.facade, 2);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		pressJoint(mounted.facade, [3, 0]);
+		moveTo(mounted.facade, [3, 1]);
+		moveTo(mounted.facade, [4, 0]);
+		const preview = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-junction-join');
+		expect(preview?.labels.map((label) => label.text).join(' ')).toContain(
+			`On Wall ${fixture.survivorWallId} right, keep the Finish from Wall ${fixture.survivorWallId} left; replace the Finish from Wall ${fixture.retiredWallId} right.`
+		);
+		release(mounted.facade, [4, 0]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== beforeBytes, 'the Finish-aware join never committed');
+
+		const joinedBytes = mounted.facade.snapshot().canonicalJson;
+		const afterScene = stageEnvelope(mounted.facade.snapshot()).units.scene.data;
+		expect(afterScene.surfaceFinishes).toEqual([
+			{ surface: { kind: 'wall-side', wallId: fixture.survivorWallId, side: 'left' }, finish: { materialId: 'velvet-dark' } },
+			{ surface: { kind: 'wall-side', wallId: fixture.survivorWallId, side: 'right' }, finish: { materialId: 'marble-light' } }
+		]);
+		expect(mounted.host.history()).toMatchObject({
+			depth: beforeHistory.depth + 1,
+			position: beforeHistory.position + 1
+		});
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(joinedBytes);
+	});
+
 	it('[cap:layout.wall-join core] joins a collinear pair by removing its Joint, preserving the survivor, its Opening and the Room through Undo, Redo and Save/Load', async () => {
 		const fixture = splitEnclosureFixture();
 		const mounted = await mount(fixture.document);

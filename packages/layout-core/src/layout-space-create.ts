@@ -20,6 +20,7 @@ import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallFirstRoom } from '.
 import { planWallSplit } from './layout-wall-noding';
 import { classifyWallIntersection } from './layout-wall-topology';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
+import type { LayoutSurfaceLineage } from './layout-surface-reference';
 
 export type SpaceCreationAnchor =
 	| { kind: 'junction'; id: string }
@@ -258,6 +259,7 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 	const createdJunctionIds: string[] = [];
 	const createdWallIds: string[] = [];
 	const splitWallIds: string[] = [];
+	const surfaceLineage: LayoutSurfaceLineage[number][] = [];
 	const nodeIds = new Map<string, string>();
 	const corners = new Map<string, LayoutVec2>();
 	const stations = new Map<string, Map<number, LayoutVec2>>();
@@ -305,6 +307,7 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 			const actual = split.document.junctions.find(({ id }) => id === split.junctionId)!.point;
 			if (!coincidesAsJunction(expected, actual)) return refuse('split', 'The split would move the Wall anchor', [wallId]);
 			document = split.document;
+			surfaceLineage.push(...split.surfaceLineage);
 			nodeIds.set(spaceCreationAnchorKey({ kind: 'wall-station', wallId, station }), split.junctionId);
 			createdJunctionIds.push(split.junctionId);
 			createdWallIds.push(...split.createdWallIds);
@@ -344,7 +347,7 @@ function stageCycle(baseline: LayoutDocumentWallFirst, capture: LayoutIdCapture,
 	if (!(outline.area > 0)) return refuse('degenerate', 'This outline has no area');
 	return {
 		kind: 'staged' as const, document: { ...document, rooms: [...document.rooms, room] },
-		roomId, createdJunctionIds, createdWallIds, splitWallIds, evidence: outline.evidence,
+		roomId, createdJunctionIds, createdWallIds, splitWallIds, surfaceLineage, evidence: outline.evidence,
 		cycleKey: spaceBoundaryCycleKey(document, room, read.lookup)!
 	};
 }

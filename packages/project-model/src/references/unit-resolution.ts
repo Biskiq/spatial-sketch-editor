@@ -164,7 +164,13 @@ function layoutScoped(
 	contentRevision: string,
 	levelId: string
 ): ReferenceResolverOutcome {
-	if (reference.componentId !== null || reference.capabilityId !== null) {
+	const component = reference.componentId;
+	const validComponent = component === null || (
+		(reference.subject.kind === 'wall' && (component === 'side:left' || component === 'side:right')) ||
+		(reference.subject.kind === 'room' && (component === 'floor' || component === 'lid')) ||
+		(reference.subject.kind === 'region' && (component === 'top' || component === 'underside' || component === 'edge'))
+	);
+	if (!validComponent || reference.capabilityId !== null) {
 		return { kind: 'missing', message: 'this unit authors no such component or capability', repairs: REACQUIRE };
 	}
 	if (reference.location.kind === 'layout-location') {

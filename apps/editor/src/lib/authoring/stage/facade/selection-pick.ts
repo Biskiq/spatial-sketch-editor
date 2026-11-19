@@ -118,12 +118,12 @@ export function createSelectionPick(input: SelectionPickPort) {
 			return null;
 		}
 	};
-	const paintAnswer: StageFacade['paintAnswer'] = (adapterId, hit) => {
+	const paintAnswer: StageFacade['paintAnswer'] = (adapterId, hit, reading) => {
 		if (!isLive()) return null;
 		const entry = adapters.get(adapterId);
 		if (entry === undefined || !entry.contributions.hostTools?.includes('paint')) return null;
 		try {
-			return entry.contributions.paintAnswer?.(hit) ?? null;
+			return entry.contributions.paintAnswer?.(hit, reading) ?? null;
 		} catch {
 			// A throwing contributor paints nothing, as everywhere else in this host.
 			return null;

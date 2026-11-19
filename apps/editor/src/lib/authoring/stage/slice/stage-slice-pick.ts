@@ -62,7 +62,7 @@ function regionSectionHit(
 		)) continue;
 		return {
 			entityId: null, kind: 'layout', distanceMeters, worldPoint: point.toArray(),
-			region: { regionId: group.group.slice('layout-region:'.length), surface: 'edge' }
+			region: { kind: 'region-face', regionId: group.group.slice('layout-region:'.length), face: 'edge' }
 		};
 	}
 	return null;

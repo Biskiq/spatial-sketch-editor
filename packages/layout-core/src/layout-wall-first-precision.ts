@@ -117,6 +117,7 @@ import type { CurveSample } from './layout-geometry-curve';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';
 import type { Vec3 } from './types';
+import type { LayoutSurfaceLineage } from './layout-surface-reference';
 
 const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;
 
@@ -499,6 +500,7 @@ export type SpaceOpenSideSlidePlan =
 			/** The Wall the open side still follows (the stub is the other fragment). */
 			keptWallId: string;
 			stubWallId: string;
+			surfaceLineage: LayoutSurfaceLineage;
 			acceptance?: WallFirstAcceptanceCompile;
 	  }
 	| { kind: 'rejected'; rejection: PrecisionRejection };
@@ -713,6 +715,7 @@ export function planSpaceOpenSideEndSlide(
 		splitJunctionId: split.junctionId,
 		keptWallId,
 		stubWallId: stub.id,
+		surfaceLineage: split.surfaceLineage,
 		...(finalized.acceptance === undefined ? {} : { acceptance: finalized.acceptance })
 	};
 }

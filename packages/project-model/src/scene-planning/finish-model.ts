@@ -21,6 +21,10 @@ import {
 	type SceneMaterialInstance,
 	type ScenePaletteSlot
 } from '../scene';
+import { resolveSceneSurfaceFinish } from '../scene-surface-reference';
+import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
 import { sameSceneValues } from './record-scope';
 
 /** One Finish, as a payload names it. */
@@ -50,8 +54,13 @@ export type FinishEntity = SceneEntity & {
 export type FinishScene = {
 	readonly materials: readonly SceneMaterialInstance[];
 	readonly entities: readonly SceneEntity[];
+	readonly surfaceFinishes?: readonly SceneSurfaceFinish[];
 	readonly palette?: readonly ScenePaletteSlot[];
 };
+
+export type FinishUser =
+	| { readonly kind: 'entity'; readonly id: string; readonly entity: SceneEntity }
+	| { readonly kind: 'surface'; readonly key: string; readonly assignment: SceneSurfaceFinish };
 
 export type FinishTargetKind = 'primitive' | 'form' | 'model';
 
@@ -122,9 +131,42 @@ export function finishOf(
 	return `curated:${entity.materialId}`;
 }
 
-/** Every Scene object using a Finish, in document order. */
-export function usersOfFinish(scene: FinishScene, key: FinishKey): SceneEntity[] {
-	return scene.entities.filter((entity) => finishOf(entity, scene.materials) === key);
+/** One authored wall/Space Finish assignment, or null when it is unassigned. */
+export function surfaceFinishFor(
+	scene: Pick<FinishScene, 'surfaceFinishes'>,
+	reference: SceneSurfaceRef
+): SceneSurfaceFinish | null {
+	return resolveSceneSurfaceFinish(scene, reference);
+}
+
+export function finishKeyOfSurface(scene: FinishScene, assignment: SceneSurfaceFinish): FinishKey {
+	const finish = assignment.finish;
+	if ('materialId' in finish) return `curated:${finish.materialId}`;
+	const instance = materialInstanceById(scene.materials, finish.materialInstanceId);
+	return instance !== undefined && isPristineInstance(instance)
+		? `curated:${instance.baseMaterialId}`
+		: `project:${finish.materialInstanceId}`;
+}
+
+/** Every Scene entity and Layout surface using a Finish, in stable source order. */
+export function usersOfFinish(
+	scene: FinishScene,
+	key: FinishKey,
+	layout?: LayoutDocumentWallFirst
+): FinishUser[] {
+	return [
+		...scene.entities
+			.filter((entity) => finishOf(entity, scene.materials) === key)
+			.map((entity): FinishUser => ({ kind: 'entity', id: entity.id, entity })),
+		...(scene.surfaceFinishes ?? [])
+			.filter((assignment) =>
+				finishKeyOfSurface(scene, assignment) === key &&
+				(layout === undefined || resolveLayoutSurface(layout, assignment.surface) !== 'retired')
+			)
+			.map((assignment): FinishUser => ({
+				kind: 'surface', key: surfaceKey(assignment.surface), assignment
+			}))
+	];
 }
 
 /** The catalogue Finish a curated key names. */

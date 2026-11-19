@@ -67,7 +67,7 @@ import {
 } from '@portfolio/project-model/units';
 
 import { layoutSubjectReference } from './drawing-planners';
-import { layoutPlanner } from './precision';
+import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
 import { ROOM_DUPLICATE_COINCIDENT_MESSAGE, roomDuplicateRefusalWords } from './refusals';
 
 export const LAYOUT_ROOM_DUPLICATE_KIND = 'layout-room-duplicate';
@@ -253,6 +253,7 @@ function roomDuplicatePlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }

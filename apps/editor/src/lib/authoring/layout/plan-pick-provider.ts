@@ -1,7 +1,7 @@
 import { Box3, Ray, Vector3 } from 'three';
 import { compiledOpeningFaceLoops } from './opening-faces';
 import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core';
-import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry } from '@portfolio/layout-core';
+import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type OverheadSource, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry, type PlanSourceKind, type PlanSubRef } from '@portfolio/layout-core';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import { LIFT_OUTLINE_DEPTH_BAND_METERS, LIFT_OUTLINE_DROP_METERS } from '../stage/lift-ink';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
@@ -911,6 +911,39 @@ export function createPlanPickProvider(
 		const slice = sliceOf();
 		const cutaway = cutawayOf();
 		const erasing = query.purpose === 'tool' && query.tool?.kind === 'erase';
+		// In the 3D reading Paint needs the exact rendered triangle: the side tag
+		// distinguishes the two outward Wall faces and excludes tops, caps and
+		// Opening reveals. The ordinary Plan hit remains Layout's projected pick.
+		if (evaluation.renderedReading !== 'plan' && query.purpose === 'tool' && query.tool?.kind === 'paint') {
+			const ray = pointerRay(css, evaluation, token);
+			const drawn = ray.kind === 'ray' ? context.pickScene(ray.ray) : null;
+			if (drawn === null || drawn.entityId !== null || drawn.layoutId === undefined || drawn.layoutKind === undefined) return null;
+			let sourceKind: PlanSourceKind;
+			let sourceId = drawn.layoutId;
+			let subRef: PlanSubRef | null = null;
+			if (drawn.layoutKind === 'wall' || drawn.layoutKind === 'wall-failure') {
+				sourceKind = 'wall';
+				sourceId = drawn.wallId ?? drawn.layoutId;
+				if (drawn.wallSide !== undefined) subRef = { kind: 'component', componentId: `side:${drawn.wallSide}` };
+			} else if (drawn.layoutKind === 'floor') {
+				sourceKind = 'room-floor';
+			} else if (drawn.layoutKind === 'region') {
+				sourceKind = 'region';
+				if (drawn.region !== undefined) subRef = { kind: 'component', componentId: drawn.region.face };
+			} else {
+				sourceKind = 'object';
+			}
+			return {
+				hit: {
+					sourceId, sourceKind, generationId: context.snapshot.compileGeneration,
+					stream: 'projected', subRef, worldPoint: drawn.worldPoint
+				},
+				refusal: null,
+				depthMeters: drawn.distanceMeters,
+				planLayer: PAPER_LAYER.projected,
+				cssDistance: 0
+			};
+		}
 		const pickOpeningIn3D = evaluation.renderedReading !== 'plan' &&
 			(query.purpose !== 'tool' || erasing) && (query.tool === null || erasing);
 		if (pickOpeningIn3D) {
@@ -952,7 +985,7 @@ export function createPlanPickProvider(
 					hit: {
 						sourceId: drawn.region.regionId, sourceKind: 'region',
 						generationId: context.snapshot.compileGeneration, stream: 'projected',
-						subRef: { kind: 'component', componentId: drawn.region.surface },
+						subRef: { kind: 'component', componentId: drawn.region.face },
 						worldPoint: drawn.worldPoint
 					},
 					refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' ? eraseRefusal('region') : null,
