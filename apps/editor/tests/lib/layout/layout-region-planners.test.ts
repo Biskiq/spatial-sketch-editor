@@ -307,6 +307,39 @@ describe('T-V4 — region Wall relations', () => {
 		if (fitted.kind !== 'success') return;
 		expect(regionOf(fitted.document, roof.regionId).elevation).toBeCloseTo(3, 9);
 	});
+
+	it('reads a footprint beyond a Wall end cap as near, not inside the body', () => {
+		const baseline = createEmptyWallFirstLayoutDocument();
+		const chain = planWallChain({
+			baseline,
+			points: [[0, 0], [8, 0]],
+			close: false,
+			capture: freshCapture(),
+			levelId: baseline.floor.id,
+			height: 3
+		});
+		if (chain.kind !== 'success') throw new Error(`wall chain failed: ${chain.rejection.message}`);
+		const wall = wallBetween(chain.document, [0, 0], [8, 0]);
+		const thick = planExactWallThickness(chain.document, wall.id, 2);
+		if (thick.kind !== 'success') throw new Error(`thickness failed: ${thick.rejection.message}`);
+
+		// Inside the strip's z band, but wholly past the end cap at x = 8.
+		const footprint: LayoutVec2[] = [[8.2, -0.2], [8.4, -0.2], [8.4, 0.2], [8.2, 0.2]];
+		const { document, regionId } = added(thick.document, { role: 'floor', footprint, elevation: 0.2 });
+		const geometry = compile(document);
+		const compiledWall = geometry.walls.find((candidate) => candidate.wallId === wall.id)!;
+		expect(regionWallPlanClass(footprint, compiledWall).planClass).toBe('near');
+		const relation = relationFor(geometry, document, regionId, wall.id);
+		expect(relation).toMatchObject({ planClass: 'near', reading: 'gap', measureAxis: 'horizontal' });
+		expect(relation.measureMeters).toBeCloseTo(0.2, 9);
+
+		// A Wall with no physical overlap is never covered, so the roof fit refuses.
+		const roof = added(document, { role: 'overhead', footprint, elevation: 2.5 }, 'region-b');
+		expectRejected(
+			planFitRegionToWalls(roof.document, compile(roof.document), roof.regionId, [wall.id]),
+			'no_covered_walls'
+		);
+	});
 });
 
 describe('T-V5 — fits are one-shot and store no link', () => {
@@ -336,6 +369,35 @@ describe('T-V5 — fits are one-shot and store no link', () => {
 			reading: 'gap',
 			measureAxis: 'horizontal'
 		});
+	});
+
+	it('Meet wall refuses a fit whose nearest edge lies beyond the Wall end', () => {
+		const baseline = createEmptyWallFirstLayoutDocument();
+		const chain = planWallChain({
+			baseline,
+			points: [[0, 0], [1, 0]],
+			close: false,
+			capture: freshCapture(),
+			levelId: baseline.floor.id,
+			height: 3
+		});
+		if (chain.kind !== 'success') throw new Error(`wall chain failed: ${chain.rejection.message}`);
+		const wall = wallBetween(chain.document, [0, 0], [1, 0]);
+		// Within the relation reach and parallel, but x ∈ [1.2, 2] is past the Wall's end.
+		const { document, regionId } = added(chain.document, {
+			role: 'floor',
+			footprint: [[1.2, 0.4], [2, 0.4], [2, 1], [1.2, 1]],
+			elevation: 0.2
+		});
+		const geometry = compile(document);
+		expect(relationFor(geometry, document, regionId, wall.id)).toMatchObject({
+			planClass: 'near',
+			reading: 'gap',
+			measureAxis: 'horizontal'
+		});
+		const before = JSON.stringify(document);
+		expectRejected(planFitRegionEdgeToWall(document, geometry, regionId, wall.id), 'no_wall_contact');
+		expect(JSON.stringify(document)).toBe(before);
 	});
 
 	it('Fit roof reaches first contact, and a Wall height edit leaves the region byte-identical', () => {

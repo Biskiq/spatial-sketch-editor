@@ -68,6 +68,7 @@ export type RegionPlannerRejectionCode =
 	| 'no_op'
 	| 'curved_wall_unsupported'
 	| 'no_horizontal_gap'
+	| 'no_wall_contact'
 	| 'edge_not_parallel'
 	| 'no_gap_to_mark'
 	| 'region_role_not_overhead'
@@ -632,6 +633,26 @@ export function planFitRegionEdgeToWall(
 		translation = [normal[0] * (-signed - half), normal[1] * (-signed - half)];
 	} else {
 		return reject('no_horizontal_gap', `Wall '${wallId}' already touches region '${regionId}'`, [regionId, wallId]);
+	}
+	const translatedStart: LayoutVec2 = [edgeStart[0] + translation[0], edgeStart[1] + translation[1]];
+	const translatedEnd: LayoutVec2 = [edgeEnd[0] + translation[0], edgeEnd[1] + translation[1]];
+	const stationAt = (point: LayoutVec2): number =>
+		first.distance +
+		(point[0] - first.point[0]) * wallDirection[0] +
+		(point[1] - first.point[1]) * wallDirection[1];
+	const stationA = stationAt(translatedStart);
+	const stationB = stationAt(translatedEnd);
+	const wallFirstStation = Math.min(first.distance, last.distance);
+	const wallLastStation = Math.max(first.distance, last.distance);
+	const contact =
+		Math.min(Math.max(stationA, stationB), wallLastStation) -
+		Math.max(Math.min(stationA, stationB), wallFirstStation);
+	if (contact <= REGION_WALL_RELATION_EPSILON) {
+		return reject(
+			'no_wall_contact',
+			`Wall '${wallId}' ends before region '${regionId}' can reach it, so Meet wall would leave a gap`,
+			[regionId, wallId]
+		);
 	}
 	return finalizeRegionCandidate(
 		{

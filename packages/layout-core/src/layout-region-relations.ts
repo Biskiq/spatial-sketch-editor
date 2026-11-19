@@ -289,13 +289,14 @@ function insideIntervals(
 }
 
 /**
- * True when the whole footprint lies inside or on the Wall body strip.
+ * True when the whole footprint lies inside or on the finite Wall body.
  *
- * Every vertex must sit within half the thickness of the centerline over the
- * Wall's own station span, and no footprint edge may leave the strip through a
- * face or an end cap. Without this a small footprint drawn wholly inside a thick
- * Wall measures its distance to the strip's outer boundary and reads `near`,
- * even though the Wall body contains it.
+ * An open Wall's body is the closed strip between its two offset faces *and its
+ * two end caps*: a footprint beyond an end cap is near the Wall, never inside
+ * it. A closed Wall has no caps, so its body is the half-thickness annulus and
+ * its two faces are the whole boundary. Without this a small footprint drawn
+ * wholly inside a thick Wall measures its distance to the strip's outer boundary
+ * and reads `near`, even though the Wall body contains it.
  */
 function footprintWithinBodyStrip(
 	footprint: readonly LayoutVec2[],
@@ -304,65 +305,74 @@ function footprintWithinBodyStrip(
 	right: readonly ProjectedPoint[],
 	half: number
 ): boolean {
-	for (const point of footprint) {
-		if (!pointWithinBodyStrip(point, wall, half)) return false;
-	}
-	const boundary: Array<[LayoutVec2, LayoutVec2]> = [];
-	for (const face of [left, right]) {
-		for (let index = 0; index + 1 < face.length; index++) {
-			boundary.push([face[index]!.point, face[index + 1]!.point]);
+	if (isClosedWall(wall)) {
+		for (const point of footprint) {
+			if (distanceToCenterline(point, wall) > half + REGION_WALL_RELATION_EPSILON) return false;
 		}
+		for (let index = 0; index < footprint.length; index++) {
+			const start = footprint[index]!;
+			const end = footprint[(index + 1) % footprint.length]!;
+			if (edgesCrossFaces(start, end, left, right)) return false;
+		}
+		return true;
 	}
-	if (!isClosedWall(wall) && left.length > 0 && right.length > 0) {
-		boundary.push([left[0]!.point, right[0]!.point]);
-		boundary.push([left.at(-1)!.point, right.at(-1)!.point]);
+	// The finite strip ring: left face forward, right face reversed. The closing
+	// edges are the two end caps, so ring membership includes them.
+	const ring = stripBodyRing(left, right);
+	if (ring.length < 3) return false;
+	for (const point of footprint) {
+		if (!pointWithinRing(ring, point)) return false;
 	}
 	for (let index = 0; index < footprint.length; index++) {
 		const start = footprint[index]!;
 		const end = footprint[(index + 1) % footprint.length]!;
-		for (const [a, b] of boundary) {
-			if (segmentsProperlyCross(start, end, a, b)) return false;
+		for (let edge = 0; edge < ring.length; edge++) {
+			if (segmentsProperlyCross(start, end, ring[edge]!, ring[(edge + 1) % ring.length]!)) return false;
 		}
 	}
 	return true;
 }
 
-/** Half-thickness membership over the Wall's station span, end caps included. */
-function pointWithinBodyStrip(
-	point: LayoutVec2,
-	wall: Pick<CompiledPhysicalWall, 'samples' | 'startJunctionId' | 'endJunctionId'>,
-	half: number
+function stripBodyRing(left: readonly ProjectedPoint[], right: readonly ProjectedPoint[]): LayoutVec2[] {
+	return [
+		...left.map((point) => point.point),
+		...right.slice().reverse().map((point) => point.point)
+	];
+}
+
+function pointWithinRing(ring: readonly LayoutVec2[], point: LayoutVec2): boolean {
+	return (
+		pointStrictlyInsidePolygon(ring, point) ||
+		pointNearBoundary(ring, point, REGION_WALL_RELATION_EPSILON)
+	);
+}
+
+function edgesCrossFaces(
+	start: LayoutVec2,
+	end: LayoutVec2,
+	left: readonly ProjectedPoint[],
+	right: readonly ProjectedPoint[]
 ): boolean {
-	let nearestDistance = Infinity;
-	let nearestStation = 0;
-	for (let index = 0; index + 1 < wall.samples.length; index++) {
-		const start = wall.samples[index]!;
-		const end = wall.samples[index + 1]!;
-		const dx = end.point[0] - start.point[0];
-		const dz = end.point[1] - start.point[1];
-		const squared = dx * dx + dz * dz;
-		const t =
-			squared > 0
-				? Math.min(
-						1,
-						Math.max(
-							0,
-							((point[0] - start.point[0]) * dx + (point[1] - start.point[1]) * dz) / squared
-						)
-					)
-				: 0;
-		const distance = Math.hypot(point[0] - (start.point[0] + dx * t), point[1] - (start.point[1] + dz * t));
-		if (distance < nearestDistance) {
-			nearestDistance = distance;
-			nearestStation = start.distance + (end.distance - start.distance) * t;
+	for (const face of [left, right]) {
+		for (let index = 0; index + 1 < face.length; index++) {
+			if (segmentsProperlyCross(start, end, face[index]!.point, face[index + 1]!.point)) return true;
 		}
 	}
-	if (nearestDistance > half + REGION_WALL_RELATION_EPSILON) return false;
-	if (isClosedWall(wall)) return true;
-	return (
-		nearestStation >= wall.samples[0]!.distance - REGION_WALL_RELATION_EPSILON &&
-		nearestStation <= wall.samples.at(-1)!.distance + REGION_WALL_RELATION_EPSILON
-	);
+	return false;
+}
+
+function distanceToCenterline(
+	point: LayoutVec2,
+	wall: Pick<CompiledPhysicalWall, 'samples'>
+): number {
+	let nearest = Infinity;
+	for (let index = 0; index + 1 < wall.samples.length; index++) {
+		nearest = Math.min(
+			nearest,
+			distancePointSegment(point, wall.samples[index]!.point, wall.samples[index + 1]!.point)
+		);
+	}
+	return nearest;
 }
 
 function isClosedWall(
