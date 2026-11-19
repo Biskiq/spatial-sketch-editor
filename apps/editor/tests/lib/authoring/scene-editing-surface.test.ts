@@ -28,7 +28,11 @@ import {
 	type Vec3
 } from '@portfolio/project-model';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import {
+	createEmptyWallFirstLayoutDocument,
+	planCreateRegion,
+	planWallChain
+} from '@portfolio/layout-core';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 
 import {
@@ -79,7 +83,8 @@ const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
 async function supportedProject(
 	entities: readonly SceneEntity[],
-	modelEntry?: NonNullable<ReturnType<typeof creatorModelResourceEntry>>
+	modelEntry?: NonNullable<ReturnType<typeof creatorModelResourceEntry>>,
+	region?: { readonly footprint: [number, number][]; readonly elevation: number }
 ): Promise<ProjectEnvelope> {
 	const planned = planWallChain({
 		baseline: createEmptyWallFirstLayoutDocument(),
@@ -94,10 +99,25 @@ async function supportedProject(
 		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
+	let layout = planned.document;
+	if (region !== undefined) {
+		const created = planCreateRegion({
+			baseline: layout,
+			capture: freshCapture(),
+			intent: {
+				role: 'floor',
+				footprint: region.footprint,
+				elevation: region.elevation,
+				thickness: 0.2
+			}
+		});
+		if (created.kind !== 'success') throw new Error('the region fixture was refused');
+		layout = created.document;
+	}
 	const project = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'Scene editing',
-		layout: planned.document,
+		layout,
 		...(modelEntry === undefined
 			? {}
 			: { resources: { formatVersion: 2 as const, resources: [modelEntry.resource] } }),
@@ -500,6 +520,35 @@ describe('Scene placement session', () => {
 		session.previewPlace('cylinder', 1, 1, 0);
 		expect(await session.commitPlace()).toEqual({ kind: 'committed' });
 		expect(port.intents).toHaveLength(2);
+		expect(session.armed()).toBe('place');
+	});
+
+	it('keeps the pinned raised support when the armed tile is re-applied before release', async () => {
+		// The Place binding re-applies the project's armed Sphere on every surface
+		// refresh. That arm is already in force, so it must not clear the support
+		// the displayed candidate was resolved against: the release then commits a
+		// pose the planner re-resolves at (0, 2) with no choice, and a terrace over
+		// the Room floor refuses as ambiguous.
+		const { session, port } = await sessionFor([boxEntity()]);
+		session.beginPlace('sphere');
+		const choice = {
+			kind: 'elevation' as const,
+			elevation: 1.2,
+			generationId: 'scene-support@source-1'
+		};
+		const preview = session.previewPlace('sphere', 0, 2, 1.2, null, choice);
+		expect(preview.kind).toBe('candidate');
+		if (preview.kind !== 'candidate') return;
+		expect(preview.candidate.position[1]).toBeGreaterThan(1.2);
+
+		session.setPlacePrimitive('sphere');
+		expect(session.candidate()).not.toBeNull();
+
+		expect(await session.commitPlace()).toEqual({ kind: 'committed' });
+		expect(port.intents).toHaveLength(1);
+		const intent = port.intents[0]!;
+		expect(intent.kind).toBe('place-object');
+		expect(intent.payload).toMatchObject({ supportChoice: choice });
 		expect(session.armed()).toBe('place');
 	});
 
@@ -1294,6 +1343,59 @@ describe('Scene adapter registration', () => {
 			.toEqual([3, 0.5, 2.5]);
 		unregister();
 		body.geometry.dispose();
+	});
+
+	it('keeps a raised object under the pointer when a 3D body drag crosses its terrace', async () => {
+		// A body press on an object resting at 0.6 m must be measured on the
+		// object's own base plane. On the datum it would sit several metres away in
+		// 3D, and the first move would throw the object toward the camera instead of
+		// sliding it across the terrace it stands on.
+		const project = await supportedProject(
+			[boxEntity(FIXTURE_ENTITY_ID, [3, 1.1, 2])],
+			undefined,
+			{
+				footprint: [
+					[0.5, 0.5],
+					[6.5, 0.5],
+					[6.5, 5.5],
+					[0.5, 5.5]
+				],
+				elevation: 0.6
+			}
+		);
+		const { facade, rendered, evaluationId } = await withSceneSurface(undefined, null, project, RECT, '3d');
+		const body = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+		body.position.set(3, 1.1, 2);
+		const unregister = rendered.register(FIXTURE_ENTITY_ID, body);
+		facade.setDrafting({ snap: false });
+		const press = stageCssOf(facade, [3, 1.6, 2.05]);
+		const target: [number, number] = [press[0] + 18, press[1] + 8];
+		expect(facade.resolvePick({ evaluationId, css: press, purpose: 'select', tool: null })).toMatchObject({
+			kind: 'resolved',
+			hit: { sourceId: FIXTURE_ENTITY_ID }
+		});
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		// An 18 px move stays a small move. The datum-plane grab would put the
+		// object metres from the pointer on the first move, so no candidate would
+		// survive over its own terrace.
+		const ghost = facade.ghosts()[0];
+		expect(ghost).toBeDefined();
+		expect(Math.abs(ghost!.center[0] - 3)).toBeLessThan(1.5);
+		expect(Math.abs(ghost!.center[2] - 2)).toBeLessThan(1.5);
+		expect(ghost!.center[1]).toBeCloseTo(1.1, 6);
+		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
+		await eventually(() => {
+			const entity = stageScene(facade.snapshot()).entities.find((entry) => entry.id === FIXTURE_ENTITY_ID);
+			return entity !== undefined && Math.abs(entity.position[0] - 3) > 1e-9;
+		});
+		const moved = stageScene(facade.snapshot()).entities.find((entry) => entry.id === FIXTURE_ENTITY_ID)!;
+		expect(moved.position[1]).toBeCloseTo(1.1, 9);
+		expect(Math.abs(moved.position[0] - 3)).toBeLessThan(1.5);
+		expect(Math.abs(moved.position[2] - 2)).toBeLessThan(1.5);
+		unregister();
+		body.geometry.dispose();
+		body.material.dispose();
 	});
 
 	it('keeps selected object body jitter and a drag returned to click range from committing', async () => {

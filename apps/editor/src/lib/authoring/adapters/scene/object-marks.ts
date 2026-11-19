@@ -29,7 +29,8 @@ import {
 	planSetLift,
 	planSetYaw,
 	type SceneOperationContext,
-	type SceneOperationResult
+	type SceneOperationResult,
+	type SceneSupportChoice
 } from '@portfolio/project-model/scene-planning';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityReference, type SceneCandidate } from './placement';
@@ -490,6 +491,8 @@ export type SceneObjectMarkPlanInput =
 			readonly entityId: string;
 			readonly contactMinY: number;
 			readonly worldXZ: readonly [number, number];
+			/** The visible support the pointer stands on, pinned for this move. */
+			readonly choice?: SceneSupportChoice;
 	  }
 	| {
 			readonly markId: typeof SCENE_OBJECT_MARK.turn;
@@ -521,7 +524,8 @@ export function planSceneObjectMark(input: SceneObjectMarkPlanInput): SceneOpera
 				entityId: input.entityId,
 				worldXZ: input.worldXZ,
 				frame: FRAME,
-				contactMinY: input.contactMinY
+				contactMinY: input.contactMinY,
+				...(input.choice === undefined ? {} : { choice: input.choice })
 			});
 		case SCENE_OBJECT_MARK.turn:
 			return planSetYaw({
@@ -553,6 +557,7 @@ export type SceneObjectMarkIntentInput =
 			readonly entityId: string;
 			readonly contactMinY: number;
 			readonly worldXZ: readonly [number, number];
+			readonly choice?: SceneSupportChoice;
 	  }
 	| {
 			readonly markId: typeof SCENE_OBJECT_MARK.turn;
@@ -588,7 +593,8 @@ export function sceneObjectMarkIntent(
 					worldXZ: [input.worldXZ[0], input.worldXZ[1]],
 					frame: FRAME,
 					frameReference: PROJECT_WORLD,
-					contactMinY: input.contactMinY
+					contactMinY: input.contactMinY,
+					...(input.choice === undefined ? {} : { supportChoice: input.choice })
 				}
 			: input.markId === SCENE_OBJECT_MARK.turn
 				? {

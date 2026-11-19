@@ -1254,6 +1254,15 @@ export function createSceneSession(input: {
 		},
 		placePrimitive: () => placePrimitive,
 		setPlacePrimitive(primitive) {
+			// Re-applying the arm already in force is a no-op. The Place binding
+			// re-applies the project's armed tile on every surface refresh, and a
+			// repeated arm must not discard the pinned support the displayed pointer
+			// candidate stands on (nor the candidate the release would commit).
+			if (
+				placePrimitive === primitive &&
+				armedModelPlacement === null &&
+				armedFormCopyPlacement === null
+			) return;
 			placePrimitive = primitive;
 			// Choosing a native primitive is an explicit replacement of an armed model
 			// or saved copy.

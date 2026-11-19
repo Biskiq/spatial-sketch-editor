@@ -1,13 +1,14 @@
 # V1c — Region authoring, Lift and Stage parity
 
-**Status:** correctness recovery and automated acceptance complete; real-browser QA is **partial**.
-This round fixed the body-drag selection loss and the unreachable corner removal, and verified
-both in Chromium alongside J7 open-to-sky/association/intended gaps, J11 Lift/height edit/Put
-back, 3D Region picking, Slice, Terrace **Line** creation and a Space fit with exact Undo/Redo.
-Raised-platform object placement and an Erase with a non-zero resting count remain unverified,
-as do approved-model placement, as-built Preview and the complete J7/J11 scripts (see **Browser
-QA gaps**). No production deployment was made, and this evidence does not declare the PR ready
-for review.
+**Status:** correctness recovery, automated acceptance and the raised-platform browser journey
+complete; real-browser QA remains **partial** outside that journey. This round fixed the
+body-drag selection loss, the unreachable corner removal, raised-platform primitive placement,
+the 3D body-drag plane and the Region's resting-copy grammar, and verified placement, movement
+and Erase at a non-zero resting count in Chromium alongside J7 open-to-sky/association/intended
+gaps, J11 Lift/height edit/Put back, 3D Region picking, Slice, Terrace **Line** creation and a
+Space fit with exact Undo/Redo. Approved-model placement, as-built Preview and the complete
+J7/J11 scripts remain unverified (see **Browser QA gaps**). No production deployment was made,
+and this evidence does not declare the PR ready for review.
 
 ## What was implemented
 
@@ -66,7 +67,32 @@ for review.
    `pointerWorkingPlanePoint` maps a pointer at an explicit elevation; corner press and move use
    `datumMeters + region.elevation`, and removal measures the raw pointer. Regression coverage:
    `layout-region-authoring.test.ts` removes a corner in one entry and Undo/Redo restores it.
-6. **Region Card closed when a body move was released.** Requalifying the selection after the
+6. **Raised-platform placement refused after a surface refresh.** The placement binding
+   re-armed its pending tile on every surface refresh through `session.setPlacePrimitive`, which
+   unconditionally cleared `candidatePlaceChoice` while leaving the live candidate in place. The
+   release then committed a shown pose without the support it was pinned to and the planner
+   refused `support-choice-required` ("2 floor contexts or elevations support this point").
+   `setPlacePrimitive` is now idempotent when the primitive is unchanged and no model or copy
+   is armed, and `applyPendingArm` only re-arms when the session's primitive differs. Coverage:
+   `scene-editing-surface.test.ts` keeps the pinned raised support when the armed tile is
+   re-applied before release.
+7. **3D body drag grabbed on the datum plane.** The body press mapped the pointer with
+   `pointerDatumPoint`, which returns the intersection with y=0. A Sphere resting at 1.20 m was
+   therefore grabbed metres behind its visible body, and the first move jumped it toward the
+   camera and off the terrace. A new `pointerPlanePoint(context, css, elevation)` maps the
+   pointer at an explicit elevation; the body press and move grab plane now use the object's
+   own base plane (`entity.position[1] + scale * contactMinY`), and `pointerDatumPoint`
+   delegates to it. `move-horizontal`'s keep-the-height semantics are unchanged, so moving
+   within the terrace preserves 1.20 m. Coverage: `scene-editing-surface.test.ts` keeps a
+   raised object under the pointer when a 3D body drag crosses its terrace.
+8. **Move over a raised Terrace was ambiguous.** Object Move previews and releases through
+   `planPlaceOnFloor` (a re-seat), but the mark planner passed no support choice. A point with a
+   terrace over a room floor therefore refused `support-choice-required`, and no move ghost was
+   produced. The drag now pins the elevation of the face the pointer visibly stands on
+   (`support.worldPoint[1]` plus the support generation) in its preview, and the released
+   `place-on-floor` intent carries the same `supportChoice`. Card grammar also reads the
+   singular `1 object rests on this platform`.
+9. **Region Card closed when a body move was released.** Requalifying the selection after the
    accepted edit treated the Region's Plan fragment as an F.1 component. A Region's fragment
    names the compiled `edge` stream, while `layoutSelectionReference` intentionally stores
    `componentId: null`, so the comparison `null !== 'edge'` retired the subject and the shell
@@ -86,11 +112,13 @@ runs; no diagnostic `console.log`, `console.error` or catch was left in the sour
 | --- | --- |
 | T-V5 | `layout-region-planners.test.ts` fit/relation/refusal coverage; `layout-region-authoring.test.ts` Card surfaces, measured selected gaps and no cue when unselected |
 | T-V7 | V1b `layout-regions.test.ts`, `layout-room-lift-action.test.ts`; `layout-region-authoring.test.ts` Space association, Card delete/Undo and Lift sources (a floor Terrace is not lifted) |
-| T-V11 | `lift-shadow-eligibility.test.ts` (lifted layer on point/spot/sun shadow cameras, negative control), `scene-region-support.test.ts`, `layout-outline-pick.test.ts`, `layout-region-authoring.test.ts` Lift/Put back and floor-Region retention |
+| T-V11 | `lift-shadow-eligibility.test.ts` (lifted layer on point/spot/sun shadow cameras, negative control), `scene-region-support.test.ts`, `layout-outline-pick.test.ts`, `layout-region-authoring.test.ts` Lift/Put back and floor-Region retention; `scene-editing-surface.test.ts` raised-support placement and 3D body-drag support retention |
 | T-V12 | `layout-region-authoring.test.ts`: body move, corner and height accept/Undo/Redo; birth Undo/Redo with captured id; Card delete Undo; refused birth adds no history; Esc adds no history |
 | T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner removal on the neighbours' chord in one entry; corner click and degenerate corner are no-ops; stale intent refused; Esc restores; a Region selected from its `edge` stream keeps its selection and Card across an accepted body move |
 
-Focused coverage in `layout-region-authoring.test.ts` is **16 tests**:
+`scene-editing-surface.test.ts` is now **79 tests**, including the two raised-support
+regressions above (pinned support across a re-arm, and a 3D body drag over a terrace) and the
+Scene Move/Mark suites. Focused coverage in `layout-region-authoring.test.ts` is **16 tests**:
 
 - every retained region planner and the Card surface;
 - body move in one history entry with Undo/Redo;
@@ -116,14 +144,16 @@ Commands run from `apps/editor` on the final tree:
 
 - `npm run check` — 0 errors, 18 pre-existing warnings.
 - `npm run test:arch` — 38 files, 350 tests passed.
-- `npm run test:fast` — 433 files, 5355 tests passed.
+- `npm run test:fast` — 433 files, 5357 tests passed.
 - `npm run test:heavy` — 11 files, 138 tests passed.
-- `npm run test -- tests/lib/authoring/layout-region-authoring.test.ts tests/lib/authoring/stage-host-acceptance.test.ts`
-  — 54 tests passed (16 and 38).
+- `npm run test -- tests/lib/authoring/scene-editing-surface.test.ts tests/lib/authoring/layout-region-authoring.test.ts`
+  — 95 tests passed (79 and 16).
 - `npm run build` — passed.
-- `node tools/harness/check-docs.mjs` — passed.
+- `node tools/harness/check-docs.mjs` (repository root) — passed.
 - `node tools/harness/guards.mjs --base cd5222fc --head HEAD` — no unapproved check or bug-state
-  change. CI remains the authority for the merge gate and `linux-x64`.
+  change (earlier round).
+- `node tools/harness/guards.mjs --base cd427bdc --head HEAD` — no unapproved check or
+  bug-state change (this round). CI remains the authority for the merge gate and `linux-x64`.
 
 ## Browser environment and project setup
 
@@ -136,9 +166,10 @@ Commands run from `apps/editor` on the final tree:
   `project:96cdddf3-8455-4c93-8605-0a0cb68d6f98` (created empty in the previous round: a
   4-Wall Room, 24.0 m² at 3 m, plus a Flat Roof at 1.20 m; this round added a three-corner
   Line Terrace fitted to the Room and a Scene Box on the floor).
-- Viewport: 1200 × 627 CSS px at device scale 2. Stage handle positions were read from
-  `[data-mark-id]` `getBoundingClientRect()` before each pointer sequence; screenshots are 1.6×
-  the CSS viewport.
+- Viewport: 1200 × 632 CSS px at device scale 2 during this round (earlier captures used
+  1200 × 627). Stage handle positions were read from `[data-mark-id]`
+  `getBoundingClientRect()` before each pointer sequence; screenshots are 1.67× the CSS
+  viewport.
 - The original project was loaded through
   `http://localhost:5177/project/project%3A7e8c49a2-2a49-4ca9-b7d9-6e9f453ec139/spatial?load=1`;
   this round's project through
@@ -241,32 +272,36 @@ Commands run from `apps/editor` on the final tree:
   `6.00 m`, Depth `4.00 m`, and the relations changed to all four Walls `Meets`
   (`47-space-fit.png`). Undo restored `4.01 m²`; Redo returned `24.00 m²`.
 
-### Raised-platform placement and resting Erase (blocked)
+### Raised-platform placement, movement and resting Erase
 
-- A Scene **Box** placed on the bare floor was created and selected (`50-resting.png`), so Scene
-  primitive placement itself works.
-- A Box dropped over the raised Terrace is created on the **ground plane**, not on the terrace
-  top: the Terrace Card stayed `0 objects rest on this platform`. Setting the Box's Advanced
-  Elevation to `1.2 m` and dragging its move mark did not bring it onto the platform — the shape
-  ended left of the Room and remained at `0` resting objects (`51-resting2.png`).
-- Consequently **Erase with a non-zero resting-object disclosure was not exercised**; erasing a
-  Region with a genuinely resting object is still unverified. This is a product gap in
-  raised-platform placement/projection, not a missing QA step.
+- The saved Room project (`project:96cdddf3…`) already held `Region 1`, the Line Terrace fitted
+  to the Room at **1.20 m**, and `Region 2`, the 1.20 m Flat Roof outside the Room. Their
+  footprints do not overlap, so no support at 1.20 m was ambiguous.
+- `Furnish › Objects › Sphere`, then a real press on the terrace top in the Plan created
+  `Primitive Sphere` resting visibly on the slab. Selecting `Region 1` read
+  **`1 object rests on this platform`** — both the non-zero count and the singular grammar
+  (`52-terrace-resting.png`). This is the gesture that previously refused with
+  `support-choice-required` (`50-resting.png`, `51-resting2.png`).
+- In 3D the Sphere was selected and body-dragged +20 × +9 CSS px with a real press/move/release.
+  The Sphere stayed on the slab rather than jumping toward the camera; the accepted move left
+  **Unsaved changes**, and selecting `Region 1` again still read `1 object rests on this
+  platform` (`53-3d-moved.png`). `Save changes` then read **Saved**.
+- With `Region 1` selected, pressing `E` armed Erase and one real press on the terrace top
+  produced the non-zero disclosure **`1 object rests on this platform and keeps its Scene
+  support when the platform is gone. Walls are unchanged. Click again to erase.`**
+  (`54-erase-disclosure.png`). Escape cancelled the armed erase without deleting the Region;
+  the disclosure names the count rather than performing the erase.
 
 ## Browser QA gaps
 
 The following required journeys were **not executed acceptably** and are not claimed:
 
-- **Raised-platform object placement:** Scene placement resolves the ground, so a primitive
-  dropped over a raised Terrace is not placed on its top; raising it through Advanced Elevation
-  and moving it with its move mark did not put it on the platform (`51-resting2.png`). This is
-  the same class of datum-versus-elevation pointer defect fixed for Region corners, now in the
-  Scene adapter. Until it is fixed, an Erase with a non-zero resting count, approved-model
-  placement, authored world-pose retention and saved-form placement cannot be verified.
+- Approved-model placement, authored world-pose retention and saved-form placement on a raised
+  Region were not re-executed; their automated fixture coverage is listed above.
 - **Flat Roof Line** creation (Terrace Line is covered; Roof creation used Box).
-- Rotation, Duplicate, Erase at a non-zero resting count, and persistence after this round's
-  fixes were not re-executed (earlier runs covered rotation, Duplicate, Erase at count `0` and
-  save/reload thickness).
+- Rotation, Duplicate and Erase at a non-zero count followed by Undo were not re-executed this
+  round (earlier runs covered rotation, Duplicate and Erase at count `0`). The non-zero Erase
+  **disclosure** is verified; the deletion it offers was deliberately not performed.
 - As-built **Preview** (blocked by the missing Experience) and **Look-through** (no control).
 - Coplanar Region/Room-floor priority and the visitor-output leak check.
 - The complete J7 and J11 scripts.

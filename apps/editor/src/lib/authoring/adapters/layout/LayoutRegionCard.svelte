@@ -316,7 +316,9 @@
 	/** Resting-object words: the derived count, never a Scene write. */
 	const restingWords = $derived(
 		region?.role === 'floor'
-			? `${restingObjects} object${restingObjects === 1 ? '' : 's'} rest on this platform`
+			? restingObjects === 1
+				? '1 object rests on this platform'
+				: `${restingObjects} objects rest on this platform`
 			: 'A Flat Roof carries no resting objects'
 	);
 </script>
