@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	createScenePlanners,
 	selectSceneSupport,
+	resolveSceneSupportOnGeometry,
 	checkSceneRecordScope,
 	DUPLICATE_OFFSET_METERS,
 	FORM_SCALE_SCOPE_FIELD,
@@ -60,6 +61,7 @@ import {
 	floorSupportSnapshotOf,
 	compileWallFirstLayoutGeometry,
 	queryFloorSupports,
+	planCreateRegion,
 	planWallChain,
 	type FloorSupportCandidate
 } from '@portfolio/layout-core';
@@ -1660,7 +1662,39 @@ describe('scene record-scope guard', () => {
 	});
 });
 
-describe('snapshot-qualified support selection', () => {
+	describe('snapshot-qualified support selection', () => {
+	it('narrows the Scene snapshot to Room floors, so a published region top cannot affect placement yet', () => {
+		const base = supportedLayout();
+		const regionPlan = planCreateRegion({
+			baseline: base,
+			capture: freshCapture(),
+			intent: {
+				role: 'floor',
+				footprint: [[2, 1], [5, 1], [5, 4], [2, 4]],
+				elevation: 0.6,
+				thickness: 0.2
+			}
+		});
+		if (regionPlan.kind !== 'success') throw new Error('the region fixture was refused');
+		const geometry = compileWallFirstLayoutGeometry(regionPlan.document).geometry;
+		const layoutCandidates = queryFloorSupports(floorSupportSnapshotOf(geometry), {
+			generationId: GENERATION,
+			x: 3,
+			z: 2
+		});
+		expect(layoutCandidates.kind === 'candidates' && layoutCandidates.candidates).toHaveLength(2);
+
+		const scene = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [3, 2],
+			requiredElevation: null
+		});
+		expect(scene).toMatchObject({ kind: 'resolved', support: { elevation: 0 } });
+		if (scene.kind !== 'resolved') return;
+		expect(scene.support.witnesses.map((witness) => witness.source.kind)).toEqual(['room']);
+	});
+
 	function candidate(elevation: number, orderKey: string): FloorSupportCandidate {
 		return {
 			queryPoint: [3, 2],
@@ -1669,12 +1703,13 @@ describe('snapshot-qualified support selection', () => {
 			generationId: GENERATION,
 			witnesses: [
 				{
+					source: { kind: 'room', roomId: `room-${orderKey}` },
 					floorId: 'floor',
-					roomId: `room-${orderKey}`,
 					recordId: `record-${orderKey}`,
 					cacheKey: `cache-${orderKey}`,
 					sourceId: `source-${orderKey}`,
-					orderKey
+					orderKey,
+					elevation
 				}
 			],
 			orderKey,

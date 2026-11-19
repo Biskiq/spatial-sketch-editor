@@ -51,6 +51,8 @@ export * from './layout-wall-topology';
 export * from './layout-wall-topology-ops';
 export * from './layout-wall-dissolve';
 export * from './layout-floor-support';
+export * from './layout-region';
+export * from './layout-region-relations';
 export * from './layout-plan-representation';
 export * from './layout-route-wall-read';
 // The plan-space box index behind the pair gates. Exported
@@ -64,5 +66,3 @@ export * from './layout-preset-explicit';
 export { materializeLayoutSourceForCapture } from './layout-source-collections';
 
 export { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';
-
-export { LAYOUT_SLICE_CONTACT_METERS } from './layout-region';

@@ -33,6 +33,7 @@ import {
 	type FloorSupportCandidate,
 	type FloorSupportQueryPolygon,
 	type FloorSupportSnapshot,
+	type FloorSupportWitness,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import { baseDocument, p } from '../../helpers/angled-plan-fixtures';
@@ -84,7 +85,11 @@ function snapshotOf(
 	rooms: FloorSupportSnapshot['rooms'],
 	queryPolygons: FloorSupportSnapshot['queryPolygons']
 ): FloorSupportSnapshot {
-	return { floors, rooms, queryPolygons };
+	return { floors, rooms, regions: [], queryPolygons };
+}
+
+function witnessRoomId(witness: FloorSupportWitness): string | null {
+	return witness.source.kind === 'room' ? witness.source.roomId : null;
 }
 
 function candidateOf(
@@ -99,12 +104,13 @@ function candidateOf(
 		generationId: 'generation-1',
 		witnesses: [
 			{
+				source: { kind: 'room', roomId },
 				floorId: 'floor-1',
-				roomId,
 				recordId: `${roomId}:record`,
 				cacheKey: `${roomId}:cache`,
 				sourceId: `${roomId}:source`,
-				orderKey
+				orderKey,
+				elevation
 			}
 		],
 		orderKey,
@@ -140,7 +146,7 @@ describe('floor-support query over the canonical compiled Layout', () => {
 		expect(support.elevation).toBe(0);
 		expect(support.upNormal).toEqual(FLOOR_SUPPORT_UP_NORMAL);
 		expect(support.generationId).toBe('generation-1');
-		expect(support.witnesses.map((witness) => witness.roomId)).toEqual([room.roomId]);
+		expect(support.witnesses.map(witnessRoomId)).toEqual([room.roomId]);
 		expect(support.witnesses[0]!.floorId).toBe(geometry.floors[0]!.floorId);
 		expect(support.orderKey).toBe(support.witnesses[0]!.orderKey);
 	});
@@ -327,7 +333,7 @@ describe('floor-support candidates over constructed compiled records', () => {
 		// One support, both sources retained: two Rooms sharing a boundary at one
 		// datum support the point at the same elevation.
 		expect(result.candidates).toHaveLength(1);
-		expect(result.candidates[0]!.witnesses.map((witness) => witness.roomId)).toEqual([
+		expect(result.candidates[0]!.witnesses.map(witnessRoomId)).toEqual([
 			'room-a',
 			'room-b'
 		]);
@@ -358,7 +364,7 @@ describe('floor-support candidates over constructed compiled records', () => {
 		expect(result.kind).toBe('candidates');
 		if (result.kind !== 'candidates') return;
 		expect(result.candidates).toHaveLength(2);
-		expect(result.candidates.map((candidate) => candidate.witnesses[0]!.roomId)).toEqual([
+		expect(result.candidates.map((candidate) => witnessRoomId(candidate.witnesses[0]!))).toEqual([
 			'room-a',
 			'room-z'
 		]);

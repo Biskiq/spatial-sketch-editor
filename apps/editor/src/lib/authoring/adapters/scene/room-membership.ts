@@ -66,7 +66,11 @@ export function acceptedSceneRoomMembership(envelope: ProjectEnvelope): Readonly
 			if (beneath.kind === 'resolved' && base > beneath.support.elevation) resolved = beneath;
 		}
 		if (resolved.kind !== 'resolved' || resolved.generationId !== sceneSupportGenerationId(envelope.units.layout.header.contentRevision)) continue;
-		const identities = new Set(resolved.support.witnesses.map(witness => witness.roomId));
+		const identities = new Set(
+			resolved.support.witnesses.flatMap((witness) =>
+				witness.source.kind === 'room' ? [witness.source.roomId] : []
+			)
+		);
 		if (identities.size === 1) {
 			rooms.set(entity.id, [...identities][0]!);
 		} else if (identities.size > 1) {

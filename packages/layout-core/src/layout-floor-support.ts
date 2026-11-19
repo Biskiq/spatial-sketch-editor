@@ -1,27 +1,23 @@
 /**
- * The Layout-owned floor-support query and chooser.
+ * The Layout-owned support queries.
  *
- * Answers one question over the canonical compiler's output: which compiled
- * Room floors support a world X/Z point, and at what elevation? It is
- * deliberately **not** `findPolygonContaining`: that helper's one reverse-order
- * winner cannot express elevation ambiguity. Here every containing `room-floor`
- * polygon becomes a witness, coincident equivalent supports deduplicate into one
- * choice that keeps **all** of them, and a genuine elevation ambiguity is
- * reported as `choice-required` rather than resolved by array order. Nothing in
- * this module ever chooses an elevation on the creator's behalf.
+ * Two directions, one contract:
  *
- * Ownership (2026-10-16 decision 8): the query is Layout-owned and built by its
- * first consumer under T1 review. It sits inside `@portfolio/layout-core`, which
- * is below `@portfolio/project-model`, so it speaks Layout-native source ids
- * (`floorId`, `roomId`) plus an opaque generation id the caller supplies;
- * F.1 qualification into `SemanticReference`/`DerivedSourceRef` happens in the
- * project-model planner, never here. This module imports no F.1 type and adds no
- * package dependency.
+ * - **Upward** (`queryFloorSupports`) answers which `room-floor` and
+ *   `region-top` faces support a world X/Z point. Every containing face is a
+ *   witness; coincident equivalent supports merge into one candidate that keeps
+ *   **all** witnesses; a genuine elevation ambiguity is `choice-required` rather
+ *   than an array-order pick.
+ * - **Downward** (`queryOverheadSupports`) mirrors the same validation,
+ *   tolerances and witness merging for closed-Space lids and overhead-region
+ *   undersides, ordered by increasing elevation.
  *
  * Facts come from compiled records only: elevation is the compiled Room's
- * `floorElevation`, cross-checked against its floor's datum. A rendered mesh
- * face, a Room centroid, a nearest-Room heuristic and a bare floor datum are
- * never support authorities. The input is read, never mutated.
+ * `floorElevation`, the compiled region's `topY`/`bottomY`, or the compiled lid's
+ * `ceilingElevation`, cross-checked against the compiled query record and Floor
+ * datum where the contract says so. A rendered mesh face, a centroid, a nearest
+ * heuristic and a bare datum are never support authorities. The input is read,
+ * never mutated.
  */
 import type { Vec3 } from './types';
 import type { LayoutVec2 } from './layout-coordinates';
@@ -29,6 +25,7 @@ import type {
 	CompiledFloor,
 	CompiledLayoutGeometry,
 	CompiledQueryPolygon,
+	CompiledRegion,
 	CompiledRoom
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
@@ -55,29 +52,37 @@ export const FLOOR_SUPPORT_TOLERANCES: Readonly<FloorSupportTolerances> = Object
 	upNormalComponent: 1e-9
 });
 
-/** A compiled Room floor faces up; support candidates carry this normal. */
+/** A compiled Room floor or floor-region top faces up; candidates carry it. */
 export const FLOOR_SUPPORT_UP_NORMAL: Readonly<Vec3> = Object.freeze([0, 1, 0]);
+/** A closed-Space lid or overhead-region underside faces down. */
+export const OVERHEAD_SUPPORT_DOWN_NORMAL: Readonly<Vec3> = Object.freeze([0, -1, 0]);
 
 /**
- * The one compiled `room-floor` record shape the query reads. Picking the
- * fields (rather than taking `CompiledQueryPolygon` whole) is what makes the
- * read surface reviewable — and it is exactly what `floorSupportSnapshotOf`
- * passes through from compiled output.
+ * One compiled support face record, narrowed to the fields the query reads.
  */
 export type FloorSupportQueryPolygon = Pick<
 	CompiledQueryPolygon,
-	'id' | 'cacheKey' | 'kind' | 'polygon' | 'sourceId' | 'floorId' | 'roomId'
+	'id' | 'cacheKey' | 'kind' | 'polygon' | 'sourceId' | 'floorId' | 'roomId' | 'elevation'
+>;
+
+/** The compiled region facts an upward region witness is verified against. */
+export type FloorSupportRegionFacts = Pick<
+	CompiledRegion,
+	'regionId' | 'role' | 'topY' | 'bottomY' | 'id' | 'cacheKey'
 >;
 
 /**
- * The compiled facts the query is a read-only function of.
+ * The compiled facts the upward query is a read-only function of.
  *
  * `floorSupportSnapshotOf(compiled)` adapts canonical compiler output; a caller
- * that already holds the records may pass them directly.
+ * that already holds the records may pass them directly. A consumer that must
+ * keep today's Room-only behavior (Scene placement before V1d) narrows
+ * `queryPolygons` to `kind: 'room-floor'` and passes `regions: []`.
  */
 export type FloorSupportSnapshot = {
 	floors: readonly Pick<CompiledFloor, 'floorId' | 'elevation'>[];
 	rooms: readonly Pick<CompiledRoom, 'roomId' | 'floorElevation'>[];
+	regions: readonly FloorSupportRegionFacts[];
 	queryPolygons: readonly FloorSupportQueryPolygon[];
 };
 
@@ -85,6 +90,7 @@ export function floorSupportSnapshotOf(compiled: CompiledLayoutGeometry): FloorS
 	return {
 		floors: compiled.floors,
 		rooms: compiled.rooms,
+		regions: compiled.regions,
 		queryPolygons: compiled.queries.polygons
 	};
 }
@@ -114,17 +120,24 @@ export type FloorSupportQueryInput = {
 	scope?: FloorSupportScope;
 };
 
-/** One compiled room-floor record that supports the queried point. */
+/** One compiled support face that supports the queried point. */
+export type FloorSupportWitnessSource =
+	| { readonly kind: 'room'; readonly roomId: string }
+	| { readonly kind: 'region'; readonly regionId: string };
+
 export type FloorSupportWitness = {
+	/** The typed source of this witness: a Room floor or a floor-role region top. */
+	source: FloorSupportWitnessSource;
 	floorId: string;
-	roomId: string;
-	/** Compiled record identity of the `room-floor` polygon. */
+	/** Compiled record identity of the containing support polygon. */
 	recordId: string;
 	/** Compiled identity of the authored inputs that produced the record. */
 	cacheKey: string;
 	sourceId: string;
 	/** Collision-safe choice identity derived from Layout-native IDs; not a lexical comparator. */
 	orderKey: string;
+	/** World elevation this witness establishes. */
+	elevation: number;
 };
 
 export type FloorSupportCandidate = {
@@ -134,7 +147,7 @@ export type FloorSupportCandidate = {
 	upNormal: Vec3;
 	/** The caller's generation, echoed so acceptance can recheck it. */
 	generationId: string;
-	/** Every equivalent source witness, ordered lexically by source, Room, floor and record IDs. */
+	/** Every equivalent source witness, ordered lexically by source, floor and record. */
 	witnesses: readonly FloorSupportWitness[];
 	/** First source-ordered witness identity: stable and unique, never an elevation pick. */
 	orderKey: string;
@@ -142,7 +155,7 @@ export type FloorSupportCandidate = {
 	label: string;
 };
 
-/** The stable choice identity of datum support; it can never equal a Room witness key. */
+/** The stable choice identity of datum support; it can never equal a source witness key. */
 export const DATUM_SUPPORT_ORDER_KEY = 'stage-datum';
 
 /**
@@ -160,8 +173,8 @@ export function layoutDatumElevation(geometry: { readonly floors: readonly { rea
  * The support the explicit datum offers at one point.
  *
  * The datum is authored, not compiled from a Room, so it has no witness. It is
- * only ever offered where `queryFloorSupports` found no Room floor: a floor that
- * covers a point always decides that point's elevation.
+ * only ever offered where `queryFloorSupports` found no authored floor: a floor
+ * that covers a point always decides that point's elevation.
  */
 export function datumSupportCandidate(input: {
 	readonly elevation: number;
@@ -268,16 +281,19 @@ export function queryFloorSupports(
 	}
 
 	const point: LayoutVec2 = [input.x, input.z];
+	const floorByFloorId = new Map(snapshot.floors.map((floor) => [floor.floorId, floor]));
+	const roomByRoomId = new Map(snapshot.rooms.map((room) => [room.roomId, room]));
+	const regionById = new Map(snapshot.regions.map((region) => [region.regionId, region]));
 	const containing: FloorSupportQueryPolygon[] = [];
 	for (const polygon of snapshot.queryPolygons) {
-		if (polygon.kind !== 'room-floor') continue;
+		if (polygon.kind !== 'room-floor' && polygon.kind !== 'region-top') continue;
 		if (scopeFloorId !== undefined && polygon.floorId !== scopeFloorId) continue;
 		if (!hasUsableBoundary(polygon.polygon)) {
 			if (pointWithinToleranceOfBounds(point, polygon.polygon, FLOOR_SUPPORT_TOLERANCES.boundaryMeters)) {
 				return {
 					kind: 'unsupported',
 					code: 'missing-support-facts',
-					message: `Compiled room-floor record "${polygon.id}" carries an invalid or degenerate boundary but reaches the queried point, so this query cannot report an honest support set.`
+					message: `Compiled ${polygon.kind} record "${polygon.id}" carries an invalid or degenerate boundary but reaches the queried point, so this query cannot report an honest support set.`
 				};
 			}
 			continue;
@@ -286,35 +302,360 @@ export function queryFloorSupports(
 	}
 	if (containing.length === 0) return { kind: 'none' };
 
-	const roomByRoomId = new Map(snapshot.rooms.map((room) => [room.roomId, room]));
-	const floorByFloorId = new Map(snapshot.floors.map((floor) => [floor.floorId, floor]));
-	const elevationByRoomId = new Map<string, number>();
+	const elevationBySource = new Map<string, number>();
 	const witnessByKey = new Map<string, FloorSupportWitness>();
 
 	for (const polygon of containing) {
-		if (polygon.roomId === undefined || polygon.floorId === undefined) {
+		const floorId = polygon.floorId;
+		if (floorId === undefined) {
 			return {
 				kind: 'unsupported',
 				code: 'missing-support-facts',
-				message: `Compiled room-floor record "${polygon.id}" names no ${polygon.roomId === undefined ? 'Room' : 'floor'} owner, so its support cannot be qualified.`
+				message: `Compiled ${polygon.kind} record "${polygon.id}" names no floor owner, so its support cannot be qualified.`
 			};
 		}
-		// Duplicate identities must agree exactly; a Map's last writer is no authority.
-		const roomFacts = snapshot.rooms.filter(room => room.roomId === polygon.roomId);
-		const floorFacts = snapshot.floors.filter(floor => floor.floorId === polygon.floorId);
-		if (roomFacts.some(room => room.floorElevation !== roomFacts[0]!.floorElevation) ||
-			floorFacts.some(floor => floor.elevation !== floorFacts[0]!.elevation)) {
+		const floorFacts = snapshot.floors.filter((floor) => floor.floorId === floorId);
+		if (floorFacts.some((floor) => floor.elevation !== floorFacts[0]!.elevation)) {
 			return {
-				kind: 'unsupported', code: 'contradictory-support-facts',
-				message: `Compiled record "${polygon.id}" has conflicting facts for one source identity.`
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled record "${polygon.id}" has conflicting facts for one floor identity.`
 			};
 		}
-		const room = roomByRoomId.get(polygon.roomId);
-		if (room === undefined || !Number.isFinite(room.floorElevation)) {
+		const floor = floorByFloorId.get(floorId);
+		if (floor === undefined || !Number.isFinite(floor.elevation)) {
 			return {
 				kind: 'unsupported',
 				code: 'missing-support-facts',
-				message: `Compiled room-floor record "${polygon.id}" has no compiled Room with a finite floor elevation for Room "${polygon.roomId}".`
+				message: `Compiled ${polygon.kind} record "${polygon.id}" has no compiled floor with a finite datum for floor "${floorId}".`
+			};
+		}
+
+		if (polygon.kind === 'room-floor') {
+			if (polygon.roomId === undefined) {
+				return {
+					kind: 'unsupported',
+					code: 'missing-support-facts',
+					message: `Compiled room-floor record "${polygon.id}" names no Room owner, so its support cannot be qualified.`
+				};
+			}
+			// Duplicate identities must agree exactly; a Map's last writer is no authority.
+			const roomFacts = snapshot.rooms.filter((room) => room.roomId === polygon.roomId);
+			if (roomFacts.some((room) => room.floorElevation !== roomFacts[0]!.floorElevation)) {
+				return {
+					kind: 'unsupported',
+					code: 'contradictory-support-facts',
+					message: `Compiled record "${polygon.id}" has conflicting facts for one source identity.`
+				};
+			}
+			const room = roomByRoomId.get(polygon.roomId);
+			if (room === undefined || !Number.isFinite(room.floorElevation)) {
+				return {
+					kind: 'unsupported',
+					code: 'missing-support-facts',
+					message: `Compiled room-floor record "${polygon.id}" has no compiled Room with a finite floor elevation for Room "${polygon.roomId}".`
+				};
+			}
+			// Two compiled facts describe one support: the Room's floor elevation and
+			// its floor's datum. Only their agreement is an elevation we may act on.
+			if (
+				Math.abs(floor.elevation - room.floorElevation) >
+				FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+			) {
+				return {
+					kind: 'unsupported',
+					code: 'contradictory-support-facts',
+					message: `Compiled Room "${room.roomId}" reports floor elevation ${room.floorElevation} and its floor "${floor.floorId}" reports datum ${floor.elevation}.`
+				};
+			}
+			const known = elevationBySource.get(`room:${room.roomId}`);
+			if (
+				known !== undefined &&
+				Math.abs(known - room.floorElevation) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+			) {
+				return {
+					kind: 'unsupported',
+					code: 'contradictory-support-facts',
+					message: `Room "${room.roomId}" appears in two containing compiled records with elevations ${known} and ${room.floorElevation}.`
+				};
+			}
+			elevationBySource.set(`room:${room.roomId}`, room.floorElevation);
+			const orderKey = geometryId([polygon.sourceId, room.roomId, floorId, polygon.id]);
+			const witnessKey = geometryId([floorId, 'room', room.roomId, polygon.id]);
+			const witness: FloorSupportWitness = {
+				source: { kind: 'room', roomId: room.roomId },
+				floorId,
+				recordId: polygon.id,
+				cacheKey: polygon.cacheKey,
+				sourceId: polygon.sourceId,
+				orderKey,
+				elevation: room.floorElevation
+			};
+			if (!registerWitness(witnessByKey, witnessKey, witness)) {
+				return contradictory(polygon.id);
+			}
+			continue;
+		}
+
+		// `region-top`: the region record is the role/elevation authority; the query
+		// record's own elevation must agree with it exactly within the tolerance.
+		const regionFacts = snapshot.regions.filter((region) => region.regionId === polygon.sourceId);
+		if (regionFacts.some((region) => region.topY !== regionFacts[0]!.topY)) {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled record "${polygon.id}" has conflicting facts for one region identity.`
+			};
+		}
+		const region = regionById.get(polygon.sourceId);
+		if (region === undefined || !Number.isFinite(region.topY) || !Number.isFinite(region.bottomY)) {
+			return {
+				kind: 'unsupported',
+				code: 'missing-support-facts',
+				message: `Compiled region-top record "${polygon.id}" has no compiled region with finite slab facts for region "${polygon.sourceId}".`
+			};
+		}
+		if (region.role !== 'floor') {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled region-top record "${polygon.id}" names "${region.regionId}", which is not a floor-role region.`
+			};
+		}
+		if (
+			polygon.elevation === undefined ||
+			!Number.isFinite(polygon.elevation) ||
+			Math.abs(polygon.elevation - region.topY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+		) {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled region-top record "${polygon.id}" reports elevation ${String(polygon.elevation)} and region "${region.regionId}" has top ${region.topY}.`
+			};
+		}
+		const known = elevationBySource.get(`region:${region.regionId}`);
+		if (
+			known !== undefined &&
+			Math.abs(known - region.topY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+		) {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Region "${region.regionId}" appears in two containing compiled records with elevations ${known} and ${region.topY}.`
+			};
+		}
+		elevationBySource.set(`region:${region.regionId}`, region.topY);
+		const orderKey = geometryId([polygon.sourceId, region.regionId, floorId, polygon.id]);
+		const witnessKey = geometryId([floorId, 'region', region.regionId, polygon.id]);
+		const witness: FloorSupportWitness = {
+			source: { kind: 'region', regionId: region.regionId },
+			floorId,
+			recordId: polygon.id,
+			cacheKey: polygon.cacheKey,
+			sourceId: polygon.sourceId,
+			orderKey,
+			elevation: region.topY
+		};
+		if (!registerWitness(witnessByKey, witnessKey, witness)) return contradictory(polygon.id);
+	}
+
+	// Source-ID ordering is the only ordering here, and it never picks an
+	// elevation: grouping below merges only supports the tolerance declares equal.
+	return { kind: 'candidates', candidates: groupSupportCandidates(input, witnessByKey) };
+}
+
+/**
+ * The downward query: closed-Space lids and overhead-region undersides at one
+ * world X/Z point, ordered by increasing elevation. `aboveElevation` narrows the
+ * set to faces more than the coplanar tolerance above that starting height.
+ */
+export type OverheadSupportQueryPolygon = Pick<
+	CompiledQueryPolygon,
+	'id' | 'cacheKey' | 'kind' | 'polygon' | 'sourceId' | 'floorId' | 'elevation'
+>;
+
+export type OverheadSupportSnapshot = {
+	floors: readonly Pick<CompiledFloor, 'floorId' | 'elevation' | 'roomIds'>[];
+	rooms: readonly Pick<
+		CompiledRoom,
+		'roomId' | 'id' | 'cacheKey' | 'overhead' | 'floorElevation' | 'ceilingElevation' | 'ceilingPolygon'
+	>[];
+	regions: readonly Pick<
+		CompiledRegion,
+		'regionId' | 'id' | 'cacheKey' | 'role' | 'bottomY' | 'topY' | 'footprint'
+	>[];
+	queryPolygons: readonly OverheadSupportQueryPolygon[];
+};
+
+export function overheadSupportSnapshotOf(compiled: CompiledLayoutGeometry): OverheadSupportSnapshot {
+	return {
+		floors: compiled.floors,
+		rooms: compiled.rooms,
+		regions: compiled.regions,
+		queryPolygons: compiled.queries.polygons
+	};
+}
+
+export type OverheadSupportQueryInput = {
+	generationId: string;
+	evidenceGenerationId?: string;
+	x: number;
+	z: number;
+	/** Select faces strictly above this starting elevation. */
+	aboveElevation?: number;
+};
+
+export type OverheadSupportWitness = FloorSupportWitness;
+
+export type OverheadSupportCandidate = {
+	queryPoint: LayoutVec2;
+	elevation: number;
+	downNormal: Vec3;
+	generationId: string;
+	witnesses: readonly OverheadSupportWitness[];
+	orderKey: string;
+	label: string;
+};
+
+export type OverheadSupportQueryResult =
+	| { kind: 'candidates'; candidates: readonly OverheadSupportCandidate[] }
+	| { kind: 'none' }
+	| {
+		kind: 'invalid-input';
+		code: 'non-finite-point' | 'missing-generation-id' | 'non-finite-height';
+		message: string;
+	}
+	| {
+		kind: 'stale-generation';
+		generationId: string;
+		evidenceGenerationId: string;
+		message: string;
+	}
+	| {
+		kind: 'unsupported';
+		code: 'missing-support-facts' | 'contradictory-support-facts';
+		message: string;
+	};
+
+export function queryOverheadSupports(
+	snapshot: OverheadSupportSnapshot,
+	input: OverheadSupportQueryInput
+): OverheadSupportQueryResult {
+	if (typeof input.generationId !== 'string' || input.generationId.trim().length === 0) {
+		return {
+			kind: 'invalid-input',
+			code: 'missing-generation-id',
+			message: 'An overhead-support query needs the caller compile generation it is resolving against.'
+		};
+	}
+	if (!Number.isFinite(input.x) || !Number.isFinite(input.z)) {
+		return {
+			kind: 'invalid-input',
+			code: 'non-finite-point',
+			message: `An overhead-support query needs a finite world X/Z point; received (${String(input.x)}, ${String(input.z)}).`
+		};
+	}
+	if (input.aboveElevation !== undefined && !Number.isFinite(input.aboveElevation)) {
+		return {
+			kind: 'invalid-input',
+			code: 'non-finite-height',
+			message: `An overhead-support query needs a finite starting elevation; received ${String(input.aboveElevation)}.`
+		};
+	}
+	if (input.evidenceGenerationId !== undefined && input.evidenceGenerationId !== input.generationId) {
+		return {
+			kind: 'stale-generation',
+			generationId: input.generationId,
+			evidenceGenerationId: input.evidenceGenerationId,
+			message: `Evidence was captured against generation "${input.evidenceGenerationId}" and the snapshot is generation "${input.generationId}".`
+		};
+	}
+
+	const point: LayoutVec2 = [input.x, input.z];
+	const floorByFloorId = new Map(snapshot.floors.map((floor) => [floor.floorId, floor]));
+	const roomById = new Map(snapshot.rooms.map((room) => [room.roomId, room]));
+	const regionById = new Map(snapshot.regions.map((region) => [region.regionId, region]));
+	const elevationBySource = new Map<string, number>();
+	const witnessByKey = new Map<string, OverheadSupportWitness>();
+
+	for (const room of snapshot.rooms) {
+		// Open to sky removes the generated lid and nothing else.
+		if (room.overhead !== 'closed') continue;
+		if (room.ceilingPolygon.length < 3) {
+			if (pointWithinToleranceOfBounds(point, room.ceilingPolygon, FLOOR_SUPPORT_TOLERANCES.boundaryMeters)) {
+				return {
+					kind: 'unsupported',
+					code: 'missing-support-facts',
+					message: `Compiled Room "${room.roomId}" has a degenerate lid that reaches the queried point.`
+				};
+			}
+			continue;
+		}
+		if (!polygonContainsWithTolerance(point, room.ceilingPolygon)) continue;
+		const floor = snapshot.floors.find((candidate) => candidate.roomIds.includes(room.roomId)) ?? snapshot.floors[0];
+		if (floor === undefined || !Number.isFinite(floor.elevation)) {
+			return {
+				kind: 'unsupported',
+				code: 'missing-support-facts',
+				message: `Compiled Room "${room.roomId}" has no compiled floor with a finite datum.`
+			};
+		}
+		if (
+			!Number.isFinite(room.floorElevation) ||
+			Math.abs(floor.elevation - room.floorElevation) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+		) {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled Room "${room.roomId}" reports floor elevation ${String(room.floorElevation)} and its floor reports datum ${floor.elevation}.`
+			};
+		}
+		if (!Number.isFinite(room.ceilingElevation)) {
+			return {
+				kind: 'unsupported',
+				code: 'missing-support-facts',
+				message: `Compiled Room "${room.roomId}" has no finite lid elevation.`
+			};
+		}
+		const recordId = room.id;
+		const witnessKey = geometryId([floor.floorId, 'room-lid', room.roomId, recordId]);
+		const witness: OverheadSupportWitness = {
+			source: { kind: 'room', roomId: room.roomId },
+			floorId: floor.floorId,
+			recordId,
+			cacheKey: room.cacheKey,
+			sourceId: room.roomId,
+			orderKey: geometryId([room.roomId, floor.floorId, recordId]),
+			elevation: room.ceilingElevation
+		};
+		if (!registerWitness(witnessByKey, witnessKey, witness)) {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled lid record "${recordId}" has conflicting source correspondence.`
+			};
+		}
+		elevationBySource.set(`room-lid:${room.roomId}`, room.ceilingElevation);
+	}
+
+	for (const polygon of snapshot.queryPolygons) {
+		if (polygon.kind !== 'region-underside') continue;
+		if (!hasUsableBoundary(polygon.polygon)) {
+			if (pointWithinToleranceOfBounds(point, polygon.polygon, FLOOR_SUPPORT_TOLERANCES.boundaryMeters)) {
+				return {
+					kind: 'unsupported',
+					code: 'missing-support-facts',
+					message: `Compiled region-underside record "${polygon.id}" carries a degenerate boundary but reaches the queried point.`
+				};
+			}
+			continue;
+		}
+		if (!polygonContainsWithTolerance(point, polygon.polygon)) continue;
+		if (polygon.floorId === undefined) {
+			return {
+				kind: 'unsupported',
+				code: 'missing-support-facts',
+				message: `Compiled region-underside record "${polygon.id}" names no floor owner.`
 			};
 		}
 		const floor = floorByFloorId.get(polygon.floorId);
@@ -322,88 +663,102 @@ export function queryFloorSupports(
 			return {
 				kind: 'unsupported',
 				code: 'missing-support-facts',
-				message: `Compiled room-floor record "${polygon.id}" has no compiled floor with a finite datum for floor "${polygon.floorId}".`
+				message: `Compiled region-underside record "${polygon.id}" has no compiled floor with a finite datum.`
 			};
 		}
-		// Two compiled facts describe one support: the Room's floor elevation and
-		// its floor's datum. Only their agreement is an elevation we may act on.
+		const regionFacts = snapshot.regions.filter((region) => region.regionId === polygon.sourceId);
+		if (regionFacts.some((region) => region.bottomY !== regionFacts[0]!.bottomY)) {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled record "${polygon.id}" has conflicting facts for one region identity.`
+			};
+		}
+		const region = regionById.get(polygon.sourceId);
+		if (region === undefined || !Number.isFinite(region.bottomY) || !Number.isFinite(region.topY)) {
+			return {
+				kind: 'unsupported',
+				code: 'missing-support-facts',
+				message: `Compiled region-underside record "${polygon.id}" has no compiled region with finite slab facts.`
+			};
+		}
+		if (region.role !== 'overhead') {
+			return {
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
+				message: `Compiled region-underside record "${polygon.id}" names "${region.regionId}", which is not an overhead-role region.`
+			};
+		}
 		if (
-			Math.abs(floor.elevation - room.floorElevation) >
-			FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+			polygon.elevation === undefined ||
+			!Number.isFinite(polygon.elevation) ||
+			Math.abs(polygon.elevation - region.bottomY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
 		) {
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Compiled Room "${room.roomId}" reports floor elevation ${room.floorElevation} and its floor "${floor.floorId}" reports datum ${floor.elevation}.`
+				message: `Compiled region-underside record "${polygon.id}" reports elevation ${String(polygon.elevation)} and region "${region.regionId}" has underside ${region.bottomY}.`
 			};
 		}
-		const known = elevationByRoomId.get(polygon.roomId);
+		const known = elevationBySource.get(`region:${region.regionId}`);
 		if (
 			known !== undefined &&
-			Math.abs(known - room.floorElevation) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+			Math.abs(known - region.bottomY) > FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
 		) {
 			return {
 				kind: 'unsupported',
 				code: 'contradictory-support-facts',
-				message: `Room "${room.roomId}" appears in two containing compiled records with elevations ${known} and ${room.floorElevation}.`
+				message: `Region "${region.regionId}" appears in two containing compiled records with elevations ${known} and ${region.bottomY}.`
 			};
 		}
-		elevationByRoomId.set(polygon.roomId, room.floorElevation);
-
-		// The choice identity includes the fragment record. Lexical ordering compares
-		// the source fields directly, never this length-prefixed encoding or elevation.
-		const orderKey = geometryId([polygon.sourceId, polygon.roomId, polygon.floorId, polygon.id]);
-		const witnessKey = geometryId([polygon.floorId, polygon.roomId, polygon.id]);
-		const previous = witnessByKey.get(witnessKey);
-		if (previous && (previous.cacheKey !== polygon.cacheKey || previous.sourceId !== polygon.sourceId)) {
+		elevationBySource.set(`region:${region.regionId}`, region.bottomY);
+		const orderKey = geometryId([polygon.sourceId, region.regionId, polygon.floorId, polygon.id]);
+		const witnessKey = geometryId([polygon.floorId, 'region-underside', region.regionId, polygon.id]);
+		const witness: OverheadSupportWitness = {
+			source: { kind: 'region', regionId: region.regionId },
+			floorId: polygon.floorId,
+			recordId: polygon.id,
+			cacheKey: polygon.cacheKey,
+			sourceId: polygon.sourceId,
+			orderKey,
+			elevation: region.bottomY
+		};
+		if (!registerWitness(witnessByKey, witnessKey, witness)) {
 			return {
-				kind: 'unsupported', code: 'contradictory-support-facts',
+				kind: 'unsupported',
+				code: 'contradictory-support-facts',
 				message: `Compiled record "${polygon.id}" has conflicting source correspondence.`
 			};
 		}
-		if (!previous) {
-			witnessByKey.set(witnessKey, {
-				floorId: polygon.floorId,
-				roomId: polygon.roomId,
-				recordId: polygon.id,
-				cacheKey: polygon.cacheKey,
-				sourceId: polygon.sourceId,
-				orderKey
-			});
-		}
 	}
 
-	// Source-ID ordering is the only ordering here, and it never picks an
-	// elevation: grouping below merges only supports the tolerance declares equal.
-	const witnesses = [...witnessByKey.values()].sort(compareWitnesses);
-	const buckets: Array<{ elevation: number; witnesses: FloorSupportWitness[] }> = [];
-	for (const witness of witnesses) {
-		const elevation = elevationByRoomId.get(witness.roomId)!;
-		const bucket = buckets.find(
-			(candidate) =>
-				candidate.witnesses[0]!.floorId === witness.floorId &&
-				candidate.witnesses.every(member =>
-					Math.abs(elevationByRoomId.get(member.roomId)! - elevation) <= FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters)
-		);
-		if (bucket === undefined) buckets.push({ elevation, witnesses: [witness] });
-		else bucket.witnesses.push(witness);
+	const groups = groupWitnessesByElevation(witnessByKey);
+	const candidates: OverheadSupportCandidate[] = [];
+	for (const group of groups) {
+		if (
+			input.aboveElevation !== undefined &&
+			group.elevation <= input.aboveElevation + FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+		) continue;
+		const first = group.witnesses[0]!;
+		candidates.push({
+			queryPoint: [input.x, input.z],
+			elevation: group.elevation,
+			downNormal: [
+				OVERHEAD_SUPPORT_DOWN_NORMAL[0],
+				OVERHEAD_SUPPORT_DOWN_NORMAL[1],
+				OVERHEAD_SUPPORT_DOWN_NORMAL[2]
+			] as Vec3,
+			generationId: input.generationId,
+			witnesses: group.witnesses,
+			orderKey: first.orderKey,
+			label: witnessLabel(first)
+		});
 	}
-
-	const candidates: FloorSupportCandidate[] = buckets
-		.map((bucket) => {
-			const first = bucket.witnesses[0]!;
-			return {
-				queryPoint: [input.x, input.z] as LayoutVec2,
-				elevation: bucket.elevation,
-				upNormal: [FLOOR_SUPPORT_UP_NORMAL[0], FLOOR_SUPPORT_UP_NORMAL[1], FLOOR_SUPPORT_UP_NORMAL[2]] as Vec3,
-				generationId: input.generationId,
-				witnesses: bucket.witnesses,
-				orderKey: first.orderKey,
-				label: `Floor ${first.floorId} / Room ${first.roomId}`
-			};
-		})
-		.sort((left, right) => compareWitnesses(left.witnesses[0]!, right.witnesses[0]!));
-
+	if (candidates.length === 0) return { kind: 'none' };
+	candidates.sort((left, right) =>
+		left.elevation - right.elevation ||
+		compareWitnesses(left.witnesses[0]!, right.witnesses[0]!)
+	);
 	return { kind: 'candidates', candidates };
 }
 
@@ -478,10 +833,91 @@ export function chooseFloorSupport(
 	return { kind: 'resolved', support: matches[0]! };
 }
 
+function registerWitness(
+	byKey: Map<string, FloorSupportWitness>,
+	key: string,
+	witness: FloorSupportWitness
+): boolean {
+	const previous = byKey.get(key);
+	if (previous !== undefined) {
+		return previous.cacheKey === witness.cacheKey && previous.sourceId === witness.sourceId;
+	}
+	byKey.set(key, witness);
+	return true;
+}
+
+function contradictory(recordId: string) {
+	return {
+		kind: 'unsupported' as const,
+		code: 'contradictory-support-facts' as const,
+		message: `Compiled record "${recordId}" has conflicting source correspondence.`
+	};
+}
+
+function groupSupportCandidates(
+	input: FloorSupportQueryInput,
+	witnessByKey: ReadonlyMap<string, FloorSupportWitness>
+): FloorSupportCandidate[] {
+	return groupWitnessesByElevation(witnessByKey)
+		.map((group) => {
+			const first = group.witnesses[0]!;
+			return {
+				queryPoint: [input.x, input.z] as LayoutVec2,
+				elevation: group.elevation,
+				upNormal: [
+					FLOOR_SUPPORT_UP_NORMAL[0],
+					FLOOR_SUPPORT_UP_NORMAL[1],
+					FLOOR_SUPPORT_UP_NORMAL[2]
+				] as Vec3,
+				generationId: input.generationId,
+				witnesses: group.witnesses,
+				orderKey: first.orderKey,
+				label: witnessLabel(first)
+			};
+		})
+		.sort((left, right) => compareWitnesses(left.witnesses[0]!, right.witnesses[0]!));
+}
+
+type WitnessGroup = { floorId: string; elevation: number; witnesses: FloorSupportWitness[] };
+
+function groupWitnessesByElevation(
+	witnessByKey: ReadonlyMap<string, FloorSupportWitness>
+): WitnessGroup[] {
+	const witnesses = [...witnessByKey.values()].sort(compareWitnesses);
+	const groups: WitnessGroup[] = [];
+	for (const witness of witnesses) {
+		// Every member must be within tolerance of the new witness. Checking only
+		// the bucket's first elevation would let a middle elevation bridge two
+		// supports that are themselves farther apart than one tolerance.
+		const group = groups.find(
+			(candidate) =>
+				candidate.floorId === witness.floorId &&
+				candidate.witnesses.every(
+					(member) =>
+						Math.abs(member.elevation - witness.elevation) <=
+						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+				)
+		);
+		if (group === undefined) groups.push({ floorId: witness.floorId, elevation: witness.elevation, witnesses: [witness] });
+		else group.witnesses.push(witness);
+	}
+	return groups;
+}
+
+function witnessLabel(witness: FloorSupportWitness): string {
+	return witness.source.kind === 'room'
+		? `Floor ${witness.floorId} / Room ${witness.source.roomId}`
+		: `Floor ${witness.floorId} / Region ${witness.source.regionId}`;
+}
+
 // `geometryId` is collision-safe identity encoding, not a lexical sort key:
 // its length prefixes would sort "b" before "a-long-source".
 function compareWitnesses(left: FloorSupportWitness, right: FloorSupportWitness): number {
-	for (const key of ['sourceId', 'roomId', 'floorId', 'recordId', 'cacheKey'] as const) {
+	if (left.source.kind !== right.source.kind) return left.source.kind < right.source.kind ? -1 : 1;
+	const leftId = left.source.kind === 'room' ? left.source.roomId : left.source.regionId;
+	const rightId = right.source.kind === 'room' ? right.source.roomId : right.source.regionId;
+	if (leftId !== rightId) return leftId < rightId ? -1 : 1;
+	for (const key of ['floorId', 'recordId', 'cacheKey'] as const) {
 		if (left[key] !== right[key]) return left[key] < right[key] ? -1 : 1;
 	}
 	return 0;

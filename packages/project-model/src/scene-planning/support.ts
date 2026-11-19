@@ -209,12 +209,23 @@ export function resolveSceneSupportOnGeometry(input: {
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneSupportResolution {
 	const { geometry, generationId, point } = input;
-	const queried = queryFloorSupports(floorSupportSnapshotOf(geometry), {
+	// V1b publishes `region-top` witnesses, but Scene placement consumes floors
+	// only until V1d wires region support into the pointer path. Narrowing the
+	// snapshot here keeps today's Room/datum behavior byte-identical.
+	const snapshot = floorSupportSnapshotOf(geometry);
+	const queried = queryFloorSupports(
+		{
+			...snapshot,
+			regions: [],
+			queryPolygons: snapshot.queryPolygons.filter((polygon) => polygon.kind === 'room-floor')
+		},
+		{
 		generationId,
 		...(input.choice === undefined ? {} : { evidenceGenerationId: input.choice.generationId }),
 		x: point[0],
 		z: point[1]
-	});
+		}
+	);
 	const withDatum: FloorSupportQueryResult = queried.kind === 'none'
 		? {
 			kind: 'candidates',

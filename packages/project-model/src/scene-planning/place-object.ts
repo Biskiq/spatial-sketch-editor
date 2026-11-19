@@ -263,17 +263,24 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 					source: {
 						version: 1, domain: 'layout',
 						revision: { kind: 'exact', contentRevision: input.supportSnapshot.sourceContentId },
-						subject: { kind: 'room', id: witness.roomId }, instancePath: [],
+						subject: witness.source.kind === 'room'
+							? { kind: 'room', id: witness.source.roomId }
+							: { kind: 'region', id: witness.source.regionId },
+						instancePath: [],
 						location: { kind: 'layout-location', levelId: witness.floorId, structureInstancePath: [] },
 						componentId: null, capabilityId: null
 					},
-					generationId: support.generationId, stream: 'layout:room-floor',
+					generationId: support.generationId,
+					stream: witness.source.kind === 'room' ? 'layout:room-floor' : 'layout:region-top',
 					subRef: { kind: 'component', componentId: witness.recordId }
 				})),
 				witnesses: support.witnesses.map(witness => ({ ...witness })),
 				queryPoint: [...support.queryPoint],
 				floorId: support.witnesses[0]?.floorId ?? null,
-				roomId: support.witnesses[0]?.roomId ?? null,
+				roomId: (() => {
+					const source = support.witnesses.find((witness) => witness.source.kind === 'room')?.source;
+					return source?.kind === 'room' ? source.roomId : null;
+				})(),
 				elevation: support.elevation,
 				generationId: support.generationId,
 				orderKey: support.orderKey,

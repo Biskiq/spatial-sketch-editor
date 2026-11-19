@@ -42,12 +42,13 @@ const SUPPORT: FloorSupportCandidate = {
 	generationId: 'generation-1',
 	witnesses: [
 		{
+			source: { kind: 'room', roomId: 'room-1' },
 			floorId: 'floor-1',
-			roomId: 'room-1',
 			recordId: 'record-1',
 			cacheKey: 'record-1:cache',
 			sourceId: 'record-1:source',
-			orderKey: 'record-1:order'
+			orderKey: 'record-1:order',
+			elevation: 0
 		}
 	],
 	orderKey: 'record-1:order',
