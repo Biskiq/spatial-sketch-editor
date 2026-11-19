@@ -99,6 +99,9 @@ export function regionWallPlanClass(
 	if (intersectsCommonInterval(footprint, left, right)) {
 		return { planClass: 'through', distanceMeters: 0 };
 	}
+	if (footprintWithinBodyStrip(footprint, wall, left, right, half)) {
+		return { planClass: 'edge', distanceMeters: 0 };
+	}
 	const distance = bodyStripDistance(footprint, left, right, wall);
 	if (distance <= REGION_WALL_RELATION_EPSILON) return { planClass: 'edge', distanceMeters: distance };
 	if (distance <= REGION_WALL_RELATION_REACH_METERS) return { planClass: 'near', distanceMeters: distance };
@@ -285,6 +288,103 @@ function insideIntervals(
 	return merged;
 }
 
+/**
+ * True when the whole footprint lies inside or on the Wall body strip.
+ *
+ * Every vertex must sit within half the thickness of the centerline over the
+ * Wall's own station span, and no footprint edge may leave the strip through a
+ * face or an end cap. Without this a small footprint drawn wholly inside a thick
+ * Wall measures its distance to the strip's outer boundary and reads `near`,
+ * even though the Wall body contains it.
+ */
+function footprintWithinBodyStrip(
+	footprint: readonly LayoutVec2[],
+	wall: Pick<CompiledPhysicalWall, 'samples' | 'startJunctionId' | 'endJunctionId'>,
+	left: readonly ProjectedPoint[],
+	right: readonly ProjectedPoint[],
+	half: number
+): boolean {
+	for (const point of footprint) {
+		if (!pointWithinBodyStrip(point, wall, half)) return false;
+	}
+	const boundary: Array<[LayoutVec2, LayoutVec2]> = [];
+	for (const face of [left, right]) {
+		for (let index = 0; index + 1 < face.length; index++) {
+			boundary.push([face[index]!.point, face[index + 1]!.point]);
+		}
+	}
+	if (!isClosedWall(wall) && left.length > 0 && right.length > 0) {
+		boundary.push([left[0]!.point, right[0]!.point]);
+		boundary.push([left.at(-1)!.point, right.at(-1)!.point]);
+	}
+	for (let index = 0; index < footprint.length; index++) {
+		const start = footprint[index]!;
+		const end = footprint[(index + 1) % footprint.length]!;
+		for (const [a, b] of boundary) {
+			if (segmentsProperlyCross(start, end, a, b)) return false;
+		}
+	}
+	return true;
+}
+
+/** Half-thickness membership over the Wall's station span, end caps included. */
+function pointWithinBodyStrip(
+	point: LayoutVec2,
+	wall: Pick<CompiledPhysicalWall, 'samples' | 'startJunctionId' | 'endJunctionId'>,
+	half: number
+): boolean {
+	let nearestDistance = Infinity;
+	let nearestStation = 0;
+	for (let index = 0; index + 1 < wall.samples.length; index++) {
+		const start = wall.samples[index]!;
+		const end = wall.samples[index + 1]!;
+		const dx = end.point[0] - start.point[0];
+		const dz = end.point[1] - start.point[1];
+		const squared = dx * dx + dz * dz;
+		const t =
+			squared > 0
+				? Math.min(
+						1,
+						Math.max(
+							0,
+							((point[0] - start.point[0]) * dx + (point[1] - start.point[1]) * dz) / squared
+						)
+					)
+				: 0;
+		const distance = Math.hypot(point[0] - (start.point[0] + dx * t), point[1] - (start.point[1] + dz * t));
+		if (distance < nearestDistance) {
+			nearestDistance = distance;
+			nearestStation = start.distance + (end.distance - start.distance) * t;
+		}
+	}
+	if (nearestDistance > half + REGION_WALL_RELATION_EPSILON) return false;
+	if (isClosedWall(wall)) return true;
+	return (
+		nearestStation >= wall.samples[0]!.distance - REGION_WALL_RELATION_EPSILON &&
+		nearestStation <= wall.samples.at(-1)!.distance + REGION_WALL_RELATION_EPSILON
+	);
+}
+
+function isClosedWall(
+	wall: Pick<CompiledPhysicalWall, 'startJunctionId' | 'endJunctionId'>
+): boolean {
+	return wall.startJunctionId !== undefined && wall.startJunctionId === wall.endJunctionId;
+}
+
+/** Strict crossing: each segment's endpoints lie on opposite sides of the other. */
+function segmentsProperlyCross(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
+	const ab: LayoutVec2 = [b[0] - a[0], b[1] - a[1]];
+	const cd: LayoutVec2 = [d[0] - c[0], d[1] - c[1]];
+	return (
+		oppositeSigns(cross(ab, [c[0] - a[0], c[1] - a[1]]), cross(ab, [d[0] - a[0], d[1] - a[1]])) &&
+		oppositeSigns(cross(cd, [a[0] - c[0], a[1] - c[1]]), cross(cd, [b[0] - c[0], b[1] - c[1]]))
+	);
+}
+
+function oppositeSigns(left: number, right: number): boolean {
+	return (left > 1e-12 && right < -1e-12) || (left < -1e-12 && right > 1e-12);
+}
+
 function bodyStripDistance(
 	footprint: readonly LayoutVec2[],
 	left: readonly ProjectedPoint[],
@@ -297,8 +397,7 @@ function bodyStripDistance(
 			stripSegments.push([face[index]!.point, face[index + 1]!.point]);
 		}
 	}
-	const closed = wall.startJunctionId !== undefined && wall.startJunctionId === wall.endJunctionId;
-	if (!closed && left.length > 0 && right.length > 0) {
+	if (!isClosedWall(wall) && left.length > 0 && right.length > 0) {
 		stripSegments.push([left[0]!.point, right[0]!.point]);
 		stripSegments.push([left.at(-1)!.point, right.at(-1)!.point]);
 	}

@@ -795,7 +795,7 @@ export function planFitWallsToRegion(
 	const skippedWallIds: string[] = [];
 	for (const wall of compiled.walls) {
 		if (!chosen.includes(wall.wallId)) continue;
-		if (wall.samples.length >= 2 && wall.samples.every((sample) => footprintContainsInclusive(compiledRegion.footprint, sample.point))) {
+		if (wall.samples.length >= 2 && centerlineWithinFootprint(compiledRegion.footprint, wall.samples)) {
 			eligible.push(wall);
 		} else {
 			skippedWallIds.push(wall.wallId);
@@ -854,6 +854,56 @@ export function planFitWallsToRegion(
 		fittedWallIds: eligible.map((wall) => wall.wallId),
 		skippedWallIds
 	};
+}
+
+/**
+ * Continuous coverage: every compiled centerline segment stays inside or on the
+ * footprint. Sampling the vertices alone is not enough, because a straight Wall
+ * can have both ends under a concave roof while its middle crosses the notch.
+ */
+function centerlineWithinFootprint(
+	footprint: readonly LayoutVec2[],
+	samples: CompiledPhysicalWall['samples']
+): boolean {
+	for (let index = 0; index + 1 < samples.length; index++) {
+		if (!segmentWithinFootprint(footprint, samples[index]!.point, samples[index + 1]!.point)) return false;
+	}
+	return true;
+}
+
+/** A segment is covered when its ends and interior probes are inside and it never crosses the ring. */
+function segmentWithinFootprint(footprint: readonly LayoutVec2[], start: LayoutVec2, end: LayoutVec2): boolean {
+	const probes: LayoutVec2[] = [start, end];
+	for (const t of [0.25, 0.5, 0.75]) {
+		probes.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
+	}
+	for (const probe of probes) {
+		if (!footprintContainsInclusive(footprint, probe)) return false;
+	}
+	for (let index = 0; index < footprint.length; index++) {
+		const a = footprint[index]!;
+		const b = footprint[(index + 1) % footprint.length]!;
+		if (segmentsProperlyCross(start, end, a, b)) return false;
+	}
+	return true;
+}
+
+/** Strict crossing: each segment's endpoints lie on opposite sides of the other. */
+function segmentsProperlyCross(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
+	const ab: LayoutVec2 = [b[0] - a[0], b[1] - a[1]];
+	const cd: LayoutVec2 = [d[0] - c[0], d[1] - c[1]];
+	return (
+		oppositeSigns(cross2(ab, [c[0] - a[0], c[1] - a[1]]), cross2(ab, [d[0] - a[0], d[1] - a[1]])) &&
+		oppositeSigns(cross2(cd, [a[0] - c[0], a[1] - c[1]]), cross2(cd, [b[0] - c[0], b[1] - c[1]]))
+	);
+}
+
+function oppositeSigns(left: number, right: number): boolean {
+	return (left > 1e-12 && right < -1e-12) || (left < -1e-12 && right > 1e-12);
+}
+
+function cross2(left: LayoutVec2, right: LayoutVec2): number {
+	return left[0] * right[1] - left[1] * right[0];
 }
 
 /** Inclusive footprint membership: an edge or vertex on the ring qualifies. */

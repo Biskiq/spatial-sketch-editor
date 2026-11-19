@@ -15,6 +15,7 @@ import {
 	planCreateWallFirstOpening,
 	planDuplicateRegion,
 	planExactWallHeight,
+	planExactWallThickness,
 	planFitRegionEdgeToWall,
 	planFitRegionToSpace,
 	planFitRegionToWalls,
@@ -271,6 +272,41 @@ describe('T-V4 — region Wall relations', () => {
 		expect(ids).toEqual([...ids].sort());
 		expect(ids.length).toBeGreaterThanOrEqual(2);
 	});
+
+	it('reads a small footprint wholly inside a thick Wall body as edge, not near', () => {
+		const baseline = createEmptyWallFirstLayoutDocument();
+		const chain = planWallChain({
+			baseline,
+			points: [[0, 0], [8, 0]],
+			close: false,
+			capture: freshCapture(),
+			levelId: baseline.floor.id,
+			height: 3
+		});
+		if (chain.kind !== 'success') throw new Error(`wall chain failed: ${chain.rejection.message}`);
+		const wall = wallBetween(chain.document, [0, 0], [8, 0]);
+		const thick = planExactWallThickness(chain.document, wall.id, 2);
+		if (thick.kind !== 'success') throw new Error(`thickness failed: ${thick.rejection.message}`);
+
+		// The 2 m Wall body spans z ∈ [-1, 1]; no face runs through this footprint.
+		const footprint: LayoutVec2[] = [[3, -0.2], [4, -0.2], [4, 0.2], [3, 0.2]];
+		const { document, regionId } = added(thick.document, { role: 'floor', footprint, elevation: 0.2 });
+		const geometry = compile(document);
+		const compiledWall = geometry.walls.find((candidate) => candidate.wallId === wall.id)!;
+		expect(compiledWall.thickness).toBeCloseTo(2, 9);
+		expect(regionWallPlanClass(footprint, compiledWall)).toMatchObject({ planClass: 'edge', distanceMeters: 0 });
+		expect(relationFor(geometry, document, regionId, wall.id)).toMatchObject({
+			planClass: 'edge',
+			reading: 'meets'
+		});
+
+		// Fit roof to walls treats the containing Wall as covered, so it can reach contact.
+		const roof = added(document, { role: 'overhead', footprint, elevation: 3.5 }, 'region-b');
+		const fitted = planFitRegionToWalls(roof.document, compile(roof.document), roof.regionId, [wall.id]);
+		expect(fitted.kind).toBe('success');
+		if (fitted.kind !== 'success') return;
+		expect(regionOf(fitted.document, roof.regionId).elevation).toBeCloseTo(3, 9);
+	});
 });
 
 describe('T-V5 — fits are one-shot and store no link', () => {
@@ -347,6 +383,53 @@ describe('T-V5 — fits are one-shot and store no link', () => {
 		expect(relationFor(compile(fitted.document), fitted.document, regionId, nearWall.id)).toMatchObject({
 			reading: 'meets'
 		});
+	});
+
+	it('Fit walls to roof skips a Wall that bridges a concave notch between its samples', () => {
+		const base = enclosure();
+		const bridging = wallBetween(base, [0, 0], [8, 0]);
+		// A concave roof with a 0.15 m slot rising from its lower edge. The slot is
+		// narrower than the compiler's 0.25 m centerline sampling, so every sample of
+		// the bridging Wall sits under the roof even though its span crosses the slot.
+		const roof: LayoutVec2[] = [
+			[-1, -1], [4.05, -1], [4.05, 1], [4.2, 1], [4.2, -1], [9, -1], [9, 3], [-1, 3]
+		];
+		const { document: withRoof, regionId } = added(base, { role: 'overhead', footprint: roof, elevation: 3.5 });
+		const partition = planWallChain({
+			baseline: withRoof,
+			points: [[2, 2], [6, 2]],
+			close: false,
+			capture: freshCapture(),
+			levelId: withRoof.floor.id,
+			height: 3
+		});
+		if (partition.kind !== 'success') throw new Error(`partition failed: ${partition.rejection.message}`);
+		const covered = partition.document.walls.find(
+			(candidate) => !withRoof.walls.some((existing) => existing.id === candidate.id)
+		)!;
+
+		const geometry = compile(partition.document);
+		const compiledBridging = geometry.walls.find((candidate) => candidate.wallId === bridging.id)!;
+		// Every compiled sample is under the roof: z = 0 across the 0..8 span, and no
+		// 0.25 m station falls inside the slot at x ∈ (4.05, 4.2).
+		expect(compiledBridging.samples.length).toBeGreaterThan(2);
+		expect(
+			compiledBridging.samples.every(
+				(sample) =>
+					sample.point[1] === 0 &&
+					sample.point[0] >= 0 &&
+					sample.point[0] <= 8 &&
+					(sample.point[0] <= 4.05 || sample.point[0] >= 4.2)
+			)
+		).toBe(true);
+
+		const fitted = planFitWallsToRegion(partition.document, geometry, regionId, [bridging.id, covered.id]);
+		expect(fitted.kind).toBe('success');
+		if (fitted.kind !== 'success') return;
+		expect(fitted.changedWallIds).toEqual([covered.id]);
+		expect(fitted.skippedWallIds).toEqual([bridging.id]);
+		expect(fitted.document.walls.find((wall) => wall.id === bridging.id)!.height).toBeCloseTo(3, 9);
+		expect(fitted.document.walls.find((wall) => wall.id === covered.id)!.height).toBeCloseTo(3.5, 9);
 	});
 
 	it('Fit walls refuses atomically when a new top would cut a hosted Opening', () => {
