@@ -1,8 +1,11 @@
 # V1c — Region authoring, Lift and Stage parity
 
 **Status:** correctness recovery and automated acceptance complete; real-browser QA is **partial**.
-J7/J11 are not yet accepted: the unexecuted journeys are listed under **Browser QA gaps**.
-No production deployment was made. This evidence does not declare the PR ready for review.
+This round fixed the body-drag selection loss and verified it in Chromium, and added J7
+open-to-sky/association/intended gaps, J11 Lift/height edit/Put back, 3D Region picking and
+Slice. Corner removal, Line creation, primitive/approved-model placement, as-built Preview and
+the complete J7/J11 scripts remain unexecuted (see **Browser QA gaps**). No production
+deployment was made, and this evidence does not declare the PR ready for review.
 
 ## What was implemented
 
@@ -49,9 +52,19 @@ No production deployment was made. This evidence does not declare the PR ready f
    Both are now included. This was a genuine V1c integration defect, not shared infrastructure.
 4. **Browser blocker — region draw cancelled on first move.** A region press did not acquire a
    Stage gesture lease, so `stage-input` cancelled the adapter drag on the first pointer move.
-   `region-ink-session` now acquires `layout-region-draw` with
+   	`region-ink-session` now acquires `layout-region-draw` with
    `cancel-on-reading-change`, publishes a refusal when another owner holds the pointer, and
    releases the lease idempotently on clear/up.
+5. **Region Card closed when a body move was released.** Requalifying the selection after the
+   accepted edit treated the Region's Plan fragment as an F.1 component. A Region's fragment
+   names the compiled `edge` stream, while `layoutSelectionReference` intentionally stores
+   `componentId: null`, so the comparison `null !== 'edge'` retired the subject and the shell
+   closed the Card even though the edit installed. `selection-requalification.ts` now derives
+   the F.1 component through `f1ComponentOf`, which returns `null` for `sourceKind: 'region'`,
+   and the entry path ignores a Region representation's component. Coverage:
+   `layout-region-authoring.test.ts` moves a Region selected with an `edge` representation and
+   asserts the selection survives; `stage-host-acceptance.test.ts` pins the requalification
+   rule directly.
 
 Temporary instrumentation used to diagnose the browser blockers was removed before the final
 runs; no diagnostic `console.log`, `console.error` or catch was left in the source.
@@ -64,12 +77,13 @@ runs; no diagnostic `console.log`, `console.error` or catch was left in the sour
 | T-V7 | V1b `layout-regions.test.ts`, `layout-room-lift-action.test.ts`; `layout-region-authoring.test.ts` Space association, Card delete/Undo and Lift sources (a floor Terrace is not lifted) |
 | T-V11 | `lift-shadow-eligibility.test.ts` (lifted layer on point/spot/sun shadow cameras, negative control), `scene-region-support.test.ts`, `layout-outline-pick.test.ts`, `layout-region-authoring.test.ts` Lift/Put back and floor-Region retention |
 | T-V12 | `layout-region-authoring.test.ts`: body move, corner and height accept/Undo/Redo; birth Undo/Redo with captured id; Card delete Undo; refused birth adds no history; Esc adds no history |
-| T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner click and degenerate corner are no-ops; stale intent refused; Esc restores |
+| T-V13 | `layout-region-authoring.test.ts`: exact corner/body/height previews equal accepted geometry; `compile` count 0 and no intents/history during pointer movement; exactly one F4 entry; exact Undo/Redo; corner click and degenerate corner are no-ops; stale intent refused; Esc restores; a Region selected from its `edge` stream keeps its selection and Card across an accepted body move |
 
-Focused coverage in `layout-region-authoring.test.ts` is **14 tests**:
+Focused coverage in `layout-region-authoring.test.ts` is **15 tests**:
 
 - every retained region planner and the Card surface;
 - body move in one history entry with Undo/Redo;
+- a Region selected through its `edge` stream stays selected after an accepted body move;
 - corner preview equals the installed footprint, with zero Layout compiles and zero history
   writes during the drag, then exact Undo/Redo;
 - body preview equals the installed footprint, with no compile/history before release;
@@ -90,9 +104,10 @@ Commands run from `apps/editor` on the final tree:
 
 - `npm run check` — 0 errors, 18 pre-existing warnings.
 - `npm run test:arch` — 38 files, 350 tests passed.
-- `npm run test:fast` — 433 files, 5352 tests passed.
+- `npm run test:fast` — 433 files, 5354 tests passed.
 - `npm run test:heavy` — 11 files, 138 tests passed.
-- `npm run test -- tests/lib/authoring/layout-region-authoring.test.ts` — 14 tests passed.
+- `npm run test -- tests/lib/authoring/layout-region-authoring.test.ts tests/lib/authoring/stage-host-acceptance.test.ts`
+  — 53 tests passed (15 and 38).
 - `npm run build` — passed.
 - `node tools/harness/check-docs.mjs` — passed.
 - `node tools/harness/guards.mjs --base cd5222fc --head HEAD` — no unapproved check or bug-state
@@ -104,13 +119,17 @@ Commands run from `apps/editor` on the final tree:
   objects `47492`.
 - Real Chromium through the local `agent-browser` CLI, headed, with synthetic mouse moves/down/up,
   keyboard input, page reloads and screenshots. No mounted test was used as browser evidence.
-- QA account: local `t1v1c-qa-2026`. Saved project:
-  `project:7e8c49a2-2a49-4ca9-b7d9-6e9f453ec139` (`Untitled project`).
+- QA account: local `t1v1c-qa-2026`. Two saved projects were used:
+  `project:7e8c49a2-2a49-4ca9-b7d9-6e9f453ec139` (the original Terrace-only project) and
+  `project:96cdddf3-8455-4c93-8605-0a0cb68d6f98` (created empty this round: a 4-Wall Room,
+  24.0 m² at 3 m, plus a Flat Roof `Canopy 1` at 1.20 m).
 - Viewport: 1200 × 627 CSS px at device scale 2. Stage handle positions were read from
   `[data-mark-id]` `getBoundingClientRect()` before each pointer sequence; screenshots are 1.6×
   the CSS viewport.
-- The project was loaded through
-  `http://localhost:5177/project/project%3A7e8c49a2-2a49-4ca9-b7d9-6e9f453ec139/spatial?load=1`.
+- The original project was loaded through
+  `http://localhost:5177/project/project%3A7e8c49a2-2a49-4ca9-b7d9-6e9f453ec139/spatial?load=1`;
+  this round's project through
+  `http://localhost:5177/project/project%3A96cdddf3-8455-4c93-8605-0a0cb68d6f98/spatial?load=1`.
 
 ## Browser QA executed
 
@@ -132,11 +151,13 @@ Commands run from `apps/editor` on the final tree:
 - **Add corner.** Pressing the top edge's hollow **Add corner here** mark added a fifth corner;
   the overlay then exposed five corner marks and five edge marks
   (`15-add-corner.png`).
-- **Body drag.** A selected body drag previewed `Δx 0.80 · Δz 0.60 m` while Width/Depth stayed
-  `3.00 / 2.50 m` (`28-body-preview.png`); the region moved on release
-  (`29-body-accepted.png`). **Observed defect:** this browser path closes the Region Card on
-  release, although the edit is accepted and the region remains selected in the Stage data.
-  The mounted test does not exercise the Card's browser lifetime. This is not claimed as a pass.
+- **Body drag and the Card defect.** A selected body drag previewed
+  `Δx 0.80 · Δz 0.60 m` while Width/Depth stayed `3.00 / 2.50 m`
+  (`28-body-preview.png`). Before the fix, release accepted the edit but cleared the selection
+  and closed the Card (`29-body-accepted.png`); the instrumented session reported
+  `{"kind":"cleared","reason":"subject-retired"}` because the Region's `edge`
+  representation was compared with its null F.1 component. After the fix the same gesture left
+  all ten marks selected and the Card open (`31-body-retained.png`).
 - **Duplicate.** The Card's Duplicate produced a second Terrace in the Stage
   (`18-duplicate.png`).
 - **Erase and Undo.** With Erase armed, a real Stage press removed the Terrace immediately; the
@@ -153,29 +174,66 @@ Commands run from `apps/editor` on the final tree:
   representation in the 3D view (`07-region-handles.png`, `10-region-3d.png`).
 - The Card read `0 objects rest on this platform` and `No Wall reads against this region yet.`
   for the unassociated Terrace.
-- No browser console exception was observed during the executed journeys. The console retained
-  only the temporary diagnostic lines from the blocked pre-fix attempts plus Vite HMR messages;
-  those diagnostic statements were removed from the source before final verification.
+- No browser console exception was observed in the clean post-fix runs. All temporary
+  diagnostics were removed from the source before the final checks.
+
+### J7 — overhead Region, Space association and intended gaps
+
+- A fresh project (`project:96cdddf3…`) was drawn as a 4-Wall Room, 24.0 m² at 3 m, saved and
+  reloaded (`32-room.png`).
+- Room Card `Overhead: Open to sky` removed the Room lid while the Walls and floor remained
+  (`33-open-to-sky.png`).
+- `Form › Roof › Box` at the Height Sheet created a Flat Roof at `1.20 m`; the Card read
+  Width `2.74 m`, Depth `2.45 m`, Area `6.70 m²`. Relations read
+  `Wall 1 Gap 0.23 m horizontal` and `Wall 2 Crosses`; **Mark intended** changed the first to
+  `Gap 0.23 m horizontal · intended` and **Clear intended** restored the measured reading.
+- The Region was renamed `Canopy 1` through the Card name (double-click, type, Enter).
+- The Space Card read `Overhead: Open to sky · under Canopy 1` and
+  `Regions: Canopy 1 (overhead)` (`34-space-under-canopy.png`).
+
+### J11 — Lift, height edit and Put back
+
+- `Room 1` actions → **Lift** showed the pill `Lift · Room 1 ▾ · Put back`; the Room lid and the
+  Canopy drew dashed lifted outlines (`35-lift.png`).
+- Pressing the lifted Canopy outline selected it with ten marks. Dragging its height ray
+  previewed `Elevation 2.001 m` and the accepted Card read `2.703 m`
+  (`36-lift-height.png`).
+- `[data-lift-put-back]` ended Lift and restored the unlifted rendering.
+- The Preview control is disabled with
+  `Create an Experience in the Experience lens to Preview it.`, so J11's as-built Preview step is
+  unreachable in this project (no Experience was authored).
+
+### 3D picking, Slice and Look-through
+
+- In 3D, a press on a Room wall opened `WALL Wall 3`; a following press on the raised Canopy's
+  3D fragment opened `REGION Region 1` (`37-region-3d.png`, `38-3d-pick.png`), proving Plan and
+  3D source picking for an authored Region.
+- `Build › Slice` produced `Cut at 1.20 m` with `To the floor`; **Put back**
+  (`[data-slice-put-back]`) ended the cut (`39-slice.png`).
+- **Look-through is not exposed in this build:** the More readings menu contains only Lift and
+  Near walls **Cut/Whole**, so there is no control to exercise the journey.
 
 ## Browser QA gaps
 
 The following required journeys were **not executed acceptably** and are not claimed:
 
-- Terrace **Line** creation; Flat Roof **Box** and **Line** creation (a Roof gesture attempt was
-  aborted while the Index overlay still owned the press; no Roof was committed).
-- Height Sheet elevation and creation-default verification through the browser.
-- Corner removal and Add-corner Undo/Redo through the browser (corner addition only is shown).
-- Rename, one-shot fit to Wall/Space, intended gaps, and Erase with a non-zero resting-object
-  disclosure.
-- Space association, Space Card Relations, Regions Index grouping, open-to-sky overhead wording.
-- Lift/Put back, floor-Region retention during Lift, point/spot/sun shadows, Slice interaction,
-  as-built Preview and Look-through, coplanar Region/Room-floor priority, and visitor-output leak
-  checks.
-- Plan/3D source picking beyond the observed selection renders.
-- Primitive, approved-model and saved-form placement on the raised Terrace; resting-object
-  disclosures before a browser move/Erase; authored world-pose retention; no approved model or
-  asset is currently provisioned in the QA project.
+- **Corner removal.** Repeated real-pointer drags of a corner past the removal threshold and
+  onto the neighbour chord did move the corner (area `6.70 → 3.68 m²`) but never presented the
+  removal state or reduced the corner count; mounted coverage remains the only evidence. This
+  may be a product defect and is not claimed as a pass.
+- **Line creation** for Terrace and Flat Roof (Box creation is covered).
+- **Primitive/approved-model placement** on a raised Region: Library → Piano arms the `objects`
+  tool with `Choose the object in the Objects panel to place it.`, but presses on the raised
+  Terrace created nothing; no approved model is provisioned in the QA project. Resting-object
+  disclosures with a non-zero count, authored world-pose retention and saved-form placement are
+  therefore unverified in the browser.
+- One-shot fits, rotation, Duplicate, Erase with a non-zero resting count, and persistence after
+  this round's fix were not re-executed (earlier runs covered rotation, Duplicate, Erase at
+  count `0` and save/reload thickness).
+- As-built **Preview** (blocked by the missing Experience) and **Look-through** (no control).
+- Coplanar Region/Room-floor priority and the visitor-output leak check.
 - The complete J7 and J11 scripts.
 
-There is no external infrastructure blocker for these gaps; they are unfinished QA. The review
-should therefore treat V1c as **not accepted** until the browser matrix is completed.
+There is no external infrastructure blocker except the unprovisioned approved model and the
+missing Experience; the remaining gaps are unfinished QA. The review should therefore treat V1c
+as **not accepted** until the browser matrix is completed.

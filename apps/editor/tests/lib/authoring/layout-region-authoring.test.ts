@@ -210,7 +210,7 @@ function settle(mounted: Mounted, clockSeconds = 6): void {
 	mounted.facade.tasks();
 }
 
-function selectRegion(mounted: Mounted, regionId: string): void {
+function selectRegion(mounted: Mounted, regionId: string, componentId: string | null = null): void {
 	const snapshot = mounted.facade.snapshot();
 	const reference = {
 		version: 1 as const,
@@ -226,7 +226,15 @@ function selectRegion(mounted: Mounted, regionId: string): void {
 		componentId: null,
 		capabilityId: null
 	};
-	mounted.facade.setSelection({ ordered: [{ reference }], primary: reference });
+	// A Plan pick names the Region's `edge` stream; it is not an F.1 component.
+	const representation = {
+		sourceId: regionId,
+		sourceKind: 'region' as const,
+		generationId: snapshot.compileGeneration,
+		stream: 'cut' as const,
+		subRef: componentId === null ? null : { kind: 'component' as const, componentId }
+	};
+	mounted.facade.setSelection({ ordered: [{ reference, representation }], primary: reference });
 	settle(mounted);
 }
 
@@ -348,6 +356,30 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toEqual(before.regions[0]!.footprint.points);
 		expect((await mounted.host.redo()).kind).toBe('installed');
 		expect(regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0]).toBeCloseTo(2, 2);
+	});
+
+	it('keeps a Region selected through its edge stream when a body move is accepted', async () => {
+		const mounted = await mount();
+		// The browser selects a Region from its `edge` Plan fragment. That stream
+		// component is not an F.1 component, so the accepted edit must not retire the
+		// selection and close the Card on release.
+		selectRegion(mounted, mounted.terraceId, 'edge');
+		expect(mounted.facade.selectionState().primary?.subject).toEqual({
+			kind: 'region',
+			id: mounted.terraceId
+		});
+
+		expect(press(mounted, [2, 2]).claimed).toBe(true);
+		dragTo(mounted, [3, 2], [2, 2]);
+		await eventually(() => regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0] !== 1);
+		settle(mounted);
+
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0]).toBeCloseTo(2, 2);
+		expect(mounted.facade.selectionState().primary?.subject).toEqual({
+			kind: 'region',
+			id: mounted.terraceId
+		});
+		expect(mounted.facade.selectionState().ordered).toHaveLength(1);
 	});
 
 	it('installs the exact corner preview in one entry, with no compile or history during the drag', async () => {
