@@ -56,13 +56,14 @@ shadow/lighting systems, authored formats, and unrelated Stage redesign are outs
 
 ### A shared Canvas lifecycle
 
-- Use a runtime-safe renderer host under `render/` with a real DOM canvas allocated in the browser per
-  generation. Initialize with `await renderer.init()` before mounting render consumers. Compose a small
-  ready-only Svelte child with Threlte's exported `createThrelteContext` and a synchronous
-  `createRenderer` callback returning the already initialized renderer for that exact canvas. Threlte
-  owns camera/DOM/task contexts, resize and the render scheduler once ready. Keep the existing canvas
-  wrapper size, focus and pointer routing. Keep server output and the loading/error container
-  independent of WebGPU globals.
+- Use a runtime-safe lifecycle owner under `render/` with one browser DOM canvas per generation.
+  Prefer stock Threlte `<Canvas>` with the shared synchronous `createRenderer` factory and a small
+  generation owner outside it. Threlte owns the DOM, camera/task contexts, resize and scheduling.
+  Biskiq owns readiness, recovery, error reporting and generation-scoped resource retirement. The
+  owner observes one explicit `init()` promise and gates render consumers, input and the first draw
+  on successful init. Keep canvas sizing, focus and pointer routing, along with server-safe loading
+  and unavailable states. PR 1 selects the integration using the same mounted lifecycle contract on
+  both backends.
 - The owner exposes starting, ready, recovering, unavailable and disposed states, a
   generation/cancellation token and a single retirement promise. Configure the shared S0 pipeline
   explicitly in the actual mounted context. Stage can request stencil, and dev benches can disable
@@ -95,28 +96,57 @@ shadow/lighting systems, authored formats, and unrelated Stage redesign are outs
   state, reattach the existing input/controller hooks, and suspend the render-facing clock while
   unavailable. Resume the same occurrence and Camera sample using the existing evaluator and preserving
   the user's pause state.
-- Register loss/error handlers before initialization and gate callbacks by generation. Use one
-  idempotent lifecycle adapter for Threlte's disposal callback and outer host cleanup. Stop the
-  scheduler callback synchronously, release child leases/targets before disposing the renderer, coalesce
-  duplicate disposal, await successful late init for cleanup and consume rejected async disposal. A
-  failed backend that partially initialized gets a teardown probe in PR 1. Keep the adapter out of the
-  stores and representations. Use public APIs and a fresh-canvas replacement. Reserve forced context
-  loss for isolated test fixtures. Three currently caches its init promise and expects the app to
-  replace a lost renderer. Its common renderer disposal is async and Threlte's current cleanup invokes
-  it without awaiting. [Three WebGPU manual](https://threejs.org/manual/pages/webgpurenderer) · [Three
-  r187 renderer](https://github.com/mrdoob/three.js/blob/r187/src/renderers/common/Renderer.js) · [Three
-  loss and disposal decision](https://github.com/mrdoob/three.js/pull/34688) · [Threlte
-  Canvas](https://threlte.xyz/docs/reference/core/canvas/) · [Threlte
-  WebGPU](https://threlte.xyz/docs/reference/core/webgpu/)
+- Register loss/error handlers before initialization and gate callbacks by generation. Route Threlte's
+  cleanup and host cancellation through the same idempotent retirement promise. Stop submissions
+  synchronously, release child leases/targets before freeing the renderer, clean up a successful late
+  init and consume rejected async start/stop/dispose calls. Use public APIs and a fresh canvas to
+  replace a lost renderer. Keep that logic in the shared owner and reserve forced context loss for
+  test fixtures. Three caches its init promise and expects the app to replace a lost renderer.
+  [Three WebGPU manual](https://threejs.org/manual/pages/webgpurenderer) ·
+  [Three r187 renderer](https://github.com/mrdoob/three.js/blob/r187/src/renderers/common/Renderer.js) ·
+  [Three loss and disposal decision](https://github.com/mrdoob/three.js/pull/34688)
 - Use public Three entry points and one pinned Three package resolution. Keep pure shared objects on
   `three` and use `three/webgpu` and `three/tsl` at renderer/material adapter sites. Anchor Vite
   prebundling and build dedupe to the same Three resolution, including the common core used by the two
   entry points. Verify common constructor/texture identity and one ColorManagement across optimized dev
   and production builds, including addons and Threlte. Audit the native constructor in Threlte's
   optional default branch: product always supplies the factory and the production registration test must
-  prove no executable product route selects the default. Record upstream-only retained bytes if tree
-  shaking leaves any and count them against the bundle gate. Replace native line optimization entries
-  with their common geometry and WebGPU addon paths.
+  prove no executable product route selects the default. Include any upstream-only retained bytes in
+  the cold-load diagnostics. Replace native line optimization entries with their common geometry and
+  WebGPU addon paths.
+
+#### PR 1 Canvas choice
+
+The pinned core 8.5.16 supports `createRenderer` on its regular Canvas. Its renderer context calls
+`setAnimationLoop()` and `dispose()` without awaiting their promises, and only catches synchronous
+disposal errors. The documented `@threlte/core/webgpu` Canvas arrived in a later version. The 8.7.0
+package delays mounting its children until `init()` resolves and handles successful late init, but its
+init chain has no rejection handler and its shared context still calls async disposal without awaiting
+it. Upgrading alone leaves rejected init and shutdown to resolve. Qualify the locked version first.
+A core upgrade requires a demonstrated lifecycle improvement and the usual dependency review.
+[Pinned core package](https://www.npmjs.com/package/@threlte/core/v/8.5.16) ·
+[Core 8.7.0 package](https://www.npmjs.com/package/@threlte/core/v/8.7.0) ·
+[Threlte WebGPU Canvas](https://threlte.xyz/docs/reference/core/webgpu/)
+
+Compare these paths in the same small mounted fixture, using the production Canvas props and one
+retained Stage/visitor state model:
+
+1. **Stock Canvas with a thin adapter.** Use the normal `createRenderer` factory, gate descendants
+   on init and use the lifecycle adapter to observe any start/stop/retirement promises Threlte does
+   not await. An outer key replaces the Canvas after terminal loss or failed startup.
+2. **Ready-gated Canvas.** Bind the host's DOM canvas and await init before mounting one small child
+   using the exported `createThrelteContext`. Supply the initialized renderer for that exact canvas
+   through a synchronous factory. Threlte still owns resize, tasks and the scheduler.
+
+Use the same delayed/rejected init, unmount-during-init, async disposal, loss/replacement and
+surviving-sibling cases for the two paths. Assert zero pre-ready draws, zero unhandled rejections,
+and one renderer retirement per generation. Late callbacks must have no effect on either surface.
+Check resize/DPR and render modes, focus/pointer-cancel, and restoration of the Stage session and
+visitor Camera/playback state. Choose
+stock Canvas if public hooks and the adapter pass the contract while preserving Threlte's lifecycle.
+Choose the ready-gated child if the stock path cannot do that without patching Threlte or taking over
+its scheduler. Record the result and exact failing case for any rejected path in PR 1. PR 2 ships
+only the selected path.
 
 ### World resources and materials
 
@@ -126,9 +156,13 @@ shadow/lighting systems, authored formats, and unrelated Stage redesign are outs
   `StandardNodeLibrary`. Under the same factory realize a matching node material only where Clip,
   Artwork's shadow mask or a proved shipped material compatibility case needs one. Use the library's
   standard class mapping, copying supported properties and texture references from the leased built-in
-  or imported clone, then attach nodes. Retain the existing store key contract and refcounts. Static
-  feature shape can choose a variant within a generation, but live clip values, softness and continuous
-  Finish changes must not churn pipelines beyond the material changes they already require. Preserve
+  or imported clone, then attach nodes. Retain the existing store key contract and refcounts. Keep
+  descriptor identity separate from shader shape. A map-slot or render-state change can select a
+  variant. In an already drawn variant, position/clip, opacity within the same blend mode, light
+  colour/softness and shape-preserving Finish preview values use uniforms or built-in bindings. In
+  PR 1 record which supported edits actually change the r187 pipeline, including zero crossings in
+  stock materials. Exercise repeated same-shape edits on both backends. Use a stable node uniform at
+  the material factory only where Three specializes a value that must remain live. Preserve
   imported alpha/fog/depth/side/blending/vertex colour, texture transforms and geometry deformation. The
   source clone must never be turned into a shared mutable node material. A reproducible incompatible
   admitted source is a gate failure. [Three r187 material
@@ -138,8 +172,10 @@ shadow/lighting systems, authored formats, and unrelated Stage redesign are outs
   Re-test shared source and variant upload, disposal listeners, release/reacquire in one update, stale
   URL/asset completions, and teardown of one Canvas while another still draws the same physical and
   image materials. Retire the native DFG shim and tests only with a behavioral successor. Keep world
-  identities and the compiled representation stable within a generation, with no new asset fetching or
-  description recomputation on an ordinary render.
+  identities and the compiled representation stable within a generation. In a warm mounted regression
+  over the same visible content, assert that camera motion and repeat rendering retain world and GPU
+  resource identities, issue zero new asset fetches and do zero world description rebuilds. An edit
+  updates only its affected leases.
 - Create the renderer with the common r187 output path, working space `srgb-linear`, sRGB output,
   `NoToneMapping`, exposure 1.0, and standard texture slot tags (colour/emissive sRGB, data such as
   normal/roughness without colour transfer). Start with Three's default half-float internal colour
@@ -232,6 +268,18 @@ shadow/lighting systems, authored formats, and unrelated Stage redesign are outs
   · [WebGL2
   readback](https://github.com/mrdoob/three.js/blob/r187/src/renderers/webgl-fallback/utils/WebGLTextureUtils.js)
 
+### Pass ownership
+
+Threlte schedules the onscreen world draw. The renderer host owns its readiness and frame observation;
+Stage's existing pre-render task supplies that frame's viewport and Camera evaluation. Three owns the
+internal shadow and output passes. Biskiq's shadow controller marks the affected light maps dirty.
+The Stage snapshot host is the only application-owned offscreen pass in this cutover. It borrows the
+ready renderer, brackets its synchronous submission and state restoration, and awaits readback outside
+that bracket. The mounted tests assert one onscreen draw per scheduled Stage frame, zero draws at
+settled rest, and that an offscreen submission neither counts as that draw nor corrupts the next one.
+This ownership is the seam an approved S8 effect would extend. Pass graph, composer and effect APIs
+belong with a capability that actually needs them.
+
 ## Ordered implementation pull requests
 
 Use two implementation PRs after this plan is reviewed. The first gives the second a measured old path
@@ -240,7 +288,7 @@ same diff. The existing runtime stays deployable after PR 1.
 
 | PR | Depends on | Changes and evidence required to review |
 | --- | --- | --- |
-| **1 · Pin the shipped baseline and qualify r187** (use `release.visitor-isolation`, `layout.interior-reveal`, and `scene.model-import` in the claim) | Reviewed migration plan and the #382 baseline. | Freeze test assets/poses and the A comparison build in the PR, with fixture manifest and reproducible sample flow. Reuse S0 and existing renderer regressions. Add focused pre-cutover tests for mounted behaviour the old suite misses, including asymmetric framing and existing release assets. Run the bounded API fixtures below using direct Three/Threlte harnesses isolated from product imports: init/loss/disposal, simultaneous devices and shared textures, projection/scissor, TSL masks including Point shadows, wide lines/stencil, colour/rows, and timed light-variant changes. Attach actual B/C results and the r187 configuration that passes. Keep prototypes and harnesses out of shipped routes. A's measurements on the two reference laptops, the candidate API proofs, and a cold public load measurement are the inputs to PR 2. |
+| **1 · Pin the shipped baseline and qualify r187** (use `release.visitor-isolation`, `layout.interior-reveal`, and `scene.model-import` in the claim) | Reviewed migration plan and the #382 baseline. | Freeze test assets/poses and the A comparison build in the PR, with fixture manifest and reproducible sample flow. Reuse S0 and existing renderer regressions. Add focused pre-cutover tests for mounted behaviour the old suite misses, including asymmetric framing and existing release assets. Compare the two Canvas integrations and record which one passes the lifecycle contract. Run the bounded API fixtures below using direct Three/Threlte harnesses isolated from product imports: init/loss/disposal, simultaneous devices and shared textures, projection/scissor, TSL masks including Point shadows, wide lines/stencil, colour/rows, and timed light-variant changes. Attach actual B/C results and the r187 configuration that passes. Keep prototypes and harnesses out of shipped routes. A's measurements on the two reference laptops, the chosen Canvas path, the candidate API proofs, and a cold public load measurement are the inputs to PR 2. |
 | **2 · Replace the product renderer** (same capabilities and `camera.one-authority`, `release.prepared-package`) | Merged PR 1, validated API probes and thresholds below. Use the A SHA/fixture hashes from PR 1, refreshed against the last native baseline if intervening render changes affect the comparison. | Apply the target architecture to the world/material/shadow and Stage presentation seams in the same branch. Implement lifecycle and mounted stores first, shared look/lighting next, then Stage clip/ink/camera/picks/snapshots, then switch and exercise every Canvas and route. Put parity tests alongside each converted surface. Delete the native factory, hooks, line imports and production fallbacks. Transfer or update the arch guards and docs. Attach integrated A/B/C results with actual backend and the verified disable-WebGPU startup path. Obtain the required green merge gate and owner manual acceptance of both backends on the complete flow before activation. |
 
 The claim uses existing capability ids. Keep the collaboration and review steps in
@@ -254,7 +302,7 @@ resolution below before opening the cutover for approval.
 | **Startup, partial init and retirement on locked canvases.** WebGL2 lack, denied WebGPU, or context acquired before failure can exercise different branches. A successful init alone does not prove an onscreen frame. | Use rejected/delayed fake init in mounted tests and both actual backends in a focused browser harness. Force native device loss and GL context loss in the harness, never the shipped feature. A test-supplied native device may be explicitly destroyed, but r187 filters a `destroyed` reason in its internal callback, so invoke the documented loss hook for deterministic owner tests and exercise a browser-supported actual loss mechanism where available. Record which was done. Assert new canvas identity, resumed render, correct backend, unchanged session/route, settled disposal and surviving sibling. Exercise rejected init, late init, unmount during pending work, repeated Enter/Exit and a failed fresh-canvas retry. If public APIs leave a reproducible native resource leak on partial failure, isolate it in a Three repro before proposing a version fix. |
 | **Node masks preserve all colour/shadow variants.** Stock PCF, standard built-ins and the WebGPU line variant use different internal stages. View-dependent shader generation could discard a needed mask, flip a line, or change a shadow filter. | Use a small golden scene with transparent Artwork, alpha-tested imported mesh, an animated/deformed caster, a ground shadow receiver, Level/drawn cut and X2 twin; render matching views on A/B/C. Bind real shadow-target observations and compare the masks for Sun, Spot and all Point faces. Check focused line/cap/stencil samples at both DPRs. If the standard material loses only a required slot or shadow property, fix it once at the factory using public TSL APIs and prove both backends. A shadow filter difference is acceptable only if it passes the visual gates; do not retune authored light fields to hide it. |
 | **Texture upload, stencil, MSAA and colour buffer support.** Half-float framebuffers, texture compare and multisample behavior vary by backend/device. | Prove a real first draw with the expected settings, a saturated cubemap, image and normal/roughness fixture, stencil outline, transparent PNG, and the odd-width readback. Record the actual format/sample count when observable. Prefer pinned defaults; try one common public configuration only if an attachment capability fails. Reapply both colour and AA/ink gates. A platform that cannot draw the required results through any qualified configuration is a compatibility blocker. |
-| **Compilation, extra output pass, texture residency and light/shadow cost.** Stable program counts can hide pipeline compile stalls. CPU and GPU timing measure different work. | Time first open, first cast/receive frame, Finish reassignment, adding/enabling a light and a warm repeat; measure current renders at matched viewport, DPR and quality. Split renderer CPU submit, GPU pass time or trace evidence, first correct rendered/presented result, and scheduler interval. If a gate fails, profile the implicated pass, test one targeted correction in the same branch, then rerun both backends. For a compile-bound case use `compileAsync` for bounded, evidenced variants outside pointer interaction, with a scene/epoch guard. For draw-bound cases first remove proved redundant submissions/state or evaluate existing key-compatible instancing only for the implicated family, preserving per-id picking and grouped materials. Keep the standard forward lighting path and the shipped asset/shadow policy. |
+| **Compilation, extra output pass, texture residency and light/shadow cost.** Stable program counts can hide pipeline compile stalls. CPU and GPU timing measure different work. | Capture pipeline creation or compile trace evidence in the fixture and time first open, first cast/receive frame, Finish reassignment, adding/enabling a light and a warm repeat. Compare matched viewport, DPR and quality. Report CPU submit, GPU pass work, first correct result and cadence separately. Profile the implicated pass before testing a targeted correction. A measured compile stall can justify `compileAsync` for a bounded set of known variants outside pointer interaction, with generation and scene revision guards. Measure cold startup and first-use latency together to check that prewarming did not just move the stall. For draw-bound cases, first remove proved redundant work. Try compatible instancing only for the implicated family and preserve identity, picks and grouped materials. Keep either optimization only if it improves the affected product flow and passes the unchanged gates on both backends. |
 | **Browser-specific canvas/pipeline or bundle loading behavior.** A dev run can mask a fallback, a duplicate Three module, or an editor import through a shared path. | Verify secure-origin production builds and force/prove each mode. Record startup network/parse separately from host time, review route graph and build provenance, and measure cold public welcome through renderer start. Qualify actual devices below and prove the unavailable state when neither backend starts. A candidate that only passes under software rendering or browser flags fails the hardware rows. |
 
 ## Verification gates
@@ -345,25 +393,33 @@ rows](../../../../prototypes/render-cost-calibration/results/apple-m2-webgl.json
 rows](../../../../prototypes/render-cost-calibration/results/apple-m2-webgpu.json) · [C raw
 rows](../../../../prototypes/render-cost-calibration/results/apple-m2-webgpu-force-webgl.json)
 
-These numerical limits are migration acceptance proposals for review in this PR. D9 remains proposed,
-and the thresholds do not establish a global shadow maximum or a recurring performance job. Define `T`
-as the measured display period and `A` as the matched native reference for that metric on the same
-machine.
+Cutover requires correct, reliable frames and the absolute response limits below on both backends.
+Use the matched native A run to explain the cost of the change. Define `T` as the observed display
+period. Apply the warm interval and motion limits at DPR 1 and 1.5. These are proposed migration
+thresholds. D9 and any product-wide shadow maximum remain separate decisions.
 
 | Metric | Acceptance on **each** B and C reference laptop |
 | --- | --- |
-| Stage orbit, drag and live Slice, S0 and current world; guided/free visitor motion | Presented-frame interval p95 ≤ 2T and ≤ A + 0.5T. No sustained run of more than three missed periods during warm ordinary input. S0 gallery visitor orbit/Travel p95 ≤ 33 ms on a 60 Hz reference. Report input-to-correct-frame delay in the Stage gesture alongside intervals, p95 ≤ 2T. |
+| Stage orbit, drag and live Slice, S0 and current world; guided/free visitor motion | Presented-frame interval p95 ≤ 2T (about 33 ms at 60 Hz). During warm continuous input or Travel, intervals stay within 4T. Report input-to-correct-frame delay in Stage gestures alongside intervals, p95 ≤ 2T. |
 | Active Visitor rest, one Sun | p95 ≤ 1.1T (~18.3 ms at 60 Hz), anchored to S0's proposed allowance. Current-world multi-caster motion uses the 2T bound and must keep all enabled shadows. Record incremental directional/spot/Point shadow cost, auxiliary passes and visible output. |
-| Warm renderer headroom | S0 gallery and representative current-world orbit/visit CPU submit p95 ≤ A + max(1 ms, 20% of A). Where timing is reliable, total GPU frame work p95 ≤ A + max(2 ms, 25% of A), with same shadow/quality configuration. Observe at DPR 1, repeat the steady-frame and interaction bounds at shipping DPR 1.5. With no comparable GPU timing, use a short pass-labelled trace where available and require the same steady/interaction bounds at 1.5 with ≤ 5% of warm intervals over 1.5T on the one-Sun gallery. Log fixed render/output steps separately from world/shadow draws. |
-| Cold Canvas and common edits | Stage project ready → first correct Stage draw, and Visitor Canvas request → first correct visitor draw, on a loaded route with cached fixture bytes: p90 ≤ A + 100 ms and ≤ 250 ms. Cold published bootstrap (navigation through first correct draw on the same controlled local connection) p90 ≤ A + 150 ms. First shown Finish/light-add/shadow-enable and warm repeats: p90 ≤ A + 50 ms, with no warm edit taking over 100 ms. Record first-ever shader/variant stalls and maximum separately, and investigate any ≥ 150 ms main-thread render/compile stall on the current-world workflow. |
-| Snapshot, resize, reuse | First uncached 640-wide image p90 ≤ A + 50 ms and ≤ 250 ms for the warmed gallery; Stage interactions still meet their frame gate while copy is pending. Cached exact pose submits zero draws. Resize/re-entry must render the right frame, with a liveness bound of 2T after available renderer and stable layout. |
+| Canvas and published startup | Stage project ready or Visitor Canvas request → first correct draw, on a loaded route with cached fixture bytes, p90 ≤ 250 ms. Cold published navigation → first correct gallery frame p90 ≤ 1 s on the fixed local production-build connection from PR 1, with a cleared browser cache. This is a reproducible startup check for the fixed gallery payload. Report the current-world cold result and the fetch/parse/init/first-draw breakdown separately. |
+| Common edits | Input → shown Finish change, light addition or shadow enablement p90 ≤ 150 ms on first use and ≤ 100 ms on warm repeats. Record the maximum and investigate any ≥ 150 ms main-thread render/compile stall in the current-world workload. |
+| Snapshot, resize, reuse | First uncached 640-wide image p90 ≤ 250 ms for the warmed gallery. Stage interactions still meet their frame gate while copy is pending. Cached exact pose submits zero draws. Resize/re-entry must render the right frame within 2T once the renderer is ready and layout is stable. |
 | Work invariants and lifecycle | Zero rendered Stage frames at rest after settling for a 10-second window. Zero shadow passes across 600 combined orbit/hover/selection/Slice frames with static casters and unchanged maps. A Sun edit that changes projection refreshes that map once, a dirty Point draws six faces, and a pure haze/exposure/softness change draws no Stage shadow map. Watch for ongoing idle work and a monotonic resource climb across 10 Preview open/close cycles and during recovery. Stores, renderer handles and listeners return to the existing live Stage scope after settled teardown, and shared asset variants remain reusable. |
-| Delivery size | Run the existing bundle report on A and the candidate. Initial public load keeps authoring modules and probes out. Renderer/TSL migration should add at most 150 KiB gzip of shared cold JS through first draw (this includes any retained upstream default branch), with actual downloaded chunk sizes and parse/startup reported. Remove measured duplication before requesting an exception. |
+| Public isolation | Preview and published routes pass their build-time import guards and keep authoring modules and migration probes out of the load path. |
 
-Failure of a timing row triggers diagnosis, including baseline conditions. If A itself misses an
-absolute limit on the chosen device, retain the failure, identify the workload and bring a comparable
-corrected fixture or evidence-backed limit to review before approving cutover. Neither synthetic wins
-nor a single higher-end laptop offsets a failing compatibility row.
+**Required diagnostics.** Report warm CPU submit and reliable GPU pass times for the gallery and
+current-world orbit/visit against A at matched quality. Log fixed output and shadow work separately.
+Where comparable GPU timing is unavailable, record that and use a short pass-labelled trace where
+available. Run the bundle report on A and the candidate, including bytes actually loaded through the
+first public draw and parse time. Treat growth above 150 KiB gzip as an investigation trigger. Check
+duplicate Three code, the upstream default constructor and chunks loaded ahead of use. A measured
+CPU/GPU delta or transfer size calls for explanation. Cutover depends on the user-facing limits,
+correctness, work invariants and isolation above.
+
+Failure of an absolute limit triggers diagnosis on that device. If A also misses the limit, retain
+both results and bring evidence from the intended workload to review before changing the fixture or
+limit. Each backend must qualify on both reference laptops.
 
 ### Visual, functional and regression acceptance
 
@@ -396,8 +452,10 @@ nor a single higher-end laptop offsets a failing compatibility row.
    DPRs. Hit candidates and winning ids must agree with the current CPU differential fixtures, including
    before/after resize, off-centre Look through, a finite endpoint boundary, a clipped/muted twin, Lift,
    transparent Artwork, a wholly hidden selected ghost, caps/ink refusing hits and pointer-cancel on
-   recovery. Assert the existing cap rebuild count/scheduling and no new pipeline compilation caused by
-   a settled material's live clip uniform update.
+   recovery. Assert existing cap rebuild counts and scheduling. In warmed variants, check actual
+   pipeline creation during repeated clip entry/drag/exit and same-shape Finish and light edits.
+   Those live value updates must create zero pipelines. Validate changed pixels and unchanged resource
+   counts where the operation only updates bindings.
 5. **Visitor delivery.** Use the same accepted Experience and release to traverse real Preview and a
    local prepared-publication route with anonymous input, including zero-node free Explore, guided
    movement/holds, reload/enter/leave and asset failures. Keep scene, camera and editorial order stable
@@ -433,8 +491,9 @@ loss recovery are tested, Stage/Preview/public use the shared host, the assigned
 interaction contracts pass, and the old renderer factory and ports are gone from product and dev routes.
 Attach the fixture/revision/actual backend results, known browser availability and any unmeasured
 diagnostics in the PR. Have the owner review the focused visual/user flows and activation under the
-repo's Tier 2 rules. In that PR update the ongoing rendering reference (ownership, clipping, snapshot,
-shadow and portability rules) and replace the older T2 two-renderer direction with the unified contract.
+repo's Tier 2 rules. In that PR update the ongoing rendering reference (lifecycle, pass ownership,
+clipping, snapshot, shadow and portability rules) and replace the older T2 two-renderer direction with
+the unified contract.
 Add the merged migration as an S8 prerequisite there. Keep historical evidence in place and use this
 plan's PR history for the implementation record.
 
