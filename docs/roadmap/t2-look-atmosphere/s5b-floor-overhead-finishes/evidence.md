@@ -112,7 +112,9 @@ paint its underside with a direct Face click from below.
 - **Region drawing — exercised.** In the real app, **Form → Roof → Flat Roof → Box** drew
   **Region 1**: 2.16 × 1.08 m, 2.32 m² at 1.2 m elevation with 0.1 m thickness. The Region and its
   card (elevation, thickness, width, depth, area) survived a full page reload, and the Form strip
-  returned to `Flat Roof · 0.00 m` ready for the next draw.
+  returned to `Flat Roof · 0.00 m` ready for the next draw. The downloaded project source confirms
+  it is a canonical Layout Region — `role: "overhead"`, polygon footprint, `elevation: 1.2`,
+  `thickness: 0.1`, `form: { kind: "flat" }` — not only a card in the UI.
 - **Direct underside click — blocked by the browser harness.** Every tab in this environment runs
   `document.hidden === true` and never fires `requestAnimationFrame`, so the camera's
   `set-reading` transition never settles: the toolbar's 3D control, its `3` shortcut and the DOM
