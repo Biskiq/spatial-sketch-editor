@@ -15,20 +15,37 @@
  *  - the canonical selection keeps its identity unless the gesture is a creation.
  */
 import { describe, expect, it } from 'vitest';
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
-import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import {
+	createEmptyWallFirstLayoutDocument,
+	planCreateRegion,
+	planWallChain,
+	type LayoutDocumentWallFirst
+} from '@portfolio/layout-core';
+import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
+import {
+	creatorModelDefinition,
+	creatorModelResourceEntry,
+	sceneSupportGenerationId
+} from '@portfolio/project-model/scene-planning';
+import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { armTile } from '$lib/authoring/adapters/scene/shape/armed-tile';
-import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
+import { rememberCreatorDefinition } from '$lib/authoring/adapters/scene/import/definitions';
+import {
+	sceneEntityReference,
+	sceneSurfaceFor,
+	type ArmedFormCopy,
+	type ArmedModelPlacement
+} from '$lib/authoring/adapters/scene/placement';
 import { SCENE_FORM_MARK } from '$lib/authoring/adapters/scene/shape/form-size';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { admitSource } from '$lib/authoring/stage/source-admission';
-import { stageScene } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { sceneObjectCommands } from './__fixtures__/scene-object-commands';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -81,7 +98,7 @@ function nativeForm(): SceneEntity {
 	};
 }
 
-async function project(entities: readonly SceneEntity[]): Promise<ProjectEnvelope> {
+function enclosedLayout(): LayoutDocumentWallFirst {
 	const baseline = createEmptyWallFirstLayoutDocument();
 	const planned = planWallChain({
 		baseline,
@@ -91,10 +108,37 @@ async function project(entities: readonly SceneEntity[]): Promise<ProjectEnvelop
 		levelId: baseline.floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
+	return planned.document;
+}
+
+function terraceLayout(): LayoutDocumentWallFirst {
+	const planned = planCreateRegion({
+		baseline: enclosedLayout(),
+		capture: freshCapture(),
+		intent: {
+			role: 'floor',
+			footprint: [
+				[2, 1],
+				[5, 1],
+				[5, 4],
+				[2, 4]
+			],
+			elevation: 0.6,
+			thickness: 0.2
+		}
+	});
+	if (planned.kind !== 'success') throw new Error('the terrace fixture was refused');
+	return planned.document;
+}
+
+async function project(
+	entities: readonly SceneEntity[],
+	layout: LayoutDocumentWallFirst = enclosedLayout()
+): Promise<ProjectEnvelope> {
 	return createUnitProject({
 		id: PROJECT_ID,
 		name: 'Scene lifecycle',
-		layout: planned.document,
+		layout,
 		scene: {
 			formatVersion: 1,
 			textures: [],
@@ -106,9 +150,14 @@ async function project(entities: readonly SceneEntity[]): Promise<ProjectEnvelop
 	});
 }
 
-async function mounted(entities: readonly SceneEntity[] = [box()]) {
+type MountOptions = {
+	readonly layout?: LayoutDocumentWallFirst;
+	readonly recordAccept?: (intent: AuthoringIntent) => void;
+};
+
+async function mounted(entities: readonly SceneEntity[] = [box()], options: MountOptions = {}) {
 	armTile(PROJECT_ID, null);
-	const source = await project(entities);
+	const source = await project(entities, options.layout);
 	const admitted = await admitSource(source, {
 		sessionEpoch: 'session-scene-lifecycle',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
@@ -130,11 +179,23 @@ async function mounted(entities: readonly SceneEntity[] = [box()]) {
 		},
 		planners: []
 	});
-	const registration = mountStageAdapter(facade, host, createAdapter);
+	const baseServices = createStageAdapterServices(facade, host);
+	const services = options.recordAccept === undefined
+		? baseServices
+		: {
+				...baseServices,
+				authoring: {
+					...baseServices.authoring,
+					accept: async (intent: AuthoringIntent) => {
+						options.recordAccept!(intent);
+						return host.accept(intent);
+					}
+				}
+			};
+	const registration = mountStageAdapter(facade, host, createAdapter, undefined, services);
 	if (registration.kind !== 'registered') throw new Error('the Scene adapter did not mount');
 	// The placement planner is registered once its metadata identity exists.
 	await new Promise((resolve) => setTimeout(resolve, 0));
-	const services = createStageAdapterServices(facade, host);
 	return { facade, host, registration, services };
 }
 
@@ -373,13 +434,76 @@ describe('X7 object-mark gesture lifetimes', () => {
 	});
 });
 
-describe('X7 placement lifetimes', () => {
-	async function placing(entities: readonly SceneEntity[] = [box()]) {
-		const fixture = await mounted(entities);
+	describe('X7 placement lifetimes', () => {
+	async function placing(entities: readonly SceneEntity[] = [box()], options: MountOptions = {}) {
+		const fixture = await mounted(entities, options);
 		const opened = fixture.facade.openContributedTask('scene-place', 'scene');
 		if (opened.kind !== 'opened') throw new Error(`Place was not opened: ${opened.message}`);
 		return fixture;
 	}
+
+	function openPlaceSurface(facade: StageFacade) {
+		const evaluation = facade.evaluation();
+		if (evaluation === null) throw new Error('the placement fixture has no evaluation');
+		const surface = sceneSurfaceFor(facade.snapshot(), evaluation);
+		if (surface === null) throw new Error('Place published no surface');
+		return surface;
+	}
+
+	function clickAt(facade: StageFacade, world: Vec3) {
+		const evaluationId = facade.evaluationId()!;
+		const at = cssOf(facade, world);
+		expect(facade.pointerIntent({ phase: 'down', css: at, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'up', css: at, evaluationId });
+	}
+
+	function approval() {
+		return {
+			derivative: {
+				hash: `sha256-${'a'.repeat(64)}`,
+				mime: 'model/gltf-binary',
+				size: 4096,
+				locator: `models/sha256-${'a'.repeat(64)}.glb`
+			},
+			source: { manifestHash: `sha256-${'b'.repeat(64)}`, size: 8192, fileCount: 2 },
+			recipe: { id: 'creator-import@1', version: 1 },
+			reportDigest: `sha256-${'c'.repeat(64)}`,
+			placement: {
+				metresPerSourceUnit: 1,
+				pivot: [0, 0, 0] as [number, number, number],
+				footprint: { width: 0.8, depth: 0.6 },
+				contactMinY: -0.25
+			}
+		};
+	}
+
+	function savedFormCopy(): ArmedFormCopy {
+		const item = canonicalFormLibraryPayload({
+			formatVersion: 1,
+			kind: 'form',
+			name: 'Saved terrace plinth',
+			form: {
+				generator: {
+					kind: 'extrude',
+					plane: 'plan',
+					outline: [
+						{ key: 1, u: 0, v: 0, smooth: false },
+						{ key: 2, u: 1, v: 0, smooth: false },
+						{ key: 3, u: 1, v: 1, smooth: false },
+						{ key: 4, u: 0, v: 1, smooth: false }
+					],
+					extent: 0.8
+				},
+				scale: [1, 1, 1],
+				nextKey: 5
+			},
+			materialId: 'plaster-warm',
+			castShadow: true,
+			receiveShadow: true
+		});
+		return { itemId: 'library-item-terrace', item, contactMinY: 0 };
+	}
+
 
 	it('places one object per press-release, selects it canonically and stays armed', async () => {
 		const fixture = await placing();
@@ -401,6 +525,109 @@ describe('X7 placement lifetimes', () => {
 		facade.camera.evaluate(RECT, 2);
 		facade.overlays();
 		await eventually(() => facade.session.task()?.kind === 'place-object');
+	});
+
+	it('installs a pointer placement on a raised floor region at the shown elevation through F4', async () => {
+		const accepted: AuthoringIntent[] = [];
+		const fixture = await placing([box()], {
+			layout: terraceLayout(),
+			recordAccept: (intent) => accepted.push(intent)
+		});
+		const { facade, host } = fixture;
+		const before = facade.snapshot();
+		const depth = host.history().depth;
+
+		clickAt(facade, [4.5, 0.6, 1.5]);
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+
+		expect(host.history().depth).toBe(depth + 1);
+		const placedId = selectedId(facade);
+		expect(placedId).not.toBeNull();
+		if (placedId === null) return;
+		const placed = entityOf(facade, placedId)!;
+		expect(placed.position[1]).toBeCloseTo(1.1, 9);
+		expect(placed.position[0]).toBeCloseTo(4.5, 9);
+		expect(placed.position[2]).toBeCloseTo(1.5, 9);
+
+		expect(accepted).toHaveLength(1);
+		const intent = accepted[0]!;
+		expect(intent.kind).toBe('place-object');
+		expect(intent.payload).toMatchObject({
+			supportChoice: {
+				kind: 'elevation',
+				elevation: 0.6,
+				generationId: sceneSupportGenerationId(before.sourceContentId)
+			}
+		});
+	});
+
+	it('forwards the raised-region choice for an approved model through the same binding and one history entry', async () => {
+		const entry = creatorModelResourceEntry('model-terrace', approval());
+		if (entry === null) throw new Error('the model fixture was refused');
+		// The binding captures approved resources under this label; matching it keeps
+		// the admitted definition identity stable.
+		const definition = await creatorModelDefinition(entry.resource, 'Imported model');
+		if (definition === null) throw new Error('the model definition was not admitted');
+		const accepted: AuthoringIntent[] = [];
+		const fixture = await placing([box()], {
+			layout: terraceLayout(),
+			recordAccept: (intent) => accepted.push(intent)
+		});
+		const { facade, host } = fixture;
+		// The import flow captures this definition before arming. Seed the same
+		// provisional store the real approved-resource load uses.
+		rememberCreatorDefinition(definition);
+		// First placement introduces the approved resource and its exact lock in the
+		// same accepted result as the entity.
+		openPlaceSurface(facade).session.setArmedModel({ definition, resource: entry });
+		const depth = host.history().depth;
+
+		clickAt(facade, [4.5, 0.6, 1.5]);
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+
+		expect(host.history().depth).toBe(depth + 1);
+		const placedId = selectedId(facade);
+		expect(placedId).not.toBeNull();
+		if (placedId === null) return;
+		const placed = entityOf(facade, placedId)!;
+		expect(placed.kind).toBe('model');
+		// Approved contact -0.25 m under the 0.6 m terrace top.
+		expect(placed.position[1]).toBeCloseTo(0.85, 9);
+		expect(accepted).toHaveLength(1);
+		expect(accepted[0]!.payload).toMatchObject({
+			supportChoice: { kind: 'elevation', elevation: 0.6 },
+			modelResource: { id: 'model-terrace' }
+		});
+		expect(stageEnvelope(facade.snapshot()).units.resources.data.resources.map((resource) => resource.id)).toContain(
+			'model-terrace'
+		);
+	});
+
+	it('forwards the raised-region choice for a saved form copy and installs one history entry', async () => {
+		const accepted: AuthoringIntent[] = [];
+		const fixture = await placing([box()], {
+			layout: terraceLayout(),
+			recordAccept: (intent) => accepted.push(intent)
+		});
+		const { facade, host } = fixture;
+		openPlaceSurface(facade).session.setArmedFormCopy(savedFormCopy());
+		const depth = host.history().depth;
+
+		clickAt(facade, [4, 0.6, 2.5]);
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+
+		expect(host.history().depth).toBe(depth + 1);
+		const placedId = selectedId(facade);
+		expect(placedId).not.toBeNull();
+		if (placedId === null) return;
+		const placed = entityOf(facade, placedId)!;
+		expect(placed.kind).toBe('form');
+		expect(placed.position[1]).toBeCloseTo(0.6, 9);
+		expect(accepted).toHaveLength(1);
+		expect(accepted[0]!.kind).toBe('place-form-copy');
+		expect(accepted[0]!.payload).toMatchObject({
+			supportChoice: { kind: 'elevation', elevation: 0.6 }
+		});
 	});
 
 	it('writes nothing for a placement press cancelled mid-gesture and stays armed', async () => {

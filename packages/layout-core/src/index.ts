@@ -51,6 +51,7 @@ export * from './layout-wall-topology';
 export * from './layout-wall-topology-ops';
 export * from './layout-wall-dissolve';
 export * from './layout-floor-support';
+export * from './layout-surface-reference';
 export * from './layout-region';
 export * from './layout-region-relations';
 export * from './layout-plan-representation';

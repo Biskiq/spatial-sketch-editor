@@ -63,7 +63,8 @@ import {
 	queryFloorSupports,
 	planCreateRegion,
 	planWallChain,
-	type FloorSupportCandidate
+	type FloorSupportCandidate,
+	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 
 const ELEVATION = 2.5;
@@ -86,6 +87,26 @@ function supportedLayout(elevation = 0) {
 	});
 	if (planned.kind !== 'success') throw new Error('the support fixture enclosure was refused');
 	return planned.document;
+}
+
+function raisedTerrace(materialize = true) {
+	const base = supportedLayout();
+	const regionPlan = planCreateRegion({
+		baseline: base,
+		capture: freshCapture(),
+		intent: {
+			role: 'floor',
+			footprint: [[2, 1], [5, 1], [5, 4], [2, 4]],
+			elevation: materialize ? 0.6 : 0,
+			thickness: 0.2
+		}
+	});
+	if (regionPlan.kind !== 'success') throw new Error('the region fixture was refused');
+	return {
+		document: regionPlan.document,
+		geometry: compileWallFirstLayoutGeometry(regionPlan.document).geometry,
+		regionId: regionPlan.regionId
+	};
 }
 
 function box(
@@ -167,10 +188,18 @@ function projectWith(
 	elevation = 0,
 	experience?: ExperienceUnitPayload
 ): Promise<ProjectEnvelope> {
+	return projectWithLayout(scene, supportedLayout(elevation), experience);
+}
+
+function projectWithLayout(
+	scene: CameraFreeSceneDocument,
+	layout: LayoutDocumentWallFirst,
+	experience?: ExperienceUnitPayload
+): Promise<ProjectEnvelope> {
 	return createUnitProject({
 		id: 'project-1',
 		name: 'Gallery',
-		layout: supportedLayout(elevation),
+		layout,
 		scene,
 		camera: TOUR_CAMERA,
 		...(experience === undefined ? {} : { experience })
@@ -520,6 +549,34 @@ describe('scene operation planners — poses and ownership', () => {
 			{ kind: 'scene-place-object', subjectIds: ['entity-new'], fields: ['entities'] }
 		]);
 		expect(cameraBytes(result.candidate.source)).toBe(cameraBytes(snapshot.domain.source));
+	});
+
+	it('places on an explicitly chosen floor-region top through the planner, never from a mesh hit Y', async () => {
+		const terrace = raisedTerrace();
+		const project = await projectWithLayout(sceneWith([]), terrace.document);
+		const snapshot = await snapshotOf(project);
+		const result = prepare(
+			'place-object',
+			snapshot,
+			intent({
+				kind: 'place-object',
+				operationId: 'op-place-region',
+				snapshot,
+				payload: placePayload({
+					supportChoice: {
+						kind: 'elevation',
+						elevation: 0.6,
+						generationId: sceneSupportGenerationId(snapshot.sourceContentId)
+					}
+				}),
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-region' }]
+			}),
+			[nativeBoxDefinition()]
+		);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const placed = result.candidate.source.units.scene.data.entities.at(-1)!;
+		expect(placed.position).toEqual([3, 1.1, 2]);
 	});
 
 	it('moves horizontally while preserving Y, rotation, scale, dimensions and material', async () => {
@@ -1663,20 +1720,8 @@ describe('scene record-scope guard', () => {
 });
 
 	describe('snapshot-qualified support selection', () => {
-	it('narrows the Scene snapshot to Room floors, so a published region top cannot affect placement yet', () => {
-		const base = supportedLayout();
-		const regionPlan = planCreateRegion({
-			baseline: base,
-			capture: freshCapture(),
-			intent: {
-				role: 'floor',
-				footprint: [[2, 1], [5, 1], [5, 4], [2, 4]],
-				elevation: 0.6,
-				thickness: 0.2
-			}
-		});
-		if (regionPlan.kind !== 'success') throw new Error('the region fixture was refused');
-		const geometry = compileWallFirstLayoutGeometry(regionPlan.document).geometry;
+	it('treats a floor-region top as a genuine Scene support and asks for an explicit choice at two elevations', () => {
+		const { geometry, regionId } = raisedTerrace();
 		const layoutCandidates = queryFloorSupports(floorSupportSnapshotOf(geometry), {
 			generationId: GENERATION,
 			x: 3,
@@ -1684,6 +1729,39 @@ describe('scene record-scope guard', () => {
 		});
 		expect(layoutCandidates.kind === 'candidates' && layoutCandidates.candidates).toHaveLength(2);
 
+		const unresolved = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [3, 2],
+			requiredElevation: null
+		});
+		expect(unresolved).toMatchObject({ kind: 'refused', code: 'support-choice-required' });
+
+		const onTerrace = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [3, 2],
+			requiredElevation: null,
+			choice: { kind: 'elevation', elevation: 0.6, generationId: GENERATION }
+		});
+		expect(onTerrace).toMatchObject({ kind: 'resolved', support: { elevation: 0.6 } });
+		if (onTerrace.kind !== 'resolved') return;
+		expect(onTerrace.support.witnesses).toContainEqual(
+			expect.objectContaining({ source: { kind: 'region', regionId } })
+		);
+
+		const onRoomFloor = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [3, 2],
+			requiredElevation: null,
+			choice: { kind: 'elevation', elevation: 0, generationId: GENERATION }
+		});
+		expect(onRoomFloor).toMatchObject({ kind: 'resolved', support: { elevation: 0 } });
+	});
+
+	it('merges a coplanar Room floor and region top into one Scene support with both witnesses', () => {
+		const { geometry, regionId } = raisedTerrace(false);
 		const scene = resolveSceneSupportOnGeometry({
 			geometry,
 			generationId: GENERATION,
@@ -1692,7 +1770,23 @@ describe('scene record-scope guard', () => {
 		});
 		expect(scene).toMatchObject({ kind: 'resolved', support: { elevation: 0 } });
 		if (scene.kind !== 'resolved') return;
-		expect(scene.support.witnesses.map((witness) => witness.source.kind)).toEqual(['room']);
+		expect(scene.support.witnesses.map((witness) => witness.source.kind).sort()).toEqual(['region', 'room']);
+		expect(scene.support.witnesses).toContainEqual(
+			expect.objectContaining({ source: { kind: 'region', regionId } })
+		);
+	});
+
+	it('keeps the datum fallback outside authored floor support', () => {
+		const { geometry } = raisedTerrace();
+		const scene = resolveSceneSupportOnGeometry({
+			geometry,
+			generationId: GENERATION,
+			point: [30, 30],
+			requiredElevation: null
+		});
+		expect(scene).toMatchObject({ kind: 'resolved', support: { elevation: 0, orderKey: 'stage-datum' } });
+		if (scene.kind !== 'resolved') return;
+		expect(scene.support.witnesses).toEqual([]);
 	});
 
 	function candidate(elevation: number, orderKey: string): FloorSupportCandidate {
