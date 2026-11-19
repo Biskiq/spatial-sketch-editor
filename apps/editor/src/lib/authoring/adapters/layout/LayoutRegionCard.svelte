@@ -14,13 +14,11 @@
 		type LayoutRegion,
 		type LayoutVec2
 	} from '@portfolio/layout-core';
-	import { countSceneRootsOnFloorRegion, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
+	import { restingObjectsOnFloorRegion } from './region-resting';
 	import {
 		compactMeasure,
 		indexLabels,
-		stageEnvelope,
 		stageLayout,
-		stageScene,
 		type StageAdapterServices
 	} from '$lib/authoring/stage/stage-adapter-host';
 	import {
@@ -85,19 +83,9 @@
 		)
 	);
 	const datum = $derived(snapshot.domain.datumMeters);
-	const restingObjects = $derived.by(() => {
-		if (region === null || region.role !== 'floor') return 0;
-		try {
-			return countSceneRootsOnFloorRegion({
-				geometry,
-				generationId: sceneSupportGenerationId(snapshot.sourceContentId),
-				scene: stageEnvelope(snapshot).units.scene.data,
-				regionId: region.id
-			});
-		} catch {
-			return 0;
-		}
-	});
+	const restingObjects = $derived(
+		region === null ? 0 : restingObjectsOnFloorRegion(snapshot, region.id)
+	);
 	const bounds = $derived.by(() => {
 		const points = region?.footprint.points ?? [];
 		if (points.length === 0) return null;

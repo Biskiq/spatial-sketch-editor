@@ -2,8 +2,7 @@ import { selectedRegion, selectedRoomLabel } from './layout-subjects';
 import { previewCoordinates, type SettledLayoutRefusal } from './manipulation-support';
 import { regionWallRelations } from '@portfolio/layout-core';
 import { candidatePreviewOf } from './candidate-preview';
-import { countSceneRootsOnFloorRegion, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
-import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
+import { restingObjectsOnFloorRegion } from './region-resting';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
@@ -830,29 +829,6 @@ export function createLayoutContributions({
 		};
 	}
 
-	/**
-	 * The derived count of Scene roots resting on a floor region. It reads the
-	 * accepted Scene through the V1d support seam and writes nothing: the Card and
-	 * the Eraser disclose this number before a move or a delete is accepted.
-	 */
-	function restingObjectsOnFloorRegion(
-		adapterContext: StageAdapterContext,
-		regionId: string
-	): number {
-		const region = document.regions.find((candidate) => candidate.id === regionId);
-		if (region === undefined || region.role !== 'floor') return 0;
-		try {
-			return countSceneRootsOnFloorRegion({
-				geometry: adapterContext.snapshot.domain.geometry,
-				generationId: sceneSupportGenerationId(adapterContext.snapshot.sourceContentId),
-				scene: stageEnvelope(adapterContext.snapshot).units.scene.data,
-				regionId
-			});
-		} catch {
-			return 0;
-		}
-	}
-
 	const contributions = {
 		hostTools: ['erase', 'measure', 'paint'],
 		/**
@@ -884,7 +860,7 @@ export function createLayoutContributions({
 			// second click; it is a read, never a Scene write.
 			const regionResting =
 				hit.sourceKind === 'region'
-					? restingObjectsOnFloorRegion(context, hit.sourceId)
+					? restingObjectsOnFloorRegion(context.snapshot, hit.sourceId)
 					: 0;
 			const confirm =
 				regionResting > 0 ||
@@ -1227,7 +1203,7 @@ export function createLayoutContributions({
 			if (cardSubject.sourceKind === 'region') {
 				const region = document.regions.find((entry) => entry.id === cardSubject.sourceId);
 				if (region === undefined) return [];
-				const resting = restingObjectsOnFloorRegion(context, region.id);
+				const resting = restingObjectsOnFloorRegion(context.snapshot, region.id);
 				const kind = region.role === 'overhead' ? 'Flat Roof' : 'Terrace';
 				return [
 					{

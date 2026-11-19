@@ -14,7 +14,8 @@ import {
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import type { AuthoringIntent } from '@portfolio/project-model';
+import type { AuthoringIntent, SceneEntity } from '@portfolio/project-model';
+import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
@@ -31,13 +32,43 @@ import {
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { layoutRoomFacts } from '$lib/authoring/adapters/layout/precision';
+import { restingObjectsOnFloorRegion } from '$lib/authoring/adapters/layout/region-resting';
+import {
+	LAYOUT_REGION_THICKNESS_KIND,
+	regionEditIntent
+} from '$lib/authoring/adapters/layout/region-planners';
 import { interiorLift, liftedSourcesNow } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { captureFor } from '../layout/__fixtures__/layout-id-capture';
+import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-t1-v1c-region-authoring';
 const ELEVATION = 0.5;
+const MODEL_ASSET_ID = 't1-v1c-terrace-model';
+
+/** One approved creator model, with its resource contact at the instance origin. */
+function creatorModelEntry() {
+	const entry = creatorModelResourceEntry(MODEL_ASSET_ID, {
+		derivative: {
+			hash: `sha256-${'a'.repeat(64)}`,
+			mime: 'model/gltf-binary',
+			size: 4096,
+			locator: 'models/t1-v1c-terrace-model.glb'
+		},
+		source: { manifestHash: `sha256-${'b'.repeat(64)}`, size: 8192, fileCount: 1 },
+		recipe: { id: 'creator-import@1', version: 1 },
+		reportDigest: `sha256-${'c'.repeat(64)}`,
+		placement: {
+			metresPerSourceUnit: 1,
+			pivot: [0, 0, 0],
+			footprint: { width: 0.8, depth: 0.8 },
+			contactMinY: 0
+		}
+	});
+	if (entry === null) throw new Error('the creator-model fixture was refused');
+	return entry;
+}
 
 function fixtureDocument(): { document: LayoutDocumentWallFirst; terraceId: string; canopyId: string } {
 	const base = createEmptyWallFirstLayoutDocument();
@@ -70,13 +101,47 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; terraceId: stri
 	return { document: canopy.document, terraceId: terrace.regionId, canopyId: canopy.regionId };
 }
 
-async function mount(fixture = fixtureDocument()) {
+async function mount(
+	fixture = fixtureDocument(),
+	options: { readonly withCreatorModel?: boolean } = {}
+) {
 	const { document, terraceId, canopyId } = fixture;
+	const compiledTerrace = compileWallFirstLayoutGeometryFresh(document).geometry.regions.find(
+		(region) => region.regionId === terraceId
+	);
+	if (compiledTerrace === undefined) throw new Error('the fixture Terrace did not compile');
+	const creatorEntry = options.withCreatorModel ? creatorModelEntry() : null;
+	const model: SceneEntity | null = options.withCreatorModel
+		? {
+				kind: 'model',
+				id: 'entity-t1-v1c-terrace-model',
+				name: 'Approved terrace model',
+				assetId: MODEL_ASSET_ID,
+				fallback: 'generic',
+				position: [2, compiledTerrace.topY, 2],
+				rotation: [0, 0, 0]
+			}
+		: null;
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'V1c region authoring',
 		layout: document,
-		scene: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
+		// The legacy shape is split into the current Scene and Camera units by
+		// the shared fixture, so this stays one admitted-shape envelope.
+		scene: {
+			formatVersion: 1,
+			textures: [],
+			materials: [],
+			entities: model === null ? [] : [model],
+			navigationNodes: [],
+			connections: []
+		},
+		...(creatorEntry === null
+			? {}
+			: {
+					resources: { formatVersion: 2 as const, resources: [creatorEntry.resource] },
+					dependencyLock: { formatVersion: 1, entries: [creatorEntry.lock] }
+				})
 	});
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-t1-v1c-region-authoring',
@@ -116,7 +181,18 @@ async function mount(fixture = fixtureDocument()) {
 	});
 	if (registration.kind !== 'registered' || services === undefined) throw new Error('the Layout adapter did not mount');
 	const roomId = stageEnvelope(facade.snapshot()).units.layout.data.rooms[0]!.id;
-	return { facade, session, host, services, document, roomId, terraceId, canopyId, intents };
+	return {
+		facade,
+		session,
+		host,
+		services,
+		document,
+		roomId,
+		terraceId,
+		canopyId,
+		modelId: model?.id ?? null,
+		intents
+	};
 }
 
 type Mounted = Awaited<ReturnType<typeof mount>>;
@@ -171,7 +247,7 @@ function press(mounted: Mounted, point: readonly [number, number], handleId?: st
 	});
 }
 
-function dragTo(mounted: Mounted, point: readonly [number, number], from?: readonly [number, number]): void {
+function moveTo(mounted: Mounted, point: readonly [number, number], from?: readonly [number, number]): void {
 	mounted.facade.pointerIntent({
 		phase: 'move',
 		css: stageCss(mounted, from ?? point),
@@ -182,11 +258,36 @@ function dragTo(mounted: Mounted, point: readonly [number, number], from?: reado
 		css: stageCss(mounted, point),
 		evaluationId: mounted.facade.evaluationId()!
 	});
+}
+
+function releaseAt(mounted: Mounted, point: readonly [number, number]): void {
 	mounted.facade.pointerIntent({
 		phase: 'up',
 		css: stageCss(mounted, point),
 		evaluationId: mounted.facade.evaluationId()!
 	});
+}
+
+function dragTo(mounted: Mounted, point: readonly [number, number], from?: readonly [number, number]): void {
+	moveTo(mounted, point, from);
+	releaseAt(mounted, point);
+}
+
+/** The live region proposal, before release. */
+function regionPreview(mounted: Mounted): readonly (readonly [number, number])[] {
+	const preview = mounted.facade
+		.candidatePreviews()
+		.find((candidate) => candidate.id === 'layout-region-candidate');
+	return preview?.polygons[0] ?? [];
+}
+
+/** An accepted footprint projected through the same evaluation as the preview. */
+function footprintCss(
+	mounted: Mounted,
+	points: readonly (readonly [number, number])[],
+	elevation: number
+): readonly (readonly [number, number])[] {
+	return points.map(([x, z]) => stageCss(mounted, [x, z], ELEVATION + elevation));
 }
 
 async function eventually(check: () => boolean, attempts = 400): Promise<void> {
@@ -205,8 +306,12 @@ function armInk(mounted: Mounted) {
 	return surface.controller;
 }
 
+let counting: StageCounting | null = null;
+
 afterEach(() => {
 	interiorLift.clear();
+	counting?.stop();
+	counting = null;
 });
 
 describe('T1 V1c — regions through the production Layout adapter', () => {
@@ -243,6 +348,155 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toEqual(before.regions[0]!.footprint.points);
 		expect((await mounted.host.redo()).kind).toBe('installed');
 		expect(regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0]).toBeCloseTo(2, 2);
+	});
+
+	it('installs the exact corner preview in one entry, with no compile or history during the drag', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		const before = acceptedLayout(mounted);
+		const depth = mounted.host.history().depth;
+		counting = startStageCounting();
+
+		expect(press(mounted, [1, 1], 'layout-region-corner:0').claimed).toBe(true);
+		moveTo(mounted, [0.6, 0.6], [1, 1]);
+		const preview = regionPreview(mounted);
+		expect(preview).toHaveLength(4);
+		// Pointer movement is proposal math only: no whole Layout compile, no F4
+		// write and no history entry before the release.
+		expect(counting.count('compile')).toBe(0);
+		expect(mounted.intents).toHaveLength(0);
+		expect(mounted.host.history().depth).toBe(depth);
+		expect(acceptedLayout(mounted)).toEqual(before);
+
+		releaseAt(mounted, [0.6, 0.6]);
+		await eventually(() => regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0] !== 1);
+		settle(mounted);
+		const accepted = regionOf(mounted, mounted.terraceId)!;
+		expect(mounted.host.history().depth).toBe(depth + 1);
+		const installed = footprintCss(mounted, accepted.footprint.points, accepted.elevation);
+		expect(installed).toHaveLength(preview.length);
+		installed.forEach(([x, y], index) => {
+			expect(x).toBeCloseTo(preview[index]![0], 1);
+			expect(y).toBeCloseTo(preview[index]![1], 1);
+		});
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toEqual(before.regions[0]!.footprint.points);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points).toEqual(accepted.footprint.points);
+	});
+
+	it('installs the exact body preview in one entry, without compiling or writing before release', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		const before = acceptedLayout(mounted);
+		const depth = mounted.host.history().depth;
+		counting = startStageCounting();
+
+		expect(press(mounted, [2, 2]).claimed).toBe(true);
+		moveTo(mounted, [3, 2], [2, 2]);
+		const preview = regionPreview(mounted);
+		expect(preview).toHaveLength(4);
+		expect(counting.count('compile')).toBe(0);
+		expect(mounted.intents).toHaveLength(0);
+		expect(mounted.host.history().depth).toBe(depth);
+		expect(acceptedLayout(mounted)).toEqual(before);
+
+		releaseAt(mounted, [3, 2]);
+		await eventually(() => regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0] !== 1);
+		settle(mounted);
+		const accepted = regionOf(mounted, mounted.terraceId)!;
+		expect(mounted.host.history().depth).toBe(depth + 1);
+		const installed = footprintCss(mounted, accepted.footprint.points, accepted.elevation);
+		installed.forEach(([x, y], index) => {
+			expect(x).toBeCloseTo(preview[index]![0], 1);
+			expect(y).toBeCloseTo(preview[index]![1], 1);
+		});
+	});
+
+	it('raises a Region by its height ray in one exact previewed history entry', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		const before = regionOf(mounted, mounted.terraceId)!;
+		const depth = mounted.host.history().depth;
+
+		expect(press(mounted, [2, 2], 'layout-region-height').claimed).toBe(true);
+		moveTo(mounted, [2, 1.2], [2, 2]);
+		const preview = regionPreview(mounted);
+		expect(preview).toHaveLength(4);
+		expect(mounted.host.history().depth).toBe(depth);
+		expect(regionOf(mounted, mounted.terraceId)?.elevation).toBe(before.elevation);
+
+		releaseAt(mounted, [2, 1.2]);
+		await eventually(() => (regionOf(mounted, mounted.terraceId)?.elevation ?? 0) !== before.elevation);
+		settle(mounted);
+		const accepted = regionOf(mounted, mounted.terraceId)!;
+		expect(accepted.elevation).toBeGreaterThan(before.elevation);
+		expect(mounted.host.history().depth).toBe(depth + 1);
+		const installed = footprintCss(mounted, accepted.footprint.points, accepted.elevation);
+		installed.forEach(([x, y], index) => {
+			expect(x).toBeCloseTo(preview[index]![0], 1);
+			expect(y).toBeCloseTo(preview[index]![1], 1);
+		});
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.elevation).toBeCloseTo(before.elevation, 9);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.elevation).toBeCloseTo(accepted.elevation, 9);
+	});
+
+	it('keeps a corner click and a refused corner as no-ops, and refuses a stale edit', async () => {
+		const mounted = await mount();
+		selectRegion(mounted, mounted.terraceId);
+		const before = acceptedLayout(mounted);
+		const depth = mounted.host.history().depth;
+
+		// A press without travel is a click, not an edit.
+		expect(press(mounted, [1, 1], 'layout-region-corner:0').claimed).toBe(true);
+		releaseAt(mounted, [1, 1]);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(acceptedLayout(mounted)).toEqual(before);
+		expect(mounted.host.history().depth).toBe(depth);
+
+		// Dragging a corner onto another corner makes a degenerate footprint; the
+		// release refuses in words and writes neither document nor history.
+		expect(press(mounted, [1, 1], 'layout-region-corner:0').claimed).toBe(true);
+		moveTo(mounted, [3, 3], [1, 1]);
+		releaseAt(mounted, [3, 3]);
+		await eventually(() =>
+			mounted.facade
+				.candidatePreviews()
+				.some((candidate) => candidate.id === 'layout-candidate-refused-settled')
+		);
+		expect(acceptedLayout(mounted)).toEqual(before);
+		expect(mounted.host.history().depth).toBe(depth);
+
+		// An intent built against the pre-edit revision is refused after another
+		// accepted region edit changed the revision.
+		const snapshot = mounted.facade.snapshot();
+		const stale = regionEditIntent({
+			kind: LAYOUT_REGION_THICKNESS_KIND,
+			regionId: mounted.terraceId,
+			payload: { thickness: 0.25 },
+			operationId: globalThis.crypto.randomUUID(),
+			projectId: snapshot.acceptedRevision.projectId,
+			revisionId: snapshot.acceptedRevision.revisionId,
+			contentRevision: snapshot.domain.unitRevisions.layout,
+			levelId: snapshot.domain.layoutLevelId
+		});
+		const fresh = regionEditIntent({
+			kind: LAYOUT_REGION_THICKNESS_KIND,
+			regionId: mounted.terraceId,
+			payload: { thickness: 0.2 },
+			operationId: globalThis.crypto.randomUUID(),
+			projectId: snapshot.acceptedRevision.projectId,
+			revisionId: snapshot.acceptedRevision.revisionId,
+			contentRevision: snapshot.domain.unitRevisions.layout,
+			levelId: snapshot.domain.layoutLevelId
+		});
+		expect((await mounted.host.accept(fresh)).kind).toBe('installed');
+		expect((await mounted.host.accept(stale)).kind).toBe('refused');
+		expect(mounted.host.history().depth).toBe(depth + 1);
 	});
 
 	it('Esc during a corner drag writes no document and no history', async () => {
@@ -380,6 +634,55 @@ describe('T1 V1c — regions through the production Layout adapter', () => {
 		expect(gaps.map((gap) => gap.labels[0]!.text)).toEqual(
 			expect.arrayContaining([expect.stringMatching(/^Gap 0\.90 m$/)])
 		);
+	});
+
+	it('counts an approved creator model on a raised Terrace, and keeps Scene bytes through move and Erase', async () => {
+		const mounted = await mount(fixtureDocument(), { withCreatorModel: true });
+		const sceneBytes = () =>
+			JSON.stringify(stageEnvelope(mounted.facade.snapshot()).units.scene.data);
+		const before = sceneBytes();
+		expect(mounted.modelId).not.toBeNull();
+		expect(stageEnvelope(mounted.facade.snapshot()).units.scene.data.entities).toHaveLength(1);
+		expect(restingObjectsOnFloorRegion(mounted.facade.snapshot(), mounted.terraceId)).toBe(1);
+
+		selectRegion(mounted, mounted.terraceId);
+		const subject = { sourceId: mounted.terraceId, sourceKind: 'region' } as never;
+		const beforeMove = stageCardActions(mounted.facade, subject).find(
+			(action) => action.id === 'layout-region-delete'
+		);
+		expect(beforeMove?.detail).toContain('1 object rests on this platform');
+		expect(sceneBytes()).toBe(before);
+
+		// A body drag moves the platform away from the model; Layout-only edits
+		// never write the Scene source.
+		expect(press(mounted, [2, 2]).claimed).toBe(true);
+		dragTo(mounted, [3.5, 2], [2, 2]);
+		await eventually(() => regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0] !== 1);
+		settle(mounted);
+		expect(restingObjectsOnFloorRegion(mounted.facade.snapshot(), mounted.terraceId)).toBe(0);
+		expect(sceneBytes()).toBe(before);
+
+		const remove = stageCardActions(mounted.facade, subject).find(
+			(action) => action.id === 'layout-region-delete'
+		);
+		expect(remove?.detail).toContain('0 objects rest on this platform');
+		expect(await remove!.run()).toEqual({ kind: 'accepted' });
+		expect(regionOf(mounted, mounted.terraceId)).toBeUndefined();
+		expect(sceneBytes()).toBe(before);
+		expect(stageEnvelope(mounted.facade.snapshot()).units.scene.data.entities[0]!.id).toBe(
+			mounted.modelId
+		);
+
+		// Undo restores the platform under the untouched model, so the derived
+		// count returns without a Scene write.
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)).toBeDefined();
+		expect(restingObjectsOnFloorRegion(mounted.facade.snapshot(), mounted.terraceId)).toBe(0);
+		expect(sceneBytes()).toBe(before);
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(regionOf(mounted, mounted.terraceId)?.footprint.points[0]![0]).toBeCloseTo(1, 2);
+		expect(restingObjectsOnFloorRegion(mounted.facade.snapshot(), mounted.terraceId)).toBe(1);
+		expect(sceneBytes()).toBe(before);
 	});
 
 	it('groups the regions in the Space Card, and deletes one through the Card with Undo', async () => {

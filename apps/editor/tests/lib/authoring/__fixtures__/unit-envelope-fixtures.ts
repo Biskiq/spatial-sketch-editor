@@ -91,6 +91,8 @@ export type UnitProjectInput = {
 	readonly camera?: CameraUnitPayload;
 	readonly experience?: ExperienceUnitPayload;
 	readonly resources?: ResourceUnitPayload;
+	/** A pinned resource's lock entries, when the fixture has one. */
+	readonly dependencyLock?: ProjectEnvelope['dependencyLock'];
 };
 
 function isLegacyScene(value: SceneDocument | CameraFreeSceneDocument): value is SceneDocument {
@@ -117,7 +119,7 @@ export async function createUnitProject(input: UnitProjectInput): Promise<Projec
 		id: input.id,
 		name: input.name,
 		acceptedRevision,
-		dependencyLock: { formatVersion: 1, entries: [] },
+		dependencyLock: input.dependencyLock ?? { formatVersion: 1, entries: [] },
 		layout: { unitId: `${input.id}:layout`, data: input.layout ?? createEmptyWallFirstLayoutDocument() },
 		scene: { unitId: `${input.id}:scene`, data: sceneData },
 		camera: { unitId: `${input.id}:camera`, data: cameraData },

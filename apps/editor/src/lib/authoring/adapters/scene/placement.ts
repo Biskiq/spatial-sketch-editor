@@ -478,27 +478,7 @@ export type SceneComposeSupport = {
 	readonly reason: string | null;
 };
 
-/**
- * The approved floor contact of one model entity, read from the accepted
- * envelope's `model` resource.
- *
- * This is the same metadata the placement session reads through
- * `contactMinYFor`; the Compose panel and the Card's Scale fact need it without
- * a session, so they read the resource here rather than guessing from a mesh or
- * treating every model as contact-less.
- */
-export function sceneModelContactMinY(
-	envelope: ProjectEnvelope,
-	entity: SceneEntity
-): number | null {
-	if (entity.kind !== 'model') return null;
-	for (const resource of envelope.units.resources.data.resources) {
-		if (resource.kind === 'model' && resource.id === entity.assetId && resource.model !== undefined) {
-			return resource.model.placement.contactMinY;
-		}
-	}
-	return catalogueModelContactMinY(entity.assetId);
-}
+export { sceneModelContactMinY } from '$lib/authoring/model-contact';
 
 /**
  * What Compose can truthfully do with one entity.

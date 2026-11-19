@@ -151,13 +151,16 @@ const allowed = new Map<string, readonly string[]>([
 			'./precision',
 			'./refusals',
 			'./region-planners',
+			'./region-resting',
 			'./room-duplicate-planners',
 			'./room-overlap-cue',
 			'./session-ports',
 			'./split-planners',
 			'./wall-gesture',
 			// T1 V1c — Erase and the Region Card disclose the derived resting-object
-			// count; it is a read, never a Scene write.
+			// count; it is a read, never a Scene write. Approved model contact comes
+			// through the one neutral resolver, not a Scene-adapter import.
+			'$lib/authoring/model-contact',
 			'@portfolio/project-model/scene-planning',
 			core
 		]

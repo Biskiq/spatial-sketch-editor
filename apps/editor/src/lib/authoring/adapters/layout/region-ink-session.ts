@@ -20,6 +20,7 @@ import type { LayoutSessionPorts } from './session-ports';
 import { candidatePreviewOf } from './candidate-preview';
 import { pointerDatumPoint } from './stage-pointer';
 import { previewCoordinates } from './manipulation-support';
+import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	LAYOUT_REGION_CREATE_KIND,
 	regionCreateIntent,
@@ -67,11 +68,18 @@ export function createRegionInkSession(
 	let press: Press | null = null;
 	let refusal: string | null = null;
 	let capture: LayoutIdCapture | null = null;
+	let lease: GestureAcquisition | null = null;
 	let committing = false;
 
 	function publish(): void {
 		services.stage.notifySurfaceChange();
 		ports.publish();
+	}
+
+	/** End the press's one gesture lease, idempotently. */
+	function endLease(): void {
+		if (lease?.kind === 'granted' && lease.lease.active) lease.lease.release();
+		lease = null;
 	}
 
 	function clear(): void {
@@ -80,6 +88,7 @@ export function createRegionInkSession(
 		press = null;
 		refusal = null;
 		capture = null;
+		endLease();
 	}
 
 	function elevationNow(): number {
@@ -204,6 +213,20 @@ export function createRegionInkSession(
 		if (intent.phase === 'down') {
 			const point = pointerDatumPoint(ctx, intent.css);
 			if (point === null) return true;
+			// A region press is authored work and must own the pointer for the whole
+			// drag: the Stage cancels an adapter gesture that has no live lease before
+			// its first move.
+			const acquisition = services.stage.acquireGesture({
+				owner: 'layout-region-draw',
+				evaluationId: intent.evaluationId,
+				policy: 'cancel-on-reading-change'
+			});
+			if (acquisition.kind !== 'granted') {
+				refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+				publish();
+				return false;
+			}
+			lease = acquisition;
 			refusal = null;
 			if (capture === null) capture = mintLayoutIdCapture();
 			if (ports.mode() === 'box') {
@@ -252,6 +275,7 @@ export function createRegionInkSession(
 		) {
 			void commit(boxRing(current.point, hoverPoint));
 		}
+		endLease();
 		publish();
 		return true;
 	}
