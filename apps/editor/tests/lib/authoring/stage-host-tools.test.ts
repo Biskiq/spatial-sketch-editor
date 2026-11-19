@@ -456,6 +456,44 @@ describe('T2.S4a — Paint', () => {
 		expect(facade.snapshot().canonicalJson).toBe(before);
 	});
 
+	it('names a straddling Region that Space scope skips', () => {
+		// A controller seam: the Layout answer is the only input that matters here.
+		const snapshot = {};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => ({
+				kind: 'paintable-surface' as const,
+				surface: { kind: 'room-floor' as const, roomId: 'room' },
+				space: {
+					kind: 'unique' as const,
+					roomId: 'room',
+					surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }],
+					excluded: [{
+						ref: { kind: 'region-face' as const, regionId: 'straddler', face: 'top' as const },
+						reason: 'spans-spaces' as const
+					}]
+				}
+			})
+		} as unknown as StageFacade;
+		const painter = createStagePainter(facade, paintOptions().options);
+		const evaluationId = 'generation-1';
+		painter.setSurfaceScope('space');
+		painter.hover({ css: [0, 0], evaluationId });
+		expect(painter.candidate()?.consequence).toBe(
+			'Paint 1 surface in this Space · 1 Region spans two Spaces, skipped'
+		);
+	});
+
 	it('does not paint a Scene object through the Light in front of it', async () => {
 		const hidden: SceneEntity = {
 			...PRIMITIVE,

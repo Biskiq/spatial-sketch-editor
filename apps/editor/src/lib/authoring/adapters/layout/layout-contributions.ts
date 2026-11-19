@@ -11,8 +11,7 @@ import {
 	resolveRoomCopyEnclosure,
 	isClosedWall,
 	resolveLayoutSurface,
-	spaceOfSurface,
-	surfacesOfSpace,
+	spacePaintReading,
 	wallSideAt,
 	type LayoutSurfaceRef,
 	type FixedWallEndpoint,
@@ -875,12 +874,14 @@ export function createLayoutContributions({
 			if (resolveLayoutSurface(document, surface) !== 'present') {
 				return { kind: 'refused', message: 'That surface changed. Try again.' };
 			}
-			const membership = spaceOfSurface(document, surface);
+			// One compiled reading answers both questions: this surface's Space and
+			// that Space's whole Paint scope.
+			const { membership, scope } = spacePaintReading(document, surface);
 			const space: StagePaintSpaceScope =
 				membership.kind === 'unique'
 					? {
 							kind: 'unique', roomId: membership.roomId,
-							surfaces: surfacesOfSpace(document, membership.roomId).surfaces
+							surfaces: scope.surfaces, excluded: scope.excluded
 						}
 					: membership;
 			return { kind: 'paintable-surface', surface, space };

@@ -16,6 +16,7 @@ import {
 import type { StageSourceHit } from '$lib/authoring/stage/stage-facade';
 import { createLayoutContributions } from '$lib/authoring/adapters/layout/layout-contributions';
 import { g1DocumentWithRooms, g1RoomPolygon } from '../layout/__fixtures__/layout-g1-fixtures';
+import { startStageCounting } from '../../helpers/stage-counts';
 
 function document(): LayoutDocumentWallFirst {
 	const layout = g1DocumentWithRooms([
@@ -89,6 +90,10 @@ describe('S5b — Layout Paint answers', () => {
 		expect(membership.has(surfaceKey({ kind: 'room-lid', roomId: 'paint-room' }))).toBe(true);
 		expect(membership.has(surfaceKey({ kind: 'region-face', regionId: 'terrace', face: 'top' }))).toBe(true);
 		expect(membership.has(surfaceKey({ kind: 'region-face', regionId: 'straddler', face: 'top' }))).toBe(false);
+		// The skip is disclosed, not hidden: the straddling top is named to Paint.
+		expect(floor.space.excluded).toEqual([
+			{ ref: { kind: 'region-face', regionId: 'straddler', face: 'top' }, reason: 'spans-spaces' }
+		]);
 
 		expect(contributions.paintAnswer(hit('paint-room', 'room-lid'), '3d')).toMatchObject({
 			kind: 'paintable-surface',
@@ -135,5 +140,21 @@ describe('S5b — Layout Paint answers', () => {
 		expect(contributionsFor(document()).paintAnswer(hit('opening:door:1', 'opening'), '3d')).toMatchObject({
 			kind: 'refused'
 		});
+	});
+
+	it('reads Space membership and scope from one Layout compile per hover', () => {
+		const layout = document();
+		const contributions = contributionsFor(layout);
+		const counting = startStageCounting();
+		try {
+			counting.reset();
+			expect(contributions.paintAnswer(hit('terrace', 'region', 'top'), '3d')).toMatchObject({
+				kind: 'paintable-surface'
+			});
+			// `compile:walls` is written once per real compile: one hover, one read.
+			expect(counting.count('compile:walls')).toBe(layout.walls.length);
+		} finally {
+			counting.stop();
+		}
 	});
 });

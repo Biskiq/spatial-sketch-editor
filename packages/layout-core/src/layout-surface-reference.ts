@@ -411,11 +411,14 @@ function regionFootprintWhollyInsideSpace(
 		footprint.every((point) => pointStrictlyInsidePolygon(outline, point));
 }
 
-/** Expand the Wall sides and face identities owned by one authored Space. */
-export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: string): SurfacesOfSpace {
+/** The same expansion over one accepted compiled reading. */
+function surfacesOfSpaceFrom(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	compiled: CompiledLayoutGeometry
+): SurfacesOfSpace {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return { surfaces: [], excluded: [] };
-	const compiled = compileWallFirstLayoutGeometry(document).geometry;
 	const outline = compiled.rooms.find((candidate) => candidate.roomId === roomId)?.floorPolygon ?? [];
 	const surfaces: LayoutSurfaceRef[] = room.boundary.map((boundary) => ({
 		kind: 'wall-side', wallId: boundary.wallId, side: boundary.direction === 'forward' ? 'left' : 'right'
@@ -439,6 +442,12 @@ export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: strin
 	return { surfaces, excluded };
 }
 
+/** Expand the Wall sides and face identities owned by one authored Space. */
+export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: string): SurfacesOfSpace {
+	if (!document.rooms.some((candidate) => candidate.id === roomId)) return { surfaces: [], excluded: [] };
+	return surfacesOfSpaceFrom(document, roomId, compileWallFirstLayoutGeometry(document).geometry);
+}
+
 export type SpaceOfSurface =
 	| { readonly kind: 'none' }
 	| { readonly kind: 'unique'; readonly roomId: string }
@@ -449,8 +458,15 @@ export type SpaceOfSurface =
  * boundary, a Space plane by its own Space, and a Region face by the same
  * whole-footprint containment rule Space scope uses. Two containing Spaces are
  * reported ambiguous rather than guessed.
+ *
+ * The compiled reading is supplied by the caller so membership and scope can
+ * share it; only a Region face ever asks for it.
  */
-export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: LayoutSurfaceRef): SpaceOfSurface {
+function membershipOf(
+	document: LayoutDocumentWallFirst,
+	reference: LayoutSurfaceRef,
+	compiled: () => CompiledLayoutGeometry
+): SpaceOfSurface {
 	if (reference.kind === 'room-floor' || reference.kind === 'room-lid') {
 		return document.rooms.some((room) => room.id === reference.roomId)
 			? { kind: 'unique', roomId: reference.roomId }
@@ -459,8 +475,7 @@ export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: Lay
 	if (reference.kind === 'region-face') {
 		const region = document.regions.find((candidate) => candidate.id === reference.regionId);
 		if (region === undefined) return { kind: 'none' };
-		const compiled = compileWallFirstLayoutGeometry(document).geometry;
-		const roomIds = compiled.rooms
+		const roomIds = compiled().rooms
 			.filter((room) => regionFootprintWhollyInsideSpace(room.floorPolygon, region.footprint.points))
 			.map((room) => room.roomId);
 		if (roomIds.length === 0) return { kind: 'none' };
@@ -474,4 +489,41 @@ export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: Lay
 	if (roomIds.length === 0) return { kind: 'none' };
 	if (roomIds.length > 1) return { kind: 'ambiguous', roomIds };
 	return { kind: 'unique', roomId: roomIds[0]! };
+}
+
+/** One pick from one authored surface; compiles only when a Region face asks. */
+export function spaceOfSurface(document: LayoutDocumentWallFirst, reference: LayoutSurfaceRef): SpaceOfSurface {
+	let reading: CompiledLayoutGeometry | null = null;
+	return membershipOf(document, reference, () => {
+		if (reading !== null) return reading;
+		const next = compileWallFirstLayoutGeometry(document).geometry;
+		reading = next;
+		return next;
+	});
+}
+
+/**
+ * Paint's one Space reading: the picked surface's membership and, when exactly
+ * one Space owns it, that Space's whole scope. Membership and scope expansion
+ * both need the compiled outlines, so this holds one reading for both — one
+ * compile per hover, not one per query.
+ */
+export function spacePaintReading(
+	document: LayoutDocumentWallFirst,
+	reference: LayoutSurfaceRef
+): { readonly membership: SpaceOfSurface; readonly scope: SurfacesOfSpace } {
+	let reading: CompiledLayoutGeometry | null = null;
+	const compiled = (): CompiledLayoutGeometry => {
+		if (reading !== null) return reading;
+		const next = compileWallFirstLayoutGeometry(document).geometry;
+		reading = next;
+		return next;
+	};
+	const membership = membershipOf(document, reference, compiled);
+	return {
+		membership,
+		scope: membership.kind === 'unique'
+			? surfacesOfSpaceFrom(document, membership.roomId, compiled())
+			: { surfaces: [], excluded: [] }
+	};
 }

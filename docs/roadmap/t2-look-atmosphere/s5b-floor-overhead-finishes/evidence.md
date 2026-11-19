@@ -23,18 +23,35 @@
   and edge (2). The one Scene look resolver re-leases the two painted faces without rebuilding
   geometry.
 
+## Review corrections (PR #382)
+
+Four implementation defects raised in review are fixed in the same PR:
+
+- **Region material refresh.** The retained slab now remembers its `role` and whether its top sits on the datum,
+  and refresh rebuilds the same `[top, underside, edge]` defaults the first build used. An unpainted overhead top
+  stays the dark slab, an unpainted edge stays dark, and a datum-aligned floor top keeps its polygon offset and draw
+  order across a Scene change.
+- **Treatment consistency.** The solid Region defaults are resolved through `applyTreatment` like a Room's floor and
+  ceiling, so Clay and Flat Colour reach an unpainted Region. `setTreatment` re-leases those defaults and the painted
+  faces from the one material store.
+- **One compile per Paint hover.** `spacePaintReading` holds one compiled Layout reading for both membership and
+  Space-scope expansion. `spaceOfSurface` and `surfacesOfSpace` keep their public behaviour and share the internal
+  reading. A call-count regression asserts one `compile:walls` write per Region hover.
+- **Exclusion disclosure.** `StagePaintSpaceScope.unique` now carries `excluded`, and the Paint consequence names the
+  skip (`· 1 Region spans two Spaces, skipped`) instead of silently painting fewer surfaces.
+
 ## Automated verification
 
-Run from the S5b worktree:
+Run from the S5b worktree after the review corrections:
 
 | Command | Result |
 | --- | --- |
-| `npm run test:fast -w @portfolio/editor` | **436 files, 5404 tests passed** |
+| `npm run test:fast -w @portfolio/editor` | **436 files, 5408 tests passed** |
 | `npm run test:arch -w @portfolio/editor` | **350/350 passed** |
 | `npm run check -w @portfolio/editor` | 0 errors, 16 pre-existing warnings |
 | `npm run check:project-model` | passed |
 | `npm run check:layout-core` | passed |
-| `npm run build` | passed |
+| `npm run build` | passed after the review corrections |
 | `npm run build -w @biskiq/api` + `vite-node tests/save-units.test.mjs` | **17/17 passed** against real Postgres |
 
 The API save-unit suite initially exposed a hard-coded `SCENE_UNIT_FORMAT_VERSION === 10`; it now
@@ -50,7 +67,10 @@ Focused coverage added or extended:
 - `layout-paint-answer.test.ts`: Room floor/lid and Region top/underside answers, edge refusal,
   dormant lid refusal, Space membership and straddler exclusion.
 - `layout-region-representation.test.ts`: three material groups, Scene resolution, re-lease on
-  Scene change without geometry rebuild, lease cleanup.
+  Scene change without geometry rebuild, role-specific defaults restored for a floor, datum-aligned
+  and overhead slab, Treatment re-lease, lease cleanup.
+- `layout-paint-answer.test.ts`: the straddling Region is disclosed in `space.excluded`, and one
+  Region hover performs exactly one Layout compile.
 - Stage pick and host-tool tests, including the regenerated pick baseline for the lid hit kind.
 
 ## Browser acceptance
@@ -83,6 +103,23 @@ were investigated separately (below).
 **Form → Roof / Terrace**, not behind a separate Region tool. The V1c note describes a
 discoverability gap in the Form family, not a missing implementation; Roof exposes Flat and
 Terrace exposes Box/Line, and Region drawing is reachable from that family strip.
+
+## Review follow-up browser pass (partial)
+
+A second pass attempted the two gaps named in review: draw a Region in the same journey, then
+paint its underside with a direct Face click from below.
+
+- **Region drawing — exercised.** In the real app, **Form → Roof → Flat Roof → Box** drew
+  **Region 1**: 2.16 × 1.08 m, 2.32 m² at 1.2 m elevation with 0.1 m thickness. The Region and its
+  card (elevation, thickness, width, depth, area) survived a full page reload, and the Form strip
+  returned to `Flat Roof · 0.00 m` ready for the next draw.
+- **Direct underside click — blocked by the browser harness.** Every tab in this environment runs
+  `document.hidden === true` and never fires `requestAnimationFrame`, so the camera's
+  `set-reading` transition never settles: the toolbar's 3D control, its `3` shortcut and the DOM
+  click all leave the Stage in Plan. The drawn project could be reloaded, but not viewed in 3D.
+  Painting the underside therefore could not be exercised here; its pick identity, Scene resolver,
+  default material and re-lease are covered by the renderer and paint-answer tests. This remains
+  open for a focused pass in a visible browser session.
 
 ## Limits of this evidence
 

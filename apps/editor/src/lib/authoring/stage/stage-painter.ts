@@ -14,7 +14,7 @@
  * dropper flag and the recent list; this controller only translates a press.
  */
 import type { StageFacade, StageSourceHit } from './stage-facade';
-import { surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
+import { surfaceKey, type LayoutSurfaceRef, type SpaceSurfaceExclusion } from '@portfolio/layout-core';
 import type { StagePaintSpaceScope } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 
@@ -30,6 +30,13 @@ function surfaceNoun(surface: LayoutSurfaceRef): string {
 		case 'room-lid': return 'lid';
 		case 'region-face': return `Region ${surface.face}`;
 	}
+}
+
+/** A Space scope never hides what it skips: a straddling Region is named. */
+function excludedWords(excluded: readonly SpaceSurfaceExclusion[]): string {
+	const spansSpaces = excluded.filter((entry) => entry.reason === 'spans-spaces').length;
+	if (spansSpaces === 0) return '';
+	return ` · ${spansSpaces} Region${spansSpaces === 1 ? '' : 's'} ${spansSpaces === 1 ? 'spans' : 'span'} two Spaces, skipped`;
 }
 
 export type StagePaintCandidate = {
@@ -175,7 +182,7 @@ export function createStagePainter(
 				? { ...target.hit, subRef: { kind: 'component', componentId: `side:${surface.side}` } }
 				: target.hit;
 			const consequence = scope === 'space' && space.kind === 'unique'
-				? `Paint ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space`
+				? `Paint ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space${excludedWords(space.excluded)}`
 				: `Paint this ${surfaceNoun(surface)}`;
 			return {
 				adapterId: target.adapterId,

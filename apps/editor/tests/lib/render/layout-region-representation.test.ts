@@ -19,6 +19,7 @@ import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { getMaterial } from '$lib/content/materials';
+import { CLAY_COLOR } from '$lib/render/materials/treatment';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
 
 function regionDocument(): LayoutDocumentWallFirst {
@@ -34,6 +35,32 @@ function regionDocument(): LayoutDocumentWallFirst {
 		form: { kind: 'flat' },
 		intendedGaps: []
 	});
+	return document;
+}
+
+/** A floor slab, a datum-aligned floor slab and an overhead slab in one Room. */
+function slabsDocument(): LayoutDocumentWallFirst {
+	const document = regionDocument();
+	document.regions.push(
+		{
+			id: 'mat',
+			role: 'floor',
+			footprint: { kind: 'polygon', points: [[1, 1], [3, 1], [3, 2], [1, 2]] },
+			elevation: 0,
+			thickness: 0.05,
+			form: { kind: 'flat' },
+			intendedGaps: []
+		},
+		{
+			id: 'canopy',
+			role: 'overhead',
+			footprint: { kind: 'polygon', points: [[1, 1], [7, 1], [7, 5], [1, 5]] },
+			elevation: 2.6,
+			thickness: 0.15,
+			form: { kind: 'flat' },
+			intendedGaps: []
+		}
+	);
 	return document;
 }
 
@@ -143,5 +170,67 @@ describe('S5b — retained Region face materials', () => {
 
 		representation.dispose();
 		store.dispose();
+	});
+
+	it('restores role-specific defaults after a Scene change for floor, datum and overhead slabs', () => {
+		const geometry = compileWallFirstLayoutGeometry(slabsDocument()).geometry;
+		let scene: RuntimeScene = paintedScene();
+		const store = createMaterialStore();
+		const representation = createRegionRepresentation(
+			store,
+			null,
+			() => {},
+			(surface) => resolveSceneSurfaceLook(scene, surface, undefined)
+		);
+		representation.update(geometry);
+
+		scene = { ...scene, surfaceFinishes: [] };
+		expect(representation.setScene(scene, null)).toBe(true);
+
+		const terrace = representation.objectOf('terrace') as Mesh;
+		const [terraceTop, terraceUnderside, terraceEdge] = faceMaterials(terrace);
+		expect(colorOf(terraceTop)).toBe(DEFAULT_FLOOR_COLOR.slice(1));
+		expect(colorOf(terraceUnderside)).toBe('111018');
+		expect(terraceEdge).toBe(terraceUnderside);
+
+		// A floor Region on the datum keeps its polygon-offset top and draw order.
+		const mat = representation.objectOf('mat') as Mesh;
+		const [matTop, matUnderside, matEdge] = faceMaterials(mat);
+		expect(mat.renderOrder).toBe(1);
+		expect((matTop as MeshStandardMaterial).polygonOffset).toBe(true);
+		expect(colorOf(matTop)).toBe(DEFAULT_FLOOR_COLOR.slice(1));
+		expect(matEdge).toBe(matUnderside);
+
+		// An overhead Region's unpainted top stays the dark slab, never the floor.
+		const canopy = representation.objectOf('canopy') as Mesh;
+		const [canopyTop, canopyUnderside, canopyEdge] = faceMaterials(canopy);
+		expect(colorOf(canopyTop)).toBe('111018');
+		expect(colorOf(canopyUnderside)).toBe('111018');
+		expect(canopyEdge).toBe(canopyUnderside);
+
+		representation.dispose();
+		store.dispose();
+	});
+
+	it('re-leases unpainted Region defaults under a Treatment', () => {
+		const geometry = compileWallFirstLayoutGeometry(regionDocument()).geometry;
+		const store = createMaterialStore();
+		const representation = createRegionRepresentation(store);
+		representation.update(geometry);
+		const mesh = oneMesh(representation);
+		expect(colorOf(faceMaterials(mesh)[0]!)).toBe(DEFAULT_FLOOR_COLOR.slice(1));
+
+		expect(representation.setTreatment('clay')).toBe(true);
+		expect(colorOf(faceMaterials(mesh)[0]!)).toBe(CLAY_COLOR.slice(1));
+		expect(colorOf(faceMaterials(mesh)[1]!)).toBe(CLAY_COLOR.slice(1));
+		expect(representation.setTreatment('clay')).toBe(false);
+
+		expect(representation.setTreatment(undefined)).toBe(true);
+		expect(colorOf(faceMaterials(mesh)[0]!)).toBe(DEFAULT_FLOOR_COLOR.slice(1));
+		expect(colorOf(faceMaterials(mesh)[1]!)).toBe('111018');
+
+		representation.dispose();
+		store.dispose();
+		expect(store.stats().live).toBe(0);
 	});
 });
