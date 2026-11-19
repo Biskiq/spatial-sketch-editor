@@ -46,7 +46,7 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import { layoutPlanner, wallStationFrame } from './precision';
+import { layoutPlanner, registerLayoutSurfaceLineage, wallStationFrame } from './precision';
 import { layoutSubjectReference } from './drawing-planners';
 import { wallSplitRefusalWords } from './refusals';
 
@@ -209,6 +209,7 @@ function wallSplitPlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }

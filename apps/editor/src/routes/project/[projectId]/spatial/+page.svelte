@@ -2483,6 +2483,9 @@
 		{#if shell.armedHostTool === 'paint' && preview === null}
 			<StagePaintPalette
 				palette={paintPalette}
+				scope={shell.paintTool?.surfaceScope() ?? 'face'}
+				candidate={shell.paintCandidate}
+				onScope={(scope) => shell.paintTool?.setSurfaceScope(scope)}
 				onPick={(key) => finishes.setActiveFromKey(key)}
 				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper(null))}
 				onCancel={() => commands.armWorldTool('select')}

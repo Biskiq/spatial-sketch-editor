@@ -6,6 +6,8 @@ import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-materi
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
+import type { RuntimeScene } from '$lib/content/scene';
+import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 
 const source = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');
 
@@ -31,6 +33,27 @@ describe('the default Wall surface', () => {
 		store.dispose();
 	});
 
+	it('resolves each authored Wall side through the shared Scene look', () => {
+		const store = createMaterialStore();
+		const scene: RuntimeScene = {
+			textures: [], materials: [], entities: [], objects: [],
+			surfaceFinishes: [{
+				surface: { kind: 'wall-side', wallId: 'wall-painted', side: 'left' },
+				finish: { materialId: 'marble-light' }
+			}]
+		};
+		const { factory, dispose } = createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, 0, undefined, {
+			resolveSurfaceLook: (surface) => resolveSceneSurfaceLook(scene, surface, undefined)
+		});
+		const mesh = { roomId: 'wall-painted', wallRanges: [{ segmentId: 'wall-painted' }] } as never;
+		const left = factory('side', mesh, 'left').material as MeshStandardMaterial;
+		const right = factory('side', mesh, 'right').material as MeshStandardMaterial;
+		expect(left.color.getHexString()).toBe('e8e4dc');
+		expect(right.color.getHexString()).toBe(DEFAULT_WALL_COLOR.slice(1));
+		dispose();
+		store.dispose();
+	});
+
 	it('acquires every Wall surface from the Canvas store, so a compile creates none', () => {
 		const store = createMaterialStore();
 		const { factory, dispose } = createVisitorWallMaterialFactory(store, () => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE);
@@ -45,12 +68,16 @@ describe('the default Wall surface', () => {
 		store.dispose();
 	});
 
-			it('reaches both the Stage and Preview through the one representation', () => {
+	it('reaches Stage and Visitor through the same Scene-aware representations', () => {
 		expect(source('src/lib/render/layout-wall-representation.ts')).toContain(
 			'createVisitorWallMaterialFactory('
 		);
-		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain(
-			'createWallRepresentation(materials, treatment)'
+		const shell = source('src/lib/visitor/VisitorLayoutShell.svelte');
+		expect(shell).toContain('createWallRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook)');
+		expect(shell).toContain('walls.setScene(scene, textureScope)');
+		expect(shell).toContain('rooms.setScene(scene, textureScope)');
+		expect(source('src/lib/authoring/stage/shell/StageCanvas.svelte')).toContain(
+			'<VisitorLayoutShell {geometry} {scene} textureScope={textureScope}'
 		);
 	});
 

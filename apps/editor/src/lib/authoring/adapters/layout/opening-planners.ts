@@ -51,7 +51,7 @@ import {
 	layoutSubjectReference,
 	readCapturedOperation
 } from './drawing-planners';
-import { layoutPlanner, preparedLayoutCandidate } from './precision';
+import { layoutPlanner, preparedLayoutCandidate, registerLayoutSurfaceLineage } from './precision';
 import { openingRefusalWords } from './refusals';
 
 export { openingRefusalWords };
@@ -259,7 +259,7 @@ function openingCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'opening', id: openingId },
 			plan.document,
 			['openings'],
-			{ created: true, id: openingId }
+			{ created: true, id: openingId, surfaceLineage: [] }
 		);
 	});
 }
@@ -305,7 +305,8 @@ function openingResizePlanner(): DomainPlanner<ProjectEnvelope> {
 			LAYOUT_OPENING_RESIZE_KIND,
 			{ kind: 'opening', id: opening.id },
 			plan.document,
-			Object.keys(patch)
+			Object.keys(patch),
+			{ surfaceLineage: [] }
 		);
 	});
 }
@@ -359,6 +360,7 @@ function openingDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			correspondence: [{ relation: 'retired', before: reference, after: null }],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, []);
 		recordPreparedCowCandidate(
 			request.intent.operationId,
 			plan.document,

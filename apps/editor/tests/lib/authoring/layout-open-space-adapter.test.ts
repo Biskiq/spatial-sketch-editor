@@ -15,10 +15,15 @@ import {
 	layoutWorkingLevelInput,
 	parseWallFirstLayoutDocumentJson,
 	serializeWallFirstLayoutDocument,
+	surfaceKey,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	SCENE_UNIT_FORMAT_VERSION,
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -93,15 +98,48 @@ function gallery(open: boolean): LayoutDocumentWallFirst {
 	return document;
 }
 
+/** Two enclosed Rooms share one divider; Erase merges them into `room-a`. */
+function sharedRoomPair(): LayoutDocumentWallFirst {
+	const document = createEmptyWallFirstLayoutDocument();
+	document.floor.elevation = ELEVATION;
+	document.junctions = [
+		junction('j-a', [0, 0]), junction('j-b', [4, 0]), junction('j-c', [4, 3]), junction('j-d', [0, 3]),
+		junction('j-e', [8, 0]), junction('j-f', [8, 3])
+	];
+	document.walls = [
+		wall('w-bottom-a', 'j-a', 'j-b'), wall('w-shared', 'j-b', 'j-c'),
+		wall('w-top-a', 'j-c', 'j-d'), wall('w-left-a', 'j-d', 'j-a'),
+		wall('w-bottom-b', 'j-b', 'j-e'), wall('w-right-b', 'j-e', 'j-f'), wall('w-top-b', 'j-f', 'j-c')
+	];
+	document.rooms = [
+		{
+			id: 'room-a', name: 'Survivor',
+			boundary: [
+				{ wallId: 'w-bottom-a', direction: 'forward' }, { wallId: 'w-shared', direction: 'forward' },
+				{ wallId: 'w-top-a', direction: 'forward' }, { wallId: 'w-left-a', direction: 'forward' }
+			], virtualEdges: [], overhead: 'closed'
+		},
+		{
+			id: 'room-b', name: 'Absorbed',
+			boundary: [
+				{ wallId: 'w-bottom-b', direction: 'forward' }, { wallId: 'w-right-b', direction: 'forward' },
+				{ wallId: 'w-top-b', direction: 'forward' }, { wallId: 'w-shared', direction: 'reverse' }
+			], virtualEdges: [], overhead: 'closed'
+		}
+	];
+	return document;
+}
+
 async function mount(
 	document: LayoutDocumentWallFirst,
-	openSpaceCreated?: StageAdapterServices['openSpaceCreated']
+	openSpaceCreated?: StageAdapterServices['openSpaceCreated'],
+	scene?: CameraFreeSceneDocument
 ): Promise<Mounted> {
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'SP1c open space',
 		layout: document,
-		scene: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
+		scene: scene ?? { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
 	});
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-sp1c-open-space',
@@ -151,6 +189,37 @@ function roomActions(facade: StageFacade) {
 }
 
 describe('SP1c — Open Space Card and lifecycle', () => {
+	it('discloses absorbed floor and lid Finishes before an enclosed Room merge', async () => {
+		const unsortedFinishes: NonNullable<CameraFreeSceneDocument['surfaceFinishes']> = [
+			{ surface: { kind: 'room-floor', roomId: 'room-a' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'room-lid', roomId: 'room-a' }, finish: { materialId: 'paper-aged' } },
+			{ surface: { kind: 'room-floor', roomId: 'room-b' }, finish: { materialId: 'velvet-dark' } },
+			{ surface: { kind: 'room-lid', roomId: 'room-b' }, finish: { materialId: 'brass-aged' } }
+		];
+		const finishes = [...unsortedFinishes].sort((left, right) => {
+			const leftKey = surfaceKey(left.surface);
+			const rightKey = surfaceKey(right.surface);
+			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+		});
+		const scene: CameraFreeSceneDocument = {
+			formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [], surfaceFinishes: finishes
+		};
+		const mounted = await mount(sharedRoomPair(), undefined, scene);
+		const erase = stageCardActions(mounted.facade, { sourceId: 'w-shared', sourceKind: 'wall', ref: null })
+			.find((action) => action.id === 'layout-wall-delete')!;
+		expect(erase.detail).toContain(
+			'On Space room-a floor, keep the Finish from Space room-a floor; replace the Finish from Space room-b floor.'
+		);
+		expect(erase.detail).toContain(
+			'On Space room-a lid, keep the Finish from Space room-a lid; replace the Finish from Space room-b lid.'
+		);
+		expect((await erase.run()).kind).toBe('accepted');
+		expect(stageEnvelope(mounted.facade.snapshot()).units.scene.data.surfaceFinishes).toEqual([
+			{ surface: { kind: 'room-floor', roomId: 'room-a' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'room-lid', roomId: 'room-a' }, finish: { materialId: 'paper-aged' } }
+		]);
+	});
+
 	it('reads Kind, Area, Overhead and Wall/open-side counts on the Room Card', async () => {
 		const { facade } = await mount(gallery(true));
 		const facts = stageCardFacts(facade, { sourceId: 'room-gallery', sourceKind: 'room', ref: null });

@@ -10,7 +10,7 @@ import type { AuthoringIntent, DomainPlanner, SemanticReference } from '@portfol
 import { canonicalUnitJson, type ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { layoutSubjectReference, readCapturedOperation } from './drawing-planners';
-import { layoutPlanner, preparedLayoutCandidate } from './precision';
+import { layoutPlanner, preparedLayoutCandidate, registerLayoutSurfaceLineage } from './precision';
 
 export const LAYOUT_OPEN_SPACE_CREATE_KIND = 'layout-open-space-create';
 
@@ -80,7 +80,7 @@ export function createSpaceCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			...(plan.createdJunctionIds.length ? ['junctions'] : []),
 			...(splitWalls.size ? ['walls'] : []),
 			...(openings.length ? ['openings'] : [])
-		], { created: true });
+		], { created: true, surfaceLineage: plan.surfaceLineage });
 		if (base.kind !== 'prepared') return base;
 		const reference = (kind: string, id: string) => layoutSubjectReference({ kind, id, contentRevision, levelId });
 		const created = [
@@ -92,19 +92,18 @@ export function createSpaceCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			...rooms.map(({ id }) => reference('room', id)),
 			...openings.map(({ id }) => reference('opening', id))
 		];
-		return {
-			kind: 'prepared',
-			candidate: {
-				...base.candidate,
-				changes: base.candidate.changes.map((change) => ({
-					...change, subjectIds: [...change.subjectIds, ...[...created, ...preserved].map((ref) => ref.subject.id)]
-				})),
-				correspondence: [
-					...base.candidate.correspondence,
-					...created.map((after) => ({ relation: 'created' as const, before: null, after })),
-					...preserved.map((before) => ({ relation: 'preserved' as const, before, after: before }))
-				]
-			}
+		const candidate = {
+			...base.candidate,
+			changes: base.candidate.changes.map((change) => ({
+				...change, subjectIds: [...change.subjectIds, ...[...created, ...preserved].map((ref) => ref.subject.id)]
+			})),
+			correspondence: [
+				...base.candidate.correspondence,
+				...created.map((after) => ({ relation: 'created' as const, before: null, after })),
+				...preserved.map((before) => ({ relation: 'preserved' as const, before, after: before }))
+			]
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
+		return { kind: 'prepared', candidate };
 	});
 }

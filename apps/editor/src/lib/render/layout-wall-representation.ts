@@ -43,10 +43,12 @@ import { createVisitorWallMaterialFactory } from '$lib/render/layout/wall-materi
 import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 import { reconcileHidden, tagRenderIdentity } from '$lib/render/render-identity';
 import type { MaterialStore } from '$lib/render/resources/material-store';
+import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 import type {
 	BasicMaterialDescriptor,
 	MaterialTreatment
 } from '$lib/render/resources/material-descriptor';
+import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 
 type WallMaterialFactory = ReturnType<typeof createVisitorWallMaterialFactory>['factory'];
 
@@ -102,6 +104,8 @@ export type WallRepresentation = {
 	 * The old factory's leases are released only after the new meshes hold theirs.
 	 */
 	setTreatment(treatment: MaterialTreatment | undefined): boolean;
+	/** Re-resolve Scene-owned surface assignments without rebuilding geometry. */
+	setScene(scene: object | null, scope: TextureLoadScope | null): boolean;
 	/**
 	 * X2's display overlay: exactly these Walls draw through the cutaway twin
 	 * material. Work is proportional to the ids that changed state, the set is
@@ -192,7 +196,11 @@ function endKeysByWall(geometry: CompiledLayoutGeometry): Map<string, string> {
 
 export function createWallRepresentation(
 	store: MaterialStore,
-	initialTreatment: MaterialTreatment | undefined = undefined
+	initialTreatment: MaterialTreatment | undefined = undefined,
+	initialScene: object | null = null,
+	initialScope: TextureLoadScope | null = null,
+	onMaterialChange: () => void = () => {},
+	resolveSurfaceLook?: SceneSurfaceLookResolver
 ): WallRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutWalls';
@@ -206,18 +214,15 @@ export function createWallRepresentation(
 	/** The Walls drawn through the cutaway twin; a display mask, never authored. */
 	let cutaway: ReadonlySet<string> = new Set();
 	let treatment: MaterialTreatment | undefined = initialTreatment;
+	let activeScene: object | null = initialScene;
+	let activeScope: TextureLoadScope | null = initialScope;
 
 	// A physical Wall belongs to no Room: the mesh builder resolves its surface
 	// with the Wall's own id as `roomId`, so the tint is always the default
 	// Wall colour. Keeping it constant is what lets the factory outlive every compile (a
 	// Room-tinted lookup would also make the representation depend on Room
 	// presentation, an input no Wall mesh reads).
-	let factory = createVisitorWallMaterialFactory(
-		store,
-		() => DEFAULT_WALL_COLOR,
-		DEFAULT_WALL_UNLIT_SHARE,
-		treatment
-	);
+	let factory: ReturnType<typeof createVisitorWallMaterialFactory>;
 	/**
 	 * The cutaway twin factory, created on first use.
 	 *
@@ -226,14 +231,31 @@ export function createWallRepresentation(
 	 * changes walls only swaps material references — no buffer upload.
 	 */
 	let cutawayFactory: ReturnType<typeof createVisitorWallMaterialFactory> | null = null;
-	function twinFactory(): ReturnType<typeof createVisitorWallMaterialFactory> {
-		cutawayFactory ??= createVisitorWallMaterialFactory(
+	function refreshMaterials(): void {
+		if (disposed) return;
+		for (const [wallId, entry] of retained) {
+			if (entry.rematerialize === null) continue;
+			for (const material of entry.rematerialize(factoryFor(wallId), entry.object as Mesh)) materialsSeen.add(material);
+		}
+		onMaterialChange();
+	}
+	function createFactory(cutawayNow = false): ReturnType<typeof createVisitorWallMaterialFactory> {
+		return createVisitorWallMaterialFactory(
 			store,
 			() => DEFAULT_WALL_COLOR,
 			DEFAULT_WALL_UNLIT_SHARE,
 			treatment,
-			{ cutaway: true }
+			{
+				...(cutawayNow ? { cutaway: true as const } : {}),
+				scope: activeScope,
+				resolveSurfaceLook,
+				onMaterialChange: refreshMaterials
+			}
 		);
+	}
+	factory = createFactory();
+	function twinFactory(): ReturnType<typeof createVisitorWallMaterialFactory> {
+		cutawayFactory ??= createFactory(true);
 		return cutawayFactory;
 	}
 
@@ -277,8 +299,8 @@ export function createWallRepresentation(
 			};
 		}
 		const surfaceFactory = cutawayNow ? twinFactory().factory : factory.factory;
-		const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
-			const resolved = surfaceFactory(surfaceKey, mesh);
+		const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh, paintSide) => {
+			const resolved = surfaceFactory(surfaceKey, mesh, paintSide);
 			materialsSeen.add(resolved.material);
 			return resolved;
 		};
@@ -296,7 +318,7 @@ export function createWallRepresentation(
 			next: WallMaterialFactory,
 			target: Mesh = mesh
 		): readonly Material[] => {
-			const materials = groups.map((group) => next(group.surfaceKey, source).material);
+			const materials = groups.map((group) => next(group.surfaceKey, source, group.paintSide).material);
 			target.material = [...materials];
 			return materials;
 		};
@@ -412,12 +434,7 @@ export function createWallRepresentation(
 			const previousFactory = factory;
 			const previousCutawayFactory = cutawayFactory;
 			treatment = next;
-			factory = createVisitorWallMaterialFactory(
-				store,
-				() => DEFAULT_WALL_COLOR,
-				DEFAULT_WALL_UNLIT_SHARE,
-				treatment
-			);
+			factory = createFactory();
 			// The twin is rebuilt lazily with the same Treatment, so a cut Wall never
 			// keeps a material of the previous finish.
 			cutawayFactory = null;
@@ -429,6 +446,21 @@ export function createWallRepresentation(
 					materialsSeen.add(material);
 				}
 			}
+			previousFactory.dispose();
+			previousCutawayFactory?.dispose();
+			return true;
+		},
+
+		setScene(nextScene, nextScope) {
+			if (disposed) throw new Error('the layout wall representation has been disposed');
+			if (nextScene === activeScene && nextScope === activeScope) return false;
+			const previousFactory = factory;
+			const previousCutawayFactory = cutawayFactory;
+			activeScene = nextScene;
+			activeScope = nextScope;
+			factory = createFactory();
+			cutawayFactory = null;
+			refreshMaterials();
 			previousFactory.dispose();
 			previousCutawayFactory?.dispose();
 			return true;

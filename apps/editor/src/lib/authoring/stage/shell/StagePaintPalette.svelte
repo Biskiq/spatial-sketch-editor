@@ -5,19 +5,26 @@
 	 * lower column and owns no Finish state of its own.
 	 */
 	import type { FinishPaintPalette } from '$lib/authoring/look/finish-authoring.svelte';
+	import type { StagePaintCandidate } from '../stage-painter';
 
 	let {
 		palette,
 		onPick,
 		onDropper,
 		onCancel,
-		onLibrary
+		onLibrary,
+		scope,
+		candidate,
+		onScope
 	}: {
 		palette: FinishPaintPalette;
 		onPick: (key: string) => void;
 		onDropper: () => void;
 		onCancel: () => void;
 		onLibrary: () => void;
+		scope: 'face' | 'space';
+		candidate: StagePaintCandidate | null;
+		onScope: (scope: 'face' | 'space') => void;
 	} = $props();
 </script>
 
@@ -32,6 +39,13 @@
 		<span class="empty">No Finish chosen</span>
 	{/if}
 	<button type="button" data-paint-library onclick={onLibrary}>Finishes…</button>
+	<span class="scope" role="group" aria-label="Paint scope">
+		<button type="button" data-paint-scope="face" aria-pressed={scope === 'face'} class:on={scope === 'face'} onclick={() => onScope('face')}>Face</button>
+		<button type="button" data-paint-scope="space" aria-pressed={scope === 'space'} class:on={scope === 'space'} onclick={() => onScope('space')}>Space</button>
+	</span>
+	{#if candidate?.surface !== null && candidate?.surface !== undefined}
+		<span class="consequence" data-paint-consequence role="status">{candidate.refusal ?? candidate.consequence}</span>
+	{/if}
 	<button
 		type="button"
 		data-paint-dropper
@@ -127,6 +141,8 @@
 		display: flex;
 		gap: 0.25rem;
 	}
+	.scope { display: flex; gap: 0.15rem; }
+	.consequence { max-width: 15rem; overflow: hidden; color: var(--shell-leaf-soft); text-overflow: ellipsis; white-space: nowrap; }
 	.recent {
 		width: 1.3rem;
 		height: 1.3rem;

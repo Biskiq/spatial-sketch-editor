@@ -20,6 +20,10 @@
       "types": "./src/scene-planning/index.ts",
       "default": "./src/scene-planning/index.ts"
     },
+    "./scene-surface-reference": {
+      "types": "./src/scene-surface-reference.ts",
+      "default": "./src/scene-surface-reference.ts"
+    },
     "./library": {
       "types": "./src/library/index.ts",
       "default": "./src/library/index.ts"

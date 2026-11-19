@@ -9,9 +9,17 @@
 import { describe, expect, it } from 'vitest';
 import type {
 	AuthoringIntent,
+	SemanticReference,
 	SceneEntity,
 	SceneMaterialInstance
 } from '@portfolio/project-model';
+import {
+	createEmptyWallFirstLayoutDocument,
+	surfaceKey,
+	surfacesOfSpace,
+	type LayoutDocumentWallFirst,
+	type LayoutSurfaceRef
+} from '@portfolio/layout-core';
 import {
 	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
@@ -21,13 +29,16 @@ import {
 	type ProjectEnvelope,
 	type ScenePaletteSlot
 } from '@portfolio/project-model/units';
+import { serializeProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	checkSceneRecordScope,
 	createFinishPlanners,
 	effectiveColorOf,
+	SCENE_SURFACE_FINISH_ASSIGN,
 	finishOf,
 	isPristineInstance,
-	withFinishPreviews
+	withFinishPreviews,
+	usersOfFinish
 } from '@portfolio/project-model/scene-planning';
 import {
 	admitUnitContent,
@@ -36,6 +47,7 @@ import {
 	createUnitProject,
 	unitRevision
 } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { g1DocumentWithRooms, g1RoomPolygon } from '../layout/__fixtures__/layout-g1-fixtures';
 
 const LABELS: Record<string, string> = {
 	'wood-walnut': 'Walnut Wood',
@@ -48,7 +60,9 @@ const LABELS: Record<string, string> = {
 
 type SceneInput = {
 	readonly entities: readonly SceneEntity[];
+	readonly layout?: LayoutDocumentWallFirst;
 	readonly materials?: readonly SceneMaterialInstance[];
+	readonly surfaceFinishes?: CameraFreeSceneDocument['surfaceFinishes'];
 	readonly palette?: readonly ScenePaletteSlot[];
 	readonly textures?: CameraFreeSceneDocument['textures'];
 	readonly resources?: ProjectEnvelope['units']['resources']['data'];
@@ -97,12 +111,39 @@ function light(id: string): SceneEntity {
 	} as SceneEntity;
 }
 
+function wallLayout(ids: readonly string[] = ['wall-a']): LayoutDocumentWallFirst {
+	const layout = createEmptyWallFirstLayoutDocument();
+	layout.junctions = ids.flatMap((id, index) => [
+		{ id: `${id}:start`, point: [index * 5, 0] as [number, number] },
+		{ id: `${id}:end`, point: [index * 5 + 4, 0] as [number, number] }
+	]);
+	layout.walls = ids.map((id) => ({
+		id, startJunctionId: `${id}:start`, endJunctionId: `${id}:end`, thickness: 0.2, height: 3, centerline: { kind: 'line' }
+	}));
+	return layout;
+}
+
+function wallSideTarget(project: ProjectEnvelope, wallId: string, side: 'left' | 'right'): SemanticReference {
+	const layout = project.units.layout.data;
+	return {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: project.units.layout.header.contentRevision },
+		subject: { kind: 'wall', id: wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: layout.floor.id, structureInstancePath: [] },
+		componentId: `side:${side}`,
+		capabilityId: null
+	};
+}
+
 function sceneDocument(input: SceneInput): CameraFreeSceneDocument {
 	return {
 		formatVersion: SCENE_UNIT_FORMAT_VERSION,
 		textures: [...(input.textures ?? [])],
 		materials: [...(input.materials ?? [])],
 		entities: [...input.entities],
+		...(input.surfaceFinishes === undefined ? {} : { surfaceFinishes: [...input.surfaceFinishes] }),
 		...(input.palette === undefined ? {} : { palette: input.palette })
 	};
 }
@@ -111,6 +152,7 @@ async function sceneEnvelope(input: SceneInput): Promise<ProjectEnvelope> {
 	return createUnitProject({
 		id: 'project-finish',
 		name: 'Finish',
+		...(input.layout === undefined ? {} : { layout: input.layout }),
 		scene: sceneDocument(input),
 		...(input.resources === undefined ? {} : { resources: input.resources })
 	});
@@ -121,9 +163,15 @@ async function directPlan(
 	kind: string,
 	payload: unknown,
 	entityIds: readonly string[] = [],
-	allocatedIds: readonly { kind: string; id: string }[] = []
+	allocatedIds: readonly { kind: string; id: string }[] = [],
+	targetsFor?: (project: ProjectEnvelope) => readonly SemanticReference[]
 ) {
-	const project = await sceneEnvelope(input);
+	const project = await createUnitProject({
+		id: 'project-finish', name: 'Finish',
+		...(input.layout === undefined ? {} : { layout: input.layout }),
+		scene: sceneDocument(input),
+		...(input.resources === undefined ? {} : { resources: input.resources })
+	});
 	const header = project.units.scene.header;
 	const acceptedRevision = { projectId: project.id, revisionId: 'revision-1' };
 	const identity = { acceptedRevision, sourceContentId: 'source-content' };
@@ -132,7 +180,7 @@ async function directPlan(
 		kind,
 		operationId: `${kind}-direct`,
 		expectedRevision: acceptedRevision,
-		targets: entityIds.map((id) => ({
+		targets: targetsFor?.(project) ?? entityIds.map((id) => ({
 			version: 1 as const,
 			domain: 'scene' as const,
 			revision: { kind: 'exact' as const, contentRevision: header.contentRevision },
@@ -174,6 +222,7 @@ async function boot(input: SceneInput) {
 	const project = await createUnitProject({
 		id: 'project-finish',
 		name: 'Finish',
+		...(input.layout === undefined ? {} : { layout: input.layout }),
 		scene: sceneDocument(input),
 		...(input.resources === undefined ? {} : { resources: input.resources })
 	});
@@ -252,6 +301,187 @@ function finishKeyOf(scene: CameraFreeSceneDocument, entityId: string): string |
 	const entity = scene.entities.find((candidate) => candidate.id === entityId)!;
 	return finishOf(entity, scene.materials);
 }
+
+describe('scene-surface-finish-assign', () => {
+	it('writes sorted shared Wall-side assignments through exact qualified Layout references', async () => {
+		const layout = wallLayout(['wall-a', 'z-wall']);
+		const surfaces = [
+			{ kind: 'wall-side' as const, wallId: 'z-wall', side: 'right' as const },
+			{ kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const }
+		];
+		const outcome = await directPlan(
+			{ entities: [], layout },
+			SCENE_SURFACE_FINISH_ASSIGN,
+			{ finish: { curated: 'marble-light' }, surfaces },
+			[],
+			[],
+			(project) => surfaces.map((surface) => wallSideTarget(project, surface.wallId, surface.side))
+		);
+		expect(outcome.kind).toBe('prepared');
+		const assignments = plannedScene(outcome).surfaceFinishes ?? [];
+		expect(assignments).toEqual([
+			{ surface: { kind: 'wall-side', wallId: 'wall-a', side: 'left' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'wall-side', wallId: 'z-wall', side: 'right' }, finish: { materialId: 'marble-light' } }
+		]);
+		expect(assignments.map((entry) => surfaceKey(entry.surface))).toEqual(
+			[...assignments.map((entry) => surfaceKey(entry.surface))].sort()
+		);
+	});
+
+	it('assigns a Space-expanded Wall-side set in one byte-exact Undo/Redo entry', async () => {
+		const layout = g1DocumentWithRooms([
+			g1RoomPolygon('paint-space', [[0, 0], [6, 0], [6, 4], [0, 4]])
+		]);
+		const room = layout.rooms[0]!;
+		const surfaces = surfacesOfSpace(layout, room.id).surfaces.filter(
+			(surface): surface is Extract<LayoutSurfaceRef, { readonly kind: 'wall-side' }> => surface.kind === 'wall-side'
+		);
+		const coordinator = await boot({ entities: [], layout });
+		const source = coordinator.current().source;
+		const beforeBytes = serializeProjectEnvelope(source);
+		const result = await accept(coordinator, {
+			version: 1,
+			kind: SCENE_SURFACE_FINISH_ASSIGN,
+			operationId: 'space-paint-all-wall-faces',
+			expectedRevision: coordinator.acceptedRevision(),
+			targets: surfaces.map((surface) => wallSideTarget(source, surface.wallId, surface.side)),
+			payload: { finish: { curated: 'velvet-dark' }, surfaces },
+			capturedInputs: [],
+			allocatedIds: []
+		});
+		expect(result.kind).toBe('accepted');
+		const paintedBytes = serializeProjectEnvelope(coordinator.current().source);
+		const assignments = sourceScene(coordinator).surfaceFinishes ?? [];
+		expect(assignments).toEqual([...surfaces]
+			.sort((left, right) => surfaceKey(left).localeCompare(surfaceKey(right)))
+			.map((surface) => ({ surface, finish: { materialId: 'velvet-dark' } })));
+		expect(assignments).toHaveLength(surfaces.length);
+
+		expect((await coordinator.undo()).kind).toBe('restored');
+		expect(serializeProjectEnvelope(coordinator.current().source)).toBe(beforeBytes);
+		expect(sourceScene(coordinator).surfaceFinishes).toBeUndefined();
+		expect((await coordinator.redo()).kind).toBe('restored');
+		expect(serializeProjectEnvelope(coordinator.current().source)).toBe(paintedBytes);
+	});
+
+	it('refuses stale or mismatched component targets without writing Scene', async () => {
+		const layout = wallLayout();
+		const surface = { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const };
+		const outcome = await directPlan(
+			{ entities: [], layout },
+			SCENE_SURFACE_FINISH_ASSIGN,
+			{ finish: { curated: 'brass-aged' }, surfaces: [surface] },
+			[],
+			[],
+			(project) => [wallSideTarget(project, surface.wallId, 'right')]
+		);
+		expect(outcome).toMatchObject({ kind: 'rejected', code: 'invalid-target' });
+	});
+});
+
+describe('surface Finish reach', () => {
+	it('counts a shared Wall-side user and updates it with the shared Finish edit', async () => {
+		const assignment = {
+			surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const },
+			finish: { materialInstanceId: 'shared-finish' }
+		};
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout: wallLayout(),
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: [assignment]
+		};
+		const project = await sceneEnvelope(input);
+		const scene = project.units.scene.data;
+		expect(usersOfFinish(scene, 'project:shared-finish')).toHaveLength(2);
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 2, mode: 'all', edit: { roughness: 0.3 }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+		const after = plannedScene(outcome);
+		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', roughness: 0.3 });
+		expect(after.surfaceFinishes).toEqual([assignment]);
+	});
+
+	it('writes Original as a curated surface Finish when a shared tint is cleared to pristine', async () => {
+		const assignment = {
+			surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const },
+			finish: { materialInstanceId: 'shared-finish' }
+		};
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout: wallLayout(),
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: [assignment]
+		};
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 2, mode: 'all', edit: { color: null }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+		const after = plannedScene(outcome);
+		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm' });
+		expect(isPristineInstance(after.materials[0]!)).toBe(true);
+		expect(after.surfaceFinishes).toEqual([{
+			surface: assignment.surface,
+			finish: { materialId: 'plaster-warm' }
+		}]);
+	});
+
+	it('counts present and dormant surfaces but excludes retired loaded assignments from reach and edits', async () => {
+		const layout = wallLayout();
+		const space = g1RoomPolygon('roof-room', [[8, 0], [12, 0], [12, 3], [8, 3]]);
+		const spaceLayout = g1DocumentWithRooms([space]);
+		spaceLayout.rooms[0]!.overhead = 'open-to-sky';
+		layout.junctions.push(...spaceLayout.junctions);
+		layout.walls.push(...spaceLayout.walls);
+		layout.rooms.push(...spaceLayout.rooms);
+		const assignments = [
+			{ surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const }, finish: { materialInstanceId: 'shared-finish' } },
+			{ surface: { kind: 'room-lid' as const, roomId: 'roof-room' }, finish: { materialInstanceId: 'shared-finish' } },
+			{ surface: { kind: 'wall-side' as const, wallId: 'wall-retired', side: 'right' as const }, finish: { materialInstanceId: 'shared-finish' } }
+		].sort((left, right) => {
+			const leftKey = surfaceKey(left.surface);
+			const rightKey = surfaceKey(right.surface);
+			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+		});
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout,
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: assignments
+		};
+		const project = await sceneEnvelope(input);
+		const scene = project.units.scene.data;
+		expect(usersOfFinish(scene, 'project:shared-finish', layout).map((user) => user.kind)).toEqual([
+			'entity', 'surface', 'surface'
+		]);
+		expect(usersOfFinish(scene, 'project:shared-finish')).toHaveLength(4);
+
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 3, mode: 'all', edit: { roughness: 0.3 }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+		expect(plannedScene(outcome).surfaceFinishes).toEqual(assignments);
+	});
+
+	it('lets a single live object edit in place when its only other assignment is retired', async () => {
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout: wallLayout(),
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: [{
+				surface: { kind: 'wall-side', wallId: 'wall-retired', side: 'left' },
+				finish: { materialInstanceId: 'shared-finish' }
+			}]
+		};
+		const project = await sceneEnvelope(input);
+		expect(usersOfFinish(project.units.scene.data, 'project:shared-finish', input.layout)).toHaveLength(1);
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 1, mode: 'in-place', edit: { roughness: 0.3 }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+	});
+});
 
 describe('scene-finish-assign', () => {
 	it('gives a primitive a curated Finish through materialId alone, one Undo', async () => {

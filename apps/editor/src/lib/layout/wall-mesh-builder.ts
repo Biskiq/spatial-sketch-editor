@@ -1,4 +1,4 @@
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { LayoutVec2, LayoutWallSide } from '@portfolio/layout-core';
 import type {
 	CompiledEndpointBand,
 	CompiledJunctionBand,
@@ -44,6 +44,8 @@ export type WallMeshSurfaceKey = string;
 
 export type IndexedWallMeshGroup = {
 	surfaceKey: WallMeshSurfaceKey;
+	/** The Wall-side material identity, absent for tops, caps and reveals. */
+	paintSide?: LayoutWallSide;
 	start: number;
 	count: number;
 };
@@ -57,13 +59,15 @@ export type Layout3dWallSurface = 'side' | 'lintel' | 'bridge';
 export type Layout3dOpeningSurface = 'jamb' | 'sill' | 'lintel' | 'arch-reveal';
 
 export type Layout3dTriangleRef =
-	| { kind: 'wall'; roomId: string; segmentId: string; surface: Layout3dWallSurface }
+	| { kind: 'wall'; roomId: string; segmentId: string; surface: Layout3dWallSurface; paintSide?: LayoutWallSide }
 	| {
 			kind: 'opening';
 			roomId: string;
 			segmentId: string;
 			openingId: string;
 			surface: Layout3dOpeningSurface;
+			/** Only outward Wall face strips are Paint targets; reveals omit it. */
+			paintSide?: LayoutWallSide;
 	  };
 
 /** One contiguous index run of one pick owner (triangle-aligned: `count % 3 === 0`). */
@@ -76,7 +80,7 @@ export type IndexedWallMesh = {
 	uvs: Float32Array; // [u = arc length, v = height above floor]
 	indices: Uint32Array; // surface-major
 	materialGroups: IndexedWallMeshGroup[];
-	sectionToRange: Array<WallMeshSectionRef & { surfaceKey: WallMeshSurfaceKey; start: number; count: number }>;
+	sectionToRange: Array<WallMeshSectionRef & { surfaceKey: WallMeshSurfaceKey; paintSide?: LayoutWallSide; start: number; count: number }>;
 	wallRanges: Array<{ segmentId: string; ranges: Array<{ start: number; count: number }> }>;
 	/**
 	 * complete authored pick identity: a sorted, non-overlapping
@@ -183,8 +187,8 @@ type Vertex = {
  * live on the face.
  */
 type FacePick =
-	| { kind: 'wall'; surface: Layout3dWallSurface }
-	| { kind: 'opening'; openingId: string; surface: Layout3dOpeningSurface };
+	| { kind: 'wall'; surface: Layout3dWallSurface; paintSide?: LayoutWallSide }
+	| { kind: 'opening'; openingId: string; surface: Layout3dOpeningSurface; paintSide?: LayoutWallSide };
 
 type Face = { verts: Vertex[]; pick?: FacePick };
 
@@ -635,16 +639,21 @@ function buildStandaloneEndBridge(
 	const nB: LayoutVec2 = curNormal;
 	const dirA: LayoutVec2 = [-prevTangent[0], -prevTangent[1]];
 	const dirB: LayoutVec2 = curTangent;
+	// The canonical corner's front/back belongs to `(prev, cur)`, while Finish
+	// identity belongs to the emitted Wall's authored start→end orientation.
+	// Match layout-core's cornerForEnd mapping before assigning either face.
+	const frontPaintSide = ((role === 'prev') === atEnd) ? 'left' : 'right';
+	const backPaintSide = frontPaintSide === 'left' ? 'right' : 'left';
 
 	const faces: Face[] = [];
 	for (const band of bands) {
 		const yLo = room.floorElevation + band.lo;
 		const yHi = room.floorElevation + band.hi;
 		if (band.solidA && band.solidB) {
-			if (front.kind === 'bevel') pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1);
+			if (front.kind === 'bevel') pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1, { ...BRIDGE_PICK, paintSide: frontPaintSide });
 			if (back.kind === 'bevel' && outer) {
-				pushBridgeCap(faces, backA, outer, yLo, yHi, band.lo, band.hi, nA, -1);
-				pushBridgeCap(faces, backB, outer, yLo, yHi, band.lo, band.hi, nB, -1);
+				pushBridgeCap(faces, backA, outer, yLo, yHi, band.lo, band.hi, nA, -1, { ...BRIDGE_PICK, paintSide: backPaintSide });
+				pushBridgeCap(faces, backB, outer, yLo, yHi, band.lo, band.hi, nB, -1, { ...BRIDGE_PICK, paintSide: backPaintSide });
 			}
 		} else if (band.solidA) {
 			pushBridgeCap(faces, frontA, backA, yLo, yHi, band.lo, band.hi, dirA, 1);
@@ -1022,6 +1031,8 @@ function buildSectionFaces(
 		: section.openingId
 			? { kind: 'opening', openingId: section.openingId, surface: 'sill' }
 			: { kind: 'wall', surface: 'side' };
+	const frontSectionPick: FacePick = { ...sectionPick, paintSide: 'left' };
+	const backSectionPick: FacePick = { ...sectionPick, paintSide: 'right' };
 	const undersidePick: FacePick = isLintel
 		? section.openingId
 			? { kind: 'opening', openingId: section.openingId, surface: 'arch-reveal' }
@@ -1073,14 +1084,14 @@ function buildSectionFaces(
 				vertex(frontA[0], yLoAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yLoA),
 				vertex(frontB[0], yLoBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yLoB),
 				vertex(frontB[0], yHiWorld, frontB[1], nB[0], 0, nB[1], b.distance, hi),
-				sectionPick
+				frontSectionPick
 			);
 			if (!backOmitted) pushBandFace(faces,
 				vertex(backB[0], yHiWorld, backB[1], -nB[0], 0, -nB[1], b.distance, hi),
 				vertex(backB[0], yLoBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yLoB),
 				vertex(backA[0], yLoAWorld, backA[1], -nA[0], 0, -nA[1], a.distance, yLoA),
 				vertex(backA[0], yHiWorld, backA[1], -nA[0], 0, -nA[1], a.distance, hi),
-				sectionPick
+				backSectionPick
 			);
 		}
 
@@ -1601,7 +1612,9 @@ function pushBridgeSide(
 			vertex(p[0], yLo, p[1], 0, 0, 0, 0, bandLo)
 		],
 		[sign * (bx / magnitude), 0, sign * (bz / magnitude)],
-		pick
+		pick.paintSide === undefined
+			? { ...pick, paintSide: sign > 0 ? 'left' : 'right' }
+			: pick
 	);
 }
 
@@ -1901,7 +1914,8 @@ function emitMesh(
 			a.roomId === b.roomId &&
 			a.segmentId === b.segmentId &&
 			a.surface === b.surface &&
-			(a.kind !== 'opening' || b.kind !== 'opening' || a.openingId === b.openingId)
+			(a.kind !== 'opening' || b.kind !== 'opening' || a.openingId === b.openingId) &&
+			a.paintSide === b.paintSide
 		);
 	}
 
@@ -1925,8 +1939,8 @@ function emitMesh(
 		const start = indices.length;
 		notePick(
 			face.pick.kind === 'wall'
-				? { kind: 'wall', roomId, segmentId, surface: face.pick.surface }
-				: { kind: 'opening', roomId, segmentId, openingId: face.pick.openingId, surface: face.pick.surface },
+				? { kind: 'wall', roomId, segmentId, surface: face.pick.surface, ...(face.pick.paintSide === undefined ? {} : { paintSide: face.pick.paintSide }) }
+				: { kind: 'opening', roomId, segmentId, openingId: face.pick.openingId, surface: face.pick.surface, ...(face.pick.paintSide === undefined ? {} : { paintSide: face.pick.paintSide }) },
 			start
 		);
 		emitFace(face);
@@ -1977,6 +1991,7 @@ function emitMesh(
 
 	// Deterministic surface order: 'side' first, then 'lintel', then any other keys alphabetically.
 	const keyOrder = collectSurfaceKeys(wallsFaces);
+	const paintSideOrder: readonly (LayoutWallSide | undefined)[] = [undefined, 'left', 'right'];
 	// All wall range entries exist up front so a bridge emitted with one wall can
 	// be referenced by BOTH adjacent walls' `wallRanges` (metadata-only).
 	const wallRangeBySegment = new Map<string, IndexedWallMesh['wallRanges'][number]>();
@@ -1986,40 +2001,48 @@ function emitMesh(
 		wallRanges.push(entry);
 	}
 	for (const surfaceKey of keyOrder) {
-		const groupStart = indices.length;
-		for (const wall of wallsFaces) {
-			activeDevelopment = wall.development;
-			const wallRange = wallRangeBySegment.get(wall.segmentId)!;
-			for (const section of wall.sections) {
-				if (section.surfaceKey !== surfaceKey) continue;
-				const start = indices.length;
-				for (const face of section.faces) emitFaceWithPick(face, roomId, wall.segmentId);
-				const count = indices.length - start;
-				if (count > 0) {
-					sectionToRange.push({ ...section.ref, surfaceKey, start, count });
-					wallRange.ranges.push({ start, count });
+		for (const paintSide of paintSideOrder) {
+			const groupStart = indices.length;
+			for (const wall of wallsFaces) {
+				activeDevelopment = wall.development;
+				const wallRange = wallRangeBySegment.get(wall.segmentId)!;
+				for (const section of wall.sections) {
+					if (section.surfaceKey !== surfaceKey) continue;
+					const matchingFaces = section.faces.filter((face) => face.pick?.paintSide === paintSide);
+					if (matchingFaces.length === 0) continue;
+					const start = indices.length;
+					for (const face of matchingFaces) emitFaceWithPick(face, roomId, wall.segmentId);
+					const count = indices.length - start;
+					if (count > 0) {
+						sectionToRange.push({ ...section.ref, surfaceKey, ...(paintSide === undefined ? {} : { paintSide }), start, count });
+						wallRange.ranges.push({ start, count });
+					}
+				}
+				for (const reveal of wall.reveals) {
+					if (reveal.surfaceKey !== surfaceKey) continue;
+					const matchingFaces = reveal.faces.filter((face) => face.pick?.paintSide === paintSide);
+					if (matchingFaces.length === 0) continue;
+					const start = indices.length;
+					for (const face of matchingFaces) emitFaceWithPick(face, roomId, wall.segmentId);
+					const count = indices.length - start;
+					if (count > 0) wallRange.ranges.push({ start, count });
+				}
+				for (const bridge of wall.bridges) {
+					if (bridge.surfaceKey !== surfaceKey) continue;
+					const matchingFaces = bridge.faces.filter((face) => face.pick?.paintSide === paintSide);
+					if (matchingFaces.length === 0) continue;
+					const start = indices.length;
+					for (const face of matchingFaces) emitFaceWithPick(face, roomId, wall.segmentId);
+					const count = indices.length - start;
+					if (count > 0) {
+						wallRange.ranges.push({ start, count });
+						wallRangeBySegment.get(bridge.neighborSegmentId)?.ranges.push({ start, count });
+					}
 				}
 			}
-			for (const reveal of wall.reveals) {
-				if (reveal.surfaceKey !== surfaceKey) continue;
-				const start = indices.length;
-				for (const face of reveal.faces) emitFaceWithPick(face, roomId, wall.segmentId);
-				const count = indices.length - start;
-				if (count > 0) wallRange.ranges.push({ start, count });
-			}
-			for (const bridge of wall.bridges) {
-				if (bridge.surfaceKey !== surfaceKey) continue;
-				const start = indices.length;
-				for (const face of bridge.faces) emitFaceWithPick(face, roomId, wall.segmentId);
-				const count = indices.length - start;
-				if (count > 0) {
-					wallRange.ranges.push({ start, count });
-					wallRangeBySegment.get(bridge.neighborSegmentId)?.ranges.push({ start, count });
-				}
-			}
+			const groupCount = indices.length - groupStart;
+			if (groupCount > 0) materialGroups.push({ surfaceKey, ...(paintSide === undefined ? {} : { paintSide }), start: groupStart, count: groupCount });
 		}
-		const groupCount = indices.length - groupStart;
-		if (groupCount > 0) materialGroups.push({ surfaceKey, start: groupStart, count: groupCount });
 	}
 
 	// Close the last pick run: from its start to the end of the index buffer.

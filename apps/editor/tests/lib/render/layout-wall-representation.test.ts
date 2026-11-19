@@ -28,6 +28,8 @@ import { immutableF4Data } from '@portfolio/project-model';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createMaterialStore } from '$lib/render/resources/material-store';
+import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
+import type { RuntimeScene } from '$lib/content/scene';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { startStageCounting } from '../../helpers/stage-counts';
 
@@ -115,6 +117,38 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		for (const child of representation.object3d.children) expect(child.parent).toBe(representation.object3d);
 		expect(representation.object3d.children).toHaveLength(next.walls.length);
 
+		representation.dispose();
+	});
+
+	it('keeps Scene Wall-side Finishes on a geometry-only rebuild', () => {
+		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
+		const geometry = compiled(document);
+		const wallId = geometry.walls[0]!.wallId;
+		const scene: RuntimeScene = {
+			textures: [], materials: [], entities: [], objects: [],
+			surfaceFinishes: [
+				{ surface: { kind: 'wall-side', wallId, side: 'left' }, finish: { materialId: 'marble-light' } },
+				{ surface: { kind: 'wall-side', wallId, side: 'right' }, finish: { materialId: 'velvet-dark' } }
+			]
+		};
+		const resolvedSides: string[] = [];
+		const representation = createWallRepresentation(
+			createMaterialStore(), undefined, scene, null, () => {},
+			(surface) => {
+				if (surface.kind === 'wall-side' && surface.wallId === wallId) resolvedSides.push(surface.side);
+				return resolveSceneSurfaceLook(scene, surface, undefined);
+			}
+		);
+		representation.update(geometry);
+		expect(new Set(resolvedSides)).toEqual(new Set(['left', 'right']));
+
+		resolvedSides.length = 0;
+		const edited = structuredClone(document);
+		edited.walls.find((wall) => wall.id === wallId)!.height += 0.25;
+		const nextGeometry = compiled(edited);
+		const stats = representation.update(nextGeometry);
+		expect(stats.built).toBeGreaterThan(0);
+		expect(new Set(resolvedSides)).toEqual(new Set(['left', 'right']));
 		representation.dispose();
 	});
 

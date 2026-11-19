@@ -10,9 +10,17 @@ owner-controlled)
 
 ## Current implementation
 
-The live Scene is the world-local Scene 9 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 10 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
+
+Scene 10 also owns optional `surfaceFinishes`: one shared Finish assignment per qualified Layout
+surface identity. It admits Wall sides, Space floors and lids; S5a exposes Face and Space painting
+for Wall sides only, with floor/lid Paint UI reserved for S5b. Layout remains appearance-free.
+Assignments resolve through the canonical Layout surface API, use the Layout default when absent,
+and keep shared Finish/material-instance identity through topology lineage. Retired identities are
+pruned in the same accepted topology edit; a loaded unresolved reference stays diagnostic and
+renders the default.
 
 Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) / **form** /
 **light** (`point|spot`) / **artwork** · textures · material instances · clusters.

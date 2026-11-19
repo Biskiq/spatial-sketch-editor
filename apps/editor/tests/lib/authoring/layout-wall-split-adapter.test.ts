@@ -20,13 +20,14 @@ import {
 	planCreateCircularRoom,
 	planCreateWallFirstOpening,
 	planWallChain,
+	surfaceKey,
 	wallFirstWallLength,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
+import type { ProjectEnvelope, CameraFreeSceneDocument } from '@portfolio/project-model/units';
+import { captureUnitSave, readUnitEnvelopeForSave, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -58,6 +59,14 @@ type Mounted = {
 	readonly services: StageAdapterServices;
 	readonly fixture: Fixture;
 };
+
+function sortedSurfaceFinishes(
+	assignments: NonNullable<CameraFreeSceneDocument['surfaceFinishes']>
+): NonNullable<CameraFreeSceneDocument['surfaceFinishes']> {
+	return [...assignments].sort((a, b) =>
+		surfaceKey(a.surface) < surfaceKey(b.surface) ? -1 : surfaceKey(a.surface) > surfaceKey(b.surface) ? 1 : 0
+	);
+}
 
 /** The S04/S05 enclosure with one Opening at an explicit station. */
 function enclosureFixture(openingOffset: number): Fixture {
@@ -186,12 +195,12 @@ function circularFixture(): Fixture {
 	};
 }
 
-async function mount(fixture: Fixture): Promise<Mounted> {
+async function mount(fixture: Fixture, scene?: CameraFreeSceneDocument): Promise<Mounted> {
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'A1 split wall',
 		layout: fixture.document,
-		scene: {
+		scene: scene ?? {
 			formatVersion: 1,
 			textures: [],
 			materials: [],
@@ -297,7 +306,17 @@ async function eventually(predicate: () => boolean): Promise<void> {
 describe('T1 A1 — Split wall', () => {
 	it('[cap:layout.wall-split core] splits a straight open Wall at the Card midpoint, preserving Opening and Room identity through Undo, Redo and Save/Load', async () => {
 		const fixture = enclosureFixture(4);
-		const mounted = await mount(fixture);
+		const beforeScene: CameraFreeSceneDocument = {
+			formatVersion: SCENE_UNIT_FORMAT_VERSION,
+			textures: [], materials: [], entities: [],
+			surfaceFinishes: sortedSurfaceFinishes([
+				{ surface: { kind: 'room-floor', roomId: fixture.roomId }, finish: { materialId: 'brass-aged' } },
+				{ surface: { kind: 'room-lid', roomId: fixture.roomId }, finish: { materialId: 'paper-aged' } },
+				{ surface: { kind: 'wall-side', wallId: fixture.wallId, side: 'left' }, finish: { materialId: 'marble-light' } },
+				{ surface: { kind: 'wall-side', wallId: fixture.wallId, side: 'right' }, finish: { materialId: 'velvet-dark' } }
+			])
+		};
+		const mounted = await mount(fixture, beforeScene);
 		selectWall(mounted.facade, fixture.wallId);
 		settle(mounted.facade, 2);
 
@@ -328,6 +347,16 @@ describe('T1 A1 — Split wall', () => {
 		const after = acceptedLayout(mounted.facade);
 		const newWall = after.walls.find((wall) => !beforeWallIds.has(wall.id))!;
 		expect(newWall).toBeDefined();
+		const afterScene = stageEnvelope(mounted.facade.snapshot()).units.scene.data;
+		const expectedSurfaceFinishes = sortedSurfaceFinishes([
+			{ surface: { kind: 'wall-side', wallId: fixture.wallId, side: 'left' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'wall-side', wallId: fixture.wallId, side: 'right' }, finish: { materialId: 'velvet-dark' } },
+			{ surface: { kind: 'room-floor', roomId: fixture.roomId }, finish: { materialId: 'brass-aged' } },
+			{ surface: { kind: 'room-lid', roomId: fixture.roomId }, finish: { materialId: 'paper-aged' } },
+			{ surface: { kind: 'wall-side', wallId: newWall.id, side: 'left' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'wall-side', wallId: newWall.id, side: 'right' }, finish: { materialId: 'velvet-dark' } }
+		]);
+		expect(afterScene.surfaceFinishes).toEqual(expectedSurfaceFinishes);
 		// The start-side Wall keeps its id; both fragments are half the source.
 		expect(after.walls.some((wall) => wall.id === fixture.wallId)).toBe(true);
 		expect(wallFirstWallLength(after, fixture.wallId)).toBeCloseTo(3, 9);

@@ -49,12 +49,73 @@ describe('buildRoomWallMesh', () => {
 		const mesh = result.mesh!;
 		assertFinite(mesh);
 		assertEdgeMultiplicity(mesh, 2);
-		// Bridge faces are metadata-only: they must not leak into sectionToRange
-		// (the reviewer's contract) nor create a second material group.
-		expect(mesh.sectionToRange.length).toBe(4);
-		expect(mesh.materialGroups.map((group) => group.surfaceKey)).toEqual(['side']);
-		// Bridge geometry is still reachable through the shared wallRanges entry.
-		expect(mesh.wallRanges.some((wall) => wall.ranges.length > 1)).toBe(true);
+		// S5a partitions each outward face by stable Wall side; bridge faces join
+		// those material groups but stay metadata-only in sectionToRange.
+		expect(mesh.materialGroups.map(({ surfaceKey, paintSide }) => [surfaceKey, paintSide ?? null])).toEqual([
+			['side', null], ['side', 'left'], ['side', 'right']
+		]);
+		let groupCursor = 0;
+		for (const group of mesh.materialGroups) {
+			expect(group.start).toBe(groupCursor);
+			expect(group.count).toBeGreaterThan(0);
+			expect(group.count % 3).toBe(0);
+			groupCursor += group.count;
+		}
+		expect(groupCursor).toBe(mesh.indices.length);
+
+		expect(mesh.sectionToRange).toHaveLength(12);
+		expect(mesh.sectionToRange.every((range) => range.kind === 'side')).toBe(true);
+		expect(mesh.sectionToRange.filter((range) => range.paintSide === undefined)).toHaveLength(4);
+		expect(mesh.sectionToRange.filter((range) => range.paintSide === 'left')).toHaveLength(4);
+		expect(mesh.sectionToRange.filter((range) => range.paintSide === 'right')).toHaveLength(4);
+
+		// Every emitted triangle, including bridge geometry, has exactly one
+		// contiguous owner. This protects the index-range partition independently
+		// of material grouping.
+		let pickCursor = 0;
+		for (const range of mesh.pickRanges) {
+			expect(range.start).toBe(pickCursor);
+			expect(range.count).toBeGreaterThan(0);
+			expect(range.count % 3).toBe(0);
+			pickCursor += range.count;
+		}
+		expect(pickCursor).toBe(mesh.indices.length);
+
+		const bridges = mesh.pickRanges.filter((range) => range.kind === 'wall' && range.surface === 'bridge');
+		expect(bridges).toHaveLength(8);
+		// Each bridge range is reachable from its authored owner and shared with
+		// the adjacent wall's wallRanges entry (the pick owner remains singular).
+		const cornerOwners: Array<[[number, number], string, string]> = [
+			[[0, 0], 'room-bev:wall:0', 'room-bev:wall:3'],
+			[[6, 0], 'room-bev:wall:1', 'room-bev:wall:0'],
+			[[6, 4], 'room-bev:wall:2', 'room-bev:wall:1'],
+			[[0, 4], 'room-bev:wall:3', 'room-bev:wall:2']
+		];
+		for (const [[cx, cz], ownerSegment, neighborSegment] of cornerOwners) {
+			const atCorner = bridges.filter((range) => {
+				let x = 0;
+				let z = 0;
+				const triangleCount = range.count / 3;
+				for (let i = range.start; i < range.start + range.count; i += 3) {
+					for (let j = i; j < i + 3; j += 1) {
+						const index = mesh.indices[j]!;
+						x += mesh.positions[index * 3]!;
+						z += mesh.positions[index * 3 + 2]!;
+					}
+				}
+				x /= triangleCount * 3;
+				z /= triangleCount * 3;
+				return Math.hypot(x - cx, z - cz) <= 0.15;
+			});
+			expect(atCorner.length).toBe(2);
+			expect(new Set(atCorner.map((range) => range.segmentId))).toEqual(new Set([ownerSegment]));
+			const ownerRanges = mesh.wallRanges.find((wall) => wall.segmentId === ownerSegment)!.ranges;
+			const neighborRanges = mesh.wallRanges.find((wall) => wall.segmentId === neighborSegment)!.ranges;
+			for (const bridge of atCorner) {
+				expect(ownerRanges).toContainEqual({ start: bridge.start, count: bridge.count });
+				expect(neighborRanges).toContainEqual({ start: bridge.start, count: bridge.count });
+			}
+		}
 	});
 
 	it('bevels acute and concave (reflex) corners watertight', () => {

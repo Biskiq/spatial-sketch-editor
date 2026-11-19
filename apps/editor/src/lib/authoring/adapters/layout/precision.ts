@@ -68,7 +68,9 @@ import {
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
-	type LayoutVec2
+	type LayoutVec2,
+	type LayoutSurfaceLineage,
+	surfaceKey
 } from '@portfolio/layout-core';
 import type {
 	AuthoringIntent,
@@ -78,6 +80,11 @@ import type {
 	PreparedCandidate,
 	SemanticReference
 } from '@portfolio/project-model';
+import {
+	applySurfaceLineage,
+	newlyRetiredSurfaceReferenceKeys,
+	surfaceLineageConsequence
+} from '@portfolio/project-model/scene-planning';
 import {
 	replaceUnitData,
 	canonicalUnitJson,
@@ -252,11 +259,77 @@ export function layoutPlanner(
 	return {
 		id: `layout.${kind}`,
 		kind,
-		admission: Object.freeze({ domain: 'layout', compound: false, units: false, resources: false }),
+		admission: Object.freeze({ domain: 'layout', compound: true, writes: ['scene'] as const, units: false, resources: false }),
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
-		prepare
+		prepare(request) {
+			const outcome = prepare(request);
+			if (outcome.kind !== 'prepared') return outcome;
+			const lineage = layoutSurfaceLineage.get(outcome.candidate);
+			if (lineage === undefined) {
+				return rejected('surface_lineage_invalid', `The ${kind} planner did not provide its required Layout surface lineage.`);
+			}
+			const accepted = request.snapshot.domain.source;
+			const afterLayout = outcome.candidate.source.units.layout.data;
+			const applied = applySurfaceLineage({
+				beforeScene: accepted.units.scene.data,
+				beforeLayout: accepted.units.layout.data,
+				afterLayout,
+				lineage
+			});
+			if (applied.kind === 'rejected') return rejected(applied.code, applied.message);
+			const newOrphans = newlyRetiredSurfaceReferenceKeys({
+				beforeScene: accepted.units.scene.data,
+				beforeLayout: accepted.units.layout.data,
+				afterScene: applied.scene,
+				afterLayout
+			});
+			if (newOrphans.length > 0) {
+				return rejected('surface_reference_orphaned', `The ${kind} candidate creates retired surface reference "${newOrphans[0]}".`);
+			}
+			if (canonicalUnitJson(accepted.units.scene.data) === canonicalUnitJson(applied.scene)) return outcome;
+			const beforeByKey = new Map((accepted.units.scene.data.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
+			const afterByKey = new Map((applied.scene.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
+			const changedKeys = [...new Set([...beforeByKey.keys(), ...afterByKey.keys()])]
+				.filter((key) => canonicalUnitJson(beforeByKey.get(key) ?? null) !== canonicalUnitJson(afterByKey.get(key) ?? null))
+				.sort();
+			const candidate: PreparedCandidate<ProjectEnvelope> = {
+				...outcome.candidate,
+				source: replaceUnitData(outcome.candidate.source, 'scene', applied.scene),
+				changes: [...outcome.candidate.changes, { kind: 'scene-surface-lineage', subjectIds: changedKeys, fields: ['surfaceFinishes'] }]
+			};
+			return { kind: 'prepared', candidate };
+		}
 	};
+}
+
+/** The Join gesture's preview reads the exact Scene transfer used by this planner. */
+export function layoutSurfaceLineageConsequence(input: {
+	readonly source: ProjectEnvelope;
+	readonly beforeLayout: LayoutDocumentWallFirst;
+	readonly afterLayout: LayoutDocumentWallFirst;
+	readonly lineage: LayoutSurfaceLineage;
+}): string {
+	const result = applySurfaceLineage({
+		beforeScene: input.source.units.scene.data,
+		beforeLayout: input.beforeLayout,
+		afterLayout: input.afterLayout,
+		lineage: input.lineage
+	});
+	return result.kind === 'ready'
+		? surfaceLineageConsequence(result.report)
+		: result.message;
+}
+
+/** Planner lineage is runtime metadata and never enters a serialized source. */
+const layoutSurfaceLineage = new WeakMap<object, LayoutSurfaceLineage>();
+
+export function registerLayoutSurfaceLineage<T extends PreparedCandidate<ProjectEnvelope>>(
+	candidate: T,
+	lineage: LayoutSurfaceLineage
+): T {
+	layoutSurfaceLineage.set(candidate, lineage);
+	return candidate;
 }
 
 /**
@@ -316,10 +389,11 @@ export function preparedLayoutCandidate(
 	document: LayoutDocumentWallFirst,
 	fields: readonly string[],
 	options: {
+		readonly surfaceLineage: LayoutSurfaceLineage;
 		readonly created?: boolean;
 		readonly retired?: boolean;
 		readonly id?: string;
-	} = {}
+	}
 ): PlannerOutcome<ProjectEnvelope> {
 	const level = capturedWorkingLevel(request);
 	if ('kind' in level) return level;
@@ -347,6 +421,7 @@ export function preparedLayoutCandidate(
 		],
 		diagnostics: []
 	};
+	registerLayoutSurfaceLineage(candidate, options.surfaceLineage);
 	return { kind: 'prepared', candidate };
 }
 
@@ -366,7 +441,7 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 		}
 		return preparedLayoutCandidate(request, 'layout-wall-height', { kind: 'wall', id: wallId }, plan.document, [
 			'height'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -393,7 +468,8 @@ function wallThicknessPlanner(): DomainPlanner<ProjectEnvelope> {
 			'layout-wall-thickness',
 			{ kind: 'wall', id: wallId },
 			plan.document,
-			['thickness']
+			['thickness'],
+			{ surfaceLineage: [] }
 		);
 	});
 }
@@ -427,7 +503,7 @@ function wallLengthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
 		return preparedLayoutCandidate(request, 'layout-wall-length', { kind: 'wall', id: wallId }, plan.document, [
 			'length'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -453,7 +529,7 @@ function wallAnglePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
 		return preparedLayoutCandidate(request, 'layout-wall-angle', { kind: 'wall', id: wallId }, plan.document, [
 			'angle'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -475,7 +551,7 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
 		return preparedLayoutCandidate(request, 'layout-wall-move', { kind: 'wall', id: wallId }, plan.document, [
 			'position'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -512,7 +588,7 @@ function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, wallRefusalWords(plan.rejection.code, plan.rejection.message));
 		return preparedLayoutCandidate(request, 'layout-wall-bend', { kind: 'wall', id: wallId }, plan.document, [
 			'shape'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -539,7 +615,7 @@ function wallKnotDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, wallRefusalWords(plan.rejection.code, plan.rejection.message));
 		return preparedLayoutCandidate(request, 'layout-wall-knot-delete', { kind: 'wall', id: wallId }, plan.document, [
 			'shape'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -556,7 +632,7 @@ function wallStraightenPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
 		return preparedLayoutCandidate(request, 'layout-wall-straighten', { kind: 'wall', id: wallId }, plan.document, [
 			'shape'
-		]);
+		], { surfaceLineage: [] });
 	});
 }
 
@@ -573,7 +649,7 @@ function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planWallFirstRoomMove(request.snapshot.domain.source.units.layout.data, roomId, [deltaX, deltaZ]);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return preparedLayoutCandidate(request, 'layout-room-move', { kind: 'room', id: roomId }, plan.document, ['position']);
+		return preparedLayoutCandidate(request, 'layout-room-move', { kind: 'room', id: roomId }, plan.document, ['position'], { surfaceLineage: [] });
 	});
 }
 
@@ -613,7 +689,8 @@ function junctionMovePlanner(): DomainPlanner<ProjectEnvelope> {
 			'layout-junction-move',
 			{ kind: 'wall', id: wallId },
 			plan.document,
-			['start', 'end']
+			['start', 'end'],
+			{ surfaceLineage: [] }
 		);
 	});
 }
@@ -671,7 +748,8 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 			'layout-opening-measure',
 			{ kind: 'opening', id: openingId },
 			plan.document,
-			[field]
+			[field],
+			{ surfaceLineage: [] }
 		);
 	});
 }
@@ -708,7 +786,8 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 			'layout-entity-name',
 			{ kind: subjectKind, id: subjectId },
 			plan.document,
-			['name']
+			['name'],
+			{ surfaceLineage: [] }
 		);
 	});
 }
@@ -744,7 +823,8 @@ function roomOverheadPlanner(): DomainPlanner<ProjectEnvelope> {
 			LAYOUT_ROOM_OVERHEAD_KIND,
 			{ kind: 'room', id: roomId },
 			plan.document,
-			['overhead']
+			['overhead'],
+			{ surfaceLineage: [] }
 		);
 	});
 }
@@ -778,7 +858,7 @@ function spaceRemovePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'room', id: roomId },
 			plan.document,
 			['rooms', 'objects', 'openings', 'junctions'],
-			{ retired: true }
+			{ retired: true, surfaceLineage: plan.surfaceLineage }
 		);
 	});
 }
@@ -862,7 +942,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'object', id: objectId },
 			plan.document,
 			['objects'],
-			{ created: true, id: objectId }
+			{ created: true, id: objectId, surfaceLineage: [] }
 		);
 	});
 }

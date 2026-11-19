@@ -1,6 +1,7 @@
 import { countWork } from '@portfolio/layout-core';
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, type Material } from 'three';
 import type { IndexedWallMesh, WallMeshSurfaceKey } from '$lib/layout/wall-mesh-builder';
+import type { LayoutWallSide } from '@portfolio/layout-core';
 
 /**
  * A material the adapter holds for one surface class. `material` is used as-is
@@ -17,7 +18,8 @@ export type ResolvedWallMaterial = {
 
 export type WallMeshMaterialFactory = (
 	surfaceKey: WallMeshSurfaceKey,
-	mesh: IndexedWallMesh
+	mesh: IndexedWallMesh,
+	paintSide?: LayoutWallSide
 ) => ResolvedWallMaterial;
 
 export type WallBufferGeometry = {
@@ -54,7 +56,7 @@ export function toWallBufferGeometry(mesh: IndexedWallMesh, resolve: WallMeshMat
 	const materials: Material[] = [];
 	const releases: Array<() => void> = [];
 	for (const [materialIndex, group] of mesh.materialGroups.entries()) {
-		const resolved = resolve(group.surfaceKey, mesh);
+		const resolved = resolve(group.surfaceKey, mesh, group.paintSide);
 		materials.push(resolved.material);
 		if (resolved.release) releases.push(resolved.release);
 		geometry.addGroup(group.start, group.count, materialIndex);

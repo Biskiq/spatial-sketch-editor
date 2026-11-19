@@ -296,13 +296,13 @@ A selected Region's Card is its editor surface: kind, name, floor-relative and w
 thickness, exact Width and Depth (scaled about the footprint's bounds centre), Area, and the
 derived **Relations** list. Each related Wall reads **Meets**, **Crosses**, or a measured **Gap**,
 with that gap's one-shot fit and **Mark intended**; intentional gaps keep their Wall reference
-through topology edits. The selected edge's scoped actions offer **Add corner here**; the Card
-offers both Space and Wall fits where they apply, and **Duplicate**. Corner knobs move footprint points and
-dragging one onto its neighbours' chord removes it; the body drags to move, the turn mark
-rotates, and the height ray sets elevation. A release is one accepted intent and one history
-entry; a refused or no-op release changes no document. Erase removes a Region and, for a floor
-Region, first discloses the derived count of Scene roots resting on it — a read, never a Scene
-write.
+through topology edits. Picking an edge on the Stage adds **Add corner here** to the Region's
+scoped actions; the Card offers both Space and Wall fits where they apply, and **Duplicate**.
+Corner knobs move footprint points and dragging one onto its neighbours' chord removes it; the
+body drags to move, the turn mark rotates, and the height ray sets elevation. A release is one
+accepted intent and one history entry; a refused or no-op release changes no document. Erase
+removes a Region and, for a floor Region, first discloses the derived count of Scene roots
+resting on it — a read, never a Scene write.
 
 The selected Region's gaps are measured dimensions on the Stage; an unselected Region draws no
 cue. **Lift** consumes the typed overhead sources, so a Flat Roof is lifted with Room lids,
@@ -313,15 +313,23 @@ ends the reading, and Preview and Look-through render as built with no Lift stat
 groups Regions, and a Space's Card lists the Regions over it and reads **Open to sky · under
 *name*** where a Flat Roof applies. Height Sheet ticks expose Region tops and undersides.
 
-`resolveLayoutSurfaceReference` is the Layout-local resolver for those references:
-a region `top`, `underside` or `edge`, or a Space `floor` or `lid`. It resolves the
-authored identity plus face against canonical compiled output, so move, footprint,
-elevation and thickness edits keep the same reference valid; deleting the subject
-leaves it unresolved (`missing-region`/`missing-space`) rather than resolving a
-coincident successor. A closed Space's generated lid resolves; an open-to-sky lid is
-`open-to-sky` while its floor still resolves. The matching downward query is
-`queryOverheadSupports`, which reports closed lids and overhead-region undersides and
-treats open-to-sky as no lid.
+`resolveLayoutSurfaceReference` is the Layout-local geometry resolver. The canonical
+tagged `LayoutSurfaceRef` names authored identities and fixed roles:
+`{ kind: 'wall-side', wallId, side }`, `{ kind: 'room-floor', roomId }`,
+`{ kind: 'room-lid', roomId }`, and `{ kind: 'region-face', regionId, face }` where
+`face` is `top`, `underside` or `edge`. Region and Room variants preserve the ids and
+face meanings V1d exposed as `{ regionId, surface }` and `{ roomId, surface }`; S5a
+retags that one union and adds Wall sides. It does not create a second surface identity
+API. The geometry resolver takes the region/Space subset supported by compiled output;
+its behavior and `CompiledRegion.faces[].surface` geometry tags remain unchanged.
+
+The authored `resolveLayoutSurface` reads identity lifecycle only. A move, footprint,
+elevation or thickness edit keeps a stable reference; deleting the subject retires it
+rather than redirecting it to a coincident successor. A closed Space lid resolves; an
+open-to-sky lid is dormant while its floor remains present. `surfacesOfSpace` and
+`spaceOfSurface` read the oriented authored boundary for per-surface membership.
+`queryOverheadSupports` remains the matching downward geometry query, reporting closed
+lids and overhead-region undersides and treating open-to-sky as no lid.
 
 ## Input and validation
 

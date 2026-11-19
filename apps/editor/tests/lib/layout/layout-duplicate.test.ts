@@ -427,6 +427,18 @@ describe('P23.4 isolated Room duplicate', () => {
 		const clone = plan.document.rooms.find((room) => room.id === capturedId(capture, 'room-1-copy'))!;
 		expect(clone).toBeDefined();
 		expect(clone.name).toBe('Alone copy');
+		expect(plan.surfaceLineage).toContainEqual({
+			to: { kind: 'wall-side', wallId: capturedId(capture, 'wall-a1-copy'), side: 'left' },
+			from: [{ kind: 'wall-side', wallId: 'wall-a1', side: 'left' }]
+		});
+		expect(plan.surfaceLineage).toContainEqual({
+			to: { kind: 'room-floor', roomId: capturedId(capture, 'room-1-copy') },
+			from: [{ kind: 'room-floor', roomId: 'room-1' }]
+		});
+		expect(plan.surfaceLineage).toContainEqual({
+			to: { kind: 'room-lid', roomId: capturedId(capture, 'room-1-copy') },
+			from: [{ kind: 'room-lid', roomId: 'room-1' }]
+		});
 
 
 		const cloneWallIds = new Set(plan.createdWallIds);

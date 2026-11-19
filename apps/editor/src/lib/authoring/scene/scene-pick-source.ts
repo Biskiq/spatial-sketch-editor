@@ -45,7 +45,12 @@ export type PickOptions = {
 export type SceneRenderedHit = {
 	readonly entityId: string | null;
 	readonly kind: 'entity' | 'floor' | 'layout';
+	/** The owned Layout subject under this mesh hit, when it has one. */
+	readonly layoutId?: string;
+	readonly layoutKind?: 'wall' | 'wall-failure' | 'object' | 'floor' | 'region';
 	readonly wallId?: string;
+	/** A qualified exterior Wall side, only on paintable front/back face strips. */
+	readonly wallSide?: 'left' | 'right';
 	readonly region?: LayoutRegionSurfaceRef;
 	readonly wallNormal?: [number, number, number];
 	readonly distanceMeters: number;
@@ -144,8 +149,10 @@ export function createScenePickSource() {
 		const surface = identity?.kind === 'region' && hit.faceIndex != null
 			? regionSurfaceOf(object.geometry, hit.faceIndex) : undefined;
 		return {
-			...(surface ? { region: { regionId: identity!.id, surface } } : {}),
-			...(face?.kind === 'wall' ? { wallId: face.segmentId } : {}),
+			...(surface ? { region: { kind: 'region-face' as const, regionId: identity!.id, face: surface } } : {}),
+			...(identity === null ? {} : { layoutId: identity.id, layoutKind: identity.kind }),
+			...(face?.paintSide === undefined ? {} : { wallId: face.segmentId, wallSide: face.paintSide }),
+			...(face?.kind === 'wall' && face.paintSide === undefined ? { wallId: face.segmentId } : {}),
 			...(normal === null ? {} : { wallNormal: normal.toArray() }),
 			...(faceNormal === undefined ? {} : { normal: faceNormal }),
 			entityId,
@@ -172,8 +179,8 @@ export function createScenePickSource() {
 	function nearest(candidate: SceneRenderedHit, current: SceneRenderedHit | null): SceneRenderedHit {
 		if (current === null) return candidate;
 		if (Math.abs(candidate.distanceMeters - current.distanceMeters) <= LAYOUT_SLICE_CONTACT_METERS) {
-			if (candidate.region?.surface === 'top' && current.kind === 'floor') return candidate;
-			if (current.region?.surface === 'top' && candidate.kind === 'floor') return current;
+			if (candidate.region?.face === 'top' && current.kind === 'floor') return candidate;
+			if (current.region?.face === 'top' && candidate.kind === 'floor') return current;
 		}
 		if (candidate.distanceMeters < current.distanceMeters) return candidate;
 		if (candidate.distanceMeters === current.distanceMeters && (candidate.entityId ?? '') < (current.entityId ?? '')) return candidate;
@@ -258,7 +265,7 @@ export function createScenePickSource() {
 					// so the ray continues to the next hit behind it (test 10).
 					if (options.hiddenAt?.(hit.point.toArray(), hit.object) === true) continue;
 					const candidate = describeHit(hit, target.id);
-					if (closest && candidate.region?.surface !== 'top') continue;
+					if (closest && candidate.region?.face !== 'top') continue;
 					closest = nearest(candidate, closest);
 					if (closest.kind !== 'floor' || target.id !== null) break;
 				}

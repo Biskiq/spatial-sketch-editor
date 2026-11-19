@@ -48,6 +48,7 @@ import {
 } from './layout-room-reconciliation';
 import type { LayoutDocumentIssue } from './layout-issue';
 import type { LayoutVec2 } from './layout-coordinates';
+import { roomSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
 import {
 	allocateCapturedId,
 	layoutWorkingLevelIssue,
@@ -125,6 +126,7 @@ export type WallFirstOpPlan =
 				roomId: string;
 				kind: 'created';
 			}>;
+			surfaceLineage: LayoutSurfaceLineage;
 			retiredRoomIds: readonly string[];
 			/** Why an open Space retired; SP1c reads these for consequence lines. */
 			spaceRetirements?: readonly SpaceRetirement[];
@@ -205,6 +207,7 @@ function runRoomBirthOperation(options: {
 		lineage: result.lineage
 			.filter((record) => record.kind === 'created')
 			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const })),
+		surfaceLineage: roomSurfaceLineage(result.lineage),
 		retiredRoomIds: result.retiredRoomIds
 	}));
 }
@@ -367,6 +370,7 @@ function planWallRemovalSet(
 	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
 	let retiredRoomIds: readonly string[] = [];
 	let spaceRetirements: readonly SpaceRetirement[] = [];
+	let surfaceLineage: LayoutSurfaceLineage = [];
 	const extraction = extractBoundaryCandidateFaces(candidate);
 	if (extraction.faces.length > 0 || document.rooms.length > 0) {
 		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
@@ -428,6 +432,7 @@ function planWallRemovalSet(
 			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
 		retiredRoomIds = [...result.retiredRoomIds];
 		spaceRetirements = result.spaceRetirements;
+		surfaceLineage = roomSurfaceLineage(result.lineage);
 	}
 
 	// I8 — prune Junctions the operation released. A released endpoint is kept
@@ -464,6 +469,7 @@ function planWallRemovalSet(
 		kind: 'success',
 		document: committed,
 		lineage,
+		surfaceLineage,
 		retiredRoomIds,
 		spaceRetirements
 	}));
@@ -641,6 +647,7 @@ export function planRoomMetadataUpdate(
 		kind: 'success',
 		document: committed,
 		lineage: [],
+		surfaceLineage: [],
 		retiredRoomIds: []
 	}));
 }
@@ -763,6 +770,7 @@ export function planWallMetadataUpdate(
 		kind: 'success',
 		document: committed,
 		lineage: [],
+		surfaceLineage: [],
 		retiredRoomIds: []
 	}));
 }
@@ -821,6 +829,7 @@ export function planOpeningMetadataUpdate(
 		kind: 'success',
 		document: committed,
 		lineage: [],
+		surfaceLineage: [],
 		retiredRoomIds: []
 	}));
 }
@@ -1003,6 +1012,7 @@ export function planRemoveSpace(
 		kind: 'success',
 		document: committed,
 		lineage: [],
+		surfaceLineage: [],
 		retiredRoomIds: [roomId],
 		spaceRetirements: [{ roomId, reason: 'explicit-remove' }]
 	}));

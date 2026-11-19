@@ -23,12 +23,19 @@ import {
 	nextLayoutPresetObjectId,
 	planCreateWallFirstOpening,
 	planWallChain,
+	surfaceKey,
 	setWorkObserver,
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
-import type { PlannerRequest } from '@portfolio/project-model';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import type { PlannerRequest, PreparedCandidate } from '@portfolio/project-model';
+import {
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	canonicalUnitJson,
+	replaceUnitData,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
@@ -46,7 +53,12 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
-import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
+import {
+	createLayoutPlanners,
+	layoutPlanner,
+	layoutSubjectOf,
+	registerLayoutSurfaceLineage
+} from '$lib/authoring/adapters/layout/precision';
 import {
 	createDrawingPlanners,
 	LAYOUT_CIRCLE_RADIUS_KIND,
@@ -160,7 +172,8 @@ describe('T1.P01.S04 — Layout precision', () => {
 		// The precision set S05 shipped plus S02's two drawing operations, S03's
 		// two Opening operations, A4's Room duplicate and SP2's Room tool, on the one registry,
 		// admission and coordinator: no family owns a second acceptance path.
-		expect(host.coordinator().planners()).toHaveLength(
+		const registeredPlanners = host.coordinator().planners();
+		expect(registeredPlanners).toHaveLength(
 			createLayoutPlanners().length +
 				createDrawingPlanners().length +
 				createSplitPlanners().length +
@@ -172,7 +185,12 @@ describe('T1.P01.S04 — Layout precision', () => {
 				createRegionPlanners().length +
 				1
 		);
-		expect(host.coordinator().planners().map(({ kind }) => kind)).toContain('layout-open-space-create');
+		expect(registeredPlanners.every((planner) =>
+			planner.admission.domain === 'layout' &&
+			planner.admission.compound === true &&
+			planner.admission.writes?.includes('scene') === true
+		)).toBe(true);
+		expect(registeredPlanners.map(({ kind }) => kind)).toContain('layout-open-space-create');
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',
 			'layout-junction-move',
@@ -399,6 +417,62 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(instrument.proposalLive()).toBe(true);
 		expect(host.history().undoUnavailableReason).toContain('proposal is live');
 		expect(await host.undo()).toMatchObject({ kind: 'unavailable', reason: 'live-proposal' });
+	});
+
+	it('requires lineage on every prepared Layout operation and keeps an all-painted Scene byte-identical for explicit empty lineage', async () => {
+		const { host, wallId, document } = await mount();
+		const accepted = host.coordinator().acceptedSnapshot();
+		const acceptedSource = accepted.domain.source;
+		const unsortedSurfaceFinishes: NonNullable<typeof acceptedSource.units.scene.data.surfaceFinishes> = [
+			{ surface: { kind: 'wall-side', wallId, side: 'left' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'wall-side', wallId, side: 'right' }, finish: { materialId: 'velvet-dark' } },
+			{ surface: { kind: 'room-floor', roomId: document.rooms[0]!.id }, finish: { materialId: 'brass-aged' } },
+			{ surface: { kind: 'room-lid', roomId: document.rooms[0]!.id }, finish: { materialId: 'paper-aged' } }
+		];
+		const surfaceFinishes = unsortedSurfaceFinishes.sort((left, right) =>
+			surfaceKey(left.surface) < surfaceKey(right.surface)
+				? -1
+				: surfaceKey(left.surface) > surfaceKey(right.surface) ? 1 : 0
+		);
+		const paintedScene = { ...acceptedSource.units.scene.data, surfaceFinishes };
+		const paintedSource = replaceUnitData(acceptedSource, 'scene', paintedScene);
+		const snapshot = { ...accepted, domain: { ...accepted.domain, source: paintedSource } };
+		const candidate: PreparedCandidate<ProjectEnvelope> = {
+			operationId: 't12-missing-lineage',
+			sourceKind: UNIT_SOURCE_KIND,
+			sourceVersion: UNIT_SOURCE_VERSION,
+			source: paintedSource,
+			changes: [],
+			correspondence: [],
+			diagnostics: []
+		};
+		const request: PlannerRequest<ProjectEnvelope> = {
+			snapshot,
+			intent: {
+				version: 1,
+				kind: 't12-missing-lineage',
+				operationId: candidate.operationId,
+				expectedRevision: accepted.acceptedRevision,
+				targets: [], payload: {}, capturedInputs: [], allocatedIds: []
+			},
+			capturedInputs: [],
+			allocatedIds: []
+		};
+		const missingLineage = layoutPlanner('t12-missing-lineage', () => ({ kind: 'prepared', candidate })).prepare(request);
+		expect(missingLineage).toMatchObject({ kind: 'rejected', code: 'surface_lineage_invalid' });
+
+		const explicitEmptyCandidate = { ...candidate, operationId: 't12-explicit-empty-lineage' };
+		registerLayoutSurfaceLineage(explicitEmptyCandidate, []);
+		const explicitEmpty = layoutPlanner('t12-explicit-empty-lineage', () => ({
+			kind: 'prepared', candidate: explicitEmptyCandidate
+		})).prepare({
+			...request,
+			intent: { ...request.intent, kind: 't12-explicit-empty-lineage', operationId: explicitEmptyCandidate.operationId }
+		});
+		expect(explicitEmpty.kind).toBe('prepared');
+		if (explicitEmpty.kind !== 'prepared') return;
+		expect(explicitEmpty.candidate.source.units.scene.data.surfaceFinishes).toEqual(surfaceFinishes);
+		expect(canonicalUnitJson(explicitEmpty.candidate.source.units.scene.data)).toBe(canonicalUnitJson(paintedScene));
 	});
 
 	it('refuses a stale floor datum and a mismatched captured object id', async () => {

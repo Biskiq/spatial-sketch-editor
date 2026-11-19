@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { T, useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
+	import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { createRegionRepresentation } from '$lib/render/layout-region-representation';
 	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
@@ -9,12 +11,13 @@
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
-	import type { SceneTreatment } from '$lib/content/scene';
+	import type { RuntimeScene, SceneTreatment } from '$lib/content/scene';
 	import RoomPortal from '$lib/render/layout/RoomPortal.svelte';
 	import GroundPlinth from '$lib/render/layout/GroundPlinth.svelte';
 
 	let {
 		geometry,
+		scene = null,
 		textureScope = null,
 		treatment = undefined,
 		plinth = true,
@@ -26,6 +29,7 @@
 		onIdentity
 	}: {
 		geometry: CompiledLayoutGeometry;
+		scene?: RuntimeScene | null;
 		textureScope?: TextureLoadScope | null;
 		/** The World's resolve-time Treatment for default floors, ceilings and walls. */
 		treatment?: SceneTreatment;
@@ -79,6 +83,8 @@
 	const resources = useRenderResources();
 	const materials = resources.materials;
 	const { invalidate } = useThrelte();
+	const resolveSurfaceLook: SceneSurfaceLookResolver = (surface) =>
+		scene === null ? null : resolveSceneSurfaceLook(scene, surface, treatment);
 
 	/**
 	 * The retained Wall representation: one imperative subtree for every compiled
@@ -86,7 +92,7 @@
 	 * `cacheKey` or whose Junction end geometry moved and releases a superseded
 	 * buffer in the same update.
 	 */
-	const walls = createWallRepresentation(materials, treatment);
+	const walls = createWallRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook);
 
 	// Update and teardown are separate effects on purpose: Svelte runs a
 	// returned cleanup before each re-run of the same effect, and `geometry`
@@ -125,7 +131,7 @@
 	 * three materials for every Room. The shell mounts its root once — there is no
 	 * per-Room component, geometry component or material component left.
 	 */
-	const rooms = createRoomRepresentation(materials, treatment);
+	const rooms = createRoomRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook);
 	const regions = createRegionRepresentation(materials);
 	$effect(() => { if (regions.update(geometry)) invalidate(); });
 
@@ -140,7 +146,13 @@
 		if (walls.setTreatment(treatment)) invalidate();
 	});
 	$effect(() => {
+		if (walls.setScene(scene, textureScope)) invalidate();
+	});
+	$effect(() => {
 		if (rooms.setTreatment(treatment)) invalidate();
+	});
+	$effect(() => {
+		if (rooms.setScene(scene, textureScope)) invalidate();
 	});
 
 	/**

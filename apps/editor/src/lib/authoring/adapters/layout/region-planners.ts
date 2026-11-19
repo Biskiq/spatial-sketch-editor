@@ -249,7 +249,10 @@ function regionPlanOutcome(
 		{
 			...(options.created === true ? { created: true } : {}),
 			...(options.retired === true ? { retired: true } : {}),
-			id: regionId
+			id: regionId,
+			// Region faces are authored identities, not Scene Finish subjects: no
+			// assignment survives a Region topology edit, so their lineage is empty.
+			surfaceLineage: []
 		}
 	);
 }
@@ -696,7 +699,7 @@ function regionFitWallsPlanner(): DomainPlanner<ProjectEnvelope> {
 			{ kind: 'region', id: regionId },
 			plan.document,
 			['regions', 'walls'],
-			{ id: regionId }
+			{ id: regionId, surfaceLineage: [] }
 		);
 		return outcome;
 	});

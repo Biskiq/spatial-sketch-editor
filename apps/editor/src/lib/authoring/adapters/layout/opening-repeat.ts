@@ -47,7 +47,7 @@ import {
 } from '@portfolio/project-model/units';
 
 import { layoutSubjectReference } from './drawing-planners';
-import { layoutPlanner } from './precision';
+import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
 
 export const LAYOUT_OPENING_REPEAT_KIND = 'layout-opening-repeat';
 
@@ -280,6 +280,7 @@ function openingRepeatPlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }

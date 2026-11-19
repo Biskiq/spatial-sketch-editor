@@ -27,7 +27,7 @@ import {
 	type LayoutWall,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { SCENE_UNIT_FORMAT_VERSION, type CameraFreeSceneDocument, type ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	evaluateViewport,
 	facePoseFromBounds,
@@ -106,14 +106,16 @@ function curvedDocument(): LayoutDocumentWallFirst {
 	return document;
 }
 
-function scene() {
+function scene(): CameraFreeSceneDocument {
 	return {
-		formatVersion: 1 as const,
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
 		textures: [],
 		materials: [],
 		entities: [],
-		navigationNodes: [],
-		connections: []
+		surfaceFinishes: [
+			{ surface: { kind: 'wall-side', wallId: 'wall-a', side: 'left' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'wall-side', wallId: 'wall-a', side: 'right' }, finish: { materialId: 'velvet-dark' } }
+		]
 	};
 }
 
@@ -271,6 +273,31 @@ afterEach(() => {
 });
 
 describe('T1 A6 — Face this Wall', () => {
+	it('uses lateral inference only for Plan hits and requires the 3D Wall face tag', async () => {
+		const mounted = await mount(straightDocument());
+		const snapshot = mounted.facade.snapshot();
+		const hit = {
+			sourceId: mounted.wallId,
+			sourceKind: 'wall' as const,
+			generationId: snapshot.compileGeneration,
+			stream: 'projected' as const,
+			subRef: null,
+			worldPoint: [3, FLOOR_Y + 1, 0.1] as [number, number, number]
+		};
+		expect(mounted.facade.paintAnswer('layout', hit, '3d')).toMatchObject({ kind: 'refused' });
+		expect(mounted.facade.paintAnswer('layout', hit, 'plan')).toMatchObject({
+			kind: 'paintable-surface',
+			surface: { kind: 'wall-side', wallId: mounted.wallId, side: 'left' }
+		});
+		expect(mounted.facade.paintAnswer('layout', {
+			...hit,
+			subRef: { kind: 'component', componentId: 'side:right' }
+		}, '3d')).toMatchObject({
+			kind: 'paintable-surface',
+			surface: { kind: 'wall-side', wallId: mounted.wallId, side: 'right' }
+		});
+	});
+
 	it('[cap:layout.wall-face core] offers the real action, frames the straight Wall and puts the exact standpoint back', async () => {
 		const mounted = await mount(straightDocument());
 		selectWall(mounted.facade, mounted.wallId);

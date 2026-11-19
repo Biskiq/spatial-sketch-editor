@@ -12,10 +12,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
+	resolveLayoutSurface,
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	SCENE_UNIT_FORMAT_VERSION,
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
@@ -26,6 +31,7 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { stageCardActions } from '$lib/authoring/stage/stage-contributions';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
+import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { captureFor } from '../layout/__fixtures__/layout-id-capture';
 
@@ -54,18 +60,19 @@ function isolatedRoom(): LayoutDocumentWallFirst {
 
 async function mount() {
 	const layout = isolatedRoom();
+	const paintedSurface = { kind: 'wall-side', wallId: layout.walls[0]!.id, side: 'left' } as const;
+	const scene: CameraFreeSceneDocument = {
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
+		textures: [],
+		materials: [],
+		entities: [],
+		surfaceFinishes: [{ surface: paintedSurface, finish: { materialId: 'marble-light' } }]
+	};
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'X1 lift action',
 		layout,
-		scene: {
-			formatVersion: 1,
-			textures: [],
-			materials: [],
-			entities: [],
-			navigationNodes: [],
-			connections: []
-		}
+		scene
 	});
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-t1-x1-lift-action',
@@ -96,6 +103,7 @@ async function mount() {
 		facade,
 		host,
 		roomId,
+		paintedSurface,
 		roomName: stageEnvelope(facade.snapshot()).units.layout.data.rooms[0]!.name,
 		liftAction: () =>
 			stageCardActions(facade, subject as never).find((action) => action.id === 'layout-room-lift')
@@ -104,6 +112,7 @@ async function mount() {
 
 afterEach(() => {
 	interiorLift.clear();
+	sliceReading.clear();
 });
 
 describe('T1 X1 — the Room Card offers Lift', () => {
@@ -112,6 +121,12 @@ describe('T1 X1 — the Room Card offers Lift', () => {
 		const beforeHistory = mounted.host.history();
 		const beforeRevision = mounted.facade.snapshot().acceptedRevision;
 		const beforeDocument = stageEnvelope(mounted.facade.snapshot()).units.layout.data;
+		const beforeScene = stageEnvelope(mounted.facade.snapshot()).units.scene.data;
+		const beforeEnvelopeBytes = mounted.facade.snapshot().canonicalJson;
+		expect(resolveLayoutSurface(beforeDocument, mounted.paintedSurface)).toBe('present');
+		expect(beforeScene.surfaceFinishes).toEqual([
+			{ surface: mounted.paintedSurface, finish: { materialId: 'marble-light' } }
+		]);
 
 		expect(mounted.liftAction()?.label).toBe('Lift');
 		const outcome = await mounted.liftAction()!.run();
@@ -121,6 +136,9 @@ describe('T1 X1 — the Room Card offers Lift', () => {
 
 		// A reading writes no document, adds no history and moves no revision.
 		expect(stageEnvelope(mounted.facade.snapshot()).units.layout.data).toEqual(beforeDocument);
+		expect(stageEnvelope(mounted.facade.snapshot()).units.scene.data).toEqual(beforeScene);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeEnvelopeBytes);
+		expect(resolveLayoutSurface(stageEnvelope(mounted.facade.snapshot()).units.layout.data, mounted.paintedSurface)).toBe('present');
 		expect(mounted.host.history()).toEqual(beforeHistory);
 		expect(mounted.facade.snapshot().acceptedRevision).toEqual(beforeRevision);
 
@@ -128,6 +146,23 @@ describe('T1 X1 — the Room Card offers Lift', () => {
 		expect(back).toEqual({ kind: 'accepted' });
 		expect(interiorLift.isActive()).toBe(false);
 		expect(mounted.liftAction()?.label).toBe('Lift');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeEnvelopeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+	});
+
+	it('keeps a painted Wall-side identity and accepted Scene unchanged during a Level cut', async () => {
+		const mounted = await mount();
+		const beforeEnvelopeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeScene = stageEnvelope(mounted.facade.snapshot()).units.scene.data;
+		const beforeHistory = mounted.host.history();
+		const beforeRevision = mounted.facade.snapshot().acceptedRevision;
+
+		sliceReading.level();
+		expect(sliceReading.reading).toEqual({ kind: 'level', depth: { kind: 'to-floor' } });
+		expect(resolveLayoutSurface(stageEnvelope(mounted.facade.snapshot()).units.layout.data, mounted.paintedSurface)).toBe('present');
+		expect(stageEnvelope(mounted.facade.snapshot()).units.scene.data).toEqual(beforeScene);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeEnvelopeBytes);
+		expect(mounted.facade.snapshot().acceptedRevision).toEqual(beforeRevision);
 		expect(mounted.host.history()).toEqual(beforeHistory);
 	});
 

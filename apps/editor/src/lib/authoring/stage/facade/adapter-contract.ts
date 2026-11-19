@@ -1,7 +1,7 @@
 import type { SubjectScope } from '../subject-scope';
 import type { Component, Snippet } from 'svelte';
 import type { PointerRay, Vec3, ViewingIntent, ViewingIntentResult, ViewportCameraState, ViewportEvaluation, WorkingPlane, WorkingPlaneHit } from '@portfolio/camera-core';
-import type { PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef } from '@portfolio/layout-core';
+import type { LayoutSurfaceRef, PlanSourceKind, PlanSourceRef, PlanStream, PlanSubRef } from '@portfolio/layout-core';
 import type { CameraOutputRefusal, F4JsonValue, SceneFormSource, SemanticReference } from '@portfolio/project-model';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import type { StageReadSnapshot } from '../accepted-read';
@@ -55,6 +55,9 @@ export type StageSourceHit = {
 	readonly worldPoint: Vec3;
 };
 
+/** The evaluated Stage reading for a Paint query; it is not part of selection identity. */
+export type StagePaintReading = 'plan' | '3d';
+
 /**
  * A binding's answer to the Eraser for one of its own subjects: its existing Card
  * delete action (with the planner-derived disclosure it already shows), or a
@@ -74,12 +77,19 @@ export type StageEraseAnswer =
 	| { readonly kind: 'refused'; readonly message: string };
 
 /**
- * A binding's answer to Paint for one of its own winners. Paint assigns a whole
- * object; it never edits the Finish, so this answer carries only eligibility and
- * the entity id the Scene adapter already knows.
+ * A binding's answer to Paint for one of its own winners. Scene entities are
+ * assigned whole-object Finishes; Layout surfaces carry stable authored refs.
+ * Paint never edits the Finish itself, so this answer carries eligibility and
+ * the identity the owning domain already knows.
  */
+export type StagePaintSpaceScope =
+	| { readonly kind: 'unique'; readonly roomId: string; readonly surfaces: readonly LayoutSurfaceRef[] }
+	| { readonly kind: 'none' }
+	| { readonly kind: 'ambiguous'; readonly roomIds: readonly string[] };
+
 export type StagePaintAnswer =
 	| { readonly kind: 'paintable'; readonly entityId: string }
+	| { readonly kind: 'paintable-surface'; readonly surface: LayoutSurfaceRef; readonly space: StagePaintSpaceScope }
 	| { readonly kind: 'refused'; readonly message: string };
 
 export type StageOverlayContribution = {
@@ -557,7 +567,7 @@ export type StageAdapterBinding = {
 	 * which Scene entity does the hit name? Additive and optional; a binding that
 	 * declares `paint` but answers `null` paints nothing.
 	 */
-	readonly paintAnswer?: (hit: StageSourceHit) => StagePaintAnswer | null;
+	readonly paintAnswer?: (hit: StageSourceHit, reading: StagePaintReading) => StagePaintAnswer | null;
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
 	 * the press from the host's navigation gesture; the same binding then receives

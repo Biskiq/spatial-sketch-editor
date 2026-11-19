@@ -52,6 +52,7 @@ import type {
 } from '../f4/types';
 import type { PlannerRegistry, PrepareResult } from '../f4/prepare';
 import { createUnitTargetInspector, prepareUnitIntent } from '../f4/unit-acceptance';
+import { newlyRetiredSurfaceReferenceKeys } from '../scene-planning/surface-lineage';
 import {
 	computeEnvelopeSourceContentId,
 	computeUnitContentRevision,
@@ -511,6 +512,23 @@ export function createUnitAcceptanceAdapter(
 			issues.push(...unitHeaderIssues(before, after));
 			issues.push(...unitLockIssues(before, after));
 			const changed = changedDomains(before, after);
+			// Layout references are repairable diagnostics on load, but an accepted
+			// operation may not introduce a newly retired identity. Compare the
+			// before/after orphan key sets so removing one old orphan cannot mask a
+			// different assignment becoming orphaned in the same compound candidate.
+			const newSurfaceOrphans = newlyRetiredSurfaceReferenceKeys({
+				beforeScene: before.units.scene.data,
+				beforeLayout: before.units.layout.data,
+				afterScene: after.units.scene.data,
+				afterLayout: after.units.layout.data
+			});
+			if (newSurfaceOrphans.length > 0) {
+				issues.push(issue(
+					'$.units.scene.data.surfaceFinishes',
+					'surface-reference-orphaned',
+					`the candidate introduces retired surface reference "${newSurfaceOrphans[0]}"`
+				));
+			}
 			// Two admissions hold, in this order: the host profile grants compound
 			// installs at all, and the producing planner's declaration says which
 			// domains this operation may write. An adapter-wide grant alone never

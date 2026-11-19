@@ -23,7 +23,8 @@ import {
 	resolveReference,
 	type AcceptedRevision,
 	type AuthoringIntent,
-	type SemanticReference
+	type SemanticReference,
+	type SceneSurfaceFinish
 } from '@portfolio/project-model';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -918,6 +919,50 @@ describe('F.2 unit acceptance — authored envelope metadata is not planner-writ
 			resources: false
 		}) ?? [];
 		expect(issues.filter((issue) => issue.code === 'lock-metadata-mismatch')).toEqual([]);
+	});
+
+	it('refuses a newly orphaned surface identity even when the same candidate removes an old orphan', async () => {
+		const base = await envelope();
+		const layout = createEmptyWallFirstLayoutDocument();
+		layout.junctions = [
+			{ id: 'j-live-a', point: [0, 0] },
+			{ id: 'j-live-b', point: [4, 0] }
+		];
+		layout.walls = [{
+			id: 'wall-live', startJunctionId: 'j-live-a', endJunctionId: 'j-live-b',
+			thickness: 0.2, height: 3, centerline: { kind: 'line' }
+		}];
+		const withLayout = await normalizeUnitEnvelope(replaceUnitData(base, 'layout', layout));
+		const oldOrphan: SceneSurfaceFinish = {
+			surface: { kind: 'wall-side' as const, wallId: 'old-orphan', side: 'left' as const },
+			finish: { materialId: 'velvet-dark' as const }
+		};
+		const liveAssignment: SceneSurfaceFinish = {
+			surface: { kind: 'wall-side' as const, wallId: 'wall-live', side: 'right' as const },
+			finish: { materialId: 'marble-light' as const }
+		};
+		const source = await normalizeUnitEnvelope(replaceUnitData(withLayout, 'scene', {
+			...withLayout.units.scene.data,
+			surfaceFinishes: [oldOrphan, liveAssignment]
+		}));
+		const adapter = createUnitAcceptanceAdapter({ compound: true });
+		const baselineAdmission = await adapter.admit(source, []);
+		expect(baselineAdmission.kind).toBe('admitted');
+		if (baselineAdmission.kind !== 'admitted') return;
+
+		const afterLayout = { ...source.units.layout.data, junctions: [], walls: [] };
+		const candidate = await normalizeUnitEnvelope(replaceUnitData(
+			replaceUnitData(baselineAdmission.source, 'layout', afterLayout),
+			'scene',
+			{ ...baselineAdmission.source.units.scene.data, surfaceFinishes: [liveAssignment] }
+		));
+		const issues = adapter.validateChange?.(baselineAdmission.source, candidate, {
+			domain: 'layout', compound: true, writes: ['scene'], units: true, resources: false
+		}) ?? [];
+		expect(issues).toContainEqual(expect.objectContaining({
+			path: '$.units.scene.data.surfaceFinishes',
+			code: 'surface-reference-orphaned'
+		}));
 	});
 
 	it('refuses a metadata-writing planner without installing or recording history', async () => {

@@ -17,6 +17,7 @@
  *   rebuild; every buffer is disposed exactly once.
  */
 import { describe, expect, it, vi } from 'vitest';
+import type { RuntimeScene } from '@portfolio/project-model';
 import {
 	BufferGeometry,
 	Group,
@@ -40,10 +41,12 @@ import {
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createRoomRepresentation } from '$lib/render/layout-room-representation';
+import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
 import { LIFTED_RENDER_LAYER } from '$lib/render/render-layers';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { renderIdentityOf } from '$lib/render/render-identity';
 import { startStageCounting } from '../../helpers/stage-counts';
+import { getMaterial } from '$lib/content/materials';
 
 function compiled(document: LayoutDocumentWallFirst): CompiledLayoutGeometry {
 	return compileWallFirstLayoutGeometry(document).geometry;
@@ -201,6 +204,41 @@ describe('E6/R3 — retained Room representation parity', () => {
 		representation.dispose();
 		store.dispose();
 	}, 60_000);
+
+	it('resolves Scene 10 Room floor and lid Finishes through the shared material store', () => {
+		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const roomId = geometry.rooms[0]!.roomId;
+		let scene: RuntimeScene = {
+			textures: [], materials: [], entities: [], objects: [],
+		surfaceFinishes: [
+			{ surface: { kind: 'room-floor', roomId }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'room-lid', roomId }, finish: { materialId: 'velvet-dark' } }
+		]
+		};
+		const store = createMaterialStore();
+		const representation = createRoomRepresentation(
+			store, undefined, scene, null, () => {}, (surface) => resolveSceneSurfaceLook(scene, surface, undefined)
+		);
+		representation.update(geometry);
+		const group = rooms(representation).get(`VisitorRoom:${roomId}`)!;
+		const floor = meshNamed(group, `VisitorFloor:${roomId}`);
+		const lid = meshNamed(group, `VisitorCeiling:${roomId}`);
+		expect(floor.material).toBeInstanceOf(MeshStandardMaterial);
+		expect((floor.material as MeshStandardMaterial).color.getHexString()).toBe(
+			getMaterial('marble-light').fallbackColor.slice(1)
+		);
+		expect(lid.material).toBeInstanceOf(MeshStandardMaterial);
+		expect((lid.material as MeshStandardMaterial).color.getHexString()).toBe(
+			getMaterial('velvet-dark').fallbackColor.slice(1)
+		);
+		const paintedFloor = floor.material;
+		scene = { ...scene, surfaceFinishes: [] };
+		expect(representation.setScene(scene, null)).toBe(true);
+		expect(floor.material).not.toBe(paintedFloor);
+		expect(floor.material).toBeInstanceOf(MeshBasicMaterial);
+		representation.dispose();
+		store.dispose();
+	});
 
 	it('keeps a Room’s group, buffers and identity when its cacheKey did not move', () => {
 		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
