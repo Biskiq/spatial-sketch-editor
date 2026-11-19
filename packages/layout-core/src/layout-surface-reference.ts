@@ -11,6 +11,7 @@ import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
 import type { CompiledLayoutGeometry, CompiledRegion, CompiledRoom } from './layout-geometry-types';
 import type { LayoutVec2 } from './layout-coordinates';
 import { pointStrictlyInsidePolygon, polygonIntersectionArea } from './layout-face-extraction';
+import { polygonContainsPolygon } from './layout-space-outline';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import type { Vec3 } from './types';
 
@@ -407,6 +408,7 @@ export function surfacesOfSpace(document: LayoutDocumentWallFirst, roomId: strin
 		};
 		const footprint = region.footprint.points;
 		const contained = footprint.length >= 3 && outline.length >= 3 &&
+			polygonContainsPolygon(outline, footprint) &&
 			footprint.every((point) => pointStrictlyInsidePolygon(outline, point));
 		if (contained) surfaces.push(reference);
 		else if (footprint.length >= 3 && outline.length >= 3 && polygonIntersectionArea(outline, footprint) > 1e-9) {

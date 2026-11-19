@@ -120,7 +120,8 @@ export function createStagePainter(
 		syncSource();
 		const target = facade.hostToolTarget({ ...input, tool: 'paint' });
 		if (target.kind !== 'hit') return null;
-		const answer = facade.paintAnswer(target.adapterId, target.hit);
+		const reading = facade.evaluation()?.renderedReading === 'plan' ? 'plan' : '3d';
+		const answer = facade.paintAnswer(target.adapterId, target.hit, reading);
 		if (answer === null) {
 			return {
 				adapterId: target.adapterId,

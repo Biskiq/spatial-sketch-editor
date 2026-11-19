@@ -23,7 +23,8 @@ import {
 } from '../scene';
 import { resolveSceneSurfaceFinish } from '../scene-surface-reference';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
-import { surfaceKey } from '@portfolio/layout-core';
+import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
 import { sameSceneValues } from './record-scope';
 
 /** One Finish, as a payload names it. */
@@ -148,13 +149,20 @@ export function finishKeyOfSurface(scene: FinishScene, assignment: SceneSurfaceF
 }
 
 /** Every Scene entity and Layout surface using a Finish, in stable source order. */
-export function usersOfFinish(scene: FinishScene, key: FinishKey): FinishUser[] {
+export function usersOfFinish(
+	scene: FinishScene,
+	key: FinishKey,
+	layout?: LayoutDocumentWallFirst
+): FinishUser[] {
 	return [
 		...scene.entities
 			.filter((entity) => finishOf(entity, scene.materials) === key)
 			.map((entity): FinishUser => ({ kind: 'entity', id: entity.id, entity })),
 		...(scene.surfaceFinishes ?? [])
-			.filter((assignment) => finishKeyOfSurface(scene, assignment) === key)
+			.filter((assignment) =>
+				finishKeyOfSurface(scene, assignment) === key &&
+				(layout === undefined || resolveLayoutSurface(layout, assignment.surface) !== 'retired')
+			)
 			.map((assignment): FinishUser => ({
 				kind: 'surface', key: surfaceKey(assignment.surface), assignment
 			}))

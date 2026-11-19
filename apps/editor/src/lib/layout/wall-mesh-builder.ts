@@ -639,16 +639,21 @@ function buildStandaloneEndBridge(
 	const nB: LayoutVec2 = curNormal;
 	const dirA: LayoutVec2 = [-prevTangent[0], -prevTangent[1]];
 	const dirB: LayoutVec2 = curTangent;
+	// The canonical corner's front/back belongs to `(prev, cur)`, while Finish
+	// identity belongs to the emitted Wall's authored start→end orientation.
+	// Match layout-core's cornerForEnd mapping before assigning either face.
+	const frontPaintSide = ((role === 'prev') === atEnd) ? 'left' : 'right';
+	const backPaintSide = frontPaintSide === 'left' ? 'right' : 'left';
 
 	const faces: Face[] = [];
 	for (const band of bands) {
 		const yLo = room.floorElevation + band.lo;
 		const yHi = room.floorElevation + band.hi;
 		if (band.solidA && band.solidB) {
-			if (front.kind === 'bevel') pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1);
+			if (front.kind === 'bevel') pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1, { ...BRIDGE_PICK, paintSide: frontPaintSide });
 			if (back.kind === 'bevel' && outer) {
-				pushBridgeCap(faces, backA, outer, yLo, yHi, band.lo, band.hi, nA, -1);
-				pushBridgeCap(faces, backB, outer, yLo, yHi, band.lo, band.hi, nB, -1);
+				pushBridgeCap(faces, backA, outer, yLo, yHi, band.lo, band.hi, nA, -1, { ...BRIDGE_PICK, paintSide: backPaintSide });
+				pushBridgeCap(faces, backB, outer, yLo, yHi, band.lo, band.hi, nB, -1, { ...BRIDGE_PICK, paintSide: backPaintSide });
 			}
 		} else if (band.solidA) {
 			pushBridgeCap(faces, frontA, backA, yLo, yHi, band.lo, band.hi, dirA, 1);

@@ -298,4 +298,24 @@ describe('Layout surface identity and lineage', () => {
 		expect(wallSideAt(compiled, 'room:wall:0', [3, -1])).toBe('right');
 		expect(wallSideAt(compiled, 'room:wall:0', [3, 0])).toBeNull();
 	});
+
+	it('excludes a Region whose vertices fit a concave Space but whose edge crosses its notch', () => {
+		const document = g1DocumentWithRooms([
+			g1RoomPolygon('concave-space', [[0, 0], [6, 0], [6, 2], [2, 2], [2, 6], [0, 6]])
+		]);
+		const reference = { kind: 'region-face', regionId: 'straddles-notch', face: 'top' } as const;
+		document.regions.push({
+			id: reference.regionId,
+			role: 'floor',
+			footprint: { kind: 'polygon', points: [[1, 1], [5, 1], [1, 5]] },
+			elevation: 0.2,
+			thickness: 0.2,
+			form: { kind: 'flat' },
+			intendedGaps: []
+		});
+
+		const result = surfacesOfSpace(document, 'concave-space');
+		expect(result.surfaces).not.toContainEqual(reference);
+		expect(result.excluded).toContainEqual({ ref: reference, reason: 'spans-spaces' });
+	});
 });

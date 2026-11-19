@@ -299,8 +299,8 @@ export function createWallRepresentation(
 			};
 		}
 		const surfaceFactory = cutawayNow ? twinFactory().factory : factory.factory;
-		const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
-			const resolved = surfaceFactory(surfaceKey, mesh);
+		const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh, paintSide) => {
+			const resolved = surfaceFactory(surfaceKey, mesh, paintSide);
 			materialsSeen.add(resolved.material);
 			return resolved;
 		};

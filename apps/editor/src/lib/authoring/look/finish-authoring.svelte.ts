@@ -51,7 +51,7 @@ import { surfaceKey } from '@portfolio/layout-core';
 type PaintableWallSide = Extract<SceneSurfaceRef, { readonly kind: 'wall-side' }>;
 import { getMaterial, materials } from '$lib/content/materials';
 import type { ProjectApi } from '$lib/platform/project-persistence';
-import type { StageAdapterServices } from '../stage/stage-adapter-host';
+import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import {
 	createFinishImageFlow,
 	finishImagePin,
@@ -331,9 +331,11 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	 * it, so a shared Finish's reach is the same number everywhere.
 	 */
 	function viewFor(entityId: string): FinishEntityView | null {
-		const current = scene();
-		const entity = entityOf(entityId);
-		if (current === null || entity === null || !isFinishPaintable(entity)) return null;
+		const snapshot = servicesNow()?.stage.snapshot();
+		if (snapshot === undefined) return null;
+		const current = snapshot.domain.scene;
+		const entity = current.entities.find((candidate) => candidate.id === entityId) ?? null;
+		if (entity === null || !isFinishPaintable(entity)) return null;
 		const key = finishOf(entity, current.materials);
 		if (key === null) return null;
 		const ref = finishRefOfKey(key);
@@ -354,7 +356,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			effectiveColorOf(entity, current, (id) => getMaterial(id).fallbackColor) ?? '#c4b4a0';
 		const literal = literalColorOf(entity, current.materials);
 		const follower = followerSlotOf(entity, current.materials);
-		const users = usersOfFinish(current, key).length;
+		const users = usersOfFinish(current, key, stageEnvelope(snapshot).units.layout.data).length;
 		const isModelOwn = key === 'model-own';
 		const colorMapId = instance?.maps?.color ?? null;
 		const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);

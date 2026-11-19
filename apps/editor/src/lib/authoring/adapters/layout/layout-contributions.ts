@@ -28,7 +28,7 @@ import {
 	type StagePaintAnswer,
 	type StagePaintSpaceScope
 } from '$lib/authoring/stage/stage-adapter-host';
-import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
+import { stageEnvelope, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 
 import LayoutInkPalette from './LayoutInkPalette.svelte';
@@ -82,6 +82,7 @@ import {
 	curvedWallFrame,
 	curvedWallPointAt,
 	previewWallStraighten,
+	layoutSurfaceLineageConsequence,
 	wallStraightenIntent,
 	wallStationAtPoint,
 	type WallFrame,
@@ -754,12 +755,25 @@ export function createLayoutContributions({
 			capture: mintLayoutIdCapture(),
 			levelId
 		});
+		const disclosed = preview.kind === 'planned'
+			? (() => {
+				const lineage = layoutSurfaceLineageConsequence({
+					source: stageEnvelope(context.snapshot),
+					beforeLayout: document,
+					afterLayout: preview.document,
+					lineage: preview.surfaceLineage
+				});
+				return lineage === 'No competing surface Finishes.'
+					? preview
+					: { ...preview, summary: `${preview.summary} ${lineage}` };
+			})()
+			: preview;
 		if (deletionDisclosures.size >= 32) {
 			const oldest = deletionDisclosures.keys().next().value;
 			if (oldest !== undefined) deletionDisclosures.delete(oldest);
 		}
-		deletionDisclosures.set(key, preview);
-		return preview;
+		deletionDisclosures.set(key, disclosed);
+		return disclosed;
 	}
 	function inkInstrument(
 		contributed: { readonly label: string; readonly summary: string } | null,
@@ -821,7 +835,7 @@ export function createLayoutContributions({
 		 * Layout-owned; S5a expands it to Wall sides only (OD-J5 keeps floor/lid UI
 		 * for S5b).
 		 */
-		paintAnswer(hit): StagePaintAnswer {
+		paintAnswer(hit, reading): StagePaintAnswer {
 			if (hit.sourceKind !== 'wall') {
 				return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
 			}
@@ -829,7 +843,9 @@ export function createLayoutContributions({
 			const taggedSide = componentId?.match(/^side:(left|right)$/)?.[1];
 			const side = taggedSide === 'left' || taggedSide === 'right'
 				? taggedSide
-				: wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [hit.worldPoint[0], hit.worldPoint[2]]);
+				: reading === 'plan'
+					? wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [hit.worldPoint[0], hit.worldPoint[2]])
+					: null;
 			if (side === null) return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
 			const surface: LayoutSurfaceRef = { kind: 'wall-side', wallId: hit.sourceId, side };
 			if (resolveLayoutSurface(document, surface) !== 'present') {

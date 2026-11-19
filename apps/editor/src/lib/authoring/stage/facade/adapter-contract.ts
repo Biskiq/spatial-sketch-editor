@@ -55,6 +55,9 @@ export type StageSourceHit = {
 	readonly worldPoint: Vec3;
 };
 
+/** The evaluated Stage reading for a Paint query; it is not part of selection identity. */
+export type StagePaintReading = 'plan' | '3d';
+
 /**
  * A binding's answer to the Eraser for one of its own subjects: its existing Card
  * delete action (with the planner-derived disclosure it already shows), or a
@@ -564,7 +567,7 @@ export type StageAdapterBinding = {
 	 * which Scene entity does the hit name? Additive and optional; a binding that
 	 * declares `paint` but answers `null` paints nothing.
 	 */
-	readonly paintAnswer?: (hit: StageSourceHit) => StagePaintAnswer | null;
+	readonly paintAnswer?: (hit: StageSourceHit, reading: StagePaintReading) => StagePaintAnswer | null;
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
 	 * the press from the host's navigation gesture; the same binding then receives

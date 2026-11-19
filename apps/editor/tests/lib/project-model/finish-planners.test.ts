@@ -402,6 +402,85 @@ describe('surface Finish reach', () => {
 		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', roughness: 0.3 });
 		expect(after.surfaceFinishes).toEqual([assignment]);
 	});
+
+	it('writes Original as a curated surface Finish when a shared tint is cleared to pristine', async () => {
+		const assignment = {
+			surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const },
+			finish: { materialInstanceId: 'shared-finish' }
+		};
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout: wallLayout(),
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: [assignment]
+		};
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 2, mode: 'all', edit: { color: null }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+		const after = plannedScene(outcome);
+		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm' });
+		expect(isPristineInstance(after.materials[0]!)).toBe(true);
+		expect(after.surfaceFinishes).toEqual([{
+			surface: assignment.surface,
+			finish: { materialId: 'plaster-warm' }
+		}]);
+	});
+
+	it('counts present and dormant surfaces but excludes retired loaded assignments from reach and edits', async () => {
+		const layout = wallLayout();
+		const space = g1RoomPolygon('roof-room', [[8, 0], [12, 0], [12, 3], [8, 3]]);
+		const spaceLayout = g1DocumentWithRooms([space]);
+		spaceLayout.rooms[0]!.overhead = 'open-to-sky';
+		layout.junctions.push(...spaceLayout.junctions);
+		layout.walls.push(...spaceLayout.walls);
+		layout.rooms.push(...spaceLayout.rooms);
+		const assignments = [
+			{ surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const }, finish: { materialInstanceId: 'shared-finish' } },
+			{ surface: { kind: 'room-lid' as const, roomId: 'roof-room' }, finish: { materialInstanceId: 'shared-finish' } },
+			{ surface: { kind: 'wall-side' as const, wallId: 'wall-retired', side: 'right' as const }, finish: { materialInstanceId: 'shared-finish' } }
+		].sort((left, right) => {
+			const leftKey = surfaceKey(left.surface);
+			const rightKey = surfaceKey(right.surface);
+			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+		});
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout,
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: assignments
+		};
+		const project = await sceneEnvelope(input);
+		const scene = project.units.scene.data;
+		expect(usersOfFinish(scene, 'project:shared-finish', layout).map((user) => user.kind)).toEqual([
+			'entity', 'surface', 'surface'
+		]);
+		expect(usersOfFinish(scene, 'project:shared-finish')).toHaveLength(4);
+
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 3, mode: 'all', edit: { roughness: 0.3 }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+		expect(plannedScene(outcome).surfaceFinishes).toEqual(assignments);
+	});
+
+	it('lets a single live object edit in place when its only other assignment is retired', async () => {
+		const input: SceneInput = {
+			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
+			layout: wallLayout(),
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			surfaceFinishes: [{
+				surface: { kind: 'wall-side', wallId: 'wall-retired', side: 'left' },
+				finish: { materialInstanceId: 'shared-finish' }
+			}]
+		};
+		const project = await sceneEnvelope(input);
+		expect(usersOfFinish(project.units.scene.data, 'project:shared-finish', input.layout)).toHaveLength(1);
+		const outcome = await directPlan(input, 'scene-finish-edit', {
+			entityId: 'object-a', from: 'project:shared-finish', reach: 1, mode: 'in-place', edit: { roughness: 0.3 }
+		}, ['object-a']);
+		expect(outcome.kind).toBe('prepared');
+	});
 });
 
 describe('scene-finish-assign', () => {

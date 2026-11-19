@@ -33,6 +33,7 @@ import type {
 	StageKeyboardIntent,
 	StageOverlayContribution,
 	StagePaintAnswer,
+	StagePaintReading,
 	StagePickQuery,
 	StagePointerIntent,
 	StageSourceHit,
@@ -225,7 +226,7 @@ export type StageFacade = {
 	/** The owning binding's erase answer for its own winner. */
 	eraseAnswer(adapterId: string, hit: StageSourceHit): StageEraseAnswer | null;
 	/** The owning binding's Paint answer for its own winner. */
-	paintAnswer(adapterId: string, hit: StageSourceHit): StagePaintAnswer | null;
+	paintAnswer(adapterId: string, hit: StageSourceHit, reading: StagePaintReading): StagePaintAnswer | null;
 	/** Admitted selected-subject marks, then any current domain idle-hover marks. */
 	marks(): readonly StageMarkView[];
 	/** The mark under a Stage-local CSS point, or `null`. */

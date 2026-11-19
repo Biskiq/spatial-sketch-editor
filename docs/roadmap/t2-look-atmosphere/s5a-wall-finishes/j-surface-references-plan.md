@@ -382,26 +382,26 @@ surfaces, and anything that changes V1–V3, SP or C planning.
 | T1 | `apps/editor/tests/lib/authoring/layout-wall-split-adapter.test.ts` — a painted two-sided Wall split carries both assignments and the test verifies the accepted envelope through Undo/Redo. |
 | T2 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the real Room-divide plan exercises boundary noding and checks the resulting fragment assignment. |
 | T3 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — competing reversed Join assignments report the replacement; the OD-J1 regression separately carries an absorbed Finish into an unpainted survivor side. |
-| T4 | `apps/editor/tests/lib/authoring/layout-wall-join-adapter.test.ts` — the reversed survivor’s preview and committed orientation agree, with one byte-exact Undo/Redo entry. |
-| T5 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — Room duplication preserves Finish identity; `finish-planners.test.ts` counts and edits the shared Finish reach including the Wall side. |
+| T4 | `apps/editor/tests/lib/authoring/layout-wall-join-adapter.test.ts` — the reversed survivor’s preview and committed orientation agree, with one byte-exact Undo/Redo entry. `layout-junction-wall-ends.test.ts` checks bridge/bevel face tags map through the canonical corner role and owned end. |
+| T5 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — Room duplication preserves Finish identity; `finish-planners.test.ts` counts present and dormant reach, excludes retired loaded refs, and safely converts surface assignments when a shared Finish returns to pristine. |
 | T6 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — an actual divide carries floor and lid, carries the noded boundary, and leaves both divider sides unassigned. |
-| T7 | `apps/editor/tests/lib/authoring/layout-drawing-adapter.test.ts` — Erase prunes the Wall assignments with the accepted topology operation and exact Undo/Redo. |
-| T8 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the same-size old/new orphan case returns the new identity key; the wrapper rejects newly retired identities by set. |
+| T7 | `apps/editor/tests/lib/authoring/layout-drawing-adapter.test.ts` — Erase prunes the Wall assignments with the accepted topology operation and exact Undo/Redo. `layout-open-space-adapter.test.ts` checks the Room-merge disclosure names competing floor/lid Finishes and the survivor records remain. |
+| T8 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the same-size old/new orphan case returns the new identity key; both the lineage wrapper and final F4 `validateChange` gate reject newly retired identity sets. |
 | T9 | `layout-room-lift-action.test.ts` checks Lift/Level reads against painted Scene bytes and history; `layout-wall-face-adapter.test.ts` checks Face/Put back likewise. |
-| T10 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — L-shaped shared-boundary membership includes only the Space’s oriented side, floor and lid. |
-| T11 | `finish-planners.test.ts` checks Space expansion as per-Wall-side assignments in one exact Undo/Redo; the Room-divide integration above checks its later divider remains unpainted. Browser QA exercised Space Paint, its four-face consequence, Undo and Redo. |
+| T10 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — L-shaped shared-boundary membership includes only the Space’s oriented side, floor and lid; a concave-outline regression excludes a Region crossing the notch even when its vertices are inside. |
+| T11 | `finish-planners.test.ts` checks Space expansion as per-Wall-side assignments in one exact Undo/Redo; the Room-divide integration above checks its later divider remains unpainted. Browser QA exercised the four-face Space consequence, visible Dark Velvet Stage rendering, Undo and Redo. |
 | T12 | `layout-precision-adapter.test.ts` checks the complete registered Layout planner set receives compound Scene admission, refuses a prepared candidate without lineage, and accepts explicit `[]` without changing an all-painted Scene’s canonical bytes. Topology candidate coverage is in T1–T10. |
 | T13 | `apps/editor/tests/lib/project-model/scene-look-schema.test.ts` — Scene 9 is refused; duplicate, unsorted, pristine-instance, unsupported-kind and bad-side surface records are rejected. |
-| T14 | `layout-room-representation.test.ts` checks Scene-aware Room materials; `default-wall-material.test.ts` checks side resolution and the shared Stage/Visitor representation wiring; `material-factory-boundary.test.ts` and `test:arch` cover visitor isolation. |
-| T15 | `layout-wall-join-adapter.test.ts` compares the preview consequence to the committed report for the reversed Join. |
+| T14 | `layout-room-representation.test.ts` checks Scene-aware Room materials; `layout-wall-representation.test.ts` checks both Wall sides resolve through the Scene factory again after a geometry-only rebuild; `default-wall-material.test.ts`, `material-factory-boundary.test.ts` and `test:arch` cover Stage/Visitor wiring and visitor isolation. |
+| T15 | `layout-wall-join-adapter.test.ts` compares the preview consequence to the committed report for the reversed Join; `layout-open-space-adapter.test.ts` checks Erase's Room-merge preview exposes the matching floor/lid lineage consequence. |
 
 ### Run results
 
-- `npm run test:fast`: **433 files, 5,357 tests passed**. The later T3/T12 additions were rerun with their two complete affected test files: **36 tests passed**.
+- `npm run test:fast -w @portfolio/editor -- --maxWorkers=2`: **433 files, 5,368 tests passed** on the final implementation tree. The nine complete affected contracts also passed separately: **137 tests**.
 - `npm run test:arch -- --maxWorkers=2`: **38 files, 350 tests passed**, including documentation references, visitor boundaries and the material-factory boundary.
-- `npm run check`: **0 errors, 16 Svelte warnings**. The editor build completed successfully; Vite emitted its existing large-chunk advisory.
-- `check:layout-core`, `check:project-model`, `check:camera-core`, `check:geometry-core`, `check:api` and `build:api` completed successfully.
+- `npm run check -w @portfolio/editor`: **0 errors, 16 Svelte warnings**. `npm run build` completed successfully; Vite emitted its existing large-chunk advisory.
+- `check:layout-core`, `check:project-model`, `check:api` and `build:api` passed after the follow-up changes. `check:camera-core` and `check:geometry-core` also passed on this implementation base; neither package changed in the follow-up.
 - `npm run test:api`: **133 passed, 0 failed, 0 skipped**, against an isolated temporary PostgreSQL 16 container at `localhost:5543`; the container was stopped after the run.
-- Focused Lift/Level/Face tests: **2 files, 9 tests passed**. Browser QA exercised Face Paint, Space Paint on four Wall sides, preview consequence, Undo and Redo; the Stage and visitor rendering paths use the shared material factory. Screenshots were retained in `/tmp`, outside the repository.
+- Browser QA on a task-owned local session exercised Plan Space Paint, the `Paint 4 Wall faces in this Space` consequence, Dark Velvet rendering on the Space-facing Wall sides in Stage, and one Undo/Redo entry. The browser reported no JavaScript errors. Screenshots remain outside the repository at `/tmp/s5a-space-preview-final.png`, `/tmp/s5a-space-undo.png` and `/tmp/s5a-painted-3d.png`.
 
 The broad fast run and architecture/build checks are local evidence on rebased base `cd5222fc` (PR #380 / V1d); required CI remains the integration gate. No sibling worktree or T1 V1c changes were modified. The branch remains a draft for review.

@@ -111,6 +111,41 @@ function triangleAreaSum(mesh: IndexedWallMesh): number {
 }
 
 describe('P23.15 Task 3 — standalone Wall end contract', () => {
+	it('maps a head-to-head owned corner bridge through its canonical role and tags lateral bevel continuations', () => {
+		const angle = 10 * Math.PI / 180;
+		const source = document(
+			[
+				{ id: 'j', point: [0, 0] },
+				{ id: 'a-far', point: [4, 0] },
+				{ id: 'b-far', point: [4 * Math.cos(angle), 4 * Math.sin(angle)] }
+			],
+			[
+				wall('a-owner', 'j', 'a-far'),
+				wall('b-other', 'j', 'b-far')
+			]
+		);
+		const built = build(source, 'a-owner');
+		const join = built.ends.start!;
+		expect(join.canonicalRole).toBe('prev');
+		expect(join.end).toBe('start');
+		expect(join.ownedSeam).not.toBeNull();
+		expect(join.canonicalCorner?.front.kind === 'bevel' || join.canonicalCorner?.back.kind === 'bevel').toBe(true);
+		expect(built.result.issues).toEqual([]);
+
+		const expectedFront = 'right'; // `prev` + `start` swaps the canonical front/back role.
+		const expectedBack = 'left';
+		const expected = new Set([
+			...(join.canonicalCorner!.front.kind === 'bevel' ? [expectedFront] : []),
+			...(join.canonicalCorner!.back.kind === 'bevel' ? [expectedBack] : [])
+		]);
+		const bridgeSides = new Set(
+			built.result.mesh!.pickRanges
+				.filter((range) => range.kind === 'wall' && range.surface === 'bridge' && range.paintSide !== undefined)
+				.map((range) => range.paintSide!)
+		);
+		expect(bridgeSides).toEqual(expected);
+	});
+
 	it('builds a degree-1 terminal end as a square cap', () => {
 		const built = build(cornerDocument(0), 'w1');
 		// `ja` is degree 1: the compiled join exists and is terminal, so the

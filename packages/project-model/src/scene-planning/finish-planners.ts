@@ -20,7 +20,12 @@
  * admit.
  */
 import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
-import { resolveLayoutSurface, surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
+import {
+	resolveLayoutSurface,
+	surfaceKey,
+	type LayoutDocumentWallFirst,
+	type LayoutSurfaceRef
+} from '@portfolio/layout-core';
 import type {
 	MaterialId,
 	SceneColor,
@@ -175,6 +180,7 @@ function collectPristine(materials: readonly SceneMaterialInstance[], entities: 
 function planEdit(
 	base: SceneDocument,
 	input: {
+		readonly layout: LayoutDocumentWallFirst;
 		readonly entityId: string;
 		readonly from: FinishKey;
 		readonly reach: number;
@@ -200,7 +206,7 @@ function planEdit(
 	if (input.from !== key) {
 		return { kind: 'rejected', code: 'stale-finish', message: 'That object’s Finish changed. Reopen the row and try again.' };
 	}
-	const users = usersOfFinish(base, key);
+	const users = usersOfFinish(base, key, input.layout);
 	const reach = users.length;
 	if (input.reach !== reach) {
 		return { kind: 'rejected', code: 'stale-reach', message: `That Finish is now used by ${reach} object${reach === 1 ? '' : 's'}.` };
@@ -286,6 +292,19 @@ function planEdit(
 		const index = materials.findIndex((instance) => instance.id === project.id);
 		materials[index] = updated;
 		changedMaterials.push(updated.id);
+		// Scene 10 does not store pristine instances as surface Finishes. If this
+		// shared edit removes the last override, preserve every assignment's
+		// effective base material (including dormant or retired loaded records).
+		if (isPristineInstance(updated) && base.surfaceFinishes !== undefined) {
+			surfaceFinishes = base.surfaceFinishes.map((assignment) =>
+				'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === updated.id
+					? { ...assignment, finish: { materialId: updated.baseMaterialId } }
+					: assignment
+			);
+			changedSurfaceKeys = surfaceFinishes
+				.filter((assignment, assignmentIndex) => assignment !== base.surfaceFinishes![assignmentIndex])
+				.map((assignment) => surfaceKey(assignment.surface));
+		}
 	}
 
 	const collected = collectPristine(materials, entities);
@@ -308,7 +327,7 @@ function planEdit(
 		kind: 'planned',
 		scene: after,
 		changedEntityIds: affected,
-		changedSurfaceKeys: input.mode === 'all' ? users.filter((user) => user.kind === 'surface').map((user) => user.key) : [],
+		changedSurfaceKeys,
 		subjectIds: affected,
 		addedMaterials,
 		changedMaterials,
@@ -880,6 +899,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		}
 		const allocationId = allocations[0]?.id ?? null;
 		const planned = planEdit(before, {
+			layout: envelope.units.layout.data,
 			entityId,
 			from,
 			reach,
@@ -1086,6 +1106,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			}
 			const workingScene: SceneDocument = { ...before, textures };
 			const planned = planEdit(workingScene, {
+				layout: envelope.units.layout.data,
 				entityId: replace.entityId,
 				from: key,
 				reach: replace.reach,
@@ -1192,6 +1213,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		let removedMaterials: readonly string[] = [];
 		if (adoptEntity !== null) {
 			const edit = planEdit(scene, {
+				layout: envelope.units.layout.data,
 				entityId: adoptEntity.id,
 				from: finishOf(adoptEntity, before.materials)!,
 				reach: reach!,
