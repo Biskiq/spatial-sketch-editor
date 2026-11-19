@@ -23,7 +23,8 @@ import {
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import type { ProjectEnvelope, CameraFreeSceneDocument } from '@portfolio/project-model/units';
+import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -89,13 +90,16 @@ function fixtureDocument(
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
 
-async function mount(extraObjects: LayoutDocumentWallFirst['objects'] = []): Promise<Mounted> {
+async function mount(
+	extraObjects: LayoutDocumentWallFirst['objects'] = [],
+	sceneFor?: (document: LayoutDocumentWallFirst, wallId: string) => CameraFreeSceneDocument
+): Promise<Mounted> {
 	const { document, wallId, openingId } = fixtureDocument(extraObjects);
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S02 drawing',
 		layout: document,
-		scene: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
+		scene: sceneFor?.(document, wallId) ?? { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
 	});
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-s02-drawing',
@@ -320,7 +324,17 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 	});
 
 	it('discloses the hosted Opening and the Room consequence, then deletes both in one undo step', async () => {
-		const mounted = await mount();
+		const mounted = await mount([], (document, wallId) => ({
+			formatVersion: SCENE_UNIT_FORMAT_VERSION,
+			textures: [], materials: [], entities: [],
+			surfaceFinishes: [
+				{ surface: { kind: 'room-floor', roomId: document.rooms[0]!.id }, finish: { materialId: 'marble-light' } },
+				{ surface: { kind: 'room-lid', roomId: document.rooms[0]!.id }, finish: { materialId: 'paper-aged' } },
+				{ surface: { kind: 'wall-side', wallId, side: 'left' }, finish: { materialId: 'brass-aged' } },
+				{ surface: { kind: 'wall-side', wallId, side: 'right' }, finish: { materialId: 'velvet-dark' } }
+			]
+		}));
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
 		const actions = stageCardActions(mounted.facade, subject);
 		// C3/D14 moves unfold entry to the Card foot and the Stage pill; the menu
@@ -350,6 +364,12 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		// SP1c carries the Room as an open Space with one released side.
 		expect(layout.rooms).toHaveLength(1);
 		expect(layout.rooms[0]!.virtualEdges).toHaveLength(1);
+		const afterScene = stageEnvelope(mounted.facade.snapshot()).units.scene.data;
+		expect(afterScene.surfaceFinishes).toEqual([
+			{ surface: { kind: 'room-floor', roomId: layout.rooms[0]!.id }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'room-lid', roomId: layout.rooms[0]!.id }, finish: { materialId: 'paper-aged' } }
+		]);
+		const afterBytes = mounted.facade.snapshot().canonicalJson;
 		// The Card is now describing a subject that no longer exists: it contributes
 		// no writer for it rather than a half-editable panel.
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
@@ -361,6 +381,9 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		expect(restored.walls.some((wall) => wall.id === mounted.wallId)).toBe(true);
 		expect(restored.openings.some((opening) => opening.id === mounted.openingId)).toBe(true);
 		expect(restored.rooms).toHaveLength(1);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect((await mounted.host.redo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(afterBytes);
 	});
 });
 

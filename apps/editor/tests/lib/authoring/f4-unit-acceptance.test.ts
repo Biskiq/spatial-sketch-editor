@@ -264,6 +264,47 @@ describe('[cap:experience.atomic-acceptance core] F.4 unit acceptance — the en
 		expect(narrow.register(cameraViewPlanner())).toEqual({ kind: 'registered' });
 	});
 
+	it('admits qualified read-only Layout targets on a Scene-owned planner', () => {
+		const planner: DomainPlanner<Source> = {
+			id: 'scene-surface-target',
+			kind: 'scene-surface-target',
+			sourceKinds: [adapter.sourceKind],
+			sourceVersions: [1],
+			admission: {
+				domain: 'scene', referenceDomains: ['layout'], compound: false, units: false, resources: false
+			},
+			prepare({ snapshot, intent }) {
+				return {
+					kind: 'prepared',
+					candidate: {
+						operationId: intent.operationId,
+						sourceKind: snapshot.sourceKind,
+						sourceVersion: snapshot.sourceVersion,
+						source: { value: 1 }, changes: [], correspondence: [], diagnostics: []
+					}
+				};
+			}
+		};
+		const registry = createPlannerRegistry<Source>();
+		expect(registry.register(planner)).toEqual({ kind: 'registered' });
+		const layoutSide: SemanticReference = {
+			...cameraReference('layout-content'),
+			domain: 'layout',
+			subject: { kind: 'wall', id: 'wall-1' },
+			location: { kind: 'layout-location', levelId: 'level-1', structureInstancePath: [] },
+			componentId: 'side:left'
+		};
+		const accepted = prepareUnitIntent(registry, snapshot(), {
+			...intent('op-layout-reference', REVISION, 0),
+			kind: planner.kind,
+			targets: [layoutSide]
+		});
+		expect(accepted.kind).toBe('prepared');
+
+		const narrow = createPlannerRegistry<Source>({ domains: ['scene'] });
+		expect(narrow.register(planner)).toMatchObject({ kind: 'refused', reason: 'unsupported-domain' });
+	});
+
 	it('refuses a duplicate operation kind and a resource planner it was not configured for', () => {
 		const registry = createUnitPlannerRegistry<Source>();
 		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });

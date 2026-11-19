@@ -32,6 +32,7 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
+import { splitWallSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
 import { coincidesAsJunction } from './layout-junction-identity';
 import { CURVE_ARC_LENGTH_TOLERANCE } from './layout-geometry-curve';
 import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
@@ -82,6 +83,8 @@ export type NodingPlanSuccess = {
 	createdWallIds: string[];
 	/** IDs of walls that were subdivided. */
 	splitWallIds: string[];
+	/** Stable authored-side transfer for every split fragment. */
+	surfaceLineage: LayoutSurfaceLineage;
 };
 
 export type NodingPlan = NodingPlanSuccess | { kind: 'rejected'; rejection: NodingRejection };
@@ -314,7 +317,8 @@ function planWallSplitInternal(
 		},
 		junctionId,
 		createdWallIds: [newWallId],
-		splitWallIds: [wallId]
+		splitWallIds: [wallId],
+		surfaceLineage: splitWallSurfaceLineage(wallId, newWallId)
 	};
 }
 
@@ -405,7 +409,8 @@ export function planWallCrossing(
 		document: secondSplit.document,
 		junctionId,
 		createdWallIds: [...firstSplit.createdWallIds, ...secondSplit.createdWallIds],
-		splitWallIds: [...firstSplit.splitWallIds, ...secondSplit.splitWallIds]
+		splitWallIds: [...firstSplit.splitWallIds, ...secondSplit.splitWallIds],
+		surfaceLineage: [...firstSplit.surfaceLineage, ...secondSplit.surfaceLineage]
 	};
 }
 

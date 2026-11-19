@@ -27,7 +27,7 @@ import {
 	type LayoutWall,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { SCENE_UNIT_FORMAT_VERSION, type CameraFreeSceneDocument, type ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	evaluateViewport,
 	facePoseFromBounds,
@@ -106,14 +106,16 @@ function curvedDocument(): LayoutDocumentWallFirst {
 	return document;
 }
 
-function scene() {
+function scene(): CameraFreeSceneDocument {
 	return {
-		formatVersion: 1 as const,
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
 		textures: [],
 		materials: [],
 		entities: [],
-		navigationNodes: [],
-		connections: []
+		surfaceFinishes: [
+			{ surface: { kind: 'wall-side', wallId: 'wall-a', side: 'left' }, finish: { materialId: 'marble-light' } },
+			{ surface: { kind: 'wall-side', wallId: 'wall-a', side: 'right' }, finish: { materialId: 'velvet-dark' } }
+		]
 	};
 }
 

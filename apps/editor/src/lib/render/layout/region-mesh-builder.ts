@@ -1,7 +1,7 @@
 import type { CompiledRegion, LayoutRegionSurfaceRef } from '@portfolio/layout-core';
 import { BufferGeometry, Float32BufferAttribute, ShapeUtils, Vector2 } from 'three';
 
-type RegionSurface = LayoutRegionSurfaceRef['surface'];
+type RegionSurface = LayoutRegionSurfaceRef['face'];
 
 /** Triangulate the compiled, outward-wound slab faces and keep their attribution. */
 export function buildRegionMeshGeometry(

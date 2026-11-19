@@ -46,6 +46,7 @@ import {
 	type ComponentLineage
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
+import type { LayoutSurfaceLineage } from './layout-surface-reference';
 
 /** Why a circular-Wall product edit refused; stable machine codes. */
 export type CircularRoomRejectionCode =
@@ -71,6 +72,7 @@ export type CircularRoomPlan =
 			readonly wallId: string;
 			readonly junctionId: string;
 			readonly createdRoomIds: readonly string[];
+				readonly surfaceLineage: LayoutSurfaceLineage;
 	  }
 	| { readonly kind: 'rejected'; readonly rejection: CircularRoomRejection };
 
@@ -154,7 +156,8 @@ function validateCandidate(document: LayoutDocumentWallFirst, wallId: string): C
 		document: validated.document,
 		wallId: '',
 		junctionId: '',
-		createdRoomIds: []
+		createdRoomIds: [],
+		surfaceLineage: []
 	};
 }
 
@@ -259,7 +262,8 @@ export function planCreateCircularRoom(options: {
 			junctionId,
 			createdRoomIds: result.lineage
 				.filter((record) => record.kind === 'created')
-				.map((record) => record.roomId)
+				.map((record) => record.roomId),
+			surfaceLineage: []
 		};
 	} catch (error) {
 		if (error instanceof LayoutIdCollisionError) {

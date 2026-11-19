@@ -12,7 +12,7 @@ runtime draw world content through the same modules, so editor and visitor canno
 ## Layers
 
 ```text
-Authored units        Layout 9 · Scene 9 · Camera · Experience
+Authored units        Layout 9 · Scene 10 · Camera · Experience
       │  one compiler; one Scene resolution, retained per unit
       ▼
 Derived descriptions  CompiledLayoutGeometry · resolved Scene content

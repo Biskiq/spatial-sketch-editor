@@ -1,89 +1,170 @@
 import { getMaterial } from '$lib/content/materials';
 import { applyTreatment } from '$lib/render/materials/treatment';
 import type { WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
-import type { MaterialStore } from '$lib/render/resources/material-store';
+import type { MaterialStore, MaterialTextureMaps } from '$lib/render/resources/material-store';
+import type { TextureLoadScope } from '$lib/render/resources/texture-store';
+import {
+	acquireEffectiveVariant,
+	effectiveTextureVariantKey,
+	loadEffectiveTextures,
+	releaseEffectiveVariant
+} from '$lib/render/resources/texture-store';
+import type { SceneSurfaceLook, SceneSurfaceLookResolver } from './surface-look';
 import type {
+	MaterialTextureSlotKey,
 	MaterialTreatment,
 	StandardMaterialDescriptor
 } from '$lib/render/resources/material-descriptor';
+import type { LayoutWallSide } from '@portfolio/layout-core';
+import type { IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
+
+type VariantLease = {
+	readonly seed: string;
+	readonly rx: number;
+	readonly ry: number;
+	readonly rotation: number;
+	readonly offset: readonly [number, number];
+	readonly scope: TextureLoadScope | null;
+	readonly maps: MaterialTextureMaps;
+};
+type SurfaceLook = SceneSurfaceLook & {
+	loaded: boolean;
+};
 
 /**
- * Imperative visitor wall-material factory — the Wall surface's descriptor.
- *
- * Builds the `textures="off"` plain-tint wall surface the Layout shell draws:
- * `plaster-warm` roughness/metalness + the room's tint, with no
- * texture maps. Materials are acquired by descriptor from the shared
- * `MaterialStore`, so two surfaces with the same tint share one instance and a
- * compile constructs none.
- *
- * Wall textures stay off (pixel parity). Tile repeat is a material-side concern
- * that applies only once textures turn on — the builder emits raw metric UVs and
- * this factory owns no repeat today.
- *
- * The returned `factory` deliberately omits `release` on every resolved
- * material: the leases are owned by this closure, so the adapter must not
- * release a shared entry. `dispose()` gives every lease back when the
- * representation unmounts.
+ * The one descriptor-backed Wall material factory used by Stage and visitor.
+ * A tagged face resolves its Scene-owned Finish through the shared material
+ * resolver; an untagged cap/reveal keeps the Layout default. Wall UVs are in
+ * metres, so the resolver is asked for one square metre and its mapping scale
+ * becomes repeats-per-metre rather than a second surface-size multiplier.
  */
 export function createVisitorWallMaterialFactory(
 	store: MaterialStore,
 	resolveTint: (roomId: string) => string,
-	/**
-	 * How much of the tint a surface shows unlit, so it holds under dim lights.
-	 * Above zero the tint is also left untoned: AgX greys a pale colour.
-	 */
 	emissiveIntensity = 0,
-	/** The World's resolve-time Treatment; Natural is absent and changes nothing. */
 	treatment: MaterialTreatment | undefined = undefined,
-	/**
-	 * Build X2's cutaway twins instead of the normal surface. The descriptor only
-	 * carries the flag: the surface, rough/metal/emissive values and lease sharing
-	 * are identical, and the store binds the twin to the StageClip's live top.
-	 */
-	options: { readonly cutaway?: true } = {}
+	options: {
+		readonly cutaway?: true;
+		readonly scope?: TextureLoadScope | null;
+		readonly resolveSurfaceLook?: SceneSurfaceLookResolver;
+		readonly onMaterialChange?: () => void;
+	} = {}
 ): {
 	factory: WallMeshMaterialFactory;
 	dispose: () => void;
 } {
-	const definition = getMaterial('plaster-warm');
+	const defaultDefinition = getMaterial('plaster-warm');
+	const scope = options.scope ?? null;
 	const leases = new Map<string, ReturnType<MaterialStore['acquire']>>();
+	const variants = new Map<string, VariantLease>();
+	const looks = new Map<string, SurfaceLook>();
+	let disposed = false;
 
-	function leaseForTint(tint: string) {
-		let lease = leases.get(tint);
-		if (!lease) {
-			const treated = applyTreatment(treatment, {
-				color: tint,
-				roughness: definition.roughness,
-				metalness: definition.metalness,
-				slotUris: {},
-				normalScale: null
-			});
-			const descriptor: StandardMaterialDescriptor = {
-				kind: 'standard',
-				color: treated.color,
-				roughness: treated.roughness,
-				metalness: treated.metalness,
-				emissive: treated.color,
-				emissiveIntensity,
+	function assignedLook(mesh: IndexedWallMesh, side: LayoutWallSide): SceneSurfaceLook | null {
+		const wallId = mesh.wallRanges[0]?.segmentId;
+		return wallId === undefined || options.resolveSurfaceLook === undefined
+			? null
+			: options.resolveSurfaceLook({ kind: 'wall-side', wallId, side });
+	}
+
+	function defaultLook(mesh: IndexedWallMesh): SurfaceLook {
+		const treated = applyTreatment(treatment, {
+			color: resolveTint(mesh.roomId),
+			roughness: defaultDefinition.roughness,
+			metalness: defaultDefinition.metalness,
+			slotUris: {},
+			normalScale: null
+		});
+		return {
+			material: {
+				kind: 'standard', color: treated.color, roughness: treated.roughness,
+				metalness: treated.metalness, emissive: treated.color, emissiveIntensity,
 				toneMapped: emissiveIntensity === 0,
 				...(options.cutaway === true ? { cutaway: true as const } : {})
-			};
-			lease = store.acquire(descriptor);
-			leases.set(tint, lease);
+			},
+			textures: null,
+			loaded: true
+		};
+	}
+
+	function sceneLook(mesh: IndexedWallMesh, side: LayoutWallSide): SurfaceLook {
+		const look = assignedLook(mesh, side);
+		if (look === null) return defaultLook(mesh);
+		const material: StandardMaterialDescriptor = {
+			...look.material,
+			emissive: look.material.color,
+			emissiveIntensity,
+			...(options.cutaway === true ? { cutaway: true } : {})
+		};
+		return { material, textures: look.textures, loaded: look.textures === null };
+	}
+
+	function keyForLook(look: SurfaceLook): string {
+		return JSON.stringify([look.material, look.textures]);
+	}
+
+	function ensureLook(mesh: IndexedWallMesh, side: LayoutWallSide): SurfaceLook {
+		const candidate = sceneLook(mesh, side);
+		const key = keyForLook(candidate);
+		const existing = looks.get(key);
+		if (existing !== undefined) return existing;
+		looks.set(key, candidate);
+		if (candidate.textures !== null) {
+			void loadEffectiveTextures(candidate.textures, scope).then((result) => {
+				if (disposed || result.status === 'failed' || result.status === 'fallback') return;
+				candidate.loaded = true;
+				options.onMaterialChange?.();
+			});
+		}
+		return candidate;
+	}
+
+	function descriptorFor(look: SurfaceLook): { descriptor: StandardMaterialDescriptor; maps?: MaterialTextureMaps } {
+		const texture = look.textures;
+		if (texture === null || !look.loaded) return { descriptor: look.material };
+		const variantKey = effectiveTextureVariantKey(texture.variantSeed, texture.repeat[0], texture.repeat[1], texture.rotation, scope, texture.offset);
+		let variant = variants.get(variantKey);
+		if (variant === undefined) {
+			const maps = acquireEffectiveVariant(texture, texture.repeat[0], texture.repeat[1], texture.rotation, scope, texture.offset) as MaterialTextureMaps;
+			variant = { seed: texture.variantSeed, rx: texture.repeat[0], ry: texture.repeat[1], rotation: texture.rotation, offset: texture.offset, scope, maps };
+			variants.set(variantKey, variant);
+		}
+		const textures: Partial<Record<MaterialTextureSlotKey, string>> = {};
+		for (const slot of Object.keys(variant.maps) as MaterialTextureSlotKey[]) textures[slot] = variantKey;
+		return Object.keys(textures).length === 0
+			? { descriptor: look.material }
+			: { descriptor: { ...look.material, textures }, maps: variant.maps };
+	}
+
+	function leaseFor(look: SurfaceLook): ReturnType<MaterialStore['acquire']> {
+		const resolved = descriptorFor(look);
+		const leaseKey = JSON.stringify(resolved.descriptor);
+		let lease = leases.get(leaseKey);
+		if (lease === undefined) {
+			lease = store.acquire(resolved.descriptor, resolved.maps);
+			leases.set(leaseKey, lease);
 		}
 		return lease;
 	}
 
-	const factory: WallMeshMaterialFactory = (_surfaceKey, mesh) => {
-		// No `release` lease: the closure owns these store leases.
-		return { material: leaseForTint(resolveTint(mesh.roomId)).material };
+	const factory: WallMeshMaterialFactory = (_surfaceKey, mesh, paintSide) => {
+		const look = paintSide === undefined ? defaultLook(mesh) : ensureLook(mesh, paintSide);
+		const lease = leaseFor(look);
+		return { material: lease.material };
 	};
 
 	return {
 		factory,
 		dispose: () => {
+			if (disposed) return;
+			disposed = true;
 			for (const lease of leases.values()) lease.release();
+			for (const variant of variants.values()) {
+				releaseEffectiveVariant(variant.seed, variant.rx, variant.ry, variant.rotation, variant.scope, variant.offset);
+			}
 			leases.clear();
+			variants.clear();
+			looks.clear();
 		}
 	};
 }

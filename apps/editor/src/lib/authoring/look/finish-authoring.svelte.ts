@@ -24,6 +24,7 @@ import {
 	followerSlotOf,
 	finishOf,
 	finishRefOfKey,
+	finishKeyOfSurface,
 	isFinishPaintable,
 	isPristineInstance,
 	literalColorOf,
@@ -42,8 +43,12 @@ import type {
 	MaterialId,
 	SceneColor,
 	SceneEntity,
-	SceneMaterialInstance
+	SceneMaterialInstance,
+	SceneSurfaceRef,
+	SemanticReference
 } from '@portfolio/project-model';
+import { surfaceKey } from '@portfolio/layout-core';
+type PaintableWallSide = Extract<SceneSurfaceRef, { readonly kind: 'wall-side' }>;
 import { getMaterial, materials } from '$lib/content/materials';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
@@ -497,6 +502,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		kind: string;
 		payload: unknown;
 		entityIds?: readonly string[];
+		targets?: readonly SemanticReference[];
 		allocatedIds?: readonly { kind: string; id: string }[];
 	}, context?: ImageWriteContext): Promise<{
 		readonly kind: string;
@@ -512,7 +518,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			kind: input.kind,
 			operationId: crypto.randomUUID(),
 			expectedRevision: context?.acceptedRevision ?? services.stage.snapshot().acceptedRevision,
-			targets: (input.entityIds ?? []).map((id) => entityReference(services, id)),
+			targets: input.targets ?? (input.entityIds ?? []).map((id) => entityReference(services, id)),
 			payload: input.payload as never,
 			capturedInputs: [],
 			allocatedIds: input.allocatedIds ?? []
@@ -1078,6 +1084,95 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return accepted ? 'accepted' : 'refused';
 	}
 
+	/** Paint one or more stable Wall sides in one Scene acceptance. */
+	async function paintSurface(surfaces: readonly PaintableWallSide[]): Promise<boolean> {
+		if (activeKey === null) {
+			host.onNotice('Choose a Finish first.');
+			return false;
+		}
+		if (surfaces.length === 0 || surfaces.some((surface) => surface.kind !== 'wall-side')) {
+			host.onNotice('Paint needs one or more Wall faces.');
+			return false;
+		}
+		if (activeKey === 'model-own') {
+			host.onNotice("Model's own cannot be painted onto a Wall side.");
+			return false;
+		}
+		const ref = finishRefOfKey(activeKey);
+		if (ref === null || ref === 'model-own') {
+			host.onNotice('That Finish no longer exists.');
+			return false;
+		}
+		const services = servicesNow();
+		if (services === null) {
+			host.onNotice('The Stage is still opening.');
+			return false;
+		}
+		const snapshot = services.stage.snapshot();
+		const targets: SemanticReference[] = surfaces.map((surface) => ({
+			version: 1,
+			domain: 'layout',
+			revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
+			subject: { kind: 'wall', id: surface.wallId },
+			instancePath: [],
+			location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
+			componentId: `side:${surface.side}`,
+			capabilityId: null
+		}));
+		busy = true;
+		try {
+			const outcome = await accept({
+				kind: 'scene-surface-finish-assign',
+				payload: { finish: ref, surfaces },
+				targets
+			});
+			return outcome.kind === 'accepted';
+		} finally {
+			busy = false;
+		}
+	}
+
+	function activeSurfaceIsAlready(surfaces: readonly PaintableWallSide[]): boolean {
+		const current = scene();
+		if (current === null || activeKey === null || surfaces.length === 0) return false;
+		const assignments = new Map((current.surfaceFinishes ?? []).map((assignment) => [surfaceKey(assignment.surface), assignment]));
+		return surfaces.every((surface) => {
+			const assignment = assignments.get(surfaceKey(surface));
+			return assignment !== undefined && finishKeyOfSurface(current, assignment) === activeKey;
+		});
+	}
+
+	/** Copy the authored Finish from a Wall face; unpainted faces have no colour to copy. */
+	async function copySurface(surface: PaintableWallSide): Promise<boolean> {
+		const current = scene();
+		const dropperState = dropper;
+		dropper = null;
+		if (current === null || surface.kind !== 'wall-side') {
+			host.onNotice('That has no Finish colour.');
+			return false;
+		}
+		const assignment = current.surfaceFinishes?.find((entry) => surfaceKey(entry.surface) === surfaceKey(surface));
+		if (assignment === undefined) {
+			host.onNotice('That has no Finish colour.');
+			return false;
+		}
+		if (dropperState?.forEntityId != null) {
+			const key = finishKeyOfSurface(current, assignment);
+			const ref = finishRefOfKey(key);
+			if (ref === null || ref === 'model-own') {
+				host.onNotice('That has no Finish colour.');
+				return false;
+			}
+			const source = colorOfKey(key);
+			await edit(dropperState.forEntityId, { color: source });
+			return true;
+		}
+		const key = finishKeyOfSurface(current, assignment);
+		remember(key);
+		host.onNotice(`Paint · ${labelOfKey(key)}`);
+		return true;
+	}
+
 	function setActive(entityId: string): void {
 		const view = viewFor(entityId);
 		if (view === null || view.key === 'model-own') {
@@ -1139,6 +1234,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		pickFinish,
 		assign,
 		paintEntity,
+		paintSurface,
+		activeSurfaceIsAlready,
+		copySurface,
 		edit,
 		setColor,
 		setOriginal,

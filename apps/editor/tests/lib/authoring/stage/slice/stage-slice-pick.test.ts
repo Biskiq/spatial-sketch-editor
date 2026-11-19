@@ -107,12 +107,12 @@ describe('the Stage pick through a Slice', () => {
 		source.setSource(data);
 		let resolved: ResolvedSlice | null = null;
 		const pick = pickThroughSlice(source, () => resolved);
-		expect(pick(RAY, data)?.region).toEqual({ regionId: 'terrace', surface: 'top' });
+		expect(pick(RAY, data)?.region).toEqual({ kind: 'region-face', regionId: 'terrace', face: 'top' });
 		resolved = { kind: 'level', cutY: 0, lowerY: null };
-		expect(pick(RAY, data)?.region?.surface).toBe('top');
+		expect(pick(RAY, data)?.region?.face).toBe('top');
 		resolved = { kind: 'level', cutY: -0.2, lowerY: null };
 		const levelHit = pick(RAY, data);
-		expect(levelHit?.region).toEqual({ regionId: 'terrace', surface: 'edge' });
+		expect(levelHit?.region).toEqual({ kind: 'region-face', regionId: 'terrace', face: 'edge' });
 		expect(levelHit?.worldPoint[1]).toBeCloseTo(-0.2001, 8);
 
 		resolved = resolveSlice({
@@ -120,7 +120,7 @@ describe('the Stage pick through a Slice', () => {
 		}, { sheetHeight: 1.2, datumMeters: 0 });
 		const drawnRay = { origin: [0, -0.2, 2], direction: [0, 0, -1] } satisfies import('@portfolio/camera-core').PointerRay;
 		const drawnHit = pick(drawnRay, data);
-		expect(drawnHit?.region).toEqual({ regionId: 'terrace', surface: 'edge' });
+		expect(drawnHit?.region).toEqual({ kind: 'region-face', regionId: 'terrace', face: 'edge' });
 		expect(drawnHit?.worldPoint[2]).toBeCloseTo(-0.0001, 8);
 		expect(pick({ ...drawnRay, origin: [0.8, -0.2, 2] }, data)?.worldPoint[2]).toBe(1);
 		floor.geometry.dispose();

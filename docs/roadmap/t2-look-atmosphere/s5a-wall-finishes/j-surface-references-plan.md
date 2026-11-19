@@ -1,10 +1,13 @@
 # J — Surface references and lineage (T1 × T2), first commit of S5a
 
-**Status:** Tier 2 plan, awaiting owner rulings in §11. This is planning only. It adds no
-production code, no schema, no fixture and makes no edit to an approved roadmap.
+**Status:** Owner-approved for S5a implementation on 2026-11-17 (six OD-J rulings, PR #368).
+This preserved first commit remains the planning authority; implementation and the V1d
+reconciliation are recorded in follow-up commits on the same draft PR.
 **Capabilities:** `look.surface-finish` *new* (S5a, S5b). T1 obligations are recorded against
 existing T1 ids.
-**Base:** `main` at `c0a7c92e`. Line references were read at this commit and will drift.
+**Planning base:** `main` at `c0a7c92e`; this is the base preserved by the first planning commit.
+**Implementation base:** `main` at `cd5222fc` (V1d PR #380). The planning commit was rebased without
+changing its contract; implementation reconciles against the newer Layout surface API below.
 
 **Authority.** The T2 proposal ([§10](../README.md#10-coordination), D1, D2, S5a/S5b rows) and the
 T1 next batch ([T1–T2 contract](../../t1-spatial-world/next-batch/README.md#t1t2-contract), Q3,
@@ -13,21 +16,25 @@ Q13, Q14, Q17, Q18, Lane D row **J**). Also the SP-plan (§§3.3, 5, 11, 16), th
 one of those sources, the difference is listed in §11 as an owner ruling. This plan never resolves
 such a difference silently.
 
-**Goal.** S5a can be implemented without inventing anything, and SP1, V1 and C can land later
-without reconciling against T2.
+**Original goal.** S5a was planned to avoid new semantic decisions, and to leave SP1, V1 and C free
+to land later without a conflicting T2 surface model. The implementation-base reconciliation above
+records the intervening V1d API and keeps V1c region-authoring/Lift work out of this PR.
 
 ## 0. Summary
 
 | # | Question | Answer here |
 | --- | --- | --- |
-| 1 | Surface identity | `LayoutSurfaceRef`: the authored source id plus a fixed role. It is typed, owned by Layout and opaque to T2. It is never compiled (§2) |
+| 1 | Surface identity | One tagged `LayoutSurfaceRef`: authored source id plus fixed role. It is typed, owned by Layout and opaque to T2. It is never compiled (§2) |
 | 2 | Finish ownership | Scene `surfaceFinishes`, one record per surface, in the Scene unit 10 bump. Layout stays appearance-free (§3) |
-| 3 | Lineage | Layout planners return `surfaceLineage`, a precedence map from new surfaces to old ones. One Scene-owned function applies it. There is one table per operation (§4) |
+| 3 | Lineage | Layout planners register runtime `surfaceLineage` metadata, a precedence map from new surfaces to old ones. One Scene-owned function applies it. There is one table per operation (§4) |
 | 4 | Unresolved | `present`, `dormant` or `retired` is read from authored Layout only. A retired assignment is pruned in the same acceptance. A dormant one is kept and comes back when its role returns. Viewing readings never count (§5) |
 | 5 | Atomic history | Already possible: history stores whole-envelope states, and compound planners exist. Every Layout planner becomes `compound, writes: ['scene']` through one wrapper (§6) |
 | 6 | Space scope | `surfacesOfSpace`, a Layout query over the oriented boundary. It expands to per-surface assignments when the gesture is made (§7) |
 
-## 1. Verified facts (code at `c0a7c92e`)
+## 1. Planning-time verified facts (code at `c0a7c92e`)
+
+These facts explain the original J proposal; they are not a claim about the later implementation
+base. The explicit V1d API reconciliation and current implementation status follow in §§2 and 9–10.
 
 | # | Fact | Where |
 | --- | --- | --- |
@@ -49,7 +56,8 @@ without reconciling against T2.
 
 ## 2. Contract C1: surface identity
 
-Layout-owned, in a new `packages/layout-core/src/layout-surface.ts`:
+Layout-owned in `packages/layout-core/src/layout-surface-reference.ts`, the canonical
+surface-reference module introduced by T1 V1d:
 
 ```ts
 export type LayoutWallSide = 'left' | 'right'; // about the Wall's canonical left normal (V11)
@@ -57,10 +65,33 @@ export type LayoutWallSide = 'left' | 'right'; // about the Wall's canonical lef
 export type LayoutSurfaceRef =
 	| { readonly kind: 'wall-side'; readonly wallId: string; readonly side: LayoutWallSide }
 	| { readonly kind: 'room-floor'; readonly roomId: string }
-	| { readonly kind: 'room-lid'; readonly roomId: string };
-// Added by the first slice that paints a region (V1 + S5b), with its own Scene bump:
-//	| { readonly kind: 'region-face'; readonly regionId: string; readonly face: 'top' | 'underside' | 'edge' };
+	| { readonly kind: 'room-lid'; readonly roomId: string }
+	| { readonly kind: 'region-face'; readonly regionId: string; readonly face: 'top' | 'underside' | 'edge' };
 ```
+
+**V1d reconciliation (PR #380, merged on the implementation base).** V1d already exported the
+canonical `LayoutSurfaceRef` from this module, with the untagged forms
+`{ regionId, surface: 'top' | 'underside' | 'edge' }` and
+`{ roomId, surface: 'floor' | 'lid' }`. S5a extends that same exported union and module; it does
+not introduce another identity system. The structural mapping is:
+
+| V1d reference | Canonical S5a reference | Preserved meaning |
+| --- | --- | --- |
+| `{ regionId, surface: face }` | `{ kind: 'region-face', regionId, face }` | Same region id and `top`, `underside` or `edge` role |
+| `{ roomId, surface: 'floor' }` | `{ kind: 'room-floor', roomId }` | Same Room id and floor role |
+| `{ roomId, surface: 'lid' }` | `{ kind: 'room-lid', roomId }` | Same Room id and lid role |
+| — | `{ kind: 'wall-side', wallId, side }` | The new stable Wall-side identity |
+
+The region property is renamed from `surface` to `face`; Room plane roles become discriminants.
+These changes make the union unambiguous while preserving authored ids, role meanings, and
+V1d geometry-resolution behavior. No V1d reference was a persisted Layout or Scene identity, so
+there is no old payload migration. `resolveLayoutSurfaceReference(compiled, ref)` remains in the
+same canonical module and accepts `LayoutGeometrySurfaceRef`, the Space/region subset of the full
+union that its compiled geometry can resolve. Its resolver behavior and compiled
+`CompiledRegion.faces[].surface` geometry tags are unchanged. The authored
+`resolveLayoutSurface(document, ref)` answers lifecycle status only; it never derives geometry.
+OD-J5 still excludes `region-face` from Scene 10 and this PR does not take V1c region-authoring or
+Lift scope.
 
 Rules:
 
@@ -155,6 +186,12 @@ Scene-owned (`scene-planning/surface-lineage.ts`):
 - Every `from` resolves in the before-document.
 - Every `to` resolves `present` or `dormant` in the after-document.
 
+Some topology planners compose several edits internally, so an intermediate surface can be born
+and retired before the single accepted candidate exists. Layout normalizes that operation-local
+lineage back to accepted before-document identities before Scene applies the strict checks above.
+Unpainted intermediate surfaces with no accepted predecessor add no persisted source; an assigned
+accepted source that is retired is rejected. Precedence order is retained through composition.
+
 The same function runs during proposal (preview) and during commit, so a consequence line cannot
 disagree with the result.
 
@@ -166,11 +203,11 @@ Room. `S.l` means `wall-side S left`. "↦" is orientation-mapped by Layout.
 | Split (A1) and noding by a drawn Wall | The new Wall inherits both sides | `N.l ← [W.l]`, `N.r ← [W.r]`. W keeps id and direction (V7) | `NodingPlanSuccess` (`createdWallIds`, `splitWallIds`); `split-planners.ts`, `drawing-planners.ts` | Landed planner, adds output |
 | Join (A2) | The survivor's finish wins, with the consequence named and Undo | For each side x of the joined Wall: `S.x ← [S.x↦, O.x↦]`. When S is reversed (V8), `S.l ← [S.r, …]` | `planDissolveJunction` exposes `survivorForward` and `otherForward` (`:293`) | Landed, adds output. OD-J1 |
 | Duplicate (A4, A5) | The copy carries the same shared Finish | `C.x ← [src.x]` for each copied Wall side. `copy-room floor/lid ← [src floor/lid]` | `DuplicatePlan` exposes `wallIdMap` and the source Room (V9). Copies keep direction (asserted by test T5) | Landed, adds output |
-| Divide a Room | The new Room's floor inherits | `new.floor ← [R.floor]`, plus `new.lid ← [R.lid]` if OD-J3 is accepted. **The new divider gets nothing** (C-plan §5) | `RoomLineageRecord` `created` with `predecessorRoomIds` (V10) | Landed, adds output |
-| Enclosed merge (erase a shared Wall) | Survivor wins, as for an open merge | `S.floor ← [S.floor, A.floor]` and the same for `lid` | `merge-survivor` record | Landed, adds output. OD-J1 |
-| Open a Room (SP1) | Nothing changes | No entries. The erased Wall's sides retire. Floor and lid refs keep the Space id | SP1 | **SP1 owes it** |
-| Open merge (SP1) | The survivor's floor finish wins | As for an enclosed merge | SP1 | **SP1 owes it** |
-| Close along a virtual edge (SP1) | — | No entries. The new Wall is unpainted | SP1 | **SP1 owes it** |
+| Divide a Room | The new Room's floor and lid inherit (OD-J3) | `new.floor ← [R.floor]`, `new.lid ← [R.lid]`. **The new divider gets nothing** (C-plan §5) | `RoomLineageRecord` `created` with `predecessorRoomIds` (V10) | Implemented in S5a |
+| Enclosed merge (erase a shared Wall) | The painted survivor side wins; if it is unpainted, carry the absorbed side (OD-J1) | `S.floor ← [S.floor, A.floor]` and the same for `lid` | `merge-survivor` record | Implemented in S5a |
+| Open a Room (SP1) | Nothing changes to the Space identity | No inheritance rows; the erased Wall's sides retire. The floor remains present and lid becomes dormant | Existing SP1 operation through the S5a wrapper | Applied by S5a |
+| Open merge (SP1) | The painted survivor floor/lid wins; otherwise carry the absorbed plane | As for an enclosed merge | Existing Room reconciliation through the S5a wrapper | Applied by S5a |
+| Close along a virtual edge (SP1) | New Wall is unpainted | No Wall-side source exists; existing Space plane refs stay | Existing SP1 operation through the S5a wrapper | Applied by S5a |
 | Attach, Release, repack (C) | Every arc inherits; repack follows the seam-side survivor under Q17 | Attach as for Split. Repack as for Join | C1–C3 | **C owes it** |
 | Regions (V1) | Duplicate carries; removal is unresolved; there is no split or merge | `copy.face ← [src.face]` | V1 planners | **V1 owes it** |
 | Erase a Wall, remove a Room, Remove space | — | No entries. Assignments are pruned in step 3 | — | Automatic |
@@ -183,7 +220,9 @@ lineage duty in `implementation-prs.md`) and adds the matching T-row in §10. Th
 
 ## 5. Contract C4: unresolved references
 
-`resolveLayoutSurface(document, ref)` is Layout-local, reads **authored** data only and returns:
+`resolveLayoutSurface(document, ref)` is Layout-local, reads **authored** data only and returns
+identity lifecycle status. It does not replace V1d's `resolveLayoutSurfaceReference(compiled, ref)`,
+which resolves face geometry:
 
 | Status | Meaning | Today |
 | --- | --- | --- |
@@ -206,21 +245,25 @@ Behaviour:
   example a lid ring under three points, `layout-geometry-queries.ts:146`) is still `present`.
 - **Read safety.** Envelope validation reports a `retired` reference as the non-blocking diagnostic
   `unresolved-surface`, following the `unresolved-view` precedent (V2). It is never repaired at
-  read, it renders the default and it is excluded from reach. Acceptance **refuses a candidate that
-  increases** the number of `unresolved-surface` diagnostics (`surface_reference_orphaned`). A
-  loaded file still opens, but no edit can create an orphan.
+  read, it renders the default and it is excluded from reach. Acceptance compares the **identity set**
+  of retired surface refs before and after a candidate, and refuses with
+  `surface_reference_orphaned` if the candidate introduces any newly retired ref. This remains
+  correct when a pre-existing orphan is removed by the same operation and the diagnostic count
+  stays constant or decreases. A loaded file still opens, but no edit can create an orphan.
 
 ## 6. Contract C5: atomic history
 
-- `layoutPlanner(kind, prepare)` in `precision.ts` becomes the single compound wrapper:
+- `layoutPlanner(kind, prepare)` in `precision.ts` is the single compound wrapper:
   `admission: { domain: 'layout', compound: true, writes: ['scene'], units: false, resources: false }`.
-  Its `prepare` returns `{ outcome, surfaceLineage }`, and the type makes `surfaceLineage` required.
-  A non-topology planner returns `[]` explicitly, so there is no default that could hide a missing
-  row.
-- The wrapper runs `applySurfaceLineage` on the prepared envelope, installs the Scene unit only if it
-  changed, and appends one `OperationChange { kind: 'scene-surface-lineage' }`. One candidate means
-  one acceptance and **one** history entry. Undo restores the prior envelope byte-exactly and Redo
-  replays the captured ids (V4).
+  Each prepared candidate registers its required lineage in runtime-only metadata; a non-topology
+  planner registers `[]` explicitly so there is no default that could hide a missing row.
+- The wrapper runs `applySurfaceLineage` on the prepared envelope, installs the Scene unit only if
+  canonical Scene data changed, and appends one `OperationChange { kind: 'scene-surface-lineage' }`
+  naming the changed surface identities. One candidate means one acceptance and **one** history
+  entry. Undo restores the prior envelope byte-exactly and Redo replays the captured ids (V4).
+- F4 admission declares `referenceDomains: ['layout']` for the Scene-owned surface Paint intent.
+  This admits a qualified Layout target reference while the write set stays Scene-only; it does not
+  grant a Scene planner permission to write Layout.
 - A Scene-only Paint planner (`domain: 'scene'`) reads Layout from the snapshot to check that each
   target is `present`. Face scope writes one record. Space scope writes N records in one entry.
 - No Layout planner writes Scene any other way. A Scene planner never writes Layout.
@@ -228,7 +271,8 @@ Behaviour:
 ## 7. Contract C6: Space paint scope
 
 `surfacesOfSpace(document, roomId): { surfaces: readonly LayoutSurfaceRef[]; excluded: readonly { ref; reason }[] }`
-and `spaceOfSurface(document, ref)`. Both are Layout queries in `layout-surface.ts`.
+and `spaceOfSurface(document, ref)`. Both are Layout queries in the canonical
+`layout-surface-reference.ts` module.
 
 - **Members**, ordered by the boundary starting at its first ref: the Space's own side of each
   boundary Wall (§2 rule 3), then `room-floor`, then `room-lid` if it is `present`. A virtual edge
@@ -264,20 +308,19 @@ Exact wording belongs to S5a and follows `adapters/layout/refusals.ts`. Each ref
 
 ## 9. Ownership and sequence
 
-| Area | Owner | Files |
+| Area | Owner | Files / implementation status |
 | --- | --- | --- |
-| `LayoutSurfaceRef`, `surfaceKey`, `resolveLayoutSurface`, `surfacesOfSpace`, `spaceOfSurface`, `wallSideAt` | T1 (Layout) | new `layout-core/src/layout-surface.ts` |
-| Lineage output from landed planners | T1 | `layout-wall-noding.ts`, `layout-wall-dissolve.ts`, `layout-duplicate.ts`, `layout-room-reconciliation.ts` (expose; no behaviour change) |
-| F.1 `componentId` admission | T1 | `project-model/src/references/unit-resolution.ts` |
-| Compiled face tags | T1 | Layout compiled Wall and Room output; `wall-mesh-builder.ts` classification |
-| `surfaceFinishes`, codec, Scene 10, `applySurfaceLineage`, the reach change in `usersOfFinish` | T2 (Scene) | `scene.ts`, `units/types.ts`, `units/validate.ts`, `scene-planning/surface-lineage.ts`, `finish-model.ts` |
-| Compound wrapper | Joint | `adapters/layout/precision.ts` |
-| Paint for surfaces, Face and Space scope, consequence lines, render lookup, visitor parity | T2 | `layout-contributions.ts`, `stage/facade/adapter-contract.ts`, the render layer |
+| Canonical `LayoutSurfaceRef`, lifecycle, `surfaceKey`, geometry/lateral resolvers and Space membership | T1 (Layout) | Extend V1d's `layout-core/src/layout-surface-reference.ts`; preserve the V1d compiled geometry resolver contract |
+| Wall-side tags and lineage producers for Split/noding, Join, Duplicate, Divide/merge and Erase | T1 (Layout) | Layout topology planners, `layout-wall-mesh-builder.ts`, Room reconciliation and duplicate output; implemented on this PR within S5a's approved scope |
+| `surfaceFinishes`, Scene 10 codec/validation, Finish reach and Scene-owned lineage application | T2 (Scene) | `scene.ts`, `units/types.ts`, `units/validate.ts`, `scene-planning/surface-lineage.ts`, `finish-model.ts` |
+| Compound wrapper and Scene-only target-reference admission | Joint | `adapters/layout/precision.ts`, `f4/types.ts`, `f4/prepare.ts` |
+| Face/Space Paint, preview consequence, runtime-safe lookup, material-factory rendering and visitor parity | T2 | `layout-contributions.ts`, `stage/facade/adapter-contract.ts`, Stage/visitor render layer |
 
-**One PR, as Q18 requires.** Commit 1 is this plan. The T1 half comes next as separate commits with
-a T1 review: it is behaviour-neutral, makes no format change, and any T1 change it needs is
-reported rather than assumed. The T2 half follows. In-flight T1 slices (SP1, V1, C) add their
-lineage rows and tests as part of their own acceptance.
+**One PR, as Q18 requires.** Commit 1 is this plan and remains preserved. V1d has since landed on
+`main`; this implementation extends its canonical Layout reference module without taking on
+parallel V1c region-authoring or Lift work. The T1-owned Wall-side identity, qualified hit and
+lineage obligations and the Scene/Stage integration are reviewed together on this PR. Future C
+topology planners add their own lineage rows and tests as part of their acceptance.
 
 ## 10. Discriminating tests
 
@@ -285,12 +328,12 @@ lineage rows and tests as part of their own acceptance.
 | --- | --- | --- |
 | T1 | Split a Wall with both sides painted differently. N carries both, with no swap. One Undo restores the envelope byte-exactly and Redo reproduces the ids and assignments | Lineage is lost, sides are swapped, or there are two history entries |
 | T2 | A Wall drawn across a painted Wall nodes it. Every fragment carries the source's sides | The noding path skips lineage |
-| T3 | Join where S is painted and O is painted differently: S's finish is kept and `report.replaced` names O's. Join where S is unpainted and O is painted: carried under OD-J1 (or unpainted under the alternative) | The survivor policy is read from geometry or length |
+| T3 | Join where S is painted and O is painted differently: S's Finish is kept and `report.replaced` names O's. If S is unpainted and O is painted, O's Finish carries under OD-J1 | The survivor policy is read from geometry or length |
 | T4 | **Head-to-head Join (V8):** the smaller-id survivor started at the Joint. Its `left` assignment ends on the face that was left in world space | An id-preserving reversal swaps finishes |
 | T5 | Duplicate a painted Room with a shared Wall (A5). The copy references the *same* `materialInstanceId`. Editing that Finish with "shared" reaches both | A Finish is cloned, or reach omits surfaces |
-| T6 | Divide a painted Room. The new Room's floor inherits; the lid inherits per OD-J3; both divider sides are unassigned | Coverage is treated as inheritance |
+| T6 | Divide a painted Room. The new Room's floor and lid inherit per OD-J3; both divider sides are unassigned | Coverage is treated as inheritance |
 | T7 | Erase a painted Wall. Its assignments are gone in the same entry, Undo brings them back, and `unresolved-surface` stays 0 | Orphans are retained, or the prune is a separate entry |
-| T8 | A candidate envelope with an injected retired assignment is refused with `surface_reference_orphaned`. A *loaded* one opens with the diagnostic and renders the default | The orphan rule bricks loads, or lets edits through |
+| T8 | A candidate with a pre-existing orphan plus a newly retired painted surface is refused with `surface_reference_orphaned`, even if the diagnostic count stays constant or falls. A *loaded* orphan opens with the diagnostic and renders the default | Orphan validation compares counts instead of the identity set |
 | T9 | Lift, Level cut and Face over painted surfaces leave status, Scene bytes and history unchanged | A viewing reading writes or unresolves |
 | T10 | `surfacesOfSpace` on an L-shaped Room with a dividing Wall returns exactly its own sides (forward→left, reverse→right), floor and lid. The neighbour's side of the shared Wall is excluded | Membership is derived from geometry, or both sides are included |
 | T11 | Space-scope Paint, then a divider drawn: the divider stays unpainted. One Undo removes all N records | Scope is stored as a live rule, or there are N entries |
@@ -298,25 +341,25 @@ lineage rows and tests as part of their own acceptance.
 | T13 | Codec: format 9 is refused; an unsorted, duplicate, pristine-instance, unknown-kind or bad-side record is refused | The normal form drifts |
 | T14 | Visitor parity: a painted World in the cold release renders the same Finishes, and no editor module reaches the visitor chunk | The visitor needs editor code |
 | T15 | Preview and commit agree: the Join consequence line equals `report.replaced` of the committed envelope | The preview recomputes on its own |
-| T16 | `room-lid` after SP1: Open to sky makes it `dormant` (not rendered, kept), Closed brings it back with no write. **Added by SP1** | The lid is pruned or re-created |
+| T16 | `room-lid` after SP1: Open to sky makes it `dormant` (not rendered, kept), Closed brings it back with no write. **Originated in SP1; retained as an integration check** | The lid is pruned or re-created |
 
 ## 11. Owner rulings
 
-| # | Decision | Recommendation | Blocks |
+| # | Decision | Approved ruling | Scope |
 | --- | --- | --- | --- |
-| **OD-J1** | Join or merge when the survivor's side has **no** Finish and the absorbed one has one | **Carry the absorbed Finish** (`from: [S, O]`). "Survivor's finish wins" then still holds when both are painted, and nothing is lost when only one is. The alternative, strict survivor state, reads Q17 literally and loses the paint | S5a (Join) |
-| **OD-J2** | Which regions belong to Space scope | **Wholly contained only**; a straddling region is excluded and named. Predictable, in the spirit of Q14. The alternative is the V-plan's any-overlap reading | S5b with V1 |
-| **OD-J3** | Divide a Room: does the new Room's **lid** inherit as well as its floor? | **Yes**, by the same reasoning as the floor row | S5b paint, but the lineage is emitted in S5a |
-| **OD-J4** | A retired reference: prune it in the same acceptance, or keep it as a diagnostic like `unresolved-view`? | **Prune** (§5). Ids never recur, so a kept record is permanent garbage that distorts reach | S5a |
-| **OD-J5** | What S5a's Scene 10 admits, and what it paints | **Admit `wall-side`, `room-floor` and `room-lid`** (all resolvable today, so S5b needs no bump). **S5a paints Wall sides only**, which is the approved slice scope. Floor and lid Paint UI ship in S5b. `region-face` waits for its own bump after V1 | S5a codec |
-| **OD-J6** | Wall tops, caps and Opening reveals | **No reference and the Layout default in S5a**. No control is shown (D18). Per-face painting is later work | S5a render |
+| **OD-J1 — approved** | Join or merge when the survivor's side has **no** Finish and the absorbed one has one | Carry the absorbed Finish (`from: [S, O]`); the survivor wins when both are painted. Apply orientation mapping before precedence and report the replaced Finish | S5a Join/merge |
+| **OD-J2 — approved** | Which regions belong to Space scope | Wholly contained only; a straddling region is excluded and named. This is Paint scope, not a change to V1 relation or Lift queries | S5b with V1 |
+| **OD-J3 — approved** | Divide a Room: does the new Room's **lid** inherit as well as its floor? | Yes; both planes inherit and the divider remains unpainted | S5b Paint; S5a emits lineage |
+| **OD-J4 — approved** | A retired reference: prune it in the same acceptance, or keep it as a diagnostic like `unresolved-view`? | Prune retired refs atomically; keep dormant refs; Undo restores both units | S5a |
+| **OD-J5 — approved** | What S5a's Scene 10 admits, and what it paints | Admit `wall-side`, `room-floor` and `room-lid`; S5a exposes Wall-side Paint only. Floor/lid UI is S5b. `region-face` waits for its separately admitted format change | S5a codec |
+| **OD-J6 — approved** | Wall tops, caps and Opening reveals | No reference or control in S5a; use the Layout default | S5a render |
 
 ## 12. Readiness, risks and out of scope
 
-**Readiness.** S5a can start once OD-J1, OD-J4 and OD-J5 are answered. Its specification needs no
-other invention: OD-J6 has a default that implementation can proceed on, and OD-J2 and OD-J3 do not
-gate S5a's Wall-side scope. T1 owes the §9 Layout half, which is behaviour-neutral. SP1, V1 and C
-inherit duties, not open questions.
+**Implementation status.** All six rulings remain as approved in the owner comment on PR #368.
+Implementation extends the V1d canonical module and planner seams on the `cd5222fc` base. The S5a
+Wall-side and Room-lineage paths are in this PR; V1c region authoring and Lift work remain on their
+T1 track. The acceptance evidence and final gates are recorded below and in the PR body.
 
 **Risks.**
 
@@ -329,3 +372,36 @@ inherit duties, not open questions.
 **Out of scope.** Finish storage code, Layout schema changes, Paint UI design beyond the refusals
 listed here, per-face painting on forms (T5), mapping overrides, persistent hosting of objects on
 surfaces, and anything that changes V1–V3, SP or C planning.
+
+## 13. Acceptance evidence
+
+### T1–T15 evidence map
+
+| # | Evidence on this PR |
+| --- | --- |
+| T1 | `apps/editor/tests/lib/authoring/layout-wall-split-adapter.test.ts` — a painted two-sided Wall split carries both assignments and the test verifies the accepted envelope through Undo/Redo. |
+| T2 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the real Room-divide plan exercises boundary noding and checks the resulting fragment assignment. |
+| T3 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — competing reversed Join assignments report the replacement; the OD-J1 regression separately carries an absorbed Finish into an unpainted survivor side. |
+| T4 | `apps/editor/tests/lib/authoring/layout-wall-join-adapter.test.ts` — the reversed survivor’s preview and committed orientation agree, with one byte-exact Undo/Redo entry. |
+| T5 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — Room duplication preserves Finish identity; `finish-planners.test.ts` counts and edits the shared Finish reach including the Wall side. |
+| T6 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — an actual divide carries floor and lid, carries the noded boundary, and leaves both divider sides unassigned. |
+| T7 | `apps/editor/tests/lib/authoring/layout-drawing-adapter.test.ts` — Erase prunes the Wall assignments with the accepted topology operation and exact Undo/Redo. |
+| T8 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — the same-size old/new orphan case returns the new identity key; the wrapper rejects newly retired identities by set. |
+| T9 | `layout-room-lift-action.test.ts` checks Lift/Level reads against painted Scene bytes and history; `layout-wall-face-adapter.test.ts` checks Face/Put back likewise. |
+| T10 | `apps/editor/tests/lib/project-model/surface-lineage.test.ts` — L-shaped shared-boundary membership includes only the Space’s oriented side, floor and lid. |
+| T11 | `finish-planners.test.ts` checks Space expansion as per-Wall-side assignments in one exact Undo/Redo; the Room-divide integration above checks its later divider remains unpainted. Browser QA exercised Space Paint, its four-face consequence, Undo and Redo. |
+| T12 | `layout-precision-adapter.test.ts` checks the complete registered Layout planner set receives compound Scene admission, refuses a prepared candidate without lineage, and accepts explicit `[]` without changing an all-painted Scene’s canonical bytes. Topology candidate coverage is in T1–T10. |
+| T13 | `apps/editor/tests/lib/project-model/scene-look-schema.test.ts` — Scene 9 is refused; duplicate, unsorted, pristine-instance, unsupported-kind and bad-side surface records are rejected. |
+| T14 | `layout-room-representation.test.ts` checks Scene-aware Room materials; `default-wall-material.test.ts` checks side resolution and the shared Stage/Visitor representation wiring; `material-factory-boundary.test.ts` and `test:arch` cover visitor isolation. |
+| T15 | `layout-wall-join-adapter.test.ts` compares the preview consequence to the committed report for the reversed Join. |
+
+### Run results
+
+- `npm run test:fast`: **433 files, 5,357 tests passed**. The later T3/T12 additions were rerun with their two complete affected test files: **36 tests passed**.
+- `npm run test:arch -- --maxWorkers=2`: **38 files, 350 tests passed**, including documentation references, visitor boundaries and the material-factory boundary.
+- `npm run check`: **0 errors, 16 Svelte warnings**. The editor build completed successfully; Vite emitted its existing large-chunk advisory.
+- `check:layout-core`, `check:project-model`, `check:camera-core`, `check:geometry-core`, `check:api` and `build:api` completed successfully.
+- `npm run test:api`: **133 passed, 0 failed, 0 skipped**, against an isolated temporary PostgreSQL 16 container at `localhost:5543`; the container was stopped after the run.
+- Focused Lift/Level/Face tests: **2 files, 9 tests passed**. Browser QA exercised Face Paint, Space Paint on four Wall sides, preview consequence, Undo and Redo; the Stage and visitor rendering paths use the shared material factory. Screenshots were retained in `/tmp`, outside the repository.
+
+The broad fast run and architecture/build checks are local evidence on rebased base `cd5222fc` (PR #380 / V1d); required CI remains the integration gate. No sibling worktree or T1 V1c changes were modified. The branch remains a draft for review.

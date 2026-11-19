@@ -3,6 +3,7 @@ import {
 	mintLayoutIdCapture,
 	planDissolveJunction,
 	proposeWallFirstArchitectureGeometry,
+	type LayoutSurfaceLineage,
 	type WallFirstArchitectureProposalWall,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
@@ -15,7 +16,7 @@ import {
 	type StageAdapterContext,
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-adapter-host';
-import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
+import { stageEnvelope, stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 
 import { wallJoinRefusalWords, wallRefusalWords } from './refusals';
@@ -28,7 +29,7 @@ import {
 	planNumericFields,
 	type PlanNumericEntryState
 } from '$lib/authoring/layout/plan-numeric-entry';
-import { LAYOUT_JUNCTION_MOVE_KIND, type WallManipulationRequest } from './precision';
+import { LAYOUT_JUNCTION_MOVE_KIND, layoutSurfaceLineageConsequence, type WallManipulationRequest } from './precision';
 import { DRAG_GRID_SNAP_CSS_PX, type LayoutSnapWinner } from './snap';
 import {
 	DRAFTING_SNAP_METERS,
@@ -78,7 +79,11 @@ type JunctionHoverGesture = {
 	/** The pointer has left the removal zone since press; leaving arms removal. */
 	leftRemovalZone: boolean;
 	/** The dissolve candidate while removal is armed; `null` when refused. */
-	joinPreview: { readonly document: LayoutDocumentWallFirst; readonly survivorWallId: string } | null;
+	joinPreview: {
+		readonly document: LayoutDocumentWallFirst;
+		readonly survivorWallId: string;
+		readonly surfaceLineage: LayoutSurfaceLineage;
+	} | null;
 	/**
 	 * The pointer travelled past the drag threshold at some point since the press.
 	 *
@@ -614,6 +619,12 @@ export function createJunctionGestureSession({
 				activeJunction.joinPreview !== null &&
 				activeJunction.proposal !== null
 			) {
+				const consequence = layoutSurfaceLineageConsequence({
+					source: stageEnvelope(services.stage.snapshot()),
+					beforeLayout: document,
+					afterLayout: activeJunction.joinPreview.document,
+					lineage: activeJunction.joinPreview.surfaceLineage
+				});
 				return [
 					candidatePreviewOf({
 						id: 'layout-candidate-junction-join',
@@ -622,7 +633,7 @@ export function createJunctionGestureSession({
 						labels: [
 							{
 								world: world(activeJunction.pointerPoint ?? activeJunction.startPoint),
-								text: 'Remove joint'
+								text: `Remove joint · ${consequence}`
 							}
 						]
 					})

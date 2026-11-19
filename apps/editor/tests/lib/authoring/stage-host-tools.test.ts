@@ -45,7 +45,7 @@ import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/lig
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createStageMeasure, resolveMeasureEndpoint } from '$lib/authoring/stage/stage-measure';
 import { createStageEraser } from '$lib/authoring/stage/stage-eraser';
-import { createStagePainter, STAGE_PAINT_TASK } from '$lib/authoring/stage/stage-painter';
+import { createStagePainter, STAGE_PAINT_TASK, type StagePaintOptions } from '$lib/authoring/stage/stage-painter';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -185,14 +185,19 @@ function css(facade: StageFacade, point: Vec3): readonly [number, number] {
 /** Paint options with a spy write; these cases never need a real Finish install. */
 function paintOptions() {
 	const assign = vi.fn(async () => true);
+	const assignSurface = vi.fn<StagePaintOptions['assignSurface']>(async () => true);
 	return {
 		assign,
+		assignSurface,
 		options: {
 			hasActive: () => true,
 			isAlready: () => false,
 			assign,
+			isSurfaceAlready: () => false,
+			assignSurface,
 			dropperArmed: () => false,
 			copy: vi.fn(async () => true),
+			copySurface: vi.fn(async () => true),
 			activeLabel: () => 'Warm Plaster'
 		}
 	};
@@ -400,22 +405,37 @@ describe('R217.S10 — Eraser', () => {
 
 
 describe('T2.S4a — Paint', () => {
-	it('refuses a Wall and a Light in their own words without writing', async () => {
+	it('paints one Wall face or all Wall faces in its Space, and still refuses a Light', async () => {
 		const { facade } = await mount('plan', [LIGHT], undefined, false, true);
-		const { assign, options } = paintOptions();
+		const { assign, assignSurface, options } = paintOptions();
 		const painter = createStagePainter(facade, options);
 		const evaluationId = facade.evaluationId()!;
 		const before = facade.snapshot().canonicalJson;
 
-		const wall = css(facade, [6, 0, 0]);
+		const wall = css(facade, [3, 0, 0.06]);
 		expect(painter.down({ css: wall, evaluationId })).toBe(true);
 		expect(painter.candidate()).toMatchObject({
 			adapterId: 'layout',
 			entityId: null,
-			refusal: 'Walls are not painted yet.'
+			surface: { kind: 'wall-side', side: 'left' },
+			assignmentSurfaces: [{ kind: 'wall-side', side: 'left' }],
+			consequence: 'Paint this Wall face'
 		});
+		const face = painter.candidate()?.surface;
 		await painter.up({ css: wall, evaluationId });
-		expect(painter.notice()).toMatchObject({ kind: 'refused', message: 'Walls are not painted yet.' });
+		expect(assignSurface).toHaveBeenCalledTimes(1);
+		expect(assignSurface.mock.calls[0]![0]).toEqual([face]);
+		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster · 1 Wall face' });
+
+		assignSurface.mockClear();
+		painter.setSurfaceScope('space');
+		expect(painter.down({ css: wall, evaluationId })).toBe(true);
+		expect(painter.candidate()?.assignmentSurfaces).toHaveLength(4);
+		expect(painter.candidate()?.consequence).toBe('Paint 4 Wall faces in this Space');
+		await painter.up({ css: wall, evaluationId });
+		expect(assignSurface).toHaveBeenCalledTimes(1);
+		expect(assignSurface.mock.calls[0]![0]).toHaveLength(4);
+		expect(assignSurface.mock.calls[0]![0].every((surface) => surface.kind === 'wall-side')).toBe(true);
 
 		const light = css(facade, LIGHT.position);
 		expect(painter.down({ css: light, evaluationId })).toBe(true);
@@ -428,6 +448,7 @@ describe('T2.S4a — Paint', () => {
 		expect(painter.notice()).toMatchObject({ kind: 'refused', message: 'Lights have no Finish.' });
 
 		expect(assign).not.toHaveBeenCalled();
+		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(facade.snapshot().canonicalJson).toBe(before);
 	});
 

@@ -283,15 +283,23 @@ stable surface references. A Region wins a coincident generated floor pick. Decl
 intentional gaps keep their Wall references through topology splits and dissolves and
 lose the reference when that Wall is removed. No Room edit creates a Region.
 
-`resolveLayoutSurfaceReference` is the Layout-local resolver for those references:
-a region `top`, `underside` or `edge`, or a Space `floor` or `lid`. It resolves the
-authored identity plus face against canonical compiled output, so move, footprint,
-elevation and thickness edits keep the same reference valid; deleting the subject
-leaves it unresolved (`missing-region`/`missing-space`) rather than resolving a
-coincident successor. A closed Space's generated lid resolves; an open-to-sky lid is
-`open-to-sky` while its floor still resolves. The matching downward query is
-`queryOverheadSupports`, which reports closed lids and overhead-region undersides and
-treats open-to-sky as no lid.
+`resolveLayoutSurfaceReference` is the Layout-local geometry resolver. The canonical
+tagged `LayoutSurfaceRef` names authored identities and fixed roles:
+`{ kind: 'wall-side', wallId, side }`, `{ kind: 'room-floor', roomId }`,
+`{ kind: 'room-lid', roomId }`, and `{ kind: 'region-face', regionId, face }` where
+`face` is `top`, `underside` or `edge`. Region and Room variants preserve the ids and
+face meanings V1d exposed as `{ regionId, surface }` and `{ roomId, surface }`; S5a
+retags that one union and adds Wall sides. It does not create a second surface identity
+API. The geometry resolver takes the region/Space subset supported by compiled output;
+its behavior and `CompiledRegion.faces[].surface` geometry tags remain unchanged.
+
+The authored `resolveLayoutSurface` reads identity lifecycle only. A move, footprint,
+elevation or thickness edit keeps a stable reference; deleting the subject retires it
+rather than redirecting it to a coincident successor. A closed Space lid resolves; an
+open-to-sky lid is dormant while its floor remains present. `surfacesOfSpace` and
+`spaceOfSurface` read the oriented authored boundary for per-surface membership.
+`queryOverheadSupports` remains the matching downward geometry query, reporting closed
+lids and overhead-region undersides and treating open-to-sky as no lid.
 
 ## Input and validation
 

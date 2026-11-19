@@ -57,6 +57,7 @@ import type {
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';
+import { duplicateRoomSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
 
 /** Repeat-count cap. */
 export const LAYOUT_DUPLICATE_MAX_COPIES = 50 as const;
@@ -102,6 +103,7 @@ export type DuplicatePlan =
 			createdOpeningIds: readonly string[];
 			createdJunctionIds: readonly string[];
 			createdWallIds: readonly string[];
+			surfaceLineage: LayoutSurfaceLineage;
 			/** Set by the two Room planners. */
 			createdRoomId?: string;
 			/** Door relations the copy could not carry; set only by `planDuplicateRoom`. */
@@ -195,6 +197,7 @@ function finalizeCandidate(
 		createdJunctionIds?: readonly string[];
 		createdWallIds?: readonly string[];
 		createdRoomId?: string;
+		surfaceLineage?: LayoutSurfaceLineage;
 		droppedRoomRelations?: readonly RoomCopyDroppedRelation[];
 	}
 ): DuplicatePlan {
@@ -265,6 +268,7 @@ function finalizeCandidate(
 		createdOpeningIds: created.createdOpeningIds ?? [],
 		createdJunctionIds: created.createdJunctionIds ?? [],
 		createdWallIds: created.createdWallIds ?? [],
+		surfaceLineage: created.surfaceLineage ?? [],
 		...(created.createdRoomId !== undefined ? { createdRoomId: created.createdRoomId } : {}),
 		...(created.droppedRoomRelations !== undefined
 			? { droppedRoomRelations: created.droppedRoomRelations }
@@ -474,6 +478,7 @@ type ClonedRoomEnclosure = {
 	readonly createdJunctionIds: readonly string[];
 	readonly createdWallIds: readonly string[];
 	readonly createdRoomId: string;
+	readonly surfaceLineage: LayoutSurfaceLineage;
 	readonly droppedRoomRelations: readonly RoomCopyDroppedRelation[];
 };
 
@@ -644,6 +649,7 @@ function cloneRoomEnclosure(
 		createdJunctionIds: clonedJunctions.map((junction) => junction.id),
 		createdWallIds: clonedWalls.map((wall) => wall.id),
 		createdRoomId: newRoomId,
+		surfaceLineage: duplicateRoomSurfaceLineage(wallIdMap, source.id, newRoomId),
 		droppedRoomRelations
 	};
 }
@@ -708,6 +714,7 @@ function planDuplicateIsolatedRoomInternal(
 		createdJunctionIds: cloned.createdJunctionIds,
 		createdWallIds: cloned.createdWallIds,
 		createdRoomId: cloned.createdRoomId,
+		surfaceLineage: cloned.surfaceLineage,
 		droppedRoomRelations: cloned.droppedRoomRelations
 	});
 }
@@ -781,6 +788,7 @@ function planDuplicateRoomInternal(
 		createdJunctionIds: cloned.createdJunctionIds,
 		createdWallIds: cloned.createdWallIds,
 		createdRoomId: cloned.createdRoomId,
+		surfaceLineage: cloned.surfaceLineage,
 		droppedRoomRelations: cloned.droppedRoomRelations
 	});
 }

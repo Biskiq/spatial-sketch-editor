@@ -37,6 +37,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutVec2,
+	type LayoutSurfaceLineage,
 	type WallChainArc,
 	type WallFirstOpPlan
 } from '@portfolio/layout-core';
@@ -56,7 +57,7 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import { layoutPlanner, preparedLayoutCandidate } from './precision';
+import { layoutPlanner, preparedLayoutCandidate, registerLayoutSurfaceLineage } from './precision';
 
 export const LAYOUT_WALL_CHAIN_COMMIT_KIND = 'layout-wall-chain-commit';
 export const LAYOUT_WALL_DELETE_KIND = 'layout-wall-delete';
@@ -344,6 +345,7 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }
@@ -375,7 +377,7 @@ export type WallDeletionSummary = {
 };
 
 export type WallDeletionPreview =
-	| ({ readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst } & WallDeletionSummary)
+	| ({ readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst; readonly surfaceLineage: LayoutSurfaceLineage } & WallDeletionSummary)
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
 
 /**
@@ -462,6 +464,7 @@ export function planWallDeletion(options: {
 	return {
 		kind: 'planned',
 		document: plan.document,
+		surfaceLineage: plan.surfaceLineage,
 		wallId: options.wallId,
 		hostedOpeningIds,
 		createdRoomIds,
@@ -625,6 +628,7 @@ function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }
@@ -724,6 +728,7 @@ function circleRoomCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }
@@ -753,7 +758,8 @@ function circleRadiusPlanner(): DomainPlanner<ProjectEnvelope> {
 			LAYOUT_CIRCLE_RADIUS_KIND,
 			{ kind: 'wall', id: wallId },
 			plan.document,
-			['radius', 'diameter']
+			['radius', 'diameter'],
+			{ surfaceLineage: plan.surfaceLineage }
 		);
 	});
 }
@@ -789,7 +795,8 @@ function circleTranslatePlanner(): DomainPlanner<ProjectEnvelope> {
 			LAYOUT_CIRCLE_TRANSLATE_KIND,
 			{ kind: 'wall', id: wallId },
 			plan.document,
-			['position']
+			['position'],
+			{ surfaceLineage: plan.surfaceLineage }
 		);
 	});
 }

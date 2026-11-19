@@ -28,6 +28,8 @@ import {
 	countWork,
 	linkClonedCowCandidate,
 	p2311Measure,
+	resolveLayoutSurface,
+	surfaceKey,
 	validateWallFirstLayoutDocument
 } from '@portfolio/layout-core';
 import { ShapeReader, type ShapeIssue, type ShapeValidation } from '../strict-shape';
@@ -35,6 +37,8 @@ import { validateAcceptedRevision, validateSemanticReference } from '../referenc
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
 import { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
+import { withSceneValidationOptions } from '../scene-validation';
+import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
 import { validateArtworkLibrary, validateSceneDocument } from '../scene-codec';
 import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import {
@@ -453,6 +457,92 @@ function readPalette(reader: ShapeReader, input: unknown): ScenePaletteSlot[] | 
 	return valid ? slots : undefined;
 }
 
+function readSurfaceFinishes(
+	reader: ShapeReader,
+	input: unknown,
+	materials: CameraFreeSceneDocument['materials']
+): SceneSurfaceFinish[] | undefined {
+	if (input === undefined) return undefined;
+	if (!Array.isArray(input)) {
+		reader.problem('$.surfaceFinishes', 'invalid_type', '$.surfaceFinishes must be an array');
+		return undefined;
+	}
+	if (input.length === 0) {
+		reader.problem('$.surfaceFinishes', 'surface_finish_not_normal', 'An empty surfaceFinishes field must be omitted');
+		return undefined;
+	}
+	const assignments: SceneSurfaceFinish[] = [];
+	const seen = new Set<string>();
+	let previousKey: string | null = null;
+	for (const [index, raw] of input.entries()) {
+		const path = `$.surfaceFinishes[${index}]`;
+		const assignment = reader.object(raw, path, ['surface', 'finish']);
+		if (assignment === null) continue;
+		if (typeof assignment.surface !== 'object' || assignment.surface === null || Array.isArray(assignment.surface)) {
+			reader.problem(`${path}.surface`, 'invalid_type', `${path}.surface must be a tagged Layout surface reference`);
+			continue;
+		}
+		const rawSurface = assignment.surface as Record<string, unknown>;
+		const kind = rawSurface.kind;
+		if (kind !== 'wall-side' && kind !== 'room-floor' && kind !== 'room-lid') {
+			reader.problem(`${path}.surface.kind`, 'unknown_surface_kind', `${path}.surface.kind is not admitted by Scene 10`);
+			continue;
+		}
+		const surfaceRecord = reader.object(
+			rawSurface,
+			`${path}.surface`,
+			kind === 'wall-side' ? ['kind', 'wallId', 'side'] : ['kind', 'roomId']
+		);
+		if (surfaceRecord === null) continue;
+		let surface: SceneSurfaceRef | null = null;
+		if (kind === 'wall-side') {
+			const wallId = reader.opaqueId(surfaceRecord.wallId, `${path}.surface.wallId`);
+			const side = reader.tag(surfaceRecord.side, `${path}.surface.side`, ['left', 'right']);
+			if (wallId !== null && side !== null) surface = { kind, wallId, side: side as 'left' | 'right' };
+		} else {
+			const roomId = reader.opaqueId(surfaceRecord.roomId, `${path}.surface.roomId`);
+			if (roomId !== null) surface = { kind, roomId };
+		}
+		const finishRecord = reader.object(assignment.finish, `${path}.finish`, ['materialId', 'materialInstanceId']);
+		if (finishRecord === null) continue;
+		const finishKeys = Object.keys(finishRecord);
+		let finish: SceneSurfaceFinish['finish'] | null = null;
+		if (finishKeys.length !== 1) {
+			reader.problem(`${path}.finish`, 'surface_finish_not_normal', `${path}.finish must name exactly one catalogue or project Finish`);
+		} else if ('materialId' in finishRecord) {
+			const materialId = reader.opaqueId(finishRecord.materialId, `${path}.finish.materialId`);
+			if (materialId !== null && !withSceneValidationOptions().isKnownMaterialId(materialId)) {
+				reader.problem(`${path}.finish.materialId`, 'missing_reference', `Unknown catalogue Finish "${materialId}"`);
+			} else if (materialId !== null) finish = { materialId: materialId as import('../scene').MaterialId };
+		} else if ('materialInstanceId' in finishRecord) {
+			const materialInstanceId = reader.opaqueId(finishRecord.materialInstanceId, `${path}.finish.materialInstanceId`);
+			const instance = materialInstanceId === null ? undefined : materials.find((material) => material.id === materialInstanceId);
+			if (materialInstanceId !== null && instance === undefined) {
+				reader.problem(`${path}.finish.materialInstanceId`, 'missing_reference', `Unknown project Finish "${materialInstanceId}"`);
+			} else if (materialInstanceId !== null && instance !== undefined) {
+				const keys = Object.keys(instance).sort();
+				const pristine = keys.length === 3 && keys[0] === 'baseMaterialId' && keys[1] === 'id' && keys[2] === 'name';
+				if (pristine) {
+					reader.problem(`${path}.finish.materialInstanceId`, 'surface_finish_not_normal', 'A project surface Finish must reference a non-pristine material instance');
+				} else finish = { materialInstanceId };
+			}
+		}
+		if (surface === null || finish === null) continue;
+		const key = surfaceKey(surface);
+		if (seen.has(key)) {
+			reader.problem(`${path}.surface`, 'duplicate_surface_finish', `Surface "${key}" has more than one Finish assignment`);
+			continue;
+		}
+		seen.add(key);
+		if (previousKey !== null && key < previousKey) {
+			reader.problem('$.surfaceFinishes', 'surface_finish_not_normal', 'Surface Finish records must be sorted by surface identity');
+		}
+		previousKey = key;
+		assignments.push({ surface, finish });
+	}
+	return assignments;
+}
+
 /**
  * Strict read of the Camera-free Scene payload. Its shared entity grammar
  * uses the internal world-local projection with an empty Camera graph.
@@ -463,7 +553,7 @@ function readPalette(reader: ShapeReader, input: unknown): ScenePaletteSlot[] | 
  */
 export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<CameraFreeSceneDocument> {
 	const reader = new ShapeReader();
-	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'palette', 'clusters', 'environment', 'artworkLibrary']);
+	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'palette', 'clusters', 'environment', 'artworkLibrary', 'surfaceFinishes']);
 	if (record === null) return failed(reader);
 	if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {
 		reader.problem(
@@ -488,6 +578,7 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 	});
 	if (!delegated.success) return { success: false, issues: delegatedIssues(delegated.issues) };
 	const document = delegated.document;
+	const surfaceFinishes = readSurfaceFinishes(reader, record.surfaceFinishes, document.materials);
 	// The follower check is the unit validator's because only this reader holds
 	// the palette; the Scene codec never sees it.
 	const paletteIds = new Set((palette ?? []).map((slot) => slot.id));
@@ -512,6 +603,7 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 			textures: document.textures,
 			materials: document.materials,
 			entities: document.entities,
+			...(surfaceFinishes === undefined ? {} : { surfaceFinishes }),
 			...(library.length === 0 ? {} : { artworkLibrary: library }),
 			...(palette === undefined ? {} : { palette }),
 			...(document.clusters === undefined ? {} : { clusters: document.clusters }),
@@ -1500,6 +1592,15 @@ function envelopeFindings(
 		toViewId !== null &&
 		connectionPairs.has(`${fromViewId}\0${toViewId}`);
 	const sceneEntities = new Set(units.scene.data.entities.map((entity) => entity.id));
+	for (const [index, assignment] of (units.scene.data.surfaceFinishes ?? []).entries()) {
+		if (resolveLayoutSurface(units.layout.data, assignment.surface) === 'retired') {
+			diagnostics.push({
+				path: `$.units.scene.data.surfaceFinishes[${index}].surface`,
+				code: 'unresolved-surface',
+				message: `surface "${surfaceKey(assignment.surface)}" is retired in the authored Layout`
+			});
+		}
+	}
 
 	units.experience.data.experiences.forEach((experience, index) => {
 		const path = `$.units.experience.data.experiences[${index}]`;

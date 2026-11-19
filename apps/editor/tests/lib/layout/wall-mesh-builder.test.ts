@@ -84,10 +84,15 @@ describe('buildRoomWallMesh', () => {
 		assertFinite(mesh);
 		expect(mesh.indices.length).toBeGreaterThan(0);
 		expect(mesh.indices.length % 3).toBe(0);
-		expect(mesh.materialGroups.map((group) => group.surfaceKey)).toEqual(['side']);
-		expect(mesh.materialGroups[0]!.count).toBe(mesh.indices.length);
-		expect(mesh.sectionToRange.length).toBe(4);
+		expect(mesh.materialGroups.map(({ surfaceKey, paintSide }) => [surfaceKey, paintSide ?? null])).toEqual([
+			['side', null], ['side', 'left'], ['side', 'right']
+		]);
+		expect(mesh.materialGroups.reduce((total, group) => total + group.count, 0)).toBe(mesh.indices.length);
+		expect(mesh.sectionToRange).toHaveLength(12);
 		expect(mesh.sectionToRange.every((range) => range.kind === 'side')).toBe(true);
+		expect(mesh.sectionToRange.filter((range) => range.paintSide === undefined)).toHaveLength(4);
+		expect(mesh.sectionToRange.filter((range) => range.paintSide === 'left')).toHaveLength(4);
+		expect(mesh.sectionToRange.filter((range) => range.paintSide === 'right')).toHaveLength(4);
 		assertEdgeMultiplicity(mesh, 2);
 	});
 
@@ -140,7 +145,10 @@ describe('buildRoomWallMesh', () => {
 		expect(result.issues).toEqual([]);
 		const mesh = result.mesh!;
 		assertFinite(mesh);
-		expect(mesh.materialGroups.map((group) => group.surfaceKey)).toEqual(['side', 'lintel']);
+		expect(mesh.materialGroups.map(({ surfaceKey, paintSide }) => [surfaceKey, paintSide ?? null])).toEqual([
+			['side', null], ['side', 'left'], ['side', 'right'],
+			['lintel', null], ['lintel', 'left'], ['lintel', 'right']
+		]);
 		expect(mesh.sectionToRange.some((range) => range.kind === 'lintel')).toBe(true);
 		// Door + two windows: their jambs are reveal faces beyond the section ranges.
 		const wallWithOpenings = mesh.wallRanges.find((range) => range.ranges.length > 1);
@@ -373,7 +381,7 @@ describe('pickRanges pick metadata', () => {
 		).mesh!;
 		const bridges = mesh.pickRanges.filter((range) => range.kind === 'wall' && range.surface === 'bridge');
 		// Every corner is beveled at miterLimit 1 → four bridges, one per wall start.
-		expect(bridges).toHaveLength(4);
+		expect(bridges).toHaveLength(8); // one left and one right face strip per corner
 
 		// Corner (0,0) is wall 0's START and wall 3's END. The bridge there must
 		// be owned by wall 0 only — the shared wallRanges entry names both walls,

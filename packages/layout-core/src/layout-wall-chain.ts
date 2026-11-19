@@ -50,6 +50,7 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
+import { roomSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
 import { p2311Measure } from './p2311-perf';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
@@ -337,6 +338,7 @@ export type WallChainPlan =
 				roomId: string;
 				kind: 'created';
 			}>;
+			surfaceLineage: LayoutSurfaceLineage;
 			retiredRoomIds: readonly string[];
 			/** Open Spaces whose boundary gained a drawn Wall and lost part of an open side. */
 			absorbedRoomIds: readonly string[];
@@ -776,6 +778,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		return resolvedId;
 	};
 	const MAX_NODING_PASSES = 64;
+	const nodingSurfaceLineage: LayoutSurfaceLineage[number][] = [];
 	let passes = 0;
 	for (;;) {
 		passes += 1;
@@ -831,6 +834,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		if (plan.kind === 'rejected') {
 			return reject({ code: 'noding_rejected', message: plan.rejection.message, wallIds: plan.rejection.wallId ? [plan.rejection.wallId] : undefined });
 		}
+		nodingSurfaceLineage.push(...plan.surfaceLineage);
 		const document = plan.document as LayoutDocumentWallFirst;
 		const before = new Set(candidate.walls.map((wall) => wall.id));
 		// Attribute new fragments by parent provenance: an authored parent's
@@ -884,6 +888,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	// boundary divides it. There is no authored role to gate on, so every chain
 	// runs the same correspondence reconciliation.
 	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
+	let surfaceLineage: LayoutSurfaceLineage = [];
 	let retiredRoomIds: string[] = [];
 	{
 		const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(candidate));
@@ -952,6 +957,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 				.filter((record) => record.kind === 'created')
 				.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
 			retiredRoomIds = [...result.retiredRoomIds];
+			surfaceLineage = roomSurfaceLineage(result.lineage);
 		}
 	}
 
@@ -1028,6 +1034,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		startJunctionId,
 		endJunctionId,
 		lineage,
+		surfaceLineage: [...nodingSurfaceLineage, ...surfaceLineage],
 		retiredRoomIds,
 		absorbedRoomIds,
 		// P23B.11 M-4 — the final canonical gate above is the ONLY compile

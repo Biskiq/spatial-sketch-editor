@@ -45,7 +45,7 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import { layoutPlanner } from './precision';
+import { layoutPlanner, registerLayoutSurfaceLineage } from './precision';
 import { layoutSubjectReference } from './drawing-planners';
 import { wallJoinRefusalWords } from './refusals';
 
@@ -175,6 +175,7 @@ function wallJoinPlanner(): DomainPlanner<ProjectEnvelope> {
 			],
 			diagnostics: []
 		};
+		registerLayoutSurfaceLineage(candidate, plan.surfaceLineage);
 		return { kind: 'prepared', candidate };
 	});
 }

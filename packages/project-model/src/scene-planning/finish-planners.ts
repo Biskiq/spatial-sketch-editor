@@ -20,12 +20,14 @@
  * admit.
  */
 import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
+import { resolveLayoutSurface, surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
 import type {
 	MaterialId,
 	SceneColor,
 	SceneEntity,
 	SceneMaterialInstance,
 	ScenePaletteSlot,
+	SceneSurfaceFinish,
 	SceneTextureAsset
 } from '../scene';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
@@ -63,6 +65,7 @@ import {
 } from './texture-resource';
 
 export const SCENE_FINISH_ASSIGN = 'scene-finish-assign';
+export const SCENE_SURFACE_FINISH_ASSIGN = 'scene-surface-finish-assign';
 export const SCENE_FINISH_EDIT = 'scene-finish-edit';
 export const SCENE_PALETTE_SLOT_ADD = 'scene-palette-slot-add';
 export const SCENE_PALETTE_SLOT_SET = 'scene-palette-slot-set';
@@ -73,6 +76,7 @@ export const SCENE_FINISH_FROM_IMAGE = 'scene-finish-from-image';
 
 const kinds = [
 	SCENE_FINISH_ASSIGN,
+	SCENE_SURFACE_FINISH_ASSIGN,
 	SCENE_FINISH_EDIT,
 	SCENE_FINISH_FROM_IMAGE,
 	SCENE_PALETTE_SLOT_ADD,
@@ -107,6 +111,7 @@ type EditPlan =
 			readonly kind: 'planned';
 			readonly scene: SceneDocument;
 			readonly changedEntityIds: readonly string[];
+			readonly changedSurfaceKeys: readonly string[];
 			readonly subjectIds: readonly string[];
 			readonly addedMaterials: readonly string[];
 			readonly changedMaterials: readonly string[];
@@ -220,6 +225,8 @@ function planEdit(
 
 	const materials = [...base.materials];
 	let entities = base.entities;
+	let surfaceFinishes = base.surfaceFinishes;
+	let changedSurfaceKeys: string[] = [];
 	const addedMaterials: string[] = [];
 	const changedMaterials: string[] = [];
 
@@ -245,7 +252,9 @@ function planEdit(
 		const created = applyFinishEdit(seed, input.edit);
 		materials.push(created);
 		addedMaterials.push(created.id);
-		const targets = input.mode === 'all' ? users : [entity];
+		const targets = input.mode === 'all'
+			? users.filter((user) => user.kind === 'entity').map((user) => user.entity)
+			: [entity];
 		const targetIds = new Set(targets.map((target) => target.id));
 		entities = base.entities.map((candidate) => {
 			if (!targetIds.has(candidate.id)) return candidate;
@@ -256,6 +265,15 @@ function planEdit(
 				materialInstanceId: created.id
 			} as SceneEntity;
 		});
+		const sharedSurfaceUsers = input.mode === 'all'
+			? users.filter((user) => user.kind === 'surface')
+			: [];
+		changedSurfaceKeys = sharedSurfaceUsers.map((user) => user.key);
+		surfaceFinishes = base.surfaceFinishes?.map((assignment) =>
+			changedSurfaceKeys.includes(surfaceKey(assignment.surface))
+				? { ...assignment, finish: { materialInstanceId: created.id } }
+				: assignment
+		);
 	} else {
 		const project = 'project' in ref ? materialInstanceById(base.materials, ref.project) : undefined;
 		if (project === undefined) {
@@ -274,15 +292,23 @@ function planEdit(
 	const removedMaterials = materials
 		.filter((instance) => !collected.some((candidate) => candidate.id === instance.id))
 		.map((instance) => instance.id);
-	const after: SceneDocument = { ...base, materials: collected, entities };
+	const after: SceneDocument = {
+		...base,
+		materials: collected,
+		entities,
+		...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
+	};
 	if (sameSceneValues(base, after)) {
 		return { kind: 'rejected', code: 'no-change', message: 'That Finish already has those values.' };
 	}
-	const affected = input.mode === 'all' ? users.map((user) => user.id) : [entity.id];
+	const affected = input.mode === 'all'
+		? users.filter((user) => user.kind === 'entity').map((user) => user.id)
+		: [entity.id];
 	return {
 		kind: 'planned',
 		scene: after,
 		changedEntityIds: affected,
+		changedSurfaceKeys: input.mode === 'all' ? users.filter((user) => user.kind === 'surface').map((user) => user.key) : [],
 		subjectIds: affected,
 		addedMaterials,
 		changedMaterials,
@@ -530,6 +556,35 @@ function readMaterialIdList(reader: ShapeReader, raw: unknown, path: string): st
 	return ids;
 }
 
+type WallSideSurfaceRef = Extract<LayoutSurfaceRef, { readonly kind: 'wall-side' }>;
+
+function readWallSideRefs(reader: ShapeReader, raw: unknown, path: string): WallSideSurfaceRef[] | null {
+	if (!Array.isArray(raw) || raw.length === 0) {
+		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of Wall-side references`);
+		return null;
+	}
+	const refs: WallSideSurfaceRef[] = [];
+	const seen = new Set<string>();
+	for (const [index, item] of raw.entries()) {
+		const at = `${path}[${index}]`;
+		const record = reader.object(item, at, ['kind', 'wallId', 'side']);
+		if (record === null) continue;
+		const kind = reader.tag(record.kind, `${at}.kind`, ['wall-side']);
+		const wallId = reader.opaqueId(record.wallId, `${at}.wallId`);
+		const side = reader.tag(record.side, `${at}.side`, ['left', 'right']);
+		if (kind === null || wallId === null || side === null) continue;
+		const ref: WallSideSurfaceRef = { kind: 'wall-side', wallId, side: side as 'left' | 'right' };
+		const key = surfaceKey(ref);
+		if (seen.has(key)) {
+			reader.problem(at, 'duplicate-surface', `${path} must not repeat a Wall side`);
+			continue;
+		}
+		seen.add(key);
+		refs.push(ref);
+	}
+	return reader.issues.length > 0 ? null : refs;
+}
+
 function sameSequence(left: readonly string[], right: readonly string[]): boolean {
 	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -733,6 +788,73 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		);
 	}
 
+	if (kind === SCENE_SURFACE_FINISH_ASSIGN) {
+		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'surfaces']);
+		const finish = payload === null ? null : readFinishRef(reader, payload.finish, '$.payload.finish');
+		const surfaces = payload === null ? null : readWallSideRefs(reader, payload.surfaces, '$.payload.surfaces');
+		if (finish === null || surfaces === null || reader.issues.length > 0) {
+			return refuse(reader.issues[0]?.message ?? 'Paint needs one Finish and at least one Wall side.');
+		}
+		if (finish === 'model-own') return refuse("Model's own cannot be painted onto a Wall side.", 'not-paintable');
+		if (request.allocatedIds.length > 0) return refuse('Painting Wall sides needs no allocated id.', 'unexpected-allocation');
+		const curated = 'curated' in finish ? finish.curated : null;
+		const project = 'project' in finish ? before.materials.find((entry) => entry.id === finish.project) : undefined;
+		if (curated !== null && !MATERIAL_ID.test(curated)) return refuse('That curated Finish does not exist.', 'unknown-catalogue');
+		if ('project' in finish && (project === undefined || isPristineInstance(project))) {
+			return refuse('That project Finish no longer exists.', 'unknown-finish');
+		}
+		if (request.intent.targets.length !== surfaces.length) return refuse('Paint must address exactly the Wall sides it names.');
+		const layoutUnit = envelope.units.layout;
+		const layout = layoutUnit.data;
+		const existing = new Map((before.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
+		const next = new Map(existing);
+		const changedKeys: string[] = [];
+		const addedKeys: string[] = [];
+		const assignedFinish: SceneSurfaceFinish['finish'] = 'curated' in finish
+			? { materialId: finish.curated }
+			: { materialInstanceId: finish.project };
+		for (const [index, surface] of surfaces.entries()) {
+			const target = request.intent.targets[index]!;
+			const componentId = `side:${surface.side}`;
+			if (
+				target.domain !== 'layout' || target.subject.kind !== 'wall' || target.subject.id !== surface.wallId ||
+				target.componentId !== componentId || target.capabilityId !== null || target.instancePath.length !== 0 ||
+				target.revision.kind !== 'exact' || target.revision.contentRevision !== layoutUnit.header.contentRevision ||
+				target.location.kind !== 'layout-location' || target.location.levelId !== layout.floor.id ||
+				target.location.structureInstancePath.length !== 0
+			) {
+				return refuse('Paint needs an exact qualified reference to each Wall side.', 'invalid-target');
+			}
+			if (resolveLayoutSurface(layout, surface) !== 'present') {
+				return refuse('That surface changed. Try again.', 'surface_not_present');
+			}
+			const key = surfaceKey(surface);
+			const assignment: SceneSurfaceFinish = { surface, finish: assignedFinish };
+			const previous = existing.get(key);
+			if (previous === undefined) addedKeys.push(key);
+			else if (JSON.stringify(previous) !== JSON.stringify(assignment)) changedKeys.push(key);
+			next.set(key, assignment);
+		}
+		const assignments = [...next.values()].sort((left, right) => {
+			const leftKey = surfaceKey(left.surface);
+			const rightKey = surfaceKey(right.surface);
+			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+		});
+		const after: SceneDocument = { ...before, surfaceFinishes: assignments };
+		if (sameSceneValues(before, after)) return refuse('Every chosen Wall side already has that Finish.', 'no-change');
+		return complete(
+			after,
+			{
+				surfaceFinishes: { changedKeys, addedKeys },
+				createdEntityIds: [],
+				changedEntityIds: [],
+				changedEntityFields: []
+			},
+			[...new Set([...addedKeys, ...changedKeys])].sort(),
+			['surfaceFinishes', 'finish']
+		);
+	}
+
 	if (kind === SCENE_FINISH_EDIT) {
 		const payload = reader.object(request.intent.payload, '$.payload', ['entityId', 'from', 'reach', 'mode', 'edit']);
 		const entityId = payload === null ? null : reader.opaqueId(payload.entityId, '$.payload.entityId');
@@ -772,6 +894,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			{
 				changedEntityIds: planned.changedEntityIds,
 				changedEntityFields: ['materialId', 'materialInstanceId'],
+				surfaceFinishes: { changedKeys: planned.changedSurfaceKeys },
 				materials: materialGrant({
 					added: planned.addedMaterials,
 					changed: planned.changedMaterials,
@@ -1228,6 +1351,7 @@ export function createFinishPlanners(
 		// other Finish write stays Scene-only.
 		admission: {
 			domain: 'scene' as const,
+			...(kind === SCENE_SURFACE_FINISH_ASSIGN ? { referenceDomains: ['layout'] as const } : {}),
 			compound: false,
 			units: false,
 			resources: kind === SCENE_FINISH_FROM_IMAGE

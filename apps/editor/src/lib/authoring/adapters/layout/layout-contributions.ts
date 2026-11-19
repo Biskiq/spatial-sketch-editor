@@ -8,6 +8,11 @@ import {
 	planDeleteWallFirstOpening,
 	resolveRoomCopyEnclosure,
 	isClosedWall,
+	resolveLayoutSurface,
+	spaceOfSurface,
+	surfacesOfSpace,
+	wallSideAt,
+	type LayoutSurfaceRef,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
@@ -19,7 +24,9 @@ import {
 	type StageCardAction,
 	type StageCardActionOutcome,
 	type StageCardSubject,
-	type StageGuideContribution
+	type StageGuideContribution,
+	type StagePaintAnswer,
+	type StagePaintSpaceScope
 } from '$lib/authoring/stage/stage-adapter-host';
 import { stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
@@ -809,11 +816,35 @@ export function createLayoutContributions({
 	const contributions = {
 		hostTools: ['erase', 'measure', 'paint'],
 		/**
-		 * Walls, Openings and floors are Layout surfaces. S5 owns Wall painting, so
-		 * Paint refuses them in Layout's words rather than reaching an object behind.
+		 * Face Paint names the Wall-side identity from the exact 3D triangle or
+		 * Layout's signed lateral reading of a Plan hit. Space membership is also
+		 * Layout-owned; S5a expands it to Wall sides only (OD-J5 keeps floor/lid UI
+		 * for S5b).
 		 */
-		paintAnswer() {
-			return { kind: 'refused' as const, message: 'Walls are not painted yet.' };
+		paintAnswer(hit): StagePaintAnswer {
+			if (hit.sourceKind !== 'wall') {
+				return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
+			}
+			const componentId = hit.subRef?.kind === 'component' ? hit.subRef.componentId : null;
+			const taggedSide = componentId?.match(/^side:(left|right)$/)?.[1];
+			const side = taggedSide === 'left' || taggedSide === 'right'
+				? taggedSide
+				: wallSideAt(context.snapshot.domain.geometry, hit.sourceId, [hit.worldPoint[0], hit.worldPoint[2]]);
+			if (side === null) return { kind: 'refused', message: 'This part of a wall can’t be painted.' };
+			const surface: LayoutSurfaceRef = { kind: 'wall-side', wallId: hit.sourceId, side };
+			if (resolveLayoutSurface(document, surface) !== 'present') {
+				return { kind: 'refused', message: 'That surface changed. Try again.' };
+			}
+			const membership = spaceOfSurface(document, surface);
+			const space: StagePaintSpaceScope =
+				membership.kind === 'unique'
+					? {
+							kind: 'unique', roomId: membership.roomId,
+							surfaces: surfacesOfSpace(document, membership.roomId).surfaces
+								.filter((candidate) => candidate.kind === 'wall-side')
+						}
+					: membership;
+			return { kind: 'paintable-surface', surface, space };
 		},
 		guides,
 		/**

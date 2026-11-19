@@ -41,6 +41,9 @@ import type {
 } from '$lib/render/resources/material-descriptor';
 import { applyTreatment } from '$lib/render/materials/treatment';
 import { DEFAULT_FLOOR_COLOR } from '$lib/visitor/room-presentation';
+import type { TextureLoadScope } from '$lib/render/resources/texture-store';
+import { createRoomSurfaceMaterials } from '$lib/render/layout/room-surface-materials';
+import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 
 /** One retained Room: what it was built from, its group, its buffers and its floor/lid meshes. */
 type RetainedRoom = {
@@ -84,6 +87,8 @@ export type RoomRepresentation = {
 	 * Returns whether any material changed.
 	 */
 	setTreatment(treatment: MaterialTreatment | undefined): boolean;
+	/** Re-resolve Scene-owned Room floor/lid assignments without rebuilding geometry. */
+	setScene(scene: object | null, scope: TextureLoadScope | null): boolean;
 	/**
 	 * Lift exactly these Rooms' generated lids out of the Stage view and out of
 	 * rays, by moving each lid mesh off the world layer onto
@@ -163,7 +168,11 @@ function roomDescriptors(treatment: MaterialTreatment | undefined): {
 
 export function createRoomRepresentation(
 	store: MaterialStore,
-	treatment: MaterialTreatment | undefined = undefined
+	treatment: MaterialTreatment | undefined = undefined,
+	initialScene: object | null = null,
+	initialScope: TextureLoadScope | null = null,
+	onMaterialChange: () => void = () => {},
+	resolveSurfaceLook?: SceneSurfaceLookResolver
 ): RoomRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutRooms';
@@ -174,12 +183,46 @@ export function createRoomRepresentation(
 	let ceilingLease = store.acquire(descriptors.ceiling);
 	const materialKeys = new Set([floorLease.key, shadowLease.key, ceilingLease.key]);
 	let disposed = false;
+	let activeScene = initialScene;
+	let activeScope = initialScope;
+	let surfaceMaterials = createRoomSurfaceMaterials({
+		store, scope: activeScope, onMaterialChange: refreshSurfaceMaterials, resolveSurfaceLook
+	});
 	let hidden: ReadonlySet<string> = new Set();
 	/** The remembered reading: a Room built later is born lifted. */
 	let lifted: ReadonlySet<string> = new Set();
 
 	/** The museum layer a lid sits on for one lifted state. */
 	const layerOf = (isLifted: boolean): number => (isLifted ? LIFTED_RENDER_LAYER : 0);
+
+	function updateMaterialKeys(): void {
+		materialKeys.clear();
+		for (const key of [floorLease.key, shadowLease.key, ceilingLease.key, ...surfaceMaterials.materialKeys()]) {
+			materialKeys.add(key);
+		}
+	}
+
+	function refreshSurfaceMaterials(): void {
+		if (disposed) return;
+		for (const entry of retained.values()) {
+			entry.floor.material = surfaceMaterials.materialFor({ kind: 'room-floor', roomId: entry.roomId }) ?? floorLease.material;
+			if (entry.ceiling !== null) {
+				entry.ceiling.material = surfaceMaterials.materialFor({ kind: 'room-lid', roomId: entry.roomId }) ?? ceilingLease.material;
+			}
+		}
+		updateMaterialKeys();
+		onMaterialChange();
+	}
+
+	function replaceSurfaceMaterials(): void {
+		const next = createRoomSurfaceMaterials({
+			store, scope: activeScope, onMaterialChange: refreshSurfaceMaterials, resolveSurfaceLook
+		});
+		const previous = surfaceMaterials;
+		surfaceMaterials = next;
+		refreshSurfaceMaterials();
+		previous.dispose();
+	}
 
 	/**
 	 * Attach `group` at `index`.
@@ -210,7 +253,8 @@ export function createRoomRepresentation(
 		// catcher that keeps the floor eligible for an authored light's shadow.
 		const floorGeometry = new ShapeGeometry(polygonShape(room.floorPolygon));
 
-		const floor = new Mesh(floorGeometry, floorLease.material);
+		const floorMaterial = surfaceMaterials.materialFor({ kind: 'room-floor', roomId: room.roomId }) ?? floorLease.material;
+		const floor = new Mesh(floorGeometry, floorMaterial);
 		floor.name = `VisitorFloor:${room.roomId}`;
 		tagRenderIdentity(floor, 'floor', room.roomId);
 		floor.position.set(0, room.floorElevation, 0);
@@ -230,7 +274,8 @@ export function createRoomRepresentation(
 		let ceiling: Mesh | null = null;
 		if (room.overhead !== 'open-to-sky') {
 			const ceilingGeometry = new ShapeGeometry(polygonShape(room.ceilingPolygon, false));
-			ceiling = new Mesh(ceilingGeometry, ceilingLease.material);
+			const lidMaterial = surfaceMaterials.materialFor({ kind: 'room-lid', roomId: room.roomId }) ?? ceilingLease.material;
+			ceiling = new Mesh(ceilingGeometry, lidMaterial);
 			ceiling.name = `VisitorCeiling:${room.roomId}`;
 			ceiling.position.set(0, room.ceilingElevation, 0);
 			ceiling.rotation.set(Math.PI / 2, 0, 0);
@@ -276,6 +321,7 @@ export function createRoomRepresentation(
 					object3d.add(next.group);
 				}
 				retained.set(room.roomId, { key: room.cacheKey, roomId: room.roomId, ...next });
+				updateMaterialKeys();
 				built += 1;
 				triangulations += next.triangulations;
 			}
@@ -320,20 +366,22 @@ export function createRoomRepresentation(
 			const nextDescriptors = roomDescriptors(treatment);
 			const nextFloor = store.acquire(nextDescriptors.floor);
 			const nextCeiling = store.acquire(nextDescriptors.ceiling);
-			for (const entry of retained.values()) {
-				entry.floor.material = nextFloor.material;
-				if (entry.ceiling) entry.ceiling.material = nextCeiling.material;
-			}
 			const previousFloor = floorLease;
 			const previousCeiling = ceilingLease;
 			floorLease = nextFloor;
 			ceilingLease = nextCeiling;
-			materialKeys.delete(previousFloor.key);
-			materialKeys.delete(previousCeiling.key);
-			materialKeys.add(nextFloor.key);
-			materialKeys.add(nextCeiling.key);
+			replaceSurfaceMaterials();
 			previousFloor.release();
 			previousCeiling.release();
+			return true;
+		},
+
+		setScene(next, scope) {
+			if (disposed) throw new Error('the layout room representation has been disposed');
+			if (next === activeScene && scope === activeScope) return false;
+			activeScene = next;
+			activeScope = scope;
+			replaceSurfaceMaterials();
 			return true;
 		},
 
@@ -367,6 +415,7 @@ export function createRoomRepresentation(
 				for (const buffer of entry.geometry) buffer.dispose();
 			}
 			retained.clear();
+			surfaceMaterials.dispose();
 			floorLease.release();
 			shadowLease.release();
 			ceilingLease.release();

@@ -33,6 +33,7 @@
 import { validateCameraFreeScenePayload } from '../units/validate';
 import type { ShapeIssue } from '../strict-shape';
 import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
+import { surfaceKey } from '@portfolio/layout-core';
 
 /**
  * The records one operation may touch. `changedEntityFields` is the value-level
@@ -67,6 +68,12 @@ export type SceneRecordScope = {
 	 * this slice deliberately does not add.
 	 */
 	readonly textures?: { readonly added: readonly string[] };
+	/** Existing surface Finish assignments this operation may retarget in place. */
+	readonly surfaceFinishes?: {
+		readonly changedKeys: readonly string[];
+		readonly addedKeys?: readonly string[];
+		readonly removedKeys?: readonly string[];
+	};
 	/** Existing entities this operation may replace in place (same id, same position). */
 	readonly changedEntityIds: readonly string[];
 	/**
@@ -155,6 +162,7 @@ export function checkSceneRecordScope(
 			field !== 'artworkLibrary' &&
 			(field !== 'materials' || scope.materials === undefined) &&
 			(field !== 'textures' || scope.textures === undefined) &&
+			(field !== 'surfaceFinishes' || scope.surfaceFinishes === undefined) &&
 			(field !== 'palette' || scope.palette?.change !== 'slots')
 	);
 	for (const field of carriedFields) {
@@ -186,6 +194,7 @@ export function checkSceneRecordScope(
 
 	issues.push(...checkMaterialScope(before, after, scope));
 	issues.push(...checkTextureScope(before, after, scope));
+	issues.push(...checkSurfaceFinishScope(before, after, scope));
 
 	const expectedIds = [
 		...before.entities.filter((entity) => !removed.has(entity.id)).map((entity) => entity.id),
@@ -415,6 +424,76 @@ function checkTextureScope(
 			code: 'record-scope-violation',
 			message: `Texture \"${texture.id}\" may not be removed by the ${scope.operationKind} operation`
 		});
+	}
+	return issues;
+}
+
+function checkSurfaceFinishScope(
+	before: SceneDocument,
+	after: SceneDocument,
+	scope: SceneRecordScope
+): readonly ShapeIssue[] {
+	if (scope.surfaceFinishes === undefined) return [];
+	const issues: ShapeIssue[] = [];
+	const changed = new Set(scope.surfaceFinishes.changedKeys);
+	const added = new Set(scope.surfaceFinishes.addedKeys ?? []);
+	const removed = new Set(scope.surfaceFinishes.removedKeys ?? []);
+	const previous = before.surfaceFinishes ?? [];
+	const next = after.surfaceFinishes ?? [];
+	const previousKeys = previous.map((assignment) => surfaceKey(assignment.surface));
+	const nextKeys = next.map((assignment) => surfaceKey(assignment.surface));
+	const previousSet = new Set(previousKeys);
+	const nextSet = new Set(nextKeys);
+	const actualAdded = nextKeys.filter((key) => !previousSet.has(key));
+	const actualRemoved = previousKeys.filter((key) => !nextSet.has(key));
+	if (
+		stableJson([...added].sort()) !== stableJson([...actualAdded].sort()) ||
+		stableJson([...removed].sort()) !== stableJson([...actualRemoved].sort())
+	) {
+		issues.push({
+			path: '$.scene.surfaceFinishes', code: 'record-scope-violation',
+			message: `Surface Finish identity changes must match the explicit add/remove grant`
+		});
+		return issues;
+	}
+	const nextByKey = new Map(next.map((assignment) => [surfaceKey(assignment.surface), assignment]));
+	for (const key of changed) {
+		if (!previousSet.has(key) || !nextSet.has(key)) {
+			issues.push({
+				path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation',
+				message: `Surface Finish "${key}" is not an existing assignment`
+			});
+		}
+	}
+	for (const assignment of previous) {
+		const key = surfaceKey(assignment.surface);
+		const candidate = nextByKey.get(key);
+		if (candidate === undefined) {
+			if (!removed.has(key)) {
+				issues.push({ path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation', message: `Surface Finish "${key}" was removed outside the grant` });
+			}
+			continue;
+		}
+		if (changed.has(key)) {
+			if (stableJson(candidate.surface) !== stableJson(assignment.surface)) {
+				issues.push({
+					path: `$.scene.surfaceFinishes.${key}.surface`, code: 'record-scope-violation',
+					message: `Surface identity "${key}" is immutable during a Finish edit`
+				});
+			}
+		} else if (stableJson(candidate) !== stableJson(assignment)) {
+			issues.push({
+				path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation',
+				message: `Surface Finish "${key}" is outside the ${scope.operationKind} operation's grant`
+			});
+		}
+	}
+	for (const assignment of next) {
+		const key = surfaceKey(assignment.surface);
+		if (previousSet.has(key)) continue;
+		if (!added.has(key)) {
+			issues.push({ path: `$.scene.surfaceFinishes.${key}`, code: 'record-scope-violation', message: `Surface Finish "${key}" was added outside the grant` });
+		}
 	}
 	return issues;
 }
