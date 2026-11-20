@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import * as projectModel from '@portfolio/project-model';
 import { derivePackageId, sha256Bytes } from '@portfolio/project-model';
 import * as units from '@portfolio/project-model/units';
+import * as materials from '@portfolio/project-model/materials';
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
@@ -65,8 +66,31 @@ describe('[cap:project.envelope core] project-model package boundary', () => {
 		for (const path of sourceFiles(packageSrc)) {
 			const source = readFileSync(path, 'utf8');
 			expect(source, path).not.toMatch(
-			/from\s*['"][^'"]*(\$lib|\/editor\/|svelte|@threlte|three)/
-		);
+				/from\s*['"][^'"]*(\$lib|\/editor\/|svelte|@threlte|three|node:)/
+			);
+		}
+	});
+
+	it('exposes the portable material contract on its own runtime-safe subpath', () => {
+		// The contract is read by the editor, the API and the visitor. It must not
+		// reach a renderer, an editor path or a Node builtin: the same subpath has
+		// to load in a browser Worker and a package reader.
+		expect(typeof materials.readRecipe).toBe('function');
+		expect(typeof materials.resolveFinish).toBe('function');
+		expect(typeof materials.bindFinish).toBe('function');
+		expect(typeof materials.sceneFinishToContract).toBe('function');
+		expect(materials.NEUTRAL_RECIPE_HASH).toMatch(/^sha256-[0-9a-f]{64}$/);
+		expect(materials.CATALOGUE_MATERIAL_IDS).toHaveLength(6);
+		for (const id of materials.CATALOGUE_MATERIAL_IDS) {
+			expect(materials.catalogueRecipe(id), id).toBeDefined();
+		}
+
+		const materialFiles = sourceFiles(resolve(packageSrc, 'materials'));
+		expect(materialFiles.length).toBeGreaterThan(0);
+		for (const path of materialFiles) {
+			const source = readFileSync(path, 'utf8');
+			expect(source, path).not.toMatch(/from\s*['"]node:/);
+			expect(source, path).not.toMatch(/from\s*['"][^'"]*(three|@threlte|\$lib)/);
 		}
 	});
 
