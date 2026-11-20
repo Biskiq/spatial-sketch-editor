@@ -73,6 +73,69 @@ function memoryStorage(): SessionStorageLike & { values: Map<string, string> } {
 	};
 }
 
+describe('client image repair transport', () => {
+	it('sends the exact bytes with the displayed pin and loaded base, then reads the acknowledgement', async () => {
+		const calls: { url: string; init: RequestInit }[] = [];
+		const bytes = Uint8Array.from([1, 2, 3]);
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async (url, init) => {
+				calls.push({ url, init: init ?? {} });
+				return new Response(JSON.stringify({
+					projectId: PROJECT_ID,
+					assetId: '00000000-0000-4000-8000-000000000001',
+					pin: { hash: `sha256-${'a'.repeat(64)}`, mime: 'image/png', size: 3 },
+					replaced: true
+				}), { status: 200, headers: { 'content-type': 'application/json' } });
+			}
+		});
+		if (!api) throw new Error('api was not created');
+
+		const repaired = await api.repairAsset(
+			PROJECT_ID,
+			'00000000-0000-4000-8000-000000000001',
+			bytes,
+			{ expectedPin: `sha256-${'a'.repeat(64)}`, savedBaseToken: TOKEN }
+		);
+		expect(calls).toHaveLength(1);
+		expect(calls[0].url).toBe(
+			`https://api.example/projects/${encodeURIComponent(PROJECT_ID)}/assets/00000000-0000-4000-8000-000000000001/repair?expectedPin=sha256-${'a'.repeat(64)}&savedBase=${encodeURIComponent(TOKEN)}`
+		);
+		expect(calls[0].init.method).toBe('PUT');
+		expect(calls[0].init.credentials).toBe('include');
+		expect((calls[0].init.headers as Record<string, string>)['Content-Type']).toBe('application/octet-stream');
+		expect(new Uint8Array(calls[0].init.body as Uint8Array)).toEqual(bytes);
+		expect(repaired).toEqual({
+			projectId: PROJECT_ID,
+			assetId: '00000000-0000-4000-8000-000000000001',
+			pin: { hash: `sha256-${'a'.repeat(64)}`, mime: 'image/png', size: 3 },
+			replaced: true
+		});
+	});
+
+	it('maps wrong bytes and a stale base without discarding their server codes', async () => {
+		for (const [status, code, expectedCode] of [
+			[422, 'image_mismatch', 'invalid'],
+			[409, 'conflict', 'conflict'],
+			[409, 'image_pin_changed', 'invalid']
+		] as const) {
+			const api = createProjectApi({
+				apiOrigin: 'https://api.example',
+				fetch: async () => new Response(JSON.stringify({ error: { code, message: 'refused' } }), {
+					status, headers: { 'content-type': 'application/json' }
+				})
+			});
+			if (!api) throw new Error('api was not created');
+			await expect(api.repairAsset(
+				PROJECT_ID,
+				'00000000-0000-4000-8000-000000000001',
+				Uint8Array.from([1]),
+				{ expectedPin: `sha256-${'a'.repeat(64)}`, savedBaseToken: TOKEN }
+			)).rejects.toMatchObject({ name: 'ProjectPersistenceError', code: expectedCode, status, serverCode: code });
+		}
+	});
+});
+
 describe('client Save transport', () => {
 	it('sends one conditional capture and reads the acknowledgement', async () => {
 		const { sourceContentId, request } = await fixture();

@@ -5,7 +5,11 @@ import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 import { discardIncompatiblePendingCapture, discardPendingCapture, persistPendingCapture, readPendingCapture, type IncompatiblePendingCloudSave } from '$lib/authoring/save/pending-capture';
 import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/save';
 import { serializeProjectEnvelope, validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
-import { verifyArtworkLibrary } from '$lib/authoring/artwork/project-artwork';
+import {
+	ProjectImageLoadError,
+	verifyProjectImageClosure
+} from '$lib/authoring/artwork/project-artwork';
+import type { VerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
 import { bootEmpty, bootFromLoadOutcome, bootFromSourceJson, bootStarterGallery, initialBootState, type BootIntent, type BootLoadOutcome, type BootState } from '$lib/authoring/stage/boot-state';
 import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
@@ -19,6 +23,7 @@ export function createProjectSession(host: {
 	readonly api: ProjectApi | null;
 	readonly auth: ProjectAuth | null;
 	readonly session: StageSession;
+	readonly images?: VerifiedProjectImageCache;
 	url(): URL;
 	acceptance(): StageAcceptanceHost | null;
 	tornDown(): boolean;
@@ -159,6 +164,7 @@ export function createProjectSession(host: {
 	async function load(projectIdToLoad: string, requestedIntent: BootIntent): Promise<void> {
 		// A read is a new epoch's source: no previous saved base, saved bytes or
 		// previous epoch's Save controller may survive into it.
+		host.images?.clear(projectIdToLoad);
 		pendingSavedBase = null;
 		remoteSavedCanonicalJson = null;
 		headSave = null;
@@ -210,6 +216,9 @@ export function createProjectSession(host: {
 			// The cloud row's canonical bytes are the saved side of a resumed capture's
 			// dirty comparison; the captured bytes are the local work.
 			remoteSavedCanonicalJson = next.snapshot.canonicalJson;
+		} else {
+			// The source did not install; its verified loading bytes are discarded.
+			host.images?.clear(projectIdToLoad);
 		}
 		applyState(next);
 		perfMark(next.status === 'ready' || next.status === 'empty' ? 'f2:cloud-admitted' : `f2:cloud-${next.status}`);
@@ -324,17 +333,22 @@ export function createProjectSession(host: {
 			reportSourceRefusal(next, 'reload');
 			return;
 		}
-		if (next.snapshot.domain.scene.entities.some((entity) => entity.kind === 'artwork') ||
-			offer.project.units.scene.data.artworkLibrary?.length) {
-			try {
-				await runBoundLoad(session, (signal) => verifyOpenedArtwork(offer.project, signal));
-			} catch (error) {
-				if (session.isCurrent(token)) host.notice = error instanceof Error ? error.message : 'Artwork could not be verified.';
-				return;
-			}
-			if (!session.isCurrent(token)) return;
-		}
 		const precondition = offer.save.capture.precondition;
+		// A resumed Save installs its retained capture exactly like a cold load, so
+		// it passes the same complete image closure before anything is replaced.
+		try {
+			await runBoundLoad(session, (signal) =>
+				verifyOpenedImages(
+					offer.project,
+					precondition.kind === 'expected-saved-base' ? precondition.token : null,
+					signal
+				)
+			);
+		} catch (error) {
+			if (session.isCurrent(token)) host.notice = error instanceof Error ? error.message : 'Project images could not be verified.';
+			return;
+		}
+		if (!session.isCurrent(token)) return;
 		pendingSavedBase = {
 			token: precondition.kind === 'expected-saved-base' ? precondition.token : null,
 			revision: pendingSavedBase?.revision ?? null,
@@ -378,10 +392,32 @@ export function createProjectSession(host: {
 		host.notice = 'The pending Save was discarded; the cloud copy is unchanged.';
 	}
 
-	async function verifyOpenedArtwork(document: unknown, signal: AbortSignal): Promise<void> {
+	/**
+	 * Verify the complete required image closure before a candidate can install.
+	 *
+	 * This is the S4b gap closed: the shelf is not the whole closure. Every
+	 * registered project texture (even one whose Finish was removed) and every
+	 * Artwork shelf image is checked against its ready row and stored bytes. The
+	 * verified bytes are handed to the route's bounded loading cache so the Stage
+	 * does not download them a second time. A refusal throws before `applyState`,
+	 * so the current session, its history and its saved base stay exactly as they
+	 * were.
+	 */
+	async function verifyOpenedImages(document: unknown, savedBaseToken: string | null, signal: AbortSignal): Promise<void> {
 		const validated = validateProjectEnvelope(document);
 		if (!validated.success || api === null) return;
-		await verifyArtworkLibrary(api, projectId, validated.envelope.units.scene.data, signal);
+		host.images?.clear(projectId);
+		try {
+			await verifyProjectImageClosure(api, projectId, validated.envelope, signal, {
+				savedBaseToken,
+				cache: host.images
+			});
+		} catch (error) {
+			// A refused candidate never leaves verified bytes behind for the session
+			// that stays mounted.
+			host.images?.clear(projectId);
+			throw error;
+		}
 	}
 
 	async function fetchOutcome(
@@ -392,7 +428,7 @@ export function createProjectSession(host: {
 	): Promise<BootLoadOutcome> {
 		try {
 			const loaded = await api!.loadProject(projectIdToLoad, signal);
-			await verifyOpenedArtwork(loaded.document, signal);
+			await verifyOpenedImages(loaded.document, loaded.savedBaseToken, signal);
 			// Capture the cloud row's saved base with the document it describes: the
 			// save state is built from this pair, never from the admitted snapshot
 			// alone (which cannot know the server's version token).
@@ -411,6 +447,9 @@ export function createProjectSession(host: {
 			// project row is created until the creator explicitly saves.
 			if (requestedIntent === 'create' && error instanceof ProjectPersistenceError && error.code === 'auth') {
 				return { kind: 'not-found' };
+			}
+			if (error instanceof ProjectImageLoadError) {
+				return { kind: 'image-refused', message: error.message, diagnostic: error.diagnostic };
 			}
 			return loadOutcomeFromError(error);
 		}
@@ -832,9 +871,14 @@ export function createProjectSession(host: {
 		// abandoned instead of installing over the project the creator now has.
 		const token = session.token();
 		try {
-			await runBoundLoad(session, (signal) => verifyOpenedArtwork(offer.document, signal));
+			await runBoundLoad(session, (signal) =>
+				verifyOpenedImages(offer.document, offer.savedBaseToken, signal)
+			);
 		} catch (error) {
-			if (session.isCurrent(token)) host.notice = error instanceof Error ? error.message : 'Artwork could not be verified.';
+			if (session.isCurrent(token)) {
+				host.images?.clear(projectId);
+				host.notice = error instanceof Error ? error.message : 'Project images could not be verified.';
+			}
 			return false;
 		}
 		if (!session.isCurrent(token)) return false;
@@ -846,6 +890,7 @@ export function createProjectSession(host: {
 		// becomes this epoch's saved base. A failed reload keeps the local source,
 		// its history/selection and the saved base the Head is still saving against.
 		if (next.status !== 'ready' && next.status !== 'empty') {
+			host.images?.clear(projectId);
 			reportSourceRefusal(next, 'reload');
 			return false;
 		}

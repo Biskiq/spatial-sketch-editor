@@ -6,7 +6,7 @@
 
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
-**Last reviewed:** 2026-10-31 (local credential migration 009). The code contract below describes
+**Last reviewed:** 2026-11-20 (project image pin verification and exact-byte repair). The code contract below describes
 the F2 cutover tree. Deployment and migration 005 remain owner-controlled after merge; it does not
 claim production activation.
 
@@ -189,6 +189,32 @@ the captured mounted bytes, while the server validates the stamped capture. Save
 an idempotent operation receipt. Reusing a revision for changed contents or an operation for changed
 bytes refuses. One concurrent saved-base contender wins; the loser preserves local work and gets a
 conflict. A network-ambiguous retry replays the exact capture. Reload is explicit replacement.
+
+**Project image closure (T2.S8 · PR C).** The Scene texture registry and Artwork shelf are one
+storage closure, enumerated by `@portfolio/project-model` for Save, cold Load and delivery. Save
+resolves the complete closure before the transaction, then defers an IO refusal until after
+owner-scoped receipt replay and saved-base checks. Under the project row lock it re-reads every
+captured asset row with `FOR SHARE` in asset-id order and compares MIME, length, SHA and object
+key; a concurrent repair therefore exposes either the complete old capture or a typed refusal,
+never a mixed one. Version and receipt append only after those checks. Cold Load runs the same
+closure against the loaded saved base before installing a candidate; failure preserves the current
+session and returns `{code,projectId,savedBase,assetId,expectedPin,paths,action}`. Verified bytes
+live only in a bounded short-lived loading cache.
+
+Image repair restores the physical object behind an existing ready row; it is not a new asset,
+revision, version, receipt or history entry. The owner-only
+`PUT /projects/:projectId/assets/:assetId/repair` takes raw bytes plus the displayed digest and the
+loaded saved-base token. Two phases bracket the stream: prove owner, base, saved-head membership
+and pin under the project-then-asset update lock and record a 24-hour attempt; stream to a fresh
+private staging key and verify length, digest, MIME and declared dimensions; then re-prove the same
+facts and conditionally swap only the object key if it is still the one phase 1 observed. No
+object-store read runs while those locks are held: a concurrent winner is observed there, verified
+after release, then its exact row, pin and object key are re-proved before success, so Saves and
+other repairs never wait on image bytes. A healthy row answers without a write; a wrong file or
+stale base leaves the old key and session untouched. The swap consumes the attempt row, and the
+next scoped asset access claims expired attempts in one statement before deleting an unreferenced
+staging key, so a delayed commit can never adopt a claimed key. Failed staging is released, and
+there is no background worker.
 
 Project lifecycle (T3.P04.S01): an owner rename is conditional on the saved-base precondition and
 uses the Save/version path, so historical versions remain readable and a no-op rename appends no

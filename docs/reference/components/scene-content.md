@@ -529,8 +529,9 @@ Materials (definitions/instances and shared-vs-unique already exist):
   an imported material it suppresses appearance maps and emissive while keeping
   displacement, alpha maps and every alpha/transparency flag, and a Natural
   model keeps its exact pre-S6 material key, clone and lease counts.
-- Remaining gaps: per-face and Wall painting (T5/S5), approved PBR map sets, and
-  save-mode verification of Finish texture pins.
+- Remaining gaps: per-face and Wall painting (T5/S5) and approved PBR map sets.
+  Save and cold Load now verify the complete Finish/Artwork image closure, including
+  Finish-only projects, through the shared project-image enumerator.
 - A default edit clones once per shared instance for the selected subset and
   retains sharing inside it; an explicit "edit shared" path discloses the
   total/outside user count. Cancelled choice, unsupported target and failure write

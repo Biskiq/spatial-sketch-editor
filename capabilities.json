@@ -196,7 +196,7 @@
     {
       "id": "project.cloud-save",
       "area": "T4",
-      "summary": "Conditional cloud Save validates the captured revision against its saved base and reports a conflict instead of overwriting",
+      "summary": "Conditional cloud Save validates the captured revision against its saved base, verifies the complete project-image closure and reports a conflict instead of overwriting; cold Load verifies the same closure and owner-authorized exact-byte repair restores a damaged saved image",
       "northStar": "north-star.md#accounts-backend-and-collaboration",
       "surface": ["apps/api/src/**", "apps/editor/src/lib/platform/**"],
       "design": null,

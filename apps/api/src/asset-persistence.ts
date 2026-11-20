@@ -194,17 +194,37 @@ export async function readAsset(
 	projectId: string,
 	assetId: string
 ): Promise<StoredAsset> {
-	const rows = await queryRows<AssetRow>(			db,
-			`SELECT ${ASSET_COLUMNS}
+	return readAssetRow(db, ownerId, projectId, assetId);
+}
+
+/**
+ * Read one owner-scoped asset row under a row lock.
+ *
+ * Image pin verification and repair share the project-then-asset lock order:
+ * a Save holds the project row before it takes these shared locks, and a repair
+ * holds the project row before it takes the asset row's update lock. `FOR SHARE`
+ * is enough for a verifier that must not race a physical-key swap.
+ */
+export async function readAssetRow(
+	db: Pick<DatabasePool, 'query'>,
+	ownerId: string,
+	projectId: string,
+	assetId: string,
+	lock: 'none' | 'share' | 'update' = 'none'
+): Promise<StoredAsset> {
+	const lockClause = lock === 'share' ? '\nFOR SHARE OF a' : lock === 'update' ? '\nFOR UPDATE OF a' : '';
+	const rows = await queryRows<AssetRow>(
+		db,
+		`SELECT ${ASSET_COLUMNS}
 FROM assets a
 JOIN projects p ON p.id = a.project_id
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.owner_id = $3
 	AND EXISTS (
 		SELECT 1 FROM project_versions v
 		WHERE v.project_id = p.id AND v.source_format = $4
-	)`,
-			[assetId, projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
-		);
+	)${lockClause}`,
+		[assetId, projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+	);
 	const row = rows[0];
 	if (!row) throw new AssetNotFoundError();
 	return readStoredAsset(row);

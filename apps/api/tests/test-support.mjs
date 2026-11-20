@@ -346,6 +346,7 @@ export function memoryObjectStore(options = {}) {
 		},
 		async get(key) {
 			gets.push(key);
+			if (options.onGet) await options.onGet(key);
 			const object = objects.get(key);
 			return object ? { body: Readable.from([object.bytes]), contentLength: object.bytes.length } : null;
 		},

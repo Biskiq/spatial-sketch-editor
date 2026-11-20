@@ -15,6 +15,7 @@ import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
+import { collectEnvelopeImageRequirements } from '@portfolio/project-model/project-images';
 import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -33,7 +34,7 @@ import {
 } from '@portfolio/project-model/units';
 
 import { registerAsset, uploadAsset } from '../dist/asset-persistence.js';
-import { prepareArtworkPins } from '../dist/artwork-persistence.js';
+import { prepareArtworkPins, prepareProjectImagePins } from '../dist/artwork-persistence.js';
 import { memoryObjectStore } from './test-support.mjs';
 import { runMigrations } from '../dist/migrate.js';
 import { ProjectNotFoundError, loadProject } from '../dist/project-persistence.js';
@@ -551,10 +552,15 @@ test('release preparation pins a P20 texture that a Finish names only through a 
 			},
 			treatment: 'clay'
 		},
-		resources: [{ kind: 'texture', id: ready.id, contentRevision: 'rev-normal', pin: null, unresolved: null }],
+		resources: [{
+			kind: 'texture', id: ready.id, contentRevision: 'rev-normal',
+			pin: { hash: ready.sha256, mime: ready.mime, size: ready.byteSize, locator: `/project-assets/${ready.id}` },
+			unresolved: null
+		}],
 		lockEntries: [{
 			domain: 'resource:texture', subjectKind: 'resource', subjectId: ready.id, instancePath: [],
-			contentRevision: 'rev-normal', requiredCapabilities: [], pin: null
+			contentRevision: 'rev-normal', requiredCapabilities: [],
+			pin: { hash: ready.sha256, mime: ready.mime, size: ready.byteSize, locator: `/project-assets/${ready.id}` }
 		}]
 	});
 	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
@@ -627,6 +633,146 @@ test('release preparation pins the colour image of a Finish and reopen keeps its
 		prepareArtworkPins(pool, store, owner, projectId, envelope.units.scene.data, 'release'),
 		(error) => error.path === '$.units.scene.data.textures[0].uri'
 	);
+});
+
+async function uploadTexture(owner, projectId, store, name, bytes) {
+	const pending = await registerAsset(pool, owner, projectId, name, 'test');
+	return uploadAsset(pool, owner, projectId, pending.id, bytes.length, Readable.from([bytes]), store, 'test');
+}
+
+function texturePin(ready) {
+	return {
+		hash: ready.sha256, mime: ready.mime, size: ready.byteSize,
+		locator: `/project-assets/${ready.id}`
+	};
+}
+
+function finishEnvelope(projectId, label, ready, { artworkLibrary = [], extraTextures = [] } = {}) {
+	const pin = texturePin(ready);
+	return unitEnvelope(projectId, label, {
+		textures: [
+			{ id: ready.id, name: label, uri: `/project-assets/${ready.id}` },
+			...extraTextures
+		],
+		materials: [{ id: 'finish', name: label, baseMaterialId: 'plaster-warm', color: '#ffffff', maps: { color: ready.id } }],
+		artworkLibrary,
+		resources: [{ kind: 'texture', id: ready.id, contentRevision: pin.hash, pin, unresolved: null }]
+	});
+}
+
+test('Finish-only Save verifies the texture closure and refuses missing bytes without advancing the head', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	const ready = await uploadTexture(owner, projectId, store, 'Colour.png', bytes);
+	const envelope = await finishEnvelope(projectId, 'Finish only', ready);
+	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
+	store.objects.delete([...store.objects.keys()][0]);
+	await assert.rejects(
+		() => saveAcceptedSource(pool, owner, request, store),
+		(error) => error.code === 'invalid-project' &&
+			error.issues.some((issue) => issue.code === 'image-missing' && issue.path === '$.units.scene.data.textures[0].uri')
+	);
+	const state = await pool.query('SELECT latest_version AS "latestVersion" FROM projects WHERE id = $1', [projectId]);
+	assert.equal(state.rows[0].latestVersion, 1);
+	// Restoring the exact bytes lets the same captured operation save.
+	const objectKey = [...store.objects.keys()][0] ?? (await pool.query(
+		'SELECT object_key AS "objectKey" FROM assets WHERE id = $1', [ready.id]
+	)).rows[0].objectKey;
+	store.objects.set(objectKey, { bytes, options: { contentType: 'image/png' } });
+	const saved = await saveAcceptedSource(pool, owner, request, store);
+	assert.equal(saved.version, 2);
+});
+
+test('Save verifies one image shared by a Finish and an unplaced Artwork and keeps same-name projects isolated', async () => {
+	const store = memoryObjectStore();
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	const projectA = nextProjectId();
+	const projectB = nextProjectId();
+	createdProjects.push(projectA, projectB);
+	const ownerA = `owner:${randomUUID()}`;
+	const ownerB = `owner:${randomUUID()}`;
+	const firstA = await saveAcceptedSource(pool, ownerA, await requestFor(await unitEnvelope(projectA)));
+	const firstB = await saveAcceptedSource(pool, ownerB, await requestFor(await unitEnvelope(projectB)));
+	const readyA = await uploadTexture(ownerA, projectA, store, 'Shared.png', bytes);
+	const readyB = await uploadTexture(ownerB, projectB, store, 'Shared.png', bytes);
+	const envelopeA = await finishEnvelope(projectA, 'Shared', readyA, {
+		artworkLibrary: [{ assetId: readyA.id, name: 'Unplaced shared', pixelWidth: 1, pixelHeight: 1 }]
+	});
+	const envelopeB = await finishEnvelope(projectB, 'Shared', readyB);
+	const savedA = await saveAcceptedSource(
+		pool, ownerA,
+		await requestFor(envelopeA, { precondition: { kind: 'expected-saved-base', token: firstA.savedBaseToken } }), store
+	);
+	const savedB = await saveAcceptedSource(
+		pool, ownerB,
+		await requestFor(envelopeB, { precondition: { kind: 'expected-saved-base', token: firstB.savedBaseToken } }), store
+	);
+	assert.equal(savedA.version, 2);
+	assert.equal(savedB.version, 2);
+	// The unplaced shelf entry stays in the private closure even though release
+	// preparation would exclude it.
+	const privateA = collectEnvelopeImageRequirements(envelopeA, 'private-save');
+	const deliveryA = collectEnvelopeImageRequirements(envelopeA, 'delivery');
+	assert.ok(privateA.requirements[0].paths.includes('$.units.scene.data.artworkLibrary[0]'));
+	assert.equal(deliveryA.requirements[0].paths.includes('$.units.scene.data.artworkLibrary[0]'), false);
+	await prepareProjectImagePins(pool, store, ownerA, projectA, envelopeA, 'private-load');
+	await assert.rejects(
+		prepareProjectImagePins(pool, store, ownerB, projectA, envelopeA, 'private-load')
+	);
+	assert.equal(readyA.sha256, readyB.sha256);
+});
+
+test('Save refuses a texture resource pin that differs from the ready row before any write', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	const ready = await uploadTexture(owner, projectId, store, 'Changed.png', bytes);
+	const envelope = await finishEnvelope(projectId, 'Changed pin', ready);
+	envelope.units.resources.data.resources[0].pin = {
+		...envelope.units.resources.data.resources[0].pin,
+		hash: `sha256-${'0'.repeat(64)}`
+	};
+	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } });
+	await assert.rejects(
+		() => saveAcceptedSource(pool, owner, request, store),
+		(error) => error.code === 'invalid-project' && error.issues.some((issue) => issue.code === 'image-pin-changed')
+	);
+	const state = await pool.query('SELECT latest_version AS "latestVersion" FROM projects WHERE id = $1', [projectId]);
+	assert.equal(state.rows[0].latestVersion, 1);
+});
+
+test('two concurrent image-bearing Saves: exactly one advances and the loser preserves the image and head', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+	const ready = await uploadTexture(owner, projectId, store, 'Concurrent.png', bytes);
+	const left = await requestFor(await finishEnvelope(projectId, 'Left', ready), {
+		precondition: { kind: 'expected-saved-base', token: first.savedBaseToken }
+	});
+	const right = await requestFor(await finishEnvelope(projectId, 'Right', ready), {
+		precondition: { kind: 'expected-saved-base', token: first.savedBaseToken }
+	});
+	const settled = await Promise.allSettled([
+		saveAcceptedSource(pool, owner, left, store),
+		saveAcceptedSource(pool, owner, right, store)
+	]);
+	assert.equal(settled.filter((entry) => entry.status === 'fulfilled').length, 1);
+	const loser = settled.find((entry) => entry.status === 'rejected');
+	assert.equal(loser.reason.code, 'conflict');
+	const versions = await pool.query('SELECT count(*)::int AS count FROM project_versions WHERE project_id = $1', [projectId]);
+	assert.equal(versions.rows[0].count, 2);
+	const object = await pool.query('SELECT object_key AS "objectKey" FROM assets WHERE id = $1', [ready.id]);
+	assert.deepEqual(store.objects.get(object.rows[0].objectKey).bytes, bytes);
 });
 
 test('Artwork Save verifies project bytes and release preparation pins each placed image once', async () => {
