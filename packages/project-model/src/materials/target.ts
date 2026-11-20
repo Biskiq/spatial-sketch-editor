@@ -23,6 +23,8 @@ export type DrawGeometry = {
 	readonly indices?: ArrayLike<number> | null;
 	/** The active index range, as Three's `drawRange` states it. */
 	readonly drawRange?: { readonly start: number; readonly count: number } | null;
+	/** Material groups; when present they are the active ranges. */
+	readonly groups?: readonly { readonly start: number; readonly count: number }[] | null;
 	/** UV0 and UV1 as flat uv pairs; absent means the attribute is missing. */
 	readonly uvs: readonly [ArrayLike<number> | null, ArrayLike<number> | null];
 };
@@ -42,20 +44,53 @@ function readVertex(
 	return values;
 }
 
-function activeIndices(geometry: DrawGeometry): number[] {
-	const total = geometry.indices ? geometry.indices.length : Math.floor(geometry.positions.length / 3);
-	const start = geometry.drawRange?.start ?? 0;
-	const requested = geometry.drawRange?.count ?? total - start;
-	const count = Number.isFinite(requested) ? requested : total - start;
-	const from = Math.max(0, Math.min(Math.floor(start), total));
-	const to = Math.max(from, Math.min(from + Math.max(0, Math.floor(count)), total));
+type ActiveIndices = {
+	readonly active: readonly number[];
+	readonly invalid: boolean;
+};
+
+function isRange(value: { readonly start: number; readonly count: number }): boolean {
+	return (
+		Number.isInteger(value.start) &&
+		Number.isInteger(value.count) &&
+		value.start >= 0 &&
+		value.count >= 0 &&
+		value.count % 3 === 0
+	);
+}
+
+/**
+ * Read the active index ranges. An empty range is valid and contributes no
+ * requirement; a malformed range, index or position array is invalid and must
+ * not be reported as "no UV requirement".
+ */
+function activeIndices(geometry: DrawGeometry): ActiveIndices {
+	if (geometry.positions.length % 3 !== 0) return { active: [], invalid: true };
+	const vertexCount = Math.floor(geometry.positions.length / 3);
+	const total = geometry.indices ? geometry.indices.length : vertexCount;
+	const ranges =
+		geometry.groups !== undefined && geometry.groups !== null && geometry.groups.length > 0
+			? geometry.groups
+			: [
+					{
+						start: geometry.drawRange?.start ?? 0,
+						count: geometry.drawRange?.count ?? total - (geometry.drawRange?.start ?? 0)
+					}
+				];
 	const active: number[] = [];
-	for (let index = from; index < to; index += 1) {
-		const vertex = geometry.indices ? geometry.indices[index] : index;
-		if (vertex === undefined || !Number.isInteger(vertex) || vertex < 0) return [];
-		active.push(vertex);
+	for (const range of ranges) {
+		if (!isRange(range) || range.start + range.count > total) return { active: [], invalid: true };
+		for (let index = range.start; index < range.start + range.count; index += 1) {
+			const vertex = geometry.indices ? geometry.indices[index] : index;
+			if (vertex === undefined || !Number.isInteger(vertex) || vertex < 0 || vertex >= vertexCount) {
+				return { active: [], invalid: true };
+			}
+			active.push(vertex);
+		}
 	}
-	return active;
+	if (active.length === 0) return { active: [], invalid: false };
+	if (active.length % 3 !== 0) return { active: [], invalid: true };
+	return { active, invalid: false };
 }
 
 function uvSetAvailable(uv: ArrayLike<number> | null, referenced: readonly number[]): boolean {
@@ -107,8 +142,11 @@ function frameAvailable(
  * vacuously available: it contributes no requirement to the intersection.
  */
 export function summarizeDrawGeometry(drawKey: string, geometry: DrawGeometry): TargetDraw {
-	const active = activeIndices(geometry);
-	if (active.length < 3) {
+	const { active, invalid } = activeIndices(geometry);
+	if (invalid) {
+		return { drawKey, invalidGeometry: true, uvSets: [], normalFrameSets: [] };
+	}
+	if (active.length === 0) {
 		return { drawKey, uvSets: [0, 1], normalFrameSets: [0, 1] };
 	}
 	const referenced = [...new Set(active)];
@@ -148,6 +186,9 @@ export function intersectTargetAvailability(
 	let normalFrameSets: (0 | 1)[] = [0, 1];
 	for (const facts of targets) {
 		for (const draw of facts.draws) {
+			// A malformed draw is reported by binding; it must not make a signal
+			// look available or unavailable in the acceptance intersection.
+			if (draw.invalidGeometry) continue;
 			uvSets = uvSets.filter((set) => draw.uvSets.includes(set));
 			normalFrameSets = normalFrameSets.filter((set) => draw.normalFrameSets.includes(set));
 		}

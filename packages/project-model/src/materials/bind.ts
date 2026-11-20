@@ -90,10 +90,15 @@ function samplingFor(
 	}
 	const metric = mapping.metric;
 	const basis = facts.metricBasis;
+	// `repeat` multiplies the target's native UVs. A metre chart has one UV unit
+	// per metre, so its multiplier is `1 / tileMeters`; a normalized chart has
+	// one UV unit per whole surface, so its basis states the surface metres.
+	// Using the surface span here would multiply the surface in twice on a metre
+	// chart (3.2 m × (3.2 / 0.8) = 12.8 tiles instead of 4).
 	const repeat =
 		basis === undefined
 			? IDENTITY_REPEAT
-			: materialMetricRepeat(basis.surfaceMeters, metric.tileMeters);
+			: materialMetricRepeat(basis.uvMeters, metric.tileMeters);
 	const rotation = basis === undefined ? 0 : metric.rotation;
 	const offset = basis === undefined ? ZERO_OFFSET : metric.offset;
 	return {
@@ -201,6 +206,21 @@ export function bindFinish(
 				target.subject
 			)
 		);
+		return { inputs, bound: null, issues: sortMaterialIssues(issues) };
+	}
+	const invalidDraws = facts.draws.filter((draw) => draw.invalidGeometry);
+	if (invalidDraws.length > 0) {
+		for (const draw of invalidDraws) {
+			issues.push(
+				issue(
+					'invalid-target-geometry',
+					'$.target.draws',
+					'Repair the malformed indices, groups or position array, then requalify.',
+					undefined,
+					`${target.subject}#${draw.drawKey}`
+				)
+			);
+		}
 		return { inputs, bound: null, issues: sortMaterialIssues(issues) };
 	}
 

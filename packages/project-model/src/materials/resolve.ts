@@ -55,17 +55,25 @@ function sourceKey(source: LocalImage): string {
 	return 'textureId' in source ? `texture:${source.textureId}` : `shipped:${source.shipped}`;
 }
 
-/** An index over verified image identities. First entry for a key wins. */
+/**
+ * An index over verified image identities.
+ *
+ * A digest may have several verified source aliases (two project texture IDs
+ * holding identical bytes); every alias resolves back to the one canonical
+ * digest while `byHash` keeps the first source as the canonical identity. A
+ * source that is claimed for two different digests is a conflict: the first
+ * verified claim wins and the later conflicting identity is not admitted, so
+ * the index can never answer one source with two contents.
+ */
 export function createImageIndex(entries: readonly ResolvedImage[]): ImageIndex {
 	const byHash = new Map<Hash, ResolvedImage>();
 	const bySource = new Map<string, Hash>();
 	for (const entry of entries) {
-		// First verified identity wins. A second source for the same digest is not
-		// admitted: two answers for one content identity would make resolution order
-		// decide what is drawn.
-		if (byHash.has(entry.hash)) continue;
-		byHash.set(entry.hash, entry);
-		bySource.set(sourceKey(entry.source), entry.hash);
+		const key = sourceKey(entry.source);
+		const claimed = bySource.get(key);
+		if (claimed !== undefined && claimed !== entry.hash) continue;
+		if (!byHash.has(entry.hash)) byHash.set(entry.hash, entry);
+		bySource.set(key, entry.hash);
 	}
 	return {
 		byHash: (hash) => byHash.get(hash) ?? null,

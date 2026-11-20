@@ -119,6 +119,55 @@ describe('draw geometry facts', () => {
 		expect(degenerate.normalFrameSets).toEqual([]);
 	});
 
+	it('distinguishes malformed geometry from a legitimately empty range', () => {
+		const empty = summarizeDrawGeometry('empty', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			drawRange: { start: 6, count: 0 },
+			uvs: [QUAD_UV0, null]
+		});
+		expect(empty.invalidGeometry).toBeUndefined();
+		expect(empty.uvSets).toEqual([0, 1]);
+
+		const outOfRange = summarizeDrawGeometry('bad-index', {
+			positions: QUAD_POSITIONS,
+			indices: [0, 1, 99],
+			uvs: [QUAD_UV0, null]
+		});
+		expect(outOfRange).toEqual({ drawKey: 'bad-index', invalidGeometry: true, uvSets: [], normalFrameSets: [] });
+
+		const partialTriangle = summarizeDrawGeometry('partial', {
+			positions: QUAD_POSITIONS,
+			indices: [0, 1, 2, 3],
+			uvs: [QUAD_UV0, null]
+		});
+		expect(partialTriangle.invalidGeometry).toBe(true);
+	});
+
+	it('uses material groups as the active ranges', () => {
+		const uv1 = [0, 0, 1, 0, 1, 1, Number.NaN, 1];
+		const both = summarizeDrawGeometry('two-groups', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			groups: [
+				{ start: 0, count: 3 },
+				{ start: 3, count: 3 }
+			],
+			uvs: [QUAD_UV0, uv1]
+		});
+		expect(both.uvSets).toEqual([0]);
+		expect(both.normalFrameSets).toEqual([0]);
+
+		const firstOnly = summarizeDrawGeometry('first-group', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			groups: [{ start: 0, count: 3 }],
+			uvs: [QUAD_UV0, uv1]
+		});
+		expect(firstOnly.uvSets).toEqual([0, 1]);
+		expect(firstOnly.normalFrameSets).toEqual([0, 1]);
+	});
+
 	it('intersects availability across draws and targets', () => {
 		const uv0Only: TargetFacts = {
 			subject: 'a',
@@ -153,10 +202,35 @@ describe('target and surface mapping', () => {
 		expect(binding.bound?.samples.find((sample) => sample.role === 'color')).toMatchObject({
 			uvSet: 0,
 			basis: 'metric',
-			repeat: [4, 1],
+			// One native UV unit is one metre, so the multiplier is 1 / tile. The
+			// resulting coverage is 3.2 × 1.25 = 4 tiles and 1.6 × 0.625 = 1 tile.
+			repeat: [1.25, 0.625],
 			rotation: 0.4,
 			offset: [0.25, 0.5]
 		});
+	});
+
+	it('derives the sampling multiplier from metres per native UV unit', () => {
+		const resolution = resolutionFor();
+		const metric = bindFinish(resolution, { subject: 'form:1', facts: FORM_FACTS });
+		const normalizedFacts: TargetFacts = {
+			subject: 'primitive:1',
+			geometryRevision: 'geometry-primitive-1',
+			metricBasis: { uvMeters: [3.2, 1.6], surfaceMeters: [3.2, 1.6] },
+			draws: [{ drawKey: 'primitive-0', uvSets: [0], normalFrameSets: [0] }]
+		};
+		const normalized = bindFinish(resolution, { subject: 'primitive:1', facts: normalizedFacts });
+		const metreSample = metric.bound?.samples.find((sample) => sample.role === 'color');
+		const normalizedSample = normalized.bound?.samples.find((sample) => sample.role === 'color');
+		expect(metreSample?.repeat).toEqual([1.25, 0.625]);
+		expect(normalizedSample?.repeat).toEqual([4, 1]);
+
+		const covered = (sample: typeof metreSample, uvMeters: readonly [number, number]) => [
+			((3.2 / uvMeters[0]) * sample!.repeat[0]),
+			((1.6 / uvMeters[1]) * sample!.repeat[1])
+		];
+		expect(covered(metreSample, [1, 1])).toEqual([4, 1]);
+		expect(covered(normalizedSample, [3.2, 1.6])).toEqual([4, 1]);
 	});
 
 	it('uses identity UV0 for a legacy GLB remap of the same Finish', () => {
@@ -184,7 +258,7 @@ describe('target and surface mapping', () => {
 		const model = bindFinish(resolution, { subject: 'model:1', facts: MODEL_FACTS });
 		expect(form.issues).toEqual([]);
 		expect(model.issues).toEqual([]);
-		expect(form.bound?.samples.find((sample) => sample.role === 'color')?.repeat).toEqual([4, 1]);
+		expect(form.bound?.samples.find((sample) => sample.role === 'color')?.repeat).toEqual([1.25, 0.625]);
 		expect(model.bound?.samples.find((sample) => sample.role === 'color')?.repeat).toEqual([1, 1]);
 		// Shared identity is one definition: both bounds resolve the same image hashes.
 		expect(form.bound?.samples.map((sample) => sample.image.hash)).toEqual(
@@ -287,6 +361,24 @@ describe('binding lifecycle diagnostics', () => {
 			path: '$.target.draws',
 			target: 'form:empty',
 			action: 'Derive target facts with at least one active draw, then requalify.'
+		});
+	});
+
+	it('refuses malformed target geometry instead of treating it as an empty draw', () => {
+		const facts: TargetFacts = {
+			subject: 'model:bad',
+			geometryRevision: 'asset-revision-1',
+			draws: [
+				{ drawKey: 'mesh-0', uvSets: [], normalFrameSets: [], invalidGeometry: true }
+			]
+		};
+		const binding = bindFinish(resolutionFor(), { subject: 'model:bad', facts });
+		expect(binding.bound).toBeNull();
+		expect(binding.issues).toContainEqual({
+			code: 'invalid-target-geometry',
+			path: '$.target.draws',
+			target: 'model:bad#mesh-0',
+			action: 'Repair the malformed indices, groups or position array, then requalify.'
 		});
 	});
 

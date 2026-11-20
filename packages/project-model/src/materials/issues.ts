@@ -32,6 +32,7 @@ export const MATERIAL_ISSUE_CODES = [
 	'stale-target-facts',
 	'missing-uv',
 	'missing-normal-frame',
+	'invalid-target-geometry',
 	'mapping-requires-metric-basis',
 	'empty-override',
 	'duplicate-image'

@@ -3,6 +3,10 @@
   "profile": "pbr-metallic-roughness/v1",
   "fixturesManifest": "fixtures.json",
   "environmentEvidence": "evidence/e0-environment.json",
+  "pixelBaseline": {
+    "status": "deferred-to-B",
+    "requirement": "Before replacing the Scene resolver or sampling path, PR B must capture the pre-change product-canvas rendering for the catalogue, S4 image, palette follower, shared Form/GLB and each Treatment, label its software renderer, and retain those pixels as the replacement oracle."
+  },
   "charts": {
     "swatchGrey": {
       "fixture": "swatch-rgba",
@@ -410,8 +414,8 @@
         "uvSet": 0,
         "basis": "metric",
         "repeat": [
-          4,
-          1
+          1.25,
+          0.625
         ],
         "rotation": 0.4,
         "offset": [
@@ -427,8 +431,8 @@
         "uvSet": 0,
         "basis": "metric",
         "repeat": [
-          4,
-          1
+          1.25,
+          0.625
         ],
         "rotation": 0.4,
         "offset": [
@@ -445,8 +449,8 @@
         "uvSet": 0,
         "basis": "metric",
         "repeat": [
-          4,
-          1
+          1.25,
+          0.625
         ],
         "rotation": 0.4,
         "offset": [
@@ -464,8 +468,8 @@
         "uvSet": 0,
         "basis": "metric",
         "repeat": [
-          4,
-          1
+          1.25,
+          0.625
         ],
         "rotation": 0.4,
         "offset": [
@@ -483,8 +487,8 @@
         "uvSet": 0,
         "basis": "metric",
         "repeat": [
-          4,
-          1
+          1.25,
+          0.625
         ],
         "rotation": 0.4,
         "offset": [

@@ -118,6 +118,11 @@ that no file on this subpath imports `node:`, `$lib`, `three`, Svelte or Threlte
   bindings or omits them; the recipe reader correctly refuses `maps.role: null`.
 - Omission inherits the complete parent binding (including convention and per-map mapping). Replacing
   a binding replaces the whole value; removing its mapping makes it follow the set mapping.
+- Duplicate image bytes under different local IDs are all admitted as source aliases of one
+  canonical digest. The first source stays the canonical `byHash` identity; every alias resolves
+  back to that digest instead of producing a false `missing-pin`. A source claimed for two
+  different digests is a conflict: the first verified claim wins and the second identity is not
+  admitted.
 - Factors accept zero where their domain includes zero. An authored value equal to the base remains
   authored and reports `override`.
 - Canonical bytes are sorted-key UTF-8 with no trailing newline. Arrays keep authored order. Local
@@ -153,10 +158,18 @@ These digests are pinned in `recipe-contract.test.ts` and repeated in the E0 bas
 - Draw facts respect indices, groups and draw range. A UV set needs a finite pair for every referenced
   vertex. A normal frame additionally needs a nonzero-area triangle with nonzero UV edges and
   `abs(det) > 1e-6 × |duv1| × |duv2|`. Empty ranges contribute nothing.
-- `target` mapping uses the metric tile on a Form and identity UV0 with unit repeat/zero rotation and
-  offset on a legacy GLB.
+- **Metric repeat is a native-UV multiplier**, not a surface tile count. It is
+  `materialMetricRepeat(basis.uvMeters, tileMeters)`: a metre chart (`uvMeters = [1,1]`)
+  gets `1 / tileMeters`, and a normalized chart (`uvMeters = surfaceMeters`) gets
+  `surface / tileMeters`. A 3.2 m surface with a 0.8 m tile therefore samples 1.25 across on a
+  metre chart (3.2 × 1.25 = 4 tiles) and 4 across on a normalized chart. Both are tested.
+- `target` mapping uses that metric result on a Form and identity UV0 with unit repeat/zero
+  rotation and offset on a legacy GLB.
 - `surface` mapping requires a metric basis; on a GLB it refuses with
   `mapping-requires-metric-basis` rather than silently using identity.
+- Material groups are active ranges. Malformed indices, out-of-range vertices, non-triangle
+  ranges or a malformed position array become `invalidGeometry` facts and bind as
+  `invalid-target-geometry`; a legitimately empty range still contributes no requirement.
 - Missing UV, missing normal frame, pending facts, stale facts and non-finite/invalid targets all
   return ordered diagnostics, and a refused target has `bound: null` while retaining `inputs` for
   inspection.
@@ -184,6 +197,9 @@ signed normal pair.
 | Form gets metric settings, GLB gets identity UV0 from one Finish | `target-binding.test.ts`; E0 shared-Finish case; parity `rotated-non-square-mapping` | Pass |
 | Explicit surface on GLB refuses | `target-binding.test.ts` → `mapping-requires-metric-basis`, `bound: null` | Pass |
 | Shared identity survives a scoped edit | `resolve-contract.test.ts` shared-definition case | Pass |
+| Metric repeat uses the native UV-unit scale | `target-binding.test.ts` metre and normalized bases both cover 4 × 1 tiles | Pass |
+| Duplicate bytes under two local IDs do not false-refuse | `recipe-contract.test.ts` / `resolve-contract.test.ts` alias + conflict cases | Pass |
+| Malformed geometry is distinct from an empty range | `target-binding.test.ts` draw/groups/bind cases | Pass |
 | Baseline and chart inputs recorded | 6 pinned fixtures + `fixtures.json` + `e0-baseline.json` + environment evidence | Recorded |
 | Product Save remains on the existing writer | No writer, codec, resource or renderer source changed in this PR | Preserved |
 | Runtime-safe subpath | `project-model-boundary.test.ts` source sweep + subpath export check | Pass |
@@ -199,9 +215,12 @@ signed normal pair.
    leaves the base slot when a texture record is missing. The pure resolver (correctly) reports
    `missing-pin`. Because A does not wire the pure path into production, no behavior changed; B must
    choose whether to preserve the legacy fallback at the adapter or repair the dangling reference.
-3. **No pixel baseline.** E0 freezes descriptors, evaluation inputs, fixture bytes and patch
-   interiors. It does not render the product canvas, and the recorded WebGL backend is SwiftShader
-   with no WebGPU adapter. Pixel/backend appearance remains B evidence.
+3. **Pixel capture is an explicit B entry gate.** E0 freezes descriptors, evaluation inputs, fixture
+   bytes and patch interiors, but does not render the product canvas; headless WebGL is SwiftShader
+   with no WebGPU adapter. `e0-baseline.json` records `pixelBaseline.status = "deferred-to-B"` plus
+   the hard requirement that B capture the pre-change product-canvas rendering (catalogue, S4 image,
+   palette follower, shared Form/GLB, each Treatment) before replacing the resolver or sampling path,
+   and retain those labelled pixels as the replacement oracle.
 4. **Headless display cadence is not physical.** The 59.9 Hz rAF reading is context, not a gate.
 5. **Diagnostic tie-break.** The plan requires sorting by path, role and target. The implementation
    adds `code` as a final deterministic tie-break; this does not reorder any distinct path/role/target.
@@ -215,8 +234,8 @@ signed normal pair.
 | --- | --- |
 | `npx vite-node scripts/build-s8-characterization-fixtures.ts --check` | pass (all bytes and manifest match) |
 | `node scripts/record-s8-baseline-environment.mjs` | pass; browser hash matches; WebGL2 true, WebGPU false |
-| `npx vitest run tests/lib/project-model/materials tests/lib/render/materials/s8-characterization.test.ts` | **109 passed / 6 files** |
-| Same focused suite under Node 22 (the CI version) | **109 passed / 6 files** |
+| `npx vitest run tests/lib/project-model/materials tests/lib/render/materials/s8-characterization.test.ts` | **117 passed / 6 files** |
+| Same focused suite under Node 22 (the CI version) | **117 passed / 6 files** |
 | `npx vitest run tests/lib/render/materials/look-parity-golden.test.ts tests/lib/render/materials/scene-instance-material.test.ts tests/lib/render/resources/texture-store.test.ts tests/lib/layout/layout-regions.test.ts` | **38 passed / 4 files** |
 | `npm run check:project-model` | pass |
 | `npm run check` | 0 errors; 16 pre-existing editor warnings |
@@ -228,15 +247,19 @@ this diff.
 
 ## Ready for B
 
-B can consume the contract as-is:
+B can consume the contract as-is, after its appearance entry gate:
 
-1. Replace `resolveSceneMaterial`'s internals with `sceneFinishToContract` + `resolveFinish` + a target
+1. Capture and label the pre-change product-canvas pixels (catalogue, S4 image, palette follower,
+   shared Form/GLB, each Treatment) before replacing the resolver or sampling path. Retain them as
+   the replacement oracle; descriptor evidence alone is not a pixel baseline.
+2. Replace `resolveSceneMaterial`'s internals with `sceneFinishToContract` + `resolveFinish` + a target
    binder, preserving the current fallback decision for dangling texture IDs and the existing
-   Treatment application point.
-2. Split the texture store's decode policy by role/source and re-run the E0 defect case; the expected
+   Treatment application point. Target facts must state metres per native UV unit, not only the
+   surface span.
+3. Split the texture store's decode policy by role/source and re-run the E0 defect case; the expected
    colour/data readings are already recorded.
-3. Emit metric planar UV0 on Region faces and change `defects.regionUv.hasUv` deliberately.
-4. Sample the bound plan on both backends and freeze pixel evidence; keep the E0 descriptors and
+4. Emit metric planar UV0 on Region faces and change `defects.regionUv.hasUv` deliberately.
+5. Sample the bound plan on both backends and freeze pixel evidence; keep the E0 descriptors and
    `look-parity-golden` as regression oracles.
 
 ## Reproduce

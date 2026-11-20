@@ -541,12 +541,21 @@ describe('image index', () => {
 		expect(alternate.byHash(IMAGE_HASH.color)).toBeNull();
 	});
 
-	it('leaves an ambiguous duplicate on its first verified identity', () => {
+	it('keeps one canonical identity while admitting every duplicate-content alias', () => {
 		const first = createImageIndex([
 			{ hash: IMAGE_HASH.color, source: { textureId: 'first' } },
 			{ hash: IMAGE_HASH.color, source: { textureId: 'second' } }
 		]);
 		expect(first.byHash(IMAGE_HASH.color)?.source).toEqual({ textureId: 'first' });
-		expect(first.hashOf({ textureId: 'second' })).toBeNull();
+		expect(first.hashOf({ textureId: 'second' })).toBe(IMAGE_HASH.color);
+	});
+
+	it('does not admit a source claimed for two different digests', () => {
+		const conflict = createImageIndex([
+			{ hash: IMAGE_HASH.color, source: { textureId: 'shared' } },
+			{ hash: IMAGE_HASH.normal, source: { textureId: 'shared' } }
+		]);
+		expect(conflict.hashOf({ textureId: 'shared' })).toBe(IMAGE_HASH.color);
+		expect(conflict.byHash(IMAGE_HASH.normal)).toBeNull();
 	});
 });

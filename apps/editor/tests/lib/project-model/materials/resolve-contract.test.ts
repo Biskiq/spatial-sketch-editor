@@ -402,6 +402,40 @@ describe('image and base diagnostics', () => {
 		expect(resolved.inputs?.roughness).not.toBe(0.92 * 0.5);
 	});
 
+	it('resolves every verified alias of duplicate image bytes to one canonical digest', () => {
+		const index = createImageIndex([
+			{ hash: IMAGE_HASH.color, source: { textureId: 'texture-a' } },
+			{ hash: IMAGE_HASH.color, source: { textureId: 'texture-b' } }
+		]);
+		expect(index.byHash(IMAGE_HASH.color)?.source).toEqual({ textureId: 'texture-a' });
+		expect(index.hashOf({ textureId: 'texture-b' })).toBe(IMAGE_HASH.color);
+
+		const base = catalogueRecipe('marble-light');
+		expect(base).toBeDefined();
+		const resolved = resolveFinish(
+			{ material: base! },
+			{ maps: { color: { image: { textureId: 'texture-b' } } } },
+			undefined,
+			index
+		);
+		expect(resolved.issues).toEqual([]);
+		expect(resolved.inputs?.maps.color?.image).toEqual({
+			hash: IMAGE_HASH.color,
+			source: { textureId: 'texture-a' }
+		});
+	});
+
+	it('refuses a source claimed for two different digests', () => {
+		const index = createImageIndex([
+			{ hash: IMAGE_HASH.color, source: { textureId: 'shared' } },
+			{ hash: IMAGE_HASH.normal, source: { textureId: 'shared' } }
+		]);
+		expect(index.hashOf({ textureId: 'shared' })).toBe(IMAGE_HASH.color);
+		// The conflicting second identity is not admitted: one source cannot answer
+		// with two contents.
+		expect(index.byHash(IMAGE_HASH.normal)).toBeNull();
+	});
+
 	it('sorts multiple diagnostics by path and role', () => {
 		const read = readRecipe(fullRecipe());
 		expect(read.success).toBe(true);

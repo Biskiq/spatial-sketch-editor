@@ -299,6 +299,11 @@ async function captureBaseline() {
 		profile: 'pbr-metallic-roughness/v1',
 		fixturesManifest: 'fixtures.json',
 		environmentEvidence: 'evidence/e0-environment.json',
+		pixelBaseline: {
+			status: 'deferred-to-B',
+			requirement:
+				'Before replacing the Scene resolver or sampling path, PR B must capture the pre-change product-canvas rendering for the catalogue, S4 image, palette follower, shared Form/GLB and each Treatment, label its software renderer, and retain those pixels as the replacement oracle.'
+		},
 		charts: {
 			swatchGrey: { fixture: 'swatch-rgba', patch: [64, 64], bytes: [128, 128, 128, 255] },
 			checkerWhite: { fixture: 'checker-asymmetric', patch: [48, 48], bytes: [255, 255, 255, 255] },
@@ -441,7 +446,7 @@ describe('E0 characterization baseline', () => {
 		expect(baseline.contract.form?.find((sample) => sample.role === 'color')).toMatchObject({
 			uvSet: 0,
 			basis: 'metric',
-			repeat: [4, 1],
+			repeat: [1.25, 0.625],
 			rotation: 0.4,
 			offset: [0.25, 0.5]
 		});
@@ -468,6 +473,12 @@ describe('E0 characterization baseline', () => {
 		expect(baseline.contract.disabledNormal.normal).toBeNull();
 					expect(baseline.contract.disabledNormal.provenance).toEqual({ source: 'disabled' });
 		expect(baseline.contract.minusYNormal).toEqual({ convention: '-Y', normalScale: 1.4 });
+	});
+
+	it('records the pixel capture as a hard PR B prerequisite', async () => {
+		const baseline = await captureBaseline();
+		expect(baseline.pixelBaseline.status).toBe('deferred-to-B');
+		expect(baseline.pixelBaseline.requirement).toContain('Before replacing the Scene resolver or sampling path');
 	});
 
 	it('matches the committed baseline', async () => {

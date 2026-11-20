@@ -252,9 +252,12 @@ export type BoundInputs = {
 
 /** The metric UV basis and surface dimensions a `target`/`surface` mapping needs. */
 export type TargetMetricBasis = {
-	/** Metres spanned by one native UV unit, u and v. A metre chart is [1, 1]. */
+	/**
+	 * Metres spanned by one native UV unit, u and v. A metre chart is [1, 1]; a
+	 * normalized chart spans the rendered surface in each unit.
+	 */
 	readonly uvMeters: readonly [number, number];
-	/** Rendered surface dimensions in metres. */
+	/** Rendered surface dimensions in metres, for acceptance and tile counts. */
 	readonly surfaceMeters: readonly [number, number];
 };
 
@@ -265,6 +268,12 @@ export type TargetDraw = {
 	readonly uvSets: readonly (0 | 1)[];
 	/** UV sets with at least one nonzero-area, non-singular tangent frame. */
 	readonly normalFrameSets: readonly (0 | 1)[];
+	/**
+	 * The active range had malformed indices/groups/positions. An empty range is
+	 * valid and contributes no requirement; malformed geometry is not authorable
+	 * and must be repaired rather than treated as an empty draw.
+	 */
+	readonly invalidGeometry?: true;
 };
 
 /**
@@ -286,6 +295,7 @@ export type SamplingEntry = {
 	readonly image: ResolvedImage;
 	readonly uvSet: 0 | 1;
 	readonly basis: 'metric' | 'identity';
+	/** Multiplier applied to the target's native UVs, not a surface tile count. */
 	readonly repeat: readonly [number, number];
 	readonly rotation: number;
 	readonly offset: readonly [number, number];
