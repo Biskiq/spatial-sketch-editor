@@ -1,0 +1,182 @@
+{
+  "displayPeriodMs": 16.699999999999932,
+  "rows": [
+    {
+      "mode": "A-native-webgl",
+      "observed": "webgl",
+      "displayPeriodMs": 16.699999999999932,
+      "startup": {
+        "initP50": 4.100000023841858,
+        "initP90": 8.199999988079071,
+        "initMax": 9.199999988079071,
+        "firstCorrectDrawP50": 22.200000017881393,
+        "firstCorrectDrawP90": 25.400000005960464,
+        "firstCorrectDrawMax": 51.79999998211861,
+        "samples": 10
+      },
+      "steady": [
+        {
+          "frames": 601,
+          "intervalP50": 16.699999999999818,
+          "intervalP95": 16.700000000000728,
+          "intervalP99": 16.80000000000109,
+          "intervalMax": 16.80000000000109,
+          "missesOver2T": 0,
+          "synchronizedP50": 2.7999999821186066
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "intervalP99": 16.80000000000109,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 2.399999976158142
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.700000000000728,
+          "intervalP95": 16.799999999999272,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 2.5999999940395355
+        }
+      ],
+      "shadow": {
+        "callsWithShadow": 17,
+        "callsWithoutShadow": 11,
+        "trianglesWithShadow": 74,
+        "trianglesWithoutShadow": 62,
+        "firstShadowedFrameMs": 4.199999988079071
+      },
+      "lightVariant": {
+        "firstFrameMs": 39.30000001192093,
+        "warmRepeatMs": 1.699999988079071
+      },
+      "notes": [
+        "Native WebGL baseline (shipped path)."
+      ]
+    },
+    {
+      "mode": "B-webgpu",
+      "observed": "webgpu",
+      "displayPeriodMs": 16.699999999999932,
+      "startup": {
+        "initP50": 1.5,
+        "initP90": 3.2999999821186066,
+        "initMax": 3.300000011920929,
+        "firstCorrectDrawP50": 12.300000011920929,
+        "firstCorrectDrawP90": 16.700000017881393,
+        "firstCorrectDrawMax": 41.10000002384186,
+        "samples": 10
+      },
+      "steady": [
+        {
+          "frames": 602,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.700000000004366,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.5999999940395355
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.700000000004366,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.600000023841858
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.700000000004366,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.5999999940395355
+        }
+      ],
+      "shadow": {
+        "callsWithShadow": 12,
+        "callsWithoutShadow": 12,
+        "trianglesWithShadow": 63,
+        "trianglesWithoutShadow": 63,
+        "firstShadowedFrameMs": 1.699999988079071
+      },
+      "lightVariant": {
+        "firstFrameMs": 28.5,
+        "warmRepeatMs": 5.5
+      },
+      "notes": [
+        "Native WebGPU observed from the initialized renderer."
+      ]
+    },
+    {
+      "mode": "C-forced-webgl2",
+      "observed": "webgl2",
+      "displayPeriodMs": 16.699999999999932,
+      "startup": {
+        "initP50": 4.0999999940395355,
+        "initP90": 5.199999988079071,
+        "initMax": 14.399999976158142,
+        "firstCorrectDrawP50": 28.599999994039536,
+        "firstCorrectDrawP90": 39.5,
+        "firstCorrectDrawMax": 46.39999997615814,
+        "samples": 10
+      },
+      "steady": [
+        {
+          "frames": 603,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.70000000001164,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 3.800000011920929
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.79999999998836,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 4.199999988079071
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.70000000001164,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 3.7000000178813934
+        }
+      ],
+      "shadow": {
+        "callsWithShadow": 12,
+        "callsWithoutShadow": 12,
+        "trianglesWithShadow": 63,
+        "trianglesWithoutShadow": 63,
+        "firstShadowedFrameMs": 6.100000023841858
+      },
+      "lightVariant": {
+        "firstFrameMs": 39.69999998807907,
+        "warmRepeatMs": 2.199999988079071
+      },
+      "notes": [
+        "Forced WebGL2 backend observed from the initialized renderer."
+      ]
+    }
+  ],
+  "limitations": [
+    "Animation-frame intervals are a presentation-opportunity proxy, not physical scanout; headless Chromium keeps its own cadence.",
+    "Synchronized columns include a GPU wait/readback and are cost diagnostics, not displayed frame times.",
+    "This run measured one host only. The Intel Iris Xe-class laptop, Safari and Firefox rows remain unverified."
+  ],
+  "harnessModuleMs": 92260.30000001192
+}

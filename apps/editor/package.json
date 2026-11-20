@@ -19,7 +19,10 @@
     "perf:spot": "vite-node perf/spot.ts",
     "perf:bundle": "node perf/bundle-report.mjs",
     "perf:bundle:first-load": "node perf/bundle-report.mjs --provenance ./.svelte-kit/output/client/bundle-provenance.json --forbid \"/=three\" --forbid \"/projects=three\"",
-    "perf:workloads": "vite-node perf/generate-workloads.ts"
+    "perf:workloads": "vite-node perf/generate-workloads.ts",
+    "webgpu:qualify": "node experiments/webgpu-migration/run.mjs --qualification",
+    "webgpu:perf": "node experiments/webgpu-migration/run.mjs --performance",
+    "webgpu:evidence": "node experiments/webgpu-migration/run.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.4.1",

@@ -1,0 +1,942 @@
+{
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "isSecureContext": true,
+    "hardwareConcurrency": 8,
+    "devicePixelRatio": 1,
+    "navigatorGpu": true,
+    "adapter": {
+      "vendor": "apple",
+      "architecture": "metal-3",
+      "device": "",
+      "description": ""
+    },
+    "threeRevision": "187"
+  },
+  "scenarios": [
+    {
+      "id": "init",
+      "title": "Initialization, observed backend and coordinate system",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "automatic selection obtained native WebGPU",
+          "ok": true,
+          "detail": "webgpu"
+        },
+        {
+          "name": "automatic coordinate system is WebGPU",
+          "ok": true,
+          "detail": "webgpu"
+        },
+        {
+          "name": "forced selection obtained WebGL2",
+          "ok": true,
+          "detail": "webgl2"
+        },
+        {
+          "name": "forced coordinate system is WebGL",
+          "ok": true,
+          "detail": "webgl"
+        },
+        {
+          "name": "automatic first draw is the expected red",
+          "ok": true,
+          "detail": "255,0,0,255"
+        },
+        {
+          "name": "forced first draw is the expected red",
+          "ok": true,
+          "detail": "255,0,0,255"
+        },
+        {
+          "name": "both generations disposed",
+          "ok": true
+        }
+      ],
+      "measurements": {
+        "navigatorGpu": true,
+        "adapter": {
+          "vendor": "apple",
+          "architecture": "metal-3",
+          "device": "",
+          "description": ""
+        },
+        "auto": {
+          "backend": "webgpu",
+          "coordinateSystem": "webgpu",
+          "initMs": 2.800000011920929,
+          "centre": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "disposed": true
+        },
+        "forced": {
+          "backend": "webgl2",
+          "coordinateSystem": "webgl",
+          "initMs": 14.300000011920929,
+          "centre": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "disposed": true
+        }
+      }
+    },
+    {
+      "id": "build-identity",
+      "title": "One Three instance across the two entry points",
+      "status": "pass",
+      "backend": "webgpu",
+      "assertions": [
+        {
+          "name": "the TSL node reads the same Texture instance",
+          "ok": true
+        },
+        {
+          "name": "a legacy scene draws through WebGPURenderer",
+          "ok": true,
+          "detail": "255,0,0,255"
+        }
+      ],
+      "measurements": {
+        "sameVectorConstructor": true,
+        "sameTextureConstructor": true,
+        "sameColourManagement": true,
+        "legacyThroughNodeRendererCentre": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "note": "This esbuild bundle resolved both entry points to one core. PR 2 must still confirm one core in the Vite production graph."
+      }
+    },
+    {
+      "id": "simultaneous-devices",
+      "title": "Two devices sharing one texture, with one retirement",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "native backend draws the shared texture",
+          "ok": true,
+          "detail": "255,0,0,255"
+        },
+        {
+          "name": "forced WebGL2 backend draws the shared texture",
+          "ok": true,
+          "detail": "255,0,0,255"
+        },
+        {
+          "name": "the survivor still draws after the other device retires",
+          "ok": true,
+          "detail": "255,0,0,255"
+        }
+      ],
+      "measurements": {
+        "textureUuid": "62d7b6e6-78aa-4606-8cba-606dfe255629",
+        "nativeBackend": "webgpu",
+        "forcedBackend": "webgl2",
+        "firstCentre": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "secondCentre": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "survivorCentre": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "survivorTextureCount": 3
+      }
+    },
+    {
+      "id": "projection-scissor",
+      "title": "Camera projection and top-left viewport/scissor",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: scissor region is drawn",
+          "ok": true,
+          "detail": "0,255,0"
+        },
+        {
+          "name": "webgpu: outside the scissor is clear",
+          "ok": true,
+          "detail": "16,24,32"
+        },
+        {
+          "name": "webgpu: perspective depth keeps the near red",
+          "ok": true,
+          "detail": "255,0,0"
+        },
+        {
+          "name": "webgpu: orthographic depth keeps the near red",
+          "ok": true,
+          "detail": "255,0,0"
+        },
+        {
+          "name": "webgl2: scissor region is drawn",
+          "ok": true,
+          "detail": "0,255,0"
+        },
+        {
+          "name": "webgl2: outside the scissor is clear",
+          "ok": true,
+          "detail": "16,24,32"
+        },
+        {
+          "name": "webgl2: perspective depth keeps the near red",
+          "ok": true,
+          "detail": "255,0,0"
+        },
+        {
+          "name": "webgl2: orthographic depth keeps the near red",
+          "ok": true,
+          "detail": "255,0,0"
+        },
+        {
+          "name": "DPR 1.5: setScissor takes CSS pixels and the backend scales them",
+          "ok": true,
+          "detail": "{\"drawingBuffer\":[300,180],\"greenBox\":[30,15,120,60],\"cssExpectedBox\":[30,15,120,60],\"unscaledExpectedBox\":[20,10,80,40],\"scissor\":[20,10,80,40],\"pixelRatio\":1.5}"
+        },
+        {
+          "name": "DPR 1.5: the drawn box is not the unscaled device box",
+          "ok": true,
+          "detail": "[30,15,120,60]"
+        }
+      ],
+      "measurements": {
+        "webgpu": {
+          "rowOrder": "top-down",
+          "inside": [
+            0,
+            255,
+            0
+          ],
+          "outside": [
+            16,
+            24,
+            32
+          ],
+          "scissor": [
+            0,
+            0,
+            160,
+            100
+          ],
+          "viewport": [
+            0,
+            0,
+            160,
+            100
+          ]
+        },
+        "webgl2": {
+          "rowOrder": "bottom-up",
+          "inside": [
+            0,
+            255,
+            0
+          ],
+          "outside": [
+            16,
+            24,
+            32
+          ],
+          "scissor": [
+            0,
+            0,
+            160,
+            100
+          ],
+          "viewport": [
+            0,
+            0,
+            160,
+            100
+          ]
+        },
+        "dpr": {
+          "drawingBuffer": [
+            300,
+            180
+          ],
+          "greenBox": [
+            30,
+            15,
+            120,
+            60
+          ],
+          "cssExpectedBox": [
+            30,
+            15,
+            120,
+            60
+          ],
+          "unscaledExpectedBox": [
+            20,
+            10,
+            80,
+            40
+          ],
+          "scissor": [
+            20,
+            10,
+            80,
+            40
+          ],
+          "pixelRatio": 1.5
+        }
+      }
+    },
+    {
+      "id": "shadow-basics",
+      "title": "A plain Sun shadow changes the floor",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: enabling the Sun shadow changes the floor",
+          "ok": true,
+          "detail": "472"
+        },
+        {
+          "name": "webgl2: enabling the Sun shadow changes the floor",
+          "ok": true,
+          "detail": "472"
+        }
+      ],
+      "measurements": {
+        "webgpu": {
+          "changedPixels": 472,
+          "changedBox": [
+            58,
+            58,
+            32,
+            32
+          ],
+          "shadowMapAllocated": true,
+          "shadowMapEnabled": true
+        },
+        "webgl2": {
+          "changedPixels": 472,
+          "changedBox": [
+            58,
+            70,
+            32,
+            32
+          ],
+          "shadowMapAllocated": true,
+          "shadowMapEnabled": true
+        }
+      }
+    },
+    {
+      "id": "shadow-mask",
+      "title": "Artwork alpha shadow mask on Sun, Spot and Point",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu sun: a UV mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "300"
+        },
+        {
+          "name": "webgpu sun: a position mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "280"
+        },
+        {
+          "name": "webgpu sun: the masked shadow differs from no shadow",
+          "ok": true,
+          "detail": "280"
+        },
+        {
+          "name": "webgpu spot: a UV mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "304"
+        },
+        {
+          "name": "webgpu spot: a position mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "319"
+        },
+        {
+          "name": "webgpu spot: the masked shadow differs from no shadow",
+          "ok": true,
+          "detail": "170"
+        },
+        {
+          "name": "webgpu point: a UV mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "369"
+        },
+        {
+          "name": "webgpu point: a position mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "369"
+        },
+        {
+          "name": "webgpu point: the masked shadow differs from no shadow",
+          "ok": true,
+          "detail": "333"
+        },
+        {
+          "name": "webgl2 sun: a UV mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "300"
+        },
+        {
+          "name": "webgl2 sun: a position mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "280"
+        },
+        {
+          "name": "webgl2 sun: the masked shadow differs from no shadow",
+          "ok": true,
+          "detail": "280"
+        },
+        {
+          "name": "webgl2 spot: a UV mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "304"
+        },
+        {
+          "name": "webgl2 spot: a position mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "319"
+        },
+        {
+          "name": "webgl2 spot: the masked shadow differs from no shadow",
+          "ok": true,
+          "detail": "170"
+        },
+        {
+          "name": "webgl2 point: a UV mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "369"
+        },
+        {
+          "name": "webgl2 point: a position mask removes a shadow the pass-through casts",
+          "ok": true,
+          "detail": "369"
+        },
+        {
+          "name": "webgl2 point: the masked shadow differs from no shadow",
+          "ok": true,
+          "detail": "333"
+        }
+      ],
+      "measurements": {
+        "webgpu": {
+          "sun": {
+            "uvMaskVsPassThrough": 300,
+            "positionMaskVsPassThrough": 280,
+            "textureMaskVsPassThrough": 0,
+            "maskVsNoShadow": 280,
+            "uvCalls": 2,
+            "passCalls": 2,
+            "noShadowCalls": 1,
+            "uvShadowMap": true,
+            "passShadowMap": true
+          },
+          "spot": {
+            "uvMaskVsPassThrough": 304,
+            "positionMaskVsPassThrough": 319,
+            "textureMaskVsPassThrough": 0,
+            "maskVsNoShadow": 170,
+            "uvCalls": 2,
+            "passCalls": 2,
+            "noShadowCalls": 1,
+            "uvShadowMap": true,
+            "passShadowMap": true
+          },
+          "point": {
+            "uvMaskVsPassThrough": 369,
+            "positionMaskVsPassThrough": 369,
+            "textureMaskVsPassThrough": 0,
+            "maskVsNoShadow": 333,
+            "uvCalls": 7,
+            "passCalls": 7,
+            "noShadowCalls": 1,
+            "uvShadowMap": true,
+            "passShadowMap": true
+          }
+        },
+        "webgl2": {
+          "sun": {
+            "uvMaskVsPassThrough": 300,
+            "positionMaskVsPassThrough": 280,
+            "textureMaskVsPassThrough": 0,
+            "maskVsNoShadow": 280,
+            "uvCalls": 2,
+            "passCalls": 2,
+            "noShadowCalls": 1,
+            "uvShadowMap": true,
+            "passShadowMap": true
+          },
+          "spot": {
+            "uvMaskVsPassThrough": 304,
+            "positionMaskVsPassThrough": 319,
+            "textureMaskVsPassThrough": 0,
+            "maskVsNoShadow": 170,
+            "uvCalls": 2,
+            "passCalls": 2,
+            "noShadowCalls": 1,
+            "uvShadowMap": true,
+            "passShadowMap": true
+          },
+          "point": {
+            "uvMaskVsPassThrough": 369,
+            "positionMaskVsPassThrough": 369,
+            "textureMaskVsPassThrough": 0,
+            "maskVsNoShadow": 333,
+            "uvCalls": 7,
+            "passCalls": 7,
+            "noShadowCalls": 1,
+            "uvShadowMap": true,
+            "passShadowMap": true
+          }
+        }
+      }
+    },
+    {
+      "id": "clip-mask",
+      "title": "TSL colour clip and its shadow-pass counterpart",
+      "status": "fail",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: maskNode discards the upper colour half",
+          "ok": true,
+          "detail": "16,24,32,255"
+        },
+        {
+          "name": "webgpu: maskNode keeps the lower colour half",
+          "ok": true,
+          "detail": "138,0,0,255"
+        },
+        {
+          "name": "webgl2: maskNode discards the upper colour half",
+          "ok": false,
+          "detail": "138,0,0,255"
+        },
+        {
+          "name": "webgl2: maskNode keeps the lower colour half",
+          "ok": false,
+          "detail": "16,24,32,255"
+        }
+      ],
+      "measurements": {
+        "webgpu-colour": {
+          "upper": [
+            16,
+            24,
+            32,
+            255
+          ],
+          "lower": [
+            138,
+            0,
+            0,
+            255
+          ]
+        },
+        "webgl2-colour": {
+          "upper": [
+            138,
+            0,
+            0,
+            255
+          ],
+          "lower": [
+            16,
+            24,
+            32,
+            255
+          ]
+        }
+      }
+    },
+    {
+      "id": "wide-lines",
+      "title": "Line2NodeMaterial width and dashes at DPR 1 and 1.5",
+      "status": "fail",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu DPR 1: 8 px line is 6..11 px",
+          "ok": true,
+          "detail": "8"
+        },
+        {
+          "name": "webgpu DPR 1: dashed line has at least three dashes",
+          "ok": true,
+          "detail": "7"
+        },
+        {
+          "name": "webgl2 DPR 1: 8 px line is 6..11 px",
+          "ok": true,
+          "detail": "6"
+        },
+        {
+          "name": "webgl2 DPR 1: dashed line has at least three dashes",
+          "ok": false,
+          "detail": "0"
+        }
+      ],
+      "measurements": {
+        "webgpu-dpr1": {
+          "thickness": 8,
+          "dashes": 7,
+          "worldUnits": false
+        },
+        "webgl2-dpr1": {
+          "thickness": 6,
+          "dashes": 0,
+          "worldUnits": false
+        }
+      }
+    },
+    {
+      "id": "stencil",
+      "title": "Stencil write/equal outline probe",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: stencil equal fills the mask region",
+          "ok": true,
+          "detail": "255,0,0,255"
+        },
+        {
+          "name": "webgpu: stencil rejects outside the mask",
+          "ok": true,
+          "detail": "16,24,32,255"
+        },
+        {
+          "name": "webgl2: stencil equal fills the mask region",
+          "ok": true,
+          "detail": "255,0,0,255"
+        },
+        {
+          "name": "webgl2: stencil rejects outside the mask",
+          "ok": true,
+          "detail": "16,24,32,255"
+        }
+      ],
+      "measurements": {
+        "webgpu": {
+          "inside": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "outside": [
+            16,
+            24,
+            32,
+            255
+          ],
+          "stencilBuffer": true
+        },
+        "webgl2": {
+          "inside": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "outside": [
+            16,
+            24,
+            32,
+            255
+          ],
+          "stencilBuffer": true
+        }
+      }
+    },
+    {
+      "id": "colour-readback",
+      "title": "sRGB output, grey ramp and async target readback",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: #808080 reads 128",
+          "ok": true,
+          "detail": "128,128,128"
+        },
+        {
+          "name": "webgpu: grey ramp is monotonic",
+          "ok": true,
+          "detail": "0,17,34,51,68,85,102,119,136,153,170,187,204,221,238,255"
+        },
+        {
+          "name": "webgpu: odd-width readback is tightly packed",
+          "ok": true,
+          "detail": "248708"
+        },
+        {
+          "name": "webgpu: row order is normalizable",
+          "ok": true,
+          "detail": "{\"topLeft\":[255,0,0,255],\"topRight\":[0,255,0,255],\"bottomLeft\":[0,0,255,255],\"bottomRight\":[255,255,0,255]}"
+        },
+        {
+          "name": "webgl2: #808080 reads 128",
+          "ok": true,
+          "detail": "128,128,128"
+        },
+        {
+          "name": "webgl2: grey ramp is monotonic",
+          "ok": true,
+          "detail": "0,17,34,51,68,85,102,119,136,153,170,187,204,221,238,255"
+        },
+        {
+          "name": "webgl2: odd-width readback is tightly packed",
+          "ok": true,
+          "detail": "248708"
+        },
+        {
+          "name": "webgl2: row order is normalizable",
+          "ok": true,
+          "detail": "{\"topLeft\":[255,0,0,255],\"topRight\":[0,255,0,255],\"bottomLeft\":[0,0,255,255],\"bottomRight\":[255,255,0,255]}"
+        }
+      ],
+      "measurements": {
+        "webgpu-grey": [
+          128,
+          128,
+          128
+        ],
+        "webgpu-ramp": [
+          0,
+          17,
+          34,
+          51,
+          68,
+          85,
+          102,
+          119,
+          136,
+          153,
+          170,
+          187,
+          204,
+          221,
+          238,
+          255
+        ],
+        "webgpu-odd": {
+          "rowOrder": "top-down",
+          "bytes": 248708,
+          "expectedBytes": 248708,
+          "ms": 1.0999999940395355,
+          "topLeft": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "topRight": [
+            0,
+            255,
+            0,
+            255
+          ],
+          "bottomLeft": [
+            0,
+            0,
+            255,
+            255
+          ],
+          "bottomRight": [
+            255,
+            255,
+            0,
+            255
+          ]
+        },
+        "webgl2-grey": [
+          128,
+          128,
+          128
+        ],
+        "webgl2-ramp": [
+          0,
+          17,
+          34,
+          51,
+          68,
+          85,
+          102,
+          119,
+          136,
+          153,
+          170,
+          187,
+          204,
+          221,
+          238,
+          255
+        ],
+        "webgl2-odd": {
+          "rowOrder": "bottom-up",
+          "bytes": 248708,
+          "expectedBytes": 248708,
+          "ms": 19.399999976158142,
+          "topLeft": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "topRight": [
+            0,
+            255,
+            0,
+            255
+          ],
+          "bottomLeft": [
+            0,
+            0,
+            255,
+            255
+          ],
+          "bottomRight": [
+            255,
+            255,
+            0,
+            255
+          ]
+        }
+      }
+    },
+    {
+      "id": "pipeline-compilation",
+      "title": "First-use pipeline work and compileAsync",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: a warm repeat is not slower than the cold frame",
+          "ok": true,
+          "detail": "12.099999994039536 -> 1.100000023841858"
+        },
+        {
+          "name": "webgpu: the scene compiled at least one program",
+          "ok": true,
+          "detail": "2"
+        },
+        {
+          "name": "webgl2: a warm repeat is not slower than the cold frame",
+          "ok": true,
+          "detail": "10.200000017881393 -> 0.4000000059604645"
+        },
+        {
+          "name": "webgl2: the scene compiled at least one program",
+          "ok": true,
+          "detail": "2"
+        }
+      ],
+      "measurements": {
+        "webgpu": {
+          "cold": {
+            "ms": 12.099999994039536,
+            "calls": 1,
+            "programs": 2
+          },
+          "warm": {
+            "ms": 1.100000023841858,
+            "calls": 2,
+            "programs": 2
+          },
+          "lightVariant": {
+            "ms": 2.4000000059604645,
+            "calls": 3,
+            "programs": 2
+          },
+          "compileAsyncMs": 5.699999988079071,
+          "compileAsyncSupported": true
+        },
+        "webgl2": {
+          "cold": {
+            "ms": 10.200000017881393,
+            "calls": 1,
+            "programs": 2
+          },
+          "warm": {
+            "ms": 0.4000000059604645,
+            "calls": 2,
+            "programs": 2
+          },
+          "lightVariant": {
+            "ms": 0.19999998807907104,
+            "calls": 3,
+            "programs": 2
+          },
+          "compileAsyncMs": 3.5,
+          "compileAsyncSupported": true
+        }
+      }
+    },
+    {
+      "id": "device-loss",
+      "title": "Device loss signals on both backends",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "destroyed device is filtered by r187",
+          "ok": true,
+          "detail": "1"
+        },
+        {
+          "name": "the documented loss hook runs for owner tests",
+          "ok": true
+        },
+        {
+          "name": "forced WebGL2 exposes a context for loss testing",
+          "ok": true
+        },
+        {
+          "name": "WEBGL_lose_context fires webglcontextlost",
+          "ok": true
+        }
+      ],
+      "measurements": {
+        "native": {
+          "destroyedFiltered": true,
+          "hookFired": true,
+          "disposeRejected": false
+        },
+        "forced": {
+          "glContext": true,
+          "extension": true,
+          "lostEvent": true
+        }
+      }
+    }
+  ],
+  "harnessModuleMs": 2037.8999999761581
+}
