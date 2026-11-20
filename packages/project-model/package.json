@@ -12,6 +12,10 @@
       "types": "./src/units/index.ts",
       "default": "./src/units/index.ts"
     },
+    "./materials": {
+      "types": "./src/materials/index.ts",
+      "default": "./src/materials/index.ts"
+    },
     "./program": {
       "types": "./src/program/index.ts",
       "default": "./src/program/index.ts"

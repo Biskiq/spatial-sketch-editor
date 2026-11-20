@@ -1,0 +1,810 @@
+{
+  "schemaVersion": 1,
+  "profile": "pbr-metallic-roughness/v1",
+  "fixturesManifest": "fixtures.json",
+  "environmentEvidence": "evidence/e0-environment.json",
+  "charts": {
+    "swatchGrey": {
+      "fixture": "swatch-rgba",
+      "patch": [
+        64,
+        64
+      ],
+      "bytes": [
+        128,
+        128,
+        128,
+        255
+      ]
+    },
+    "checkerWhite": {
+      "fixture": "checker-asymmetric",
+      "patch": [
+        48,
+        48
+      ],
+      "bytes": [
+        255,
+        255,
+        255,
+        255
+      ]
+    },
+    "checkerMagentaMarker": {
+      "fixture": "checker-asymmetric",
+      "patch": [
+        100,
+        52
+      ],
+      "bytes": [
+        240,
+        20,
+        240,
+        255
+      ]
+    },
+    "normalPlusY": {
+      "fixture": "normal-plus-y",
+      "patch": [
+        64,
+        64
+      ],
+      "bytes": [
+        166,
+        204,
+        222,
+        255
+      ]
+    },
+    "normalMinusY": {
+      "fixture": "normal-minus-y",
+      "patch": [
+        64,
+        64
+      ],
+      "bytes": [
+        166,
+        51,
+        222,
+        255
+      ]
+    },
+    "ormCentre": {
+      "fixture": "orm-distinct",
+      "patch": [
+        64,
+        64
+      ],
+      "bytes": [
+        51,
+        191,
+        255,
+        255
+      ]
+    },
+    "note": "patch is the top-left pixel of the named interior; the fixture manifest records the full rectangles"
+  },
+  "capturedFrom": {
+    "repository": "Biskiq/spatial-sketch-editor",
+    "mainRevision": "30da19b3",
+    "planningPr": 386,
+    "rendererPr": 385,
+    "note": "captured before S8 renderer changes; regenerate only with a deliberate renderer change"
+  },
+  "fixtures": [
+    {
+      "id": "swatch-rgba",
+      "file": "swatch-rgba.png",
+      "sha256": "sha256-3b508ce162f82434ba39bd3e2a052ee24e2fc22121b4d28f3f1d5ee0731d74bf",
+      "byteSize": 1001
+    },
+    {
+      "id": "checker-asymmetric",
+      "file": "checker-asymmetric.png",
+      "sha256": "sha256-804eec261a53cec97b06d11116f62518009fbdc47f4de3d039bdd7b6c8487ba4",
+      "byteSize": 1478
+    },
+    {
+      "id": "normal-plus-y",
+      "file": "normal-plus-y.png",
+      "sha256": "sha256-7722fb1e8c41b79843c092075009da3476f5017e367704785ecb1084faa06f27",
+      "byteSize": 357
+    },
+    {
+      "id": "normal-minus-y",
+      "file": "normal-minus-y.png",
+      "sha256": "sha256-b506c18ae7d124084d69c6294f2864c9c783db9ac00c7256769342e0eda6805e",
+      "byteSize": 357
+    },
+    {
+      "id": "orm-distinct",
+      "file": "orm-distinct.png",
+      "sha256": "sha256-675bb561cbe484402c07c85dfdc84d627c5278d23fae59a37413bd6e3aecaad5",
+      "byteSize": 356
+    },
+    {
+      "id": "two-uv-glb",
+      "file": "two-uv-glb.glb",
+      "sha256": "sha256-035847df897be8d6a443eea99bb86868c08c348ebd596cd38d438f8314756f35",
+      "byteSize": 1344
+    }
+  ],
+  "catalogue": [
+    {
+      "id": "plaster-warm",
+      "recipeHash": "sha256-834aa252d781156ddfb9df77150bd97215aea373381b77ce96f8d767c763a572",
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#c4b4a0",
+          "roughness": 0.92,
+          "metalness": 0.02,
+          "toneMapped": true
+        },
+        "textures": {
+          "variantSeed": "v1fab86",
+          "slotUris": {
+            "map": "/textures/plaster-warm/map.png",
+            "roughnessMap": "/textures/plaster-warm/roughness.png"
+          },
+          "repeat": [
+            1,
+            1
+          ],
+          "rotation": 0,
+          "offset": [
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "wood-walnut",
+      "recipeHash": "sha256-86092484bd0a9631c7f9b48c598be5840cab935178c42ec0e48a571edb52d265",
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#3d2a1a",
+          "roughness": 0.78,
+          "metalness": 0.04,
+          "toneMapped": true
+        },
+        "textures": {
+          "variantSeed": "vbfd390",
+          "slotUris": {
+            "map": "/textures/wood-walnut/map.png",
+            "roughnessMap": "/textures/wood-walnut/roughness.png"
+          },
+          "repeat": [
+            1.3333333333333333,
+            1.3333333333333333
+          ],
+          "rotation": 0,
+          "offset": [
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "brass-aged",
+      "recipeHash": "sha256-a08fcbf3f21e70a91932c7fc01623d7e78903d5cdeeff9e2b0381fb92e340d70",
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#d6b35f",
+          "roughness": 0.45,
+          "metalness": 0.85,
+          "toneMapped": true
+        },
+        "textures": {
+          "variantSeed": "ve4acf4",
+          "slotUris": {
+            "map": "/textures/brass-aged/map.png"
+          },
+          "repeat": [
+            4,
+            4
+          ],
+          "rotation": 0,
+          "offset": [
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "marble-light",
+      "recipeHash": "sha256-e29d0b584dbb87520ffb84686dd8be6fd9b3eadae1c49fc5ccab44a39f4dc27c",
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#e8e4dc",
+          "roughness": 0.35,
+          "metalness": 0.08,
+          "toneMapped": true
+        },
+        "textures": null
+      }
+    },
+    {
+      "id": "velvet-dark",
+      "recipeHash": "sha256-ded4ef9c43323776e45fdb3a3c5c19af6a3f58009f45ccb3d94f974adaa7330b",
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#3a1822",
+          "roughness": 0.95,
+          "metalness": 0,
+          "toneMapped": true
+        },
+        "textures": null
+      }
+    },
+    {
+      "id": "paper-aged",
+      "recipeHash": "sha256-79fa5adf7b9e7927e55c875209750b08f9ca59e29ff965c38657bf4b26286e46",
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#e2d2b0",
+          "roughness": 0.9,
+          "metalness": 0,
+          "toneMapped": true
+        },
+        "textures": null
+      }
+    }
+  ],
+  "appearance": {
+    "s4SingleImage": {
+      "material": {
+        "kind": "standard",
+        "color": "#3d2a1a",
+        "roughness": 0.78,
+        "metalness": 0.04,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v7b779c",
+        "slotUris": {
+          "map": "/s8-fixtures/swatch-rgba.png",
+          "roughnessMap": "/textures/wood-walnut/roughness.png"
+        },
+        "repeat": [
+          1.5999999999999999,
+          0.7333333333333334
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    "paletteFollower": {
+      "material": {
+        "kind": "standard",
+        "color": "#5a3a22",
+        "roughness": 0.9,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": null
+    },
+    "sharedRotatedNonSquare": {
+      "material": {
+        "kind": "standard",
+        "color": "#3d2a1a",
+        "roughness": 0.78,
+        "metalness": 0.04,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v7b779c",
+        "slotUris": {
+          "map": "/s8-fixtures/swatch-rgba.png",
+          "roughnessMap": "/textures/wood-walnut/roughness.png"
+        },
+        "repeat": [
+          4,
+          1
+        ],
+        "rotation": 0.42,
+        "offset": [
+          0.25,
+          0.5
+        ]
+      }
+    },
+    "treatments": {
+      "natural": {
+        "material": {
+          "kind": "standard",
+          "color": "#3d2a1a",
+          "roughness": 0.78,
+          "metalness": 0.04,
+          "toneMapped": true
+        },
+        "textures": {
+          "variantSeed": "v7b779c",
+          "slotUris": {
+            "map": "/s8-fixtures/swatch-rgba.png",
+            "roughnessMap": "/textures/wood-walnut/roughness.png"
+          },
+          "repeat": [
+            2.5,
+            1.25
+          ],
+          "rotation": 0.42,
+          "offset": [
+            0.25,
+            0.5
+          ]
+        }
+      },
+      "clay": {
+        "material": {
+          "kind": "standard",
+          "color": "#d6d3cd",
+          "roughness": 0.9,
+          "metalness": 0,
+          "toneMapped": true
+        },
+        "textures": null
+      },
+      "flatColour": {
+        "material": {
+          "kind": "standard",
+          "color": "#3d2a1a",
+          "roughness": 0.78,
+          "metalness": 0,
+          "toneMapped": true
+        },
+        "textures": null
+      }
+    },
+    "authoredZero": {
+      "material": {
+        "kind": "standard",
+        "color": "#3d2a1a",
+        "roughness": 0,
+        "metalness": 0,
+        "toneMapped": true
+      },
+      "textures": {
+        "variantSeed": "v2d798d",
+        "slotUris": {
+          "map": "/textures/wood-walnut/map.png",
+          "roughnessMap": "/textures/wood-walnut/roughness.png"
+        },
+        "repeat": [
+          0.6666666666666666,
+          0.6666666666666666
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    "missingOptionalMap": {
+      "material": {
+        "kind": "standard",
+        "color": "#e8e4dc",
+        "roughness": 0.35,
+        "metalness": 0.08,
+        "toneMapped": true
+      },
+      "textures": null
+    }
+  },
+  "contract": {
+    "form": [
+      {
+        "role": "color",
+        "uvSet": 0,
+        "basis": "metric",
+        "repeat": [
+          4,
+          1
+        ],
+        "rotation": 0.4,
+        "offset": [
+          0.25,
+          0.5
+        ],
+        "image": {
+          "textureId": "texture-color"
+        }
+      },
+      {
+        "role": "normal",
+        "uvSet": 0,
+        "basis": "metric",
+        "repeat": [
+          4,
+          1
+        ],
+        "rotation": 0.4,
+        "offset": [
+          0.25,
+          0.5
+        ],
+        "convention": "+Y",
+        "image": {
+          "textureId": "texture-normal"
+        }
+      },
+      {
+        "role": "roughness",
+        "uvSet": 0,
+        "basis": "metric",
+        "repeat": [
+          4,
+          1
+        ],
+        "rotation": 0.4,
+        "offset": [
+          0.25,
+          0.5
+        ],
+        "component": "g",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      },
+      {
+        "role": "metalness",
+        "uvSet": 0,
+        "basis": "metric",
+        "repeat": [
+          4,
+          1
+        ],
+        "rotation": 0.4,
+        "offset": [
+          0.25,
+          0.5
+        ],
+        "component": "b",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      },
+      {
+        "role": "occlusion",
+        "uvSet": 0,
+        "basis": "metric",
+        "repeat": [
+          4,
+          1
+        ],
+        "rotation": 0.4,
+        "offset": [
+          0.25,
+          0.5
+        ],
+        "component": "r",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      }
+    ],
+    "model": [
+      {
+        "role": "color",
+        "uvSet": 0,
+        "basis": "identity",
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ],
+        "image": {
+          "textureId": "texture-color"
+        }
+      },
+      {
+        "role": "normal",
+        "uvSet": 0,
+        "basis": "identity",
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ],
+        "convention": "+Y",
+        "image": {
+          "textureId": "texture-normal"
+        }
+      },
+      {
+        "role": "roughness",
+        "uvSet": 0,
+        "basis": "identity",
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ],
+        "component": "g",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      },
+      {
+        "role": "metalness",
+        "uvSet": 0,
+        "basis": "identity",
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ],
+        "component": "b",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      },
+      {
+        "role": "occlusion",
+        "uvSet": 0,
+        "basis": "identity",
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "offset": [
+          0,
+          0
+        ],
+        "component": "r",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      }
+    ],
+    "uv1Mirrored": [
+      {
+        "role": "color",
+        "uvSet": 1,
+        "basis": "identity",
+        "repeat": [
+          2,
+          3
+        ],
+        "rotation": 1.2,
+        "offset": [
+          0.1,
+          0.9
+        ],
+        "image": {
+          "textureId": "texture-color"
+        }
+      },
+      {
+        "role": "normal",
+        "uvSet": 1,
+        "basis": "identity",
+        "repeat": [
+          2,
+          3
+        ],
+        "rotation": 1.2,
+        "offset": [
+          0.1,
+          0.9
+        ],
+        "convention": "+Y",
+        "image": {
+          "textureId": "texture-normal"
+        }
+      },
+      {
+        "role": "roughness",
+        "uvSet": 1,
+        "basis": "identity",
+        "repeat": [
+          2,
+          3
+        ],
+        "rotation": 1.2,
+        "offset": [
+          0.1,
+          0.9
+        ],
+        "component": "g",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      },
+      {
+        "role": "metalness",
+        "uvSet": 1,
+        "basis": "identity",
+        "repeat": [
+          2,
+          3
+        ],
+        "rotation": 1.2,
+        "offset": [
+          0.1,
+          0.9
+        ],
+        "component": "b",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      },
+      {
+        "role": "occlusion",
+        "uvSet": 1,
+        "basis": "identity",
+        "repeat": [
+          2,
+          3
+        ],
+        "rotation": 1.2,
+        "offset": [
+          0.1,
+          0.9
+        ],
+        "component": "r",
+        "invert": false,
+        "image": {
+          "textureId": "texture-orm"
+        }
+      }
+    ],
+    "orm": {
+      "roughness": {
+        "image": {
+          "hash": "sha256-f2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df",
+          "source": {
+            "textureId": "texture-orm"
+          }
+        },
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.8,
+              1.6
+            ],
+            "rotation": 0.4,
+            "offset": [
+              0.25,
+              0.5
+            ]
+          }
+        },
+        "component": "g",
+        "invert": false
+      },
+      "metalness": {
+        "image": {
+          "hash": "sha256-f2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df",
+          "source": {
+            "textureId": "texture-orm"
+          }
+        },
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.8,
+              1.6
+            ],
+            "rotation": 0.4,
+            "offset": [
+              0.25,
+              0.5
+            ]
+          }
+        },
+        "component": "b",
+        "invert": false
+      },
+      "occlusion": {
+        "image": {
+          "hash": "sha256-f2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df2df",
+          "source": {
+            "textureId": "texture-orm"
+          }
+        },
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.8,
+              1.6
+            ],
+            "rotation": 0.4,
+            "offset": [
+              0.25,
+              0.5
+            ]
+          }
+        },
+        "component": "r",
+        "invert": false
+      }
+    },
+    "disabledNormal": {
+      "normal": null,
+      "provenance": {
+        "source": "disabled"
+      }
+    },
+    "minusYNormal": {
+      "convention": "-Y",
+      "normalScale": 1.4
+    }
+  },
+  "defects": {
+    "textureStoreSharedSource": {
+      "sharedUri": "/s8-fixtures/shared-source.png",
+      "firstVerified": "one Texture cached by URI; the first slot decides its colorSpace",
+      "byte": 128,
+      "rawRead": 0.5019607843137255,
+      "colourRead": 0.21586050011389926,
+      "expected": {
+        "colourSlot": "srgb",
+        "dataSlot": ""
+      },
+      "colourFirst": {
+        "mapColorSpace": "srgb",
+        "roughnessMapColorSpace": "srgb"
+      },
+      "dataFirst": {
+        "roughnessMapColorSpace": "",
+        "mapColorSpace": ""
+      }
+    },
+    "regionUv": {
+      "surface": "top + underside + edge of one rectangular slab",
+      "hasUv": false,
+      "attributes": [
+        "normal",
+        "position"
+      ],
+      "groups": 6,
+      "vertexCount": 36,
+      "surfaceCount": 12,
+      "expected": {
+        "hasUv": true,
+        "mapping": "metric planar UV0 on every face"
+      }
+    }
+  }
+}
