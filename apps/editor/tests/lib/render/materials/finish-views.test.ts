@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NoColorSpace, SRGBColorSpace, Texture } from 'three';
 import { rgba8MipChainBytes } from '@portfolio/project-model/materials';
 import {
@@ -53,6 +53,62 @@ describe('finish view leases', () => {
 
 		lease.release();
 		expect(finishViewStats().live).toBe(0);
+		// The upload stays charged until eviction, so a released working set cannot
+		// quietly stop counting while its texture is still resident.
+		expect(finishViewStats().bytes).toBe(BYTES * 2);
+	});
+
+	it('reuses a released view without a second upload', async () => {
+		setDefaultTextureSourceLoader(async () => imageTexture());
+		const source = [{ view: 'colour', uri: '/one.png', role: 'color' as const }];
+		const first = await acquireFinishViews(source, null);
+		const texture = first.views.colour;
+		first.release();
+		const second = await acquireFinishViews(source, null);
+		expect(second.views.colour).toBe(texture);
+		expect(finishViewStats()).toMatchObject({ live: 1, created: 1 });
+		second.release();
+	});
+
+	it('evicts the oldest unleased view and disposes its upload under budget pressure', async () => {
+		let call = 0;
+		const textures: Texture[] = [];
+		setDefaultTextureSourceLoader(async () => {
+			call += 1;
+			const texture = imageTexture();
+			textures.push(texture);
+			return texture;
+		});
+		setFinishViewBudget(BYTES + 1);
+		const first = await acquireFinishViews([{ view: 'a', uri: '/a.png', role: 'color' }], null);
+		const firstTexture = first.views.a;
+		const dispose = vi.spyOn(firstTexture, 'dispose');
+		first.release();
+
+		const second = await acquireFinishViews([{ view: 'b', uri: '/b.png', role: 'color' }], null);
+		expect(second.issues).toEqual([]);
+		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(finishViewStats()).toMatchObject({ live: 1, created: 2, bytes: BYTES });
+		expect(call).toBe(2);
+		second.release();
+	});
+
+	it('keeps an old generation release from touching a new generation entry', async () => {
+		setDefaultTextureSourceLoader(async () => imageTexture());
+		const source = [{ view: 'colour', uri: '/one.png', role: 'color' as const }];
+		const old = await acquireFinishViews(source, null);
+		setFinishViewGeneration(finishViewStats().generation + 1);
+		const next = await acquireFinishViews(source, null);
+		// The source cache may hand back the same decoded texture under a new
+		// generation entry; the lease counts are what must stay isolated.
+		expect(next.views.colour).toBeTruthy();
+		expect(finishViewStats().live).toBe(2);
+
+		old.release();
+		// The old lease releases its own entry; the new generation stays leased.
+		expect(finishViewStats().live).toBe(1);
+		next.release();
+		expect(finishViewStats().live).toBe(0);
 	});
 
 	it('shares one logical view between two callers and releases by reference count', async () => {
@@ -104,7 +160,12 @@ describe('finish view leases', () => {
 	});
 
 	it('refuses the whole set without a partial lease when the budget cannot fit it', async () => {
-		setDefaultTextureSourceLoader(async () => imageTexture());
+		const textures: { texture: Texture; dispose: ReturnType<typeof vi.spyOn> }[] = [];
+		setDefaultTextureSourceLoader(async () => {
+			const texture = imageTexture();
+			textures.push({ texture, dispose: vi.spyOn(texture, 'dispose') });
+			return texture;
+		});
 		setFinishViewBudget(BYTES * 2 - 1);
 		const lease = await acquireFinishViews(
 			[
@@ -121,6 +182,10 @@ describe('finish view leases', () => {
 			available: BYTES * 2 - 1
 		});
 		expect(finishViewStats()).toMatchObject({ live: 0, refused: 1 });
+		// A refused set must not leave its decoded uploads behind: neither in the
+		// source cache nor on the GPU.
+		expect(textures).toHaveLength(2);
+		for (const { dispose } of textures) expect(dispose).toHaveBeenCalledTimes(1);
 		lease.release();
 	});
 

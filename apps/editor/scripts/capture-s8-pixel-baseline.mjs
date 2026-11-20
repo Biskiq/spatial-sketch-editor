@@ -228,9 +228,13 @@ async function main() {
 
 	if (!WRITE) {
 		let failures = 0;
+		let unmeasured = 0;
+		let compared = 0;
+		const expected = BACKENDS.length * CASES.length;
 		for (const [key, entry] of Object.entries(results.cases)) {
 			if (entry.status === 'unmeasured' || entry.file === undefined) {
 				console.log(`unmeasured ${key}: ${entry.observedBackend}`);
+				unmeasured += 1;
 				continue;
 			}
 			const baselinePath = resolve(OUT_DIR, entry.file);
@@ -238,17 +242,29 @@ async function main() {
 			const png = currentPngs.get(key);
 			if (png === undefined) {
 				console.log(`unmeasured ${key}: no current capture`);
+				unmeasured += 1;
 				continue;
+			}
+			if (entry.status === 'errors') {
+				console.error(`errors ${key}: ${entry.errors?.join('; ') ?? 'renderer reported errors'}`);
+				failures += 1;
 			}
 			writeFileSync(currentPath, png);
 			const baseline = decodePng(readFileSync(baselinePath));
 			const current = decodePng(png);
 			const difference = meanAbsoluteDifference(baseline.pixels, current.pixels);
 			console.log(`${key}: mean Δ ${difference.toFixed(3)} / ${TOLERANCE}`);
+			compared += 1;
 			if (difference > TOLERANCE) failures += 1;
 		}
+		// A missing backend is not a pass. The exit gates require both an observed
+		// WebGPU and WebGL2 capture for every case.
+		if (unmeasured > 0 || compared !== expected) {
+			console.error(`unmeasured ${unmeasured} case(s); compared ${compared}/${expected}`);
+			failures += 1;
+		}
 		if (failures > 0) {
-			console.error(`${failures} pixel case(s) outside tolerance ${TOLERANCE}`);
+			console.error(`${failures} pixel case(s) failed or were not compared against tolerance ${TOLERANCE}`);
 			process.exitCode = 1;
 		}
 	}

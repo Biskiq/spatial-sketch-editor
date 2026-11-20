@@ -45,11 +45,24 @@ const KEY_DIRECTION = new Vector3(-1, 1, 1).normalize();
 const FILL_DIRECTION = new Vector3(1, 0, -1).normalize();
 const GRAZING_DIRECTION = new Vector3(1, 0.12, 0.25).normalize();
 
+/**
+ * The inverse of Three r187's `equirectUV(direction)`:
+ *
+ * `u = atan2(z, x) / 2π + 1/2`, `v = asin(y) / π + 1/2`.
+ *
+ * The old formulation used `u` as longitude directly and `+cos` for latitude,
+ * which baked every patch at the antipode of the direction it named. Sampling
+ * through the renderer's mapping must round-trip to the authored direction.
+ */
 function directionFor(u: number, v: number): Vector3 {
-	const phi = u * Math.PI * 2;
-	const theta = v * Math.PI;
-	const sinTheta = Math.sin(theta);
-	return new Vector3(sinTheta * Math.cos(phi), Math.cos(theta), sinTheta * Math.sin(phi));
+	const longitude = (u - 0.5) * Math.PI * 2;
+	const latitude = (v - 0.5) * Math.PI;
+	const cosLatitude = Math.cos(latitude);
+	return new Vector3(
+		cosLatitude * Math.cos(longitude),
+		Math.sin(latitude),
+		cosLatitude * Math.sin(longitude)
+	);
 }
 
 /**

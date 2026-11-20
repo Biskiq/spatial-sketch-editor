@@ -228,6 +228,8 @@ type Entry = {
 	realization: ModelRealization | null;
 	/** The sampled view lease the drawn instance currently holds. */
 	views: FinishViewLease | null;
+	/** Cancels the current Finish-view acquisition on restyle/release. */
+	controller: AbortController | null;
 	/** Bumped by every presentation, arrival and release: only the newest may apply. */
 	generation: number;
 	/** The style key the drawn instance shows now. */
@@ -320,6 +322,8 @@ export function createSceneModelRepresentation(
 		entry.gate.close();
 		entry.arrival = null;
 		entry.generation += 1;
+		entry.controller?.abort();
+		entry.controller = null;
 		entry.lease?.release();
 		entry.lease = null;
 		if (entry.realization !== null) {
@@ -423,9 +427,13 @@ export function createSceneModelRepresentation(
 		if (active.finish !== undefined) {
 			// The sampled path loads only the plan's views, then mounts/restyles
 			// with one node material. No stock map slot is loaded for a Finish.
+			entry.controller?.abort();
+			const controller = new AbortController();
+			entry.controller = controller;
 			track(
-				acquireFinishViews(active.views ?? [], look.scope)
+				acquireFinishViews(active.views ?? [], look.scope, controller.signal)
 					.then((lease) => {
+						if (entry.controller === controller) entry.controller = null;
 						if (disposed || id !== entry.generation) {
 							lease.release();
 							return;
@@ -538,6 +546,7 @@ export function createSceneModelRepresentation(
 			arrival: null,
 			realization: null,
 			views: null,
+			controller: null,
 			generation: 0,
 			shown: null,
 			state: { status: source.url === null ? 'fallback' : 'loading' },

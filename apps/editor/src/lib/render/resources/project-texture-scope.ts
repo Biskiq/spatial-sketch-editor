@@ -24,7 +24,7 @@
  * representation's `reloadTextures`, so a recovered image appears without
  * rebuilding the Scene.
  */
-import { TextureLoader, type Texture as ThreeTexture } from 'three';
+import { Texture as ThreeTextureClass, TextureLoader, type Texture as ThreeTexture } from 'three';
 import { probeArtworkImage } from '@portfolio/project-model';
 import {
 	invalidateScopedMaterialLoads,
@@ -116,15 +116,38 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		preparedPins.delete(uri);
 	}
 
+	/**
+	 * Decode verified bytes without colour conversion, premultiplication or EXIF
+	 * rotation. Raw maps must preserve the file's channels and authored
+	 * orientation; a browser `<img>` decode would apply all three.
+	 */
+	async function decodeRaw(bytes: Uint8Array, mime: string): Promise<ImageBitmap | null> {
+		if (typeof createImageBitmap !== 'function') return null;
+		return createImageBitmap(new Blob([Uint8Array.from(bytes)], { type: mime }), {
+			imageOrientation: 'none',
+			premultiplyAlpha: 'none',
+			colorSpaceConversion: 'none'
+		});
+	}
+
+	function publish(assetId: string, probe: { pixelWidth: number; pixelHeight: number }, blob: Blob): void {
+		dimensions.set(assetId, { width: probe.pixelWidth, height: probe.pixelHeight });
+		if (!previewUris.has(assetId)) previewUris.set(assetId, URL.createObjectURL(blob));
+	}
+
 	async function loadProjectImage(
 		assetId: string,
-		isCurrent: () => boolean = () => true
+		isCurrent: () => boolean = () => true,
+		raw = false
 	): Promise<ThreeTexture> {
 		const pin = input.pins().get(assetId);
 		if (pin === undefined) throw new Error('The image is not registered in this project.');
 		const content = await input.load(assetId, abort.signal);
 		abort.signal.throwIfAborted();
 		const probe = probeArtworkImage(content.bytes);
+		if (raw && probe.orientation !== 1) {
+			throw new Error('Raw material maps require identity EXIF orientation.');
+		}
 		const digest = `sha256-${await imageSha256(content.bytes)}`;
 		if (
 			content.mime !== pin.mime ||
@@ -135,6 +158,19 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			throw new Error('The image bytes do not match the saved project.');
 		}
 		const blob = new Blob([Uint8Array.from(content.bytes)], { type: pin.mime });
+
+		if (raw) {
+			const bitmap = await decodeRaw(content.bytes, pin.mime);
+			if (bitmap !== null) {
+				if (disposed || !isCurrent()) {
+					bitmap.close();
+					throw new Error('The project texture scope is closed.');
+				}
+				publish(assetId, probe, blob);
+				return new ThreeTextureClass(bitmap);
+			}
+		}
+
 		const url = URL.createObjectURL(blob);
 		try {
 			const texture = await loader.loadAsync(url);
@@ -142,15 +178,31 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				texture.dispose();
 				throw new Error('The project texture scope is closed.');
 			}
-			dimensions.set(assetId, { width: probe.pixelWidth, height: probe.pixelHeight });
-			if (!previewUris.has(assetId)) previewUris.set(assetId, URL.createObjectURL(blob));
+			publish(assetId, probe, blob);
 			return texture;
 		} finally {
 			URL.revokeObjectURL(url);
 		}
 	}
 
-	async function loadCatalogue(uri: string): Promise<ThreeTexture> {
+	async function loadCatalogue(uri: string, raw = false): Promise<ThreeTexture> {
+		if (raw) {
+			// A raw map cannot silently fall back to the colour-managed loader: that
+			// would turn a normal/roughness map into display-referred sRGB bytes.
+			if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
+				throw new Error('Raw material maps require fetch and createImageBitmap.');
+			}
+			const response = await fetch(uri);
+			if (!response.ok) throw new Error(`Could not load raw material map (${response.status}).`);
+			const blob = await response.blob();
+			const bitmap = await decodeRaw(new Uint8Array(await blob.arrayBuffer()), blob.type || 'image/png');
+			if (bitmap === null) throw new Error('Raw material maps require createImageBitmap.');
+			if (disposed) {
+				bitmap.close();
+				throw new Error('The project texture scope is closed.');
+			}
+			return new ThreeTextureClass(bitmap);
+		}
 		const texture = await loader.loadAsync(uri);
 		if (disposed) {
 			texture.dispose();
@@ -161,18 +213,27 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 
 	const scope: ProjectTextureScope = {
 		scopeId: input.scopeId,
-		loader: async (uri) => {
+		loader: async (uri, slot, options) => {
 			if (disposed) throw new Error('The project texture scope is closed.');
 			requested.add(uri);
-			const generation = (generations.get(uri) ?? 0) + 1;
-			generations.set(uri, generation);
+			// A load does not supersede another load of the same URI. S4's eager
+			// prepare and a sampled colour view can decode the same pinned bytes in
+			// parallel under different storage policies; only `forget` (Retry, pin
+			// change, disposal) advances this generation and invalidates them.
+			const generation = generations.get(uri) ?? 0;
 			const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
+			const raw =
+				options?.policy === 'raw' || (options === undefined && slot !== 'map');
 			try {
 				const texture =
 					assetId === null
-						? await loadCatalogue(uri)
-						: await loadProjectImage(assetId, () => generations.get(uri) === generation);
-				if (disposed || generations.get(uri) !== generation) {
+						? await loadCatalogue(uri, raw)
+						: await loadProjectImage(
+							assetId,
+							() => (generations.get(uri) ?? 0) === generation,
+							raw
+							);
+				if (disposed || (generations.get(uri) ?? 0) !== generation) {
 					texture.dispose();
 					throw new Error('That texture load was superseded.');
 				}
@@ -180,7 +241,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				input.onSuccess?.(uri);
 				return texture;
 			} catch (error) {
-				if (!disposed && generations.get(uri) === generation) {
+				if (!disposed && (generations.get(uri) ?? 0) === generation) {
 					const message = error instanceof Error ? error.message : 'The image could not load.';
 					input.onFailure?.(uri, message);
 				}

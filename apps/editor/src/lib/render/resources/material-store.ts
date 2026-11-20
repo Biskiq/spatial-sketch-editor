@@ -420,10 +420,13 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 		acquire(descriptor, maps, source, views) {
 			if (disposed) throw new Error('the material store has been disposed');
 			const canonical = materialKey(descriptor);
-			const key =
-				descriptor.kind === 'standard' && descriptor.finish !== undefined
-					? `${canonical}|views=${viewSignature(views)}`
-					: canonical;
+			// A sampled standard surface and an imported remap both sample the
+			// acquired GPU views. Texture UUIDs are part of identity: two scopes can
+			// resolve the same descriptor text to different bytes.
+			const usesViews =
+				(descriptor.kind === 'standard' && descriptor.finish !== undefined) ||
+				(descriptor.kind === 'imported' && descriptor.remap?.finish !== undefined);
+			const key = usesViews ? `${canonical}|views=${viewSignature(views)}` : canonical;
 			let entry = entries.get(key);
 			if (entry === undefined) {
 				const material = construct(descriptor, maps, source, views);

@@ -12,24 +12,26 @@
  *
  * ## Bounded memory
  *
- * The complete set is preflighted together. If it cannot fit after removing every
- * unleased entry, no partial reservation is taken: the caller gets
+ * The complete set is preflighted together. If it cannot fit after evicting
+ * unleased views oldest-first, no partial reservation is taken: the caller gets
  * `texture-budget` with the required and available byte counts and may retry
- * after the working set changes. That prevents two builds from each waiting on
- * the other's partial reservation.
+ * after the working set changes. Eviction disposes the finished upload, not just
+ * its logical entry, so a sequence of disjoint working sets cannot accumulate
+ * GPU textures on a live renderer.
  *
  * ## Lifetime
  *
  * Entries are reference counted and scoped: the same view key in two texture
- * scopes is two textures. A release at zero drops the logical view (the source
- * bytes stay in the source cache), so a later acquire is one cache hit. A
- * concurrent acquisition that installed the same view while another set loaded
- * joins its reference count instead of replacing it. A Canvas generation change
- * clears every logical entry and refuses completions that started under the old
- * generation.
+ * scopes is two textures. A release at zero keeps the entry charged until it is
+ * evicted or its Canvas generation retires; a concurrent acquisition in the same
+ * generation joins its reference count. A Canvas generation change tags new
+ * acquisitions with the new generation and refuses completions from the old one,
+ * but it does not clear another live Canvas's entries. Lease releases capture the
+ * exact entry they acquired, so an old lease can never delete a newer entry that
+ * reused the same view key.
  */
 import type { TextureLoadScope } from './texture-store';
-import { loadFinishTexture } from './texture-store';
+import { loadFinishTexture, releaseFinishTexture } from './texture-store';
 import type { FinishTextureViews } from './finish-sampling';
 import type { Texture } from 'three';
 
@@ -70,7 +72,7 @@ export type FinishViewStats = {
 	readonly created: number;
 	/** Views released to zero, monotone. */
 	readonly released: number;
-	/** Estimated RGBA8 mip bytes held now. */
+	/** Estimated RGBA8 mip bytes held now, including zero-reference entries. */
 	readonly bytes: number;
 	/** The current generation tag. */
 	readonly generation: number;
@@ -100,20 +102,25 @@ export function rgba8MipChainBytes(width: number, height: number): number {
 }
 
 type Entry = {
+	readonly key: string;
 	readonly texture: Texture;
 	readonly bytes: number;
-	refCount: number;
 	readonly generation: number;
+	readonly scopeId: string;
+	readonly source: FinishViewSource;
+	refCount: number;
+	lastUsed: number;
 };
 
-/** A logical view is scoped: two projects may spell the same view key differently. */
-function entryKey(scopeId: string, view: string): string {
-	return `${scopeId}::${view}`;
+/** A logical view is scoped and generation-tagged; keys from two eras coexist. */
+function entryKey(scopeId: string, generation: number, view: string): string {
+	return `${scopeId}::${generation}::${view}`;
 }
 
 let entries = new Map<string, Entry>();
 let budgetBytes = DEFAULT_FINISH_VIEW_BUDGET_BYTES;
 let generation = 0;
+let access = 0;
 let created = 0;
 let released = 0;
 let refused = 0;
@@ -148,51 +155,150 @@ export function finishViewBudget(): number {
 	return budgetBytes;
 }
 
-/** A Canvas generation changed: drop every logical view and refuse old completions. */
+/**
+ * A Canvas generation changed.
+ *
+ * The tag advances monotonically across all Canvas hosts. Entries from earlier
+ * generations stay charged and remain releasable by their exact leases; new
+ * acquisitions never join them, and a budget-pressure eviction removes them
+ * oldest-first. This deliberately does not clear the map: one Canvas recovering
+ * must not wipe another live Canvas's accounting.
+ */
 export function setFinishViewGeneration(next: number): void {
-	generation = next;
-	for (const entry of entries.values()) released += entry.refCount > 0 ? 1 : 0;
-	entries = new Map();
+	generation = Math.max(generation, next);
 }
 
 export function finishViewStats(): FinishViewStats {
-	return { live: entries.size, created, released, bytes: heldBytes(), generation, refused };
+	let live = 0;
+	for (const entry of entries.values()) if (entry.refCount > 0) live += 1;
+	return { live, created, released, bytes: heldBytes(), generation, refused };
 }
 
 /** Test-only: clear the logical cache without touching the texture source cache. */
 export function resetFinishViewsForTests(): void {
 	entries = new Map();
 	generation = 0;
+	access = 0;
 	budgetBytes = DEFAULT_FINISH_VIEW_BUDGET_BYTES;
 	created = 0;
 	released = 0;
 	refused = 0;
 }
 
-function releaseView(key: string): void {
-	const entry = entries.get(key);
-	if (entry === undefined) return;
-	if (entry.refCount > 0) entry.refCount -= 1;
+/**
+ * Give back exactly one entry. Reaching zero records the release and leaves the
+ * upload charged until eviction; it never removes a newer entry with the same
+ * logical view.
+ */
+function releaseEntry(entry: Entry): void {
+	if (entry.refCount <= 0) return;
+	entry.refCount -= 1;
 	if (entry.refCount > 0) return;
-	entries.delete(key);
+	entry.lastUsed = ++access;
 	released += 1;
+}
+
+/**
+ * Dispose one evicted upload. If another entry still names the same texture (two
+ * view keys can share a URI and role), the texture stays until its final entry is
+ * evicted. Removing the Finish source key makes a later acquire reload bytes
+ * rather than hand back a disposed texture.
+ */
+function disposeEntry(entry: Entry, remaining: Iterable<Entry>): void {
+	for (const other of remaining) {
+		if (other.texture === entry.texture) return;
+	}
+	const disposed = releaseFinishTexture(entry.source.uri, entry.source.role, { scopeId: entry.scopeId });
+	// A test loader or another owner may supply a texture that never entered the
+	// source cache; disposal here is still safe and keeps the budget honest.
+	if (!disposed) entry.texture.dispose();
+}
+
+/**
+ * Evict unleased entries oldest-first, tie-breaking by key, until `needed` bytes
+ * are free or no candidate remains. Referenced views are never evicted.
+ */
+function evictUnleased(protectedKeys: ReadonlySet<string>, needed: number): number {
+	let available = 0;
+	const candidates = [...entries.values()]
+		.filter((entry) => entry.refCount === 0 && !protectedKeys.has(entry.key))
+		.sort((left, right) => left.lastUsed - right.lastUsed || left.key.localeCompare(right.key));
+	for (const entry of candidates) {
+		entries.delete(entry.key);
+		disposeEntry(entry, entries.values());
+		available += entry.bytes;
+		if (available >= needed) break;
+	}
+	return available;
+}
+
+function abortReason(signal: AbortSignal): unknown {
+	return signal.reason ?? new DOMException('The acquisition was cancelled.', 'AbortError');
 }
 
 /** One view's load, with the scope's decode concurrency capped at two. */
 const activeDecodes = new Map<string, number>();
-const waiting: (() => void)[] = [];
+const waiting = new Map<string, (() => void)[]>();
 
-async function withDecodeSlot<T>(scopeId: string, task: () => Promise<T>): Promise<T> {
+function wakeNext(scopeId: string): void {
+	const queue = waiting.get(scopeId);
+	const next = queue?.shift();
+	if (next !== undefined) next();
+}
+
+function waitForDecodeSlot(scopeId: string, signal: AbortSignal | undefined): Promise<void> {
+	return new Promise<void>((resolve, reject) => {
+		const queue = waiting.get(scopeId) ?? [];
+		waiting.set(scopeId, queue);
+		const wake = (): void => {
+			cleanup();
+			resolve();
+		};
+		const onAbort = (): void => {
+			const index = queue.indexOf(wake);
+			if (index >= 0) queue.splice(index, 1);
+			cleanup();
+			reject(abortReason(signal!));
+		};
+		const cleanup = (): void => {
+			signal?.removeEventListener('abort', onAbort);
+		};
+		queue.push(wake);
+		signal?.addEventListener('abort', onAbort, { once: true });
+	});
+}
+
+async function withDecodeSlot<T>(
+	scopeId: string,
+	task: () => Promise<T>,
+	signal?: AbortSignal
+): Promise<T> {
+	// The wake queue is per scope: a woken waiter whose own scope is full must not
+	// starve a different scope with both of its slots free.
 	while ((activeDecodes.get(scopeId) ?? 0) >= 2) {
-		await new Promise<void>((resolve) => waiting.push(resolve));
+		if (signal?.aborted) {
+			wakeNext(scopeId);
+			throw abortReason(signal);
+		}
+		try {
+			await waitForDecodeSlot(scopeId, signal);
+		} catch (error) {
+			// An aborted waiter consumed a wake-up; pass the turn to the next
+			// waiter instead of leaving the queue asleep.
+			wakeNext(scopeId);
+			throw error;
+		}
+	}
+	if (signal?.aborted) {
+		wakeNext(scopeId);
+		throw abortReason(signal);
 	}
 	activeDecodes.set(scopeId, (activeDecodes.get(scopeId) ?? 0) + 1);
 	try {
 		return await task();
 	} finally {
 		activeDecodes.set(scopeId, Math.max(0, (activeDecodes.get(scopeId) ?? 1) - 1));
-		const next = waiting.shift();
-		if (next !== undefined) next();
+		wakeNext(scopeId);
 	}
 }
 
@@ -218,12 +324,38 @@ export async function acquireFinishViews(
 	const key = `${scopeId}::${ordered.map((entry) => entry.view).join('|')}`;
 	const startedGeneration = generation;
 	const issues: FinishViewIssue[] = [];
-	const acquired: string[] = [];
+	const acquired: Entry[] = [];
 	const views: Record<string, Texture> = {};
-	const keyFor = (view: string): string => entryKey(scopeId, view);
+	const pending = new Map<string, FinishViewSource>();
+	const keyFor = (view: string): string => entryKey(scopeId, startedGeneration, view);
+
+	/**
+	 * Give back a decoded texture that never became an entry. It may already be
+	 * shared with a live entry (two acquisitions raced), in which case that entry
+	 * keeps the source cache reference; otherwise release the source key so a
+	 * retry reloads bytes instead of receiving a disposed texture.
+	 */
+	const discardPending = (): void => {
+		for (const source of pending.values()) {
+			const texture = views[source.view];
+			if (texture === undefined) continue;
+			let shared = false;
+			for (const entry of entries.values()) {
+				if (entry.texture === texture) {
+					shared = true;
+					break;
+				}
+			}
+			if (shared) continue;
+			if (!releaseFinishTexture(source.uri, source.role, scope)) texture.dispose();
+			delete views[source.view];
+		}
+		pending.clear();
+	};
 
 	const abort = (): FinishViewLease => {
-		for (const view of acquired) releaseView(view);
+		discardPending();
+		for (const entry of acquired) releaseEntry(entry);
 		return {
 			views: {},
 			key,
@@ -247,7 +379,7 @@ export async function acquireFinishViews(
 			continue;
 		}
 		entry.refCount += 1;
-		acquired.push(keyFor(source.view));
+		acquired.push(entry);
 		views[source.view] = entry.texture;
 	}
 
@@ -263,7 +395,11 @@ export async function acquireFinishViews(
 			return abort();
 		}
 		try {
-			const texture = await withDecodeSlot(scopeId, () => loadFinishTexture(source.uri, source.role, scope));
+			const texture = await withDecodeSlot(
+				scopeId,
+				() => loadFinishTexture(source.uri, source.role, scope),
+				signal
+			);
 			if (generation !== startedGeneration) {
 				issues.push({
 					code: 'generation-mismatch',
@@ -280,7 +416,12 @@ export async function acquireFinishViews(
 			const dimensions = dimensionsOf(texture);
 			loadedBytes.set(source.view, dimensions === null ? 0 : rgba8MipChainBytes(dimensions.width, dimensions.height));
 			views[source.view] = texture;
+			pending.set(source.view, source);
 		} catch (error) {
+			if (signal?.aborted) {
+				issues.push({ code: 'cancelled', view: source.view, role: source.role });
+				return abort();
+			}
 			issues.push({
 				code: 'image-load-failed',
 				view: source.view,
@@ -299,7 +440,11 @@ export async function acquireFinishViews(
 	for (const source of missing) {
 		if (!entries.has(keyFor(source.view))) required += loadedBytes.get(source.view) ?? 0;
 	}
-	const available = Math.max(0, budgetBytes - heldBytes());
+	const protectedKeys = new Set(acquired.map((entry) => entry.key));
+	let available = Math.max(0, budgetBytes - heldBytes());
+	if (required > available) {
+		available += evictUnleased(protectedKeys, required - available);
+	}
 	if (required > available) {
 		refused += 1;
 		issues.push({
@@ -312,22 +457,29 @@ export async function acquireFinishViews(
 	}
 
 	for (const source of missing) {
-		const key = keyFor(source.view);
-		const existing = entries.get(key);
+		const entryKeyForView = keyFor(source.view);
+		const existing = entries.get(entryKeyForView);
 		if (existing !== undefined) {
 			existing.refCount += 1;
 			views[source.view] = existing.texture;
-			acquired.push(key);
+			acquired.push(existing);
+			pending.delete(source.view);
 			continue;
 		}
-		entries.set(key, {
+		const entry: Entry = {
+			key: entryKeyForView,
 			texture: views[source.view]!,
 			bytes: loadedBytes.get(source.view) ?? 0,
 			refCount: 1,
-			generation: startedGeneration
-		});
+			generation: startedGeneration,
+			scopeId,
+			source,
+			lastUsed: ++access
+		};
+		entries.set(entryKeyForView, entry);
 		created += 1;
-		acquired.push(key);
+		acquired.push(entry);
+		pending.delete(source.view);
 	}
 
 	let releasedOnce = false;
@@ -339,7 +491,7 @@ export async function acquireFinishViews(
 		release() {
 			if (releasedOnce) return;
 			releasedOnce = true;
-			for (const view of acquired) releaseView(view);
+			for (const entry of acquired) releaseEntry(entry);
 		}
 	};
 }

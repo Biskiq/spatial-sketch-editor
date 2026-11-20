@@ -17,6 +17,7 @@ import {
   NoColorSpace,
   RepeatWrapping,
   SRGBColorSpace,
+  Texture as ThreeTextureClass,
   TextureLoader,
   type Texture as ThreeTexture
 } from 'three';
@@ -195,9 +196,15 @@ function applyClonePolicy(texture: ThreeTexture, slot: MaterialTextureSlot) {
  * can swap freely without a class instance. The setter accepts `null` to
  * restore the legacy path.
  */
+export type TextureSourceLoadOptions = {
+  readonly policy: TextureDecodePolicy;
+  readonly storage: TextureRowStorage;
+};
+
 export type TextureSourceLoader = (
   uri: string,
-  slot: MaterialTextureSlot
+  slot: MaterialTextureSlot,
+  options?: TextureSourceLoadOptions
 ) => Promise<ThreeTexture>;
 
 /**
@@ -293,23 +300,48 @@ function loadViaTextureLoader(
   policy: TextureDecodePolicy,
   storage: TextureRowStorage
 ): Promise<ThreeTexture> {
-  return new Promise<ThreeTexture>((resolve, reject) => {
-    loader.load(
-      url,
-      (texture) => {
-        applySourceDefaults(texture, policy, storage);
-        if (sourceCache.get(key) === entry) entry.texture = texture;
-        resolve(texture);
-      },
-      undefined,
-      (event) => {
-        const message = `Failed to load texture for material "${materialId}": ${url}`;
-        console.warn(message, event);
-        if (sourceCache.get(key) === entry) entry.error = message;
-        reject(new Error(message));
+  const legacy = (): Promise<ThreeTexture> =>
+    new Promise<ThreeTexture>((resolve, reject) => {
+      loader.load(
+        url,
+        (texture) => {
+          applySourceDefaults(texture, policy, storage);
+          if (sourceCache.get(key) === entry) entry.texture = texture;
+          resolve(texture);
+        },
+        undefined,
+        (event) => {
+          const message = `Failed to load texture for material "${materialId}": ${url}`;
+          console.warn(message, event);
+          if (sourceCache.get(key) === entry) entry.error = message;
+          reject(new Error(message));
+        }
+      );
+    });
+
+  // Raw catalogue/fixture bytes must not go through the browser's colour-managed
+  // `<img>` decode. Fetch the file and hand the decoder an identity contract; a
+  // failure is a failed raw load, never a silent sRGB fallback.
+  if (policy === 'raw') {
+    return (async () => {
+      if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
+        throw new Error(`Raw texture loading requires fetch and createImageBitmap: ${url}`);
       }
-    );
-  });
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const bitmap = await createImageBitmap(blob, {
+        imageOrientation: 'none',
+        premultiplyAlpha: 'none',
+        colorSpaceConversion: 'none'
+      });
+      const texture = new ThreeTextureClass(bitmap);
+      applySourceDefaults(texture, policy, storage);
+      if (sourceCache.get(key) === entry) entry.texture = texture;
+      return texture;
+    })();
+  }
+  return legacy();
 }
 
 async function loadViaDefaultSourceLoader(
@@ -322,7 +354,7 @@ async function loadViaDefaultSourceLoader(
   storage: TextureRowStorage
 ): Promise<ThreeTexture> {
   try {
-    const texture = await defaultSourceLoader!(url, slot);
+    const texture = await defaultSourceLoader!(url, slot, { policy, storage });
     applySourceDefaults(texture, policy, storage);
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
@@ -345,7 +377,7 @@ async function loadViaScopedLoader(
   storage: TextureRowStorage
 ): Promise<ThreeTexture> {
   try {
-    const texture = await scoped(url, slot);
+    const texture = await scoped(url, slot, { policy, storage });
     applySourceDefaults(texture, policy, storage);
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
@@ -698,6 +730,30 @@ export function loadFinishTexture(
   scope?: TextureLoadScope | null
 ): Promise<ThreeTexture> {
   return loadSource(uri, textureSlotForRole(role), 'finish', scope ?? null, 'top');
+}
+
+/**
+ * Evict one Finish source after its last view lease is gone.
+ *
+ * Finish views own the GPU residency of their top-first upload: the view cache
+ * charges exact mip bytes and evicts unleased views oldest-first. Removing only
+ * the Finish source key leaves the legacy upload and every other decode policy
+ * for the same URI untouched.
+ *
+ * @returns whether this call disposed a loaded texture.
+ */
+export function releaseFinishTexture(
+  uri: string,
+  role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
+  scope?: TextureLoadScope | TextureScopeKey | null
+): boolean {
+  const key = sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
+  const entry = sourceCache.get(key);
+  if (entry === undefined) return false;
+  sourceCache.delete(key);
+  if (entry.texture === undefined) return false;
+  entry.texture.dispose();
+  return true;
 }
 
 export function releaseEffectiveVariant(

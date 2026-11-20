@@ -77,8 +77,8 @@
 		onChange(next) {
 			if (next.generation !== generation) {
 				cancelPointerGesture();
-				// A new device generation owns new GPU views; old leases are dropped
-				// and late completions are refused by the view cache.
+				// A new device generation owns new GPU views; old leases stay with
+				// their owners and late completions are refused by the view cache.
 				setFinishViewGeneration(next.generation);
 			}
 			snapshot = next;

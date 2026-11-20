@@ -171,9 +171,21 @@ describe('texture-cache extensions', () => {
 			const a = await loadSourceTexture('/textures/injected.png', 'map');
 			const b = await loadSourceTexture('/textures/injected.png', 'map');
 			expect(loader).toHaveBeenCalledTimes(1);
-			expect(loader).toHaveBeenCalledWith('/textures/injected.png', 'map');
+			expect(loader).toHaveBeenCalledWith(
+				'/textures/injected.png',
+				'map',
+				{ policy: 'srgb', storage: 'legacy' }
+			);
 			expect(a).toBe(fakeTex);
 			expect(b).toBe(fakeTex);
+		});
+
+		it('raw policy never falls back to the colour-managed loader', async () => {
+			vi.stubGlobal('createImageBitmap', undefined);
+			await expect(loadSourceTexture('/textures/raw.png', 'normalMap')).rejects.toThrow(
+				/Raw texture loading requires/
+			);
+			vi.unstubAllGlobals();
 		});
 
 		it('rejection from loader produces a failed status (no legacy fallback)', async () => {
@@ -233,7 +245,10 @@ describe('texture-cache extensions', () => {
 
 			const loaded = await loadSourceTexture('/textures/route.png', 'roughnessMap');
 			expect(loaded).toBe(fakeTex);
-			expect(loader).toHaveBeenCalledWith('/textures/route.png', 'roughnessMap');
+			expect(loader).toHaveBeenCalledWith('/textures/route.png', 'roughnessMap', {
+				policy: 'raw',
+				storage: 'legacy'
+			});
 		});
 
 		it('__resetDefaultSourceLoaderForTests clears the dispatcher', async () => {

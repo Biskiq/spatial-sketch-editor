@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
 	import { onDestroy, onMount } from 'svelte';
+	import CanvasHost from '$lib/render/CanvasHost.svelte';
+	import BenchReadback from './BenchReadback.svelte';
 	import type { Material, Texture } from 'three';
 	import { createInspectionGeometry, type InspectionGeometryKind } from '$lib/render/materials/inspection-geometry';
 	import {
@@ -151,16 +153,19 @@
 	</div>
 
 	<div class="viewport">
-		<T.PerspectiveCamera
-			makeDefault
-			fov={pose.fovYDegrees}
-			position={[...pose.eye]}
-			onCreate={(camera: import('three').PerspectiveCamera) => camera.lookAt(0, 0, 0)}
-		/>
-		<T is={lighting.group} />
-		{#if material !== null}
-			<T.Mesh geometry={geometry} {material} />
-		{/if}
+		<CanvasHost surface="preview" renderMode="always" placeholder="#555">
+			<T.PerspectiveCamera
+				makeDefault
+				fov={pose.fovYDegrees}
+				position={[...pose.eye]}
+				onCreate={(camera: import('three').PerspectiveCamera) => camera.lookAt(0, 0, 0)}
+			/>
+			<T is={lighting.group} />
+			{#if material !== null}
+				<T.Mesh geometry={geometry} {material} />
+			{/if}
+			<BenchReadback {material} {kind} {rig} />
+		</CanvasHost>
 	</div>
 </main>
 

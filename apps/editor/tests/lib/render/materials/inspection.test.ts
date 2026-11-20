@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Vector3 } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import {
 	createInspectionGeometry,
 	inspectionGeometryFacts,
@@ -16,6 +16,7 @@ import {
 import {
 	createInspectionObserver,
 	inspectionChannels,
+	renderInspectionFrame,
 	inspectionPose,
 	inspectionThumbnailKey,
 	normalizeInspectionRows,
@@ -76,12 +77,15 @@ describe('inspection reference lighting', () => {
 		let baseSeen = false;
 		for (let y = 0; y < height; y += 1) {
 			for (let x = 0; x < width; x += 1) {
-				const phi = ((x + 0.5) / width) * Math.PI * 2;
-				const theta = ((y + 0.5) / height) * Math.PI;
+				// The inverse of Three r187's `equirectUV`: the baked field must
+				// round-trip through the renderer's own mapping, not a private one.
+				const longitude = (((x + 0.5) / width) - 0.5) * Math.PI * 2;
+				const latitude = (((y + 0.5) / height) - 0.5) * Math.PI;
+				const cosLatitude = Math.cos(latitude);
 				const direction = new Vector3(
-					Math.sin(theta) * Math.cos(phi),
-					Math.cos(theta),
-					Math.sin(theta) * Math.sin(phi)
+					cosLatitude * Math.cos(longitude),
+					Math.sin(latitude),
+					cosLatitude * Math.sin(longitude)
 				);
 				const value = pixels[(y * width + x) * 4]!;
 				if (direction.dot(key) > Math.cos((10 * Math.PI) / 180)) {
@@ -190,6 +194,40 @@ describe('inspection presentation', () => {
 		expect(inspectionThumbnailKey({ recipeKey: 'sha256-abc', geometry: 'block' })).not.toBe(base);
 	});
 
+	it('labels the WebGL fallback from the observed backend and flips its rows', async () => {
+		const readback = new Uint8Array([
+			1, 1, 1, 1, 2, 2, 2, 2,
+			3, 3, 3, 3, 4, 4, 4, 4
+		]);
+		const renderer = {
+			// The product constructs `WebGPURenderer` on both backends; this flag is
+			// not the observed backend.
+			isWebGPURenderer: true,
+			backend: { isWebGLBackend: true },
+			getRenderTarget: () => null,
+			getClearColor: (target: unknown) => target,
+			getClearAlpha: () => 1,
+			autoClear: true,
+			toneMappingExposure: 1,
+			setRenderTarget: () => undefined,
+			setClearColor: () => undefined,
+			clear: () => undefined,
+			render: () => undefined,
+			readRenderTargetPixelsAsync: async () => readback
+		};
+		const frame = await renderInspectionFrame({
+			renderer: renderer as never,
+			scene: new Scene(),
+			camera: new PerspectiveCamera(),
+			size: 2
+		});
+		expect(frame?.backend).toBe('webgl2');
+		expect([...(frame?.pixels ?? [])]).toEqual([
+			3, 3, 3, 3, 4, 4, 4, 4,
+			1, 1, 1, 1, 2, 2, 2, 2
+		]);
+	});
+
 	it('normalizes readback rows by backend', () => {
 		const pixels = new Uint8Array([
 			1, 1, 1, 1, 2, 2, 2, 2,
@@ -237,7 +275,9 @@ describe('inspection presentation', () => {
 		});
 		await Promise.resolve();
 		await Promise.resolve();
-		expect(results.map((result) => result.status)).toEqual(['ready', 'ready']);
+		// The first draw was superseded before it could publish; only the newest
+		// serial's result is observable.
+		expect(results.map((result) => result.status)).toEqual(['ready']);
 		expect(results.at(-1)?.serial).toBe(2);
 		observer.dispose();
 	});

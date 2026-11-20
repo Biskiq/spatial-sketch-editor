@@ -59,6 +59,42 @@ describe('E7/R2b — a sampled descriptor binds the views it was given', () => {
 		second.release();
 		store.dispose();
 	});
+
+	it('keeps an imported remap identity per acquired view set', () => {
+		const store = createMaterialStore();
+		const finish = {
+			profile: 'pbr-metallic-roughness/v1' as const,
+			entries: [
+				{
+					role: 'color' as const,
+					view: 'colour',
+					uvSet: 0 as const,
+					origin: 'legacy' as const,
+					repeat: [1, 1] as const,
+					rotation: 0,
+					offset: [0, 0] as const
+				}
+			],
+			occlusionStrength: 1,
+			normalScale: 1
+		};
+		const descriptor: MaterialDescriptor = {
+			kind: 'imported',
+			asset: '/models/one.glb',
+			mesh: 0,
+			slot: 0,
+			wireframe: false,
+			remap: { color: '#c4b4a0', roughness: 0.6, metalness: 0, finish }
+		};
+		const first = store.acquire(descriptor, undefined, undefined, { colour: new Texture() });
+		const second = store.acquire(descriptor, undefined, undefined, { colour: new Texture() });
+
+		expect(first.material).not.toBe(second.material);
+		expect(first.key).not.toBe(second.key);
+		first.release();
+		second.release();
+		store.dispose();
+	});
 });
 
 describe('E7/R2b — a textured descriptor is one material per variant', () => {

@@ -418,6 +418,16 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			look?.roughness ?? '-',
 			look?.metalness ?? '-',
 			look?.normalScale?.join(',') ?? '-',
+			// The legacy variant seed predates Finish, so two structurally
+			// different plans can share it. Include the plan and its resolved image
+			// sources so a restyle cannot retain the previous graph or bytes.
+			look?.finish === undefined ? '-' : JSON.stringify(look.finish),
+			look?.slotUris === undefined
+				? '-'
+				: Object.entries(look.slotUris)
+						.sort(([left], [right]) => left.localeCompare(right))
+						.map(([slot, uri]) => `${slot}=${uri}`)
+						.join(','),
 			input.treatment ?? '-',
 			wireframe,
 			castShadow,
@@ -455,8 +465,10 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 					fallbackCatalogueId: 'paper-aged'
 				},
 				// A legacy model remap keeps identity UV0: the model's own chart is the
-				// coordinate owner and the Finish's metric tile does not apply.
-				{ kind: 'legacy' }
+				// coordinate owner and the Finish's metric tile does not apply. The
+				// GLB has not arrived yet, so both UV sets are provisionally admitted;
+				// `model-realization` re-checks the actual draw before binding.
+				{ kind: 'legacy', uvSets: [0, 1], normalFrameSets: [0, 1] }
 			)
 		: null;
 	const look: SceneModelLook | null =

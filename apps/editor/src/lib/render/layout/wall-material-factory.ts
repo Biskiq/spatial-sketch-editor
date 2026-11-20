@@ -32,6 +32,7 @@ type VariantLease = {
 type SurfaceLook = SceneSurfaceLook & {
 	loaded: boolean;
 	views: FinishViewLease | null;
+	controller: AbortController | null;
 };
 
 /**
@@ -87,7 +88,8 @@ export function createVisitorWallMaterialFactory(
 			},
 			textures: null,
 			loaded: true,
-			views: null
+			views: null,
+			controller: null
 		};
 	}
 
@@ -105,7 +107,8 @@ export function createVisitorWallMaterialFactory(
 			material,
 			textures: look.textures,
 			loaded: sampled ? false : look.textures === null,
-			views: null
+			views: null,
+			controller: null
 		};
 	}
 
@@ -121,8 +124,11 @@ export function createVisitorWallMaterialFactory(
 		looks.set(key, candidate);
 		const sampled = candidate.material.kind === 'standard' && candidate.material.finish !== undefined;
 		if (sampled) {
-			void acquireFinishViews(candidate.textures?.views ?? [], scope)
+			const controller = new AbortController();
+			candidate.controller = controller;
+			void acquireFinishViews(candidate.textures?.views ?? [], scope, controller.signal)
 				.then((lease) => {
+					if (candidate.controller === controller) candidate.controller = null;
 					if (disposed) {
 						lease.release();
 						return;
@@ -203,7 +209,10 @@ export function createVisitorWallMaterialFactory(
 			for (const variant of variants.values()) {
 				releaseEffectiveVariant(variant.seed, variant.rx, variant.ry, variant.rotation, variant.scope, variant.offset);
 			}
-			for (const look of looks.values()) look.views?.release();
+			for (const look of looks.values()) {
+			look.controller?.abort();
+			look.views?.release();
+		}
 			leases.clear();
 			variants.clear();
 			looks.clear();

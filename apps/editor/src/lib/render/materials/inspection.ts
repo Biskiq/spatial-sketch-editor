@@ -33,6 +33,7 @@ import {
 } from 'three';
 import { SRGBColorSpace } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
+import { rendererBackendOf } from '$lib/render/renderer-backend';
 import type {
 	StandardFinishPlan,
 	StandardMaterialDescriptor
@@ -151,9 +152,10 @@ export type InspectionFrame = {
 type InspectionRenderer = WebGLRenderer | WebGPURenderer;
 
 function backendOf(renderer: InspectionRenderer): InspectionRenderBackend {
-	return (renderer as { isWebGPURenderer?: boolean }).isWebGPURenderer === true
-		? 'webgpu'
-		: 'webgl2';
+	// `WebGPURenderer` is the product's constructor on both backends; its own
+	// `isWebGPURenderer` flag stays true even when `forceWebGL` selected the
+	// compatibility backend. Only the observed backend decides row order.
+	return rendererBackendOf(renderer as WebGPURenderer);
 }
 
 /** Snapshot's row rule: WebGL reads bottom-up, WebGPU reads top-down. */
@@ -374,21 +376,28 @@ export function createInspectionObserver(options: {
 		try {
 			while (wanted && !disposed) {
 				wanted = false;
-				serial += 1;
+				// The serial was advanced when the request was submitted. A draw
+				// that was already running is therefore superseded immediately:
+				// its completion can never publish over the newer request.
 				const current = serial;
 				const startedGeneration = options.generation();
-				controller = new AbortController();
+				const active = new AbortController();
+				controller = active;
 				let frame: InspectionFrame | null = null;
 				try {
-					frame = await options.draw(controller.signal, startedGeneration);
+					frame = await options.draw(active.signal, startedGeneration);
 				} catch {
-					if (!controller.signal.aborted && !disposed) {
-						options.onResult({ status: 'refused', serial: current });
+					if (disposed) return;
+					if (active.signal.aborted) {
+						if (current === serial) options.onResult({ status: 'cancelled', serial: current });
+						continue;
 					}
+					if (current === serial) options.onResult({ status: 'refused', serial: current });
 					continue;
 				}
 				if (disposed) return;
-				if (controller.signal.aborted) {
+				if (current !== serial) continue;
+				if (active.signal.aborted) {
 					options.onResult({ status: 'cancelled', serial: current });
 					continue;
 				}
@@ -408,7 +417,12 @@ export function createInspectionObserver(options: {
 	return {
 		request() {
 			if (disposed) return;
+			// Submission is the replacement point: the new serial wins before the
+			// current draw has a chance to publish. The active draw is aborted so
+			// its work stops as soon as the consumer honours the signal.
+			serial += 1;
 			wanted = true;
+			controller?.abort();
 			void loop();
 		},
 		cancel() {

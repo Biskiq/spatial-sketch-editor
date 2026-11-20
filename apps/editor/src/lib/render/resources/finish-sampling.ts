@@ -31,6 +31,7 @@ import {
 	type Texture
 } from 'three/webgpu';
 import {
+	bitangentView,
 	color,
 	cross,
 	dFdx,
@@ -40,6 +41,7 @@ import {
 	normalize,
 	positionView,
 	select,
+	tangentView,
 	texture,
 	uv,
 	vec2,
@@ -199,6 +201,31 @@ function normalNodeFor(
 ): TslNode {
 	const sampled = finishSampleNode(entry, view, cache);
 	const strength = float(normalScale);
+	const scaled = vec3(sampled.x.mul(strength), sampled.y.mul(strength), sampled.z);
+	const geometric = safeNormalize(normalView);
+
+	// A default, untransformed UV0 chart uses the mesh's own tangent and
+	// handedness. That is the authored frame and stays stable at any camera
+	// distance. Transformed UVs, UV1 and meshes without tangents fall back to
+	// view-derivative frames below.
+	const identityUv0 =
+		entry.uvSet === 0 &&
+		entry.rotation === 0 &&
+		entry.repeat[0] === 1 &&
+		entry.repeat[1] === 1 &&
+		entry.offset[0] === 0 &&
+		entry.offset[1] === 0;
+	if (identityUv0) {
+		const meshTangent: TslNode = tangentView;
+		const meshBitangent: TslNode = bitangentView;
+		const meshMapped = safeNormalize(
+			meshTangent.mul(scaled.x).add(meshBitangent.mul(scaled.y)).add(geometric.mul(scaled.z))
+		);
+		// A zero-length tangent is the one degenerate mesh case; keep the
+		// geometric normal there instead of normalizing zero.
+		return (select as TslNode)(tangentView.length().greaterThan(1e-6), meshMapped, geometric);
+	}
+
 	// `entry.repeat` is applied by `sampleUv`; the frame uses the transformed UV
 	// so the tangent basis follows the same axes as the sampled image.
 	const frame: TslNode = frameUv(entry);
@@ -206,7 +233,6 @@ function normalNodeFor(
 	const dpdy: TslNode = dFdy(positionView);
 	const duvdx: TslNode = dFdx(frame);
 	const duvdy: TslNode = dFdy(frame);
-	const geometric = safeNormalize(normalView);
 	const tangent = safeNormalize(
 		cross(dpdy, geometric).mul(duvdx.x).add(cross(geometric, dpdx).mul(duvdy.x))
 	);
@@ -214,13 +240,17 @@ function normalNodeFor(
 		cross(dpdy, geometric).mul(duvdx.y).add(cross(geometric, dpdx).mul(duvdy.y))
 	);
 	const determinant = duvdx.x.mul(duvdy.y).sub(duvdy.x.mul(duvdx.y));
-	const scaled = vec3(sampled.x.mul(strength), sampled.y.mul(strength), sampled.z);
 	const mapped = safeNormalize(
 		tangent.mul(scaled.x).add(bitangent.mul(scaled.y)).add(geometric.mul(scaled.z))
 	);
+	// Singularity is relative to the UV edge lengths, not an absolute
+	// screen-space area: a small but valid repeat (e.g. a 1 cm tile viewed from
+	// far away) must not silently lose its normal map. The E0 predicate uses the
+	// same `1e-6 × |du/dx| × |du/dy|` bound.
+	const singular = duvdx.length().mul(duvdy.length()).mul(1e-6);
 	// The chosen image convention already flipped `sampled.y`; the frame is in the
 	// authored, transformed UV basis, so no second Y sign is applied here.
-	return (select as TslNode)(determinant.abs().greaterThan(1e-8), mapped, geometric);
+	return (select as TslNode)(determinant.abs().greaterThan(singular), mapped, geometric);
 }
 
 function entryFor(

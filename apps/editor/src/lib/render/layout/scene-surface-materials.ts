@@ -14,6 +14,7 @@ import type { SceneSurfaceLook, SceneSurfaceLookResolver, SceneSurfaceRef } from
 type SurfaceLook = SceneSurfaceLook & {
 	loaded: boolean;
 	views: FinishViewLease | null;
+	controller: AbortController | null;
 };
 type Variant = {
 	readonly seed: string;
@@ -44,11 +45,19 @@ export function createSceneSurfaceMaterials(input: {
 		const existing = looks.get(key);
 		if (existing !== undefined) return existing;
 		const sampled = resolved.material.kind === 'standard' && resolved.material.finish !== undefined;
-		const look: SurfaceLook = { ...resolved, loaded: sampled ? false : resolved.textures === null, views: null };
+		const look: SurfaceLook = {
+			...resolved,
+			loaded: sampled ? false : resolved.textures === null,
+			views: null,
+			controller: null
+		};
 		looks.set(key, look);
 		if (sampled) {
-			void acquireFinishViews(resolved.textures?.views ?? [], input.scope)
+			const controller = new AbortController();
+			look.controller = controller;
+			void acquireFinishViews(resolved.textures?.views ?? [], input.scope, controller.signal)
 				.then((lease) => {
+					if (look.controller === controller) look.controller = null;
 					if (disposed) {
 						lease.release();
 						return;
@@ -133,7 +142,10 @@ export function createSceneSurfaceMaterials(input: {
 			for (const variant of variants.values()) {
 				releaseEffectiveVariant(variant.seed, variant.rx, variant.ry, variant.rotation, variant.scope, variant.offset);
 			}
-			for (const look of looks.values()) look.views?.release();
+			for (const look of looks.values()) {
+				look.controller?.abort();
+				look.views?.release();
+			}
 			leases.clear();
 			variants.clear();
 			looks.clear();

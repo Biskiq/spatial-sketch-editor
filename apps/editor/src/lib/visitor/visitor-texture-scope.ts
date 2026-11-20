@@ -12,7 +12,7 @@
  * Lifetime: the owner revokes URLs via `dispose()` on unmount/failure. Dispose
  * is idempotent and never touches shared state.
  */
-import { TextureLoader, type Texture as ThreeTexture } from 'three';
+import { Texture as ThreeTextureClass, TextureLoader, type Texture as ThreeTexture } from 'three';
 import type { MaterialTextureSlot } from '$lib/types/materials';
 import { isAllowedShippedTextureUri } from './shipped-static-registry';
 
@@ -80,9 +80,29 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 
 	const loader = new TextureLoader();
 	const createSourceLoader = () => {
-		return async (uri: string, _slot: MaterialTextureSlot): Promise<ThreeTexture> => {
+		return async (
+			uri: string,
+			_slot: MaterialTextureSlot,
+			options?: { readonly policy: 'srgb' | 'raw' | string }
+		): Promise<ThreeTexture> => {
 			const resolved = resolveTexture(uri);
 			if (!resolved) throw new Error(`Texture not available in release ${releaseId}: ${uri}`);
+			if (options?.policy === 'raw') {
+				const entry = init.bytesByUri.get(uri);
+				if (entry === undefined || typeof createImageBitmap !== 'function') {
+					throw new Error(`Raw texture bytes are unavailable in release ${releaseId}: ${uri}`);
+				}
+				const bitmap = await createImageBitmap(new Blob([entry.bytes.slice()], { type: entry.mime }), {
+					imageOrientation: 'none',
+					premultiplyAlpha: 'none',
+					colorSpaceConversion: 'none'
+				});
+				if (disposed) {
+					bitmap.close();
+					throw new Error(`Release ${releaseId} is closed`);
+				}
+				return new ThreeTextureClass(bitmap);
+			}
 			return loader.loadAsync(resolved);
 		};
 	};

@@ -327,6 +327,50 @@ describe('arrival gate (E8 stale-arrival rejection)', () => {
 	});
 });
 
+describe('imported Finish target guard', () => {
+	it('keeps the constants when the arrived mesh has neither UV set the plan names', () => {
+		const source = template();
+		for (const mesh of surfacesOf(source)) mesh.geometry.deleteAttribute('uv');
+		const store = createMaterialStore();
+		const finish = {
+			profile: 'pbr-metallic-roughness/v1' as const,
+			entries: [
+				{
+					role: 'color' as const,
+					view: 'colour',
+					uvSet: 0 as const,
+					origin: 'legacy' as const,
+					repeat: [1, 1] as const,
+					rotation: 0,
+					offset: [0, 0] as const
+				}
+			],
+			occlusionStrength: 1,
+			normalScale: 1
+		};
+		const look: ModelLook = {
+			material: { color: '#c4b4a0', roughness: 0.6, metalness: 0, finish },
+			texture: null,
+			views: { colour: new Texture() }
+		};
+		const instance = realizeModel(source, {
+			asset: 'no-uv',
+			store,
+			look,
+			wireframe: false,
+			castShadow: true,
+			receiveShadow: true
+		});
+
+		const material = surfacesOf(instance.root)[0]!.material as MeshStandardMaterial & {
+			isNodeMaterial?: boolean;
+		};
+		expect(material.isNodeMaterial).not.toBe(true);
+		expect(material.color.getHexString()).toBe('c4b4a0');
+		instance.release();
+	});
+});
+
 describe('realization identity', () => {
 	it('names every mesh by its depth-first index, the identity a remap is keyed by', () => {
 		const source = template();
