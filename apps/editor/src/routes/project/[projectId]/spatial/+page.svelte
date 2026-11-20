@@ -1914,6 +1914,9 @@
 		// StageViewportRegion spreads these props, so each getter tracks its own inputs.
 		return {
 			scenePick,
+			// A renderer recovery cancels the captured press through the viewport's
+			// own pointercancel seam, never a fabricated pointer id.
+			capturedPointers: () => stageInput.capturedPointers(),
 			get dial() { return dial; },
 			lightPreview,
 			geometry: boot.snapshot.domain.geometry,

@@ -130,7 +130,7 @@ describe('the outline in the Stage', () => {
 	it('draws selection, hover and erase through one merged, biased pair of lines', () => {
 		expect(source).toContain('visibleIdentityContour(positions, eye)');
 		expect(source.match(/\.\.\.OUTLINE_DEPTH_BIAS/g)).toHaveLength(1);
-		expect(source.match(/new LineMaterial\(/g)).toHaveLength(1);
+		expect(source.match(/new Line2NodeMaterial\(/g)).toHaveLength(1);
 	});
 
 	it('keeps hover depth tested and lifts only the selected identity above the Room ceiling', () => {

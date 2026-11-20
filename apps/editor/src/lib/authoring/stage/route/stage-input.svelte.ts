@@ -315,6 +315,20 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		else if (hoverSelection === null || !sameReference(hoverSelection.reference, nextHover.reference)) hoverSelection = nextHover;
 	}
 
+	/**
+	 * The pointer ids the Stage currently holds: the press owner and every pinch
+	 * pointer. The Canvas host reads these immediately before it replaces a
+	 * renderer generation, so recovery cancels the creator's actual gesture through
+	 * the viewport's own pointercancel seam instead of guessing pointer id 1.
+	 */
+	function capturedPointers(): number[] {
+		const ids = new Set<number>();
+		const owner = input.press.owner();
+		if (owner !== null) ids.add(owner);
+		if (pinch !== null) for (const id of pinch.keys()) ids.add(id);
+		return [...ids];
+	}
+
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interrupt(reason: StageInterruptionReason): void {
 		if (input.unfold.interrupt()) return;
@@ -828,6 +842,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 		pointerMove,
 		pointerUp,
 		pointerCancel,
+		capturedPointers,
 		lostPointerCapture,
 		click,
 		wheel,

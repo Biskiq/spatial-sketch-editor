@@ -42,6 +42,8 @@ import {
 const LIB = 'apps/editor/src/lib';
 const DESCRIPTOR = `${LIB}/render/resources/material-descriptor.ts`;
 const STORE = `${LIB}/render/resources/material-store.ts`;
+/** The one TSL clip predicate: a render-layer graph both Canvases can share. */
+const CLIP = `${LIB}/render/clip/slice-clip-mask.ts`;
 const TEXTURE_STORE = `${LIB}/render/resources/texture-store.ts`;
 const DESCRIPTION = `${LIB}/render/scene-render-description.ts`;
 const REPRESENTATIONS = [
@@ -126,12 +128,23 @@ describe('render-layer-boundary: descriptors are plain, portable data', () => {
 });
 
 describe('render-layer-boundary: stores read no authoring layer', () => {
-	it('the material store imports only Three and its descriptor', () => {
-		expect(importsOf(STORE).filter((specifier) => specifier !== 'three' && specifier !== './material-descriptor')).toEqual([]);
+	it('the material store imports only Three, its descriptor and the shared clip graph', () => {
+		expect(
+			importsOf(STORE).filter(
+				(specifier) =>
+					specifier !== 'three' &&
+					// The colour mask and the artwork shadow mask are TSL graphs.
+					specifier !== 'three/tsl' &&
+					specifier !== './material-descriptor' &&
+					specifier !== '$lib/render/clip/slice-clip-mask'
+			)
+		).toEqual([]);
 	});
 
-	it('the material store’s closure is exactly the store and its descriptor', () => {
-		expect([...importClosure([absolute(STORE)])].map(relativeToRepo).sort()).toEqual([DESCRIPTOR, STORE].sort());
+	it('the material store’s closure is exactly the store, its descriptor and the clip graph', () => {
+		expect([...importClosure([absolute(STORE)])].map(relativeToRepo).sort()).toEqual(
+			[DESCRIPTOR, STORE, CLIP].sort()
+		);
 	});
 
 	it('the texture store’s module set is exact and holds no content-layer edge', () => {

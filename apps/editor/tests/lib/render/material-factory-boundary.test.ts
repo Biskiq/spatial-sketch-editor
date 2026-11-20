@@ -47,7 +47,8 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/paper-marks.ts': { count: 3, owner: 'Paper ink' },
 	'lib/authoring/stage/paper-scene.ts': { count: 3, owner: 'Paper scene' },
 	'lib/authoring/stage/shell/StageCanvas.svelte': { count: 1, owner: 'mat ground overlay' },
-	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'mat ground' },
+	'lib/authoring/stage/shell/stage-mat-grid.ts': { count: 2, owner: 'mat grid node materials' },
+	'lib/authoring/stage/shell/StageMatGround.svelte': { count: 2, owner: 'plate tint and mat shadow' },
 	'lib/authoring/stage/shell/StageSelectionLayer.svelte': { count: 2, owner: 'selection ink' },
 	'lib/authoring/stage/shell/StageLiftLayer.svelte': { count: 1, owner: 'lift ink' },
 	'lib/authoring/stage/shell/StageSliceLayer.svelte': { count: 6, owner: 'slice ink (SL1 plane/outline/ghost + SL2 drawn plane/depth/draft)' },
@@ -159,9 +160,9 @@ describe('material-factory-boundary: one factory for world materials', () => {
 
 	it('keeps the allowlist exact: a new site fails, and so does a stale entry', () => {
 		const actual = constructionSites();
-		// Standard, basic, Lambert, depth, distance and shadow (E9 added Lambert and
-		// the two shadow-pass kinds of the retained artwork alpha exception).
-		const expected: Record<string, number> = { [STORE]: 6 };
+		// Standard, basic, Lambert, shadow and the imported clone: the artwork alpha
+		// exception is a shadow-pass node on its surface, not a depth/distance pair.
+		const expected: Record<string, number> = { [STORE]: 4 };
 		for (const [file, entry] of Object.entries({ ...RR7_REMAINDER, ...EDITOR_INK })) expected[file] = entry.count;
 		expect(actual).toEqual(expected);
 	});
@@ -245,15 +246,15 @@ describe('material-factory-boundary: one factory for world materials', () => {
 			expect(code, host).toMatch(/resources\.dispose\(\)/);
 		}
 		// The Slice seam is the **one** ownership option this call takes: the Stage's
-		// own plane array and, for SL2, the one uniform object the drawn patch reads.
-		// The store is born holding those exact references so a cut never recompiles a
-		// program. Anything else passed here would be a second ownership decision
+		// own plane array and the one TSL mask graph its drawn cut evaluates.
+		// The store is born holding those exact references, so a cut only writes
+		// uniforms. Anything else passed here would be a second ownership decision
 		// smuggled in as an option.
 		const stage = withoutComments(
 			readFileSync(path.join(EDITOR_SRC, 'lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8')
 		);
 		expect(stage).toMatch(
-			/provideRenderResources\(\{\s*clippingPlanes: stageClip\.planes as Plane\[\],\s*sliceClip: stageClip\.sliceUniforms\s*\}\)/
+			/provideRenderResources\(\{\s*clippingPlanes: stageClip\.planes as Plane\[\],\s*clipMasks: \(cutaway\) => stageClip\.clipMasks\(cutaway\)\s*\}\)/
 		);
 		// The clip is created **before** the resources, so the store is born with it.
 		expect(stage.indexOf('setStageClip(createStageClip())')).toBeLessThan(

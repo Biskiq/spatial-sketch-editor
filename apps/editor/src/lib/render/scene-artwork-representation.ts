@@ -22,13 +22,13 @@
  * moves the retained group, a body edit rebuilds the meshes and their leases
  * while keeping the loaded image, and a source edit releases the image lease.
  *
- * **Retained portability exception.** An image with transparent texels
- * keeps custom depth and distance materials with `alphaTest: 0.5`, so its shadow
- * has the image's silhouette while the surface still blends every texel.
- * Moving `alphaTest` onto the surface would give the same shadow but would also
- * discard the texels below 0.5 in the colour pass, which the blended surface
- * draws today. The colour image would differ, so the exception stays; the two
- * shadow materials are built by the store like every other surface.
+ * **Transparent cast shadows.** An image with transparent texels carries the
+ * `shadowAlpha: 0.5` mask on its one Lambert surface, so its shadow has the
+ * image's silhouette while the colour pass still blends every texel. Moving
+ * `alphaTest` onto the surface would give the same shadow but would also discard
+ * texels below 0.5 in the colour pass, which the blended surface draws today. The
+ * mask is realized by the store as r187's `maskShadowNode`, not as a second
+ * depth/distance material.
  *
  * **Picking is unchanged.** The component never registered an Artwork with the
  * Stage pick index (Artwork is selected through its frame overlay), so this
@@ -175,7 +175,8 @@ export function createSceneArtworkRepresentation(
 					transparent: loaded.transparent || ghost,
 					depthWrite: !loaded.transparent && !ghost,
 					opacity: ghost ? GHOST_OPACITY : 1,
-					...(ghost ? { fog: false as const } : {})
+					...(ghost ? { fog: false as const } : {}),
+					...(loaded.transparent && !ghost ? { shadowAlpha: SHADOW_ALPHA_TEST } : {})
 				},
 				maps
 			),
@@ -183,16 +184,6 @@ export function createSceneArtworkRepresentation(
 			true
 		);
 		image.scale.set(item.imageSize[0], item.imageSize[1], 1);
-		if (loaded.transparent && !ghost) {
-			const depth = store.acquire(
-				{ kind: 'depth', map: mapKey, alphaTest: SHADOW_ALPHA_TEST, packing: 'rgba' },
-				maps
-			);
-			const distance = store.acquire({ kind: 'distance', map: mapKey, alphaTest: SHADOW_ALPHA_TEST }, maps);
-			materials.push(depth, distance);
-			image.customDepthMaterial = depth.material;
-			image.customDistanceMaterial = distance.material;
-		}
 		if (item.frame !== null) {
 			mesh('SceneArtworkFrame', geometry.acquire(item.frame.geometry), store.acquire(plain(item.frame.color)), item.frame.z, true);
 		}

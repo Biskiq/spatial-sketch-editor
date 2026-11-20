@@ -17,8 +17,8 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { Scene as ThreeScene, type Camera, type InterleavedBufferAttribute } from 'three';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import type { Camera, InterleavedBufferAttribute } from 'three';
+import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 import { evaluateLayoutPlan, type LayoutVec2, type PlanEvaluation } from '@portfolio/layout-core';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import type { RuntimeScene } from '@portfolio/project-model';
@@ -28,13 +28,16 @@ import { createPaperScene } from '$lib/authoring/stage/paper-scene';
 import { buildCompiledLayoutCandidatePaper } from '$lib/authoring/adapters/layout/candidate-preview';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
-import { previewCanvasRenderer, stageCanvasRenderer } from '$lib/render/canvas-renderers';
+import { countSurfaceFrames, type RendererSurface } from '$lib/render/renderer-backend';
+import { perfRenderer } from '$lib/platform/perf-marks';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { resolveSceneMaterial } from '$lib/render/materials/scene-instance-material';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 vi.mock('@threlte/core', async () => import('./fixtures/threlte-counting-context'));
 
-import { countingScene, countingShadowMap, threlteProbe } from './fixtures/threlte-counting-context';
+import { countingLight, countingRenderer, countingScene, threlteProbe } from './fixtures/threlte-counting-context';
 import StagePaperCountingProbe from './fixtures/StagePaperCountingProbe.svelte';
 import { openingSelection } from './fixtures/selection-entry';
 import ShadowTriggersWithResources from './fixtures/ShadowTriggersWithResources.svelte';
@@ -68,9 +71,6 @@ vi.mock('three', async (importOriginal) => {
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const RENDERER_INFO = { render: { calls: 4, triangles: 120 }, memory: { geometries: 2, textures: 1 } };
 
-function shadowLights() {
-	return [{ castShadow: true }];
-}
 
 let fixture: CountingSceneFixture;
 let counting: StageCounting | null = null;
@@ -178,13 +178,13 @@ describe('E0 work counters through their production callers', () => {
 		expect(seam.count('camera:evaluate')).toBe(1);
 	});
 
-	it('registers Stage and Preview surfaces through the production Canvas renderer callbacks', () => {
+	it('installs the surface frame counter in the one renderer factory', () => {
 		const seam = begin();
-		const stage = stageCanvasRenderer(document.createElement('canvas'));
-		const preview = previewCanvasRenderer(document.createElement('canvas'));
-		stage.render(new ThreeScene(), {} as Camera);
-		stage.render(new ThreeScene(), {} as Camera);
-		preview.render(new ThreeScene(), {} as Camera);
+		const stage = countSurfaceFrames(perfRenderer({ render: () => {}, info: RENDERER_INFO }, 'stage'), 'stage' as RendererSurface);
+		const preview = countSurfaceFrames(perfRenderer({ render: () => {}, info: RENDERER_INFO }, 'preview'), 'preview' as RendererSurface);
+		(stage as { render(): void }).render();
+		(stage as { render(): void }).render();
+		(preview as { render(): void }).render();
 		expect(seam.count('render:stage-frame')).toBe(2);
 		expect(seam.count('render:preview-frame')).toBe(1);
 		expect(seam.surfaces()).toEqual(expect.arrayContaining(['stage', 'preview']));
@@ -200,24 +200,37 @@ describe('E0 work counters through their production callers', () => {
 			geometries: 2,
 			textures: 1
 		});
+		// The production factory is the one that wraps: no second seam can be born.
+		const factory = readFileSync(resolve(process.cwd(), 'src/lib/render/renderer-backend.ts'), 'utf8');
+		expect(factory).toContain('perfRenderer(renderer, surface)');
+		expect(factory).toContain('countSurfaceFrames(');
 	});
 
-	it('mirrors a shadow pass that actually rendered', () => {
+	it('mirrors a shadow pass that actually rendered, not the enclosing frame', () => {
 		const seam = begin();
+		const camera = {};
+		const light = { isLight: true, castShadow: true, shadow: { autoUpdate: true, needsUpdate: false, camera } };
+		// The controller and the renderer must agree on the scene identity: r187's
+		// ShadowNode submits the same scene it is rendering.
+		const scene = { traverse: (callback: (object: typeof light) => void) => callback(light) };
 		const renders: unknown[][] = [];
-		const shadowMap = {
-			autoUpdate: true,
-			needsUpdate: false,
-			render(lights: readonly unknown[], scene: unknown, camera: unknown): void {
-				renders.push([lights, scene, camera]);
+		const renderer = {
+			render(sceneRef: unknown, cameraRef: unknown): void {
+				renders.push([sceneRef, cameraRef]);
+				// r187's ShadowNode.renderShadow makes this nested call while the light's
+				// request is still set; the enclosing render is not a second pass.
+				if (sceneRef !== scene) return;
+				if (!light.shadow.autoUpdate && !light.shadow.needsUpdate) return;
+				light.shadow.needsUpdate = false;
+				renderer.render(scene, camera);
 			}
 		};
-		const shadows = createShadowInvalidation({ shadowMap });
+		const shadows = createShadowInvalidation({ renderer, scene });
 		try {
 			shadows.invalidate();
-			shadowMap.render(shadowLights(), new ThreeScene(), {});
+			renderer.render(scene, {});
 			expect(shadows.stats().passes).toBe(1);
-			expect(renders).toHaveLength(1);
+			expect(renders).toEqual([[scene, {}], [scene, camera]]);
 			expect(seam.count('render:shadow-update')).toBe(1);
 		} finally {
 			shadows.dispose();
@@ -385,11 +398,11 @@ describe('E0 mounted Stage shell counting', () => {
 		try {
 			flushSync();
 			await tick();
-			countingShadowMap.render(shadowLights(), new ThreeScene(), {});
+			// One frame through the renderer the wiring was handed: the controller
+			// sees the call and counts it only when a map was consumed.
+			countingRenderer.render(countingScene, {});
 			expect(seam.count('render:shadow-update')).toBe(1);
-			// The model-plus-casting-light rule keeps per-frame updates for a model
-			// whose arrival is not observable at this boundary.
-			expect(countingShadowMap.autoUpdate).toBe(false);
+			expect(countingLight.shadow.autoUpdate).toBe(false);
 		} finally {
 			await unmount(component);
 			target.remove();
@@ -405,8 +418,8 @@ describe('E0 observer-disabled behaviour', () => {
 		const drawing = buildPaperPlan(fixture.plan, fixture.compiled, fixture.footprints);
 		const resources = createPaperScene(drawing, [1280, 720]);
 		resources.dispose();
-		const managed = stageCanvasRenderer(document.createElement('canvas'));
-		managed.render(new ThreeScene(), {} as Camera);
+		const counted = countSurfaceFrames(perfRenderer({ render: () => {}, info: RENDERER_INFO }, 'stage'), 'stage' as RendererSurface);
+		counted.render();
 		expect(seam.counts()).toEqual(countsBefore);
 		expect(seam.rendererInfo('stage')).toBeNull();
 		expect(globalThis).not.toHaveProperty('__BISKIQ_PERF_ON_RENDERER__');

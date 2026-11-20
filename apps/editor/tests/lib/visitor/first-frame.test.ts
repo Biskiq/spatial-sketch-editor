@@ -28,8 +28,8 @@ function scheduler() {
 	};
 }
 
-function source(frame = 0) {
-	return { info: { render: { frame } } };
+function source(calls = 0) {
+	return { info: { calls } };
 }
 
 describe('observeFirstRenderedFrame', () => {
@@ -47,13 +47,30 @@ describe('observeFirstRenderedFrame', () => {
 		schedule.flush();
 		expect(seen).toEqual([]);
 
-		frames.info.render.frame = 8;
+		frames.info.calls = 8;
 		schedule.flush();
 		expect(seen).toEqual([8]);
 
-		frames.info.render.frame = 9;
+		frames.info.calls = 9;
 		schedule.flush();
 		expect(seen).toEqual([8]);
+	});
+
+	it('falls back to the legacy WebGL counter when the common counter is absent', () => {
+		const frames = { info: { render: { frame: 4 } } };
+		const schedule = scheduler();
+		const seen: number[] = [];
+		observeFirstRenderedFrame({
+			source: frames,
+			onFrame: (frame) => seen.push(frame),
+			requestFrame: schedule.requestFrame,
+			cancelFrame: schedule.cancelFrame
+		});
+		schedule.flush();
+		expect(seen).toEqual([]);
+		frames.info.render.frame = 5;
+		schedule.flush();
+		expect(seen).toEqual([5]);
 	});
 
 	it('does not treat scheduling opportunities as rendered frames', () => {
@@ -89,7 +106,7 @@ describe('observeFirstRenderedFrame', () => {
 			cancelFrame: schedule.cancelFrame
 		});
 		observer.cancel();
-		frames.info.render.frame = 2;
+		frames.info.calls = 2;
 		schedule.flush();
 		expect(calls).toBe(0);
 		expect(schedule.cancelled).toHaveLength(1);

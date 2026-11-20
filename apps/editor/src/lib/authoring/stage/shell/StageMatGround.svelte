@@ -56,8 +56,8 @@
 	const gridMaterial = createMatGridMaterial();
 	const groundMaterial = createMatGroundMaterial();
 	onDestroy(() => {
-		gridMaterial.dispose();
-		groundMaterial.dispose();
+		gridMaterial.material.dispose();
+		groundMaterial.material.dispose();
 	});
 
 	const ground = $derived(matGroundFor(evaluation, datumMeters));
@@ -98,7 +98,7 @@
 		rotation={[-Math.PI / 2, 0, 0]}
 	>
 		<T.PlaneGeometry args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]} />
-		<T is={groundMaterial} />
+		<T is={groundMaterial.material} />
 	</T.Mesh>
 {/if}
 {#if gridVisible}
@@ -111,6 +111,6 @@
 		oncreate={overlayOnly}
 	>
 		<T.PlaneGeometry args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]} />
-		<T is={gridMaterial} />
+		<T is={gridMaterial.material} />
 	</T.Mesh>
 {/if}

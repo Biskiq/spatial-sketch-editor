@@ -29,8 +29,8 @@ import {
 	MeshBasicMaterial,
 	type InstancedInterleavedBuffer
 } from 'three';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
+import { Line2NodeMaterial } from 'three/webgpu';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -400,7 +400,7 @@ describe('Paper Plan — stream treatment', () => {
 			const symbolBatches = resources.group.children.filter(
 				(child): child is LineSegments2 => child instanceof LineSegments2 && child.renderOrder === PAPER_LAYER.symbol
 			);
-			expect(symbolBatches.map((line) => (line.material as LineMaterial).dashed).sort()).toEqual([false, true]);
+			expect(symbolBatches.map((line) => (line.material as Line2NodeMaterial).dashed).sort()).toEqual([false, true]);
 		} finally {
 			resources.dispose();
 		}
@@ -993,7 +993,7 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		);
 		expect(matGround).toContain('createMatGroundMaterial');
 		const groundShader = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
-		expect(groundShader).toContain('uMatInk: { value: new Color(MAT_BACKGROUND_INK) }');
+		expect(groundShader).toContain('uMatInk: uniform(new Color(MAT_BACKGROUND_INK))');
 
 		// PLATE inks are semantic colors; tone mapping would shift the vellum and ink
 		// away from the shell's own values. Every Paper material opts out.

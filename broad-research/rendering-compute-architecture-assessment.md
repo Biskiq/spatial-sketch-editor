@@ -96,16 +96,16 @@ that is currently worst (draw submissions). Rust/WASM touches none.
 
 ### 5.1 WebGPU portability: current lock-in surface and a rule for T2
 
-**[C] Inventory at `73103c27`** (non-test sources in `apps/editor/src`, `packages/*/src`):
+**[C] Inventory after the PR 2 cutover** (non-test sources in `apps/editor/src`, `packages/*/src`):
 
 | Surface | Count | Where |
 | --- | --- | --- |
-| Renderer construction | 1 factory | `apps/editor/src/lib/render/managed-webgl-renderer.ts`, used by Stage, visitor preview and `/dev/materials` |
-| Hand-written GLSL (`ShaderMaterial`) | 1 file | `apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts` (editor mat grid, editor-only) |
-| `onBeforeCompile` | 1 (internal) | The renderer factory briefly wraps it to capture three's shared DFG lookup texture for disposal (`managed-webgl-renderer.ts:46–75`). A WebGL-internals workaround: a WebGPU trial needs its own leak check, not a port |
+| Renderer construction | 1 factory | `apps/editor/src/lib/render/renderer-backend.ts` — one r187 `WebGPURenderer` (native WebGPU, WebGL2 fallback), used by the shared `CanvasHost.svelte` for Stage, visitor preview, published visit and dev benches |
+| Hand-written GLSL (`ShaderMaterial`) | 0 | The mat grid is a TSL `MeshBasicNodeMaterial` pair in `stage-mat-grid.ts` |
+| `onBeforeCompile` | 0 | Retired with the native renderer; the clip and artwork shadow masks are TSL nodes |
 | `RawShaderMaterial`, `EffectComposer`, postprocessing library | 0 | — |
-| `WebGLRenderTarget` | 1 file | `StageSnapshotRenderer.svelte` |
-| Shadow map control | 1 module | `shadow-invalidation.ts` (already renderer-agnostic by design) |
+| `WebGLRenderTarget` | 0 | Snapshots draw into a generic `RenderTarget` and read it asynchronously |
+| Shadow map control | 1 module | `shadow-invalidation.ts` (per-light `autoUpdate` / `needsUpdate`, as r187's `ShadowNode` reads) |
 
 This is close to the best possible starting position: a WebGPU trial is a factory swap, one GLSL
 file, one render-target site and a leak check, not a migration. The goal is to keep it that way through T2. Proposed rule for T2

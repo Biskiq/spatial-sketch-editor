@@ -19,7 +19,7 @@ export type FakeRenderer = HostRenderer & {
 	pixelRatio: number;
 	lastSize: { width: number; height: number } | null;
 	shadowMap: { enabled: boolean; type: number; autoUpdate: boolean; needsUpdate: boolean };
-	info: { render: { frame: number; calls: number; triangles: number }; memory: { textures: number } };
+	info: { calls: number; render: { calls: number; triangles: number }; memory: { textures: number } };
 	xr: { isPresenting: boolean };
 	outputColorSpace: string;
 	toneMapping: number;
@@ -98,7 +98,7 @@ export function fakeHost(
 				pixelRatio: 1,
 				lastSize: null,
 				shadowMap: { enabled: false, type: 0, autoUpdate: true, needsUpdate: false },
-				info: { render: { frame: 0, calls: 0, triangles: 0 }, memory: { textures: 0 } },
+				info: { calls: 0, render: { calls: 0, triangles: 0 }, memory: { textures: 0 } },
 				xr: { isPresenting: false },
 				outputColorSpace: 'srgb',
 				toneMapping: 0,
@@ -122,7 +122,7 @@ export function fakeHost(
 				},
 				render() {
 					renderer.renderCalls += 1;
-					renderer.info.render.frame += 1;
+					renderer.info.calls += 1;
 					renderer.info.render.calls += 1;
 				},
 				async dispose() {
@@ -139,7 +139,7 @@ export function fakeHost(
 			const index = created.indexOf(renderer as FakeRenderer);
 			return pending[index]!.promise.then(() => {
 				const target = renderer as FakeRenderer;
-				target.info.render.frame = 0;
+				target.info.calls = 0;
 			});
 		},
 		backend(renderer) {

@@ -36,9 +36,9 @@ import {
 	unionPaperFillPolygons,
 	type PaperFillPolygons
 } from './paper-fill-geometry';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { Line2NodeMaterial } from 'three/webgpu';
+import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import { sameReference, type StageSelectionEntry } from './semantic-selection';
 import { STAGE_ERASE_INK } from './stage-eraser';
@@ -256,8 +256,6 @@ export function paperMarkSet(
 
 export type PaperMarkSceneResources = {
 	readonly group: Group;
-	/** CSS-pixel viewport size; fat-line widths are CSS pixels, never device pixels. */
-	setResolution(widthCssPx: number, heightCssPx: number): void;
 	/** Follow the Paper drawing's settle-in; 0 → 1. */
 	setFade(fade: number): void;
 	dispose(): void;
@@ -315,7 +313,7 @@ export function createPaperMarkScene(
 		for (const positions of linePositions(geometry)) {
 			const lineGeometry = new LineGeometry();
 			lineGeometry.setPositions(new Float32Array(positions));
-			const material = new LineMaterial({
+			const material = new Line2NodeMaterial({
 			fog: false,
 				color: new Color(ink).getHex(),
 				linewidth: widthCssPx,
@@ -329,7 +327,6 @@ export function createPaperMarkScene(
 				// Dash lengths are world meters on the sheet.
 				...(dashed ? { dashSize: 0.12, gapSize: 0.08 } : {})
 			});
-			material.resolution.set(resolution[0], resolution[1]);
 			const object = new Line2(lineGeometry, material);
 			if (dashed) object.computeLineDistances();
 			object.renderOrder = renderOrder;
@@ -440,13 +437,6 @@ export function createPaperMarkScene(
 
 	return {
 		group,
-		setResolution(widthCssPx: number, heightCssPx: number): void {
-			group.traverse((node) => {
-				if (node instanceof Line2) {
-					(node.material as LineMaterial).resolution.set(widthCssPx, heightCssPx);
-				}
-			});
-		},
 		setFade(fade: number): void {
 			const clamped = Math.min(1, Math.max(0, fade));
 			for (const entry of fades) entry.material.opacity = entry.baseOpacity * clamped;

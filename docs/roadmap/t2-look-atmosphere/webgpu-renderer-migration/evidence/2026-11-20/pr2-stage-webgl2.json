@@ -1,0 +1,152 @@
+{
+  "flow": "PR 2 Stage and Preview browser acceptance",
+  "backend": "webgl2",
+  "project": "seeded agent-admin session",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "generatedAt": "2026-11-20T16:32:35.364Z",
+  "stage": {
+    "generations": 4,
+    "canvasId": "5",
+    "before": false,
+    "connected": true,
+    "backend": "webgl2",
+    "calls": 14,
+    "drawCalls": 14
+  },
+  "shadows": {
+    "passes": 1,
+    "maps": 6,
+    "invalidations": 2
+  },
+  "errors": [],
+  "recoveryErrors": [
+    "console: THREE.THREE.WebGPURenderer: WebGL Device Lost:\n\nMessage: Unknown reason"
+  ],
+  "deviceLossNoise": 1,
+  "rows": [
+    {
+      "step": "stage-ready",
+      "status": "passed",
+      "detail": "backend webgl2; generations 1"
+    },
+    {
+      "step": "plan",
+      "status": "passed",
+      "detail": "canvas sha256:3146653d24bffc90",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-plan.png"
+    },
+    {
+      "step": "3d",
+      "status": "passed",
+      "detail": "canvas sha256:9f84b082f0442d50",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-3d.png"
+    },
+    {
+      "step": "wall-drag",
+      "status": "passed",
+      "detail": "canvas sha256:27777ef869049027",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-wall-drag.png"
+    },
+    {
+      "step": "wall-drag",
+      "status": "passed",
+      "detail": "Wall end moved; one accepted result installed"
+    },
+    {
+      "step": "finish",
+      "status": "passed",
+      "detail": "canvas sha256:7ece7708c43fab64",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-finish.png"
+    },
+    {
+      "step": "finish",
+      "status": "passed",
+      "detail": "curated Finish accepted on the selected Wall"
+    },
+    {
+      "step": "slice",
+      "status": "passed",
+      "detail": "canvas sha256:5679191999208dca",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-slice.png"
+    },
+    {
+      "step": "slice",
+      "status": "passed",
+      "detail": "Level cut applied and put back; no source write"
+    },
+    {
+      "step": "cutaway-whole",
+      "status": "passed",
+      "detail": "canvas sha256:d8f1f96f254ad201",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-cutaway-whole.png"
+    },
+    {
+      "step": "cutaway-cut",
+      "status": "passed",
+      "detail": "canvas sha256:66fdff5ea6b3a539",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-cutaway-cut.png"
+    },
+    {
+      "step": "cutaway",
+      "status": "passed",
+      "detail": "Near walls Whole then Cut"
+    },
+    {
+      "step": "light-shadow",
+      "status": "passed",
+      "detail": "canvas sha256:8bc71e14f9f3da77",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-light-shadow.png"
+    },
+    {
+      "step": "light-shadow",
+      "status": "passed",
+      "detail": "Point Shadow on: maps +6, passes +1"
+    },
+    {
+      "step": "shadow-idle",
+      "status": "passed",
+      "detail": "no shadow submissions across orbit/idle; 7 maps total"
+    },
+    {
+      "step": "experience-capture",
+      "status": "passed",
+      "detail": "canvas sha256:dfde3bb22876a72c",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-experience-capture.png"
+    },
+    {
+      "step": "camera-capture",
+      "status": "passed",
+      "detail": "Experience Capture installed one accepted Camera snapshot"
+    },
+    {
+      "step": "preview",
+      "status": "passed",
+      "detail": "canvas sha256:b93c23326f90daec",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-preview.png"
+    },
+    {
+      "step": "preview-visit",
+      "status": "passed",
+      "detail": "visitor free exploration drew its first frame; exited to the Stage"
+    },
+    {
+      "step": "preview-reentry",
+      "status": "passed",
+      "detail": "second visit drew on the same warm Preview surface"
+    },
+    {
+      "step": "recovered",
+      "status": "passed",
+      "detail": "canvas sha256:56f21b11c11eb50d",
+      "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-recovered.png"
+    },
+    {
+      "step": "stage-recovery",
+      "status": "passed",
+      "detail": "unavailable → Retry; fresh canvas; a Wall selects again"
+    }
+  ]
+}

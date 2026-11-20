@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
-  import { Canvas, T } from '@threlte/core';
-import { PCFShadowMap } from 'three';
+	import CanvasHost from '$lib/render/CanvasHost.svelte';
+  import { T } from '@threlte/core';
   import { onDestroy } from 'svelte';
   import { provideRenderResources } from '$lib/render/resources/render-resources';
   import { OrbitControls } from '@threlte/extras';
@@ -134,7 +133,8 @@ import { PCFShadowMap } from 'three';
   </aside>
 
   <div class="canvas-shell">
-    <Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+    <CanvasHost surface="preview" renderMode="always" placeholder="#17171c">
+      {#snippet children()}
       <T.PerspectiveCamera makeDefault position={[3.4, 2.5, 5.4]} fov={44} near={0.05} far={40} />
       <OrbitControls enableDamping target={[0, 0.85, 0]} minDistance={1.2} maxDistance={12} />
 
@@ -166,7 +166,8 @@ import { PCFShadowMap } from 'three';
         <T.MeshStandardMaterial color="#68666a" roughness={0.9} metalness={0} />
       </T.Mesh>
       <T.GridHelper args={[14, 28, '#8e826f', '#3e3c42']} position={[0, 0.002, 0]} />
-    </Canvas>
+      {/snippet}
+    </CanvasHost>
   </div>
 </main>
 

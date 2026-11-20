@@ -1,10 +1,11 @@
 /**
  * PR 1 keeps every WebGPU experiment outside the shipped client/server graph.
  *
- * The production renderer stays native WebGL; no route, component or product
- * module may import the experiment tree or the node/TSL entry points until the
- * PR 2 cutover. This also prevents a stray import from pulling a second Three
- * core into the product bundle.
+ * The PR 2 cutover made the node/TSL renderer the product renderer, so the
+ * product now imports `three/webgpu` and `three/tsl` by design. What stays
+ * isolated is the experiment tree: no product module may reach into it, and the
+ * shipped renderer always comes from the one factory in `renderer-backend.ts`,
+ * so no second Three core enters the bundle.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -36,11 +37,13 @@ describe('PR 1 WebGPU experiment isolation', () => {
 		expect(offenders.map((path) => relative(APP, path))).toEqual([]);
 	});
 
-	it('keeps the node/TSL renderer entry points out of product source', () => {
+	it('constructs the node renderer in exactly one product factory', () => {
 		const offenders = PRODUCT_FILES.filter((path) =>
-			/from ['"]three\/(webgpu|tsl)['"]|WebGPURenderer/.test(readFileSync(path, 'utf8'))
+			/new ThreeWebGPURenderer\(|new WebGPURenderer\(/.test(readFileSync(path, 'utf8'))
 		);
-		expect(offenders.map((path) => relative(APP, path))).toEqual([]);
+		expect(offenders.map((path) => relative(APP, path))).toEqual([
+			'src/lib/render/renderer-backend.ts'
+		]);
 	});
 
 	it('keeps the experiments free of product imports', () => {

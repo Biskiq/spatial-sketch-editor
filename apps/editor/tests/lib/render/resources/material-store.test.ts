@@ -12,13 +12,9 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import {
-	BasicDepthPacking,
 	MeshBasicMaterial,
-	MeshDepthMaterial,
-	MeshDistanceMaterial,
 	MeshLambertMaterial,
 	MeshStandardMaterial,
-	RGBADepthPacking,
 	Texture
 } from 'three';
 import {
@@ -228,9 +224,8 @@ describe('E9/R2c — Lambert, shadow-pass and vertex-colour kinds', () => {
 			materialKey({ kind: 'lambert', color: '#fff', transparent: false, opacity: 1, depthWrite: true, vertexColors: false })
 		);
 		expect(materialKey({ kind: 'lambert', map: 'artwork:a' })).not.toBe(materialKey({ kind: 'lambert', map: 'artwork:b' }));
-		expect(materialKey({ kind: 'depth', map: 'a', alphaTest: 0.5, packing: 'rgba' })).not.toBe(
-			materialKey({ kind: 'distance', map: 'a', alphaTest: 0.5 })
-		);
+		// The shadow silhouette is part of the look's identity.
+		expect(materialKey({ kind: 'lambert', shadowAlpha: 0.5 })).not.toBe(materialKey({ kind: 'lambert' }));
 		expect(materialKey({ kind: 'basic', color: 0xffffff })).toBe(
 			materialKey({ kind: 'basic', color: '#ffffff', vertexColors: false, depthWrite: true })
 		);
@@ -244,13 +239,10 @@ describe('E9/R2c — Lambert, shadow-pass and vertex-colour kinds', () => {
 		const surface = lambert.material as MeshLambertMaterial;
 		expect([surface.map, surface.transparent, surface.depthWrite, surface.opacity, surface.vertexColors]).toEqual([map, true, false, 0.65, false]);
 		expect(surface.color.getHexString()).toBe('ffffff');
-		const depth = store.acquire({ kind: 'depth', map: 'artwork:t', alphaTest: 0.5, packing: 'rgba' }, { map }).material as MeshDepthMaterial;
-		expect([depth.map, depth.alphaTest, depth.depthPacking]).toEqual([map, 0.5, RGBADepthPacking]);
-		const plain = store.acquire({ kind: 'depth' }).material as MeshDepthMaterial;
-		expect([plain.map, plain.alphaTest, plain.depthPacking]).toEqual([null, 0, BasicDepthPacking]);
-		const distance = store.acquire({ kind: 'distance', map: 'artwork:t', alphaTest: 0.5 }, { map }).material as MeshDistanceMaterial;
-		expect(distance).toBeInstanceOf(MeshDistanceMaterial);
-		expect([distance.map, distance.alphaTest]).toEqual([map, 0.5]);
+		// The artwork's alpha cut is the shadow mask r187's shadow pass reads.
+		const shadowed = store.acquire({ kind: 'lambert', map: 'artwork:t', shadowAlpha: 0.5 }, { map }).material;
+		expect((shadowed as unknown as { maskShadowNode?: unknown }).maskShadowNode).toBeTruthy();
+		expect((surface as unknown as { maskShadowNode?: unknown }).maskShadowNode).toBeUndefined();
 		const ground = store.acquire({ kind: 'basic', color: 0xffffff, vertexColors: true, toneMapped: false, depthWrite: false }).material as MeshBasicMaterial;
 		expect([ground.vertexColors, ground.toneMapped, ground.depthWrite]).toEqual([true, false, false]);
 		const lit = store.acquire({ kind: 'lambert', vertexColors: true }).material as MeshLambertMaterial;
@@ -261,8 +253,7 @@ describe('E9/R2c — Lambert, shadow-pass and vertex-colour kinds', () => {
 	it('refuses a mapped Lambert, depth or distance descriptor without its texture', () => {
 		const store = createMaterialStore();
 		expect(() => store.acquire({ kind: 'lambert', map: 'artwork:t' })).toThrow(/binds "map"/);
-		expect(() => store.acquire({ kind: 'depth', map: 'artwork:t' })).toThrow(/binds "map"/);
-		expect(() => store.acquire({ kind: 'distance', map: 'artwork:t' })).toThrow(/binds "map"/);
+
 		store.dispose();
 	});
 

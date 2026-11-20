@@ -7,57 +7,58 @@
  *
  * ## Two realizations, one predicate
  *
- * A **Level** cut uses Two native planes exactly as SL1 shipped: keep below the cut
- * and, when the depth is finite, keep above the lower bound. A **drawn** cut keeps
- * both native planes at keep-all and uses the finite-segment discard supplied by
- * the material store's clip patch, whose CPU twin is `sliceHides` in `slice-cut.ts`.
+ * A **Level** cut uses the two native clipping planes exactly as SL1 shipped:
+ * keep below the cut and, when the depth is finite, keep above the lower bound.
+ * A **drawn** cut keeps both native planes at keep-all and uses the finite-segment
+ * discard supplied by the one TSL predicate (`slice-clip-mask.ts`), whose CPU twin
+ * is `sliceHides` in `slice-cut.ts`.
  *
- * The material store is born with the fixed two-plane array and the shared shader
- * uniforms before its first material compiles. Neither array length nor the shader
- * patch changes for the Canvas's life, so drawing, moving, Flip and depth only
- * write values: the program count stays flat.
+ * The material store is born with the fixed two-plane array and the shared mask
+ * before its first material is built. Neither array length nor the predicate
+ * changes for the Canvas's life, so drawing, moving, Flip and depth only write
+ * values: the pipeline count stays flat.
  *
  * ## The sign, stated once
  *
- * Three r187's vertex chunk writes `vClipPosition = -mvPosition.xyz`, the fragment
- * chunk discards where `dot(vClipPosition, plane.xyz) > plane.w`, and
- * `WebGLClipping` uploads each plane in view space as `(normal, constant)`.
- * Substituting, a fragment is discarded where `normal · p + constant < 0` and kept
+ * Three's clipping context discards where `normal · p + constant < 0` and keeps
  * where it is **≥ 0** — exactly `Plane.distanceToPoint(p) ≥ 0`. Every helper here
- * therefore states the inequality it **keeps**, and the constructor asserts the sign
- * so a flip fails loudly in every lane.
+ * therefore states the inequality it **keeps**, and the constructor asserts the
+ * sign so a flip fails loudly in every lane. The common renderer's clipping is
+ * enabled by the presence of `material.clippingPlanes`; there is no
+ * `localClippingEnabled` switch on r187's renderer.
  *
  * ## Snapshots are as built
  *
- * `asBuilt(render)` parks the native planes at no-op, the shader mode at `0` and
+ * `asBuilt(render)` parks the native planes at no-op, the mask mode at `0` and
  * X2's cutaway top at never-cut for the duration of a snapshot, then restores them
  * in `finally` — re-entrant, exception safe, and never invalidating. Overlay ink is
  * outside the snapshot mask already, so the image is the world as built.
  *
  * ## Shadows
  *
- * `clipShadows` stays `false` and this module never touches it: a shadow map is
- * rendered from the unclipped world, so every caster above the cut still casts
- * exactly as built.
+ * A shadow pass renders the unclipped world: every clipped material carries a
+ * pass-through `maskShadowNode`, so a caster above the cut still casts exactly as
+ * built.
  */
 import { Plane, Vector3, type Material } from 'three';
 import { getContext, setContext } from 'svelte';
 import type { ResolvedSlice } from './slice-cut';
 import {
-	applySliceClipShader,
+	createSliceClipMask,
 	createSliceClipUniforms,
 	NEVER_CUT_TOP_Y,
 	restoreSliceClipUniforms,
 	snapshotSliceClipUniforms,
 	writeSliceClipUniforms,
+	type SliceClipMasks,
 	type SliceClipUniforms
-} from '$lib/render/resources/material-store';
+} from '../../../render/clip/slice-clip-mask';
 
 /**
  * Two planes for every reading, so the count never changes.
  *
  * X2's cutaway inherits this seam; if it ever needs more planes it raises this
- * constant once (one compile at load, never at runtime) instead of adding a second
+ * constant once (one build at load, never at runtime) instead of adding a second
  * clipping path.
  */
 export const STAGE_CLIP_PLANE_COUNT = 2;
@@ -112,8 +113,8 @@ function nativePlanesOf(resolved: ResolvedSlice | null): readonly Plane[] {
 	];
 }
 
-/** A shader-uniform snapshot for a reading, without touching the live uniforms. */
-function shaderStateOf(resolved: ResolvedSlice | null) {
+/** A mask-state snapshot for a reading, without touching the live uniforms. */
+function maskStateOf(resolved: ResolvedSlice | null) {
 	const scratch = createSliceClipUniforms();
 	writeSliceClipUniforms(scratch, resolved?.kind === 'drawn' ? resolved : null);
 	return snapshotSliceClipUniforms(scratch);
@@ -122,19 +123,24 @@ function shaderStateOf(resolved: ResolvedSlice | null) {
 export type StageClip = {
 	/** The one array every colour material holds **by reference**. Never replaced. */
 	readonly planes: readonly Plane[];
-	/** The one uniform object every colour material's compile hook shares. */
+	/** The one uniform object every colour material's mask reads. */
 	readonly sliceUniforms: SliceClipUniforms;
+	/**
+	 * The material store's clip factory: one node graph per cutaway binding,
+	 * attached at construction and never replaced.
+	 */
+	clipMasks(cutaway: boolean): SliceClipMasks;
 	/** Apply a resolved reading (or `null` for no Slice). Mutates in place. */
 	apply(resolved: ResolvedSlice | null): void;
-	/** Render as built: planes and shader no-op for the duration of `render`. */
+	/** Render as built: planes and mask no-op for the duration of `render`. */
 	asBuilt<T>(render: () => T): T;
 	/** Whether a Slice is live. */
 	isActive(): boolean;
 	/**
 	 * Cut an ink material with its subject: the native planes (Level) **and** the
 	 * drawn predicate. Selection, hover and Lift ink hold the planes by reference;
-	 * without the patch a drawn cut would leave their contours floating over what it
-	 * removed (§2.4). Installed once, before the material's first compile, so drawing
+	 * without the mask a drawn cut would leave their contours floating over what it
+	 * removed (§2.4). Attached once, before the material's first draw, so drawing
 	 * and editing a cut still only write uniforms.
 	 */
 	clipInk<M extends Material>(material: M): M;
@@ -162,34 +168,45 @@ export function createStageClip(): StageClip {
 	assertSign();
 	const planes: Plane[] = [keepAll(), keepAll()];
 	const sliceUniforms = createSliceClipUniforms();
+	const masks = new Map<boolean, SliceClipMasks>();
 	let depth = 0;
 	let savedPlanes: Plane[] | null = null;
-	let savedShader: ReturnType<typeof snapshotSliceClipUniforms> | null = null;
+	let savedMask: ReturnType<typeof snapshotSliceClipUniforms> | null = null;
 	let active = false;
+
+	function packed(cutaway: boolean): SliceClipMasks {
+		let mask = masks.get(cutaway);
+		if (mask === undefined) {
+			mask = createSliceClipMask(sliceUniforms, { cutaway });
+			masks.set(cutaway, mask);
+		}
+		return mask;
+	}
 
 	function write(target: readonly Plane[], values: readonly Plane[]): void {
 		target[0]!.copy(values[0]!);
 		target[1]!.copy(values[1]!);
 	}
 
-	function writeShader(state: ReturnType<typeof snapshotSliceClipUniforms>): void {
+	function writeMask(state: ReturnType<typeof snapshotSliceClipUniforms>): void {
 		restoreSliceClipUniforms(sliceUniforms, state);
 	}
 
 	return {
 		planes,
 		sliceUniforms,
+		clipMasks: packed,
 		apply(resolved) {
 			active = resolved !== null;
 			const native = nativePlanesOf(resolved);
-			const shader = shaderStateOf(resolved);
+			const shader = maskStateOf(resolved);
 			// Inside a snapshot render the live values are parked at no-op; the newest
 			// reading must win when the snapshot exits, so it is written to the saved
 			// state instead of the live one.
-			if (depth > 0 && savedPlanes !== null && savedShader !== null) {
+			if (depth > 0 && savedPlanes !== null && savedMask !== null) {
 				write(savedPlanes, native);
 				// A reading change never moves the cutaway top; keep the parked value.
-				savedShader = { ...shader, cutawayTopY: savedShader.cutawayTopY };
+				savedMask = { ...shader, cutawayTopY: savedMask.cutawayTopY };
 				return;
 			}
 			write(planes, native);
@@ -197,13 +214,13 @@ export function createStageClip(): StageClip {
 			// fresh state for the reading (never-cut by default), so restore it around
 			// the write rather than letting a Level/Drawn edit silently show every Wall.
 			const cutawayTopY = sliceUniforms.cutawayTopY.value;
-			writeShader(shader);
+			writeMask(shader);
 			sliceUniforms.cutawayTopY.value = cutawayTopY;
 		},
 		asBuilt(render) {
 			if (depth === 0) {
 				savedPlanes = planes.map((plane) => plane.clone());
-				savedShader = snapshotSliceClipUniforms(sliceUniforms);
+				savedMask = snapshotSliceClipUniforms(sliceUniforms);
 				planes.forEach((plane) => plane.copy(keepAll()));
 				sliceUniforms.mode.value = 0;
 				// X2's cutaway is a viewing state too: a snapshot is the world as built.
@@ -214,27 +231,27 @@ export function createStageClip(): StageClip {
 				return render();
 			} finally {
 				depth -= 1;
-				if (depth === 0 && savedPlanes !== null && savedShader !== null) {
+				if (depth === 0 && savedPlanes !== null && savedMask !== null) {
 					const restorePlanes = savedPlanes;
-					const restoreShader = savedShader;
+					const restoreMask = savedMask;
 					savedPlanes = null;
-					savedShader = null;
+					savedMask = null;
 					write(planes, restorePlanes);
-					writeShader(restoreShader);
+					writeMask(restoreMask);
 				}
 			}
 		},
 		isActive: () => active,
 		clipInk(material) {
 			material.clippingPlanes = planes;
-			applySliceClipShader(material, sliceUniforms);
+			(material as Material & { maskNode?: unknown }).maskNode = packed(false).colour;
 			return material;
 		},
 		setCutawayTop(y) {
 			const value = y === null ? NEVER_CUT_TOP_Y : y;
-			if (depth > 0 && savedShader !== null) {
+			if (depth > 0 && savedMask !== null) {
 				// The newest value must win when the snapshot exits.
-				savedShader = { ...savedShader, cutawayTopY: value };
+				savedMask = { ...savedMask, cutawayTopY: value };
 				return;
 			}
 			sliceUniforms.cutawayTopY.value = value;
@@ -242,7 +259,7 @@ export function createStageClip(): StageClip {
 		cutawayTop: () => sliceUniforms.cutawayTopY.value,
 		cutawayInk(material) {
 			material.clippingPlanes = planes;
-			applySliceClipShader(material, sliceUniforms, { cutaway: true });
+			(material as Material & { maskNode?: unknown }).maskNode = packed(true).colour;
 			return material;
 		}
 	};

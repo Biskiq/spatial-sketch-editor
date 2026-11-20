@@ -23,9 +23,9 @@ import {
 	type InterleavedBufferAttribute,
 	type Material
 } from 'three';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { Line2NodeMaterial } from 'three/webgpu';
+import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { createPaperFillGeometry } from './paper-fill-geometry';
 import { paperSourceRuns, type PaperSourceRun } from './paper-selection';
 import { countWork } from '@portfolio/layout-core';
@@ -45,8 +45,6 @@ export type PaperSceneResources = {
 	readonly group: Group;
 	/** Paper's arrival over the shaded frame; see `paperRevealFor`. */
 	setReveal(reveal: PaperReveal): void;
-	/** CSS-pixel viewport size; fat-line widths are CSS pixels, never device pixels. */
-	setResolution(widthCssPx: number, heightCssPx: number): void;
 	/**
 	 * Draw every line batch except one source's own instance runs, by compacting
 	 * the batch's existing instance storage in place. No geometry, GPU buffer or
@@ -205,7 +203,7 @@ export function createPaperScene(
 			if (positions.length === 0) continue;
 			const geometry = new LineSegmentsGeometry();
 			geometry.setPositions(positions);
-			const material = new LineMaterial({
+			const material = new Line2NodeMaterial({
 			fog: false,
 				color: new Color(style.ink).getHex(),
 				linewidth: style.widthCssPx,
@@ -220,7 +218,6 @@ export function createPaperScene(
 				dashSize: style.dashSizeMeters,
 				gapSize: style.gapSizeMeters
 			});
-			material.resolution.set(resolution[0], resolution[1]);
 			const object = new LineSegments2(geometry, material);
 			if (dashed) object.computeLineDistances();
 			object.renderOrder = batch[0]!.layer;
@@ -307,7 +304,7 @@ export function createPaperScene(
 		const geometry = new LineSegmentsGeometry();
 		geometry.setPositions(new Float32Array(positions));
 		const style = PAPER_LINE_STYLE.footprint;
-		const material = new LineMaterial({
+		const material = new Line2NodeMaterial({
 			fog: false,
 			color: new Color(style.ink).getHex(),
 			linewidth: style.widthCssPx,
@@ -318,7 +315,6 @@ export function createPaperScene(
 			toneMapped: false,
 			dashed: false
 		});
-		material.resolution.set(resolution[0], resolution[1]);
 		const object = new LineSegments2(geometry, material);
 		object.renderOrder = footprint.layer;
 		object.frustumCulled = false;
@@ -334,11 +330,6 @@ export function createPaperScene(
 		group,
 		setReveal(reveal: PaperReveal): void {
 			for (const entry of fades) entry.material.opacity = entry.baseOpacity * reveal[entry.part];
-		},
-		setResolution(widthCssPx: number, heightCssPx: number): void {
-			group.traverse((node) => {
-				if (node instanceof LineSegments2) (node.material as LineMaterial).resolution.set(widthCssPx, heightCssPx);
-			});
 		},
 		setHiddenSource(sourceId: string | null): void {
 			if (sourceId === hiddenSource) return;

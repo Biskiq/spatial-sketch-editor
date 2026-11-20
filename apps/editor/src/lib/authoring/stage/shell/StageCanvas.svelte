@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CANVAS_TONE_MAPPING, stageCanvasRenderer } from '$lib/render/canvas-renderers';
+	import CanvasHost from '$lib/render/CanvasHost.svelte';
 	import { perfMark } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
@@ -17,8 +17,8 @@
 	 * otherwise apply its `AgXToneMapping` default, and Gate A accepted
 	 * `NoToneMapping` (see `CANVAS_TONE_MAPPING`).
 	 */
-	import { Canvas, T } from '@threlte/core';
-	import { PCFShadowMap, type Object3D, type Plane } from 'three';
+	import { T } from '@threlte/core';
+	import type { Object3D, Plane } from 'three';
 	import {
 		createStageClip,
 		setStageClip
@@ -110,6 +110,8 @@ import StageMatGround from './StageMatGround.svelte';
 		hover = null,
 		hoverTone = 'hover',
 		scenePick,
+		/** The Stage's captured pointer ids, read before a renderer generation retires. */
+		capturedPointers = null,
 		/**
 		 * Display-only session overlay: the Rooms a Lift reading has lifted. Preview
 		 * is a separate Canvas and never passes it. `VisitorPreviewSurface` does not
@@ -177,6 +179,7 @@ import StageMatGround from './StageMatGround.svelte';
 		hoverTone?: 'hover' | 'erase';
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
+		capturedPointers?: (() => readonly number[]) | null;
 		liftedRoomIds?: readonly string[];
 		liftedRegionIds?: readonly string[];
 		liftSources?: readonly OverheadSource[];
@@ -228,7 +231,7 @@ import StageMatGround from './StageMatGround.svelte';
 	const stageClip = setStageClip(createStageClip());
 	const resources = provideRenderResources({
 		clippingPlanes: stageClip.planes as Plane[],
-		sliceClip: stageClip.sliceUniforms
+		clipMasks: (cutaway) => stageClip.clipMasks(cutaway)
 	});
 	onDestroy(() => resources.dispose());
 	/**
@@ -413,12 +416,8 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 </script>
 
-<Canvas
-	createRenderer={stageCanvasRenderer}
-	dpr={[1, 1.5]}
-	shadows={PCFShadowMap}
-	toneMapping={CANVAS_TONE_MAPPING}
->
+<CanvasHost surface="stage" {capturedPointers}>
+	{#snippet children()}
 	<!-- The one writer of the shared planes, and the frame request that follows. -->
 	<StageClipPlanes clip={stageClip} reading={resolvedSlice ?? null} />
 	<!--
@@ -661,4 +660,5 @@ import StageMatGround from './StageMatGround.svelte';
 		bounds={snapshotBounds}
 		environment={environmentShown && sky ? JSON.stringify(sky) : 'paper'}
 	/>
-</Canvas>
+	{/snippet}
+</CanvasHost>

@@ -137,7 +137,7 @@ describe('G4 visitor shell boundary', () => {
 		expect(sceneRepresentation()).toContain("if (item.geometry.kind === 'form') forms += 1");
 		const triggers = shadowTriggers();
 		expect(triggers).toContain('createShadowInvalidation');
-		expect(triggers).toContain('renderer.shadowMap');
+		expect(triggers).toContain('rendererState.renderer');
 		expect(triggers).toContain('requestFrame: invalidate');
 		expect(triggers).toContain('shadows.dispose()');
 		expect(triggers).toContain('formRenderRevision] as const');
@@ -145,9 +145,12 @@ describe('G4 visitor shell boundary', () => {
 		// per-frame updates instead of a trigger that might miss it.
 		expect(triggers).toContain('setAlwaysUpdate');
 		const controller = shadowInvalidation();
-		expect(controller).toContain('webglcontextrestored');
+		// The per-light contract replaced the frame-global shadow map and its WebGL
+		// context listener; a generation's device loss belongs to the Canvas host.
+		expect(controller).toContain('ShadowStateLike');
 		expect(controller).toContain('autoUpdate');
 		expect(controller).toContain('needsUpdate');
+		expect(controller).not.toContain('webglcontextrestored');
 		// The camera must never appear as a dependency: a shadow map renders from
 		// the light's shadow camera, which is the whole saving.
 		expect(triggers).not.toMatch(/const \{[^}]*camera/);

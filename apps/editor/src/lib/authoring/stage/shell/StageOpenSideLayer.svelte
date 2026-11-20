@@ -10,9 +10,9 @@
 	 */
 	import { T, useThrelte } from '@threlte/core';
 	import { Group, Vector2, type Object3D } from 'three';
-	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
-	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+	import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
+	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+	import { Line2NodeMaterial } from 'three/webgpu';
 	import type { CompiledSpaceEdge } from '@portfolio/layout-core';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { OUTLINE_DEPTH_BIAS } from './stage-outline';
@@ -60,7 +60,7 @@
 		// describes; the offset is ink, not a change to the compiled geometry.
 		const y = source.elevation + 0.012;
 		geometry.setPositions([edge.start[0], y, edge.start[1], edge.end[0], y, edge.end[1]]);
-		const material = new LineMaterial({
+		const material = new Line2NodeMaterial({
 			color: STAGE_PAINT.hover,
 			linewidth: reading === 'plan' ? 1.6 : 2,
 			dashed: true,
@@ -72,7 +72,6 @@
 			depthTest: true,
 			depthWrite: false,
 			...OUTLINE_DEPTH_BIAS,
-			resolution: new Vector2(width, height)
 		});
 		const line = new Line2(geometry, material);
 		line.computeLineDistances();

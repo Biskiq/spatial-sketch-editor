@@ -10,13 +10,20 @@
  * Ownership is per renderer, as §2.4 requires: the Canvas host creates one
  * store through `provideRenderResources` (`render-resources.ts`), the Layout and
  * Scene representations lease from it, and the host disposes it after them. Two
- * Canvases therefore never share a material — WebGL objects cannot be shared
- * across contexts — and no representation constructs one on its own.
+ * Canvases therefore never share a material — a material's GPU resources belong
+ * to one context — and no representation constructs one on its own.
+ *
+ * Materials are realized with Three's standard classes. r187's
+ * `StandardNodeLibrary` maps each one to its node implementation and copies the
+ * supported properties, so a `MeshStandardMaterial`, `MeshLambertMaterial`,
+ * `MeshBasicMaterial` or `ShadowMaterial` built here renders on both the native
+ * WebGPU and WebGL2 backends without a second factory. Node hooks are attached
+ * only where a look needs them (the Stage's clip mask, Artwork's shadow mask).
  *
  * The store reads the Gate A record; it does not re-decide it. Gate A's
  * accepted pipeline is `NoToneMapping` at exposure 1.0 with sRGB output and an
- * `srgb-linear` working space, measured on the shared `createManagedWebGLRenderer`
- * factory; per-surface parity is Gate B's. Nothing here sets tone mapping, exposure or an output
+ * `srgb-linear` working space, named by the shared renderer factory; per-surface
+ * parity is Gate B's. Nothing here sets tone mapping, exposure or an output
  * colour space, so a material built by this store renders under exactly the
  * pipeline Gate A measured. `toneMapped` is a per-material opt-out the record
  * permits — Gate A named `MeshLambertMaterial` with no mapper as the artwork
@@ -24,19 +31,16 @@
  */
 import {
 	MeshBasicMaterial,
-	MeshDepthMaterial,
-	MeshDistanceMaterial,
 	MeshLambertMaterial,
 	MeshStandardMaterial,
-	RGBADepthPacking,
-	BasicDepthPacking,
 	ShadowMaterial,
 	Vector2,
-	Vector3,
 	type Material,
 	type Plane,
 	type Texture
 } from 'three';
+import { reference } from 'three/tsl';
+import type { SliceClipMasks } from '$lib/render/clip/slice-clip-mask';
 import {
 	CLAY_COLOR,
 	CLAY_ROUGHNESS,
@@ -126,7 +130,7 @@ function boundMaps(
 			? descriptor.textures
 			: descriptor.kind === 'imported'
 				? descriptor.remap?.textures
-				: descriptor.kind === 'lambert' || descriptor.kind === 'depth' || descriptor.kind === 'distance'
+				: descriptor.kind === 'lambert'
 					? descriptor.map === undefined
 						? undefined
 						: { map: descriptor.map }
@@ -285,8 +289,8 @@ function construct(
 				...(descriptor.vertexColors === undefined ? {} : { vertexColors: descriptor.vertexColors }),
 				...(descriptor.depthWrite === undefined ? {} : { depthWrite: descriptor.depthWrite })
 			});
-		case 'lambert':
-			return new MeshLambertMaterial({
+		case 'lambert': {
+			const material = new MeshLambertMaterial({
 				...(descriptor.color === undefined ? {} : { color: descriptor.color }),
 				...(descriptor.transparent === undefined ? {} : { transparent: descriptor.transparent }),
 				...(descriptor.opacity === undefined ? {} : { opacity: descriptor.opacity }),
@@ -295,17 +299,20 @@ function construct(
 				...(descriptor.fog === false ? { fog: false } : {}),
 				...(bound === null ? {} : bound)
 			});
-		case 'depth':
-			return new MeshDepthMaterial({
-				depthPacking: descriptor.packing === 'rgba' ? RGBADepthPacking : BasicDepthPacking,
-				...(descriptor.alphaTest === undefined ? {} : { alphaTest: descriptor.alphaTest }),
-				...(bound === null ? {} : bound)
-			});
-		case 'distance':
-			return new MeshDistanceMaterial({
-				...(descriptor.alphaTest === undefined ? {} : { alphaTest: descriptor.alphaTest }),
-				...(bound === null ? {} : bound)
-			});
+			if (descriptor.shadowAlpha !== undefined) {
+				// The shadow-pass mask reads the material's own map, exactly as r187's
+				// own shadow path does, so the silhouette follows the bound texture without
+				// a second material or a custom depth/distance attachment.
+				// The reference node's shader type is a texture; its `.a` channel is the
+				// map's alpha, exactly as r187's own shadow path reads it.
+				const mapReference = reference('map', 'texture', material) as unknown as {
+					a: { greaterThan(value: number): unknown };
+				};
+				(material as Material & { maskShadowNode?: unknown }).maskShadowNode =
+					mapReference.a.greaterThan(descriptor.shadowAlpha);
+			}
+			return material;
+		}
 		case 'shadow':
 			return new ShadowMaterial({
 				...(descriptor.opacity === undefined ? {} : { opacity: descriptor.opacity }),
@@ -329,276 +336,30 @@ export type MaterialStoreOptions = {
 	 * The array is assigned, never copied: the Stage clip mutates its `Plane`
 	 * instances in place for the Canvas's whole life, so a material holding a clone
 	 * would stop following the cut. A descriptor with `clip: false` (the environment
-	 * ground) gets `null` instead. Depth and distance materials are untouched — they
-	 * realize shadows, which are rendered from the unclipped world (`clipShadows`
-	 * stays `false`). Absent means no clipping, which is the Preview Canvas.
+	 * ground) gets `null` instead. Absent means no clipping, which is the Visitor
+	 * Preview Canvas.
 	 */
 	readonly clippingPlanes?: Plane[];
 	/**
-	 * The drawn Slice's shared uniforms. Colour materials get the finite-segment
-	 * discard patch once, at construction; depth/distance/shadow materials never do,
-	 * because shadows are rendered from the unclipped world. Grade and other
-	 * `clip: false` surfaces stay unpatched too.
+	 * The Stage's one TSL clip predicate, supplied by `StageClip`.
+	 *
+	 * A colour material receives the mask once, at construction, as `maskNode` plus
+	 * its pass-through shadow mask; shadow-only and `clip: false` surfaces never get
+	 * one, because shadows are rendered from the unclipped world and the environment
+	 * ground is not part of the cut. The Visitor Preview passes nothing, so its
+	 * materials carry no clip graph at all.
 	 */
-	readonly sliceClip?: SliceClipUniforms;
+	readonly clipMasks?: MaterialClipMasks;
 };
 
-/**
- * The drawn Slice's GPU predicate, installed once per colour material.
- *
- * SL1 realized a Level cut with two native clipping planes. A drawn cut needs a
- * **finite segment** as well: only the points within the segment's planar extent
- * are cut. Three's plane count is constant, so a second clipping architecture would
- * either recompile on every draw or clip the whole infinite plane. This module keeps
- * SL1's two planes and adds one uniform-driven discard:
- *
- * ```
- * s = dot(p - origin, along)
- * b = dot(p - origin, hiddenNormal)
- * hidden = |s| <= halfLength && (b > 0 || b < -depth)
- * ```
- *
- * The patch is installed when the material is constructed, before its first
- * compile. The mode uniform is `0` for Level/off, so drawing, Flip and depth changes
- * only write uniforms and never change the program. `customProgramCacheKey` includes
- * a fixed tag so the program cache cannot confuse a patched material with its
- * unpatched twin.
- *
- * Depth/distance/shadow materials are deliberately not patched: shadows are rendered
- * from the unclipped world and must stay identical (SL1's `clipShadows: false`).
- */
-
-export type ScalarUniform = { value: number };
-export type VectorUniform = { value: Vector3 };
-
-/** The uniform object every patched material shares by reference. */
-export type SliceClipUniforms = {
-	readonly mode: ScalarUniform;
-	readonly origin: VectorUniform;
-	readonly normal: VectorUniform;
-	readonly along: VectorUniform;
-	readonly halfLength: ScalarUniform;
-	readonly depth: ScalarUniform;
-	/**
-	 * The X2 cutaway top: a **live** uniform owned by `StageClip`. Every material
-	 * outside the cutaway twin set is bound to {@link NEVER_CUT_UNIFORM} instead,
-	 * which is why one program serves both and a cut costs no compile.
-	 */
-	readonly cutawayTopY: ScalarUniform;
-};
-
-/** The fixed suffix on every patched program's cache key. */
-export const SLICE_CLIP_PROGRAM_KEY = 'biskiq.slice-clip@2';
-
-/**
- * The height a never-cut material discards above: above every Stage point, so the
- * added fragment test is a no-op for anything outside the cutaway twin set.
- */
-export const NEVER_CUT_TOP_Y = 1e6;
-
-/**
- * The one constant uniform every non-twin patched material binds **by reference**.
- *
- * It is created once and never written: a normal surface's binding cannot follow a
- * cut because there is nothing to follow, and a twin writes only its own live
- * `cutawayTopY`.
- */
-export const NEVER_CUT_UNIFORM: ScalarUniform = Object.freeze({ value: NEVER_CUT_TOP_Y });
-
-export function createSliceClipUniforms(): SliceClipUniforms {
-	return {
-		mode: { value: 0 },
-		origin: { value: new Vector3(0, 0, 0) },
-		normal: { value: new Vector3(0, 1, 0) },
-		along: { value: new Vector3(1, 0, 0) },
-		halfLength: { value: 0 },
-		depth: { value: 0.1 },
-		cutawayTopY: { value: NEVER_CUT_TOP_Y }
-	};
-}
-
-/** Write a resolved reading into the shared uniforms. `null`/Level turns the patch off. */
-export type SliceClipSource = {
-	readonly origin: readonly [number, number, number];
-	readonly hiddenNormal: readonly [number, number, number];
-	readonly along: readonly [number, number, number];
-	readonly halfLength: number;
-	readonly depthMeters: number;
-} | null;
-
-/** Write a drawn cut into the shared uniforms. `null` turns the patch off. */
-export function writeSliceClipUniforms(
-	uniforms: SliceClipUniforms,
-	source: SliceClipSource
-): void {
-	if (source === null) {
-		uniforms.mode.value = 0;
-		uniforms.halfLength.value = 0;
-		return;
-	}
-	uniforms.mode.value = 1;
-	uniforms.origin.value.set(source.origin[0], source.origin[1], source.origin[2]);
-	uniforms.normal.value.set(
-		source.hiddenNormal[0],
-		source.hiddenNormal[1],
-		source.hiddenNormal[2]
-	);
-	uniforms.along.value.set(source.along[0], source.along[1], source.along[2]);
-	uniforms.halfLength.value = source.halfLength;
-	uniforms.depth.value = source.depthMeters;
-}
-
-/** A plain snapshot of the values, for the as-built render's `finally`. */
-export function snapshotSliceClipUniforms(uniforms: SliceClipUniforms): {
-	readonly mode: number;
-	readonly origin: [number, number, number];
-	readonly normal: [number, number, number];
-	readonly along: [number, number, number];
-	readonly halfLength: number;
-	readonly depth: number;
-	readonly cutawayTopY: number;
-} {
-	return {
-		mode: uniforms.mode.value,
-		origin: uniforms.origin.value.toArray() as [number, number, number],
-		normal: uniforms.normal.value.toArray() as [number, number, number],
-		along: uniforms.along.value.toArray() as [number, number, number],
-		halfLength: uniforms.halfLength.value,
-		depth: uniforms.depth.value,
-		cutawayTopY: uniforms.cutawayTopY.value
-	};
-}
-
-export function restoreSliceClipUniforms(
-	uniforms: SliceClipUniforms,
-	state: ReturnType<typeof snapshotSliceClipUniforms>
-): void {
-	uniforms.mode.value = state.mode;
-	uniforms.origin.value.fromArray(state.origin);
-	uniforms.normal.value.fromArray(state.normal);
-	uniforms.along.value.fromArray(state.along);
-	uniforms.halfLength.value = state.halfLength;
-	uniforms.depth.value = state.depth;
-	uniforms.cutawayTopY.value = state.cutawayTopY;
-}
-
-/** A patch is installed once; a second store option must not wrap it twice. */
-const PATCHED = Symbol('biskiq.slice-clip-patched');
-
-const VERTEX_DECLARATION = 'varying vec3 vSliceWorldPosition;\n';
-const FRAGMENT_DECLARATION = [
-	'varying vec3 vSliceWorldPosition;',
-	'uniform float uSliceClipMode;',
-	'uniform vec3 uSliceClipOrigin;',
-	'uniform vec3 uSliceClipNormal;',
-	'uniform vec3 uSliceClipAlong;',
-	'uniform float uSliceClipHalfLength;',
-	'uniform float uSliceClipDepth;',
-	'uniform float uCutawayTopY;',
-	''
-].join('\n');
-
-const VERTEX_SAMPLE = `
-#include <project_vertex>
-vec4 sliceClipWorld = vec4( transformed, 1.0 );
-#ifdef USE_BATCHING
-sliceClipWorld = batchingMatrix * sliceClipWorld;
-#endif
-#ifdef USE_INSTANCING
-sliceClipWorld = instanceMatrix * sliceClipWorld;
-#endif
-vSliceWorldPosition = ( modelMatrix * sliceClipWorld ).xyz;
-`;
-
-/**
- * The same varying for a shader with no `project_vertex` chunk — `LineMaterial`, the
- * selection and Lift ink. Every Three vertex shader that clips has `mvPosition` in
- * view space where `clipping_planes_vertex` is included (native planes clip from it),
- * so the world point is recovered there. A fat line's `mvPosition` is its segment
- * endpoint, the same approximation Three's own plane clipping makes for it.
- */
-const VERTEX_SAMPLE_FROM_VIEW = `
-#include <clipping_planes_vertex>
-vSliceWorldPosition = ( inverse( viewMatrix ) * vec4( mvPosition.xyz, 1.0 ) ).xyz;
-`;
-
-const FRAGMENT_TEST = `
-#include <clipping_planes_fragment>
-if ( uSliceClipMode > 0.5 ) {
-	vec3 sliceClipRel = vSliceWorldPosition - uSliceClipOrigin;
-	float sliceClipS = dot( sliceClipRel, uSliceClipAlong );
-	if ( abs( sliceClipS ) <= uSliceClipHalfLength ) {
-		float sliceClipB = dot( sliceClipRel, uSliceClipNormal );
-		if ( sliceClipB > 0.0 || sliceClipB < -uSliceClipDepth ) discard;
-	}
-}
-if ( vSliceWorldPosition.y > uCutawayTopY ) discard;
-`;
-
-/**
- * Install the predicate on a colour material, preserving any compile hook it
- * already had (an imported glTF material may carry one).
- *
- * `options.cutaway` selects the **twin** binding: the fragment test reads the
- * StageClip's live `cutawayTopY` instead of the shared never-cut constant. The
- * shader source and cache key are identical either way, so a twin is the same
- * program as its normal sibling — which is what keeps a cut compile-free.
- *
- * Returns `false` for a shader whose chunk layout this patch does not recognize;
- * the material is left untouched rather than half-patched. The store treats that as
- * a diagnostic, not a reason to add a fallback clipping path.
- */
-export function applySliceClipShader(
-	material: Material,
-	uniforms: SliceClipUniforms,
-	options: { readonly cutaway?: boolean } = {}
-): boolean {
-	const target = material as Material & { [PATCHED]?: boolean };
-	if (target[PATCHED] === true) return true;
-	const baseCompile = material.onBeforeCompile;
-	const baseKey = material.customProgramCacheKey();
-	const cutawayTop = options.cutaway === true ? uniforms.cutawayTopY : NEVER_CUT_UNIFORM;
-	material.onBeforeCompile = function (shader, renderer) {
-		baseCompile.call(this, shader, renderer);
-		const world = shader.vertexShader.includes('#include <project_vertex>');
-		const view = !world && shader.vertexShader.includes('#include <clipping_planes_vertex>');
-		if ((!world && !view) || !shader.fragmentShader.includes('#include <clipping_planes_fragment>')) {
-			return;
-		}
-		shader.uniforms.uSliceClipMode = uniforms.mode;
-		shader.uniforms.uSliceClipOrigin = uniforms.origin;
-		shader.uniforms.uSliceClipNormal = uniforms.normal;
-		shader.uniforms.uSliceClipAlong = uniforms.along;
-		shader.uniforms.uSliceClipHalfLength = uniforms.halfLength;
-		shader.uniforms.uSliceClipDepth = uniforms.depth;
-		shader.uniforms.uCutawayTopY = cutawayTop;
-		shader.vertexShader =
-			VERTEX_DECLARATION +
-			(world
-				? shader.vertexShader.replace('#include <project_vertex>', VERTEX_SAMPLE)
-				: shader.vertexShader.replace('#include <clipping_planes_vertex>', VERTEX_SAMPLE_FROM_VIEW));
-		shader.fragmentShader =
-			FRAGMENT_DECLARATION +
-			shader.fragmentShader.replace('#include <clipping_planes_fragment>', FRAGMENT_TEST);
-	};
-	material.customProgramCacheKey = function () {
-		return `${baseKey}|${SLICE_CLIP_PROGRAM_KEY}`;
-	};
-	// A store material compiles on its first draw, after this call; no `needsUpdate`
-	// is needed, and setting it would only mark a fresh material dirty.
-	target[PATCHED] = true;
-	return true;
-}
-
-/** Whether this material carries the patch (diagnostics/tests). */
-export function hasSliceClipShader(material: Material): boolean {
-	return (material as Material & { [PATCHED]?: boolean })[PATCHED] === true;
-}
-
+/** The masks one material carries, by cutaway binding. */
+export type MaterialClipMasks = (cutaway: boolean) => SliceClipMasks | null;
 
 /** Whether this descriptor's material takes the Canvas's clipping planes. */
 function clipsWithStore(descriptor: MaterialDescriptor): boolean {
-	if (descriptor.kind === 'depth' || descriptor.kind === 'distance' || descriptor.kind === 'shadow') return false;
+	// Shadow-only surfaces realize the shadow catcher; they are never part of the
+	// clipped world.
+	if (descriptor.kind === 'shadow') return false;
 	return !('clip' in descriptor && descriptor.clip === false);
 }
 
@@ -633,10 +394,16 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 				if (options.clippingPlanes !== undefined) {
 					material.clippingPlanes = clips ? options.clippingPlanes : null;
 				}
-				if (clips && options.sliceClip !== undefined) {
-					applySliceClipShader(material, options.sliceClip, {
-						cutaway: 'cutaway' in descriptor && descriptor.cutaway === true
-					});
+				if (clips && options.clipMasks !== undefined) {
+					const masks = options.clipMasks('cutaway' in descriptor && descriptor.cutaway === true);
+					if (masks !== null) {
+						// One node graph per material, shared with every equal look. The
+						// renderer reads it as the colour-pass predicate and uses the
+						// pass-through mask during a shadow pass, so shadows stay unclipped.
+						const target = material as Material & { maskNode?: unknown; maskShadowNode?: unknown };
+						target.maskNode = masks.colour;
+						target.maskShadowNode = masks.shadow;
+					}
 				}
 				entry = { descriptor, material, refCount: 0 };
 				entries.set(key, entry);

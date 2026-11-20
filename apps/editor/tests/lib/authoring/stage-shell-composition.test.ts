@@ -195,8 +195,10 @@ describe('Stage shell composition', () => {
 		expect(STAGE_FILES.length).toBeGreaterThan(4);
 		expect(STAGE_FILES).toContain(CANVAS_FILE);
 
-		const canvases = STAGE_FILES.filter((file) => /<Canvas[\s>]/.test(readSource(file)));
-		expect(canvases).toEqual([CANVAS_FILE]);
+		// StageCanvas mounts the shared host, which owns the one stock Canvas.
+		const canvases = STAGE_FILES.filter((file) => /<Canvas[\s>]/.test(codeOf(file)));
+		expect(canvases).toEqual([]);
+		expect(readSource(CANVAS_FILE)).toContain('<CanvasHost');
 
 		// That one Canvas renders the visitor's own wall and entity renderers — the
 		// shared compile is what makes editor and visitor geometry agree, and a local
@@ -210,9 +212,11 @@ describe('Stage shell composition', () => {
 		expect(stageEntities).toContain("from '$lib/visitor/VisitorEntityGroups.svelte'");
 		expect(stageEntities).toContain("import('$lib/render/models/scene-model-support')");
 		// Explicit shadow-map type; never the boolean that resolves to the removed
-		// PCFSoft filtering path.
-		expect(canvas).toContain('shadows={PCFShadowMap}');
-		expect(canvas).not.toMatch(/shadows(\s*=\s*\{?\s*(true|false)|\s[^=])/);
+		// PCFSoft filtering path. The host owns the Canvas and therefore the prop.
+		const host = codeOf('apps/editor/src/lib/render/CanvasHost.svelte');
+		expect(host).toContain('<Canvas');
+		expect(host).toContain('shadows={PCFShadowMap}');
+		expect(host).not.toMatch(/shadows(\s*=\s*\{?\s*(true|false)|\s[^=])/);
 		// Exactly one camera is mounted on it, and it is the realizer.
 		expect((canvas.match(/<StageCamera/g) ?? []).length).toBe(1);
 	});
@@ -287,14 +291,19 @@ describe('Stage shell composition', () => {
 		// The pose math lives in exactly one place: the realizer copies the
 		// evaluation's own matrices instead of composing its own camera.
 		const camera = codeOf('apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte');
-		expect(camera).toContain('camera.matrix.fromArray(evaluation.inverseViewMatrix');
-		expect(camera).toContain('camera.projectionMatrix.fromArray(evaluation.projectionMatrix');
+		// The realization owns the matrix copy and the backend's clip convention;
+		// the Camera component only hands it the evaluation.
+		expect(camera).toContain('realizeEvaluatedCamera(camera, evaluation');
+		expect(camera).not.toContain('camera.matrix.fromArray');
+		const realization = codeOf('apps/editor/src/lib/render/camera-realization.ts');
+		expect(realization).toContain('camera.matrix.fromArray(evaluation.inverseViewMatrix');
+		expect(realization).toContain('camera.projectionMatrix.fromArray(evaluation.projectionMatrix');
 		// One `fov` literal, and it is the construction default Threlte needs before
 		// the first evaluated frame; the realizer overwrites the projection from the
 		// evaluation rather than letting that default shape what is drawn.
 		expect((camera.match(/fov=\{/g) ?? []).length).toBe(1);
-		expect(camera).toContain('camera.near = evaluation.near');
-		expect(camera).toContain('camera.far = evaluation.far');
+		expect(realization).toContain('camera.near = evaluation.near');
+		expect(realization).toContain('camera.far = evaluation.far');
 		// T1.P02.S06 D.6 (H9) — the realizer must not ask for a frame just because
 		// it ran: a task's default invalidates, which is what kept the Stage
 		// rendering at rest (Bench 1: 120 of 120 idle frames). A new evaluation asks

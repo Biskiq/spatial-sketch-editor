@@ -10,8 +10,8 @@
  * from the polygons its footprint projection already retained.
  */
 import { describe, expect, it } from 'vitest';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
+import { Line2NodeMaterial } from 'three/webgpu';
 import { Mesh, MeshBasicMaterial, type Group } from 'three';
 import type { SemanticReference } from '@portfolio/project-model';
 import type { LayoutVec2 } from '@portfolio/layout-core';
@@ -582,9 +582,9 @@ describe('R217.S07 — Paper mark overlay', () => {
 				(child): child is LineSegments2 => child instanceof LineSegments2 && child.renderOrder === PAPER_MARK_LAYER.selectionLine
 			);
 			expect(lines).toHaveLength(2);
-			expect(lines.map((line) => (line.material as LineMaterial).dashed).sort()).toEqual([false, true]);
+			expect(lines.map((line) => (line.material as Line2NodeMaterial).dashed).sort()).toEqual([false, true]);
 			for (const line of lines) {
-				const material = line.material as LineMaterial;
+				const material = line.material as Line2NodeMaterial;
 				expect(material.color.getHexString()).toBe(PAPER_SELECTION_INK.slice(1));
 				expect(material.linewidth).toBe(2);
 			}
@@ -601,7 +601,7 @@ describe('R217.S07 — Paper mark overlay', () => {
 		try {
 			expect(resources.group.children.some((child) => child instanceof Mesh && child.material instanceof MeshBasicMaterial)).toBe(true);
 			const lines = resources.group.children.filter((child): child is LineSegments2 => child instanceof LineSegments2);
-			const at = (order: number) => lines.find((line) => line.renderOrder === order)!.material as LineMaterial;
+			const at = (order: number) => lines.find((line) => line.renderOrder === order)!.material as Line2NodeMaterial;
 			expect(at(PAPER_MARK_LAYER.selectionHalo).color.getHexString()).toBe(PAPER_SELECTION_EDGE_INK.slice(1));
 			expect(at(PAPER_MARK_LAYER.selectionHalo).linewidth).toBe(2);
 			expect(lines.some(line=>line.renderOrder===PAPER_MARK_LAYER.selectionLine)).toBe(false);
@@ -625,12 +625,12 @@ describe('R217.S07 — Paper mark overlay', () => {
 		expect(selectionHalo).toBeDefined();
 		expect(hoverHalo).toBeDefined();
 		expect(selection!.renderOrder).toBeGreaterThan(60);
-		expect((selection!.material as LineMaterial).color.getHexString()).toBe(PAPER_SELECTION_EDGE_INK.slice(1));
-		expect((selection!.material as LineMaterial).depthTest).toBe(false);
+		expect((selection!.material as Line2NodeMaterial).color.getHexString()).toBe(PAPER_SELECTION_EDGE_INK.slice(1));
+		expect((selection!.material as Line2NodeMaterial).depthTest).toBe(false);
 		expect(selection!.layers.mask).toBe(1 << 2);
-		expect((selectionHalo!.material as LineMaterial).color.getHexString()).toBe('152c26');
-		expect((hover!.material as LineMaterial).color.getHexString()).toBe('4f8f6c');
-		expect((hoverHalo!.material as LineMaterial).color.getHexString()).toBe('4f8f6c');
+		expect((selectionHalo!.material as Line2NodeMaterial).color.getHexString()).toBe('152c26');
+		expect((hover!.material as Line2NodeMaterial).color.getHexString()).toBe('4f8f6c');
+		expect((hoverHalo!.material as Line2NodeMaterial).color.getHexString()).toBe('4f8f6c');
 		expect(resources.group.layers.mask).toBe(1 << 2);
 		const tint = resources.group.children.find(
 			(child): child is Mesh => child instanceof Mesh && child.material instanceof MeshBasicMaterial
@@ -675,7 +675,7 @@ describe('R217.S07 — Paper mark overlay', () => {
 				(child): child is LineSegments2 => child instanceof LineSegments2
 			);
 			expect(lines).toHaveLength(2);
-			expect(lines.every((line) => (line.material as LineMaterial).color.getHexString() !== PAPER_SELECTION_INK.slice(1))).toBe(true);
+			expect(lines.every((line) => (line.material as Line2NodeMaterial).color.getHexString() !== PAPER_SELECTION_INK.slice(1))).toBe(true);
 		} finally {
 			resources.dispose();
 		}
@@ -687,12 +687,12 @@ describe('R217.S07 — Paper mark overlay', () => {
 		try {
 			resources.setFade(0);
 			for (const child of resources.group.children) {
-				const material = (child as LineSegments2).material as LineMaterial;
+				const material = (child as LineSegments2).material as Line2NodeMaterial;
 				expect(material.opacity).toBe(0);
 			}
 			resources.setFade(1);
 			for (const child of resources.group.children) {
-				const material = (child as LineSegments2).material as LineMaterial;
+				const material = (child as LineSegments2).material as Line2NodeMaterial;
 				expect(material.opacity).toBeGreaterThan(0);
 			}
 		} finally {

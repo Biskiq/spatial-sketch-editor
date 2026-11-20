@@ -27,13 +27,56 @@ Render resources      per Canvas: MaterialStore · GeometryStore · LightStore �
 Representations       Layout Walls, objects, Rooms · Scene entities · Scene lights
       │               imperative Object3D graphs, mounted once and patched by item key
       ▼
-Renderer              managed-webgl-renderer.ts · on-demand frames · shadow invalidation
+Renderer              CanvasHost.svelte · one r187 WebGPURenderer (WebGPU/WebGL2) ·
+                      on-demand frames · per-light shadow invalidation
 ```
 
-The Canvas host — `StageCanvas.svelte` or `VisitorPreviewSurface.svelte` — calls
-`provideRenderResources()` once, and everything mounted under it leases from those stores. The
-snapshot renderer draws the Stage's own scene with the Stage's renderer into an offscreen target, so
-it never creates a second context or store set.
+The Canvas host — the shared `CanvasHost.svelte`, mounted by `StageCanvas.svelte`, `VisitorPreviewSurface.svelte`
+and the published visit — owns the one stock Threlte `<Canvas>` and calls `provideRenderResources()`
+once; everything mounted under it leases from those stores. The snapshot renderer draws the Stage's
+own scene with the Stage's renderer into an offscreen `RenderTarget`, so it never creates a second
+context or store set.
+
+### One renderer, one generation
+
+`renderer-backend.ts` is the only construction site: one Three r187 `WebGPURenderer` per generation,
+requesting native WebGPU with Three's own WebGL2 fallback, on the host's own DOM canvas. The Stage
+keeps stencil, alpha, antialias, DPR 1–1.5 and the accepted `NoToneMapping` pipeline; the factory
+names that pipeline once (`CANVAS_TONE_MAPPING`) and counts frames per surface.
+
+`CanvasHost.svelte` makes the renderer usable before anything draws:
+
+- `autoRender` stays false and children mount only after `renderer.init()` resolved, so no task,
+camera copy or texture lease runs against a half-built renderer;
+- Threlte receives a ready-gated facade over the real renderer; the shadow controller and snapshots
+use the real object from `renderer-context.ts`;
+- a fresh generation is a **new DOM canvas**, never a restored context, and a captured Stage gesture
+is cancelled through the pointer-cancel seam before its canvas leaves the page;
+- a failed init or a lost device retries on a fresh canvas, first with WebGPU and then with the
+WebGL2-compatible request; an exhausted episode shows an in-place unavailable state with Retry.
+
+Camera poses remain the Camera authority's: `camera-realization.ts` copies an evaluated pose onto the
+Three camera at the renderer boundary, sets the camera's coordinate system first (so r187 never
+recomputes the evaluated projection), converts clip-space Z for native WebGPU and rebuilds the
+physical inverse. `frame-scissor.ts` hands the capture frame through as a top-left rectangle, which
+is the common renderer's convention on both backends.
+
+### Clipping and shadows
+
+A Slice is one TSL predicate. Native `Plane`s still realize the Level reading as two clipping-plane
+slots, while a drawn cut and X2's cutaway top are one `maskNode` graph built from shared `uniform()`
+nodes (`render/clip/slice-clip-mask.ts`); a material carries a pass-through `maskShadowNode`, so
+shadows render from the unclipped world. The material store attaches that graph once per material, so
+editing a cut only writes uniforms — no program rebuilds, no GLSL and no `onBeforeCompile`.
+
+Shadow invalidation is per light: `ShadowNode` reads each caster's `shadow.autoUpdate` /
+`shadow.needsUpdate`, and `shadow-invalidation.ts` owns that decision (geometry, Scene, model
+arrival/release, Sun direction, a playing animation, a fresh generation) while wrapping the real
+renderer's `render` for the count oracle.
+
+Snapshots are as-built: the Stage clip parks its planes and mask values for the draw, the camera is
+the shared realization at the authored pose, and the readback is a generic 8-bit target read with
+`readRenderTargetPixelsAsync`; rows are normalized to top-down per backend and encoded to sRGB once.
 
 The per-object layers are the Stage camera's contract: layer 0 is world content, layer 2 is editor
 ink on the overlay (the selection contour, and Lift's dashed outline and ghost), and layer 3 is
@@ -205,13 +248,12 @@ release).
 
 ### Portability allowlist
 
-World code uses built-in Three material classes and standard properties, which both WebGL and WebGPU
-renderers honour. Outside an exact allowlist, product code has no `onBeforeCompile`,
-`ShaderMaterial`, `WebGLRenderTarget`, non-2D `getContext`, custom depth or distance material, or
-WebGL-only Three import path. A new site fails, and so does a stale entry, so the list only shrinks.
-`managed-webgl-renderer.ts` is the one renderer-specific module. The artwork shadow-pass materials
-stay listed in `scene-artwork-representation.ts`, because `alphaTest` on the surface would discard
-colour-pass texels and change the image.
+World code uses built-in Three material classes and standard properties; the common renderer honours
+them on both backends, and every backend-specific site is now gone. The exact allowlist is **empty**:
+product code has no `onBeforeCompile`, `ShaderMaterial`, `WebGLRenderTarget`, non-2D `getContext`,
+custom depth or distance material, and no WebGL-only Three import path. The common line geometry and
+Three's webgpu fat-line objects are the backend-neutral survivors; `renderer-backend.ts` is the one
+module that names a renderer. A new site fails, and so does a stale entry, so the list only shrinks.
 
 **Guard:** `render/renderer-portability-boundary`.
 
@@ -290,10 +332,10 @@ accepted decision ([pipeline record](../../roadmap/t2-look-atmosphere/s0-renderi
 and it stands (owner ruling, E12). The material store reads that record and sets no tone mapping,
 exposure or output colour space.
 
-The accepted value is named once, as `CANVAS_TONE_MAPPING` in `canvas-renderers.ts`, and both product
-Canvases pass it to `<Canvas>`. That attribute is load-bearing, not decoration: Threlte's Canvas
-assigns its own `AgXToneMapping` default to the renderer the shared factory returns, so a Canvas that
-omits the prop silently runs a pipeline Gate A rejected. Exposure needs no prop — neither the factory
+The accepted value is named once, as `CANVAS_TONE_MAPPING` in `renderer-backend.ts`, and the one
+shared Canvas host passes it to `<Canvas>`. That attribute is load-bearing, not decoration:
+Threlte's Canvas assigns its own `AgXToneMapping` default to whatever renderer factory it receives,
+so a host that omits the prop silently runs a pipeline Gate A rejected. Exposure needs no prop — neither the factory
 nor Threlte writes `toneMappingExposure`, so Three's 1.0 stands — and output colour space is Threlte's
 sRGB default, which no Canvas overrides. Stage, Visitor Preview and the published visit therefore
 share one pipeline; the published route draws through the same Preview surface.

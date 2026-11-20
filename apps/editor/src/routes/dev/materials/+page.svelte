@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
+	import CanvasHost from '$lib/render/CanvasHost.svelte';
   import { page } from '$app/state';
-  import { Canvas, T } from '@threlte/core';
+  import { T } from '@threlte/core';
   import { onDestroy } from 'svelte';
   import { provideRenderResources } from '$lib/render/resources/render-resources';
   import { computeTextureRepeat, getMaterial } from '$lib/content/materials';
@@ -92,7 +92,8 @@
   </aside>
 
   <div class="canvas-shell">
-    <Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={false}>
+    <CanvasHost surface="preview" renderMode="always" placeholder="#121218">
+      {#snippet children()}
       <T.PerspectiveCamera makeDefault position={[2.2, 2.4, 8.5]} fov={45} />
       <T.AmbientLight intensity={0.35} />
       <T.HemisphereLight args={['#f0e6d4', '#1a1814', 0.55]} />
@@ -152,7 +153,8 @@
         <T.PlaneGeometry args={[16, 6]} />
         <T.MeshStandardMaterial color="#1a1a22" roughness={0.95} />
       </T.Mesh>
-    </Canvas>
+      {/snippet}
+    </CanvasHost>
   </div>
 </main>
 

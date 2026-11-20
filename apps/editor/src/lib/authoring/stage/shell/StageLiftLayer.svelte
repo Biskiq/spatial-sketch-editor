@@ -29,9 +29,9 @@
 		type Object3D,
 		type Plane
 	} from 'three';
-	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
-	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+	import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
+	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+	import { Line2NodeMaterial } from 'three/webgpu';
 	import type { OverheadSource } from '@portfolio/layout-core';
 	import { LIFT_OUTLINE_DROP_METERS } from '../lift-ink';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
@@ -110,7 +110,7 @@
 		);
 		const hovered = hoveredRoomId !== null && hoveredRoomId === source.subject.id;
 		const planes = clipPlanes();
-		const material = cutInk(new LineMaterial({
+		const material = cutInk(new Line2NodeMaterial({
 			...(planes === undefined ? {} : { clippingPlanes: planes }),
 			color: STAGE_PAINT.hover,
 			linewidth: hovered ? 3 : 2,
@@ -123,7 +123,6 @@
 			depthTest: true,
 			depthWrite: false,
 			...OUTLINE_DEPTH_BIAS,
-			resolution: new Vector2(width, height)
 		}), planes);
 		const line = new Line2(geometry, material);
 		line.computeLineDistances();
