@@ -118,6 +118,9 @@ Decisions inside this:
   Because forms and Walls emit metre UVs, **Scale is stated in real units** and one brick image
   tiles identically on a wall and a plinth.
 - **PBR maps arrive in two distinct steps, both in S8; the schema is open from S1.**
+  The [professional material foundation proposal](./s8-professional-material-foundation/implementation-plan.md)
+  revisits the scope below after the merged renderer cutover. It keeps manual assignment before set
+  recognition and puts one unified UX planning phase after the engineering proofs.
   - **S4 ships one image:** the colour image, with Sheen. No bump control appears, because there
     is no bump map to control.
   - **S8a, manual assignment:** More › **Maps** lists named slots (Colour · Bump · Roughness ·
@@ -483,7 +486,7 @@ for multi-PR, Tier 2 or invention-risking work, as the first commit of that work
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
 | **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | Scene 11 | With T1 |
-| **S8 Catalogue and depth** | **S8a** manual map slots · **S8b** automatic set import · curated sets and fixture models · see-through and Glow as S0 allows | S4 · D8 · G1 for fixtures | **bump if see-through/Glow land** | **Yes** (licence) |
+| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) proposes revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Proposed coordinated Scene/resources bump | **Yes** (format and licence) |
 
 ```text
 now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)
