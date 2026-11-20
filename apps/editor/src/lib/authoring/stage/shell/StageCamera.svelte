@@ -12,6 +12,7 @@
 	import { Color, Vector2, type PerspectiveCamera } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import { MAT_BACKGROUND_INK, PAPER_GROUND_INK, STAGE_WORLD_LAYER, stageCameraLayerMask } from '../paper-plan';
+	import { stageFrameScissor } from './frame-scissor';
 
 	let {
 		evaluation,
@@ -54,18 +55,17 @@
 		// The one renderer draws the active Stage and, when Looking through, only the
 		// measured 16:10 frame. Snapshot rendering restores these states in `finally`.
 		const size = renderer.getSize(new Vector2());
-		if (frameViewport === null) {
+		const scissor = stageFrameScissor(frameViewport, size);
+		if (scissor === null) {
 			renderer.setScissorTest(false);
 			renderer.setViewport(0, 0, size.x, size.y);
 		} else {
 			renderer.setScissorTest(false);
 			renderer.setViewport(0, 0, size.x, size.y);
 			renderer.clear();
-			const x = frameViewport.left;
-			const y = Math.max(0, size.y - frameViewport.top - frameViewport.height);
-			renderer.setViewport(x, y, frameViewport.width, frameViewport.height);
+			renderer.setViewport(scissor.x, scissor.y, scissor.width, scissor.height);
 			renderer.setScissorTest(true);
-			renderer.setScissor(x, y, frameViewport.width, frameViewport.height);
+			renderer.setScissor(scissor.x, scissor.y, scissor.width, scissor.height);
 		}
 		camera.matrixAutoUpdate = false;
 		camera.matrix.fromArray(evaluation.inverseViewMatrix as number[]);

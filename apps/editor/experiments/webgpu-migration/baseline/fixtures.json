@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-11-20",
+  "baselineCommit": "a53d30deb8ab0c4964bc42a41bf2e0d874ee6786",
+  "baselinePullRequest": "#383 (approved migration plan)",
+  "packages": {
+    "three": "0.187.0",
+    "threlteCore": "8.5.16",
+    "threlteExtras": "9.21.0"
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "dpr": 1
+  },
+  "s0Comparators": {
+    "empty": {
+      "kind": "empty",
+      "camera": {
+        "position": [
+          0,
+          1.6,
+          -1.2
+        ],
+        "lookAt": [
+          0,
+          1.4,
+          3.5
+        ],
+        "fov": 50,
+        "near": 0.1,
+        "far": 100
+      }
+    },
+    "small-room": {
+      "kind": "starter-room",
+      "width": 7,
+      "depth": 6,
+      "wallHeight": 3,
+      "camera": {
+        "position": [
+          0,
+          1.6,
+          -0.5
+        ],
+        "lookAt": [
+          0,
+          1.4,
+          3
+        ]
+      }
+    },
+    "gallery-wall": {
+      "kind": "gallery-wall",
+      "width": 12,
+      "depth": 7,
+      "wallHeight": 3,
+      "quads": {
+        "count": 6,
+        "size": [
+          1.2,
+          0.9
+        ],
+        "y": 1.7,
+        "z": 3.38,
+        "xs": [
+          -3.3,
+          -1.98,
+          -0.66,
+          0.66,
+          1.98,
+          3.3
+        ],
+        "texture": "apps/editor/static/textures/plaster-warm/map.png"
+      },
+      "camera": {
+        "position": [
+          0,
+          1.6,
+          -1.2
+        ],
+        "lookAt": [
+          0,
+          1.4,
+          3.5
+        ],
+        "fov": 50,
+        "near": 0.1,
+        "far": 100
+      },
+      "sun": {
+        "position": [
+          4,
+          5,
+          2
+        ],
+        "intensity": 2.2,
+        "castShadow": true
+      }
+    }
+  },
+  "currentWorld": {
+    "target": {
+      "rooms": 10,
+      "walls": 31,
+      "stageDraws": 64,
+      "visitorDraws": 58,
+      "stageTriangles": 44937,
+      "visitorTriangles": 25203
+    },
+    "fixture": {
+      "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.project.json",
+      "bytes": 29829,
+      "digest": "sha256-aef406451ee4129636bfa18e8a2f2ca10ffa4312862f98a2c326a812d8037a5e",
+      "generator": "apps/editor/scripts/build-webgpu-current-world.ts",
+      "counts": {
+        "rooms": 10,
+        "walls": 31,
+        "junctions": 22,
+        "openings": 1,
+        "regions": 1,
+        "objects": 1,
+        "sceneEntities": 7,
+        "resources": 2,
+        "lights": 2,
+        "artworks": 2,
+        "models": 1,
+        "primitives": 1,
+        "forms": 1
+      },
+      "camera": {
+        "views": [
+          {
+            "id": "view-entry",
+            "eye": [10, 1.7, 3.9],
+            "target": [10, 1.4, 7.5],
+            "fov": 54
+          }
+        ]
+      }
+    },
+    "publicationProjection": {
+      "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
+      "bytes": 28392,
+      "digest": "sha256-2541b2e3396f0f85ea7918f53c1d9fc448eaa5c65126fd40cfb483af3053636a",
+      "removedContent": [
+        "form"
+      ],
+      "reason": "P20 prepared publication refuses native forms; the source comparator keeps entity-form, and this explicit projection is what the cold public baseline serves."
+    },
+    "artwork": [
+      {
+        "assetId": "33333333-3333-4333-8333-333333333333",
+        "path": "apps/editor/experiments/webgpu-migration/baseline/current-world-neutral.png",
+        "bytes": 68,
+        "digest": "sha256-5e3d382db4dd83d59aa5742793ad6b7903409e865c83bcbc54835049f043bc15"
+      },
+      {
+        "assetId": "44444444-4444-4444-8444-444444444444",
+        "path": "apps/editor/experiments/webgpu-migration/baseline/current-world-translucent.png",
+        "bytes": 68,
+        "digest": "sha256-63ef318d96b5d0d0ceba6e04a4e622b1158335cdc67c49e27839132c6f655058"
+      }
+    ],
+    "requiredContent": [
+      "opening",
+      "curved-wall",
+      "room-floor-lid",
+      "standalone-region-s5b-faces",
+      "layout-object",
+      "scene-primitive",
+      "form",
+      "mapped-finish",
+      "imported-textured-glb",
+      "neutral-artwork",
+      "translucent-artwork",
+      "shadow-sun",
+      "shadow-spot",
+      "shadow-point"
+    ],
+    "status": "Frozen in PR 1 as a reproducible canonical equivalent. The measured saved project is absent; this fixture reproduces its 10-room/31-wall scale with the current F.2 builders. The 64/58 draw and triangle census stays as the saved-world target, not a claim about this fixture."
+  },
+  "coldPublic": {
+    "evidence": "docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/cold-public.json",
+    "route": "/p/:publicationId",
+    "mode": "A-native-webgl",
+    "fixture": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
+    "samples": 20,
+    "browserBatches": 2,
+    "summaryMs": {
+      "p50": 186.4,
+      "p90": 269.8,
+      "max": 350.0
+    },
+    "batchP90Ms": [
+      269.8,
+      208.2
+    ],
+    "rendererAtFirstFrame": {
+      "surface": "preview",
+      "calls": 369,
+      "triangles": 14314,
+      "textures": 8
+    },
+    "canvas": {
+      "width": 1280,
+      "height": 528
+    },
+    "consoleErrors": 0,
+    "boundary": "Local production build on loopback, fresh browser contexts with HTTP cache disabled. visitor:first-frame is a renderer scheduling mark, not physical presentation."
+  },
+  "preparedPublication": {
+    "protocol": "P20",
+    "registryVersion": 1,
+    "maxAssetBytes": 26214400,
+    "mimes": [
+      "image/png",
+      "image/webp",
+      "image/jpeg"
+    ],
+    "releaseEndpoint": "/publications/:publicationId",
+    "assetEndpoint": "/publications/:publicationId/versions/:version/assets/:assetId/content",
+    "fixtureBytes": "Synthetic P20 release built from shipped texture bytes; no live publication is used for PR 1."
+  },
+  "unverified": [
+    "Intel Iris Xe-class laptop (A/B/C and cold-public rows) - hardware unavailable on this host.",
+    "Safari and Firefox qualification and cold-public rows - browsers unavailable on this host.",
+    "Exact S0 benchmark camera/pose source at commit 120419bf is not in this tree; comparators use the frozen interior camera recorded here.",
+    "Physical display cadence, thermal state and production-URL deployment were not measured; cold-public uses the local production build over loopback.",
+    "Native WebGPU device loss was exercised through the documented hook; r187 filters a destroyed device, so browser-driven loss remains unverified.",
+    "The measured 31-wall saved world is absent; currentWorld is an explicit canonical equivalent at the same 10-room/31-wall scale, not a byte-for-byte recovery of that project."
+  ],
+  "hardwareDeferralRequest": {
+    "status": "pending owner approval",
+    "approved": false,
+    "scope": [
+      "Intel Iris Xe-class laptop A/B/C and cold-public measurements",
+      "Safari and Firefox qualification and cold-public rows",
+      "Physical display cadence and thermal state"
+    ],
+    "reason": "The reference laptop and those browsers are not available on this host. This record requests a deferral; it is not an approval and must not be cited as one."
+  },
+  "assets": [
+    {
+      "path": "apps/editor/static/textures/plaster-warm/map.png",
+      "bytes": 47350,
+      "digest": "sha256-fbc560b447dbf80a578ee872d01a47776f041a3a9404603b0f1529664566eec0"
+    },
+    {
+      "path": "apps/editor/static/textures/plaster-warm/roughness.png",
+      "bytes": 61695,
+      "digest": "sha256-956a35621e1fd853be643bcaf726fd40db671946f80f8475fb5cd60648ca18ec"
+    },
+    {
+      "path": "apps/editor/static/textures/brass-aged/map.png",
+      "bytes": 76488,
+      "digest": "sha256-ad73e7b0fec069675ce71f8c0a63734c597d51b6a81d00fa1755dec00c86f271"
+    },
+    {
+      "path": "apps/editor/static/textures/wood-walnut/map.png",
+      "bytes": 53591,
+      "digest": "sha256-358c89409516f0c020e0ad703ef082666010a00517c68c1667c4d8e885b867f4"
+    },
+    {
+      "path": "apps/editor/static/textures/wood-walnut/roughness.png",
+      "bytes": 2001,
+      "digest": "sha256-677d806ea44fba6f6d3447b8a0f0c1956b3078e84cf572fd0c444139ac5e7865"
+    },
+    {
+      "path": "apps/editor/static/museum/models/piano/grand-piano.glb",
+      "bytes": 245788,
+      "digest": "sha256-a360b6fcbad835f5b82fe0ba7d347538695230974d27767483a4d6fd4a08d660"
+    },
+    {
+      "path": "apps/editor/static/museum/models/furniture/chair/salon-chair.glb",
+      "bytes": 298300,
+      "digest": "sha256-480698dafa0c4d17960db4d218e7db462a327ea86a8e7d22a8f49fb25ab6ff9e"
+    },
+    {
+      "path": "apps/editor/static/museum/models/furniture/sofa/sofa-03.glb",
+      "bytes": 307128,
+      "digest": "sha256-a16592847a589c3edd658f076845f9bae4b53c299f3740822f27c77a6798eb9b"
+    },
+    {
+      "path": "apps/editor/static/museum/models/furniture/table/salon-table.glb",
+      "bytes": 198956,
+      "digest": "sha256-454a5a35caa3fd49e4173e029f634d342d92be4a54ea0bb422e7c4ae2bae3cd0"
+    },
+    {
+      "path": "apps/editor/static/museum/models/decor/chandelier/chandelier2.glb",
+      "bytes": 567424,
+      "digest": "sha256-83e188c2179e8aa15a2ae87d46c8ab62a0cdc824d184903f8b25d3c2fb8e2fde"
+    },
+    {
+      "path": "apps/editor/static/museum/models/decor/oil-lamp/victorian-oil-lamp.glb",
+      "bytes": 264424,
+      "digest": "sha256-c093a2d3b32e5f2e1be71a7efe8a5109c384735d06a789bac7af2a8251553fc2"
+    },
+    {
+      "path": "apps/editor/static/museum/models/decor/clock/grandfather-clock.glb",
+      "bytes": 532884,
+      "digest": "sha256-c44bfabd45da819470038502130b56f7bc6863daaadc0d48909c9d14e6361420"
+    },
+    {
+      "path": "apps/editor/tests/lib/render/fixtures/model-path-baseline.json",
+      "bytes": 57535,
+      "digest": "sha256-68a1af4501e36689a6ab34f34312acaf60256db464229d1dc57d7fb28c2f3b18"
+    },
+    {
+      "path": "apps/editor/tests/lib/render/fixtures/light-parity-baseline.json",
+      "bytes": 77884,
+      "digest": "sha256-ff260ec26cefb543e0ddc8f97915f974618ab6107a14068369df71ad85c4f0d3"
+    },
+    {
+      "path": "apps/editor/tests/lib/render/materials/__fixtures__/look-parity-golden.json",
+      "bytes": 34601,
+      "digest": "sha256-e583055ac7f17db3cfe2ece720d03c6378bee50a8d0dc5701aa92b2bbafcc533"
+    },
+    {
+      "path": "prototypes/render-cost-calibration/src/scene.js",
+      "bytes": 9220,
+      "digest": "sha256-221cbd75954b21d03f2c714829f156a11c9094093f74356874272ca463ba05d9"
+    },
+    {
+      "path": "prototypes/render-cost-calibration/src/configs.js",
+      "bytes": 5727,
+      "digest": "sha256-b1bb4be2369bc35e074ac961ad19a41ff63055109cdddc2b276620b56d18ee20"
+    }
+  ]
+}

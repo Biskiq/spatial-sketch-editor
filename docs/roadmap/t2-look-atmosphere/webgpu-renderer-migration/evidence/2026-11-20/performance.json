@@ -1,0 +1,202 @@
+{
+  "displayPeriodMs": 16.699999999999932,
+  "fixture": {
+    "galleryTexture": {
+      "path": "apps/editor/static/textures/plaster-warm/map.png",
+      "url": "/textures/plaster-warm/map.png",
+      "bytes": 47350,
+      "digest": "sha256-fbc560b447dbf80a578ee872d01a47776f041a3a9404603b0f1529664566eec0"
+    },
+    "geometry": "12 × 7 m interior, six 1.2 × 0.9 m textured quads, one shadowed Sun, camera (0,1.6,−1.2) → (0,1.4,3.5), 50° FOV"
+  },
+  "rows": [
+    {
+      "mode": "A-native-webgl",
+      "observed": "webgl",
+      "displayPeriodMs": 16.699999999999932,
+      "startup": {
+        "initP50": 4.5,
+        "initP90": 9.099999994039536,
+        "initMax": 10.5,
+        "firstDrawSubmittedP50": 26.900000005960464,
+        "firstDrawSubmittedP90": 31.400000005960464,
+        "firstDrawSubmittedMax": 53.29999998211861,
+        "firstVerifiedFrameP50": 33,
+        "firstVerifiedFrameP90": 37.80000001192093,
+        "firstVerifiedFrameMax": 71.19999998807907,
+        "samples": 10
+      },
+      "steady": [
+        {
+          "frames": 603,
+          "intervalP50": 16.699999999999818,
+          "intervalP95": 16.700000000000728,
+          "intervalP99": 16.800000000000182,
+          "intervalMax": 16.80000000000109,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.7000000178813934
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "intervalP99": 16.80000000000109,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.9000000059604645
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.799999999999272,
+          "intervalP99": 16.799999999999272,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.9000000059604645
+        }
+      ],
+      "shadow": {
+        "callsWithShadow": 17,
+        "callsWithoutShadow": 11,
+        "trianglesWithShadow": 74,
+        "trianglesWithoutShadow": 62,
+        "firstShadowedFrameMs": 3.0999999940395355
+      },
+      "lightVariant": {
+        "firstFrameMs": 27.5,
+        "warmRepeatMs": 2
+      },
+      "notes": [
+        "Native WebGL baseline (shipped path)."
+      ]
+    },
+    {
+      "mode": "B-webgpu",
+      "observed": "webgpu",
+      "displayPeriodMs": 16.699999999999932,
+      "startup": {
+        "initP50": 1.699999988079071,
+        "initP90": 2.899999976158142,
+        "initMax": 4.399999976158142,
+        "firstDrawSubmittedP50": 13.699999988079071,
+        "firstDrawSubmittedP90": 17.299999982118607,
+        "firstDrawSubmittedMax": 39.19999998807907,
+        "firstVerifiedFrameP50": 20.299999982118607,
+        "firstVerifiedFrameP90": 27.099999994039536,
+        "firstVerifiedFrameMax": 679.5,
+        "samples": 10
+      },
+      "steady": [
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.700000000004366,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.2000000178813934
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.700000000004366,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.300000011920929
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.799999999995634,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 1.300000011920929
+        }
+      ],
+      "shadow": {
+        "callsWithShadow": 12,
+        "callsWithoutShadow": 12,
+        "trianglesWithShadow": 63,
+        "trianglesWithoutShadow": 63,
+        "firstShadowedFrameMs": 1.9000000059604645
+      },
+      "lightVariant": {
+        "firstFrameMs": 192.80000001192093,
+        "warmRepeatMs": 2.2999999821186066
+      },
+      "notes": [
+        "Native WebGPU observed from the initialized renderer."
+      ]
+    },
+    {
+      "mode": "C-forced-webgl2",
+      "observed": "webgl2",
+      "displayPeriodMs": 16.699999999999932,
+      "startup": {
+        "initP50": 4.5,
+        "initP90": 6.800000011920929,
+        "initMax": 7.9000000059604645,
+        "firstDrawSubmittedP50": 33.29999998211861,
+        "firstDrawSubmittedP90": 38.80000001192093,
+        "firstDrawSubmittedMax": 48.80000001192093,
+        "firstVerifiedFrameP50": 41.099999994039536,
+        "firstVerifiedFrameP90": 50.099999994039536,
+        "firstVerifiedFrameMax": 58.30000001192093,
+        "samples": 10
+      },
+      "steady": [
+        {
+          "frames": 603,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.70000000001164,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 3
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.70000000001164,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 2.9000000059604645
+        },
+        {
+          "frames": 601,
+          "intervalP50": 16.69999999999709,
+          "intervalP95": 16.79999999998836,
+          "intervalP99": 16.80000000000291,
+          "intervalMax": 16.80000000000291,
+          "missesOver2T": 0,
+          "synchronizedP50": 3
+        }
+      ],
+      "shadow": {
+        "callsWithShadow": 12,
+        "callsWithoutShadow": 12,
+        "trianglesWithShadow": 63,
+        "trianglesWithoutShadow": 63,
+        "firstShadowedFrameMs": 4.799999982118607
+      },
+      "lightVariant": {
+        "firstFrameMs": 38.80000001192093,
+        "warmRepeatMs": 2.5
+      },
+      "notes": [
+        "Forced WebGL2 backend observed from the initialized renderer."
+      ]
+    }
+  ],
+  "limitations": [
+    "First draw submitted is time until renderer.render() returned; it proves no pixels and no presentation.",
+    "First verified frame is time until the canvas copy first contained a gallery, including any GPU wait/readback; it is an upper bound, not physical presentation.",
+    "Animation-frame intervals are a presentation-opportunity proxy, not physical scanout; headless Chromium keeps its own cadence.",
+    "Synchronized columns include a GPU wait/readback and are cost diagnostics, not displayed frame times.",
+    "This run measured one host only. The Intel Iris Xe-class laptop, Safari and Firefox rows remain unverified."
+  ],
+  "harnessModuleMs": 93176.20000001788
+}
