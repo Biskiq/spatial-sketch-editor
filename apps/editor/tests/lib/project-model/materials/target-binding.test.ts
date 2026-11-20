@@ -57,6 +57,27 @@ describe('draw geometry facts', () => {
 		expect(draw).toEqual({ drawKey: 'mesh-0', uvSets: [0], normalFrameSets: [0] });
 	});
 
+	it('accepts the unbounded default draw range', () => {
+		const absent = summarizeDrawGeometry('absent', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			uvs: [QUAD_UV0, null]
+		});
+		expect(absent.invalidGeometry).toBeUndefined();
+		expect(absent.uvSets).toEqual([0]);
+
+		// BufferGeometry initializes drawRange.count to Infinity.
+		const unbounded = summarizeDrawGeometry('unbounded', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			drawRange: { start: 0, count: Infinity },
+			uvs: [QUAD_UV0, null]
+		});
+		expect(unbounded.invalidGeometry).toBeUndefined();
+		expect(unbounded.uvSets).toEqual([0]);
+		expect(unbounded.normalFrameSets).toEqual([0]);
+	});
+
 	it('lets an empty draw range contribute no requirement', () => {
 		const draw = summarizeDrawGeometry('empty', {
 			positions: QUAD_POSITIONS,
@@ -144,28 +165,76 @@ describe('draw geometry facts', () => {
 		expect(partialTriangle.invalidGeometry).toBe(true);
 	});
 
-	it('uses material groups as the active ranges', () => {
+	it('uses material groups as active ranges and intersects the draw range', () => {
 		const uv1 = [0, 0, 1, 0, 1, 1, Number.NaN, 1];
+		const groups = [
+			{ start: 0, count: 3 },
+			{ start: 3, count: 3 }
+		];
 		const both = summarizeDrawGeometry('two-groups', {
 			positions: QUAD_POSITIONS,
 			indices: QUAD_INDICES,
-			groups: [
-				{ start: 0, count: 3 },
-				{ start: 3, count: 3 }
-			],
+			groups,
 			uvs: [QUAD_UV0, uv1]
 		});
 		expect(both.uvSets).toEqual([0]);
 		expect(both.normalFrameSets).toEqual([0]);
 
+		// The second group's bad UV1 is outside the rendered draw range and must
+		// not refuse an otherwise valid first-group material.
 		const firstOnly = summarizeDrawGeometry('first-group', {
 			positions: QUAD_POSITIONS,
 			indices: QUAD_INDICES,
-			groups: [{ start: 0, count: 3 }],
+			drawRange: { start: 0, count: 3 },
+			groups,
 			uvs: [QUAD_UV0, uv1]
 		});
+		expect(firstOnly.invalidGeometry).toBeUndefined();
 		expect(firstOnly.uvSets).toEqual([0, 1]);
 		expect(firstOnly.normalFrameSets).toEqual([0, 1]);
+
+		const secondOnly = summarizeDrawGeometry('second-group', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			drawRange: { start: 3, count: 3 },
+			groups,
+			uvs: [QUAD_UV0, uv1]
+		});
+		expect(secondOnly.uvSets).toEqual([0]);
+	});
+
+	it('rejects malformed ranges but clips an out-of-bounds draw to empty', () => {
+		for (const drawRange of [
+			{ start: -1, count: 3 },
+			{ start: 0, count: -1 },
+			{ start: 0, count: 1.5 },
+			{ start: 0, count: 4 }
+		]) {
+			const draw = summarizeDrawGeometry('malformed', {
+				positions: QUAD_POSITIONS,
+				indices: QUAD_INDICES,
+				drawRange,
+				uvs: [QUAD_UV0, null]
+			});
+			expect(draw.invalidGeometry, JSON.stringify(drawRange)).toBe(true);
+		}
+
+		const clipped = summarizeDrawGeometry('clipped', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			drawRange: { start: 99, count: 3 },
+			uvs: [QUAD_UV0, null]
+		});
+		expect(clipped.invalidGeometry).toBeUndefined();
+		expect(clipped.uvSets).toEqual([0, 1]);
+
+		const badGroup = summarizeDrawGeometry('bad-group', {
+			positions: QUAD_POSITIONS,
+			indices: QUAD_INDICES,
+			groups: [{ start: 0, count: 4 }],
+			uvs: [QUAD_UV0, null]
+		});
+		expect(badGroup.invalidGeometry).toBe(true);
 	});
 
 	it('intersects availability across draws and targets', () => {

@@ -167,9 +167,14 @@ These digests are pinned in `recipe-contract.test.ts` and repeated in the E0 bas
   rotation and offset on a legacy GLB.
 - `surface` mapping requires a metric basis; on a GLB it refuses with
   `mapping-requires-metric-basis` rather than silently using identity.
-- Material groups are active ranges. Malformed indices, out-of-range vertices, non-triangle
-  ranges or a malformed position array become `invalidGeometry` facts and bind as
-  `invalid-target-geometry`; a legitimately empty range still contributes no requirement.
+- The renderer's default `drawRange.count = Infinity` is accepted as the unbounded range. A
+  finite range must be an integer and whole triangles; an out-of-bounds start clips to an empty
+  draw, as the renderer does.
+- Material groups intersect the draw range (`max(drawStart, group.start)` …
+  `min(drawEnd, group.end)`). A group clipped away contributes nothing; the remaining slices are
+  the actually rendered triangles. Malformed indices, out-of-range vertices, non-triangle slices,
+  malformed groups or a malformed position array become `invalidGeometry` facts and bind as
+  `invalid-target-geometry`.
 - Missing UV, missing normal frame, pending facts, stale facts and non-finite/invalid targets all
   return ordered diagnostics, and a refused target has `bound: null` while retaining `inputs` for
   inspection.
@@ -200,6 +205,7 @@ signed normal pair.
 | Metric repeat uses the native UV-unit scale | `target-binding.test.ts` metre and normalized bases both cover 4 × 1 tiles | Pass |
 | Duplicate bytes under two local IDs do not false-refuse | `recipe-contract.test.ts` / `resolve-contract.test.ts` alias + conflict cases | Pass |
 | Malformed geometry is distinct from an empty range | `target-binding.test.ts` draw/groups/bind cases | Pass |
+| Default Infinity and group/draw-range intersection | `target-binding.test.ts` unbounded, restricted-group, clipped and malformed-range cases | Pass |
 | Baseline and chart inputs recorded | 6 pinned fixtures + `fixtures.json` + `e0-baseline.json` + environment evidence | Recorded |
 | Product Save remains on the existing writer | No writer, codec, resource or renderer source changed in this PR | Preserved |
 | Runtime-safe subpath | `project-model-boundary.test.ts` source sweep + subpath export check | Pass |
@@ -234,8 +240,8 @@ signed normal pair.
 | --- | --- |
 | `npx vite-node scripts/build-s8-characterization-fixtures.ts --check` | pass (all bytes and manifest match) |
 | `node scripts/record-s8-baseline-environment.mjs` | pass; browser hash matches; WebGL2 true, WebGPU false |
-| `npx vitest run tests/lib/project-model/materials tests/lib/render/materials/s8-characterization.test.ts` | **117 passed / 6 files** |
-| Same focused suite under Node 22 (the CI version) | **117 passed / 6 files** |
+| `npx vitest run tests/lib/project-model/materials tests/lib/render/materials/s8-characterization.test.ts` | **119 passed / 6 files** |
+| Same focused suite under Node 22 (the CI version) | **119 passed / 6 files** |
 | `npx vitest run tests/lib/render/materials/look-parity-golden.test.ts tests/lib/render/materials/scene-instance-material.test.ts tests/lib/render/resources/texture-store.test.ts tests/lib/layout/layout-regions.test.ts` | **38 passed / 4 files** |
 | `npm run check:project-model` | pass |
 | `npm run check` | 0 errors; 16 pre-existing editor warnings |

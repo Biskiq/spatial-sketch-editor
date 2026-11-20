@@ -49,38 +49,80 @@ type ActiveIndices = {
 	readonly invalid: boolean;
 };
 
-function isRange(value: { readonly start: number; readonly count: number }): boolean {
-	return (
-		Number.isInteger(value.start) &&
-		Number.isInteger(value.count) &&
-		value.start >= 0 &&
-		value.count >= 0 &&
-		value.count % 3 === 0
-	);
+type ActiveRange = { readonly start: number; readonly end: number };
+
+/**
+ * Three initializes `drawRange.count` to `Infinity`; that is the unbounded
+ * default, not a malformed range. A finite range must be an integer. A start
+ * beyond the buffer is clipped to an empty draw, matching the renderer.
+ */
+function drawRangeOf(
+	range: DrawGeometry['drawRange'],
+	total: number
+): { readonly start: number; readonly end: number; readonly valid: boolean } {
+	const start = range?.start ?? 0;
+	const count = range?.count ?? Infinity;
+	if (!Number.isInteger(start) || start < 0) return { start: 0, end: 0, valid: false };
+	if (count !== Infinity && (!Number.isInteger(count) || count < 0)) {
+		return { start: 0, end: 0, valid: false };
+	}
+	const clippedStart = Math.min(start, total);
+	const clippedEnd =
+		count === Infinity ? total : Math.min(start + count, total);
+	return { start: clippedStart, end: Math.max(clippedStart, clippedEnd), valid: true };
 }
 
 /**
- * Read the active index ranges. An empty range is valid and contributes no
- * requirement; a malformed range, index or position array is invalid and must
- * not be reported as "no UV requirement".
+ * Material groups intersect the draw range, exactly as the renderer computes
+ * `max(drawStart, group.start)` / `min(drawEnd, group.end)`. A group clipped
+ * away entirely contributes nothing; a surviving slice must still describe
+ * whole triangles.
+ */
+function groupRanges(
+	groups: NonNullable<DrawGeometry['groups']>,
+	draw: { readonly start: number; readonly end: number }
+): { readonly ranges: readonly ActiveRange[]; readonly valid: boolean } {
+	const ranges: ActiveRange[] = [];
+	for (const group of groups) {
+		if (
+			!Number.isInteger(group.start) ||
+			group.start < 0 ||
+			!Number.isInteger(group.count) ||
+			group.count < 0
+		) {
+			return { ranges: [], valid: false };
+		}
+		const start = Math.max(group.start, draw.start);
+		const end = Math.min(group.start + group.count, draw.end);
+		if (end <= start) continue;
+		if ((end - start) % 3 !== 0) return { ranges: [], valid: false };
+		ranges.push({ start, end });
+	}
+	return { ranges, valid: true };
+}
+
+/**
+ * Read the actually rendered index ranges. Empty and clipped-away ranges are
+ * valid and contribute no requirement; a malformed range, active index or
+ * position array is invalid and must not be reported as "no UV requirement".
  */
 function activeIndices(geometry: DrawGeometry): ActiveIndices {
 	if (geometry.positions.length % 3 !== 0) return { active: [], invalid: true };
 	const vertexCount = Math.floor(geometry.positions.length / 3);
 	const total = geometry.indices ? geometry.indices.length : vertexCount;
-	const ranges =
-		geometry.groups !== undefined && geometry.groups !== null && geometry.groups.length > 0
-			? geometry.groups
-			: [
-					{
-						start: geometry.drawRange?.start ?? 0,
-						count: geometry.drawRange?.count ?? total - (geometry.drawRange?.start ?? 0)
-					}
-				];
+	const draw = drawRangeOf(geometry.drawRange, total);
+	if (!draw.valid) return { active: [], invalid: true };
+
+	const hasGroups =
+		geometry.groups !== undefined && geometry.groups !== null && geometry.groups.length > 0;
+	const grouped = hasGroups ? groupRanges(geometry.groups!, draw) : null;
+	if (grouped !== null && !grouped.valid) return { active: [], invalid: true };
+	const ranges: readonly ActiveRange[] = grouped?.ranges ?? [draw];
+
 	const active: number[] = [];
 	for (const range of ranges) {
-		if (!isRange(range) || range.start + range.count > total) return { active: [], invalid: true };
-		for (let index = range.start; index < range.start + range.count; index += 1) {
+		if ((range.end - range.start) % 3 !== 0) return { active: [], invalid: true };
+		for (let index = range.start; index < range.end; index += 1) {
 			const vertex = geometry.indices ? geometry.indices[index] : index;
 			if (vertex === undefined || !Number.isInteger(vertex) || vertex < 0 || vertex >= vertexCount) {
 				return { active: [], invalid: true };
@@ -88,8 +130,6 @@ function activeIndices(geometry: DrawGeometry): ActiveIndices {
 			active.push(vertex);
 		}
 	}
-	if (active.length === 0) return { active: [], invalid: false };
-	if (active.length % 3 !== 0) return { active: [], invalid: true };
 	return { active, invalid: false };
 }
 
