@@ -54,6 +54,7 @@
 	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
 	import { createStageEraser, STAGE_ERASER_TASK } from '$lib/authoring/stage/stage-eraser';
 	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
+	import { createVerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
 		developmentPointAtStationFromBuffers,
@@ -204,17 +205,24 @@
 	 */
 	const stagePick = pickThroughSlice(scenePick, () => resolvedSlice, subjectScope.get);
 
+	/**
+	 * The cold-load scope's verified bytes. `verifyProjectImageClosure` fills this
+	 * before the candidate installs; the Stage consumes each entry once instead of
+	 * downloading the same image again. A miss falls back to the normal verified
+	 * route, so the cache is an optimisation, never a second authority.
+	 */
+	const verifiedImages = createVerifiedProjectImageCache();
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
 		projectId,
 		resolveArtwork: async (image, signal) => {
 			if (api === null) throw new Error('Artwork storage is unavailable.');
-			return readVerifiedArtwork(api, projectId, image, signal);
+			return verifiedImages.take(projectId, image.assetId) ?? readVerifiedArtwork(api, projectId, image, signal);
 		},
 		resolveTexture: async (assetId, signal) => {
 			if (api === null) throw new Error('Finish image storage is unavailable.');
-			return api.loadAssetContent(projectId, assetId, signal);
+			return verifiedImages.take(projectId, assetId) ?? api.loadAssetContent(projectId, assetId, signal);
 		},
 		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
@@ -282,7 +290,7 @@
 	});
 
 	const projectSession = createProjectSession({
-		projectId, intent, api, auth, session,
+		projectId, intent, api, auth, session, images: verifiedImages,
 		// Shallow `replaceState` (Studio mirrors its root into the address) does not move
 		// `page.url`; the session rewrites this address when a Save consumes `create=1`, so it
 		// must start from the address actually shown or it would erase the mirrored root.

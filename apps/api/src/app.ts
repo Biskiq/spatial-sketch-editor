@@ -59,6 +59,12 @@ import {
 	saveFormLibraryItem
 } from './form-library.js';
 import type { ObjectStore } from './object-store.js';
+import {
+	expireAbandonedImageRepairs,
+	ImageRepairError,
+	readImageRepairRequest,
+	repairProjectImage
+} from './image-repair.js';
 import { listProjects, loadProject, ProjectNotFoundError } from './project-persistence.js';
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
 import {
@@ -756,6 +762,14 @@ export function createApp({
 		const projectId = (request.params as { projectId?: unknown }).projectId;
 		if (!userId) return unauthorized(reply);
 		if (!isValidProjectId(projectId)) return assetInputFailure(reply, new AssetInputError('invalid_asset', 400, 'Invalid project ID'));
+		// The scoped asset access is the repair-attempt sweep point: an abandoned
+		// staging key is removed once it expires and no ready row names it. This is
+		// the existing model-staging pattern, not a background worker.
+		try {
+			await expireAbandonedImageRepairs(pool, objectStore, projectId, userId);
+		} catch {
+			// Cleanup never blocks reading the project's live assets.
+		}
 		try {
 			return { assets: await listAssets(pool, userId, projectId) };
 		} catch (error) {
@@ -829,6 +843,49 @@ export function createApp({
 		}
 	});
 
+	// Exact-byte recovery for an existing saved image. The request carries only
+	// the original bytes and the two facts the editor displayed (the pin and the
+	// loaded saved base); the server derives everything else from the saved head.
+	app.put('/projects/:projectId/assets/:assetId/repair', {
+		onRequest: requireAssetUpload,
+		handlerTimeout: lifecyclePolicy.handlerTimeoutMs
+	}, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const { projectId, assetId } = request.params as { projectId?: unknown; assetId?: unknown };
+		if (!userId) return unauthorized(reply);
+		if (!isValidProjectId(projectId) || !isValidAssetId(assetId)) {
+			return assetInputFailure(reply, new AssetInputError('invalid_asset', 400, 'Invalid asset identifier'));
+		}
+		const parsed = readImageRepairRequest(request.query);
+		if (parsed instanceof ImageRepairError) {
+			return reply.code(parsed.statusCode).send(errorBody(parsed.code, parsed.message));
+		}
+		const contentLength = readUploadContentLength(request);
+		if (contentLength instanceof AssetInputError) return assetInputFailure(reply, contentLength);
+		if (!(request.body instanceof Readable)) {
+			return assetInputFailure(reply, new AssetInputError('invalid_upload', 400, 'Invalid upload body'));
+		}
+		const requestDeadline = createProjectWriteRequestSignal(request, lifecyclePolicy.handlerTimeoutMs);
+		try {
+			return await repairProjectImage(
+				pool,
+				userId,
+				projectId,
+				assetId,
+				parsed,
+				contentLength,
+				request.body,
+				objectStore,
+				objectNamespace,
+				{ parentSignal: requestDeadline.signal, policy: lifecyclePolicy }
+			);
+		} catch (error) {
+			return imageRepairFailure(app, reply, error);
+		} finally {
+			requestDeadline.dispose();
+		}
+	});
+
 	app.get('/projects/:projectId/assets/:assetId/content', { onRequest: requireAssetSession }, async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		const { projectId, assetId } = request.params as { projectId?: unknown; assetId?: unknown };
@@ -893,6 +950,18 @@ function modelFailure(app: FastifyInstance, reply: FastifyReply, error: unknown,
 		return reply.code(409).send(errorBody('project-busy', 'The project write was stopped; retry after the project operation resolves'));
 	}
 	return databaseFailure(app, reply, error, message);
+}
+
+function imageRepairFailure(app: FastifyInstance, reply: FastifyReply, error: unknown) {
+	if (error instanceof ImageRepairError) {
+		return reply.code(error.statusCode).send(errorBody(error.code, error.message));
+	}
+	if (error instanceof ProjectNotFoundError) return notFound(reply);
+	if (error instanceof ProjectWriteAbortedError) {
+		if (reply.sent) return reply;
+		return reply.code(409).send(errorBody('project-busy', 'The project write was stopped; retry after the project operation resolves'));
+	}
+	return databaseFailure(app, reply, error, 'Image repair failed');
 }
 
 function assetFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {

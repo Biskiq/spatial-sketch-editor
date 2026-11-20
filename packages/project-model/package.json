@@ -8,6 +8,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./project-images": {
+      "types": "./src/project-images.ts",
+      "default": "./src/project-images.ts"
+    },
     "./units": {
       "types": "./src/units/index.ts",
       "default": "./src/units/index.ts"

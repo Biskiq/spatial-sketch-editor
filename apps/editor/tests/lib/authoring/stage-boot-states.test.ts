@@ -148,6 +148,29 @@ describe('the editor host boots into exactly one named state', () => {
 		expect(server).toEqual({ status: 'error', projectId: PROJECT_ID, message: 'the request was rejected' });
 	});
 
+	it('keeps a project-image refusal as its own actionable error state', async () => {
+		const diagnostic = {
+			code: 'image-missing' as const,
+			projectId: PROJECT_ID,
+			savedBase: 'saved-base:base',
+			assetId: '00000000-0000-4000-8000-000000000001',
+			expectedPin: { hash: `sha256-${'a'.repeat(64)}`, mime: 'image/png' as const, size: 68 },
+			paths: ['$.units.scene.data.textures[0].uri'],
+			action: 'Repair it from the original file, then reopen the project.'
+		};
+		const state = await bootFromLoadOutcome(
+			initialBootState(PROJECT_ID, 'open'),
+			{ kind: 'image-refused', message: 'The Finish image is missing.', diagnostic },
+			contextFor()
+		);
+		expect(state).toEqual({
+			status: 'error',
+			projectId: PROJECT_ID,
+			message: 'The Finish image is missing.',
+			image: diagnostic
+		});
+	});
+
 	it('admits a loaded valid source into ready with the read-facade contract the Stage mounts', async () => {
 		const context = contextFor();
 		const document = await starterDocument(context);

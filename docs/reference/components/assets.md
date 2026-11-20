@@ -77,11 +77,18 @@ Project registry rows
 → PNG/WebP/JPEG
 ```
 
-P20 does **not** build the final Assets workspace. Cloud Load resolves every referenced logical
-texture before project replacement, verifies registry metadata plus MIME/size/SHA, then primes the
-existing binary store; failure leaves the current project unchanged. Provider search and general
-delete/GC remain deferred. Built-ins retain catalogue identity — do not invent registry behavior for
-them.
+P20 does **not** build the final Assets workspace. Cloud Load resolves the complete project-image
+closure before replacement — every registered project texture (including a Finish-only image and a
+texture record whose Finish was removed) and every Artwork shelf image — verifies the ready row,
+locator, MIME, byte length, SHA, stored bytes and declared dimensions, then primes the existing
+binary store; failure leaves the current project unchanged. Provider search and general delete/GC
+remain deferred. Built-ins retain catalogue identity — do not invent registry behavior for them.
+
+One shared enumerator in `@portfolio/project-model` produces the closure for Save, Load and
+delivery. It deduplicates by asset id, rejects two pins or two oriented sizes for one image and
+keeps every authored path that references it. A private closure requires the authored `texture`
+pin for a project texture; delivery accepts the ready registry row for a legacy pin-less texture
+resource. An unreferenced staged P20 row is outside both closures.
 
 ## Artwork images
 
@@ -118,9 +125,35 @@ revokes it immediately, and keeps the decoded dimensions for the mapping aspect 
 resolution warning. A failed or tampered image falls back to the Finish colour; the Card offers a
 targeted *Retry* that invalidates only that URI. Catalogue textures keep their static path.
 
-**Save-mode gap:** Save verifies the Artwork shelf, not Finish texture pins. The editor loader's
-verification covers authoring; save-mode texture verification is a follow-up. Release preparation
-pins and verifies the bytes for delivery.
+**Save, cold Load and exact-byte repair (T2.S8 · PR C).** Save now verifies the complete closure,
+including a Finish-only project: owner/project/asset, ready status, canonical locator, MIME, byte
+length, SHA, the actual R2 bytes and the accepted image format/dimensions. Verification runs before
+the Save transaction so an identical committed retry can still replay its receipt after a blob has
+disappeared; the IO refusal itself is raised only after receipt replay and saved-base checks. Under
+the project row lock the captured ready rows — including their object keys — must still match, so a
+concurrent repair cannot mix one row with another's bytes. The version and receipt append only
+after every check.
+
+Cold Load verifies the same closure before installing the incoming candidate. A refusal preserves
+the open session, history and saved base and returns a source-specific diagnostic with the code,
+project ID, loaded saved base, asset id, expected pin, every referencing path and the repair action.
+Verified bytes enter a bounded, short-lived loading cache; the Stage consumes each entry at most
+once and a miss re-fetches through the normal verified route. A refused candidate clears the bytes
+it had already verified.
+
+The owner-only repair route is
+`PUT /projects/:projectId/assets/:assetId/repair?expectedPin=sha256-…&savedBase=saved-base:…`
+with raw `application/octet-stream` bytes. It derives the authoritative pin from the owned saved
+head and ready row; a missing row or changed metadata requires source recovery. When only the
+backing bytes are missing or corrupt, the supplied original streams to a fresh private staging key
+and is verified for length, digest, MIME and Artwork dimensions before a conditional swap of the
+physical object key. A wrong file is `422`, a stale base or changed pin `409`, an inaccessible
+resource `404` and storage failure `503`. A healthy identical row answers success without a write;
+a concurrent winner is accepted only after its bytes verify. The superseded key is retired after
+commit; a failed attempt releases its staging key and attempt row. Attempts record owner, project,
+asset, staging key and a 24-hour expiry before streaming, and the next scoped asset access collects
+expired attempts whose key no ready row references. Repair creates no source revision, version,
+receipt or history entry.
 
 An uploaded image whose write was cancelled, refused or undone stays in project assets under P20
 retention. The Scene never puts bytes in Undo and never deletes them; an asset no texture record

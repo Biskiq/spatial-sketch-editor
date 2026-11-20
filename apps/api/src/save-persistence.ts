@@ -37,7 +37,13 @@ import {
 } from '@portfolio/project-model/save';
 
 import type { DatabaseClient, DatabasePool } from './database.js';
-import { ArtworkAssetRefusal, prepareArtworkPins, verifyArtworkPinRows, type ArtworkAssetPin } from './artwork-persistence.js';
+import {
+	ArtworkAssetRefusal,
+	ImageVerificationUnavailableError,
+	prepareProjectImagePins,
+	verifyProjectImagePinRows,
+	type ArtworkAssetPin
+} from './artwork-persistence.js';
 import type { ObjectStore } from './object-store.js';
 import { verifyModelResourcePins } from './model-persistence.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
@@ -141,16 +147,27 @@ export async function saveAcceptedSourceWithHandlers(
 		throw new SaveRefusalError(preparedResult.code, preparedResult.message, preparedResult.issues ?? []);
 	}
 	const prepared = preparedResult.source;
-	const scene = (prepared.document as ProjectEnvelope).units?.scene?.data;
-	let artworkPins: readonly ArtworkAssetPin[] = [];
-	let artworkRefusal: ArtworkAssetRefusal | undefined;
-	if (scene?.artworkLibrary?.length) {
-		try {
-			artworkPins = await prepareArtworkPins(pool, store, ownerId, capture.projectId, scene, 'save');
-		} catch (error) {
-			if (!(error instanceof ArtworkAssetRefusal)) throw error;
-			artworkRefusal = error;
-		}
+	// Resolve the **complete** image closure, not just the Artwork shelf: a
+	// Finish-only project still names every P20 texture it uses. Verification is
+	// performed before the transaction so the receipt and saved-base checks can
+	// still answer a committed retry after a blob has disappeared; the refusal is
+	// raised only after both have passed.
+	let imagePins: readonly ArtworkAssetPin[] = [];
+	let imageRefusal: ArtworkAssetRefusal | undefined;
+	let imageUnavailable: ImageVerificationUnavailableError | undefined;
+	try {
+		imagePins = await prepareProjectImagePins(
+			pool,
+			store,
+			ownerId,
+			capture.projectId,
+			prepared.document as ProjectEnvelope,
+			'private-save'
+		);
+	} catch (error) {
+		if (error instanceof ArtworkAssetRefusal) imageRefusal = error;
+		else if (error instanceof ImageVerificationUnavailableError) imageUnavailable = error;
+		else throw error;
 	}
 
 	return withTransaction(pool, async (db) => {
@@ -296,14 +313,22 @@ LIMIT 1`,
 		// retained bytes and provenance agree with the resource's pins; the refusal
 		// rolls the transaction back, so no stored version changes.
 		await verifyModelResourcePins(db, capture.projectId, finalSource.document as ProjectEnvelope);
+		// A receipt replay and the saved-base checks above answer before any image
+		// refusal, so an identical committed retry never turns a vanished blob into
+		// a lost acknowledgement. Storage unavailability stays distinct from bad
+		// bytes: it is a service failure, not a project refusal.
+		if (imageUnavailable !== undefined) throw imageUnavailable;
 		try {
-			if (artworkRefusal) throw artworkRefusal;
-			await verifyArtworkPinRows(db, ownerId, capture.projectId, artworkPins);
+			if (imageRefusal !== undefined) throw imageRefusal;
+			await verifyProjectImagePinRows(db, ownerId, capture.projectId, imagePins);
 		} catch (error) {
 			if (!(error instanceof ArtworkAssetRefusal)) throw error;
-			throw new SaveRefusalError('invalid-project', error.message, [
-				{ path: error.path, code: 'artwork_asset_unavailable', message: error.message }
-			]);
+			const paths = error.paths.length === 0 ? [error.path] : error.paths;
+			throw new SaveRefusalError(
+				'invalid-project',
+				error.message,
+				paths.map((path) => ({ path, code: error.code, message: error.message }))
+			);
 		}
 
 		const nextVersion = latestVersion + 1;

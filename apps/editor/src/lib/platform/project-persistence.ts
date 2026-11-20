@@ -37,6 +37,24 @@ export type ProjectAssetContent = {
 	bytes: Uint8Array;
 };
 
+export type ProjectImagePin = {
+	hash: string;
+	mime: ProjectAssetMime;
+	size: number;
+};
+
+export type ImageRepairRequest = {
+	expectedPin: string;
+	savedBaseToken: string;
+};
+
+export type ImageRepairAcknowledgement = {
+	projectId: string;
+	assetId: string;
+	pin: ProjectImagePin;
+	replaced: boolean;
+};
+
 export type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 export type ProjectSummary = {
@@ -149,6 +167,14 @@ export type ProjectApi = {
 		signal?: AbortSignal
 	): Promise<ProjectAssetMetadata>;
 	loadAssetContent(projectId: string, assetId: string, signal?: AbortSignal): Promise<ProjectAssetContent>;
+	/** Restore one saved image's exact bytes; the server derives the pin from the saved head. */
+	repairAsset(
+		projectId: string,
+		assetId: string,
+		bytes: Uint8Array,
+		request: ImageRepairRequest,
+		signal?: AbortSignal
+	): Promise<ImageRepairAcknowledgement>;
 };
 
 export function createProjectApi(
@@ -255,7 +281,20 @@ export function createProjectApi(
 				`${assetPath(projectId)}/${encodeURIComponent(assetId)}/content`,
 				{ method: 'GET' },
 				signal
-			)
+			),
+		repairAsset: (projectId, assetId, bytes, request, signal) => {
+			const query = new URLSearchParams({
+				expectedPin: request.expectedPin,
+				savedBase: request.savedBaseToken
+			});
+			return requestAssetUpload(
+				requestFetch,
+				origin,
+				`${assetPath(projectId)}/${encodeURIComponent(assetId)}/repair?${query.toString()}`,
+				bytes,
+				signal
+			).then(readImageRepairAcknowledgement);
+		}
 	};
 }
 
@@ -594,6 +633,31 @@ function readDeleteAcknowledgement(value: unknown): DeleteProjectAcknowledgement
 	return {
 		projectId: readString(value.projectId),
 		cleanup: readEnum(value.cleanup, ['complete', 'pending'])
+	};
+}
+
+function readImageRepairAcknowledgement(value: unknown): ImageRepairAcknowledgement {
+	if (!isRecord(value) || Object.keys(value).length !== 4 || !isRecord(value.pin)) {
+		throw invalidResponse();
+	}
+	if (
+		Object.keys(value.pin).length !== 3 ||
+		!Object.prototype.hasOwnProperty.call(value.pin, 'hash') ||
+		!Object.prototype.hasOwnProperty.call(value.pin, 'mime') ||
+		!Object.prototype.hasOwnProperty.call(value.pin, 'size') ||
+		typeof value.replaced !== 'boolean'
+	) {
+		throw invalidResponse();
+	}
+	return {
+		projectId: readString(value.projectId),
+		assetId: readAssetId(value.assetId),
+		pin: {
+			hash: readContentId(value.pin.hash),
+			mime: readAssetMime(value.pin.mime as string | null),
+			size: readNullableAssetByteSize(value.pin.size) as number
+		},
+		replaced: value.replaced
 	};
 }
 

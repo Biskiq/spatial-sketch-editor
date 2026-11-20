@@ -5,13 +5,15 @@ vi.mock('$lib/render/artwork/artwork-decode', () => ({ verifyArtworkDecode: vi.f
 import {
 	FINISH_IMAGE_POLICY,
 	importProjectImage,
-	verifyArtworkLibrary
+	verifyArtworkLibrary,
+	verifyProjectImageClosure
 } from '$lib/authoring/artwork/project-artwork';
+import { createVerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 import { finishImageLabel, finishImageWarning } from '$lib/authoring/look/finish-image.svelte';
 import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
-import type { ProjectApi, ProjectAssetMetadata } from '$lib/platform/project-persistence';
-import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
+import { ProjectPersistenceError, type ProjectApi, type ProjectAssetMetadata } from '$lib/platform/project-persistence';
+import type { CameraFreeSceneDocument, ProjectEnvelope, TypedResource } from '@portfolio/project-model/units';
 
 const PNG = Uint8Array.from(
 	atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII='),
@@ -19,6 +21,7 @@ const PNG = Uint8Array.from(
 );
 const PLACED = '00000000-0000-4000-8000-000000000001';
 const UNPLACED = '00000000-0000-4000-8000-000000000002';
+const FINISH = '00000000-0000-4000-8000-000000000003';
 const image = { pixelWidth: 1, pixelHeight: 1 };
 
 function row(assetId: string, sha256: string): ProjectAssetMetadata {
@@ -55,9 +58,9 @@ function scene(): CameraFreeSceneDocument {
 	};
 }
 
-function api(rows: ProjectAssetMetadata[]) {
+function api(rows: ProjectAssetMetadata[], bytes: Uint8Array = PNG) {
 	const loadAssetContent = vi.fn(async (_projectId: string, _assetId: string) => ({
-		bytes: PNG,
+		bytes,
 		mime: 'image/png' as const
 	}));
 	const listAssets = vi.fn(async () => rows);
@@ -67,6 +70,130 @@ function api(rows: ProjectAssetMetadata[]) {
 		loadAssetContent
 	};
 }
+
+function finishScene(): CameraFreeSceneDocument {
+	return {
+		formatVersion: 11,
+		textures: [{ id: FINISH, name: 'Brick', uri: `/project-assets/${FINISH}` }],
+		materials: [{
+			id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm',
+			color: '#ffffff', maps: { color: FINISH }
+		}],
+		entities: [],
+		artworkLibrary: []
+	};
+}
+
+function envelopeOf(sceneDocument: CameraFreeSceneDocument, resources: TypedResource[]): ProjectEnvelope {
+	return {
+		units: {
+			scene: { data: sceneDocument },
+			resources: { data: { resources } }
+		}
+	} as unknown as ProjectEnvelope;
+}
+
+function finishResource(sha256: string): TypedResource {
+	return {
+		kind: 'texture', id: FINISH, contentRevision: sha256, unresolved: null,
+		pin: { hash: sha256, mime: 'image/png', size: PNG.length, locator: `/project-assets/${FINISH}` }
+	};
+}
+
+describe('cold-load project image closure', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('verifies a Finish-only image against its authored pin and rents the bytes to the load scope', async () => {
+		const digest = `sha256-${await imageSha256(PNG)}`;
+		const harness = api([row(FINISH, digest)]);
+		const cache = createVerifiedProjectImageCache();
+		const requirements = await verifyProjectImageClosure(
+			harness.api,
+			'project',
+			envelopeOf(finishScene(), [finishResource(digest)]),
+			new AbortController().signal,
+			{ savedBaseToken: 'saved-base:base', cache }
+		);
+		expect(requirements.map((requirement) => requirement.assetId)).toEqual([FINISH]);
+		expect(harness.listAssets).toHaveBeenCalledTimes(1);
+		expect(harness.loadAssetContent).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(verifyArtworkDecode)).not.toHaveBeenCalled();
+		expect(cache.take('project', FINISH)).toMatchObject({ bytes: PNG, mime: 'image/png' });
+		expect(cache.take('project', FINISH)).toBeNull();
+	});
+
+	it('names a missing row, corrupt bytes and a changed pin as distinct source refusals', async () => {
+		const digest = `sha256-${await imageSha256(PNG)}`;
+		const signal = new AbortController().signal;
+		const source = envelopeOf(finishScene(), [finishResource(digest)]);
+
+		await expect(verifyProjectImageClosure(api([]).api, 'project', source, signal)).rejects.toMatchObject({
+			diagnostic: {
+				code: 'image-missing', projectId: 'project', savedBase: null, assetId: FINISH,
+				expectedPin: { hash: digest },
+				paths: [
+					'$.units.scene.data.textures[0].uri',
+					'$.units.scene.data.materials[0].maps.color'
+				]
+			}
+		});
+
+		const corrupt = api([row(FINISH, digest)], Uint8Array.from(PNG, (value, index) => index === PNG.length - 1 ? value ^ 1 : value));
+		await expect(verifyProjectImageClosure(corrupt.api, 'project', source, signal)).rejects.toMatchObject({
+			diagnostic: { code: 'image-corrupt', assetId: FINISH }
+		});
+
+		const changed = api([row(FINISH, `sha256-${'0'.repeat(64)}`)]);
+		await expect(verifyProjectImageClosure(changed.api, 'project', source, signal)).rejects.toMatchObject({
+			diagnostic: { code: 'image-pin-changed', assetId: FINISH }
+		});
+	});
+
+	it('refuses a texture with no authored pin before fetching any bytes', async () => {
+		const harness = api([]);
+		await expect(
+			verifyProjectImageClosure(
+				harness.api, 'project', envelopeOf(finishScene(), []), new AbortController().signal,
+				{ savedBaseToken: 'saved-base:base' }
+			)
+		).rejects.toMatchObject({
+			diagnostic: {
+				code: 'image-requirement-invalid',
+				savedBase: 'saved-base:base',
+				paths: ['$.units.resources.data.resources']
+			}
+		});
+		expect(harness.listAssets).not.toHaveBeenCalled();
+		expect(harness.loadAssetContent).not.toHaveBeenCalled();
+	});
+
+	it('refuses a permission failure as its own diagnostic', async () => {
+		const digest = `sha256-${await imageSha256(PNG)}`;
+		const forbidden = {
+			listAssets: vi.fn(async () => { throw new ProjectPersistenceError('auth', 'sign in'); }),
+			loadAssetContent: vi.fn()
+		} as unknown as ProjectApi;
+		await expect(
+			verifyProjectImageClosure(forbidden, 'project', envelopeOf(finishScene(), [finishResource(digest)]), new AbortController().signal)
+		).rejects.toMatchObject({ diagnostic: { code: 'image-forbidden' } });
+	});
+});
+
+describe('verified project image loading cache', () => {
+	it('is bounded, evicts the oldest entry and clears one project', () => {
+		const cache = createVerifiedProjectImageCache({ maxBytes: 10 });
+		cache.put('project', 'a', { bytes: new Uint8Array(6), mime: 'image/png' });
+		cache.put('project', 'b', { bytes: new Uint8Array(6), mime: 'image/png' });
+		expect(cache.size).toBe(1);
+		expect(cache.take('project', 'a')).toBeNull();
+		expect(cache.take('project', 'b')).not.toBeNull();
+		cache.put('project', 'c', { bytes: new Uint8Array(4), mime: 'image/png' });
+		cache.put('other', 'd', { bytes: new Uint8Array(4), mime: 'image/png' });
+		cache.clear('project');
+		expect(cache.size).toBe(1);
+		expect(cache.take('other', 'd')).not.toBeNull();
+	});
+});
 
 describe('Artwork reopen verification', () => {
 	beforeEach(() => vi.clearAllMocks());

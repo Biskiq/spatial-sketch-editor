@@ -30,6 +30,7 @@
  */
 import type { LayoutGeometryIssue } from '@portfolio/layout-core';
 import type { ProjectIssue } from '@portfolio/project-model';
+import type { ProjectImageDiagnostic } from '$lib/authoring/artwork/project-artwork';
 import { createEmptyUnitEnvelope } from '@portfolio/project-model/units';
 
 import {
@@ -61,7 +62,13 @@ export type BootState =
 	  }
 	| { readonly status: 'missing'; readonly projectId: string }
 	| { readonly status: 'forbidden'; readonly projectId: string }
-	| { readonly status: 'error'; readonly projectId: string; readonly message: string };
+	| {
+			readonly status: 'error';
+			readonly projectId: string;
+			readonly message: string;
+			/** Present when a cold load refused one project image; names the repair. */
+			readonly image?: ProjectImageDiagnostic;
+	  };
 
 /** The outcome of one cloud project read, deliberately separate from its cause. */
 export type BootLoadOutcome =
@@ -69,7 +76,12 @@ export type BootLoadOutcome =
 	| { readonly kind: 'not-found' }
 	| { readonly kind: 'forbidden' }
 	| { readonly kind: 'network' }
-	| { readonly kind: 'server'; readonly message: string };
+	| { readonly kind: 'server'; readonly message: string }
+	| {
+			readonly kind: 'image-refused';
+			readonly message: string;
+			readonly diagnostic: ProjectImageDiagnostic;
+	  };
 
 /**
  * How an identity was reached.
@@ -143,6 +155,11 @@ export async function bootFromLoadOutcome(
 			return { status: 'error', projectId, message: 'Cloud service is unavailable' };
 		case 'server':
 			return { status: 'error', projectId, message: outcome.message };
+		case 'image-refused':
+			// A source-specific image refusal is not a generic service failure: the
+			// diagnostic names the asset, its pin and every referencing path, and the
+			// previous session remains mounted because nothing was installed.
+			return { status: 'error', projectId, message: outcome.message, image: outcome.diagnostic };
 		case 'loaded':
 			return stateFromAdmission(projectId, await admitSource(documentOf(outcome.document), context), 'ready');
 	}
