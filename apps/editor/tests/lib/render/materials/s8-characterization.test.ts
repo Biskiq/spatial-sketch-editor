@@ -148,12 +148,15 @@ async function defectTextureOrder() {
 		const byte = 128;
 		const raw = byte / 255;
 		const srgb = raw <= 0.04045 ? raw / 12.92 : ((raw + 0.055) / 1.055) ** 2.4;
+		// The last bit of `** 2.4` differs between V8 versions. The baseline is a
+		// transfer-function observation, not a bit-exact numeric oracle.
+		const colourRead = Number(srgb.toFixed(12));
 		return {
 			sharedUri: shared,
 			firstVerified: 'one Texture cached by URI; the first slot decides its colorSpace',
 			byte,
 			rawRead: raw,
-			colourRead: srgb,
+			colourRead,
 			expected: { colourSlot: SRGBColorSpace, dataSlot: NoColorSpace },
 			colourFirst,
 			dataFirst
@@ -423,7 +426,7 @@ describe('E0 characterization baseline', () => {
 		expect(defect.colourFirst).toEqual({ mapColorSpace: 'srgb', roughnessMapColorSpace: 'srgb' });
 		expect(defect.dataFirst).toEqual({ roughnessMapColorSpace: '', mapColorSpace: '' });
 		expect(defect.rawRead).toBeCloseTo(128 / 255, 15);
-		expect(defect.colourRead).toBeCloseTo(0.21586050011389926, 15);
+		expect(defect.colourRead).toBeCloseTo(0.215860500114, 12);
 	});
 
 	it('records the missing Region UV attribute', async () => {

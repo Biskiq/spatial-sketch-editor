@@ -70,7 +70,8 @@ freezes descriptors and evaluation inputs, not screenshots.
 1. **One cached source, two interpretations.** With one URI loaded first as `map`, a later
    `roughnessMap` reads the same `Texture` with `colorSpace = 'srgb'` instead of `''`. Loaded first as
    `roughnessMap`, a later `map` reads `''` instead of `'srgb'`. The 128 grey reading is recorded as
-   raw `0.5019607843137255` versus sRGB-decoded `0.21586050011389926`. B must key decode policy by
+   raw `0.5019607843137255` versus sRGB-decoded `0.215860500114` (rounded to 12 decimals; V8 versions
+   differ in the last bit of `** 2.4`). B must key decode policy by
    role/source rather than by URI alone.
 2. **No Region UV.** A rectangular slab's region mesh has attributes `normal`, `position` only, with
    zero `uv`; the baseline records `hasUv: false` and the expected metric planar UV0. B must emit it
@@ -215,6 +216,7 @@ signed normal pair.
 | `npx vite-node scripts/build-s8-characterization-fixtures.ts --check` | pass (all bytes and manifest match) |
 | `node scripts/record-s8-baseline-environment.mjs` | pass; browser hash matches; WebGL2 true, WebGPU false |
 | `npx vitest run tests/lib/project-model/materials tests/lib/render/materials/s8-characterization.test.ts` | **109 passed / 6 files** |
+| Same focused suite under Node 22 (the CI version) | **109 passed / 6 files** |
 | `npx vitest run tests/lib/render/materials/look-parity-golden.test.ts tests/lib/render/materials/scene-instance-material.test.ts tests/lib/render/resources/texture-store.test.ts tests/lib/layout/layout-regions.test.ts` | **38 passed / 4 files** |
 | `npm run check:project-model` | pass |
 | `npm run check` | 0 errors; 16 pre-existing editor warnings |
