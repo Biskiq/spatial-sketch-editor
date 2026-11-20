@@ -9,9 +9,10 @@
  * are plain data and live here, so the handler never imports the realization's
  * values.
  */
-import type { StandardMaterialDescriptor } from '../resources/material-descriptor';
+import type { StandardFinishPlan, StandardMaterialDescriptor } from '../resources/material-descriptor';
 import type { TextureLoadScope } from '../resources/texture-store';
 import type { TextureVariantSource } from '../resources/texture-variant';
+import type { Texture } from 'three';
 
 /** The surface look a model's meshes wear, and the texture variant it binds, if any. */
 export type ModelLook = {
@@ -22,6 +23,8 @@ export type ModelLook = {
 		readonly repeat: readonly [number, number];
 		readonly scope: TextureLoadScope | null;
 	} | null;
+	/** The acquired sampled views, when the look uses a Finish plan. */
+	readonly views?: Readonly<Record<string, Texture>>;
 };
 
 /** The fields of a resolved Scene material a model look reads. */
@@ -55,16 +58,22 @@ export function texturesReady(result: { readonly status: string } | undefined): 
 export function modelLookFor(
 	effective: ModelSurfaceSource,
 	scope: TextureLoadScope | null,
-	textured: boolean
+	textured: boolean,
+	finish?: StandardFinishPlan,
+	views?: Readonly<Record<string, Texture>>
 ): ModelLook {
 	return {
 		material: {
 			color: effective.color,
 			roughness: effective.roughness,
 			metalness: effective.metalness,
-			...(effective.normalScale == null ? {} : { normalScale: effective.normalScale })
+			...(effective.normalScale == null ? {} : { normalScale: effective.normalScale }),
+			...(finish === undefined ? {} : { finish })
 		},
-		texture: textured ? { source: effective, repeat: [1, 1], scope } : null
+		// A sampled look never binds a stock map slot; the plan's views replace
+		// every map, including the normal the scale belongs to.
+		texture: finish !== undefined ? null : textured ? { source: effective, repeat: [1, 1], scope } : null,
+		...(views === undefined ? {} : { views })
 	};
 }
 

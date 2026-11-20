@@ -4,8 +4,9 @@
   "fixturesManifest": "fixtures.json",
   "environmentEvidence": "evidence/e0-environment.json",
   "pixelBaseline": {
-    "status": "deferred-to-B",
-    "requirement": "Before replacing the Scene resolver or sampling path, PR B must capture the pre-change product-canvas rendering for the catalogue, S4 image, palette follower, shared Form/GLB and each Treatment, label its software renderer, and retain those pixels as the replacement oracle."
+    "status": "captured",
+    "requirement": "Before replacing the Scene resolver or sampling path, PR B must capture the pre-change product-canvas rendering for the catalogue, S4 image, palette follower, shared Form/GLB and each Treatment, label its software renderer, and retain those pixels as the replacement oracle.",
+    "artifacts": "apps/editor/tests/lib/render/materials/__fixtures__/s8/pixels/capture.json"
   },
   "charts": {
     "swatchGrey": {
@@ -788,19 +789,20 @@
       },
       "colourFirst": {
         "mapColorSpace": "srgb",
-        "roughnessMapColorSpace": "srgb"
+        "roughnessMapColorSpace": ""
       },
       "dataFirst": {
         "roughnessMapColorSpace": "",
-        "mapColorSpace": ""
+        "mapColorSpace": "srgb"
       }
     },
     "regionUv": {
       "surface": "top + underside + edge of one rectangular slab",
-      "hasUv": false,
+      "hasUv": true,
       "attributes": [
         "normal",
-        "position"
+        "position",
+        "uv"
       ],
       "groups": 6,
       "vertexCount": 36,

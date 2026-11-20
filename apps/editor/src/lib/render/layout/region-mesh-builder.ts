@@ -11,6 +11,7 @@ export function buildRegionMeshGeometry(
 	const geometry = new BufferGeometry();
 	const positions: number[] = [];
 	const normals: number[] = [];
+	const uvs: number[] = [];
 	const surfaceByTriangle: RegionSurface[] = [];
 	for (const { polygon, normal, surface } of region.faces) {
 		const start = positions.length / 3;
@@ -25,6 +26,13 @@ export function buildRegionMeshGeometry(
 			const reverse = windingY * normal[1] < 0;
 			for (const [x, y, z] of [a, reverse ? c : b, reverse ? b : c]) {
 				positions.push(x - origin[0], y - origin[1], z - origin[2]);
+				// Region faces are metre charts. Use the compiled world coordinates
+				// before the origin subtraction so two rooms' charts agree. The top
+				// chart looks down with v along -z; the underside mirrors z so the
+				// image reads the same way from below. Edges have no meaningful chart.
+				if (surface === 'top') uvs.push(x, -z);
+				else if (surface === 'underside') uvs.push(x, z);
+				else uvs.push(0, 0);
 			}
 			normals.push(...normal, ...normal, ...normal);
 			surfaceByTriangle.push(surface);
@@ -33,6 +41,7 @@ export function buildRegionMeshGeometry(
 	}
 	geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 	geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+	geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
 	geometry.userData.regionSurfaces = surfaceByTriangle;
 	return geometry;
 }

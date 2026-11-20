@@ -12,6 +12,8 @@
  * release-then-reacquire inside one update never deletes a GPU texture.
  */
 import {
+  LinearFilter,
+  LinearMipmapLinearFilter,
   NoColorSpace,
   RepeatWrapping,
   SRGBColorSpace,
@@ -99,10 +101,87 @@ const sourceCache = new Map<string, SourceEntry>();
 const variantCache = new Map<VariantKey, VariantEntry>();
 const materialLoadPromises = new Map<string, Promise<MaterialTexturesResult>>();
 
-function applySourceDefaults(texture: ThreeTexture, slot: MaterialTextureSlot) {
+/**
+ * The decode policy of one render slot.
+ *
+ * `srgb` is a colour input: the hardware decodes the stored sRGB bytes once.
+ * `raw` is data: no transfer function, no premultiplication. The policy is part
+ * of the source-cache key, so one URI bound as both a colour map and a data map
+ * cannot inherit whichever slot loaded first.
+ */
+export type TextureDecodePolicy = 'srgb' | 'raw';
+
+/**
+ * The upload row convention.
+ *
+ * `legacy` preserves TextureLoader's bottom-up rows for the pre-S8 path, exactly
+ * as every existing catalogue surface draws. `top` uploads top-first rows for a
+ * sampled Finish, whose graph applies the one origin conversion at the sample
+ * boundary.
+ */
+export type TextureRowStorage = 'legacy' | 'top';
+
+export function texturePolicyForSlot(slot: MaterialTextureSlot): TextureDecodePolicy {
+  return slot === 'map' ? 'srgb' : 'raw';
+}
+
+/** The render slot one portable map role reads. */
+export function textureSlotForRole(
+  role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion'
+): MaterialTextureSlot {
+  switch (role) {
+    case 'color':
+      return 'map';
+    case 'normal':
+      return 'normalMap';
+    case 'roughness':
+      return 'roughnessMap';
+    case 'metalness':
+      return 'metalnessMap';
+    case 'occlusion':
+      return 'aoMap';
+  }
+}
+
+/**
+ * One source texture's render interpretation.
+ *
+ * The returned texture's `colorSpace` states the policy it was loaded under. The
+ * caller must not mutate it; a second role with a different policy loads its own
+ * entry, which is the fix for the one-cache-two-meanings defect.
+ */
+function applySourceDefaults(
+  texture: ThreeTexture,
+  policy: TextureDecodePolicy,
+  storage: TextureRowStorage = 'legacy'
+) {
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.colorSpace = slot === 'map' ? SRGBColorSpace : NoColorSpace;
+  texture.colorSpace = policy === 'srgb' ? SRGBColorSpace : NoColorSpace;
+  // Top-first storage for the sampled path; the legacy path keeps TextureLoader's
+  // default so every existing surface draws exactly as before.
+  if (storage === 'top') texture.flipY = false;
+  // Data roles read raw channel values: never premultiply, never assume a
+  // 4-byte alignment from the source image's own row width.
+  texture.premultiplyAlpha = false;
+  texture.unpackAlignment = 1;
+  texture.generateMipmaps = true;
+  texture.minFilter = LinearMipmapLinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.anisotropy = 1;
+  texture.needsUpdate = true;
+}
+
+/** Apply the slot's decode policy to a clone without second-guessing its source. */
+function applyClonePolicy(texture: ThreeTexture, slot: MaterialTextureSlot) {
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.colorSpace = texturePolicyForSlot(slot) === 'srgb' ? SRGBColorSpace : NoColorSpace;
+  texture.premultiplyAlpha = false;
+  texture.generateMipmaps = true;
+  texture.minFilter = LinearMipmapLinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.anisotropy = 1;
   texture.needsUpdate = true;
 }
 
@@ -146,9 +225,15 @@ function scopeIdOf(scope?: TextureLoadScope | TextureScopeKey | null): string | 
   return id && id.length > 0 ? id : null;
 }
 
-function sourceKey(scope: TextureLoadScope | TextureScopeKey | null | undefined, url: string): string {
+function sourceKey(
+  scope: TextureLoadScope | TextureScopeKey | null | undefined,
+  url: string,
+  policy: TextureDecodePolicy,
+  storage: TextureRowStorage
+): string {
   const id = scopeIdOf(scope);
-  return id ? `${id}::${url}` : url;
+  const base = `${policy}::${storage}::${url}`;
+  return id ? `${id}::${base}` : base;
 }
 
 function materialPromiseKey(scope: TextureLoadScope | TextureScopeKey | null | undefined, materialId: string): string {
@@ -171,9 +256,11 @@ function loadSource(
   url: string,
   slot: MaterialTextureSlot,
   materialId: string,
-  scope?: TextureLoadScope | null
+  scope?: TextureLoadScope | null,
+  storage: TextureRowStorage = 'legacy'
 ): Promise<ThreeTexture> {
-  const key = sourceKey(scope ?? null, url);
+  const policy = texturePolicyForSlot(slot);
+  const key = sourceKey(scope ?? null, url, policy, storage);
   const existing = sourceCache.get(key);
   if (existing) {
     if (existing.error) return Promise.reject(new Error(existing.error));
@@ -187,10 +274,10 @@ function loadSource(
   // write its result into the newer one.
   const entry: SourceEntry = { promise: null };
   const promise = scope
-    ? loadViaScopedLoader(key, url, slot, materialId, scope.loader, entry)
+    ? loadViaScopedLoader(key, url, slot, materialId, scope.loader, entry, policy, storage)
     : defaultSourceLoader
-      ? loadViaDefaultSourceLoader(key, url, slot, materialId, entry)
-      : loadViaTextureLoader(key, url, slot, materialId, entry);
+      ? loadViaDefaultSourceLoader(key, url, slot, materialId, entry, policy, storage)
+      : loadViaTextureLoader(key, url, slot, materialId, entry, policy, storage);
 
   entry.promise = promise;
   sourceCache.set(key, entry);
@@ -202,13 +289,15 @@ function loadViaTextureLoader(
   url: string,
   slot: MaterialTextureSlot,
   materialId: string,
-  entry: SourceEntry
+  entry: SourceEntry,
+  policy: TextureDecodePolicy,
+  storage: TextureRowStorage
 ): Promise<ThreeTexture> {
   return new Promise<ThreeTexture>((resolve, reject) => {
     loader.load(
       url,
       (texture) => {
-        applySourceDefaults(texture, slot);
+        applySourceDefaults(texture, policy, storage);
         if (sourceCache.get(key) === entry) entry.texture = texture;
         resolve(texture);
       },
@@ -228,11 +317,13 @@ async function loadViaDefaultSourceLoader(
   url: string,
   slot: MaterialTextureSlot,
   materialId: string,
-  entry: SourceEntry
+  entry: SourceEntry,
+  policy: TextureDecodePolicy,
+  storage: TextureRowStorage
 ): Promise<ThreeTexture> {
   try {
     const texture = await defaultSourceLoader!(url, slot);
-    applySourceDefaults(texture, slot);
+    applySourceDefaults(texture, policy, storage);
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
@@ -249,11 +340,13 @@ async function loadViaScopedLoader(
   slot: MaterialTextureSlot,
   materialId: string,
   scoped: TextureSourceLoader,
-  entry: SourceEntry
+  entry: SourceEntry,
+  policy: TextureDecodePolicy,
+  storage: TextureRowStorage
 ): Promise<ThreeTexture> {
   try {
     const texture = await scoped(url, slot);
-    applySourceDefaults(texture, slot);
+    applySourceDefaults(texture, policy, storage);
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
@@ -289,9 +382,10 @@ function cloneMaps(
   for (const [slot, source] of Object.entries(sources) as [MaterialTextureSlot, ThreeTexture][]) {
     if (!source) continue;
     const clone = source.clone();
-    clone.wrapS = RepeatWrapping;
-    clone.wrapT = RepeatWrapping;
-    clone.colorSpace = source.colorSpace;
+    // The role decides the transfer function, not whichever slot loaded the
+    // source first. This is the one-cache-two-meanings defect's fix.
+    applyClonePolicy(clone, slot);
+    clone.flipY = source.flipY;
     clone.repeat.set(repeatX, repeatY);
     clone.rotation = rotation;
     clone.offset.set(offset[0], offset[1]);
@@ -407,12 +501,22 @@ export function releaseMaterialVariant(
  */
 /** @returns whether a cached texture was disposed here. */
 export function invalidateTextureSource(scopeId: string | null, url: string): boolean {
-  const key = sourceKey(scopeId === null ? null : { scopeId }, url);
-  const entry = sourceCache.get(key);
-  if (entry === undefined) return false;
-  sourceCache.delete(key);
-  entry.texture?.dispose();
-  return entry.texture !== undefined;
+  const prefix = scopeId === null ? '' : `${scopeId}::`;
+  const suffix = `::${url}`;
+  let disposed = false;
+  for (const [key, entry] of [...sourceCache]) {
+    if (!key.endsWith(suffix)) continue;
+    if (prefix !== '') {
+      if (!key.startsWith(prefix)) continue;
+    } else if (!key.startsWith('srgb::') && !key.startsWith('raw::')) {
+      // A null scope invalidates the un-scoped namespace only.
+      continue;
+    }
+    sourceCache.delete(key);
+    entry.texture?.dispose();
+    disposed ||= entry.texture !== undefined;
+  }
+  return disposed;
 }
 
 /**
@@ -562,13 +666,14 @@ export function acquireEffectiveVariant(
     MaterialTextureSlot,
     string
   ][]) {
-    const cached = sourceCache.get(sourceKey(scope ?? null, url));
+    const cached = sourceCache.get(
+      sourceKey(scope ?? null, url, texturePolicyForSlot(entrySlot), 'legacy')
+    );
     if (!cached?.texture) continue;
     const source = cached.texture;
     const clone = source.clone();
-    clone.wrapS = RepeatWrapping;
-    clone.wrapT = RepeatWrapping;
-    clone.colorSpace = source.colorSpace;
+    applyClonePolicy(clone, entrySlot);
+    clone.flipY = source.flipY;
     clone.repeat.set(repeatX, repeatY);
     clone.rotation = rotation;
     clone.offset.set(offset[0], offset[1]);
@@ -578,6 +683,21 @@ export function acquireEffectiveVariant(
   }
   variantCache.set(key, { maps, refCount: 1, pendingDispose: false });
   return maps;
+}
+
+/**
+ * The source texture a sampled Finish view reads.
+ *
+ * Storage is top-first and the slot supplies the decode policy, so the sample
+ * graph can apply exactly one origin conversion. The key includes both, so the
+ * same URI sampled as colour and as data never shares one interpretation.
+ */
+export function loadFinishTexture(
+  uri: string,
+  role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
+  scope?: TextureLoadScope | null
+): Promise<ThreeTexture> {
+  return loadSource(uri, textureSlotForRole(role), 'finish', scope ?? null, 'top');
 }
 
 export function releaseEffectiveVariant(

@@ -132,11 +132,22 @@ function bindLook(look: ModelLook): {
 	readonly remap: Omit<StandardMaterialDescriptor, 'kind'>;
 	readonly maps: MaterialTextureMaps;
 	readonly hold: VariantHold | null;
+	readonly views: Readonly<Record<string, Texture>> | undefined;
 } {
 	const base = { ...look.material };
 	// A Finish's normal strength and flip bind only with the normal map they scale.
 	const { normalScale: _normalScale, ...withoutNormalScale } = base;
-	if (look.texture === null) return { remap: withoutNormalScale, maps: {}, hold: null };
+	if (base.finish !== undefined) {
+		// A sampled legacy model binds identity UV0 and the plan's views. Without
+		// a complete view set it keeps the resolved constants, never a half plan.
+		if (look.views === undefined || Object.keys(look.views).length === 0) {
+			const { finish: _finish, ...constants } = withoutNormalScale;
+			return { remap: constants, maps: {}, hold: null, views: undefined };
+		}
+		return { remap: base, maps: {}, hold: null, views: look.views };
+	}
+	if (look.texture === null)
+		return { remap: withoutNormalScale, maps: {}, hold: null, views: undefined };
 	const { source, repeat, scope } = look.texture;
 	const [rx, ry] = repeat;
 	const loaded = acquireEffectiveVariant(source, rx, ry, 0, scope);
@@ -153,13 +164,14 @@ function bindLook(look: ModelLook): {
 	}
 	if (!bound) {
 		releaseEffectiveVariant(source.variantSeed, rx, ry, 0, scope);
-		return { remap: withoutNormalScale, maps: {}, hold: null };
+		return { remap: withoutNormalScale, maps: {}, hold: null, views: undefined };
 	}
 	const textures: MaterialTextureKeys = keys;
 	return {
 		remap: { ...(maps.normalMap === undefined ? withoutNormalScale : base), textures },
 		maps,
-		hold: { seed: source.variantSeed, rx, ry, scope }
+		hold: { seed: source.variantSeed, rx, ry, scope },
+		views: undefined
 	};
 }
 
@@ -196,7 +208,12 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		};
 		// Natural (treatment absent) is exactly today's key, clone and lease count.
 		if (bound === null) return options.store.acquire(identity, undefined, templateMaterial);
-		return options.store.acquire({ ...identity, remap: bound.remap }, bound.maps);
+		return options.store.acquire(
+			{ ...identity, remap: bound.remap },
+			bound.maps,
+			undefined,
+			bound.views
+		);
 	}
 
 	/**
@@ -217,7 +234,14 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 					next.push({
 						mesh: drawn,
 						slot,
-						lease: surfaceFor(meshIndex, slot, templateMaterial, bound, style.wireframe, treatment)
+						lease: surfaceFor(
+							meshIndex,
+							slot,
+							templateMaterial,
+							bound,
+							style.wireframe,
+							treatment
+						)
 					});
 				});
 				return;
@@ -225,7 +249,14 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 			next.push({
 				mesh: drawn,
 				slot: -1,
-				lease: surfaceFor(meshIndex, 0, templateMesh.material, bound, style.wireframe, treatment)
+				lease: surfaceFor(
+					meshIndex,
+					0,
+					templateMesh.material,
+					bound,
+					style.wireframe,
+					treatment
+				)
 			});
 		});
 		for (const hold of next) {

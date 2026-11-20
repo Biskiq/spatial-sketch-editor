@@ -17,6 +17,8 @@ import type {
 } from '$lib/render/resources/material-descriptor';
 import type { LayoutWallSide } from '@portfolio/layout-core';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
+import { acquireFinishViews, type FinishViewLease } from '$lib/render/resources/finish-views';
+import type { Texture } from 'three';
 
 type VariantLease = {
 	readonly seed: string;
@@ -29,6 +31,7 @@ type VariantLease = {
 };
 type SurfaceLook = SceneSurfaceLook & {
 	loaded: boolean;
+	views: FinishViewLease | null;
 };
 
 /**
@@ -83,7 +86,8 @@ export function createVisitorWallMaterialFactory(
 				...(options.cutaway === true ? { cutaway: true as const } : {})
 			},
 			textures: null,
-			loaded: true
+			loaded: true,
+			views: null
 		};
 	}
 
@@ -96,7 +100,13 @@ export function createVisitorWallMaterialFactory(
 			emissiveIntensity,
 			...(options.cutaway === true ? { cutaway: true } : {})
 		};
-		return { material, textures: look.textures, loaded: look.textures === null };
+		const sampled = material.kind === 'standard' && material.finish !== undefined;
+		return {
+			material,
+			textures: look.textures,
+			loaded: sampled ? false : look.textures === null,
+			views: null
+		};
 	}
 
 	function keyForLook(look: SurfaceLook): string {
@@ -109,7 +119,26 @@ export function createVisitorWallMaterialFactory(
 		const existing = looks.get(key);
 		if (existing !== undefined) return existing;
 		looks.set(key, candidate);
-		if (candidate.textures !== null) {
+		const sampled = candidate.material.kind === 'standard' && candidate.material.finish !== undefined;
+		if (sampled) {
+			void acquireFinishViews(candidate.textures?.views ?? [], scope)
+				.then((lease) => {
+					if (disposed) {
+						lease.release();
+						return;
+					}
+					const named = new Set((candidate.textures?.views ?? []).map((source) => source.view));
+					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					if (!complete) {
+						lease.release();
+						return;
+					}
+					candidate.views = lease;
+					candidate.loaded = true;
+					options.onMaterialChange?.();
+				})
+				.catch(() => undefined);
+		} else if (candidate.textures !== null) {
 			void loadEffectiveTextures(candidate.textures, scope).then((result) => {
 				if (disposed || result.status === 'failed' || result.status === 'fallback') return;
 				candidate.loaded = true;
@@ -119,7 +148,19 @@ export function createVisitorWallMaterialFactory(
 		return candidate;
 	}
 
-	function descriptorFor(look: SurfaceLook): { descriptor: StandardMaterialDescriptor; maps?: MaterialTextureMaps } {
+	function descriptorFor(look: SurfaceLook): {
+		descriptor: StandardMaterialDescriptor;
+		maps?: MaterialTextureMaps;
+		views?: Readonly<Record<string, Texture>>;
+	} {
+		const sampled = look.material.kind === 'standard' && look.material.finish !== undefined;
+		if (sampled) {
+			if (!look.loaded || look.views === null) {
+				const { finish: _finish, ...plain } = look.material;
+				return { descriptor: plain as StandardMaterialDescriptor };
+			}
+			return { descriptor: look.material, views: look.views.views };
+		}
 		const texture = look.textures;
 		if (texture === null || !look.loaded) return { descriptor: look.material };
 		const variantKey = effectiveTextureVariantKey(texture.variantSeed, texture.repeat[0], texture.repeat[1], texture.rotation, scope, texture.offset);
@@ -138,10 +179,10 @@ export function createVisitorWallMaterialFactory(
 
 	function leaseFor(look: SurfaceLook): ReturnType<MaterialStore['acquire']> {
 		const resolved = descriptorFor(look);
-		const leaseKey = JSON.stringify(resolved.descriptor);
+		const leaseKey = `${JSON.stringify(resolved.descriptor)}|${look.views?.key ?? ''}`;
 		let lease = leases.get(leaseKey);
 		if (lease === undefined) {
-			lease = store.acquire(resolved.descriptor, resolved.maps);
+			lease = store.acquire(resolved.descriptor, resolved.maps, undefined, resolved.views);
 			leases.set(leaseKey, lease);
 		}
 		return lease;
@@ -162,6 +203,7 @@ export function createVisitorWallMaterialFactory(
 			for (const variant of variants.values()) {
 				releaseEffectiveVariant(variant.seed, variant.rx, variant.ry, variant.rotation, variant.scope, variant.offset);
 			}
+			for (const look of looks.values()) look.views?.release();
 			leases.clear();
 			variants.clear();
 			looks.clear();

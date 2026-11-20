@@ -21,7 +21,11 @@
  * - `key` changes only when something that changes the drawn result changes.
  */
 import type { FormMesh } from '@portfolio/geometry-core';
-import type { MaterialTextureSlotKey, StandardMaterialDescriptor } from './material-descriptor';
+import type {
+	MaterialTextureSlotKey,
+	StandardFinishPlan,
+	StandardMaterialDescriptor
+} from './material-descriptor';
 
 export type SceneVec3 = readonly [number, number, number];
 
@@ -137,10 +141,23 @@ export type SceneTransform = {
 	readonly scale: SceneVec3;
 };
 
+/** One acquired view a sampled material's plan names. */
+export type SceneFinishViewSource = {
+	/** The stable view key the descriptor's plan entry names. */
+	readonly view: string;
+	/** The verified image URI the view is loaded from. */
+	readonly uri: string;
+	readonly role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion';
+};
+
 /**
  * One resolved texture binding: the variant the look loads, the slots it covers
  * and the surface repeat. The scope is deliberately absent — a Canvas supplies
  * its own cache namespace when it acquires.
+ *
+ * `views` is present only on the sampled path. The legacy fields stay for the
+ * existing variant pool and for the `sceneLookFor` descriptor oracle; a sampled
+ * descriptor carries its plan and never binds a stock map slot.
  */
 export type SceneTextureSpec = {
 	readonly variantSeed: string;
@@ -150,6 +167,8 @@ export type SceneTextureSpec = {
 	readonly rotation: number;
 	/** Shift in tile fractions, u then v. */
 	readonly offset: readonly [number, number];
+	/** Present when the material samples through a Finish plan. */
+	readonly views?: readonly SceneFinishViewSource[];
 };
 
 export type SceneRenderItem = {
@@ -229,6 +248,10 @@ export type SceneModelLook = {
 	readonly slotUris: Readonly<Partial<Record<MaterialTextureSlotKey, string>>>;
 	/** The Finish's normal strength and flip; applied only while a normal map binds. */
 	readonly normalScale?: readonly [number, number];
+	/** The sampled plan for a legacy-UV0 model remap, when one exists. */
+	readonly finish?: StandardFinishPlan;
+	/** The views the sampled plan names. */
+	readonly views?: readonly SceneFinishViewSource[];
 };
 
 /**

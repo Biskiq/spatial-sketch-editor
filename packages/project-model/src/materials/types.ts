@@ -294,6 +294,12 @@ export type SamplingEntry = {
 	readonly role: MapRole;
 	readonly image: ResolvedImage;
 	readonly uvSet: 0 | 1;
+	/**
+	 * Where the image's rows start. `legacy` is the repository's established
+	 * TextureLoader upload convention and samples row `1−v`; `gltf` is an explicit
+	 * glTF UV binding and samples row `v`.
+	 */
+	readonly origin: 'legacy' | 'gltf';
 	readonly basis: 'metric' | 'identity';
 	/** Multiplier applied to the target's native UVs, not a surface tile count. */
 	readonly repeat: readonly [number, number];

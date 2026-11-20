@@ -106,7 +106,7 @@ describe('model arrival: one caster channel (E8/G4)', () => {
 		const host = read(HOST);
 		expect(host).toMatch(/const token = entry\.gate\.begin\(\);/);
 		expect(host.match(/if \(disposed \|\| !entry\.gate\.accepts\(token\)\) return;/g)?.length).toBeGreaterThanOrEqual(2);
-		expect(host).toMatch(/if \(!entry\.gate\.accepts\(current\.token\)\) return;/);
+		expect(host).toMatch(/if \(!entry\.gate\.accepts\(current\.token\)\) \{ views\?\.release\(\); return; \}/);
 		expect(host).toMatch(/entry\.gate\.close\(\);/);
 	});
 

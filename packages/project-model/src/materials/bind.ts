@@ -67,6 +67,9 @@ function samplingFor(
 			role,
 			image: binding.image as SamplingEntry['image'],
 			uvSet: mapping.set,
+			// An explicit glTF UV binding uses the authored upper-left origin. The
+			// sampling graph reads row `v`; no storage-row flip is applied.
+			origin: 'gltf',
 			basis: 'identity',
 			repeat: [mapping.repeat[0], mapping.repeat[1]],
 			rotation: mapping.rotation,
@@ -105,6 +108,9 @@ function samplingFor(
 		role,
 		image: binding.image as SamplingEntry['image'],
 		uvSet: 0,
+		// Native geometry and a legacy target remap preserve the established
+		// TextureLoader convention, so the sample boundary reads row `1−v`.
+		origin: 'legacy',
 		basis: basis === undefined ? 'identity' : 'metric',
 		repeat: [repeat[0], repeat[1]],
 		rotation,

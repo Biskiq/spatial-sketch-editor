@@ -28,6 +28,7 @@
 	import { CanvasLifecycle, type LifecycleSnapshot } from './canvas-lifecycle';
 	import { createRendererGeneration, type GenerationSnapshot } from './renderer-generation';
 	import { provideCanvasRendererState } from './renderer-context';
+	import { setFinishViewGeneration } from './resources/finish-views';
 
 	const DPR: [number, number] = [1, 1.5];
 
@@ -74,7 +75,12 @@
 
 	const lifecycle = new CanvasLifecycle({
 		onChange(next) {
-			if (next.generation !== generation) cancelPointerGesture();
+			if (next.generation !== generation) {
+				cancelPointerGesture();
+				// A new device generation owns new GPU views; old leases are dropped
+				// and late completions are refused by the view cache.
+				setFinishViewGeneration(next.generation);
+			}
 			snapshot = next;
 			generation = next.generation;
 			const nextReady = next.phase === 'ready';

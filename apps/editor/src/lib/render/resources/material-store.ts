@@ -52,6 +52,11 @@ import {
 	type MaterialTextureSlotKey,
 	type MaterialTreatment
 } from './material-descriptor';
+import {
+	createFinishMaterial,
+	missingFinishViews,
+	type FinishTextureViews
+} from './finish-sampling';
 
 /**
  * The loaded variants a textured descriptor binds, by slot.
@@ -90,6 +95,8 @@ export type MaterialStoreStats = {
 	readonly treated: number;
 	/** Imported materials left as authored because their class cannot take one. */
 	readonly treatmentSkipped: number;
+	/** Sampled node materials constructed from a Finish plan, monotone. */
+	readonly sampled: number;
 };
 
 export type MaterialStore = {
@@ -106,7 +113,13 @@ export type MaterialStore = {
 	 * owns the clone thereafter. `source` is never retained and never disposed by
 	 * the store, so the loader's cached asset stays intact for the next instance.
 	 */
-	acquire(descriptor: MaterialDescriptor, maps?: MaterialTextureMaps, source?: Material): MaterialLease;
+	acquire(
+		descriptor: MaterialDescriptor,
+		maps?: MaterialTextureMaps,
+		source?: Material,
+		/** The GPU views a sampled descriptor's plan names, by view key. */
+		views?: FinishTextureViews
+	): MaterialLease;
 	/** The live instance for `descriptor`, or null. Takes no lease; for reads and tests. */
 	peek(descriptor: MaterialDescriptor): Material | null;
 	stats(): MaterialStoreStats;
@@ -121,6 +134,15 @@ type Entry = {
 };
 
 /** The maps a textured descriptor declares, or a refusal naming the missing slot. */
+/** The GPU views are part of store identity: a scope swap must not reuse old bytes. */
+function viewSignature(views: FinishTextureViews | undefined): string {
+	if (views === undefined) return '';
+	return Object.keys(views)
+		.sort()
+		.map((key) => `${key}:${views[key].uuid}`)
+		.join(',');
+}
+
 function boundMaps(
 	descriptor: MaterialDescriptor,
 	maps: MaterialTextureMaps | undefined
@@ -157,10 +179,16 @@ function boundMaps(
 function constructImported(
 	descriptor: ImportedMaterialDescriptor,
 	maps: MaterialTextureMaps | undefined,
-	source: Material | undefined
+	source: Material | undefined,
+	views: FinishTextureViews | undefined
 ): Material {
 	if (descriptor.remap !== undefined) {
-		return construct({ kind: 'standard', ...descriptor.remap, wireframe: descriptor.wireframe }, maps);
+		return construct(
+			{ kind: 'standard', ...descriptor.remap, wireframe: descriptor.wireframe },
+			maps,
+			undefined,
+			views
+		);
 	}
 	if (source === undefined) {
 		throw new Error(
@@ -252,12 +280,27 @@ function tuneImported(material: Material, treatment: MaterialTreatment): boolean
 function construct(
 	descriptor: MaterialDescriptor,
 	maps: MaterialTextureMaps | undefined,
-	source?: Material
+	source?: Material,
+	views?: FinishTextureViews
 ): Material {
-	if (descriptor.kind === 'imported') return constructImported(descriptor, maps, source);
+	if (descriptor.kind === 'imported') return constructImported(descriptor, maps, source, views);
 	const bound = boundMaps(descriptor, maps);
 	switch (descriptor.kind) {
 		case 'standard':
+			if (descriptor.finish !== undefined) {
+				// The sampled path: one node material reads the plan's views. The stock
+				// map slots stay empty, so no second multiply or decode can occur.
+				const missing = missingFinishViews(descriptor, views);
+				if (missing.length > 0) {
+					throw new Error(
+						`material descriptor names finish view(s) without one: ${missing.join(', ')}`
+					);
+				}
+				if (views === undefined) {
+					throw new Error('a sampled finish descriptor needs its GPU views');
+				}
+				return createFinishMaterial(descriptor, views);
+			}
 			return new MeshStandardMaterial({
 				color: descriptor.color,
 				...(descriptor.polygonOffset ? {
@@ -370,15 +413,21 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 	let acquired = 0;
 	let treated = 0;
 	let treatmentSkipped = 0;
+	let sampled = 0;
 	let disposed = false;
 
 	return {
-		acquire(descriptor, maps, source) {
+		acquire(descriptor, maps, source, views) {
 			if (disposed) throw new Error('the material store has been disposed');
-			const key = materialKey(descriptor);
+			const canonical = materialKey(descriptor);
+			const key =
+				descriptor.kind === 'standard' && descriptor.finish !== undefined
+					? `${canonical}|views=${viewSignature(views)}`
+					: canonical;
 			let entry = entries.get(key);
 			if (entry === undefined) {
-				const material = construct(descriptor, maps, source);
+				const material = construct(descriptor, maps, source, views);
+				if (descriptor.kind === 'standard' && descriptor.finish !== undefined) sampled += 1;
 				if (
 					descriptor.kind === 'imported' &&
 					descriptor.remap === undefined &&
@@ -430,7 +479,14 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 		},
 
 		peek(descriptor) {
-			return entries.get(materialKey(descriptor))?.material ?? null;
+			const canonical = materialKey(descriptor);
+			const exact = entries.get(canonical);
+			if (exact !== undefined) return exact.material;
+			if (descriptor.kind === 'standard' && descriptor.finish !== undefined) {
+				const prefix = `${canonical}|views=`;
+				for (const [key, entry] of entries) if (key.startsWith(prefix)) return entry.material;
+			}
+			return null;
 		},
 
 		stats() {
@@ -440,7 +496,8 @@ export function createMaterialStore(options: MaterialStoreOptions = {}): Materia
 				disposed: disposedCount,
 				acquired,
 				treated,
-				treatmentSkipped
+				treatmentSkipped,
+				sampled
 			};
 		},
 

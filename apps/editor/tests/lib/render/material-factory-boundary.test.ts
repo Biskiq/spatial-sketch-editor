@@ -61,6 +61,8 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 };
 
 const STORE = 'lib/render/resources/material-store.ts';
+/** The one sampled material builder; the store delegates the node constructor to it. */
+const FINISH = 'lib/render/resources/finish-sampling.ts';
 
 /** A class name that constructs a world surface: `Mesh*Material` or `ShadowMaterial`. */
 const MATERIAL_CLASS = /^(?:Mesh|Shadow)[A-Za-z]*Material$/;
@@ -153,7 +155,7 @@ function constructionSites(): Record<string, number> {
 
 describe('material-factory-boundary: one factory for world materials', () => {
 	it('constructs a world material only in the store', () => {
-		const allowlist = new Set([STORE, ...Object.keys(RR7_REMAINDER), ...Object.keys(EDITOR_INK)]);
+		const allowlist = new Set([STORE, FINISH, ...Object.keys(RR7_REMAINDER), ...Object.keys(EDITOR_INK)]);
 		const offenders = Object.keys(constructionSites()).filter((file) => !allowlist.has(file)).sort();
 		expect(offenders).toEqual([]);
 	});
@@ -162,7 +164,7 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		const actual = constructionSites();
 		// Standard, basic, Lambert, shadow and the imported clone: the artwork alpha
 		// exception is a shadow-pass node on its surface, not a depth/distance pair.
-		const expected: Record<string, number> = { [STORE]: 4 };
+		const expected: Record<string, number> = { [STORE]: 4, [FINISH]: 2 };
 		for (const [file, entry] of Object.entries({ ...RR7_REMAINDER, ...EDITOR_INK })) expected[file] = entry.count;
 		expect(actual).toEqual(expected);
 	});
@@ -273,6 +275,18 @@ describe('material-factory-boundary: one factory for world materials', () => {
 		expect(shell).toContain('createRoomRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook)');
 		// The representations release their leases; the Canvas frees what is left.
 		expect(shell).not.toMatch(/materials\.dispose\(\)/);
+	});
+});
+
+describe('material-factory-boundary: the sampled finish helper', () => {
+	it('is the only added constructor site and the store delegates to it', () => {
+		const code = withoutComments(readFileSync(path.join(EDITOR_SRC, FINISH), 'utf8'));
+		expect(code).toContain('new MeshStandardNodeMaterial(');
+		expect(code).toContain('new MeshBasicNodeMaterial(');
+		expect(constructorSites(path.join(EDITOR_SRC, FINISH), code)).toBe(2);
+		expect(withoutComments(readFileSync(path.join(EDITOR_SRC, STORE), 'utf8'))).toContain(
+			'createFinishMaterial('
+		);
 	});
 });
 

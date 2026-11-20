@@ -121,6 +121,16 @@ export {
 } from './resolve';
 
 export {
+	FINISH_SAMPLING_PLAN_VERSION,
+	finishSamplingPlan,
+	finishSamplingPlanKey,
+	rgba8MipChainBytes,
+	type FinishPlanOrigin,
+	type FinishSamplingPlan,
+	type FinishSamplingPlanEntry
+} from './plan';
+
+export {
 	intersectTargetAvailability,
 	summarizeDrawGeometry,
 	targetHasDraws,
