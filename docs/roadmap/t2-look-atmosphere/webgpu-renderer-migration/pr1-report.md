@@ -21,7 +21,8 @@ planning PR #383). Resolved packages: Three `0.187.0`, `@threlte/core` `8.5.16`,
 | **P1** — the gallery benchmark declared the plaster texture but drew a procedural 8 × 8 `DataTexture`. | `api/performance.ts` now loads `apps/editor/static/textures/plaster-warm/map.png` through `TextureLoader`; `run.mjs` serves `/textures/*` and `/museum/*` from `apps/editor/static`. The report records the file's 47,350 bytes and `sha256-fbc560b4…eec0`. | `performance.json.fixture.galleryTexture` |
 | **P1** — both Canvas hosts leaked the 30-second episode timer on teardown. | `stock-canvas-host.svelte` and `ready-gated-canvas-host.svelte` call `lifecycle.dispose()` from `onDestroy`. Tests assert the episode timer is cleared and the host is disposed on unmount. | lifecycle 11 tests; mounted 14 tests |
 | **P2** — `startupSamples()` labelled a submitted draw as the first correct frame. | Startup is split into `firstDrawSubmitted` (render returned; no pixel proof) and `firstVerifiedFrame` (a canvas copy contained a gallery; includes backend wait/readback). Both are reported, separately labelled, and neither is presentation. | `performance.json.rows[].startup`; limitations |
-| **P2** — wide lines advertised DPR 1 and 1.5 but only created DPR 1 renderers. | `qualification.ts` loops `[1, 1.5]` per backend, scales the target, readback, thickness and dash sampling by DPR, and records `dpr` plus `drawingBuffer`. WebGPU passes at both; WebGL2 fails at both. | `qualification.json` → `wide-lines` |
+| **P2** — wide lines advertised DPR 1 and 1.5 but only created DPR 1 renderers. | `qualification.ts` loops `[1, 1.5]` per backend, scales the target, readback, thickness and dash sampling by DPR, and records `dpr` plus `drawingBuffer`. Both backends pass at both DPRs. | `qualification.json` → `wide-lines` |
+| **Readback orientation** — `readTarget()` silently defaulted to top-down when its signature missed or was vertically symmetric, so the clip and wide-line failures were harness artifacts. | `readTarget()` now normalizes from the measured backend contract (`webgpu: top-down`, `webgl2: bottom-up`), cross-checks the caller's signature, and throws on a contradictory or non-matching signature instead of guessing. A new raw-row-order scenario verifies the contract independently of `readTarget`. The clip signature now uses its red lower half; the wide-line scene pins both line colours (Line2 defaults to a random hue) and uses a top-left magenta marker for an unambiguous signature. | `qualification.json` → `row-order`, `clip-mask`, `wide-lines`; two consecutive 13/13 runs |
 
 ## 2. What landed
 
@@ -30,7 +31,7 @@ planning PR #383). Resolved packages: Three `0.187.0`, `@threlte/core` `8.5.16`,
 | Baseline | `fixtures.json` pins the commit, resolved packages, S0 comparator geometry and cameras, 17 shipped asset/fixture digests, the canonical current-world fixture, the cold-public evidence and the explicit hardware deferral request. |
 | Canvas comparison | Stock Threlte 8.5.16 `Canvas` + adapter and the ready-gated host, sharing `CanvasLifecycle` and one generation owner. |
 | Lifecycle tests | `webgpu-canvas-lifecycle.test.ts` (11) and `webgpu-canvas-mounted.test.ts` (14; six cases on both candidates). |
-| API qualification | Isolated real Three harness under `experiments/webgpu-migration/api/`; 12 scenarios on native WebGPU and forced WebGL2. |
+| API qualification | Isolated real Three harness under `experiments/webgpu-migration/api/`; 13 scenarios on native WebGPU and forced WebGL2. |
 | Performance | Matched A/B/C gallery using the declared plaster texture, 10 startup samples per row, three 10-second windows, shadow and light-variant probes. |
 | Current-world fixture | `scripts/build-webgpu-current-world.ts` deterministically emits a 10-room/31-wall F.2 project, its explicit P20-safe publication projection, two 1 × 1 artwork PNGs and a hashed summary. |
 | Cold public baseline | `cold-public.mjs` builds the production app, serves it on loopback with a P20 mock API, and measures 20 fresh-cache public launches in two browser processes. |
@@ -75,10 +76,11 @@ reports the initialized backend; every B row observed `webgpu`, every C row
 | Two devices, one texture | both drew the shared texture; the survivor still drew after the other retired | same |
 | Projection / scissor | target scissor at `(24,16,60,40)` clipped; outside was background; perspective and orthographic depth kept the near surface | same |
 | DPR 1.5 scissor | CSS box `(20,10,80,40)` produced a `(30,15,120,60)` green box in a 300 × 180 buffer | same |
-| TSL colour `maskNode` | upper half discarded, lower half drawn | **inverted** (see blockers) |
+| Raw target rows | top-down | bottom-up (verified independently by `row-order`) |
+| TSL colour `maskNode` | upper half background, lower half `138,0,0` | upper half background, lower half `138,0,0` |
 | Sun shadow | enabling the Sun changed 472 floor pixels; shadow map allocated and enabled | same |
-| Wide lines, DPR 1 | 8 px line measured 6 px; dashed line had 7 dashes | 8 px line measured 8 px; **one contiguous segment, no dash pattern** |
-| Wide lines, DPR 1.5 | 8 px line measured 12 px in a 300 × 180 buffer; dashed line had 7 dashes | 8 px line measured 12 px; **one contiguous segment, no dash pattern** |
+| Wide lines, DPR 1 | 8 px line measured 8 px; dashed line had 7 dashes | 8 px line measured 8 px; dashed line had 7 dashes |
+| Wide lines, DPR 1.5 | 8 px line measured 12 px in a 300 × 180 buffer; dashed line had 7 dashes | 8 px line measured 12 px; dashed line had 7 dashes |
 | Stencil | equal-test fill inside, background outside | same |
 | Colour | `#808080` = 128; ramp `0,17,…,255`; odd 641 × 97 readback 248,708 packed bytes | `#808080` = 128; same ramp and packed byte count; bottom-up rows normalized by the harness |
 | Pipelines | cold 11 ms → warm 1 ms; `compileAsync` 5 ms; 2 programs | cold 9.9 ms → warm 0.3 ms; `compileAsync` 3.7 ms |
@@ -186,35 +188,47 @@ proposed gate.
 
 ## 6. Blockers and unverified items for PR 2
 
-1. **WebGL2 `maskNode` is inverted.** The same TSL `positionWorld.y < 0` colour
-   mask keeps the lower half on WebGPU and the upper half on forced WebGL2.
-   Stage Level/drawn clip and Cutaway cannot ship on C until this is resolved or
-   the affected material path is reworked.
-2. **WebGL2 dashed wide lines render no dashes at DPR 1 or 1.5.** Both runs
-   produce one contiguous segment with `Line2NodeMaterial`, `worldUnits: false`.
-   WebGPU produces seven dashes at both DPRs. Determine whether this is material
-   configuration, an r187 limitation or a renderer defect before choosing a
-   workaround; Stage Slice/drafting dashes must be proven on C.
-3. **Shadow submission cost on B/C is not exposed by r187 `Info`.** A
+**No genuine backend failure remains in the qualification matrix.** The two
+forced-WebGL2 failures reported earlier were harness defects, not renderer
+defects:
+
+- `readTarget()` fell back to top-down when its signature did not match; the
+  clip signature expected black against a `#101820` background, and the
+  wide-line signature sampled a vertically symmetric background. WebGL2 rows
+  were therefore never flipped. The clip signature now uses the red lower half;
+  the wide-line scene has a top-left magenta marker; normalization comes from
+  the independently measured backend contract and throws when the signature
+  contradicts it or matches neither orientation.
+- `Line2` constructs its default material with a random hue. The pixel probe
+  read only the red channel, so a blue/green run looked like an absent line and
+  a run-dependent dash count. Both line materials now pin `#ffffff`, and dash
+  detection takes the best row in a small band around the dashed line.
+
+Both backends now reproduce the same pixels: clip upper `16,24,32` and lower
+`138,0,0`; wide lines 8 px/7 dashes at DPR 1 and 12 px/7 dashes at DPR 1.5.
+No minimal Three r187 reproduction is warranted because no r187 shader or
+rendering-path failure was found.
+
+1. **Shadow submission cost on B/C is not exposed by r187 `Info`.** A
    controller-level counter (target + camera identity) is required, as the plan
    specifies; this PR records the gap instead of inventing a number.
-4. **Artwork shadow mask needs a product-shaped proof.** r187 already applies a
+2. **Artwork shadow mask needs a product-shaped proof.** r187 already applies a
    material `map`'s alpha in the shadow pass, so a texture mask was redundant in
    the harness. The final Lambert variant must still be tested with the existing
    shadow material semantics and a photograph/transparent asset on all three
    light kinds.
-5. **Reference hardware deferral is requested, not approved.** No Intel Iris
+3. **Reference hardware deferral is requested, not approved.** No Intel Iris
    Xe-class laptop, Safari or Firefox row; no real display period, thermal
    state, physical DPR 1.5 resize or browser-driven native WebGPU loss. The
    manifest records `hardwareDeferralRequest.status: "pending owner approval"`
    and `approved: false`. This report does not claim that deferral.
-6. **The cold public baseline is local, not deployed.** It uses a production
+4. **The cold public baseline is local, not deployed.** It uses a production
    build over loopback with a mock P20 API. No preview or production deployment
    was created for this correction pass.
-7. **The measured saved world remains absent.** `currentWorld` is a canonical
+5. **The measured saved world remains absent.** `currentWorld` is a canonical
    equivalent at the same 10-room/31-wall scale. Its draw/triangle counts are not
    the saved-world census.
-8. **Stock Canvas needs the adapter.** The product may not adopt the plain
+6. **Stock Canvas needs the adapter.** The product may not adopt the plain
    Threlte context without the generation owner; PR 2 must keep the same
    readiness, fresh-canvas recovery and idempotent retirement rules.
 
@@ -232,12 +246,15 @@ Ran on the branch at Node 26 / npm 11:
   public harness.
 - Fixture generator — rerun from `scripts/build-webgpu-current-world.ts`;
   emitted the same bytes and digests.
-- Harness — qualification **10 pass / 2 fail** (both forced-WebGL2 gaps above);
-  performance A/B/C complete; cold public 20 samples, 0 console errors.
-- CI at `1965597a` — all required checks passed (run 44665860999): build,
-  check, API check/tests, fast, heavy, architecture, guards, package and
-  platform checks. `editor focused verification` was skipped by the path
-  classifier.
+- Harness — qualification **13 pass / 0 fail** on both backends; two
+  consecutive full runs produced identical clip pixels and wide-line
+  thickness/dash counts. Performance A/B/C complete; cold public 20 samples,
+  0 console errors.
+- CI at `1965597a` (previous correction head) — all required checks passed
+  (run 44665860999): build, check, API check/tests, fast, heavy, architecture,
+  guards, package and platform checks. `editor focused verification` was
+  skipped by the path classifier. This row-order follow-up adds a new head;
+  its PR checks are the current CI result.
 
 Harness commands: `npm run webgpu:qualify`, `npm run webgpu:perf`,
 `npm run webgpu:cold` and `npm run webgpu:evidence`.

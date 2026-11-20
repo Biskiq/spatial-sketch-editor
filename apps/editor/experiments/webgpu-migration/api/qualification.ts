@@ -42,6 +42,7 @@ import {
 } from 'three/webgpu';
 import { float, texture as textureNode, uv, positionWorld } from 'three/tsl';
 import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
+import { Line2NodeMaterial } from 'three/webgpu';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import {
 	assertion,
@@ -153,6 +154,78 @@ export const qualification: readonly ScenarioEntry[] = [
 				forced
 			}
 		};
+	}),
+
+	scenario('row-order', 'Native readback row order, independent of scene signatures', async () => {
+		const assertions: Assertion[] = [];
+		const measurements: Record<string, unknown> = {};
+		for (const forceWebGL of [false, true]) {
+			const created = await createWebgpuRenderer({ width: 32, height: 32, forceWebGL });
+			const label = created.backend;
+			const scene = new Scene();
+			scene.background = new Color('#000000');
+			const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+			camera.position.z = 2;
+			// Only the scene's top-left corner is red. Raw rows are inspected before
+			// any normalization, so this probe cannot inherit readTarget's contract.
+			const marker = new Mesh(new PlaneGeometry(0.25, 0.25), new MeshBasicNodeMaterial({ color: '#ff0000' }));
+			marker.position.set(-0.8, 0.8, 0);
+			scene.add(marker);
+			const renderTarget = target(32, 32);
+			created.renderer.setRenderTarget(renderTarget);
+			created.renderer.render(scene, camera);
+			created.renderer.setRenderTarget(null);
+			const raw = await created.renderer.readRenderTargetPixelsAsync(renderTarget, 0, 0, 32, 32);
+			const native = raw instanceof Uint8Array ? raw : new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+			const at = (x: number, y: number): number[] => {
+				const index = (y * 32 + x) * 4;
+				return Array.from(native.slice(index, index + 3));
+			};
+			const top = at(4, 4);
+			const bottom = at(4, 27);
+			const red = (rgb: number[]): boolean => colourDistance(rgb, [255, 0, 0]) <= 4;
+			const black = (rgb: number[]): boolean => colourDistance(rgb, [0, 0, 0]) <= 4;
+			const observed =
+				red(top) && black(bottom)
+					? 'top-down'
+					: black(top) && red(bottom)
+						? 'bottom-up'
+						: 'indeterminate';
+			const expected = label === 'webgl2' ? 'bottom-up' : 'top-down';
+			let unmatchedRefused = false;
+			try {
+				await readTarget(created.renderer, renderTarget, 32, 32, {
+					x: 4,
+					y: 4,
+					expected: [0, 255, 255]
+				});
+			} catch {
+				unmatchedRefused = true;
+			}
+			let contradictoryRefused = false;
+			try {
+				await readTarget(created.renderer, renderTarget, 32, 32, {
+					x: 4,
+					y: 27,
+					expected: [255, 0, 0]
+				});
+			} catch {
+				contradictoryRefused = true;
+			}
+			measurements[label] = { expected, observed, top, bottom, unmatchedRefused, contradictoryRefused };
+			assertions.push(assertion(`${label}: raw rows are ${expected}`, observed === expected, observed));
+			assertions.push(
+				assertion(`${label}: an unmatched signature is refused, not defaulted`, unmatchedRefused)
+			);
+			assertions.push(
+				assertion(`${label}: a signature that contradicts the backend is refused`, contradictoryRefused)
+			);
+			disposeScene(scene);
+			renderTarget.dispose();
+			await created.renderer.dispose();
+			created.canvas.remove();
+		}
+		return { backend: 'webgpu+webgl2', assertions, measurements };
 	}),
 
 	scenario('build-identity', 'One Three instance across the two entry points', async () => {
@@ -631,17 +704,24 @@ export const qualification: readonly ScenarioEntry[] = [
 			created.renderer.setRenderTarget(renderTarget);
 			created.renderer.render(scene, camera);
 			created.renderer.setRenderTarget(null);
+			// The red lower half is the signature. The background is #101820, not
+			// black, so a black signature can never confirm either orientation.
 			const readback = await readTarget(created.renderer, renderTarget, 120, 120, {
 				x: 60,
-				y: 30,
-				expected: [0, 0, 0]
+				y: 90,
+				expected: [138, 0, 0]
 			});
 			const upper = pixelAt(readback, 60, 30);
 			const lower = pixelAt(readback, 60, 90);
 			const label = created.backend;
 			assertions.push(assertion(`${label}: maskNode discards the upper colour half`, colourDistance(upper, [16, 24, 32]) <= 8, upper));
 			assertions.push(assertion(`${label}: maskNode keeps the lower colour half`, lower[0]! - upper[0]! > 40, lower));
-			measurements[`${label}-colour`] = { upper, lower };
+			measurements[`${label}-colour`] = {
+				upper,
+				lower,
+				rowOrder: readback.rowOrder,
+				rowOrderSignature: readback.signature
+			};
 			disposeScene(scene);
 			renderTarget.dispose();
 			await created.renderer.dispose();
@@ -665,11 +745,24 @@ export const qualification: readonly ScenarioEntry[] = [
 				scene.background = new Color(BACKGROUND);
 				const camera = new OrthographicCamera(-1, 1, 0.6, -0.6, 0.1, 10);
 				camera.position.z = 2;
-				const line = new Line2(new LineGeometry().setPositions([-0.8, 0.2, 0, 0.8, 0.2, 0]));
+				// A magenta marker in the top-left corner makes the row-order
+				// signature unambiguous at both DPRs; the line scans never touch it.
+				const marker = new Mesh(new PlaneGeometry(0.08, 0.08), new MeshBasicNodeMaterial({ color: '#ff00ff' }));
+				marker.position.set(-0.94, 0.54, 0.1);
+				scene.add(marker);
+				// Line2's default material picks a random hue. A pixel probe cannot
+				// use it: a blue/green run would read as "no line". Pin both colours.
+				const line = new Line2(
+					new LineGeometry().setPositions([-0.8, 0.2, 0, 0.8, 0.2, 0]),
+					new Line2NodeMaterial({ color: '#ffffff' })
+				);
 				line.material.linewidth = 8;
 				line.material.worldUnits = false;
 				line.computeLineDistances();
-				const dashed = new Line2(new LineGeometry().setPositions([-0.8, -0.2, 0, 0.8, -0.2, 0]));
+				const dashed = new Line2(
+					new LineGeometry().setPositions([-0.8, -0.2, 0, 0.8, -0.2, 0]),
+					new Line2NodeMaterial({ color: '#ffffff' })
+				);
 				dashed.material.linewidth = 6;
 				dashed.material.worldUnits = false;
 				dashed.material.dashed = true;
@@ -682,34 +775,58 @@ export const qualification: readonly ScenarioEntry[] = [
 				created.renderer.render(scene, camera);
 				created.renderer.setRenderTarget(null);
 				const readback = await readTarget(created.renderer, renderTarget, pixelWidth, pixelHeight, {
-					x: 5,
-					y: 5,
-					expected: [16, 24, 32]
+					x: Math.round(6 * dpr),
+					y: Math.round(4 * dpr),
+					expected: [255, 0, 255]
 				});
 				let thickness = 0;
-				let run = 0;
 				const thicknessX = Math.round(100 * dpr);
-				for (let y = 0; y < pixelHeight; y += 1) {
-					if (pixelAt(readback, thicknessX, y)[0]! > 100) {
-						run += 1;
-						thickness = Math.max(thickness, run);
-					} else {
-						run = 0;
+				for (let x = thicknessX - 2; x <= thicknessX + 2; x += 1) {
+					let run = 0;
+					for (let y = 0; y < pixelHeight; y += 1) {
+						if (pixelAt(readback, x, y)[0]! > 100) {
+							run += 1;
+							thickness = Math.max(thickness, run);
+						} else {
+							run = 0;
+						}
 					}
 				}
+				// A dash count must not depend on one exact scan row: DPR rounding and
+				// antialiasing move its visible band by a pixel. Take the best row in
+				// a small band around the expected dashed-line position.
 				let dashes = 0;
-				let inDash = false;
+				let dashRow: number | null = null;
 				const dashY = Math.round(78 * dpr);
-				for (let x = Math.round(20 * dpr); x < Math.round(180 * dpr); x += 1) {
-					const red = pixelAt(readback, x, dashY)[0]! > 100;
-					if (red && !inDash) dashes += 1;
-					inDash = red;
+				for (let y = Math.max(0, dashY - 4); y <= Math.min(pixelHeight - 1, dashY + 4); y += 1) {
+					let count = 0;
+					let inDash = false;
+					for (let x = Math.round(20 * dpr); x < Math.round(180 * dpr); x += 1) {
+						const red = pixelAt(readback, x, y)[0]! > 100;
+						if (red && !inDash) count += 1;
+						inDash = red;
+					}
+					if (count > dashes) {
+						dashes = count;
+						dashRow = y;
+					}
+				}
+				const centreColumn: Array<[number, [number, number, number, number]]> = [];
+				for (let y = 0; y < pixelHeight; y += 1) {
+					const pixel = pixelAt(readback, thicknessX, y);
+					if (pixel[0]! > 100 || pixel[2]! > 100) centreColumn.push([y, pixel]);
 				}
 				measurements[`${label}-dpr${dpr}`] = {
 					thickness,
 					dashes,
 					dpr,
 					drawingBuffer: [created.canvas.width, created.canvas.height],
+					rowOrder: readback.rowOrder,
+					rowOrderSignature: readback.signature,
+					centreColumnCount: centreColumn.length,
+					centreColumn: centreColumn.slice(0, 12),
+					dashRow,
+					viewport: created.renderer.getViewport(new Vector4()).toArray(),
 					worldUnits: false
 				};
 				assertions.push(

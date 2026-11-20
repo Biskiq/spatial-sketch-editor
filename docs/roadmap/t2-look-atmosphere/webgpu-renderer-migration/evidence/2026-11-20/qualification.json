@@ -66,7 +66,7 @@
         "auto": {
           "backend": "webgpu",
           "coordinateSystem": "webgpu",
-          "initMs": 3.7000000178813934,
+          "initMs": 2.199999988079071,
           "centre": [
             255,
             0,
@@ -78,7 +78,7 @@
         "forced": {
           "backend": "webgl2",
           "coordinateSystem": "webgl",
-          "initMs": 7.200000017881393,
+          "initMs": 11.799999982118607,
           "centre": [
             255,
             0,
@@ -86,6 +86,74 @@
             255
           ],
           "disposed": true
+        }
+      }
+    },
+    {
+      "id": "row-order",
+      "title": "Native readback row order, independent of scene signatures",
+      "status": "pass",
+      "backend": "webgpu+webgl2",
+      "assertions": [
+        {
+          "name": "webgpu: raw rows are top-down",
+          "ok": true,
+          "detail": "top-down"
+        },
+        {
+          "name": "webgpu: an unmatched signature is refused, not defaulted",
+          "ok": true
+        },
+        {
+          "name": "webgpu: a signature that contradicts the backend is refused",
+          "ok": true
+        },
+        {
+          "name": "webgl2: raw rows are bottom-up",
+          "ok": true,
+          "detail": "bottom-up"
+        },
+        {
+          "name": "webgl2: an unmatched signature is refused, not defaulted",
+          "ok": true
+        },
+        {
+          "name": "webgl2: a signature that contradicts the backend is refused",
+          "ok": true
+        }
+      ],
+      "measurements": {
+        "webgpu": {
+          "expected": "top-down",
+          "observed": "top-down",
+          "top": [
+            255,
+            0,
+            0
+          ],
+          "bottom": [
+            0,
+            0,
+            0
+          ],
+          "unmatchedRefused": true,
+          "contradictoryRefused": true
+        },
+        "webgl2": {
+          "expected": "bottom-up",
+          "observed": "bottom-up",
+          "top": [
+            0,
+            0,
+            0
+          ],
+          "bottom": [
+            255,
+            0,
+            0
+          ],
+          "unmatchedRefused": true,
+          "contradictoryRefused": true
         }
       }
     },
@@ -141,7 +209,7 @@
         }
       ],
       "measurements": {
-        "textureUuid": "2a7bbde2-a37c-48f9-92ed-038c189e4568",
+        "textureUuid": "401e1471-e0d9-455e-9384-838d052b1b1f",
         "nativeBackend": "webgpu",
         "forcedBackend": "webgl2",
         "firstCentre": [
@@ -521,7 +589,7 @@
     {
       "id": "clip-mask",
       "title": "TSL colour clip and its shadow-pass counterpart",
-      "status": "fail",
+      "status": "pass",
       "backend": "webgpu+webgl2",
       "assertions": [
         {
@@ -536,13 +604,13 @@
         },
         {
           "name": "webgl2: maskNode discards the upper colour half",
-          "ok": false,
-          "detail": "138,0,0,255"
+          "ok": true,
+          "detail": "16,24,32,255"
         },
         {
           "name": "webgl2: maskNode keeps the lower colour half",
-          "ok": false,
-          "detail": "16,24,32,255"
+          "ok": true,
+          "detail": "138,0,0,255"
         }
       ],
       "measurements": {
@@ -558,34 +626,38 @@
             0,
             0,
             255
-          ]
+          ],
+          "rowOrder": "top-down",
+          "rowOrderSignature": "confirmed"
         },
         "webgl2-colour": {
           "upper": [
+            16,
+            24,
+            32,
+            255
+          ],
+          "lower": [
             138,
             0,
             0,
             255
           ],
-          "lower": [
-            16,
-            24,
-            32,
-            255
-          ]
+          "rowOrder": "bottom-up",
+          "rowOrderSignature": "confirmed"
         }
       }
     },
     {
       "id": "wide-lines",
       "title": "Line2NodeMaterial width and dashes at DPR 1 and 1.5",
-      "status": "fail",
+      "status": "pass",
       "backend": "webgpu+webgl2",
       "assertions": [
         {
           "name": "webgpu DPR 1: 8 px line stays visible (6..11 px)",
           "ok": true,
-          "detail": "6"
+          "detail": "8"
         },
         {
           "name": "webgpu DPR 1: dashed line has at least three dashes",
@@ -609,8 +681,8 @@
         },
         {
           "name": "webgl2 DPR 1: dashed line has at least three dashes",
-          "ok": false,
-          "detail": "1"
+          "ok": true,
+          "detail": "7"
         },
         {
           "name": "webgl2 DPR 1.5: 8 px line stays visible (6..17 px)",
@@ -619,16 +691,136 @@
         },
         {
           "name": "webgl2 DPR 1.5: dashed line has at least three dashes",
-          "ok": false,
-          "detail": "1"
+          "ok": true,
+          "detail": "7"
         }
       ],
       "measurements": {
         "webgpu-dpr1": {
-          "thickness": 6,
+          "thickness": 8,
           "dashes": 7,
           "dpr": 1,
           "drawingBuffer": [
+            200,
+            120
+          ],
+          "rowOrder": "top-down",
+          "rowOrderSignature": "confirmed",
+          "centreColumnCount": 14,
+          "centreColumn": [
+            [
+              36,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              37,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              38,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              39,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              40,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              41,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              42,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              43,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              77,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              78,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              79,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              80,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ]
+          ],
+          "dashRow": 77,
+          "viewport": [
+            0,
+            0,
             200,
             120
           ],
@@ -642,13 +834,253 @@
             300,
             180
           ],
+          "rowOrder": "top-down",
+          "rowOrderSignature": "confirmed",
+          "centreColumnCount": 21,
+          "centreColumn": [
+            [
+              54,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              55,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              56,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              57,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              58,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              59,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              60,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              61,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              62,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              63,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              64,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              65,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ]
+          ],
+          "dashRow": 115,
+          "viewport": [
+            0,
+            0,
+            200,
+            120
+          ],
           "worldUnits": false
         },
         "webgl2-dpr1": {
           "thickness": 8,
-          "dashes": 1,
+          "dashes": 7,
           "dpr": 1,
           "drawingBuffer": [
+            200,
+            120
+          ],
+          "rowOrder": "bottom-up",
+          "rowOrderSignature": "confirmed",
+          "centreColumnCount": 14,
+          "centreColumn": [
+            [
+              36,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              37,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              38,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              39,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              40,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              41,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              42,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              43,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              77,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              78,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              79,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              80,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ]
+          ],
+          "dashRow": 77,
+          "viewport": [
+            0,
+            0,
             200,
             120
           ],
@@ -656,11 +1088,131 @@
         },
         "webgl2-dpr1.5": {
           "thickness": 12,
-          "dashes": 1,
+          "dashes": 7,
           "dpr": 1.5,
           "drawingBuffer": [
             300,
             180
+          ],
+          "rowOrder": "bottom-up",
+          "rowOrderSignature": "confirmed",
+          "centreColumnCount": 21,
+          "centreColumn": [
+            [
+              54,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              55,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              56,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              57,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              58,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              59,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              60,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              61,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              62,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              63,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              64,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ],
+            [
+              65,
+              [
+                255,
+                255,
+                255,
+                255
+              ]
+            ]
+          ],
+          "dashRow": 116,
+          "viewport": [
+            0,
+            0,
+            200,
+            120
           ],
           "worldUnits": false
         }
@@ -801,7 +1353,7 @@
           "rowOrder": "top-down",
           "bytes": 248708,
           "expectedBytes": 248708,
-          "ms": 0.9000000059604645,
+          "ms": 2.4000000059604645,
           "topLeft": [
             255,
             0,
@@ -854,7 +1406,7 @@
           "rowOrder": "bottom-up",
           "bytes": 248708,
           "expectedBytes": 248708,
-          "ms": 3.5999999940395355,
+          "ms": 4.5999999940395355,
           "topLeft": [
             255,
             0,
@@ -891,7 +1443,7 @@
         {
           "name": "webgpu: a warm repeat is not slower than the cold frame",
           "ok": true,
-          "detail": "11 -> 1"
+          "detail": "12 -> 0.7999999821186066"
         },
         {
           "name": "webgpu: the scene compiled at least one program",
@@ -901,7 +1453,7 @@
         {
           "name": "webgl2: a warm repeat is not slower than the cold frame",
           "ok": true,
-          "detail": "9.900000005960464 -> 0.29999998211860657"
+          "detail": "11.100000023841858 -> 0.3999999761581421"
         },
         {
           "name": "webgl2: the scene compiled at least one program",
@@ -912,31 +1464,31 @@
       "measurements": {
         "webgpu": {
           "cold": {
-            "ms": 11,
+            "ms": 12,
             "calls": 1,
             "programs": 2
           },
           "warm": {
-            "ms": 1,
+            "ms": 0.7999999821186066,
             "calls": 2,
             "programs": 2
           },
           "lightVariant": {
-            "ms": 0.800000011920929,
+            "ms": 3,
             "calls": 3,
             "programs": 2
           },
-          "compileAsyncMs": 5,
+          "compileAsyncMs": 5.100000023841858,
           "compileAsyncSupported": true
         },
         "webgl2": {
           "cold": {
-            "ms": 9.900000005960464,
+            "ms": 11.100000023841858,
             "calls": 1,
             "programs": 2
           },
           "warm": {
-            "ms": 0.29999998211860657,
+            "ms": 0.3999999761581421,
             "calls": 2,
             "programs": 2
           },
@@ -945,7 +1497,7 @@
             "calls": 3,
             "programs": 2
           },
-          "compileAsyncMs": 3.699999988079071,
+          "compileAsyncMs": 3.7999999821186066,
           "compileAsyncSupported": true
         }
       }
@@ -988,5 +1540,5 @@
       }
     }
   ],
-  "harnessModuleMs": 1494
+  "harnessModuleMs": 1501.9000000059605
 }

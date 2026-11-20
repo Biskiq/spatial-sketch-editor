@@ -143,24 +143,44 @@ export function target(width: number, height: number, options: { stencil?: boole
 	return renderTarget;
 }
 
+export type RowOrder = 'top-down' | 'bottom-up';
+
+/**
+ * r187's native row order, measured by the `row-order` qualification scenario.
+ *
+ * WebGPU's async texture copy starts at the texture origin (top-left). The
+ * WebGL2 backend's full-buffer `readPixels` starts at the bottom-left. This is
+ * backend behavior, not a per-scene guess: a scene whose only signature is a
+ * centred or horizontally symmetric shape still normalizes correctly.
+ */
+export function rowOrderForBackend(backend: Backend): RowOrder {
+	if (backend === 'webgl2') return 'bottom-up';
+	if (backend === 'webgpu') return 'top-down';
+	throw new Error(`Unknown renderer backend ${String(backend)}; cannot normalize target rows`);
+}
+
 export type Readback = {
 	readonly pixels: Uint8Array;
 	readonly width: number;
 	readonly height: number;
 	/** Rows normalized to top-down, whatever the backend's native order was. */
 	readonly topDown: Uint8Array;
-	readonly rowOrder: 'top-down' | 'bottom-up';
+	readonly rowOrder: RowOrder;
+	/** Whether the caller's signature independently confirmed the backend order. */
+	readonly signature: 'confirmed' | 'ambiguous';
 	readonly bytes: number;
 	readonly ms: number;
 };
 
 /**
- * Read a whole target through the r187 async copy API.
+ * Read a whole target through the r187 async copy API and normalize its rows.
  *
- * The WebGPU API returns tightly packed rows from the texture's top; the WebGL2
- * backend's full-buffer read starts at the bottom. Rather than assume, the
- * caller supplies a corner signature and `readTarget` detects the order from
- * the returned bytes. `topDown` is the one normalized form scenarios compare.
+ * Normalization comes from the verified backend behavior, not a top-down
+ * default. The caller's corner signature is a cross-check: if it matches one
+ * orientation and that differs from the backend, this throws rather than
+ * guessing. A signature that matches neither orientation is also an error. A
+ * signature that matches both (a centred or symmetric probe) is recorded as
+ * ambiguous but does not override the backend contract.
  */
 export async function readTarget(
 	renderer: WebGPURenderer,
@@ -182,16 +202,28 @@ export async function readTarget(
 		Math.abs(rgb[0]! - corner.expected[0]) <= 4 &&
 		Math.abs(rgb[1]! - corner.expected[1]) <= 4 &&
 		Math.abs(rgb[2]! - corner.expected[2]) <= 4;
-	// The corner probe is drawn at the top-left of the scene. If the native
-	// buffer already has it at row `corner.y` it is top-down; if it appears at
-	// the mirrored row it is bottom-up.
 	const nativeTop = at(corner.x, corner.y);
 	const nativeBottom = at(corner.x, height - 1 - corner.y);
-	const rowOrder: 'top-down' | 'bottom-up' = looksLikeCorner(nativeTop)
-		? 'top-down'
-		: looksLikeCorner(nativeBottom)
-			? 'bottom-up'
-			: 'top-down';
+	const topMatches = looksLikeCorner(nativeTop);
+	const bottomMatches = looksLikeCorner(nativeBottom);
+	const backend = backendOf(renderer);
+	const rowOrder = rowOrderForBackend(backend);
+	let signature: Readback['signature'];
+	if (topMatches && bottomMatches) {
+		signature = 'ambiguous';
+	} else if (!topMatches && !bottomMatches) {
+		throw new Error(
+			`${backend}: row-order signature ${JSON.stringify(corner.expected)} matched neither y=${corner.y} nor y=${height - 1 - corner.y}; refusing to normalize an indeterminate target`
+		);
+	} else {
+		const observed = topMatches ? 'top-down' : 'bottom-up';
+		if (observed !== rowOrder) {
+			throw new Error(
+				`${backend}: signature indicates ${observed} rows but the backend contract is ${rowOrder}; refusing to guess`
+			);
+		}
+		signature = 'confirmed';
+	}
 	const topDown = new Uint8Array(native.length);
 	if (rowOrder === 'top-down') topDown.set(native);
 	else {
@@ -200,7 +232,7 @@ export async function readTarget(
 			topDown.set(native.subarray((height - 1 - row) * rowBytes, (height - row) * rowBytes), row * rowBytes);
 		}
 	}
-	return { pixels: native, width, height, topDown, rowOrder, bytes, ms };
+	return { pixels: native, width, height, topDown, rowOrder, signature, bytes, ms };
 }
 
 export function pixelAt(readback: Readback, x: number, y: number): [number, number, number, number] {
