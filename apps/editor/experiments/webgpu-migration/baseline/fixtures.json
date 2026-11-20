@@ -108,6 +108,60 @@
       "stageTriangles": 44937,
       "visitorTriangles": 25203
     },
+    "fixture": {
+      "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.project.json",
+      "bytes": 29829,
+      "digest": "sha256-aef406451ee4129636bfa18e8a2f2ca10ffa4312862f98a2c326a812d8037a5e",
+      "generator": "apps/editor/scripts/build-webgpu-current-world.ts",
+      "counts": {
+        "rooms": 10,
+        "walls": 31,
+        "junctions": 22,
+        "openings": 1,
+        "regions": 1,
+        "objects": 1,
+        "sceneEntities": 7,
+        "resources": 2,
+        "lights": 2,
+        "artworks": 2,
+        "models": 1,
+        "primitives": 1,
+        "forms": 1
+      },
+      "camera": {
+        "views": [
+          {
+            "id": "view-entry",
+            "eye": [10, 1.7, 3.9],
+            "target": [10, 1.4, 7.5],
+            "fov": 54
+          }
+        ]
+      }
+    },
+    "publicationProjection": {
+      "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
+      "bytes": 28392,
+      "digest": "sha256-2541b2e3396f0f85ea7918f53c1d9fc448eaa5c65126fd40cfb483af3053636a",
+      "removedContent": [
+        "form"
+      ],
+      "reason": "P20 prepared publication refuses native forms; the source comparator keeps entity-form, and this explicit projection is what the cold public baseline serves."
+    },
+    "artwork": [
+      {
+        "assetId": "33333333-3333-4333-8333-333333333333",
+        "path": "apps/editor/experiments/webgpu-migration/baseline/current-world-neutral.png",
+        "bytes": 68,
+        "digest": "sha256-5e3d382db4dd83d59aa5742793ad6b7903409e865c83bcbc54835049f043bc15"
+      },
+      {
+        "assetId": "44444444-4444-4444-8444-444444444444",
+        "path": "apps/editor/experiments/webgpu-migration/baseline/current-world-translucent.png",
+        "bytes": 68,
+        "digest": "sha256-63ef318d96b5d0d0ceba6e04a4e622b1158335cdc67c49e27839132c6f655058"
+      }
+    ],
     "requiredContent": [
       "opening",
       "curved-wall",
@@ -124,7 +178,36 @@
       "shadow-spot",
       "shadow-point"
     ],
-    "status": "Not frozen in PR 1: the measured saved project is not present in the repository. PR 2 must capture and hash a shareable current-format project; counts are carried from the saved-world census."
+    "status": "Frozen in PR 1 as a reproducible canonical equivalent. The measured saved project is absent; this fixture reproduces its 10-room/31-wall scale with the current F.2 builders. The 64/58 draw and triangle census stays as the saved-world target, not a claim about this fixture."
+  },
+  "coldPublic": {
+    "evidence": "docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/cold-public.json",
+    "route": "/p/:publicationId",
+    "mode": "A-native-webgl",
+    "fixture": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
+    "samples": 20,
+    "browserBatches": 2,
+    "summaryMs": {
+      "p50": 186.4,
+      "p90": 269.8,
+      "max": 350.0
+    },
+    "batchP90Ms": [
+      269.8,
+      208.2
+    ],
+    "rendererAtFirstFrame": {
+      "surface": "preview",
+      "calls": 369,
+      "triangles": 14314,
+      "textures": 8
+    },
+    "canvas": {
+      "width": 1280,
+      "height": 528
+    },
+    "consoleErrors": 0,
+    "boundary": "Local production build on loopback, fresh browser contexts with HTTP cache disabled. visitor:first-frame is a renderer scheduling mark, not physical presentation."
   },
   "preparedPublication": {
     "protocol": "P20",
@@ -140,11 +223,23 @@
     "fixtureBytes": "Synthetic P20 release built from shipped texture bytes; no live publication is used for PR 1."
   },
   "unverified": [
-    "Intel Iris Xe-class laptop (A/B/C, Safari/Firefox rows) - hardware unavailable on this host.",
+    "Intel Iris Xe-class laptop (A/B/C and cold-public rows) - hardware unavailable on this host.",
+    "Safari and Firefox qualification and cold-public rows - browsers unavailable on this host.",
     "Exact S0 benchmark camera/pose source at commit 120419bf is not in this tree; comparators use the frozen interior camera recorded here.",
-    "Cold published navigation from a production build with cleared cache was not measured in PR 1.",
-    "The measured 31-wall saved world is not in the repository; counts are from the census only."
+    "Physical display cadence, thermal state and production-URL deployment were not measured; cold-public uses the local production build over loopback.",
+    "Native WebGPU device loss was exercised through the documented hook; r187 filters a destroyed device, so browser-driven loss remains unverified.",
+    "The measured 31-wall saved world is absent; currentWorld is an explicit canonical equivalent at the same 10-room/31-wall scale, not a byte-for-byte recovery of that project."
   ],
+  "hardwareDeferralRequest": {
+    "status": "pending owner approval",
+    "approved": false,
+    "scope": [
+      "Intel Iris Xe-class laptop A/B/C and cold-public measurements",
+      "Safari and Firefox qualification and cold-public rows",
+      "Physical display cadence and thermal state"
+    ],
+    "reason": "The reference laptop and those browsers are not available on this host. This record requests a deferral; it is not an approval and must not be cited as one."
+  },
   "assets": [
     {
       "path": "apps/editor/static/textures/plaster-warm/map.png",

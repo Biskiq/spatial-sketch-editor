@@ -15,7 +15,7 @@
  */
 import { build } from 'esbuild';
 import { createServer } from 'node:http';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -37,6 +37,40 @@ const evidenceDir = join(
 );
 mkdirSync(evidenceDir, { recursive: true });
 
+const STATIC_ROOT = join(appRoot, 'static');
+
+function mimeFor(path) {
+	if (path.endsWith('.png')) return 'image/png';
+	if (path.endsWith('.webp')) return 'image/webp';
+	if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+	if (path.endsWith('.glb')) return 'model/gltf-binary';
+	if (path.endsWith('.json')) return 'application/json';
+	return 'application/octet-stream';
+}
+
+function serveStatic(request, response) {
+	const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+	const file = join(STATIC_ROOT, pathname);
+	if (!file.startsWith(STATIC_ROOT)) {
+		response.writeHead(403);
+		response.end('forbidden');
+		return true;
+	}
+	try {
+		const bytes = readFileSync(file);
+		response.writeHead(200, {
+			'content-type': mimeFor(pathname),
+			'content-length': String(bytes.byteLength),
+			'cache-control': 'no-store'
+		});
+		response.end(bytes);
+	} catch {
+		response.writeHead(404);
+		response.end('not found');
+	}
+	return true;
+}
+
 function serve() {
 	const html = '<!doctype html><html><head><meta charset="utf-8"><title>WebGPU migration harness</title></head><body style="margin:0;background:#101820"><p style="font:12px monospace;color:#9aa">WebGPU qualification harness</p></body></html>';
 	const server = createServer((request, response) => {
@@ -48,6 +82,10 @@ function serve() {
 		if (request.url === '/' || request.url === '/index.html') {
 			response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
 			response.end(html);
+			return;
+		}
+		if (request.url.startsWith('/textures/') || request.url.startsWith('/museum/')) {
+			serveStatic(request, response);
 			return;
 		}
 		response.writeHead(404);
@@ -146,11 +184,16 @@ try {
 		writeFileSync(join(evidenceDir, 'performance.json'), JSON.stringify(performanceReport, null, 2));
 		for (const row of performanceReport.rows) {
 			console.log(
-				`  ${row.mode}: init ${row.startup.initP50.toFixed(1)} ms, first correct ${row.startup.firstCorrectDrawP50.toFixed(
+				`  ${row.mode}: init ${row.startup.initP50.toFixed(1)} ms, submitted draw ${row.startup.firstDrawSubmittedP50.toFixed(
+					1
+				)} ms, verified frame ${row.startup.firstVerifiedFrameP50.toFixed(
 					1
 				)} ms, steady p50 ${row.steady.map((window) => window.intervalP50.toFixed(1)).join('/')} ms`
 			);
 		}
+		console.log(
+			`  gallery texture ${performanceReport.fixture.galleryTexture.path}: ${performanceReport.fixture.galleryTexture.bytes} B, ${performanceReport.fixture.galleryTexture.digest}`
+		);
 	}
 
 	if (consoleErrors.length > 0) {

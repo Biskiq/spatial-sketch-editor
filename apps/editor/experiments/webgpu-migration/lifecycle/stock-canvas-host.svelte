@@ -17,6 +17,7 @@
 	 * what gives the recovery path a genuinely new DOM canvas.
 	 */
 	import { Canvas } from '@threlte/core';
+	import { onDestroy } from 'svelte';
 	import { NoToneMapping, PCFShadowMap } from 'three';
 	import { CanvasLifecycle, type LifecycleSnapshot } from './canvas-lifecycle';
 	import { createGenerationOwner, type GenerationSnapshot } from './generation-owner';
@@ -63,6 +64,9 @@
 		}
 	});
 	lifecycle.begin();
+	// The episode timer is real work after readiness; teardown must clear it even
+	// when the Canvas subtree already retired the generation.
+	onDestroy(() => lifecycle.dispose());
 
 	function ownerChanged(next: GenerationSnapshot): void {
 		if (next.state === 'ready') {

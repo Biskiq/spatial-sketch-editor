@@ -302,6 +302,15 @@ describe('canvas lifecycle', () => {
 		expect(lifecycle.snapshot().phase).toBe('unavailable');
 	});
 
+	it('clears the recovery-episode timer when the surface is disposed', () => {
+		const { lifecycle, timer } = lifecycleFixture();
+		lifecycle.ready('webgpu');
+		expect(timer.pending()).toBe(1);
+		lifecycle.dispose();
+		expect(timer.pending()).toBe(0);
+		expect(lifecycle.snapshot().phase).toBe('disposed');
+	});
+
 	it('ends a recovery episode after 30 seconds without loss', () => {
 		const { lifecycle, timer } = lifecycleFixture();
 		lifecycle.ready('webgpu');

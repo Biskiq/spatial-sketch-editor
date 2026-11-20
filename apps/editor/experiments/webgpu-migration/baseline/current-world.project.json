@@ -1,0 +1,1219 @@
+{
+  "formatVersion": 1,
+  "id": "project:t2-pr1-current-world",
+  "name": "T2 PR 1 current world",
+  "acceptedRevision": {
+    "projectId": "project:t2-pr1-current-world",
+    "revisionId": "revision-current-world-1"
+  },
+  "dependencyLock": {
+    "formatVersion": 1,
+    "entries": []
+  },
+  "units": {
+    "layout": {
+      "header": {
+        "domain": "layout",
+        "unitId": "project:t2-pr1-current-world:layout",
+        "formatVersion": 9,
+        "contentRevision": "sha256-4324afe2a3505ee62fe0efbc9ef6ea6a99ed4872fef76564f9b1f7835bb9f74d"
+      },
+      "data": {
+        "units": "meters",
+        "formatVersion": 9,
+        "floor": {
+          "id": "floor-ground",
+          "name": "Ground Floor",
+          "elevation": 0
+        },
+        "junctions": [
+          {
+            "id": "j-0-0",
+            "point": [
+              0,
+              0
+            ]
+          },
+          {
+            "id": "j-0-1",
+            "point": [
+              0,
+              4
+            ]
+          },
+          {
+            "id": "j-0-2",
+            "point": [
+              0,
+              8
+            ]
+          },
+          {
+            "id": "j-1-0",
+            "point": [
+              4,
+              0
+            ]
+          },
+          {
+            "id": "j-1-1",
+            "point": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "j-1-2",
+            "point": [
+              4,
+              8
+            ]
+          },
+          {
+            "id": "j-2-0",
+            "point": [
+              8,
+              0
+            ]
+          },
+          {
+            "id": "j-2-1",
+            "point": [
+              8,
+              4
+            ]
+          },
+          {
+            "id": "j-2-2",
+            "point": [
+              8,
+              8
+            ]
+          },
+          {
+            "id": "j-3-0",
+            "point": [
+              12,
+              0
+            ]
+          },
+          {
+            "id": "j-3-1",
+            "point": [
+              12,
+              4
+            ]
+          },
+          {
+            "id": "j-3-2",
+            "point": [
+              12,
+              8
+            ]
+          },
+          {
+            "id": "j-4-0",
+            "point": [
+              16,
+              0
+            ]
+          },
+          {
+            "id": "j-4-1",
+            "point": [
+              16,
+              4
+            ]
+          },
+          {
+            "id": "j-4-2",
+            "point": [
+              16,
+              8
+            ]
+          },
+          {
+            "id": "j-5-0",
+            "point": [
+              20,
+              0
+            ]
+          },
+          {
+            "id": "j-5-1",
+            "point": [
+              20,
+              4
+            ]
+          },
+          {
+            "id": "j-5-2",
+            "point": [
+              20,
+              8
+            ]
+          },
+          {
+            "id": "j-fs-0",
+            "point": [
+              13,
+              5
+            ]
+          },
+          {
+            "id": "j-fs-1",
+            "point": [
+              15,
+              5
+            ]
+          },
+          {
+            "id": "j-fs-2",
+            "point": [
+              15,
+              7
+            ]
+          },
+          {
+            "id": "j-fs-3",
+            "point": [
+              13,
+              7
+            ]
+          }
+        ],
+        "walls": [
+          {
+            "id": "wall-v-0-0",
+            "startJunctionId": "j-0-0",
+            "endJunctionId": "j-0-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-0-1",
+            "startJunctionId": "j-0-1",
+            "endJunctionId": "j-0-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-1-0",
+            "startJunctionId": "j-1-0",
+            "endJunctionId": "j-1-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-1-1",
+            "startJunctionId": "j-1-1",
+            "endJunctionId": "j-1-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-2-0",
+            "startJunctionId": "j-2-0",
+            "endJunctionId": "j-2-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-2-1",
+            "startJunctionId": "j-2-1",
+            "endJunctionId": "j-2-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-3-0",
+            "startJunctionId": "j-3-0",
+            "endJunctionId": "j-3-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-3-1",
+            "startJunctionId": "j-3-1",
+            "endJunctionId": "j-3-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-4-0",
+            "startJunctionId": "j-4-0",
+            "endJunctionId": "j-4-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-4-1",
+            "startJunctionId": "j-4-1",
+            "endJunctionId": "j-4-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-5-0",
+            "startJunctionId": "j-5-0",
+            "endJunctionId": "j-5-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-v-5-1",
+            "startJunctionId": "j-5-1",
+            "endJunctionId": "j-5-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-0-0",
+            "startJunctionId": "j-0-0",
+            "endJunctionId": "j-1-0",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-1-0",
+            "startJunctionId": "j-1-0",
+            "endJunctionId": "j-2-0",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-2-0",
+            "startJunctionId": "j-2-0",
+            "endJunctionId": "j-3-0",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-3-0",
+            "startJunctionId": "j-3-0",
+            "endJunctionId": "j-4-0",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-4-0",
+            "startJunctionId": "j-4-0",
+            "endJunctionId": "j-5-0",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-0-1",
+            "startJunctionId": "j-0-1",
+            "endJunctionId": "j-1-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-1-1",
+            "startJunctionId": "j-1-1",
+            "endJunctionId": "j-2-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-2-1",
+            "startJunctionId": "j-2-1",
+            "endJunctionId": "j-3-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-3-1",
+            "startJunctionId": "j-3-1",
+            "endJunctionId": "j-4-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-4-1",
+            "startJunctionId": "j-4-1",
+            "endJunctionId": "j-5-1",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-0-2",
+            "startJunctionId": "j-0-2",
+            "endJunctionId": "j-1-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-1-2",
+            "startJunctionId": "j-1-2",
+            "endJunctionId": "j-2-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-2-2",
+            "startJunctionId": "j-2-2",
+            "endJunctionId": "j-3-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-3-2",
+            "startJunctionId": "j-3-2",
+            "endJunctionId": "j-4-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-h-4-2",
+            "startJunctionId": "j-4-2",
+            "endJunctionId": "j-5-2",
+            "thickness": 0.16,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-fs-0",
+            "startJunctionId": "j-fs-0",
+            "endJunctionId": "j-fs-1",
+            "thickness": 0.12,
+            "height": 2.4,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-fs-1",
+            "startJunctionId": "j-fs-1",
+            "endJunctionId": "j-fs-2",
+            "thickness": 0.12,
+            "height": 2.4,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "wall-fs-1:knot:0",
+                  "point": [
+                    15.5,
+                    6
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    15.166666666666666,
+                    5.333333333333333
+                  ],
+                  "handleIn": [
+                    15.5,
+                    5.666666666666667
+                  ]
+                },
+                {
+                  "handleOut": [
+                    15.5,
+                    6.333333333333333
+                  ],
+                  "handleIn": [
+                    15.166666666666666,
+                    6.666666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "wall-fs-2",
+            "startJunctionId": "j-fs-2",
+            "endJunctionId": "j-fs-3",
+            "thickness": 0.12,
+            "height": 2.4,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-fs-3",
+            "startJunctionId": "j-fs-3",
+            "endJunctionId": "j-fs-0",
+            "thickness": 0.12,
+            "height": 2.4,
+            "centerline": {
+              "kind": "line"
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "id": "room-0-0",
+            "name": "Room 1.1",
+            "boundary": [
+              {
+                "wallId": "wall-h-0-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-1-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-0-1",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-0-0",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-0-1",
+            "name": "Room 1.2",
+            "boundary": [
+              {
+                "wallId": "wall-h-0-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-1-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-0-2",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-0-1",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-1-0",
+            "name": "Room 2.1",
+            "boundary": [
+              {
+                "wallId": "wall-h-1-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-2-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-1-1",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-1-0",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-1-1",
+            "name": "Room 2.2",
+            "boundary": [
+              {
+                "wallId": "wall-h-1-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-2-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-1-2",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-1-1",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-2-0",
+            "name": "Room 3.1",
+            "boundary": [
+              {
+                "wallId": "wall-h-2-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-3-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-2-1",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-2-0",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-2-1",
+            "name": "Room 3.2",
+            "boundary": [
+              {
+                "wallId": "wall-h-2-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-3-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-2-2",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-2-1",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-3-0",
+            "name": "Room 4.1",
+            "boundary": [
+              {
+                "wallId": "wall-h-3-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-4-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-3-1",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-3-0",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-3-1",
+            "name": "Room 4.2",
+            "boundary": [
+              {
+                "wallId": "wall-h-3-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-4-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-3-2",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-3-1",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-4-0",
+            "name": "Room 5.1",
+            "boundary": [
+              {
+                "wallId": "wall-h-4-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-5-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-4-1",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-4-0",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          },
+          {
+            "id": "room-4-1",
+            "name": "Room 5.2",
+            "boundary": [
+              {
+                "wallId": "wall-h-4-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-v-5-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-h-4-2",
+                "direction": "reverse"
+              },
+              {
+                "wallId": "wall-v-4-1",
+                "direction": "reverse"
+              }
+            ],
+            "virtualEdges": [],
+            "overhead": "closed"
+          }
+        ],
+        "openings": [
+          {
+            "id": "door-entry",
+            "wallId": "wall-h-0-0",
+            "kind": "door",
+            "offset": 1,
+            "width": 0.9,
+            "height": 2.1,
+            "sillHeight": 0,
+            "profile": "rectangular",
+            "name": "Entry"
+          }
+        ],
+        "objects": [
+          {
+            "id": "object-bench",
+            "kind": "box",
+            "position": [
+              2,
+              0.4,
+              2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": [
+              1,
+              0.8,
+              1
+            ],
+            "roomId": "room-0-0"
+          }
+        ],
+        "regions": [
+          {
+            "id": "region-plinth",
+            "role": "floor",
+            "footprint": {
+              "kind": "polygon",
+              "points": [
+                [
+                  22,
+                  0
+                ],
+                [
+                  24,
+                  0
+                ],
+                [
+                  24,
+                  2
+                ],
+                [
+                  22,
+                  2
+                ]
+              ]
+            },
+            "elevation": 0,
+            "thickness": 0.12,
+            "form": {
+              "kind": "flat"
+            },
+            "intendedGaps": [],
+            "name": "Standalone plinth"
+          }
+        ],
+        "identity": {
+          "cursor": 0,
+          "rooms": {},
+          "junctions": {},
+          "walls": {},
+          "openings": {},
+          "regions": {}
+        }
+      }
+    },
+    "scene": {
+      "header": {
+        "domain": "scene",
+        "unitId": "project:t2-pr1-current-world:scene",
+        "formatVersion": 11,
+        "contentRevision": "sha256-53a59f791ca16b5986d154e6ef0e2c59c6f8b44f09f02cd41624b371a55505e4"
+      },
+      "data": {
+        "formatVersion": 11,
+        "textures": [
+          {
+            "id": "tex-plaster",
+            "name": "Warm plaster map",
+            "uri": "/textures/plaster-warm/map.png"
+          }
+        ],
+        "materials": [
+          {
+            "id": "finish-plaster",
+            "name": "Warm plaster",
+            "baseMaterialId": "plaster-warm",
+            "roughness": 0.86,
+            "maps": {
+              "color": "tex-plaster"
+            }
+          }
+        ],
+        "entities": [
+          {
+            "kind": "primitive",
+            "id": "entity-plinth",
+            "name": "Plinth block",
+            "primitive": "box",
+            "dimensions": {
+              "width": 1.8,
+              "height": 0.9,
+              "depth": 1.2
+            },
+            "materialId": "plaster-warm",
+            "castShadow": true,
+            "receiveShadow": true,
+            "position": [
+              17,
+              0.45,
+              2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "materialInstanceId": "finish-plaster"
+          },
+          {
+            "kind": "model",
+            "id": "entity-piano",
+            "name": "Imported piano",
+            "assetId": "paris-grand-piano",
+            "fallback": "piano",
+            "position": [
+              6,
+              0,
+              2
+            ],
+            "rotation": [
+              0,
+              0.4,
+              0
+            ],
+            "materialInstanceId": "finish-plaster"
+          },
+          {
+            "kind": "artwork",
+            "id": "entity-artwork-neutral",
+            "name": "Neutral artwork",
+            "position": [
+              10,
+              1.6,
+              7.88
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "source": {
+              "kind": "image",
+              "assetId": "33333333-3333-4333-8333-333333333333",
+              "pixelWidth": 1,
+              "pixelHeight": 1
+            },
+            "widthMeters": 1
+          },
+          {
+            "kind": "artwork",
+            "id": "entity-artwork-translucent",
+            "name": "Translucent artwork",
+            "position": [
+              14,
+              1.6,
+              4.12
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "source": {
+              "kind": "image",
+              "assetId": "44444444-4444-4444-8444-444444444444",
+              "pixelWidth": 1,
+              "pixelHeight": 1
+            },
+            "widthMeters": 0.8
+          },
+          {
+            "kind": "form",
+            "id": "entity-form",
+            "name": "Native form",
+            "position": [
+              18,
+              0,
+              6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "form": {
+              "generator": {
+                "kind": "extrude",
+                "plane": "plan",
+                "outline": [
+                  {
+                    "key": 1,
+                    "u": -0.4,
+                    "v": -0.4,
+                    "smooth": false
+                  },
+                  {
+                    "key": 2,
+                    "u": 0.4,
+                    "v": -0.4,
+                    "smooth": false
+                  },
+                  {
+                    "key": 3,
+                    "u": 0.4,
+                    "v": 0.4,
+                    "smooth": false
+                  },
+                  {
+                    "key": 4,
+                    "u": -0.4,
+                    "v": 0.4,
+                    "smooth": false
+                  }
+                ],
+                "extent": 1.2
+              },
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "nextKey": 5
+            },
+            "materialId": "plaster-warm",
+            "castShadow": true,
+            "receiveShadow": true
+          },
+          {
+            "kind": "light",
+            "id": "light-point",
+            "name": "Point shadow",
+            "light": "point",
+            "color": "#fff1dc",
+            "intensity": 14,
+            "castShadow": true,
+            "position": [
+              10,
+              2.6,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "kind": "light",
+            "id": "light-spot",
+            "name": "Spot shadow",
+            "light": "spot",
+            "color": "#ffe8cc",
+            "intensity": 60,
+            "angle": 0.5,
+            "castShadow": true,
+            "position": [
+              4,
+              3,
+              2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "penumbra": 0.3
+          }
+        ],
+        "surfaceFinishes": [
+          {
+            "surface": {
+              "kind": "region-face",
+              "regionId": "region-plinth",
+              "face": "top"
+            },
+            "finish": {
+              "materialInstanceId": "finish-plaster"
+            }
+          },
+          {
+            "surface": {
+              "kind": "room-floor",
+              "roomId": "room-0-0"
+            },
+            "finish": {
+              "materialId": "wood-walnut"
+            }
+          }
+        ],
+        "artworkLibrary": [
+          {
+            "assetId": "33333333-3333-4333-8333-333333333333",
+            "pixelWidth": 1,
+            "pixelHeight": 1,
+            "name": "Neutral artwork"
+          },
+          {
+            "assetId": "44444444-4444-4444-8444-444444444444",
+            "pixelWidth": 1,
+            "pixelHeight": 1,
+            "name": "Translucent artwork"
+          }
+        ],
+        "environment": {
+          "sky": {
+            "preset": "daylight",
+            "time": 12,
+            "heading": 0,
+            "arcHeight": 50,
+            "haze": 0.3,
+            "exposure": 1,
+            "softness": 0.5,
+            "sunShadows": true,
+            "moon": {
+              "color": "#ffffff",
+              "strength": 0.2
+            },
+            "skyColor": "#dfe9f5",
+            "groundColor": "#bdb7a9"
+          }
+        }
+      }
+    },
+    "camera": {
+      "header": {
+        "domain": "camera",
+        "unitId": "project:t2-pr1-current-world:camera",
+        "formatVersion": 1,
+        "contentRevision": "sha256-ef045490354d1c7a2d93bc5c3f48e08db1e6856f9ff70e9611e09bdbc14859c2"
+      },
+      "data": {
+        "formatVersion": 1,
+        "views": [
+          {
+            "id": "view-entry",
+            "label": "Entry",
+            "eye": [
+              10,
+              1.7,
+              3.9
+            ],
+            "target": [
+              10,
+              1.4,
+              7.5
+            ],
+            "fov": 54,
+            "connectedViewIds": []
+          },
+          {
+            "id": "view-piano",
+            "label": "Piano",
+            "eye": [
+              2.5,
+              1.7,
+              3.9
+            ],
+            "target": [
+              6,
+              1.1,
+              2
+            ],
+            "fov": 54,
+            "connectedViewIds": []
+          },
+          {
+            "id": "view-plinth",
+            "label": "Plinth",
+            "eye": [
+              17,
+              1.7,
+              5.5
+            ],
+            "target": [
+              17,
+              1.1,
+              2
+            ],
+            "fov": 54,
+            "connectedViewIds": []
+          }
+        ],
+        "connections": []
+      }
+    },
+    "experience": {
+      "header": {
+        "domain": "experience",
+        "unitId": "project:t2-pr1-current-world:experience",
+        "formatVersion": 4,
+        "contentRevision": "sha256-6330329d2f6c7a92008f553b1cc3c5de6ff34588bd6cb896e9b75d955d9667bb"
+      },
+      "data": {
+        "formatVersion": 4,
+        "experiences": []
+      }
+    },
+    "resources": {
+      "header": {
+        "domain": "resources",
+        "unitId": "project:t2-pr1-current-world:resources",
+        "formatVersion": 2,
+        "contentRevision": "sha256-242ab8fd1237233dc8ddc0816a93c9379207cc9d4679413e890ad691fa5d06b5"
+      },
+      "data": {
+        "formatVersion": 2,
+        "resources": [
+          {
+            "kind": "texture",
+            "id": "tex-plaster",
+            "contentRevision": "revision-tex-plaster-1",
+            "pin": null,
+            "unresolved": null
+          },
+          {
+            "kind": "asset",
+            "id": "paris-grand-piano",
+            "contentRevision": "revision-piano-1",
+            "pin": null,
+            "unresolved": null
+          }
+        ]
+      }
+    }
+  }
+}

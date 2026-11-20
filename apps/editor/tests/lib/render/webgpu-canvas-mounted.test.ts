@@ -14,7 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 import StockCanvasHost from '../../../experiments/webgpu-migration/lifecycle/stock-canvas-host.svelte';
 import ReadyGatedCanvasHost from '../../../experiments/webgpu-migration/lifecycle/ready-gated-canvas-host.svelte';
-import type { LifecycleSnapshot } from '../../../experiments/webgpu-migration/lifecycle/canvas-lifecycle';
+import {
+	CanvasLifecycle,
+	type LifecycleSnapshot
+} from '../../../experiments/webgpu-migration/lifecycle/canvas-lifecycle';
 import { fakeHost, settle, type FakeHost } from './fixtures/webgpu-canvas-fakes';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -263,6 +266,17 @@ describe.each(CANDIDATES)('$name', (candidate) => {
 		} finally {
 			await unmount(component);
 		}
+	});
+
+	it('disposes the lifecycle episode timer on unmount', async () => {
+		const dispose = vi.spyOn(CanvasLifecycle.prototype, 'dispose');
+		const host = fakeHost();
+		const { component } = await mountHost(candidate, host);
+		host.resolveInit(0);
+		await pumpUntil(host, () => host.created[0]!.renderCalls > 0);
+		expect(dispose).not.toHaveBeenCalled();
+		await unmount(component);
+		expect(dispose).toHaveBeenCalledTimes(1);
 	});
 
 	it('consumes a rejected async disposal and reports no unhandled rejection', async () => {

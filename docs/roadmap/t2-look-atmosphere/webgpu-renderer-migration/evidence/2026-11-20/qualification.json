@@ -66,7 +66,7 @@
         "auto": {
           "backend": "webgpu",
           "coordinateSystem": "webgpu",
-          "initMs": 2.800000011920929,
+          "initMs": 3.7000000178813934,
           "centre": [
             255,
             0,
@@ -78,7 +78,7 @@
         "forced": {
           "backend": "webgl2",
           "coordinateSystem": "webgl",
-          "initMs": 14.300000011920929,
+          "initMs": 7.200000017881393,
           "centre": [
             255,
             0,
@@ -141,7 +141,7 @@
         }
       ],
       "measurements": {
-        "textureUuid": "62d7b6e6-78aa-4606-8cba-606dfe255629",
+        "textureUuid": "2a7bbde2-a37c-48f9-92ed-038c189e4568",
         "nativeBackend": "webgpu",
         "forcedBackend": "webgl2",
         "firstCentre": [
@@ -583,9 +583,9 @@
       "backend": "webgpu+webgl2",
       "assertions": [
         {
-          "name": "webgpu DPR 1: 8 px line is 6..11 px",
+          "name": "webgpu DPR 1: 8 px line stays visible (6..11 px)",
           "ok": true,
-          "detail": "8"
+          "detail": "6"
         },
         {
           "name": "webgpu DPR 1: dashed line has at least three dashes",
@@ -593,25 +593,75 @@
           "detail": "7"
         },
         {
-          "name": "webgl2 DPR 1: 8 px line is 6..11 px",
+          "name": "webgpu DPR 1.5: 8 px line stays visible (6..17 px)",
           "ok": true,
-          "detail": "6"
+          "detail": "12"
+        },
+        {
+          "name": "webgpu DPR 1.5: dashed line has at least three dashes",
+          "ok": true,
+          "detail": "7"
+        },
+        {
+          "name": "webgl2 DPR 1: 8 px line stays visible (6..11 px)",
+          "ok": true,
+          "detail": "8"
         },
         {
           "name": "webgl2 DPR 1: dashed line has at least three dashes",
           "ok": false,
-          "detail": "0"
+          "detail": "1"
+        },
+        {
+          "name": "webgl2 DPR 1.5: 8 px line stays visible (6..17 px)",
+          "ok": true,
+          "detail": "12"
+        },
+        {
+          "name": "webgl2 DPR 1.5: dashed line has at least three dashes",
+          "ok": false,
+          "detail": "1"
         }
       ],
       "measurements": {
         "webgpu-dpr1": {
-          "thickness": 8,
+          "thickness": 6,
           "dashes": 7,
+          "dpr": 1,
+          "drawingBuffer": [
+            200,
+            120
+          ],
+          "worldUnits": false
+        },
+        "webgpu-dpr1.5": {
+          "thickness": 12,
+          "dashes": 7,
+          "dpr": 1.5,
+          "drawingBuffer": [
+            300,
+            180
+          ],
           "worldUnits": false
         },
         "webgl2-dpr1": {
-          "thickness": 6,
-          "dashes": 0,
+          "thickness": 8,
+          "dashes": 1,
+          "dpr": 1,
+          "drawingBuffer": [
+            200,
+            120
+          ],
+          "worldUnits": false
+        },
+        "webgl2-dpr1.5": {
+          "thickness": 12,
+          "dashes": 1,
+          "dpr": 1.5,
+          "drawingBuffer": [
+            300,
+            180
+          ],
           "worldUnits": false
         }
       }
@@ -751,7 +801,7 @@
           "rowOrder": "top-down",
           "bytes": 248708,
           "expectedBytes": 248708,
-          "ms": 1.0999999940395355,
+          "ms": 0.9000000059604645,
           "topLeft": [
             255,
             0,
@@ -804,7 +854,7 @@
           "rowOrder": "bottom-up",
           "bytes": 248708,
           "expectedBytes": 248708,
-          "ms": 19.399999976158142,
+          "ms": 3.5999999940395355,
           "topLeft": [
             255,
             0,
@@ -841,7 +891,7 @@
         {
           "name": "webgpu: a warm repeat is not slower than the cold frame",
           "ok": true,
-          "detail": "12.099999994039536 -> 1.100000023841858"
+          "detail": "11 -> 1"
         },
         {
           "name": "webgpu: the scene compiled at least one program",
@@ -851,7 +901,7 @@
         {
           "name": "webgl2: a warm repeat is not slower than the cold frame",
           "ok": true,
-          "detail": "10.200000017881393 -> 0.4000000059604645"
+          "detail": "9.900000005960464 -> 0.29999998211860657"
         },
         {
           "name": "webgl2: the scene compiled at least one program",
@@ -862,40 +912,40 @@
       "measurements": {
         "webgpu": {
           "cold": {
-            "ms": 12.099999994039536,
+            "ms": 11,
             "calls": 1,
             "programs": 2
           },
           "warm": {
-            "ms": 1.100000023841858,
+            "ms": 1,
             "calls": 2,
             "programs": 2
           },
           "lightVariant": {
-            "ms": 2.4000000059604645,
+            "ms": 0.800000011920929,
             "calls": 3,
             "programs": 2
           },
-          "compileAsyncMs": 5.699999988079071,
+          "compileAsyncMs": 5,
           "compileAsyncSupported": true
         },
         "webgl2": {
           "cold": {
-            "ms": 10.200000017881393,
+            "ms": 9.900000005960464,
             "calls": 1,
             "programs": 2
           },
           "warm": {
-            "ms": 0.4000000059604645,
+            "ms": 0.29999998211860657,
             "calls": 2,
             "programs": 2
           },
           "lightVariant": {
-            "ms": 0.19999998807907104,
+            "ms": 0.30000001192092896,
             "calls": 3,
             "programs": 2
           },
-          "compileAsyncMs": 3.5,
+          "compileAsyncMs": 3.699999988079071,
           "compileAsyncSupported": true
         }
       }
@@ -938,5 +988,5 @@
       }
     }
   ],
-  "harnessModuleMs": 2037.8999999761581
+  "harnessModuleMs": 1494
 }

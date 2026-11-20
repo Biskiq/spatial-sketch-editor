@@ -1,0 +1,61 @@
+{
+  "fixture": "apps/editor/experiments/webgpu-migration/baseline/current-world.project.json",
+  "digest": "sha256-aef406451ee4129636bfa18e8a2f2ca10ffa4312862f98a2c326a812d8037a5e",
+  "bytes": 29829,
+  "counts": {
+    "rooms": 10,
+    "walls": 31,
+    "junctions": 22,
+    "openings": 1,
+    "regions": 1,
+    "objects": 1,
+    "sceneEntities": 7,
+    "resources": 2,
+    "lights": 2,
+    "artworks": 2,
+    "models": 1,
+    "primitives": 1,
+    "forms": 1
+  },
+  "publicationProjection": {
+    "fixture": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
+    "digest": "sha256-2541b2e3396f0f85ea7918f53c1d9fc448eaa5c65126fd40cfb483af3053636a",
+    "bytes": 28392,
+    "removedContent": [
+      "form"
+    ],
+    "reason": "P20 prepared publication refuses native forms; the source comparator keeps entity-form."
+  },
+  "requiredContent": {
+    "opening": true,
+    "curved-wall": true,
+    "room-floor-lid": true,
+    "standalone-region-s5b-faces": true,
+    "layout-object": true,
+    "scene-primitive": true,
+    "form": true,
+    "mapped-finish": true,
+    "imported-textured-glb": true,
+    "neutral-artwork": true,
+    "translucent-artwork": true,
+    "shadow-sun": true,
+    "shadow-spot": true,
+    "shadow-point": true
+  },
+  "artwork": [
+    {
+      "path": "apps/editor/experiments/webgpu-migration/baseline/current-world-neutral.png",
+      "assetId": "33333333-3333-4333-8333-333333333333",
+      "mime": "image/png",
+      "byteSize": 68,
+      "digest": "sha256-5e3d382db4dd83d59aa5742793ad6b7903409e865c83bcbc54835049f043bc15"
+    },
+    {
+      "path": "apps/editor/experiments/webgpu-migration/baseline/current-world-translucent.png",
+      "assetId": "44444444-4444-4444-8444-444444444444",
+      "mime": "image/png",
+      "byteSize": 68,
+      "digest": "sha256-63ef318d96b5d0d0ceba6e04a4e622b1158335cdc67c49e27839132c6f655058"
+    }
+  ]
+}

@@ -6,8 +6,8 @@
  * versions, the S0 comparator geometry and camera poses, and the exact bytes
  * of every shipped texture, GLB and render fixture the A row renders.
  *
- * `currentWorld` records the census target and explicitly marks the missing
- * saved project as unverified rather than pretending a fixture exists.
+ * `currentWorld` records the census target and pins the canonical equivalent
+ * built for PR 1; the absent saved project stays explicit in `unverified`.
  */
 import { createHash, type BinaryLike } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
@@ -23,7 +23,27 @@ type Manifest = {
 	packages: { three: string; threlteCore: string; threlteExtras: string };
 	viewport: { width: number; height: number; dpr: number };
 	s0Comparators: Record<string, Record<string, unknown>>;
-	currentWorld: { target: Record<string, number>; requiredContent: string[]; status: string };
+	currentWorld: {
+		target: Record<string, number>;
+		fixture: { path: string; bytes: number; digest: string; counts: Record<string, number> };
+		publicationProjection: {
+			path: string;
+			bytes: number;
+			digest: string;
+			removedContent: string[];
+		};
+		artwork: Array<{ assetId: string; path: string; bytes: number; digest: string }>;
+		requiredContent: string[];
+		status: string;
+	};
+	coldPublic: {
+		samples: number;
+		browserBatches: number;
+		summaryMs: { p50: number; p90: number; max: number };
+		rendererAtFirstFrame: { calls: number; triangles: number };
+		consoleErrors: number;
+		boundary: string;
+	};
 	preparedPublication: {
 		protocol: string;
 		registryVersion: number;
@@ -33,6 +53,12 @@ type Manifest = {
 		assetEndpoint: string;
 	};
 	unverified: string[];
+	hardwareDeferralRequest: {
+		status: string;
+		approved: boolean;
+		scope: string[];
+		reason: string;
+	};
 	assets: Asset[];
 };
 
@@ -85,7 +111,7 @@ describe('PR 1 native-WebGL baseline manifest', () => {
 		expect(gallery.camera.far).toBe(100);
 	});
 
-	it('names every required current-world element and admits the missing project', () => {
+	it('names every required current-world element and pins the canonical fixture', () => {
 		expect(manifest.currentWorld.target).toMatchObject({
 			rooms: 10,
 			walls: 31,
@@ -108,7 +134,39 @@ describe('PR 1 native-WebGL baseline manifest', () => {
 				'shadow-point'
 			])
 		);
-		expect(manifest.currentWorld.status).toContain('Not frozen in PR 1');
+		expect(manifest.currentWorld.status).toContain('Frozen in PR 1');
+		expect(manifest.currentWorld.fixture.path).toBe(
+			'apps/editor/experiments/webgpu-migration/baseline/current-world.project.json'
+		);
+		expect(manifest.currentWorld.fixture.counts).toMatchObject({ rooms: 10, walls: 31 });
+		expect(manifest.currentWorld.publicationProjection.removedContent).toEqual(['form']);
+	});
+
+	it('matches the canonical current-world fixture and its publication projection byte-for-byte', () => {
+		const files = [
+			{
+				path: manifest.currentWorld.fixture.path,
+				bytes: manifest.currentWorld.fixture.bytes,
+				digest: manifest.currentWorld.fixture.digest
+			},
+			{
+				path: manifest.currentWorld.publicationProjection.path,
+				bytes: manifest.currentWorld.publicationProjection.bytes,
+				digest: manifest.currentWorld.publicationProjection.digest
+			},
+			...manifest.currentWorld.artwork.map((entry) => ({
+				path: entry.path,
+				bytes: entry.bytes,
+				digest: entry.digest
+			}))
+		];
+		for (const file of files) {
+			const bytes = readFileSync(resolve(ROOT, file.path));
+			expect(bytes.byteLength, file.path).toBe(file.bytes);
+			expect(`sha256-${createHash('sha256').update(bytes as unknown as BinaryLike).digest('hex')}`, file.path).toBe(
+				file.digest
+			);
+		}
 	});
 
 	it('pins the prepared-publication protocol inputs, not a live publication', () => {
@@ -153,14 +211,28 @@ describe('PR 1 native-WebGL baseline manifest', () => {
 		}
 	});
 
+	it('pins the cold-public evidence and its measurement boundary', () => {
+		expect(manifest.coldPublic.samples).toBe(20);
+		expect(manifest.coldPublic.browserBatches).toBe(2);
+		expect(manifest.coldPublic.summaryMs.p90).toBeLessThan(1000);
+		expect(manifest.coldPublic.rendererAtFirstFrame.calls).toBeGreaterThan(0);
+		expect(manifest.coldPublic.rendererAtFirstFrame.triangles).toBeGreaterThan(0);
+		expect(manifest.coldPublic.consoleErrors).toBe(0);
+		expect(manifest.coldPublic.boundary).toContain('not physical presentation');
+	});
+
 	it('records the unverified reference rows instead of claiming them', () => {
 		expect(manifest.unverified).toEqual(
 			expect.arrayContaining([
 				expect.stringContaining('Intel Iris Xe'),
-				expect.stringContaining('Cold published navigation'),
-				expect.stringContaining('saved world')
+				expect.stringContaining('Safari and Firefox'),
+				expect.stringContaining('canonical equivalent')
 			])
 		);
+		expect(manifest.hardwareDeferralRequest).toMatchObject({
+			status: 'pending owner approval',
+			approved: false
+		});
 		// The manifest test uses the app root only to resolve static bytes.
 		expect(APP.endsWith('apps/editor')).toBe(true);
 	});

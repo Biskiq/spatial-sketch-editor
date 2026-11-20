@@ -22,7 +22,8 @@
     "perf:workloads": "vite-node perf/generate-workloads.ts",
     "webgpu:qualify": "node experiments/webgpu-migration/run.mjs --qualification",
     "webgpu:perf": "node experiments/webgpu-migration/run.mjs --performance",
-    "webgpu:evidence": "node experiments/webgpu-migration/run.mjs"
+    "webgpu:evidence": "node experiments/webgpu-migration/run.mjs",
+    "webgpu:cold": "node experiments/webgpu-migration/cold-public.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.4.1",

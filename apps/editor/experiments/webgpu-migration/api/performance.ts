@@ -16,20 +16,19 @@ import {
 	AmbientLight,
 	BoxGeometry,
 	Color,
-	DataTexture,
 	DirectionalLight,
 	Mesh,
 	MeshStandardMaterial,
-	NoColorSpace,
 	NoToneMapping,
 	PCFShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
-	RGBAFormat,
 	RenderTarget,
 	SRGBColorSpace,
 	Scene,
-	WebGPURenderer
+	TextureLoader,
+	WebGPURenderer,
+	type Texture
 } from 'three/webgpu';
 
 export type PerfMode = 'A-native-webgl' | 'B-webgpu' | 'C-forced-webgl2';
@@ -52,9 +51,14 @@ export type PerfRow = {
 		readonly initP50: number;
 		readonly initP90: number;
 		readonly initMax: number;
-		readonly firstCorrectDrawP50: number;
-		readonly firstCorrectDrawP90: number;
-		readonly firstCorrectDrawMax: number;
+		/** Time until `renderer.render()` returned; no pixel or presentation proof. */
+		readonly firstDrawSubmittedP50: number;
+		readonly firstDrawSubmittedP90: number;
+		readonly firstDrawSubmittedMax: number;
+		/** Time until the canvas copy first showed a gallery, after any backend wait. */
+		readonly firstVerifiedFrameP50: number;
+		readonly firstVerifiedFrameP90: number;
+		readonly firstVerifiedFrameMax: number;
 		readonly samples: number;
 	};
 	readonly steady: WindowStats[];
@@ -83,29 +87,53 @@ function percentile(values: readonly number[], fraction: number): number {
 	return sorted[Math.max(0, index)]!;
 }
 
-function galleryTexture(): Uint8Array {
-	const data = new Uint8Array(8 * 8 * 4);
-	for (let y = 0; y < 8; y += 1) {
-		for (let x = 0; x < 8; x += 1) {
-			const index = (y * 8 + x) * 4;
-			const light = (x + y) % 2 === 0 ? 220 : 138;
-			data[index] = light;
-			data[index + 1] = Math.round(light * 0.88);
-			data[index + 2] = Math.round(light * 0.72);
-			data[index + 3] = 255;
-		}
+const GALLERY_TEXTURE_URL = '/textures/plaster-warm/map.png';
+
+export type GalleryTextureEvidence = {
+	readonly path: string;
+	readonly url: string;
+	readonly bytes: number;
+	readonly digest: string;
+};
+
+/** The fixture's actual bytes, hashed in the browser against the pinned manifest. */
+async function galleryTextureEvidence(): Promise<GalleryTextureEvidence> {
+	const response = await fetch(GALLERY_TEXTURE_URL, { cache: 'no-store' });
+	if (!response.ok) {
+		throw new Error(`Gallery texture ${GALLERY_TEXTURE_URL} returned HTTP ${response.status}`);
 	}
-	return data;
+	const bytes = new Uint8Array(await response.arrayBuffer());
+	const digest = await crypto.subtle.digest('SHA-256', bytes as unknown as BufferSource);
+	const hex = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('');
+	return {
+		path: 'apps/editor/static/textures/plaster-warm/map.png',
+		url: GALLERY_TEXTURE_URL,
+		bytes: bytes.byteLength,
+		digest: `sha256-${hex}`
+	};
+}
+
+async function loadLegacyGalleryTexture(): Promise<Legacy.Texture> {
+	const texture = await new Legacy.TextureLoader().loadAsync(GALLERY_TEXTURE_URL);
+	texture.colorSpace = Legacy.SRGBColorSpace;
+	texture.needsUpdate = true;
+	return texture;
+}
+
+async function loadCommonGalleryTexture(): Promise<Texture> {
+	const texture = await new TextureLoader().loadAsync(GALLERY_TEXTURE_URL);
+	texture.colorSpace = SRGBColorSpace;
+	texture.needsUpdate = true;
+	return texture;
 }
 
 type SceneKit = {
 	readonly scene: Scene | Legacy.Scene;
 	readonly camera: PerspectiveCamera | Legacy.PerspectiveCamera;
 	readonly lights: Array<unknown>;
-	readonly textures: Array<{ dispose(): void }>;
 };
 
-function legacyGallery(): SceneKit {
+function legacyGallery(texture: Legacy.Texture): SceneKit {
 	const scene = new Legacy.Scene();
 	scene.background = new Legacy.Color('#e9ebe6');
 	const camera = new Legacy.PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 100);
@@ -132,9 +160,6 @@ function legacyGallery(): SceneKit {
 	left.receiveShadow = true;
 	right.receiveShadow = true;
 	scene.add(far, near, left, right, floor);
-	const texture = new Legacy.DataTexture(galleryTexture(), 8, 8);
-	texture.colorSpace = Legacy.SRGBColorSpace;
-	texture.needsUpdate = true;
 	for (let index = 0; index < 6; index += 1) {
 		const quad = new Legacy.Mesh(
 			new Legacy.PlaneGeometry(1.2, 0.9),
@@ -149,10 +174,10 @@ function legacyGallery(): SceneKit {
 	sun.castShadow = true;
 	sun.target.position.set(0, 0, 0);
 	scene.add(sun, sun.target, new Legacy.AmbientLight(0xffffff, 0.35));
-	return { scene, camera, lights: [sun], textures: [texture] };
+	return { scene, camera, lights: [sun] };
 }
 
-function commonGallery(): SceneKit {
+function commonGallery(texture: Texture): SceneKit {
 	const scene = new Scene();
 	scene.background = new Color('#e9ebe6');
 	const camera = new PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 100);
@@ -179,9 +204,6 @@ function commonGallery(): SceneKit {
 	left.receiveShadow = true;
 	right.receiveShadow = true;
 	scene.add(far, near, left, right, floor);
-	const texture = new DataTexture(galleryTexture(), 8, 8);
-	texture.colorSpace = SRGBColorSpace;
-	texture.needsUpdate = true;
 	for (let index = 0; index < 6; index += 1) {
 		const quad = new Mesh(new PlaneGeometry(1.2, 0.9), new MeshStandardMaterial({ map: texture, roughness: 0.6 }));
 		quad.position.set(-3.3 + index * 1.32, 1.7, 3.38);
@@ -193,7 +215,7 @@ function commonGallery(): SceneKit {
 	sun.castShadow = true;
 	sun.target.position.set(0, 0, 0);
 	scene.add(sun, sun.target, new AmbientLight(0xffffff, 0.35));
-	return { scene, camera, lights: [sun], textures: [texture] };
+	return { scene, camera, lights: [sun] };
 }
 
 function disposeKit(kit: SceneKit): void {
@@ -208,7 +230,6 @@ function disposeKit(kit: SceneKit): void {
 		if (Array.isArray(material)) for (const entry of material) entry.dispose();
 		else material?.dispose();
 	});
-	for (const texture of kit.textures) texture.dispose();
 }
 
 type RendererAdapter = {
@@ -438,57 +459,81 @@ async function steadyWindows(adapter: RendererAdapter, kit: SceneKit, windows = 
 
 async function startupSamples(adapterFactory: () => Promise<RendererAdapter>, kit: () => SceneKit): Promise<{
 	init: number[];
-	firstDraw: number[];
+	submitted: number[];
+	verified: number[];
 }> {
 	const init: number[] = [];
-	const firstDraw: number[] = [];
+	const submitted: number[] = [];
+	const verified: number[] = [];
 	for (let run = 0; run < 10; run += 1) {
 		const start = performance.now();
 		const adapter = await adapterFactory();
 		init.push(adapter.initMs);
 		const sceneKit = kit();
 		adapter.render(sceneKit.scene, sceneKit.camera);
+		// A submitted draw is not a presented frame: this only proves the render
+		// call returned. The verified boundary below separately proves the canvas
+		// copy contained a gallery, including any backend wait it needed.
 		const submittedAt = performance.now();
 		// The canvas is read before a cross-task presentation can replace it:
 		// r187's WebGPU canvas has no preserveDrawingBuffer, and headless Chrome
 		// may present between awaits.
 		const immediate = frameStats(adapter.canvas);
+		const immediateAt = performance.now();
 		await adapter.readSynchronized();
 		const afterWait = frameStats(adapter.canvas);
-		if (immediate.distinct <= 2) {
+		const afterWaitAt = performance.now();
+		const verifiedAt = immediate.distinct > 2 ? immediateAt : afterWait.distinct > 2 ? afterWaitAt : null;
+		if (verifiedAt === null) {
 			throw new Error(
 				`${adapter.mode}: first frame did not show a gallery (immediate ${JSON.stringify(immediate)}, after ${JSON.stringify(afterWait)})`
 			);
 		}
-		firstDraw.push(submittedAt - start);
+		submitted.push(submittedAt - start);
+		verified.push(verifiedAt - start);
 		disposeKit(sceneKit);
 		await adapter.dispose();
 	}
-	return { init, firstDraw };
+	return { init, submitted, verified };
 }
 
 export type PerformanceReport = {
 	readonly displayPeriodMs: number;
+	readonly fixture: {
+		readonly galleryTexture: GalleryTextureEvidence;
+		readonly geometry: string;
+	};
 	readonly rows: PerfRow[];
 	readonly limitations: string[];
 };
 
 export async function runPerformance(): Promise<PerformanceReport> {
 	const period = await idlePeriod();
+	const galleryTexture = await galleryTextureEvidence();
 	const limitations: string[] = [];
 
 	const create = (mode: PerfMode): (() => Promise<RendererAdapter>) => {
 		if (mode === 'A-native-webgl') return createNativeWebGL;
 		return () => createCommonRenderer(mode === 'C-forced-webgl2');
 	};
-	const kitFor = (mode: PerfMode): (() => SceneKit) => (mode === 'A-native-webgl' ? legacyGallery : commonGallery);
 	const rows: PerfRow[] = [];
 
 	for (const mode of ['A-native-webgl', 'B-webgpu', 'C-forced-webgl2'] as const) {
 		const adapter = await create(mode)();
 		const observed = adapter.observed;
-		const startup = await startupSamples(create(mode), kitFor(mode));
-		const kit = kitFor(mode)();
+		let kitFor: () => SceneKit;
+		let disposeTexture: () => void;
+		if (mode === 'A-native-webgl') {
+			const texture = await loadLegacyGalleryTexture();
+			kitFor = () => legacyGallery(texture);
+			disposeTexture = () => texture.dispose();
+		} else {
+			const texture = await loadCommonGalleryTexture();
+			kitFor = () => commonGallery(texture);
+			disposeTexture = () => texture.dispose();
+		}
+		const startup = await startupSamples(create(mode), kitFor);
+		const kit = kitFor();
 
 		// Warm the pipeline before steady measurement.
 		for (let warm = 0; warm < 10; warm += 1) adapter.render(kit.scene, kit.camera);
@@ -534,10 +579,13 @@ export async function runPerformance(): Promise<PerformanceReport> {
 				initP50: percentile(startup.init, 0.5),
 				initP90: percentile(startup.init, 0.9),
 				initMax: Math.max(...startup.init),
-				firstCorrectDrawP50: percentile(startup.firstDraw, 0.5),
-				firstCorrectDrawP90: percentile(startup.firstDraw, 0.9),
-				firstCorrectDrawMax: Math.max(...startup.firstDraw),
-				samples: startup.firstDraw.length
+				firstDrawSubmittedP50: percentile(startup.submitted, 0.5),
+				firstDrawSubmittedP90: percentile(startup.submitted, 0.9),
+				firstDrawSubmittedMax: Math.max(...startup.submitted),
+				firstVerifiedFrameP50: percentile(startup.verified, 0.5),
+				firstVerifiedFrameP90: percentile(startup.verified, 0.9),
+				firstVerifiedFrameMax: Math.max(...startup.verified),
+				samples: startup.verified.length
 			},
 			steady,
 			shadow: {
@@ -557,13 +605,24 @@ export async function runPerformance(): Promise<PerformanceReport> {
 		});
 
 		disposeKit(kit);
+		disposeTexture();
 		await adapter.dispose();
 	}
 
 	limitations.push(
+		'First draw submitted is time until renderer.render() returned; it proves no pixels and no presentation.',
+		'First verified frame is time until the canvas copy first contained a gallery, including any GPU wait/readback; it is an upper bound, not physical presentation.',
 		'Animation-frame intervals are a presentation-opportunity proxy, not physical scanout; headless Chromium keeps its own cadence.',
 		'Synchronized columns include a GPU wait/readback and are cost diagnostics, not displayed frame times.',
 		'This run measured one host only. The Intel Iris Xe-class laptop, Safari and Firefox rows remain unverified.'
 	);
-	return { displayPeriodMs: period, rows, limitations };
+	return {
+		displayPeriodMs: period,
+		fixture: {
+			galleryTexture,
+			geometry: '12 × 7 m interior, six 1.2 × 0.9 m textured quads, one shadowed Sun, camera (0,1.6,−1.2) → (0,1.4,3.5), 50° FOV'
+		},
+		rows,
+		limitations
+	};
 }

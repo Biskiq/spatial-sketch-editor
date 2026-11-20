@@ -654,57 +654,79 @@ export const qualification: readonly ScenarioEntry[] = [
 		const assertions: Assertion[] = [];
 		const measurements: Record<string, unknown> = {};
 		for (const forceWebGL of [false, true]) {
-			const created = await createWebgpuRenderer({ width: 200, height: 120, forceWebGL });
-			const label = created.backend;
-			const scene = new Scene();
-			scene.background = new Color(BACKGROUND);
-			const camera = new OrthographicCamera(-1, 1, 0.6, -0.6, 0.1, 10);
-			camera.position.z = 2;
-			const line = new Line2(new LineGeometry().setPositions([-0.8, 0.2, 0, 0.8, 0.2, 0]));
-			line.material.linewidth = 8;
-			line.material.worldUnits = false;
-			line.computeLineDistances();
-			const dashed = new Line2(new LineGeometry().setPositions([-0.8, -0.2, 0, 0.8, -0.2, 0]));
-			dashed.material.linewidth = 6;
-			dashed.material.worldUnits = false;
-			dashed.material.dashed = true;
-			dashed.material.dashSize = 0.15;
-			dashed.material.gapSize = 0.1;
-			dashed.computeLineDistances();
-			scene.add(line, dashed);
-			const renderTarget = target(200, 120);
-			created.renderer.setRenderTarget(renderTarget);
-			created.renderer.render(scene, camera);
-			created.renderer.setRenderTarget(null);
-			const readback = await readTarget(created.renderer, renderTarget, 200, 120, {
-				x: 5,
-				y: 5,
-				expected: [16, 24, 32]
-			});
-			let thickness = 0;
-			let run = 0;
-			for (let y = 0; y < 120; y += 1) {
-				if (pixelAt(readback, 100, y)[0]! > 100) {
-					run += 1;
-					thickness = Math.max(thickness, run);
-				} else {
-					run = 0;
+			for (const dpr of [1, 1.5] as const) {
+				const width = 200;
+				const height = 120;
+				const pixelWidth = Math.round(width * dpr);
+				const pixelHeight = Math.round(height * dpr);
+				const created = await createWebgpuRenderer({ width, height, dpr, forceWebGL });
+				const label = created.backend;
+				const scene = new Scene();
+				scene.background = new Color(BACKGROUND);
+				const camera = new OrthographicCamera(-1, 1, 0.6, -0.6, 0.1, 10);
+				camera.position.z = 2;
+				const line = new Line2(new LineGeometry().setPositions([-0.8, 0.2, 0, 0.8, 0.2, 0]));
+				line.material.linewidth = 8;
+				line.material.worldUnits = false;
+				line.computeLineDistances();
+				const dashed = new Line2(new LineGeometry().setPositions([-0.8, -0.2, 0, 0.8, -0.2, 0]));
+				dashed.material.linewidth = 6;
+				dashed.material.worldUnits = false;
+				dashed.material.dashed = true;
+				dashed.material.dashSize = 0.15;
+				dashed.material.gapSize = 0.1;
+				dashed.computeLineDistances();
+				scene.add(line, dashed);
+				const renderTarget = target(pixelWidth, pixelHeight);
+				created.renderer.setRenderTarget(renderTarget);
+				created.renderer.render(scene, camera);
+				created.renderer.setRenderTarget(null);
+				const readback = await readTarget(created.renderer, renderTarget, pixelWidth, pixelHeight, {
+					x: 5,
+					y: 5,
+					expected: [16, 24, 32]
+				});
+				let thickness = 0;
+				let run = 0;
+				const thicknessX = Math.round(100 * dpr);
+				for (let y = 0; y < pixelHeight; y += 1) {
+					if (pixelAt(readback, thicknessX, y)[0]! > 100) {
+						run += 1;
+						thickness = Math.max(thickness, run);
+					} else {
+						run = 0;
+					}
 				}
+				let dashes = 0;
+				let inDash = false;
+				const dashY = Math.round(78 * dpr);
+				for (let x = Math.round(20 * dpr); x < Math.round(180 * dpr); x += 1) {
+					const red = pixelAt(readback, x, dashY)[0]! > 100;
+					if (red && !inDash) dashes += 1;
+					inDash = red;
+				}
+				measurements[`${label}-dpr${dpr}`] = {
+					thickness,
+					dashes,
+					dpr,
+					drawingBuffer: [created.canvas.width, created.canvas.height],
+					worldUnits: false
+				};
+				assertions.push(
+					assertion(
+						`${label} DPR ${dpr}: 8 px line stays visible (6..${Math.round(11 * dpr)} px)`,
+						thickness >= 6 && thickness <= Math.round(11 * dpr),
+						thickness
+					)
+				);
+				assertions.push(
+					assertion(`${label} DPR ${dpr}: dashed line has at least three dashes`, dashes >= 3, dashes)
+				);
+				disposeScene(scene);
+				renderTarget.dispose();
+				await created.renderer.dispose();
+				created.canvas.remove();
 			}
-			let dashes = 0;
-			let inDash = false;
-			for (let x = 20; x < 180; x += 1) {
-				const red = pixelAt(readback, x, 78)[0]! > 100;
-				if (red && !inDash) dashes += 1;
-				inDash = red;
-			}
-			measurements[`${label}-dpr1`] = { thickness, dashes, worldUnits: false };
-			assertions.push(assertion(`${label} DPR 1: 8 px line is 6..11 px`, thickness >= 6 && thickness <= 11, thickness));
-			assertions.push(assertion(`${label} DPR 1: dashed line has at least three dashes`, dashes >= 3, dashes));
-			disposeScene(scene);
-			renderTarget.dispose();
-			await created.renderer.dispose();
-			created.canvas.remove();
 		}
 		return { backend: 'webgpu+webgl2', assertions, measurements };
 	}),

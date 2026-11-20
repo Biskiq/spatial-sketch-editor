@@ -11,6 +11,7 @@
 	 * same `CanvasLifecycle` and `createGenerationOwner` the stock candidate uses;
 	 * only the DOM and the mount ordering differ.
 	 */
+	import { onDestroy } from 'svelte';
 	import { CanvasLifecycle, type LifecycleSnapshot } from './canvas-lifecycle';
 	import { createGenerationOwner } from './generation-owner';
 	import HarnessProbe from './harness-probe.svelte';
@@ -59,6 +60,9 @@
 		}
 	});
 	lifecycle.begin();
+	// The episode timer is real work after readiness; teardown must clear it even
+	// when the effect cleanup already retired the generation.
+	onDestroy(() => lifecycle.dispose());
 
 	$effect(() => {
 		const element = canvas;
