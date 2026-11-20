@@ -3,11 +3,13 @@
  *
  * The H9 obligation is a count, not a duration: during a fixed orbit (a camera
  * move, which no shadow map depends on) a settled Stage must render **zero**
- * shadow passes, and exactly one per affected shadow map after a trigger. r187's
- * node renderer reads each light's own `shadow.autoUpdate` / `shadow.needsUpdate`
- * (`ShadowNode.updateBefore`), so the fakes below copy that contract: a render
- * consumes a map only while the light is always-updating or dirty, and the render
- * clears the dirty flag.
+ * shadow submissions, and exactly one per affected shadow map after a trigger.
+ * r187's node renderer reads each light's own `shadow.autoUpdate` /
+ * `shadow.needsUpdate` (`ShadowNode.updateBefore`), and renders a due map by
+ * calling `renderer.render(scene, shadow.camera)` from `renderShadow` **inside**
+ * the outer scene render. The fake below copies that nested call structure, not
+ * just the dirty flags, so the counter cannot silently count the enclosing frame
+ * and the submission again.
  */
 import { describe, expect, it, vi } from 'vitest';
 
@@ -23,7 +25,7 @@ type FakeLight = ShadowObjectLike & {
 	castShadow: boolean;
 	isDirectionalLight?: boolean;
 	isPointLight?: boolean;
-	shadow: { autoUpdate: boolean; needsUpdate: boolean };
+	shadow: { autoUpdate: boolean; needsUpdate: boolean; camera: object };
 };
 
 function light(
@@ -32,15 +34,17 @@ function light(
 	return {
 		isLight: true,
 		castShadow: true,
-		shadow: { autoUpdate: true, needsUpdate: false },
+		shadow: { autoUpdate: true, needsUpdate: false, camera: {} },
 		...flags
 	};
 }
 
 /**
- * A scene of lights and a renderer whose render consumes exactly what three's
- * `ShadowNode` would: an always-updating light, or one asked for an update, and
- * then clears the request.
+ * A scene of lights and a renderer whose outer render consumes exactly what
+ * three's `ShadowNode` would: every always-updating or dirty light calls the
+ * renderer again with its own shadow camera, and the dirty flag is cleared after
+ * those submissions return. A point light's cube is six calls through the same
+ * camera, as `PointShadowNode.renderShadow` does in r187.
  */
 function fakeStage(lights: readonly FakeLight[]) {
 	const scene: ShadowSceneLike = {
@@ -48,22 +52,35 @@ function fakeStage(lights: readonly FakeLight[]) {
 			for (const entry of lights) callback(entry);
 		}
 	};
-	const state = { renders: 0, shadowRenders: 0 };
+	const state = { renders: 0, outerRenders: 0, shadowRenders: 0 };
 	const renderer: ShadowRendererLike = {
-		render() {
+		render(sceneRef, camera) {
 			state.renders += 1;
-			let consumed = 0;
+			const shadowLight = sceneRef === scene
+				? lights.find((entry) => entry.castShadow && entry.shadow.camera === camera)
+				: undefined;
+			if (shadowLight !== undefined) {
+				// The actual map submission, nested inside the outer render.
+				state.shadowRenders += 1;
+				return;
+			}
+			state.outerRenders += 1;
 			for (const entry of lights) {
 				if (!entry.castShadow) continue;
 				if (!entry.shadow.autoUpdate && !entry.shadow.needsUpdate) continue;
+				// ShadowNode clears the request after updateShadow returns, so it is
+				// still set while the nested renders are in flight. A point light
+				// submits one call per cube face through the same camera.
+				const faces = entry.isPointLight === true ? 6 : 1;
+				for (let face = 0; face < faces; face += 1) {
+					renderer.render(scene, entry.shadow.camera);
+				}
 				entry.shadow.needsUpdate = false;
-				consumed += 1;
 			}
-			if (consumed > 0) state.shadowRenders += 1;
 		}
 	};
 	const frame = (): void => {
-		renderer.render({}, {});
+		renderer.render(scene, {});
 	};
 	return { scene, renderer, state, frame };
 }
@@ -80,10 +97,12 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		expect(controller.stats().passes).toBe(1);
 		expect(controller.stats().maps).toBe(1);
 		expect(state.shadowRenders).toBe(1);
+		expect(state.outerRenders).toBe(1);
 		// 60 orbit frames: the camera moved, no shadow map input did.
 		for (let index = 0; index < 60; index += 1) frame();
 		expect(controller.stats().passes).toBe(1);
 		expect(state.shadowRenders).toBe(1);
+		expect(state.outerRenders).toBe(61);
 
 		controller.dispose();
 	});
@@ -92,40 +111,60 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		const sun = light({ isDirectionalLight: true });
 		const ambient = light();
 		const point = light({ isPointLight: true });
-		const { renderer, frame } = fakeStage([sun, ambient, point]);
-		const controller = createShadowInvalidation({ renderer, scene: { traverse: (cb) => [sun, ambient, point].forEach(cb) } });
+		const { scene, renderer, frame } = fakeStage([sun, ambient, point]);
+		const controller = createShadowInvalidation({ renderer, scene });
 		frame();
-		expect(controller.stats().maps).toBe(8);
+		expect(controller.stats()).toEqual({ passes: 3, maps: 8, invalidations: 0 });
 		controller.invalidateSun();
 		controller.invalidateSun();
 		frame();
 		// The Sun's map only; the Scene light and the point cube stay as they were.
-		expect(controller.stats().maps).toBe(9);
+		expect(controller.stats()).toEqual({ passes: 4, maps: 9, invalidations: 2 });
 		controller.invalidateSun();
 		controller.invalidate();
 		frame();
-		expect(controller.stats().maps).toBe(17);
+		// A full invalidation renders all three lights (the "ambient" light here is a
+		// casting light too), while the Sun's earlier request is already coalesced.
+		expect(controller.stats()).toEqual({ passes: 7, maps: 17, invalidations: 4 });
 	});
 
-	it('coalesces triggers into one pass and counts one map per casting light', () => {
+	it('coalesces triggers into one rendering call and counts one map per casting light', () => {
 		const lights = [light(), light({ castShadow: false }), light()];
 		const { scene, renderer, frame } = fakeStage(lights);
 		const controller = createShadowInvalidation({ renderer, scene });
 		frame();
-		expect(controller.stats()).toEqual({ passes: 1, maps: 2, invalidations: 0 });
+		expect(controller.stats()).toEqual({ passes: 2, maps: 2, invalidations: 0 });
 
 		// Three triggers before the frame lands (geometry, scene and a model
-		// arriving in the same task) are one pass, not three.
+		// arriving in the same task) are one outer frame, but each light still
+		// submits its own map: two actual passes, never four.
 		controller.invalidate();
 		controller.invalidate();
 		controller.invalidate();
 		expect(controller.stats().invalidations).toBe(3);
 		frame();
-		expect(controller.stats().passes).toBe(2);
+		expect(controller.stats().passes).toBe(4);
 		expect(controller.stats().maps).toBe(4);
 		frame();
-		expect(controller.stats().passes).toBe(2);
+		expect(controller.stats().passes).toBe(4);
 
+		controller.dispose();
+	});
+
+	it('counts the nested shadow submission once, never the enclosing frame', () => {
+		const sun = light({ isDirectionalLight: true });
+		const point = light({ isPointLight: true });
+		const { scene, renderer, frame } = fakeStage([sun, point]);
+		const controller = createShadowInvalidation({ renderer, scene });
+
+		// One outer render, seven nested face submissions: the point cube is six
+		// calls, but it is one pass; the Sun is one call and one pass.
+		frame();
+		expect(controller.stats()).toEqual({ passes: 2, maps: 7, invalidations: 0 });
+
+		// A settled outer render has no nested submission and adds nothing.
+		frame();
+		expect(controller.stats()).toEqual({ passes: 2, maps: 7, invalidations: 0 });
 		controller.dispose();
 	});
 
@@ -163,7 +202,7 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		const { scene, renderer, frame } = fakeStage([light()]);
 		const controller = createShadowInvalidation({ renderer, scene, alwaysUpdate: true });
 		for (let index = 0; index < 5; index += 1) frame();
-		expect(controller.stats().passes).toBe(5);
+		expect(controller.stats()).toEqual({ passes: 5, maps: 5, invalidations: 0 });
 		// A trigger is meaningless when every frame already updates.
 		controller.invalidate();
 		expect(controller.stats().invalidations).toBe(0);
@@ -190,7 +229,7 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		controller.dispose();
 	});
 
-	it('counts six shadow maps for a point light and none for a pass without casting lights', () => {
+	it('counts six shadow faces for a point light and none for a pass without casting lights', () => {
 		const point = fakeStage([light({ isPointLight: true })]);
 		const controller = createShadowInvalidation({ renderer: point.renderer, scene: point.scene });
 		point.frame();

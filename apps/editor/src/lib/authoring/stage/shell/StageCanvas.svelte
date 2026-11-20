@@ -110,6 +110,8 @@ import StageMatGround from './StageMatGround.svelte';
 		hover = null,
 		hoverTone = 'hover',
 		scenePick,
+		/** The Stage's captured pointer ids, read before a renderer generation retires. */
+		capturedPointers = null,
 		/**
 		 * Display-only session overlay: the Rooms a Lift reading has lifted. Preview
 		 * is a separate Canvas and never passes it. `VisitorPreviewSurface` does not
@@ -177,6 +179,7 @@ import StageMatGround from './StageMatGround.svelte';
 		hoverTone?: 'hover' | 'erase';
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
+		capturedPointers?: (() => readonly number[]) | null;
 		liftedRoomIds?: readonly string[];
 		liftedRegionIds?: readonly string[];
 		liftSources?: readonly OverheadSource[];
@@ -413,7 +416,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 </script>
 
-<CanvasHost surface="stage">
+<CanvasHost surface="stage" {capturedPointers}>
 	{#snippet children()}
 	<!-- The one writer of the shared planes, and the frame request that follows. -->
 	<StageClipPlanes clip={stageClip} reading={resolvedSlice ?? null} />

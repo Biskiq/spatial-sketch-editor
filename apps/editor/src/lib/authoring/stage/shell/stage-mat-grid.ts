@@ -115,7 +115,11 @@ function plateCoverage(lattice: Tsl, uPlate: Tsl): Tsl {
 	const distance: Tsl = length(max(q, vec2(0)))
 		.add(min(max(q.x, q.y), 0))
 		.sub(GROUND_PLATE_CORNER_METERS);
-	return clamp(0.5 - distance.div(max(dFdx(distance), dFdy(distance)).max(1e-9)), 0, 1);
+	// `fwidth`'s absolute one-pixel width; a signed max would collapse to the
+	// clamp on one side of the edge. The subtraction must stay in TSL: a JS `-`
+	// on a node stringifies it and folds a literal NaN into the shader.
+	const width: Tsl = max(abs(dFdx(distance)), abs(dFdy(distance))).max(1e-9);
+	return clamp(float(0.5).sub(distance.div(width)), 0, 1);
 }
 
 /** The grammar's fade: fully inked at 16 CSS px, absent below 8. */
@@ -138,7 +142,7 @@ function metreSpacingCssPx(meters: Tsl, uPixelRatio: Tsl): Tsl {
 /** A one-device-pixel antialiased line at every whole cell. */
 function lineCoverage(cells: Tsl): Tsl {
 	const distance: Tsl = abs(fract(cells.sub(0.5)).sub(0.5)).div(
-		max(dFdx(cells), dFdy(cells)).max(1e-9)
+		max(abs(dFdx(cells)), abs(dFdy(cells))).max(1e-9)
 	);
 	return clamp(float(1).sub(min(distance, 1)), 0, 1);
 }
@@ -168,7 +172,7 @@ export function createMatGridMaterial(): MatMaterial {
 		);
 		const minorWeight: Tsl = levelFade(metre.mul(GRID_MINOR_METERS));
 		const majorWeight: Tsl = levelFade(metre.mul(GRID_MAJOR_METERS));
-		const coarseWeight: Tsl = levelFade(metre.mul(GRID_COARSE_METERS)).mul(1 - majorWeight);
+		const coarseWeight: Tsl = levelFade(metre.mul(GRID_COARSE_METERS)).mul(float(1).sub(majorWeight));
 		const minorLine: Tsl = max(
 			lineCoverage(vLattice.x.div(GRID_MINOR_METERS)).mul(minorWeight),
 			lineCoverage(vLattice.y.div(GRID_MINOR_METERS)).mul(minorWeight)

@@ -27,8 +27,15 @@ export const countingRenderer: CountingRenderer = {
 	domElement: null,
 	render(scene, camera) {
 		renders.push([scene, camera]);
-		// r187's ShadowNode clears the request it consumed.
+		// r187's ShadowNode renders a due map by calling `renderer.render` again
+		// with the light's own shadow camera, inside the outer scene render. The
+		// nested call is the actual submission; the outer one is not.
+		if (camera === countingLight.shadow.camera) return;
+		if (!countingLight.shadow.autoUpdate && !countingLight.shadow.needsUpdate) return;
+		// ShadowNode clears the request after updateShadow returns, so it is still
+		// set while the nested render is in flight.
 		countingLight.shadow.needsUpdate = false;
+		countingRenderer.render(scene, countingLight.shadow.camera);
 	}
 };
 

@@ -30,6 +30,8 @@ export default defineConfig({
 		'project-lifecycle.spec.ts',
 		't2-a2-artwork-replace.spec.ts',
 		'integrated-journeys.spec.ts',
+		// PR 2 review: the Stage and detached Preview journey on both backends.
+		'pr2-stage-acceptance.spec.ts',
 		'lifecycle-regression.spec.ts',
 		'head-lifetime.spec.ts',
 		'renderer-lifetime.spec.ts',

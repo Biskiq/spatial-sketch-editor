@@ -17,7 +17,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { Scene as ThreeScene, type Camera, type InterleavedBufferAttribute } from 'three';
+import type { Camera, InterleavedBufferAttribute } from 'three';
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
 import { evaluateLayoutPlan, type LayoutVec2, type PlanEvaluation } from '@portfolio/layout-core';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
@@ -206,22 +206,31 @@ describe('E0 work counters through their production callers', () => {
 		expect(factory).toContain('countSurfaceFrames(');
 	});
 
-	it('mirrors a shadow pass that actually rendered', () => {
+	it('mirrors a shadow pass that actually rendered, not the enclosing frame', () => {
 		const seam = begin();
-		const light = { isLight: true, castShadow: true, shadow: { autoUpdate: true, needsUpdate: false } };
+		const camera = {};
+		const light = { isLight: true, castShadow: true, shadow: { autoUpdate: true, needsUpdate: false, camera } };
+		// The controller and the renderer must agree on the scene identity: r187's
+		// ShadowNode submits the same scene it is rendering.
 		const scene = { traverse: (callback: (object: typeof light) => void) => callback(light) };
 		const renders: unknown[][] = [];
 		const renderer = {
-			render(sceneRef: unknown, camera: unknown): void {
-				renders.push([sceneRef, camera]);
+			render(sceneRef: unknown, cameraRef: unknown): void {
+				renders.push([sceneRef, cameraRef]);
+				// r187's ShadowNode.renderShadow makes this nested call while the light's
+				// request is still set; the enclosing render is not a second pass.
+				if (sceneRef !== scene) return;
+				if (!light.shadow.autoUpdate && !light.shadow.needsUpdate) return;
+				light.shadow.needsUpdate = false;
+				renderer.render(scene, camera);
 			}
 		};
 		const shadows = createShadowInvalidation({ renderer, scene });
 		try {
 			shadows.invalidate();
-			renderer.render(new ThreeScene(), {});
+			renderer.render(scene, {});
 			expect(shadows.stats().passes).toBe(1);
-			expect(renders).toHaveLength(1);
+			expect(renders).toEqual([[scene, {}], [scene, camera]]);
 			expect(seam.count('render:shadow-update')).toBe(1);
 		} finally {
 			shadows.dispose();

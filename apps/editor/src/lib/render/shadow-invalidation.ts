@@ -29,11 +29,20 @@
  *
  * ## Counting
  *
- * `stats()` reports **actual submissions**, not requests: a pass is counted only
- * when a rendering call consumed at least one dirty (or always-updating) casting
- * light, and each consumed light counts one map — six for a point light's cube.
- * The counter wraps the real renderer's `render`, so it sees the same calls the
- * scheduler makes and never counts a no-op frame.
+ * `stats()` reports **actual submissions**, not requests. r187's `ShadowNode`
+ * renders a due map by calling `renderer.render(scene, shadow.camera)` from
+ * `renderShadow`, *inside* the outer scene render. A point light's cube is six
+ * such calls, one per face. The counter therefore counts only nested calls whose
+ * scene and camera are the ones `ShadowNode` submits, and never the enclosing
+ * frame: `passes` is one per light per outer frame (the six point faces coalesce
+ * into one pass), while `maps` is one per actual face submission. The old
+ * outer-call check counted the first nested call and then the outer call again,
+ * so a lost device's counter could overcount.
+ *
+ * The wrapper still configures and invalidates the lights a scheduler frame
+ * needs; it just no longer infers a submission from a dirty flag. A frame with
+ * no dirty map cannot count, and a request that is coalesced or skipped cannot
+ * overcount.
  *
  * The module is framework-free on purpose: the unit test drives fake lights and a
  * fake renderer.
@@ -45,6 +54,8 @@ import { countWork } from '@portfolio/layout-core';
 export type ShadowStateLike = {
 	autoUpdate: boolean;
 	needsUpdate: boolean;
+	/** The camera `ShadowNode.renderShadow` passes to the renderer. */
+	readonly camera?: unknown;
 };
 
 /** The slice of an object this module inspects while walking the scene. */
@@ -67,9 +78,9 @@ export type ShadowRendererLike = {
 };
 
 export type ShadowInvalidationStats = {
-	/** Rendering calls that consumed at least one shadow map. */
+	/** Shadow passes observed: one per due light per outer scene render. */
 	readonly passes: number;
-	/** Shadow maps rendered: one per consumed light, six for a point light. */
+	/** Shadow map faces submitted: one per nested call, six for a point light. */
 	readonly maps: number;
 	/** Times a caller reported a dependency change. */
 	readonly invalidations: number;
@@ -117,6 +128,8 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	let passes = 0;
 	let maps = 0;
 	let invalidations = 0;
+	/** Lights whose first face was seen in the current outer render. */
+	let submitted = new Set<ShadowObjectLike>();
 	let disposed = false;
 
 	/** Every casting light currently in the scene, configured for our policy. */
@@ -141,17 +154,28 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 
 	renderer.render = function counted(sceneRef: unknown, camera: unknown): unknown {
 		const lights = castingLights();
-		const consumed = lights.filter((light) => light.shadow!.needsUpdate || alwaysUpdate);
+		// This is the exact call `ShadowNode.renderShadow` makes (r187,
+		// `src/nodes/lighting/ShadowNode.js`): the same scene and the light's own
+		// shadow camera, nested inside the scene render. Only that submission is a
+		// shadow pass; the enclosing render is not a second one.
+		const submitting = sceneRef === scene
+			? lights.find((light) => light.shadow!.camera !== undefined && light.shadow!.camera === camera)
+			: undefined;
+		// The enclosing render begins a new batch. r187's point cube submits six
+		// faces through this same camera before the outer render returns; the
+		// first face is the pass, and every call is one map face.
+		if (submitting === undefined) submitted = new Set();
 		const result = originalRender.call(renderer, sceneRef, camera);
-		if (consumed.length > 0) {
-			passes += 1;
-			// The work counter mirrors `stats().passes`: one rendering call that
-			// actually consumed a map, never a call that had nothing dirty.
-			countWork('render:shadow-update');
-			for (const light of consumed) maps += light.isPointLight === true ? 6 : 1;
+		if (submitting !== undefined) {
+			if (!submitted.has(submitting)) {
+				submitted.add(submitting);
+				passes += 1;
+				// The work counter mirrors `stats().passes`: one real shadow pass,
+				// never the enclosing frame and never a request that rendered nothing.
+				countWork('render:shadow-update');
+			}
+			maps += 1;
 		}
-		// r187 clears `needsUpdate` inside its own shadow pass; the assertion keeps
-		// the counter honest if a future version stops doing that.
 		return result;
 	};
 

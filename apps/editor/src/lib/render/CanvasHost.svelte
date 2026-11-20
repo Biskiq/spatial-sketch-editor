@@ -37,7 +37,8 @@
 		renderMode = 'on-demand',
 		onBackend = null,
 		onReady = null,
-		placeholder = null
+		placeholder = null,
+		capturedPointers = null
 	}: {
 		surface: RendererSurface;
 		children: Snippet;
@@ -47,6 +48,11 @@
 		onReady?: ((ready: boolean) => void) | null;
 		/** The surface tone behind Starting/Recovering/Unavailable. */
 		placeholder?: string | null;
+		/**
+		 * The pointer ids the surface currently holds, read immediately before a
+		 * generation is replaced. A surface that has no captured gesture omits it.
+		 */
+		capturedPointers?: (() => readonly number[]) | null;
 	} = $props();
 
 	const rendererState = provideCanvasRendererState();
@@ -92,16 +98,22 @@
 	/**
 	 * The existing pointer-cancel seam, not a second gesture authority: the Stage
 	 * viewport already listens for `pointercancel`, so a captured drag ends through
-	 * the same path a browser-cancelled pointer takes. The host deliberately has no
-	 * `pointercancel` listener of its own: this synthetic event bubbles through the
-	 * viewport, and a forwarding handler on the host would receive its own dispatch
-	 * and recurse.
+	 * the same path a browser-cancelled pointer takes. The surface reports the ids
+	 * it actually captured; the host never invents one, because a fabricated id
+	 * would not match the live press and the edit would silently survive the
+	 * canvas replacement. The host deliberately has no `pointercancel` listener of
+	 * its own: this synthetic event bubbles through the viewport, and a forwarding
+	 * handler on the host would receive its own dispatch and recurse.
 	 */
 	function cancelPointerGesture(): void {
 		const element = host;
 		if (element === undefined) return;
-		const pointer = typeof PointerEvent === 'function' ? new PointerEvent('pointercancel', { bubbles: true, pointerId: 1 }) : null;
-		if (pointer !== null) element.dispatchEvent(pointer);
+		for (const pointerId of capturedPointers?.() ?? []) {
+			const pointer = typeof PointerEvent === 'function'
+				? new PointerEvent('pointercancel', { bubbles: true, pointerId })
+				: null;
+			if (pointer !== null) element.dispatchEvent(pointer);
+		}
 	}
 
 	function ownerChanged(next: GenerationSnapshot): void {
@@ -138,7 +150,13 @@
 	{#if unavailable}
 		<div class="unavailable" role="alert" data-renderer-unavailable>
 			<p>Rendering is unavailable on this device.</p>
-			<button type="button" onclick={() => lifecycle.retry()}>Retry</button>
+			<!-- The Stage viewport captures every press inside it; without this the
+			     Retry click is retargeted to the Stage and the button never fires. -->
+			<button
+				type="button"
+				onpointerdown={(event) => event.stopPropagation()}
+				onclick={(event) => { event.stopPropagation(); lifecycle.retry(); }}
+			>Retry</button>
 		</div>
 	{:else}
 		{#key generation}

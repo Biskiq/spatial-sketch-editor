@@ -12,7 +12,10 @@ or activated by this branch.
 · [`pr2-product-webgl2-dpr1.json`](./evidence/2026-11-20/pr2-product-webgl2-dpr1.json)
 · [`pr2-product-webgpu-dpr1_5.json`](./evidence/2026-11-20/pr2-product-webgpu-dpr1_5.json)
 · [`pr2-product-webgl2-dpr1_5.json`](./evidence/2026-11-20/pr2-product-webgl2-dpr1_5.json)
-· screenshots `pr2-product-{A-native-webgl,webgpu,webgl2}-dpr1.png`
+· Stage/Preview [`pr2-stage-webgpu.json`](./evidence/2026-11-20/pr2-stage-webgpu.json),
+[`pr2-stage-webgl2.json`](./evidence/2026-11-20/pr2-stage-webgl2.json)
+· screenshots `pr2-product-{A-native-webgl,webgpu,webgl2}-dpr1.png` and
+`pr2-stage-{webgpu,webgl2}-*.png`
 · PR 1 A baseline [`performance.json`](./evidence/2026-11-20/performance.json),
 [`cold-public.json`](./evidence/2026-11-20/cold-public.json)
 
@@ -37,6 +40,10 @@ or activated by this branch.
 | --- | --- |
 | `visitor:first-frame` never fired on the shipped published route. r187's common `Info` advances `info.calls` per `render()`, while the legacy `info.render.frame` slot is only refreshed inside its internal animation loop; the product runs `autoRender: false`, so the mark stayed silent and startup could not be observed. | `visitor/first-frame.ts` now prefers `info.calls` and keeps the legacy `info.render.frame` shape as a typed fallback. The unit fixture and canvas fakes use the common counter. |
 | The host's `pointercancel` handler received its own synthetic `pointercancel` dispatch and recursed: a `RangeError: Maximum call stack size exceeded` on every generation change, and on any real pointer cancel. | The canvas host no longer listens for `pointercancel`. The cancel seam dispatches on the host and bubbles through the Stage viewport, which owns the listener. |
+| Recovery dispatched `pointercancel` with a fabricated `pointerId: 1`, so a touch, pen or later pointer press kept editing across the canvas replacement. | `CanvasHost` reads the surface's actual captured ids (`capturedPointers`) and dispatches one cancel per id before the new generation mounts. The mounted regression uses pointer id 7 and asserts cancellation precedes generation 2. |
+| The shadow oracle inferred a point light's submission from its dirty flag and counted one nested call as six maps, while r187's cube actually calls the renderer six times. The fake made one call, so it could not expose the overcount. | The wrapper observes only nested `render(scene, shadow.camera)` calls and coalesces a light's faces into one pass per outer render, with one map per face. The fake now issues six calls for a point cube; the browser journey records exactly `+6 maps / +1 pass` and zero shadow work across a settled orbit and idle second. |
+| The Stage mat grid's TSL arithmetic emitted `NaN.0` and a signed derivative pair instead of `fwidth`, so the shader failed on both backends. | `stage-mat-grid.ts` uses `float(...).sub(...)` and `abs` derivatives. The Stage/Preview journey now reports no shader or console errors on either backend. |
+| The WebGL2 unavailable Retry button never fired: the Stage viewport captured the press and retargeted the click. | The recovery button stops `pointerdown` propagation; the browser retry now mounts a fresh generation and returns `ready` on a new canvas. |
 
 ## 3. Tests
 
@@ -45,10 +52,12 @@ Run from `apps/editor` on the final tree:
 | Command | Result |
 | --- | --- |
 | `npm run check` | 0 errors, 16 pre-existing warnings |
-| `npm run test:fast` | 441 files, 5,451 tests pass |
+| `npm run test:fast` | 442 files, 5,454 tests pass |
 | `npm run test:arch` | 38 files, 350 tests pass |
 | `npm run test:heavy` | 11 files, 138 tests pass |
+| focused shadow/pointer/mounted recovery | 3 files, 27 tests pass |
 | `npm run build` | exit 0 |
+| Stage/Preview browser acceptance | 2/2 journeys pass (WebGPU and WebGL2) |
 
 ## 4. Integrated product measurement
 
@@ -95,13 +104,39 @@ WebGL2 receives the browser's cancelable `webglcontextlost`, presents the
 in-place unavailable state, and its Retry mounts a second WebGL2 generation that
 resumes drawing. Both paths leave exactly one connected canvas.
 
+### Stage and detached-Preview acceptance
+
+Run on the shipped production build with the seeded test-auth session and the
+private local API/database, in branded Chrome 157. The same journey runs once on
+native WebGPU and once with `navigator.gpu` hidden so Three selects WebGL2. It
+creates a Room through Ink; exercises Plan/3D, a Wall-handle drag, a curated
+Finish, Slice Level/Put back, Near-wall Whole/Cut; places a Point light in
+Daylight with the Sun's shadows off; captures an Experience Camera snapshot;
+enters Preview into free exploration, exits and re-enters; then forces a loss
+and recovers. Both backends pass every row with `errors: []`.
+
+The shadow oracle records `passes: 1, maps: 6` for the Point light: six real
+face submissions are one light pass, and the settled orbit plus idle second add
+no further work. Recovery ends `ready` on a fresh canvas at generation 4 on both
+backends (WebGPU automatic; WebGL2 unavailable → Retry). The WebGPU run discards
+16 Dawn validation lines emitted by the deliberately lost device; the WebGL2 run
+emits none. Evidence: [`pr2-stage-webgpu.json`](./evidence/2026-11-20/pr2-stage-webgpu.json),
+[`pr2-stage-webgl2.json`](./evidence/2026-11-20/pr2-stage-webgl2.json); screenshots
+`pr2-stage-{webgpu,webgl2}-{plan,3d,wall-drag,finish,slice,cutaway-cut,light-shadow,experience-capture,preview,recovered}.png`;
+machine facts [`pr2-stage-machine-facts.json`](./evidence/2026-11-20/pr2-stage-machine-facts.json).
+
 ## 5. Remaining verification and risks
 
-- **Stage and detached-Preview journeys were not timed on hardware.** They need
-  an authenticated project and the local API/database, which this headless run
-  cannot sign in to. Stage authoring parity is covered by the fast, architecture
-  and heavy suites, including the mounted camera, clipping, shadow, snapshot and
-  interaction fixtures, but not by a fresh hardware A/B measurement.
+- **Stage and detached-Preview journeys are functionally accepted, not
+  hardware-timed.** They now run against an authenticated project and the local
+  API/database on both backends (see §4), but the performance table above remains
+  the published-route measurement. Stage authoring parity is additionally
+  covered by the fast, architecture and heavy suites, including the mounted
+  camera, clipping, shadow, snapshot and interaction fixtures.
+- Studio deliberately uses its fixed even light and omits authored Point/Spot
+  lights; the acceptance selects Daylight before placing one. If owner
+  acceptance wants an authored light to appear in Studio too, that is a separate
+  product decision, not part of this correction.
 - The measurement host is one Apple M2 in headless branded Chrome. The Intel
   Iris Xe-class laptop, Safari and Firefox rows from the plan remain unrun, as
   they did in PR 1.

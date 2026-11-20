@@ -32,12 +32,14 @@
 	 * light's shadow camera) and the ghost meshes (they draw with
 	 * `depthWrite={false}` and never set `castShadow`).
 	 */
+	import { onDestroy } from 'svelte';
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import type { RuntimeScene } from '@portfolio/project-model';
 	import { canonicalUnitJson } from '@portfolio/project-model/units';
 	import type { StageLightPreview } from '../stage-light-preview.svelte';
 
+	import { perfMarksEnabled } from '$lib/platform/perf-marks';
 	import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import { useCanvasRendererState } from '$lib/render/renderer-context';
@@ -75,6 +77,19 @@
 		// an invalidation asks for exactly one frame rather than starting a loop.
 		requestFrame: invalidate
 	});
+
+	// Harness-only observation of the counter: the browser acceptance run reads
+	// the same submissions the product counts, against real r187 shadow nodes.
+	// It is absent from ordinary sessions, so no page gains a debug surface.
+	type ShadowStatsGlobal = typeof globalThis & {
+		__BISKIQ_SHADOW_STATS__?: () => ReturnType<typeof shadows.stats>;
+	};
+	if (perfMarksEnabled()) {
+		(globalThis as ShadowStatsGlobal).__BISKIQ_SHADOW_STATS__ = () => shadows.stats();
+		onDestroy(() => {
+			delete (globalThis as ShadowStatsGlobal).__BISKIQ_SHADOW_STATS__;
+		});
+	}
 
 	const casterSceneKey = $derived(canonicalUnitJson({
 		entities: scene.entities,
