@@ -54,9 +54,9 @@ describe('linear readback to sRGB', () => {
 
 describe('encodeSnapshotPixels', () => {
 	/**
-	 * A 2 × 2 readback, bottom row first as WebGL returns it. Each pixel carries
-	 * a distinct red so the row flip is visible, and alpha 0 so the forced opaque
-	 * alpha is visible too.
+	 * A 2 × 2 readback already normalized to top-down by the backend-aware read.
+	 * Each pixel carries a distinct red so the row order is visible, and alpha 0 so
+   * the forced opaque alpha is visible too.
 	 */
 	const readback = new Uint8Array([
 		// Bottom source row (becomes the PNG's last row).
@@ -65,15 +65,15 @@ describe('encodeSnapshotPixels', () => {
 		200, 50, 60, 0, 255, 70, 80, 0
 	]);
 
-	it('flips rows top-down and forces opaque alpha', () => {
+	it('keeps the normalized top-down order and forces opaque alpha', () => {
 		const encoded = encodeSnapshotPixels(readback, 2, 2);
 		expect(Array.from(encoded)).toEqual([
-			// PNG row 0 is the source's last row.
-			linearByteToSrgbByte(200), linearByteToSrgbByte(50), linearByteToSrgbByte(60), 255,
-			linearByteToSrgbByte(255), linearByteToSrgbByte(70), linearByteToSrgbByte(80), 255,
-			// PNG row 1 is the source's first row.
+			// PNG row 0 is the readback's first row.
 			linearByteToSrgbByte(55), linearByteToSrgbByte(10), linearByteToSrgbByte(20), 255,
-			linearByteToSrgbByte(128), linearByteToSrgbByte(30), linearByteToSrgbByte(40), 255
+			linearByteToSrgbByte(128), linearByteToSrgbByte(30), linearByteToSrgbByte(40), 255,
+			// PNG row 1 is the readback's last row.
+			linearByteToSrgbByte(200), linearByteToSrgbByte(50), linearByteToSrgbByte(60), 255,
+			linearByteToSrgbByte(255), linearByteToSrgbByte(70), linearByteToSrgbByte(80), 255
 		]);
 	});
 

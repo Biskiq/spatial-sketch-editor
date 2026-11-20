@@ -15,7 +15,7 @@ import {
 	STAGE_CLIP_KEEP_ALL_CONSTANT,
 	STAGE_CLIP_PLANE_COUNT
 } from '$lib/authoring/stage/slice/stage-clip';
-import { NEVER_CUT_TOP_Y } from '$lib/render/resources/material-store';
+import { hasSliceClipMask, NEVER_CUT_TOP_Y } from '$lib/render/clip/slice-clip-mask';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 import { materialKey } from '$lib/render/resources/material-descriptor';
 
@@ -71,19 +71,24 @@ describe('test 5 — the store takes the Canvas clip by reference', () => {
 		store.dispose();
 	});
 
-	it('never clips a depth/distance shadow pass, and never clips without the option', () => {
+	it('installs the one mask on colour kinds and none on the shadow catcher', () => {
 		const clip = createStageClip();
 		const planes = clip.planes as Plane[];
-		const clippedStore = createMaterialStore({ clippingPlanes: planes });
-		const depth = clippedStore.acquire({ kind: 'depth' }).material;
-		const distance = clippedStore.acquire({ kind: 'distance' }).material;
-		expect(depth.clippingPlanes).not.toBe(planes);
-		expect(distance.clippingPlanes).not.toBe(planes);
+		const clippedStore = createMaterialStore({
+			clippingPlanes: planes,
+			clipMasks: (cutaway) => clip.clipMasks(cutaway)
+		});
+		const standard = clippedStore.acquire({ kind: 'standard', color: '#ffffff', roughness: 1, metalness: 0 }).material;
+		expect(hasSliceClipMask(standard)).toBe(true);
+		const shadow = clippedStore.acquire({ kind: 'shadow', opacity: 0.3 }).material;
+		expect(hasSliceClipMask(shadow)).toBe(false);
+		expect(shadow.clippingPlanes).not.toBe(planes);
 
-		// The Preview Canvas passes no option: its materials are unclipped as today.
+		// The Preview Canvas passes no masks: its materials carry no clip graph at all.
 		const preview = createMaterialStore();
 		const material = preview.acquire({ kind: 'standard', color: '#ffffff', roughness: 1, metalness: 0 }).material;
 		expect(material.clippingPlanes).toBeNull();
+		expect(hasSliceClipMask(material)).toBe(false);
 		clippedStore.dispose();
 		preview.dispose();
 	});
@@ -214,15 +219,15 @@ describe('test 9 — a snapshot renders the world as built', () => {
 describe('clipInk: editor ink is cut by both realizations', () => {
 	it('shares the plane array and installs the drawn patch once', async () => {
 		const { MeshBasicMaterial } = await import('three');
-		const { hasSliceClipShader } = await import('$lib/render/resources/material-store');
 		const { createStageClip, materialUsesClip } = await import('$lib/authoring/stage/slice/stage-clip');
 		const clip = createStageClip();
 		const material = clip.clipInk(new MeshBasicMaterial());
 		expect(materialUsesClip(material, clip)).toBe(true);
-		expect(hasSliceClipShader(material)).toBe(true);
-		const key = material.customProgramCacheKey();
+		expect(hasSliceClipMask(material)).toBe(true);
+		// Re-attaching is idempotent for the material's identity, never a new graph.
+		const masks = clip.clipMasks(false);
 		clip.clipInk(material);
-		expect(material.customProgramCacheKey()).toBe(key);
+		expect(clip.clipMasks(false)).toBe(masks);
 		material.dispose();
 	});
 });

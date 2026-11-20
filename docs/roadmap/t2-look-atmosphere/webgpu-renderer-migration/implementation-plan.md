@@ -1,6 +1,7 @@
 # T2 WebGPU renderer migration
 
-**Status** · Approved product direction. Implementation and cutover gates below are for review.
+**Status** · Approved product direction. PR 1 (r187 qualification) and PR 2 (the atomic production
+cutover) are implemented; PR 2 awaits owner acceptance before merge. No further planning PR.
 **Code baseline** · `main` at `e6375025`, which includes T2 S5b. The lockfile pins Three and its
 types at 0.187.0, Threlte core at 8.5.16 and extras at 9.21.0. Reconfirm the source revision when
 capturing the baseline and check intervening changes to the affected surfaces at cutover.

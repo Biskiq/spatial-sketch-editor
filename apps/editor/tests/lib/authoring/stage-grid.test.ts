@@ -12,7 +12,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { composedSpatialHost } from '../../helpers/import-closure';
-import { LineSegments, ShaderMaterial } from 'three';
+import { LineSegments } from 'three';
+import { MeshBasicNodeMaterial } from 'three/webgpu';
 import {
 	VIEWPORT_NEAR_FLOOR_METERS,
 	type InspectionPose,
@@ -64,7 +65,7 @@ describe('the mat keeps its depth away from a floor on the datum', () => {
 		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		const mat = source.slice(source.indexOf('<T.Mesh'), source.indexOf('{#if gridVisible}'));
 		expect(mat).toContain('args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}');
-		const material = createMatGroundMaterial();
+		const { material } = createMatGroundMaterial();
 		expect(material.polygonOffset).toBe(true);
 		expect(material.polygonOffsetUnits).toBe(MAT_GROUND_POLYGON_OFFSET_UNITS);
 		expect(material.depthWrite).toBe(true);
@@ -102,13 +103,15 @@ describe('the Paper plate around the work', () => {
 	});
 
 	it('draws lines only on the plate, leaving plain forest beyond it', () => {
-		const material = createMatGridMaterial();
-		expect(material.fragmentShader).toContain('minorLine * uPlateMinorOpacity * plate');
-		expect(material.fragmentShader).toContain('majorLine * uPlateMajorOpacity * plate');
-		expect(material.uniforms.uMatMinorInk).toBeUndefined();
-		material.dispose();
+		const grid = createMatGridMaterial();
+		expect('uMatMinorInk' in grid.uniforms).toBe(false);
+		expect(grid.material.colorNode).toBeTruthy();
+		grid.material.dispose();
 		const stage = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
-		expect(stage).toContain('uMatInk: { value: new Color(MAT_BACKGROUND_INK) }');
+		// Both levels are multiplied by the plate coverage: plain mat outside it.
+		expect(stage).toContain('minorLine.mul(uPlateMinorOpacity).mul(plate)');
+		expect(stage).toContain('majorLine.mul(uPlateMajorOpacity).mul(plate)');
+		expect(stage).toContain('uMatInk: uniform(new Color(MAT_BACKGROUND_INK))');
 	});
 
 	it('takes its bounds from the work alone, never the Camera', () => {
@@ -125,19 +128,20 @@ describe('the Paper plate around the work', () => {
 			{ centerXZ: [32, -16] as [number, number], halfExtentMeters: 256, latticeOffsetXZ: [7, 9] as [number, number] }
 		]) {
 			updateMatGridMaterial(material, ground, 1, plate);
-			const [minX, minZ] = material.uniforms.uPlate!.value as number[];
+			const [minX, minZ] = material.uniforms.uPlate!.value.toArray();
 			// World −5, −10 in the same coordinates the shader's lines use.
 			expect(minX).toBe(plate.minX - (ground.centerXZ[0] - ground.latticeOffsetXZ[0]));
 			expect(minZ).toBe(plate.minZ - (ground.centerXZ[1] - ground.latticeOffsetXZ[1]));
 		}
-		material.dispose();
+		material.material.dispose();
 	});
 
 	it('draws the ground in one unlit draw, so its edge cannot fight anything', () => {
-		const material = createMatGroundMaterial();
-		expect(material.fragmentShader).toContain('mix(uMatInk, uPlateInk, plateCoverage(vLattice))');
-		expect(material.toneMapped).toBe(false);
-		material.dispose();
+		const ground = createMatGroundMaterial();
+		expect(ground.material).toBeInstanceOf(MeshBasicNodeMaterial);
+		expect(ground.material.colorNode).toBeTruthy();
+		expect(ground.material.toneMapped).toBe(false);
+		ground.material.dispose();
 		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		expect(source).not.toContain('MeshStandardMaterial');
 		expect(source).toContain('workspaceRectFor(contentBounds)');
@@ -146,13 +150,13 @@ describe('the Paper plate around the work', () => {
 	it('is Paper: the same ground token and the same grid inks and opacities', () => {
 		const ground = createMatGroundMaterial();
 		expect(`#${ground.uniforms.uPlateInk!.value.getHexString()}`).toBe(PAPER_GROUND_INK);
-		ground.dispose();
+		ground.material.dispose();
 		const grid = createMatGridMaterial();
 		expect(`#${grid.uniforms.uPlateMinorInk!.value.getHexString()}`).toBe(PAPER_GRID_INK.minor.toLowerCase());
 		expect(`#${grid.uniforms.uPlateMajorInk!.value.getHexString()}`).toBe(PAPER_GRID_INK.major.toLowerCase());
 		expect(grid.uniforms.uPlateMinorOpacity!.value).toBe(PAPER_GRID_INK.minorOpacity);
 		expect(grid.uniforms.uPlateMajorOpacity!.value).toBe(PAPER_GRID_INK.majorOpacity);
-		grid.dispose();
+		grid.material.dispose();
 	});
 });
 
@@ -411,35 +415,36 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 
 	it('draws the mat grid per pixel on one quad, never as line geometry', () => {
 		const material = createMatGridMaterial();
-		expect(material).toBeInstanceOf(ShaderMaterial);
-		expect(material).not.toBeInstanceOf(LineSegments);
+		expect(material.material).toBeInstanceOf(MeshBasicNodeMaterial);
+		expect(material.material).not.toBeInstanceOf(LineSegments);
 		// Walls occlude it; it writes no depth, and its depth-step offset keeps it
 		// ahead of the mat 6 mm below at every distance.
-		expect(material.depthTest).toBe(true);
-		expect(material.depthWrite).toBe(false);
-		expect(material.polygonOffset).toBe(true);
-		expect(material.polygonOffsetUnits).toBeLessThan(0);
+		expect(material.material.depthTest).toBe(true);
+		expect(material.material.depthWrite).toBe(false);
+		expect(material.material.polygonOffset).toBe(true);
+		expect(material.material.polygonOffsetUnits).toBeLessThan(0);
 		// Depth steps only: a slope factor would draw it over thin floor geometry.
-		expect(material.polygonOffsetFactor).toBe(0);
-		expect(material.transparent).toBe(true);
+		expect(material.material.polygonOffsetFactor).toBe(0);
+		expect(material.material.transparent).toBe(true);
 		// Under the height plane's tint (order 1) and every other Stage mark.
 		expect(MAT_GRID_RENDER_ORDER).toBeLessThan(1);
-		// The grammar's thresholds and the fixed levels are the shader's own.
-		for (const literal of ['8.0', '16.0', '/ 1.0', '/ 5.0', '/ 25.0']) {
-			expect(material.fragmentShader).toContain(literal);
+		// The grammar's thresholds and the fixed levels are the graph's own.
+		const graph = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
+		for (const literal of ['GRID_SUPPRESS_SPACING_CSS_PX', 'GRID_FULL_SPACING_CSS_PX', 'GRID_MINOR_METERS', 'GRID_MAJOR_METERS', 'GRID_COARSE_METERS']) {
+			expect(graph).toContain(literal);
 		}
-		// One weight per level from the denser direction, outside the per-axis loop.
-		const fragment = material.fragmentShader;
-		expect(fragment).toContain('min(metreSpacingCssPx(vLattice.x), metreSpacingCssPx(vLattice.y))');
-		expect(fragment.indexOf('levelFade(metre')).toBeLessThan(fragment.indexOf('for (int axis'));
-		expect(fragment.slice(fragment.indexOf('for (int axis'))).not.toContain('levelFade');
+		// One weight per level from the denser direction: both axes feed one metre
+		// reading, so a level's two directions always leave together.
+		expect(graph).toContain('metreSpacingCssPx(vLattice.x, uPixelRatio)');
+		expect(graph).toContain('metreSpacingCssPx(vLattice.y, uPixelRatio)');
+		expect(graph).toContain('min(');
 		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5, { minX: 500, maxX: 520, minZ: -260, maxZ: -240 });
-		expect(material.uniforms.uSize!.value).toBe(2048);
-		expect(material.uniforms.uLatticeOffset!.value).toEqual([12, -6]);
-		expect(material.uniforms.uPixelRatio!.value).toBe(1.5);
+		expect(material.uniforms.uSize.value).toBe(2048);
+		expect(material.uniforms.uLatticeOffset.value.toArray()).toEqual([12, -6]);
+		expect(material.uniforms.uPixelRatio.value).toBe(1.5);
 		// The plate shares `vLattice`'s origin, so float32 never carries world values.
-		expect(material.uniforms.uPlate!.value).toEqual([0, -10, 20, 10]);
-		material.dispose();
+		expect(material.uniforms.uPlate.value.toArray()).toEqual([0, -10, 20, 10]);
+		material.material.dispose();
 	});
 
 	it('draws every major line on a wide Stage and stays bounded by the viewport', () => {

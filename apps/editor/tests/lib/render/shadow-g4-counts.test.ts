@@ -8,17 +8,15 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { Scene as ThreeScene } from 'three';
 import { skyFromPreset } from '@portfolio/project-model/units';
 import { startStageCounting, type StageCounting } from '../../helpers/stage-counts';
 
 vi.mock('@threlte/core', async () => import('../authoring/fixtures/threlte-counting-context'));
 
-import { countingShadowMap, threlteProbe } from '../authoring/fixtures/threlte-counting-context';
+import { countingLight, countingRenderer, countingScene, threlteProbe } from '../authoring/fixtures/threlte-counting-context';
 import ShadowTriggersProbe from './fixtures/ShadowTriggersProbe.svelte';
 import { probeHandles, probeInput } from './fixtures/shadow-probe-input.svelte';
 
-const LIGHTS = [{ castShadow: true }];
 const FRAMES = 50;
 
 type Session = {
@@ -32,8 +30,8 @@ let host: HTMLElement | null = null;
 
 function frames(count: number): void {
 	for (let i = 0; i < count; i += 1) {
-		countingShadowMap.render(LIGHTS, new ThreeScene(), {});
-		countingShadowMap.needsUpdate = false;
+		countingRenderer.render(countingScene, {});
+		countingLight.shadow.needsUpdate = false;
 	}
 }
 
@@ -157,7 +155,7 @@ describe('G4 — exact shadow-update counts through the mounted wiring', () => {
 		// The release renders once; the map is then static, with nothing playing.
 		expect(session.count()).toBe(FRAMES + 1);
 		expect(resources().casters.playing()).toBe(0);
-		expect(countingShadowMap.autoUpdate).toBe(false);
+		expect(countingLight.shadow.autoUpdate).toBe(false);
 	});
 
 	it('a playing animation renders every frame, and one pass more when it stops', async () => {
@@ -171,6 +169,6 @@ describe('G4 — exact shadow-update counts through the mounted wiring', () => {
 		frames(FRAMES);
 		// The frame that stops the animation renders once; then the map is static again.
 		expect(session.count()).toBe(FRAMES + 1);
-		expect(countingShadowMap.autoUpdate).toBe(false);
+		expect(countingLight.shadow.autoUpdate).toBe(false);
 	});
 });

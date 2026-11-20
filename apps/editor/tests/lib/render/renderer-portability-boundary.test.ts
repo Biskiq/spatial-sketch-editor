@@ -7,10 +7,13 @@
  * and removing a site fails it too until its entry is removed, so the list can
  * only shrink.
  *
- * Forbidden outside the allowlist: `onBeforeCompile`, `ShaderMaterial` (which
- * includes `RawShaderMaterial`), `WebGLRenderTarget`, `getContext(` on anything but a 2D canvas, an alpha-test depth
- * override (`customDepthMaterial` / `customDistanceMaterial`), and an import from
- * a WebGL-only Three path (`three/examples/jsm/lines/*`, `three/addons/lines/*`, `three/src/*`).
+ * Forbidden everywhere (the allowlist is empty after the cutover): `onBeforeCompile`,
+ * `ShaderMaterial` (which includes `RawShaderMaterial`), `WebGLRenderTarget`,
+ * `getContext(` on anything but a 2D canvas, an alpha-test depth override
+ * (`customDepthMaterial` / `customDistanceMaterial`), and an import from a
+ * WebGL-only Three path. The common geometry paths
+ * (`LineGeometry`, `LineSegmentsGeometry`) and the webgpu line objects are the
+ * backend-neutral survivors and are not flagged.
  */
 import { describe, expect, it } from 'vitest';
 import { readProductSources, scanTokens, type TokenRule } from '../../helpers/render-boundary-scan';
@@ -22,39 +25,15 @@ const RULES: readonly TokenRule[] = [
 	{ name: 'getContext-non-2d', pattern: /\.getContext\(\s*(?!['"]2d['"])/ },
 	{ name: 'customDepthMaterial', pattern: /\bcustomDepthMaterial\b/ },
 	{ name: 'customDistanceMaterial', pattern: /\bcustomDistanceMaterial\b/ },
-	{ name: 'webgl-only-three-path', pattern: /from\s*['"]three\/(?:examples\/jsm\/lines|addons\/lines|src)\// }
+	{
+		name: 'webgl-only-three-path',
+		pattern:
+			/from\s*['"](?:three\/(?:examples\/jsm\/lines|src)\/|three\/addons\/lines\/(?!webgpu\/|LineGeometry\.js|LineSegmentsGeometry\.js))/
+	}
 ];
 
 /** Every permitted site, and exactly what each may contain. */
-export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {
-	// The WebGL shim: the DFG lookup lifecycle wraps onBeforeCompile. The only renderer-specific module.
-	'apps/editor/src/lib/render/managed-webgl-renderer.ts': ['onBeforeCompile'],
-	// T1 SL2's finite drawn cut: a fixed, uniform-driven GLSL discard installed on the
-	// built-in materials. Editor Stage only (never a snapshot/Preview surface). This is
-	// the one world-material site; a WebGPU port needs a TSL node material equivalent.
-	'apps/editor/src/lib/render/resources/material-store.ts': ['onBeforeCompile'],
-	// Editor-only GLSL for the mat and grid; a node material when a port happens.
-	'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts': ['ShaderMaterial'],
-	// Editor-only fat lines; Three ships a WebGPU line variant.
-	'apps/editor/src/lib/authoring/stage/paper-scene.ts': ['webgl-only-three-path'],
-	'apps/editor/src/lib/authoring/stage/paper-marks.ts': ['webgl-only-three-path'],
-	'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte': ['webgl-only-three-path'],
-	// 2 px / 3 px section edges are `Line2`, whose geometry and material live on the
-	// examples path. Editor Stage ink only: never exported, never in a snapshot.
-	'apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte': ['webgl-only-three-path'],
-	// X2's cap and seam outline is the same editor-only fat-line family.
-	'apps/editor/src/lib/authoring/stage/cutaway/StageCutawayLayer.svelte': ['webgl-only-three-path'],
-	// T1 X1's Lift outline is the same editor-only fat-line family as the selection
-	// contour; Three ships a WebGPU line variant.
-	'apps/editor/src/lib/authoring/stage/shell/StageLiftLayer.svelte': ['webgl-only-three-path'],
-	'apps/editor/src/lib/authoring/stage/shell/StageOpenSideLayer.svelte': ['webgl-only-three-path'],
-	// The generic RenderTarget when a port happens.
-	'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte': ['WebGLRenderTarget'],
-	// World code, retained R5 exception (E9): alphaTest on the surface would give the same shadow
-	// silhouette but discard alpha < 0.5 texels in the colour pass, so the image would not match.
-	// The two shadow-pass materials are built by the store; only their attachment is listed here.
-	'apps/editor/src/lib/render/scene-artwork-representation.ts': ['customDepthMaterial', 'customDistanceMaterial']
-};
+export const PORTABILITY_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {};
 
 describe('renderer portability boundary', () => {
 	it('keeps the renderer-specific sites to exactly the frozen allowlist', () => {
@@ -74,6 +53,9 @@ describe('renderer portability boundary', () => {
 			expect(scan('renderer.getContext()')).toEqual(['getContext-non-2d']);
 			expect(scan("canvas.getContext('webgl2')")).toEqual(['getContext-non-2d']);
 			expect(scan("import { Line2 } from 'three/examples/jsm/lines/Line2.js';")).toEqual(['webgl-only-three-path']);
+			expect(scan("import { LineMaterial } from 'three/addons/lines/LineMaterial.js';")).toEqual(['webgl-only-three-path']);
+			expect(scan("import { Line2 } from 'three/addons/lines/webgpu/Line2.js';")).toEqual([]);
+			expect(scan("import { LineGeometry } from 'three/addons/lines/LineGeometry.js';")).toEqual([]);
 			expect(scan('<T.MeshDepthMaterial attach="customDepthMaterial" />')).toEqual(['customDepthMaterial']);
 		});
 

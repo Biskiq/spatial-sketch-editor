@@ -38,10 +38,10 @@
 		type Object3D,
 		type Plane
 	} from 'three';
-	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+	import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
+	import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 	import { untrack } from 'svelte';
-	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+	import { Line2NodeMaterial } from 'three/webgpu';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { compiledOpeningFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
@@ -324,7 +324,7 @@
 			const edgeGeometry = new LineGeometry();
 			edgeGeometry.setPositions(points);
 						const planes = clipFor(tone);
-			const material = cutInk(new LineMaterial({
+			const material = cutInk(new Line2NodeMaterial({
 				fog: false,
 				...(planes === undefined ? {} : { clippingPlanes: planes }),
 				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL),
@@ -338,7 +338,6 @@
 				depthTest: tone !== 'selection',
 				depthWrite: false,
 				...OUTLINE_DEPTH_BIAS,
-				resolution: new Vector2(width, height),
 				...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
 			}), planes, tone);
 			const line = new Line2(edgeGeometry, material);

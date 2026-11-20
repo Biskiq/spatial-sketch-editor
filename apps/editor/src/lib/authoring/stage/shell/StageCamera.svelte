@@ -13,6 +13,8 @@
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import { MAT_BACKGROUND_INK, PAPER_GROUND_INK, STAGE_WORLD_LAYER, stageCameraLayerMask } from '../paper-plan';
 	import { stageFrameScissor } from './frame-scissor';
+	import { realizeEvaluatedCamera } from '$lib/render/camera-realization';
+	import { useCanvasRendererState } from '$lib/render/renderer-context';
 
 	let {
 		evaluation,
@@ -37,6 +39,8 @@
 
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
 	const { invalidate, scene, renderer, shouldRender, renderStage, autoRenderTask } = useThrelte();
+	/** The observed backend decides the clip-space convention the camera is written in. */
+	const rendererState = useCanvasRendererState();
 
 	// Runs before the render pass each frame, so the evaluated matrices are the
 	// ones the meshes are actually drawn with even if Threlte touched the camera.
@@ -67,15 +71,9 @@
 			renderer.setScissorTest(true);
 			renderer.setScissor(scissor.x, scissor.y, scissor.width, scissor.height);
 		}
-		camera.matrixAutoUpdate = false;
-		camera.matrix.fromArray(evaluation.inverseViewMatrix as number[]);
-		camera.matrixWorldNeedsUpdate = true;
-		camera.near = evaluation.near;
-		camera.far = evaluation.far;
-		camera.projectionMatrix.fromArray(evaluation.projectionMatrix as number[]);
-		camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-		camera.updateMatrixWorld(true);
-		camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+		// The one shared realization: coordinate system first, then the evaluated
+		// matrices, with the native-WebGPU clip-Z conversion at this boundary.
+		realizeEvaluatedCamera(camera, evaluation, rendererState.backend ?? 'webgl2');
 	}, { autoInvalidate: false, stage: renderStage, before: autoRenderTask });
 
 	$effect(() => {

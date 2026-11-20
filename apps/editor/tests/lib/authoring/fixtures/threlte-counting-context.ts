@@ -3,54 +3,49 @@
  *
  * `@threlte/core` is mocked to this module in `stage-counting.test.ts`. The
  * components under test are the real StagePaper and StageShadowTriggers; only
- * the Canvas, its renderer and its scheduling are replaced. The renderer's
- * `shadowMap` here is a fake `ShadowMapLike`: a shadow-map render that three
- * would issue is invoked explicitly by the test, so the production invalidation
- * wrapper is what counts it.
+ * the Canvas, its renderer and its scheduling are replaced. The renderer here is
+ * an ordinary object with a `render` method: the production invalidation
+ * controller wraps exactly that method, and the test calls it to issue one frame.
  */
-import { Scene } from 'three';
-import type { ShadowMapLike } from '$lib/render/shadow-invalidation';
-
-export type CountingShadowMap = ShadowMapLike & {
-	render(lights: readonly unknown[], scene: unknown, camera: unknown): void;
-};
+import { DirectionalLight, Scene } from 'three';
 
 export type CountingRenderer = {
-	readonly shadowMap: CountingShadowMap;
 	readonly domElement: null;
+	render(scene: unknown, camera: unknown): void;
 };
 
-const shadowRenders: unknown[][] = [];
+const renders: unknown[][] = [];
 const invalidations: number[] = [];
 
-export const countingShadowMap: CountingShadowMap = {
-	autoUpdate: true,
-	needsUpdate: false,
-	render(lights, scene, camera) {
-		shadowRenders.push([lights, scene, camera]);
+export const countingScene = new Scene();
+/** The one casting light the invalidation controller owns in these tests. */
+export const countingLight = new DirectionalLight();
+countingLight.castShadow = true;
+countingScene.add(countingLight);
+
+export const countingRenderer: CountingRenderer = {
+	domElement: null,
+	render(scene, camera) {
+		renders.push([scene, camera]);
+		// r187's ShadowNode clears the request it consumed.
+		countingLight.shadow.needsUpdate = false;
 	}
 };
 
-export const countingRenderer: CountingRenderer = {
-	shadowMap: countingShadowMap,
-	domElement: null
-};
-
-export const countingScene = new Scene();
 let invalidateCount = 0;
 
 export const threlteProbe = {
-	shadowRenders,
+	renders,
 	invalidations,
 	get invalidationCount(): number {
 		return invalidateCount;
 	},
 	reset(): void {
-		shadowRenders.length = 0;
+		renders.length = 0;
 		invalidations.length = 0;
 		invalidateCount = 0;
-		countingShadowMap.autoUpdate = true;
-		countingShadowMap.needsUpdate = false;
+		countingLight.shadow.autoUpdate = true;
+		countingLight.shadow.needsUpdate = false;
 	}
 };
 

@@ -1,11 +1,9 @@
 <script lang="ts">
-	import { CANVAS_TONE_MAPPING, previewCanvasRenderer } from '$lib/render/canvas-renderers';
+	import CanvasHost from '$lib/render/CanvasHost.svelte';
 	import { perfMark } from '$lib/platform/perf-marks';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { provideRenderResources } from '$lib/render/resources/render-resources';
 import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
-import { PCFShadowMap } from 'three';
-	import { Canvas } from '@threlte/core';
 	import { T } from '@threlte/core';
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { NavigationGraph } from '@portfolio/project-model';
@@ -421,13 +419,8 @@ import { PCFShadowMap } from 'three';
 		aria-label={mode === 'public' ? 'Published project canvas' : 'Visitor preview canvas'}
 		aria-describedby="visitor-preview-help"
 	>
-		<Canvas
-			createRenderer={previewCanvasRenderer}
-			dpr={[1, 1.5]}
-			shadows={PCFShadowMap}
-			toneMapping={CANVAS_TONE_MAPPING}
-			renderMode={active ? 'always' : 'on-demand'}
-		>
+		<CanvasHost surface="preview" renderMode={active ? 'always' : 'on-demand'} placeholder="#e9ebe6">
+			{#snippet children()}
 			{#if sky === null || sky.preset === 'studio'}
 				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
 				<T.Color attach="background" args={['#e9ebe6']} />
@@ -472,7 +465,8 @@ import { PCFShadowMap } from 'three';
 			/>
 			<!-- Renderer-observed first frame; inert unless the harness enables marks. -->
 			<VisitorFirstFrame {runEpoch} {active} />
-		</Canvas>
+			{/snippet}
+		</CanvasHost>
 	</div>
 	<div class="visitor-brand" class:published={mode === 'public'}>
 		{#if mode === 'public'}<span class="brand-kicker">Published</span>{/if}

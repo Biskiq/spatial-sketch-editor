@@ -13,11 +13,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	ExtrudeGeometry,
 	Mesh,
-	MeshDepthMaterial,
-	MeshDistanceMaterial,
 	MeshLambertMaterial,
 	PlaneGeometry,
-	RGBADepthPacking,
 	ShapeGeometry,
 	Texture,
 	Vector3,
@@ -61,9 +58,11 @@ function framedFixture(): SceneArtworkItem[] {
 	);
 }
 
-function baselineInventory(item: SceneArtworkItem, transparent: boolean): { geometries: number; materials: number } {
+function baselineInventory(item: SceneArtworkItem, _transparent: boolean): { geometries: number; materials: number } {
 	const parts = 1 + (item.frame ? 1 : 0) + (item.mat ? 1 : 0) + (item.backing ? 1 : 0);
-	return { geometries: parts, materials: parts + (transparent ? 2 : 0) };
+	// A transparent image adds no material: its shadow silhouette is a node on the
+	// one surface, where the old renderer needed a depth and a distance material.
+	return { geometries: parts, materials: parts };
 }
 
 type Deferred = { resolve(load: ArtworkImageLoad): void; reject(error: unknown): void };
@@ -260,8 +259,7 @@ describe('E9/R5 — Artwork fidelity against the removed component', () => {
 		expect(surface.color.getHexString()).toBe('ffffff');
 		expect([surface.transparent, surface.depthWrite, surface.opacity]).toEqual([false, true, 1]);
 		expect([image.castShadow, image.receiveShadow]).toEqual([true, true]);
-		expect(image.customDepthMaterial).toBeUndefined();
-		expect(image.customDistanceMaterial).toBeUndefined();
+		expect((surface as unknown as { maskShadowNode?: unknown }).maskShadowNode).toBeUndefined();
 
 		const frame = named(root, 'SceneArtworkFrame');
 		const f = item.frame!.geometry;
@@ -310,20 +308,16 @@ describe('E9/R5 — Artwork fidelity against the removed component', () => {
 		const image = named(representation.objectOf(items[0]!.id), 'SceneArtworkImage');
 		const surface = image.material as MeshLambertMaterial;
 		expect([surface.transparent, surface.depthWrite, surface.opacity, surface.alphaTest]).toEqual([true, false, 1, 0]);
-		const depth = image.customDepthMaterial as MeshDepthMaterial;
-		expect(depth).toBeInstanceOf(MeshDepthMaterial);
-		expect([depth.map, depth.alphaTest, depth.depthPacking]).toEqual([images.texture(ASSET), 0.5, RGBADepthPacking]);
-		const distance = image.customDistanceMaterial as MeshDistanceMaterial;
-		expect(distance).toBeInstanceOf(MeshDistanceMaterial);
-		expect([distance.map, distance.alphaTest]).toEqual([images.texture(ASSET), 0.5]);
-		// Two Artworks of one image share all three: surface, depth and distance.
+		// The shadow silhouette reads the same map's alpha, on the surface itself.
+		const shadowMask = (surface as unknown as { maskShadowNode?: unknown }).maskShadowNode;
+		expect(shadowMask).toBeTruthy();
+		// Two Artworks of one image share the surface and its shadow mask.
 		const other = named(representation.objectOf(items[1]!.id), 'SceneArtworkImage');
 		expect(other.material).toBe(image.material);
-		expect(other.customDepthMaterial).toBe(depth);
-		expect(other.customDistanceMaterial).toBe(distance);
-		expect(store.stats().live).toBe(3);
-		// Baseline: 1 surface + 1 depth + 1 distance per Artwork.
-		expect(items.reduce((sum, item) => sum + baselineInventory(item, true).materials, 0)).toBe(6);
+		expect((other.material as unknown as { maskShadowNode?: unknown }).maskShadowNode).toBe(shadowMask);
+		expect(store.stats().live).toBe(1);
+		// Baseline: one surface per Artwork, shared here by the same image.
+		expect(items.reduce((sum, item) => sum + baselineInventory(item, true).materials, 0)).toBe(2);
 		representation.dispose();
 	});
 
@@ -340,7 +334,9 @@ describe('E9/R5 — Artwork fidelity against the removed component', () => {
 			expect([material.transparent, material.depthWrite, material.opacity, material.fog]).toEqual([true, false, 0.65, false]);
 			expect([mesh.castShadow, mesh.receiveShadow]).toEqual([false, false]);
 		}
-		expect(named(root, 'SceneArtworkImage').customDepthMaterial).toBeUndefined();
+		expect(
+			(named(root, 'SceneArtworkImage').material as unknown as { maskShadowNode?: unknown }).maskShadowNode
+		).toBeUndefined();
 		representation.dispose();
 	});
 

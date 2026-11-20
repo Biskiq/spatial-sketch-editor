@@ -159,28 +159,15 @@ export type LambertMaterialDescriptor = {
 	readonly clip?: false;
 	/** The X2 cutaway twin (see `StandardMaterialDescriptor.cutaway`). */
 	readonly cutaway?: true;
-};
-
-/**
- * A shadow-pass override for an alpha-tested surface. `depth` is the
- * directional/spot pass; `distance` is the point-light pass. They exist for one
- * retained portability exception (artwork with transparent texels): see
- * `scene-artwork-representation.ts`.
- */
-export type DepthMaterialDescriptor = {
-	readonly kind: 'depth';
-	readonly map?: string;
-	/** Absent means 0. */
-	readonly alphaTest?: number;
-	/** The depth encoding. Absent means `basic` (Three's default). */
-	readonly packing?: 'basic' | 'rgba';
-};
-
-export type DistanceMaterialDescriptor = {
-	readonly kind: 'distance';
-	readonly map?: string;
-	/** Absent means 0. */
-	readonly alphaTest?: number;
+	/**
+	 * The alpha threshold of this surface's **cast shadow** silhouette.
+	 *
+	 * A transparent image blends every texel in the colour pass, so an
+	 * `alphaTest` on the surface would discard its soft edge. r187's shadow pass
+	 * instead reads a material mask: texels above this threshold cast, the rest do
+	 * not. Absent means no shadow mask, which is every opaque surface.
+	 */
+	readonly shadowAlpha?: number;
 };
 
 /**
@@ -231,8 +218,6 @@ export type MaterialDescriptor =
 	| StandardMaterialDescriptor
 	| BasicMaterialDescriptor
 	| LambertMaterialDescriptor
-	| DepthMaterialDescriptor
-	| DistanceMaterialDescriptor
 	| ShadowMaterialDescriptor
 	| ImportedMaterialDescriptor;
 
@@ -323,22 +308,14 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`opacity=${num(descriptor.opacity ?? 1)}`,
 				`depthWrite=${bool(descriptor.depthWrite, true)}`,
 				`vertexColors=${bool(descriptor.vertexColors, false)}`,
+				// Absent keeps the pre-mask key exactly; a shadow silhouette is a
+				// distinct lease from a surface that casts nothing.
+				...(descriptor.shadowAlpha === undefined
+					? []
+					: [`shadowAlpha=${num(descriptor.shadowAlpha)}`]),
 				...(descriptor.fog === false ? ['fog=0'] : []),
 				...(descriptor.clip === false ? ['clip=0'] : []),
 				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
-			].join('|');
-		case 'depth':
-			return [
-				'depth',
-				`map=${textureIdentity(descriptor.map)}`,
-				`alphaTest=${num(descriptor.alphaTest ?? 0)}`,
-				`packing=${descriptor.packing ?? 'basic'}`
-			].join('|');
-		case 'distance':
-			return [
-				'distance',
-				`map=${textureIdentity(descriptor.map)}`,
-				`alphaTest=${num(descriptor.alphaTest ?? 0)}`
 			].join('|');
 		case 'imported': {
 			// The asset is an approved URL: encoded so no character of it can be

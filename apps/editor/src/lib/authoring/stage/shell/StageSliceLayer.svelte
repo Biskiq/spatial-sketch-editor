@@ -40,9 +40,9 @@
 		type Material,
 		type Object3D
 	} from 'three';
-	import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-	import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
-	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+	import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js';
+	import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+	import { Line2NodeMaterial } from 'three/webgpu';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import {
 		type CapAssemblyIssue,
@@ -503,12 +503,11 @@
 			if (positions.length === 0) return;
 			const geometry = new LineSegmentsGeometry();
 			geometry.setPositions(positions as number[]);
-			const material = new LineMaterial({
+			const material = new Line2NodeMaterial({
 				color,
 				linewidth: widthPx,
 				depthWrite: false,
 				toneMapped: false,
-				resolution: new Vector2(Math.max(1, width), Math.max(1, height))
 			});
 			const line = new LineSegments2(geometry, material);
 			line.renderOrder = 4;

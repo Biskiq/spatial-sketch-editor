@@ -113,13 +113,13 @@ describe('the layer renders segments with the segment class', () => {
 	);
 
 	it('uses LineSegments2 + LineSegmentsGeometry, never the connected pair', () => {
-		expect(layer).toContain("from 'three/examples/jsm/lines/LineSegments2.js'");
-		expect(layer).toContain("from 'three/examples/jsm/lines/LineSegmentsGeometry.js'");
+		expect(layer).toContain("from 'three/addons/lines/webgpu/LineSegments2.js'");
+		expect(layer).toContain("from 'three/addons/lines/LineSegmentsGeometry.js'");
 		expect(layer).toContain('new LineSegmentsGeometry()');
 		// `LineGeometry` is a substring of `LineSegmentsGeometry`: name the class and
 		// the import explicitly rather than the word.
 		expect(layer).not.toContain('new LineGeometry()');
-		expect(layer).not.toContain("from 'three/examples/jsm/lines/Line2.js'");
+		expect(layer).not.toContain("from 'three/addons/lines/webgpu/Line2.js'");
 	});
 
 			it('accumulates groups rather than replacing the collection', () => {

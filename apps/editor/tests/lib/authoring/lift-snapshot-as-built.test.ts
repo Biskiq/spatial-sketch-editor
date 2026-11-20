@@ -24,12 +24,12 @@ import {
 	Vector4,
 	type Material,
 	type Object3D,
-	type Scene,
-	type WebGLRenderer
+	type Scene
 } from 'three';
-import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import type { WebGPURenderer } from 'three/webgpu';
+import { Line2NodeMaterial } from 'three/webgpu';
+import { Line2 } from 'three/addons/lines/webgpu/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { compileWallFirstLayoutGeometry, type CompiledLayoutGeometry } from '@portfolio/layout-core';
 
 import { renderStageSnapshot } from '$lib/authoring/stage/shell/StageSnapshotRenderer.svelte';
@@ -68,7 +68,7 @@ type Drawn = {
  * and world matrix.
  */
 function recordingRenderer(): {
-	readonly renderer: WebGLRenderer;
+	readonly renderer: WebGPURenderer;
 	readonly drawn: Drawn[];
 	readonly renders: () => number;
 } {
@@ -102,17 +102,16 @@ function recordingRenderer(): {
 				});
 			});
 		},
-		readRenderTargetPixels: (
+		readRenderTargetPixelsAsync: async (
 			_target: unknown,
 			_x: number,
 			_y: number,
-			_width: number,
-			_height: number,
-			buffer: Uint8Array
-		) => buffer.fill(0)
+			width: number,
+			height: number
+		) => new Uint8Array(width * height * 4)
 	};
 	return {
-		renderer: stub as unknown as WebGLRenderer,
+		renderer: stub as unknown as WebGPURenderer,
 		drawn,
 		renders: () => renders
 	};
@@ -155,7 +154,7 @@ function buildShell(geometry: CompiledLayoutGeometry): Shell {
 	outlineGeometry.setPositions(
 		[...ring, ring[0]!].flatMap(([x, z]) => [x, geometry.rooms[0]!.ceilingElevation - 0.01, z])
 	);
-	const outlineMaterial = new LineMaterial({
+	const outlineMaterial = new Line2NodeMaterial({
 		color: 0xffffff,
 		linewidth: 2,
 		dashed: true,
@@ -210,20 +209,20 @@ afterEach(() => {
 });
 
 describe('T1 X1 — a snapshot is as-built during Lift', () => {
-	it('draws the identical world, every lid included, and no Lift ink', () => {
+	it('draws the identical world, every lid included, and no Lift ink', async () => {
 		const geometry = compiled();
 		const shell = buildShell(geometry);
 		const lidNames = geometry.rooms.map((room) => `VisitorCeiling:${room.roomId}`);
 
 		const off = recordingRenderer();
-		const offFrame = renderStageSnapshot(off.renderer, shell.scene, REQUEST, null);
+		const offFrame = await renderStageSnapshot(off.renderer, shell.scene, REQUEST, null, null, 'webgpu');
 		expect(offFrame).not.toBeNull();
 		expect(off.renders()).toBe(1);
 		for (const lid of lidNames) expect(off.drawn.map((object) => object.name)).toContain(lid);
 
 		shell.rooms.setLifted(new Set([geometry.rooms[0]!.roomId]));
 		const on = recordingRenderer();
-		const onFrame = renderStageSnapshot(on.renderer, shell.scene, REQUEST, null);
+		const onFrame = await renderStageSnapshot(on.renderer, shell.scene, REQUEST, null, null, 'webgpu');
 		expect(onFrame).not.toBeNull();
 
 		// As-built: the same objects, the same material instances, the same world

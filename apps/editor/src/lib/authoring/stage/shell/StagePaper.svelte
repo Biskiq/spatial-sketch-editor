@@ -124,8 +124,10 @@
 		const current = resources;
 		const currentMarks = markResources;
 		if (current === null && currentMarks === null) return;
-		current?.setResolution(width, height);
-		currentMarks?.setResolution(width, height);
+		// A resize requests the frame; the common line material derives its own
+		// CSS-pixel viewport from the renderer, so there is no resolution to write.
+		void current;
+		void currentMarks;
 		invalidate();
 	});
 

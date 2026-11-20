@@ -1,13 +1,16 @@
 /**
  * The Stage snapshot's one colour path.
  *
- * Three r187 renders a non-XR `WebGLRenderTarget` in
- * `ColorManagement.workingColorSpace` (`srgb-linear`), whatever the target
- * texture's `colorSpace` says (`WebGLPrograms.getParameters`). The Stage's
- * snapshot target is an 8-bit target with `NoColorSpace`, so the bytes it reads
- * back are **linear**, while an `<img>` shows sRGB. A PNG has no colour-space
- * chunk the browser honours here, so the conversion has to happen on the way
- * out. This module is the only place that writes snapshot pixels.
+ * Three r187 renders a non-XR render target in its working colour space
+ * (`srgb-linear`). The Stage's snapshot target is an 8-bit `RenderTarget` with
+ * `NoColorSpace`, so the bytes it reads back are **linear**, while an `<img>`
+ * shows sRGB. A PNG has no colour-space chunk the browser honours here, so the
+ * conversion has to happen on the way out. This module is the only place that
+ * writes snapshot pixels.
+ *
+ * Orientation is not this module's job: the snapshot host normalizes the
+ * backend's packed rows to **top-down** (WebGPU is top-down, the WebGL2 backend
+ * reads bottom-up) before anything reaches the writer.
  *
  * Gate A recorded the mismatch as F5 and refused to use snapshots as evidence
  * (see `docs/roadmap/t2-look-atmosphere/s0-rendering-gate/pipeline.md`); Gate B
@@ -49,11 +52,10 @@ export function linearByteToSrgbByte(value: number): number {
 }
 
 /**
- * The PNG-ready RGBA pixels for a snapshot readback.
+ * The PNG-ready RGBA pixels for a top-down snapshot readback.
  *
- * WebGL reads bottom-up and the PNG is top-down, so rows are flipped here; the
- * Stage's target writes alpha 0 where nothing draws, so alpha is forced opaque
- * as it was before the fix. The input buffer is never mutated.
+ * The Stage's target writes alpha 0 where nothing draws, so alpha is forced
+ * opaque as it was before the E6 fix. The input buffer is never mutated.
  */
 export function encodeSnapshotPixels(
 	pixels: Uint8Array,
@@ -71,7 +73,7 @@ export function encodeSnapshotPixels(
 	}
 	const encoded = new Uint8Array(pixels.length);
 	for (let y = 0; y < height; y += 1) {
-		const from = (height - 1 - y) * rowBytes;
+		const from = y * rowBytes;
 		const to = y * rowBytes;
 		for (let index = 0; index < rowBytes; index += 4) {
 			encoded[to + index] = LINEAR_TO_SRGB[pixels[from + index]!]!;

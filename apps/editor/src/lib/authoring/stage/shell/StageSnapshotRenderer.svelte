@@ -6,21 +6,35 @@
 	 * host and the function it calls cannot drift: the instance below does nothing
 	 * but hold the reused target, encode the bytes and register with the snapshot
 	 * service. A unit test can drive the real function with a recording renderer,
-	 * which is how "a snapshot is as-built during Lift" is proven without a WebGL
-	 * context.
+	 * which is how "a snapshot is as-built during Lift" is proven without a GPU.
+	 *
+	 * ## The common renderer's offscreen pass
+	 *
+	 * The target is one generic `RenderTarget` per ready Stage generation and size:
+	 * 640 px wide, the authored aspect, 8-bit linear RGBA, no MSAA. Submission and
+	 * the start of the packed async readback happen inside one synchronous state
+	 * bracket; the renderer's target, clear, viewport/scissor and the clip state are
+	 * restored **before** the copy is awaited, so an in-flight thumbnail never parks
+	 * the Stage's live uniforms or blocks a normal onscreen frame.
+	 *
+	 * Row order comes from the observed backend: the WebGPU copy is top-down, the
+	 * WebGL2 copy is bottom-up. The result is normalized to top-down here, so the one
+	 * colour writer never has to know which backend produced the bytes.
 	 */
 	import {
 		Color,
 		PerspectiveCamera,
+		RenderTarget,
 		UnsignedByteType,
 		Vector4,
-		WebGLRenderTarget,
-		type Scene,
-		type WebGLRenderer
+		type Scene
 	} from 'three';
+	import type { WebGPURenderer } from 'three/webgpu';
 	import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core';
 	import { PAPER_GROUND_INK, STAGE_LIFTED_LAYER, STAGE_WORLD_LAYER } from '../paper-plan';
 	import type { SnapshotRequest } from '../stage-snapshots';
+	import { realizeEvaluatedCamera } from '$lib/render/camera-realization';
+	import type { RendererBackend } from '$lib/render/renderer-backend';
 
 	export const SNAPSHOT_WIDTH = 640;
 
@@ -34,9 +48,9 @@
 		readonly camera: PerspectiveCamera;
 		readonly width: number;
 		readonly height: number;
-		/** The target's linear readback, bottom-up, exactly as the renderer read it. */
+		/** The target's linear readback, **top-down**, normalized for this writer. */
 		readonly pixels: Uint8Array;
-		readonly target: WebGLRenderTarget;
+		readonly target: RenderTarget;
 	};
 
 	/** The farthest corner of the Stage's own content from the framed target. */
@@ -47,30 +61,41 @@
 		return Math.max(1, Math.hypot(x, y, z));
 	}
 
+	/** Reverse the rows of a tightly packed RGBA buffer. */
+	function flipRows(pixels: Uint8Array, width: number, height: number): Uint8Array {
+		const rowBytes = width * 4;
+		const flipped = new Uint8Array(pixels.length);
+		for (let y = 0; y < height; y += 1) {
+			flipped.set(pixels.subarray((height - 1 - y) * rowBytes, (height - y) * rowBytes), y * rowBytes);
+		}
+		return flipped;
+	}
+
 	/**
 	 * Draw one authored View pose into the reusable offscreen target.
 	 *
-	 * Every renderer mutation is restored in the `finally`, including when the
-	 * readback throws, so a snapshot can never leave the Stage's renderer in a
-	 * snapshot state.
+	 * Every renderer mutation is restored in the `finally`, including when the draw
+	 * or the read submission throws, so a snapshot can never leave the Stage's
+	 * renderer in a snapshot state.
 	 *
 	 * `reuse` is the host's target from the previous frame; it is used while its
 	 * size still matches and returned in the frame, which is what keeps this an
 	 * unchanged one-target render rather than an allocation per snapshot.
 	 */
-	export function renderStageSnapshot(
-		renderer: WebGLRenderer,
+	export async function renderStageSnapshot(
+		renderer: WebGPURenderer,
 		scene: Scene,
 		request: SnapshotRequest,
 		bounds: StageSnapshotBounds | null,
-		reuse: WebGLRenderTarget | null = null,
+		reuse: RenderTarget | null,
+		backend: RendererBackend,
 		/**
 		 * The Stage's clip seam, when the host has one. A snapshot is **as built**: the
 		 * seam parks every plane for the duration of the draw and puts the live reading
 		 * back afterwards, so a thumbnail taken during a Slice is the world, not the cut.
 		 */
 		asBuilt: (<T>(render: () => T) => T) | null = null
-	): StageSnapshotFrame | null {
+	): Promise<StageSnapshotFrame | null> {
 		const pose = inspectionPoseFromView({
 			eye: [request.pose.eye[0], request.pose.eye[1], request.pose.eye[2]],
 			target: [request.pose.target[0], request.pose.target[1], request.pose.target[2]],
@@ -103,15 +128,9 @@
 		const evaluation = result.evaluation;
 
 		const camera = new PerspectiveCamera();
-		camera.matrixAutoUpdate = false;
-		camera.matrix.fromArray(evaluation.inverseViewMatrix as number[]);
-		camera.matrixWorldNeedsUpdate = true;
-		camera.near = evaluation.near;
-		camera.far = evaluation.far;
-		camera.projectionMatrix.fromArray(evaluation.projectionMatrix as number[]);
-		camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-		camera.updateMatrixWorld(true);
-		camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+		// The shared realization owns the coordinate system, the clip-Z conversion and
+		// the physical inverse for this exact evaluated pose.
+		realizeEvaluatedCamera(camera, evaluation, backend);
 		// World content only: the Stage's selection, Paper and mark layers are helpers.
 		// **Snapshots are as-built**: a lifted overhead is world content, so the
 		// snapshot camera includes the lifted layer the Stage camera never enables.
@@ -121,7 +140,11 @@
 		let target = reuse;
 		if (target === null || target.width !== SNAPSHOT_WIDTH || target.height !== height) {
 			target?.dispose();
-			target = new WebGLRenderTarget(SNAPSHOT_WIDTH, height, { type: UnsignedByteType });
+			target = new RenderTarget(SNAPSHOT_WIDTH, height, {
+				type: UnsignedByteType,
+				// Target-local pixels, independent of canvas DPR and with no MSAA.
+				samples: 0
+			});
 		}
 		const previousTarget = renderer.getRenderTarget();
 		const previousColor = renderer.getClearColor(new Color());
@@ -130,10 +153,8 @@
 		const previousScissorTest = renderer.getScissorTest();
 		const previousViewport = renderer.getViewport(new Vector4());
 		const previousScissor = renderer.getScissor(new Vector4());
+		let copy: Promise<ArrayLike<number> | Uint8Array> | null = null;
 		try {
-			// This target's viewport is already in target pixels. r187 applies screen
-			// DPR in setViewport/setScissor only on the default framebuffer;
-			// setRenderTarget installs this viewport without scaling it.
 			target.viewport.set(0, 0, SNAPSHOT_WIDTH, height);
 			target.scissor.set(0, 0, SNAPSHOT_WIDTH, height);
 			target.scissorTest = false;
@@ -144,9 +165,10 @@
 			renderer.clear();
 			if (asBuilt === null) renderer.render(scene, camera);
 			else asBuilt(() => renderer.render(scene, camera));
-			const pixels = new Uint8Array(SNAPSHOT_WIDTH * height * 4);
-			renderer.readRenderTargetPixels(target, 0, 0, SNAPSHOT_WIDTH, height, pixels);
-			return { camera, width: SNAPSHOT_WIDTH, height, pixels, target };
+			// Start the packed copy while the target is still current, then restore all
+			// renderer state before yielding: a pending read must never hold the Stage's
+			// live uniforms or its viewport hostage.
+			copy = renderer.readRenderTargetPixelsAsync(target, 0, 0, SNAPSHOT_WIDTH, height);
 		} catch {
 			return null;
 		} finally {
@@ -157,6 +179,18 @@
 			renderer.setClearColor(previousColor, previousAlpha);
 			renderer.autoClear = previousAutoClear;
 		}
+		if (copy === null) return null;
+		try {
+			const raw = await copy;
+			const read = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+			const rows = read.length === SNAPSHOT_WIDTH * height * 4
+				? read
+				: read.subarray(0, SNAPSHOT_WIDTH * height * 4);
+			const pixels = backend === 'webgpu' ? rows.slice() : flipRows(rows, SNAPSHOT_WIDTH, height);
+			return { camera, width: SNAPSHOT_WIDTH, height, pixels, target };
+		} catch {
+			return null;
+		}
 	}
 </script>
 
@@ -165,21 +199,23 @@
 	 * The Stage's one snapshot render host.
 	 *
 	 * It renders an authored View's exact pose through `camera-core` into a
-	 * reusable offscreen target on the **existing** renderer: never a second WebGL
+	 * reusable offscreen target on the **existing** renderer: never a second GPU
 	 * context, never the active inspection camera, and never a persisted image.
-	 * Editor helpers are excluded by the snapshot camera's layer mask, and every
-	 * renderer mutation is restored in a `finally`, including when the readback
-	 * throws.
+	 * Editor helpers are excluded by the snapshot camera's layer mask, every
+	 * renderer mutation is restored before the copy is awaited, and the serial
+	 * queue is scoped to this generation so a failed or hung read cannot block a
+	 * recovered host.
 	 */
 	import { onMount, untrack } from 'svelte';
 	import { useThrelte } from '@threlte/core';
 	import { snapshotDataUrl } from '../snapshot-image';
 	import { useStageClip } from '../slice/stage-clip';
 	import { invalidateStageSnapshots, registerStageSnapshotRenderer } from '../stage-snapshots';
+	import { useCanvasRendererState } from '$lib/render/renderer-context';
 	// The module script above is this file's other half: `renderStageSnapshot`,
-	// `StageSnapshotBounds`, `SnapshotRequest` and `WebGLRenderTarget` are in scope
-	// here, and importing them again is a duplicate identifier. The instance renders
-	// through the same function a test can drive.
+	// `StageSnapshotFrame` and `RenderTarget` are in scope here, and importing them
+	// again is a duplicate identifier. The instance renders through the same
+	// function a test can drive.
 
 	let {
 		revision = 0,
@@ -193,29 +229,42 @@
 	} = $props();
 
 	const { scene, renderer } = useThrelte();
+	const rendererState = useCanvasRendererState();
 	/** The Canvas's clip, or null outside a Stage Canvas. */
 	const stageClip = useStageClip();
-	let target: WebGLRenderTarget | null = null;
+	let target: RenderTarget | null = null;
+	let inFlight = false;
+	let disposed = false;
 
 	async function render(request: SnapshotRequest): Promise<string | null> {
-		const frame = renderStageSnapshot(
-			renderer,
-			scene,
-			request,
-			bounds,
-			target,
-			stageClip === null ? null : (render) => stageClip.asBuilt(render)
-		);
-		if (frame === null) return null;
-		target = frame.target;
-		// The target renders linear bytes (r187 ignores a non-XR target's texture
-		// colour space); the shared writer is the one sRGB encode.
-		return snapshotDataUrl(frame.pixels, frame.width, frame.height);
+		// One in-flight snapshot per generation: the serial service already queues
+		// requests, and a second concurrent target would compete for the same renderer.
+		if (inFlight || disposed) return null;
+		inFlight = true;
+		try {
+			const frame = await renderStageSnapshot(
+				renderer as unknown as Parameters<typeof renderStageSnapshot>[0],
+				scene,
+				request,
+				bounds,
+				target,
+				rendererState.backend ?? 'webgl2',
+				stageClip === null ? null : (draw) => stageClip.asBuilt(draw)
+			);
+			if (frame === null || disposed) return null;
+			target = frame.target;
+			// The target renders linear bytes; the shared writer is the one sRGB encode.
+			// Its input is already normalized to top-down by the backend-aware read.
+			return snapshotDataUrl(frame.pixels, frame.width, frame.height);
+		} finally {
+			inFlight = false;
+		}
 	}
 
 	onMount(() => {
 		const unregister = registerStageSnapshotRenderer(render);
 		return () => {
+			disposed = true;
 			unregister();
 			target?.dispose();
 			target = null;

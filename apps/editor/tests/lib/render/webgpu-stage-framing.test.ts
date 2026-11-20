@@ -1,8 +1,8 @@
 /**
  * The Stage capture frame is an asymmetric CSS box measured from the top-left.
- * The shipped Stage applies it as a bottom-origin viewport/scissor; r187's
- * WebGL2 backend converts Y internally, while native WebGPU uses the top-left
- * render-pass rectangle. PR 1 freezes this conversion before the renderer swap.
+ * r187's common renderer uses the top-left rectangle on both backends: native
+ * WebGPU by definition and the WebGL2 backend by internal conversion. The Stage
+ * therefore hands the CSS box through unchanged.
  *
  * The real renderer's DPR 1/1.5 projection/scissor behaviour is measured in
  * `experiments/webgpu-migration` (see the PR 1 evidence), because jsdom cannot
@@ -17,10 +17,10 @@ import { stageFrameScissor } from '$lib/authoring/stage/shell/frame-scissor';
 const SIZE = { x: 1280, y: 720 };
 
 describe('Stage asymmetric frame scissor', () => {
-	it('converts the 16:10 capture frame from top-left CSS to bottom origin', () => {
+	it('hands the 16:10 capture frame through as a top-left rectangle', () => {
 		expect(stageFrameScissor({ left: 120, top: 90, width: 640, height: 400 }, SIZE)).toEqual({
 			x: 120,
-			y: 230,
+			y: 90,
 			width: 640,
 			height: 400
 		});
@@ -29,16 +29,16 @@ describe('Stage asymmetric frame scissor', () => {
 	it('preserves an asymmetric offset at a different surface size', () => {
 		expect(stageFrameScissor({ left: 37, top: 13, width: 809, height: 501 }, { x: 1700, y: 950 })).toEqual({
 			x: 37,
-			y: 436,
+			y: 13,
 			width: 809,
 			height: 501
 		});
 	});
 
-	it('clamps a frame that starts above the surface instead of going negative', () => {
+	it('clamps a frame that starts below the surface into it, never off it', () => {
 		expect(stageFrameScissor({ left: 0, top: 700, width: 640, height: 400 }, SIZE)).toEqual({
 			x: 0,
-			y: 0,
+			y: 320,
 			width: 640,
 			height: 400
 		});
@@ -55,7 +55,7 @@ describe('Stage asymmetric frame scissor', () => {
 		const frame = { left: 20, top: 10, width: 80, height: 40 };
 		expect(stageFrameScissor(frame, { x: 200, y: 120 })).toEqual({
 			x: 20,
-			y: 70,
+			y: 10,
 			width: 80,
 			height: 40
 		});
@@ -70,5 +70,6 @@ describe('Stage asymmetric frame scissor', () => {
 		expect(source).toContain('stageFrameScissor(frameViewport, size)');
 		expect(source).toContain('renderer.setScissorTest(true)');
 		expect(source).toContain('renderer.setScissor(scissor.x, scissor.y, scissor.width, scissor.height)');
+		expect(source).toContain('realizeEvaluatedCamera(camera, evaluation, rendererState.backend');
 	});
 });

@@ -40,6 +40,7 @@
 
 	import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
+	import { useCanvasRendererState } from '$lib/render/renderer-context';
 
 	let {
 		sunKey = "off",
@@ -58,15 +59,21 @@
 		formRenderRevision: number;
 	} = $props();
 
-	const { renderer, invalidate } = useThrelte();
+	const { scene: threlteScene, invalidate } = useThrelte();
+	const rendererState = useCanvasRendererState();
 	const resources = useRenderResources();
+	// This component only mounts inside a ready generation, so the real renderer
+	// exists; the controller observes its render calls to count actual submissions.
+	const renderer = rendererState.renderer;
+	if (renderer === null) {
+		throw new Error('StageShadowTriggers requires a ready renderer generation');
+	}
 	const shadows = createShadowInvalidation({
-		shadowMap: renderer.shadowMap,
+		renderer,
+		scene: threlteScene,
 		// The renderer's scheduler still renders on demand (Threlte's default), so
 		// an invalidation asks for exactly one frame rather than starting a loop.
-		requestFrame: invalidate,
-		// A restored context has lost every shadow map; re-render them.
-		canvas: renderer.domElement
+		requestFrame: invalidate
 	});
 
 	const casterSceneKey = $derived(canonicalUnitJson({
@@ -91,8 +98,12 @@
 		if (changed) shadows.invalidate();
 	});
 
+	// Compare the key itself: a parent re-render hands the same value again and
+	// must not render a directional map that nothing changed.
+	let previousSunKey: string | null = null;
 	$effect(() => {
-		void sunKey;
+		if (previousSunKey === sunKey) return;
+		previousSunKey = sunKey;
 		shadows.invalidateSun();
 	});
 

@@ -36,9 +36,9 @@ the remaining Stage / snapshot / Preview / visit comparison — snapshot colour 
 own `AgXToneMapping` default to the renderer the factory returns, and neither product Canvas passed
 `toneMapping`, so the Stage, the Preview and the published visit shipped AgX at exposure 1.0 while
 this record described `NoToneMapping`. Both Canvases now pass the accepted value through one exported
-constant, `CANVAS_TONE_MAPPING` (`apps/editor/src/lib/render/canvas-renderers.ts`). A mounted
-regression (`apps/editor/tests/lib/render/canvas-tone-mapping.test.ts`) reads the renderer Threlte
-configures on each production Canvas — `toneMapping` `NoToneMapping`, `toneMappingExposure` 1.0,
+constant, `CANVAS_TONE_MAPPING` (`apps/editor/src/lib/render/renderer-backend.ts`), handed to the
+shared Canvas host. A regression (`apps/editor/tests/lib/render/canvas-tone-mapping.test.ts`) reads
+the renderer the product constructs — `toneMapping` `NoToneMapping`, `toneMappingExposure` 1.0,
 `outputColorSpace` `sRGB`, working space `srgb-linear`, `PCFShadowMap` — and a source check requires
 both Canvases to name the constant, so a dependency default cannot reopen the gap. Removing the props
 again measures `toneMapping` 6 (`AgXToneMapping`) on both Canvases; that is the before state. The
