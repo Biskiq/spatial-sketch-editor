@@ -3,6 +3,7 @@ import {
 	__resetDefaultSourceLoaderForTests,
 	acquireEffectiveVariant,
 	loadEffectiveTextures,
+	loadFinishTexture,
 	loadSourceTexture,
 	releaseEffectiveVariant,
 	resetTextureCachesForTests,
@@ -174,7 +175,7 @@ describe('texture-cache extensions', () => {
 			expect(loader).toHaveBeenCalledWith(
 				'/textures/injected.png',
 				'map',
-				{ policy: 'srgb', storage: 'legacy' }
+				expect.objectContaining({ policy: 'srgb', storage: 'legacy' })
 			);
 			expect(a).toBe(fakeTex);
 			expect(b).toBe(fakeTex);
@@ -245,10 +246,65 @@ describe('texture-cache extensions', () => {
 
 			const loaded = await loadSourceTexture('/textures/route.png', 'roughnessMap');
 			expect(loaded).toBe(fakeTex);
-			expect(loader).toHaveBeenCalledWith('/textures/route.png', 'roughnessMap', {
-				policy: 'raw',
-				storage: 'legacy'
-			});
+			expect(loader).toHaveBeenCalledWith(
+				'/textures/route.png',
+				'roughnessMap',
+				expect.objectContaining({ policy: 'raw', storage: 'legacy' })
+			);
+		});
+
+		it('aborts shared IO only when its last waiter leaves', async () => {
+			const signals: AbortSignal[] = [];
+			const loader = vi.fn(
+				(_uri: string, _slot: string, options?: { signal?: AbortSignal }) =>
+					new Promise<ThreeTexture>((_resolve, reject) => {
+						const signal = options!.signal!;
+						signals.push(signal);
+						signal.addEventListener('abort', () =>
+							reject(new DOMException('aborted', 'AbortError'))
+						);
+					})
+			);
+			setDefaultTextureSourceLoader(loader);
+			const first = new AbortController();
+			const second = new AbortController();
+			const one = loadFinishTexture('/textures/shared.png', 'color', null, first.signal);
+			const two = loadFinishTexture('/textures/shared.png', 'color', null, second.signal);
+			await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+			expect(signals).toHaveLength(1);
+
+			first.abort();
+			await expect(one).rejects.toThrow();
+			// The second surface still needs the bytes: do not abort the shared read.
+			expect(signals[0]!.aborted).toBe(false);
+
+			second.abort();
+			await expect(two).rejects.toThrow();
+			expect(signals[0]!.aborted).toBe(true);
+		});
+
+		it('keeps a shared read alive for the remaining waiter', async () => {
+			let settle: ((texture: ThreeTexture) => void) | undefined;
+			const loader = vi.fn(
+				(_uri: string, _slot: string, options?: { signal?: AbortSignal }) =>
+					new Promise<ThreeTexture>((resolve, reject) => {
+						settle = resolve;
+						options?.signal?.addEventListener('abort', () =>
+							reject(new DOMException('aborted', 'AbortError'))
+						);
+					})
+			);
+			setDefaultTextureSourceLoader(loader);
+			const first = new AbortController();
+			const one = loadFinishTexture('/textures/remaining.png', 'color', null, first.signal);
+			const two = loadFinishTexture('/textures/remaining.png', 'color');
+			await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+
+			first.abort();
+			await expect(one).rejects.toThrow();
+			const texture = new (await import('three')).Texture();
+			settle?.(texture);
+			await expect(two).resolves.toBe(texture);
 		});
 
 		it('__resetDefaultSourceLoaderForTests clears the dispatcher', async () => {

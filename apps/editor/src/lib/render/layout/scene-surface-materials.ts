@@ -7,7 +7,11 @@ import {
 	releaseEffectiveVariant
 } from '$lib/render/resources/texture-store';
 import type { MaterialTextureSlotKey, StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
-import { acquireFinishViews, type FinishViewLease } from '$lib/render/resources/finish-views';
+import {
+	acquireFinishViews,
+	type FinishViewGeneration,
+	type FinishViewLease
+} from '$lib/render/resources/finish-views';
 import type { Material } from 'three';
 import type { SceneSurfaceLook, SceneSurfaceLookResolver, SceneSurfaceRef } from './surface-look';
 
@@ -32,6 +36,8 @@ export function createSceneSurfaceMaterials(input: {
 	readonly scope: TextureLoadScope | null;
 	readonly onMaterialChange: () => void;
 	readonly resolveSurfaceLook?: SceneSurfaceLookResolver;
+	/** The owning Canvas's generation; a replacement refuses only its own loads. */
+	readonly viewGeneration?: () => FinishViewGeneration | null;
 }): { materialFor(surface: SceneSurfaceRef): Material | null; materialKeys(): readonly string[]; dispose(): void } {
 	const leases = new Map<string, ReturnType<MaterialStore['acquire']>>();
 	const variants = new Map<string, Variant>();
@@ -55,7 +61,12 @@ export function createSceneSurfaceMaterials(input: {
 		if (sampled) {
 			const controller = new AbortController();
 			look.controller = controller;
-			void acquireFinishViews(resolved.textures?.views ?? [], input.scope, controller.signal)
+			void acquireFinishViews(
+				resolved.textures?.views ?? [],
+				input.scope,
+				controller.signal,
+				input.viewGeneration?.() ?? undefined
+			)
 				.then((lease) => {
 					if (look.controller === controller) look.controller = null;
 					if (disposed) {

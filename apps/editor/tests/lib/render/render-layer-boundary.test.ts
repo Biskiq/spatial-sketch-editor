@@ -156,6 +156,7 @@ describe('render-layer-boundary: stores read no authoring layer', () => {
 				'@portfolio/layout-core',
 				'$lib/types/materials',
 				'three',
+				'./image-encoding',
 				'./texture-variant'
 			].sort()
 		);

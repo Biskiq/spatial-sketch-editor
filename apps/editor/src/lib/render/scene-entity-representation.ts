@@ -63,7 +63,11 @@ import {
 	type LoadedTextureMaps,
 	type TextureLoadScope
 } from './resources/texture-store';
-import { acquireFinishViews, type FinishViewLease } from './resources/finish-views';
+import {
+	acquireFinishViews,
+	type FinishViewGeneration,
+	type FinishViewLease
+} from './resources/finish-views';
 
 /** What one update did, as counts — tests read these, never a stopwatch. */
 export type SceneEntityRepresentationStats = {
@@ -92,6 +96,8 @@ export type SceneEntityRepresentationOptions = {
 	readonly geometry: GeometryStore;
 	/** The texture cache namespace this Canvas loads under (release scope). */
 	readonly scope?: () => TextureLoadScope | null;
+	/** The owning Canvas's generation; a replacement refuses only its own loads. */
+	readonly viewGeneration?: () => FinishViewGeneration | null;
 	/**
 	 * Register an item's root with the host's pick index. The representation
 	 * calls it when an item is built and the returned unregister when it is
@@ -214,6 +220,7 @@ export function createSceneEntityRepresentation(
 		store: options.store,
 		geometry: options.geometry,
 		casters: options.casters ?? NO_CASTERS,
+		viewGeneration: options.viewGeneration,
 		onRoot: (id, root) => options.onRoot?.(id, root),
 		onDrawn: (id) => options.onModelDrawn?.(id),
 		onState: (id, state) => options.onModelState?.(id, state)
@@ -265,7 +272,12 @@ export function createSceneEntityRepresentation(
 			const controller = new AbortController();
 			entry.controller?.abort();
 			entry.controller = controller;
-			const job: Promise<void> = acquireFinishViews(sources, scope, controller.signal)
+			const job: Promise<void> = acquireFinishViews(
+				sources,
+				scope,
+				controller.signal,
+				options.viewGeneration?.() ?? undefined
+			)
 				.then((lease) => {
 					if (disposed || entry.generation !== generation) {
 						lease.release();

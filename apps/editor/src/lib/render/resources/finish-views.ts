@@ -23,12 +23,11 @@
  *
  * Entries are reference counted and scoped: the same view key in two texture
  * scopes is two textures. A release at zero keeps the entry charged until it is
- * evicted or its Canvas generation retires; a concurrent acquisition in the same
- * generation joins its reference count. A Canvas generation change tags new
- * acquisitions with the new generation and refuses completions from the old one,
- * but it does not clear another live Canvas's entries. Lease releases capture the
- * exact entry they acquired, so an old lease can never delete a newer entry that
- * reused the same view key.
+ * evicted, its scope is torn down, or its Canvas generation retires; a concurrent
+ * acquisition in the same generation joins its reference count. Generations are
+ * owned per Canvas: advancing one host's generation never refuses another host's
+ * in-flight completion. Lease releases capture the exact entry they acquired, so
+ * an old lease can never delete a newer entry that reused the same view key.
  */
 import type { TextureLoadScope } from './texture-store';
 import { loadFinishTexture, releaseFinishTexture } from './texture-store';
@@ -74,10 +73,22 @@ export type FinishViewStats = {
 	readonly released: number;
 	/** Estimated RGBA8 mip bytes held now, including zero-reference entries. */
 	readonly bytes: number;
-	/** The current generation tag. */
-	readonly generation: number;
+	/** The current generation tag of each Canvas owner. */
+	readonly generations: Readonly<Record<string, number>>;
 	/** Budget refusals, monotone. */
 	readonly refused: number;
+};
+
+/**
+ * The Canvas generation an acquisition belongs to.
+ *
+ * `owner` is stable for one Canvas host for its lifetime; `generation` advances
+ * when that host replaces its device canvas. Two Canvas hosts therefore never
+ * invalidate each other's work.
+ */
+export type FinishViewGeneration = {
+	readonly owner: string;
+	readonly generation: number;
 };
 
 /** The v1 steady ceiling; the measured gate may adopt a smaller one. */
@@ -105,21 +116,27 @@ type Entry = {
 	readonly key: string;
 	readonly texture: Texture;
 	readonly bytes: number;
+	readonly owner: string;
 	readonly generation: number;
 	readonly scopeId: string;
 	readonly source: FinishViewSource;
 	refCount: number;
 	lastUsed: number;
+	/** The scope or generation that owned this entry has gone away. */
+	retired: boolean;
 };
 
-/** A logical view is scoped and generation-tagged; keys from two eras coexist. */
-function entryKey(scopeId: string, generation: number, view: string): string {
-	return `${scopeId}::${generation}::${view}`;
+/** A logical view is scoped, owner-tagged and generation-tagged. */
+function entryKey(scopeId: string, owner: string, generation: number, view: string): string {
+	return `${scopeId}::${owner}::${generation}::${view}`;
 }
+
+const GLOBAL_OWNER = 'global';
 
 let entries = new Map<string, Entry>();
 let budgetBytes = DEFAULT_FINISH_VIEW_BUDGET_BYTES;
-let generation = 0;
+/** Latest generation per Canvas owner; never advanced by another Canvas. */
+let ownerGenerations = new Map<string, number>();
 let access = 0;
 let created = 0;
 let released = 0;
@@ -156,28 +173,50 @@ export function finishViewBudget(): number {
 }
 
 /**
- * A Canvas generation changed.
+ * One Canvas advanced its generation.
  *
- * The tag advances monotonically across all Canvas hosts. Entries from earlier
- * generations stay charged and remain releasable by their exact leases; new
- * acquisitions never join them, and a budget-pressure eviction removes them
- * oldest-first. This deliberately does not clear the map: one Canvas recovering
- * must not wipe another live Canvas's accounting.
+ * Only entries owned by that Canvas are retired. Entries from the previous
+ * generation stay charged and remain releasable by their exact leases; an
+ * unleased one is disposed immediately, a leased one at its final release. No
+ * other Canvas's accounting or in-flight completion is touched.
  */
-export function setFinishViewGeneration(next: number): void {
-	generation = Math.max(generation, next);
+export function setFinishViewGeneration(owner: string, next: number): void {
+	if (!Number.isFinite(next)) return;
+	const previous = ownerGenerations.get(owner) ?? 0;
+	if (next <= previous) return;
+	ownerGenerations.set(owner, next);
+	for (const entry of [...entries.values()]) {
+		if (entry.owner !== owner || entry.generation >= next) continue;
+		if (entry.refCount === 0) {
+			entries.delete(entry.key);
+			disposeEntry(entry, entries.values());
+		} else {
+			entry.retired = true;
+		}
+	}
+}
+
+function latestGeneration(owner: string): number {
+	return ownerGenerations.get(owner) ?? 0;
 }
 
 export function finishViewStats(): FinishViewStats {
 	let live = 0;
 	for (const entry of entries.values()) if (entry.refCount > 0) live += 1;
-	return { live, created, released, bytes: heldBytes(), generation, refused };
+	return {
+		live,
+		created,
+		released,
+		bytes: heldBytes(),
+		generations: Object.fromEntries(ownerGenerations),
+		refused
+	};
 }
 
 /** Test-only: clear the logical cache without touching the texture source cache. */
 export function resetFinishViewsForTests(): void {
 	entries = new Map();
-	generation = 0;
+	ownerGenerations = new Map();
 	access = 0;
 	budgetBytes = DEFAULT_FINISH_VIEW_BUDGET_BYTES;
 	created = 0;
@@ -196,6 +235,29 @@ function releaseEntry(entry: Entry): void {
 	if (entry.refCount > 0) return;
 	entry.lastUsed = ++access;
 	released += 1;
+	if (entry.retired && entries.get(entry.key) === entry) {
+		entries.delete(entry.key);
+		disposeEntry(entry, entries.values());
+	}
+}
+
+/**
+ * Release every cached view one texture scope owns.
+ *
+ * A route teardown must not wait for budget pressure to free its uploads. An
+ * unleased entry is disposed now; a leased one is retired and disposed by its
+ * final release, so a live material never samples a disposed texture.
+ */
+export function releaseFinishViewsForScope(scopeId: string): void {
+	for (const entry of [...entries.values()]) {
+		if (entry.scopeId !== scopeId) continue;
+		if (entry.refCount === 0) {
+			entries.delete(entry.key);
+			disposeEntry(entry, entries.values());
+		} else {
+			entry.retired = true;
+		}
+	}
 }
 
 /**
@@ -313,7 +375,8 @@ async function withDecodeSlot<T>(
 export async function acquireFinishViews(
 	sources: readonly FinishViewSource[],
 	scope: TextureLoadScope | null,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	viewGeneration?: FinishViewGeneration
 ): Promise<FinishViewLease> {
 	const unique = new Map<string, FinishViewSource>();
 	for (const source of sources) {
@@ -322,12 +385,16 @@ export async function acquireFinishViews(
 	const ordered = [...unique.values()].sort((left, right) => left.view.localeCompare(right.view));
 	const scopeId = scope?.scopeId ?? 'global';
 	const key = `${scopeId}::${ordered.map((entry) => entry.view).join('|')}`;
-	const startedGeneration = generation;
+	const owner = viewGeneration?.owner ?? GLOBAL_OWNER;
+	const startedGeneration = viewGeneration === undefined ? 0 : latestGeneration(owner);
+	/** Only an owned generation can be lost; an unowned acquisition is never refused. */
+	const generationLost = (): boolean =>
+		viewGeneration !== undefined && latestGeneration(owner) !== startedGeneration;
 	const issues: FinishViewIssue[] = [];
 	const acquired: Entry[] = [];
 	const views: Record<string, Texture> = {};
 	const pending = new Map<string, FinishViewSource>();
-	const keyFor = (view: string): string => entryKey(scopeId, startedGeneration, view);
+	const keyFor = (view: string): string => entryKey(scopeId, owner, startedGeneration, view);
 
 	/**
 	 * Give back a decoded texture that never became an entry. It may already be
@@ -385,7 +452,7 @@ export async function acquireFinishViews(
 
 	const loadedBytes = new Map<string, number>();
 	for (const source of missing) {
-		if (signal?.aborted || generation !== startedGeneration) {
+		if (signal?.aborted || generationLost()) {
 			issues.push({
 				code: signal?.aborted ? 'cancelled' : 'generation-mismatch',
 				view: source.view,
@@ -397,10 +464,10 @@ export async function acquireFinishViews(
 		try {
 			const texture = await withDecodeSlot(
 				scopeId,
-				() => loadFinishTexture(source.uri, source.role, scope),
+				() => loadFinishTexture(source.uri, source.role, scope, signal),
 				signal
 			);
-			if (generation !== startedGeneration) {
+			if (generationLost()) {
 				issues.push({
 					code: 'generation-mismatch',
 					view: source.view,
@@ -470,11 +537,13 @@ export async function acquireFinishViews(
 			key: entryKeyForView,
 			texture: views[source.view]!,
 			bytes: loadedBytes.get(source.view) ?? 0,
-			refCount: 1,
+			owner,
 			generation: startedGeneration,
 			scopeId,
 			source,
-			lastUsed: ++access
+			refCount: 1,
+			lastUsed: ++access,
+			retired: false
 		};
 		entries.set(entryKeyForView, entry);
 		created += 1;

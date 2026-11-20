@@ -9,6 +9,7 @@
 	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 	import { createRoomRepresentation } from '$lib/render/layout-room-representation';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
+	import { tryUseCanvasRendererState } from '$lib/render/renderer-context';
 	import type { LayoutIdentityIndex } from '$lib/render/render-identity';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import type { RuntimeScene, SceneTreatment } from '$lib/content/scene';
@@ -83,6 +84,8 @@
 	const resources = useRenderResources();
 	const materials = resources.materials;
 	const { invalidate } = useThrelte();
+	const rendererState = tryUseCanvasRendererState();
+	const viewGeneration = rendererState === null ? undefined : () => rendererState.viewGeneration;
 	const resolveSurfaceLook: SceneSurfaceLookResolver = (surface) =>
 		scene === null ? null : resolveSceneSurfaceLook(scene, surface, treatment);
 
@@ -92,7 +95,15 @@
 	 * `cacheKey` or whose Junction end geometry moved and releases a superseded
 	 * buffer in the same update.
 	 */
-	const walls = createWallRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook);
+	const walls = createWallRepresentation(
+		materials,
+		undefined,
+		null,
+		null,
+		() => invalidate(),
+		resolveSurfaceLook,
+		viewGeneration
+	);
 
 	// Update and teardown are separate effects on purpose: Svelte runs a
 	// returned cleanup before each re-run of the same effect, and `geometry`
@@ -131,8 +142,23 @@
 	 * three materials for every Room. The shell mounts its root once — there is no
 	 * per-Room component, geometry component or material component left.
 	 */
-	const rooms = createRoomRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook);
-	const regions = createRegionRepresentation(materials, null, () => invalidate(), resolveSurfaceLook);
+	const rooms = createRoomRepresentation(
+		materials,
+		undefined,
+		null,
+		null,
+		() => invalidate(),
+		resolveSurfaceLook,
+		viewGeneration
+	);
+	const regions = createRegionRepresentation(
+		materials,
+		null,
+		() => invalidate(),
+		resolveSurfaceLook,
+		undefined,
+		viewGeneration
+	);
 	$effect(() => { if (regions.update(geometry)) invalidate(); });
 
 	$effect(() => {

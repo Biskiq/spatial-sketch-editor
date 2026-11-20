@@ -46,7 +46,11 @@ import type { GeometryLease, GeometryStore } from './resources/geometry-store';
 import type { MaterialLease, MaterialStore } from './resources/material-store';
 import type { SceneModelItem, SceneModelLook } from './resources/scene-render-item';
 import { loadEffectiveTextures, type TextureLoadScope } from './resources/texture-store';
-import { acquireFinishViews, type FinishViewLease } from './resources/finish-views';
+import {
+	acquireFinishViews,
+	type FinishViewGeneration,
+	type FinishViewLease
+} from './resources/finish-views';
 import {
 	createArrivalGate,
 	modelLookFor,
@@ -164,6 +168,8 @@ export type SceneModelRepresentationOptions = {
 	readonly onDrawn?: (id: string) => void;
 	/** A model's load status changed. */
 	readonly onState?: (id: string, state: SceneModelState) => void;
+	/** The owning Canvas's generation; a replacement refuses only its own loads. */
+	readonly viewGeneration?: () => FinishViewGeneration | null;
 };
 
 export type SceneModelRepresentation = {
@@ -430,8 +436,13 @@ export function createSceneModelRepresentation(
 			entry.controller?.abort();
 			const controller = new AbortController();
 			entry.controller = controller;
-			track(
-				acquireFinishViews(active.views ?? [], look.scope, controller.signal)
+							track(
+				acquireFinishViews(
+					active.views ?? [],
+					look.scope,
+					controller.signal,
+					options.viewGeneration?.() ?? undefined
+				)
 					.then((lease) => {
 						if (entry.controller === controller) entry.controller = null;
 						if (disposed || id !== entry.generation) {

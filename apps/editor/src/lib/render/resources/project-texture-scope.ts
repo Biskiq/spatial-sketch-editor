@@ -33,6 +33,8 @@ import {
 	type TextureLoadScope
 } from './texture-store';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
+import { probeRawImage } from './image-encoding';
+import { releaseFinishViewsForScope } from './finish-views';
 
 export type ProjectTexturePin = {
 	readonly hash: string;
@@ -138,16 +140,17 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 	async function loadProjectImage(
 		assetId: string,
 		isCurrent: () => boolean = () => true,
-		raw = false
+		raw = false,
+		signal: AbortSignal = abort.signal
 	): Promise<ThreeTexture> {
 		const pin = input.pins().get(assetId);
 		if (pin === undefined) throw new Error('The image is not registered in this project.');
-		const content = await input.load(assetId, abort.signal);
-		abort.signal.throwIfAborted();
+		const content = await input.load(assetId, signal);
+		signal.throwIfAborted();
 		const probe = probeArtworkImage(content.bytes);
-		if (raw && probe.orientation !== 1) {
-			throw new Error('Raw material maps require identity EXIF orientation.');
-		}
+		// A raw role must preserve stored channels; validate the container before
+		// the decoder allocates anything (orientation, precision, profile).
+		if (raw) probeRawImage(content.bytes);
 		const digest = `sha256-${await imageSha256(content.bytes)}`;
 		if (
 			content.mime !== pin.mime ||
@@ -161,6 +164,10 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 
 		if (raw) {
 			const bitmap = await decodeRaw(content.bytes, pin.mime);
+			if (signal.aborted) {
+				bitmap?.close();
+				signal.throwIfAborted();
+			}
 			if (bitmap !== null) {
 				if (disposed || !isCurrent()) {
 					bitmap.close();
@@ -185,17 +192,23 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		}
 	}
 
-	async function loadCatalogue(uri: string, raw = false): Promise<ThreeTexture> {
+	async function loadCatalogue(uri: string, raw = false, signal?: AbortSignal): Promise<ThreeTexture> {
 		if (raw) {
 			// A raw map cannot silently fall back to the colour-managed loader: that
 			// would turn a normal/roughness map into display-referred sRGB bytes.
 			if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
 				throw new Error('Raw material maps require fetch and createImageBitmap.');
 			}
-			const response = await fetch(uri);
+			const response = await fetch(uri, { signal });
 			if (!response.ok) throw new Error(`Could not load raw material map (${response.status}).`);
 			const blob = await response.blob();
-			const bitmap = await decodeRaw(new Uint8Array(await blob.arrayBuffer()), blob.type || 'image/png');
+			const bytes = new Uint8Array(await blob.arrayBuffer());
+			probeRawImage(bytes);
+			const bitmap = await decodeRaw(bytes, blob.type || 'image/png');
+			if (signal?.aborted) {
+				bitmap?.close();
+				signal.throwIfAborted();
+			}
 			if (bitmap === null) throw new Error('Raw material maps require createImageBitmap.');
 			if (disposed) {
 				bitmap.close();
@@ -224,15 +237,24 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
 			const raw =
 				options?.policy === 'raw' || (options === undefined && slot !== 'map');
+			// A caller's cancellation releases only its interest; the texture store
+			// aborts the shared read when its last waiter leaves. The scope's own
+			// abort also ends this load on teardown.
+			const loadController = new AbortController();
+			const abortLoad = (): void => loadController.abort();
+			options?.signal?.addEventListener('abort', abortLoad, { once: true });
+			abort.signal.addEventListener('abort', abortLoad, { once: true });
+			if (options?.signal?.aborted === true || abort.signal.aborted) abortLoad();
 			try {
 				const texture =
 					assetId === null
-						? await loadCatalogue(uri, raw)
+						? await loadCatalogue(uri, raw, loadController.signal)
 						: await loadProjectImage(
 							assetId,
 							() => (generations.get(uri) ?? 0) === generation,
-							raw
-							);
+							raw,
+							loadController.signal
+						);
 				if (disposed || (generations.get(uri) ?? 0) !== generation) {
 					texture.dispose();
 					throw new Error('That texture load was superseded.');
@@ -246,6 +268,9 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 					input.onFailure?.(uri, message);
 				}
 				throw error;
+			} finally {
+				options?.signal?.removeEventListener('abort', abortLoad);
+				abort.signal.removeEventListener('abort', abortLoad);
 			}
 		},
 		prepare: async (uris) => {
@@ -289,6 +314,9 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			if (disposed) return;
 			disposed = true;
 			abort.abort();
+			// Release this route's uploaded Finish views now; budget eviction is for
+			// live working sets, not a teardown guarantee.
+			releaseFinishViewsForScope(scope.scopeId);
 			// Invalidate every requested URI, not only the successes: a cached
 			// failure or an aborted in-flight load otherwise outlives this route and
 			// the next scope with the same id never asks again.

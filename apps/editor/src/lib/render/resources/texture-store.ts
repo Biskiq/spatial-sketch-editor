@@ -23,6 +23,7 @@ import {
 } from 'three';
 import type { MaterialDefinition, MaterialTextureSlot } from '$lib/types/materials';
 import { countWork } from '@portfolio/layout-core';
+import { probeRawImage } from './image-encoding';
 import type { TextureVariantSource } from './texture-variant';
 
 export type LoadedTextureMaps = Partial<Record<MaterialTextureSlot, ThreeTexture>>;
@@ -37,6 +38,11 @@ type SourceEntry = {
   promise: Promise<ThreeTexture> | null;
   texture?: ThreeTexture;
   error?: string;
+  /** Callers still waiting; the final abort cancels the shared IO. */
+  waiters: number;
+  /** The shared load was cancelled; a late completion must not install. */
+  cancelled: boolean;
+  controller: AbortController | null;
 };
 
 type VariantKey = string;
@@ -199,6 +205,8 @@ function applyClonePolicy(texture: ThreeTexture, slot: MaterialTextureSlot) {
 export type TextureSourceLoadOptions = {
   readonly policy: TextureDecodePolicy;
   readonly storage: TextureRowStorage;
+  /** Aborted when the last caller waiting on this shared source leaves. */
+  readonly signal?: AbortSignal;
 };
 
 export type TextureSourceLoader = (
@@ -259,12 +267,84 @@ export function __resetDefaultSourceLoaderForTests(): void {
   defaultSourceLoader = null;
 }
 
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException('The texture load was cancelled.', 'AbortError');
+}
+
+/**
+ * Drop one in-flight source when its final waiter leaves.
+ *
+ * A completed texture stays cached: the IO is already paid for, and another
+ * caller may legitimately join it. An in-flight entry is removed so a late
+ * completion cannot install into a cache key its caller abandoned.
+ */
+function cancelSourceEntry(key: string, entry: SourceEntry): void {
+  if (entry.texture !== undefined) return;
+  entry.cancelled = true;
+  entry.controller?.abort();
+  if (sourceCache.get(key) === entry) sourceCache.delete(key);
+}
+
+/**
+ * Wait for one shared source, tracking interest for cancellation.
+ *
+ * Every caller joins the same promise; only when the last one aborts is the
+ * shared fetch/decode aborted. One cancellation therefore never stops bytes
+ * another visible surface still needs.
+ */
+function waitForSource(
+  key: string,
+  entry: SourceEntry,
+  promise: Promise<ThreeTexture>,
+  signal?: AbortSignal
+): Promise<ThreeTexture> {
+  entry.waiters += 1;
+  const leave = (): void => {
+    entry.waiters = Math.max(0, entry.waiters - 1);
+  };
+  if (signal === undefined) return promise.finally(leave);
+  if (signal.aborted) {
+    leave();
+    if (entry.waiters === 0) cancelSourceEntry(key, entry);
+    return Promise.reject(abortReason(signal));
+  }
+  return new Promise<ThreeTexture>((resolve, reject) => {
+    let done = false;
+    const onAbort = (): void => {
+      if (done) return;
+      done = true;
+      signal.removeEventListener('abort', onAbort);
+      leave();
+      if (entry.waiters === 0) cancelSourceEntry(key, entry);
+      reject(abortReason(signal));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (texture) => {
+        if (done) return;
+        done = true;
+        signal.removeEventListener('abort', onAbort);
+        leave();
+        resolve(texture);
+      },
+      (error: unknown) => {
+        if (done) return;
+        done = true;
+        signal.removeEventListener('abort', onAbort);
+        leave();
+        reject(error);
+      }
+    );
+  });
+}
+
 function loadSource(
   url: string,
   slot: MaterialTextureSlot,
   materialId: string,
   scope?: TextureLoadScope | null,
-  storage: TextureRowStorage = 'legacy'
+  storage: TextureRowStorage = 'legacy',
+  signal?: AbortSignal
 ): Promise<ThreeTexture> {
   const policy = texturePolicyForSlot(slot);
   const key = sourceKey(scope ?? null, url, policy, storage);
@@ -272,23 +352,31 @@ function loadSource(
   if (existing) {
     if (existing.error) return Promise.reject(new Error(existing.error));
     if (existing.texture) return Promise.resolve(existing.texture);
-    if (existing.promise !== null) return existing.promise;
+    if (existing.promise !== null) return waitForSource(key, existing, existing.promise, signal);
     return Promise.reject(new Error('Texture load is not available.'));
   }
+  if (signal?.aborted) return Promise.reject(abortReason(signal));
 
   // The entry is the identity a late completion must still own. A Retry, a pin
   // change or a disposed scope replaces the entry; an older promise must not
   // write its result into the newer one.
-  const entry: SourceEntry = { promise: null };
+  const controller = new AbortController();
+  const entry: SourceEntry = {
+    promise: null,
+    waiters: 0,
+    cancelled: false,
+    controller
+  };
+  const sourceSignal = controller.signal;
   const promise = scope
-    ? loadViaScopedLoader(key, url, slot, materialId, scope.loader, entry, policy, storage)
+    ? loadViaScopedLoader(key, url, slot, materialId, scope.loader, entry, policy, storage, sourceSignal)
     : defaultSourceLoader
-      ? loadViaDefaultSourceLoader(key, url, slot, materialId, entry, policy, storage)
-      : loadViaTextureLoader(key, url, slot, materialId, entry, policy, storage);
+      ? loadViaDefaultSourceLoader(key, url, slot, materialId, entry, policy, storage, sourceSignal)
+      : loadViaTextureLoader(key, url, slot, materialId, entry, policy, storage, sourceSignal);
 
   entry.promise = promise;
   sourceCache.set(key, entry);
-  return promise;
+  return waitForSource(key, entry, promise, signal);
 }
 
 function loadViaTextureLoader(
@@ -298,19 +386,29 @@ function loadViaTextureLoader(
   materialId: string,
   entry: SourceEntry,
   policy: TextureDecodePolicy,
-  storage: TextureRowStorage
+  storage: TextureRowStorage,
+  signal: AbortSignal
 ): Promise<ThreeTexture> {
   const legacy = (): Promise<ThreeTexture> =>
     new Promise<ThreeTexture>((resolve, reject) => {
       loader.load(
         url,
         (texture) => {
+          if (entry.cancelled || signal.aborted) {
+            texture.dispose();
+            reject(abortReason(signal));
+            return;
+          }
           applySourceDefaults(texture, policy, storage);
           if (sourceCache.get(key) === entry) entry.texture = texture;
           resolve(texture);
         },
         undefined,
         (event) => {
+          if (entry.cancelled || signal.aborted) {
+            reject(abortReason(signal));
+            return;
+          }
           const message = `Failed to load texture for material "${materialId}": ${url}`;
           console.warn(message, event);
           if (sourceCache.get(key) === entry) entry.error = message;
@@ -327,14 +425,21 @@ function loadViaTextureLoader(
       if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
         throw new Error(`Raw texture loading requires fetch and createImageBitmap: ${url}`);
       }
-      const response = await fetch(url);
+      const response = await fetch(url, { signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
-      const bitmap = await createImageBitmap(blob, {
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      // Validate the container before the decoder allocates an RGBA buffer.
+      probeRawImage(bytes);
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: blob.type || 'image/png' }), {
         imageOrientation: 'none',
         premultiplyAlpha: 'none',
         colorSpaceConversion: 'none'
       });
+      if (entry.cancelled || signal.aborted) {
+        bitmap.close();
+        throw abortReason(signal);
+      }
       const texture = new ThreeTextureClass(bitmap);
       applySourceDefaults(texture, policy, storage);
       if (sourceCache.get(key) === entry) entry.texture = texture;
@@ -351,14 +456,20 @@ async function loadViaDefaultSourceLoader(
   materialId: string,
   entry: SourceEntry,
   policy: TextureDecodePolicy,
-  storage: TextureRowStorage
+  storage: TextureRowStorage,
+  signal: AbortSignal
 ): Promise<ThreeTexture> {
   try {
-    const texture = await defaultSourceLoader!(url, slot, { policy, storage });
+    const texture = await defaultSourceLoader!(url, slot, { policy, storage, signal });
+    if (entry.cancelled || signal.aborted) {
+      texture.dispose();
+      throw abortReason(signal);
+    }
     applySourceDefaults(texture, policy, storage);
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
+    if (entry.cancelled || signal.aborted) throw abortReason(signal);
     const message = `Failed to load texture for material "${materialId}": ${url}`;
     console.warn(message, event);
     if (sourceCache.get(key) === entry) entry.error = message;
@@ -374,14 +485,20 @@ async function loadViaScopedLoader(
   scoped: TextureSourceLoader,
   entry: SourceEntry,
   policy: TextureDecodePolicy,
-  storage: TextureRowStorage
+  storage: TextureRowStorage,
+  signal: AbortSignal
 ): Promise<ThreeTexture> {
   try {
-    const texture = await scoped(url, slot, { policy, storage });
+    const texture = await scoped(url, slot, { policy, storage, signal });
+    if (entry.cancelled || signal.aborted) {
+      texture.dispose();
+      throw abortReason(signal);
+    }
     applySourceDefaults(texture, policy, storage);
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
+    if (entry.cancelled || signal.aborted) throw abortReason(signal);
     const message = `Failed to load texture for material "${materialId}": ${url}`;
     console.warn(message, event);
     if (sourceCache.get(key) === entry) entry.error = message;
@@ -545,6 +662,8 @@ export function invalidateTextureSource(scopeId: string | null, url: string): bo
       continue;
     }
     sourceCache.delete(key);
+    entry.cancelled = true;
+    entry.controller?.abort();
     entry.texture?.dispose();
     disposed ||= entry.texture !== undefined;
   }
@@ -565,6 +684,10 @@ export function invalidateScopedMaterialLoads(scopeId: string): void {
 
 /** Test helper: clear in-memory caches (does not dispose GPU sources still referenced). */
 export function resetTextureCachesForTests() {
+  for (const entry of sourceCache.values()) {
+    entry.cancelled = true;
+    entry.controller?.abort();
+  }
   for (const entry of variantCache.values()) {
     for (const texture of Object.values(entry.maps)) texture?.dispose();
   }
@@ -592,9 +715,10 @@ export type EffectiveLoadResult =
 export function loadSourceTexture(
   url: string,
   slot: MaterialTextureSlot,
-  scope?: TextureLoadScope | null
+  scope?: TextureLoadScope | null,
+  signal?: AbortSignal
 ): Promise<ThreeTexture> {
-  return loadSource(url, slot, 'effective', scope ?? null);
+  return loadSource(url, slot, 'effective', scope ?? null, 'legacy', signal);
 }
 
 export async function loadEffectiveTextures(
@@ -727,9 +851,10 @@ export function acquireEffectiveVariant(
 export function loadFinishTexture(
   uri: string,
   role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
-  scope?: TextureLoadScope | null
+  scope?: TextureLoadScope | null,
+  signal?: AbortSignal
 ): Promise<ThreeTexture> {
-  return loadSource(uri, textureSlotForRole(role), 'finish', scope ?? null, 'top');
+  return loadSource(uri, textureSlotForRole(role), 'finish', scope ?? null, 'top', signal);
 }
 
 /**
@@ -751,6 +876,8 @@ export function releaseFinishTexture(
   const entry = sourceCache.get(key);
   if (entry === undefined) return false;
   sourceCache.delete(key);
+  entry.cancelled = true;
+  entry.controller?.abort();
   if (entry.texture === undefined) return false;
   entry.texture.dispose();
   return true;

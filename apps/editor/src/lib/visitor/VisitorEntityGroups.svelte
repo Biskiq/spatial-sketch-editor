@@ -22,6 +22,7 @@
 	import { isSceneFormEntity } from '$lib/content/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
+	import { tryUseCanvasRendererState } from '$lib/render/renderer-context';
 	import { createSceneEntityRepresentation } from '$lib/render/scene-entity-representation';
 	import type { SceneModelSupport } from '$lib/render/scene-model-representation';
 	import {
@@ -76,10 +77,12 @@
 	 */
 	const resources = useRenderResources();
 	const { invalidate } = useThrelte();
+	const rendererState = tryUseCanvasRendererState();
 	const entities = createSceneEntityRepresentation({
 		store: resources.materials,
 		geometry: resources.geometry,
 		scope: () => textureScope,
+		viewGeneration: rendererState === null ? undefined : () => rendererState.viewGeneration,
 		onRoot: (id, root) => onEntityRoot?.(id, root),
 		// Read inside the update effect, so a replaced scope re-runs it.
 		artworkScope: () => artworkScope,

@@ -15,6 +15,8 @@
 import { Texture as ThreeTextureClass, TextureLoader, type Texture as ThreeTexture } from 'three';
 import type { MaterialTextureSlot } from '$lib/types/materials';
 import { isAllowedShippedTextureUri } from './shipped-static-registry';
+import { probeRawImage } from '$lib/render/resources/image-encoding';
+import { releaseFinishViewsForScope } from '$lib/render/resources/finish-views';
 
 export type ReleaseBytesEntry = {
 	bytes: Uint8Array;
@@ -83,33 +85,45 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 		return async (
 			uri: string,
 			_slot: MaterialTextureSlot,
-			options?: { readonly policy: 'srgb' | 'raw' | string }
+			options?: { readonly policy: 'srgb' | 'raw' | string; readonly signal?: AbortSignal }
 		): Promise<ThreeTexture> => {
 			const resolved = resolveTexture(uri);
 			if (!resolved) throw new Error(`Texture not available in release ${releaseId}: ${uri}`);
+			if (options?.signal?.aborted) throw options.signal.reason;
 			if (options?.policy === 'raw') {
 				const entry = init.bytesByUri.get(uri);
 				if (entry === undefined || typeof createImageBitmap !== 'function') {
 					throw new Error(`Raw texture bytes are unavailable in release ${releaseId}: ${uri}`);
 				}
+				// Preserve stored channels: refuse a non-8-bit, CMYK, animated or
+				// EXIF-oriented map before the browser allocates its bitmap.
+				probeRawImage(entry.bytes);
 				const bitmap = await createImageBitmap(new Blob([entry.bytes.slice()], { type: entry.mime }), {
 					imageOrientation: 'none',
 					premultiplyAlpha: 'none',
 					colorSpaceConversion: 'none'
 				});
-				if (disposed) {
+				if (disposed || options?.signal?.aborted) {
 					bitmap.close();
-					throw new Error(`Release ${releaseId} is closed`);
+					throw options?.signal?.reason ?? new Error(`Release ${releaseId} is closed`);
 				}
 				return new ThreeTextureClass(bitmap);
 			}
-			return loader.loadAsync(resolved);
+			const texture = await loader.loadAsync(resolved);
+			if (disposed || options?.signal?.aborted) {
+				texture.dispose();
+				throw options?.signal?.reason ?? new Error(`Release ${releaseId} is closed`);
+			}
+			return texture;
 		};
 	};
 
 	const dispose = () => {
 		if (disposed) return;
 		disposed = true;
+		// A release teardown frees its uploaded Finish views immediately; a
+		// still-leased view is retired until its final release.
+		releaseFinishViewsForScope(releaseId);
 		revokeAll();
 	};
 

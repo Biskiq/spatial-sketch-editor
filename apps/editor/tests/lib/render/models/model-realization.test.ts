@@ -9,6 +9,7 @@ import {
 	AnimationMixer,
 	Bone,
 	BoxGeometry,
+	BufferAttribute,
 	Group,
 	Mesh,
 	MeshStandardMaterial,
@@ -328,6 +329,87 @@ describe('arrival gate (E8 stale-arrival rejection)', () => {
 });
 
 describe('imported Finish target guard', () => {
+	function withUv1(source: Group): void {
+		for (const mesh of surfacesOf(source)) {
+			const position = mesh.geometry.getAttribute('position');
+			const uv1 = new Float32Array(position.count * 2);
+			for (let vertex = 0; vertex < position.count; vertex += 1) {
+				uv1[vertex * 2] = (vertex % 4) / 4;
+				uv1[vertex * 2 + 1] = Math.floor(vertex / 4) / 6;
+			}
+			mesh.geometry.setAttribute('uv1', new BufferAttribute(uv1, 2));
+		}
+	}
+
+	function explicitFinish(uvSet: 0 | 1) {
+		return {
+			profile: 'pbr-metallic-roughness/v1' as const,
+			entries: [
+				{
+					role: 'color' as const,
+					view: `colour-${uvSet}`,
+					uvSet,
+					origin: 'gltf' as const,
+					repeat: [1, 1] as const,
+					rotation: 0,
+					offset: [0, 0] as const
+				}
+			],
+			occlusionStrength: 1,
+			normalScale: 1
+		};
+	}
+
+	it('binds explicit UV0 and UV1 through the arrived model adapter', () => {
+		for (const uvSet of [0, 1] as const) {
+			const source = template();
+			withUv1(source);
+			const store = createMaterialStore();
+			const finish = explicitFinish(uvSet);
+			const look: ModelLook = {
+				material: { color: '#c4b4a0', roughness: 0.6, metalness: 0, finish },
+				texture: null,
+				views: { [`colour-${uvSet}`]: new Texture() }
+			};
+			const instance = realizeModel(source, {
+				asset: `explicit-uv${uvSet}`,
+				store,
+				look,
+				wireframe: false,
+				castShadow: true,
+				receiveShadow: true
+			});
+			const material = surfacesOf(instance.root)[0]!.material as MeshStandardMaterial & {
+				isNodeMaterial?: boolean;
+			};
+			expect(material.isNodeMaterial).toBe(true);
+			instance.release();
+		}
+	});
+
+	it('keeps the constants when the plan names UV1 but the arrived mesh has only UV0', () => {
+		const source = template();
+		const store = createMaterialStore();
+		const look: ModelLook = {
+			material: { color: '#c4b4a0', roughness: 0.6, metalness: 0, finish: explicitFinish(1) },
+			texture: null,
+			views: { 'colour-1': new Texture() }
+		};
+		const instance = realizeModel(source, {
+			asset: 'uv0-only',
+			store,
+			look,
+			wireframe: false,
+			castShadow: true,
+			receiveShadow: true
+		});
+		const material = surfacesOf(instance.root)[0]!.material as MeshStandardMaterial & {
+			isNodeMaterial?: boolean;
+		};
+		expect(material.isNodeMaterial).not.toBe(true);
+		instance.release();
+	});
+
 	it('keeps the constants when the arrived mesh has neither UV set the plan names', () => {
 		const source = template();
 		for (const mesh of surfacesOf(source)) mesh.geometry.deleteAttribute('uv');

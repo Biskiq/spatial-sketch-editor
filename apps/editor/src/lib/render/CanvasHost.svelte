@@ -57,6 +57,12 @@
 	} = $props();
 
 	const rendererState = provideCanvasRendererState();
+	/** Stable for this host; a replacement canvas advances only this owner. */
+	const viewOwner =
+		typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+			? `canvas-${crypto.randomUUID()}`
+			: `canvas-${Math.random().toString(36).slice(2)}`;
+	rendererState.viewGeneration = { owner: viewOwner, generation: 0 };
 	let snapshot = $state<LifecycleSnapshot>({
 		phase: 'starting',
 		attempt: 'auto',
@@ -79,8 +85,11 @@
 				cancelPointerGesture();
 				// A new device generation owns new GPU views; old leases stay with
 				// their owners and late completions are refused by the view cache.
-				setFinishViewGeneration(next.generation);
+				// Only this Canvas's owner advances: another host's in-flight
+				// acquisition stays valid.
+				setFinishViewGeneration(viewOwner, next.generation);
 			}
+			rendererState.viewGeneration = { owner: viewOwner, generation: next.generation };
 			snapshot = next;
 			generation = next.generation;
 			const nextReady = next.phase === 'ready';

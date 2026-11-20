@@ -73,7 +73,9 @@ describe('the default Wall surface', () => {
 			'createVisitorWallMaterialFactory('
 		);
 		const shell = source('src/lib/visitor/VisitorLayoutShell.svelte');
-		expect(shell).toContain('createWallRepresentation(materials, undefined, null, null, () => invalidate(), resolveSurfaceLook)');
+		expect(shell).toMatch(
+			/createWallRepresentation\(\s*materials,\s*undefined,\s*null,\s*null,\s*\(\) => invalidate\(\),\s*resolveSurfaceLook,\s*viewGeneration\s*\)/
+		);
 		expect(shell).toContain('walls.setScene(scene, textureScope)');
 		expect(shell).toContain('rooms.setScene(scene, textureScope)');
 		expect(source('src/lib/authoring/stage/shell/StageCanvas.svelte')).toContain(

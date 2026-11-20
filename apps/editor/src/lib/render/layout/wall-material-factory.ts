@@ -17,7 +17,11 @@ import type {
 } from '$lib/render/resources/material-descriptor';
 import type { LayoutWallSide } from '@portfolio/layout-core';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
-import { acquireFinishViews, type FinishViewLease } from '$lib/render/resources/finish-views';
+import {
+	acquireFinishViews,
+	type FinishViewGeneration,
+	type FinishViewLease
+} from '$lib/render/resources/finish-views';
 import type { Texture } from 'three';
 
 type VariantLease = {
@@ -52,6 +56,8 @@ export function createVisitorWallMaterialFactory(
 		readonly scope?: TextureLoadScope | null;
 		readonly resolveSurfaceLook?: SceneSurfaceLookResolver;
 		readonly onMaterialChange?: () => void;
+		/** The owning Canvas's generation; a replacement refuses only its own loads. */
+		readonly viewGeneration?: () => FinishViewGeneration | null;
 	} = {}
 ): {
 	factory: WallMeshMaterialFactory;
@@ -126,7 +132,12 @@ export function createVisitorWallMaterialFactory(
 		if (sampled) {
 			const controller = new AbortController();
 			candidate.controller = controller;
-			void acquireFinishViews(candidate.textures?.views ?? [], scope, controller.signal)
+			void acquireFinishViews(
+				candidate.textures?.views ?? [],
+				scope,
+				controller.signal,
+				options.viewGeneration?.() ?? undefined
+			)
 				.then((lease) => {
 					if (candidate.controller === controller) candidate.controller = null;
 					if (disposed) {

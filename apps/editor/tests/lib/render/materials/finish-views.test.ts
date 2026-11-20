@@ -5,9 +5,11 @@ import {
 	acquireFinishViews,
 	DEFAULT_FINISH_VIEW_BUDGET_BYTES,
 	finishViewStats,
+	releaseFinishViewsForScope,
 	resetFinishViewsForTests,
 	setFinishViewBudget,
-	setFinishViewGeneration
+	setFinishViewGeneration,
+	type FinishViewGeneration
 } from '$lib/render/resources/finish-views';
 import {
 	__resetDefaultSourceLoaderForTests,
@@ -96,9 +98,10 @@ describe('finish view leases', () => {
 	it('keeps an old generation release from touching a new generation entry', async () => {
 		setDefaultTextureSourceLoader(async () => imageTexture());
 		const source = [{ view: 'colour', uri: '/one.png', role: 'color' as const }];
-		const old = await acquireFinishViews(source, null);
-		setFinishViewGeneration(finishViewStats().generation + 1);
-		const next = await acquireFinishViews(source, null);
+		const oldToken: FinishViewGeneration = { owner: 'canvas-a', generation: 0 };
+		const old = await acquireFinishViews(source, null, undefined, oldToken);
+		setFinishViewGeneration('canvas-a', 1);
+		const next = await acquireFinishViews(source, null, undefined, { owner: 'canvas-a', generation: 1 });
 		// The source cache may hand back the same decoded texture under a new
 		// generation entry; the lease counts are what must stay isolated.
 		expect(next.views.colour).toBeTruthy();
@@ -215,15 +218,76 @@ describe('finish view leases', () => {
 					resolve = settle;
 				})
 		);
-		const pending = acquireFinishViews([{ view: 'colour', uri: '/slow.png', role: 'color' }], null);
+		const token: FinishViewGeneration = { owner: 'canvas-a', generation: 0 };
+		const pending = acquireFinishViews(
+			[{ view: 'colour', uri: '/slow.png', role: 'color' }],
+			null,
+			undefined,
+			token
+		);
 		await new Promise((wait) => setTimeout(wait, 0));
-		setFinishViewGeneration(finishViewStats().generation + 1);
+		setFinishViewGeneration('canvas-a', 1);
 		resolve?.(imageTexture());
 		const lease = await pending;
 
 		expect(lease.views).toEqual({});
 		expect(lease.issues[0]?.code).toBe('generation-mismatch');
-		expect(finishViewStats()).toMatchObject({ live: 0, generation: 1 });
+		expect(finishViewStats()).toMatchObject({ live: 0, generations: { 'canvas-a': 1 } });
+	});
+
+	it('does not refuse one Canvas when another Canvas recovers', async () => {
+		let resolve: ((texture: Texture) => void) | undefined;
+		setDefaultTextureSourceLoader(
+			() =>
+				new Promise<Texture>((settle) => {
+					resolve = settle;
+				})
+		);
+		const pending = acquireFinishViews(
+			[{ view: 'colour', uri: '/canvas-a.png', role: 'color' }],
+			null,
+			undefined,
+			{ owner: 'canvas-a', generation: 0 }
+		);
+		await new Promise((wait) => setTimeout(wait, 0));
+		setFinishViewGeneration('canvas-b', 7);
+		resolve?.(imageTexture());
+		const lease = await pending;
+
+		expect(lease.issues).toEqual([]);
+		expect(lease.views.colour).toBeTruthy();
+		lease.release();
+	});
+
+	it('releases a scope teardown immediately once no lease remains', async () => {
+		const texture = imageTexture();
+		const dispose = vi.spyOn(texture, 'dispose');
+		const scope = { scopeId: 'project:teardown', loader: async () => texture };
+		const lease = await acquireFinishViews(
+			[{ view: 'colour', uri: '/teardown.png', role: 'color' }],
+			scope
+		);
+		expect(finishViewStats().bytes).toBe(BYTES);
+		lease.release();
+		releaseFinishViewsForScope(scope.scopeId);
+		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(finishViewStats()).toMatchObject({ live: 0, bytes: 0 });
+	});
+
+	it('retires a still-leased view at teardown and disposes it on release', async () => {
+		const texture = imageTexture();
+		const dispose = vi.spyOn(texture, 'dispose');
+		const scope = { scopeId: 'project:teardown-leased', loader: async () => texture };
+		const lease = await acquireFinishViews(
+			[{ view: 'colour', uri: '/leased.png', role: 'color' }],
+			scope
+		);
+		releaseFinishViewsForScope(scope.scopeId);
+		expect(dispose).not.toHaveBeenCalled();
+		expect(finishViewStats()).toMatchObject({ live: 1, bytes: BYTES });
+		lease.release();
+		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(finishViewStats()).toMatchObject({ live: 0, bytes: 0 });
 	});
 });
 
