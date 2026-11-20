@@ -250,11 +250,10 @@ Ran on the branch at Node 26 / npm 11:
   consecutive full runs produced identical clip pixels and wide-line
   thickness/dash counts. Performance A/B/C complete; cold public 20 samples,
   0 console errors.
-- CI at `1965597a` (previous correction head) — all required checks passed
-  (run 44665860999): build, check, API check/tests, fast, heavy, architecture,
-  guards, package and platform checks. `editor focused verification` was
-  skipped by the path classifier. This row-order follow-up adds a new head;
-  its PR checks are the current CI result.
+- CI at `c048d33e` — all required checks passed (run 44669331313): build,
+  check, API check/tests, fast, heavy, architecture, guards, package and
+  platform checks. `editor focused verification` was skipped by the path
+  classifier.
 
 Harness commands: `npm run webgpu:qualify`, `npm run webgpu:perf`,
 `npm run webgpu:cold` and `npm run webgpu:evidence`.
