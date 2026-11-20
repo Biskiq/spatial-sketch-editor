@@ -148,12 +148,16 @@ head and ready row; a missing row or changed metadata requires source recovery. 
 backing bytes are missing or corrupt, the supplied original streams to a fresh private staging key
 and is verified for length, digest, MIME and Artwork dimensions before a conditional swap of the
 physical object key. A wrong file is `422`, a stale base or changed pin `409`, an inaccessible
-resource `404` and storage failure `503`. A healthy identical row answers success without a write;
-a concurrent winner is accepted only after its bytes verify. The superseded key is retired after
-commit; a failed attempt releases its staging key and attempt row. Attempts record owner, project,
-asset, staging key and a 24-hour expiry before streaming, and the next scoped asset access collects
-expired attempts whose key no ready row references. Repair creates no source revision, version,
-receipt or history entry.
+resource `404` and storage failure `503`. A healthy identical row answers success without a write.
+No object-store read runs inside a locked transaction: a concurrent winner is only observed under
+the project-then-asset lock, verified after the lock is released, then its exact row, pin and
+object key are re-proved before this attempt answers, so a slow store cannot block a Save or another
+repair. The swap consumes the attempt row; an expired attempt is claimed in one statement by the
+next scoped asset access before its unreferenced staging key is deleted, so a delayed commit can
+never adopt a claimed key and a key a ready row names is never removed. The superseded key is
+retired after commit; a failed attempt releases its staging key and attempt row. Attempts record
+owner, project, asset, staging key and a 24-hour expiry before streaming. Repair creates no source
+revision, version, receipt or history entry.
 
 An uploaded image whose write was cancelled, refused or undone stays in project assets under P20
 retention. The Scene never puts bytes in Undo and never deletes them; an asset no texture record

@@ -207,11 +207,14 @@ revision, version, receipt or history entry. The owner-only
 loaded saved-base token. Two phases bracket the stream: prove owner, base, saved-head membership
 and pin under the project-then-asset update lock and record a 24-hour attempt; stream to a fresh
 private staging key and verify length, digest, MIME and declared dimensions; then re-prove the same
-facts and conditionally swap only the object key if it is still the one phase 1 observed. A healthy
-row answers without a write, a concurrent winner is verified before success, and a wrong file or
-stale base leaves the old key and session untouched. Failed staging is released; expired attempts
-are collected on the next scoped asset access when no ready row references their key, with no
-background worker.
+facts and conditionally swap only the object key if it is still the one phase 1 observed. No
+object-store read runs while those locks are held: a concurrent winner is observed there, verified
+after release, then its exact row, pin and object key are re-proved before success, so Saves and
+other repairs never wait on image bytes. A healthy row answers without a write; a wrong file or
+stale base leaves the old key and session untouched. The swap consumes the attempt row, and the
+next scoped asset access claims expired attempts in one statement before deleting an unreferenced
+staging key, so a delayed commit can never adopt a claimed key. Failed staging is released, and
+there is no background worker.
 
 Project lifecycle (T3.P04.S01): an owner rename is conditional on the saved-base precondition and
 uses the Save/version path, so historical versions remain readable and a no-op rename appends no

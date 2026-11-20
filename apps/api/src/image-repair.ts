@@ -16,14 +16,20 @@
  * 2. Stream the supplied original to the staging key, verifying length, digest,
  *    MIME and any declared dimensions. Then take the same locks again, re-prove
  *    the base and pin, and conditionally swap the key only if it is still the one
- *    phase 1 observed. A concurrent winner is accepted only after its bytes are
- *    verified; a changed pin or base is a conflict.
+ *    phase 1 observed. A changed pin or base is a conflict.
+ *
+ * No object-store read runs inside a locked transaction. A concurrent winner is
+ * only observed under the lock, then verified outside it and revalidated against
+ * its exact row, pin and object key before this attempt reports success, so a
+ * slow store never blocks Saves or other repairs. The swap consumes this
+ * attempt's row: an attempt that the expiry sweep claimed first can never have
+ * its staging key adopted afterwards.
  *
  * A lost response is safe to retry: the healthy-row check returns success without
  * a write. A wrong file, a stale base or a lost race leaves the old key and the
  * open editor session untouched. Failed or crashed attempts remain discoverable
- * by the next scoped asset access, which removes their staging key once no asset
- * row references it (the existing model-staging pattern).
+ * by the next scoped asset access, which claims and removes their staging key
+ * (the existing model-staging pattern).
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PassThrough, Readable } from 'node:stream';
@@ -46,7 +52,7 @@ import {
 	readProjectImagePin,
 	type ArtworkAssetPin
 } from './artwork-persistence.js';
-import type { DatabasePool } from './database.js';
+import type { DatabaseClient, DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
 import { withProjectWriteLease, type ProjectLifecyclePolicy } from './project-write-lease.js';
@@ -161,10 +167,9 @@ function pinOf(pin: ArtworkAssetPin): ProjectImagePin {
 	return { hash: pin.sha256, mime: pin.mime, size: pin.byteSize };
 }
 
-function requirementFor(
-	envelope: ProjectEnvelope,
-	assetId: string
-): ReturnType<typeof collectEnvelopeImageRequirements>['requirements'][number] {
+type ImageRequirement = ReturnType<typeof collectEnvelopeImageRequirements>['requirements'][number];
+
+function requirementFor(envelope: ProjectEnvelope, assetId: string): ImageRequirement {
 	const closure = collectEnvelopeImageRequirements(envelope, 'private-save');
 	if (closure.issues.length > 0) {
 		throw new ImageRepairError(409, 'image_pin_changed', 'The saved image closure cannot be verified; source recovery is required.');
@@ -265,6 +270,198 @@ async function verifyHealthyRow(store: ObjectStore, pin: ArtworkAssetPin): Promi
 	) {
 		throw new ArtworkAssetRefusal('', 'The stored image MIME or dimensions differ from its pin.', { code: 'image-corrupt' });
 	}
+}
+
+/** How many times a winner that keeps moving is re-read before this attempt gives up. */
+const CONCURRENT_WINNER_ROUNDS = 3;
+
+/** The phase-1 facts every later transaction re-proves. */
+type RepairPreparation = {
+	readonly pin: ProjectImagePin;
+	readonly oldObjectKey: string;
+	readonly artwork: ArtworkAssetPin['artwork'];
+};
+
+/** One current row observed under a lock; its bytes are verified only after release. */
+type ObservedImage = {
+	readonly pin: ProjectImagePin;
+	readonly objectKey: string;
+	readonly artwork: ArtworkAssetPin['artwork'];
+};
+
+type RepairCommit =
+	| { readonly kind: 'swapped'; readonly pin: ProjectImagePin; readonly oldObjectKey: string }
+	| { readonly kind: 'winner'; readonly candidate: ObservedImage };
+
+function observe(pin: ArtworkAssetPin): ObservedImage {
+	return { pin: pinOf(pin), objectKey: pin.objectKey, artwork: pin.artwork };
+}
+
+/**
+ * Re-prove owner, saved base, saved-head membership and the pinned identity under
+ * the project-then-asset update lock. No object-store read is allowed here: a row
+ * that moved while this attempt streamed is only observed and verified later.
+ */
+async function lockRepairState(
+	db: DatabaseClient,
+	ownerId: string,
+	projectId: string,
+	assetId: string,
+	request: ImageRepairRequest,
+	prepared: RepairPreparation
+): Promise<{ readonly current: ArtworkAssetPin; readonly requirement: ImageRequirement }> {
+	const locked = await lockProject(db, ownerId, projectId);
+	if (readNullableString(locked.savedBaseToken) !== request.savedBaseToken) {
+		throw new ImageRepairError(409, 'conflict', 'The saved base changed; reload the project before repairing.');
+	}
+	const latestVersion = readSafeInteger(locked.latestVersion);
+	const envelope = await readSavedHead(db, projectId, latestVersion);
+	const requirement = requirementFor(envelope, assetId);
+	const current = await readProjectImagePin(db, ownerId, projectId, requirement, 'update');
+	const authoritative = pinOf(current);
+	if (
+		authoritative.hash !== prepared.pin.hash ||
+		authoritative.mime !== prepared.pin.mime ||
+		authoritative.size !== prepared.pin.size
+	) {
+		throw new ImageRepairError(
+			409,
+			'image_pin_changed',
+			'The saved revision pins different image bytes; source recovery is required.'
+		);
+	}
+	return { current, requirement };
+}
+
+/**
+ * Commit one streamed attempt. It either swaps its staging key in or observes a
+ * concurrent winner for verification after the locks are released; it never
+ * reads object bytes.
+ */
+async function commitRepair(
+	db: DatabaseClient,
+	ownerId: string,
+	projectId: string,
+	assetId: string,
+	request: ImageRepairRequest,
+	prepared: RepairPreparation,
+	attemptId: string,
+	stagingKey: string
+): Promise<RepairCommit> {
+	const { current, requirement } = await lockRepairState(
+		db,
+		ownerId,
+		projectId,
+		assetId,
+		request,
+		prepared
+	);
+	if (current.objectKey !== prepared.oldObjectKey) {
+		return { kind: 'winner', candidate: observe(current) };
+	}
+	// Consuming this attempt's row is the adoption right. An attempt whose row the
+	// expiry sweep already claimed is fenced off and can never swap its key in.
+	const claimed = await queryRows<{ id: unknown }>(
+		db,
+		`DELETE FROM image_repair_attempts
+WHERE id = $1::uuid AND project_id = $2 AND owner_id = $3
+RETURNING id`,
+		[attemptId, projectId, ownerId]
+	);
+	if (!claimed[0]) {
+		throw new ImageRepairError(
+			409,
+			'conflict',
+			'The repair attempt expired before it could be committed; retry the repair.'
+		);
+	}
+	const updated = await queryRows<{ id: unknown }>(
+		db,
+		`UPDATE assets
+SET object_key = $3, updated_at = now()
+WHERE id = $1::uuid AND project_id = $2 AND object_key = $4 AND import_state = 'ready'
+RETURNING id`,
+		[assetId, projectId, stagingKey, prepared.oldObjectKey]
+	);
+	if (!updated[0]) {
+		// Defensive: the row moved despite the update lock. Verify the winner
+		// outside this transaction like any other concurrent winner.
+		const winner = await readProjectImagePin(db, ownerId, projectId, requirement, 'update');
+		return { kind: 'winner', candidate: observe(winner) };
+	}
+	return { kind: 'swapped', pin: prepared.pin, oldObjectKey: prepared.oldObjectKey };
+}
+
+async function verifyObservedBytes(
+	store: ObjectStore,
+	assetId: string,
+	observed: ObservedImage
+): Promise<void> {
+	await verifyHealthyRow(store, {
+		assetId,
+		mime: observed.pin.mime,
+		byteSize: observed.pin.size,
+		sha256: observed.pin.hash,
+		objectKey: observed.objectKey,
+		paths: [],
+		expectedPin: observed.pin,
+		artwork: observed.artwork
+	});
+}
+
+/**
+ * Accept a concurrent winner. Its bytes are verified outside every transaction,
+ * then its exact row identity, pin and object key are re-proved under a fresh
+ * lock; a row that moved again is verified in the next round, so a success always
+ * names bytes this attempt has read while holding nothing.
+ */
+async function acceptObservedImage(
+	pool: DatabasePool,
+	store: ObjectStore,
+	ownerId: string,
+	projectId: string,
+	assetId: string,
+	request: ImageRepairRequest,
+	prepared: RepairPreparation,
+	attemptId: string,
+	first: ObservedImage,
+	signal: AbortSignal
+): Promise<{ readonly pin: ProjectImagePin }> {
+	let candidate = first;
+	for (let round = 0; round < CONCURRENT_WINNER_ROUNDS; round += 1) {
+		signal.throwIfAborted();
+		try {
+			await verifyObservedBytes(store, assetId, candidate);
+		} catch (error) {
+			if (error instanceof ArtworkAssetRefusal) {
+				throw new ImageRepairError(
+					409,
+					'conflict',
+					'The image changed while repairing but its bytes do not match the saved pin; reload and retry.'
+				);
+			}
+			throw asImageRepairError(error);
+		}
+		const revalidated = await withTransaction(pool, async (db) => {
+			const { current } = await lockRepairState(db, ownerId, projectId, assetId, request, prepared);
+			if (
+				current.objectKey !== candidate.objectKey ||
+				current.sha256 !== candidate.pin.hash ||
+				current.mime !== candidate.pin.mime ||
+				current.byteSize !== candidate.pin.size
+			) {
+				return { kind: 'changed' as const, candidate: observe(current) };
+			}
+			await db.query(
+				'DELETE FROM image_repair_attempts WHERE id = $1::uuid AND project_id = $2 AND owner_id = $3',
+				[attemptId, projectId, ownerId]
+			);
+			return { kind: 'verified' as const, pin: candidate.pin };
+		});
+		if (revalidated.kind === 'verified') return { pin: revalidated.pin };
+		candidate = revalidated.candidate;
+	}
+	throw new ImageRepairError(409, 'conflict', 'The image keeps changing while repairing; reload and retry.');
 }
 
 function toBuffer(value: unknown): Buffer {
@@ -456,12 +653,7 @@ export async function repairProjectImage(
 		ownerId,
 		projectId,
 		async ({ signal }) => {
-			type Prepared = {
-				readonly pin: ProjectImagePin;
-				readonly oldObjectKey: string;
-				readonly artwork: ArtworkAssetPin['artwork'];
-			};
-			let prepared: Prepared;
+			let prepared: RepairPreparation;
 			try {
 				prepared = await withTransaction(pool, async (db) => {
 					const locked = await lockProject(db, ownerId, projectId);
@@ -533,103 +725,53 @@ VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, now() + $8::interval)`,
 				throw asImageRepairError(error);
 			}
 
-			type Committed = {
-				readonly pin: ProjectImagePin;
-				readonly replaced: boolean;
-				readonly oldObjectKey: string | null;
-			};
-			let committed: Committed;
+			let commit: RepairCommit;
 			try {
-				committed = await withTransaction(pool, async (db) => {
-					const locked = await lockProject(db, ownerId, projectId);
-					if (readNullableString(locked.savedBaseToken) !== request.savedBaseToken) {
-						throw new ImageRepairError(409, 'conflict', 'The saved base changed; reload the project before repairing.');
-					}
-					const latestVersion = readSafeInteger(locked.latestVersion);
-					const envelope = await readSavedHead(db, projectId, latestVersion);
-					const requirement = requirementFor(envelope, assetId);
-					const current = await readProjectImagePin(db, ownerId, projectId, requirement, 'update');
-					const authoritative = pinOf(current);
-					if (
-						authoritative.hash !== prepared.pin.hash ||
-						authoritative.mime !== prepared.pin.mime ||
-						authoritative.size !== prepared.pin.size
-					) {
-						throw new ImageRepairError(
-							409,
-							'image_pin_changed',
-							'The saved revision pins different image bytes; source recovery is required.'
-						);
-					}
-					if (current.objectKey !== prepared.oldObjectKey) {
-						// Another repair (or a concurrent write) moved the key while this
-						// attempt streamed. Its bytes must prove themselves before this
-						// attempt reports success.
-						try {
-							await verifyHealthyRow(store, current);
-						} catch (error) {
-							if (error instanceof ArtworkAssetRefusal) {
-								throw new ImageRepairError(
-									409,
-									'conflict',
-									'The image changed while repairing but its bytes do not match the saved pin; reload and retry.'
-								);
-							}
-							throw asImageRepairError(error);
-						}
-						await db.query('DELETE FROM image_repair_attempts WHERE id = $1::uuid', [attemptId]);
-						return { pin: authoritative, replaced: false, oldObjectKey: null };
-					}
-					const updated = await queryRows<{ id: unknown }>(
-						db,
-						`UPDATE assets
-SET object_key = $3, updated_at = now()
-WHERE id = $1::uuid AND project_id = $2 AND object_key = $4 AND import_state = 'ready'
-RETURNING id`,
-						[assetId, projectId, stagingKey, prepared.oldObjectKey]
-					);
-					if (!updated[0]) {
-						// Lost a conditional swap. Re-read under the lock; a healthy winner
-						// is success, anything else is a conflict for this attempt.
-						const winner = await readProjectImagePin(db, ownerId, projectId, requirement, 'update');
-						try {
-							await verifyHealthyRow(store, winner);
-						} catch (error) {
-							if (error instanceof ArtworkAssetRefusal) {
-								throw new ImageRepairError(409, 'conflict', 'The image changed while repairing; reload and retry.');
-							}
-							throw asImageRepairError(error);
-						}
-						await db.query('DELETE FROM image_repair_attempts WHERE id = $1::uuid', [attemptId]);
-						return { pin: pinOf(winner), replaced: false, oldObjectKey: null };
-					}
-					await db.query('DELETE FROM image_repair_attempts WHERE id = $1::uuid', [attemptId]);
-					return { pin: authoritative, replaced: true, oldObjectKey: prepared.oldObjectKey };
-				});
+				commit = await withTransaction(pool, (db) =>
+					commitRepair(db, ownerId, projectId, assetId, request, prepared, attemptId, stagingKey)
+				);
 			} catch (error) {
 				if (await deleteStagedKey(store, stagingKey)) await forgetAttempt(pool, attemptId);
 				throw asImageRepairError(error);
 			}
 
-			if (committed.replaced && committed.oldObjectKey !== null && committed.oldObjectKey !== stagingKey) {
+			if (commit.kind === 'winner') {
+				// Verification and revalidation run outside every transaction, so a slow
+				// object store can never hold the project or asset locks.
+				let accepted: { readonly pin: ProjectImagePin };
+				try {
+					accepted = await acceptObservedImage(
+						pool,
+						store,
+						ownerId,
+						projectId,
+						assetId,
+						request,
+						prepared,
+						attemptId,
+						commit.candidate,
+						signal
+					);
+				} catch (error) {
+					if (await deleteStagedKey(store, stagingKey)) await forgetAttempt(pool, attemptId);
+					throw asImageRepairError(error);
+				}
+				// The winner's key is live; this attempt's own staging key is not, so
+				// release it instead of leaving an unreferenced object behind.
+				await deleteStagedKey(store, stagingKey);
+				return { projectId, assetId, pin: accepted.pin, replaced: false };
+			}
+
+			if (commit.oldObjectKey !== stagingKey) {
 				// The superseded key is retired only after the new key is committed.
 				try {
-					await store.delete?.(committed.oldObjectKey);
+					await store.delete?.(commit.oldObjectKey);
 				} catch {
 					// An orphaned old key remains in deletion inventory; the ready row
 					// already names the verified replacement.
 				}
-			} else if (!committed.replaced) {
-				// A concurrent winner's key is live; this attempt's own staging key is
-				// not, so release it instead of leaving an unreferenced object behind.
-				await deleteStagedKey(store, stagingKey);
 			}
-			return {
-				projectId,
-				assetId,
-				pin: committed.pin,
-				replaced: committed.replaced
-			};
+			return { projectId, assetId, pin: commit.pin, replaced: true };
 		},
 		options
 	);
@@ -644,11 +786,14 @@ type AbandonedAttemptRow = {
 /**
  * Collect expired repair attempts for one owned project.
  *
- * A staging key may be referenced by a ready asset row if a commit preceded a
- * lost response; that key is never deleted. Every expired attempt row is removed,
- * and an unreferenced staging object is deleted first. Called by the next scoped
- * asset access and at the start of every repair, matching the model-staging
- * pattern: there is no background worker.
+ * One statement claims every expired attempt, so the removal of its adoption
+ * right commits before any object is deleted. A delayed attempt can no longer
+ * swap a claimed key into its asset row (`repairProjectImage` must consume its
+ * own attempt to commit), and the reference check runs after the claim, so a key
+ * that a ready row names is never deleted. An attempt whose delete fails leaves
+ * an orphan for the namespace purge, exactly like model staging. Called by the
+ * next scoped asset access and at the start of every repair: there is no
+ * background worker.
  */
 export async function expireAbandonedImageRepairs(
 	db: Pick<DatabasePool, 'query'>,
@@ -657,31 +802,30 @@ export async function expireAbandonedImageRepairs(
 	ownerId: string
 ): Promise<number> {
 	if (!store) return 0;
-	const rows = await queryRows<AbandonedAttemptRow>(
+	const claimed = await queryRows<AbandonedAttemptRow>(
 		db,
-		`SELECT r.id, r.staging_key AS "stagingKey",
-	EXISTS (SELECT 1 FROM assets a WHERE a.object_key = r.staging_key) AS referenced
-FROM image_repair_attempts r
-WHERE r.project_id = $1 AND r.owner_id = $2 AND r.expires_at <= now()`,
+		`WITH claimed AS (
+	DELETE FROM image_repair_attempts
+	WHERE project_id = $1 AND owner_id = $2 AND expires_at <= now()
+	RETURNING id, staging_key
+)
+SELECT c.id, c.staging_key AS "stagingKey",
+	EXISTS (SELECT 1 FROM assets a WHERE a.object_key = c.staging_key) AS referenced
+FROM claimed c`,
 		[projectId, ownerId]
 	);
-	if (rows.length === 0) return 0;
-	const removed: string[] = [];
-	for (const row of rows) {
-		const id = readString(row.id);
+	for (const row of claimed) {
+		if (row.referenced === true) continue;
 		const key = readString(row.stagingKey);
-		if (row.referenced !== true) {
-			try {
-				await store.delete?.(key);
-			} catch {
-				continue;
-			}
+		// The claim already fenced this attempt off; a failed delete is collected by
+		// the namespace purge rather than resurrecting an adoption right.
+		try {
+			await store.delete?.(key);
+		} catch {
+			// Best effort, as above.
 		}
-		removed.push(id);
 	}
-	if (removed.length === 0) return 0;
-	await db.query('DELETE FROM image_repair_attempts WHERE id = ANY ($1::uuid[])', [removed]);
-	return removed.length;
+	return claimed.length;
 }
 
 function readString(value: unknown): string {

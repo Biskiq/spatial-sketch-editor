@@ -48,6 +48,7 @@ const PNG_SHA = `sha256-${createHash('sha256').update(PNG).digest('hex')}`;
 
 let pool;
 let store;
+const storeOptions = {};
 let app;
 const createdProjects = [];
 let counter = 0;
@@ -173,6 +174,14 @@ function repair(cookie, projectId, assetId, bytes, { expectedPin, savedBaseToken
 	});
 }
 
+function within(promise, ms, label) {
+	let timer;
+	const deadline = new Promise((_, reject) => {
+		timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms: ${label}`)), ms);
+	});
+	return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
+
 async function attemptCount(projectId) {
 	const result = await pool.query(
 		'SELECT count(*)::int AS count FROM image_repair_attempts WHERE project_id = $1',
@@ -185,7 +194,7 @@ before(async () => {
 	pool = new Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 3000 });
 	await pool.query('SELECT 1');
 	await runMigrations(pool);
-	store = memoryObjectStore();
+	store = memoryObjectStore(storeOptions);
 	app = createApp({
 		pool,
 		objectStore: store,
@@ -426,4 +435,176 @@ test('the repair request reader requires the exact two facts and a canonical ima
 	assert.equal(missing.json().error.code, 'invalid_repair');
 	assert.equal(store.puts.length, puts);
 	assert.equal(await attemptCount(fixture.projectId), 0);
+});
+
+test('a stalled object-store read while accepting a concurrent winner does not hold the project lock', async () => {
+	const fixture = await createProjectWithFinishImage();
+	const cookie = await sessionCookie(app, fixture.owner);
+	store.objects.delete(fixture.objectKey);
+
+	let releasePut;
+	let putEntered;
+	const putStarted = new Promise((resolve) => (putEntered = resolve));
+	const putGate = new Promise((resolve) => (releasePut = resolve));
+	let stallPut = true;
+	storeOptions.onPut = async (key) => {
+		if (!stallPut || !key.includes('/repair-')) return;
+		stallPut = false;
+		putEntered();
+		await putGate;
+	};
+
+	let getEntered;
+	let releaseGet;
+	const getStarted = new Promise((resolve) => (getEntered = resolve));
+	const getGate = new Promise((resolve) => (releaseGet = resolve));
+	let stallGet = false;
+	let getHeld = false;
+
+	// This attempt reads phase 1 and its pre-check before the winner commits.
+	const delayed = repair(cookie, fixture.projectId, fixture.ready.id, PNG, {
+		expectedPin: fixture.ready.sha256,
+		savedBaseToken: fixture.saved.savedBaseToken
+	});
+
+	try {
+		await within(putStarted, 5_000, 'the delayed repair never began staging');
+
+		// A competing repair commits a verified key while the first is streaming.
+		const winner = await repair(cookie, fixture.projectId, fixture.ready.id, PNG, {
+			expectedPin: fixture.ready.sha256,
+			savedBaseToken: fixture.saved.savedBaseToken
+		});
+		assert.equal(winner.statusCode, 200, winner.body);
+		assert.equal(winner.json().replaced, true);
+		const winnerKey = await objectKeyOf(fixture.projectId, fixture.ready.id);
+		assert.notEqual(winnerKey, fixture.objectKey);
+
+		// The loser can only observe the winner once its stream ends, and verifying
+		// those bytes is the read that must happen outside the locks.
+		storeOptions.onGet = async (key) => {
+			if (!stallGet || key !== winnerKey) return;
+			stallGet = false;
+			getHeld = true;
+			getEntered();
+			await getGate;
+		};
+		stallGet = true;
+		releasePut();
+		await within(getStarted, 5_000, 'the losing repair never verified the winner');
+
+		const saveRequest = await requestFor(
+			envelopeFor(fixture.projectId, 'Finish image saved', {
+				textures: [textureRecord(fixture.ready.id)],
+				materials: [finishMaterial(fixture.ready.id)],
+				resources: [
+					{
+						kind: 'texture',
+						id: fixture.ready.id,
+						contentRevision: fixture.pin.hash,
+						pin: fixture.pin,
+						unresolved: null
+					}
+				]
+			}),
+			{ kind: 'expected-saved-base', token: fixture.saved.savedBaseToken }
+		);
+		const saved = await within(
+			saveAcceptedSource(pool, fixture.owner, saveRequest, store),
+			2_000,
+			'a Save waited on the object-store read held by a repair transaction'
+		);
+		assert.ok(saved.savedBaseToken.startsWith('saved-base:'));
+		assert.equal(getHeld, true, 'the winner verification must still be stalled');
+
+		releaseGet();
+		const loser = await within(delayed, 10_000, 'the delayed repair never answered');
+		// The Save moved the head, so the loser re-proves its base after verifying
+		// the winner and refuses rather than acknowledging a stale repair.
+		assert.equal(loser.statusCode, 409, loser.body);
+		assert.equal(loser.json().error.code, 'conflict');
+		assert.equal(await objectKeyOf(fixture.projectId, fixture.ready.id), winnerKey);
+		assert.deepEqual(store.objects.get(winnerKey).bytes, PNG);
+		assert.equal(await attemptCount(fixture.projectId), 0);
+	} finally {
+		storeOptions.onPut = undefined;
+		storeOptions.onGet = undefined;
+		releasePut();
+		releaseGet();
+		await delayed.catch(() => {});
+	}
+});
+
+test('an expired attempt cannot adopt its staging key after the sweep claims it', async () => {
+	const fixture = await createProjectWithFinishImage();
+	const cookie = await sessionCookie(app, fixture.owner);
+	// Corruption, not a missing object: the sweep must never remove this live key.
+	store.objects.set(fixture.objectKey, {
+		bytes: Buffer.alloc(PNG.length),
+		options: { contentType: 'image/png' }
+	});
+
+	let releasePut;
+	let putEntered;
+	const putStarted = new Promise((resolve) => (putEntered = resolve));
+	const putGate = new Promise((resolve) => (releasePut = resolve));
+	let stallPut = true;
+	storeOptions.onPut = async (key) => {
+		if (!stallPut || !key.includes('/repair-')) return;
+		stallPut = false;
+		putEntered();
+		await putGate;
+	};
+
+	const delayed = repair(cookie, fixture.projectId, fixture.ready.id, PNG, {
+		expectedPin: fixture.ready.sha256,
+		savedBaseToken: fixture.saved.savedBaseToken
+	});
+
+	try {
+		await within(putStarted, 5_000, 'the delayed repair never began staging');
+		const expired = await pool.query(
+			`UPDATE image_repair_attempts
+SET created_at = now() - interval '2 hours', expires_at = now() - interval '1 hour'
+WHERE project_id = $1 AND asset_id = $2
+RETURNING staging_key AS "stagingKey"`,
+			[fixture.projectId, fixture.ready.id]
+		);
+		assert.equal(expired.rowCount, 1, 'the delayed repair records exactly one attempt');
+		const stagingKey = expired.rows[0].stagingKey;
+
+		// The scoped asset access claims the expired attempt before any delete.
+		const listed = await app.inject({
+			method: 'GET',
+			url: `/projects/${fixture.projectId}/assets`,
+			headers: { cookie }
+		});
+		assert.equal(listed.statusCode, 200, listed.body);
+		assert.equal(await attemptCount(fixture.projectId), 0, 'the sweep claims the expired attempt');
+
+		// The claim is committed while the stream is still held; the delayed commit
+		// must refuse instead of adopting the claimed key.
+		releasePut();
+		const refused = await within(delayed, 10_000, 'the delayed repair never answered');
+		assert.equal(refused.statusCode, 409, refused.body);
+		assert.equal(refused.json().error.code, 'conflict');
+		assert.equal(await objectKeyOf(fixture.projectId, fixture.ready.id), fixture.objectKey);
+		assert.equal(store.objects.has(fixture.objectKey), true, 'the live key is never deleted');
+		assert.equal(store.objects.has(stagingKey), false, 'the fenced attempt leaves no staged bytes');
+		assert.equal(await attemptCount(fixture.projectId), 0);
+
+		// Recovery stays available: the same original still repairs the image.
+		const repaired = await repair(cookie, fixture.projectId, fixture.ready.id, PNG, {
+			expectedPin: fixture.ready.sha256,
+			savedBaseToken: fixture.saved.savedBaseToken
+		});
+		assert.equal(repaired.statusCode, 200, repaired.body);
+		assert.equal(repaired.json().replaced, true);
+		const loaded = await loadProject(pool, fixture.owner, fixture.projectId);
+		await prepareProjectImagePins(pool, store, fixture.owner, fixture.projectId, loaded.document, 'private-load');
+	} finally {
+		storeOptions.onPut = undefined;
+		releasePut();
+		await delayed.catch(() => {});
+	}
 });

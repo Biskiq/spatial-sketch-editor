@@ -762,9 +762,10 @@ export function createApp({
 		const projectId = (request.params as { projectId?: unknown }).projectId;
 		if (!userId) return unauthorized(reply);
 		if (!isValidProjectId(projectId)) return assetInputFailure(reply, new AssetInputError('invalid_asset', 400, 'Invalid project ID'));
-		// The scoped asset access is the repair-attempt sweep point: an abandoned
-		// staging key is removed once it expires and no ready row names it. This is
-		// the existing model-staging pattern, not a background worker.
+		// The scoped asset access is the repair-attempt sweep point: an expired
+		// attempt is claimed first and its staging key is removed once no ready row
+		// names it. This is the existing model-staging pattern, not a background
+		// worker.
 		try {
 			await expireAbandonedImageRepairs(pool, objectStore, projectId, userId);
 		} catch {
