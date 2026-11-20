@@ -6,7 +6,7 @@
     "width": 1920,
     "height": 1080
   },
-  "generatedAt": "2026-11-20T15:31:31.821Z",
+  "generatedAt": "2026-11-20T16:32:21.669Z",
   "stage": {
     "generations": 4,
     "canvasId": "5",
@@ -22,7 +22,10 @@
     "invalidations": 2
   },
   "errors": [],
-  "deviceLossNoise": 16,
+  "recoveryErrors": [
+    "console: THREE.THREE.WebGPURenderer: undefined Device Lost:\n\nMessage: pr2-stage-forced-loss"
+  ],
+  "deviceLossNoise": 1,
   "rows": [
     {
       "step": "stage-ready",
@@ -44,7 +47,7 @@
     {
       "step": "wall-drag",
       "status": "passed",
-      "detail": "canvas sha256:fe7f4173b65a0781",
+      "detail": "canvas sha256:cc0a1707f4dd119d",
       "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgpu-wall-drag.png"
     },
     {
@@ -137,7 +140,7 @@
     {
       "step": "recovered",
       "status": "passed",
-      "detail": "canvas sha256:bf0cba98f1d6509b",
+      "detail": "canvas sha256:5161e79ca322a0c5",
       "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgpu-recovered.png"
     },
     {

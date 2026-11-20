@@ -46,6 +46,7 @@ vi.mock('$lib/render/renderer-generation', () => ({
 			retirement: Promise.resolve(),
 			forwardedDraws: 0,
 			blockedDraws: 0,
+			emptyDraws: 0,
 			snapshot: () => ({ state: 'starting', backend: null, failure: null }),
 			start() {
 				queueMicrotask(() => options.onChange?.({ state: 'ready', backend: 'webgpu', failure: null }));

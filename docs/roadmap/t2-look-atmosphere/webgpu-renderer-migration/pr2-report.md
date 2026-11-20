@@ -44,6 +44,7 @@ or activated by this branch.
 | The shadow oracle inferred a point light's submission from its dirty flag and counted one nested call as six maps, while r187's cube actually calls the renderer six times. The fake made one call, so it could not expose the overcount. | The wrapper observes only nested `render(scene, shadow.camera)` calls and coalesces a light's faces into one pass per outer render, with one map per face. The fake now issues six calls for a point cube; the browser journey records exactly `+6 maps / +1 pass` and zero shadow work across a settled orbit and idle second. |
 | The Stage mat grid's TSL arithmetic emitted `NaN.0` and a signed derivative pair instead of `fwidth`, so the shader failed on both backends. | `stage-mat-grid.ts` uses `float(...).sub(...)` and `abs` derivatives. The Stage/Preview journey now reports no shader or console errors on either backend. |
 | The WebGL2 unavailable Retry button never fired: the Stage viewport captured the press and retargeted the click. | The recovery button stops `pointerdown` propagation; the browser retry now mounts a fresh generation and returns `ready` on a new canvas. |
+| The acceptance muted its browser error listener before forcing the loss, so the 16 saved validation errors were necessarily emitted **before** the deliberate loss — yet the runner classified every `Uncaptured WebGPU GPUValidationError` as device-loss noise. The errors were real: the kept-warm Preview canvas is hidden between visits, and r187 was asked to draw at 0×0, creating a zero-sized depth texture and swapchain. | The collector is never muted. Every page or console error is stored with its text and its phase in the console stream; a boundary message emitted after the last journey frame separates journey errors from recovery errors. Only recovery errors carrying `pr2-stage-forced-loss`, `[Invalid Device]`, or Three's `WebGL Device Lost` report are accepted, and the raw recovery texts remain in the evidence. Independently, the generation facade refuses a top-level draw while its canvas has zero pixels and counts it as `emptyDraws`; a regression drives a 0×0 draw and then a real one on the same renderer. |
 
 ## 3. Tests
 
@@ -52,10 +53,10 @@ Run from `apps/editor` on the final tree:
 | Command | Result |
 | --- | --- |
 | `npm run check` | 0 errors, 16 pre-existing warnings |
-| `npm run test:fast` | 442 files, 5,454 tests pass |
+| `npm run test:fast` | 443 files, 5,455 tests pass |
 | `npm run test:arch` | 38 files, 350 tests pass |
 | `npm run test:heavy` | 11 files, 138 tests pass |
-| focused shadow/pointer/mounted recovery | 3 files, 27 tests pass |
+| focused pointer/shadow/mounted recovery/empty canvas | 4 files, 28 tests pass |
 | `npm run build` | exit 0 |
 | Stage/Preview browser acceptance | 2/2 journeys pass (WebGPU and WebGL2) |
 
@@ -113,14 +114,16 @@ creates a Room through Ink; exercises Plan/3D, a Wall-handle drag, a curated
 Finish, Slice Level/Put back, Near-wall Whole/Cut; places a Point light in
 Daylight with the Sun's shadows off; captures an Experience Camera snapshot;
 enters Preview into free exploration, exits and re-enters; then forces a loss
-and recovers. Both backends pass every row with `errors: []`.
+and recovers. Both backends pass every row with no journey-phase errors. The
+collector stays live through recovery and records one explicit device-loss
+message per backend: WebGPU's `pr2-stage-forced-loss` reason and WebGL2's
+`WebGL Device Lost` report. Raw recovery texts are in the evidence, not folded
+into a blanket count.
 
 The shadow oracle records `passes: 1, maps: 6` for the Point light: six real
 face submissions are one light pass, and the settled orbit plus idle second add
 no further work. Recovery ends `ready` on a fresh canvas at generation 4 on both
-backends (WebGPU automatic; WebGL2 unavailable → Retry). The WebGPU run discards
-16 Dawn validation lines emitted by the deliberately lost device; the WebGL2 run
-emits none. Evidence: [`pr2-stage-webgpu.json`](./evidence/2026-11-20/pr2-stage-webgpu.json),
+backends (WebGPU automatic; WebGL2 unavailable → Retry). Evidence: [`pr2-stage-webgpu.json`](./evidence/2026-11-20/pr2-stage-webgpu.json),
 [`pr2-stage-webgl2.json`](./evidence/2026-11-20/pr2-stage-webgl2.json); screenshots
 `pr2-stage-{webgpu,webgl2}-{plan,3d,wall-drag,finish,slice,cutaway-cut,light-shadow,experience-capture,preview,recovered}.png`;
 machine facts [`pr2-stage-machine-facts.json`](./evidence/2026-11-20/pr2-stage-machine-facts.json).

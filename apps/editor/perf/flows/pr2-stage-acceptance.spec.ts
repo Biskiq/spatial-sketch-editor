@@ -77,7 +77,22 @@ if (!apiOrigin || !authSecret || !resultsDir || !baseURL) {
 }
 
 const STAGE = '[role="application"][aria-label="Spatial stage"]';
-const DEVICE_LOSS_NOISE = /Uncaptured WebGPU GPUValidationError|Device Lost|pr2-stage-forced-loss/;
+/**
+ * Every console error is recorded. The recovery boundary is itself written to
+ * the console stream, so messages are attributed by their position in that
+ * stream: anything before the boundary is a journey error, anything after it is
+ * a recovery error. Muting the collector cannot be used here, because that would
+ * hide exactly the errors the forced loss is supposed to explain.
+ */
+const RECOVERY_BOUNDARY = 'pr2-stage:recovery-boundary';
+/**
+ * A recovery message is accepted only when it carries this run's forced-loss
+ * reason, names a device the loss invalidated, or is Three's own WebGL2
+ * context-loss report (the browser event has no custom reason). A bare
+ * `Uncaptured WebGPU GPUValidationError` is not device-loss noise: the same
+ * prefix describes shader, pipeline and binding defects that must fail the run.
+ */
+const DEVICE_LOSS_NOISE = /pr2-stage-forced-loss|\[Invalid Device\]|WebGL Device Lost/i;
 const STAGE_HOST = '[data-canvas-host="stage"]';
 const READY = `${STAGE_HOST}[data-phase="ready"]`;
 const VISITOR_CANVAS = '[data-visitor-canvas-root] canvas';
@@ -87,6 +102,12 @@ type Row = {
 	readonly status: 'passed' | 'failed';
 	readonly detail: string;
 	readonly screenshot?: string;
+};
+
+type CapturedError = {
+	readonly phase: 'journey' | 'recovery';
+	readonly text: string;
+	readonly at: number;
 };
 
 function cookieForBrowser(pair: string): { name: string; value: string; domain: string; path: string; httpOnly: boolean; secure: boolean } {
@@ -104,8 +125,8 @@ function cookieForBrowser(pair: string): { name: string; value: string; domain: 
 	};
 }
 
-async function openSession(browser: Browser, backend: Backend, errors: string[]) {
-	let muted = false;
+async function openSession(browser: Browser, backend: Backend, errors: CapturedError[]) {
+	let phase: CapturedError['phase'] = 'journey';
 	const started = await newMeasuredSession(browser, {
 		viewport: VIEWPORT,
 		deviceScaleFactor: 1,
@@ -144,19 +165,25 @@ async function openSession(browser: Browser, backend: Backend, errors: string[])
 	const auth = await loginAs({ user: 'agent-admin', apiOrigin: apiOrigin!, secret: authSecret!, origin: baseURL! });
 	await context.addCookies([cookieForBrowser(auth.cookie)]);
 	page.on('pageerror', (error) => {
-		if (!muted) errors.push(`pageerror: ${error.stack ?? error.message}`);
+		errors.push({ phase, text: `pageerror: ${error.stack ?? error.message}`, at: Date.now() });
 	});
 	page.on('console', (message) => {
-		if (muted) return;
-		if (message.type() === 'error' && /THREE|Shader|Uncaught/.test(message.text())) {
-			errors.push(`console: ${message.text()}`);
+		if (message.type() !== 'error') return;
+		const text = message.text();
+		// The boundary is emitted in the page's console stream, so every earlier
+		// message has already been delivered under `journey`; only later ones can
+		// describe the loss that has not happened yet at this point.
+		if (text === RECOVERY_BOUNDARY) {
+			phase = 'recovery';
+			return;
 		}
+		errors.push({ phase, text: `console: ${text}`, at: Date.now() });
 	});
 	return {
 		...started,
-		// A deliberately lost device logs uncaptured validation errors while its
-		// frames are in flight. The recovery assertions cover that window instead.
-		muteErrors: () => { muted = true; }
+		beginRecovery: async () => {
+			await page.evaluate((boundary) => console.error(boundary), RECOVERY_BOUNDARY);
+		}
 	};
 }
 
@@ -341,7 +368,7 @@ async function runJourney(
 	page: Page,
 	backend: Backend,
 	rows: Row[],
-	session: { muteErrors(): void }
+	session: { beginRecovery(): Promise<void> }
 ): Promise<void> {
 	const projectId = uniqueProjectId(`pr2-stage-${backend}`);
 	await gotoCreateIntent(page, projectId);
@@ -546,16 +573,17 @@ async function runJourney(
 	await expect(page.locator(READY)).toBeVisible();
 
 	// Recovery on the Stage itself: WebGPU replaces the generation; WebGL2
-	// presents Retry and resumes on a fresh canvas.
+	// presents Retry and resumes on a fresh canvas. The console boundary lands
+	// after the last journey frame, so any validation error already in flight is
+	// still attributed to the journey and cannot be excused by the later loss.
 	await page.waitForTimeout(500);
-	session.muteErrors();
+	await session.beginRecovery();
 	const recovery = await forceStageRecovery(page, backend);
 	expect(recovery.after.canvasId).not.toBe(recovery.before.canvasId);
 	expect(recovery.after.before).toBe(false);
 	expect(recovery.after.connected).toBe(true);
-	// The collector stays muted for the rest of the run: the lost device's
-	// validation messages can arrive after the new generation is ready, and the
-	// behavioral assertions above already prove recovery.
+	// The collector stays live for the rest of the run: a validation error after
+	// recovery that does not name the lost device fails the journey.
 	await screenshot(page, backend, 'recovered', rows);
 	await enterSelectTool(page);
 	await ensureIndexOpen(page);
@@ -572,14 +600,18 @@ test.describe('PR 2 Stage and Preview acceptance', () => {
 	for (const backend of ['webgpu', 'webgl2'] as const) {
 		test(`${backend}: Stage authoring, shadows, capture, Preview and recovery`, async ({ browser }) => {
 			test.setTimeout(300_000);
-			const errors: string[] = [];
+			const errors: CapturedError[] = [];
 			const rows: Row[] = [];
 			const started = await openSession(browser, backend, errors);
-							try {
-					await runJourney(started.page, backend, rows, started);
-					// The forced loss is expected to log Dawn validation errors; they are
-					// recorded as a count, never allowed to hide a page or shader error.
-					expect(errors.filter((text) => !DEVICE_LOSS_NOISE.test(text))).toEqual([]);
+			try {
+				await runJourney(started.page, backend, rows, started);
+				const journeyErrors = errors.filter((entry) => entry.phase === 'journey');
+				const recoveryErrors = errors.filter((entry) => entry.phase === 'recovery');
+				// A journey error is never device-loss noise: the loss has not been
+				// forced yet. A recovery error must name the lost device; an uncaptured
+				// GPUValidationError alone could be a real shader or pipeline defect.
+				expect(journeyErrors).toEqual([]);
+				expect(recoveryErrors.filter((entry) => !DEVICE_LOSS_NOISE.test(entry.text))).toEqual([]);
 			} finally {
 				const state = await stageState(started.page).catch(() => null);
 				const shadows = await shadowStats(started.page).catch(() => null);
@@ -594,8 +626,11 @@ test.describe('PR 2 Stage and Preview acceptance', () => {
 						generatedAt: new Date().toISOString(),
 						stage: state,
 						shadows,
-						errors: errors.filter((text) => !DEVICE_LOSS_NOISE.test(text)),
-						deviceLossNoise: errors.filter((text) => DEVICE_LOSS_NOISE.test(text)).length,
+						errors: errors.filter((entry) => entry.phase === 'journey').map((entry) => entry.text),
+						recoveryErrors: errors.filter((entry) => entry.phase === 'recovery').map((entry) => entry.text),
+						deviceLossNoise: errors.filter(
+							(entry) => entry.phase === 'recovery' && DEVICE_LOSS_NOISE.test(entry.text)
+						).length,
 						rows
 					}, null, 2)
 				);

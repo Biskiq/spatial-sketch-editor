@@ -6,7 +6,7 @@
     "width": 1920,
     "height": 1080
   },
-  "generatedAt": "2026-11-20T15:31:44.175Z",
+  "generatedAt": "2026-11-20T16:32:35.364Z",
   "stage": {
     "generations": 4,
     "canvasId": "5",
@@ -22,7 +22,10 @@
     "invalidations": 2
   },
   "errors": [],
-  "deviceLossNoise": 0,
+  "recoveryErrors": [
+    "console: THREE.THREE.WebGPURenderer: WebGL Device Lost:\n\nMessage: Unknown reason"
+  ],
+  "deviceLossNoise": 1,
   "rows": [
     {
       "step": "stage-ready",
@@ -66,7 +69,7 @@
     {
       "step": "slice",
       "status": "passed",
-      "detail": "canvas sha256:df758d8cd9f35dd1",
+      "detail": "canvas sha256:5679191999208dca",
       "screenshot": "/Users/tony/Documents/Biskiq/worktrees/t2-pr2-webgpu-cutover/docs/roadmap/t2-look-atmosphere/webgpu-renderer-migration/evidence/2026-11-20/pr2-stage-webgl2-slice.png"
     },
     {

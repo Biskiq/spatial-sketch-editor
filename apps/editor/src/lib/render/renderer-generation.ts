@@ -54,6 +54,12 @@ export type RendererGeneration = {
 	readonly forwardedDraws: number;
 	/** Draw requests the facade refused before init or after retirement. */
 	readonly blockedDraws: number;
+	/**
+	 * Draw requests refused because layout had collapsed the canvas to zero
+	 * pixels. Drawing then would make WebGPU create a zero-sized depth texture and
+	 * swapchain, which is a validation error rather than a frame.
+	 */
+	readonly emptyDraws: number;
 	snapshot(): GenerationSnapshot;
 	start(): void;
 	retire(): Promise<void>;
@@ -72,7 +78,7 @@ function createFacade(
 	renderer: WebGPURenderer,
 	isReady: () => boolean,
 	retire: () => void,
-	counts: { forwarded: number; blocked: number }
+	counts: { forwarded: number; blocked: number; empty: number }
 ): WebGPURenderer {
 	const facade = new Proxy(renderer, {
 		get(target, property, receiver) {
@@ -80,6 +86,15 @@ function createFacade(
 				return (...args: unknown[]): unknown => {
 					if (!isReady()) {
 						counts.blocked += 1;
+						return undefined;
+					}
+					// A hidden surface keeps its renderer and scene warm, but its DOM
+					// canvas is resized to zero. r187 would create a zero-sized depth
+					// texture and swapchain and log uncaptured validation errors; there
+					// is no frame to present, so refuse the draw instead.
+					const canvas = (target as { domElement?: { width?: number; height?: number } }).domElement;
+					if ((canvas?.width ?? 0) === 0 || (canvas?.height ?? 0) === 0) {
+						counts.empty += 1;
 						return undefined;
 					}
 					counts.forwarded += 1;
@@ -111,7 +126,7 @@ export function createRendererGeneration(options: {
 }): RendererGeneration {
 	const timer = options.timer ?? defaultTimer();
 	const deadlineMs = options.deadlineMs ?? DEADLINE_MS;
-	const counts = { forwarded: 0, blocked: 0 };
+	const counts = { forwarded: 0, blocked: 0, empty: 0 };
 
 	const renderer = createProductRenderer(options.canvas, options.attempt, options.surface);
 
@@ -205,6 +220,9 @@ export function createRendererGeneration(options: {
 		},
 		get blockedDraws() {
 			return counts.blocked;
+		},
+		get emptyDraws() {
+			return counts.empty;
 		},
 		snapshot,
 		start(): void {
