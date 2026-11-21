@@ -1,5 +1,5 @@
 {
-  "schema": "s8-f-acquisition-manifest/1",
+  "schema": "s8-f-acquisition-manifest/2",
   "status": "proposed for owner review; nothing harvested",
   "retrieved": "2026-11-21",
   "plan": "f-catalogue-acquisition-plan.md",
@@ -19,9 +19,33 @@
     },
     "rule": "Snapshot each licence page at harvest; store its sha256 as evidenceSnapshotHash in the licence record."
   },
+  "densityModel": {
+    "screenPxPerMeter": "H / (2 * d * tan(vfov / 2)) for a surface facing the camera at distance d",
+    "vfovDegrees": 54,
+    "drawingBufferHeightPx": {
+      "1080p": 1000,
+      "1440p": 1300
+    },
+    "designDisplay": "1440p",
+    "designDistanceMeters": {
+      "surface": 1.5,
+      "object": 0.8
+    },
+    "texelPxPerMeter": "resolution / larger tile edge",
+    "magnification": "screen px/m divided by texel px/m; above 1 the texture is magnified",
+    "screen": {
+      "pass": "magnification <= 1.5",
+      "conditional": "1.5 < magnification <= 2.0 and not featureDefined; decided by the visual check, fallback one step up",
+      "escalate": "otherwise; try the next ladder step"
+    },
+    "featureDefined": "the surface reads through sharp periodic features (grout, mortar, board joints, weave, brushing); conditional magnification escalates",
+    "gate": "the screen chooses where qualification starts; the visual check in the representative scenes decides",
+    "outOfScope": "adaptive streaming, automatic quality, user texture preferences and anisotropic filtering"
+  },
   "budgets": {
     "finishViewBudgetBytes": 268435456,
     "rgba8MipBytesPerView": {
+      "512": 1398100,
       "1k": 5592404,
       "2k": 22369620,
       "4k": 89478484
@@ -31,17 +55,79 @@
       "maxBytes": 26214400,
       "bitDepth": 8,
       "colour": "sRGB, no ICC/cICP other than standard sRGB",
-      "dataMaps": "lossless (PNG)"
+      "dataMaps": "lossless"
     }
   },
+  "representativeScenes": [
+    {
+      "id": "living-room",
+      "description": "Living room: herringbone floor, painted plaster walls, painted brick feature wall, walnut cabinet, linen sofa, leather chair, satin brass fittings, marble table top",
+      "sets": [
+        "wood-herringbone-parquet",
+        "plaster-painted",
+        "masonry-brick-painted",
+        "wood-walnut-veneer",
+        "textile-linen",
+        "leather-smooth",
+        "metal-satin",
+        "stone-marble-white"
+      ],
+      "gpuBytesStart": 132819596,
+      "gpuBytesWorstCase": 254454412,
+      "shareOfFinishViewBudgetWorstCase": 0.95
+    },
+    {
+      "id": "kitchen",
+      "description": "Kitchen: tiled wall, terrazzo floor, oak veneer cabinets, brushed steel, matte plastic, painted plaster, concrete worktop",
+      "sets": [
+        "tile-ceramic-white",
+        "stone-terrazzo",
+        "wood-oak-veneer",
+        "metal-brushed",
+        "synthetic-plastic-matte",
+        "plaster-painted",
+        "concrete-smooth"
+      ],
+      "gpuBytesStart": 74099344,
+      "gpuBytesWorstCase": 199928464,
+      "shareOfFinishViewBudgetWorstCase": 0.74
+    },
+    {
+      "id": "gallery-office",
+      "description": "Gallery or office: oak plank floor, concrete and plaster walls, red brick, loop carpet, oak desk, leather chair, brushed fittings",
+      "sets": [
+        "wood-oak-planks",
+        "concrete-smooth",
+        "plaster-painted",
+        "masonry-brick-red",
+        "textile-carpet-loop",
+        "wood-oak-veneer",
+        "leather-smooth",
+        "metal-brushed"
+      ],
+      "gpuBytesStart": 103459468,
+      "gpuBytesWorstCase": 216705676,
+      "shareOfFinishViewBudgetWorstCase": 0.81
+    }
+  ],
   "summary": {
     "coreAssetSets": 17,
     "coreEntries": 22,
     "expansionAssetSets": 17,
     "deferredItems": 9,
-    "coreSourceBytes": 2929732506,
-    "coreGpuBytes1kAllResident": 274027796,
-    "coreGpuBytes2kAllResident": 1096111380
+    "coreStartingResolutions": {
+      "1k:conditional": 3,
+      "1k:pass": 6,
+      "2k:pass": 1,
+      "512:conditional": 4,
+      "512:pass": 3
+    },
+    "coreSourceBytes2k": 866749509,
+    "expansionSourceBytes2k": 934471359,
+    "coreGpuBytesAllResidentStart": 240473364,
+    "coreGpuBytesAllResidentWorstCase": 437605652,
+    "coreGpuBytesAllResidentUniform1k": 274027796,
+    "coreGpuBytesAllResidentUniform2k": 1096111380
   },
   "taxonomy": [
     {
@@ -201,32 +287,86 @@
       ]
     }
   ],
-  "legacy": [
-    {
-      "id": "plaster-warm",
-      "coveredBy": "plaster-painted"
+  "legacy": {
+    "rules": {
+      "inF": [
+        "Remove all six from the creator-facing shelf and from catalogue counts; they become hidden legacy bases.",
+        "Keep every ID resolvable with unchanged recipe, pins and bytes, so saved projects, the S8 E0 baseline, goldens and fixtures that name them keep validating and rendering identically.",
+        "Re-point each creatorDefaults use to its qualified replacement; if the replacement fails qualification, that default stays on its legacy ID and the failure is recorded.",
+        "Leave internalUses unchanged in F (colour-overridden placeholder geometry and technical fallbacks).",
+        "Record each as a legacy placeholder with no catalogue provenance; never write a licence record or invent an origin for the three textured placeholders."
+      ],
+      "afterF": "Remove the six IDs, their five images and pins, and re-point internalUses, in one cleanup PR once no baseline needs them: strict Scene format bump, readers refuse, fixtures regenerated, no migration (pre-beta stance)."
     },
-    {
-      "id": "wood-walnut",
-      "coveredBy": "wood-walnut-veneer"
-    },
-    {
-      "id": "brass-aged",
-      "coveredBy": "metal-satin (brass)"
-    },
-    {
-      "id": "marble-light",
-      "coveredBy": "stone-marble-white"
-    },
-    {
-      "id": "velvet-dark",
-      "coveredBy": "deferred cloth-sheen family (textile-linen until then)"
-    },
-    {
-      "id": "paper-aged",
-      "coveredBy": "no Core replacement; paper is an Expansion gap"
-    }
-  ],
+    "ids": [
+      {
+        "id": "plaster-warm",
+        "kind": "placeholder texture (2 x 256 px PNG, colour + roughness)",
+        "creatorDefaults": [
+          "apps/editor/src/lib/render/layout-room-representation.ts (default wall)",
+          "apps/editor/src/lib/render/layout/wall-material-factory.ts (default wall)",
+          "apps/editor/src/lib/render/layout/scene-surface-look.ts (surface fallback)",
+          "apps/editor/src/lib/authoring/adapters/scene/shape/draw-session.ts (SHAPE_DEFAULT_MATERIAL)",
+          "apps/editor/src/lib/authoring/adapters/scene/candidate-presenter.ts (candidate)",
+          "apps/editor/src/lib/authoring/scene/object-definition-policy.ts (definition default)"
+        ],
+        "internalUses": [
+          "apps/editor/src/lib/render/assets/fallback-shapes.ts (colour-overridden placeholder part)"
+        ],
+        "replacement": "plaster-painted"
+      },
+      {
+        "id": "wood-walnut",
+        "kind": "placeholder texture (2 x 256 px PNG, colour + roughness)",
+        "creatorDefaults": [],
+        "internalUses": [
+          "apps/editor/src/lib/render/assets/fallback-shapes.ts (colour-overridden placeholder parts)"
+        ],
+        "replacement": "wood-walnut-veneer"
+      },
+      {
+        "id": "brass-aged",
+        "kind": "placeholder texture (1 x 256 px PNG, colour)",
+        "creatorDefaults": [
+          "apps/editor/src/lib/render/layout/RoomPortal.svelte (portal default)"
+        ],
+        "internalUses": [
+          "apps/editor/src/lib/render/assets/fallback-shapes.ts (placeholder parts)"
+        ],
+        "replacement": "metal-brass-satin"
+      },
+      {
+        "id": "marble-light",
+        "kind": "flat factors, no images",
+        "creatorDefaults": [],
+        "internalUses": [
+          "apps/editor/src/lib/render/assets/fallback-shapes.ts (colour-overridden placeholder parts)"
+        ],
+        "replacement": "stone-marble-white"
+      },
+      {
+        "id": "velvet-dark",
+        "kind": "flat factors, no images",
+        "creatorDefaults": [],
+        "internalUses": [
+          "apps/editor/src/lib/render/assets/fallback-shapes.ts (colour-overridden placeholder parts)"
+        ],
+        "replacement": "none in v1; velvet waits for the cloth-sheen family (Deferred)"
+      },
+      {
+        "id": "paper-aged",
+        "kind": "flat factors, no images",
+        "creatorDefaults": [],
+        "internalUses": [
+          "packages/project-model/src/scene-planning/finish-planners.ts (Finish-image base, colour #ffffff)",
+          "apps/editor/src/lib/render/scene-render-description.ts (model fallback)",
+          "apps/editor/src/lib/visitor/visitor-cold-runtime.ts (model fallback)",
+          "apps/editor/src/lib/render/assets/fallback-shapes.ts (colour-overridden placeholder parts)"
+        ],
+        "replacement": "none in F; paper is an Expansion gap"
+      }
+    ]
+  },
   "entries": [
     {
       "id": "wood-oak-veneer",
@@ -244,8 +384,8 @@
           "kind": "target",
           "metric": {
             "tileMeters": [
-              1.83,
-              1.83
+              0.5,
+              0.5
             ],
             "rotation": 0,
             "offset": [
@@ -322,7 +462,7 @@
         }
       },
       "targetMeanAlbedo": "#4f3828",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     },
     {
       "id": "wood-oak-planks",
@@ -598,7 +738,7 @@
         }
       },
       "targetMeanAlbedo": "#e6e2da",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     },
     {
       "id": "plaster-painted",
@@ -647,7 +787,7 @@
         }
       },
       "targetMeanAlbedo": "#e8e2d8",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     },
     {
       "id": "concrete-smooth",
@@ -1136,7 +1276,7 @@
         }
       },
       "targetMeanAlbedo": "#cbbfa8",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     },
     {
       "id": "textile-carpet-loop",
@@ -1232,7 +1372,7 @@
         }
       },
       "targetMeanAlbedo": "#8a4f2c",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     },
     {
       "id": "synthetic-plastic-matte",
@@ -1276,7 +1416,7 @@
         }
       },
       "targetMeanAlbedo": "#e6e6e3",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     }
   ],
   "assetSets": [
@@ -1294,60 +1434,103 @@
       "scale": {
         "class": "A",
         "tileMeters": [
-          1.83,
-          1.83
+          0.5,
+          0.5
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 560,
-        "2k": 1119
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 1024,
+          "1k": 2048,
+          "2k": 4096
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.2,
+            "1k": 0.6,
+            "2k": 0.3
+          },
+          "1440p": {
+            "512": 1.56,
+            "1k": 0.78,
+            "2k": 0.39
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
-      "notes": "Light European oak, fine straight grain; the default light timber.",
+      "notes": "Light oak, the default light timber. Chosen over oak_veneer_01 because its 0.5 m repeat qualifies at 512-1K instead of 2K; the repeat check at the overview decides.",
       "alternates": [
         {
           "provider": "polyhaven",
-          "assetId": "white_oak_veneer",
-          "reason": "0.5 m repeat, paler; use if 1.83 m reads too coarse on furniture",
-          "pageUrl": "https://polyhaven.com/a/white_oak_veneer"
+          "assetId": "oak_veneer_01",
+          "reason": "1.83 m figure never visibly repeats on a large panel, but needs 2K (64 MiB); use it if the 0.5 m repeat is conspicuous at the overview",
+          "pageUrl": "https://polyhaven.com/a/oak_veneer_01",
+          "tileMeters": [
+            1.83,
+            1.83
+          ],
+          "resolution": {
+            "startingCandidate": "2k",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 67108860,
+            "magnification1440p": {
+              "512": 5.7,
+              "1k": 2.85,
+              "2k": 1.42
+            }
+          }
         }
       ],
       "source": {
         "provider": "polyhaven",
-        "assetId": "oak_veneer_01",
-        "title": "Oak Veneer 01",
-        "pageUrl": "https://polyhaven.com/a/oak_veneer_01",
-        "apiInfoUrl": "https://api.polyhaven.com/info/oak_veneer_01",
-        "apiFilesUrl": "https://api.polyhaven.com/files/oak_veneer_01",
+        "assetId": "white_oak_veneer",
+        "title": "White Oak Veneer",
+        "pageUrl": "https://polyhaven.com/a/white_oak_veneer",
+        "apiInfoUrl": "https://api.polyhaven.com/info/white_oak_veneer",
+        "apiFilesUrl": "https://api.polyhaven.com/files/white_oak_veneer",
         "creators": [
           "Jenelle van Heerden"
         ],
         "providerCategory": "Wood/Veneer/Oak Veneer",
-        "datePublished": 1709856000,
+        "datePublished": 1786448942,
         "declaredDimensions": {
-          "x": 1.83,
-          "y": 1.83,
+          "x": 0.5,
+          "y": 0.5,
           "unit": "m",
           "sourceUnit": "mm"
         },
         "maxResolution": [
-          16384,
-          16384
+          8192,
+          8192
         ],
         "mapsAvailable": [
           "AO",
@@ -1368,44 +1551,44 @@
           "1k",
           "2k",
           "4k",
-          "8k",
-          "16k"
+          "8k"
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/oak_veneer_01/oak_veneer_01_diff_4k.jpg",
-              "bytes": 12587069,
-              "md5": "d4c13847045d1a10475a23b0787bf384"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/white_oak_veneer/white_oak_veneer_diff_2k.png",
+              "bytes": 21448863,
+              "md5": "58245e8c08d109df485eca0b09de6898"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/oak_veneer_01/oak_veneer_01_nor_gl_4k.png",
-              "bytes": 85408687,
-              "md5": "fa1e03f182d12f8d28e8d3ffa064addf"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/white_oak_veneer/white_oak_veneer_nor_gl_2k.png",
+              "bytes": 21125813,
+              "md5": "81a4262f8fffa5262c20af3b4ca0fa3b"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/oak_veneer_01/oak_veneer_01_arm_4k.png",
-              "bytes": 72042743,
-              "md5": "04fb4d1d4a1fc5ad641a57c2d56818f9"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/white_oak_veneer/white_oak_veneer_arm_2k.png",
+              "bytes": 16818888,
+              "md5": "ef2c1d41bad592ea01bf9758a8f65e88"
             }
           ],
-          "totalBytes": 170038499
+          "totalBytes": 59393564
         },
-        "provider1kReference": {
-          "color": 641756,
-          "normal": 5045076,
-          "orm": 4333883
+        "pngSetBytesByResolution": {
+          "1k": 14716962,
+          "2k": 59393564,
+          "4k": 234669814
         }
       },
       "orm": {
@@ -1433,24 +1616,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 1024,
-        "2k": 2048
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 512,
+          "1k": 1024,
+          "2k": 2048
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.4,
+            "1k": 1.2,
+            "2k": 0.6
+          },
+          "1440p": {
+            "512": 3.11,
+            "1k": 1.56,
+            "2k": 0.78
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0-darken",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Species-true walnut figure; the source is mid-brown so the recipe colour darkens it to a classic walnut.",
       "alternates": [
@@ -1458,13 +1669,43 @@
           "provider": "ambientcg",
           "assetId": "Wood051",
           "reason": "0.8 m declared, already espresso-dark; use if darkening flattens the figure",
-          "pageUrl": "https://ambientcg.com/a/Wood051"
+          "pageUrl": "https://ambientcg.com/a/Wood051",
+          "tileMeters": [
+            0.8,
+            0.8
+          ],
+          "resolution": {
+            "startingCandidate": "1k",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 16777212,
+            "magnification1440p": {
+              "512": 2.49,
+              "1k": 1.25,
+              "2k": 0.62
+            }
+          }
         },
         {
           "provider": "polyhaven",
           "assetId": "smoked_walnut_veneer",
           "reason": "same author/scale, cooler smoked tone",
-          "pageUrl": "https://polyhaven.com/a/smoked_walnut_veneer"
+          "pageUrl": "https://polyhaven.com/a/smoked_walnut_veneer",
+          "tileMeters": [
+            1.0,
+            1.0
+          ],
+          "resolution": {
+            "startingCandidate": "1k",
+            "screen": "conditional",
+            "fallback": "2k",
+            "gpuBytesStart": 16777212,
+            "magnification1440p": {
+              "512": 3.11,
+              "1k": 1.56,
+              "2k": 0.78
+            }
+          }
         }
       ],
       "source": {
@@ -1512,39 +1753,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/walnut_veneer_02/walnut_veneer_02_diff_4k.jpg",
-              "bytes": 9631919,
-              "md5": "9294085775080be7c3467837bc2f60d2"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/walnut_veneer_02/walnut_veneer_02_diff_2k.png",
+              "bytes": 20967169,
+              "md5": "d0aee187ba4258da2b8998abac738b5c"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/walnut_veneer_02/walnut_veneer_02_nor_gl_4k.png",
-              "bytes": 78144810,
-              "md5": "7be9da32acc5d9c419119f58e3c3a6bb"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/walnut_veneer_02/walnut_veneer_02_nor_gl_2k.png",
+              "bytes": 19226010,
+              "md5": "913290ef6342f4a4dc91d5c0aabd2317"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/walnut_veneer_02/walnut_veneer_02_arm_4k.png",
-              "bytes": 63835645,
-              "md5": "54388885ceda920e6ee8243fc9062783"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/walnut_veneer_02/walnut_veneer_02_arm_2k.png",
+              "bytes": 16631176,
+              "md5": "7348e11ef705f62695e16383db3bbb4d"
             }
           ],
-          "totalBytes": 151612374
+          "totalBytes": 56824355
         },
-        "provider1kReference": {
-          "color": 592833,
-          "normal": 4703928,
-          "orm": 4280861
+        "pngSetBytesByResolution": {
+          "1k": 14180767,
+          "2k": 56824355,
+          "4k": 225867188
         }
       },
       "orm": {
@@ -1572,24 +1814,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 602,
-        "2k": 1205
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 301,
+          "1k": 602,
+          "2k": 1205
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.17,
+            "1k": 1.09,
+            "2k": 0.54
+          },
+          "1440p": {
+            "512": 2.82,
+            "1k": 1.41,
+            "2k": 0.71
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Finished plank floor; the default timber floor.",
       "alternates": [
@@ -1597,7 +1867,22 @@
           "provider": "polyhaven",
           "assetId": "laminate_floor_02",
           "reason": "1.7 m, cleaner engineered look",
-          "pageUrl": "https://polyhaven.com/a/laminate_floor_02"
+          "pageUrl": "https://polyhaven.com/a/laminate_floor_02",
+          "tileMeters": [
+            1.7,
+            1.7
+          ],
+          "resolution": {
+            "startingCandidate": "1k",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 16777212,
+            "magnification1440p": {
+              "512": 2.82,
+              "1k": 1.41,
+              "2k": 0.71
+            }
+          }
         }
       ],
       "source": {
@@ -1645,39 +1930,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/wood_floor/wood_floor_diff_4k.jpg",
-              "bytes": 10771881,
-              "md5": "0ec20da4eb478c72f34b73e6421d6a9a"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wood_floor/wood_floor_diff_2k.png",
+              "bytes": 21423099,
+              "md5": "4801d7ad3720166655a251920197646f"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/wood_floor/wood_floor_nor_gl_4k.png",
-              "bytes": 75335153,
-              "md5": "243a249096636594e4240880c1e1f863"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wood_floor/wood_floor_nor_gl_2k.png",
+              "bytes": 19399802,
+              "md5": "c50f8bf962667821336e492f98ab5e73"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/wood_floor/wood_floor_arm_4k.png",
-              "bytes": 60469105,
-              "md5": "db5814c439db151140eeffa0a6ab083c"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wood_floor/wood_floor_arm_2k.png",
+              "bytes": 16651290,
+              "md5": "3b70701a77ebab5a9495967c2adc94d0"
             }
           ],
-          "totalBytes": 146576139
+          "totalBytes": 57474191
         },
-        "provider1kReference": {
-          "color": 734493,
-          "normal": 4873122,
-          "orm": 4297200
+        "pngSetBytesByResolution": {
+          "1k": 14579924,
+          "2k": 57474191,
+          "4k": 219456459
         }
       },
       "orm": {
@@ -1705,24 +1991,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 301,
-        "2k": 602
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 151,
+          "1k": 301,
+          "2k": 602
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 4.34,
+            "1k": 2.17,
+            "2k": 1.09
+          },
+          "1440p": {
+            "512": 5.65,
+            "1k": 2.82,
+            "2k": 1.41
+          }
+        },
+        "startingCandidate": "2k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 67108860,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "priority",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Large 3.4 m repeat keeps the pattern from visibly tiling but gives only 301 px/m at 1K; first 2K candidate.",
       "alternates": [],
@@ -1773,39 +2087,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/herringbone_parquet/herringbone_parquet_diff_4k.jpg",
-              "bytes": 14252931,
-              "md5": "f29c773d0daf156665cbfad8f5728de2"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/herringbone_parquet/herringbone_parquet_diff_2k.png",
+              "bytes": 21385327,
+              "md5": "4d30228a259f54d9217b373715e0aedb"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/herringbone_parquet/herringbone_parquet_nor_gl_4k.png",
-              "bytes": 77989899,
-              "md5": "fc2c633cefbc64aa83cf0d7a482b709f"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/herringbone_parquet/herringbone_parquet_nor_gl_2k.png",
+              "bytes": 18984465,
+              "md5": "592dcdc7741f13765bf7bd18398f3312"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/herringbone_parquet/herringbone_parquet_arm_4k.png",
-              "bytes": 66813505,
-              "md5": "159b85d35360ce364c770b1e0e29b521"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/herringbone_parquet/herringbone_parquet_arm_2k.png",
+              "bytes": 16502136,
+              "md5": "f1d6b7684f1cb998a831f46fac0abef4"
             }
           ],
-          "totalBytes": 159056335
+          "totalBytes": 56871928
         },
-        "provider1kReference": {
-          "color": 829046,
-          "normal": 4799713,
-          "orm": 4054522
+        "pngSetBytesByResolution": {
+          "1k": 14393642,
+          "2k": 56871928,
+          "4k": 230429020
         }
       },
       "orm": {
@@ -1833,24 +2148,52 @@
         ],
         "basis": "nominal; admitted only by owner ruling"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 853,
-        "2k": 1707
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 427,
+          "1k": 853,
+          "2k": 1707
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.53,
+            "1k": 0.77,
+            "2k": 0.38
+          },
+          "1440p": {
+            "512": 1.99,
+            "1k": 1.0,
+            "2k": 0.5
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "White marble with grey veining; veining scale is ambiguous, so it needs a nominal tile.",
       "alternates": [
@@ -1858,7 +2201,22 @@
           "provider": "ambientcg",
           "assetId": "Travertine009",
           "reason": "1.2 m declared (class A); the fallback if class C is refused",
-          "pageUrl": "https://ambientcg.com/a/Travertine009"
+          "pageUrl": "https://ambientcg.com/a/Travertine009",
+          "tileMeters": [
+            1.2,
+            1.2
+          ],
+          "resolution": {
+            "startingCandidate": "512",
+            "screen": "conditional",
+            "fallback": "1k",
+            "gpuBytesStart": 4194300,
+            "magnification1440p": {
+              "512": 1.99,
+              "1k": 1.0,
+              "2k": 0.5
+            }
+          }
         }
       ],
       "source": {
@@ -1896,17 +2254,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Marble012_4K-PNG.zip",
-            "bytes": 195672054
+            "url": "https://ambientcg.com/get?file=Marble012_2K-PNG.zip",
+            "bytes": 49387235
           },
-          "totalBytes": 195672054
-        },
-        "provider1kReference": {
-          "zip1kPng": 12909875,
-          "zip1kJpg": 4672904
+          "totalBytes": 49387235
         },
         "zipBytesByVariant": {
           "1K-JPG": 4672904,
@@ -1944,24 +2298,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 1280,
-        "2k": 2560
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 640,
+          "1k": 1280,
+          "2k": 2560
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.02,
+            "1k": 0.51,
+            "2k": 0.26
+          },
+          "1440p": {
+            "512": 1.33,
+            "1k": 0.66,
+            "2k": 0.33
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 4194300
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Warm terrazzo with a declared 0.8 m tile; colour maps are approximated from a photo.",
       "alternates": [
@@ -2013,17 +2395,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Terrazzo019L_4K-PNG.zip",
-            "bytes": 211949491
+            "url": "https://ambientcg.com/get?file=Terrazzo019L_2K-PNG.zip",
+            "bytes": 53612620
           },
-          "totalBytes": 211949491
-        },
-        "provider1kReference": {
-          "zip1kPng": 14374399,
-          "zip1kJpg": 5215562
+          "totalBytes": 53612620
         },
         "zipBytesByVariant": {
           "1K-JPG": 5215562,
@@ -2061,24 +2439,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 1024,
-        "2k": 2048
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 512,
+          "1k": 1024,
+          "2k": 2048
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.28,
+            "1k": 0.64,
+            "2k": 0.32
+          },
+          "1440p": {
+            "512": 1.66,
+            "1k": 0.83,
+            "2k": 0.42
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Running-bond clay brick; cross-check the declared 1.0 m against course count (class B check).",
       "alternates": [
@@ -2086,7 +2492,22 @@
           "provider": "ambientcg",
           "assetId": "Bricks059",
           "reason": "1.05 m declared, cleaner orange brick",
-          "pageUrl": "https://ambientcg.com/a/Bricks059"
+          "pageUrl": "https://ambientcg.com/a/Bricks059",
+          "tileMeters": [
+            1.05,
+            1.05
+          ],
+          "resolution": {
+            "startingCandidate": "1k",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 16777212,
+            "magnification1440p": {
+              "512": 1.74,
+              "1k": 0.87,
+              "2k": 0.44
+            }
+          }
         }
       ],
       "source": {
@@ -2136,39 +2557,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/red_brick_03/red_brick_03_diff_4k.jpg",
-              "bytes": 11437615,
-              "md5": "0c257e296a367319d81600490626d0f5"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/red_brick_03/red_brick_03_diff_2k.png",
+              "bytes": 9101323,
+              "md5": "2c0b87b51626d637e29c0596274151f4"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/red_brick_03/red_brick_03_nor_gl_4k.png",
-              "bytes": 28168313,
-              "md5": "3b738d96a1e3e33ca2fa45d37086d353"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/red_brick_03/red_brick_03_nor_gl_2k.png",
+              "bytes": 8141778,
+              "md5": "d5c3e4b5216c2decee54b3a036cc64b8"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/red_brick_03/red_brick_03_arm_4k.png",
-              "bytes": 24939961,
-              "md5": "27a51c26aa39126415842a5b2f29772d"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/red_brick_03/red_brick_03_arm_2k.png",
+              "bytes": 5877058,
+              "md5": "c6dd487b1a18730dd78812421b26a390"
             }
           ],
-          "totalBytes": 64545889
+          "totalBytes": 23120159
         },
-        "provider1kReference": {
-          "color": 694500,
-          "normal": 2084859,
-          "orm": 1407864
+        "pngSetBytesByResolution": {
+          "1k": 5700882,
+          "2k": 23120159,
+          "4k": 88334969
         }
       },
       "orm": {
@@ -2196,24 +2618,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 661,
-        "2k": 1321
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 330,
+          "1k": 661,
+          "2k": 1321
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.98,
+            "1k": 0.99,
+            "2k": 0.5
+          },
+          "1440p": {
+            "512": 2.57,
+            "1k": 1.29,
+            "2k": 0.64
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "White painted brick; tint recolours brick and mortar together, as paint does.",
       "alternates": [],
@@ -2259,17 +2709,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=PaintedBricks004_4K-PNG.zip",
-            "bytes": 206318672
+            "url": "https://ambientcg.com/get?file=PaintedBricks004_2K-PNG.zip",
+            "bytes": 55086398
           },
-          "totalBytes": 206318672
-        },
-        "provider1kReference": {
-          "zip1kPng": 15163883,
-          "zip1kJpg": 6964286
+          "totalBytes": 55086398
         },
         "zipBytesByVariant": {
           "1K-JPG": 6964286,
@@ -2307,24 +2753,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 512,
-        "2k": 1024
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 256,
+          "1k": 512,
+          "2k": 1024
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.56,
+            "1k": 1.28,
+            "2k": 0.64
+          },
+          "1440p": {
+            "512": 3.32,
+            "1k": 1.66,
+            "2k": 0.83
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Clean, near-neutral painted plaster; the default wall.",
       "alternates": [
@@ -2332,7 +2806,22 @@
           "provider": "polyhaven",
           "assetId": "plastered_wall",
           "reason": "2.0 m bare plaster, same author",
-          "pageUrl": "https://polyhaven.com/a/plastered_wall"
+          "pageUrl": "https://polyhaven.com/a/plastered_wall",
+          "tileMeters": [
+            2.0,
+            2.0
+          ],
+          "resolution": {
+            "startingCandidate": "1k",
+            "screen": "conditional",
+            "fallback": "2k",
+            "gpuBytesStart": 16777212,
+            "magnification1440p": {
+              "512": 3.32,
+              "1k": 1.66,
+              "2k": 0.83
+            }
+          }
         }
       ],
       "source": {
@@ -2381,39 +2870,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/painted_plaster_wall/painted_plaster_wall_diff_4k.jpg",
-              "bytes": 12556766,
-              "md5": "7db04e0e455152cf79e112f5852c973d"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.png",
+              "bytes": 22706294,
+              "md5": "a59f31e4461b4e9385e88030e32280d9"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/painted_plaster_wall/painted_plaster_wall_nor_gl_4k.png",
-              "bytes": 90277227,
-              "md5": "351ce0b340e3d17d801e03cecec90db8"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_wall/painted_plaster_wall_nor_gl_2k.png",
+              "bytes": 22789885,
+              "md5": "2eba0da17c1d194537c1231cb412e310"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/painted_plaster_wall/painted_plaster_wall_arm_4k.png",
-              "bytes": 52773821,
-              "md5": "7c5c521d72d8ad722bc74036668199e3"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_wall/painted_plaster_wall_arm_2k.png",
+              "bytes": 14790707,
+              "md5": "89a4d4c345073c326ed4a29168e5e3f3"
             }
           ],
-          "totalBytes": 155607814
+          "totalBytes": 60286886
         },
-        "provider1kReference": {
-          "color": 686726,
-          "normal": 5688118,
-          "orm": 3925213
+        "pngSetBytesByResolution": {
+          "1k": 15230389,
+          "2k": 60286886,
+          "4k": 232619330
         }
       },
       "orm": {
@@ -2441,24 +2931,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 427,
-        "2k": 853
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 213,
+          "1k": 427,
+          "2k": 853
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 3.07,
+            "1k": 1.53,
+            "2k": 0.77
+          },
+          "1440p": {
+            "512": 3.99,
+            "1k": 1.99,
+            "2k": 1.0
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Light smooth concrete; the colour map is approximated from a photo. A polished preset shares its bytes.",
       "alternates": [
@@ -2466,13 +2984,43 @@
           "provider": "polyhaven",
           "assetId": "concrete_wall_008",
           "reason": "2.71 m, scanned; better data provenance, more staining",
-          "pageUrl": "https://polyhaven.com/a/concrete_wall_008"
+          "pageUrl": "https://polyhaven.com/a/concrete_wall_008",
+          "tileMeters": [
+            2.71,
+            2.71
+          ],
+          "resolution": {
+            "startingCandidate": "2k",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 67108860,
+            "magnification1440p": {
+              "512": 4.5,
+              "1k": 2.25,
+              "2k": 1.13
+            }
+          }
         },
         {
           "provider": "ambientcg",
           "assetId": "Concrete034",
           "reason": "1.1 x 0.55 m, non-square",
-          "pageUrl": "https://ambientcg.com/a/Concrete034"
+          "pageUrl": "https://ambientcg.com/a/Concrete034",
+          "tileMeters": [
+            1.1,
+            0.55
+          ],
+          "resolution": {
+            "startingCandidate": "512",
+            "screen": "conditional",
+            "fallback": "1k",
+            "gpuBytesStart": 4194300,
+            "magnification1440p": {
+              "512": 1.83,
+              "1k": 0.91,
+              "2k": 0.46
+            }
+          }
         }
       ],
       "source": {
@@ -2516,17 +3064,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Concrete046_4K-PNG.zip",
-            "bytes": 241619299
+            "url": "https://ambientcg.com/get?file=Concrete046_2K-PNG.zip",
+            "bytes": 59708442
           },
-          "totalBytes": 241619299
-        },
-        "provider1kReference": {
-          "zip1kPng": 15533155,
-          "zip1kJpg": 5989511
+          "totalBytes": 59708442
         },
         "zipBytesByVariant": {
           "1K-JPG": 5989511,
@@ -2564,24 +3108,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 1024,
-        "2k": 2048
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 512,
+          "1k": 1024,
+          "2k": 2048
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.28,
+            "1k": 0.64,
+            "2k": 0.32
+          },
+          "1440p": {
+            "512": 1.66,
+            "1k": 0.83,
+            "2k": 0.42
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "White square tile with grout. Tint also tints the grout: coloured tile with light grout needs a layered family (deferred).",
       "alternates": [],
@@ -2627,17 +3199,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Tiles107_4K-PNG.zip",
-            "bytes": 110965265
+            "url": "https://ambientcg.com/get?file=Tiles107_2K-PNG.zip",
+            "bytes": 26905547
           },
-          "totalBytes": 110965265
-        },
-        "provider1kReference": {
-          "zip1kPng": 8258711,
-          "zip1kJpg": 3200991
+          "totalBytes": 26905547
         },
         "zipBytesByVariant": {
           "1K-JPG": 3200991,
@@ -2675,24 +3243,52 @@
         ],
         "basis": "nominal; admitted only by owner ruling"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 2048,
-        "2k": 4096
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 1024,
+          "1k": 2048,
+          "2k": 4096
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.2,
+            "1k": 0.6,
+            "2k": 0.3
+          },
+          "1440p": {
+            "512": 1.56,
+            "1k": 0.78,
+            "2k": 0.39
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 2796200,
+          "1k": 11184808,
+          "2k": 44739240
+        },
+        "gpuBytesStart": 2796200,
+        "gpuBytesWorstCase": 11184808
       },
       "tint": "metal",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 2,
-        "gpuBytes1k": 11184808,
-        "gpuBytes2k": 44739240
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 2
       },
       "notes": "Structure only (normal + roughness); colour comes from measured F0 per preset.",
       "alternates": [],
@@ -2732,17 +3328,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Metal032_4K-PNG.zip",
-            "bytes": 226901204
+            "url": "https://ambientcg.com/get?file=Metal032_2K-PNG.zip",
+            "bytes": 51323783
           },
-          "totalBytes": 226901204
-        },
-        "provider1kReference": {
-          "zip1kPng": 12255885,
-          "zip1kJpg": 3650556
+          "totalBytes": 51323783
         },
         "zipBytesByVariant": {
           "1K-JPG": 3650556,
@@ -2781,24 +3373,52 @@
         ],
         "basis": "nominal; admitted only by owner ruling"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 2048,
-        "2k": 4096
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 1024,
+          "1k": 2048,
+          "2k": 4096
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.2,
+            "1k": 0.6,
+            "2k": 0.3
+          },
+          "1440p": {
+            "512": 1.56,
+            "1k": 0.78,
+            "2k": 0.39
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 2796200,
+          "1k": 11184808,
+          "2k": 44739240
+        },
+        "gpuBytesStart": 11184808,
+        "gpuBytesWorstCase": 11184808
       },
       "tint": "metal",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 2,
-        "gpuBytes1k": 11184808,
-        "gpuBytes2k": 44739240
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 2
       },
       "notes": "Brushed structure approximated with a normal map; true anisotropy is a deferred family.",
       "alternates": [
@@ -2845,17 +3465,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Metal009_4K-PNG.zip",
-            "bytes": 202436424
+            "url": "https://ambientcg.com/get?file=Metal009_2K-PNG.zip",
+            "bytes": 50113613
           },
-          "totalBytes": 202436424
-        },
-        "provider1kReference": {
-          "zip1kPng": 13138410,
-          "zip1kJpg": 4767000
+          "totalBytes": 50113613
         },
         "zipBytesByVariant": {
           "1K-JPG": 4767000,
@@ -2894,24 +3510,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 3779,
-        "2k": 7557
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 1889,
+          "1k": 3779,
+          "2k": 7557
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 0.65,
+            "1k": 0.32,
+            "2k": 0.16
+          },
+          "1440p": {
+            "512": 0.84,
+            "1k": 0.42,
+            "2k": 0.21
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 4194300
       },
       "tint": "T1-neutralize",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Woven linen; the source is light blue, so it needs a luminance-neutral derivative to tint. Its anisotropy/sheen maps are ignored in v1.",
       "alternates": [],
@@ -2966,39 +3610,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rough_linen/rough_linen_diff_4k.jpg",
-              "bytes": 13064750,
-              "md5": "8baff705eca1ecca5eefce25563b4b78"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rough_linen/rough_linen_diff_2k.png",
+              "bytes": 23034793,
+              "md5": "3545211c4b7a868187055232e7311bc0"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rough_linen/rough_linen_nor_gl_4k.png",
-              "bytes": 77542996,
-              "md5": "43180ccade92ad31707b3e643feafd10"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rough_linen/rough_linen_nor_gl_2k.png",
+              "bytes": 22196908,
+              "md5": "c790b11f591f898dbec1d75733159fb3"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rough_linen/rough_linen_arm_4k.png",
-              "bytes": 94854503,
-              "md5": "5ab9fb81633824772b3eb6778a1b9f16"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rough_linen/rough_linen_arm_2k.png",
+              "bytes": 25594524,
+              "md5": "8ace7206e4eb7f71bd8e3f082fece735"
             }
           ],
-          "totalBytes": 185462249
+          "totalBytes": 70826225
         },
-        "provider1kReference": {
-          "color": 835801,
-          "normal": 5653944,
-          "orm": 6639947
+        "pngSetBytesByResolution": {
+          "1k": 18106031,
+          "2k": 70826225,
+          "4k": 261353545
         }
       },
       "orm": {
@@ -3026,24 +3671,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 602,
-        "2k": 1205
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 301,
+          "1k": 602,
+          "2k": 1205
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.17,
+            "1k": 1.09,
+            "2k": 0.54
+          },
+          "1440p": {
+            "512": 2.82,
+            "1k": 1.41,
+            "2k": 0.71
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Photogrammetry loop-pile carpet, beige; tints toward warm/darker tones only.",
       "alternates": [],
@@ -3089,17 +3762,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Carpet016_4K-PNG.zip",
-            "bytes": 251396875
+            "url": "https://ambientcg.com/get?file=Carpet016_2K-PNG.zip",
+            "bytes": 65696017
           },
-          "totalBytes": 251396875
-        },
-        "provider1kReference": {
-          "zip1kPng": 18012836,
-          "zip1kJpg": 9371762
+          "totalBytes": 65696017
         },
         "zipBytesByVariant": {
           "1K-JPG": 9371762,
@@ -3137,24 +3806,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 3413,
-        "2k": 6827
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 1707,
+          "1k": 3413,
+          "2k": 6827
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 0.72,
+            "1k": 0.36,
+            "2k": 0.18
+          },
+          "1440p": {
+            "512": 0.93,
+            "1k": 0.47,
+            "2k": 0.23
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 4194300
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Off-white upholstery leather; the recipe colour gives cognac/black/etc.",
       "alternates": [
@@ -3162,7 +3859,22 @@
           "provider": "ambientcg",
           "assetId": "Leather035D",
           "reason": "0.3 m declared, beige, unstitched",
-          "pageUrl": "https://ambientcg.com/a/Leather035D"
+          "pageUrl": "https://ambientcg.com/a/Leather035D",
+          "tileMeters": [
+            0.3,
+            0.3
+          ],
+          "resolution": {
+            "startingCandidate": "512",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 4194300,
+            "magnification1440p": {
+              "512": 0.93,
+              "1k": 0.47,
+              "2k": 0.23
+            }
+          }
         }
       ],
       "source": {
@@ -3210,39 +3922,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/leather_white/leather_white_diff_4k.jpg",
-              "bytes": 14972596,
-              "md5": "26a2ffa8618206fbf99b63ab3bcbfd92"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/leather_white/leather_white_diff_2k.png",
+              "bytes": 8177379,
+              "md5": "d61e4c0dc5d586d07193cca9466a07c8"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/leather_white/leather_white_nor_gl_4k.png",
-              "bytes": 26791907,
-              "md5": "0fe4ccefc6e7958fc18297fa1ec1cd32"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/leather_white/leather_white_nor_gl_2k.png",
+              "bytes": 7480079,
+              "md5": "fe06491c88281d3b9a7bb1d0f70f8ecb"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/leather_white/leather_white_arm_4k.png",
-              "bytes": 30368496,
-              "md5": "92af92f9eda6dce284c3c1776445b6d4"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/leather_white/leather_white_arm_2k.png",
+              "bytes": 7874714,
+              "md5": "a17f783846e0afd90101e997af588d4e"
             }
           ],
-          "totalBytes": 72132999
+          "totalBytes": 23532172
         },
-        "provider1kReference": {
-          "color": 728363,
-          "normal": 1766429,
-          "orm": 1842444
+        "pngSetBytesByResolution": {
+          "1k": 5373119,
+          "2k": 23532172,
+          "4k": 91552762
         }
       },
       "orm": {
@@ -3270,24 +3983,52 @@
         ],
         "basis": "nominal; admitted only by owner ruling"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 2048,
-        "2k": 4096
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 1024,
+          "1k": 2048,
+          "2k": 4096
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.2,
+            "1k": 0.6,
+            "2k": 0.3
+          },
+          "1440p": {
+            "512": 1.56,
+            "1k": 0.78,
+            "2k": 0.39
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "White matte plastic micro-surface; colour is entirely the recipe colour.",
       "alternates": [
@@ -3333,17 +4074,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Plastic010_4K-PNG.zip",
-            "bytes": 177440924
+            "url": "https://ambientcg.com/get?file=Plastic010_2K-PNG.zip",
+            "bytes": 46586374
           },
-          "totalBytes": 177440924
-        },
-        "provider1kReference": {
-          "zip1kPng": 12355422,
-          "zip1kJpg": 3535012
+          "totalBytes": 46586374
         },
         "zipBytesByVariant": {
           "1K-JPG": 3535012,
@@ -3381,24 +4118,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 2048,
-        "2k": 4096
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 1024,
+          "1k": 2048,
+          "2k": 4096
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.2,
+            "1k": 0.6,
+            "2k": 0.3
+          },
+          "1440p": {
+            "512": 1.56,
+            "1k": 0.78,
+            "2k": 0.39
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Edge-grain plywood sheet.",
       "alternates": [],
@@ -3447,39 +4212,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/plywood/plywood_diff_4k.jpg",
-              "bytes": 16467261,
-              "md5": "da449a51c2be0c34b8ebc5c058fc61b4"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/plywood/plywood_diff_2k.png",
+              "bytes": 9121668,
+              "md5": "47b30d3d53aea08c49f1f9c8ed3b1638"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/plywood/plywood_nor_gl_4k.png",
-              "bytes": 22958150,
-              "md5": "3ddf13f7f7c1a32a9744cf9837e91d1f"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/plywood/plywood_nor_gl_2k.png",
+              "bytes": 6462656,
+              "md5": "5afc1a545d31a280d914250ee069d7c6"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/plywood/plywood_arm_4k.png",
-              "bytes": 28427502,
-              "md5": "e6cd8deb692ef5a2d4d38e5ef346dbf2"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/plywood/plywood_arm_2k.png",
+              "bytes": 7487562,
+              "md5": "c72f19726b5cceef8d0aa7a7bd412a2e"
             }
           ],
-          "totalBytes": 67852913
+          "totalBytes": 23071886
         },
-        "provider1kReference": {
-          "color": 882059,
-          "normal": 1549450,
-          "orm": 1794537
+        "pngSetBytesByResolution": {
+          "1k": 5384771,
+          "2k": 23071886,
+          "4k": 88647753
         }
       },
       "orm": {
@@ -3507,24 +4273,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 1024,
-        "2k": 2048
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 512,
+          "1k": 1024,
+          "2k": 2048
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.4,
+            "1k": 1.2,
+            "2k": 0.6
+          },
+          "1440p": {
+            "512": 3.11,
+            "1k": 1.56,
+            "2k": 0.78
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Very light hardwood; Scandinavian interiors.",
       "alternates": [],
@@ -3573,39 +4367,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/white_maple_veneer/white_maple_veneer_diff_4k.jpg",
-              "bytes": 6716314,
-              "md5": "f8fcc20a1dcbd8a0a4f917f5d946664f"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/white_maple_veneer/white_maple_veneer_diff_2k.png",
+              "bytes": 19941093,
+              "md5": "1642b19b2aac7dc60275b0c9c87cf77f"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/white_maple_veneer/white_maple_veneer_nor_gl_4k.png",
-              "bytes": 71809958,
-              "md5": "59b62cb74d035863bd0a70a745da1e11"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/white_maple_veneer/white_maple_veneer_nor_gl_2k.png",
+              "bytes": 17840665,
+              "md5": "47e19573e4ac8887386bf2a62eb80b41"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/white_maple_veneer/white_maple_veneer_arm_4k.png",
-              "bytes": 64845050,
-              "md5": "fd35cc1daaeec8574366caf56d121bc5"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/white_maple_veneer/white_maple_veneer_arm_2k.png",
+              "bytes": 16661077,
+              "md5": "50c1d77bfbe8962ed04090abd56cb48c"
             }
           ],
-          "totalBytes": 143371322
+          "totalBytes": 54442835
         },
-        "provider1kReference": {
-          "color": 443279,
-          "normal": 4309857,
-          "orm": 4161634
+        "pngSetBytesByResolution": {
+          "1k": 13466827,
+          "2k": 54442835,
+          "4k": 215645424
         }
       },
       "orm": {
@@ -3633,24 +4428,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 853,
-        "2k": 1707
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 427,
+          "1k": 853,
+          "2k": 1707
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.53,
+            "1k": 0.77,
+            "2k": 0.38
+          },
+          "1440p": {
+            "512": 1.99,
+            "1k": 1.0,
+            "2k": 0.5
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Warm travertine, declared 1.2 m.",
       "alternates": [],
@@ -3696,17 +4519,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Travertine009_4K-PNG.zip",
-            "bytes": 142842817
+            "url": "https://ambientcg.com/get?file=Travertine009_2K-PNG.zip",
+            "bytes": 35288755
           },
-          "totalBytes": 142842817
-        },
-        "provider1kReference": {
-          "zip1kPng": 9299244,
-          "zip1kJpg": 3292870
+          "totalBytes": 35288755
         },
         "zipBytesByVariant": {
           "1K-JPG": 3292870,
@@ -3744,24 +4563,52 @@
         ],
         "basis": "nominal; admitted only by owner ruling"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 853,
-        "2k": 1707
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 427,
+          "1k": 853,
+          "2k": 1707
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.53,
+            "1k": 0.77,
+            "2k": 0.38
+          },
+          "1440p": {
+            "512": 1.99,
+            "1k": 1.0,
+            "2k": 0.5
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Dark veined marble.",
       "alternates": [],
@@ -3800,17 +4647,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Marble016_4K-PNG.zip",
-            "bytes": 147883793
+            "url": "https://ambientcg.com/get?file=Marble016_2K-PNG.zip",
+            "bytes": 40551177
           },
-          "totalBytes": 147883793
-        },
-        "provider1kReference": {
-          "zip1kPng": 11640108,
-          "zip1kJpg": 4352207
+          "totalBytes": 40551177
         },
         "zipBytesByVariant": {
           "1K-JPG": 4352207,
@@ -3848,24 +4691,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 492,
-        "2k": 985
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 246,
+          "1k": 492,
+          "2k": 985
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.66,
+            "1k": 1.33,
+            "2k": 0.66
+          },
+          "1440p": {
+            "512": 3.46,
+            "1k": 1.73,
+            "2k": 0.86
+          }
+        },
+        "startingCandidate": "2k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 67108860,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Square terracotta floor; source is dark and worn.",
       "alternates": [],
@@ -3914,39 +4785,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/terracotta_floor_tiles/terracotta_floor_tiles_diff_4k.jpg",
-              "bytes": 10615771,
-              "md5": "17dbcdee162b4744d39c1c1477f5832a"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/terracotta_floor_tiles/terracotta_floor_tiles_diff_2k.png",
+              "bytes": 21118791,
+              "md5": "828ebd7102c635a4de24d98ebd5310da"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/terracotta_floor_tiles/terracotta_floor_tiles_nor_gl_4k.png",
-              "bytes": 85281929,
-              "md5": "7786127bd2cb79c95247b744c2b011a0"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/terracotta_floor_tiles/terracotta_floor_tiles_nor_gl_2k.png",
+              "bytes": 21127543,
+              "md5": "c07284f97f40ced847a0ef8b1a22d866"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/terracotta_floor_tiles/terracotta_floor_tiles_arm_4k.png",
-              "bytes": 69209186,
-              "md5": "76837fecf998618522ddf104d35ec645"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/terracotta_floor_tiles/terracotta_floor_tiles_arm_2k.png",
+              "bytes": 17415569,
+              "md5": "95039c6d61ce34d018365c75a5dff97d"
             }
           ],
-          "totalBytes": 165106886
+          "totalBytes": 59661903
         },
-        "provider1kReference": {
-          "color": 649304,
-          "normal": 5228039,
-          "orm": 4323295
+        "pngSetBytesByResolution": {
+          "1k": 14802771,
+          "2k": 59661903,
+          "4k": 238096542
         }
       },
       "orm": {
@@ -3971,21 +4843,24 @@
         "tileMeters": null,
         "basis": "measured repeating feature (module/pitch), cross-checked +/-10%"
       },
-      "texelDensityPxPerMeter": null,
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "startingCandidate": null,
+        "screen": "measure-at-harvest",
+        "note": "class B tile is measured at harvest; screen then"
+      },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Subway tile; tile = counted modules x 75 x 150 mm, measured at harvest (class B).",
       "alternates": [],
@@ -4024,17 +4899,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Tiles036_4K-PNG.zip",
-            "bytes": 178002641
+            "url": "https://ambientcg.com/get?file=Tiles036_2K-PNG.zip",
+            "bytes": 47391580
           },
-          "totalBytes": 178002641
-        },
-        "provider1kReference": {
-          "zip1kPng": 12744162,
-          "zip1kJpg": 4420561
+          "totalBytes": 47391580
         },
         "zipBytesByVariant": {
           "1K-JPG": 4420561,
@@ -4072,24 +4943,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 465,
-        "2k": 931
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 233,
+          "1k": 465,
+          "2k": 931
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.81,
+            "1k": 1.41,
+            "2k": 0.7
+          },
+          "1440p": {
+            "512": 3.65,
+            "1k": 1.83,
+            "2k": 0.91
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Weathered steel sheet.",
       "alternates": [],
@@ -4140,39 +5039,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rust_coarse_01/rust_coarse_01_diff_4k.jpg",
-              "bytes": 13786098,
-              "md5": "db56905cc140ab087a49f3e1ae2ae496"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rust_coarse_01/rust_coarse_01_diff_2k.png",
+              "bytes": 22449923,
+              "md5": "ccfbc8f04be9a57c4bf4f57e13392ef2"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rust_coarse_01/rust_coarse_01_nor_gl_4k.png",
-              "bytes": 90697223,
-              "md5": "f45f4fa7e813790c2adf353554cde3f6"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rust_coarse_01/rust_coarse_01_nor_gl_2k.png",
+              "bytes": 22604890,
+              "md5": "e1794a4830de6acde8b9d238104fa61f"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rust_coarse_01/rust_coarse_01_arm_4k.png",
-              "bytes": 70618155,
-              "md5": "bb00f3a1e2da4e1a71a3ed40cf5c87fd"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rust_coarse_01/rust_coarse_01_arm_2k.png",
+              "bytes": 17783506,
+              "md5": "f5fb4d73928261799a6d15528922d676"
             }
           ],
-          "totalBytes": 175101476
+          "totalBytes": 62838319
         },
-        "provider1kReference": {
-          "color": 845196,
-          "normal": 5575172,
-          "orm": 4447937
+        "pngSetBytesByResolution": {
+          "1k": 15665219,
+          "2k": 62838319,
+          "4k": 250049425
         }
       },
       "orm": {
@@ -4200,24 +5100,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 512,
-        "2k": 1024
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 256,
+          "1k": 512,
+          "2k": 1024
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.56,
+            "1k": 1.28,
+            "2k": 0.64
+          },
+          "1440p": {
+            "512": 3.32,
+            "1k": 1.66,
+            "2k": 0.83
+          }
+        },
+        "startingCandidate": "2k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 67108860,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Fluted/ribbed photogrammetry concrete; relief is normal-only in v1.",
       "alternates": [],
@@ -4263,17 +5191,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Concrete045_4K-PNG.zip",
-            "bytes": 232587176
+            "url": "https://ambientcg.com/get?file=Concrete045_2K-PNG.zip",
+            "bytes": 57208952
           },
-          "totalBytes": 232587176
-        },
-        "provider1kReference": {
-          "zip1kPng": 14519254,
-          "zip1kJpg": 5618232
+          "totalBytes": 57208952
         },
         "zipBytesByVariant": {
           "1K-JPG": 5618232,
@@ -4311,24 +5235,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 3710,
-        "2k": 7420
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 1855,
+          "1k": 3710,
+          "2k": 7420
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 0.66,
+            "1k": 0.33,
+            "2k": 0.17
+          },
+          "1440p": {
+            "512": 0.86,
+            "1k": 0.43,
+            "2k": 0.21
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 4194300
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Herringbone upholstery weave.",
       "alternates": [],
@@ -4382,39 +5334,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/poly_wool_herringbone/poly_wool_herringbone_diff_4k.jpg",
-              "bytes": 13605843,
-              "md5": "341e13e3da4f8fac10d8007d2675f2c8"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/poly_wool_herringbone/poly_wool_herringbone_diff_2k.png",
+              "bytes": 23326893,
+              "md5": "2a9396a38eaccc9792237a245657bfa0"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/poly_wool_herringbone/poly_wool_herringbone_nor_gl_4k.png",
-              "bytes": 80720802,
-              "md5": "4114633065aae44364f8ed1dd3e6e955"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/poly_wool_herringbone/poly_wool_herringbone_nor_gl_2k.png",
+              "bytes": 22564255,
+              "md5": "b7e3c7c9ea3562a2cb2bfe660e91cc8e"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/poly_wool_herringbone/poly_wool_herringbone_arm_4k.png",
-              "bytes": 110137505,
-              "md5": "306fb130939fac256390405e3685c91b"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/poly_wool_herringbone/poly_wool_herringbone_arm_2k.png",
+              "bytes": 28138698,
+              "md5": "4d10299740615e69e27d8e2da4094180"
             }
           ],
-          "totalBytes": 204464150
+          "totalBytes": 74029846
         },
-        "provider1kReference": {
-          "color": 942966,
-          "normal": 5768966,
-          "orm": 7093535
+        "pngSetBytesByResolution": {
+          "1k": 18759159,
+          "2k": 74029846,
+          "4k": 282346658
         }
       },
       "orm": {
@@ -4442,24 +5395,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 512,
-        "2k": 1024
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 256,
+          "1k": 512,
+          "2k": 1024
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.56,
+            "1k": 1.28,
+            "2k": 0.64
+          },
+          "1440p": {
+            "512": 3.32,
+            "1k": 1.66,
+            "2k": 0.83
+          }
+        },
+        "startingCandidate": "2k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 67108860,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T1",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Studded rubber flooring.",
       "alternates": [
@@ -4467,7 +5448,22 @@
           "provider": "ambientcg",
           "assetId": "Rubber004",
           "reason": "0.75 m declared",
-          "pageUrl": "https://ambientcg.com/a/Rubber004"
+          "pageUrl": "https://ambientcg.com/a/Rubber004",
+          "tileMeters": [
+            0.75,
+            0.75
+          ],
+          "resolution": {
+            "startingCandidate": "512",
+            "screen": "pass",
+            "fallback": null,
+            "gpuBytesStart": 4194300,
+            "magnification1440p": {
+              "512": 1.25,
+              "1k": 0.62,
+              "2k": 0.31
+            }
+          }
         }
       ],
       "source": {
@@ -4516,39 +5512,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rubber_tiles/rubber_tiles_diff_4k.jpg",
-              "bytes": 7971930,
-              "md5": "d8c328b7b89bf14bd019f7a275d4eb27"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rubber_tiles/rubber_tiles_diff_2k.png",
+              "bytes": 20476042,
+              "md5": "40bc2c794925577f8493a7d59e047ab2"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rubber_tiles/rubber_tiles_nor_gl_4k.png",
-              "bytes": 97802582,
-              "md5": "7f5082dd1707cfcac407c61e82ecbed3"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rubber_tiles/rubber_tiles_nor_gl_2k.png",
+              "bytes": 23762462,
+              "md5": "b658088d38ad6fd71fc99630a6ce4557"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rubber_tiles/rubber_tiles_arm_4k.png",
-              "bytes": 56426215,
-              "md5": "ff235d4bbcd5e4755a6cd09524d4cd61"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rubber_tiles/rubber_tiles_arm_2k.png",
+              "bytes": 15073291,
+              "md5": "856b1358cc7de4947ba93935f51a8b33"
             }
           ],
-          "totalBytes": 162200727
+          "totalBytes": 59311795
         },
-        "provider1kReference": {
-          "color": 351085,
-          "normal": 5760184,
-          "orm": 3886309
+        "pngSetBytesByResolution": {
+          "1k": 14593320,
+          "2k": 59311795,
+          "4k": 238136491
         }
       },
       "orm": {
@@ -4576,24 +5573,52 @@
         ],
         "basis": "nominal; admitted only by owner ruling"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 2048,
-        "2k": 4096
+      "resolution": {
+        "designClass": "object",
+        "designDistanceMeters": 0.8,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 1024,
+          "1k": 2048,
+          "2k": 4096
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 1227,
+          "1440p": 1595
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.2,
+            "1k": 0.6,
+            "2k": 0.3
+          },
+          "1440p": {
+            "512": 1.56,
+            "1k": 0.78,
+            "2k": 0.39
+          }
+        },
+        "startingCandidate": "512",
+        "screen": "conditional",
+        "fallback": "1k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 4194300,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Cork board/floor.",
       "alternates": [],
@@ -4632,17 +5657,13 @@
         ],
         "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
         "source": {
-          "resolution": "4K",
+          "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Cork001_4K-PNG.zip",
-            "bytes": 136879229
+            "url": "https://ambientcg.com/get?file=Cork001_2K-PNG.zip",
+            "bytes": 61709016
           },
-          "totalBytes": 136879229
-        },
-        "provider1kReference": {
-          "zip1kPng": 17558562,
-          "zip1kJpg": 8628837
+          "totalBytes": 61709016
         },
         "zipBytesByVariant": {
           "1K-JPG": 8628837,
@@ -4678,24 +5699,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 683,
-        "2k": 1365
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 341,
+          "1k": 683,
+          "2k": 1365
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.92,
+            "1k": 0.96,
+            "2k": 0.48
+          },
+          "1440p": {
+            "512": 2.49,
+            "1k": 1.25,
+            "2k": 0.62
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Relief is normal-only in v1.",
       "alternates": [],
@@ -4745,39 +5794,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/cobblestone_floor_04/cobblestone_floor_04_diff_4k.jpg",
-              "bytes": 8480858,
-              "md5": "5f1ce8210eb6c239fff6083484e7c911"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/cobblestone_floor_04/cobblestone_floor_04_diff_2k.png",
+              "bytes": 25271712,
+              "md5": "d9ed2644b8dbd951ac654321d23b5056"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/cobblestone_floor_04/cobblestone_floor_04_nor_gl_4k.png",
-              "bytes": 92979949,
-              "md5": "56a8f2b667b2f881801ed3cf33a839f4"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/cobblestone_floor_04/cobblestone_floor_04_nor_gl_2k.png",
+              "bytes": 24134851,
+              "md5": "9cea74d8adc381ed730e7ac89e1134c4"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/cobblestone_floor_04/cobblestone_floor_04_arm_4k.png",
-              "bytes": 73477762,
-              "md5": "dcd37e55f3bb3621e94fa1e7a0445d5a"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/cobblestone_floor_04/cobblestone_floor_04_arm_2k.png",
+              "bytes": 18270921,
+              "md5": "8285e9eed046af6104994e645fa09f65"
             }
           ],
-          "totalBytes": 174938569
+          "totalBytes": 67677484
         },
-        "provider1kReference": {
-          "color": 575440,
-          "normal": 6073334,
-          "orm": 4578315
+        "pngSetBytesByResolution": {
+          "1k": 16949131,
+          "2k": 67677484,
+          "4k": 267299065
         }
       },
       "orm": {
@@ -4805,24 +5855,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 483,
-        "2k": 966
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": true,
+        "texelPxPerMeter": {
+          "512": 242,
+          "1k": 483,
+          "2k": 966
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.71,
+            "1k": 1.35,
+            "2k": 0.68
+          },
+          "1440p": {
+            "512": 3.52,
+            "1k": 1.76,
+            "2k": 0.88
+          }
+        },
+        "startingCandidate": "2k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 67108860,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "Cast-stone pavers.",
       "alternates": [],
@@ -4872,39 +5950,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/pavement_02/pavement_02_diff_4k.jpg",
-              "bytes": 20567828,
-              "md5": "a4d21cec790680f2d99829b07cb0a3f9"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/pavement_02/pavement_02_diff_2k.png",
+              "bytes": 24274370,
+              "md5": "cafa2ffaa31e7e0b4da4fef2eaaa580b"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/pavement_02/pavement_02_nor_gl_4k.png",
-              "bytes": 86826985,
-              "md5": "8cf09197e4d6f10cf5ce4c2df037c599"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/pavement_02/pavement_02_nor_gl_2k.png",
+              "bytes": 21777663,
+              "md5": "12cd153aef131ec428fa991a4fae7e1f"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/pavement_02/pavement_02_arm_4k.png",
-              "bytes": 72306832,
-              "md5": "42baf23b324f180c7910543216ae9a0e"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/pavement_02/pavement_02_arm_2k.png",
+              "bytes": 18572898,
+              "md5": "9e1efad0739266699d266b8ffc1ebd70"
             }
           ],
-          "totalBytes": 179701645
+          "totalBytes": 64624931
         },
-        "provider1kReference": {
-          "color": 1178347,
-          "normal": 5401579,
-          "orm": 4550316
+        "pngSetBytesByResolution": {
+          "1k": 15981730,
+          "2k": 64624931,
+          "4k": 256455789
         }
       },
       "orm": {
@@ -4932,24 +6011,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 512,
-        "2k": 1024
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 256,
+          "1k": 512,
+          "2k": 1024
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.56,
+            "1k": 1.28,
+            "2k": 0.64
+          },
+          "1440p": {
+            "512": 3.32,
+            "1k": 1.66,
+            "2k": 0.83
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "",
       "alternates": [],
@@ -4999,39 +6106,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/gravel_floor_02/gravel_floor_02_diff_4k.jpg",
-              "bytes": 17244260,
-              "md5": "bbe0e57e29eae935ec6e4de6954510da"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/gravel_floor_02/gravel_floor_02_diff_2k.png",
+              "bytes": 23982709,
+              "md5": "f3be475089aad8a6593abde206697959"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/gravel_floor_02/gravel_floor_02_nor_gl_4k.png",
-              "bytes": 95437600,
-              "md5": "6244322eedc6ac52ad559e8f8749965c"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/gravel_floor_02/gravel_floor_02_nor_gl_2k.png",
+              "bytes": 24189112,
+              "md5": "ee91478f957e090e4059ea6273a3e248"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/gravel_floor_02/gravel_floor_02_arm_4k.png",
-              "bytes": 72991316,
-              "md5": "e2f0531ff3c5b3852ce8f9ab4735bf4a"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/gravel_floor_02/gravel_floor_02_arm_2k.png",
+              "bytes": 18565547,
+              "md5": "d2e542256f03b165b5c966c28cc5a45d"
             }
           ],
-          "totalBytes": 185673176
+          "totalBytes": 66737368
         },
-        "provider1kReference": {
-          "color": 1240441,
-          "normal": 6128277,
-          "orm": 4721713
+        "pngSetBytesByResolution": {
+          "1k": 16916287,
+          "2k": 66737368,
+          "4k": 262897407
         }
       },
       "orm": {
@@ -5059,24 +6167,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 341,
-        "2k": 683
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 171,
+          "1k": 341,
+          "2k": 683
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 3.83,
+            "1k": 1.92,
+            "2k": 0.96
+          },
+          "1440p": {
+            "512": 4.98,
+            "1k": 2.49,
+            "2k": 1.25
+          }
+        },
+        "startingCandidate": "2k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 67108860,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "",
       "alternates": [],
@@ -5126,39 +6262,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/asphalt_02/asphalt_02_diff_4k.jpg",
-              "bytes": 11654128,
-              "md5": "c77ab7e6b6ffc7f50d572cd3fc4ffeb5"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/asphalt_02/asphalt_02_diff_2k.png",
+              "bytes": 9989224,
+              "md5": "fefc3f8f46ac2cf1d701380d67616c33"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/asphalt_02/asphalt_02_nor_gl_4k.png",
-              "bytes": 34053111,
-              "md5": "6c477be12c3ff20cd9ee1d4b37756e4d"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/asphalt_02/asphalt_02_nor_gl_2k.png",
+              "bytes": 9122344,
+              "md5": "5e1dc171185794b1ffcf8f48864467dd"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/asphalt_02/asphalt_02_arm_4k.png",
-              "bytes": 28483028,
-              "md5": "2da8eb9664e7fbc967ec00b49efedb73"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/asphalt_02/asphalt_02_arm_2k.png",
+              "bytes": 7120781,
+              "md5": "4002a43c5941707d51f572358ad30d0c"
             }
           ],
-          "totalBytes": 74190267
+          "totalBytes": 26232349
         },
-        "provider1kReference": {
-          "color": 731707,
-          "normal": 2323825,
-          "orm": 1784946
+        "pngSetBytesByResolution": {
+          "1k": 6594316,
+          "2k": 26232349,
+          "4k": 100400956
         }
       },
       "orm": {
@@ -5186,24 +6323,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 683,
-        "2k": 1365
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 341,
+          "1k": 683,
+          "2k": 1365
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 1.92,
+            "1k": 0.96,
+            "2k": 0.48
+          },
+          "1440p": {
+            "512": 2.49,
+            "1k": 1.25,
+            "2k": 0.62
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "pass",
+        "fallback": null,
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 16777212
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "",
       "alternates": [],
@@ -5254,39 +6419,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sand_01/sand_01_diff_4k.jpg",
-              "bytes": 7391665,
-              "md5": "5fd525c68fffba0467dd16853854605d"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sand_01/sand_01_diff_2k.png",
+              "bytes": 25044514,
+              "md5": "80513d13769f0e50120c3deb07dd5ee4"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sand_01/sand_01_nor_gl_4k.png",
-              "bytes": 84001062,
-              "md5": "34061ae2f045250a7a6280bf3dfda442"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sand_01/sand_01_nor_gl_2k.png",
+              "bytes": 21778772,
+              "md5": "b58a19090377dacf161a1c6b6dfc07d5"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sand_01/sand_01_arm_4k.png",
-              "bytes": 57638304,
-              "md5": "ca28821e17717b61f0c5807e4e74adec"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sand_01/sand_01_arm_2k.png",
+              "bytes": 15345093,
+              "md5": "58c7c7a829a73882db98c8a9c7845f95"
             }
           ],
-          "totalBytes": 149031031
+          "totalBytes": 62168379
         },
-        "provider1kReference": {
-          "color": 485088,
-          "normal": 5683522,
-          "orm": 4029555
+        "pngSetBytesByResolution": {
+          "1k": 15957244,
+          "2k": 62168379,
+          "4k": 240733372
         }
       },
       "orm": {
@@ -5314,24 +6480,52 @@
         ],
         "basis": "provider-declared dimensions"
       },
-      "texelDensityPxPerMeter": {
-        "1k": 512,
-        "2k": 1024
+      "resolution": {
+        "designClass": "surface",
+        "designDistanceMeters": 1.5,
+        "featureDefined": false,
+        "texelPxPerMeter": {
+          "512": 256,
+          "1k": 512,
+          "2k": 1024
+        },
+        "screenPxPerMeterAtDesignDistance": {
+          "1080p": 654,
+          "1440p": 850
+        },
+        "magnification": {
+          "1080p": {
+            "512": 2.56,
+            "1k": 1.28,
+            "2k": 0.64
+          },
+          "1440p": {
+            "512": 3.32,
+            "1k": 1.66,
+            "2k": 0.83
+          }
+        },
+        "startingCandidate": "1k",
+        "screen": "conditional",
+        "fallback": "2k",
+        "gpuBytesByResolution": {
+          "512": 4194300,
+          "1k": 16777212,
+          "2k": 67108860
+        },
+        "gpuBytesStart": 16777212,
+        "gpuBytesWorstCase": 67108860
       },
       "tint": "T0",
       "derivatives": {
-        "default": "1k",
-        "produced": [
+        "ladder": [
+          "512",
           "1k",
           "2k"
         ],
-        "allowlisted": [
-          "1k"
-        ],
-        "twoK": "recorded",
-        "views": 3,
-        "gpuBytes1k": 16777212,
-        "gpuBytes2k": 67108860
+        "producedFrom": "the 2K source, for qualification",
+        "allowlisted": "the qualified resolution only",
+        "views": 3
       },
       "notes": "",
       "alternates": [],
@@ -5381,39 +6575,40 @@
         ],
         "integrity": "per-file md5 from the files API; compute sha256 on download",
         "source": {
-          "resolution": "4k",
+          "resolution": "2k",
+          "format": "PNG (provider 16-bit where supplied)",
           "files": [
             {
               "role": "color",
               "map": "Diffuse",
-              "format": "jpg",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/forrest_ground_01/forrest_ground_01_diff_4k.jpg",
-              "bytes": 10044373,
-              "md5": "79a4c855c08b3057578e13aa3c312002"
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forrest_ground_01/forrest_ground_01_diff_2k.png",
+              "bytes": 26253635,
+              "md5": "cda857d84802f75a7c4e9e4868ead076"
             },
             {
               "role": "normal",
               "map": "nor_gl",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/forrest_ground_01/forrest_ground_01_nor_gl_4k.png",
-              "bytes": 105711162,
-              "md5": "c346dd69ac1bd7873c6f54bacf4ec9a1"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forrest_ground_01/forrest_ground_01_nor_gl_2k.png",
+              "bytes": 27037479,
+              "md5": "dbeb8ca5c1914b78865f7d5ae1f70026"
             },
             {
               "role": "orm",
               "map": "arm",
               "format": "png",
-              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/forrest_ground_01/forrest_ground_01_arm_4k.png",
-              "bytes": 70592350,
-              "md5": "a03aa4bdca64bf5802a70788910bd149"
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forrest_ground_01/forrest_ground_01_arm_2k.png",
+              "bytes": 18233670,
+              "md5": "79c5204ba03bfd14482b3bb59a5a420d"
             }
           ],
-          "totalBytes": 186347885
+          "totalBytes": 71524784
         },
-        "provider1kReference": {
-          "color": 833711,
-          "normal": 6787606,
-          "orm": 4650954
+        "pngSetBytesByResolution": {
+          "1k": 18042313,
+          "2k": 71524784,
+          "4k": 278762505
         }
       },
       "orm": {
