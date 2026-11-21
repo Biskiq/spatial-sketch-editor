@@ -3,20 +3,30 @@
  *
  * Registration names targets; it does not prove what their geometry can
  * sample. This module derives the facts from the exact geometry the renderer
- * would draw — the same unit primitive, the same evaluated Form buffer, or the
- * exact approved model derivative — and binds them to the revision the host
- * inspected. F4 compares the caller's echo against this analysis and refuses a
- * set, a draw or a basis the host did not derive.
+ * would draw — the same unit primitive, the same evaluated Form buffer, the
+ * compiled Layout surface mesh, or the exact approved model derivative — and
+ * binds them to the revision the host inspected. F4 compares the caller's echo
+ * against this analysis and refuses a set, a draw or a basis the host did not
+ * derive.
  *
  * It is headless: no Canvas, mesh, material or renderer object is created, so a
  * host with the editor Canvas closed derives the same facts.
  */
 import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
+import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { buildRegionMeshGeometry } from '$lib/render/layout/region-mesh-builder';
+import {
+	legJoinsByWall,
+	type CompiledLayoutGeometry,
+	type CompiledRegion,
+	type LayoutSurfaceRef
+} from '@portfolio/layout-core';
 import type {
 	RuntimeScene,
 	SceneEntity,
 	SceneFormEntity,
-	ScenePrimitiveEntity
+	ScenePrimitiveEntity,
+	SceneSurfaceRef
 } from '@portfolio/project-model';
 import {
 	summarizeDrawGeometry,
@@ -26,7 +36,7 @@ import {
 	type TargetFacts,
 	type TargetMetricBasis
 } from '@portfolio/project-model/materials';
-import type { BufferGeometry } from 'three';
+import { ShapeUtils, Vector2, type BufferGeometry } from 'three';
 import { constructGeometry } from '../resources/geometry-store';
 import type { GeometrySpec } from '../resources/scene-render-item';
 import {
@@ -38,7 +48,7 @@ export type { TargetAnalysis, TargetAnalysisRequest } from '@portfolio/project-m
 
 /** One approved model derivative, read through the host's one loader cache. */
 export type ModelDerivativeAnalysis = {
-	/** The digest of the exact bytes these draws were read from. */
+	/** The digest of the exact approved bytes these draws were read from. */
 	readonly digest: string;
 	readonly draws: readonly {
 		readonly drawKey: string;
@@ -46,17 +56,26 @@ export type ModelDerivativeAnalysis = {
 	}[];
 };
 
+/**
+ * The approved derivative for one exact content digest. The digest is the
+ * resource pin's hash, not a Scene revision the caller asserted: a derivative
+ * for another revision is not an answer, and the analyzer also rejects a
+ * returned analysis whose own digest disagrees.
+ */
 export type ModelDerivativeAnalysisProvider = (
-	assetId: string,
-	contentRevision: string
+	digest: string
 ) => ModelDerivativeAnalysis | null;
 
 export type SceneTargetAnalysisInput = {
-	/** The currently accepted Scene and its exact unit revisions. */
+	/** The currently accepted Scene, its compiled Layout and their exact revisions. */
 	read: () => {
 		readonly scene: RuntimeScene;
 		readonly sceneRevision: string;
 		readonly layoutRevision: string;
+		/** Canonical compiled Layout the renderer's surfaces are built from. */
+		readonly geometry: CompiledLayoutGeometry;
+		/** The approved derivative digest for a model resource, or null. */
+		readonly modelDigest: (assetId: string) => string | null;
 	} | null;
 	/**
 	 * The approved derivative for a model resource. Absent, a model target has no
@@ -142,10 +161,17 @@ function modelFacts(
 	entity: Extract<SceneEntity, { kind: 'model' }>,
 	subject: string,
 	revision: string,
+	current: NonNullable<ReturnType<SceneTargetAnalysisInput['read']>>,
 	provider: ModelDerivativeAnalysisProvider | undefined
 ): TargetFacts | null {
-	const derivative = provider?.(entity.assetId, revision) ?? null;
-	if (derivative === null || derivative.draws.length === 0) return null;
+	const digest = current.modelDigest(entity.assetId);
+	if (digest === null) return null;
+	const derivative = provider?.(digest) ?? null;
+	// The analysis must be the approved bytes themselves, not an analysis of
+	// another pinned revision that happens to be cached.
+	if (derivative === null || derivative.digest !== digest || derivative.draws.length === 0) {
+		return null;
+	}
 	return {
 		subject,
 		geometryRevision: revision,
@@ -155,10 +181,150 @@ function modelFacts(
 	};
 }
 
+/** The renderer's wall sheets are metre charts: u is arc length, v is height. */
+function wallSideFacts(
+	geometry: CompiledLayoutGeometry,
+	surface: Extract<LayoutSurfaceRef, { kind: 'wall-side' }>,
+	subject: string,
+	revision: string
+): TargetFacts | null {
+	const wall = geometry.walls.find((candidate) => candidate.wallId === surface.wallId);
+	if (wall === undefined) return null;
+	const floor = geometry.floors.find((candidate) => candidate.floorId === wall.floorId);
+	if (floor === undefined) return null;
+	const built = buildStandaloneWallMesh(
+		wall,
+		floor.elevation,
+		legJoinsByWall(geometry.junctions).get(wall.wallId) ?? null
+	);
+	if (built.mesh === undefined || built.mesh.indices.length === 0) return null;
+	const draw = summarizeDrawGeometry(subject, {
+		positions: built.mesh.positions,
+		indices: built.mesh.indices,
+		uvs: [built.mesh.uvs, null]
+	});
+	return {
+		subject,
+		geometryRevision: revision,
+		metricBasis: { uvMeters: [1, 1], surfaceMeters: [1, 1] },
+		draws: [draw]
+	};
+}
+
+/** The Room floors and lids the renderer triangulates, as metre UVs. */
+function roomPlaneFacts(
+	room: CompiledLayoutGeometry['rooms'][number],
+	surface: Extract<LayoutSurfaceRef, { kind: 'room-floor' | 'room-lid' }>,
+	subject: string,
+	revision: string
+): TargetFacts | null {
+	if (surface.kind === 'room-lid' && room.overhead === 'open-to-sky') return null;
+	const polygon = surface.kind === 'room-floor' ? room.floorPolygon : room.ceilingPolygon;
+	if (polygon.length < 3) return null;
+	const elevation = surface.kind === 'room-floor' ? room.floorElevation : room.ceilingElevation;
+	const triangles = ShapeUtils.triangulateShape(
+		polygon.map(([x, z]) => new Vector2(x, z)),
+		[]
+	);
+	if (triangles.length === 0) return null;
+	const positions: number[] = [];
+	const uvs: number[] = [];
+	const indices: number[] = [];
+	for (const triangle of triangles) {
+		for (const index of triangle) {
+			const [x, z] = polygon[index]!;
+			indices.push(positions.length / 3);
+			positions.push(x, elevation, z);
+			// The floor looks up with v along -z; the lid mirrors z so the image
+			// reads the same way from below. Both are metre charts.
+			uvs.push(x, surface.kind === 'room-floor' ? -z : z);
+		}
+	}
+	const draw = summarizeDrawGeometry(subject, {
+		positions,
+		indices,
+		uvs: [uvs, null]
+	});
+	return {
+		subject,
+		geometryRevision: revision,
+		metricBasis: { uvMeters: [1, 1], surfaceMeters: [1, 1] },
+		draws: [draw]
+	};
+}
+
+/** The compiled region face subset, exactly as the region representation draws it. */
+function regionFaceFacts(
+	region: CompiledRegion,
+	surface: Extract<LayoutSurfaceRef, { kind: 'region-face' }>,
+	subject: string,
+	revision: string
+): TargetFacts | null {
+	const built = buildRegionMeshGeometry(region);
+	try {
+		const surfaceByTriangle =
+			(built.userData.regionSurfaces as readonly string[] | undefined) ?? [];
+		const positions = built.getAttribute('position');
+		if (positions === undefined) return null;
+		const uvs = built.getAttribute('uv');
+		const subsetPositions: number[] = [];
+		const subsetUvs: number[] = [];
+		let matched = false;
+		for (let triangle = 0; triangle * 3 < surfaceByTriangle.length; triangle += 1) {
+			if (surfaceByTriangle[triangle] !== surface.face) continue;
+			matched = true;
+			for (let corner = 0; corner < 3; corner += 1) {
+				const vertex = triangle * 3 + corner;
+				subsetPositions.push(
+					positions.getX(vertex),
+					positions.getY(vertex),
+					positions.getZ(vertex)
+				);
+				subsetUvs.push(uvs?.getX(vertex) ?? 0, uvs?.getY(vertex) ?? 0);
+			}
+		}
+		if (!matched || subsetPositions.length === 0) return null;
+		const draw = summarizeDrawGeometry(subject, {
+			positions: subsetPositions,
+			uvs: [subsetUvs, null]
+		});
+		return {
+			subject,
+			geometryRevision: revision,
+			metricBasis: { uvMeters: [1, 1], surfaceMeters: [1, 1] },
+			draws: [draw]
+		};
+	} finally {
+		built.dispose();
+	}
+}
+
+function layoutSurfaceFacts(
+	geometry: CompiledLayoutGeometry,
+	surface: SceneSurfaceRef,
+	subject: string,
+	revision: string
+): TargetFacts | null {
+	switch (surface.kind) {
+		case 'wall-side':
+			return wallSideFacts(geometry, surface, subject, revision);
+		case 'room-floor':
+		case 'room-lid': {
+			const room = geometry.rooms.find((candidate) => candidate.roomId === surface.roomId);
+			return room === undefined ? null : roomPlaneFacts(room, surface, subject, revision);
+		}
+		case 'region-face': {
+			const region = geometry.regions.find((candidate) => candidate.regionId === surface.regionId);
+			return region === undefined ? null : regionFaceFacts(region, surface, subject, revision);
+		}
+	}
+}
+
 function analyzeEntity(
 	entity: SceneEntity,
 	subject: string,
 	revision: string,
+	current: NonNullable<ReturnType<SceneTargetAnalysisInput['read']>>,
 	provider: ModelDerivativeAnalysisProvider | undefined
 ): TargetFacts | null {
 	switch (entity.kind) {
@@ -167,7 +333,7 @@ function analyzeEntity(
 		case 'form':
 			return formFacts(entity, subject, revision);
 		case 'model':
-			return modelFacts(entity, subject, revision, provider);
+			return modelFacts(entity, subject, revision, current, provider);
 		default:
 			return null;
 	}
@@ -184,15 +350,31 @@ export function createSceneTargetAnalysis(input: SceneTargetAnalysisInput): Targ
 		if (current === null || requests.length === 0) return null;
 		const facts: TargetFacts[] = [];
 		for (const request of requests) {
-			// Layout surfaces are qualified from the compiled layout mesh by E's
-			// surface analysis; until that derivative is published, a surface
-			// target is pending rather than assumed.
-			if (request.domain !== 'scene') return null;
+			if (request.domain === 'layout') {
+				const surface = request.surface ?? null;
+				if (surface === null) return null;
+				if (request.expectedGeometryRevision !== current.layoutRevision) return null;
+				const analyzed = layoutSurfaceFacts(
+					current.geometry,
+					surface,
+					request.subject,
+					current.layoutRevision
+				);
+				if (analyzed === null) return null;
+				facts.push(analyzed);
+				continue;
+			}
 			if (request.expectedGeometryRevision !== current.sceneRevision) return null;
 			const entityId = request.entityId ?? request.subject;
 			const entity = current.scene.entities.find((candidate) => candidate.id === entityId);
 			if (entity === undefined) return null;
-			const analyzed = analyzeEntity(entity, request.subject, current.sceneRevision, input.models);
+			const analyzed = analyzeEntity(
+				entity,
+				request.subject,
+				current.sceneRevision,
+				current,
+				input.models
+			);
 			if (analyzed === null) return null;
 			facts.push(analyzed);
 		}

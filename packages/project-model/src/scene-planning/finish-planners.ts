@@ -2072,7 +2072,12 @@ export function createFinishPlanners(
 		// other Finish write stays Scene-only.
 		admission: {
 			domain: 'scene' as const,
-			...(kind === SCENE_SURFACE_FINISH_ASSIGN ? { referenceDomains: ['layout'] as const } : {}),
+			// Registration may name compile-qualified Layout surfaces as targets it
+			// paints, exactly as the surface assignment planner does. Layout is a
+			// reference input: the candidate still writes only the Scene unit.
+			...(kind === SCENE_SURFACE_FINISH_ASSIGN || kind === SCENE_FINISH_REGISTER
+				? { referenceDomains: ['layout'] as const }
+				: {}),
 			compound: false,
 			units: false,
 			resources: kind === SCENE_FINISH_FROM_IMAGE || kind === SCENE_FINISH_REGISTER

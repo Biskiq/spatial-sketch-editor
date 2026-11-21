@@ -9,7 +9,7 @@
 	 * catalogue base and overrides. Both share geometry, camera and lights, so a
 	 * screenshot pair is a controlled pixel comparison.
 	 */
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import { T } from '@threlte/core';
 	import CanvasHost from '$lib/render/CanvasHost.svelte';
@@ -78,9 +78,13 @@
 					modelSupport: () => null,
 					modelUrls: () => new Map()
 				});
+				// Mount first. A measurement of an object that is not in the scene
+				// measures the empty viewport, not a correct first draw.
 				representation = rep;
+				await tick();
 				rep.update(description);
 				await rep.idle();
+				await tick();
 				await new Promise<void>((resolve) =>
 					requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
 				);
@@ -213,7 +217,7 @@
 				<T.DirectionalLight position={[3.4, 5.2, 4.2]} intensity={1.35} color="#fff4e5" />
 				<T.DirectionalLight position={[-3.2, 2.2, -2.4]} intensity={0.45} color="#d9e6ff" />
 				<T.Color attach="background" args={['#121218']} />
-				{#if ready && representation !== null}
+				{#if representation !== null}
 					<DGateMount object={representation.object3d} />
 				{/if}
 				{#if measureMotion}

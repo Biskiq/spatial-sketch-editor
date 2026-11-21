@@ -199,10 +199,10 @@ function entityTarget(project: Awaited<ReturnType<typeof createUnitProject>>, id
 }
 
 /** A model derivative with UV0 only: the GLB carries no UV1. */
-function modelDerivative(assetId: string): ModelDerivativeAnalysis | null {
-	if (assetId !== 'creator-shelf') return null;
+function modelDerivative(digest: string): ModelDerivativeAnalysis | null {
+	if (digest !== `sha256-${'d'.repeat(64)}`) return null;
 	return {
-		digest: `sha256-${'d'.repeat(64)}`,
+		digest,
 		draws: [
 			{
 				drawKey: 'mesh-0',
@@ -313,7 +313,14 @@ async function fixture(
 		read: () => ({
 			scene: runtimeSceneOf(authority.source) as never,
 			sceneRevision: authority.source.units.scene.header.contentRevision,
-			layoutRevision: authority.source.units.layout.header.contentRevision
+			layoutRevision: authority.source.units.layout.header.contentRevision,
+			geometry: admitted.snapshot.domain.geometry,
+			modelDigest: (assetId: string) => {
+				const resource = authority.source.units.resources.data.resources.find(
+					(candidate) => candidate.kind === 'model' && candidate.id === assetId
+				);
+				return resource?.pin?.hash ?? null;
+			}
 		}),
 		models: modelDerivative
 	});

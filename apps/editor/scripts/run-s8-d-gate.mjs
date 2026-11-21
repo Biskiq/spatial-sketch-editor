@@ -8,6 +8,10 @@
  * path carrying the same effective inputs through a catalogue base. Both frames
  * share geometry, camera and lights, so the pair is a controlled pixel compare.
  *
+ * The gate is enforcing: every required backend must report that backend, every
+ * frame must be captured without page errors, and every pair must meet the
+ * declared threshold. Any miss exits nonzero and records why.
+ *
  * Usage (from the repository root, with the editor dev server running):
  *   node apps/editor/scripts/run-s8-d-gate.mjs
  *   node apps/editor/scripts/run-s8-d-gate.mjs --out docs/.../s8-d-gate.json
@@ -24,6 +28,14 @@ const SHOT_DIR = resolve(
 	process.cwd(),
 	'docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence'
 );
+
+/** The declared acceptance threshold for the D/B pixel comparison. */
+const THRESHOLD = {
+	meanAbs: 0.5,
+	maxAbs: 2,
+	channelSamplesOver8: 0
+};
+
 const BACKENDS = [
 	{ name: 'webgl2', args: ['--use-angle=metal'], hideWebGPU: true },
 	{
@@ -127,7 +139,12 @@ function decodePng(bytes) {
 
 function compare(left, right) {
 	if (left.width !== right.width || left.height !== right.height) {
-		return { comparable: false, reason: 'size mismatch' };
+		return {
+			comparable: false,
+			reason: 'size mismatch',
+			passed: false,
+			threshold: THRESHOLD
+		};
 	}
 	let total = 0;
 	let max = 0;
@@ -142,13 +159,20 @@ function compare(left, right) {
 			if (diff > 8) overTolerance += 1;
 		}
 	}
+	const meanAbs = Number((total / compared).toFixed(4));
+	const passed =
+		meanAbs <= THRESHOLD.meanAbs &&
+		max <= THRESHOLD.maxAbs &&
+		overTolerance <= THRESHOLD.channelSamplesOver8;
 	return {
 		comparable: true,
 		width: left.width,
 		height: left.height,
-		meanAbs: Number((total / compared).toFixed(4)),
+		meanAbs,
 		maxAbs: max,
-		channelSamplesOver8: overTolerance
+		channelSamplesOver8: overTolerance,
+		threshold: THRESHOLD,
+		passed
 	};
 }
 
@@ -169,7 +193,6 @@ async function capture(browser, backend, label) {
 	page.on('console', (message) => {
 		if (message.type() === 'error') errors.push(message.text());
 	});
-	const key = `${backend.name}/${label}`;
 	try {
 		await page.goto(`${BASE_URL}/dev/s8-d?case=${label}`, { waitUntil: 'domcontentloaded' });
 		await page.waitForSelector('html[data-s8-d-ready="true"]', { timeout: 120_000 });
@@ -214,66 +237,156 @@ async function capture(browser, backend, label) {
 		const file = resolve(SHOT_DIR, `s8-d-${backend.name}-${label}.png`);
 		mkdirSync(dirname(file), { recursive: true });
 		writeFileSync(file, png);
+		const result = raw === null ? null : JSON.parse(raw);
+		const observedBackend = observed ?? 'unavailable';
+		const images = Array.isArray(result?.images) ? result.images : [];
+		const problems = [];
+		if (result === null) problems.push('the page published no gate result');
+		if (observedBackend !== backend.name) {
+			problems.push(`requested ${backend.name}, observed ${observedBackend}`);
+		}
+		if (images.length !== 3) {
+			problems.push(`expected 3 Finish images, observed ${images.length}`);
+		}
+		if (result?.textures !== 3) {
+			problems.push(`expected 3 drawn texture views, observed ${result?.textures ?? 'none'}`);
+		}
+		if (errors.length > 0) problems.push(`page errors: ${errors.join(' | ')}`);
 		return {
 			requestedBackend: backend.name,
-			observedBackend: observed ?? 'unavailable',
+			observedBackend,
 			device,
-			status: 'captured',
-			result: raw === null ? null : JSON.parse(raw),
+			status: problems.length === 0 ? 'captured' : 'failed',
+			problems,
+			result,
 			screenshot: file,
 			image: decodePng(png),
-			errors
+			errors,
+			passed: problems.length === 0
 		};
 	} catch (error) {
 		return {
 			requestedBackend: backend.name,
 			observedBackend: 'unavailable',
 			status: 'failed',
-			error: error instanceof Error ? error.message : String(error),
-			errors
+			problems: [error instanceof Error ? error.message : String(error)],
+			errors,
+			passed: false
 		};
 	} finally {
 		await context.close();
 	}
 }
 
+async function runBackend(backend) {
+	const browser = await chromium.launch({
+		headless: true,
+		args: [...backend.args, '--disable-gpu-sandbox']
+	});
+	try {
+		const d = await capture(browser, backend, 'd');
+		const b = await capture(browser, backend, 'b');
+		const cases = {};
+		for (const entry of [d, b]) {
+			const { image, ...rest } = entry;
+			cases[`${backend.name}/${rest.result?.case ?? 'unknown'}`] = rest;
+		}
+		const comparison =
+			d.image === undefined || b.image === undefined
+				? {
+					comparable: false,
+					reason: 'one frame was not captured',
+					passed: false,
+					threshold: THRESHOLD
+				}
+				: compare(d.image, b.image);
+		const problems = [];
+		if (d.status !== 'captured') problems.push(`d ${d.status}: ${(d.problems ?? []).join('; ')}`);
+		if (b.status !== 'captured') problems.push(`b ${b.status}: ${(b.problems ?? []).join('; ')}`);
+		if (!comparison.passed) problems.push('pixel comparison did not meet the declared threshold');
+		return {
+			status: problems.length === 0 ? 'passed' : 'failed',
+			problems,
+			cases,
+			comparison,
+			passed: problems.length === 0
+		};
+	} finally {
+		await browser.close();
+	}
+}
+
 async function main() {
 	mkdirSync(SHOT_DIR, { recursive: true });
-	const report = { capturedAt: new Date().toISOString(), baseUrl: BASE_URL, cases: {}, comparisons: {} };
+	const report = {
+		capturedAt: new Date().toISOString(),
+		baseUrl: BASE_URL,
+		threshold: THRESHOLD,
+		requiredBackends: BACKENDS.map((backend) => backend.name),
+		backends: {},
+		failures: [],
+		verdict: 'not-accepted'
+	};
 	for (const backend of BACKENDS) {
-		const browser = await chromium.launch({
-			headless: true,
-			args: [...backend.args, '--disable-gpu-sandbox']
-		});
 		try {
-			const d = await capture(browser, backend, 'd');
-			const b = await capture(browser, backend, 'b');
-			for (const entry of [d, b]) {
-				const { image, ...rest } = entry;
-				report.cases[`${backend.name}/${rest.result?.case ?? 'unknown'}`] = {
-					...rest,
-					screenshot: entry.screenshot
-				};
+			const outcome = await runBackend(backend);
+			report.backends[backend.name] = outcome;
+			if (!outcome.passed) {
+				for (const problem of outcome.problems) report.failures.push(`${backend.name}: ${problem}`);
 			}
-			report.comparisons[backend.name] = {
-				d: report.cases[`${backend.name}/d`]?.observedBackend ?? 'unavailable',
-				b: report.cases[`${backend.name}/b`]?.observedBackend ?? 'unavailable',
-				...(d.image === undefined || b.image === undefined
-					? { comparable: false, reason: 'one frame was not captured' }
-					: compare(d.image, b.image))
-			};
 			console.log(
-				`${backend.name}: d=${report.cases[`${backend.name}/d`]?.status} b=${report.cases[`${backend.name}/b`]?.status} ` +
-					`observed=${report.comparisons[backend.name].d}`
+				`${backend.name}: ${outcome.status} ` +
+					`d=${outcome.cases[`${backend.name}/d`]?.status ?? 'missing'} ` +
+					`b=${outcome.cases[`${backend.name}/b`]?.status ?? 'missing'} ` +
+					`observed=${outcome.cases[`${backend.name}/d`]?.observedBackend ?? 'unavailable'} ` +
+					`meanAbs=${outcome.comparison.meanAbs ?? 'n/a'}`
 			);
-		} finally {
-			await browser.close();
+		} catch (error) {
+			report.backends[backend.name] = {
+				status: 'failed',
+				passed: false,
+				problems: [error instanceof Error ? error.message : String(error)],
+				cases: {},
+				comparison: { passed: false, reason: 'backend could not run', threshold: THRESHOLD }
+			};
+			report.failures.push(
+				`${backend.name}: ${error instanceof Error ? error.message : String(error)}`
+			);
+			console.error(`${backend.name}: failed to run: ${String(error)}`);
 		}
 	}
+	report.cases = Object.fromEntries(
+		Object.entries(report.backends).flatMap(([, outcome]) => Object.entries(outcome.cases ?? {}))
+	);
+	for (const backend of BACKENDS) {
+		const outcome = report.backends[backend.name];
+		if (outcome === undefined) {
+			report.failures.push(`${backend.name}: no result`);
+			continue;
+		}
+		for (const label of ['d', 'b']) {
+			const entry = outcome.cases?.[`${backend.name}/${label}`];
+			if (entry === undefined) {
+				report.failures.push(`${backend.name}/${label}: no captured frame`);
+				continue;
+			}
+			if (entry.status !== 'captured') {
+				report.failures.push(`${backend.name}/${label}: ${entry.status}`);
+			}
+		}
+		if (outcome.comparison?.passed !== true) {
+			report.failures.push(`${backend.name}: pixel comparison not accepted`);
+		}
+	}
+	report.verdict = report.failures.length === 0 ? 'accepted' : 'not-accepted';
 	if (OUT_PATH !== null) {
 		writeFileSync(resolve(process.cwd(), OUT_PATH), `${JSON.stringify(report, null, 2)}\n`);
 	}
 	console.log(JSON.stringify(report, null, 2));
+	if (report.verdict !== 'accepted') {
+		console.error(`S8 D gate NOT ACCEPTED: ${report.failures.join(' | ')}`);
+		process.exitCode = 1;
+	}
 }
 
 await main();

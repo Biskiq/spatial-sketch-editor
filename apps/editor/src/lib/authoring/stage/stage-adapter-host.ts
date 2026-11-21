@@ -5,7 +5,11 @@ import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stag
 import type { StageSession } from './stage-session';
 import type { FinishAuthoring } from '../look/finish-authoring.svelte';
 import { createMaterialProofRegistry } from '../material-proof';
-import { createSceneTargetAnalysis } from '$lib/render/materials/target-analysis';
+import {
+	createSceneTargetAnalysis,
+	type ModelDerivativeAnalysisProvider
+} from '$lib/render/materials/target-analysis';
+import { stageEnvelope } from './unit-stage-source';
 
 /** Public Stage values used by adapter contributions; implementation remains in Stage. */
 export { evaluationIdOf } from './camera-session';
@@ -103,6 +107,16 @@ export type StageAdapterServices = {
 
 export type StageAdapterFactory = (services: StageAdapterServices) => StageAdapter;
 
+/** Host-owned sources the production target analysis reads, never authored data. */
+export type StageTargetSources = {
+	/**
+	 * Analysis of one exact approved model derivative, keyed by its pin digest.
+	 * The route fills this from the same owner-only derivative bytes the Stage
+	 * draws; a missing digest stays a strict `target-pending` refusal.
+	 */
+	readonly models?: ModelDerivativeAnalysisProvider;
+};
+
 /** One route-active interaction posture; at most one is active at a time. */
 export type StagePostureClaim = 'claimed' | 'pass';
 
@@ -150,20 +164,36 @@ export function createStageAdapterServices(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
 	finishes?: () => FinishAuthoring | null,
-	materialProofs?: import('$lib/authoring/material-proof').MaterialProofRegistry
+	materialProofs?: import('$lib/authoring/material-proof').MaterialProofRegistry,
+	targetSources?: StageTargetSources
 ): StageAdapterServices {
 	return {
 		stage,
 		materialProofs: materialProofs ?? createMaterialProofRegistry(),
 		targetAnalysis: createSceneTargetAnalysis({
 			read: () => {
-				const domain = stage.snapshot().domain;
+				const snapshot = stage.snapshot();
+				const domain = snapshot.domain;
+				let digests: ReadonlyMap<string, string> | null = null;
 				return {
 					scene: domain.scene,
 					sceneRevision: domain.unitRevisions.scene,
-					layoutRevision: domain.unitRevisions.layout
+					layoutRevision: domain.unitRevisions.layout,
+					geometry: domain.geometry,
+					modelDigest(assetId: string): string | null {
+						if (digests === null) {
+							const pins = new Map<string, string>();
+							for (const resource of stageEnvelope(snapshot).units.resources.data.resources) {
+								if (resource.kind !== 'model' || resource.pin === null || resource.unresolved !== null) continue;
+								pins.set(resource.id, resource.pin.hash);
+							}
+							digests = pins;
+						}
+						return digests.get(assetId) ?? null;
+					}
 				};
-			}
+			},
+			...(targetSources?.models === undefined ? {} : { models: targetSources.models })
 		}),
 		finishes: {
 			get current() {
@@ -188,9 +218,11 @@ export function mountStageAdapter(
 	 * route fills `lightInspection` there). A fresh value is only for a direct
 	 * test mount that has no route-owned ports to carry.
 	 */
-	services?: StageAdapterServices
+	services?: StageAdapterServices,
+	/** Route-owned target sources, used only when composing a fresh services value. */
+	targetSources?: StageTargetSources
 ): StageAdapterRegistration {
 	return stage.registerStageAdapter(
-		factory(services ?? createStageAdapterServices(stage, host, finishes))
+		factory(services ?? createStageAdapterServices(stage, host, finishes, undefined, targetSources))
 	);
 }

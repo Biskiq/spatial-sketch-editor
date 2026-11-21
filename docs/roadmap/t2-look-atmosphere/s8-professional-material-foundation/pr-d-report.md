@@ -1,9 +1,10 @@
 # T2.S8 PR D — format cutover and the vertical material slice
 
 **Status:** implementation complete on `t2/s8-pr-d-format-cutover`, based on
-`main@d4598f79`. Review-ready; not merged. **The format migration is not
-activated.** No saved head, pending capture or release was converted. The five
-follow-up findings from review are addressed below.
+`main@d4598f79`; this follow-up starts from `38a40729`. Review-ready; not merged.
+**The format migration is not activated.** No saved head, pending capture or
+release was converted. The earlier five follow-up findings and the final four
+independent-review findings are addressed below.
 
 ## Cutover
 
@@ -91,14 +92,29 @@ incompatible analysis refuses with `target-pending`; a caller that asserts a
 fact the host did not prove refuses with `untrusted-target-facts`.
 
 The editor analyzer (`render/materials/target-analysis.ts`) constructs the exact
-native primitive geometry through `constructGeometry`, reads Layout surfaces
-through their existing projection and requires an approved-derivative provider
-for model facts. It does not inspect renderer state or trust the payload. The
-acceptance suite includes an adversarial case: a GLB derivative with UV0 only,
-and a caller claiming UV1 on it, is refused; the same call with the host-derived
-UV0 set is admitted. Layout surfaces currently return no analysis and therefore
-cannot be registered until their host derivation lands; that is a safe refusal,
-not a fabricated fact.
+native primitive geometry through `constructGeometry`, reads compiled Layout
+surfaces through `buildStandaloneWallMesh`, `ShapeUtils` floor/lid triangulation
+and `buildRegionMeshGeometry`, and requires an approved-derivative provider for
+model facts. It binds model analysis to the resource pin's hash, not a Scene
+revision: the host passes the exact digest read from the approved resource, the
+provider answers for that digest, and an analysis whose own `digest` disagrees
+is rejected. The analyzer never inspects renderer state or trusts the payload.
+
+Production wiring now supplies both host sources. `createStageAdapterServices`
+reads the accepted Scene, its unit revisions, its compiled `domain.geometry`
+and the approved model pins; the spatial route fills a digest-keyed analysis
+cache from the exact model bytes observed during `resolveApprovedModels`.
+Registration therefore reaches the real `scene-finish-register` planner for a
+Wall, a Form and an approved GLB instead of ending at `target-pending`.
+
+`apps/editor/tests/lib/project-model/s8-pr-d-production-targets.test.ts` drives
+the production composition (`createStageAdapterServices` plus the real Scene and
+Layout adapters) for all three target kinds. It also pins the strict edges:
+UV1 on a UV0-only GLB refuses with `missing-uv`, a changed approved pin cannot
+reuse the old derivative's analysis, and a stale Layout revision has no
+analysis. `model-derivative-analysis.test.ts` additionally parses the committed
+two-UV GLB through the real `GLTFLoader`, proving the analyzer reports both
+native UV sets from the exact derivative bytes.
 
 ### 2. Outgoing conversion revision proof
 
@@ -123,17 +139,26 @@ Each capture uses a fresh browser context (empty browser cache and a fresh
 editor session); the D source is a cold admission of the serialized bytes, not
 the in-memory draft.
 
-Reproduce with the editor dev server on port 5219:
+The representation is now mounted before timing starts. `DGateMount` no
+longer waits for the post-measurement `ready` flag: the page mounts the entity,
+awaits `tick()`, applies the description, awaits idle and two rendered frames,
+and only then records the first correct draw. Warm edits and the motion sample
+run with that same object visibly present.
+
+Reproduce with an editor dev server (the local supervisor uses 5178):
 
 ```sh
-S8_D_BASE_URL=http://localhost:5219 node apps/editor/scripts/run-s8-d-gate.mjs \
+S8_D_BASE_URL=http://localhost:5178 node apps/editor/scripts/run-s8-d-gate.mjs \
   --out docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-d-gate.json
 ```
 
 The gate requests WebGL2 (WebGPU hidden) and WebGPU, records the observed
 backend and device, captures 512×512 canvas PNGs and compares every RGB channel
-against the B frame. Results on this machine (Apple M2, 8 cores, ANGLE Metal
-renderer, WebGPU `metal-3`, HeadlessChrome 153.0.8010.12, DPR 1):
+against the B frame. It now enforces the declared threshold and exits nonzero on
+any missing backend/frame, page error, wrong observed backend, wrong image or
+texture count, or comparison over threshold. Results on this machine (Apple M2,
+8 cores, ANGLE Metal renderer, WebGPU `metal-3`, HeadlessChrome 153.0.8010.12,
+DPR 1):
 
 | Backend | D frame | B frame | Mean abs | Max abs | Channels > 8 |
 | --- | --- | --- | --- | --- | --- |
@@ -164,18 +189,18 @@ The gate measures the actual D and B browser paths on both backends. Timings
 are milliseconds from one run per backend; warm edits are 12 samples after three
 warm-ups.
 
-| Case | Build | Cold load → draw | Warm edit p50 / p90 | Motion p95 |
-| --- | --- | --- | --- | --- |
-| WebGL2 D | 115 | 36 | 0.2 / 0.3 | 16.7 |
-| WebGL2 B | 100 | 37 | 0.3 / 0.4 | 16.7 |
-| WebGPU D | 81 | 39 | 0.3 / 0.4 | 16.8 |
-| WebGPU B | 42 | 37 | 0.3 / 0.4 | 16.7 |
+| Case | Build | Cold load → draw | First correct draw | Warm edit p50 / p90 | Motion p95 |
+| --- | --- | --- | --- | --- | --- |
+| WebGL2 D | 221 | 771 | 993 | 0.4 / 0.5 | 16.7 |
+| WebGL2 B | 97 | 75 | 172 | 0.4 / 0.5 | 16.7 |
+| WebGPU D | 107 | 64 | 171 | 0.4 / 0.6 | 16.7 |
+| WebGPU B | 63 | 59 | 122 | 0.3 / 0.4 | 16.8 |
 
-- **First correct draw:** the cold-bundle-to-idle-and-two-frames reading is
-  36–39 ms, well inside the 1 s p90 budget. The page-start total including the
-  fixture build is 78–151 ms. One cold sample per backend was taken, so this is
-  not a p90 claim.
-- **Warm Finish editing:** p90 0.3–0.4 ms for a changed roughness constant
+- **First correct draw:** measured after the object is mounted and two frames
+  have rendered. WebGL2 D includes the cold-bundle build; WebGPU D/B and WebGL2
+  B are 122–172 ms. One cold sample per backend was taken, so this is not a p90
+  claim.
+- **Warm Finish editing:** p90 0.3–0.6 ms for a changed roughness constant
   through the real description and representation with cached decoded sources,
   under both the 150 ms first-use and 100 ms warm budgets. This measures update
   admission, not GPU shader completion.
@@ -192,6 +217,48 @@ warm-ups.
 The heavy 32-use / eight-distinct-1K-set fixture was not run; B's unchanged
 sampling path and residency evidence still apply, and the numbers above are for
 this one-plane gate only.
+
+### 6. Enforced gate verdict
+
+The gate now records a `verdict` per backend and for the run, and exits nonzero
+when any required backend is missing, any D/B frame is not captured, the
+observed backend differs from the requested one, page errors occur, the image or
+texture count is not three, or the pixel comparison exceeds
+`{meanAbs: 0.5, maxAbs: 2, channelSamplesOver8: 0}`. The fresh run recorded
+`verdict: "accepted"`, empty `failures`, both backends `passed`, meanAbs 0,
+maxAbs 0 and zero channel samples over 8 on both pairs.
+
+### 7. Detached Preview product journey
+
+One local product journey ran against the shipped spatial route and the real
+API, not the standalone gate route:
+
+1. The seed helper created an owner project through the real Save API and
+   uploaded three PNGs through the real asset registry/object-store APIs; the
+   saved source contains three texture resources, one material resource with
+   three image bindings, and a one-view Experience.
+2. The browser opened `/project/:id/spatial`, selected `D Plinth`, opened
+   `Roughness & Metal` and nudged Roughness from 0.39 to 0.40 through the Scene
+   card. The Head reported `dirty`.
+3. Product Save sent a `PUT /projects/:id` that captured all three texture
+   resources and three material image bindings; the API returned 200, version 4,
+   and the saved roughness was 0.40.
+4. A fresh browser context (empty cache) cold-loaded the project: `GET` 200, six
+   image responses covering three distinct asset IDs, and a visible Stage
+   canvas.
+5. The Head Preview entered the detached visitor surface, started the guided
+   tour, and rendered the textured plinth. The canvas screenshot
+   [`s8-d-product-preview.png`](./evidence/s8-d-product-preview.png) has channel
+   standard deviations 70.9 / 67.0 / 65.5, so it is not a blank frame. Exit
+   returned the Stage canvas; reopening Preview rendered again; Escape after the
+   reopen returned the Stage again.
+
+[`evidence/s8-d-product-journey.json`](./evidence/s8-d-product-journey.json)
+records the Save capture facts, asset IDs, cold-load responses, preview
+screenshot evidence and teardown results. The journey script is
+`apps/editor/scripts/run-s8-d-journey.mjs`; its one-time local seed is
+`apps/editor/scripts/seed-s8-d-journey.ts`. Neither is imported by application
+source.
 
 ## Migration evidence
 
@@ -260,40 +327,49 @@ and the look-parity golden remains the pixel oracle.
 
 | Command | Result |
 | --- | --- |
-| `npm run test:fast -w @portfolio/editor` | 461 files / 5,695 tests passed, exit 0 |
-| targeted D acceptance, codec/converter, planner and render-boundary suites | 8 + 9 + 47 + 28 tests passed |
+| `npx vitest run --config vitest.fast.config.ts --maxWorkers=4` | 463 files / 5,700 tests passed, exit 0 |
 | `npm run test:arch -w @portfolio/editor` | 38 files / 356 tests passed, exit 0 |
-| heavy renderer lane (earlier on this branch) | 11 files / 138 tests passed |
-| `npm test -w @biskiq/api` (Postgres-backed) | exit 0, no failures (including Save refusal for missing/corrupt definition blobs) |
-| `npm run check:project-model` | 0 errors |
-| `npm run check:api` | 0 errors |
-| `npm run check -w @portfolio/editor` | 0 errors, 16 pre-existing Svelte warnings |
+| `npm run test:heavy -w @portfolio/editor` | 11 files / 138 tests passed, exit 0 |
+| project-model lane (including `s8-pr-d-production-targets.test.ts`) | 33 files / 564 tests passed, exit 0 |
+| `npm test -w @biskiq/api` (Postgres-backed) | exit 0, no failures |
+| `npm run check:project-model` | exit 0, 0 errors |
+| `npm run check:api` | exit 0, 0 errors |
+| `npm run check -w @portfolio/editor` | exit 0, 0 errors, 16 pre-existing Svelte warnings |
 | `BUNDLE_PROVENANCE=1 npm run build -w @portfolio/editor` | exit 0 |
-| `S8_D_BASE_URL=http://localhost:5219 node apps/editor/scripts/run-s8-d-gate.mjs` | exit 0; four frames captured, both backends pixel-identical |
-| `npm run perf:bundle:first-load -w @portfolio/editor` | exit 0; public route 566.5 KiB brotli, no `three` in `/` or `/projects` first load |
+| `S8_D_BASE_URL=http://localhost:5178 node apps/editor/scripts/run-s8-d-gate.mjs` | exit 0; `verdict: accepted`, four frames, both backends pixel-identical, zero page errors |
+| `node apps/editor/scripts/run-s8-d-journey.mjs` | exit 0; Save 200 (v4), cold Load 200, three distinct images, Preview rendered, close/reopen/close returned the Stage |
 
-The fast lane includes the public-surface, prepared-reader-required, visitor
-isolation, current-world fixture, material runtime and B renderer suites.
+An unconstrained parallel run of the same fast lane timed out one 5 s
+`stage-counting` test under full-suite load; that file passes alone, and the
+bounded-worker full run above is green. The fast lane includes the
+public-surface, prepared-reader-required, visitor isolation, current-world
+fixture, material runtime and B renderer suites.
 
 ## Limits
 
-- The visual gate is a dedicated standalone route, not the product shell's
-  detached Preview chrome. It mounts the same Scene description, entity
-  representation, material store and CanvasHost, but does not exercise the
-  Preview panel's surrounding UI lifecycle; the preview-boundary suites still
-  cover that mount.
-- Cold Load in the browser is the serializer → fresh source admission →
-  cold-public composer path. It does not call the cloud API in a browser. The
-  Postgres-backed API suite separately covers Save/Load, definition image pins
-  and refusals for missing or corrupt blobs.
+- The visual gate is a dedicated standalone route. It mounts the same Scene
+  description, entity representation, material store and CanvasHost, but not the
+  product shell's Preview chrome. The separate product journey covers the real
+  Head Save, cloud cold Load and detached Preview lifecycle; the gate remains the
+  controlled pixel and timing comparison.
+- The gate's own cold path is serializer → fresh admission → cold-public
+  composer, without a cloud call. The product journey separately performed a
+  real cloud Save and cold Load; the Postgres-backed API suite covers the
+  server-side Save/Load and definition-image refusals.
 - Measurements come from one Apple M2 machine and one cold sample per backend;
   no p90 for first draw, no heavy 32-use fixture and no software backend row.
   Motion is rAF cadence, not GPU timestamp queries. Warm edit timing stops at
-  update admission, not shader completion. Results on other hardware remain
-  unmeasured.
-- Layout surfaces return no target analysis yet, so registration on a Layout
-  surface refuses safely until that host derivation is added; native
-  primitives and model derivatives are analyzed.
+  update admission, not shader completion. The product journey is one run and
+  records one Preview frame, not a distribution. Results on other hardware
+  remain unmeasured.
+- Model analysis is available only after the approved derivative bytes have
+  been observed through the Stage's model lease. A model that has not loaded, a
+  missing pin and a changed derivative remain strict `target-pending` refusals;
+  they are not synthesized from a Scene revision or from renderer state.
+- The product journey used a local username/password account and a seeded
+  project; it did not exercise a human OAuth sign-in or a project created
+  entirely through the Hub UI. The Finish edit, Save, cold Load and Preview
+  controls were the shipped product controls.
 - Migration activation, saved-head inventory and owner approval are deliberately
   outside this PR.
 

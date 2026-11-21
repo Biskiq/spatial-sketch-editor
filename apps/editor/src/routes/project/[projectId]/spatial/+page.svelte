@@ -54,6 +54,10 @@
 	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
 	import { createStageEraser, STAGE_ERASER_TASK } from '$lib/authoring/stage/stage-eraser';
 	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
+	import {
+		analyzeModelDerivativeBytes,
+		createModelAnalysisCache
+	} from '$lib/render/materials/model-derivative-analysis';
 	import { createVerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
@@ -196,6 +200,9 @@
 	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
 	const materialProofs = createMaterialProofRegistry();
+	// Finish target analysis reads the exact approved derivative bytes the Stage
+	// draws, keyed by their pin digest. It is host-owned and never authored.
+	const modelAnalyses = createModelAnalysisCache();
 	const lightPreview = createStageLightPreview();
 	const scenePick = createScenePickSource();
 
@@ -225,6 +232,10 @@
 		resolveTexture: async (assetId, signal) => {
 			if (api === null) throw new Error('Finish image storage is unavailable.');
 			return verifiedImages.take(projectId, assetId) ?? api.loadAssetContent(projectId, assetId, signal);
+		},
+		analyzeModel: async (_assetId, digest, bytes) => {
+			if (modelAnalyses.has(digest)) return;
+			modelAnalyses.register(await analyzeModelDerivativeBytes(bytes, digest));
 		},
 		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
@@ -279,6 +290,7 @@
 			subjectScope
 		}),
 		adapterFactories: stageAdapterFactories,
+		targetSources: { models: modelAnalyses.provider },
 		interruptInput: interruptForReplacement,
 		resetFocus: () => experienceFocus.reset(),
 		resetPresentationBeforeSwap: resetPresentationBeforeSwap,

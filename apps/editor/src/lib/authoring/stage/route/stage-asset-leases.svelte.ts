@@ -65,6 +65,12 @@ export type StageAssetLeaseInput = {
 	readonly resolveArtwork: (image: ArtworkImage, signal: AbortSignal) => Promise<ArtworkBytes>;
 	/** Authenticated project texture bytes for a Finish image (S4b). */
 	readonly resolveTexture?: (assetId: string, signal: AbortSignal) => Promise<ProjectTextureResolution>;
+	/**
+	 * Observe one approved derivative's exact bytes so the route can derive the
+	 * target analysis Finish registration reads. It runs before the URLs install;
+	 * a failure never blocks the model's own rendering.
+	 */
+	readonly analyzeModel?: (assetId: string, digest: string, bytes: Uint8Array) => Promise<void> | void;
 	readonly notice: StageAssetLeaseNotice;
 	/** Deterministic test seams; production uses the existing modules. */
 	readonly resolveModels?: typeof resolveApprovedModels;
@@ -239,7 +245,13 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 						// it, rather than a second route-level project fact.
 						projectId: snapshot.acceptedRevision.projectId,
 						apiOrigin: input.apiOrigin,
-						signal
+						signal,
+						...(input.analyzeModel === undefined
+							? {}
+							: {
+								onBytes: ({ assetId, hash, bytes }) =>
+									input.analyzeModel!(assetId, hash, bytes)
+							})
 					});
 					return landed.value;
 				})) !== null;
