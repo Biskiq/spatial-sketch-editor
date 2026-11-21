@@ -4,6 +4,7 @@ import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';
 import type { FinishAuthoring } from '../look/finish-authoring.svelte';
+import { createMaterialProofRegistry } from '../material-proof';
 
 /** Public Stage values used by adapter contributions; implementation remains in Stage. */
 export { evaluationIdOf } from './camera-session';
@@ -69,6 +70,8 @@ export type StageLightInspection = {
 
 export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
+	/** The route session's content-addressed material proofs. */
+	readonly materialProofs: import('$lib/authoring/material-proof').MaterialProofRegistry;
 	/** Open the Card for a freshly installed and selected Space. */
 	readonly openSpaceCreated?: (reference: SemanticReference) => void;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
@@ -139,10 +142,12 @@ export type StagePostureLayer = {
 export function createStageAdapterServices(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
-	finishes?: () => FinishAuthoring | null
+	finishes?: () => FinishAuthoring | null,
+	materialProofs?: import('$lib/authoring/material-proof').MaterialProofRegistry
 ): StageAdapterServices {
 	return {
 		stage,
+		materialProofs: materialProofs ?? createMaterialProofRegistry(),
 		finishes: {
 			get current() {
 				return finishes?.() ?? null;

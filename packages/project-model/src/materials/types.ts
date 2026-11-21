@@ -346,5 +346,12 @@ export type FinishBinding = {
  */
 export type MaterialRuntimeIndex = {
 	readonly definitions: ReadonlyMap<Hash, Recipe>;
+	/**
+	 * Each definition's own image mappings, keyed by the definition digest. A
+	 * binding is resolved through its definition, never through a flat hash table
+	 * where an unrelated texture with the same bytes could win.
+	 */
+	readonly definitionImages: ReadonlyMap<Hash, readonly ResolvedImage[]>;
+	/** Verified Scene texture pins, used for instance override bindings. */
 	readonly images: readonly ResolvedImage[];
 };

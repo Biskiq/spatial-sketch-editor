@@ -103,6 +103,7 @@ function scene(entities: SceneEntity[]): RuntimeScene {
 		textures: TEXTURES,
 		materialIndex: {
 			definitions: new Map(),
+			definitionImages: new Map(),
 			images: [{ hash: TEXTURE_HASH, source: { textureId: TEXTURE_ID } }]
 		}
 	} as unknown as RuntimeScene;
@@ -336,6 +337,7 @@ describe('E7/R4 — resolved Scene description', () => {
 			textures: [...TEXTURES, { id: normalId, name: 'Normal', uri: '/textures/normal.png' }],
 			materialIndex: {
 				definitions: new Map(),
+				definitionImages: new Map(),
 				images: [
 					{ hash: TEXTURE_HASH, source: { textureId: TEXTURE_ID } },
 					{ hash: normalHash, source: { textureId: normalId } }

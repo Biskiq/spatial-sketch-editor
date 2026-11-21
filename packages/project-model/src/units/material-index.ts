@@ -21,13 +21,15 @@ export function materialRuntimeIndexOf(
 	resources: ResourceUnitPayload
 ): MaterialRuntimeIndex | undefined {
 	const definitions = new Map<string, import('../materials/types').Recipe>();
+	const definitionImages = new Map<string, ResolvedImage[]>();
 	const images: ResolvedImage[] = [];
 	for (const resource of resources.resources) {
 		if (resource.kind === 'material' && resource.material !== undefined) {
 			definitions.set(resource.id, resource.material.recipe);
-			for (const image of resource.material.images) {
-				images.push({ hash: image.hash, source: image.source });
-			}
+			definitionImages.set(resource.id, resource.material.images.map((image) => ({
+				hash: image.hash,
+				source: image.source
+			})));
 			continue;
 		}
 		if (resource.kind === 'texture' && resource.pin !== null && resource.unresolved === null) {
@@ -35,5 +37,5 @@ export function materialRuntimeIndexOf(
 		}
 	}
 	if (definitions.size === 0 && images.length === 0) return undefined;
-	return { definitions, images };
+	return { definitions, definitionImages, images };
 }

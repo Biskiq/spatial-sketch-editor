@@ -18,7 +18,13 @@
  */
 import { shippedImage } from './catalogue';
 import { dedupeMaterialIssues, type MaterialIssue } from './issues';
-import { resolveFinish, type ImageIndex } from './resolve';
+import {
+	materialImageIndex,
+	mergeImageIndexes,
+	resolveFinish,
+	shippedImageIndex,
+	type ImageIndex
+} from './resolve';
 import type {
 	Finish,
 	Hash,
@@ -26,8 +32,7 @@ import type {
 	Mapping,
 	PaletteSlot,
 	Recipe,
-	ResolvedImage,
-	TargetFacts
+	ResolvedImage
 } from './types';
 
 export type MaterialDeliveryImagePin = {
@@ -64,7 +69,6 @@ export type MaterialDeliveryContribution = {
 type MaterialDeliverySubjectBase = {
 	readonly subject: string;
 	readonly palette?: readonly PaletteSlot[];
-	readonly targetFacts?: TargetFacts | null;
 };
 
 /**
@@ -79,6 +83,8 @@ export type MaterialDeliverySubject =
 export type MaterialDeliveryInput = {
 	/** Resource-backed definitions by digest. */
 	readonly definitions: ReadonlyMap<Hash, Recipe>;
+	/** Each definition's own image mappings, keyed by definition digest. */
+	readonly definitionImages: ReadonlyMap<Hash, readonly ResolvedImage[]>;
 	readonly imageIndex: ImageIndex;
 	/**
 	 * Verified manifest pins for project bytes. Delivery requires a digest, MIME
@@ -126,9 +132,9 @@ export function materialDeliveryContribution(
 			const shipped = shippedImage(image.source.shipped);
 			if (shipped === undefined || shipped.hash !== image.hash) {
 				issues.push({
-					code: 'unknown-catalogue-base',
+					code: 'missing-image',
 					path: `$.images.${image.hash}`,
-					action: 'Use an image from the frozen shipped catalogue manifest.'
+					action: 'Use an image from the frozen static manifest.'
 				});
 				return;
 			}
@@ -170,7 +176,7 @@ export function materialDeliveryContribution(
 						const recipe = input.definitions.get(finish.base.material);
 						if (recipe === undefined) {
 							issues.push({
-								code: 'unknown-catalogue-base',
+								code: 'missing-definition',
 								path: `$.subjects.${subject.subject}.base.material`,
 								action: 'Include the definition this Finish names in the delivery closure.'
 							});
@@ -180,7 +186,14 @@ export function materialDeliveryContribution(
 						return { material: recipe };
 					})();
 		if (base === null) continue;
-		const resolution = resolveFinish(base, finish?.overrides, subject.palette, input.imageIndex);
+		const imageIndex = finish !== null && 'material' in finish.base
+			? mergeImageIndexes(
+					shippedImageIndex(),
+				materialImageIndex(input.definitionImages.get(finish.base.material) ?? []),
+				input.imageIndex
+				)
+			: input.imageIndex;
+		const resolution = resolveFinish(base, finish?.overrides, subject.palette, imageIndex);
 		issues.push(...resolution.issues);
 		if (resolution.inputs === null) continue;
 		const requirements: MaterialDeliveryMappingRequirement[] = [];

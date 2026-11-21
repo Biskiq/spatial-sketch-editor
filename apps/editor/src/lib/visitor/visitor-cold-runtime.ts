@@ -37,7 +37,6 @@ import {
 	type MaterialRuntimeIndex
 } from '@portfolio/project-model/materials';
 import { surfaceKey } from '@portfolio/layout-core';
-import { catalogueBaseOf } from '@portfolio/project-model/scene-planning';
 import {
 	getShippedMaterialById,
 	getShippedModelByAssetId,
@@ -167,7 +166,9 @@ export function validateColdReleaseReferences(input: {
 				for (const role of ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const) {
 					const binding = definition.maps[role];
 					if (binding === undefined) continue;
-					const image = input.scene.materialIndex?.images.find((entry) => entry.hash === binding.image);
+					const image = input.scene.materialIndex?.definitionImages
+						.get(material.base.material)
+						?.find((entry) => entry.hash === binding.image);
 					if (image === undefined) {
 						issues.push({ path, message: `Missing material image "${binding.image}"` });
 						continue;
@@ -236,7 +237,7 @@ export function validateColdReleaseReferences(input: {
 			if (!instance) {
 				issues.push({ path, message: `Unknown material instance "${instanceId}"` });
 			} else {
-				const base = catalogueBaseOf(instance);
+				const base = 'catalogue' in instance.base ? instance.base.catalogue : null;
 				if (base !== null && base !== MATERIAL_NEUTRAL_BASE_ID) materialIds.add(base);
 			}
 		}
@@ -353,6 +354,7 @@ export function composeColdReleaseBundle(input: {
 	const materialImages = runtimeScene.materialIndex?.images ?? [];
 	const delivery = materialDeliveryContribution({
 		definitions: runtimeScene.materialIndex?.definitions ?? new Map(),
+		definitionImages: runtimeScene.materialIndex?.definitionImages ?? new Map(),
 		imageIndex: mergeImageIndexes(
 			shippedImageIndex(),
 			materialImageIndex(materialImages)

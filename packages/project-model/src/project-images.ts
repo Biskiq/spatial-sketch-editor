@@ -260,6 +260,20 @@ export function collectSceneImageRequirements(
 				paths: [path]
 			});
 		}
+		// A Scene 12 override may name a shipped image rather than a project
+		// texture. It has no P20 pin, so its only admissible identity is the frozen
+		// shipped manifest; a root-relative path is not enough.
+		for (const [role, binding] of Object.entries(material.overrides?.maps ?? {})) {
+			if (binding === null || binding === undefined || !('image' in binding)) continue;
+			const image = binding.image;
+			if (!('shipped' in image)) continue;
+			if (shippedImage(image.shipped) !== undefined) continue;
+			issues.push({
+				path: `$.units.scene.data.materials[${materialIndex}].overrides.maps.${role}.image.shipped`,
+				code: 'image-static-unknown',
+				message: `Static texture "${image.shipped}" is not in the frozen shipped registry`
+			});
+		}
 	}
 
 	// Every material definition belongs to the same project-image closure. Its

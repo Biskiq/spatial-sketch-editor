@@ -61,7 +61,7 @@ import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validatio
 import type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 export type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 import { attachUnitStageSource } from './unit-stage-source';
-import { proofForEnvelope, rememberMaterialProof } from '../material-proof';
+import { proofForEnvelope, type MaterialProofRegistry } from '../material-proof';
 
 export type AdmissionRefusalReason =
 	| 'invalid-json'
@@ -86,6 +86,8 @@ export type AdmissionContext = {
 	readonly sessionEpoch: string;
 	/** The opaque acceptance revision; fresh for every accepted source. */
 	readonly acceptedRevision: AcceptedRevision;
+	/** The session-owned proof registry; source admission fills it. */
+	readonly materialProofs?: MaterialProofRegistry;
 };
 
 const UNIT_DOMAINS: readonly UnitDomain[] = ['layout', 'scene', 'camera', 'experience', 'resources'];
@@ -319,7 +321,7 @@ async function admitSourceOnce(
 			}))
 		};
 	}
-	rememberMaterialProof(envelope, materialProof.proof);
+	context.materialProofs?.remember(materialProof.proof);
 
 	// The canonical form is computed once here: its bytes are both what the content
 	// identity describes and what the host records as the accepted baseline. When the

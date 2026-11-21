@@ -586,6 +586,7 @@ export function createStageFacade(input: {
 					contributedTaskOwner?.adapterId === taskOwner.adapterId &&
 					contributedTaskOwner.taskId === taskOwner.taskId;
 				return { ...content, view: { ...content.view, services: {
+					materialProofs: services.materialProofs,
 					stage: { ...services.stage,
 						setSelection: (value) => active() ? setSelection(value) : { kind: 'refused', code: 'inactive-task', message: 'Resume the task before selecting.' },
 						select: (value) => { if (active()) select(value); },

@@ -30,7 +30,9 @@ import {
 	type ScenePaletteSlot
 } from '@portfolio/project-model/units';
 import { serializeProjectEnvelope } from '@portfolio/project-model/units';
+import { catalogueRecipe } from '@portfolio/project-model/materials';
 import {
+	applyFinishEdit,
 	checkSceneRecordScope,
 	createFinishPlanners,
 	effectiveColorOf,
@@ -1383,6 +1385,49 @@ describe('scene-finish-edit — Scale and Direction', () => {
 		);
 		const instance = acceptedScene(result).materials.find((material) => material.id === 'p')!;
 		expect(instance.overrides?.mapping).toBeUndefined();
+	});
+});
+
+describe('applyFinishEdit preserves authored mapping meaning', () => {
+	it('keeps an explicit value even when it equals the catalogue base', () => {
+		const base = catalogueRecipe('plaster-warm')!.mapping;
+		if (base.kind !== 'target') throw new Error('fixture base is not target-mapped');
+		const edited = applyFinishEdit(
+			{ id: 'p', name: 'P', base: { catalogue: 'plaster-warm' } },
+			{ tileMeters: [base.metric.tileMeters[0], base.metric.tileMeters[1]] }
+		);
+		expect(edited.overrides?.mapping).toEqual({ kind: 'target', metric: base.metric });
+	});
+
+	it('preserves an existing surface mapping kind and its offset', () => {
+		const edited = applyFinishEdit(
+			{
+				id: 'p',
+				name: 'P',
+				base: { catalogue: 'plaster-warm' },
+				overrides: { mapping: { kind: 'surface', metric: { tileMeters: [2, 2], rotation: 0.1, offset: [0.2, 0.3] } } }
+			},
+			{ rotation: 0.4 }
+		);
+		expect(edited.overrides?.mapping).toEqual({
+			kind: 'surface',
+			metric: { tileMeters: [2, 2], rotation: 0.4, offset: [0.2, 0.3] }
+		});
+	});
+
+	it('does not reinterpret a uv repeat as metres', () => {
+		const existing: SceneMaterialInstance = {
+			id: 'p', name: 'P', base: { catalogue: 'plaster-warm' },
+			overrides: { mapping: { kind: 'uv', set: 0, repeat: [2, 3], rotation: 0.1, offset: [0, 0] } }
+		};
+		const rotated = applyFinishEdit(existing, { rotation: 0.4 });
+		expect(rotated.overrides?.mapping).toEqual({
+			kind: 'uv', set: 0, repeat: [2, 3], rotation: 0.4, offset: [0, 0]
+		});
+		const metric = applyFinishEdit(existing, { tileMeters: [0.5, 0.75] });
+		const mapping = metric.overrides?.mapping;
+		expect(mapping?.kind).toBe('target');
+		expect(mapping?.kind === 'target' ? mapping.metric.tileMeters : null).toEqual([0.5, 0.75]);
 	});
 });
 

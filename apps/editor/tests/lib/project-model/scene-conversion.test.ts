@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { computeUnitContentRevision } from '@portfolio/project-model/units';
+import { catalogueRecipe } from '@portfolio/project-model/materials';
 import {
 	convertScene11To12,
 	type SceneConversionResult
@@ -68,7 +69,7 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 	it('preserves identities, assignments and pins while converting the Finish grammar', async () => {
 		const source = await outgoingEnvelope();
 		const result = await convertScene11To12(source);
-		expect(result.success).toBe(true);
+		expect(result.success, result.success ? '' : JSON.stringify(result.issues)).toBe(true);
 		if (!result.success || result.document === undefined) return;
 		const document = result.document;
 		expect(document.units.scene.header.formatVersion).toBe(12);
@@ -148,5 +149,81 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 		const result: SceneConversionResult = await convertScene11To12(source);
 		expect(result.success).toBe(false);
 		if (!result.success) expect(result.issues[0]?.code).toBe('unknown-key');
+	});
+
+	it('fills a sparse scene mapping from the catalogue base, not the neutral recipe', async () => {
+		const source = (await outgoingEnvelope()) as unknown as {
+			units: { scene: { data: { materials: Record<string, unknown>[] } } };
+		};
+		source.units.scene.data.materials[0]!.mapping = { tileMeters: [1.5, 2.5] };
+		const result = await convertScene11To12(source);
+		expect(result.success).toBe(true);
+		if (!result.success || result.document === undefined) return;
+		const base = catalogueRecipe('plaster-warm')!.mapping;
+		expect(base.kind).toBe('target');
+		if (base.kind !== 'target') return;
+		const mapping = result.document.units.scene.data.materials[0]!.overrides?.mapping;
+		expect(mapping).toMatchObject({
+			kind: 'target',
+			metric: {
+				tileMeters: [1.5, 2.5],
+				rotation: base.metric.rotation,
+				offset: base.metric.offset
+			}
+		});
+	});
+
+	it('staticizes a shipped texture and preserves a palette follower', async () => {
+		const source = (await outgoingEnvelope()) as unknown as {
+			units: {
+				scene: {
+					data: {
+						textures: { id: string; name: string; uri: string }[];
+						materials: Record<string, unknown>[];
+						palette: unknown[];
+					};
+				};
+			};
+		};
+		source.units.scene.data.textures[0] = {
+			id: 'tex-colour', name: 'Colour', uri: '/textures/plaster-warm/map.png'
+		};
+		source.units.scene.data.palette = [{ id: 'accent', name: 'Accent', color: '#aabbcc' }];
+		source.units.scene.data.materials[0]!.color = { slot: 'accent' };
+		const result = await convertScene11To12(source);
+		expect(result.success).toBe(true);
+		if (!result.success || result.document === undefined) return;
+		const finish = result.document.units.scene.data.materials[0]!;
+		expect(finish.overrides?.color).toEqual({ slot: 'accent' });
+		expect(finish.overrides?.maps?.color).toEqual({
+			image: { shipped: '/textures/plaster-warm/map.png' }
+		});
+	});
+
+	it('preserves packed scalar components for roughness, occlusion and metalness', async () => {
+		const source = (await outgoingEnvelope()) as unknown as {
+			units: { scene: { data: { textures: { id: string; name: string; uri: string }[]; materials: Record<string, unknown>[] } } };
+		};
+		source.units.scene.data.textures.push({ id: 'tex-orm', name: 'ORM', uri: '/textures/orm.png' });
+		source.units.scene.data.materials[0]!.maps = {
+			color: 'tex-colour', roughness: 'tex-orm', occlusion: 'tex-orm', metalness: 'tex-orm'
+		};
+		const result = await convertScene11To12(source);
+		expect(result.success, result.success ? '' : JSON.stringify(result.issues)).toBe(true);
+		if (!result.success || result.document === undefined) return;
+		const maps = result.document.units.scene.data.materials[0]!.overrides?.maps;
+		expect(maps?.roughness).toMatchObject({ component: 'g', invert: false });
+		expect(maps?.occlusion).toMatchObject({ component: 'r', invert: false });
+		expect(maps?.metalness).toMatchObject({ component: 'b', invert: false });
+	});
+
+	it('refuses an unknown catalogue base before producing a document', async () => {
+		const source = (await outgoingEnvelope()) as unknown as {
+			units: { scene: { data: { materials: Record<string, unknown>[] } } };
+		};
+		source.units.scene.data.materials[0]!.baseMaterialId = 'not-a-catalogue-base';
+		const result = await convertScene11To12(source);
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.issues[0]?.code).toBe('unknown-material');
 	});
 });

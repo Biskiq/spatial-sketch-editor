@@ -14,8 +14,8 @@ import {
 	type LayoutSurfaceLineage,
 	type LayoutSurfaceRef
 } from '@portfolio/layout-core';
-import type { CameraFreeSceneDocument } from '../units/types';
-import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
+import type { CameraFreeSceneDocument } from './units/types';
+import type { SceneSurfaceFinish, SceneSurfaceRef } from './scene';
 
 export type SurfaceLineageReport = {
 	readonly replaced: readonly {

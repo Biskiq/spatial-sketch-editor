@@ -352,7 +352,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (definition === null) return null;
 		const binding = definition.maps[role];
 		if (binding === undefined) return null;
-		const image = scene()?.materialIndex?.images.find((entry) => entry.hash === binding.image);
+		const hash = instance !== undefined && 'material' in instance.base ? instance.base.material : null;
+		const image = hash === null
+			? undefined
+			: scene()?.materialIndex?.definitionImages.get(hash)?.find((entry) => entry.hash === binding.image);
 		return image !== undefined && 'textureId' in image.source ? image.source.textureId : null;
 	}
 

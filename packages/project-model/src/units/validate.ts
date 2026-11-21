@@ -40,7 +40,7 @@ import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
 import { readMaterialDefinition } from '../materials/definition';
 import { shippedImage } from '../materials/catalogue';
 import { finishTextureBindings } from '../materials/read';
-import { MATERIAL_CAPABILITY } from '../materials/types';
+import { MATERIAL_CAPABILITY, MATERIAL_MAP_ROLES } from '../materials/types';
 import { withSceneValidationOptions } from '../scene-validation';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
 import { validateArtworkLibrary, validateSceneDocument } from '../scene-codec';
@@ -1909,6 +1909,22 @@ function envelopeFindings(
 	// A material definition is immutable content with its own exact lock and
 	// capability. Its local mappings are the only answer for each recipe digest,
 	// and every project mapping must agree with the Scene texture record and pin.
+	// An instance override may name a shipped image directly; it must be in the
+	// same frozen allowlist as a definition image, not merely a root-relative URI.
+	for (const [index, material] of units.scene.data.materials.entries()) {
+		for (const role of MATERIAL_MAP_ROLES) {
+			const binding = material.overrides?.maps?.[role];
+			if (binding === undefined || binding === null || !('shipped' in binding.image)) continue;
+			const shipped = shippedImage(binding.image.shipped);
+			if (shipped === undefined) {
+				closure.push({
+					path: `$.units.scene.data.materials[${index}].overrides.maps.${role}.image.shipped`,
+					code: 'unknown-static-image',
+					message: `Finish "${material.id}" names shipped image "${binding.image.shipped}" outside the frozen manifest`
+				});
+			}
+		}
+	}
 	const materialLocks = new Map<string, typeof lock.entries[number][]>();
 	for (const entry of lock.entries) {
 		if (entry.domain !== 'resource:material') continue;

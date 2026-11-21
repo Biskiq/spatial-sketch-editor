@@ -42,7 +42,7 @@ import { EMPTY_MATERIAL_PROOF, verifyMaterialDigest, type MaterialDigestProof } 
 import { resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
 import { qualifyAcrossTargets } from '../materials/bind';
 import { shippedImage } from '../materials/catalogue';
-import { MATERIAL_CAPABILITY, type Recipe, type TargetDraw, type TargetFacts } from '../materials/types';
+import { MATERIAL_CAPABILITY, MATERIAL_NEUTRAL_BASE_ID, type Recipe, type TargetDraw, type TargetFacts } from '../materials/types';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
@@ -106,6 +106,15 @@ type Result = PlannerOutcome<ProjectEnvelope>;
 
 const MATERIAL_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HEX_COLOR = /^#[0-9a-f]{6}$/;
+
+/** Material definition recipes in one request, by digest. */
+function materialRecipesOf(envelope: ProjectEnvelope): ReadonlyMap<string, Recipe> {
+	return new Map(
+		envelope.units.resources.data.resources
+			.filter((resource) => resource.kind === 'material' && resource.material !== undefined)
+			.map((resource) => [resource.id, resource.material!.recipe])
+	);
+}
 
 export type FinishPlannerOptions = {
 	/** The catalogue's display label, e.g. `Walnut Wood`; identity is its id. */
@@ -180,7 +189,7 @@ function assignOne(
 	}
 	return {
 		...entity,
-		materialId: catalogueBaseOf(project) ?? 'pbr-neutral-v1',
+		materialId: catalogueBaseOf(project) ?? MATERIAL_NEUTRAL_BASE_ID,
 		materialInstanceId: project.id
 	} as SceneEntity;
 }
@@ -206,6 +215,7 @@ function planEdit(
 		readonly edit: SceneFinishEdit;
 		readonly allocateId: string | null;
 		readonly options: FinishPlannerOptions;
+		readonly materialRecipes?: ReadonlyMap<string, Recipe>;
 	}
 ): EditPlan {
 	const entity = base.entities.find((candidate) => candidate.id === input.entityId);
@@ -259,7 +269,7 @@ function planEdit(
 		if ('project' in ref && project === undefined) {
 			return { kind: 'rejected', code: 'unknown-finish', message: 'That Finish no longer exists.' };
 		}
-		const baseId = curated ? ref.curated : (catalogueBaseOf(project!) ?? 'pbr-neutral-v1');
+		const baseId = curated ? ref.curated : (catalogueBaseOf(project!) ?? MATERIAL_NEUTRAL_BASE_ID);
 		// A curated edit starts from the catalogue base; a clone keeps every
 		// authored value of its source Finish and changes only its id and name.
 		const seed: SceneMaterialInstance = curated
@@ -273,7 +283,8 @@ function planEdit(
 					id: input.allocateId!,
 					name: nextFinishName(project!.name, base.materials)
 				};
-		const created = applyFinishEdit(seed, input.edit);
+		const baseRecipe = 'material' in seed.base ? input.materialRecipes?.get(seed.base.material) : undefined;
+		const created = applyFinishEdit(seed, input.edit, baseRecipe);
 		materials.push(created);
 		addedMaterials.push(created.id);
 		const targets = input.mode === 'all'
@@ -285,7 +296,7 @@ function planEdit(
 			if (candidate.kind === 'model') return { ...candidate, materialInstanceId: created.id };
 			return {
 				...candidate,
-				materialId: catalogueBaseOf(created) ?? 'pbr-neutral-v1',
+				materialId: catalogueBaseOf(created) ?? MATERIAL_NEUTRAL_BASE_ID,
 				materialInstanceId: created.id
 			} as SceneEntity;
 		});
@@ -303,10 +314,11 @@ function planEdit(
 		if (project === undefined) {
 			return { kind: 'rejected', code: 'unknown-finish', message: 'That Finish no longer exists.' };
 		}
-		if (finishEditIsNoop(project, input.edit)) {
+		const projectRecipe = 'material' in project.base ? input.materialRecipes?.get(project.base.material) : undefined;
+		if (finishEditIsNoop(project, input.edit, projectRecipe)) {
 			return { kind: 'rejected', code: 'no-change', message: 'That Finish already has those values.' };
 		}
-		const updated = applyFinishEdit(project, input.edit);
+		const updated = applyFinishEdit(project, input.edit, projectRecipe);
 		const index = materials.findIndex((instance) => instance.id === project.id);
 		materials[index] = updated;
 		changedMaterials.push(updated.id);
@@ -316,7 +328,7 @@ function planEdit(
 		if (isPristineInstance(updated) && base.surfaceFinishes !== undefined) {
 			surfaceFinishes = base.surfaceFinishes.map((assignment) =>
 				'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === updated.id
-					? { ...assignment, finish: { materialId: (catalogueBaseOf(updated) ?? 'pbr-neutral-v1') as MaterialId } }
+					? { ...assignment, finish: { materialId: (catalogueBaseOf(updated) ?? MATERIAL_NEUTRAL_BASE_ID) as MaterialId } }
 					: assignment
 			);
 			changedSurfaceKeys = surfaceFinishes
@@ -1182,7 +1194,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			mode: mode as 'just-this' | 'all' | 'in-place',
 			edit,
 			allocateId: allocationId,
-			options
+			options,
+			materialRecipes: materialRecipesOf(envelope)
 		});
 		if (planned.kind === 'rejected') return refuse(planned.message, planned.code);
 		return complete(
@@ -1709,7 +1722,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				mode: replace.mode,
 				edit: { colorMap: assetId },
 				allocateId: needsNew ? allocations[0]!.id : null,
-				options
+				options,
+				materialRecipes: materialRecipesOf(envelope)
 			});
 			if (planned.kind === 'rejected') return refuse(planned.message, planned.code);
 			scene = planned.scene;
@@ -1816,7 +1830,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				mode: mode as 'just-this' | 'all' | 'in-place',
 				edit: { color: { slot: allocations[0]!.id } },
 				allocateId: finishAllocation,
-				options
+				options,
+				materialRecipes: materialRecipesOf(envelope)
 			});
 			if (edit.kind === 'rejected') return refuse(edit.message, edit.code);
 			scene = edit.scene;

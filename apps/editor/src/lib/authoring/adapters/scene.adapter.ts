@@ -50,7 +50,6 @@ import {
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
 import { getMaterial, materialById } from '$lib/content/materials';
-import { materialProofFor } from '$lib/authoring/material-proof';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import { armedModelDefinition, creatorDefinitions } from './scene/import/definitions';
@@ -86,7 +85,7 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 		...createArtworkPlanners(),
 		...createFinishPlanners({
 			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id),
-			materialProof: (request) => materialProofFor(request.snapshot.domain.source)
+			materialProof: () => services.materialProofs.proof()
 		}),
 		...createScenePlanners({
 		definitions: () => {

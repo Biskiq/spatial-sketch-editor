@@ -129,6 +129,7 @@ function finishFor(testCase: Case): Finish | undefined {
 function materialIndex(): MaterialRuntimeIndex {
 	return {
 		definitions: new Map(),
+		definitionImages: new Map(),
 		images: TEXTURES.map((texture) => ({
 			hash: TEXTURE_HASH[texture.id]!,
 			source: { textureId: texture.id }

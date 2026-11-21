@@ -152,6 +152,7 @@
 		createFinishAuthoring,
 		type FinishAuthoring
 	} from '$lib/authoring/look/finish-authoring.svelte';
+	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { withFinishPreviews } from '@portfolio/project-model/scene-planning';
 	import StagePaintPalette from '$lib/authoring/stage/shell/StagePaintPalette.svelte';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
@@ -194,6 +195,7 @@
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
 	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
+	const materialProofs = createMaterialProofRegistry();
 	const lightPreview = createStageLightPreview();
 	const scenePick = createScenePickSource();
 
@@ -253,6 +255,7 @@
 	const stageEpoch = createStageProjectEpoch({
 		session,
 		assets: stageAssets,
+		materialProofs,
 		finishes: () => finishes,
 		lightInspection: () => lightInspectionPort,
 		objectStudio: () => objectStudioPort,
@@ -290,7 +293,7 @@
 	});
 
 	const projectSession = createProjectSession({
-		projectId, intent, api, auth, session, images: verifiedImages,
+		projectId, intent, api, auth, session, images: verifiedImages, materialProofs,
 		// Shallow `replaceState` (Studio mirrors its root into the address) does not move
 		// `page.url`; the session rewrites this address when a Save consumes `create=1`, so it
 		// must start from the address actually shown or it would erase the mirrored root.

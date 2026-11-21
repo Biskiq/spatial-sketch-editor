@@ -1,35 +1,81 @@
 /**
- * The admission-time material digest proof.
+ * The session-owned material digest proof registry.
  *
  * A canonical recipe digest can only be recomputed asynchronously, while F4
- * planning is synchronous. `admitSource` builds one proof over the validated
- * envelope's material definitions and remembers it by the exact envelope value
- * it prepared; the Finish planner reads that proof when `registerFinish` runs.
+ * planning is synchronous. The registry owns the proofs this editor session has
+ * verified, keyed by **digest and exact canonical bytes**. It is filled by
+ * source admission and by the asynchronous preparation step for a new draft, and
+ * its lifetime is the Stage route session, not one envelope value.
  *
- * The registry is a `WeakMap`, so a proof lives exactly as long as the runtime
- * that was admitted with it: it can never become stale for a later envelope
- * value, and it is never serialized.
+ * Undo/Redo may reuse an entry because the same digest always describes the same
+ * immutable bytes. A different recipe with the same digest can never match. The
+ * registry is never serialized, and it clears with its session.
  */
 import {
 	buildMaterialDigestProof,
+	canonicalRecipeJson,
 	EMPTY_MATERIAL_PROOF,
+	recipeHash,
+	type Hash,
 	type MaterialDigestProof,
-	type MaterialIssue
+	type MaterialDigestProofEntry,
+	type MaterialIssue,
+	type Recipe
 } from '@portfolio/project-model/materials';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
-const proofs = new WeakMap<ProjectEnvelope, MaterialDigestProof>();
+export type MaterialProofRegistry = {
+	/** Merge one verified proof; a conflicting entry is rejected. */
+	remember(proof: MaterialDigestProof): void;
+	/** The current immutable proof view for the synchronous planner. */
+	proof(): MaterialDigestProof;
+	/** Verify a new draft recipe before its registration intent is accepted. */
+	prepareFinishRegistration(recipe: Recipe): Promise<
+		| { readonly ok: true; readonly hash: Hash; readonly proof: MaterialDigestProof }
+		| { readonly ok: false; readonly issues: readonly MaterialIssue[] }
+	>;
+	clear(): void;
+};
 
-export function rememberMaterialProof(
-	envelope: ProjectEnvelope,
-	proof: MaterialDigestProof
-): void {
-	proofs.set(envelope, proof);
+function proofOf(entries: ReadonlyMap<Hash, MaterialDigestProofEntry>): MaterialDigestProof {
+	const frozen = new Map(entries);
+	return Object.freeze({
+		entries: frozen,
+		has: (hash: Hash) => frozen.has(hash),
+		get: (hash: Hash) => frozen.get(hash) ?? null,
+		matches: (hash: Hash, recipe: Recipe) => {
+			const entry = frozen.get(hash);
+			return entry !== undefined && entry.canonicalJson === canonicalRecipeJson(recipe);
+		}
+	});
 }
 
-/** The proof admitted with this exact envelope value, or the empty proof. */
-export function materialProofFor(envelope: ProjectEnvelope): MaterialDigestProof {
-	return proofs.get(envelope) ?? EMPTY_MATERIAL_PROOF;
+export function createMaterialProofRegistry(): MaterialProofRegistry {
+	const entries = new Map<Hash, MaterialDigestProofEntry>();
+	return {
+		remember(proof) {
+			for (const entry of proof.entries.values()) {
+				const existing = entries.get(entry.hash);
+				if (existing !== undefined && existing.canonicalJson !== entry.canonicalJson) {
+					throw new Error(`Material digest ${entry.hash} has conflicting canonical bytes`);
+				}
+				entries.set(entry.hash, entry);
+			}
+		},
+		proof() {
+			return entries.size === 0 ? EMPTY_MATERIAL_PROOF : proofOf(entries);
+		},
+		async prepareFinishRegistration(recipe) {
+			const hash = await recipeHash(recipe);
+			const result = await buildMaterialDigestProof([{ hash, recipe }]);
+			if (!result.success) return { ok: false, issues: result.issues };
+			this.remember(result.proof);
+			return { ok: true, hash, proof: proofOf(entries) };
+		},
+		clear() {
+			entries.clear();
+		}
+	};
 }
 
 export async function proofForEnvelope(

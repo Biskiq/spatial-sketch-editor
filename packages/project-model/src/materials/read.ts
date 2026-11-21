@@ -66,7 +66,7 @@ const METRIC_KEYS = ['tileMeters', 'rotation', 'offset'] as const;
 const UV_KEYS = ['kind', 'set', 'repeat', 'rotation', 'offset'] as const;
 const ROLE_SELECTORS = ['convention', 'component', 'invert'] as const;
 
-const COLOR_LITERAL = /^#[0-9a-f]{6}$/i;
+const COLOR_LITERAL = /^#[0-9a-f]{6}$/;
 const HASH_IDENTITY = /^sha256-[0-9a-f]{64}$/;
 const TWO_PI = Math.PI * 2;
 const NORMAL_SCALE_MAX = 10;
@@ -242,7 +242,7 @@ class MaterialReader {
 			this.problem(path, 'invalid-colour', 'Use a lowercase #rrggbb colour.');
 			return null;
 		}
-		return input.toLowerCase();
+		return input;
 	}
 
 	tag<T extends string>(input: unknown, path: string, allowed: readonly T[]): T | null {

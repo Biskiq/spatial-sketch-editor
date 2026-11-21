@@ -150,9 +150,19 @@ function findTexture(document: LookSource, textureId: string | undefined): Scene
  * view key names the same identity, so bytes are shared by record, not by URI
  * spelling alone.
  */
-function sceneImageIndex(document: LookSource): ImageIndex {
-	const proofImages = document.materialIndex?.images ?? [];
-	return mergeImageIndexes(shippedImageIndex(), materialImageIndex(proofImages));
+function sceneImageIndex(document: LookSource, definitionHash?: string): ImageIndex {
+	const allImages = document.materialIndex?.images ?? [];
+	const proofImages = definitionHash === undefined
+		? allImages
+		: (document.materialIndex?.definitionImages.get(definitionHash) ?? []);
+	// A definition's own mappings win over an unrelated texture with the same
+	// bytes. Overrides may still pin another texture from this Scene, so the full
+	// registry remains a fallback rather than being dropped.
+	return mergeImageIndexes(
+		shippedImageIndex(),
+		materialImageIndex(proofImages),
+		materialImageIndex(allImages)
+	);
 }
 
 /** The recipe a resource-backed Finish names, from its derived runtime index. */
@@ -343,7 +353,8 @@ export function sceneFinishFor(
 		console.warn(`[scene-instance-material] Unknown materialInstanceId: ${target.materialInstanceId}`);
 	}
 	const base = instance?.base;
-	const baseRecipe = base !== undefined && 'material' in base ? definitionRecipe(document, base.material) : null;
+	const definitionHash = base !== undefined && 'material' in base ? base.material : null;
+	const baseRecipe = definitionHash === null ? null : definitionRecipe(document, definitionHash);
 	let catalogueId: MaterialId | null =
 		base !== undefined && 'catalogue' in base
 			? (base.catalogue as MaterialId)
@@ -418,7 +429,7 @@ export function sceneFinishFor(
 				{ material: baseRecipe },
 				source?.overrides,
 				document.palette,
-				sceneImageIndex(document)
+				sceneImageIndex(document, definitionHash ?? undefined)
 			)
 		: resolveFinish(
 				{ catalogue: catalogue!.id },

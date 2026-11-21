@@ -18,6 +18,7 @@ function doc(
 		textures,
 		materialIndex: {
 			definitions: new Map(),
+			definitionImages: new Map(),
 			images: textures.map((texture) => ({ hash: `hash:${texture.id}`, source: { textureId: texture.id } }))
 		},
 		...extra

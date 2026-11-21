@@ -9,6 +9,7 @@
  */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 import { readFile, readdir } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { Pool } from 'pg';
@@ -644,6 +645,37 @@ async function uploadTexture(owner, projectId, store, name, bytes) {
 	return uploadAsset(pool, owner, projectId, pending.id, bytes.length, Readable.from([bytes]), store, 'test');
 }
 
+function tinyPng(r, g, b) {
+	const chunk = (type, data) => {
+		const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+		const length = Buffer.alloc(4);
+		length.writeUInt32BE(data.length);
+		const crc = Buffer.alloc(4);
+		crc.writeUInt32BE(crc32(body));
+		return Buffer.concat([length, body, crc]);
+	};
+	const header = Buffer.alloc(13);
+	header.writeUInt32BE(1, 0);
+	header.writeUInt32BE(1, 4);
+	header[8] = 8;
+	header[9] = 2;
+	return Buffer.concat([
+		Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+		chunk('IHDR', header),
+		chunk('IDAT', deflateSync(Buffer.from([0, r, g, b]))),
+		chunk('IEND', Buffer.alloc(0))
+	]);
+}
+
+function crc32(bytes) {
+	let crc = 0xffffffff;
+	for (const byte of bytes) {
+		crc ^= byte;
+		for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+	}
+	return (crc ^ 0xffffffff) >>> 0;
+}
+
 function texturePin(ready) {
 	return {
 		hash: ready.sha256, mime: ready.mime, size: ready.byteSize,
@@ -721,6 +753,112 @@ test('Save and Load independently verify a material definition identity', async 
 		const receipts = await pool.query('SELECT count(*)::int AS count FROM save_receipts WHERE project_id = $1', [projectId]);
 		assert.equal(receipts.rows[0].count, 2);
 	});
+
+test('a three-image brushed metal definition saves with every local image pin verified', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const baseline = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const colorBytes = tinyPng(200, 10, 10);
+	const normalBytes = tinyPng(10, 200, 10);
+	const roughnessBytes = tinyPng(10, 10, 200);
+	const color = await uploadTexture(owner, projectId, store, 'Color.png', colorBytes);
+	const normal = await uploadTexture(owner, projectId, store, 'Normal.png', normalBytes);
+	const roughness = await uploadTexture(owner, projectId, store, 'Roughness.png', roughnessBytes);
+	const textures = [color, normal, roughness];
+	const recipeRead = readRecipe({
+		profile: 'pbr-metallic-roughness/v1',
+		color: '#b8bcc0', roughness: 0.32, metalness: 1, occlusionStrength: 1, normalScale: 1,
+		mapping: { kind: 'target', metric: { tileMeters: [0.4, 1.2], rotation: 0.2, offset: [0.1, 0.3] } },
+		maps: {
+			color: { image: color.sha256 },
+			normal: { image: normal.sha256, convention: '+Y' },
+			roughness: { image: roughness.sha256, component: 'g', invert: false }
+		}
+	});
+	assert.equal(recipeRead.success, true, JSON.stringify(recipeRead));
+	const hash = await recipeHash(recipeRead.recipe);
+	const images = textures.map((texture) => ({
+		hash: texture.sha256,
+		source: { textureId: texture.id }
+	}));
+	const envelope = await unitEnvelope(projectId, 'Brushed metal', {
+		textures: textures.map((texture) => ({
+			id: texture.id,
+			name: texture.id,
+			uri: `/project-assets/${texture.id}`
+		})),
+		materials: [{ id: 'brushed-metal', name: 'Brushed metal', base: { material: hash } }],
+		resources: [
+			...textures.map((texture) => ({
+				kind: 'texture', id: texture.id, contentRevision: texture.sha256,
+				pin: texturePin(texture), unresolved: null
+			})),
+			{ kind: 'material', id: hash, contentRevision: hash, pin: null, unresolved: null, material: { recipe: recipeRead.recipe, images } }
+		],
+		lockEntries: [{
+			domain: 'resource:material', subjectKind: 'resource', subjectId: hash, instancePath: [],
+			contentRevision: hash, requiredCapabilities: [{ id: 'pbr-metallic-roughness', version: '1' }], pin: null
+		}]
+	});
+	const request = await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: baseline.savedBaseToken } });
+	const saved = await saveAcceptedSource(pool, owner, request, store);
+	assert.equal(saved.version, 2);
+	const pins = await prepareProjectImagePins(pool, store, owner, projectId, envelope, 'private-save');
+	assert.deepEqual(pins.map((pin) => pin.assetId).sort(), textures.map((texture) => texture.id).sort());
+	assert.deepEqual(new Set(pins.map((pin) => pin.sha256)), new Set(textures.map((texture) => texture.sha256)));
+	// Every definition image is independently verified against its blob.
+	const colorPin = pins.find((pin) => pin.assetId === color.id);
+	store.objects.delete(colorPin.objectKey);
+	await assert.rejects(
+		saveAcceptedSource(
+			pool, owner,
+			await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: saved.savedBaseToken } }),
+			store
+		),
+		(error) => error.code === 'image-missing' || /missing from storage/.test(String(error.message))
+	);
+	store.objects.set(colorPin.objectKey, { bytes: colorBytes, options: { contentType: 'image/png' } });
+	const normalPin = pins.find((pin) => pin.assetId === normal.id);
+	const corrupt = tinyPng(9, 9, 9);
+	store.objects.set(normalPin.objectKey, { bytes: corrupt, options: { contentType: 'image/png' } });
+	await assert.rejects(
+		saveAcceptedSource(
+			pool, owner,
+			await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: saved.savedBaseToken } }),
+			store
+		),
+		(error) => error.code === 'image-corrupt' || error.code === 'image-pin-changed' ||
+			/corrupt|pin changed|differ from their registry digest/i.test(String(error.message))
+	);
+	const state = await pool.query('SELECT latest_version AS "latestVersion" FROM projects WHERE id = $1', [projectId]);
+	assert.equal(state.rows[0].latestVersion, 2);
+});
+
+test('Save refuses a Finish override static image outside the frozen manifest', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const store = memoryObjectStore();
+	const first = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+	const envelope = await unitEnvelope(projectId, 'Bad static override', {
+		materials: [{
+			id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' },
+			overrides: { maps: { color: { image: { shipped: '/evil/anything.png' } } } }
+		}]
+	});
+	await assert.rejects(
+		async () => saveAcceptedSource(
+			pool, owner,
+			await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } }),
+			store
+		),
+		(error) => error.code === 'invalid-project' || /unknown-static-image/.test(String(error.message))
+	);
+	const state = await pool.query('SELECT latest_version AS "latestVersion" FROM projects WHERE id = $1', [projectId]);
+	assert.equal(state.rows[0].latestVersion, 1);
+});
 
 test('Finish-only Save verifies the texture closure and refuses missing bytes without advancing the head', async () => {
 	const projectId = nextProjectId();

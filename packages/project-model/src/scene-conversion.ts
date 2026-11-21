@@ -22,6 +22,14 @@ import { catalogueRecipe } from './materials/catalogue';
 import { shippedImage } from './materials/catalogue';
 import { sceneFinishToContract } from './materials/scene-finish';
 import type { MaterialIssue } from './materials/issues';
+import {
+	materialImageIndex,
+	mergeImageIndexes,
+	resolveFinish,
+	shippedImageIndex,
+	type ImageIndex,
+	type PaletteSlot
+} from './materials';
 import type { ProjectEnvelope } from './units/types';
 import { computeUnitContentRevision } from './units/canonical';
 import { validateProjectEnvelope } from './units/validate';
@@ -161,6 +169,46 @@ function staticizeShippedMaps(
 	};
 }
 
+/**
+ * Compare A's resolved output, not just the admitted bytes. Sparse Scene 11
+ * mappings inherit rotation and offset from the catalogue base, so a conversion
+ * that silently drops those fields would still serialize and validate.
+ * Image identity is compared by presence, not by local spelling: staticizing a
+ * shipped texture changes `{textureId}` to `{shipped}` while preserving bytes.
+ */
+function resolvedSignature(
+	finish: import('./materials/types').Finish,
+	index: ImageIndex,
+	palette: readonly PaletteSlot[] | undefined
+): string | null {
+	if (!('catalogue' in finish.base)) return null;
+	const resolution = resolveFinish({ catalogue: finish.base.catalogue }, finish.overrides, palette, index);
+	if (resolution.inputs === null) return `unresolved:${resolution.issues.map((entry) => entry.code).join(',')}`;
+	const inputs = resolution.inputs;
+	return JSON.stringify({
+		color: inputs.color,
+		roughness: inputs.roughness,
+		metalness: inputs.metalness,
+		occlusionStrength: inputs.occlusionStrength,
+		normalScale: inputs.normalScale,
+		maps: (['color', 'normal', 'roughness', 'metalness', 'occlusion'] as const).map((role) => {
+			const binding = inputs.maps[role];
+			if (binding === undefined) return null;
+			return {
+				role,
+				mapping: binding.mapping,
+				...('convention' in binding && binding.convention !== undefined
+					? { convention: binding.convention }
+					: {}),
+				...('component' in binding && binding.component !== undefined
+					? { component: binding.component }
+					: {}),
+				...('invert' in binding && binding.invert !== undefined ? { invert: binding.invert } : {})
+			};
+		})
+	});
+}
+
 function dataFormat(unit: unknown): unknown {
 	return isRecord(unit) && isRecord(unit.data) ? unit.data.formatVersion : undefined;
 }
@@ -212,9 +260,29 @@ export async function convertScene11To12(
 	const textureRecords = Array.isArray(sceneData.textures)
 		? (sceneData.textures as readonly { id: string; uri: string }[])
 		: [];
+	const sceneIndex: ImageIndex = mergeImageIndexes(
+		shippedImageIndex(),
+		materialImageIndex(textureRecords.map((texture) => ({
+			hash: texture.id,
+			source: { textureId: texture.id }
+		})))
+	);
+	const palette = Array.isArray(sceneData.palette) ? (sceneData.palette as PaletteSlot[]) : undefined;
 	for (const [index, material] of sceneData.materials.entries()) {
 		const converted = readMaterial(material, index, issues);
-		if (converted?.success) materials.push(staticizeShippedMaps(converted.finish, textureRecords));
+		if (converted?.success) {
+			const target = staticizeShippedMaps(converted.finish, textureRecords);
+			const before = resolvedSignature(converted.finish, sceneIndex, palette);
+			const after = resolvedSignature(target, sceneIndex, palette);
+			if (before !== null && before !== after) {
+				issues.push(issue(
+					`$.units.scene.data.materials[${index}]`,
+					'resolved-output-mismatch',
+					'Conversion changed the finish resolved through its catalogue base.'
+				));
+			}
+			materials.push(target);
+		}
 	}
 	if (issues.length > 0) return { success: false, issues };
 

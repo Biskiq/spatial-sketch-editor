@@ -34,8 +34,10 @@ and `checkEnvelopeMaterialProof` (sync). The proof is keyed by digest **and
 exact canonical recipe bytes**. A serialized `verified` flag is ignored.
 
 - Editor admission validates structure, asynchronously hashes every recipe and
-  remembers the proof for the exact admitted `ProjectEnvelope` in a `WeakMap`.
-  The synchronous `scene-finish-register` planner reads only that proof.
+  remembers each digest-and-canonical-bytes proof in a session-owned registry.
+  A new draft is prepared asynchronously before registration; the synchronous
+  `scene-finish-register` planner reads only that registry, so the real adapter
+  path can register a recipe the admitted source does not yet contain.
 - The public release loader validates the release document and verifies its
   material digests before fetching or installing release bytes.
 - API Save, Load and rename independently recompute canonical hashes; a
@@ -110,13 +112,28 @@ it removes the native Form as required by the existing P20 public refusal.
 3. registers an unassigned Finish, reuses its definition with different local
    image IDs without adding texture/resource rows or a second lock, and leaves
    entity assignments unchanged;
-4. serializes, admits the source cold through the asynchronous ingress, and
-   composes a release whose image pins agree exactly with the manifest;
-5. injects a false recipe hash, a changed target revision, a foreign image, a
-   valid header around a tampered recipe, a missing material lock and an
-   unsupported capability. Every case refuses with no candidate.
+4. assigns one resource-backed rotated Finish to a primitive, a Form and a GLB
+   through the D writer, proving the shared definition is not catalogue-only;
+5. serializes, admits the source cold through the asynchronous ingress, and
+   composes the release from that cold-admitted envelope so its image pins agree
+   exactly with the manifest;
+6. injects a false recipe hash, a changed target revision, a stale registration
+   geometry revision, a foreign image, a valid header around a tampered recipe,
+   a missing material lock and an unsupported capability. Every case refuses
+   with no candidate.
 
-Companion suites cover the codec/converter (`scene-conversion.test.ts`), the
+The registration in that fixture is dispatched to the planner registered by the
+real Scene adapter, with no injected proof: the fixture fills the session
+registry through asynchronous source admission and new-draft preparation, then
+lets the adapter's synchronous planner read it.
+
+The Postgres-backed API suite additionally saves the same three-image brushed
+metal definition, verifies every definition image pin, and refuses both a
+missing blob and a corrupt blob without advancing the project head.
+
+Companion suites cover the codec/converter (`scene-conversion.test.ts`, including
+resolved sparse-mapping offsets, shipped staticization, palette followers and
+packed components), the
 pure delivery projection (`materials/delivery.test.ts`), definition image leases
 for Stage (`stage-asset-leases.test.ts`), cold runtime image-pin validation and
 the public release material refusal (`visitor-public-route.test.ts`). The B
@@ -127,16 +144,16 @@ and the look-parity golden remains the pixel oracle.
 
 | Command | Result |
 | --- | --- |
-| `npm run test:fast -w @portfolio/editor` | 461 files / 5,680 tests passed, exit 0 |
-| targeted D acceptance + public release after final test edit | 20 tests passed |
-| `npm run test:arch -w @portfolio/editor` | 38 files / 354 tests passed, exit 0 |
+| `npm run test:fast -w @portfolio/editor` | 461 files / 5,692 tests passed, exit 0 |
+| targeted D acceptance, delivery, codec/converter and planner suites | 130 tests passed |
+| `npm run test:arch -w @portfolio/editor` | 38 files / 356 tests passed, exit 0 |
 | heavy renderer lane (earlier on this branch) | 11 files / 138 tests passed |
-| `npm test -w @biskiq/api` (Postgres-backed) | exit 0, no failures |
+| `npm test -w @biskiq/api` (Postgres-backed) | exit 0, no failures (including Save refusal for missing/corrupt definition blobs) |
 | `npm run check:project-model` | 0 errors |
 | `npm run check:api` | 0 errors |
 | `npm run check -w @portfolio/editor` | 0 errors, 16 pre-existing Svelte warnings |
 | `BUNDLE_PROVENANCE=1 npm run build -w @portfolio/editor` | exit 0 |
-| `npm run perf:bundle:first-load -w @portfolio/editor` | exit 0; public route 569.7 KiB brotli, no `three` in `/` or `/projects` first load |
+| `npm run perf:bundle:first-load -w @portfolio/editor` | exit 0; public route 566.5 KiB brotli, no `three` in `/` or `/projects` first load |
 
 The fast lane includes the public-surface, prepared-reader-required, visitor
 isolation, current-world fixture, material runtime and B renderer suites.
@@ -148,7 +165,10 @@ isolation, current-world fixture, material runtime and B renderer suites.
   deterministic B golden and current-world cold fixture pass.
 - No manual browser session was used for detached Preview or a visual pixel
   comparison; those surfaces are covered by the renderer characterization,
-  golden, preview-boundary and cold-composition suites.
+  golden, preview-boundary and cold-composition suites. **Detached Preview and
+  pixel comparison remain explicit D exit gaps for this PR**: the renderer
+  golden and cold composition prove the projection, not a rendered detached
+  browser surface or a pixel-diff oracle.
 - Migration activation, saved-head inventory and owner approval are deliberately
   outside this PR.
 

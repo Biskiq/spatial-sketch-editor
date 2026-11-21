@@ -993,12 +993,12 @@ describe('Scene 8 Finish fields', () => {
 		);
 	});
 
-	it('normalizes uppercase hex and refuses an out-of-range tile', () => {
-		const upper = validateSceneDocument(
-			withMaterial(material({ overrides: { color: '#AABBCC' } }))
+	it('refuses uppercase hex and an out-of-range tile', () => {
+		expectIssue(
+			withMaterial(material({ overrides: { color: '#AABBCC' } })),
+			'invalid-colour',
+			'$.materials[0].overrides.color'
 		);
-		expect(upper.success).toBe(true);
-		if (upper.success) expect(upper.document.materials[0]?.overrides?.color).toBe('#aabbcc');
 		expectIssue(
 			withMaterial(material({ overrides: { mapping: { kind: 'target', metric: { tileMeters: [0, 1], rotation: 0, offset: [0, 0] } } } })),
 			'out-of-range',

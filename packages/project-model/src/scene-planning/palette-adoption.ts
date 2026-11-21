@@ -55,7 +55,7 @@ export function planPaletteAdoption(scene: SceneDocument): PaletteAdoptionPlan {
 				inherited += 1;
 				continue;
 			}
-			if (instance.overrides?.maps?.color !== undefined) {
+			if (instance.overrides?.maps?.color != null) {
 				imageTints += 1;
 				continue;
 			}

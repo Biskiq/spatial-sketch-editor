@@ -24,12 +24,14 @@ import {
 import { catalogueRecipe } from '../materials/catalogue';
 import { pruneOverrides } from '../materials/read';
 import { NEUTRAL_RECIPE } from '../materials/recipe';
+import { MATERIAL_NEUTRAL_BASE_ID } from '../materials/types';
 import type {
 	Finish,
 	FinishOverrides,
 	Mapping,
 	Metric,
-	OverrideMaps
+	OverrideMaps,
+	Recipe
 } from '../materials/types';
 import { resolveSceneSurfaceFinish } from '../scene-surface-reference';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
@@ -111,13 +113,17 @@ export function materialBaseOf(instance: SceneMaterialInstance): string | null {
 	return 'material' in instance.base ? instance.base.material : null;
 }
 
-/** The base metric of one Finish, used when an edit authors only part of it. */
-function baseMetricOf(instance: SceneMaterialInstance): Metric {
+/**
+ * The base metric of one Finish, used when an edit authors only part of it.
+ * A `uv` base's repeat is not a metre size: an edit that starts authoring metres
+ * must begin from the neutral metric rather than silently reinterpret it.
+ */
+function baseMetricOf(instance: SceneMaterialInstance, baseRecipe?: Recipe): Metric {
 	const catalogue = catalogueBaseOf(instance);
-	const recipe = catalogue === null ? undefined : catalogueRecipe(catalogue);
+	const recipe = baseRecipe ?? (catalogue === null ? undefined : catalogueRecipe(catalogue));
 	const mapping = recipe?.mapping ?? NEUTRAL_RECIPE.mapping;
 	return mapping.kind === 'uv'
-		? { tileMeters: mapping.repeat, rotation: mapping.rotation, offset: mapping.offset }
+		? { tileMeters: [1, 1], rotation: 0, offset: [0, 0] }
 		: mapping.metric;
 }
 
@@ -214,7 +220,7 @@ export function baseMaterialIdOf(
 		if (catalogue !== null) return catalogue;
 		// A resource-backed Finish still has a catalogue fallback for the host's
 		// materialId contract; its authored signals come from the definition.
-		return 'pbr-neutral-v1';
+		return MATERIAL_NEUTRAL_BASE_ID;
 	}
 	return isFinishPaintable(entity) && entity.kind !== 'model'
 		? ((entity as FinishEntity).materialId ?? null)
@@ -385,7 +391,9 @@ export type SceneFinishEdit = {
  */
 export function applyFinishEdit(
 	instance: SceneMaterialInstance,
-	edit: SceneFinishEdit
+	edit: SceneFinishEdit,
+	/** The definition recipe for a `{material}` base, when one is available. */
+	baseRecipe?: Recipe
 ): SceneMaterialInstance {
 	const overrides = JSON.parse(
 		JSON.stringify(instance.overrides ?? {})
@@ -418,9 +426,13 @@ export function applyFinishEdit(
 		}
 	}
 	if ('tileMeters' in edit || 'rotation' in edit) {
-		const base = baseMetricOf(instance);
+		const base = baseMetricOf(instance, baseRecipe);
 		const existing = overrides.mapping as Mapping | undefined;
-		const existingMetric = existing !== undefined && existing.kind !== 'uv' ? existing.metric : undefined;
+		const existingMetric = existing === undefined
+			? undefined
+			: existing.kind === 'uv'
+				? { tileMeters: base.tileMeters, rotation: existing.rotation, offset: existing.offset }
+				: existing.metric;
 		const metric: Metric = {
 			tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
 			rotation: existingMetric?.rotation ?? base.rotation,
@@ -433,14 +445,25 @@ export function applyFinishEdit(
 			rotation: nextRotation,
 			offset: metric.offset
 		};
-		const matchesBase =
-			nextMetric.tileMeters[0] === base.tileMeters[0] &&
-			nextMetric.tileMeters[1] === base.tileMeters[1] &&
-			nextMetric.rotation === base.rotation &&
-			nextMetric.offset[0] === base.offset[0] &&
-			nextMetric.offset[1] === base.offset[1];
-		if (matchesBase) delete overrides.mapping;
-		else overrides.mapping = { kind: 'target', metric: nextMetric } satisfies Mapping;
+		const authoredValue =
+			('tileMeters' in edit && edit.tileMeters !== null) ||
+			('rotation' in edit && edit.rotation !== null);
+		if (!authoredValue) {
+			delete overrides.mapping;
+		} else if (existing?.kind === 'uv' && !('tileMeters' in edit)) {
+			overrides.mapping = {
+				kind: 'uv',
+				repeat: existing.repeat,
+					set: existing.set,
+				rotation: nextRotation,
+				offset: existing.offset
+			} satisfies Mapping;
+		} else {
+			overrides.mapping = {
+				kind: existing?.kind === 'surface' ? 'surface' : 'target',
+				metric: nextMetric
+			} satisfies Mapping;
+		}
 	}
 	const pruned = pruneOverrides(overrides as FinishOverrides);
 	return {
@@ -461,9 +484,10 @@ export function colorMapOf(instance: SceneMaterialInstance | undefined): string 
 /** Whether an edit would change nothing on the given instance. */
 export function finishEditIsNoop(
 	instance: SceneMaterialInstance,
-	edit: SceneFinishEdit
+	edit: SceneFinishEdit,
+	baseRecipe?: Recipe
 ): boolean {
-	return sameSceneValues(applyFinishEdit(instance, edit), instance);
+	return sameSceneValues(applyFinishEdit(instance, edit, baseRecipe), instance);
 }
 
 /** Every material whose colour follows one palette slot. */

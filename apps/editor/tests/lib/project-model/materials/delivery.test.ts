@@ -29,6 +29,13 @@ const FINISH: Finish = {
 	base: { material: DEFINITION }
 };
 
+function ownDefinitionImages() {
+	return (['color', 'normal', 'orm', 'roughness'] as const).map((role) => ({
+		hash: IMAGE_HASH[role],
+		source: IMAGE_SOURCE[role]
+	}));
+}
+
 function subjects() {
 	return [
 		{ subject: 'form:1', finish: FINISH, targetFacts: FORM_FACTS },
@@ -49,6 +56,7 @@ describe('material delivery projection', () => {
 	it('deduplicates one shared definition and pin set while retaining one use per subject', () => {
 		const delivery = materialDeliveryContribution({
 			definitions: new Map([[DEFINITION, fullRecipe()]]),
+			definitionImages: new Map([[DEFINITION, ownDefinitionImages()]]),
 			imageIndex: fixtureImageIndex(),
 			projectImagePins: pins(),
 			subjects: subjects()
@@ -75,6 +83,7 @@ describe('material delivery projection', () => {
 		(withoutNormal as Map<string, { mime: string; size: number; locator?: string }>).delete(IMAGE_HASH.normal);
 		const delivery = materialDeliveryContribution({
 			definitions: new Map([[DEFINITION, fullRecipe()]]),
+			definitionImages: new Map([[DEFINITION, ownDefinitionImages()]]),
 			imageIndex: fixtureImageIndex(),
 			projectImagePins: withoutNormal,
 			subjects: subjects()
@@ -87,6 +96,7 @@ describe('material delivery projection', () => {
 	it('refuses an image outside the frozen shipped manifest', () => {
 		const delivery = materialDeliveryContribution({
 			definitions: new Map([[DEFINITION, fullRecipe()]]),
+			definitionImages: new Map([[DEFINITION, ownDefinitionImages()]]),
 			imageIndex: createImageIndex([
 				{ hash: IMAGE_HASH.color, source: IMAGE_SOURCE.color },
 				{ hash: IMAGE_HASH.normal, source: IMAGE_SOURCE.normal },
@@ -105,12 +115,43 @@ describe('material delivery projection', () => {
 				}
 			}]
 		});
-		expect(delivery.issues).toContainEqual(expect.objectContaining({ code: 'unknown-catalogue-base' }));
+		expect(delivery.issues).toContainEqual(expect.objectContaining({ code: 'missing-image' }));
+	});
+
+	it('names a missing definition instead of blaming the catalogue', () => {
+		const delivery = materialDeliveryContribution({
+			definitions: new Map(),
+			definitionImages: new Map(),
+			imageIndex: fixtureImageIndex(),
+			subjects: [{ subject: 'form:1', finish: FINISH }]
+		});
+		expect(delivery.issues).toContainEqual(expect.objectContaining({ code: 'missing-definition' }));
+	});
+
+	it('resolves a definition through its own images, not an earlier same-hash texture', () => {
+		const ownImages = Object.entries(IMAGE_HASH).map(([role, hash]) => ({
+			hash,
+			source: IMAGE_SOURCE[role as keyof typeof IMAGE_SOURCE]
+		}));
+		const delivery = materialDeliveryContribution({
+			definitions: new Map([[DEFINITION, fullRecipe()]]),
+			definitionImages: new Map([[DEFINITION, ownImages]]),
+			imageIndex: createImageIndex([
+				{ hash: IMAGE_HASH.color, source: { textureId: 'unrelated-earlier-texture' } }
+			]),
+			projectImagePins: pins(),
+			subjects: [{ subject: 'form:1', finish: FINISH }]
+		});
+		expect(delivery.issues).toEqual([]);
+		expect(delivery.imagePins.find((pin) => pin.hash === IMAGE_HASH.color)?.source).toEqual(
+			IMAGE_SOURCE.color
+		);
 	});
 
 	it('keeps a static pin exact and reports its shipped locator, MIME and size', () => {
 		const delivery = materialDeliveryContribution({
 			definitions: new Map(),
+			definitionImages: new Map(),
 			imageIndex: shippedImageIndex(),
 			subjects: [{
 				subject: 'curated',
@@ -130,6 +171,7 @@ describe('material delivery projection', () => {
 	it('carries a direct catalogue subject without inventing a Finish id', () => {
 		const delivery = materialDeliveryContribution({
 			definitions: new Map(),
+			definitionImages: new Map(),
 			imageIndex: shippedImageIndex(),
 			subjects: [{ subject: 'entity:wall-plinth', catalogue: 'brass-aged' }]
 		});

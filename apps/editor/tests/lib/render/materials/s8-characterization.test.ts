@@ -79,6 +79,7 @@ function lookSource(
 		textures: [S8_TEXTURE],
 		materialIndex: {
 			definitions: new Map(),
+			definitionImages: new Map(),
 			images: [{ hash: S8_TEXTURE_HASH, source: { textureId: S8_TEXTURE.id } }]
 		},
 		materials,

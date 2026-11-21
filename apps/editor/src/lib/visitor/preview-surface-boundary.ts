@@ -26,6 +26,7 @@ const FORBIDDEN_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
 	// editor machinery. This names the live tree; the deleted `src/lib/editor/`
 	// pattern it replaced could never match anything again.
 	{ pattern: /src\/lib\/authoring\//, label: 'editor authoring machinery (stage, adapters, Save, F.4)' },
+	{ pattern: /project-model\/(?:src\/)?scene-planning\//, label: 'F4 scene-planning barrel' },
 	{ pattern: /MuseumScene\.svelte/, label: 'bespoke MuseumScene' },
 	{ pattern: /MuseumHUD\.svelte/, label: 'bespoke MuseumHUD' },
 	{ pattern: /MuseumCanvas\.svelte/, label: 'museum canvas (Chopin-bound)' },

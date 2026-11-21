@@ -28,6 +28,10 @@
       "types": "./src/scene-planning/index.ts",
       "default": "./src/scene-planning/index.ts"
     },
+    "./form": {
+      "types": "./src/form.ts",
+      "default": "./src/form.ts"
+    },
     "./scene-surface-reference": {
       "types": "./src/scene-surface-reference.ts",
       "default": "./src/scene-surface-reference.ts"

@@ -103,6 +103,7 @@ export function lookCaseDocument(lookCase: LookCase): LookSource {
 		textures: [{ ...LOOK_TEXTURE }],
 		materialIndex: {
 			definitions: new Map(),
+			definitionImages: new Map(),
 			images: [{ hash: LOOK_TEXTURE.hash, source: { textureId: LOOK_TEXTURE.id } }]
 		},
 		materials:

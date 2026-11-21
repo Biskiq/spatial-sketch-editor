@@ -125,4 +125,23 @@ describe('the shared project-image closure enumerator', () => {
 			expect.arrayContaining(['image-dimensions-conflict', 'image-static-unknown'])
 		);
 	});
+
+	it('allowlists a Finish override shipped image and refuses an arbitrary path', () => {
+		const base = { id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' as const } };
+		const valid = collectSceneImageRequirements(
+			scene({ materials: [{ ...base, overrides: { maps: { color: { image: { shipped: '/textures/plaster-warm/map.png' } } } } }] }),
+			'private-save'
+		);
+		expect(valid.issues).toEqual([]);
+		expect(valid.requirements).toEqual([]);
+
+		const refused = collectSceneImageRequirements(
+			scene({ materials: [{ ...base, overrides: { maps: { color: { image: { shipped: '/evil/anything.png' } } } } }] }),
+			'private-save'
+		);
+		expect(refused.issues).toContainEqual(expect.objectContaining({
+			code: 'image-static-unknown',
+			path: '$.units.scene.data.materials[0].overrides.maps.color.image.shipped'
+		}));
+	});
 });
