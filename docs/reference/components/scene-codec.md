@@ -22,8 +22,9 @@ never clamps. A Finish has a `catalogue` or `material` (recipe digest) base and 
 an absent field inherits the base, `null` disables one base map, and an empty override container is
 never persisted, so canonical bytes hash the authored content only. A `target` or `surface` mapping
 carries a metric (`tileMeters`, `rotation`, `offset`); a `uv` mapping names a native UV set, repeat,
-rotation and offset. Rotations normalize to [0, 2π) radians and offsets to [0, 1). `normalScale` without a bound normal map is
-refused. A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec leaves
+rotation and offset. Rotations normalize to [0, 2π) radians and offsets to [0, 1). The codec does not tie `normalScale` to a normal map: a disabled normal map keeps its stored strength dormant. The
+F4 Finish patch refuses a patch that sets `normalScale` (or resets the normal map while leaving an authored
+`normalScale`) when no normal binding remains (`normal-control-without-normal`). A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec leaves
 follower closure to the unit validator, which is the only reader holding the palette. Retired
 Scene 11 Finish keys such as `normalFlipY` and `baseTextureId` are unknown keys, and a
 `/project-assets/{assetId}` texture's Scene id must equal that asset id (`texture_id_mismatch`).

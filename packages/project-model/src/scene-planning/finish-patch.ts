@@ -206,7 +206,13 @@ export function applyFinishPatch(
 	}
 	const pruned = pruneOverrides(read.overrides);
 	const setsNormalScale = edits.some((edit) => edit.field === 'normalScale' && edit.op === 'set');
-	if (setsNormalScale && !bindsNormal(pruned, baseRecipe)) {
+	// Resetting the normal map back to a base without one leaves any authored
+	// strength with nothing to scale; a patch must reset it too. Disabling keeps
+	// the stored positive strength dormant, so it stays allowed.
+	const resetsNormalMap = edits.some((edit) => edit.field === 'maps.normal' && edit.op === 'reset');
+	const strandsNormalScale =
+		resetsNormalMap && pruned?.normalScale !== undefined && !bindsNormal(pruned, baseRecipe);
+	if ((setsNormalScale || strandsNormalScale) && !bindsNormal(pruned, baseRecipe)) {
 		return {
 			ok: false,
 			problem: {

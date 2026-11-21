@@ -29,6 +29,7 @@ import {
 	proposeMaterialSet,
 	type DraftEdits
 } from '@portfolio/project-model/material-authoring';
+import { applyFinishPatch } from '../../../../../packages/project-model/src/scene-planning/finish-patch';
 import {
 	SCENE_FINISH_PATCH,
 	SCENE_FINISH_REGISTER,
@@ -802,5 +803,108 @@ describe('T2.S8 E exit — correctable set import', () => {
 		expect(outcome).toMatchObject({ ok: false, code: 'target-pending' });
 		expect(uploads).toEqual([]);
 	});
-});
 
+	it('rejects a stale revision from the coordinator as stale-revision, not refused (finding 3)', async () => {
+		const fx = await fixture();
+		const draft = await draftOf(fx, STEEL, MANUAL_STEEL);
+		const h = host(fx, importer());
+		const outcome = await acceptDraft(draft, { entityIds: ['plinth'], surfaces: [] }, 'late-stale', new AbortController().signal, {
+			...h,
+			// The project moves after the post-IO recheck and before the write.
+			accept: async (next) => {
+				await fx.coordinator.accept(intent(fx, SCENE_FINISH_RENAME, { finish: { project: 'shared' }, name: 'Moved' }, 'bump-late'));
+				return fx.coordinator.accept(next) as never;
+			}
+		});
+		expect(outcome).toMatchObject({ ok: false, code: 'stale-revision' });
+		expect(scene(fx).materials.map((instance) => instance.id)).toEqual(['shared']);
+	});
+
+	it('starts no upload after a failed one has been reported (finding 2)', async () => {
+		const fx = await fixture();
+		const draft = await draftOf(fx, STEEL, MANUAL_STEEL);
+		let started = 0;
+		const failing = (async (_api: unknown, _project: string, input: File, _signal: AbortSignal) => {
+			started++;
+			if (started === 1) throw new Error('upload exploded');
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			const bytes = new Uint8Array(await input.arrayBuffer());
+			return {
+				assetId: uuidOf(`sha256-${await imageSha256(bytes)}`),
+				name: input.name,
+				pixelWidth: 4,
+				pixelHeight: 4,
+				mime: 'image/png',
+				byteSize: bytes.length,
+				sha256: `sha256-${await imageSha256(bytes)}`
+			};
+		}) as never;
+		const outcome = await acceptDraft(draft, { entityIds: ['plinth'], surfaces: [] }, 'fails', new AbortController().signal, host(fx, failing));
+		expect(outcome).toMatchObject({ ok: false, code: 'upload-failed', message: 'upload exploded' });
+		const atReturn = started;
+		await new Promise((resolve) => setTimeout(resolve, 80));
+		expect(started).toBe(atReturn);
+		expect(atReturn).toBe(2);
+	});
+
+	it('refuses a dormant surface for good instead of reporting it pending (finding 4)', async () => {
+		const fx = await fixture();
+		const draft = await draftOf(fx, STEEL, MANUAL_STEEL);
+		const uploads: Upload[] = [];
+		const outcome = await acceptDraft(draft, { entityIds: [], surfaces: [LID] }, 'dormant', new AbortController().signal, host(fx, importer({ uploads })));
+		expect(outcome).toMatchObject({ ok: false, code: 'refused' });
+		expect(uploads).toEqual([]);
+	});
+
+	it('lists materialize for a curated Finish with no users (finding 8)', async () => {
+		const fx = await fixture();
+		expect(inspectFinish(fx.coordinator.current().source, { curated: 'wood-walnut' as never })?.operations).toContain('materialize');
+		const created = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { curated: 'wood-walnut' }, mode: 'all', selectedUsers: [], expectedUsers: [],
+			edits: [{ field: 'roughness', op: 'set', value: 0.4 }]
+		}, 'unassigned', [{ kind: 'scene-finish', id: 'unassigned-concrete' }]));
+		expect(created.kind).toBe('accepted');
+	});
+
+	it('a Just-this clone that ends pristine takes the curated normal form (finding 1)', async () => {
+		const fx = await fixture();
+		const all = ['entity:plinth-b', surfaceUserKey(LID), surfaceUserKey(WALL)].sort();
+		const reset = { field: 'color', op: 'reset' };
+		const surfaceOnly = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { project: 'shared' }, mode: 'just-this', selectedUsers: [surfaceUserKey(WALL)], expectedUsers: all, edits: [reset]
+		}, 'pristine-surface', [{ kind: 'scene-finish', id: 'pristine-clone' }]));
+		expect(surfaceOnly.kind).toBe('accepted');
+		expect(scene(fx).materials.map((instance) => instance.id)).toEqual(['shared']);
+		expect(scene(fx).surfaceFinishes).toEqual(byKey([
+			{ surface: WALL, finish: { materialId: 'plaster-warm' } },
+			{ surface: LID, finish: { materialInstanceId: 'shared' } }
+		]));
+		expect((await fx.coordinator.undo()).kind).toBe('restored');
+
+		const entityOnly = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { project: 'shared' }, mode: 'just-this', selectedUsers: ['entity:plinth-b'], expectedUsers: all, edits: [reset]
+		}, 'pristine-entity', [{ kind: 'scene-finish', id: 'pristine-clone-2' }]));
+		expect(entityOnly.kind).toBe('accepted');
+		expect(scene(fx).materials.map((instance) => instance.id)).toEqual(['shared']);
+		const plinthB = scene(fx).entities.find((entity) => entity.id === 'plinth-b') as { materialId?: string; materialInstanceId?: string };
+		expect(plinthB.materialId).toBe('plaster-warm');
+		expect(plinthB.materialInstanceId).toBeUndefined();
+		expect(inspectFinish(fx.coordinator.current().source, { project: 'shared' })!.users.map((user) => user.key)).not.toContain('entity:plinth-b');
+	});
+
+	it('resetting a normal map back to a base without one refuses a stranded strength (finding 7)', () => {
+		const instance: SceneMaterialInstance = {
+			id: 'n',
+			name: 'N',
+			base: { catalogue: 'plaster-warm' },
+			overrides: {
+				normalScale: 0.5,
+				maps: { normal: { image: { textureId: 'tex' }, convention: '-Y' } }
+			} as never
+		};
+		const stranded = applyFinishPatch(instance, [{ field: 'maps.normal', op: 'reset' }], undefined);
+		expect(stranded).toMatchObject({ ok: false, problem: { code: 'normal-control-without-normal' } });
+		expect(applyFinishPatch(instance, [{ field: 'maps.normal', op: 'reset' }, { field: 'normalScale', op: 'reset' }], undefined).ok).toBe(true);
+		expect(applyFinishPatch(instance, [{ field: 'maps.normal', op: 'disable' }], undefined).ok).toBe(true);
+	});
+});

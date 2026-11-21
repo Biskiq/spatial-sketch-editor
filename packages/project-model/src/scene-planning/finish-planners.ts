@@ -2061,8 +2061,20 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		let changedSurfaceKeys: string[] = [];
 		let changedEntityIds: string[] = [];
 		if (needsNew) {
-			materials.push(next);
-			addedMaterials.push(next.id);
+			// A clone that ends pristine (catalogue base, no overrides) is never
+			// stored for primitives and surfaces: the selected users take the
+			// curated normal form and the allocated id is ignored (a reservation,
+			// not a grant). A model user has no normal form for a catalogue base,
+			// so a clone that reaches a model keeps its instance.
+			const reachesModel = affected.some(
+				(user) => user.kind === 'entity' && before.entities.find((entity) => entity.id === (user as { entityId: string }).entityId)?.kind === 'model'
+			);
+			const pristineClone = isPristineInstance(next) && !reachesModel;
+			const cloneBase = catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID;
+			if (!pristineClone) {
+				materials.push(next);
+				addedMaterials.push(next.id);
+			}
 			const entityIds = new Set(
 				affected.filter((user) => user.kind === 'entity').map((user) => (user as { entityId: string }).entityId)
 			);
@@ -2070,11 +2082,11 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			entities = before.entities.map((entity) => {
 				if (!entityIds.has(entity.id)) return entity;
 				if (entity.kind === 'model') return { ...entity, materialInstanceId: next.id } as SceneEntity;
-				return {
-					...entity,
-					materialId: catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID,
-					materialInstanceId: next.id
-				} as SceneEntity;
+				if (pristineClone) {
+					const { materialInstanceId: _dropped, ...rest } = entity as SceneEntity & { materialInstanceId?: string };
+					return { ...rest, materialId: cloneBase } as SceneEntity;
+				}
+				return { ...entity, materialId: cloneBase, materialInstanceId: next.id } as SceneEntity;
 			});
 			const surfaceKeys = new Set(
 				affected
@@ -2084,7 +2096,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			changedSurfaceKeys = [...surfaceKeys];
 			surfaceFinishes = before.surfaceFinishes?.map((assignment) =>
 				surfaceKeys.has(surfaceKey(assignment.surface))
-					? { ...assignment, finish: { materialInstanceId: next.id } }
+					? { ...assignment, finish: pristineClone ? { materialId: cloneBase as MaterialId } : { materialInstanceId: next.id } }
 					: assignment
 			);
 		} else {

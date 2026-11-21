@@ -73,23 +73,45 @@ export type SetFileSession = {
 	release(): void;
 };
 
-/** Run `work` over `items`, at most `limit` at a time, preserving input order. */
+/**
+ * Run `work` over `items`, at most `limit` at a time, preserving input order.
+ *
+ * The first failure aborts the lanes' shared signal and stops new items from
+ * starting; every lane settles before this returns or throws, so no `work` call
+ * begins or is still running after the caller sees the result.
+ */
 async function mapBounded<T, R>(
 	items: readonly T[],
 	limit: number,
 	signal: AbortSignal,
-	work: (item: T) => Promise<R>
+	work: (item: T, signal: AbortSignal) => Promise<R>
 ): Promise<R[]> {
+	const controller = new AbortController();
+	const link = () => controller.abort(signal.reason);
+	if (signal.aborted) link();
+	else signal.addEventListener('abort', link, { once: true });
 	const results = new Array<R>(items.length);
 	let next = 0;
+	let failure: { readonly error: unknown } | null = null;
 	const lanes = Array.from({ length: Math.min(limit, items.length) }, async () => {
-		while (next < items.length) {
-			signal.throwIfAborted();
+		while (failure === null && next < items.length) {
+			if (controller.signal.aborted) {
+				failure ??= { error: controller.signal.reason ?? new DOMException('Aborted', 'AbortError') };
+				return;
+			}
 			const index = next++;
-			results[index] = await work(items[index]!);
+			try {
+				results[index] = await work(items[index]!, controller.signal);
+			} catch (error) {
+				failure ??= { error };
+				controller.abort(error);
+				return;
+			}
 		}
 	});
 	await Promise.all(lanes);
+	signal.removeEventListener('abort', link);
+	if (failure !== null) throw (failure as { error: unknown }).error;
 	return results;
 }
 
@@ -327,9 +349,12 @@ function targetProblem(source: ProjectEnvelope, targets: DraftTargets): string |
 		}
 	}
 	for (const surface of targets.surfaces) {
-		if (resolveLayoutSurface(source.units.layout.data, surface) === 'retired') {
-			return 'That surface changed. Try again.';
-		}
+		// The register planner admits only a present surface. A dormant one (e.g. the
+		// lid of an open-to-sky room) draws nothing, so it can never qualify: refuse
+		// it for good instead of reporting it as pending analysis.
+		const lifecycle = resolveLayoutSurface(source.units.layout.data, surface);
+		if (lifecycle === 'dormant') return 'That surface is not drawn right now, so it cannot take a Finish.';
+		if (lifecycle !== 'present') return 'That surface changed. Try again.';
 	}
 	return null;
 }
@@ -394,10 +419,10 @@ export async function acceptDraft(
 	const sources = [...draft.sources.values()].sort((left, right) => (left.hash < right.hash ? -1 : 1));
 	let staged: ImportedProjectImage[];
 	try {
-		staged = await mapBounded(sources, MATERIAL_SET_CONCURRENCY, signal, async (source) => {
-			const bytes = await source.read(signal);
+		staged = await mapBounded(sources, MATERIAL_SET_CONCURRENCY, signal, async (source, laneSignal) => {
+			const bytes = await source.read(laneSignal);
 			const file = new File([bytes as BlobPart], source.name, { type: source.mime });
-			return importImage(host.api, host.projectId, file, signal, FINISH_IMAGE_POLICY, { preferAssetIds: prefer });
+			return importImage(host.api, host.projectId, file, laneSignal, FINISH_IMAGE_POLICY, { preferAssetIds: prefer });
 		});
 	} catch (error) {
 		if (signal.aborted) return refused('aborted', 'Cancelled. Uploaded images stay in the project; no Finish was added.');
@@ -462,7 +487,16 @@ export async function acceptDraft(
 	} as AuthoringIntent);
 	if (outcome.kind !== 'accepted') {
 		const reason = outcome.reason ?? outcome.code ?? outcome.kind;
-		const code = reason === 'target-pending' ? 'target-pending' : 'refused';
+		const code: AcceptDraftRefusal =
+			reason === 'target-pending'
+				? 'target-pending'
+				: reason === 'stale-revision'
+					? 'stale-revision'
+					: reason === 'image-pin-conflict' || reason === 'texture-mismatch'
+						? 'image-pin-mismatch'
+						: reason === 'aborted'
+							? 'aborted'
+							: 'refused';
 		return refused(code, outcome.message ?? 'The material could not be added.', [
 			{ path: '$', code: reason, message: outcome.message ?? outcome.kind }
 		]);

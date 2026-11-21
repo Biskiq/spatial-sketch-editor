@@ -54,9 +54,13 @@ authored zero is preserved.
 
 Editor services in `apps/editor/src/lib/authoring/materials/material-set.ts`: `readSetFileFacts`
 (concurrency 2), `prepareDraft(edits, files, expectedRevision, signal)` and
-`acceptDraft(draft, targets, scope, operationId, signal)`. Acceptance refuses pending targets before
-IO, stages distinct files through `importProjectImage`, rechecks revision and reach after IO and
-issues exactly one `scene-finish-register` with Finish id `finish-<operationId>`. `aborted`,
+`acceptDraft(draft, targets, operationId, signal, host)`. Plan § E5 names a `scope` parameter but never
+defines what it carries; no invented semantics were added, so the signature deviates (host-injected
+F4 scope is derived from `targets`). Acceptance refuses pending targets and dormant/retired surfaces
+(`refused`) before IO, bounds uploads at two and stops new ones on the first failure (every lane
+settles before the result returns), stages distinct files through `importProjectImage`, rechecks revision and reach after IO and
+issues exactly one `scene-finish-register` with Finish id `finish-<operationId>`. F4 refusals map `stale-revision`, `image-pin-conflict`/`texture-mismatch` (→ `image-pin-mismatch`)
+and `aborted` to their own codes; the rest stay `refused`. `aborted`,
 `stale-revision`, `target-pending`, `image-pin-mismatch` and `unresolved-role` leave the project
 unchanged. `project-artwork.ts` gains `preferAssetIds` (prefer an already referenced ready row, else
 the lexically first) and an in-flight map so identical bytes reserve and upload once.
@@ -66,7 +70,7 @@ the visitor closure rejects it.
 
 ## Acceptance (E exit)
 
-`apps/editor/tests/lib/project-model/s8-pr-e-acceptance.test.ts` (9 tests) drives the real adapter,
+`apps/editor/tests/lib/project-model/s8-pr-e-acceptance.test.ts` (15 tests) drives the real adapter,
 target analysis and unit coordinator:
 
 | E exit item | Result |
@@ -88,7 +92,7 @@ Also: `material-set-proposal.test.ts` (10), `project-artwork.test.ts` (+2), `pre
 | --- | --- |
 | `npm run check` (editor) | 0 errors; 16 pre-existing warnings, none in files this PR touches |
 | `check:project-model` | pass |
-| `test:fast` | 464 files, 5717 tests pass |
+| `test:fast` | 464 files, 5723 tests (2 load-timeout flakes in unrelated harness/paper files pass alone) |
 | `test:arch` | 38 files, 357 tests pass |
 | `test:heavy` | 11 files, 138 tests pass |
 | `npm run build` | pass |
@@ -131,7 +135,7 @@ limitation: F4 still refuses a compound write and E does not widen it. It is rec
 | Check | Result |
 | --- | --- |
 | `npm run test:arch` | 38 files, 357 passed (documentation gate green) |
-| `npm run test:fast` | 464 files, 5717 passed (rerun after the fix) |
+| `npm run test:fast` | 464 files, 5721 passed + 2 unrelated load timeouts, green alone (review follow-up) |
 | `npm run check` | 0 errors; 16 pre-existing warnings |
 | `check:project-model` | pass |
 | `npm run build` | pass |
@@ -155,3 +159,13 @@ was not re-read in the recheck.
 - Owner manual browser acceptance was waived by the owner (2026-11-21); the agent gate above is the browser evidence.
 
 F (inspection/catalogue) and G (transfer) can proceed in parallel from this surface.
+
+## Review follow-up
+
+- A *Just this* clone that ends pristine (catalogue base, no overrides) is not stored: surfaces and
+  primitives take the curated normal form (`{materialId}` / `materialId` without `materialInstanceId`)
+  and the allocated Finish id is ignored (a reservation, not a grant). A clone reaching a model user
+  keeps its instance, since a model has no normal form for a catalogue base.
+- Resetting `maps.normal` to a base without a normal map refuses a still-authored `normalScale`
+  (`normal-control-without-normal`) unless the patch resets it too; `disable` stays allowed.
+- `inspectFinish` always lists `materialize` for a curated Finish, matching the patch planner.

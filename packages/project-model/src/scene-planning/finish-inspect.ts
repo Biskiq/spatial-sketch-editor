@@ -292,7 +292,8 @@ export function inspectFinish(
 	const drawing = users.length;
 	const operations: FinishOperation[] = ['assign'];
 	if (curated) {
-		if (drawing > 0) operations.push('materialize');
+		// An unassigned named Finish is allowed (plan E4), so materialize is always listed.
+		operations.push('materialize');
 	} else {
 		operations.push('rename');
 		if (drawing <= 1) operations.push('edit-in-place');
