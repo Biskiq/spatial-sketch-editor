@@ -11,7 +11,7 @@ import {
   type FormMesh,
   type ProfileAnchor
 } from '@portfolio/geometry-core';
-import type { SceneFormSource } from '../scene';
+import type { SceneFormSource } from './scene';
 
 /** Evaluate one form source at its stored extent and per-axis scale. */
 export function evaluateSceneForm(source: SceneFormSource): FormMesh {

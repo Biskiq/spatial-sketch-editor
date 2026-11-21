@@ -656,14 +656,7 @@ describe('scene document codec', () => {
 			}
 		];
 		document.materials = [
-			{
-				id: 'material-wall-detail',
-				name: 'Wall Detail',
-				baseMaterialId: 'plaster-warm',
-				maps: { color: 'texture-wall-detail' },
-				roughness: 0.7,
-				metalness: 0.1
-			}
+			{ id: 'material-wall-detail', name: 'Wall Detail', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'texture-wall-detail' } } }, roughness: 0.7, metalness: 0.1 } }
 		];
 		(document.entities[0] as { materialInstanceId?: string }).materialInstanceId =
 			'material-wall-detail';
@@ -732,21 +725,16 @@ describe('scene document codec', () => {
 
 		const duplicateMaterials = cloneDocument();
 		duplicateMaterials.materials = [
-			{ id: 'same-material', name: 'First', baseMaterialId: 'plaster-warm' },
-			{ id: 'same-material', name: 'Second', baseMaterialId: 'wood-walnut' }
+			{ id: 'same-material', name: 'First', base: { catalogue: 'plaster-warm' } },
+			{ id: 'same-material', name: 'Second', base: { catalogue: 'wood-walnut' } }
 		];
 		expectIssue(duplicateMaterials, 'duplicate_id', '$.materials[1].id');
 
 		const unknownTexture = cloneDocument();
 		unknownTexture.materials = [
-			{
-				id: 'unknown-texture-material',
-				name: 'Unknown Texture',
-				baseMaterialId: 'plaster-warm',
-				maps: { color: 'missing-texture' }
-			}
+			{ id: 'unknown-texture-material', name: 'Unknown Texture', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'missing-texture' } } } } }
 		];
-		expectIssue(unknownTexture, 'unknown_texture', '$.materials[0].maps.color');
+		expectIssue(unknownTexture, 'unknown_texture', '$.materials[0].overrides.maps.color.image.textureId');
 
 		const unknownMaterial = cloneDocument();
 		(unknownMaterial.entities[0] as { materialInstanceId?: string }).materialInstanceId =
@@ -761,9 +749,9 @@ describe('scene document codec', () => {
 	it('rejects invalid material bases, overrides, and light material references', () => {
 		const unknownBase = cloneDocument();
 		unknownBase.materials = [
-			{ id: 'bad-base', name: 'Bad Base', baseMaterialId: 'missing-material' }
+			{ id: 'bad-base', name: 'Bad Base', base: { catalogue: 'missing-material' } }
 		] as unknown as SceneDocument['materials'];
-		expectIssue(unknownBase, 'unknown_material', '$.materials[0].baseMaterialId');
+		expectIssue(unknownBase, 'unknown_material', '$.materials[0].base.catalogue');
 
 		for (const [key, value] of [
 			['roughness', -0.01],
@@ -773,14 +761,9 @@ describe('scene document codec', () => {
 		] as const) {
 			const invalidOverride = cloneDocument();
 			invalidOverride.materials = [
-				{
-					id: `bad-${key}-${value}`,
-					name: 'Bad Override',
-					baseMaterialId: 'plaster-warm',
-					[key]: value
-				}
+				{ id: `bad-${key}-${value}`, name: 'Bad Override', base: { catalogue: 'plaster-warm' }, overrides: { [key]: value } }
 			];
-			expectIssue(invalidOverride, `invalid_${key}`, `$.materials[0].${key}`);
+			expectIssue(invalidOverride, 'out-of-range', `$.materials[0].overrides.${key}`);
 		}
 
 		const lightReference = cloneDocument();
@@ -906,17 +889,28 @@ describe('Scene 8 Finish fields', () => {
 	}
 
 	function material(extra: Record<string, unknown> = {}) {
-		return { id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm', ...extra };
+		const { overrides, ...rest } = extra;
+		return {
+			id: 'finish',
+			name: 'Finish',
+			base: { catalogue: 'plaster-warm' },
+			...(rest === undefined || Object.keys(rest).length === 0 ? {} : rest),
+			...(overrides === undefined ? {} : { overrides })
+		};
 	}
 
-	it('round-trips every Finish field and drops every default', () => {
+	it('round-trips every Finish field and keeps explicit values equal to the base', () => {
 		const document = withMaterial(
 			material({
-				color: { slot: 'accent' },
-				maps: { color: WALL.id, normal: NORMAL.id },
-				mapping: { tileMeters: [0.5, 2], rotation: 0.25, offset: [0.1, 0.2] },
-				normalScale: 0.5,
-				normalFlipY: true
+				overrides: {
+					color: { slot: 'accent' },
+					maps: {
+						color: { image: { textureId: WALL.id } },
+						normal: { image: { textureId: NORMAL.id }, convention: '-Y' }
+					},
+					mapping: { kind: 'target', metric: { tileMeters: [0.5, 2], rotation: 0.25, offset: [0.1, 0.2] } },
+					normalScale: 0.5
+				}
 			})
 		);
 		const result = validateSceneDocument(document);
@@ -926,32 +920,49 @@ describe('Scene 8 Finish fields', () => {
 		expect(parseSceneDocumentJson(result.canonicalJson)).toEqual(result);
 
 		const defaults = validateSceneDocument(
-			withMaterial(material({ maps: {}, mapping: { rotation: 0, offset: [0, 0] } }))
+			withMaterial(material({
+				overrides: {
+					maps: {},
+					mapping: { kind: 'target', metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] } }
+				}
+			}))
 		);
 		expect(defaults.success).toBe(true);
 		if (!defaults.success) return;
-		expect(defaults.document.materials[0]).toEqual(material());
+		expect(defaults.document.materials[0]).toEqual(
+			material({
+				overrides: {
+					mapping: { kind: 'target', metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] } }
+				}
+			})
+		);
 
 		const normalDefaults = validateSceneDocument(
 			withMaterial(
 				material({
-					maps: { normal: NORMAL.id },
-					normalScale: 1,
-					normalFlipY: false
+					overrides: {
+						maps: { normal: { image: { textureId: NORMAL.id }, convention: '+Y' } },
+						normalScale: 1
+					}
 				})
 			)
 		);
 		expect(normalDefaults.success).toBe(true);
 		if (!normalDefaults.success) return;
 		expect(normalDefaults.document.materials[0]).toEqual(
-			material({ maps: { normal: NORMAL.id } })
+			material({
+				overrides: {
+					maps: { normal: { image: { textureId: NORMAL.id }, convention: '+Y' } },
+					normalScale: 1
+				}
+			})
 		);
 	});
 
 	it('refuses the retired single colour map as an unknown key', () => {
 		expectIssue(
 			withMaterial(material({ baseTextureId: WALL.id })),
-			'unknown_property',
+			'unknown-key',
 			'$.materials[0].baseTextureId'
 		);
 	});
@@ -967,40 +978,31 @@ describe('Scene 8 Finish fields', () => {
 		'refuses an unknown texture in maps.%s',
 		(slot) => {
 			expectIssue(
-				withMaterial(material({ maps: { [slot]: 'missing-texture' } }), [WALL]),
+				withMaterial(material({ overrides: { maps: { [slot]: { image: { textureId: 'missing-texture' }, ...(slot === 'normal' ? { convention: '+Y' } : slot === 'color' ? {} : { component: 'r', invert: false }) } } } }), [WALL]),
 				'unknown_texture',
-				`$.materials[0].maps.${slot}`
+				`$.materials[0].overrides.maps.${slot}.image.textureId`
 			);
 		}
 	);
 
-	it.each(['normalScale', 'normalFlipY'] as const)(
-		'refuses %s without a normal map',
-		(field) => {
-			expectIssue(
-				withMaterial(material({ [field]: field === 'normalScale' ? 0.5 : true })),
-				'normal_map_required',
-				`$.materials[0].${field}`
-			);
-		}
-	);
+	it('refuses an unknown normal convention', () => {
+		expectIssue(
+			withMaterial(material({ overrides: { maps: { normal: { image: { textureId: NORMAL.id }, convention: 'up' } } } })),
+			'unknown-key',
+			'$.materials[0].overrides.maps.normal.convention'
+		);
+	});
 
-	it('refuses uppercase hex and every out-of-range mapping value', () => {
-		expectIssue(withMaterial(material({ color: '#AABBCC' })), 'invalid_color', '$.materials[0].color');
+	it('refuses uppercase hex and an out-of-range tile', () => {
 		expectIssue(
-			withMaterial(material({ mapping: { offset: [1, 0] } })),
-			'invalid_value',
-			'$.materials[0].mapping.offset'
+			withMaterial(material({ overrides: { color: '#AABBCC' } })),
+			'invalid-colour',
+			'$.materials[0].overrides.color'
 		);
 		expectIssue(
-			withMaterial(material({ mapping: { rotation: Math.PI * 2 } })),
-			'invalid_value',
-			'$.materials[0].mapping.rotation'
-		);
-		expectIssue(
-			withMaterial(material({ mapping: { tileMeters: [0, 1] } })),
-			'invalid_dimension',
-			'$.materials[0].mapping.tileMeters'
+			withMaterial(material({ overrides: { mapping: { kind: 'target', metric: { tileMeters: [0, 1], rotation: 0, offset: [0, 0] } } } })),
+			'out-of-range',
+			'$.materials[0].overrides.mapping.metric.tileMeters[0]'
 		);
 	});
 });

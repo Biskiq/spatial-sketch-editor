@@ -183,6 +183,8 @@ export function createStageAcceptanceHost(options: {
 	readonly facade: StageFacade;
 	readonly baseline: StageAcceptanceBaseline;
 	readonly sessionEpoch: string;
+	/** The route session's content-addressed material proofs. */
+	readonly materialProofs?: import('../material-proof').MaterialProofRegistry;
 	/**
 	 * Conformance planners supplied by a caller before adapters mount. The live
 	 * Scene adapter registers its own planners through `registerPlanner`; this
@@ -407,7 +409,11 @@ export function createStageAcceptanceHost(options: {
 			// Stage never shows a snapshot the visitor runtime could not prepare.
 			const admission = await admitSource(
 				snapshot.domain.source,
-				{ sessionEpoch, acceptedRevision: snapshot.acceptedRevision },
+				{
+					sessionEpoch,
+					acceptedRevision: snapshot.acceptedRevision,
+					...(options.materialProofs === undefined ? {} : { materialProofs: options.materialProofs })
+				},
 				{
 					compileSession,
 					knownIdentity: installOptions.knownIdentity,
@@ -719,7 +725,11 @@ export function createStageAcceptanceHost(options: {
 				// document rather than the old one.
 				const admission = await admitSource(
 					source.source,
-					{ sessionEpoch: nextEpoch, acceptedRevision: source.revision },
+					{
+						sessionEpoch: nextEpoch,
+						acceptedRevision: source.revision,
+						...(options.materialProofs === undefined ? {} : { materialProofs: options.materialProofs })
+					},
 					{ compileSession }
 				);
 				if (disposed) return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };

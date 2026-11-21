@@ -65,6 +65,12 @@ export type StageAssetLeaseInput = {
 	readonly resolveArtwork: (image: ArtworkImage, signal: AbortSignal) => Promise<ArtworkBytes>;
 	/** Authenticated project texture bytes for a Finish image (S4b). */
 	readonly resolveTexture?: (assetId: string, signal: AbortSignal) => Promise<ProjectTextureResolution>;
+	/**
+	 * Observe one approved derivative's exact bytes so the route can derive the
+	 * target analysis Finish registration reads. It runs before the URLs install;
+	 * a failure never blocks the model's own rendering.
+	 */
+	readonly analyzeModel?: (assetId: string, digest: string, bytes: Uint8Array) => Promise<void> | void;
 	readonly notice: StageAssetLeaseNotice;
 	/** Deterministic test seams; production uses the existing modules. */
 	readonly resolveModels?: typeof resolveApprovedModels;
@@ -149,7 +155,28 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 			// orphan on every route open.
 			const usedTextureIds = new Set<string>();
 			for (const material of scene.materials) {
-				for (const textureId of Object.values(material.maps ?? {})) usedTextureIds.add(textureId);
+				// The route controller may not execute a package barrel (X1/X2); the
+				// canonical enumerator is `finishTextureBindings`, and this is its
+				// five-role walk over the same accepted Finish value.
+				for (const role of ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const) {
+					const image = material.overrides?.maps?.[role]?.image;
+					if (image !== undefined && image !== null && 'textureId' in image) {
+						usedTextureIds.add(image.textureId);
+					}
+				}
+			}
+			// A resource-backed Finish can draw images inherited from its definition
+			// without naming them in an override. Those local mappings are still the
+			// faces' bytes, so lease the definition's exact texture records too.
+			const materialBases = new Set(
+				scene.materials.flatMap((material) => ('material' in material.base ? [material.base.material] : []))
+			);
+			for (const resource of envelope.units.resources.data.resources) {
+				if (resource.kind !== 'material' || resource.material === undefined) continue;
+				if (!materialBases.has(resource.id)) continue;
+				for (const image of resource.material.images) {
+					if ('textureId' in image.source) usedTextureIds.add(image.source.textureId);
+				}
 			}
 			const pinsByUri = new Map<string, ProjectTexturePin>();
 			for (const texture of scene.textures) {
@@ -218,7 +245,13 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 						// it, rather than a second route-level project fact.
 						projectId: snapshot.acceptedRevision.projectId,
 						apiOrigin: input.apiOrigin,
-						signal
+						signal,
+						...(input.analyzeModel === undefined
+							? {}
+							: {
+								onBytes: ({ assetId, hash, bytes }) =>
+									input.analyzeModel!(assetId, hash, bytes)
+							})
 					});
 					return landed.value;
 				})) !== null;

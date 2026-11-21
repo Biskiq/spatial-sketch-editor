@@ -242,16 +242,9 @@ export async function buildCountingSceneFixture(
 		{ id: COUNTING_TEXTURE_ID, name: 'Counting texture', uri: '/textures/e0-counting.png' }
 	];
 	const materials: SceneMaterialInstance[] = [
-		{ id: SHARED_LOOK, name: 'Shared plaster', baseMaterialId: 'plaster-warm', roughness: 0.85, metalness: 0 },
-		{ id: SECOND_LOOK, name: 'Second plaster', baseMaterialId: 'plaster-warm', roughness: 0.4, metalness: 0 },
-		{
-			id: TEXTURED_LOOK,
-			name: 'Textured plaster',
-			baseMaterialId: 'plaster-warm',
-			maps: { color: COUNTING_TEXTURE_ID },
-			roughness: 0.65,
-			metalness: 0
-		}
+		{ id: SHARED_LOOK, name: 'Shared plaster', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.85, metalness: 0 } },
+		{ id: SECOND_LOOK, name: 'Second plaster', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.4, metalness: 0 } },
+		{ id: TEXTURED_LOOK, name: 'Textured plaster', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: COUNTING_TEXTURE_ID } } }, roughness: 0.65, metalness: 0 } }
 	];
 
 	const entities: SceneEntity[] = [];

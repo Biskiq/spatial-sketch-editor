@@ -35,9 +35,14 @@
 	const WOOD_SHARED: SceneMaterialInstance = {
 		id: 'oracle-shared',
 		name: 'S8 Shared Wood',
-		baseMaterialId: 'wood-walnut',
-		maps: { color: 'oracle-swatch' },
-		mapping: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] }
+		base: { catalogue: 'wood-walnut' },
+		overrides: {
+			maps: { color: { image: { textureId: 'oracle-swatch' } } },
+			mapping: {
+				kind: 'target',
+				metric: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] }
+			}
+		}
 	};
 
 	function primitive(id: string, x: number, options: {
@@ -132,15 +137,14 @@
 				{
 					id: 'oracle-palette',
 					name: 'S8 Palette',
-					baseMaterialId: 'plaster-warm',
-					color: { slot: 'oracle-walnut' }
+					base: { catalogue: 'plaster-warm' },
+					overrides: { color: { slot: 'oracle-walnut' } }
 				},
 				{
 					id: 'oracle-zero',
 					name: 'S8 Zero',
-					baseMaterialId: 'wood-walnut',
-					roughness: 0,
-					metalness: 0
+					base: { catalogue: 'wood-walnut' },
+					overrides: { roughness: 0, metalness: 0 }
 				}
 			);
 			entities = [

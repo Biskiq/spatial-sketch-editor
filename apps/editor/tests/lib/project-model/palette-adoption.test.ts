@@ -32,8 +32,46 @@ const PALETTE: ScenePaletteSlot[] = [
 	{ id: 'ink', name: 'Ink', color: '#293241' }
 ];
 
-function material(id: string, input: Partial<SceneMaterialInstance>): SceneMaterialInstance {
-	return { id, name: id, baseMaterialId: 'plaster-warm', ...input };
+type LegacyMaterialInput = {
+	color?: SceneMaterialInstance['overrides'] extends infer O ? (O extends { color?: infer C } ? C : never) : never;
+	roughness?: number;
+	metalness?: number;
+	maps?: Record<string, string>;
+	mapping?: { tileMeters?: [number, number]; rotation?: number; offset?: [number, number] };
+};
+
+function material(id: string, input: LegacyMaterialInput): SceneMaterialInstance {
+	const { color, roughness, metalness, maps, mapping } = input;
+	const overrides: Record<string, unknown> = {};
+	if (color !== undefined) overrides.color = color;
+	if (roughness !== undefined) overrides.roughness = roughness;
+	if (metalness !== undefined) overrides.metalness = metalness;
+	if (maps !== undefined) {
+		overrides.maps = Object.fromEntries(
+			Object.entries(maps).map(([role, textureId]) => [
+				role,
+				role === 'color' || role === 'normal'
+					? { image: { textureId }, ...(role === 'normal' ? { convention: '+Y' } : {}) }
+					: { image: { textureId }, component: 'r', invert: false }
+			])
+		);
+	}
+	if (mapping !== undefined) {
+		overrides.mapping = {
+			kind: 'target',
+			metric: {
+				tileMeters: mapping.tileMeters ?? [1, 1],
+				rotation: mapping.rotation ?? 0,
+				offset: mapping.offset ?? [0, 0]
+			}
+		};
+	}
+	return {
+		id,
+		name: id,
+		base: { catalogue: 'plaster-warm' },
+		...(Object.keys(overrides).length === 0 ? {} : { overrides: overrides as SceneMaterialInstance['overrides'] })
+	};
 }
 
 function scene(materials: SceneMaterialInstance[], palette = PALETTE): CameraFreeSceneDocument {
@@ -142,7 +180,7 @@ describe('T2.S6 — scene-palette-adopt', () => {
 		expect(outcome.kind).toBe('prepared');
 		if (outcome.kind !== 'prepared') return;
 		expect(outcome.candidate.source.units.scene.data.materials).toEqual([
-			{ ...before.materials[0], color: { slot: 'coral' } },
+			{ ...before.materials[0], overrides: { ...before.materials[0]!.overrides, color: { slot: 'coral' } } },
 			before.materials[1]
 		]);
 		expect(outcome.candidate.changes).toEqual([
@@ -169,5 +207,34 @@ describe('T2.S6 — scene-palette-adopt', () => {
 			.toMatchObject({ kind: 'rejected', code: 'no-palette' });
 		expect(adopt(scene([material('a', { color: { slot: 'coral' } })]), []))
 			.toMatchObject({ kind: 'rejected', code: 'no-change' });
+	});
+
+	it('adopts a Finish whose colour map is explicitly disabled (maps: { color: null })', () => {
+		const disabledColorMap: SceneMaterialInstance = {
+			id: 'disabled-map',
+			name: 'Disabled map',
+			base: { catalogue: 'plaster-warm' },
+			overrides: {
+				color: '#aa5533',
+				maps: { color: null }
+			}
+		};
+		const before = scene([disabledColorMap]);
+		const plan = planPaletteAdoption(before);
+		expect(plan.rows).toEqual([
+			{ color: '#aa5533', slotId: 'coral', slotName: 'Coral', slotColor: '#ee6c4d', finishes: 1, objects: 1 }
+		]);
+		expect(plan.skipped).toEqual({ imageTints: 0, inherited: 0 });
+
+		const outcome = adopt(before, [{ color: '#aa5533', slotId: 'coral', slotColor: '#ee6c4d' }]);
+		expect(outcome.kind).toBe('prepared');
+		if (outcome.kind !== 'prepared') return;
+		expect(outcome.candidate.source.units.scene.data.materials[0]).toEqual({
+			...disabledColorMap,
+			overrides: {
+				...disabledColorMap.overrides,
+				color: { slot: 'coral' }
+			}
+		});
 	});
 });

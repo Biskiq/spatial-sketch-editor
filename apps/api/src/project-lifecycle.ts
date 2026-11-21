@@ -15,6 +15,7 @@ import type { DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
 import { ProjectNotFoundError, loadProject, queryRows, withTransaction } from './project-persistence.js';
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
+import { verifyMaterialDefinitionHashes } from './material-integrity.js';
 import {
 	DEFAULT_PROJECT_LIFECYCLE_POLICY,
 	projectCleanupBoundMs,
@@ -142,6 +143,10 @@ export async function renameProject(
 		throw new Error('Stored project failed validation');
 	}
 	const envelope = validation.envelope;
+	const materialIssues = await verifyMaterialDefinitionHashes(envelope);
+	if (materialIssues.length > 0) {
+		throw new SaveRefusalError('invalid-project', materialIssues[0]!.message);
+	}
 	if (envelope.name === request.name) {
 		return renameNoOp(pool, ownerId, projectId, request);
 	}

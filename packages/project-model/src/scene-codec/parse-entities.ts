@@ -21,6 +21,7 @@ import {
 import { ARTWORK_MAX_IMAGE_EDGE, isArtworkAssetId, isArtworkImageEdge, isArtworkWidth } from '../artwork';
 import type { ArtworkImage, ArtworkLibraryEntry } from '../artwork';
 import { readArtworkFrame } from '../artwork-frame';
+import { readFinish } from '../materials/read';
 import type { ArtworkFrame } from '../artwork-frame';
 import type {
 	SceneArtworkEntity,
@@ -260,6 +261,15 @@ export function parseFinishMapping(
 	};
 }
 
+/**
+ * Read one Scene 12 material instance through the portable Finish reader.
+ *
+ * The Scene codec owns Finish identity and the assignment normal form; the
+ * grammar itself is the accepted v1 contract, so a second parser here would be
+ * a second authority. A catalogue base must name a known catalogue id; a
+ * resource base is a digest and is resolved against the resources unit by
+ * envelope closure, not by this record reader.
+ */
 export function parseMaterialInstance(
 	input: unknown,
 	path: string,
@@ -267,111 +277,32 @@ export function parseMaterialInstance(
 	validation: ResolvedSceneValidationOptions
 ): SceneMaterialInstance | undefined {
 	if (!isRecord(input)) {
-		addIssue(issues, path, 'invalid_type', 'Expected a material instance object');
+		addIssue(issues, path, 'invalid_type', 'Expected a Finish object');
 		return undefined;
 	}
-	assertAllowedKeys(
-		input,
-		[
-			'id',
-			'name',
-			'baseMaterialId',
-			'color',
-			'roughness',
-			'metalness',
-			'maps',
-			'mapping',
-			'normalScale',
-			'normalFlipY'
-		],
-		path,
-		issues
-	);
-	const id = readRequiredString(input, 'id', path, issues);
-	const name = readRequiredString(input, 'name', path, issues);
-	const baseMaterialIdRaw = readRequiredString(input, 'baseMaterialId', path, issues);
-	const baseMaterialId =
-		baseMaterialIdRaw && validation.isKnownMaterialId(baseMaterialIdRaw)
-			? (baseMaterialIdRaw as MaterialId)
-			: undefined;
-	if (baseMaterialIdRaw && !baseMaterialId) {
-		addIssue(
-			issues,
-			`${path}.baseMaterialId`,
-			'unknown_material',
-			`Unknown material: ${baseMaterialIdRaw}`
-		);
-	}
-	const color = 'color' in input ? parseSceneColor(input.color, `${path}.color`, issues) : undefined;
-	const roughness = readUnitInterval(input, 'roughness', path, issues);
-	const metalness = readUnitInterval(input, 'metalness', path, issues);
-	const parsedMaps = 'maps' in input ? parseFinishMaps(input.maps, `${path}.maps`, issues) : undefined;
-	const maps = parsedMaps === undefined || Object.keys(parsedMaps).length === 0 ? undefined : parsedMaps;
-	const parsedMapping =
-		'mapping' in input ? parseFinishMapping(input.mapping, `${path}.mapping`, issues) : undefined;
-	const mapping =
-		parsedMapping === undefined || Object.keys(parsedMapping).length === 0
-			? undefined
-			: parsedMapping;
-	let normalScaleValid = true;
-	let normalScale: number | undefined;
-	if ('normalScale' in input) {
-		const value = readRequiredNumber(input, 'normalScale', path, issues);
-		if (value === undefined || value <= 0 || value > FINISH_NORMAL_SCALE_MAX) {
+	const read = readFinish(input);
+	if (!read.success) {
+		for (const issue of read.issues) {
 			addIssue(
 				issues,
-				`${path}.normalScale`,
-				'invalid_value',
-				`normalScale must be in (0, ${FINISH_NORMAL_SCALE_MAX}]`
-			);
-			normalScaleValid = false;
-		} else if (value !== 1) normalScale = value;
-	}
-	let normalFlipYValid = true;
-	let normalFlipY: boolean | undefined;
-	if ('normalFlipY' in input) {
-		const value = readRequiredBoolean(input, 'normalFlipY', path, issues);
-		if (value === undefined) normalFlipYValid = false;
-		else if (value) normalFlipY = true;
-	}
-	// Both normal fields are meaningless without a normal map, so their presence
-	// is refused rather than silently dropped.
-	for (const key of ['normalScale', 'normalFlipY'] as const) {
-		if (key in input && parsedMaps?.normal === undefined) {
-			addIssue(
-				issues,
-				`${path}.${key}`,
-				'normal_map_required',
-				`${key} requires maps.normal`
+				issue.path === '$' ? path : `${path}${issue.path.slice(1)}`,
+				issue.code,
+				issue.action ?? issue.code
 			);
 		}
-	}
-	if (
-		!id ||
-		!name ||
-		!baseMaterialId ||
-		('color' in input && color === undefined) ||
-		('roughness' in input && roughness === undefined) ||
-		('metalness' in input && metalness === undefined) ||
-		('maps' in input && parsedMaps === undefined) ||
-		('mapping' in input && parsedMapping === undefined) ||
-		!normalScaleValid ||
-		!normalFlipYValid
-	) {
 		return undefined;
 	}
-	return {
-		id,
-		name,
-		baseMaterialId,
-		...(color === undefined ? {} : { color }),
-		...(roughness === undefined ? {} : { roughness }),
-		...(metalness === undefined ? {} : { metalness }),
-		...(maps === undefined ? {} : { maps }),
-		...(mapping === undefined ? {} : { mapping }),
-		...(normalScale === undefined ? {} : { normalScale }),
-		...(normalFlipY === undefined ? {} : { normalFlipY })
-	};
+	const finish = read.finish;
+	if ('catalogue' in finish.base && !validation.isKnownMaterialId(finish.base.catalogue)) {
+		addIssue(
+			issues,
+			`${path}.base.catalogue`,
+			'unknown_material',
+			`Unknown material: ${finish.base.catalogue}`
+		);
+		return undefined;
+	}
+	return finish;
 }
 export function readPositiveDimension(
 	value: JsonRecord,

@@ -4,6 +4,12 @@ import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
 import type { StageSession } from './stage-session';
 import type { FinishAuthoring } from '../look/finish-authoring.svelte';
+import { createMaterialProofRegistry } from '../material-proof';
+import {
+	createSceneTargetAnalysis,
+	type ModelDerivativeAnalysisProvider
+} from '$lib/render/materials/target-analysis';
+import { stageEnvelope } from './unit-stage-source';
 
 /** Public Stage values used by adapter contributions; implementation remains in Stage. */
 export { evaluationIdOf } from './camera-session';
@@ -69,6 +75,14 @@ export type StageLightInspection = {
 
 export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
+	/** The route session's content-addressed material proofs. */
+	readonly materialProofs: import('$lib/authoring/material-proof').MaterialProofRegistry;
+	/**
+	 * Host-owned geometry facts for the exact accepted Scene revision. Finish
+	 * registration compares the caller's echo against this analysis; it never
+	 * trusts a fact the host did not derive from the exact geometry.
+	 */
+	readonly targetAnalysis: import('$lib/render/materials/target-analysis').TargetAnalysis;
 	/** Open the Card for a freshly installed and selected Space. */
 	readonly openSpaceCreated?: (reference: SemanticReference) => void;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
@@ -92,6 +106,16 @@ export type StageAdapterServices = {
 };
 
 export type StageAdapterFactory = (services: StageAdapterServices) => StageAdapter;
+
+/** Host-owned sources the production target analysis reads, never authored data. */
+export type StageTargetSources = {
+	/**
+	 * Analysis of one exact approved model derivative, keyed by its pin digest.
+	 * The route fills this from the same owner-only derivative bytes the Stage
+	 * draws; a missing digest stays a strict `target-pending` refusal.
+	 */
+	readonly models?: ModelDerivativeAnalysisProvider;
+};
 
 /** One route-active interaction posture; at most one is active at a time. */
 export type StagePostureClaim = 'claimed' | 'pass';
@@ -139,10 +163,38 @@ export type StagePostureLayer = {
 export function createStageAdapterServices(
 	stage: StageFacade,
 	host: StageAcceptanceHost,
-	finishes?: () => FinishAuthoring | null
+	finishes?: () => FinishAuthoring | null,
+	materialProofs?: import('$lib/authoring/material-proof').MaterialProofRegistry,
+	targetSources?: StageTargetSources
 ): StageAdapterServices {
 	return {
 		stage,
+		materialProofs: materialProofs ?? createMaterialProofRegistry(),
+		targetAnalysis: createSceneTargetAnalysis({
+			read: () => {
+				const snapshot = stage.snapshot();
+				const domain = snapshot.domain;
+				let digests: ReadonlyMap<string, string> | null = null;
+				return {
+					scene: domain.scene,
+					sceneRevision: domain.unitRevisions.scene,
+					layoutRevision: domain.unitRevisions.layout,
+					geometry: domain.geometry,
+					modelDigest(assetId: string): string | null {
+						if (digests === null) {
+							const pins = new Map<string, string>();
+							for (const resource of stageEnvelope(snapshot).units.resources.data.resources) {
+								if (resource.kind !== 'model' || resource.pin === null || resource.unresolved !== null) continue;
+								pins.set(resource.id, resource.pin.hash);
+							}
+							digests = pins;
+						}
+						return digests.get(assetId) ?? null;
+					}
+				};
+			},
+			...(targetSources?.models === undefined ? {} : { models: targetSources.models })
+		}),
 		finishes: {
 			get current() {
 				return finishes?.() ?? null;
@@ -166,9 +218,11 @@ export function mountStageAdapter(
 	 * route fills `lightInspection` there). A fresh value is only for a direct
 	 * test mount that has no route-owned ports to carry.
 	 */
-	services?: StageAdapterServices
+	services?: StageAdapterServices,
+	/** Route-owned target sources, used only when composing a fresh services value. */
+	targetSources?: StageTargetSources
 ): StageAdapterRegistration {
 	return stage.registerStageAdapter(
-		factory(services ?? createStageAdapterServices(stage, host, finishes))
+		factory(services ?? createStageAdapterServices(stage, host, finishes, undefined, targetSources))
 	);
 }

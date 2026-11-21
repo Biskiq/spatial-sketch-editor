@@ -61,6 +61,7 @@ import { CATALOGUE_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validatio
 import type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 export type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 import { attachUnitStageSource } from './unit-stage-source';
+import { proofForEnvelope, type MaterialProofRegistry } from '../material-proof';
 
 export type AdmissionRefusalReason =
 	| 'invalid-json'
@@ -85,6 +86,8 @@ export type AdmissionContext = {
 	readonly sessionEpoch: string;
 	/** The opaque acceptance revision; fresh for every accepted source. */
 	readonly acceptedRevision: AcceptedRevision;
+	/** The session-owned proof registry; source admission fills it. */
+	readonly materialProofs?: MaterialProofRegistry;
 };
 
 const UNIT_DOMAINS: readonly UnitDomain[] = ['layout', 'scene', 'camera', 'experience', 'resources'];
@@ -301,6 +304,24 @@ async function admitSourceOnce(
 			issues: prepared.issues.filter((issue) => issue.severity !== 'warning')
 		};
 	}
+
+	// Recipe identities are content digests, so they can only be verified by
+	// hashing the canonical bytes asynchronously. That proof is retained for this
+	// exact admitted envelope value and is the only source `registerFinish` may
+	// trust during synchronous F4 planning.
+	const materialProof = await measureWorkAsync('admission:material-proof', () => proofForEnvelope(envelope));
+	if (!materialProof.ok) {
+		return {
+			kind: 'refused',
+			reason: 'invalid-format',
+			issues: materialProof.issues.map((issue) => ({
+				path: issue.path,
+				code: issue.code,
+				message: issue.action ?? issue.code
+			}))
+		};
+	}
+	context.materialProofs?.remember(materialProof.proof);
 
 	// The canonical form is computed once here: its bytes are both what the content
 	// identity describes and what the host records as the accepted baseline. When the

@@ -1,4 +1,5 @@
 export type MaterialId =
+  | 'pbr-neutral-v1'
   | 'plaster-warm'
   | 'wood-walnut'
   | 'brass-aged'

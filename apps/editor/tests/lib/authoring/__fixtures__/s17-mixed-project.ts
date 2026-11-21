@@ -268,7 +268,7 @@ export async function buildS17MixedProject(projectId = PROJECT_ID): Promise<{
 		)
 	];
 	const resources: ResourceUnitPayload = {
-		formatVersion: 2,
+		formatVersion: 3,
 		resources: [...catalogueEntries.map((entry) => entry.resource), creatorEntry.resource]
 	};
 	const project = await createUnitProject({

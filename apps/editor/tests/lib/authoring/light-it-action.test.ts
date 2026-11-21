@@ -147,7 +147,7 @@ async function mounted(options: {
 			? {}
 			: {
 					resources: {
-						formatVersion: 2 as const,
+						formatVersion: 3 as const,
 						resources: [options.modelEntry.resource]
 					}
 				}),

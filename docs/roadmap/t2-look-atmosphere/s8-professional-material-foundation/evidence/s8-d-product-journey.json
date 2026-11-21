@@ -1,0 +1,86 @@
+{
+  "projectId": "project:0ecb47c3-9a08-40d5-b6c4-249ce50b113d",
+  "projectName": "D resource journey",
+  "editorOrigin": "http://localhost:5178",
+  "apiOrigin": "http://localhost:44075",
+  "assetIds": [
+    "9025e78c-8c7a-4ab8-b4fb-f4f66e19a43f",
+    "6e09023e-25cc-45e3-87a5-ec6d616509f4",
+    "ef37a6d8-2163-4395-84a9-5eb62d0e0f58"
+  ],
+  "imageHashes": [
+    "sha256-3b508ce162f82434ba39bd3e2a052ee24e2fc22121b4d28f3f1d5ee0731d74bf",
+    "sha256-b506c18ae7d124084d69c6294f2864c9c783db9ac00c7256769342e0eda6805e",
+    "sha256-675bb561cbe484402c07c85dfdc84d627c5278d23fae59a37413bd6e3aecaad5"
+  ],
+  "save": {
+    "status": 200,
+    "name": "D resource journey",
+    "version": 4,
+    "textureResources": 3,
+    "imageBindings": 3,
+    "recipeHash": "sha256-209b9b323ad7ad3fb7c473a267e33fea07542928037b5edc026b16b070f08dee",
+    "roughnessBefore": "0.39",
+    "roughnessAfter": "0.4"
+  },
+  "coldLoad": {
+    "status": 200,
+    "imageBytesFetched": 6,
+    "distinctImagesFetched": [
+      "6e09023e-25cc-45e3-87a5-ec6d616509f4",
+      "9025e78c-8c7a-4ab8-b4fb-f4f66e19a43f",
+      "ef37a6d8-2163-4395-84a9-5eb62d0e0f58"
+    ],
+    "canvasVisible": true
+  },
+  "preview": {
+    "firstEntry": "visible",
+    "guidedTourOffered": true,
+    "canvasChannelStdev": [
+      70.9,
+      67.02,
+      65.54
+    ],
+    "screenshot": "docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-d-product-preview.png",
+    "reopen": "visible",
+    "teardown": {
+      "exitButtonReturnsStage": true,
+      "escapeAfterReopenReturnsStage": true
+    },
+    "imageBytesFetched": 0
+  },
+  "imageResponses": [
+    {
+      "phase": "cold",
+      "assetId": "6e09023e-25cc-45e3-87a5-ec6d616509f4",
+      "status": 200
+    },
+    {
+      "phase": "cold",
+      "assetId": "9025e78c-8c7a-4ab8-b4fb-f4f66e19a43f",
+      "status": 200
+    },
+    {
+      "phase": "cold",
+      "assetId": "ef37a6d8-2163-4395-84a9-5eb62d0e0f58",
+      "status": 200
+    },
+    {
+      "phase": "cold",
+      "assetId": "6e09023e-25cc-45e3-87a5-ec6d616509f4",
+      "status": 200
+    },
+    {
+      "phase": "cold",
+      "assetId": "9025e78c-8c7a-4ab8-b4fb-f4f66e19a43f",
+      "status": 200
+    },
+    {
+      "phase": "cold",
+      "assetId": "ef37a6d8-2163-4395-84a9-5eb62d0e0f58",
+      "status": 200
+    }
+  ],
+  "problems": [],
+  "verdict": "passed"
+}

@@ -59,7 +59,7 @@ import {
 	type Vec3
 } from '../scene';
 import { framePointToWorld, frameYawToWorld, isFinitePlacementFrame } from './frame';
-import { evaluateSceneForm, sceneFormContactMinY } from './form';
+import { evaluateSceneForm, sceneFormContactMinY } from '../form';
 import { readFormLibraryPayload, type FormLibraryPayload } from '../library/form-library';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import { resolveSceneSupport, type SceneSupportChoice } from './support';

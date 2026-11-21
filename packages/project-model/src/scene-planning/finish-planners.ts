@@ -36,12 +36,27 @@ import type {
 	SceneSurfaceRef,
 	SceneTextureAsset
 } from '../scene';
+import { readRecipe } from '../materials/read';
+import { readMaterialDefinition, type MaterialResourceImage } from '../materials/definition';
+import { EMPTY_MATERIAL_PROOF, verifyMaterialDigest, type MaterialDigestProof } from '../materials/proof';
+import { resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
+import { qualifyAcrossTargets } from '../materials/bind';
+import { shippedImage } from '../materials/catalogue';
+import {
+	MATERIAL_CAPABILITY,
+	MATERIAL_NEUTRAL_BASE_ID,
+	type Recipe,
+	type TargetAnalysis,
+	type TargetDraw,
+	type TargetFacts
+} from '../materials/types';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
 import type { CameraFreeSceneDocument as SceneDocument, ProjectEnvelope, TypedResource } from '../units/types';
 import {
 	applyFinishEdit,
+	catalogueBaseOf,
 	finishEditIsNoop,
 	finishOf,
 	finishRefOfKey,
@@ -79,12 +94,14 @@ export const SCENE_PALETTE_SLOT_RENAME = 'scene-palette-slot-rename';
 export const SCENE_PALETTE_SLOT_REMOVE = 'scene-palette-slot-remove';
 export const SCENE_PALETTE_ADOPT = 'scene-palette-adopt';
 export const SCENE_FINISH_FROM_IMAGE = 'scene-finish-from-image';
+export const SCENE_FINISH_REGISTER = 'scene-finish-register';
 
 const kinds = [
 	SCENE_FINISH_ASSIGN,
 	SCENE_SURFACE_FINISH_ASSIGN,
 	SCENE_FINISH_EDIT,
 	SCENE_FINISH_FROM_IMAGE,
+	SCENE_FINISH_REGISTER,
 	SCENE_PALETTE_SLOT_ADD,
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_PALETTE_SLOT_RENAME,
@@ -97,9 +114,36 @@ type Result = PlannerOutcome<ProjectEnvelope>;
 const MATERIAL_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HEX_COLOR = /^#[0-9a-f]{6}$/;
 
+/** Material definition recipes in one request, by digest. */
+function materialRecipesOf(envelope: ProjectEnvelope): ReadonlyMap<string, Recipe> {
+	return new Map(
+		envelope.units.resources.data.resources
+			.filter((resource) => resource.kind === 'material' && resource.material !== undefined)
+			.map((resource) => [resource.id, resource.material!.recipe])
+	);
+}
+
 export type FinishPlannerOptions = {
 	/** The catalogue's display label, e.g. `Walnut Wood`; identity is its id. */
 	readonly labelForMaterial?: (materialId: MaterialId) => string;
+	/**
+	 * The ingress proof for new material definitions. A provider is re-read per
+	 * preparation because a long-lived planner outlives one source session; the
+	 * proof itself is content-addressed and immutable. Absent, no new definition
+	 * is admitted.
+	 */
+	readonly materialProof?: (request: PlannerRequest<ProjectEnvelope>) => MaterialDigestProof;
+	/**
+	 * Host-owned target analysis for the exact source revision.
+	 *
+	 * Registration names targets; it never proves what their geometry can sample.
+	 * The host derives facts from the exact shipped native shape, the exact Layout
+	 * surface or the exact approved model derivative, bound to the revision it
+	 * inspected. F4 matches the caller's facts against this analysis and refuses
+	 * stale, absent or incompatible facts. Absent, no registration with a target
+	 * is admitted: caller assertions are never a substitute.
+	 */
+	readonly targetAnalysis?: TargetAnalysis;
 };
 
 function refuse(message: string, code = 'invalid-value'): Result {
@@ -145,7 +189,7 @@ function assignOne(
 		if (entity.kind === 'model') {
 			const instance = materialInstanceById(materials, entity.materialInstanceId);
 			// Already carried by the same pristine base: nothing to write.
-			if (instance !== undefined && isPristineInstance(instance) && instance.baseMaterialId === finish.curated) {
+			if (instance !== undefined && isPristineInstance(instance) && catalogueBaseOf(instance) === finish.curated) {
 				return entity;
 			}
 			return { ...entity, materialInstanceId: pristineIdForBase(finish.curated) };
@@ -163,7 +207,7 @@ function assignOne(
 	}
 	return {
 		...entity,
-		materialId: project.baseMaterialId,
+		materialId: catalogueBaseOf(project) ?? MATERIAL_NEUTRAL_BASE_ID,
 		materialInstanceId: project.id
 	} as SceneEntity;
 }
@@ -189,6 +233,7 @@ function planEdit(
 		readonly edit: SceneFinishEdit;
 		readonly allocateId: string | null;
 		readonly options: FinishPlannerOptions;
+		readonly materialRecipes?: ReadonlyMap<string, Recipe>;
 	}
 ): EditPlan {
 	const entity = base.entities.find((candidate) => candidate.id === input.entityId);
@@ -242,21 +287,22 @@ function planEdit(
 		if ('project' in ref && project === undefined) {
 			return { kind: 'rejected', code: 'unknown-finish', message: 'That Finish no longer exists.' };
 		}
-		const baseId = curated ? ref.curated : project!.baseMaterialId;
+		const baseId = curated ? ref.curated : (catalogueBaseOf(project!) ?? MATERIAL_NEUTRAL_BASE_ID);
 		// A curated edit starts from the catalogue base; a clone keeps every
 		// authored value of its source Finish and changes only its id and name.
 		const seed: SceneMaterialInstance = curated
 			? {
 					id: input.allocateId!,
-					name: nextFinishName(labelOf(input.options, baseId), base.materials),
-					baseMaterialId: baseId
+					name: nextFinishName(labelOf(input.options, baseId as MaterialId), base.materials),
+					base: { catalogue: baseId }
 				}
 			: {
 					...project!,
 					id: input.allocateId!,
 					name: nextFinishName(project!.name, base.materials)
 				};
-		const created = applyFinishEdit(seed, input.edit);
+		const baseRecipe = 'material' in seed.base ? input.materialRecipes?.get(seed.base.material) : undefined;
+		const created = applyFinishEdit(seed, input.edit, baseRecipe);
 		materials.push(created);
 		addedMaterials.push(created.id);
 		const targets = input.mode === 'all'
@@ -268,7 +314,7 @@ function planEdit(
 			if (candidate.kind === 'model') return { ...candidate, materialInstanceId: created.id };
 			return {
 				...candidate,
-				materialId: created.baseMaterialId,
+				materialId: catalogueBaseOf(created) ?? MATERIAL_NEUTRAL_BASE_ID,
 				materialInstanceId: created.id
 			} as SceneEntity;
 		});
@@ -286,10 +332,11 @@ function planEdit(
 		if (project === undefined) {
 			return { kind: 'rejected', code: 'unknown-finish', message: 'That Finish no longer exists.' };
 		}
-		if (finishEditIsNoop(project, input.edit)) {
+		const projectRecipe = 'material' in project.base ? input.materialRecipes?.get(project.base.material) : undefined;
+		if (finishEditIsNoop(project, input.edit, projectRecipe)) {
 			return { kind: 'rejected', code: 'no-change', message: 'That Finish already has those values.' };
 		}
-		const updated = applyFinishEdit(project, input.edit);
+		const updated = applyFinishEdit(project, input.edit, projectRecipe);
 		const index = materials.findIndex((instance) => instance.id === project.id);
 		materials[index] = updated;
 		changedMaterials.push(updated.id);
@@ -299,7 +346,7 @@ function planEdit(
 		if (isPristineInstance(updated) && base.surfaceFinishes !== undefined) {
 			surfaceFinishes = base.surfaceFinishes.map((assignment) =>
 				'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === updated.id
-					? { ...assignment, finish: { materialId: updated.baseMaterialId } }
+					? { ...assignment, finish: { materialId: (catalogueBaseOf(updated) ?? MATERIAL_NEUTRAL_BASE_ID) as MaterialId } }
 					: assignment
 			);
 			changedSurfaceKeys = surfaceFinishes
@@ -576,6 +623,176 @@ function readMaterialIdList(reader: ShapeReader, raw: unknown, path: string): st
 	return ids;
 }
 
+const TARGET_SUBJECT_MAX_LENGTH = 200;
+
+function readIndexPair(reader: ShapeReader, raw: unknown, path: string): (0 | 1)[] | null {
+	if (!Array.isArray(raw) || raw.length > 2) {
+		reader.problem(path, 'invalid-value', `${path} must hold at most the two native UV sets`);
+		return null;
+	}
+	const sets: (0 | 1)[] = [];
+	for (const [index, value] of raw.entries()) {
+		if (value !== 0 && value !== 1) {
+			reader.problem(`${path}[${index}]`, 'invalid-value', `${path} may name only UV set 0 or 1`);
+			return null;
+		}
+		if (sets.includes(value)) {
+			reader.problem(`${path}[${index}]`, 'duplicate-id', `${path} must not repeat a UV set`);
+			return null;
+		}
+		sets.push(value);
+	}
+	return sets;
+}
+
+function readMetrePair(reader: ShapeReader, raw: unknown, path: string): readonly [number, number] | null {
+	if (!Array.isArray(raw) || raw.length !== 2) {
+		reader.problem(path, 'invalid-value', `${path} must be a [u, v] pair in metres`);
+		return null;
+	}
+	const u = reader.number(raw[0], `${path}[0]`);
+	const v = reader.number(raw[1], `${path}[1]`);
+	if (u === null || v === null) return null;
+	if (u <= 0 || v <= 0) {
+		reader.problem(path, 'invalid-value', `${path} must be greater than zero`);
+		return null;
+	}
+	return [u, v];
+}
+
+/**
+ * Read the derived target facts an ingress proves for the exact revision it
+ * inspected. Facts are never persisted; they only qualify this admission.
+ */
+function readTargetFacts(reader: ShapeReader, raw: unknown, path: string): TargetFacts[] | null {
+	if (!Array.isArray(raw)) {
+		reader.problem(path, 'invalid-value', `${path} must be an array of target facts`);
+		return null;
+	}
+	const facts: TargetFacts[] = [];
+	const subjects = new Set<string>();
+	for (const [index, item] of raw.entries()) {
+		const at = `${path}[${index}]`;
+		const record = reader.object(item, at, ['subject', 'geometryRevision', 'metricBasis', 'draws']);
+		if (record === null) return null;
+		const subject = reader.string(record.subject, `${at}.subject`);
+		const geometryRevision = reader.string(record.geometryRevision, `${at}.geometryRevision`);
+		if (subject === null || geometryRevision === null) return null;
+		if (subject.length === 0 || subject.length > TARGET_SUBJECT_MAX_LENGTH) {
+			reader.problem(`${at}.subject`, 'invalid-value', `${at}.subject must be 1-${TARGET_SUBJECT_MAX_LENGTH} characters`);
+			return null;
+		}
+		if (subjects.has(subject)) {
+			reader.problem(at, 'duplicate-id', `${path} must not repeat a target subject`);
+			return null;
+		}
+		subjects.add(subject);
+		let metricBasis: TargetFacts['metricBasis'];
+		if (record.metricBasis !== undefined) {
+			const basis = reader.object(record.metricBasis, `${at}.metricBasis`, ['uvMeters', 'surfaceMeters']);
+			if (basis === null) return null;
+			const uvMeters = readMetrePair(reader, basis.uvMeters, `${at}.metricBasis.uvMeters`);
+			const surfaceMeters = readMetrePair(reader, basis.surfaceMeters, `${at}.metricBasis.surfaceMeters`);
+			if (uvMeters === null || surfaceMeters === null) return null;
+			metricBasis = { uvMeters, surfaceMeters };
+		}
+		if (!Array.isArray(record.draws)) {
+			reader.problem(`${at}.draws`, 'invalid-value', `${at}.draws must be an array`);
+			return null;
+		}
+		const draws: TargetDraw[] = [];
+		const drawKeys = new Set<string>();
+		for (const [drawIndex, draw] of record.draws.entries()) {
+			const drawPath = `${at}.draws[${drawIndex}]`;
+			const drawRecord = reader.object(draw, drawPath, ['drawKey', 'uvSets', 'normalFrameSets', 'invalidGeometry']);
+			if (drawRecord === null) return null;
+			const drawKey = reader.string(drawRecord.drawKey, `${drawPath}.drawKey`);
+			if (drawKey === null) return null;
+			if (drawKeys.has(drawKey)) {
+				reader.problem(drawPath, 'duplicate-id', `${at}.draws must not repeat a draw key`);
+				return null;
+			}
+			drawKeys.add(drawKey);
+			const uvSets = readIndexPair(reader, drawRecord.uvSets, `${drawPath}.uvSets`);
+			const normalFrameSets = readIndexPair(reader, drawRecord.normalFrameSets, `${drawPath}.normalFrameSets`);
+			if (uvSets === null || normalFrameSets === null) return null;
+			if (drawRecord.invalidGeometry !== undefined && drawRecord.invalidGeometry !== true) {
+				reader.problem(`${drawPath}.invalidGeometry`, 'invalid-value', `${drawPath}.invalidGeometry may only be true`);
+				return null;
+			}
+			draws.push({
+				drawKey,
+				uvSets: uvSets.filter((set) => set === 0 || set === 1),
+				normalFrameSets: normalFrameSets.filter((set) => set === 0 || set === 1),
+				...(drawRecord.invalidGeometry === true ? { invalidGeometry: true as const } : {})
+			});
+		}
+		facts.push({ subject, geometryRevision, ...(metricBasis === undefined ? {} : { metricBasis }), draws });
+	}
+	return facts;
+}
+
+type RegisterImageInput = {
+	readonly hash: string;
+	readonly source: { readonly textureId: string } | { readonly shipped: string };
+	readonly texture?: { readonly name: string; readonly pin: { readonly hash: string; readonly mime: string; readonly size: number } };
+};
+
+function readRegisterImages(reader: ShapeReader, raw: unknown, path: string): RegisterImageInput[] | null {
+	if (!Array.isArray(raw)) {
+		reader.problem(path, 'invalid-value', `${path} must be an array of image bindings`);
+		return null;
+	}
+	const images: RegisterImageInput[] = [];
+	for (const [index, item] of raw.entries()) {
+		const at = `${path}[${index}]`;
+		const record = reader.object(item, at, ['hash', 'source', 'texture']);
+		if (record === null) return null;
+		const hash = reader.string(record.hash, `${at}.hash`);
+		if (hash === null || !/^sha256-[0-9a-f]{64}$/.test(hash)) {
+			if (hash !== null) reader.problem(`${at}.hash`, 'invalid-value', `${at}.hash must be a sha256 identity`);
+			return null;
+		}
+		const sourceRecord = reader.object(record.source, `${at}.source`, ['textureId', 'shipped']);
+		if (sourceRecord === null) return null;
+		const hasTexture = 'textureId' in sourceRecord;
+		const hasShipped = 'shipped' in sourceRecord;
+		if (hasTexture === hasShipped) {
+			reader.problem(`${at}.source`, 'invalid-local-image', `${at}.source must name exactly one textureId or shipped image`);
+			return null;
+		}
+		let source: RegisterImageInput['source'];
+		if (hasTexture) {
+			const textureId = reader.opaqueId(sourceRecord.textureId, `${at}.source.textureId`);
+			if (textureId === null) return null;
+			source = { textureId };
+		} else {
+			const shipped = reader.string(sourceRecord.shipped, `${at}.source.shipped`);
+			if (shipped === null || shipped.length === 0) return null;
+			source = { shipped };
+		}
+		let texture: RegisterImageInput['texture'];
+		if (record.texture !== undefined) {
+			if (!hasTexture) {
+				reader.problem(`${at}.texture`, 'invalid-value', `${at}.texture needs a textureId source`);
+				return null;
+			}
+			const textureRecord = reader.object(record.texture, `${at}.texture`, ['name', 'pin']);
+			if (textureRecord === null) return null;
+			const name = reader.string(textureRecord.name, `${at}.texture.name`);
+			const pinRecord = reader.object(textureRecord.pin, `${at}.texture.pin`, ['hash', 'mime', 'size']);
+			if (name === null || pinRecord === null) return null;
+			const pinHash = reader.string(pinRecord.hash, `${at}.texture.pin.hash`);
+			const pinMime = reader.string(pinRecord.mime, `${at}.texture.pin.mime`);
+			const pinSize = reader.number(pinRecord.size, `${at}.texture.pin.size`);
+			if (pinHash === null || pinMime === null || pinSize === null) return null;
+			texture = { name, pin: { hash: pinHash, mime: pinMime, size: pinSize } };
+		}
+		images.push({ hash, source, ...(texture === undefined ? {} : { texture }) });
+	}
+	return images;
+}
+
 function readSurfaceRefs(reader: ShapeReader, raw: unknown, path: string): SceneSurfaceRef[] | null {
 	if (!Array.isArray(raw) || raw.length === 0) {
 		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of surface references`);
@@ -645,6 +862,33 @@ function sameSequence(left: readonly string[], right: readonly string[]): boolea
 	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+/**
+ * Whether caller-supplied facts are exactly the host analysis. Registration
+ * treats the payload as an echo for diagnostics, never as evidence: a set, a
+ * draw or a metric basis the host did not derive is a refusal.
+ */
+function sameTargetFacts(left: TargetFacts, right: TargetFacts): boolean {
+	if (left.subject !== right.subject || left.geometryRevision !== right.geometryRevision) return false;
+	if (JSON.stringify(left.metricBasis ?? null) !== JSON.stringify(right.metricBasis ?? null)) return false;
+	if (left.draws.length !== right.draws.length) return false;
+	const byKey = new Map(right.draws.map((draw) => [draw.drawKey, draw]));
+	for (const draw of left.draws) {
+		const other = byKey.get(draw.drawKey);
+		if (other === undefined) return false;
+		if ((draw.invalidGeometry === true) !== (other.invalidGeometry === true)) return false;
+		if (!sameSequence([...draw.uvSets].sort().map(String), [...other.uvSets].sort().map(String))) return false;
+		if (
+			!sameSequence(
+				[...draw.normalFrameSets].sort().map(String),
+				[...other.normalFrameSets].sort().map(String)
+			)
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
 function allocationOf(
 	request: PlannerRequest<ProjectEnvelope>,
 	allowedKinds: readonly string[],
@@ -658,6 +902,58 @@ function allocationOf(
 		return { missing: `This operation takes one allocated ${allowedKinds.join(' or ')} id.` };
 	}
 	return { id: allocations[0]!.id };
+}
+
+/**
+ * Prove that one registration changed no resource or lock it did not declare.
+ *
+ * F.4's record scope covers the Scene payload; material registration also owns
+ * two envelope-level records. This finalizer compares them before the candidate
+ * is built, so an edit can add exactly its definition, its new project textures
+ * and its one material lock, and can never rewrite an unrelated model pin.
+ */
+function materialCandidateScopeProblem(
+	beforeResources: readonly TypedResource[],
+	afterResources: readonly TypedResource[],
+	beforeLock: readonly import('../units/types').DependencyLockEntry[],
+	afterLock: readonly import('../units/types').DependencyLockEntry[],
+	allowedResourceIds: ReadonlySet<string>,
+	addedLocks: readonly import('../units/types').DependencyLockEntry[]
+): string | null {
+	const resourceKey = (resource: TypedResource) => `${resource.kind}:${resource.id}`;
+	const beforeById = new Map(beforeResources.map((resource) => [resourceKey(resource), resource]));
+	const afterById = new Map(afterResources.map((resource) => [resourceKey(resource), resource]));
+	if (afterById.size !== afterResources.length) return 'Two resources claim the same identity.';
+	for (const [key, resource] of beforeById) {
+		const next = afterById.get(key);
+		if (next === undefined || JSON.stringify(next) !== JSON.stringify(resource)) {
+			return 'A material registration may not change an existing resource.';
+		}
+	}
+	for (const [key, resource] of afterById) {
+		if (beforeById.has(key)) continue;
+		if (!allowedResourceIds.has(resource.id)) return 'A material registration added an undeclared resource.';
+	}
+	for (const id of allowedResourceIds) {
+		if (![...afterById.values()].some((resource) => resource.id === id)) {
+			return 'A material registration omitted one of its declared resources.';
+		}
+	}
+	const lockKey = (entry: import('../units/types').DependencyLockEntry) => JSON.stringify(entry);
+	const beforeLockKeys = new Set(beforeLock.map(lockKey));
+	const afterLockKeys = new Set(afterLock.map(lockKey));
+	for (const entry of beforeLock) {
+		if (!afterLockKeys.has(lockKey(entry))) return 'A material registration may not remove or rewrite a dependency lock.';
+	}
+	const declared = new Set(addedLocks.map(lockKey));
+	for (const entry of afterLock) {
+		if (beforeLockKeys.has(lockKey(entry))) continue;
+		if (!declared.has(lockKey(entry))) return 'A material registration added an undeclared dependency lock.';
+	}
+	for (const entry of addedLocks) {
+		if (!afterLockKeys.has(lockKey(entry))) return 'A material registration omitted its material lock.';
+	}
+	return null;
 }
 
 function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: FinishPlannerOptions): Result {
@@ -775,7 +1071,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		let pristineId: string | null = null;
 		if (curatedFinish !== null && targets.some((entity) => entity.kind === 'model')) {
 			const reusable = before.materials.find(
-				(instance) => isPristineInstance(instance) && instance.baseMaterialId === curatedFinish.curated
+				(instance) => isPristineInstance(instance) && catalogueBaseOf(instance) === curatedFinish.curated
 			);
 			if (reusable !== undefined) pristineId = reusable.id;
 			else {
@@ -796,19 +1092,19 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				materials.push({
 					id: pristineId,
 					name: labelOf(options, curatedFinish.curated),
-					baseMaterialId: curatedFinish.curated
+					base: { catalogue: curatedFinish.curated }
 				});
 			}
 		}
 		const resolvePristine = (base: MaterialId): string => {
 			const reusable = materials.find(
-				(instance) => isPristineInstance(instance) && instance.baseMaterialId === base
+				(instance) => isPristineInstance(instance) && catalogueBaseOf(instance) === base
 			);
 			if (reusable !== undefined) return reusable.id;
 			// Several curated bases in one multi-target paint: each needs its own
 			// pristine record. The intent carries one id, so a second base refuses.
 			if (pristineId !== null) {
-				materials.push({ id: pristineId, name: labelOf(options, base), baseMaterialId: base });
+				materials.push({ id: pristineId, name: labelOf(options, base), base: { catalogue: base } });
 				return pristineId;
 			}
 			throw new Error('missing pristine instance');
@@ -943,7 +1239,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			mode: mode as 'just-this' | 'all' | 'in-place',
 			edit,
 			allocateId: allocationId,
-			options
+			options,
+			materialRecipes: materialRecipesOf(envelope)
 		});
 		if (planned.kind === 'rejected') return refuse(planned.message, planned.code);
 		return complete(
@@ -961,6 +1258,367 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			planned.subjectIds,
 			['finish', 'color', 'roughness', 'metalness', 'maps', 'mapping', 'materials']
 		);
+	}
+
+	if (kind === SCENE_FINISH_REGISTER) {
+		const payload = reader.object(request.intent.payload, '$.payload', [
+			'name',
+			'recipeHash',
+			'recipe',
+			'images',
+			'entityIds',
+			'surfaces',
+			'targetFacts'
+		]);
+		if (payload === null) return refuse('The material registration payload must be an object.', 'invalid-value');
+		const name = reader.string(payload.name, '$.payload.name');
+		const recipeHash = payload === null ? null : reader.string(payload.recipeHash, '$.payload.recipeHash');
+		const rawImages = payload === null ? null : readRegisterImages(reader, payload.images, '$.payload.images');
+		const rawFacts = payload === null ? null : readTargetFacts(reader, payload.targetFacts, '$.payload.targetFacts');
+		if (name === null || recipeHash === null || rawImages === null || rawFacts === null || reader.issues.length > 0) {
+			return refuse(reader.issues[0]?.message ?? 'The material registration is incomplete.');
+		}
+		if (name.length === 0 || name.length > FINISH_NAME_MAX_LENGTH) {
+			return refuse(`A Finish name must be 1-${FINISH_NAME_MAX_LENGTH} characters.`, 'invalid-value');
+		}
+		const allocations = request.allocatedIds;
+		if (allocations.length !== 1 || !['scene-finish', 'scene-material'].includes(allocations[0]!.kind)) {
+			return refuse('Registering a Finish needs exactly one allocated Finish id.', 'missing-allocation');
+		}
+		const finishId = allocations[0]!.id;
+		if (before.materials.some((instance) => instance.id === finishId)) {
+			return refuse('That Finish id is already in use.', 'unexpected-allocation');
+		}
+		const recipeRead = readRecipe(payload.recipe);
+		if (!recipeRead.success) {
+			return refuse(recipeRead.issues[0]?.action ?? 'The material recipe is not admissible.', 'invalid-value');
+		}
+		const recipe = recipeRead.recipe;
+		const proof = options.materialProof?.(request) ?? EMPTY_MATERIAL_PROOF;
+		const verification = verifyMaterialDigest(proof, recipeHash, recipe);
+		if (!verification.ok) {
+			return refuse(verification.issue.action ?? 'That recipe digest was not verified for these exact canonical bytes. Re-import the material.', 'material-digest-mismatch');
+		}
+		const definitionRead = readMaterialDefinition({
+			recipe,
+			images: rawImages.map((image) => ({ hash: image.hash, source: image.source }))
+		});
+		if (!definitionRead.success) {
+			return refuse(definitionRead.issues[0]?.action ?? 'The material definition is not admissible.', 'invalid-value');
+		}
+		const definition = definitionRead.definition;
+
+		const resources = [...envelope.units.resources.data.resources];
+		const textures = [...before.textures];
+		const addedTextureResources: TypedResource[] = [];
+		const existingMaterial = resources.find((resource) => resource.kind === 'material' && resource.id === recipeHash);
+		// A digest already vendored under different local IDs reuses its verified
+		// mapping: the recipe bytes are the same, and the existing definition
+		// already covers exactly those digests with closure-checked pins. The new
+		// request's local IDs are destination hints, not a second definition.
+		let effectiveDefinition = definition;
+		const reusesDefinition = existingMaterial !== undefined;
+		if (reusesDefinition) {
+			if (existingMaterial.material === undefined) {
+				return refuse('That material identity is already used by another resource kind.', 'material-definition-conflict');
+			}
+			if (JSON.stringify(existingMaterial.material.recipe) !== JSON.stringify(recipe)) {
+				return refuse('That material identity already has a different definition.', 'material-definition-conflict');
+			}
+			const existingHashes = new Set(existingMaterial.material.images.map((image) => image.hash));
+			if (definition.images.some((image) => !existingHashes.has(image.hash))) {
+				return refuse('That material identity does not cover these image digests.', 'material-definition-conflict');
+			}
+			effectiveDefinition = existingMaterial.material;
+		}
+		for (const image of rawImages) {
+			if ('shipped' in image.source) {
+				const shipped = shippedImage(image.source.shipped);
+				if (shipped === undefined || shipped.hash !== image.hash) {
+					return refuse('A shipped material image is not in the frozen catalogue at that digest.', 'image-static-unknown');
+				}
+				continue;
+			}
+			const assetId = image.source.textureId;
+			const existingTexture = textures.find((texture) => texture.id === assetId);
+			const existingResource = resources.find((resource) => resource.kind === 'texture' && resource.id === assetId);
+			if (image.texture === undefined) {
+				if (existingTexture === undefined || existingTexture.uri !== finishTextureUri(assetId)) {
+					return refuse(`Material image "${assetId}" has no agreeing Scene texture record. Import the image first.`, 'texture-mismatch');
+				}
+				if (existingResource === undefined || existingResource.pin?.hash !== image.hash) {
+					return refuse(`Material image "${assetId}" is not pinned at that digest. Import the image first.`, 'texture-mismatch');
+				}
+				continue;
+			}
+			const pin = {
+				hash: image.texture.pin.hash,
+				mime: image.texture.pin.mime,
+				size: image.texture.pin.size,
+				locator: finishTextureUri(assetId)
+			} satisfies FinishTexturePin;
+			const textureResource = finishTextureResource({ assetId, pin });
+			if (textureResource === null) {
+				return refuse(`Material image "${assetId}" is not an admissible project image.`, 'texture-mismatch');
+			}
+			if (image.hash !== pin.hash) {
+				return refuse(`Material image "${assetId}" is bound to a different digest than its pin.`, 'image-pin-conflict');
+			}
+			if (existingTexture === undefined && !reusesDefinition) {
+				textures.push({ id: assetId, name: image.texture.name, uri: finishTextureUri(assetId) });
+			} else if (existingTexture !== undefined && existingTexture.uri !== finishTextureUri(assetId)) {
+				return refuse(`Material image "${assetId}" is already recorded at another URI.`, 'texture-mismatch');
+			}
+			if (existingResource === undefined && !reusesDefinition) {
+				resources.push(textureResource);
+				addedTextureResources.push(textureResource);
+			} else if (
+				existingResource !== undefined &&
+				(existingResource.kind !== 'texture' || !sameFinishTexturePin(existingResource.pin, textureResource.pin))
+			) {
+				return refuse(`Material image "${assetId}" is already pinned to other bytes.`, 'image-pin-conflict');
+			}
+		}
+
+		const requestedDefinition = { recipe, images: effectiveDefinition.images };
+		let materialResource: TypedResource;
+		let addedMaterial = false;
+		if (existingMaterial === undefined) {
+			materialResource = {
+				kind: 'material',
+				id: recipeHash,
+				contentRevision: recipeHash,
+				pin: null,
+				unresolved: null,
+				material: requestedDefinition
+			};
+			resources.push(materialResource);
+			addedMaterial = true;
+		} else {
+			if (existingMaterial.material === undefined) {
+				return refuse('That material identity is already used by another resource kind.', 'material-definition-conflict');
+			}
+			if (JSON.stringify(existingMaterial.material) !== JSON.stringify(requestedDefinition)) {
+				return refuse('That material identity already has a different definition.', 'material-definition-conflict');
+			}
+			materialResource = existingMaterial;
+		}
+		const materialLock: import('../units/types').DependencyLockEntry = {
+			domain: 'resource:material',
+			subjectKind: 'resource',
+			subjectId: recipeHash,
+			instancePath: [],
+			contentRevision: recipeHash,
+			requiredCapabilities: [MATERIAL_CAPABILITY],
+			pin: null
+		};
+		const existingLock = envelope.dependencyLock.entries.find((entry) =>
+			entry.domain === 'resource:material' && entry.subjectId === recipeHash
+		);
+		const addedLock = existingLock === undefined;
+		if (existingLock !== undefined && JSON.stringify(existingLock) !== JSON.stringify(materialLock)) {
+			return refuse('That material identity already has a different dependency lock.', 'lock-conflict');
+		}
+
+		const entityIds = payload.entityIds === undefined ? [] : readEntityIdList(reader, payload.entityIds, '$.payload.entityIds', true);
+		const surfaces = payload.surfaces === undefined ? [] : readSurfaceRefs(reader, payload.surfaces, '$.payload.surfaces');
+		if (entityIds === null || surfaces === null || reader.issues.length > 0) {
+			return refuse(reader.issues[0]?.message ?? 'The Finish targets are not admissible.');
+		}
+		if (request.intent.targets.length !== entityIds.length + surfaces.length) {
+			return refuse('Registration must address exactly the targets it names.', 'invalid-target');
+		}
+
+		const selectedTargets = new Map<
+			string,
+			{ readonly domain: 'scene' | 'layout'; readonly entityId?: string; readonly surface?: SceneSurfaceRef; readonly revision: string }
+		>();
+		for (const [index, entityId] of entityIds.entries()) {
+			const target = request.intent.targets[index]!;
+			const problem = sceneEntityTargetProblem(target, entityId, header.contentRevision);
+			if (problem !== null) return refuse(problem.message, 'invalid-target');
+			if (!before.entities.some((entity) => entity.id === entityId)) return refuse('That object is not in the current revision.', 'unknown-entity');
+			selectedTargets.set(entityId, { domain: 'scene', entityId, revision: header.contentRevision });
+		}
+		const layout = envelope.units.layout;
+		for (const [index, surface] of surfaces.entries()) {
+			const target = request.intent.targets[entityIds.length + index]!;
+			const expected = surfaceTargetComponent(surface);
+			if (
+				target.domain !== 'layout' || target.subject.kind !== expected.kind || target.subject.id !== expected.id ||
+				target.componentId !== expected.componentId || target.capabilityId !== null || target.instancePath.length !== 0 ||
+				target.revision.kind !== 'exact' || target.revision.contentRevision !== layout.header.contentRevision ||
+				target.location.kind !== 'layout-location' || target.location.levelId !== layout.data.floor.id ||
+				target.location.structureInstancePath.length !== 0
+			) {
+				return refuse('Registration needs an exact qualified reference to each surface.', 'invalid-target');
+			}
+			if (resolveLayoutSurface(layout.data, surface) !== 'present') {
+				return refuse('That surface changed. Try again.', 'surface_not_present');
+			}
+			selectedTargets.set(surfaceKey(surface), {
+				domain: 'layout',
+				surface,
+				revision: layout.header.contentRevision
+			});
+		}
+		// Registration never trusts the intent's facts. The host analysis must
+		// prove every selected target at exactly this revision; the payload may
+		// echo it, and any difference is a refusal rather than a wider admission.
+		const trustedFacts = new Map<string, TargetFacts>();
+		if (selectedTargets.size > 0) {
+			const analysis = options.targetAnalysis?.([...selectedTargets].map(([subject, target]) => ({
+				subject,
+				domain: target.domain,
+				...(target.entityId === undefined ? {} : { entityId: target.entityId }),
+				...(target.surface === undefined ? {} : { surface: target.surface }),
+				expectedGeometryRevision: target.revision
+			}))) ?? null;
+			if (analysis === null || analysis.length === 0) {
+				return refuse('No host geometry analysis covers these targets. Requalify the exact revision.', 'target-pending');
+			}
+			for (const facts of analysis) {
+				const selected = selectedTargets.get(facts.subject);
+				if (selected === undefined) {
+					return refuse('Target analysis names an object this registration does not select.', 'invalid-target');
+				}
+				if (trustedFacts.has(facts.subject)) {
+					return refuse('Target analysis answered one subject twice.', 'invalid-target');
+				}
+				if (facts.geometryRevision !== selected.revision || facts.draws.length === 0) {
+					return refuse('Host target analysis is stale or empty. Requalify the exact geometry revision.', 'target-pending');
+				}
+				trustedFacts.set(facts.subject, facts);
+			}
+			for (const subject of selectedTargets.keys()) {
+				if (!trustedFacts.has(subject)) {
+					return refuse('Host analysis does not cover every selected target. Requalify the exact geometry revision.', 'target-pending');
+				}
+			}
+		}
+		if (rawFacts.length > 0) {
+			if (rawFacts.length !== trustedFacts.size) {
+				return refuse('Caller target facts do not describe exactly the selected targets.', 'untrusted-target-facts');
+			}
+			for (const facts of rawFacts) {
+				const trusted = trustedFacts.get(facts.subject);
+				if (trusted === undefined || !sameTargetFacts(facts, trusted)) {
+					return refuse(
+						'Caller target facts disagree with the host geometry analysis. Requalify and retry.',
+						'untrusted-target-facts'
+					);
+				}
+			}
+		}
+
+		const imageIndex = mergeImageIndexes(shippedImageIndex(), materialImageIndex(effectiveDefinition.images));
+		const resolution = resolveFinish({ material: recipe }, undefined, before.palette, imageIndex);
+		if (resolution.inputs === null) {
+			return refuse('The material recipe cannot resolve on these images.', 'material-definition-conflict');
+		}
+		if (trustedFacts.size > 0) {
+			const qualification = qualifyAcrossTargets(
+				resolution,
+				[...trustedFacts].map(([subject, facts]) => ({ subject, facts }))
+			);
+			if (qualification.issues.length > 0) {
+				const first = qualification.issues[0]!;
+				return refuse(first.action ?? 'This Finish cannot be drawn on the selected target.', first.code);
+			}
+		}
+
+		const finish: SceneMaterialInstance = {
+			id: finishId,
+			name,
+			base: { material: recipeHash }
+		};
+		const materials = [...before.materials, finish];
+		const entities = before.entities.map((entity) =>
+			entityIds.includes(entity.id)
+				? assignOne(entity, { project: finishId }, materials, () => {
+						throw new Error('a registered Finish needs no pristine instance');
+					})
+				: entity
+		);
+		const existingAssignments = new Map((before.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
+		const addedKeys: string[] = [];
+		const changedKeys: string[] = [];
+		for (const surface of surfaces) {
+			const key = surfaceKey(surface);
+			const assignment: SceneSurfaceFinish = { surface, finish: { materialInstanceId: finishId } };
+			const previous = existingAssignments.get(key);
+			if (previous === undefined) addedKeys.push(key);
+			else if (JSON.stringify(previous) !== JSON.stringify(assignment)) changedKeys.push(key);
+			existingAssignments.set(key, assignment);
+		}
+		const surfaceFinishes = [...existingAssignments.values()].sort((left, right) => {
+			const leftKey = surfaceKey(left.surface);
+			const rightKey = surfaceKey(right.surface);
+			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+		});
+		const after: SceneDocument = {
+			...before,
+			textures,
+			materials,
+			entities,
+			...(surfaceFinishes.length === 0 ? {} : { surfaceFinishes })
+		};
+		const scopeProblem = materialCandidateScopeProblem(
+			envelope.units.resources.data.resources,
+			resources,
+			envelope.dependencyLock.entries,
+			addedLock ? [...envelope.dependencyLock.entries, materialLock] : envelope.dependencyLock.entries,
+			new Set([
+				...(addedMaterial ? [materialResource.id] : []),
+				...addedTextureResources.map((resource) => resource.id)
+			]),
+			addedLock ? [materialLock] : []
+		);
+		if (scopeProblem !== null) return refuse(scopeProblem, 'resource-scope');
+		const finalized = finalizeSceneCandidate({
+			before,
+			after,
+			scope: {
+				...scope,
+				changedEntityIds: entityIds,
+				changedEntityFields: ['materialId', 'materialInstanceId'],
+				surfaceFinishes: { changedKeys, addedKeys },
+				textures: { added: addedTextureResources.map((resource) => resource.id) },
+				materials: materialGrant({ added: [finishId] })
+			}
+		});
+		if (finalized.kind === 'rejected') return finalized;
+		let candidateSource = replaceUnitData(envelope, 'scene', finalized.scene);
+		candidateSource = {
+			...candidateSource,
+			units: {
+				...candidateSource.units,
+				resources: {
+					header: { ...candidateSource.units.resources.header },
+					data: { formatVersion: candidateSource.units.resources.data.formatVersion, resources }
+				}
+			},
+			dependencyLock: {
+				...candidateSource.dependencyLock,
+				entries: addedLock ? [...candidateSource.dependencyLock.entries, materialLock] : candidateSource.dependencyLock.entries
+			}
+		};
+		return {
+			kind: 'prepared',
+			candidate: {
+				operationId: request.intent.operationId,
+				sourceKind: request.snapshot.sourceKind,
+				sourceVersion: request.snapshot.sourceVersion,
+				source: candidateSource,
+				changes: [{ kind, subjectIds: [...entityIds, ...surfaces.map(surfaceKey)], fields: ['materials', 'textures', 'surfaceFinishes', 'finish', 'resources', 'dependencyLock'] }],
+				correspondence: after.entities.map((entity) => ({
+					relation: 'preserved' as const,
+					before: reference(entity.id),
+					after: reference(entity.id)
+				})),
+				diagnostics: []
+			}
+		};
 	}
 
 	if (kind === SCENE_FINISH_FROM_IMAGE) {
@@ -1101,10 +1759,12 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			const created: SceneMaterialInstance = {
 				id: finishId,
 				name,
-				baseMaterialId: 'paper-aged',
-				// The base is `#e2d2b0`; white keeps the image untinted (S1's writer rule).
-				color: '#ffffff',
-				maps: { color: assetId }
+				base: { catalogue: 'paper-aged' },
+				overrides: {
+					// The base is `#e2d2b0`; white keeps the image untinted (S1's writer rule).
+					color: '#ffffff',
+					maps: { color: { image: { textureId: assetId } } }
+				}
 			};
 			const materials = [...before.materials, created];
 			const entities = before.entities.map((entity) =>
@@ -1150,7 +1810,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				mode: replace.mode,
 				edit: { colorMap: assetId },
 				allocateId: needsNew ? allocations[0]!.id : null,
-				options
+				options,
+				materialRecipes: materialRecipesOf(envelope)
 			});
 			if (planned.kind === 'rejected') return refuse(planned.message, planned.code);
 			scene = planned.scene;
@@ -1208,7 +1869,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				before.materials,
 				(adoptEntity as SceneEntity & { materialInstanceId?: string }).materialInstanceId
 			);
-			if (instance?.color === undefined || typeof instance.color !== 'string' || instance.color !== parsedColor.value) {
+			if (instance?.overrides?.color === undefined || typeof instance.overrides.color !== 'string' || instance.overrides.color !== parsedColor.value) {
 				return refuse('The current colour is inherited, so there is no literal to save.', 'invalid-adopt');
 			}
 		} else if (request.intent.targets.length !== 0) {
@@ -1257,7 +1918,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				mode: mode as 'just-this' | 'all' | 'in-place',
 				edit: { color: { slot: allocations[0]!.id } },
 				allocateId: finishAllocation,
-				options
+				options,
+				materialRecipes: materialRecipesOf(envelope)
 			});
 			if (edit.kind === 'rejected') return refuse(edit.message, edit.code);
 			scene = edit.scene;
@@ -1353,12 +2015,12 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		const targets = new Map(mapping.map((entry) => [entry.color, entry.slotId]));
 		const changedMaterials: string[] = [];
 		const materials = before.materials.map((instance) => {
-			const color = instance.color;
-			if (typeof color !== 'string' || instance.maps?.color !== undefined) return instance;
+			const color = instance.overrides?.color;
+			if (typeof color !== 'string' || instance.overrides?.maps?.color != null) return instance;
 			const slotId = targets.get(color.toLowerCase());
 			if (slotId === undefined) return instance;
 			changedMaterials.push(instance.id);
-			return { ...instance, color: { slot: slotId } };
+			return { ...instance, overrides: { ...instance.overrides, color: { slot: slotId } } };
 		});
 		if (changedMaterials.length === 0) return refuse('Every Finish already follows the palette.', 'no-change');
 		return complete(
@@ -1410,10 +2072,15 @@ export function createFinishPlanners(
 		// other Finish write stays Scene-only.
 		admission: {
 			domain: 'scene' as const,
-			...(kind === SCENE_SURFACE_FINISH_ASSIGN ? { referenceDomains: ['layout'] as const } : {}),
+			// Registration may name compile-qualified Layout surfaces as targets it
+			// paints, exactly as the surface assignment planner does. Layout is a
+			// reference input: the candidate still writes only the Scene unit.
+			...(kind === SCENE_SURFACE_FINISH_ASSIGN || kind === SCENE_FINISH_REGISTER
+				? { referenceDomains: ['layout'] as const }
+				: {}),
 			compound: false,
 			units: false,
-			resources: kind === SCENE_FINISH_FROM_IMAGE
+			resources: kind === SCENE_FINISH_FROM_IMAGE || kind === SCENE_FINISH_REGISTER
 		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],

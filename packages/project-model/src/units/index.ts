@@ -26,6 +26,8 @@ export * from './envelope';
 export * from './runtime';
 export * from './camera-connectivity';
 export * from './validate';
+export * from './material-index';
+export * from './material-digests';
 export * from './acceptance-staging';
 export * from './planning';
 export * from './experience-structure';

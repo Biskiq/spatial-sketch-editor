@@ -18,24 +18,49 @@ import {
 } from '@portfolio/layout-core';
 import {
 	TWO_UV_FACTS,
+	contentHash,
 	fixtureImageIndex,
 	fullRecipe
 } from '../../project-model/materials/fixtures';
 
 const SWATCH = '/s8-fixtures/checker-asymmetric.png';
+const SWATCH_HASH = contentHash('swatch');
+const SWATCH_INDEX = {
+	definitions: new Map(),
+	definitionImages: new Map(),
+	images: [{ hash: SWATCH_HASH, source: { textureId: 'swatch' as const } }]
+};
 
 describe('sceneFinishFor', () => {
+	it('resolves a resource-backed Finish through its definition images, not a same-hash texture', () => {
+		const definitionHash = contentHash('definition');
+		const document = lookSource({
+			textures: [
+				{ id: 'swatch', name: 'Swatch', uri: SWATCH },
+				{ id: 'wrong', name: 'Unrelated', uri: '/s8-fixtures/wrong.png' }
+			],
+			materialIndex: {
+				definitions: new Map([[definitionHash, { ...fullRecipe(), maps: { color: { image: SWATCH_HASH } } }]]),
+				definitionImages: new Map([[definitionHash, [{ hash: SWATCH_HASH, source: { textureId: 'swatch' } }]]]),
+				images: [{ hash: SWATCH_HASH, source: { textureId: 'wrong' } }]
+			},
+			materials: [{ id: 'finish', name: 'Finish', base: { material: definitionHash } }]
+		});
+		const look = sceneFinishFor(
+			document,
+			{ materialInstanceId: 'finish', fallbackCatalogueId: 'wood-walnut' },
+			{ kind: 'metric', uvMeters: [1, 1], surfaceMeters: [1, 1] }
+		);
+		expect(look.textures?.slotUris.map).toBe(SWATCH);
+		expect(look.material.finish?.entries[0]?.view).toBe('texture:swatch|srgb');
+	});
+
 	it('builds the frozen legacy plan for a metric Form with a legacy-UV0 override', () => {
 		const document = lookSource({
 			textures: [{ id: 'swatch', name: 'Swatch', uri: SWATCH }],
+			materialIndex: SWATCH_INDEX,
 			materials: [
-				{
-					id: 'wood',
-					name: 'Wood',
-					baseMaterialId: 'wood-walnut',
-					maps: { color: 'swatch' },
-					mapping: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] }
-				}
+				{ id: 'wood', name: 'Wood', base: { catalogue: 'wood-walnut' }, overrides: { maps: { color: { image: { textureId: 'swatch' } } }, mapping: { kind: 'target', metric: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] } } } }
 			]
 		});
 		const look = sceneFinishFor(
@@ -64,8 +89,9 @@ describe('sceneFinishFor', () => {
 	it('keeps identity UV0 and the authored rows for a legacy model remap', () => {
 		const document = lookSource({
 			textures: [{ id: 'swatch', name: 'Swatch', uri: SWATCH }],
+			materialIndex: SWATCH_INDEX,
 			materials: [
-				{ id: 'model', name: 'Model', baseMaterialId: 'wood-walnut', maps: { color: 'swatch' } }
+				{ id: 'model', name: 'Model', base: { catalogue: 'wood-walnut' }, overrides: { maps: { color: { image: { textureId: 'swatch' } } } } }
 			]
 		});
 		const look = sceneFinishFor(
@@ -117,7 +143,7 @@ describe('sceneFinishFor', () => {
 		const document = lookSource({
 			textures: [{ id: 'swatch', name: 'Swatch', uri: SWATCH }],
 			materials: [
-				{ id: 'wood', name: 'Wood', baseMaterialId: 'wood-walnut', maps: { color: 'swatch' } }
+				{ id: 'wood', name: 'Wood', base: { catalogue: 'wood-walnut' }, overrides: { maps: { color: { image: { textureId: 'swatch' } } } } }
 			],
 			environment: { treatment: 'flat-colour' }
 		});

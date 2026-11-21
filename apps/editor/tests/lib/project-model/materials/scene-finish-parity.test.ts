@@ -1,24 +1,20 @@
 /**
- * The compatibility proof between today's Scene 11 Finish and the v1 grammar.
- *
- * This suite catches an adapter that quietly changes the current appearance:
- * every catalogue base, an S4 single-image Finish, a palette follower, a
- * rotated non-square mapping and the legacy normal scale/flip pair are resolved
- * twice — once by the shipped `resolveSceneMaterial`, once by the pure
- * `sceneFinishToContract` + `resolveFinish` — and the readings must agree.
- *
- * Treatment is intentionally not compared: the pure resolver returns the
- * untreated value, and the render layer applies Treatment once afterwards.
+ * The render adapter and the pure resolver must read one Scene 12 Finish the
+ * same way. The adapter now consumes `Finish` directly; this suite proves the
+ * shipped `resolveSceneMaterial` projection still agrees with `resolveFinish`
+ * for catalogue bases, palette followers, a rotated non-square mapping, normal
+ * conventions and every scalar role.
  */
 import { describe, expect, it } from 'vitest';
 import {
 	createImageIndex,
 	mergeImageIndexes,
 	resolveFinish,
-	sceneFinishToContract,
 	shippedImageIndex,
+	type Finish,
 	type FinishOverrides,
-	type LocalImage
+	type LocalImage,
+	type MaterialRuntimeIndex
 } from '@portfolio/project-model/materials';
 import { computeTextureRepeat } from '$lib/content/materials';
 import {
@@ -27,11 +23,9 @@ import {
 	type LookSource,
 	type ResolveTarget
 } from '$lib/render/materials/scene-instance-material';
-import type {
-	MaterialTextureSlot
-} from '$lib/types/materials';
-import type { SceneColor, SceneMaterialInstance, SceneTextureAsset } from '$lib/content/scene';
-import { IMAGE_HASH, contentHash } from './fixtures';
+import type { MaterialTextureSlot } from '$lib/types/materials';
+import type { SceneColor, SceneTextureAsset } from '$lib/content/scene';
+import { contentHash } from './fixtures';
 
 const TEXTURES: SceneTextureAsset[] = [
 	{ id: 'tex-color', name: 'Colour', uri: '/project-assets/tex-color' },
@@ -41,13 +35,9 @@ const TEXTURES: SceneTextureAsset[] = [
 	{ id: 'tex-metalness', name: 'Metalness', uri: '/project-assets/tex-metalness' }
 ];
 
-const TEXTURE_HASH: Readonly<Record<string, string>> = {
-	'tex-color': contentHash('scene-color'),
-	'tex-normal': contentHash('scene-normal'),
-	'tex-roughness': contentHash('scene-roughness'),
-	'tex-occlusion': contentHash('scene-occlusion'),
-	'tex-metalness': contentHash('scene-metalness')
-};
+const TEXTURE_HASH: Readonly<Record<string, string>> = Object.fromEntries(
+	TEXTURES.map((texture) => [texture.id, contentHash(`scene-${texture.id}`)])
+);
 
 function sceneImageIndex() {
 	const project = TEXTURES.map((texture) => ({
@@ -72,142 +62,112 @@ const SLOT_OF_ROLE = {
 
 type Case = {
 	readonly name: string;
-	readonly base: SceneMaterialInstance['baseMaterialId'];
-	readonly instance?: {
-		readonly color?: SceneColor;
-		readonly roughness?: number;
-		readonly metalness?: number;
-		readonly maps?: Partial<Record<'color' | 'normal' | 'roughness' | 'occlusion' | 'metalness', string>>;
-		readonly mapping?: { tileMeters?: [number, number]; rotation?: number; offset?: [number, number] };
-		readonly normalScale?: number;
-		readonly normalFlipY?: boolean;
-	};
+	readonly base: { readonly catalogue: string };
+	readonly overrides?: FinishOverrides;
 	readonly surface: [number, number];
 };
 
 const CASES: readonly Case[] = [
 	...(
 		['plaster-warm', 'wood-walnut', 'brass-aged', 'marble-light', 'velvet-dark', 'paper-aged'] as const
-	).map((base): Case => ({ name: `catalogue:${base}`, base, surface: [3.5, 1.25] })),
+	).map((base): Case => ({ name: `catalogue:${base}`, base: { catalogue: base }, surface: [3.5, 1.25] })),
 	{
 		name: 's4-single-image:marble',
-		base: 'marble-light',
-		instance: { maps: { color: 'tex-color' } },
+		base: { catalogue: 'marble-light' },
+		overrides: { maps: { color: { image: { textureId: 'tex-color' } } } },
 		surface: [2.4, 1.1]
 	},
 	{
-		name: 's4-single-image:brass',
-		base: 'brass-aged',
-		instance: { maps: { color: 'tex-color' }, roughness: 0.31 },
-		surface: [0.75, 1.8]
-	},
-	{
 		name: 'palette-follower',
-		base: 'marble-light',
-		instance: { color: { slot: 'slot-walnut' } },
+		base: { catalogue: 'marble-light' },
+		overrides: { color: { slot: 'slot-walnut' } },
 		surface: [2, 2]
 	},
 	{
 		name: 'rotated-non-square-mapping',
-		base: 'wood-walnut',
-		instance: {
-			mapping: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] }
+		base: { catalogue: 'wood-walnut' },
+		overrides: {
+			mapping: { kind: 'target', metric: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] } }
 		},
 		surface: [3.2, 1.6]
 	},
 	{
-		name: 'normal-plus-y',
-		base: 'plaster-warm',
-		instance: { maps: { normal: 'tex-normal' }, normalScale: 0.6, normalFlipY: false },
-		surface: [2, 2]
-	},
-	{
 		name: 'normal-minus-y',
-		base: 'plaster-warm',
-		instance: { maps: { normal: 'tex-normal' }, normalScale: 0.6, normalFlipY: true },
+		base: { catalogue: 'plaster-warm' },
+		overrides: {
+			maps: { normal: { image: { textureId: 'tex-normal' }, convention: '-Y' } },
+			normalScale: 0.6
+		},
 		surface: [2, 2]
-	},
-	{
-		name: 'normal-scale-without-map-is-ignored',
-		base: 'velvet-dark',
-		instance: { normalScale: 0.4, normalFlipY: true },
-		surface: [1, 1]
 	},
 	{
 		name: 'all-scalar-roles',
-		base: 'wood-walnut',
-		instance: {
+		base: { catalogue: 'wood-walnut' },
+		overrides: {
 			roughness: 0,
 			metalness: 1,
-			maps: { roughness: 'tex-roughness', occlusion: 'tex-occlusion', metalness: 'tex-metalness' }
+			maps: {
+				roughness: { image: { textureId: 'tex-roughness' }, component: 'r', invert: false },
+				occlusion: { image: { textureId: 'tex-occlusion' }, component: 'r', invert: false },
+				metalness: { image: { textureId: 'tex-metalness' }, component: 'r', invert: false }
+			}
 		},
 		surface: [1.5, 3]
 	}
 ];
 
-function instanceFor(testCase: Case): SceneMaterialInstance | undefined {
-	if (testCase.instance === undefined) return undefined;
-	const instance = testCase.instance;
+function finishFor(testCase: Case): Finish | undefined {
+	if (testCase.overrides === undefined) return undefined;
 	return {
 		id: `instance:${testCase.name}`,
 		name: testCase.name,
-		baseMaterialId: testCase.base,
-		...(instance.color === undefined ? {} : { color: instance.color }),
-		...(instance.roughness === undefined ? {} : { roughness: instance.roughness }),
-		...(instance.metalness === undefined ? {} : { metalness: instance.metalness }),
-		...(instance.maps === undefined ? {} : { maps: instance.maps }),
-		...(instance.mapping === undefined ? {} : { mapping: instance.mapping }),
-		...(instance.normalScale === undefined ? {} : { normalScale: instance.normalScale }),
-		...(instance.normalFlipY === undefined ? {} : { normalFlipY: instance.normalFlipY })
+		base: testCase.base,
+		overrides: testCase.overrides
+	};
+}
+
+function materialIndex(): MaterialRuntimeIndex {
+	return {
+		definitions: new Map(),
+		definitionImages: new Map(),
+		images: TEXTURES.map((texture) => ({
+			hash: TEXTURE_HASH[texture.id]!,
+			source: { textureId: texture.id }
+		}))
 	};
 }
 
 function lookSource(testCase: Case): LookSource {
+	const finish = finishFor(testCase);
 	return {
 		textures: TEXTURES,
-		materials: instanceFor(testCase) === undefined ? [] : [instanceFor(testCase)!],
-		palette: [{ id: 'slot-walnut', name: 'Walnut', color: '#5a3a22' }]
+		materials: finish === undefined ? [] : [finish],
+		palette: [{ id: 'slot-walnut', name: 'Walnut', color: '#5a3a22' }],
+		materialIndex: materialIndex()
 	};
 }
 
 function targetFor(testCase: Case): ResolveTarget {
-	const instance = instanceFor(testCase);
+	const finish = finishFor(testCase);
 	return {
-		materialInstanceId: instance?.id ?? null,
-		fallbackCatalogueId: testCase.base
+		materialInstanceId: finish?.id ?? null,
+		fallbackCatalogueId: testCase.base.catalogue as never
 	};
 }
 
 function pureResolution(testCase: Case) {
-	const instance = instanceFor(testCase);
-	const adapted = sceneFinishToContract(
-		instance === undefined
-			? { id: `implicit:${testCase.name}`, name: testCase.name, baseMaterialId: testCase.base }
-			: {
-					id: instance.id,
-					name: instance.name,
-					baseMaterialId: instance.baseMaterialId,
-					...(instance.color === undefined ? {} : { color: instance.color }),
-					...(instance.roughness === undefined ? {} : { roughness: instance.roughness }),
-					...(instance.metalness === undefined ? {} : { metalness: instance.metalness }),
-					...(instance.maps === undefined ? {} : { maps: instance.maps }),
-					...(instance.mapping === undefined ? {} : { mapping: instance.mapping }),
-					...(instance.normalScale === undefined ? {} : { normalScale: instance.normalScale }),
-					...(instance.normalFlipY === undefined ? {} : { normalFlipY: instance.normalFlipY })
-				}
-	);
-	if (!adapted.success) throw new Error(JSON.stringify(adapted.issues));
+	const finish = finishFor(testCase);
 	const resolved = resolveFinish(
-		{ catalogue: testCase.base },
-		adapted.finish.overrides,
+		(finish?.base ?? testCase.base) as { catalogue: string },
+		finish?.overrides,
 		[{ id: 'slot-walnut', name: 'Walnut', color: '#5a3a22' }],
 		sceneImageIndex()
 	);
-	if (resolved.inputs === null) throw new Error('the catalogue base did not resolve');
-	return { adapted, resolved };
+	if (resolved.inputs === null) throw new Error('the base did not resolve');
+	return resolved;
 }
 
-function pureSlotUris(inputs: NonNullable<ReturnType<typeof pureResolution>['resolved']['inputs']>) {
+function pureSlotUris(inputs: NonNullable<ReturnType<typeof pureResolution>['inputs']>) {
 	const uris: Partial<Record<MaterialTextureSlot, string>> = {};
 	for (const role of ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const) {
 		const binding = inputs.maps[role];
@@ -218,10 +178,10 @@ function pureSlotUris(inputs: NonNullable<ReturnType<typeof pureResolution>['res
 	return uris;
 }
 
-describe('Scene 11 → v1 compatibility', () => {
+describe('Scene 12 Finish → render projection', () => {
 	it.each(CASES)('$name resolves to the same effective readings', (testCase) => {
 		const current = resolveSceneMaterial(lookSource(testCase), targetFor(testCase));
-		const { resolved } = pureResolution(testCase);
+		const resolved = pureResolution(testCase);
 		const inputs = resolved.inputs!;
 		expect(resolved.issues).toEqual([]);
 
@@ -247,12 +207,10 @@ describe('Scene 11 → v1 compatibility', () => {
 
 	it.each(CASES)('$name uses the one metric repeat formula', (testCase) => {
 		const current = resolveSceneMaterial(lookSource(testCase), targetFor(testCase));
-		const { resolved } = pureResolution(testCase);
+		const resolved = pureResolution(testCase);
 		const look = sceneLookFor(lookSource(testCase), targetFor(testCase), testCase.surface);
 		const expected = computeTextureRepeat(testCase.surface, current.defaultTileSizeMeters);
 		if (Object.keys(current.slotUris).length === 0) {
-			// An untextured look carries no variant, so there is no repeat to read;
-			// the mapping is still resolved for a later map binding.
 			expect(look.textures).toBeNull();
 		} else {
 			expect(look.textures?.repeat).toEqual(expected);
@@ -267,7 +225,7 @@ describe('Scene 11 → v1 compatibility', () => {
 		).toEqual(expected);
 	});
 
-	it('keeps a shared S4 Finish identical on a Form, a Wall and a rotated model remap', () => {
+	it('keeps a shared Finish identical on a Form, a Wall and a rotated model remap', () => {
 		const testCase = CASES.find((entry) => entry.name === 'rotated-non-square-mapping')!;
 		const document = lookSource(testCase);
 		const target = targetFor(testCase);
@@ -278,53 +236,29 @@ describe('Scene 11 → v1 compatibility', () => {
 		];
 		expect(readings[1]).toEqual(readings[0]);
 		expect(readings[2]).toEqual(readings[0]);
-		// One instance, one effective look: shared identity is what lets the
-		// renderer lease one material for every user instead of one per surface.
 		expect(readings[0].catalogue).toBe('wood-walnut');
 		expect(readings[0].defaultTileSizeMeters).toEqual([0.8, 1.6]);
 		expect(readings[0].rotation).toBe(0.42);
 	});
 
-	it('adapts an instance-only binding without needing a catalogue base', () => {
-		const adapted = sceneFinishToContract({
-			id: 'finish-custom',
-			name: 'Custom',
-			baseMaterialId: 'plaster-warm',
-			maps: { color: 'tex-color' }
-		});
-		expect(adapted.success).toBe(true);
-		if (!adapted.success) return;
-		expect(adapted.finish.overrides).toEqual({
-			maps: { color: { image: { textureId: 'tex-color' } } }
-		});
-
+	it('keeps the base roughness map when only colour is overridden', () => {
 		const resolved = resolveFinish(
 			{ catalogue: 'plaster-warm' },
-			adapted.finish.overrides,
+			{ maps: { color: { image: { textureId: 'tex-color' } } } },
 			undefined,
 			sceneImageIndex()
 		);
 		expect(resolved.issues).toEqual([]);
 		expect(resolved.inputs?.maps.color?.image?.source).toEqual({ textureId: 'tex-color' });
-		// The base's own roughness map survives a colour-only override.
 		expect(resolved.inputs?.maps.roughness?.image?.source).toEqual({
 			shipped: '/textures/plaster-warm/roughness.png'
 		});
 	});
 
-	it('keeps an authored zero factor through the adapter', () => {
-		const adapted = sceneFinishToContract({
-			id: 'finish-zero',
-			name: 'Zero',
-			baseMaterialId: 'wood-walnut',
-			roughness: 0,
-			metalness: 0
-		});
-		expect(adapted.success).toBe(true);
-		if (!adapted.success) return;
+	it('keeps an authored zero factor', () => {
 		const resolved = resolveFinish(
 			{ catalogue: 'wood-walnut' },
-			adapted.finish.overrides,
+			{ roughness: 0, metalness: 0 },
 			undefined,
 			sceneImageIndex()
 		);
@@ -333,57 +267,20 @@ describe('Scene 11 → v1 compatibility', () => {
 		expect(resolved.inputs?.provenance.roughness).toEqual({ source: 'override' });
 	});
 
-	it('adapts the legacy normal flip as exactly one Y-sign convention', () => {
-		const adapted = sceneFinishToContract({
-			id: 'finish-normal',
-			name: 'Normal',
-			baseMaterialId: 'plaster-warm',
-			maps: { normal: 'tex-normal' },
-			normalScale: -0.6,
-			normalFlipY: true
-		});
-		expect(adapted.success).toBe(true);
-		if (!adapted.success) return;
-		const overrides = adapted.finish.overrides as FinishOverrides;
-		expect(overrides.normalScale).toBe(0.6);
-		expect(overrides.maps?.normal).toEqual({
-			image: { textureId: 'tex-normal' },
-			convention: '-Y'
-		});
-		const resolved = resolveFinish(
-			{ catalogue: 'plaster-warm' },
-			overrides,
-			undefined,
-			sceneImageIndex()
-		);
+	it('reads a normal convention and authored scale directly', () => {
+		const overrides: FinishOverrides = {
+			maps: { normal: { image: { textureId: 'tex-normal' }, convention: '-Y' } },
+			normalScale: 0.6
+		};
+		const resolved = resolveFinish({ catalogue: 'plaster-warm' }, overrides, undefined, sceneImageIndex());
 		expect(resolved.inputs?.maps.normal?.convention).toBe('-Y');
 		expect(resolved.inputs?.normalScale).toBe(0.6);
 	});
 
-	it('does not let an unreferenced normal control change anything', () => {
-		const adapted = sceneFinishToContract({
-			id: 'finish-normal-only',
-			name: 'Normal only',
-			baseMaterialId: 'velvet-dark',
-			normalScale: 0.4,
-			normalFlipY: true
-		});
-		expect(adapted.success).toBe(true);
-		if (!adapted.success) return;
-		expect(adapted.finish.overrides).toBeUndefined();
-	});
-
 	it('still refuses an unknown catalogue base at the contract boundary', () => {
-		const adapted = sceneFinishToContract({
-			id: 'finish-unknown',
-			name: 'Unknown',
-			baseMaterialId: 'not-a-catalogue-base'
-		});
-		expect(adapted.success).toBe(true);
-		if (!adapted.success) return;
 		const resolved = resolveFinish(
 			{ catalogue: 'not-a-catalogue-base' },
-			adapted.finish.overrides,
+			undefined,
 			undefined,
 			sceneImageIndex()
 		);

@@ -27,6 +27,8 @@
  * catalogue path.
  */
 import { isArtworkAssetId } from './artwork';
+import { shippedImage } from './materials/catalogue';
+import { finishTextureBindings } from './materials/read';
 import { ARTWORK_MAX_BYTES } from './artwork-image';
 import { isAllowedShippedTextureUri } from './shipped-static';
 import type { ProjectEnvelope, ResourcePin, TypedResource } from './units/types';
@@ -214,9 +216,12 @@ export function collectSceneImageRequirements(
 		}
 		const paths = [recordPath];
 		for (const [materialIndex, material] of scene.materials.entries()) {
-			for (const [role, textureId] of Object.entries(material.maps ?? {})) {
-				if (textureId === texture.id) {
-					addPath(paths, `$.units.scene.data.materials[${materialIndex}].maps.${role}`);
+			for (const binding of finishTextureBindings(material)) {
+				if (binding.textureId === texture.id) {
+					addPath(
+						paths,
+						`$.units.scene.data.materials[${materialIndex}].overrides.maps.${binding.role}.image.textureId`
+					);
 				}
 			}
 		}
@@ -229,6 +234,102 @@ export function collectSceneImageRequirements(
 			// material/entity references follow in authored order.
 			paths: [recordPath, ...comparePaths(paths.filter((path) => path !== recordPath))]
 		});
+	}
+
+	// Scene 12 Finish overrides name local images directly. Every one is a
+	// project image reference, whether the binding came from a curated base or a
+	// resource definition.
+	for (const [materialIndex, material] of scene.materials.entries()) {
+		for (const binding of finishTextureBindings(material)) {
+			const path = `$.units.scene.data.materials[${materialIndex}].overrides.maps.${binding.role}.image.textureId`;
+			const resource = resourceFor(resources, binding.textureId);
+			const expectedPin = expectedPinOf(resource);
+			if (expectedPin === null && purpose !== 'delivery') {
+				issues.push({
+					path,
+					code: 'image-pin-missing',
+					message: `Project image "${binding.textureId}" needs a texture resource pin before it can be saved or opened`
+				});
+				continue;
+			}
+			add({
+				assetId: binding.textureId,
+				locator: `${PROJECT_ASSET_URI_PREFIX}${binding.textureId}`,
+				expectedPin,
+				artwork: null,
+				paths: [path]
+			});
+		}
+		// A Scene 12 override may name a shipped image rather than a project
+		// texture. It has no P20 pin, so its only admissible identity is the frozen
+		// shipped manifest; a root-relative path is not enough.
+		for (const [role, binding] of Object.entries(material.overrides?.maps ?? {})) {
+			if (binding === null || binding === undefined || !('image' in binding)) continue;
+			const image = binding.image;
+			if (!('shipped' in image)) continue;
+			if (shippedImage(image.shipped) !== undefined) continue;
+			issues.push({
+				path: `$.units.scene.data.materials[${materialIndex}].overrides.maps.${role}.image.shipped`,
+				code: 'image-static-unknown',
+				message: `Static texture "${image.shipped}" is not in the frozen shipped registry`
+			});
+		}
+	}
+
+	// Every material definition belongs to the same project-image closure. Its
+	// recipe digests are exact, so a local mapping is verified against both the
+	// Scene texture record and that texture's resource pin.
+	for (const [resourceIndex, resource] of resources.entries()) {
+		if (resource.kind !== 'material' || resource.material === undefined) continue;
+		const definitionPath = `$.units.resources.data.resources[${resourceIndex}].material.images`;
+		for (const image of resource.material.images) {
+			if ('shipped' in image.source) {
+				const shipped = shippedImage(image.source.shipped);
+				if (shipped === undefined || shipped.hash !== image.hash) {
+					issues.push({
+						path: definitionPath,
+						code: 'image-static-unknown',
+						message: `Material "${resource.id}" names shipped image "${image.source.shipped}" outside the frozen manifest or with a different digest`
+					});
+				}
+				continue;
+			}
+			const textureId = image.source.textureId;
+			const texture = scene.textures.find((candidate) => candidate.id === textureId);
+			if (texture === undefined) {
+				issues.push({
+					path: definitionPath,
+					code: 'image-texture-identity-mismatch',
+					message: `Material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no Scene texture record`
+				});
+				continue;
+			}
+			const textureResource = resourceFor(resources, textureId);
+			const expectedPin = expectedPinOf(textureResource);
+			if (expectedPin === null) {
+				issues.push({
+					path: definitionPath,
+					code: 'image-pin-missing',
+					message: `Material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no resolved pin`
+				});
+				continue;
+			}
+			if (expectedPin.hash !== image.hash) {
+				issues.push({
+					path: definitionPath,
+					code: 'image-pin-conflict',
+					message: `Material "${resource.id}" binds ${image.hash} and texture "${textureId}" pins ${expectedPin.hash}`
+				});
+				continue;
+			}
+			add({
+				assetId: textureId,
+				locator: texture.uri,
+				expectedPin,
+				artwork: null,
+				paths: [definitionPath]
+			});
+		}
 	}
 
 	for (const [index, image] of (scene.artworkLibrary ?? []).entries()) {

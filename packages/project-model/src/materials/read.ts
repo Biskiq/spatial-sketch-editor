@@ -66,7 +66,7 @@ const METRIC_KEYS = ['tileMeters', 'rotation', 'offset'] as const;
 const UV_KEYS = ['kind', 'set', 'repeat', 'rotation', 'offset'] as const;
 const ROLE_SELECTORS = ['convention', 'component', 'invert'] as const;
 
-const COLOR_LITERAL = /^#[0-9a-f]{6}$/i;
+const COLOR_LITERAL = /^#[0-9a-f]{6}$/;
 const HASH_IDENTITY = /^sha256-[0-9a-f]{64}$/;
 const TWO_PI = Math.PI * 2;
 const NORMAL_SCALE_MAX = 10;
@@ -242,7 +242,7 @@ class MaterialReader {
 			this.problem(path, 'invalid-colour', 'Use a lowercase #rrggbb colour.');
 			return null;
 		}
-		return input.toLowerCase();
+		return input;
 	}
 
 	tag<T extends string>(input: unknown, path: string, allowed: readonly T[]): T | null {
@@ -631,7 +631,9 @@ export function pruneOverrides(overrides: FinishOverrides | undefined): FinishOv
 	for (const key of OVERRIDE_KEYS) {
 		const value = overrides[key as keyof FinishOverrides];
 		if (value === undefined) continue;
-		if (key === 'maps' && typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+		if (key === 'maps' && typeof value === 'object' && value !== null) {
+			if (Object.keys(value).length === 0) continue;
+			next[key] = value;
 			continue;
 		}
 		next[key] = value;
@@ -687,7 +689,12 @@ export function readFinish(input: unknown): FinishReadResult {
 			: (() => {
 					const read = readOverrides(record.overrides);
 					if (!read.success) {
-						reader.issues.push(...read.issues);
+						reader.issues.push(
+							...read.issues.map((issue) => ({
+								...issue,
+								path: issue.path === '$' ? '$.overrides' : `$.overrides${issue.path.slice(1)}`
+							}))
+						);
 						return undefined;
 					}
 					return pruneOverrides(read.overrides);
@@ -703,6 +710,24 @@ export function readFinish(input: unknown): FinishReadResult {
 		...(overrides === undefined ? {} : { overrides })
 	};
 	return { success: true, finish: deepFreeze(finish) };
+}
+
+/**
+ * Every local texture id one Finish's overrides bind, with the role that names
+ * it. Used by the Scene unit's texture-reference closure and the project-image
+ * enumerator; a definition's digest bindings are a separate list.
+ */
+export function finishTextureBindings(
+	finish: Finish
+): readonly { readonly role: MapRole; readonly textureId: string }[] {
+	const bindings: { role: MapRole; textureId: string }[] = [];
+	for (const role of MATERIAL_MAP_ROLES) {
+		const binding = finish.overrides?.maps?.[role];
+		if (binding === undefined || binding === null) continue;
+		const source = binding.image;
+		if ('textureId' in source) bindings.push({ role, textureId: source.textureId });
+	}
+	return bindings;
 }
 
 /** Whether a Finish is a pristine catalogue instance (its base alone). */

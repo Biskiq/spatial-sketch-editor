@@ -83,6 +83,16 @@ export type ResolveApprovedModelsInput = {
 	readonly signal?: AbortSignal;
 	/** Test seam: the transport, or `null` when the API is not configured. */
 	readonly client?: Pick<ModelImportClient, 'loadContent'> | null;
+	/**
+	 * Observe the exact approved derivative bytes once, before they become a
+	 * render URL. The host uses this to derive the target analysis the Finish
+	 * planners read; a failure here must not stop the model from drawing.
+	 */
+	readonly onBytes?: (input: {
+		readonly assetId: string;
+		readonly hash: string;
+		readonly bytes: Uint8Array;
+	}) => Promise<void> | void;
 };
 
 /**
@@ -122,6 +132,14 @@ export async function resolveApprovedModels(
 		}
 		try {
 			const bytes = await client.loadContent(input.projectId, pin.hash, input.signal);
+			if (input.onBytes !== undefined) {
+				try {
+					await input.onBytes({ assetId: pin.assetId, hash: pin.hash, bytes });
+				} catch {
+					// The analysis is an authoring capability; the approved bytes are
+					// still drawable and a missing analysis stays `target-pending`.
+				}
+			}
 			urls.set(pin.assetId, acquire(pin.hash, bytes));
 			acquired.push(pin.hash);
 		} catch (error) {

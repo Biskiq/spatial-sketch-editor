@@ -62,8 +62,17 @@ export const materials: MaterialDefinition[] = [
   }
 ];
 
+const NEUTRAL_MATERIAL: MaterialDefinition = {
+  id: 'pbr-neutral-v1',
+  label: 'Neutral PBR',
+  fallbackColor: '#ffffff',
+  roughness: 0.5,
+  metalness: 0,
+  defaultTileSizeMeters: [1, 1]
+};
+
 export const materialById = new Map<MaterialId, MaterialDefinition>(
-  materials.map((material) => [material.id, material])
+  [...materials, NEUTRAL_MATERIAL].map((material) => [material.id, material])
 );
 
 export function getMaterial(id: MaterialId): MaterialDefinition {

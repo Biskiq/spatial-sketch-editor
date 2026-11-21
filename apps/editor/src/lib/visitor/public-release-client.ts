@@ -20,6 +20,7 @@ import {
 } from './visitor-cold-runtime';
 
 import { artworkAssetUri } from '@portfolio/project-model';
+import { validateProjectEnvelope, verifyEnvelopeMaterialDigests } from '@portfolio/project-model/units';
 import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import type { ReleaseBytesEntry } from './visitor-texture-scope';
@@ -353,6 +354,18 @@ export async function loadPublicReleaseBundle(input: {
 	signal?: AbortSignal;
 }): Promise<{ bundle: ColdReleaseBundle; version: number; revision: number }> {
 	const release = await fetchPublicRelease(input);
+	input.signal?.throwIfAborted();
+	// Material recipe identities are canonical-byte digests. The public release is
+	// another external ingress: verify them here, before downloading or installing
+	// any bytes, rather than trusting the publisher's serialized document.
+	const structural = validateProjectEnvelope(release.document);
+	if (!structural.success) {
+		throw new PublicVisitorError('invalid-release', 'The published project is invalid');
+	}
+	const materials = await verifyEnvelopeMaterialDigests(structural.envelope);
+	if (!materials.success) {
+		throw new PublicVisitorError('invalid-release', 'The published material definition is invalid');
+	}
 	input.signal?.throwIfAborted();
 	const bytesByUri = await fetchPublicReleaseBytes({
 		publicationId: input.publicationId,

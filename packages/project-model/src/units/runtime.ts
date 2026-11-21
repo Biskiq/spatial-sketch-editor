@@ -45,6 +45,7 @@ import {
 	type EnvelopeClosureFinding,
 	type EnvelopeDiagnostic
 } from './validate';
+import { materialRuntimeIndexOf } from './material-index';
 
 export type UnitRuntimeReady = {
 	readonly kind: 'ready';
@@ -285,6 +286,12 @@ export function prepareValidatedUnitRuntime(
 		// edit must not walk an unchanged resources unit.
 		const modelFootprints = modelFootprintsOf(envelope.units.resources.data);
 		if (modelFootprints.size > 0) runtimeScene = { ...runtimeScene, modelFootprints };
+		// The material index is the resources unit's read projection: definitions
+		// and verified image identities the renderer resolves through. It never
+		// enters the Scene bytes, and a retained Scene carries the one it was
+		// resolved with because reuse is keyed on both units.
+		const materialIndex = materialRuntimeIndexOf(envelope.units.resources.data);
+		if (materialIndex !== undefined) runtimeScene = { ...runtimeScene, materialIndex };
 		// The Look is the Scene unit's own world presentation: the internal
 		// world-local document deliberately does not carry it, so it is attached to
 		// the runtime value every surface shares. Reuse is keyed by this same unit,

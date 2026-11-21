@@ -77,7 +77,7 @@ describe('Scene 11 unit payload', () => {
 		];
 		for (const item of cases) {
 			const materials = JSON.stringify(item.assignments).includes('pristine')
-				? [{ id: 'pristine', name: 'Pristine', baseMaterialId: 'plaster-warm' }]
+				? [{ id: 'pristine', name: 'Pristine', base: { catalogue: 'plaster-warm' } }]
 				: [];
 			expect(issues(payload({ surfaceFinishes: item.assignments, materials }))).toContainEqual(
 				expect.objectContaining({ code: item.code })
@@ -126,7 +126,7 @@ describe('Scene 11 unit payload', () => {
 		const literal = validateCameraFreeScenePayload(
 			payload({
 				materials: [
-					{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', color: '#aabbcc' }
+					{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: '#aabbcc' } }
 				]
 			})
 		);
@@ -136,7 +136,7 @@ describe('Scene 11 unit payload', () => {
 			payload({
 				palette: PALETTE,
 				materials: [
-					{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', color: { slot: 'accent' } }
+					{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'accent' } } }
 				]
 			})
 		);
@@ -147,12 +147,12 @@ describe('Scene 11 unit payload', () => {
 			issues(
 				payload({
 					materials: [
-						{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', color: { slot: 'missing' } }
+						{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'missing' } } }
 					]
 				})
 			)
 		).toContainEqual(
-			expect.objectContaining({ code: 'unknown_palette_slot', path: '$.materials[0].color.slot' })
+			expect.objectContaining({ code: 'unknown_palette_slot', path: '$.materials[0].overrides.color.slot' })
 		);
 	});
 
@@ -198,13 +198,7 @@ describe('Scene 11 unit payload', () => {
 			formatVersion: SCENE_UNIT_FORMAT_VERSION,
 			textures: [{ id: 'tex-1', name: 'One', uri: '/textures/one.png' }],
 			materials: [
-				{
-					id: 'm',
-					name: 'M',
-					baseMaterialId: 'plaster-warm' as const,
-					maps: { color: 'tex-1', normal: 'tex-1' },
-					mapping: { rotation: 0.25, offset: [0.1, 0.2] as [number, number], tileMeters: [1, 2] as [number, number] }
-				}
+				{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' as const }, overrides: { maps: { color: { image: { textureId: 'tex-1' } }, normal: { image: { textureId: 'tex-1' }, convention: '+Y' as const } }, mapping: { kind: 'target' as const, metric: { rotation: 0.25, offset: [0.1, 0.2] as [number, number], tileMeters: [1, 2] as [number, number] } } } }
 			],
 			entities: [],
 			palette: [{ id: 'accent', name: 'Accent', color: '#112233' }],
@@ -215,13 +209,7 @@ describe('Scene 11 unit payload', () => {
 			palette: [{ color: '#112233', name: 'Accent', id: 'accent' }],
 			entities: [],
 			materials: [
-				{
-					mapping: { tileMeters: [1, 2], offset: [0.1, 0.2], rotation: 0.25 },
-					maps: { normal: 'tex-1', color: 'tex-1' },
-					baseMaterialId: 'plaster-warm',
-					name: 'M',
-					id: 'm'
-				}
+				{ name: 'M', id: 'm', base: { catalogue: 'plaster-warm' }, overrides: { mapping: { kind: 'target' as const, metric: { tileMeters: [1, 2], offset: [0.1, 0.2], rotation: 0.25 } }, maps: { normal: { image: { textureId: 'tex-1' }, convention: '+Y' as const }, color: { image: { textureId: 'tex-1' } } } } }
 			],
 			textures: [{ uri: '/textures/one.png', name: 'One', id: 'tex-1' }],
 			formatVersion: SCENE_UNIT_FORMAT_VERSION

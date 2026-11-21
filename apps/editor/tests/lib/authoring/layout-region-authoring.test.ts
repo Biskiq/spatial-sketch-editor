@@ -147,7 +147,7 @@ async function mount(
 		...(creatorEntry === null
 			? {}
 			: {
-					resources: { formatVersion: 2 as const, resources: [creatorEntry.resource] },
+					resources: { formatVersion: 3 as const, resources: [creatorEntry.resource] },
 					dependencyLock: { formatVersion: 1, entries: [creatorEntry.lock] }
 				})
 	});

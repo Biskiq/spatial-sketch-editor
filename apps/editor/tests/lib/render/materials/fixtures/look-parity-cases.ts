@@ -8,6 +8,7 @@
  */
 import type { MaterialId } from '@portfolio/project-model';
 import type { SceneDocument } from '$lib/content/scene';
+import type { LookSource } from '$lib/render/materials/scene-finish';
 import {
 	skyFromPreset,
 	type SceneEnvironmentChoice
@@ -19,7 +20,8 @@ import { worldEnvironmentLook } from '$lib/render/world-environment';
 export const LOOK_TEXTURE = {
 	id: 'wall-detail',
 	name: 'Wall Detail',
-	uri: '/textures/wall-detail.webp'
+	uri: '/textures/wall-detail.webp',
+	hash: `sha256-${'6'.repeat(64)}`
 } as const;
 
 export type LookCase = {
@@ -86,10 +88,24 @@ export function lookCaseInstanceId(lookCase: LookCase): string {
  * The Scene input for one case. The Scene 7 golden's colour map is expressed
  * as Scene 8's `maps.color`; the expected output is unchanged.
  */
-export function lookCaseDocument(lookCase: LookCase): Pick<SceneDocument, 'materials' | 'textures'> {
+export function lookCaseDocument(lookCase: LookCase): LookSource {
 	const instance = lookCase.instance;
+	const overrides = instance === null
+		? undefined
+		: {
+				...(instance.mapTextureId === undefined
+					? {}
+					: { maps: { color: { image: { textureId: instance.mapTextureId } } } }),
+				...(instance.roughness === undefined ? {} : { roughness: instance.roughness }),
+				...(instance.metalness === undefined ? {} : { metalness: instance.metalness })
+			};
 	return {
 		textures: [{ ...LOOK_TEXTURE }],
+		materialIndex: {
+			definitions: new Map(),
+			definitionImages: new Map(),
+			images: [{ hash: LOOK_TEXTURE.hash, source: { textureId: LOOK_TEXTURE.id } }]
+		},
 		materials:
 			instance === null
 				? []
@@ -97,12 +113,8 @@ export function lookCaseDocument(lookCase: LookCase): Pick<SceneDocument, 'mater
 						{
 							id: lookCaseInstanceId(lookCase),
 							name: lookCase.id,
-							baseMaterialId: lookCase.fallbackCatalogueId,
-							...(instance.mapTextureId === undefined
-								? {}
-								: { maps: { color: instance.mapTextureId } }),
-							...(instance.roughness === undefined ? {} : { roughness: instance.roughness }),
-							...(instance.metalness === undefined ? {} : { metalness: instance.metalness })
+							base: { catalogue: lookCase.fallbackCatalogueId },
+							...(overrides === undefined ? {} : { overrides })
 						}
 					]
 	};

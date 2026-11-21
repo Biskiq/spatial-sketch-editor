@@ -68,7 +68,7 @@ describe('recipe canonical identity', () => {
 			occlusionStrength: 1,
 			metalness: 0,
 			roughness: 0.5,
-			color: '#FFFFFF',
+			color: '#ffffff',
 			profile: 'pbr-metallic-roughness/v1'
 		};
 		const read = readRecipe(shuffled);

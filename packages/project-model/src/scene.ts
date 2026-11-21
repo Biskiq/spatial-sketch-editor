@@ -14,7 +14,13 @@ export type MaterialId =
   | 'brass-aged'
   | 'marble-light'
   | 'velvet-dark'
-  | 'paper-aged';
+  | 'paper-aged'
+  /**
+   * The frozen technical, untextured catalogue base. A resource-backed Finish
+   * names it as its catalogue fallback while its material definition supplies
+   * the authored signals.
+   */
+  | 'pbr-neutral-v1';
 
 /** Scene 11 assignments: every canonical Layout surface identity. */
 export type SceneSurfaceRef = LayoutSurfaceRef;
@@ -160,6 +166,10 @@ export type SceneColor = string | { readonly slot: string };
  * P20 asset id directly. A named slot replaces the base catalogue's texture for
  * that slot; unnamed slots keep the base's.
  */
+/**
+ * The Scene 11 string map slots. Kept only as the outgoing-format vocabulary
+ * the offline converter reads; Scene 12 never persists this shape.
+ */
 export type SceneFinishMaps = {
 	readonly color?: string;
 	readonly normal?: string;
@@ -180,22 +190,15 @@ export type SceneFinishMapping = {
 };
 
 /**
- * A project Finish: a named look that references one curated catalogue Finish
- * and optionally overrides its colour, PBR scalars, maps, mapping and normal.
- * Scene 8 retires the single colour map: a colour map is now `maps.color`.
+ * A project Finish: a named look over one catalogue base or one immutable
+ * material definition, plus sparse role-typed overrides.
+ *
+ * Scene 12 uses the portable v1 Finish grammar directly. The previous flat
+ * fields (`baseMaterialId`, string map slots, `normalFlipY`) were the Scene 11
+ * spelling; their meanings map onto `base`, `overrides.maps` and the normal
+ * binding's `convention`. Display names remain outside recipe identity.
  */
-export type SceneMaterialInstance = {
-  id: string;
-  name: string;
-  baseMaterialId: MaterialId;
-  color?: SceneColor;
-  roughness?: number;
-  metalness?: number;
-  maps?: SceneFinishMaps;
-  mapping?: SceneFinishMapping;
-  normalScale?: number;
-  normalFlipY?: boolean;
-};
+export type SceneMaterialInstance = import('./materials/types').Finish;
 
 /** The most palette slots one World may carry. */
 export const SCENE_PALETTE_MAX_SLOTS = 8 as const;
@@ -548,6 +551,12 @@ export type RuntimeScene = {
   textures: SceneTextureAsset[];
   /** Material instances; rendering support lands in Phase 5.3. */
   materials: SceneMaterialInstance[];
+  /**
+   * Read-only material definitions and verified image identities from the
+   * resources unit. Derived beside `modelFootprints`, never authored into the
+   * Scene; a renderer resolves a resource-backed Finish through this index.
+   */
+  materialIndex?: import('./materials/types').MaterialRuntimeIndex;
 	/** Scene-owned shared Finish assignments for Layout-authored faces. */
 	readonly surfaceFinishes?: readonly SceneSurfaceFinish[];
 	/** The World's ordered palette, when it has one. */

@@ -50,12 +50,12 @@ export function planPaletteAdoption(scene: SceneDocument): PaletteAdoptionPlan {
 	const rows = new Map<string, { slot: ScenePaletteSlot; finishes: number; objects: number }>();
 	if (slots.length > 0) {
 		for (const instance of scene.materials) {
-			const color = instance.color;
+			const color = instance.overrides?.color;
 			if (color === undefined || typeof color !== 'string') {
 				inherited += 1;
 				continue;
 			}
-			if (instance.maps?.color !== undefined) {
+			if (instance.overrides?.maps?.color != null) {
 				imageTints += 1;
 				continue;
 			}

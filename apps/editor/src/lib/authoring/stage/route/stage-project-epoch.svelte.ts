@@ -32,7 +32,12 @@
  * renderer store.
  */
 import type { StageReadSnapshot } from '../accepted-read';
-import type { StageAdapterFactory, StageLightInspection, StageObjectStudio } from '../stage-adapter-host';
+import type {
+	StageAdapterFactory,
+	StageLightInspection,
+	StageObjectStudio,
+	StageTargetSources
+} from '../stage-adapter-host';
 import {
 	createStageAdapterServices,
 	mountStageAdapter
@@ -49,6 +54,7 @@ import { stageEnvelope } from '../unit-stage-source';
 import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAssetLeases } from './stage-asset-leases.svelte';
 import type { FinishAuthoring } from '../../look/finish-authoring.svelte';
+import type { MaterialProofRegistry } from '../../material-proof';
 
 /** The existing project-session API, narrowed to what the epoch composes. */
 export type StageProjectEpochProjectSession = {
@@ -69,6 +75,8 @@ export type StageProjectEpochPreview = {
 export type StageProjectEpochInput = {
 	readonly session: StageSession;
 	readonly assets: StageAssetLeases;
+	/** The route session's proof registry; one value survives Load and replacement. */
+	readonly materialProofs: MaterialProofRegistry;
 	/** Lazy: project-session is constructed around this controller's `activate`. */
 	readonly projectSession: () => StageProjectEpochProjectSession;
 	/** Lazy: Preview is constructed against this controller's facade getter. */
@@ -106,6 +114,11 @@ export type StageProjectEpochInput = {
 	readonly createServices?: typeof createStageAdapterServices;
 	/** The route's Finish service getter, shared with every replacement epoch. */
 	readonly finishes?: () => FinishAuthoring | null;
+	/**
+	 * The route's host-owned target sources (approved model analyses). Stable
+	 * across replacement epochs; a new facade reads the new accepted identity.
+	 */
+	readonly targetSources?: StageTargetSources;
 	readonly mountAdapter?: typeof mountStageAdapter;
 };
 
@@ -202,8 +215,10 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		nextFacade.acquireInspection('exclusive');
 		// One acceptance coordinator per project epoch, starting from the admitted
 		// baseline. The coordinator's bounded history is the single history.
+		const materialProofs = input.materialProofs;
 		const mounted = createAcceptance({
 			sessionEpoch: snapshot.sessionEpoch,
+			materialProofs,
 			baseline: {
 				revision: snapshot.acceptedRevision,
 				source: stageEnvelope(snapshot),
@@ -226,7 +241,13 @@ export function createStageProjectEpoch(input: StageProjectEpochInput) {
 		});
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
-		const createdServices = createServices(nextFacade, mounted, input.finishes);
+		const createdServices = createServices(
+			nextFacade,
+			mounted,
+			input.finishes,
+			materialProofs,
+			input.targetSources
+		);
 		const inspection = input.lightInspection?.() ?? null;
 		const studio = input.objectStudio?.() ?? null;
 		const openSpaceCreated = input.openSpaceCreated;

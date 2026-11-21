@@ -28,6 +28,10 @@
       "types": "./src/scene-planning/index.ts",
       "default": "./src/scene-planning/index.ts"
     },
+    "./form": {
+      "types": "./src/form.ts",
+      "default": "./src/form.ts"
+    },
     "./scene-surface-reference": {
       "types": "./src/scene-surface-reference.ts",
       "default": "./src/scene-surface-reference.ts"
@@ -51,6 +55,10 @@
     "./units/validate": {
       "types": "./src/units/validate.ts",
       "default": "./src/units/validate.ts"
+    },
+    "./scene-conversion": {
+      "types": "./src/scene-conversion.ts",
+      "default": "./src/scene-conversion.ts"
     }
   },
   "files": [
