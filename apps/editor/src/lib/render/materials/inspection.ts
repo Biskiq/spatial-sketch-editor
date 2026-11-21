@@ -256,6 +256,7 @@ export function createInspectionScene(input: {
 	readonly material: Material;
 	readonly kind?: InspectionGeometryKind;
 	readonly rig?: InspectionRig;
+	readonly radianceScale?: number;
 }): {
 	scene: Scene;
 	camera: PerspectiveCamera;
@@ -266,7 +267,7 @@ export function createInspectionScene(input: {
 	const kind = input.kind ?? 'sphere';
 	const rig = input.rig ?? 'studio';
 	const { geometry } = createInspectionGeometry(kind);
-	const lighting = createInspectionLighting(rig);
+	const lighting = createInspectionLighting(rig, { radianceScale: input.radianceScale });
 	const camera = createInspectionCamera(kind);
 	const scene = new Scene();
 	scene.background = new Color(INSPECTION_THUMBNAIL_BACKGROUND);

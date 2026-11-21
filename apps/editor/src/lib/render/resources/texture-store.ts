@@ -43,6 +43,12 @@ type SourceEntry = {
   /** The shared load was cancelled; a late completion must not install. */
   cancelled: boolean;
   controller: AbortController | null;
+  /** True while this entry is the cache's retained owner of its source. */
+  cacheOwned: boolean;
+  /** Compressed source bytes retained for this entry, when the loader knows them. */
+  compressedBytes: number;
+  /** Estimated decoded RGBA8 bytes for this entry's source image. */
+  decodedBytes: number;
 };
 
 type VariantKey = string;
@@ -107,6 +113,89 @@ const loader = new TextureLoader();
 const sourceCache = new Map<string, SourceEntry>();
 const variantCache = new Map<VariantKey, VariantEntry>();
 const materialLoadPromises = new Map<string, Promise<MaterialTexturesResult>>();
+
+let liveCompressedBytes = 0;
+let liveDecodedBytes = 0;
+let peakCompressedBytes = 0;
+let peakDecodedBytes = 0;
+
+export type TextureSourceMemoryStats = {
+  /** Loaded source entries retained by the cache. */
+  readonly liveSources: number;
+  /** Compressed file bytes retained, where a loader reports them. */
+  readonly compressedBytes: number;
+  /** Estimated decoded RGBA8 CPU bytes retained. */
+  readonly decodedBytes: number;
+  /** Highest compressed-byte total observed since the last reset. */
+  readonly peakCompressedBytes: number;
+  /** Highest decoded-CPU-byte total observed since the last reset. */
+  readonly peakDecodedBytes: number;
+};
+
+/**
+ * The plan's separate source-memory readings.
+ *
+ * `compressedBytes` counts bytes a loader could report (raw fetch/scoped bytes);
+ * it is not a synthetic estimate for a legacy loader that never exposes its
+ * response body. `decodedBytes` is an RGBA8 estimate from the image dimensions,
+ * not browser heap accounting. Both are released when the owning scope tears
+ * down.
+ */
+export function textureSourceMemoryStats(): TextureSourceMemoryStats {
+  return {
+    liveSources: sourceCache.size,
+    compressedBytes: liveCompressedBytes,
+    decodedBytes: liveDecodedBytes,
+    peakCompressedBytes,
+    peakDecodedBytes
+  };
+}
+
+function decodedCpuBytesOf(texture: ThreeTexture): number {
+  const image = texture.image as
+    | { width?: unknown; height?: unknown; naturalWidth?: unknown; naturalHeight?: unknown }
+    | null
+    | undefined;
+  const width = Number(image?.width ?? image?.naturalWidth);
+  const height = Number(image?.height ?? image?.naturalHeight);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) return 0;
+  return Math.round(width * height * 4);
+}
+
+function compressedBytesOf(texture: ThreeTexture): number {
+  const value = (texture.userData as { s8SourceBytes?: unknown } | undefined)?.s8SourceBytes;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0;
+}
+
+function setEntryCompressedBytes(entry: SourceEntry, bytes: number): void {
+  if (!entry.cacheOwned) return;
+  const next = Number.isFinite(bytes) && bytes > 0 ? Math.round(bytes) : 0;
+  liveCompressedBytes -= entry.compressedBytes;
+  entry.compressedBytes = next;
+  liveCompressedBytes += next;
+  peakCompressedBytes = Math.max(peakCompressedBytes, liveCompressedBytes);
+}
+
+function setEntryDecodedBytes(entry: SourceEntry, bytes: number): void {
+  if (!entry.cacheOwned) return;
+  const next = Number.isFinite(bytes) && bytes > 0 ? Math.round(bytes) : 0;
+  liveDecodedBytes -= entry.decodedBytes;
+  entry.decodedBytes = next;
+  liveDecodedBytes += next;
+  peakDecodedBytes = Math.max(peakDecodedBytes, liveDecodedBytes);
+}
+
+/** Remove one retained source and its memory from the live totals. */
+function removeSourceEntry(key: string, entry: SourceEntry): void {
+  if (entry.cacheOwned) {
+    entry.cacheOwned = false;
+    liveCompressedBytes -= entry.compressedBytes;
+    liveDecodedBytes -= entry.decodedBytes;
+    entry.compressedBytes = 0;
+    entry.decodedBytes = 0;
+  }
+  if (sourceCache.get(key) === entry) sourceCache.delete(key);
+}
 
 /**
  * The decode policy of one render slot.
@@ -282,7 +371,7 @@ function cancelSourceEntry(key: string, entry: SourceEntry): void {
   if (entry.texture !== undefined) return;
   entry.cancelled = true;
   entry.controller?.abort();
-  if (sourceCache.get(key) === entry) sourceCache.delete(key);
+  removeSourceEntry(key, entry);
 }
 
 /**
@@ -365,7 +454,10 @@ function loadSource(
     promise: null,
     waiters: 0,
     cancelled: false,
-    controller
+    controller,
+    cacheOwned: false,
+    compressedBytes: 0,
+    decodedBytes: 0
   };
   const sourceSignal = controller.signal;
   const promise = scope
@@ -376,6 +468,12 @@ function loadSource(
 
   entry.promise = promise;
   sourceCache.set(key, entry);
+  entry.cacheOwned = true;
+  // A failed read releases its compressed-byte reservation; the entry stays
+  // cached as a failure so a retry still has to invalidate it explicitly.
+  void promise.catch(() => {
+    if (entry.texture === undefined) setEntryCompressedBytes(entry, 0);
+  });
   return waitForSource(key, entry, promise, signal);
 }
 
@@ -400,6 +498,8 @@ function loadViaTextureLoader(
             return;
           }
           applySourceDefaults(texture, policy, storage);
+          setEntryCompressedBytes(entry, compressedBytesOf(texture));
+          setEntryDecodedBytes(entry, decodedCpuBytesOf(texture));
           if (sourceCache.get(key) === entry) entry.texture = texture;
           resolve(texture);
         },
@@ -429,6 +529,7 @@ function loadViaTextureLoader(
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const bytes = new Uint8Array(await blob.arrayBuffer());
+      setEntryCompressedBytes(entry, bytes.byteLength);
       // Validate the container before the decoder allocates an RGBA buffer.
       probeRawImage(bytes);
       const bitmap = await createImageBitmap(new Blob([bytes], { type: blob.type || 'image/png' }), {
@@ -442,6 +543,8 @@ function loadViaTextureLoader(
       }
       const texture = new ThreeTextureClass(bitmap);
       applySourceDefaults(texture, policy, storage);
+      setEntryCompressedBytes(entry, bytes.byteLength);
+      setEntryDecodedBytes(entry, decodedCpuBytesOf(texture));
       if (sourceCache.get(key) === entry) entry.texture = texture;
       return texture;
     })();
@@ -466,6 +569,8 @@ async function loadViaDefaultSourceLoader(
       throw abortReason(signal);
     }
     applySourceDefaults(texture, policy, storage);
+    setEntryCompressedBytes(entry, compressedBytesOf(texture));
+    setEntryDecodedBytes(entry, decodedCpuBytesOf(texture));
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
@@ -495,6 +600,8 @@ async function loadViaScopedLoader(
       throw abortReason(signal);
     }
     applySourceDefaults(texture, policy, storage);
+    setEntryCompressedBytes(entry, compressedBytesOf(texture));
+    setEntryDecodedBytes(entry, decodedCpuBytesOf(texture));
     if (sourceCache.get(key) === entry) entry.texture = texture;
     return texture;
   } catch (event) {
@@ -661,7 +768,7 @@ export function invalidateTextureSource(scopeId: string | null, url: string): bo
       // A null scope invalidates the un-scoped namespace only.
       continue;
     }
-    sourceCache.delete(key);
+    removeSourceEntry(key, entry);
     entry.cancelled = true;
     entry.controller?.abort();
     entry.texture?.dispose();
@@ -682,11 +789,41 @@ export function invalidateScopedMaterialLoads(scopeId: string): void {
   }
 }
 
+/**
+ * Release every source and variant one scope owns.
+ *
+ * Route and release teardown must not leave source-cache bytes, decoded CPU
+ * images or variant textures to a later budget eviction. This is the one
+ * teardown operation both the authenticated project scope and the cold release
+ * scope call; it aborts in-flight reads so a late completion cannot reinstall.
+ */
+export function releaseTextureScope(scopeId: string): void {
+  const prefix = `${scopeId}::`;
+  for (const [key, entry] of [...variantCache]) {
+    if (!key.startsWith(prefix)) continue;
+    for (const texture of Object.values(entry.maps)) texture?.dispose();
+    variantCache.delete(key);
+    if (entry.pendingDispose) pendingVariantDisposals = Math.max(0, pendingVariantDisposals - 1);
+    countWork('texture:variant-dispose');
+  }
+  for (const [key, entry] of [...sourceCache]) {
+    if (!key.startsWith(prefix)) continue;
+    entry.cancelled = true;
+    entry.controller?.abort();
+    removeSourceEntry(key, entry);
+    entry.texture?.dispose();
+  }
+  for (const key of [...materialLoadPromises.keys()]) {
+    if (key.startsWith(prefix)) materialLoadPromises.delete(key);
+  }
+}
+
 /** Test helper: clear in-memory caches (does not dispose GPU sources still referenced). */
 export function resetTextureCachesForTests() {
   for (const entry of sourceCache.values()) {
     entry.cancelled = true;
     entry.controller?.abort();
+    entry.cacheOwned = false;
   }
   for (const entry of variantCache.values()) {
     for (const texture of Object.values(entry.maps)) texture?.dispose();
@@ -696,6 +833,10 @@ export function resetTextureCachesForTests() {
   flushScheduled = false;
   materialLoadPromises.clear();
   sourceCache.clear();
+  liveCompressedBytes = 0;
+  liveDecodedBytes = 0;
+  peakCompressedBytes = 0;
+  peakDecodedBytes = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -875,7 +1016,7 @@ export function releaseFinishTexture(
   const key = sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
   const entry = sourceCache.get(key);
   if (entry === undefined) return false;
-  sourceCache.delete(key);
+  removeSourceEntry(key, entry);
   entry.cancelled = true;
   entry.controller?.abort();
   if (entry.texture === undefined) return false;

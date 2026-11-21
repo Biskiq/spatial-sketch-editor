@@ -1,0 +1,349 @@
+{
+  "capturedAt": "2026-11-21T00:41:29.314Z",
+  "cases": {
+    "webgl2/highlight@1": {
+      "requestedBackend": "webgl2",
+      "observedBackend": "webgl2",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "highlight",
+        "backend": "webgl2",
+        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+        "softwareAdapter": true,
+        "dpr": 1,
+        "variants": [
+          {
+            "radianceScale": 1,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1,
+                "halfPeakLargestComponent": 1606,
+                "clippedFraction": 0.11773351578733972,
+                "subjectPixels": 19731
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.7529422167760778,
+                "halfPeakLargestComponent": 7482,
+                "clippedFraction": 0,
+                "subjectPixels": 19731
+              }
+            ],
+            "peakRatio": 1.3281231649910212,
+            "pass": false,
+            "reasons": [
+              "clipped subject pixels are not below 1%"
+            ]
+          },
+          {
+            "radianceScale": 0.5,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1,
+                "halfPeakLargestComponent": 1257,
+                "clippedFraction": 0.04304409523308982,
+                "subjectPixels": 19027
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.3762621229909065,
+                "halfPeakLargestComponent": 7470,
+                "clippedFraction": 0,
+                "subjectPixels": 18920
+              }
+            ],
+            "peakRatio": 2.657721675652609,
+            "pass": false,
+            "reasons": [
+              "clipped subject pixels are not below 1%"
+            ]
+          }
+        ],
+        "adoptedRadianceScale": null,
+        "pass": false,
+        "reasons": [
+          "1: clipped subject pixels are not below 1%",
+          "0.5: clipped subject pixels are not below 1%"
+        ]
+      },
+      "errors": []
+    },
+    "webgl2/residency@1": {
+      "requestedBackend": "webgl2",
+      "observedBackend": "webgl2",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "residency",
+        "backend": "webgl2",
+        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+        "softwareAdapter": true,
+        "dpr": 1,
+        "steps": [
+          {
+            "targetMiB": 128,
+            "estimatedBytes": 134217696,
+            "views": 24,
+            "uploadMs": 77.90000003576279,
+            "transientMs": 42.69999998807907,
+            "recovered": true
+          },
+          {
+            "targetMiB": 192,
+            "estimatedBytes": 201326544,
+            "views": 36,
+            "uploadMs": 19.30000001192093,
+            "transientMs": 0.800000011920929,
+            "recovered": true
+          },
+          {
+            "targetMiB": 256,
+            "estimatedBytes": 268435392,
+            "views": 48,
+            "uploadMs": 27.30000001192093,
+            "transientMs": 4.300000011920929,
+            "recovered": true
+          },
+          {
+            "targetMiB": 384,
+            "estimatedBytes": 402653088,
+            "views": 72,
+            "uploadMs": 49.80000001192093,
+            "transientMs": 0.6000000238418579,
+            "recovered": true
+          }
+        ],
+        "firstFailure": null,
+        "maxPassedMiB": 384,
+        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+      },
+      "errors": []
+    },
+    "webgl2/residency@1.5": {
+      "requestedBackend": "webgl2",
+      "observedBackend": "webgl2",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "residency",
+        "backend": "webgl2",
+        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+        "softwareAdapter": true,
+        "dpr": 1.5,
+        "steps": [
+          {
+            "targetMiB": 128,
+            "estimatedBytes": 134217696,
+            "views": 24,
+            "uploadMs": 37.59999996423721,
+            "transientMs": 31.80000001192093,
+            "recovered": true
+          },
+          {
+            "targetMiB": 192,
+            "estimatedBytes": 201326544,
+            "views": 36,
+            "uploadMs": 15.199999988079071,
+            "transientMs": 0.6000000238418579,
+            "recovered": true
+          },
+          {
+            "targetMiB": 256,
+            "estimatedBytes": 268435392,
+            "views": 48,
+            "uploadMs": 13.699999988079071,
+            "transientMs": 1.600000023841858,
+            "recovered": true
+          },
+          {
+            "targetMiB": 384,
+            "estimatedBytes": 402653088,
+            "views": 72,
+            "uploadMs": 23.5,
+            "transientMs": 0.5999999642372131,
+            "recovered": true
+          }
+        ],
+        "firstFailure": null,
+        "maxPassedMiB": 384,
+        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+      },
+      "errors": []
+    },
+    "webgpu/highlight@1": {
+      "requestedBackend": "webgpu",
+      "observedBackend": "webgpu",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "highlight",
+        "backend": "webgpu",
+        "adapter": "apple metal-3",
+        "softwareAdapter": false,
+        "dpr": 1,
+        "variants": [
+          {
+            "radianceScale": 1,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1,
+                "halfPeakLargestComponent": 1603,
+                "clippedFraction": 0.11787361272994476,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.7605245046752924,
+                "halfPeakLargestComponent": 7422,
+                "clippedFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 1.3148820239881056,
+            "pass": false,
+            "reasons": [
+              "clipped subject pixels are not below 1%"
+            ]
+          },
+          {
+            "radianceScale": 0.5,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1,
+                "halfPeakLargestComponent": 1259,
+                "clippedFraction": 0.043029984218832196,
+                "subjectPixels": 19010
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.38132601143253014,
+                "halfPeakLargestComponent": 7410,
+                "clippedFraction": 0,
+                "subjectPixels": 18921
+              }
+            ],
+            "peakRatio": 2.622427975063366,
+            "pass": false,
+            "reasons": [
+              "clipped subject pixels are not below 1%"
+            ]
+          }
+        ],
+        "adoptedRadianceScale": null,
+        "pass": false,
+        "reasons": [
+          "1: clipped subject pixels are not below 1%",
+          "0.5: clipped subject pixels are not below 1%"
+        ]
+      },
+      "errors": []
+    },
+    "webgpu/residency@1": {
+      "requestedBackend": "webgpu",
+      "observedBackend": "webgpu",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "residency",
+        "backend": "webgpu",
+        "adapter": "apple metal-3",
+        "softwareAdapter": false,
+        "dpr": 1,
+        "steps": [
+          {
+            "targetMiB": 128,
+            "estimatedBytes": 134217696,
+            "views": 24,
+            "uploadMs": 37.19999998807907,
+            "transientMs": 16,
+            "recovered": true
+          },
+          {
+            "targetMiB": 192,
+            "estimatedBytes": 201326544,
+            "views": 36,
+            "uploadMs": 8.5,
+            "transientMs": 2.400000035762787,
+            "recovered": true
+          },
+          {
+            "targetMiB": 256,
+            "estimatedBytes": 268435392,
+            "views": 48,
+            "uploadMs": 9.899999976158142,
+            "transientMs": 0.5,
+            "recovered": true
+          },
+          {
+            "targetMiB": 384,
+            "estimatedBytes": 402653088,
+            "views": 72,
+            "uploadMs": 58.59999996423721,
+            "transientMs": 0.699999988079071,
+            "recovered": true
+          }
+        ],
+        "firstFailure": null,
+        "maxPassedMiB": 384,
+        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+      },
+      "errors": []
+    },
+    "webgpu/residency@1.5": {
+      "requestedBackend": "webgpu",
+      "observedBackend": "webgpu",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "residency",
+        "backend": "webgpu",
+        "adapter": "apple metal-3",
+        "softwareAdapter": false,
+        "dpr": 1.5,
+        "steps": [
+          {
+            "targetMiB": 128,
+            "estimatedBytes": 134217696,
+            "views": 24,
+            "uploadMs": 32.30000001192093,
+            "transientMs": 15.5,
+            "recovered": true
+          },
+          {
+            "targetMiB": 192,
+            "estimatedBytes": 201326544,
+            "views": 36,
+            "uploadMs": 7.399999976158142,
+            "transientMs": 2.400000035762787,
+            "recovered": true
+          },
+          {
+            "targetMiB": 256,
+            "estimatedBytes": 268435392,
+            "views": 48,
+            "uploadMs": 9.300000011920929,
+            "transientMs": 0.5999999642372131,
+            "recovered": true
+          },
+          {
+            "targetMiB": 384,
+            "estimatedBytes": 402653088,
+            "views": 72,
+            "uploadMs": 20.69999998807907,
+            "transientMs": 0.6000000238418579,
+            "recovered": true
+          }
+        ],
+        "firstFailure": null,
+        "maxPassedMiB": 384,
+        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+      },
+      "errors": []
+    }
+  }
+}

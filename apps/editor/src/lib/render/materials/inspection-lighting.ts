@@ -11,7 +11,9 @@
  * (1,0.12,0.25), white ambient 0.15, and no reflection map.
  *
  * The constants and the source texture are versioned: F reuses exactly these for
- * catalogue evidence, so changing them is a new preview-recipe version.
+ * catalogue evidence, so changing them is a new preview-recipe version. The
+ * optional `radianceScale` exists only for the PR B calibration gate's one
+ * half-radiance retry; the product recipe always leaves it at 1.
  */
 import {
 	AmbientLight,
@@ -72,7 +74,8 @@ function directionFor(u: number, v: number): Vector3 {
  */
 export function studioEnvironmentPixels(
 	width = STUDIO_ENVIRONMENT_WIDTH,
-	height = STUDIO_ENVIRONMENT_HEIGHT
+	height = STUDIO_ENVIRONMENT_HEIGHT,
+	radianceScale = 1
 ): Float32Array {
 	const pixels = new Float32Array(width * height * 4);
 	const direction = new Vector3();
@@ -81,9 +84,9 @@ export function studioEnvironmentPixels(
 	for (let y = 0; y < height; y += 1) {
 		for (let x = 0; x < width; x += 1) {
 			direction.copy(directionFor((x + 0.5) / width, (y + 0.5) / height));
-			let radiance = STUDIO_BASE_RADIANCE;
-			if (direction.dot(KEY_DIRECTION) >= keyCos) radiance += STUDIO_KEY_RADIANCE;
-			if (direction.dot(FILL_DIRECTION) >= fillCos) radiance += STUDIO_FILL_RADIANCE;
+			let radiance = STUDIO_BASE_RADIANCE * radianceScale;
+			if (direction.dot(KEY_DIRECTION) >= keyCos) radiance += STUDIO_KEY_RADIANCE * radianceScale;
+			if (direction.dot(FILL_DIRECTION) >= fillCos) radiance += STUDIO_FILL_RADIANCE * radianceScale;
 			const offset = (y * width + x) * 4;
 			pixels[offset] = radiance;
 			pixels[offset + 1] = radiance;
@@ -95,9 +98,9 @@ export function studioEnvironmentPixels(
 }
 
 /** The unprefiltered studio source, linear and equirectangular. */
-export function createStudioEnvironmentTexture(): DataTexture {
+export function createStudioEnvironmentTexture(radianceScale = 1): DataTexture {
 	const texture = new DataTexture(
-		studioEnvironmentPixels(),
+		studioEnvironmentPixels(STUDIO_ENVIRONMENT_WIDTH, STUDIO_ENVIRONMENT_HEIGHT, radianceScale),
 		STUDIO_ENVIRONMENT_WIDTH,
 		STUDIO_ENVIRONMENT_HEIGHT,
 		RGBAFormat,
@@ -121,7 +124,10 @@ export type InspectionLighting = {
 };
 
 /** One rig's lights and source; PMREM is lazy and owned by the caller's generation. */
-export function createInspectionLighting(rig: InspectionRig): InspectionLighting {
+export function createInspectionLighting(
+	rig: InspectionRig,
+	options: { readonly radianceScale?: number } = {}
+): InspectionLighting {
 	const group = new Group();
 	group.name = `InspectionLighting:${rig}`;
 	let source: DataTexture | null = null;
@@ -135,7 +141,7 @@ export function createInspectionLighting(rig: InspectionRig): InspectionLighting
 		key.target.position.set(0, 0, 0);
 		group.add(ambient, key, key.target);
 	} else {
-		source = createStudioEnvironmentTexture();
+		source = createStudioEnvironmentTexture(options.radianceScale ?? 1);
 	}
 
 	return {

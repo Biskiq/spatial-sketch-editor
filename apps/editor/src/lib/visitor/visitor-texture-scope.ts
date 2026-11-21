@@ -17,6 +17,7 @@ import type { MaterialTextureSlot } from '$lib/types/materials';
 import { isAllowedShippedTextureUri } from './shipped-static-registry';
 import { probeRawImage } from '$lib/render/resources/image-encoding';
 import { releaseFinishViewsForScope } from '$lib/render/resources/finish-views';
+import { releaseTextureScope } from '$lib/render/resources/texture-scope-release';
 
 export type ReleaseBytesEntry = {
 	bytes: Uint8Array;
@@ -141,7 +142,9 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 					bitmap.close();
 					throw options?.signal?.reason ?? new Error(`Release ${releaseId} is closed`);
 				}
-				return new ThreeTextureClass(bitmap);
+				const texture = new ThreeTextureClass(bitmap);
+				texture.userData.s8SourceBytes = raw.bytes.byteLength;
+				return texture;
 			}
 			const texture = await loader.loadAsync(resolved);
 			if (disposed || options?.signal?.aborted) {
@@ -158,6 +161,7 @@ export function createReleaseTextureScope(init: ReleaseTextureScopeInit): Releas
 		// A release teardown frees its uploaded Finish views immediately; a
 		// still-leased view is retired until its final release.
 		releaseFinishViewsForScope(releaseId);
+		releaseTextureScope(releaseId);
 		revokeAll();
 	};
 

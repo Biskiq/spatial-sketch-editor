@@ -1,9 +1,9 @@
 # PR B · Sample a Finish on either backend (E2 + E7 rendering core)
 
-**Status: review follow-up complete; merge on hold.** Base `d6291c2a` on branch
-`t2/s8-pr-b-material-sampling`. This report accompanies the correction commit after `bb16065c`. Every
-code finding below is fixed in this diff; unavailable measurement gates are recorded as unmeasured, not
-as passes.
+**Status: review follow-up and measurement harness complete; merge on hold.** Base `d6291c2a` on
+branch `t2/s8-pr-b-material-sampling`. This report accompanies the follow-up diff after `2f89c781`.
+Every code finding below is fixed in this diff; unavailable measurement gates are recorded as
+unmeasured or failed, not as passes.
 
 ## Result
 
@@ -31,6 +31,18 @@ as passes.
   contract are in place. The bench now publishes the observed renderer to a control outside the
   Threlte DOM and draws through the production readback path; manual 192 px readbacks report
   `webgl2 192x192` and `webgpu 192x192`.
+- Source memory is reported separately from GPU residency. `textureSourceMemoryStats()` exposes live
+  compressed-source bytes, estimated decoded RGBA8 CPU bytes, and independent peaks for each. A
+  loader that cannot report its compressed bytes contributes zero rather than a fabricated estimate;
+  decoded bytes are an RGBA8 dimension estimate, not browser heap accounting.
+- Scope teardown now aborts in-flight source reads, removes source and variant entries, disposes
+  uploaded textures and drops material-load promises. Historical peaks survive teardown; live totals
+  return to zero. The cold Visitor uses a narrow release wrapper so its module never imports the
+  texture-store source token.
+- A dev-only `/dev/s8-gates` route and `scripts/run-s8-gates.mjs` run the residency staircase and the
+  192 px highlight gate on whatever backend Chromium actually obtains. They record the adapter name
+  and mark software adapters rather than treating SwiftShader as the M2 GPU. Evidence from this host
+  is in `evidence/s8-b-gates.json`.
 
 ## Review follow-up
 
@@ -47,11 +59,12 @@ as passes.
 | 9. Normal maps disappear as the camera moves closer | **Fixed.** Identity UV0 uses mesh tangents and handedness; derivative frames use a scale-relative singularity test. | `finish-sampling.test.ts` tangent and near-singular cases |
 | 10. Replaced inspection requests publish stale pixels | **Fixed.** Submission advances the serial, the active draw is cancelled, and terminal results are gated on the current serial and generation. | `inspection.test.ts` replacement and stale-result cases |
 | 11. Studio bake places lights opposite the specified directions | **Fixed.** `directionFor` is the inverse of Three r187's `equirectUV`; the baked directions are tested through the consumer mapping. | `inspection.test.ts` studio direction case |
-| 12. Evidence cannot establish the PR B exit gates | **Measured where possible; open gates recorded here.** The bench now uses `CanvasHost` and the production readback path, capture comparison fails on a missing or mismatched capture, and both observed backends complete a manual 192 px readback. Residency, studio calibration, mirrored-UV1 normal pixels and CPU peaks remain unmeasured on this host and are not claimed as passes. | `s8-bench` route, `BenchReadback.svelte`, `capture-s8-pixel-baseline.mjs`, this report |
+| 12. Evidence cannot establish the PR B exit gates | **Measured where this host supports it; open/failed gates recorded here.** The dev harness now runs the real Finish-view cache through all four residency targets and the production 192 px studio readback on both observed backends. Residency completes at 384 MiB estimated on both, but has no GPU-memory reading; the highlight gate fails its clipping check at nominal and half radiance on both. Mirrored-UV1 normal pixels remain unmeasured. Nothing here is claimed as a qualified ceiling or a passed highlight gate. | `s8-gates` route, `run-s8-gates.mjs`, `s8-b-gates.json`, this report |
 | 13. Cold Visitor cannot load shipped raw maps | **Fixed.** A raw role looks in the private release-byte map first; an allowlisted shipped URI is fetched only after the registry check and is probed before decode. Unknown static paths still refuse without a fetch. Warm Plaster and Walnut roughness maps are the regression fixture. | `visitor-cold-runtime.test.ts` shipped-raw and unknown-static cases |
 | 14. A stale Canvas token is admitted at the latest generation | **Fixed.** `acquireFinishViews` validates the supplied generation before reuse, decode or upload. A stale-at-entry token returns `generation-mismatch` with zero loads; a token that advances during load still aborts; another owner's generation does not refuse this one. | `finish-views.test.ts` stale-entry, generation-change and two-Canvas cases |
 | 15. JPEG ICC profiles are silently accepted | **Fixed.** An ICC-tagged raw JPEG is admitted only when the ICC description identifies standard sRGB; unverified, Adobe RGB, Display P3 and malformed profiles return `unsupported-image-encoding`. Untagged JPEG remains admitted. | `image-encoding.test.ts` sRGB/Display P3/Adobe RGB cases |
 | 16. Bench readback is unreachable and loops | **Fixed.** The readback button was rendered inside Threlte's hidden DOM, and its rebuild effect read and wrote `material`. The control now sits outside `CanvasHost`, the host publishes an optional renderer-state callback, and the effect tracks its inputs while untracking the rebuild. Manual 192 px readbacks succeed on both observed backends. | `CanvasHost.svelte`, `BenchReadback.svelte`, `s8-bench/+page.svelte`; manual `webgl2 192x192`, `webgpu 192x192` |
+| 17. Separate compressed-source and decoded-CPU peaks are absent | **Implemented and unit-tested.** `textureSourceMemoryStats()` reports live and peak values independently; invalidation and scope release subtract live bytes without erasing peaks, and the raw Finish map records actual fetched bytes plus its 256×256 decoded size. Decoded bytes are explicitly an RGBA8 estimate, not browser heap. | `texture-store.test.ts` scoped peaks, invalidation, teardown and raw-byte cases; `texture-store.ts` |
 
 ## Gates and observations
 
@@ -65,23 +78,54 @@ as passes.
 | Cold Visitor shipped raw maps | Warm Plaster and Walnut roughness maps load through the allowlisted fetch, header probe and identity bitmap options; unknown static paths make zero fetches | Pass (`visitor-cold-runtime.test.ts`) |
 | Stale Canvas admission | A stale token is refused before any load or lease; a generation change during load is refused; an independent owner proceeds | Pass (`finish-views.test.ts`) |
 | Row orientation on both backends | WebGL2 fallback and WebGPU are distinguished by the observed backend; asymmetric readback covers the flip; the 12-case chart captured on both observed backends | Pass |
-| 192×192 studio highlight, roughness 0.2 vs 0.8 | The bench readback now runs (`webgl2 192x192`), but it is grazing/0.62 on SwiftShader, not the studio 0.2/0.8 calibration. The gate needs both actual backends and a physical WebGL2 accelerator, which this headless host does not expose. | **Unmeasured** |
-| 128/192/256/384 MiB working-set ceiling and 4096² transient headroom | No #385 reference-hardware session or approved step harness is available here. Headless WebGL2 is SwiftShader, not the Apple M2 GPU; WebGPU Metal is reachable only through explicit Chromium flags. No timing/recovery or GPU-memory reading is available for the staircase. | **Unmeasured**; v1 constant remains the provisional 256 MiB and is not qualified |
-| Separate compressed-source and decoded-CPU peaks | No source/decode peak instrumentation or profiler session exists in this checkout; the scope teardown releases bytes but does not report peaks | **Unmeasured** |
+| 192×192 studio highlight, roughness 0.2 vs 0.8 | Production readback at 192 px on both observed backends. Nominal radiance ratio 1.328/1.315, half 2.658/2.622; the 0.2 half-peak component is smaller in every run. Clipping fails: 11.77%/11.79% at nominal and 4.30%/4.30% at half, against `<1%`. No rig variant is adopted. WebGL2 is ANGLE/SwiftShader, so the both-hardware-backend qualification is also unavailable. | **Failed / unmeasured** — no studio variant meets the clipping gate; the WebGL2 result is software |
+| 128/192/256/384 MiB working-set ceiling and 4096² transient headroom | The dev harness steps the real Finish-view cache through all four estimated targets and adds a 4096² RGBA8 transient at each step. SwiftShader and WebGPU Metal both completed 384 MiB estimated + transient with recovery; measured estimated bytes were 134,217,696 / 201,326,544 / 268,435,392 / 402,653,088. There is no device GPU-memory reading, so this does not establish a ceiling; the WebGL2 result is software. | **Unmeasured** — harness observation only; v1 remains provisional 256 MiB |
+| Separate compressed-source and decoded-CPU peaks | Instrumentation now reports both peaks independently. Unit cases exercise scoped loads, invalidation and teardown; a raw Finish map reports actual fetched source bytes and a 256×256 RGBA8 decoded estimate. No production profile session with real project assets was run here, and legacy `TextureLoader` paths have no compressed-byte count. | **Implemented; synthetic peaks verified. Real-session peaks unmeasured** |
 | Linear patch interiors, 1/255 tolerance, rotated/mirrored UV1 normals, transparent raw RGB and alpha | 12-case pixel compare against the frozen chart on both observed backends; largest mean channel difference 2.175/255 | Pass on both observed backends; dedicated mirrored-UV1 normal pixel row unmeasured |
 | Bench readback | Manual clicks now reach the production probe and report `webgl2 192x192` and `webgpu 192x192`; the earlier zero-size control and effect loop are fixed | Observed; this is tooling, not the 192 px calibration gate |
+
+## Gate harness
+
+The dev-only route is `apps/editor/src/routes/dev/s8-gates/+page.svelte`; the runner is
+`apps/editor/scripts/run-s8-gates.mjs`. From `apps/editor`, with the dev server running:
+
+```bash
+node scripts/run-s8-gates.mjs \
+  --out ../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-b-gates.json
+```
+
+The runner launches Chromium for each observed backend, opens both gate modes, waits for the page's
+real renderer, and records the adapter string. `?gate=residency` uses the actual Finish-view cache and
+lease path; `?gate=highlight` uses a `MaterialStore` lease and the production 192 px readback. The
+pure metrics are in `lib/dev/s8-gate-metrics.ts` and are covered by `s8-gate-metrics.test.ts`.
+
+Observed on 2026-11-21 (`evidence/s8-b-gates.json`):
+
+- **WebGPU:** `apple metal-3`, no software flag. **WebGL2:** `ANGLE (Google, Vulkan 1.3.0
+  (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)`, marked as software.
+- **Residency:** both observed backends completed all four estimated targets (24/36/48/72 views;
+  134,217,696 / 201,326,544 / 268,435,392 / 402,653,088 bytes) and the 4096² transient at each step,
+  including DPR 1 and 1.5. This is a cache-allocation observation, not a GPU-memory ceiling; there is
+  no device memory reading in Chromium here.
+- **Highlight:** nominal peak ratios were 1.328 (SwiftShader) and 1.315 (Metal); half-radiance ratios
+  were 2.658 and 2.622. The half-peak component was smaller at 0.2 in every run. Clipping failed every
+  run: 11.77%/11.79% at nominal, 4.30%/4.30% at half, against `<1%`. No radiance variant was adopted,
+  and the gate stays failed. Because WebGL2 is SwiftShader, the both-hardware-backend requirement is
+  also unmet.
 
 ## Checks run locally
 
 | Command | Result |
 | --- | --- |
 | `npm run check` | 0 errors; 16 pre-existing editor warnings |
-| `npm run test:fast` | 5,643 passed / 455 files |
-| `npx vitest run tests/lib/render tests/lib/visitor` | 640 passed / 74 files |
+| `npm run test:fast` | 5,649 passed / 456 files |
+| `npx vitest run tests/lib/render/resources/texture-store.test.ts tests/lib/render/resources/project-texture-scope.test.ts tests/lib/visitor/visitor-cold-runtime.test.ts tests/lib/dev/s8-gate-metrics.test.ts` | 54 passed / 4 files |
+| `npx vitest run tests/lib/render tests/lib/visitor` | 642 passed / 74 files |
 | `npm run test:arch` | 354 passed / 38 files |
 | `npm run check:project-model` | pass |
 | `npm run build` | pass |
 | S8 pixel compare, 12 cases | pass on both observed backends; max mean channel Δ 2.175/255 |
+| `node scripts/run-s8-gates.mjs` | 6/6 cases captured; residency completed 384 MiB estimated; highlight failed clipping on both observed backends |
 | Manual `/dev/s8-bench` readback | `webgl2 192x192`, `webgpu 192x192` (tooling observation, not the calibration gate) |
 | `git diff --check` | clean |
 
@@ -101,29 +145,35 @@ suite matrix. No assertion was weakened for a pass.
 - **Cold shipped raw bytes are fetched, not added to the private release map.** The private P20
   `bytesByUri` boundary stays private; catalogue-implied maps load only through the append-only
   shipped allowlist, with a zero-fetch refusal for any other static path.
-- **CPU peak reporting is absent.** The plan asks for separate compressed-source and decoded-CPU peaks;
-  this diff releases scope-owned bytes but does not add a peak metric. It is listed as an open gate,
-  not claimed as satisfied.
+- **Decoded CPU bytes are an estimate, not heap.** The decoded peak is `width × height × 4` from the
+  decoded image dimensions. It deliberately does not claim browser image-decode or GC heap usage.
+- **Compressed bytes are reported only when a loader has them.** Raw fetch/scoped paths record the
+  actual source length; a legacy `TextureLoader` path that never exposes a response body contributes
+  zero instead of a fabricated ratio.
+- **The gate route uses product seams.** It leases its highlight material from `MaterialStore`, reads
+  the adapter from the initialized backend, and leaves the product recipe's studio radiance at 1. The
+  optional `radianceScale` is used only for the gate's one half-radiance retry.
 - **Source formats are unchanged.** Scene 11 / resources 2 remain the admitted format; D owns the
   incompatible cutover.
 
 ## Open gates and next evidence
 
-1. **Working-set ceiling.** No #385 reference-hardware session or approved 128/192/256/384 MiB step
-   harness is available in this environment. Headless WebGL2 is ANGLE/SwiftShader, not the Apple M2
-   GPU; WebGPU Metal is reachable only through explicit Chromium launch flags. There is no browser API
-   here for the required GPU-memory reading, timing/recovery stop rule or 4096² transient allocation.
-   The 256 MiB v1 constant is explicitly provisional and is not qualified by this report.
-2. **Studio calibration at 192 px.** The roughness-0.2/0.8 highlight gate (≥1.1× peak, smaller
-   half-peak area, <1% clipping) needs both actual backends and a live studio rig. The manual bench
-   readback proves only that the production readback path runs at 192 px; it is grazing/0.62 on
-   SwiftShader, so it cannot qualify this gate. The rig is frozen and versioned; the gate stays open.
+1. **Working-set ceiling.** The 128/192/256/384 MiB harness now exists and completed every estimated
+   step plus the 4096² transient on both observed backends, including DPR 1 and 1.5. It still cannot
+   measure device GPU memory, and headless WebGL2 is ANGLE/SwiftShader rather than the Apple M2 GPU.
+   The 256 MiB v1 constant remains explicitly provisional and is not qualified by this observation.
+2. **Studio calibration at 192 px.** The production readback now runs at 192 px on both observed
+   backends with the studio 0.2/0.8 pair. The gate fails its `<1%` clipping requirement at nominal and
+   at the one allowed half-radiance retry (11.77–11.79% and 4.30–4.30%), while peak ratio and compact
+   area pass. No rig variant is adopted. Qualifying the gate still needs both actual backends and a rig
+   whose 0.2 highlight does not clip; this is a calibration/source decision, not a missing harness.
 3. **Dedicated normal-map and mirrored-UV1 GPU pixels.** Unit and chart coverage exist, but no
    dedicated two-backend pixel capture of the mirrored UV1 mesh or the opposed normal-sign chart was
    taken. The `two-uv-glb.glb` oracle asset is present; the calibration harness is not.
-4. **Compressed-source and decoded-CPU peaks.** Scope teardown releases owned sources and views, but
-   no compressed/decode peak instrumentation or profiler session exists here. The plan's separate
-   peaks are therefore unreported, not estimated or claimed.
+4. **Compressed-source and decoded-CPU peaks.** The reporting and teardown release are implemented and
+   unit-tested with synthetic loads. No real project-asset profile session was run here, and legacy
+   loader paths without an exposed body have no compressed-byte count. Real-session peaks remain
+   unmeasured; they are not inferred from the unit fixtures.
 
 These are recorded as unmeasured, not passed. They do not change the source contracts, which are
 covered by the unit and architecture suites above.

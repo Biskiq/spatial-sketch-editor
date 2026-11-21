@@ -30,6 +30,7 @@ import {
 	invalidateScopedMaterialLoads,
 	invalidateTextureSource,
 	loadSourceTexture,
+	releaseTextureScope,
 	type TextureLoadScope
 } from './texture-store';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
@@ -174,7 +175,9 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 					throw new Error('The project texture scope is closed.');
 				}
 				publish(assetId, probe, blob);
-				return new ThreeTextureClass(bitmap);
+				const texture = new ThreeTextureClass(bitmap);
+				(texture.userData ??= {}).s8SourceBytes = content.bytes.length;
+				return texture;
 			}
 		}
 
@@ -186,6 +189,7 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				throw new Error('The project texture scope is closed.');
 			}
 			publish(assetId, probe, blob);
+			(texture.userData ??= {}).s8SourceBytes = content.bytes.length;
 			return texture;
 		} finally {
 			URL.revokeObjectURL(url);
@@ -214,7 +218,9 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 				bitmap.close();
 				throw new Error('The project texture scope is closed.');
 			}
-			return new ThreeTextureClass(bitmap);
+			const texture = new ThreeTextureClass(bitmap);
+			(texture.userData ??= {}).s8SourceBytes = bytes.byteLength;
+			return texture;
 		}
 		const texture = await loader.loadAsync(uri);
 		if (disposed) {
@@ -317,15 +323,11 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			// Release this route's uploaded Finish views now; budget eviction is for
 			// live working sets, not a teardown guarantee.
 			releaseFinishViewsForScope(scope.scopeId);
-			// Invalidate every requested URI, not only the successes: a cached
-			// failure or an aborted in-flight load otherwise outlives this route and
-			// the next scope with the same id never asks again.
-			for (const uri of requested) {
-				const cached = invalidateTextureSource(scope.scopeId, uri);
-				const texture = loaded.get(uri);
-				if (texture !== undefined && !cached) texture.dispose();
-			}
-			invalidateScopedMaterialLoads(scope.scopeId);
+			// Release every source, variant and failed material result for this
+			// route, including URIs whose load failed or is still in flight. The
+			// scope-owned source textures are disposed there, so the loaded map is
+			// only cleared here.
+			releaseTextureScope(scope.scopeId);
 			loaded.clear();
 			requested.clear();
 			generations.clear();
