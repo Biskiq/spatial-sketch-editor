@@ -270,7 +270,7 @@ function regionFaceFacts(
 		const subsetPositions: number[] = [];
 		const subsetUvs: number[] = [];
 		let matched = false;
-		for (let triangle = 0; triangle * 3 < surfaceByTriangle.length; triangle += 1) {
+		for (let triangle = 0; triangle < surfaceByTriangle.length; triangle += 1) {
 			if (surfaceByTriangle[triangle] !== surface.face) continue;
 			matched = true;
 			for (let corner = 0; corner < 3; corner += 1) {

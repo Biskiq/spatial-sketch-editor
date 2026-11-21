@@ -2016,7 +2016,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		const changedMaterials: string[] = [];
 		const materials = before.materials.map((instance) => {
 			const color = instance.overrides?.color;
-			if (typeof color !== 'string' || instance.overrides?.maps?.color !== undefined) return instance;
+			if (typeof color !== 'string' || instance.overrides?.maps?.color != null) return instance;
 			const slotId = targets.get(color.toLowerCase());
 			if (slotId === undefined) return instance;
 			changedMaterials.push(instance.id);

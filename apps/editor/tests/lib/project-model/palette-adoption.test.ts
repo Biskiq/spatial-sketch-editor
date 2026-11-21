@@ -208,4 +208,33 @@ describe('T2.S6 — scene-palette-adopt', () => {
 		expect(adopt(scene([material('a', { color: { slot: 'coral' } })]), []))
 			.toMatchObject({ kind: 'rejected', code: 'no-change' });
 	});
+
+	it('adopts a Finish whose colour map is explicitly disabled (maps: { color: null })', () => {
+		const disabledColorMap: SceneMaterialInstance = {
+			id: 'disabled-map',
+			name: 'Disabled map',
+			base: { catalogue: 'plaster-warm' },
+			overrides: {
+				color: '#aa5533',
+				maps: { color: null }
+			}
+		};
+		const before = scene([disabledColorMap]);
+		const plan = planPaletteAdoption(before);
+		expect(plan.rows).toEqual([
+			{ color: '#aa5533', slotId: 'coral', slotName: 'Coral', slotColor: '#ee6c4d', finishes: 1, objects: 1 }
+		]);
+		expect(plan.skipped).toEqual({ imageTints: 0, inherited: 0 });
+
+		const outcome = adopt(before, [{ color: '#aa5533', slotId: 'coral', slotColor: '#ee6c4d' }]);
+		expect(outcome.kind).toBe('prepared');
+		if (outcome.kind !== 'prepared') return;
+		expect(outcome.candidate.source.units.scene.data.materials[0]).toEqual({
+			...disabledColorMap,
+			overrides: {
+				...disabledColorMap.overrides,
+				color: { slot: 'coral' }
+			}
+		});
+	});
 });

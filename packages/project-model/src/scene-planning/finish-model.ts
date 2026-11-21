@@ -113,15 +113,47 @@ export function materialBaseOf(instance: SceneMaterialInstance): string | null {
 	return 'material' in instance.base ? instance.base.material : null;
 }
 
+function baseMappingOf(instance: SceneMaterialInstance, baseRecipe?: Recipe): Mapping {
+	const catalogue = catalogueBaseOf(instance);
+	const recipe = baseRecipe ?? (catalogue === null ? undefined : catalogueRecipe(catalogue));
+	return recipe?.mapping ?? NEUTRAL_RECIPE.mapping;
+}
+
+function sameMetric(a: Metric, b: Metric): boolean {
+	return (
+		a.tileMeters[0] === b.tileMeters[0] &&
+		a.tileMeters[1] === b.tileMeters[1] &&
+		a.rotation === b.rotation &&
+		a.offset[0] === b.offset[0] &&
+		a.offset[1] === b.offset[1]
+	);
+}
+
+function sameMapping(a: Mapping, b: Mapping): boolean {
+	if (a.kind !== b.kind) return false;
+	if (a.kind === 'uv' && b.kind === 'uv') {
+		return (
+			a.set === b.set &&
+			a.repeat[0] === b.repeat[0] &&
+			a.repeat[1] === b.repeat[1] &&
+			a.rotation === b.rotation &&
+			a.offset[0] === b.offset[0] &&
+			a.offset[1] === b.offset[1]
+		);
+	}
+	if (a.kind !== 'uv' && b.kind !== 'uv') {
+		return sameMetric(a.metric, b.metric);
+	}
+	return false;
+}
+
 /**
  * The base metric of one Finish, used when an edit authors only part of it.
  * A `uv` base's repeat is not a metre size: an edit that starts authoring metres
  * must begin from the neutral metric rather than silently reinterpret it.
  */
 function baseMetricOf(instance: SceneMaterialInstance, baseRecipe?: Recipe): Metric {
-	const catalogue = catalogueBaseOf(instance);
-	const recipe = baseRecipe ?? (catalogue === null ? undefined : catalogueRecipe(catalogue));
-	const mapping = recipe?.mapping ?? NEUTRAL_RECIPE.mapping;
+	const mapping = baseMappingOf(instance, baseRecipe);
 	return mapping.kind === 'uv'
 		? { tileMeters: [1, 1], rotation: 0, offset: [0, 0] }
 		: mapping.metric;
@@ -426,43 +458,59 @@ export function applyFinishEdit(
 		}
 	}
 	if ('tileMeters' in edit || 'rotation' in edit) {
+		const baseMapping = baseMappingOf(instance, baseRecipe);
 		const base = baseMetricOf(instance, baseRecipe);
 		const existing = overrides.mapping as Mapping | undefined;
-		const existingMetric = existing === undefined
-			? undefined
-			: existing.kind === 'uv'
-				? { tileMeters: base.tileMeters, rotation: existing.rotation, offset: existing.offset }
-				: existing.metric;
-		const metric: Metric = {
-			tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
-			rotation: existingMetric?.rotation ?? base.rotation,
-			offset: existingMetric?.offset ?? base.offset
-		};
-		const nextTile = ('tileMeters' in edit ? edit.tileMeters : metric.tileMeters) ?? base.tileMeters;
-		const nextRotation = ('rotation' in edit ? edit.rotation : metric.rotation) ?? base.rotation;
-		const nextMetric = {
-			tileMeters: [nextTile[0], nextTile[1]] as readonly [number, number],
-			rotation: nextRotation,
-			offset: metric.offset
-		};
-		const authoredValue =
-			('tileMeters' in edit && edit.tileMeters !== null) ||
-			('rotation' in edit && edit.rotation !== null);
-		if (!authoredValue) {
-			delete overrides.mapping;
-		} else if (existing?.kind === 'uv' && !('tileMeters' in edit)) {
-			overrides.mapping = {
+		const effective = existing ?? baseMapping;
+		const tileEdit = edit.tileMeters;
+		const rotationEdit = edit.rotation;
+		const hasNonNullTileEdit = tileEdit !== undefined && tileEdit !== null;
+		const hasNonNullRotationEdit = rotationEdit !== undefined && rotationEdit !== null;
+		const hasNonNullEdit = hasNonNullTileEdit || hasNonNullRotationEdit;
+
+		let nextMapping: Mapping;
+		if (effective.kind === 'uv' && !hasNonNullTileEdit) {
+			const baseUvRotation = baseMapping.kind === 'uv' ? baseMapping.rotation : base.rotation;
+			const nextRotation = rotationEdit === null ? baseUvRotation : (rotationEdit ?? effective.rotation);
+			nextMapping = {
 				kind: 'uv',
-				repeat: existing.repeat,
-					set: existing.set,
+				repeat: effective.repeat,
+				set: effective.set,
 				rotation: nextRotation,
-				offset: existing.offset
-			} satisfies Mapping;
+				offset: effective.offset
+			};
 		} else {
-			overrides.mapping = {
-				kind: existing?.kind === 'surface' ? 'surface' : 'target',
-				metric: nextMetric
-			} satisfies Mapping;
+			const existingMetric = existing === undefined
+				? undefined
+				: existing.kind === 'uv'
+					? { tileMeters: base.tileMeters, rotation: existing.rotation, offset: existing.offset }
+					: existing.metric;
+			const metric: Metric = effective.kind === 'uv'
+				? {
+					tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
+					rotation: existingMetric?.rotation ?? base.rotation,
+					offset: existingMetric?.offset ?? base.offset
+				}
+				: effective.metric;
+			const nextTile = tileEdit === null ? base.tileMeters : (tileEdit ?? metric.tileMeters);
+			const nextRotation = rotationEdit === null ? base.rotation : (rotationEdit ?? metric.rotation);
+			nextMapping = {
+				kind: effective.kind === 'surface' ? 'surface' : 'target',
+				metric: {
+					tileMeters: [nextTile[0], nextTile[1]],
+					rotation: nextRotation,
+					offset: metric.offset
+				}
+			};
+		}
+
+		const matchesBase =
+			sameMapping(nextMapping, baseMapping) ||
+			(nextMapping.kind === 'target' && baseMapping.kind === 'uv' && sameMetric(nextMapping.metric, base));
+		if (!hasNonNullEdit && matchesBase) {
+			delete overrides.mapping;
+		} else {
+			overrides.mapping = nextMapping;
 		}
 	}
 	const pruned = pruneOverrides(overrides as FinishOverrides);

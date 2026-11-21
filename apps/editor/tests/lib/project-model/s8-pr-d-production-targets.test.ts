@@ -231,18 +231,28 @@ function entityTarget(source: ProjectEnvelope, id: string): SemanticReference {
 }
 
 function surfaceTarget(source: ProjectEnvelope, surface: LayoutSurfaceRef): SemanticReference {
+	const subject = surface.kind === 'wall-side'
+		? { kind: 'wall' as const, id: surface.wallId }
+		: surface.kind === 'region-face'
+			? { kind: 'region' as const, id: surface.regionId }
+			: { kind: 'room' as const, id: surface.roomId };
+	const componentId = surface.kind === 'wall-side'
+		? `side:${surface.side}`
+		: surface.kind === 'region-face'
+			? surface.face
+			: surface.kind === 'room-floor' ? 'floor' : 'lid';
 	return {
 		version: 1,
 		domain: 'layout',
 		revision: { kind: 'exact', contentRevision: source.units.layout.header.contentRevision },
-		subject: { kind: 'wall', id: WALL.wallId },
+		subject,
 		instancePath: [],
 		location: {
 			kind: 'layout-location',
 			levelId: source.units.layout.data.floor.id,
 			structureInstancePath: []
 		},
-		componentId: `side:${surface.kind === 'wall-side' ? surface.side : 'left'}`,
+		componentId,
 		capabilityId: null
 	};
 }
@@ -273,12 +283,16 @@ function payloadFor(
 	};
 }
 
-async function mountProduction(modelDigest: string, provider: Map<string, ModelDerivativeAnalysis>) {
+async function mountProduction(
+	modelDigest: string,
+	provider: Map<string, ModelDerivativeAnalysis>,
+	layout: LayoutDocumentWallFirst = wallLayout()
+) {
 	const extras = modelExtras(modelDigest);
 	const project = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'Production targets',
-		layout: wallLayout(),
+		layout,
 		scene: {
 			formatVersion: 1,
 			textures: [],
@@ -485,5 +499,53 @@ describe('T2.S8 D production target analysis', () => {
 				}
 			])
 		).toBeNull();
+	});
+
+	it('analyses every triangle of an 8-vertex Region top, underside and edge through production adapters', async () => {
+		const layout = wallLayout();
+		const octagonPoints: [number, number][] = Array.from({ length: 8 }, (_, i) => {
+			const angle = (i * Math.PI) / 4;
+			return [2 + Math.cos(angle) * 1.5, 2 + Math.sin(angle) * 1.5];
+		});
+		layout.regions = [
+			{
+				id: 'octagon-terrace',
+				role: 'floor',
+				footprint: { kind: 'polygon', points: octagonPoints },
+				elevation: 0.4,
+				thickness: 0.2,
+				form: { kind: 'flat' },
+				intendedGaps: []
+			}
+		];
+		const mounted = await mountProduction(OLD_MODEL, new Map(), layout);
+		const revision = mounted.snapshot.domain.unitRevisions.layout;
+		const top: LayoutSurfaceRef = { kind: 'region-face', regionId: 'octagon-terrace', face: 'top' };
+		const underside: LayoutSurfaceRef = { kind: 'region-face', regionId: 'octagon-terrace', face: 'underside' };
+		const edge: LayoutSurfaceRef = { kind: 'region-face', regionId: 'octagon-terrace', face: 'edge' };
+
+		// An 8-vertex Region has 6 top triangles (0..5), 6 underside triangles (6..11),
+		// and 16 edge triangles (12..27). The previous `triangle * 3 < length` loop
+		// stopped at triangle 9, dropping underside triangles 10..11 and all edge triangles.
+		const facts = mounted.services.targetAnalysis([
+			{ subject: surfaceKey(top), domain: 'layout', surface: top, expectedGeometryRevision: revision },
+			{ subject: surfaceKey(underside), domain: 'layout', surface: underside, expectedGeometryRevision: revision },
+			{ subject: surfaceKey(edge), domain: 'layout', surface: edge, expectedGeometryRevision: revision }
+		]);
+		expect(facts).toHaveLength(3);
+		expect(facts?.[0]?.draws[0]?.uvSets).toEqual([0]);
+		expect(facts?.[0]?.draws[0]?.normalFrameSets).toEqual([0]);
+		expect(facts?.[1]?.draws[0]?.uvSets).toEqual([0]);
+		expect(facts?.[1]?.draws[0]?.normalFrameSets).toEqual([0]);
+		expect(facts?.[2]?.draws[0]?.uvSets).toEqual([0]);
+
+		const recipe = await recipeFor({
+			kind: 'target',
+			metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] }
+		});
+		const topReg = await register(mounted, recipe, [], [top], 'finish-octagon-top');
+		const underReg = await register(mounted, recipe, [], [underside], 'finish-octagon-underside');
+		expect(topReg.kind).toBe('accepted');
+		expect(underReg.kind).toBe('accepted');
 	});
 });

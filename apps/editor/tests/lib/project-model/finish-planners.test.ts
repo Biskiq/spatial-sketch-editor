@@ -30,7 +30,7 @@ import {
 	type ScenePaletteSlot
 } from '@portfolio/project-model/units';
 import { serializeProjectEnvelope } from '@portfolio/project-model/units';
-import { catalogueRecipe } from '@portfolio/project-model/materials';
+import { NEUTRAL_RECIPE, catalogueRecipe, type Recipe } from '@portfolio/project-model/materials';
 import {
 	applyFinishEdit,
 	checkSceneRecordScope,
@@ -1428,6 +1428,77 @@ describe('applyFinishEdit preserves authored mapping meaning', () => {
 		const mapping = metric.overrides?.mapping;
 		expect(mapping?.kind).toBe('target');
 		expect(mapping?.kind === 'target' ? mapping.metric.tileMeters : null).toEqual([0.5, 0.75]);
+	});
+
+	it('preserves inherited uv mapping (set: 1, repeat, offset) when rotating a resource-backed Finish', () => {
+		const baseRecipe: Recipe = {
+			...NEUTRAL_RECIPE,
+			mapping: { kind: 'uv', set: 1, repeat: [3, 4], rotation: 0.1, offset: [0.25, 0.5] }
+		};
+		const resourceFinish: SceneMaterialInstance = {
+			id: 'p',
+			name: 'P',
+			base: { material: `sha256-${'a'.repeat(64)}` }
+		};
+		const rotated = applyFinishEdit(resourceFinish, { rotation: 0.75 }, baseRecipe);
+		expect(rotated.overrides?.mapping).toEqual({
+			kind: 'uv',
+			set: 1,
+			repeat: [3, 4],
+			rotation: 0.75,
+			offset: [0.25, 0.5]
+		});
+		const metric = applyFinishEdit(resourceFinish, { tileMeters: [0.5, 0.5] }, baseRecipe);
+		expect(metric.overrides?.mapping).toEqual({
+			kind: 'target',
+			metric: { tileMeters: [0.5, 0.5], rotation: 0, offset: [0, 0] }
+		});
+		expect(applyFinishEdit(metric, { tileMeters: null }, baseRecipe).overrides?.mapping).toBeUndefined();
+	});
+
+	it('preserves inherited surface mapping kind when rotating or scaling a resource-backed Finish', () => {
+		const baseRecipe: Recipe = {
+			...NEUTRAL_RECIPE,
+			mapping: { kind: 'surface', metric: { tileMeters: [2, 3], rotation: 0.1, offset: [0.2, 0.4] } }
+		};
+		const resourceFinish: SceneMaterialInstance = {
+			id: 'p',
+			name: 'P',
+			base: { material: `sha256-${'b'.repeat(64)}` }
+		};
+		const rotated = applyFinishEdit(resourceFinish, { rotation: 0.9 }, baseRecipe);
+		expect(rotated.overrides?.mapping).toEqual({
+			kind: 'surface',
+			metric: { tileMeters: [2, 3], rotation: 0.9, offset: [0.2, 0.4] }
+		});
+		const scaled = applyFinishEdit(resourceFinish, { tileMeters: [4, 5] }, baseRecipe);
+		expect(scaled.overrides?.mapping).toEqual({
+			kind: 'surface',
+			metric: { tileMeters: [4, 5], rotation: 0.1, offset: [0.2, 0.4] }
+		});
+	});
+
+	it('resets only the cleared mapping field when another authored field remains', () => {
+		const instance: SceneMaterialInstance = {
+			id: 'p',
+			name: 'P',
+			base: { catalogue: 'plaster-warm' },
+			overrides: {
+				mapping: { kind: 'target', metric: { tileMeters: [3, 4], rotation: 0.5, offset: [0, 0] } }
+			}
+		};
+		const clearedRotation = applyFinishEdit(instance, { rotation: null });
+		expect(clearedRotation.overrides?.mapping).toEqual({
+			kind: 'target',
+			metric: { tileMeters: [3, 4], rotation: 0, offset: [0, 0] }
+		});
+		const clearedTile = applyFinishEdit(instance, { tileMeters: null });
+		expect(clearedTile.overrides?.mapping).toEqual({
+			kind: 'target',
+			metric: { tileMeters: [2, 2], rotation: 0.5, offset: [0, 0] }
+		});
+		const clearedBoth = applyFinishEdit(clearedRotation, { tileMeters: null });
+		expect(clearedBoth.overrides?.mapping).toBeUndefined();
 	});
 });
 
