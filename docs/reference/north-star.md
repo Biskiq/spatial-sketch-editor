@@ -76,7 +76,7 @@ functionality nor select an implementation.
 - **Progressive depth without a ceiling.** Simple operations stay immediately accessible; precise
   parameters, graphs, procedural systems and specialised tools expose their full depth when a
   creator asks for it. Beginner and professional surfaces are levels of access to one coherent
-  capability, not separate engines or permanently restricted product tiers. Complexity on demand is
+  capability, not separate engines or artificially limited creative capabilities. Complexity on demand is
   desirable; mandatory complexity is not. No ordinary creator has to manage mesh topology,
   construction order, UV layout or a full CAD/DCC workflow.
 - **Freeform freedom with semantic intelligence.** Direct, SketchUp-like modeling freedom and
