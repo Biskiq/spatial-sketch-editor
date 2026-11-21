@@ -52,6 +52,8 @@ export {
 	type SurfaceMapping,
 	type TargetDraw,
 	type TargetFacts,
+	type TargetAnalysis,
+	type TargetAnalysisRequest,
 	type TargetMapping,
 	type TargetMetricBasis,
 	type UvMapping,

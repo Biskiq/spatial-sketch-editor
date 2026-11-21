@@ -43,6 +43,11 @@ import {
 	unitRevision
 } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
+import {
+	createSceneTargetAnalysis,
+	type ModelDerivativeAnalysis
+} from '$lib/render/materials/target-analysis';
+import { sceneFinishFor } from '$lib/render/materials/scene-instance-material';
 
 const COLOUR = `sha256-${'1'.repeat(64)}`;
 const ORM = `sha256-${'2'.repeat(64)}`;
@@ -144,6 +149,42 @@ function surfaceTarget(
 	};
 }
 
+/** The approved creator model record a `shelf` placement needs to admit. */
+function modelExtras(): {
+	resources: ProjectEnvelope['units']['resources']['data'];
+	dependencyLock: ProjectEnvelope['dependencyLock'];
+} {
+	const modelHash = `sha256-${'d'.repeat(64)}`;
+	const modelPin = {
+		hash: modelHash, mime: MODEL_RESOURCE_MIME, size: 1024,
+		locator: `/projects/project-d/models/content/${modelHash}`
+	};
+	return {
+		resources: {
+			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+			resources: [{
+				kind: 'model', id: 'creator-shelf', contentRevision: modelHash, pin: modelPin, unresolved: null,
+				model: {
+					source: { manifestHash: `sha256-${'e'.repeat(64)}`, size: 2048, fileCount: 2 },
+					recipe: { id: 'creator-import', version: 1 },
+					reportDigest: `sha256-${'f'.repeat(64)}`,
+					placement: {
+						metresPerSourceUnit: 0.5, pivot: [0, 0, 0],
+						footprint: { width: 1.2, depth: 0.8 }, contactMinY: 0, placement: 'floor'
+					}
+				}
+			}]
+		},
+		dependencyLock: {
+			formatVersion: 1,
+			entries: [{
+				domain: 'resource:model', subjectKind: 'resource', subjectId: 'creator-shelf',
+				instancePath: [], contentRevision: modelHash, requiredCapabilities: [], pin: modelPin
+			}]
+		}
+	};
+}
+
 function entityTarget(project: Awaited<ReturnType<typeof createUnitProject>>, id: string): SemanticReference {
 	return {
 		version: 1,
@@ -157,11 +198,42 @@ function entityTarget(project: Awaited<ReturnType<typeof createUnitProject>>, id
 	};
 }
 
+/** A model derivative with UV0 only: the GLB carries no UV1. */
+function modelDerivative(assetId: string): ModelDerivativeAnalysis | null {
+	if (assetId !== 'creator-shelf') return null;
+	return {
+		digest: `sha256-${'d'.repeat(64)}`,
+		draws: [
+			{
+				drawKey: 'mesh-0',
+				geometry: {
+					positions: [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
+					indices: [0, 1, 2, 0, 2, 3],
+					uvs: [
+						[0, 0, 1, 0, 1, 1, 0, 1],
+						null
+					]
+				}
+			}
+		]
+	};
+}
+
+function runtimeSceneOf(source: ProjectEnvelope) {
+	return {
+		textures: source.units.scene.data.textures,
+		materials: source.units.scene.data.materials,
+		entities: source.units.scene.data.entities,
+		objects: []
+	};
+}
+
 function payloadFor(
 	recipe: Recipe,
 	recipeHash: string,
 	sceneRevision: string,
-	entityIds: readonly string[] = ['plinth']
+	entityIds: readonly string[] = ['plinth'],
+	facts?: readonly unknown[]
 ) {
 	return {
 		name: 'Brushed metal',
@@ -173,12 +245,7 @@ function payloadFor(
 			texture: { name: texture.name, pin: { hash: texture.hash, mime: 'image/png', size: texture.size } }
 		})),
 		entityIds: [...entityIds],
-		targetFacts: entityIds.map((id) => ({
-			subject: id,
-			geometryRevision: sceneRevision,
-			metricBasis: { uvMeters: [1, 1] as const, surfaceMeters: [1, 1] as const },
-			draws: [{ drawKey: id, uvSets: [0] as const, normalFrameSets: [0] as const }]
-		}))
+		targetFacts: facts ?? []
 	};
 }
 
@@ -238,9 +305,22 @@ async function fixture(
 	const admittedSource = stageEnvelope(admitted.snapshot);
 	const prepared = await materialProofs.prepareFinishRegistration(recipe);
 	if (!prepared.ok) throw new Error('fixture recipe did not prepare');
+	// The planner reads host-owned analysis, never the caller's facts. This is
+	// the real analyzer over the exact accepted Scene, with the approved model
+	// derivative as its only model source.
+	const authority = { source: admittedSource };
+	const targetAnalysis = createSceneTargetAnalysis({
+		read: () => ({
+			scene: runtimeSceneOf(authority.source) as never,
+			sceneRevision: authority.source.units.scene.header.contentRevision,
+			layoutRevision: authority.source.units.layout.header.contentRevision
+		}),
+		models: modelDerivative
+	});
 	const planners: unknown[] = [];
 	createAdapter({
 		materialProofs,
+		targetAnalysis,
 		authoring: {
 			registerPlanner: (planner: unknown) => {
 				planners.push(planner);
@@ -257,17 +337,41 @@ async function fixture(
 		},
 		planners: planners as never
 	});
+	const initialFacts = targetAnalysis(
+		entityIds.map((id) => ({
+			subject: id,
+			domain: 'scene' as const,
+			entityId: id,
+			expectedGeometryRevision: authority.source.units.scene.header.contentRevision
+		}))
+	) as readonly unknown[] | null;
 	const registration = await coordinator.accept({
 		version: 1,
 		kind: SCENE_FINISH_REGISTER,
 		operationId: 'register-brushed',
 		expectedRevision: coordinator.acceptedRevision(),
 		targets: entityIds.map((id) => entityTarget(coordinator.current().source, id)),
-		payload: payloadFor(recipe, hash, coordinator.current().source.units.scene.header.contentRevision, entityIds),
+		payload: payloadFor(
+			recipe,
+			hash,
+			coordinator.current().source.units.scene.header.contentRevision,
+			entityIds,
+			initialFacts ?? []
+		),
 		capturedInputs: [],
 		allocatedIds: [{ kind: 'scene-finish', id: 'finish-brushed' }]
 	} as AuthoringIntent);
-	return { recipe, hash, registration, coordinator, materialProofs, surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const } };
+	if (registration.kind === 'accepted') authority.source = coordinator.current().source;
+	return {
+		recipe,
+		hash,
+		registration,
+		coordinator,
+		materialProofs,
+		authority,
+		targetAnalysis,
+		surface: { kind: 'wall-side' as const, wallId: 'wall-a', side: 'left' as const }
+	};
 }
 
 describe('T2.S8 PR D exit fixture', () => {
@@ -351,41 +455,16 @@ describe('T2.S8 PR D exit fixture', () => {
 	it('assigns one resource-backed rotated Finish to a Form and a GLB through the D writer', async () => {
 		const rotated: Recipe = {
 			...(await brushedRecipe()),
-			mapping: { kind: 'target', metric: { tileMeters: [0.45, 1.8], rotation: 0.7, offset: [0.12, 0.34] } }
-		};
-		const modelHash = `sha256-${'d'.repeat(64)}`;
-		const modelPin = {
-			hash: modelHash, mime: MODEL_RESOURCE_MIME, size: 1024,
-			locator: `/projects/project-d/models/content/${modelHash}`
+			// An explicit UV mapping is the one chart a GLB and a Form share: it
+			// reads each target's native UV0, so the same rotation and offset bind
+			// without claiming a metric basis the model does not carry.
+			mapping: { kind: 'uv', set: 0, repeat: [1, 1], rotation: 0.7, offset: [0.12, 0.34] }
 		};
 		const { registration, coordinator } = await fixture(
 			[box(), form(), glb()],
 			['plinth', 'pedestal', 'shelf'],
 			rotated,
-			{
-				resources: {
-					formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
-					resources: [{
-						kind: 'model', id: 'creator-shelf', contentRevision: modelHash, pin: modelPin, unresolved: null,
-						model: {
-							source: { manifestHash: `sha256-${'e'.repeat(64)}`, size: 2048, fileCount: 2 },
-							recipe: { id: 'creator-import', version: 1 },
-							reportDigest: `sha256-${'f'.repeat(64)}`,
-							placement: {
-								metresPerSourceUnit: 0.5, pivot: [0, 0, 0],
-								footprint: { width: 1.2, depth: 0.8 }, contactMinY: 0, placement: 'floor'
-							}
-						}
-					}]
-				},
-				dependencyLock: {
-					formatVersion: 1,
-					entries: [{
-						domain: 'resource:model', subjectKind: 'resource', subjectId: 'creator-shelf',
-						instancePath: [], contentRevision: modelHash, requiredCapabilities: [], pin: modelPin
-					}]
-				}
-			}
+			modelExtras()
 		);
 		if (registration.kind !== 'accepted') throw new Error(JSON.stringify(registration));
 		const source = coordinator.current().source;
@@ -568,5 +647,126 @@ describe('T2.S8 PR D exit fixture', () => {
 			expect(capability.closure.map((issue) => issue.code)).toContain('unsupported-capability');
 		}
 		expect(coordinator.current().source).toEqual(source);
+	});
+
+	it('refuses caller facts that claim a UV set the host analysis did not find', async () => {
+		const uvRecipe: Recipe = {
+			...(await brushedRecipe()),
+			mapping: { kind: 'uv', set: 0, repeat: [1, 1], rotation: 0, offset: [0, 0] }
+		};
+		const { coordinator, targetAnalysis } = await fixture(
+			[box(), glb()],
+			['plinth', 'shelf'],
+			uvRecipe,
+			modelExtras()
+		);
+		const source = coordinator.current().source;
+		const revision = source.units.scene.header.contentRevision;
+		const facts = targetAnalysis([
+			{ subject: 'plinth', domain: 'scene', entityId: 'plinth', expectedGeometryRevision: revision },
+			{ subject: 'shelf', domain: 'scene', entityId: 'shelf', expectedGeometryRevision: revision }
+		]);
+		if (facts === null) throw new Error('fixture analysis did not answer');
+		// The host read a GLB with UV0 only. A caller that asserts UV1 must not
+		// widen the admission: the claim disagrees with the exact geometry.
+		const tampered = facts.map((entry) =>
+			entry.subject === 'shelf'
+				? {
+						...entry,
+						draws: entry.draws.map((draw) => ({ ...draw, uvSets: [0, 1] as const, normalFrameSets: [0, 1] as const }))
+					}
+				: entry
+		);
+		const outcome = await coordinator.accept({
+			version: 1,
+			kind: SCENE_FINISH_REGISTER,
+			operationId: 'claim-uv1',
+			expectedRevision: coordinator.acceptedRevision(),
+			targets: ['plinth', 'shelf'].map((id) => entityTarget(source, id)),
+			payload: {
+				...payloadFor(uvRecipe, await recipeHash(uvRecipe), revision, ['plinth', 'shelf'], tampered),
+				name: 'Claimed UV1'
+			},
+			capturedInputs: [],
+			allocatedIds: [{ kind: 'scene-finish', id: 'finish-claimed-uv1' }]
+		} as AuthoringIntent);
+		expect(outcome.kind).toBe('rejected');
+		if (outcome.kind === 'rejected') expect(outcome.reason).toBe('untrusted-target-facts');
+		expect(coordinator.current().source).toEqual(source);
+	});
+
+	it('registers a no-texture material with no image bindings, persists it and renders its constants', async () => {
+		const { coordinator, materialProofs, targetAnalysis } = await fixture();
+		const read = readRecipe({
+			profile: 'pbr-metallic-roughness/v1',
+			color: '#7a7f85',
+			roughness: 0.55,
+			metalness: 0.2,
+			occlusionStrength: 1,
+			normalScale: 1,
+			mapping: { kind: 'target', metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] } },
+			maps: {}
+		});
+		if (!read.success) throw new Error(JSON.stringify(read.issues));
+		const recipe = read.recipe;
+		const hash = await recipeHash(recipe);
+		const prepared = await materialProofs.prepareFinishRegistration(recipe);
+		expect(prepared.ok).toBe(true);
+		const source = coordinator.current().source;
+		const revision = source.units.scene.header.contentRevision;
+		const facts = targetAnalysis([
+			{ subject: 'plinth', domain: 'scene', entityId: 'plinth', expectedGeometryRevision: revision }
+		]);
+		const registration = await coordinator.accept({
+			version: 1,
+			kind: SCENE_FINISH_REGISTER,
+			operationId: 'register-plain',
+			expectedRevision: coordinator.acceptedRevision(),
+			targets: [entityTarget(source, 'plinth')],
+			payload: {
+				name: 'Plain satin',
+				recipeHash: hash,
+				recipe,
+				images: [],
+				entityIds: ['plinth'],
+				targetFacts: facts ?? []
+			},
+			capturedInputs: [],
+			allocatedIds: [{ kind: 'scene-finish', id: 'finish-plain' }]
+		} as AuthoringIntent);
+		expect(registration.kind).toBe('accepted');
+		const registered = coordinator.current().source;
+		const resource = registered.units.resources.data.resources.find(
+			(candidate) => candidate.kind === 'material' && candidate.id === hash
+		);
+		expect(resource?.material?.images).toEqual([]);
+
+		const admitted = await admitSourceJson(serializeProjectEnvelope(registered), {
+			sessionEpoch: 'cold-plain',
+			acceptedRevision: unitRevision('project-d', 'cold-plain')
+		});
+		expect(admitted.kind).toBe('admitted');
+		if (admitted.kind !== 'admitted') return;
+		const bundle = composeColdReleaseBundle({
+			document: stageEnvelope(admitted.snapshot),
+			manifest: {
+				releaseId: 'release-plain',
+				bytesByUri: new Map(
+					TEXTURES.map((texture) => [
+						`/project-assets/${texture.id}`,
+						{ bytes: new Uint8Array(texture.size), mime: 'image/png', sha256: texture.hash }
+					])
+				)
+			}
+		});
+		const look = sceneFinishFor(
+			bundle.scene,
+			{ materialInstanceId: 'finish-plain', fallbackCatalogueId: 'plaster-warm' },
+			{ kind: 'metric', uvMeters: [1, 1], surfaceMeters: [1, 1] }
+		);
+		expect(look.issues).toEqual([]);
+		expect(look.textures).toBeNull();
+		expect(look.material).toMatchObject({ color: '#7a7f85', roughness: 0.55, metalness: 0.2 });
+		bundle.dispose();
 	});
 });

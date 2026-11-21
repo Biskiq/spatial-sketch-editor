@@ -237,6 +237,7 @@ function harness() {
 			return {
 				stage: {} as never,
 				materialProofs: {} as never,
+				targetAnalysis: {} as never,
 				authoring: {} as never
 			} as StageAdapterServices;
 		},

@@ -256,6 +256,38 @@ export async function convertScene11To12(
 		};
 	}
 
+	// The format stamps say what the bytes claim to be; they say nothing about
+	// whether the bytes are the revision the headers name. Verify every unit's
+	// content revision before conversion, so a payload edited underneath an
+	// unchanged header refuses instead of being re-stamped as if it were sound.
+	// This is verification only: the converter never repairs a header over
+	// input it has not proved.
+	for (const domain of ['layout', 'scene', 'camera', 'experience', 'resources'] as const) {
+		const unit = units[domain];
+		if (!isRecord(unit) || !isRecord(unit.header) || !isRecord(unit.data)) {
+			issues.push(issue(`$.units.${domain}`, 'invalid-type', `Expected the ${domain} unit payload and header.`));
+			continue;
+		}
+		const recorded = unit.header.contentRevision;
+		if (typeof recorded !== 'string' || recorded.length === 0) {
+			issues.push(
+				issue(`$.units.${domain}.header.contentRevision`, 'invalid-type', 'Expected a recorded unit content revision.')
+			);
+			continue;
+		}
+		const recomputed = await computeUnitContentRevision(unit.data);
+		if (recomputed !== recorded) {
+			issues.push(
+				issue(
+					`$.units.${domain}.header.contentRevision`,
+					'content-revision-mismatch',
+					`The ${domain} payload does not match its recorded content revision; repair the source or restore the original bytes before converting.`
+				)
+			);
+		}
+	}
+	if (issues.length > 0) return { success: false, issues };
+
 	const materials: unknown[] = [];
 	const textureRecords = Array.isArray(sceneData.textures)
 		? (sceneData.textures as readonly { id: string; uri: string }[])

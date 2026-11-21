@@ -42,7 +42,14 @@ import { EMPTY_MATERIAL_PROOF, verifyMaterialDigest, type MaterialDigestProof } 
 import { resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
 import { qualifyAcrossTargets } from '../materials/bind';
 import { shippedImage } from '../materials/catalogue';
-import { MATERIAL_CAPABILITY, MATERIAL_NEUTRAL_BASE_ID, type Recipe, type TargetDraw, type TargetFacts } from '../materials/types';
+import {
+	MATERIAL_CAPABILITY,
+	MATERIAL_NEUTRAL_BASE_ID,
+	type Recipe,
+	type TargetAnalysis,
+	type TargetDraw,
+	type TargetFacts
+} from '../materials/types';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
@@ -126,6 +133,17 @@ export type FinishPlannerOptions = {
 	 * is admitted.
 	 */
 	readonly materialProof?: (request: PlannerRequest<ProjectEnvelope>) => MaterialDigestProof;
+	/**
+	 * Host-owned target analysis for the exact source revision.
+	 *
+	 * Registration names targets; it never proves what their geometry can sample.
+	 * The host derives facts from the exact shipped native shape, the exact Layout
+	 * surface or the exact approved model derivative, bound to the revision it
+	 * inspected. F4 matches the caller's facts against this analysis and refuses
+	 * stale, absent or incompatible facts. Absent, no registration with a target
+	 * is admitted: caller assertions are never a substitute.
+	 */
+	readonly targetAnalysis?: TargetAnalysis;
 };
 
 function refuse(message: string, code = 'invalid-value'): Result {
@@ -721,8 +739,8 @@ type RegisterImageInput = {
 };
 
 function readRegisterImages(reader: ShapeReader, raw: unknown, path: string): RegisterImageInput[] | null {
-	if (!Array.isArray(raw) || raw.length === 0) {
-		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of image bindings`);
+	if (!Array.isArray(raw)) {
+		reader.problem(path, 'invalid-value', `${path} must be an array of image bindings`);
 		return null;
 	}
 	const images: RegisterImageInput[] = [];
@@ -842,6 +860,33 @@ function surfaceTargetComponent(surface: SceneSurfaceRef): { kind: 'wall' | 'roo
 
 function sameSequence(left: readonly string[], right: readonly string[]): boolean {
 	return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+/**
+ * Whether caller-supplied facts are exactly the host analysis. Registration
+ * treats the payload as an echo for diagnostics, never as evidence: a set, a
+ * draw or a metric basis the host did not derive is a refusal.
+ */
+function sameTargetFacts(left: TargetFacts, right: TargetFacts): boolean {
+	if (left.subject !== right.subject || left.geometryRevision !== right.geometryRevision) return false;
+	if (JSON.stringify(left.metricBasis ?? null) !== JSON.stringify(right.metricBasis ?? null)) return false;
+	if (left.draws.length !== right.draws.length) return false;
+	const byKey = new Map(right.draws.map((draw) => [draw.drawKey, draw]));
+	for (const draw of left.draws) {
+		const other = byKey.get(draw.drawKey);
+		if (other === undefined) return false;
+		if ((draw.invalidGeometry === true) !== (other.invalidGeometry === true)) return false;
+		if (!sameSequence([...draw.uvSets].sort().map(String), [...other.uvSets].sort().map(String))) return false;
+		if (
+			!sameSequence(
+				[...draw.normalFrameSets].sort().map(String),
+				[...other.normalFrameSets].sort().map(String)
+			)
+		) {
+			return false;
+		}
+	}
+	return true;
 }
 
 function allocationOf(
@@ -1384,13 +1429,16 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			return refuse('Registration must address exactly the targets it names.', 'invalid-target');
 		}
 
-		const expectedRevisions = new Map<string, string>();
+		const selectedTargets = new Map<
+			string,
+			{ readonly domain: 'scene' | 'layout'; readonly entityId?: string; readonly surface?: SceneSurfaceRef; readonly revision: string }
+		>();
 		for (const [index, entityId] of entityIds.entries()) {
 			const target = request.intent.targets[index]!;
 			const problem = sceneEntityTargetProblem(target, entityId, header.contentRevision);
 			if (problem !== null) return refuse(problem.message, 'invalid-target');
 			if (!before.entities.some((entity) => entity.id === entityId)) return refuse('That object is not in the current revision.', 'unknown-entity');
-			expectedRevisions.set(entityId, header.contentRevision);
+			selectedTargets.set(entityId, { domain: 'scene', entityId, revision: header.contentRevision });
 		}
 		const layout = envelope.units.layout;
 		for (const [index, surface] of surfaces.entries()) {
@@ -1408,18 +1456,58 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			if (resolveLayoutSurface(layout.data, surface) !== 'present') {
 				return refuse('That surface changed. Try again.', 'surface_not_present');
 			}
-			expectedRevisions.set(surfaceKey(surface), layout.header.contentRevision);
+			selectedTargets.set(surfaceKey(surface), {
+				domain: 'layout',
+				surface,
+				revision: layout.header.contentRevision
+			});
 		}
-		if (rawFacts.length !== expectedRevisions.size) {
-			return refuse('Qualify every selected target at its exact geometry revision.', 'target-pending');
-		}
-		for (const facts of rawFacts) {
-			const expectedRevision = expectedRevisions.get(facts.subject);
-			if (expectedRevision === undefined) {
-				return refuse('Target facts name an object this registration does not select.', 'invalid-target');
+		// Registration never trusts the intent's facts. The host analysis must
+		// prove every selected target at exactly this revision; the payload may
+		// echo it, and any difference is a refusal rather than a wider admission.
+		const trustedFacts = new Map<string, TargetFacts>();
+		if (selectedTargets.size > 0) {
+			const analysis = options.targetAnalysis?.([...selectedTargets].map(([subject, target]) => ({
+				subject,
+				domain: target.domain,
+				...(target.entityId === undefined ? {} : { entityId: target.entityId }),
+				...(target.surface === undefined ? {} : { surface: target.surface }),
+				expectedGeometryRevision: target.revision
+			}))) ?? null;
+			if (analysis === null || analysis.length === 0) {
+				return refuse('No host geometry analysis covers these targets. Requalify the exact revision.', 'target-pending');
 			}
-			if (facts.geometryRevision !== expectedRevision || facts.draws.length === 0) {
-				return refuse('Target facts are stale or empty. Requalify the exact geometry revision.', 'target-pending');
+			for (const facts of analysis) {
+				const selected = selectedTargets.get(facts.subject);
+				if (selected === undefined) {
+					return refuse('Target analysis names an object this registration does not select.', 'invalid-target');
+				}
+				if (trustedFacts.has(facts.subject)) {
+					return refuse('Target analysis answered one subject twice.', 'invalid-target');
+				}
+				if (facts.geometryRevision !== selected.revision || facts.draws.length === 0) {
+					return refuse('Host target analysis is stale or empty. Requalify the exact geometry revision.', 'target-pending');
+				}
+				trustedFacts.set(facts.subject, facts);
+			}
+			for (const subject of selectedTargets.keys()) {
+				if (!trustedFacts.has(subject)) {
+					return refuse('Host analysis does not cover every selected target. Requalify the exact geometry revision.', 'target-pending');
+				}
+			}
+		}
+		if (rawFacts.length > 0) {
+			if (rawFacts.length !== trustedFacts.size) {
+				return refuse('Caller target facts do not describe exactly the selected targets.', 'untrusted-target-facts');
+			}
+			for (const facts of rawFacts) {
+				const trusted = trustedFacts.get(facts.subject);
+				if (trusted === undefined || !sameTargetFacts(facts, trusted)) {
+					return refuse(
+						'Caller target facts disagree with the host geometry analysis. Requalify and retry.',
+						'untrusted-target-facts'
+					);
+				}
 			}
 		}
 
@@ -1428,10 +1516,10 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		if (resolution.inputs === null) {
 			return refuse('The material recipe cannot resolve on these images.', 'material-definition-conflict');
 		}
-		if (rawFacts.length > 0) {
+		if (trustedFacts.size > 0) {
 			const qualification = qualifyAcrossTargets(
 				resolution,
-				rawFacts.map((facts) => ({ subject: facts.subject, facts }))
+				[...trustedFacts].map(([subject, facts]) => ({ subject, facts }))
 			);
 			if (qualification.issues.length > 0) {
 				const first = qualification.issues[0]!;

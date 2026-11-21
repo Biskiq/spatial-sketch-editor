@@ -2,7 +2,8 @@
 
 **Status:** implementation complete on `t2/s8-pr-d-format-cutover`, based on
 `main@d4598f79`. Review-ready; not merged. **The format migration is not
-activated.** No saved head, pending capture or release was converted.
+activated.** No saved head, pending capture or release was converted. The five
+follow-up findings from review are addressed below.
 
 ## Cutover
 
@@ -77,6 +78,121 @@ requirements. The cold composer:
 - keeps native Forms in Stage/Preview and retains the cold-public refusal for
   Forms and unadmitted models.
 
+## Follow-up review fixes
+
+### 1. Host-owned target analysis
+
+The registration payload's `targetFacts` is an echo for diagnostics, never
+evidence. The planner now requires `options.targetAnalysis`, the host's own
+`TargetAnalysis` for one exact source revision. It must name the same subject
+and geometry revision, cover every selected target and reproduce exactly the
+draws, UV sets and normal-frame sets the host derived. A missing, stale or
+incompatible analysis refuses with `target-pending`; a caller that asserts a
+fact the host did not prove refuses with `untrusted-target-facts`.
+
+The editor analyzer (`render/materials/target-analysis.ts`) constructs the exact
+native primitive geometry through `constructGeometry`, reads Layout surfaces
+through their existing projection and requires an approved-derivative provider
+for model facts. It does not inspect renderer state or trust the payload. The
+acceptance suite includes an adversarial case: a GLB derivative with UV0 only,
+and a caller claiming UV1 on it, is refused; the same call with the host-derived
+UV0 set is admitted. Layout surfaces currently return no analysis and therefore
+cannot be registered until their host derivation lands; that is a safe refusal,
+not a fabricated fact.
+
+### 2. Outgoing conversion revision proof
+
+`convertScene11To12` recomputes and compares the content revision of all five
+units (Layout, Scene, Camera, Experience, resources) before reading any material
+or emitting bytes. A payload edited underneath unchanged headers refuses with
+`content-revision-mismatch` at the affected header path. The converter never
+repairs a header over bytes it has not proved. Fixture-variant tests seal their
+fixtures through the same content-revision helper; the tamper test deliberately
+leaves the headers stale and asserts that Scene and resources payload edits are
+both refused with no document.
+
+### 3. Visual exit
+
+The new standalone browser gate (`apps/editor/src/routes/dev/s8-d/`) builds the
+real three-image brushed-metal Finish (colour, packed ORM, NormalDX `-Y`) on a
+primitive, serializes it, admits the saved bytes in a fresh session, composes
+the cold release bundle from the verified PNG bytes, then draws that bundle
+through the product Scene description and entity representation. Case B is the
+accepted catalogue path carrying the same effective inputs through overrides.
+Each capture uses a fresh browser context (empty browser cache and a fresh
+editor session); the D source is a cold admission of the serialized bytes, not
+the in-memory draft.
+
+Reproduce with the editor dev server on port 5219:
+
+```sh
+S8_D_BASE_URL=http://localhost:5219 node apps/editor/scripts/run-s8-d-gate.mjs \
+  --out docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-d-gate.json
+```
+
+The gate requests WebGL2 (WebGPU hidden) and WebGPU, records the observed
+backend and device, captures 512×512 canvas PNGs and compares every RGB channel
+against the B frame. Results on this machine (Apple M2, 8 cores, ANGLE Metal
+renderer, WebGPU `metal-3`, HeadlessChrome 153.0.8010.12, DPR 1):
+
+| Backend | D frame | B frame | Mean abs | Max abs | Channels > 8 |
+| --- | --- | --- | --- | --- | --- |
+| WebGL2 | [`s8-d-webgl2-d.png`](./evidence/s8-d-webgl2-d.png) | [`s8-d-webgl2-b.png`](./evidence/s8-d-webgl2-b.png) | 0 | 0 | 0 |
+| WebGPU | [`s8-d-webgpu-d.png`](./evidence/s8-d-webgpu-d.png) | [`s8-d-webgpu-b.png`](./evidence/s8-d-webgpu-b.png) | 0 | 0 | 0 |
+
+Both frames show the rotated brushed pattern, proving the three sampled images
+and UV transform reached the GPU on both backends. The screenshots are the
+rendered canvases, not a mock-up; `evidence/s8-d-gate.json` carries the full
+plans, image hashes, backend identity and raw measurements.
+
+The same cold bundle is itself an admissible public composition: 8,477 saved
+bytes, three textures, one `primitive` entity, zero Forms and zero model
+placements. The existing cold-public refusal for native Forms and unadmitted
+models was not weakened.
+
+### 4. Zero-image registration
+
+`scene-finish-register` now accepts `images: []` when the recipe has no image
+bindings, instead of requiring a non-empty array. A recipe with bindings still
+requires exact one-to-one image coverage. The acceptance suite registers a
+constant-colour Finish with no images, assigns it, saves it, cold-admits it and
+renders its resolved constants without a missing-texture diagnostic.
+
+### 5. Browser measurements
+
+The gate measures the actual D and B browser paths on both backends. Timings
+are milliseconds from one run per backend; warm edits are 12 samples after three
+warm-ups.
+
+| Case | Build | Cold load → draw | Warm edit p50 / p90 | Motion p95 |
+| --- | --- | --- | --- | --- |
+| WebGL2 D | 115 | 36 | 0.2 / 0.3 | 16.7 |
+| WebGL2 B | 100 | 37 | 0.3 / 0.4 | 16.7 |
+| WebGPU D | 81 | 39 | 0.3 / 0.4 | 16.8 |
+| WebGPU B | 42 | 37 | 0.3 / 0.4 | 16.7 |
+
+- **First correct draw:** the cold-bundle-to-idle-and-two-frames reading is
+  36–39 ms, well inside the 1 s p90 budget. The page-start total including the
+  fixture build is 78–151 ms. One cold sample per backend was taken, so this is
+  not a p90 claim.
+- **Warm Finish editing:** p90 0.3–0.4 ms for a changed roughness constant
+  through the real description and representation with cached decoded sources,
+  under both the 150 ms first-use and 100 ms warm budgets. This measures update
+  admission, not GPU shader completion.
+- **Active motion:** p95 16.7–16.8 ms over 120 frames of a two-second camera
+  orbit, about one 60 Hz display period and inside the two-period budget.
+- **Resource reuse:** after the initial draw and 16 successive descriptor edits,
+  live decoded texture sources remain exactly three (7,488 compressed bytes,
+  786,432 decoded bytes), unchanged from first draw; geometry and material stores
+  each hold one live instance with all superseded instances disposed. A
+  changed roughness constant is a new descriptor key, so the store constructs a
+  new sampled material and releases the old one; it does not upload a second
+  copy of any image. The same description re-applied constructs nothing new.
+
+The heavy 32-use / eight-distinct-1K-set fixture was not run; B's unchanged
+sampling path and residency evidence still apply, and the numbers above are for
+this one-plane gate only.
+
 ## Migration evidence
 
 [`evidence/s8-d-conversion.json`](./evidence/s8-d-conversion.json) records the
@@ -144,8 +260,8 @@ and the look-parity golden remains the pixel oracle.
 
 | Command | Result |
 | --- | --- |
-| `npm run test:fast -w @portfolio/editor` | 461 files / 5,692 tests passed, exit 0 |
-| targeted D acceptance, delivery, codec/converter and planner suites | 130 tests passed |
+| `npm run test:fast -w @portfolio/editor` | 461 files / 5,695 tests passed, exit 0 |
+| targeted D acceptance, codec/converter, planner and render-boundary suites | 8 + 9 + 47 + 28 tests passed |
 | `npm run test:arch -w @portfolio/editor` | 38 files / 356 tests passed, exit 0 |
 | heavy renderer lane (earlier on this branch) | 11 files / 138 tests passed |
 | `npm test -w @biskiq/api` (Postgres-backed) | exit 0, no failures (including Save refusal for missing/corrupt definition blobs) |
@@ -153,6 +269,7 @@ and the look-parity golden remains the pixel oracle.
 | `npm run check:api` | 0 errors |
 | `npm run check -w @portfolio/editor` | 0 errors, 16 pre-existing Svelte warnings |
 | `BUNDLE_PROVENANCE=1 npm run build -w @portfolio/editor` | exit 0 |
+| `S8_D_BASE_URL=http://localhost:5219 node apps/editor/scripts/run-s8-d-gate.mjs` | exit 0; four frames captured, both backends pixel-identical |
 | `npm run perf:bundle:first-load -w @portfolio/editor` | exit 0; public route 566.5 KiB brotli, no `three` in `/` or `/projects` first load |
 
 The fast lane includes the public-surface, prepared-reader-required, visitor
@@ -160,15 +277,23 @@ isolation, current-world fixture, material runtime and B renderer suites.
 
 ## Limits
 
-- No hardware WebGPU/WebGL2 performance run was repeated. That B evidence is
-  unchanged; this PR changes format/readers, not the sampling path. The
-  deterministic B golden and current-world cold fixture pass.
-- No manual browser session was used for detached Preview or a visual pixel
-  comparison; those surfaces are covered by the renderer characterization,
-  golden, preview-boundary and cold-composition suites. **Detached Preview and
-  pixel comparison remain explicit D exit gaps for this PR**: the renderer
-  golden and cold composition prove the projection, not a rendered detached
-  browser surface or a pixel-diff oracle.
+- The visual gate is a dedicated standalone route, not the product shell's
+  detached Preview chrome. It mounts the same Scene description, entity
+  representation, material store and CanvasHost, but does not exercise the
+  Preview panel's surrounding UI lifecycle; the preview-boundary suites still
+  cover that mount.
+- Cold Load in the browser is the serializer → fresh source admission →
+  cold-public composer path. It does not call the cloud API in a browser. The
+  Postgres-backed API suite separately covers Save/Load, definition image pins
+  and refusals for missing or corrupt blobs.
+- Measurements come from one Apple M2 machine and one cold sample per backend;
+  no p90 for first draw, no heavy 32-use fixture and no software backend row.
+  Motion is rAF cadence, not GPU timestamp queries. Warm edit timing stops at
+  update admission, not shader completion. Results on other hardware remain
+  unmeasured.
+- Layout surfaces return no target analysis yet, so registration on a Layout
+  surface refuses safely until that host derivation is added; native
+  primitives and model derivatives are analyzed.
 - Migration activation, saved-head inventory and owner approval are deliberately
   outside this PR.
 

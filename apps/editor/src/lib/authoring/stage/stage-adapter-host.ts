@@ -5,6 +5,7 @@ import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stag
 import type { StageSession } from './stage-session';
 import type { FinishAuthoring } from '../look/finish-authoring.svelte';
 import { createMaterialProofRegistry } from '../material-proof';
+import { createSceneTargetAnalysis } from '$lib/render/materials/target-analysis';
 
 /** Public Stage values used by adapter contributions; implementation remains in Stage. */
 export { evaluationIdOf } from './camera-session';
@@ -72,6 +73,12 @@ export type StageAdapterServices = {
 	readonly stage: StageAdapterPort;
 	/** The route session's content-addressed material proofs. */
 	readonly materialProofs: import('$lib/authoring/material-proof').MaterialProofRegistry;
+	/**
+	 * Host-owned geometry facts for the exact accepted Scene revision. Finish
+	 * registration compares the caller's echo against this analysis; it never
+	 * trusts a fact the host did not derive from the exact geometry.
+	 */
+	readonly targetAnalysis: import('$lib/render/materials/target-analysis').TargetAnalysis;
 	/** Open the Card for a freshly installed and selected Space. */
 	readonly openSpaceCreated?: (reference: SemanticReference) => void;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
@@ -148,6 +155,16 @@ export function createStageAdapterServices(
 	return {
 		stage,
 		materialProofs: materialProofs ?? createMaterialProofRegistry(),
+		targetAnalysis: createSceneTargetAnalysis({
+			read: () => {
+				const domain = stage.snapshot().domain;
+				return {
+					scene: domain.scene,
+					sceneRevision: domain.unitRevisions.scene,
+					layoutRevision: domain.unitRevisions.layout
+				};
+			}
+		}),
 		finishes: {
 			get current() {
 				return finishes?.() ?? null;

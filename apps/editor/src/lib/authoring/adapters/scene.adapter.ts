@@ -85,7 +85,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 		...createArtworkPlanners(),
 		...createFinishPlanners({
 			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id),
-			materialProof: () => services.materialProofs.proof()
+			materialProof: () => services.materialProofs.proof(),
+			targetAnalysis: services.targetAnalysis
 		}),
 		...createScenePlanners({
 		definitions: () => {

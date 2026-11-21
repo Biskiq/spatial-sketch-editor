@@ -289,6 +289,23 @@ export type TargetFacts = {
 	readonly draws: readonly TargetDraw[];
 };
 
+/** One selected target whose geometry the host must qualify. */
+export type TargetAnalysisRequest = {
+	readonly subject: string;
+	readonly domain: 'scene' | 'layout';
+	/** Present for a Scene entity target; its id is also its subject. */
+	readonly entityId?: string;
+	/** Present for a Scene-owned Layout surface target. */
+	readonly surface?: import('../scene').SceneSurfaceRef;
+	/** The revision the host must analyse; another revision is not an answer. */
+	readonly expectedGeometryRevision: string;
+};
+
+/** Facts derived by the host, keyed by the subject the caller selected. */
+export type TargetAnalysis = (
+	requests: readonly TargetAnalysisRequest[]
+) => readonly TargetFacts[] | null;
+
 /** One role's resolved sampling instruction for a bound draw. */
 export type SamplingEntry = {
 	readonly role: MapRole;

@@ -65,6 +65,12 @@ async function outgoingEnvelope() {
 	return outgoing as never;
 }
 
+/** Build a valid variant: the header records the bytes the test authored. */
+async function sealScene(source: unknown): Promise<void> {
+	const scene = (source as { units: { scene: { header: { contentRevision: string }; data: unknown } } }).units.scene;
+	scene.header.contentRevision = await computeUnitContentRevision(scene.data as never);
+}
+
 describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 	it('preserves identities, assignments and pins while converting the Finish grammar', async () => {
 		const source = await outgoingEnvelope();
@@ -122,6 +128,50 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 		expect(source).toEqual(before);
 	});
 
+	it('refuses a payload edited underneath an unchanged content revision', async () => {
+		const sceneTampered = (await outgoingEnvelope()) as unknown as {
+			units: { scene: { header: { contentRevision: string }; data: { materials: { color: string }[] } } };
+		};
+		const sceneBefore = structuredClone(sceneTampered);
+		sceneTampered.units.scene.data.materials[0]!.color = '#010101';
+		const sceneResult = await convertScene11To12(sceneTampered);
+		expect(sceneResult.success).toBe(false);
+		if (!sceneResult.success) {
+			expect(sceneResult.issues).toContainEqual(
+				expect.objectContaining({
+					path: '$.units.scene.header.contentRevision',
+					code: 'content-revision-mismatch'
+				})
+			);
+		}
+		// Verification never repairs the header over bytes it did not prove.
+		expect(sceneTampered).toEqual({
+			...sceneBefore,
+			units: {
+				...sceneBefore.units,
+				scene: {
+					...sceneBefore.units.scene,
+					data: sceneTampered.units.scene.data
+				}
+			}
+		});
+
+		const resourcesTampered = (await outgoingEnvelope()) as unknown as {
+			units: { resources: { header: { contentRevision: string }; data: { resources: unknown[] } } };
+		};
+		resourcesTampered.units.resources.data.resources.push({ kind: 'texture', id: 'smuggled' });
+		const resourcesResult = await convertScene11To12(resourcesTampered);
+		expect(resourcesResult.success).toBe(false);
+		if (!resourcesResult.success) {
+			expect(resourcesResult.issues).toContainEqual(
+				expect.objectContaining({
+					path: '$.units.resources.header.contentRevision',
+					code: 'content-revision-mismatch'
+				})
+			);
+		}
+	});
+
 	it('refuses a mixed or historical version pair without a partial document', async () => {
 		const source = (await outgoingEnvelope()) as unknown as {
 			units: {
@@ -146,6 +196,7 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 			units: { scene: { data: { materials: Record<string, unknown>[] } } };
 		};
 		source.units.scene.data.materials[0]!.invented = true;
+		await sealScene(source);
 		const result: SceneConversionResult = await convertScene11To12(source);
 		expect(result.success).toBe(false);
 		if (!result.success) expect(result.issues[0]?.code).toBe('unknown-key');
@@ -156,6 +207,7 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 			units: { scene: { data: { materials: Record<string, unknown>[] } } };
 		};
 		source.units.scene.data.materials[0]!.mapping = { tileMeters: [1.5, 2.5] };
+		await sealScene(source);
 		const result = await convertScene11To12(source);
 		expect(result.success).toBe(true);
 		if (!result.success || result.document === undefined) return;
@@ -190,6 +242,7 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 		};
 		source.units.scene.data.palette = [{ id: 'accent', name: 'Accent', color: '#aabbcc' }];
 		source.units.scene.data.materials[0]!.color = { slot: 'accent' };
+		await sealScene(source);
 		const result = await convertScene11To12(source);
 		expect(result.success).toBe(true);
 		if (!result.success || result.document === undefined) return;
@@ -208,6 +261,7 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 		source.units.scene.data.materials[0]!.maps = {
 			color: 'tex-colour', roughness: 'tex-orm', occlusion: 'tex-orm', metalness: 'tex-orm'
 		};
+		await sealScene(source);
 		const result = await convertScene11To12(source);
 		expect(result.success, result.success ? '' : JSON.stringify(result.issues)).toBe(true);
 		if (!result.success || result.document === undefined) return;
@@ -222,6 +276,7 @@ describe('Scene 11/resources 2 -> Scene 12/resources 3', () => {
 			units: { scene: { data: { materials: Record<string, unknown>[] } } };
 		};
 		source.units.scene.data.materials[0]!.baseMaterialId = 'not-a-catalogue-base';
+		await sealScene(source);
 		const result = await convertScene11To12(source);
 		expect(result.success).toBe(false);
 		if (!result.success) expect(result.issues[0]?.code).toBe('unknown-material');
