@@ -73,6 +73,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 	});
 
 	afterEach(() => {
+		vi.unstubAllGlobals();
 		resetTextureCachesForTests();
 		__resetDefaultSourceLoaderForTests();
 	});
@@ -103,6 +104,62 @@ describe('P22.1 cold runtime + asset seam', () => {
 		expect(result.status).toBe('ready');
 		expect(loader).toHaveBeenCalledTimes(1);
 		expect(loader).toHaveBeenCalledWith(p20Uri);
+	});
+
+	it('loads shipped Warm Plaster and Walnut roughness maps through the raw policy', async () => {
+		const testDir = dirname(fileURLToPath(import.meta.url));
+		const fetchMock = vi.fn(async (input: string) => ({
+			ok: true,
+			status: 200,
+			blob: async () => ({
+				arrayBuffer: async () =>
+					Uint8Array.from(readFileSync(resolve(testDir, '../../../static', input.slice(1))))
+			})
+		}));
+		vi.stubGlobal('fetch', fetchMock);
+		const bitmaps: Array<{ width: number; height: number; close: ReturnType<typeof vi.fn> }> = [];
+		const createBitmap = vi.fn(async (_blob: Blob, options: ImageBitmapOptions) => {
+			expect(options).toEqual({
+				imageOrientation: 'none',
+				premultiplyAlpha: 'none',
+				colorSpaceConversion: 'none'
+			});
+			const bitmap = { width: 256, height: 256, close: vi.fn() };
+			bitmaps.push(bitmap);
+			return bitmap;
+		});
+		vi.stubGlobal('createImageBitmap', createBitmap);
+		const scope = createReleaseTextureScope({
+			releaseId: 'release-shipped-raw',
+			bytesByUri: new Map<string, ReleaseBytesEntry>()
+		});
+		const loader = scope.createSourceLoader();
+		const uris = [
+			'/textures/plaster-warm/roughness.png',
+			'/textures/wood-walnut/roughness.png'
+		];
+		for (const uri of uris) {
+			const texture = await loader(uri, 'roughnessMap', { policy: 'raw' });
+			expect(texture.image).toBe(bitmaps.at(-1));
+			texture.dispose();
+		}
+		expect(fetchMock.mock.calls.map(([uri]) => uri)).toEqual(uris);
+		expect(createBitmap).toHaveBeenCalledTimes(2);
+		scope.dispose();
+	});
+
+	it('refuses an unknown static raw map without fetching it', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const scope = createReleaseTextureScope({
+			releaseId: 'release-unknown-raw',
+			bytesByUri: new Map<string, ReleaseBytesEntry>()
+		});
+		await expect(
+			scope.createSourceLoader()('/textures/not-shipped/roughness.png', 'roughnessMap', { policy: 'raw' })
+		).rejects.toThrow(/not available/);
+		expect(fetchMock).not.toHaveBeenCalled();
+		scope.dispose();
 	});
 
 	it('texture override on a built-in model uses the supplied resolver', async () => {

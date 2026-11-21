@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Material } from 'three';
-	import { useCanvasRendererState } from '$lib/render/renderer-context';
+	import type { WebGPURenderer } from 'three/webgpu';
 	import {
 		createInspectionScene,
 		renderInspectionFrame
@@ -11,21 +11,17 @@
 	let {
 		material,
 		kind,
-		rig
+		rig,
+		renderer
 	}: {
 		material: Material | null;
 		kind: InspectionGeometryKind;
 		rig: InspectionRig;
+		renderer: WebGPURenderer | null;
 	} = $props();
-
-	// This component lives inside CanvasHost, so it reads the observed renderer
-	// rather than constructing a second one. That is the same path a product
-	// consumer uses for a fixed thumbnail.
-	const rendererState = useCanvasRendererState();
 	let status = $state('idle');
 
 	async function capture(): Promise<void> {
-		const renderer = rendererState.renderer;
 		if (renderer === null) {
 			status = 'renderer not ready';
 			return;

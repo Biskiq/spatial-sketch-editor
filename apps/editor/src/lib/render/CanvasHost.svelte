@@ -27,7 +27,7 @@
 	import { CANVAS_TONE_MAPPING, type RendererBackend, type RendererSurface } from './renderer-backend';
 	import { CanvasLifecycle, type LifecycleSnapshot } from './canvas-lifecycle';
 	import { createRendererGeneration, type GenerationSnapshot } from './renderer-generation';
-	import { provideCanvasRendererState } from './renderer-context';
+	import { provideCanvasRendererState, type CanvasRendererState } from './renderer-context';
 	import { setFinishViewGeneration } from './resources/finish-views';
 
 	const DPR: [number, number] = [1, 1.5];
@@ -38,6 +38,7 @@
 		renderMode = 'on-demand',
 		onBackend = null,
 		onReady = null,
+		onRendererState = null,
 		placeholder = null,
 		capturedPointers = null
 	}: {
@@ -47,6 +48,8 @@
 		/** Reports the observed backend and generation once a canvas is ready. */
 		onBackend?: ((backend: RendererBackend, generation: number) => void) | null;
 		onReady?: ((ready: boolean) => void) | null;
+		/** Reports the observed renderer record to a control outside the Canvas DOM. */
+		onRendererState?: ((state: CanvasRendererState | null) => void) | null;
 		/** The surface tone behind Starting/Recovering/Unavailable. */
 		placeholder?: string | null;
 		/**
@@ -97,6 +100,7 @@
 				rendererState.backend = nextReady ? next.backend : null;
 				rendererState.renderer = nextReady ? currentRenderer : null;
 				onReady?.(nextReady);
+				onRendererState?.(nextReady ? rendererState : null);
 			}
 			rendererState.generation = next.generation;
 			ready = nextReady;
@@ -108,7 +112,10 @@
 	lifecycle.begin();
 	// Teardown must clear the episode timer even when the Canvas subtree already
 	// retired the generation.
-	onDestroy(() => lifecycle.dispose());
+	onDestroy(() => {
+		lifecycle.dispose();
+		onRendererState?.(null);
+	});
 
 	/**
 	 * The existing pointer-cancel seam, not a second gesture authority: the Stage

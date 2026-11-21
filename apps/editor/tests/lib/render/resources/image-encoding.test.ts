@@ -60,9 +60,38 @@ function jpeg(options: {
 	precision?: number;
 	components?: number;
 	orientation?: number;
+	icc?: string;
 } = {}): Uint8Array {
 	const components = options.components ?? 3;
 	const parts: Uint8Array[] = [Uint8Array.from([0xff, 0xd8])];
+	if (options.icc !== undefined) {
+		const text = new Uint8Array(options.icc.length + 1);
+		for (let index = 0; index < options.icc.length; index += 1) text[index] = options.icc.charCodeAt(index);
+		const desc = new Uint8Array(12 + text.length);
+		desc.set([0x64, 0x65, 0x73, 0x63], 0);
+		new DataView(desc.buffer).setUint32(8, text.length);
+		desc.set(text, 12);
+		const profile = new Uint8Array(144 + desc.length);
+		const profileView = new DataView(profile.buffer);
+		profileView.setUint32(0, profile.length);
+		profile.set([0x52, 0x47, 0x42, 0x20], 16);
+		profileView.setUint32(128, 1);
+		profile.set([0x64, 0x65, 0x73, 0x63], 132);
+		profileView.setUint32(136, 144);
+		profileView.setUint32(140, desc.length);
+		profile.set(desc, 144);
+		const header = new Uint8Array(14);
+		header.set([0x49, 0x43, 0x43, 0x5f, 0x50, 0x52, 0x4f, 0x46, 0x49, 0x4c, 0x45, 0], 0);
+		header[12] = 1;
+		header[13] = 1;
+		const payload = concat([header, profile]);
+		const app2 = new Uint8Array(4 + payload.length);
+		app2[0] = 0xff;
+		app2[1] = 0xe2;
+		new DataView(app2.buffer).setUint16(2, 2 + payload.length);
+		app2.set(payload, 4);
+		parts.push(app2);
+	}
 	if (options.orientation !== undefined && options.orientation !== 1) {
 		const payload = exifOrientation(options.orientation);
 		const app1 = new Uint8Array(4 + payload.length);
@@ -166,6 +195,19 @@ describe('raw material map headers', () => {
 
 	it('refuses an EXIF-oriented JPEG raw map', () => {
 		expect(() => probeRawImage(jpeg({ orientation: 8 }))).toThrow(/EXIF orientation/);
+	});
+
+	it('accepts a JPEG tagged as standard sRGB and refuses an unverified ICC profile', () => {
+		expect(probeRawImage(jpeg({ icc: 'sRGB IEC61966-2.1' }))).toMatchObject({
+			channels: 3,
+			bitDepth: 8
+		});
+		expect(() => probeRawImage(jpeg({ icc: 'Display P3' }))).toThrow(
+			/ICC profile that is not verified as standard sRGB/
+		);
+		expect(() => probeRawImage(jpeg({ icc: 'Adobe RGB (1998)' }))).toThrow(
+			/ICC profile that is not verified as standard sRGB/
+		);
 	});
 
 	it('accepts a static WebP and refuses an animated one', () => {

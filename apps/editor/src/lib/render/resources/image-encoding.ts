@@ -68,6 +68,92 @@ function exifOrientation(bytes: Uint8Array): number | undefined {
 	return undefined;
 }
 
+type IccSegment = { sequence: number; total: number; data: Uint8Array };
+
+/** Read an ICC `desc` or `mluc` tag. The profile is untrusted input. */
+function iccDescription(profile: Uint8Array, offset: number, size: number): string | undefined {
+	const view = viewOf(profile);
+	const end = offset + size;
+	if (offset < 0 || size < 12 || end > profile.length) return undefined;
+	const type = String.fromCharCode(
+		profile[offset]!,
+		profile[offset + 1]!,
+		profile[offset + 2]!,
+		profile[offset + 3]!
+	);
+	if (type === 'desc') {
+		const length = view.getUint32(offset + 8);
+		if (length === 0 || length > 512 || 12 + length > size) return undefined;
+		return String.fromCharCode(...profile.subarray(offset + 12, offset + 12 + length)).replace(/\0+$/, '');
+	}
+	if (type === 'mluc') {
+		const records = view.getUint32(offset + 8);
+		const recordSize = view.getUint32(offset + 12);
+		if (records < 1 || recordSize < 12 || 16 + recordSize > size) return undefined;
+		const length = view.getUint32(offset + 20);
+		const textOffset = view.getUint32(offset + 24);
+		if (
+			length < 2 ||
+			length > 1024 ||
+			length % 2 !== 0 ||
+			textOffset < offset ||
+			textOffset + length > end
+		) {
+			return undefined;
+		}
+		const units: number[] = [];
+		for (let index = 0; index < length; index += 2) {
+			units.push(view.getUint16(textOffset + index));
+		}
+		return String.fromCharCode(...units).replace(/\0+$/, '');
+	}
+	return undefined;
+}
+
+/**
+ * Admit only an ICC profile that identifies itself as the standard sRGB space.
+ * JPEG has no portable sRGB chunk, so an absent profile is the untagged case;
+ * any other profile is potentially wide-gamut and must not be accepted
+ * silently.
+ */
+function jpegIccDescription(segments: readonly IccSegment[]): string | undefined {
+	if (segments.length === 0) return undefined;
+	const total = segments[0]!.total;
+	if (total < 1 || segments.length !== total) return undefined;
+	const ordered = [...segments].sort((left, right) => left.sequence - right.sequence);
+	if (ordered.some((segment, index) => segment.total !== total || segment.sequence !== index + 1)) {
+		return undefined;
+	}
+	const length = ordered.reduce((sum, segment) => sum + segment.data.length, 0);
+	if (length < 132) return undefined;
+	const profile = new Uint8Array(length);
+	let cursor = 0;
+	for (const segment of ordered) {
+		profile.set(segment.data, cursor);
+		cursor += segment.data.length;
+	}
+	const view = viewOf(profile);
+	if (view.getUint32(0) > profile.length) return undefined;
+	const colourSpace = String.fromCharCode(
+		profile[16]!,
+		profile[17]!,
+		profile[18]!,
+		profile[19]!
+	);
+	if (colourSpace !== 'RGB ' && colourSpace !== 'GRAY') return undefined;
+	const tags = view.getUint32(128);
+	if (tags > 256 || 132 + tags * 12 > profile.length) return undefined;
+	for (let index = 0; index < tags; index += 1) {
+		const entry = 132 + index * 12;
+		if (!matches(profile, entry, 'desc')) continue;
+		const offset = view.getUint32(entry + 4);
+		const size = view.getUint32(entry + 8);
+		if (size < 12 || offset + size > profile.length) continue;
+		return iccDescription(profile, offset, size);
+	}
+	return undefined;
+}
+
 function png(bytes: Uint8Array, view: DataView): RawImageEncoding {
 	if (bytes.length < 33 || view.getUint32(8) !== 13 || !matches(bytes, 12, 'IHDR')) return invalid();
 	const width = view.getUint32(16);
@@ -136,7 +222,7 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 	let width = 0;
 	let height = 0;
 	let channels: 1 | 2 | 3 | 4 | undefined;
-	let hasIcc = false;
+	const iccSegments: IccSegment[] = [];
 	for (let offset = 2; offset + 4 <= bytes.length; ) {
 		if (bytes[offset++] !== 0xff) return invalid();
 		while (bytes[offset] === 0xff) offset += 1;
@@ -149,8 +235,15 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 		if (marker === 0xe1 && size >= 8 && matches(bytes, payload, 'Exif\0\0')) {
 			orientation ??= exifOrientation(bytes.subarray(payload + 6, offset + size));
 		}
-		if (marker === 0xe2 && size >= 14 && matches(bytes, payload, 'ICC_PROFILE\0')) {
-			hasIcc = true;
+		if (marker === 0xe2 && size >= 16 && matches(bytes, payload, 'ICC_PROFILE\0')) {
+			const sequence = bytes[payload + 12]!;
+			const total = bytes[payload + 13]!;
+			if (sequence < 1 || total < 1 || sequence > total) return invalid();
+			iccSegments.push({
+				sequence,
+				total,
+				data: bytes.subarray(payload + 14, offset + size)
+			});
 		}
 		if ([0xc0, 0xc1, 0xc2].includes(marker) && size >= 8) {
 			precision = view.getUint8(payload);
@@ -179,9 +272,15 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 			'Re-export the map without rotation.'
 		);
 	}
-	// JPEG has no standard sRGB marker when untagged; an ICC profile may still
-	// describe a non-sRGB space, but browsers expose no portable profile id here.
-	void hasIcc;
+	if (iccSegments.length > 0) {
+		const description = jpegIccDescription(iccSegments);
+		if (description === undefined || !/\bsrgb\b/i.test(description)) {
+			return unsupported(
+				'the JPEG carries an ICC profile that is not verified as standard sRGB',
+				'Re-export the map as untagged sRGB or with the standard sRGB IEC61966-2.1 profile.'
+			);
+		}
+	}
 	return { mime: 'image/jpeg', width, height, channels: channels ?? 3, bitDepth: 8 };
 }
 

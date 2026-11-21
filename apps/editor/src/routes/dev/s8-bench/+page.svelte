@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import CanvasHost from '$lib/render/CanvasHost.svelte';
 	import BenchReadback from './BenchReadback.svelte';
 	import type { Material, Texture } from 'three';
@@ -17,6 +17,7 @@
 	} from '$lib/render/resources/finish-sampling';
 	import { loadFinishTexture } from '$lib/render/resources/texture-store';
 	import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+	import type { CanvasRendererState } from '$lib/render/renderer-context';
 
 	type Channel = 'lit' | 'unlit-color' | 'color' | 'roughness' | 'occlusion';
 
@@ -31,6 +32,7 @@
 	let material = $state<Material | null>(null);
 	let geometry = $state(createInspectionGeometry('sphere').geometry);
 	let pose = $derived(inspectionPose(kind));
+	let rendererState = $state<CanvasRendererState | null>(null);
 
 	const rig: InspectionRig = 'grazing';
 	const lighting = createInspectionLighting(rig);
@@ -115,7 +117,10 @@
 
 	$effect(() => {
 		channel;
-		rebuild();
+		views;
+		// `rebuild` disposes and replaces `material`; track the inputs, not its
+		// own write, or the effect would schedule itself forever.
+		untrack(rebuild);
 	});
 
 	onDestroy(() => {
@@ -150,10 +155,16 @@
 			{/each}
 		</div>
 		<p>Rig: grazing (reference studio runs in the headless chart test).</p>
+		<BenchReadback {material} {kind} {rig} renderer={rendererState?.renderer ?? null} />
 	</div>
 
 	<div class="viewport">
-		<CanvasHost surface="preview" renderMode="always" placeholder="#555">
+		<CanvasHost
+			surface="preview"
+			renderMode="always"
+			placeholder="#555"
+			onRendererState={(state) => (rendererState = state)}
+		>
 			<T.PerspectiveCamera
 				makeDefault
 				fov={pose.fovYDegrees}
@@ -164,7 +175,6 @@
 			{#if material !== null}
 				<T.Mesh geometry={geometry} {material} />
 			{/if}
-			<BenchReadback {material} {kind} {rig} />
 		</CanvasHost>
 	</div>
 </main>

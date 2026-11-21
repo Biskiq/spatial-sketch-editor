@@ -235,6 +235,30 @@ describe('finish view leases', () => {
 		expect(finishViewStats()).toMatchObject({ live: 0, generations: { 'canvas-a': 1 } });
 	});
 
+	it('rejects a stale token before loading or leasing anything', async () => {
+		let loads = 0;
+		setDefaultTextureSourceLoader(async () => {
+			loads += 1;
+			return imageTexture();
+		});
+		setFinishViewGeneration('canvas-a', 1);
+		const lease = await acquireFinishViews(
+			[{ view: 'colour', uri: '/stale.png', role: 'color' }],
+			null,
+			undefined,
+			{ owner: 'canvas-a', generation: 0 }
+		);
+
+		expect(lease.views).toEqual({});
+		expect(lease.issues[0]).toMatchObject({ code: 'generation-mismatch' });
+		expect(loads).toBe(0);
+		expect(finishViewStats()).toMatchObject({
+			live: 0,
+			created: 0,
+			generations: { 'canvas-a': 1 }
+		});
+	});
+
 	it('does not refuse one Canvas when another Canvas recovers', async () => {
 		let resolve: ((texture: Texture) => void) | undefined;
 		setDefaultTextureSourceLoader(

@@ -386,7 +386,10 @@ export async function acquireFinishViews(
 	const scopeId = scope?.scopeId ?? 'global';
 	const key = `${scopeId}::${ordered.map((entry) => entry.view).join('|')}`;
 	const owner = viewGeneration?.owner ?? GLOBAL_OWNER;
-	const startedGeneration = viewGeneration === undefined ? 0 : latestGeneration(owner);
+	// The supplied token is the admission proof, not a hint. Reading the latest
+	// generation here would admit a token that was already stale when the caller
+	// received it, and the resulting lease would belong to a dead Canvas.
+	const startedGeneration = viewGeneration?.generation ?? 0;
 	/** Only an owned generation can be lost; an unowned acquisition is never refused. */
 	const generationLost = (): boolean =>
 		viewGeneration !== undefined && latestGeneration(owner) !== startedGeneration;
@@ -434,6 +437,13 @@ export async function acquireFinishViews(
 
 	if (signal?.aborted) {
 		issues.push({ code: 'cancelled', action: 'Retry when the inspection is visible.' });
+		return abort();
+	}
+	if (viewGeneration !== undefined && latestGeneration(owner) !== startedGeneration) {
+		issues.push({
+			code: 'generation-mismatch',
+			action: 'Wait for the recovered Canvas, then requalify.'
+		});
 		return abort();
 	}
 
