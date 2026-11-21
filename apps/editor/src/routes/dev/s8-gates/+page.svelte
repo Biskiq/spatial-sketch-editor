@@ -6,7 +6,16 @@
 	 * `?gate=highlight` draws the frozen 192 px studio sphere at roughness 0.2 and
 	 * 0.8 through the production inspection readback. `?gate=residency` steps the
 	 * real Finish-view cache through the plan's 128/192/256/384 MiB targets and
-	 * adds one 4096² RGBA8 transient upload at each step.
+	 * adds one 4096² RGBA8 transient **with its complete mip chain** at each step.
+	 * On WebGPU the transient runs inside out-of-memory and validation error
+	 * scopes; on WebGL2 the context and `getError` are checked. A step whose
+	 * allocation reports an error, loses the device or exceeds the time budget is
+	 * a failure, not a recovery.
+	 *
+	 * The highlight gate reads peak and connected half-peak area from a linear
+	 * half-float readback of the same scene, and clipping from the production
+	 * 8-bit sRGB thumbnail, as the plan's "linear metal-sphere highlight" with
+	 * "<1% clipped in final sRGB" requires.
 	 *
 	 * The page reports what it observed. It does not label a software WebGL2
 	 * adapter as the M2 GPU, and it does not turn a completed allocation into a
@@ -15,11 +24,15 @@
 	import { onDestroy } from 'svelte';
 	import { T } from '@threlte/core';
 	import {
+		Color,
 		DataTexture,
+		HalfFloatType,
 		LinearFilter,
 		LinearMipmapLinearFilter,
+		LinearSRGBColorSpace,
 		NoColorSpace,
 		PerspectiveCamera,
+		RenderTarget,
 		RGBAFormat,
 		Scene,
 		UnsignedByteType,
@@ -48,16 +61,24 @@
 	import { createMaterialStore, type MaterialStore } from '$lib/render/resources/material-store';
 	import {
 		S8_RESIDENCY_TARGETS_MIB,
+		S8_TRANSIENT_BYTES,
+		S8_TRANSIENT_LEVELS,
 		analyzeHighlightFrame,
+		analyzeLinearHighlight,
+		createResidencyTransient,
 		highlightVerdict,
 		residencyViewsForTarget,
-		type HighlightMetric
+		type HighlightMetric,
+		type LinearHighlightMetric
 	} from '$lib/dev/s8-gate-metrics';
 
 	type GateName = 'highlight' | 'residency';
 	type HighlightVariant = {
 		radianceScale: number;
+		/** Outside the plan's nominal → half sequence; recorded, never adopted. */
+		exploratory?: boolean;
 		metrics: HighlightMetric[];
+		linear: LinearHighlightMetric[];
 		peakRatio: number;
 		pass: boolean;
 		reasons: string[];
@@ -69,6 +90,7 @@
 		softwareAdapter: boolean;
 		dpr: number;
 		variants: HighlightVariant[];
+		exploratory: HighlightVariant[];
 		adoptedRadianceScale: number | null;
 		pass: boolean;
 		reasons: string[];
@@ -79,6 +101,10 @@
 		views: number;
 		uploadMs: number;
 		transientMs: number;
+		transientBytes: number;
+		transientLevelsExpected: number;
+		transientLevelsObserved: number | null;
+		transientErrors: string[];
 		recovered: boolean;
 	};
 	type ResidencyResult = {
@@ -99,6 +125,15 @@
 	const STEP_BUDGET_MS = 20_000;
 	const gate = (page.url.searchParams.get('gate') ?? 'highlight') as GateName;
 	const requestedDpr = Number(page.url.searchParams.get('dpr') ?? '1');
+	/**
+	 * Optional exploratory scales for an owner decision (e.g. `?explore=0.25`).
+	 * The plan permits exactly nominal and one half-radiance retry; anything here
+	 * is evidence for a recipe change, never an adopted rig or a gate pass.
+	 */
+	const exploreScales = (page.url.searchParams.get('explore') ?? '')
+		.split(',')
+		.map(Number)
+		.filter((value) => Number.isFinite(value) && value > 0 && value !== 1 && value !== 0.5);
 
 	let rendererState = $state<CanvasRendererState | null>(null);
 	let status = $state('waiting for a renderer');
@@ -141,12 +176,81 @@
 		}
 	}
 
+	function halfToFloat(bits: number): number {
+		const sign = bits & 0x8000 ? -1 : 1;
+		const exponent = (bits >> 10) & 0x1f;
+		const fraction = bits & 0x3ff;
+		if (exponent === 0) return sign * fraction * 2 ** -24;
+		if (exponent === 31) return fraction === 0 ? sign * Infinity : Number.NaN;
+		return sign * (1 + fraction / 1024) * 2 ** (exponent - 15);
+	}
+
+	/**
+	 * Dev-only linear reading of the same inspection scene: a half-float linear
+	 * target, transparent clear and no scene background, so alpha marks the
+	 * subject and radiance above 1 survives. Every renderer/scene mutation is
+	 * restored.
+	 */
+	async function renderLinearFrame(
+		renderer: WebGPURenderer,
+		scene: Scene,
+		camera: PerspectiveCamera,
+		size: number
+	): Promise<{ pixels: Float32Array; width: number; height: number }> {
+		const target = new RenderTarget(size, size, {
+			type: HalfFloatType,
+			colorSpace: LinearSRGBColorSpace,
+			samples: 0,
+			depthBuffer: true
+		});
+		const r = renderer as unknown as {
+			getRenderTarget(): unknown;
+			setRenderTarget(value: unknown): void;
+			getClearColor(value: Color): Color;
+			getClearAlpha(): number;
+			setClearColor(value: Color | string, alpha: number): void;
+			clear(): void;
+			render(scene: Scene, camera: PerspectiveCamera): void;
+			readRenderTargetPixelsAsync(
+				target: RenderTarget,
+				x: number,
+				y: number,
+				w: number,
+				h: number
+			): Promise<ArrayLike<number>>;
+		};
+		const previousTarget = r.getRenderTarget();
+		const previousColor = r.getClearColor(new Color());
+		const previousAlpha = r.getClearAlpha();
+		const previousBackground = scene.background;
+		try {
+			scene.background = null;
+			r.setRenderTarget(target);
+			r.setClearColor('#000000', 0);
+			r.clear();
+			r.render(scene, camera);
+			const raw = await r.readRenderTargetPixelsAsync(target, 0, 0, size, size);
+			const pixels = new Float32Array(size * size * 4);
+			const isHalf = raw instanceof Uint16Array;
+			for (let index = 0; index < pixels.length; index += 1) {
+				pixels[index] = isHalf ? halfToFloat(raw[index]!) : Number(raw[index]);
+			}
+			return { pixels, width: size, height: size };
+		} finally {
+			scene.background = previousBackground;
+			r.setRenderTarget(previousTarget);
+			r.setClearColor(previousColor, previousAlpha);
+			target.dispose();
+		}
+	}
+
 	async function renderHighlightVariant(
 		renderer: WebGPURenderer,
 		radianceScale: number,
 		store: MaterialStore
 	): Promise<HighlightVariant> {
 		const metrics: HighlightMetric[] = [];
+		const linear: LinearHighlightMetric[] = [];
 		for (const roughness of [0.2, 0.8]) {
 			const lease = store.acquire({
 				kind: 'standard',
@@ -170,24 +274,34 @@
 				});
 				if (frame === null) throw new Error(`The ${roughness} inspection readback was refused.`);
 				metrics.push(analyzeHighlightFrame(frame, roughness));
+				linear.push(
+					analyzeLinearHighlight(
+						await renderLinearFrame(renderer, inspection.scene, inspection.camera, 192),
+						roughness
+					)
+				);
 			} finally {
 				inspection.dispose();
 				lease.release();
 			}
 		}
 		const [low, high] = metrics;
-		const verdict = highlightVerdict(low!, high!);
-		return { radianceScale, metrics, ...verdict };
+		const verdict = highlightVerdict(low!, high!, { low: linear[0]!, high: linear[1]! });
+		return { radianceScale, metrics, linear, ...verdict };
 	}
 
 	async function runHighlight(renderer: WebGPURenderer): Promise<HighlightResult> {
 		const store = createMaterialStore();
 		let nominal: HighlightVariant;
 		const variants: HighlightVariant[] = [];
+		const exploratory: HighlightVariant[] = [];
 		try {
 			nominal = await renderHighlightVariant(renderer, 1, store);
 			variants.push(nominal);
 			if (!nominal.pass) variants.push(await renderHighlightVariant(renderer, 0.5, store));
+			for (const scale of exploreScales) {
+				exploratory.push({ ...(await renderHighlightVariant(renderer, scale, store)), exploratory: true });
+			}
 		} finally {
 			store.dispose();
 		}
@@ -200,6 +314,7 @@
 			softwareAdapter: adapter.software,
 			dpr: requestedDpr,
 			variants,
+			exploratory,
 			adoptedRadianceScale: adopted?.radianceScale ?? null,
 			pass: adopted !== null,
 			reasons: adopted === null
@@ -233,6 +348,82 @@
 		await initTexture.call(renderer, texture);
 	}
 
+	type GpuDevice = {
+		pushErrorScope(filter: 'out-of-memory' | 'validation'): void;
+		popErrorScope(): Promise<{ message: string } | null>;
+		lost: Promise<{ message: string }>;
+	};
+	let deviceLost: string | null = null;
+
+	function backendOf(renderer: WebGPURenderer): {
+		device?: GpuDevice;
+		gl?: WebGL2RenderingContext;
+		get(texture: Texture): Record<string, unknown> | undefined;
+	} {
+		return (renderer as unknown as { backend: ReturnType<typeof backendOf> }).backend;
+	}
+
+	/**
+	 * Observe allocation failure the backend would otherwise report
+	 * asynchronously: WebGPU error scopes and device loss, or a lost WebGL2
+	 * context / GL_OUT_OF_MEMORY.
+	 */
+	function beginAllocationProbe(renderer: WebGPURenderer): { end(): Promise<string[]> } {
+		const backend = backendOf(renderer);
+		const device = backend.device;
+		if (device !== undefined) {
+			void device.lost.then((info) => (deviceLost = info.message || 'device lost'));
+			device.pushErrorScope('out-of-memory');
+			device.pushErrorScope('validation');
+			return {
+				async end() {
+					const validation = await device.popErrorScope();
+					const memory = await device.popErrorScope();
+					const errors: string[] = [];
+					if (memory !== null) errors.push(`out-of-memory: ${memory.message}`);
+					if (validation !== null) errors.push(`validation: ${validation.message}`);
+					if (deviceLost !== null) errors.push(`device lost: ${deviceLost}`);
+					return errors;
+				}
+			};
+		}
+		const gl = backend.gl;
+		// Drain stale flags so the reading belongs to this allocation. Bounded: a
+		// lost context reports CONTEXT_LOST_WEBGL on every call.
+		for (let drain = 0; gl !== undefined && drain < 16; drain += 1) {
+			if (gl.getError() === gl.NO_ERROR) break;
+		}
+		return {
+			async end() {
+				if (gl === undefined) return ['no backend error channel'];
+				const errors: string[] = [];
+				if (gl.isContextLost()) errors.push('context lost');
+				const code = gl.getError();
+				if (code === gl.OUT_OF_MEMORY) errors.push('GL_OUT_OF_MEMORY');
+				else if (code !== gl.NO_ERROR) errors.push(`GL error 0x${code.toString(16)}`);
+				return errors;
+			}
+		};
+	}
+
+	/** The mip levels the backend actually allocated for `texture`, when readable. */
+	function observedMipLevels(renderer: WebGPURenderer, texture: Texture): number | null {
+		const backend = backendOf(renderer);
+		const data = backend.get(texture);
+		if (backend.device !== undefined) {
+			const gpu = data?.texture as { mipLevelCount?: number } | undefined;
+			return typeof gpu?.mipLevelCount === 'number' ? gpu.mipLevelCount : null;
+		}
+		const gl = backend.gl;
+		const handle = data?.textureGPU as WebGLTexture | undefined;
+		if (gl === undefined || handle === undefined) return null;
+		const previous = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
+		gl.bindTexture(gl.TEXTURE_2D, handle);
+		const levels = gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_IMMUTABLE_LEVELS) as number | null;
+		gl.bindTexture(gl.TEXTURE_2D, previous);
+		return typeof levels === 'number' && levels > 0 ? levels : null;
+	}
+
 	async function runResidency(renderer: WebGPURenderer): Promise<ResidencyResult> {
 		const scopeId = `gate-residency-${Date.now().toString(36)}`;
 		const owner = `gate-residency-${Math.random().toString(36).slice(2)}`;
@@ -263,26 +454,39 @@
 					firstFailure = `${targetMiB} MiB: ${lease.issues[0]!.code}`;
 					break;
 				}
+				const steadyProbe = beginAllocationProbe(renderer);
 				for (const texture of Object.values(lease.views)) await upload(renderer, texture);
+				const steadyErrors = await steadyProbe.end();
 				const uploadMs = performance.now() - startedAt;
+				if (steadyErrors.length > 0) {
+					firstFailure = `${targetMiB} MiB steady upload: ${steadyErrors[0]}`;
+					break;
+				}
 				if (uploadMs > STEP_BUDGET_MS) {
 					firstFailure = `${targetMiB} MiB: upload took ${Math.round(uploadMs)} ms`;
 					break;
 				}
-				// A transient upload beyond the proposed steady ceiling. It is released
-				// immediately, so the next step starts from the steady working set.
+				// A transient upload beyond the proposed steady ceiling, with its full
+				// mip chain. It is released immediately, so the next step starts from
+				// the steady working set.
 				const transientStarted = performance.now();
-				const transient = new DataTexture(
-					new Uint8Array(4096 * 4096 * 4),
-					4096,
-					4096,
-					RGBAFormat,
-					UnsignedByteType
-				);
+				const transient = createResidencyTransient();
 				let recovered = true;
+				let transientErrors: string[] = [];
+				let transientLevelsObserved: number | null = null;
 				try {
+					const probe = beginAllocationProbe(renderer);
 					await upload(renderer, transient);
 					renderer.render(new Scene(), new PerspectiveCamera());
+					transientLevelsObserved = observedMipLevels(renderer, transient);
+					transientErrors = await probe.end();
+					if (transientErrors.length > 0) {
+						recovered = false;
+						firstFailure = `${targetMiB} MiB transient: ${transientErrors[0]}`;
+					} else if (transientLevelsObserved !== null && transientLevelsObserved < S8_TRANSIENT_LEVELS) {
+						recovered = false;
+						firstFailure = `${targetMiB} MiB transient allocated ${transientLevelsObserved}/${S8_TRANSIENT_LEVELS} mip levels`;
+					}
 				} catch (error) {
 					recovered = false;
 					firstFailure = `${targetMiB} MiB transient: ${error instanceof Error ? error.message : String(error)}`;
@@ -300,6 +504,10 @@
 					views: previousViews,
 					uploadMs,
 					transientMs,
+					transientBytes: S8_TRANSIENT_BYTES,
+					transientLevelsExpected: S8_TRANSIENT_LEVELS,
+					transientLevelsObserved,
+					transientErrors,
 					recovered
 				});
 				if (!recovered) break;
@@ -323,7 +531,7 @@
 			steps,
 			firstFailure,
 			maxPassedMiB,
-			note: 'Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading.'
+			note: 'Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading.'
 		};
 	}
 

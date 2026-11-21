@@ -1024,6 +1024,30 @@ export function releaseFinishTexture(
   return true;
 }
 
+/**
+ * Hand one loaded Finish source to its still-leased view, without disposing it.
+ *
+ * Scope teardown (`releaseTextureScope`) disposes every source the scope still
+ * caches. A Finish view that a live material is still sampling must not lose its
+ * texture there: the view cache retires that entry and disposes the texture at
+ * its final lease release. Detaching removes the source key (so nothing can join
+ * or reinstall it, and live source bytes drop at teardown) and transfers the
+ * single disposal duty to the view cache.
+ *
+ * @returns whether a loaded texture was detached.
+ */
+export function detachFinishTexture(
+  uri: string,
+  role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
+  scope?: TextureLoadScope | TextureScopeKey | null
+): boolean {
+  const key = sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
+  const entry = sourceCache.get(key);
+  if (entry === undefined || entry.texture === undefined) return false;
+  removeSourceEntry(key, entry);
+  return true;
+}
+
 export function releaseEffectiveVariant(
   seed: string,
   repeatX: number,

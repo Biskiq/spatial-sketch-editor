@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-21T00:41:29.314Z",
+  "capturedAt": "2026-11-21T02:10:54.478Z",
   "cases": {
     "webgl2/highlight@1": {
       "requestedBackend": "webgl2",
@@ -9,8 +9,8 @@
       "result": {
         "gate": "highlight",
         "backend": "webgl2",
-        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
-        "softwareAdapter": true,
+        "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+        "softwareAdapter": false,
         "dpr": 1,
         "variants": [
           {
@@ -19,19 +19,37 @@
               {
                 "roughness": 0.2,
                 "peakLinear": 1,
-                "halfPeakLargestComponent": 1606,
-                "clippedFraction": 0.11773351578733972,
-                "subjectPixels": 19731
+                "halfPeakLargestComponent": 1603,
+                "clippedFraction": 0.11630264024730147,
+                "nearClipFraction": 0.11787361272994476,
+                "subjectPixels": 19733
               },
               {
                 "roughness": 0.8,
-                "peakLinear": 0.7529422167760778,
-                "halfPeakLargestComponent": 7482,
+                "peakLinear": 0.7605245046752924,
+                "halfPeakLargestComponent": 7422,
                 "clippedFraction": 0,
-                "subjectPixels": 19731
+                "nearClipFraction": 0,
+                "subjectPixels": 19733
               }
             ],
-            "peakRatio": 1.3281231649910212,
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 3.9101562499999996,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0.1160999341205088,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.7622070312499999,
+                "halfPeakLargestComponent": 7360,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130044843049328,
             "pass": false,
             "reasons": [
               "clipped subject pixels are not below 1%"
@@ -43,23 +61,125 @@
               {
                 "roughness": 0.2,
                 "peakLinear": 1,
-                "halfPeakLargestComponent": 1257,
-                "clippedFraction": 0.04304409523308982,
-                "subjectPixels": 19027
+                "halfPeakLargestComponent": 1259,
+                "clippedFraction": 0.042181665176458216,
+                "nearClipFraction": 0.0430231946562878,
+                "subjectPixels": 19013
               },
               {
                 "roughness": 0.8,
-                "peakLinear": 0.3762621229909065,
-                "halfPeakLargestComponent": 7470,
+                "peakLinear": 0.38132601143253014,
+                "halfPeakLargestComponent": 7412,
                 "clippedFraction": 0,
+                "nearClipFraction": 0,
                 "subjectPixels": 18920
               }
             ],
-            "peakRatio": 2.657721675652609,
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1.9550781249999998,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0.040541225358536465,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.38110351562499994,
+                "halfPeakLargestComponent": 7360,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130044843049328,
             "pass": false,
             "reasons": [
               "clipped subject pixels are not below 1%"
             ]
+          }
+        ],
+        "exploratory": [
+          {
+            "radianceScale": 0.25,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.9734452903984125,
+                "halfPeakLargestComponent": 811,
+                "clippedFraction": 0,
+                "nearClipFraction": 0.00909694894465171,
+                "subjectPixels": 19567
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.19120168274079136,
+                "halfPeakLargestComponent": 7213,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 17120
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.9775390624999999,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.19055175781249997,
+                "halfPeakLargestComponent": 7360,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130044843049328,
+            "pass": true,
+            "reasons": [],
+            "exploratory": true
+          },
+          {
+            "radianceScale": 0.2,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.7835377915261935,
+                "halfPeakLargestComponent": 809,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 19603
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.15292615199615017,
+                "halfPeakLargestComponent": 4538,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 17688
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.7822265625,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.15246582031249997,
+                "halfPeakLargestComponent": 7356,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130504403522819,
+            "pass": true,
+            "reasons": [],
+            "exploratory": true
           }
         ],
         "adoptedRadianceScale": null,
@@ -79,46 +199,62 @@
       "result": {
         "gate": "residency",
         "backend": "webgl2",
-        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
-        "softwareAdapter": true,
+        "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+        "softwareAdapter": false,
         "dpr": 1,
         "steps": [
           {
             "targetMiB": 128,
             "estimatedBytes": 134217696,
             "views": 24,
-            "uploadMs": 77.90000003576279,
-            "transientMs": 42.69999998807907,
+            "uploadMs": 180.9000000357628,
+            "transientMs": 56,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 192,
             "estimatedBytes": 201326544,
             "views": 36,
-            "uploadMs": 19.30000001192093,
-            "transientMs": 0.800000011920929,
+            "uploadMs": 90.30000001192093,
+            "transientMs": 28.399999976158142,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 256,
             "estimatedBytes": 268435392,
             "views": 48,
-            "uploadMs": 27.30000001192093,
-            "transientMs": 4.300000011920929,
+            "uploadMs": 86.20000004768372,
+            "transientMs": 19.299999952316284,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 384,
             "estimatedBytes": 402653088,
             "views": 72,
-            "uploadMs": 49.80000001192093,
-            "transientMs": 0.6000000238418579,
+            "uploadMs": 195.4000000357628,
+            "transientMs": 14.599999964237213,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           }
         ],
         "firstFailure": null,
         "maxPassedMiB": 384,
-        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+        "note": "Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading."
       },
       "errors": []
     },
@@ -130,46 +266,62 @@
       "result": {
         "gate": "residency",
         "backend": "webgl2",
-        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
-        "softwareAdapter": true,
+        "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+        "softwareAdapter": false,
         "dpr": 1.5,
         "steps": [
           {
             "targetMiB": 128,
             "estimatedBytes": 134217696,
             "views": 24,
-            "uploadMs": 37.59999996423721,
-            "transientMs": 31.80000001192093,
+            "uploadMs": 182.19999998807907,
+            "transientMs": 32,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 192,
             "estimatedBytes": 201326544,
             "views": 36,
-            "uploadMs": 15.199999988079071,
-            "transientMs": 0.6000000238418579,
+            "uploadMs": 86.89999997615814,
+            "transientMs": 14.699999988079071,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 256,
             "estimatedBytes": 268435392,
             "views": 48,
-            "uploadMs": 13.699999988079071,
-            "transientMs": 1.600000023841858,
+            "uploadMs": 87.10000002384186,
+            "transientMs": 15.300000011920929,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 384,
             "estimatedBytes": 402653088,
             "views": 72,
-            "uploadMs": 23.5,
-            "transientMs": 0.5999999642372131,
+            "uploadMs": 206.19999998807907,
+            "transientMs": 16.400000035762787,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           }
         ],
         "firstFailure": null,
         "maxPassedMiB": 384,
-        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+        "note": "Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading."
       },
       "errors": []
     },
@@ -192,7 +344,8 @@
                 "roughness": 0.2,
                 "peakLinear": 1,
                 "halfPeakLargestComponent": 1603,
-                "clippedFraction": 0.11787361272994476,
+                "clippedFraction": 0.11630264024730147,
+                "nearClipFraction": 0.11787361272994476,
                 "subjectPixels": 19733
               },
               {
@@ -200,10 +353,27 @@
                 "peakLinear": 0.7605245046752924,
                 "halfPeakLargestComponent": 7422,
                 "clippedFraction": 0,
+                "nearClipFraction": 0,
                 "subjectPixels": 19733
               }
             ],
-            "peakRatio": 1.3148820239881056,
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 3.9101562499999996,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0.1160999341205088,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.7622070312499999,
+                "halfPeakLargestComponent": 7359,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130044843049328,
             "pass": false,
             "reasons": [
               "clipped subject pixels are not below 1%"
@@ -216,7 +386,8 @@
                 "roughness": 0.2,
                 "peakLinear": 1,
                 "halfPeakLargestComponent": 1259,
-                "clippedFraction": 0.043029984218832196,
+                "clippedFraction": 0.04218832193582325,
+                "nearClipFraction": 0.043029984218832196,
                 "subjectPixels": 19010
               },
               {
@@ -224,14 +395,115 @@
                 "peakLinear": 0.38132601143253014,
                 "halfPeakLargestComponent": 7410,
                 "clippedFraction": 0,
+                "nearClipFraction": 0,
                 "subjectPixels": 18921
               }
             ],
-            "peakRatio": 2.622427975063366,
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1.9550781249999998,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0.040541225358536465,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.38110351562499994,
+                "halfPeakLargestComponent": 7359,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130044843049328,
             "pass": false,
             "reasons": [
               "clipped subject pixels are not below 1%"
             ]
+          }
+        ],
+        "exploratory": [
+          {
+            "radianceScale": 0.25,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.9734452903984125,
+                "halfPeakLargestComponent": 811,
+                "clippedFraction": 0,
+                "nearClipFraction": 0.00909694894465171,
+                "subjectPixels": 19567
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.19120168274079136,
+                "halfPeakLargestComponent": 7211,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 17116
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.9775390624999999,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.19055175781249997,
+                "halfPeakLargestComponent": 7359,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.130044843049328,
+            "pass": true,
+            "reasons": [],
+            "exploratory": true
+          },
+          {
+            "radianceScale": 0.2,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.7835377915261935,
+                "halfPeakLargestComponent": 809,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 19603
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.15292615199615017,
+                "halfPeakLargestComponent": 4540,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 17692
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.7822265625,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.152587890625,
+                "halfPeakLargestComponent": 7344,
+                "overOneFraction": 0,
+                "subjectPixels": 19733
+              }
+            ],
+            "peakRatio": 5.1264,
+            "pass": true,
+            "reasons": [],
+            "exploratory": true
           }
         ],
         "adoptedRadianceScale": null,
@@ -259,38 +531,54 @@
             "targetMiB": 128,
             "estimatedBytes": 134217696,
             "views": 24,
-            "uploadMs": 37.19999998807907,
-            "transientMs": 16,
+            "uploadMs": 47.89999997615814,
+            "transientMs": 25.900000035762787,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 192,
             "estimatedBytes": 201326544,
             "views": 36,
-            "uploadMs": 8.5,
-            "transientMs": 2.400000035762787,
+            "uploadMs": 12.399999976158142,
+            "transientMs": 19.5,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 256,
             "estimatedBytes": 268435392,
             "views": 48,
-            "uploadMs": 9.899999976158142,
-            "transientMs": 0.5,
+            "uploadMs": 12.199999988079071,
+            "transientMs": 17.400000035762787,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 384,
             "estimatedBytes": 402653088,
             "views": 72,
-            "uploadMs": 58.59999996423721,
-            "transientMs": 0.699999988079071,
+            "uploadMs": 40.30000001192093,
+            "transientMs": 42,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           }
         ],
         "firstFailure": null,
         "maxPassedMiB": 384,
-        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+        "note": "Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading."
       },
       "errors": []
     },
@@ -310,38 +598,378 @@
             "targetMiB": 128,
             "estimatedBytes": 134217696,
             "views": 24,
-            "uploadMs": 32.30000001192093,
-            "transientMs": 15.5,
+            "uploadMs": 46.19999998807907,
+            "transientMs": 26.30000001192093,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 192,
             "estimatedBytes": 201326544,
             "views": 36,
-            "uploadMs": 7.399999976158142,
-            "transientMs": 2.400000035762787,
+            "uploadMs": 14.099999964237213,
+            "transientMs": 20.100000023841858,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 256,
             "estimatedBytes": 268435392,
             "views": 48,
-            "uploadMs": 9.300000011920929,
-            "transientMs": 0.5999999642372131,
+            "uploadMs": 11.399999976158142,
+            "transientMs": 16.19999998807907,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           },
           {
             "targetMiB": 384,
             "estimatedBytes": 402653088,
             "views": 72,
-            "uploadMs": 20.69999998807907,
-            "transientMs": 0.6000000238418579,
+            "uploadMs": 27.30000001192093,
+            "transientMs": 29.19999998807907,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
             "recovered": true
           }
         ],
         "firstFailure": null,
         "maxPassedMiB": 384,
-        "note": "Estimated Finish-view RGBA8 mip bytes; no device GPU-memory reading."
+        "note": "Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading."
+      },
+      "errors": []
+    },
+    "webgl2-swiftshader/highlight@1": {
+      "requestedBackend": "webgl2-swiftshader",
+      "observedBackend": "webgl2",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "highlight",
+        "backend": "webgl2",
+        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+        "softwareAdapter": true,
+        "dpr": 1,
+        "variants": [
+          {
+            "radianceScale": 1,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1,
+                "halfPeakLargestComponent": 1606,
+                "clippedFraction": 0.11631442907100502,
+                "nearClipFraction": 0.11773351578733972,
+                "subjectPixels": 19731
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.7529422167760778,
+                "halfPeakLargestComponent": 7482,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 19731
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 3.912109375,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0.11611170239724292,
+                "subjectPixels": 19731
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.7563476562499999,
+                "halfPeakLargestComponent": 7509,
+                "overOneFraction": 0,
+                "subjectPixels": 19731
+              }
+            ],
+            "peakRatio": 5.172369270497096,
+            "pass": false,
+            "reasons": [
+              "clipped subject pixels are not below 1%"
+            ]
+          },
+          {
+            "radianceScale": 0.5,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1,
+                "halfPeakLargestComponent": 1257,
+                "clippedFraction": 0.042150628054869396,
+                "nearClipFraction": 0.04304409523308982,
+                "subjectPixels": 19027
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.3762621229909065,
+                "halfPeakLargestComponent": 7470,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 18920
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 1.9560546875,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0.04054533475242005,
+                "subjectPixels": 19731
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.37817382812499994,
+                "halfPeakLargestComponent": 7509,
+                "overOneFraction": 0,
+                "subjectPixels": 19731
+              }
+            ],
+            "peakRatio": 5.172369270497096,
+            "pass": false,
+            "reasons": [
+              "clipped subject pixels are not below 1%"
+            ]
+          }
+        ],
+        "exploratory": [
+          {
+            "radianceScale": 0.25,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.9822505503331171,
+                "halfPeakLargestComponent": 806,
+                "clippedFraction": 0,
+                "nearClipFraction": 0.00909694894465171,
+                "subjectPixels": 19567
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.1878207723006779,
+                "halfPeakLargestComponent": 7228,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 17091
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.97802734375,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0,
+                "subjectPixels": 19731
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.18908691406249997,
+                "halfPeakLargestComponent": 7509,
+                "overOneFraction": 0,
+                "subjectPixels": 19731
+              }
+            ],
+            "peakRatio": 5.172369270497096,
+            "pass": true,
+            "reasons": [],
+            "exploratory": true
+          },
+          {
+            "radianceScale": 0.2,
+            "metrics": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.7835377915261935,
+                "halfPeakLargestComponent": 809,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 19597
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.14995978981060856,
+                "halfPeakLargestComponent": 4546,
+                "clippedFraction": 0,
+                "nearClipFraction": 0,
+                "subjectPixels": 17666
+              }
+            ],
+            "linear": [
+              {
+                "roughness": 0.2,
+                "peakLinear": 0.78271484375,
+                "halfPeakLargestComponent": 811,
+                "overOneFraction": 0,
+                "subjectPixels": 19731
+              },
+              {
+                "roughness": 0.8,
+                "peakLinear": 0.1513671875,
+                "halfPeakLargestComponent": 7499,
+                "overOneFraction": 0,
+                "subjectPixels": 19731
+              }
+            ],
+            "peakRatio": 5.170967741935484,
+            "pass": true,
+            "reasons": [],
+            "exploratory": true
+          }
+        ],
+        "adoptedRadianceScale": null,
+        "pass": false,
+        "reasons": [
+          "1: clipped subject pixels are not below 1%",
+          "0.5: clipped subject pixels are not below 1%"
+        ]
+      },
+      "errors": []
+    },
+    "webgl2-swiftshader/residency@1": {
+      "requestedBackend": "webgl2-swiftshader",
+      "observedBackend": "webgl2",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "residency",
+        "backend": "webgl2",
+        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+        "softwareAdapter": true,
+        "dpr": 1,
+        "steps": [
+          {
+            "targetMiB": 128,
+            "estimatedBytes": 134217696,
+            "views": 24,
+            "uploadMs": 74.20000004768372,
+            "transientMs": 108.59999996423721,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          },
+          {
+            "targetMiB": 192,
+            "estimatedBytes": 201326544,
+            "views": 36,
+            "uploadMs": 21.5,
+            "transientMs": 1800.0999999642372,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          },
+          {
+            "targetMiB": 256,
+            "estimatedBytes": 268435392,
+            "views": 48,
+            "uploadMs": 18.400000035762787,
+            "transientMs": 743.5,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          },
+          {
+            "targetMiB": 384,
+            "estimatedBytes": 402653088,
+            "views": 72,
+            "uploadMs": 34.700000047683716,
+            "transientMs": 2177.599999964237,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          }
+        ],
+        "firstFailure": null,
+        "maxPassedMiB": 384,
+        "note": "Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading."
+      },
+      "errors": []
+    },
+    "webgl2-swiftshader/residency@1.5": {
+      "requestedBackend": "webgl2-swiftshader",
+      "observedBackend": "webgl2",
+      "status": "captured",
+      "statusText": "complete",
+      "result": {
+        "gate": "residency",
+        "backend": "webgl2",
+        "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+        "softwareAdapter": true,
+        "dpr": 1.5,
+        "steps": [
+          {
+            "targetMiB": 128,
+            "estimatedBytes": 134217696,
+            "views": 24,
+            "uploadMs": 50.299999952316284,
+            "transientMs": 101.40000003576279,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          },
+          {
+            "targetMiB": 192,
+            "estimatedBytes": 201326544,
+            "views": 36,
+            "uploadMs": 19.899999976158142,
+            "transientMs": 1170.1000000238419,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          },
+          {
+            "targetMiB": 256,
+            "estimatedBytes": 268435392,
+            "views": 48,
+            "uploadMs": 21.19999998807907,
+            "transientMs": 776.0999999642372,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          },
+          {
+            "targetMiB": 384,
+            "estimatedBytes": 402653088,
+            "views": 72,
+            "uploadMs": 34.39999997615814,
+            "transientMs": 1109.4000000357628,
+            "transientBytes": 89478484,
+            "transientLevelsExpected": 13,
+            "transientLevelsObserved": 13,
+            "transientErrors": [],
+            "recovered": true
+          }
+        ],
+        "firstFailure": null,
+        "maxPassedMiB": 384,
+        "note": "Estimated Finish-view RGBA8 mip bytes plus a full-chain 4096² transient; allocation errors are observed through WebGPU error scopes or WebGL2 getError/context loss. There is no device GPU-memory reading."
       },
       "errors": []
     }

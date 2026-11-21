@@ -30,7 +30,7 @@
  * an old lease can never delete a newer entry that reused the same view key.
  */
 import type { TextureLoadScope } from './texture-store';
-import { loadFinishTexture, releaseFinishTexture } from './texture-store';
+import { detachFinishTexture, loadFinishTexture, releaseFinishTexture } from './texture-store';
 import type { FinishTextureViews } from './finish-sampling';
 import type { Texture } from 'three';
 
@@ -247,6 +247,11 @@ function releaseEntry(entry: Entry): void {
  * A route teardown must not wait for budget pressure to free its uploads. An
  * unleased entry is disposed now; a leased one is retired and disposed by its
  * final release, so a live material never samples a disposed texture.
+ *
+ * Both product teardowns call this **before** `releaseTextureScope`, which
+ * disposes every source the scope still caches. A leased entry therefore detaches
+ * its source first: the source cache forgets the key without disposing it, and
+ * this cache becomes the texture's single disposer.
  */
 export function releaseFinishViewsForScope(scopeId: string): void {
 	for (const entry of [...entries.values()]) {
@@ -256,6 +261,7 @@ export function releaseFinishViewsForScope(scopeId: string): void {
 			disposeEntry(entry, entries.values());
 		} else {
 			entry.retired = true;
+			detachFinishTexture(entry.source.uri, entry.source.role, { scopeId: entry.scopeId });
 		}
 	}
 }

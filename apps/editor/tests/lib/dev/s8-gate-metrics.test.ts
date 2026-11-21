@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { LinearMipmapLinearFilter } from 'three';
 import {
 	S8_RESIDENCY_TARGETS_MIB,
 	S8_RESIDENCY_VIEW_BYTES,
+	S8_TRANSIENT_BYTES,
+	S8_TRANSIENT_LEVELS,
+	createResidencyTransient,
 	analyzeHighlightFrame,
+	analyzeLinearHighlight,
 	highlightVerdict,
 	residencyViewsForTarget
 } from '$lib/dev/s8-gate-metrics';
@@ -30,6 +35,17 @@ describe('S8 gate metrics', () => {
 				target * 1024 * 1024
 			);
 		}
+	});
+
+	it('builds the 4096² transient with its complete mip chain (~85.3 MiB)', () => {
+		const transient = createResidencyTransient();
+		expect(transient.image.width).toBe(4096);
+		expect(transient.generateMipmaps).toBe(true);
+		expect(transient.minFilter).toBe(LinearMipmapLinearFilter);
+		expect(S8_TRANSIENT_LEVELS).toBe(13);
+		expect(S8_TRANSIENT_BYTES).toBe(89_478_484);
+		expect(S8_TRANSIENT_BYTES / (1024 * 1024)).toBeCloseTo(85.33, 2);
+		transient.dispose();
 	});
 
 	it('measures linear peak, connected half-peak area and final-sRGB clipping', () => {
@@ -109,5 +125,62 @@ describe('S8 gate metrics', () => {
 		expect(highlightVerdict(metric({ ...low, peak: 0.5 }), metric(high)).reasons[0]).toContain(
 			'< 1.1'
 		);
+	});
+
+	it('counts only saturated 255 channels as clipped; 250–254 is near-clip, not clipped', () => {
+		const metric = analyzeHighlightFrame(
+			frame(3, 1, [
+				[255, 200],
+				[252, 252],
+				[200, 200]
+			]),
+			0.2
+		);
+		expect(metric.subjectPixels).toBe(3);
+		expect(metric.clippedFraction).toBeCloseTo(1 / 3);
+		expect(metric.nearClipFraction).toBeCloseTo(2 / 3);
+	});
+
+	it('reads the unclipped linear peak and connected half-peak area from a float frame', () => {
+		// Alpha 0 is the cleared background. A peak of 4 has a half-peak of 2, so
+		// the 1.5 neighbour is outside the compact core even though both clip.
+		const pixels = new Float32Array([
+			0, 0, 0, 0,
+			4, 4, 4, 1,
+			1.5, 1.5, 1.5, 1,
+			0.2, 0.2, 0.2, 1
+		]);
+		const metric = analyzeLinearHighlight({ pixels, width: 4, height: 1 }, 0.2);
+		expect(metric.subjectPixels).toBe(3);
+		expect(metric.peakLinear).toBeCloseTo(4);
+		expect(metric.halfPeakLargestComponent).toBe(1);
+		expect(metric.overOneFraction).toBeCloseTo(2 / 3);
+	});
+
+	it('takes peak and area from the linear reading but clipping from the sRGB frame', () => {
+		const srgb = (clipped: number) => ({
+			roughness: 0.2,
+			peakLinear: 1,
+			halfPeakLargestComponent: 500,
+			clippedFraction: clipped,
+			subjectPixels: 1000
+		});
+		const linear = (peak: number, area: number) => ({
+			roughness: 0.2,
+			peakLinear: peak,
+			halfPeakLargestComponent: area,
+			overOneFraction: 0,
+			subjectPixels: 1000
+		});
+		// The clipped sRGB readings tie at peak 1 and equal area; the linear
+		// readings separate them.
+		const pass = highlightVerdict(srgb(0), srgb(0), { low: linear(3, 40), high: linear(1, 300) });
+		expect(pass).toMatchObject({ peakRatio: 3, pass: true });
+		const clipped = highlightVerdict(srgb(0.05), srgb(0), {
+			low: linear(3, 40),
+			high: linear(1, 300)
+		});
+		expect(clipped.pass).toBe(false);
+		expect(clipped.reasons).toEqual(['clipped subject pixels are not below 1%']);
 	});
 });

@@ -9,7 +9,7 @@
  *
  * Usage (from `apps/editor`, with the dev server running):
  *   node scripts/run-s8-gates.mjs
- *   node scripts/run-s8-gates.mjs --out ../../docs/.../s8-b-gates.json
+ *   node apps/editor/scripts/run-s8-gates.mjs --out docs/.../s8-b-gates.json   (from the repository root)
  */
 import { chromium } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -18,15 +18,36 @@ import { resolve } from 'node:path';
 const BASE_URL = process.env.S8_GATE_BASE_URL ?? 'http://localhost:5199';
 const OUT_INDEX = process.argv.indexOf('--out');
 const OUT_PATH = OUT_INDEX >= 0 ? process.argv[OUT_INDEX + 1] : null;
+/** Optional exploratory radiance scales, recorded separately and never adopted. */
+const EXPLORE = process.env.S8_GATE_EXPLORE ?? '';
+/**
+ * Each case requests one backend through the browser, never through the page:
+ * the product renderer is WebGPU-first and falls back to WebGL2 only when
+ * WebGPU is unavailable. The hardware WebGL2 case therefore hides
+ * `navigator.gpu` before any page script runs (a browser-level init script; the
+ * route itself is unchanged) and keeps ANGLE on Metal, so the fallback runs on
+ * the host GPU rather than on SwiftShader. `S8_GATE_INCLUDE_SOFTWARE=1` adds the SwiftShader case for
+ * comparison; it is recorded with its software flag and never qualifies a gate.
+ */
 const BACKENDS = [
 	{
 		name: 'webgl2',
-		args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']
+		args: ['--use-angle=metal'],
+		hideWebGPU: true
 	},
 	{
 		name: 'webgpu',
 		args: ['--enable-unsafe-webgpu', '--enable-features=WebGPU', '--use-angle=metal']
-	}
+	},
+	...(process.env.S8_GATE_INCLUDE_SOFTWARE === '1'
+		? [
+				{
+					name: 'webgl2-swiftshader',
+					args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+					hideWebGPU: true
+				}
+			]
+		: [])
 ];
 const CASES = [
 	{ gate: 'highlight', dpr: 1 },
@@ -40,6 +61,11 @@ async function runCase(browser, backend, testCase) {
 		deviceScaleFactor: testCase.dpr,
 		colorScheme: 'dark'
 	});
+	if (backend.hideWebGPU) {
+		await context.addInitScript(() => {
+			Object.defineProperty(Navigator.prototype, 'gpu', { get: () => undefined, configurable: true });
+		});
+	}
 	const page = await context.newPage();
 	const errors = [];
 	page.on('pageerror', (error) => errors.push(String(error)));
@@ -49,7 +75,7 @@ async function runCase(browser, backend, testCase) {
 	const key = `${backend.name}/${testCase.gate}@${testCase.dpr}`;
 	try {
 		await page.goto(
-			`${BASE_URL}/dev/s8-gates?gate=${testCase.gate}&dpr=${testCase.dpr}`,
+			`${BASE_URL}/dev/s8-gates?gate=${testCase.gate}&dpr=${testCase.dpr}${EXPLORE ? `&explore=${EXPLORE}` : ''}`,
 			{ waitUntil: 'domcontentloaded' }
 		);
 		await page.waitForSelector('html[data-s8-gate-ready="true"]', { timeout: 240_000 });

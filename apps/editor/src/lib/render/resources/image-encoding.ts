@@ -89,18 +89,25 @@ function iccDescription(profile: Uint8Array, offset: number, size: number): stri
 	if (type === 'mluc') {
 		const records = view.getUint32(offset + 8);
 		const recordSize = view.getUint32(offset + 12);
-		if (records < 1 || recordSize < 12 || 16 + recordSize > size) return undefined;
+		if (records < 1 || records > 64 || recordSize < 12) return undefined;
+		const table = 16 + records * recordSize;
+		if (table > size) return undefined;
+		// ICC.1 §10.15: each record's string offset is measured from the start of
+		// the tag, not the profile. The first record is the profile's own
+		// description; a later localisation cannot override it.
 		const length = view.getUint32(offset + 20);
-		const textOffset = view.getUint32(offset + 24);
+		const relative = view.getUint32(offset + 24);
 		if (
 			length < 2 ||
 			length > 1024 ||
 			length % 2 !== 0 ||
-			textOffset < offset ||
-			textOffset + length > end
+			relative < table ||
+			relative + length > size
 		) {
 			return undefined;
 		}
+		const textOffset = offset + relative;
+		if (textOffset + length > end) return undefined;
 		const units: number[] = [];
 		for (let index = 0; index < length; index += 2) {
 			units.push(view.getUint16(textOffset + index));
@@ -110,13 +117,56 @@ function iccDescription(profile: Uint8Array, offset: number, size: number): stri
 	return undefined;
 }
 
+/** sRGB primaries, Bradford-adapted to the ICC D50 PCS (IEC 61966-2.1 profiles). */
+const SRGB_D50_COLORANTS: Readonly<Record<'rXYZ' | 'gXYZ' | 'bXYZ', readonly [number, number, number]>> = {
+	rXYZ: [0.4361, 0.2225, 0.0139],
+	gXYZ: [0.3851, 0.7169, 0.0971],
+	bXYZ: [0.1431, 0.0606, 0.7141]
+};
+/** Published sRGB profiles round their colorants differently; P3 differs by >0.07. */
+const SRGB_COLORANT_TOLERANCE = 0.005;
+
+/** One `XYZ ` tag's first s15Fixed16 triple, or undefined when malformed. */
+function iccXyz(profile: Uint8Array, offset: number, size: number): [number, number, number] | undefined {
+	if (size < 20 || offset + 20 > profile.length || !matches(profile, offset, 'XYZ ')) return undefined;
+	const view = viewOf(profile);
+	return [
+		view.getInt32(offset + 8) / 65536,
+		view.getInt32(offset + 12) / 65536,
+		view.getInt32(offset + 16) / 65536
+	];
+}
+
 /**
  * Admit only an ICC profile that identifies itself as the standard sRGB space.
  * JPEG has no portable sRGB chunk, so an absent profile is the untagged case;
  * any other profile is potentially wide-gamut and must not be accepted
- * silently.
+ * silently. A matrix profile must also carry sRGB colorants: a name alone does
+ * not make a wide-gamut matrix standard sRGB.
  */
-function jpegIccDescription(segments: readonly IccSegment[]): string | undefined {
+function jpegIccIsStandardSrgb(segments: readonly IccSegment[]): boolean {
+	const description = jpegIccDescription(segments);
+	if (description === undefined || !/\bsrgb\b/i.test(description)) return false;
+	const profile = assembleIcc(segments);
+	if (profile === undefined) return false;
+	const view = viewOf(profile);
+	const tags = view.getUint32(128);
+	for (let index = 0; index < tags; index += 1) {
+		const entry = 132 + index * 12;
+		const signature = String.fromCharCode(...profile.subarray(entry, entry + 4));
+		if (signature !== 'rXYZ' && signature !== 'gXYZ' && signature !== 'bXYZ') continue;
+		const xyz = iccXyz(profile, view.getUint32(entry + 4), view.getUint32(entry + 8));
+		if (xyz === undefined) return false;
+		const expected = SRGB_D50_COLORANTS[signature];
+		if (xyz.some((value, axis) => Math.abs(value - expected[axis]!) > SRGB_COLORANT_TOLERANCE)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Reassemble a complete, ordered APP2 ICC profile with a valid header and tag table. */
+function assembleIcc(segments: readonly IccSegment[]): Uint8Array | undefined {
 	if (segments.length === 0) return undefined;
 	const total = segments[0]!.total;
 	if (total < 1 || segments.length !== total) return undefined;
@@ -134,15 +184,19 @@ function jpegIccDescription(segments: readonly IccSegment[]): string | undefined
 	}
 	const view = viewOf(profile);
 	if (view.getUint32(0) > profile.length) return undefined;
-	const colourSpace = String.fromCharCode(
-		profile[16]!,
-		profile[17]!,
-		profile[18]!,
-		profile[19]!
-	);
-	if (colourSpace !== 'RGB ' && colourSpace !== 'GRAY') return undefined;
 	const tags = view.getUint32(128);
 	if (tags > 256 || 132 + tags * 12 > profile.length) return undefined;
+	return profile;
+}
+
+/** The profile's own `desc` text, from an RGB or GRAY profile only. */
+function jpegIccDescription(segments: readonly IccSegment[]): string | undefined {
+	const profile = assembleIcc(segments);
+	if (profile === undefined) return undefined;
+	const view = viewOf(profile);
+	const colourSpace = String.fromCharCode(...profile.subarray(16, 20));
+	if (colourSpace !== 'RGB ' && colourSpace !== 'GRAY') return undefined;
+	const tags = view.getUint32(128);
 	for (let index = 0; index < tags; index += 1) {
 		const entry = 132 + index * 12;
 		if (!matches(profile, entry, 'desc')) continue;
@@ -273,8 +327,7 @@ function jpeg(bytes: Uint8Array, view: DataView): RawImageEncoding {
 		);
 	}
 	if (iccSegments.length > 0) {
-		const description = jpegIccDescription(iccSegments);
-		if (description === undefined || !/\bsrgb\b/i.test(description)) {
+		if (!jpegIccIsStandardSrgb(iccSegments)) {
 			return unsupported(
 				'the JPEG carries an ICC profile that is not verified as standard sRGB',
 				'Re-export the map as untagged sRGB or with the standard sRGB IEC61966-2.1 profile.'

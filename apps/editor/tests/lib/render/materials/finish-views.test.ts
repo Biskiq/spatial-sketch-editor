@@ -13,8 +13,10 @@ import {
 } from '$lib/render/resources/finish-views';
 import {
 	__resetDefaultSourceLoaderForTests,
+	releaseTextureScope,
 	resetTextureCachesForTests,
-	setDefaultTextureSourceLoader
+	setDefaultTextureSourceLoader,
+	textureSourceMemoryStats
 } from '$lib/render/resources/texture-store';
 
 const SIZE = 64;
@@ -311,6 +313,46 @@ describe('finish view leases', () => {
 		expect(finishViewStats()).toMatchObject({ live: 1, bytes: BYTES });
 		lease.release();
 		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(finishViewStats()).toMatchObject({ live: 0, bytes: 0 });
+	});
+
+	it('keeps a leased view alive through the full product teardown (views, then source scope)', async () => {
+		// Both product teardowns (project route, cold release) call
+		// `releaseFinishViewsForScope` and then `releaseTextureScope`. The second
+		// call disposes every cached source in the scope; a still-leased Finish
+		// view must not lose its texture there, and must be disposed exactly once
+		// by its own final release.
+		const leased = imageTexture();
+		const idle = imageTexture();
+		const leasedDispose = vi.spyOn(leased, 'dispose');
+		const idleDispose = vi.spyOn(idle, 'dispose');
+		const scope = {
+			scopeId: 'project:full-teardown',
+			loader: async (uri: string) => (uri === '/leased.png' ? leased : idle)
+		};
+		const lease = await acquireFinishViews(
+			[{ view: 'colour', uri: '/leased.png', role: 'color' }],
+			scope
+		);
+		const other = await acquireFinishViews(
+			[{ view: 'rough', uri: '/idle.png', role: 'roughness' }],
+			scope
+		);
+		other.release();
+		expect(textureSourceMemoryStats().liveSources).toBe(2);
+
+		releaseFinishViewsForScope(scope.scopeId);
+		releaseTextureScope(scope.scopeId);
+
+		expect(idleDispose).toHaveBeenCalledTimes(1);
+		expect(leasedDispose).not.toHaveBeenCalled();
+		// The source cache forgot both keys at teardown; the leased bytes stay
+		// charged to the view budget until the lease goes.
+		expect(textureSourceMemoryStats().liveSources).toBe(0);
+		expect(finishViewStats()).toMatchObject({ live: 1, bytes: BYTES });
+
+		lease.release();
+		expect(leasedDispose).toHaveBeenCalledTimes(1);
 		expect(finishViewStats()).toMatchObject({ live: 0, bytes: 0 });
 	});
 });

@@ -56,30 +56,96 @@ function exifOrientation(orientation: number): Uint8Array {
 	return concat([Uint8Array.from([0x45, 0x78, 0x69, 0x66, 0, 0]), tiff]);
 }
 
+function ascii(text: string): number[] {
+	return [...text].map((char) => char.charCodeAt(0));
+}
+
+/** An ICC v2 `desc` (textDescriptionType) tag. */
+function descTag(text: string): Uint8Array {
+	const tag = new Uint8Array(12 + text.length + 1);
+	tag.set(ascii('desc'), 0);
+	new DataView(tag.buffer).setUint32(8, text.length + 1);
+	tag.set(ascii(text), 12);
+	return tag;
+}
+
+/**
+ * An ICC v4 `mluc` tag with one enUS record. String offsets are measured from
+ * the start of the tag (ICC.1 §10.15).
+ */
+function mlucTag(text: string): Uint8Array {
+	const units = [...text].map((char) => char.charCodeAt(0));
+	const tag = new Uint8Array(28 + units.length * 2);
+	const view = new DataView(tag.buffer);
+	tag.set(ascii('mluc'), 0);
+	view.setUint32(8, 1);
+	view.setUint32(12, 12);
+	tag.set(ascii('enUS'), 16);
+	view.setUint32(20, units.length * 2);
+	view.setUint32(24, 28);
+	units.forEach((unit, index) => view.setUint16(28 + index * 2, unit));
+	return tag;
+}
+
+function xyzTag(x: number, y: number, z: number): Uint8Array {
+	const tag = new Uint8Array(20);
+	const view = new DataView(tag.buffer);
+	tag.set(ascii('XYZ '), 0);
+	view.setInt32(8, Math.round(x * 65536));
+	view.setInt32(12, Math.round(y * 65536));
+	view.setInt32(16, Math.round(z * 65536));
+	return tag;
+}
+
+/** A minimal RGB ICC profile: 128-byte header, tag table, 4-byte aligned tag data. */
+function iccProfile(tags: readonly (readonly [string, Uint8Array])[]): Uint8Array {
+	const tableEnd = 132 + tags.length * 12;
+	const offsets: number[] = [];
+	let cursor = tableEnd;
+	for (const [, data] of tags) {
+		cursor = Math.ceil(cursor / 4) * 4;
+		offsets.push(cursor);
+		cursor += data.length;
+	}
+	const profile = new Uint8Array(cursor);
+	const view = new DataView(profile.buffer);
+	view.setUint32(0, profile.length);
+	profile.set(ascii('RGB '), 16);
+	view.setUint32(128, tags.length);
+	tags.forEach(([signature, data], index) => {
+		const entry = 132 + index * 12;
+		profile.set(ascii(signature), entry);
+		view.setUint32(entry + 4, offsets[index]!);
+		view.setUint32(entry + 8, data.length);
+		profile.set(data, offsets[index]!);
+	});
+	return profile;
+}
+
+const SRGB_COLORANTS: readonly (readonly [string, Uint8Array])[] = [
+	['rXYZ', xyzTag(0.43607, 0.22249, 0.01392)],
+	['gXYZ', xyzTag(0.38515, 0.71687, 0.09708)],
+	['bXYZ', xyzTag(0.14307, 0.06061, 0.7141)]
+];
+const DISPLAY_P3_COLORANTS: readonly (readonly [string, Uint8Array])[] = [
+	['rXYZ', xyzTag(0.51512, 0.2412, -0.00105)],
+	['gXYZ', xyzTag(0.29198, 0.69225, 0.04189)],
+	['bXYZ', xyzTag(0.1571, 0.06657, 0.78407)]
+];
+
 function jpeg(options: {
 	precision?: number;
 	components?: number;
 	orientation?: number;
 	icc?: string;
+	iccProfile?: Uint8Array;
 } = {}): Uint8Array {
 	const components = options.components ?? 3;
 	const parts: Uint8Array[] = [Uint8Array.from([0xff, 0xd8])];
-	if (options.icc !== undefined) {
-		const text = new Uint8Array(options.icc.length + 1);
-		for (let index = 0; index < options.icc.length; index += 1) text[index] = options.icc.charCodeAt(index);
-		const desc = new Uint8Array(12 + text.length);
-		desc.set([0x64, 0x65, 0x73, 0x63], 0);
-		new DataView(desc.buffer).setUint32(8, text.length);
-		desc.set(text, 12);
-		const profile = new Uint8Array(144 + desc.length);
-		const profileView = new DataView(profile.buffer);
-		profileView.setUint32(0, profile.length);
-		profile.set([0x52, 0x47, 0x42, 0x20], 16);
-		profileView.setUint32(128, 1);
-		profile.set([0x64, 0x65, 0x73, 0x63], 132);
-		profileView.setUint32(136, 144);
-		profileView.setUint32(140, desc.length);
-		profile.set(desc, 144);
+	const profile =
+		options.iccProfile ??
+		(options.icc === undefined ? undefined : iccProfile([['desc', descTag(options.icc)]]));
+	if (profile !== undefined) {
 		const header = new Uint8Array(14);
 		header.set([0x49, 0x43, 0x43, 0x5f, 0x50, 0x52, 0x4f, 0x46, 0x49, 0x4c, 0x45, 0], 0);
 		header[12] = 1;
@@ -208,6 +274,42 @@ describe('raw material map headers', () => {
 		expect(() => probeRawImage(jpeg({ icc: 'Adobe RGB (1998)' }))).toThrow(
 			/ICC profile that is not verified as standard sRGB/
 		);
+	});
+
+	it('reads an ICC v4 mluc description at its tag-relative offset', () => {
+		// A real v4 sRGB profile stores its description as `mluc`, whose string
+		// offset counts from the tag start. The old reader treated it as a
+		// profile offset and refused every such profile.
+		const v4 = iccProfile([['desc', mlucTag('sRGB IEC61966-2.1')], ...SRGB_COLORANTS]);
+		expect(probeRawImage(jpeg({ iccProfile: v4 }))).toMatchObject({ channels: 3, bitDepth: 8 });
+		expect(() =>
+			probeRawImage(jpeg({ iccProfile: iccProfile([['desc', mlucTag('Display P3')]]) }))
+		).toThrow(/ICC profile that is not verified as standard sRGB/);
+	});
+
+	it('refuses a mluc record whose offset points outside its own tag', () => {
+		// The old reader followed a profile-absolute offset, so text elsewhere in
+		// the profile (here a second desc tag spelling sRGB) could be borrowed.
+		const borrowed = iccProfile([
+			['desc', mlucTag('Display P3')],
+			['dmdd', descTag('sRGB IEC61966-2.1')]
+		]);
+		const view = new DataView(borrowed.buffer);
+		const descOffset = view.getUint32(132 + 4);
+		const otherOffset = view.getUint32(144 + 4);
+		view.setUint32(descOffset + 24, otherOffset + 12);
+		expect(() => probeRawImage(jpeg({ iccProfile: borrowed }))).toThrow(
+			/ICC profile that is not verified as standard sRGB/
+		);
+	});
+
+	it('refuses a wide-gamut matrix profile that merely names itself sRGB', () => {
+		const misnamed = iccProfile([['desc', descTag('sRGB-ish wide')], ...DISPLAY_P3_COLORANTS]);
+		expect(() => probeRawImage(jpeg({ iccProfile: misnamed }))).toThrow(
+			/ICC profile that is not verified as standard sRGB/
+		);
+		const honest = iccProfile([['desc', descTag('sRGB IEC61966-2.1')], ...SRGB_COLORANTS]);
+		expect(probeRawImage(jpeg({ iccProfile: honest }))).toMatchObject({ channels: 3 });
 	});
 
 	it('accepts a static WebP and refuses an animated one', () => {
