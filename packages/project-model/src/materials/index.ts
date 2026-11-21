@@ -33,6 +33,7 @@ export {
 	type MaterialBaseRef,
 	type MaterialNeutralBaseId,
 	type MaterialProfile,
+	type MaterialRuntimeIndex,
 	type Metric,
 	type Normal,
 	type NormalConvention,
@@ -51,6 +52,8 @@ export {
 	type SurfaceMapping,
 	type TargetDraw,
 	type TargetFacts,
+	type TargetAnalysis,
+	type TargetAnalysisRequest,
 	type TargetMapping,
 	type TargetMetricBasis,
 	type UvMapping,
@@ -68,6 +71,7 @@ export {
 
 export {
 	finishIdentityKey,
+	finishTextureBindings,
 	isColourLiteral,
 	isHash,
 	isPristineFinish,
@@ -81,6 +85,33 @@ export {
 	type OverridesReadResult,
 	type RecipeReadResult
 } from './read';
+
+export {
+	readMaterialDefinition,
+	recipeImageDigests,
+	type MaterialDefinition,
+	type MaterialDefinitionReadResult,
+	type MaterialResourceImage
+} from './definition';
+
+export {
+	EMPTY_MATERIAL_PROOF,
+	buildMaterialDigestProof,
+	verifyMaterialDigest,
+	type MaterialDigestProof,
+	type MaterialDigestProofEntry,
+	type MaterialProofResult
+} from './proof';
+
+export {
+	materialDeliveryContribution,
+	type MaterialDeliveryContribution,
+	type MaterialDeliveryImagePin,
+	type MaterialDeliveryInput,
+	type MaterialDeliveryMappingRequirement,
+	type MaterialDeliverySubject,
+	type MaterialDeliveryUse
+} from './delivery';
 
 export {
 	NEUTRAL_RECIPE,

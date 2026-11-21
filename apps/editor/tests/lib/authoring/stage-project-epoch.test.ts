@@ -203,6 +203,7 @@ function harness() {
 	controller = createStageProjectEpoch({
 		session: session as never,
 		assets: assets as never,
+		materialProofs: {} as never,
 		projectSession: () => projectSession,
 		preview: () => preview,
 		createFacade: (snapshot) => {
@@ -235,6 +236,8 @@ function harness() {
 			log.push('services.create');
 			return {
 				stage: {} as never,
+				materialProofs: {} as never,
+				targetAnalysis: {} as never,
 				authoring: {} as never
 			} as StageAdapterServices;
 		},

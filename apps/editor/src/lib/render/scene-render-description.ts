@@ -94,7 +94,7 @@ function cached(scene: RuntimeScene, forms: SceneFormSupport | null, build: () =
 	return description;
 }
 
-function primitiveGeometry(entity: ScenePrimitiveEntity): {
+export function scenePrimitiveGeometry(entity: ScenePrimitiveEntity): {
 	readonly spec: GeometrySpec;
 	readonly scale: SceneVec3;
 } {
@@ -141,7 +141,7 @@ function primitiveGeometry(entity: ScenePrimitiveEntity): {
  * faces tile as if they were as deep as the box. This is the existing
  * behaviour and S4b keeps it; the Card says "Scale is approximate on boxes".
  */
-function primitiveSurface(entity: ScenePrimitiveEntity): [number, number] {
+export function scenePrimitiveSurfaceMeters(entity: ScenePrimitiveEntity): [number, number] {
 	const scale = entity.scale ?? 1;
 	const surface: [number, number] = (() => {
 		switch (entity.primitive) {
@@ -521,8 +521,8 @@ export function describeSceneRender(
 				continue;
 			}
 			if (isScenePrimitiveEntity(entity)) {
-				const geometry = primitiveGeometry(entity);
-				const surface = primitiveSurface(entity);
+				const geometry = scenePrimitiveGeometry(entity);
+				const surface = scenePrimitiveSurfaceMeters(entity);
 				const look = sceneFinishFor(
 					scene,
 					{

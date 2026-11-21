@@ -13,7 +13,16 @@ function doc(
 	textures: SceneDocument['textures'] = [WALL_TEXTURE, FLOOR_TEXTURE, NORMAL_TEXTURE],
 	extra: { palette?: LookSource['palette']; environment?: LookSource['environment'] } = {}
 ): LookSource {
-	return { materials, textures, ...extra } as LookSource;
+	return {
+		materials,
+		textures,
+		materialIndex: {
+			definitions: new Map(),
+			definitionImages: new Map(),
+			images: textures.map((texture) => ({ hash: `hash:${texture.id}`, source: { textureId: texture.id } }))
+		},
+		...extra
+	} as LookSource;
 }
 
 describe('resolveSceneMaterial', () => {
@@ -38,12 +47,7 @@ describe('resolveSceneMaterial', () => {
 	it('replaces exactly the colour slot when an instance supplies maps.color', () => {
 		const result = resolveSceneMaterial(
 			doc([
-				{
-					id: 'wall-material',
-					name: 'Wall Material',
-					baseMaterialId: 'plaster-warm',
-					maps: { color: 'wall-detail' }
-				}
+				{ id: 'wall-material', name: 'Wall Material', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'wall-detail' } } } } }
 			]),
 			{ materialInstanceId: 'wall-material', fallbackCatalogueId: 'plaster-warm' }
 		);
@@ -57,12 +61,7 @@ describe('resolveSceneMaterial', () => {
 
 		const result = resolveSceneMaterial(
 			doc([
-				{
-					id: 'wall-material',
-					name: 'Wall Material',
-					baseMaterialId: 'plaster-warm',
-					maps: { color: 'nonexistent' }
-				}
+				{ id: 'wall-material', name: 'Wall Material', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'nonexistent' } } } } }
 			]),
 			{ materialInstanceId: 'wall-material', fallbackCatalogueId: 'plaster-warm' }
 		);
@@ -82,9 +81,11 @@ describe('resolveSceneMaterial', () => {
 					{
 						id: 'wall-normal-material',
 						name: 'Wall Normal Material',
-						baseMaterialId: 'plaster-warm',
-						maps: { normal: 'wall-normal' },
-						...normal
+						base: { catalogue: 'plaster-warm' },
+						overrides: {
+							maps: { normal: { image: { textureId: 'wall-normal' }, convention: normal.normalFlipY ? '-Y' : '+Y' } },
+							...(normal.normalScale === undefined ? {} : { normalScale: normal.normalScale })
+						}
 					}
 				]),
 				{ materialInstanceId: 'wall-normal-material', fallbackCatalogueId: 'plaster-warm' as const }
@@ -101,12 +102,7 @@ describe('resolveSceneMaterial', () => {
 	it('uses instance mapping for tile size, rotation and offset', () => {
 		const result = resolveSceneMaterial(
 			doc([
-				{
-					id: 'mapped',
-					name: 'Mapped',
-					baseMaterialId: 'plaster-warm',
-					mapping: { tileMeters: [0.5, 0.25], rotation: Math.PI / 4, offset: [0.25, -0.5] }
-				}
+				{ id: 'mapped', name: 'Mapped', base: { catalogue: 'plaster-warm' }, overrides: { mapping: { kind: 'target', metric: { tileMeters: [0.5, 0.25], rotation: Math.PI / 4, offset: [0.25, -0.5] } } } }
 			]),
 			{ materialInstanceId: 'mapped', fallbackCatalogueId: 'plaster-warm' }
 		);
@@ -118,14 +114,14 @@ describe('resolveSceneMaterial', () => {
 
 	it('resolves a literal colour and a palette follower', () => {
 		const literal = resolveSceneMaterial(
-			doc([{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', color: '#112233' }]),
+			doc([{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: '#112233' } }]),
 			{ materialInstanceId: 'm', fallbackCatalogueId: 'plaster-warm' }
 		);
 		expect(literal.color).toBe('#112233');
 
 		const follower = resolveSceneMaterial(
 			doc(
-				[{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', color: { slot: 'accent' } }],
+				[{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'accent' } } }],
 				undefined,
 				{ palette: [{ id: 'accent', name: 'Accent', color: '#aabbcc' }] }
 			),
@@ -137,7 +133,7 @@ describe('resolveSceneMaterial', () => {
 	it('falls back to the catalogue colour when a follower slot is missing (with dev warn)', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 		const result = resolveSceneMaterial(
-			doc([{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', color: { slot: 'missing' } }]),
+			doc([{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'missing' } } }]),
 			{ materialInstanceId: 'm', fallbackCatalogueId: 'plaster-warm' }
 		);
 		expect(result.color).toBe('#c4b4a0');
@@ -147,7 +143,7 @@ describe('resolveSceneMaterial', () => {
 
 	it('keeps the natural look and its seed exactly as Scene 7 resolved it', () => {
 		const materials: SceneDocument['materials'] = [
-			{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', maps: { color: 'wall-detail' }, roughness: 0.4 }
+			{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'wall-detail' } } }, roughness: 0.4 } }
 		];
 		const natural = resolveSceneMaterial(doc(materials), {
 			materialInstanceId: 'm',
@@ -164,14 +160,7 @@ describe('resolveSceneMaterial', () => {
 
 	it('applies Clay as resolved values with no maps and a changed variant', () => {
 		const materials: SceneDocument['materials'] = [
-			{
-				id: 'm',
-				name: 'M',
-				baseMaterialId: 'plaster-warm',
-				color: { slot: 'accent' },
-				maps: { color: 'wall-detail', normal: 'wall-normal' },
-				roughness: 0.2
-			}
+			{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'accent' }, maps: { color: { image: { textureId: 'wall-detail' } }, normal: { image: { textureId: 'wall-normal' }, convention: '+Y' } }, roughness: 0.2 } }
 		];
 		const natural = resolveSceneMaterial(doc(materials), {
 			materialInstanceId: 'm',
@@ -197,14 +186,7 @@ describe('resolveSceneMaterial', () => {
 		const flat = resolveSceneMaterial(
 			doc(
 				[
-					{
-						id: 'm',
-						name: 'M',
-						baseMaterialId: 'plaster-warm',
-						color: '#445566',
-						maps: { color: 'wall-detail' },
-						roughness: 0.2
-					}
+					{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { color: '#445566', maps: { color: { image: { textureId: 'wall-detail' } } }, roughness: 0.2 } }
 				],
 				undefined,
 				{ environment: { treatment: 'flat-colour' } }
@@ -221,13 +203,7 @@ describe('resolveSceneMaterial', () => {
 	it('shows an image Finish colour field under Flat and Clay (D2)', () => {
 		const image = doc(
 			[
-				{
-					id: 'm',
-					name: 'Image',
-					baseMaterialId: 'plaster-warm',
-					color: '#ffffff',
-					maps: { color: 'wall-detail' }
-				}
+				{ id: 'm', name: 'Image', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ffffff', maps: { color: { image: { textureId: 'wall-detail' } } } } }
 			],
 			undefined,
 			{ environment: { treatment: 'flat-colour' } }
@@ -250,13 +226,7 @@ describe('resolveSceneMaterial', () => {
 	it('uses instance overrides for roughness and metalness when set', () => {
 		const result = resolveSceneMaterial(
 			doc([
-				{
-					id: 'm',
-					name: 'M',
-					baseMaterialId: 'plaster-warm',
-					roughness: 0.35,
-					metalness: 0.6
-				}
+				{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.35, metalness: 0.6 } }
 			]),
 			{ materialInstanceId: 'm', fallbackCatalogueId: 'plaster-warm' }
 		);
@@ -286,7 +256,7 @@ describe('resolveSceneMaterial', () => {
 
 	it('produces the same variantSeed for the same effective (slot, roughness, metalness)', () => {
 		const args = (id: string) => [
-			doc([{ id, name: 'M', baseMaterialId: 'plaster-warm', maps: { color: 'wall-detail' } }]),
+			doc([{ id, name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'wall-detail' } } } } }]),
 			{ materialInstanceId: id, fallbackCatalogueId: 'plaster-warm' as const }
 		] as const;
 		const a = resolveSceneMaterial(...args('m1'));
@@ -296,7 +266,7 @@ describe('resolveSceneMaterial', () => {
 
 	it('produces different variantSeeds for different effective textures', () => {
 		const args = (id: string, textureId: string) => [
-			doc([{ id, name: 'M', baseMaterialId: 'plaster-warm', maps: { color: textureId } }]),
+			doc([{ id, name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: textureId } } } } }]),
 			{ materialInstanceId: id, fallbackCatalogueId: 'plaster-warm' as const }
 		] as const;
 		const wallResolve = resolveSceneMaterial(...args('m-wall', 'wall-detail'));

@@ -119,8 +119,8 @@ const MODEL_SNAPSHOT = attachUnitStageSource(
 				data: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [MODEL] }
 			},
 			resources: {
-				header: { formatVersion: 2, contentRevision: 'sha256-resources' },
-				data: { formatVersion: 2, resources: [MODEL_RESOURCE, { kind: 'asset', id: 'paris-salon-chair', unresolved: null }] }
+				header: { formatVersion: 3, contentRevision: 'sha256-resources' },
+				data: { formatVersion: 3, resources: [MODEL_RESOURCE, { kind: 'asset', id: 'paris-salon-chair', unresolved: null }] }
 			}
 		}
 	} as unknown as ProjectEnvelope

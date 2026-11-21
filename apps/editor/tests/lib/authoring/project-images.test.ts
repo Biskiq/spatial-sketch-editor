@@ -14,7 +14,7 @@ const PIN = {
 
 function scene(overrides: Partial<CameraFreeSceneDocument> = {}): CameraFreeSceneDocument {
 	return {
-		formatVersion: 11,
+		formatVersion: 12,
 		textures: [],
 		materials: [],
 		entities: [],
@@ -37,7 +37,7 @@ describe('the shared project-image closure enumerator', () => {
 			scene({
 				textures: [texture()],
 				materials: [
-					{ id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm', color: '#ffffff', maps: { color: A } }
+					{ id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ffffff', maps: { color: { image: { textureId: A } } } } }
 				]
 			}),
 			'private-save',
@@ -52,7 +52,7 @@ describe('the shared project-image closure enumerator', () => {
 				artwork: null,
 				paths: [
 					'$.units.scene.data.textures[0].uri',
-					'$.units.scene.data.materials[0].maps.color'
+					'$.units.scene.data.materials[0].overrides.maps.color.image.textureId'
 				]
 			}
 		]);
@@ -124,5 +124,24 @@ describe('the shared project-image closure enumerator', () => {
 		expect(closure.issues.map((issue) => issue.code)).toEqual(
 			expect.arrayContaining(['image-dimensions-conflict', 'image-static-unknown'])
 		);
+	});
+
+	it('allowlists a Finish override shipped image and refuses an arbitrary path', () => {
+		const base = { id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' as const } };
+		const valid = collectSceneImageRequirements(
+			scene({ materials: [{ ...base, overrides: { maps: { color: { image: { shipped: '/textures/plaster-warm/map.png' } } } } }] }),
+			'private-save'
+		);
+		expect(valid.issues).toEqual([]);
+		expect(valid.requirements).toEqual([]);
+
+		const refused = collectSceneImageRequirements(
+			scene({ materials: [{ ...base, overrides: { maps: { color: { image: { shipped: '/evil/anything.png' } } } } }] }),
+			'private-save'
+		);
+		expect(refused.issues).toContainEqual(expect.objectContaining({
+			code: 'image-static-unknown',
+			path: '$.units.scene.data.materials[0].overrides.maps.color.image.shipped'
+		}));
 	});
 });

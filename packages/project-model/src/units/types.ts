@@ -69,10 +69,10 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 11 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 12 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
-export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
+export const RESOURCE_UNIT_FORMAT_VERSION = 3 as const;
 
 /** The five admitted unit domains, in stable order. */
 export const UNIT_DOMAINS = ['layout', 'scene', 'camera', 'experience', 'resources'] as const;
@@ -385,8 +385,11 @@ export type ExperienceUnitPayload = {
 	experiences: readonly Experience[];
 };
 
-/** The admitted typed-resource kinds: textures, catalogue assets and creator models. */
-export const RESOURCE_KINDS = ['texture', 'asset', 'model'] as const;
+/**
+ * The admitted typed-resource kinds: textures, catalogue assets, creator models
+ * and immutable material definitions.
+ */
+export const RESOURCE_KINDS = ['texture', 'asset', 'model', 'material'] as const;
 
 export type ResourceKind = (typeof RESOURCE_KINDS)[number];
 
@@ -446,6 +449,21 @@ export type ModelResourceDetail = {
 };
 
 /**
+ * One immutable material definition: its canonical recipe and the exact local
+ * source for each map digest. `images` is unique by hash, sorted ascending and
+ * covers every recipe map digest exactly.
+ */
+export type MaterialResourceImage = {
+	hash: string;
+	source: import('../materials/types').LocalImage;
+};
+
+export type MaterialResourceDetail = {
+	recipe: import('../materials/types').Recipe;
+	images: readonly MaterialResourceImage[];
+};
+
+/**
  * One typed resource. `contentRevision` is the exact content revision when the
  * bytes are known; `pin` is the external-bytes pin for a resource outside the
  * project; `unresolved` is the authored diagnostic when the binding is not yet
@@ -463,6 +481,8 @@ export type TypedResource = {
 	pin: ResourcePin | null;
 	unresolved: UnresolvedBinding | null;
 	model?: ModelResourceDetail;
+	/** Present only on a `material` resource. */
+	material?: MaterialResourceDetail;
 };
 
 /** The resource payload is a collection; an empty registry is valid only when unused. */

@@ -117,7 +117,10 @@ function textureRecord(assetId) {
 }
 
 function finishMaterial(assetId) {
-	return { id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm', color: '#ffffff', maps: { color: assetId } };
+	return {
+		id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' },
+		overrides: { color: '#ffffff', maps: { color: { image: { textureId: assetId } } } }
+	};
 }
 
 async function createProjectWithFinishImage(owner = `google:${randomUUID()}`) {

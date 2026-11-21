@@ -16,7 +16,7 @@
  */
 import { GEOMETRY_CORE_EVALUATOR_VERSION, type FormMesh } from '@portfolio/geometry-core';
 import type { SceneFormSource } from '@portfolio/project-model';
-import { evaluateSceneForm } from '@portfolio/project-model/scene-planning';
+import { evaluateSceneForm } from '@portfolio/project-model/form';
 
 /** Highest number of evaluated forms retained before the oldest is evicted. */
 export const FORM_EVALUATION_CACHE_LIMIT = 256;

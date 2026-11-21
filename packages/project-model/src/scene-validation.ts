@@ -31,7 +31,10 @@ const MATERIAL_IDS = new Set([
 	'brass-aged',
 	'marble-light',
 	'velvet-dark',
-	'paper-aged'
+	'paper-aged',
+	// The technical base is a valid fallback for a resource-backed Finish and
+	// for a primitive whose project Finish supplies the authored signals.
+	'pbr-neutral-v1'
 ]);
 
 const FALLBACKS = new Set<SceneObjectFallback>([

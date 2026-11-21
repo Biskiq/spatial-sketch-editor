@@ -132,6 +132,24 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 	};
 }
 
+/**
+ * Clone one normalized Finish. `readFinish` already dropped unknown keys and
+ * pruned empty override containers, so this is a structural copy of the
+ * portable grammar: the canonical serializer sorts keys for identity.
+ */
+function cloneFinish(finish: SceneDocument['materials'][number]): SceneDocument['materials'][number] {
+	return {
+		id: finish.id,
+		name: finish.name,
+		base: 'catalogue' in finish.base
+			? { catalogue: finish.base.catalogue }
+			: { material: finish.base.material },
+		...(finish.overrides === undefined
+			? {}
+			: { overrides: JSON.parse(JSON.stringify(finish.overrides)) as NonNullable<typeof finish.overrides> })
+	};
+}
+
 export function canonicalDocument(document: SceneDocument): SceneDocument {
 	return {
 		// The current-format discriminator is part of the canonical bytes: a
@@ -142,55 +160,7 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 			name: texture.name,
 			uri: texture.uri
 		})),
-		materials: document.materials.map((material) => ({
-			id: material.id,
-			name: material.name,
-			baseMaterialId: material.baseMaterialId,
-			...(material.color === undefined
-				? {}
-				: {
-						color:
-							typeof material.color === 'string'
-								? material.color
-								: { slot: material.color.slot }
-					}),
-			...(material.roughness === undefined ? {} : { roughness: material.roughness }),
-			...(material.metalness === undefined ? {} : { metalness: material.metalness }),
-			...(material.maps === undefined
-				? {}
-				: {
-						maps: {
-							...(material.maps.color === undefined ? {} : { color: material.maps.color }),
-							...(material.maps.normal === undefined ? {} : { normal: material.maps.normal }),
-							...(material.maps.roughness === undefined
-								? {}
-								: { roughness: material.maps.roughness }),
-							...(material.maps.occlusion === undefined
-								? {}
-								: { occlusion: material.maps.occlusion }),
-							...(material.maps.metalness === undefined
-								? {}
-								: { metalness: material.maps.metalness })
-						}
-					}),
-			...(material.mapping === undefined
-				? {}
-				: {
-						mapping: {
-							...(material.mapping.tileMeters === undefined
-								? {}
-								: { tileMeters: [...material.mapping.tileMeters] }),
-							...(material.mapping.rotation === undefined
-								? {}
-								: { rotation: material.mapping.rotation }),
-							...(material.mapping.offset === undefined
-								? {}
-								: { offset: [...material.mapping.offset] })
-						}
-					}),
-			...(material.normalScale === undefined ? {} : { normalScale: material.normalScale }),
-			...(material.normalFlipY === undefined ? {} : { normalFlipY: material.normalFlipY })
-		})),
+		materials: document.materials.map(cloneFinish),
 		entities: document.entities.map(cloneEntity),
 		...(document.clusters === undefined ? {} : { clusters: document.clusters.map((cluster) => ({ id: cluster.id, name: cluster.name, memberIds: [...cluster.memberIds] })) }),
 		navigationNodes: document.navigationNodes.map((node) => ({ id: node.id, label: node.label, position: [...node.position], cameraTarget: [...node.cameraTarget], fov: node.fov, connectedNodeIds: [...node.connectedNodeIds] })),

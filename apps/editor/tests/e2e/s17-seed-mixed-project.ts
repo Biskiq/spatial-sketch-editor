@@ -137,7 +137,7 @@ export async function seedS17BrowserProject(
 			...fixture.units.scene.data,
 			entities: fixture.units.scene.data.entities.filter((entity) => entity.id !== ids.approvedModelId)
 		},
-		resources: { formatVersion: 2, resources: catalogueResources }
+		resources: { formatVersion: 3, resources: catalogueResources }
 	});
 	const initialProject: ProjectEnvelope = {
 		...initialSource,
@@ -279,7 +279,7 @@ export async function seedS17BrowserProject(
 			acceptedRevision: { projectId, revisionId: randomUUID() },
 			layout: fixture.units.layout.data,
 			scene: fixture.units.scene.data,
-			resources: { formatVersion: 2, resources: [...catalogueResources, entry.resource] }
+			resources: { formatVersion: 3, resources: [...catalogueResources, entry.resource] }
 		});
 		const pinnedProject: ProjectEnvelope = {
 			...project,

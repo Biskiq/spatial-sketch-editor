@@ -65,7 +65,12 @@ export type GeometryStore = {
 	dispose(): void;
 };
 
-function construct(spec: GeometrySpec): BufferGeometry {
+/**
+ * Build the one buffer a geometry key names. The store uses it behind its
+ * lease; target analysis uses it with no store at all, so a headless host can
+ * read the exact same geometry the renderer would draw.
+ */
+export function constructGeometry(spec: GeometrySpec): BufferGeometry {
 	if (spec.kind === 'form') return buildFormGeometry(spec.mesh, spec.plane);
 	if (spec.kind === 'artwork-frame') return artworkFrameGeometry(spec);
 	if (spec.kind === 'artwork-mat') return artworkMatGeometry(spec);
@@ -113,7 +118,7 @@ export function createGeometryStore(): GeometryStore {
 			const key = geometryKeyOf(spec);
 			let entry = entries.get(key);
 			if (entry === undefined) {
-				entry = { spec, geometry: construct(spec), refCount: 0 };
+				entry = { spec, geometry: constructGeometry(spec), refCount: 0 };
 				entries.set(key, entry);
 				created += 1;
 			}

@@ -286,13 +286,13 @@ describe('P22.1 cold runtime + asset seam', () => {
 		const issues = validateColdReleaseReferences({
 			scene: {
 				textures: [],
-				materials: [{ id: 'm', baseMaterialId: 'plaster-warm', maps: { normal: 'missing' } }],
+				materials: [{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { maps: { normal: { image: { textureId: 'missing' }, convention: '+Y' } } } }],
 				entities: []
 			},
 			manifest: { releaseId: 'r1', bytesByUri: new Map<string, ReleaseBytesEntry>() }
 		});
 		expect(issues).toEqual([
-			{ path: '$.scene.materials[0].maps.normal', message: 'Unknown finish map "missing"' }
+			{ path: '$.scene.materials[0].overrides.maps.normal.image.textureId', message: 'Unknown finish map "missing"' }
 		]);
 	});
 
@@ -480,12 +480,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
 				textures: [],
 				materials: [
-					{
-						id: 'finish-coral',
-						name: 'Coral',
-						baseMaterialId: 'plaster-warm',
-						color: { slot: 'coral' }
-					}
+					{ id: 'finish-coral', name: 'Coral', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'coral' } } }
 				],
 				entities: [],
 				palette: [{ id: 'coral', name: 'Coral', color: '#ee6c4d' }],
@@ -497,7 +492,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 			manifest: { releaseId: `${project.id}@v1`, bytesByUri: new Map() }
 		});
 		expect(bundle.scene.environment).toEqual({ sky: start, treatment: 'clay' });
-		expect(bundle.scene.materials[0]).toMatchObject({ color: { slot: 'coral' } });
+		expect(bundle.scene.materials[0]).toMatchObject({ overrides: { color: { slot: 'coral' } } });
 		expect(bundle.scene.palette?.[0]).toMatchObject({ id: 'coral', color: '#ee6c4d' });
 		bundle.dispose();
 
@@ -523,7 +518,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
 				textures: [{ id: 'pinned-map', name: 'Pinned map', uri }],
 				materials: [
-					{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', maps: { color: 'pinned-map' } }
+					{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'pinned-map' } } } } }
 				],
 				entities: []
 			},

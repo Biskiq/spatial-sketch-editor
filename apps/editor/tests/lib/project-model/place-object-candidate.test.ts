@@ -595,7 +595,7 @@ it('refuses a finite native contact inconsistent with the primitive dimensions',
 it('preserves populated resource and cluster bytes across every admitted entity kind', () => {
  const document = cameraFreeScene(cloneFixtureDocument('tour-minimal'));
  document.textures = [{ id: 'texture-1', name: 'Texture', uri: '/textures/test.png' }];
- document.materials = [{ id: 'material-1', name: 'Material', baseMaterialId: 'plaster-warm', maps: { color: 'texture-1' }, roughness: 0.25, metalness: 0.75 }];
+ document.materials = [{ id: 'material-1', name: 'Material', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: 'texture-1' } } }, roughness: 0.25, metalness: 0.75 } }];
  document.clusters = [{ id: 'cluster-1', name: 'Group', memberIds: document.entities.map(entity => entity.id) }];
  const freeze = (value: unknown): void => {
   if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }

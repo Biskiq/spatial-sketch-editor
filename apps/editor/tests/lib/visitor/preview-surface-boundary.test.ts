@@ -94,6 +94,20 @@ describe('preview-surface-boundary validator', () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it('rejects the F4 scene-planning barrel in the visitor closure', () => {
+		const root = '/src/lib/visitor/VisitorPreviewSurface.svelte';
+		const planning = '/packages/project-model/src/scene-planning/index.ts';
+		expect(isForbiddenPreviewSurfaceModule(planning)).toContain('scene-planning');
+		const result = validatePreviewSurfaceGraph(
+			graphFrom(root, {
+				[root]: { imports: [planning] },
+				[planning]: { imports: [] }
+			})
+		);
+		expect(result.ok).toBe(false);
+		expect(result.forbidden[0]!.id).toBe(planning);
+	});
+
 	it('rejects a two-hop indirect authoring import through a generic leaf (P22.1)', () => {
 		const root = '/src/lib/visitor/VisitorPreviewSurface.svelte';
 		const mid = '/src/lib/visitor/visitor-cold-runtime.ts';

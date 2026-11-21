@@ -20,7 +20,7 @@ export * from './place-object';
 export * from './support';
 export * from './region-contact';
 export * from './record-scope';
-export * from './form';
+export * from '../form';
 export * from './operations';
 export * from './light-operations';
 export * from './intent-payload';
@@ -29,7 +29,7 @@ export * from './planners';
 
 export * from './finish-model';
 export * from './finish-planners';
-export * from './surface-lineage';
+export * from '../surface-lineage';
 export * from './palette-adoption';
 export * from './texture-resource';
 export * from './artwork-planners';

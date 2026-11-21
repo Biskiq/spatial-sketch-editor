@@ -15,6 +15,7 @@ import { bootEmpty, bootFromLoadOutcome, bootFromSourceJson, bootStarterGallery,
 import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { runBoundLoad, type ReplacementEpochToken, type StageSession } from '$lib/authoring/stage/stage-session';
 import type { StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
+import type { MaterialProofRegistry } from '$lib/authoring/material-proof';
 import { createApiSaveTransport, createHeadSave, createSaveState, type HeadSave, type ReloadOffer } from '$lib/authoring/save';
 
 export function createProjectSession(host: {
@@ -24,6 +25,8 @@ export function createProjectSession(host: {
 	readonly auth: ProjectAuth | null;
 	readonly session: StageSession;
 	readonly images?: VerifiedProjectImageCache;
+	/** The route session's content-addressed material proofs. */
+	readonly materialProofs?: MaterialProofRegistry;
 	url(): URL;
 	acceptance(): StageAcceptanceHost | null;
 	tornDown(): boolean;
@@ -52,7 +55,8 @@ export function createProjectSession(host: {
 		revisionCounter += 1;
 		return {
 			sessionEpoch: `session-${epochCounter}-${projectId}`,
-			acceptedRevision: { projectId, revisionId: `revision-${revisionCounter}` }
+			acceptedRevision: { projectId, revisionId: `revision-${revisionCounter}` },
+			...(host.materialProofs === undefined ? {} : { materialProofs: host.materialProofs })
 		};
 	}
 
@@ -162,6 +166,7 @@ export function createProjectSession(host: {
 	/* --- boot -------------------------------------------------------------- */
 
 	async function load(projectIdToLoad: string, requestedIntent: BootIntent): Promise<void> {
+		host.materialProofs?.clear();
 		// A read is a new epoch's source: no previous saved base, saved bytes or
 		// previous epoch's Save controller may survive into it.
 		host.images?.clear(projectIdToLoad);

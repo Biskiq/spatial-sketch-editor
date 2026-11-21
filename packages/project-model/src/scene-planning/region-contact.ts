@@ -19,7 +19,7 @@ import {
 	type CompiledLayoutGeometry
 } from '@portfolio/layout-core';
 import type { SceneEntity, ScenePrimitiveEntity } from '../scene';
-import { sceneFormContactMinY } from './form';
+import { sceneFormContactMinY } from '../form';
 
 /** The planners' upright tolerance: pitch and roll this close to zero are level. */
 const UPRIGHT_TOLERANCE = 1e-9;

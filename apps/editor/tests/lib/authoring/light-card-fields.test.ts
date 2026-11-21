@@ -79,8 +79,8 @@ function snapshotOf(entity: SceneLightEntity): StageReadSnapshot {
 					data: sceneData
 				},
 				resources: {
-					header: { formatVersion: 2, contentRevision: 'sha256-resources' },
-					data: { formatVersion: 2, resources: [] }
+					header: { formatVersion: 3, contentRevision: 'sha256-resources' },
+					data: { formatVersion: 3, resources: [] }
 				}
 			}
 		} as unknown as ProjectEnvelope

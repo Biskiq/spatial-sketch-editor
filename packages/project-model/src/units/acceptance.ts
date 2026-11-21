@@ -52,7 +52,7 @@ import type {
 } from '../f4/types';
 import type { PlannerRegistry, PrepareResult } from '../f4/prepare';
 import { createUnitTargetInspector, prepareUnitIntent } from '../f4/unit-acceptance';
-import { newlyRetiredSurfaceReferenceKeys } from '../scene-planning/surface-lineage';
+import { newlyRetiredSurfaceReferenceKeys } from '../surface-lineage';
 import {
 	computeEnvelopeSourceContentId,
 	computeUnitContentRevision,

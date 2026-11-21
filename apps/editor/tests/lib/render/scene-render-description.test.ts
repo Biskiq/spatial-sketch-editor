@@ -20,6 +20,7 @@ const LOOK_SECOND = 'look-second';
 const LOOK_PLAIN = 'look-plain';
 const LOOK_TEXTURED = 'look-textured';
 const TEXTURE_ID = 'texture-one';
+const TEXTURE_HASH = `sha256-${'4'.repeat(64)}`;
 
 function primitive(
 	id: string,
@@ -81,17 +82,10 @@ const FORM_ENTITY: SceneEntity = {
 
 const TEXTURES: SceneTextureAsset[] = [{ id: TEXTURE_ID, name: 'One', uri: '/textures/one.png' }];
 const MATERIALS: SceneMaterialInstance[] = [
-	{ id: LOOK_SHARED, name: 'Shared', baseMaterialId: 'plaster-warm', roughness: 0.85, metalness: 0 },
-	{ id: LOOK_SECOND, name: 'Second', baseMaterialId: 'plaster-warm', roughness: 0.4, metalness: 0 },
-	{ id: LOOK_PLAIN, name: 'Plain', baseMaterialId: 'marble-light', roughness: 0.5, metalness: 0 },
-	{
-		id: LOOK_TEXTURED,
-		name: 'Textured',
-		baseMaterialId: 'plaster-warm',
-		maps: { color: TEXTURE_ID },
-		roughness: 0.65,
-		metalness: 0
-	}
+	{ id: LOOK_SHARED, name: 'Shared', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.85, metalness: 0 } },
+	{ id: LOOK_SECOND, name: 'Second', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.4, metalness: 0 } },
+	{ id: LOOK_PLAIN, name: 'Plain', base: { catalogue: 'marble-light' }, overrides: { roughness: 0.5, metalness: 0 } },
+	{ id: LOOK_TEXTURED, name: 'Textured', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: TEXTURE_ID } } }, roughness: 0.65, metalness: 0 } }
 ];
 
 function deepFreeze<T>(value: T): T {
@@ -103,7 +97,16 @@ function deepFreeze<T>(value: T): T {
 }
 
 function scene(entities: SceneEntity[]): RuntimeScene {
-	return { entities, materials: MATERIALS, textures: TEXTURES } as unknown as RuntimeScene;
+	return {
+		entities,
+		materials: MATERIALS,
+		textures: TEXTURES,
+		materialIndex: {
+			definitions: new Map(),
+			definitionImages: new Map(),
+			images: [{ hash: TEXTURE_HASH, source: { textureId: TEXTURE_ID } }]
+		}
+	} as unknown as RuntimeScene;
 }
 
 const FORM_SUPPORT: SceneFormSupport = {
@@ -243,13 +246,7 @@ describe('E7/R4 — resolved Scene description', () => {
 	it('scales a plane’s repeat by object scale and leaves a mapped tile size authoritative', () => {
 		// `mapping.tileMeters` divides the already-scaled surface: one tile is
 		// 0.5 m, so a 1.2 m plane (0.6 × 2) repeats 2.4 times.
-		const mapped: SceneMaterialInstance = {
-			id: 'look-mapped',
-			name: 'Mapped',
-			baseMaterialId: 'plaster-warm',
-			maps: { color: TEXTURE_ID },
-			mapping: { tileMeters: [0.5, 0.5] }
-		};
+		const mapped: SceneMaterialInstance = { id: 'look-mapped', name: 'Mapped', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: TEXTURE_ID } } }, mapping: { kind: 'target', metric: { tileMeters: [0.5, 0.5], rotation: 0, offset: [0, 0] } } } };
 		const value = {
 			entities: [
 				primitive('plane-scaled', 'plane', [0, 0, 0], 'look-mapped', { scale: 2 })
@@ -321,15 +318,8 @@ describe('E7/R4 — resolved Scene description', () => {
 	});
 	it('remaps a model to the Finish look, keeping its normal strength and flip but ignoring mapping', () => {
 		const normalId = 'texture-normal';
-		const finish: SceneMaterialInstance = {
-			id: 'look-model',
-			name: 'Model',
-			baseMaterialId: 'plaster-warm',
-			maps: { normal: normalId },
-			mapping: { tileMeters: [0.5, 0.5], rotation: 0.5, offset: [0.25, 0] },
-			normalScale: 0.5,
-			normalFlipY: true
-		};
+		const normalHash = `sha256-${'5'.repeat(64)}`;
+		const finish: SceneMaterialInstance = { id: 'look-model', name: 'Model', base: { catalogue: 'plaster-warm' }, overrides: { maps: { normal: { image: { textureId: normalId }, convention: '-Y' } }, mapping: { kind: 'target', metric: { tileMeters: [0.5, 0.5], rotation: 0.5, offset: [0.25, 0] } }, normalScale: 0.5 } };
 		const model = {
 			kind: 'model',
 			id: 'model-a',
@@ -345,6 +335,14 @@ describe('E7/R4 — resolved Scene description', () => {
 			entities: [model],
 			materials: [finish],
 			textures: [...TEXTURES, { id: normalId, name: 'Normal', uri: '/textures/normal.png' }],
+			materialIndex: {
+				definitions: new Map(),
+				definitionImages: new Map(),
+				images: [
+					{ hash: TEXTURE_HASH, source: { textureId: TEXTURE_ID } },
+					{ hash: normalHash, source: { textureId: normalId } }
+				]
+			},
 			objects: [],
 			modelFootprints: new Map([['creator-model', { width: 1, depth: 1 }]])
 		} as unknown as RuntimeScene;

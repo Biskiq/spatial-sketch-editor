@@ -32,7 +32,7 @@ const RISO_SKY: SceneSky = {
 
 function sceneOf(environment?: SceneEnvironment): LookScene {
 	return {
-		formatVersion: 11,
+		formatVersion: 12,
 		textures: [],
 		materials: [],
 		entities: [],
@@ -233,7 +233,7 @@ describe('T2 P0 — the Look authoring seam', () => {
 		const scene = {
 			...sceneOf({ sky: skyFromPreset('dusk', 0) }),
 			palette: [{ id: 'coral', name: 'Coral', color: '#ee6c4d' }],
-			materials: [{ id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm', color: '#ee6c4d' }]
+			materials: [{ id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ee6c4d' } }]
 		} as unknown as LookScene;
 		const host = harness({ scene });
 		expect(host.look.canAdopt).toBe(true);

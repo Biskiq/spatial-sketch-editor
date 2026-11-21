@@ -289,6 +289,23 @@ export type TargetFacts = {
 	readonly draws: readonly TargetDraw[];
 };
 
+/** One selected target whose geometry the host must qualify. */
+export type TargetAnalysisRequest = {
+	readonly subject: string;
+	readonly domain: 'scene' | 'layout';
+	/** Present for a Scene entity target; its id is also its subject. */
+	readonly entityId?: string;
+	/** Present for a Scene-owned Layout surface target. */
+	readonly surface?: import('../scene').SceneSurfaceRef;
+	/** The revision the host must analyse; another revision is not an answer. */
+	readonly expectedGeometryRevision: string;
+};
+
+/** Facts derived by the host, keyed by the subject the caller selected. */
+export type TargetAnalysis = (
+	requests: readonly TargetAnalysisRequest[]
+) => readonly TargetFacts[] | null;
+
 /** One role's resolved sampling instruction for a bound draw. */
 export type SamplingEntry = {
 	readonly role: MapRole;
@@ -337,4 +354,21 @@ export type FinishBinding = {
 	readonly inputs: BoundInputs | null;
 	readonly bound: BoundFinish | null;
 	readonly issues: readonly import('./issues').MaterialIssue[];
+};
+
+/**
+ * The runtime-only material index a scene preparation derives from the
+ * resources unit. It is never serialized: a definition is reached by its
+ * digest, and every digest maps to exactly one verified local image identity.
+ */
+export type MaterialRuntimeIndex = {
+	readonly definitions: ReadonlyMap<Hash, Recipe>;
+	/**
+	 * Each definition's own image mappings, keyed by the definition digest. A
+	 * binding is resolved through its definition, never through a flat hash table
+	 * where an unrelated texture with the same bytes could win.
+	 */
+	readonly definitionImages: ReadonlyMap<Hash, readonly ResolvedImage[]>;
+	/** Verified Scene texture pins, used for instance override bindings. */
+	readonly images: readonly ResolvedImage[];
 };
