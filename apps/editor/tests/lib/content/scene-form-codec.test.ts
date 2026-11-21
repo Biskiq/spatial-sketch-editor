@@ -256,7 +256,7 @@ describe('native form Scene codec', () => {
 
   it('canonically writes a material instance override on a form', () => {		const result = validateSceneDocument({
       ...document(formEntity({ materialInstanceId: 'instance-1' })),
-      materials: [{ id: 'instance-1', name: 'Walnut instance', baseMaterialId: 'wood-walnut' }]
+      materials: [{ id: 'instance-1', name: 'Walnut instance', base: { catalogue: 'wood-walnut' } }]
     });
     expect(result.success).toBe(true);
     if (!result.success) return;

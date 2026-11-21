@@ -17,7 +17,7 @@
  */
 import { deepFreeze } from './immutable';
 import { readRecipe } from './read';
-import { NEUTRAL_RECIPE } from './recipe';
+import { NEUTRAL_RECIPE } from './neutral';
 import {
 	MATERIAL_PROFILE,
 	MATERIAL_NEUTRAL_BASE_ID,

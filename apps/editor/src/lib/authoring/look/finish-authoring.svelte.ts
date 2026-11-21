@@ -20,7 +20,7 @@ import {
 	FINISH_SHEEN_STOPS,
 	PALETTE_NAME_MAX_LENGTH,
 	baseMaterialIdOf,
-	effectiveColorOf,
+	catalogueBaseOf,
 	followerSlotOf,
 	finishOf,
 	finishRefOfKey,
@@ -68,7 +68,7 @@ function surfaceTargetComponent(surface: PaintableSurface): string {
 		case 'region-face': return surface.face;
 	}
 }
-import { getMaterial, materials } from '$lib/content/materials';
+import { getMaterial, materialById, materials } from '$lib/content/materials';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import {
@@ -330,6 +330,32 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return current?.materials.find((material) => material.id === id)?.name ?? 'Finish';
 	}
 
+	/** The immutable definition a resource-backed Finish names. */
+	function definitionOf(
+		instance: SceneMaterialInstance | undefined
+	): import('@portfolio/project-model/materials').Recipe | null {
+		if (instance === undefined || !('material' in instance.base)) return null;
+		return scene()?.materialIndex?.definitions.get(instance.base.material) ?? null;
+	}
+
+	/** The local texture id an inherited or overridden binding resolves to. */
+	function textureIdFor(
+		instance: SceneMaterialInstance | undefined,
+		role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion'
+	): string | null {
+		const override = instance?.overrides?.maps?.[role];
+		if (override === null) return null;
+		if (override !== undefined) {
+			return 'textureId' in override.image ? override.image.textureId : null;
+		}
+		const definition = definitionOf(instance);
+		if (definition === null) return null;
+		const binding = definition.maps[role];
+		if (binding === undefined) return null;
+		const image = scene()?.materialIndex?.images.find((entry) => entry.hash === binding.image);
+		return image !== undefined && 'textureId' in image.source ? image.source.textureId : null;
+	}
+
 	function colorOfKey(key: string): string {
 		const current = scene();
 		if (current === null) return '#c4b4a0';
@@ -339,8 +365,13 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 		const instance = current.materials.find((material) => material.id === key.slice('project:'.length));
 		if (instance === undefined) return '#c4b4a0';
-		const color = instance.color;
-		if (color === undefined) return getMaterial(instance.baseMaterialId).fallbackColor;
+		const color = instance.overrides?.color;
+		if (color === undefined) {
+			const base = catalogueBaseOf(instance);
+			const definition = definitionOf(instance);
+			if (definition !== null) return definition.color;
+			return base !== null && materialById.has(base) ? getMaterial(base as MaterialId).fallbackColor : '#c4b4a0';
+		}
 		if (typeof color === 'string') return color;
 		return current.palette?.find((slot) => slot.id === color.slot)?.color ?? '#c4b4a0';
 	}
@@ -364,20 +395,24 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			(entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId
 		);
 		const baseMaterialId = baseMaterialIdOf(entity, current.materials);
-		const catalogue = baseMaterialId === null ? null : getMaterial(baseMaterialId);
-		const baseLabel = catalogue?.label ?? (baseMaterialId ?? 'Finish');
-		const roughness = instance?.roughness ?? catalogue?.roughness ?? 0.5;
-		const roughnessAuthored = instance?.roughness !== undefined;
-		const metalness = instance?.metalness ?? catalogue?.metalness ?? 0;
+		const definition = definitionOf(instance);
+		const catalogueId = instance !== undefined && 'catalogue' in instance.base ? instance.base.catalogue : baseMaterialId;
+		const catalogue = catalogueId !== null && materialById.has(catalogueId as MaterialId)
+			? getMaterial(catalogueId as MaterialId)
+			: null;
+		const baseLabel = definition !== null ? 'Imported material' : (catalogue?.label ?? (baseMaterialId ?? 'Finish'));
+		const roughness = instance?.overrides?.roughness ?? definition?.roughness ?? catalogue?.roughness ?? 0.5;
+		const roughnessAuthored = instance?.overrides?.roughness !== undefined;
+		const metalness = instance?.overrides?.metalness ?? definition?.metalness ?? catalogue?.metalness ?? 0;
 		const sheen = sheenReading({ effectiveRoughness: roughness, authored: roughnessAuthored, baseLabel });
 		const metal = metalReading(metalness);
-		const effectiveColor =
-			effectiveColorOf(entity, current, (id) => getMaterial(id).fallbackColor) ?? '#c4b4a0';
 		const literal = literalColorOf(entity, current.materials);
 		const follower = followerSlotOf(entity, current.materials);
+		const effectiveColor = literal ?? (follower === null ? undefined : current.palette?.find((slot) => slot.id === follower)?.color) ??
+			definition?.color ?? catalogue?.fallbackColor ?? '#c4b4a0';
 		const users = usersOfFinish(current, key, stageEnvelope(snapshot).units.layout.data).length;
 		const isModelOwn = key === 'model-own';
-		const colorMapId = instance?.maps?.color ?? null;
+		const colorMapId = textureIdFor(instance, 'color');
 		const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);
 		// A project texture is authenticated bytes: CSS cannot fetch the Scene URI
 		// from the editor origin, so the preview uses the scope's retained URL.
@@ -388,9 +423,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 					? (host.texturePreviewUri?.(colorMapId) ?? null)
 					: textureRecordUri;
 		const imageDimensions = colorMapId === null ? null : (host.imageDimensions?.(colorMapId) ?? null);
-		const hasColorImage = Boolean(colorMapId ?? catalogue?.textures?.map);
+		const hasColorImage = Boolean(colorMapId ?? definition?.maps.color ?? catalogue?.textures?.map);
 		const tileSizeAvailable = Boolean(
-			(instance?.maps !== undefined && Object.keys(instance.maps).length > 0) ||
+			(instance?.overrides?.maps !== undefined && Object.keys(instance.overrides.maps).length > 0) ||
+				(definition !== null && Object.keys(definition.maps).length > 0) ||
 				(catalogue?.textures !== undefined && Object.keys(catalogue.textures).length > 0)
 		);
 		const palette = current.palette ?? [];
@@ -424,9 +460,17 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				imageDimensions === null
 					? null
 					: finishImageWarning(imageDimensions.width, imageDimensions.height),
-			tileMeters: instance?.mapping?.tileMeters ?? null,
-			defaultTileMeters: catalogue?.defaultTileSizeMeters ?? [1, 1],
-			rotation: instance?.mapping?.rotation ?? 0,
+			tileMeters: instance?.overrides?.mapping !== undefined && instance.overrides.mapping.kind !== 'uv'
+				? instance.overrides.mapping.metric.tileMeters
+				: definition?.mapping.kind !== 'uv' && definition?.mapping !== undefined
+					? definition.mapping.metric.tileMeters
+					: null,
+			defaultTileMeters: definition?.mapping.kind === 'target' ? definition.mapping.metric.tileMeters : (catalogue?.defaultTileSizeMeters ?? [1, 1]),
+			rotation: instance?.overrides?.mapping !== undefined && instance.overrides.mapping.kind !== 'uv'
+				? instance.overrides.mapping.metric.rotation
+				: definition?.mapping.kind !== 'uv' && definition?.mapping !== undefined
+					? definition.mapping.metric.rotation
+					: 0,
 			tileSizeAvailable,
 			directionAvailable: hasColorImage,
 			canEditMapping: entity.kind !== 'model',
@@ -434,7 +478,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			canSaveToPalette:
 				literal !== null && paletteHasRoom(palette) && !palette.some((slot) => slot.color === literal),
 			paletteRoom: paletteHasRoom(palette),
-			originalWritesWhite: hasColorImage && instance?.maps?.color !== undefined
+			originalWritesWhite: hasColorImage && instance?.overrides?.maps?.color !== undefined
 		};
 	}
 
@@ -459,7 +503,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			project: (current?.materials ?? [])
 				.filter((instance) => !isPristineInstance(instance))
 				.map((instance) => {
-					const colorMapId = instance.maps?.color ?? null;
+					const colorMapId = textureIdFor(instance, 'color');
 					const dimensions = colorMapId === null ? null : (host.imageDimensions?.(colorMapId) ?? null);
 					const textureRecordUri = colorMapId === null ? null : (host.textureUri?.(colorMapId) ?? null);
 					return {
@@ -492,9 +536,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				color: slot.color,
 				users: current?.materials.filter(
 					(material) =>
-						material.color !== undefined &&
-						typeof material.color !== 'string' &&
-						material.color.slot === slot.id
+						material.overrides?.color !== undefined &&
+						typeof material.overrides.color !== 'string' &&
+						material.overrides.color.slot === slot.id
 				).length ?? 0
 			}))
 		};
@@ -570,7 +614,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		let allocations: { kind: string; id: string }[] = [];
 		if (typeof ref === 'object' && 'curated' in ref && paintable.some((entity) => entity.kind === 'model')) {
 			const reusable = current.materials.some(
-				(instance) => isPristineInstance(instance) && instance.baseMaterialId === ref.curated
+				(instance) => isPristineInstance(instance) && catalogueBaseOf(instance) === ref.curated
 			);
 			if (!reusable) allocations = [newId('scene-finish', crypto.randomUUID())];
 		}

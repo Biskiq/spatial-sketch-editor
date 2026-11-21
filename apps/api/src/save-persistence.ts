@@ -21,8 +21,8 @@ import {
 	UNIT_ENVELOPE_SOURCE_FORMAT,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import {
-	SAVE_CONTENT_IDENTITY_SCHEME,
+import { verifyMaterialDefinitionHashes } from './material-integrity.js';
+import { SAVE_CONTENT_IDENTITY_SCHEME,
 	createSavedBaseToken,
 	resolveSaveSourceHandler,
 	sameAcceptedRevision,
@@ -147,6 +147,14 @@ export async function saveAcceptedSourceWithHandlers(
 		throw new SaveRefusalError(preparedResult.code, preparedResult.message, preparedResult.issues ?? []);
 	}
 	const prepared = preparedResult.source;
+	const materialIssues = await verifyMaterialDefinitionHashes(prepared.document as ProjectEnvelope);
+	if (materialIssues.length > 0) {
+		throw new SaveRefusalError(
+			'invalid-project',
+			materialIssues[0]!.message,
+			materialIssues.map((issue) => ({ path: issue.path, code: 'invalid-hash', message: issue.message }))
+		);
+	}
 	// Resolve the **complete** image closure, not just the Artwork shelf: a
 	// Finish-only project still names every P20 texture it uses. Verification is
 	// performed before the transaction so the receipt and saved-base checks can

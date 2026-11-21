@@ -338,3 +338,13 @@ export type FinishBinding = {
 	readonly bound: BoundFinish | null;
 	readonly issues: readonly import('./issues').MaterialIssue[];
 };
+
+/**
+ * The runtime-only material index a scene preparation derives from the
+ * resources unit. It is never serialized: a definition is reached by its
+ * digest, and every digest maps to exactly one verified local image identity.
+ */
+export type MaterialRuntimeIndex = {
+	readonly definitions: ReadonlyMap<Hash, Recipe>;
+	readonly images: readonly ResolvedImage[];
+};

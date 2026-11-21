@@ -26,6 +26,19 @@ import {
 } from '@portfolio/project-model';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import {
+	MATERIAL_NEUTRAL_BASE_ID,
+	finishTextureBindings,
+	materialDeliveryContribution,
+	materialImageIndex,
+	mergeImageIndexes,
+	shippedImageIndex,
+	type Finish,
+	type MaterialDeliverySubject,
+	type MaterialRuntimeIndex
+} from '@portfolio/project-model/materials';
+import { surfaceKey } from '@portfolio/layout-core';
+import { catalogueBaseOf } from '@portfolio/project-model/scene-planning';
+import {
 	getShippedMaterialById,
 	getShippedModelByAssetId,
 	isAllowedShippedTextureUri,
@@ -96,7 +109,8 @@ export function isRootRelativeSafe(uri: string): boolean {
 
 const COLD_SCENE_OPTIONS = {
 	isKnownAssetId: (assetId: string) => isKnownShippedAssetId(assetId),
-	isKnownMaterialId: (materialId: string) => isKnownShippedMaterialId(materialId),
+	isKnownMaterialId: (materialId: string) =>
+		materialId === MATERIAL_NEUTRAL_BASE_ID || isKnownShippedMaterialId(materialId),
 	isSceneObjectFallback: (value: unknown) => isShippedFallback(value),
 	isSafeTextureUri: (uri: string) => isRootRelativeSafe(uri)
 };
@@ -106,7 +120,12 @@ const COLD_SCENE_OPTIONS = {
  * Pure; no IO, no store reads beyond the supplied manifest map.
  */
 export function validateColdReleaseReferences(input: {
-	scene: { textures: Array<{ id: string; name: string; uri: string }>; materials: Array<{ id: string; baseMaterialId?: string; maps?: Readonly<Record<string, string>> }>; entities: Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }> };
+	scene: {
+		textures: Array<{ id: string; name: string; uri: string }>;
+		materials: Array<Finish>;
+		entities: Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }>;
+		materialIndex?: MaterialRuntimeIndex;
+	};
 	manifest: ColdReleaseManifest;
 }): ColdReleaseIssue[] {
 	const issues: ColdReleaseIssue[] = [];
@@ -136,14 +155,46 @@ export function validateColdReleaseReferences(input: {
 
 	for (const [index, material] of input.scene.materials.entries()) {
 		const path = `$.scene.materials[${index}]`;
-		if (material.baseMaterialId !== undefined && getShippedMaterialById(material.baseMaterialId) === undefined) {
-			issues.push({ path, message: `Unknown base material "${material.baseMaterialId}"` });
+		if ('catalogue' in material.base) {
+			if (material.base.catalogue !== MATERIAL_NEUTRAL_BASE_ID && getShippedMaterialById(material.base.catalogue) === undefined) {
+				issues.push({ path, message: `Unknown base material "${material.base.catalogue}"` });
+			}
+		} else {
+			const definition = input.scene.materialIndex?.definitions.get(material.base.material);
+			if (definition === undefined) {
+				issues.push({ path, message: `Missing material definition "${material.base.material}"` });
+			} else {
+				for (const role of ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const) {
+					const binding = definition.maps[role];
+					if (binding === undefined) continue;
+					const image = input.scene.materialIndex?.images.find((entry) => entry.hash === binding.image);
+					if (image === undefined) {
+						issues.push({ path, message: `Missing material image "${binding.image}"` });
+						continue;
+					}
+					if ('shipped' in image.source) {
+						if (!isAllowedShippedTextureUri(image.source.shipped)) {
+							issues.push({ path, message: `Material image "${image.hash}" is not an allowlisted shipped resource` });
+						}
+						continue;
+					}
+					const texture = textureById.get(image.source.textureId);
+					if (texture === undefined) {
+						issues.push({ path, message: `Material image "${image.hash}" names an unknown texture` });
+					} else if (isProjectAssetUri(texture.uri) && !input.manifest.bytesByUri.get(texture.uri)?.bytes.byteLength) {
+						issues.push({ path, message: `Material image "${image.hash}" is missing release bytes` });
+					}
+				}
+			}
 		}
-		// Every map slot names a Scene texture record, so the release's texture
-		// reference set covers every Finish map through `maps.*`.
-		for (const [slot, textureId] of Object.entries(material.maps ?? {})) {
-			if (!textureById.has(textureId)) {
-				issues.push({ path: `${path}.maps.${slot}`, message: `Unknown finish map "${textureId}"` });
+		// Every map binding names a Scene texture record, so the release's texture
+		// reference set covers every Finish override through the canonical walker.
+		for (const binding of finishTextureBindings(material)) {
+			if (!textureById.has(binding.textureId)) {
+				issues.push({
+					path: `${path}.overrides.maps.${binding.role}.image.textureId`,
+					message: `Unknown finish map "${binding.textureId}"`
+				});
 			}
 		}
 	}
@@ -184,11 +235,12 @@ export function validateColdReleaseReferences(input: {
 			const instance = materialById.get(instanceId);
 			if (!instance) {
 				issues.push({ path, message: `Unknown material instance "${instanceId}"` });
-			} else if (instance.baseMaterialId) {
-				materialIds.add(instance.baseMaterialId);
+			} else {
+				const base = catalogueBaseOf(instance);
+				if (base !== null && base !== MATERIAL_NEUTRAL_BASE_ID) materialIds.add(base);
 			}
 		}
-		if (fallbackId) materialIds.add(fallbackId);
+		if (fallbackId && fallbackId !== MATERIAL_NEUTRAL_BASE_ID) materialIds.add(fallbackId);
 		if (entity.kind === 'model' && materialIds.size === 0) materialIds.add('paper-aged');
 		for (const materialId of materialIds) {
 			const shipped = getShippedMaterialById(materialId);
@@ -255,7 +307,8 @@ export function composeColdReleaseBundle(input: {
 		{
 			scene: {
 				textures: runtimeScene.textures,
-				materials: runtimeScene.materials as ColdReleaseBundle['scene']['materials'],
+				materials: runtimeScene.materials,
+				...(runtimeScene.materialIndex === undefined ? {} : { materialIndex: runtimeScene.materialIndex }),
 				entities: runtimeScene.entities as Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }>
 			},
 			manifest
@@ -263,6 +316,67 @@ export function composeColdReleaseBundle(input: {
 	);
 	if (referenceIssues.length > 0) {
 		throw new Error(referenceIssues[0]!.message);
+	}
+	if (signal?.aborted) throw new Error('Release preparation was cancelled');
+
+	// The pure material projection is an input to drawing, not a renderer
+	// concern. Its image pins must agree exactly with the downloaded manifest
+	// bytes: a successful HTTP read without a digest is not verification.
+	const finishById = new Map(runtimeScene.materials.map((finish) => [finish.id, finish]));
+	const subjects: MaterialDeliverySubject[] = [];
+	for (const assignment of runtimeScene.surfaceFinishes ?? []) {
+		const subject = `surface:${surfaceKey(assignment.surface)}`;
+		if ('materialInstanceId' in assignment.finish) {
+			const finish = finishById.get(assignment.finish.materialInstanceId);
+			if (finish !== undefined) subjects.push({ subject, finish, palette: runtimeScene.palette });
+		} else {
+			subjects.push({ subject, catalogue: assignment.finish.materialId, palette: runtimeScene.palette });
+		}
+	}
+	for (const entity of runtimeScene.entities) {
+		const materialInstanceId = 'materialInstanceId' in entity ? entity.materialInstanceId : undefined;
+		const finish = materialInstanceId === undefined ? undefined : finishById.get(materialInstanceId);
+		if (finish !== undefined) {
+			subjects.push({ subject: `entity:${entity.id}`, finish, palette: runtimeScene.palette });
+		} else if ('materialId' in entity && typeof entity.materialId === 'string') {
+			subjects.push({ subject: `entity:${entity.id}`, catalogue: entity.materialId, palette: runtimeScene.palette });
+		}
+	}
+	const pinsByHash = new Map(
+		(prepared.envelope.units.resources.data.resources ?? [])
+			.filter((resource) => resource.kind === 'texture' && resource.pin !== null)
+			.map((resource) => [
+				resource.pin!.hash,
+				{ mime: resource.pin!.mime, size: resource.pin!.size }
+			])
+	);
+	const materialImages = runtimeScene.materialIndex?.images ?? [];
+	const delivery = materialDeliveryContribution({
+		definitions: runtimeScene.materialIndex?.definitions ?? new Map(),
+		imageIndex: mergeImageIndexes(
+			shippedImageIndex(),
+			materialImageIndex(materialImages)
+		),
+		projectImagePins: pinsByHash,
+		subjects
+	});
+	if (delivery.issues.length > 0) {
+		const issue = delivery.issues[0]!;
+		throw new Error(`${issue.code} at ${issue.path}: ${issue.action ?? 'Material delivery is incomplete.'}`);
+	}
+	const textureById = new Map(runtimeScene.textures.map((texture) => [texture.id, texture]));
+	for (const pin of delivery.imagePins) {
+		if (!('textureId' in pin.source)) continue;
+		const texture = textureById.get(pin.source.textureId);
+		const entry = texture === undefined ? undefined : manifest.bytesByUri.get(texture.uri);
+		if (
+			entry === undefined ||
+			entry.sha256 !== pin.hash ||
+			entry.mime !== pin.mime ||
+			entry.bytes.byteLength !== pin.size
+		) {
+			throw new Error(`Material image "${pin.hash}" does not match its verified release manifest entry`);
+		}
 	}
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
 

@@ -68,7 +68,7 @@ function payload(entities: readonly unknown[], formatVersion: number = SCENE_UNI
 
 describe('Scene unit format 10', () => {
 	it('is the one admitted Scene format', () => {
-		expect(SCENE_UNIT_FORMAT_VERSION).toBe(11);
+		expect(SCENE_UNIT_FORMAT_VERSION).toBe(12);
 	});
 
 	it('refuses a version-7 Scene payload strictly, even when its content is otherwise valid', () => {
@@ -145,7 +145,7 @@ describe('Point and Spot are unchanged', () => {
 		const result = validateCameraFreeScenePayload(payload([POINT, SPOT]));
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.value.formatVersion).toBe(11);
+		expect(result.value.formatVersion).toBe(12);
 		expect(result.value.entities).toEqual([POINT, SPOT]);
 	});
 
@@ -178,7 +178,7 @@ describe('Point and Spot are unchanged', () => {
 		const read = validateProjectEnvelope(JSON.parse(text));
 		expect(read.success).toBe(true);
 		if (!read.success) return;
-		expect(read.envelope.units.scene.header.formatVersion).toBe(11);
+		expect(read.envelope.units.scene.header.formatVersion).toBe(12);
 		expect(read.envelope.units.scene.data.entities).toEqual([POINT, SPOT]);
 
 		// The same envelope with its Scene unit stamped version 7 is refused whole.

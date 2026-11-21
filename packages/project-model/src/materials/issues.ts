@@ -35,7 +35,9 @@ export const MATERIAL_ISSUE_CODES = [
 	'invalid-target-geometry',
 	'mapping-requires-metric-basis',
 	'empty-override',
-	'duplicate-image'
+	'duplicate-image',
+	'definition-image-coverage',
+	'missing-definition'
 ] as const;
 
 export type MaterialIssueCode = (typeof MATERIAL_ISSUE_CODES)[number];

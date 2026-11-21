@@ -149,7 +149,28 @@ export function createStageAssetLeases(input: StageAssetLeaseInput) {
 			// orphan on every route open.
 			const usedTextureIds = new Set<string>();
 			for (const material of scene.materials) {
-				for (const textureId of Object.values(material.maps ?? {})) usedTextureIds.add(textureId);
+				// The route controller may not execute a package barrel (X1/X2); the
+				// canonical enumerator is `finishTextureBindings`, and this is its
+				// five-role walk over the same accepted Finish value.
+				for (const role of ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const) {
+					const image = material.overrides?.maps?.[role]?.image;
+					if (image !== undefined && image !== null && 'textureId' in image) {
+						usedTextureIds.add(image.textureId);
+					}
+				}
+			}
+			// A resource-backed Finish can draw images inherited from its definition
+			// without naming them in an override. Those local mappings are still the
+			// faces' bytes, so lease the definition's exact texture records too.
+			const materialBases = new Set(
+				scene.materials.flatMap((material) => ('material' in material.base ? [material.base.material] : []))
+			);
+			for (const resource of envelope.units.resources.data.resources) {
+				if (resource.kind !== 'material' || resource.material === undefined) continue;
+				if (!materialBases.has(resource.id)) continue;
+				for (const image of resource.material.images) {
+					if ('textureId' in image.source) usedTextureIds.add(image.source.textureId);
+				}
 			}
 			const pinsByUri = new Map<string, ProjectTexturePin>();
 			for (const texture of scene.textures) {

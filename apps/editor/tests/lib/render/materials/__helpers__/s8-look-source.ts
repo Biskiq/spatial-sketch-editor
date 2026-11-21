@@ -6,11 +6,13 @@ export function lookSource(input: {
 	readonly materials?: LookSource['materials'];
 	readonly palette?: LookSource['palette'];
 	readonly environment?: LookSource['environment'];
+	readonly materialIndex?: LookSource['materialIndex'];
 }): LookSource {
 	return {
 		textures: input.textures ?? [],
 		materials: input.materials ?? [],
 		palette: input.palette ?? [],
-		environment: input.environment ?? {}
+		environment: input.environment ?? {},
+		...(input.materialIndex === undefined ? {} : { materialIndex: input.materialIndex })
 	} as LookSource;
 }

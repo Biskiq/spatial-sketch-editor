@@ -192,7 +192,8 @@ async function directPlan(
 	payload: unknown,
 	entityIds: readonly string[] = [],
 	allocatedIds: readonly { kind: string; id: string }[] = [],
-	targetsFor?: (project: ProjectEnvelope) => readonly SemanticReference[]
+	targetsFor?: (project: ProjectEnvelope) => readonly SemanticReference[],
+	materialProof?: (request: never) => import('@portfolio/project-model/materials').MaterialDigestProof
 ) {
 	const project = await createUnitProject({
 		id: 'project-finish', name: 'Finish',
@@ -222,7 +223,10 @@ async function directPlan(
 		capturedInputs: [],
 		allocatedIds
 	};
-	const planner = createFinishPlanners({ labelForMaterial: (id) => LABELS[id] ?? id }).find(
+	const planner = createFinishPlanners({
+		labelForMaterial: (id) => LABELS[id] ?? id,
+		...(materialProof === undefined ? {} : { materialProof: materialProof as never })
+	}).find(
 		(candidate) => candidate.kind === kind
 	)!;
 	return planner.prepare({
@@ -479,7 +483,7 @@ describe('surface Finish reach', () => {
 		const input: SceneInput = {
 			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
 			layout: wallLayout(),
-			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#aabbcc' } }],
 			surfaceFinishes: [assignment]
 		};
 		const project = await sceneEnvelope(input);
@@ -490,7 +494,7 @@ describe('surface Finish reach', () => {
 		}, ['object-a']);
 		expect(outcome.kind).toBe('prepared');
 		const after = plannedScene(outcome);
-		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', roughness: 0.3 });
+		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', overrides: { roughness: 0.3 } });
 		expect(after.surfaceFinishes).toEqual([assignment]);
 	});
 
@@ -502,7 +506,7 @@ describe('surface Finish reach', () => {
 		const input: SceneInput = {
 			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
 			layout: wallLayout(),
-			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#aabbcc' } }],
 			surfaceFinishes: [assignment]
 		};
 		const outcome = await directPlan(input, 'scene-finish-edit', {
@@ -510,7 +514,7 @@ describe('surface Finish reach', () => {
 		}, ['object-a']);
 		expect(outcome.kind).toBe('prepared');
 		const after = plannedScene(outcome);
-		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm' });
+		expect(after.materials[0]).toMatchObject({ id: 'shared-finish', name: 'Shared Finish', base: { catalogue: 'plaster-warm' } });
 		expect(isPristineInstance(after.materials[0]!)).toBe(true);
 		expect(after.surfaceFinishes).toEqual([{
 			surface: assignment.surface,
@@ -538,7 +542,7 @@ describe('surface Finish reach', () => {
 		const input: SceneInput = {
 			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
 			layout,
-			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#aabbcc' } }],
 			surfaceFinishes: assignments
 		};
 		const project = await sceneEnvelope(input);
@@ -559,7 +563,7 @@ describe('surface Finish reach', () => {
 		const input: SceneInput = {
 			entities: [box('object-a', 'plaster-warm', 'shared-finish')],
 			layout: wallLayout(),
-			materials: [{ id: 'shared-finish', name: 'Shared Finish', baseMaterialId: 'plaster-warm', color: '#aabbcc' }],
+			materials: [{ id: 'shared-finish', name: 'Shared Finish', base: { catalogue: 'plaster-warm' }, overrides: { color: '#aabbcc' } }],
 			surfaceFinishes: [{
 				surface: { kind: 'wall-side', wallId: 'wall-retired', side: 'left' },
 				finish: { materialInstanceId: 'shared-finish' }
@@ -609,7 +613,7 @@ describe('scene-finish-assign', () => {
 			)
 		);
 		expect(first.materials).toEqual([
-			{ id: 'pristine-walnut', name: 'Walnut Wood', baseMaterialId: 'wood-walnut' }
+			{ id: 'pristine-walnut', name: 'Walnut Wood', base: { catalogue: 'wood-walnut' } }
 		]);
 		expect(isPristineInstance(first.materials[0]!)).toBe(true);
 		expect(
@@ -623,7 +627,7 @@ describe('scene-finish-assign', () => {
 				{
 					entities: [model('m1', 'pristine-walnut'), model('m2')],
 					materials: [
-						{ id: 'pristine-walnut', name: 'Walnut Wood', baseMaterialId: 'wood-walnut' }
+						{ id: 'pristine-walnut', name: 'Walnut Wood', base: { catalogue: 'wood-walnut' } }
 					]
 				},
 				'scene-finish-assign',
@@ -644,7 +648,7 @@ describe('scene-finish-assign', () => {
 				{
 					entities: [model('m1', 'pristine-old')],
 					materials: [
-						{ id: 'pristine-old', name: 'Warm Plaster', baseMaterialId: 'plaster-warm' }
+						{ id: 'pristine-old', name: 'Warm Plaster', base: { catalogue: 'plaster-warm' } }
 					]
 				},
 				'scene-finish-assign',
@@ -662,7 +666,7 @@ describe('scene-finish-assign', () => {
 				{
 					entities: [box('a'), model('m')],
 					materials: [
-						{ id: 'p1', name: 'Walnut 2', baseMaterialId: 'wood-walnut', roughness: 0.7 }
+						{ id: 'p1', name: 'Walnut 2', base: { catalogue: 'wood-walnut' }, overrides: { roughness: 0.7 } }
 					]
 				},
 				'scene-finish-assign',
@@ -685,7 +689,7 @@ describe('scene-finish-assign', () => {
 				{
 					entities: [model('m', 'p1')],
 					materials: [
-						{ id: 'p1', name: 'Walnut 2', baseMaterialId: 'wood-walnut', color: '#111111' }
+						{ id: 'p1', name: 'Walnut 2', base: { catalogue: 'wood-walnut' }, overrides: { color: '#111111' } }
 					]
 				},
 				'scene-finish-assign',
@@ -733,7 +737,7 @@ describe('the picker preview', () => {
 		const accepted = sceneDocument({
 			entities: [box('a', 'wood-walnut', 'p1'), box('b', 'wood-walnut')],
 			materials: [
-				{ id: 'p1', name: 'Walnut', baseMaterialId: 'wood-walnut', color: '#111111' }
+				{ id: 'p1', name: 'Walnut', base: { catalogue: 'wood-walnut' }, overrides: { color: '#111111' } }
 			]
 		});
 		const preview = withFinishPreviews(accepted, new Map([['a', '#ff0000']]));
@@ -743,7 +747,7 @@ describe('the picker preview', () => {
 		const entity = preview.entities.find((candidate) => candidate.id === 'a')!;
 		const instanceId = (entity as { materialInstanceId?: string }).materialInstanceId!;
 		expect(instanceId).not.toBe('p1');
-		expect(preview.materials.find((material) => material.id === instanceId)?.color).toBe('#ff0000');
+		expect(preview.materials.find((material) => material.id === instanceId)?.overrides?.color).toBe('#ff0000');
 		expect(effectiveColorOf(entity, preview, () => '#000000')).toBe('#ff0000');
 	});
 
@@ -752,7 +756,7 @@ describe('the picker preview', () => {
 		const preview = withFinishPreviews(accepted, new Map([['a', '#00ff00']]));
 		expect(accepted.materials).toHaveLength(0);
 		expect(preview.materials).toHaveLength(1);
-		expect(preview.materials[0]).toMatchObject({ baseMaterialId: 'wood-walnut', color: '#00ff00' });
+		expect(preview.materials[0]).toMatchObject({ base: { catalogue: 'wood-walnut' }, overrides: { color: '#00ff00' } });
 	});
 });
 
@@ -773,12 +777,7 @@ describe('scene-finish-edit and the shared-Finish Ask', () => {
 		);
 		const scene = acceptedScene(result);
 		expect(scene.materials).toEqual([
-			{
-				id: 'walnut-gloss',
-				name: 'Walnut Wood 2',
-				baseMaterialId: 'wood-walnut',
-				roughness: 0.3
-			}
+			{ id: 'walnut-gloss', name: 'Walnut Wood 2', base: { catalogue: 'wood-walnut' }, overrides: { roughness: 0.3 } }
 		]);
 		expect(finishKeyOf(scene, 'a')).toBe('project:walnut-gloss');
 		expect(finishKeyOf(scene, 'b')).toBe('curated:wood-walnut');
@@ -801,13 +800,7 @@ describe('scene-finish-edit and the shared-Finish Ask', () => {
 		);
 		const scene = acceptedScene(result);
 		expect(scene.materials).toEqual([
-			{
-				id: 'walnut-shared',
-				name: 'Walnut Wood 2',
-				baseMaterialId: 'wood-walnut',
-				color: '#2b1a10',
-				metalness: 1
-			}
+			{ id: 'walnut-shared', name: 'Walnut Wood 2', base: { catalogue: 'wood-walnut' }, overrides: { color: '#2b1a10', metalness: 1 } }
 		]);
 		expect(finishKeyOf(scene, 'a')).toBe('project:walnut-shared');
 		expect(finishKeyOf(scene, 'b')).toBe('project:walnut-shared');
@@ -816,7 +809,7 @@ describe('scene-finish-edit and the shared-Finish Ask', () => {
 	it('edits a single-user project Finish in place without allocating an id', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1')],
-			materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', roughness: 0.5 }]
+			materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.5 } }]
 		});
 		const result = await accept(
 			coordinator,
@@ -829,14 +822,14 @@ describe('scene-finish-edit and the shared-Finish Ask', () => {
 			}, ['a'])
 		);
 		const scene = acceptedScene(result);
-		expect(scene.materials[0]).toMatchObject({ id: 'p1', roughness: 0.1, metalness: 1 });
+		expect(scene.materials[0]).toMatchObject({ id: 'p1', overrides: { roughness: 0.1, metalness: 1 } });
 		expect(scene.entities[0]).toMatchObject({ materialId: 'plaster-warm', materialInstanceId: 'p1' });
 	});
 
 	it('clones a shared project Finish for Just this, keeping the original users', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1'), box('b', 'plaster-warm', 'p1')],
-			materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', roughness: 0.5 }]
+			materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.5 } }]
 		});
 		const result = await accept(
 			coordinator,
@@ -850,14 +843,8 @@ describe('scene-finish-edit and the shared-Finish Ask', () => {
 		);
 		const scene = acceptedScene(result);
 		expect(scene.materials).toEqual([
-			{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', roughness: 0.5 },
-			{
-				id: 'p1-copy',
-				name: 'Plaster 2 2',
-				baseMaterialId: 'plaster-warm',
-				roughness: 0.5,
-				color: '#abcdef'
-			}
+			{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.5 } },
+			{ id: 'p1-copy', name: 'Plaster 2 2', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.5, color: '#abcdef' } }
 		]);
 		expect(finishKeyOf(scene, 'a')).toBe('project:p1-copy');
 		expect(finishKeyOf(scene, 'b')).toBe('project:p1');
@@ -909,7 +896,7 @@ describe('the palette', () => {
 	it('adopts a literal into a follower in the same write', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1')],
-			materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', color: '#aabbcc' }]
+			materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { color: '#aabbcc' } }]
 		});
 		const result = await accept(
 			coordinator,
@@ -922,13 +909,13 @@ describe('the palette', () => {
 		);
 		const scene = acceptedScene(result);
 		expect(scene.palette).toEqual([{ id: 'slot-a', name: 'Colour 1', color: '#aabbcc' }]);
-		expect(scene.materials[0]!.color).toEqual({ slot: 'slot-a' });
+		expect(scene.materials[0]!.overrides?.color).toEqual({ slot: 'slot-a' });
 	});
 
 	it('recolours a slot globally and its followers resolve the new colour', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1'), box('b', 'plaster-warm', 'p1')],
-			materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', color: { slot: 'slot-a' } }],
+			materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'slot-a' } } }],
 			palette: [{ id: 'slot-a', name: 'Accent', color: '#aabbcc' }]
 		});
 		const result = await accept(
@@ -937,13 +924,13 @@ describe('the palette', () => {
 		);
 		const scene = acceptedScene(result);
 		expect(scene.palette).toEqual([{ id: 'slot-a', name: 'Accent', color: '#112233' }]);
-		expect(scene.materials[0]).toMatchObject({ color: { slot: 'slot-a' } });
+		expect(scene.materials[0]).toMatchObject({ overrides: { color: { slot: 'slot-a' } } });
 	});
 
 	it('renames a slot without changing its id, position or followers', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1')],
-			materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', color: { slot: 'slot-a' } }],
+			materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'slot-a' } } }],
 			palette: [
 				{ id: 'slot-a', name: 'Accent', color: '#aabbcc' },
 				{ id: 'slot-b', name: 'Second', color: '#ddeeff' }
@@ -958,14 +945,14 @@ describe('the palette', () => {
 			{ id: 'slot-a', name: 'Warm accent', color: '#aabbcc' },
 			{ id: 'slot-b', name: 'Second', color: '#ddeeff' }
 		]);
-		expect(scene.materials[0]!.color).toEqual({ slot: 'slot-a' });
+		expect(scene.materials[0]!.overrides?.color).toEqual({ slot: 'slot-a' });
 	});
 
 	it('publishes preserved correspondence for untouched entities on a palette-only write', async () => {
 		const plan = await directPlan(
 			{
 				entities: [box('a', 'plaster-warm', 'p1'), box('b', 'plaster-warm', 'p1')],
-				materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', color: { slot: 'slot-a' } }],
+				materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'slot-a' } } }],
 				palette: [{ id: 'slot-a', name: 'Accent', color: '#aabbcc' }]
 			},
 			'scene-palette-slot-set',
@@ -981,7 +968,7 @@ describe('the palette', () => {
 	it('removes a slot, literalises its followers and drops an empty palette', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p1')],
-			materials: [{ id: 'p1', name: 'Plaster 2', baseMaterialId: 'plaster-warm', color: { slot: 'slot-a' } }],
+			materials: [{ id: 'p1', name: 'Plaster 2', base: { catalogue: 'plaster-warm' }, overrides: { color: { slot: 'slot-a' } } }],
 			palette: [{ id: 'slot-a', name: 'Accent', color: '#aabbcc' }]
 		});
 		const result = await accept(
@@ -990,7 +977,7 @@ describe('the palette', () => {
 		);
 		const scene = acceptedScene(result);
 		expect('palette' in scene).toBe(false);
-		expect(scene.materials[0]!.color).toBe('#aabbcc');
+		expect(scene.materials[0]!.overrides?.color).toBe('#aabbcc');
 	});
 
 	it('refuses a ninth slot and an over-long name', async () => {
@@ -1022,7 +1009,7 @@ describe('the palette', () => {
 describe('record scope', () => {
 	const before = sceneDocument({
 		entities: [box('a')],
-		materials: [{ id: 'p1', name: 'P', baseMaterialId: 'plaster-warm', color: '#111111' }],
+		materials: [{ id: 'p1', name: 'P', base: { catalogue: 'plaster-warm' }, overrides: { color: '#111111' } }],
 		palette: [{ id: 'slot-a', name: 'A', color: '#111111' }]
 	});
 
@@ -1080,7 +1067,7 @@ describe('record scope', () => {
 		const reordered: CameraFreeSceneDocument = {
 			...before,
 			materials: [
-				{ id: 'p2', name: 'Second', baseMaterialId: 'plaster-warm' },
+				{ id: 'p2', name: 'Second', base: { catalogue: 'plaster-warm' } },
 				...before.materials
 			]
 		};
@@ -1144,13 +1131,7 @@ describe('scene-finish-from-image', () => {
 		const scene = acceptedScene(result);
 		expect(scene.textures).toEqual([{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }]);
 		expect(scene.materials).toEqual([
-			{
-				id: 'finish-image',
-				name: 'Brick',
-				baseMaterialId: 'paper-aged',
-				color: '#ffffff',
-				maps: { color: IMAGE_ASSET }
-			}
+			{ id: 'finish-image', name: 'Brick', base: { catalogue: 'paper-aged' }, overrides: { color: '#ffffff', maps: { color: { image: { textureId: IMAGE_ASSET } } } } }
 		]);
 		expect(finishKeyOf(scene, 'a')).toBe('project:finish-image');
 		expect(scene.entities[0]).toMatchObject({ materialId: 'paper-aged', materialInstanceId: 'finish-image' });
@@ -1204,7 +1185,7 @@ describe('scene-finish-from-image', () => {
 		const scene = acceptedScene(second);
 		expect(scene.textures).toHaveLength(1);
 		expect(scene.materials.map((material) => material.id)).toEqual(['finish-one', 'finish-two']);
-		expect(scene.materials[1]).toMatchObject({ name: 'Brick 3', maps: { color: IMAGE_ASSET } });
+		expect(scene.materials[1]).toMatchObject({ name: 'Brick 3', overrides: { maps: { color: { image: { textureId: IMAGE_ASSET } } } } });
 		expect(resourcesOf(second)).toHaveLength(1);
 		expect(finishKeyOf(scene, 'a')).toBe('project:finish-one');
 		expect(finishKeyOf(scene, 'b')).toBe('project:finish-two');
@@ -1275,8 +1256,8 @@ describe('scene-finish-from-image', () => {
 		const coordinator = await boot({
 			entities: [box('a'), box('b')],
 			materials: [
-				{ id: 'shared', name: 'Shared', baseMaterialId: 'plaster-warm', roughness: 0.4 },
-				{ id: 'single', name: 'Single', baseMaterialId: 'wood-walnut' }
+				{ id: 'shared', name: 'Shared', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.4 } },
+				{ id: 'single', name: 'Single', base: { catalogue: 'wood-walnut' } }
 			]
 		});
 		await accept(coordinator, intentOf(coordinator, 'scene-finish-assign', { finish: { project: 'shared' }, entityIds: ['a', 'b'] }, ['a', 'b']));
@@ -1296,10 +1277,10 @@ describe('scene-finish-from-image', () => {
 		);
 		const scene = acceptedScene(cloned);
 		expect(scene.textures).toEqual([{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }]);
-		expect(scene.materials.find((material) => material.id === 'shared')).toMatchObject({ roughness: 0.4 });
+		expect(scene.materials.find((material) => material.id === 'shared')).toMatchObject({ overrides: { roughness: 0.4 } });
 		expect(scene.materials.find((material) => material.id === 'shared-clone')).toMatchObject({
 			name: 'Shared 2',
-			maps: { color: IMAGE_ASSET }
+			overrides: { maps: { color: { image: { textureId: IMAGE_ASSET } } } }
 		});
 		expect(finishKeyOf(scene, 'a')).toBe('project:shared-clone');
 		expect(finishKeyOf(scene, 'b')).toBe('project:shared');
@@ -1319,7 +1300,7 @@ describe('scene-finish-from-image', () => {
 		);
 		const replacedScene = acceptedScene(replaced);
 		expect(replacedScene.materials.find((material) => material.id === 'shared')).toMatchObject({
-			maps: { color: IMAGE_ASSET }
+			overrides: { maps: { color: { image: { textureId: IMAGE_ASSET } } } }
 		});
 		expect(replacedScene.textures).toHaveLength(1);
 	});
@@ -1328,7 +1309,7 @@ describe('scene-finish-from-image', () => {
 		const coordinator = await boot({
 			entities: [box('a')],
 			materials: [
-				{ id: 'image-finish', name: 'Brick', baseMaterialId: 'paper-aged', color: '#ffffff', maps: { color: IMAGE_ASSET } }
+				{ id: 'image-finish', name: 'Brick', base: { catalogue: 'paper-aged' }, overrides: { color: '#ffffff', maps: { color: { image: { textureId: IMAGE_ASSET } } } } }
 			],
 			textures: [{ id: IMAGE_ASSET, name: 'Brick', uri: IMAGE_URI }],
 			resources: {
@@ -1350,10 +1331,10 @@ describe('scene-finish-from-image', () => {
 		);
 		const scene = acceptedScene(removed);
 		const instance = scene.materials.find((material) => material.id === 'image-finish')!;
-		expect(instance.maps).toBeUndefined();
+		expect(instance.overrides?.maps).toBeUndefined();
 		// The white tint was only there to let the image through; removing it lets
 		// the base material's own colour rule return.
-		expect(instance.color).toBeUndefined();
+		expect(instance.overrides?.color).toBeUndefined();
 		// Orphan textures follow the asset's retention; the Scene write never
 		// deletes bytes it cannot see.
 		expect(scene.textures).toHaveLength(1);
@@ -1364,7 +1345,7 @@ describe('scene-finish-edit — Scale and Direction', () => {
 	it('writes tileMetres and a normalised rotation through the ordinary Ask rules', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p')],
-			materials: [{ id: 'p', name: 'P', baseMaterialId: 'plaster-warm', roughness: 0.5 }]
+			materials: [{ id: 'p', name: 'P', base: { catalogue: 'plaster-warm' }, overrides: { roughness: 0.5 } }]
 		});
 		const result = await accept(
 			coordinator,
@@ -1378,15 +1359,16 @@ describe('scene-finish-edit — Scale and Direction', () => {
 		);
 		const scene = acceptedScene(result);
 		const instance = scene.materials.find((material) => material.id === 'p')!;
-		expect(instance.mapping?.tileMeters).toEqual([0.5, 0.25]);
-		expect(instance.mapping?.rotation).toBeCloseTo((3 * Math.PI) / 2, 10);
+		const mapping = instance.overrides?.mapping;
+		expect(mapping?.kind === 'target' ? mapping.metric.tileMeters : undefined).toEqual([0.5, 0.25]);
+		expect(mapping?.kind === 'target' ? mapping.metric.rotation : undefined).toBeCloseTo((3 * Math.PI) / 2, 10);
 	});
 
 	it('deletes the mapping when a null edit leaves nothing', async () => {
 		const coordinator = await boot({
 			entities: [box('a', 'plaster-warm', 'p')],
 			materials: [
-				{ id: 'p', name: 'P', baseMaterialId: 'plaster-warm', mapping: { tileMeters: [1, 2] } }
+				{ id: 'p', name: 'P', base: { catalogue: 'plaster-warm' }, overrides: { mapping: { kind: 'target', metric: { tileMeters: [1, 2], rotation: 0, offset: [0, 0] } } } }
 			]
 		});
 		const result = await accept(
@@ -1400,7 +1382,7 @@ describe('scene-finish-edit — Scale and Direction', () => {
 			}, ['a'])
 		);
 		const instance = acceptedScene(result).materials.find((material) => material.id === 'p')!;
-		expect(instance.mapping).toBeUndefined();
+		expect(instance.overrides?.mapping).toBeUndefined();
 	});
 });
 

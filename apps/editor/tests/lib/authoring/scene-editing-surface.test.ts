@@ -120,7 +120,7 @@ async function supportedProject(
 		layout,
 		...(modelEntry === undefined
 			? {}
-			: { resources: { formatVersion: 2 as const, resources: [modelEntry.resource] } }),
+			: { resources: { formatVersion: 3 as const, resources: [modelEntry.resource] } }),
 		scene: { formatVersion: 1, textures: [], materials: [], entities: [...entities], navigationNodes: [], connections: [] }
 	});
 	return modelEntry === undefined

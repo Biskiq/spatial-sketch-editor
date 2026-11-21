@@ -37,6 +37,10 @@ import { validateAcceptedRevision, validateSemanticReference } from '../referenc
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
 import { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
+import { readMaterialDefinition } from '../materials/definition';
+import { shippedImage } from '../materials/catalogue';
+import { finishTextureBindings } from '../materials/read';
+import { MATERIAL_CAPABILITY } from '../materials/types';
 import { withSceneValidationOptions } from '../scene-validation';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
 import { validateArtworkLibrary, validateSceneDocument } from '../scene-codec';
@@ -87,6 +91,7 @@ import {
 	type ExperienceTransitionKind,
 	type ExperienceUnitPayload,
 	type LayoutUnitPayload,
+	type MaterialResourceDetail,
 	type ModelResourceDetail,
 	type PayloadOf,
 	type ProjectEnvelope,
@@ -531,7 +536,12 @@ function readSurfaceFinishes(
 				reader.problem(`${path}.finish.materialInstanceId`, 'missing_reference', `Unknown project Finish "${materialInstanceId}"`);
 			} else if (materialInstanceId !== null && instance !== undefined) {
 				const keys = Object.keys(instance).sort();
-				const pristine = keys.length === 3 && keys[0] === 'baseMaterialId' && keys[1] === 'id' && keys[2] === 'name';
+				const pristine =
+					keys.length === 3 &&
+					keys[0] === 'base' &&
+					keys[1] === 'id' &&
+					keys[2] === 'name' &&
+					'catalogue' in (instance as { base?: { catalogue?: unknown } }).base!;
 				if (pristine) {
 					reader.problem(`${path}.finish.materialInstanceId`, 'surface_finish_not_normal', 'A project surface Finish must reference a non-pristine material instance');
 				} else finish = { materialInstanceId };
@@ -593,11 +603,11 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 	// the palette; the Scene codec never sees it.
 	const paletteIds = new Set((palette ?? []).map((slot) => slot.id));
 	for (const [index, material] of document.materials.entries()) {
-		const color = material.color;
+		const color = material.overrides?.color;
 		if (color === undefined || typeof color === 'string') continue;
 		if (!paletteIds.has(color.slot)) {
 			reader.problem(
-				`$.materials[${index}].color.slot`,
+				`$.materials[${index}].overrides.color.slot`,
 				'unknown_palette_slot',
 				`Unknown palette slot: ${color.slot}`
 			);
@@ -1136,7 +1146,18 @@ export function validateExperiencePayload(input: unknown): ShapeValidation<Exper
 	};
 }
 
-const RESOURCE_KEYS = ['kind', 'id', 'contentRevision', 'pin', 'unresolved', 'model'] as const;
+function sameCapabilities(
+	actual: readonly RequiredCapability[],
+	expected: RequiredCapability
+): boolean {
+	return (
+		actual.length === 1 &&
+		actual[0]!.id === expected.id &&
+		actual[0]!.version === expected.version
+	);
+}
+
+const RESOURCE_KEYS = ['kind', 'id', 'contentRevision', 'pin', 'unresolved', 'model', 'material'] as const;
 const RESOURCE_PAYLOAD_KEYS = ['formatVersion', 'resources'] as const;
 const MODEL_KEYS = ['source', 'recipe', 'reportDigest', 'placement'] as const;
 const MODEL_SOURCE_KEYS = ['manifestHash', 'size', 'fileCount'] as const;
@@ -1201,9 +1222,15 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 			reader.problem(`${path}.model`, 'invalid-type', `${path}.model must be a model detail object when present, not null`);
 			return failed(reader);
 		}
+		if (value.material === null) {
+			reader.problem(`${path}.material`, 'invalid-type', `${path}.material must be a material definition object when present, not null`);
+			return failed(reader);
+		}
 		const model = value.model === undefined ? undefined : readModelDetail(reader, value.model, `${path}.model`);
+		const material = value.material === undefined ? undefined : readMaterialResourceDetail(reader, value.material, `${path}.material`);
 		if (kind === null || id === null || (value.pin !== null && pin === null)) return failed(reader);
 		if (value.model !== undefined && model === undefined) return failed(reader);
+		if (value.material !== undefined && material === undefined) return failed(reader);
 		if (contentRevision === null && pin === null && unresolved === null) {
 			reader.problem(path, 'unresolved-resource-without-diagnostic', `${path} is neither pinned nor revised and carries no diagnostic`);
 			return failed(reader);
@@ -1211,6 +1238,10 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 		if (kind === 'model') {
 			if (model === undefined) {
 				reader.problem(`${path}.model`, 'missing-model-detail', `${path} is a model resource and must carry its retained source, recipe, report digest and placement`);
+				return failed(reader);
+			}
+			if (material !== undefined) {
+				reader.problem(`${path}.material`, 'unknown-key', `${path}.material is only part of a material resource`);
 				return failed(reader);
 			}
 			if (pin === null || unresolved !== null) {
@@ -1229,9 +1260,36 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 				reader.problem(`${path}.contentRevision`, 'content-revision-mismatch', `${path}.contentRevision must be the derivative pin's own hash`);
 				return failed(reader);
 			}
-		} else if (model !== undefined) {
-			reader.problem(`${path}.model`, 'unknown-key', `${path}.model is only part of a model resource`);
-			return failed(reader);
+		} else if (kind === 'material') {
+			if (material === undefined) {
+				reader.problem(`${path}.material`, 'missing-material-detail', `${path} is a material resource and must carry its recipe and exact image mappings`);
+				return failed(reader);
+			}
+			if (model !== undefined) {
+				reader.problem(`${path}.model`, 'unknown-key', `${path}.model is only part of a model resource`);
+				return failed(reader);
+			}
+			if (pin !== null || unresolved !== null) {
+				reader.problem(`${path}.pin`, 'unapproved-material-resource', `${path} is an immutable in-project definition and must not carry an external pin or diagnostic`);
+				return failed(reader);
+			}
+			if (contentRevision === null || contentRevision !== id) {
+				reader.problem(`${path}.contentRevision`, 'content-revision-mismatch', `${path}.contentRevision must be the recipe identity itself`);
+				return failed(reader);
+			}
+			if (!SHA256_PATTERN.test(id)) {
+				reader.problem(`${path}.id`, 'invalid-hash', `${path}.id must be the lowercase sha256 recipe identity`);
+				return failed(reader);
+			}
+		} else {
+			if (model !== undefined) {
+				reader.problem(`${path}.model`, 'unknown-key', `${path}.model is only part of a model resource`);
+				return failed(reader);
+			}
+			if (material !== undefined) {
+				reader.problem(`${path}.material`, 'unknown-key', `${path}.material is only part of a material resource`);
+				return failed(reader);
+			}
 		}
 		const key = `${kind}:${id}`;
 		if (ids.has(key)) reader.problem(`${path}.id`, 'duplicate-identity', `resource "${key}" is declared twice`);
@@ -1242,7 +1300,8 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 			contentRevision,
 			pin,
 			unresolved,
-			...(model === undefined ? {} : { model })
+			...(model === undefined ? {} : { model }),
+			...(material === undefined ? {} : { material })
 		});
 	}
 	if (reader.issues.length > 0) return failed(reader);
@@ -1251,6 +1310,33 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 		value: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources },
 		ignoredOptionalExtensions: []
 	};
+}
+
+/**
+ * Strict read of a material resource's definition.
+ *
+ * The recipe/definition grammar is the portable v1 reader, not a second parser:
+ * exact digest coverage, unique sorted images and every role/selector pairing
+ * come from that one implementation. This function only maps its diagnostics
+ * into the envelope reader's path space.
+ */
+function readMaterialResourceDetail(
+	reader: ShapeReader,
+	input: unknown,
+	path: string
+): MaterialResourceDetail | undefined {
+	const read = readMaterialDefinition(input);
+	if (!read.success) {
+		for (const issue of read.issues) {
+			reader.problem(
+				issue.path === '$' ? path : `${path}${issue.path.slice(1)}`,
+				issue.code,
+				issue.action ?? issue.code
+			);
+		}
+		return undefined;
+	}
+	return read.definition;
 }
 
 /** Strict read of the retained model provenance and placement definition. */
@@ -1779,7 +1865,13 @@ function envelopeFindings(
 			.filter((entity) => entity.kind === 'model')
 			.map((entity) => (modelResourceIds.has(entity.assetId)
 				? { kind: 'model', id: entity.assetId }
-				: { kind: 'asset', id: entity.assetId }))
+				: { kind: 'asset', id: entity.assetId })),
+		// A Finish can only reach a resource-backed definition through its
+		// digest. The definition itself, its local image mappings and its exact
+		// lock are checked below; this entry is the executable reference.
+		...units.scene.data.materials.flatMap((material) =>
+			'material' in material.base ? [{ kind: 'material', id: material.base.material }] : []
+		)
 	];
 	for (const required of requiredResources) {
 		const resource = resourceByKindAndId.get(`${required.kind}\0${required.id}`);
@@ -1811,6 +1903,81 @@ function envelopeFindings(
 				code: 'missing-lock',
 				message: `model resource "${resource.id}" is not pinned by a dependency-lock entry`
 			});
+		}
+	}
+
+	// A material definition is immutable content with its own exact lock and
+	// capability. Its local mappings are the only answer for each recipe digest,
+	// and every project mapping must agree with the Scene texture record and pin.
+	const materialLocks = new Map<string, typeof lock.entries[number][]>();
+	for (const entry of lock.entries) {
+		if (entry.domain !== 'resource:material') continue;
+		const entries = materialLocks.get(entry.subjectId) ?? [];
+		entries.push(entry);
+		materialLocks.set(entry.subjectId, entries);
+	}
+	for (const resource of resources) {
+		if (resource.kind !== 'material') continue;
+		const detail = resource.material;
+		const path = `$.units.resources.data.resources`;
+		if (detail === undefined) continue;
+		const materialLockEntries = materialLocks.get(resource.id) ?? [];
+		if (materialLockEntries.length !== 1) {
+			closure.push({
+				path: '$.dependencyLock.entries',
+				code: 'missing-lock',
+				message: `material resource "${resource.id}" must have exactly one resource:material lock`
+			});
+		} else {
+			const entry = materialLockEntries[0]!;
+			if (entry.subjectKind !== 'resource' || entry.instancePath.length !== 0 || entry.pin !== null) {
+				closure.push({ path: '$.dependencyLock.entries', code: 'material-lock-invalid', message: `material lock "${resource.id}" must be a root resource lock without an external pin` });
+			}
+			if (entry.contentRevision !== resource.id || entry.contentRevision !== resource.contentRevision) {
+				closure.push({ path: '$.dependencyLock.entries', code: 'resource-revision-mismatch', message: `material lock "${resource.id}" must pin the recipe identity` });
+			}
+			if (!sameCapabilities(entry.requiredCapabilities, MATERIAL_CAPABILITY)) {
+				closure.push({ path: '$.dependencyLock.entries', code: 'unsupported-capability', message: `material lock "${resource.id}" must require exactly ${MATERIAL_CAPABILITY.id}@${MATERIAL_CAPABILITY.version}` });
+			}
+		}
+		for (const image of detail.images) {
+			if ('shipped' in image.source) {
+				const shipped = shippedImage(image.source.shipped);
+				if (shipped === undefined || shipped.hash !== image.hash) {
+					closure.push({
+						path,
+						code: 'unknown-static-image',
+						message: `material "${resource.id}" names shipped image "${image.source.shipped}" outside the frozen manifest or with a different digest`
+					});
+			}
+				continue;
+			}
+			const textureId = image.source.textureId;
+			const textureRecord = units.scene.data.textures.find((texture) => texture.id === textureId);
+			if (textureRecord === undefined || textureRecord.uri !== `/project-assets/${textureId}`) {
+				closure.push({
+					path,
+					code: 'missing-texture-record',
+					message: `material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no agreeing Scene texture record`
+				});
+				continue;
+			}
+			const textureResource = resourceByKindAndId.get(`texture\0${textureId}`);
+			if (textureResource === undefined || textureResource.unresolved !== null || textureResource.pin === null) {
+				closure.push({
+					path,
+					code: 'missing-resource',
+					message: `material "${resource.id}" maps ${image.hash} to texture "${textureId}" with no resolved pin`
+				});
+				continue;
+			}
+			if (textureResource.pin.hash !== image.hash) {
+				closure.push({
+					path,
+					code: 'material-image-pin-mismatch',
+					message: `material "${resource.id}" binds ${image.hash} and texture "${textureId}" pins ${textureResource.pin.hash}`
+				});
+			}
 		}
 	}
 

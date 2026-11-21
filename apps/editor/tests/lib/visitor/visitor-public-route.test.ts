@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { NEUTRAL_RECIPE, NEUTRAL_RECIPE_HASH } from '@portfolio/project-model/materials';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import {
 	fetchPublicRelease,
@@ -114,6 +115,43 @@ describe('[cap:release.visitor-isolation core] P22.3 public release client', () 
 			bundle.dispose();
 		}
 		expect(bundle.textureScope.resolveTexture('/textures/plaster-warm/map.png')).toBeNull();
+	});
+
+	it('refuses a release whose material recipe digest does not match its resource', async () => {
+		const wrongHash = `sha256-${'0'.repeat(64)}`;
+		const project = await createUnitProject({
+			id: 'project:public-wrong-material',
+			name: 'Wrong Material',
+			scene: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [],
+				materials: [{ id: 'm', name: 'M', base: { material: NEUTRAL_RECIPE_HASH } }],
+				entities: []
+			},
+			resources: {
+				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+				resources: [
+					{
+						kind: 'material',
+						id: wrongHash,
+						contentRevision: wrongHash,
+						pin: null,
+						unresolved: null,
+						material: { recipe: NEUTRAL_RECIPE, images: [] }
+					}
+				]
+			}
+		});
+		const requested: string[] = [];
+		const fetchImpl = vi.fn(async (input: string) => {
+			requested.push(input);
+			return jsonResponse(releasePayload(project));
+		});
+
+		await expect(
+			loadPublicReleaseBundle({ publicationId: PUB_A, apiOrigin: 'https://api.test', fetchImpl })
+		).rejects.toMatchObject({ code: 'invalid-release' });
+		expect(requested).toEqual([`https://api.test/publications/${PUB_A}`]);
 	});
 
 	it('uses the released document name and verifies P20 bytes before install', async () => {

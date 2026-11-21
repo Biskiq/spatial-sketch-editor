@@ -110,8 +110,8 @@
     },
     "fixture": {
       "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.project.json",
-      "bytes": 29829,
-      "digest": "sha256-aef406451ee4129636bfa18e8a2f2ca10ffa4312862f98a2c326a812d8037a5e",
+      "bytes": 30030,
+      "digest": "sha256-bfb3378a61edfeff4a57dfb7b2c117bc735e61919e3527d4b74a2db3d7d80fd8",
       "generator": "apps/editor/scripts/build-webgpu-current-world.ts",
       "counts": {
         "rooms": 10,
@@ -132,8 +132,16 @@
         "views": [
           {
             "id": "view-entry",
-            "eye": [10, 1.7, 3.9],
-            "target": [10, 1.4, 7.5],
+            "eye": [
+              10,
+              1.7,
+              3.9
+            ],
+            "target": [
+              10,
+              1.4,
+              7.5
+            ],
             "fov": 54
           }
         ]
@@ -141,8 +149,8 @@
     },
     "publicationProjection": {
       "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
-      "bytes": 28392,
-      "digest": "sha256-2541b2e3396f0f85ea7918f53c1d9fc448eaa5c65126fd40cfb483af3053636a",
+      "bytes": 28593,
+      "digest": "sha256-044efa28a790cd75e86f29009394b987b63da7add46f28daf366367b33fc95a2",
       "removedContent": [
         "form"
       ],
@@ -190,7 +198,7 @@
     "summaryMs": {
       "p50": 186.4,
       "p90": 269.8,
-      "max": 350.0
+      "max": 350
     },
     "batchP90Ms": [
       269.8,

@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-11-21T04:42:52.163Z",
+  "migrationActivated": false,
+  "source": {
+    "revision": "d4598f79",
+    "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.project.json",
+    "bytes": 29829,
+    "digest": "sha256-aef406451ee4129636bfa18e8a2f2ca10ffa4312862f98a2c326a812d8037a5e",
+    "scene": 11,
+    "resources": 2
+  },
+  "dryRun": {
+    "success": true,
+    "hasDocument": false,
+    "report": {
+      "source": {
+        "scene": 11,
+        "resources": 2
+      },
+      "target": {
+        "scene": 12,
+        "resources": 3
+      },
+      "materials": [
+        {
+          "id": "finish-plaster",
+          "name": "Warm plaster",
+          "base": "plaster-warm"
+        }
+      ],
+      "preserved": {
+        "textures": 1,
+        "entities": 7,
+        "assignments": 2
+      }
+    }
+  },
+  "conversion": {
+    "success": true,
+    "documentBytes": 30030,
+    "documentDigest": "sha256-bfb3378a61edfeff4a57dfb7b2c117bc735e61919e3527d4b74a2db3d7d80fd8",
+    "matchesCommittedScene12Fixture": true
+  },
+  "currentReaderRefusesOutgoingBytes": true,
+  "currentReaderIssues": [
+    {
+      "path": "$.units.scene.header.formatVersion",
+      "code": "unsupported_format_version"
+    },
+    {
+      "path": "$.units.scene.data.formatVersion",
+      "code": "unsupported_format_version"
+    },
+    {
+      "path": "$.units.resources.header.formatVersion",
+      "code": "unsupported_format_version"
+    },
+    {
+      "path": "$.units.resources.data.formatVersion",
+      "code": "unsupported_format_version"
+    }
+  ],
+  "refusals": [
+    {
+      "case": "future-scene",
+      "success": false,
+      "issues": [
+        {
+          "path": "$.units.scene",
+          "code": "unsupported-format"
+        }
+      ]
+    },
+    {
+      "case": "mixed-resource-header",
+      "success": false,
+      "issues": [
+        {
+          "path": "$.units.resources",
+          "code": "unsupported-format"
+        }
+      ]
+    },
+    {
+      "case": "mixed-scene-data",
+      "success": false,
+      "issues": [
+        {
+          "path": "$.units.scene",
+          "code": "unsupported-format"
+        }
+      ]
+    },
+    {
+      "case": "outgoing-resource-data",
+      "success": false,
+      "issues": [
+        {
+          "path": "$.units.resources",
+          "code": "unsupported-format"
+        }
+      ]
+    },
+    {
+      "case": "missing-materials",
+      "success": false,
+      "issues": [
+        {
+          "path": "$.units.scene.data.materials",
+          "code": "invalid-type"
+        }
+      ]
+    }
+  ]
+}

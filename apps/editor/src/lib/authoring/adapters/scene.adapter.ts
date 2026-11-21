@@ -49,7 +49,8 @@ import {
 	createArtworkPlanners,
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
-import { getMaterial } from '$lib/content/materials';
+import { getMaterial, materialById } from '$lib/content/materials';
+import { materialProofFor } from '$lib/authoring/material-proof';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import { armedModelDefinition, creatorDefinitions } from './scene/import/definitions';
@@ -83,7 +84,10 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 	const admitted: NormalizedPlacementDefinition[] = [];
 	const planners = [
 		...createArtworkPlanners(),
-		...createFinishPlanners({ labelForMaterial: (id) => getMaterial(id).label }),
+		...createFinishPlanners({
+			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id),
+			materialProof: (request) => materialProofFor(request.snapshot.domain.source)
+		}),
 		...createScenePlanners({
 		definitions: () => {
 			// The approved model a creator has armed is an admitted definition even

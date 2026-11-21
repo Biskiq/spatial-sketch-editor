@@ -587,7 +587,7 @@ describe('scene operation planners — poses and ownership', () => {
 		});
 		const project = await projectWith(
 			sceneWith([entity], undefined, [
-				{ id: 'material-1', name: 'Material', baseMaterialId: 'plaster-warm' }
+				{ id: 'material-1', name: 'Material', base: { catalogue: 'plaster-warm' } }
 			]),
 			ELEVATION
 		);

@@ -29,6 +29,7 @@ import type {
 	ScenePathAnchor,
 	SceneWaypoint
 } from '../scene';
+import { finishTextureBindings } from '../materials/read';
 import type { SceneDocumentIssue } from './index';
 import type { ResolvedSceneValidationOptions } from '../scene-validation';
 import type { JsonRecord } from './readers';
@@ -614,17 +615,14 @@ export function validateSemantics(
 	assertUnique(document.textures, 'texture asset', '$.textures', issues);
 	assertUnique(document.materials, 'material instance', '$.materials', issues);
 	const textureIds = new Set(document.textures.map((texture) => texture.id));
-	const FINISH_MAP_SLOTS = ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const;
 	for (const [index, material] of document.materials.entries()) {
-		if (material.maps === undefined) continue;
-		for (const slot of FINISH_MAP_SLOTS) {
-			const textureId = material.maps[slot];
-			if (textureId === undefined || textureIds.has(textureId)) continue;
+		for (const binding of finishTextureBindings(material)) {
+			if (textureIds.has(binding.textureId)) continue;
 			addIssue(
 				issues,
-				`$.materials[${index}].maps.${slot}`,
+				`$.materials[${index}].overrides.maps.${binding.role}.image.textureId`,
 				'unknown_texture',
-				`Unknown texture asset: ${textureId}`
+				`Unknown texture asset: ${binding.textureId}`
 			);
 		}
 	}

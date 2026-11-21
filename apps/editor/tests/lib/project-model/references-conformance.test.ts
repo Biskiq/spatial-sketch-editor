@@ -564,7 +564,7 @@ const DOCUMENT = await createUnitProject({
 	scene: {
 		formatVersion: SCENE_UNIT_FORMAT_VERSION,
 		textures: [{ id: 'texture-1', name: 'Paper', uri: '/textures/paper.png' }],
-		materials: [{ id: 'material-1', name: 'Plaster', baseMaterialId: 'plaster-warm' }],
+		materials: [{ id: 'material-1', name: 'Plaster', base: { catalogue: 'plaster-warm' } }],
 		entities: [
 			{ id: 'entity-1', name: 'Free', position: [0, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'piano', fallback: 'piano' },
 			{ id: 'entity-2', name: 'Clustered', position: [1, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'chair', fallback: 'chair' },

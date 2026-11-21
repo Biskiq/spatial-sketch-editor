@@ -51,6 +51,10 @@
     "./units/validate": {
       "types": "./src/units/validate.ts",
       "default": "./src/units/validate.ts"
+    },
+    "./scene-conversion": {
+      "types": "./src/scene-conversion.ts",
+      "default": "./src/scene-conversion.ts"
     }
   },
   "files": [

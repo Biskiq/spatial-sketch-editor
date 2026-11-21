@@ -16,6 +16,7 @@ import test, { after, before } from 'node:test';
 
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
 import { collectEnvelopeImageRequirements } from '@portfolio/project-model/project-images';
+import { readRecipe, recipeHash } from '@portfolio/project-model/materials';
 import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -38,6 +39,7 @@ import { prepareArtworkPins, prepareProjectImagePins } from '../dist/artwork-per
 import { memoryObjectStore } from './test-support.mjs';
 import { runMigrations } from '../dist/migrate.js';
 import { ProjectNotFoundError, loadProject } from '../dist/project-persistence.js';
+import { verifyMaterialDefinitionHashes } from '../dist/material-integrity.js';
 import { saveAcceptedSource, saveAcceptedSourceWithHandler } from '../dist/save-persistence.js';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
@@ -211,9 +213,10 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
 		[projectId]
 	);
-	// Scene format 11 is the only admitted format now, and Save stores exactly
+	// Scene format 12 is the only admitted format now, and Save stores exactly
 	// the captured canonical bytes — the form source is never re-derived.
-	assert.equal(SCENE_UNIT_FORMAT_VERSION, 11);
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 12);
+	assert.equal(RESOURCE_UNIT_FORMAT_VERSION, 3);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
 	assert.equal(storedScene.header.formatVersion, SCENE_UNIT_FORMAT_VERSION);
@@ -534,14 +537,15 @@ test('release preparation pins a P20 texture that a Finish names only through a 
 		// none is dropped: a palette follower, maps, mapping, normal strength and
 		// flip, and an environment with an edited Sky and a Treatment.
 		materials: [{
-			id: 'finish', name: 'Finish', baseMaterialId: 'plaster-warm',
-			color: { slot: 'accent' },
-			roughness: 0.4,
-			metalness: 0.1,
-			maps: { normal: ready.id },
-			mapping: { tileMeters: [0.5, 2], rotation: 0.25, offset: [0.1, 0.2] },
-			normalScale: 0.5,
-			normalFlipY: true
+			id: 'finish', name: 'Finish', base: { catalogue: 'plaster-warm' },
+			overrides: {
+				color: { slot: 'accent' },
+				roughness: 0.4,
+				metalness: 0.1,
+				maps: { normal: { image: { textureId: ready.id }, convention: '-Y' } },
+				mapping: { kind: 'target', metric: { tileMeters: [0.5, 2], rotation: 0.25, offset: [0.1, 0.2] } },
+				normalScale: 0.5
+			}
 		}],
 		palette: [{ id: 'accent', name: 'Accent', color: '#445566' }, { id: 'ground', name: 'Ground', color: '#ddccbb' }],
 		environment: {
@@ -602,8 +606,8 @@ test('release preparation pins the colour image of a Finish and reopen keeps its
 	// A Finish image names the P20 texture only through `maps.color`; no Artwork
 	// places it, so closure and release must find the record itself.
 	const finish = {
-		id: 'brick', name: 'Brick wall', baseMaterialId: 'paper-aged',
-		color: '#ffffff', maps: { color: ready.id }
+		id: 'brick', name: 'Brick wall', base: { catalogue: 'paper-aged' },
+		overrides: { color: '#ffffff', maps: { color: { image: { textureId: ready.id } } } }
 	};
 	// The planner's shape: a real pin, the pin hash as the content revision and
 	// no dependency-lock entry. Texture resources are closed by their record.
@@ -654,11 +658,69 @@ function finishEnvelope(projectId, label, ready, { artworkLibrary = [], extraTex
 			{ id: ready.id, name: label, uri: `/project-assets/${ready.id}` },
 			...extraTextures
 		],
-		materials: [{ id: 'finish', name: label, baseMaterialId: 'plaster-warm', color: '#ffffff', maps: { color: ready.id } }],
+		materials: [{
+			id: 'finish', name: label, base: { catalogue: 'plaster-warm' },
+			overrides: { color: '#ffffff', maps: { color: { image: { textureId: ready.id } } } }
+		}],
 		artworkLibrary,
 		resources: [{ kind: 'texture', id: ready.id, contentRevision: pin.hash, pin, unresolved: null }]
 	});
 }
+
+test('Save and Load independently verify a material definition identity', async () => {
+		const projectId = nextProjectId();
+		createdProjects.push(projectId);
+		const owner = `owner:${randomUUID()}`;
+		const store = memoryObjectStore();
+		const baseline = await saveAcceptedSource(pool, owner, await requestFor(await unitEnvelope(projectId)));
+		const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+		const ready = await uploadTexture(owner, projectId, store, 'Definition.png', bytes);
+		const pin = texturePin(ready);
+		const recipeRead = readRecipe({
+			profile: 'pbr-metallic-roughness/v1',
+			color: '#b8bcc0',
+			roughness: 0.3,
+			metalness: 1,
+			occlusionStrength: 1,
+			normalScale: 1,
+			mapping: { kind: 'target', metric: { tileMeters: [1, 1], rotation: 0, offset: [0, 0] } },
+			maps: { color: { image: ready.sha256 } }
+		});
+		assert.equal(recipeRead.success, true);
+		const definitionHash = await recipeHash(recipeRead.recipe);
+		const detail = { recipe: recipeRead.recipe, images: [{ hash: ready.sha256, source: { textureId: ready.id } }] };
+		const envelope = await unitEnvelope(projectId, 'Material definition', {
+			textures: [{ id: ready.id, name: 'Definition', uri: `/project-assets/${ready.id}` }],
+			materials: [{ id: 'finish-definition', name: 'Definition', base: { material: definitionHash } }],
+			resources: [
+				{ kind: 'texture', id: ready.id, contentRevision: pin.hash, pin, unresolved: null },
+				{ kind: 'material', id: definitionHash, contentRevision: definitionHash, pin: null, unresolved: null, material: detail }
+			],
+			lockEntries: [{
+				domain: 'resource:material', subjectKind: 'resource', subjectId: definitionHash, instancePath: [],
+				contentRevision: definitionHash,
+				requiredCapabilities: [{ id: 'pbr-metallic-roughness', version: '1' }], pin: null
+			}]
+		});
+		const first = await saveAcceptedSource(
+			pool, owner, await requestFor(envelope, { precondition: { kind: 'expected-saved-base', token: baseline.savedBaseToken } }), store
+		);
+		assert.equal(first.version, 2);
+		const reopened = await loadProject(pool, owner, projectId);
+		assert.deepEqual(await verifyMaterialDefinitionHashes(reopened.document), []);
+
+		const tampered = structuredClone(envelope);
+		const material = tampered.units.resources.data.resources.find((resource) => resource.kind === 'material');
+		material.material.recipe.color = '#000000';
+		const refusal = await saveAcceptedSource(
+			pool, owner, await requestFor(tampered, { precondition: { kind: 'expected-saved-base', token: first.savedBaseToken } }), store
+		).then(() => null, (error) => error);
+		assert.equal(refusal?.code, 'invalid-project');
+		const versions = await pool.query('SELECT count(*)::int AS count FROM project_versions WHERE project_id = $1', [projectId]);
+		assert.equal(versions.rows[0].count, 2);
+		const receipts = await pool.query('SELECT count(*)::int AS count FROM save_receipts WHERE project_id = $1', [projectId]);
+		assert.equal(receipts.rows[0].count, 2);
+	});
 
 test('Finish-only Save verifies the texture closure and refuses missing bytes without advancing the head', async () => {
 	const projectId = nextProjectId();

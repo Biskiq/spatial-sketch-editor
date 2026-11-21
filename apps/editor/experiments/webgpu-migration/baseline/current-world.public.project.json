@@ -850,11 +850,11 @@
       "header": {
         "domain": "scene",
         "unitId": "project:t2-pr1-current-world:scene",
-        "formatVersion": 11,
-        "contentRevision": "sha256-97739e7068b5d65fed23bc4ea9ff892540de9b27494aa09a2da45db53e342625"
+        "formatVersion": 12,
+        "contentRevision": "sha256-45e05439337147466333b42efc37798fecbaa9c25dfe2673d8562d6b49a50a25"
       },
       "data": {
-        "formatVersion": 11,
+        "formatVersion": 12,
         "textures": [
           {
             "id": "tex-plaster",
@@ -866,10 +866,18 @@
           {
             "id": "finish-plaster",
             "name": "Warm plaster",
-            "baseMaterialId": "plaster-warm",
-            "roughness": 0.86,
-            "maps": {
-              "color": "tex-plaster"
+            "base": {
+              "catalogue": "plaster-warm"
+            },
+            "overrides": {
+              "roughness": 0.86,
+              "maps": {
+                "color": {
+                  "image": {
+                    "shipped": "/textures/plaster-warm/map.png"
+                  }
+                }
+              }
             }
           }
         ],
@@ -1135,11 +1143,11 @@
       "header": {
         "domain": "resources",
         "unitId": "project:t2-pr1-current-world:resources",
-        "formatVersion": 2,
-        "contentRevision": "sha256-242ab8fd1237233dc8ddc0816a93c9379207cc9d4679413e890ad691fa5d06b5"
+        "formatVersion": 3,
+        "contentRevision": "sha256-007704e54bf75835244ef924c4d8200fd9820ec9609e8344dd0ceb03e924a752"
       },
       "data": {
-        "formatVersion": 2,
+        "formatVersion": 3,
         "resources": [
           {
             "kind": "texture",

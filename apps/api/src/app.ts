@@ -40,6 +40,7 @@ import {
 	renameProject as renameProjectLifecycle,
 	hasUnsupportedLayoutFormat, UnsupportedLayoutFormatError, UNSUPPORTED_LAYOUT_FORMAT, UNSUPPORTED_LAYOUT_MESSAGE
 } from './project-lifecycle.js';
+import { verifyMaterialDefinitionHashes } from './material-integrity.js';
 import {
 	approveModelImport,
 	cancelModelImport,
@@ -468,6 +469,10 @@ export function createApp({
 					return reply.code(422).send(errorBody('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE));
 				}
 				return databaseFailure(app, reply, new Error('Stored project failed validation'), 'Stored project failed validation');
+			}
+			const materialIssues = await verifyMaterialDefinitionHashes(validation.envelope);
+			if (materialIssues.length > 0) {
+				return reply.code(422).send(errorBody('invalid-material-definition', materialIssues[0]!.message));
 			}
 			return { ...loaded, document: validation.envelope };
 		} catch (error) {

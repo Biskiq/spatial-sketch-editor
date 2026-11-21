@@ -30,13 +30,7 @@ import {
 } from '@portfolio/project-model/units';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 
-const MATERIAL: SceneMaterialInstance = {
-	id: 'finish-1',
-	name: 'Coral paint',
-	baseMaterialId: 'plaster-warm',
-	color: '#ee6c4d',
-	roughness: 0.8
-};
+const MATERIAL: SceneMaterialInstance = { id: 'finish-1', name: 'Coral paint', base: { catalogue: 'plaster-warm' }, overrides: { color: '#ee6c4d', roughness: 0.8 } };
 
 function sceneDocument(environment?: SceneEnvironment): CameraFreeSceneDocument {
 	return {

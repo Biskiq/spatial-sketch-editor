@@ -121,7 +121,7 @@ async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEn
 		id: PROJECT_ID,
 		name: 'S10 host tools',
 		layout: document,
-		...(modelEntry === null ? {} : { resources: { formatVersion: 2 as const, resources: [modelEntry.resource] } }),
+		...(modelEntry === null ? {} : { resources: { formatVersion: 3 as const, resources: [modelEntry.resource] } }),
 		scene: { formatVersion: 1, textures: [], materials: [], entities: [...entities], navigationNodes: [], connections: [] }
 	});
 	if (modelEntry !== null) project = { ...project, dependencyLock: { ...project.dependencyLock, entries: [modelEntry.lock] } };

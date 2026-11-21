@@ -102,7 +102,7 @@ async function mounted(options: {
 			formatVersion: 1,
 			textures: [],
 			materials: [
-				{ id: 'material-target', name: 'Target', baseMaterialId: 'plaster-warm' as never }
+				{ id: 'material-target', name: 'Target', base: { catalogue: 'plaster-warm' as never } }
 			],
 			entities: [...(options.entities ?? [])],
 			navigationNodes: [],

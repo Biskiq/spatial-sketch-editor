@@ -135,7 +135,7 @@ function envelopeWithTextures(used: string, unused: string): ProjectEnvelope {
 						{ id: unused, name: 'Unused', uri: `/project-assets/${unused}` }
 					],
 					materials: [
-						{ id: 'm', name: 'M', baseMaterialId: 'plaster-warm', maps: { color: used } }
+						{ id: 'm', name: 'M', base: { catalogue: 'plaster-warm' }, overrides: { maps: { color: { image: { textureId: used } } } } }
 					],
 					entities: []
 				}
@@ -154,6 +154,43 @@ function envelopeWithTextures(used: string, unused: string): ProjectEnvelope {
 							kind: 'texture',
 							pin: { hash: 'sha256-unused', mime: 'image/png', size: 1 },
 							unresolved: null
+						}
+					]
+				}
+			}
+		}
+	} as unknown as ProjectEnvelope;
+}
+
+function envelopeWithDefinitionTexture(id: string): ProjectEnvelope {
+	return {
+		units: {
+			scene: {
+				data: {
+					formatVersion: 1,
+					textures: [{ id, name: 'Definition', uri: `/project-assets/${id}` }],
+					materials: [{ id: 'm', name: 'M', base: { material: 'sha256-definition' } }],
+					entities: []
+				}
+			},
+			resources: {
+				data: {
+					resources: [
+						{
+							id,
+							kind: 'texture',
+							pin: { hash: 'sha256-definition-image', mime: 'image/png', size: 1 },
+							unresolved: null
+						},
+						{
+							id: 'sha256-definition',
+							kind: 'material',
+							pin: null,
+							unresolved: null,
+							material: {
+								recipe: {},
+								images: [{ hash: 'sha256-definition-image', source: { textureId: id } }]
+							}
 						}
 					]
 				}
@@ -189,6 +226,30 @@ describe('approved asset leases', () => {
 
 		expect(prepare).toHaveBeenCalledTimes(1);
 		expect(prepare.mock.calls[0][0]).toEqual(['/project-assets/used']);
+		subject.controller.dispose();
+	});
+
+	it('leases images inherited from a material definition', async () => {
+		const prepare = vi.fn(async (_uris: readonly string[]) => {});
+		const textureScope = {
+			scopeId: 'project:definition-texture-test',
+			loader: vi.fn(),
+			prepare,
+			retry: vi.fn(),
+			dimensionsOf: () => null,
+			aspectOf: () => null,
+			previewUriOf: () => null,
+			dispose: vi.fn()
+		};
+		const subject = controllerWith({
+			resolveModels: vi.fn(async () => approvedSources({})) as unknown as StageAssetLeaseInput['resolveModels'],
+			createTextureScope: (() => textureScope) as unknown as StageAssetLeaseInput['createTextureScope']
+		});
+
+		await subject.controller.resolve(snapshotWith(envelopeWithDefinitionTexture('definition-image'), 'definition-texture'));
+
+		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(prepare.mock.calls[0][0]).toEqual(['/project-assets/definition-image']);
 		subject.controller.dispose();
 	});
 

@@ -46,7 +46,7 @@ import {
 	compileWallFirstLayoutGeometryFresh,
 	createEmptyWallFirstLayoutDocument
 } from '@portfolio/layout-core';
-import type { MaterialDefinition } from '$lib/types/materials';
+import type { MaterialDefinition, MaterialId } from '$lib/types/materials';
 import type { SceneDocument, SceneMaterialInstance, SceneTextureAsset } from '$lib/content/scene';
 import {
 	FORM_FACTS,
@@ -67,14 +67,9 @@ const S8_TEXTURE: SceneTextureAsset = {
 	name: 'S8 Swatch',
 	uri: '/s8-fixtures/swatch-rgba.png'
 };
+const S8_TEXTURE_HASH = `sha256-${'7'.repeat(64)}`;
 
-const WOOD: SceneMaterialInstance = {
-	id: 's8-wood',
-	name: 'S8 Wood',
-	baseMaterialId: 'wood-walnut',
-	maps: { color: 's8-swatch' },
-	mapping: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] }
-};
+const WOOD: SceneMaterialInstance = { id: 's8-wood', name: 'S8 Wood', base: { catalogue: 'wood-walnut' }, overrides: { maps: { color: { image: { textureId: 's8-swatch' } } }, mapping: { kind: 'target', metric: { tileMeters: [0.8, 1.6], rotation: 0.42, offset: [0.25, 0.5] } } } };
 
 function lookSource(
 	materials: SceneMaterialInstance[] = [],
@@ -82,6 +77,10 @@ function lookSource(
 ): LookSource {
 	return {
 		textures: [S8_TEXTURE],
+		materialIndex: {
+			definitions: new Map(),
+			images: [{ hash: S8_TEXTURE_HASH, source: { textureId: S8_TEXTURE.id } }]
+		},
 		materials,
 		palette: [{ id: 's8-walnut', name: 'Walnut', color: '#5a3a22' }],
 		...(environment === undefined ? {} : { environment })
@@ -90,7 +89,7 @@ function lookSource(
 
 function currentLook(testCase: {
 	materials?: SceneMaterialInstance[];
-	fallback: SceneDocument['materials'][number]['baseMaterialId'];
+	fallback: MaterialId;
 	instanceId?: string;
 	environment?: LookSource['environment'];
 	surface: [number, number];
@@ -326,12 +325,7 @@ async function captureBaseline() {
 		appearance: {
 			s4SingleImage: currentLook({
 				materials: [
-					{
-						id: 's8-wood',
-						name: 'S8 Wood',
-						baseMaterialId: 'wood-walnut',
-						maps: { color: 's8-swatch' }
-					}
+					{ id: 's8-wood', name: 'S8 Wood', base: { catalogue: 'wood-walnut' }, overrides: { maps: { color: { image: { textureId: 's8-swatch' } } } } }
 				],
 				instanceId: 's8-wood',
 				fallback: 'wood-walnut',
@@ -339,7 +333,7 @@ async function captureBaseline() {
 			}),
 			paletteFollower: currentLook({
 				materials: [
-					{ id: 's8-follower', name: 'S8 Follower', baseMaterialId: 'paper-aged', color: { slot: 's8-walnut' } }
+					{ id: 's8-follower', name: 'S8 Follower', base: { catalogue: 'paper-aged' }, overrides: { color: { slot: 's8-walnut' } } }
 				],
 				instanceId: 's8-follower',
 				fallback: 'paper-aged',
@@ -370,7 +364,7 @@ async function captureBaseline() {
 			},
 			authoredZero: currentLook({
 				materials: [
-					{ id: 's8-zero', name: 'S8 Zero', baseMaterialId: 'wood-walnut', roughness: 0, metalness: 0 }
+					{ id: 's8-zero', name: 'S8 Zero', base: { catalogue: 'wood-walnut' }, overrides: { roughness: 0, metalness: 0 } }
 				],
 				instanceId: 's8-zero',
 				fallback: 'wood-walnut',

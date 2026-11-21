@@ -210,9 +210,12 @@ function buildScene(): CameraFreeSceneDocument {
 			{
 				id: 'finish-plaster',
 				name: 'Warm plaster',
-				baseMaterialId: 'plaster-warm',
-				maps: { color: 'tex-plaster' },
-				roughness: 0.86
+				base: { catalogue: 'plaster-warm' },
+				overrides: {
+					roughness: 0.86,
+					// The recorded PR 1 fixture names the frozen shipped plaster map.
+					maps: { color: { image: { shipped: '/textures/plaster-warm/map.png' } } }
+				}
 			}
 		],
 		entities: [
@@ -470,7 +473,9 @@ const summary = {
 		'layout-object': layout.objects.length > 0,
 		'scene-primitive': scene.entities.some((entity) => entity.kind === 'primitive'),
 		form: scene.entities.some((entity) => entity.kind === 'form'),
-		'mapped-finish': scene.materials.some((material) => material.maps?.color !== undefined),
+		'mapped-finish': scene.materials.some(
+			(material) => material.overrides?.maps?.color !== undefined
+		),
 		'imported-textured-glb': scene.entities.some((entity) => entity.kind === 'model' && entity.assetId === 'paris-grand-piano'),
 		'neutral-artwork': scene.entities.some((entity) => entity.kind === 'artwork' && entity.id === 'entity-artwork-neutral'),
 		'translucent-artwork': scene.entities.some((entity) => entity.kind === 'artwork' && entity.id === 'entity-artwork-translucent'),

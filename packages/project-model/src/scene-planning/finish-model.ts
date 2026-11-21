@@ -6,7 +6,7 @@
  *
  * - a primitive or Form with no instance has `curated:<entity.materialId>`;
  * - a model with no instance has `model-own`;
- * - an instance with only `id`, `name` and `baseMaterialId` is *pristine* and
+ * - an instance with only `id`, `name` and a catalogue `base` is *pristine* and
  *   means the curated Finish it names, so the Library never lists it;
  * - any other instance is a project Finish, `project:<id>`.
  *
@@ -21,6 +21,16 @@ import {
 	type SceneMaterialInstance,
 	type ScenePaletteSlot
 } from '../scene';
+import { catalogueRecipe } from '../materials/catalogue';
+import { pruneOverrides } from '../materials/read';
+import { NEUTRAL_RECIPE } from '../materials/recipe';
+import type {
+	Finish,
+	FinishOverrides,
+	Mapping,
+	Metric,
+	OverrideMaps
+} from '../materials/types';
 import { resolveSceneSurfaceFinish } from '../scene-surface-reference';
 import type { SceneSurfaceFinish, SceneSurfaceRef } from '../scene';
 import { resolveLayoutSurface, surfaceKey } from '@portfolio/layout-core';
@@ -86,22 +96,29 @@ export function finishRefOfKey(key: FinishKey): SceneFinishRef | null {
 	return null;
 }
 
-/** A pristine instance renders exactly as its base and is never listed. */
+/** A pristine instance renders exactly as its catalogue base and is never listed. */
 export function isPristineInstance(instance: SceneMaterialInstance): boolean {
-	const keys = Object.keys(instance).sort();
-	return (
-		keys.length === 3 &&
-		keys[0] === 'baseMaterialId' &&
-		keys[1] === 'id' &&
-		keys[2] === 'name' &&
-		instance.color === undefined &&
-		instance.roughness === undefined &&
-		instance.metalness === undefined &&
-		instance.maps === undefined &&
-		instance.mapping === undefined &&
-		instance.normalScale === undefined &&
-		instance.normalFlipY === undefined
-	);
+	return 'catalogue' in instance.base && instance.overrides === undefined;
+}
+
+/** The catalogue base a Finish names, or null for a resource-backed definition. */
+export function catalogueBaseOf(instance: SceneMaterialInstance): MaterialId | null {
+	return 'catalogue' in instance.base ? (instance.base.catalogue as MaterialId) : null;
+}
+
+/** The resource digest a Finish names, or null for a catalogue base. */
+export function materialBaseOf(instance: SceneMaterialInstance): string | null {
+	return 'material' in instance.base ? instance.base.material : null;
+}
+
+/** The base metric of one Finish, used when an edit authors only part of it. */
+function baseMetricOf(instance: SceneMaterialInstance): Metric {
+	const catalogue = catalogueBaseOf(instance);
+	const recipe = catalogue === null ? undefined : catalogueRecipe(catalogue);
+	const mapping = recipe?.mapping ?? NEUTRAL_RECIPE.mapping;
+	return mapping.kind === 'uv'
+		? { tileMeters: mapping.repeat, rotation: mapping.rotation, offset: mapping.offset }
+		: mapping.metric;
 }
 
 export function materialInstanceById(
@@ -123,8 +140,9 @@ export function finishOf(
 	if (!isFinishPaintable(entity)) return null;
 	const instance = materialInstanceById(materials, entity.materialInstanceId);
 	if (instance !== undefined) {
-		return isPristineInstance(instance)
-			? `curated:${instance.baseMaterialId}`
+		const catalogue = catalogueBaseOf(instance);
+		return isPristineInstance(instance) && catalogue !== null
+			? `curated:${catalogue}`
 			: `project:${instance.id}`;
 	}
 	if (entity.kind === 'model') return FINISH_MODEL_OWN;
@@ -143,8 +161,9 @@ export function finishKeyOfSurface(scene: FinishScene, assignment: SceneSurfaceF
 	const finish = assignment.finish;
 	if ('materialId' in finish) return `curated:${finish.materialId}`;
 	const instance = materialInstanceById(scene.materials, finish.materialInstanceId);
-	return instance !== undefined && isPristineInstance(instance)
-		? `curated:${instance.baseMaterialId}`
+	const catalogue = instance === undefined ? null : catalogueBaseOf(instance);
+	return instance !== undefined && isPristineInstance(instance) && catalogue !== null
+		? `curated:${catalogue}`
 		: `project:${finish.materialInstanceId}`;
 }
 
@@ -190,7 +209,13 @@ export function baseMaterialIdOf(
 		materials,
 		(entity as FinishEntity).materialInstanceId
 	);
-	if (instance !== undefined) return instance.baseMaterialId;
+	if (instance !== undefined) {
+		const catalogue = catalogueBaseOf(instance);
+		if (catalogue !== null) return catalogue;
+		// A resource-backed Finish still has a catalogue fallback for the host's
+		// materialId contract; its authored signals come from the definition.
+		return 'pbr-neutral-v1';
+	}
 	return isFinishPaintable(entity) && entity.kind !== 'model'
 		? ((entity as FinishEntity).materialId ?? null)
 		: null;
@@ -235,7 +260,7 @@ export function literalColorOf(
 	materials: readonly SceneMaterialInstance[]
 ): string | null {
 	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
-	const color = instance?.color;
+	const color = instance?.overrides?.color;
 	return color !== undefined && typeof color === 'string' ? color : null;
 }
 
@@ -245,7 +270,7 @@ export function followerSlotOf(
 	materials: readonly SceneMaterialInstance[]
 ): string | null {
 	const instance = materialInstanceById(materials, (entity as FinishEntity).materialInstanceId);
-	const color = instance?.color;
+	const color = instance?.overrides?.color;
 	return color !== undefined && typeof color !== 'string' ? color.slot : null;
 }
 
@@ -261,7 +286,7 @@ export function effectiveColorOf(
 		scene.materials,
 		(entity as FinishEntity).materialInstanceId
 	);
-	const instanceColor = instance?.color;
+	const instanceColor = instance?.overrides?.color;
 	if (instanceColor !== undefined) {
 		if (typeof instanceColor === 'string') return instanceColor;
 		const slot = scene.palette?.find((entry) => entry.id === instanceColor.slot);
@@ -362,50 +387,75 @@ export function applyFinishEdit(
 	instance: SceneMaterialInstance,
 	edit: SceneFinishEdit
 ): SceneMaterialInstance {
-	const next: Record<string, unknown> = { ...instance };
+	const overrides = JSON.parse(
+		JSON.stringify(instance.overrides ?? {})
+	) as Record<string, unknown>;
 	if ('color' in edit) {
-		if (edit.color === null) delete next.color;
-		else next.color = edit.color;
+		if (edit.color === null) delete overrides.color;
+		else overrides.color = edit.color;
 	}
 	if ('roughness' in edit) {
-		if (edit.roughness === null) delete next.roughness;
-		else next.roughness = edit.roughness;
+		if (edit.roughness === null) delete overrides.roughness;
+		else overrides.roughness = edit.roughness;
 	}
 	if ('metalness' in edit) {
-		if (edit.metalness === null) delete next.metalness;
-		else next.metalness = edit.metalness;
+		if (edit.metalness === null) delete overrides.metalness;
+		else overrides.metalness = edit.metalness;
 	}
 	if ('colorMap' in edit) {
-		const maps = { ...((next.maps as Record<string, string> | undefined) ?? {}) };
+		const maps: Record<string, unknown> = { ...((overrides.maps as Record<string, unknown> | undefined) ?? {}) };
 		const colorMap = edit.colorMap;
 		if (colorMap === null || colorMap === undefined) delete maps.color;
-		else maps.color = colorMap;
-		if (Object.keys(maps).length === 0) delete next.maps;
-		else next.maps = maps;
-		if ((colorMap === null || colorMap === undefined) && next.maps === undefined && next.color === '#ffffff') {
-			delete next.color;
+		else maps.color = { image: { textureId: colorMap } };
+		if (Object.keys(maps).length === 0) delete overrides.maps;
+		else overrides.maps = maps;
+		if (
+			(colorMap === null || colorMap === undefined) &&
+			overrides.maps === undefined &&
+			overrides.color === '#ffffff'
+		) {
+			delete overrides.color;
 		}
 	}
 	if ('tileMeters' in edit || 'rotation' in edit) {
-		const mapping = { ...((next.mapping as Record<string, unknown> | undefined) ?? {}) };
-		if ('tileMeters' in edit) {
-			const tileMeters = edit.tileMeters;
-			if (tileMeters === null || tileMeters === undefined) delete mapping.tileMeters;
-			else mapping.tileMeters = [tileMeters[0], tileMeters[1]];
-		}
-		if ('rotation' in edit) {
-			if (edit.rotation === null) delete mapping.rotation;
-			else mapping.rotation = edit.rotation;
-		}
-		if (Object.keys(mapping).length === 0) delete next.mapping;
-		else next.mapping = mapping;
+		const base = baseMetricOf(instance);
+		const existing = overrides.mapping as Mapping | undefined;
+		const existingMetric = existing !== undefined && existing.kind !== 'uv' ? existing.metric : undefined;
+		const metric: Metric = {
+			tileMeters: existingMetric?.tileMeters ?? base.tileMeters,
+			rotation: existingMetric?.rotation ?? base.rotation,
+			offset: existingMetric?.offset ?? base.offset
+		};
+		const nextTile = ('tileMeters' in edit ? edit.tileMeters : metric.tileMeters) ?? base.tileMeters;
+		const nextRotation = ('rotation' in edit ? edit.rotation : metric.rotation) ?? base.rotation;
+		const nextMetric = {
+			tileMeters: [nextTile[0], nextTile[1]] as readonly [number, number],
+			rotation: nextRotation,
+			offset: metric.offset
+		};
+		const matchesBase =
+			nextMetric.tileMeters[0] === base.tileMeters[0] &&
+			nextMetric.tileMeters[1] === base.tileMeters[1] &&
+			nextMetric.rotation === base.rotation &&
+			nextMetric.offset[0] === base.offset[0] &&
+			nextMetric.offset[1] === base.offset[1];
+		if (matchesBase) delete overrides.mapping;
+		else overrides.mapping = { kind: 'target', metric: nextMetric } satisfies Mapping;
 	}
-	return next as unknown as SceneMaterialInstance;
+	const pruned = pruneOverrides(overrides as FinishOverrides);
+	return {
+		id: instance.id,
+		name: instance.name,
+		base: instance.base,
+		...(pruned === undefined ? {} : { overrides: pruned })
+	} as Finish;
 }
 
 /** The colour-map texture id a Finish binds, or `null` for no colour image. */
 export function colorMapOf(instance: SceneMaterialInstance | undefined): string | null {
-	return instance?.maps?.color ?? null;
+	const binding = instance?.overrides?.maps?.color;
+	if (binding === undefined || binding === null) return null;
+	return 'textureId' in binding.image ? binding.image.textureId : null;
 }
 
 /** Whether an edit would change nothing on the given instance. */
@@ -423,9 +473,9 @@ export function paletteFollowers(
 ): SceneMaterialInstance[] {
 	return materials.filter(
 		(instance) =>
-			instance.color !== undefined &&
-			typeof instance.color !== 'string' &&
-			instance.color.slot === slotId
+			instance.overrides?.color !== undefined &&
+			typeof instance.overrides.color !== 'string' &&
+			instance.overrides.color.slot === slotId
 	);
 }
 
@@ -435,13 +485,16 @@ export function literalizePaletteFollowers(
 	slotId: string,
 	color: string
 ): SceneMaterialInstance[] {
-	return materials.map((instance) =>
-		instance.color !== undefined &&
-		typeof instance.color !== 'string' &&
-		instance.color.slot === slotId
-			? { ...instance, color }
-			: instance
-	);
+	return materials.map((instance) => {
+		const override = instance.overrides?.color;
+		if (override === undefined || typeof override === 'string' || override.slot !== slotId) {
+			return instance;
+		}
+		return {
+			...instance,
+			overrides: { ...instance.overrides, color }
+		} as SceneMaterialInstance;
+	});
 }
 
 /**
@@ -466,9 +519,9 @@ export function withFinishPreviews<TS extends FinishScene>(
 		const source = materialInstanceById(scene.materials, entity.materialInstanceId);
 		const id = `preview-finish-${entity.id}`;
 		const next = {
-			...(source ?? { name: 'Preview', baseMaterialId: base }),
+			...(source ?? { name: 'Preview', base: { catalogue: base } }),
 			id,
-			color
+			overrides: { ...source?.overrides, color }
 		} as SceneMaterialInstance;
 		const index = materials.findIndex((material) => material.id === id);
 		if (index === -1) materials.push(next);
