@@ -1,0 +1,5475 @@
+{
+  "schema": "s8-f-acquisition-manifest/1",
+  "status": "proposed for owner review; nothing harvested",
+  "retrieved": "2026-11-21",
+  "plan": "f-catalogue-acquisition-plan.md",
+  "licenceEvidence": {
+    "polyhaven": {
+      "url": "https://polyhaven.com/license",
+      "statement": "Our assets are all licensed as CC0",
+      "apiTerms": "https://api.polyhaven.com (unique User-Agent required; API use for harvest only)"
+    },
+    "ambientcg": {
+      "url": "https://docs.ambientcg.com/license/",
+      "statement": "All ambientCG assets are provided under the Creative Commons CC0 1.0 Universal License"
+    },
+    "physicallybased": {
+      "url": "https://api.physicallybased.info/v2/materials",
+      "statement": "header.license = CC0 1.0 Universal"
+    },
+    "rule": "Snapshot each licence page at harvest; store its sha256 as evidenceSnapshotHash in the licence record."
+  },
+  "budgets": {
+    "finishViewBudgetBytes": 268435456,
+    "rgba8MipBytesPerView": {
+      "1k": 5592404,
+      "2k": 22369620,
+      "4k": 89478484
+    },
+    "imageAdmission": {
+      "maxEdge": 4096,
+      "maxBytes": 26214400,
+      "bitDepth": 8,
+      "colour": "sRGB, no ICC/cICP other than standard sRGB",
+      "dataMaps": "lossless (PNG)"
+    }
+  },
+  "summary": {
+    "coreAssetSets": 17,
+    "coreEntries": 22,
+    "expansionAssetSets": 17,
+    "deferredItems": 9,
+    "coreSourceBytes": 2929732506,
+    "coreGpuBytes1kAllResident": 274027796,
+    "coreGpuBytes2kAllResident": 1096111380
+  },
+  "taxonomy": [
+    {
+      "id": "wood",
+      "label": "Wood",
+      "subcategories": [
+        "veneer",
+        "boards-and-parquet",
+        "engineered"
+      ],
+      "core": [
+        "wood-herringbone-parquet",
+        "wood-oak-planks",
+        "wood-oak-veneer",
+        "wood-walnut-veneer"
+      ],
+      "expansion": [
+        "wood-maple-veneer",
+        "wood-plywood"
+      ]
+    },
+    {
+      "id": "stone",
+      "label": "Stone",
+      "subcategories": [
+        "polished",
+        "natural",
+        "composite"
+      ],
+      "core": [
+        "stone-marble-white",
+        "stone-terrazzo"
+      ],
+      "expansion": [
+        "stone-marble-black",
+        "stone-travertine"
+      ]
+    },
+    {
+      "id": "masonry",
+      "label": "Masonry",
+      "subcategories": [
+        "brick",
+        "block"
+      ],
+      "core": [
+        "masonry-brick-painted",
+        "masonry-brick-red"
+      ],
+      "expansion": []
+    },
+    {
+      "id": "plaster-concrete",
+      "label": "Plaster & Concrete",
+      "subcategories": [
+        "plaster",
+        "concrete"
+      ],
+      "core": [
+        "concrete-smooth",
+        "plaster-painted"
+      ],
+      "expansion": [
+        "concrete-fluted"
+      ]
+    },
+    {
+      "id": "tile-ceramic",
+      "label": "Tile & Ceramic",
+      "subcategories": [
+        "glazed-tile",
+        "terracotta"
+      ],
+      "core": [
+        "tile-ceramic-white"
+      ],
+      "expansion": [
+        "tile-subway",
+        "tile-terracotta"
+      ]
+    },
+    {
+      "id": "metal",
+      "label": "Metal",
+      "subcategories": [
+        "polished-satin",
+        "brushed",
+        "weathered"
+      ],
+      "core": [
+        "metal-brushed",
+        "metal-satin"
+      ],
+      "expansion": [
+        "metal-corten"
+      ]
+    },
+    {
+      "id": "textile",
+      "label": "Textile",
+      "subcategories": [
+        "woven",
+        "pile-carpet"
+      ],
+      "core": [
+        "textile-carpet-loop",
+        "textile-linen"
+      ],
+      "expansion": [
+        "textile-wool-herringbone"
+      ]
+    },
+    {
+      "id": "leather",
+      "label": "Leather",
+      "subcategories": [
+        "upholstery"
+      ],
+      "core": [
+        "leather-smooth"
+      ],
+      "expansion": []
+    },
+    {
+      "id": "synthetic-paper",
+      "label": "Synthetic & Paper",
+      "subcategories": [
+        "plastic",
+        "rubber",
+        "cork",
+        "paper"
+      ],
+      "core": [
+        "synthetic-plastic-matte"
+      ],
+      "expansion": [
+        "synthetic-cork",
+        "synthetic-rubber"
+      ]
+    },
+    {
+      "id": "exterior-ground",
+      "label": "Exterior Ground",
+      "subcategories": [
+        "paving",
+        "loose",
+        "organic"
+      ],
+      "core": [],
+      "expansion": [
+        "ground-asphalt",
+        "ground-cobblestone",
+        "ground-forest-floor",
+        "ground-gravel",
+        "ground-paving",
+        "ground-sand"
+      ]
+    }
+  ],
+  "legacy": [
+    {
+      "id": "plaster-warm",
+      "coveredBy": "plaster-painted"
+    },
+    {
+      "id": "wood-walnut",
+      "coveredBy": "wood-walnut-veneer"
+    },
+    {
+      "id": "brass-aged",
+      "coveredBy": "metal-satin (brass)"
+    },
+    {
+      "id": "marble-light",
+      "coveredBy": "stone-marble-white"
+    },
+    {
+      "id": "velvet-dark",
+      "coveredBy": "deferred cloth-sheen family (textile-linen until then)"
+    },
+    {
+      "id": "paper-aged",
+      "coveredBy": "no Core replacement; paper is an Expansion gap"
+    }
+  ],
+  "entries": [
+    {
+      "id": "wood-oak-veneer",
+      "label": "Oak Veneer",
+      "setId": "wood-oak-veneer",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.83,
+              1.83
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      }
+    },
+    {
+      "id": "wood-walnut-veneer",
+      "label": "Walnut Veneer",
+      "setId": "wood-walnut-veneer",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": null,
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.0,
+              1.0
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "targetMeanAlbedo": "#4f3828",
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+    },
+    {
+      "id": "wood-oak-planks",
+      "label": "Oak Plank Floor",
+      "setId": "wood-oak-planks",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.7,
+              1.7
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      }
+    },
+    {
+      "id": "wood-herringbone-parquet",
+      "label": "Herringbone Parquet",
+      "setId": "wood-herringbone-parquet",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              3.4,
+              3.4
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      }
+    },
+    {
+      "id": "stone-marble-white",
+      "label": "White Marble",
+      "setId": "stone-marble-white",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.2,
+              1.2
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "plausibilityCheck": "#ebe6e1 (Physically Based Marble)"
+    },
+    {
+      "id": "stone-terrazzo",
+      "label": "Terrazzo",
+      "setId": "stone-terrazzo",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.8,
+              0.8
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      }
+    },
+    {
+      "id": "masonry-brick-red",
+      "label": "Red Brick",
+      "setId": "masonry-brick-red",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.0,
+              1.0
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "plausibilityCheck": "#8c5746 (Physically Based Brick)"
+    },
+    {
+      "id": "masonry-brick-painted",
+      "label": "Painted Brick",
+      "setId": "masonry-brick-painted",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": null,
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.55,
+              1.55
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "targetMeanAlbedo": "#e6e2da",
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+    },
+    {
+      "id": "plaster-painted",
+      "label": "Painted Plaster",
+      "setId": "plaster-painted",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": null,
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              2.0,
+              2.0
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "targetMeanAlbedo": "#e8e2d8",
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+    },
+    {
+      "id": "concrete-smooth",
+      "label": "Smooth Concrete",
+      "setId": "concrete-smooth",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              2.4,
+              2.4
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "plausibilityCheck": "#bdbdbd (Physically Based Concrete)"
+    },
+    {
+      "id": "concrete-polished",
+      "label": "Polished Concrete",
+      "setId": "concrete-smooth",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 0.45,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              2.4,
+              2.4
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "preset": "shares concrete-smooth images; roughness factor only"
+    },
+    {
+      "id": "tile-ceramic-white",
+      "label": "White Ceramic Tile",
+      "setId": "tile-ceramic-white",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.0,
+              1.0
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "plausibilityCheck": "#e0e0dd (Physically Based Porcelain, tile face only)"
+    },
+    {
+      "id": "metal-stainless-satin",
+      "label": "Satin Stainless Steel",
+      "setId": "metal-satin",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#d6d1cb",
+        "roughness": 1,
+        "metalness": 1,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "colorEvidence": {
+        "source": "physicallybased.info",
+        "material": "Stainless Steel",
+        "apiUrl": "https://api.physicallybased.info/v2/materials",
+        "linearSrgb": [
+          0.669,
+          0.639,
+          0.598
+        ],
+        "srgbHex": "#d6d1cb",
+        "note": "linear sRGB clamped to [0,1] then sRGB-encoded; the recipe colour is an sRGB hex decoded by three ColorManagement"
+      }
+    },
+    {
+      "id": "metal-brass-satin",
+      "label": "Satin Brass",
+      "setId": "metal-satin",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#f5e4ae",
+        "roughness": 1,
+        "metalness": 1,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "colorEvidence": {
+        "source": "physicallybased.info",
+        "material": "Brass",
+        "apiUrl": "https://api.physicallybased.info/v2/materials",
+        "linearSrgb": [
+          0.91,
+          0.778,
+          0.423
+        ],
+        "srgbHex": "#f5e4ae",
+        "note": "linear sRGB clamped to [0,1] then sRGB-encoded; the recipe colour is an sRGB hex decoded by three ColorManagement"
+      }
+    },
+    {
+      "id": "metal-copper-satin",
+      "label": "Satin Copper",
+      "setId": "metal-satin",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#f7cfbf",
+        "roughness": 1,
+        "metalness": 1,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "colorEvidence": {
+        "source": "physicallybased.info",
+        "material": "Copper",
+        "apiUrl": "https://api.physicallybased.info/v2/materials",
+        "linearSrgb": [
+          0.932,
+          0.623,
+          0.522
+        ],
+        "srgbHex": "#f7cfbf",
+        "note": "linear sRGB clamped to [0,1] then sRGB-encoded; the recipe colour is an sRGB hex decoded by three ColorManagement"
+      }
+    },
+    {
+      "id": "metal-gold-satin",
+      "label": "Satin Gold",
+      "setId": "metal-satin",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffe496",
+        "roughness": 1,
+        "metalness": 1,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "colorEvidence": {
+        "source": "physicallybased.info",
+        "material": "Gold",
+        "apiUrl": "https://api.physicallybased.info/v2/materials",
+        "linearSrgb": [
+          1.059,
+          0.773,
+          0.307
+        ],
+        "srgbHex": "#ffe496",
+        "note": "linear sRGB clamped to [0,1] then sRGB-encoded; the recipe colour is an sRGB hex decoded by three ColorManagement"
+      }
+    },
+    {
+      "id": "metal-stainless-brushed",
+      "label": "Brushed Stainless Steel",
+      "setId": "metal-brushed",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#d6d1cb",
+        "roughness": 1,
+        "metalness": 1,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "colorEvidence": {
+        "source": "physicallybased.info",
+        "material": "Stainless Steel",
+        "apiUrl": "https://api.physicallybased.info/v2/materials",
+        "linearSrgb": [
+          0.669,
+          0.639,
+          0.598
+        ],
+        "srgbHex": "#d6d1cb",
+        "note": "linear sRGB clamped to [0,1] then sRGB-encoded; the recipe colour is an sRGB hex decoded by three ColorManagement"
+      }
+    },
+    {
+      "id": "metal-aluminium-brushed",
+      "label": "Brushed Aluminium",
+      "setId": "metal-brushed",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#f5f6f6",
+        "roughness": 1,
+        "metalness": 1,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "colorEvidence": {
+        "source": "physicallybased.info",
+        "material": "Aluminum",
+        "apiUrl": "https://api.physicallybased.info/v2/materials",
+        "linearSrgb": [
+          0.916,
+          0.923,
+          0.924
+        ],
+        "srgbHex": "#f5f6f6",
+        "note": "linear sRGB clamped to [0,1] then sRGB-encoded; the recipe colour is an sRGB hex decoded by three ColorManagement"
+      }
+    },
+    {
+      "id": "textile-linen",
+      "label": "Natural Linen",
+      "setId": "textile-linen",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": null,
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.271,
+              0.271
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "targetMeanAlbedo": "#cbbfa8",
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+    },
+    {
+      "id": "textile-carpet-loop",
+      "label": "Loop Pile Carpet",
+      "setId": "textile-carpet-loop",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              1.7,
+              1.7
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      }
+    },
+    {
+      "id": "leather-cognac",
+      "label": "Cognac Leather",
+      "setId": "leather-smooth",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": null,
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.3,
+              0.3
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
+          }
+        }
+      },
+      "targetMeanAlbedo": "#8a4f2c",
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+    },
+    {
+      "id": "synthetic-plastic-matte",
+      "label": "Matte Plastic",
+      "setId": "synthetic-plastic-matte",
+      "tier": "core",
+      "recipe": {
+        "profile": "pbr-metallic-roughness/v1",
+        "color": null,
+        "roughness": 1,
+        "metalness": 0,
+        "occlusionStrength": 1,
+        "normalScale": 1,
+        "mapping": {
+          "kind": "target",
+          "metric": {
+            "tileMeters": [
+              0.5,
+              0.5
+            ],
+            "rotation": 0,
+            "offset": [
+              0,
+              0
+            ]
+          }
+        },
+        "maps": {
+          "color": {
+            "image": "<color image sha256>"
+          },
+          "normal": {
+            "image": "<normal image sha256>",
+            "convention": "+Y"
+          },
+          "roughness": {
+            "image": "<orm image sha256>",
+            "component": "g",
+            "invert": false
+          }
+        }
+      },
+      "targetMeanAlbedo": "#e6e6e3",
+      "colorRule": "color = per-channel linear(target) / measured linear mean of the 1K colour derivative, encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
+    }
+  ],
+  "assetSets": [
+    {
+      "setId": "wood-oak-veneer",
+      "tier": "core",
+      "category": "wood",
+      "subcategory": "veneer",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.83,
+          1.83
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 560,
+        "2k": 1119
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Light European oak, fine straight grain; the default light timber.",
+      "alternates": [
+        {
+          "provider": "polyhaven",
+          "assetId": "white_oak_veneer",
+          "reason": "0.5 m repeat, paler; use if 1.83 m reads too coarse on furniture",
+          "pageUrl": "https://polyhaven.com/a/white_oak_veneer"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "oak_veneer_01",
+        "title": "Oak Veneer 01",
+        "pageUrl": "https://polyhaven.com/a/oak_veneer_01",
+        "apiInfoUrl": "https://api.polyhaven.com/info/oak_veneer_01",
+        "apiFilesUrl": "https://api.polyhaven.com/files/oak_veneer_01",
+        "creators": [
+          "Jenelle van Heerden"
+        ],
+        "providerCategory": "Wood/Veneer/Oak Veneer",
+        "datePublished": 1709856000,
+        "declaredDimensions": {
+          "x": 1.83,
+          "y": 1.83,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          16384,
+          16384
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k",
+          "16k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/oak_veneer_01/oak_veneer_01_diff_4k.jpg",
+              "bytes": 12587069,
+              "md5": "d4c13847045d1a10475a23b0787bf384"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/oak_veneer_01/oak_veneer_01_nor_gl_4k.png",
+              "bytes": 85408687,
+              "md5": "fa1e03f182d12f8d28e8d3ffa064addf"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/oak_veneer_01/oak_veneer_01_arm_4k.png",
+              "bytes": 72042743,
+              "md5": "04fb4d1d4a1fc5ad641a57c2d56818f9"
+            }
+          ],
+          "totalBytes": 170038499
+        },
+        "provider1kReference": {
+          "color": 641756,
+          "normal": 5045076,
+          "orm": 4333883
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "wood-walnut-veneer",
+      "tier": "core",
+      "category": "wood",
+      "subcategory": "veneer",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.0,
+          1.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 1024,
+        "2k": 2048
+      },
+      "tint": "T0-darken",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Species-true walnut figure; the source is mid-brown so the recipe colour darkens it to a classic walnut.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Wood051",
+          "reason": "0.8 m declared, already espresso-dark; use if darkening flattens the figure",
+          "pageUrl": "https://ambientcg.com/a/Wood051"
+        },
+        {
+          "provider": "polyhaven",
+          "assetId": "smoked_walnut_veneer",
+          "reason": "same author/scale, cooler smoked tone",
+          "pageUrl": "https://polyhaven.com/a/smoked_walnut_veneer"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "walnut_veneer_02",
+        "title": "Walnut Veneer 02",
+        "pageUrl": "https://polyhaven.com/a/walnut_veneer_02",
+        "apiInfoUrl": "https://api.polyhaven.com/info/walnut_veneer_02",
+        "apiFilesUrl": "https://api.polyhaven.com/files/walnut_veneer_02",
+        "creators": [
+          "Jenelle van Heerden"
+        ],
+        "providerCategory": "Wood/Veneer/Walnut Veneer",
+        "datePublished": 1786448942,
+        "declaredDimensions": {
+          "x": 1.0,
+          "y": 1.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/walnut_veneer_02/walnut_veneer_02_diff_4k.jpg",
+              "bytes": 9631919,
+              "md5": "9294085775080be7c3467837bc2f60d2"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/walnut_veneer_02/walnut_veneer_02_nor_gl_4k.png",
+              "bytes": 78144810,
+              "md5": "7be9da32acc5d9c419119f58e3c3a6bb"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/walnut_veneer_02/walnut_veneer_02_arm_4k.png",
+              "bytes": 63835645,
+              "md5": "54388885ceda920e6ee8243fc9062783"
+            }
+          ],
+          "totalBytes": 151612374
+        },
+        "provider1kReference": {
+          "color": 592833,
+          "normal": 4703928,
+          "orm": 4280861
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "wood-oak-planks",
+      "tier": "core",
+      "category": "wood",
+      "subcategory": "boards-and-parquet",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.7,
+          1.7
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 602,
+        "2k": 1205
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Finished plank floor; the default timber floor.",
+      "alternates": [
+        {
+          "provider": "polyhaven",
+          "assetId": "laminate_floor_02",
+          "reason": "1.7 m, cleaner engineered look",
+          "pageUrl": "https://polyhaven.com/a/laminate_floor_02"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "wood_floor",
+        "title": "Wood Floor",
+        "pageUrl": "https://polyhaven.com/a/wood_floor",
+        "apiInfoUrl": "https://api.polyhaven.com/info/wood_floor",
+        "apiFilesUrl": "https://api.polyhaven.com/files/wood_floor",
+        "creators": [
+          "Dimitrios Savva"
+        ],
+        "providerCategory": "Wood/Boards & Planks/Finished & Varnished",
+        "datePublished": 1698105600,
+        "declaredDimensions": {
+          "x": 1.7,
+          "y": 1.7,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/wood_floor/wood_floor_diff_4k.jpg",
+              "bytes": 10771881,
+              "md5": "0ec20da4eb478c72f34b73e6421d6a9a"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/wood_floor/wood_floor_nor_gl_4k.png",
+              "bytes": 75335153,
+              "md5": "243a249096636594e4240880c1e1f863"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/wood_floor/wood_floor_arm_4k.png",
+              "bytes": 60469105,
+              "md5": "db5814c439db151140eeffa0a6ab083c"
+            }
+          ],
+          "totalBytes": 146576139
+        },
+        "provider1kReference": {
+          "color": 734493,
+          "normal": 4873122,
+          "orm": 4297200
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "wood-herringbone-parquet",
+      "tier": "core",
+      "category": "wood",
+      "subcategory": "boards-and-parquet",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          3.4,
+          3.4
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 301,
+        "2k": 602
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "priority",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Large 3.4 m repeat keeps the pattern from visibly tiling but gives only 301 px/m at 1K; first 2K candidate.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "herringbone_parquet",
+        "title": "Herringbone Parquet",
+        "pageUrl": "https://polyhaven.com/a/herringbone_parquet",
+        "apiInfoUrl": "https://api.polyhaven.com/info/herringbone_parquet",
+        "apiFilesUrl": "https://api.polyhaven.com/files/herringbone_parquet",
+        "creators": [
+          "Jenelle van Heerden",
+          "Sergej Majboroda"
+        ],
+        "providerCategory": "Wood/Boards & Planks/Parquet",
+        "datePublished": 1688428800,
+        "declaredDimensions": {
+          "x": 3.4,
+          "y": 3.4,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          16384,
+          16384
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k",
+          "16k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/herringbone_parquet/herringbone_parquet_diff_4k.jpg",
+              "bytes": 14252931,
+              "md5": "f29c773d0daf156665cbfad8f5728de2"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/herringbone_parquet/herringbone_parquet_nor_gl_4k.png",
+              "bytes": 77989899,
+              "md5": "fc2c633cefbc64aa83cf0d7a482b709f"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/herringbone_parquet/herringbone_parquet_arm_4k.png",
+              "bytes": 66813505,
+              "md5": "159b85d35360ce364c770b1e0e29b521"
+            }
+          ],
+          "totalBytes": 159056335
+        },
+        "provider1kReference": {
+          "color": 829046,
+          "normal": 4799713,
+          "orm": 4054522
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "stone-marble-white",
+      "tier": "core",
+      "category": "stone",
+      "subcategory": "polished",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "C",
+        "tileMeters": [
+          1.2,
+          1.2
+        ],
+        "basis": "nominal; admitted only by owner ruling"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 853,
+        "2k": 1707
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "White marble with grey veining; veining scale is ambiguous, so it needs a nominal tile.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Travertine009",
+          "reason": "1.2 m declared (class A); the fallback if class C is refused",
+          "pageUrl": "https://ambientcg.com/a/Travertine009"
+        }
+      ],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Marble012",
+        "title": "Marble 012",
+        "pageUrl": "https://ambientcg.com/a/Marble012",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Marble012&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Marble",
+        "datePublished": "2020-01-26",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Marble012_4K-PNG.zip",
+            "bytes": 195672054
+          },
+          "totalBytes": 195672054
+        },
+        "provider1kReference": {
+          "zip1kPng": 12909875,
+          "zip1kJpg": 4672904
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 4672904,
+          "2K-JPG": 14792073,
+          "4K-JPG": 59380993,
+          "8K-JPG": 268730821,
+          "1K-PNG": 12909875,
+          "2K-PNG": 49387235,
+          "4K-PNG": 195672054,
+          "8K-PNG": 777931707
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "stone-terrazzo",
+      "tier": "core",
+      "category": "stone",
+      "subcategory": "composite",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          0.8,
+          0.8
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 1280,
+        "2k": 2560
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Warm terrazzo with a declared 0.8 m tile; colour maps are approximated from a photo.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Terrazzo005",
+          "reason": "classic white with black chips but no declared scale (class C)",
+          "pageUrl": "https://ambientcg.com/a/Terrazzo005"
+        }
+      ],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Terrazzo019L",
+        "title": "Terrazzo 019 L",
+        "pageUrl": "https://ambientcg.com/a/Terrazzo019L",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Terrazzo019L&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Terrazzo",
+        "datePublished": "2021-09-26",
+        "creationMethod": "PBRApproximated",
+        "declaredDimensions": {
+          "x": 0.8,
+          "y": 0.8,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Terrazzo019L_4K-PNG.zip",
+            "bytes": 211949491
+          },
+          "totalBytes": 211949491
+        },
+        "provider1kReference": {
+          "zip1kPng": 14374399,
+          "zip1kJpg": 5215562
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 5215562,
+          "2K-JPG": 17910164,
+          "4K-JPG": 71929961,
+          "8K-JPG": 325749705,
+          "1K-PNG": 14374399,
+          "2K-PNG": 53612620,
+          "4K-PNG": 211949491,
+          "8K-PNG": 878947504
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "masonry-brick-red",
+      "tier": "core",
+      "category": "masonry",
+      "subcategory": "brick",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.0,
+          1.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 1024,
+        "2k": 2048
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Running-bond clay brick; cross-check the declared 1.0 m against course count (class B check).",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Bricks059",
+          "reason": "1.05 m declared, cleaner orange brick",
+          "pageUrl": "https://ambientcg.com/a/Bricks059"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "red_brick_03",
+        "title": "Red Brick 03",
+        "pageUrl": "https://polyhaven.com/a/red_brick_03",
+        "apiInfoUrl": "https://api.polyhaven.com/info/red_brick_03",
+        "apiFilesUrl": "https://api.polyhaven.com/files/red_brick_03",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Brick & Block/Clay Brick/Running-Bond",
+        "datePublished": 1530171674,
+        "declaredDimensions": {
+          "x": 1.0,
+          "y": 1.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Bump",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "spec"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/red_brick_03/red_brick_03_diff_4k.jpg",
+              "bytes": 11437615,
+              "md5": "0c257e296a367319d81600490626d0f5"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/red_brick_03/red_brick_03_nor_gl_4k.png",
+              "bytes": 28168313,
+              "md5": "3b738d96a1e3e33ca2fa45d37086d353"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/red_brick_03/red_brick_03_arm_4k.png",
+              "bytes": 24939961,
+              "md5": "27a51c26aa39126415842a5b2f29772d"
+            }
+          ],
+          "totalBytes": 64545889
+        },
+        "provider1kReference": {
+          "color": 694500,
+          "normal": 2084859,
+          "orm": 1407864
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "masonry-brick-painted",
+      "tier": "core",
+      "category": "masonry",
+      "subcategory": "brick",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.55,
+          1.55
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 661,
+        "2k": 1321
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "White painted brick; tint recolours brick and mortar together, as paint does.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "PaintedBricks004",
+        "title": "Painted Bricks 004",
+        "pageUrl": "https://ambientcg.com/a/PaintedBricks004",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=PaintedBricks004&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Painted Bricks",
+        "datePublished": "2021-05-30",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": {
+          "x": 1.55,
+          "y": 1.55,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "ambient-occlusion"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=PaintedBricks004_4K-PNG.zip",
+            "bytes": 206318672
+          },
+          "totalBytes": 206318672
+        },
+        "provider1kReference": {
+          "zip1kPng": 15163883,
+          "zip1kJpg": 6964286
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 6964286,
+          "2K-JPG": 22018257,
+          "4K-JPG": 71221355,
+          "8K-JPG": 227632546,
+          "1K-PNG": 15163883,
+          "2K-PNG": 55086398,
+          "4K-PNG": 206318672,
+          "8K-PNG": 777098983
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "plaster-painted",
+      "tier": "core",
+      "category": "plaster-concrete",
+      "subcategory": "plaster",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.0,
+          2.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 512,
+        "2k": 1024
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Clean, near-neutral painted plaster; the default wall.",
+      "alternates": [
+        {
+          "provider": "polyhaven",
+          "assetId": "plastered_wall",
+          "reason": "2.0 m bare plaster, same author",
+          "pageUrl": "https://polyhaven.com/a/plastered_wall"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "painted_plaster_wall",
+        "title": "Painted Plaster Wall",
+        "pageUrl": "https://polyhaven.com/a/painted_plaster_wall",
+        "apiInfoUrl": "https://api.polyhaven.com/info/painted_plaster_wall",
+        "apiFilesUrl": "https://api.polyhaven.com/files/painted_plaster_wall",
+        "creators": [
+          "Amal Kumar"
+        ],
+        "providerCategory": "Concrete/Plaster & Stucco/Painted Plaster",
+        "datePublished": 1706140800,
+        "declaredDimensions": {
+          "x": 2.0,
+          "y": 2.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          16384,
+          16384
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k",
+          "16k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/painted_plaster_wall/painted_plaster_wall_diff_4k.jpg",
+              "bytes": 12556766,
+              "md5": "7db04e0e455152cf79e112f5852c973d"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/painted_plaster_wall/painted_plaster_wall_nor_gl_4k.png",
+              "bytes": 90277227,
+              "md5": "351ce0b340e3d17d801e03cecec90db8"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/painted_plaster_wall/painted_plaster_wall_arm_4k.png",
+              "bytes": 52773821,
+              "md5": "7c5c521d72d8ad722bc74036668199e3"
+            }
+          ],
+          "totalBytes": 155607814
+        },
+        "provider1kReference": {
+          "color": 686726,
+          "normal": 5688118,
+          "orm": 3925213
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "concrete-smooth",
+      "tier": "core",
+      "category": "plaster-concrete",
+      "subcategory": "concrete",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.4,
+          2.4
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 427,
+        "2k": 853
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Light smooth concrete; the colour map is approximated from a photo. A polished preset shares its bytes.",
+      "alternates": [
+        {
+          "provider": "polyhaven",
+          "assetId": "concrete_wall_008",
+          "reason": "2.71 m, scanned; better data provenance, more staining",
+          "pageUrl": "https://polyhaven.com/a/concrete_wall_008"
+        },
+        {
+          "provider": "ambientcg",
+          "assetId": "Concrete034",
+          "reason": "1.1 x 0.55 m, non-square",
+          "pageUrl": "https://ambientcg.com/a/Concrete034"
+        }
+      ],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Concrete046",
+        "title": "Concrete 046",
+        "pageUrl": "https://ambientcg.com/a/Concrete046",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Concrete046&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Concrete",
+        "datePublished": "2024-04-25",
+        "creationMethod": "PBRApproximated",
+        "declaredDimensions": {
+          "x": 2.4,
+          "y": 2.4,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Concrete046_4K-PNG.zip",
+            "bytes": 241619299
+          },
+          "totalBytes": 241619299
+        },
+        "provider1kReference": {
+          "zip1kPng": 15533155,
+          "zip1kJpg": 5989511
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 5989511,
+          "2K-JPG": 23194538,
+          "4K-JPG": 99777686,
+          "8K-JPG": 446085223,
+          "1K-PNG": 15533155,
+          "2K-PNG": 59708442,
+          "4K-PNG": 241619299,
+          "8K-PNG": 991670016
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "tile-ceramic-white",
+      "tier": "core",
+      "category": "tile-ceramic",
+      "subcategory": "glazed-tile",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.0,
+          1.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 1024,
+        "2k": 2048
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "White square tile with grout. Tint also tints the grout: coloured tile with light grout needs a layered family (deferred).",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Tiles107",
+        "title": "Tiles 107",
+        "pageUrl": "https://ambientcg.com/a/Tiles107",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Tiles107&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Tiles",
+        "datePublished": "2021-05-23",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": {
+          "x": 1.0,
+          "y": 1.0,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "ambient-occlusion"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Tiles107_4K-PNG.zip",
+            "bytes": 110965265
+          },
+          "totalBytes": 110965265
+        },
+        "provider1kReference": {
+          "zip1kPng": 8258711,
+          "zip1kJpg": 3200991
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 3200991,
+          "2K-JPG": 6705310,
+          "4K-JPG": 18750200,
+          "8K-JPG": 88365292,
+          "1K-PNG": 8258711,
+          "2K-PNG": 26905547,
+          "4K-PNG": 110965265,
+          "8K-PNG": 350001234
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "metal-satin",
+      "tier": "core",
+      "category": "metal",
+      "subcategory": "polished-satin",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "C",
+        "tileMeters": [
+          0.5,
+          0.5
+        ],
+        "basis": "nominal; admitted only by owner ruling"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 2048,
+        "2k": 4096
+      },
+      "tint": "metal",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 2,
+        "gpuBytes1k": 11184808,
+        "gpuBytes2k": 44739240
+      },
+      "notes": "Structure only (normal + roughness); colour comes from measured F0 per preset.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Metal032",
+        "title": "Metal 032",
+        "pageUrl": "https://ambientcg.com/a/Metal032",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Metal032&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Metal",
+        "datePublished": "2020-08-09",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "metalness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Metal032_4K-PNG.zip",
+            "bytes": 226901204
+          },
+          "totalBytes": 226901204
+        },
+        "provider1kReference": {
+          "zip1kPng": 12255885,
+          "zip1kJpg": 3650556
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 3650556,
+          "2K-JPG": 13036124,
+          "4K-JPG": 73681644,
+          "8K-JPG": 428531122,
+          "1K-PNG": 12255885,
+          "2K-PNG": 51323783,
+          "4K-PNG": 226901204,
+          "8K-PNG": 943213294
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "255 (metal; metalness factor 1, map not bound)"
+      },
+      "colorPolicy": "provider colour map not used; colour factor from Physically Based F0"
+    },
+    {
+      "setId": "metal-brushed",
+      "tier": "core",
+      "category": "metal",
+      "subcategory": "brushed",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "C",
+        "tileMeters": [
+          0.5,
+          0.5
+        ],
+        "basis": "nominal; admitted only by owner ruling"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 2048,
+        "2k": 4096
+      },
+      "tint": "metal",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 2,
+        "gpuBytes1k": 11184808,
+        "gpuBytes2k": 44739240
+      },
+      "notes": "Brushed structure approximated with a normal map; true anisotropy is a deferred family.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Metal011",
+          "reason": "same tags and maps; pick whichever reads cleaner on the inspection rig",
+          "pageUrl": "https://ambientcg.com/a/Metal011"
+        }
+      ],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Metal009",
+        "title": "Metal 009",
+        "pageUrl": "https://ambientcg.com/a/Metal009",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Metal009&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Metal",
+        "datePublished": "2018-08-16",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "metalness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Metal009_4K-PNG.zip",
+            "bytes": 202436424
+          },
+          "totalBytes": 202436424
+        },
+        "provider1kReference": {
+          "zip1kPng": 13138410,
+          "zip1kJpg": 4767000
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 4767000,
+          "2K-JPG": 16660145,
+          "4K-JPG": 70046122,
+          "8K-JPG": 315617145,
+          "1K-PNG": 13138410,
+          "2K-PNG": 50113613,
+          "4K-PNG": 202436424,
+          "8K-PNG": 345997578
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "255 (metal; metalness factor 1, map not bound)"
+      },
+      "colorPolicy": "provider colour map not used; colour factor from Physically Based F0"
+    },
+    {
+      "setId": "textile-linen",
+      "tier": "core",
+      "category": "textile",
+      "subcategory": "woven",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          0.271,
+          0.271
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 3779,
+        "2k": 7557
+      },
+      "tint": "T1-neutralize",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Woven linen; the source is light blue, so it needs a luminance-neutral derivative to tint. Its anisotropy/sheen maps are ignored in v1.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "rough_linen",
+        "title": "Rough Linen",
+        "pageUrl": "https://polyhaven.com/a/rough_linen",
+        "apiInfoUrl": "https://api.polyhaven.com/info/rough_linen",
+        "apiFilesUrl": "https://api.polyhaven.com/files/rough_linen",
+        "creators": [
+          "Rico Cilliers",
+          "colormass"
+        ],
+        "providerCategory": "Textiles & Leather/Woven/Linen & Hessian-weave",
+        "datePublished": 1757078158,
+        "declaredDimensions": {
+          "x": 0.271,
+          "y": 0.271,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8233,
+          8251
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Mask",
+          "Metal",
+          "Rough",
+          "anisotropy_rotation",
+          "anisotropy_strength",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "spec_ior"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rough_linen/rough_linen_diff_4k.jpg",
+              "bytes": 13064750,
+              "md5": "8baff705eca1ecca5eefce25563b4b78"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rough_linen/rough_linen_nor_gl_4k.png",
+              "bytes": 77542996,
+              "md5": "43180ccade92ad31707b3e643feafd10"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rough_linen/rough_linen_arm_4k.png",
+              "bytes": 94854503,
+              "md5": "5ab9fb81633824772b3eb6778a1b9f16"
+            }
+          ],
+          "totalBytes": 185462249
+        },
+        "provider1kReference": {
+          "color": 835801,
+          "normal": 5653944,
+          "orm": 6639947
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "textile-carpet-loop",
+      "tier": "core",
+      "category": "textile",
+      "subcategory": "pile-carpet",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.7,
+          1.7
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 602,
+        "2k": 1205
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Photogrammetry loop-pile carpet, beige; tints toward warm/darker tones only.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Carpet016",
+        "title": "Carpet 016",
+        "pageUrl": "https://ambientcg.com/a/Carpet016",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Carpet016&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Carpet",
+        "datePublished": "2023-11-05",
+        "creationMethod": "PBRPhotogrammetry",
+        "declaredDimensions": {
+          "x": 1.7,
+          "y": 1.7,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "ambient-occlusion"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Carpet016_4K-PNG.zip",
+            "bytes": 251396875
+          },
+          "totalBytes": 251396875
+        },
+        "provider1kReference": {
+          "zip1kPng": 18012836,
+          "zip1kJpg": 9371762
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 9371762,
+          "2K-JPG": 31205527,
+          "4K-JPG": 111252536,
+          "8K-JPG": 416968444,
+          "1K-PNG": 18012836,
+          "2K-PNG": 65696017,
+          "4K-PNG": 251396875,
+          "8K-PNG": 983334376
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "leather-smooth",
+      "tier": "core",
+      "category": "leather",
+      "subcategory": "upholstery",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          0.3,
+          0.3
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 3413,
+        "2k": 6827
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Off-white upholstery leather; the recipe colour gives cognac/black/etc.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Leather035D",
+          "reason": "0.3 m declared, beige, unstitched",
+          "pageUrl": "https://ambientcg.com/a/Leather035D"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "leather_white",
+        "title": "Leather White",
+        "pageUrl": "https://polyhaven.com/a/leather_white",
+        "apiInfoUrl": "https://api.polyhaven.com/info/leather_white",
+        "apiFilesUrl": "https://api.polyhaven.com/files/leather_white",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Textiles & Leather/Leather/Upholstery Leather",
+        "datePublished": 1592532089,
+        "declaredDimensions": {
+          "x": 0.3,
+          "y": 0.3,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/leather_white/leather_white_diff_4k.jpg",
+              "bytes": 14972596,
+              "md5": "26a2ffa8618206fbf99b63ab3bcbfd92"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/leather_white/leather_white_nor_gl_4k.png",
+              "bytes": 26791907,
+              "md5": "0fe4ccefc6e7958fc18297fa1ec1cd32"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/leather_white/leather_white_arm_4k.png",
+              "bytes": 30368496,
+              "md5": "92af92f9eda6dce284c3c1776445b6d4"
+            }
+          ],
+          "totalBytes": 72132999
+        },
+        "provider1kReference": {
+          "color": 728363,
+          "normal": 1766429,
+          "orm": 1842444
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "synthetic-plastic-matte",
+      "tier": "core",
+      "category": "synthetic-paper",
+      "subcategory": "plastic",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "C",
+        "tileMeters": [
+          0.5,
+          0.5
+        ],
+        "basis": "nominal; admitted only by owner ruling"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 2048,
+        "2k": 4096
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "White matte plastic micro-surface; colour is entirely the recipe colour.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Plastic013A",
+          "reason": "white, slightly more texture",
+          "pageUrl": "https://ambientcg.com/a/Plastic013A"
+        }
+      ],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Plastic010",
+        "title": "Plastic 010",
+        "pageUrl": "https://ambientcg.com/a/Plastic010",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Plastic010&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Plastic",
+        "datePublished": "2020-09-06",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Plastic010_4K-PNG.zip",
+            "bytes": 177440924
+          },
+          "totalBytes": 177440924
+        },
+        "provider1kReference": {
+          "zip1kPng": 12355422,
+          "zip1kJpg": 3535012
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 3535012,
+          "2K-JPG": 12649692,
+          "4K-JPG": 51455068,
+          "8K-JPG": 183131371,
+          "1K-PNG": 12355422,
+          "2K-PNG": 46586374,
+          "4K-PNG": 177440924,
+          "8K-PNG": 641029043
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "wood-plywood",
+      "tier": "expansion",
+      "category": "wood",
+      "subcategory": "engineered",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          0.5,
+          0.5
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 2048,
+        "2k": 4096
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Edge-grain plywood sheet.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "plywood",
+        "title": "Plywood",
+        "pageUrl": "https://polyhaven.com/a/plywood",
+        "apiInfoUrl": "https://api.polyhaven.com/info/plywood",
+        "apiFilesUrl": "https://api.polyhaven.com/files/plywood",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Wood/Engineered Wood/Plywood",
+        "datePublished": 1592792935,
+        "declaredDimensions": {
+          "x": 0.5,
+          "y": 0.5,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/plywood/plywood_diff_4k.jpg",
+              "bytes": 16467261,
+              "md5": "da449a51c2be0c34b8ebc5c058fc61b4"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/plywood/plywood_nor_gl_4k.png",
+              "bytes": 22958150,
+              "md5": "3ddf13f7f7c1a32a9744cf9837e91d1f"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/plywood/plywood_arm_4k.png",
+              "bytes": 28427502,
+              "md5": "e6cd8deb692ef5a2d4d38e5ef346dbf2"
+            }
+          ],
+          "totalBytes": 67852913
+        },
+        "provider1kReference": {
+          "color": 882059,
+          "normal": 1549450,
+          "orm": 1794537
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "wood-maple-veneer",
+      "tier": "expansion",
+      "category": "wood",
+      "subcategory": "veneer",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.0,
+          1.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 1024,
+        "2k": 2048
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Very light hardwood; Scandinavian interiors.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "white_maple_veneer",
+        "title": "White Maple Veneer",
+        "pageUrl": "https://polyhaven.com/a/white_maple_veneer",
+        "apiInfoUrl": "https://api.polyhaven.com/info/white_maple_veneer",
+        "apiFilesUrl": "https://api.polyhaven.com/files/white_maple_veneer",
+        "creators": [
+          "Jenelle van Heerden"
+        ],
+        "providerCategory": "Wood/Veneer/Light Hardwood Veneer",
+        "datePublished": 1786448942,
+        "declaredDimensions": {
+          "x": 1.0,
+          "y": 1.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/white_maple_veneer/white_maple_veneer_diff_4k.jpg",
+              "bytes": 6716314,
+              "md5": "f8fcc20a1dcbd8a0a4f917f5d946664f"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/white_maple_veneer/white_maple_veneer_nor_gl_4k.png",
+              "bytes": 71809958,
+              "md5": "59b62cb74d035863bd0a70a745da1e11"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/white_maple_veneer/white_maple_veneer_arm_4k.png",
+              "bytes": 64845050,
+              "md5": "fd35cc1daaeec8574366caf56d121bc5"
+            }
+          ],
+          "totalBytes": 143371322
+        },
+        "provider1kReference": {
+          "color": 443279,
+          "normal": 4309857,
+          "orm": 4161634
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "stone-travertine",
+      "tier": "expansion",
+      "category": "stone",
+      "subcategory": "natural",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.2,
+          1.2
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 853,
+        "2k": 1707
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Warm travertine, declared 1.2 m.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Travertine009",
+        "title": "Travertine 009",
+        "pageUrl": "https://ambientcg.com/a/Travertine009",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Travertine009&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Travertine",
+        "datePublished": "2023-12-20",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": {
+          "x": 1.2,
+          "y": 1.2,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "ambient-occlusion"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Travertine009_4K-PNG.zip",
+            "bytes": 142842817
+          },
+          "totalBytes": 142842817
+        },
+        "provider1kReference": {
+          "zip1kPng": 9299244,
+          "zip1kJpg": 3292870
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 3292870,
+          "2K-JPG": 9116254,
+          "4K-JPG": 32850019,
+          "8K-JPG": 166964780,
+          "1K-PNG": 9299244,
+          "2K-PNG": 35288755,
+          "4K-PNG": 142842817,
+          "8K-PNG": 516610703
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "stone-marble-black",
+      "tier": "expansion",
+      "category": "stone",
+      "subcategory": "polished",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "C",
+        "tileMeters": [
+          1.2,
+          1.2
+        ],
+        "basis": "nominal; admitted only by owner ruling"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 853,
+        "2k": 1707
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Dark veined marble.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Marble016",
+        "title": "Marble 016",
+        "pageUrl": "https://ambientcg.com/a/Marble016",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Marble016&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Marble",
+        "datePublished": "2021-06-20",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Marble016_4K-PNG.zip",
+            "bytes": 147883793
+          },
+          "totalBytes": 147883793
+        },
+        "provider1kReference": {
+          "zip1kPng": 11640108,
+          "zip1kJpg": 4352207
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 4352207,
+          "2K-JPG": 11923140,
+          "4K-JPG": 36923954,
+          "8K-JPG": 121497853,
+          "1K-PNG": 11640108,
+          "2K-PNG": 40551177,
+          "4K-PNG": 147883793,
+          "8K-PNG": 530276365
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "tile-terracotta",
+      "tier": "expansion",
+      "category": "tile-ceramic",
+      "subcategory": "terracotta",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.08,
+          2.08
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 492,
+        "2k": 985
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Square terracotta floor; source is dark and worn.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "terracotta_floor_tiles",
+        "title": "Terracotta Floor Tiles",
+        "pageUrl": "https://polyhaven.com/a/terracotta_floor_tiles",
+        "apiInfoUrl": "https://api.polyhaven.com/info/terracotta_floor_tiles",
+        "apiFilesUrl": "https://api.polyhaven.com/files/terracotta_floor_tiles",
+        "creators": [
+          "Dimitrios Savva"
+        ],
+        "providerCategory": "Ceramic/Terracotta",
+        "datePublished": 1781827200,
+        "declaredDimensions": {
+          "x": 2.08,
+          "y": 2.08,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/terracotta_floor_tiles/terracotta_floor_tiles_diff_4k.jpg",
+              "bytes": 10615771,
+              "md5": "17dbcdee162b4744d39c1c1477f5832a"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/terracotta_floor_tiles/terracotta_floor_tiles_nor_gl_4k.png",
+              "bytes": 85281929,
+              "md5": "7786127bd2cb79c95247b744c2b011a0"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/terracotta_floor_tiles/terracotta_floor_tiles_arm_4k.png",
+              "bytes": 69209186,
+              "md5": "76837fecf998618522ddf104d35ec645"
+            }
+          ],
+          "totalBytes": 165106886
+        },
+        "provider1kReference": {
+          "color": 649304,
+          "normal": 5228039,
+          "orm": 4323295
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "tile-subway",
+      "tier": "expansion",
+      "category": "tile-ceramic",
+      "subcategory": "glazed-tile",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "B",
+        "tileMeters": null,
+        "basis": "measured repeating feature (module/pitch), cross-checked +/-10%"
+      },
+      "texelDensityPxPerMeter": null,
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Subway tile; tile = counted modules x 75 x 150 mm, measured at harvest (class B).",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Tiles036",
+        "title": "Tiles 036",
+        "pageUrl": "https://ambientcg.com/a/Tiles036",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Tiles036&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Tiles",
+        "datePublished": "2019-03-09",
+        "creationMethod": "PBRProcedural",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Tiles036_4K-PNG.zip",
+            "bytes": 178002641
+          },
+          "totalBytes": 178002641
+        },
+        "provider1kReference": {
+          "zip1kPng": 12744162,
+          "zip1kJpg": 4420561
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 4420561,
+          "2K-JPG": 14365292,
+          "4K-JPG": 48464613,
+          "8K-JPG": 165354977,
+          "1K-PNG": 12744162,
+          "2K-PNG": 47391580,
+          "4K-PNG": 178002641,
+          "8K-PNG": 592503943
+        }
+      },
+      "orm": {
+        "r": "255 (no AO; occlusion not bound)",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "metal-corten",
+      "tier": "expansion",
+      "category": "metal",
+      "subcategory": "weathered",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.2,
+          2.2
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 465,
+        "2k": 931
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Weathered steel sheet.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "rust_coarse_01",
+        "title": "Rust Coarse 01",
+        "pageUrl": "https://polyhaven.com/a/rust_coarse_01",
+        "apiInfoUrl": "https://api.polyhaven.com/info/rust_coarse_01",
+        "apiFilesUrl": "https://api.polyhaven.com/files/rust_coarse_01",
+        "creators": [
+          "Dimitrios Savva",
+          "Rico Cilliers"
+        ],
+        "providerCategory": "Metal/Sheet & Corrugated/Flat Sheet",
+        "datePublished": 1638230400,
+        "declaredDimensions": {
+          "x": 2.2,
+          "y": 2.2,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          16384,
+          16384
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k",
+          "16k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rust_coarse_01/rust_coarse_01_diff_4k.jpg",
+              "bytes": 13786098,
+              "md5": "db56905cc140ab087a49f3e1ae2ae496"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rust_coarse_01/rust_coarse_01_nor_gl_4k.png",
+              "bytes": 90697223,
+              "md5": "f45f4fa7e813790c2adf353554cde3f6"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rust_coarse_01/rust_coarse_01_arm_4k.png",
+              "bytes": 70618155,
+              "md5": "bb00f3a1e2da4e1a71a3ed40cf5c87fd"
+            }
+          ],
+          "totalBytes": 175101476
+        },
+        "provider1kReference": {
+          "color": 845196,
+          "normal": 5575172,
+          "orm": 4447937
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "concrete-fluted",
+      "tier": "expansion",
+      "category": "plaster-concrete",
+      "subcategory": "concrete",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.0,
+          2.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 512,
+        "2k": 1024
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Fluted/ribbed photogrammetry concrete; relief is normal-only in v1.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Concrete045",
+        "title": "Concrete 045",
+        "pageUrl": "https://ambientcg.com/a/Concrete045",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Concrete045&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Concrete",
+        "datePublished": "2023-10-01",
+        "creationMethod": "PBRPhotogrammetry",
+        "declaredDimensions": {
+          "x": 2.0,
+          "y": 2.0,
+          "unit": "m",
+          "sourceUnit": "cm",
+          "precision": "approximate (provider states ca.)"
+        },
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "ambient-occlusion"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K",
+          "8K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Concrete045_4K-PNG.zip",
+            "bytes": 232587176
+          },
+          "totalBytes": 232587176
+        },
+        "provider1kReference": {
+          "zip1kPng": 14519254,
+          "zip1kJpg": 5618232
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 5618232,
+          "2K-JPG": 20268151,
+          "4K-JPG": 84744289,
+          "8K-JPG": 371410621,
+          "1K-PNG": 14519254,
+          "2K-PNG": 57208952,
+          "4K-PNG": 232587176,
+          "8K-PNG": 954093858
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "textile-wool-herringbone",
+      "tier": "expansion",
+      "category": "textile",
+      "subcategory": "woven",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          0.27,
+          0.276
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 3710,
+        "2k": 7420
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Herringbone upholstery weave.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "poly_wool_herringbone",
+        "title": "Poly Wool Herringbone",
+        "pageUrl": "https://polyhaven.com/a/poly_wool_herringbone",
+        "apiInfoUrl": "https://api.polyhaven.com/info/poly_wool_herringbone",
+        "apiFilesUrl": "https://api.polyhaven.com/files/poly_wool_herringbone",
+        "creators": [
+          "Rico Cilliers",
+          "colormass"
+        ],
+        "providerCategory": "Textiles & Leather/Woven/Plain Weave Cotton",
+        "datePublished": 1757078158,
+        "declaredDimensions": {
+          "x": 0.27,
+          "y": 0.276,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8216,
+          8387
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Metal",
+          "Rough",
+          "anisotropy_rotation",
+          "anisotropy_strength",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "spec_ior"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/poly_wool_herringbone/poly_wool_herringbone_diff_4k.jpg",
+              "bytes": 13605843,
+              "md5": "341e13e3da4f8fac10d8007d2675f2c8"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/poly_wool_herringbone/poly_wool_herringbone_nor_gl_4k.png",
+              "bytes": 80720802,
+              "md5": "4114633065aae44364f8ed1dd3e6e955"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/poly_wool_herringbone/poly_wool_herringbone_arm_4k.png",
+              "bytes": 110137505,
+              "md5": "306fb130939fac256390405e3685c91b"
+            }
+          ],
+          "totalBytes": 204464150
+        },
+        "provider1kReference": {
+          "color": 942966,
+          "normal": 5768966,
+          "orm": 7093535
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "synthetic-rubber",
+      "tier": "expansion",
+      "category": "synthetic-paper",
+      "subcategory": "rubber",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.0,
+          2.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 512,
+        "2k": 1024
+      },
+      "tint": "T1",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Studded rubber flooring.",
+      "alternates": [
+        {
+          "provider": "ambientcg",
+          "assetId": "Rubber004",
+          "reason": "0.75 m declared",
+          "pageUrl": "https://ambientcg.com/a/Rubber004"
+        }
+      ],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "rubber_tiles",
+        "title": "Rubber Tiles",
+        "pageUrl": "https://polyhaven.com/a/rubber_tiles",
+        "apiInfoUrl": "https://api.polyhaven.com/info/rubber_tiles",
+        "apiFilesUrl": "https://api.polyhaven.com/files/rubber_tiles",
+        "creators": [
+          "Amal Kumar"
+        ],
+        "providerCategory": "Plastic & Rubber/Rubber/Rubber Flooring",
+        "datePublished": 1700524800,
+        "declaredDimensions": {
+          "x": 2.0,
+          "y": 2.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          16384,
+          16384
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k",
+          "16k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rubber_tiles/rubber_tiles_diff_4k.jpg",
+              "bytes": 7971930,
+              "md5": "d8c328b7b89bf14bd019f7a275d4eb27"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rubber_tiles/rubber_tiles_nor_gl_4k.png",
+              "bytes": 97802582,
+              "md5": "7f5082dd1707cfcac407c61e82ecbed3"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/rubber_tiles/rubber_tiles_arm_4k.png",
+              "bytes": 56426215,
+              "md5": "ff235d4bbcd5e4755a6cd09524d4cd61"
+            }
+          ],
+          "totalBytes": 162200727
+        },
+        "provider1kReference": {
+          "color": 351085,
+          "normal": 5760184,
+          "orm": 3886309
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "synthetic-cork",
+      "tier": "expansion",
+      "category": "synthetic-paper",
+      "subcategory": "cork",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:ambientcg"
+      },
+      "scale": {
+        "class": "C",
+        "tileMeters": [
+          0.5,
+          0.5
+        ],
+        "basis": "nominal; admitted only by owner ruling"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 2048,
+        "2k": 4096
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Cork board/floor.",
+      "alternates": [],
+      "source": {
+        "provider": "ambientcg",
+        "assetId": "Cork001",
+        "title": "Cork 001",
+        "pageUrl": "https://ambientcg.com/a/Cork001",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Cork001&include=maps,downloads,dimensions,technique",
+        "creators": [
+          "ambientCG"
+        ],
+        "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
+        "providerCategory": "Cork",
+        "datePublished": "2018-11-30",
+        "creationMethod": "PBRApproximated",
+        "declaredDimensions": null,
+        "mapsAvailable": [
+          "color",
+          "displacement",
+          "normal",
+          "roughness",
+          "ambient-occlusion"
+        ],
+        "normalConvention": {
+          "chosen": "*_NormalGL.png",
+          "recipe": "+Y",
+          "alsoAvailable": "*_NormalDX.png (-Y)",
+          "verify": "confirm both files in the ZIP listing at harvest"
+        },
+        "packing": "separate Color/Roughness/Metalness/AmbientOcclusion files; pack ORM in the derivative step",
+        "resolutionsAvailable": [
+          "1K",
+          "2K",
+          "4K"
+        ],
+        "integrity": "no provider checksum; record ZIP byte size + sha256 on download and per-file sha256 after extraction",
+        "source": {
+          "resolution": "4K",
+          "format": "PNG",
+          "zip": {
+            "url": "https://ambientcg.com/get?file=Cork001_4K-PNG.zip",
+            "bytes": 136879229
+          },
+          "totalBytes": 136879229
+        },
+        "provider1kReference": {
+          "zip1kPng": 17558562,
+          "zip1kJpg": 8628837
+        },
+        "zipBytesByVariant": {
+          "1K-JPG": 8628837,
+          "2K-JPG": 24029900,
+          "4K-JPG": 82465878,
+          "1K-PNG": 17558562,
+          "2K-PNG": 61709016,
+          "4K-PNG": 136879229
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "0 (dielectric; map not bound)"
+      }
+    },
+    {
+      "setId": "ground-cobblestone",
+      "tier": "expansion",
+      "category": "exterior-ground",
+      "subcategory": "paving",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.5,
+          1.5
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 683,
+        "2k": 1365
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Relief is normal-only in v1.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "cobblestone_floor_04",
+        "title": "Cobblestone Floor 04",
+        "pageUrl": "https://polyhaven.com/a/cobblestone_floor_04",
+        "apiInfoUrl": "https://api.polyhaven.com/info/cobblestone_floor_04",
+        "apiFilesUrl": "https://api.polyhaven.com/files/cobblestone_floor_04",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Stone/Cobblestone & Paving/Rough & Irregular Setts",
+        "datePublished": 1560989332,
+        "declaredDimensions": {
+          "x": 1.5,
+          "y": 1.5,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "rough_ao"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/cobblestone_floor_04/cobblestone_floor_04_diff_4k.jpg",
+              "bytes": 8480858,
+              "md5": "5f1ce8210eb6c239fff6083484e7c911"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/cobblestone_floor_04/cobblestone_floor_04_nor_gl_4k.png",
+              "bytes": 92979949,
+              "md5": "56a8f2b667b2f881801ed3cf33a839f4"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/cobblestone_floor_04/cobblestone_floor_04_arm_4k.png",
+              "bytes": 73477762,
+              "md5": "dcd37e55f3bb3621e94fa1e7a0445d5a"
+            }
+          ],
+          "totalBytes": 174938569
+        },
+        "provider1kReference": {
+          "color": 575440,
+          "normal": 6073334,
+          "orm": 4578315
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "ground-paving",
+      "tier": "expansion",
+      "category": "exterior-ground",
+      "subcategory": "paving",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.12,
+          2.12
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 483,
+        "2k": 966
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "Cast-stone pavers.",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "pavement_02",
+        "title": "Pavement 02",
+        "pageUrl": "https://polyhaven.com/a/pavement_02",
+        "apiInfoUrl": "https://api.polyhaven.com/info/pavement_02",
+        "apiFilesUrl": "https://api.polyhaven.com/files/pavement_02",
+        "creators": [
+          "Charlotte Baglioni",
+          "Dario Barresi"
+        ],
+        "providerCategory": "Brick & Block/Concrete Block & Paver/Cast-Stone Block",
+        "datePublished": 1676332800,
+        "declaredDimensions": {
+          "x": 2.12,
+          "y": 2.12,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/pavement_02/pavement_02_diff_4k.jpg",
+              "bytes": 20567828,
+              "md5": "a4d21cec790680f2d99829b07cb0a3f9"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/pavement_02/pavement_02_nor_gl_4k.png",
+              "bytes": 86826985,
+              "md5": "8cf09197e4d6f10cf5ce4c2df037c599"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/pavement_02/pavement_02_arm_4k.png",
+              "bytes": 72306832,
+              "md5": "42baf23b324f180c7910543216ae9a0e"
+            }
+          ],
+          "totalBytes": 179701645
+        },
+        "provider1kReference": {
+          "color": 1178347,
+          "normal": 5401579,
+          "orm": 4550316
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "ground-gravel",
+      "tier": "expansion",
+      "category": "exterior-ground",
+      "subcategory": "loose",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.0,
+          2.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 512,
+        "2k": 1024
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "gravel_floor_02",
+        "title": "Gravel Floor 02",
+        "pageUrl": "https://polyhaven.com/a/gravel_floor_02",
+        "apiInfoUrl": "https://api.polyhaven.com/info/gravel_floor_02",
+        "apiFilesUrl": "https://api.polyhaven.com/files/gravel_floor_02",
+        "creators": [
+          "Dimitrios Savva",
+          "Jenelle van Heerden"
+        ],
+        "providerCategory": "Ground & Terrain/Gravel & Pebbles/Driveway Gravel",
+        "datePublished": 1709164800,
+        "declaredDimensions": {
+          "x": 2.0,
+          "y": 2.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/gravel_floor_02/gravel_floor_02_diff_4k.jpg",
+              "bytes": 17244260,
+              "md5": "bbe0e57e29eae935ec6e4de6954510da"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/gravel_floor_02/gravel_floor_02_nor_gl_4k.png",
+              "bytes": 95437600,
+              "md5": "6244322eedc6ac52ad559e8f8749965c"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/gravel_floor_02/gravel_floor_02_arm_4k.png",
+              "bytes": 72991316,
+              "md5": "e2f0531ff3c5b3852ce8f9ab4735bf4a"
+            }
+          ],
+          "totalBytes": 185673176
+        },
+        "provider1kReference": {
+          "color": 1240441,
+          "normal": 6128277,
+          "orm": 4721713
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "ground-asphalt",
+      "tier": "expansion",
+      "category": "exterior-ground",
+      "subcategory": "paving",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          3.0,
+          3.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 341,
+        "2k": 683
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "asphalt_02",
+        "title": "Asphalt 02",
+        "pageUrl": "https://polyhaven.com/a/asphalt_02",
+        "apiInfoUrl": "https://api.polyhaven.com/info/asphalt_02",
+        "apiFilesUrl": "https://api.polyhaven.com/files/asphalt_02",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Asphalt & Bitumen/Asphalt/Cracked Asphalt",
+        "datePublished": 1596694249,
+        "declaredDimensions": {
+          "x": 3.0,
+          "y": 3.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "rough_ao"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/asphalt_02/asphalt_02_diff_4k.jpg",
+              "bytes": 11654128,
+              "md5": "c77ab7e6b6ffc7f50d572cd3fc4ffeb5"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/asphalt_02/asphalt_02_nor_gl_4k.png",
+              "bytes": 34053111,
+              "md5": "6c477be12c3ff20cd9ee1d4b37756e4d"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/asphalt_02/asphalt_02_arm_4k.png",
+              "bytes": 28483028,
+              "md5": "2da8eb9664e7fbc967ec00b49efedb73"
+            }
+          ],
+          "totalBytes": 74190267
+        },
+        "provider1kReference": {
+          "color": 731707,
+          "normal": 2323825,
+          "orm": 1784946
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "ground-sand",
+      "tier": "expansion",
+      "category": "exterior-ground",
+      "subcategory": "loose",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          1.5,
+          1.5
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 683,
+        "2k": 1365
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "sand_01",
+        "title": "Sand 01",
+        "pageUrl": "https://polyhaven.com/a/sand_01",
+        "apiInfoUrl": "https://api.polyhaven.com/info/sand_01",
+        "apiFilesUrl": "https://api.polyhaven.com/files/sand_01",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Ground & Terrain/Sand/Compacted & Trampled Sand",
+        "datePublished": 1529359200,
+        "declaredDimensions": {
+          "x": 1.5,
+          "y": 1.5,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Bump",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "spec"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sand_01/sand_01_diff_4k.jpg",
+              "bytes": 7391665,
+              "md5": "5fd525c68fffba0467dd16853854605d"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sand_01/sand_01_nor_gl_4k.png",
+              "bytes": 84001062,
+              "md5": "34061ae2f045250a7a6280bf3dfda442"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sand_01/sand_01_arm_4k.png",
+              "bytes": 57638304,
+              "md5": "ca28821e17717b61f0c5807e4e74adec"
+            }
+          ],
+          "totalBytes": 149031031
+        },
+        "provider1kReference": {
+          "color": 485088,
+          "normal": 5683522,
+          "orm": 4029555
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    },
+    {
+      "setId": "ground-forest-floor",
+      "tier": "expansion",
+      "category": "exterior-ground",
+      "subcategory": "organic",
+      "family": "pbr-metallic-roughness/v1",
+      "licence": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "provider:polyhaven"
+      },
+      "scale": {
+        "class": "A",
+        "tileMeters": [
+          2.0,
+          2.0
+        ],
+        "basis": "provider-declared dimensions"
+      },
+      "texelDensityPxPerMeter": {
+        "1k": 512,
+        "2k": 1024
+      },
+      "tint": "T0",
+      "derivatives": {
+        "default": "1k",
+        "produced": [
+          "1k",
+          "2k"
+        ],
+        "allowlisted": [
+          "1k"
+        ],
+        "twoK": "recorded",
+        "views": 3,
+        "gpuBytes1k": 16777212,
+        "gpuBytes2k": 67108860
+      },
+      "notes": "",
+      "alternates": [],
+      "source": {
+        "provider": "polyhaven",
+        "assetId": "forrest_ground_01",
+        "title": "Forest Ground 01",
+        "pageUrl": "https://polyhaven.com/a/forrest_ground_01",
+        "apiInfoUrl": "https://api.polyhaven.com/info/forrest_ground_01",
+        "apiFilesUrl": "https://api.polyhaven.com/files/forrest_ground_01",
+        "creators": [
+          "Rob Tuytel"
+        ],
+        "providerCategory": "Ground & Terrain/Forest Floor/Leaf Litter",
+        "datePublished": 1552956906,
+        "declaredDimensions": {
+          "x": 2.0,
+          "y": 2.0,
+          "unit": "m",
+          "sourceUnit": "mm"
+        },
+        "maxResolution": [
+          8192,
+          8192
+        ],
+        "mapsAvailable": [
+          "AO",
+          "Diffuse",
+          "Displacement",
+          "Rough",
+          "arm",
+          "nor_dx",
+          "nor_gl",
+          "rough_ao"
+        ],
+        "normalConvention": {
+          "chosen": "nor_gl",
+          "recipe": "+Y",
+          "alsoAvailable": "nor_dx (-Y)"
+        },
+        "packing": "provider arm = R AO, G roughness, B metal (glTF ORM order)",
+        "resolutionsAvailable": [
+          "1k",
+          "2k",
+          "4k",
+          "8k"
+        ],
+        "integrity": "per-file md5 from the files API; compute sha256 on download",
+        "source": {
+          "resolution": "4k",
+          "files": [
+            {
+              "role": "color",
+              "map": "Diffuse",
+              "format": "jpg",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/forrest_ground_01/forrest_ground_01_diff_4k.jpg",
+              "bytes": 10044373,
+              "md5": "79a4c855c08b3057578e13aa3c312002"
+            },
+            {
+              "role": "normal",
+              "map": "nor_gl",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/forrest_ground_01/forrest_ground_01_nor_gl_4k.png",
+              "bytes": 105711162,
+              "md5": "c346dd69ac1bd7873c6f54bacf4ec9a1"
+            },
+            {
+              "role": "orm",
+              "map": "arm",
+              "format": "png",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/forrest_ground_01/forrest_ground_01_arm_4k.png",
+              "bytes": 70592350,
+              "md5": "a03aa4bdca64bf5802a70788910bd149"
+            }
+          ],
+          "totalBytes": 186347885
+        },
+        "provider1kReference": {
+          "color": 833711,
+          "normal": 6787606,
+          "orm": 4650954
+        }
+      },
+      "orm": {
+        "r": "ambient occlusion",
+        "g": "roughness",
+        "b": "provider metal map (expected 0)"
+      }
+    }
+  ],
+  "deferred": [
+    {
+      "set": "textile-velvet",
+      "family": "cloth-sheen",
+      "prov": "ph",
+      "id": "velour_velvet",
+      "why": "Velvet reads through sheen; v1 metallic-roughness renders it as flat cloth."
+    },
+    {
+      "set": "ceramic-glazed-coloured-tile",
+      "family": "layered (mask) or clearcoat",
+      "why": "Coloured glaze with light grout needs a mask or layer; tint recolours grout too."
+    },
+    {
+      "set": "lacquer-car-paint",
+      "family": "clearcoat",
+      "why": "Needs a clearcoat lobe."
+    },
+    {
+      "set": "metal-brushed-anisotropic",
+      "family": "anisotropy",
+      "why": "True brushed highlights need anisotropy; Core approximates with normals."
+    },
+    {
+      "set": "metal-perforated / wicker / foliage",
+      "family": "coverage (alpha)",
+      "why": "Opaque-only v1 has no alpha coverage."
+    },
+    {
+      "set": "glass / water",
+      "family": "transmission",
+      "why": "Needs transmission and IOR."
+    },
+    {
+      "set": "signage / LED",
+      "family": "emission",
+      "why": "Needs emission."
+    },
+    {
+      "set": "cobble / rock wall deep relief",
+      "family": "height / parallax",
+      "why": "v1 has no height; deep relief flattens to normals."
+    },
+    {
+      "set": "wear / dirt / paint-over",
+      "family": "procedural or layered",
+      "why": "Layered blending and procedural wear are separate families."
+    }
+  ]
+}
