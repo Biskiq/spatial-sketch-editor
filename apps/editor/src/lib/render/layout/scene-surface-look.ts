@@ -1,6 +1,6 @@
 import { resolveSceneSurfaceFinish } from '@portfolio/project-model/scene-surface-reference';
 import type { RuntimeScene, SceneTreatment } from '$lib/content/scene';
-import { sceneLookFor } from '$lib/render/materials/scene-instance-material';
+import { sceneFinishFor } from '$lib/render/materials/scene-instance-material';
 import type { SceneSurfaceLook, SceneSurfaceRef } from './surface-look';
 
 /** Resolve one Scene assignment through the same catalogue/instance look used by entities. */
@@ -17,5 +17,12 @@ export function resolveSceneSurfaceLook(
 	const sceneWithTreatment = treatment === scene.environment?.treatment
 		? scene
 		: { ...scene, environment: { ...(scene.environment ?? {}), treatment } };
-	return sceneLookFor(sceneWithTreatment, target, [1, 1]);
+	// Scene surfaces are metre charts (Forms, Walls, Room floor/lid and Region
+	// faces). One native UV unit is one metre; the canonical plan supplies the
+	// per-mapping repeat and rotation.
+	return sceneFinishFor(sceneWithTreatment, target, {
+		kind: 'metric',
+		uvMeters: [1, 1],
+		surfaceMeters: [1, 1]
+	});
 }

@@ -36,7 +36,7 @@ describe('Scene Artwork', () => {
 	});
 	it('probes original PNG bytes before decode and reports the initial edge limit', () => {
 		const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII='), (c) => c.charCodeAt(0));
-		expect(probeArtworkImage(bytes)).toEqual({ mime: 'image/png', pixelWidth: 1, pixelHeight: 1 });
+		expect(probeArtworkImage(bytes)).toEqual({ mime: 'image/png', pixelWidth: 1, pixelHeight: 1, orientation: 1 });
 		new DataView(bytes.buffer).setUint32(16, 4097);
 		expect(() => probeArtworkImage(bytes)).toThrow('4096 px per edge');
 		expect(() => probeArtworkImage(bytes.subarray(0, 34))).toThrow('valid static');
@@ -151,9 +151,9 @@ it('reads JPEG orientation and static WebP dimensions from the original containe
 		77, 77, 0, 42, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0,
 		0xff, 0xc0, 0, 8, 8, 0, 4, 0, 8, 1, 0xff, 0xda, 0, 2, 0xff, 0xd9
 	]);
-	expect(probeArtworkImage(jpeg)).toEqual({ mime: 'image/jpeg', pixelWidth: 4, pixelHeight: 8 });
+	expect(probeArtworkImage(jpeg)).toEqual({ mime: 'image/jpeg', pixelWidth: 4, pixelHeight: 8, orientation: 6 });
 	const webp = Uint8Array.from(atob('UklGRk4AAABXRUJQVlA4WAoAAAAgAAAABwAAAwAAVlA4IDAAAADQAQCdASoIAAQAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA='), (c) => c.charCodeAt(0));
-	expect(probeArtworkImage(webp)).toEqual({ mime: 'image/webp', pixelWidth: 8, pixelHeight: 4 });
+	expect(probeArtworkImage(webp)).toEqual({ mime: 'image/webp', pixelWidth: 8, pixelHeight: 4, orientation: 1 });
 	webp[20] |= 2;
 	expect(() => probeArtworkImage(webp)).toThrow('Animated images');
 });

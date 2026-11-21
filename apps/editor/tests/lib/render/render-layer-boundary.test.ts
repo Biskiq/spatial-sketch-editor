@@ -44,6 +44,8 @@ const DESCRIPTOR = `${LIB}/render/resources/material-descriptor.ts`;
 const STORE = `${LIB}/render/resources/material-store.ts`;
 /** The one TSL clip predicate: a render-layer graph both Canvases can share. */
 const CLIP = `${LIB}/render/clip/slice-clip-mask.ts`;
+/** The one sampled material helper the store delegates its node constructor to. */
+const FINISH = `${LIB}/render/resources/finish-sampling.ts`;
 const TEXTURE_STORE = `${LIB}/render/resources/texture-store.ts`;
 const DESCRIPTION = `${LIB}/render/scene-render-description.ts`;
 const REPRESENTATIONS = [
@@ -136,14 +138,15 @@ describe('render-layer-boundary: stores read no authoring layer', () => {
 					// The colour mask and the artwork shadow mask are TSL graphs.
 					specifier !== 'three/tsl' &&
 					specifier !== './material-descriptor' &&
+					specifier !== './finish-sampling' &&
 					specifier !== '$lib/render/clip/slice-clip-mask'
 			)
 		).toEqual([]);
 	});
 
-	it('the material store’s closure is exactly the store, its descriptor and the clip graph', () => {
+	it('the material store’s closure is exactly the store, its descriptor, its sampled helper and the clip graph', () => {
 		expect([...importClosure([absolute(STORE)])].map(relativeToRepo).sort()).toEqual(
-			[DESCRIPTOR, STORE, CLIP].sort()
+			[DESCRIPTOR, STORE, FINISH, CLIP].sort()
 		);
 	});
 
@@ -153,6 +156,7 @@ describe('render-layer-boundary: stores read no authoring layer', () => {
 				'@portfolio/layout-core',
 				'$lib/types/materials',
 				'three',
+				'./image-encoding',
 				'./texture-variant'
 			].sort()
 		);

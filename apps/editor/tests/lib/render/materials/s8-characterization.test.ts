@@ -235,9 +235,9 @@ function samplePlan(bound: ReturnType<typeof bindFinish>['bound']) {
 		repeat: sample.repeat,
 		rotation: sample.rotation,
 		offset: sample.offset,
-		component: sample.component,
-		invert: sample.invert,
-		convention: sample.convention,
+		...(sample.component === undefined ? {} : { component: sample.component }),
+		...(sample.invert === undefined ? {} : { invert: sample.invert }),
+		...(sample.convention === undefined ? {} : { convention: sample.convention }),
 		image: sample.image.source
 	}));
 }
@@ -300,9 +300,10 @@ async function captureBaseline() {
 		fixturesManifest: 'fixtures.json',
 		environmentEvidence: 'evidence/e0-environment.json',
 		pixelBaseline: {
-			status: 'deferred-to-B',
+			status: 'captured',
 			requirement:
-				'Before replacing the Scene resolver or sampling path, PR B must capture the pre-change product-canvas rendering for the catalogue, S4 image, palette follower, shared Form/GLB and each Treatment, label its software renderer, and retain those pixels as the replacement oracle.'
+				'Before replacing the Scene resolver or sampling path, PR B must capture the pre-change product-canvas rendering for the catalogue, S4 image, palette follower, shared Form/GLB and each Treatment, label its software renderer, and retain those pixels as the replacement oracle.',
+			artifacts: 'apps/editor/tests/lib/render/materials/__fixtures__/s8/pixels/capture.json'
 		},
 		charts: {
 			swatchGrey: { fixture: 'swatch-rgba', patch: [64, 64], bytes: [128, 128, 128, 255] },
@@ -424,20 +425,20 @@ describe('E0 characterization baseline', () => {
 		]);
 	});
 
-	it('records the observed colour/data cache defect, not an assumed one', async () => {
+	it('records the corrected colour/data decode after the role-keyed cache', async () => {
 		const baseline = await captureBaseline();
 		const defect = baseline.defects.textureStoreSharedSource;
 		expect(defect.expected).toEqual({ colourSlot: 'srgb', dataSlot: '' });
-		expect(defect.colourFirst).toEqual({ mapColorSpace: 'srgb', roughnessMapColorSpace: 'srgb' });
-		expect(defect.dataFirst).toEqual({ roughnessMapColorSpace: '', mapColorSpace: '' });
+		expect(defect.colourFirst).toEqual({ mapColorSpace: 'srgb', roughnessMapColorSpace: '' });
+		expect(defect.dataFirst).toEqual({ roughnessMapColorSpace: '', mapColorSpace: 'srgb' });
 		expect(defect.rawRead).toBeCloseTo(128 / 255, 15);
 		expect(defect.colourRead).toBeCloseTo(0.215860500114, 12);
 	});
 
-	it('records the missing Region UV attribute', async () => {
+	it('records the Region UV attribute after B added the metric chart', async () => {
 		const baseline = await captureBaseline();
-		expect(baseline.defects.regionUv.hasUv).toBe(false);
-		expect(baseline.defects.regionUv.attributes).toEqual(['normal', 'position']);
+		expect(baseline.defects.regionUv.hasUv).toBe(true);
+		expect(baseline.defects.regionUv.attributes).toEqual(['normal', 'position', 'uv']);
 		expect(baseline.defects.regionUv.surfaceCount).toBeGreaterThan(0);
 	});
 
@@ -475,9 +476,9 @@ describe('E0 characterization baseline', () => {
 		expect(baseline.contract.minusYNormal).toEqual({ convention: '-Y', normalScale: 1.4 });
 	});
 
-	it('records the pixel capture as a hard PR B prerequisite', async () => {
+	it('records the pre-change pixel capture as a completed PR B prerequisite', async () => {
 		const baseline = await captureBaseline();
-		expect(baseline.pixelBaseline.status).toBe('deferred-to-B');
+		expect(baseline.pixelBaseline.status).toBe('captured');
 		expect(baseline.pixelBaseline.requirement).toContain('Before replacing the Scene resolver or sampling path');
 	});
 

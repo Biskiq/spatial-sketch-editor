@@ -47,6 +47,11 @@ import type { MaterialLease, MaterialStore } from './resources/material-store';
 import type { SceneModelItem, SceneModelLook } from './resources/scene-render-item';
 import { loadEffectiveTextures, type TextureLoadScope } from './resources/texture-store';
 import {
+	acquireFinishViews,
+	type FinishViewGeneration,
+	type FinishViewLease
+} from './resources/finish-views';
+import {
 	createArrivalGate,
 	modelLookFor,
 	nextModelEntityId,
@@ -163,6 +168,8 @@ export type SceneModelRepresentationOptions = {
 	readonly onDrawn?: (id: string) => void;
 	/** A model's load status changed. */
 	readonly onState?: (id: string, state: SceneModelState) => void;
+	/** The owning Canvas's generation; a replacement refuses only its own loads. */
+	readonly viewGeneration?: () => FinishViewGeneration | null;
 };
 
 export type SceneModelRepresentation = {
@@ -202,6 +209,8 @@ type Presentation = {
 	readonly wireframe: boolean;
 	readonly castShadow: boolean;
 	readonly receiveShadow: boolean;
+	/** The sampled views acquired for this presentation, if it has a Finish. */
+	readonly views?: FinishViewLease | null;
 };
 
 type Entry = {
@@ -223,6 +232,10 @@ type Entry = {
 	lease: ModelTemplateLease | null;
 	arrival: Arrival | null;
 	realization: ModelRealization | null;
+	/** The sampled view lease the drawn instance currently holds. */
+	views: FinishViewLease | null;
+	/** Cancels the current Finish-view acquisition on restyle/release. */
+	controller: AbortController | null;
 	/** Bumped by every presentation, arrival and release: only the newest may apply. */
 	generation: number;
 	/** The style key the drawn instance shows now. */
@@ -315,6 +328,8 @@ export function createSceneModelRepresentation(
 		entry.gate.close();
 		entry.arrival = null;
 		entry.generation += 1;
+		entry.controller?.abort();
+		entry.controller = null;
 		entry.lease?.release();
 		entry.lease = null;
 		if (entry.realization !== null) {
@@ -323,6 +338,9 @@ export function createSceneModelRepresentation(
 			entry.realization.release();
 			entry.realization = null;
 		}
+		// The views go back after the realization that samples them.
+		entry.views?.release();
+		entry.views = null;
 		entry.shown = null;
 	}
 
@@ -330,16 +348,31 @@ export function createSceneModelRepresentation(
 	 * Show a presentation on the arrived template. The first show mounts the instance
 	 * and retires the fallback; later shows restyle it. A gate-closed arrival never shows.
 	 */
-	function show(entry: Entry, current: Arrival, look: Presentation, textured: boolean): void {
-		if (!entry.gate.accepts(current.token)) return;
+	function show(
+		entry: Entry,
+		current: Arrival,
+		look: Presentation,
+		textured: boolean,
+		views: FinishViewLease | null = null
+	): void {
+		if (!entry.gate.accepts(current.token)) { views?.release(); return; }
 		const style: ModelStyle = {
-			look: look.look === null ? null : modelLookFor(look.look, look.scope, textured),
+			look:
+				look.look === null
+					? null
+					: modelLookFor(
+							look.look,
+							look.scope,
+							textured,
+							look.look.finish,
+							views?.views
+						),
 			...(look.treatment === undefined ? {} : { treatment: look.treatment }),
 			wireframe: look.wireframe,
 			castShadow: look.castShadow,
 			receiveShadow: look.receiveShadow
 		};
-		const key = `${look.key}|${textured}`;
+		const key = `${look.key}|${textured}|${views?.key ?? ''}`;
 		if (entry.realization === null) {
 			const next = current.support.realize(current.template, {
 				asset: current.url,
@@ -348,6 +381,8 @@ export function createSceneModelRepresentation(
 			});
 			const inspection = current.support.inspect(next.root, current.animationNames);
 			entry.realization = next;
+			entry.views?.release();
+			entry.views = views;
 			entry.shown = key;
 			releaseFallback(entry);
 			entry.presentation.add(next.root);
@@ -361,8 +396,13 @@ export function createSceneModelRepresentation(
 			options.onDrawn?.(entry.id);
 			return;
 		}
-		if (entry.shown === key) return;
+		if (entry.shown === key) {
+			if (views !== entry.views) views?.release();
+			return;
+		}
 		entry.realization.restyle(style);
+		entry.views?.release();
+		entry.views = views;
 		entry.shown = key;
 		options.onDrawn?.(entry.id);
 	}
@@ -388,6 +428,43 @@ export function createSceneModelRepresentation(
 		const active = look.look;
 		if (active === null) {
 			show(entry, current, look, false);
+			return;
+		}
+		if (active.finish !== undefined) {
+			// The sampled path loads only the plan's views, then mounts/restyles
+			// with one node material. No stock map slot is loaded for a Finish.
+			entry.controller?.abort();
+			const controller = new AbortController();
+			entry.controller = controller;
+							track(
+				acquireFinishViews(
+					active.views ?? [],
+					look.scope,
+					controller.signal,
+					options.viewGeneration?.() ?? undefined
+				)
+					.then((lease) => {
+						if (entry.controller === controller) entry.controller = null;
+						if (disposed || id !== entry.generation) {
+							lease.release();
+							return;
+						}
+						const named = new Set((active.views ?? []).map((source) => source.view));
+						const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+						if (!complete && import.meta.env.DEV) {
+							for (const issue of lease.issues) console.warn(`[scene-model] ${entry.id}: ${issue.code}`, issue);
+						}
+						try {
+							show(entry, current, look, complete, complete ? lease : null);
+						} catch (error) {
+							lease.release();
+							throw error;
+						} finally {
+							if (!complete) lease.release();
+						}
+					})
+					.catch(() => undefined)
+			);
 			return;
 		}
 		if (look.scope === null) show(entry, current, look, false);
@@ -479,6 +556,8 @@ export function createSceneModelRepresentation(
 			lease: null,
 			arrival: null,
 			realization: null,
+			views: null,
+			controller: null,
 			generation: 0,
 			shown: null,
 			state: { status: source.url === null ? 'fallback' : 'loading' },

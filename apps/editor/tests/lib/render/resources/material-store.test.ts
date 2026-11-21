@@ -24,6 +24,79 @@ import {
 } from '$lib/render/resources/material-descriptor';
 import { createMaterialStore } from '$lib/render/resources/material-store';
 
+describe('E7/R2b — a sampled descriptor binds the views it was given', () => {
+	it('keeps one instance per view set even when the plan is identical', () => {
+		const store = createMaterialStore();
+		const descriptor: MaterialDescriptor = {
+			kind: 'standard',
+			color: '#c4b4a0',
+			roughness: 0.6,
+			metalness: 0,
+			toneMapped: true,
+			finish: {
+				profile: 'pbr-metallic-roughness/v1',
+				entries: [
+					{
+						role: 'color',
+						view: 'colour',
+						uvSet: 0,
+						origin: 'legacy',
+						repeat: [1, 1],
+						rotation: 0,
+						offset: [0, 0]
+					}
+				],
+				occlusionStrength: 1,
+				normalScale: 1
+			}
+		};
+		const first = store.acquire(descriptor, undefined, undefined, { colour: new Texture() });
+		const second = store.acquire(descriptor, undefined, undefined, { colour: new Texture() });
+
+		expect(first.material).not.toBe(second.material);
+		expect(store.stats()).toMatchObject({ created: 2, live: 2, sampled: 2 });
+		first.release();
+		second.release();
+		store.dispose();
+	});
+
+	it('keeps an imported remap identity per acquired view set', () => {
+		const store = createMaterialStore();
+		const finish = {
+			profile: 'pbr-metallic-roughness/v1' as const,
+			entries: [
+				{
+					role: 'color' as const,
+					view: 'colour',
+					uvSet: 0 as const,
+					origin: 'legacy' as const,
+					repeat: [1, 1] as const,
+					rotation: 0,
+					offset: [0, 0] as const
+				}
+			],
+			occlusionStrength: 1,
+			normalScale: 1
+		};
+		const descriptor: MaterialDescriptor = {
+			kind: 'imported',
+			asset: '/models/one.glb',
+			mesh: 0,
+			slot: 0,
+			wireframe: false,
+			remap: { color: '#c4b4a0', roughness: 0.6, metalness: 0, finish }
+		};
+		const first = store.acquire(descriptor, undefined, undefined, { colour: new Texture() });
+		const second = store.acquire(descriptor, undefined, undefined, { colour: new Texture() });
+
+		expect(first.material).not.toBe(second.material);
+		expect(first.key).not.toBe(second.key);
+		first.release();
+		second.release();
+		store.dispose();
+	});
+});
+
 describe('E7/R2b — a textured descriptor is one material per variant', () => {
 	it('shares one instance between equal textured keys and binds the supplied maps', () => {
 		const store = createMaterialStore();
@@ -127,7 +200,8 @@ describe('the material store', () => {
 			disposed: 0,
 			acquired: 2,
 			treated: 0,
-			treatmentSkipped: 0
+			treatmentSkipped: 0,
+			sampled: 0
 		});
 		first.release();
 		expect(store.stats()).toMatchObject({ live: 1, disposed: 0 });

@@ -27,7 +27,7 @@
  * the lazily loaded model support, because SkeletonUtils is part of its graph; the
  * Three-free presentation rules live in `model-presentation`.
  */
-import { Mesh, type Material, type Object3D, type SkinnedMesh, type Texture } from 'three';
+import { Mesh, type BufferGeometry, type Material, type Object3D, type SkinnedMesh, type Texture } from 'three';
 import { clone as cloneSkinnedHierarchy } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { MaterialLease, MaterialStore, MaterialTextureMaps } from '../resources/material-store';
 import {
@@ -128,15 +128,105 @@ export function cloneModelHierarchy(template: Object3D): Object3D {
  * it. A variant with no loaded slot binds nothing, so the surface stays untextured
  * rather than naming a texture the store would refuse.
  */
+function finitePair(
+	attribute: { getX(index: number): number; getY(index: number): number },
+	vertex: number
+): readonly [number, number] | null {
+	const u = attribute.getX(vertex);
+	const v = attribute.getY(vertex);
+	return Number.isFinite(u) && Number.isFinite(v) ? [u, v] : null;
+}
+
+/**
+ * The actual draw availability of one imported mesh. This is the render-side
+ * half of target qualification: the Scene adapter can only provisionally bind a
+ * model remap before its GLB arrives, so the arrived mesh must still prove every
+ * UV set and normal frame the plan names.
+ *
+ * The render layer cannot import the project-model summarizer (E6's boundary), so
+ * this checks the same predicates against the live BufferGeometry: finite UVs on
+ * every referenced vertex and at least one non-singular UV frame for a normal.
+ */
+function finishFitsMesh(mesh: Mesh, plan: NonNullable<StandardMaterialDescriptor['finish']>): boolean {
+	const geometry = mesh.geometry as BufferGeometry;
+	const position = geometry.getAttribute('position');
+	if (position === undefined) return false;
+	const index = geometry.getIndex();
+	const total = index === null ? position.count : index.count;
+	const start = Math.max(0, geometry.drawRange.start);
+	const count = geometry.drawRange.count;
+	const end = Number.isFinite(count) ? Math.min(total, start + count) : total;
+	const referenced: number[] = [];
+	for (let offset = start; offset < end; offset += 1) {
+		const vertex = index === null ? offset : index.getX(offset);
+		if (!Number.isInteger(vertex) || vertex < 0 || vertex >= position.count) return false;
+		referenced.push(vertex);
+	}
+	// An empty active range contributes no sampling requirement.
+	if (referenced.length === 0) return true;
+
+	for (const entry of plan.entries) {
+		const attribute = geometry.getAttribute(entry.uvSet === 0 ? 'uv' : 'uv1');
+		if (attribute === undefined) return false;
+		for (const vertex of referenced) {
+			if (finitePair(attribute, vertex) === null) return false;
+		}
+		if (entry.role !== 'normal') continue;
+		let frame = false;
+		for (let offset = 0; offset + 2 < referenced.length; offset += 3) {
+			const a = referenced[offset]!;
+			const b = referenced[offset + 1]!;
+			const c = referenced[offset + 2]!;
+			const ua = finitePair(attribute, a)!;
+			const ub = finitePair(attribute, b)!;
+			const uc = finitePair(attribute, c)!;
+			const abx = position.getX(b) - position.getX(a);
+			const aby = position.getY(b) - position.getY(a);
+			const abz = position.getZ(b) - position.getZ(a);
+			const acx = position.getX(c) - position.getX(a);
+			const acy = position.getY(c) - position.getY(a);
+			const acz = position.getZ(c) - position.getZ(a);
+			const nx = aby * acz - abz * acy;
+			const ny = abz * acx - abx * acz;
+			const nz = abx * acy - aby * acx;
+			if (Math.hypot(nx, ny, nz) === 0) continue;
+			const dux = ub[0] - ua[0];
+			const duy = ub[1] - ua[1];
+			const dvx = uc[0] - ua[0];
+			const dvy = uc[1] - ua[1];
+			const lengthU = Math.hypot(dux, duy);
+			const lengthV = Math.hypot(dvx, dvy);
+			if (!(lengthU > 0) || !(lengthV > 0)) continue;
+			if (Math.abs(dux * dvy - duy * dvx) > 1e-6 * lengthU * lengthV) {
+				frame = true;
+				break;
+			}
+		}
+		if (!frame) return false;
+	}
+	return true;
+}
+
 function bindLook(look: ModelLook): {
 	readonly remap: Omit<StandardMaterialDescriptor, 'kind'>;
 	readonly maps: MaterialTextureMaps;
 	readonly hold: VariantHold | null;
+	readonly views: Readonly<Record<string, Texture>> | undefined;
 } {
 	const base = { ...look.material };
 	// A Finish's normal strength and flip bind only with the normal map they scale.
 	const { normalScale: _normalScale, ...withoutNormalScale } = base;
-	if (look.texture === null) return { remap: withoutNormalScale, maps: {}, hold: null };
+	if (base.finish !== undefined) {
+		// A sampled legacy model binds identity UV0 and the plan's views. Without
+		// a complete view set it keeps the resolved constants, never a half plan.
+		if (look.views === undefined || Object.keys(look.views).length === 0) {
+			const { finish: _finish, ...constants } = withoutNormalScale;
+			return { remap: constants, maps: {}, hold: null, views: undefined };
+		}
+		return { remap: base, maps: {}, hold: null, views: look.views };
+	}
+	if (look.texture === null)
+		return { remap: withoutNormalScale, maps: {}, hold: null, views: undefined };
 	const { source, repeat, scope } = look.texture;
 	const [rx, ry] = repeat;
 	const loaded = acquireEffectiveVariant(source, rx, ry, 0, scope);
@@ -153,13 +243,14 @@ function bindLook(look: ModelLook): {
 	}
 	if (!bound) {
 		releaseEffectiveVariant(source.variantSeed, rx, ry, 0, scope);
-		return { remap: withoutNormalScale, maps: {}, hold: null };
+		return { remap: withoutNormalScale, maps: {}, hold: null, views: undefined };
 	}
 	const textures: MaterialTextureKeys = keys;
 	return {
 		remap: { ...(maps.normalMap === undefined ? withoutNormalScale : base), textures },
 		maps,
-		hold: { seed: source.variantSeed, rx, ry, scope }
+		hold: { seed: source.variantSeed, rx, ry, scope },
+		views: undefined
 	};
 }
 
@@ -181,11 +272,19 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 	function surfaceFor(
 		meshIndex: number,
 		slot: number,
+		templateMesh: Mesh,
 		templateMaterial: Material,
 		bound: ReturnType<typeof bindLook> | null,
 		wireframe: boolean,
 		treatment: 'flat-colour' | 'clay' | undefined
 	): MaterialLease {
+		// A provisional plan that the arrived mesh cannot actually sample keeps
+		// the resolved constants instead of drawing a half-bound surface. This is
+		// the per-draw target check the pre-arrival adapter cannot perform.
+		if (bound !== null && bound.remap.finish !== undefined && !finishFitsMesh(templateMesh, bound.remap.finish)) {
+			const { finish: _finish, ...constants } = bound.remap;
+			bound = { remap: constants, maps: {}, hold: null, views: undefined };
+		}
 		const identity = {
 			kind: 'imported' as const,
 			asset: options.asset,
@@ -196,7 +295,12 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 		};
 		// Natural (treatment absent) is exactly today's key, clone and lease count.
 		if (bound === null) return options.store.acquire(identity, undefined, templateMaterial);
-		return options.store.acquire({ ...identity, remap: bound.remap }, bound.maps);
+		return options.store.acquire(
+			{ ...identity, remap: bound.remap },
+			bound.maps,
+			undefined,
+			bound.views
+		);
 	}
 
 	/**
@@ -217,7 +321,15 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 					next.push({
 						mesh: drawn,
 						slot,
-						lease: surfaceFor(meshIndex, slot, templateMaterial, bound, style.wireframe, treatment)
+						lease: surfaceFor(
+							meshIndex,
+							slot,
+							templateMesh,
+							templateMaterial,
+							bound,
+							style.wireframe,
+							treatment
+						)
 					});
 				});
 				return;
@@ -225,7 +337,15 @@ export function realizeModel(template: Object3D, options: ModelRealizationOption
 			next.push({
 				mesh: drawn,
 				slot: -1,
-				lease: surfaceFor(meshIndex, 0, templateMesh.material, bound, style.wireframe, treatment)
+				lease: surfaceFor(
+					meshIndex,
+					0,
+					templateMesh,
+					templateMesh.material,
+					bound,
+					style.wireframe,
+					treatment
+				)
 			});
 		});
 		for (const hold of next) {

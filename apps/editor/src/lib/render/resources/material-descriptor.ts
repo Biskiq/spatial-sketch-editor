@@ -73,6 +73,45 @@ export const MATERIAL_TEXTURE_SLOTS: readonly MaterialTextureSlotKey[] = [
  */
 export type MaterialTextureKeys = Readonly<Partial<Record<MaterialTextureSlotKey, string>>>;
 
+/** The five portable map roles; a sampled Finish lowers to these. */
+export type FinishMapRole = 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion';
+
+/**
+ * One role's sampling instruction inside a descriptor.
+ *
+ * `view` names the acquired GPU view the sample graph reads; the view is supplied
+ * beside the descriptor through `MaterialStore.acquire`, never carried here. The
+ * affine transform lives in the sample graph, so rotating a map needs no second
+ * uploaded bitmap.
+ */
+export type FinishSamplingPlanEntry = {
+	readonly role: FinishMapRole;
+	readonly view: string;
+	readonly uvSet: 0 | 1;
+	/** `legacy` samples row `1−v`; `gltf` samples row `v`. */
+	readonly origin: 'legacy' | 'gltf';
+	readonly repeat: readonly [number, number];
+	readonly rotation: number;
+	readonly offset: readonly [number, number];
+	readonly convention?: '+Y' | '-Y';
+	readonly component?: 'r' | 'g' | 'b' | 'a';
+	readonly invert?: boolean;
+};
+
+/**
+ * The sampled v1 plan on a standard descriptor. Its presence is what selects the
+ * node-material path; an untextured or legacy descriptor keeps the stock
+ * constructor and its exact canonical key.
+ */
+export type StandardFinishPlan = {
+	readonly profile: 'pbr-metallic-roughness/v1';
+	readonly entries: readonly FinishSamplingPlanEntry[];
+	/** `1 + strength × (sample − 1)` on indirect lighting. */
+	readonly occlusionStrength: number;
+	/** The normalized signed normal strength; the convention supplies the Y sign. */
+	readonly normalScale: number;
+};
+
 export type StandardMaterialDescriptor = {
 	readonly kind: 'standard';
 	readonly polygonOffset?: readonly [factor: number, units: number];
@@ -92,6 +131,12 @@ export type StandardMaterialDescriptor = {
 	 * `y` flips green, which is what the authored `normalFlipY` writes.
 	 */
 	readonly normalScale?: readonly [number, number];
+	/**
+	 * The sampled metallic–roughness plan; absent keeps the stock constructor. When
+	 * present, `textures` is absent: the plan's views are the only sampling inputs
+	 * and the stock map slots stay empty to prevent a second multiply or decode.
+	 */
+	readonly finish?: StandardFinishPlan;
 	/**
 	 * Bound texture variants by slot; absent means an untextured surface. A
 	 * descriptor that names a slot is constructed with that slot's maps, so an
@@ -256,6 +301,36 @@ function bool(value: boolean | undefined, fallback: boolean): string {
 	return (value ?? fallback) ? '1' : '0';
 }
 
+/** One plan entry as canonical key text; every field the sample graph reads. */
+function finishEntryKey(entry: FinishSamplingPlanEntry): string {
+	return [
+		entry.role,
+	encodeURIComponent(entry.view),
+		entry.uvSet,
+		entry.origin,
+		entry.repeat.map(num).join(','),
+		num(entry.rotation),
+		entry.offset.map(num).join(','),
+		entry.convention ?? '-',
+		entry.component ?? '-',
+		entry.invert === true ? '1' : '0'
+	].join(':');
+}
+
+/** The canonical text of a sampled plan, sorted by role. */
+function finishKey(plan: StandardFinishPlan): string {
+	const order: readonly FinishMapRole[] = ['color', 'normal', 'roughness', 'metalness', 'occlusion'];
+	return [
+		plan.profile,
+		`ao=${num(plan.occlusionStrength)}`,
+		`ns=${num(plan.normalScale)}`,
+		[...plan.entries]
+			.sort((left, right) => order.indexOf(left.role) - order.indexOf(right.role))
+			.map(finishEntryKey)
+			.join(';')
+	].join('|');
+}
+
 /**
  * The canonical key for `descriptor`.
  *
@@ -282,6 +357,9 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				`textures=${MATERIAL_TEXTURE_SLOTS.map(
 					(slot) => `${slot}:${descriptor.textures?.[slot] ?? '-'}`
 				).join(';')}`,
+				// Appended only when sampled: an untextured descriptor keeps its exact
+				// pre-S8 key, and a sampled one can never share it.
+				...(descriptor.finish === undefined ? [] : [`finish=${finishKey(descriptor.finish)}`]),
 				// Absent keeps the normal surface's key exactly; a twin is a distinct
 				// lease, never a second use of the same instance.
 				...(descriptor.polygonOffset ? [`polygonOffset=${descriptor.polygonOffset.map(num).join(',')}`] : []),

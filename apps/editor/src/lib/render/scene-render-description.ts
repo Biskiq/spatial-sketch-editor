@@ -54,7 +54,7 @@ import {
 	type SceneTransform,
 	type SceneVec3
 } from './resources/scene-render-item';
-import { resolveSceneMaterial, sceneLookFor } from '$lib/render/materials/scene-instance-material';
+import { sceneFinishFor } from '$lib/render/materials/scene-instance-material';
 import type { StandardMaterialDescriptor } from './resources/material-descriptor';
 
 /** One canonical Form evaluation, as the lazy form kernel produces it. */
@@ -192,7 +192,9 @@ function itemKey(
 		materialKey(material),
 		textures === null
 			? 'none'
-			: `${textures.variantSeed}@${textures.repeat[0]}x${textures.repeat[1]}@${textures.rotation}@${textures.offset[0]}x${textures.offset[1]}`,
+			: `${textures.variantSeed}@${textures.repeat[0]}x${textures.repeat[1]}@${textures.rotation}@${textures.offset[0]}x${textures.offset[1]}@${(textures.views ?? [])
+					.map((view) => `${view.view}=${view.uri}`)
+					.join(',')}`,
 		...transform.position,
 		...transform.rotation,
 		...transform.scale,
@@ -416,6 +418,16 @@ export function describeSceneModel(input: SceneModelInput): SceneModelItem {
 			look?.roughness ?? '-',
 			look?.metalness ?? '-',
 			look?.normalScale?.join(',') ?? '-',
+			// The legacy variant seed predates Finish, so two structurally
+			// different plans can share it. Include the plan and its resolved image
+			// sources so a restyle cannot retain the previous graph or bytes.
+			look?.finish === undefined ? '-' : JSON.stringify(look.finish),
+			look?.slotUris === undefined
+				? '-'
+				: Object.entries(look.slotUris)
+						.sort(([left], [right]) => left.localeCompare(right))
+						.map(([slot, uri]) => `${slot}=${uri}`)
+						.join(','),
 			input.treatment ?? '-',
 			wireframe,
 			castShadow,
@@ -443,24 +455,36 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 	// The resolved look a model's meshes are remapped to; without an instance the
 	// asset keeps its own materials. `paper-aged` is the catalogue fallback the
 	// per-entity renderer used for a model instance. A remap keeps the model's own
-	// UVs, so its mapping (rotation, offset, tile size) is ignored here; its normal
-	// strength and flip still apply.
+	// UV0, so a metric tile mapping has no basis and is ignored; an explicit UV
+	// mapping, the normal strength and the flip still apply.
 	const effective = entity.materialInstanceId
-		? resolveSceneMaterial(scene, {
-				materialInstanceId: entity.materialInstanceId,
-				fallbackCatalogueId: 'paper-aged'
-			})
+		? sceneFinishFor(
+				scene,
+				{
+					materialInstanceId: entity.materialInstanceId,
+					fallbackCatalogueId: 'paper-aged'
+				},
+				// A legacy model remap keeps identity UV0: the model's own chart is the
+				// coordinate owner and the Finish's metric tile does not apply. The
+				// GLB has not arrived yet, so both UV sets are provisionally admitted;
+				// `model-realization` re-checks the actual draw before binding.
+				{ kind: 'legacy', uvSets: [0, 1], normalFrameSets: [0, 1] }
+			)
 		: null;
 	const look: SceneModelLook | null =
 		effective === null
 			? null
 			: {
-					color: effective.color,
-					roughness: effective.roughness,
-					metalness: effective.metalness,
-					variantSeed: effective.variantSeed,
-					slotUris: effective.slotUris,
-					...(effective.normalScale === null ? {} : { normalScale: effective.normalScale })
+					color: typeof effective.material.color === 'string' ? effective.material.color : '#ffffff',
+					roughness: effective.material.roughness,
+					metalness: effective.material.metalness,
+					variantSeed: effective.textures?.variantSeed ?? 'v-legacy',
+					slotUris: effective.textures?.slotUris ?? {},
+					...(effective.material.normalScale === undefined
+						? {}
+						: { normalScale: effective.material.normalScale }),
+					...(effective.material.finish === undefined ? {} : { finish: effective.material.finish }),
+					...(effective.textures?.views === undefined ? {} : { views: effective.textures.views })
 				};
 	const footprint = scene.modelFootprints?.get(entity.assetId);
 	return describeSceneModel({
@@ -499,13 +523,15 @@ export function describeSceneRender(
 			if (isScenePrimitiveEntity(entity)) {
 				const geometry = primitiveGeometry(entity);
 				const surface = primitiveSurface(entity);
-				const look = sceneLookFor(
+				const look = sceneFinishFor(
 					scene,
 					{
 						materialInstanceId: entity.materialInstanceId ?? null,
 						fallbackCatalogueId: entity.materialId
 					},
-					surface
+					// A primitive's UV0 is 0..1 per face, so one UV unit spans the
+					// rendered surface in each axis; the box approximation is retained.
+					{ kind: 'metric', uvMeters: [surface[0], surface[1]], surfaceMeters: [surface[0], surface[1]] }
 				);
 				const transform = entityTransform(entity, entity.scale ?? 1);
 				items.push({
@@ -536,14 +562,14 @@ export function describeSceneRender(
 			// arrives.
 			const form = forms?.evaluate(entity.form) ?? null;
 			if (form === null) continue;
-			const look = sceneLookFor(
+			const look = sceneFinishFor(
 				scene,
 				{
 					materialInstanceId: entity.materialInstanceId ?? null,
 					fallbackCatalogueId: entity.materialId
 				},
-				// Form UVs are metres, so one surface unit is one metre.
-				[1, 1]
+				// Form UVs are metres, so one native unit is one metre.
+				{ kind: 'metric', uvMeters: [1, 1], surfaceMeters: [1, 1] }
 			);
 			const geometry: GeometrySpec = {
 				kind: 'form',

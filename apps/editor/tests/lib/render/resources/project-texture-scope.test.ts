@@ -5,7 +5,7 @@
  * verifies the Scene's pinned sha256/MIME/size before decoding, and revokes its
  * object URL. These tests pin the refusals as well as the happy path.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('three', async () => {
 	const actual = await vi.importActual<typeof import('three')>('three');
@@ -30,6 +30,7 @@ vi.mock('three', async () => {
 
 import { createProjectTextureScope, type ProjectTexturePin } from '$lib/render/resources/project-texture-scope';
 import {
+	loadFinishTexture,
 	loadSourceTexture,
 	resetTextureCachesForTests
 } from '$lib/render/resources/texture-store';
@@ -59,6 +60,10 @@ function scope() {
 		onSuccess
 	});
 }
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
 
 beforeEach(async () => {
 	resetTextureCachesForTests();
@@ -242,6 +247,38 @@ describe('project texture scope', () => {
 		await Promise.resolve();
 		expect(onFailure).not.toHaveBeenCalled();
 		await expect(loadSourceTexture(URI, 'map', product)).resolves.toBeTruthy();
+		expect(product.dimensionsOf(ASSET)).toEqual({ width: 1, height: 1 });
+		product.dispose();
+	});
+
+	it('decodes a raw role with identity orientation and no colour conversion', async () => {
+		const bitmap = { width: 1, height: 1, close: vi.fn() };
+		const decode = vi.fn(async () => bitmap);
+		vi.stubGlobal('createImageBitmap', decode);
+		const product = scope();
+
+		await loadSourceTexture(URI, 'normalMap', product);
+
+		expect(decode).toHaveBeenCalledTimes(1);
+		expect(decode).toHaveBeenCalledWith(expect.any(Blob), {
+			imageOrientation: 'none',
+			premultiplyAlpha: 'none',
+			colorSpaceConversion: 'none'
+		});
+		product.dispose();
+	});
+
+	it('joins an eager prepare and a sampled load of the same URI', async () => {
+		const product = scope();
+		const prepared = product.prepare([URI]);
+		const sampled = loadFinishTexture(URI, 'color', product);
+		await Promise.all([prepared, sampled]);
+
+		// Prepare uses the legacy upload policy, the Finish uses top-first rows:
+		// different cache keys, but the same verified read. Neither may supersede
+		// the other's project-loader generation.
+		expect(onFailure).not.toHaveBeenCalled();
+		expect(onSuccess).toHaveBeenCalledTimes(2);
 		expect(product.dimensionsOf(ASSET)).toEqual({ width: 1, height: 1 });
 		product.dispose();
 	});

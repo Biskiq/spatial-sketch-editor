@@ -2,6 +2,7 @@ import { ARTWORK_MAX_IMAGE_EDGE, isArtworkImageEdge } from './artwork';
 
 export type ArtworkMime = 'image/png' | 'image/jpeg' | 'image/webp';
 type Dimensions = { pixelWidth: number; pixelHeight: number };
+type ProbedDimensions = Dimensions & { orientation: number };
 export const ARTWORK_MAX_BYTES = 25 * 1024 * 1024;
 
 function matches(bytes: Uint8Array, offset: number, ascii: string): boolean {
@@ -13,7 +14,7 @@ function invalid(): never {
 	throw new Error('Artwork requires a valid static PNG, JPEG or WebP image.');
 }
 
-function png(bytes: Uint8Array, view: DataView): Dimensions {
+function png(bytes: Uint8Array, view: DataView): ProbedDimensions {
 	if (bytes.length < 33 || view.getUint32(8) !== 13 || !matches(bytes, 12, 'IHDR')) return invalid();
 	let hasData = false;
 	for (let offset = 8; offset + 12 <= bytes.length;) {
@@ -27,7 +28,7 @@ function png(bytes: Uint8Array, view: DataView): Dimensions {
 		}
 		if (matches(bytes, offset + 4, 'IDAT')) hasData = true;
 		if (matches(bytes, offset + 4, 'IEND') && size === 0 && hasData && next === bytes.length) {
-			return { pixelWidth: view.getUint32(16), pixelHeight: view.getUint32(20) };
+			return { pixelWidth: view.getUint32(16), pixelHeight: view.getUint32(20), orientation: 1 };
 		}
 		offset = next;
 	}
@@ -54,7 +55,7 @@ function exif(bytes: Uint8Array): number | undefined {
 	return undefined;
 }
 
-function jpeg(bytes: Uint8Array, view: DataView): Dimensions {
+function jpeg(bytes: Uint8Array, view: DataView): ProbedDimensions {
 	let orientation: number | undefined;
 	let frame: Dimensions | undefined;
 	if (bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return invalid();
@@ -67,9 +68,10 @@ function jpeg(bytes: Uint8Array, view: DataView): Dimensions {
 		if (size < 2 || offset + size > bytes.length) return invalid();
 		const payload = offset + 2;
 		if (marker === 0xda && frame !== undefined) {
-			return (orientation ?? 1) >= 5
-				? { pixelWidth: frame.pixelHeight, pixelHeight: frame.pixelWidth }
-				: frame;
+			const value = orientation ?? 1;
+			return value >= 5
+				? { pixelWidth: frame.pixelHeight, pixelHeight: frame.pixelWidth, orientation: value }
+				: { ...frame, orientation: value };
 		}
 		if (marker === 0xe1 && size >= 8 && matches(bytes, payload, 'Exif\0\0')) {
 			// Editors often append a second EXIF APP1 without an orientation tag.
@@ -84,7 +86,7 @@ function jpeg(bytes: Uint8Array, view: DataView): Dimensions {
 	return invalid();
 }
 
-function webp(bytes: Uint8Array, view: DataView): Dimensions {
+function webp(bytes: Uint8Array, view: DataView): ProbedDimensions {
 	if (view.getUint32(4, true) + 8 !== bytes.length) return invalid();
 	let canvas: Dimensions | undefined;
 	let image: Dimensions | undefined;
@@ -124,15 +126,15 @@ function webp(bytes: Uint8Array, view: DataView): Dimensions {
 	}
 	if (image === undefined || (canvas !== undefined &&
 		(canvas.pixelWidth !== image.pixelWidth || canvas.pixelHeight !== image.pixelHeight))) return invalid();
-	return image;
+	return { ...image, orientation: 1 };
 }
 
 /** Bounded container metadata probe. The editor additionally confirms pixel decode at import. */
-export function probeArtworkImage(bytes: Uint8Array): Dimensions & { mime: ArtworkMime } {
+export function probeArtworkImage(bytes: Uint8Array): ProbedDimensions & { mime: ArtworkMime } {
 	if (bytes.length > ARTWORK_MAX_BYTES) throw new Error('Artwork images must be 25 MiB or smaller.');
 	if (bytes.length < 12) return invalid();
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-	let result: Dimensions & { mime: ArtworkMime };
+	let result: ProbedDimensions & { mime: ArtworkMime };
 	if (view.getUint32(0) === 0x89504e47 && view.getUint32(4) === 0x0d0a1a0a) {
 		result = { mime: 'image/png', ...png(bytes, view) };
 	} else if (view.getUint16(0) === 0xffd8) {

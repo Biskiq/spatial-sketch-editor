@@ -63,6 +63,11 @@ import {
 	type LoadedTextureMaps,
 	type TextureLoadScope
 } from './resources/texture-store';
+import {
+	acquireFinishViews,
+	type FinishViewGeneration,
+	type FinishViewLease
+} from './resources/finish-views';
 
 /** What one update did, as counts — tests read these, never a stopwatch. */
 export type SceneEntityRepresentationStats = {
@@ -91,6 +96,8 @@ export type SceneEntityRepresentationOptions = {
 	readonly geometry: GeometryStore;
 	/** The texture cache namespace this Canvas loads under (release scope). */
 	readonly scope?: () => TextureLoadScope | null;
+	/** The owning Canvas's generation; a replacement refuses only its own loads. */
+	readonly viewGeneration?: () => FinishViewGeneration | null;
 	/**
 	 * Register an item's root with the host's pick index. The representation
 	 * calls it when an item is built and the returned unregister when it is
@@ -156,6 +163,10 @@ type RetainedItem = {
 	/** Whether a texture variant has been bound; a failed load stays false. */
 	texturesReady: boolean;
 	variant: VariantLease | null;
+	/** The sampled views bound to a Finish surface. */
+	views: FinishViewLease | null;
+	/** Cancels the in-flight view load when the item is rebuilt or released. */
+	controller: AbortController | null;
 	/** Bumped whenever the item is rebuilt or released, so a late load cannot patch it. */
 	generation: number;
 	unregister: (() => void) | null;
@@ -209,6 +220,7 @@ export function createSceneEntityRepresentation(
 		store: options.store,
 		geometry: options.geometry,
 		casters: options.casters ?? NO_CASTERS,
+		viewGeneration: options.viewGeneration,
 		onRoot: (id, root) => options.onRoot?.(id, root),
 		onDrawn: (id) => options.onModelDrawn?.(id),
 		onState: (id, state) => options.onModelState?.(id, state)
@@ -221,12 +233,17 @@ export function createSceneEntityRepresentation(
 
 	function releaseItem(entry: RetainedItem): void {
 		entry.generation += 1;
+		entry.controller?.abort();
+		entry.controller = null;
 		entry.unregister?.();
 		entry.unregister = null;
 		entry.group.removeFromParent();
 		// The material lease goes back before the variant it binds, so the store
 		// never constructs a material whose maps are already on their way out.
 		entry.material.release();
+		// The views go back after the material that samples them.
+		entry.views?.release();
+		entry.views = null;
 		if (entry.variant !== null) {
 			releaseEffectiveVariant(
 				entry.variant.seed,
@@ -245,6 +262,63 @@ export function createSceneEntityRepresentation(
 		const textures = item.textures;
 		if (textures === null) return;
 		const scope = options.scope?.() ?? null;
+		const finish = item.material.kind === 'standard' ? item.material.finish : undefined;
+		if (finish !== undefined) {
+			// The sampled path: acquire every view the plan names, then bind the
+			// node material in one switch. A budget refusal or a failed page keeps
+			// the plain resolved surface and reports the scoped diagnostic.
+			const sources = textures.views ?? [];
+			const generation = entry.generation;
+			const controller = new AbortController();
+			entry.controller?.abort();
+			entry.controller = controller;
+			const job: Promise<void> = acquireFinishViews(
+				sources,
+				scope,
+				controller.signal,
+				options.viewGeneration?.() ?? undefined
+			)
+				.then((lease) => {
+					if (disposed || entry.generation !== generation) {
+						lease.release();
+						return;
+					}
+					const named = new Set(sources.map((source) => source.view));
+					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					if (!complete) {
+						lease.release();
+						if (import.meta.env.DEV) {
+							for (const issue of lease.issues) {
+								console.warn(`[scene-entity] ${item.id}: ${issue.code}`, issue);
+							}
+						}
+						return;
+					}
+					let next: MaterialLease;
+					try {
+						next = options.store.acquire(item.material, undefined, undefined, lease.views);
+					} catch (error) {
+						lease.release();
+						throw error;
+					}
+					const base = entry.material;
+					entry.material = next;
+					entry.views?.release();
+					entry.views = lease;
+					entry.texturesReady = true;
+					entry.mesh.material = next.material;
+					base.release();
+				})
+				.catch(() => {
+					/* A failed view load keeps the resolved untextured surface. */
+				});
+			pending.add(job);
+			const settle = (): void => {
+				pending.delete(job);
+			};
+			void job.then(settle, settle);
+			return;
+		}
 		const [rx, ry] = textures.repeat;
 		const { rotation, offset } = textures;
 		const generation = entry.generation;
@@ -297,7 +371,9 @@ export function createSceneEntityRepresentation(
 		group.scale.set(...item.transform.scale);
 
 		const geometry = options.geometry.acquire(item.geometry);
-		const material = options.store.acquire(item.material);
+		const sampled = item.material.kind === 'standard' && item.material.finish !== undefined;
+		const { finish: _finish, textures: _textures, ...plain } = item.material;
+		const material = options.store.acquire(sampled ? (plain as StandardMaterialDescriptor) : item.material);
 		const mesh = new Mesh(geometry.geometry, material.material);
 		mesh.name = `SceneEntityBody:${item.id}`;
 		mesh.scale.set(...item.geometryScale);
@@ -316,6 +392,8 @@ export function createSceneEntityRepresentation(
 			textures: item.textures !== null,
 			texturesReady: false,
 			variant: null,
+			views: null,
+			controller: null,
 			generation: 0,
 			unregister: options.onRoot?.(item.id, group) ?? null
 		};
@@ -400,6 +478,7 @@ export function createSceneEntityRepresentation(
 			if (disposed) return;
 			for (const entry of retained.values()) {
 				if (!entry.textures || entry.texturesReady) continue;
+				entry.controller?.abort();
 				entry.generation += 1;
 				loadTextures(entry, entry.item);
 			}
