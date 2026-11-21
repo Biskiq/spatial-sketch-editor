@@ -10,7 +10,7 @@
  */
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import type { AuthoringIntent, RuntimeScene, SemanticReference } from '@portfolio/project-model';
-import { SCENE_FINISH_PATCH } from '@portfolio/project-model/scene-planning';
+import { SCENE_FINISH_PATCH, SCENE_PALETTE_SLOT_ADD } from '@portfolio/project-model/scene-planning';
 import {
 	createEmptyCameraPayload,
 	createEmptyExperiencePayload,
@@ -213,12 +213,12 @@ function destinationEnvelope(): Promise<ProjectEnvelope> {
 	});
 }
 
-async function coordinatorFor(project: ProjectEnvelope) {
+async function coordinatorFor(project: ProjectEnvelope, sessionEpoch = 'g-gate') {
 	const admitted = await admitSourceJson(serializeProjectEnvelope(project), {
-		sessionEpoch: 'g-gate',
+		sessionEpoch,
 		acceptedRevision: { projectId: project.id, revisionId: 'gate-1' }
 	});
-	if (admitted.kind !== 'admitted') throw new Error(`G destination did not admit: ${JSON.stringify(admitted)}`);
+	if (admitted.kind !== 'admitted') throw new Error(`G project ${project.id} did not admit: ${JSON.stringify(admitted)}`);
 	const baseline = stageEnvelope(admitted.snapshot);
 	const planners: unknown[] = [];
 	const materialProofs = createMaterialProofRegistry();
@@ -250,8 +250,8 @@ async function coordinatorFor(project: ProjectEnvelope) {
 	let ordinal = 1;
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
 		adapter: createUnitAcceptanceAdapter({ compound: true, resourceStaging: true }),
-		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch: 'g-gate', resourceStaging: true }),
-		sessionEpoch: 'g-gate',
+		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch, resourceStaging: true }),
+		sessionEpoch,
 		baseline: {
 			revision: admitted.snapshot.acceptedRevision,
 			source: baseline,
@@ -275,23 +275,104 @@ async function sha256Text(text: string): Promise<string> {
 
 export async function buildGGate(): Promise<GGateReport> {
 	const sourceBundle = await buildEGate('auto');
+	let sourceDisposed = false;
 	try {
 		const sourceAdmitted = await admitSourceJson(sourceBundle.saved, {
 			sessionEpoch: 'g-source-cold',
 			acceptedRevision: { projectId: SOURCE_PROJECT, revisionId: 'g-source-1' }
 		});
 		if (sourceAdmitted.kind !== 'admitted') throw new Error('G source did not admit');
-		const source = stageEnvelope(sourceAdmitted.snapshot);
+		let source: ProjectEnvelope | null = stageEnvelope(sourceAdmitted.snapshot);
 		const finish = source.units.scene.data.materials.find((entry) => entry.name === 'Brushed');
 		if (finish === undefined) throw new Error('G source Finish is missing');
-		const library = memoryLibrary(sourceBundle.bytes);
+
+		const sourceState = await coordinatorFor(source, 'g-source');
+		const sourceCoordinator = sourceState.coordinator;
+		const paletteAdded = await sourceCoordinator.accept({
+			version: 1,
+			kind: SCENE_PALETTE_SLOT_ADD,
+			operationId: 'gate-palette-add',
+			expectedRevision: sourceCoordinator.acceptedRevision(),
+			targets: [],
+			payload: { color: '#d8b48a' } as AuthoringIntent['payload'],
+			capturedInputs: [],
+			allocatedIds: [{ kind: 'scene-palette-slot', id: 'palette-warm' }]
+		});
+		if (paletteAdded.kind !== 'accepted') throw new Error(`G palette add refused: ${JSON.stringify(paletteAdded)}`);
+		const paletteFollowed = await sourceCoordinator.accept({
+			version: 1,
+			kind: SCENE_FINISH_PATCH,
+			operationId: 'gate-follow-palette',
+			expectedRevision: sourceCoordinator.acceptedRevision(),
+			targets: [],
+			payload: {
+				finish: { project: finish.id },
+				mode: 'in-place',
+				selectedUsers: ['entity:e-plane'],
+				expectedUsers: ['entity:e-plane'],
+				edits: [{ field: 'color', op: 'set', value: { slot: 'palette-warm' } }]
+			} as AuthoringIntent['payload'],
+			capturedInputs: [],
+			allocatedIds: []
+		});
+		if (paletteFollowed.kind !== 'accepted') throw new Error(`G palette follow refused: ${JSON.stringify(paletteFollowed)}`);
+
+		let sourceWithPalette: ProjectEnvelope | null = sourceCoordinator.current().source;
+		const sourcePaletteSlot = sourceWithPalette.units.scene.data.palette?.find((slot) => slot.id === 'palette-warm');
+		if (sourcePaletteSlot === undefined || sourcePaletteSlot.color !== '#d8b48a') {
+			throw new Error('G source envelope did not carry the palette slot');
+		}
+		const updatedFinish = sourceWithPalette.units.scene.data.materials.find((entry) => entry.id === finish.id);
+		if (
+			updatedFinish === undefined ||
+			updatedFinish.overrides?.color === undefined ||
+			typeof updatedFinish.overrides.color !== 'object' ||
+			updatedFinish.overrides.color.slot !== 'palette-warm'
+		) {
+			throw new Error('G source Finish did not carry overrides.color = { slot: "palette-warm" }');
+		}
+
+		const sourceBytes = new Map(sourceBundle.bytes);
+		const sourcePins = new Map(
+			sourceWithPalette.units.resources.data.resources
+				.filter((resource) => resource.kind === 'texture' && resource.pin !== null)
+				.map((resource) => [resource.id, { hash: resource.pin!.hash, mime: resource.pin!.mime, size: resource.pin!.size }])
+		);
+		const sourceBytesByUri = new Map(
+			sourceWithPalette.units.scene.data.textures.map((texture) => {
+				const bytes = sourceBytes.get(texture.id);
+				if (bytes === undefined) throw new Error(`G source lost ${texture.id}`);
+				return [texture.uri, { bytes, mime: 'image/png' as const, sha256: sourcePins.get(texture.id)!.hash }];
+			})
+		);
+		const sourceColdBundle = composeColdReleaseBundle({
+			document: sourceWithPalette,
+			manifest: { releaseId: 'release-g-source', bytesByUri: sourceBytesByUri }
+		});
+		let sourceKey: string;
+		try {
+			const sourceDescription = describeSceneRender(sourceColdBundle.scene);
+			const sourceItem = sourceDescription.items.find((item) => item.id === 'e-plane');
+			if (sourceItem === undefined) throw new Error('render description is missing source plane');
+			sourceKey = normalizedMaterialKey(sourceWithPalette, materialKey(sourceItem.material));
+		} finally {
+			sourceColdBundle.dispose();
+		}
+
+		const library = memoryLibrary(sourceBytes);
 		const saved = await saveFinishToLibrary({
-			source,
+			source: sourceWithPalette,
 			finishId: finish.id,
 			operationId: 'gate-save',
 			client: library.client
 		});
 		if (!saved.ok) throw new Error(`G Save refused: ${JSON.stringify(saved.issues)}`);
+		if (JSON.stringify(saved.draft.capturedFollowers) !== JSON.stringify(['palette-warm'])) {
+			throw new Error(`expected capturedFollowers ['palette-warm'], got ${JSON.stringify(saved.draft.capturedFollowers)}`);
+		}
+		if (saved.draft.payload.recipe.color !== '#d8b48a') {
+			throw new Error(`expected flattened literal color '#d8b48a', got ${String(saved.draft.payload.recipe.color)}`);
+		}
 
 		const destinationState = await coordinatorFor(await destinationEnvelope());
 		const destination = destinationState.coordinator;
@@ -347,7 +428,13 @@ export async function buildGGate(): Promise<GGateReport> {
 
 		const destinationJson = serializeProjectEnvelope(afterEdit);
 		await library.client.remove(saved.summary.id);
+		sourceBytes.clear();
+		sourceBundle.dispose();
+		sourceDisposed = true;
+		source = null;
+		sourceWithPalette = null;
 		if (library.items.size !== 0) throw new Error('the library item survived removal');
+		if (sourceBytes.size !== 0) throw new Error('the source bytes survived removal');
 		library.resetCalls();
 		const coldAdmitted = await admitSourceJson(destinationJson, {
 			sessionEpoch: 'g-cold',
@@ -371,40 +458,45 @@ export async function buildGGate(): Promise<GGateReport> {
 			document: cold,
 			manifest: { releaseId: 'release-g-gate', bytesByUri }
 		});
-		const sourceDescription = describeSceneRender(sourceBundle.scene);
-		const destinationDescription = describeSceneRender(bundle.scene);
-		const sourceItem = sourceDescription.items.find((item) => item.id === 'e-plane');
-		const destinationItem = destinationDescription.items.find((item) => item.id === 'g-plane-b');
-		if (sourceItem === undefined || destinationItem === undefined) throw new Error('render description is missing a plane');
-		const sourceKey = normalizedMaterialKey(source, materialKey(sourceItem.material));
-		const destinationKey = normalizedMaterialKey(cold, materialKey(destinationItem.material));
-		const definitions = cold.units.resources.data.resources.filter((resource) => resource.kind === 'material');
-		const hashes = [...pins.values()].map((pin) => pin.hash).sort();
-		const expected = saved.draft.images.map((image) => image.hash).sort();
-		if (definitions.length !== 1) throw new Error(`expected one material definition, saw ${definitions.length}`);
-		if (JSON.stringify(hashes) !== JSON.stringify(expected)) throw new Error('destination image hashes differ');
-		if (sourceKey !== destinationKey) {
-			throw new Error(`the unedited Finish does not resolve identically\nsource=${sourceKey}\ndestination=${destinationKey}`);
+		try {
+			const destinationDescription = describeSceneRender(bundle.scene);
+			const destinationItem = destinationDescription.items.find((item) => item.id === 'g-plane-b');
+			if (destinationItem === undefined) throw new Error('render description is missing a plane');
+			const destinationKey = normalizedMaterialKey(cold, materialKey(destinationItem.material));
+			const definitions = cold.units.resources.data.resources.filter((resource) => resource.kind === 'material');
+			const hashes = [...pins.values()].map((pin) => pin.hash).sort();
+			const expected = saved.draft.images.map((image) => image.hash).sort();
+			if (definitions.length !== 1) throw new Error(`expected one material definition, saw ${definitions.length}`);
+			if (JSON.stringify(hashes) !== JSON.stringify(expected)) throw new Error('destination image hashes differ');
+			if (sourceKey !== destinationKey) {
+				throw new Error(`the unedited Finish does not resolve identically\nsource=${sourceKey}\ndestination=${destinationKey}`);
+			}
+			if (library.calls() !== 0) throw new Error('cold open called the library');
+			return {
+				ok: true,
+				sourceFinishId: finish.id,
+				finishIds: [first.finishId, second.finishId],
+				capturedFollowers: saved.draft.capturedFollowers,
+				independentEdit: true,
+				sourceRemovedBeforeColdOpen: true,
+				itemRemovedBeforeColdOpen: true,
+				definitionCount: definitions.length,
+				textureCount: cold.units.scene.data.textures.length,
+				imageHashes: hashes,
+				recipeHash: saved.summary.recipeHash,
+				litDescriptorEqual: sourceKey === destinationKey,
+				runtimeLibraryCalls: library.calls(),
+				historyEntries: 3,
+				savedBytes: destinationJson.length,
+				savedHash: await sha256Text(destinationJson)
+			};
+		} finally {
+			bundle.dispose();
 		}
-		if (library.calls() !== 0) throw new Error('cold open called the library');
-		const report = {
-			ok: true,
-			sourceFinishId: finish.id,
-			finishIds: [first.finishId, second.finishId],
-			independentEdit: true,
-			definitionCount: definitions.length,
-			textureCount: cold.units.scene.data.textures.length,
-			imageHashes: hashes,
-			recipeHash: saved.summary.recipeHash,
-			litDescriptorEqual: sourceKey === destinationKey,
-			runtimeLibraryCalls: library.calls(),
-			historyEntries: 3,
-			savedBytes: destinationJson.length,
-			savedHash: await sha256Text(destinationJson)
-		};
-		bundle.dispose();
-		return report;
 	} finally {
-		sourceBundle.dispose();
+		if (!sourceDisposed) {
+			sourceBundle.dispose();
+			sourceDisposed = true;
+		}
 	}
 }

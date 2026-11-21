@@ -19,10 +19,15 @@ import {
 } from '@portfolio/project-model/units';
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import { serializeProjectEnvelope } from '@portfolio/project-model/units';
-import type { MaterialLibraryClient, MaterialLibrarySaveInput } from '$lib/authoring/adapters/scene/library/material-client';
+import {
+	MaterialLibraryClientError,
+	type MaterialLibraryClient,
+	type MaterialLibrarySaveInput
+} from '$lib/authoring/adapters/scene/library/material-client';
 import {
 	insertFinishFromLibrary,
-	saveFinishToLibrary
+	saveFinishToLibrary,
+	uploadFinishThumbnail
 } from '$lib/authoring/adapters/scene/library/material';
 import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 import { recipeHash } from '@portfolio/project-model/materials';
@@ -129,7 +134,20 @@ describe('saveFinishToLibrary', () => {
 
 describe('insertFinishFromLibrary', () => {
 	test('installs the vendored texture records and allocates the server Finish id', async () => {
-		const destination = await envelope(createEmptyUnitSceneDocument());
+		const scene = createEmptyUnitSceneDocument();
+		scene.entities.push({
+			kind: 'primitive',
+			id: 'g-plane',
+			name: 'Plane',
+			position: [0, 0, 0],
+			rotation: [0, 0, 0],
+			primitive: 'plane',
+			dimensions: { width: 1, height: 1 },
+			materialId: 'plaster-warm',
+			castShadow: false,
+			receiveShadow: false
+		});
+		const destination = await envelope(scene);
 		const textureId = '00000000-0000-4000-8000-000000000001';
 		const recipe = {
 			profile: 'pbr-metallic-roughness/v1' as const,
@@ -238,6 +256,222 @@ describe('insertFinishFromLibrary', () => {
 		});
 		expect(result.ok).toBe(false);
 		expect(accepted).toBe(false);
+	});
+
+	test('refuses with stale-revision without calling accept when revision advances or project switches during transfer', async () => {
+		const destination = await envelope(createEmptyUnitSceneDocument());
+		const otherDestination = await createProjectEnvelope({
+			id: 'project-other',
+			name: 'Other',
+			acceptedRevision: { projectId: 'project-other', revisionId: 'revision-1' },
+			dependencyLock: { formatVersion: 1, entries: [] },
+			layout: { unitId: 'layout', data: createEmptyWallFirstLayoutDocument() },
+			scene: { unitId: 'scene', data: createEmptyUnitSceneDocument() },
+			camera: { unitId: 'camera', data: createEmptyCameraPayload() },
+			experience: { unitId: 'experience', data: createEmptyExperiencePayload() },
+			resources: { unitId: 'resources', data: createEmptyResourcePayload() }
+		});
+		const recipe = {
+			profile: 'pbr-metallic-roughness/v1' as const,
+			color: '#ffffff',
+			roughness: 0.5,
+			metalness: 0,
+			occlusionStrength: 1,
+			normalScale: 1,
+			mapping: { kind: 'uv' as const, set: 0 as const, repeat: [1, 1] as const, rotation: 0, offset: [0, 0] as const },
+			maps: {}
+		};
+		const pinned = await recipeHash(recipe);
+		let currentState = { source: destination, revision: destination.acceptedRevision };
+		let accepted = false;
+
+		const makeClient = (onTransfer: () => void) =>
+			({
+				async transfer() {
+					onTransfer();
+					return {
+						itemId: 'item-stale',
+						contentId: `sha256-${'e'.repeat(64)}`,
+						finishId: 'finish-insert-stale',
+						name: 'Walnut',
+						recipe,
+						recipeHash: pinned,
+						images: [],
+						savedBase: null
+					};
+				}
+			}) as unknown as MaterialLibraryClient;
+
+		const runInsert = (client: MaterialLibraryClient) =>
+			insertFinishFromLibrary({
+				item: { id: 'item-stale', contentId: `sha256-${'e'.repeat(64)}`, recipeHash: pinned },
+				destinationProjectId: PROJECT,
+				operationId: 'insert-stale',
+				targets: { entityIds: [], surfaces: [] },
+				client,
+				signal: new AbortController().signal,
+				host: {
+					current: () => currentState,
+					accept: async () => {
+						accepted = true;
+						return { kind: 'accepted' };
+					},
+					entityReference: () => {
+						throw new Error('not used');
+					},
+					surfaceReference: () => {
+						throw new Error('not used');
+					},
+					materialProofs: createMaterialProofRegistry()
+				}
+			});
+
+		const advanced = await runInsert(
+			makeClient(() => {
+				currentState = {
+					source: destination,
+					revision: { projectId: PROJECT, revisionId: 'revision-2' }
+				};
+			})
+		);
+		expect(advanced.ok).toBe(false);
+		if (!advanced.ok) expect(advanced.code).toBe('stale-revision');
+		expect(accepted).toBe(false);
+
+		currentState = { source: destination, revision: destination.acceptedRevision };
+		const switched = await runInsert(
+			makeClient(() => {
+				currentState = {
+					source: otherDestination,
+					revision: otherDestination.acceptedRevision
+				};
+			})
+		);
+		expect(switched.ok).toBe(false);
+		if (!switched.ok) expect(switched.code).toBe('stale-revision');
+		expect(accepted).toBe(false);
+	});
+
+	test('forwards MaterialLibraryClientError stale and conflict codes', async () => {
+		const destination = await envelope(createEmptyUnitSceneDocument());
+		const runWithError = (error: MaterialLibraryClientError) =>
+			insertFinishFromLibrary({
+				item: { id: 'item-err', contentId: `sha256-${'f'.repeat(64)}`, recipeHash: `sha256-${'0'.repeat(64)}` },
+				destinationProjectId: PROJECT,
+				operationId: 'insert-err',
+				targets: { entityIds: [], surfaces: [] },
+				client: {
+					async transfer() {
+						throw error;
+					}
+				} as unknown as MaterialLibraryClient,
+				signal: new AbortController().signal,
+				host: {
+					current: () => ({ source: destination, revision: destination.acceptedRevision }),
+					accept: async () => ({ kind: 'accepted' }),
+					entityReference: () => {
+						throw new Error('not used');
+					},
+					surfaceReference: () => {
+						throw new Error('not used');
+					},
+					materialProofs: createMaterialProofRegistry()
+				}
+			});
+
+		const stale = await runWithError(new MaterialLibraryClientError('stale', 'Stale', 409, 'stale_revision'));
+		expect(stale.ok).toBe(false);
+		if (!stale.ok) expect(stale.code).toBe('stale-revision');
+
+		const conflict = await runWithError(
+			new MaterialLibraryClientError('conflict', 'Conflict', 409, 'content_id_mismatch')
+		);
+		expect(conflict.ok).toBe(false);
+		if (!conflict.ok) expect(conflict.code).toBe('conflict');
+	});
+
+	test('refuses unknown or non-paintable light targets before calling client.transfer', async () => {
+		const scene = createEmptyUnitSceneDocument();
+		scene.entities.push({
+			kind: 'light',
+			light: 'point',
+			id: 'g-light',
+			name: 'Light',
+			position: [0, 2, 0],
+			rotation: [0, 0, 0],
+			color: '#ffffff',
+			intensity: 1,
+			castShadow: false
+		});
+		const destination = await envelope(scene);
+		let transferCalls = 0;
+		const client = {
+			async transfer() {
+				transferCalls += 1;
+				throw new Error('should not be called');
+			}
+		} as unknown as MaterialLibraryClient;
+
+		const runTargets = (targets: { entityIds: string[]; surfaces: [] }) =>
+			insertFinishFromLibrary({
+				item: { id: 'item-t', contentId: `sha256-${'f'.repeat(64)}`, recipeHash: `sha256-${'0'.repeat(64)}` },
+				destinationProjectId: PROJECT,
+				operationId: 'insert-target',
+				targets,
+				client,
+				signal: new AbortController().signal,
+				host: {
+					current: () => ({ source: destination, revision: destination.acceptedRevision }),
+					accept: async () => ({ kind: 'accepted' }),
+					entityReference: () => {
+						throw new Error('not used');
+					},
+					surfaceReference: () => {
+						throw new Error('not used');
+					},
+					materialProofs: createMaterialProofRegistry()
+				}
+			});
+
+		const unknownTarget = await runTargets({ entityIds: ['missing-entity'], surfaces: [] });
+		expect(unknownTarget.ok).toBe(false);
+		if (!unknownTarget.ok) expect(unknownTarget.code).toBe('refused');
+
+		const lightTarget = await runTargets({ entityIds: ['g-light'], surfaces: [] });
+		expect(lightTarget.ok).toBe(false);
+		if (!lightTarget.ok) expect(lightTarget.code).toBe('refused');
+
+		expect(transferCalls).toBe(0);
+	});
+});
+
+describe('uploadFinishThumbnail', () => {
+	test('rejects wrong dimensions and returns false when OffscreenCanvas is absent in Node', async () => {
+		const item = {
+			id: 'item-thumb',
+			contentId: `sha256-${'a'.repeat(64)}`,
+			recipeHash: `sha256-${'b'.repeat(64)}`
+		};
+		const client = {
+			async putThumbnail() {
+				throw new Error('should not be called');
+			}
+		} as unknown as MaterialLibraryClient;
+
+		await expect(
+			uploadFinishThumbnail({
+				item,
+				frame: { width: 128, height: 128, pixels: new Uint8Array(128 * 128 * 4), backend: 'webgl2' },
+				client
+			})
+		).rejects.toThrow(/192×192/);
+
+		const uploaded = await uploadFinishThumbnail({
+			item,
+			frame: { width: 192, height: 192, pixels: new Uint8Array(192 * 192 * 4), backend: 'webgl2' },
+			client
+		});
+		expect(uploaded).toBe(false);
 	});
 });
 

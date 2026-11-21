@@ -121,4 +121,49 @@ describe('material library client', () => {
 		});
 		expect(transfer.finishId).toBe('finish-insert-1');
 	});
+
+	test('putThumbnail and thumbnail handle bytes and map 409 stale_thumbnail / stale_revision to stale', async () => {
+		const contentId = await materialLibraryContentId(payload);
+		const pinned = await recipeHash(recipe);
+		const item = { id: 'item-1', contentId, recipeHash: pinned };
+		const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+
+		const okClient = createMaterialLibraryClient({
+			apiOrigin: 'https://api.example',
+			fetchImpl: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+				if (init?.method === 'PUT') return new Response(null, { status: 204 });
+				return new Response(png, { status: 200 });
+			}) as typeof fetch
+		});
+		await expect(okClient.putThumbnail(item, png)).resolves.toBeUndefined();
+		await expect(okClient.thumbnail(item.id)).resolves.toEqual(png);
+
+		const staleThumbnailClient = createMaterialLibraryClient({
+			apiOrigin: 'https://api.example',
+			fetchImpl: (async () =>
+				new Response(
+					JSON.stringify({ error: { code: 'stale_thumbnail', message: 'Thumbnail upload expired.' } }),
+					{ status: 409, headers: { 'content-type': 'application/json' } }
+				)) as typeof fetch
+		});
+		await expect(staleThumbnailClient.putThumbnail(item, png)).rejects.toMatchObject({
+			code: 'stale',
+			status: 409,
+			serverCode: 'stale_thumbnail'
+		});
+
+		const staleRevisionClient = createMaterialLibraryClient({
+			apiOrigin: 'https://api.example',
+			fetchImpl: (async () =>
+				new Response(
+					JSON.stringify({ error: { code: 'stale_revision', message: 'Project revision changed.' } }),
+					{ status: 409, headers: { 'content-type': 'application/json' } }
+				)) as typeof fetch
+		});
+		await expect(staleRevisionClient.transfer(item, 'destination-project', 'insert-1')).rejects.toMatchObject({
+			code: 'stale',
+			status: 409,
+			serverCode: 'stale_revision'
+		});
+	});
 });

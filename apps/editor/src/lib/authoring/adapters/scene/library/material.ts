@@ -9,7 +9,8 @@
  * stale editor refuses only the registration, leaving the vendored P20 rows for
  * a later insert.
  */
-import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
+import { resolveLayoutSurface } from '@portfolio/layout-core';
+import type { AcceptedRevision, AuthoringIntent, SemanticReference } from '@portfolio/project-model';
 import {
 	finishLibraryDraftFromScene,
 	type FinishLibraryDraft,
@@ -18,24 +19,31 @@ import {
 	type MaterialLibraryTransfer
 } from '@portfolio/project-model/library';
 import type { Recipe } from '@portfolio/project-model/materials';
-import { SCENE_FINISH_REGISTER } from '@portfolio/project-model/scene-planning';
+import { isFinishTarget, SCENE_FINISH_REGISTER } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { draftFinishId, type DraftTargets } from '../../../materials/material-set';
 import type { MaterialProofRegistry } from '../../../material-proof';
 import { encodeInspectionPng, type InspectionFrame } from '$lib/render/materials/inspection';
-import type { MaterialLibraryClient } from './material-client';
+import { MaterialLibraryClientError, type MaterialLibraryClient } from './material-client';
 
 export type FinishLibrarySaveResult =
 	| { readonly ok: true; readonly summary: MaterialLibraryItemSummary; readonly draft: FinishLibraryDraft }
 	| { readonly ok: false; readonly issues: readonly MaterialLibraryIssue[] };
 
 /** The exact local image dependencies of one accepted Scene Finish. */
-export function finishLibraryImages(source: ProjectEnvelope) {
+export function finishLibraryImages(source: ProjectEnvelope, materialId?: string | null) {
 	const resources = source.units.resources.data.resources;
 	return {
-		definitionImages: resources.flatMap((resource) =>
-			resource.kind === 'material' && resource.material !== undefined ? resource.material.images : []
-		),
+		definitionImages:
+			materialId === null
+				? []
+				: resources.flatMap((resource) =>
+						resource.kind === 'material' &&
+						resource.material !== undefined &&
+						(materialId === undefined || resource.id === materialId)
+							? resource.material.images
+							: []
+					),
 		textureImages: resources.flatMap((resource) =>
 			resource.kind === 'texture' && resource.pin !== null
 				? [{ hash: resource.pin.hash, source: { textureId: resource.id } }]
@@ -68,11 +76,11 @@ export async function saveFinishToLibrary(input: {
 		baseMaterial === null
 			? undefined
 			: resources.find((resource) => resource.kind === 'material' && resource.id === baseMaterial);
-	const images = finishLibraryImages(input.source);
+	const images = finishLibraryImages(input.source, baseMaterial);
 	const draft = await finishLibraryDraftFromScene({
 		finish,
 		definition: definition?.material?.recipe ?? null,
-		definitionImages: images.definitionImages,
+		definitionImages: definition?.material?.images ?? [],
 		textureImages: images.textureImages,
 		...(input.source.units.scene.data.palette === undefined
 			? {}
@@ -162,6 +170,7 @@ export async function insertFinishFromLibrary(input: {
 	readonly item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>;
 	readonly destinationProjectId: string;
 	readonly operationId: string;
+	readonly expectedRevision?: AcceptedRevision;
 	readonly targets: DraftTargets;
 	readonly client: MaterialLibraryClient;
 	readonly host: InsertFinishHost;
@@ -170,6 +179,29 @@ export async function insertFinishFromLibrary(input: {
 	if (input.signal.aborted) return refused('aborted', 'Cancelled. Nothing was inserted.');
 	if (input.targets.entityIds.length > 0 && input.targets.surfaces.length > 0) {
 		return refused('refused', 'Assign the inserted Finish to objects or to surfaces first, then paint the rest.');
+	}
+	const beforeState = input.host.current();
+	const expectedRevision = input.expectedRevision ?? beforeState.revision;
+	if (
+		beforeState.source.id !== input.destinationProjectId ||
+		beforeState.revision.projectId !== expectedRevision.projectId ||
+		beforeState.revision.revisionId !== expectedRevision.revisionId
+	) {
+		return refused('stale-revision', 'The destination project changed before insertion started. Try again.');
+	}
+	for (const entityId of input.targets.entityIds) {
+		const entity = beforeState.source.units.scene.data.entities.find((entry) => entry.id === entityId);
+		if (entity === undefined) {
+			return refused('refused', `Target entity "${entityId}" is not in the current revision.`);
+		}
+		if (!isFinishTarget(entity)) {
+			return refused('refused', `Target entity "${entityId}" cannot receive a Finish.`);
+		}
+	}
+	for (const surface of input.targets.surfaces) {
+		if (resolveLayoutSurface(beforeState.source.units.layout.data, surface) !== 'present') {
+			return refused('refused', 'Target surface is not present in the current layout.');
+		}
 	}
 	let transfer: MaterialLibraryTransfer;
 	try {
@@ -181,6 +213,11 @@ export async function insertFinishFromLibrary(input: {
 		);
 	} catch (error) {
 		if (input.signal.aborted) return refused('aborted', 'Cancelled. Nothing was inserted.');
+		if (error instanceof MaterialLibraryClientError) {
+			const code: InsertFinishRefusal =
+				error.code === 'stale' ? 'stale-revision' : error.code === 'conflict' ? 'conflict' : 'refused';
+			return refused(code, error.message);
+		}
 		const message = error instanceof Error ? error.message : 'The saved material could not be inserted.';
 		return refused('refused', message);
 	}
@@ -205,6 +242,16 @@ export async function insertFinishFromLibrary(input: {
 	}
 	if (input.signal.aborted) return refused('aborted', 'Cancelled. The inserted images stay reusable in this project.');
 	const afterState = input.host.current();
+	if (
+		afterState.source.id !== input.destinationProjectId ||
+		afterState.revision.projectId !== expectedRevision.projectId ||
+		afterState.revision.revisionId !== expectedRevision.revisionId
+	) {
+		return refused(
+			'stale-revision',
+			'The project changed while the material was being prepared. Try inserting it again.'
+		);
+	}
 	const after = afterState.source;
 	const scene = after.units.scene.data;
 	const resources = after.units.resources.data.resources;
@@ -218,7 +265,9 @@ export async function insertFinishFromLibrary(input: {
 			(resource) =>
 				resource.kind === 'texture' &&
 				resource.id === textureId &&
-				resource.pin?.hash === image.hash
+				resource.pin?.hash === image.hash &&
+				resource.pin.mime === image.mime &&
+				resource.pin.size === image.byteSize
 		);
 		return {
 			hash: image.hash,
@@ -237,7 +286,7 @@ export async function insertFinishFromLibrary(input: {
 		version: 1,
 		kind: SCENE_FINISH_REGISTER,
 		operationId: input.operationId,
-		expectedRevision: afterState.revision,
+		expectedRevision,
 		targets: [
 			...input.targets.entityIds.map((id) => input.host.entityReference(after, id)),
 			...input.targets.surfaces.map((surface) => input.host.surfaceReference(after, surface))

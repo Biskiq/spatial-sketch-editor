@@ -46,10 +46,15 @@ import {
 } from '@portfolio/project-model/library';
 import { probeArtworkImage, sha256Bytes } from '@portfolio/project-model';
 import { recipeHash, shippedImage } from '@portfolio/project-model/materials';
-import { canonicalUnitJson } from '@portfolio/project-model/units';
+import { canonicalUnitJson, UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 
 import type { DatabasePool } from './database.js';
-import { queryRows, withTransaction } from './project-persistence.js';
+import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
+import {
+  DEFAULT_PROJECT_LIFECYCLE_POLICY,
+  withProjectWriteLease,
+  type ProjectLifecyclePolicy
+} from './project-write-lease.js';
 import { readAssetRow } from './asset-persistence.js';
 import type { ObjectStore } from './object-store.js';
 
@@ -532,11 +537,27 @@ async function clearStagingRows(
   ]);
 }
 
-async function deleteObjectQuietly(store: ObjectStore, key: string): Promise<void> {
+async function consumeStagingRows(
+  db: Pick<DatabasePool, 'query'>,
+  ownerId: string,
+  keys: readonly string[]
+): Promise<string[]> {
+  if (keys.length === 0) return [];
+  const rows = await queryRows<{ key: unknown }>(
+    db,
+    'DELETE FROM library_staging WHERE owner_id = $1 AND object_key = ANY ($2::text[]) RETURNING object_key AS key',
+    [ownerId, [...keys]]
+  );
+  return rows.map((row) => readString(row.key));
+}
+
+async function deleteObjectQuietly(store: ObjectStore, key: string): Promise<boolean> {
   try {
     await store.delete?.(key);
+    return true;
   } catch {
     // The staging row remains for bounded retry.
+    return false;
   }
 }
 
@@ -547,9 +568,40 @@ async function discardStaged(
   keys: readonly string[]
 ): Promise<void> {
   if (keys.length === 0) return;
-  for (const key of keys) await deleteObjectQuietly(store, key);
+  const deleted: string[] = [];
+  for (const key of keys) {
+    if (await deleteObjectQuietly(store, key)) deleted.push(key);
+  }
+  if (deleted.length === 0) return;
   try {
-    await clearStagingRows(pool, ownerId, keys);
+    await clearStagingRows(pool, ownerId, deleted);
+  } catch {
+    // Expiry collection will observe the missing objects.
+  }
+}
+
+async function reclaimLosingStaged(
+  pool: DatabasePool,
+  store: ObjectStore,
+  ownerId: string,
+  keys: readonly string[]
+): Promise<void> {
+  if (keys.length === 0) return;
+  const toClear: string[] = [];
+  for (const key of keys) {
+    try {
+      if (await keyStillReferenced(pool, key)) {
+        toClear.push(key);
+      } else if (await deleteObjectQuietly(store, key)) {
+        toClear.push(key);
+      }
+    } catch {
+      // A later expiry pass will re-check and collect unreferenced keys.
+    }
+  }
+  if (toClear.length === 0) return;
+  try {
+    await clearStagingRows(pool, ownerId, toClear);
   } catch {
     // Expiry collection will observe the missing objects.
   }
@@ -588,6 +640,7 @@ async function copyVerifiedImage(input: {
 }): Promise<void> {
   const source = await input.store.get(input.sourceKey);
   if (source === null || source.contentLength !== input.expectedSize) {
+    if (source !== null) source.body.destroy();
     throw new FormLibraryInputError('image_unavailable', 422, 'The source image bytes are missing or the wrong length');
   }
   const output = new PassThrough();
@@ -730,6 +783,7 @@ async function prepareSaveImage(input: {
   }
   const staging = libraryImageKey(input.ownerId, input.itemId, input.binding.hash, input.namespace);
   try {
+    await recordStaging(input.pool, input.ownerId, staging);
     await copyVerifiedImage({
       store: input.store,
       sourceKey: asset.objectKey,
@@ -739,9 +793,8 @@ async function prepareSaveImage(input: {
       expectedSize: asset.byteSize,
       ...(input.signal === undefined ? {} : { signal: input.signal })
     });
-    await recordStaging(input.pool, input.ownerId, staging);
   } catch (error) {
-    await deleteObjectQuietly(input.store, staging);
+    await discardStaged(input.pool, input.store, input.ownerId, [staging]);
     throw error instanceof FormLibraryInputError
       ? error
       : new FormLibraryInputError('image_unavailable', 422, 'A source image could not be copied into the library');
@@ -856,8 +909,14 @@ export async function saveMaterialLibraryItem(
             'That operation id was already used for a different library save'
           );
         }
+        const existing = await queryRows<LibraryRow>(
+          client,
+          `SELECT ${MATERIAL_SUMMARY_COLUMNS} FROM form_library_items WHERE owner_id = $1 AND id = $2::uuid`,
+          [ownerId, replaySummary(committed).id]
+        );
+        if (existing[0] === undefined) throw new FormLibraryNotFoundError();
         replayed = true;
-        return replaySummary(committed);
+        return materialSummaryOf(existing[0]);
       }
       await client.query('INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [ownerId]);
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [ownerId]);
@@ -871,6 +930,16 @@ export async function saveMaterialLibraryItem(
           409,
           `My Objects holds at most ${FORM_LIBRARY_MAX_ITEMS} items. Remove an item to save another.`
         );
+      }
+      if (stagedKeys.length > 0) {
+        const claimed = await consumeStagingRows(client, ownerId, stagedKeys);
+        if (claimed.length !== stagedKeys.length) {
+          throw new FormLibraryInputError(
+            'stale_revision',
+            409,
+            'A staged library image expired before commit; retry saving the material.'
+          );
+        }
       }
       const inserted = await client.query<LibraryRow>(
         `INSERT INTO form_library_items
@@ -912,9 +981,8 @@ export async function saveMaterialLibraryItem(
     await discardStaged(pool, objectStore, ownerId, stagedKeys);
     throw error;
   }
-  await clearStagingRows(pool, ownerId, stagedKeys).catch(() => {});
   if (replayed) {
-    for (const key of stagedKeys) await discardStaged(pool, objectStore, ownerId, [key]);
+    await reclaimLosingStaged(pool, objectStore, ownerId, stagedKeys);
   }
   return summary;
 }
@@ -962,6 +1030,7 @@ export async function readMaterialLibraryThumbnail(
   if (key === null) throw new FormLibraryNotFoundError('Thumbnail not found');
   const stored = await objectStore.get(key);
   if (stored === null || stored.contentLength !== readSafeInteger(row.thumbnailByteSize)) {
+    if (stored !== null) stored.body.destroy();
     throw new FormLibraryNotFoundError('Thumbnail not found');
   }
   return { body: stored.body, byteSize: stored.contentLength };
@@ -1024,14 +1093,14 @@ export async function saveMaterialLibraryThumbnail(
   const staging = thumbnailKey(ownerId, itemId, options.objectNamespace);
   const hash = await sha256Bytes(bytes);
   try {
+    await recordStaging(pool, ownerId, staging);
     await store.put(staging, Readable.from([Buffer.from(bytes)]), {
       contentType: 'image/png',
       contentLength: bytes.byteLength,
       signal: options.signal ?? new AbortController().signal
     });
-    await recordStaging(pool, ownerId, staging);
   } catch (error) {
-    await deleteObjectQuietly(store, staging);
+    await discardStaged(pool, store, ownerId, [staging]);
     throw error instanceof FormLibraryInputError
       ? error
       : new FormLibraryInputError('image_unavailable', 422, 'The thumbnail could not be stored');
@@ -1051,6 +1120,14 @@ export async function saveMaterialLibraryThumbnail(
           'The library item changed while the thumbnail was uploading'
         );
       }
+      const claimed = await consumeStagingRows(client, ownerId, [staging]);
+      if (claimed.length !== 1) {
+        throw new FormLibraryInputError(
+          'stale_thumbnail',
+          409,
+          'The thumbnail upload expired before commit; retry the upload.'
+        );
+      }
       const old = readNullableString(locked.thumbnailKey);
       await client.query(
         `UPDATE form_library_items
@@ -1064,7 +1141,6 @@ export async function saveMaterialLibraryThumbnail(
     await discardStaged(pool, store, ownerId, [staging]);
     throw error;
   }
-  await clearStagingRows(pool, ownerId, [staging]).catch(() => {});
   if (previousKey !== null && previousKey !== staging) {
     await reclaimIfUnreferenced(pool, store, previousKey);
   }
@@ -1120,9 +1196,12 @@ async function readDestinationProject(
     `SELECT saved_base_token AS "savedBase"
 		 FROM projects p
 		 WHERE p.id = $1 AND p.owner_id = $2
-		   AND EXISTS (SELECT 1 FROM project_versions v WHERE v.project_id = p.id)
+		   AND EXISTS (
+		     SELECT 1 FROM project_versions v
+		     WHERE v.project_id = p.id AND v.source_format = $3
+		   )
 		 ${lock ? 'FOR UPDATE OF p' : ''}`,
-    [projectId, ownerId]
+    [projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
   );
   const row = rows[0];
   if (row === undefined) throw new FormLibraryNotFoundError('Destination project not found');
@@ -1258,7 +1337,7 @@ export async function transferMaterialLibraryItem(
   body: unknown,
   objectStore: ObjectStore | undefined,
   objectNamespace: string,
-  options: { readonly signal?: AbortSignal } = {}
+  options: { readonly signal?: AbortSignal; readonly policy?: ProjectLifecyclePolicy } = {}
 ): Promise<MaterialLibraryTransfer> {
   if (!objectStore) throw new Error('Object storage is unavailable');
   const parsed = parseMaterialLibraryTransferBody(body);
@@ -1278,7 +1357,7 @@ export async function transferMaterialLibraryItem(
 
   const itemRows = await queryRows<LibraryRow>(
     pool,
-    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, kind, format_version AS "formatVersion", canonical_bytes AS "canonicalBytes"
+    `SELECT ${MATERIAL_SUMMARY_COLUMNS}, canonical_bytes AS "canonicalBytes"
 		 FROM form_library_items
 		 WHERE owner_id = $1 AND id = $2::uuid`,
     [ownerId, itemId]
@@ -1336,190 +1415,218 @@ export async function transferMaterialLibraryItem(
     throw new FormLibraryInputError('content_id_mismatch', 400, 'The material image dependencies do not cover its recipe');
   }
 
-  const destination = await readDestinationProject(pool, ownerId, parsed.destinationProjectId, false);
-  const replay = await readReceipt(pool, ownerId, 'material-transfer', parsed.operationId);
-  if (replay !== null) {
-    if (readString(replay.requestDigest) !== digest) {
-      throw new FormLibraryInputError(
-        'operation_conflict',
-        409,
-        'That operation id was already used for a different library transfer'
-      );
-    }
-    if (readNullableString(replay.destinationSavedBase) !== destination.savedBase) {
-      throw new FormLibraryInputError(
-        'stale_revision',
-        409,
-        'The destination project changed since this insertion. Choose the material again.'
-      );
-    }
-    return transferResponseOf(replay.response);
-  }
-
-  const staged: PendingDestinationAsset[] = [];
-  const stagedKeys: string[] = [];
-  try {
-    for (const image of images) {
-      if (image.sourceKind === 'shipped') {
-        const shipped = shippedImage(image.sourceUri ?? '');
-        if (shipped === undefined || shipped.hash !== image.hash || shipped.mime !== image.mime || shipped.byteSize !== image.byteSize) {
-          throw new FormLibraryInputError('unsupported_image', 422, 'A shipped dependency is outside the frozen manifest');
-        }
-        continue;
-      }
-      if (image.objectKey === null) {
-        throw new FormLibraryInputError('image_unavailable', 422, 'A private library image has no stored object');
-      }
-      const ready = await findReadyDestinationRow(pool, parsed.destinationProjectId, image);
-      if (ready !== null) continue;
-      const assetId = randomUUID();
-      const stagingKey = destinationAssetKey(parsed.destinationProjectId, assetId, objectNamespace);
-      try {
-        await copyVerifiedImage({
-          store: objectStore,
-          sourceKey: image.objectKey,
-          destinationKey: stagingKey,
-          expectedHash: image.hash,
-          expectedMime: image.mime,
-          expectedSize: image.byteSize,
-          ...(options.signal === undefined ? {} : { signal: options.signal })
-        });
-        await recordStaging(pool, ownerId, stagingKey);
-      } catch (error) {
-        await deleteObjectQuietly(objectStore, stagingKey);
-        throw error instanceof FormLibraryInputError
-          ? error
-          : new FormLibraryInputError('image_unavailable', 422, 'A library image could not be copied into the project');
-      }
-      staged.push({
-        assetId,
-        hash: image.hash,
-        mime: image.mime,
-        byteSize: image.byteSize,
-        name: `library-${image.hash.slice('sha256-'.length, 'sha256-'.length + 12)}`,
-        stagingKey,
-        adopted: false
-      });
-      stagedKeys.push(stagingKey);
-    }
-  } catch (error) {
-    await discardStaged(pool, objectStore, ownerId, stagedKeys);
-    throw error;
-  }
-
-  const finishId = `finish-${parsed.operationId}`;
-  let response: MaterialLibraryTransfer;
-  try {
-    response = await withTransaction(pool, async (client) => {
-      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
-        `material-transfer:${ownerId}:${parsed.operationId}`
-      ]);
-      const lockedDestination = await readDestinationProject(client, ownerId, parsed.destinationProjectId, true);
-      const committed = await readReceipt(client, ownerId, 'material-transfer', parsed.operationId);
-      if (committed !== null) {
-        if (readString(committed.requestDigest) !== digest) {
+  return withProjectWriteLease(
+    pool,
+    ownerId,
+    parsed.destinationProjectId,
+    async ({ signal: leaseSignal, assertActive }) => {
+      assertActive();
+      const destination = await readDestinationProject(pool, ownerId, parsed.destinationProjectId, false);
+      const replay = await readReceipt(pool, ownerId, 'material-transfer', parsed.operationId);
+      if (replay !== null) {
+        if (readString(replay.requestDigest) !== digest) {
           throw new FormLibraryInputError(
             'operation_conflict',
             409,
             'That operation id was already used for a different library transfer'
           );
         }
-        if (readNullableString(committed.destinationSavedBase) !== lockedDestination.savedBase) {
+        if (readNullableString(replay.destinationSavedBase) !== destination.savedBase) {
           throw new FormLibraryInputError(
             'stale_revision',
             409,
             'The destination project changed since this insertion. Choose the material again.'
           );
         }
-        return transferResponseOf(committed.response);
+        return transferResponseOf(replay.response);
       }
-      // The item must still exist at its exact revision at metadata commit.
-      const itemStillThere = await queryRows<{ contentId: unknown; formatVersion: unknown }>(
-        client,
-        `SELECT content_id AS "contentId", format_version AS "formatVersion" FROM form_library_items
-				 WHERE owner_id = $1 AND id = $2::uuid AND kind = 'material' FOR SHARE`,
-        [ownerId, itemId]
-      );
-      if (itemStillThere[0] === undefined || readString(itemStillThere[0].contentId) !== parsed.contentId) {
-        throw new FormLibraryNotFoundError('The library item was removed during the transfer');
-      }
-      if (readSafeInteger(itemStillThere[0].formatVersion) !== 1) {
-        throw new FormLibraryInputError(
-          'unsupported_format_version',
-          409,
-          'This material was made with an earlier development version and cannot be inserted'
-        );
-      }
-      const resolvedImages: MaterialLibraryTransferImage[] = [];
-      for (const image of images) {
-        if (image.sourceKind === 'shipped') {
-          resolvedImages.push({
+
+      const staged: PendingDestinationAsset[] = [];
+      const stagedKeys: string[] = [];
+      try {
+        for (const image of images) {
+          if (image.sourceKind === 'shipped') {
+            const shipped = shippedImage(image.sourceUri ?? '');
+            if (shipped === undefined || shipped.hash !== image.hash || shipped.mime !== image.mime || shipped.byteSize !== image.byteSize) {
+              throw new FormLibraryInputError('unsupported_image', 422, 'A shipped dependency is outside the frozen manifest');
+            }
+            continue;
+          }
+          if (image.objectKey === null) {
+            throw new FormLibraryInputError('image_unavailable', 422, 'A private library image has no stored object');
+          }
+          assertActive();
+          const ready = await findReadyDestinationRow(pool, parsed.destinationProjectId, image);
+          if (ready !== null) continue;
+          const assetId = randomUUID();
+          const stagingKey = destinationAssetKey(parsed.destinationProjectId, assetId, objectNamespace);
+          try {
+            assertActive();
+            await recordStaging(pool, ownerId, stagingKey);
+            await copyVerifiedImage({
+              store: objectStore,
+              sourceKey: image.objectKey,
+              destinationKey: stagingKey,
+              expectedHash: image.hash,
+              expectedMime: image.mime,
+              expectedSize: image.byteSize,
+              signal: leaseSignal
+            });
+            assertActive();
+          } catch (error) {
+            await discardStaged(pool, objectStore, ownerId, [stagingKey]);
+            if (error instanceof FormLibraryInputError) throw error;
+            if (leaseSignal.aborted) assertActive();
+            throw new FormLibraryInputError('image_unavailable', 422, 'A library image could not be copied into the project');
+          }
+          staged.push({
+            assetId,
             hash: image.hash,
-            source: { shipped: image.sourceUri! },
             mime: image.mime,
-            byteSize: image.byteSize
+            byteSize: image.byteSize,
+            name: `library-${image.hash.slice('sha256-'.length, 'sha256-'.length + 12)}`,
+            stagingKey,
+            adopted: false
           });
-          continue;
+          stagedKeys.push(stagingKey);
         }
-        const pending = staged.find((entry) => entry.hash === image.hash && !entry.adopted);
-        const ready = await findReadyDestinationRow(client, parsed.destinationProjectId, image);
-        if (ready !== null) {
-          resolvedImages.push(
-            transferImageOf({ ...image, assetId: ready.id, name: ready.name })
-          );
-          if (pending !== undefined) pending.adopted = false;
-          continue;
-        }
-        if (pending === undefined) {
-          throw new FormLibraryInputError('image_unavailable', 422, 'A staged destination image is missing');
-        }
-        await client.query(
-          `INSERT INTO assets
-						(id, project_id, name, kind, storage_kind, source_kind, source_ref, mime, byte_size, sha256, object_key, import_state)
-					 VALUES ($1::uuid, $2, $3, 'texture', 'r2', 'upload', null, $4, $5, $6, $7, 'ready')`,
-          [pending.assetId, parsed.destinationProjectId, pending.name, pending.mime, pending.byteSize, pending.hash, pending.stagingKey]
-        );
-        pending.adopted = true;
-        resolvedImages.push(
-          transferImageOf({
-            hash: pending.hash,
-            mime: pending.mime,
-            byteSize: pending.byteSize,
-            assetId: pending.assetId,
-            name: pending.name
-          })
-        );
+      } catch (error) {
+        await discardStaged(pool, objectStore, ownerId, stagedKeys);
+        throw error;
       }
-      const committedResponse: MaterialLibraryTransfer = {
-        itemId,
-        contentId: parsed.contentId,
-        finishId,
-        name: parsedPayload.payload.name,
-        recipe: parsedPayload.payload.recipe,
-        recipeHash: recipeRevision,
-        images: resolvedImages,
-        savedBase: lockedDestination.savedBase
-      };
-      await insertReceipt(client, {
-        ownerId,
-        kind: 'material-transfer',
-        operationId: parsed.operationId,
-        digest,
-        destinationSavedBase: lockedDestination.savedBase,
-        response: committedResponse
-      });
-      return committedResponse;
-    });
-  } catch (error) {
-    await discardStaged(pool, objectStore, ownerId, stagedKeys);
-    throw error;
-  }
-  // Adopted keys stay; a losing staged copy is removed only after the committed
-  // rows no longer depend on it.
-  const losing = staged.filter((entry) => !entry.adopted).map((entry) => entry.stagingKey);
-  await clearStagingRows(pool, ownerId, stagedKeys).catch(() => {});
-  for (const key of losing) await reclaimIfUnreferenced(pool, objectStore, key);
-  return response;
+
+      const finishId = `finish-${parsed.operationId}`;
+      let response: MaterialLibraryTransfer;
+      let committed = false;
+      try {
+        assertActive();
+        response = await withTransaction(pool, async (client) => {
+          await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+            `material-transfer:${ownerId}:${parsed.operationId}`
+          ]);
+          const lockedDestination = await readDestinationProject(client, ownerId, parsed.destinationProjectId, true);
+          const committedReceipt = await readReceipt(client, ownerId, 'material-transfer', parsed.operationId);
+          if (committedReceipt !== null) {
+            if (readString(committedReceipt.requestDigest) !== digest) {
+              throw new FormLibraryInputError(
+                'operation_conflict',
+                409,
+                'That operation id was already used for a different library transfer'
+              );
+            }
+            if (readNullableString(committedReceipt.destinationSavedBase) !== lockedDestination.savedBase) {
+              throw new FormLibraryInputError(
+                'stale_revision',
+                409,
+                'The destination project changed since this insertion. Choose the material again.'
+              );
+            }
+            return transferResponseOf(committedReceipt.response);
+          }
+          // The item must still exist at its exact revision at metadata commit.
+          const itemStillThere = await queryRows<{ contentId: unknown; formatVersion: unknown }>(
+            client,
+            `SELECT content_id AS "contentId", format_version AS "formatVersion" FROM form_library_items
+						 WHERE owner_id = $1 AND id = $2::uuid AND kind = 'material' FOR SHARE`,
+            [ownerId, itemId]
+          );
+          if (itemStillThere[0] === undefined || readString(itemStillThere[0].contentId) !== parsed.contentId) {
+            throw new FormLibraryNotFoundError('The library item was removed during the transfer');
+          }
+          if (readSafeInteger(itemStillThere[0].formatVersion) !== 1) {
+            throw new FormLibraryInputError(
+              'unsupported_format_version',
+              409,
+              'This material was made with an earlier development version and cannot be inserted'
+            );
+          }
+          const resolvedImages: MaterialLibraryTransferImage[] = [];
+          for (const image of images) {
+            if (image.sourceKind === 'shipped') {
+              resolvedImages.push({
+                hash: image.hash,
+                source: { shipped: image.sourceUri! },
+                mime: image.mime,
+                byteSize: image.byteSize
+              });
+              continue;
+            }
+            const pending = staged.find((entry) => entry.hash === image.hash && !entry.adopted);
+            const ready = await findReadyDestinationRow(client, parsed.destinationProjectId, image);
+            if (ready !== null) {
+              resolvedImages.push(
+                transferImageOf({ ...image, assetId: ready.id, name: ready.name })
+              );
+              if (pending !== undefined) pending.adopted = false;
+              continue;
+            }
+            if (pending === undefined) {
+              throw new FormLibraryInputError('image_unavailable', 422, 'A staged destination image is missing');
+            }
+            const claimed = await consumeStagingRows(client, ownerId, [pending.stagingKey]);
+            if (claimed.length !== 1) {
+              throw new FormLibraryInputError(
+                'stale_revision',
+                409,
+                'A staged destination image expired before commit; retry the transfer.'
+              );
+            }
+            await client.query(
+              `INSERT INTO assets
+								(id, project_id, name, kind, storage_kind, source_kind, source_ref, mime, byte_size, sha256, object_key, import_state)
+							 VALUES ($1::uuid, $2, $3, 'texture', 'r2', 'upload', null, $4, $5, $6, $7, 'ready')`,
+              [pending.assetId, parsed.destinationProjectId, pending.name, pending.mime, pending.byteSize, pending.hash, pending.stagingKey]
+            );
+            pending.adopted = true;
+            resolvedImages.push(
+              transferImageOf({
+                hash: pending.hash,
+                mime: pending.mime,
+                byteSize: pending.byteSize,
+                assetId: pending.assetId,
+                name: pending.name
+              })
+            );
+          }
+          const committedResponse: MaterialLibraryTransfer = {
+            itemId,
+            contentId: parsed.contentId,
+            finishId,
+            name: parsedPayload.payload.name,
+            recipe: parsedPayload.payload.recipe,
+            recipeHash: recipeRevision,
+            images: resolvedImages,
+            savedBase: lockedDestination.savedBase
+          };
+          await insertReceipt(client, {
+            ownerId,
+            kind: 'material-transfer',
+            operationId: parsed.operationId,
+            digest,
+            destinationSavedBase: lockedDestination.savedBase,
+            response: committedResponse
+          });
+          return committedResponse;
+        });
+        committed = true;
+        assertActive();
+      } catch (error) {
+        if (!committed) {
+          await discardStaged(pool, objectStore, ownerId, stagedKeys);
+        }
+        throw error;
+      }
+      // Adopted keys stay; a losing staged copy is removed only after the committed
+      // rows no longer depend on it.
+      const losing = staged.filter((entry) => !entry.adopted).map((entry) => entry.stagingKey);
+      await reclaimLosingStaged(pool, objectStore, ownerId, losing);
+      return response;
+    },
+    {
+      ...(options.signal === undefined ? {} : { parentSignal: options.signal }),
+      policy: options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY
+    }
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1669,12 +1776,20 @@ export async function removeFormLibraryItem(
 /* Abandoned staging                                                          */
 /* -------------------------------------------------------------------------- */
 
+type AbandonedStagingRow = {
+  id: unknown;
+  key: unknown;
+  referenced: unknown;
+};
+
 /**
  * Reclaim one owner's expired staging keys, bytes included.
  *
  * This is the model-staging pattern, not a background worker: a scoped library
- * or transfer access performs it first. A key that a committed item, thumbnail
- * or destination asset row still names is never deleted.
+ * or transfer access performs it first. One statement claims every expired
+ * staging row before checking committed references, so a delayed commit can no
+ * longer adopt a claimed key and a key that a committed item, thumbnail or
+ * destination asset row names is never deleted.
  */
 export async function expireAbandonedLibraryStaging(
   pool: DatabasePool,
@@ -1682,31 +1797,35 @@ export async function expireAbandonedLibraryStaging(
   ownerId: string
 ): Promise<void> {
   if (!store) return;
-  const rows = await queryRows<{ id: unknown; key: unknown }>(
+  const claimed = await queryRows<AbandonedStagingRow>(
     pool,
-    `SELECT id, object_key AS key FROM library_staging
-		 WHERE owner_id = $1 AND expires_at <= now()
-		 ORDER BY expires_at ASC LIMIT 100`,
+    `WITH candidate AS (
+			SELECT id FROM library_staging
+			WHERE owner_id = $1 AND expires_at <= now()
+			ORDER BY expires_at ASC
+			LIMIT 100
+		),
+		claimed AS (
+			DELETE FROM library_staging s
+			USING candidate c
+			WHERE s.id = c.id AND s.owner_id = $1
+			RETURNING s.id, s.object_key
+		)
+		SELECT c.id, c.object_key AS key, (
+			EXISTS (SELECT 1 FROM material_library_images m WHERE m.object_key = c.object_key)
+			OR EXISTS (SELECT 1 FROM form_library_items f WHERE f.thumbnail_key = c.object_key)
+			OR EXISTS (SELECT 1 FROM assets a WHERE a.object_key = c.object_key)
+		) AS referenced
+		FROM claimed c`,
     [ownerId]
   );
-  for (const entry of rows) {
+  for (const entry of claimed) {
+    if (entry.referenced === true) continue;
     const key = readString(entry.key);
-    let referenced = true;
     try {
-      referenced = await keyStillReferenced(pool, key);
+      await store.delete?.(key);
     } catch {
-      continue;
+      // Best effort: the staging row is already claimed; an orphan is collected by namespace purge.
     }
-    if (!referenced) {
-      try {
-        await store.delete?.(key);
-      } catch {
-        continue;
-      }
-    }
-    await pool.query('DELETE FROM library_staging WHERE id = $1::uuid AND owner_id = $2', [
-      readString(entry.id),
-      ownerId
-    ]);
   }
 }

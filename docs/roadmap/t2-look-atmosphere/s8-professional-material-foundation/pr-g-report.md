@@ -27,7 +27,7 @@ staging reuse `library_receipts` / `library_staging` with material operation kin
 **Save** (`POST /library/items`). Accepts exactly `{ contentId, operationId, sourceProjectId,
 payload, images }`. Ownership is derived from the session; a project image is rechecked as a ready
 row of the owner's named source project. Private bytes are copied through `ObjectStore.get/put` and
-verified for digest, MIME, length and PNG/WebP signature before the transaction. The transaction
+verified for digest, MIME, length and PNG/JPEG/WebP signature before the transaction. The transaction
 inserts item metadata, image rows and the operation receipt together; a list never observes a
 partial item, and a replayed operation returns the committed summary. Payload >256 KiB, >1,000
 items, >5 images or an invalid pin refuse without a row.
@@ -110,12 +110,21 @@ filtering, canonical read/refusal and exact transfer triple plus recipe revalida
 | `npm run check:api` | pass |
 | `npm run check` (editor) | 0 errors; 16 pre-existing warnings in 6 files |
 | `npm run build:api` | pass |
-| `npm run test:api` (fresh local Postgres) | 157 pass, 0 fail |
-| focused API `material-library.test.mjs` | 7 pass |
-| focused editor material suites | 2 files, 8 pass |
+| `npm run test:api` (fresh local Postgres) | 162 pass, 0 fail |
+| focused API `material-library.test.mjs` | 12 pass |
+| focused editor material & library suites | 4 files, 26 pass |
 | `npm run test:arch` | 38 files, 357 pass |
-| `npm run test:fast` | 461/466 files and 5,726/5,731 tests passed; five unrelated load timeouts (harness, stage-grid/handles/paper) passed 120/120 when rerun alone |
+| `npm run test:fast` (prior baseline; not re-run after final edits) | 461/466 files and 5,726/5,731 tests passed; five unrelated load timeouts (harness, stage-grid/handles/paper) passed 120/120 when rerun alone |
 | `npm run build` (editor) | pass |
+
+## Review fixes
+
+- **Atomic staging claim/consume fencing** — library staging rows are recorded before object puts, claimed and consumed atomically inside commit transactions (`consumeStagingRows`), and expired via one atomic CTE claim-and-check query so concurrent or retried operations cannot double-consume or race a staged object.
+- **`withProjectWriteLease` on transfer** — `POST /library/items/:itemId/transfers` acquires the destination project write lease around the destination mutation and receipt commit, with `handlerTimeout` and `createProjectWriteRequestSignal`.
+- **`flattenFinishForLibrary` issue/name enforcement** — flattening rejects any non-empty `resolveFinish` issues and validates the assembled payload (name bounds, canonical size) through `readMaterialLibraryPayload` rather than silently dropping roles or substituting defaults.
+- **`insertFinishFromLibrary` `expectedRevision` stale-editor guard** — registration captures `expectedRevision` before network IO, checks target admissibility up front, re-checks revision/project identity after IO, and refuses stale inserts without calling `host.accept`.
+- **Migration 011 schema-scoped constraint check** — `011-material-library.sql` qualifies its `pg_constraint` lookups with `conrelid = 'form_library_items'::regclass` instead of matching across schemas.
+- **Real palette-following + pre-cold-open source removal in `/dev/s8-g`** — the browser gate now applies `SCENE_PALETTE_SLOT_ADD` and `SCENE_FINISH_PATCH` on the source coordinator, asserts `capturedFollowers: ['palette-warm']` and flattened `#d8b48a` colour, and disposes/clears the source project alongside the library item before cold-admitting the destination.
 
 ## Deviations and limits
 

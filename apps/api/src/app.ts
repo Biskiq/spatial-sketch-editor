@@ -873,19 +873,28 @@ export function createApp({
 		}
 	});
 
-	app.post('/library/items/:itemId/transfers', { onRequest: requireLibrarySession }, async (request, reply) => {
+	app.post('/library/items/:itemId/transfers', {
+		onRequest: requireLibrarySession,
+		handlerTimeout: lifecyclePolicy.handlerTimeoutMs
+	}, async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		const itemId = (request.params as { itemId?: unknown }).itemId;
 		if (!userId) return unauthorized(reply);
 		if (!isValidLibraryItemId(itemId)) return notFound(reply);
+		const requestDeadline = createProjectWriteRequestSignal(request, lifecyclePolicy.handlerTimeoutMs);
 		try {
 			if (!isJsonContentType(request.headers['content-type'])) {
 				return reply.code(415).send(errorBody('unsupported_media_type', 'Unsupported Media Type'));
 			}
 			reply.header('Cache-Control', 'private, no-store');
-			return await transferMaterialLibraryItem(pool, userId, itemId, request.body, objectStore, objectNamespace);
+			return await transferMaterialLibraryItem(pool, userId, itemId, request.body, objectStore, objectNamespace, {
+				signal: requestDeadline.signal,
+				policy: lifecyclePolicy
+			});
 		} catch (error) {
 			return libraryFailure(app, reply, error, 'Library transfer failed');
+		} finally {
+			requestDeadline.dispose();
 		}
 	});
 
@@ -1077,6 +1086,11 @@ function libraryFailure(app: FastifyInstance, reply: FastifyReply, error: unknow
 		return reply.code(error.statusCode).send(errorBody(error.code, error.message));
 	}
 	if (error instanceof FormLibraryNotFoundError) return notFound(reply);
+	if (error instanceof ProjectNotFoundError) return notFound(reply);
+	if (error instanceof ProjectWriteAbortedError) {
+		if (reply.sent) return reply;
+		return reply.code(409).send(errorBody('project-busy', 'The project write was stopped; retry after the project operation resolves'));
+	}
 	return databaseFailure(app, reply, error, message);
 }
 

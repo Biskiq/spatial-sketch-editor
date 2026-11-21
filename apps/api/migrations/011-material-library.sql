@@ -61,7 +61,9 @@ ALTER TABLE form_library_items
 DO $$
 BEGIN
 	IF NOT EXISTS (
-		SELECT 1 FROM pg_constraint WHERE conname = 'form_library_items_material_fields_check'
+		SELECT 1 FROM pg_constraint
+		WHERE conrelid = 'form_library_items'::regclass
+			AND conname = 'form_library_items_material_fields_check'
 	) THEN
 		ALTER TABLE form_library_items
 			ADD CONSTRAINT form_library_items_material_fields_check
@@ -73,7 +75,9 @@ BEGIN
 			);
 	END IF;
 	IF NOT EXISTS (
-		SELECT 1 FROM pg_constraint WHERE conname = 'form_library_items_thumbnail_complete_check'
+		SELECT 1 FROM pg_constraint
+		WHERE conrelid = 'form_library_items'::regclass
+			AND conname = 'form_library_items_thumbnail_complete_check'
 	) THEN
 		ALTER TABLE form_library_items
 			ADD CONSTRAINT form_library_items_thumbnail_complete_check

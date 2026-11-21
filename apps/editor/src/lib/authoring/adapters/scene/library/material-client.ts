@@ -112,7 +112,7 @@ function readError(body: unknown, status: number): MaterialLibraryClientError {
 	if (status === 409 && (serverCode === 'operation_conflict' || serverCode === 'content_id_mismatch')) {
 		return new MaterialLibraryClientError('conflict', message, status, serverCode);
 	}
-	if (status === 409 && serverCode === 'stale_revision') {
+	if (status === 409 && (serverCode === 'stale_revision' || serverCode === 'stale_thumbnail')) {
 		return new MaterialLibraryClientError('stale', message, status, serverCode);
 	}
 	if (status >= 400 && status < 500) return new MaterialLibraryClientError('refused', message, status, serverCode);

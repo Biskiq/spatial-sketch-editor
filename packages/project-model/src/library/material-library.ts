@@ -498,7 +498,7 @@ export async function flattenFinishForLibrary(
     capture.palette,
     capture.imageIndex
   );
-  if (resolution.inputs === null) {
+  if (resolution.inputs === null || resolution.issues.length > 0) {
     return {
       ok: false,
       issues: dedupeMaterialIssues(resolution.issues).map((problem) =>
@@ -544,12 +544,16 @@ export async function flattenFinishForLibrary(
   }
   if (issues.length > 0) return { ok: false, issues };
 
-  const payload = canonicalMaterialLibraryPayload({
+  const payloadRead = readMaterialLibraryPayload({
     formatVersion: MATERIAL_LIBRARY_PAYLOAD_FORMAT_VERSION,
     kind: 'material',
     name: capture.name,
     recipe: read.recipe
   });
+  if (!payloadRead.success) {
+    return { ok: false, issues: payloadRead.issues };
+  }
+  const payload = payloadRead.payload;
   const capturedFollowers: string[] = [];
   const overrideColor = capture.overrides?.color;
   if (overrideColor !== undefined && typeof overrideColor !== 'string') {

@@ -18,7 +18,7 @@ import {
 	canonicalMaterialLibraryPayload,
 	materialLibraryContentId
 } from '@portfolio/project-model/library';
-import { readRecipe } from '@portfolio/project-model/materials';
+import { readRecipe, SHIPPED_MATERIAL_IMAGES } from '@portfolio/project-model/materials';
 
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
@@ -57,9 +57,8 @@ function chunk(type, data) {
 	return Buffer.concat([length, name, data, crc]);
 }
 
-/** A valid 2×2 RGBA PNG, small enough for the fixed-thumbnail contract. */
-function pngBytes(red = 180, green = 140, blue = 90) {
-	const size = 2;
+/** A valid RGBA PNG of the given square edge size. */
+function pngBytes(red = 180, green = 140, blue = 90, size = 2) {
 	const header = Buffer.alloc(13);
 	header.writeUInt32BE(size, 0);
 	header.writeUInt32BE(size, 4);
@@ -523,4 +522,275 @@ test('a full library refuses material Save in words and stores no row', async ()
 	assert.equal(saved.response.statusCode, 409);
 	assert.equal(saved.response.json().error.code, 'library_full');
 	assert.match(saved.response.json().error.message, /Remove an item/i);
+});
+
+test('save receipt replays idempotently, conflicts on changed body and never resurrects a removed item', async () => {
+	const source = await sourceWithImages('save-receipt');
+	const payload = materialPayload(source.images.map((asset) => asset.sha256), 'Cedar');
+	const operationId = 'save-receipt-op';
+
+	const first = await saveMaterial(source.owner.cookie, payload, source.images, source.project.id, operationId);
+	assert.equal(first.response.statusCode, 201, first.response.body);
+	const summary = first.response.json();
+
+	const replay = await saveMaterial(source.owner.cookie, payload, source.images, source.project.id, operationId);
+	assert.equal(replay.response.statusCode, 201, replay.response.body);
+	assert.deepEqual(replay.response.json(), summary);
+
+	const changedPayload = materialPayload(source.images.map((asset) => asset.sha256), 'Cedar Renamed');
+	const conflict = await saveMaterial(source.owner.cookie, changedPayload, source.images, source.project.id, operationId);
+	assert.equal(conflict.response.statusCode, 409, conflict.response.body);
+	assert.equal(conflict.response.json().error.code, 'operation_conflict');
+
+	const removed = await app.inject({
+		method: 'DELETE',
+		url: `/library/items/${summary.id}`,
+		headers: { cookie: source.owner.cookie }
+	});
+	assert.equal(removed.statusCode, 204);
+
+	const afterDelete = await saveMaterial(source.owner.cookie, payload, source.images, source.project.id, operationId);
+	assert.equal(afterDelete.response.statusCode, 404, afterDelete.response.body);
+
+	const list = await app.inject({
+		method: 'GET',
+		url: '/library/items?kind=material',
+		headers: { cookie: source.owner.cookie }
+	});
+	assert.equal(list.statusCode, 200);
+	assert.equal(list.json().items.length, 0);
+});
+
+test('shipped-image material Save, Transfer and Remove store zero asset rows and preserve shipped sources', async () => {
+	const owner = await newOwner('shipped');
+	const sourceProject = await newProject(owner.cookie, 'shipped-source');
+	const destinationProject = await newProject(owner.cookie, 'shipped-dest');
+	const shipped = SHIPPED_MATERIAL_IMAGES.slice(0, 3);
+	const payload = materialPayload(shipped.map((image) => image.hash), 'Shipped Plaster');
+	const body = {
+		contentId: await materialLibraryContentId(payload),
+		operationId: 'shipped-save-op',
+		sourceProjectId: sourceProject.id,
+		payload,
+		images: shipped.map((image) => ({ hash: image.hash, source: { shipped: image.uri } }))
+	};
+
+	const saved = await app.inject({
+		method: 'POST',
+		url: '/library/items',
+		headers: { cookie: owner.cookie, 'content-type': 'application/json' },
+		payload: body
+	});
+	assert.equal(saved.statusCode, 201, saved.body);
+	const item = saved.json();
+	assert.equal(item.imageCount, 3);
+
+	const transferred = await transfer(owner.cookie, item.id, destinationProject.id, item.contentId, 'shipped-transfer-op');
+	assert.equal(transferred.statusCode, 200, transferred.body);
+	const result = transferred.json();
+	assert.equal(result.images.length, 3);
+	assert.ok(result.images.every((image) => 'shipped' in image.source && !('textureId' in image.source)));
+
+	const destAssets = await pool.query('SELECT count(*)::int AS count FROM assets WHERE project_id = $1', [destinationProject.id]);
+	assert.equal(destAssets.rows[0].count, 0);
+
+	const removed = await app.inject({
+		method: 'DELETE',
+		url: `/library/items/${item.id}`,
+		headers: { cookie: owner.cookie }
+	});
+	assert.equal(removed.statusCode, 204);
+	const gone = await app.inject({
+		method: 'GET',
+		url: `/library/items/${item.id}`,
+		headers: { cookie: owner.cookie }
+	});
+	assert.equal(gone.statusCode, 404);
+});
+
+test('thumbnail upload enforces PNG format, 192x192 edge, 256 KiB cap and owner isolation', async () => {
+	const source = await sourceWithImages('thumb-validation');
+	const other = await newOwner('thumb-other');
+	const payload = materialPayload(source.images.map((asset) => asset.sha256));
+	const saved = await saveMaterial(source.owner.cookie, payload, source.images, source.project.id);
+	assert.equal(saved.response.statusCode, 201, saved.response.body);
+	const item = saved.response.json();
+	const url = `/library/items/${item.id}/thumbnail?expectedContentId=${item.contentId}&recipeKey=${item.recipeHash}`;
+
+	const jpeg = await app.inject({
+		method: 'PUT',
+		url,
+		headers: { cookie: source.owner.cookie, 'content-type': 'application/octet-stream' },
+		payload: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])
+	});
+	assert.equal(jpeg.statusCode, 415, jpeg.body);
+
+	const corrupt = await app.inject({
+		method: 'PUT',
+		url,
+		headers: { cookie: source.owner.cookie, 'content-type': 'application/octet-stream' },
+		payload: Buffer.from('not-a-valid-png')
+	});
+	assert.equal(corrupt.statusCode, 415, corrupt.body);
+
+	const oversizedEdge = await app.inject({
+		method: 'PUT',
+		url,
+		headers: { cookie: source.owner.cookie, 'content-type': 'application/octet-stream' },
+		payload: pngBytes(100, 100, 100, 193)
+	});
+	assert.equal(oversizedEdge.statusCode, 415, oversizedEdge.body);
+
+	const tooLarge = await app.inject({
+		method: 'PUT',
+		url,
+		headers: { cookie: source.owner.cookie, 'content-type': 'application/octet-stream' },
+		payload: Buffer.alloc(256 * 1024 + 1, 0)
+	});
+	assert.equal(tooLarge.statusCode, 413, tooLarge.body);
+
+	const wrongOwner = await app.inject({
+		method: 'PUT',
+		url,
+		headers: { cookie: other.cookie, 'content-type': 'application/octet-stream' },
+		payload: pngBytes()
+	});
+	assert.equal(wrongOwner.statusCode, 404, wrongOwner.body);
+});
+
+test('abandoned staging expiry deletes unreferenced objects, keeps committed objects and fences late commits', async () => {
+	const source = await sourceWithImages('staging-expiry');
+	const payload = materialPayload(source.images.map((asset) => asset.sha256), 'Oak');
+	const saved = await saveMaterial(source.owner.cookie, payload, source.images, source.project.id);
+	assert.equal(saved.response.statusCode, 201, saved.response.body);
+	const item = saved.response.json();
+
+	const committedRow = await pool.query(
+		`SELECT object_key AS "objectKey" FROM material_library_images
+		 WHERE item_id = $1::uuid AND object_key IS NOT NULL ORDER BY hash ASC LIMIT 1`,
+		[item.id]
+	);
+	const committedKey = committedRow.rows[0].objectKey;
+	const orphanKey = `library/material-test/${encodeURIComponent(source.owner.id)}/orphan-${randomUUID()}`;
+	assetStore.objects.set(orphanKey, { body: Buffer.from('orphan'), contentType: 'image/png' });
+
+	await pool.query(
+		`INSERT INTO library_staging (id, owner_id, object_key, created_at, expires_at)
+		 VALUES ($1::uuid, $2, $3, now() - interval '25 hours', now() - interval '1 hour'),
+		        ($4::uuid, $2, $5, now() - interval '25 hours', now() - interval '1 hour')`,
+		[randomUUID(), source.owner.id, orphanKey, randomUUID(), committedKey]
+	);
+
+	const listed = await app.inject({
+		method: 'GET',
+		url: '/library/items?kind=material',
+		headers: { cookie: source.owner.cookie }
+	});
+	assert.equal(listed.statusCode, 200);
+	assert.equal(assetStore.objects.has(orphanKey), false);
+	assert.equal(assetStore.objects.has(committedKey), true);
+	const remainingStaging = await pool.query(
+		'SELECT count(*)::int AS count FROM library_staging WHERE owner_id = $1',
+		[source.owner.id]
+	);
+	assert.equal(remainingStaging.rows[0].count, 0);
+
+	// Fence: if staging rows are claimed/deleted before commit, save refuses with 409 stale_revision.
+	const fencedStore = {
+		...assetStore,
+		async put(key, body, options) {
+			await assetStore.put(key, body, options);
+			await pool.query('DELETE FROM library_staging WHERE owner_id = $1 AND object_key = $2', [source.owner.id, key]);
+		}
+	};
+	const fencedApp = createApp({
+		pool,
+		sessionKey: SESSION_KEY,
+		logger: false,
+		objectStore: fencedStore,
+		objectNamespace: 'material-fence-test'
+	});
+	await fencedApp.ready();
+	const fencedPayload = materialPayload(source.images.map((asset) => asset.sha256), 'Fenced Oak');
+	const fencedBody = saveBody(fencedPayload, source.images, source.project.id, 'fenced-save-op');
+	fencedBody.contentId = await materialLibraryContentId(fencedPayload);
+	const fenced = await fencedApp.inject({
+		method: 'POST',
+		url: '/library/items',
+		headers: { cookie: source.owner.cookie, 'content-type': 'application/json' },
+		payload: fencedBody
+	});
+	assert.equal(fenced.statusCode, 409, fenced.body);
+	assert.equal(fenced.json().error.code, 'stale_revision');
+	const notCommitted = await pool.query(
+		'SELECT count(*)::int AS count FROM form_library_items WHERE owner_id = $1 AND name = $2',
+		[source.owner.id, 'Fenced Oak']
+	);
+	assert.equal(notCommitted.rows[0].count, 0);
+});
+
+test('transfer write lease fences deleteProject with 409 project-busy while in flight', async () => {
+	const source = await sourceWithImages('lease-fence');
+	const destination = await newProject(source.owner.cookie, 'lease-dest');
+	const payload = materialPayload(source.images.map((asset) => asset.sha256), 'Leased Maple');
+	const saved = await saveMaterial(source.owner.cookie, payload, source.images, source.project.id);
+	assert.equal(saved.response.statusCode, 201, saved.response.body);
+	const item = saved.response.json();
+
+	let enteredPut;
+	const putEntered = new Promise((resolve) => {
+		enteredPut = resolve;
+	});
+	let releasePut;
+	const putGate = new Promise((resolve) => {
+		releasePut = resolve;
+	});
+	let pausedOnce = false;
+	const leasedStore = {
+		...assetStore,
+		async put(key, body, options) {
+			if (!pausedOnce && key.startsWith(`projects/material-lease-test/${destination.id}/`)) {
+				pausedOnce = true;
+				enteredPut();
+				await putGate;
+			}
+			return assetStore.put(key, body, options);
+		}
+	};
+	const leasedApp = createApp({
+		pool,
+		sessionKey: SESSION_KEY,
+		logger: false,
+		objectStore: leasedStore,
+		objectNamespace: 'material-lease-test'
+	});
+	await leasedApp.ready();
+	try {
+		const inFlightTransfer = leasedApp.inject({
+			method: 'POST',
+			url: `/library/items/${item.id}/transfers`,
+			headers: { cookie: source.owner.cookie, 'content-type': 'application/json' },
+			payload: {
+				destinationProjectId: destination.id,
+				contentId: item.contentId,
+				operationId: 'leased-transfer-op'
+			}
+		});
+		await putEntered;
+
+		const deleteAttempt = await leasedApp.inject({
+			method: 'DELETE',
+			url: `/projects/${destination.id}`,
+			headers: { cookie: source.owner.cookie, 'content-type': 'application/json' },
+			payload: { precondition: { kind: 'expected-saved-base', token: destination.savedBaseToken } }
+		});
+		assert.equal(deleteAttempt.statusCode, 409, deleteAttempt.body);
+		assert.equal(deleteAttempt.json().error.code, 'project-busy');
+
+		releasePut();
+		const completed = await inFlightTransfer;
+		assert.equal(completed.statusCode, 200, completed.body);
+	} finally {
+		releasePut?.();
+	}
 });
