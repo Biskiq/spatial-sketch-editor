@@ -1,0 +1,20 @@
+{
+  "gate": "/dev/s8-e",
+  "fixture": "Brushed_BaseColor_1k.png + Brushed_ORM_1k.png + Brushed_NormalDX_1k.png on primitive plane e-plane; uv mapping rotation 0.35, offset [0.12, 0.2]",
+  "flow": "readSetFileFacts -> proposeMaterialSet -> draftFromCandidate | manual DraftEdits -> prepareDraft -> acceptDraft (real F4 adapter) -> serialize -> cold admission -> composeColdReleaseBundle -> describeSceneRender",
+  "canvas": { "cssPx": 512, "devicePx": 768, "dpr": 1.5 },
+  "browser": "Claude desktop browser pane (Chromium), macOS 15 (Darwin 24.6)",
+  "cases": {
+    "webgpu": {
+      "auto":   { "savedHash": "sha256-88e8ad53794964feaea3b6bc217b66cd9cd3a10027de55b727edbf03ae2fe2b8", "pixelSha256Prefix": "57ff1a4b672e1a4e", "uploads": 3, "historyEntries": 1, "warmFirstCorrectDrawMs": 208 },
+      "manual": { "savedHash": "sha256-88e8ad53794964feaea3b6bc217b66cd9cd3a10027de55b727edbf03ae2fe2b8", "pixelSha256Prefix": "57ff1a4b672e1a4e", "uploads": 3, "historyEntries": 1 },
+      "edited": { "savedHash": "sha256-9a4fe093efc47536352356583c02fb97c52540305d49214d8a3e39259b42efbf", "pixelSha256Prefix": "77f7bbe38461c5b2", "historyEntries": 2, "overrides": { "color": "#d08050", "maps": { "normal": null } } }
+    },
+    "webgl2": {
+      "auto":   { "savedHash": "sha256-88e8ad53794964feaea3b6bc217b66cd9cd3a10027de55b727edbf03ae2fe2b8", "pixelSha256Prefix": "e8e36343b7910b70", "warmFirstCorrectDrawMs": 82 },
+      "manual": { "savedHash": "sha256-88e8ad53794964feaea3b6bc217b66cd9cd3a10027de55b727edbf03ae2fe2b8", "pixelSha256Prefix": "e8e36343b7910b70" },
+      "edited": { "savedHash": "sha256-9a4fe093efc47536352356583c02fb97c52540305d49214d8a3e39259b42efbf", "pixelSha256Prefix": "34ef97bd95533e98" }
+    }
+  },
+  "result": "auto == manual (bytes and pixels) on each backend; edited differs; no console errors"
+}

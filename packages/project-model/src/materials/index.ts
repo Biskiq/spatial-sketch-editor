@@ -175,9 +175,3 @@ export {
 	type AcrossTargetsQualification,
 	type TargetQualification
 } from './bind';
-
-export {
-	sceneFinishToContract,
-	type SceneFinishAdaptation,
-	type SceneFinishSource
-} from './scene-finish';

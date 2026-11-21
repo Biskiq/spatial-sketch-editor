@@ -29,6 +29,8 @@ export * from './planners';
 
 export * from './finish-model';
 export * from './finish-planners';
+export * from './finish-inspect';
+export * from './finish-patch';
 export * from '../surface-lineage';
 export * from './palette-adoption';
 export * from './texture-resource';

@@ -39,9 +39,10 @@ import type {
 import { readRecipe } from '../materials/read';
 import { readMaterialDefinition, type MaterialResourceImage } from '../materials/definition';
 import { EMPTY_MATERIAL_PROOF, verifyMaterialDigest, type MaterialDigestProof } from '../materials/proof';
-import { resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
+import { createImageIndex, resolveFinish, mergeImageIndexes, shippedImageIndex, materialImageIndex } from '../materials/resolve';
 import { qualifyAcrossTargets } from '../materials/bind';
-import { shippedImage } from '../materials/catalogue';
+import { catalogueRecipe, shippedImage } from '../materials/catalogue';
+import { materialRuntimeIndexOf } from '../units/material-index';
 import {
 	MATERIAL_CAPABILITY,
 	MATERIAL_NEUTRAL_BASE_ID,
@@ -58,11 +59,13 @@ import {
 	applyFinishEdit,
 	catalogueBaseOf,
 	finishEditIsNoop,
+	finishKeyOfRef,
 	finishOf,
 	finishRefOfKey,
 	isFinishPaintable,
 	isPristineInstance,
 	literalizePaletteFollowers,
+	materialBaseOf,
 	materialInstanceById,
 	nextFinishName,
 	nextPaletteName,
@@ -75,6 +78,8 @@ import {
 	type SceneFinishRef
 } from './finish-model';
 import { sceneEntityTargetProblem } from './intent-payload';
+import { analysisRequestOf, analysisSubjectOf, finishIdIsReferenced, finishUsersWithLifecycle } from './finish-inspect';
+import { applyFinishPatch, baseRecipeOf, FINISH_PATCH_FIELDS, type FinishPatchEdit, type FinishPatchField } from './finish-patch';
 import { planPaletteAdoption } from './palette-adoption';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import {
@@ -95,6 +100,9 @@ export const SCENE_PALETTE_SLOT_REMOVE = 'scene-palette-slot-remove';
 export const SCENE_PALETTE_ADOPT = 'scene-palette-adopt';
 export const SCENE_FINISH_FROM_IMAGE = 'scene-finish-from-image';
 export const SCENE_FINISH_REGISTER = 'scene-finish-register';
+export const SCENE_FINISH_RENAME = 'scene-finish-rename';
+export const SCENE_FINISH_PATCH = 'scene-finish-patch';
+export const SCENE_FINISH_REMOVE = 'scene-finish-remove';
 
 const kinds = [
 	SCENE_FINISH_ASSIGN,
@@ -102,6 +110,9 @@ const kinds = [
 	SCENE_FINISH_EDIT,
 	SCENE_FINISH_FROM_IMAGE,
 	SCENE_FINISH_REGISTER,
+	SCENE_FINISH_RENAME,
+	SCENE_FINISH_PATCH,
+	SCENE_FINISH_REMOVE,
 	SCENE_PALETTE_SLOT_ADD,
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_PALETTE_SLOT_RENAME,
@@ -340,7 +351,7 @@ function planEdit(
 		const index = materials.findIndex((instance) => instance.id === project.id);
 		materials[index] = updated;
 		changedMaterials.push(updated.id);
-		// Scene 11 does not store pristine instances as surface Finishes. If this
+		// The Scene does not store pristine instances as surface Finishes. If this
 		// shared edit removes the last override, preserve every assignment's
 		// effective base material (including dormant or retired loaded records).
 		if (isPristineInstance(updated) && base.surfaceFinishes !== undefined) {
@@ -793,6 +804,128 @@ function readRegisterImages(reader: ShapeReader, raw: unknown, path: string): Re
 	return images;
 }
 
+/**
+ * Stage one material image binding against the Scene texture records and the
+ * typed resources. A `texture` entry installs its record and pin (when `allowAdd`);
+ * without one, the record and pin must already agree. Mutates the arrays; returns
+ * a refusal or `null`.
+ */
+function stageMaterialImage(
+	image: RegisterImageInput,
+	textures: SceneTextureAsset[],
+	resources: TypedResource[],
+	addedTextureResources: TypedResource[],
+	allowAdd: boolean
+): { readonly message: string; readonly code: string } | null {
+	if ('shipped' in image.source) {
+		const shipped = shippedImage(image.source.shipped);
+		if (shipped === undefined || shipped.hash !== image.hash) {
+			return { message: 'A shipped material image is not in the frozen catalogue at that digest.', code: 'image-static-unknown' };
+		}
+		return null;
+	}
+	const assetId = image.source.textureId;
+	const existingTexture = textures.find((texture) => texture.id === assetId);
+	const existingResource = resources.find((resource) => resource.kind === 'texture' && resource.id === assetId);
+	if (image.texture === undefined) {
+		if (existingTexture === undefined || existingTexture.uri !== finishTextureUri(assetId)) {
+			return { message: `Material image "${assetId}" has no agreeing Scene texture record. Import the image first.`, code: 'texture-mismatch' };
+		}
+		if (existingResource === undefined || existingResource.pin?.hash !== image.hash) {
+			return { message: `Material image "${assetId}" is not pinned at that digest. Import the image first.`, code: 'texture-mismatch' };
+		}
+		return null;
+	}
+	const pin = {
+		hash: image.texture.pin.hash,
+		mime: image.texture.pin.mime,
+		size: image.texture.pin.size,
+		locator: finishTextureUri(assetId)
+	} satisfies FinishTexturePin;
+	const textureResource = finishTextureResource({ assetId, pin });
+	if (textureResource === null) {
+		return { message: `Material image "${assetId}" is not an admissible project image.`, code: 'texture-mismatch' };
+	}
+	if (image.hash !== pin.hash) {
+		return { message: `Material image "${assetId}" is bound to a different digest than its pin.`, code: 'image-pin-conflict' };
+	}
+	if (existingTexture === undefined && allowAdd) {
+		textures.push({ id: assetId, name: image.texture.name, uri: finishTextureUri(assetId) });
+	} else if (existingTexture !== undefined && existingTexture.uri !== finishTextureUri(assetId)) {
+		return { message: `Material image "${assetId}" is already recorded at another URI.`, code: 'texture-mismatch' };
+	}
+	if (existingResource === undefined && allowAdd) {
+		resources.push(textureResource);
+		addedTextureResources.push(textureResource);
+	} else if (
+		existingResource !== undefined &&
+		(existingResource.kind !== 'texture' || !sameFinishTexturePin(existingResource.pin, textureResource.pin))
+	) {
+		return { message: `Material image "${assetId}" is already pinned to other bytes.`, code: 'image-pin-conflict' };
+	}
+	return null;
+}
+
+/** Read a typed Finish patch. Values are judged after application by the strict reader. */
+function readPatchEdits(reader: ShapeReader, raw: unknown, path: string): FinishPatchEdit[] | null {
+	if (!Array.isArray(raw) || raw.length === 0) {
+		reader.problem(path, 'invalid-value', `${path} must be a non-empty list of field edits`);
+		return null;
+	}
+	const edits: FinishPatchEdit[] = [];
+	for (const [index, item] of raw.entries()) {
+		const at = `${path}[${index}]`;
+		const record = reader.object(item, at, ['field', 'op', 'value']);
+		if (record === null) return null;
+		const field = reader.tag(record.field, `${at}.field`, FINISH_PATCH_FIELDS) as FinishPatchField | null;
+		const op = reader.tag(record.op, `${at}.op`, ['set', 'disable', 'reset']);
+		if (field === null || op === null) return null;
+		if (op === 'set') {
+			if (!('value' in record)) {
+				reader.problem(`${at}.value`, 'missing-field', `${at}.value is required to set a field`);
+				return null;
+			}
+			edits.push({ field, op, value: record.value });
+			continue;
+		}
+		if ('value' in record) {
+			reader.problem(`${at}.value`, 'invalid-value', `${at}.value is only read by "set"`);
+			return null;
+		}
+		if (op === 'disable') {
+			if (!field.startsWith('maps.')) {
+				reader.problem(`${at}.op`, 'invalid-value', `${at}: only a map can be disabled`);
+				return null;
+			}
+			edits.push({ field: field as `maps.${import('../materials/types').MapRole}`, op });
+			continue;
+		}
+		edits.push({ field, op: 'reset' });
+	}
+	return edits;
+}
+
+/** Read a list of Finish user keys (`entity:<id>` / `surface:<key>`). */
+function readUserKeys(reader: ShapeReader, raw: unknown, path: string): string[] | null {
+	if (!Array.isArray(raw)) {
+		reader.problem(path, 'invalid-value', `${path} must be a list of Finish user keys`);
+		return null;
+	}
+	const keys: string[] = [];
+	for (const [index, entry] of raw.entries()) {
+		if (typeof entry !== 'string' || !/^(entity|surface):.+$/.test(entry)) {
+			reader.problem(`${path}[${index}]`, 'invalid-value', `${path}[${index}] must be a Finish user key`);
+			return null;
+		}
+		if (keys.includes(entry)) {
+			reader.problem(`${path}[${index}]`, 'duplicate-id', `${path} must not repeat a user`);
+			return null;
+		}
+		keys.push(entry);
+	}
+	return keys;
+}
+
 function readSurfaceRefs(reader: ShapeReader, raw: unknown, path: string): SceneSurfaceRef[] | null {
 	if (!Array.isArray(raw) || raw.length === 0) {
 		reader.problem(path, 'invalid-value', `${path} must be a non-empty array of surface references`);
@@ -808,7 +941,7 @@ function readSurfaceRefs(reader: ShapeReader, raw: unknown, path: string): Scene
 		}
 		const kind = (item as Record<string, unknown>).kind;
 		if (kind !== 'wall-side' && kind !== 'room-floor' && kind !== 'room-lid' && kind !== 'region-face') {
-			reader.problem(`${at}.kind`, 'unknown_surface_kind', `${at}.kind is not admitted by Scene 11`);
+			reader.problem(`${at}.kind`, 'unknown_surface_kind', `${at}.kind is not admitted by Scene 12`);
 			continue;
 		}
 		const record = reader.object(
@@ -1271,7 +1404,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			'targetFacts'
 		]);
 		if (payload === null) return refuse('The material registration payload must be an object.', 'invalid-value');
-		const name = reader.string(payload.name, '$.payload.name');
+		const rawRegisterName = reader.string(payload.name, '$.payload.name');
+		const name = rawRegisterName === null ? null : rawRegisterName.trim();
 		const recipeHash = payload === null ? null : reader.string(payload.recipeHash, '$.payload.recipeHash');
 		const rawImages = payload === null ? null : readRegisterImages(reader, payload.images, '$.payload.images');
 		const rawFacts = payload === null ? null : readTargetFacts(reader, payload.targetFacts, '$.payload.targetFacts');
@@ -1332,52 +1466,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			effectiveDefinition = existingMaterial.material;
 		}
 		for (const image of rawImages) {
-			if ('shipped' in image.source) {
-				const shipped = shippedImage(image.source.shipped);
-				if (shipped === undefined || shipped.hash !== image.hash) {
-					return refuse('A shipped material image is not in the frozen catalogue at that digest.', 'image-static-unknown');
-				}
-				continue;
-			}
-			const assetId = image.source.textureId;
-			const existingTexture = textures.find((texture) => texture.id === assetId);
-			const existingResource = resources.find((resource) => resource.kind === 'texture' && resource.id === assetId);
-			if (image.texture === undefined) {
-				if (existingTexture === undefined || existingTexture.uri !== finishTextureUri(assetId)) {
-					return refuse(`Material image "${assetId}" has no agreeing Scene texture record. Import the image first.`, 'texture-mismatch');
-				}
-				if (existingResource === undefined || existingResource.pin?.hash !== image.hash) {
-					return refuse(`Material image "${assetId}" is not pinned at that digest. Import the image first.`, 'texture-mismatch');
-				}
-				continue;
-			}
-			const pin = {
-				hash: image.texture.pin.hash,
-				mime: image.texture.pin.mime,
-				size: image.texture.pin.size,
-				locator: finishTextureUri(assetId)
-			} satisfies FinishTexturePin;
-			const textureResource = finishTextureResource({ assetId, pin });
-			if (textureResource === null) {
-				return refuse(`Material image "${assetId}" is not an admissible project image.`, 'texture-mismatch');
-			}
-			if (image.hash !== pin.hash) {
-				return refuse(`Material image "${assetId}" is bound to a different digest than its pin.`, 'image-pin-conflict');
-			}
-			if (existingTexture === undefined && !reusesDefinition) {
-				textures.push({ id: assetId, name: image.texture.name, uri: finishTextureUri(assetId) });
-			} else if (existingTexture !== undefined && existingTexture.uri !== finishTextureUri(assetId)) {
-				return refuse(`Material image "${assetId}" is already recorded at another URI.`, 'texture-mismatch');
-			}
-			if (existingResource === undefined && !reusesDefinition) {
-				resources.push(textureResource);
-				addedTextureResources.push(textureResource);
-			} else if (
-				existingResource !== undefined &&
-				(existingResource.kind !== 'texture' || !sameFinishTexturePin(existingResource.pin, textureResource.pin))
-			) {
-				return refuse(`Material image "${assetId}" is already pinned to other bytes.`, 'image-pin-conflict');
-			}
+			const staged = stageMaterialImage(image, textures, resources, addedTextureResources, !reusesDefinition);
+			if (staged !== null) return refuse(staged.message, staged.code);
 		}
 
 		const requestedDefinition = { recipe, images: effectiveDefinition.images };
@@ -1437,7 +1527,14 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			const target = request.intent.targets[index]!;
 			const problem = sceneEntityTargetProblem(target, entityId, header.contentRevision);
 			if (problem !== null) return refuse(problem.message, 'invalid-target');
-			if (!before.entities.some((entity) => entity.id === entityId)) return refuse('That object is not in the current revision.', 'unknown-entity');
+			const entity = before.entities.find((candidate) => candidate.id === entityId);
+			if (entity === undefined) return refuse('That object is not in the current revision.', 'unknown-entity');
+			if (!isFinishPaintable(entity)) {
+				return refuse(
+					entity.kind === 'light' ? 'Lights have no Finish.' : 'That subject cannot take a Finish.',
+					'not-paintable'
+				);
+			}
 			selectedTargets.set(entityId, { domain: 'scene', entityId, revision: header.contentRevision });
 		}
 		const layout = envelope.units.layout;
@@ -1619,6 +1716,428 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				diagnostics: []
 			}
 		};
+	}
+
+	// T2.S8 E4: rename, typed patch (edit / fork / reset) and removal of a
+	// project Finish. None of them addresses an object: the Finish is named in
+	// the payload, and the caller's view of its users is rechecked here.
+	const withResources = (
+		after: SceneDocument,
+		grant: Partial<SceneRecordScope>,
+		resources: readonly TypedResource[] | null,
+		lockEntries: readonly import('../units/types').DependencyLockEntry[] | null,
+		subjectIds: readonly string[],
+		fields: string[]
+	): Result => {
+		const finalized = finalizeSceneCandidate({ before, after, scope: { ...scope, ...grant } });
+		if (finalized.kind === 'rejected') return finalized;
+		let candidateSource = replaceUnitData(envelope, 'scene', finalized.scene);
+		if (resources !== null) {
+			candidateSource = {
+				...candidateSource,
+				units: {
+					...candidateSource.units,
+					resources: {
+						header: { ...candidateSource.units.resources.header },
+						data: { formatVersion: candidateSource.units.resources.data.formatVersion, resources: [...resources] }
+					}
+				}
+			};
+		}
+		if (lockEntries !== null) {
+			candidateSource = { ...candidateSource, dependencyLock: { ...candidateSource.dependencyLock, entries: [...lockEntries] } };
+		}
+		return {
+			kind: 'prepared',
+			candidate: {
+				operationId: request.intent.operationId,
+				sourceKind: request.snapshot.sourceKind,
+				sourceVersion: request.snapshot.sourceVersion,
+				source: candidateSource,
+				changes: [{ kind, subjectIds, fields }],
+				correspondence: after.entities.map((entity) => ({
+					relation: 'preserved' as const,
+					before: reference(entity.id),
+					after: reference(entity.id)
+				})),
+				diagnostics: []
+			}
+		};
+	};
+	const readProjectFinish = (raw: unknown): SceneMaterialInstance | Result => {
+		const finish = readFinishRef(reader, raw, '$.payload.finish');
+		if (finish === null || reader.issues.length > 0) return refuse(reader.issues[0]?.message ?? 'Name one project Finish.');
+		if (finish === 'model-own' || !('project' in finish)) {
+			return refuse('Only a project Finish can be renamed or removed.', 'not-editable');
+		}
+		const instance = materialInstanceById(before.materials, finish.project);
+		if (instance === undefined || isPristineInstance(instance)) {
+			return refuse('That project Finish no longer exists.', 'unknown-finish');
+		}
+		return instance;
+	};
+	const isResult = (value: SceneMaterialInstance | Result): value is Result =>
+		(value as Result).kind === 'rejected' || (value as Result).kind === 'prepared';
+
+	if (kind === SCENE_FINISH_RENAME) {
+		const payload = reader.object(request.intent.payload, '$.payload', ['finish', 'name']);
+		if (payload === null) return refuse(reader.issues[0]?.message ?? 'Rename needs a Finish and a name.');
+		const instance = readProjectFinish(payload.finish);
+		if (isResult(instance)) return instance;
+		// A blank name is a naming refusal, not a shape error: read the raw string.
+		const rawName = typeof payload.name === 'string' ? payload.name : null;
+		if (rawName === null || reader.issues.length > 0) return refuse(reader.issues[0]?.message ?? 'Name the Finish.');
+		if (request.intent.targets.length !== 0) return refuse('Renaming a Finish addresses no object.', 'invalid-target');
+		if (request.allocatedIds.length !== 0) return refuse('Renaming a Finish creates no id.', 'unexpected-allocation');
+		const name = rawName.trim();
+		if (name.length === 0 || name.length > FINISH_NAME_MAX_LENGTH) {
+			return refuse(`A Finish name must be 1-${FINISH_NAME_MAX_LENGTH} characters.`, 'invalid-name');
+		}
+		if (name === instance.name) return refuse('That Finish already has this name.', 'no-change');
+		const after: SceneDocument = {
+			...before,
+			materials: before.materials.map((candidate) => (candidate.id === instance.id ? { ...candidate, name } : candidate))
+		};
+		return complete(after, { materials: materialGrant({ changed: [instance.id] }) }, [instance.id], ['materials']);
+	}
+
+	if (kind === SCENE_FINISH_REMOVE) {
+		const payload = reader.object(request.intent.payload, '$.payload', ['finish']);
+		if (payload === null) return refuse(reader.issues[0]?.message ?? 'Removal needs one Finish.');
+		const instance = readProjectFinish(payload.finish);
+		if (isResult(instance)) return instance;
+		if (request.intent.targets.length !== 0) return refuse('Removing a Finish addresses no object.', 'invalid-target');
+		if (request.allocatedIds.length !== 0) return refuse('Removing a Finish creates no id.', 'unexpected-allocation');
+		if (finishIdIsReferenced(before, instance.id)) {
+			const { users, storedReferences } = finishUsersWithLifecycle(
+				before,
+				`project:${instance.id}`,
+				envelope.units.layout.data
+			);
+			const dormant = users.filter((user) => user.kind === 'surface' && user.lifecycle === 'dormant').length;
+			return {
+				kind: 'rejected',
+				code: 'finish-in-use',
+				message:
+					`That Finish is still used by ${users.length} target${users.length === 1 ? '' : 's'}` +
+					`${dormant > 0 ? ` (${dormant} dormant)` : ''}` +
+					`${storedReferences.length > 0 ? ` and ${storedReferences.length} stored reference${storedReferences.length === 1 ? '' : 's'}` : ''}. ` +
+					'Assign another Finish first.',
+				diagnostics: [...users, ...storedReferences].map((user) => ({
+					path: '$.payload.finish',
+					code: user.kind === 'surface' && user.lifecycle !== 'present' ? `${user.lifecycle}-user` : 'user',
+					message: user.key
+				}))
+			};
+		}
+		const materials = before.materials.filter((candidate) => candidate.id !== instance.id);
+		const hash = materialBaseOf(instance);
+		let resources: TypedResource[] | null = null;
+		let lockEntries: import('../units/types').DependencyLockEntry[] | null = null;
+		// The definition and its lock leave with their last Finish. Texture rows
+		// and P20 bytes stay: they are independently retained project images.
+		if (hash !== null && !materials.some((candidate) => materialBaseOf(candidate) === hash)) {
+			resources = envelope.units.resources.data.resources.filter(
+				(resource) => !(resource.kind === 'material' && resource.id === hash)
+			);
+			lockEntries = envelope.dependencyLock.entries.filter(
+				(entry) => !(entry.domain === 'resource:material' && entry.subjectId === hash)
+			);
+		}
+		return withResources(
+			{ ...before, materials },
+			{ materials: materialGrant({ removed: [instance.id] }) },
+			resources,
+			lockEntries,
+			[instance.id],
+			resources === null ? ['materials'] : ['materials', 'resources', 'dependencyLock']
+		);
+	}
+
+	if (kind === SCENE_FINISH_PATCH) {
+		const payload = reader.object(request.intent.payload, '$.payload', [
+			'finish',
+			'edits',
+			'mode',
+			'selectedUsers',
+			'expectedUsers',
+			'images'
+		]);
+		if (payload === null) return refuse(reader.issues[0]?.message ?? 'A Finish patch must be an object.');
+		const finish = readFinishRef(reader, payload.finish, '$.payload.finish');
+		const mode = reader.tag(payload.mode, '$.payload.mode', ['in-place', 'all', 'just-this']) as
+			| 'in-place' | 'all' | 'just-this' | null;
+		const edits = readPatchEdits(reader, payload.edits, '$.payload.edits');
+		const selected = readUserKeys(reader, payload.selectedUsers, '$.payload.selectedUsers');
+		const expected = readUserKeys(reader, payload.expectedUsers, '$.payload.expectedUsers');
+		const rawImages = payload.images === undefined ? [] : readRegisterImages(reader, payload.images, '$.payload.images');
+		if (
+			finish === null || mode === null || edits === null || selected === null || expected === null ||
+			rawImages === null || reader.issues.length > 0
+		) {
+			return refuse(reader.issues[0]?.message ?? 'The Finish patch is incomplete.');
+		}
+		if (request.intent.targets.length !== 0) {
+			return refuse('A Finish patch names its users in the payload, not as targets.', 'invalid-target');
+		}
+		if (finish === 'model-own') {
+			return refuse("A model's own materials are not a Finish. Choose a Finish first.", 'not-editable');
+		}
+		const curated = 'curated' in finish;
+		let project: SceneMaterialInstance | undefined;
+		if ('project' in finish) {
+			project = materialInstanceById(before.materials, finish.project);
+			if (project === undefined || isPristineInstance(project)) {
+				return refuse('That project Finish no longer exists.', 'unknown-finish');
+			}
+		} else if (catalogueRecipe(finish.curated) === undefined) {
+			return refuse('That curated Finish does not exist.', 'unknown-catalogue');
+		}
+		const layoutData = envelope.units.layout.data;
+		const key = finishKeyOfRef(finish);
+		const { users } = finishUsersWithLifecycle(before, key, layoutData);
+		const userKeys = users.map((user) => user.key);
+		// The caller's affected set is a precondition: a user that appeared or
+		// left since the caller looked refuses rather than widening the write.
+		if (expected.length !== userKeys.length || !expected.every((entry) => userKeys.includes(entry))) {
+			return {
+				kind: 'rejected',
+				code: 'stale-reach',
+				message: `That Finish is now used by ${userKeys.length} target${userKeys.length === 1 ? '' : 's'}. Reopen it and try again.`,
+				diagnostics: userKeys.map((entry) => ({ path: '$.payload.expectedUsers', code: 'current-user', message: entry }))
+			};
+		}
+		const unknownSelected = selected.find((entry) => !userKeys.includes(entry));
+		if (unknownSelected !== undefined) {
+			return refuse(`"${unknownSelected}" does not use this Finish.`, 'invalid-target');
+		}
+		const selectsAll = selected.length === userKeys.length;
+		if (mode === 'in-place') {
+			if (curated) return refuse('A curated Finish is never edited in place.', 'mode-mismatch');
+			if (userKeys.length > 1) return refuse('A shared Finish is edited for all its users or just some.', 'mode-mismatch');
+			if (!selectsAll) return refuse('An in-place edit selects the Finish’s only user.', 'mode-mismatch');
+		} else if (mode === 'all') {
+			if (!curated && userKeys.length <= 1) return refuse('A Finish with one user is edited in place.', 'mode-mismatch');
+			if (!selectsAll) return refuse('Editing all users selects every user.', 'mode-mismatch');
+		} else if (selected.length === 0 || selectsAll) {
+			return refuse('“Just this” edits a proper subset of the Finish’s users.', 'mode-mismatch');
+		}
+		const needsNew = curated || mode === 'just-this';
+		const allocation = allocationOf(request, ['scene-finish', 'scene-material'], needsNew);
+		if ('missing' in allocation) return refuse(allocation.missing, needsNew ? 'missing-allocation' : 'unexpected-allocation');
+		if (!needsNew && allocation.id !== null) return refuse('Editing a Finish in place creates no id.', 'unexpected-allocation');
+		if (needsNew && before.materials.some((instance) => instance.id === allocation.id)) {
+			return refuse('That Finish id is already in use.', 'unexpected-allocation');
+		}
+
+		const resources = [...envelope.units.resources.data.resources];
+		const textures = [...before.textures];
+		const addedTextureResources: TypedResource[] = [];
+		for (const image of rawImages) {
+			const staged = stageMaterialImage(image, textures, resources, addedTextureResources, true);
+			if (staged !== null) return refuse(staged.message, staged.code);
+		}
+		const recipes = materialRecipesOf(envelope);
+		const seed: SceneMaterialInstance = !needsNew
+			? project!
+			: curated
+				? {
+						id: allocation.id!,
+						name: nextFinishName(labelOf(options, (finish as { curated: MaterialId }).curated), before.materials),
+						base: { catalogue: (finish as { curated: MaterialId }).curated }
+					}
+				: { ...project!, id: allocation.id!, name: nextFinishName(project!.name, before.materials) };
+		const patched = applyFinishPatch(seed, edits, baseRecipeOf(seed, recipes));
+		if (!patched.ok) {
+			return {
+				kind: 'rejected',
+				code: patched.problem.code,
+				message: patched.problem.message,
+				diagnostics: [{ path: patched.problem.path, code: patched.problem.code, message: patched.problem.message }]
+			};
+		}
+		const next = patched.instance;
+		const affected = needsNew
+			? users.filter((user) => mode !== 'just-this' || selected.includes(user.key))
+			: users;
+
+		// Resolve the result against the candidate's own resources, then qualify
+		// every affected user that draws today when sampling changed.
+		const runtime = materialRuntimeIndexOf({ formatVersion: envelope.units.resources.data.formatVersion, resources });
+		const baseHash = materialBaseOf(next);
+		const imageIndex = mergeImageIndexes(
+			shippedImageIndex(),
+			materialImageIndex(baseHash === null ? [] : (runtime?.definitionImages.get(baseHash) ?? [])),
+			createImageIndex(runtime?.images ?? [])
+		);
+		const baseRecipe = baseHash === null ? undefined : runtime?.definitions.get(baseHash);
+		if (baseHash !== null && baseRecipe === undefined) {
+			return refuse('That Finish’s material definition is missing.', 'missing-definition');
+		}
+		const resolution = resolveFinish(
+			baseHash === null ? { catalogue: catalogueBaseOf(next)! } : { material: baseRecipe! },
+			next.overrides,
+			before.palette,
+			imageIndex
+		);
+		if (resolution.inputs === null || resolution.issues.length > 0) {
+			const first = resolution.issues[0];
+			return {
+				kind: 'rejected',
+				code: first?.code ?? 'invalid-value',
+				message: first?.action ?? 'That Finish cannot resolve with these values.',
+				diagnostics: resolution.issues.map((issue) => ({
+					path: issue.path,
+					code: issue.code,
+					message: issue.action ?? issue.code
+				}))
+			};
+		}
+		if (patched.touchesSampling) {
+			const drawing = affected.filter((user) => user.kind === 'entity' || user.lifecycle === 'present');
+			if (drawing.length > 0) {
+				const requests = drawing.map((user) => analysisRequestOf(envelope, user));
+				const analysis = options.targetAnalysis?.(requests) ?? null;
+				if (analysis === null || analysis.length === 0) {
+					return refuse('No host geometry analysis covers these users. Requalify the exact revision.', 'target-pending');
+				}
+				const trusted = new Map<string, TargetFacts>();
+				const expectedRevision = new Map(requests.map((entry) => [entry.subject, entry.expectedGeometryRevision]));
+				for (const facts of analysis) {
+					const revision = expectedRevision.get(facts.subject);
+					if (revision === undefined || trusted.has(facts.subject)) {
+						return refuse('Target analysis does not match the Finish’s users.', 'invalid-target');
+					}
+					if (facts.geometryRevision !== revision || facts.draws.length === 0) {
+						return refuse('Host target analysis is stale or empty. Requalify the exact geometry revision.', 'target-pending');
+					}
+					trusted.set(facts.subject, facts);
+				}
+				if (requests.some((entry) => !trusted.has(entry.subject))) {
+					return refuse('Host analysis does not cover every affected user. Requalify the exact geometry revision.', 'target-pending');
+				}
+				const qualification = qualifyAcrossTargets(
+					resolution,
+					drawing.map((user) => ({
+						subject: analysisSubjectOf(user),
+						facts: trusted.get(analysisSubjectOf(user))!,
+						expectedGeometryRevision: expectedRevision.get(analysisSubjectOf(user))!
+					}))
+				);
+				if (qualification.issues.length > 0) {
+					const failing = new Set(
+						qualification.perTarget.filter((entry) => entry.issues.length > 0).map((entry) => entry.subject)
+					);
+					const viable = drawing.filter((user) => !failing.has(analysisSubjectOf(user))).map((user) => user.key);
+					const first = qualification.issues[0]!;
+					return {
+						kind: 'rejected',
+						code: 'target-incompatible',
+						message: first.action ?? 'This Finish cannot be drawn on every affected user.',
+						diagnostics: [
+							...drawing
+								.filter((user) => failing.has(analysisSubjectOf(user)))
+								.flatMap((user) =>
+									qualification.perTarget
+										.find((entry) => entry.subject === analysisSubjectOf(user))!
+										.issues.map((issue) => ({
+											path: '$.payload.selectedUsers',
+											code: 'incompatible-user',
+											message: `${user.key}: ${issue.code}${issue.role === undefined ? '' : ` (${issue.role})`}`
+										}))
+								),
+							...viable.map((entry) => ({ path: '$.payload.selectedUsers', code: 'viable-user', message: entry }))
+						]
+					};
+				}
+			}
+		}
+
+		const materials = [...before.materials];
+		const addedMaterials: string[] = [];
+		const changedMaterials: string[] = [];
+		let entities = before.entities;
+		let surfaceFinishes = before.surfaceFinishes;
+		let changedSurfaceKeys: string[] = [];
+		let changedEntityIds: string[] = [];
+		if (needsNew) {
+			materials.push(next);
+			addedMaterials.push(next.id);
+			const entityIds = new Set(
+				affected.filter((user) => user.kind === 'entity').map((user) => (user as { entityId: string }).entityId)
+			);
+			changedEntityIds = [...entityIds];
+			entities = before.entities.map((entity) => {
+				if (!entityIds.has(entity.id)) return entity;
+				if (entity.kind === 'model') return { ...entity, materialInstanceId: next.id } as SceneEntity;
+				return {
+					...entity,
+					materialId: catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID,
+					materialInstanceId: next.id
+				} as SceneEntity;
+			});
+			const surfaceKeys = new Set(
+				affected
+					.filter((user) => user.kind === 'surface')
+					.map((user) => surfaceKey((user as { surface: SceneSurfaceRef }).surface))
+			);
+			changedSurfaceKeys = [...surfaceKeys];
+			surfaceFinishes = before.surfaceFinishes?.map((assignment) =>
+				surfaceKeys.has(surfaceKey(assignment.surface))
+					? { ...assignment, finish: { materialInstanceId: next.id } }
+					: assignment
+			);
+		} else {
+			const index = materials.findIndex((instance) => instance.id === next.id);
+			materials[index] = next;
+			changedMaterials.push(next.id);
+			// A shared reset back to its catalogue base leaves a pristine instance,
+			// which surfaces never store: keep every assignment's effective base.
+			if (isPristineInstance(next) && before.surfaceFinishes !== undefined) {
+				surfaceFinishes = before.surfaceFinishes.map((assignment) =>
+					'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === next.id
+						? { ...assignment, finish: { materialId: (catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID) as MaterialId } }
+						: assignment
+				);
+				changedSurfaceKeys = surfaceFinishes
+					.filter((assignment, assignmentIndex) => assignment !== before.surfaceFinishes![assignmentIndex])
+					.map((assignment) => surfaceKey(assignment.surface));
+			}
+		}
+		const collected = collectPristine(materials, entities);
+		const removedMaterials = materials
+			.filter((instance) => !collected.some((candidate) => candidate.id === instance.id))
+			.map((instance) => instance.id);
+		const after: SceneDocument = {
+			...before,
+			textures,
+			materials: collected,
+			entities,
+			...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
+		};
+		const scopeProblem = materialCandidateScopeProblem(
+			envelope.units.resources.data.resources,
+			resources,
+			envelope.dependencyLock.entries,
+			envelope.dependencyLock.entries,
+			new Set(addedTextureResources.map((resource) => resource.id)),
+			[]
+		);
+		if (scopeProblem !== null) return refuse(scopeProblem, 'resource-scope');
+		return withResources(
+			after,
+			{
+				changedEntityIds,
+				changedEntityFields: ['materialId', 'materialInstanceId'],
+				surfaceFinishes: { changedKeys: changedSurfaceKeys },
+				textures: { added: addedTextureResources.map((resource) => resource.id) },
+				materials: materialGrant({ added: addedMaterials, changed: changedMaterials, removed: removedMaterials })
+			},
+			addedTextureResources.length === 0 ? null : resources,
+			null,
+			[next.id, ...affected.map((user) => user.key)],
+			['materials', 'textures', 'surfaceFinishes', 'finish', 'resources']
+		);
 	}
 
 	if (kind === SCENE_FINISH_FROM_IMAGE) {
@@ -2080,7 +2599,11 @@ export function createFinishPlanners(
 				: {}),
 			compound: false,
 			units: false,
-			resources: kind === SCENE_FINISH_FROM_IMAGE || kind === SCENE_FINISH_REGISTER
+			resources:
+				kind === SCENE_FINISH_FROM_IMAGE ||
+				kind === SCENE_FINISH_REGISTER ||
+				kind === SCENE_FINISH_PATCH ||
+				kind === SCENE_FINISH_REMOVE
 		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],

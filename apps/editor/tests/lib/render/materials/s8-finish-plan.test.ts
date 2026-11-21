@@ -3,8 +3,7 @@ import {
 	bindFinish,
 	finishSamplingPlan,
 	resolveFinish,
-	type FinishOverrides,
-	type SceneFinishSource
+	type FinishOverrides
 } from '@portfolio/project-model/materials';
 import {
 	lookSource

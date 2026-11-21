@@ -36,8 +36,6 @@ import type {
 	SceneLightKind,
 	MaterialId,
 	SceneColor,
-	SceneFinishMaps,
-	SceneFinishMapping,
 	SceneModelEntity,
 	SceneMaterialInstance,
 	SceneObjectCluster,
@@ -76,13 +74,7 @@ type EntityParserOptions = {
 /** A project texture's `id` must equal the P20 asset its URI names. */
 const PROJECT_ASSET_URI_PATTERN = /^\/project-assets\/([^/]+)$/;
 
-const FINISH_MAP_KEYS = ['color', 'normal', 'roughness', 'occlusion', 'metalness'] as const;
-const FINISH_MAPPING_KEYS = ['tileMeters', 'rotation', 'offset'] as const;
-const FINISH_TILE_MIN_METERS = 0.01;
-const FINISH_TILE_MAX_METERS = 100;
-const FINISH_NORMAL_SCALE_MAX = 10;
 const FINISH_COLOR_SLOT_MAX_LENGTH = 64;
-const TWO_PI = Math.PI * 2;
 
 export function parseTextureAsset(
 	input: unknown,
@@ -162,103 +154,6 @@ export function parseSceneColor(
 		return undefined;
 	}
 	return { slot };
-}
-
-/** One texture id per named slot; an empty object is returned and then dropped. */
-export function parseFinishMaps(
-	input: unknown,
-	path: string,
-	issues: SceneDocumentIssue[]
-): SceneFinishMaps | undefined {
-	if (!isRecord(input)) {
-		addIssue(issues, path, 'invalid_type', 'Expected a finish maps object');
-		return undefined;
-	}
-	assertAllowedKeys(input, FINISH_MAP_KEYS, path, issues);
-	const maps: Partial<Record<(typeof FINISH_MAP_KEYS)[number], string>> = {};
-	let valid = true;
-	for (const slot of FINISH_MAP_KEYS) {
-		if (!(slot in input)) continue;
-		const textureId = readRequiredString(input, slot, path, issues);
-		if (textureId === undefined) valid = false;
-		else maps[slot] = textureId;
-	}
-	return valid ? (maps as SceneFinishMaps) : undefined;
-}
-
-/** Two finite numbers; the caller applies the field's own range. */
-function readFinishPair(
-	input: unknown,
-	path: string,
-	slot: string,
-	issues: SceneDocumentIssue[]
-): [number, number] | undefined {
-	if (!Array.isArray(input) || input.length !== 2) {
-		addIssue(issues, path, 'invalid_type', `Expected ${slot} to be an array of exactly two numbers`);
-		return undefined;
-	}
-	const values: number[] = [];
-	for (const [index, candidate] of input.entries()) {
-		if (typeof candidate !== 'number' || !Number.isFinite(candidate)) {
-			addIssue(issues, `${path}[${index}]`, 'non_finite_number', 'Expected a finite number');
-			return undefined;
-		}
-		values.push(candidate);
-	}
-	return [values[0]!, values[1]!];
-}
-
-/** Tile size in metres, rotation in radians and offset in tile fractions. */
-export function parseFinishMapping(
-	input: unknown,
-	path: string,
-	issues: SceneDocumentIssue[]
-): SceneFinishMapping | undefined {
-	if (!isRecord(input)) {
-		addIssue(issues, path, 'invalid_type', 'Expected a finish mapping object');
-		return undefined;
-	}
-	assertAllowedKeys(input, FINISH_MAPPING_KEYS, path, issues);
-	let valid = true;
-	let tileMeters: [number, number] | undefined;
-	if ('tileMeters' in input) {
-		const pair = readFinishPair(input.tileMeters, `${path}.tileMeters`, 'tileMeters', issues);
-		if (pair === undefined) valid = false;
-		else if (
-			pair.some((value) => value < FINISH_TILE_MIN_METERS || value > FINISH_TILE_MAX_METERS)
-		) {
-			addIssue(
-				issues,
-				`${path}.tileMeters`,
-				'invalid_dimension',
-				`tileMeters must be within [${FINISH_TILE_MIN_METERS}, ${FINISH_TILE_MAX_METERS}] m`
-			);
-			valid = false;
-		} else tileMeters = pair;
-	}
-	let rotation: number | undefined;
-	if ('rotation' in input) {
-		const value = readRequiredNumber(input, 'rotation', path, issues);
-		if (value === undefined || value < 0 || value >= TWO_PI) {
-			addIssue(issues, `${path}.rotation`, 'invalid_value', 'rotation must be in [0, 2π) radians');
-			valid = false;
-		} else if (value !== 0) rotation = value;
-	}
-	let offset: [number, number] | undefined;
-	if ('offset' in input) {
-		const pair = readFinishPair(input.offset, `${path}.offset`, 'offset', issues);
-		if (pair === undefined) valid = false;
-		else if (pair.some((value) => value < 0 || value >= 1)) {
-			addIssue(issues, `${path}.offset`, 'invalid_value', 'offset must be in [0, 1) tile fractions');
-			valid = false;
-		} else if (pair[0] !== 0 || pair[1] !== 0) offset = pair;
-	}
-	if (!valid) return undefined;
-	return {
-		...(tileMeters === undefined ? {} : { tileMeters }),
-		...(rotation === undefined ? {} : { rotation }),
-		...(offset === undefined ? {} : { offset })
-	};
 }
 
 /**

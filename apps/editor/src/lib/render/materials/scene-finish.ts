@@ -5,7 +5,7 @@
  * `sceneFinishFor` returns the same plain descriptor **plus** the sampled plan and
  * the view sources the renderer acquires. Both come from one resolution:
  *
- * 1. the Scene 11 instance is adapted by `sceneFinishToContract`;
+ * 1. the Scene 12 instance is already the v1 Finish grammar;
  * 2. `resolveFinish` applies sparse overrides, palette followers and provenance;
  * 3. `bindFinish` qualifies the target and produces per-role UV sets, transforms
  *    and origins;
@@ -263,7 +263,7 @@ function targetFacts(
 			uvMeters: [geometry.uvMeters[0], geometry.uvMeters[1]],
 			surfaceMeters: [geometry.surfaceMeters[0], geometry.surfaceMeters[1]]
 		},
-		// Scene 11 metric targets author UV0 only; UV1 is a future format capability.
+		// Native metric targets carry UV0 only; UV1 comes from an approved model derivative.
 		draws: [{ drawKey: 'native-draw', uvSets: [0], normalFrameSets: [0] }]
 	};
 }

@@ -1,5 +1,5 @@
 /**
- * Scene 11's Look schema at the unit boundary.
+ * The current Scene unit's Look schema at the unit boundary.
  *
  * The Scene codec owns one document's strict shape. This suite covers what only
  * the unit reader knows: the palette, the follower check and the stored Sky and
@@ -46,12 +46,15 @@ function issues(input: unknown) {
 	return result.issues.map((issue) => ({ code: issue.code, path: issue.path }));
 }
 
-describe('Scene 11 unit payload', () => {
-	it('admits format 11 and refuses format 10 strictly', () => {
+describe('Scene unit payload', () => {
+	it('admits only the current format and refuses Scene 11 and older strictly', () => {
+		expect(SCENE_UNIT_FORMAT_VERSION).toBe(12);
 		expect(validateCameraFreeScenePayload(payload()).success).toBe(true);
-		expect(issues({ ...payload(), formatVersion: 10 })).toContainEqual(
-			expect.objectContaining({ code: 'unsupported_format_version', path: '$.formatVersion' })
-		);
+		for (const formatVersion of [10, 11, 13]) {
+			expect(issues({ ...payload(), formatVersion })).toContainEqual(
+				expect.objectContaining({ code: 'unsupported_format_version', path: '$.formatVersion' })
+			);
+		}
 	});
 
 	it('admits Wall-side and Region-face Finishes and refuses non-normal surface assignments', () => {

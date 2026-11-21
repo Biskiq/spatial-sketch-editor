@@ -490,7 +490,7 @@ function readSurfaceFinishes(
 		const rawSurface = assignment.surface as Record<string, unknown>;
 		const kind = rawSurface.kind;
 		if (kind !== 'wall-side' && kind !== 'room-floor' && kind !== 'room-lid' && kind !== 'region-face') {
-			reader.problem(`${path}.surface.kind`, 'unknown_surface_kind', `${path}.surface.kind is not admitted by Scene 11`);
+			reader.problem(`${path}.surface.kind`, 'unknown_surface_kind', `${path}.surface.kind is not admitted by Scene 12`);
 			continue;
 		}
 		const surfaceRecord = reader.object(
