@@ -4,7 +4,8 @@
 	 * by the editor or visitor surfaces.
 	 *
 	 * `?gate=highlight` draws the frozen 192 px studio sphere at roughness 0.2 and
-	 * 0.8 through the production inspection readback. `?gate=residency` steps the
+	 * 0.8 through the production inspection readback. `?gate=fidelity` runs the
+	 * linear-target sampling chart (`./fidelity.ts`). `?gate=residency` steps the
 	 * real Finish-view cache through the plan's 128/192/256/384 MiB targets and
 	 * adds one 4096² RGBA8 transient **with its complete mip chain** at each step.
 	 * On WebGPU the transient runs inside out-of-memory and validation error
@@ -40,6 +41,8 @@
 	} from 'three';
 	import type { WebGPURenderer } from 'three/webgpu';
 	import { page } from '$app/state';
+	import { renderLinearFrame } from './linear-readback';
+	import { runFidelity, type FidelityResult } from './fidelity';
 	import CanvasHost from '$lib/render/CanvasHost.svelte';
 	import type { CanvasRendererState } from '$lib/render/renderer-context';
 	import {
@@ -72,7 +75,7 @@
 		type LinearHighlightMetric
 	} from '$lib/dev/s8-gate-metrics';
 
-	type GateName = 'highlight' | 'residency';
+	type GateName = 'highlight' | 'residency' | 'fidelity';
 	type HighlightVariant = {
 		radianceScale: number;
 		/** Outside the plan's nominal → half sequence; recorded, never adopted. */
@@ -118,7 +121,7 @@
 		maxPassedMiB: number;
 		note: string;
 	};
-	type GateResult = HighlightResult | ResidencyResult;
+	type GateResult = HighlightResult | ResidencyResult | FidelityResult;
 
 	const MIB = 1024 * 1024;
 	const VIEW_SIZE = 1024;
@@ -176,74 +179,6 @@
 		}
 	}
 
-	function halfToFloat(bits: number): number {
-		const sign = bits & 0x8000 ? -1 : 1;
-		const exponent = (bits >> 10) & 0x1f;
-		const fraction = bits & 0x3ff;
-		if (exponent === 0) return sign * fraction * 2 ** -24;
-		if (exponent === 31) return fraction === 0 ? sign * Infinity : Number.NaN;
-		return sign * (1 + fraction / 1024) * 2 ** (exponent - 15);
-	}
-
-	/**
-	 * Dev-only linear reading of the same inspection scene: a half-float linear
-	 * target, transparent clear and no scene background, so alpha marks the
-	 * subject and radiance above 1 survives. Every renderer/scene mutation is
-	 * restored.
-	 */
-	async function renderLinearFrame(
-		renderer: WebGPURenderer,
-		scene: Scene,
-		camera: PerspectiveCamera,
-		size: number
-	): Promise<{ pixels: Float32Array; width: number; height: number }> {
-		const target = new RenderTarget(size, size, {
-			type: HalfFloatType,
-			colorSpace: LinearSRGBColorSpace,
-			samples: 0,
-			depthBuffer: true
-		});
-		const r = renderer as unknown as {
-			getRenderTarget(): unknown;
-			setRenderTarget(value: unknown): void;
-			getClearColor(value: Color): Color;
-			getClearAlpha(): number;
-			setClearColor(value: Color | string, alpha: number): void;
-			clear(): void;
-			render(scene: Scene, camera: PerspectiveCamera): void;
-			readRenderTargetPixelsAsync(
-				target: RenderTarget,
-				x: number,
-				y: number,
-				w: number,
-				h: number
-			): Promise<ArrayLike<number>>;
-		};
-		const previousTarget = r.getRenderTarget();
-		const previousColor = r.getClearColor(new Color());
-		const previousAlpha = r.getClearAlpha();
-		const previousBackground = scene.background;
-		try {
-			scene.background = null;
-			r.setRenderTarget(target);
-			r.setClearColor('#000000', 0);
-			r.clear();
-			r.render(scene, camera);
-			const raw = await r.readRenderTargetPixelsAsync(target, 0, 0, size, size);
-			const pixels = new Float32Array(size * size * 4);
-			const isHalf = raw instanceof Uint16Array;
-			for (let index = 0; index < pixels.length; index += 1) {
-				pixels[index] = isHalf ? halfToFloat(raw[index]!) : Number(raw[index]);
-			}
-			return { pixels, width: size, height: size };
-		} finally {
-			scene.background = previousBackground;
-			r.setRenderTarget(previousTarget);
-			r.setClearColor(previousColor, previousAlpha);
-			target.dispose();
-		}
-	}
-
 	async function renderHighlightVariant(
 		renderer: WebGPURenderer,
 		radianceScale: number,
@@ -276,7 +211,13 @@
 				metrics.push(analyzeHighlightFrame(frame, roughness));
 				linear.push(
 					analyzeLinearHighlight(
-						await renderLinearFrame(renderer, inspection.scene, inspection.camera, 192),
+						await renderLinearFrame(
+							renderer,
+							inspection.scene,
+							inspection.camera,
+							192,
+							rendererState?.backend ?? 'webgpu'
+						),
 						roughness
 					)
 				);
@@ -540,7 +481,16 @@
 		started = true;
 		status = `running ${gate} on ${state.backend ?? 'unknown'}`;
 		try {
-			result = gate === 'residency' ? await runResidency(state.renderer) : await runHighlight(state.renderer);
+			result =
+				gate === 'residency'
+					? await runResidency(state.renderer)
+					: gate === 'fidelity'
+						? await runFidelity(
+								state.renderer,
+								state.backend ?? 'unknown',
+								await describeAdapter(state.renderer)
+							)
+						: await runHighlight(state.renderer);
 			status = 'complete';
 		} catch (error) {
 			status = `failed: ${error instanceof Error ? error.message : String(error)}`;

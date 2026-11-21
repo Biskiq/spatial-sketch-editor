@@ -57,7 +57,8 @@ const EDITOR_INK: Record<string, { count: number; owner: string }> = {
 	'lib/authoring/stage/shell/StageCelestialDial.svelte': { count: 1, owner: 'Celestial Dial ink' },
 	'lib/authoring/stage/shell/StageWallPin.svelte': { count: 1, owner: 'pin gizmo' },
 	'routes/dev/assets/+page.svelte': { count: 1, owner: 'dev bench' },
-	'routes/dev/materials/+page.svelte': { count: 1, owner: 'dev bench' }
+	'routes/dev/materials/+page.svelte': { count: 1, owner: 'dev bench' },
+	'routes/dev/s8-gates/fidelity.ts': { count: 1, owner: 'S8 PR B fidelity chart (linear diagnostic)' }
 };
 
 const STORE = 'lib/render/resources/material-store.ts';

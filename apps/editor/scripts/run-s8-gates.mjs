@@ -51,6 +51,7 @@ const BACKENDS = [
 ];
 const CASES = [
 	{ gate: 'highlight', dpr: 1 },
+	{ gate: 'fidelity', dpr: 1 },
 	{ gate: 'residency', dpr: 1 },
 	{ gate: 'residency', dpr: 1.5 }
 ];

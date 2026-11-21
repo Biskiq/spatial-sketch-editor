@@ -9,8 +9,11 @@ import {
 	createInspectionLighting,
 	GRAZING_AMBIENT_INTENSITY,
 	GRAZING_KEY_INTENSITY,
+	INSPECTION_LIGHTING_VERSION,
 	STUDIO_BASE_RADIANCE,
+	STUDIO_FILL_RADIANCE,
 	STUDIO_KEY_RADIANCE,
+	STUDIO_RADIANCE_SCALE_FROM_V1,
 	studioEnvironmentPixels
 } from '$lib/render/materials/inspection-lighting';
 import {
@@ -66,6 +69,14 @@ describe('inspection reference geometry', () => {
 });
 
 describe('inspection reference lighting', () => {
+	it('freezes studio lighting v2 as the v1 radiances scaled by 0.2', () => {
+		expect(INSPECTION_LIGHTING_VERSION).toBe(2);
+		expect(STUDIO_RADIANCE_SCALE_FROM_V1).toBe(0.2);
+		expect(STUDIO_BASE_RADIANCE).toBeCloseTo(0.12 * 0.2, 12);
+		expect(STUDIO_KEY_RADIANCE).toBeCloseTo(4 * 0.2, 12);
+		expect(STUDIO_FILL_RADIANCE).toBeCloseTo(1.5 * 0.2, 12);
+	});
+
 	it('bakes the studio field at the frozen radiances', () => {
 		const width = 128;
 		const height = 64;
@@ -93,7 +104,7 @@ describe('inspection reference lighting', () => {
 					keySeen = true;
 				}
 				if (direction.dot(fill) > Math.cos((10 * Math.PI) / 180)) {
-					expect(value).toBeCloseTo(STUDIO_BASE_RADIANCE + 1.5, 6);
+					expect(value).toBeCloseTo(STUDIO_BASE_RADIANCE + STUDIO_FILL_RADIANCE, 6);
 					fillSeen = true;
 				}
 				if (direction.dot(key) < Math.cos((80 * Math.PI) / 180) && direction.dot(fill) < Math.cos((80 * Math.PI) / 180)) {

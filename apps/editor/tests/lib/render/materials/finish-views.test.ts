@@ -316,6 +316,31 @@ describe('finish view leases', () => {
 		expect(finishViewStats()).toMatchObject({ live: 0, bytes: 0 });
 	});
 
+	it('evicts an unscoped view through the source cache, so a re-acquire never gets a disposed texture', async () => {
+		// An editor-global (null-scope) acquisition is keyed without a scope prefix
+		// in the source cache. Eviction must remove that exact key: disposing the
+		// texture while the cache still holds it would hand the disposed texture
+		// back to the next acquisition of the same image.
+		const made: Texture[] = [];
+		setDefaultTextureSourceLoader(async () => {
+			const texture = imageTexture();
+			made.push(texture);
+			return texture;
+		});
+		setFinishViewBudget(BYTES);
+		const first = await acquireFinishViews([{ view: 'a', uri: '/a.png', role: 'color' }], null);
+		first.release();
+		const other = await acquireFinishViews([{ view: 'b', uri: '/b.png', role: 'color' }], null);
+		other.release();
+		// `a` was evicted for `b`: its source key is gone with it.
+		expect(textureSourceMemoryStats().liveSources).toBe(1);
+
+		const again = await acquireFinishViews([{ view: 'a', uri: '/a.png', role: 'color' }], null);
+		expect(again.views.a).not.toBe(made[0]);
+		expect(made).toHaveLength(3);
+		again.release();
+	});
+
 	it('keeps a leased view alive through the full product teardown (views, then source scope)', async () => {
 		// Both product teardowns (project route, cold release) call
 		// `releaseFinishViewsForScope` and then `releaseTextureScope`. The second

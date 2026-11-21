@@ -185,6 +185,62 @@ function setEntryDecodedBytes(entry: SourceEntry, bytes: number): void {
   peakDecodedBytes = Math.max(peakDecodedBytes, liveDecodedBytes);
 }
 
+/**
+ * Final-owner cleanup for decoded bitmaps.
+ *
+ * A decoder hands the store an `ImageBitmap` (or any closable image). The
+ * source texture and every variant clone of it share that one bitmap through
+ * Three's `Source`, so no single texture is its owner. Each texture that holds
+ * the bitmap registers here once; its `dispose` event drops one interest, and
+ * the last interest closes the bitmap. A texture that is never disposed keeps
+ * its bitmap open, so a live clone can still re-upload after an invalidated
+ * source disposes.
+ */
+type ClosableImage = { close(): void };
+const decodedImageOwners = new Map<ClosableImage, number>();
+const decodedImageTextures = new WeakSet<ThreeTexture>();
+let closedDecodedImages = 0;
+
+function closableImageOf(texture: ThreeTexture): ClosableImage | null {
+  const image = texture.image as unknown;
+  if (image === null || typeof image !== 'object') return null;
+  return typeof (image as { close?: unknown }).close === 'function'
+    ? (image as ClosableImage)
+    : null;
+}
+
+/** Register one texture as an owner of its decoded bitmap. Idempotent per texture. */
+export function retainDecodedImage(texture: ThreeTexture): void {
+  const image = closableImageOf(texture);
+  if (image === null || decodedImageTextures.has(texture)) return;
+  decodedImageTextures.add(texture);
+  decodedImageOwners.set(image, (decodedImageOwners.get(image) ?? 0) + 1);
+  const onDispose = () => {
+    texture.removeEventListener('dispose', onDispose);
+    const remaining = (decodedImageOwners.get(image) ?? 1) - 1;
+    if (remaining > 0) {
+      decodedImageOwners.set(image, remaining);
+      return;
+    }
+    decodedImageOwners.delete(image);
+    closedDecodedImages += 1;
+    image.close();
+  };
+  texture.addEventListener('dispose', onDispose);
+}
+
+export type DecodedImageStats = {
+  /** Decoded bitmaps with at least one undisposed owning texture. */
+  readonly open: number;
+  /** Bitmaps closed by their final owner since the last reset. */
+  readonly closed: number;
+};
+
+/** Observation only: open and closed decoded bitmaps. */
+export function decodedImageStats(): DecodedImageStats {
+  return { open: decodedImageOwners.size, closed: closedDecodedImages };
+}
+
 /** Remove one retained source and its memory from the live totals. */
 function removeSourceEntry(key: string, entry: SourceEntry): void {
   if (entry.cacheOwned) {
@@ -492,6 +548,7 @@ function loadViaTextureLoader(
       loader.load(
         url,
         (texture) => {
+          retainDecodedImage(texture);
           if (entry.cancelled || signal.aborted) {
             texture.dispose();
             reject(abortReason(signal));
@@ -542,6 +599,7 @@ function loadViaTextureLoader(
         throw abortReason(signal);
       }
       const texture = new ThreeTextureClass(bitmap);
+      retainDecodedImage(texture);
       applySourceDefaults(texture, policy, storage);
       setEntryCompressedBytes(entry, bytes.byteLength);
       setEntryDecodedBytes(entry, decodedCpuBytesOf(texture));
@@ -564,6 +622,7 @@ async function loadViaDefaultSourceLoader(
 ): Promise<ThreeTexture> {
   try {
     const texture = await defaultSourceLoader!(url, slot, { policy, storage, signal });
+    retainDecodedImage(texture);
     if (entry.cancelled || signal.aborted) {
       texture.dispose();
       throw abortReason(signal);
@@ -595,6 +654,7 @@ async function loadViaScopedLoader(
 ): Promise<ThreeTexture> {
   try {
     const texture = await scoped(url, slot, { policy, storage, signal });
+    retainDecodedImage(texture);
     if (entry.cancelled || signal.aborted) {
       texture.dispose();
       throw abortReason(signal);
@@ -638,6 +698,7 @@ function cloneMaps(
   for (const [slot, source] of Object.entries(sources) as [MaterialTextureSlot, ThreeTexture][]) {
     if (!source) continue;
     const clone = source.clone();
+    retainDecodedImage(clone);
     // The role decides the transfer function, not whichever slot loaded the
     // source first. This is the one-cache-two-meanings defect's fix.
     applyClonePolicy(clone, slot);
@@ -837,6 +898,8 @@ export function resetTextureCachesForTests() {
   liveDecodedBytes = 0;
   peakCompressedBytes = 0;
   peakDecodedBytes = 0;
+  decodedImageOwners.clear();
+  closedDecodedImages = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -969,6 +1032,7 @@ export function acquireEffectiveVariant(
     if (!cached?.texture) continue;
     const source = cached.texture;
     const clone = source.clone();
+    retainDecodedImage(clone);
     applyClonePolicy(clone, entrySlot);
     clone.flipY = source.flipY;
     clone.repeat.set(repeatX, repeatY);

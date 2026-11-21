@@ -48,6 +48,7 @@ const HOST_LIGHTS: Record<string, { sites: Record<string, number>; owner: string
 	'lib/render/materials/inspection-lighting.ts': { sites: { AmbientLight: 1, DirectionalLight: 1 }, owner: 'inspection reference rig' },
 	'routes/dev/assets/+page.svelte': { sites: { HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' },
 	'routes/dev/s8-oracle/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 2 }, owner: 'S8 pixel oracle' },
+	'routes/dev/s8-gates/fidelity.ts': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'S8 PR B fidelity chart' },
 	'routes/dev/materials/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' }
 };
 

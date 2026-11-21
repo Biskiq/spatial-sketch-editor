@@ -30,7 +30,12 @@
  * an old lease can never delete a newer entry that reused the same view key.
  */
 import type { TextureLoadScope } from './texture-store';
-import { detachFinishTexture, loadFinishTexture, releaseFinishTexture } from './texture-store';
+import {
+	detachFinishTexture,
+	loadFinishTexture,
+	releaseFinishTexture,
+	type TextureScopeKey
+} from './texture-store';
 import type { FinishTextureViews } from './finish-sampling';
 import type { Texture } from 'three';
 
@@ -119,6 +124,12 @@ type Entry = {
 	readonly owner: string;
 	readonly generation: number;
 	readonly scopeId: string;
+	/**
+	 * The texture-store scope the source was loaded under. An unscoped (editor
+	 * global) acquisition is `null`, not the `'global'` grouping label above: the
+	 * source cache keys an unscoped entry without a scope prefix.
+	 */
+	readonly textureScope: TextureScopeKey | null;
 	readonly source: FinishViewSource;
 	refCount: number;
 	lastUsed: number;
@@ -261,7 +272,7 @@ export function releaseFinishViewsForScope(scopeId: string): void {
 			disposeEntry(entry, entries.values());
 		} else {
 			entry.retired = true;
-			detachFinishTexture(entry.source.uri, entry.source.role, { scopeId: entry.scopeId });
+			detachFinishTexture(entry.source.uri, entry.source.role, entry.textureScope);
 		}
 	}
 }
@@ -276,7 +287,7 @@ function disposeEntry(entry: Entry, remaining: Iterable<Entry>): void {
 	for (const other of remaining) {
 		if (other.texture === entry.texture) return;
 	}
-	const disposed = releaseFinishTexture(entry.source.uri, entry.source.role, { scopeId: entry.scopeId });
+	const disposed = releaseFinishTexture(entry.source.uri, entry.source.role, entry.textureScope);
 	// A test loader or another owner may supply a texture that never entered the
 	// source cache; disposal here is still safe and keeps the budget honest.
 	if (!disposed) entry.texture.dispose();
@@ -556,6 +567,7 @@ export async function acquireFinishViews(
 			owner,
 			generation: startedGeneration,
 			scopeId,
+			textureScope: scope === null ? null : { scopeId: scope.scopeId },
 			source,
 			refCount: 1,
 			lastUsed: ++access,

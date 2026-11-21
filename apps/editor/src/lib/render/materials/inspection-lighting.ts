@@ -2,18 +2,23 @@
  * Recipe 1's two reference lighting rigs.
  *
  * Studio is a first-party deterministic environment: a 128×64 equirectangular
- * linear radiance field evaluated at texel centres in Y-up space, base 0.12,
- * plus a white radiance-4 patch within 22° of normalized (−1,1,1) and radiance
- * 1.5 within 30° of (1,0,−1). It is prefiltered once per Canvas generation with
+ * linear radiance field evaluated at texel centres in Y-up space, base 0.024,
+ * plus a white radiance-0.8 patch within 22° of normalized (−1,1,1) and radiance
+ * 0.3 within 30° of (1,0,−1). It is prefiltered once per Canvas generation with
  * the renderer's PMREM and never mutated by project lighting.
+ *
+ * **Lighting version 2** (owner decision, 2026-11-20): every v1 studio radiance
+ * (base 0.12, key 4, fill 1.5) scaled by 0.2. v1 clipped 11.6% of a roughness-0.2
+ * metal sphere in final sRGB at exposure 1; v2 keeps exposure 1, sRGB output and
+ * the strict highlight gate. Geometry, angles and directions are unchanged.
  *
  * Grazing is a single white directional light of intensity 2 from normalized
  * (1,0.12,0.25), white ambient 0.15, and no reflection map.
  *
  * The constants and the source texture are versioned: F reuses exactly these for
  * catalogue evidence, so changing them is a new preview-recipe version. The
- * optional `radianceScale` exists only for the PR B calibration gate's one
- * half-radiance retry; the product recipe always leaves it at 1.
+ * optional `radianceScale` multiplies the versioned recipe and exists only for
+ * the dev calibration gate; the product recipe always leaves it at 1.
  */
 import {
 	AmbientLight,
@@ -30,13 +35,15 @@ import {
 } from 'three';
 import { PMREMGenerator } from 'three/webgpu';
 
-export const INSPECTION_LIGHTING_VERSION = 1 as const;
+export const INSPECTION_LIGHTING_VERSION = 2 as const;
+/** v2 = v1 studio radiances × this factor; recorded so G can cite the derivation. */
+export const STUDIO_RADIANCE_SCALE_FROM_V1 = 0.2;
 export const STUDIO_ENVIRONMENT_WIDTH = 128;
 export const STUDIO_ENVIRONMENT_HEIGHT = 64;
-export const STUDIO_BASE_RADIANCE = 0.12;
-export const STUDIO_KEY_RADIANCE = 4;
+export const STUDIO_BASE_RADIANCE = 0.024;
+export const STUDIO_KEY_RADIANCE = 0.8;
 export const STUDIO_KEY_DEGREES = 22;
-export const STUDIO_FILL_RADIANCE = 1.5;
+export const STUDIO_FILL_RADIANCE = 0.3;
 export const STUDIO_FILL_DEGREES = 30;
 export const GRAZING_KEY_INTENSITY = 2;
 export const GRAZING_AMBIENT_INTENSITY = 0.15;
