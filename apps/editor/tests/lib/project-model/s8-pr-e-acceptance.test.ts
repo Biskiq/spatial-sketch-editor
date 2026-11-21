@@ -635,7 +635,8 @@ describe('T2.S8 E exit — editing one Finish', () => {
 		}, 'model-own'))).toMatchObject({ kind: 'rejected', reason: 'not-editable' });
 		const before = snapshot(fx);
 		const light = await create(fx, { entityIds: ['lamp'], surfaces: [] }, 'on-light');
-		expect(light).toMatchObject({ ok: false, code: 'target-pending' });
+		// A light never becomes paintable: refuse it, do not report pending work.
+		expect(light).toMatchObject({ ok: false, code: 'refused', message: 'Lights have no Finish.' });
 		expect(snapshot(fx)).toBe(before);
 	});
 

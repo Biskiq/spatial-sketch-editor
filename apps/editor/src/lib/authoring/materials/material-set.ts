@@ -31,9 +31,9 @@ import {
 	type SetImageMime
 } from '@portfolio/project-model/material-authoring';
 import type { Hash, Recipe, TargetAnalysis } from '@portfolio/project-model/materials';
-import { SCENE_FINISH_REGISTER } from '@portfolio/project-model/scene-planning';
+import { SCENE_FINISH_REGISTER, isFinishTarget } from '@portfolio/project-model/scene-planning';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
-import { surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
+import { resolveLayoutSurface, surfaceKey, type LayoutSurfaceRef } from '@portfolio/layout-core';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import { probeRawImage } from '$lib/render/resources/image-encoding';
@@ -312,6 +312,28 @@ function referencedTextureIds(source: ProjectEnvelope): Set<string> {
 	return new Set(source.units.scene.data.textures.map((texture) => texture.id));
 }
 
+/**
+ * A target the accepted revision cannot paint at all, as opposed to one whose
+ * analysis is still pending. A light or Artwork never becomes paintable, so it
+ * must not be reported as something to retry.
+ */
+function targetProblem(source: ProjectEnvelope, targets: DraftTargets): string | null {
+	const entities = new Map(source.units.scene.data.entities.map((entity) => [entity.id, entity]));
+	for (const id of targets.entityIds) {
+		const entity = entities.get(id);
+		if (entity === undefined) return 'That object is not in the current revision.';
+		if (!isFinishTarget(entity)) {
+			return entity.kind === 'light' ? 'Lights have no Finish.' : 'That subject cannot take a Finish.';
+		}
+	}
+	for (const surface of targets.surfaces) {
+		if (resolveLayoutSurface(source.units.layout.data, surface) === 'retired') {
+			return 'That surface changed. Try again.';
+		}
+	}
+	return null;
+}
+
 function targetsArePending(
 	source: ProjectEnvelope,
 	targets: DraftTargets,
@@ -362,6 +384,8 @@ export async function acceptDraft(
 	if (!sameRevision(before.revision, draft.expectedRevision)) {
 		return refused('stale-revision', 'The project changed since this material was prepared. Review it again.');
 	}
+	const unpaintable = targetProblem(before.source, targets);
+	if (unpaintable !== null) return refused('refused', unpaintable);
 	if (targetsArePending(before.source, targets, host.targetAnalysis)) {
 		return refused('target-pending', 'The selected objects are still being analysed. Try again in a moment.');
 	}
@@ -394,6 +418,8 @@ export async function acceptDraft(
 	if (!sameRevision(after.revision, draft.expectedRevision)) {
 		return refused('stale-revision', 'The project changed while images were uploading. Review the material again.');
 	}
+	const unpaintableAfter = targetProblem(after.source, targets);
+	if (unpaintableAfter !== null) return refused('refused', unpaintableAfter);
 	if (targetsArePending(after.source, targets, host.targetAnalysis)) {
 		return refused('target-pending', 'The selected objects changed while images were uploading. Try again.');
 	}

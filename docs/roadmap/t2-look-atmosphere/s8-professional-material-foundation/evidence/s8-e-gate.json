@@ -16,5 +16,31 @@
       "edited": { "savedHash": "sha256-9a4fe093efc47536352356583c02fb97c52540305d49214d8a3e39259b42efbf", "pixelSha256Prefix": "34ef97bd95533e98" }
     }
   },
+  "recheck": {
+    "date": "2026-11-21",
+    "host": "local Freebuff Chromium (macOS); no WebGPU adapter, renderer fell back to WebGL2",
+    "backend": "webgl2",
+    "cases": {
+      "auto": {
+        "savedHash": "sha256-8f95a292e10574f61b398921d7214d38c5be21e1ef771cc4a5749bf0412d591e",
+        "recipeHash": "sha256-c3d8383e408b1a3e5398afc79ce1a2eef6397062c29f80420b3c4dc624998b7c",
+        "uploads": 3,
+        "historyEntries": 1,
+        "firstCorrectDrawMs": 359
+      },
+      "manual": {
+        "savedHash": "sha256-8f95a292e10574f61b398921d7214d38c5be21e1ef771cc4a5749bf0412d591e",
+        "recipeHash": "sha256-c3d8383e408b1a3e5398afc79ce1a2eef6397062c29f80420b3c4dc624998b7c",
+        "uploads": 3,
+        "historyEntries": 1
+      },
+      "edited": {
+        "savedHash": "sha256-e6e202d776703fbd8b898c8148c2059799fd25f3a83d9c5b3312e729cd0d823a",
+        "historyEntries": 2,
+        "overrides": { "color": "#d08050", "maps": { "normal": null } }
+      }
+    },
+    "note": "PNG bytes are generated per browser run, so these saved hashes differ from the committed gate hashes above. auto == manual within this run; edited differs. Pixel identity was not re-read."
+  },
   "result": "auto == manual (bytes and pixels) on each backend; edited differs; no console errors"
 }
