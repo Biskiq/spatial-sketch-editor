@@ -90,7 +90,7 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | Authority | Owns | Current encoding |
 |---|---|---|
 | **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 9`: Junctions, Walls (including one isolated self-connected closed Wall), persistent Rooms with required `virtualEdges` and `overhead`, Wall-hosted Openings, horizontal Regions, and document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path; format 9 is the only recognized version |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects, surface finishes) | `units.scene.data` / Scene 11 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects, surface finishes) | `units.scene.data` / Scene 12 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/pacing, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 4, collection-capable); Presentations, linear Guides, one entry View/stay per Stop, invitations, detours and visitor reach |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
@@ -151,7 +151,8 @@ domain operations it exposes and how densely. The owning domain decides what an 
 where it applies. A capability admitted for one context is the same capability wherever its targets
 exist: Object Studio, World, Layout surfaces and imported models use one Finish model, one Scene
 planner set, one inspection path and one history. No context receives its own material, texturing,
-geometry, animation or history engine.
+geometry, animation or history engine; a task-local preview evaluates owned source and never becomes
+a second authority.
 
 Layout retains architectural semantics and the canonical architectural compiler; Scene retains
 object form and composition semantics; typed resources retain independently versioned source/reuse.
@@ -185,30 +186,45 @@ Appearance is Scene-owned and shared by every supported target: native objects, 
 Layout surfaces through Scene `surfaceFinishes`, while Layout stays appearance-free. Four boundaries
 hold for every future material capability:
 
-- **Source is family-owned; evaluation is derived.** A Finish's identity, assignments, sharing and
-  Ask scope do not depend on its material family. Each family owns a strict, versioned source grammar,
-  its override vocabulary and an evaluator version, and declares its capability in the dependency
-  lock. `pbr-metallic-roughness/v1` is the first family and the portable evaluated signal set the
-  renderer consumes. It is not the universal editable material format.
+- **Source and evaluator are family-owned.** Finish identity and the assignment, sharing and Ask
+  model are family-independent; each family declares the target requirements that qualify an
+  assignment. Each family owns a strict, versioned source grammar, its
+  override vocabulary and its evaluator, and declares its capability in the dependency lock.
+  `pbr-metallic-roughness/v1` is the first family; it is not the universal editable material format,
+  and later families are not restricted to its evaluated signals. A family may offer a portable
+  fallback or bake with explicitly declared loss; optical, procedural and programmable capabilities
+  may need richer evaluators and delivery formats.
 - **Procedural source survives its bakes.** A procedural, layered or painted family keeps its
   non-destructive source. Evaluated textures, baked maps and simplified delivery profiles are
   reproducible derivatives with recorded inputs, evaluator version and declared loss. A bake never
-  replaces editable source, and shader code is never authored truth.
-- **Surface addressing and parameterization have owners.** Appearance targets use owner-declared
-  identities: Layout surface keys with topology lineage, Scene entity and admitted component or
-  source-role identities, and import-declared material slots. The coordinates that place appearance
-  on a target (metric bases, UV sets, projections) are owner-declared or explicitly authored, never
-  inferred from renderer buffers, mesh indices or nearest geometry. Persistent per-face, per-region,
-  masked or painted appearance waits for a declared parameterization owner, anchor under edits and
-  correspondence through geometry revision ([T5 identity](../roadmap/t5-expressive-geometry/umbrella-plan.md#identity-topology-and-revision)).
-- **One material authority across contexts.** Inspection, catalogue, import, library and authoring
-  operations are the same in every context and for agents. A substantial focused material workspace
-  may present them; it owns no separate material model.
+  silently replaces editable source; replacing source with baked results is an explicit lossy
+  conversion under the [North Star](./north-star.md#creative-freedom-and-depth) conversion rule.
+  Generated shader code is not authored truth merely because it was generated; validated, sandboxed
+  programmable source remains admissible as typed, versioned family source.
+- **Surface addressing and parameterization have owners.** Geometry identity, base coordinates and
+  correspondence through geometry revision belong to the geometry side: T1 through Layout for
+  architecture and T5 for native forms, while imported models declare their own UV sets and material
+  slots. Targets are addressed as Layout surface keys with topology lineage, Scene entity and
+  admitted component or source-role identities, and import-declared slots. T2 through Scene owns
+  appearance and its bindings, including mappings, projections and texture coordinates authored
+  against qualified geometry. Every such parameterization declares its
+  stability and its behavior when the geometry is revised, and failed correspondence is visible and
+  repairable; nothing binds to renderer buffers, evaluated or generated mesh indices or nearest geometry. No painting
+  technique is required to freeze generated UV coordinates
+  ([T5 identity](../roadmap/t5-expressive-geometry/umbrella-plan.md#identity-topology-and-revision)).
+- **One appearance capability across contexts.** Inspection, catalogue, import, library and
+  authoring operations are one capability, reaching World, Object Studio and supported
+  architectural or imported targets through qualified adapters, and the same for agents. A focused
+  material workspace with dense graphs, layer editors, UV tools or specialised controls may present
+  them when advanced work needs it; it owns no separate material model. Its interaction favours
+  layers first with graphs on demand, explainable procedural operations and continuous feedback on
+  the Stage; its exact design stays open.
 
 The first family's grammar and slices live in the
 [S8 plan](../roadmap/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md);
 its landed rules are promoted into [Scene content](./components/scene-content.md#material-and-light-semantic-gaps),
-Assets, Persistence and Rendering as S8 closes.
+Assets, Persistence and Rendering as each S8 PR lands; D's promotion lands with E's documentation
+work.
 
 ### Shared composition and execution contract (F — destination)
 
@@ -309,7 +325,7 @@ interior-only.
 |---------|-----------------|
 | Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
-| Scene models, primitives, lights, materials, native form sources, surface finishes | `units.scene.data` / Scene 11 (`@portfolio/project-model`) |
+| Scene models, primitives, lights, materials, native form sources, surface finishes | `units.scene.data` / Scene 12 (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `units.camera.data` / Camera 1 (`@portfolio/project-model`) |
 | Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
 | Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |

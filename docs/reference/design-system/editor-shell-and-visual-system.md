@@ -92,7 +92,9 @@ World and Experience share Head, a collapsible Index, a dominant Stage, a contex
 overlay Card and one **lower working edge** that grows upward from a dock. Their identity
 and hierarchy remain recognizable across lenses; Card, palette and Instrument are absent
 when their context is absent. **The Stage is the workspace:** every other surface is
-small, floats over the Stage or disappears.
+small, floats over the Stage or disappears; a focused context may admit a larger invoked workspace
+under [Focused authoring contexts](#focused-authoring-contexts) while the Stage remains the spatial
+truth.
 
 ```text
 HEAD — Index toggle · Biskiq · project (menu: rename, delete, source download and replacement) · World | Experience · active Experience · [location chip when the Index is collapsed] · Find ⌘K · Undo/Redo · saved · Preview
@@ -217,12 +219,15 @@ narrow work to one subject or task with tools suited to it. Object Studio is the
 scope; its journeys are specified in the
 [T5 Studio specification](../../roadmap/t5-expressive-geometry/object-studio-design.md).
 
-A focused context may expose a different dock, denser parameters, graphs, construction or
-inspection views and a substantial invoked workspace when professional work needs them. It still:
+A focused context may expose a different dock, denser parameters, dense graphs, layer editors, UV
+tools, specialised controls, construction or inspection views and a substantial invoked workspace
+when professional work needs them. These are legitimate in-app workflows, and focused material
+authoring is accepted when advanced appearance capabilities require it; its exact design stays open.
+It still:
 
 - stays in the same application, project, Head, Undo/Redo and Save, and changes scope, not source;
 - keeps one canonical selection, one writer per fact and the Card as the selected identity;
-- asks Camera for every framing, linked view and return;
+- asks Camera for every Stage or spatial framing, linked view and return;
 - has an explicit entry, a visible exit and a revalidated return; pending work follows Apply,
   Discard and Continue rather than an invisible commit;
 - offers keyboard, numeric and coarse-pointer paths and a narrow layout;

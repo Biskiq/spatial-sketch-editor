@@ -82,7 +82,7 @@ can judge by eye.
 
 | | Ship in this batch | Extensibility contract (model and seams now, UI later) | Can wait |
 | --- | --- | --- | --- |
-| **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Finish identity is independent of its material family. S8's strict `pbr-metallic-roughness/v1` family carries the first map set and mapping; opacity, emission and later families are admitted as new versioned families ([S8](./s8-professional-material-foundation/implementation-plan.md#admission-after-s8)). One material factory and resolver | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
+| **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Finish identity is independent of its material family. S8's strict `pbr-metallic-roughness/v1` family carries the first map set and mapping; opacity, emission and later families would be admitted as new versioned families ([S8](./s8-professional-material-foundation/implementation-plan.md#admission-after-s8)). One shared resolution and dispatch path; each family supplies its evaluator | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
 | **Artwork** | Import PNG / JPEG / WebP as an **Artwork object**; place on a wall or free in 3D; size in real units with the aspect locked; transparency kept; four frame styles and a mat; **Light it** fitted to the frame; a derived *Lit by* reading; identical in Visitor Preview | Artwork `source` is a tagged union (image now, drawing later). Frame geometry is generated from parameters. Card-action and Library-entry slots that show nothing until a capability fills them | Trim (crop, straighten), wall labels, glazing, persistent hosting on a moving wall, SVG / video, the Artwork Studio |
 | **Light** | Bare emitters of all three kinds placed **free in space** and aimed like a camera; **frustum** beam handles; *Look through*; Lights in the Index; **Light it** | A fixture is an ordinary object grouped with an emitter. Lights are ordinary group members, so a saved rig is a saved group | Fixture models, articulated heads, saved rigs, live-linked rigs, area lights |
 | **Sky** | Six preset starts, Time dial, Sun direction, Haze, More and the Celestial Dial | Scene 11 stores time, heading and noon height. The shared atmosphere resolver derives the Sun and Moon | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
@@ -104,7 +104,7 @@ row; depth opens in place.
 | --- | --- | --- |
 | Pick | Library › Finishes: curated, **This project**, **+ From image** | Instance referencing a base and optional maps |
 | Adjust | **Colour** (palette swatches, then a free picker and dropper) · **Sheen** (Matte · Satin · Gloss · High gloss) | `color` as a literal or a palette-slot reference · `roughness` |
-| More | **Image** (replace, remove) · **Scale** ("one tile = 1.2 m") · **Direction** (0° / 90°, free angle) · exact roughness · **Metal** on/off. From S8: **Maps**. Opacity and glow arrive with later material families | map slots by P20 asset id · `mapping { tileMeters, rotation, offset }` · `metalness` · `normalScale`. From S8 D: a catalogue or content-addressed `material` base with sparse overrides |
+| More | **Image** (replace, remove) · **Scale** ("one tile = 1.2 m") · **Direction** (0° / 90°, free angle) · exact roughness · **Metal** on/off. From S8: **Maps**. Opacity and glow would arrive with later material families | map slots by P20 asset id · `mapping { tileMeters, rotation, offset }` · `metalness` · `normalScale`. From S8 D: a catalogue or content-addressed `material` base with sparse overrides |
 
 Decisions inside this:
 
@@ -126,7 +126,7 @@ Decisions inside this:
     is no bump map to control.
   - **Manual assignment (S8 E):** named roles (Colour · Normal · Roughness · Metalness ·
     Occlusion). Each role binds one project image, or one channel of it, with its convention. Normal strength and
-    convention appear only once a normal map is assigned. This is deterministic and is the escape
+    convention apply only once a normal map is assigned. This is deterministic and is the escape
     hatch for everything else.
   - **Correctable set import (S8 E):** drop several files together and Biskiq *proposes* one Finish,
     matching slots by the common filename suffixes, with a preview and the slot list open for

@@ -71,17 +71,21 @@ functionality nor select an implementation.
 - **One project, one creative environment.** A creator can deepen and revise work from first
   sketch to published experience without exporting it to a specialist application merely to
   finish an ordinary native workflow. External interchange remains valuable and optional: import,
-  export and round trips are supported routes, never the required path for admitted work.
+  export and round trips are valuable routes where supported, never the required path for admitted
+  work.
 - **Progressive depth without a ceiling.** Simple operations stay immediately accessible; precise
   parameters, graphs, procedural systems and specialised tools expose their full depth when a
   creator asks for it. Beginner and professional surfaces are levels of access to one coherent
   capability, not separate engines or permanently restricted product tiers. Complexity on demand is
   desirable; mandatory complexity is not. No ordinary creator has to manage mesh topology,
   construction order, UV layout or a full CAD/DCC workflow.
-- **Freeform freedom with semantic intelligence.** Freeform modeling and architecture-aware
-  authoring coexist. Architectural meaning comes from explicit Layout operations and declared
-  relationships, never from forced classification of arbitrary geometry; freeform geometry stays
-  fully useful without being given architectural meaning.
+- **Freeform freedom with semantic intelligence.** Direct, SketchUp-like modeling freedom and
+  meaningful native architecture coexist. Whether geometry is architecture, and which element kind
+  it is, is established by the committed operation and declared relationships, never inferred from
+  resemblance or reclassified automatically later; freeform geometry stays fully useful without being given architectural
+  meaning. Professional architectural design and documentation are a capability target without
+  requiring full BIM parity, and deeper building-information depth stays optional. Accessibility
+  describes how easily someone can begin creating, not how little they can ultimately accomplish.
 - **Precision without ceremony.** Exact dimensions, constraints and engineering-style operations
   are admissible where they serve creative work, with declared units, tolerances and correctness
   guarantees. Precision does not imply a mandatory traditional CAD interface, and no capability
@@ -90,8 +94,8 @@ functionality nor select an implementation.
 - **Unified creation and presentation.** Modeling, appearance, light, behavior, Camera and
   Experience are connected parts of one pipeline over shared subjects. A presentation can use what
   was built; a revision to what was built reports its effect on what presents it.
-- **Focused contexts, shared capabilities.** World, Object Studio and future focused authoring
-  contexts may expose substantially different tools and densities, while sharing one project,
+- **Focused contexts, shared capabilities.** World, Object Studio and future authoring contexts
+  (lenses, readings and focused scopes) may expose substantially different tools and densities, while sharing one project,
   subject identity, selection, acceptance, history and Save. A context specialises access, not
   ownership: a capability such as appearance authoring belongs to its domain and is reusable on
   every supported target in every context, never re-implemented per context
@@ -111,10 +115,11 @@ functionality nor select an implementation.
 - **Semantic ownership.** Layout, Scene, Camera, Experience and typed resources retain their own
   meaning and validation through one project acceptance path. Creative depth adds no competing
   document, compiler, history or renderer authority.
-- **Open engine, optional managed infrastructure.** Creative work stays portable, and the engine is
-  meant to remain self-hostable. A managed Biskiq service may offer hosted storage, asset delivery,
-  publishing and convenience; it never defines the limits of a project's source, resources or
-  portability. The product licence remains undecided.
+- **Portable creative engine, optional managed services.** Independent project portability and a
+  self-hostable engine are product directions, not claims of current availability. Managed Biskiq
+  services may offer hosting, storage, compute, delivery and collaboration convenience; they never
+  define the limits of a project's source, resources or portability. The product licence remains
+  undecided.
 - **Admission, not inventory.** Admit depth for a meaningful creative workflow with coherent source
   ownership, demonstrated engineering feasibility, and supported correctness, revision, browser
   cost and failure/recovery evidence. Simpler controls, imported content and existing capabilities
@@ -127,9 +132,13 @@ sequencing and specific implementation direction remain TBD where evidence is in
 workflow advantage is a hypothesis. The E0 experiment was withdrawn on 2026-10-27; T5's planning direction is its
 [umbrella plan](../roadmap/t5-expressive-geometry/umbrella-plan.md), which is roadmap authority,
 not a reference contract; Object Studio's dual entry and profile revision are its first landed
-capabilities. No technique — sculpting, surface refinement, authored topology, UV work, material
-graphs, rigging or animation — is promised or excluded by its name or origin; each earns admission
-through this boundary. The [capability horizon](#capability-horizon) lists plausible directions,
+capabilities. No technique — sculpting, surface refinement, authored topology, B-rep solids, UV
+work, material graphs, rigging, animation or programmable behavior — is promised or excluded by its
+name or origin; each earns admission through this boundary. Each admitted source representation has
+clear ownership, versioning and evaluation, and several techniques and operations may compose within
+one authoritative source. Conversion between representations may be lossy only when it is explicit,
+truthfully disclosed and governed by a declared recovery policy; editable source is never silently
+destroyed. The [capability horizon](#capability-horizon) lists plausible directions,
 not commitments.
 
 ### Current state labels
@@ -508,9 +517,10 @@ These exclude structures and mandatory burdens, not creative techniques.
   texturing, modeling or animation engine for Object Studio, World or another
   focused context), or a capability accumulated without coherent source
   ownership merely to match a specialist application
-- shader or runtime implementation code as authored project truth; a material
-  or procedural graph is admissible only as typed, versioned source with a
-  declared evaluator
+- generated shader or runtime implementation code treated as authored project
+  truth merely because it was generated; material and procedural graphs are typed, versioned source with a
+  declared evaluator, and validated, sandboxed programmable source remains
+  admissible through the same boundary
 - becoming a general-purpose 2D design suite, CMS, Webflow-style website
   builder or landing-page builder, or competing with Figma/Canva as a 2D design
   suite
@@ -526,8 +536,8 @@ These exclude structures and mandatory burdens, not creative techniques.
 - migrating legacy/Chopin editor session state into the greenfield product
 
 Use the [creative-depth admission test](#creative-freedom-and-depth) before expanding authoring
-depth. No modeling, sculpting, retopology, UV, rigging, animation, material-graph or precision-CAD
-workflow is permanently external because of the tool category it comes from; none is committed scope
+depth. No modeling, sculpting, retopology, B-rep, UV, rigging, animation, material-graph,
+programmable-behavior, building-information or precision-CAD workflow is permanently external because of the tool category it comes from; none is committed scope
 either. Until a workflow is admitted, external tools and truthful import serve it. Imported or
 generated results remain welcome with truthful supported capabilities, and arbitrary scripting stays
 the separately governed extension tier.
@@ -575,12 +585,12 @@ complete list; each still passes [admission](#creative-freedom-and-depth) throug
 
 | Area | Possible depth | Boundary it keeps |
 | --- | --- | --- |
-| Modeling | Controlled and subdivision surfaces, sculpting and local refinement, precise solids and edits, constraints, procedural and parametric assemblies | One active source per body, explicit conversion with recoverable source, Scene-owned meaning ([T5](../roadmap/t5-expressive-geometry/umbrella-plan.md)) |
-| Architecture | Multi-level buildings, stairs and roofs, element properties, schedules and derived drawings, relationships, standards-based interchange | Layout and its one compiler own architectural meaning; derived views stay readings ([Layout](./components/layout.md#build--world-architecture)) |
-| Appearance | Further material families, layered and procedural materials, masks, painting, decals, projections, baking | Family-owned source, derived evaluation and delivery bakes; shared on objects and architecture ([architecture](./architecture.md#appearance-authoring-destination)) |
-| Animation and behavior | Component and parameter channels, keyframed and procedural motion, clips, rigs, simulations with declared state | Typed resources and F.3 channels; Experience invokes, Camera stays the one viewing authority |
+| Modeling | Controlled and subdivision surfaces, sculpting and local refinement, B-rep and precise solids, constraints, procedural and parametric assemblies | Each admitted source has clear ownership, versioning and evaluation; techniques may compose within one authoritative source; lossy conversion is explicit, disclosed and recoverable by declared policy; Scene-owned meaning for objects, architectural features stay Layout's ([T5](../roadmap/t5-expressive-geometry/umbrella-plan.md)) |
+| Architecture | Multi-level buildings, stairs and roofs, associative dimensions, derived plans, sections and elevations, annotations and sheets, exchange; optionally element properties, schedules, classification, construction layers, IFC and coordination | Meaning by committed Layout operation; Layout and its one compiler own architectural bodies; no BIM parity required and no compliance implied without qualification ([Layout](./components/layout.md#build--world-architecture)) |
+| Appearance | Further material families, optical, layered, procedural and programmable materials, masks, painting, decals, projections, baking | Each family owns its source and evaluator; fallbacks and bakes declare loss; shared on objects and architecture ([architecture](./architecture.md#appearance-authoring-destination)) |
+| Animation and behavior | Component and parameter channels, keyframed and procedural motion, native animation authoring, clips, rigs, programmable behaviors, simulations with declared state | Clips and performances as typed resources, channel effects through F.3, owners of rigs and programmable source declared on admission; coherent Experience time; task-local previews stay previews; Camera stays the one viewing authority |
 | Storytelling and presentation | Branching and conditional flow, narration, multiple Experiences, film and stills, live and XR presentation | Experience owns meaning and occurrences; visitor isolation |
-| Infrastructure | Team libraries and offered updates, self-hosted services, managed Biskiq Cloud hosting, runtime SDK | Portable source and resources; managed services stay optional |
+| Infrastructure | Team libraries and offered updates, self-hosting, managed hosting, storage, compute, delivery and collaboration, runtime SDK | Portable source and resources; managed services stay optional |
 
 
 

@@ -21,10 +21,11 @@ existing projects and releases keep their locked revisions; detaching for
 independent editing creates a new authored identity. Source bytes and conversion
 provenance are retained where later reprocessing requires them.
 
-A library scope is a source of resources, not a dependency of the project that uses them. It may
-be private, shared or hosted by a managed or self-hosted service; whichever hosts it, an inserted
-resource carries its own bytes, revision and provenance into the project, which Saves, Loads and
-publishes without that service. Hosting, sharing and licensing of such services are undecided
+Whichever service hosts a library scope — private, shared, managed or self-hosted, which are
+product directions rather than current availability — project use follows the rules above: an
+authorized shared reference or a vendored immutable copy, with an exact locked revision and
+provenance. No project depends on a fragile pointer into a service's private store, and a portable
+export carries its full closure. Hosting, sharing and licensing of such services are undecided
 ([North Star](../north-star.md#creative-freedom-and-depth)).
 
 **Truthful ingest.** Ingest declares which structure, clips, material slots,
