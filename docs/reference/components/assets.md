@@ -21,6 +21,12 @@ existing projects and releases keep their locked revisions; detaching for
 independent editing creates a new authored identity. Source bytes and conversion
 provenance are retained where later reprocessing requires them.
 
+A library scope is a source of resources, not a dependency of the project that uses them. It may
+be private, shared or hosted by a managed or self-hosted service; whichever hosts it, an inserted
+resource carries its own bytes, revision and provenance into the project, which Saves, Loads and
+publishes without that service. Hosting, sharing and licensing of such services are undecided
+([North Star](../north-star.md#creative-freedom-and-depth)).
+
 **Truthful ingest.** Ingest declares which structure, clips, material slots,
 pivots and metadata survived and which operations are supported. A render-ready
 derivative is never advertised as a preserved semantic assembly; a flat model

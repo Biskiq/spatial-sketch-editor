@@ -139,10 +139,19 @@ selected executable/publication programs require closure under F.5.
 
 the [North Star](./north-star.md#creative-freedom-and-depth) owns the product principles.
 
-World creation, composition and Object Focus refinement operate on the same domain-owned subjects
-through the shared Stage, selection, F4 acceptance/history and Save path. Focus is an editing scope,
-not another Scene, persisted domain or renderer. It neither merges World with Experience nor changes
-PLATE's shell authority. Its entry/return, interactions and instruments remain TBD.
+World creation, composition and Object Studio refinement operate on the same domain-owned subjects
+through the shared Stage, selection, F4 acceptance/history and Save path. Object Studio is a focused
+editing scope, not another Scene, persisted domain or renderer. It neither merges World with
+Experience nor changes PLATE's shell authority. Its dual entry and profile revision are implemented;
+later journeys follow the [T5 Studio specification](../roadmap/t5-expressive-geometry/object-studio-design.md)
+and PLATE's [focused-context rule](./design-system/editor-shell-and-visual-system.md#focused-authoring-contexts).
+
+**Workflow context is not capability ownership.** A lens, reading or focused scope decides which
+domain operations it exposes and how densely. The owning domain decides what an operation means and
+where it applies. A capability admitted for one context is the same capability wherever its targets
+exist: Object Studio, World, Layout surfaces and imported models use one Finish model, one Scene
+planner set, one inspection path and one history. No context receives its own material, texturing,
+geometry, animation or history engine.
 
 Layout retains architectural semantics and the canonical architectural compiler; Scene retains
 object form and composition semantics; typed resources retain independently versioned source/reuse.
@@ -169,6 +178,37 @@ must establish its minimum source and integration needs, obtain owning-track/F r
 and supply correctness, revision and browser-cost evidence. Representation mix, kernels, package
 boundaries, evaluator/caching strategy, implementation direction and delivery sequence remain TBD;
 the proposed directed hybrid has no privileged status. Visitor isolation and T4 delivery remain intact.
+
+### Appearance authoring (destination)
+
+Appearance is Scene-owned and shared by every supported target: native objects, imported models and
+Layout surfaces through Scene `surfaceFinishes`, while Layout stays appearance-free. Four boundaries
+hold for every future material capability:
+
+- **Source is family-owned; evaluation is derived.** A Finish's identity, assignments, sharing and
+  Ask scope do not depend on its material family. Each family owns a strict, versioned source grammar,
+  its override vocabulary and an evaluator version, and declares its capability in the dependency
+  lock. `pbr-metallic-roughness/v1` is the first family and the portable evaluated signal set the
+  renderer consumes. It is not the universal editable material format.
+- **Procedural source survives its bakes.** A procedural, layered or painted family keeps its
+  non-destructive source. Evaluated textures, baked maps and simplified delivery profiles are
+  reproducible derivatives with recorded inputs, evaluator version and declared loss. A bake never
+  replaces editable source, and shader code is never authored truth.
+- **Surface addressing and parameterization have owners.** Appearance targets use owner-declared
+  identities: Layout surface keys with topology lineage, Scene entity and admitted component or
+  source-role identities, and import-declared material slots. The coordinates that place appearance
+  on a target (metric bases, UV sets, projections) are owner-declared or explicitly authored, never
+  inferred from renderer buffers, mesh indices or nearest geometry. Persistent per-face, per-region,
+  masked or painted appearance waits for a declared parameterization owner, anchor under edits and
+  correspondence through geometry revision ([T5 identity](../roadmap/t5-expressive-geometry/umbrella-plan.md#identity-topology-and-revision)).
+- **One material authority across contexts.** Inspection, catalogue, import, library and authoring
+  operations are the same in every context and for agents. A substantial focused material workspace
+  may present them; it owns no separate material model.
+
+The first family's grammar and slices live in the
+[S8 plan](../roadmap/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md);
+its landed rules are promoted into [Scene content](./components/scene-content.md#material-and-light-semantic-gaps),
+Assets, Persistence and Rendering as S8 closes.
 
 ### Shared composition and execution contract (F — destination)
 

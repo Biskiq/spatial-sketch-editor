@@ -399,7 +399,15 @@ Broader depth (stairs, railings, richer parametric components, arbitrary curve
 intersection and noding, NURBS/CAD curve operations, roof helpers, general
 constraint sophistication) is demand/evidence-gated. Architectural extensions remain Layout-owned;
 native object depth follows the [creative-depth admission boundary](../north-star.md#creative-freedom-and-depth).
-UV/rigging and general character-animation authoring remain external workflows.
+UV, rigging and character-animation authoring are outside Layout and not yet admitted anywhere;
+external tools and import serve them until a capability is admitted to its owner.
+
+Architectural meaning comes from explicit Layout operations. Freeform Scene geometry is never
+classified as a Wall, Region or Space by inference from its shape or position; any later adoption of
+freeform geometry as architecture is an explicit, reviewable operation and an open design
+decision. Building-information depth — typed properties, schedules, quantities and derived
+drawings — is admissible Layout depth when evidence supports it. Schedules and drawings are
+readings or delivery derivatives of Layout source, never a second architectural model.
 
 
 

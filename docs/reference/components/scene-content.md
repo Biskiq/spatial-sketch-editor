@@ -540,7 +540,9 @@ Materials (definitions/instances and shared-vs-unique already exist):
   imported glass/alpha preservation; clearing a model assignment restores the
   imported appearance.
 - Arbitrary UVs expose unsupported metric controls with a reason rather than an
-  automatic projection. No shader/node graph, slot editor or texture painting.
+  automatic projection. Shader/node graphs, a slot editor and texture painting are not current
+  capabilities; they enter, if admitted, through the
+  [appearance authoring destination](../architecture.md#appearance-authoring-destination).
 
 Lights and environment:
 
