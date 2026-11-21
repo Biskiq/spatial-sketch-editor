@@ -291,6 +291,19 @@ delete statement, so another owner's id answers as not found. The library is out
 Save: it adds no project version, dependency-lock entry or authored reference, and a Scene
 `place-form-copy` writes a detached form source with a new entity id.
 
+**Material library (T2.S8 G).** Migration 011 widens the same table's `kind` check to `material` and
+adds the portable `recipe_hash`, the optional complete thumbnail key/hash/recipe/byte-size set, and
+`material_library_images` (primary key `(item_id, hash)`, exactly one private object key or shipped
+URI). A material item keeps the canonical `{kind:'material',formatVersion:1,name,recipe}` payload in
+the existing bounded column. Save verifies exact source pins and streams private copies through the
+ObjectStore before atomically inserting metadata, image rows and a `library_receipts` row; abandoned
+staging rows are collected after 24 hours on the next owner-scoped library/transfer access. Transfer
+runs under the destination project row lock, reuses a matching ready asset row or inserts a new one
+with the destination project's own object key, and records its response receipt. The destination
+never references a library or source-project key. Thumbnail and item reads are owner-filtered and
+private/no-store. Removing an item cascades its image rows and reclaims only keys no committed row
+still names.
+
 **Project asset durability (P20 shipped 2026-09-04):** registry metadata in Postgres, heavy
 texture bytes in private R2 through `apps/api` only. Session/package texture URIs cannot reach
 semantic JSONB Save (durability gate). Assets are not normalized into `ProjectDocument` — the

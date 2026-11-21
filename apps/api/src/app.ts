@@ -54,10 +54,15 @@ import {
 import {
 	FormLibraryInputError,
 	FormLibraryNotFoundError,
-	listFormLibraryItems,
-	readFormLibraryItem,
+	expireAbandonedLibraryStaging,
+	listLibraryItems,
+	readLibraryItem,
+	readMaterialLibraryThumbnail,
 	removeFormLibraryItem,
-	saveFormLibraryItem
+	saveFormLibraryItem,
+	saveMaterialLibraryItem,
+	saveMaterialLibraryThumbnail,
+	transferMaterialLibraryItem
 } from './form-library.js';
 import type { ObjectStore } from './object-store.js';
 import {
@@ -185,8 +190,11 @@ export function createApp({
 					.header('Vary', 'Origin')
 					.header('Access-Control-Allow-Methods', 'GET, PUT, POST, PATCH, DELETE, OPTIONS')
 					.header('Access-Control-Allow-Headers', 'Content-Type')
-					// My Objects reads these two headers to verify the item it listed.
-					.header('Access-Control-Expose-Headers', 'ETag, X-Library-Format-Version');
+					// My Objects reads these headers to verify the item it listed.
+					.header(
+						'Access-Control-Expose-Headers',
+						'ETag, X-Library-Format-Version, X-Library-Kind'
+					);
 			}
 			if (request.method === 'OPTIONS') {
 				if (!origin || origin !== expectedBrowserOrigin) {
@@ -691,11 +699,20 @@ export function createApp({
 	app.get('/library/items', { onRequest: requireLibrarySession }, async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		if (!userId) return unauthorized(reply);
+		const rawKind = (request.query as { kind?: unknown }).kind;
+		if (rawKind !== undefined && rawKind !== 'form' && rawKind !== 'material' && rawKind !== 'all') {
+			return reply.code(400).send(errorBody('invalid_library_item', 'Expected kind=form, material or all'));
+		}
+		try {
+			await expireAbandonedLibraryStaging(pool, objectStore, userId);
+		} catch {
+			// Cleanup never blocks a list.
+		}
 		try {
 			// Owner names and ids are as private as the bytes; never let a browser
 			// retain them across a sign-out or owner switch.
 			reply.header('Cache-Control', 'private, no-store');
-			return { items: await listFormLibraryItems(pool, userId) };
+			return { items: await listLibraryItems(pool, userId, rawKind ?? 'form') };
 		} catch (error) {
 			return libraryFailure(app, reply, error, 'Library list failed');
 		}
@@ -708,7 +725,20 @@ export function createApp({
 			if (!isJsonContentType(request.headers['content-type'])) {
 				return reply.code(415).send(errorBody('unsupported_media_type', 'Unsupported Media Type'));
 			}
-			return reply.code(201).send(await saveFormLibraryItem(pool, userId, request.body));
+			const body = request.body;
+			const material =
+				typeof body === 'object' &&
+				body !== null &&
+				!Array.isArray(body) &&
+				typeof (body as { payload?: unknown }).payload === 'object' &&
+				(body as { payload?: { kind?: unknown } }).payload?.kind === 'material';
+			return reply
+				.code(201)
+				.send(
+					material
+						? await saveMaterialLibraryItem(pool, userId, body, objectStore, objectNamespace)
+						: await saveFormLibraryItem(pool, userId, body)
+				);
 		} catch (error) {
 			return libraryFailure(app, reply, error, 'Library save failed');
 		}
@@ -720,12 +750,18 @@ export function createApp({
 		if (!userId) return unauthorized(reply);
 		if (!isValidLibraryItemId(itemId)) return notFound(reply);
 		try {
-			const { summary, bytes } = await readFormLibraryItem(pool, userId, itemId);
+			await expireAbandonedLibraryStaging(pool, objectStore, userId);
+		} catch {
+			// Cleanup never blocks a read.
+		}
+		try {
+			const { summary, bytes } = await readLibraryItem(pool, userId, itemId);
 			return reply
 				.header('Content-Type', 'application/json; charset=utf-8')
 				.header('Content-Length', String(bytes.byteLength))
 				.header('ETag', `"${summary.contentId}"`)
 				.header('X-Library-Format-Version', String(summary.formatVersion))
+				.header('X-Library-Kind', summary.kind)
 				// Owner-scoped bytes are never a shared or long-lived browser cache:
 				// Remove must be immediate, and a later session must re-authorize rather
 				// than read a previous owner's item from disk.
@@ -742,10 +778,114 @@ export function createApp({
 		if (!userId) return unauthorized(reply);
 		if (!isValidLibraryItemId(itemId)) return notFound(reply);
 		try {
-			await removeFormLibraryItem(pool, userId, itemId);
+			await removeFormLibraryItem(pool, userId, itemId, objectStore);
 			return reply.code(204).send();
 		} catch (error) {
 			return libraryFailure(app, reply, error, 'Library remove failed');
+		}
+	});
+
+	// The optional fixed thumbnail derivative. It is always private owner data,
+	// never a shared cache entry; a missing derivative is an honest 404 and the
+	// item remains usable with the swatch fallback.
+	app.get('/library/items/:itemId/thumbnail', { onRequest: requireLibrarySession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const itemId = (request.params as { itemId?: unknown }).itemId;
+		if (!userId) return unauthorized(reply);
+		if (!isValidLibraryItemId(itemId)) return notFound(reply);
+		try {
+			const thumbnail = await readMaterialLibraryThumbnail(pool, userId, itemId, objectStore);
+			return reply
+				.header('Content-Type', 'image/png')
+				.header('Content-Length', String(thumbnail.byteSize))
+				.header('Cache-Control', 'private, no-store')
+				.send(thumbnail.body);
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library thumbnail read failed');
+		}
+	});
+
+	app.put('/library/items/:itemId/thumbnail', {
+		onRequest: requireLibrarySession,
+		handlerTimeout: lifecyclePolicy.handlerTimeoutMs
+	}, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const itemId = (request.params as { itemId?: unknown }).itemId;
+		if (!userId) return unauthorized(reply);
+		if (!isValidLibraryItemId(itemId)) return notFound(reply);
+		const query = request.query as { expectedContentId?: unknown; recipeKey?: unknown };
+		if (
+			typeof query.expectedContentId !== 'string' ||
+			!/^sha256-[0-9a-f]{64}$/.test(query.expectedContentId) ||
+			typeof query.recipeKey !== 'string' ||
+			!/^sha256-[0-9a-f]{64}$/.test(query.recipeKey)
+		) {
+			return reply
+				.code(400)
+				.send(errorBody('invalid_library_item', 'Expected expectedContentId and recipeKey pinning the item revision'));
+		}
+		const contentType = String(request.headers['content-type'] ?? '').split(';', 1)[0]?.trim().toLowerCase();
+		if (contentType !== 'application/octet-stream') {
+			return reply.code(415).send(errorBody('unsupported_media_type', 'Unsupported Media Type'));
+		}
+		const contentLength = readUploadContentLength(request);
+		if (contentLength instanceof AssetInputError) return assetInputFailure(reply, contentLength);
+		if (!(request.body instanceof Readable) && !Buffer.isBuffer(request.body)) {
+			return reply.code(400).send(errorBody('invalid_upload', 'Invalid upload body'));
+		}
+		if (contentLength > 256 * 1024) {
+			return reply.code(413).send(errorBody('payload_too_large', 'Payload Too Large'));
+		}
+		const bytes = new Uint8Array(contentLength);
+		if (Buffer.isBuffer(request.body)) {
+			if (request.body.length !== contentLength) {
+				return reply.code(400).send(errorBody('invalid_upload', 'Upload length does not match Content-Length'));
+			}
+			bytes.set(request.body);
+		} else {
+			let offset = 0;
+			try {
+				for await (const chunk of request.body) {
+					const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+					if (offset + buffer.length > bytes.length) {
+						return reply.code(400).send(errorBody('invalid_upload', 'Upload length does not match Content-Length'));
+					}
+					bytes.set(buffer, offset);
+					offset += buffer.length;
+				}
+			} catch {
+				return reply.code(400).send(errorBody('invalid_upload', 'Upload stream failed'));
+			}
+			if (offset !== contentLength) {
+				return reply.code(400).send(errorBody('invalid_upload', 'Upload length does not match Content-Length'));
+			}
+		}
+		try {
+			await saveMaterialLibraryThumbnail(pool, userId, itemId, bytes, {
+				expectedContentId: query.expectedContentId,
+				recipeKey: query.recipeKey,
+				objectStore,
+				objectNamespace
+			});
+			return reply.code(204).send();
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library thumbnail save failed');
+		}
+	});
+
+	app.post('/library/items/:itemId/transfers', { onRequest: requireLibrarySession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const itemId = (request.params as { itemId?: unknown }).itemId;
+		if (!userId) return unauthorized(reply);
+		if (!isValidLibraryItemId(itemId)) return notFound(reply);
+		try {
+			if (!isJsonContentType(request.headers['content-type'])) {
+				return reply.code(415).send(errorBody('unsupported_media_type', 'Unsupported Media Type'));
+			}
+			reply.header('Cache-Control', 'private, no-store');
+			return await transferMaterialLibraryItem(pool, userId, itemId, request.body, objectStore, objectNamespace);
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library transfer failed');
 		}
 	});
 
