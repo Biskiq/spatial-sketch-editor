@@ -29,12 +29,12 @@ import {
 	proposeMaterialSet,
 	type DraftEdits
 } from '@portfolio/project-model/material-authoring';
-import { applyFinishPatch } from '../../../../../packages/project-model/src/scene-planning/finish-patch';
 import {
 	SCENE_FINISH_PATCH,
 	SCENE_FINISH_REGISTER,
 	SCENE_FINISH_REMOVE,
 	SCENE_FINISH_RENAME,
+	applyFinishPatch,
 	inspectFinish,
 	resolveEnvelopeFinish,
 	surfaceUserKey

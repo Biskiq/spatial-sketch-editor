@@ -139,7 +139,7 @@ limitation: F4 still refuses a compound write and E does not widen it. It is rec
 | `npm run check` | 0 errors; 16 pre-existing warnings |
 | `check:project-model` | pass |
 | `npm run build` | pass |
-| focused E suites | 42 passed across four files; the two changed suites re-ran 19/19 |
+| focused E suites | 42 passed across four files; the two changed suites re-ran 25/25 |
 | `/dev/s8-e` recheck | WebGL2: auto = manual saved bytes, edited differs, no console errors |
 
 The browser recheck ran on this workstation's Chromium, which exposes no WebGPU adapter (the
