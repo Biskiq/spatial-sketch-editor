@@ -124,7 +124,10 @@ and fixed: `acceptDraft` treated every target without analysis facts as `target-
 (or another non-paintable subject) was reported as "still being analysed" forever. It now refuses a
 light, a non-paintable subject, a missing object and a retired Layout surface as `refused` before any
 upload, and applies the same rule after IO. The acceptance test asserts the light refusal and an
-unchanged project. No other substantive E-scope defect was found.
+unchanged project. A second review pass then fixed the remaining findings — bounded set-import lane
+cancellation, dormant-surface refusal, F4 refusal mapping, the pristine *Just this* clone normal
+form, a stranded `normalScale` reset and curated `materialize` — each covered by the expanded
+15-test acceptance suite and summarized under *Review follow-up*.
 
 The mixed Scene-object + Layout-surface registration limit is accepted as E's documented workflow
 limitation: F4 still refuses a compound write and E does not widen it. It is recorded in the plan's
