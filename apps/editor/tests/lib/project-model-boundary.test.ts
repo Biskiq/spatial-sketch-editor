@@ -78,7 +78,6 @@ describe('[cap:project.envelope core] project-model package boundary', () => {
 		expect(typeof materials.readRecipe).toBe('function');
 		expect(typeof materials.resolveFinish).toBe('function');
 		expect(typeof materials.bindFinish).toBe('function');
-		expect(typeof materials.sceneFinishToContract).toBe('function');
 		expect(materials.NEUTRAL_RECIPE_HASH).toMatch(/^sha256-[0-9a-f]{64}$/);
 		expect(materials.CATALOGUE_MATERIAL_IDS).toHaveLength(6);
 		for (const id of materials.CATALOGUE_MATERIAL_IDS) {

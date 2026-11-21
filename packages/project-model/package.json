@@ -20,6 +20,10 @@
       "types": "./src/materials/index.ts",
       "default": "./src/materials/index.ts"
     },
+    "./material-authoring": {
+      "types": "./src/material-authoring/index.ts",
+      "default": "./src/material-authoring/index.ts"
+    },
     "./program": {
       "types": "./src/program/index.ts",
       "default": "./src/program/index.ts"
@@ -55,10 +59,6 @@
     "./units/validate": {
       "types": "./src/units/validate.ts",
       "default": "./src/units/validate.ts"
-    },
-    "./scene-conversion": {
-      "types": "./src/scene-conversion.ts",
-      "default": "./src/scene-conversion.ts"
     }
   },
   "files": [

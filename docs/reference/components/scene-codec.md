@@ -1,31 +1,34 @@
 # Scene codec layout
 
 **Read when:** working inside `packages/project-model/src/scene-codec/` or the app Scene seam.
-**Last reviewed:** 2026-11-19 (S5b Region face references and Scene 11)
-**Version note:** S8 D (#390) landed Scene 12 / resources 3. This layout still describes Scene 11
-until S8 E's documentation work promotes D's rules.
+**Last reviewed:** 2026-11-21 (S8 E: Scene 12 / resources 3 is the sole canonical format)
 
 ---
 
 ## Codec boundary
 
-Scene 11 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
+Scene 12 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
 by the Camera codec is not a second authored Scene authority. Camera and Experience are separate
 units today. Release readers do not consume authoring codecs. Compound acceptance belongs to F.4.
 
-Scene 11 stores the authored Sky. Its Sun and Moon positions are derived from time,
+Scene 12 stores the authored Sky. Its Sun and Moon positions are derived from time,
 heading and noon height. The all-default Studio Sky normalizes to absence, as does an empty
-environment. Scene 10 and earlier source and release payloads are refused with
-`unsupported_format_version`. Publishing again requires a re-authored Scene 11 project.
+environment. Scene 11 and earlier source and release payloads are refused with
+`unsupported_format_version`; no converter exists. Publishing again requires a re-authored Scene 12
+project.
 
-Scene 11's Finish grammar is strict. `maps` names one texture id per slot; `mapping` carries
-`tileMeters`, `rotation` and `offset`; `normalScale` and `normalFlipY` are refused without
-`maps.normal`. A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec
-leaves follower closure to the unit validator, which is the only reader holding the palette. Every
-default (empty maps/mapping, `rotation: 0`, `offset: [0, 0]`, `normalScale: 1`, `normalFlipY:
-false`) is dropped from the parsed value, so canonical bytes hash the authored content only. The
-retired `baseTextureId` is an unknown key, and a `/project-assets/{assetId}` texture's Scene id must
-equal that asset id (`texture_id_mismatch`).
+Scene 12's Finish grammar is strict and is read by the material reader (`materials/read.ts`), which
+never clamps. A Finish has a `catalogue` or `material` (recipe digest) base and sparse `overrides`;
+an absent field inherits the base, `null` disables one base map, and an empty override container is
+never persisted, so canonical bytes hash the authored content only. A `target` or `surface` mapping
+carries a metric (`tileMeters`, `rotation`, `offset`); a `uv` mapping names a native UV set, repeat,
+rotation and offset. Rotations normalize to [0, 2π) radians and offsets to [0, 1). The codec does not tie `normalScale` to a normal map: a disabled normal map keeps its stored strength dormant. The
+F4 Finish patch refuses a patch that sets `normalScale` (or resets the normal map while leaving an authored
+`normalScale`) when no normal binding remains (`normal-control-without-normal`). A colour is a lowercase `#rrggbb` literal or a `{slot}` follower, and the codec leaves
+follower closure to the unit validator, which is the only reader holding the palette. Retired
+Scene 11 Finish keys such as `normalFlipY` and `baseTextureId` are unknown keys, and a
+`/project-assets/{assetId}` texture's Scene id must equal that asset id (`texture_id_mismatch`).
+Material definitions live in resources 3, never in Scene.
 
 Optional `surfaceFinishes` is a nonempty, sorted and unique array of assignments to canonical Layout
 `wall-side`, `room-floor`, `room-lid` or `region-face` references. A Region face must be `top` or

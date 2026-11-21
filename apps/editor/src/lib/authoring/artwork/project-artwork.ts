@@ -71,7 +71,31 @@ export type ImportedProjectImage = {
 export type ProjectImageImportHooks = {
 	/** `checking` covers the probe and decode; `uploading` covers the P20 write. */
 	readonly onPhase?: (phase: 'checking' | 'uploading') => void;
+	/**
+	 * Asset ids the caller's project already references. When several ready rows
+	 * hold identical bytes, a referenced one is reused before any other (T2.S8 E5).
+	 */
+	readonly preferAssetIds?: ReadonlySet<string>;
 };
+
+/**
+ * One reservation/upload per project and digest at a time. A second import of
+ * the same bytes while the first is in flight waits for that asset id instead of
+ * reserving another row; if the first fails or is cancelled, it runs its own.
+ */
+const inflightImageUploads = new Map<string, Promise<string>>();
+
+/**
+ * The deterministic reuse choice among identical ready rows: a referenced id
+ * first, else the lexically first id. Listing order never decides.
+ */
+export function preferredProjectImageRow<T extends { readonly id: string }>(
+	rows: readonly T[],
+	prefer: ReadonlySet<string> | undefined
+): T | undefined {
+	const sorted = [...rows].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+	return sorted.find((row) => prefer?.has(row.id) === true) ?? sorted[0];
+}
 
 function ready(asset: ProjectAssetMetadata | undefined): asset is ProjectAssetMetadata {
 	return asset?.kind === 'texture' && asset.storageKind === 'r2' &&
@@ -374,19 +398,32 @@ export async function importProjectImage(
 	await verifyArtworkDecode(bytes, mime, { pixelWidth, pixelHeight });
 	signal.throwIfAborted();
 	const sha256 = `sha256-${await imageSha256(bytes)}`;
-	const rows = await api.listAssets(projectId, signal);
 	const matches = (row: ProjectAssetMetadata) =>
 		ready(row) && row.mime === mime && row.byteSize === bytes.length && row.sha256 === sha256;
-	const prior = rows.find(matches);
-	let assetId: string;
 	const name = file.name.trim().slice(0, 120) || policy.label;
-	hooks.onPhase?.('uploading');
-	if (prior) {
-		assetId = prior.id;
-		await readVerifiedArtwork(api, projectId, { assetId, pixelWidth, pixelHeight }, signal, prior);
-	} else {
+	const inflightKey = `${projectId}\u0000${sha256}`;
+	const pending = inflightImageUploads.get(inflightKey);
+	if (pending !== undefined) {
+		try {
+			const assetId = await pending;
+			signal.throwIfAborted();
+			await readVerifiedArtwork(api, projectId, { assetId, pixelWidth, pixelHeight }, signal);
+			return { assetId, name, pixelWidth, pixelHeight, mime, byteSize: bytes.length, sha256 };
+		} catch (error) {
+			signal.throwIfAborted();
+			void error;
+		}
+	}
+	const stage = async (): Promise<string> => {
+		const rows = await api.listAssets(projectId, signal);
+		const prior = preferredProjectImageRow(rows.filter(matches), hooks.preferAssetIds);
+		hooks.onPhase?.('uploading');
+		if (prior) {
+			await readVerifiedArtwork(api, projectId, { assetId: prior.id, pixelWidth, pixelHeight }, signal, prior);
+			return prior.id;
+		}
 		const reserved = await api.registerAsset(projectId, name, signal);
-		assetId = reserved.id;
+		const assetId = reserved.id;
 		try {
 			const uploaded = await api.uploadAsset(projectId, assetId, bytes, signal);
 			if (!matches(uploaded)) throw new Error(`${policy.label} upload did not match the source.`);
@@ -396,6 +433,15 @@ export async function importProjectImage(
 			if (!recovered) throw error;
 			await readVerifiedArtwork(api, projectId, { assetId, pixelWidth, pixelHeight }, signal, recovered);
 		}
+		return assetId;
+	};
+	const staging = stage();
+	inflightImageUploads.set(inflightKey, staging);
+	let assetId: string;
+	try {
+		assetId = await staging;
+	} finally {
+		if (inflightImageUploads.get(inflightKey) === staging) inflightImageUploads.delete(inflightKey);
 	}
 	return { assetId, name, pixelWidth, pixelHeight, mime, byteSize: bytes.length, sha256 };
 }

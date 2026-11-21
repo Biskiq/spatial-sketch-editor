@@ -85,8 +85,8 @@ contract until an explicitly reviewed cutover.
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
 `units`. Unit payload versions are Layout 9, Scene 12, Camera 1, Experience 4 and resources 3
-(S8 D, #390). The Scene field and Finish descriptions below still describe Scene 11 until S8 E's
-documentation work promotes D's grammar.
+(S8 D, #390). Scene 12 / resources 3 is the sole canonical format; by owner ruling (S8 E) no
+Scene 11 → 12 conversion, saved-head inventory or rollback campaign exists.
 Layout's envelope unit version is not a second number: `LAYOUT_UNIT_FORMAT_VERSION` is the Layout
 `formatVersion` itself (`LAYOUT_WALL_FIRST_FORMAT_VERSION`), so one authority governs the unit
 header and the payload.
@@ -105,7 +105,7 @@ of heads, revisions, pending captures and releases, a tested restore with the ou
 and the owner's approved disposition for every affected source. See the
 [verticality cutover gate](../../roadmap/t1-spatial-world/next-batch/v-plan-verticality.md#stored-source-and-activation).
 
-**Scene 11** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
+**Scene 12** carries `textures`, `materials`, `entities`, optional `clusters`, optional `palette`,
 optional `environment`, optional `surfaceFinishes`, and the project Artwork shelf. `surfaceFinishes`
 contains one assignment per qualified Layout Wall-side, Space-floor, Space-lid or Region
 `top`/`underside` reference; a Region `edge` has no Finish. Layout does not store appearance. The shelf owns project-local image entries. Every
@@ -115,16 +115,22 @@ default, and generated frame dimensions are never stored. This additive record d
 Scene unit; a reader that predates it refuses a framed document at strict validation. Scene carries
 no Camera or editorial fields. Scene 4 introduced the `form` entity,
 whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
-Scene 11 stores world presentation as an optional `environment`. The Sky records time, noon
+Scene 12 stores world presentation as an optional `environment`. The Sky records time, noon
 heading, noon height, haze, exposure, softness, the shared shadow switch, Moon colour and strength,
 and Sky and Ground colours. The optional Treatment is `flat-colour` or `clay`. Absent Sky uses
-Studio light. A Finish may name one texture id per `maps` slot, a `mapping` and a normal scale.
-A colour is a lowercase literal or a palette follower, and `palette` holds at most eight ordered
-slots. The retired single colour map is refused as an unknown key.
+Studio light. A Finish is `{id, name, base, overrides?}`. Its base names one curated `catalogue` id or
+one project `material` definition by recipe digest. Sparse `overrides` may set `color` (a lowercase
+literal or a palette follower), `roughness`, `metalness`, `occlusionStrength`, `normalScale`, the set
+`mapping` (`target`, `surface` or `uv`), and per-role `maps` (`color`, `normal`, `roughness`,
+`metalness`, `occlusion`). A map override binds a Scene texture; `null` explicitly disables the
+base's map. An empty override container is never persisted. `palette` holds at most eight ordered
+slots. Retired single-map and tile fields are refused as unknown keys. Resources 3 adds the `material` kind: `id === contentRevision`
+is the canonical recipe digest, with one exact `resource:material` lock requiring
+`pbr-metallic-roughness@1` and exactly one local image source per bound digest.
 
-Scene 10 projects and releases are refused with `unsupported_format_version`. Scene 10 releases
-remain inaccessible under Scene 11. Authors must recreate their project in Scene 11 before they can
-publish it again. S2, S5a and S5b provide no converter or automatic republish path.
+Scene 11 and earlier projects and releases are refused with `unsupported_format_version`; there is
+no converter, dual reader or automatic republish path. Authors recreate such a project in Scene 12
+before publishing it again (pre-baseline policy, below).
 
 Scene 7 retired the authored `directional` Light
 kind (the Sky owns the only Sun): any `directional` entity is refused with a typed error, never

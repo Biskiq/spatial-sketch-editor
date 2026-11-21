@@ -205,7 +205,7 @@ describe('E6/R3 — retained Room representation parity', () => {
 		store.dispose();
 	}, 60_000);
 
-	it('resolves Scene 11 Room floor and lid Finishes through the shared material store', () => {
+	it('resolves Scene 12 Room floor and lid Finishes through the shared material store', () => {
 		const geometry = compiled(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
 		const roomId = geometry.rooms[0]!.roomId;
 		let scene: RuntimeScene = {

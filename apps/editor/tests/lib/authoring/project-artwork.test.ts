@@ -269,6 +269,45 @@ describe('Finish images through the shared project importer (D3)', () => {
 		expect(vi.mocked(verifyArtworkDecode)).toHaveBeenCalledTimes(2);
 	});
 
+	it('reserves and uploads identical in-flight bytes once (T2.S8 E5)', async () => {
+		const harness = importHarness();
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => (release = resolve));
+		const upload = harness.uploadAsset.getMockImplementation()!;
+		harness.uploadAsset.mockImplementation(async (...args) => {
+			await gate;
+			return upload(...args);
+		});
+		const signal = new AbortController().signal;
+		const both = Promise.all([
+			importProjectImage(harness.api, 'project', file('Steel_ORM.png'), signal, FINISH_IMAGE_POLICY),
+			importProjectImage(harness.api, 'project', file('steel orm copy.png'), signal, FINISH_IMAGE_POLICY)
+		]);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		release();
+		const [left, right] = await both;
+		expect(left.assetId).toBe('imported-finish');
+		expect(right.assetId).toBe(left.assetId);
+		expect(harness.registerAsset).toHaveBeenCalledTimes(1);
+		expect(harness.uploadAsset).toHaveBeenCalledTimes(1);
+	});
+
+	it('prefers an already referenced ready row, else the lexically first, among identical bytes', async () => {
+		const sha = await digest();
+		const rows = [row('c-row', sha), row('a-row', sha), row('b-row', sha)];
+		const listed = { ...importHarness(), rows };
+		listed.listAssets.mockImplementation(async () => rows);
+		const signal = new AbortController().signal;
+		const lexical = await importProjectImage(listed.api, 'project', file(), signal, FINISH_IMAGE_POLICY);
+		expect(lexical.assetId).toBe('a-row');
+		const referenced = await importProjectImage(listed.api, 'project', file(), signal, FINISH_IMAGE_POLICY, {
+			preferAssetIds: new Set(['c-row'])
+		});
+		expect(referenced.assetId).toBe('c-row');
+		expect(listed.registerAsset).not.toHaveBeenCalled();
+		expect(listed.uploadAsset).not.toHaveBeenCalled();
+	});
+
 	it('refuses past the Artwork byte cap before reading the file', async () => {
 		const harness = importHarness();
 		const oversized = {

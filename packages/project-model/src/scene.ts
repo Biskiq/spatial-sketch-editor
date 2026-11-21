@@ -22,7 +22,7 @@ export type MaterialId =
    */
   | 'pbr-neutral-v1';
 
-/** Scene 11 assignments: every canonical Layout surface identity. */
+/** Surface Finish assignments: every canonical Layout surface identity. */
 export type SceneSurfaceRef = LayoutSurfaceRef;
 export type SceneSurfaceFinish = {
   readonly surface: SceneSurfaceRef;
@@ -162,41 +162,11 @@ export type SceneTextureAsset = {
 export type SceneColor = string | { readonly slot: string };
 
 /**
- * The colour-image slot map: each entry names a `SceneTextureAsset.id`, never a
- * P20 asset id directly. A named slot replaces the base catalogue's texture for
- * that slot; unnamed slots keep the base's.
- */
-/**
- * The Scene 11 string map slots. Kept only as the outgoing-format vocabulary
- * the offline converter reads; Scene 12 never persists this shape.
- */
-export type SceneFinishMaps = {
-	readonly color?: string;
-	readonly normal?: string;
-	readonly roughness?: string;
-	readonly occlusion?: string;
-	readonly metalness?: string;
-};
-
-/**
- * One finish's texture mapping. Forms and Walls emit metre UVs, so `tileMeters`
- * states one tile's real size; `rotation` is radians about the UV centre and
- * `offset` shifts in tile fractions.
- */
-export type SceneFinishMapping = {
-	readonly tileMeters?: readonly [number, number];
-	readonly rotation?: number;
-	readonly offset?: readonly [number, number];
-};
-
-/**
  * A project Finish: a named look over one catalogue base or one immutable
  * material definition, plus sparse role-typed overrides.
  *
- * Scene 12 uses the portable v1 Finish grammar directly. The previous flat
- * fields (`baseMaterialId`, string map slots, `normalFlipY`) were the Scene 11
- * spelling; their meanings map onto `base`, `overrides.maps` and the normal
- * binding's `convention`. Display names remain outside recipe identity.
+ * Scene 12 stores the portable v1 Finish grammar directly. Display names remain
+ * outside recipe identity.
  */
 export type SceneMaterialInstance = import('./materials/types').Finish;
 

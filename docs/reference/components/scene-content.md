@@ -1,22 +1,20 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-11-19 (S5b floors, lids and Region faces on Scene 11). The earlier
+**Last reviewed:** 2026-11-21 (S8 E manual authoring and set import on Scene 12). The earlier
 2026-10-28 review covered My Objects independent-copy insertion on the S02 Shape reading, per-axis
 sizing and the S01 native-form and Scene 4 baseline; current behavior is below and production
 activation remains owner-controlled.
-**Version note:** S8 D (#390) landed Scene 12 / resources 3. This contract still describes Scene 11
-until S8 E's documentation work promotes D's rules.
 
 ---
 
 ## Current implementation
 
-The live Scene is the world-local Scene 11 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 12 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
-Scene 11 also owns optional `surfaceFinishes`: one shared Finish assignment per qualified Layout
+Scene 12 also owns optional `surfaceFinishes`: one shared Finish assignment per qualified Layout
 surface identity. It admits Wall sides, Space floors and lids, and authored Region `top` and
 `underside` faces; a Region `edge` is not a Finish face. Paint reaches all of them through the one
 Face/Space workflow, with Space scope expanding to the oriented Wall sides, the floor, a present

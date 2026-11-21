@@ -108,6 +108,23 @@ describe('preview-surface-boundary validator', () => {
 		expect(result.forbidden[0]!.id).toBe(planning);
 	});
 
+	it('rejects the material set proposal and draft composer in the visitor closure (T2.S8 E5)', () => {
+		const root = '/src/lib/visitor/VisitorPreviewSurface.svelte';
+		const authoring = '/packages/project-model/src/material-authoring/proposal.ts';
+		expect(isForbiddenPreviewSurfaceModule(authoring)).toContain('material set proposal');
+		expect(isForbiddenPreviewSurfaceModule('/node_modules/@portfolio/project-model/material-authoring/index.ts')).toContain(
+			'material set proposal'
+		);
+		const result = validatePreviewSurfaceGraph(
+			graphFrom(root, {
+				[root]: { imports: [authoring] },
+				[authoring]: { imports: [] }
+			})
+		);
+		expect(result.ok).toBe(false);
+		expect(result.forbidden[0]!.id).toBe(authoring);
+	});
+
 	it('rejects a two-hop indirect authoring import through a generic leaf (P22.1)', () => {
 		const root = '/src/lib/visitor/VisitorPreviewSurface.svelte';
 		const mid = '/src/lib/visitor/visitor-cold-runtime.ts';

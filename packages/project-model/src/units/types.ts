@@ -56,8 +56,6 @@ export {
 export type {
 	SceneColor,
 	SceneEnvironment,
-	SceneFinishMaps,
-	SceneFinishMapping,
 	ScenePaletteSlot,
 	SceneSky,
 	SceneSkyPreset,
