@@ -30,7 +30,7 @@ future work. Automated evidence status is separate from owner product acceptance
 >
 > Publishing compiles an accepted revision, selected Experience(s), and a delivery profile into a visitor-safe package with explicit semantic compatibility and resource closure. Each published Experience has its own publication pointer; semantic locations persist across republishing while their subjects persist, and pinned release addresses preserve historical context. Compatible runtimes support interactive links, embedding, presenting, stills, and film through declared execution choices. Immutable delivery derivatives are separate from authored truth and native editable exports. A Release Baseline governs the first durable prepared-visitor package; a separate Source Baseline follows landed foundation formats. Visitor release readers never depend on the changing authoring validator.
 >
-> Human manipulation and agents operate the same inspectable capabilities through typed, serializable intents and expected-revision validation. Cross-domain acceptance is atomic and produces one undo result. The product earns its value through creative usefulness, reliable revision, reuse, and audience outcomes. Ordinary spatial experiences do not require general mesh modeling, engineering simulation, or game-engine programming.
+> Human manipulation and agents operate the same inspectable capabilities through typed, serializable intents and expected-revision validation. Cross-domain acceptance is atomic and produces one undo result. The product earns its value through creative usefulness, reliable revision, reuse, and audience outcomes. Ordinary spatial experiences do not require general mesh modeling, engineering simulation, or game-engine programming; deeper modeling, appearance, animation and behavior remain reachable inside the same project as each capability is admitted.
 
 Build, Stage, Direct, and Experience express capabilities, not a mandatory
 waterfall. The conceptual loop is:
@@ -45,10 +45,17 @@ Compose / Build
 → Revise
 ```
 
-The product is **not** a Blender replacement, a game engine, a BIM system, a
-Webflow-style website builder, a general CMS, or a Figma/Canva-style 2D design
-suite. Its value is the combination of **semantic spatial authoring + experience
-direction + visitor-facing web UI + a portable, publishable runtime**.
+Biskiq is a **unified spatial creation environment**: architecture, freeform and
+precise modeling, materials, light, animation, behavior, Camera direction,
+storytelling and publishing can coexist in one continuing project. It is not
+defined by imitating any specialist application. A capability is neither
+excluded nor promised because it traditionally belongs to a DCC, CAD, BIM,
+texturing or game-engine tool; it enters through
+[capability admission](#creative-freedom-and-depth). Biskiq is not a
+Webflow-style website builder, a general CMS or a Figma/Canva-style 2D design
+suite. Its value is the combination of **semantic spatial authoring + integrated
+creative depth + experience direction + visitor-facing web UI + a portable,
+publishable runtime**.
 
 Human direct manipulation, structured authoring, and AI/agent authoring operate
 on the same semantic project model, as clients of one canonical state. AI is not
@@ -57,40 +64,82 @@ generator.
 
 ### Creative freedom and depth
 
-These principles guide new design; they neither describe shipped T5 functionality nor select its
-implementation.
+These principles are the one statement of Biskiq's creative philosophy; roadmaps and contracts
+reference them rather than restating them. They guide new design; they neither describe shipped
+functionality nor select an implementation.
 
+- **One project, one creative environment.** A creator can deepen and revise work from first
+  sketch to published experience without exporting it to a specialist application merely to
+  finish an ordinary native workflow. External interchange remains valuable and optional: import,
+  export and round trips are valuable routes where supported, never the required path for admitted
+  work.
+- **Progressive depth without a ceiling.** Simple operations stay immediately accessible; precise
+  parameters, graphs, procedural systems and specialised tools expose their full depth when a
+  creator asks for it. Beginner and professional surfaces are levels of access to one coherent
+  capability, not separate engines or artificially limited creative capabilities. Complexity on demand is
+  desirable; mandatory complexity is not. No ordinary creator has to manage mesh topology,
+  construction order, UV layout or a full CAD/DCC workflow.
+- **Freeform freedom with semantic intelligence.** Direct, SketchUp-like modeling freedom and
+  meaningful native architecture coexist. Whether geometry is architecture, and which element kind
+  it is, is established by the committed operation and declared relationships, never inferred from
+  resemblance or reclassified automatically later; freeform geometry stays fully useful without being given architectural
+  meaning. Professional architectural design and documentation are a capability target without
+  requiring full BIM parity, and deeper building-information depth stays optional. Accessibility
+  describes how easily someone can begin creating, not how little they can ultimately accomplish.
+- **Precision without ceremony.** Exact dimensions, constraints and engineering-style operations
+  are admissible where they serve creative work, with declared units, tolerances and correctness
+  guarantees. Precision does not imply a mandatory traditional CAD interface, and no capability
+  claims structural, code-compliance, manufacturing or safety certification unless that specific
+  capability declares and qualifies it.
+- **Unified creation and presentation.** Modeling, appearance, light, behavior, Camera and
+  Experience are connected parts of one pipeline over shared subjects. A presentation can use what
+  was built; a revision to what was built reports its effect on what presents it.
+- **Focused contexts, shared capabilities.** World, Object Studio and future authoring contexts
+  (lenses, readings and focused scopes) may expose substantially different tools and densities, while sharing one project,
+  subject identity, selection, acceptance, history and Save. A context specialises access, not
+  ownership: a capability such as appearance authoring belongs to its domain and is reusable on
+  every supported target in every context, never re-implemented per context
+  ([architecture](./architecture.md#expressive-creation-and-revision-destination)).
 - **Disciplined creative freedom.** Creators draw, shape, arrange and refine spatial work with
   room for individual expression. Complexity earns its place through creative value, predictable
-  revision and reuse, rather than feature parity with another modeling application.
+  revision and reuse; parity with another application is neither the goal nor a disqualifier.
 - **Contextual spatial creation.** Visible work and deliberately chosen spatial context can inform
   supported creation and editing. Direct interaction remains understandable, with non-sketch
   equivalents; recognition and modeling knowledge must not become admission requirements.
 - **Composable relationships.** Spatial intent can be deliberately reused across form and
   arrangement. Continuing following, constraints and exceptions are explicit; proximity, a gesture
   or a one-time placement does not silently create a persistent dependency.
-- **Progressive depth.** World editing and a dedicated Object Focus scope share authored subjects,
-  identity, relationships and revision. Depth is available when needed without requiring an ordinary
-  creator to manage mesh topology, construction order or a full CAD/DCC workflow. Exact Focus UX
-  remains open within the ratified shell authority.
 - **Dependable revision.** Supported edits retain their meaning across accepted changes, Undo,
   Save and reopen. Consequences, lost support and repair are legible; ambiguity never silently
   retargets or discards work. Precision and preservation promises have explicit scope.
 - **Semantic ownership.** Layout, Scene, Camera, Experience and typed resources retain their own
   meaning and validation through one project acceptance path. Creative depth adds no competing
   document, compiler, history or renderer authority.
-- **Evidence-led capability expansion.** Admit depth for a demonstrated creative barrier, with
-  transfer, revision, correctness, browser cost and failure/recovery evidence. Simpler controls,
-  imported content and existing capabilities remain valid solutions; an experiment may narrow or
-  reject the proposed workflow.
+- **Portable creative engine, optional managed services.** Independent project portability and a
+  self-hostable engine are product directions, not claims of current availability. Managed Biskiq
+  services may offer hosting, storage, compute, delivery and collaboration convenience; they never
+  define the limits of a project's source, resources or portability. The product licence remains
+  undecided.
+- **Admission, not inventory.** Admit depth for a meaningful creative workflow with coherent source
+  ownership, demonstrated engineering feasibility, and supported correctness, revision, browser
+  cost and failure/recovery evidence. Simpler controls, imported content and existing capabilities
+  remain valid solutions; an experiment may narrow or reject the proposed workflow. No fixed
+  capability list defines the product's ceiling, and a limitation of today's implementation is not
+  a prohibition on tomorrow's product.
 
 Interaction design, source/geometry representations, kernels, milestone definitions, slice counts,
 sequencing and specific implementation direction remain TBD where evidence is insufficient. The
-workflow advantage is a hypothesis. The E0 experiment was withdrawn on 2026-10-27; T5's planning
-direction is its [umbrella plan](../roadmap/t5-expressive-geometry/umbrella-plan.md), which is
-roadmap authority, not a reference contract. Sculpting, surface
-refinement or deliberately authored geometric controls are neither promised nor excluded solely
-by technique. They must earn admission through this boundary.
+workflow advantage is a hypothesis. The E0 experiment was withdrawn on 2026-10-27; T5's planning direction is its
+[umbrella plan](../roadmap/t5-expressive-geometry/umbrella-plan.md), which is roadmap authority,
+not a reference contract; Object Studio's dual entry and profile revision are its first landed
+capabilities. No technique — sculpting, surface refinement, authored topology, B-rep solids, UV
+work, material graphs, rigging, animation or programmable behavior — is promised or excluded by its
+name or origin; each earns admission through this boundary. Each admitted source representation has
+clear ownership, versioning and evaluation, and several techniques and operations may compose within
+one authoritative source. Conversion between representations may be lossy only when it is explicit,
+truthfully disclosed and governed by a declared recovery policy; editable source is never silently
+destroyed. The [capability horizon](#capability-horizon) lists plausible directions,
+not commitments.
 
 ### Current state labels
 
@@ -427,9 +476,11 @@ Current production choices remain deliberate rather than ideological:
 - External asset/tool integrations remain adapters into one canonical
   ingest/asset-record boundary; provider schemas, temporary URLs, file formats
   and storage details do not become durable Scene/Project state.
-- WebGPU/WGSL stays bounded until a real product or performance requirement
-  justifies promotion. Rust/WASM requires an isolated CPU bottleneck and
-  boundary-inclusive proof; it is not a default rewrite target.
+- The common r187 renderer runs native WebGPU with a WebGL2 fallback
+  ([rendering](./components/rendering.md)). Hand-written WGSL or custom shader
+  stages stay bounded until a real product or performance requirement justifies
+  them. Rust/WASM requires an isolated CPU bottleneck and boundary-inclusive
+  proof; it is not a default rewrite target.
 - Shader/runtime implementation source never becomes serialized authored project
   truth merely because the renderer uses it.
 - Optimization work follows measured large-scene/runtime bottlenecks. Future
@@ -445,8 +496,11 @@ Current production choices remain deliberate rather than ideological:
 
 ## Permanent non-goals
 
-- general-purpose DCC-style mesh editing, sculpting, UV authoring, rigging, or
-  character-animation authoring as the normal editor workflow
+These exclude structures and mandatory burdens, not creative techniques.
+
+- making mesh topology, UV layout, rigging, construction order, node graphs or
+  precision-CAD procedure a prerequisite for ordinary creation; such depth is
+  invoked when wanted, never imposed
 - a second layout geometry compiler or consumer-owned architectural truth
 - a second camera/navigation/motion graph competing with the canonical Camera
   authority
@@ -459,9 +513,17 @@ Current production choices remain deliberate rather than ideological:
   truth)
 - making deep code or game-engine scripting mandatory for ordinary spatial
   experiences
-- becoming a general-purpose 2D design suite, BIM system, game engine, CMS,
-  Webflow-style website builder, or landing-page builder merely through feature
-  accumulation, or competing with Figma/Canva as a 2D design suite
+- a parallel engine, document or history per workflow context (a separate
+  texturing, modeling or animation engine for Object Studio, World or another
+  focused context), or a capability accumulated without coherent source
+  ownership merely to match a specialist application
+- generated shader or runtime implementation code treated as authored project
+  truth merely because it was generated; material and procedural graphs are typed, versioned source with a
+  declared evaluator, and validated, sandboxed programmable source remains
+  admissible through the same boundary
+- becoming a general-purpose 2D design suite, CMS, Webflow-style website
+  builder or landing-page builder, or competing with Figma/Canva as a 2D design
+  suite
 - a generic AI agent framework, or training a proprietary general 3D/world
   model — external models, generators and agent intelligence stay replaceable
   clients/suppliers, welcome through supported ingest
@@ -474,10 +536,11 @@ Current production choices remain deliberate rather than ideological:
 - migrating legacy/Chopin editor session state into the greenfield product
 
 Use the [creative-depth admission test](#creative-freedom-and-depth) before expanding authoring
-depth. A local shaping or surface capability is not permanently external merely because it uses
-mesh controls or sculpting techniques; neither is it committed scope. General-purpose DCC/CAD,
-retopology, UV/rig authoring, character animation and arbitrary shader/node authoring remain external
-workflows. Imported or generated results remain welcome with truthful supported capabilities.
+depth. No modeling, sculpting, retopology, B-rep, UV, rigging, animation, material-graph,
+programmable-behavior, building-information or precision-CAD workflow is permanently external because of the tool category it comes from; none is committed scope
+either. Until a workflow is admitted, external tools and truthful import serve it. Imported or
+generated results remain welcome with truthful supported capabilities, and arbitrary scripting stays
+the separately governed extension tier.
 
 
 
@@ -514,6 +577,20 @@ current implementation slices:
 
 Absence from today's tracker means **not scheduled yet**, not rejected by the
 product vision. Sequencing is owned by [`../roadmap/README.md`](../roadmap/README.md).
+
+### Capability horizon
+
+Illustrative directions the architecture must not foreclose. They are neither commitments nor a
+complete list; each still passes [admission](#creative-freedom-and-depth) through its owning domain.
+
+| Area | Possible depth | Boundary it keeps |
+| --- | --- | --- |
+| Modeling | Controlled and subdivision surfaces, sculpting and local refinement, B-rep and precise solids, constraints, procedural and parametric assemblies | Each admitted source has clear ownership, versioning and evaluation; techniques may compose within one authoritative source; lossy conversion is explicit, disclosed and recoverable by declared policy; Scene-owned meaning for objects, architectural features stay Layout's ([T5](../roadmap/t5-expressive-geometry/umbrella-plan.md)) |
+| Architecture | Multi-level buildings, stairs and roofs, associative dimensions, derived plans, sections and elevations, annotations and sheets, exchange; optionally element properties, schedules, classification, construction layers, IFC and coordination | Meaning by committed Layout operation; Layout and its one compiler own architectural bodies; no BIM parity required and no compliance implied without qualification ([Layout](./components/layout.md#build--world-architecture)) |
+| Appearance | Further material families, optical, layered, procedural and programmable materials, masks, painting, decals, projections, baking | Each family owns its source and evaluator; fallbacks and bakes declare loss; shared on objects and architecture ([architecture](./architecture.md#appearance-authoring-destination)) |
+| Animation and behavior | Component and parameter channels, keyframed and procedural motion, native animation authoring, clips, rigs, programmable behaviors, simulations with declared state | Clips and performances as typed resources, channel effects through F.3, owners of rigs and programmable source declared on admission; coherent Experience time; task-local previews stay previews; Camera stays the one viewing authority |
+| Storytelling and presentation | Branching and conditional flow, narration, multiple Experiences, film and stills, live and XR presentation | Experience owns meaning and occurrences; visitor isolation |
+| Infrastructure | Team libraries and offered updates, self-hosting, managed hosting, storage, compute, delivery and collaboration, runtime SDK | Portable source and resources; managed services stay optional |
 
 
 

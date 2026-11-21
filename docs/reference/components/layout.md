@@ -399,7 +399,31 @@ Broader depth (stairs, railings, richer parametric components, arbitrary curve
 intersection and noding, NURBS/CAD curve operations, roof helpers, general
 constraint sophistication) is demand/evidence-gated. Architectural extensions remain Layout-owned;
 native object depth follows the [creative-depth admission boundary](../north-star.md#creative-freedom-and-depth).
-UV/rigging and general character-animation authoring remain external workflows.
+Layout owns architectural surface identity, base coordinates and correspondence; texture-coordinate
+and mapping authoring belong to Scene's
+[appearance authoring destination](../architecture.md#appearance-authoring-destination). Rigging and
+character-animation authoring are not yet admitted anywhere; external tools and import serve them
+until a capability is admitted to its owner.
+
+Whether geometry is architecture, and which element kind it is, is established by the committed
+operation, never inferred from resemblance or automatically reclassified later; topology-derived
+roles and enclosure within Layout stay derived as described above. Freeform Scene geometry is never classified as a Wall, Region
+or Space by its shape or position; any later adoption of freeform geometry as architecture is an
+explicit, reviewable operation and an open design decision. A feature that modifies a canonical
+architectural body (an Opening through a Wall, a recess into it) belongs to Layout; independent
+decorative geometry belongs to Scene, with an explicit attachment where it must follow
+architecture. Shared geometric algorithms do not transfer domain ownership.
+
+Professional architectural design and documentation are a capability target without requiring
+full BIM parity. Associative dimensions, derived plans, sections and elevations, annotations,
+sheets and exchange are progressive capabilities. Derived drawing geometry is computed from Layout
+and Scene source, never a second architectural model; the precise ownership and encoding of
+authored documentation are decided when that work is planned. Deeper building-information depth —
+typed properties, schedules, quantities, classification, construction layers, IFC, coordination and
+engineering data — is optional and admissible, never mandatory and never permanently prohibited.
+IFC is an exchange and provenance format, not a competing live architectural authority; explicit
+adoption of exchanged content into Layout may be admitted later. No capability implies structural
+adequacy, code compliance or certification unless it explicitly declares and qualifies it.
 
 
 

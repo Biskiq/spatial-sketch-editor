@@ -1,12 +1,14 @@
 # T2.S8 · Professional material foundation
 
-**Proposal for review.** Base `5d5f9858` includes the unified renderer cutover. The first deliverable is an opaque, metallic–roughness Finish that a creator can import, adjust, share, inspect under known light, save, and reuse in another project. A creator picking Walnut from the catalogue can still paint it in one action. The professional path earns its place when someone supplies their own wood grain, packed maps and physical tile dimensions and can reproduce the result on a second machine. [T2 planning baseline](../README.md) · [North Star](../../../reference/north-star.md)
+**Status:** plan merged in #386; A (#387), B (#389), C (#388) and D (#390) have landed and E is next. D's migration of existing saved heads is not activated ([D report](./pr-d-report.md)). The plan was written against base `5d5f9858`, which includes the unified renderer cutover. The first deliverable is an opaque, metallic–roughness Finish that a creator can import, adjust, share, inspect under known light, save, and reuse in another project. A creator picking Walnut from the catalogue can still paint it in one action. The professional path earns its place when someone supplies their own wood grain, packed maps and physical tile dimensions and can reproduce the result on a second machine. [T2 planning baseline](../README.md) · [North Star](../../../reference/north-star.md)
 
 | Commitment | Scope |
 | --- | --- |
 | Deliver in S8 | Revisioned material definitions, shared project Finishes and scoped edits, explicit texture channels, manual composition and correctable set import, physical and authored-UV mapping, licensed curated sets, private library transfer and a multi-geometry inspection capability. One UX plan follows the engineering proofs. |
 | Establish for extension | A strict material family and evaluator version, typed inputs, declared mapping requirements, immutable dependencies, capability diagnostics and a portable resolved descriptor. The first family exercises every seam. |
 | Schedule independently | Optical and specialized families, procedural recipes and layers, richer projections and assignment overrides. Visible fixtures and saved light rigs follow D8 and G1 on their own track. |
+
+**Extension boundaries.** The [unified creative direction](../../../reference/north-star.md#creative-freedom-and-depth) leaves S8's scope unchanged. `pbr-metallic-roughness/v1` is the first material family, not the universal editable format; each later family owns its source and evaluator and is not restricted to v1's evaluated signals. [Admission after S8](#admission-after-s8) records guidance, not a committed sequence; later families, procedural sources and their bakes are admitted under the [appearance authoring destination](../../../reference/architecture.md#appearance-authoring-destination). E, F, G and U add no material graphs, procedural layers, texture painting or baking, and no UX phase or prerequisite precedes E.
 
 ## What changes from the umbrella
 
@@ -235,11 +237,13 @@ Design one curated-first journey and validate it against four tasks. An occasion
 
 ## Admission after S8
 
+These candidates are guidance, not a committed sequence. Each family owns its source and evaluator and may, not must, offer a portable fallback or bake with declared loss.
+
 | Candidate | Next proof and owner |
 | --- | --- |
 | Masked foliage, blended opacity, emissive signage, glass or a coated/cloth surface | Admit each as a named profile with parameter units, coverage/depth/sorting/shadow behavior and both-backend parity. Test cutouts in drawn cuts and shadows. Emission needs a separate proof for bloom or illuminating neighbors. Transmission needs indoor reflections, background sampling and nested-surface cost evidence. S0's indoor and Paper decisions stand. |
-| Local planar, box and triplanar projection, assignment-local mapping, decals | Start with a specific curved-wall or plinth use case. Declare coordinate owner, anchor under movement/resizing, seam treatment, normal blending, lineage and cost. A placement override needs its own Scene contract and shared-use behavior. Generated projections never become authored UV meshes. |
-| Procedural and layered materials | First candidate is a deterministic two-layer paint/wear preset with one mask. Require bounded parameters, layer order and blend algebra per signal, seed and evaluator version, a bake recipe with exact source dependencies, and a tested portable fallback with declared loss. Admit a family only when a creator can revise it after reopen and both backends meet budget. |
+| Local planar, box and triplanar projection, assignment-local mapping, decals | Start with a specific curved-wall or plinth use case. Declare coordinate owner, anchor under movement/resizing, seam treatment, normal blending, lineage and cost. A placement override needs its own Scene contract and shared-use behavior. Generated projections are never serialized as mesh data; turning one into authored texture coordinates is an explicit operation with a declared anchor, stability and revision behavior. |
+| Procedural and layered materials | First candidate is a deterministic two-layer paint/wear preset with one mask. Require bounded parameters, layer order and blend algebra per signal, seed and evaluator version; where the family offers a bake or portable fallback, test its recipe with exact source dependencies and declared loss. Admit a family only when a creator can revise it after reopen and both backends meet budget. |
 | Wider libraries, interchange and delivery optimization | Team ACLs, live revision offers, provider search, UDIM, MaterialX/glTF import/export and KTX2 derivatives each need a consumer, reproducible conversion and an explicit unsupported-input policy. Preserve input assets and record recipe/version for derivatives. |
 | **Fixtures and rigs · separate G1 track** | After G1 group selection and rigid operations, qualify a CC0 fixture model under D8 and compose it with the ordinary Scene emitter. Prove place, aim, duplicate, ungroup, Undo and release licensing. A reusable rig must preserve member/target identity through the group/library contract. Neither visible fixture assets nor G1 selection are dependencies of E0–U. |
 

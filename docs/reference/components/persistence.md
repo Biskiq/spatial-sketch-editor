@@ -84,7 +84,9 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 9, Scene 11, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 9, Scene 12, Camera 1, Experience 4 and resources 3
+(S8 D, #390). The Scene field and Finish descriptions below still describe Scene 11 until S8 E's
+documentation work promotes D's grammar.
 Layout's envelope unit version is not a second number: `LAYOUT_UNIT_FORMAT_VERSION` is the Layout
 `formatVersion` itself (`LAYOUT_WALL_FIRST_FORMAT_VERSION`), so one authority governs the unit
 header and the payload.

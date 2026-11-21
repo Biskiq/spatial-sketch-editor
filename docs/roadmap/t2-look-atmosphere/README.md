@@ -82,7 +82,7 @@ can judge by eye.
 
 | | Ship in this batch | Extensibility contract (model and seams now, UI later) | Can wait |
 | --- | --- | --- | --- |
-| **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Schema carries every PBR map slot, mapping, opacity and emission as open numeric fields. One material factory, so a new property is one resolver change | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
+| **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Finish identity is independent of its material family. S8's strict `pbr-metallic-roughness/v1` family carries the first map set and mapping; opacity, emission and later families would be admitted as new versioned families ([S8](./s8-professional-material-foundation/implementation-plan.md#admission-after-s8)). One shared resolution and dispatch path; each family supplies its evaluator | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
 | **Artwork** | Import PNG / JPEG / WebP as an **Artwork object**; place on a wall or free in 3D; size in real units with the aspect locked; transparency kept; four frame styles and a mat; **Light it** fitted to the frame; a derived *Lit by* reading; identical in Visitor Preview | Artwork `source` is a tagged union (image now, drawing later). Frame geometry is generated from parameters. Card-action and Library-entry slots that show nothing until a capability fills them | Trim (crop, straighten), wall labels, glazing, persistent hosting on a moving wall, SVG / video, the Artwork Studio |
 | **Light** | Bare emitters of all three kinds placed **free in space** and aimed like a camera; **frustum** beam handles; *Look through*; Lights in the Index; **Light it** | A fixture is an ordinary object grouped with an emitter. Lights are ordinary group members, so a saved rig is a saved group | Fixture models, articulated heads, saved rigs, live-linked rigs, area lights |
 | **Sky** | Six preset starts, Time dial, Sun direction, Haze, More and the Celestial Dial | Scene 11 stores time, heading and noon height. The shared atmosphere resolver derives the Sun and Moon | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
@@ -104,7 +104,7 @@ row; depth opens in place.
 | --- | --- | --- |
 | Pick | Library › Finishes: curated, **This project**, **+ From image** | Instance referencing a base and optional maps |
 | Adjust | **Colour** (palette swatches, then a free picker and dropper) · **Sheen** (Matte · Satin · Gloss · High gloss) | `color` as a literal or a palette-slot reference · `roughness` |
-| More | **Image** (replace, remove) · **Scale** ("one tile = 1.2 m") · **Direction** (0° / 90°, free angle) · exact roughness · **Metal** on/off · opacity · glow. From S8: **Maps** | map slots by P20 asset id · `mapping { tileMeters, rotation, offset }` · `metalness` · `normalScale` · `opacity` · `emissive` |
+| More | **Image** (replace, remove) · **Scale** ("one tile = 1.2 m") · **Direction** (0° / 90°, free angle) · exact roughness · **Metal** on/off. From S8: **Maps**. Opacity and glow would arrive with later material families | map slots by P20 asset id · `mapping { tileMeters, rotation, offset }` · `metalness` · `normalScale`. From S8 D: a catalogue or content-addressed `material` base with sparse overrides |
 
 Decisions inside this:
 
@@ -117,20 +117,23 @@ Decisions inside this:
   and `baseTextureId` already exists; the missing parts are the Card entry and the mapping fields.
   Because forms and Walls emit metre UVs, **Scale is stated in real units** and one brick image
   tiles identically on a wall and a plinth.
-- **PBR maps arrive in two distinct steps, both in S8; the schema is open from S1.**
-  The [professional material foundation proposal](./s8-professional-material-foundation/implementation-plan.md)
-  revisits the scope below after the merged renderer cutover. It keeps manual assignment before set
-  recognition and puts one unified UX planning phase after the engineering proofs.
+- **PBR maps arrive in two distinct steps, both in S8.**
+  The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md)
+  (merged in #386) supersedes the original S8a/S8b split: its PR E runs manual composition first,
+  then correctable set import through the same operation, and one UX phase (U) follows the
+  engineering proofs. A–D have landed (#387, #389, #388, #390).
   - **S4 ships one image:** the colour image, with Sheen. No bump control appears, because there
     is no bump map to control.
-  - **S8a, manual assignment:** More › **Maps** lists named slots (Colour · Bump · Roughness ·
-    Shading · Metal). Each slot picks one project image. Bump strength and *Flip bump* appear only
-    once a bump map is assigned. This is deterministic and is the escape hatch for everything else.
-  - **S8b, automatic set import:** drop several files together and Biskiq *proposes* one Finish,
+  - **Manual assignment (S8 E):** named roles (Colour · Normal · Roughness · Metalness ·
+    Occlusion). Each role binds one project image, or one channel of it, with its convention. Normal strength and
+    convention apply only once a normal map is assigned. This is deterministic and is the escape
+    hatch for everything else.
+  - **Correctable set import (S8 E):** drop several files together and Biskiq *proposes* one Finish,
     matching slots by the common filename suffixes, with a preview and the slot list open for
     correction. Nothing is assigned silently; an unrecognised file is left unassigned and said so.
   - Manual comes first because automatic import is built on it and must fall back to it. Packed
-    (three-in-one) maps and gloss-instead-of-roughness conversion wait.
+    (three-in-one) channel selection and gloss-to-roughness conversion belong to that first manual
+    capability, so import never assumes one file equals one property.
 - **Mapping lives on the Finish.** A different scale on one wall is *Just this* (a clone). A
   per-assignment override is a later field on the assignment, noted so S1 does not preclude it.
 - **Sharing is unchanged from revision 1:** shared by default, the Ask Rule on edit (*just this /
@@ -140,7 +143,8 @@ Decisions inside this:
 
 **Emitter versus fixture.** An *emitter* is the Scene light entity. Visitors never see it; they see
 its light. A *fixture* is a visible object grouped with an emitter. The model gains no new light
-type. Emitters ship now; fixture models are an asset decision (D8) and follow in S8.
+type. Emitters ship now; fixture models are an asset decision (D8) and follow D8 and G1 on S8's
+separate fixture/rig track.
 
 **Free placement, camera-style.** A light is not bound to a ceiling or a wall. Like a Camera View
 it is a body somewhere in space plus the thing it looks at. Surfaces are a magnet during placement,
@@ -463,7 +467,7 @@ evidence, in the PR of the slice that carries them.
 | D15 | Light placement | Free in space, camera-style, with *Look through* realised through Camera; surfaces are magnets only | 1 |
 | D17 | Guide versus light | **Final.** Guides are line-only marks that never imitate illumination; the rendered result is the only light (§5) | 1 |
 | D18 | No inert controls | **Final.** Nothing is shown before it works; future capabilities are seams in the model and wiring only | 1 |
-| D19 | PBR maps | **Final.** S4 one colour image; S8a manual slot assignment; S8b automatic set import as a correctable proposal | 1 |
+| D19 | PBR maps | **Final.** S4 one colour image; then, in S8 E, manual role assignment followed by automatic set import as a correctable proposal through the same operation (originally S8a/S8b) | 1 |
 | D16 | Artwork response to light | Lit and matte, no sky reflection, fidelity proven by S0 item 7. An always-full-brightness option waits | with S0 |
 
 ### Capability slices
@@ -486,7 +490,7 @@ for multi-PR, Tier 2 or invention-risking work, as the first commit of that work
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
 | **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | Scene 11 | With T1 |
-| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) proposes revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Proposed coordinated Scene/resources bump | **Yes** (format and licence) |
+| **S8 Catalogue and depth** | Original milestone covers manual maps, set import, catalogue depth and gated optics. The [professional material foundation plan](./s8-professional-material-foundation/implementation-plan.md) (#386) delivers revisioned material assets, channel-aware sampling, mapping, reusable libraries and inspection. A–D have landed; E is next. | S4 · S5/S6 integration · merged WebGPU/WebGL2 cutover · D8 for assets · G1 on the separate fixture/rig track | Scene 12 / resources 3 (D, #390) | **Yes** (format and licence) |
 
 ```text
 now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)
@@ -575,7 +579,7 @@ cancel (S2–S6). Browser QA is focused and manual.
 | Artwork drawn as a textured quad | **Accepted, and clarified.** My objection was only ever to authoring it as a plane with a shared Finish |
 | Beam guide versus illumination | **Accepted and made a rule** (D17), including the guide-only state on Paper |
 | Does S3 need a plan? | **Yes.** I was wrong to call it a plain PR: it sets interaction grammar and *Look through* touches the Camera authority. Groups split out as G1 with their own plan |
-| Manual maps versus automatic import | **Clarified as S8a then S8b,** manual first because automatic must fall back to it |
+| Manual maps versus automatic import | **Clarified as S8a then S8b,** manual first because automatic must fall back to it. The S8 plan keeps this order inside PR E |
 | Reserved Studio controls | **Accepted and widened** to a standing rule (D18): no inert controls anywhere in the batch |
 
 ## 14. Unresolved questions

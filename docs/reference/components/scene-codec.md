@@ -2,6 +2,8 @@
 
 **Read when:** working inside `packages/project-model/src/scene-codec/` or the app Scene seam.
 **Last reviewed:** 2026-11-19 (S5b Region face references and Scene 11)
+**Version note:** S8 D (#390) landed Scene 12 / resources 3. This layout still describes Scene 11
+until S8 E's documentation work promotes D's rules.
 
 ---
 

@@ -5,6 +5,8 @@
 2026-10-28 review covered My Objects independent-copy insertion on the S02 Shape reading, per-axis
 sizing and the S01 native-form and Scene 4 baseline; current behavior is below and production
 activation remains owner-controlled.
+**Version note:** S8 D (#390) landed Scene 12 / resources 3. This contract still describes Scene 11
+until S8 E's documentation work promotes D's rules.
 
 ---
 
@@ -540,7 +542,9 @@ Materials (definitions/instances and shared-vs-unique already exist):
   imported glass/alpha preservation; clearing a model assignment restores the
   imported appearance.
 - Arbitrary UVs expose unsupported metric controls with a reason rather than an
-  automatic projection. No shader/node graph, slot editor or texture painting.
+  automatic projection. Shader/node graphs, a slot editor and texture painting are not current
+  capabilities; they enter, if admitted, through the
+  [appearance authoring destination](../architecture.md#appearance-authoring-destination).
 
 Lights and environment:
 

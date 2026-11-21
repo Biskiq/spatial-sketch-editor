@@ -21,6 +21,13 @@ existing projects and releases keep their locked revisions; detaching for
 independent editing creates a new authored identity. Source bytes and conversion
 provenance are retained where later reprocessing requires them.
 
+Whichever service hosts a library scope — private, shared, managed or self-hosted, which are
+product directions rather than current availability — project use follows the rules above: an
+authorized shared reference or a vendored immutable copy, with an exact locked revision and
+provenance. No project depends on a fragile pointer into a service's private store, and a portable
+export carries its full closure. Hosting, sharing and licensing of such services are undecided
+([North Star](../north-star.md#creative-freedom-and-depth)).
+
 **Truthful ingest.** Ingest declares which structure, clips, material slots,
 pivots and metadata survived and which operations are supported. A render-ready
 derivative is never advertised as a preserved semantic assembly; a flat model

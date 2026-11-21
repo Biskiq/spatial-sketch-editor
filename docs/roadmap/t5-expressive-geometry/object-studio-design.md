@@ -227,6 +227,14 @@ This plan specifies no multi-viewport implementation. One Stage means coherent s
 that expert learning or all future tools must fit the first viewport arrangement. Preserve the
 approved shell's information ownership, not incidental limitations of its current components.
 
+Wherever Studio exposes appearance, it reaches the same Scene appearance capability as World
+through a qualified adapter: the same Finish model, Library, *Just this / All* planners and
+inspection. Studio adds no material model, store or history
+([appearance authoring](../../reference/architecture.md#appearance-authoring-destination)).
+Per-part, per-region or painted appearance on native forms waits for the surface identity,
+correspondence and parameterization named under the umbrella's
+[later depth](./umbrella-plan.md#later-depth-with-bounded-next-decisions).
+
 ## Responsive and accessibility acceptance
 
 Use existing shell metrics, material roles and spatial marks. At 1440×900, 820×1180 and 1280×720,

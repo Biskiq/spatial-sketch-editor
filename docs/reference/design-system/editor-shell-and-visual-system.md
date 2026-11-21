@@ -92,7 +92,9 @@ World and Experience share Head, a collapsible Index, a dominant Stage, a contex
 overlay Card and one **lower working edge** that grows upward from a dock. Their identity
 and hierarchy remain recognizable across lenses; Card, palette and Instrument are absent
 when their context is absent. **The Stage is the workspace:** every other surface is
-small, floats over the Stage or disappears.
+small, floats over the Stage or disappears; a focused context may admit a larger invoked workspace
+under [Focused authoring contexts](#focused-authoring-contexts) while the Stage remains the spatial
+truth.
 
 ```text
 HEAD — Index toggle · Biskiq · project (menu: rename, delete, source download and replacement) · World | Experience · active Experience · [location chip when the Index is collapsed] · Find ⌘K · Undo/Redo · saved · Preview
@@ -147,9 +149,10 @@ never grows sideways, and a tool never opens a second row of controls.
   tool.** A faint caret above the armed key says the palette is collapsed (the recommended
   cue; showing nothing is a retained alternative).
 - **Instrument.** The Instrument appears because work is invoked, never because a selected
-  subject has advanced capabilities. It is reserved for tasks that need room: the
-  **Library** (objects, art, materials, lights, and import with Place or Trace), repair,
-  and in Experience the Guide. Edit shape, Erase acceptance, Slice depth and Dimensions are
+  subject has advanced capabilities. It is reserved for tasks that need room. Today those
+  are the **Library** (objects, art, materials, lights, and import with Place or Trace),
+  repair, and in Experience the Guide; another task enters only through a
+  [focused-context](#focused-authoring-contexts) design decision. Edit shape, Erase acceptance, Slice depth and Dimensions are
   not Instruments: they live on the object, at the gesture, in the state pill or in the
   Card.
   An Instrument never automatically moves the Camera or covers the reading control and
@@ -201,6 +204,41 @@ requires them. Capabilities do not earn permanent chrome simply by existing.
 Head owns application actions, not a second task toolbar. Index locates subjects;
 Card explains the selected identity; Stage carries spatial work; the lower surface
 carries the invoked task. A feature must choose its home by that responsibility.
+
+### Focused authoring contexts
+
+A quiet shell at rest never means capped depth. The [North Star](../north-star.md#creative-freedom-and-depth)
+owns the philosophy: complexity on demand, never mandatory complexity. The shell offers depth
+in widening steps, all over the same model and writers: **pick** a curated choice, **adjust** a
+few named controls, open **More** for exact values, then invoke a **task** (palette, reading or
+Instrument), and finally enter a **focused context** where the work needs its own tools.
+
+Three kinds of context exist. **Lenses** (World, Experience) frame authority. **Temporary
+readings** (Slice, Face, Unroll, Lift) change how the same source is seen. **Focused scopes**
+narrow work to one subject or task with tools suited to it. Object Studio is the first focused
+scope; its journeys are specified in the
+[T5 Studio specification](../../roadmap/t5-expressive-geometry/object-studio-design.md).
+
+A focused context may expose a different dock, denser parameters, dense graphs, layer editors, UV
+tools, specialised controls, construction or inspection views and a substantial invoked workspace
+when professional work needs them. These are legitimate in-app workflows, and focused material
+authoring is accepted when advanced appearance capabilities require it; its exact design stays open.
+It still:
+
+- stays in the same application, project, Head, Undo/Redo and Save, and changes scope, not source;
+- keeps one canonical selection, one writer per fact and the Card as the selected identity;
+- asks Camera for every Stage or spatial framing, linked view and return;
+- has an explicit entry, a visible exit and a revalidated return; pending work follows Apply,
+  Discard and Continue rather than an invisible commit;
+- offers keyboard, numeric and coarse-pointer paths and a narrow layout;
+- exposes domain capabilities, never its own copy of them. Appearance authoring, for example, is
+  the same Finish capability in World and in Object Studio, on objects, architecture and imports
+  ([architecture](../architecture.md#expressive-creation-and-revision-destination)).
+
+A new focused context, or an invoked workspace larger than the current Instruments, is a named
+design decision under the [feature design loop](#product-convergence-destination). It shows the
+work that needs the room, entry and return, selection continuity and how the Stage stays the
+spatial truth. Depth reached this way never becomes permanent resting chrome.
 
 ### Canonical identity and state
 
@@ -1322,7 +1360,9 @@ Its proposal must make these outcomes visible together:
 - Coherent material, typography, controls, selection/active-lens hierarchy, accessible
   state distinctions and local precision/refusal.
 - One lower column (dock → palette → Instrument) with explicit palette collapse and Esc
-  unwinding one level at a time; the Instrument only for Library, repair and the Guide.
+  unwinding one level at a time; the Instrument for invoked procedures (Library, repair and
+  the Guide today), and any further workspace or focused scope admitted under
+  [focused authoring contexts](#focused-authoring-contexts).
 - The mark language of rays and points: gold only for selection, white for available
   transformation, yellow for temporary inspection, values only on hover or drag, and no
   handle for an operation its domain cannot perform.
