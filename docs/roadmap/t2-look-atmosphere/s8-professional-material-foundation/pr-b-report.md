@@ -87,11 +87,11 @@ unmeasured or failed, not as passes.
 ## Gate harness
 
 The dev-only route is `apps/editor/src/routes/dev/s8-gates/+page.svelte`; the runner is
-`apps/editor/scripts/run-s8-gates.mjs`. From `apps/editor`, with the dev server running:
+`apps/editor/scripts/run-s8-gates.mjs`. From the repository root, with the dev server running:
 
 ```bash
-node scripts/run-s8-gates.mjs \
-  --out ../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-b-gates.json
+node apps/editor/scripts/run-s8-gates.mjs \
+  --out docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-b-gates.json
 ```
 
 The runner launches Chromium for each observed backend, opens both gate modes, waits for the page's
