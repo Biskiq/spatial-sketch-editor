@@ -40,7 +40,19 @@ import type {
 import type { ProjectTextureScope } from '$lib/render/resources/project-texture-scope';
 import { releaseFinishTexture, type TextureLoadScope } from '$lib/render/resources/texture-store';
 import { createInspectionGeometry, type InspectionGeometryKind } from './inspection-geometry';
+import { resolveSampleTile } from './sample-tile-resolve';
 import {
+	SAMPLE_TILE_MASTER_SIZE,
+	SAMPLE_TILE_RIG,
+	createSampleTileGeometry,
+	mappingTileMeters,
+	sampleTileFramingKey,
+	sampleTileKey,
+	sampleTileMetricFacts,
+	type SampleTileFraming
+} from './sample-tile';
+import {
+	INSPECTION_LIGHTING_VERSION,
 	createInspectionLighting,
 	type InspectionLighting,
 	type InspectionRig
@@ -89,6 +101,12 @@ export type InspectionRequest = {
 	readonly lighting: InspectionLightingMode;
 	readonly display: InspectionDisplay;
 	readonly sizePx: readonly [width: number, height: number];
+	/**
+	 * U1's sample-tile presentation: a front-on window of this many metres on
+	 * the reference plane, lit by the `sample-tile` rig. `geometry` and
+	 * `lighting` are then `plane` and `sample-tile`; the size is square.
+	 */
+	readonly sampleTile?: SampleTileFraming;
 };
 
 export type InspectionIssue = {
@@ -125,6 +143,12 @@ export type InspectionThumbnailRequest = {
 	readonly geometry?: InspectionGeometryKind;
 	readonly width?: number;
 	readonly height?: number;
+	/**
+	 * The product sample tile (`sample-tile/1`): a window of the given framing,
+	 * or `'default'` to derive it from the Finish's tile size. The size defaults
+	 * to the 256 px master and must be square.
+	 */
+	readonly sampleTile?: SampleTileFraming | 'default';
 };
 
 export type InspectionThumbnail =
@@ -537,9 +561,12 @@ export function createInspectionHost(options: {
 		signal: AbortSignal,
 		retry: boolean
 	): Promise<InspectionState | null> {
-		const { subject, geometry, display, lighting } = request;
+		const { subject, geometry, display, lighting, sampleTile } = request;
 		const [width, height] = request.sizePx;
 		if (!validSize(request.sizePx)) return refused('invalid-size');
+		if (sampleTile !== undefined && (width !== height || geometry !== 'plane' || lighting !== SAMPLE_TILE_RIG)) {
+			return refused('invalid-sample-tile');
+		}
 		const missing = subjectRefusal(subject);
 		if (missing !== null) return missing;
 
@@ -559,7 +586,12 @@ export function createInspectionHost(options: {
 			world = { ...sample, anchorWorld: anchor };
 		}
 
-		const resolved = resolveInspectionSubject(subject, geometry, world?.treatment);
+		const resolved = resolveInspectionSubject(
+			subject,
+			geometry,
+			world?.treatment,
+			sampleTile === undefined ? undefined : sampleTileMetricFacts(sampleTile)
+		);
 		const { inputs, recipeKey } = resolved;
 		if (inputs === null || recipeKey === null) {
 			return resolved.issues.length > 0
@@ -576,6 +608,7 @@ export function createInspectionHost(options: {
 		let leased: AcquiredViews | null = null;
 		let releaseMaterial: (() => void) | null = null;
 		let worldLighting: WorldInspectionLighting | null = null;
+		const windowGeometries: BufferGeometry[] = [];
 		const scene = new Scene();
 		try {
 			let views: FinishViewLease['views'] = {};
@@ -631,7 +664,14 @@ export function createInspectionHost(options: {
 					scene.environment = rig.environment(current.renderer);
 				}
 			}
-			scene.add(new Mesh(geometryFor(current, geometry), material));
+			if (sampleTile === undefined) {
+				scene.add(new Mesh(geometryFor(current, geometry), material));
+			} else {
+				// A window is per request (its UV range fits the framing): built and freed here.
+				const windowGeometry = createSampleTileGeometry(sampleTile, mappingTileMeters(inputs.mapping));
+				windowGeometries.push(windowGeometry);
+				scene.add(new Mesh(windowGeometry, material));
+			}
 
 			const frame = await renderInspectionFrame({
 				renderer: current.renderer,
@@ -661,6 +701,7 @@ export function createInspectionHost(options: {
 			};
 		} finally {
 			scene.clear();
+			for (const windowGeometry of windowGeometries) disposeQuietly(windowGeometry);
 			if (worldLighting !== null) {
 				worldLighting.dispose();
 				leases -= 1;
@@ -729,7 +770,8 @@ export function createInspectionHost(options: {
 			request.geometry,
 			typeof lighting === 'string' ? lighting : worldLightSampleKey(lighting.world),
 			request.display,
-			request.sizePx
+			request.sizePx,
+			request.sampleTile === undefined ? null : sampleTileFramingKey(request.sampleTile)
 		]);
 	}
 
@@ -877,13 +919,19 @@ export function createInspectionHost(options: {
 		async thumbnail(input, signal) {
 			if (disposed) return refused('host-disposed');
 			if (signal?.aborted) return refused('cancelled');
-			const geometry = input.geometry ?? 'sphere';
-			const width = input.width ?? INSPECTION_THUMBNAIL_SIZE;
-			const height = input.height ?? input.width ?? INSPECTION_THUMBNAIL_SIZE;
-			if (!validSize([width, height])) return refused('invalid-size');
+			const tiled = input.sampleTile !== undefined;
+			const geometry = tiled ? 'plane' : (input.geometry ?? 'sphere');
+			const fallbackSize = tiled ? SAMPLE_TILE_MASTER_SIZE : INSPECTION_THUMBNAIL_SIZE;
+			const width = input.width ?? fallbackSize;
+			const height = input.height ?? input.width ?? fallbackSize;
+			if (!validSize([width, height]) || (tiled && width !== height)) return refused('invalid-size');
 			const missing = subjectRefusal(input.subject);
 			if (missing !== null) return missing;
-			const resolved = resolveInspectionSubject(input.subject, geometry);
+			let resolved = resolveInspectionSubject(input.subject, geometry);
+			let framing: SampleTileFraming | undefined;
+			if (input.sampleTile !== undefined && resolved.inputs !== null) {
+				({ resolved, framing } = resolveSampleTile(input.subject, input.sampleTile, width));
+			}
 			const { inputs, recipeKey } = resolved;
 			if (inputs === null || recipeKey === null) {
 				return resolved.issues.length > 0
@@ -894,7 +942,10 @@ export function createInspectionHost(options: {
 			const issues = resolutionIssues(resolved, inputs);
 			if (issues.length > 0) return { status: 'refused', issues };
 
-			const key = inspectionThumbnailKey({ recipeKey, geometry, width, height });
+			const key =
+				framing === undefined
+					? inspectionThumbnailKey({ recipeKey, geometry, width, height })
+					: sampleTileKey({ recipeKey, framing, width, height, lightingVersion: INSPECTION_LIGHTING_VERSION });
 			let cacheKey: string | null = null;
 			let retryKey: string | null = null;
 			let jobId: string | null = null;
@@ -929,7 +980,14 @@ export function createInspectionHost(options: {
 					key,
 					recipeKey,
 					retryKey,
-					request: { subject: input.subject, geometry, lighting: 'studio', display: 'lit', sizePx: [width, height] },
+					request: {
+						subject: input.subject,
+						geometry,
+						lighting: framing === undefined ? 'studio' : SAMPLE_TILE_RIG,
+						display: 'lit',
+						sizePx: [width, height],
+						...(framing === undefined ? {} : { sampleTile: framing })
+					},
 					waiters: new Set(),
 					controller: new AbortController()
 				};

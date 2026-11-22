@@ -65,6 +65,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import type { CelestialDialModel } from '../../look/celestial-dial';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
+	import FinishTileRenderer from './FinishTileRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
 	import { STAGE_NEUTRAL_AMBIENT_INTENSITY, STAGE_NEUTRAL_DIRECTIONALS } from '$lib/render/stage-neutral-lighting';
 	import { sunShadowKey, worldEnvironmentLook } from '$lib/render/world-environment';
@@ -663,5 +664,7 @@ import StageMatGround from './StageMatGround.svelte';
 		bounds={snapshotBounds}
 		environment={environmentShown && sky ? JSON.stringify(sky) : 'paper'}
 	/>
+	<!-- The Finish picture host: the E7 inspection host on this renderer, drawing only when a shelf asks. -->
+	<FinishTileRenderer />
 	{/snippet}
 </CanvasHost>

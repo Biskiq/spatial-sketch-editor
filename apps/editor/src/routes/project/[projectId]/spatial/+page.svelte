@@ -18,7 +18,7 @@
 	 * EditorHead/Index/Card, Unfold, Artwork, Experience lens/controller, drafting
 	 * and the Height Sheet remain exactly where they were.
 	 */
-	import { onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
@@ -54,6 +54,8 @@
 	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
 	import { createStageEraser, STAGE_ERASER_TASK } from '$lib/authoring/stage/stage-eraser';
 	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
+	import { provideFinishTiles } from '$lib/authoring/look/finish-tiles-context';
+	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import {
 		analyzeModelDerivativeBytes,
 		createModelAnalysisCache
@@ -221,6 +223,9 @@
 	 * route, so the cache is an optimisation, never a second authority.
 	 */
 	const verifiedImages = createVerifiedProjectImageCache();
+	// The Stage's Finish pictures (U1): the shelf asks, the Stage-mounted host draws.
+	const finishTiles = provideFinishTiles();
+	onDestroy(() => finishTiles.dispose());
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
@@ -581,6 +586,20 @@
 	});
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
 	const paintPalette = $derived(finishes.paintPalette());
+	/** One project Finish's picture source: the accepted Scene, read at its content id, through the project's texture scope. */
+	function finishTileSource(finishId: string): FinishTileSource | null {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		return {
+			kind: 'finish',
+			subject: {
+				kind: 'finish',
+				document: boot.snapshot.domain.scene,
+				finishId,
+				revision: boot.snapshot.sourceContentId,
+				scope: stageAssets.textureScope
+			}
+		};
+	}
 	const finishShelf = $derived.by(() => {
 		void shell.contributionsVersion;
 		return finishes.libraryShelf();
@@ -2400,6 +2419,7 @@
 						onMaterialPick: look.pickMaterial,
 						finishShelf,
 						onFinishPick: (ref) => void finishes.pickFinish(ref),
+						finishTileSource,
 						finishImage: finishes.image,
 						onFinishImageImport: (file: File) => void finishes.addFromImage(file),
 						onFinishImageCancel: () => finishes.cancelImage(),

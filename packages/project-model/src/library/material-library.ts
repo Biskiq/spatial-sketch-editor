@@ -54,9 +54,13 @@ export const MATERIAL_LIBRARY_MAX_CANONICAL_BYTES = 256 * 1024;
 /** A v1 material item names at most five distinct image dependencies. */
 export const MATERIAL_LIBRARY_MAX_IMAGES = 5;
 
-/** One thumbnail is a PNG no larger than 192×192 and 256 KiB. */
+/**
+ * One thumbnail is a PNG no larger than 256×256 and 256 KiB. 256 is the U1
+ * sample-tile master; the 192×192 thumbnails stored before U1 stay valid (the
+ * rule is a cap, not an exact size).
+ */
 export const MATERIAL_LIBRARY_MAX_THUMBNAIL_BYTES = 256 * 1024;
-export const MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE = 192;
+export const MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE = 256;
 
 export type MaterialLibraryKind = 'material';
 

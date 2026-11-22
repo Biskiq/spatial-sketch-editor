@@ -30,9 +30,11 @@
 		type InspectionState,
 		type InspectionTexel
 	} from '$lib/render/materials/inspection-host';
+	import { SAMPLE_TILE_RECIPE, type SampleTileFraming } from '$lib/render/materials/sample-tile';
 	import type { InspectionSubject } from '$lib/render/materials/inspection-subject';
 	import { worldLightSampleFor } from '$lib/render/materials/inspection-world';
 	import { materials } from '$lib/content/materials';
+	import { materialThumbnailFraming } from '$lib/content/material-presentation';
 	import type { MaterialId } from '$lib/types/materials';
 	import StageReference from './StageReference.svelte';
 	import { INSPECTION_ANCHOR, buildInspectionFixture, type InspectionFixture } from './fixture';
@@ -203,11 +205,29 @@
 							lighting: INSPECTION_LIGHTING_VERSION,
 							geometry: INSPECTION_GEOMETRY_VERSION
 						},
+						sampleTileRecipe: SAMPLE_TILE_RECIPE,
 						catalogue: materials.map((material) => material.id),
 						async thumbnail(id: MaterialId) {
 							const result = await host.thumbnail({ subject: { kind: 'catalogue', id } });
 							if (result.status !== 'ready') return result;
 							return { status: result.status, key: result.key, png: [...result.png] };
+						},
+						/** The U1 sample tile of the accepted project Finish (the project and private-library path). */
+						async projectSampleTile(size = 256) {
+							const result = await host.thumbnail({ subject: built.finish, width: size, height: size, sampleTile: 'default' });
+							if (result.status !== 'ready') return result;
+							return { status: result.status, key: result.key, recipeKey: result.recipeKey, png: [...result.png] };
+						},
+						/** The U1 sample tile: `framing` overrides the catalogue hint; `null` means default. */
+						async sampleTile(id: MaterialId, size = 256, framing?: SampleTileFraming | null) {
+							const result = await host.thumbnail({
+								subject: { kind: 'catalogue', id },
+								width: size,
+								height: size,
+								sampleTile: framing === null ? 'default' : (framing ?? materialThumbnailFraming[id] ?? 'default')
+							});
+							if (result.status !== 'ready') return result;
+							return { status: result.status, key: result.key, recipeKey: result.recipeKey, png: [...result.png] };
 						}
 					}
 				});

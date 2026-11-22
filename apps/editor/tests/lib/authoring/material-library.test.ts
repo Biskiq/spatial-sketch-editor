@@ -464,14 +464,17 @@ describe('uploadFinishThumbnail', () => {
 				frame: { width: 128, height: 128, pixels: new Uint8Array(128 * 128 * 4), backend: 'webgl2' },
 				client
 			})
-		).rejects.toThrow(/192×192/);
+		).rejects.toThrow(/256×256 master or a 192×192/);
 
-		const uploaded = await uploadFinishThumbnail({
-			item,
-			frame: { width: 192, height: 192, pixels: new Uint8Array(192 * 192 * 4), backend: 'webgl2' },
-			client
-		});
-		expect(uploaded).toBe(false);
+		// The 256 px master and the pre-U1 192 px frame are both accepted.
+		for (const edge of [256, 192]) {
+			const uploaded = await uploadFinishThumbnail({
+				item,
+				frame: { width: edge, height: edge, pixels: new Uint8Array(edge * edge * 4), backend: 'webgl2' },
+				client
+			});
+			expect(uploaded).toBe(false);
+		}
 	});
 });
 
