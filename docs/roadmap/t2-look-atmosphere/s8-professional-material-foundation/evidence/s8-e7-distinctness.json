@@ -1,6 +1,6 @@
 {
   "schema": "s8-e7-distinctness/1",
-  "measuredAt": "2026-11-22T01:51:27+00:00",
+  "measuredAt": "2026-11-22T03:18:34+00:00",
   "result": "fails",
   "disposition": "deferred to U by owner decision 2026-11-21; not waived",
   "criterion": "F catalogue plan, Qualify: no pair has thumbnail patch-mean dE00 < 3 and luminance SSIM > 0.95; under 1% of subject pixels clipped",
@@ -14,94 +14,94 @@
     "clipping": "any channel at 255, over each sphere silhouette"
   },
   "recipeVersions": {
-    "inspection": 1,
+    "inspection": 2,
     "lighting": 2,
     "geometry": 1
   },
   "references": [
     {
       "id": "wood-oak-veneer",
-      "sha256": "019480ba37123cf6fdf90a65a6cb4975421a31dc3a01ad9ee022b1573efec166"
+      "sha256": "92d2753b352f643461b25c4bafb70ba9ab1432177b6c06604d4ebc2622c57093"
     },
     {
       "id": "wood-walnut-veneer",
-      "sha256": "4e2e9f2882525b709458aa34a1addf0ad9d86a1ae503af0ffd5a5e759c7d9339"
+      "sha256": "8d042cc3e7bc4a9b143e44f25b646f4cbb1b85fb07d294c0347cf4cb4fab5bc7"
     },
     {
       "id": "wood-oak-planks",
-      "sha256": "83473e34535fb0bf559f337e76cc48f34a9c7c2b2bb6185fb5467c1ecdfc2480"
+      "sha256": "7b738ff14cd21f63eeeb0d4551fe74618bc88165ebd6737d612984037681a0fa"
     },
     {
       "id": "wood-herringbone-parquet",
-      "sha256": "444d0ee0dd807cce12370da4488fc9313369837f597f9c3d3c10c3401873d483"
+      "sha256": "7df9d11f22a9b38756605f1d6e7d3964f4f97b0430f4214c66083cf1b77a3b24"
     },
     {
       "id": "stone-travertine",
-      "sha256": "46ef059b39a7261b58a5a76191eb4a78a7f93674286126e1926c3c132c82ccf5"
+      "sha256": "44c35119d7208c3d3d806f39789b75234d029169ce3d6be063d31356f19581f9"
     },
     {
       "id": "stone-terrazzo",
-      "sha256": "eb909fb5c96621e3d90f3b0d0be74a65816a7e8b5932f2a3112b77eaa05087ea"
+      "sha256": "578c8fdc301b390af55570af221607822fda084b481c88c53ef49868cb96b440"
     },
     {
       "id": "masonry-brick-red",
-      "sha256": "4d99ed8522d69bf91cd39a1bbf0f781726758379d5f2bfa72c131639cddf02ed"
+      "sha256": "2c28899b36da48545f4bf5ca6e42496eb29beb22c9cbb76b5fb2bb3b687c2b32"
     },
     {
       "id": "plaster-painted",
-      "sha256": "efbb6178623c01f2d4417a62ed37f0e5a5c8f38624b8b781c73d47cfc6a853db"
+      "sha256": "ca4f9a65791d24bad8670c423a9eeb782e2fe52bf6eab859f4ae3c91e626ea95"
     },
     {
       "id": "concrete-smooth",
-      "sha256": "7a16abbc6a8a28415a2ba6d9511ea9b05a45f3a0f435faac1a6e3e07a100a516"
+      "sha256": "d65ac2a11274fc735cd177d6f6179f3dc5c614c8a8b4ffe6dce7d9a43998b125"
     },
     {
       "id": "concrete-polished",
-      "sha256": "bc1cb17d2d71fb92523cfa5b51cd9ba6533c242299a0c8c40c015dae59eb10bc"
+      "sha256": "5910ae1d166d702f8fe3bf8848765f4902db17f1f3c3e3b8bc762da46d2cbe48"
     },
     {
       "id": "tile-ceramic-white",
-      "sha256": "98394a118b13077c6832b7d4c6f13f9da485a1d37013d6e7f4eadef4bd5a7698"
+      "sha256": "d30d0ba37ce94a0ec15978caef1d1a7cec05219a39c3e7a184b1acb0e10187b7"
     },
     {
       "id": "metal-stainless-satin",
-      "sha256": "820d029eec643c153560a4aa8b0b373ec8f112d201985babb9b1dee92da09665"
+      "sha256": "3c55579588f911d4b62c3d2adb98a757605083776aa63bbca0afd61a7d4758e9"
     },
     {
       "id": "metal-brass-satin",
-      "sha256": "79b29c1e37ebbf6f592cdaac855080a097a633d20554f0dc7291ad491d4b2431"
+      "sha256": "929272e29ca4e92585f770f4d36c9443ea23982af8ae6ce3be0aeb781d28f67c"
     },
     {
       "id": "metal-copper-satin",
-      "sha256": "fdd404b34f44c078589859d6ec536922fb31f3362502c1e0e48d00f3eb49f4b7"
+      "sha256": "580cb54f53344597fd0cae07426b6536bcfaca6e271c1e62582889525d1ac835"
     },
     {
       "id": "metal-gold-satin",
-      "sha256": "45b158585987d8a56d55ccaff3a6cfc2d43ee9855e01b527afd4ec5723604059"
+      "sha256": "f5d6ea0e9794efe85e449d751f9e05c491af3b728d400eafabe74f2f9cc3755c"
     },
     {
       "id": "metal-stainless-brushed",
-      "sha256": "8581b22071378c5642a4c1e2ea8b6cac65f1ebdd1eb83c02feb36811ba7064e0"
+      "sha256": "34c5514569eb3929600f7cb949437e1975eb982f19e226980570f99f8aee6428"
     },
     {
       "id": "metal-aluminium-brushed",
-      "sha256": "038ddefc398f74bedc43c9d8a5deb2ccf84420a3cdf15e13f9af1b2943d401ab"
+      "sha256": "e2250ba4b1c7a1b2f78c7a2ac455cd99f3cdda936e2bf323cc415e6349b25e2a"
     },
     {
       "id": "textile-linen",
-      "sha256": "dac863d4d99853085804714a25ba7bbc8955dc9832f25a467738655642b7d261"
+      "sha256": "0e0ca0d1dc218944388a929812399387e76c951286dc023eae9e3cf9274c21e5"
     },
     {
       "id": "textile-carpet-loop",
-      "sha256": "0b47395f8c3a45fdaaec6f15aacf7eb1ceb22361476f769254eef3f87aad97cd"
+      "sha256": "75fd3da80a136f7859c54e27e2421727ebfa628098b1ca97271b48fee3282818"
     },
     {
       "id": "leather-cognac",
-      "sha256": "4df44fbba9a06c06a2d0897e60051351c199df7d4cab5df3b5554c2181a1a5ef"
+      "sha256": "76c698739b982c4ef8c055700a641c1dd94b552e9c75fabdf496eb7767c29a2c"
     },
     {
       "id": "synthetic-plastic-matte",
-      "sha256": "07d0bc7d988f887ce340ccbd4ad5285856b5a3fdeac6790305abf437774144e8"
+      "sha256": "01e3a52cce05e3f6b52424c727dfe688f05c54fa07818f3023c01b11c2664460"
     }
   ],
   "readings": {

@@ -1,7 +1,7 @@
 # T2.S8 E7: material inspection and catalogue thumbnails
 
 **Status:** implemented and reviewed on `t2-s8-e7-inspection-thumbnails`, based on `main@45993c29`;
-**not merged**. One plan deviation, the [inspection camera](#open-deviation-inspection-camera), is open.
+**not merged**. The [inspection camera](#inspection-camera) uses the shared Camera realizer.
 F's catalogue distinctness criterion **failed and is deferred to U by the owner**.
 The automated technical checks pass; they are not acceptance of F's catalogue intake.
 Authority: [plan § F](./implementation-plan.md#f--inspect-materials-and-qualify-the-catalogue). U is
@@ -42,7 +42,7 @@ complete the [revalidation list](./implementation-plan.md#thumbnail-revalidation
 - **Subjects and World sampling** (`inspection-subject.ts`, `inspection-world.ts`): catalogue,
   accepted Finish or draft through `sceneFinishFor`; Sky, Paper, lights and Treatment at an anchor.
 - **Frames at any size and geometry** (`inspection.ts`): keys include dimensions, geometry and the
-  recipe versions.
+  recipe versions (inspection 2, lighting 2, geometry 1).
 - **21 engineering reference derivatives**, their manifest, generator and stale-safe lookup. No
   product surface shows them; the Finishes shelf is unchanged from `main`.
 - **`/dev/materials`**: a real-project fixture and the in-browser technical checks.
@@ -77,14 +77,14 @@ Chromium 153.0.8010.12: 21 of 21 technical checks pass on each of WebGPU and Web
 
 Captures: [WebGPU World](./evidence/s8-e7-webgpu-world.jpg),
 [WebGL2 World](./evidence/s8-e7-webgl2-world.jpg). Each backend logged only the provoked Device
-Lost error. The captures and the real-editor spot check predate the review fixes, which change neither
-reference pixels nor the shelf. That spot check, on a fresh project, found 21 swatch tiles, no
-reference derivative requested and no console error.
+Lost error. The captures come from inspection recipe 2. The real-editor spot check predates the review
+fixes and the camera change, neither of which touches the shelf. That spot check, on a fresh project,
+found 21 swatch tiles, no reference derivative requested and no console error.
 
 Reproduce from `apps/editor`, with its dev server running:
 
 ```bash
-S8_GATE_BASE_URL=http://localhost:5176 node scripts/run-s8-e7-gate.mjs
+S8_GATE_BASE_URL=http://localhost:<port> node scripts/run-s8-e7-gate.mjs
 ```
 
 ## Verification
@@ -94,16 +94,19 @@ Local evidence, run after the last code change:
 - `npm run check`: 0 errors, 16 baseline warnings.
 - `npm run build`: pass. In the client build only the `/dev/materials` node contains the host or the
   reference lookup.
-- Regenerating the references left all 21 PNGs byte-identical.
-- `test:arch`: 38 files, 358 tests pass.
-- `test:fast`: 474 files, 5,854 tests pass with `--maxWorkers=3 --testTimeout=60000`.
+- Regenerating the recipe 2 references a second time left all 21 PNGs byte-identical.
+- `test:arch`: 38 files, 358 tests pass with `--testTimeout=30000`.
+- `tests/lib/render/materials`: 14 files, 166 tests pass.
+- `test:fast` was last run locally before the camera change (474 files, 5,854 tests); CI certifies it
+  for this version.
 - `npm test` and `test:heavy` were not run locally; CI certifies them.
 
 ## Independent review
 
 One fresh-context Tier 1 review of `307014c2e` passed with no P0 or P1. It found eight P2s (one
 pre-existing) and one P3, and listed seven suspicions. The fixes followed the review and, under the
-one-round rule, were checked by tests and the browser checks, not by a second review.
+one-round rule, were checked by tests and the browser checks, not by a second review. The camera change for S2 also
+followed the review and was checked the same way.
 
 | Finding | Disposition |
 | --- | --- |
@@ -114,23 +117,28 @@ one-round rule, were checked by tests and the browser checks, not by a second re
 | F5 A failed solo channel drew a constant | fixed, tested |
 | F6 Narrow aspects clipped the subject | fixed, tested |
 | F7 Draft edits re-read verified bytes | fixed, tested |
-| F8 Cancelling one acquisition can dispose another's pending texture | **open**: pre-existing in `finish-views.ts`, outside E7 |
+| F8 Cancelling one acquisition can dispose another's pending texture | pre-existing, outside E7; fixed in [PR 398](https://github.com/Biskiq/spatial-sketch-editor/pull/398), which merges separately |
 | F9 (P3) Checks proved less than their names | fixed |
 | S1 Planning bullets in the swatch deliverable | no change: part of the approved proposal |
-| S2 Inspection camera bypasses the shared realizer | **open deviation**, below |
+| S2 Inspection camera bypasses the shared realizer | fixed after owner approval, [below](#inspection-camera) |
 | S3 Stale drafts sampled the World | fixed, tested |
 | S4 An empty texel read looked valid | fixed, tested |
 | S5 Coalesced jobs could read through a disposed scope | fixed, tested |
 | S6 Offscreen draws count as `render:stage-frame` | no change: the Stage snapshot's convention |
 | S7 Light allowlist growth | no change: the list stays exact |
 
-### Open deviation: inspection camera
+### Inspection camera
 
 The plan says "Use fixed evaluated inspection poses via the shared Camera realizer."
-`createInspectionCamera`, introduced by PR B and extended by E7, builds its own camera instead.
-Trying the shared realizer changed all 21 references: 0.04–0.20% of decoded RGBA bytes, by at most
-37/255, with a mean change of at most 0.0032/255. The trial was backed out. Adopting it needs the
-owner to approve regenerated references.
+`createInspectionCamera`, introduced by PR B, built its own camera. With the owner's approval of
+2026-11-21 it now evaluates the same fixed pose through camera-core and realizes it for the observed
+backend. A 1:2048 request dollies the evaluated square pose, because Camera converts authored Views
+only up to 1 km of extent.
+
+The projection rounds differently, so the inspection recipe moved from 1 to 2 and the 21 references
+were regenerated under new keys. Against recipe 1, 0.04–0.20% of decoded RGBA bytes changed, by at
+most 37/255, with a mean change of at most 0.0032/255. The failing distinctness pairs and all of their
+recorded values are unchanged.
 
 ## Deviations and limits
 

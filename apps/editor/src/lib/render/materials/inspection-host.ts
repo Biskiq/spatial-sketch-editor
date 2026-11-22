@@ -182,6 +182,7 @@ export type InspectionHost = {
 
 type Session = {
 	readonly renderer: InspectionRenderer;
+	readonly backend: RendererBackend;
 	readonly viewGeneration: FinishViewGeneration;
 	readonly controller: AbortController;
 	readonly geometries: Map<InspectionGeometryKind, BufferGeometry>;
@@ -635,7 +636,7 @@ export function createInspectionHost(options: {
 			const frame = await renderInspectionFrame({
 				renderer: current.renderer,
 				scene,
-				camera: createInspectionCamera(geometry, width / height),
+				camera: createInspectionCamera(geometry, width / height, current.backend),
 				size: Math.max(width, height),
 				width,
 				height,
@@ -809,6 +810,7 @@ export function createInspectionHost(options: {
 			epoch += 1;
 			session = {
 				renderer: state.renderer,
+				backend: state.backend,
 				viewGeneration: { owner: state.viewGeneration.owner, generation: state.viewGeneration.generation },
 				controller: new AbortController(),
 				geometries: new Map(),

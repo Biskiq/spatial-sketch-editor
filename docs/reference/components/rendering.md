@@ -151,8 +151,8 @@ descriptor with `clip: false` keeps the Stage Slice out of a swatch.
   (`stage-neutral-lighting.ts`) at an explicit anchor. It has no other geometry, cast shadows or fog.
   A stale Finish or draft is refused. Under a Treatment nothing is sampled: bound roles report
   `not-sampled` beside the treated constants.
-- The fixed-pose camera's far plane follows the subject at narrow aspects. It is built in
-  `materials/inspection.ts`, not yet through the shared Camera realizer the T2.S8 plan requires.
+- The fixed inspection pose is evaluated by camera-core and drawn through the shared Camera
+  realizer for the observed backend; its depth range follows the subject at narrow aspects.
 - The studio environment exists only in the offscreen inspection scene and never lights the World.
 - Inspection and thumbnail lookup stay outside visitor, public and Preview closures.
 

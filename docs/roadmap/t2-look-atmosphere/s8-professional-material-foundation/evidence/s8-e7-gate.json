@@ -1,6 +1,6 @@
 {
   "scope": "automated technical checks; not acceptance of F's catalogue intake",
-  "capturedAt": "2026-11-22T02:35:55.431Z",
+  "capturedAt": "2026-11-22T03:18:01.095Z",
   "pass": true,
   "cases": {
     "webgl2": {
@@ -459,15 +459,15 @@
             "id": "thumbnails: any size and geometry, stable keys, drafts uncached",
             "pass": true,
             "measured": [
-              "sphere 192x192: thumb-9d3900c9fb0a4c25",
-              "sphere 64x64: thumb-e17e238125fd7d55",
-              "sphere 240x120: thumb-4b766a18e7b6c5dc",
-              "plane 192x192: thumb-581f77f82dac7d8e",
-              "plane 64x64: thumb-e0b9572ca0a4d11e",
-              "plane 240x120: thumb-6a13145d1e719209",
-              "block 192x192: thumb-11d14d3320b03637",
-              "block 64x64: thumb-652122c3e888a867",
-              "block 240x120: thumb-fe88455a0d126320"
+              "sphere 192x192: thumb-1994445e20bdd046",
+              "sphere 64x64: thumb-7f554da20b49ce36",
+              "sphere 240x120: thumb-b0951183dfe8cbb7",
+              "plane 192x192: thumb-65c437fdab2e9a6d",
+              "plane 64x64: thumb-c421af6511e22dfd",
+              "plane 240x120: thumb-ce0736247327986a",
+              "block 192x192: thumb-c1b04062287e305c",
+              "block 64x64: thumb-d5ea89a6608d914c",
+              "block 240x120: thumb-a677d58f4cbf804b"
             ]
           },
           {
@@ -495,9 +495,9 @@
               "stone-terrazzo": 0.0529,
               "masonry-brick-red": 0.0357,
               "plaster-painted": 0.0354,
-              "concrete-smooth": 0.0483,
+              "concrete-smooth": 0.046,
               "concrete-polished": 0.0662,
-              "tile-ceramic-white": 0.0358,
+              "tile-ceramic-white": 0.0299,
               "metal-stainless-satin": 0.135,
               "metal-brass-satin": 0.1417,
               "metal-copper-satin": 0.1312,
@@ -507,7 +507,7 @@
               "textile-linen": 0.0386,
               "textile-carpet-loop": 0.045,
               "leather-cognac": 0.0534,
-              "synthetic-plastic-matte": 0.1135
+              "synthetic-plastic-matte": 0.11
             }
           },
           {
@@ -654,7 +654,7 @@
                 "halfPeakLargestComponent": 4540,
                 "clippedFraction": 0,
                 "nearClipFraction": 0,
-                "subjectPixels": 17692
+                "subjectPixels": 17691
               },
               "verdict": {
                 "peakRatio": 5.123635044095784,
@@ -1049,15 +1049,15 @@
             "id": "thumbnails: any size and geometry, stable keys, drafts uncached",
             "pass": true,
             "measured": [
-              "sphere 192x192: thumb-9d3900c9fb0a4c25",
-              "sphere 64x64: thumb-e17e238125fd7d55",
-              "sphere 240x120: thumb-4b766a18e7b6c5dc",
-              "plane 192x192: thumb-581f77f82dac7d8e",
-              "plane 64x64: thumb-e0b9572ca0a4d11e",
-              "plane 240x120: thumb-6a13145d1e719209",
-              "block 192x192: thumb-11d14d3320b03637",
-              "block 64x64: thumb-652122c3e888a867",
-              "block 240x120: thumb-fe88455a0d126320"
+              "sphere 192x192: thumb-1994445e20bdd046",
+              "sphere 64x64: thumb-7f554da20b49ce36",
+              "sphere 240x120: thumb-b0951183dfe8cbb7",
+              "plane 192x192: thumb-65c437fdab2e9a6d",
+              "plane 64x64: thumb-c421af6511e22dfd",
+              "plane 240x120: thumb-ce0736247327986a",
+              "block 192x192: thumb-c1b04062287e305c",
+              "block 64x64: thumb-d5ea89a6608d914c",
+              "block 240x120: thumb-a677d58f4cbf804b"
             ]
           },
           {

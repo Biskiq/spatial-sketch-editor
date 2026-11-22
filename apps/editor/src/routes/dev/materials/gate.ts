@@ -179,8 +179,7 @@ function orientation(
 		}
 		geometry.dispose();
 	}
-	const camera: PerspectiveCamera = createInspectionCamera(kind);
-	camera.updateMatrixWorld();
+	const camera: PerspectiveCamera = createInspectionCamera(kind, 1, frame.backend);
 	let samples = 0;
 	let matched = 0;
 	const colours = new Set<string>();
@@ -355,11 +354,11 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 			await environment.showWorld(sky);
 			const scene = environment.stageScene();
 			if (scene === null) throw new Error('the Stage reference is not mounted');
-			const camera = createInspectionCamera('sphere');
-			const anchor = new Vector3(...INSPECTION_ANCHOR);
-			camera.position.add(anchor);
-			camera.lookAt(anchor);
-			camera.updateMatrixWorld();
+			const camera = createInspectionCamera('sphere', 1, backend!);
+			// The realized pose, translated to the sample: same eye direction and fit.
+			camera.position.add(new Vector3(...INSPECTION_ANCHOR));
+			camera.matrix.setPosition(camera.position);
+			camera.updateMatrixWorld(true);
 			const { fog, background } = scene;
 			// Fog is a view-distance effect the sample deliberately omits.
 			scene.fog = null;

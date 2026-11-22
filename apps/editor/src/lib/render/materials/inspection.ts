@@ -15,7 +15,7 @@
  *   and a generation change is reported as `generation-lost` rather than as stale
  *   pixels.
  *
- * The fixed thumbnail is the same draw at 192×192 on the recipe-1 sphere under
+ * The fixed thumbnail is the same draw at 192×192 on the reference sphere under
  * studio light. Its key hashes the effective untreated recipe identity and every
  * version that can change pixels; only a successful `ready` result is cacheable.
  */
@@ -33,6 +33,8 @@ import {
 } from 'three';
 import { SRGBColorSpace } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
+import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core';
+import { realizeEvaluatedCamera } from '$lib/render/camera-realization';
 import { rendererBackendOf } from '$lib/render/renderer-backend';
 import type {
 	StandardFinishPlan,
@@ -52,7 +54,7 @@ import {
 	type InspectionRig
 } from './inspection-lighting';
 
-export const INSPECTION_VERSION = 1 as const;
+export const INSPECTION_VERSION = 2 as const;
 export const INSPECTION_THUMBNAIL_SIZE = 192;
 export const INSPECTION_THUMBNAIL_BACKGROUND = '#555555';
 export const INSPECTION_THUMBNAIL_EXPOSURE = 1;
@@ -106,7 +108,7 @@ export type InspectionPose = {
 	readonly fit: 0.8;
 };
 
-/** The recipe-1 subject radii; the pose fits the bounding sphere to 80%. */
+/** The reference subjects' radii; the pose fits the bounding sphere to 80%. */
 function subjectRadius(kind: InspectionGeometryKind): number {
 	switch (kind) {
 		case 'sphere':
@@ -138,15 +140,38 @@ export function inspectionPose(kind: InspectionGeometryKind, aspect = 1): Inspec
 	return { eye: [eye.x, eye.y, eye.z], target, fovYDegrees: 35, fit: 0.8 };
 }
 
-/** A camera at the fixed pose, ready for the offscreen draw. */
-export function createInspectionCamera(kind: InspectionGeometryKind, aspect = 1): PerspectiveCamera {
-	const pose = inspectionPose(kind, aspect);
-	// A narrow aspect moves the eye back; the far plane follows the subject.
-	const far = Math.max(20, Math.hypot(...pose.eye) + 2 * subjectRadius(kind));
-	const camera = new PerspectiveCamera(pose.fovYDegrees, aspect, 0.01, far);
-	camera.position.set(...pose.eye);
-	camera.lookAt(new Vector3(...pose.target));
-	camera.updateProjectionMatrix();
+/**
+ * A camera at the fixed pose, evaluated by the Camera authority and realized for
+ * the backend that will draw it. The depth range follows the subject, so a
+ * narrow aspect's distant eye never clips it.
+ */
+export function createInspectionCamera(
+	kind: InspectionGeometryKind,
+	aspect: number,
+	backend: InspectionRenderBackend
+): PerspectiveCamera {
+	const { eye, target, fovYDegrees } = inspectionPose(kind, aspect);
+	// Camera converts authored Views up to 1 km of extent, and a 1:2048 request needs
+	// more: convert the square pose, then dolly it along the same direction.
+	const square = inspectionPose(kind).eye;
+	const view = inspectionPoseFromView({ eye: [...square], target: [...target], fovYDegrees })!;
+	const state = createViewportCameraState({
+		outputId: 'material-inspection',
+		sessionEpoch: 'material-inspection',
+		sourceRevision: `inspection@${INSPECTION_VERSION}`,
+		reading: '3d',
+		pose: {
+			...view,
+			targetPlaneHeightMeters: view.targetPlaneHeightMeters * (Math.hypot(...eye) / Math.hypot(...square))
+		},
+		sceneRadiusMeters: 2 * subjectRadius(kind)
+	});
+	const result = evaluateViewport(state, { left: 0, top: 0, width: aspect, height: 1, devicePixelRatio: 1 }, 0, 1);
+	if (result.kind !== 'evaluated') throw new Error(`The inspection camera is unavailable: ${result.reason}`);
+	const camera = new PerspectiveCamera(fovYDegrees, aspect);
+	realizeEvaluatedCamera(camera, result.evaluation, backend);
+	// The realized matrices draw; position and rotation only mirror them for readers.
+	camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
 	return camera;
 }
 
@@ -302,7 +327,7 @@ export function createInspectionScene(input: {
 	const rig = input.rig ?? 'studio';
 	const { geometry } = createInspectionGeometry(kind);
 	const lighting = createInspectionLighting(rig, { radianceScale: input.radianceScale });
-	const camera = createInspectionCamera(kind);
+	const camera = createInspectionCamera(kind, 1, backendOf(input.renderer));
 	const scene = new Scene();
 	scene.background = new Color(INSPECTION_THUMBNAIL_BACKGROUND);
 	scene.add(lighting.group);

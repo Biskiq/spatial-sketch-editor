@@ -10,7 +10,7 @@
 	import type { SceneSky } from '@portfolio/project-model/units';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
 	import type { WorldEnvironmentFrame } from '$lib/render/world-environment';
-	import { createInspectionCamera } from '$lib/render/materials/inspection';
+	import { inspectionPose } from '$lib/render/materials/inspection';
 	import {
 		STAGE_NEUTRAL_AMBIENT_INTENSITY,
 		STAGE_NEUTRAL_DIRECTIONALS
@@ -33,15 +33,15 @@
 	} = $props();
 
 	const { scene, camera } = useThrelte();
-	const pose = createInspectionCamera('sphere');
+	const pose = inspectionPose('sphere');
 	const [x, y, z] = INSPECTION_ANCHOR;
-	const eye: [number, number, number] = [pose.position.x + x, pose.position.y + y, pose.position.z + z];
+	const eye: [number, number, number] = [pose.eye[0] + x, pose.eye[1] + y, pose.eye[2] + z];
 
 	$effect(() => onScene(scene, $camera));
 	onDestroy(() => onScene(null, null));
 </script>
 
-<T.PerspectiveCamera makeDefault position={eye} fov={pose.fov} oncreate={(ref) => ref.lookAt(x, y, z)} />
+<T.PerspectiveCamera makeDefault position={eye} fov={pose.fovYDegrees} oncreate={(ref) => ref.lookAt(x, y, z)} />
 <DGateMount object={entities} />
 {#if sky !== null}
 	<WorldEnvironment

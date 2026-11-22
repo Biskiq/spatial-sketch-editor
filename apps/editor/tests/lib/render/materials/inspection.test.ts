@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PerspectiveCamera, Scene, Vector3 } from 'three';
+import { PerspectiveCamera, Scene, Vector3, WebGLCoordinateSystem, WebGPUCoordinateSystem } from 'three';
 import {
 	createInspectionGeometry,
 	inspectionGeometryFacts,
@@ -35,7 +35,7 @@ describe('inspection camera', () => {
 			const { geometry } = createInspectionGeometry(kind);
 			const position = geometry.getAttribute('position');
 			for (const aspect of [1 / 2048, 1 / 16, 0.15, 0.5, 1, 2, 2048]) {
-				const camera = createInspectionCamera(kind, aspect);
+				const camera = createInspectionCamera(kind, aspect, 'webgl2');
 				camera.updateMatrixWorld();
 				let nearest = Infinity;
 				let farthest = -Infinity;
@@ -52,6 +52,28 @@ describe('inspection camera', () => {
 				expect(widest, `${kind} ${aspect}`).toBeLessThanOrEqual(1);
 			}
 			geometry.dispose();
+		}
+	});
+
+	it.each(['webgl2', 'webgpu'] as const)('realizes the fixed pose for %s through the Camera authority', (backend) => {
+		const [nearClip, coordinates] = backend === 'webgpu' ? [0, WebGPUCoordinateSystem] : [-1, WebGLCoordinateSystem];
+		for (const kind of ['sphere', 'plane', 'block'] as const) {
+			for (const aspect of [1 / 2048, 0.5, 1, 2, 2048]) {
+				const pose = inspectionPose(kind, aspect);
+				const camera = createInspectionCamera(kind, aspect, backend);
+				const distance = new Vector3(...pose.eye).length();
+				expect(camera.position.distanceTo(new Vector3(...pose.eye)) / distance, `${kind} ${aspect}`).toBeLessThan(1e-6);
+				// A renderer recomputes the projection when the convention differs.
+				expect(camera.coordinateSystem).toBe(coordinates);
+				expect(camera.matrixAutoUpdate).toBe(false);
+				const eye = new Vector3().setFromMatrixPosition(camera.matrixWorld);
+				const forward = eye.clone().negate().normalize();
+				const clipDepth = (depth: number) =>
+					eye.clone().addScaledVector(forward, depth).project(camera).z;
+				expect(clipDepth(camera.near)).toBeCloseTo(nearClip, 2);
+				expect(clipDepth(camera.far)).toBeCloseTo(1, 2);
+				expect(new Vector3().project(camera).setZ(0).length()).toBeLessThan(1e-5);
+			}
 		}
 	});
 });
