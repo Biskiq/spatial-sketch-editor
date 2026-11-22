@@ -347,6 +347,45 @@ describe('project texture scope', () => {
 			product.dispose();
 		});
 
+		it('drops every changed pin before the first image of a prepare loads', async () => {
+			const assetB = '00000000-0000-4000-8000-0000000000bb';
+			const uriB = `/project-assets/${assetB}`;
+			pins.set(assetB, { hash: digest, mime: 'image/png', size: PNG.length });
+			const product = scope();
+			await product.prepare([URI, uriB]);
+			const roughB = [{ view: 'rough-b', uri: uriB, role: 'roughness' as const }];
+			(await acquireFinishViews(roughB, product)).release();
+			const changed = { hash: `sha256-${'0'.repeat(64)}`, mime: 'image/png', size: PNG.length } as const;
+			pins.set(ASSET, changed);
+			pins.set(assetB, changed);
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+			const preparing = product.prepare([URI, uriB]);
+			expect((await acquireFinishViews(roughB, product)).issues[0]?.code).toBe('image-load-failed');
+			await preparing;
+			product.dispose();
+		});
+
+		it.each([0, 1, 2, 3, 4])('closes a bitmap superseded %i microtasks after its decode', async (ticks) => {
+			const uri = '/textures/raw.png';
+			const bitmap = { width: 1, height: 1, close: vi.fn() };
+			let decoded!: () => void;
+			const decode = new Promise<void>((resolve) => (decoded = resolve));
+			vi.stubGlobal('fetch', async () => new Response(PNG, { headers: { 'content-type': 'image/png' } }));
+			vi.stubGlobal('createImageBitmap', async () => {
+				decoded();
+				return bitmap;
+			});
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+			const product = scope();
+			const loading = loadFinishTexture(uri, 'roughness', product).catch(() => null);
+			await decode;
+			for (let i = 0; i < ticks; i += 1) await Promise.resolve();
+			product.retry(uri);
+			await loading;
+			product.dispose();
+			expect(bitmap.close).toHaveBeenCalledTimes(1);
+		});
+
 		for (const action of ['retry', 'dispose'] as const) {
 			it.each([0, 1, 2, 3, 4, 5, 6, 8, 12])(
 				`${action} %i microtasks after the decode never leases a disposed texture`,

@@ -479,6 +479,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it. -->
 		<VisitorLayoutShell {geometry} {scene} textureScope={textureScope} plinth={false} doorFrames={false}
+			{textureRevision}
 			treatment={scene.environment?.treatment}
 			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
 			{liftedRoomIds}

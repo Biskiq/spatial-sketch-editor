@@ -43,11 +43,13 @@ import type { SceneModelItem, SceneModelLook } from '$lib/render/resources/scene
 import {
 	__resetDefaultSourceLoaderForTests,
 	flushDeferredTextureReleases,
+	invalidateTextureSource,
 	resetTextureCachesForTests,
 	setDefaultTextureSourceLoader,
 	type TextureLoadScope
 } from '$lib/render/resources/texture-store';
 import { summarizeMeshes, type MeshSummary } from './fixtures/model-path-summary';
+import { invalidateFinishViewsForSource, resetFinishViewsForTests } from '$lib/render/resources/finish-views';
 
 // ---- a controllable template fetch ---------------------------------------------
 
@@ -235,6 +237,7 @@ afterEach(() => {
 	pendingTextures.clear();
 	flushDeferredTextureReleases();
 	resetTextureCachesForTests();
+	resetFinishViewsForTests();
 	__resetDefaultSourceLoaderForTests();
 });
 
@@ -581,6 +584,43 @@ describe('scene model handler — texture races', () => {
 		await settle();
 		expect(h.store.stats()).toMatchObject({ live: 0, acquired });
 		expect(h.events).toEqual([]);
+	});
+
+	it('a re-acquired Finish with the same view ids replaces the old bytes', async () => {
+		const h = harness();
+		const url = 'https://models.test/bytes.glb';
+		const scope = scopeFor('bytes');
+		const context = h.context({ urls: URLS({ 'paris-salon-chair': url }), scope });
+		const sampled = (color: string, uri: string): SceneModelLook => ({
+			...look(uri, color, uri),
+			slotUris: {},
+			views: [{ view: uri, uri, role: 'color' }],
+			finish: {
+				profile: 'pbr-metallic-roughness/v1',
+				entries: [{ role: 'color', view: uri, uvSet: 0, origin: 'legacy', repeat: [1, 1], rotation: 0, offset: [0, 0] }],
+				occlusionStrength: 1,
+				normalScale: 1
+			}
+		});
+		const first = model('a', { look: sampled('ff0000', 'bytes-a.png') });
+		h.models.update([first], context);
+		h.fetcher.deliver(url, twoMesh('bytes'));
+		await settle();
+		const old = new Texture();
+		const oldDisposed = vi.fn();
+		old.addEventListener('dispose', oldDisposed);
+		pendingTextures.get('bytes-a.png')!(old);
+		await settle();
+
+		h.models.update([model('a', { look: sampled('00ff00', 'bytes-b.png') })], context);
+		invalidateFinishViewsForSource(scope.scopeId, 'bytes-a.png');
+		invalidateTextureSource(scope.scopeId, 'bytes-a.png');
+		h.models.update([{ ...first }], context);
+		await settle();
+		finishTexture('bytes-a.png');
+		await settle();
+		expect(oldDisposed).toHaveBeenCalledTimes(1);
+		h.models.dispose();
 	});
 
 	describe('unscoped looks', () => {

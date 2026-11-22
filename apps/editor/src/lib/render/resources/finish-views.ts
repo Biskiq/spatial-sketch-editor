@@ -37,6 +37,7 @@
  */
 import type { TextureLoadScope } from './texture-store';
 import {
+	cachedFinishTexture,
 	detachFinishTexture,
 	finishTextureKey,
 	loadFinishTexture,
@@ -365,6 +366,11 @@ function releaseHold(hold: SourceHold): void {
 	hold.holders -= 1;
 	if (hold.holders > 0) return;
 	if (holds.get(hold.key) === hold) holds.delete(hold.key);
+	if (hold.lost === null) {
+		// A cancelled waiter never receives the texture its load installed.
+		const cached = cachedFinishTexture(hold.source.uri, hold.source.role, hold.scope);
+		if (cached !== undefined) handToHold(hold, cached);
+	}
 	for (const [texture, forget] of hold.textures) {
 		texture.removeEventListener('dispose', forget);
 		disposeUnused(texture, hold.source, hold.scope);
@@ -373,13 +379,19 @@ function releaseHold(hold: SourceHold): void {
 }
 
 /**
- * Dispose one texture no entry names (two view keys can share a URI and role).
+ * Dispose one texture no entry names (two view keys can share a URI and role),
+ * or leave it to the acquisitions now holding its source.
  * Removing that texture's Finish source key makes a later acquire reload bytes
  * rather than hand back a disposed texture; a newer source under the key stays.
  */
 function disposeUnused(texture: Texture, source: FinishViewSource, scope: TextureScopeKey | null): void {
 	for (const entry of entries.values()) {
 		if (entry.texture === texture) return;
+	}
+	const hold = holds.get(finishTextureKey(source.uri, source.role, scope));
+	if (hold !== undefined) {
+		handToHold(hold, texture);
+		return;
 	}
 	// A detached texture, or one another owner supplied, is not in the source
 	// cache; disposal here is still safe and keeps the budget honest.
@@ -388,10 +400,7 @@ function disposeUnused(texture: Texture, source: FinishViewSource, scope: Textur
 
 /** Dispose one evicted upload now, or leave it to the acquisitions still holding its source. */
 function disposeEntry(entry: Entry): void {
-	const { source, textureScope, texture } = entry;
-	const hold = holds.get(finishTextureKey(source.uri, source.role, textureScope));
-	if (hold === undefined) disposeUnused(texture, source, textureScope);
-	else handToHold(hold, texture);
+	disposeUnused(entry.texture, entry.source, entry.textureScope);
 }
 
 /**

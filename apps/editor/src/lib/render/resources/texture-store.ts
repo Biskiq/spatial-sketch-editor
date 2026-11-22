@@ -1072,6 +1072,15 @@ export function finishTextureKey(
   return sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
 }
 
+/** The loaded Finish texture the source cache still owns under this key, if any. */
+export function cachedFinishTexture(
+  uri: string,
+  role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
+  scope?: TextureLoadScope | TextureScopeKey | null
+): ThreeTexture | undefined {
+  return sourceCache.get(finishTextureKey(uri, role, scope))?.texture;
+}
+
 /**
  * Evict one Finish source after its last view lease is gone.
  *

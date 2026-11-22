@@ -697,6 +697,48 @@ describe('a source invalidated under its views', () => {
 		expect(loads.map((load) => load.uri)).toEqual([other.uri]);
 	});
 
+	it('upgrades a retried source to closed when only that source is held', async () => {
+		const { scope, loads, retry, teardown, settle } = countingScope(other.uri);
+		const pending = acquireFinishViews([other], scope);
+		await tick();
+		retry(other.uri);
+		teardown();
+		settle.get(other.uri)!();
+		const lease = await pending;
+		expect(lease.issues[0]?.code).toBe('cancelled');
+		expect(lease.leaseCount()).toBe(0);
+		expect(loads).toHaveLength(1);
+	});
+
+	it('leaves a texture an earlier holder lost to the acquisition that now holds it', async () => {
+		const { scope, disposedOf, settle } = countingScope('/z.png', other.uri);
+		const first = acquireFinishViews([colour, { ...colour, view: 'z', uri: '/z.png' }], scope);
+		await tick();
+		releaseFinishViewsForScope(scope.scopeId);
+		const second = acquireFinishViews([colour, other], scope);
+		await tick();
+		settle.get('/z.png')!();
+		expect((await first).issues[0]?.code).toBe('cancelled');
+		settle.get(other.uri)!();
+		const lease = await second;
+		expect(lease.issues).toEqual([]);
+		expect(disposedOf(lease.views.colour!)).toBe(0);
+		lease.release();
+	});
+
+	it.each(TICKS)('leaves no unowned source when cancelled %i microtasks in', async (ticks) => {
+		const { scope } = countingScope();
+		const controller = new AbortController();
+		const pending = acquireFinishViews([colour], scope, controller.signal);
+		for (let i = 0; i < ticks; i += 1) await Promise.resolve();
+		controller.abort();
+		const lease = await pending;
+		lease.release();
+		await tick();
+		const named = finishViewStats().bytes / BYTES;
+		expect(textureSourceMemoryStats().liveSources).toBe(named);
+	});
+
 	it('stays closed when its scope id mounts again and retries the image', async () => {
 		const { scope, loads, retry, teardown, settle } = countingScope(colour.uri);
 		const pending = acquireFinishViews([colour], scope);

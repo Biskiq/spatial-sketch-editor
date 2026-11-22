@@ -179,6 +179,8 @@ export type SceneModelRepresentation = {
 	stateOf(id: string): SceneModelState | null;
 	/** The per-Canvas loader's counts, or null before the support arrived. */
 	loaderStats(): ModelLoaderStats | null;
+	/** Ask again for the images that failed, as Scene items do. */
+	reloadTextures(): void;
 	/** Resolves when no load or texture completion is still pending. Observation only. */
 	idle(): Promise<void>;
 	dispose(): void;
@@ -238,8 +240,10 @@ type Entry = {
 	controller: AbortController | null;
 	/** Bumped by every presentation, arrival and release: only the newest may apply. */
 	generation: number;
-	/** The style key the drawn instance shows now. */
+	/** The style and view textures the drawn instance shows now. */
 	shown: string | null;
+	/** The current presentation's images arrived. */
+	textured: boolean;
 	state: SceneModelState;
 	unregister: (() => void) | null;
 };
@@ -342,6 +346,7 @@ export function createSceneModelRepresentation(
 		entry.views?.release();
 		entry.views = null;
 		entry.shown = null;
+		entry.textured = false;
 	}
 
 	/**
@@ -372,7 +377,10 @@ export function createSceneModelRepresentation(
 			castShadow: look.castShadow,
 			receiveShadow: look.receiveShadow
 		};
-		const key = `${look.key}|${textured}|${views?.key ?? ''}`;
+		entry.textured = textured;
+		// View ids survive a Retry or a new pin; the textures under them do not.
+		const bytes = Object.values(views?.views ?? {}).map((texture) => texture.uuid);
+		const key = `${look.key}|${textured}|${views?.key ?? ''}|${bytes}`;
 		if (entry.realization === null) {
 			const next = current.support.realize(current.template, {
 				asset: current.url,
@@ -424,6 +432,7 @@ export function createSceneModelRepresentation(
 			receiveShadow: entry.item.receiveShadow
 		};
 		entry.generation += 1;
+		entry.textured = false;
 		const id = entry.generation;
 		const active = look.look;
 		if (active === null) {
@@ -560,6 +569,7 @@ export function createSceneModelRepresentation(
 			controller: null,
 			generation: 0,
 			shown: null,
+			textured: false,
 			state: { status: source.url === null ? 'fallback' : 'loading' },
 			unregister: null
 		};
@@ -690,6 +700,16 @@ export function createSceneModelRepresentation(
 
 		loaderStats() {
 			return loader?.stats() ?? null;
+		},
+
+		reloadTextures() {
+			if (disposed) return;
+			for (const entry of entries.values()) {
+				// An unfinished Finish acquisition follows a Retry by itself.
+				if (entry.arrival === null || entry.item.look === null) continue;
+				if (entry.textured || entry.controller !== null) continue;
+				present(entry);
+			}
 		},
 
 		async idle() {

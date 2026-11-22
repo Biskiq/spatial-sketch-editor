@@ -20,8 +20,8 @@
  *   derive a tile's aspect without a second decoder.
  *
  * Retry is targeted: `retry(uri)` drops that one source-cache error and reloads
- * only that URI. The Stage reloads failed item textures through the
- * representation's `reloadTextures`, so a recovered image appears without
+ * only that URI. The Stage then calls every representation's `reloadTextures`, so
+ * a recovered image appears on items, models and Layout surfaces without
  * rebuilding the Scene.
  */
 import { Texture as ThreeTextureClass, TextureLoader, type Texture as ThreeTexture } from 'three';
@@ -31,6 +31,7 @@ import {
 	invalidateTextureSource,
 	loadSourceTexture,
 	releaseTextureScope,
+	retainDecodedImage,
 	type TextureLoadScope
 } from './texture-store';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
@@ -114,6 +115,21 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		}
 		prepared.delete(uri);
 		preparedPins.delete(uri);
+	}
+
+	function pinHashOf(uri: string): string | null {
+		const assetId = PROJECT_ASSET_URI.exec(uri)?.[1];
+		return assetId === undefined ? null : (input.pins().get(assetId)?.hash ?? null);
+	}
+
+	/**
+	 * A resource pin is immutable in a valid Scene, but a restored or tampered
+	 * envelope can change it under the same URI. Never serve the previous bytes
+	 * (or the previous failure) for a new pin.
+	 */
+	function forgetChangedPin(uri: string): void {
+		if (!prepared.has(uri) || !PROJECT_ASSET_URI.test(uri)) return;
+		if (preparedPins.get(uri) !== pinHashOf(uri)) forget(uri);
 	}
 
 	/**
@@ -259,6 +275,8 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 							loadController.signal
 						);
 				if (disposed || (generations.get(uri) ?? 0) !== generation) {
+					// The store has not taken ownership yet, so nothing else closes the bitmap.
+					retainDecodedImage(texture);
 					texture.dispose();
 					throw new Error('That texture load was superseded.');
 				}
@@ -277,18 +295,17 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		},
 		prepare: async (uris) => {
 			if (disposed) return;
+			// Every changed pin goes before the first await: meanwhile a consumer may ask for any of them.
+			for (const uri of uris) forgetChangedPin(uri);
 			for (const uri of uris) {
 				// A dispose during an earlier awaited load must stop the whole list,
 				// not start the next URI and cache its closed-scope failure.
 				if (disposed) return;
 				requested.add(uri);
-				const assetId = PROJECT_ASSET_URI.exec(uri)?.[1] ?? null;
-				const pinHash = assetId === null ? null : (input.pins().get(assetId)?.hash ?? null);
-				// A resource pin is immutable in a valid Scene, but a restored or
-				// tampered envelope can change it under the same URI. Never serve the
-				// previous bytes (or the previous failure) for a new pin.
-				if (prepared.has(uri) && (assetId === null || preparedPins.get(uri) === pinHash)) continue;
-				if (prepared.has(uri)) forget(uri);
+				// Again, for a pin that changed during an earlier await.
+				forgetChangedPin(uri);
+				if (prepared.has(uri)) continue;
+				const pinHash = pinHashOf(uri);
 				prepared.add(uri);
 				if (pinHash !== null) preparedPins.set(uri, pinHash);
 				try {

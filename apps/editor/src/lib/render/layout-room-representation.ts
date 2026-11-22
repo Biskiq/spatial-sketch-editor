@@ -90,6 +90,8 @@ export type RoomRepresentation = {
 	setTreatment(treatment: MaterialTreatment | undefined): boolean;
 	/** Re-resolve Scene-owned Room floor/lid assignments without rebuilding geometry. */
 	setScene(scene: object | null, scope: TextureLoadScope | null): boolean;
+	/** Ask again for the surface images that failed, without rebuilding geometry. */
+	reloadTextures(): void;
 	/**
 	 * Lift exactly these Rooms' generated lids out of the Stage view and out of
 	 * rays, by moving each lid mesh off the world layer onto
@@ -385,6 +387,11 @@ export function createRoomRepresentation(
 			previousFloor.release();
 			previousCeiling.release();
 			return true;
+		},
+
+		reloadTextures() {
+			if (disposed) return;
+			surfaceMaterials.reloadTextures();
 		},
 
 		setScene(next, scope) {
