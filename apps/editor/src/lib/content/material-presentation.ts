@@ -75,3 +75,82 @@ export function variantCardOf(id: MaterialId): MaterialVariantCard | undefined {
 	const primary = variantPrimary.get(id);
 	return primary ? materialVariantCards.find((c) => c.primary === primary) : undefined;
 }
+
+export type FoldedCuratedCard<T extends { readonly id: MaterialId }> = T & {
+	/** The card's name: the variant card's label, else the entry's own. */
+	readonly cardLabel: string | null;
+	/** Empty for a plain entry; the chip row for a variant card. */
+	readonly variants: readonly { readonly id: MaterialId; readonly label: string }[];
+};
+
+/**
+ * D1 folding, shared by every curated surface (Library shelf, Paint tray): a
+ * variant card sits where its primary does and shows `shown(primary)`, or the
+ * primary, and its other variants are dropped from the list.
+ */
+export function foldVariantCards<T extends { readonly id: MaterialId }>(
+	entries: readonly T[],
+	shown: (primary: MaterialId) => MaterialId | undefined = () => undefined
+): FoldedCuratedCard<T>[] {
+	const cards: FoldedCuratedCard<T>[] = [];
+	for (const entry of entries) {
+		const group = variantCardOf(entry.id);
+		if (group === undefined) {
+			cards.push({ ...entry, cardLabel: null, variants: [] });
+			continue;
+		}
+		if (entry.id !== group.primary) continue;
+		// A choice outside this card (another card's pick) never changes what it shows.
+		const wanted = shown(group.primary);
+		const chosen = wanted !== undefined && group.variants.some((variant) => variant.id === wanted) ? wanted : group.primary;
+		const pick = entries.find((candidate) => candidate.id === chosen) ?? entry;
+		cards.push({ ...pick, cardLabel: group.label, variants: group.variants });
+	}
+	return cards;
+}
+
+/** The catalogue's families, in the order every curated surface lists them (presentation only). */
+export const materialFamilies = [
+	{ id: 'wood', label: 'Wood' },
+	{ id: 'stone', label: 'Stone' },
+	{ id: 'masonry', label: 'Masonry' },
+	{ id: 'plaster-concrete', label: 'Plaster & Concrete' },
+	{ id: 'tile-ceramic', label: 'Tile & Ceramic' },
+	{ id: 'metal', label: 'Metal' },
+	{ id: 'textile', label: 'Textile' },
+	{ id: 'leather', label: 'Leather' },
+	{ id: 'synthetic-paper', label: 'Synthetic & Paper' }
+] as const;
+
+export type MaterialFamilyId = (typeof materialFamilies)[number]['id'];
+
+const familyByPrefix: Readonly<Record<string, MaterialFamilyId>> = {
+	wood: 'wood',
+	stone: 'stone',
+	masonry: 'masonry',
+	plaster: 'plaster-concrete',
+	concrete: 'plaster-concrete',
+	tile: 'tile-ceramic',
+	metal: 'metal',
+	textile: 'textile',
+	leather: 'leather',
+	synthetic: 'synthetic-paper',
+	paper: 'synthetic-paper'
+};
+
+/** A curated entry's family, read from its id's leading word; null for an entry outside the taxonomy. */
+export function materialFamilyOf(id: MaterialId): MaterialFamilyId | null {
+	return familyByPrefix[id.split('-', 1)[0] ?? ''] ?? null;
+}
+
+/** Entries grouped by family in taxonomy order, each group in catalogue order; an unknown family closes the list as "Other". */
+export function groupByMaterialFamily<T extends { readonly id: MaterialId }>(
+	entries: readonly T[]
+): { readonly id: MaterialFamilyId | 'other'; readonly label: string; readonly entries: readonly T[] }[] {
+	const groups = [...materialFamilies, { id: 'other', label: 'Other' } as const].map((family) => ({
+		id: family.id,
+		label: family.label,
+		entries: entries.filter((entry) => (materialFamilyOf(entry.id) ?? 'other') === family.id)
+	}));
+	return groups.filter((group) => group.entries.length > 0);
+}

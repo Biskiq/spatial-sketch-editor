@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { materials, materialById } from '$lib/content/materials';
-import { materialVariantCards, variantCardOf } from '$lib/content/material-presentation';
+import {
+	foldVariantCards,
+	groupByMaterialFamily,
+	materialFamilyOf,
+	materialVariantCards,
+	variantCardOf
+} from '$lib/content/material-presentation';
+import type { MaterialId } from '$lib/types/materials';
 import { catalogueRenderFacts } from '@portfolio/project-model/materials';
 
 describe('D1 variant cards', () => {
@@ -38,5 +45,31 @@ describe('D1 variant cards', () => {
 			if (material.id === 'concrete-smooth' || material.id === 'concrete-polished') continue;
 			expect(variantCardOf(material.id), material.id).toBeUndefined();
 		}
+	});
+});
+
+describe('D1 folding and families, shared by the Library shelf and the Paint tray', () => {
+	const entries = (['wood-oak-planks', 'concrete-smooth', 'concrete-polished', 'metal-gold-satin'] as MaterialId[]).map((id) => ({ id }));
+
+	it('shows the chosen variant in the primary’s place and drops the others', () => {
+		expect(foldVariantCards(entries).map((card) => card.id)).toEqual(['wood-oak-planks', 'concrete-smooth', 'metal-gold-satin']);
+		const folded = foldVariantCards(entries, () => 'concrete-polished');
+		expect(folded[1]).toMatchObject({ id: 'concrete-polished', cardLabel: 'Concrete' });
+	});
+
+	it('never lets a choice outside the card replace its picture', () => {
+		const folded = foldVariantCards(entries, () => 'wood-oak-planks');
+		expect(folded.map((card) => card.id)).toEqual(['wood-oak-planks', 'concrete-smooth', 'metal-gold-satin']);
+	});
+
+	it('places every curated entry in a family, in taxonomy order', () => {
+		for (const material of materials) {
+			if (material.id.startsWith('pbr-')) continue;
+			if (!['plaster-warm', 'wood-walnut', 'brass-aged', 'marble-light', 'velvet-dark', 'paper-aged'].includes(material.id)) {
+				expect(materialFamilyOf(material.id), material.id).not.toBeNull();
+			}
+		}
+		const groups = groupByMaterialFamily([{ id: 'metal-gold-satin' }, { id: 'concrete-smooth' }, { id: 'pbr-neutral-v1' }] as { id: MaterialId }[]);
+		expect(groups.map((group) => group.id)).toEqual(['plaster-concrete', 'metal', 'other']);
 	});
 });

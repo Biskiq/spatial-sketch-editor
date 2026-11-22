@@ -133,9 +133,9 @@
 		outline-offset: 1px;
 	}
 	.key.armed {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-		box-shadow: 0 1px 3px #0004;
+		background: var(--shell-tool-armed-bg);
+		color: var(--shell-tool-armed-ink);
+		box-shadow: var(--shell-tool-armed-edge);
 	}
 	.key[aria-disabled='true'] {
 		opacity: var(--shell-control-disabled-opacity);

@@ -211,7 +211,7 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 			const toolInput = { css: sample.css, evaluationId: id, coarse: sample.coarse };
 			if (armedHostTool === 'measure') input.measureTool()?.hover(toolInput);
 			else if (armedHostTool === 'erase') input.eraserTool()?.hover(toolInput);
-			else input.paintTool()?.hover(toolInput);
+			else input.paintTool()?.hover({ ...toolInput, shift: sample.shift });
 			input.session.setHover(null);
 			hoverSelection = null;
 			hoverMove = false;
@@ -441,7 +441,12 @@ export function createStageInputArbiter(input: StageInputArbiterInput) {
 						? input.paintTool()
 						: null;
 			if (hostTool !== null) {
-				const claimed = hostTool.down({ css, evaluationId: pointerEvaluationId, coarse });
+				const claimed = hostTool.down({
+					css,
+					evaluationId: pointerEvaluationId,
+					coarse,
+					...(armedHostTool === 'paint' ? { shift: event.shiftKey, alt: event.altKey } : {})
+				});
 				input.onRefreshHostTools();
 				if (claimed) {
 					if (!input.capturePointer(event.currentTarget as HTMLElement, event.pointerId)) {

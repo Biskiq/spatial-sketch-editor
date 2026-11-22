@@ -514,7 +514,8 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		const selected = createPaperMarkScene({
 			selection: { fills, contours: [] },
 			hover: { fills: [], contours: [] },
-			erase: { fills: [], contours: [] }
+			erase: { fills: [], contours: [] },
+			paint: { fills: [], contours: [] }
 		}, [1280, 720]);
 		try {
 			for (const resources of [paper, selected]) {
@@ -927,7 +928,7 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
 		const resources = createPaperScene(drawing, [1280, 720]);
 		const marks = createPaperMarkScene({
-			selection: { fills: [], contours: [] }, hover: { fills: [], contours: [] }, erase: { fills: [], contours: [] }
+			selection: { fills: [], contours: [] }, hover: { fills: [], contours: [] }, erase: { fills: [], contours: [] }, paint: { fills: [], contours: [] }
 		}, [1280, 720]);
 		try {
 			resources.setReveal(settled.reveal!);

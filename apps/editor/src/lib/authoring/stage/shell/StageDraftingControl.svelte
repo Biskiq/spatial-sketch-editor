@@ -480,11 +480,11 @@
 		width: 28px;
 		padding: 0;
 	}
-	/* Armed is temporary, so it stays a wash and an underline, never the light key. */
+	/* Armed is the shared forest-3 step (D12), never the light engaged key. */
 	.tools .icon.armed {
 		background: var(--shell-tool-armed-bg);
 		color: var(--shell-tool-armed-ink);
-		box-shadow: var(--shell-press-ring);
+		box-shadow: var(--shell-tool-armed-edge);
 	}
 	.tools .icon.armed::after {
 		content: '';

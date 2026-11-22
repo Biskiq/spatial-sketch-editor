@@ -11,7 +11,7 @@
 	import WorldIcon from './WorldIcon.svelte';
 	import { assets } from '$lib/content/assets';
 	import { materials } from '$lib/content/materials';
-	import { variantCardOf } from '$lib/content/material-presentation';
+	import { foldVariantCards, variantCardOf } from '$lib/content/material-presentation';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import {
@@ -53,7 +53,9 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		plateOpen = true,
 		onPlateOpen = () => {},
 		requestedCategory = null,
-		studio = false
+		studio = false,
+		paintChip = null,
+		trayOwnsPlate = false
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -95,6 +97,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		requestedCategory?: { readonly category: WorldLibraryCategory; readonly nonce: number } | null;
 		/** Object Studio's dock: Select, Objects, Measure and Eraser only. */
 		studio?: boolean;
+		/** The Paint key's live chip: the active pick, a circle for a colour and a rounded square for a material. */
+		paintChip?: { readonly color: string; readonly shape: 'colour' | 'material'; readonly source?: FinishTileSource | null } | null;
+		/** An armed tool's own tray stands in for the words plate (Paint's tray), so no second card opens above the dock. */
+		trayOwnsPlate?: boolean;
 	} = $props();
 
 	/**
@@ -102,28 +108,13 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	 * creator's choice is a view state of the shelf, never authored.
 	 */
 	let variantChoice = $state<Record<string, string>>({});
-	const curatedCards = $derived.by(() => {
-		if (finishShelf === null) return [];
-		const cards: {
-			readonly id: MaterialId;
-			readonly label: string;
-			readonly color: string;
-			readonly variants: readonly { readonly id: MaterialId; readonly label: string }[];
-		}[] = [];
-		for (const finish of finishShelf.curated) {
-			const group = variantCardOf(finish.id);
-			if (group === undefined) {
-				cards.push({ ...finish, variants: [] });
-				continue;
-			}
-			// A variant folds into its card, which sits where the primary does.
-			if (finish.id !== group.primary) continue;
-			const chosen = variantChoice[group.primary] ?? group.primary;
-			const shown = finishShelf.curated.find((entry) => entry.id === chosen) ?? finish;
-			cards.push({ id: shown.id, label: group.label, color: shown.color, variants: group.variants });
-		}
-		return cards;
-	});
+	const curatedCards = $derived(
+		finishShelf === null
+			? []
+			: foldVariantCards(finishShelf.curated, (primary) => variantChoice[primary] as MaterialId | undefined).map(
+				(card) => ({ ...card, label: card.cardLabel ?? card.label })
+			)
+	);
 
 	const plateId = $props.id();
 	let artworkFileInput = $state<HTMLInputElement>();
@@ -207,11 +198,11 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	);
 </script>	<section
 		class="world-toolbar"
-		class:folded={!plateOpen || activeTool === 'select'}
+		class:folded={!plateOpen || activeTool === 'select' || trayOwnsPlate}
 		data-world-toolbar
 		data-active-tool={activeTool}
 	>
-		{#if activeTool !== 'select'}
+		{#if activeTool !== 'select' && !trayOwnsPlate}
 		<div class="tier" id={plateId} hidden={!plateOpen}>
 		<div class="row words">
 			<div class="strip words-strip">
@@ -521,6 +512,11 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 				onclick={() => pressTool(tool.id)}
 			>
 				<WorldIcon name={tool.icon} size={20} hero />
+				{#if tool.id === 'paint' && paintChip !== null}
+					<i class="chip {paintChip.shape}" data-paint-chip style={`background: ${paintChip.color}`} aria-hidden="true">
+						{#if paintChip.shape === 'material'}<FinishTile source={paintChip.source ?? null} color={paintChip.color} size={13} />{/if}
+					</i>
+				{/if}
 				<span class="kl">{tool.label}</span>
 				{#if tool.shortcut}<kbd class="kk">{tool.shortcut}</kbd>{/if}
 			</button>
@@ -968,30 +964,42 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		color: var(--shell-ink-light);
 	}
 	.key.armed {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-		box-shadow: inset 0 0 0 1px var(--shell-hairline);
-	}
-	.key.armed .kk {
-		color: var(--shell-ink-3);
-	}
-	.key.armed .family-dots i {
-		background: var(--shell-hairline-strong);
-	}
-	.key.armed .family-dots i.on {
-		background: var(--shell-action);
+		background: var(--shell-tool-armed-bg);
+		color: var(--shell-tool-armed-ink);
+		box-shadow: var(--shell-tool-armed-edge);
 	}
 	.key:focus-visible {
 		outline: 2px solid var(--shell-focus-halo);
 		outline-offset: -2px;
 	}
-	.key.armed:focus-visible {
-		outline-color: var(--shell-action);
-	}
 	.kl {
 		font: 500 var(--shell-text-control)/1 var(--shell-sans);
 		letter-spacing: -0.005em;
 		white-space: nowrap;
+	}
+	.chip {
+		position: absolute;
+		top: 5px;
+		left: 50%;
+		width: 13px;
+		height: 13px;
+		transform: translateX(4px);
+		border: 1.5px solid var(--shell-forest);
+		box-shadow: 0 0 0 1px var(--shell-hairline-strong);
+		pointer-events: none;
+	}
+	.chip.colour {
+		border-radius: 50%;
+	}
+	.chip.material {
+		overflow: hidden;
+		border-radius: 3px;
+	}
+	.chip :global(.finish-tile) {
+		width: 100%;
+		height: 100%;
+		border-radius: 0;
+		box-shadow: none;
 	}
 	.kk {
 		position: absolute;
@@ -1027,9 +1035,6 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	}
 	.dock button:focus-visible {
 		outline-color: var(--shell-focus-halo);
-	}
-	.dock .key.armed:focus-visible {
-		outline-color: var(--shell-action);
 	}
 	@media (max-width: 760px) {
 		.world-toolbar {

@@ -62,7 +62,7 @@
 		/** The hovered subject; quiet neutral contour, suppressed for the selection itself. */
 		hover?: StageSelectionEntry | null;
 		/** `erase` re-strokes the hovered subject in the Eraser's red dashes. */
-		hoverTone?: 'hover' | 'erase';
+		hoverTone?: 'hover' | 'erase' | 'paint';
 		/** Changes when Scene entity roots mount or unmount, so the drawing follows. */
 		revision?: number;
 	} = $props();

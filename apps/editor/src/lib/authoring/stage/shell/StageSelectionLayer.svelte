@@ -76,7 +76,7 @@
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
 		/** The armed Eraser's winner reads as red dashes, never gold. */
-		hoverTone?: 'hover' | 'erase';
+		hoverTone?: 'hover' | 'erase' | 'paint';
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;
 		/**
@@ -103,6 +103,8 @@
 	const GOLD = STAGE_PAINT.selection;
 	const NEUTRAL = STAGE_PAINT.hover;
 	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
+	/** The cobalt of a proposal: what the next Paint release will change. */
+	const PROPOSAL = STAGE_PAINT.proposal;
 	/**
 	 * Prototype switch, dev only. The shipped contour remains the default until
 	 * the stencil reading is accepted; `?wallOutline=stencil` exercises the
@@ -123,7 +125,7 @@
 	 * The array is the Canvas's own, never a copy: a material created here must share
 	 * the clip the world materials hold, so a moved plane moves this ink too.
 	 */
-	function clipFor(tone: 'selection' | 'hover' | 'erase' | 'rim'): Plane[] | undefined {
+	function clipFor(tone: 'selection' | 'hover' | 'erase' | 'paint' | 'rim'): Plane[] | undefined {
 		if (stageClip === null) return undefined;
 		if (tone === 'selection' && unclippedSelection) return undefined;
 		return stageClip.planes as Plane[];
@@ -136,7 +138,7 @@
 	function cutInk<M extends Material>(
 		material: M,
 		planes: Plane[] | undefined,
-		tone: 'selection' | 'hover' | 'erase' | 'rim'
+		tone: 'selection' | 'hover' | 'erase' | 'paint' | 'rim'
 	): M {
 		if (planes === undefined || stageClip === null) return material;
 		// A cut Wall's hover/rim contour follows its stub; the selection contour is
@@ -314,7 +316,7 @@
 
 	function addContour(
 		contour: number[] | Float32Array,
-		tone: 'selection' | 'hover' | 'erase' | 'rim',
+		tone: 'selection' | 'hover' | 'erase' | 'paint' | 'rim',
 		color?: number
 	): void {
 		if (contour.length === 0) return;
@@ -327,7 +329,7 @@
 			const material = cutInk(new Line2NodeMaterial({
 				fog: false,
 				...(planes === undefined ? {} : { clippingPlanes: planes }),
-				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL),
+				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : tone === 'paint' ? PROPOSAL : NEUTRAL),
 				linewidth: tone === 'selection' ? 3 : 2.5,
 				transparent: true,
 				opacity: 1,
@@ -338,12 +340,12 @@
 				depthTest: tone !== 'selection',
 				depthWrite: false,
 				...OUTLINE_DEPTH_BIAS,
-				...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
+				...(tone === 'erase' || tone === 'paint' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
 			}), planes, tone);
 			const line = new Line2(edgeGeometry, material);
-			if (tone === 'erase') line.computeLineDistances();
+			if (tone === 'erase' || tone === 'paint') line.computeLineDistances();
 			line.frustumCulled = false;
-			line.renderOrder = tone === 'selection' ? 22 : tone === 'rim' ? 23 : tone === 'erase' ? 24 : 19;
+			line.renderOrder = tone === 'selection' ? 22 : tone === 'rim' ? 23 : tone === 'erase' || tone === 'paint' ? 24 : 19;
 			line.layers.set(2);
 			root.add(line);
 			fades.push({ material, opacity: 1 });
@@ -353,7 +355,7 @@
 
 	function apply(
 		entry: StageSelectionEntry | null,
-		tone: 'selection' | 'hover' | 'erase'
+		tone: 'selection' | 'hover' | 'erase' | 'paint'
 	): void {
 		if (entry === null) return;
 		// Artwork is selected by its screen-space frame polygon and grips
@@ -431,6 +433,7 @@
 		// The Eraser's winner is drawn even when it is the selection: it says what the
 		// next click removes, which gold alone cannot.
 		if (hover !== null && hoverTone === 'erase') apply(hover, 'erase');
+		else if (hover !== null && hoverTone === 'paint') apply(hover, 'paint');
 		else if (hover !== null && (selection === null || !sameReference(hover.reference, selection.reference))) {
 			apply(hover, 'hover');
 		}

@@ -296,6 +296,41 @@ describe('stage keyboard arbitration', () => {
 		expect(calls).toEqual(['interrupt:escape', 'refresh-host-tools']);
 	});
 
+	it('lets Paint fold its wheel, dropper and tray before clearing the draft or disarming', () => {
+		const rungs: boolean[] = [true, false];
+		const { calls, keyboard } = harness({
+			armedHostTool: () => 'paint',
+			dismissPaint: () => rungs.shift() ?? false,
+			paintTool: () => ({ clear: () => { calls.push('clear-paint'); return true; } }) as never,
+			task: () => ({}) as never
+		});
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape']);
+
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'interrupt:escape', 'clear-paint', 'refresh-host-tools']);
+	});
+
+	it('answers T, S and I only while Paint is armed and nothing modifies the key', () => {
+		const keys: string[] = [];
+		const armed = harness({ armedHostTool: () => 'paint', paintKey: (key) => { keys.push(key); return true; } });
+		for (const key of ['t', 'S', 'i']) armed.keyboard.handleKey(keyEvent(key));
+		expect(keys).toEqual(['tab', 'reach', 'sample']);
+
+		keys.length = 0;
+		armed.keyboard.handleKey(keyEvent('t', { metaKey: true }));
+		expect(keys).toEqual([]);
+
+		const idle = harness({ armedHostTool: () => 'measure', paintKey: (key) => { keys.push(key); return true; } });
+		idle.keyboard.handleKey(keyEvent('t'));
+		expect(keys).toEqual([]);
+
+		const pressing = harness({ armedHostTool: () => 'paint', pressing: () => true, paintKey: (key) => { keys.push(key); return true; } });
+		pressing.keyboard.handleKey(keyEvent('s'));
+		expect(keys).toEqual([]);
+	});
+
 	it('folds an armed task palette before the task itself', () => {
 		const { calls, keyboard } = harness({
 			task: () => ({}) as never,

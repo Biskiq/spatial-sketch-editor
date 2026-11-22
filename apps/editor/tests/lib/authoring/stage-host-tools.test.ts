@@ -45,7 +45,7 @@ import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/lig
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createStageMeasure, resolveMeasureEndpoint } from '$lib/authoring/stage/stage-measure';
 import { createStageEraser } from '$lib/authoring/stage/stage-eraser';
-import { createStagePainter, STAGE_PAINT_TASK, type StagePaintOptions } from '$lib/authoring/stage/stage-painter';
+import { createStagePainter, LONG_PRESS_MS, STAGE_PAINT_TASK, type StagePaintOptions } from '$lib/authoring/stage/stage-painter';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -419,7 +419,7 @@ describe('T2.S4a — Paint', () => {
 			entityId: null,
 			surface: { kind: 'wall-side', side: 'left' },
 			assignmentSurfaces: [{ kind: 'wall-side', side: 'left' }],
-			consequence: 'Paint this Wall face'
+			consequence: 'Warm Plaster on this Wall face'
 		});
 		const face = painter.candidate()?.surface;
 		await painter.up({ css: wall, evaluationId });
@@ -435,7 +435,7 @@ describe('T2.S4a — Paint', () => {
 		expect(expanded.filter((surface) => surface.kind === 'wall-side')).toHaveLength(4);
 		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-floor' }));
 		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-lid' }));
-		expect(painter.candidate()?.consequence).toBe('Paint 6 surfaces in this Space');
+		expect(painter.candidate()?.consequence).toBe('Warm Plaster on 6 surfaces in this Space');
 		await painter.up({ css: wall, evaluationId });
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(assignSurface.mock.calls[0]![0]).toHaveLength(6);
@@ -454,6 +454,86 @@ describe('T2.S4a — Paint', () => {
 		expect(assign).not.toHaveBeenCalled();
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(facade.snapshot().canonicalJson).toBe(before);
+	});
+
+	it('names the pick and what it replaces on the consequence line, and re-reads it on a new pick', () => {
+		const snapshot = {};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => ({
+				kind: 'paintable-surface' as const,
+				surface: { kind: 'room-floor' as const, roomId: 'room' },
+				space: { kind: 'unique' as const, roomId: 'room', surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }], excluded: [] }
+			})
+		} as unknown as StageFacade;
+		let pick = 'Walnut Veneer';
+		const worn = vi.fn(() => 'Painted Plaster');
+		const painter = createStagePainter(facade, { ...paintOptions().options, activeLabel: () => pick, wornLabel: worn });
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Walnut Veneer replaces Painted Plaster on this floor');
+		expect(worn).toHaveBeenCalledWith({ surface: { kind: 'room-floor', roomId: 'room' } });
+		pick = 'Terrazzo';
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Terrazzo replaces Painted Plaster on this floor');
+		worn.mockReturnValue(null as unknown as string);
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Terrazzo on this floor');
+	});
+
+	it('samples on a touch long-press and paints on a touch tap', async () => {
+		const snapshot = {};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => ({
+				kind: 'paintable-surface' as const,
+				surface: { kind: 'room-floor' as const, roomId: 'room' },
+				space: { kind: 'unique' as const, roomId: 'room', surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }], excluded: [] }
+			}),
+			acquireGesture: () => ({ kind: 'granted' as const, lease: { active: true, release: () => {} } })
+		} as unknown as StageFacade;
+		let clock = 0;
+		const { options, assignSurface } = paintOptions();
+		const painter = createStagePainter(facade, { ...options, now: () => clock });
+		const at = { css: [0, 0] as const, evaluationId: 'generation-1', coarse: true };
+
+		expect(painter.down(at)).toBe(true);
+		clock = LONG_PRESS_MS;
+		await painter.up(at);
+		expect(options.copySurface).toHaveBeenCalledTimes(1);
+		expect(assignSurface).not.toHaveBeenCalled();
+
+		expect(painter.down(at)).toBe(true);
+		clock += 120;
+		await painter.up(at);
+		expect(assignSurface).toHaveBeenCalledTimes(1);
+		expect(options.copySurface).toHaveBeenCalledTimes(1);
+
+		// Nothing picked: a touch press is still held, so a long-press can sample.
+		const empty = createStagePainter(facade, { ...options, hasActive: () => false, now: () => clock });
+		expect(empty.down(at)).toBe(true);
+		clock += LONG_PRESS_MS;
+		await empty.up(at);
+		expect(options.copySurface).toHaveBeenCalledTimes(2);
 	});
 
 	it('names a straddling Region that Space scope skips', () => {
@@ -490,7 +570,7 @@ describe('T2.S4a — Paint', () => {
 		painter.setSurfaceScope('space');
 		painter.hover({ css: [0, 0], evaluationId });
 		expect(painter.candidate()?.consequence).toBe(
-			'Paint 1 surface in this Space · 1 Region spans two Spaces, skipped'
+			'Warm Plaster on 1 surface in this Space · 1 Region spans two Spaces, skipped'
 		);
 	});
 
@@ -558,7 +638,7 @@ describe('T2.S4a — Paint', () => {
 		expect(facade.session.gesture()).toMatchObject({ owner: STAGE_PAINT_TASK });
 		await painter.up({ css: at, evaluationId });
 		expect(assign).toHaveBeenCalledTimes(1);
-		expect(assign).toHaveBeenCalledWith(PRIMITIVE.id);
+		expect(assign).toHaveBeenCalledWith([PRIMITIVE.id]);
 		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster' });
 		expect(facade.session.gesture()).toBeNull();
 
@@ -569,6 +649,104 @@ describe('T2.S4a — Paint', () => {
 		await painter.up({ css: away, evaluationId });
 		expect(assign).not.toHaveBeenCalled();
 		expect(facade.session.gesture()).toBeNull();
+	});
+});
+
+describe('T2.S8 U2 — Paint strokes', () => {
+	const FORM_AT: Vec3 = [5, 0, 2.5];
+
+	it('paints every object a drag crosses in one write, and shows the count while pressing', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const first = css(facade, [2, 0, 2]);
+		const second = css(facade, FORM_AT);
+
+		expect(painter.down({ css: first, evaluationId })).toBe(true);
+		expect(painter.stroke()).toEqual({ kind: 'object', count: 1 });
+		painter.move({ css: second, evaluationId });
+		expect(painter.stroke()).toEqual({ kind: 'object', count: 2 });
+		await painter.up({ css: second, evaluationId });
+
+		expect(assign).toHaveBeenCalledTimes(1);
+		expect((assign.mock.calls as unknown as string[][][])[0]![0]).toEqual([PRIMITIVE.id, FORM.id]);
+		expect(painter.notice()).toMatchObject({ kind: 'accepted', message: 'Painted Warm Plaster · 2 objects' });
+		expect(painter.stroke()).toBeNull();
+	});
+
+	it('writes nothing when the stroke is cancelled, and a fresh stroke still paints', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+
+		painter.down({ css: at, evaluationId });
+		painter.move({ css: css(facade, FORM_AT), evaluationId });
+		painter.cancel();
+		await painter.up({ css: at, evaluationId });
+		expect(assign).not.toHaveBeenCalled();
+		expect(painter.stroke()).toBeNull();
+
+		painter.down({ css: at, evaluationId });
+		await painter.up({ css: at, evaluationId });
+		expect(assign).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports an object already wearing the pick and writes nothing', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, { ...options, isAlready: () => true });
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+		painter.down({ css: at, evaluationId });
+		await painter.up({ css: at, evaluationId });
+		expect(assign).not.toHaveBeenCalled();
+		expect(painter.notice()).toMatchObject({ kind: 'already' });
+	});
+
+	it('Alt samples the pointed Finish instead of painting', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+		expect(painter.down({ css: at, evaluationId, alt: true })).toBe(true);
+		await painter.up({ css: at, evaluationId, alt: true });
+		expect(options.copy).toHaveBeenCalledTimes(1);
+		expect(assign).not.toHaveBeenCalled();
+	});
+
+	it('Shift paints the whole Space for this gesture only', async () => {
+		const { facade } = await mount('plan', [LIGHT], undefined, false, true);
+		const { assignSurface, options } = paintOptions();
+		const painter = createStagePainter(facade, options);
+		const evaluationId = facade.evaluationId()!;
+		const wall = css(facade, [3, 0, 0.06]);
+
+		expect(painter.surfaceScope()).toBe('surface');
+		painter.down({ css: wall, evaluationId, shift: true });
+		expect(painter.stroke()).toEqual({ kind: 'surface', count: 6 });
+		await painter.up({ css: wall, evaluationId, shift: true });
+		expect(assignSurface.mock.calls[0]![0]).toHaveLength(6);
+		expect(painter.surfaceScope()).toBe('surface');
+
+		assignSurface.mockClear();
+		painter.down({ css: wall, evaluationId });
+		await painter.up({ css: wall, evaluationId });
+		expect(assignSurface.mock.calls[0]![0]).toHaveLength(1);
+	});
+
+	it('does not paint when Paint has no pick', async () => {
+		const { facade } = await mount();
+		const { assign, options } = paintOptions();
+		const painter = createStagePainter(facade, { ...options, hasActive: () => false });
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+		painter.down({ css: at, evaluationId });
+		await painter.up({ css: at, evaluationId });
+		expect(assign).not.toHaveBeenCalled();
 	});
 });
 

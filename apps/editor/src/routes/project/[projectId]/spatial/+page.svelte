@@ -160,7 +160,10 @@
 	} from '$lib/authoring/look/finish-authoring.svelte';
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { withFinishPreviews } from '@portfolio/project-model/scene-planning';
-	import StagePaintPalette from '$lib/authoring/stage/shell/StagePaintPalette.svelte';
+	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
+	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
+	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
+	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
@@ -585,7 +588,23 @@
 		};
 	});
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
-	const paintPalette = $derived(finishes.paintPalette());
+	const paintTray = $derived(finishes.paintTray());
+	const paintTrayState = createPaintTrayState();
+	// Paint's consequence line, read on the Stage view bar while the tray is up.
+	const paintLine = $derived(
+		shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen
+			? paintConsequence({
+				stroke: shell.paintTool?.stroke() ?? null,
+				dropper: paintTray.dropper,
+				picked: paintTray.active !== null,
+				tab: paintTray.colourEnabled ? paintTrayState.tab : 'materials',
+				candidate: shell.paintCandidate
+			})
+			: null
+	);
+	$effect(() => {
+		if (shell.armedHostTool !== 'paint') paintTrayState.reset();
+	});
 	/** One project Finish's picture source: the accepted Scene, read at its content id, through the project's texture scope. */
 	function finishTileSource(finishId: string): FinishTileSource | null {
 		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
@@ -901,6 +920,7 @@
 			shell.setWorldPlateOpen(true);
 			shell.setPaletteOpen(false);
 		},
+		isPaintArmed: () => shell.armedHostTool === 'paint',
 		armPaint: () => commands.armWorldTool('paint')
 	});
 	artworkInteraction = createStageArtworkInteraction({
@@ -1024,6 +1044,27 @@
 		paintTool: () => shell.paintTool,
 		clearEraseHover: () => shell.setEraseHover(null),
 		clearPaintHover: () => shell.setPaintHover(null),
+		paintKey: (key) => {
+			if (key === 'tab') {
+				if (!finishes.paintTray().colourEnabled) return false;
+				paintTrayState.toggleTab(true);
+			} else if (key === 'reach') {
+				const next = shell.paintTool?.surfaceScope() === 'space' ? 'surface' : 'space';
+				shell.paintTool?.setSurfaceScope(next);
+			} else {
+				if (finishes.dropperArmed) finishes.cancelDropper();
+				else finishes.armDropper(null);
+			}
+			return true;
+		},
+		dismissPaint: () => {
+			if (paintTrayState.wheelOpen) return paintTrayState.dismiss();
+			if (finishes.dropperArmed) {
+				finishes.cancelDropper();
+				return true;
+			}
+			return paintTrayState.dismiss();
+		},
 		refreshHostTools: () => shell.refreshHostTools(),
 		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
 		paletteOpen: () => shell.paletteOpen,
@@ -2001,7 +2042,7 @@
 						? shell.paintHover
 						: stageInput.hoverSelection;
 			},
-			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : 'hover' as const; },
+			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : shell.armedHostTool === 'paint' ? 'paint' as const : 'hover' as const; },
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftedRegionIds() { return liftedRegionIds; },
 			get liftSources() { return liftedSources; },
@@ -2353,6 +2394,7 @@
 		{#snippet toolbars()}
 			<StageToolbars
 				previewing={preview !== null}
+				{paintLine}
 				viewLine={preview === null
 					? {
 						drafting: {
@@ -2418,7 +2460,12 @@
 						onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
 						onMaterialPick: look.pickMaterial,
 						finishShelf,
-						onFinishPick: (ref) => void finishes.pickFinish(ref),
+						onFinishPick: (ref) => {
+							// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
+							const fromPaint = shell.armedHostTool === 'paint';
+							void finishes.pickFinish(ref);
+							if (fromPaint && shell.libraryOpen) commands.armWorldTool('paint');
+						},
 						finishTileSource,
 						finishImage: finishes.image,
 						onFinishImageImport: (file: File) => void finishes.addFromImage(file),
@@ -2430,6 +2477,8 @@
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
 						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
 						onLookPick: look.pickLibraryEntry,
+						trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
+						paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
 						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 						inkReading: shell.inkReading,
 						sliceMode: sliceReading.reading?.kind ?? null,
@@ -2526,16 +2575,22 @@
 			onCloseKeys={() => shell.setKeysOpen(false)}
 		/>
 
-		{#if shell.armedHostTool === 'paint' && preview === null}
-			<StagePaintPalette
-				palette={paintPalette}
-				scope={shell.paintTool?.surfaceScope() ?? 'face'}
-				candidate={shell.paintCandidate}
-				onScope={(scope) => shell.paintTool?.setSurfaceScope(scope)}
-				onPick={(key) => finishes.setActiveFromKey(key)}
+		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen}
+			<StagePaintTray
+				tray={paintTray}
+				view={paintTrayState}
+				radius={shell.paintTool?.surfaceScope() ?? 'surface'}
+				onRadius={(radius) => shell.paintTool?.setSurfaceScope(radius)}
+				onPick={(swatch) => {
+					const colour = swatch.kind === 'colour' ? parseColourKey(swatch.key) : null;
+					if (colour !== null) finishes.pickColour(colour);
+					else finishes.pickMaterialKey(swatch.key);
+				}}
+				onColour={(colour) => finishes.pickColour(colour)}
+				onFavourite={() => finishes.toggleActiveFavourite()}
 				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper(null))}
-				onCancel={() => commands.armWorldTool('select')}
 				onLibrary={() => finishes.openFinishes()}
+				tileSource={finishTileSource}
 			/>
 		{/if}
 

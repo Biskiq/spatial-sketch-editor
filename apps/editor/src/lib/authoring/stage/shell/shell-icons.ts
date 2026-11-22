@@ -1,14 +1,15 @@
-// Static Round 2 glyph vocabulary, editor only.
+// Static Round 2 glyph vocabulary, editor only. paint, dropper, library and brush are the
+// approved appearance design's glyphs (prototypes/appearance-ux, 2026-11-22).
 export const shellIcons: Readonly<Record<string, string>> = {
   select: '<path d="M5 3 L5 18.5 L9 14.5 L11.8 20.8 L14 19.8 L11.2 13.6 L17 13.6 Z"/>',
   ink: '<path d="M12 3 L16.5 8.5 L14.5 14 L12 21 L9.5 14 L7.5 8.5 Z"/><path d="M12 8 V14"/>',
   slice: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M4.5 19.5 L19.5 4.5"/>',
   eraser: '<path d="M3.5 13.5 L10.5 6.5 L18.5 14.5 L12 21 H8 L3.5 16.5 Z"/><path d="M7.5 10 L15.5 18"/>',
   measure: '<rect x="2" y="7" width="20" height="10" rx="1.5"/><path d="M6 7 V10 M10 7 V11 M14 7 V10 M18 7 V11"/>',
-  paint: '<path d="M20 4 L12.5 11.5"/><path d="M10.5 9.5 L14.5 13.5 C15 14 14.5 15.5 13 16.5 C11 17.8 7.5 17.2 6 18.6 C5 19.6 3 20.5 3 20.5 C3 19 4 17.5 5.4 16.5 C6.8 15 6 11.5 7.5 10.5 Z"/>',
+  paint: '<path d="M14.5 3.5 20.5 9.5 11 19a2.1 2.1 0 0 1-3 0l-3-3a2.1 2.1 0 0 1 0-3Z"/><path d="M5.5 13.5h11" opacity=".55"/><path d="M19.5 15.5c0 1.6 1 2.4 1 3.5a1.5 1.5 0 0 1-3 0c0-1.1 1-1.9 1-3.5Z"/>',
   assets: '<path d="M8 2.5 L13.5 5.5 V11.5 L8 14.5 L2.5 11.5 V5.5 Z"/><path d="M2.5 5.5 L8 8.5 L13.5 5.5 M8 8.5 V14.5"/><path d="M18 13.5 V21.5 M14 17.5 H22"/>',
   import: '<path d="M3 14 V19 A2 2 0 0 0 5 21 H19 A2 2 0 0 0 21 19 V14"/><path d="M12 3 V15"/><path d="M7.5 10.5 L12 15 L16.5 10.5"/>',
-  library: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+  library: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><circle cx="17" cy="17" r="3"/><path d="m19.2 19.2 1.8 1.8"/>',
   view3d: '<path d="M12 3 L20 7.5 V16.5 L12 21 L4 16.5 V7.5 Z"/><path d="M4 7.5 L12 12 L20 7.5 M12 12 V21"/>',
   plan: '<rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 12 H13 V21"/>',
   elevation: '<path d="M3 21 V10 L12 3 L21 10 V21 Z"/><path d="M10 21 V15 H14 V21"/>',
@@ -59,6 +60,10 @@ export const shellIcons: Readonly<Record<string, string>> = {
   warning: '<path d="M12 3.5 L21.5 20 H2.5 Z"/><path d="M12 9.5 V14.5"/><circle cx="12" cy="17.5" r="0.9" fill="currentColor" stroke="none"/>',
   check: '<path d="M5 12.5 L10 17.5 L19 7.5"/>',
   plus: '<path d="M12 5 V19 M5 12 H19"/>',
+  star: '<path d="M12 3.5 L14.6 8.8 L20.5 9.7 L16.3 13.8 L17.3 19.6 L12 16.8 L6.7 19.6 L7.7 13.8 L3.5 9.7 L9.4 8.8 Z"/>',
+  brush: '<path d="M20 3.5c-4.5 2-8.5 6-10.5 9.5l2 2c3.5-2 7.5-6 9.5-10.5Z"/><path d="M9 13.5c-2 0-3.5 1.5-3.5 3.5 0 1.2-.8 2.4-2 3 3.4.6 7-1 7-4.5"/>',
+  paintSurface: '<path d="M4 7.5 L12 3.5 L20 7.5 V16.5 L12 20.5 L4 16.5 Z" opacity="0.45"/><path d="M12 11.5 L20 7.5 V16.5 L12 20.5 Z" fill="currentColor" fill-opacity="0.22"/><path d="M12 11.5 V20.5"/>',
+  paintSpace: '<path d="M4 7.5 L12 3.5 L20 7.5 V16.5 L12 20.5 L4 16.5 Z"/><path d="M4 7.5 L12 11.5 L20 7.5 M12 11.5 V20.5" opacity="0.6"/><path d="M4 7.5 V16.5 L12 20.5 L20 16.5 V7.5" fill="currentColor" fill-opacity="0.16"/>',
   minus: '<path d="M5 12 H19"/>',
   dot: '<circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>',
   sheet: '<path d="M3 16 L6.5 9 H21 L17.5 16 Z"/><path d="M10 9 V6.5 A2 2 0 0 1 14 6.5 V9"/>',
@@ -76,7 +81,7 @@ export const shellIcons: Readonly<Record<string, string>> = {
   pin: '<path d="M9 3 H15 L14 9 L17.5 12.5 H6.5 L10 9 Z"/><path d="M12 12.5 V21"/>',
   swap: '<path d="M4 8 H18 M14 4 L18 8 L14 12"/><path d="M20 16 H6 M10 12 L6 16 L10 20"/>',
   filter: '<path d="M3.5 5 H20.5 L14 12.5 V19 L10 21 V12.5 Z"/>',
-  dropper: '<path d="M14.5 4.5 A2.6 2.6 0 0 1 19.5 9.5 L17 12 L12 7 Z"/><path d="M13 8 L5 16 V19 H8 L16 11"/>',
+  dropper: '<path d="m14.5 6.5 3 3"/><path d="M16 3.5a2.1 2.1 0 0 1 3 0l1.5 1.5a2.1 2.1 0 0 1 0 3l-2 2-4.5-4.5Z"/><path d="M14.5 8 6 16.5 5 20l3.5-1 8.5-8.5"/>',
   chevronLeft: '<path d="M15 6 L9 12 L15 18"/>',
   expand: '<path d="M14 4 H20 V10 M10 20 H4 V14 M20 4 L13 11 M4 20 L11 13"/>',
   minimize: '<path d="M20 4 L14 10 M14 5 V10 H19 M4 20 L10 14 M10 19 V14 H5"/>',
