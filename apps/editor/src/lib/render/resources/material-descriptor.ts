@@ -144,6 +144,11 @@ export type StandardMaterialDescriptor = {
 	 */
 	readonly textures?: MaterialTextureKeys;
 	/**
+	 * `false` exempts the surface from the Canvas's slice clipping, as the basic
+	 * family already allows. An inspection swatch is never part of the cut World.
+	 */
+	readonly clip?: false;
+	/**
 	 * The descriptor of X2's **cutaway twin**: the same surface, driven by the
 	 * StageClip's live cutaway top instead of the constant never-cut value.
 	 *
@@ -362,6 +367,7 @@ export function materialKey(descriptor: MaterialDescriptor): string {
 				...(descriptor.finish === undefined ? [] : [`finish=${finishKey(descriptor.finish)}`]),
 				// Absent keeps the normal surface's key exactly; a twin is a distinct
 				// lease, never a second use of the same instance.
+				...(descriptor.clip === false ? ['clip=0'] : []),
 				...(descriptor.polygonOffset ? [`polygonOffset=${descriptor.polygonOffset.map(num).join(',')}`] : []),
 				...(descriptor.cutaway === true ? ['cutaway=1'] : [])
 			].join('|');

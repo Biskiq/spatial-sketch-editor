@@ -118,10 +118,38 @@ itself and never clones a material per instance.
 ### One light realizer
 
 The Canvas `LightStore` is the only constructor of a world Point, Spot or Sun light. Host fills
-(ambient, the Sky's hemisphere, Paper's neutral rig) and dev benches are counted per file on an exact,
+(ambient, the Sky's hemisphere, Paper's neutral rig), the offscreen inspection fills and dev
+benches are counted per file on an exact,
 shrink-only allowlist. The Stage and the Preview lease from the Canvas store.
 
 **Guard:** `render/light-realizer-boundary`.
+
+### Material inspection
+
+`materials/inspection-host.ts` draws Finish inspections and thumbnails offscreen on the editor's own
+renderer, one host per editor; today `/dev/materials` mounts it. A subject is a catalogue entry, an
+accepted project Finish or an unaccepted draft, and each resolves through `sceneFinishFor`. Materials
+and lights come from the Canvas stores; a draft's images load only through its own memory scope. A
+descriptor with `clip: false` keeps the Stage Slice out of a swatch.
+
+- A request names any size up to the 2048 readback bound, one geometry (sphere, plane or block), a
+  lighting (studio, grazing or Current World) and a display (lit, unlit colour or one solo role).
+- States are `pending`, `ready`, `partial` with issues and `refused` with issues and no frame.
+- One render lane serves the interactive request before queued thumbnails. Replacement cancels the
+  older request, a settled request draws nothing, and a draw's leases end with its readback.
+- Only `ready` enters the bounded thumbnail cache, namespaced by catalogue or project scope. Its key
+  covers the resolved recipe, output dimensions, geometry and recipe versions. Draft and Current
+  World results never enter it.
+- Losing the renderer cancels work and drops its GPU caches; live work resumes on the next
+  generation.
+- Current World uses the Stage's Sky, lights, Treatment and neutral constants
+  (`stage-neutral-lighting.ts`) at an explicit anchor. It has no other geometry, cast shadows or fog.
+- The studio environment exists only in the offscreen inspection scene and never lights the World.
+- Inspection and thumbnail lookup stay outside visitor, public and Preview closures.
+
+**Guards:** `render/materials/inspection-host`, `render/materials/inspection-subject`,
+`render/materials/catalogue-thumbnails`, `authoring/f4-public-isolation`,
+`render/light-realizer-boundary`.
 
 ### One look resolver
 

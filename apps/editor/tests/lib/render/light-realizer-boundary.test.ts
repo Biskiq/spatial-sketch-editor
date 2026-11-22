@@ -39,17 +39,19 @@ const STORE_SITES = { PointLight: 1, SpotLight: 1, DirectionalLight: 1 };
  * Exact per class; shrink-only.
  */
 const HOST_LIGHTS: Record<string, { sites: Record<string, number>; owner: string }> = {
-	// Ambient under the Sky and under Paper; Paper's two-light neutral rig.
-	'lib/authoring/stage/shell/StageCanvas.svelte': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'Stage host fill + Paper rig' },
+	// Ambient under the Sky and under Paper; Paper's neutral rig, one site over the shared constants.
+	'lib/authoring/stage/shell/StageCanvas.svelte': { sites: { AmbientLight: 1, DirectionalLight: 1 }, owner: 'Stage host fill + Paper rig' },
 	'lib/visitor/VisitorPreviewSurface.svelte': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'Preview host fill + Paper rig' },
 	// The Sky's hemisphere fill. The Sun is the store's.
 	'lib/render/WorldEnvironment.svelte': { sites: { HemisphereLight: 1, AmbientLight: 1 }, owner: 'Sky hemisphere fill' },
 	// Recipe 1's grazing rig is a reference lighting fixture, not a world light.
 	'lib/render/materials/inspection-lighting.ts': { sites: { AmbientLight: 1, DirectionalLight: 1 }, owner: 'inspection reference rig' },
+	// E7 Current World: the Stage's own fills around a swatch. Point, Spot and the Sun stay the store's.
+	'lib/render/materials/inspection-world.ts': { sites: { AmbientLight: 2, DirectionalLight: 1, HemisphereLight: 1 }, owner: 'inspection Current World fills' },
 	'routes/dev/assets/+page.svelte': { sites: { HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' },
 	'routes/dev/s8-oracle/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 2 }, owner: 'S8 pixel oracle' },
 	'routes/dev/s8-gates/fidelity.ts': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'S8 PR B fidelity chart' },
-	'routes/dev/materials/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' },
+	'routes/dev/materials/StageReference.svelte': { sites: { AmbientLight: 1, DirectionalLight: 1 }, owner: 'E7 gate Stage reference' },
 	'routes/dev/s8-d/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 2 }, owner: 'S8 PR D visual gate' },
 	'routes/dev/s8-e/+page.svelte': { sites: { AmbientLight: 1, HemisphereLight: 1, DirectionalLight: 2 }, owner: 'S8 PR E visual gate' }
 };

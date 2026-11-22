@@ -179,8 +179,8 @@ is lossy WebP (sRGB); normal (+Y) and ORM (R occlusion, G roughness, B metal con
 Metal sets carry no colour map: their recipe colour is the measured F0, and they are ready on the
 structure maps alone. Every image is pinned by sha256, MIME and byte length in the shipped
 manifest, and pins are append-only. The editor and the visitor runtime fetch a set's images only
-when a Finish binds them; the creator shelf shows a swatch colour (recipe factor × the qualified
-map's mean), never a render input. Upload builds a full mip chain and samples with linear
+when a Finish binds them; the creator shelf shows a derivative thumbnail over a swatch colour
+(recipe factor × the qualified map's mean), neither of which is a render input. Upload builds a full mip chain and samples with linear
 magnification, trilinear minification and anisotropy 1. GPU residency is accounted per view against
 the Finish-view ceiling and refuses with `texture-budget` instead of thrashing. Source files are
 retained byte-for-byte outside git. Derivation records (every transform, measurement and hash) and
@@ -189,8 +189,18 @@ retained sources. The six legacy placeholder IDs resolve for existing documents 
 values and bytes but are not offered for new use; new authored objects default to
 `plaster-painted`.
 
-**Not current (destination).** 192² catalogue thumbnail derivatives, adaptive resolution streaming
-or progressive refinement, automatic quality selection by device, a user texture-quality preference,
+**Catalogue thumbnails (T2.S8 E7).** Each creator-facing entry ships one 192×192 PNG reference
+derivative under `/material-thumbnails/`: sphere, studio, lit and Natural. The manifest
+`src/lib/content/material-thumbnails.json` records the recipe versions and each file's key and
+sha256. `catalogueThumbnailUri` returns a file only while its key matches the one the current entry,
+size, geometry and recipe versions produce; otherwise the shelf keeps the swatch. A lookup loads no
+texture and the shelf renders nothing, so opening it fetches no full-resolution set image.
+Regenerate from `apps/editor`, with its dev server running and `S8_GATE_BASE_URL` naming it, with
+`node scripts/generate-material-thumbnails.mjs`. 192×192 is the versioned reference derivative, not
+a display size: the [inspection host](./rendering.md#material-inspection) serves other sizes and
+geometries on demand, and none is pre-generated.
+
+**Not current (destination).** Adaptive resolution streaming or progressive refinement, automatic quality selection by device, a user texture-quality preference,
 anisotropic filtering, GPU-compressed (KTX2/Basis) derivatives and CDN-origin Expansion delivery.
 Each needs its own consumer and evidence. Adding another resolution of a set is an allowlist append
 under a new URI, never a change to an existing pin.
