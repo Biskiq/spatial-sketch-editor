@@ -10,7 +10,7 @@ import * as T from './thumbs.js';
 import { CATALOGUE } from '../shared/catalogue.js';
 import { $, h, ic, swatch, toast } from './ui-kit.js';
 import * as A from './actions.js';
-import { renderTray, trayRowItems, pickFromItem } from './ui-tray.js';
+import { renderTray } from './ui-tray.js';
 import { renderLibrary } from './ui-library.js';
 import { renderCard, cardSelection } from './ui-card.js';
 import { renderImporter, renderPicker } from './ui-panels.js';
@@ -56,7 +56,8 @@ function renderIndex() {
   const subjectOn = (sid) => U.focus && U.card === 'subject' && TARGETS[U.focus.target].subject === sid;
   el.append(h('h6', {}, 'Index', h('span', {}, 'Riverside · Living')));
   const groups = [['Walls', ['wall-n', 'wall-w', 'wall-e', 'wall-s', 'part']], ['Floors', ['floor']], ['Objects', ['sofa', 'table', 'rug', 'chair']]];
-  const end = (t) => [M.openDiagnostics(M.S.p.assign[t]).length ? h('i', { class: 'warnd', title: 'Needs repair' }) : null, h('span', { class: 'isw', style: { backgroundImage: `url(${T.url(M.look(M.S.p.assign[t]), 'xs', 64)})` }, title: M.nameOf(M.S.p.assign[t]) })];
+  // U leaves the Index unchanged: no Finish swatch or repair dot per row (later, outside U).
+  const end = () => [];
   const hover = (ts) => ({ onPointerenter: () => A.getStage()?.set({ hover: ts, ghostLook: null }), onPointerleave: () => A.getStage()?.set({ hover: [] }) });
   for (const [g, subs] of groups) {
     el.append(h('div', { class: 'ixg' }, g));
@@ -76,7 +77,7 @@ function renderIndex() {
       }
     }
   }
-  el.append(h('p', { class: 'note-sm', style: { margin: '14px 6px 0' } }, 'Finishes in use: Library › This project. Palette: Paint › ⌃ (under the dropper).'));
+  el.append(h('p', { class: 'note-sm', style: { margin: '14px 6px 0' } }, 'Context, unchanged in U. Finishes in use: Library › This project. Palette: Paint › ⌃. Repair: the head.'));
 }
 
 // ------------------------------------------------------------------ bar
@@ -125,7 +126,7 @@ const TASKS = [
   { id: 'repair', title: '4 · Repair a missing image and a model mismatch', who: 'Anyone reopening a project',
     steps: ['Set up opens the “client” state: amber hatch on two walls and the chair frame', 'Head › 2 to repair lists each issue with its surfaces', 'Client Tile: Relink, Replace, or Use colour instead', 'Client Oak on the chair: Use UV set 0 or Surface mapping', 'Hatch clears; Undo restores the issue exactly'] }
 ];
-const CHECKS = ['Library draft: L › any material ⤢ › Customise… — cobalt ghost on the selected surface; click another surface to move it; Apply is one undo', 'Align on wall: Card › Pattern › Align on wall… — ruler, repeat grid, offset and rotation handles', 'Brush (future): Paint › Brush shows its tools and options rows; E picks its eraser', 'Cold reopen: in app.html without ?scene (presets are never saved), edit, then reload — Finishes, names and palette return; thumbnails regenerate from recipes', 'Cancel: Esc mid-drag drops the stroke; Esc closes the top surface first', 'Keyboard: B, T, 1–9, Enter on Stage focus, Tab through Card rows, arrows on sliders (bursts coalesce)', 'Coarse pointer: long-press samples; 44 px targets; drag paints', 'Narrow: open board.html for 820 × 1180 iPad portrait'];
+const CHECKS = ['Library draft: L › any material ⤢ › Customise… — cobalt ghost on the selected surface; click another surface to move it; Apply is one undo', 'Align on wall: Card › Pattern › Align on wall… — ruler, repeat grid, offset and rotation handles', 'Brush (future): Paint › Brush shows its tools and options rows; E picks its eraser', 'Cold reopen: in app.html without ?scene (presets are never saved), edit, then reload — Finishes, names and palette return; thumbnails regenerate from recipes', 'Cancel: Esc mid-drag drops the stroke; Esc closes the top surface first', 'Keyboard: B, T, Enter on Stage focus, Tab through Card rows, arrows on sliders (bursts coalesce)', 'Coarse pointer: long-press samples; 44 px targets; drag paints', 'Narrow: open board.html for 820 × 1180 iPad portrait'];
 
 function renderDrawer() {
   const el = $('#drawer');
@@ -269,7 +270,6 @@ function onKey(e) {
   else if (k === 's' && U.tool === 'paint') setUi({ scope: U.scope === 'space' ? 'surface' : 'space' });
   else if (k === '[') turn(-1);
   else if (k === ']') turn(1);
-  else if (/^[1-9]$/.test(k) && U.tool === 'paint') { const it = trayRowItems()[+k - 1]; if (it) pickFromItem(it); }
   else return;
   e.preventDefault();
 }

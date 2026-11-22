@@ -70,7 +70,7 @@
             placeholder for later (see <a href="#finishing">the ladder</a>).</li>
           <li><b>Shape tells the consequence.</b> A circle is a colour: it recolours the surface and keeps its relief and
             sheen (walnut stays grained). A rounded square is a material: it replaces the whole Finish. One grammar in the
-            tray, Library, Card and Index.</li>
+            tray, Library and Card.</li>
           <li><b>The Library is an asset library.</b> A kind rail (Materials with nested categories; Objects, which Furnish
             opens; Openings and Plants &amp; Lights later), sources <i>All · Curated · This project · My library · Sources</i>
             (third-party shelves later), filters, and a master–detail pane with a live preview, ★, <i>Use for Paint</i>,
@@ -78,9 +78,13 @@
             <i>from Oak Veneer · 3 changes</i>. Every card has one anatomy (name up to two lines, one sub-line; usage and
             variants sit on the image), and in <i>All</i> the small sources are one-row shelves with <i>See all n ›</i>. No
             pin: Shift-click keeps it open for a run of picks and <code>L</code> reopens the last view.</li>
-          <li><b>The Index is the hierarchy.</b> Nested rows with the Finish swatch at the end of each; no Finish list beside it.
-            Finishes in use live in <i>Library › This project</i> (a click selects their users); the palette lives in
-            <i>Paint › ⌃</i>.</li>
+          <li><b>U leaves the Index unchanged.</b> Appearance needs no Index work: Finishes in use live in
+            <i>Library › This project</i> (a click selects their users), the palette in <i>Paint › ⌃</i>, repair in the head.
+            The prototype's Index is context, not a proposal; a Finish swatch per row is later, outside U.</li>
+          <li><b>The armed tool key is a quiet forest step.</b> The armed key fills with forest&nbsp;3 (<code>#2d5e48</code>) with
+            an ivory icon and a faint inner edge, replacing the ivory key, so gold and cobalt stay the loudest marks on screen. It is
+            one shell token for every tool family (World, drafting, Experience); primary buttons and pressed toggles keep their own
+            treatment. See <a href="#decisions">D12</a>.</li>
         </ul>
       </div>
       <div>
@@ -120,7 +124,7 @@
         <a href="app.html?scene=walnut&amp;lib=curated&amp;detail=cat:wood-walnut-veneer">Library ↗</a> · <a href="app.html?scene=walnut&amp;tool=paint&amp;tab=colours&amp;tray=open">colours ↗</a></div></li>
       <li><div><b>Apply</b><p>Hover shows a cobalt ghost and a consequence line (<i>Walnut Veneer replaces Painted Plaster on North wall</i>). Click paints one surface; drag paints several; Shift-click paints the whole room or object once. One undo per stroke.</p>
         <a href="app.html?scene=walnut&amp;tool=paint">open ↗</a></div></li>
-      <li><div><b>Adjust on the Card</b><p>The painted surface opens its Finish Card (a multi-part object opens its parts first). Reach line, then Material, Colour, Sheen, Pattern. Dragging previews (never history); release commits one undo step, coalesced for 600 ms.</p>
+      <li><div><b>Adjust on the Card</b><p>The painted surface opens its Finish Card (a multi-part object opens its parts first). Reach line, then Material, Colour, Sheen, Pattern. Dragging previews (never history); release commits one undo step (a held arrow key commits on key-up).</p>
         <a href="app.html?scene=walnut&amp;focus=table:top&amp;card=finish">open ↗</a></div></li>
       <li><div><b>Edit exactly</b><p><i>Edit material…</i> opens the editor beside the Card: raw maps, exact fields (double-click resets one), <i>Compare with original</i> under Studio, Grazing or this room.</p>
         <a href="app.html?scene=walnut&amp;focus=table:top&amp;card=finish&amp;edit=table:top">open ↗</a></div></li>
@@ -147,7 +151,7 @@
     <dl class="kv" style="margin-top:12px">
       <dt>Cold reopen</dt><dd>The prototype saves to localStorage; reload restores Finishes, assignments, palette, favourites, recents and My library. Task presets (<code>?scene=</code>) start fresh and are never saved.</dd>
       <dt>Cancel / Undo</dt><dd>Escape closes the top layer first — picker, Library detail, Library, Align, editor, import, tray, draft — then deselects. Every write is one undo step; import and its assignments undo together.</dd>
-      <dt>Keyboard</dt><dd><code>B</code> Paint (in Paint: Brush / Surface), <code>E</code> Erase (in Brush: its eraser), <code>V</code> Select, <code>L</code> Library (last view), <code>I</code> sample, <code>T</code> tab, <code>S</code> Space / Surface, <code>1</code>–<code>9</code> pick, <code>[</code> <code>]</code> turn, arrows nudge in Align, ⌘Z / ⇧⌘Z. Every swatch, card and row is a focusable button.</dd>
+      <dt>Keyboard</dt><dd><code>B</code> Paint (in Paint: Brush / Surface), <code>E</code> Erase (in Brush: its eraser), <code>V</code> Select, <code>L</code> Library (last view), <code>I</code> sample, <code>T</code> tab, <code>S</code> Space / Surface, <code>[</code> <code>]</code> turn, arrows nudge in Align, ⌘Z / ⇧⌘Z. Every swatch, card and row is a focusable button. Picking by number is deferred: <code>2</code> and <code>3</code> already switch the reading.</dd>
       <dt>Coarse pointer</dt><dd>44 px swatches and hit areas; long-press samples; drag paints. Designed, not yet checked on a device.</dd>
       <dt>Narrow layouts</dt><dd>iPad portrait: the Library and the Material editor become bottom sheets with the room still visible above; the Library source switch folds into a menu when the sheet is narrow; the Card folds to its identity row while the tray or Library is open. <a href="board.html">Board</a>.</dd>
     </dl>
@@ -237,13 +241,13 @@
     <div class="tw"><table>
       <thead><tr><th>Question</th><th>Recommended</th><th>Rejected, and why</th></tr></thead>
       <tbody>
-        <tr><td><a href="concepts.html#instrument">Where quick picks live</a></td><td>A · tabbed tray on the dock</td><td><b>B mixed row</b> (colours and materials in one row): close alternative, kept for owner choice; it loses the tab's clear consequence. <b>C rail</b>: clashes with the Index and becomes a second Finish list. <b>D ring</b>: a later accelerator, not the primary instrument.</td></tr>
+        <tr><td><a href="concepts.html#instrument">Where quick picks live</a></td><td>A · tabbed tray on the dock</td><td><b>B mixed row</b> (colours and materials in one row): close alternative, kept for owner choice; it loses the tab's clear consequence. <b>C rail</b>: clashes with the Index and becomes a second Finish list. <b>D ring</b>: not the primary instrument; promoted as Paint's future <i>quick wheel</i> (below).</td></tr>
         <tr><td><a href="concepts.html#grammar">Swatch grammar</a></td><td>G1 · shape = consequence</td><td><b>All circles</b>: colour and material look interchangeable but do opposite things to relief. <b>All squares</b>: colours lose their light, quick read. <b>Wide 3:2 chips</b>: show more pattern but cut the tray's capacity by a third.</td></tr>
         <tr><td><a href="concepts.html#cards">Library cards</a></td><td>Grid of 128 px cards that expand in place</td><td><b>Large previews</b>: about three across in the sheet on a laptop, too slow to scan 21+ entries. <b>List rows</b>: kept for search results and My library management, not browsing.</td></tr>
         <tr><td><a href="concepts.html#toolbar">Toolbar</a></td><td>T1 · Paint + Erase + Library</td><td><b>Separate Colour and Material tools</b>: two keys for one verb, and the dropper must guess which. <b>Contextual only</b>: no way to paint several surfaces quickly. <b>Floating palette</b>: covers the Stage and duplicates the tray.</td></tr>
         <tr><td><a href="concepts.html#colour">Colour on a material</a></td><td>Natural / Stained / Painted, offered by material</td><td>A single "colour" that always multiplies: dark woods cannot become pale, and creators cannot tell why. <b>Tint / Colour</b> as labels: they describe the maths, not the result.</td></tr>
         <tr><td><a href="concepts.html#card-layout">Card and editor</a></td><td>Card (Finish) + Material editor</td><td><b>Progressive Card</b> (first round): mixed the raw capture with the treatment and overflowed 288 px. <b>Tabbed</b>: hides reach on a tab. <b>Channel-first</b>: right for artists, wrong as the default; its exactness lives on in the editor.</td></tr>
-        <tr><td><a href="concepts.html#rejected">Second round</a></td><td>Editor, Brush in Paint, Shift-click, swatch in the Index, cobalt for reach</td><td><b>View-only Inspect</b>: every exact edit meant leaving it. <b>Brush as its own tool</b>: a ninth dock key with a second palette. <b>Library pin</b>: fights the Card for the right edge. <b>Finish list in the Index</b>: mixes where and what. <b>Gold for reach</b>: one ink, two meanings.</td></tr>
+        <tr><td><a href="concepts.html#rejected">Second round</a></td><td>Editor, Brush in Paint, Shift-click, cobalt for reach (the Index swatch is now outside U)</td><td><b>View-only Inspect</b>: every exact edit meant leaving it. <b>Brush as its own tool</b>: a ninth dock key with a second palette. <b>Library pin</b>: fights the Card for the right edge. <b>Finish list in the Index</b>: mixes where and what. <b>Gold for reach</b>: one ink, two meanings.</td></tr>
         <tr><td>Thumbnails</td><td>Flat lit sample tile, physical window</td><td><b>Lit sphere</b> at S/M: curvature foreshortens the pattern toward the rim, a fifth of the square is background, and it still fails the concrete pair at 256. <b>Unlit colour</b>: metals and finish variants become identical. <b>One full repeat</b>: a 3.4 m parquet tile turns to noise at 56 px.</td></tr>
       </tbody>
     </table></div>
@@ -265,7 +269,10 @@
         <tr><td>Material editor: raw maps read-only, exact Finish fields, compare</td><td><span class="tag new">new UI</span></td><td>Over E4 inspect / patch and the E7 host; no new operation</td></tr>
         <tr><td>Align on wall / floor</td><td><span class="tag new">new UI</span></td><td>Edits the existing tiling size, rotation and offset; faced view through the Camera <code>face</code> intent</td></tr>
         <tr><td>Library drafts (Customise…), kind rail, This project source</td><td><span class="tag new">new UI</span></td><td>Commits through existing assignment and G save</td></tr>
+        <tr><td>Armed tool key: forest&nbsp;3 for every tool family</td><td><span class="tag new">new UI</span></td><td>One shell token and its three docks; amends the approved shell design (<a href="#decisions">D12</a>)</td></tr>
         <tr><td>Finish naming <i>Material · treatment</i></td><td><span class="tag new">new engineering</span></td><td>A naming rule plus a <i>named</i> flag so a renamed Finish keeps its name</td></tr>
+        <tr><td>Quick wheel: hold Paint's key (long-press it on touch) for up to eight ★ favourites at the cursor; release over one to pick</td><td><span class="tag fut">promoted</span></td><td>Reads the tray's favourites, never a second list; a tap still arms Paint, and long-press on the Stage stays the dropper. Replaces number picks</td></tr>
+        <tr><td>Index: Finish swatch per row, repair dot</td><td><span class="tag fut">later</span></td><td>Outside U; the Index is unchanged</td></tr>
         <tr><td>Layers, masks, brush, decals, Teach (<a href="#finishing">ladder steps 4–6</a>); procedural materials, displacement, third-party libraries, objects, openings, plants</td><td><span class="tag fut">future</span></td><td>Dashed, labelled slots in the Card, editor, tray and Library so the layout has room; storyboard in <a href="concepts.html#ladder">Concepts</a>; no commitment</td></tr>
       </tbody>
     </table></div>
@@ -295,9 +302,13 @@
   </section>
 
   <section class="sec" id="decisions">
-    <header><h2>Owner decisions <small>each with a recommendation</small></h2></header>
+    <header><h2>Owner decisions <small>all decided 2026-11-22</small></h2></header>
+    <p class="note">The owner accepted every recommendation below (D7: tray A). Where this design differs from the approved
+      shell design — the armed key (D12), and the Paint tray's labelled tabs, radius, <i>Browse all</i> and expanded palette —
+      this design governs; the shell contract is amended when U's implementation is accepted. The number quick-pick
+      (<code>1</code>–<code>9</code>) is deferred, and the quick wheel is promoted as Paint's future accelerator.</p>
     <ol class="dec">
-      <li><b>Smooth and Polished concrete.</b><p>No presentation separates them (same scan, factor only). <b>Recommend</b> one card, <i>Smooth Concrete</i>, with a <i>Matte / Polished</i> variant chip, and F's rule applied between cards, not between a card's variants. Alternative: drop Polished from Core. U cannot close while this is open.</p></li>
+      <li><b>Smooth and Polished concrete.</b><p>No presentation separates them (same scan, factor only). <b>Recommend</b> one card, <i>Smooth Concrete</i>, with a <i>Matte / Polished</i> variant chip, and F's rule applied between cards, not between a card's variants. F's rule is then recorded between cards.</p></li>
       <li><b>Reach before the edit, replacing the post-hoc Ask.</b><p>The plan keeps PLATE's Ask semantics. The study asks the same question earlier: a reach line on the Card (<i>Shared by n · This wall | All&nbsp;n</i>), cobalt outlines on who <i>All</i> reaches, defaults by kind. Nothing is asked after a drag. <b>Recommend</b> adopting it; it removes a dialog from every shared edit.</p></li>
       <li><b>Colour coat as new engineering.</b><p>A colour applied with Paint keeps relief and sheen and becomes a deduplicated derived Finish (ten walls painted Sage make one Finish, following the palette). <b>Recommend</b> a dedicated planner over E4 primitives.</p></li>
       <li><b>G thumbnail slot to 256 px.</b><p>Needed for a 2× M card. <b>Recommend</b> a scoped change: PNG, ≤ 256 KiB, edge 256, new thumbnail recipe key. Old 192 items stay valid and display with upscale until regenerated.</p></li>
@@ -308,6 +319,11 @@
       <li><b>Library drafts.</b><p><i>Customise…</i> opens the Material editor on a draft that writes nothing until Apply, Use for Paint or Save. <b>Recommend</b> adopting; it makes “try before you commit” the default way to start from the Library.</p></li>
       <li><b>Ladder seams for layers, masks and brush.</b><p>Agree the seams now (Base layer over v1, room-fact masks, Surface layers on the decal contract, Brush inside Paint) without designing the features. <b>Recommend</b> recording them as the direction, not as a contract.</p></li>
       <li><b>Import reads file names first.</b><p>The PBR map set is the industry standard, so the sheet keeps its names (Normal, Roughness, ORM) and asks only what the files leave open. Normal direction and gloss inversion come from vendor naming when present (<code>_gl</code> / <code>_dx</code>, <code>nor_gl</code>, <code>arm</code>, <code>gloss</code>); a clean set imports in one click (<a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;import=clean">clean ↗</a>, <a href="app.html?scene=artist">messy ↗</a>). <b>Recommend</b> adding name detection to E5's draft facts; it never overrides an explicit answer.</p></li>
+      <li><b>Armed tool key.</b> <span class="tag now">decided 2026-11-22</span><p>The armed key on every dock is
+        forest&nbsp;3 (<code>#2d5e48</code>) with an ivory icon and a 1&nbsp;px inner edge at 16% white, replacing the soft
+        ivory key. The fill alone is about 2.1 : 1 against the dock, so the icon and edge carry the state too; the tool-colour
+        mark and the collapsed-palette caret are unchanged. It changes the approved shell design (the armed key and its state
+        row), so that slice is Tier&nbsp;2 and promotes the rule into the contract when accepted.</p></li>
     </ol>
   </section>
 
@@ -319,11 +335,12 @@
         <tr><td>Tray</td><td>Favourites, recents (creator prefs), palette, thumbnails</td><td>none: arms Paint</td><td><i>picked</i> lead swatch; empty state <i>Star colours or materials to keep them here</i></td></tr>
         <tr><td>Stage hover</td><td>Pick, target, scope</td><td>none until release</td><td>Consequence line: <i>&lt;pick&gt; replaces / colours &lt;current&gt; on &lt;target&gt;</i>; cobalt dashed ghost</td></tr>
         <tr><td>Library</td><td>Catalogue, project Finishes and users, private library listing, thumbnails</td><td><code>assign</code> on <i>Apply</i>; G insert on My library; nothing while drafting</td><td>Kind rail, sources, filters, detail pane, <i>Customise…</i>, <i>Used by n · select</i>, edited mark, <i>what travels</i> for library items</td></tr>
-        <tr><td>Finish Card</td><td><code>inspectFinish</code>: provenance, users, operations, diagnostics</td><td>E4 patch with reach; swap; rename</td><td>Reach line; original markers; <i>Material · treatment</i> names; other-kind note; 600 ms coalescing</td></tr>
+        <tr><td>Finish Card</td><td><code>inspectFinish</code>: provenance, users, operations, diagnostics</td><td>E4 patch with reach; swap; rename</td><td>Reach line; original markers; <i>Material · treatment</i> names; other-kind note; one undo per release</td></tr>
         <tr><td>Material editor</td><td>E7 host frames; raw map facts; the original Finish</td><td>E4 patch through the same adapter</td><td>Raw / exact split, faint original tick and double-click reset, <i>N changes · Reset all</i>, Compare, bottom sheet on iPad portrait</td></tr>
         <tr><td>Align on wall</td><td>Surface frame, tiling</td><td>E4 tiling patch (offset, rotation)</td><td>Ruler, grid and handles never saved; snaps (1 cm, 15°); <i>Put back</i></td></tr>
         <tr><td>Import sheet</td><td>E5 file facts and draft</td><td><code>acceptDraft</code></td><td>One summary line (<i>5 files · Rough Oak · 2 things to check</i>); only the open questions (red collision that blocks, amber normal check); the file table behind <i>Show files</i>; normal direction and gloss read from file names when they say (<code>_gl</code>, <code>_dx</code>, <code>nor_gl</code>, <code>arm</code>, <code>gloss</code>), so a clean vendor set imports in one click; <i>Import &amp; apply to n</i>; one kind, then paint the rest</td></tr>
-        <tr><td>Repair</td><td><code>inspectFinish</code> diagnostics</td><td>E4 diagnostic actions</td><td>Amber hatch on surfaces, dot in the Index, <i>n to repair</i> in the head</td></tr>
+        <tr><td>Dock (every tool family)</td><td>Armed tool</td><td>none</td><td><code>--shell-tool-armed-bg</code> becomes forest&nbsp;3, with an armed ink (ivory) and edge token; <code>.key.armed</code> in the World, Stage and Experience docks moves to it from <code>--shell-mode-active-bg</code>; drafting tools and Experience place-armed already use it. Primary buttons, the lens and pressed segments keep the ivory token. Production keeps its own dock anatomy: the prototype's word labels under icons are not proposed</td></tr>
+        <tr><td>Repair</td><td><code>inspectFinish</code> diagnostics</td><td>E4 diagnostic actions</td><td>Amber hatch on surfaces, <i>n to repair</i> in the head (no Index change)</td></tr>
       </tbody>
     </table></div>
     <p class="note">Light &amp; Sky inks keep one meaning each: gold = selected, cobalt = will change (reach, ghost, draft),
@@ -336,6 +353,7 @@
       <thead><tr><th>Slice</th><th>Delivers</th><th>Depends on</th><th>Exit</th></tr></thead>
       <tbody>
         <tr><td>U1 thumbnails</td><td>Sample-tile recipe (new version) on the E7 host; framing hints table; 256 px master and XS/S/M derivatives; G slot to 256 (D4); shelf swatches replaced</td><td>E7, D1, D4</td><td>All five items of the plan's <a href="../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md#thumbnail-revalidation-required-in-u">revalidation list</a> recorded on the host, on both backends; F's rule re-run on all 210 pairs</td></tr>
+        <tr><td>U8 armed key</td><td>Armed tool key token and its three docks; the approved shell design amended (D12)</td><td>none; lands with or before U2</td><td>Every dock's armed key reads at a glance on Paper and in 3D; focus ring and hover stay distinct; owner check</td></tr>
         <tr><td>U2 tray and Paint</td><td>Paint key, tray with tabs, favourites and recents, dropper, Face / Space, consequence line and ghost</td><td>U1</td><td>Task 1 in the editor; keyboard and coarse-pointer pass</td></tr>
         <tr><td>U3 colour coat</td><td>Coat planner with dedupe and palette following (D3)</td><td>U2</td><td>Ten walls Sage → one Finish; palette edit follows</td></tr>
         <tr><td>U4 Finish Card</td><td>Finish Card, reach line (D2), Swap, Colour modes, Sheen steps (D6), Pattern, naming</td><td>U2</td><td>Task 1 sheen edit, Task 2 split scale; one undo per release</td></tr>
@@ -344,6 +362,46 @@
         <tr><td>U7 transfer</td><td>Save to library, My library source, insert</td><td>U5, D4</td><td>Task 3 across two projects, cold reopen</td></tr>
       </tbody>
     </table></div>
+  </section>
+
+  <section class="sec" id="readiness">
+    <header><h2>Before implementation <small>what a U plan still needs</small></h2></header>
+    <p class="note"><b>Settled 2026-11-22:</b> D1–D12 accepted; the thumbnail treatment is recorded in the S8 plan; this design
+      governs where it differs from the shell contract; picking by number is deferred. The rules below were accepted the same
+      day, each chosen as the smallest rule that leaves room to grow.</p>
+    <ol>
+      <li><b>Stored facts.</b>
+        <ul>
+          <li><i>Names:</i> no flag and no format change. A Finish already stores a name; it is regenerated from
+            <i>Material · treatment</i> only while it still equals the generated name, so a renamed Finish keeps its name.</li>
+          <li><i>Favourites and recents:</i> creator preferences behind one small interface, on the device now (12 recents) and
+            on the account later. Each entry is a reference, never a copy: a colour, <code>cat:</code>, a library item, or a
+            project Finish that shows only inside its project.</li>
+          <li><i>Framing hints:</i> an optional window size and centre per entry in the catalogue's existing presentation side
+            table; imported and project Finishes derive theirs from tile size.</li>
+          <li><i>Thumbnail recipe:</i> one versioned key, <code>sample-tile/1</code>, part of every derivative's cache key.</li>
+        </ul></li>
+      <li><b>Rules.</b>
+        <ul>
+          <li><i>Coat identity:</i> one coat Finish per base Finish and colour, where the colour is a palette slot or a literal.
+            Removing a slot already turns followers into its last literal colour, so coats keep their colour.</li>
+          <li><i>Sheen:</i> three targets on effective roughness: Matte 0.8, Satin 0.5, Gloss 0.2. A value within 0.05 of a
+            target shows as that step, anything else as <i>Custom</i>; a step rougher than the capture is disabled. The targets
+            sit in one table per material family.</li>
+          <li><i>Undo:</i> no timer. A drag or a held arrow key previews and commits once on release; typed values commit on
+            Enter or blur. History needs no coalescing timer.</li>
+        </ul></li>
+      <li><b>States: one rule.</b> A refusal is a line in place with at most one action, never a dialog, and never blocks
+        unrelated editing. Budget: a flat swatch and <i>Too many large textures open · Retry</i>. No world anchor: <i>This
+        room</i> is disabled (<i>Place it to see it in this room</i>); Studio and Grazing work. Slow import: after 300 ms the
+        summary reads <i>Reading 3 of 5…</i>, and Esc cancels with nothing written. My library unreachable: <i>Offline ·
+        Retry</i>, and Save is disabled with that reason. Empty source: one sentence and one action.</li>
+      <li><b>From prototype to production.</b> No new colour tokens except D12's armed key; a short table maps every prototype
+        token to an existing presentation token. Capitalisation: sentence case for anything named or clickable, all caps only
+        for small, non-interactive mono metadata. Future features ship no placeholders: Paint's radius shows <i>Surface ·
+        Space</i> until Brush exists, and the Card and editor are ordered row lists that later rows join. The prototype's head,
+        Index, Stage and dock labels are scaffolding.</li>
+    </ol>
   </section>
 
   <section class="sec" id="limits">

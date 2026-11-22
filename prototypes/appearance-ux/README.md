@@ -4,7 +4,7 @@ How a creator picks, applies, edits, inspects, repairs and reuses colours and ma
 merged S8 material foundation, in the Light & Sky language. Competing directions, one recommended
 end-to-end instrument, a thumbnail lab measured with E7's method, and a responsive board.
 
-**Status:** design study for owner review. Not approved, not a production contract, not a plan. No
+**Status:** approved by the owner on 2026-11-22 (D1–D12, recorded in the S8 plan). Still not a production contract: the S8 plan and U's implementation plan are. No
 product file imports it. The prototype simulates S8's operations; the lab approximates its renderer.
 
 ## Open it
@@ -68,7 +68,8 @@ The head menu's *Reset prototype* clears saved state.
 - One instrument: a Paint key with a tabbed tray and a *Brush · Surface · Space* radius; circle =
   colour that keeps relief, rounded square = material that replaces the Finish; the Library as an
   asset library whose *Customise…* opens the Material editor on a draft that writes nothing until Apply;
-  the Index as hierarchy only.
+  the Index unchanged (context only in the prototype). The armed dock key is a quiet forest step for
+  every tool family (owner decision D12).
 - Gold = selected, cobalt = will change. Reach is visible before the edit. The editor marks the original
   with a faint tick; double-click resets a field.
 - Import keeps the standard map names and asks only what the file names leave open.

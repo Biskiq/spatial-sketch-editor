@@ -18,7 +18,7 @@ const matItem = (ref) => ({ kind: 'material', ref });
 const validColour = (v) => v.startsWith('#') || M.S.p.palette.some((s) => s.id === v);
 const validRef = (r) => r.startsWith('cat:') ? !!BY_ID[r.slice(4)] : r.startsWith('fin:') ? !!M.S.p.finishes[r.slice(4)] : r.startsWith('model:');
 
-/** Items of the always-visible row, in key order (1–9). */
+/** Items of the always-visible row, in display order (number picks are deferred). */
 export function trayRowItems() {
   if (U.trayTab === 'colours') {
     const fav = M.S.prefs.favColours.filter(validColour);
@@ -78,7 +78,6 @@ export function renderTray() {
     if (!it.fav && !sawRecent) { sawRecent = true; row.append(h('span', { class: 'sep' }), h('span', { class: 'lab' }, 'recent')); }
     const b = swatch(it, size, { pressed: samePick(it), onClick: () => pickFromItem(it), title: `${i < 9 ? i + 1 + ' · ' : ''}${A.pickName(it.kind === 'colour' ? it : { kind: 'material', ref: it.ref })}` });
     b.dataset.fid = 'tray-' + i;
-    if (i < 9) b.append(h('span', { class: 'n' }, String(i + 1)));
     row.append(b);
   });
   if (!items.length) row.append(h('span', { class: 'note' }, 'Star colours or materials to keep them here.'));

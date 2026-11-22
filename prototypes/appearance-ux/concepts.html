@@ -286,7 +286,7 @@ function inst() {
     };
     draw(); m.append(tray);
     host.append(box('A · Tabbed tray on the dock', 'rec', m,
-      ['Sits where the hand already is (on Paint in the dock), never over the Card or the Index', 'One row, one consequence per tab: Colours coat, Materials replace — the tab says what the click will do', '1–9 keys stay stable inside a tab', 'Expands upward to palette + wheel, or all materials; the Library takes over beyond that'],
+      ['Sits where the hand already is (on Paint in the dock), never over the Card or the Index', 'One row, one consequence per tab: Colours coat, Materials replace — the tab says what the click will do', 'Expands upward to palette + wheel, or all materials; the Library takes over beyond that'],
       ['One extra click (T) to switch kinds', 'Favourites are per tab: a mixed “my scheme” needs a palette or a saved set (future)']));
   }
   // B · mixed row
@@ -319,9 +319,9 @@ function inst() {
     const items = [...colourItems, ...matItems];
     items.forEach((it, i) => { const a = (i / items.length) * Math.PI * 2 - Math.PI / 2; const b = sw(it, 30); b.style.left = 75 + Math.cos(a) * 58 - 15 + 'px'; b.style.top = 75 + Math.sin(a) * 58 - 15 + 'px'; ring.append(b); });
     m.append(ring); armable(ring, items, cons);
-    host.append(box('D · Radial ring at the cursor', 'later', m,
+    host.append(box('D · Quick wheel at the cursor (promoted)', 'later', m,
       ['Zero travel: pick where you paint', 'Good expert accelerator for a few favourites'],
-      ['Hidden until you know the gesture; nothing to discover on first use', 'Eight slots, no names, no recents, no path to the Library', 'Long-press is already the semantic dropper; right-click is not available on iPad', 'Covers the surface you are about to judge']));
+      ['Hidden until you know the gesture; nothing to discover on first use', 'Eight slots, no names, no recents, no path to the Library', 'Long-press is already the semantic dropper; right-click is not available on iPad', 'Covers the surface you are about to judge', '<b>Promoted</b> by the owner as Paint’s future accelerator: hold Paint’s key (long-press it on touch) to open it with the ★ favourites; release picks and closes it, so it never stays over the surface']));
   }
 }
 
@@ -487,7 +487,7 @@ function rej() {
       ['A pinned panel fights the Card for the right edge and hides the Stage', 'Replaced by <b>Shift-click keeps it open</b> for a run of picks, and <b>L</b> reopening the last view']),
     box('Finish list in the Index', 'rej', mini('<div class="ln"><span>Index</span><em>Walls · Floors · Objects · Finishes</em></div>'),
       ['One place to see everything'],
-      ['Mixed two hierarchies — where things are, and what they wear', 'Replaced by a swatch at the end of every Index row, Finishes in <b>Library › This project</b> (a click selects their users), and the palette in Paint › ⌃']),
+      ['Mixed two hierarchies — where things are, and what they wear', 'Replaced by Finishes in <b>Library › This project</b> (a click selects their users) and the palette in Paint › ⌃; U leaves the Index unchanged (a per-row swatch is later, outside U)']),
     box('Gold for reach', 'rej', mini('<div class="ln"><span>Selected</span><em style="color:#a27a1d">gold</em></div><div class="ln"><span>Also changes</span><em style="color:#a27a1d">gold, lighter</em></div>'),
       ['Fewer colours on the Stage'],
       ['One colour meant two things: what you picked and what your edit will reach', 'Replaced by <b>gold = selected</b> (Stage outline and Index row only) and <b>cobalt = will change</b> (reach, draft ghost, Teach)'])

@@ -92,7 +92,7 @@ body.fold #card .card .body,body.fold #card .card .foot{display:none}
 
 #dock{position:fixed;bottom:10px;left:calc(var(--idx) + (100vw - var(--idx)) / 2);transform:translateX(-50%);width:min(var(--dock-w),calc(100vw - var(--idx) - 24px));height:56px;background:var(--forest);border-radius:14px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 6px;z-index:30;box-shadow:0 6px 18px rgba(18,38,29,.28)}
 .dk{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;height:46px;padding:0 6px;border-radius:10px;color:#e9efe9;font-size:10.5px;position:relative}
-.dk:hover{background:var(--forest2)} .dk[aria-pressed=true]{background:var(--forest3)}
+.dk:hover{background:var(--forest2)} .dk[aria-pressed=true]{background:var(--forest3);color:#f3f0e4;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
 .dk:focus-visible{outline:2px solid #a9c47a;outline-offset:-2px}
 .dk.dim{opacity:.42}
 .dk .lk{font:9px var(--mono);opacity:.6;position:absolute;top:3px;right:5px}
@@ -105,7 +105,7 @@ body.fold #card .card .body,body.fold #card .card .foot{display:none}
 #tray[hidden]{display:none}
 .tr-h{display:flex;align-items:center;gap:8px}
 .tr-h .grow{flex:1}
-.tr-row{display:flex;align-items:center;gap:8px;margin-top:8px;overflow-x:auto;overflow-y:visible;padding:4px 2px 6px;scrollbar-width:thin}
+.tr-row{display:flex;align-items:center;gap:8px;margin-top:8px;overflow-x:auto;overflow-y:visible;padding:4px 2px 6px 7px;scroll-padding-left:7px;scrollbar-width:thin}
 .tr-row .sep{width:1px;height:30px;background:var(--line);flex:none;margin:0 2px}
 .tr-row .lab{font:9.5px var(--mono);color:var(--ink2);writing-mode:vertical-rl;transform:rotate(180deg);flex:none;letter-spacing:.06em;text-transform:uppercase}
 .tr-row .sw .n{position:absolute;left:-4px;top:-5px;font:9px var(--mono);color:var(--ink2);background:#fff;border-radius:4px;padding:0 2px;line-height:12px;pointer-events:none}
