@@ -28,10 +28,18 @@
  * owned per Canvas: advancing one host's generation never refuses another host's
  * in-flight completion. Lease releases capture the exact entry they acquired, so
  * an old lease can never delete a newer entry that reused the same view key.
+ *
+ * An unfinished acquisition holds every source it names. A texture that is
+ * refused, cancelled, evicted or retired meanwhile is disposed by the last holder
+ * to settle, and only if no entry names it by then. When a source changes under
+ * an unfinished acquisition (Retry, a new pin) it acquires again; when its scope
+ * closes it commits nothing.
  */
 import type { TextureLoadScope } from './texture-store';
 import {
+	cachedFinishTexture,
 	detachFinishTexture,
+	finishTextureKey,
 	loadFinishTexture,
 	releaseFinishTexture,
 	type TextureScopeKey
@@ -118,7 +126,8 @@ export function rgba8MipChainBytes(width: number, height: number): number {
 }
 
 type Entry = {
-	readonly key: string;
+	/** Renamed when its source changes, so no acquisition joins the old bytes. */
+	key: string;
 	readonly texture: Texture;
 	readonly bytes: number;
 	readonly owner: string;
@@ -144,7 +153,22 @@ function entryKey(scopeId: string, owner: string, generation: number, view: stri
 
 const GLOBAL_OWNER = 'global';
 
+/** One source that unfinished acquisitions may still commit. */
+type SourceHold = {
+	/** Renamed once lost, so no later acquisition joins it. */
+	key: string;
+	readonly source: FinishViewSource;
+	readonly scope: TextureScopeKey | null;
+	readonly scopeId: string;
+	holders: number;
+	/** Why these bytes may no longer be committed. */
+	lost: 'changed' | 'closed' | null;
+	/** What the last holder must dispose or leave to an entry, each with its listener. */
+	readonly textures: Map<Texture, () => void>;
+};
+
 let entries = new Map<string, Entry>();
+let holds = new Map<string, SourceHold>();
 let budgetBytes = DEFAULT_FINISH_VIEW_BUDGET_BYTES;
 /** Latest generation per Canvas owner; never advanced by another Canvas. */
 let ownerGenerations = new Map<string, number>();
@@ -200,7 +224,7 @@ export function setFinishViewGeneration(owner: string, next: number): void {
 		if (entry.owner !== owner || entry.generation >= next) continue;
 		if (entry.refCount === 0) {
 			entries.delete(entry.key);
-			disposeEntry(entry, entries.values());
+			disposeEntry(entry);
 		} else {
 			entry.retired = true;
 		}
@@ -227,6 +251,7 @@ export function finishViewStats(): FinishViewStats {
 /** Test-only: clear the logical cache without touching the texture source cache. */
 export function resetFinishViewsForTests(): void {
 	entries = new Map();
+	holds = new Map();
 	ownerGenerations = new Map();
 	access = 0;
 	budgetBytes = DEFAULT_FINISH_VIEW_BUDGET_BYTES;
@@ -248,7 +273,7 @@ function releaseEntry(entry: Entry): void {
 	released += 1;
 	if (entry.retired && entries.get(entry.key) === entry) {
 		entries.delete(entry.key);
-		disposeEntry(entry, entries.values());
+		disposeEntry(entry);
 	}
 }
 
@@ -265,32 +290,117 @@ function releaseEntry(entry: Entry): void {
  * this cache becomes the texture's single disposer.
  */
 export function releaseFinishViewsForScope(scopeId: string): void {
+	for (const hold of [...holds.values()]) {
+		if (hold.scopeId === scopeId) loseHold(hold, 'closed');
+	}
 	for (const entry of [...entries.values()]) {
 		if (entry.scopeId !== scopeId) continue;
 		if (entry.refCount === 0) {
 			entries.delete(entry.key);
-			disposeEntry(entry, entries.values());
+			disposeEntry(entry);
 		} else {
 			entry.retired = true;
-			detachFinishTexture(entry.source.uri, entry.source.role, entry.textureScope);
+			detachFinishTexture(entry.source.uri, entry.source.role, entry.textureScope, entry.texture);
 		}
 	}
 }
 
 /**
- * Dispose one evicted upload. If another entry still names the same texture (two
- * view keys can share a URI and role), the texture stays until its final entry is
- * evicted. Removing the Finish source key makes a later acquire reload bytes
- * rather than hand back a disposed texture.
+ * One image's bytes changed or are being retried.
+ *
+ * No later acquisition joins a view of the old bytes and an unfinished one loads
+ * again. An unleased view is disposed now; a leased one lives to its final
+ * release. As with teardown, call this **before** the texture store's
+ * `invalidateTextureSource`, which disposes whatever was not detached here.
  */
-function disposeEntry(entry: Entry, remaining: Iterable<Entry>): void {
-	for (const other of remaining) {
-		if (other.texture === entry.texture) return;
+export function invalidateFinishViewsForSource(scopeId: string, uri: string): void {
+	for (const hold of [...holds.values()]) {
+		if (hold.scopeId === scopeId && hold.source.uri === uri) loseHold(hold, 'changed');
 	}
-	const disposed = releaseFinishTexture(entry.source.uri, entry.source.role, entry.textureScope);
-	// A test loader or another owner may supply a texture that never entered the
-	// source cache; disposal here is still safe and keeps the budget honest.
-	if (!disposed) entry.texture.dispose();
+	for (const entry of [...entries.values()]) {
+		if (entry.scopeId !== scopeId || entry.source.uri !== uri) continue;
+		entries.delete(entry.key);
+		if (entry.refCount === 0) {
+			disposeEntry(entry);
+		} else {
+			entry.retired = true;
+			entry.key = `${entry.key}::invalidated:${++access}`;
+			entries.set(entry.key, entry);
+			detachFinishTexture(entry.source.uri, entry.source.role, entry.textureScope, entry.texture);
+		}
+	}
+}
+
+function loseHold(hold: SourceHold, reason: 'changed' | 'closed'): void {
+	if (hold.lost === null) {
+		holds.delete(hold.key);
+		hold.key = `${hold.key}::lost:${++access}`;
+		holds.set(hold.key, hold);
+	} else if (hold.lost === 'closed') return;
+	hold.lost = reason;
+}
+
+function holdSource(source: FinishViewSource, scope: TextureScopeKey | null, scopeId: string): SourceHold {
+	const key = finishTextureKey(source.uri, source.role, scope);
+	let hold = holds.get(key);
+	if (hold === undefined) {
+		hold = { key, source, scope, scopeId, holders: 0, lost: null, textures: new Map() };
+		holds.set(key, hold);
+	}
+	hold.holders += 1;
+	return hold;
+}
+
+/** Leave one texture to the last holder, unless someone disposes it first. */
+function handToHold(hold: SourceHold, texture: Texture): void {
+	if (hold.textures.has(texture)) return;
+	const forget = (): void => {
+		texture.removeEventListener('dispose', forget);
+		hold.textures.delete(texture);
+	};
+	hold.textures.set(texture, forget);
+	texture.addEventListener('dispose', forget);
+}
+
+function releaseHold(hold: SourceHold): void {
+	hold.holders -= 1;
+	if (hold.holders > 0) return;
+	if (holds.get(hold.key) === hold) holds.delete(hold.key);
+	if (hold.lost === null) {
+		// A cancelled waiter never receives the texture its load installed.
+		const cached = cachedFinishTexture(hold.source.uri, hold.source.role, hold.scope);
+		if (cached !== undefined) handToHold(hold, cached);
+	}
+	for (const [texture, forget] of hold.textures) {
+		texture.removeEventListener('dispose', forget);
+		disposeUnused(texture, hold.source, hold.scope);
+	}
+	hold.textures.clear();
+}
+
+/**
+ * Dispose one texture no entry names (two view keys can share a URI and role),
+ * or leave it to the acquisitions now holding its source.
+ * Removing that texture's Finish source key makes a later acquire reload bytes
+ * rather than hand back a disposed texture; a newer source under the key stays.
+ */
+function disposeUnused(texture: Texture, source: FinishViewSource, scope: TextureScopeKey | null): void {
+	for (const entry of entries.values()) {
+		if (entry.texture === texture) return;
+	}
+	const hold = holds.get(finishTextureKey(source.uri, source.role, scope));
+	if (hold !== undefined) {
+		handToHold(hold, texture);
+		return;
+	}
+	// A detached texture, or one another owner supplied, is not in the source
+	// cache; disposal here is still safe and keeps the budget honest.
+	if (!releaseFinishTexture(source.uri, source.role, scope, texture)) texture.dispose();
+}
+
+/** Dispose one evicted upload now, or leave it to the acquisitions still holding its source. */
+function disposeEntry(entry: Entry): void {
+	disposeUnused(entry.texture, entry.source, entry.textureScope);
 }
 
 /**
@@ -304,7 +414,7 @@ function evictUnleased(protectedKeys: ReadonlySet<string>, needed: number): numb
 		.sort((left, right) => left.lastUsed - right.lastUsed || left.key.localeCompare(right.key));
 	for (const entry of candidates) {
 		entries.delete(entry.key);
-		disposeEntry(entry, entries.values());
+		disposeEntry(entry);
 		available += entry.bytes;
 		if (available >= needed) break;
 	}
@@ -413,35 +523,17 @@ export async function acquireFinishViews(
 	const issues: FinishViewIssue[] = [];
 	const acquired: Entry[] = [];
 	const views: Record<string, Texture> = {};
-	const pending = new Map<string, FinishViewSource>();
+	const held = new Map<FinishViewSource, SourceHold>();
 	const keyFor = (view: string): string => entryKey(scopeId, owner, startedGeneration, view);
 
-	/**
-	 * Give back a decoded texture that never became an entry. It may already be
-	 * shared with a live entry (two acquisitions raced), in which case that entry
-	 * keeps the source cache reference; otherwise release the source key so a
-	 * retry reloads bytes instead of receiving a disposed texture.
-	 */
-	const discardPending = (): void => {
-		for (const source of pending.values()) {
-			const texture = views[source.view];
-			if (texture === undefined) continue;
-			let shared = false;
-			for (const entry of entries.values()) {
-				if (entry.texture === texture) {
-					shared = true;
-					break;
-				}
-			}
-			if (shared) continue;
-			if (!releaseFinishTexture(source.uri, source.role, scope)) texture.dispose();
-			delete views[source.view];
-		}
-		pending.clear();
+	/** Every exit settles exactly once. */
+	const settleHolds = (): void => {
+		for (const hold of held.values()) releaseHold(hold);
+		held.clear();
 	};
 
 	const abort = (): FinishViewLease => {
-		discardPending();
+		settleHolds();
 		for (const entry of acquired) releaseEntry(entry);
 		return {
 			views: {},
@@ -450,6 +542,20 @@ export async function acquireFinishViews(
 			leaseCount: () => 0,
 			release() {}
 		};
+	};
+
+	/** A closed scope refuses; changed bytes are acquired again. Null when nothing was lost. */
+	const interrupted = (): FinishViewLease | Promise<FinishViewLease> | null => {
+		const reasons = new Set([...held.values()].map((hold) => hold.lost));
+		if (reasons.has('closed')) {
+			issues.push({ code: 'cancelled', action: 'Acquire again from a live texture scope.' });
+			return abort();
+		}
+		if (!reasons.has('changed')) return null;
+		// The new attempt takes its holds synchronously, so the unchanged images survive this abort.
+		const again = acquireFinishViews(ordered, scope, signal, viewGeneration);
+		abort();
+		return again;
 	};
 
 	if (signal?.aborted) {
@@ -477,6 +583,10 @@ export async function acquireFinishViews(
 		views[source.view] = entry.texture;
 	}
 
+	// Hold before the first load: a shared promise can settle another caller first,
+	// and a joined view's source can change while the missing ones load.
+	for (const source of ordered) held.set(source, holdSource(source, scope, scopeId));
+
 	const loadedBytes = new Map<string, number>();
 	for (const source of missing) {
 		if (signal?.aborted || generationLost()) {
@@ -488,12 +598,19 @@ export async function acquireFinishViews(
 			});
 			return abort();
 		}
+		const hold = held.get(source)!;
 		try {
 			const texture = await withDecodeSlot(
 				scopeId,
-				() => loadFinishTexture(source.uri, source.role, scope, signal),
+				() => {
+					// A queued load must not reinstall a source in a closed scope.
+					if (hold.lost !== null) throw new Error('The source was released before it loaded.');
+					return loadFinishTexture(source.uri, source.role, scope, signal);
+				},
 				signal
 			);
+			// A lost source was already disposed by the store, or detached to the entry that names it.
+			if (hold.lost === null) handToHold(hold, texture);
 			if (generationLost()) {
 				issues.push({
 					code: 'generation-mismatch',
@@ -507,15 +624,18 @@ export async function acquireFinishViews(
 				issues.push({ code: 'cancelled', view: source.view, role: source.role });
 				return abort();
 			}
+			const interruption = interrupted();
+			if (interruption !== null) return interruption;
 			const dimensions = dimensionsOf(texture);
 			loadedBytes.set(source.view, dimensions === null ? 0 : rgba8MipChainBytes(dimensions.width, dimensions.height));
 			views[source.view] = texture;
-			pending.set(source.view, source);
 		} catch (error) {
 			if (signal?.aborted) {
 				issues.push({ code: 'cancelled', view: source.view, role: source.role });
 				return abort();
 			}
+			const interruption = interrupted();
+			if (interruption !== null) return interruption;
 			issues.push({
 				code: 'image-load-failed',
 				view: source.view,
@@ -534,7 +654,8 @@ export async function acquireFinishViews(
 	for (const source of missing) {
 		if (!entries.has(keyFor(source.view))) required += loadedBytes.get(source.view) ?? 0;
 	}
-	const protectedKeys = new Set(acquired.map((entry) => entry.key));
+	// Including a view installed meanwhile, which this commit joins at no charge.
+	const protectedKeys = new Set(ordered.map((source) => keyFor(source.view)));
 	let available = Math.max(0, budgetBytes - heldBytes());
 	if (required > available) {
 		available += evictUnleased(protectedKeys, required - available);
@@ -557,7 +678,6 @@ export async function acquireFinishViews(
 			existing.refCount += 1;
 			views[source.view] = existing.texture;
 			acquired.push(existing);
-			pending.delete(source.view);
 			continue;
 		}
 		const entry: Entry = {
@@ -576,8 +696,8 @@ export async function acquireFinishViews(
 		entries.set(entryKeyForView, entry);
 		created += 1;
 		acquired.push(entry);
-		pending.delete(source.view);
 	}
+	settleHolds();
 
 	let releasedOnce = false;
 	return {

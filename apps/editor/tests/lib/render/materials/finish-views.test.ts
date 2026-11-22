@@ -5,6 +5,7 @@ import {
 	acquireFinishViews,
 	DEFAULT_FINISH_VIEW_BUDGET_BYTES,
 	finishViewStats,
+	invalidateFinishViewsForSource,
 	releaseFinishViewsForScope,
 	resetFinishViewsForTests,
 	setFinishViewBudget,
@@ -13,6 +14,8 @@ import {
 } from '$lib/render/resources/finish-views';
 import {
 	__resetDefaultSourceLoaderForTests,
+	invalidateTextureSource,
+	loadFinishTexture,
 	releaseTextureScope,
 	resetTextureCachesForTests,
 	setDefaultTextureSourceLoader,
@@ -379,6 +382,396 @@ describe('finish view leases', () => {
 		lease.release();
 		expect(leasedDispose).toHaveBeenCalledTimes(1);
 		expect(finishViewStats()).toMatchObject({ live: 0, bytes: 0 });
+	});
+});
+
+describe('a source shared by unfinished acquisitions', () => {
+	const view = (name: string, uri: string) => ({ view: name, uri, role: 'color' as const });
+	const shared = view('0-shared', '/shared.png');
+	const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+	let scopes = 0;
+	/** A scope whose named images wait to be settled; every load gets its own texture. */
+	function scopeWaitingOn(...uris: string[]) {
+		const waiting = new Map<string, { resolve(): void; reject(error: Error): void }>();
+		const loads: { uri: string; dispose: ReturnType<typeof vi.spyOn> }[] = [];
+		const scope = {
+			// Decode slots are per scope, so an unsettled case cannot stall the next one.
+			scopeId: `project:shared-${++scopes}`,
+			loader: (uri: string) => {
+				const texture = imageTexture();
+				loads.push({ uri, dispose: vi.spyOn(texture, 'dispose') });
+				if (!uris.includes(uri)) return Promise.resolve(texture);
+				return new Promise<Texture>((resolve, reject) => {
+					waiting.set(uri, { resolve: () => resolve(texture), reject });
+				});
+			}
+		};
+		const disposals = (uri = shared.uri) =>
+			loads.filter((load) => load.uri === uri).map((load) => load.dispose.mock.calls.length);
+		return { scope, disposals, settle: (uri: string) => waiting.get(uri)! };
+	}
+
+	it('survives a cancelled holder, and the other commits it', async () => {
+		const { scope, disposals, settle } = scopeWaitingOn('/a.png', '/b.png');
+		const controller = new AbortController();
+		const first = acquireFinishViews([shared, view('a', '/a.png')], scope, controller.signal);
+		const second = acquireFinishViews([shared, view('b', '/b.png')], scope);
+		await tick();
+		controller.abort();
+		expect((await first).issues[0]?.code).toBe('cancelled');
+		expect(disposals()).toEqual([0]);
+
+		settle('/b.png').resolve();
+		const lease = await second;
+		expect(lease.issues).toEqual([]);
+		expect(disposals()).toEqual([0]);
+		lease.release();
+		releaseFinishViewsForScope(scope.scopeId);
+		expect(disposals()).toEqual([1]);
+	});
+
+	it('survives a holder whose sibling image failed', async () => {
+		vi.spyOn(console, 'warn').mockImplementationOnce(() => {});
+		const { scope, disposals, settle } = scopeWaitingOn('/a.png', '/b.png');
+		const first = acquireFinishViews([shared, view('a', '/a.png')], scope);
+		const second = acquireFinishViews([shared, view('b', '/b.png')], scope);
+		await tick();
+		settle('/a.png').reject(new Error('blocked'));
+		expect((await first).issues[0]?.code).toBe('image-load-failed');
+		expect(disposals()).toEqual([0]);
+		settle('/b.png').resolve();
+		(await second).release();
+		expect(disposals()).toEqual([0]);
+	});
+
+	it('survives a budget refusal in the tick the shared load resolves', async () => {
+		const { scope, disposals, settle } = scopeWaitingOn('/shared.png');
+		setFinishViewBudget(BYTES);
+		const first = acquireFinishViews([view('a', '/a.png'), view('z', '/shared.png')], scope);
+		await tick();
+		const second = acquireFinishViews([shared], scope);
+		await tick();
+		settle('/shared.png').resolve();
+		expect((await first).issues[0]?.code).toBe('texture-budget');
+		const lease = await second;
+		expect(lease.issues).toEqual([]);
+		expect(disposals()).toEqual([0]);
+		lease.release();
+	});
+
+	it('survives a generation refusal on another Canvas', async () => {
+		const { scope, disposals, settle } = scopeWaitingOn('/a.png', '/b.png');
+		const first = acquireFinishViews([shared, view('a', '/a.png')], scope, undefined, { owner: 'a', generation: 0 });
+		const second = acquireFinishViews([shared, view('b', '/b.png')], scope, undefined, { owner: 'b', generation: 0 });
+		await tick();
+		setFinishViewGeneration('a', 1);
+		settle('/a.png').resolve();
+		expect((await first).issues[0]?.code).toBe('generation-mismatch');
+		expect(disposals()).toEqual([0]);
+		settle('/b.png').resolve();
+		(await second).release();
+		expect(disposals()).toEqual([0]);
+	});
+
+	it('survives eviction of the view another caller committed', async () => {
+		const { scope, disposals, settle } = scopeWaitingOn('/b.png');
+		const pending = acquireFinishViews([shared, view('b', '/b.png')], scope);
+		await tick();
+		(await acquireFinishViews([shared], scope)).release();
+		setFinishViewBudget(BYTES);
+		(await acquireFinishViews([view('c', '/c.png')], scope)).release();
+		expect(disposals()).toEqual([0]);
+
+		setFinishViewBudget(BYTES * 3);
+		settle('/b.png').resolve();
+		const lease = await pending;
+		expect(lease.issues).toEqual([]);
+		expect(disposals()).toEqual([0]);
+		lease.release();
+	});
+
+	it('survives retirement of another Canvas generation', async () => {
+		const { scope, disposals, settle } = scopeWaitingOn('/b.png');
+		(await acquireFinishViews([shared], scope, undefined, { owner: 'a', generation: 0 })).release();
+		const pending = acquireFinishViews([shared, view('b', '/b.png')], scope, undefined, { owner: 'b', generation: 0 });
+		await tick();
+		setFinishViewGeneration('a', 1);
+		expect(disposals()).toEqual([0]);
+		settle('/b.png').resolve();
+		(await pending).release();
+		expect(disposals()).toEqual([0]);
+	});
+
+	it('is never evicted by the acquisition about to join it', async () => {
+		const { scope, disposals, settle } = scopeWaitingOn('/b.png');
+		const pending = acquireFinishViews([shared, view('b', '/b.png')], scope);
+		await tick();
+		(await acquireFinishViews([shared], scope)).release();
+		setFinishViewBudget(BYTES);
+		settle('/b.png').resolve();
+		expect((await pending).issues[0]?.code).toBe('texture-budget');
+		expect(disposals()).toEqual([0]);
+		expect(finishViewStats().bytes).toBe(BYTES);
+	});
+
+	it.each([
+		['holds the decoded texture', '0-shared'],
+		['has not reached the shared image yet', 'z-shared']
+	])('is disposed once by a last holder that %s', async (_, name) => {
+		const { scope, disposals } = scopeWaitingOn('/a.png', '/b.png');
+		const [one, two] = [new AbortController(), new AbortController()];
+		const first = acquireFinishViews([shared, view('a', '/a.png')], scope, one.signal);
+		const second = acquireFinishViews([view(name, shared.uri), view('b', '/b.png')], scope, two.signal);
+		await tick();
+		one.abort();
+		await first;
+		expect(disposals()).toEqual([0]);
+		two.abort();
+		await second;
+		expect(disposals()).toEqual([1]);
+		expect(textureSourceMemoryStats().liveSources).toBe(0);
+	});
+
+	it('is not disposed again after its scope tore down', async () => {
+		vi.spyOn(console, 'warn').mockImplementationOnce(() => {});
+		const { scope, disposals, settle } = scopeWaitingOn('/a.png');
+		const pending = acquireFinishViews([shared, view('a', '/a.png')], scope);
+		await tick();
+		releaseFinishViewsForScope(scope.scopeId);
+		releaseTextureScope(scope.scopeId);
+		settle('/a.png').resolve();
+		expect((await pending).views).toEqual({});
+		expect(disposals()).toEqual([1]);
+	});
+
+	it('is released by identity, never as the texture that replaced it', async () => {
+		const { scope, disposals } = scopeWaitingOn();
+		const old = await acquireFinishViews([shared], scope);
+		releaseFinishViewsForScope(scope.scopeId);
+		releaseTextureScope(scope.scopeId);
+		// The scope id mounts again while a material still leases the old texture.
+		const next = await acquireFinishViews([view('remounted', shared.uri)], scope);
+		old.release();
+		expect(disposals()).toEqual([1, 0]);
+		next.release();
+	});
+});
+
+describe('a source invalidated under its views', () => {
+	const colour = { view: 'colour', uri: '/colour.png', role: 'color' as const };
+	const other = { view: 'other', uri: '/other.png', role: 'color' as const };
+	const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+	/** Enough microtasks to cross every await between a decode and its commit. */
+	const TICKS = Array.from({ length: 16 }, (_, index) => index);
+
+	let scopes = 0;
+	function countingScope(...slow: string[]) {
+		const settle = new Map<string, () => void>();
+		const loads: { uri: string; texture: Texture; disposed: number }[] = [];
+		const scope = {
+			scopeId: `project:invalidated-${++scopes}`,
+			loader: (uri: string) => {
+				const texture = imageTexture();
+				const load = { uri, texture, disposed: 0 };
+				texture.addEventListener('dispose', () => (load.disposed += 1));
+				const first = !loads.some((earlier) => earlier.uri === uri);
+				loads.push(load);
+				if (!first || !slow.includes(uri)) return Promise.resolve(texture);
+				return new Promise<Texture>((resolve) => settle.set(uri, () => resolve(texture)));
+			}
+		};
+		const disposals = (uri?: string) =>
+			loads.filter((load) => uri === undefined || load.uri === uri).map((load) => load.disposed);
+		const retry = (uri: string) => {
+			invalidateFinishViewsForSource(scope.scopeId, uri);
+			invalidateTextureSource(scope.scopeId, uri);
+		};
+		const teardown = () => {
+			releaseFinishViewsForScope(scope.scopeId);
+			releaseTextureScope(scope.scopeId);
+		};
+		const disposedOf = (texture: Texture) => loads.find((load) => load.texture === texture)?.disposed;
+		return { scope, loads, disposals, disposedOf, retry, teardown, settle };
+	}
+
+	it.each(TICKS)('never commits a disposed texture when torn down %i microtasks in', async (ticks) => {
+		const { scope, disposals, disposedOf, teardown } = countingScope();
+		const pending = acquireFinishViews([colour], scope);
+		for (let i = 0; i < ticks; i += 1) await Promise.resolve();
+		teardown();
+		const lease = await pending;
+		if (lease.views.colour === undefined) expect(lease.issues[0]?.code).toBe('cancelled');
+		else expect(disposedOf(lease.views.colour)).toBe(0);
+		lease.release();
+		expect(disposals().filter((count) => count !== 1)).toEqual([]);
+		expect(finishViewStats().bytes).toBe(0);
+	});
+
+	it.each(TICKS)('commits live bytes when retried %i microtasks in', async (ticks) => {
+		const { scope, disposals, disposedOf, retry, teardown } = countingScope();
+		const pending = acquireFinishViews([colour], scope);
+		for (let i = 0; i < ticks; i += 1) await Promise.resolve();
+		retry(colour.uri);
+		const lease = await pending;
+		expect(lease.issues).toEqual([]);
+		expect(disposedOf(lease.views.colour!)).toBe(0);
+		lease.release();
+		teardown();
+		expect(disposals().filter((count) => count !== 1)).toEqual([]);
+		expect(finishViewStats().bytes).toBe(0);
+	});
+
+	it('keeps a leased texture until its release and gives the next lease new bytes', async () => {
+		const { scope, disposals, retry, teardown } = countingScope();
+		const old = await acquireFinishViews([colour], scope);
+		retry(colour.uri);
+		expect(disposals()).toEqual([0]);
+		const next = await acquireFinishViews([colour], scope);
+		expect(next.views.colour).not.toBe(old.views.colour);
+		expect(finishViewStats()).toMatchObject({ live: 2, bytes: BYTES * 2 });
+		old.release();
+		expect(disposals()).toEqual([1, 0]);
+		expect(finishViewStats().bytes).toBe(BYTES);
+		next.release();
+		teardown();
+		expect(disposals()).toEqual([1, 1]);
+	});
+
+	it('disposes an unleased view at once', async () => {
+		const { scope, disposals, retry } = countingScope();
+		(await acquireFinishViews([colour], scope)).release();
+		retry(colour.uri);
+		expect(disposals()).toEqual([1]);
+		expect(finishViewStats().bytes).toBe(0);
+	});
+
+	it('keeps one texture that two views share until the last lease is gone', async () => {
+		const { scope, disposals, retry } = countingScope();
+		(await acquireFinishViews([colour], scope)).release();
+		const leased = await acquireFinishViews([{ ...colour, view: 'same image' }], scope);
+		retry(colour.uri);
+		expect(disposals()).toEqual([0]);
+		leased.release();
+		expect(disposals()).toEqual([1]);
+	});
+
+	it('reloads a view the waiting acquisition had already joined, and only that one', async () => {
+		const { scope, disposals, retry, settle } = countingScope(other.uri);
+		const old = await acquireFinishViews([colour], scope);
+		const pending = acquireFinishViews([colour, other], scope);
+		await tick();
+		retry(colour.uri);
+		settle.get(other.uri)!();
+		const lease = await pending;
+		expect(lease.issues).toEqual([]);
+		expect(lease.views.colour).not.toBe(old.views.colour);
+		expect(disposals(colour.uri)).toEqual([0, 0]);
+		expect(disposals(other.uri)).toEqual([0]);
+		old.release();
+		expect(disposals(colour.uri)).toEqual([1, 0]);
+		lease.release();
+	});
+
+	it('reloads a decoded texture without loading its unchanged sibling again', async () => {
+		const { scope, disposals, retry, settle } = countingScope(other.uri);
+		const pending = acquireFinishViews([colour, other], scope);
+		await tick();
+		retry(colour.uri);
+		settle.get(other.uri)!();
+		const lease = await pending;
+		expect(lease.issues).toEqual([]);
+		expect(disposals(colour.uri)).toEqual([1, 0]);
+		expect(disposals(other.uri)).toEqual([0]);
+		lease.release();
+	});
+
+	it('lets teardown win over an earlier retry and starts no load afterwards', async () => {
+		const { scope, loads, retry, teardown, settle } = countingScope(other.uri);
+		const pending = acquireFinishViews([other, { ...colour, view: 'z-colour' }], scope);
+		await tick();
+		retry(other.uri);
+		teardown();
+		settle.get(other.uri)!();
+		expect((await pending).issues[0]?.code).toBe('cancelled');
+		expect(loads.map((load) => load.uri)).toEqual([other.uri]);
+	});
+
+	it('upgrades a retried source to closed when only that source is held', async () => {
+		const { scope, loads, retry, teardown, settle } = countingScope(other.uri);
+		const pending = acquireFinishViews([other], scope);
+		await tick();
+		retry(other.uri);
+		teardown();
+		settle.get(other.uri)!();
+		const lease = await pending;
+		expect(lease.issues[0]?.code).toBe('cancelled');
+		expect(lease.leaseCount()).toBe(0);
+		expect(loads).toHaveLength(1);
+	});
+
+	it('leaves a texture an earlier holder lost to the acquisition that now holds it', async () => {
+		const { scope, disposedOf, settle } = countingScope('/z.png', other.uri);
+		const first = acquireFinishViews([colour, { ...colour, view: 'z', uri: '/z.png' }], scope);
+		await tick();
+		releaseFinishViewsForScope(scope.scopeId);
+		const second = acquireFinishViews([colour, other], scope);
+		await tick();
+		settle.get('/z.png')!();
+		expect((await first).issues[0]?.code).toBe('cancelled');
+		settle.get(other.uri)!();
+		const lease = await second;
+		expect(lease.issues).toEqual([]);
+		expect(disposedOf(lease.views.colour!)).toBe(0);
+		lease.release();
+	});
+
+	it.each(TICKS)('leaves no unowned source when cancelled %i microtasks in', async (ticks) => {
+		const { scope } = countingScope();
+		const controller = new AbortController();
+		const pending = acquireFinishViews([colour], scope, controller.signal);
+		for (let i = 0; i < ticks; i += 1) await Promise.resolve();
+		controller.abort();
+		const lease = await pending;
+		lease.release();
+		await tick();
+		const named = finishViewStats().bytes / BYTES;
+		expect(textureSourceMemoryStats().liveSources).toBe(named);
+	});
+
+	it('stays closed when its scope id mounts again and retries the image', async () => {
+		const { scope, loads, retry, teardown, settle } = countingScope(colour.uri);
+		const pending = acquireFinishViews([colour], scope);
+		await tick();
+		teardown();
+		retry(colour.uri);
+		settle.get(colour.uri)!();
+		expect((await pending).issues[0]?.code).toBe('cancelled');
+		expect(loads).toHaveLength(1);
+	});
+
+	it('starts no load for an acquisition still queued at teardown', async () => {
+		const { scope, loads, teardown, settle } = countingScope('/one.png', '/two.png');
+		const first = acquireFinishViews([{ ...colour, uri: '/one.png' }], scope);
+		const second = acquireFinishViews([{ ...colour, view: 'two', uri: '/two.png' }], scope);
+		const queued = acquireFinishViews([other], scope);
+		await tick();
+		teardown();
+		for (const resolve of settle.values()) resolve();
+		await Promise.all([first, second]);
+		expect((await queued).issues[0]?.code).toBe('cancelled');
+		expect(loads.map((load) => load.uri)).toEqual(['/one.png', '/two.png']);
+	});
+
+	it('detaches by identity, so teardown still disposes the replacement source', async () => {
+		const { scope, disposals, retry, teardown } = countingScope();
+		const old = await acquireFinishViews([colour], scope);
+		retry(colour.uri);
+		await loadFinishTexture(colour.uri, colour.role, scope);
+		teardown();
+		expect(disposals()).toEqual([0, 1]);
+		old.release();
+		expect(disposals()).toEqual([1, 1]);
 	});
 });
 
