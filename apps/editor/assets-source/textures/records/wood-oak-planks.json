@@ -1,0 +1,226 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "wood-oak-planks",
+	"provider": "polyhaven",
+	"assetId": "wood_floor",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/wood_floor/color/wood_floor_diff_2k.png",
+			"sha256": "33040146e3ea6fa47d7bbf4ccdecdf3443cdb831e72e1f33dede6ad6542b2b7c",
+			"bytes": 21423099,
+			"md5": "4801d7ad3720166655a251920197646f",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wood_floor/wood_floor_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/wood_floor/normal/wood_floor_nor_gl_2k.png",
+			"sha256": "2364421a19aba9392bcd0ba14617e7e91ac2869ca3fab16d83563b5250d71bc8",
+			"bytes": 19399802,
+			"md5": "c50f8bf962667821336e492f98ab5e73",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wood_floor/wood_floor_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/wood_floor/orm/wood_floor_arm_2k.png",
+			"sha256": "8e586020caf49073e3a3e7e6af3ab298dcd468db9ffa6dc4c62dd37728d38b45",
+			"bytes": 16651290,
+			"md5": "3b70701a77ebab5a9495967c2adc94d0",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wood_floor/wood_floor_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"orm": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 0
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "cff4669fe23a92e2efb4df183cbaa37da653bbca20954c3f88d8f36fe1cd3b5c",
+				"bytes": 47546
+			},
+			"normal": {
+				"sha256": "a1ff836231e51a36e7b723816a95abcd91855fd6bc0294f839507962b53fbeab",
+				"bytes": 167904
+			},
+			"orm": {
+				"sha256": "a75c77b6716d4f6dc34ff4f842a67bc284be100bff8a45a5eea46e4e4dee754b",
+				"bytes": 274282
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "296024e6b7712478eb7585883de975f4bf775c981095a1dac2532c7aa84eb7ee",
+				"bytes": 986704
+			},
+			"normal": {
+				"sha256": "f396f2da26f82b436167408333ae802e9a19df487531a0a9e50ac9ac3cc00d96",
+				"bytes": 3913892
+			},
+			"orm": {
+				"sha256": "0884d4110f694c15280ffaa35bebb4f0608e88331b98a80ee2bb480eb107443c",
+				"bytes": 5019238
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "87cd8d3ca60160177a8e4f684b320819a47bec54e811d2ccfc319fd027fba90e",
+				"bytes": 237406
+			},
+			"normal": {
+				"sha256": "0bae98742d97f49e9c5ca6d5a595f24f252245daf351fa336ee69bc0afe5408f",
+				"bytes": 856620
+			},
+			"orm": {
+				"sha256": "f755dc04f5570ea5548f00a4f4601959702d99d09d90c9e19193f728811587b0",
+				"bytes": 1175470
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 5.975,
+			"normal": 2.425,
+			"orm": 6.32
+		},
+		"1k->512": {
+			"color": 5.202,
+			"normal": 1.915,
+			"orm": 5.112
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 2.105,
+			"colorSeamVsFeatures": [
+				0.541,
+				0.598
+			],
+			"colorLinearMean": [
+				0.21864,
+				0.11848,
+				0.05535
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 2.536,
+			"normalSeamVsFeatures": [
+				1.063,
+				0.547
+			],
+			"ormSeamRatio": 1.941,
+			"ormSeamVsFeatures": [
+				0.743,
+				0.537
+			],
+			"roughnessMean": 0.4715,
+			"occlusionMean": 0.9116
+		},
+		"2k": {
+			"colorSeamRatio": 2.426,
+			"colorSeamVsFeatures": [
+				0.751,
+				0.603
+			],
+			"colorLinearMean": [
+				0.21856,
+				0.11831,
+				0.05578
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.409,
+			"normalSeamVsFeatures": [
+				0.488,
+				0.458
+			],
+			"ormSeamRatio": 1.783,
+			"ormSeamVsFeatures": [
+				0.8,
+				0.492
+			],
+			"roughnessMean": 0.4715,
+			"occlusionMean": 0.9116
+		},
+		"1k": {
+			"colorSeamRatio": 3.142,
+			"colorSeamVsFeatures": [
+				0.857,
+				0.559
+			],
+			"colorLinearMean": [
+				0.2185,
+				0.11843,
+				0.05553
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.735,
+			"normalSeamVsFeatures": [
+				0.522,
+				0.521
+			],
+			"ormSeamRatio": 2.346,
+			"ormSeamVsFeatures": [
+				0.835,
+				0.54
+			],
+			"roughnessMean": 0.4715,
+			"occlusionMean": 0.9116
+		}
+	},
+	"entryColours": [
+		{
+			"id": "wood-oak-planks",
+			"color": "#ffffff",
+			"rule": "as shot",
+			"measuredLinearMean": [
+				0.21856,
+				0.11831,
+				0.05578
+			],
+			"albedoLuminance": 0.1351
+		}
+	],
+	"qualified": "1k"
+}

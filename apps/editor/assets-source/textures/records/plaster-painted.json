@@ -1,0 +1,260 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "plaster-painted",
+	"provider": "polyhaven",
+	"assetId": "painted_plaster_wall",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/painted_plaster_wall/color/painted_plaster_wall_diff_2k.png",
+			"sha256": "5d3e476d633d873f2f9f443936a7d3f6a5830b5486c9bd704cef7c1f89dbb3cc",
+			"bytes": 22706294,
+			"md5": "a59f31e4461b4e9385e88030e32280d9",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/painted_plaster_wall/normal/painted_plaster_wall_nor_gl_2k.png",
+			"sha256": "322041257ab0dad1a1a1c18d98bc28689136103f6a64d4849f7aa3ae5b8b090f",
+			"bytes": 22789885,
+			"md5": "2eba0da17c1d194537c1231cb412e310",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_wall/painted_plaster_wall_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/painted_plaster_wall/orm/painted_plaster_wall_arm_2k.png",
+			"sha256": "8fc9a730b7ea6698d4109924984326b2a0c37a77489e425213e8b24962fc9cce",
+			"bytes": 14790707,
+			"md5": "89a4d4c345073c326ed4a29168e5e3f3",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_wall/painted_plaster_wall_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"orm": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [
+			{
+				"transform": "linear-colour-gain/1",
+				"target": "#e8e2d8",
+				"neededGain": 2.11324,
+				"gainCeiling": 2.0361,
+				"appliedGain": 2.0361,
+				"maxClippedShare": 0.005,
+				"clippedShare": 0.005,
+				"before": {
+					"linearMean": [
+						0.40642,
+						0.36708,
+						0.35161
+					],
+					"luminanceContrast": 0.1224
+				},
+				"after": {
+					"linearMean": [
+						0.82752,
+						0.74742,
+						0.71591
+					],
+					"luminanceContrast": 0.1224
+				}
+			}
+		],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 0
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "437de5aeb4b04d09f088a93b14cf7a0f94269ff8d9a3b8c70bc27bd286dea934",
+				"bytes": 51632
+			},
+			"normal": {
+				"sha256": "e61cd388d2dec6b6972c969aa1d218255e7787567793cf6161ee1b11e87a4013",
+				"bytes": 322370
+			},
+			"orm": {
+				"sha256": "8e937a74a0c091189ed3cd27d077707cfd04adb0df7957db4c7cff852c5fdcee",
+				"bytes": 192250
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "e825e0bf9913cfc40b68265d32e74e6931a6a4458bef9539bdfc93f5815c23b7",
+				"bytes": 1532562
+			},
+			"normal": {
+				"sha256": "508a0c5aba2d99a90c88e2ee3d4083f0bd9da812a14984aceb6ec76a3e973989",
+				"bytes": 7357800
+			},
+			"orm": {
+				"sha256": "d485c50e9b01faee6a4ba31170093a3c74256d301392d965c76008d0a9035cf6",
+				"bytes": 3492696
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "e9aef308c792b2324e562f5cc0607637a5b8de6cdaf1deb0c7f137a66c2f9050",
+				"bytes": 311708
+			},
+			"normal": {
+				"sha256": "14eb6c6261835bd0685113c3910f487ea8226b21b52a5f5853fe290e5b85d23f",
+				"bytes": 1628824
+			},
+			"orm": {
+				"sha256": "a3f907d398b049956bf29187a80f5ee5380bc6f0703790cc2b0177cfafd39704",
+				"bytes": 861296
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 9.127,
+			"normal": 8.566,
+			"orm": 2.018
+		},
+		"1k->512": {
+			"color": 6.556,
+			"normal": 7.389,
+			"orm": 1.99
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.013,
+			"colorSeamVsFeatures": [
+				0.742,
+				0.698
+			],
+			"colorLinearMean": [
+				0.82582,
+				0.75025,
+				0.71623
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1,
+			"normalSeamVsFeatures": [
+				0.721,
+				0.797
+			],
+			"ormSeamRatio": 1.003,
+			"ormSeamVsFeatures": [
+				0.655,
+				0.87
+			],
+			"roughnessMean": 0.9188,
+			"occlusionMean": 0.9571
+		},
+		"2k": {
+			"colorSeamRatio": 1.088,
+			"colorSeamVsFeatures": [
+				0.862,
+				0.839
+			],
+			"colorLinearMean": [
+				0.82674,
+				0.74974,
+				0.71551
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.011,
+			"normalSeamVsFeatures": [
+				0.719,
+				0.761
+			],
+			"ormSeamRatio": 1.049,
+			"ormSeamVsFeatures": [
+				0.747,
+				0.858
+			],
+			"roughnessMean": 0.9188,
+			"occlusionMean": 0.9571
+		},
+		"1k": {
+			"colorSeamRatio": 1.057,
+			"colorSeamVsFeatures": [
+				0.847,
+				0.78
+			],
+			"colorLinearMean": [
+				0.82612,
+				0.75012,
+				0.71589
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.998,
+			"normalSeamVsFeatures": [
+				0.714,
+				0.781
+			],
+			"ormSeamRatio": 1.038,
+			"ormSeamVsFeatures": [
+				0.697,
+				0.856
+			],
+			"roughnessMean": 0.9188,
+			"occlusionMean": 0.9571
+		}
+	},
+	"entryColours": [
+		{
+			"id": "plaster-painted",
+			"color": "#fbfff9",
+			"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+			"target": "#e8e2d8",
+			"measuredLinearMean": [
+				0.82674,
+				0.74974,
+				0.71551
+			],
+			"linearFactor": [
+				0.96222,
+				1,
+				0.94611
+			],
+			"albedoLuminance": 0.7542,
+			"targetLuminance": 0.7651,
+			"targetReached": false
+		}
+	],
+	"qualified": "1k"
+}

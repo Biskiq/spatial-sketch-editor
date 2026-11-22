@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	CATALOGUE_BASE_IDS,
 	CATALOGUE_MATERIAL_IDS,
+	LEGACY_MATERIAL_IDS,
 	NEUTRAL_RECIPE,
 	NEUTRAL_RECIPE_HASH,
 	canonicalRecipeBytes,
@@ -436,8 +437,8 @@ describe('catalogue compatibility', () => {
 			'velvet-dark': { color: '#3a1822', roughness: 0.95, metalness: 0, tile: [1, 1], maps: [] },
 			'paper-aged': { color: '#e2d2b0', roughness: 0.9, metalness: 0, tile: [0.4, 0.4], maps: [] }
 		};
-		expect(CATALOGUE_MATERIAL_IDS).toEqual(Object.keys(expected));
-		for (const id of CATALOGUE_MATERIAL_IDS) {
+		expect(LEGACY_MATERIAL_IDS).toEqual(Object.keys(expected));
+		for (const id of LEGACY_MATERIAL_IDS) {
 			const facts = catalogueRenderFacts(id);
 			expect(facts, id).toBeDefined();
 			expect(facts?.color).toBe(expected[id]!.color);
@@ -481,15 +482,17 @@ describe('catalogue compatibility', () => {
 	});
 
 	it('keeps the neutral base frozen and outside creator-facing counts', () => {
-		expect(CATALOGUE_BASE_IDS).toEqual([...CATALOGUE_MATERIAL_IDS, 'pbr-neutral-v1']);
+		expect(CATALOGUE_BASE_IDS).toEqual([...CATALOGUE_MATERIAL_IDS, ...LEGACY_MATERIAL_IDS, 'pbr-neutral-v1']);
 		expect(catalogueMaterial('pbr-neutral-v1')?.technical).toBe(true);
 		expect(catalogueMaterial('pbr-neutral-v1')?.recipe).toBe(NEUTRAL_RECIPE);
 		expect(catalogueMaterial('plaster-warm')?.technical).toBe(false);
+		expect(catalogueMaterial('plaster-warm')?.legacy).toBe(true);
+		expect(catalogueMaterial('plaster-painted')?.legacy).toBe(false);
 	});
 
 	it('resolves every shipped image by hash and allowlisted URI', () => {
 		const index = shippedImageIndex();
-		for (const id of CATALOGUE_MATERIAL_IDS) {
+		for (const id of [...CATALOGUE_MATERIAL_IDS, ...LEGACY_MATERIAL_IDS]) {
 			const recipe = catalogueRecipe(id)!;
 			for (const role of ['color', 'normal', 'roughness', 'metalness', 'occlusion'] as const) {
 				const binding = recipe.maps[role];

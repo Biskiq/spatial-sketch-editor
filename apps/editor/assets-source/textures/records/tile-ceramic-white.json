@@ -1,0 +1,254 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "tile-ceramic-white",
+	"provider": "ambientcg",
+	"assetId": "Tiles107",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Tiles107/archive/Tiles107_2K-PNG.zip",
+			"sha256": "b11357fb73e3f5b67e9bbb989f9ced356ac7d77703695a38404901880486699d",
+			"bytes": 26905547,
+			"url": "https://ambientcg.com/get?file=Tiles107_2K-PNG.zip"
+		},
+		{
+			"role": "occlusion",
+			"retentionKey": "materials/ambientcg/Tiles107/occlusion/Tiles107_2K-PNG_AmbientOcclusion.png",
+			"sha256": "5767d4764ba7a75ca40b8598145b5ecfabecf500b74cf69449b3aa637f8c91c5",
+			"bytes": 108818,
+			"member": "Tiles107_2K-PNG_AmbientOcclusion.png"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Tiles107/color/Tiles107_2K-PNG_Color.png",
+			"sha256": "e9afcfc5a718c56fd0590f8d8aa8f7428b670e27229ed51007fc4911839debdf",
+			"bytes": 790496,
+			"member": "Tiles107_2K-PNG_Color.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Tiles107/normal/Tiles107_2K-PNG_NormalGL.png",
+			"sha256": "e79c01bb19ade3e195af27df819af62005141c8781e19237c35a8124c726aec0",
+			"bytes": 9968142,
+			"member": "Tiles107_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Tiles107/roughness/Tiles107_2K-PNG_Roughness.png",
+			"sha256": "2b65352a0b112e90e438503269613e7a08cf84b5811c0c1c6f87b81818699ee4",
+			"bytes": 453608,
+			"member": "Tiles107_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		],
+		"occlusion": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "7a93ac9fa01083aefcc2b3c5a68eb6a2c5834ae2abc4a87dec835a3f23aec48e",
+				"bytes": 7148
+			},
+			"normal": {
+				"sha256": "e774d6bd898af4bd3b7a3a36b724f870cae0c42263255a36e0126d361fde6548",
+				"bytes": 86692
+			},
+			"orm": {
+				"sha256": "ead80a6db925bcb91e6ff10cad75972535a556c5bc8b450b8ec08d2750e79bbf",
+				"bytes": 46476
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "ace8df56d01435d204860b2f6ea8f08f556318e032e59655b26f301d9685eac2",
+				"bytes": 64394
+			},
+			"normal": {
+				"sha256": "0927073b810f53358d628e6d2dd97eab7a6bbc9597e42e5f50ac37ac57de315e",
+				"bytes": 853278
+			},
+			"orm": {
+				"sha256": "634f8a55a0160da262690393058cf30ff401f286321c46632c67e18685f9b4c0",
+				"bytes": 514078
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "4c26b805337be92a4e9db0999a8dd2af0b21ec1a4d0c952d82f7148df0095ffe",
+				"bytes": 19976
+			},
+			"normal": {
+				"sha256": "641cdbeea9c27f33c61bd22d4c142acf7938baff4be7548414710be7f0df8057",
+				"bytes": 265234
+			},
+			"orm": {
+				"sha256": "8c37ea083159eebd86c9933e54e8b3cd4a735e215cc70b41800473387b7ca8fc",
+				"bytes": 160486
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 3.839,
+			"normal": 5.655,
+			"orm": 3.913
+		},
+		"1k->512": {
+			"color": 9.337,
+			"normal": 11.33,
+			"orm": 8.174
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.488,
+			"colorSeamVsFeatures": [
+				0.051,
+				0.049
+			],
+			"colorLinearMean": [
+				0.94897,
+				0.94596,
+				0.94615
+			],
+			"colorClippedShare": 0.00186,
+			"normalSeamRatio": 22.986,
+			"normalSeamVsFeatures": [
+				0.939,
+				0.871
+			],
+			"ormSeamRatio": 1.121,
+			"ormSeamVsFeatures": [
+				0.035,
+				0.04
+			],
+			"roughnessMean": 0.0536,
+			"occlusionMean": 0.9942
+		},
+		"2k": {
+			"colorSeamRatio": 4.22,
+			"colorSeamVsFeatures": [
+				0.064,
+				0.059
+			],
+			"colorLinearMean": [
+				0.94904,
+				0.94501,
+				0.94706
+			],
+			"colorClippedShare": 0.00275,
+			"normalSeamRatio": 20.368,
+			"normalSeamVsFeatures": [
+				0.548,
+				0.599
+			],
+			"ormSeamRatio": 5.239,
+			"ormSeamVsFeatures": [
+				0.118,
+				0.11
+			],
+			"roughnessMean": 0.0536,
+			"occlusionMean": 0.9942
+		},
+		"1k": {
+			"colorSeamRatio": 1.82,
+			"colorSeamVsFeatures": [
+				0.036,
+				0.036
+			],
+			"colorLinearMean": [
+				0.9494,
+				0.94598,
+				0.94629
+			],
+			"colorClippedShare": 0.00049,
+			"normalSeamRatio": 10.561,
+			"normalSeamVsFeatures": [
+				0.32,
+				0.335
+			],
+			"ormSeamRatio": 2.622,
+			"ormSeamVsFeatures": [
+				0.075,
+				0.077
+			],
+			"roughnessMean": 0.0537,
+			"occlusionMean": 0.9942
+		}
+	},
+	"entryColours": [
+		{
+			"id": "tile-ceramic-white",
+			"color": "#f3f4f0",
+			"rule": "T1 neutral base: the reference hue at the source luminance (reference is a check, not a luminance target)",
+			"target": null,
+			"measuredLinearMean": [
+				0.94904,
+				0.94501,
+				0.94706
+			],
+			"linearFactor": [
+				0.89758,
+				0.90141,
+				0.87249
+			],
+			"albedoLuminance": 0.85,
+			"targetLuminance": 0.85,
+			"targetReached": true,
+			"plausibility": {
+				"reference": "#e0e0dd",
+				"sourceLuminanceRatio": 1.272,
+				"withinTolerance": false
+			}
+		}
+	],
+	"qualified": "1k"
+}

@@ -1,0 +1,189 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "metal-satin",
+	"provider": "ambientcg",
+	"assetId": "Metal032",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Metal032/archive/Metal032_2K-PNG.zip",
+			"sha256": "5505e02e68cebc0d496f3c1d8c3d67ec8b9f6f9cacb7c905897f52c7311359a2",
+			"bytes": 51323783,
+			"url": "https://ambientcg.com/get?file=Metal032_2K-PNG.zip"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Metal032/color/Metal032_2K-PNG_Color.png",
+			"sha256": "01c92355535a746db5ffa4cfe9c986e87193bfaed6ecfa99ecaffccf8d336eec",
+			"bytes": 5237714,
+			"member": "Metal032_2K-PNG_Color.png"
+		},
+		{
+			"role": "metalness",
+			"retentionKey": "materials/ambientcg/Metal032/metalness/Metal032_2K-PNG_Metalness.png",
+			"sha256": "b4cdf116d1edb968aceab2a95faef861ea9ee1e1712bbcd689ff0b2b8214fcae",
+			"bytes": 2581,
+			"member": "Metal032_2K-PNG_Metalness.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Metal032/normal/Metal032_2K-PNG_NormalGL.png",
+			"sha256": "dfe511e45f535337267443498d72915d6102a4bd28afead00080cdf498bbd536",
+			"bytes": 17567234,
+			"member": "Metal032_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Metal032/roughness/Metal032_2K-PNG_Roughness.png",
+			"sha256": "0db7e32e807a9ec743d97223057a65448f74fe387de82b41a3939ad0f6d889f7",
+			"bytes": 2048597,
+			"member": "Metal032_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": "none (metal: colour factor is measured F0)",
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "255 (occlusion not bound)",
+			"g": "roughness",
+			"b": "255 (metal; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"normal": {
+				"sha256": "87be18764ce07a9540dfea5ae858d6dff0d545a11a003cb91f6e8b3e7f20d2ef",
+				"bytes": 63656
+			},
+			"orm": {
+				"sha256": "a5b6ed419a02387c3dbff85fc9390a3276f59ec51d2b279b3bcbea807fef04c5",
+				"bytes": 84748
+			}
+		},
+		"2k": {
+			"normal": {
+				"sha256": "86d890d5e816368ffda6f3e4dc2d6bde0f60ebc560b36553debf62dbedfb7f4e",
+				"bytes": 1267374
+			},
+			"orm": {
+				"sha256": "244a70f1204746be364f28496cdfccdbe4b2250ea117f4c7bbef3bd7d4474f0b",
+				"bytes": 2027994
+			}
+		},
+		"1k": {
+			"normal": {
+				"sha256": "601857b4cfb9fe45fc063042755de7fd81564c1b3e9d91ac3bf31655d04b3793",
+				"bytes": 263620
+			},
+			"orm": {
+				"sha256": "4f0baabc9cfb3b67e54029d8eef1cc5fdec996023a8345596a5cd3508e9b4e71",
+				"bytes": 438938
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"normal": 0.332,
+			"orm": 1.533
+		},
+		"1k->512": {
+			"normal": 0.124,
+			"orm": 1.046
+		}
+	},
+	"statistics": {
+		"512": {
+			"normalSeamRatio": 1.018,
+			"normalSeamVsFeatures": [
+				0.924,
+				0.948
+			],
+			"ormSeamRatio": 1.033,
+			"ormSeamVsFeatures": [
+				0.941,
+				0.878
+			],
+			"roughnessMean": 0.4083,
+			"occlusionMean": 1
+		},
+		"2k": {
+			"normalSeamRatio": 1.192,
+			"normalSeamVsFeatures": [
+				1.14,
+				1.134
+			],
+			"ormSeamRatio": 1.309,
+			"ormSeamVsFeatures": [
+				1.213,
+				1.228
+			],
+			"roughnessMean": 0.4081,
+			"occlusionMean": 1
+		},
+		"1k": {
+			"normalSeamRatio": 1.023,
+			"normalSeamVsFeatures": [
+				0.968,
+				0.953
+			],
+			"ormSeamRatio": 1.12,
+			"ormSeamVsFeatures": [
+				1.012,
+				1.061
+			],
+			"roughnessMean": 0.4086,
+			"occlusionMean": 1
+		}
+	},
+	"entryColours": [
+		{
+			"id": "metal-stainless-satin",
+			"color": "#d6d1cb",
+			"rule": "measured F0 (no colour map)"
+		},
+		{
+			"id": "metal-brass-satin",
+			"color": "#f5e4ae",
+			"rule": "measured F0 (no colour map)"
+		},
+		{
+			"id": "metal-copper-satin",
+			"color": "#f7cfbf",
+			"rule": "measured F0 (no colour map)"
+		},
+		{
+			"id": "metal-gold-satin",
+			"color": "#ffe496",
+			"rule": "measured F0 (no colour map)"
+		}
+	],
+	"qualified": "512"
+}

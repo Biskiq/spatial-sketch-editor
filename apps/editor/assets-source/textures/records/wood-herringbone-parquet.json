@@ -1,0 +1,226 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "wood-herringbone-parquet",
+	"provider": "polyhaven",
+	"assetId": "herringbone_parquet",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/herringbone_parquet/color/herringbone_parquet_diff_2k.png",
+			"sha256": "ad7894b9d9189652d89ff0a1553909d2143db017fb2686ed56e5bb7db54745c2",
+			"bytes": 21385327,
+			"md5": "4d30228a259f54d9217b373715e0aedb",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/herringbone_parquet/herringbone_parquet_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/herringbone_parquet/normal/herringbone_parquet_nor_gl_2k.png",
+			"sha256": "c7e03fae4aa752ba4524ba703ea78930254ef2a3bf32eb6bbe6e80bf6927c8b6",
+			"bytes": 18984465,
+			"md5": "592dcdc7741f13765bf7bd18398f3312",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/herringbone_parquet/herringbone_parquet_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/herringbone_parquet/orm/herringbone_parquet_arm_2k.png",
+			"sha256": "d0d5bda6beec6a8ed4cfa04922da84f360c1fc0f06e854cfbfb9d4bfbc69b672",
+			"bytes": 16502136,
+			"md5": "f1d6b7684f1cb998a831f46fac0abef4",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/herringbone_parquet/herringbone_parquet_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"orm": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 0
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "fdb1b06e6a84dbe145ea4b5a27cc08298146dc5c0a3ee51ed60288b16d011b18",
+				"bytes": 64072
+			},
+			"normal": {
+				"sha256": "41369667103a31fa90be31dcbb47215f567c54a075b1e356e435ef9e787c9c4a",
+				"bytes": 127254
+			},
+			"orm": {
+				"sha256": "b2b719106e6fa928f02b708d3f7106f94e64597f0b9f1f5ec2f82b246efd287b",
+				"bytes": 184218
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "ca8b379b35cf12a1fb23d3a89049edaa43d427dcec462853f0ecbe48027fccfd",
+				"bytes": 1306350
+			},
+			"normal": {
+				"sha256": "0aa86abab55d8056a58b8ad4c572aab57b6d6dd1297d11d1e9627618b9e93c59",
+				"bytes": 3210128
+			},
+			"orm": {
+				"sha256": "478869f6f71924534bacea4d33d8bd0ad59cf73c8c608be454b4c4e283c41aff",
+				"bytes": 3549212
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "dbb8cc636c2e33cd72547f1733682c1922beea671dfb3101eee855fc895390eb",
+				"bytes": 286244
+			},
+			"normal": {
+				"sha256": "395de1bedf78a3257c1fa93514e1c79f815dee19fdab2fb9f1694f9e2fbdf3a2",
+				"bytes": 639084
+			},
+			"orm": {
+				"sha256": "da44930dc7330e380a2e6c0d56ad991148399fe7031307c12c21dba92cad6507",
+				"bytes": 853214
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 5.614,
+			"normal": 1.938,
+			"orm": 2.403
+		},
+		"1k->512": {
+			"color": 4.787,
+			"normal": 1.087,
+			"orm": 1.755
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.097,
+			"colorSeamVsFeatures": [
+				0.764,
+				0.907
+			],
+			"colorLinearMean": [
+				0.29662,
+				0.16416,
+				0.07589
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.88,
+			"normalSeamVsFeatures": [
+				0.466,
+				0.671
+			],
+			"ormSeamRatio": 0.953,
+			"ormSeamVsFeatures": [
+				0.522,
+				0.75
+			],
+			"roughnessMean": 0.0981,
+			"occlusionMean": 0.9734
+		},
+		"2k": {
+			"colorSeamRatio": 1.018,
+			"colorSeamVsFeatures": [
+				0.85,
+				0.918
+			],
+			"colorLinearMean": [
+				0.29611,
+				0.16423,
+				0.07607
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.891,
+			"normalSeamVsFeatures": [
+				0.487,
+				0.739
+			],
+			"ormSeamRatio": 0.961,
+			"ormSeamVsFeatures": [
+				0.689,
+				0.803
+			],
+			"roughnessMean": 0.0981,
+			"occlusionMean": 0.9734
+		},
+		"1k": {
+			"colorSeamRatio": 1.054,
+			"colorSeamVsFeatures": [
+				0.816,
+				0.879
+			],
+			"colorLinearMean": [
+				0.29637,
+				0.16421,
+				0.07595
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.86,
+			"normalSeamVsFeatures": [
+				0.428,
+				0.675
+			],
+			"ormSeamRatio": 0.955,
+			"ormSeamVsFeatures": [
+				0.611,
+				0.759
+			],
+			"roughnessMean": 0.0981,
+			"occlusionMean": 0.9734
+		}
+	},
+	"entryColours": [
+		{
+			"id": "wood-herringbone-parquet",
+			"color": "#ffffff",
+			"rule": "as shot",
+			"measuredLinearMean": [
+				0.29611,
+				0.16423,
+				0.07607
+			],
+			"albedoLuminance": 0.1859
+		}
+	],
+	"qualified": "2k"
+}

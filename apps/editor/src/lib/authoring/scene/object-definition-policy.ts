@@ -391,7 +391,7 @@ function nativeFootprint(primitive: NativePlacementPrimitive): LayoutVec2[] {
 }
 
 function nativeCreationDefaults(primitive: NativePlacementPrimitive): ObjectCreationDefaults {
-	const materialId = 'plaster-warm' as const;
+	const materialId = 'plaster-painted' as const;
 	if (primitive === 'sphere') {
 		return {
 			kind: 'primitive',

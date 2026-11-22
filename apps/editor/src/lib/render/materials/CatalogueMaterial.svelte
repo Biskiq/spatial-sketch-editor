@@ -150,7 +150,8 @@
     loadMaterialTextures(def, activeScope).then((result) => {
       if (cancelled) return;
 
-      if (result.status !== 'ready' || !result.maps.map) {
+      // A map-less set (metals) is ready on its structure maps alone.
+      if (result.status !== 'ready' || (def.textures?.map !== undefined && !result.maps.map)) {
         status = 'failed';
         return;
       }

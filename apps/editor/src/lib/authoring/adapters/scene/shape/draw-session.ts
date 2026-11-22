@@ -50,7 +50,7 @@ import {
 } from './outline';
 
 /** The material every native primitive is created with. */
-export const SHAPE_DEFAULT_MATERIAL = 'plaster-warm' as const;
+export const SHAPE_DEFAULT_MATERIAL = 'plaster-painted' as const;
 /** The creator-visible name pattern native primitives use: one plain noun. */
 export const SHAPE_DEFAULT_NAME = 'Shape';
 /** The height a tile creates; the Card and the Height ray change it afterwards. */

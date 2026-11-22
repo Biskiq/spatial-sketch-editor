@@ -1,0 +1,231 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "masonry-brick-red",
+	"provider": "polyhaven",
+	"assetId": "red_brick_03",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/red_brick_03/color/red_brick_03_diff_2k.png",
+			"sha256": "c7acd2473455d71729ae9c649047f39ff8cc4a4b37873da47273b71925304181",
+			"bytes": 9101323,
+			"md5": "2c0b87b51626d637e29c0596274151f4",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/red_brick_03/red_brick_03_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/red_brick_03/normal/red_brick_03_nor_gl_2k.png",
+			"sha256": "f27cdea3ee64e775e48654de6ec154d1a48082ae1a5b7007fd111ae2b6a50e22",
+			"bytes": 8141778,
+			"md5": "d5c3e4b5216c2decee54b3a036cc64b8",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/red_brick_03/red_brick_03_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/red_brick_03/orm/red_brick_03_arm_2k.png",
+			"sha256": "c2cbc138ad29f6ef03849340d4f69d3a6298c2be39187b438c2c51dcf1c15b07",
+			"bytes": 5877058,
+			"md5": "c6dd487b1a18730dd78812421b26a390",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/red_brick_03/red_brick_03_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"orm": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 0
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "c5ae4b0310b75d8f18ac48687b32b93eecc285fe150d64ec829cc64b3037001d",
+				"bytes": 92332
+			},
+			"normal": {
+				"sha256": "792faee3d00662e7188672abb9813edd12440af6428b681e6620b5f4b25a15a6",
+				"bytes": 450810
+			},
+			"orm": {
+				"sha256": "31039d3b6baf4206f0f620e01af5ccbb6d990ea5f3e2500e1f223fe5c0996924",
+				"bytes": 296748
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "d75cf3a4e725adeaf0c101ecaa2bbfd1305e91cb252a8b0501512f004481dc2c",
+				"bytes": 1813696
+			},
+			"normal": {
+				"sha256": "284987cd378c630e1335f7930d74ac1ba5c8344fa1170c2f814680dac6c2e47f",
+				"bytes": 7539728
+			},
+			"orm": {
+				"sha256": "8061ee9f7c5dc5b9f2ccb011199844fc35dbfbc8c5b438c000c4467f687e8895",
+				"bytes": 4642220
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "f950fe0f80b27d7f42ca28390ff74c5fed6689addb6edcffce94d74a3f632fce",
+				"bytes": 421944
+			},
+			"normal": {
+				"sha256": "fe24714e3da646826bd82335708e32322cc1b81e9100a9676e54d0c3592c93eb",
+				"bytes": 1937452
+			},
+			"orm": {
+				"sha256": "eb00bef0a6ed59174366dde943cbe5be452d220fe73be6b096806eb0f974158c",
+				"bytes": 1240504
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 10.922,
+			"normal": 8.687,
+			"orm": 4.111
+		},
+		"1k->512": {
+			"color": 10.221,
+			"normal": 9.778,
+			"orm": 5.223
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.497,
+			"colorSeamVsFeatures": [
+				0.563,
+				0.624
+			],
+			"colorLinearMean": [
+				0.15675,
+				0.10192,
+				0.0842
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.572,
+			"normalSeamVsFeatures": [
+				0.479,
+				0.583
+			],
+			"ormSeamRatio": 1.909,
+			"ormSeamVsFeatures": [
+				0.449,
+				0.659
+			],
+			"roughnessMean": 0.5317,
+			"occlusionMean": 0.7802
+		},
+		"2k": {
+			"colorSeamRatio": 1.04,
+			"colorSeamVsFeatures": [
+				0.837,
+				0.634
+			],
+			"colorLinearMean": [
+				0.15703,
+				0.10157,
+				0.08464
+			],
+			"colorClippedShare": 0.00001,
+			"normalSeamRatio": 1.178,
+			"normalSeamVsFeatures": [
+				0.62,
+				0.517
+			],
+			"ormSeamRatio": 1.557,
+			"ormSeamVsFeatures": [
+				0.885,
+				0.734
+			],
+			"roughnessMean": 0.5317,
+			"occlusionMean": 0.7802
+		},
+		"1k": {
+			"colorSeamRatio": 1.137,
+			"colorSeamVsFeatures": [
+				0.665,
+				0.6
+			],
+			"colorLinearMean": [
+				0.15672,
+				0.10186,
+				0.08428
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.28,
+			"normalSeamVsFeatures": [
+				0.541,
+				0.494
+			],
+			"ormSeamRatio": 1.524,
+			"ormSeamVsFeatures": [
+				0.62,
+				0.602
+			],
+			"roughnessMean": 0.5317,
+			"occlusionMean": 0.7802
+		}
+	},
+	"entryColours": [
+		{
+			"id": "masonry-brick-red",
+			"color": "#ffffff",
+			"rule": "as shot",
+			"measuredLinearMean": [
+				0.15703,
+				0.10157,
+				0.08464
+			],
+			"albedoLuminance": 0.1121,
+			"plausibility": {
+				"reference": "#8c5746",
+				"sourceLuminanceRatio": 0.874,
+				"withinTolerance": true
+			}
+		}
+	],
+	"qualified": "1k"
+}

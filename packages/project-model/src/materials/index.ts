@@ -127,17 +127,20 @@ export {
 export {
 	CATALOGUE_BASE_IDS,
 	CATALOGUE_MATERIAL_IDS,
+	LEGACY_MATERIAL_IDS,
 	SHIPPED_MATERIAL_IMAGES,
 	catalogueMaterial,
 	catalogueMaterials,
 	catalogueRecipe,
 	catalogueRenderFacts,
 	isCatalogueMaterialId,
+	isLegacyMaterialId,
 	shippedImage,
 	shippedImageByHash,
 	type CatalogueImage,
 	type CatalogueMaterial,
 	type CatalogueMaterialId,
+	type LegacyMaterialId,
 	type CatalogueRenderFacts
 } from './catalogue';
 

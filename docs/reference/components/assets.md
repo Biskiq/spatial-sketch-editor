@@ -170,6 +170,31 @@ An uploaded image whose write was cancelled, refused or undone stays in project 
 retention. The Scene never puts bytes in Undo and never deletes them; an asset no texture record
 references is not pinned, while a texture record whose Finish is gone is still pinned.
 
+## Curated material textures (T2.S8 F)
+
+**Current.** Each curated material set ships one qualified resolution (512, 1K or 2K), chosen per
+material by texel density at the design viewing distance and by visual qualification. There is no
+universal size. Its images live at `/textures/<set-id>/{color.webp,normal.webp,orm.webp}`. Colour
+is lossy WebP (sRGB); normal (+Y) and ORM (R occlusion, G roughness, B metal constant) are lossless.
+Metal sets carry no colour map: their recipe colour is the measured F0, and they are ready on the
+structure maps alone. Every image is pinned by sha256, MIME and byte length in the shipped
+manifest, and pins are append-only. The editor and the visitor runtime fetch a set's images only
+when a Finish binds them; the creator shelf shows a swatch colour (recipe factor × the qualified
+map's mean), never a render input. Upload builds a full mip chain and samples with linear
+magnification, trilinear minification and anisotropy 1. GPU residency is accounted per view against
+the Finish-view ceiling and refuses with `texture-budget` instead of thrashing. Source files are
+retained byte-for-byte outside git. Derivation records (every transform, measurement and hash) and
+licence records live under `apps/editor/assets-source/`, and the derivation is reproducible from the
+retained sources. The six legacy placeholder IDs resolve for existing documents with unchanged
+values and bytes but are not offered for new use; new authored objects default to
+`plaster-painted`.
+
+**Not current (destination).** 192² catalogue thumbnail derivatives, adaptive resolution streaming
+or progressive refinement, automatic quality selection by device, a user texture-quality preference,
+anisotropic filtering, GPU-compressed (KTX2/Basis) derivatives and CDN-origin Expansion delivery.
+Each needs its own consumer and evidence. Adding another resolution of a set is an allowlist append
+under a new URI, never a change to an existing pin.
+
 ## My Objects library scope
 
 The first consumer of the ratified **library scope**, implemented, is one typed `form` item,
@@ -406,3 +431,9 @@ performance, integration cost and compliance obligations when a named precision 
 it ([T5 capability admission](../../roadmap/t5-expressive-geometry/umbrella-plan.md#later-depth-with-bounded-next-decisions)).
 The same applies to MPL implicit-field candidates such as Fidget and libfive. Nothing is installed or
 selected.
+
+**Material derivation codec (T2.S8 F).** `@napi-rs/image` 1.16.0 (MIT) decodes curated PNG sources
+and encodes WebP derivatives. It is an `apps/editor` devDependency used only by the build-time
+derivation script under `apps/editor/assets-source/textures/`; no product module imports it and it
+never reaches a browser bundle. Every pixel decision lives in the codec-independent
+`material-pixels.ts`, so the codec stays replaceable.

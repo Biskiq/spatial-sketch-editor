@@ -134,6 +134,23 @@ describe('texture-cache extensions', () => {
 		}
 	});
 
+	it('binds a map-less set by the structure maps it carries (S8 F metals)', async () => {
+		// Data maps load raw; the injected loader stands in for fetch + ImageBitmap.
+		setDefaultTextureSourceLoader(vi.fn(async (url: string) => sizedTexture(url, 32, 32)));
+		const result = await loadEffectiveTextures({
+			...effectiveA,
+			slotUris: { normalMap: '/textures/metal/normal.webp', roughnessMap: '/textures/metal/orm.webp' },
+			variantSeed: 'vMETAL'
+		});
+		expect(result.status).toBe('ready');
+		if (result.status === 'ready') {
+			expect(result.maps.map).toBeUndefined();
+			expect(result.maps.normalMap?.uuid).toBe('/textures/metal/normal.webp');
+			expect(result.maps.roughnessMap?.uuid).toBe('/textures/metal/orm.webp');
+		}
+		__resetDefaultSourceLoaderForTests();
+	});
+
 	it('acquireEffectiveVariant returns the same maps reference for repeat acquires', () => {
 		const first = acquireEffectiveVariant(effectiveA, 2, 2, 0);
 		const second = acquireEffectiveVariant(effectiveA, 2, 2, 0);

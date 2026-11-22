@@ -270,7 +270,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 							{#if finishShelf === null}
 								{#each visibleMaterials as material (material.id)}
 									<button type="button" class="tile" title={material.label} onclick={() => onMaterialPick(material.id)}>
-										<i class="material" style:background={material.fallbackColor}></i>
+										<i class="material" style:background={material.swatchColor ?? material.fallbackColor}></i>
 										<span class="tile-label">{material.label}</span>
 									</button>
 								{/each}

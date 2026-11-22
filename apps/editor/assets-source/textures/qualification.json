@@ -1,0 +1,71 @@
+{
+	"schema": "s8-f-qualification/1",
+	"judgedOn": "2026-11-21",
+	"method": "Offline qualification sheets: each ladder level magnified to the 1440p design-distance screen density (surface 1.5 m = 850 px/m, object 0.8 m = 1595 px/m), colour × lit normal under a grazing key, beside a 2×2 tile of the 512 level for seams and repeat. Where a level's magnification is below 1 the sheet sampler has no mip prefilter, so differences above that level are aliasing a GPU would not show and are discounted. Agent judgement; the owner retains final visual acceptance.",
+	"sets": {
+		"wood-oak-veneer": {
+			"level": "512",
+			"judgement": "512 holds grain and figure at 0.8 m (×1.56, low-frequency figure); 1K indistinguishable. Conditional screen resolved at the start step."
+		},
+		"wood-walnut-veneer": {
+			"level": "1k",
+			"judgement": "512 softens the dark grain lines at 0.8 m (×3.11); 1K holds them (×1.56, conditional) and 2K adds nothing visible."
+		},
+		"wood-oak-planks": {
+			"level": "1k",
+			"judgement": "512 smears the grain and board joints at 1.5 m (×2.82); 1K crisp (×1.41); 2K equal."
+		},
+		"wood-herringbone-parquet": {
+			"level": "2k",
+			"judgement": "512 blurs the blocks; 1K (×2.82) softens block edges and grain; 2K (×1.41) crisp. Feature-defined; 2K is required."
+		},
+		"stone-terrazzo": {
+			"level": "512",
+			"judgement": "Aggregate edges hold at 512 (×1.33); no visible gain at 1K."
+		},
+		"stone-travertine": {
+			"level": "512",
+			"judgement": "Low-frequency banding holds at 512 (×1.99, conditional, stochastic); 1K indistinguishable. Replaces stone-marble-white (excluded on albedo plausibility)."
+		},
+		"masonry-brick-red": {
+			"level": "1k",
+			"judgement": "512 softens mortar edges at 1.5 m (×1.66); 1K crisp (×0.83); 2K equal."
+		},
+		"plaster-painted": {
+			"level": "1k",
+			"judgement": "512 loses the trowel grain at 1.5 m (×3.32); 1K holds it (×1.66, conditional, stochastic); 2K adds only faint speckle."
+		},
+		"concrete-smooth": {
+			"level": "1k",
+			"judgement": "512 blurs the pitting (×3.99); 1K holds it (×1.99, conditional, stochastic low-frequency); 2K adds fine speckle only. Repeat at 2.4 m shows a mild recurring stain at the overview, not conspicuous."
+		},
+		"tile-ceramic-white": {
+			"level": "1k",
+			"judgement": "512 softens grout lines (×1.66, feature-defined); 1K crisp; 2K equal."
+		},
+		"metal-satin": {
+			"level": "512",
+			"judgement": "Satin normals are near flat at every level; 512 is indistinguishable (×1.56, conditional)."
+		},
+		"metal-brushed": {
+			"level": "1k",
+			"judgement": "512 loses the brushing (×1.56, feature-defined); 1K shows it (×0.78); 2K equal at design distance."
+		},
+		"textile-linen": {
+			"level": "512",
+			"judgement": "×0.84 at 0.8 m: the finest threads are below the design screen density at every level once mipped; the weave modulation reads at 512. Higher levels differ only by unprefiltered aliasing."
+		},
+		"textile-carpet-loop": {
+			"level": "1k",
+			"judgement": "512 smears the loops at 1.5 m (×2.82); 1K holds them (×1.41); 2K marginally crisper, not judged necessary."
+		},
+		"leather-smooth": {
+			"level": "512",
+			"judgement": "Grain holds at 512 (×0.93); higher levels add only aliasing in the sheet."
+		},
+		"synthetic-plastic-matte": {
+			"level": "512",
+			"judgement": "Fine stipple reads as a matte sheen at 512 (×1.56, conditional, stochastic); 1K indistinguishable."
+		}
+	}
+}

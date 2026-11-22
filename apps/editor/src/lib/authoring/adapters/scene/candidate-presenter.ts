@@ -92,7 +92,7 @@ export function sceneEntityAtCandidate(
 			name: 'Candidate form',
 			position: [...candidate.position] as Vec3,
 			rotation: [...candidate.rotation] as Vec3,
-			materialId: 'plaster-warm',
+			materialId: 'plaster-painted',
 			castShadow: true,
 			receiveShadow: true,
 			form: candidate.form
@@ -103,7 +103,7 @@ export function sceneEntityAtCandidate(
 			kind: 'primitive' as const,
 			id: 'scene-candidate-primitive',
 			name: 'Candidate object',
-			materialId: 'plaster-warm' as const,
+			materialId: 'plaster-painted' as const,
 			castShadow: true,
 			receiveShadow: true,
 			position: [...candidate.position] as Vec3,
