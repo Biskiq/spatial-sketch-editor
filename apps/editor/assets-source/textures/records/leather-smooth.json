@@ -1,0 +1,234 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "leather-smooth",
+	"provider": "polyhaven",
+	"assetId": "leather_white",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/leather_white/color/leather_white_diff_2k.png",
+			"sha256": "507647ca0d485b7d956e57f70d600da2777088dccbe50e8300b6c119f75b3b7c",
+			"bytes": 8177379,
+			"md5": "d61e4c0dc5d586d07193cca9466a07c8",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/leather_white/leather_white_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/leather_white/normal/leather_white_nor_gl_2k.png",
+			"sha256": "7766d7a06e2f1d84cb87a1b82e36bff13cc2b3daaf9a02bca15e14b491f414b6",
+			"bytes": 7480079,
+			"md5": "fe06491c88281d3b9a7bb1d0f70f8ecb",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/leather_white/leather_white_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/leather_white/orm/leather_white_arm_2k.png",
+			"sha256": "b4677a6dcf2055c990159e8979a466289769bdd04a8d4aec3fbbc3060002b2a6",
+			"bytes": 7874714,
+			"md5": "a17f783846e0afd90101e997af588d4e",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/leather_white/leather_white_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"orm": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 0
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "aabf976f0ae75f15f9e6fba5278789636a8f1c7714eac58497f207921b985a35",
+				"bytes": 48618
+			},
+			"normal": {
+				"sha256": "94c10d202a5018a95b5939c919debd92abfaf181803e5e51479cd9c0fe4fa46f",
+				"bytes": 237852
+			},
+			"orm": {
+				"sha256": "d97e099816b588b3108af9dc7d62eda185a9da771a6c0866bf7ac268346e317b",
+				"bytes": 309432
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "07c2d7490336698b4335b3b96df208718283961f93ba52b362385af3abb6ddba",
+				"bytes": 1427712
+			},
+			"normal": {
+				"sha256": "b632d67948074925bc1dab1a15f8089cbb07484f411b48952abf8cc35dc769fc",
+				"bytes": 5716210
+			},
+			"orm": {
+				"sha256": "29c9e1c47438c7112cc1b2ae57567f9aa99f20ef6c84902200595bd2c08b0ff3",
+				"bytes": 6126808
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "54804deab88f10a472ff71afacf6331107999d6d70cb28b438e24affa9d27024",
+				"bytes": 278446
+			},
+			"normal": {
+				"sha256": "9bc3c5226f646c3894481ceb7179f009ef80053eab2822baca0ae7d0f5e5477d",
+				"bytes": 1213202
+			},
+			"orm": {
+				"sha256": "2cfb2eb22ca429334b3acb78de4714dcd473d81827b8280657d1cb8d92191ce6",
+				"bytes": 1376674
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 7.726,
+			"normal": 4.751,
+			"orm": 9.384
+		},
+		"1k->512": {
+			"color": 5.142,
+			"normal": 3.584,
+			"orm": 7.072
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.05,
+			"colorSeamVsFeatures": [
+				0.897,
+				0.931
+			],
+			"colorLinearMean": [
+				0.30709,
+				0.29091,
+				0.21481
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.976,
+			"normalSeamVsFeatures": [
+				0.895,
+				0.747
+			],
+			"ormSeamRatio": 1.012,
+			"ormSeamVsFeatures": [
+				0.929,
+				0.851
+			],
+			"roughnessMean": 0.6171,
+			"occlusionMean": 0.8683
+		},
+		"2k": {
+			"colorSeamRatio": 0.933,
+			"colorSeamVsFeatures": [
+				0.867,
+				0.737
+			],
+			"colorLinearMean": [
+				0.30584,
+				0.29131,
+				0.21612
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.974,
+			"normalSeamVsFeatures": [
+				0.912,
+				0.755
+			],
+			"ormSeamRatio": 0.968,
+			"ormSeamVsFeatures": [
+				0.909,
+				0.767
+			],
+			"roughnessMean": 0.6171,
+			"occlusionMean": 0.8683
+		},
+		"1k": {
+			"colorSeamRatio": 1.07,
+			"colorSeamVsFeatures": [
+				0.937,
+				0.965
+			],
+			"colorLinearMean": [
+				0.30672,
+				0.29117,
+				0.21533
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.989,
+			"normalSeamVsFeatures": [
+				0.916,
+				0.776
+			],
+			"ormSeamRatio": 1.01,
+			"ormSeamVsFeatures": [
+				0.934,
+				0.864
+			],
+			"roughnessMean": 0.6171,
+			"occlusionMean": 0.8683
+		}
+	},
+	"entryColours": [
+		{
+			"id": "leather-cognac",
+			"color": "#eb8d60",
+			"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+			"target": "#8a4f2c",
+			"measuredLinearMean": [
+				0.30584,
+				0.29131,
+				0.21612
+			],
+			"linearFactor": [
+				0.831,
+				0.2684,
+				0.11654
+			],
+			"albedoLuminance": 0.1118,
+			"targetLuminance": 0.1118,
+			"targetReached": true
+		}
+	],
+	"qualified": "512"
+}

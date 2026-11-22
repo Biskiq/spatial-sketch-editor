@@ -1,0 +1,238 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "synthetic-plastic-matte",
+	"provider": "ambientcg",
+	"assetId": "Plastic013A",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Plastic013A/archive/Plastic013A_2K-PNG.zip",
+			"sha256": "839f6aa8dca14b7403d94998e9da235940ecbfa7a0da9a0e8f76d634be96dec6",
+			"bytes": 60818712,
+			"url": "https://ambientcg.com/get?file=Plastic013A_2K-PNG.zip"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Plastic013A/color/Plastic013A_2K-PNG_Color.png",
+			"sha256": "0eba5df81daa1d17eb4eb9418ee12610b659a239e43bb200d34435361f7c3b23",
+			"bytes": 2582707,
+			"member": "Plastic013A_2K-PNG_Color.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Plastic013A/normal/Plastic013A_2K-PNG_NormalGL.png",
+			"sha256": "617fa76f4871900888994976a8a4e00e151628cfbd4b67f2d215568d2a3e96bd",
+			"bytes": 23068121,
+			"member": "Plastic013A_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Plastic013A/roughness/Plastic013A_2K-PNG_Roughness.png",
+			"sha256": "dbf809f41a7402664b99a5f57c9af653ca70921fa8167ce61d1e048523060d7c",
+			"bytes": 2754788,
+			"member": "Plastic013A_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "255 (occlusion not bound)",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "a67e6d09a4f21a8b405a0012984e07e7c30a0ad900d88a64d85d984d15b70320",
+				"bytes": 2084
+			},
+			"normal": {
+				"sha256": "1dde35d60cc767d9f5c2a4c8e30b1779835bc4845becaeb1c00cdf7de8bdc574",
+				"bytes": 237040
+			},
+			"orm": {
+				"sha256": "a8c9f9bb303a7303173568145a0c126cc850a59ed6354e623ff3b9c5c2464eac",
+				"bytes": 112620
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "7adce8332e42c7c00a0056c2061ca7a1f200a5867f3e38f8c7fe010e41ca9d2c",
+				"bytes": 513862
+			},
+			"normal": {
+				"sha256": "03194ebc4b095bec5c26cf89ec9afe5fa0460fef3fef424ad234e6936d151a52",
+				"bytes": 7846178
+			},
+			"orm": {
+				"sha256": "74df68c4e80b0022d00741d9e72b095c37546de8376e394a6b0a97d01d6fbcce",
+				"bytes": 2886484
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "8e02e450e5d82a604ccb53b533682bad982729bb54720caef74164ca6cf6d3fb",
+				"bytes": 61750
+			},
+			"normal": {
+				"sha256": "0e1d59373c8bb390cb2c33b2ed9b2f704b586948585d2caff31dcd09ed2b5e37",
+				"bytes": 1597770
+			},
+			"orm": {
+				"sha256": "5c0468d5e8ee179c1e9f78de8be14436e8e13af6da0bd0f2e9ff7fd94c7130ee",
+				"bytes": 655480
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 2.929,
+			"normal": 14.532,
+			"orm": 5.568
+		},
+		"1k->512": {
+			"color": 2.127,
+			"normal": 9.529,
+			"orm": 4.053
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 6.026,
+			"colorSeamVsFeatures": [
+				0.564,
+				0.795
+			],
+			"colorLinearMean": [
+				0.8471,
+				0.82615,
+				0.8126
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.971,
+			"normalSeamVsFeatures": [
+				0.907,
+				0.76
+			],
+			"ormSeamRatio": 1.202,
+			"ormSeamVsFeatures": [
+				1.03,
+				0.883
+			],
+			"roughnessMean": 0.4007,
+			"occlusionMean": 1
+		},
+		"2k": {
+			"colorSeamRatio": 1.456,
+			"colorSeamVsFeatures": [
+				1.216,
+				0.891
+			],
+			"colorLinearMean": [
+				0.84337,
+				0.82322,
+				0.81297
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.033,
+			"normalSeamVsFeatures": [
+				1.01,
+				0.655
+			],
+			"ormSeamRatio": 1.328,
+			"ormSeamVsFeatures": [
+				1.215,
+				0.871
+			],
+			"roughnessMean": 0.4005,
+			"occlusionMean": 1
+		},
+		"1k": {
+			"colorSeamRatio": 1.036,
+			"colorSeamVsFeatures": [
+				0.577,
+				0.778
+			],
+			"colorLinearMean": [
+				0.84584,
+				0.82424,
+				0.81317
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.985,
+			"normalSeamVsFeatures": [
+				0.984,
+				0.649
+			],
+			"ormSeamRatio": 1.167,
+			"ormSeamVsFeatures": [
+				1.115,
+				0.72
+			],
+			"roughnessMean": 0.401,
+			"occlusionMean": 1
+		}
+	},
+	"entryColours": [
+		{
+			"id": "synthetic-plastic-matte",
+			"color": "#f8fbf9",
+			"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+			"target": "#e6e6e3",
+			"measuredLinearMean": [
+				0.84337,
+				0.82322,
+				0.81297
+			],
+			"linearFactor": [
+				0.93826,
+				0.96122,
+				0.94487
+			],
+			"albedoLuminance": 0.7896,
+			"targetLuminance": 0.7896,
+			"targetReached": true
+		}
+	],
+	"qualified": "512"
+}

@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { NoColorSpace, SRGBColorSpace, Texture } from 'three';
 import {
-	CATALOGUE_MATERIAL_IDS,
+	LEGACY_MATERIAL_IDS,
 	bindFinish,
 	catalogueRecipe,
 	readRecipe,
@@ -257,8 +257,9 @@ async function captureBaseline() {
 		};
 	});
 
+	// E0 characterized the six pre-F bases; they stay resolvable unchanged.
 	const catalogue = [];
-	for (const id of CATALOGUE_MATERIAL_IDS) {
+	for (const id of LEGACY_MATERIAL_IDS) {
 		const recipe = catalogueRecipe(id);
 		if (recipe === undefined) throw new Error(id);
 		catalogue.push({

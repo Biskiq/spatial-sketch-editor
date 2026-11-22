@@ -1,13 +1,55 @@
 # S8 F · Catalogue and harvest plan
 
-**Status:** amended after the first owner review. Proposed for final owner approval. Nothing has
-been downloaded, derived or shipped, and no dependency has been added.
+**Status:** approved 2026-11-21 and implemented in the F PR. The outcome is below; the sections after
+it are the approved plan as written, kept for the record.
 **Scope:** E6a catalogue intake inside [F](./implementation-plan.md#f--inspect-materials-and-qualify-the-catalogue).
 E7 inspection, thumbnails and the F exit stay as the implementation plan defines them.
 **Machine-readable companion:** [`f-acquisition-manifest.json`](./f-acquisition-manifest.json)
 (schema `s8-f-acquisition-manifest/2`). It was generated on 2026-11-21 from the Poly Haven,
 ambientCG and Physically Based APIs. When this page and the manifest differ, the manifest wins for
 URLs, sizes, checksums and screening numbers; this page wins for policy.
+
+## Outcome (2026-11-21)
+
+**Shipped: 16 sets → 21 creator-facing entries**, against the proposed 17 → 22. A smaller credible
+catalogue was preferred to the count (D7).
+
+- **Levels:** 7 sets at 512, 8 at 1K and 1 at 2K (herringbone). The derived WebP set totals 28.1 MB.
+- **Excluded after harvest and derivation:**
+  - *White marble* (`Marble012`). Its colour mean is 0.539× the Physically Based marble reference
+    in luminance. A recipe factor cannot lighten, and a gain to the reference clips 57.6% of
+    texels and destroys the veining. The listed fallback *travertine* (`Travertine009`) ships under
+    its own identity, never as marble.
+  - *Painted brick* (`PaintedBricks004`). The as-shot paint is blue-grey. A gain to warm white
+    clips 99.9% of texels, and the D4 luminance-neutral step is approved for linen only. It
+    requalifies if the owner extends D4 or a warm-white source is found.
+- **Alternate used:** *matte plastic* uses `Plastic013A`, because the first choice `Plastic010`
+  is too dark for its target.
+- **Recorded colour transforms:**
+  - plaster: one linear gain of 2.036, capped by the 0.5% clip ceiling; contrast is unchanged and
+    the target is missed by 1.4% in luminance;
+  - linen: the D4 neutral step, then a gain.
+
+  Every other set ships its source colour unmodified.
+- **Render-path fix:** the texture loaders treated a missing colour map as failure, so metal sets
+  (normal and ORM only) fell back to flat colour. A set that binds no colour map is now ready on its
+  structure maps, with a regression test.
+- **Defaults:** new shapes and native objects default to `plaster-painted`. Render fallbacks for
+  documents without a material stay on the legacy entries, which resolve unchanged.
+- **Rendered QA:** run on `/dev/s8-f` with B's inspection rigs (studio and grazing, lighting v2).
+  The matrix is the board plus three vignettes × two rigs × WebGPU and WebGL2. Every cell settled
+  with no failures and no console errors.
+- **Evidence:**
+  - [`evidence/s8-f-catalogue.json`](./evidence/s8-f-catalogue.json) holds per-set sources and hashes,
+    measurements per level, transforms with before and after values, rejected candidates with
+    reasons, and the QA matrix;
+  - screenshots are under `evidence/s8-f-*.jpg`;
+  - derivation and qualification records are in `apps/editor/assets-source/textures/`.
+- **Still open:**
+  - D2 upload of the retained sources to the private store; sources are held locally under the
+    immutable key layout;
+  - the E7 product inspection host and 192² shelf thumbnails;
+  - the owner's final visual acceptance.
 
 ## 1. Decision requested
 

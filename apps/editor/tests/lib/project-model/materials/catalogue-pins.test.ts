@@ -14,16 +14,24 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
 	CATALOGUE_MATERIAL_IDS,
+	LEGACY_MATERIAL_IDS,
 	SHIPPED_MATERIAL_IMAGES,
 	catalogueMaterials,
 	catalogueRenderFacts
 } from '@portfolio/project-model/materials';
 import { listShippedTextureUris } from '@portfolio/project-model';
-import { materials as editorCatalogue } from '$lib/content/materials';
+import { legacyMaterials, materials as editorCatalogue } from '$lib/content/materials';
 import type { MaterialTextureSlot } from '$lib/types/materials';
 
 const STATIC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../static');
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** The RIFF container's first WebP chunk: `VP8 ` lossy, `VP8L` lossless, `VP8X` extended. */
+function webpChunk(bytes: Buffer): string | null {
+	if (bytes.subarray(0, 4).toString('latin1') !== 'RIFF') return null;
+	if (bytes.subarray(8, 12).toString('latin1') !== 'WEBP') return null;
+	return bytes.subarray(12, 16).toString('latin1');
+}
 
 const ROLE_OF_EDITOR_SLOT: Readonly<Record<MaterialTextureSlot, string>> = {
 	map: 'color',
@@ -40,8 +48,17 @@ describe('shipped material image pins', () => {
 			const digest = `sha256-${createHash('sha256').update(new Uint8Array(bytes)).digest('hex')}`;
 			expect(bytes.byteLength, image.uri).toBe(image.byteSize);
 			expect(digest, image.uri).toBe(image.hash);
-			expect(image.mime, image.uri).toBe('image/png');
-			expect(bytes.subarray(0, 8).equals(new Uint8Array(PNG_SIGNATURE)), image.uri).toBe(true);
+			if (image.mime === 'image/png') {
+				// Only the legacy placeholders ship PNG.
+				expect(image.uri, image.uri).toMatch(/\/(map|roughness)\.png$/);
+				expect(bytes.subarray(0, 8).equals(new Uint8Array(PNG_SIGNATURE)), image.uri).toBe(true);
+				continue;
+			}
+			expect(image.mime, image.uri).toBe('image/webp');
+			// The curated colour map is lossy sRGB; normal and ORM data maps are
+			// lossless so the derivation's pixel round trip holds in the browser.
+			const lossless = !image.uri.endsWith('/color.webp');
+			expect(webpChunk(bytes), image.uri).toBe(lossless ? 'VP8L' : 'VP8 ');
 		}
 	});
 
@@ -58,7 +75,8 @@ describe('shipped material image pins', () => {
 
 	it('joins the pure catalogue records to the editor catalogue exactly', () => {
 		expect(CATALOGUE_MATERIAL_IDS).toEqual(editorCatalogue.map((definition) => definition.id));
-		for (const definition of editorCatalogue) {
+		expect(LEGACY_MATERIAL_IDS).toEqual(legacyMaterials.map((definition) => definition.id));
+		for (const definition of [...editorCatalogue, ...legacyMaterials]) {
 			const facts = catalogueRenderFacts(definition.id);
 			expect(facts, definition.id).toBeDefined();
 			expect(facts?.color, definition.id).toBe(definition.fallbackColor);
@@ -76,8 +94,11 @@ describe('shipped material image pins', () => {
 	});
 
 	it('keeps the technical neutral base out of the creator catalogue', () => {
-		const creator = catalogueMaterials().filter((entry) => !entry.technical);
+		const creator = catalogueMaterials().filter((entry) => !entry.technical && !entry.legacy);
 		expect(creator.map((entry) => entry.id)).toEqual(CATALOGUE_MATERIAL_IDS);
+		expect(catalogueMaterials().filter((entry) => entry.legacy).map((entry) => entry.id)).toEqual(
+			LEGACY_MATERIAL_IDS
+		);
 		expect(catalogueMaterials().find((entry) => entry.id === 'pbr-neutral-v1')?.technical).toBe(true);
 		expect(editorCatalogue.some((definition) => (definition.id as string) === 'pbr-neutral-v1')).toBe(false);
 	});

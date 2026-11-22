@@ -1,0 +1,241 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "stone-marble-white",
+	"provider": "ambientcg",
+	"assetId": "Marble012",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Marble012/archive/Marble012_2K-PNG.zip",
+			"sha256": "969c795f2fcb0ce2dd793a3bac31f2f07f70911bb6692cbcda794efebb88678b",
+			"bytes": 49387235,
+			"url": "https://ambientcg.com/get?file=Marble012_2K-PNG.zip"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Marble012/color/Marble012_2K-PNG_Color.png",
+			"sha256": "d9b41efdaea457857e428151b9c731e455ed1c2911c543fc9ff159a626cf9493",
+			"bytes": 8515096,
+			"member": "Marble012_2K-PNG_Color.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Marble012/normal/Marble012_2K-PNG_NormalGL.png",
+			"sha256": "233673baeac961ee941373d161ca5a4d006f89e1da39b7fbd73ac73aa9224a30",
+			"bytes": 14808159,
+			"member": "Marble012_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Marble012/roughness/Marble012_2K-PNG_Roughness.png",
+			"sha256": "ab08c1af4ee81408bed70d483c6d5a753fd166a4341bfe2e748dc2697bd259fa",
+			"bytes": 2008206,
+			"member": "Marble012_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorGain": {
+			"transform": "linear-colour-gain/1",
+			"gain": 2.01271,
+			"clippedShare": 0.57601,
+			"target": "#ebe6e1"
+		},
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "255 (occlusion not bound)",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "59160b13979335d60f727ab37ab094c9d2b5f69236d56792689ec293da708363",
+				"bytes": 88128
+			},
+			"normal": {
+				"sha256": "d577f4fe5074bcad827fc43306e98614d385910acb2edf08124c0c10b5f8838c",
+				"bytes": 64524
+			},
+			"orm": {
+				"sha256": "d609df5fc7250722ee7e9b520fb94244ce007bf14afa7a21225a51d7ac030696",
+				"bytes": 127504
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "ab1b6443aa74542021b6ac2bc0afcb49f60786730f687f260d69258fc562021e",
+				"bytes": 1586754
+			},
+			"normal": {
+				"sha256": "66abcb1e616926f7ea246445a9bbae7c9e956733d50fad1fe8329402bebc1a21",
+				"bytes": 1199834
+			},
+			"orm": {
+				"sha256": "bd2ece2d5e9b7bb85726eab540bb93de3d7e4721c435da469da0079de9a83444",
+				"bytes": 1927800
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "119072a03f01ce3074500191e2b6fa5870242381ddc27bd47ba1dbbd1cf34f50",
+				"bytes": 398318
+			},
+			"normal": {
+				"sha256": "2fbb10dc14a8ffb1e58516800375a9fb65fbdb7a97c309f12e2fe356e7bfafa8",
+				"bytes": 262662
+			},
+			"orm": {
+				"sha256": "47a9a7f50ba8fb43e9ac7601dd525763b9158defb92a9225d323cbc94fc7f9ca",
+				"bytes": 513540
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 12.272,
+			"normal": 0.193,
+			"orm": 1.714
+		},
+		"1k->512": {
+			"color": 10.599,
+			"normal": 0.109,
+			"orm": 1.838
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.183,
+			"colorSeamVsFeatures": [
+				0.935,
+				0.775
+			],
+			"colorLinearMean": [
+				0.8427,
+				0.85583,
+				0.91565
+			],
+			"colorClippedShare": 0.03677,
+			"normalSeamRatio": 1.021,
+			"normalSeamVsFeatures": [
+				0.9,
+				0.966
+			],
+			"ormSeamRatio": 1.02,
+			"ormSeamVsFeatures": [
+				0.803,
+				0.737
+			],
+			"roughnessMean": 0.066,
+			"occlusionMean": 1
+		},
+		"2k": {
+			"colorSeamRatio": 1.294,
+			"colorSeamVsFeatures": [
+				0.962,
+				0.942
+			],
+			"colorLinearMean": [
+				0.83504,
+				0.84739,
+				0.89135
+			],
+			"colorClippedShare": 0.07575,
+			"normalSeamRatio": 1.056,
+			"normalSeamVsFeatures": [
+				1.008,
+				0.963
+			],
+			"ormSeamRatio": 1.227,
+			"ormSeamVsFeatures": [
+				0.968,
+				0.95
+			],
+			"roughnessMean": 0.0659,
+			"occlusionMean": 1
+		},
+		"1k": {
+			"colorSeamRatio": 1.225,
+			"colorSeamVsFeatures": [
+				0.946,
+				0.846
+			],
+			"colorLinearMean": [
+				0.83952,
+				0.85262,
+				0.90475
+			],
+			"colorClippedShare": 0.0535,
+			"normalSeamRatio": 0.971,
+			"normalSeamVsFeatures": [
+				0.897,
+				0.91
+			],
+			"ormSeamRatio": 1.066,
+			"ormSeamVsFeatures": [
+				0.834,
+				0.809
+			],
+			"roughnessMean": 0.0664,
+			"occlusionMean": 1
+		}
+	},
+	"entryColours": [
+		{
+			"id": "stone-marble-white",
+			"target": "#ebe6e1",
+			"targetBasis": "plausibility reference (source luminance 0.539x)",
+			"measuredLinearMean": [
+				0.83504,
+				0.84739,
+				0.89135
+			],
+			"color": "#fef7ed",
+			"linearFactor": [
+				0.99489,
+				0.93381,
+				0.84472
+			],
+			"rule": "linear(target) / measured linear mean, per channel (§7)"
+		}
+	],
+	"qualified": null
+}

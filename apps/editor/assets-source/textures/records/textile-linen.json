@@ -1,0 +1,291 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "textile-linen",
+	"provider": "polyhaven",
+	"assetId": "rough_linen",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/rough_linen/color/rough_linen_diff_2k.png",
+			"sha256": "92a274c46f24af3d7761c6722e54fec8188e3b7ef6b92dc2c874bfc0ed3d4069",
+			"bytes": 23034793,
+			"md5": "3545211c4b7a868187055232e7311bc0",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rough_linen/rough_linen_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/rough_linen/normal/rough_linen_nor_gl_2k.png",
+			"sha256": "1de2d1e782a54340b9a047a78382c1a0218cc1933bdffb331d6ed5fa2164e932",
+			"bytes": 22196908,
+			"md5": "c790b11f591f898dbec1d75733159fb3",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rough_linen/rough_linen_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/rough_linen/orm/rough_linen_arm_2k.png",
+			"sha256": "d264907dd3fea0c389585dc0b24b9c9d75823662d1c5c8798dd8abea26a73e69",
+			"bytes": 25594524,
+			"md5": "8ace7206e4eb7f71bd8e3f082fece735",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rough_linen/rough_linen_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2052
+		],
+		"normal": [
+			2048,
+			2052
+		],
+		"orm": [
+			2048,
+			2052
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "separable Lanczos-3, periodic edges",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": {
+			"transform": "rec709-linear-luminance-grey/1",
+			"weights": [
+				0.2126,
+				0.7152,
+				0.0722
+			]
+		},
+		"colorTransforms": [
+			{
+				"transform": "rec709-linear-luminance-grey/1",
+				"weights": [
+					0.2126,
+					0.7152,
+					0.0722
+				],
+				"before": {
+					"linearMean": [
+						0.28816,
+						0.41158,
+						0.6154
+					],
+					"luminanceContrast": 0.1778
+				},
+				"after": {
+					"linearMean": [
+						0.40006,
+						0.40006,
+						0.40006
+					],
+					"luminanceContrast": 0.1778
+				}
+			},
+			{
+				"transform": "linear-colour-gain/1",
+				"target": "#cbbfa8",
+				"neededGain": 1.52264,
+				"gainCeiling": 1.86299,
+				"appliedGain": 1.52264,
+				"maxClippedShare": 0.005,
+				"clippedShare": 0,
+				"before": {
+					"linearMean": [
+						0.40006,
+						0.40006,
+						0.40006
+					],
+					"luminanceContrast": 0.1778
+				},
+				"after": {
+					"linearMean": [
+						0.60915,
+						0.60915,
+						0.60915
+					],
+					"luminanceContrast": 0.1778
+				}
+			}
+		],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 72
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "a0eef2abb6bd6bd42218b7e21e3ba7345586fb59d9d55089b6b588ebca22a817",
+				"bytes": 56656
+			},
+			"normal": {
+				"sha256": "e9ea4858d8ceb8ef0fb24fecee84b1a76396d16ecf680cb5c756cfa4c2e8d157",
+				"bytes": 340922
+			},
+			"orm": {
+				"sha256": "82ec123de3387d931eb3b526c1442c42de5d8bd59f52916fdeff25cb68f70b4f",
+				"bytes": 382978
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "98ee9c1ea678fe6a96e84bd00d3d6e44d144b034277fe17984e021af2ca758e4",
+				"bytes": 1414642
+			},
+			"normal": {
+				"sha256": "b3c8356ef3e1c6d61c9aa3fa84386c43d72834059c189d30f19a69aa3c32df83",
+				"bytes": 6644946
+			},
+			"orm": {
+				"sha256": "a87a5ed10184041ab9c50e3a6d5b49d291dde1ccd3b6cdd3d0e6f0aaab7bf0b0",
+				"bytes": 7262330
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "8df2135a05434f1dd6b6aae7f5b40a383e7c90b8111e095849d89ce0ad28ea99",
+				"bytes": 362676
+			},
+			"normal": {
+				"sha256": "8481394821a2286d42b9bf3c835b31cd94164c90dea744e43cd581320f5318d4",
+				"bytes": 1728770
+			},
+			"orm": {
+				"sha256": "71fc1d313a3eab0c431972622a7da6bebc9fafcf53f81175108baeef1769dcfa",
+				"bytes": 1729890
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 10.579,
+			"normal": 7.545,
+			"orm": 15.585
+		},
+		"1k->512": {
+			"color": 11.498,
+			"normal": 8.731,
+			"orm": 16.759
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.028,
+			"colorSeamVsFeatures": [
+				0.782,
+				0.805
+			],
+			"colorLinearMean": [
+				0.60986,
+				0.60986,
+				0.60986
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.049,
+			"normalSeamVsFeatures": [
+				0.921,
+				0.856
+			],
+			"ormSeamRatio": 0.994,
+			"ormSeamVsFeatures": [
+				0.851,
+				0.866
+			],
+			"roughnessMean": 0.6593,
+			"occlusionMean": 0.7726
+		},
+		"2k": {
+			"colorSeamRatio": 0.907,
+			"colorSeamVsFeatures": [
+				0.646,
+				0.666
+			],
+			"colorLinearMean": [
+				0.60991,
+				0.60989,
+				0.60991
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 0.969,
+			"normalSeamVsFeatures": [
+				0.799,
+				0.684
+			],
+			"ormSeamRatio": 0.954,
+			"ormSeamVsFeatures": [
+				0.773,
+				0.702
+			],
+			"roughnessMean": 0.6593,
+			"occlusionMean": 0.7726
+		},
+		"1k": {
+			"colorSeamRatio": 0.952,
+			"colorSeamVsFeatures": [
+				0.717,
+				0.822
+			],
+			"colorLinearMean": [
+				0.60984,
+				0.60984,
+				0.60984
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.026,
+			"normalSeamVsFeatures": [
+				0.856,
+				0.907
+			],
+			"ormSeamRatio": 0.964,
+			"ormSeamVsFeatures": [
+				0.797,
+				0.872
+			],
+			"roughnessMean": 0.6593,
+			"occlusionMean": 0.7726
+		}
+	},
+	"entryColours": [
+		{
+			"id": "textile-linen",
+			"color": "#fdeed2",
+			"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+			"target": "#cbbfa8",
+			"measuredLinearMean": [
+				0.60991,
+				0.60989,
+				0.60991
+			],
+			"linearFactor": [
+				0.97916,
+				0.85425,
+				0.64202
+			],
+			"albedoLuminance": 0.5279,
+			"targetLuminance": 0.5279,
+			"targetReached": true
+		}
+	],
+	"qualified": "512"
+}

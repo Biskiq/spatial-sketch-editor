@@ -1,6 +1,6 @@
 {
   "schema": "s8-f-acquisition-manifest/2",
-  "status": "proposed for owner review; nothing harvested",
+  "status": "approved 2026-11-21; Core harvested 2026-11-21 (see apps/editor/assets-source/textures/records)",
   "retrieved": "2026-11-21",
   "plan": "f-catalogue-acquisition-plan.md",
   "licenceEvidence": {
@@ -158,12 +158,14 @@
         "composite"
       ],
       "core": [
-        "stone-marble-white",
-        "stone-terrazzo"
+        "stone-terrazzo",
+        "stone-travertine"
       ],
       "expansion": [
-        "stone-marble-black",
-        "stone-travertine"
+        "stone-marble-black"
+      ],
+      "excluded": [
+        "stone-marble-white"
       ]
     },
     {
@@ -174,10 +176,12 @@
         "block"
       ],
       "core": [
-        "masonry-brick-painted",
         "masonry-brick-red"
       ],
-      "expansion": []
+      "expansion": [],
+      "excluded": [
+        "masonry-brick-painted"
+      ]
     },
     {
       "id": "plaster-concrete",
@@ -559,9 +563,9 @@
       }
     },
     {
-      "id": "stone-marble-white",
-      "label": "White Marble",
-      "setId": "stone-marble-white",
+      "id": "stone-travertine",
+      "label": "Travertine",
+      "setId": "stone-travertine",
       "tier": "core",
       "recipe": {
         "profile": "pbr-metallic-roughness/v1",
@@ -596,10 +600,14 @@
             "image": "<orm image sha256>",
             "component": "g",
             "invert": false
+          },
+          "occlusion": {
+            "image": "<orm image sha256>",
+            "component": "r",
+            "invert": false
           }
         }
-      },
-      "plausibilityCheck": "#ebe6e1 (Physically Based Marble)"
+      }
     },
     {
       "id": "stone-terrazzo",
@@ -690,55 +698,6 @@
         }
       },
       "plausibilityCheck": "#8c5746 (Physically Based Brick)"
-    },
-    {
-      "id": "masonry-brick-painted",
-      "label": "Painted Brick",
-      "setId": "masonry-brick-painted",
-      "tier": "core",
-      "recipe": {
-        "profile": "pbr-metallic-roughness/v1",
-        "color": null,
-        "roughness": 1,
-        "metalness": 0,
-        "occlusionStrength": 1,
-        "normalScale": 1,
-        "mapping": {
-          "kind": "target",
-          "metric": {
-            "tileMeters": [
-              1.55,
-              1.55
-            ],
-            "rotation": 0,
-            "offset": [
-              0,
-              0
-            ]
-          }
-        },
-        "maps": {
-          "color": {
-            "image": "<color image sha256>"
-          },
-          "normal": {
-            "image": "<normal image sha256>",
-            "convention": "+Y"
-          },
-          "roughness": {
-            "image": "<orm image sha256>",
-            "component": "g",
-            "invert": false
-          },
-          "occlusion": {
-            "image": "<orm image sha256>",
-            "component": "r",
-            "invert": false
-          }
-        }
-      },
-      "targetMeanAlbedo": "#e6e2da",
-      "colorRule": "color = per-channel linear(target) / measured linear mean of the colour source (box filtering keeps the mean), encoded to sRGB hex; a channel above 1 means the source is too dark: use the alternate"
     },
     {
       "id": "plaster-painted",
@@ -2131,7 +2090,7 @@
     },
     {
       "setId": "stone-marble-white",
-      "tier": "core",
+      "tier": "excluded",
       "category": "stone",
       "subcategory": "polished",
       "family": "pbr-metallic-roughness/v1",
@@ -2277,6 +2236,10 @@
         "r": "255 (no AO; occlusion not bound)",
         "g": "roughness",
         "b": "0 (dielectric; map not bound)"
+      },
+      "exclusion": {
+        "on": "2026-11-21",
+        "reason": "§15 albedo plausibility: 2K colour mean luminance 0.539x the Physically Based Marble reference (#ebe6e1), outside ±20%; a factor cannot lighten and a recorded gain to the reference clips 57.6% of texels, destroying the veining. The listed alternate Travertine009 replaces it (D1 fallback set)."
       }
     },
     {
@@ -2601,7 +2564,7 @@
     },
     {
       "setId": "masonry-brick-painted",
-      "tier": "core",
+      "tier": "excluded",
       "category": "masonry",
       "subcategory": "brick",
       "family": "pbr-metallic-roughness/v1",
@@ -2732,6 +2695,10 @@
         "r": "ambient occlusion",
         "g": "roughness",
         "b": "0 (dielectric; map not bound)"
+      },
+      "exclusion": {
+        "on": "2026-11-21",
+        "reason": "§7 / principle \"prefer correct sources over aggressive correction\": the as-shot paint is blue-grey (linear mean ~0.32/0.38/0.39). A gain to the warm-white target clips 99.9% of texels (hue destroyed); the only non-destructive route is the D4 luminance-neutral step, which the owner approved for linen only. No listed alternate. Requalifies if the owner extends D4 to painted masonry or a warm-white painted-brick source is found."
       }
     },
     {
@@ -4034,24 +4001,25 @@
       "alternates": [
         {
           "provider": "ambientcg",
-          "assetId": "Plastic013A",
-          "reason": "white, slightly more texture",
-          "pageUrl": "https://ambientcg.com/a/Plastic013A"
+          "assetId": "Plastic010",
+          "pageUrl": "https://ambientcg.com/a/Plastic010",
+          "tileMeters": null,
+          "reason": "first choice; failed the §7 colour rule at harvest: 2K colour linear mean below the #e6e6e3 target in every channel (a factor cannot lighten)"
         }
       ],
       "source": {
         "provider": "ambientcg",
-        "assetId": "Plastic010",
-        "title": "Plastic 010",
-        "pageUrl": "https://ambientcg.com/a/Plastic010",
-        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Plastic010&include=maps,downloads,dimensions,technique",
+        "assetId": "Plastic013A",
+        "title": "Plastic 013 A",
+        "pageUrl": "https://ambientcg.com/a/Plastic013A",
+        "apiUrl": "https://ambientcg.com/api/v3/assets?id=Plastic013A&include=maps,downloads,dimensions,technique",
         "creators": [
           "ambientCG"
         ],
         "creatorNote": "the API exposes no per-asset author; ambientCG is operated by Lennart Demes (https://docs.ambientcg.com/legal/)",
         "providerCategory": "Plastic",
-        "datePublished": "2020-09-06",
-        "creationMethod": "PBRProcedural",
+        "datePublished": null,
+        "creationMethod": "surface-fully-procedural",
         "declaredDimensions": null,
         "mapsAvailable": [
           "color",
@@ -4077,26 +4045,22 @@
           "resolution": "2k",
           "format": "PNG",
           "zip": {
-            "url": "https://ambientcg.com/get?file=Plastic010_2K-PNG.zip",
-            "bytes": 46586374
+            "url": "https://ambientcg.com/get?file=Plastic013A_2K-PNG.zip",
+            "bytes": 60818712
           },
-          "totalBytes": 46586374
-        },
-        "zipBytesByVariant": {
-          "1K-JPG": 3535012,
-          "2K-JPG": 12649692,
-          "4K-JPG": 51455068,
-          "8K-JPG": 183131371,
-          "1K-PNG": 12355422,
-          "2K-PNG": 46586374,
-          "4K-PNG": 177440924,
-          "8K-PNG": 641029043
+          "totalBytes": 60818712
         }
       },
       "orm": {
         "r": "255 (no AO; occlusion not bound)",
         "g": "roughness",
         "b": "0 (dielectric; map not bound)"
+      },
+      "selection": {
+        "harvestedOn": "2026-11-21",
+        "firstChoice": "Plastic010",
+        "used": "Plastic013A",
+        "reason": "§7: the first choice is too dark for its target; the listed alternate (linear mean 0.852/0.820/0.812 from its 1K preview) reaches it"
       }
     },
     {
@@ -4411,7 +4375,7 @@
     },
     {
       "setId": "stone-travertine",
-      "tier": "expansion",
+      "tier": "core",
       "category": "stone",
       "subcategory": "natural",
       "family": "pbr-metallic-roughness/v1",
@@ -4542,6 +4506,11 @@
         "r": "ambient occlusion",
         "g": "roughness",
         "b": "0 (dielectric; map not bound)"
+      },
+      "selection": {
+        "harvestedOn": "2026-11-21",
+        "replaces": "stone-marble-white",
+        "reason": "listed alternate of stone-marble-white; class A 1.2 m, 1K preview linear mean 0.741/0.601/0.415 (luminance 0.617)"
       }
     },
     {
@@ -6666,5 +6635,16 @@
       "family": "procedural or layered",
       "why": "Layered blending and procedural wear are separate families."
     }
-  ]
+  ],
+  "harvestOutcome": {
+    "on": "2026-11-21",
+    "alternatesUsed": {
+      "synthetic-plastic-matte": "Plastic013A",
+      "stone-marble-white": "stone-travertine (Travertine009)"
+    },
+    "excluded": [
+      "stone-marble-white",
+      "masonry-brick-painted"
+    ]
+  }
 }

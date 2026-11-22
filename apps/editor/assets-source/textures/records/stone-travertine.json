@@ -1,0 +1,241 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "stone-travertine",
+	"provider": "ambientcg",
+	"assetId": "Travertine009",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Travertine009/archive/Travertine009_2K-PNG.zip",
+			"sha256": "838d56d2abac7b7451b54c756afcd36244b55f3d71a968d674b1e9f8ac4fe4b3",
+			"bytes": 35288755,
+			"url": "https://ambientcg.com/get?file=Travertine009_2K-PNG.zip"
+		},
+		{
+			"role": "occlusion",
+			"retentionKey": "materials/ambientcg/Travertine009/occlusion/Travertine009_2K-PNG_AmbientOcclusion.png",
+			"sha256": "a42bf90ebc5149872d43ee6ede518a09a61de202e5850bb099a77ec6de76a7ea",
+			"bytes": 123329,
+			"member": "Travertine009_2K-PNG_AmbientOcclusion.png"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Travertine009/color/Travertine009_2K-PNG_Color.png",
+			"sha256": "26109f83440709519a1ca0697e4fdf0e9f325cdc383621322af58e99b2e6ac09",
+			"bytes": 5371425,
+			"member": "Travertine009_2K-PNG_Color.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Travertine009/normal/Travertine009_2K-PNG_NormalGL.png",
+			"sha256": "236dedef7c0219b603ada22f23acce5fb3b4daa73c89447478e782b5cc5a2bbf",
+			"bytes": 11975848,
+			"member": "Travertine009_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Travertine009/roughness/Travertine009_2K-PNG_Roughness.png",
+			"sha256": "e2ab17c98cbfe7253cef90d870d6519d9b8537895c6e5b6224b6555a9ee81661",
+			"bytes": 1101656,
+			"member": "Travertine009_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		],
+		"occlusion": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "606be858d1b49aad24f25a9143599e24bcb63daac4150de14319e5d946ddccba",
+				"bytes": 39934
+			},
+			"normal": {
+				"sha256": "eaeec1196865e358e750a1c39e0b9a561d0d84c7be7f6a12742de07fbfcf80ce",
+				"bytes": 61870
+			},
+			"orm": {
+				"sha256": "0f78e8d41ecae47375071bd00add122d04ca9db1c38942b0d80da56e01c6ba4f",
+				"bytes": 72712
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "e76dab62954ff4ffa6b668f8f77244217a60021b3a214f4f5b1f180ff8344116",
+				"bytes": 590288
+			},
+			"normal": {
+				"sha256": "ab69415c0361915aee0a6a5ba1d078e252dad70c6e3af853b4beb65b01110e4c",
+				"bytes": 935586
+			},
+			"orm": {
+				"sha256": "27ea29e2ef8172d2dbcbfe065f96741de8f916fb38ca53bfd4b3fb0d1c581642",
+				"bytes": 1071874
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "3d4826af80e824e54a94fb23d1343ec69d8c51fd9f2a7f6f3850d41782f99ce8",
+				"bytes": 165368
+			},
+			"normal": {
+				"sha256": "556a4eed0ec3afb5cb20eb2b3d68d40a5e32c66a5501ff97e620807b255a4d51",
+				"bytes": 244212
+			},
+			"orm": {
+				"sha256": "f644498412ef5e83b93cd61466450fb7058ff4486aa0af81cbe63bf434a35d6d",
+				"bytes": 292538
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 2.775,
+			"normal": 0.064,
+			"orm": 0.369
+		},
+		"1k->512": {
+			"color": 3.07,
+			"normal": 0.047,
+			"orm": 0.38
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.151,
+			"colorSeamVsFeatures": [
+				0.98,
+				0.601
+			],
+			"colorLinearMean": [
+				0.74206,
+				0.60243,
+				0.41489
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.04,
+			"normalSeamVsFeatures": [
+				0.921,
+				0.92
+			],
+			"ormSeamRatio": 1.081,
+			"ormSeamVsFeatures": [
+				0.835,
+				0.722
+			],
+			"roughnessMean": 0.0371,
+			"occlusionMean": 0.9964
+		},
+		"2k": {
+			"colorSeamRatio": 1.405,
+			"colorSeamVsFeatures": [
+				1.094,
+				0.86
+			],
+			"colorLinearMean": [
+				0.74186,
+				0.60253,
+				0.41489
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.192,
+			"normalSeamVsFeatures": [
+				1.137,
+				1.037
+			],
+			"ormSeamRatio": 1.068,
+			"ormSeamVsFeatures": [
+				0.877,
+				0.829
+			],
+			"roughnessMean": 0.037,
+			"occlusionMean": 0.9965
+		},
+		"1k": {
+			"colorSeamRatio": 1.258,
+			"colorSeamVsFeatures": [
+				1.033,
+				0.71
+			],
+			"colorLinearMean": [
+				0.74267,
+				0.60313,
+				0.41537
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.064,
+			"normalSeamVsFeatures": [
+				1.005,
+				0.94
+			],
+			"ormSeamRatio": 1.04,
+			"ormSeamVsFeatures": [
+				0.858,
+				0.794
+			],
+			"roughnessMean": 0.0375,
+			"occlusionMean": 0.9965
+		}
+	},
+	"entryColours": [
+		{
+			"id": "stone-travertine",
+			"color": "#ffffff",
+			"rule": "as shot",
+			"measuredLinearMean": [
+				0.74186,
+				0.60253,
+				0.41489
+			],
+			"albedoLuminance": 0.6186
+		}
+	],
+	"qualified": "512"
+}

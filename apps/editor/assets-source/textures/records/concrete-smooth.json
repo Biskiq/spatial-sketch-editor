@@ -1,0 +1,267 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "concrete-smooth",
+	"provider": "ambientcg",
+	"assetId": "Concrete046",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Concrete046/archive/Concrete046_2K-PNG.zip",
+			"sha256": "094b70a90b6d932868f20c081befac50a89a7e969155fad34291e76c40b30306",
+			"bytes": 59708442,
+			"url": "https://ambientcg.com/get?file=Concrete046_2K-PNG.zip"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Concrete046/color/Concrete046_2K-PNG_Color.png",
+			"sha256": "3b53e738cba92e453e7c8b7b366e75537a179642ee71f2d1d13322e2e2efd7b5",
+			"bytes": 6453231,
+			"member": "Concrete046_2K-PNG_Color.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Concrete046/normal/Concrete046_2K-PNG_NormalGL.png",
+			"sha256": "a918e1927372652921a1973b37e80158afcfe221124a524522d975e8cd00b8b7",
+			"bytes": 21043237,
+			"member": "Concrete046_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Concrete046/roughness/Concrete046_2K-PNG_Roughness.png",
+			"sha256": "3e896927632f707235538316b3668666380c8ba4794b4e4955a788ac2e8410fd",
+			"bytes": 2597606,
+			"member": "Concrete046_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "255 (occlusion not bound)",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "03da1d33f6933b1a4efe79efe2a3ea3e7476dbef4d22d619784796c635480004",
+				"bytes": 50328
+			},
+			"normal": {
+				"sha256": "5bd9fdaa3d106b1a63bf62a44c0d3865ba29fe2c191a77e9e24aa5eb1ffcb244",
+				"bytes": 135500
+			},
+			"orm": {
+				"sha256": "511b29e9b9365eb64654adc186c5fe0c42cfd90e5b996d8e7d7179b3e12a055d",
+				"bytes": 148260
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "1d526fff6e1bdcc628187d24305bec46dd61de7109aa767905b8a7324403dde5",
+				"bytes": 962014
+			},
+			"normal": {
+				"sha256": "1a51817d117aa57fbc99420437713d38a6c7f357e4832b021510a3a5d4b0d36f",
+				"bytes": 3704202
+			},
+			"orm": {
+				"sha256": "62f2965e46b2f99505045a10736048b169b0bc6a7ec19fcc0b87dfb73c9ee62d",
+				"bytes": 2731350
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "df97c25706c29bb60855496c958a16b7689800a1daafff95309dae3059c6c4cb",
+				"bytes": 245694
+			},
+			"normal": {
+				"sha256": "2ad3f48a8eaea35483ae210aa6c06bab0c60464e1ed020aa5c0f5f7589ed0713",
+				"bytes": 762750
+			},
+			"orm": {
+				"sha256": "e7a8a9fee83a80b563fc49a85a851cdd5dd53d162b4368e0763e63d910684c97",
+				"bytes": 649010
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 4.891,
+			"normal": 3.478,
+			"orm": 4.126
+		},
+		"1k->512": {
+			"color": 4.756,
+			"normal": 2.051,
+			"orm": 3.401
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.186,
+			"colorSeamVsFeatures": [
+				0.83,
+				0.772
+			],
+			"colorLinearMean": [
+				0.61206,
+				0.61925,
+				0.48791
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.135,
+			"normalSeamVsFeatures": [
+				0.707,
+				0.646
+			],
+			"ormSeamRatio": 0.938,
+			"ormSeamVsFeatures": [
+				0.808,
+				0.683
+			],
+			"roughnessMean": 0.4946,
+			"occlusionMean": 1
+		},
+		"2k": {
+			"colorSeamRatio": 1.347,
+			"colorSeamVsFeatures": [
+				1.044,
+				0.898
+			],
+			"colorLinearMean": [
+				0.61177,
+				0.61934,
+				0.48783
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.387,
+			"normalSeamVsFeatures": [
+				0.909,
+				0.734
+			],
+			"ormSeamRatio": 1.002,
+			"ormSeamVsFeatures": [
+				0.945,
+				0.74
+			],
+			"roughnessMean": 0.4946,
+			"occlusionMean": 1
+		},
+		"1k": {
+			"colorSeamRatio": 1.213,
+			"colorSeamVsFeatures": [
+				0.897,
+				0.842
+			],
+			"colorLinearMean": [
+				0.61238,
+				0.61986,
+				0.48826
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.202,
+			"normalSeamVsFeatures": [
+				0.785,
+				0.635
+			],
+			"ormSeamRatio": 0.97,
+			"ormSeamVsFeatures": [
+				0.883,
+				0.693
+			],
+			"roughnessMean": 0.4947,
+			"occlusionMean": 1
+		}
+	},
+	"entryColours": [
+		{
+			"id": "concrete-smooth",
+			"color": "#e7e6ff",
+			"rule": "T1 neutral base: the reference hue at the source luminance (reference is a check, not a luminance target)",
+			"target": null,
+			"measuredLinearMean": [
+				0.61177,
+				0.61934,
+				0.48783
+			],
+			"linearFactor": [
+				0.79741,
+				0.78766,
+				1
+			],
+			"albedoLuminance": 0.4878,
+			"targetLuminance": 0.6082,
+			"targetReached": false,
+			"plausibility": {
+				"reference": "#bdbdbd",
+				"sourceLuminanceRatio": 1.195,
+				"withinTolerance": true
+			}
+		},
+		{
+			"id": "concrete-polished",
+			"color": "#e7e6ff",
+			"rule": "preset of concrete-smooth: shares concrete-smooth images; roughness factor only",
+			"target": null,
+			"measuredLinearMean": [
+				0.61177,
+				0.61934,
+				0.48783
+			],
+			"linearFactor": [
+				0.79741,
+				0.78766,
+				1
+			],
+			"albedoLuminance": 0.4878,
+			"targetLuminance": 0.6082,
+			"targetReached": false,
+			"plausibility": {
+				"reference": "#bdbdbd",
+				"sourceLuminanceRatio": 1.195,
+				"withinTolerance": true
+			}
+		}
+	],
+	"qualified": "1k"
+}

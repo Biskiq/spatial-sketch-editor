@@ -1,0 +1,230 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "stone-terrazzo",
+	"provider": "ambientcg",
+	"assetId": "Terrazzo019L",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "archive",
+			"retentionKey": "materials/ambientcg/Terrazzo019L/archive/Terrazzo019L_2K-PNG.zip",
+			"sha256": "57ab2301dc27888434ebf201b2b027a5832be3eb25cf86d8a52fafd7a247125f",
+			"bytes": 53612620,
+			"url": "https://ambientcg.com/get?file=Terrazzo019L_2K-PNG.zip"
+		},
+		{
+			"role": "color",
+			"retentionKey": "materials/ambientcg/Terrazzo019L/color/Terrazzo019L_2K-PNG_Color.png",
+			"sha256": "44742676bcd17bd24bf8442ebff73dca24aa125bccb4261d734957cfcf3c7169",
+			"bytes": 6400839,
+			"member": "Terrazzo019L_2K-PNG_Color.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/ambientcg/Terrazzo019L/normal/Terrazzo019L_2K-PNG_NormalGL.png",
+			"sha256": "328de0bb865ffbac715fedadc7f81c54fa60914001e1fcd1a0307383160cb5b0",
+			"bytes": 17993833,
+			"member": "Terrazzo019L_2K-PNG_NormalGL.png"
+		},
+		{
+			"role": "roughness",
+			"retentionKey": "materials/ambientcg/Terrazzo019L/roughness/Terrazzo019L_2K-PNG_Roughness.png",
+			"sha256": "9b1e78a330ba8893c8ca9db0ec667564a1875d4a994de0d1c4aecfaa6f86a56b",
+			"bytes": 2035399,
+			"member": "Terrazzo019L_2K-PNG_Roughness.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"roughness": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "255 (occlusion not bound)",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": null
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "b1b9cb28a2d85597f501526a992af86a12a1b4c772aafc02216c08f3d38c64ca",
+				"bytes": 71870
+			},
+			"normal": {
+				"sha256": "617c711c7ead655306a9d8460e0be782b74fb81fa60a71f8cfa6d3a795e6903b",
+				"bytes": 86608
+			},
+			"orm": {
+				"sha256": "228a0afe700ebe9d7c173cff5712f8a78d96c1733ccaea654be72d205febc5c6",
+				"bytes": 124406
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "305853601a35068da6cfc2900eeb9ee338a1d4efde029a6b508de8bcc1ed6340",
+				"bytes": 840540
+			},
+			"normal": {
+				"sha256": "58ed9bf203d8dbf76edf1e7ccabe3dfc2a331252891b39219a8b864bfb9a6ee1",
+				"bytes": 2436620
+			},
+			"orm": {
+				"sha256": "bc46abf2269942791d209a1f5aab22305a440544bc3c8cf736d0b4c12541ddc6",
+				"bytes": 1952918
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "11bda158431e401269ff54180f3a1f27afd47dd1c0bbad185093f92016be6f5c",
+				"bytes": 258258
+			},
+			"normal": {
+				"sha256": "d7b4ffb89d5b62e6f424c17cc23c233f7790e3b828d59e45a61a571555956fd2",
+				"bytes": 481504
+			},
+			"orm": {
+				"sha256": "b1c41f0d4eb707319a16cbe506988535b3ac72fce6044c62e847d933c9f04de6",
+				"bytes": 505864
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 4.761,
+			"normal": 0.789,
+			"orm": 1.868
+		},
+		"1k->512": {
+			"color": 5.791,
+			"normal": 0.574,
+			"orm": 1.917
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.081,
+			"colorSeamVsFeatures": [
+				0.829,
+				0.763
+			],
+			"colorLinearMean": [
+				0.35553,
+				0.27357,
+				0.1804
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.023,
+			"normalSeamVsFeatures": [
+				0.913,
+				0.884
+			],
+			"ormSeamRatio": 0.945,
+			"ormSeamVsFeatures": [
+				0.712,
+				0.6
+			],
+			"roughnessMean": 0.2766,
+			"occlusionMean": 1
+		},
+		"2k": {
+			"colorSeamRatio": 1.376,
+			"colorSeamVsFeatures": [
+				1.035,
+				0.856
+			],
+			"colorLinearMean": [
+				0.35526,
+				0.27365,
+				0.18054
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.209,
+			"normalSeamVsFeatures": [
+				1.072,
+				0.994
+			],
+			"ormSeamRatio": 0.954,
+			"ormSeamVsFeatures": [
+				0.757,
+				0.678
+			],
+			"roughnessMean": 0.2765,
+			"occlusionMean": 1
+		},
+		"1k": {
+			"colorSeamRatio": 1.152,
+			"colorSeamVsFeatures": [
+				0.928,
+				0.741
+			],
+			"colorLinearMean": [
+				0.35591,
+				0.27389,
+				0.18067
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.052,
+			"normalSeamVsFeatures": [
+				0.915,
+				0.873
+			],
+			"ormSeamRatio": 0.903,
+			"ormSeamVsFeatures": [
+				0.716,
+				0.611
+			],
+			"roughnessMean": 0.277,
+			"occlusionMean": 1
+		}
+	},
+	"entryColours": [
+		{
+			"id": "stone-terrazzo",
+			"color": "#ffffff",
+			"rule": "as shot",
+			"measuredLinearMean": [
+				0.35526,
+				0.27365,
+				0.18054
+			],
+			"albedoLuminance": 0.2843
+		}
+	],
+	"qualified": "512"
+}

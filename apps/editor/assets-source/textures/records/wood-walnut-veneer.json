@@ -1,0 +1,234 @@
+{
+	"schema": "s8-f-derivation-record/1",
+	"setId": "wood-walnut-veneer",
+	"provider": "polyhaven",
+	"assetId": "walnut_veneer_02",
+	"acquiredAt": "2026-11-21",
+	"sources": [
+		{
+			"role": "color",
+			"retentionKey": "materials/polyhaven/walnut_veneer_02/color/walnut_veneer_02_diff_2k.png",
+			"sha256": "5fb013815f24ac2f02cff134e1558eb8e91b8db76d73c7ac7d4a6d35a1a19382",
+			"bytes": 20967169,
+			"md5": "d0aee187ba4258da2b8998abac738b5c",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/walnut_veneer_02/walnut_veneer_02_diff_2k.png"
+		},
+		{
+			"role": "normal",
+			"retentionKey": "materials/polyhaven/walnut_veneer_02/normal/walnut_veneer_02_nor_gl_2k.png",
+			"sha256": "fca41e607df5c9511123d246b8582538db7ecd728c221e657f5593de62dc9030",
+			"bytes": 19226010,
+			"md5": "913290ef6342f4a4dc91d5c0aabd2317",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/walnut_veneer_02/walnut_veneer_02_nor_gl_2k.png"
+		},
+		{
+			"role": "orm",
+			"retentionKey": "materials/polyhaven/walnut_veneer_02/orm/walnut_veneer_02_arm_2k.png",
+			"sha256": "a3f2a9bd658eaa572940ee0ae50e2b62b7f964fed9f08c4da20c6b177a90df41",
+			"bytes": 16631176,
+			"md5": "7348e11ef705f62695e16383db3bbb4d",
+			"url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/walnut_veneer_02/walnut_veneer_02_arm_2k.png"
+		}
+	],
+	"sourceSizes": {
+		"color": [
+			2048,
+			2048
+		],
+		"normal": [
+			2048,
+			2048
+		],
+		"orm": [
+			2048,
+			2048
+		]
+	},
+	"tool": {
+		"script": "apps/editor/assets-source/textures/derive.ts",
+		"node": "v26.7.0",
+		"platform": "darwin-arm64",
+		"codec": "@napi-rs/image@1.16.0"
+	},
+	"parameters": {
+		"resampleTo2048": "none",
+		"ladderFilter": "exact 2x box (linear light for colour; renormalized normals)",
+		"neutralize": null,
+		"colorTransforms": [],
+		"color": {
+			"format": "image/webp",
+			"lossy": true,
+			"quality": 90,
+			"api": "WebPEncodeRGBA simple API (default method)",
+			"metadata": "none"
+		},
+		"normal": {
+			"format": "image/webp",
+			"lossless": true,
+			"convention": "+Y"
+		},
+		"orm": {
+			"format": "image/webp",
+			"lossless": true,
+			"r": "ambient occlusion",
+			"g": "roughness",
+			"b": "0 (dielectric; map not bound)",
+			"providerBlueMax": 0
+		}
+	},
+	"ladder": {
+		"512": {
+			"color": {
+				"sha256": "d4f8537096b60420a640f10b8c20431d227e5c1ddaad9ce92226ff257259ff52",
+				"bytes": 34182
+			},
+			"normal": {
+				"sha256": "525d7b60cc50b757ad7ea6c07e6975ccb9edba32f4b8d264be7d9cb823d26291",
+				"bytes": 127154
+			},
+			"orm": {
+				"sha256": "8e429b03447733be6d5372c4d18b07f33cb49dad06119ae89f3bde7b2040bfdf",
+				"bytes": 234976
+			}
+		},
+		"2k": {
+			"color": {
+				"sha256": "eadebbeb1798e87924fa1e7d4da342a09a43425d473a379fcc6fbe3976215b93",
+				"bytes": 604848
+			},
+			"normal": {
+				"sha256": "1a7f9bbf637e52902a96c390b87ddaea13dba802d1c6c13acedbca2cd3f22be3",
+				"bytes": 3016704
+			},
+			"orm": {
+				"sha256": "f8ea823368ad84b31e19ec138ff4b33fa17905327d97b3eaff0e263f17ad061b",
+				"bytes": 3475898
+			}
+		},
+		"1k": {
+			"color": {
+				"sha256": "3b7eb33f0c21f41eae4cd9a58fc85d0c08a5099c9b2a8b1352b98648692e1198",
+				"bytes": 144146
+			},
+			"normal": {
+				"sha256": "1be042d760267e8deeb0927e2239d1e377a3e94d37607f07db66f679f54b9703",
+				"bytes": 621080
+			},
+			"orm": {
+				"sha256": "5d4c9eecbfc0c6a7efa067ae192554b18c538aa1f6c8961e36b3c952980dcd60",
+				"bytes": 916812
+			}
+		}
+	},
+	"detailLoss": {
+		"2k->1k": {
+			"color": 3.715,
+			"normal": 1.546,
+			"orm": 8.104
+		},
+		"1k->512": {
+			"color": 3.982,
+			"normal": 0.953,
+			"orm": 6.214
+		}
+	},
+	"statistics": {
+		"512": {
+			"colorSeamRatio": 1.196,
+			"colorSeamVsFeatures": [
+				0.995,
+				0.357
+			],
+			"colorLinearMean": [
+				0.40095,
+				0.25469,
+				0.16827
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.122,
+			"normalSeamVsFeatures": [
+				0.824,
+				0.712
+			],
+			"ormSeamRatio": 1.19,
+			"ormSeamVsFeatures": [
+				0.827,
+				0.831
+			],
+			"roughnessMean": 0.6458,
+			"occlusionMean": 0.958
+		},
+		"2k": {
+			"colorSeamRatio": 1.292,
+			"colorSeamVsFeatures": [
+				0.946,
+				0.565
+			],
+			"colorLinearMean": [
+				0.40102,
+				0.25464,
+				0.16845
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.065,
+			"normalSeamVsFeatures": [
+				0.797,
+				0.762
+			],
+			"ormSeamRatio": 1.153,
+			"ormSeamVsFeatures": [
+				0.797,
+				0.722
+			],
+			"roughnessMean": 0.6458,
+			"occlusionMean": 0.958
+		},
+		"1k": {
+			"colorSeamRatio": 1.238,
+			"colorSeamVsFeatures": [
+				0.977,
+				0.459
+			],
+			"colorLinearMean": [
+				0.40102,
+				0.25465,
+				0.16846
+			],
+			"colorClippedShare": 0,
+			"normalSeamRatio": 1.067,
+			"normalSeamVsFeatures": [
+				0.799,
+				0.846
+			],
+			"ormSeamRatio": 1.181,
+			"ormSeamVsFeatures": [
+				0.851,
+				0.814
+			],
+			"roughnessMean": 0.6458,
+			"occlusionMean": 0.958
+		}
+	},
+	"entryColours": [
+		{
+			"id": "wood-walnut-veneer",
+			"color": "#7a6e63",
+			"rule": "design target: linear(target) / measured mean per channel; target hue kept at the supported luminance when unreachable (§7)",
+			"target": "#4f3828",
+			"measuredLinearMean": [
+				0.40102,
+				0.25464,
+				0.16845
+			],
+			"linearFactor": [
+				0.19497,
+				0.1553,
+				0.12597
+			],
+			"albedoLuminance": 0.0464,
+			"targetLuminance": 0.0464,
+			"targetReached": true
+		}
+	],
+	"qualified": "1k"
+}

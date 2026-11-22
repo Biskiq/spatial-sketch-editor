@@ -364,7 +364,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (current === null) return '#c4b4a0';
 		if (key === 'model-own') return '#c4b4a0';
 		if (key.startsWith('curated:')) {
-			return getMaterial(key.slice('curated:'.length) as MaterialId).fallbackColor;
+			const material = getMaterial(key.slice('curated:'.length) as MaterialId);
+			return material.swatchColor ?? material.fallbackColor;
 		}
 		const instance = current.materials.find((material) => material.id === key.slice('project:'.length));
 		if (instance === undefined) return '#c4b4a0';
@@ -373,7 +374,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			const base = catalogueBaseOf(instance);
 			const definition = definitionOf(instance);
 			if (definition !== null) return definition.color;
-			return base !== null && materialById.has(base) ? getMaterial(base as MaterialId).fallbackColor : '#c4b4a0';
+			if (base === null || !materialById.has(base)) return '#c4b4a0';
+			const material = getMaterial(base as MaterialId);
+			return material.swatchColor ?? material.fallbackColor;
 		}
 		if (typeof color === 'string') return color;
 		return current.palette?.find((slot) => slot.id === color.slot)?.color ?? '#c4b4a0';
@@ -501,7 +504,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			curated: materials.map((material) => ({
 				id: material.id,
 				label: material.label,
-				color: material.fallbackColor
+				color: material.swatchColor ?? material.fallbackColor
 			})),
 			project: (current?.materials ?? [])
 				.filter((instance) => !isPristineInstance(instance))

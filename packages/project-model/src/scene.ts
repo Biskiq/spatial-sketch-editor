@@ -9,6 +9,28 @@ import type { LayoutSurfaceRef } from '@portfolio/layout-core';
 export type Vec3 = [number, number, number];
 export type AssetId = string;
 export type MaterialId =
+  | 'wood-oak-veneer'
+  | 'wood-walnut-veneer'
+  | 'wood-oak-planks'
+  | 'wood-herringbone-parquet'
+  | 'stone-travertine'
+  | 'stone-terrazzo'
+  | 'masonry-brick-red'
+  | 'plaster-painted'
+  | 'concrete-smooth'
+  | 'concrete-polished'
+  | 'tile-ceramic-white'
+  | 'metal-stainless-satin'
+  | 'metal-brass-satin'
+  | 'metal-copper-satin'
+  | 'metal-gold-satin'
+  | 'metal-stainless-brushed'
+  | 'metal-aluminium-brushed'
+  | 'textile-linen'
+  | 'textile-carpet-loop'
+  | 'leather-cognac'
+  | 'synthetic-plastic-matte'
+  /** Legacy placeholder bases (pre-S8 F): resolvable, not creator-facing. */
   | 'plaster-warm'
   | 'wood-walnut'
   | 'brass-aged'

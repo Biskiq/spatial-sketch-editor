@@ -741,7 +741,10 @@ export async function loadMaterialTextures(
       })
     );
 
-    if (!maps.map && errors.length > 0) {
+    // A requested colour map is required; a map-less set (a metal's structure
+    // maps under a measured F0 factor) is textured by whatever it does carry.
+    const colorMissing = textures.map !== undefined ? !maps.map : Object.keys(maps).length === 0;
+    if (colorMissing && errors.length > 0) {
       return { status: 'failed', error: errors.join('; '), maps };
     }
 
@@ -947,7 +950,9 @@ export async function loadEffectiveTextures(
     })
   );
 
-  if (!maps.map) {
+  // A requested colour map is required; a map-less set binds what it carries.
+  const colorMissing = effective.slotUris.map !== undefined ? !maps.map : Object.keys(maps).length === 0;
+  if (colorMissing) {
     if (failed.length > 0) {
       return { status: 'failed', error: failed.join('; '), maps };
     }

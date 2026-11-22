@@ -1,17 +1,20 @@
 /**
- * The curated Finish catalogue.
+ * The Finish catalogue facade.
  *
- * Scene 8 resolves a project Finish on top of one of these six definitions, and
- * a release pins their texture URIs through the shipped-static registry. Pinning
- * the complete definition catches a silent appearance change: a label edit is
- * allowed, every render field is not.
+ * Scene 8 resolves a project Finish on top of a catalogue definition, and a
+ * release pins its texture URIs through the shipped-static registry. The six
+ * legacy placeholders are pinned field by field: existing documents and
+ * baselines must keep reading them unchanged, although no shelf offers them.
+ * The curated entries (T2.S8 F) are joined to the pure records by
+ * `catalogue-pins.test.ts`; here they are checked as the creator shelf.
  */
 import { describe, expect, it } from 'vitest';
 import { SHIPPED_MATERIALS } from '@portfolio/project-model';
-import { materials } from '$lib/content/materials';
+import { CATALOGUE_MATERIAL_IDS } from '@portfolio/project-model/materials';
+import { getMaterial, isMaterialId, legacyMaterials, materials } from '$lib/content/materials';
 import type { MaterialDefinition } from '$lib/types/materials';
 
-const CATALOGUE: readonly MaterialDefinition[] = [
+const LEGACY: readonly MaterialDefinition[] = [
 	{
 		id: 'plaster-warm',
 		label: 'Warm Plaster',
@@ -72,22 +75,39 @@ const CATALOGUE: readonly MaterialDefinition[] = [
 ];
 
 describe('the Finish catalogue', () => {
-	it('pins every appearance field of all six ids', () => {
+	it('pins every appearance field of the six legacy ids', () => {
 		// A label is presentation, not appearance: compare every other field.
 		const appearance = (list: readonly MaterialDefinition[]) =>
 			list.map(({ label: _label, ...definition }) => definition);
-		expect(appearance(materials)).toEqual(appearance(CATALOGUE));
-		expect(materials.map((definition) => definition.id)).toEqual(CATALOGUE.map((definition) => definition.id));
+		expect(appearance(legacyMaterials)).toEqual(appearance(LEGACY));
+		expect(legacyMaterials.map((definition) => definition.id)).toEqual(LEGACY.map((definition) => definition.id));
+	});
+
+	it('keeps the legacy ids resolvable but off the creator shelf', () => {
+		const shelf = new Set(materials.map((definition) => definition.id));
+		for (const definition of LEGACY) {
+			expect(shelf.has(definition.id), definition.id).toBe(false);
+			expect(isMaterialId(definition.id), definition.id).toBe(true);
+			expect(getMaterial(definition.id).fallbackColor).toBe(definition.fallbackColor);
+		}
+	});
+
+	it('offers exactly the curated catalogue, each with a measured shelf swatch', () => {
+		expect(materials.map((definition) => definition.id)).toEqual([...CATALOGUE_MATERIAL_IDS]);
+		for (const definition of materials) {
+			expect(definition.swatchColor, definition.id).toMatch(/^#[0-9a-f]{6}$/);
+		}
+		expect(legacyMaterials.every((definition) => definition.swatchColor === undefined)).toBe(true);
 	});
 
 	it('pins the shipped-static texture URIs to each definition', () => {
-		expect(SHIPPED_MATERIALS.map((entry) => entry.id)).toEqual(
-			CATALOGUE.map((definition) => definition.id)
-		);
-		for (const definition of CATALOGUE) {
+		const all = [...LEGACY, ...materials];
+		expect(SHIPPED_MATERIALS.map((entry) => entry.id)).toEqual(all.map((definition) => definition.id));
+		for (const definition of all) {
 			const shipped = SHIPPED_MATERIALS.find((entry) => entry.id === definition.id);
 			expect(shipped, definition.id).toBeDefined();
-			expect(shipped?.textureUris).toEqual(Object.values(definition.textures ?? {}));
+			// A curated ORM image serves both the roughness and occlusion slots.
+			expect(shipped?.textureUris).toEqual([...new Set(Object.values(definition.textures ?? {}))]);
 		}
 	});
 });
