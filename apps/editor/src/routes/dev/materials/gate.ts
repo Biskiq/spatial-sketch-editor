@@ -1,5 +1,8 @@
 /**
- * The E7 acceptance gate, run in the browser on the observed backend.
+ * E7's automated technical checks, run in the browser on the observed backend.
+ *
+ * Passing them is not acceptance of F's catalogue intake: they measure neither
+ * distinctness between entries nor readability at a display size.
  *
  * Every check drives the product host on the page's real renderer with the
  * fixture's real project. It reports what it measured; a check that could not
@@ -57,8 +60,8 @@ export type GateEnvironment = {
 	stageCamera(): string;
 	/** Show the fixture World under this Sky (null is Paper) and settle the Stage. */
 	showWorld(sky: SceneSky | null): Promise<void>;
-	/** Mount or unmount the shelf list and settle it. */
-	showShelf(open: boolean): Promise<void>;
+	/** Mount or unmount the reference list and settle it. */
+	showReferences(open: boolean): Promise<void>;
 };
 
 export type GateCheck = { readonly id: string; readonly pass: boolean; readonly measured: unknown };
@@ -516,7 +519,7 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 		return { pass: result.status === 'refused' && host.stats().queued === 0, measured: { status: result.status, ...host.stats() } };
 	});
 
-	await check('shipped catalogue derivatives match this backend', async () => {
+	await check('catalogue reference derivatives match this backend', async () => {
 		const measured: Record<string, number | string> = {};
 		let pass = true;
 		for (const { id } of catalogue) {
@@ -540,9 +543,9 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 		return { pass, measured };
 	});
 
-	await check('twenty shelf openings fetch no full-resolution image', async () => {
-		await environment.showShelf(true);
-		await environment.showShelf(false);
+	await check('twenty reference-list openings fetch no full-resolution image', async () => {
+		await environment.showReferences(true);
+		await environment.showReferences(false);
 		const fetched: string[] = [];
 		const observer = new PerformanceObserver((list) => {
 			for (const entry of list.getEntries()) {
@@ -554,13 +557,13 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 		const views = finishViewStats().created;
 		let shown = 0;
 		for (let index = 0; index < 20; index += 1) {
-			await environment.showShelf(true);
-			shown = [...document.querySelectorAll<HTMLImageElement>('img[data-shelf-thumbnail]')].filter(
+			await environment.showReferences(true);
+			shown = [...document.querySelectorAll<HTMLImageElement>('img[data-reference-thumbnail]')].filter(
 				(image) => image.complete && image.naturalWidth === 192
 			).length;
 			const project = await host.thumbnail({ subject: fixture.finish });
 			if (project.status !== 'ready') throw new Error('project derivative was refused');
-			await environment.showShelf(false);
+			await environment.showReferences(false);
 		}
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		observer.disconnect();

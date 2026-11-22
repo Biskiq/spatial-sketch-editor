@@ -3,7 +3,7 @@ import { materials } from '$lib/content/materials';
 import { createFinishAuthoring } from '$lib/authoring/look/finish-authoring.svelte';
 
 describe('Library › Finishes, curated tiles', () => {
-	it('carries each shipped thumbnail beside the colour swatch it falls back to', () => {
+	it('offers colour swatches only until U delivers product thumbnails', () => {
 		const shelf = createFinishAuthoring({
 			services: () => null,
 			onNotice: () => undefined,
@@ -11,10 +11,9 @@ describe('Library › Finishes, curated tiles', () => {
 			armPaint: () => undefined
 		}).libraryShelf();
 
-		expect(shelf.curated.map((tile) => tile.id)).toEqual(materials.map((material) => material.id));
-		for (const tile of shelf.curated) {
-			expect(tile.thumbnailUri).toMatch(new RegExp(`^/material-thumbnails/${tile.id}-thumb-[0-9a-f]{16}\\.png$`));
-			expect(tile.color).toMatch(/^#[0-9a-f]{6}$/);
-		}
+		// Exact objects: E7's engineering reference derivatives are not tile pictures.
+		expect(shelf.curated).toStrictEqual(
+			materials.map(({ id, label, swatchColor, fallbackColor }) => ({ id, label, color: swatchColor ?? fallbackColor }))
+		);
 	});
 });

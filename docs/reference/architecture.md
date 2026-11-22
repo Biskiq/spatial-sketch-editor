@@ -49,7 +49,7 @@ apps/editor (product)            frozen Chopin project (separate)
 | `/editor` | Compatibility redirect → `/project/<fresh id>/spatial?create=1` (the mint marks a new identity, so a 404 is read as `new`, not `missing`) |
 | `/project/:id/spatial` | F2 authoring Stage: stored source, starter, empty or Open JSON; unit-scoped Layout/Scene operations, one history, conditional Head Save and guarded replacement |
 | `/p/:publicationId` | Visitor-only route; Public reads return honest 404 until T4 prepared-reader activation |
-| `/dev/materials` | Development surface and acceptance gate for [material inspection](./components/rendering.md#material-inspection) |
+| `/dev/materials` | Development surface and technical checks for [material inspection](./components/rendering.md#material-inspection) |
 | `/dev/assets` | Development preview retained inside the reduced foundation |
 
 The `/editor` compatibility route and hub's New Project enter the starter gallery

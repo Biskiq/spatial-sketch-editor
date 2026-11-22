@@ -1,6 +1,7 @@
 {
 	"schemaVersion": 1,
 	"generatedBy": "apps/editor/scripts/generate-material-thumbnails.mjs",
+	"purpose": "engineering-reference",
 	"backend": "webgpu",
 	"versions": {
 		"inspection": 1,

@@ -2,6 +2,7 @@
 /**
  * Dev-only E7 gate runner: `/dev/materials?gate=e7` on each Chromium backend.
  *
+ * Its checks are technical: a pass is not acceptance of F's catalogue intake.
  * It records exactly what completed. A case that did not run, observed another
  * backend, or logged an error is never recorded as a pass.
  *
@@ -19,6 +20,7 @@ function option(name) {
 const out = option('--out');
 const shots = option('--shots');
 
+const SCOPE = "automated technical checks; not acceptance of F's catalogue intake";
 const cases = {};
 for (const name of Object.keys(BACKENDS)) {
 	let browser;
@@ -67,6 +69,6 @@ for (const name of Object.keys(BACKENDS)) {
 
 const pass = Object.values(cases).every((entry) => entry.pass);
 if (out !== null) {
-	writeFileSync(resolve(out), `${JSON.stringify({ capturedAt: new Date().toISOString(), pass, cases }, null, 2)}\n`);
+	writeFileSync(resolve(out), `${JSON.stringify({ scope: SCOPE, capturedAt: new Date().toISOString(), pass, cases }, null, 2)}\n`);
 }
 if (!pass) process.exitCode = 1;

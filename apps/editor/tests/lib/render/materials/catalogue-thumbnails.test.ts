@@ -15,8 +15,12 @@ import { EDITOR_ROOT } from '../../../helpers/import-closure';
 const directory = join(EDITOR_ROOT, 'static', 'material-thumbnails');
 const rows = manifest.thumbnails;
 
-describe('the shipped 192×192 reference derivatives', () => {
-	it('has exactly one row and one file per catalogue entry, in shelf order', () => {
+describe('the 192×192 engineering reference derivatives', () => {
+	it('declares them references, not product thumbnails', () => {
+		expect(manifest.purpose).toBe('engineering-reference');
+	});
+
+	it('has exactly one row and one file per catalogue entry, in catalogue order', () => {
 		expect(rows.map((row) => row.id)).toEqual(materials.map((material) => material.id));
 		expect(readdirSync(directory).sort()).toEqual(rows.map((row) => row.file).sort());
 	});

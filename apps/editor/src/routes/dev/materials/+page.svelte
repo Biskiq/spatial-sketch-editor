@@ -4,7 +4,7 @@
 	 *
 	 * One host on the page's own renderer inspects a catalogue entry, the
 	 * fixture's accepted Finish or a provisional draft, on each reference
-	 * geometry, light and display. `?gate=e7` runs the acceptance gate and
+	 * geometry, light and display. `?gate=e7` runs the technical checks and
 	 * publishes its JSON; `?backend=webgl2` observes the compatibility backend.
 	 * This is a dev surface, not Materials UX.
 	 */
@@ -64,12 +64,12 @@
 	let size = $state('384x384');
 	let uv = $state({ u: 0.5, v: 0.5 });
 	let worldSky = $state.raw<SceneSky | null>(null);
-	let shelfOpen = $state(true);
+	let referencesOpen = $state(true);
 	let inspection = $state.raw<InspectionState>({ status: 'pending' });
 	let texel = $state.raw<InspectionTexel | null>(null);
 	let output = $state<HTMLCanvasElement | undefined>(undefined);
 
-	const shelf = materials.map((material) => ({
+	const references = materials.map((material) => ({
 		id: material.id,
 		label: material.label,
 		color: material.swatchColor ?? material.fallbackColor,
@@ -213,7 +213,7 @@
 				});
 
 				if (gated) {
-					shelfOpen = false;
+					referencesOpen = false;
 					await tick();
 					report = await runE7Gate({
 						resources,
@@ -231,12 +231,12 @@
 							await rep.idle();
 							await frames();
 						},
-						async showShelf(open) {
-							shelfOpen = open;
+						async showReferences(open) {
+							referencesOpen = open;
 							await tick();
 							if (!open) return;
 							await Promise.all(
-								[...document.querySelectorAll<HTMLImageElement>('img[data-shelf-thumbnail]')].map((image) =>
+								[...document.querySelectorAll<HTMLImageElement>('img[data-reference-thumbnail]')].map((image) =>
 									image.decode()
 								)
 							);
@@ -398,12 +398,13 @@
 		</div>
 	</section>
 
-	{#if shelfOpen}
-		<ul class="shelf">
-			{#each shelf as item (item.id)}
+	{#if referencesOpen}
+		<h2>Engineering reference derivatives (not product thumbnails)</h2>
+		<ul class="references">
+			{#each references as item (item.id)}
 				<li>
 					{#if item.thumbnail}
-						<img data-shelf-thumbnail src={item.thumbnail} alt="" width="96" height="96" />
+						<img data-reference-thumbnail src={item.thumbnail} alt="" width="96" height="96" />
 					{:else}
 						<i style:background={item.color}></i>
 					{/if}
@@ -414,7 +415,7 @@
 	{/if}
 
 	{#if report !== null}
-		<p>{report.pass ? 'Gate passed' : `Gate failed: ${report.failed.join('; ')}`}</p>
+		<p>{report.pass ? 'Technical checks passed' : `Technical checks failed: ${report.failed.join('; ')}`}</p>
 	{/if}
 </main>
 
@@ -469,7 +470,7 @@
 		text-align: left;
 	}
 
-	.shelf {
+	.references {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 		gap: 8px;
@@ -477,8 +478,8 @@
 		list-style: none;
 	}
 
-	.shelf img,
-	.shelf i {
+	.references img,
+	.references i {
 		display: block;
 		width: 96px;
 		height: 96px;

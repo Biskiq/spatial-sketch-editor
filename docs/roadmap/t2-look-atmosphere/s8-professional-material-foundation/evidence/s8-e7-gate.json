@@ -1,5 +1,6 @@
 {
-  "capturedAt": "2026-11-22T01:18:41.813Z",
+  "scope": "automated technical checks; not acceptance of F's catalogue intake",
+  "capturedAt": "2026-11-22T01:53:07.433Z",
   "pass": true,
   "cases": {
     "webgl2": {
@@ -425,7 +426,7 @@
             }
           },
           {
-            "id": "shipped catalogue derivatives match this backend",
+            "id": "catalogue reference derivatives match this backend",
             "pass": true,
             "measured": {
               "wood-oak-veneer": 0.0695,
@@ -452,7 +453,7 @@
             }
           },
           {
-            "id": "twenty shelf openings fetch no full-resolution image",
+            "id": "twenty reference-list openings fetch no full-resolution image",
             "pass": true,
             "measured": {
               "shown": 21,
@@ -957,7 +958,7 @@
             }
           },
           {
-            "id": "shipped catalogue derivatives match this backend",
+            "id": "catalogue reference derivatives match this backend",
             "pass": true,
             "measured": {
               "wood-oak-veneer": 0,
@@ -984,7 +985,7 @@
             }
           },
           {
-            "id": "twenty shelf openings fetch no full-resolution image",
+            "id": "twenty reference-list openings fetch no full-resolution image",
             "pass": true,
             "measured": {
               "shown": 21,

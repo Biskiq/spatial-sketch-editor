@@ -59,12 +59,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onMaterialPick: (materialId: string) => void;
 		/** Library › Finishes: curated then project Finishes. */
 		finishShelf?: {
-			readonly curated: readonly {
-				readonly id: MaterialId;
-				readonly label: string;
-				readonly color: string;
-				readonly thumbnailUri?: string;
-			}[];
+			readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
 			readonly project: readonly {
 				readonly id: string;
 				readonly name: string;
@@ -288,15 +283,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 										data-finish-tile={`curated:${finish.id}`}
 										onclick={() => onFinishPick({ curated: finish.id })}
 									>
-										{#if finish.thumbnailUri !== undefined}
-											<i
-												class="material thumbnail"
-												style:background-color={finish.color}
-												style:background-image={`url("${finish.thumbnailUri}")`}
-											></i>
-										{:else}
-											<i class="material" style:background={finish.color}></i>
-										{/if}
+										<i class="material" style:background={finish.color}></i>
 										<span class="tile-label">{finish.label}</span>
 									</button>
 								{/each}
@@ -791,11 +778,6 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		background-position: center;
 		background-size: cover;
 		background-blend-mode: multiply;
-	}
-	/* A rendered derivative over its swatch colour; unlike a project image, never tinted. */
-	.material.thumbnail {
-		background-position: center;
-		background-size: cover;
 	}
 	.material.from-image {
 		display: grid;

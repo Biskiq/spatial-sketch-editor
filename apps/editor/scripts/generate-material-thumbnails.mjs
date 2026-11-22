@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Generate the shipped 192×192 catalogue derivatives (E7).
+ * Generate the catalogue's 192×192 engineering reference derivatives (E7).
+ * They are regression references, not product thumbnails.
  *
- * Each entry is drawn by the product inspection host on `/dev/materials`, twice,
+ * Each entry is drawn by the inspection host on `/dev/materials`, twice,
  * in separate page loads on WebGPU; differing bytes fail the run. Files are
  * named by entry and key, and the manifest records each file's SHA-256.
  *
@@ -71,12 +72,13 @@ try {
 	const manifest = {
 		schemaVersion: 1,
 		generatedBy: 'apps/editor/scripts/generate-material-thumbnails.mjs',
+		purpose: 'engineering-reference',
 		backend: BACKEND,
 		versions,
 		thumbnails
 	};
 	writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, '\t')}\n`);
-	console.log(`${thumbnails.length} thumbnails written`);
+	console.log(`${thumbnails.length} reference derivatives written`);
 } finally {
 	await browser.close();
 }

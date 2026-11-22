@@ -69,7 +69,6 @@ function surfaceTargetComponent(surface: PaintableSurface): string {
 	}
 }
 import { getMaterial, materialById, materials } from '$lib/content/materials';
-import { catalogueThumbnailUri } from '$lib/render/materials/catalogue-thumbnails';
 import type { ProjectApi } from '$lib/platform/project-persistence';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import {
@@ -491,12 +490,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	/** Library › Finishes: curated tiles, then the project's own Finishes. */
 	function libraryShelf(): {
-		readonly curated: readonly {
-			readonly id: MaterialId;
-			readonly label: string;
-			readonly color: string;
-			readonly thumbnailUri?: string;
-		}[];
+		readonly curated: readonly { readonly id: MaterialId; readonly label: string; readonly color: string }[];
 		readonly project: readonly {
 			readonly id: string;
 			readonly name: string;
@@ -510,8 +504,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			curated: materials.map((material) => ({
 				id: material.id,
 				label: material.label,
-				color: material.swatchColor ?? material.fallbackColor,
-				thumbnailUri: catalogueThumbnailUri(material.id)
+				color: material.swatchColor ?? material.fallbackColor
 			})),
 			project: (current?.materials ?? [])
 				.filter((instance) => !isPristineInstance(instance))
