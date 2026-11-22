@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
-	import WorldIcon from '../world-toolbar/WorldIcon.svelte';
 
 	let {
 		captureDisabled = false,
@@ -35,7 +34,7 @@
 		title="Select: the pointer selects subjects on the Stage"
 		data-dock-tool="select"
 	>
-		<WorldIcon name="select" size={20} hero />
+		<ShellIcon name="select" size={20} />
 		<span class="kl">Select</span>
 	</button>
 	<button

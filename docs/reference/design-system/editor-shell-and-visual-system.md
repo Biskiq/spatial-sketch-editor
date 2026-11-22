@@ -151,7 +151,8 @@ never grows sideways, and a tool never opens a second row of controls.
   and Experience docks, declared once as `--shell-dock-*` in `presentation-tokens.css`: a
   **56 px** forest bar (14 px radius, `--shell-dock-shadow`) with 6 px side padding and 2 px
   between keys, carrying **46 px-tall inset keys**, at least 54 px wide, with a 10 px radius,
-  a 20 px icon over a 10.5 px label, a 9 px mono shortcut hint at 60% ivory in the key's
+  a 20 px icon (1.5 stroke; the accepted design's Select, Build, Form, Landscape, Furnish, Paint,
+  Erase and Library glyphs, `WorldIcon` hero set) over a 10.5 px label, a 9 px mono shortcut hint at 60% ivory in the key's
   top-right corner, and 28 px separators with 3 px margins between groups. Keys centre in the
   bar (`safe center`: an overflowing dock scrolls from its start). Idle keys wear the muted
   light ink and a quiet wash on hover; the **armed key** is the forest-3 key above; an
@@ -162,7 +163,8 @@ never grows sideways, and a tool never opens a second row of controls.
   Stage edge, with the armed tool's palette or tray 8 px above the dock. Below 700 px keys
   narrow to 44 px and the shortcut hints drop; coarse pointers keep a 44 px target. The
   Experience dock fits its content (four keys) in the same chassis and shows no shortcut
-  hints, as it assigns none.
+  hints, as it assigns none; the study did not design Experience glyphs, so its keys keep their
+  existing icons.
 - **Arming.** Clicking a tool, its key or Find's Arm verb arms it. Arming never changes
   selection; what a gesture makes becomes selected. Tools stay armed until Esc or Select.
   A control that is not a tool, such as the Height Sheet, never arms a tool.

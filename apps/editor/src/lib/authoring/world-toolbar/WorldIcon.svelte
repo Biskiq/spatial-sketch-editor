@@ -4,7 +4,8 @@
 	 *
 	 * `hero` selects the dock-key drawing (the prototype's HERO map); the default
 	 * palette set is the same 24px grid the prototype uses for options and chrome.
-	 * Paint and Library are the approved appearance design's glyphs (prototypes/appearance-ux).
+	 * The dock-key (`hero`) glyphs are the approved appearance design's: Select, Build, Form,
+	 * Landscape, Furnish, Paint, Erase and Library (prototypes/appearance-ux/shared/icons.js).
 	 */
 	let {
 		name = 'select',
@@ -56,13 +57,13 @@
 	};
 
 	const heroPaths: Record<string, string> = {
-		select: '<path d="M6 3.6 18.4 11l-5.5 1.6 3.2 5.6-2.4 1.4-3.2-5.6L6.2 18.4z"/>',
-		'fam-build': '<path d="M2.8 20.4h18.4"/><path d="M5.2 20.4v-9.2l6-5.2 6 5.2v9.2"/><path d="M17.2 14.2h3.4v6.2"/><path d="M9.6 20.4v-4.4h3.2v4.4"/><path d="M8.2 12.4h1.4M12.8 12.4h1.4"/>',
-		'fam-form': '<path d="M3.2 20h17.6v-3.2H3.2z"/><path d="M5.8 16.8v-6.2h6.4v6.2"/><circle cx="16.6" cy="13.4" r="3.4"/><path d="M5.8 10.6 8 8.4h6.4l-2.2 2.2M14.4 8.4v6.2l-2.2 2.2" opacity=".7"/>',
-		'fam-land': '<path d="M2.4 19.8c3.2-4.8 6.2-6.8 9.6-6.8s6.4 2 9.6 6.8"/><path d="M16.2 13.6V10"/><circle cx="16.2" cy="7.4" r="2.6"/><path d="M5.6 19.8c1.2-1.4 2.2-2.2 3.4-2.6" opacity=".6"/>',
-		'fam-furnish': '<path d="M6 12.2V8.2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M3.8 12.8a1.5 1.5 0 0 1 3 0v2.4h10.4v-2.4a1.5 1.5 0 0 1 3 0V18H3.8z"/><path d="M6 18v2.4M18 18v2.4"/>',
+		select: '<path d="M5 3.5 18.5 12 12.5 13.5 9.5 19.5Z"/>',
+		'fam-build': '<path d="M3.5 20.5h17"/><path d="M5.5 20.5v-9L12 6l6.5 5.5v9"/><path d="M10 20.5v-5h4v5" opacity=".6"/>',
+		'fam-form': '<path d="M4 18.5V9.5L12 5l8 4.5v9l-8 2Z"/><path d="M12 5v15.5" opacity=".5"/>',
+		'fam-land': '<path d="M2.5 19.5h19"/><path d="M3.5 19.5 9 10.5l3.5 5 2.5-3.5 5.5 7.5"/><circle cx="16.5" cy="6.5" r="2"/>',
+		'fam-furnish': '<path d="M4 12h16v4H4Z"/><path d="M5.5 16v3.5M18.5 16v3.5M6 12V8.5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2V12"/>',
 		paint: '<path d="M14.5 3.5 20.5 9.5 11 19a2.1 2.1 0 0 1-3 0l-3-3a2.1 2.1 0 0 1 0-3Z"/><path d="M5.5 13.5h11" opacity=".55"/><path d="M19.5 15.5c0 1.6 1 2.4 1 3.5a1.5 1.5 0 0 1-3 0c0-1.1 1-1.9 1-3.5Z"/>',
-		erase: '<path d="m14.4 4.4 5.2 5.2-9.4 9.6H5.6l-2.1-2.1a1.4 1.4 0 0 1 0-2z"/><path d="m8.6 10.2 5.2 5.2M10.2 19.2h10"/>',
+		erase: '<path d="M13.5 4.5 20 11l-8.5 8.5H7L4 16.5a2 2 0 0 1 0-2.8Z"/><path d="M9 9.5l6.5 6.5M11.5 19.5H20" opacity=".6"/>',
 		library: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><circle cx="17" cy="17" r="3"/><path d="m19.2 19.2 1.8 1.8"/>'
 	};
 </script>
@@ -73,7 +74,7 @@
 	viewBox="0 0 24 24"
 	fill="none"
 	stroke="currentColor"
-	stroke-width={hero ? 1.6 : 1.5}
+	stroke-width="1.5"
 	stroke-linecap="round"
 	stroke-linejoin="round"
 	aria-hidden="true"
