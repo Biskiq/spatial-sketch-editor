@@ -48,7 +48,32 @@ export const STUDIO_FILL_DEGREES = 30;
 export const GRAZING_KEY_INTENSITY = 2;
 export const GRAZING_AMBIENT_INTENSITY = 0.15;
 
-export type InspectionRig = 'studio' | 'grazing';
+/**
+ * `sample-tile` is U1's product thumbnail rig (recipe `sample-tile/1`, see
+ * `sample-tile.ts`). It is a third rig beside the two engineering references:
+ * studio and grazing, their constants and their 192 px derivatives stay as E7
+ * froze them.
+ */
+export type InspectionRig = 'studio' | 'grazing' | 'sample-tile';
+
+/**
+ * The sample-tile rig's constants. Any change to one is a new thumbnail recipe
+ * version (`SAMPLE_TILE_RECIPE`), never an edit in place.
+ *
+ * A flat sample viewed from the front reflects the part of the environment near
+ * +Z, so the field is a soft sky ramp plus a horizontal strip light whose
+ * reflection crosses the upper part of a glossy sample as a sheen band, and one
+ * raking key light from the upper left that gives relief to matte surfaces.
+ */
+export const SAMPLE_TILE_SKY_LOW = 0.05;
+export const SAMPLE_TILE_SKY_HIGH = 0.2;
+export const SAMPLE_TILE_STRIP_RADIANCE = 1.6;
+/** Strip centre elevation above the horizon, and its soft half-width (radians). */
+export const SAMPLE_TILE_STRIP_ELEVATION = 0.17;
+export const SAMPLE_TILE_STRIP_SIGMA_ELEVATION = 0.07;
+export const SAMPLE_TILE_STRIP_SIGMA_AZIMUTH = 0.9;
+export const SAMPLE_TILE_KEY_INTENSITY = 2;
+export const SAMPLE_TILE_KEY_DIRECTION: readonly [number, number, number] = [-0.55, 0.6, 0.58];
 
 const KEY_DIRECTION = new Vector3(-1, 1, 1).normalize();
 const FILL_DIRECTION = new Vector3(1, 0, -1).normalize();
@@ -104,6 +129,56 @@ export function studioEnvironmentPixels(
 	return pixels;
 }
 
+/**
+ * The sample-tile field as linear RGBA floats, row-major equirectangular like
+ * the studio source: a sky ramp from the horizon up plus the strip light.
+ */
+export function sampleTileEnvironmentPixels(
+	width = STUDIO_ENVIRONMENT_WIDTH,
+	height = STUDIO_ENVIRONMENT_HEIGHT
+): Float32Array {
+	const pixels = new Float32Array(width * height * 4);
+	const direction = new Vector3();
+	for (let y = 0; y < height; y += 1) {
+		for (let x = 0; x < width; x += 1) {
+			direction.copy(directionFor((x + 0.5) / width, (y + 0.5) / height));
+			const up = Math.min(Math.max((direction.y + 0.35) / 1.25, 0), 1);
+			const ramp = up * up * (3 - 2 * up);
+			let radiance = SAMPLE_TILE_SKY_LOW + (SAMPLE_TILE_SKY_HIGH - SAMPLE_TILE_SKY_LOW) * ramp;
+			const elevation = Math.asin(Math.min(Math.max(direction.y, -1), 1));
+			const azimuth = Math.atan2(direction.x, direction.z);
+			const dE = elevation - SAMPLE_TILE_STRIP_ELEVATION;
+			radiance +=
+				SAMPLE_TILE_STRIP_RADIANCE *
+				Math.exp(-(dE * dE) / (2 * SAMPLE_TILE_STRIP_SIGMA_ELEVATION ** 2)) *
+				Math.exp(-(azimuth * azimuth) / (2 * SAMPLE_TILE_STRIP_SIGMA_AZIMUTH ** 2));
+			const offset = (y * width + x) * 4;
+			pixels[offset] = radiance;
+			pixels[offset + 1] = radiance;
+			pixels[offset + 2] = radiance;
+			pixels[offset + 3] = 1;
+		}
+	}
+	return pixels;
+}
+
+function createSampleTileEnvironmentTexture(): DataTexture {
+	const texture = new DataTexture(
+		sampleTileEnvironmentPixels(),
+		STUDIO_ENVIRONMENT_WIDTH,
+		STUDIO_ENVIRONMENT_HEIGHT,
+		RGBAFormat,
+		FloatType
+	);
+	texture.mapping = EquirectangularReflectionMapping;
+	texture.colorSpace = LinearSRGBColorSpace;
+	texture.minFilter = LinearFilter;
+	texture.magFilter = LinearFilter;
+	texture.generateMipmaps = false;
+	texture.needsUpdate = true;
+	return texture;
+}
+
 /** The unprefiltered studio source, linear and equirectangular. */
 export function createStudioEnvironmentTexture(radianceScale = 1): DataTexture {
 	const texture = new DataTexture(
@@ -147,6 +222,12 @@ export function createInspectionLighting(
 		key.position.copy(GRAZING_DIRECTION).multiplyScalar(10);
 		key.target.position.set(0, 0, 0);
 		group.add(ambient, key, key.target);
+	} else if (rig === 'sample-tile') {
+		source = createSampleTileEnvironmentTexture();
+		const key = new DirectionalLight(0xffffff, SAMPLE_TILE_KEY_INTENSITY);
+		key.position.set(...SAMPLE_TILE_KEY_DIRECTION).normalize().multiplyScalar(10);
+		key.target.position.set(0, 0, 0);
+		group.add(key, key.target);
 	} else {
 		source = createStudioEnvironmentTexture(options.radianceScale ?? 1);
 	}
