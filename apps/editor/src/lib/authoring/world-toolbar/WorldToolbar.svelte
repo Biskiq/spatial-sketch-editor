@@ -50,7 +50,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onPlateOpen = () => {},
 		requestedCategory = null,
 		studio = false,
-		paintChip = null
+		paintChip = null,
+		trayOwnsPlate = false
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -92,6 +93,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		studio?: boolean;
 		/** The Paint key's live chip: the active pick, a circle for a colour and a rounded square for a material. */
 		paintChip?: { readonly color: string; readonly shape: 'colour' | 'material' } | null;
+		/** An armed tool's own tray stands in for the words plate (Paint's tray), so no second card opens above the dock. */
+		trayOwnsPlate?: boolean;
 	} = $props();
 
 	const plateId = $props.id();
@@ -176,11 +179,11 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	);
 </script>	<section
 		class="world-toolbar"
-		class:folded={!plateOpen || activeTool === 'select'}
+		class:folded={!plateOpen || activeTool === 'select' || trayOwnsPlate}
 		data-world-toolbar
 		data-active-tool={activeTool}
 	>
-		{#if activeTool !== 'select'}
+		{#if activeTool !== 'select' && !trayOwnsPlate}
 		<div class="tier" id={plateId} hidden={!plateOpen}>
 		<div class="row words">
 			<div class="strip words-strip">

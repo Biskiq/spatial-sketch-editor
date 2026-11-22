@@ -2438,6 +2438,7 @@
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
 						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
 						onLookPick: look.pickLibraryEntry,
+						trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null,
 						paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material' },
 						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 						inkReading: shell.inkReading,

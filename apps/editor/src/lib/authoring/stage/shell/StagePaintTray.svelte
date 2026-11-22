@@ -93,16 +93,22 @@
 
 <div class="tray" data-paint-tray aria-label="Paint" data-paint-tab={tab} data-expanded={view.expanded}>
 	<div class="head">
-		{#if tray.colourEnabled}
-			<span class="seg tabs" role="tablist" aria-label="Paint with">
+		<span class="seg tabs" role="tablist" aria-label="Paint with">
+			{#if tray.colourEnabled}
 				<button type="button" role="tab" data-paint-tab-button="colours" aria-selected={tab === 'colours'} class:on={tab === 'colours'} onclick={() => view.setTab('colours')}>Colours</button>
-				<button type="button" role="tab" data-paint-tab-button="materials" aria-selected={tab === 'materials'} class:on={tab === 'materials'} onclick={() => view.setTab('materials')}>Materials</button>
-			</span>
-		{:else}
-			<span class="seg tabs"><span class="word on">Materials</span></span>
-		{/if}
+			{:else}
+				<!-- Colour paint is U3's colour-coat planner; the tab is decided and drawn, and inert until it lands. -->
+				<button type="button" role="tab" class="future" data-paint-tab-button="colours" aria-selected="false" aria-disabled="true" title="Colour paint arrives with colour coats" onclick={(event) => event.preventDefault()}>Colours</button>
+			{/if}
+			<button type="button" role="tab" data-paint-tab-button="materials" aria-selected={tab === 'materials'} class:on={tab === 'materials'} onclick={() => view.setTab('materials')}>Materials</button>
+		</span>
 		<span class="consequence" class:refused={consequence.refused} data-paint-consequence role="status">{consequence.text}</span>
 		<span class="seg radius" role="group" aria-label="Paint reach">
+			<!-- Brush is a decided future radius inside Paint: drawn, inert, with no tool rows until it is built. -->
+			<button type="button" class="future" data-paint-radius="brush" aria-disabled="true" title="Brush: paint part of a surface. Coming later" onclick={(event) => event.preventDefault()}>
+				<ShellIcon name="paint" size={14} />
+				Brush
+			</button>
 			{#each PAINT_RADII as option (option.id)}
 				<button
 					type="button"
@@ -302,8 +308,7 @@
 		background: var(--shell-white);
 		box-shadow: 0 1px 2px rgb(18 38 29 / 6%);
 	}
-	.seg button,
-	.word {
+	.seg button {
 		display: inline-flex;
 		min-height: 0;
 		align-items: center;
@@ -321,15 +326,18 @@
 	.seg button:hover {
 		background: var(--shell-leaf-tint);
 	}
+	.seg button.future,
+	.seg button.future:hover {
+		border: 1px dashed var(--shell-hairline-strong);
+		background: transparent;
+		color: var(--shell-ink-3);
+		cursor: default;
+	}
 	.seg button.on,
-	.seg button[aria-pressed='true'],
-	.word.on {
+	.seg button[aria-pressed='true'] {
 		background: var(--shell-forest);
 		color: var(--shell-white);
 		box-shadow: 0 1px 3px rgb(18 38 29 / 30%);
-	}
-	.word {
-		cursor: default;
 	}
 	.consequence {
 		min-width: 0;

@@ -56,10 +56,17 @@ function render(tray: PaintTrayView, extra: Record<string, unknown> = {}) {
 }
 
 describe('T2.S8 U2 — Paint tray', () => {
-	it('shows a single Materials heading until Colours exists, then two tabs', () => {
+	it('draws Colours and Brush as inert future affordances until they exist', () => {
 		const one = render(view());
-		expect(one.target.querySelector('[role="tablist"]')).toBeNull();
+		const colours = one.target.querySelector<HTMLButtonElement>('[data-paint-tab-button="colours"]')!;
+		expect(colours.getAttribute('aria-disabled')).toBe('true');
+		colours.click();
+		flushSync();
 		expect(one.target.querySelector('[data-paint-tab]')?.getAttribute('data-paint-tab')).toBe('materials');
+		const brush = one.target.querySelector<HTMLButtonElement>('[data-paint-radius="brush"]')!;
+		expect(brush.getAttribute('aria-disabled')).toBe('true');
+		brush.click();
+		expect(one.onRadius).not.toHaveBeenCalled();
 
 		const two = render(view({ colourEnabled: true }));
 		expect(two.target.querySelectorAll('[role="tab"]')).toHaveLength(2);
@@ -101,8 +108,9 @@ describe('T2.S8 U2 — Paint tray', () => {
 		expect(onRadius).toHaveBeenCalledWith('space');
 		target.querySelector<HTMLButtonElement>('[data-paint-dropper]')!.click();
 		expect(onDropper).toHaveBeenCalledTimes(1);
-		// A future Brush is not a placeholder: only the two radii are drawn.
-		expect(target.querySelectorAll('[data-paint-radius]')).toHaveLength(2);
+		// Brush is drawn as a decided future radius, inert; only Surface and Space act.
+		expect(target.querySelectorAll('[data-paint-radius]:not([aria-disabled])')).toHaveLength(2);
+		expect(target.querySelectorAll('[data-paint-radius="brush"][aria-disabled="true"]')).toHaveLength(1);
 	});
 
 	it('states the consequence, the stroke count and a refusal in place', () => {
