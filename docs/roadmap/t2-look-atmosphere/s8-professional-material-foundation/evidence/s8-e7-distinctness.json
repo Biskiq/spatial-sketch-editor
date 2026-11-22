@@ -1,0 +1,209 @@
+{
+  "schema": "s8-e7-distinctness/1",
+  "measuredAt": "2026-11-22T03:18:34+00:00",
+  "result": "fails",
+  "disposition": "deferred to U by owner decision 2026-11-21; not waived",
+  "criterion": "F catalogue plan, Qualify: no pair has thumbnail patch-mean dE00 < 3 and luminance SSIM > 0.95; under 1% of subject pixels clipped",
+  "method": {
+    "note": "F does not define the patch, region or SSIM window; both readings below are reported.",
+    "input": "the committed 192x192 engineering references, verified against the manifest sha256",
+    "colour": "per-patch mean in linear sRGB, CIEDE2000, then the mean over patches",
+    "central-crop": "pixels 54..137, an 8x8 patch grid",
+    "full-subject": "16 px patches and SSIM windows lying wholly inside the sphere silhouette shared by all entries",
+    "ssim": "Rec.601 luma, uniform 8 px windows, stride 4, K1 0.01, K2 0.03, L 255",
+    "clipping": "any channel at 255, over each sphere silhouette"
+  },
+  "recipeVersions": {
+    "inspection": 2,
+    "lighting": 2,
+    "geometry": 1
+  },
+  "references": [
+    {
+      "id": "wood-oak-veneer",
+      "sha256": "92d2753b352f643461b25c4bafb70ba9ab1432177b6c06604d4ebc2622c57093"
+    },
+    {
+      "id": "wood-walnut-veneer",
+      "sha256": "8d042cc3e7bc4a9b143e44f25b646f4cbb1b85fb07d294c0347cf4cb4fab5bc7"
+    },
+    {
+      "id": "wood-oak-planks",
+      "sha256": "7b738ff14cd21f63eeeb0d4551fe74618bc88165ebd6737d612984037681a0fa"
+    },
+    {
+      "id": "wood-herringbone-parquet",
+      "sha256": "7df9d11f22a9b38756605f1d6e7d3964f4f97b0430f4214c66083cf1b77a3b24"
+    },
+    {
+      "id": "stone-travertine",
+      "sha256": "44c35119d7208c3d3d806f39789b75234d029169ce3d6be063d31356f19581f9"
+    },
+    {
+      "id": "stone-terrazzo",
+      "sha256": "578c8fdc301b390af55570af221607822fda084b481c88c53ef49868cb96b440"
+    },
+    {
+      "id": "masonry-brick-red",
+      "sha256": "2c28899b36da48545f4bf5ca6e42496eb29beb22c9cbb76b5fb2bb3b687c2b32"
+    },
+    {
+      "id": "plaster-painted",
+      "sha256": "ca4f9a65791d24bad8670c423a9eeb782e2fe52bf6eab859f4ae3c91e626ea95"
+    },
+    {
+      "id": "concrete-smooth",
+      "sha256": "d65ac2a11274fc735cd177d6f6179f3dc5c614c8a8b4ffe6dce7d9a43998b125"
+    },
+    {
+      "id": "concrete-polished",
+      "sha256": "5910ae1d166d702f8fe3bf8848765f4902db17f1f3c3e3b8bc762da46d2cbe48"
+    },
+    {
+      "id": "tile-ceramic-white",
+      "sha256": "d30d0ba37ce94a0ec15978caef1d1a7cec05219a39c3e7a184b1acb0e10187b7"
+    },
+    {
+      "id": "metal-stainless-satin",
+      "sha256": "3c55579588f911d4b62c3d2adb98a757605083776aa63bbca0afd61a7d4758e9"
+    },
+    {
+      "id": "metal-brass-satin",
+      "sha256": "929272e29ca4e92585f770f4d36c9443ea23982af8ae6ce3be0aeb781d28f67c"
+    },
+    {
+      "id": "metal-copper-satin",
+      "sha256": "580cb54f53344597fd0cae07426b6536bcfaca6e271c1e62582889525d1ac835"
+    },
+    {
+      "id": "metal-gold-satin",
+      "sha256": "f5d6ea0e9794efe85e449d751f9e05c491af3b728d400eafabe74f2f9cc3755c"
+    },
+    {
+      "id": "metal-stainless-brushed",
+      "sha256": "34c5514569eb3929600f7cb949437e1975eb982f19e226980570f99f8aee6428"
+    },
+    {
+      "id": "metal-aluminium-brushed",
+      "sha256": "e2250ba4b1c7a1b2f78c7a2ac455cd99f3cdda936e2bf323cc415e6349b25e2a"
+    },
+    {
+      "id": "textile-linen",
+      "sha256": "0e0ca0d1dc218944388a929812399387e76c951286dc023eae9e3cf9274c21e5"
+    },
+    {
+      "id": "textile-carpet-loop",
+      "sha256": "75fd3da80a136f7859c54e27e2421727ebfa628098b1ca97271b48fee3282818"
+    },
+    {
+      "id": "leather-cognac",
+      "sha256": "76c698739b982c4ef8c055700a641c1dd94b552e9c75fabdf496eb7767c29a2c"
+    },
+    {
+      "id": "synthetic-plastic-matte",
+      "sha256": "01e3a52cce05e3f6b52424c727dfe688f05c54fa07818f3023c01b11c2664460"
+    }
+  ],
+  "readings": {
+    "central-crop": {
+      "patches": 64,
+      "ssimWindows": 400,
+      "failingPairs": [
+        {
+          "pair": [
+            "plaster-painted",
+            "synthetic-plastic-matte"
+          ],
+          "meanPatchDeltaE00": 1.98,
+          "maxPatchDeltaE00": 3.15,
+          "luminanceSSIM": 0.973,
+          "fails": true
+        },
+        {
+          "pair": [
+            "concrete-smooth",
+            "concrete-polished"
+          ],
+          "meanPatchDeltaE00": 0.27,
+          "maxPatchDeltaE00": 2.03,
+          "luminanceSSIM": 0.994,
+          "fails": true
+        },
+        {
+          "pair": [
+            "metal-stainless-satin",
+            "metal-stainless-brushed"
+          ],
+          "meanPatchDeltaE00": 1.18,
+          "maxPatchDeltaE00": 7.23,
+          "luminanceSSIM": 0.979,
+          "fails": true
+        }
+      ]
+    },
+    "full-subject": {
+      "patches": 55,
+      "ssimWindows": 1092,
+      "failingPairs": [
+        {
+          "pair": [
+            "plaster-painted",
+            "synthetic-plastic-matte"
+          ],
+          "meanPatchDeltaE00": 2.04,
+          "maxPatchDeltaE00": 3.51,
+          "luminanceSSIM": 0.977,
+          "fails": true
+        },
+        {
+          "pair": [
+            "concrete-smooth",
+            "concrete-polished"
+          ],
+          "meanPatchDeltaE00": 0.3,
+          "maxPatchDeltaE00": 2.0,
+          "luminanceSSIM": 0.987,
+          "fails": true
+        },
+        {
+          "pair": [
+            "metal-stainless-satin",
+            "metal-stainless-brushed"
+          ],
+          "meanPatchDeltaE00": 1.21,
+          "maxPatchDeltaE00": 6.3,
+          "luminanceSSIM": 0.976,
+          "fails": true
+        }
+      ]
+    }
+  },
+  "clippedSubjectFraction": {
+    "wood-oak-veneer": 0.0,
+    "wood-walnut-veneer": 0.0,
+    "wood-oak-planks": 0.0,
+    "wood-herringbone-parquet": 0.0,
+    "stone-travertine": 0.0,
+    "stone-terrazzo": 0.0,
+    "masonry-brick-red": 0.0,
+    "plaster-painted": 0.0,
+    "concrete-smooth": 0.0,
+    "concrete-polished": 0.0,
+    "tile-ceramic-white": 0.0,
+    "metal-stainless-satin": 0.0,
+    "metal-brass-satin": 0.0,
+    "metal-copper-satin": 0.0,
+    "metal-gold-satin": 0.0,
+    "metal-stainless-brushed": 0.0,
+    "metal-aluminium-brushed": 0.0,
+    "textile-linen": 0.0,
+    "textile-carpet-loop": 0.0,
+    "leather-cognac": 0.0,
+    "synthetic-plastic-matte": 0.0
+  },
+  "sensitivity": [
+    "The same three pairs fail in both readings.",
+    "Read as the maximum patch dE00 < 3 instead of the mean, only concrete-smooth / concrete-polished fails in either region.",
+    "Narrow passes: metal-brass-satin / metal-gold-satin (mean dE00 3.10 and 3.20 at SSIM 1.000) and textile-linen / textile-carpet-loop (SSIM 0.916 and 0.947 at mean dE00 1.27 and 1.26)."
+  ]
+}

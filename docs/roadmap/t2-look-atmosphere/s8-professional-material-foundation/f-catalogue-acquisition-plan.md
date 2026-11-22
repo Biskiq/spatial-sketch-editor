@@ -53,10 +53,19 @@ catalogue was preferred to the count (D7).
     reasons, and the QA matrix;
   - screenshots are under `evidence/s8-f-*.jpg`;
   - derivation and qualification records are in `apps/editor/assets-source/textures/`.
+- **Distinctness: failed, deferred by the owner (2026-11-21), not waived.** This intake did not record
+  a run of the Qualify rule below. E7 measured it: three pairs fail
+  ([evidence](./evidence/s8-e7-distinctness.json)). The rule and its consequence are unchanged and U
+  must revalidate it
+  ([amendment](./implementation-plan.md#owner-approved-deferral-catalogue-distinctness-2026-11-21)).
+  The set qualification recorded here is separate and does not imply distinctness or readability.
 - **Still open:**
   - D2 upload of the retained sources to the private store; sources are held locally under the
     immutable key layout;
-  - the E7 product inspection host and 192² shelf thumbnails;
+  - the E7 inspection host and 192² engineering references, delivered separately
+    ([report](./pr-e7-report.md));
+  - product thumbnails and the distinctness revalidation, owned by U. The shelf keeps colour
+    swatches until then, which supersedes the 192² shelf derivatives described in §9;
   - the owner's final visual acceptance.
 
 ## 1. Decision requested

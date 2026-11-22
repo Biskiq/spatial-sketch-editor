@@ -1,0 +1,202 @@
+{
+	"schemaVersion": 1,
+	"generatedBy": "apps/editor/scripts/generate-material-thumbnails.mjs",
+	"purpose": "engineering-reference",
+	"backend": "webgpu",
+	"versions": {
+		"inspection": 2,
+		"lighting": 2,
+		"geometry": 1
+	},
+	"thumbnails": [
+		{
+			"id": "wood-oak-veneer",
+			"key": "thumb-ad43cbb363b6e8e7",
+			"file": "wood-oak-veneer-thumb-ad43cbb363b6e8e7.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "92d2753b352f643461b25c4bafb70ba9ab1432177b6c06604d4ebc2622c57093"
+		},
+		{
+			"id": "wood-walnut-veneer",
+			"key": "thumb-9bad06fb09fa270f",
+			"file": "wood-walnut-veneer-thumb-9bad06fb09fa270f.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "8d042cc3e7bc4a9b143e44f25b646f4cbb1b85fb07d294c0347cf4cb4fab5bc7"
+		},
+		{
+			"id": "wood-oak-planks",
+			"key": "thumb-8f2a46be68cd79d2",
+			"file": "wood-oak-planks-thumb-8f2a46be68cd79d2.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "7b738ff14cd21f63eeeb0d4551fe74618bc88165ebd6737d612984037681a0fa"
+		},
+		{
+			"id": "wood-herringbone-parquet",
+			"key": "thumb-d8ee496c088659f0",
+			"file": "wood-herringbone-parquet-thumb-d8ee496c088659f0.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "7df9d11f22a9b38756605f1d6e7d3964f4f97b0430f4214c66083cf1b77a3b24"
+		},
+		{
+			"id": "stone-travertine",
+			"key": "thumb-9a102ae423000a48",
+			"file": "stone-travertine-thumb-9a102ae423000a48.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "44c35119d7208c3d3d806f39789b75234d029169ce3d6be063d31356f19581f9"
+		},
+		{
+			"id": "stone-terrazzo",
+			"key": "thumb-330ab9ae5bab34de",
+			"file": "stone-terrazzo-thumb-330ab9ae5bab34de.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "578c8fdc301b390af55570af221607822fda084b481c88c53ef49868cb96b440"
+		},
+		{
+			"id": "masonry-brick-red",
+			"key": "thumb-d75ad225b534952d",
+			"file": "masonry-brick-red-thumb-d75ad225b534952d.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "2c28899b36da48545f4bf5ca6e42496eb29beb22c9cbb76b5fb2bb3b687c2b32"
+		},
+		{
+			"id": "plaster-painted",
+			"key": "thumb-79a089b258cc6f1a",
+			"file": "plaster-painted-thumb-79a089b258cc6f1a.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "ca4f9a65791d24bad8670c423a9eeb782e2fe52bf6eab859f4ae3c91e626ea95"
+		},
+		{
+			"id": "concrete-smooth",
+			"key": "thumb-f499c9c6ee425d1e",
+			"file": "concrete-smooth-thumb-f499c9c6ee425d1e.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "d65ac2a11274fc735cd177d6f6179f3dc5c614c8a8b4ffe6dce7d9a43998b125"
+		},
+		{
+			"id": "concrete-polished",
+			"key": "thumb-3d7faf94cf129c3a",
+			"file": "concrete-polished-thumb-3d7faf94cf129c3a.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "5910ae1d166d702f8fe3bf8848765f4902db17f1f3c3e3b8bc762da46d2cbe48"
+		},
+		{
+			"id": "tile-ceramic-white",
+			"key": "thumb-a25169dfd4b1bd6b",
+			"file": "tile-ceramic-white-thumb-a25169dfd4b1bd6b.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "d30d0ba37ce94a0ec15978caef1d1a7cec05219a39c3e7a184b1acb0e10187b7"
+		},
+		{
+			"id": "metal-stainless-satin",
+			"key": "thumb-22c2fdc65c64d824",
+			"file": "metal-stainless-satin-thumb-22c2fdc65c64d824.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "3c55579588f911d4b62c3d2adb98a757605083776aa63bbca0afd61a7d4758e9"
+		},
+		{
+			"id": "metal-brass-satin",
+			"key": "thumb-e699846c49fa50a2",
+			"file": "metal-brass-satin-thumb-e699846c49fa50a2.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "929272e29ca4e92585f770f4d36c9443ea23982af8ae6ce3be0aeb781d28f67c"
+		},
+		{
+			"id": "metal-copper-satin",
+			"key": "thumb-7452ad90ff928302",
+			"file": "metal-copper-satin-thumb-7452ad90ff928302.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "580cb54f53344597fd0cae07426b6536bcfaca6e271c1e62582889525d1ac835"
+		},
+		{
+			"id": "metal-gold-satin",
+			"key": "thumb-c731a03c2d3a9afa",
+			"file": "metal-gold-satin-thumb-c731a03c2d3a9afa.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "f5d6ea0e9794efe85e449d751f9e05c491af3b728d400eafabe74f2f9cc3755c"
+		},
+		{
+			"id": "metal-stainless-brushed",
+			"key": "thumb-3e8d83ecdd9fb1c6",
+			"file": "metal-stainless-brushed-thumb-3e8d83ecdd9fb1c6.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "34c5514569eb3929600f7cb949437e1975eb982f19e226980570f99f8aee6428"
+		},
+		{
+			"id": "metal-aluminium-brushed",
+			"key": "thumb-12cedeed7635fced",
+			"file": "metal-aluminium-brushed-thumb-12cedeed7635fced.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "e2250ba4b1c7a1b2f78c7a2ac455cd99f3cdda936e2bf323cc415e6349b25e2a"
+		},
+		{
+			"id": "textile-linen",
+			"key": "thumb-83bb7cbc8f57c54c",
+			"file": "textile-linen-thumb-83bb7cbc8f57c54c.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "0e0ca0d1dc218944388a929812399387e76c951286dc023eae9e3cf9274c21e5"
+		},
+		{
+			"id": "textile-carpet-loop",
+			"key": "thumb-7b78bc50b7494c7c",
+			"file": "textile-carpet-loop-thumb-7b78bc50b7494c7c.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "75fd3da80a136f7859c54e27e2421727ebfa628098b1ca97271b48fee3282818"
+		},
+		{
+			"id": "leather-cognac",
+			"key": "thumb-eb85b43d15ca0b89",
+			"file": "leather-cognac-thumb-eb85b43d15ca0b89.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "76c698739b982c4ef8c055700a641c1dd94b552e9c75fabdf496eb7767c29a2c"
+		},
+		{
+			"id": "synthetic-plastic-matte",
+			"key": "thumb-d4b0600eaf43b306",
+			"file": "synthetic-plastic-matte-thumb-d4b0600eaf43b306.png",
+			"width": 192,
+			"height": 192,
+			"geometry": "sphere",
+			"sha256": "01e3a52cce05e3f6b52424c727dfe688f05c54fa07818f3023c01b11c2664460"
+		}
+	]
+}

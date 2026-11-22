@@ -1,6 +1,6 @@
 # T2.S8 · Professional material foundation
 
-**Status:** plan merged in #386; A (#387), B (#389), C (#388) and D (#390) have landed; E is in review ([E report](./pr-e-report.md)), after which F and G may run in parallel. By owner ruling Scene 12 / resources 3 is the sole canonical format: no Scene 11 → 12 migration, saved-head inventory or rollback campaign exists, and E removed D's conversion code ([D report](./pr-d-report.md) is kept as history). The plan was written against base `5d5f9858`, which includes the unified renderer cutover. The first deliverable is an opaque, metallic–roughness Finish that a creator can import, adjust, share, inspect under known light, save, and reuse in another project. A creator picking Walnut from the catalogue can still paint it in one action. The professional path earns its place when someone supplies their own wood grain, packed maps and physical tile dimensions and can reproduce the result on a second machine. [T2 planning baseline](../README.md) · [North Star](../../../reference/north-star.md)
+**Status:** plan merged in #386; A (#387), B (#389), C (#388) and D (#390) have landed; E (#392, [report](./pr-e-report.md)), G (#396, [report](./pr-g-report.md)) and F's catalogue intake (#395) have since landed; F's remaining capability, E7, is delivered separately ([report](./pr-e7-report.md)). F's catalogue distinctness criterion failed on E7's references and is [deferred to U by the owner](#owner-approved-deferral-catalogue-distinctness-2026-11-21); it is not waived and F's catalogue intake is not fully accepted. By owner ruling Scene 12 / resources 3 is the sole canonical format: no Scene 11 → 12 migration, saved-head inventory or rollback campaign exists, and E removed D's conversion code ([D report](./pr-d-report.md) is kept as history). The plan was written against base `5d5f9858`, which includes the unified renderer cutover. The first deliverable is an opaque, metallic–roughness Finish that a creator can import, adjust, share, inspect under known light, save, and reuse in another project. A creator picking Walnut from the catalogue can still paint it in one action. The professional path earns its place when someone supplies their own wood grain, packed maps and physical tile dimensions and can reproduce the result on a second machine. [T2 planning baseline](../README.md) · [North Star](../../../reference/north-star.md)
 
 | Commitment | Scope |
 | --- | --- |
@@ -46,7 +46,7 @@ Each letter below is a merge boundary. E0–E7 identify the capabilities proved 
 | [E](#e--manual-authoring-and-correctable-set-import) | Rest of E4 + E5. Run manual composition first, then accept an automatically recognized set through that same operation. | D |
 | [F](#f--inspect-materials-and-qualify-the-catalogue) | Complete E7 and E6a. Use calibrated inspection, World context and recoverable thumbnail generation to qualify the curated collection. | B, D, E |
 | [G](#g--transfer-a-finish-between-projects) | E6b. Save to a private library, insert twice, remove the source, and cold-open the destination. | D, E and B's fixed thumbnail contract. Can run alongside F. |
-| [U](#what-reaches-ux-planning) | Design one curated-first experience over the accepted operations, diagnostics and measured limits. | F and G, plus the integrated gates below |
+| [U](#what-reaches-ux-planning) | Settle the [swatch treatment first](#first-deliverable-of-u-swatch-treatment), then design one curated-first experience over the accepted operations, diagnostics and measured limits. | F and G, plus the integrated gates below and [F's deferred distinctness revalidation](#thumbnail-revalidation-required-in-u) |
 
 A/B develop the profile without changing source formats. C isolates a real storage defect from the format change. D includes one working writer and every reader that must understand its output. E keeps two ways of producing the same plan together. F closes catalogue licensing and presentation fidelity. G closes private storage and transfer integrity. Claims for the corresponding persistence/delivery work cover `project.envelope`, `project.cloud-save`, `release.prepared-package` and `release.visitor-isolation`. Apply the [repository verification contract](../../../../apps/editor/tests/README.md) to each diff. API changes also run the database-backed API suite.
 
@@ -208,7 +208,30 @@ Use fixed evaluated inspection poses via the shared Camera realizer. For the sph
 
 **E6a catalogue intake.** *Amended by the [F catalogue and harvest plan](./f-catalogue-acquisition-plan.md); it replaces the earlier fourteen-entry target.* Qualify the Core list in [`f-acquisition-manifest.json`](./f-acquisition-manifest.json). Size follows coverage, not a quota: every Core taxonomy slot ships at least one qualified creator-facing entry, or records why its first choice and alternates failed, and the shipped count is reported. The technical neutral base and the legacy placeholders are not counted. A preset that reuses a set's pinned images is an entry only if it passes the distinctness test on its own. Each set ships one resolution, 512, 1K or 2K: the lowest that passes the density screen and the visual comparison in the representative scenes ([plan §8](./f-catalogue-acquisition-plan.md#8-resolution-and-texel-density)). Only that resolution is allowlisted, and no universal size applies. Sources are the highest resolution the ladder uses (2K lossless), retained outside git; 4K is not required. Store each new immutable ID and its record alongside the existing catalogue: label, source URL, creator, CC0 evidence, acquisition date, image purpose, measured dimensions, MIME, SHA/size, packing, normal convention, claimed physical tile, scale class, qualified resolution with its screening and visual evidence, and exact v1 recipe. Catalogue static paths are allowlisted and append-only. Changing pixels or meaning needs a new ID and registry revision. Use F's fixed thumbnail and manifest digest to publish a small derivative. A missing licence, broken URL provenance, mismatched pin, failed fidelity or resolution qualification, or unverifiable scale (class C outside the admitted micro-surface sets) excludes that entry. Ship the cleared subset and record the count. Creator files follow P20. The six legacy IDs (`plaster-warm`, `wood-walnut`, `brass-aged`, `marble-light`, `velvet-dark`, `paper-aged`) leave the creator-facing shelf. They stay resolvable with unchanged values and bytes for existing documents and baselines, and gain no invented provenance. Creator-facing defaults move to qualified replacements. Removing the IDs is a later strict format change.
 
-**F exit.** Feed one real accepted Finish and one corrected draft through each inspection geometry. Under studio, two roughness values 0.2/0.8 on the same metal sphere must show a narrower/brighter highlight at 0.2. Under grazing, reversing the normal Y sign must reverse the signed response of the +Y/−Y chart. Compare the unoccluded World test subject with Stage using identical lighting and pose, patch-mean ΔE00 ≤2 on each backend. For geometry/UV orientation use the asymmetric checker and known metre spacing. For thumbnails check size, row orientation, stable request key and patch tolerance across backends (PNG byte identity is unnecessary). Run B's frozen studio chart before content qualification. A clipped or indistinguishable entry fails catalogue intake. Each shipped set records its density screen and the visual comparison with the next lower resolution in the representative scenes, and each scene's catalogue working set is reported against the plan's budget target. A regression on the reference chart holds F. Test rapid subject/mode switch, absent UV1, teardown mid-readback, device loss, and opening/closing the shelf 20 times. Require no project/history/camera change, zero full-res image fetches for a warm derivative list and generation-owned leases at baseline after teardown. Protect Artwork, Paper and the production colour pipeline with their existing gates.
+**F exit.** Feed one real accepted Finish and one corrected draft through each inspection geometry. Under studio, two roughness values 0.2/0.8 on the same metal sphere must show a narrower/brighter highlight at 0.2. Under grazing, reversing the normal Y sign must reverse the signed response of the +Y/−Y chart. Compare the unoccluded World test subject with Stage using identical lighting and pose, patch-mean ΔE00 ≤2 on each backend. For geometry/UV orientation use the asymmetric checker and known metre spacing. For thumbnails check size, row orientation, stable request key and patch tolerance across backends (PNG byte identity is unnecessary). Run B's frozen studio chart before content qualification. A clipped or indistinguishable entry fails catalogue intake (unchanged; the current failure is under an [owner-approved deferral](#owner-approved-deferral-catalogue-distinctness-2026-11-21)). Each shipped set records its density screen and the visual comparison with the next lower resolution in the representative scenes, and each scene's catalogue working set is reported against the plan's budget target. A regression on the reference chart holds F. Test rapid subject/mode switch, absent UV1, teardown mid-readback, device loss, and opening/closing the shelf 20 times. Require no project/history/camera change, zero full-res image fetches for a warm derivative list and generation-owned leases at baseline after teardown. Protect Artwork, Paper and the production colour pipeline with their existing gates.
+
+**E7 outcome.** The inspection host, the 192×192 engineering reference derivatives and the automated technical checks are recorded in the [E7 report](./pr-e7-report.md). By owner clarification 192×192 is the versioned reference size; the host accepts other sizes and geometries. The creator shelf keeps its colour swatches until U delivers the replacement. Passing the technical checks is not acceptance of F's catalogue intake.
+
+### Owner-approved deferral: catalogue distinctness (2026-11-21)
+
+The distinctness requirement **fails** on the current references and is **not waived**. Measured at 192×192 in the frozen studio recipe ([method, both readings and sensitivity](./evidence/s8-e7-distinctness.json)), three pairs are under ΔE00 3 with SSIM over 0.95:
+
+| Pair | Mean patch ΔE00 | Luminance SSIM | Relationship |
+| --- | --: | --: | --- |
+| `concrete-smooth` / `concrete-polished` | 0.27 | 0.994 | preset of the same set |
+| `metal-stainless-satin` / `metal-stainless-brushed` | 1.18 | 0.979 | different sets |
+| `plaster-painted` / `synthetic-plastic-matte` | 1.98 | 0.973 | different sets |
+
+The references also read too dark and, cropped to a shelf tile, too small to recognise. Keeping swatches avoids the dark pictures but does not cure distinctness: the two concretes share the swatch `#bababa` and the two stainless entries share `#d6d1cb`, so only their labels tell them apart today. The owner approved deferring this visual failure to U, with these boundaries:
+
+| Concern | Owner | State |
+| --- | --- | --- |
+| Inspection correctness, rendering infrastructure and reference derivatives | E7 | delivered, with automated technical checks |
+| Material qualification: sources, licence, pins, resolution, scale, seams and albedo | F | as F recorded it; E7 neither repeats nor extends it, and it does not imply distinctness |
+| Final thumbnail appearance, responsive card design, display-size readability and visual presentation | U | open |
+| The catalogue-intake distinctness criterion | revalidated in U | failed and deferred |
+
+Until revalidation no entry is recorded as having passed distinctness and none is dropped under this deferral. The criterion and its consequence stand: a failing preset is dropped and a failing set goes to its alternate. If presentation cannot separate a pair, U returns that catalogue decision to the owner.
 
 ## G · Transfer a Finish between projects
 
@@ -234,6 +257,40 @@ Compare each observed backend with its A baseline. Use the #385 current-world an
 Engineering hands over a callable command/query inventory with sample inputs and results, the supported channel × mapping × target matrix, the preview recipes, the small licensed library, and reproducible examples of conflicts, incomplete imports, missing UVs, cold-load refusal and targeted repair. Each result identifies the affected Finish, users, source, override state and corrective operation where applicable. Include the slowest measured operation and the evidence for its progress or cancellation state.
 
 **E handoff limitation.** One Finish registration names either Scene objects or Layout surfaces, never both: F4 refuses a compound Scene + Layout write and E does not widen it. The creator therefore registers the new Finish on one kind, then paints the remaining users in a second step. U's journey, copy and error handling must present that as two deliberate steps, not as a failed import; shared Finish editing across both kinds is preserved.
+
+### First deliverable of U: swatch treatment
+
+By owner decision (2026-11-21) the treatment of the material swatches is U's **first deliverable**, ahead of the rest of its design. Until it is delivered the shelf keeps its single-colour swatches.
+
+**The technique is TBD.** It gets dedicated planning later, as part of U's design, and E7 neither chooses nor implements it. That planning must settle:
+
+- what a swatch represents at each display size, including its crop and physical scale;
+- how colour, texture, metals and finish-only variants read, including entries that share one colour map;
+- how a swatch is produced, including whether a lightweight computed representation can replace a full render;
+- how curated, project and private-library Finishes each obtain, cache and refresh one, without full-resolution fetches when a list opens.
+
+Flat crops, lit renders and a mix of both are candidates to evaluate; none is selected. The delivered treatment is subject to the revalidation below.
+
+### Thumbnail revalidation required in U
+
+U owns the product thumbnails and replaces the shelf's colour swatches only after it has validated each of these. It cannot close while the [deferred criterion](#owner-approved-deferral-catalogue-distinctness-2026-11-21) is unresolved.
+
+1. **Actual display sizes:** each entry is recognisable at every size and crop the design ships, including narrow layouts.
+2. **Retina sharpness:** each derivative covers its CSS size at 2× pixel density.
+3. **Thumbnail lighting:** colour reads true to the material under the chosen presentation, and F's clipping limit holds. A recipe change gets a new version and leaves the inspection references intact.
+4. **Similar-material differentiation:** F's rule is re-run on every pair at the shipped presentation and the result recorded, along with a readability check at display size. The three failing pairs, and the narrow passes brass/gold and linen/carpet, get explicit attention.
+5. **Private-library compatibility:** G as built cannot store the proposed masters in its one thumbnail slot. `uploadFinishThumbnail` accepts exactly 192×192; the API accepts a PNG of at most 192 px per edge and 256 KiB. U either fits that contract or proposes a scoped change to it.
+
+The following are strong design inputs from the owner discussion, **not frozen contracts**:
+
+| Representation | Indicative size (CSS px) | Source |
+| --- | --- | --- |
+| XS circle, inline | 24 or 32 | sphere master |
+| S square, quick access | 56 (minimum 48) | flat master |
+| M card, library | 128×160 (compact 96×124) | sphere master |
+| L detail | 240, with a flat close-up | both |
+
+The proposed masters are a 512 px sphere and a 256 px flat. E7's 192 px references stay engineering references.
 
 Design one curated-first journey and validate it against four tasks. An occasional creator paints a wall with walnut and changes its sheen. A material artist corrects a gloss/ORM set, compares grain and normals under two lights, and gives one of three surfaces a different scale. A returning creator moves the result to another project and can explain what is shared. A creator with an incompatible model or missing image can identify and repair the affected channel without losing the rest. Evaluate cold reopen, cancel/Undo, keyboard and coarse-pointer access and narrow layouts. Keep PLATE's Library, Paint, contextual editing and Ask semantics. The UX plan chooses placement, disclosure, wording and comparison interactions using these proofs. [Approved shell and visual system](../../../reference/design-system/editor-shell-and-visual-system.md)
 

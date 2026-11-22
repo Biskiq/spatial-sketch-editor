@@ -66,6 +66,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
+	import { STAGE_NEUTRAL_AMBIENT_INTENSITY, STAGE_NEUTRAL_DIRECTIONALS } from '$lib/render/stage-neutral-lighting';
 	import { sunShadowKey, worldEnvironmentLook } from '$lib/render/world-environment';
 	import type { SceneSky } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
@@ -429,10 +430,11 @@ import StageMatGround from './StageMatGround.svelte';
 		<!-- The World's environment replaces the neutral lights, and the mat outside the plate. -->
 		<WorldEnvironment {sky} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
-		<T.AmbientLight intensity={0.45} />
+		<T.AmbientLight intensity={STAGE_NEUTRAL_AMBIENT_INTENSITY} />
 		<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
-		<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
-		<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
+		{#each STAGE_NEUTRAL_DIRECTIONALS as neutral (neutral.position.join(','))}
+			<T.DirectionalLight position={[...neutral.position]} intensity={neutral.intensity} />
+		{/each}
 	{/if}
 	<StageCamera {evaluation} paperVisible={paperCovers} paperInk={paperInk2d} frameViewport={framedViewport} worldOnly={framedViewport !== null} environmentSky={environmentShown} />
 	{#if evaluation !== null && matVisible}

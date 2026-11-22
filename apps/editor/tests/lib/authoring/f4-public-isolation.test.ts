@@ -15,7 +15,7 @@
  * root must be a member, and the closure must actually reach the shared F4
  * package modules.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -55,6 +55,31 @@ describe('F.4 editor-only isolation', () => {
 			expect(reached.has(preferences)).toBe(false);
 		}
 	});
+	it('keeps material inspection and its derivatives out of visitor and public import closures', () => {
+		const materials = join(EDITOR_SRC, 'lib', 'render', 'materials');
+		const inspection = [
+			...readdirSync(materials)
+				.filter((file) => /^(?:inspection.*|catalogue-thumbnails)\.ts$/.test(file))
+				.map((file) => join(materials, file)),
+			join(EDITOR_SRC, 'lib', 'content', 'material-thumbnails.json'),
+			join(EDITOR_SRC, 'lib', 'dev', 's8-colour-difference.ts')
+		];
+		// Positive controls: the modules exist, and the dev inspection gate does reach them.
+		expect(inspection).toContain(join(materials, 'inspection-host.ts'));
+		expect(inspection).toContain(join(materials, 'catalogue-thumbnails.ts'));
+		for (const file of inspection) expect(existsSync(file), file).toBe(true);
+		const gate = importClosure([join(EDITOR_SRC, 'routes', 'dev', 'materials', 'gate.ts')]);
+		expect(gate.has(join(materials, 'inspection-host.ts'))).toBe(true);
+		expect(gate.has(join(materials, 'catalogue-thumbnails.ts'))).toBe(true);
+
+		const preview = join(EDITOR_SRC, 'lib', 'visitor', 'VisitorPreviewSurface.svelte');
+		for (const root of [PUBLIC_ROUTE_ROOT, preview]) {
+			const reached = importClosure([root]);
+			expect(reached.has(root)).toBe(true);
+			expect(inspection.filter((file) => reached.has(file))).toEqual([]);
+		}
+	});
+
 	it('keeps the acceptance coordinator and its history out of the public route closure', () => {
 		expect(existsSync(COORDINATOR), 'the coordinator must exist for this proof to mean anything').toBe(true);
 

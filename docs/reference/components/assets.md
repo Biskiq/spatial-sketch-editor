@@ -189,8 +189,18 @@ retained sources. The six legacy placeholder IDs resolve for existing documents 
 values and bytes but are not offered for new use; new authored objects default to
 `plaster-painted`.
 
-**Not current (destination).** 192² catalogue thumbnail derivatives, adaptive resolution streaming
-or progressive refinement, automatic quality selection by device, a user texture-quality preference,
+**Inspection reference derivatives (T2.S8 E7).** Each creator-facing entry has one 192×192 PNG
+engineering reference under `/material-thumbnails/`: sphere, studio, lit and Natural. They are
+regression references for material inspection, not product thumbnails, and no product surface shows
+them. The manifest `src/lib/content/material-thumbnails.json` records their purpose, the recipe
+versions and each file's key and sha256. `catalogueThumbnailUri` returns a file only while its key
+matches the one the current entry, size, geometry and recipe versions produce, and a lookup loads no
+texture. Regenerate from `apps/editor`, with its dev server running and `S8_GATE_BASE_URL` naming it,
+with `node scripts/generate-material-thumbnails.mjs`. 192×192 is the versioned reference size, not a
+display size: the [inspection host](./rendering.md#material-inspection) serves other sizes and
+geometries on demand, and none is pre-generated.
+
+**Not current (destination).** Product catalogue thumbnails, adaptive resolution streaming or progressive refinement, automatic quality selection by device, a user texture-quality preference,
 anisotropic filtering, GPU-compressed (KTX2/Basis) derivatives and CDN-origin Expansion delivery.
 Each needs its own consumer and evidence. Adding another resolution of a set is an allowlist append
 under a new URI, never a change to an existing pin.

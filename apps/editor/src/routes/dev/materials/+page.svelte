@@ -1,254 +1,487 @@
 <script lang="ts">
+	/**
+	 * The E7 engineering consumer of material inspection.
+	 *
+	 * One host on the page's own renderer inspects a catalogue entry, the
+	 * fixture's accepted Finish or a provisional draft, on each reference
+	 * geometry, light and display. `?gate=e7` runs the technical checks and
+	 * publishes its JSON; `?backend=webgl2` observes the compatibility backend.
+	 * This is a dev surface, not Materials UX.
+	 */
+	import { INSPECTION_VERSION } from '$lib/render/materials/inspection';
+	import { INSPECTION_GEOMETRY_VERSION } from '$lib/render/materials/inspection-geometry';
+	import { INSPECTION_LIGHTING_VERSION } from '$lib/render/materials/inspection-lighting';
+	import { onDestroy, onMount, tick } from 'svelte';
+	import { page } from '$app/state';
+	import type { Camera, Scene } from 'three';
+	import type { SceneSky } from '@portfolio/project-model/units';
 	import CanvasHost from '$lib/render/CanvasHost.svelte';
-  import { page } from '$app/state';
-  import { T } from '@threlte/core';
-  import { onDestroy } from 'svelte';
-  import { provideRenderResources } from '$lib/render/resources/render-resources';
-  import { computeTextureRepeat, getMaterial } from '$lib/content/materials';
-  import MaterialPreviewItem from '$lib/render/materials/MaterialPreviewItem.svelte';
-  import type { MaterialId, MaterialLoadStatus, Vec2 } from '$lib/types/materials';
+	import type { CanvasRendererState } from '$lib/render/renderer-context';
+	import { provideRenderResources } from '$lib/render/resources/render-resources';
+	import { describeSceneRender } from '$lib/render/scene-render-description';
+	import { describeSceneLights } from '$lib/render/scene-light-description';
+	import { createSceneEntityRepresentation } from '$lib/render/scene-entity-representation';
+	import { createSceneLightRepresentation } from '$lib/render/scene-light-representation';
+	import { catalogueThumbnailUri } from '$lib/render/materials/catalogue-thumbnails';
+	import type { InspectionGeometryKind } from '$lib/render/materials/inspection-geometry';
+	import {
+		createInspectionHost,
+		type InspectionDisplay,
+		type InspectionState,
+		type InspectionTexel
+	} from '$lib/render/materials/inspection-host';
+	import type { InspectionSubject } from '$lib/render/materials/inspection-subject';
+	import { worldLightSampleFor } from '$lib/render/materials/inspection-world';
+	import { materials } from '$lib/content/materials';
+	import type { MaterialId } from '$lib/types/materials';
+	import StageReference from './StageReference.svelte';
+	import { INSPECTION_ANCHOR, buildInspectionFixture, type InspectionFixture } from './fixture';
+	import { runE7Gate, type GateReport } from './gate';
 
-  // The Canvas owns one material and geometry store for its subtree.
-  const resources = provideRenderResources();
-  onDestroy(() => resources.dispose());
+	if (page.url.searchParams.get('backend') === 'webgl2') {
+		Object.defineProperty(Navigator.prototype, 'gpu', { get: () => undefined, configurable: true });
+	}
+	const gated = page.url.searchParams.get('gate') === 'e7';
 
-  type PreviewSpec = {
-    id: MaterialId;
-    kind: 'wall' | 'floor' | 'brass' | 'box' | 'curtain' | 'paper';
-    surfaceSize: Vec2;
-    position: [number, number, number];
-  };
+	const resources = provideRenderResources();
+	const host = createInspectionHost({ materials: resources.materials, lights: resources.lights });
 
-  const previews: PreviewSpec[] = [
-    { id: 'plaster-warm', kind: 'wall', surfaceSize: [3, 2.4], position: [-4.5, 1.2, 0] },
-    { id: 'wood-walnut', kind: 'floor', surfaceSize: [3, 3], position: [-1.5, 0, 0] },
-    { id: 'brass-aged', kind: 'brass', surfaceSize: [0.8, 0.8], position: [1.2, 0.6, 0] },
-    { id: 'marble-light', kind: 'box', surfaceSize: [1.4, 0.25], position: [3.4, 0.12, 0] },
-    { id: 'velvet-dark', kind: 'curtain', surfaceSize: [1.6, 2.4], position: [5.4, 1.2, 0] },
-    { id: 'paper-aged', kind: 'paper', surfaceSize: [0.9, 1.2], position: [7.2, 1.1, 0] }
-  ];
+	let fixture = $state.raw<InspectionFixture | null>(null);
+	let entities = $state.raw<ReturnType<typeof createSceneEntityRepresentation> | null>(null);
+	let worldLights = $state.raw<ReturnType<typeof createSceneLightRepresentation> | null>(null);
+	let stageScene: Scene | null = null;
+	let stageCamera: Camera | null = null;
+	let renderer: CanvasRendererState | null = null;
+	let backend = $state('starting');
+	let ready = $state(false);
+	let error = $state<string | null>(null);
+	let report = $state.raw<GateReport | null>(null);
 
-  const texturesOff = $derived(page.url.searchParams.get('textures') === 'off');
-  const textureMode = $derived(texturesOff ? ('off' as const) : ('auto' as const));
+	let subjectId = $state('finish');
+	let geometry = $state<InspectionGeometryKind>('sphere');
+	let lighting = $state<'studio' | 'grazing' | 'world' | 'paper'>('studio');
+	let displayId = $state('lit');
+	let size = $state('384x384');
+	let uv = $state({ u: 0.5, v: 0.5 });
+	let worldSky = $state.raw<SceneSky | null>(null);
+	let referencesOpen = $state(true);
+	let inspection = $state.raw<InspectionState>({ status: 'pending' });
+	let texel = $state.raw<InspectionTexel | null>(null);
+	let output = $state<HTMLCanvasElement | undefined>(undefined);
 
-  let plasterStatus = $state<MaterialLoadStatus>('idle');
-  let woodStatus = $state<MaterialLoadStatus>('idle');
-  let brassStatus = $state<MaterialLoadStatus>('idle');
-  let marbleStatus = $state<MaterialLoadStatus>('idle');
-  let velvetStatus = $state<MaterialLoadStatus>('idle');
-  let paperStatus = $state<MaterialLoadStatus>('idle');
+	const references = materials.map((material) => ({
+		id: material.id,
+		label: material.label,
+		color: material.swatchColor ?? material.fallbackColor,
+		thumbnail: catalogueThumbnailUri(material.id)
+	}));
 
-  const statusById = $derived({
-    'plaster-warm': plasterStatus,
-    'wood-walnut': woodStatus,
-    'brass-aged': brassStatus,
-    'marble-light': marbleStatus,
-    'velvet-dark': velvetStatus,
-    'paper-aged': paperStatus
-  } as Record<MaterialId, MaterialLoadStatus>);
+	function subjectOf(id: string, from: InspectionFixture): InspectionSubject {
+		if (id === 'finish') return from.finish;
+		if (id === 'draft') return { kind: 'draft', draft: from.drafts.corrected };
+		if (id === 'absent-uv1') return { kind: 'draft', draft: from.drafts.secondUv };
+		return { kind: 'catalogue', id: id as MaterialId };
+	}
+	const subject = $derived(fixture === null ? null : subjectOf(subjectId, fixture));
 
-  function repeatFor(id: MaterialId, surfaceSize: Vec2) {
-    const material = getMaterial(id);
-    return computeTextureRepeat(surfaceSize, material.defaultTileSizeMeters ?? [1, 1]);
-  }
+	$effect(() => {
+		if (gated || fixture === null || subject === null) return;
+		const [width, height] = size.split('x').map(Number);
+		const display = (
+			displayId === 'lit' || displayId === 'unlit-color' ? displayId : { solo: displayId }
+		) as InspectionDisplay;
+		return host.observe(
+			{
+				subject,
+				geometry,
+				lighting:
+					lighting === 'studio' || lighting === 'grazing'
+						? lighting
+						: {
+								world: worldLightSampleFor({
+									scene: fixture.scene,
+									acceptedRevision: fixture.revision,
+									sky: lighting === 'world' ? fixture.sky : null,
+									frame: fixture.frame,
+									anchorWorld: INSPECTION_ANCHOR
+								})
+							},
+				display,
+				sizePx: [width!, height!]
+			},
+			(next) => (inspection = next)
+		);
+	});
+
+	$effect(() => {
+		if (gated || fixture === null) return;
+		if (lighting === 'world') worldSky = fixture.sky;
+		if (lighting === 'paper') worldSky = null;
+	});
+
+	$effect(() => {
+		const state = inspection;
+		if (output === undefined) return;
+		const context = output.getContext('2d')!;
+		if (!('frame' in state)) {
+			context.clearRect(0, 0, output.width, output.height);
+			return;
+		}
+		output.width = state.frame.width;
+		output.height = state.frame.height;
+		context.putImageData(
+			new ImageData(new Uint8ClampedArray(state.frame.pixels), state.frame.width, state.frame.height),
+			0,
+			0
+		);
+	});
+
+	function onRendererState(state: CanvasRendererState | null): void {
+		if (state?.renderer == null || state.backend === null) {
+			renderer = null;
+			backend = 'starting';
+			host.detach();
+			return;
+		}
+		// The host record is mutable; keep this generation's values.
+		renderer = { ...state, viewGeneration: { ...state.viewGeneration } };
+		backend = state.backend;
+		host.attach({ renderer: state.renderer, backend: state.backend, viewGeneration: state.viewGeneration });
+	}
+
+	const frames = () =>
+		new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+	async function until(condition: () => boolean, what: string): Promise<void> {
+		const started = performance.now();
+		while (!condition()) {
+			if (performance.now() - started > 30_000) throw new Error(`${what} was not ready`);
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		}
+	}
+
+	async function inspectTexel(): Promise<void> {
+		if (subject !== null) texel = await host.texel({ subject, geometry, uv: [uv.u, uv.v] });
+	}
+
+	let disposed = false;
+
+	onMount(() => {
+		void (async () => {
+			try {
+				const built = await buildInspectionFixture();
+				if (disposed) {
+					built.dispose();
+					return;
+				}
+				fixture = built;
+				worldSky = built.sky;
+				await until(() => renderer !== null, 'the renderer');
+				const rep = createSceneEntityRepresentation({
+					store: resources.materials,
+					geometry: resources.geometry,
+					scope: () => built.scope,
+					modelSupport: () => null,
+					modelUrls: () => new Map(),
+					viewGeneration: () => renderer?.viewGeneration ?? null
+				});
+				const lightRep = createSceneLightRepresentation({ lights: resources.lights });
+				lightRep.update(describeSceneLights(built.scene));
+				entities = rep;
+				worldLights = lightRep;
+				await tick();
+				rep.update(describeSceneRender(built.scene));
+				await rep.idle();
+				await frames();
+				await until(() => stageScene !== null, 'the Stage reference');
+
+				// The thumbnail generator renders through this page's host.
+				Object.assign(window, {
+					materialInspection: {
+						versions: {
+							inspection: INSPECTION_VERSION,
+							lighting: INSPECTION_LIGHTING_VERSION,
+							geometry: INSPECTION_GEOMETRY_VERSION
+						},
+						catalogue: materials.map((material) => material.id),
+						async thumbnail(id: MaterialId) {
+							const result = await host.thumbnail({ subject: { kind: 'catalogue', id } });
+							if (result.status !== 'ready') return result;
+							return { status: result.status, key: result.key, png: [...result.png] };
+						}
+					}
+				});
+
+				if (gated) {
+					referencesOpen = false;
+					await tick();
+					report = await runE7Gate({
+						resources,
+						fixture: built,
+						pageHost: host,
+						renderer: () => renderer,
+						stageScene: () => stageScene,
+						stageCamera: () => {
+							if (stageCamera === null) throw new Error('the Stage camera is not mounted');
+							return JSON.stringify([stageCamera.matrixWorld.toArray(), stageCamera.projectionMatrix.toArray()]);
+						},
+						async showWorld(sky) {
+							worldSky = sky;
+							await tick();
+							await rep.idle();
+							await frames();
+						},
+						async showReferences(open) {
+							referencesOpen = open;
+							await tick();
+							if (!open) return;
+							await Promise.all(
+								[...document.querySelectorAll<HTMLImageElement>('img[data-reference-thumbnail]')].map((image) =>
+									image.decode()
+								)
+							);
+						}
+					});
+				}
+				ready = true;
+			} catch (cause) {
+				error = cause instanceof Error ? `${cause.message}\n${cause.stack}` : String(cause);
+			}
+		})();
+	});
+
+	onDestroy(() => {
+		disposed = true;
+		host.dispose();
+		entities?.dispose();
+		worldLights?.dispose();
+		fixture?.dispose();
+		resources.dispose();
+	});
 </script>
 
 <svelte:head>
-  <title>Material Preview — Chopin Museum Dev</title>
+	<title>Material inspection — dev</title>
 </svelte:head>
 
-<main class="page">
-  <aside class="panel">
-    <p class="eyebrow">/dev/materials</p>
-    <h1>Architecture materials</h1>
-    <p class="lede">
-      Isolated PBR preview. Use <code>?textures=off</code> to force fallback colours.
-    </p>
+<main
+	data-e7-ready={error !== null ? 'error' : ready}
+	data-e7-backend={backend}
+	data-e7-status={inspection.status}
+	data-e7-result={report === null ? null : JSON.stringify(report)}
+	data-e7-error={error}
+>
+	<header>
+		<h1>Material inspection</h1>
+		<span>{backend} · {inspection.status}</span>
+		<label>
+			Subject
+			<select bind:value={subjectId}>
+				<option value="finish">Accepted project Finish</option>
+				<option value="draft">Corrected draft</option>
+				<option value="absent-uv1">Draft with absent UV1</option>
+				{#each materials as material (material.id)}
+					<option value={material.id}>{material.label}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			Geometry
+			<select bind:value={geometry}>
+				<option value="sphere">Sphere</option>
+				<option value="plane">Plane</option>
+				<option value="block">Block</option>
+			</select>
+		</label>
+		<label>
+			Lighting
+			<select bind:value={lighting}>
+				<option value="studio">Studio</option>
+				<option value="grazing">Grazing</option>
+				<option value="world">Current World, Sky</option>
+				<option value="paper">Current World, Paper</option>
+			</select>
+		</label>
+		<label>
+			Display
+			<select bind:value={displayId}>
+				{#each ['lit', 'unlit-color', 'color', 'normal', 'roughness', 'metalness', 'occlusion'] as id (id)}
+					<option value={id}>{id}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			Size
+			<select bind:value={size}>
+				{#each ['64x64', '192x192', '384x384', '768x768', '384x192', '192x384'] as value (value)}
+					<option {value}>{value}</option>
+				{/each}
+			</select>
+		</label>
+	</header>
 
-    <ul>
-      {#each previews as preview (preview.id)}
-        {@const material = getMaterial(preview.id)}
-        {@const repeat = repeatFor(preview.id, preview.surfaceSize)}
-        {@const status = statusById[preview.id]}
-        <li>
-          <strong>{material.label}</strong>
-          <span>{preview.surfaceSize[0].toFixed(2)} × {preview.surfaceSize[1].toFixed(2)} m</span>
-          <span>repeat {repeat[0].toFixed(2)} × {repeat[1].toFixed(2)}</span>
-          <span
-            class:ready={status === 'ready'}
-            class:failed={status === 'failed'}
-            class:fallback={status === 'fallback' || status === 'loading'}
-          >
-            {status}{status === 'failed' || status === 'fallback' ? ' (fallback colour)' : ''}
-          </span>
-        </li>
-      {/each}
-    </ul>
+	{#if error !== null}
+		<pre role="alert">{error}</pre>
+	{/if}
 
-    <p class="hint">
-      Textured: plaster, wood, brass. Marble / velvet / paper are fallback-only until assets arrive.
-    </p>
-    <a href="/museum">Back to museum</a>
-  </aside>
+	<section class="views">
+		<figure>
+			<canvas bind:this={output} width="384" height="384" data-e7-output></canvas>
+			<figcaption>Inspection</figcaption>
+		</figure>
+		<figure>
+			<div class="stage">
+				<CanvasHost surface="preview" renderMode="always" placeholder="#555555" {onRendererState}>
+					{#snippet children()}
+						{#if fixture !== null && entities !== null && worldLights !== null}
+							<StageReference
+								sky={worldSky}
+								frame={fixture.frame}
+								entities={entities.object3d}
+								lights={worldLights.object3d}
+								onScene={(scene, camera) => {
+									stageScene = scene;
+									stageCamera = camera;
+								}}
+							/>
+						{/if}
+					{/snippet}
+				</CanvasHost>
+			</div>
+			<figcaption>Stage reference</figcaption>
+		</figure>
+		<div class="readings">
+			{#if inspection.status === 'partial' || inspection.status === 'refused'}
+				<ul data-e7-issues>
+					{#each inspection.issues as issue, index (index)}
+						<li>{issue.code} {issue.role ?? ''} {issue.action ?? ''}</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if inspection.status === 'ready' || inspection.status === 'partial'}
+				<table>
+					<tbody>
+						{#each inspection.channels as channel (channel.role)}
+							<tr>
+								<th>{channel.role}</th>
+								<td>{channel.state}</td>
+								<td>{channel.component ?? channel.convention ?? ''}{channel.invert ? ' inverted' : ''}</td>
+								<td>{JSON.stringify(channel.provenance)}</td>
+								<td>{channel.constant}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+			<label>U <input type="number" min="0" max="1" step="0.05" bind:value={uv.u} /></label>
+			<label>V <input type="number" min="0" max="1" step="0.05" bind:value={uv.v} /></label>
+			<button type="button" onclick={inspectTexel} disabled={subject === null}>Read texel</button>
+			{#if texel !== null}
+				{#if texel.status === 'refused'}
+					<p>{texel.issues[0]?.code}</p>
+				{:else}
+					<table data-e7-texel>
+						<thead><tr><th>role</th><th>source</th><th>converted</th><th>effective</th></tr></thead>
+						<tbody>
+							{#each texel.channels as channel (channel.role)}
+								<tr>
+									<th>{channel.role}</th>
+									{#each [channel.source, channel.converted, channel.effective] as values, index (index)}
+										<td>{values?.map((value) => value.toFixed(3)).join(' ') ?? '—'}</td>
+									{/each}
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+			{/if}
+		</div>
+	</section>
 
-  <div class="canvas-shell">
-    <CanvasHost surface="preview" renderMode="always" placeholder="#121218">
-      {#snippet children()}
-      <T.PerspectiveCamera makeDefault position={[2.2, 2.4, 8.5]} fov={45} />
-      <T.AmbientLight intensity={0.35} />
-      <T.HemisphereLight args={['#f0e6d4', '#1a1814', 0.55]} />
-      <T.DirectionalLight position={[4, 8, 3]} intensity={1.15} color="#fff4e5" />
-      <T.Color attach="background" args={['#121218']} />
+	{#if referencesOpen}
+		<h2>Engineering reference derivatives (not product thumbnails)</h2>
+		<ul class="references">
+			{#each references as item (item.id)}
+				<li>
+					{#if item.thumbnail}
+						<img data-reference-thumbnail src={item.thumbnail} alt="" width="96" height="96" />
+					{:else}
+						<i style:background={item.color}></i>
+					{/if}
+					{item.label}
+				</li>
+			{/each}
+		</ul>
+	{/if}
 
-      <MaterialPreviewItem
-        materialId="plaster-warm"
-        kind="wall"
-        surfaceSize={[3, 2.4]}
-        position={[-4.5, 1.2, 0]}
-        textures={textureMode}
-        bind:status={plasterStatus}
-      />
-      <MaterialPreviewItem
-        materialId="wood-walnut"
-        kind="floor"
-        surfaceSize={[3, 3]}
-        position={[-1.5, 0, 0]}
-        textures={textureMode}
-        bind:status={woodStatus}
-      />
-      <MaterialPreviewItem
-        materialId="brass-aged"
-        kind="brass"
-        surfaceSize={[0.8, 0.8]}
-        position={[1.2, 0.6, 0]}
-        textures={textureMode}
-        bind:status={brassStatus}
-      />
-      <MaterialPreviewItem
-        materialId="marble-light"
-        kind="box"
-        surfaceSize={[1.4, 0.25]}
-        position={[3.4, 0.12, 0]}
-        textures={textureMode}
-        bind:status={marbleStatus}
-      />
-      <MaterialPreviewItem
-        materialId="velvet-dark"
-        kind="curtain"
-        surfaceSize={[1.6, 2.4]}
-        position={[5.4, 1.2, 0]}
-        textures={textureMode}
-        bind:status={velvetStatus}
-      />
-      <MaterialPreviewItem
-        materialId="paper-aged"
-        kind="paper"
-        surfaceSize={[0.9, 1.2]}
-        position={[7.2, 1.1, 0]}
-        textures={textureMode}
-        bind:status={paperStatus}
-      />
-
-      <T.Mesh position={[1.5, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <T.PlaneGeometry args={[16, 6]} />
-        <T.MeshStandardMaterial color="#1a1a22" roughness={0.95} />
-      </T.Mesh>
-      {/snippet}
-    </CanvasHost>
-  </div>
+	{#if report !== null}
+		<p>{report.pass ? 'Technical checks passed' : `Technical checks failed: ${report.failed.join('; ')}`}</p>
+	{/if}
 </main>
 
 <style>
-  .page {
-    display: grid;
-    grid-template-columns: minmax(18rem, 24rem) 1fr;
-    min-height: 100vh;
-    background: #0b0b10;
-    color: #f4efe4;
-    font-family:
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      sans-serif;
-  }
+	main {
+		min-height: 100vh;
+		padding: 16px;
+		background: #333;
+		color: #f4f4f4;
+		font: 12px/1.4 ui-sans-serif, system-ui, sans-serif;
+	}
 
-  .panel {
-    padding: 1.25rem 1.35rem;
-    border-right: 1px solid rgb(255 255 255 / 0.1);
-    background: rgb(10 10 14 / 0.92);
-    overflow: auto;
-  }
+	header,
+	.views {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		align-items: start;
+		margin-bottom: 16px;
+	}
 
-  .eyebrow {
-    margin: 0;
-    color: #d6b35f;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-  }
+	h1 {
+		margin: 0;
+		font-size: 15px;
+	}
 
-  h1 {
-    margin: 0.35rem 0 0.6rem;
-    font-size: 1.7rem;
-  }
+	figure {
+		margin: 0;
+	}
 
-  .lede,
-  .hint,
-  li span {
-    color: rgb(244 239 228 / 0.72);
-    line-height: 1.45;
-    font-size: 0.9rem;
-  }
+	canvas[data-e7-output],
+	.stage {
+		width: 384px;
+		height: 384px;
+		max-width: 100%;
+		background: #555;
+		object-fit: contain;
+	}
 
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 1rem 0;
-    display: grid;
-    gap: 0.75rem;
-  }
+	.stage {
+		position: relative;
+	}
 
-  li {
-    display: grid;
-    gap: 0.15rem;
-    padding: 0.7rem 0.8rem;
-    border: 1px solid rgb(255 255 255 / 0.1);
-    border-radius: 0.75rem;
-    background: rgb(255 255 255 / 0.04);
-  }
+	.readings {
+		max-width: 100%;
+		overflow-x: auto;
+	}
 
-  .ready {
-    color: #9ed3bf;
-  }
+	th,
+	td {
+		padding: 2px 8px;
+		text-align: left;
+	}
 
-  .failed,
-  .fallback {
-    color: #d18b56;
-  }
+	.references {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+		gap: 8px;
+		padding: 0;
+		list-style: none;
+	}
 
-  a {
-    color: #d6b35f;
-  }
-
-  .canvas-shell {
-    position: relative;
-    min-height: 100vh;
-  }
-
-  @media (max-width: 840px) {
-    .page {
-      grid-template-columns: 1fr;
-      grid-template-rows: auto 60vh;
-    }
-
-    .panel {
-      border-right: 0;
-      border-bottom: 1px solid rgb(255 255 255 / 0.1);
-      max-height: 40vh;
-    }
-
-    .canvas-shell {
-      min-height: 60vh;
-    }
-  }
+	.references img,
+	.references i {
+		display: block;
+		width: 96px;
+		height: 96px;
+	}
 </style>
