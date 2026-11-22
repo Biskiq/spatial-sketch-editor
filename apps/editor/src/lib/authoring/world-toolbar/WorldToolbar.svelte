@@ -555,7 +555,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		border: 0;
 		border-radius: var(--shell-instrument-radius);
 		background: var(--shell-forest);
-		box-shadow: var(--shell-instrument-shadow);
+		box-shadow: var(--shell-dock-shadow);
 		color: var(--shell-ink-light);
 		font-family: var(--shell-sans);
 		overflow: hidden;
@@ -935,26 +935,32 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	.note .act {
 		margin-left: auto;
 	}
+	/* The shared dock anatomy (--shell-dock-*): inset rounded keys centred on a 56 px forest bar. */
 	.dock {
 		flex: none;
 		display: flex;
-		align-items: stretch;
-		height: 56px;
+		align-items: center;
+		justify-content: safe center;
+		gap: var(--shell-dock-gap);
+		height: var(--shell-dock-height);
+		padding: 0 var(--shell-dock-pad-x);
 		overflow-x: auto;
 		overflow-y: hidden;
 		background: var(--shell-forest);
 	}
 	.key {
 		position: relative;
-		flex: 1 0 50px;
+		flex: 0 0 auto;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		gap: 2px;
-		min-width: 50px;
-		padding: 0 4px;
+		min-width: var(--shell-dock-key-min-width);
+		height: var(--shell-dock-key-height);
+		padding: 0 var(--shell-dock-key-pad-x);
 		border: 0;
+		border-radius: var(--shell-dock-key-radius);
 		background: transparent;
 		color: var(--shell-ink-quiet);
 		cursor: pointer;
@@ -973,7 +979,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		outline-offset: -2px;
 	}
 	.kl {
-		font: 500 var(--shell-text-control)/1 var(--shell-sans);
+		font: 500 var(--shell-dock-label-size)/1 var(--shell-sans);
 		letter-spacing: -0.005em;
 		white-space: nowrap;
 	}
@@ -1003,10 +1009,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	}
 	.kk {
 		position: absolute;
-		top: 4px;
+		top: 3px;
 		right: 5px;
-		color: color-mix(in srgb, var(--shell-ivory) 32%, transparent);
-		font: 400 7px/1 var(--shell-mono);
+		color: var(--shell-dock-hint-ink);
+		font: 400 var(--shell-dock-hint-size)/1 var(--shell-mono);
 	}
 	.family-dots {
 		display: flex;
@@ -1024,9 +1030,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	}
 	.sep {
 		flex: none;
-		align-self: stretch;
+		align-self: center;
 		width: 1px;
-		margin: 12px 0;
+		height: var(--shell-dock-sep-height);
+		margin: 0 var(--shell-dock-sep-margin);
 		background: var(--shell-line-on-forest);
 	}
 	button:focus-visible {
@@ -1047,15 +1054,12 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		.picks {
 			height: 58px;
 		}
-		.dock {
-			height: 54px;
-		}
 		.key {
-			flex-basis: 51px;
-			min-width: 51px;
+			min-width: 44px;
+			padding: 0 3px;
 		}
-		.kl {
-			font-size: var(--shell-text-utility);
+		.kk {
+			display: none;
 		}
 	}
 	@media (pointer: coarse) {

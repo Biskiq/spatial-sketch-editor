@@ -7,6 +7,13 @@ never reconciled downward to fit current code. A conflict with a hard invariant 
 judgment. Routine implementation does not amend this contract; accepted enduring design rules
 are deliberately promoted here when implementation is accepted.
 
+**Accepted appearance design (#399) supersedes older shell references.** Where the accepted
+appearance study (`prototypes/appearance-ux`, approved 2026-11-22) and an older reference in this
+document, the sheets or an archived plan disagree about a surface it designed, the accepted
+design governs that surface. T2.S8 U8 promotes its dock anatomy; U2 promoted its armed key and
+Paint tray. Surfaces it did not design (Index, Card internals, Library, Material editor, Guide)
+keep their existing authority until their own slice adopts the design.
+
 **Accepted foundation:** Core Product Stability at PR #271 (`ce4e232c`) includes room and shape
 creation, direct manipulation, Camera and Experience authoring, and visitor Preview. This does
 not claim the complete destination below, advanced geometry, Object Studio or public publishing.
@@ -138,8 +145,24 @@ never grows sideways, and a tool never opens a second row of controls.
   quiet forest-3 key (`#2d5e48`) with an ivory icon and a 1 px inner edge at 16% white
   (appearance design D12), one shell token for every tool family, so gold and cobalt stay
   the loudest marks on screen. Tool colour survives only as a 2 px mark under an icon
-  and is never a state colour. Controls are icon-first with tooltips (name, key hint);
-  palette controls carry no words at rest.
+  and is never a state colour. **Dock keys carry their word** (icon over label, with the
+  key hint in the corner), as in the accepted design; palette controls carry no words at rest.
+- **Dock anatomy (accepted #399 design, T2.S8 U8).** One chassis and one key serve the World
+  and Experience docks, declared once as `--shell-dock-*` in `presentation-tokens.css`: a
+  **56 px** forest bar (14 px radius, `--shell-dock-shadow`) with 6 px side padding and 2 px
+  between keys, carrying **46 px-tall inset keys**, at least 54 px wide, with a 10 px radius,
+  a 20 px icon over a 10.5 px label, a 9 px mono shortcut hint at 60% ivory in the key's
+  top-right corner, and 28 px separators with 3 px margins between groups. Keys centre in the
+  bar (`safe center`: an overflowing dock scrolls from its start). Idle keys wear the muted
+  light ink and a quiet wash on hover; the **armed key** is the forest-3 key above; an
+  engaged panel key (Guide while open) is the ivory key; a disabled key drops to 42% opacity
+  and stays visible; keyboard focus is the white halo drawn inside the key. A family key
+  carries small dots for its tools, the lit dot marking the armed one, and Paint's key its
+  live material indicator. **Placement:** bottom-centred in the Stage column, 10 px above the
+  Stage edge, with the armed tool's palette or tray 8 px above the dock. Below 700 px keys
+  narrow to 44 px and the shortcut hints drop; coarse pointers keep a 44 px target. The
+  Experience dock fits its content (four keys) in the same chassis and shows no shortcut
+  hints, as it assigns none.
 - **Arming.** Clicking a tool, its key or Find's Arm verb arms it. Arming never changes
   selection; what a gesture makes becomes selected. Tools stay armed until Esc or Select.
   A control that is not a tool, such as the Height Sheet, never arms a tool.
@@ -759,7 +782,7 @@ identity. There is no permanent Scene inventory or property editor; Stage and th
 World locator provide subject reach. Context links explicitly Open or Select
 their target; the Card's context remains canonical selected identity.
 
-The Experience dock is the same lower-edge column as World: **Select**, **Place a View**
+The Experience dock is the same lower-edge column and the same dock anatomy as World: **Select**, **Place a View**
 and **Path** (available while a Guide is open) as pointer tools, then **Capture** (what you
 see becomes a View) and **Guide**, which opens the Guide instrument. Look through adds a
 gold capture frame; Preview is a takeover. The height Sheet is not shown in Experience;
@@ -1024,7 +1047,7 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue other than the proposal ghost |
 | Stage hover | Leaf contour on a hovered 3D Wall; the approved 2D cut-band hover is unchanged |
 | Selection, the held anchor and current playback moment | Gold (`#d4ad45`, dark ink `#74560c` reference), local contour and quiet tint; selection and playback retain different shape/text cues. Gold means selected geometry (or the point being held), never hover, an available action or inspection |
-| Armed tool | Quiet **forest-3** key (`#2d5e48`) with an ivory icon and a 1 px inner edge at 16% white on the dock material (`--shell-tool-armed-*`, D12); tool colour is only a 2 px mark under an icon. Primary buttons, the lens and pressed segments keep the ivory engaged key |
+| Armed tool | Quiet **forest-3** key (`#2d5e48`) with an ivory icon and a 1 px inner edge at 16% white on the dock material (`--shell-tool-armed-*`, D12), on the dock anatomy `--shell-dock-*` (#399, U8); tool colour is only a 2 px mark under an icon. Primary buttons, the lens and pressed segments keep the ivory engaged key |
 | Available transformation | **White sticker** glyphs with a fine ink keyline and soft shadow; glyph lines in ink with a hairline white halo ([mark language](#spatial-mark-language)) |
 | Temporary inspection (Slice and its depth) | Translucent **yellow** plane or volume (`#f2d000` reference) with the state pill; distinct from gold by hue, translucency and the pill |
 | Marked for erasing | **Red** dashes (`#d0412d` reference), only while the Eraser is in use |

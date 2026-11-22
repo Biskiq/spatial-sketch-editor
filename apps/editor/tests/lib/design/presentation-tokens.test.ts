@@ -134,7 +134,6 @@ const SHELL_SURFACES = [
 	'lib/authoring/world-toolbar/ObjectsPlate.svelte',
 	'lib/authoring/stage/shell/StageEnvironmentControl.svelte',
 	'lib/authoring/stage/shell/WorldMark.svelte',
-	'lib/authoring/stage/shell/StageDock.svelte',
 	'lib/authoring/stage/shell/StageDraftingControl.svelte',
 	'lib/authoring/stage/shell/StageEnvironmentControl.svelte',
 	'lib/authoring/stage/shell/StageHeightSheet.svelte',
