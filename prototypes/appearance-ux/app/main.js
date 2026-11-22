@@ -76,7 +76,7 @@ function renderIndex() {
       }
     }
   }
-  el.append(h('p', { class: 'note-sm', style: { margin: '14px 6px 0' } }, 'Finishes in use: Library › This project. Palette: Paint › More.'));
+  el.append(h('p', { class: 'note-sm', style: { margin: '14px 6px 0' } }, 'Finishes in use: Library › This project. Palette: Paint › ⌃ (under the dropper).'));
 }
 
 // ------------------------------------------------------------------ bar
@@ -231,7 +231,8 @@ async function boot() {
   if (qs.get('lib')) A.openLibrary(qs.get('intent') || 'pick', { source: qs.get('lib'), kind: qs.get('kind') || 'materials', detail: qs.get('detail') || null });
   if (qs.get('edit') && TARGETS[qs.get('edit')]) { A.focus(qs.get('edit'), 'finish'); setUi({ editor: { open: true, ...(qs.get('compare') ? { compare: true } : {}), ...(qs.get('light') ? { light: qs.get('light') } : {}) } }); }
   if (qs.get('align') && TARGETS[qs.get('align')]) { A.focus(qs.get('align'), 'finish'); setUi({ align: { target: qs.get('align') } }); }
-  if (qs.get('draft')) { const id = qs.get('draft'); setUi({ draft: { base: { catalogue: id }, ov: {}, name: '', named: false, target: U.focus?.target || null, src: 'cat:' + id, preview: null } }); }
+  if (qs.get('draft')) { const id = qs.get('draft'); setUi({ draft: { base: { catalogue: id }, ov: {}, name: '', named: false, target: U.focus?.target || null, src: 'cat:' + id, preview: null }, editor: { open: true } }); }
+  if (qs.get('import')) setUi({ importer: { open: true, set: qs.get('import') === 'clean' ? 'clean' : 'messy', targets: U.focus ? [U.focus.target] : [] } });
   if (qs.get('selectAll')) setUi({ selectAll: true, reach: 'all' });
   if (qs.get('view')) setView(+qs.get('view'));
   if (M.S.restored && !scene) toast('Reopened your saved prototype state · head › project › Reset clears it');

@@ -4,7 +4,8 @@
  * My library · Sources, future), search and filters, and a master–detail side pane with a live
  * preview. Curated and imported items are raw materials ("Veneer · 0.5 m"); project and My library
  * items are Finishes ("from Oak Veneer · 3 changes"). Click chooses for the context the Library was
- * opened in; Shift-click keeps it open. Customise… opens the Card as a draft: nothing is written.
+ * opened in; Shift-click keeps it open. Customise… opens the Material editor on a draft: nothing is
+ * written until Apply, Use for Paint or Save.
  * The Library never writes itself: actions.chooseFromLibrary calls the writer.
  */
 import * as M from './model.js';
@@ -78,7 +79,7 @@ export function renderLibrary() {
   const keepFocus = document.activeElement?.id === 'lib-q';
   const keepScroll = el.querySelector('.lb-grid')?.scrollTop || 0;
   el.innerHTML = '';
-  el.classList.toggle('with-detail', !!L.detail);
+  el.classList.toggle('with-detail', !!(L.detail && L.kind === 'materials' && findEntry(L.detail)));
   // the source switch folds into a dropdown when the Library itself is narrow (not the window)
   const narrow = el.getBoundingClientRect().width < 760;
   const q = h('input', { id: 'lib-q', type: 'search', placeholder: L.kind === 'materials' ? 'Search materials and finishes' : 'Search', value: L.q, 'aria-label': 'Search the Library', onInput: (e) => { U.library.q = e.target.value; setUi({}); } });
@@ -100,7 +101,7 @@ export function renderLibrary() {
   const rail = h('nav', { class: 'lb-rail', 'aria-label': 'Kinds' });
   for (const [k, label, icon] of KINDS) {
     const future = k !== 'materials';
-    rail.append(h('button', { class: 'ix' + (L.kind === k ? ' on' : '') + (future ? ' fut' : ''), title: future ? `${label} — ${k === 'objects' ? 'Furnish' : 'future'}` : undefined, 'aria-current': L.kind === k ? 'true' : undefined, onClick: () => setUi({ library: { kind: k, detail: null } }) }, ic(icon, 15), h('span', { class: 'nm' }, label), future ? h('span', { class: 'sub' }, k === 'objects' ? 'Furnish' : 'future') : null));
+    rail.append(h('button', { class: 'ix' + (L.kind === k ? ' on' : '') + (future ? ' fut' : ' parent'), title: future ? `${label} — ${k === 'objects' ? 'Furnish' : 'future'}` : undefined, 'aria-current': L.kind === k ? 'true' : undefined, onClick: () => setUi({ library: { kind: k, detail: null } }) }, ic(icon, 15), h('span', { class: 'nm' }, label), future ? h('span', { class: 'sub' }, k === 'objects' ? 'Furnish' : 'future') : null));
     if (k === 'materials' && L.kind === 'materials') for (const c of [{ id: 'all', label: 'All materials' }, ...TAXONOMY]) rail.append(h('button', { class: 'ix sub2' + (L.cat === c.id ? ' on' : ''), onClick: () => setUi({ library: { cat: c.id } }) }, h('span', { class: 'nm' }, c.label)));
   }
   const grid = h('div', { class: 'lb-grid' });
@@ -110,8 +111,12 @@ export function renderLibrary() {
     const gs = entries(); let any = false;
     for (const [g, list] of gs) {
       if (!list.length) continue; any = true;
-      if (g) grid.append(h('h6', { class: 'lb-g' }, g, h('span', {}, String(list.length))));
-      for (const x of list) grid.append(card(x));
+      // in All, the small sources are one-row shelves (same card size as Curated) with "See all"
+      const shelf = g && g !== 'Curated' && !L.q.trim();
+      const srcOf = { 'This project': 'project', 'My library': 'mine' }[g];
+      if (g) grid.append(h('h6', { class: 'lb-g' }, g, h('span', {}, String(list.length)),
+        shelf ? h('button', { class: 'linkb see', hidden: true, 'data-shelf': srcOf, onClick: () => setUi({ library: { source: srcOf } }) }, `See all ${list.length} ›`) : null));
+      for (const x of list) { const c = card(x); if (shelf) c.dataset.shelf = srcOf; grid.append(c); }
     }
     if (!any) grid.append(h('div', { class: 'lb-empty' }, L.source === 'mine' ? 'Nothing saved yet. Save to My library from any Finish Card — it travels to every project.' : 'No matches. Clear a filter or the search.'));
   }
@@ -119,7 +124,20 @@ export function renderLibrary() {
   if (L.detail) { const x = findEntry(L.detail); if (x) body.append(detail(x)); }
   el.append(body);
   grid.scrollTop = keepScroll;
+  capShelves(grid); requestAnimationFrame(() => capShelves(grid));
+  new ResizeObserver(() => capShelves(grid)).observe(grid);
   if (keepFocus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+}
+
+// cap each All-view shelf at one row of the grid's laid-out column count
+function capShelves(grid) {
+  if (!grid.isConnected) return;
+  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter((x) => x.endsWith('px')).length || 1;
+  for (const src of ['project', 'mine']) {
+    const cs = [...grid.querySelectorAll(`.mc[data-shelf="${src}"]`)];
+    cs.forEach((c, i) => { c.hidden = i >= cols; });
+    const see = grid.querySelector(`.see[data-shelf="${src}"]`); if (see) see.hidden = cs.length <= cols;
+  }
 }
 
 function contextLine() {
@@ -145,12 +163,13 @@ function card(x) {
     onPointerenter: () => x.users?.length && A.getStage()?.set({ users: x.users, usersMode: 'all' }),
     onPointerleave: () => x.users?.length && A.getStage()?.set({ users: [] }) });
   const th = h('div', { class: 'th', style: { backgroundImage: `url(${T.url(x.look, 'sample', 256)})` } });
-  const meta = h('div', { class: 'mt' }, h('span', { class: 'mn' }, x.name, n ? h('i', { class: 'edm', title: `Edited · ${n} change${n === 1 ? '' : 's'} from ${x.mat.label}` }) : null), h('span', { class: 'ms' }, subOf(x)));
-  if (x.users) meta.append(h('button', { class: 'users linkb', title: x.users.length ? 'Select every surface using it' : 'Unused', disabled: !x.users.length || undefined, onClick: (e) => { e.stopPropagation(); selectUsers(x); } }, x.users.length ? `Used by ${x.users.length} · select` : 'Unused'));
+  // one anatomy for every source: name (up to two lines) + one sub-line; usage and variants sit on the image
+  const meta = h('div', { class: 'mt' }, h('span', { class: 'mn', title: x.name }, h('span', { class: 'mnt' }, x.name), n ? h('i', { class: 'edm', title: `Edited · ${n} change${n === 1 ? '' : 's'} from ${x.mat.label}` }) : null), h('span', { class: 'ms' }, subOf(x)));
+  if (x.users) th.append(h('button', { class: 'users' + (x.users.length ? '' : ' none'), title: x.users.length ? `Used by ${x.users.length} — select every surface using it` : 'Unused in this project', 'aria-label': x.users.length ? `Used by ${x.users.length}, select them` : 'Unused', disabled: !x.users.length || undefined, onClick: (e) => { e.stopPropagation(); selectUsers(x); } }, ic('shared', 12), x.users.length ? String(x.users.length) : '0'));
   if (x.variants) {
     const v = h('div', { class: 'vchips' });
     for (const id of x.variants) v.append(h('span', { class: variantSel.concrete === id ? 'on' : '', role: 'button', tabindex: 0, title: `${BY_ID[id].label} · roughness ${BY_ID[id].rough}`, onClick: () => { variantSel.concrete = id; setUi({}); } }, BY_ID[id].rough < 0.7 ? 'Polished' : 'Matte'));
-    meta.append(v);
+    th.append(v);
   }
   b.append(th, meta,
     x.ref ? h('button', { class: 'star sm' + (fav ? ' on' : ''), 'aria-pressed': String(fav), title: fav ? 'In your tray — click to remove' : 'Keep in your tray', 'aria-label': 'Favourite ' + x.name, onClick: (e) => { e.stopPropagation(); M.toggleFavourite('material', x.ref); setUi({}); } }, ic('star', 14)) : null,
@@ -181,7 +200,7 @@ function selectUsers(x) {
 }
 function customise(x) {
   const t = U.focus?.target || null;
-  setUi({ library: { open: false }, editor: { open: false }, draft: { base: x.base, ov: { ...x.ov }, name: x.name, named: x.src !== 'curated' && (x.src === 'mine' || !!x.f?.named), target: t, src: x.key, preview: null },
+  setUi({ library: { open: false }, editor: { open: true }, draft: { base: x.base, ov: { ...x.ov }, name: x.name, named: x.src !== 'curated' && (x.src === 'mine' || !!x.f?.named), target: t, src: x.key, preview: null },
     status: t ? `Draft from ${x.name} · previewing on ${A.shortTarget(t)} · nothing is written` : `Draft from ${x.name} · click a surface to preview` });
 }
 
@@ -207,7 +226,7 @@ function detail(x) {
     h('button', { class: 'btn pri', 'data-fid': 'lbd-primary', onClick: primary[1] }, primary[0]),
     L.intent !== 'swap' && L.intent === 'apply' ? h('button', { class: 'btn', onClick: () => { A.arm(choiceOf(x)); setUi({ library: { open: false } }); } }, 'Use for Paint') : null,
     L.intent !== 'swap' && L.intent !== 'apply' && U.focus ? h('button', { class: 'btn', onClick: () => { U.library.intent = 'apply'; choose(x, false); } }, 'Apply to ' + A.shortTarget(U.focus.target)) : null,
-    h('button', { class: 'btn', 'data-fid': 'lbd-customise', title: 'Adjust it on the Card first — nothing is written until you apply', onClick: () => customise(x) }, 'Customise…'),
+    h('button', { class: 'btn', 'data-fid': 'lbd-customise', title: 'Open it in the Material editor as a draft — nothing is written until you apply', onClick: () => customise(x) }, 'Customise…'),
     x.users?.length ? h('button', { class: 'btn ghost', onClick: () => selectUsers(x) }, `Select all ${x.users.length}`) : null,
     x.src === 'project' && x.f ? h('button', { class: 'btn ghost', onClick: () => { const it = M.saveToLibrary(x.ref); toast(`Saved “${it.name}” to My library`); } }, 'Save to My library') : null,
     x.src === 'mine' ? h('button', { class: 'btn ghost', onClick: () => { M.removeLibraryItem(x.id); setUi({ library: { detail: null } }); } }, 'Remove from My library') : null);

@@ -42,7 +42,8 @@ or writes it, so board frames and reviewers never clobber each other.
 | `selectAll=1` | With `focus`, select every user of the Finish (reach *All*) |
 | `lib=all` · `curated` · `project` · `mine` · `sources` | Open the Library on a source |
 | `kind=materials` · `objects` · `openings` · `plants`, `intent=pick` · `swap`, `detail=<ref>` | Library kind, why it opened, and the detail pane, e.g. `detail=cat:wood-oak-veneer` |
-| `draft=<catalogue id>` | A Library draft of that material (*Customise…*) on the focused surface |
+| `draft=<catalogue id>` | A Library draft of that material (*Customise…*) in the Material editor, on the focused surface |
+| `import=clean` · `messy` | Open the Import sheet on a clean vendor set (names settle everything) or the messy one (collision, unstated normal) |
 | `edit=<target>`, `compare=1`, `light=studio` · `grazing` · `world` | Open the Material editor |
 | `align=<target>` | Align on wall / floor |
 | `future=1` | Show the Card's dashed future rows (layers, strokes) |
@@ -66,8 +67,11 @@ The head menu's *Reset prototype* clears saved state.
   wears). The Card is the quick Finish; the Material editor beside it is the exact one.
 - One instrument: a Paint key with a tabbed tray and a *Brush · Surface · Space* radius; circle =
   colour that keeps relief, rounded square = material that replaces the Finish; the Library as an
-  asset library with drafts that write nothing until Apply; the Index as hierarchy only.
-- Gold = selected, cobalt = will change. Reach is visible before the edit.
+  asset library whose *Customise…* opens the Material editor on a draft that writes nothing until Apply;
+  the Index as hierarchy only.
+- Gold = selected, cobalt = will change. Reach is visible before the edit. The editor marks the original
+  with a faint tick; double-click resets a field.
+- Import keeps the standard map names and asks only what the file names leave open.
 - Layers, masks and the brush join later along a ladder (Pick → Finish → Exact → Layers → Masks →
   Brush) whose seams are agreed now and drawn in Concepts.
 - Thumbnails: a flat, lit sample tile framed on a physical window, one stored 256 px master per

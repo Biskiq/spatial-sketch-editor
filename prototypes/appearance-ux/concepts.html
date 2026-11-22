@@ -414,7 +414,7 @@ function fcs() {
       + '<div class="ln"><span>★ · Save to My library</span><em>Edit material… · ⋯</em></div>'
       + '<div class="sub">Edit material… → 560 px beside the Card</div>'
       + ln('Raw material', 'Colour · Relief · Sheen maps · View') + ln('Exact finish', 'hex · r 0.62<span class="dt"></span> · size · angle · offset') + ln('Layers', 'Base · Add layer (later)')),
-      ['The Card answers most requests in four controls, each with a sensible default and the original marked', 'The editor separates what was captured (raw maps, read-only) from what you changed (exact fields, each with a gold reset dot)', 'One adapter: Card, editor, Library drafts and Align on wall all write the same Finish'],
+      ['The Card answers most requests in four controls, each with a sensible default and the original marked', 'The editor separates what was captured (raw maps, read-only) from what you changed (exact fields; a faint tick marks the original, double-click resets)', 'One adapter: Card, editor, Library drafts and Align on wall all write the same Finish'],
       ['Two surfaces to learn; mitigated because the editor opens from the Card and returns to it (‹ Finish)']),
     box('Progressive Card (first round)', 'rej', el('div', { class: 'fc' }, hd('Walnut · table', 'Finish · project') + ln('Changes apply to', 'This part · All 2') + ln('Colour', 'Natural · Tint · Colour') + ln('Sheen', 'Satin r 0.60', 60) + ln('Pattern', '1.00 m', 50) + ln('Relief', '1.00×', 50) + '<div class="acc2"><span>Maps & channels</span><span>3 on ▸</span></div><div class="acc2"><span>Mapping</span><span>UV0 ▸</span></div><div class="acc2"><span>Exact values</span><span>▸</span></div>'),
       ['Everything in one column; nothing opens elsewhere'],
@@ -429,7 +429,7 @@ function fcs() {
 const LADDER = [
   ['1', 'Pick', 'Paint a colour or a material from the tray', 'built'],
   ['2', 'Finish', 'Card: colour, sheen, pattern; save, share', 'built'],
-  ['3', 'Exact', 'Editor: raw maps, exact values, reset dots', 'built'],
+  ['3', 'Exact', 'Editor: raw maps, exact values, double-click reset', 'built'],
   ['4', 'Layers', 'Stack a second look over the Base', 'future'],
   ['5', 'Masks', 'Say where a layer shows, in room terms', 'future'],
   ['6', 'Brush', 'Paint, erase, smudge on the surface; Teach', 'future'],
@@ -487,7 +487,7 @@ function rej() {
       ['A pinned panel fights the Card for the right edge and hides the Stage', 'Replaced by <b>Shift-click keeps it open</b> for a run of picks, and <b>L</b> reopening the last view']),
     box('Finish list in the Index', 'rej', mini('<div class="ln"><span>Index</span><em>Walls · Floors · Objects · Finishes</em></div>'),
       ['One place to see everything'],
-      ['Mixed two hierarchies — where things are, and what they wear', 'Replaced by a swatch at the end of every Index row, Finishes in <b>Library › This project</b> (a click selects their users), and the palette in Paint › More']),
+      ['Mixed two hierarchies — where things are, and what they wear', 'Replaced by a swatch at the end of every Index row, Finishes in <b>Library › This project</b> (a click selects their users), and the palette in Paint › ⌃']),
     box('Gold for reach', 'rej', mini('<div class="ln"><span>Selected</span><em style="color:#a27a1d">gold</em></div><div class="ln"><span>Also changes</span><em style="color:#a27a1d">gold, lighter</em></div>'),
       ['Fewer colours on the Stage'],
       ['One colour meant two things: what you picked and what your edit will reach', 'Replaced by <b>gold = selected</b> (Stage outline and Index row only) and <b>cobalt = will change</b> (reach, draft ghost, Teach)'])

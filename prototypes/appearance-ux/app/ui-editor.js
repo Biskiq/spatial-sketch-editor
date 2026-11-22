@@ -2,14 +2,15 @@
  * Material editor: the same Finish as the Card, widened (about 560 px; a bottom sheet on iPad
  * portrait). It replaces the view-only Inspect. Left: a live preview you can turn, compare and
  * probe. Right: the RAW MATERIAL (captured maps, never edited in place) and the EXACT FINISH
- * (every value the Card rounds to steps). A gold dot marks each changed group; click it to reset.
+ * (every value the Card rounds to steps). A changed field's label darkens and a faint tick marks the
+ * original; double-click the label or slider resets it.
  * Done shrinks back to the Card. Layers are a future seam and only shown as a placeholder.
  */
 import * as M from './model.js';
 import { U, setUi } from './ui-state.js';
 import { TARGETS } from './stage.js';
 import * as T from './thumbs.js';
-import { $, h, ic, seg, range, validHex, normHex } from './ui-kit.js';
+import { $, h, ic, seg, range, validHex, normHex, toast } from './ui-kit.js';
 import * as A from './actions.js';
 import * as F from './finish.js';
 import { cardHead } from './ui-card.js';
@@ -21,19 +22,41 @@ const MAPS = [['colour', 'Colour', 'colour', { shade: 'unlit' }], ['normal', 'Re
 export function editorPanel(fm) {
   const E = U.editor;
   const head = cardHead(fm, { back: false });
-  // ‹ Finish replaces the back arrow; the reach chip says who changes
-  head.prepend(h('button', { class: 'back wideback', title: 'Back to the Card (Done)', 'aria-label': 'Back to the Finish Card', 'data-fid': 'ed-back', onClick: done }, ic('back', 16), h('span', {}, 'Finish')));
+  const draft = fm.kind === 'draft';
+  // ‹ Finish replaces the back arrow (a draft has no Card to go back to); the chip says who changes
+  if (!draft) head.prepend(h('button', { class: 'back wideback', title: 'Back to the Card (Done)', 'aria-label': 'Back to the Finish Card', 'data-fid': 'ed-back', onClick: done }, ic('back', 16), h('span', {}, 'Finish')));
   head.querySelector('.tt').after(reachChip(fm));
 
   const grid = h('div', { class: 'ed' }, previewCol(fm, E), h('div', { class: 'ed-r', 'data-scroll': 'ed' }, rawSection(fm, E), exactSection(fm), layersSection(fm)));
   const n = F.changedGroups(fm).length;
+  if (draft) return h('div', { class: 'card wide draft' }, head, draftStrip(fm, n), grid, draftFoot(fm));
   const foot = h('div', { class: 'foot' },
     h('span', { class: 'edn' }, n ? `${n} change${n === 1 ? '' : 's'} from original` : 'Same as the original material'),
     n ? h('button', { 'data-fid': 'ed-reset-all', title: 'Back to the raw material, one undo', onClick: () => fm.edit(F.resetAllPatch(fm)) }, 'Reset all') : null,
     h('button', { class: 'btn sm pri push', 'data-fid': 'ed-done', onClick: done }, 'Done'));
-  return h('div', { class: 'card wide' + (fm.kind === 'draft' ? ' draft' : '') }, head, grid, foot);
+  return h('div', { class: 'card wide' }, head, grid, foot);
 }
 const done = () => setUi({ editor: { open: false } });
+
+// ------------------------------------------------------------------ Library draft (Customise…)
+function draftStrip(fm, n) {
+  const D = U.draft, from = M.materialOfBase(D.base).label;
+  return h('div', { class: 'ed-draft' },
+    h('span', { class: 'note-sm' }, `Draft · from ${from}${n ? ` · ${n} change${n === 1 ? '' : 's'}` : ''} · nothing is written yet`,
+      n ? [' · ', h('button', { class: 'linkb', 'data-fid': 'ed-reset-all', title: 'Back to the raw material', onClick: () => fm.edit(F.resetAllPatch(fm)) }, 'Reset all')] : null),
+    h('span', { class: 'reachl' }, ic('single', 13), fm.t ? h('span', {}, 'Previewing on ', h('b', {}, A.shortTarget(fm.t)), ' · click another surface to move it') : h('span', {}, 'Click a surface to preview it there')));
+}
+function draftFoot(fm) {
+  const D = U.draft;
+  return h('div', { class: 'foot' },
+    h('button', { 'data-fid': 'draft-cancel', onClick: () => setUi({ draft: null, editor: { open: false }, status: 'Draft cancelled · nothing written' }) }, 'Cancel'),
+    h('button', { class: 'push', 'data-fid': 'draft-save', title: 'A private copy for any project; nothing in this project changes', onClick: () => { const it = M.saveRecipeToLibrary(D.base, D.ov, fm.name); toast(`Saved “${it.name}” to My library · no project change`); } }, 'Save to My library'),
+    h('button', { class: 'btn sm', 'data-fid': 'draft-paint', onClick: () => { A.arm({ kind: 'recipe', base: D.base, ov: D.ov, name: fm.name }); setUi({ draft: null, editor: { open: false } }); } }, 'Use for Paint'),
+    h('button', { class: 'btn sm pri', disabled: !D.target || undefined, 'data-fid': 'draft-apply', title: D.target ? 'One undo step' : 'Click a surface first', onClick: () => {
+      const ref = M.assignRecipe([D.target], D.base, D.ov, D.name, D.named, 'Apply');
+      setUi({ draft: null, editor: { open: false }, focus: { target: D.target }, card: 'finish', reach: 'this', status: `Applied ${M.nameOf(ref)} to ${A.shortTarget(D.target)} · one undo` });
+    } }, D.target ? 'Apply to ' + A.shortTarget(D.target) : 'Apply to…'));
+}
 
 function reachChip(fm) {
   if (fm.kind === 'draft') return h('span', { class: 'rchip', title: 'Nothing is written until you apply' }, 'Draft');
@@ -163,12 +186,20 @@ function exactSection(fm) {
   return s;
 }
 
-/** One exact field: label, gold dot when changed from the original (click resets that field). */
+/**
+ * One exact field. Changed from the original: the label darkens a step and a faint grey tick marks the
+ * original on the slider — nothing more. Double-click the label or the slider to reset this field
+ * (one undo); Reset all, Compare and Undo cover the rest.
+ */
 function field(fm, g, label, ...kids) {
   const ch = F.changed(fm, g);
+  const reset = (e) => { if (!F.changed(fm, g)) return; e.preventDefault(); fm.endPreview?.(); fm.edit(F.resetPatch(fm, g)); };
+  const v = h('div', { class: 'efv' }, ...kids);
+  if (!ch) v.querySelectorAll('.omark').forEach((n) => n.remove());
+  v.querySelectorAll('input[type=range]').forEach((r) => { r.addEventListener('dblclick', reset); if (ch) r.title = 'Double-click to reset to the original'; });
   return h('div', { class: 'edf' + (ch ? ' changed' : '') },
-    h('div', { class: 'efl' }, h('span', {}, label), ch ? h('button', { class: 'chg', 'aria-label': `${label} changed — reset to original`, title: `Changed from the original — click to reset ${label.toLowerCase()}`, 'data-fid': 'reset-' + g, onClick: () => fm.edit(F.resetPatch(fm, g)) }) : null),
-    h('div', { class: 'efv' }, ...kids));
+    h('div', { class: 'efl', title: ch ? `Changed — double-click to reset ${label.toLowerCase()}` : undefined, 'data-fid': 'reset-' + g, onDblclick: reset }, h('span', {}, label)),
+    v);
 }
 
 // ------------------------------------------------------------------ layers (future seam)

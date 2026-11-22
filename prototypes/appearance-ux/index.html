@@ -64,7 +64,8 @@
             surface wears, names, shares and saves. A Finish is named <i>Material · treatment</i> (<i>Oak Veneer · Sage stain</i>)
             until someone renames it; a renamed Finish keeps its name.</li>
           <li><b>Paint is one dock key.</b> Arming it opens a tray above the dock: <i>Colours</i> and <i>Materials</i> tabs,
-            favourites (★), recents, the picked item first, and <i>More ⌃</i> for the full palette and palette editing. The
+            favourites (★), recents, the picked item first, and one ⌃ toggle under the dropper for the full palette and
+            <i>Edit palette</i> (it turns to ⌄ in the same place). The
             radius is <i>Brush · Surface · Space</i>; Surface is the default, Shift-click is a one-off Space, and Brush is a drawn
             placeholder for later (see <a href="#finishing">the ladder</a>).</li>
           <li><b>Shape tells the consequence.</b> A circle is a colour: it recolours the surface and keeps its relief and
@@ -74,11 +75,12 @@
             opens; Openings and Plants &amp; Lights later), sources <i>All · Curated · This project · My library · Sources</i>
             (third-party shelves later), filters, and a master–detail pane with a live preview, ★, <i>Use for Paint</i>,
             <i>Apply</i> and <i>Customise…</i>. Curated items read <i>Veneer · 0.5 m</i>; project and library items read
-            <i>from Oak Veneer · 3 changes</i>. No pin: Shift-click keeps it open for a run of picks and <code>L</code> reopens
-            the last view.</li>
+            <i>from Oak Veneer · 3 changes</i>. Every card has one anatomy (name up to two lines, one sub-line; usage and
+            variants sit on the image), and in <i>All</i> the small sources are one-row shelves with <i>See all n ›</i>. No
+            pin: Shift-click keeps it open for a run of picks and <code>L</code> reopens the last view.</li>
           <li><b>The Index is the hierarchy.</b> Nested rows with the Finish swatch at the end of each; no Finish list beside it.
             Finishes in use live in <i>Library › This project</i> (a click selects their users); the palette lives in
-            <i>Paint › More</i>.</li>
+            <i>Paint › ⌃</i>.</li>
         </ul>
       </div>
       <div>
@@ -90,11 +92,12 @@
             − / +, ↻ 90° and <i>Align on wall…</i>. Foot: ★, <i>Save to My library</i>, <i>Edit material…</i>, ⋯.</li>
           <li><b>The Material editor is the exact Finish.</b> About 560 px beside the Card (a bottom sheet on iPad portrait):
             a preview with shape, light, view and a probe, and <i>Compare with original</i>; <i>Raw material</i> map rows
-            (read-only, each can be switched off for this Finish); <i>Exact finish</i> fields, each with a gold dot that resets
-            it; a <i>Layers</i> placeholder; <i>N changes · Reset all · Done</i>. It replaces the view-only inspector.</li>
-          <li><b>Library drafts write nothing.</b> <i>Customise…</i> turns the Card into a draft: a cobalt ghost previews it on
-            the selected surface, a click on another surface moves the preview, and only <i>Apply to X</i> (one undo),
-            <i>Use for Paint</i> or <i>Save</i> commits anything. The draft edits exactly like a Finish because the Card,
+            (read-only, each can be switched off for this Finish); <i>Exact finish</i> fields — a changed field's label darkens and a faint grey tick marks the original;
+            double-click the label or slider resets that field; a <i>Layers</i> placeholder; <i>N changes · Reset all · Done</i>. It replaces the view-only inspector.</li>
+          <li><b>Library drafts write nothing.</b> <i>Customise…</i> opens the Material editor on a draft (the quick Card is
+            only for a surface clicked on the Stage): a cobalt ghost previews it on the selected surface, a click on another
+            surface moves the preview, × or Esc cancels, and only <i>Apply to X</i> (one undo), <i>Use for Paint</i> or
+            <i>Save to My library</i> commits anything. The draft edits exactly like a Finish because the Card,
             editor, draft and Align share one Finish adapter.</li>
           <li><b>Two inks, one meaning each.</b> Gold = selected (Stage outline and Index row only). Cobalt = will change
             (reach when <i>All</i>, the hover ghost, a draft). Esc, an empty click or ✕ deselects.</li>
@@ -119,9 +122,9 @@
         <a href="app.html?scene=walnut&amp;tool=paint">open ↗</a></div></li>
       <li><div><b>Adjust on the Card</b><p>The painted surface opens its Finish Card (a multi-part object opens its parts first). Reach line, then Material, Colour, Sheen, Pattern. Dragging previews (never history); release commits one undo step, coalesced for 600 ms.</p>
         <a href="app.html?scene=walnut&amp;focus=table:top&amp;card=finish">open ↗</a></div></li>
-      <li><div><b>Edit exactly</b><p><i>Edit material…</i> opens the editor beside the Card: raw maps, exact fields with reset dots, <i>Compare with original</i> under Studio, Grazing or this room.</p>
+      <li><div><b>Edit exactly</b><p><i>Edit material…</i> opens the editor beside the Card: raw maps, exact fields (double-click resets one), <i>Compare with original</i> under Studio, Grazing or this room.</p>
         <a href="app.html?scene=walnut&amp;focus=table:top&amp;card=finish&amp;edit=table:top">open ↗</a></div></li>
-      <li><div><b>Customise from the Library</b><p><i>Customise…</i> on a Library item: a draft Card and a cobalt ghost on the selected wall; click another wall to move it; Apply, Use for Paint or Save.</p>
+      <li><div><b>Customise from the Library</b><p><i>Customise…</i> on a Library item: the Material editor on a draft and a cobalt ghost on the selected wall; click another wall to move it; Apply, Use for Paint or Save.</p>
         <a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;draft=wood-oak-veneer">open ↗</a></div></li>
       <li><div><b>Align on wall</b><p>From Pattern: the wall straight on, ruler and grid; drag to move or turn the pattern; <i>Put back</i>.</p>
         <a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;align=wall-n:a">open ↗</a></div></li>
@@ -166,14 +169,14 @@
         <tr><td>Bring in files</td><td>Import sheet</td><td><code>registerImport</code></td><td>E5 <code>prepareDraft</code> / <code>acceptDraft</code>, one kind per registration</td></tr>
         <tr><td>Fix a broken channel</td><td>Repair strip</td><td><code>repair</code></td><td>E4 diagnostic actions from <code>inspectFinish</code></td></tr>
         <tr><td>Name, remove</td><td>Card name, Card ⋯</td><td><code>rename</code>, <code>removeUnused</code></td><td>E4 rename, unused-only remove</td></tr>
-        <tr><td>Palette colour</td><td>Paint › More › Edit palette, tray <i>+</i></td><td><code>setSlot</code>, <code>addPaletteSlot</code></td><td>Existing palette authority</td></tr>
+        <tr><td>Palette colour</td><td>Paint › ⌃ › Edit palette, tray <i>+</i></td><td><code>setSlot</code>, <code>addPaletteSlot</code></td><td>Existing palette authority</td></tr>
         <tr><td>Save / reuse across projects</td><td>Card foot, Library <i>My library</i></td><td><code>saveToLibrary</code> (no project write), <code>insertFromLibrary</code>, <code>applyLibraryItem</code></td><td>G save, transfer insert (new Finish id per insert)</td></tr>
         <tr><td>Look closely</td><td>Editor preview, map <i>View</i>, Compare, probe; Align overlays</td><td><i>none</i></td><td>E7 inspection host (read-only); Camera <code>face</code> intent</td></tr>
       </tbody>
     </table></div>
     <h3>Rules the design depends on</h3>
     <ul>
-      <li><b>The Material is never edited.</b> Raw maps are read-only in the editor; switching a map off is a Finish setting that the reset dot undoes. Swapping the Material keeps the treatment and returns the pattern to the new material’s real size.</li>
+      <li><b>The Material is never edited.</b> Raw maps are read-only in the editor; switching a map off is a Finish setting that resetting the field undoes. Swapping the Material keeps the treatment and returns the pattern to the new material’s real size.</li>
       <li><b>Reach is visible before the edit, and defaults by kind.</b> A curated Finish defaults to <i>This wall</i> (editing walnut should not silently fork every walnut surface into a project Finish); a project Finish (<code>fin:</code>) defaults to <i>All&nbsp;n</i> and edits in place. Cobalt outlines show who <i>All</i> reaches, and only then.</li>
       <li><b>Materializing reaches one kind.</b> <i>All</i> on a curated or model Finish reaches only same-kind users (F4 refuses a compound Scene + Layout registration); the Card says which users keep the original. Editing an existing <code>fin:</code> still reaches Layout and Scene users together.</li>
       <li><b>A pristine clone is the curated normal form.</b> Resetting every override returns surfaces to <code>cat:</code>, as E's review follow-up does.</li>
@@ -302,8 +305,9 @@
       <li><b>Sheen display.</b><p>Three steps over effective roughness (factor × scanned mean), never rougher than the capture, the original marked with a dot; exact values in the editor. <b>Recommend</b> adopting.</p></li>
       <li><b>Tray A or mixed row B.</b><p>Both are drawn in Concepts. <b>Recommend</b> A (tabs) for the clarity of consequence; B if the owner prefers fewer clicks over that clarity.</p></li>
       <li><b>Card and Material editor split.</b><p>The Card is the quick Finish; the editor is the exact one and replaces the view-only inspector. <b>Recommend</b> adopting; the editor needs no new operation.</p></li>
-      <li><b>Library drafts.</b><p><i>Customise…</i> edits a draft that writes nothing until Apply, Use for Paint or Save. <b>Recommend</b> adopting; it makes “try before you commit” the default way to start from the Library.</p></li>
+      <li><b>Library drafts.</b><p><i>Customise…</i> opens the Material editor on a draft that writes nothing until Apply, Use for Paint or Save. <b>Recommend</b> adopting; it makes “try before you commit” the default way to start from the Library.</p></li>
       <li><b>Ladder seams for layers, masks and brush.</b><p>Agree the seams now (Base layer over v1, room-fact masks, Surface layers on the decal contract, Brush inside Paint) without designing the features. <b>Recommend</b> recording them as the direction, not as a contract.</p></li>
+      <li><b>Import reads file names first.</b><p>The PBR map set is the industry standard, so the sheet keeps its names (Normal, Roughness, ORM) and asks only what the files leave open. Normal direction and gloss inversion come from vendor naming when present (<code>_gl</code> / <code>_dx</code>, <code>nor_gl</code>, <code>arm</code>, <code>gloss</code>); a clean set imports in one click (<a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;import=clean">clean ↗</a>, <a href="app.html?scene=artist">messy ↗</a>). <b>Recommend</b> adding name detection to E5's draft facts; it never overrides an explicit answer.</p></li>
     </ol>
   </section>
 
@@ -316,9 +320,9 @@
         <tr><td>Stage hover</td><td>Pick, target, scope</td><td>none until release</td><td>Consequence line: <i>&lt;pick&gt; replaces / colours &lt;current&gt; on &lt;target&gt;</i>; cobalt dashed ghost</td></tr>
         <tr><td>Library</td><td>Catalogue, project Finishes and users, private library listing, thumbnails</td><td><code>assign</code> on <i>Apply</i>; G insert on My library; nothing while drafting</td><td>Kind rail, sources, filters, detail pane, <i>Customise…</i>, <i>Used by n · select</i>, edited mark, <i>what travels</i> for library items</td></tr>
         <tr><td>Finish Card</td><td><code>inspectFinish</code>: provenance, users, operations, diagnostics</td><td>E4 patch with reach; swap; rename</td><td>Reach line; original markers; <i>Material · treatment</i> names; other-kind note; 600 ms coalescing</td></tr>
-        <tr><td>Material editor</td><td>E7 host frames; raw map facts; the original Finish</td><td>E4 patch through the same adapter</td><td>Raw / exact split, gold reset dots, <i>N changes · Reset all</i>, Compare, bottom sheet on iPad portrait</td></tr>
+        <tr><td>Material editor</td><td>E7 host frames; raw map facts; the original Finish</td><td>E4 patch through the same adapter</td><td>Raw / exact split, faint original tick and double-click reset, <i>N changes · Reset all</i>, Compare, bottom sheet on iPad portrait</td></tr>
         <tr><td>Align on wall</td><td>Surface frame, tiling</td><td>E4 tiling patch (offset, rotation)</td><td>Ruler, grid and handles never saved; snaps (1 cm, 15°); <i>Put back</i></td></tr>
-        <tr><td>Import sheet</td><td>E5 file facts and draft</td><td><code>acceptDraft</code></td><td>Red collision rows that block; amber normal check; <i>Import &amp; apply to n</i>; one kind, then paint the rest</td></tr>
+        <tr><td>Import sheet</td><td>E5 file facts and draft</td><td><code>acceptDraft</code></td><td>One summary line (<i>5 files · Rough Oak · 2 things to check</i>); only the open questions (red collision that blocks, amber normal check); the file table behind <i>Show files</i>; normal direction and gloss read from file names when they say (<code>_gl</code>, <code>_dx</code>, <code>nor_gl</code>, <code>arm</code>, <code>gloss</code>), so a clean vendor set imports in one click; <i>Import &amp; apply to n</i>; one kind, then paint the rest</td></tr>
         <tr><td>Repair</td><td><code>inspectFinish</code> diagnostics</td><td>E4 diagnostic actions</td><td>Amber hatch on surfaces, dot in the Index, <i>n to repair</i> in the head</td></tr>
       </tbody>
     </table></div>

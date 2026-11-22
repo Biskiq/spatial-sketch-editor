@@ -126,7 +126,8 @@ export function closeTransient() {
   if (U.library.open && U.library.detail) { setUi({ library: { detail: null } }); return true; }
   if (U.library.open) { setUi({ library: { open: false } }); return true; }
   if (U.align) { setUi({ align: null }); return true; }
-  if (U.editor.open) { setUi({ editor: { open: false } }); return true; }
+  // a Library draft lives in the Material editor: closing it cancels the draft
+  if (U.editor.open) { setUi(U.draft ? { editor: { open: false }, draft: null, status: 'Draft cancelled · nothing written' } : { editor: { open: false } }); return true; }
   if (U.importer.open) { setUi({ importer: { open: false } }); return true; }
   if (U.tasksOpen || U.issuesOpen) { setUi({ tasksOpen: false, issuesOpen: false }); return true; }
   if (U.dropper) { setUi({ dropper: false }); return true; }

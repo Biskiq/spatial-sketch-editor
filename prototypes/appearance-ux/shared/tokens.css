@@ -120,8 +120,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 input[type=range]:hover::-webkit-slider-thumb{box-shadow:0 1px 3px rgba(18,38,29,.35),0 0 0 4px rgba(111,138,62,.14)}
 input[type=range]:active::-webkit-slider-thumb{box-shadow:0 1px 3px rgba(18,38,29,.35),0 0 0 7px rgba(111,138,62,.22)}
 input[type=range]:active::-moz-range-thumb{box-shadow:0 1px 3px rgba(18,38,29,.35),0 0 0 7px rgba(111,138,62,.22)}
-.cr-ctl .omark{position:absolute;top:1px;width:2px;height:22px;margin-left:-1px;background:var(--gold-ink);border-radius:1px;pointer-events:none;opacity:.8}
-.cr-ctl .omark::after{content:"";position:absolute;left:-2px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+.cr-ctl .omark{position:absolute;top:5px;width:1.5px;height:14px;margin-left:-.75px;background:rgba(18,38,29,.28);border-radius:1px;pointer-events:none}
 .ramp input[type=range]{--track:var(--ramp)}
 @media (pointer:coarse){ input[type=range]{height:44px} }
 

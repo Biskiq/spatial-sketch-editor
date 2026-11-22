@@ -1,6 +1,6 @@
 /*
  * Paint tray — the one quick-access instrument. It sits on the dock: favourites then recents for
- * the active tab, a radius (Brush · Surface · Space), and "More ⌃" to expand upward into the
+ * the active tab, a radius (Brush · Surface · Space), and a ⌃ toggle under the dropper to expand upward into the
  * palette (with palette editing) or the material grid. Brush is a future tool inside Paint: it
  * adds at most two rows (its tools, then the selected tool's options) and never becomes a dock
  * tool of its own. The tray never writes: picking arms Paint; Stage gestures commit through
@@ -95,14 +95,17 @@ export function renderTray() {
     const on = favList.includes(curKey);
     row.append(h('button', { class: 'star' + (on ? ' on' : ''), title: on ? 'In favourites — click to remove' : 'Keep the current pick in favourites', 'aria-pressed': String(on), 'aria-label': 'Favourite current pick', 'data-fid': 'tray-star', onClick: () => M.toggleFavourite(U.pick.kind === 'colour' ? 'colour' : 'material', curKey) }, ic('star', 18)));
   }
-  if (!U.trayOpen) row.append(h('button', { class: 'morep', 'aria-expanded': 'false', 'data-fid': 'tray-more', title: U.trayTab === 'colours' ? 'Palette, wheel and palette editing' : 'Every material in the project, My library and curated', onClick: () => setUi({ trayOpen: true }) }, 'More', h('span', { 'aria-hidden': 'true' }, '⌃')));
-  el.append(row);
+  // one toggle, in the dropper's column: ⌃ shows the palette / every material, ⌄ hides it again
+  const what = U.trayTab === 'colours' ? 'palette' : 'all materials';
+  const toggle = h('button', { class: 'ib tr-tg', 'aria-expanded': String(!!U.trayOpen), 'aria-label': `${U.trayOpen ? 'Hide' : 'Show'} ${what}`, title: `${U.trayOpen ? 'Hide' : 'Show'} ${what}`, 'data-fid': U.trayOpen ? 'tray-collapse' : 'tray-more', onClick: () => setUi({ trayOpen: !U.trayOpen }) }, chevron(U.trayOpen));
+  el.append(h('div', { class: 'tr-body' }, row, toggle));
 
   // rows 2–3 — Brush (future): its tools, then the options of the selected tool. Never more than three rows.
   if (U.scope === 'brush') el.append(brushRows());
 
-  if (U.trayOpen) el.append(h('div', { class: 'tr-xw' }, h('button', { class: 'ib collapse', 'aria-expanded': 'true', 'aria-label': 'Collapse tray', title: 'Collapse', 'data-fid': 'tray-collapse', onClick: () => setUi({ trayOpen: false }) }, '⌄'), U.trayTab === 'colours' ? expandedColours() : expandedMaterials()));
+  if (U.trayOpen) el.append(U.trayTab === 'colours' ? expandedColours() : expandedMaterials());
 }
+const chevron = (open) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 16 16'); s.setAttribute('width', '16'); s.setAttribute('height', '16'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = `<path d="${open ? 'M4 6l4 4 4-4' : 'M4 10l4-4 4 4'}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`; return s; };
 
 function brushRows() {
   const tools = h('div', { class: 'tr-tools', role: 'toolbar', 'aria-label': 'Brush tools (future)' });
@@ -137,7 +140,7 @@ function expandedColours() {
   pal.append(h('button', { class: 'sw c dashed', style: { width: '34px', height: '34px' }, title: 'Add a palette colour', 'aria-label': 'Add a palette colour', onClick: (e) => setUi({ picker: { anchor: e.currentTarget.getBoundingClientRect(), hex: A.pickHex(U.pick) || '#b5a58a', title: 'New palette colour', addSlot: true } }) }, ic('plus', 14)));
   x.append(h('div', {}, h('h5', {}, 'Project palette', h('button', { class: 'linkb', 'aria-pressed': String(edit), 'data-fid': 'pal-edit', title: 'Change a palette colour everywhere it is followed, as one undo', onClick: () => setUi({ paletteEdit: !edit }) }, edit ? 'Done editing' : 'Edit palette')), pal,
     edit ? h('p', { class: 'note-sm' }, 'Click a colour to change it everywhere; the number is how many surfaces follow it. One undo per change.') : null));
-  x.append(h('div', {}, h('h5', {}, 'Colour vs material'), h('p', { class: 'note', style: { margin: 0 } }, 'Circles colour a surface and keep its relief and sheen (walnut stays grained; plaster stays plaster). Rounded squares replace the whole Finish.')));
+  x.append(h('p', { class: 'note-sm tr-hint', title: 'Walnut stays grained; plaster stays plaster. A rounded square (Materials) replaces the whole Finish.' }, 'Circles colour a surface and keep its relief and sheen · rounded squares replace the Finish.'));
   return x;
 }
 

@@ -92,18 +92,32 @@ export function renderPicker() {
 }
 
 // ================================================================== importer
-const FILES = [
-  ['RoughOak_Color.jpg', 'Colour', 'sRGB base colour', 'ok'],
-  ['RoughOak_Normal.png', 'Normal', 'generic name — Y direction not stated', 'ack'],
-  ['RoughOak_ORM.png', 'Occlusion · Roughness · Metal', 'R · G · B', 'clash'],
-  ['RoughOak_Gloss.png', 'Roughness', 'gloss, inverted to roughness', 'clash'],
-  ['RoughOak_Height.png', 'Not used', 'height / displacement — later', 'skip']
-];
+// Two stand-in downloads. "messy": generic names, a packed ORM and a Gloss both claim roughness, the
+// normal direction is not stated. "clean": a typical vendor set whose names settle everything
+// (diff · nor_gl · arm), so it imports in one click. Detection reads file names only.
+const SETS = {
+  messy: [
+    ['RoughOak_Color.jpg', 'Colour', 'sRGB base colour', 'ok'],
+    ['RoughOak_Normal.png', 'Normal', 'generic name — Y direction not stated', 'ack'],
+    ['RoughOak_ORM.png', 'Occlusion · Roughness · Metal', 'packed R · G · B', 'clash'],
+    ['RoughOak_Gloss.png', 'Roughness', 'gloss, inverted to roughness', 'clash'],
+    ['RoughOak_Height.png', 'Not used', 'height / displacement — later', 'skip']
+  ],
+  clean: [
+    ['rough_oak_diff_2k.jpg', 'Colour', 'sRGB base colour', 'ok'],
+    ['rough_oak_nor_gl_2k.png', 'Normal', 'OpenGL (+Y) — “_gl” in the name', 'ok'],
+    ['rough_oak_arm_2k.png', 'Occlusion · Roughness · Metal', 'packed R · G · B — “arm”', 'ok'],
+    ['rough_oak_disp_2k.png', 'Not used', 'height / displacement — later', 'skip']
+  ]
+};
 let D = null;
 export function renderImporter() {
   const el = $('#importer'); const I = U.importer;
   el.hidden = !I.open; if (el.hidden) { el.innerHTML = ''; D = null; return; }
-  if (!D) D = { rough: null, flip: false, ack: false, size: '1.20', name: 'Rough Oak', targets: I.targets || (U.focus ? [U.focus.target] : []), kind: null };
+  const set = I.set === 'clean' ? 'clean' : 'messy', FILES = SETS[set];
+  if (!D) D = set === 'clean'
+    ? { set, rough: 'orm', flip: false, ack: true, detected: true, size: '1.20', name: 'Rough Oak', targets: I.targets || (U.focus ? [U.focus.target] : []), kind: null, files: false }
+    : { set, rough: null, flip: false, ack: false, detected: false, size: '1.20', name: 'Rough Oak', targets: I.targets || (U.focus ? [U.focus.target] : []), kind: null, files: false };
   const keep = document.activeElement?.dataset?.fid;
   el.innerHTML = '';
   const kinds = [...new Set(D.targets.map((t) => TARGETS[t].kind))];
@@ -115,27 +129,39 @@ export function renderImporter() {
 
   const rows = FILES.map(([fn, ch, sub, st]) => h('tr', {}, h('td', { class: 'fn' }, fn), h('td', {}, ch, h('div', { class: 'note-sm' }, sub)),
     h('td', {}, st === 'ok' ? h('span', { class: 'tag ok' }, 'ready') : st === 'skip' ? h('span', { class: 'tag fut' }, 'ignored') : st === 'ack' ? h('span', { class: 'tag ' + (D.ack ? 'ok' : 'warn') }, D.ack ? (D.flip ? '−Y confirmed' : '+Y confirmed') : 'check') : h('span', { class: 'tag ' + (D.rough ? (D.rough === (fn.includes('ORM') ? 'orm' : 'gloss') ? 'ok' : 'fut') : 'no') }, D.rough ? (D.rough === (fn.includes('ORM') ? 'orm' : 'gloss') ? 'roughness source' : 'roughness unused') : 'collision'))));
-  const left = h('div', { class: 'ctl', style: { minWidth: 0 } },
-    h('div', { class: 'tw' }, h('table', { class: 'files' }, h('thead', {}, h('tr', {}, h('th', {}, 'File'), h('th', {}, 'Reads as'), h('th', {}, ''))), h('tbody', {}, rows))),
-    D.rough ? h('div', { class: 'okbox' }, `Roughness from ${D.rough === 'orm' ? 'ORM green channel; Gloss is ignored' : 'Gloss (inverted); ORM keeps occlusion and metal only'}.`, ' ', h('button', { class: 'linkb', onClick: () => { D.rough = null; renderImporter(); } }, 'Change'))
-      : h('div', { class: 'refuse', role: 'alert' }, h('b', {}, 'Two files claim roughness. '), 'Choose one — nothing imports until you do.', h('div', { style: { marginTop: '6px' } }, seg([['orm', 'ORM green channel'], ['gloss', 'Gloss, inverted']], null, (v) => { D.rough = v; renderImporter(); }))),
-    h('div', { class: 'r' }, h('span', {}, 'Normal map direction'),
+  // pick first: one summary line; only the questions the files leave open; the table behind "Show files"
+  const used = FILES.filter((f) => f[3] !== 'skip').length;
+  const open = [!D.rough && set === 'messy' ? 'roughness' : null, !D.ack ? 'normal' : null].filter(Boolean);
+  const summary = h('div', { class: 'imp-sum' + (open.length ? '' : ' ok') }, h('b', {}, `${FILES.length} files · ${D.name.trim() || 'Untitled'}`),
+    h('span', {}, open.length ? ` · ${open.length} thing${open.length === 1 ? '' : 's'} to check` : ` · ready${set === 'clean' ? ' — the file names settled everything' : ''}`),
+    h('div', { class: 'note-sm' }, `Read as one material from ${used} images: colour, relief (normal) and sheen (roughness, occlusion, metal).${FILES.some((f) => f[3] === 'skip') ? ' Height is kept aside for later.' : ''}`));
+  const table = h('details', { class: 'imp-files', open: D.files || undefined, onToggle: (e) => { D.files = e.target.open; } },
+    h('summary', {}, `Show files (${FILES.length})`),
+    h('div', { class: 'tw' }, h('table', { class: 'files' }, h('thead', {}, h('tr', {}, h('th', {}, 'File'), h('th', {}, 'Reads as'), h('th', {}, ''))), h('tbody', {}, rows))));
+  const roughQ = set === 'clean' ? null : D.rough ? h('div', { class: 'okbox' }, `Roughness from ${D.rough === 'orm' ? 'ORM green channel; Gloss is ignored' : 'Gloss (inverted); ORM keeps occlusion and metal only'}.`, ' ', h('button', { class: 'linkb', onClick: () => { D.rough = null; renderImporter(); } }, 'Change'))
+    : h('div', { class: 'refuse', role: 'alert' }, h('b', {}, 'Two files claim roughness. '), 'Choose one — nothing imports until you do.', h('div', { style: { marginTop: '6px' } }, seg([['orm', 'ORM green channel'], ['gloss', 'Gloss, inverted']], null, (v) => { D.rough = v; renderImporter(); })));
+  const normalQ = D.detected
+    ? h('div', { class: 'okbox' }, 'Normal direction: OpenGL (+Y), from “_gl” in the file name.', ' ', h('button', { class: 'linkb', onClick: () => { D.detected = false; D.ack = false; renderImporter(); } }, 'Change'))
+    : h('div', { class: 'r' }, h('span', {}, 'Normal map direction'),
       seg([[false, '+Y up · OpenGL (proposed)'], [true, '−Y · DirectX']], D.flip, (v) => { D.flip = v; D.ack = false; renderImporter(); }),
-      h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: D.ack || undefined, 'data-fid': 'imp-ack', onChange: (e) => { D.ack = e.target.checked; renderImporter(); } }), 'I checked the test: bumps look raised, lit from above.')),
+      h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: D.ack || undefined, 'data-fid': 'imp-ack', onChange: (e) => { D.ack = e.target.checked; renderImporter(); } }), 'I checked the test: bumps look raised, lit from above.'));
+  const left = h('div', { class: 'ctl', style: { minWidth: 0 } },
+    summary, roughQ, normalQ,
     h('div', { class: 'g2', style: { gap: '10px' } },
       h('div', { class: 'r' }, h('span', {}, 'Physical size'), h('div', { class: 'fldrow' }, h('input', { class: 'fld' + (sizeOk ? '' : ' bad'), value: D.size, 'data-fid': 'imp-size', 'aria-label': 'Physical size of one image in metres', onInput: (e) => { D.size = e.target.value; } , onChange: () => renderImporter(), onKeydown: (e) => { if (e.key === 'Enter') renderImporter(); } }), h('span', { class: 'unit' }, 'm per image'))),
       h('div', { class: 'r' }, h('span', {}, 'Name'), h('input', { class: 'fld', value: D.name, maxlength: 120, 'data-fid': 'imp-name', 'aria-label': 'Finish name', onInput: (e) => { D.name = e.target.value; }, onChange: () => renderImporter() }))),
     h('div', { class: 'r' }, h('span', {}, 'Register on'),
       kinds.length > 1 ? h('div', {}, h('div', { class: 'refuse' }, 'Layout surfaces and Scene objects register in separate steps. Pick one now; paint the rest from Materials afterwards — it stays one shared Finish.'), h('div', { style: { marginTop: '6px' } }, seg(kinds.map((k) => [k, `${k === 'layout' ? 'Layout surfaces' : 'Scene objects'} · ${D.targets.filter((t) => TARGETS[t].kind === k).length}`]), D.kind, (v) => { D.kind = v; renderImporter(); })))
-        : h('div', { class: 'note' }, regTargets.length ? regTargets.map(A.shortTarget).join(', ') : 'Nothing selected — it lands in This project; paint it from Materials.')));
+        : h('div', { class: 'note' }, regTargets.length ? regTargets.map(A.shortTarget).join(', ') : 'Nothing selected — it lands in This project; paint it from Materials.')),
+    table);
   const testC = h('canvas', { width: 360, height: 360 });
   const sampleC = h('canvas', { width: 480, height: 480 });
   const right = h('div', { class: 'ctl' },
     h('figure', {}, h('div', { class: 'view', style: { width: 'min(300px,80vw)' } }, sampleC), h('figcaption', {}, 'draft · flat sample · studio')),
     h('figure', {}, h('div', { class: 'view', style: { width: 'min(300px,80vw)' } }, testC), h('figcaption', {}, 'normal test · light from above')));
-  el.append(h('div', { class: 'sh-h' }, ic('import', 18), h('div', {}, h('div', { class: 'k' }, 'Import material · draft'), h('b', {}, '5 files dropped')), h('button', { class: 'cp-x', style: { marginLeft: 'auto' }, 'aria-label': 'Cancel import', onClick: () => setUi({ importer: { open: false } }) }, '×')),
+  el.append(h('div', { class: 'sh-h' }, ic('import', 18), h('div', {}, h('div', { class: 'k' }, 'Import material · draft'), h('b', {}, `${FILES.length} files dropped`)), h('button', { class: 'cp-x', style: { marginLeft: 'auto' }, 'aria-label': 'Cancel import', onClick: () => setUi({ importer: { open: false } }) }, '×')),
     h('div', { class: 'sh-b', style: { gridTemplateColumns: 'minmax(0,1fr) auto' } }, left, right),
-    h('div', { class: 'sh-f' }, h('span', { class: 'note' }, ready ? 'Ready. One undo removes the import and its assignments.' : 'Resolve the red and amber items to continue.'),
+    h('div', { class: 'sh-f' }, h('span', { class: 'note' }, ready ? 'Ready. One undo removes the import and its assignments.' : `Answer the ${open.length === 1 ? 'question' : `${open.length} questions`} above to continue.`),
       h('button', { class: 'btn', onClick: () => setUi({ importer: { open: false } }) }, 'Cancel'),
       h('button', { class: 'btn pri', disabled: !ready || undefined, onClick: accept }, regTargets.length ? `Import & apply to ${regTargets.length}` : 'Import')));
   try {
@@ -145,7 +171,8 @@ export function renderImporter() {
   if (keep) el.querySelector(`[data-fid="${keep}"]`)?.focus();
 
   function accept() {
-    const res = M.registerImport({ name: D.name.trim(), set: 'rough-oak', ov: { rough: D.rough === 'gloss' ? 0.62 : 1, normalFlip: D.flip || undefined, tile: size }, maps: { colour: 'RoughOak_Color.jpg', normal: 'RoughOak_Normal.png', orm: 'RoughOak_ORM.png', ...(D.rough === 'gloss' ? { gloss: 'RoughOak_Gloss.png' } : {}) }, notes: `Roughness from ${D.rough === 'orm' ? 'ORM.G' : 'Gloss (inverted)'} · normal ${D.flip ? '−Y' : '+Y'} acknowledged · height ignored.` }, regTargets, (t) => TARGETS[t].kind);
+    const maps = set === 'clean' ? { colour: FILES[0][0], normal: FILES[1][0], orm: FILES[2][0] } : { colour: 'RoughOak_Color.jpg', normal: 'RoughOak_Normal.png', orm: 'RoughOak_ORM.png', ...(D.rough === 'gloss' ? { gloss: 'RoughOak_Gloss.png' } : {}) };
+    const res = M.registerImport({ name: D.name.trim(), set: 'rough-oak', ov: { rough: D.rough === 'gloss' ? 0.62 : 1, normalFlip: D.flip || undefined, tile: size }, maps, notes: `Roughness from ${D.rough === 'orm' ? 'ORM.G' : 'Gloss (inverted)'} · normal ${D.flip ? '−Y' : '+Y'} ${D.detected ? 'from the file name' : 'acknowledged'} · height ignored.` }, regTargets, (t) => TARGETS[t].kind);
     if (res.refused) { toast('Refused: one kind per registration'); return; }
     setUi({ importer: { open: false } });
     if (regTargets[0]) A.focus(regTargets[0], 'finish');
