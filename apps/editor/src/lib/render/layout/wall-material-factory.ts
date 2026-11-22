@@ -61,6 +61,7 @@ export function createVisitorWallMaterialFactory(
 	} = {}
 ): {
 	factory: WallMeshMaterialFactory;
+	reloadTextures: () => void;
 	dispose: () => void;
 } {
 	const defaultDefinition = getMaterial('plaster-warm');
@@ -128,6 +129,11 @@ export function createVisitorWallMaterialFactory(
 		const existing = looks.get(key);
 		if (existing !== undefined) return existing;
 		looks.set(key, candidate);
+		loadLook(candidate);
+		return candidate;
+	}
+
+	function loadLook(candidate: SurfaceLook): void {
 		const sampled = candidate.material.kind === 'standard' && candidate.material.finish !== undefined;
 		if (sampled) {
 			const controller = new AbortController();
@@ -162,7 +168,6 @@ export function createVisitorWallMaterialFactory(
 				options.onMaterialChange?.();
 			});
 		}
-		return candidate;
 	}
 
 	function descriptorFor(look: SurfaceLook): {
@@ -213,6 +218,13 @@ export function createVisitorWallMaterialFactory(
 
 	return {
 		factory,
+		reloadTextures: () => {
+			if (disposed) return;
+			// An unfinished Finish acquisition follows a Retry by itself.
+			for (const look of looks.values()) {
+				if (!look.loaded && look.controller === null) loadLook(look);
+			}
+		},
 		dispose: () => {
 			if (disposed) return;
 			disposed = true;

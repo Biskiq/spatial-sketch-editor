@@ -178,6 +178,8 @@ export function createRegionRepresentation(
 			return changed;
 		},
 		objectOf(id: string) { return entries.get(id)?.mesh ?? null; },
+		/** Ask again for the face images that failed, without rebuilding geometry. */
+		reloadTextures(): void { surfaceMaterials.reloadTextures(); },
 		/** Re-resolve Scene-owned Region faces without rebuilding geometry. */
 		setScene(next: object | null, scope: TextureLoadScope | null): boolean {
 			if (next === scene && scope === activeScope) return false;

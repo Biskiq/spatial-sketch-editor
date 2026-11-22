@@ -38,7 +38,7 @@ export function createSceneSurfaceMaterials(input: {
 	readonly resolveSurfaceLook?: SceneSurfaceLookResolver;
 	/** The owning Canvas's generation; a replacement refuses only its own loads. */
 	readonly viewGeneration?: () => FinishViewGeneration | null;
-}): { materialFor(surface: SceneSurfaceRef): Material | null; materialKeys(): readonly string[]; dispose(): void } {
+}): { materialFor(surface: SceneSurfaceRef): Material | null; materialKeys(): readonly string[]; reloadTextures(): void; dispose(): void } {
 	const leases = new Map<string, ReturnType<MaterialStore['acquire']>>();
 	const variants = new Map<string, Variant>();
 	const looks = new Map<string, SurfaceLook>();
@@ -58,11 +58,17 @@ export function createSceneSurfaceMaterials(input: {
 			controller: null
 		};
 		looks.set(key, look);
-		if (sampled) {
+		loadLook(look);
+		return look;
+	}
+
+	function loadLook(look: SurfaceLook): void {
+		if (look.material.kind === 'standard' && look.material.finish !== undefined) {
+			const sources = look.textures?.views ?? [];
 			const controller = new AbortController();
 			look.controller = controller;
 			void acquireFinishViews(
-				resolved.textures?.views ?? [],
+				sources,
 				input.scope,
 				controller.signal,
 				input.viewGeneration?.() ?? undefined
@@ -73,7 +79,7 @@ export function createSceneSurfaceMaterials(input: {
 						lease.release();
 						return;
 					}
-					const named = new Set((resolved.textures?.views ?? []).map((source) => source.view));
+					const named = new Set(sources.map((source) => source.view));
 					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
 					if (!complete) {
 						lease.release();
@@ -91,7 +97,6 @@ export function createSceneSurfaceMaterials(input: {
 				input.onMaterialChange();
 			});
 		}
-		return look;
 	}
 
 	function descriptorFor(look: SurfaceLook): {
@@ -145,6 +150,13 @@ export function createSceneSurfaceMaterials(input: {
 		},
 		materialKeys() {
 			return [...leases.values()].map((lease) => lease.key);
+		},
+		reloadTextures() {
+			if (disposed) return;
+			// An unfinished Finish acquisition follows a Retry by itself.
+			for (const look of looks.values()) {
+				if (!look.loaded && look.controller === null) loadLook(look);
+			}
 		},
 		dispose() {
 			if (disposed) return;

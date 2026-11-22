@@ -83,6 +83,11 @@ describe('the default Wall surface', () => {
 		);
 	});
 
+	it('passes a texture Retry from the Stage to the Layout shell', () => {
+		const stage = source('src/lib/authoring/stage/shell/StageCanvas.svelte');
+		expect(/<VisitorLayoutShell[^]*?\/>/u.exec(stage)?.[0]).toContain('{textureRevision}');
+	});
+
 	it('draws the default Room floor as the ground: same colour, unlit and untoned', () => {
 		expect(DEFAULT_FLOOR_COLOR).toBe(PAPER_GROUND_INK);
 		expect(source('src/lib/render/layout-room-representation.ts')).toContain(

@@ -194,8 +194,8 @@ function viewKey(role: MapRole, image: ImageRef): string {
 
 /**
  * Drop a map entry whose Scene texture record no longer exists, so the base
- * slot survives exactly as the shipped resolver's fallback did. A dev warning
- * names the lost id.
+ * slot survives exactly as the shipped resolver's fallback did. A disabled
+ * (`null`) role stays disabled. A dev warning names the lost id.
  */
 function sanitizeInstance(
 	document: LookSource,
@@ -207,7 +207,12 @@ function sanitizeInstance(
 	const dropped: string[] = [];
 	for (const role of Object.keys(maps) as MapRole[]) {
 		const binding = maps[role];
-		if (binding === undefined || binding === null) continue;
+		if (binding === undefined) continue;
+		if (binding === null) {
+			// `null` disables the base's map; losing a sibling must not switch it back on.
+			kept[role] = null;
+			continue;
+		}
 		const textureId = 'textureId' in binding.image ? binding.image.textureId : null;
 		if (textureId !== null && findTexture(document, textureId) === undefined) {
 			dropped.push(`${role}:${textureId}`);

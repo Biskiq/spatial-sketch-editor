@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { resolveSceneSurfaceLook } from '$lib/render/layout/scene-surface-look';
@@ -20,6 +21,7 @@
 		geometry,
 		scene = null,
 		textureScope = null,
+		textureRevision = 0,
 		treatment = undefined,
 		plinth = true,
 		doorFrames = true,
@@ -32,6 +34,8 @@
 		geometry: CompiledLayoutGeometry;
 		scene?: RuntimeScene | null;
 		textureScope?: TextureLoadScope | null;
+		/** Bumped by a host's targeted image Retry; failed surface images load again. */
+		textureRevision?: number;
 		/** The World's resolve-time Treatment for default floors, ceilings and walls. */
 		treatment?: SceneTreatment;
 		/**
@@ -185,6 +189,20 @@
 	});
 	$effect(() => {
 		if (regions.setTreatment(treatment)) invalidate();
+	});
+
+	/** The revision already applied; mounting asks for every image by itself. */
+	let seenTextureRevision: number | null = null;
+	$effect(() => {
+		const revision = textureRevision;
+		const seen = seenTextureRevision;
+		seenTextureRevision = revision;
+		if (seen === null || seen === revision) return;
+		untrack(() => {
+			walls.reloadTextures();
+			rooms.reloadTextures();
+			regions.reloadTextures();
+		});
 	});
 
 	/**

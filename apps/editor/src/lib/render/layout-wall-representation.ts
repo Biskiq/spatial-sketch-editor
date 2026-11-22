@@ -107,6 +107,8 @@ export type WallRepresentation = {
 	setTreatment(treatment: MaterialTreatment | undefined): boolean;
 	/** Re-resolve Scene-owned surface assignments without rebuilding geometry. */
 	setScene(scene: object | null, scope: TextureLoadScope | null): boolean;
+	/** Ask again for the surface images that failed, without rebuilding geometry. */
+	reloadTextures(): void;
 	/**
 	 * X2's display overlay: exactly these Walls draw through the cutaway twin
 	 * material. Work is proportional to the ids that changed state, the set is
@@ -452,6 +454,12 @@ export function createWallRepresentation(
 			previousFactory.dispose();
 			previousCutawayFactory?.dispose();
 			return true;
+		},
+
+		reloadTextures() {
+			if (disposed) return;
+			factory.reloadTextures();
+			cutawayFactory?.reloadTextures();
 		},
 
 		setScene(nextScene, nextScope) {

@@ -482,6 +482,7 @@ export function createSceneEntityRepresentation(
 				entry.generation += 1;
 				loadTextures(entry, entry.item);
 			}
+			models.reloadTextures();
 		},
 
 		objectOf(id) {
