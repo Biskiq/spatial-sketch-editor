@@ -113,17 +113,9 @@ describe('T2.S8 U2 — Paint tray', () => {
 		expect(target.querySelectorAll('[data-paint-radius="brush"][aria-disabled="true"]')).toHaveLength(1);
 	});
 
-	it('states the consequence, the stroke count and a refusal in place', () => {
-		const active = material('curated:a', 'Alpha');
-		const candidate = (refusal: string | null, consequence: string | null) => ({ refusal, consequence }) as never;
-		const line = (props: Record<string, unknown>) => render(view({ active }), props).target.querySelector('[data-paint-consequence]')!;
-		expect(line({}).textContent).toBe('Point at a surface or an object');
-		expect(line({ candidate: candidate(null, 'Paint this Wall face') }).textContent).toBe('Paint this Wall face');
-		const refused = line({ candidate: candidate('Lights have no Finish.', null) });
-		expect(refused.textContent).toBe('Lights have no Finish.');
-		expect(refused.classList.contains('refused')).toBe(true);
-		expect(line({ stroke: { kind: 'surface', count: 3 } }).textContent).toBe('3 surfaces · release to paint');
-		expect(render(view({ dropper: true })).target.querySelector('[data-paint-consequence]')!.textContent).toBe('Click to sample a Finish');
+	it('leaves the consequence line to the Stage view bar', () => {
+		// The accepted design reads Paint's next press on the view bar; the tray head is tabs | radius | dropper.
+		expect(render(view({ active: material('curated:a', 'Alpha') })).target.querySelector('[data-paint-consequence]')).toBeNull();
 	});
 
 	it('expands to the palette and wheel on Colours, and the wheel hands back a literal colour', () => {

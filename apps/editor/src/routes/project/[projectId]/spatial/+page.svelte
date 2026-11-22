@@ -161,6 +161,7 @@
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { withFinishPreviews } from '@portfolio/project-model/scene-planning';
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
+	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
@@ -589,6 +590,18 @@
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
 	const paintTray = $derived(finishes.paintTray());
 	const paintTrayState = createPaintTrayState();
+	// Paint's consequence line, read on the Stage view bar while the tray is up.
+	const paintLine = $derived(
+		shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen
+			? paintConsequence({
+				stroke: shell.paintTool?.stroke() ?? null,
+				dropper: paintTray.dropper,
+				picked: paintTray.active !== null,
+				tab: paintTray.colourEnabled ? paintTrayState.tab : 'materials',
+				candidate: shell.paintCandidate
+			})
+			: null
+	);
 	$effect(() => {
 		if (shell.armedHostTool !== 'paint') paintTrayState.reset();
 	});
@@ -2381,6 +2394,7 @@
 		{#snippet toolbars()}
 			<StageToolbars
 				previewing={preview !== null}
+				{paintLine}
 				viewLine={preview === null
 					? {
 						drafting: {
@@ -2566,8 +2580,6 @@
 				tray={paintTray}
 				view={paintTrayState}
 				radius={shell.paintTool?.surfaceScope() ?? 'surface'}
-				candidate={shell.paintCandidate}
-				stroke={shell.paintTool?.stroke() ?? null}
 				onRadius={(radius) => shell.paintTool?.setSurfaceScope(radius)}
 				onPick={(swatch) => {
 					const colour = swatch.kind === 'colour' ? parseColourKey(swatch.key) : null;

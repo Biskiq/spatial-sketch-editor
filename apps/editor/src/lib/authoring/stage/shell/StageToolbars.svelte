@@ -17,6 +17,7 @@
 	 * the composition root.
 	 */
 	import type { ComponentProps } from 'svelte';
+	import type { PaintConsequence } from '../paint-consequence';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
 	import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
 	import StageDraftingControl from './StageDraftingControl.svelte';
@@ -35,6 +36,7 @@
 	let {
 		previewing,
 		viewLine = null,
+		paintLine = null,
 		show = null,
 		world = null,
 		instrument = null,
@@ -45,6 +47,8 @@
 		readonly viewLine?: {
 			readonly drafting: DraftingProps;
 		} | null;
+		/** The armed Paint tool's consequence, read on the view bar (T2.S8 U2). */
+		readonly paintLine?: PaintConsequence | null;
 		readonly show?: {
 			readonly open: boolean;
 			readonly mode: 'whole' | 'selection';
@@ -121,6 +125,14 @@
 		onpointerdown={(event) => event.stopPropagation()}
 	>
 		<StageDraftingControl {...viewLine.drafting} />
+		{#if paintLine !== null}
+			<!-- The accepted appearance design reads Paint's next press here, not in the tray. -->
+			<div class="paint-line" class:refused={paintLine.refused} data-paint-consequence role="status" title={paintLine.text}>
+				<span class="tool">{paintLine.tool}</span>
+				<span class="div" aria-hidden="true"></span>
+				<span class="msg">{paintLine.text}</span>
+			</div>
+		{/if}
 	</div>
 {/if}
 
@@ -322,6 +334,45 @@
 	}
 	.view-line > :global(*) {
 		pointer-events: auto;
+	}
+	/* Paint's consequence: the prototype's light bar beside the reading control. */
+	.paint-line {
+		box-sizing: border-box;
+		display: flex;
+		min-width: 0;
+		max-width: min(38.5rem, 100%);
+		height: 36px;
+		align-items: center;
+		gap: 6px;
+		padding: 0 10px;
+		overflow: hidden;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 10px;
+		background: var(--shell-white);
+		box-shadow: 0 1px 4px rgb(18 38 29 / 10%);
+		color: var(--shell-ink-3);
+		font-family: var(--shell-sans);
+		font-size: var(--shell-text-utility);
+		white-space: nowrap;
+	}
+	.paint-line .tool {
+		flex: none;
+		color: var(--shell-forest);
+		font-weight: 600;
+	}
+	.paint-line .div {
+		width: 1px;
+		height: 20px;
+		flex: none;
+		background: var(--shell-hairline);
+	}
+	.paint-line .msg {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.paint-line.refused .msg {
+		color: var(--shell-refuse);
 	}
 	/* Experience's Show control sits below the restored reading line. */
 	.stage-actions {

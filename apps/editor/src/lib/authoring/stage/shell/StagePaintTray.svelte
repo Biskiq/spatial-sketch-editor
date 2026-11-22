@@ -3,7 +3,8 @@
 	 * The armed Paint tool's tray (T2.S8 U2): one Colours / Materials tray with a
 	 * reach control, a swatch row (favourites then recents), the dropper, a
 	 * custom colour wheel and an expansion to the full palette or Finishes. It
-	 * draws the pick and the consequence and owns no Finish state; every command
+	 * draws the pick and owns no Finish state (the consequence line is the
+	 * Stage view bar's); every command
 	 * goes back through the page to the Finish service and the painter.
 	 *
 	 * A circle is a colour (it keeps relief and sheen); a rounded square is a
@@ -18,7 +19,6 @@
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import type { MaterialId } from '$lib/types/materials';
 	import type { PaintTrayState, PaintTrayTab } from '$lib/authoring/look/paint-tray-state.svelte';
-	import type { StagePaintCandidate, StagePaintStroke } from '../stage-painter';
 	import ShellIcon from './ShellIcon.svelte';
 	import StagePaintWheel from './StagePaintWheel.svelte';
 
@@ -26,8 +26,6 @@
 		tray,
 		view,
 		radius,
-		candidate,
-		stroke,
 		onPick,
 		onColour,
 		onFavourite,
@@ -39,8 +37,6 @@
 		tray: PaintTrayView;
 		view: PaintTrayState;
 		radius: PaintRadius;
-		candidate: StagePaintCandidate | null;
-		stroke: StagePaintStroke | null;
 		onPick: (swatch: PaintSwatch) => void;
 		onColour: (colour: PaintColour) => void;
 		onFavourite: () => void;
@@ -68,18 +64,6 @@
 	const row = $derived(tab === 'colours' ? tray.colours.row : tray.materials.row);
 	const shape = $derived(tab === 'colours' ? 'colour' : 'material');
 	const activeInTab = $derived(tray.active !== null && tray.active.kind === (tab === 'colours' ? 'colour' : 'finish'));
-
-	const consequence = $derived.by(() => {
-		if (stroke !== null && stroke.count > 0) {
-			const noun = stroke.kind === 'surface' ? (stroke.count === 1 ? 'surface' : 'surfaces') : stroke.count === 1 ? 'object' : 'objects';
-			return { text: `${stroke.count} ${noun} · release to paint`, refused: false };
-		}
-		if (tray.dropper) return { text: 'Click to sample a Finish', refused: false };
-		if (tray.active === null) return { text: tab === 'colours' ? 'Choose a colour' : 'Choose a material', refused: false };
-		if (candidate?.refusal) return { text: candidate.refusal, refused: true };
-		if (candidate?.consequence) return { text: candidate.consequence, refused: false };
-		return { text: 'Point at a surface or an object', refused: false };
-	});
 
 	function roving(event: KeyboardEvent): void {
 		const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
@@ -126,7 +110,7 @@
 			{/if}
 			<button type="button" role="tab" title="A material replaces the whole Finish (T)" data-paint-tab-button="materials" aria-selected={tab === 'materials'} class:on={tab === 'materials'} onclick={() => view.setTab('materials')}>Materials</button>
 		</span>
-		<span class="consequence" class:refused={consequence.refused} data-paint-consequence role="status" title={consequence.text}>{consequence.text}</span>
+		<span class="grow"></span>
 		<span class="seg radius" role="group" aria-label="Paint radius">
 			<!-- Brush is a decided future radius inside Paint: drawn, inert, with no tool rows until it is built. -->
 			<button type="button" class="future" data-paint-radius="brush" aria-disabled="true" title="Brush — paint part of a surface (future)" onclick={(event) => event.preventDefault()}>
@@ -382,19 +366,8 @@
 		color: var(--shell-white);
 		box-shadow: 0 1px 3px rgb(18 38 29 / 30%);
 	}
-	.consequence {
-		min-width: 0;
+	.grow {
 		flex: 1;
-		overflow: hidden;
-		padding: 0 4px;
-		color: var(--shell-ink-3);
-		font-size: var(--shell-text-utility);
-		text-align: right;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.consequence.refused {
-		color: var(--shell-refuse);
 	}
 	.strip {
 		display: flex;
@@ -599,11 +572,6 @@
 	@media (max-width: 700px) {
 		.head {
 			flex-wrap: wrap;
-		}
-		.consequence {
-			order: 5;
-			flex-basis: 100%;
-			text-align: left;
 		}
 	}
 	@media (pointer: coarse) {
