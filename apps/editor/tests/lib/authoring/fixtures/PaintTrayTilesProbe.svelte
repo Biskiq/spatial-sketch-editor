@@ -34,8 +34,6 @@
 	{tray}
 	{view}
 	radius="surface"
-	candidate={null}
-	stroke={null}
 	{onPick}
 	onColour={() => {}}
 	onFavourite={() => {}}

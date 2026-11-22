@@ -49,7 +49,7 @@ function render(tray: PaintTrayView, extra: Record<string, unknown> = {}) {
 	mounted.push(
 		mount(StagePaintTray, {
 			target,
-			props: { tray, view: state, radius: 'surface', candidate: null, stroke: null, ...callbacks, ...extra }
+			props: { tray, view: state, radius: 'surface', ...callbacks, ...extra }
 		}) as Record<string, unknown>
 	);
 	return { target, state, ...callbacks };
