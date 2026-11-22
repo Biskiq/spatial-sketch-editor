@@ -81,14 +81,44 @@ Cold load, cache reuse, recipe change and failure behaviour are covered by `fini
 (master fetch only on first need, cache hit with no second render, key change on recipe or framing
 change, null on host refusal with the swatch retained, revocation on forget/dispose).
 
+## Review follow-up
+
+1. **Cache lifecycle.** The service now hands out *leases* (`lease`, `leaseNow`) instead of bare
+   URLs. A picture leaving the LRU, a scope forget or a dispose revokes its object URL at once if no
+   tile holds it, and at the last `release()` if one does; a tile's picture is never pulled from
+   under it. A draw still in flight when its picture is evicted, forgotten or disposed makes no URL
+   at all, so nothing can leak. Shared work is cancelled only when its last holder leaves: one
+   cancelled tile no longer fails a draw another tile still wants, and an abandoned draw is
+   forgotten so the next ask starts fresh.
+2. **Stale thumbnails.** `FinishTile` clears the previous picture in the same effect run that sees
+   a new source, takes an already-made picture synchronously (no empty frame on a parent re-render),
+   drops late or out-of-order answers by abort, and releases what it holds on every change and on
+   unmount.
+3. **Rendering pressure.** The host already runs one render lane with a 128-job queue and per-job
+   texture leases held only to readback. The service now also bounds its own draws to
+   `FINISH_TILE_RENDER_CONCURRENCY` (2) in flight; a shelf's remaining Finishes wait in the
+   service, and a tile that leaves before its turn is never drawn. Catalogue tiles never reach the
+   host (committed masters), so only project Finishes queue.
+4. **Product-shell QA.** In the editor (`/project/u1qa/spatial?create=1`, WebGPU): placed a box,
+   recoloured its Painted Plaster to `#b5472c`, which creates the project Finish "Painted Plaster
+   2". Library › Finishes then showed that Finish as a rendered 64 px picture (blob URL) beside the
+   catalogue tiles, with no console errors. Eight rapid Matte/Polished clicks on the concrete card
+   ended with exactly one `<img>` for the chosen variant.
+
+Regression tests: `finish-tiles.test.ts` (lifecycle block: evicted-and-unheld revoked, evicted-and-held
+kept until release, no URL leaked after 230 Finishes plus dispose, forget/dispose mid-draw, one
+cancel vs. shared draw, last-holder cancel and retry, `leaseNow`, 60-Finish shelf peak ≤ 2, queued
+tile that left is never drawn) and `finish-tile.test.ts` (new, jsdom: clears at once, out-of-order
+answers, rapid switching, cached picture with no empty frame, release and cancel on unmount).
+Re-verified: `npm run check` 0 errors; `test:arch` 358/358; the full default editor suite
+529 files / 6552 tests with a 120 s timeout; `npm run build` passes and the visitor closure is
+still clean.
+
 ## Limitations
 
 - The cache is memory only. There is no persistent cache for project Finish pictures.
 - Private-library items keep whatever thumbnail the server returns. U1 makes the contract accept a
   256 px master; nothing here renders and uploads one automatically.
-- A project-Finish picture on the shelf is unit-tested and verified on the dev host, but was not
-  exercised in the product shell (a local session cannot create one without the cloud "From image"
-  path).
 - XS/S derivation uses canvas in the browser; the acceptance script sweeps them with `sharp` as a
   stand-in for the same crop and resample.
 - `svelte-check` still warns about `stageInput` and similar `non_reactive_update` cases in the

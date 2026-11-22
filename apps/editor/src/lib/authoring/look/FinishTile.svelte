@@ -10,7 +10,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { tryUseFinishTiles } from './finish-tiles-context';
-	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
+	import type { FinishTileLease, FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 
 	let {
 		source,
@@ -49,12 +49,33 @@
 		const edge = size;
 		const dpr = ratio;
 		const controller = new AbortController();
-		untrack(() => {
-			void tiles.picture(wanted, edge, dpr, controller.signal).then((picture) => {
-				if (!controller.signal.aborted) url = picture?.url ?? null;
+		let held: FinishTileLease | null = null;
+		// Never show the previous source's picture: take the new one now if it is
+		// already made, else clear and wait. Out-of-order answers are dropped by the
+		// abort below, and a held picture is released on every change.
+		const ready = untrack(() => tiles.leaseNow(wanted, edge, dpr));
+		if (ready !== null) {
+			held = ready;
+			url = ready.url;
+		} else {
+			url = null;
+			untrack(() => {
+				void tiles.lease(wanted, edge, dpr, controller.signal).then((lease) => {
+					if (lease === null) return;
+					if (controller.signal.aborted) {
+						lease.release();
+						return;
+					}
+					held = lease;
+					url = lease.url;
+				});
 			});
-		});
-		return () => controller.abort();
+		}
+		return () => {
+			controller.abort();
+			held?.release();
+			held = null;
+		};
 	});
 </script>
 
