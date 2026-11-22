@@ -47,13 +47,16 @@ export function seg(options, value, onPick, cls = 'seg') {
   return w;
 }
 
-export function range({ min, max, step, value, onInput, onChange, label, ticks, pinned }) {
+/** Slider. `mark` = the original value: a small gold tick (the thumb itself never changes shape). */
+export function range({ min, max, step, value, onInput, onChange, label, ticks, mark, disabled }) {
   const r = h('input', { type: 'range', min, max, step, value, 'aria-label': label });
   const setP = () => r.style.setProperty('--p', ((r.value - min) / (max - min)) * 100 + '%');
   setP();
   r.addEventListener('input', () => { setP(); onInput?.(+r.value); });
   r.addEventListener('change', () => onChange?.(+r.value));
-  const wrap = h('div', { class: 'cr-ctl' + (pinned ? ' pinned' : '') }, r);
+  if (disabled) r.disabled = true;
+  const wrap = h('div', { class: 'cr-ctl' }, r);
+  if (mark != null && mark >= min && mark <= max) wrap.append(h('i', { class: 'omark', title: 'Original', style: { left: `calc(10px + (100% - 20px) * ${((mark - min) / (max - min)).toFixed(4)})` } }));
   if (ticks) {
     const t = h('div', { class: 'ticks' });
     for (const [v, txt, on] of ticks) t.append(h('span', { class: on ? 'on' : '', style: { left: ((v - min) / (max - min)) * 100 + '%' } }, txt));

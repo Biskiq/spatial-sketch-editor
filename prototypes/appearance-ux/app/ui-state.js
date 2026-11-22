@@ -7,19 +7,23 @@ export const onUi = (fn) => (subs.add(fn), () => subs.delete(fn));
 
 export const U = {
   tool: 'select',                              // select | paint | erase
-  pick: { kind: 'colour', slot: 'sage' },      // {kind:'colour', slot|hex} | {kind:'material', ref} | {kind:'library', id}
-  scope: 'face',                               // face | space
+  pick: { kind: 'colour', slot: 'sage' },      // {kind:'colour', slot|hex} | {kind:'material', ref} | {kind:'library', id} | {kind:'recipe', base, ov, name}
+  scope: 'surface',                            // Paint radius: brush (future) | surface | space
+  brushTool: 'brush',                          // inside Brush (future): brush | erase
   dropper: false,                              // one-shot semantic sample
   trayTab: 'colours',                          // colours | materials
-  trayOpen: false,                             // expanded wheel / grid
-  focus: null,                                 // { target } — the surface the Card is about
-  card: 'subject',                             // subject | finish
-  reach: 'all',                                // all | this (Finish Card writes)
-  hoverReach: false,
-  library: { open: false, q: '', cat: 'all', source: 'curated', filters: new Set(), expanded: null, keepOpen: false, intent: 'pick' },
-  inspector: { open: false, target: null, geom: 'sphere', light: 'studio', display: 'lit', compare: false, turn: 0 },
+  trayOpen: false,                             // expanded palette / material grid
+  paletteEdit: false,                          // tray: clicking a palette colour edits it everywhere
+  focus: null,                                 // { target } — the selected surface
+  card: 'finish',                              // finish | subject (an object or wall with several parts)
+  reach: 'all',                                // all | this (Finish writes)
+  selectAll: false,                            // ⋯ › Select all using this Finish
+  editor: { open: false, geom: 'sphere', light: 'studio', display: 'lit', compare: false, turn: 0 },
+  draft: null,                                 // Library › Customise…: { base, ov, name, named, target, src } — nothing written
+  align: null,                                 // { target } — Align on wall: the faced surface, straight on
+  library: { open: false, q: '', kind: 'materials', cat: 'all', source: 'all', filters: new Set(), detail: null, intent: 'pick', geom: 'sphere', light: 'studio', turn: 0 },
   importer: { open: false },
-  picker: null,                                // { anchor, hex, onPick, title }
+  picker: null,                                // { anchor, hex, title, onColour | forPaint | slotEdit | addSlot }
   indexOpen: false,
   tasksOpen: false,
   issuesOpen: false,

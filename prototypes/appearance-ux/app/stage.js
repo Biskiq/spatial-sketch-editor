@@ -39,7 +39,7 @@ export const SUBJECTS = {
   chair: { label: 'Lounge chair', kind: 'model', targets: ['chair:seat', 'chair:frame'] }
 };
 export const kindOfTarget = (t) => TARGETS[t].kind;
-/** Space scope: every face of the same group in the room (walls → all six wall faces; an object → all its parts). */
+/** Paint radius. Surface (and the future Brush) → the one surface; Space → every wall surface in the room, or every part of an object. */
 export function scopeTargets(t, scope) {
   if (scope !== 'space') return [t];
   const g = TARGETS[t].group;
@@ -107,13 +107,21 @@ const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
 const lookKey = (L) => T.key({ ...L, rot: 0 }, 'tile', 192);
 
+/** The faced frame of a surface (Align on wall): its largest face, size in metres, and its axes. */
+export function faceFrame(t) {
+  const fs = faces.filter((f) => f.target === t);
+  const dims = (f) => { const d = (a, b, ax) => Math.abs(ax.reduce((s, v, i) => s + v * (b[i] - a[i]), 0)); return [d(f.pts[0], f.pts[1], f.U) || d(f.pts[0], f.pts[3], f.U), d(f.pts[0], f.pts[3], f.V) || d(f.pts[0], f.pts[1], f.V)]; };
+  const f = fs.map((f) => ({ f, wh: dims(f) })).sort((a, b) => b.wh[0] * b.wh[1] - a.wh[0] * a.wh[1])[0];
+  return f ? { w: f.wh[0], h: f.wh[1], floor: TARGETS[t].group === 'floor' } : null;
+}
+
 export function createStage(svg, hooks) {
   const defs = el('defs'); svg.append(defs);
   const gFaces = el('g'); const gOver = el('g'); const gGhost = el('g', { 'pointer-events': 'none' }); const gTop = el('g', { 'pointer-events': 'none' });
   svg.append(gFaces, gGhost, gOver, gTop);
   defs.innerHTML = `<pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="rgba(183,121,31,.18)"/><path d="M0 0v8" stroke="#b7791f" stroke-width="2.2" opacity=".75"/></pattern>`;
   const imgIds = new Map();
-  let state = { hover: [], ghostLook: null, selected: null, users: [], usersMode: 'all', subjectTarget: null, scopeHover: [] };
+  let state = { hover: [], ghostLook: null, selected: null, users: [], usersMode: 'all', subjectTarget: null, scopeHover: [], draft: null };
 
   function imgFor(L) {
     const k = lookKey(L);
@@ -128,7 +136,8 @@ export function createStage(svg, hooks) {
     const a = (L.rot || 0) * Math.PI / 180;
     const U = f.U.map((u, i) => Math.cos(a) * u + Math.sin(a) * f.V[i]);
     const V = f.V.map((v, i) => -Math.sin(a) * f.U[i] + Math.cos(a) * v);
-    const O = f.pts[0];
+    const off = L.offset || [0, 0];
+    const O = f.pts[0].map((o, i) => o + f.U[i] * off[0] + f.V[i] * off[1]);   // offset → moves the pattern right / up
     const s0 = P(O), sU = P(O.map((o, i) => o + U[i] * tile)), sV = P(O.map((o, i) => o + V[i] * tile));
     const m = [sU[0] - s0[0], sU[1] - s0[1], -(sV[0] - s0[0]), -(sV[1] - s0[1]), s0[0], s0[1]];
     const pat = el('pattern', { id: pid, width: 1, height: 1, patternUnits: 'userSpaceOnUse', patternTransform: `matrix(${m.map((v) => v.toFixed(3)).join(',')})` });
@@ -183,8 +192,18 @@ export function createStage(svg, hooks) {
         for (const p of polysFor(t)) gTop.append(el('polygon', { points: p.getAttribute('points'), fill: 'none', stroke: '#2a62d6', 'stroke-width': 2.2, 'stroke-dasharray': '6 4' }));
       }
     } else for (const t of state.hover) for (const p of polysFor(t)) gTop.append(el('polygon', { points: p.getAttribute('points'), fill: 'rgba(111,138,62,.08)', stroke: '#6f8a3e', 'stroke-width': 1.6 }));
-    // reach: users of the edited Finish (gold = selected subject; dashed gold = other users that change too)
-    for (const t of state.users) for (const p of polysFor(t)) gOver.append(el('polygon', { points: p.getAttribute('points'), fill: state.usersMode === 'all' ? 'rgba(217,165,33,.12)' : 'none', stroke: '#d9a521', 'stroke-width': 1.6, 'stroke-dasharray': '5 4', 'pointer-events': 'none' }));
+    // draft (Library › Customise…): a cobalt ghost on the surface it would be applied to — nothing written
+    if (state.draft) for (const t of state.draft.targets) {
+      for (const f of faces.filter((f) => f.target === t && (f.wall ? visible(f.N) && !nearWall(f) : visible(f.N)))) {
+        const pid = 'd' + patSeq++; const pat = patternFor(f, state.draft.look, pid); pat.classList.add('f'); defs.append(pat);
+        const pts = f.pts.map(P).map((p) => p.join(',')).join(' ');
+        gGhost.append(el('polygon', { points: pts, fill: `url(#${pid})`, opacity: 0.95 }));
+        const [sc, so] = shadeOf(f.N); gGhost.append(el('polygon', { points: pts, fill: sc, 'fill-opacity': so }));
+      }
+      for (const p of polysFor(t)) gTop.append(el('polygon', { points: p.getAttribute('points'), fill: 'none', stroke: '#2a62d6', 'stroke-width': 2.4, 'stroke-dasharray': '6 4' }));
+    }
+    // reach: cobalt = will change too (the other users of the edited Finish); gold = selected only
+    for (const t of state.users) for (const p of polysFor(t)) gOver.append(el('polygon', { points: p.getAttribute('points'), fill: state.usersMode === 'all' ? 'rgba(42,98,214,.10)' : 'none', stroke: '#2a62d6', 'stroke-width': 1.6, 'stroke-dasharray': '5 4', 'pointer-events': 'none' }));
     if (state.selected) for (const t of state.selected) for (const p of polysFor(t)) gOver.append(el('polygon', { points: p.getAttribute('points'), fill: 'none', stroke: '#d9a521', 'stroke-width': 3, 'pointer-events': 'none' }));
   }
 

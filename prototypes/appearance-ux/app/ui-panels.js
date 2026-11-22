@@ -1,14 +1,13 @@
 /*
- * Popover and sheets: colour picker (Light & Sky radial geometry), Inspector (view only — it never
- * writes) and Import (E5 draft: collisions block, generic normals need acknowledgement, one kind
- * per registration).
+ * Popover and sheets: colour picker (Light & Sky radial geometry) and Import (E5 draft: collisions
+ * block, generic normals need acknowledgement, one kind per registration). The view-only Inspector
+ * is gone: the Material editor (ui-editor.js) previews and edits the same Finish.
  */
 import * as M from './model.js';
 import { U, setUi } from './ui-state.js';
-import { BY_ID } from '../shared/catalogue.js';
 import { TARGETS } from './stage.js';
 import * as T from './thumbs.js';
-import { $, h, ic, seg, range, toast, hexToHsl, hslToHex, validHex, normHex, sheenName } from './ui-kit.js';
+import { $, h, ic, seg, range, toast, hexToHsl, hslToHex, validHex, normHex } from './ui-kit.js';
 import * as A from './actions.js';
 
 // ================================================================== picker
@@ -76,72 +75,21 @@ export function renderPicker() {
   el.append(h('div', { class: 'cpop', role: 'dialog', 'aria-label': P.title },
     h('div', { class: 'cp-h' }, h('b', {}, P.title), h('span', { class: 'cp-wn', title: 'Before · now' }, was, cur), h('button', { class: 'cp-x', 'aria-label': 'Close', onClick: () => { cancel(); close(); } }, '×')),
     dial, lr,
-    h('div', { class: 'note-sm', style: { marginTop: '6px' } }, P.slotEdit ? 'Every surface following this palette colour changes with it.' : P.forFinish ? 'Previewed live on the Stage; Done or release commits.' : 'Palette colours keep surfaces linked to later palette changes.'),
+    h('div', { class: 'note-sm', style: { marginTop: '6px' } }, P.slotEdit ? 'Every surface following this palette colour changes with it.' : P.onColour ? 'Previewed live; Done or release commits. Palette colours stay linked.' : 'Palette colours keep surfaces linked to later palette changes.'),
     P.slotEdit ? null : chips,
     h('div', { class: 'cp-hex' }, 'Hex', hexF), actions));
   draw(); ramp();
   el.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.target.matches('.fld')) { e.stopPropagation(); cancel(); close(); } }, { once: true });
 
   function apply(c, final) {
+    if (P.onColour) { P.onColour(c, final); return; }
     if (P.forPaint) { A.arm(c.slot ? { kind: 'colour', slot: c.slot } : { kind: 'colour', hex: c.hex }, { quiet: true }); return; }
     if (P.slotEdit) { if (c.hex) M.setSlot(P.slotEdit, c.hex); return; }
     if (P.addSlot) return;
-    if (P.forFinish) {
-      const t = P.forFinish.t, ref = M.S.p.assign[t], f = M.finishOf(ref), mode = P.forFinish.mode;
-      const hasMap = BY_ID[M.look(ref, false).set].colorMap;
-      const patch = mode === 'coat'
-        ? { colour: 'coat', maps: { ...(f?.ov.maps || {}), colour: null }, ...(c.slot ? { slot: c.slot, coat: undefined } : { coat: c.hex, slot: undefined }) }
-        : { colour: hasMap ? 'tint' : undefined, ...(c.slot ? { slot: c.slot, tint: undefined } : { tint: c.hex, slot: undefined }) };
-      if (!final) { const us = A.reachUsersOf(t, ref); M.setPreview(ref, patch, us.length > 1 && U.reach === 'all' ? us : [t]); return; }
-      M.setPreview(null); A.editAt(t, patch, 'colour');
-    }
   }
-  function cancel() { M.setPreview(null); }
+  function cancel() { M.setPreview(null); if (U.draft) U.draft.preview = null; }
   function close() { setUi({ picker: null }); }
 }
-
-// ================================================================== inspector
-const LIGHTS = { studio: {}, grazing: { grazing: true }, world: { lightTurn: 0.62, exposure: 0.95, key: 0.95, bg: '#dfe2e3' } };
-export function renderInspector() {
-  const el = $('#inspector'); const I = U.inspector;
-  el.hidden = !I.open || !I.target; if (el.hidden) { el.innerHTML = ''; return; }
-  el.innerHTML = '';
-  const t = I.target, ref = M.S.p.assign[t], L = M.look(ref), base = BY_ID[L.set];
-  const baseLook = M.look('cat:' + base.id, false);
-  const pres = I.geom;
-  const over = () => ({ ...LIGHTS[I.light], lightTurn: (LIGHTS[I.light].lightTurn || 0) + I.turn, ...(I.display === 'lit' ? {} : I.display === 'colour' ? { shade: 'unlit' } : { solo: I.display }), ...(pres === 'sample' ? { window: base.frame.w * 1.4 } : {}) });
-  const mk = (look, label) => {
-    const c = h('canvas', { width: 640, height: 640 });
-    const probe = h('div', { class: 'probe' }, 'hover to probe');
-    const v = h('div', { class: 'view' }, c, probe);
-    try { T.paint(look, pres === 'sample' ? 'sample' : pres, c, over()); } catch { /* not loaded */ }
-    c.addEventListener('pointermove', (e) => {
-      const b = c.getBoundingClientRect(); const x = Math.floor((e.clientX - b.left) / b.width * c.width), y = Math.floor((e.clientY - b.top) / b.height * c.height);
-      const d = c.getContext('2d').getImageData(x, y, 1, 1).data; const hex = '#' + [d[0], d[1], d[2]].map((n) => n.toString(16).padStart(2, '0')).join('');
-      const Y = 0.2126 * lin(d[0]) + 0.7152 * lin(d[1]) + 0.0722 * lin(d[2]); const Lstar = Y > 0.008856 ? 116 * Math.cbrt(Y) - 16 : 903.3 * Y;
-      const m = pres === 'sample' || pres === 'chip' ? `  ·  ${(((x / c.width) - 0.5) * (pres === 'sample' ? base.frame.w * 1.4 : base.frame.w)).toFixed(3)} m` : '';
-      probe.textContent = `${hex}  L* ${Lstar.toFixed(0)}${m}`;
-    });
-    return label ? h('figure', {}, v, h('figcaption', {}, label)) : v;
-  };
-  const views = I.compare ? h('div', { class: 'ab' }, mk(baseLook, 'A · curated ' + base.label), mk(L, 'B · this Finish')) : mk(L);
-  const ctl = h('div', { class: 'ctl' },
-    h('div', { class: 'r' }, h('span', {}, 'Shape'), seg([['sphere', 'Sphere'], ['sample', 'Flat sample'], ['chip', 'Chip'], ['tile', 'One tile']], I.geom, (v) => setUi({ inspector: { geom: v } }))),
-    h('div', { class: 'r' }, h('span', {}, 'Light'), seg([['studio', 'Studio'], ['grazing', 'Grazing'], ['world', 'This World']], I.light, (v) => setUi({ inspector: { light: v } })),
-      range({ min: -1.5, max: 1.5, step: 0.05, value: I.turn, label: 'Turn the light', onChange: (v) => setUi({ inspector: { turn: v } }) }),
-      h('div', { class: 'note-sm' }, I.light === 'world' ? 'Approximates this project’s Sky sun (simulated here; product uses the Light & Sky world).' : I.light === 'grazing' ? 'Low light across the surface: relief and scale errors show first.' : 'Even softbox + strip: colour and sheen read.')),
-    h('div', { class: 'r' }, h('span', {}, 'Display · view only'), seg([['lit', 'Lit'], ['colour', 'Colour'], ['normal', 'Normal'], ['roughness', 'Rough'], ['metal', 'Metal'], ['occlusion', 'AO']], I.display, (v) => setUi({ inspector: { display: v } }), 'mseg')),
-    h('div', { class: 'r' }, h('span', {}, 'Compare'), h('label', { class: 'chk' }, h('button', { class: 'switch', role: 'switch', 'aria-checked': String(I.compare), 'aria-label': 'Compare against curated base', onClick: () => setUi({ inspector: { compare: !I.compare } }) }), 'A/B against the curated base')),
-    h('dl', { class: 'facts', style: { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', fontSize: '12px', margin: 0 } },
-      h('dt', { class: 'note' }, 'Sheen'), h('dd', { style: { margin: 0 } }, (() => { const sc = L.ormOff ? 1 : T.scanRough(L.set), r = Math.min(1, L.rough * sc); return `${!L.ormOff && Math.abs(L.rough - 1) < 0.005 ? 'As scanned' : sheenName(r)} · r ${r.toFixed(2)}${L.ormOff ? '' : ' (×' + L.rough.toFixed(2) + ' on scan)'} · m ${L.metal.toFixed(2)}`; })()),
-      h('dt', { class: 'note' }, 'Repeat'), h('dd', { style: { margin: 0 } }, `${L.tile[0].toFixed(2)} m · ${L.rot || 0}°`),
-      h('dt', { class: 'note' }, 'Used by'), h('dd', { style: { margin: 0 } }, M.usersOf(ref).map(A.shortTarget).join(', '))),
-    h('p', { class: 'note-sm' }, 'Inspect never writes. Change values on the Card — this view updates live.'));
-  el.append(
-    h('div', { class: 'sh-h' }, ic('inspect', 18), h('div', {}, h('div', { class: 'k' }, 'Inspect · ' + A.originLabel(ref)), h('b', {}, M.nameOf(ref))), h('span', { class: 'note', style: { marginLeft: 'auto' } }, A.targetLabel(t)), h('button', { class: 'cp-x', 'aria-label': 'Close inspector', onClick: () => setUi({ inspector: { open: false } }) }, '×')),
-    h('div', { class: 'sh-b' }, views, ctl));
-}
-const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
 
 // ================================================================== importer
 const FILES = [

@@ -57,7 +57,7 @@ function seedProject(kind) {
   return p;
 }
 
-const STORE = 'u-appearance-projects/1';
+const STORE = 'u-appearance-projects/2';
 // A ?scene= preset (Tasks drawer links, board.html frames, review links) runs EPHEMERAL: fresh
 // seeds, nothing read from or written to the viewer's saved state, so frames never clobber
 // each other and every reviewer sees the same starting point.
@@ -181,6 +181,32 @@ const stripUndef2 = (o) => Object.fromEntries(Object.entries(o || {}).filter(([,
 const canon = (base, ov) => JSON.stringify([base, Object.keys(ov).sort().map((k) => [k, ov[k]])]);
 function findFinish(base, ov) { const c = canon(base, ov); return Object.values(S.p.finishes).find((f) => canon(f.base, f.ov) === c); }
 function newFinish(p, data) { const id = 'f' + p.seq++; p.finishes[id] = { id, origin: 'project', ...data }; return 'fin:' + id; }
+/**
+ * Finish names. A Finish the creator has not renamed is named from its recipe — "Material ·
+ * treatment" (e.g. "Oak Veneer · Sage stain · Satin") — and re-named on every edit; a renamed
+ * Finish (named: true) keeps its name. The UI registers the namer because sheen names depend
+ * on the measured scan (thumbs.js), which the model does not read.
+ */
+let namer = (base) => materialOfBase(base).label;
+export const setNamer = (fn) => { namer = fn; };
+export const autoName = (base, ov) => namer(base, ov || {});
+/** The raw material a recipe starts from: captured images, real-world size and source. Never edited in place. */
+export function materialOfBase(base) {
+  if (base.catalogue) { const e = BY_ID[base.catalogue]; return { id: e.id, set: e.set, label: e.label, sub: e.sub || '', tile: e.tile[0], source: 'Curated', licence: 'CC0 source', files: { colour: e.colorMap ? e.set + '/color.webp' : null, normal: e.set + '/normal.webp', orm: e.set + '/orm.webp' }, e }; }
+  const I = IMPORT_SETS[base.set]; const e = BY_ID[I.set];
+  return { id: base.set, set: I.set, label: I.label, sub: 'Imported', tile: I.tile[0], source: 'Imported', licence: 'your files', files: null, e };
+}
+export function materialOf(ref) {
+  const m = materialOfBase(baseOfRef(ref));
+  if (kindOfRef(ref) === 'model') return { ...m, source: 'Model’s own', licence: 'arrived with the model' };
+  const f = finishOf(ref);
+  return f?.maps ? { ...m, files: { colour: f.maps.colour || null, normal: f.maps.normal || null, orm: f.maps.orm || null } } : m;
+}
+/** The original look of a ref: its raw material before any treatment (what "changed" is measured against). */
+export function originalLook(ref) { return compose(baseFromBase(baseOfRef(ref)), finishOf(ref)?.orig || {}); }
+/** Import settings (real size, roughness source) are the import's original, not changes. */
+export const originalOv = (ref) => finishOf(ref)?.orig || {};
+export const rawBaseOf = (ref) => baseOfRef(ref);
 function baseOfRef(ref) {
   const k = kindOfRef(ref);
   if (k === 'cat') return { catalogue: ref.slice(4) };
@@ -203,7 +229,7 @@ export function coatRefFor(currentRef, colour /* {slot}|{hex} */) {
   if (BY_ID[base.catalogue || IMPORT_SETS[base.set]?.set]?.colorMap) ov.maps = { ...(ov.maps || {}), colour: null };
   const hit = findFinish(base, ov);
   if (hit) return 'fin:' + hit.id;
-  return { pending: true, base, ov, name: `${colour.slot ? S.p.palette.find((s) => s.id === colour.slot).name : colour.hex} on ${nameOf(currentRef).replace(/^.* on /, '')}` };
+  return { pending: true, base, ov, name: namer(base, ov) };
 }
 
 /** THE assignment writer. `choice` is a ref, { coat: {slot}|{hex} } resolved per target, or fn(target) → ref (Erase). */
@@ -239,6 +265,7 @@ export function editFinish(subject, ref, patch, reach, coalesceKey = '', reachUs
       const f = p.finishes[ref.slice(4)];
       Object.assign(f.ov, patch);
       for (const [key, v] of Object.entries(patch)) if (v === undefined) delete f.ov[key];
+      if (!f.named) f.name = namer(f.base, f.ov);
       return;
     }
     const base = baseOfRef(ref);
@@ -250,7 +277,9 @@ export function editFinish(subject, ref, patch, reach, coalesceKey = '', reachUs
     if (pristine) nref = 'cat:' + base.catalogue;          // E review follow-up: a pristine clone is the curated normal form
     else {
       const hit = effectiveReach === 'this' ? null : findFinish(base, ov);
-      nref = hit ? 'fin:' + hit.id : newFinish(p, { base, ov, name: prev ? (effectiveReach === 'this' ? prev.name + ' · 2' : prev.name) : nameOf(ref) + ' · custom', origin: prev?.origin === 'import' ? 'import' : prev?.origin === 'library-copy' ? 'library-copy' : 'project', libItem: prev?.libItem, maps: prev?.maps, importNotes: prev?.importNotes, coat: prev?.coat });
+      const named = !!prev?.named;
+      const name = named ? (effectiveReach === 'this' ? prev.name + ' · 2' : prev.name) : namer(base, ov);
+      nref = hit ? 'fin:' + hit.id : newFinish(p, { base, ov, name, named, orig: prev?.orig, origin: prev?.origin === 'import' ? 'import' : prev?.origin === 'library-copy' ? 'library-copy' : 'project', libItem: prev?.libItem, maps: prev?.maps, importNotes: prev?.importNotes, coat: prev?.coat });
     }
     const targets = effectiveReach === 'all' ? (reachUsers || usersOf(ref)) : [subject];
     for (const t of targets) p.assign[t] = nref;
@@ -265,7 +294,7 @@ export function setPreview(ref, patch, targets = null) { S.preview = patch ? { r
 
 export function rename(ref, name) {
   const n = name.trim(); if (n.length < 1 || n.length > 120 || kindOfRef(ref) !== 'fin') return false;
-  commit('Rename', (p) => { p.finishes[ref.slice(4)].name = n; }); return true;
+  commit('Rename', (p) => { const f = p.finishes[ref.slice(4)]; f.name = n; f.named = true; }); return true;
 }
 export function removeUnused(ref) {
   if (usersOf(ref).length || kindOfRef(ref) !== 'fin') return false;
@@ -284,7 +313,7 @@ export function registerImport(draft, targets, kindOf) {
   if (kinds.size > 1) return { refused: 'mixed-kinds' };
   let ref;
   commit('Import ' + draft.name, (p) => {
-    ref = newFinish(p, { base: { set: draft.set }, ov: stripUndef2(draft.ov), name: draft.name, origin: 'import', maps: draft.maps, importNotes: draft.notes });
+    ref = newFinish(p, { base: { set: draft.set }, ov: stripUndef2(draft.ov), name: draft.name, named: true, orig: stripUndef2(draft.ov), origin: 'import', maps: draft.maps, importNotes: draft.notes });
     for (const t of targets) p.assign[t] = ref;
   });
   emit('imported', { ref, targets });
@@ -307,7 +336,7 @@ export function applyLibraryItem(id, targets, label = 'Paint') {
   const item = S.library.find((i) => i.id === id); if (!item) return null;
   let ref;
   commit(label + ' ' + item.name, (p) => {
-    ref = newFinish(p, { base: clone(item.base), ov: clone(item.ov), name: item.name, origin: 'library-copy', libItem: id });
+    ref = newFinish(p, { base: clone(item.base), ov: clone(item.ov), name: item.name, named: true, origin: 'library-copy', libItem: id });
     for (const t of targets) p.assign[t] = ref;
   });
   emit('inserted', { ref, item }); emit('assigned', { targets, choice: ref });
@@ -316,18 +345,57 @@ export function applyLibraryItem(id, targets, label = 'Paint') {
 export function insertFromLibrary(id) {
   const item = S.library.find((i) => i.id === id); if (!item) return null;
   let ref;
-  commit('Insert ' + item.name, (p) => { ref = newFinish(p, { base: clone(item.base), ov: clone(item.ov), name: item.name, origin: 'library-copy', libItem: id }); });
+  commit('Insert ' + item.name, (p) => { ref = newFinish(p, { base: clone(item.base), ov: clone(item.ov), name: item.name, named: true, origin: 'library-copy', libItem: id }); });
   emit('inserted', { ref, item });
   return ref;
+}
+
+/**
+ * Swap: a new raw material under the same treatment. The caller passes the treatment it keeps
+ * (colour and sheen step, re-expressed for the new scan); the pattern resets to the new material's
+ * real size. Reach as for editFinish: 'all' writes every reach user, 'this' only the subject. One undo.
+ */
+export function replaceBase(subject, ref, newBase, ov, reach, reachUsers, label) {
+  const users = reachUsers || usersOf(ref);
+  const targets = users.length <= 1 || reach === 'all' ? users : [subject];
+  let out;
+  commit(label || 'Swap to ' + materialOfBase(newBase).label, (p) => {
+    out = recipeRef(p, newBase, stripUndef2(ov));
+    for (const t of targets) p.assign[t] = out;
+  });
+  emit('assigned', { targets, choice: out });
+  return out;
+}
+/** A recipe that is not yet a project Finish (Library draft, "Use for Paint") lands as one: reused if identical. */
+function recipeRef(p, base, ov, name, named = false) {
+  if (base.catalogue && !Object.keys(ov).length) return 'cat:' + base.catalogue;
+  const hit = findFinish(base, ov);
+  if (hit) return 'fin:' + hit.id;
+  return newFinish(p, { base: clone(base), ov: clone(ov), name: named && name ? name : namer(base, ov), named: !!(named && name), coat: ov.colour === 'coat' || undefined });
+}
+export function assignRecipe(targets, base, ov, name, named, label = 'Apply') {
+  let out;
+  commit(label + ' ' + (named && name ? name : namer(base, ov)), (p) => { out = recipeRef(p, base, stripUndef2(ov), name, named); for (const t of targets) p.assign[t] = out; });
+  emit('assigned', { targets, choice: out });
+  return out;
+}
+/** Save a draft recipe to My library: zero project history (G). */
+export function saveRecipeToLibrary(base, ov, name) {
+  const o = stripUndef2(ov);
+  const flattened = o.slot ? [S.p.palette.find((s) => s.id === o.slot)?.name] : [];
+  if (o.slot) { const hx = slotHex(o.slot); if (o.colour === 'coat') o.coat = hx; else o.tint = hx; delete o.slot; }
+  const item = { id: 'lib' + Date.now().toString(36), name: name || namer(base, o), base: clone(base), ov: o, savedFrom: PROJECTS[S.projectId], savedAt: new Date().toISOString().slice(0, 10), flattened };
+  S.library.unshift(item); saveLibrary(); emit('saved', { item });
+  return item;
 }
 
 // ---------------------------------------------------------------- repair scenario
 export function seedRepair() {
   commit('Open “Client” project state', (p) => {
-    p.finishes.ct = { id: 'ct', origin: 'import', name: 'Client Tile', base: { set: 'client-tile' }, ov: { tint: '#ffffff' }, maps: { colour: 'client-tile_basecolor.png', normal: 'client-tile_normal.png', orm: 'client-tile_orm.png' },
+    p.finishes.ct = { id: 'ct', origin: 'import', name: 'Client Tile', named: true, base: { set: 'client-tile' }, ov: { tint: '#ffffff' }, orig: { tint: '#ffffff' }, maps: { colour: 'client-tile_basecolor.png', normal: 'client-tile_normal.png', orm: 'client-tile_orm.png' },
       diag: [{ id: 'missing', channel: 'colour', file: 'client-tile_basecolor.png', text: 'Colour image is missing on this machine' }] };
     p.assign['wall-w:a'] = 'fin:ct'; p.assign['part:b'] = 'fin:ct';
-    p.finishes.co = { id: 'co', origin: 'import', name: 'Client Oak', base: { set: 'rough-oak' }, ov: { mapping: 'uv1' }, maps: { colour: 'client-oak_albedo.jpg', normal: 'client-oak_normal.png', orm: 'client-oak_orm.png' },
+    p.finishes.co = { id: 'co', origin: 'import', name: 'Client Oak', named: true, base: { set: 'rough-oak' }, ov: { mapping: 'uv1' }, maps: { colour: 'client-oak_albedo.jpg', normal: 'client-oak_normal.png', orm: 'client-oak_orm.png' },
       diag: [{ id: 'uv1', channel: 'mapping', text: 'Mapping reads UV set 1; Lounge chair only has UV set 0' }] };
     p.assign['chair:frame'] = 'fin:co';
   });

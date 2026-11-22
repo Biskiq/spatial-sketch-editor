@@ -6,6 +6,7 @@ import * as M from './model.js';
 import { U, setUi } from './ui-state.js';
 import { TARGETS, SUBJECTS, scopeTargets } from './stage.js';
 import { toast } from './ui-kit.js';
+import * as F from './finish.js';
 
 let stage = null;
 export const bindStage = (s) => { stage = s; };
@@ -21,6 +22,7 @@ export function pickName(pick) {
   if (!pick) return '';
   if (pick.kind === 'colour') return pick.slot ? M.S.p.palette.find((s) => s.id === pick.slot)?.name || 'Colour' : pick.hex;
   if (pick.kind === 'library') return M.S.library.find((i) => i.id === pick.id)?.name || 'Library item';
+  if (pick.kind === 'recipe') return pick.name || M.autoName(pick.base, pick.ov);
   return M.nameOf(pick.ref);
 }
 export function pickHex(pick) { return pick.kind === 'colour' ? (pick.slot ? M.slotHex(pick.slot) : pick.hex) : null; }
@@ -34,13 +36,15 @@ export function resultLook(t, pick = U.pick, tool = U.tool) {
     return typeof r === 'string' ? M.look(r) : M.recipeLook(r.base, r.ov);
   }
   if (pick.kind === 'library') { const it = M.S.library.find((i) => i.id === pick.id); return M.recipeLook(it.base, it.ov); }
+  if (pick.kind === 'recipe') return M.recipeLook(pick.base, pick.ov);
   return M.look(pick.ref);
 }
 
 /** One-line consequence of the gesture under the pointer (bar text). */
 export function consequence(t) {
+  if (U.scope === 'brush') return 'Brush is a future tool · B returns to Surface';
   const targets = scopeTargets(t, U.scope);
-  const where = targets.length > 1 ? `${targets.length} ${TARGETS[t].group === 'walls' ? 'wall faces' : 'parts'}` : `<b>${shortTarget(t)}</b>`;
+  const where = targets.length > 1 ? `${targets.length} ${TARGETS[t].group === 'walls' ? 'wall surfaces' : 'parts'}` : `<b>${shortTarget(t)}</b>`;
   const cur = M.S.p.assign[t];
   if (U.tool === 'erase') return `Click: reset ${where} to <b>${M.nameOf(M.eraseRef(t))}</b>`;
   if (U.pick.kind === 'colour') {
@@ -61,7 +65,7 @@ window.addEventListener('pointerdown', (e) => { shiftAtPress = e.shiftKey; }, tr
 /** Commit a click or a whole drag stroke as one undo step. */
 export function commitPaint(stroked) {
   const space = U.scope === 'space' || shiftAtPress;
-  const targets = [...new Set(stroked.flatMap((t) => scopeTargets(t, space ? 'space' : 'face')))];
+  const targets = [...new Set(stroked.flatMap((t) => scopeTargets(t, space ? 'space' : 'surface')))];
   if (!targets.length) return;
   const last = stroked[stroked.length - 1];
   if (U.tool === 'erase') {
@@ -70,6 +74,10 @@ export function commitPaint(stroked) {
     const c = U.pick.slot ? { slot: U.pick.slot } : { hex: U.pick.hex };
     M.assign(targets, { coat: c }, 'Paint ' + pickName(U.pick));
     M.pushRecent('colour', U.pick.slot || U.pick.hex);
+  } else if (U.pick.kind === 'recipe') {
+    const ref = M.assignRecipe(targets, U.pick.base, U.pick.ov, U.pick.name, U.pick.named, 'Paint');
+    U.pick = { kind: 'material', ref };   // later strokes reuse the Finish it just made
+    M.pushRecent('material', ref);
   } else if (U.pick.kind === 'library') {
     const ref = M.applyLibraryItem(U.pick.id, targets);
     // the same pick keeps painting the copy it just made — one insert per pick, not per stroke
@@ -109,22 +117,37 @@ export function editAt(t, patch, key = '') {
 export function focus(t, card = 'subject') {
   // a project Finish is a shared thing (default All); a curated material is a value (default This)
   const ref = (t && M.S.p.assign[t]) || '';
-  setUi({ focus: t ? { target: t } : null, card, reach: ref.startsWith('fin:') ? 'all' : 'this' }, 'focus');
+  setUi({ focus: t ? { target: t } : null, card, reach: ref.startsWith('fin:') ? 'all' : 'this', selectAll: false, align: null, ...(t ? {} : { editor: { open: false } }) }, 'focus');
 }
 
+/** Esc closes the top surface first: picker › Library detail › Library › Align › editor › import › drawers › dropper › tray › draft. */
 export function closeTransient() {
   if (U.picker) { setUi({ picker: null }); return true; }
+  if (U.library.open && U.library.detail) { setUi({ library: { detail: null } }); return true; }
   if (U.library.open) { setUi({ library: { open: false } }); return true; }
-  if (U.inspector.open) { setUi({ inspector: { open: false } }); return true; }
+  if (U.align) { setUi({ align: null }); return true; }
+  if (U.editor.open) { setUi({ editor: { open: false } }); return true; }
   if (U.importer.open) { setUi({ importer: { open: false } }); return true; }
   if (U.tasksOpen || U.issuesOpen) { setUi({ tasksOpen: false, issuesOpen: false }); return true; }
   if (U.dropper) { setUi({ dropper: false }); return true; }
   if (U.trayOpen) { setUi({ trayOpen: false }); return true; }
+  if (U.draft) { setUi({ draft: null, status: 'Draft cancelled · nothing written' }); return true; }
   return false;
 }
 
+/** Open the Library in context: Replace, Swap and Paint open Materials; Furnish opens Objects; L reopens the last view. */
 export function openLibrary(intent = 'pick', extra = {}) {
-  setUi({ library: { open: true, intent, expanded: null, ...extra }, picker: null });
+  const kind = extra.kind || (intent === 'swap' || intent === 'apply' || U.tool === 'paint' ? 'materials' : U.library.kind);
+  setUi({ library: { open: true, intent, ...extra, kind }, picker: null });
+}
+
+/** Swap ›: another raw material under the same treatment. A draft swaps its base; a surface writes one undo. */
+export function swapTo(base, label) {
+  const fm = F.finishModel(); if (!fm) return;
+  const ov = F.swapPatch(fm, base);
+  if (fm.kind === 'draft') { setUi({ draft: { base, ov, named: false }, status: `Draft now on ${M.materialOfBase(base).label}` }); return; }
+  const ref = M.replaceBase(fm.t, fm.ref, base, ov, fm.reach, fm.ref.startsWith('fin:') ? null : fm.users, 'Swap to ' + M.materialOfBase(base).label);
+  setUi({ card: 'finish', status: `Swapped to ${label || M.materialOfBase(base).label} · ${M.nameOf(ref)} · one undo` });
 }
 
 /** Choose from the Library: arm Paint, or apply straight to the focused surface (Replace). */
@@ -137,7 +160,7 @@ export function chooseFromLibrary(choice, keepOpen) {
   } else {
     arm(choice);
   }
-  if (!keepOpen && !U.library.keepOpen) setUi({ library: { open: false } });
+  if (!keepOpen) setUi({ library: { open: false } });
 }
 
 export function originLabel(ref) {

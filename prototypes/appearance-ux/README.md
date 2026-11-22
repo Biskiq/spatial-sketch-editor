@@ -21,9 +21,9 @@ Then open <http://127.0.0.1:8870/prototypes/appearance-ux/>. The `appearance-ux`
 
 | Page | What it is |
 | --- | --- |
-| `index.html` | Decision sheet: recommendation, flow, ownership rules, thumbnail findings, rejected alternatives, owner decisions, handoff and slices |
+| `index.html` | Decision sheet: recommendation, flow, ownership rules, thumbnail findings, rejected alternatives, the finishing ladder, owner decisions, handoff and slices |
 | `app.html` | The recommended instrument end to end |
-| `concepts.html` | Competing directions for six questions (instrument, swatch grammar, Library cards, toolbar, colour on a material, Finish Card layout) |
+| `concepts.html` | Competing directions for six questions (instrument, swatch grammar, Library cards, toolbar, colour on a material, Card and Material editor), the finishing-ladder storyboard (layers, masks, brush) and the second round's rejected options |
 | `lab.html` | The 21 catalogue entries in six presentations at real sizes; distinctness sweep; *Save evidence* writes `evidence/u-thumbnail-lab.json` |
 | `board.html` | Each flow step at 1440×900, 1280×800, 1180×820, 1024×768 and 820×1180 |
 
@@ -37,9 +37,15 @@ or writes it, so board frames and reviewers never clobber each other.
 | `scene=walnut` · `artist` · `transfer` · `repair` | The plan's four tasks |
 | `tool=paint` · `erase` · `select` | Arm a tool |
 | `tab=colours` · `materials`, `tray=open` | Tray tab, expanded tray |
+| `scope=surface` · `space` · `brush`, `brushTool=<tool>` | Paint radius; Brush is a drawn placeholder |
 | `focus=<target>&card=subject` · `finish` | Open a Card, e.g. `focus=table:top&card=finish` |
-| `lib=curated` · `project` · `mine`, `expand=<ref>` | Open the Library, optionally with an expanded card |
-| `inspect=<target>` | Open the inspector |
+| `selectAll=1` | With `focus`, select every user of the Finish (reach *All*) |
+| `lib=all` · `curated` · `project` · `mine` · `sources` | Open the Library on a source |
+| `kind=materials` · `objects` · `openings` · `plants`, `intent=pick` · `swap`, `detail=<ref>` | Library kind, why it opened, and the detail pane, e.g. `detail=cat:wood-oak-veneer` |
+| `draft=<catalogue id>` | A Library draft of that material (*Customise…*) on the focused surface |
+| `edit=<target>`, `compare=1`, `light=studio` · `grazing` · `world` | Open the Material editor |
+| `align=<target>` | Align on wall / floor |
+| `future=1` | Show the Card's dashed future rows (layers, strokes) |
 | `view=<n>` | Stage view |
 
 The head menu's *Reset prototype* clears saved state.
@@ -56,9 +62,14 @@ The head menu's *Reset prototype* clears saved state.
 
 ## Findings in short
 
-- One instrument: a Paint key with a tabbed tray; circle = colour that keeps relief, rounded
-  square = material that replaces the Finish; Library as a sheet; contextual Finish Card with reach
-  chosen before the edit; view-only inspector.
+- A Material (raw capture, never edited) is not a Finish (Material + treatment, what a surface
+  wears). The Card is the quick Finish; the Material editor beside it is the exact one.
+- One instrument: a Paint key with a tabbed tray and a *Brush · Surface · Space* radius; circle =
+  colour that keeps relief, rounded square = material that replaces the Finish; the Library as an
+  asset library with drafts that write nothing until Apply; the Index as hierarchy only.
+- Gold = selected, cobalt = will change. Reach is visible before the edit.
+- Layers, masks and the brush join later along a ladder (Pick → Finish → Exact → Layers → Masks →
+  Brush) whose seams are agreed now and drawn in Concepts.
 - Thumbnails: a flat, lit sample tile framed on a physical window, one stored 256 px master per
   Finish. It separates satin/brushed stainless and plaster/plastic, which fail on E7's references.
 - Smooth and Polished concrete share one scan and differ only by a roughness factor; no

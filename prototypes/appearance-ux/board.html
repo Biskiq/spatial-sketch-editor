@@ -38,9 +38,9 @@
     <div class="tw"><table>
       <thead><tr><th>Width</th><th>Index</th><th>Card</th><th>Tray / Library</th><th>Stage</th></tr></thead>
       <tbody>
-        <tr><td>≥ 1100</td><td>Column, 256 px, always visible</td><td>288 px, right, below the context bar</td><td>Tray above the dock; Library a sheet between Index and Card</td><td>Between Index and Card</td></tr>
+        <tr><td>≥ 1100</td><td>Column, 256 px, always visible</td><td>288 px, right, below the context bar; about 560 px while the Material editor is open</td><td>Tray above the dock; Library a sheet between Index and Card</td><td>Between Index and Card</td></tr>
         <tr><td>861–1099</td><td>Overlay from the head button</td><td>288 px</td><td>Library spans the Stage column; expanded tray limits the Card's height</td><td>Full width minus Card</td></tr>
-        <tr><td>≤ 860 (iPad portrait)</td><td>Overlay</td><td>252 px; folds to its identity row while the Library or the expanded tray is open</td><td>Library becomes a bottom sheet with a scrim; tray stays above the dock</td><td>Full width minus Card</td></tr>
+        <tr><td>≤ 860 (iPad portrait)</td><td>Overlay</td><td>288 px; folds to its identity row while the Library or the expanded tray is open; the Material editor becomes a bottom sheet</td><td>Library becomes a bottom sheet with a scrim; tray stays above the dock</td><td>Full width minus Card; above the editor sheet while editing</td></tr>
         <tr><td>Coarse pointer</td><td colspan="4">44 px swatches and targets, 44 px slider hit areas, long-press samples (the dropper), drag paints. iframes cannot emulate a coarse pointer: check it on a device or with the browser's touch emulation on <code>app.html</code> itself.</td></tr>
       </tbody>
     </table></div>
@@ -49,11 +49,14 @@
 <script>
 const SC = [
   ['paint', 'Arm & paint', 'scene=walnut', 'Paint armed with Walnut from the tray; hover a wall to see the cobalt ghost and the consequence line.'],
-  ['card', 'Finish Card', 'scene=walnut&focus=table:top&card=finish', 'Card for the coffee table top: reach chosen before the edit (This part · All 2), then Colour, Sheen, Pattern, Relief.'],
-  ['tray', 'Colours expanded', 'scene=walnut&tab=colours&tray=open', 'The tray expanded upward: project palette and the wheel. At ≤ 860 the Card folds to its identity row.'],
-  ['library', 'Library', 'scene=walnut&lib=curated', 'Library sheet: search, sources, filters, categories, 256 px sample cards. A bottom sheet with a scrim at ≤ 860.'],
-  ['detail', 'Library detail', 'scene=walnut&lib=curated&expand=cat:wood-oak-veneer', 'Expanded card: 512 sample, close-up and sphere, facts and what travels.'],
-  ['inspect', 'Inspector', 'scene=walnut&focus=table:top&card=finish&inspect=table:top', 'View-only inspector: shape, light, display channel, A/B against the curated base.'],
+  ['card', 'Finish Card', 'scene=walnut&focus=table:top&card=finish', 'The Card is the Finish: reach line, Material with Swap, Colour, Sheen with the original marked, Pattern; foot with ★, Save, Edit material….'],
+  ['editor', 'Material editor', 'scene=walnut&focus=table:top&card=finish&edit=table:top', 'Edit material…: preview with Compare, raw maps read-only, exact fields with gold reset dots. A bottom sheet at ≤ 860 with the room above.'],
+  ['tray', 'Colours expanded', 'scene=walnut&tab=colours&tray=open', 'The tray expanded upward: project palette with Edit palette, ⌄ to collapse. At ≤ 860 the Card folds to its identity row.'],
+  ['brush', 'Brush (future)', 'scene=walnut&tool=paint&scope=brush', 'Brush inside Paint: at most three rows — swatches, tools, options. A drawn placeholder; strokes are refused with a note.'],
+  ['library', 'Library', 'scene=walnut&lib=all', 'Asset library: kind rail with nested categories, sources (a menu when the sheet is narrow), filters. A bottom sheet with a scrim at ≤ 860.'],
+  ['detail', 'Library detail', 'scene=walnut&focus=wall-n:a&lib=curated&detail=cat:wood-oak-veneer', 'Master–detail: live preview, facts, Use for Paint, Apply, Customise….'],
+  ['draft', 'Library draft', 'scene=walnut&focus=wall-n:a&draft=wood-oak-veneer', 'Customise…: a draft Card and a cobalt ghost on the wall; nothing is written until Apply, Use for Paint or Save.'],
+  ['align', 'Align on wall', 'scene=walnut&focus=wall-n:a&align=wall-n:a', 'The wall straight on with ruler and grid; square handle moves the pattern, round handle turns it; Put back.'],
   ['import', 'Import', 'scene=artist', 'Five dropped files: the roughness collision refuses until chosen; the normal direction needs a check.'],
   ['repair', 'Repair', 'scene=repair', 'Two Finishes need repair on open: missing image and a UV-set mismatch.'],
   ['transfer', 'Transfer', 'scene=transfer', 'Imported Finish in focus: Save to library, switch project, insert from My library.']

@@ -88,6 +88,27 @@
   .fc .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line)} .fc .tabs span{padding:3px 8px;border-radius:6px 6px 0 0} .fc .tabs span.on{background:var(--forest);color:#fff}
   .fc .acc2{border:1px solid var(--line);border-radius:7px;padding:4px 8px;display:flex;justify-content:space-between;color:var(--ink2)}
   .fc .hidden{opacity:.35;text-decoration:line-through}
+  .fc .sub{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:4px}
+  .fc .rch{font-size:11.5px;color:#2a62d6;background:#eef2fb;border-radius:7px;padding:3px 7px}
+  .fc .dt{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold,#c9a14a);margin-left:4px;vertical-align:middle}
+
+  /* finishing ladder + storyboard */
+  .ladder{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:6px 0 14px}
+  .ladder div{border:1px solid var(--line);border-radius:10px;padding:8px 9px;background:#fff;font-size:12px;display:grid;gap:2px;align-content:start}
+  .ladder div b{font-size:13px} .ladder div span{color:var(--ink2);font-size:11.5px}
+  .ladder div.fut{border-style:dashed;background:var(--panel)}
+  .ladder div i{font:10px var(--mono);font-style:normal;color:var(--ink2);letter-spacing:.06em}
+  @media(max-width:960px){.ladder{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .story{display:grid;gap:14px}
+  .scene{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start;border:1px dashed var(--line);border-radius:12px;padding:12px;background:#fff}
+  .scene h3{margin:0 0 4px;font-size:15px} .scene p{margin:4px 0;font-size:12.5px}
+  .scene .eng{font-size:12px;color:var(--ink2);border-top:1px solid var(--line2);padding-top:6px;margin-top:6px}
+  .scene .eng b{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+  .frames{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .frames figure{margin:0;display:grid;gap:4px} .frames figcaption{font:10.5px var(--mono);color:var(--ink2)}
+  .frames .arr{font:12px var(--mono);color:var(--ink2);text-align:center;max-width:110px}
+  .frames svg{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+  .why{display:inline-flex;gap:6px;align-items:center;font-size:11.5px;color:#2a62d6;background:#eef2fb;border-radius:999px;padding:2px 9px}
 </style>
 </head>
 <body>
@@ -163,8 +184,31 @@
 
   <!-- 6 ─────────────────────────────────────────────────────────────── -->
   <section class="sec" id="card-layout">
-    <header><h2>6 · Finish Card layout <small>what is visible before any disclosure</small></h2></header>
+    <header><h2>6 · Card and Material editor <small>the quick Finish vs the exact one</small></h2></header>
+    <p class="note">A <b>Material</b> is the raw capture — its images, real size and source — and is never edited. A
+      <b>Finish</b> is a Material plus a treatment (colour, sheen, pattern) and is what a surface wears, names and saves. The Card
+      is the Finish: four plain controls with intelligent defaults. <b>Edit material…</b> opens the editor beside it for exact
+      values, the raw maps and, later, layers. Both write through one Finish adapter, so a Library draft edits exactly like a
+      Finish on a wall.</p>
     <div class="g3" id="fcs"></div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="ladder">
+    <header><h2>7 · The finishing ladder <small>how layers, masks and the brush join later</small></h2></header>
+    <p class="note">Each step adds one idea and keeps every earlier step working unchanged; nobody has to climb further than
+      they need. Steps 1–3 are built in the prototype. Steps 4–6 are drawn here as a storyboard so the seams they need are
+      agreed now: nothing below is implemented, and nothing below is a contract.</p>
+    <div class="ladder" id="ladderSteps"></div>
+    <div class="story" id="story"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="rejected">
+    <header><h2>8 · Rejected in the second round <small>kept so the trade-off stays visible</small></h2></header>
+    <p class="note">These were built or proposed in the first pass and replaced after the owner review. Each card says what
+      replaced it.</p>
+    <div class="g3" id="rej"></div>
   </section>
 </main>
 
@@ -358,21 +402,95 @@ function com() {
   }
 }
 
-// ---------------------------------------------------------------- 6 card layouts
+// ---------------------------------------------------------------- 6 card + editor
 function fcs() {
   const host = $('#fcs'); host.innerHTML = '';
-  const hd = `<div class="hd"><i style="background-image:url(${img('wood-walnut-veneer', 'xs', 64)})"></i><div><div class="fut-k">Finish · project</div><b>Walnut · table</b></div></div>`;
+  const hd = (name, k) => `<div class="hd"><i style="background-image:url(${img('wood-oak-veneer', 'xs', 64)})"></i><div><div class="fut-k">${k}</div><b>${name}</b></div></div>`;
   const ln = (a, b, p) => `<div class="ln"><span>${a}</span><em>${b}</em></div>${p != null ? `<div class="bar" style="--p:${p}%"></div>` : ''}`;
   host.append(
-    box('Progressive Card', 'rec', el('div', { class: 'fc' }, hd + ln('Changes apply to', 'This part · All 2') + ln('Colour', 'Natural · Tint · Colour') + ln('Sheen', 'Satin r 0.60', 60) + ln('Pattern', '1.00 m', 50) + ln('Relief', '1.00×', 50) + '<div class="acc2"><span>Maps & channels</span><span>3 on ▸</span></div><div class="acc2"><span>Mapping</span><span>UV0 ▸</span></div><div class="acc2"><span>Exact values</span><span>▸</span></div><div class="acc2"><span>Used by 2</span><span>▸</span></div>'),
-      ['Reach is chosen before the edit and sits above every control', 'Four plain-language controls answer most requests; channels and numbers one click away', 'Diagnostics, when present, come first'],
-      ['Long on short laptop screens; mitigated by one-open accordion']),
-    box('Tabbed Card', 'rej', el('div', { class: 'fc' }, hd + '<div class="tabs"><span class="on">Basic</span><span>Maps</span><span>Mapping</span><span>Info</span></div>' + ln('Colour', 'Natural') + ln('Sheen', 'Satin', 60) + ln('Pattern', '1.00 m', 50) + '<div class="note-sm hidden">Changes apply to …</div><div class="note-sm hidden">Missing image …</div>'),
-      ['Short; familiar from 3D tools'],
-      ['Reach and diagnostics land on a tab, so a shared edit can happen without seeing who it reaches', 'Tabs inside a Card inside a workspace: three levels of mode']),
-    box('Channel-first inspector', 'rej', el('div', { class: 'fc' }, hd + ln('Base colour', 'map · tint #7a6e63') + ln('Roughness', 'ORM.G × 1.00') + ln('Metalness', 'ORM.B × 0.00') + ln('Normal', '+Y × 1.00') + ln('Occlusion', 'ORM.R') + ln('UV', 'set 0 · 1.00 m · 0°')),
-      ['Complete and exact; what a technical artist expects'],
-      ['Speaks recipe, not outcome: “Satin” becomes “ORM.G × 0.63”', 'Kept, unchanged, as the Maps & channels and Exact values sections of the progressive Card'])
+    box('Card (Finish) + Material editor', 'rec', el('div', { class: 'fc' },
+      hd('Oak Veneer · stained', 'Project Finish · from Oak Veneer') + '<div class="rch">Shared by 3 · This wall | All 3</div>'
+      + ln('Material', 'Oak Veneer · Swap ›') + ln('Colour', 'Natural · Stained · Painted') + ln('Sheen', 'Matte · Satin● · Gloss') + ln('Pattern', 'Real size 0.5 m · − + · ↻ 90°')
+      + '<div class="ln"><span>★ · Save to My library</span><em>Edit material… · ⋯</em></div>'
+      + '<div class="sub">Edit material… → 560 px beside the Card</div>'
+      + ln('Raw material', 'Colour · Relief · Sheen maps · View') + ln('Exact finish', 'hex · r 0.62<span class="dt"></span> · size · angle · offset') + ln('Layers', 'Base · Add layer (later)')),
+      ['The Card answers most requests in four controls, each with a sensible default and the original marked', 'The editor separates what was captured (raw maps, read-only) from what you changed (exact fields, each with a gold reset dot)', 'One adapter: Card, editor, Library drafts and Align on wall all write the same Finish'],
+      ['Two surfaces to learn; mitigated because the editor opens from the Card and returns to it (‹ Finish)']),
+    box('Progressive Card (first round)', 'rej', el('div', { class: 'fc' }, hd('Walnut · table', 'Finish · project') + ln('Changes apply to', 'This part · All 2') + ln('Colour', 'Natural · Tint · Colour') + ln('Sheen', 'Satin r 0.60', 60) + ln('Pattern', '1.00 m', 50) + ln('Relief', '1.00×', 50) + '<div class="acc2"><span>Maps & channels</span><span>3 on ▸</span></div><div class="acc2"><span>Mapping</span><span>UV0 ▸</span></div><div class="acc2"><span>Exact values</span><span>▸</span></div>'),
+      ['Everything in one column; nothing opens elsewhere'],
+      ['Mixed the raw capture and the treatment in one list, so “Maps” read as editable Finish settings', 'Long on laptop screens; maps overflowed the 288 px column', 'Superseded by the Card + editor split']),
+    box('Tabbed Card / channel-first inspector', 'rej', el('div', { class: 'fc' }, hd('Walnut · table', 'Finish · project') + '<div class="tabs"><span class="on">Basic</span><span>Maps</span><span>Mapping</span><span>Info</span></div>' + ln('Base colour', 'map · tint #7a6e63') + ln('Roughness', 'ORM.G × 1.00') + ln('Normal', '+Y × 1.00') + '<div class="note-sm hidden">Changes apply to …</div>'),
+      ['Short; complete and exact; familiar from 3D tools'],
+      ['Reach lands on a tab, so a shared edit can happen without seeing who it reaches', 'Speaks recipe, not outcome: “Satin” becomes “ORM.G × 0.63”', 'Its exactness lives on as the editor’s Exact finish fields'])
+  );
+}
+
+// ---------------------------------------------------------------- 7 ladder storyboard (future steps 4–6)
+const LADDER = [
+  ['1', 'Pick', 'Paint a colour or a material from the tray', 'built'],
+  ['2', 'Finish', 'Card: colour, sheen, pattern; save, share', 'built'],
+  ['3', 'Exact', 'Editor: raw maps, exact values, reset dots', 'built'],
+  ['4', 'Layers', 'Stack a second look over the Base', 'future'],
+  ['5', 'Masks', 'Say where a layer shows, in room terms', 'future'],
+  ['6', 'Brush', 'Paint, erase, smudge on the surface; Teach', 'future'],
+];
+const tileUrl = (id, extra) => T.url(look(id, extra), 'tile', 192);
+let wallN = 0;
+const RNG = (seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+// a faced wall: base Finish, an optional lower Finish under a height band, optional strokes, optional mask overlay
+function wallSvg({ base, lower, band = 0, strokes = null, why = '', w = 250, h = 150, cobalt = false, seed = 3 }) {
+  const n = wallN++, ppm = h / 2.7, tile = (m) => Math.max(18, m * ppm);
+  const pat = (k, f) => `<pattern id="w${n}${k}" patternUnits="userSpaceOnUse" width="${tile(f.m)}" height="${tile(f.m)}"><image href="${tileUrl(f.id, f.extra)}" width="${tile(f.m)}" height="${tile(f.m)}" preserveAspectRatio="none"/></pattern>`;
+  const yb = h - band * ppm;
+  let body = `<rect width="${w}" height="${h}" fill="url(#w${n}a)"/>`;
+  if (lower) body += `<rect y="${yb}" width="${w}" height="${h - yb}" fill="url(#w${n}b)"/><line x1="0" x2="${w}" y1="${yb}" y2="${yb}" stroke="rgba(18,38,29,.35)" stroke-width="1.2"/>`;
+  if (strokes) { const r = RNG(seed); for (let i = 0; i < strokes.n; i++) { const cx = 10 + r() * (w - 20), cy = h - 6 - r() * strokes.h * ppm, rx = 6 + r() * 16, ry = 3 + r() * 7; body += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${strokes.c}" filter="url(#w${n}s)"/>`; } }
+  if (why) body += `<rect x="0" y="${yb}" width="${w}" height="${h - yb}" fill="rgba(42,98,214,.10)" stroke="#2a62d6" stroke-dasharray="5 4" stroke-width="1.5"/><text x="8" y="${yb - 6}" font-size="10.5" font-family="ui-monospace,monospace" fill="#2a62d6">${why}</text>`;
+  if (cobalt) body += `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" fill="none" stroke="#2a62d6" stroke-width="2" stroke-dasharray="6 4"/>`;
+  return `<svg width="${w}" height="${h + 10}" viewBox="0 0 ${w} ${h + 10}" role="img"><defs>${pat('a', base)}${lower ? pat('b', lower) : ''}<filter id="w${n}s" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>${body}<rect y="${h}" width="${w}" height="10" fill="#8b6a4a"/></svg>`;
+}
+const fig = (svg, cap) => `<figure>${svg}<figcaption>${cap}</figcaption></figure>`;
+function story() {
+  $('#ladderSteps').innerHTML = LADDER.map(([k, t, d, st]) => `<div class="${st === 'future' ? 'fut' : ''}"><i>${k} · ${st}</i><b>${t}</b><span>${d}</span></div>`).join('');
+  const plaster = { id: 'plaster-painted', m: 2 }, sage = { id: 'plaster-painted', m: 2, extra: { colour: 'coat', coat: '#9aa58c' } }, oak = { id: 'wood-oak-veneer', m: 0.5 }, ink = { id: 'plaster-painted', m: 2, extra: { colour: 'coat', coat: '#2f3a44' } };
+  const scuff = { n: 16, h: 0.35, c: 'rgba(64,48,32,.30)' };
+  const scene = (title, lede, frames, eng) => { const d = el('div', { class: 'scene' }); d.innerHTML = `<div><h3>${title}</h3>${lede}<div class="eng"><b>Engineering fit</b><br>${eng}</div></div><div class="frames">${frames}</div>`; return d; };
+  $('#story').append(
+    scene('4 · Two-tone from a height band',
+      '<p>“Paint the bottom 90 cm Sage.” The Finish gains a second layer, <b>Sage paint</b>, and its mask is a room fact — a <b>Height band 0–0.9 m</b> — not a hand-drawn shape, so it stays straight on every wall the Finish reaches and follows a wall that changes height.</p><p><span class="why">See why · Height band 0–0.9 m</span> draws the mask in cobalt on the Stage. Other masks in the same family: Near the floor, Around openings, Corners, In the sun, Within reach.</p>',
+      fig(wallSvg({ base: plaster }), 'Finish · Painted Plaster') + '<span class="arr">+ layer<br>Sage paint<br>mask: Height band</span>' + fig(wallSvg({ base: plaster, lower: sage, band: 0.9, why: 'See why · Height band 0–0.9 m' }), 'Finish · 2 layers · See why on'),
+      'Layers are a new Finish family over v1: today’s Finish becomes the <b>Base</b> layer, unchanged. Masks are evaluated from Layout facts (levels, openings, wall frames) at render time — derived, never authored geometry.'),
+    scene('5 · Teach: wear painted on one wall spreads to five',
+      '<p>With the Brush, scuff the foot of one wall by hand. <b>Teach</b> reads the strokes and proposes a rule — “Wear · Near the floor · 0–35 cm · irregular” — and shows the five walls that share the Finish in cobalt: they <i>will change</i> when you accept.</p><p>Accepting turns the hand strokes into a Finish layer with a mask, so new walls that get this Finish wear the same way. Declining keeps the strokes on the one wall.</p>',
+      fig(wallSvg({ base: plaster, strokes: scuff, seed: 7, w: 200, h: 120 }), 'Brushed by hand · one wall') + '<span class="arr">Teach →<br>Near the floor<br>0–35 cm</span>' + `<div style="display:grid;grid-template-columns:repeat(3,auto);gap:6px">${[11, 23, 31, 47, 59].map((sd) => wallSvg({ base: plaster, strokes: scuff, seed: sd, w: 78, h: 48, cobalt: true })).join('')}</div>`,
+      'Teach only proposes; the result is an ordinary layer + mask, so there is still one evaluator. Brush strokes before Teach are Surface layers (next scene). No separate “workspace” material model exists at any step.'),
+    scene('6 · Strokes survive a Finish swap',
+      '<p>Two kinds of layer. <b>Finish layers</b> (Base, Sage band, taught Wear) belong to the Finish and travel with it. <b>Surface layers</b> (brush strokes, decals, a stencilled sign) belong to this wall, in its own metres.</p><p>So swapping Painted Plaster for Oak Veneer keeps the hand-painted marks where they were. Erase in Brush (E) removes strokes, never the Finish.</p>',
+      fig(wallSvg({ base: plaster, strokes: { n: 10, h: 1.6, c: 'rgba(47,58,68,.55)' }, seed: 5, w: 200, h: 120 }), 'Painted Plaster + 10 strokes') + '<span class="arr">Swap ›<br>Oak Veneer</span>' + fig(wallSvg({ base: oak, strokes: { n: 10, h: 1.6, c: 'rgba(47,58,68,.55)' }, seed: 5, w: 200, h: 120 }), 'Oak Veneer + the same strokes'),
+      'Surface layers need the S8 decal contract plus repair strips when the wall is edited. Face / Unroll reuse the Camera <code>face</code> intent (as Align on wall does today). Bakes for delivery are derivatives, never authored truth.')
+  );
+}
+
+// ---------------------------------------------------------------- 8 rejected this round
+function rej() {
+  const host = $('#rej'); host.innerHTML = '';
+  const mini = (html) => el('div', { class: 'fc', style: { minHeight: '0' } }, html);
+  host.append(
+    box('View-only Inspect', 'rej', mini('<div class="ln"><span>Inspect</span><em>maps · lighting · probe</em></div><div class="ln"><span>To change a value</span><em>close → Card</em></div>'),
+      ['Safe: looking never changed anything'],
+      ['Every precise edit meant leaving the place you were looking', 'Replaced by the <b>Material editor</b>: it inspects and edits, with the raw maps read-only and the exact Finish fields editable']),
+    box('Brush as its own tool', 'rej', mini('<div class="ln"><span>Dock</span><em>… Paint · Brush · Erase · Library</em></div><div class="ln"><span>Tray</span><em>a second palette, star, dropper</em></div>'),
+      ['A clear home for brush options'],
+      ['A ninth dock target with a second palette, favourites and dropper', 'Replaced by <b>Brush · Surface · Space</b> in Paint’s radius: Brush opens at most three rows (swatches / tools / options), and Smudge, Clone, Stencil, Decal, Teach grow inside it']),
+    box('Library pin', 'rej', mini('<div class="ln"><span>Library</span><em>📌 pinned · stays open</em></div><div class="ln"><span>Right edge</span><em>Library vs Card</em></div>'),
+      ['Keeps browsing while painting'],
+      ['A pinned panel fights the Card for the right edge and hides the Stage', 'Replaced by <b>Shift-click keeps it open</b> for a run of picks, and <b>L</b> reopening the last view']),
+    box('Finish list in the Index', 'rej', mini('<div class="ln"><span>Index</span><em>Walls · Floors · Objects · Finishes</em></div>'),
+      ['One place to see everything'],
+      ['Mixed two hierarchies — where things are, and what they wear', 'Replaced by a swatch at the end of every Index row, Finishes in <b>Library › This project</b> (a click selects their users), and the palette in Paint › More']),
+    box('Gold for reach', 'rej', mini('<div class="ln"><span>Selected</span><em style="color:#a27a1d">gold</em></div><div class="ln"><span>Also changes</span><em style="color:#a27a1d">gold, lighter</em></div>'),
+      ['Fewer colours on the Stage'],
+      ['One colour meant two things: what you picked and what your edit will reach', 'Replaced by <b>gold = selected</b> (Stage outline and Index row only) and <b>cobalt = will change</b> (reach, draft ghost, Teach)'])
   );
 }
 
@@ -382,7 +500,7 @@ bindSeg('#gSize', (v) => { gSize = +v; gram(); });
 bindSeg('#gBg', (v) => { gBg = v; gram(); });
 bindSeg('#lvSeg', (v) => { lvMode = v; lvOpen = null; lv(); });
 await T.preload(CATALOGUE);
-inst(); gram(); lv(); tbs(); com(); fcs();
+inst(); gram(); lv(); tbs(); com(); fcs(); story(); rej();
 $('#status').textContent = 'Rendered live from apps/editor/static/textures (prototype renderer; see the thumbnail lab for the measured comparison).';
 </script>
 </body>
