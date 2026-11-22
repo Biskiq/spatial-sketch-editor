@@ -46,7 +46,7 @@ Each letter below is a merge boundary. E0–E7 identify the capabilities proved 
 | [E](#e--manual-authoring-and-correctable-set-import) | Rest of E4 + E5. Run manual composition first, then accept an automatically recognized set through that same operation. | D |
 | [F](#f--inspect-materials-and-qualify-the-catalogue) | Complete E7 and E6a. Use calibrated inspection, World context and recoverable thumbnail generation to qualify the curated collection. | B, D, E |
 | [G](#g--transfer-a-finish-between-projects) | E6b. Save to a private library, insert twice, remove the source, and cold-open the destination. | D, E and B's fixed thumbnail contract. Can run alongside F. |
-| [U](#what-reaches-ux-planning) | Design one curated-first experience over the accepted operations, diagnostics and measured limits. | F and G, plus the integrated gates below and [F's deferred distinctness revalidation](#thumbnail-revalidation-required-in-u) |
+| [U](#what-reaches-ux-planning) | Settle the [swatch treatment first](#first-deliverable-of-u-swatch-treatment), then design one curated-first experience over the accepted operations, diagnostics and measured limits. | F and G, plus the integrated gates below and [F's deferred distinctness revalidation](#thumbnail-revalidation-required-in-u) |
 
 A/B develop the profile without changing source formats. C isolates a real storage defect from the format change. D includes one working writer and every reader that must understand its output. E keeps two ways of producing the same plan together. F closes catalogue licensing and presentation fidelity. G closes private storage and transfer integrity. Claims for the corresponding persistence/delivery work cover `project.envelope`, `project.cloud-save`, `release.prepared-package` and `release.visitor-isolation`. Apply the [repository verification contract](../../../../apps/editor/tests/README.md) to each diff. API changes also run the database-backed API suite.
 
@@ -257,6 +257,19 @@ Compare each observed backend with its A baseline. Use the #385 current-world an
 Engineering hands over a callable command/query inventory with sample inputs and results, the supported channel × mapping × target matrix, the preview recipes, the small licensed library, and reproducible examples of conflicts, incomplete imports, missing UVs, cold-load refusal and targeted repair. Each result identifies the affected Finish, users, source, override state and corrective operation where applicable. Include the slowest measured operation and the evidence for its progress or cancellation state.
 
 **E handoff limitation.** One Finish registration names either Scene objects or Layout surfaces, never both: F4 refuses a compound Scene + Layout write and E does not widen it. The creator therefore registers the new Finish on one kind, then paints the remaining users in a second step. U's journey, copy and error handling must present that as two deliberate steps, not as a failed import; shared Finish editing across both kinds is preserved.
+
+### First deliverable of U: swatch treatment
+
+By owner decision (2026-11-21) the treatment of the material swatches is U's **first deliverable**, ahead of the rest of its design. Until it is delivered the shelf keeps its single-colour swatches.
+
+**The technique is TBD.** It gets dedicated planning later, as part of U's design, and E7 neither chooses nor implements it. That planning must settle:
+
+- what a swatch represents at each display size, including its crop and physical scale;
+- how colour, texture, metals and finish-only variants read, including entries that share one colour map;
+- how a swatch is produced, including whether a lightweight computed representation can replace a full render;
+- how curated, project and private-library Finishes each obtain, cache and refresh one, without full-resolution fetches when a list opens.
+
+Flat crops, lit renders and a mix of both are candidates to evaluate; none is selected. The delivered treatment is subject to the revalidation below.
 
 ### Thumbnail revalidation required in U
 

@@ -29,8 +29,9 @@ this branch's first version, the crop of a sphere into a 72×28 shelf band
 ([capture of that withdrawn shelf](./evidence/s8-e7-editor-shelf.jpg)). The [shelf keeps colour
 swatches](./evidence/s8-e7-editor-swatches.jpg), which avoids the dark pictures but does not cure
 distinctness: the two concretes share `#bababa` and the two stainless entries share `#d6d1cb`, so
-only their labels differ. U must complete the
-[revalidation list](./implementation-plan.md#thumbnail-revalidation-required-in-u).
+only their labels differ. The [swatch treatment](./implementation-plan.md#first-deliverable-of-u-swatch-treatment)
+is U's first deliverable, with its technique TBD for dedicated planning in U's design. U must
+complete the [revalidation list](./implementation-plan.md#thumbnail-revalidation-required-in-u).
 
 ## What E7 adds
 
