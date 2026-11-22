@@ -77,6 +77,16 @@
         "prototypes/world-creation-tools"
       ],
       "port": 8840
+    },
+    {
+      "name": "appearance-ux",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "prototypes/appearance-ux/serve.py",
+        "8870"
+      ],
+      "port": 8870,
+      "url": "http://127.0.0.1:8870"
     }
   ]
 }

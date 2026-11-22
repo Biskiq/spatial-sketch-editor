@@ -262,7 +262,7 @@ Engineering hands over a callable command/query inventory with sample inputs and
 
 By owner decision (2026-11-21) the treatment of the material swatches is U's **first deliverable**, ahead of the rest of its design. Until it is delivered the shelf keeps its single-colour swatches.
 
-**The technique is TBD.** It gets dedicated planning later, as part of U's design, and E7 neither chooses nor implements it. That planning must settle:
+**Settled by [owner ruling](#owner-rulings-on-the-u-design-2026-11-22) on 2026-11-22;** the rest of this section is the brief it answered. **The technique was TBD.** It gets dedicated planning later, as part of U's design, and E7 neither chooses nor implements it. That planning must settle:
 
 - what a swatch represents at each display size, including its crop and physical scale;
 - how colour, texture, metals and finish-only variants read, including entries that share one colour map;
@@ -279,7 +279,7 @@ U owns the product thumbnails and replaces the shelf's colour swatches only afte
 2. **Retina sharpness:** each derivative covers its CSS size at 2× pixel density.
 3. **Thumbnail lighting:** colour reads true to the material under the chosen presentation, and F's clipping limit holds. A recipe change gets a new version and leaves the inspection references intact.
 4. **Similar-material differentiation:** F's rule is re-run on every pair at the shipped presentation and the result recorded, along with a readability check at display size. The three failing pairs, and the narrow passes brass/gold and linen/carpet, get explicit attention.
-5. **Private-library compatibility:** G as built cannot store the proposed masters in its one thumbnail slot. `uploadFinishThumbnail` accepts exactly 192×192; the API accepts a PNG of at most 192 px per edge and 256 KiB. U either fits that contract or proposes a scoped change to it.
+5. **Private-library compatibility:** G as built cannot store the proposed masters in its one thumbnail slot. `uploadFinishThumbnail` accepts exactly 192×192; the API accepts a PNG of at most 192 px per edge and 256 KiB. U either fits that contract or proposes a scoped change to it (D4 chose the scoped change).
 
 The following are strong design inputs from the owner discussion, **not frozen contracts**:
 
@@ -290,9 +290,22 @@ The following are strong design inputs from the owner discussion, **not frozen c
 | M card, library | 128×160 (compact 96×124) | sphere master |
 | L detail | 240, with a flat close-up | both |
 
-The proposed masters are a 512 px sphere and a 256 px flat. E7's 192 px references stay engineering references.
+The proposed masters are a 512 px sphere and a 256 px flat; the owner ruling below replaces them with one 256 px flat master. E7's 192 px references stay engineering references.
 
-Design one curated-first journey and validate it against four tasks. An occasional creator paints a wall with walnut and changes its sheen. A material artist corrects a gloss/ORM set, compares grain and normals under two lights, and gives one of three surfaces a different scale. A returning creator moves the result to another project and can explain what is shared. A creator with an incompatible model or missing image can identify and repair the affected channel without losing the rest. Evaluate cold reopen, cancel/Undo, keyboard and coarse-pointer access and narrow layouts. Keep PLATE's Library, Paint, contextual editing and Ask semantics. The UX plan chooses placement, disclosure, wording and comparison interactions using these proofs. [Approved shell and visual system](../../../reference/design-system/editor-shell-and-visual-system.md)
+Design one curated-first journey and validate it against four tasks. An occasional creator paints a wall with walnut and changes its sheen. A material artist corrects a gloss/ORM set, compares grain and normals under two lights, and gives one of three surfaces a different scale. A returning creator moves the result to another project and can explain what is shared. A creator with an incompatible model or missing image can identify and repair the affected channel without losing the rest. Evaluate cold reopen, cancel/Undo, keyboard and coarse-pointer access and narrow layouts. Keep PLATE's Library, Paint and contextual editing semantics; by owner ruling its post-hoc Ask is replaced by reach shown before the edit (D2). The UX plan chooses placement, disclosure, wording and comparison interactions using these proofs. [Approved shell and visual system](../../../reference/design-system/editor-shell-and-visual-system.md)
+
+### Owner rulings on the U design (2026-11-22)
+
+The owner approved the U design study ([decision sheet](../../../../prototypes/appearance-ux/index.html), PR #399) with every recommendation, D1–D12. The study is evidence, not a contract: U's implementation plan states these rules as its contract, and no product file imports the prototype.
+
+- **Precedence.** Where the U design differs from the [approved shell](../../../reference/design-system/editor-shell-and-visual-system.md) — the armed tool key, and the Paint palette's labelled tabs, radius, *Browse all* and expanded palette — the U design governs. The shell contract is amended when U's implementation is accepted, under its own promotion rule.
+- **Swatch treatment (U1).** A flat, lit sample tile framed on a physical window. One stored 256 px master per Finish under a new thumbnail recipe version; XS, S and M derive from it, and the L detail and the editor preview render on demand through the E7 host. Framing hints live outside the recipe. The revalidation list above still applies.
+- **Similar materials (D1).** Smooth and Polished concrete become one card with a *Matte / Polished* variant chip; F's rule is applied between cards.
+- **G slot (D4).** A scoped change to 256 px: PNG, at most 256 KiB, a new thumbnail recipe key; 192 px items stay valid until regenerated.
+- **Armed tool key (D12).** Every dock's armed key is forest 3 with an ivory icon and a faint inner edge, through one shell token shared by every tool family; primary buttons, the lens and pressed toggles keep ivory.
+- **The rest** — reach before the edit (D2), the colour-coat planner (D3), same-kind materialize (D5), sheen steps (D6), tray A (D7), the Card and Material editor split (D8), Library drafts (D9), ladder seams as direction (D10) and import reading file names first (D11) — as recorded on the decision sheet.
+- **Scope.** U leaves the Index unchanged. Picking by number is deferred (`2` and `3` switch the reading). A quick wheel — hold Paint's key for the ★ favourites at the cursor — is promoted as Paint's future accelerator, outside U's first delivery.
+- **Implementation rules.** Accepted the same day, as recorded in the decision sheet's [Before implementation](../../../../prototypes/appearance-ux/index.html#readiness) section: names regenerate only while unchanged (no flag, no format change); favourites and recents are referenced creator preferences; framing hints sit in the catalogue's presentation table; one versioned thumbnail recipe key; one coat Finish per base and colour; sheen targets per material family; one undo per release with no coalescing timer; refusals as a line in place; no new colour tokens beyond D12; sentence case except small mono metadata; no visible placeholders for future features.
 
 ## Admission after S8
 

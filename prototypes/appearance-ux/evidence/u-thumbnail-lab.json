@@ -1,0 +1,1554 @@
+{
+ "schema": "u-thumbnail-lab/1",
+ "measuredAt": "2026-11-22T06:03:04.901Z",
+ "renderer": "prototype WebGL2 approximation (prototypes/appearance-ux/shared/render.js); NOT the E7 inspection host",
+ "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Claude/6.28899.6 Chrome/156.0.8078.100 Safari/537.36",
+ "method": {
+  "colour": "per-patch mean in linear sRGB, CIEDE2000, mean over an 8x8 patch grid",
+  "ssim": "Rec.601 luma, uniform 8 px windows, stride 4, K1 0.01, K2 0.03, L 255",
+  "regions": {
+   "sphere": "E7 central crop 54/192..138/192",
+   "flat": "subject inset 0.06..0.94",
+   "chip": "0.12..0.88"
+  },
+  "criterion": "fails when meanPatchDeltaE00 < 3 and luminanceSSIM > 0.95; narrow = within 1.5 dE00 or 0.02 SSIM of failing",
+  "colourShift": "CIEDE2000 between the presentation mean and the unlit flat-colour mean of the same window (lower = lit thumbnail reads closer to the base colour)"
+ },
+ "readings": [
+  {
+   "presentation": "e7",
+   "label": "E7 reference",
+   "px": 192,
+   "failingPairs": [
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 1.98,
+     "maxPatchDeltaE00": 3.15,
+     "luminanceSSIM": 0.973,
+     "fails": true
+    },
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.27,
+     "maxPatchDeltaE00": 2.03,
+     "luminanceSSIM": 0.994,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.18,
+     "maxPatchDeltaE00": 7.23,
+     "luminanceSSIM": 0.979,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 3.1,
+     "maxPatchDeltaE00": 4.64,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "concrete-smooth"
+     ],
+     "meanPatchDeltaE00": 4.12,
+     "maxPatchDeltaE00": 5.39,
+     "luminanceSSIM": 0.938,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 4.26,
+     "maxPatchDeltaE00": 8.72,
+     "luminanceSSIM": 0.976,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.27,
+     "maxPatchDeltaE00": 2.03,
+     "luminanceSSIM": 0.994,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.18,
+     "maxPatchDeltaE00": 7.23,
+     "luminanceSSIM": 0.979,
+     "fails": true
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 1.98,
+     "maxPatchDeltaE00": 3.15,
+     "luminanceSSIM": 0.973,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 3.1,
+     "maxPatchDeltaE00": 4.64,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 1.27,
+     "maxPatchDeltaE00": 1.48,
+     "luminanceSSIM": 0.915,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    15,
+    66
+   ],
+   "meanColourShiftDeltaE00": 46.49
+  },
+  {
+   "presentation": "e7",
+   "label": "E7 reference",
+   "px": 112,
+   "failingPairs": [
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 2.01,
+     "maxPatchDeltaE00": 3.15,
+     "luminanceSSIM": 0.972,
+     "fails": true
+    },
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.28,
+     "maxPatchDeltaE00": 2.08,
+     "luminanceSSIM": 0.992,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.12,
+     "maxPatchDeltaE00": 7.13,
+     "luminanceSSIM": 0.98,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 3.08,
+     "maxPatchDeltaE00": 4.62,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 1.29,
+     "maxPatchDeltaE00": 1.48,
+     "luminanceSSIM": 0.946,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 4.21,
+     "maxPatchDeltaE00": 8.69,
+     "luminanceSSIM": 0.974,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.28,
+     "maxPatchDeltaE00": 2.08,
+     "luminanceSSIM": 0.992,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.12,
+     "maxPatchDeltaE00": 7.13,
+     "luminanceSSIM": 0.98,
+     "fails": true
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 2.01,
+     "maxPatchDeltaE00": 3.15,
+     "luminanceSSIM": 0.972,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 3.08,
+     "maxPatchDeltaE00": 4.62,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 1.29,
+     "maxPatchDeltaE00": 1.48,
+     "luminanceSSIM": 0.946,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    14,
+    66
+   ],
+   "meanColourShiftDeltaE00": 46.94
+  },
+  {
+   "presentation": "e7",
+   "label": "E7 reference",
+   "px": 256,
+   "failingPairs": [
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 2.01,
+     "maxPatchDeltaE00": 3.17,
+     "luminanceSSIM": 0.982,
+     "fails": true
+    },
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.27,
+     "maxPatchDeltaE00": 2.05,
+     "luminanceSSIM": 0.995,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.14,
+     "maxPatchDeltaE00": 7.19,
+     "luminanceSSIM": 0.982,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 1.28,
+     "maxPatchDeltaE00": 1.52,
+     "luminanceSSIM": 0.949,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 3.09,
+     "maxPatchDeltaE00": 4.63,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "wood-oak-veneer",
+      "wood-oak-planks"
+     ],
+     "meanPatchDeltaE00": 2.53,
+     "maxPatchDeltaE00": 3.92,
+     "luminanceSSIM": 0.941,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.27,
+     "maxPatchDeltaE00": 2.05,
+     "luminanceSSIM": 0.995,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.14,
+     "maxPatchDeltaE00": 7.19,
+     "luminanceSSIM": 0.982,
+     "fails": true
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 2.01,
+     "maxPatchDeltaE00": 3.17,
+     "luminanceSSIM": 0.982,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 3.09,
+     "maxPatchDeltaE00": 4.63,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 1.28,
+     "maxPatchDeltaE00": 1.52,
+     "luminanceSSIM": 0.949,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    14,
+    66
+   ],
+   "meanColourShiftDeltaE00": 46.66
+  },
+  {
+   "presentation": "sphere",
+   "label": "Re-lit sphere",
+   "px": 112,
+   "failingPairs": [],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.6,
+     "maxPatchDeltaE00": 4.06,
+     "luminanceSSIM": 0.948,
+     "fails": false
+    },
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.48,
+     "maxPatchDeltaE00": 3.55,
+     "luminanceSSIM": 0.944,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.43,
+     "maxPatchDeltaE00": 5.4,
+     "luminanceSSIM": 0.944,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.48,
+     "maxPatchDeltaE00": 3.55,
+     "luminanceSSIM": 0.944,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.6,
+     "maxPatchDeltaE00": 4.06,
+     "luminanceSSIM": 0.948,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.43,
+     "maxPatchDeltaE00": 5.4,
+     "luminanceSSIM": 0.944,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.96,
+     "maxPatchDeltaE00": 5.23,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.06,
+     "maxPatchDeltaE00": 3.55,
+     "luminanceSSIM": 0.898,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    50,
+    224
+   ],
+   "meanColourShiftDeltaE00": 8.67
+  },
+  {
+   "presentation": "sphere",
+   "label": "Re-lit sphere",
+   "px": 256,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.45,
+     "maxPatchDeltaE00": 3.34,
+     "luminanceSSIM": 0.977,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.58,
+     "maxPatchDeltaE00": 3.94,
+     "luminanceSSIM": 0.948,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.96,
+     "maxPatchDeltaE00": 5.22,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.61,
+     "maxPatchDeltaE00": 9.94,
+     "luminanceSSIM": 0.96,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.45,
+     "maxPatchDeltaE00": 3.34,
+     "luminanceSSIM": 0.977,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 1.58,
+     "maxPatchDeltaE00": 3.94,
+     "luminanceSSIM": 0.948,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.43,
+     "maxPatchDeltaE00": 5.48,
+     "luminanceSSIM": 0.855,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.96,
+     "maxPatchDeltaE00": 5.22,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.09,
+     "maxPatchDeltaE00": 3.58,
+     "luminanceSSIM": 0.589,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    49,
+    223
+   ],
+   "meanColourShiftDeltaE00": 8.47
+  },
+  {
+   "presentation": "albedo",
+   "label": "Flat colour",
+   "px": 112,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-aluminium-brushed",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 3.76,
+     "maxPatchDeltaE00": 4.03,
+     "luminanceSSIM": 0.995,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.16,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 5.35,
+     "maxPatchDeltaE00": 5.5,
+     "luminanceSSIM": 0.993,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4,
+     "maxPatchDeltaE00": 4.73,
+     "luminanceSSIM": 0.805,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.16,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 4.7,
+     "maxPatchDeltaE00": 5.66,
+     "luminanceSSIM": 0.647,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 1,
+   "centreLuma": [
+    60,
+    246
+   ],
+   "meanColourShiftDeltaE00": 0
+  },
+  {
+   "presentation": "albedo",
+   "label": "Flat colour",
+   "px": 256,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-aluminium-brushed",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 3.77,
+     "maxPatchDeltaE00": 4.03,
+     "luminanceSSIM": 0.996,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.16,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 5.35,
+     "maxPatchDeltaE00": 5.5,
+     "luminanceSSIM": 0.994,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0,
+     "maxPatchDeltaE00": 0,
+     "luminanceSSIM": 1,
+     "fails": true
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4,
+     "maxPatchDeltaE00": 4.72,
+     "luminanceSSIM": 0.595,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.16,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 1,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 4.7,
+     "maxPatchDeltaE00": 5.74,
+     "luminanceSSIM": 0.614,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 1,
+   "centreLuma": [
+    59,
+    246
+   ],
+   "meanColourShiftDeltaE00": 0
+  },
+  {
+   "presentation": "relief",
+   "label": "Flat relief",
+   "px": 112,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.09,
+     "maxPatchDeltaE00": 0.16,
+     "luminanceSSIM": 0.999,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0.35,
+     "maxPatchDeltaE00": 0.95,
+     "luminanceSSIM": 0.982,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.1,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 0.999,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.74,
+     "maxPatchDeltaE00": 9.48,
+     "luminanceSSIM": 0.957,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 9.02,
+     "maxPatchDeltaE00": 9.99,
+     "luminanceSSIM": 0.974,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.09,
+     "maxPatchDeltaE00": 0.16,
+     "luminanceSSIM": 0.999,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0.35,
+     "maxPatchDeltaE00": 0.95,
+     "luminanceSSIM": 0.982,
+     "fails": true
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.41,
+     "maxPatchDeltaE00": 5.36,
+     "luminanceSSIM": 0.735,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.1,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 0.999,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.34,
+     "maxPatchDeltaE00": 4.12,
+     "luminanceSSIM": 0.275,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    45,
+    225
+   ],
+   "meanColourShiftDeltaE00": 14.18
+  },
+  {
+   "presentation": "relief",
+   "label": "Flat relief",
+   "px": 256,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.08,
+     "maxPatchDeltaE00": 0.16,
+     "luminanceSSIM": 0.999,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0.32,
+     "maxPatchDeltaE00": 0.87,
+     "luminanceSSIM": 0.946,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.1,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 0.999,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.83,
+     "maxPatchDeltaE00": 9.58,
+     "luminanceSSIM": 0.916,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 0.08,
+     "maxPatchDeltaE00": 0.16,
+     "luminanceSSIM": 0.999,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 0.32,
+     "maxPatchDeltaE00": 0.87,
+     "luminanceSSIM": 0.946,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.41,
+     "maxPatchDeltaE00": 5.34,
+     "luminanceSSIM": 0.492,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 5.1,
+     "maxPatchDeltaE00": 5.16,
+     "luminanceSSIM": 0.999,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.38,
+     "maxPatchDeltaE00": 4.16,
+     "luminanceSSIM": 0.255,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    44,
+    225
+   ],
+   "meanColourShiftDeltaE00": 14.19
+  },
+  {
+   "presentation": "sample",
+   "label": "Sample tile",
+   "px": 112,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 2.03,
+     "maxPatchDeltaE00": 8.65,
+     "luminanceSSIM": 0.964,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.75,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.02,
+     "maxPatchDeltaE00": 10.05,
+     "luminanceSSIM": 0.95,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.88,
+     "maxPatchDeltaE00": 16.41,
+     "luminanceSSIM": 0.85,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 2.03,
+     "maxPatchDeltaE00": 8.65,
+     "luminanceSSIM": 0.964,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 2.5,
+     "maxPatchDeltaE00": 6.51,
+     "luminanceSSIM": 0.847,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.83,
+     "maxPatchDeltaE00": 5.93,
+     "luminanceSSIM": 0.734,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.75,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.21,
+     "maxPatchDeltaE00": 4.02,
+     "luminanceSSIM": 0.263,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    51,
+    226
+   ],
+   "meanColourShiftDeltaE00": 4.63
+  },
+  {
+   "presentation": "sample",
+   "label": "Sample tile",
+   "px": 256,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 1.98,
+     "maxPatchDeltaE00": 8.48,
+     "luminanceSSIM": 0.978,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.75,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.998,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.03,
+     "maxPatchDeltaE00": 10.05,
+     "luminanceSSIM": 0.944,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-copper-satin"
+     ],
+     "meanPatchDeltaE00": 11.48,
+     "maxPatchDeltaE00": 12.61,
+     "luminanceSSIM": 0.989,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 1.98,
+     "maxPatchDeltaE00": 8.48,
+     "luminanceSSIM": 0.978,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 2.64,
+     "maxPatchDeltaE00": 6.88,
+     "luminanceSSIM": 0.674,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.83,
+     "maxPatchDeltaE00": 5.98,
+     "luminanceSSIM": 0.493,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.75,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.998,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.27,
+     "maxPatchDeltaE00": 4.05,
+     "luminanceSSIM": 0.246,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    51,
+    225
+   ],
+   "meanColourShiftDeltaE00": 4.66
+  },
+  {
+   "presentation": "chip",
+   "label": "Chip",
+   "px": 112,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 2,
+     "maxPatchDeltaE00": 8.78,
+     "luminanceSSIM": 0.959,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.76,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.05,
+     "maxPatchDeltaE00": 10.1,
+     "luminanceSSIM": 0.947,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.96,
+     "maxPatchDeltaE00": 15.87,
+     "luminanceSSIM": 0.859,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 2,
+     "maxPatchDeltaE00": 8.78,
+     "luminanceSSIM": 0.959,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 2.48,
+     "maxPatchDeltaE00": 6.25,
+     "luminanceSSIM": 0.854,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.81,
+     "maxPatchDeltaE00": 5.98,
+     "luminanceSSIM": 0.767,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.76,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.997,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.2,
+     "maxPatchDeltaE00": 4.04,
+     "luminanceSSIM": 0.297,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    50,
+    227
+   ],
+   "meanColourShiftDeltaE00": 4.53
+  },
+  {
+   "presentation": "chip",
+   "label": "Chip",
+   "px": 256,
+   "failingPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 1.98,
+     "maxPatchDeltaE00": 8.84,
+     "luminanceSSIM": 0.979,
+     "fails": true
+    }
+   ],
+   "narrowest": [
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.76,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.998,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-brushed",
+      "metal-aluminium-brushed"
+     ],
+     "meanPatchDeltaE00": 8.06,
+     "maxPatchDeltaE00": 10.1,
+     "luminanceSSIM": 0.942,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-copper-satin"
+     ],
+     "meanPatchDeltaE00": 11.53,
+     "maxPatchDeltaE00": 12.61,
+     "luminanceSSIM": 0.988,
+     "fails": false
+    }
+   ],
+   "watchPairs": [
+    {
+     "pair": [
+      "concrete-smooth",
+      "concrete-polished"
+     ],
+     "meanPatchDeltaE00": 1.98,
+     "maxPatchDeltaE00": 8.84,
+     "luminanceSSIM": 0.979,
+     "fails": true
+    },
+    {
+     "pair": [
+      "metal-stainless-satin",
+      "metal-stainless-brushed"
+     ],
+     "meanPatchDeltaE00": 2.67,
+     "maxPatchDeltaE00": 6.92,
+     "luminanceSSIM": 0.685,
+     "fails": false
+    },
+    {
+     "pair": [
+      "plaster-painted",
+      "synthetic-plastic-matte"
+     ],
+     "meanPatchDeltaE00": 4.83,
+     "maxPatchDeltaE00": 6.05,
+     "luminanceSSIM": 0.488,
+     "fails": false
+    },
+    {
+     "pair": [
+      "metal-brass-satin",
+      "metal-gold-satin"
+     ],
+     "meanPatchDeltaE00": 4.76,
+     "maxPatchDeltaE00": 5.18,
+     "luminanceSSIM": 0.998,
+     "fails": false
+    },
+    {
+     "pair": [
+      "textile-linen",
+      "textile-carpet-loop"
+     ],
+     "meanPatchDeltaE00": 3.27,
+     "maxPatchDeltaE00": 3.95,
+     "luminanceSSIM": 0.227,
+     "fails": false
+    }
+   ],
+   "maxClippedFraction": 0,
+   "centreLuma": [
+    50,
+    226
+   ],
+   "meanColourShiftDeltaE00": 4.56
+  }
+ ],
+ "variantStudy": {
+  "pair": [
+   "concrete-smooth",
+   "concrete-polished"
+  ],
+  "px": 256,
+  "note": "sample tile with the strip light gain raised; gain 6 is the shipped study value",
+  "rows": [
+   {
+    "stripGain": 6,
+    "meanPatchDeltaE00": 1.98,
+    "luminanceSSIM": 0.978,
+    "fails": true
+   },
+   {
+    "stripGain": 8,
+    "meanPatchDeltaE00": 2.31,
+    "luminanceSSIM": 0.97,
+    "fails": true
+   },
+   {
+    "stripGain": 10,
+    "meanPatchDeltaE00": 2.61,
+    "luminanceSSIM": 0.962,
+    "fails": true
+   },
+   {
+    "stripGain": 12,
+    "meanPatchDeltaE00": 2.87,
+    "luminanceSSIM": 0.953,
+    "fails": true
+   }
+  ]
+ },
+ "derivativeBytes": {
+  "presentation": "sample",
+  "note": "Encoded by the browser canvas from the prototype renderer; PNG is G's current slot format. Byte sizes are indicative of the shipped encoder, not identical to it.",
+  "rows": [
+   {
+    "px": 192,
+    "pngMaxKiB": 92.8,
+    "pngMaxEntry": "masonry-brick-red",
+    "pngMeanKiB": 63.5,
+    "webp86MaxKiB": 8.9,
+    "webp86MeanKiB": 3.6
+   },
+   {
+    "px": 256,
+    "pngMaxKiB": 160.9,
+    "pngMaxEntry": "masonry-brick-red",
+    "pngMeanKiB": 111.4,
+    "webp86MaxKiB": 14.5,
+    "webp86MeanKiB": 5.9
+   },
+   {
+    "px": 512,
+    "pngMaxKiB": 633.1,
+    "pngMaxEntry": "masonry-brick-red",
+    "pngMeanKiB": 390.3,
+    "webp86MaxKiB": 64.5,
+    "webp86MeanKiB": 17.7
+   }
+  ],
+  "gSlot": "G accepts one 192x192 PNG <= 256 KiB. A 256 px sample-tile PNG fits the byte cap (max 160.9 KiB); 512 px does not."
+ }
+}

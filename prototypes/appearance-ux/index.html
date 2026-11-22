@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision sheet · U appearance study</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<style>
+  .open{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
+  .open a{display:block;text-decoration:none;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .open a:hover{border-color:var(--moss)}
+  .open a b{display:block;font-size:15px;color:var(--forest)}
+  .open a span{font-size:12.5px;color:var(--ink2)}
+  .flow{counter-reset:f;list-style:none;padding:0;display:grid;gap:8px}
+  .flow li{counter-increment:f;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:0}
+  .flow li::before{content:counter(f);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--forest);color:#fff;font:12px var(--mono)}
+  .flow li b{font-size:13.5px} .flow li p{margin:2px 0 0;font-size:13px;color:var(--ink2)}
+  .flow li a{color:var(--moss-ink);font-size:12px}
+  .dec{counter-reset:d;list-style:none;padding:0;display:grid;gap:10px}
+  .dec>li{counter-increment:d;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px 10px 46px;position:relative;margin:0}
+  .dec>li::before{content:'D' counter(d);position:absolute;left:12px;top:10px;font:12px var(--mono);color:var(--gold-ink);background:var(--gold-soft);border-radius:5px;padding:1px 5px}
+  .dec b{font-size:13.5px} .dec p{margin:3px 0 0;font-size:13px}
+  .slices td:first-child{white-space:nowrap;font:12px var(--mono)}
+  .ladder{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-top:10px}
+  .ladder figure{margin:0;display:grid;gap:5px;justify-items:start}
+  .ladder figcaption{font:11px var(--mono);color:var(--ink2)}
+  .ladder img,.ladder canvas{display:block;box-shadow:inset 0 0 0 1px rgba(18,38,29,.16)}
+  .xs{border-radius:50%} .s{border-radius:var(--sw-r)} .m{border-radius:10px}
+  .pair{display:flex;gap:6px}
+  .ink{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+  td a,p a,li a{color:var(--moss-ink)}
+  .kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;font-size:13px}
+  .kv dt{color:var(--ink2)} .kv dd{margin:0}
+  @media(max-width:700px){.kv{grid-template-columns:1fr}.kv dd{margin-bottom:6px}}
+</style>
+</head>
+<body>
+<nav class="top"><b>U · Appearance</b>
+  <a href="index.html" aria-current="page">Decision sheet</a><a href="app.html">Prototype</a><a href="concepts.html">Concepts</a>
+  <a href="lab.html">Thumbnail lab</a><a href="board.html">Responsive board</a>
+</nav>
+<main class="doc">
+  <header style="padding:22px 0 4px">
+    <h1>Appearance UX · decision sheet</h1>
+    <p class="lede">T2.S8 U: how a creator picks, applies, edits, inspects, repairs and reuses colours and materials, built on the
+      merged S8 engine (A–G, E7) and the Light &amp; Sky language. <b>Design study for owner review.</b> Not approved, not a
+      production contract, and nothing here is imported by product code. The prototype simulates S8's operations; the
+      thumbnail lab approximates its renderer.</p>
+    <div class="open">
+      <a href="app.html"><b>Prototype</b><span>The recommended instrument end to end: Paint and its tray, the Library, the Finish Card, the Material editor, Align on wall, import, repair, transfer.</span></a>
+      <a href="concepts.html"><b>Concepts</b><span>Competing directions for six questions, the finishing ladder storyboard (layers, masks, brush), and what the second round rejected.</span></a>
+      <a href="lab.html"><b>Thumbnail lab</b><span>All 21 catalogue entries in six presentations at real sizes, measured with E7's distinctness method.</span></a>
+      <a href="board.html"><b>Responsive board</b><span>Every step of the flow at five laptop, desktop and iPad viewports at once.</span></a>
+    </div>
+  </header>
+
+  <section class="sec" id="recommendation">
+    <header><h2>Recommendation <small>one instrument, a quick Finish and an exact one</small></h2></header>
+    <div class="g2">
+      <div>
+        <ul>
+          <li><b>A Material is not a Finish.</b> A <i>Material</i> is the raw capture — its images, real size, source and
+            licence — and is never edited. A <i>Finish</i> is a Material plus a treatment (colour, sheen, pattern) and is what a
+            surface wears, names, shares and saves. A Finish is named <i>Material · treatment</i> (<i>Oak Veneer · Sage stain</i>)
+            until someone renames it; a renamed Finish keeps its name.</li>
+          <li><b>Paint is one dock key.</b> Arming it opens a tray above the dock: <i>Colours</i> and <i>Materials</i> tabs,
+            favourites (★), recents, the picked item first, and one ⌃ toggle under the dropper for the full palette and
+            <i>Edit palette</i> (it turns to ⌄ in the same place). The
+            radius is <i>Brush · Surface · Space</i>; Surface is the default, Shift-click is a one-off Space, and Brush is a drawn
+            placeholder for later (see <a href="#finishing">the ladder</a>).</li>
+          <li><b>Shape tells the consequence.</b> A circle is a colour: it recolours the surface and keeps its relief and
+            sheen (walnut stays grained). A rounded square is a material: it replaces the whole Finish. One grammar in the
+            tray, Library and Card.</li>
+          <li><b>The Library is an asset library.</b> A kind rail (Materials with nested categories; Objects, which Furnish
+            opens; Openings and Plants &amp; Lights later), sources <i>All · Curated · This project · My library · Sources</i>
+            (third-party shelves later), filters, and a master–detail pane with a live preview, ★, <i>Use for Paint</i>,
+            <i>Apply</i> and <i>Customise…</i>. Curated items read <i>Veneer · 0.5 m</i>; project and library items read
+            <i>from Oak Veneer · 3 changes</i>. Every card has one anatomy (name up to two lines, one sub-line; usage and
+            variants sit on the image), and in <i>All</i> the small sources are one-row shelves with <i>See all n ›</i>. No
+            pin: Shift-click keeps it open for a run of picks and <code>L</code> reopens the last view.</li>
+          <li><b>U leaves the Index unchanged.</b> Appearance needs no Index work: Finishes in use live in
+            <i>Library › This project</i> (a click selects their users), the palette in <i>Paint › ⌃</i>, repair in the head.
+            The prototype's Index is context, not a proposal; a Finish swatch per row is later, outside U.</li>
+          <li><b>The armed tool key is a quiet forest step.</b> The armed key fills with forest&nbsp;3 (<code>#2d5e48</code>) with
+            an ivory icon and a faint inner edge, replacing the ivory key, so gold and cobalt stay the loudest marks on screen. It is
+            one shell token for every tool family (World, drafting, Experience); primary buttons and pressed toggles keep their own
+            treatment. See <a href="#decisions">D12</a>.</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li><b>The Card is the Finish (288 px).</b> Name (click to rename), a reach line (<i>On North wall · only here</i>
+            or <i>Shared by 6 · This wall | All 6</i>), Material with <i>Swap ›</i> (keeps the treatment, pattern back to real
+            size), Colour <i>Natural · Stained · Painted</i> chosen by the material (wood and stone stain, plaster paints)
+            with palette chips, Sheen <i>Matte · Satin · Gloss</i> with a dot on the original step, Pattern <i>Real size</i>,
+            − / +, ↻ 90° and <i>Align on wall…</i>. Foot: ★, <i>Save to My library</i>, <i>Edit material…</i>, ⋯.</li>
+          <li><b>The Material editor is the exact Finish.</b> About 560 px beside the Card (a bottom sheet on iPad portrait):
+            a preview with shape, light, view and a probe, and <i>Compare with original</i>; <i>Raw material</i> map rows
+            (read-only, each can be switched off for this Finish); <i>Exact finish</i> fields — a changed field's label darkens and a faint grey tick marks the original;
+            double-click the label or slider resets that field; a <i>Layers</i> placeholder; <i>N changes · Reset all · Done</i>. It replaces the view-only inspector.</li>
+          <li><b>Library drafts write nothing.</b> <i>Customise…</i> opens the Material editor on a draft (the quick Card is
+            only for a surface clicked on the Stage): a cobalt ghost previews it on the selected surface, a click on another
+            surface moves the preview, × or Esc cancels, and only <i>Apply to X</i> (one undo), <i>Use for Paint</i> or
+            <i>Save to My library</i> commits anything. The draft edits exactly like a Finish because the Card,
+            editor, draft and Align share one Finish adapter.</li>
+          <li><b>Two inks, one meaning each.</b> Gold = selected (Stage outline and Index row only). Cobalt = will change
+            (reach when <i>All</i>, the hover ghost, a draft). Esc, an empty click or ✕ deselects.</li>
+          <li><b>Align on wall / floor.</b> The surface faced straight on (the Camera <code>face</code> intent), a metre ruler,
+            the repeat grid, a square handle for offset and a round one for rotation; <i>Put back</i> exits. Overlays are never
+            saved; every release is one undo through the same Finish writer.</li>
+          <li><b>Thumbnails are flat lit sample tiles</b> framed on a physical window, one stored 256 px master per Finish.
+            See <a href="#thumbnails">U1</a>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="flow">
+    <header><h2>The complete flow <small>each step opens the prototype at that state</small></h2></header>
+    <ol class="flow">
+      <li><div><b>Arm Paint</b><p>Paint key or <code>B</code>. The tray appears on the dock with the last tab used; the radius is Surface, <code>S</code> toggles Space.</p>
+        <a href="app.html?scene=walnut&amp;tool=paint">open ↗</a></div></li>
+      <li><div><b>Pick</b><p>A tray swatch, a palette colour, the wheel, the dropper, or a Library item. A pick made elsewhere leads the tray row as <i>picked</i>, so what is armed is always visible where it is used.</p>
+        <a href="app.html?scene=walnut&amp;lib=curated&amp;detail=cat:wood-walnut-veneer">Library ↗</a> · <a href="app.html?scene=walnut&amp;tool=paint&amp;tab=colours&amp;tray=open">colours ↗</a></div></li>
+      <li><div><b>Apply</b><p>Hover shows a cobalt ghost and a consequence line (<i>Walnut Veneer replaces Painted Plaster on North wall</i>). Click paints one surface; drag paints several; Shift-click paints the whole room or object once. One undo per stroke.</p>
+        <a href="app.html?scene=walnut&amp;tool=paint">open ↗</a></div></li>
+      <li><div><b>Adjust on the Card</b><p>The painted surface opens its Finish Card (a multi-part object opens its parts first). Reach line, then Material, Colour, Sheen, Pattern. Dragging previews (never history); release commits one undo step (a held arrow key commits on key-up).</p>
+        <a href="app.html?scene=walnut&amp;focus=table:top&amp;card=finish">open ↗</a></div></li>
+      <li><div><b>Edit exactly</b><p><i>Edit material…</i> opens the editor beside the Card: raw maps, exact fields (double-click resets one), <i>Compare with original</i> under Studio, Grazing or this room.</p>
+        <a href="app.html?scene=walnut&amp;focus=table:top&amp;card=finish&amp;edit=table:top">open ↗</a></div></li>
+      <li><div><b>Customise from the Library</b><p><i>Customise…</i> on a Library item: the Material editor on a draft and a cobalt ghost on the selected wall; click another wall to move it; Apply, Use for Paint or Save.</p>
+        <a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;draft=wood-oak-veneer">open ↗</a></div></li>
+      <li><div><b>Align on wall</b><p>From Pattern: the wall straight on, ruler and grid; drag to move or turn the pattern; <i>Put back</i>.</p>
+        <a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;align=wall-n:a">open ↗</a></div></li>
+      <li><div><b>Save and reuse</b><p>★ keeps it in the tray; <i>Save to My library</i> changes nothing in the project; in another project insert it from My library as an independent copy.</p>
+        <a href="app.html?scene=transfer">open ↗</a></div></li>
+    </ol>
+  </section>
+
+  <section class="sec" id="tasks">
+    <header><h2>The plan's four tasks <small>S8 plan § What reaches UX planning</small></h2></header>
+    <div class="tw"><table>
+      <thead><tr><th>Task</th><th>Path in the prototype</th><th>What it proves</th></tr></thead>
+      <tbody>
+        <tr><td>Occasional creator: walnut on a wall, change its sheen</td><td><a href="app.html?scene=walnut">Task 1</a>: tray → click wall → Card Sheen step</td><td>Three clicks to paint, one drag to edit; the curated Walnut stays curated for other users (default reach <i>This part</i>)</td></tr>
+        <tr><td>Material artist: correct a gloss/ORM set, compare under two lights, one of three surfaces at another scale</td><td><a href="app.html?scene=artist">Task 2</a>: Import sheet → choose Roughness source → acknowledge normal → apply to 3 → <i>Edit material…</i> → Compare under Studio and Grazing → reach <i>This wall</i> → Pattern − / +</td><td>Collisions block with no silent winner; the normal is checked on a test, not trusted; a split is a deliberate reach choice</td></tr>
+        <tr><td>Returning creator: move it to another project and explain what is shared</td><td><a href="app.html?scene=transfer">Task 3</a>: Card foot → Save to library → switch project → My library → paint</td><td>Save changes nothing in the source; the inserted copy is independent and says so (<i>From my library</i>)</td></tr>
+        <tr><td>Incompatible model or missing image: find and repair the channel</td><td><a href="app.html?scene=repair">Task 4</a>: head → <i>2 to repair</i> → amber strips → <i>Use colour instead</i> / <i>Use UV set 0</i></td><td>Only the broken channel is touched; the rest of the Finish keeps rendering; one undo restores</td></tr>
+      </tbody>
+    </table></div>
+    <dl class="kv" style="margin-top:12px">
+      <dt>Cold reopen</dt><dd>The prototype saves to localStorage; reload restores Finishes, assignments, palette, favourites, recents and My library. Task presets (<code>?scene=</code>) start fresh and are never saved.</dd>
+      <dt>Cancel / Undo</dt><dd>Escape closes the top layer first — picker, Library detail, Library, Align, editor, import, tray, draft — then deselects. Every write is one undo step; import and its assignments undo together.</dd>
+      <dt>Keyboard</dt><dd><code>B</code> Paint (in Paint: Brush / Surface), <code>E</code> Erase (in Brush: its eraser), <code>V</code> Select, <code>L</code> Library (last view), <code>I</code> sample, <code>T</code> tab, <code>S</code> Space / Surface, <code>[</code> <code>]</code> turn, arrows nudge in Align, ⌘Z / ⇧⌘Z. Every swatch, card and row is a focusable button. Picking by number is deferred: <code>2</code> and <code>3</code> already switch the reading.</dd>
+      <dt>Coarse pointer</dt><dd>44 px swatches and hit areas; long-press samples; drag paints. Designed, not yet checked on a device.</dd>
+      <dt>Narrow layouts</dt><dd>iPad portrait: the Library and the Material editor become bottom sheets with the room still visible above; the Library source switch folds into a menu when the sheet is narrow; the Card folds to its identity row while the tray or Library is open. <a href="board.html">Board</a>.</dd>
+    </dl>
+  </section>
+
+  <section class="sec" id="ownership">
+    <header><h2>Ownership rules <small>one writer per intent; everything else only chooses</small></h2></header>
+    <p class="note">Pickers, the tray, the Library, the Index and the editor preview never write project state. They arm a pick or
+      build a patch and hand it to exactly one writer. A drag preview is transient render state and never enters history.
+      Favourites and recents are creator preferences, not project data.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Intent</th><th>Surfaces that ask</th><th>One writer (prototype)</th><th>S8 operation</th></tr></thead>
+      <tbody>
+        <tr><td>Put a material on surfaces</td><td>Paint stroke, Space scope, Library <i>Apply</i></td><td><code>assign</code></td><td>F4 assignment, curated normal form</td></tr>
+        <tr><td>Swap the material, keep the treatment</td><td>Card <i>Swap ›</i>, Library opened by Swap</td><td><code>replaceBase</code></td><td>E4 patch of the base set with reach; pattern back to the new real size</td></tr>
+        <tr><td>Commit a Library draft</td><td>Draft Card <i>Apply to X</i> / <i>Save</i></td><td><code>assignRecipe</code> (one undo), <code>saveRecipeToLibrary</code></td><td>Materialize + F4 assignment; G save. Nothing is written while drafting</td></tr>
+        <tr><td>Put a colour on surfaces (coat)</td><td>Colours tab, wheel, palette, dropper</td><td><code>assign</code> → <code>coatRefFor</code></td><td><span class="tag new">new</span> composition of E4 <code>disable</code> colour map + palette follower, deduplicated</td></tr>
+        <tr><td>Change a Finish</td><td>Finish Card, Material editor, Align on wall</td><td><code>editFinish</code> via the Finish adapter (<code>finish.js</code>)</td><td>E4 patch: <i>in place</i> / <i>All</i> / <i>Just this</i>; curated materialization; tiling size, rotation, offset</td></tr>
+        <tr><td>Bring in files</td><td>Import sheet</td><td><code>registerImport</code></td><td>E5 <code>prepareDraft</code> / <code>acceptDraft</code>, one kind per registration</td></tr>
+        <tr><td>Fix a broken channel</td><td>Repair strip</td><td><code>repair</code></td><td>E4 diagnostic actions from <code>inspectFinish</code></td></tr>
+        <tr><td>Name, remove</td><td>Card name, Card ⋯</td><td><code>rename</code>, <code>removeUnused</code></td><td>E4 rename, unused-only remove</td></tr>
+        <tr><td>Palette colour</td><td>Paint › ⌃ › Edit palette, tray <i>+</i></td><td><code>setSlot</code>, <code>addPaletteSlot</code></td><td>Existing palette authority</td></tr>
+        <tr><td>Save / reuse across projects</td><td>Card foot, Library <i>My library</i></td><td><code>saveToLibrary</code> (no project write), <code>insertFromLibrary</code>, <code>applyLibraryItem</code></td><td>G save, transfer insert (new Finish id per insert)</td></tr>
+        <tr><td>Look closely</td><td>Editor preview, map <i>View</i>, Compare, probe; Align overlays</td><td><i>none</i></td><td>E7 inspection host (read-only); Camera <code>face</code> intent</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Rules the design depends on</h3>
+    <ul>
+      <li><b>The Material is never edited.</b> Raw maps are read-only in the editor; switching a map off is a Finish setting that resetting the field undoes. Swapping the Material keeps the treatment and returns the pattern to the new material’s real size.</li>
+      <li><b>Reach is visible before the edit, and defaults by kind.</b> A curated Finish defaults to <i>This wall</i> (editing walnut should not silently fork every walnut surface into a project Finish); a project Finish (<code>fin:</code>) defaults to <i>All&nbsp;n</i> and edits in place. Cobalt outlines show who <i>All</i> reaches, and only then.</li>
+      <li><b>Materializing reaches one kind.</b> <i>All</i> on a curated or model Finish reaches only same-kind users (F4 refuses a compound Scene + Layout registration); the Card says which users keep the original. Editing an existing <code>fin:</code> still reaches Layout and Scene users together.</li>
+      <li><b>A pristine clone is the curated normal form.</b> Resetting every override returns surfaces to <code>cat:</code>, as E's review follow-up does.</li>
+      <li><b>Sheen shows the effective value, never rougher than captured.</b> Roughness is a factor on the ORM map; the Card shows three steps over <i>factor × scanned mean</i>, disables steps rougher than the capture, marks the original's nearest step with a dot and reads <i>Custom</i> between steps. The editor shows the exact value.</li>
+      <li><b>No duplicated writers.</b> The Index is hierarchy and opens the Card; the Library chooses and drafts; the Card, editor, drafts and Align write through one Finish adapter. There is no second Finish list.</li>
+    </ul>
+  </section>
+
+  <section class="sec" id="thumbnails">
+    <header><h2>U1 · Thumbnail treatment <small>the plan's first deliverable</small></h2></header>
+    <p>Measured in the <a href="lab.html">lab</a> with E7's method, which reproduces E7's committed numbers on the 192 px
+      references first (<a href="evidence/u-thumbnail-lab.json">evidence</a>). The lab renderer approximates the shipped
+      metallic–roughness path, so this chooses the presentation and crop; final numbers come from the E7 inspection host.</p>
+    <div class="ladder" id="ladder"><span class="note">Rendering…</span></div>
+    <p class="cap" id="ladderCap"></p>
+    <h3>Recommendation</h3>
+    <ul>
+      <li><b>Sample tile:</b> flat, lit, with a soft sheen band across the top third so gloss and metal read, framed on a
+        <b>physical window</b> (two or three boards, one brick course, a few linen threads), not a repeat count. It reads
+        true to colour (mean colour shift ΔE00 4.7 against 46.5 for the E7 references at 192 px) with no clipping.</li>
+      <li><b>One stored master per Finish: 256 px PNG.</b> XS (28 CSS, tighter window), S (56) and M (128, 2×) derive from it.
+        The L detail (sphere, grazing close-up) and the Material editor preview render on demand through the E7 host, one at a time, so
+        opening a list never fetches full-resolution images.</li>
+      <li><b>Framing hint outside the recipe:</b> window size and centre per catalogue entry, in the same side table as
+        thumbnails and locators. Project and imported Finishes default to a window from their tile size.</li>
+      <li><b>New thumbnail recipe version;</b> E7's inspection recipe 2 and its 192 px references stay intact as engineering references.</li>
+    </ul>
+    <h3>Similar materials</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Pair</th><th>E7 reference 192</th><th>Re-lit sphere 256</th><th>Sample tile 256</th><th>Reading</th></tr></thead>
+      <tbody>
+        <tr><td>Smooth / Polished concrete</td><td class="fail">0.27 · 0.994</td><td class="fail">0.45 · 0.977</td><td class="fail">1.98 · 0.978</td><td>Same scan, roughness factor 1 vs 0.45. Raising the sheen band gain to 12 only reaches 2.87 · 0.953: <b>no presentation separates a factor-only variant</b></td></tr>
+        <tr><td>Satin / Brushed stainless</td><td class="fail">1.18 · 0.979</td><td class="pass">1.58 · 0.948</td><td class="pass">2.64 · 0.674</td><td>The window shows the brush direction</td></tr>
+        <tr><td>Painted plaster / Matte plastic</td><td class="fail">1.98 · 0.973</td><td class="pass">4.43 · 0.855</td><td class="pass">4.83 · 0.493</td><td>True colour and texture separate them</td></tr>
+        <tr><td>Satin brass / Satin gold <span class="tag warn">narrow</span></td><td class="pass">3.10 · 1.000</td><td class="pass">4.96 · 0.997</td><td class="pass">4.75 · 0.998</td><td>Passes on colour alone; label stays essential</td></tr>
+        <tr><td>Linen / Loop carpet <span class="tag warn">narrow</span></td><td class="pass">1.27 · 0.915</td><td class="pass">3.09 · 0.589</td><td class="pass">3.27 · 0.246</td><td>Clear at S and above</td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap">Mean patch ΔE00 · luminance SSIM. F's rule fails a pair when ΔE00 &lt; 3 and SSIM &gt; 0.95. The re-lit sphere
+      passes concrete at 112 px only because SSIM dips to 0.944 at that size; at 256 it fails, so it is not a robust pass.</p>
+    <h3>Sizes, bytes and the G slot</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Use</th><th>CSS</th><th>Derivative</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>XS circle: recents, inline readouts, chips</td><td>28 (24–32)</td><td>64</td><td>master, tighter window</td></tr>
+        <tr><td>S rounded square: tray, Card head</td><td>40–56 (44 coarse)</td><td>112</td><td>master</td></tr>
+        <tr><td>M card: Library grid</td><td>124–150</td><td>256</td><td>master</td></tr>
+        <tr><td>L detail: expanded card</td><td>240 + close-up + sphere</td><td>480, on demand</td><td>E7 host, cached by recipe key</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Sample-tile PNGs (browser encoder, indicative): 256 px max 160.9 KiB (red brick), mean 111.4 KiB; 512 px max 633.1 KiB.
+      G's slot accepts exactly 192×192 PNG ≤ 256 KiB. A 256 px master fits the byte cap but not the edge: the proposal is a
+      scoped change of G's slot to 256 px (<a href="#decisions">D4</a>). At 192 the M card is under 2× on a Retina display.</p>
+  </section>
+
+  <section class="sec" id="rejected">
+    <header><h2>Rejected and alternative directions <small>drawn in <a href="concepts.html">Concepts</a></small></h2></header>
+    <div class="tw"><table>
+      <thead><tr><th>Question</th><th>Recommended</th><th>Rejected, and why</th></tr></thead>
+      <tbody>
+        <tr><td><a href="concepts.html#instrument">Where quick picks live</a></td><td>A · tabbed tray on the dock</td><td><b>B mixed row</b> (colours and materials in one row): close alternative, kept for owner choice; it loses the tab's clear consequence. <b>C rail</b>: clashes with the Index and becomes a second Finish list. <b>D ring</b>: not the primary instrument; promoted as Paint's future <i>quick wheel</i> (below).</td></tr>
+        <tr><td><a href="concepts.html#grammar">Swatch grammar</a></td><td>G1 · shape = consequence</td><td><b>All circles</b>: colour and material look interchangeable but do opposite things to relief. <b>All squares</b>: colours lose their light, quick read. <b>Wide 3:2 chips</b>: show more pattern but cut the tray's capacity by a third.</td></tr>
+        <tr><td><a href="concepts.html#cards">Library cards</a></td><td>Grid of 128 px cards that expand in place</td><td><b>Large previews</b>: about three across in the sheet on a laptop, too slow to scan 21+ entries. <b>List rows</b>: kept for search results and My library management, not browsing.</td></tr>
+        <tr><td><a href="concepts.html#toolbar">Toolbar</a></td><td>T1 · Paint + Erase + Library</td><td><b>Separate Colour and Material tools</b>: two keys for one verb, and the dropper must guess which. <b>Contextual only</b>: no way to paint several surfaces quickly. <b>Floating palette</b>: covers the Stage and duplicates the tray.</td></tr>
+        <tr><td><a href="concepts.html#colour">Colour on a material</a></td><td>Natural / Stained / Painted, offered by material</td><td>A single "colour" that always multiplies: dark woods cannot become pale, and creators cannot tell why. <b>Tint / Colour</b> as labels: they describe the maths, not the result.</td></tr>
+        <tr><td><a href="concepts.html#card-layout">Card and editor</a></td><td>Card (Finish) + Material editor</td><td><b>Progressive Card</b> (first round): mixed the raw capture with the treatment and overflowed 288 px. <b>Tabbed</b>: hides reach on a tab. <b>Channel-first</b>: right for artists, wrong as the default; its exactness lives on in the editor.</td></tr>
+        <tr><td><a href="concepts.html#rejected">Second round</a></td><td>Editor, Brush in Paint, Shift-click, cobalt for reach (the Index swatch is now outside U)</td><td><b>View-only Inspect</b>: every exact edit meant leaving it. <b>Brush as its own tool</b>: a ninth dock key with a second palette. <b>Library pin</b>: fights the Card for the right edge. <b>Finish list in the Index</b>: mixes where and what. <b>Gold for reach</b>: one ink, two meanings.</td></tr>
+        <tr><td>Thumbnails</td><td>Flat lit sample tile, physical window</td><td><b>Lit sphere</b> at S/M: curvature foreshortens the pattern toward the rim, a fifth of the square is background, and it still fails the concrete pair at 256. <b>Unlit colour</b>: metals and finish variants become identical. <b>One full repeat</b>: a 3.4 m parquet tile turns to noise at 56 px.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="sec" id="scope">
+    <header><h2>What exists, what is new, what is later</h2></header>
+    <div class="tw"><table>
+      <thead><tr><th>Capability</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Paint a catalogue material, edit factors, maps, mapping and normal strength</td><td><span class="tag now">S8 exists</span></td><td>E4 inspect / patch / planners</td></tr>
+        <tr><td>Set import with collisions, gloss inversion, ORM/RMA, normal acknowledgement</td><td><span class="tag now">S8 exists</span></td><td>E5; the sheet is new UI only</td></tr>
+        <tr><td>Inspection under known light, references</td><td><span class="tag now">S8 exists</span></td><td>E7 host; no product surface yet</td></tr>
+        <tr><td>Save to private library, insert into another project</td><td><span class="tag now">S8 exists</span></td><td>G; thumbnail slot 192 px</td></tr>
+        <tr><td>Colour coat that keeps relief (dedupe, palette follower)</td><td><span class="tag new">new engineering</span></td><td>Composition of existing pieces; needs a planner and dedupe rule (<a href="#decisions">D3</a>)</td></tr>
+        <tr><td>Sample-tile thumbnail recipe, framing hints, 256 slot</td><td><span class="tag new">new engineering</span></td><td>U1</td></tr>
+        <tr><td>Favourites and recents</td><td><span class="tag new">new engineering</span></td><td>Creator preference storage, outside the project</td></tr>
+        <tr><td>Finish-only variants presented on one card</td><td><span class="tag new">new engineering</span></td><td>Catalogue presentation metadata (<a href="#decisions">D1</a>)</td></tr>
+        <tr><td>Material editor: raw maps read-only, exact Finish fields, compare</td><td><span class="tag new">new UI</span></td><td>Over E4 inspect / patch and the E7 host; no new operation</td></tr>
+        <tr><td>Align on wall / floor</td><td><span class="tag new">new UI</span></td><td>Edits the existing tiling size, rotation and offset; faced view through the Camera <code>face</code> intent</td></tr>
+        <tr><td>Library drafts (Customise…), kind rail, This project source</td><td><span class="tag new">new UI</span></td><td>Commits through existing assignment and G save</td></tr>
+        <tr><td>Armed tool key: forest&nbsp;3 for every tool family</td><td><span class="tag new">new UI</span></td><td>One shell token and its three docks; amends the approved shell design (<a href="#decisions">D12</a>)</td></tr>
+        <tr><td>Finish naming <i>Material · treatment</i></td><td><span class="tag new">new engineering</span></td><td>A naming rule plus a <i>named</i> flag so a renamed Finish keeps its name</td></tr>
+        <tr><td>Quick wheel: hold Paint's key (long-press it on touch) for up to eight ★ favourites at the cursor; release over one to pick</td><td><span class="tag fut">promoted</span></td><td>Reads the tray's favourites, never a second list; a tap still arms Paint, and long-press on the Stage stays the dropper. Replaces number picks</td></tr>
+        <tr><td>Index: Finish swatch per row, repair dot</td><td><span class="tag fut">later</span></td><td>Outside U; the Index is unchanged</td></tr>
+        <tr><td>Layers, masks, brush, decals, Teach (<a href="#finishing">ladder steps 4–6</a>); procedural materials, displacement, third-party libraries, objects, openings, plants</td><td><span class="tag fut">future</span></td><td>Dashed, labelled slots in the Card, editor, tray and Library so the layout has room; storyboard in <a href="concepts.html#ladder">Concepts</a>; no commitment</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="sec" id="finishing">
+    <header><h2>The finishing ladder <small>how later texturing joins existing seams</small></h2></header>
+    <p>Progressive complexity: each step adds one idea and leaves every earlier step working, so a creator climbs only as far as
+      the job needs. <b>Pick → Finish → Exact</b> are built in the prototype; <b>Layers → Masks → Brush</b> are agreed seams, drawn
+      in <a href="concepts.html#ladder">Concepts</a>, not designed or committed.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Step</th><th>Creator sees</th><th>Seam it reuses</th></tr></thead>
+      <tbody>
+        <tr><td>1 · Pick</td><td>Paint tray, Library</td><td>F4 assignment</td></tr>
+        <tr><td>2 · Finish</td><td>The Card: colour, sheen, pattern, save</td><td>E4 patch with reach; G save</td></tr>
+        <tr><td>3 · Exact</td><td>The Material editor; Align on wall</td><td>E4 fields; E7 host; Camera <code>face</code></td></tr>
+        <tr><td>4 · Layers <span class="tag fut">future</span></td><td>Editor <i>Layers</i>: today's Finish becomes the <i>Base</i>; add a look over it</td><td>A new Finish family over v1; v1 Finishes read unchanged as one Base layer</td></tr>
+        <tr><td>5 · Masks <span class="tag fut">future</span></td><td>Room-fact masks with <i>See why</i>: Height band, Near the floor, Around openings, Corners, In the sun, Within reach</td><td>Evaluated from Layout facts at render time; derived, never authored geometry</td></tr>
+        <tr><td>6 · Brush <span class="tag fut">future</span></td><td>Paint › Brush: Brush, Erase, Smudge, Clone, Stencil, Decal, Teach in at most three tray rows; Face / Unroll</td><td>Surface layers on the S8 decal contract plus repair strips; Camera <code>face</code>; bakes are delivery derivatives</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><b>Finish layers vs Surface layers.</b> Finish layers (Base, a Sage band, taught wear) travel with the Finish to every surface that wears it. Surface layers (strokes, decals) belong to one surface, in its own metres, and survive a Finish swap.</li>
+      <li><b>Teach</b> turns hand strokes into a proposed layer + mask (“Wear · Near the floor · 0–35 cm”), shows in cobalt which surfaces will change, and commits only on accept. There is still one evaluator.</li>
+      <li><b>No separate workspace material model</b> at any step: the editor, Align and a later Face / Unroll view all edit the same Finish.</li>
+    </ul>
+  </section>
+
+  <section class="sec" id="decisions">
+    <header><h2>Owner decisions <small>all decided 2026-11-22</small></h2></header>
+    <p class="note">The owner accepted every recommendation below (D7: tray A). Where this design differs from the approved
+      shell design — the armed key (D12), and the Paint tray's labelled tabs, radius, <i>Browse all</i> and expanded palette —
+      this design governs; the shell contract is amended when U's implementation is accepted. The number quick-pick
+      (<code>1</code>–<code>9</code>) is deferred, and the quick wheel is promoted as Paint's future accelerator.</p>
+    <ol class="dec">
+      <li><b>Smooth and Polished concrete.</b><p>No presentation separates them (same scan, factor only). <b>Recommend</b> one card, <i>Smooth Concrete</i>, with a <i>Matte / Polished</i> variant chip, and F's rule applied between cards, not between a card's variants. F's rule is then recorded between cards.</p></li>
+      <li><b>Reach before the edit, replacing the post-hoc Ask.</b><p>The plan keeps PLATE's Ask semantics. The study asks the same question earlier: a reach line on the Card (<i>Shared by n · This wall | All&nbsp;n</i>), cobalt outlines on who <i>All</i> reaches, defaults by kind. Nothing is asked after a drag. <b>Recommend</b> adopting it; it removes a dialog from every shared edit.</p></li>
+      <li><b>Colour coat as new engineering.</b><p>A colour applied with Paint keeps relief and sheen and becomes a deduplicated derived Finish (ten walls painted Sage make one Finish, following the palette). <b>Recommend</b> a dedicated planner over E4 primitives.</p></li>
+      <li><b>G thumbnail slot to 256 px.</b><p>Needed for a 2× M card. <b>Recommend</b> a scoped change: PNG, ≤ 256 KiB, edge 256, new thumbnail recipe key. Old 192 items stay valid and display with upscale until regenerated.</p></li>
+      <li><b>Same-kind reach on materialize.</b><p><i>All</i> on a curated or model Finish reaches only same-kind users, with the Card naming who keeps the original. <b>Recommend</b> accepting as the E handoff's two-step journey; widening F4 is a separate decision.</p></li>
+      <li><b>Sheen display.</b><p>Three steps over effective roughness (factor × scanned mean), never rougher than the capture, the original marked with a dot; exact values in the editor. <b>Recommend</b> adopting.</p></li>
+      <li><b>Tray A or mixed row B.</b><p>Both are drawn in Concepts. <b>Recommend</b> A (tabs) for the clarity of consequence; B if the owner prefers fewer clicks over that clarity.</p></li>
+      <li><b>Card and Material editor split.</b><p>The Card is the quick Finish; the editor is the exact one and replaces the view-only inspector. <b>Recommend</b> adopting; the editor needs no new operation.</p></li>
+      <li><b>Library drafts.</b><p><i>Customise…</i> opens the Material editor on a draft that writes nothing until Apply, Use for Paint or Save. <b>Recommend</b> adopting; it makes “try before you commit” the default way to start from the Library.</p></li>
+      <li><b>Ladder seams for layers, masks and brush.</b><p>Agree the seams now (Base layer over v1, room-fact masks, Surface layers on the decal contract, Brush inside Paint) without designing the features. <b>Recommend</b> recording them as the direction, not as a contract.</p></li>
+      <li><b>Import reads file names first.</b><p>The PBR map set is the industry standard, so the sheet keeps its names (Normal, Roughness, ORM) and asks only what the files leave open. Normal direction and gloss inversion come from vendor naming when present (<code>_gl</code> / <code>_dx</code>, <code>nor_gl</code>, <code>arm</code>, <code>gloss</code>); a clean set imports in one click (<a href="app.html?scene=walnut&amp;focus=wall-n:a&amp;import=clean">clean ↗</a>, <a href="app.html?scene=artist">messy ↗</a>). <b>Recommend</b> adding name detection to E5's draft facts; it never overrides an explicit answer.</p></li>
+      <li><b>Armed tool key.</b> <span class="tag now">decided 2026-11-22</span><p>The armed key on every dock is
+        forest&nbsp;3 (<code>#2d5e48</code>) with an ivory icon and a 1&nbsp;px inner edge at 16% white, replacing the soft
+        ivory key. The fill alone is about 2.1 : 1 against the dock, so the icon and edge carry the state too; the tool-colour
+        mark and the collapsed-palette caret are unchanged. It changes the approved shell design (the armed key and its state
+        row), so that slice is Tier&nbsp;2 and promotes the rule into the contract when accepted.</p></li>
+    </ol>
+  </section>
+
+  <section class="sec" id="handoff">
+    <header><h2>UX to engineering handoff</h2></header>
+    <div class="tw"><table>
+      <thead><tr><th>Surface</th><th>Reads</th><th>Writes through</th><th>Copy and states to carry</th></tr></thead>
+      <tbody>
+        <tr><td>Tray</td><td>Favourites, recents (creator prefs), palette, thumbnails</td><td>none: arms Paint</td><td><i>picked</i> lead swatch; empty state <i>Star colours or materials to keep them here</i></td></tr>
+        <tr><td>Stage hover</td><td>Pick, target, scope</td><td>none until release</td><td>Consequence line: <i>&lt;pick&gt; replaces / colours &lt;current&gt; on &lt;target&gt;</i>; cobalt dashed ghost</td></tr>
+        <tr><td>Library</td><td>Catalogue, project Finishes and users, private library listing, thumbnails</td><td><code>assign</code> on <i>Apply</i>; G insert on My library; nothing while drafting</td><td>Kind rail, sources, filters, detail pane, <i>Customise…</i>, <i>Used by n · select</i>, edited mark, <i>what travels</i> for library items</td></tr>
+        <tr><td>Finish Card</td><td><code>inspectFinish</code>: provenance, users, operations, diagnostics</td><td>E4 patch with reach; swap; rename</td><td>Reach line; original markers; <i>Material · treatment</i> names; other-kind note; one undo per release</td></tr>
+        <tr><td>Material editor</td><td>E7 host frames; raw map facts; the original Finish</td><td>E4 patch through the same adapter</td><td>Raw / exact split, faint original tick and double-click reset, <i>N changes · Reset all</i>, Compare, bottom sheet on iPad portrait</td></tr>
+        <tr><td>Align on wall</td><td>Surface frame, tiling</td><td>E4 tiling patch (offset, rotation)</td><td>Ruler, grid and handles never saved; snaps (1 cm, 15°); <i>Put back</i></td></tr>
+        <tr><td>Import sheet</td><td>E5 file facts and draft</td><td><code>acceptDraft</code></td><td>One summary line (<i>5 files · Rough Oak · 2 things to check</i>); only the open questions (red collision that blocks, amber normal check); the file table behind <i>Show files</i>; normal direction and gloss read from file names when they say (<code>_gl</code>, <code>_dx</code>, <code>nor_gl</code>, <code>arm</code>, <code>gloss</code>), so a clean vendor set imports in one click; <i>Import &amp; apply to n</i>; one kind, then paint the rest</td></tr>
+        <tr><td>Dock (every tool family)</td><td>Armed tool</td><td>none</td><td><code>--shell-tool-armed-bg</code> becomes forest&nbsp;3, with an armed ink (ivory) and edge token; <code>.key.armed</code> in the World, Stage and Experience docks moves to it from <code>--shell-mode-active-bg</code>; drafting tools and Experience place-armed already use it. Primary buttons, the lens and pressed segments keep the ivory token. Production keeps its own dock anatomy: the prototype's word labels under icons are not proposed</td></tr>
+        <tr><td>Repair</td><td><code>inspectFinish</code> diagnostics</td><td>E4 diagnostic actions</td><td>Amber hatch on surfaces, <i>n to repair</i> in the head (no Index change)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Light &amp; Sky inks keep one meaning each: gold = selected, cobalt = will change (reach, ghost, draft),
+      red = refusal, amber = needs repair. One undo per release.</p>
+  </section>
+
+  <section class="sec" id="slices">
+    <header><h2>Implementation slices <small>U1 first, by owner decision</small></h2></header>
+    <div class="tw"><table class="slices">
+      <thead><tr><th>Slice</th><th>Delivers</th><th>Depends on</th><th>Exit</th></tr></thead>
+      <tbody>
+        <tr><td>U1 thumbnails</td><td>Sample-tile recipe (new version) on the E7 host; framing hints table; 256 px master and XS/S/M derivatives; G slot to 256 (D4); shelf swatches replaced</td><td>E7, D1, D4</td><td>All five items of the plan's <a href="../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md#thumbnail-revalidation-required-in-u">revalidation list</a> recorded on the host, on both backends; F's rule re-run on all 210 pairs</td></tr>
+        <tr><td>U8 armed key</td><td>Armed tool key token and its three docks; the approved shell design amended (D12)</td><td>none; lands with or before U2</td><td>Every dock's armed key reads at a glance on Paper and in 3D; focus ring and hover stay distinct; owner check</td></tr>
+        <tr><td>U2 tray and Paint</td><td>Paint key, tray with tabs, favourites and recents, dropper, Face / Space, consequence line and ghost</td><td>U1</td><td>Task 1 in the editor; keyboard and coarse-pointer pass</td></tr>
+        <tr><td>U3 colour coat</td><td>Coat planner with dedupe and palette following (D3)</td><td>U2</td><td>Ten walls Sage → one Finish; palette edit follows</td></tr>
+        <tr><td>U4 Finish Card</td><td>Finish Card, reach line (D2), Swap, Colour modes, Sheen steps (D6), Pattern, naming</td><td>U2</td><td>Task 1 sheen edit, Task 2 split scale; one undo per release</td></tr>
+        <tr><td>U5 Library</td><td>Asset library: kind rail, sources, filters, detail pane, variants (D1), drafts (D9)</td><td>U1, U4</td><td>21 entries scannable at 1024 px; no full-res fetch on open; a draft writes nothing until Apply</td></tr>
+        <tr><td>U6 editor, align, import, repair</td><td>Material editor on the E7 host (D8); Align on wall; Import sheet on E5; repair strips</td><td>U4</td><td>Tasks 2 and 4; Align round-trips offset and rotation</td></tr>
+        <tr><td>U7 transfer</td><td>Save to library, My library source, insert</td><td>U5, D4</td><td>Task 3 across two projects, cold reopen</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="sec" id="readiness">
+    <header><h2>Before implementation <small>what a U plan still needs</small></h2></header>
+    <p class="note"><b>Settled 2026-11-22:</b> D1–D12 accepted; the thumbnail treatment is recorded in the S8 plan; this design
+      governs where it differs from the shell contract; picking by number is deferred. The rules below were accepted the same
+      day, each chosen as the smallest rule that leaves room to grow.</p>
+    <ol>
+      <li><b>Stored facts.</b>
+        <ul>
+          <li><i>Names:</i> no flag and no format change. A Finish already stores a name; it is regenerated from
+            <i>Material · treatment</i> only while it still equals the generated name, so a renamed Finish keeps its name.</li>
+          <li><i>Favourites and recents:</i> creator preferences behind one small interface, on the device now (12 recents) and
+            on the account later. Each entry is a reference, never a copy: a colour, <code>cat:</code>, a library item, or a
+            project Finish that shows only inside its project.</li>
+          <li><i>Framing hints:</i> an optional window size and centre per entry in the catalogue's existing presentation side
+            table; imported and project Finishes derive theirs from tile size.</li>
+          <li><i>Thumbnail recipe:</i> one versioned key, <code>sample-tile/1</code>, part of every derivative's cache key.</li>
+        </ul></li>
+      <li><b>Rules.</b>
+        <ul>
+          <li><i>Coat identity:</i> one coat Finish per base Finish and colour, where the colour is a palette slot or a literal.
+            Removing a slot already turns followers into its last literal colour, so coats keep their colour.</li>
+          <li><i>Sheen:</i> three targets on effective roughness: Matte 0.8, Satin 0.5, Gloss 0.2. A value within 0.05 of a
+            target shows as that step, anything else as <i>Custom</i>; a step rougher than the capture is disabled. The targets
+            sit in one table per material family.</li>
+          <li><i>Undo:</i> no timer. A drag or a held arrow key previews and commits once on release; typed values commit on
+            Enter or blur. History needs no coalescing timer.</li>
+        </ul></li>
+      <li><b>States: one rule.</b> A refusal is a line in place with at most one action, never a dialog, and never blocks
+        unrelated editing. Budget: a flat swatch and <i>Too many large textures open · Retry</i>. No world anchor: <i>This
+        room</i> is disabled (<i>Place it to see it in this room</i>); Studio and Grazing work. Slow import: after 300 ms the
+        summary reads <i>Reading 3 of 5…</i>, and Esc cancels with nothing written. My library unreachable: <i>Offline ·
+        Retry</i>, and Save is disabled with that reason. Empty source: one sentence and one action.</li>
+      <li><b>From prototype to production.</b> No new colour tokens except D12's armed key; a short table maps every prototype
+        token to an existing presentation token. Capitalisation: sentence case for anything named or clickable, all caps only
+        for small, non-interactive mono metadata. Future features ship no placeholders: Paint's radius shows <i>Surface ·
+        Space</i> until Brush exists, and the Card and editor are ordered row lists that later rows join. The prototype's head,
+        Index, Stage and dock labels are scaffolding.</li>
+    </ol>
+  </section>
+
+  <section class="sec" id="limits">
+    <header><h2>Limits of this study</h2></header>
+    <ul>
+      <li>Simulated operations and history; no file IO (imports use stand-in texture sets), no network, no real Camera.</li>
+      <li>The lab renderer is a WebGL2 approximation of the metallic–roughness path. Decisions on presentation and crop are
+        portable; absolute numbers must be re-measured on the E7 host (U1).</li>
+      <li>No creator study. The four tasks were walked by the author, not by creators.</li>
+      <li>Coarse pointer designed but not checked on an iPad; the board's iframes cannot emulate one.</li>
+    </ul>
+    <p class="note">Run: <code>python3 prototypes/appearance-ux/serve.py</code>, then open
+      <code>http://127.0.0.1:8870/prototypes/appearance-ux/</code>. Details in the <a href="README.md">README</a>.</p>
+  </section>
+</main>
+<script type="module">
+import * as T from './app/thumbs.js';
+import { BY_ID, E7_REF, E7_DIR } from './shared/catalogue.js';
+const lookOf = (id) => { const e = BY_ID[id]; return { set: id, tint: e.tint, rough: e.rough, metal: e.metal, normalScale: 1, tile: e.tile, rot: 0, colour: 'natural' }; };
+const ids = ['wood-walnut-veneer', 'masonry-brick-red', 'concrete-smooth', 'concrete-polished'];
+const host = document.getElementById('ladder');
+function img(src, css, cls) { const i = new Image(); i.src = src; i.width = i.height = css; i.className = cls; i.alt = ''; return i; }
+function fig(children, cap) { const f = document.createElement('figure'); const row = document.createElement('div'); row.className = 'pair'; row.append(...children); f.append(row); const c = document.createElement('figcaption'); c.textContent = cap; f.append(c); return f; }
+try {
+  await T.preload(ids.map((i) => BY_ID[i]));
+  host.innerHTML = '';
+  const w = lookOf('wood-walnut-veneer');
+  host.append(
+    fig([img(T.url(w, 'xs', 64), 28, 'xs')], 'XS 28 · 64'),
+    fig([img(T.url(w, 'sample', 112), 56, 's')], 'S 56 · 112'),
+    fig([img(T.url(w, 'sample', 256), 128, 'm')], 'M 128 · 256'),
+    fig([img(E7_DIR + E7_REF['wood-walnut-veneer'], 128, 'm')], 'E7 reference 192'),
+    fig([img(T.url(lookOf('masonry-brick-red'), 'sample', 256), 128, 'm')], 'Red Brick · M'),
+    fig([img(T.url(lookOf('concrete-smooth'), 'sample', 256), 96, 'm'), img(T.url(lookOf('concrete-polished'), 'sample', 256), 96, 'm')], 'Smooth / Polished concrete'));
+  document.getElementById('ladderCap').textContent = 'Live from the shipped texture bytes. Walnut through the size ladder, beside its E7 reference; the concrete pair is the one the presentation cannot separate.';
+} catch (err) { host.textContent = 'Thumbnails need the study server (README).'; }
+</script>
+</body>
+</html>
