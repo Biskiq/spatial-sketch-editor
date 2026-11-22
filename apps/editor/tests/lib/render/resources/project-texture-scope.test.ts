@@ -28,6 +28,8 @@ vi.mock('three', async () => {
 	return { ...actual, TextureLoader: MockTextureLoader };
 });
 
+import { Texture } from 'three';
+import { acquireFinishViews, resetFinishViewsForTests } from '$lib/render/resources/finish-views';
 import { createProjectTextureScope, type ProjectTexturePin } from '$lib/render/resources/project-texture-scope';
 import {
 	loadFinishTexture,
@@ -62,6 +64,8 @@ function scope() {
 }
 
 afterEach(() => {
+	resetFinishViewsForTests();
+	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
@@ -298,5 +302,74 @@ describe('project texture scope', () => {
 		});
 		late.dispose();
 		await expect(late.loader(URI, 'map')).rejects.toThrow(/aborted|closed/);
+	});
+
+	describe('with Finish views', () => {
+		const rough = [{ view: 'rough', uri: URI, role: 'roughness' as const }];
+		const disposed = new Map<Texture, number>();
+		const disposalsOf = (texture: Texture) => disposed.get(texture) ?? 0;
+
+		beforeEach(() => {
+			disposed.clear();
+			vi.stubGlobal('createImageBitmap', async () => ({ width: 1, height: 1, close: vi.fn() }));
+			const dispose = Texture.prototype.dispose;
+			vi.spyOn(Texture.prototype, 'dispose').mockImplementation(function (this: Texture) {
+				disposed.set(this, (disposed.get(this) ?? 0) + 1);
+				dispose.call(this);
+			});
+		});
+
+		it.each(['retry', 'pin change'] as const)('a %s keeps a leased texture until its release', async (cause) => {
+			const product = scope();
+			await product.prepare([URI]);
+			const old = await acquireFinishViews(rough, product);
+			const texture = old.views.rough!;
+			if (cause === 'retry') product.retry(URI);
+			else {
+				pins.set(ASSET, { hash: `sha256-${'0'.repeat(64)}`, mime: 'image/png', size: PNG.length });
+				await product.prepare([URI]);
+			}
+			expect(disposalsOf(texture)).toBe(0);
+			old.release();
+			expect(disposalsOf(texture)).toBe(1);
+			product.dispose();
+			expect(disposalsOf(texture)).toBe(1);
+		});
+
+		it('a changed pin is not served the previous view', async () => {
+			const product = scope();
+			await product.prepare([URI]);
+			(await acquireFinishViews(rough, product)).release();
+			pins.set(ASSET, { hash: `sha256-${'0'.repeat(64)}`, mime: 'image/png', size: PNG.length });
+			await product.prepare([URI]);
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+			expect((await acquireFinishViews(rough, product)).issues[0]?.code).toBe('image-load-failed');
+			product.dispose();
+		});
+
+		for (const action of ['retry', 'dispose'] as const) {
+			it.each([0, 1, 2, 3, 4, 5, 6, 8, 12])(
+				`${action} %i microtasks after the decode never leases a disposed texture`,
+				async (ticks) => {
+					let decoded!: () => void;
+					const decode = new Promise<void>((resolve) => (decoded = resolve));
+					onSuccess.mockImplementationOnce(() => decoded());
+					const product = scope();
+					const pending = acquireFinishViews(rough, product);
+					await decode;
+					for (let i = 0; i < ticks; i += 1) await Promise.resolve();
+					if (action === 'retry') product.retry(URI);
+					else product.dispose();
+					const lease = await pending;
+					const texture = lease.views.rough;
+					if (action === 'retry') expect(lease.issues).toEqual([]);
+					if (texture !== undefined) expect(disposalsOf(texture)).toBe(0);
+					else expect(lease.issues[0]?.code).toBe('cancelled');
+					lease.release();
+					product.dispose();
+					expect([...disposed.values()].filter((count) => count !== 1)).toEqual([]);
+				}
+			);
+		}
 	});
 });

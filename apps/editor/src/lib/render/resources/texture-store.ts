@@ -819,11 +819,9 @@ export function releaseMaterialVariant(
  * replaced pin or a creator's explicit Retry must be able to ask again. Only
  * the named scope's entry is dropped; every other Canvas keeps its lease.
  */
-/** @returns whether a cached texture was disposed here. */
-export function invalidateTextureSource(scopeId: string | null, url: string): boolean {
+export function invalidateTextureSource(scopeId: string | null, url: string): void {
   const prefix = scopeId === null ? '' : `${scopeId}::`;
   const suffix = `::${url}`;
-  let disposed = false;
   for (const [key, entry] of [...sourceCache]) {
     if (!key.endsWith(suffix)) continue;
     if (prefix !== '') {
@@ -836,9 +834,7 @@ export function invalidateTextureSource(scopeId: string | null, url: string): bo
     entry.cancelled = true;
     entry.controller?.abort();
     entry.texture?.dispose();
-    disposed ||= entry.texture !== undefined;
   }
-  return disposed;
 }
 
 /**
@@ -1067,24 +1063,36 @@ export function loadFinishTexture(
   return loadSource(uri, textureSlotForRole(role), 'finish', scope ?? null, 'top', signal);
 }
 
+/** The cache identity of one Finish source: roles with one decode policy share it. */
+export function finishTextureKey(
+  uri: string,
+  role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
+  scope?: TextureLoadScope | TextureScopeKey | null
+): string {
+  return sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
+}
+
 /**
  * Evict one Finish source after its last view lease is gone.
  *
  * Finish views own the GPU residency of their top-first upload: the view cache
  * charges exact mip bytes and evicts unleased views oldest-first. Removing only
  * the Finish source key leaves the legacy upload and every other decode policy
- * for the same URI untouched.
+ * for the same URI untouched. With `expected`, a source that has since replaced
+ * that texture under the same key is left untouched too.
  *
  * @returns whether this call disposed a loaded texture.
  */
 export function releaseFinishTexture(
   uri: string,
   role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  expected?: ThreeTexture
 ): boolean {
-  const key = sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
+  const key = finishTextureKey(uri, role, scope);
   const entry = sourceCache.get(key);
   if (entry === undefined) return false;
+  if (expected !== undefined && entry.texture !== expected) return false;
   removeSourceEntry(key, entry);
   entry.cancelled = true;
   entry.controller?.abort();
@@ -1101,18 +1109,21 @@ export function releaseFinishTexture(
  * texture there: the view cache retires that entry and disposes the texture at
  * its final lease release. Detaching removes the source key (so nothing can join
  * or reinstall it, and live source bytes drop at teardown) and transfers the
- * single disposal duty to the view cache.
+ * single disposal duty to the view cache. With `expected`, a source that has
+ * since replaced that texture under the same key stays with the cache.
  *
  * @returns whether a loaded texture was detached.
  */
 export function detachFinishTexture(
   uri: string,
   role: 'color' | 'normal' | 'roughness' | 'metalness' | 'occlusion',
-  scope?: TextureLoadScope | TextureScopeKey | null
+  scope?: TextureLoadScope | TextureScopeKey | null,
+  expected?: ThreeTexture
 ): boolean {
-  const key = sourceKey(scope ?? null, uri, texturePolicyForSlot(textureSlotForRole(role)), 'top');
+  const key = finishTextureKey(uri, role, scope);
   const entry = sourceCache.get(key);
   if (entry === undefined || entry.texture === undefined) return false;
+  if (expected !== undefined && entry.texture !== expected) return false;
   removeSourceEntry(key, entry);
   return true;
 }

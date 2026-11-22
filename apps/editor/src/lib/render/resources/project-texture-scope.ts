@@ -35,7 +35,7 @@ import {
 } from './texture-store';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import { probeRawImage } from './image-encoding';
-import { releaseFinishViewsForScope } from './finish-views';
+import { invalidateFinishViewsForSource, releaseFinishViewsForScope } from './finish-views';
 
 export type ProjectTexturePin = {
 	readonly hash: string;
@@ -86,7 +86,6 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 	const loader = new TextureLoader();
 	const abort = new AbortController();
 	const dimensions = new Map<string, TextureDimensions>();
-	const loaded = new Map<string, ThreeTexture>();
 	const previewUris = new Map<string, string>();
 	const prepared = new Set<string>();
 	/** The pin each prepared URI was loaded under, so a changed pin invalidates it. */
@@ -102,12 +101,10 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 		requested.add(uri);
 		generations.set(uri, (generations.get(uri) ?? 0) + 1);
 		invalidateScopedMaterialLoads(scope.scopeId);
-		const cached = invalidateTextureSource(scope.scopeId, uri);
-		const texture = loaded.get(uri);
-		if (texture !== undefined) {
-			if (!cached) texture.dispose();
-			loaded.delete(uri);
-		}
+		// Views first: they detach what a live material still samples. The store then
+		// disposes the rest, including a decode that has not reached its cache entry.
+		invalidateFinishViewsForSource(scope.scopeId, uri);
+		invalidateTextureSource(scope.scopeId, uri);
 		const assetId = PROJECT_ASSET_URI.exec(uri)?.[1];
 		if (assetId !== undefined) {
 			dimensions.delete(assetId);
@@ -265,7 +262,6 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 					texture.dispose();
 					throw new Error('That texture load was superseded.');
 				}
-				loaded.set(uri, texture);
 				input.onSuccess?.(uri);
 				return texture;
 			} catch (error) {
@@ -324,11 +320,8 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			// live working sets, not a teardown guarantee.
 			releaseFinishViewsForScope(scope.scopeId);
 			// Release every source, variant and failed material result for this
-			// route, including URIs whose load failed or is still in flight. The
-			// scope-owned source textures are disposed there, so the loaded map is
-			// only cleared here.
+			// route, including URIs whose load failed or is still in flight.
 			releaseTextureScope(scope.scopeId);
-			loaded.clear();
 			requested.clear();
 			generations.clear();
 			for (const url of previewUris.values()) URL.revokeObjectURL(url);

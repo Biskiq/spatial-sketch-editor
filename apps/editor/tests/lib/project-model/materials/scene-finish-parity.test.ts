@@ -5,7 +5,7 @@
  * for catalogue bases, palette followers, a rotated non-square mapping, normal
  * conventions and every scalar role.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	createImageIndex,
 	mergeImageIndexes,
@@ -253,6 +253,26 @@ describe('Scene 12 Finish → render projection', () => {
 		expect(resolved.inputs?.maps.roughness?.image?.source).toEqual({
 			shipped: '/textures/plaster-warm/roughness.png'
 		});
+	});
+
+	it.each([
+		['the only image', { color: { image: { textureId: 'tex-lost' } } }],
+		[
+			'one of two images',
+			{ color: { image: { textureId: 'tex-lost' } }, occlusion: { image: { textureId: 'tex-occlusion' }, component: 'r', invert: false } }
+		]
+	] as const)('keeps disabled maps disabled when %s is lost', (_, maps) => {
+		vi.spyOn(console, 'warn').mockImplementationOnce(() => {});
+		const testCase: Case = {
+			name: 'lost-beside-disabled',
+			base: { catalogue: 'plaster-warm' },
+			overrides: { maps: { ...maps, normal: null, roughness: null } },
+			surface: [2, 2]
+		};
+		const { slotUris } = resolveSceneMaterial(lookSource(testCase), targetFor(testCase));
+		expect(slotUris.map).toBeDefined();
+		expect(slotUris.normalMap).toBeUndefined();
+		expect(slotUris.roughnessMap).toBeUndefined();
 	});
 
 	it('keeps an authored zero factor', () => {
