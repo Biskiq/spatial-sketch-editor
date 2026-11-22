@@ -262,7 +262,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     stage: 'landed',
     summary: 'Place point and spot lights from the Library.'
   },
-  { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'landed', summary: 'Paint a whole object with a Finish.', shortcut: 'B' },
+  { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'landed', summary: 'Paint objects and surfaces with a material.', shortcut: 'B' },
   { id: 'erase', label: 'Erase', icon: 'erase', family: null, stage: 'landed', summary: 'Remove a subject from the Stage.', shortcut: 'E' },
   { id: 'measure', label: 'Measure', icon: 'measure', family: null, stage: 'landed', summary: 'Measure between two points.', shortcut: 'M' },
   {

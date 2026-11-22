@@ -3,7 +3,8 @@
  *
  * One service owns the creator's Finish intent outside the Scene document:
  *
- * - the **active** Finish Paint assigns and the session's five recents;
+ * - the **active** pick Paint applies (a Finish, or a colour through the
+ *   colour-coat seam) and the creator's favourites and recents;
  * - the shared-Finish **Ask**: one pending edit (or palette adoption), its
  *   reach, *Just this* / *All N* / *Cancel*, and the optional "apply to all
  *   edits while this is open" memory;
@@ -70,6 +71,22 @@ function surfaceTargetComponent(surface: PaintableSurface): string {
 }
 import { getMaterial, materialById, materials } from '$lib/content/materials';
 import type { ProjectApi } from '$lib/platform/project-persistence';
+import {
+	colourKey,
+	normaliseHex,
+	paintRow,
+	parseColourKey,
+	pickKey,
+	toggleFavourite as toggleFavouriteKey,
+	touchRecent,
+	type PaintColour,
+	type PaintPick
+} from './paint-pick';
+import {
+	createDevicePaintPreferences,
+	type PaintPreferenceStore,
+	type PaintPreferences
+} from './paint-preferences';
 import { stageEnvelope, type StageAdapterServices } from '../stage/stage-adapter-host';
 import {
 	createFinishImageFlow,
@@ -88,6 +105,16 @@ export type FinishAuthoringHost = {
 	readonly openFinishes: () => void;
 	/** Arm the host Paint task, optionally in the Finish dropper. */
 	readonly armPaint: (mode: { readonly kind: 'paint' } | { readonly kind: 'dropper' }) => void;
+	/** Whether the host Paint tool is armed now; a Library pick then arms, never assigns. */
+	readonly isPaintArmed?: () => boolean;
+	/** Creator favourites and recents. Defaults to the device store. */
+	readonly preferences?: PaintPreferenceStore;
+	/**
+	 * The colour-coat seam. U3's planner supplies it; until then Paint offers no
+	 * Colours tab, because a colour that keeps relief needs the coat dedupe rule
+	 * rather than an edit of a Finish other surfaces share.
+	 */
+	readonly colourCoat?: PaintColourPort;
 	/**
 	 * S4b's creator-bytes seam. These are absent in a route with no cloud project;
 	 * *+ From image* then refuses with the same words Artwork uses.
@@ -163,14 +190,43 @@ export type FinishPaletteView = {
 	readonly room: boolean;
 };
 
-export type FinishPaintPalette = {
-	readonly active: { readonly key: FinishKey; readonly label: string; readonly color: string } | null;
-	readonly recents: readonly {
-		readonly key: FinishKey;
-		readonly label: string;
-		readonly color: string;
-	}[];
+/** The seam U3's colour-coat planner implements. Paint never edits a Finish. */
+export type PaintColourPort = {
+	/** One acceptance: coat these objects with the colour. */
+	readonly paintEntities: (entityIds: readonly string[], colour: PaintColour) => Promise<boolean>;
+	/** One acceptance: coat these Layout surfaces with the colour. */
+	readonly paintSurfaces: (surfaces: readonly SceneSurfaceRef[], colour: PaintColour) => Promise<boolean>;
+	/** Whether every target already wears this colour (no write, no history entry). */
+	readonly isAlready?: (
+		targets: { readonly entityIds: readonly string[]; readonly surfaces: readonly SceneSurfaceRef[] },
+		colour: PaintColour
+	) => boolean;
+};
+
+export type PaintSwatch = {
+	readonly kind: 'finish' | 'colour';
+	/** A Finish key, `slot:<id>` or `#rrggbb`: the stored reference. */
+	readonly key: string;
+	readonly label: string;
+	readonly color: string;
+	readonly favourite: boolean;
+};
+
+/** Everything the Paint tray draws. Resolved here so the tray owns no Finish state. */
+export type PaintTrayView = {
+	/** False until a colour-coat port exists; the tray then has one tab. */
+	readonly colourEnabled: boolean;
+	readonly active: PaintSwatch | null;
 	readonly dropper: boolean;
+	readonly colours: {
+		readonly row: readonly PaintSwatch[];
+		readonly palette: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+	};
+	readonly materials: {
+		readonly row: readonly PaintSwatch[];
+		readonly project: readonly PaintSwatch[];
+		readonly curated: readonly PaintSwatch[];
+	};
 };
 
 type PendingEdit = {
@@ -217,8 +273,6 @@ export type FinishAsk = {
 
 type Pending = PendingEdit | PendingPalette | PendingImageReplace;
 
-const RECENTS_LIMIT = 5;
-
 function entityReference(services: StageAdapterServices, entityId: string) {
 	const snapshot = services.stage.snapshot();
 	return {
@@ -239,7 +293,9 @@ function newId(kind: string, id: string) {
 
 export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let activeKey = $state.raw<string | null>(null);
-	let recents = $state.raw<readonly string[]>([]);
+	let activeColour = $state.raw<PaintColour | null>(null);
+	const preferenceStore = host.preferences ?? createDevicePaintPreferences();
+	let prefs = $state.raw<PaintPreferences>(preferenceStore.load());
 	let ask = $state.raw<FinishAsk | null>(null);
 	let pending = $state.raw<Pending | null>(null);
 	let applyToAllEdits = $state(false);
@@ -314,9 +370,25 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (preview.size > 0) preview = new Map();
 	}
 
-	function remember(key: string): void {
+	/** Arm a Finish. Arming never writes and never touches the recents. */
+	function activate(key: string): void {
 		activeKey = key;
-		recents = [key, ...recents.filter((entry) => entry !== key)].slice(0, RECENTS_LIMIT);
+		activeColour = null;
+	}
+
+	function setPrefs(next: PaintPreferences): void {
+		prefs = next;
+		preferenceStore.save(next);
+	}
+
+	/** A write succeeded with this Finish: it joins the recents. */
+	function noteUsed(key: string): void {
+		if (key === 'model-own') return;
+		setPrefs({ ...prefs, recentMaterials: touchRecent(prefs.recentMaterials, key) });
+	}
+
+	function noteUsedColour(colour: PaintColour): void {
+		setPrefs({ ...prefs, recentColours: touchRecent(prefs.recentColours, colourKey(colour)) });
 	}
 
 	function labelOfKey(key: string): string {
@@ -550,12 +622,68 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		};
 	}
 
-	function paintPalette(): FinishPaintPalette {
-		const resolve = (key: string) => ({ key, label: labelOfKey(key), color: colorOfKey(key) });
+	function colourLabel(colour: PaintColour): string {
+		if (colour.kind === 'literal') return colour.hex.toUpperCase();
+		return scene()?.palette?.find((slot) => slot.id === colour.slotId)?.name ?? 'Colour';
+	}
+
+	function colourHex(colour: PaintColour): string {
+		if (colour.kind === 'literal') return colour.hex;
+		return scene()?.palette?.find((slot) => slot.id === colour.slotId)?.color ?? '#c4b4a0';
+	}
+
+	/** Whether a stored Finish key still names a Finish this project can paint. */
+	function finishKeyResolves(key: string): boolean {
+		if (key === 'model-own') return false;
+		if (key.startsWith('curated:')) return materialById.has(key.slice('curated:'.length) as MaterialId);
+		if (key.startsWith('project:')) {
+			const id = key.slice('project:'.length);
+			return scene()?.materials.some((material) => material.id === id) ?? false;
+		}
+		return false;
+	}
+
+	function colourKeyResolves(key: string): boolean {
+		const colour = parseColourKey(key);
+		if (colour === null) return false;
+		return colour.kind === 'literal' || (scene()?.palette?.some((slot) => slot.id === colour.slotId) ?? false);
+	}
+
+	function paintTray(): PaintTrayView {
+		const favouriteMaterials = new Set(prefs.favouriteMaterials);
+		const favouriteColours = new Set(prefs.favouriteColours);
+		const finish = (key: string): PaintSwatch => ({
+			kind: 'finish',
+			key,
+			label: labelOfKey(key),
+			color: colorOfKey(key),
+			favourite: favouriteMaterials.has(key)
+		});
+		const colour = (key: string): PaintSwatch => {
+			const parsed = parseColourKey(key)!;
+			return { kind: 'colour', key, label: colourLabel(parsed), color: colourHex(parsed), favourite: favouriteColours.has(key) };
+		};
+		const current = scene();
+		const shelf = libraryShelf();
+		const active: PaintSwatch | null =
+			activeColour !== null
+				? colour(colourKey(activeColour))
+				: activeKey === null
+					? null
+					: finish(activeKey);
 		return {
-			active: activeKey === null ? null : resolve(activeKey),
-			recents: recents.map(resolve),
-			dropper: dropper !== null
+			colourEnabled: host.colourCoat !== undefined,
+			active,
+			dropper: dropper !== null,
+			colours: {
+				row: paintRow(prefs.favouriteColours, prefs.recentColours, colourKeyResolves).map((entry) => colour(entry.key)),
+				palette: (current?.palette ?? []).map((slot) => ({ id: slot.id, name: slot.name, color: slot.color }))
+			},
+			materials: {
+				row: paintRow(prefs.favouriteMaterials, prefs.recentMaterials, finishKeyResolves).map((entry) => finish(entry.key)),
+				project: shelf.project.map((entry) => finish(`project:${entry.id}`)),
+				curated: shelf.curated.map((entry) => finish(`curated:${entry.id}`))
+			}
 		};
 	}
 
@@ -597,7 +725,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (outcome.kind === 'refused' && outcome.code !== 'no-change' && outcome.reason !== 'no-change') {
 			host.onNotice(outcome.message);
 		}
-		return outcome;
+		// The Stage reports a landed write as `installed`; every caller here asks
+		// whether the write was accepted, so a landed write reads as `accepted`.
+		return outcome.kind === 'installed' ? { ...outcome, kind: 'accepted' } : outcome;
 	}
 
 	/** One Finish assignment for one or more objects. */
@@ -647,18 +777,18 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 	}
 
-	function setActiveFromKey(key: string): void {
-		remember(key);
-		host.onNotice(`Paint · ${labelOfKey(key)}`);
-	}
 
-	/** A Library pick: assign to the selection, or arm Paint when nothing is selected. */
+	/**
+	 * A Library pick. With Paint armed, or with nothing selected, it arms Paint and
+	 * writes nothing; otherwise it is a Replace of the selection's Finish.
+	 */
 	async function pickFinish(ref: SceneFinishRef): Promise<void> {
 		const key = typeof ref === 'object' && 'curated' in ref ? `curated:${ref.curated}` : typeof ref === 'object' ? `project:${ref.project}` : 'model-own';
+		const armed = host.isPaintArmed?.() ?? false;
 		const selected = selectionEntity();
-		if (selected === null) {
-			remember(key);
-			host.armPaint({ kind: 'paint' });
+		if (selected === null || armed) {
+			activate(key);
+			if (!armed) host.armPaint({ kind: 'paint' });
 			return;
 		}
 		if (!isFinishPaintable(selected)) {
@@ -666,7 +796,47 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return;
 		}
 		const assigned = await assign([selected.id], ref);
-		if (assigned) remember(key);
+		if (assigned) {
+			activate(key);
+			noteUsed(key);
+		}
+	}
+
+	/** A tray pick of a material: arm it. Never writes. */
+	function pickMaterialKey(key: string): void {
+		if (!finishKeyResolves(key)) {
+			host.onNotice('That Finish is not in this project.');
+			return;
+		}
+		activate(key);
+	}
+
+	/** A tray pick of a colour: arm it. Only when the colour-coat seam exists. */
+	function pickColour(colour: PaintColour): void {
+		if (host.colourCoat === undefined) return;
+		if (colour.kind === 'literal') {
+			const hex = normaliseHex(colour.hex);
+			if (hex === null) return;
+			activeColour = { kind: 'literal', hex };
+		} else {
+			if (!colourKeyResolves(colourKey(colour))) {
+				host.onNotice('That palette colour is gone.');
+				return;
+			}
+			activeColour = colour;
+		}
+		activeKey = null;
+	}
+
+	/** Star or unstar the active pick. */
+	function toggleActiveFavourite(): void {
+		const active = activeColour !== null ? { kind: 'colour' as const, key: colourKey(activeColour) } : activeKey !== null && finishKeyResolves(activeKey) ? { kind: 'finish' as const, key: activeKey } : null;
+		if (active === null) return;
+		setPrefs(
+			active.kind === 'colour'
+				? { ...prefs, favouriteColours: toggleFavouriteKey(prefs.favouriteColours, active.key) }
+				: { ...prefs, favouriteMaterials: toggleFavouriteKey(prefs.favouriteMaterials, active.key) }
+		);
 	}
 
 	function stickyMode(key: string): 'just-this' | 'all' | null {
@@ -1049,7 +1219,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				allocatedIds: [newId('scene-finish', finishId)]
 			}, context);
 			if (outcome.kind === 'accepted') {
-				remember(`project:${finishId}`);
+				activate(`project:${finishId}`);
+				if (entityIds.length > 0) noteUsed(`project:${finishId}`);
 				if (warning !== null) host.onNotice(warning);
 				if (entityIds.length === 0) host.armPaint({ kind: 'paint' });
 				return { kind: 'accepted' };
@@ -1122,41 +1293,65 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			await edit(dropperState.forEntityId, { color: source });
 			return true;
 		}
-		remember(view.key);
+		activate(view.key);
 		host.onNotice(`Paint · ${view.label}`);
 		return true;
 	}
 
-	/** Paint commits one object. It never edits a Finish, so it never asks. */
-	async function paintEntity(entityId: string): Promise<'accepted' | 'already' | 'refused'> {
+	/**
+	 * Paint commits one acceptance for every object a stroke crossed. It never
+	 * edits a Finish, so it never asks. Objects already wearing the pick are left
+	 * out of the write; when none is left the answer is `already`.
+	 */
+	async function paintEntities(entityIds: readonly string[]): Promise<'accepted' | 'already' | 'refused'> {
+		if (activeColour !== null) {
+			const port = host.colourCoat;
+			if (port === undefined) return 'refused';
+			if (port.isAlready?.({ entityIds, surfaces: [] }, activeColour) === true) return 'already';
+			const painted = await port.paintEntities(entityIds, activeColour);
+			if (painted) noteUsedColour(activeColour);
+			return painted ? 'accepted' : 'refused';
+		}
 		if (activeKey === null) {
 			host.onNotice('Choose a Finish first.');
 			return 'refused';
 		}
-		const view = viewFor(entityId);
-		if (view === null) {
-			host.onNotice(paintabilityNotice(entityOf(entityId)));
+		const key = activeKey;
+		const views = entityIds.map((id) => viewFor(id));
+		if (views.every((view) => view === null)) {
+			host.onNotice(paintabilityNotice(entityOf(entityIds[0] ?? null)));
 			return 'refused';
 		}
-		if (view.key === activeKey) {
-			host.onNotice(`Already ${view.label}`);
+		const readable = views.filter((view): view is FinishEntityView => view !== null);
+		const fresh = readable.filter((view) => view.key !== key);
+		if (fresh.length === 0) {
+			host.onNotice(`Already ${labelOfKey(key)}`);
 			return 'already';
 		}
-		if (activeKey === 'model-own' && view.kind !== 'model') {
+		const targets = key === 'model-own' ? fresh.filter((view) => view.kind === 'model') : fresh;
+		if (targets.length === 0) {
 			host.onNotice("Model's own can only be painted onto a model.");
 			return 'refused';
 		}
-		const ref = finishRefOfKey(activeKey);
+		const ref = finishRefOfKey(key);
 		if (ref === null) {
 			host.onNotice('That Finish no longer exists.');
 			return 'refused';
 		}
-		const accepted = await assign([entityId], ref);
+		const accepted = await assign(targets.map((view) => view.entityId), ref);
+		if (accepted) noteUsed(key);
 		return accepted ? 'accepted' : 'refused';
 	}
 
 	/** Paint one or more stable Layout surfaces in one Scene acceptance. */
 	async function paintSurface(surfaces: readonly PaintableSurface[]): Promise<boolean> {
+		if (activeColour !== null) {
+			const port = host.colourCoat;
+			if (port === undefined || surfaces.length === 0) return false;
+			const painted = await port.paintSurfaces(surfaces, activeColour);
+			if (painted) noteUsedColour(activeColour);
+			return painted;
+		}
 		if (activeKey === null) {
 			host.onNotice('Choose a Finish first.');
 			return false;
@@ -1197,7 +1392,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				payload: { finish: ref, surfaces },
 				targets
 			});
-			return outcome.kind === 'accepted';
+			if (outcome.kind !== 'accepted') return false;
+			noteUsed(activeKey);
+			return true;
 		} finally {
 			busy = false;
 		}
@@ -1205,6 +1402,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 
 	function activeSurfaceIsAlready(surfaces: readonly PaintableSurface[]): boolean {
 		const current = scene();
+		if (activeColour !== null) {
+			return host.colourCoat?.isAlready?.({ entityIds: [], surfaces }, activeColour) ?? false;
+		}
 		if (current === null || activeKey === null || surfaces.length === 0) return false;
 		const assignments = new Map((current.surfaceFinishes ?? []).map((assignment) => [surfaceKey(assignment.surface), assignment]));
 		return surfaces.every((surface) => {
@@ -1239,7 +1439,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return true;
 		}
 		const key = finishKeyOfSurface(current, assignment);
-		remember(key);
+		activate(key);
 		host.onNotice(`Paint · ${labelOfKey(key)}`);
 		return true;
 	}
@@ -1250,16 +1450,28 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			host.onNotice('That has no Finish colour.');
 			return;
 		}
-		remember(view.key);
+		activate(view.key);
 	}
 
 	function activeLabel(): string {
+		if (activeColour !== null) return colourLabel(activeColour);
 		return activeKey === null ? 'No Finish' : labelOfKey(activeKey);
 	}
 
-	function activeIsAlready(entityId: string): boolean {
-		const view = viewFor(entityId);
-		return view !== null && activeKey !== null && view.key === activeKey;
+	/** Whether every one of these objects already wears the active pick. */
+	function activeIsAlready(entityIds: readonly string[]): boolean {
+		if (activeColour !== null) {
+			return host.colourCoat?.isAlready?.({ entityIds, surfaces: [] }, activeColour) ?? false;
+		}
+		if (activeKey === null || entityIds.length === 0) return false;
+		return entityIds.every((id) => {
+			const view = viewFor(id);
+			return view !== null && view.key === activeKey;
+		});
+	}
+
+	function hasActive(): boolean {
+		return activeKey !== null || activeColour !== null;
 	}
 
 	function isAssignable(entityId: string): boolean {
@@ -1272,6 +1484,16 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	return {
 		get activeKey() {
 			return activeKey;
+		},
+		get activeColour() {
+			return activeColour;
+		},
+		get activePick(): PaintPick | null {
+			return activeColour !== null
+				? { kind: 'colour', colour: activeColour }
+				: activeKey === null
+					? null
+					: { kind: 'finish', key: activeKey };
 		},
 		get ask() {
 			return ask;
@@ -1300,11 +1522,11 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		viewFor,
 		libraryShelf,
 		paletteView,
-		paintPalette,
+		paintTray,
 		selectionEntityId,
 		pickFinish,
 		assign,
-		paintEntity,
+		paintEntities,
 		paintSurface,
 		activeSurfaceIsAlready,
 		copySurface,
@@ -1334,7 +1556,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		previewColor,
 		clearPreview,
 		setActive,
-		setActiveFromKey,
+		pickMaterialKey,
+		pickColour,
+		toggleActiveFavourite,
+		hasActive,
 		activeLabel,
 		activeIsAlready,
 		isAssignable,

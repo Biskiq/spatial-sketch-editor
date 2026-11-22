@@ -62,6 +62,13 @@ export type StageKeyboardInput = {
 	readonly paintTool?: () => StagePaintController | null;
 	readonly clearEraseHover: () => void;
 	readonly clearPaintHover?: () => void;
+	/**
+	 * Paint's tray keys while Paint is armed: T flips tab, S flips reach, I toggles
+	 * the dropper. Returns whether the key was Paint's.
+	 */
+	readonly paintKey?: (key: 'tab' | 'reach' | 'sample') => boolean;
+	/** Paint's Escape rungs before the draft: the wheel, the dropper, then the expansion. */
+	readonly dismissPaint?: () => boolean;
 	readonly refreshHostTools: () => void;
 	readonly armedDockKey: () => { readonly palette?: boolean } | undefined;
 	readonly paletteOpen: () => boolean;
@@ -212,6 +219,26 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 		) {
 			return;
 		}
+		// Paint's own letters, only while its tray is up: no modifier, no live press,
+		// text entry already returned above.
+		if (
+			action.kind === 'none' &&
+			input.armedHostTool() === 'paint' &&
+			input.lens() === 'world' &&
+			!input.pressing() &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			!event.shiftKey &&
+			!event.repeat
+		) {
+			const key = event.key.toLowerCase();
+			const paintKey = key === 't' ? 'tab' : key === 's' ? 'reach' : key === 'i' ? 'sample' : null;
+			if (paintKey !== null && input.paintKey?.(paintKey) === true) {
+				event.preventDefault();
+				return;
+			}
+		}
 		switch (action.kind) {
 			case 'reading':
 				setReading(action.reading);
@@ -302,6 +329,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 				const armedHostTool = input.armedHostTool();
 				if (armedHostTool === 'measure' && input.measureTool()?.clear()) { input.refreshHostTools(); break; }
 				if (armedHostTool === 'erase' && input.eraserTool()?.clear()) { input.clearEraseHover(); input.refreshHostTools(); break; }
+				if (armedHostTool === 'paint' && input.dismissPaint?.() === true) break;
 				if (armedHostTool === 'paint' && input.paintTool?.()?.clear()) { input.clearPaintHover?.(); input.refreshHostTools(); break; }
 				// A live drawn draft/edit is not the cut itself: Escape returns the cut to
 				// its last committed segment first, and only a later Escape puts it back.

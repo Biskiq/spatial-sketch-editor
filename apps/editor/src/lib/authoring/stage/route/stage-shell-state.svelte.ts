@@ -38,6 +38,7 @@ import { createStageEraser } from '../stage-eraser';
 import { STAGE_ERASER_TASK } from '../stage-eraser';
 import type { StagePaintCandidate, StagePaintController } from '../stage-painter';
 import { createStagePainter } from '../stage-painter';
+import type { PaintRadius } from '../../look/paint-pick';
 import type { FinishAuthoring } from '$lib/authoring/look/finish-authoring.svelte';
 import {
 	applyDraftingPatch,
@@ -166,7 +167,7 @@ export function createStageShellState(input: StageShellStateInput) {
 	let measureTool = $state.raw<StageMeasureController | null>(null);
 	let eraserTool = $state.raw<StageEraserController | null>(null);
 	let paintTool = $state.raw<StagePaintController | null>(null);
-	let paintScope = $state<'face' | 'space'>('face');
+	let paintScope = $state<PaintRadius>('surface');
 	let paintCandidate = $state.raw<StagePaintCandidate | null>(null);
 	let hostToolOverlay = $state.raw<StageHostToolOverlay | null>(null);
 	/** The Eraser's winner, drawn with the erase treatment in place of hover. */
@@ -375,10 +376,10 @@ export function createStageShellState(input: StageShellStateInput) {
 		paintTool = createStagePainter(
 			next,
 			{
-				hasActive: () => (input.finishes()?.activeKey ?? null) !== null,
-				isAlready: (entityId) => input.finishes()?.activeIsAlready(entityId) ?? false,
-				assign: async (entityId) =>
-					(await input.finishes()?.paintEntity(entityId)) === 'accepted',
+				hasActive: () => input.finishes()?.hasActive() ?? false,
+				isAlready: (entityIds) => input.finishes()?.activeIsAlready(entityIds) ?? false,
+				assign: async (entityIds) =>
+					(await input.finishes()?.paintEntities(entityIds)) === 'accepted',
 				isSurfaceAlready: (surfaces) => input.finishes()?.activeSurfaceIsAlready(surfaces) ?? false,
 				assignSurface: async (surfaces) => (await input.finishes()?.paintSurface(surfaces)) ?? false,
 				dropperArmed: () => input.finishes()?.dropperArmed ?? false,

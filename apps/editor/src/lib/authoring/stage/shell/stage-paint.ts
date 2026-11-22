@@ -10,5 +10,6 @@ import { SPATIAL_PAINT } from '$lib/design/spatial-paint';
 export const STAGE_PAINT = Object.freeze({
 	ink: SPATIAL_PAINT.ink,
 	hover: SPATIAL_PAINT.hover,
-	selection: SPATIAL_PAINT.selection
+	selection: SPATIAL_PAINT.selection,
+	proposal: SPATIAL_PAINT.proposal
 });

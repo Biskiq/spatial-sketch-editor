@@ -177,7 +177,7 @@ import StageMatGround from './StageMatGround.svelte';
 		selection?: StageSelectionEntry | null;
 		hover?: StageSelectionEntry | null;
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
-		hoverTone?: 'hover' | 'erase';
+		hoverTone?: 'hover' | 'erase' | 'paint';
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
 		capturedPointers?: (() => readonly number[]) | null;

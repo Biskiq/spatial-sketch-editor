@@ -42,6 +42,10 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import { sameReference, type StageSelectionEntry } from './semantic-selection';
 import { STAGE_ERASE_INK } from './stage-eraser';
+import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
+
+/** What a Paint release will change: the cobalt of every proposal. */
+const STAGE_PAINT_INK = SPATIAL_PAINT_ROLES.proposal;
 import { contourPolylines } from './shell/stage-outline';
 import {
 	PAPER_LAYER,
@@ -78,10 +82,12 @@ export const PAPER_MARK_LAYER = {
 	selectionHalo: PAPER_LAYER.sceneFootprint + 11,
 	selectionLine: PAPER_LAYER.sceneFootprint + 12,
 	eraseHalo: PAPER_LAYER.sceneFootprint + 13,
-	erase: PAPER_LAYER.sceneFootprint + 14
+	erase: PAPER_LAYER.sceneFootprint + 14,
+	paintHalo: PAPER_LAYER.sceneFootprint + 13,
+	paint: PAPER_LAYER.sceneFootprint + 14
 } as const;
 
-export type PaperMarkTone = 'selection' | 'hover' | 'erase';
+export type PaperMarkTone = 'selection' | 'hover' | 'erase' | 'paint';
 
 /** One elevation's contour; the union of a filled subject has no internal edges. */
 export type PaperMarkContour = {
@@ -109,6 +115,8 @@ export type PaperMarkSet = {
 	readonly hover: PaperMarkGeometry;
 	/** The armed Eraser's winner; empty unless the hover tone is `erase`. */
 	readonly erase: PaperMarkGeometry;
+	/** The armed Paint's winner, in the proposal cobalt; empty unless the tone is `paint`. */
+	readonly paint: PaperMarkGeometry;
 };
 
 const EMPTY_GEOMETRY: PaperMarkGeometry = { fills: [], contours: [] };
@@ -241,17 +249,20 @@ export function paperMarkSet(
 	drawing: PaperPlanDrawing,
 	selection: StageSelectionEntry | null,
 	hover: StageSelectionEntry | null,
-	hoverTone: 'hover' | 'erase' = 'hover'
+	hoverTone: 'hover' | 'erase' | 'paint' = 'hover'
 ): PaperMarkSet {
 	const selected = selection === null ? EMPTY_GEOMETRY : geometryOf(drawing, selection);
 	if (hoverTone === 'erase') {
-		return { selection: selected, hover: EMPTY_GEOMETRY, erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover) };
+		return { selection: selected, hover: EMPTY_GEOMETRY, erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover), paint: EMPTY_GEOMETRY };
+	}
+	if (hoverTone === 'paint') {
+		return { selection: selected, hover: EMPTY_GEOMETRY, erase: EMPTY_GEOMETRY, paint: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover) };
 	}
 	const hovered =
 		hover === null || (selection !== null && sameReference(hover.reference, selection.reference))
 			? EMPTY_GEOMETRY
 			: geometryOf(drawing, hover);
-	return { selection: selected, hover: hovered, erase: EMPTY_GEOMETRY };
+	return { selection: selected, hover: hovered, erase: EMPTY_GEOMETRY, paint: EMPTY_GEOMETRY };
 }
 
 export type PaperMarkSceneResources = {
@@ -434,6 +445,9 @@ export function createPaperMarkScene(
 	// Erase: red dashes over a dark halo, above the selection it may be naming.
 	addLine(marks.erase, PAPER_MARK_HALO_INK, 4, 0.7, PAPER_MARK_LAYER.eraseHalo);
 	addLine(marks.erase, STAGE_ERASE_INK, 2.2, 1, PAPER_MARK_LAYER.erase, true);
+	// Paint: cobalt dashes, the proposal hue, because the next release will change this.
+	addLine(marks.paint, PAPER_MARK_HALO_INK, 4, 0.7, PAPER_MARK_LAYER.paintHalo);
+	addLine(marks.paint, STAGE_PAINT_INK, 2.2, 1, PAPER_MARK_LAYER.paint, true);
 
 	return {
 		group,

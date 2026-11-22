@@ -49,7 +49,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		plateOpen = true,
 		onPlateOpen = () => {},
 		requestedCategory = null,
-		studio = false
+		studio = false,
+		paintChip = null
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -89,6 +90,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		requestedCategory?: { readonly category: WorldLibraryCategory; readonly nonce: number } | null;
 		/** Object Studio's dock: Select, Objects, Measure and Eraser only. */
 		studio?: boolean;
+		/** The Paint key's live chip: the active pick, a circle for a colour and a rounded square for a material. */
+		paintChip?: { readonly color: string; readonly shape: 'colour' | 'material' } | null;
 	} = $props();
 
 	const plateId = $props.id();
@@ -465,6 +468,9 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 				onclick={() => pressTool(tool.id)}
 			>
 				<WorldIcon name={tool.icon} size={20} hero />
+				{#if tool.id === 'paint' && paintChip !== null}
+					<i class="chip {paintChip.shape}" data-paint-chip style={`background: ${paintChip.color}`} aria-hidden="true"></i>
+				{/if}
 				<span class="kl">{tool.label}</span>
 				{#if tool.shortcut}<kbd class="kk">{tool.shortcut}</kbd>{/if}
 			</button>
@@ -905,6 +911,23 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		font: 500 var(--shell-text-control)/1 var(--shell-sans);
 		letter-spacing: -0.005em;
 		white-space: nowrap;
+	}
+	.chip {
+		position: absolute;
+		top: 5px;
+		left: 50%;
+		width: 13px;
+		height: 13px;
+		transform: translateX(4px);
+		border: 1.5px solid var(--shell-forest);
+		box-shadow: 0 0 0 1px var(--shell-hairline-strong);
+		pointer-events: none;
+	}
+	.chip.colour {
+		border-radius: 50%;
+	}
+	.chip.material {
+		border-radius: 3px;
 	}
 	.kk {
 		position: absolute;

@@ -574,7 +574,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		);
 		expect(layer).toContain('const GOLD = STAGE_PAINT.selection');
 		expect(layer).toContain('const NEUTRAL = STAGE_PAINT.hover');
-		expect(layer).toContain("color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL)");
+		expect(layer).toContain("color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : tone === 'paint' ? PROPOSAL : NEUTRAL)");
 		expect(layer).toContain("toneMapped: false");
 		// Hover (and S10's erase dashes) are edges only; the tint is selection's alone.
 		expect(layer).not.toContain('new Mesh(tintGeometry');
@@ -592,7 +592,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// Hidden LODs/children are not drawn, so they cannot contribute a gold clone.
 		expect(layer).toContain('hasVisibleAncestor(node)');
 		// Selection outranks hover when two identities share an edge.
-		expect(layer).toContain("tone === 'selection' ? 22 : tone === 'rim' ? 23 : tone === 'erase' ? 24 : 19");
+		expect(layer).toContain("tone === 'selection' ? 22 : tone === 'rim' ? 23 : tone === 'erase' || tone === 'paint' ? 24 : 19");
 		expect(layer).not.toContain('tint.renderOrder');
 		const canvas = readFileSync(
 			new URL('../../../src/lib/authoring/stage/shell/StageCanvas.svelte', import.meta.url),
