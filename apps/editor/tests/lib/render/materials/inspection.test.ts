@@ -17,6 +17,7 @@ import {
 	studioEnvironmentPixels
 } from '$lib/render/materials/inspection-lighting';
 import {
+	createInspectionCamera,
 	createInspectionObserver,
 	inspectionChannels,
 	renderInspectionFrame,
@@ -27,6 +28,33 @@ import {
 	type InspectionObservation
 } from '$lib/render/materials/inspection';
 import type { StandardMaterialDescriptor } from '$lib/render/resources/material-descriptor';
+
+describe('inspection camera', () => {
+	it('keeps the whole subject inside the depth range at every admitted aspect', () => {
+		for (const kind of ['sphere', 'plane', 'block'] as const) {
+			const { geometry } = createInspectionGeometry(kind);
+			const position = geometry.getAttribute('position');
+			for (const aspect of [1 / 2048, 1 / 16, 0.15, 0.5, 1, 2, 2048]) {
+				const camera = createInspectionCamera(kind, aspect);
+				camera.updateMatrixWorld();
+				let nearest = Infinity;
+				let farthest = -Infinity;
+				let widest = 0;
+				for (let index = 0; index < position.count; index += 1) {
+					const point = new Vector3().fromBufferAttribute(position as never, index);
+					const depth = -point.clone().applyMatrix4(camera.matrixWorldInverse).z;
+					nearest = Math.min(nearest, depth);
+					farthest = Math.max(farthest, depth);
+					widest = Math.max(widest, Math.abs(point.project(camera).x));
+				}
+				expect(nearest, `${kind} ${aspect}`).toBeGreaterThan(camera.near);
+				expect(farthest, `${kind} ${aspect}`).toBeLessThan(camera.far);
+				expect(widest, `${kind} ${aspect}`).toBeLessThanOrEqual(1);
+			}
+			geometry.dispose();
+		}
+	});
+});
 
 describe('inspection reference geometry', () => {
 	it('builds the frozen plane, sphere and rounded block facts', () => {

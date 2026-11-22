@@ -1,7 +1,8 @@
 # T2.S8 E7: material inspection and catalogue thumbnails
 
-**Status:** implementation complete on `t2-s8-e7-inspection-thumbnails`, based on `main@45993c29`;
-**not merged**. F's catalogue distinctness criterion **failed and is deferred to U by the owner**.
+**Status:** implemented and reviewed on `t2-s8-e7-inspection-thumbnails`, based on `main@45993c29`;
+**not merged**. One plan deviation, the [inspection camera](#open-deviation-inspection-camera), is open.
+F's catalogue distinctness criterion **failed and is deferred to U by the owner**.
 The automated technical checks pass; they are not acceptance of F's catalogue intake.
 Authority: [plan § F](./implementation-plan.md#f--inspect-materials-and-qualify-the-catalogue). U is
 not started.
@@ -55,7 +56,7 @@ F's catalogue, the engine, shaders, persistence and R2 are unchanged.
 These are **not complete F acceptance**. They do not measure distinctness between entries, catalogue
 clipping, display-size readability, or F's density and budget records.
 
-Chromium 153.0.8010.12: 20 of 20 technical checks pass on each of WebGPU and WebGL2.
+Chromium 153.0.8010.12: 21 of 21 technical checks pass on each of WebGPU and WebGL2.
 [Recorded result](./evidence/s8-e7-gate.json).
 
 | Requirement | Measured |
@@ -66,7 +67,8 @@ Chromium 153.0.8010.12: 20 of 20 technical checks pass on each of WebGPU and Web
 | Current World vs Stage, 7 sphere patches, ΔE00 ≤ 2 | Sky max 0.544 WebGL2, 0.5507 WebGPU; Paper 0.2971, 0.3046 |
 | UV orientation and metre spacing | all sampled checker points match; a half-metre tile repeats twice per metre (plane only) |
 | Derivatives across backends | max ΔE00 0.4306 on WebGL2, 0 on WebGPU |
-| Absent UV1 | partial, never a thumbnail |
+| Absent UV1 | partial, never a thumbnail; a sibling channel still reads and the absent role's solo is refused |
+| Treatment | bound roles report `not-sampled` with the treated constants |
 | Rapid switching and settled work | 40 requests give 1 draw of the last; settled gives 0 draws |
 | Dev reference list opened and closed 20 times | 0 full-resolution fetches, 0 draws |
 | Teardown mid-readback | nothing published; leases return to baseline |
@@ -75,8 +77,9 @@ Chromium 153.0.8010.12: 20 of 20 technical checks pass on each of WebGPU and Web
 
 Captures: [WebGPU World](./evidence/s8-e7-webgpu-world.jpg),
 [WebGL2 World](./evidence/s8-e7-webgl2-world.jpg). Each backend logged only the provoked Device
-Lost error. The real editor was spot-checked on a fresh project: 21 swatch tiles, no reference
-derivative requested and no console error.
+Lost error. The captures and the real-editor spot check predate the review fixes, which change neither
+reference pixels nor the shelf. That spot check, on a fresh project, found 21 swatch tiles, no
+reference derivative requested and no console error.
 
 Reproduce from `apps/editor`, with its dev server running:
 
@@ -93,8 +96,41 @@ Local evidence, run after the last code change:
   reference lookup.
 - Regenerating the references left all 21 PNGs byte-identical.
 - `test:arch`: 38 files, 358 tests pass.
-- `test:fast`: 473 files, 5,843 tests pass with `--maxWorkers=3 --testTimeout=60000`.
+- `test:fast`: 474 files, 5,854 tests pass with `--maxWorkers=3 --testTimeout=60000`.
 - `npm test` and `test:heavy` were not run locally; CI certifies them.
+
+## Independent review
+
+One fresh-context Tier 1 review of `307014c2e` passed with no P0 or P1. It found eight P2s (one
+pre-existing) and one P3, and listed seven suspicions. The fixes followed the review and, under the
+one-round rule, were checked by tests and the browser checks, not by a second review.
+
+| Finding | Disposition |
+| --- | --- |
+| F1 Retry never recovered a failed image | fixed, tested |
+| F2 Treatment reported bound roles as missing | fixed, tested and browser-checked |
+| F3 One failed image hid its siblings and its own error | fixed, tested |
+| F4 One absent UV set lost every channel | fixed, tested and browser-checked |
+| F5 A failed solo channel drew a constant | fixed, tested |
+| F6 Narrow aspects clipped the subject | fixed, tested |
+| F7 Draft edits re-read verified bytes | fixed, tested |
+| F8 Cancelling one acquisition can dispose another's pending texture | **open**: pre-existing in `finish-views.ts`, outside E7 |
+| F9 (P3) Checks proved less than their names | fixed |
+| S1 Planning bullets in the swatch deliverable | no change: part of the approved proposal |
+| S2 Inspection camera bypasses the shared realizer | **open deviation**, below |
+| S3 Stale drafts sampled the World | fixed, tested |
+| S4 An empty texel read looked valid | fixed, tested |
+| S5 Coalesced jobs could read through a disposed scope | fixed, tested |
+| S6 Offscreen draws count as `render:stage-frame` | no change: the Stage snapshot's convention |
+| S7 Light allowlist growth | no change: the list stays exact |
+
+### Open deviation: inspection camera
+
+The plan says "Use fixed evaluated inspection poses via the shared Camera realizer."
+`createInspectionCamera`, introduced by PR B and extended by E7, builds its own camera instead.
+Trying the shared realizer changed all 21 references: 0.04–0.20% of decoded RGBA bytes, by at most
+37/255, with a mean change of at most 0.0032/255. The trial was backed out. Adopting it needs the
+owner to approve regenerated references.
 
 ## Deviations and limits
 

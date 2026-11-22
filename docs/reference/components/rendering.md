@@ -135,6 +135,11 @@ descriptor with `clip: false` keeps the Stage Slice out of a swatch.
 - A request names any size up to the 2048 readback bound, one geometry (sphere, plane or block), a
   lighting (studio, grazing or Current World) and a display (lit, unlit colour or one solo role).
 - States are `pending`, `ready`, `partial` with issues and `refused` with issues and no frame.
+- The whole view set is leased together. When an image fails, each role using it is named and the
+  other channels still read, as they do beside a role whose UV set is absent. A bound solo channel
+  that cannot read is refused; only an unbound one shows its constant.
+- Retry, or preparing the draft again, reloads only failed images. The next thumbnail request of a
+  failed catalogue or project look also retries. Draft edits over the same sources share one scope.
 - One render lane serves the interactive request before queued thumbnails. Replacement cancels the
   older request, a settled request draws nothing, and a draw's leases end with its readback.
 - Only `ready` enters the bounded thumbnail cache, namespaced by catalogue or project scope. Its key
@@ -144,10 +149,15 @@ descriptor with `clip: false` keeps the Stage Slice out of a swatch.
   generation.
 - Current World uses the Stage's Sky, lights, Treatment and neutral constants
   (`stage-neutral-lighting.ts`) at an explicit anchor. It has no other geometry, cast shadows or fog.
+  A stale Finish or draft is refused. Under a Treatment nothing is sampled: bound roles report
+  `not-sampled` beside the treated constants.
+- The fixed-pose camera's far plane follows the subject at narrow aspects. It is built in
+  `materials/inspection.ts`, not yet through the shared Camera realizer the T2.S8 plan requires.
 - The studio environment exists only in the offscreen inspection scene and never lights the World.
 - Inspection and thumbnail lookup stay outside visitor, public and Preview closures.
 
-**Guards:** `render/materials/inspection-host`, `render/materials/inspection-subject`,
+**Guards:** `render/materials/inspection-host`, `render/materials/inspection-host-sources`,
+`render/materials/inspection-subject`,
 `render/materials/catalogue-thumbnails`, `authoring/f4-public-isolation`,
 `render/light-realizer-boundary`.
 

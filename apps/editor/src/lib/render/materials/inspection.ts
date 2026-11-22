@@ -132,7 +132,7 @@ export function inspectionPose(kind: InspectionGeometryKind, aspect = 1): Inspec
 	const fov = 35;
 	const verticalHalf = (fov * Math.PI) / 360;
 	const half =
-		aspect >= 1 ? verticalHalf : Math.atan(Math.tan(verticalHalf) * Math.max(aspect, 1e-3));
+		aspect >= 1 ? verticalHalf : Math.atan(Math.tan(verticalHalf) * Math.max(aspect, 1e-6));
 	const distance = subjectRadius(kind) / (0.8 * Math.tan(half));
 	const eye = direction.multiplyScalar(distance);
 	return { eye: [eye.x, eye.y, eye.z], target, fovYDegrees: 35, fit: 0.8 };
@@ -141,7 +141,9 @@ export function inspectionPose(kind: InspectionGeometryKind, aspect = 1): Inspec
 /** A camera at the fixed pose, ready for the offscreen draw. */
 export function createInspectionCamera(kind: InspectionGeometryKind, aspect = 1): PerspectiveCamera {
 	const pose = inspectionPose(kind, aspect);
-	const camera = new PerspectiveCamera(pose.fovYDegrees, aspect, 0.01, 20);
+	// A narrow aspect moves the eye back; the far plane follows the subject.
+	const far = Math.max(20, Math.hypot(...pose.eye) + 2 * subjectRadius(kind));
+	const camera = new PerspectiveCamera(pose.fovYDegrees, aspect, 0.01, far);
 	camera.position.set(...pose.eye);
 	camera.lookAt(new Vector3(...pose.target));
 	camera.updateProjectionMatrix();

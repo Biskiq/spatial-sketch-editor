@@ -81,7 +81,10 @@ async function readFragment(
 		const raw = await settledOrAborted(copy, signal);
 		if (raw === null) return null;
 		const half = raw instanceof Uint16Array;
-		return [0, 1, 2].map((index) => (half ? DataUtils.fromHalfFloat(raw[index]!) : Number(raw[index])));
+		const value = (index: number): number => (half ? DataUtils.fromHalfFloat(raw[index]!) : Number(raw[index]));
+		// The fragment is opaque, so a transparent one is a lost device's empty read.
+		if (!(value(3) >= 0.5)) throw new Error('The texel read back empty.');
+		return [0, 1, 2].map(value);
 	} finally {
 		target.dispose();
 		geometry.dispose();

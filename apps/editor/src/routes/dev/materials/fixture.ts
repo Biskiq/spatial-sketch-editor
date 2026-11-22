@@ -86,6 +86,8 @@ export type InspectionFixture = {
 		readonly twiceUv: PreparedFinishDraft;
 		readonly oneMetre: PreparedFinishDraft;
 		readonly secondUv: PreparedFinishDraft;
+		/** A normal on the absent UV1 beside a roughness on UV0. */
+		readonly mixedUv: PreparedFinishDraft;
 	};
 	/** Everything inspection must leave untouched. */
 	projectState(): { saved: string; revision: string; undo: boolean; camera: string };
@@ -319,7 +321,15 @@ export async function buildInspectionFixture(): Promise<InspectionFixture> {
 		halfMetre: await checker('Half-metre tile', metric(0.5)),
 		twiceUv: await checker('Repeat 2', { ...IDENTITY, repeat: [2, 2] }),
 		oneMetre: await checker('One-metre tile', metric(1)),
-		secondUv: await checker('Absent UV1', { ...IDENTITY, set: 1 })
+		secondUv: await checker('Absent UV1', { ...IDENTITY, set: 1 }),
+		mixedUv: await draft({
+			name: 'Absent UV1 beside UV0',
+			mapping: IDENTITY,
+			roles: {
+				normal: { role: 'normal', file: 'plus', convention: '+Y', mapping: { ...IDENTITY, set: 1 } },
+				roughness: { role: 'roughness', file: 'orm', component: 'g', invert: false }
+			}
+		})
 	};
 
 	const bounds = {

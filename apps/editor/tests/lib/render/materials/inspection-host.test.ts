@@ -186,7 +186,14 @@ describe('the interactive inspection', () => {
 			[{ sizePx: [INSPECTION_MAX_SIZE + 1, 8] }, 'invalid-size'],
 			[{ subject: finish('a', 'deleted') }, 'subject-missing'],
 			[{ lighting: world(null) }, 'world-anchor-required'],
-			[{ subject: finish('a'), lighting: world([1, 2, 3], '2') }, 'world-sample-stale']
+			[{ subject: finish('a'), lighting: world([1, 2, 3], '2') }, 'world-sample-stale'],
+			[
+				{
+					subject: { kind: 'draft', draft: { ...inspectionDraft(), expectedRevision: { revisionId: '1' } } },
+					lighting: world([1, 2, 3], '2')
+				},
+				'world-sample-stale'
+			]
 		];
 		for (const [overrides, code] of cases) {
 			rig.observe(request(overrides));
@@ -214,7 +221,14 @@ describe('the interactive inspection', () => {
 		rig.observe(request({ display: 'unlit-color' }));
 		await rig.settled();
 		const partial = rig.states.at(-1)!;
-		expect(partial).toMatchObject({ status: 'partial', issues: [{ code: 'image-load-failed' }] });
+		expect(partial).toMatchObject({
+			status: 'partial',
+			// One ORM image serves both roles.
+			issues: [
+				{ code: 'image-load-failed', role: 'roughness' },
+				{ code: 'image-load-failed', role: 'occlusion' }
+			]
+		});
 		expect('channels' in partial && partial.channels.find((channel) => channel.role === 'color')?.state).toBe('bound');
 		expect('channels' in partial && partial.channels.find((channel) => channel.role === 'roughness')?.state).toBe(
 			'missing-view'
@@ -233,6 +247,7 @@ describe('the interactive inspection', () => {
 		await rig.settled();
 		expect(rig.host.stats().draftScopes).toBe(1);
 		stop();
+		await Promise.resolve();
 		expect(rig.host.stats().draftScopes).toBe(0);
 	});
 });
@@ -324,6 +339,16 @@ describe('thumbnails', () => {
 		expect(rig.host.stats().draws).toBe(1);
 		await rig.host.thumbnail({ subject: finish('project-b') });
 		expect(rig.host.stats()).toMatchObject({ draws: 2, cached: 2 });
+	});
+
+	it('never joins a job to another scope object under the same id', async () => {
+		rig = harness();
+		const results = await Promise.all([
+			rig.host.thumbnail({ subject: finish('project-a') }),
+			rig.host.thumbnail({ subject: finish('project-a') })
+		]);
+		expect(results.map((result) => result.status)).toEqual(['ready', 'ready']);
+		expect(rig.host.stats().draws).toBe(2);
 	});
 
 	it('never caches a draft', async () => {

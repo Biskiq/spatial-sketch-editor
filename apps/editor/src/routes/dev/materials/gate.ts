@@ -386,6 +386,22 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 	}
 	await environment.showWorld(fixture.sky);
 
+	await check('a Treatment samples nothing and says so', async () => {
+		const world = { ...sample(fixture.sky), treatment: 'clay' as const };
+		const next = await settle(host, request(draft(drafts.corrected), { lighting: { world } }));
+		if (next.status !== 'ready') return { pass: false, measured: { status: next.status } };
+		const read = Object.fromEntries(next.channels.map((channel) => [channel.role, channel]));
+		return {
+			pass:
+				(['color', 'normal', 'roughness', 'occlusion'] as const).every((role) => read[role]!.state === 'not-sampled') &&
+				read.metalness!.state === 'constant' &&
+				read.color!.constant === '#d6d3cd' &&
+				read.roughness!.constant === 0.9 &&
+				read.metalness!.constant === 0,
+			measured: next.channels.map(({ role, state, constant }) => ({ role, state, constant }))
+		};
+	});
+
 	await check('channel texel report', async () => {
 		const accepted = await host.texel({ subject: fixture.finish, geometry: 'plane', uv: [0.5, 0.5] });
 		const corrected = await host.texel({ subject: draft(drafts.corrected), geometry: 'plane', uv: [0.5, 0.5] });
@@ -397,7 +413,14 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 		const near = (value: number | undefined, expected: number, tolerance = 2 / 255): boolean =>
 			value !== undefined && Math.abs(value - expected) <= tolerance;
 		const [, storedY] = S8_CHART_FIXTURES.normalMinusY.centre;
+		// The corrected draft's tint, linear, over what its colour map samples.
+		const tint = new Color('#e0a878').toArray();
+		const tinted = tint.every((value, index) =>
+			near(c.color!.effective[index], value * (c.color!.converted?.[index] ?? Number.NaN), 1e-4)
+		);
 		const pass =
+			c.color!.state === 'bound' &&
+			tinted &&
 			near(a.occlusion!.converted?.[0], 51 / 255) &&
 			near(a.roughness!.converted?.[0], 191 / 255) &&
 			near(a.metalness!.converted?.[0], 1) &&
@@ -414,9 +437,22 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 		const next = await settle(host, request(draft(drafts.secondUv), { geometry: 'plane' }));
 		const thumbnail = await host.thumbnail({ subject: draft(drafts.secondUv) });
 		const colour = next.status === 'partial' ? next.channels.find((channel) => channel.role === 'color') : undefined;
+		const mixed = draft(drafts.mixedUv);
+		const sibling = await settle(host, request(mixed, { geometry: 'plane', display: { solo: 'roughness' } }));
+		const roughness =
+			sibling.status === 'partial' ? sibling.channels.find((channel) => channel.role === 'roughness') : undefined;
+		const absent = await settle(host, request(mixed, { geometry: 'plane', display: { solo: 'normal' } }));
 		return {
-			pass: next.status === 'partial' && colour?.state === 'missing-view' && thumbnail.status === 'refused',
+			pass:
+				next.status === 'partial' &&
+				colour?.state === 'missing-view' &&
+				thumbnail.status === 'refused' &&
+				sibling.status === 'partial' &&
+				roughness?.state === 'bound' &&
+				absent.status === 'refused',
 			measured: {
+				sibling: { status: sibling.status, roughness },
+				absentSolo: absent.status === 'refused' ? absent.issues : absent.status,
 				status: next.status,
 				issues: next.status === 'partial' ? next.issues : null,
 				colour,
@@ -678,6 +714,8 @@ export async function runE7Gate(environment: GateEnvironment): Promise<GateRepor
 			new Promise((_, reject) => setTimeout(() => reject(new Error(`no recovery: ${statuses.join()}`)), STATE_TIMEOUT_MS))
 		]);
 		release();
+		// An edit re-observes in the same turn, so the draft scope ends one microtask later.
+		await Promise.resolve();
 		const next = environment.renderer();
 		const measured = {
 			statuses,
