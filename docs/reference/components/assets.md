@@ -195,7 +195,7 @@ anisotropic filtering, GPU-compressed (KTX2/Basis) derivatives and CDN-origin Ex
 Each needs its own consumer and evidence. Adding another resolution of a set is an allowlist append
 under a new URI, never a change to an existing pin.
 
-## My Objects form library scope
+## My Objects library scope
 
 The first consumer of the ratified **library scope**, implemented, is one typed `form` item,
 owned by the signed-in creator, not by a project. Its payload is format 1
@@ -219,6 +219,25 @@ copy is ordinary native-form Scene truth afterwards.
 Until beta an item records the format it was written with. An older-format item stays listed and
 removable, is marked as made with an earlier development version, and is refused at insertion; it
 is never migrated or misread ([owner ruling](assets.md)).
+
+The same scope admits one typed `material` item (T2.S8 G). Its format 1 payload is
+`{ formatVersion, kind: 'material', name, recipe }`, where the recipe is the accepted Finish
+flattened over its current palette literals, without Treatment. The content id covers the name and
+recipe; a separate `recipe_hash` is the portable recipe revision. Up to five distinct image
+dependencies are pinned in `material_library_images` as either this owner's immutable private copy
+(`library/<namespace>/<owner>/<item>/<attempt>/...`) or a frozen shipped manifest URI. A save
+streams and verifies each private copy before inserting the item, image rows and operation receipt
+in one transaction, so a list never observes a partial item. Project history is unchanged.
+
+Listing defaults to forms for existing callers and accepts `kind=material` or `kind=all`. Read
+returns the canonical payload and kind. The optional fixed 192×192 PNG thumbnail is a separate
+owner-only read or PUT; it is capped at 256 KiB, pinned to the item content id and recipe key, and a
+missing derivative is 404 with the swatch fallback. Insert is
+owned and body/operation-idempotent, reuses a matching ready project asset row or copies exact bytes
+under the destination project's own asset key, and returns a stable Finish id plus local image
+bindings for the ordinary F4 registration. The destination holds no library object key or URL, so
+removing the item or source project leaves it intact. A different body for the same operation id
+is 409; a replay after the destination saved base advanced is 409 `stale_revision`.
 
 ## Creator model resource storage (T2.P02.S01)
 
