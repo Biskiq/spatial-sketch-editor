@@ -12,6 +12,8 @@
  * colour (`#rrggbb`).
  */
 
+import type { MaterialId } from '$lib/types/materials';
+
 /** The creator preference lists are 12 recents and 24 favourites per kind. */
 export const PAINT_RECENTS_LIMIT = 12;
 export const PAINT_FAVOURITES_LIMIT = 24;
@@ -133,4 +135,18 @@ export function hexToHsl(hex: string): Hsl {
 	const h =
 		max === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
 	return { h, s: s * 100, l: l * 100 };
+}
+
+/**
+ * The U1 picture source of a stored Finish key: a curated key is its catalogue
+ * master, a project key goes through the page's project source (its Scene and
+ * texture scope), anything else (a colour, the model's own look) has none.
+ */
+export function paintTileSource<S>(
+	key: string,
+	project: (finishId: string) => S | null
+): { readonly kind: 'catalogue'; readonly id: MaterialId } | S | null {
+	if (key.startsWith('curated:')) return { kind: 'catalogue', id: key.slice('curated:'.length) as MaterialId };
+	if (key.startsWith('project:')) return project(key.slice('project:'.length));
+	return null;
 }

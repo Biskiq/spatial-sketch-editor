@@ -1,0 +1,182 @@
+{
+	"schemaVersion": 1,
+	"generatedBy": "apps/editor/scripts/generate-material-tiles.mjs",
+	"purpose": "product-sample-tile-master",
+	"recipe": "sample-tile/1",
+	"backend": "webgpu",
+	"versions": {
+		"inspection": 2,
+		"lighting": 2,
+		"geometry": 1
+	},
+	"tiles": [
+		{
+			"id": "wood-oak-veneer",
+			"key": "tile-454a543ed61d79e2",
+			"file": "wood-oak-veneer-tile-454a543ed61d79e2.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "c7517256466281341855490b35f8cba9e7a26c8e692946b49e84d77a57956054"
+		},
+		{
+			"id": "wood-walnut-veneer",
+			"key": "tile-e5437d62c0b4c902",
+			"file": "wood-walnut-veneer-tile-e5437d62c0b4c902.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "2819505b5569ce274bbc694bb41a075e2b675470e19d4d0abb3264d9b0cb0192"
+		},
+		{
+			"id": "wood-oak-planks",
+			"key": "tile-272ced6d81b5daf1",
+			"file": "wood-oak-planks-tile-272ced6d81b5daf1.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "ec60ee24597b352599a7e117cc074a5f07689be9dfed5c7094386a30bb2457c0"
+		},
+		{
+			"id": "wood-herringbone-parquet",
+			"key": "tile-7e5df05c02f330a4",
+			"file": "wood-herringbone-parquet-tile-7e5df05c02f330a4.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "b11a8dc5f1111b1df9d048f381754895f4500622b5874dcc22e891904272c1af"
+		},
+		{
+			"id": "stone-travertine",
+			"key": "tile-87b14501f4c4e92d",
+			"file": "stone-travertine-tile-87b14501f4c4e92d.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "5e522a52c979a5d4a85dc97c1120eb8889699404f70a86e3c18bf87413b02990"
+		},
+		{
+			"id": "stone-terrazzo",
+			"key": "tile-00667b16a28eb7fe",
+			"file": "stone-terrazzo-tile-00667b16a28eb7fe.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "71b6517f8a341290ebc0de81368f17eeddc943d73364fb77ec3e8bdfb7de2a14"
+		},
+		{
+			"id": "masonry-brick-red",
+			"key": "tile-b4ef01632ac19407",
+			"file": "masonry-brick-red-tile-b4ef01632ac19407.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "37518ac709dfc05f48b0ca5c980eb40fa90ee37bd02d6c20fc0015bb8029ffad"
+		},
+		{
+			"id": "plaster-painted",
+			"key": "tile-4e1fca37062da523",
+			"file": "plaster-painted-tile-4e1fca37062da523.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "5fcfc20b30bc0b6902e7767efd331f0ab3a2cfc7623739684b4cd480be80fcfe"
+		},
+		{
+			"id": "concrete-smooth",
+			"key": "tile-8ab4c0c497944b5c",
+			"file": "concrete-smooth-tile-8ab4c0c497944b5c.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "13588208877d56b14f295aac2a927d5f4d7e8e55c6d5d1219d5bdce674dcf9a2"
+		},
+		{
+			"id": "concrete-polished",
+			"key": "tile-80e22388f19efa66",
+			"file": "concrete-polished-tile-80e22388f19efa66.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "7b09bb8bae6db262ad4f076bf547edd48aaf278c65cd937e243176876fe89a3e"
+		},
+		{
+			"id": "tile-ceramic-white",
+			"key": "tile-d26bb6ff95cdbc93",
+			"file": "tile-ceramic-white-tile-d26bb6ff95cdbc93.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "416c9469be1657d045afc37172ba8fe54c5eb604c08a4de6c65d19896f4a092b"
+		},
+		{
+			"id": "metal-stainless-satin",
+			"key": "tile-969f00118914611d",
+			"file": "metal-stainless-satin-tile-969f00118914611d.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "216e406f68201b51c7e9936039b5b765398e3df7a82f21b0043e2ddffb1c0bdd"
+		},
+		{
+			"id": "metal-brass-satin",
+			"key": "tile-d3a246077b04326b",
+			"file": "metal-brass-satin-tile-d3a246077b04326b.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "bd7007fd7f79944d020a83014c71fb9b6a43b0e403d00730c3e858aac9642417"
+		},
+		{
+			"id": "metal-copper-satin",
+			"key": "tile-71c5181fdee1ac2b",
+			"file": "metal-copper-satin-tile-71c5181fdee1ac2b.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "4453d139f9dcab78b14a45844e6d52b955e7a22f3de6ae19375b0db6f2496b1b"
+		},
+		{
+			"id": "metal-gold-satin",
+			"key": "tile-a409845f36618853",
+			"file": "metal-gold-satin-tile-a409845f36618853.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "74b6149b606e0a45334ae8c15245f138b1ee21fc99a5c6867211b0922fabd9d2"
+		},
+		{
+			"id": "metal-stainless-brushed",
+			"key": "tile-14fdb403af679737",
+			"file": "metal-stainless-brushed-tile-14fdb403af679737.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "d09e09bf04bbe207a23d638d1f821912937c70335ac25c34fa9205b6707577d9"
+		},
+		{
+			"id": "metal-aluminium-brushed",
+			"key": "tile-19ed2faafb6faa40",
+			"file": "metal-aluminium-brushed-tile-19ed2faafb6faa40.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "afe0b8fa0bb63873fda96fa30445a949bde0b2e4b82cdfce063bfe14bc92bade"
+		},
+		{
+			"id": "textile-linen",
+			"key": "tile-03527ef6d0b14f22",
+			"file": "textile-linen-tile-03527ef6d0b14f22.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "edb7ba0bb1aaacf7cab1bfe72cd3cfb805c756393851e3e1d25c6aabe8be7eea"
+		},
+		{
+			"id": "textile-carpet-loop",
+			"key": "tile-f6ca4cf14813d3d1",
+			"file": "textile-carpet-loop-tile-f6ca4cf14813d3d1.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "27f7f36cf0591b1aa6f77769c1863f97d86334981acf75f5dda4bfd3643ed1c6"
+		},
+		{
+			"id": "leather-cognac",
+			"key": "tile-92334d4f2756658b",
+			"file": "leather-cognac-tile-92334d4f2756658b.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "d8da1997bdfb0588ce8bcafe3aaa693fdfd3a00a3625413e57dcfa80566c7ed6"
+		},
+		{
+			"id": "synthetic-plastic-matte",
+			"key": "tile-ae6f0f3deafc8ced",
+			"file": "synthetic-plastic-matte-tile-ae6f0f3deafc8ced.png",
+			"width": 256,
+			"height": 256,
+			"sha256": "316f69ffc598a911f880d9c2af4161f96d995910039afb6e8029edf6c2eb15ea"
+		}
+	]
+}

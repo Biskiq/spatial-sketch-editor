@@ -210,6 +210,8 @@ export type PaintSwatch = {
 	readonly label: string;
 	readonly color: string;
 	readonly favourite: boolean;
+	/** A project Finish's own colour image, multiplied over the swatch until its picture loads. */
+	readonly imageUri?: string | null;
 };
 
 /** Everything the Paint tray draws. Resolved here so the tray owns no Finish state. */
@@ -652,19 +654,21 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	function paintTray(): PaintTrayView {
 		const favouriteMaterials = new Set(prefs.favouriteMaterials);
 		const favouriteColours = new Set(prefs.favouriteColours);
+		const shelf = libraryShelf();
+		const projectImages = new Map(shelf.project.map((entry) => [`project:${entry.id}`, entry.imageUri]));
 		const finish = (key: string): PaintSwatch => ({
 			kind: 'finish',
 			key,
 			label: labelOfKey(key),
 			color: colorOfKey(key),
-			favourite: favouriteMaterials.has(key)
+			favourite: favouriteMaterials.has(key),
+			imageUri: projectImages.get(key) ?? null
 		});
 		const colour = (key: string): PaintSwatch => {
 			const parsed = parseColourKey(key)!;
 			return { kind: 'colour', key, label: colourLabel(parsed), color: colourHex(parsed), favourite: favouriteColours.has(key) };
 		};
 		const current = scene();
-		const shelf = libraryShelf();
 		const active: PaintSwatch | null =
 			activeColour !== null
 				? colour(colourKey(activeColour))

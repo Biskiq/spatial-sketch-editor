@@ -12,7 +12,11 @@
 	 * follows the approved appearance prototype (prototypes/appearance-ux).
 	 */
 	import type { PaintSwatch, PaintTrayView } from '$lib/authoring/look/finish-authoring.svelte';
-	import { PAINT_RADII, parseColourKey, type PaintColour, type PaintRadius } from '$lib/authoring/look/paint-pick';
+	import { PAINT_RADII, paintTileSource, parseColourKey, type PaintColour, type PaintRadius } from '$lib/authoring/look/paint-pick';
+	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
+	import { foldVariantCards, groupByMaterialFamily } from '$lib/content/material-presentation';
+	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
+	import type { MaterialId } from '$lib/types/materials';
 	import type { PaintTrayState, PaintTrayTab } from '$lib/authoring/look/paint-tray-state.svelte';
 	import type { StagePaintCandidate, StagePaintStroke } from '../stage-painter';
 	import ShellIcon from './ShellIcon.svelte';
@@ -29,7 +33,8 @@
 		onFavourite,
 		onDropper,
 		onRadius,
-		onLibrary
+		onLibrary,
+		tileSource = () => null
 	}: {
 		tray: PaintTrayView;
 		view: PaintTrayState;
@@ -42,7 +47,25 @@
 		onDropper: () => void;
 		onRadius: (radius: PaintRadius) => void;
 		onLibrary: () => void;
+		/** U1's project-Finish picture source (the route's, shared with the Library shelf). */
+		tileSource?: (finishId: string) => FinishTileSource | null;
 	} = $props();
+
+	const sourceOf = (swatch: PaintSwatch): FinishTileSource | null =>
+		swatch.kind === 'finish' ? paintTileSource(swatch.key, tileSource) : null;
+
+	/**
+	 * D1 in the tray: one Concrete card with a Matte/Polished chip. The card
+	 * shows the variant that is the pick, else its primary; a chip picks.
+	 */
+	const curatedCards = $derived(
+		foldVariantCards(
+			tray.materials.curated.map((swatch) => ({ ...swatch, id: swatch.key.slice('curated:'.length) as MaterialId })),
+			() => (tray.active?.kind === 'finish' && tray.active.key.startsWith('curated:') ? (tray.active.key.slice('curated:'.length) as MaterialId) : undefined)
+		)
+	);
+	const curatedGroups = $derived(groupByMaterialFamily(curatedCards));
+	const curatedByKey = $derived(new Map(tray.materials.curated.map((swatch) => [swatch.key, swatch])));
 
 	const tab = $derived<PaintTrayTab>(tray.colourEnabled ? view.tab : 'materials');
 	const row = $derived(tab === 'colours' ? tray.colours.row : tray.materials.row);
@@ -90,6 +113,10 @@
 			: tray.colours.palette[0]?.color ?? '#808080'
 	);
 </script>
+
+{#snippet tile(swatch: PaintSwatch, size: number)}
+	<FinishTile source={sourceOf(swatch)} color={swatch.color} imageUri={swatch.imageUri ?? null} {size} />
+{/snippet}
 
 <div class="tray" data-paint-tray aria-label="Paint" data-paint-tab={tab} data-expanded={view.expanded}>
 	<div class="head">
@@ -139,7 +166,9 @@
 	<div class="body">
 		<span class="strip" role="listbox" aria-label={tab === 'colours' ? 'Colours' : 'Materials'} onkeydown={roving} tabindex="-1">
 			{#if leadVisible && tray.active !== null}
-				<span class="swatch-button picked {shape}" style={`--swatch: ${tray.active.color}`} data-paint-lead title={`Picked · ${tray.active.label}`} role="img" aria-label={`Picked · ${tray.active.label}`}></span>
+				<span class="swatch-button picked {shape}" style={`--swatch: ${tray.active.color}`} data-paint-lead title={`Picked · ${tray.active.label}`} role="img" aria-label={`Picked · ${tray.active.label}`}>
+					{#if tray.active.kind === 'finish'}{@render tile(tray.active, 40)}{/if}
+				</span>
 				<span class="lab">picked</span>
 				<span class="sep"></span>
 			{/if}
@@ -163,7 +192,9 @@
 					tabindex={tabIndex(swatch, index)}
 					data-paint-swatch={swatch.key}
 					onclick={() => onPick(swatch)}
-				></button>
+				>
+					{#if swatch.kind === 'finish'}{@render tile(swatch, 40)}{/if}
+				</button>
 			{/each}
 			<span class="sep"></span>
 			{#if tab === 'colours'}
@@ -246,19 +277,47 @@
 						<span class="heading">This project</span>
 						<span class="grid">
 							{#each tray.materials.project as swatch (swatch.key)}
-								<button type="button" class="swatch-button material" class:picked={tray.active?.key === swatch.key} style={`--swatch: ${swatch.color}`} title={swatch.label} aria-label={swatch.label} data-paint-swatch={swatch.key} onclick={() => onPick(swatch)}></button>
+								<button type="button" class="swatch-button material" class:picked={tray.active?.key === swatch.key} style={`--swatch: ${swatch.color}`} title={swatch.label} aria-label={swatch.label} data-paint-swatch={swatch.key} onclick={() => onPick(swatch)}>
+									{@render tile(swatch, 40)}
+								</button>
 							{/each}
 						</span>
 					</div>
 				{/if}
-				<div class="group" role="group" aria-label="Curated">
-					<span class="heading">Curated</span>
-					<span class="grid">
-						{#each tray.materials.curated as swatch (swatch.key)}
-							<button type="button" class="swatch-button material" class:picked={tray.active?.key === swatch.key} style={`--swatch: ${swatch.color}`} title={swatch.label} aria-label={swatch.label} data-paint-swatch={swatch.key} onclick={() => onPick(swatch)}></button>
+				{#each curatedGroups as family (family.id)}
+					<div class="group" role="group" aria-label={family.label} data-paint-family={family.id}>
+						<span class="heading">{family.label}</span>
+						<span class="grid">
+							{#each family.entries as card (card.variants.length > 0 ? `card:${card.cardLabel}` : card.key)}
+							{@const named = card.variants.length > 0 ? `${card.cardLabel}, ${card.variants.find((v) => v.id === card.id)?.label ?? ''}` : card.label}
+							<span class="card" class:variants={card.variants.length > 0}>
+								<button type="button" class="swatch-button material" class:picked={tray.active?.key === card.key} style={`--swatch: ${card.color}`} title={named} aria-label={named} data-paint-swatch={card.key} onclick={() => onPick(card)}>
+									{@render tile(card, 40)}
+								</button>
+								{#if card.variants.length > 0}
+									<span class="variant-chip" role="group" aria-label={`${card.cardLabel} finish`}>
+										{#each card.variants as variant (variant.id)}
+											{@const entry = curatedByKey.get(`curated:${variant.id}`)}
+											<button
+												type="button"
+												class:on={variant.id === card.id}
+												aria-pressed={variant.id === card.id}
+												data-paint-variant={variant.id}
+												disabled={entry === undefined}
+												onclick={() => entry !== undefined && onPick(entry)}
+											>{variant.label}</button>
+										{/each}
+									</span>
+								{/if}
+							</span>
 						{/each}
-					</span>
-				</div>
+						</span>
+					</div>
+				{/each}
+				<button type="button" class="pill library" data-paint-library-open onclick={onLibrary}>
+					<ShellIcon name="library" size={15} />
+					Open the Library · search, filters, detail
+				</button>
 			{/if}
 		</div>
 	{/if}
@@ -398,6 +457,14 @@
 			box-shadow 0.12s,
 			transform 0.12s;
 	}
+	/* U1's picture fills the swatch and takes its shape; the ring stays the button's. */
+	.swatch-button :global(.finish-tile) {
+		width: 100%;
+		height: 100%;
+		border-radius: inherit;
+		box-shadow: inset 0 0 0 1px rgb(18 38 29 / 16%);
+		pointer-events: none;
+	}
 	.swatch-button.colour {
 		border-radius: 50%;
 	}
@@ -501,10 +568,47 @@
 		border-color: var(--shell-leaf);
 		background: var(--shell-leaf-tint);
 	}
+	.card {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+	/* D1, as on the Library shelf: the chip sits beside the picture, never over it. */
+	.variant-chip {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 2px;
+		border-radius: 7px;
+		background: color-mix(in srgb, var(--shell-ink) 6%, transparent);
+	}
+	.variant-chip button {
+		min-height: 0;
+		padding: 2px 6px;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--shell-ink-2);
+		font: 10px/1.3 var(--shell-mono);
+		text-align: left;
+		cursor: pointer;
+	}
+	.variant-chip button:hover {
+		background: var(--shell-leaf-tint);
+	}
+	.variant-chip button.on {
+		background: var(--shell-forest);
+		color: var(--shell-white);
+	}
+	.pill.library {
+		justify-self: start;
+		padding: 5px 12px;
+	}
 	.more {
 		display: grid;
 		gap: 10px;
-		max-height: 16rem;
+		/* The prototype's expansion: as tall as the Stage allows above the dock. */
+		max-height: max(12rem, calc(100dvh - 24rem));
 		margin-top: 6px;
 		padding-top: 8px;
 		overflow: auto;
@@ -559,6 +663,10 @@
 		.seg button,
 		.pill {
 			min-height: 40px;
+		}
+		.variant-chip button {
+			min-height: 22px;
+			padding-inline: 10px;
 		}
 	}
 </style>

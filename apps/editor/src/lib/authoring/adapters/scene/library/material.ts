@@ -13,6 +13,7 @@ import { resolveLayoutSurface } from '@portfolio/layout-core';
 import type { AcceptedRevision, AuthoringIntent, SemanticReference } from '@portfolio/project-model';
 import {
 	finishLibraryDraftFromScene,
+	MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE,
 	type FinishLibraryDraft,
 	type MaterialLibraryIssue,
 	type MaterialLibraryItemSummary,
@@ -100,10 +101,14 @@ export async function saveFinishToLibrary(input: {
 	return { ok: true, summary, draft: draft.draft };
 }
 
+/** The sample-tile master (U1) and the 192 px thumbnail stored before it. */
+const THUMBNAIL_EDGES: readonly number[] = [MATERIAL_LIBRARY_MAX_THUMBNAIL_EDGE, 192];
+
 /**
- * Encode and install the fixed 192×192 derivative for one saved item. The
- * render happens outside this function; a failed encode or upload leaves the
- * item usable with the swatch fallback.
+ * Encode and install the square thumbnail for one saved item: the 256×256
+ * sample-tile master, or a 192×192 frame (compatible with items stored before
+ * U1). The render happens outside this function; a failed encode or upload
+ * leaves the item usable with the swatch fallback.
  */
 export async function uploadFinishThumbnail(input: {
 	readonly item: Pick<MaterialLibraryItemSummary, 'id' | 'contentId' | 'recipeHash'>;
@@ -111,8 +116,11 @@ export async function uploadFinishThumbnail(input: {
 	readonly client: MaterialLibraryClient;
 	readonly signal?: AbortSignal;
 }): Promise<boolean> {
-	if (input.frame.width !== 192 || input.frame.height !== 192) {
-		throw new Error('A material thumbnail must be the fixed 192×192 frame.');
+	if (
+		input.frame.width !== input.frame.height ||
+		!THUMBNAIL_EDGES.includes(input.frame.width)
+	) {
+		throw new Error('A material thumbnail must be a 256×256 master or a 192×192 frame.');
 	}
 	const bytes = await encodeInspectionPng(input.frame);
 	if (bytes === null) return false;

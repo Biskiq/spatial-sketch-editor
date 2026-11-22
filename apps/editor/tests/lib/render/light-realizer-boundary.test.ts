@@ -44,8 +44,8 @@ const HOST_LIGHTS: Record<string, { sites: Record<string, number>; owner: string
 	'lib/visitor/VisitorPreviewSurface.svelte': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'Preview host fill + Paper rig' },
 	// The Sky's hemisphere fill. The Sun is the store's.
 	'lib/render/WorldEnvironment.svelte': { sites: { HemisphereLight: 1, AmbientLight: 1 }, owner: 'Sky hemisphere fill' },
-	// Recipe 1's grazing rig is a reference lighting fixture, not a world light.
-	'lib/render/materials/inspection-lighting.ts': { sites: { AmbientLight: 1, DirectionalLight: 1 }, owner: 'inspection reference rig' },
+	// Recipe 1's grazing rig and the sample-tile rig are a reference lighting fixture, not a world light.
+	'lib/render/materials/inspection-lighting.ts': { sites: { AmbientLight: 1, DirectionalLight: 2 }, owner: 'inspection reference rig' },
 	// E7 Current World: the Stage's own fills around a swatch. Point, Spot and the Sun stay the store's.
 	'lib/render/materials/inspection-world.ts': { sites: { AmbientLight: 2, DirectionalLight: 1, HemisphereLight: 1 }, owner: 'inspection Current World fills' },
 	'routes/dev/assets/+page.svelte': { sites: { HemisphereLight: 1, DirectionalLight: 1 }, owner: 'dev bench' },

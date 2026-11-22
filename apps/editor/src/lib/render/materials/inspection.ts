@@ -346,7 +346,7 @@ export function createInspectionScene(input: {
 	};
 }
 
-function stableHash(text: string): string {
+export function stableHash(text: string): string {
 	let a = 0x811c9dc5;
 	for (let index = 0; index < text.length; index += 1) {
 		a ^= text.charCodeAt(index);

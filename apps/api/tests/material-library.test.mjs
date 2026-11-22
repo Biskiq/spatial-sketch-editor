@@ -608,7 +608,7 @@ test('shipped-image material Save, Transfer and Remove store zero asset rows and
 	assert.equal(gone.statusCode, 404);
 });
 
-test('thumbnail upload enforces PNG format, 192x192 edge, 256 KiB cap and owner isolation', async () => {
+test('thumbnail upload enforces PNG format, 256x256 edge cap, 256 KiB cap and owner isolation', async () => {
 	const source = await sourceWithImages('thumb-validation');
 	const other = await newOwner('thumb-other');
 	const payload = materialPayload(source.images.map((asset) => asset.sha256));
@@ -637,9 +637,20 @@ test('thumbnail upload enforces PNG format, 192x192 edge, 256 KiB cap and owner 
 		method: 'PUT',
 		url,
 		headers: { cookie: source.owner.cookie, 'content-type': 'application/octet-stream' },
-		payload: pngBytes(100, 100, 100, 193)
+		payload: pngBytes(100, 100, 100, 257)
 	});
 	assert.equal(oversizedEdge.statusCode, 415, oversizedEdge.body);
+
+	// The 256 px sample-tile master and a pre-U1 192 px thumbnail are both valid.
+	for (const edge of [256, 192]) {
+		const accepted = await app.inject({
+			method: 'PUT',
+			url,
+			headers: { cookie: source.owner.cookie, 'content-type': 'application/octet-stream' },
+			payload: pngBytes(100, 100, 100, edge)
+		});
+		assert.equal(accepted.statusCode, 204, `${edge}: ${accepted.body}`);
+	}
 
 	const tooLarge = await app.inject({
 		method: 'PUT',

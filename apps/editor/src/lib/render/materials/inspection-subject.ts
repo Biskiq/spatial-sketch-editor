@@ -327,10 +327,12 @@ function channelPlan(
 export function resolveInspectionSubject(
 	subject: InspectionSubject,
 	geometry: InspectionGeometryKind,
-	treatment?: SceneTreatment
+	treatment?: SceneTreatment,
+	/** A sample tile's window: one UV unit is that many metres (`sampleTileMetricFacts`). */
+	metricFacts?: { readonly uvMeters: readonly [number, number]; readonly surfaceMeters: readonly [number, number] }
 ): ResolvedInspectionSubject {
 	const { document, target } = sourceOf(subject);
-	const facts = inspectionGeometryFacts(geometry);
+	const facts = metricFacts ?? inspectionGeometryFacts(geometry);
 	const metric = {
 		kind: 'metric' as const,
 		uvMeters: [facts.uvMeters[0], facts.uvMeters[1]] as const,

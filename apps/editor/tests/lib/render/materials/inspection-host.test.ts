@@ -351,6 +351,76 @@ describe('thumbnails', () => {
 		expect(rig.host.stats().draws).toBe(2);
 	});
 
+	describe('sample tile (U1)', () => {
+		const tile = (input: Record<string, unknown> = {}) =>
+			rig!.host.thumbnail({ subject: OAK, sampleTile: 'default', ...input } as never);
+
+		it('draws the 256 master on the plane, keyed apart from the E7 sphere', async () => {
+			rig = harness();
+			const result = await tile();
+			expect(result).toMatchObject({ status: 'ready', frame: { width: 256, height: 256 } });
+			const sphere = await rig.host.thumbnail({ subject: OAK });
+			expect(sphere.status === 'ready' && result.status === 'ready' && sphere.key !== result.key).toBe(true);
+			expect(result.status === 'ready' && result.key).toMatch(/^tile-/);
+			await rig.released();
+		});
+
+		it('reuses a drawn tile and draws a new one for a new window', async () => {
+			rig = harness();
+			await tile();
+			await tile();
+			expect(rig.host.stats().draws).toBe(1);
+			// Oak's default window is 40% of its 0.5 m tile, so a stated 0.2 is the same picture.
+			await tile({ sampleTile: { windowMeters: 0.2 } });
+			expect(rig.host.stats().draws).toBe(1);
+			await tile({ sampleTile: { windowMeters: 0.3 } });
+			await tile({ sampleTile: { windowMeters: 0.3, centre: [0.4, 0.5] } });
+			expect(rig.host.stats()).toMatchObject({ draws: 3, cached: 3 });
+			await rig.released();
+		});
+
+		it('keys a tile by the Finish and window, not by how the hint is spelled', async () => {
+			rig = harness();
+			const a = await tile({ sampleTile: { windowMeters: 0.28 } });
+			const b = await tile({ sampleTile: { windowMeters: 0.28, centre: [0.5, 0.5] } });
+			expect(a.status === 'ready' && b.status === 'ready' && a.key === b.key).toBe(true);
+			expect(rig.host.stats().draws).toBe(1);
+			const walnut = await tile({ subject: WALNUT, sampleTile: { windowMeters: 0.28 } });
+			expect(walnut.status === 'ready' && a.status === 'ready' && walnut.key !== a.key).toBe(true);
+		});
+
+		it('draws a project Finish under its own scope', async () => {
+			rig = harness();
+			await tile({ subject: finish('project-a') });
+			await tile({ subject: finish('project-a') });
+			expect(rig.host.stats().draws).toBe(1);
+			await tile({ subject: finish('project-b') });
+			expect(rig.host.stats()).toMatchObject({ draws: 2, cached: 2 });
+		});
+
+		it('refuses a non-square or oversized tile and a cancelled one', async () => {
+			rig = harness();
+			expect(await tile({ width: 256, height: 128 })).toMatchObject({ status: 'refused', issues: [{ code: 'invalid-size' }] });
+			expect(await tile({ width: INSPECTION_MAX_SIZE + 1, height: INSPECTION_MAX_SIZE + 1 })).toMatchObject({ status: 'refused' });
+			const controller = new AbortController();
+			controller.abort();
+			expect(await tile({ subject: WALNUT }).then(() => rig!.host.thumbnail({ subject: WALNUT, sampleTile: 'default' }, controller.signal))).toMatchObject({
+				status: 'refused',
+				issues: [{ code: 'cancelled' }]
+			});
+			await rig.released();
+		});
+
+		it('keeps the E7 sphere thumbnail untouched', async () => {
+			rig = harness();
+			const before = await rig.host.thumbnail({ subject: OAK });
+			await tile();
+			const after = await rig.host.thumbnail({ subject: OAK });
+			expect(before).toMatchObject({ status: 'ready', frame: { width: 192, height: 192 } });
+			expect(after).toBe(before);
+		});
+	});
+
 	it('never caches a draft', async () => {
 		rig = harness();
 		const subject: InspectionSubject = { kind: 'draft', draft: inspectionDraft() };

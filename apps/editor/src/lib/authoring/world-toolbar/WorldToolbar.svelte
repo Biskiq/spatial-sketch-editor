@@ -11,6 +11,9 @@
 	import WorldIcon from './WorldIcon.svelte';
 	import { assets } from '$lib/content/assets';
 	import { materials } from '$lib/content/materials';
+	import { foldVariantCards, variantCardOf } from '$lib/content/material-presentation';
+	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
+	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import {
 		WORLD_FAMILIES,
 		WORLD_LIBRARY_CATEGORIES,
@@ -35,6 +38,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onMaterialPick,
 		finishShelf = null,
 		onFinishPick = () => {},
+		finishTileSource = () => null,
 		finishImage = null,
 		onFinishImageImport = () => {},
 		onFinishImageCancel = () => {},
@@ -71,6 +75,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			}[];
 		} | null;
 		onFinishPick?: (ref: SceneFinishRef) => void;
+		/** The picture source of one project Finish (U1); null while none can be drawn. */
+		finishTileSource?: (finishId: string) => FinishTileSource | null;
 		/** *+ From image*: the one upload state machine shared with the Card. */
 		finishImage?: FinishImageState | null;
 		onFinishImageImport?: (file: File) => void;
@@ -92,10 +98,23 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		/** Object Studio's dock: Select, Objects, Measure and Eraser only. */
 		studio?: boolean;
 		/** The Paint key's live chip: the active pick, a circle for a colour and a rounded square for a material. */
-		paintChip?: { readonly color: string; readonly shape: 'colour' | 'material' } | null;
+		paintChip?: { readonly color: string; readonly shape: 'colour' | 'material'; readonly source?: FinishTileSource | null } | null;
 		/** An armed tool's own tray stands in for the words plate (Paint's tray), so no second card opens above the dock. */
 		trayOwnsPlate?: boolean;
 	} = $props();
+
+	/**
+	 * D1: a variant card shows one entry and a chip row for the rest. The
+	 * creator's choice is a view state of the shelf, never authored.
+	 */
+	let variantChoice = $state<Record<string, string>>({});
+	const curatedCards = $derived(
+		finishShelf === null
+			? []
+			: foldVariantCards(finishShelf.curated, (primary) => variantChoice[primary] as MaterialId | undefined).map(
+				(card) => ({ ...card, label: card.cardLabel ?? card.label })
+			)
+	);
 
 	const plateId = $props.id();
 	let artworkFileInput = $state<HTMLInputElement>();
@@ -281,17 +300,41 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 									</button>
 								{/each}
 							{:else}
-								{#each finishShelf.curated as finish (finish.id)}
-									<button
-										type="button"
-										class="tile"
-										title={finish.label}
-										data-finish-tile={`curated:${finish.id}`}
-										onclick={() => onFinishPick({ curated: finish.id })}
-									>
-										<i class="material" style:background={finish.color}></i>
-										<span class="tile-label">{finish.label}</span>
-									</button>
+								{#each curatedCards as finish (finish.variants.length > 0 ? `card:${finish.label}` : finish.id)}
+									<div class="finish-card" class:variants={finish.variants.length > 0}>
+										<button
+											type="button"
+											class="tile"
+											title={finish.variants.length > 0
+												? `${finish.label}, ${finish.variants.find((v) => v.id === finish.id)?.label ?? ''}`
+												: finish.label}
+											data-finish-tile={`curated:${finish.id}`}
+											onclick={() => onFinishPick({ curated: finish.id })}
+										>
+											<FinishTile
+												source={{ kind: 'catalogue', id: finish.id }}
+												color={finish.color}
+												size={32}
+											/>
+											<span class="tile-label">{finish.label}</span>
+										</button>
+										{#if finish.variants.length > 0}
+											<div class="variant-chip" role="group" aria-label={`${finish.label} finish`}>
+												{#each finish.variants as variant (variant.id)}
+													<button
+														type="button"
+														class:on={variant.id === finish.id}
+														aria-pressed={variant.id === finish.id}
+														data-finish-variant={variant.id}
+														onclick={() => {
+															const group = variantCardOf(variant.id);
+															if (group !== undefined) variantChoice[group.primary] = variant.id;
+														}}>{variant.label}</button
+													>
+												{/each}
+											</div>
+										{/if}
+									</div>
 								{/each}
 								{#each finishShelf.project as finish (finish.id)}
 									<button
@@ -301,14 +344,12 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 										data-finish-tile={`project:${finish.id}`}
 										onclick={() => onFinishPick({ project: finish.id })}
 									>
-										{#if finish.imageUri !== null}
-											<i
-												class="material image"
-												style={`background-color:${finish.color};background-image:url("${finish.imageUri}")`}
-											></i>
-										{:else}
-											<i class="material" style:background={finish.color}></i>
-										{/if}
+										<FinishTile
+											source={finishTileSource(finish.id)}
+											color={finish.color}
+											imageUri={finish.imageUri}
+											size={32}
+										/>
 										<span class="tile-label">{finish.name}</span>
 									</button>
 								{/each}
@@ -472,7 +513,9 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			>
 				<WorldIcon name={tool.icon} size={20} hero />
 				{#if tool.id === 'paint' && paintChip !== null}
-					<i class="chip {paintChip.shape}" data-paint-chip style={`background: ${paintChip.color}`} aria-hidden="true"></i>
+					<i class="chip {paintChip.shape}" data-paint-chip style={`background: ${paintChip.color}`} aria-hidden="true">
+						{#if paintChip.shape === 'material'}<FinishTile source={paintChip.source ?? null} color={paintChip.color} size={13} />{/if}
+					</i>
 				{/if}
 				<span class="kl">{tool.label}</span>
 				{#if tool.shortcut}<kbd class="kk">{tool.shortcut}</kbd>{/if}
@@ -783,6 +826,37 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	.finish-card {
+		position: relative;
+		flex: none;
+		display: flex;
+		align-items: center;
+		height: 100%;
+	}
+	/* D1: the chip sits beside the picture, never over it. */
+	.variant-chip {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin: 0 4px 0 -6px;
+		padding: 2px;
+		border-radius: 7px;
+		background: color-mix(in srgb, var(--shell-ink, #000) 8%, transparent);
+	}
+	.variant-chip button {
+		padding: 2px 5px;
+		border: 0;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--shell-ink-2, inherit);
+		font: 8px/1.2 var(--shell-sans);
+		text-align: left;
+		cursor: pointer;
+	}
+	.variant-chip button.on {
+		background: var(--shell-ink, #222);
+		color: var(--shell-surface, #fff);
+	}
 	.material.image {
 		background-position: center;
 		background-size: cover;
@@ -930,7 +1004,14 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		border-radius: 50%;
 	}
 	.chip.material {
+		overflow: hidden;
 		border-radius: 3px;
+	}
+	.chip :global(.finish-tile) {
+		width: 100%;
+		height: 100%;
+		border-radius: 0;
+		box-shadow: none;
 	}
 	.kk {
 		position: absolute;

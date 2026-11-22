@@ -18,7 +18,7 @@
 	 * EditorHead/Index/Card, Unfold, Artwork, Experience lens/controller, drafting
 	 * and the Height Sheet remain exactly where they were.
 	 */
-	import { onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
@@ -54,6 +54,8 @@
 	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
 	import { createStageEraser, STAGE_ERASER_TASK } from '$lib/authoring/stage/stage-eraser';
 	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
+	import { provideFinishTiles } from '$lib/authoring/look/finish-tiles-context';
+	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import {
 		analyzeModelDerivativeBytes,
 		createModelAnalysisCache
@@ -159,7 +161,7 @@
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { withFinishPreviews } from '@portfolio/project-model/scene-planning';
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
-	import { parseColourKey } from '$lib/authoring/look/paint-pick';
+	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
@@ -223,6 +225,9 @@
 	 * route, so the cache is an optimisation, never a second authority.
 	 */
 	const verifiedImages = createVerifiedProjectImageCache();
+	// The Stage's Finish pictures (U1): the shelf asks, the Stage-mounted host draws.
+	const finishTiles = provideFinishTiles();
+	onDestroy(() => finishTiles.dispose());
 	const stageAssets = createStageAssetLeases({
 		session,
 		apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
@@ -587,6 +592,20 @@
 	$effect(() => {
 		if (shell.armedHostTool !== 'paint') paintTrayState.reset();
 	});
+	/** One project Finish's picture source: the accepted Scene, read at its content id, through the project's texture scope. */
+	function finishTileSource(finishId: string): FinishTileSource | null {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		return {
+			kind: 'finish',
+			subject: {
+				kind: 'finish',
+				document: boot.snapshot.domain.scene,
+				finishId,
+				revision: boot.snapshot.sourceContentId,
+				scope: stageAssets.textureScope
+			}
+		};
+	}
 	const finishShelf = $derived.by(() => {
 		void shell.contributionsVersion;
 		return finishes.libraryShelf();
@@ -2427,7 +2446,13 @@
 						onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
 						onMaterialPick: look.pickMaterial,
 						finishShelf,
-						onFinishPick: (ref) => void finishes.pickFinish(ref),
+						onFinishPick: (ref) => {
+							// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
+							const fromPaint = shell.armedHostTool === 'paint';
+							void finishes.pickFinish(ref);
+							if (fromPaint && shell.libraryOpen) commands.armWorldTool('paint');
+						},
+						finishTileSource,
 						finishImage: finishes.image,
 						onFinishImageImport: (file: File) => void finishes.addFromImage(file),
 						onFinishImageCancel: () => finishes.cancelImage(),
@@ -2438,8 +2463,8 @@
 						onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
 						onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
 						onLookPick: look.pickLibraryEntry,
-						trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null,
-						paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material' },
+						trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
+						paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
 						plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 						inkReading: shell.inkReading,
 						sliceMode: sliceReading.reading?.kind ?? null,
@@ -2536,7 +2561,7 @@
 			onCloseKeys={() => shell.setKeysOpen(false)}
 		/>
 
-		{#if shell.armedHostTool === 'paint' && preview === null}
+		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen}
 			<StagePaintTray
 				tray={paintTray}
 				view={paintTrayState}
@@ -2553,6 +2578,7 @@
 				onFavourite={() => finishes.toggleActiveFavourite()}
 				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper(null))}
 				onLibrary={() => finishes.openFinishes()}
+				tileSource={finishTileSource}
 			/>
 		{/if}
 

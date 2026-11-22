@@ -118,3 +118,15 @@ describe('T2.S8 U2 — Paint preferences', () => {
 		expect(store.saved().favouriteMaterials).toEqual(['curated:x']);
 	});
 });
+
+describe('paintTileSource', () => {
+	it('maps a stored Finish key to U1’s picture source and nothing else', async () => {
+		const { paintTileSource } = await import('$lib/authoring/look/paint-pick');
+		const project = (id: string) => ({ project: id });
+		expect(paintTileSource('curated:wood-oak-veneer', project)).toEqual({ kind: 'catalogue', id: 'wood-oak-veneer' });
+		expect(paintTileSource('project:f9', project)).toEqual({ project: 'f9' });
+		expect(paintTileSource('#336699', project)).toBeNull();
+		expect(paintTileSource('slot:sage', project)).toBeNull();
+		expect(paintTileSource('model-own', project)).toBeNull();
+	});
+});
