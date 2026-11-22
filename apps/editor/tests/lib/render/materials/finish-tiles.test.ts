@@ -168,6 +168,7 @@ describe('the Finish picture service', () => {
 		controller.abort();
 		expect(await tiles.lease(OAK, 32, 1, controller.signal)).toBeNull();
 		const made = await tiles.lease(OAK, 32, 1);
+		made!.release();
 		tiles.dispose();
 		expect(revoked).toContain(made!.url);
 		expect(await tiles.lease(OAK, 32, 1)).toBeNull();
@@ -310,6 +311,62 @@ describe('the Finish picture service', () => {
 			expect((await Promise.all(all)).every((lease) => lease !== null)).toBe(true);
 			expect(host.peak()).toBeLessThanOrEqual(FINISH_TILE_RENDER_CONCURRENCY);
 			expect(tiles.stats()).toMatchObject({ drawing: 0, drawQueued: 0 });
+		});
+
+		it('keeps a held picture valid through dispose and revokes it at its last release', async () => {
+			const tiles = service();
+			tiles.registerRenderer(ready());
+			const held = await tiles.lease(project('held'), 32, 1);
+			const idle = await tiles.lease(project('idle'), 32, 1);
+			idle!.release();
+			tiles.dispose();
+			expect(revoked).toContain(idle!.url);
+			expect(revoked).not.toContain(held!.url);
+			held!.release();
+			expect(revoked).toContain(held!.url);
+			expect(new Set(revoked).size).toBe(created.length);
+		});
+
+		it('never cancels a draw a tile is still waiting for when a shelf over the limit evicts it', async () => {
+			const host = manual();
+			const tiles = service();
+			tiles.registerRenderer(host.render);
+			const count = 230;
+			const all = Array.from({ length: count }, (_, i) => tiles.lease(project(`s${i}`), 32, 1));
+			await settle();
+			expect(tiles.stats().pictures).toBeLessThanOrEqual(192);
+			let done = 0;
+			while (done < count) {
+				expect(host.pending[done]!.signal!.aborted).toBe(false);
+				host.pending[done]!.resolve();
+				done += 1;
+				await settle();
+			}
+			const leases = await Promise.all(all);
+			expect(leases.every((lease) => lease !== null)).toBe(true);
+			// Evicted while drawing, the held URLs outlive the cache until released.
+			const evicted = leases.slice(0, count - 192).map((lease) => lease!.url);
+			expect(revoked.filter((url) => evicted.includes(url))).toHaveLength(0);
+			for (const lease of leases) lease!.release();
+			tiles.dispose();
+			expect(new Set(revoked).size).toBe(created.length);
+		});
+
+		it('revokes a picture evicted while drawing at its last release, not before', async () => {
+			const host = manual();
+			const tiles = service();
+			tiles.registerRenderer(host.render);
+			const first = tiles.lease(project('first'), 32, 1);
+			for (let i = 0; i < 192; i += 1) void tiles.lease(project(`s${i}`), 32, 1);
+			await settle();
+			expect(host.pending[0]!.signal!.aborted).toBe(false);
+			host.pending[0]!.resolve();
+			const lease = await first;
+			expect(lease).not.toBeNull();
+			expect(tiles.leaseNow(project('first'), 32, 1)).toBeNull();
+			expect(revoked).not.toContain(lease!.url);
+			lease!.release();
+			expect(revoked).toEqual([lease!.url]);
 		});
 
 		it('never draws a queued tile that left the shelf before its turn', async () => {

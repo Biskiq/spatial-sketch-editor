@@ -114,6 +114,37 @@ Re-verified: `npm run check` 0 errors; `test:arch` 358/358; the full default edi
 529 files / 6552 tests with a 120 s timeout; `npm run build` passes and the visitor closure is
 still clean.
 
+## Independent review follow-up (lease lifetime)
+
+An independent review at `8873e3f4c` confirmed two lifetime defects in `finish-tiles.svelte.ts`,
+each reproduced by a regression test that failed before the fix:
+
+1. **Dispose revoked held leases.** `dispose()` revoked every object URL, including ones a tile
+   still showed, contradicting the lease contract ("valid until `release()`"). The route's
+   `onDestroy` can run before child tiles release, so a still-mounted `<img>` could lose its
+   source. Fix: dispose now retires entries exactly as eviction does — unheld URLs are revoked at
+   once, held ones at their last release; draws are still cancelled and new leases refused. The
+   earlier test that asserted the old behaviour now releases before disposing.
+2. **Eviction cancelled awaited draws.** LRU retirement aborted any unsettled job, so a shelf of
+   more than 192 project Finishes requested at once lost its oldest requests (null → swatch only),
+   and the picture job also refused to finish once its entry was marked dead. Fix: eviction only
+   cancels a draw nobody waits for; an evicted draw with waiters completes, its lease is taken and
+   its URL revoked at the last release. Forget and dispose still cancel unconditionally (their
+   textures are gone). Leases awaiting a picture are counted (`waiters`), so a picture retired
+   between its draw settling and its waiter taking it is neither revoked under that waiter nor
+   leaked if the waiter declines it.
+
+New tests (`finish-tiles.test.ts`, lifecycle block): held lease survives dispose and is revoked at
+release; a 230-Finish shelf over the 192 limit gets every picture with no draw aborted and no URL
+leaked; a picture evicted mid-draw is served, absent from the cache, and revoked exactly at its
+release. Adjacent paths inspected with no further defects: draw-slot queue and abort, renderer
+register/unregister and epoch retry, scope forget, shared master jobs, and `FinishTile`'s
+switch/cancel/release effect.
+
+Verification: `npm run check` 0 errors (17 pre-existing warnings); `test:arch` 38 files / 358
+tests; focused materials + Finish tile suites 22 files / 353 tests; `test:fast` 482 files / 6066
+tests.
+
 ## Limitations
 
 - The cache is memory only. There is no persistent cache for project Finish pictures.

@@ -76,6 +76,8 @@ type Entry = {
 	/** The URL is an object URL this service must revoke (a catalogue master's static URL is not). */
 	owned: boolean;
 	refs: number;
+	/** Leases awaiting this picture that have not yet taken (or declined) it. */
+	waiters: number;
 	/** Left the cache (evicted, forgotten or disposed): no new holder, revoked at the last release. */
 	dead: boolean;
 	revoked: boolean;
@@ -203,11 +205,20 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		if (entry.owned && entry.url !== null) URL.revokeObjectURL(entry.url);
 	}
 
-	/** Leave the cache. In use: the URL lives until its last release. */
-	function retire(entry: Entry): void {
+	/** A retired picture's URL goes once no lease holds it and no waiter is about to take it. */
+	function reap(entry: Entry): void {
+		if (entry.dead && entry.refs === 0 && entry.waiters === 0) revoke(entry);
+	}
+
+	/**
+	 * Leave the cache. In use: the URL lives until its last release. Eviction
+	 * only cancels a draw nobody waits for; a forget or dispose (`cancel`) stops
+	 * it regardless, because its textures are gone.
+	 */
+	function retire(entry: Entry, cancel = false): void {
 		entry.dead = true;
-		if (!entry.job.settled) entry.job.controller.abort();
-		if (entry.refs === 0) revoke(entry);
+		if (!entry.job.settled && (cancel || entry.job.holders === 0)) entry.job.controller.abort();
+		reap(entry);
 	}
 
 	function remember<T>(map: Map<string, T>, key: string, value: T, limit: number, release?: (value: T) => void): void {
@@ -271,6 +282,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			key,
 			owned: false,
 			refs: 0,
+			waiters: 0,
 			dead: false,
 			revoked: false
 		};
@@ -291,9 +303,10 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			}
 			const found = await hold(master, signal);
 			if (found === null) return null;
-			// Dead or disposed while drawing: make nothing that nobody could revoke.
+			// Cancelled (last waiter left, forgotten or disposed) while drawing: make
+			// nothing that nobody could revoke. An evicted draw with waiters goes on.
 			entry.key = found.key;
-			const alive = (): boolean => !disposed && !entry.dead && !signal.aborted;
+			const alive = (): boolean => !disposed && !signal.aborted;
 			if (!alive()) return null;
 			// M is the master itself; a catalogue master is served by its own URL.
 			if (derivative.edge === SAMPLE_TILE_MASTER_SIZE) {
@@ -340,7 +353,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 				if (released) return;
 				released = true;
 				entry.refs -= 1;
-				if (entry.dead && entry.refs === 0) revoke(entry);
+				reap(entry);
 			}
 		};
 	}
@@ -388,9 +401,17 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		): Promise<FinishTileLease | null> {
 			const entry = entryOf(source, cssPx, devicePixelRatio);
 			if (entry === null) return null;
-			const result = await hold(entry.job, signal);
-			if (result === null || signal?.aborted) return null;
-			return take(entry);
+			entry.waiters += 1;
+			let result: Picture | null;
+			try {
+				result = await hold(entry.job, signal);
+			} finally {
+				entry.waiters -= 1;
+			}
+			const lease = result === null || signal?.aborted || disposed ? null : take(entry);
+			// Retired while this waiter was on its way and nobody else took it.
+			if (lease === null) reap(entry);
+			return lease;
 		},
 		/** Drop every picture of one project scope (its textures were disposed). In-use URLs live to their last release. */
 		forgetScope(scopeId: string): void {
@@ -404,7 +425,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			for (const [key, entry] of [...pictures]) {
 				if (!key.startsWith(prefix)) continue;
 				pictures.delete(key);
-				retire(entry);
+				retire(entry, true);
 			}
 		},
 		stats() {
@@ -425,11 +446,8 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			render = null;
 			for (const job of masters.values()) if (!job.settled) job.controller.abort();
 			masters.clear();
-			for (const entry of pictures.values()) {
-				entry.dead = true;
-				if (!entry.job.settled) entry.job.controller.abort();
-				revoke(entry);
-			}
+			// A picture a tile still shows lives to its last release, as after an eviction.
+			for (const entry of pictures.values()) retire(entry, true);
 			pictures.clear();
 			while (waiting.length > 0) waiting.shift()?.(null);
 		}
