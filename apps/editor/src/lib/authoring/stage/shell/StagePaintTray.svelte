@@ -309,10 +309,12 @@
 	/* A light instrument above the dock, the dock's own width: the approved
 	   appearance prototype's tray. Swatch rings and the pill controls are its. */
 	.tray {
-		/* Centred over the dock: the same inset the lower column keeps from the index. */
+		/* Centred over the dock: the same inset the lower column keeps from the index.
+		   It floats 8px clear of the dock, as in the prototype: the lower column sits
+		   10px off the stage edge, so 10px + its height + 8px. */
 		position: absolute;
 		inset-inline: calc(12px + var(--index-cover, 0px)) 12px;
-		bottom: calc(var(--lower-column-height, 0px) + 0.75rem);
+		bottom: calc(var(--lower-column-height, 0px) + 18px);
 		z-index: 13;
 		box-sizing: border-box;
 		display: flex;
