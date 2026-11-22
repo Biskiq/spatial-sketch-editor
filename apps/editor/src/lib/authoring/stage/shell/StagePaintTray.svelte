@@ -55,17 +55,14 @@
 		swatch.kind === 'finish' ? paintTileSource(swatch.key, tileSource) : null;
 
 	/**
-	 * D1 in the tray: one Concrete card with a Matte/Polished chip. The card
-	 * shows the variant that is the pick, else its primary; a chip picks.
+	 * D1 in the tray: a variant family is one swatch, its primary (Concrete, not
+	 * Polished concrete). Variants are chosen in the Library, never here; a picked
+	 * variant leads the row as the pick.
 	 */
 	const curatedCards = $derived(
-		foldVariantCards(
-			tray.materials.curated.map((swatch) => ({ ...swatch, id: swatch.key.slice('curated:'.length) as MaterialId })),
-			() => (tray.active?.kind === 'finish' && tray.active.key.startsWith('curated:') ? (tray.active.key.slice('curated:'.length) as MaterialId) : undefined)
-		)
+		foldVariantCards(tray.materials.curated.map((swatch) => ({ ...swatch, id: swatch.key.slice('curated:'.length) as MaterialId })))
 	);
 	const curatedGroups = $derived(groupByMaterialFamily(curatedCards));
-	const curatedByKey = $derived(new Map(tray.materials.curated.map((swatch) => [swatch.key, swatch])));
 
 	const tab = $derived<PaintTrayTab>(tray.colourEnabled ? view.tab : 'materials');
 	const row = $derived(tab === 'colours' ? tray.colours.row : tray.materials.row);
@@ -125,15 +122,15 @@
 				<button type="button" role="tab" data-paint-tab-button="colours" aria-selected={tab === 'colours'} class:on={tab === 'colours'} onclick={() => view.setTab('colours')}>Colours</button>
 			{:else}
 				<!-- Colour paint is U3's colour-coat planner; the tab is decided and drawn, and inert until it lands. -->
-				<button type="button" role="tab" class="future" data-paint-tab-button="colours" aria-selected="false" aria-disabled="true" title="Colour paint arrives with colour coats" onclick={(event) => event.preventDefault()}>Colours</button>
+				<button type="button" role="tab" class="future" data-paint-tab-button="colours" aria-selected="false" aria-disabled="true" title="Colour replaces the surface colour and keeps its relief (T) · arrives with colour coats" onclick={(event) => event.preventDefault()}>Colours</button>
 			{/if}
-			<button type="button" role="tab" data-paint-tab-button="materials" aria-selected={tab === 'materials'} class:on={tab === 'materials'} onclick={() => view.setTab('materials')}>Materials</button>
+			<button type="button" role="tab" title="A material replaces the whole Finish (T)" data-paint-tab-button="materials" aria-selected={tab === 'materials'} class:on={tab === 'materials'} onclick={() => view.setTab('materials')}>Materials</button>
 		</span>
-		<span class="consequence" class:refused={consequence.refused} data-paint-consequence role="status">{consequence.text}</span>
-		<span class="seg radius" role="group" aria-label="Paint reach">
+		<span class="consequence" class:refused={consequence.refused} data-paint-consequence role="status" title={consequence.text}>{consequence.text}</span>
+		<span class="seg radius" role="group" aria-label="Paint radius">
 			<!-- Brush is a decided future radius inside Paint: drawn, inert, with no tool rows until it is built. -->
-			<button type="button" class="future" data-paint-radius="brush" aria-disabled="true" title="Brush: paint part of a surface. Coming later" onclick={(event) => event.preventDefault()}>
-				<ShellIcon name="paint" size={14} />
+			<button type="button" class="future" data-paint-radius="brush" aria-disabled="true" title="Brush — paint part of a surface (future)" onclick={(event) => event.preventDefault()}>
+				<ShellIcon name="brush" size={14} />
 				Brush
 			</button>
 			{#each PAINT_RADII as option (option.id)}
@@ -156,7 +153,7 @@
 			data-paint-dropper
 			aria-pressed={tray.dropper}
 			aria-label="Sample"
-			title="Sample a Finish from the Stage (I) · Alt-click does it without this button"
+			title="Sample a surface’s Finish (I) · Alt-click or long-press does it without this button"
 			onclick={onDropper}
 		>
 			<ShellIcon name="dropper" size={18} />
@@ -196,6 +193,9 @@
 					{#if swatch.kind === 'finish'}{@render tile(swatch, 40)}{/if}
 				</button>
 			{/each}
+			{#if row.length === 0 && !leadVisible}
+				<span class="empty" data-paint-empty>Star colours or materials to keep them here.</span>
+			{/if}
 			<span class="sep"></span>
 			{#if tab === 'colours'}
 				<button type="button" class="swatch-button colour dashed" data-paint-wheel-open aria-expanded={view.wheelOpen} title="Any colour: open the wheel" aria-label="Custom colour" onclick={() => view.setWheelOpen(!view.wheelOpen)}>
@@ -227,8 +227,8 @@
 			class="ib"
 			data-paint-expand
 			aria-expanded={view.expanded}
-			aria-label={view.expanded ? 'Show fewer' : 'Show more'}
-			title={view.expanded ? 'Show fewer' : 'Show more'}
+			aria-label={`${view.expanded ? 'Hide' : 'Show'} ${tab === 'colours' ? 'palette' : 'all materials'}`}
+			title={`${view.expanded ? 'Hide' : 'Show'} ${tab === 'colours' ? 'palette' : 'all materials'}`}
 			onclick={() => view.toggleExpanded()}
 		>
 			<ShellIcon name={view.expanded ? 'chevronDown' : 'chevronUp'} size={16} />
@@ -288,35 +288,17 @@
 					<div class="group" role="group" aria-label={family.label} data-paint-family={family.id}>
 						<span class="heading">{family.label}</span>
 						<span class="grid">
-							{#each family.entries as card (card.variants.length > 0 ? `card:${card.cardLabel}` : card.key)}
-							{@const named = card.variants.length > 0 ? `${card.cardLabel}, ${card.variants.find((v) => v.id === card.id)?.label ?? ''}` : card.label}
-							<span class="card" class:variants={card.variants.length > 0}>
-								<button type="button" class="swatch-button material" class:picked={tray.active?.key === card.key} style={`--swatch: ${card.color}`} title={named} aria-label={named} data-paint-swatch={card.key} onclick={() => onPick(card)}>
+							{#each family.entries as card (card.key)}
+								<button type="button" class="swatch-button material" class:picked={tray.active?.key === card.key} style={`--swatch: ${card.color}`} title={card.cardLabel ?? card.label} aria-label={card.cardLabel ?? card.label} data-paint-swatch={card.key} onclick={() => onPick(card)}>
 									{@render tile(card, 40)}
 								</button>
-								{#if card.variants.length > 0}
-									<span class="variant-chip" role="group" aria-label={`${card.cardLabel} finish`}>
-										{#each card.variants as variant (variant.id)}
-											{@const entry = curatedByKey.get(`curated:${variant.id}`)}
-											<button
-												type="button"
-												class:on={variant.id === card.id}
-												aria-pressed={variant.id === card.id}
-												data-paint-variant={variant.id}
-												disabled={entry === undefined}
-												onclick={() => entry !== undefined && onPick(entry)}
-											>{variant.label}</button>
-										{/each}
-									</span>
-								{/if}
-							</span>
-						{/each}
+							{/each}
 						</span>
 					</div>
 				{/each}
 				<button type="button" class="pill library" data-paint-library-open onclick={onLibrary}>
 					<ShellIcon name="library" size={15} />
-					Open the Library · search, filters, detail
+					Open the Library — search, filters, detail
 				</button>
 			{/if}
 		</div>
@@ -440,6 +422,12 @@
 		text-transform: uppercase;
 		transform: rotate(180deg);
 		writing-mode: vertical-rl;
+	}
+	.empty {
+		flex: none;
+		color: var(--shell-ink-3);
+		font: 400 var(--shell-text-control)/1.3 var(--shell-sans);
+		white-space: nowrap;
 	}
 	.swatch-button {
 		position: relative;
@@ -568,38 +556,7 @@
 		border-color: var(--shell-leaf);
 		background: var(--shell-leaf-tint);
 	}
-	.card {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-	}
 	/* D1, as on the Library shelf: the chip sits beside the picture, never over it. */
-	.variant-chip {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		padding: 2px;
-		border-radius: 7px;
-		background: color-mix(in srgb, var(--shell-ink) 6%, transparent);
-	}
-	.variant-chip button {
-		min-height: 0;
-		padding: 2px 6px;
-		border: 0;
-		border-radius: 999px;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font: 10px/1.3 var(--shell-mono);
-		text-align: left;
-		cursor: pointer;
-	}
-	.variant-chip button:hover {
-		background: var(--shell-leaf-tint);
-	}
-	.variant-chip button.on {
-		background: var(--shell-forest);
-		color: var(--shell-white);
-	}
 	.pill.library {
 		justify-self: start;
 		padding: 5px 12px;
@@ -663,10 +620,6 @@
 		.seg button,
 		.pill {
 			min-height: 40px;
-		}
-		.variant-chip button {
-			min-height: 22px;
-			padding-inline: 10px;
 		}
 	}
 </style>

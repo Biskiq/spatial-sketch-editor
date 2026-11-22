@@ -964,25 +964,13 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		color: var(--shell-ink-light);
 	}
 	.key.armed {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-		box-shadow: inset 0 0 0 1px var(--shell-hairline);
-	}
-	.key.armed .kk {
-		color: var(--shell-ink-3);
-	}
-	.key.armed .family-dots i {
-		background: var(--shell-hairline-strong);
-	}
-	.key.armed .family-dots i.on {
-		background: var(--shell-action);
+		background: var(--shell-tool-armed-bg);
+		color: var(--shell-tool-armed-ink);
+		box-shadow: var(--shell-tool-armed-edge);
 	}
 	.key:focus-visible {
 		outline: 2px solid var(--shell-focus-halo);
 		outline-offset: -2px;
-	}
-	.key.armed:focus-visible {
-		outline-color: var(--shell-action);
 	}
 	.kl {
 		font: 500 var(--shell-text-control)/1 var(--shell-sans);
@@ -1047,9 +1035,6 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	}
 	.dock button:focus-visible {
 		outline-color: var(--shell-focus-halo);
-	}
-	.dock .key.armed:focus-visible {
-		outline-color: var(--shell-action);
 	}
 	@media (max-width: 760px) {
 		.world-toolbar {

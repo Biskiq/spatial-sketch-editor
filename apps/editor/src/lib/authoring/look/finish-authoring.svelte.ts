@@ -1448,6 +1448,14 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		return true;
 	}
 
+	/** The name of what a surface or object wears now (the consequence line); `null` when it has none. */
+	function wornLabel(target: { readonly surface: PaintableSurface } | { readonly entityId: string }): string | null {
+		if ('entityId' in target) return viewFor(target.entityId)?.label ?? null;
+		const current = scene();
+		const assignment = current?.surfaceFinishes?.find((entry) => surfaceKey(entry.surface) === surfaceKey(target.surface));
+		return current === null || assignment === undefined ? null : labelOfKey(finishKeyOfSurface(current, assignment));
+	}
+
 	function setActive(entityId: string): void {
 		const view = viewFor(entityId);
 		if (view === null || view.key === 'model-own') {
@@ -1534,6 +1542,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		paintSurface,
 		activeSurfaceIsAlready,
 		copySurface,
+		wornLabel,
 		edit,
 		setColor,
 		setOriginal,

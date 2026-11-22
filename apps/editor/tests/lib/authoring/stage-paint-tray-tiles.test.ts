@@ -2,8 +2,8 @@
 /**
  * T2.S8 U2 × U1 — the Paint tray draws every material through U1's FinishTile
  * and the route's one picture service: catalogue keys as catalogue masters,
- * project keys through the route's project source, colours never. The D1
- * Concrete card follows the pick, its chip picks a variant, and every picture
+ * project keys through the route's project source, colours never. D1 folds a
+ * variant family to its primary (variants are the Library's), and every picture
  * the tray held is released when a pick changes or the tray closes.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -109,36 +109,46 @@ describe('T2.S8 U2 × U1 — Paint tray pictures', () => {
 		expect(one.target.querySelector<HTMLElement>('[data-paint-swatch="curated:wood-oak-planks"] .finish-tile')!.style.backgroundColor).not.toBe('');
 	});
 
-	it('expands into families with one Concrete card whose chip picks a variant', async () => {
+	it('expands into families with one Concrete swatch and no variant chooser', async () => {
 		const one = render(trayView(null));
 		one.view.toggleExpanded();
 		await settle();
 		const families = [...one.target.querySelectorAll('[data-paint-family]')].map((group) => group.getAttribute('data-paint-family'));
 		expect(families).toEqual(['wood', 'stone', 'plaster-concrete', 'metal']);
-		// Polished is a chip of the Concrete card, never a tile of its own.
+		// The approved tray lists primaries only: variants are the Library's (D1).
 		expect(one.target.querySelector('[data-paint-swatch="curated:concrete-polished"]')).toBeNull();
+		expect(one.target.querySelector('[data-paint-variant]')).toBeNull();
+		const concrete = one.target.querySelector<HTMLButtonElement>('[data-paint-swatch="curated:concrete-smooth"]')!;
+		expect(concrete.getAttribute('aria-label')).not.toMatch(/polished/i);
 		expect(pictureIn(one.target, 'curated:concrete-smooth')).toBe('blob:concrete-smooth');
-		one.target.querySelector<HTMLButtonElement>('[data-paint-variant="concrete-polished"]')!.click();
-		expect(one.onPick).toHaveBeenCalledWith(expect.objectContaining({ key: 'curated:concrete-polished' }));
+		concrete.click();
+		expect(one.onPick).toHaveBeenCalledWith(expect.objectContaining({ key: 'curated:concrete-smooth' }));
 	});
 
-	it('shows the picked variant on its card and ignores another card’s pick', async () => {
-		const one = render(trayView(finish('curated:wood-oak-planks', 'Oak Planks')));
+	it('leads the row with a variant picked elsewhere and releases it when the pick moves on', async () => {
+		const one = render(trayView(finish('curated:concrete-polished', 'Polished Concrete')));
 		one.view.toggleExpanded();
 		await settle();
-		// A wood pick leaves Concrete on its primary, in its own family.
-		expect(one.target.querySelector('[data-paint-family="plaster-concrete"] [data-paint-swatch="curated:concrete-smooth"]')).not.toBeNull();
-		// Before the fix the Concrete card took this picture too: one tile only.
+		expect(one.target.querySelector('[data-paint-lead] img')?.getAttribute('src')).toBe('blob:concrete-polished');
+		// The Concrete primary is not the pick, so it is not ringed.
+		expect(one.target.querySelector('[data-paint-swatch="curated:concrete-smooth"]')!.classList.contains('picked')).toBe(false);
+		expect(one.holding()).toContain('blob:concrete-polished');
+		// One oak tile only: no card borrows another family's picture.
 		expect(one.target.querySelectorAll('[data-paint-swatch="curated:wood-oak-planks"]')).toHaveLength(1);
 
-		one.probe.show(trayView(finish('curated:concrete-polished', 'Polished Concrete')));
+		one.probe.show(trayView(finish('curated:wood-oak-planks', 'Oak Planks')));
 		await settle();
-		const card = one.target.querySelector('[data-paint-family="plaster-concrete"] [data-paint-swatch]')!;
-		expect(card.getAttribute('data-paint-swatch')).toBe('curated:concrete-polished');
-		expect(card.querySelector('img')?.getAttribute('src')).toBe('blob:concrete-polished');
-		expect(one.target.querySelector('[data-paint-variant="concrete-polished"]')?.getAttribute('aria-pressed')).toBe('true');
-		// The Matte picture this card held is released at once.
-		expect(one.holding()).not.toContain('blob:concrete-smooth');
+		expect(one.target.querySelector('[data-paint-lead] img')?.getAttribute('src')).toBe('blob:wood-oak-planks');
+		expect(one.holding()).not.toContain('blob:concrete-polished');
+	});
+
+	it('says how to fill an empty row, and not while a pick leads it', async () => {
+		const one = render(trayView(null));
+		await settle();
+		expect(one.target.querySelector('[data-paint-empty]')?.textContent).toBe('Star colours or materials to keep them here.');
+		one.probe.show(trayView(finish('curated:stone-terrazzo', 'Terrazzo')));
+		await settle();
+		expect(one.target.querySelector('[data-paint-empty]')).toBeNull();
 	});
 
 	it('releases every picture it held when the tray closes', async () => {

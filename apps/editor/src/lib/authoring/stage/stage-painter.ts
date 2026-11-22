@@ -94,6 +94,10 @@ export type StagePaintOptions = {
 	readonly surfaceScope?: () => PaintRadius;
 	readonly setSurfaceScope?: (scope: PaintRadius) => void;
 	readonly activeLabel: () => string;
+	/** What the pointed surface or object wears now, for the consequence line; `null` when it has no named Finish. */
+	/** Clock for long-press sampling; tests inject one. */
+	readonly now?: () => number;
+	readonly wornLabel?: (target: { readonly surface: PaintableSurface } | { readonly entityId: string }) => string | null;
 };
 
 export type StagePaintStroke = {
@@ -144,12 +148,18 @@ type Press = {
 	readonly scope: PaintRadius;
 	/** Alt at press: sample this Finish instead of painting. */
 	readonly sample: boolean;
+	/** A touch press: held still on one subject for LONG_PRESS_MS, it samples instead of painting. */
+	readonly coarse: boolean;
+	readonly startedAt: number;
 	/** The paintable subjects the stroke has crossed, in order. */
 	readonly targets: StagePaintCandidate[];
 	readonly keys: Set<string>;
 	kind: 'object' | 'surface' | null;
 	cancelled: boolean;
 };
+
+/** The approved design's coarse-pointer dropper: a press held this long on one subject samples it. */
+export const LONG_PRESS_MS = 500;
 
 export function createStagePainter(
 	facade: StageFacade,
@@ -172,6 +182,20 @@ export function createStagePainter(
 		current = null;
 		notice = null;
 		uiGeneration += 1;
+	}
+
+	/**
+	 * The consequence line of the approved design: `<pick> replaces <current> on
+	 * <target>`. Without a pick it stays the plain verb; without a named current
+	 * Finish it names only the pick and the target.
+	 */
+	function pickWords(): string {
+		return options.hasActive() ? `${options.activeLabel()} on` : 'Paint';
+	}
+	function replaceWords(worn: string | null, target: string): string {
+		if (!options.hasActive()) return `Paint ${target}`;
+		const pick = options.activeLabel();
+		return worn !== null && worn !== pick ? `${pick} replaces ${worn} on ${target}` : `${pick} on ${target}`;
 	}
 
 	function candidateAt(input: PointerInput, reach: PaintRadius): StagePaintCandidate | null {
@@ -223,8 +247,8 @@ export function createStagePainter(
 				? { ...target.hit, subRef: { kind: 'component', componentId: `side:${surface.side}` } }
 				: target.hit;
 			const consequence = reach === 'space' && space.kind === 'unique'
-				? `Paint ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space${excludedWords(space.excluded)}`
-				: `Paint this ${surfaceNoun(surface)}`;
+				? `${pickWords()} ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space${excludedWords(space.excluded)}`
+				: replaceWords(options.wornLabel?.({ surface }) ?? null, `this ${surfaceNoun(surface)}`);
 			return {
 				adapterId: target.adapterId,
 				hit,
@@ -243,7 +267,7 @@ export function createStagePainter(
 			surface: null,
 			space: null,
 			assignmentSurfaces: [],
-			consequence: 'Paint this object',
+			consequence: replaceWords(options.wornLabel?.({ entityId: answer.entityId }) ?? null, 'this object'),
 			refusal: target.refusal
 		};
 	}
@@ -349,12 +373,15 @@ export function createStagePainter(
 		hover(input) {
 			if (press !== null || inFlight) return;
 			const next = input === null || input.coarse === true ? null : candidateAt(input, reachFor(input));
-			if (!sameSubject(next, current) || (next === null) !== (current === null)) current = next;
+			// The same subject is re-read when its line changes (a new pick while hovering).
+			if (!sameSubject(next, current) || (next === null) !== (current === null) || next?.consequence !== current?.consequence) current = next;
 		},
 		down(input) {
 			if (inFlight || press !== null) return false;
 			const sampling = input.alt === true || options.dropperArmed();
-			if (!options.hasActive() && !sampling) {
+			const coarse = input.coarse === true;
+			// A touch press may become a long-press sample, so it is held even with nothing picked.
+			if (!options.hasActive() && !sampling && !coarse) {
 				notice = {
 					kind: 'refused',
 					message: 'Choose a Finish in Library › Finishes, or in the object’s Card.',
@@ -380,6 +407,8 @@ export function createStagePainter(
 				first: target,
 				scope: reach,
 				sample: sampling,
+				coarse,
+				startedAt: (options.now ?? defaultNow)(),
 				targets: [],
 				keys: new Set(),
 				kind: null,
@@ -415,6 +444,15 @@ export function createStagePainter(
 			if (ending.cancelled) return;
 			if (ending.sample) {
 				if (sameSubject(under, ending.first)) await sampleFrom(ending.first, input.css);
+				return;
+			}
+			if (
+				ending.coarse &&
+				ending.targets.length <= 1 &&
+				sameSubject(under, ending.first) &&
+				(options.now ?? defaultNow)() - ending.startedAt >= LONG_PRESS_MS
+			) {
+				await sampleFrom(ending.first, input.css);
 				return;
 			}
 			if (ending.targets.length === 0) {
@@ -472,4 +510,8 @@ export function createStagePainter(
 			onChange();
 		}
 	};
+}
+
+function defaultNow(): number {
+	return typeof performance === 'undefined' ? Date.now() : performance.now();
 }

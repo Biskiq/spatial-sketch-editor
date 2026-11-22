@@ -126,15 +126,15 @@
 		background: var(--shell-on-forest-wash);
 	}
 	.key.armed {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
-		box-shadow: 0 1px 3px #0004;
+		background: var(--shell-tool-armed-bg);
+		color: var(--shell-tool-armed-ink);
+		box-shadow: var(--shell-tool-armed-edge);
 	}
 	/* Place a View is a temporary arm, not a second Select: a wash and an underline. */
 	.key.place-armed {
 		background: var(--shell-tool-armed-bg);
 		color: var(--shell-tool-armed-ink);
-		box-shadow: var(--shell-press-ring);
+		box-shadow: var(--shell-tool-armed-edge);
 	}
 	.key.place-armed::after {
 		content: '';

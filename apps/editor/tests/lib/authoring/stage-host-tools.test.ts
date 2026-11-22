@@ -45,7 +45,7 @@ import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/lig
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createStageMeasure, resolveMeasureEndpoint } from '$lib/authoring/stage/stage-measure';
 import { createStageEraser } from '$lib/authoring/stage/stage-eraser';
-import { createStagePainter, STAGE_PAINT_TASK, type StagePaintOptions } from '$lib/authoring/stage/stage-painter';
+import { createStagePainter, LONG_PRESS_MS, STAGE_PAINT_TASK, type StagePaintOptions } from '$lib/authoring/stage/stage-painter';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -419,7 +419,7 @@ describe('T2.S4a — Paint', () => {
 			entityId: null,
 			surface: { kind: 'wall-side', side: 'left' },
 			assignmentSurfaces: [{ kind: 'wall-side', side: 'left' }],
-			consequence: 'Paint this Wall face'
+			consequence: 'Warm Plaster on this Wall face'
 		});
 		const face = painter.candidate()?.surface;
 		await painter.up({ css: wall, evaluationId });
@@ -435,7 +435,7 @@ describe('T2.S4a — Paint', () => {
 		expect(expanded.filter((surface) => surface.kind === 'wall-side')).toHaveLength(4);
 		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-floor' }));
 		expect(expanded).toContainEqual(expect.objectContaining({ kind: 'room-lid' }));
-		expect(painter.candidate()?.consequence).toBe('Paint 6 surfaces in this Space');
+		expect(painter.candidate()?.consequence).toBe('Warm Plaster on 6 surfaces in this Space');
 		await painter.up({ css: wall, evaluationId });
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(assignSurface.mock.calls[0]![0]).toHaveLength(6);
@@ -454,6 +454,86 @@ describe('T2.S4a — Paint', () => {
 		expect(assign).not.toHaveBeenCalled();
 		expect(assignSurface).toHaveBeenCalledTimes(1);
 		expect(facade.snapshot().canonicalJson).toBe(before);
+	});
+
+	it('names the pick and what it replaces on the consequence line, and re-reads it on a new pick', () => {
+		const snapshot = {};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => ({
+				kind: 'paintable-surface' as const,
+				surface: { kind: 'room-floor' as const, roomId: 'room' },
+				space: { kind: 'unique' as const, roomId: 'room', surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }], excluded: [] }
+			})
+		} as unknown as StageFacade;
+		let pick = 'Walnut Veneer';
+		const worn = vi.fn(() => 'Painted Plaster');
+		const painter = createStagePainter(facade, { ...paintOptions().options, activeLabel: () => pick, wornLabel: worn });
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Walnut Veneer replaces Painted Plaster on this floor');
+		expect(worn).toHaveBeenCalledWith({ surface: { kind: 'room-floor', roomId: 'room' } });
+		pick = 'Terrazzo';
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Terrazzo replaces Painted Plaster on this floor');
+		worn.mockReturnValue(null as unknown as string);
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Terrazzo on this floor');
+	});
+
+	it('samples on a touch long-press and paints on a touch tap', async () => {
+		const snapshot = {};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => ({
+				kind: 'paintable-surface' as const,
+				surface: { kind: 'room-floor' as const, roomId: 'room' },
+				space: { kind: 'unique' as const, roomId: 'room', surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }], excluded: [] }
+			}),
+			acquireGesture: () => ({ kind: 'granted' as const, lease: { active: true, release: () => {} } })
+		} as unknown as StageFacade;
+		let clock = 0;
+		const { options, assignSurface } = paintOptions();
+		const painter = createStagePainter(facade, { ...options, now: () => clock });
+		const at = { css: [0, 0] as const, evaluationId: 'generation-1', coarse: true };
+
+		expect(painter.down(at)).toBe(true);
+		clock = LONG_PRESS_MS;
+		await painter.up(at);
+		expect(options.copySurface).toHaveBeenCalledTimes(1);
+		expect(assignSurface).not.toHaveBeenCalled();
+
+		expect(painter.down(at)).toBe(true);
+		clock += 120;
+		await painter.up(at);
+		expect(assignSurface).toHaveBeenCalledTimes(1);
+		expect(options.copySurface).toHaveBeenCalledTimes(1);
+
+		// Nothing picked: a touch press is still held, so a long-press can sample.
+		const empty = createStagePainter(facade, { ...options, hasActive: () => false, now: () => clock });
+		expect(empty.down(at)).toBe(true);
+		clock += LONG_PRESS_MS;
+		await empty.up(at);
+		expect(options.copySurface).toHaveBeenCalledTimes(2);
 	});
 
 	it('names a straddling Region that Space scope skips', () => {
@@ -490,7 +570,7 @@ describe('T2.S4a — Paint', () => {
 		painter.setSurfaceScope('space');
 		painter.hover({ css: [0, 0], evaluationId });
 		expect(painter.candidate()?.consequence).toBe(
-			'Paint 1 surface in this Space · 1 Region spans two Spaces, skipped'
+			'Warm Plaster on 1 surface in this Space · 1 Region spans two Spaces, skipped'
 		);
 	});
 

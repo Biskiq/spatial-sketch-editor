@@ -135,7 +135,9 @@ never grows sideways, and a tool never opens a second row of controls.
 
 - **Dock and palette material.** Both use the dark forest Instrument material with thin
   white icons, so they read as one instrument over any Stage. The armed tool sits on a
-  soft ivory key with a dark icon. Tool colour survives only as a 2 px mark under an icon
+  quiet forest-3 key (`#2d5e48`) with an ivory icon and a 1 px inner edge at 16% white
+  (appearance design D12), one shell token for every tool family, so gold and cobalt stay
+  the loudest marks on screen. Tool colour survives only as a 2 px mark under an icon
   and is never a state colour. Controls are icon-first with tooltips (name, key hint);
   palette controls carry no words at rest.
 - **Arming.** Clicking a tool, its key or Find's Arm verb arms it. Arming never changes
@@ -894,7 +896,7 @@ open usability work, not unfinished shell acceptance.
 ### Experience visual language
 
 Both lenses use the same material, mark language and state roles from the shared visual
-grammar: forest framing and instruments, ivory armed keys, gold selection, white
+grammar: forest framing and instruments, forest-3 armed keys, gold selection, white
 available-transform marks and neutral working surfaces. Thumbnail-led authoring, light
 Stop items within the dark Guide context, quiet spatial context and progressive disclosure
 provide one coherent application. World-specific tools keep their own procedures within
@@ -943,7 +945,7 @@ PLATE has exactly three material classes; a task name is not a new material clas
 | --- | --- |
 | **Chassis** | Shared frame: forest Head, quiet neutral Index and contextual light Card; identity and orientation separated by alignment, hairlines and tonal steps |
 | **Paper** | Spatial Stage, expressed as dark **cutting mat** for model/depth work or light **vellum** for measured drawing; top-down and flat readings render as paper or shaded by an application viewing preference |
-| **Instrument** | Controls acting on the work: the dark forest **dock and palettes** with an ivory armed key, the forest task surface of the Library, repair and Guide, neutral working items and restrained edges |
+| **Instrument** | Controls acting on the work: the dark forest **dock and palettes** with a forest-3 armed key, the forest task surface of the Library, repair and Guide, neutral working items and restrained edges |
 
 The mat gives depth, artwork and geometry a dark ground, with a Paper surface around the work. Vellum makes measured
 architecture the drawing subject. Ink and ochre are mark/state roles, not additional
@@ -1022,7 +1024,7 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue other than the proposal ghost |
 | Stage hover | Leaf contour on a hovered 3D Wall; the approved 2D cut-band hover is unchanged |
 | Selection, the held anchor and current playback moment | Gold (`#d4ad45`, dark ink `#74560c` reference), local contour and quiet tint; selection and playback retain different shape/text cues. Gold means selected geometry (or the point being held), never hover, an available action or inspection |
-| Armed tool | Soft **ivory** key (`#f3f0e4` reference) with a dark icon on the dock material; tool colour is only a 2 px mark under an icon |
+| Armed tool | Quiet **forest-3** key (`#2d5e48`) with an ivory icon and a 1 px inner edge at 16% white on the dock material (`--shell-tool-armed-*`, D12); tool colour is only a 2 px mark under an icon. Primary buttons, the lens and pressed segments keep the ivory engaged key |
 | Available transformation | **White sticker** glyphs with a fine ink keyline and soft shadow; glyph lines in ink with a hairline white halo ([mark language](#spatial-mark-language)) |
 | Temporary inspection (Slice and its depth) | Translucent **yellow** plane or volume (`#f2d000` reference) with the state pill; distinct from gold by hue, translucency and the pill |
 | Marked for erasing | **Red** dashes (`#d0412d` reference), only while the Eraser is in use |
@@ -1086,7 +1088,7 @@ becomes an outline so it does not wash out the focused story.
 | State | Required distinction |
 | --- | --- |
 | **Hover** | Neutral grey on light UI surfaces (Card, menus, Index rows), where held/selected rows stay light gold; restrained edge/tint below selection on Stage |
-| **Armed** | Named tool and distinct active-context treatment: the ivory key on the dark dock, with the palette open or collapsed; never a selected-identity gold echo |
+| **Armed** | Named tool and distinct active-context treatment: the forest-3 key on the dark dock, with the palette open or collapsed; never a selected-identity gold echo |
 | **Selected** | Coherent identity contour/edge and quiet fill across its representations |
 | **Keyboard focus** | Independent visible non-hue focus cue, using focus-visible behavior; no focus ring after a pointer click |
 | **Pressed/toggled or active lens/reading** | Quiet recess, edge and inset rule; does not become selection |

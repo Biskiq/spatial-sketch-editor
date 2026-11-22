@@ -387,7 +387,8 @@ export function createStageShellState(input: StageShellStateInput) {
 				copySurface: async (surface) => (await input.finishes()?.copySurface(surface)) ?? false,
 				surfaceScope: () => paintScope,
 				setSurfaceScope: (scope) => { paintScope = scope; },
-				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish'
+				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish',
+				wornLabel: (target) => input.finishes()?.wornLabel(target) ?? null
 			},
 			() => refreshHostTools()
 		);

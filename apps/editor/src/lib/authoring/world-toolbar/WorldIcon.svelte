@@ -4,6 +4,7 @@
 	 *
 	 * `hero` selects the dock-key drawing (the prototype's HERO map); the default
 	 * palette set is the same 24px grid the prototype uses for options and chrome.
+	 * Paint and Library are the approved appearance design's glyphs (prototypes/appearance-ux).
 	 */
 	let {
 		name = 'select',
@@ -13,7 +14,7 @@
 
 	const paths: Record<string, string> = {
 		select: '<path d="M6.5 3.8 18 10.6l-5.1 1.5 3 5.3-2.2 1.3-3-5.3-3.9 3.7z"/>',
-		paint: '<rect x="4" y="3.8" width="13" height="5.2" rx="1.2"/><path d="M17 6.4h2.6v5.2h-8.1v3"/><rect x="10" y="14.6" width="3" height="6" rx=".8"/>',
+		paint: '<path d="M14.5 3.5 20.5 9.5 11 19a2.1 2.1 0 0 1-3 0l-3-3a2.1 2.1 0 0 1 0-3Z"/><path d="M5.5 13.5h11" opacity=".55"/><path d="M19.5 15.5c0 1.6 1 2.4 1 3.5a1.5 1.5 0 0 1-3 0c0-1.1 1-1.9 1-3.5Z"/>',
 		erase: '<path d="m14.4 4.6 5 5-9.2 9.4H5.6l-2-2a1.4 1.4 0 0 1 0-2z"/><path d="m8.6 10.2 5 5M10.2 19H20"/>',
 		measure: '<path d="m3.6 16.4 12.8-12.8 4 4L7.6 20.4z"/><path d="m7 13 1.6 1.6M9.6 10.4l2 2M12.2 7.8l1.6 1.6M14.8 5.2l2 2"/>',
 		slice: '<path d="M8.5 3.5 16 6.2v14.3l-7.5-2.7z"/><path d="M3 12.2h3.2M18.4 12.2h2.6" stroke-dasharray="1.6 1.6"/>',
@@ -49,7 +50,7 @@
 		'op-round': '<path d="M3 20.2h18"/><circle cx="12" cy="11" r="5"/><path d="M12 6v10M7 11h10" opacity=".55"/>',
 		'op-niche': '<path d="M3 20.2h18"/><path d="M7 17.2v-6.6a5 5 0 0 1 10 0v6.6z"/><path d="M9.4 17.2v-6.2a2.6 2.6 0 0 1 5.2 0v6.2" opacity=".55"/>',
 		'op-wide': '<path d="M3 20.2h18"/><path d="M4.4 20.2V8.4h15.2v11.8"/><path d="M4.4 8.4 7 5.8h10l2.6 2.6" opacity=".55"/>',
-		library: '<rect x="4" y="4" width="6.6" height="6.6" rx="1"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="1"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="1"/><path d="M16.7 13.4v6.6M13.4 16.7h6.6"/>',
+		library: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><circle cx="17" cy="17" r="3"/><path d="m19.2 19.2 1.8 1.8"/>',
 		sun: '<circle cx="12" cy="12" r="3.8"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6"/>',
 		chevron: '<path d="m7 10 5 5 5-5"/>'
 	};
@@ -60,9 +61,9 @@
 		'fam-form': '<path d="M3.2 20h17.6v-3.2H3.2z"/><path d="M5.8 16.8v-6.2h6.4v6.2"/><circle cx="16.6" cy="13.4" r="3.4"/><path d="M5.8 10.6 8 8.4h6.4l-2.2 2.2M14.4 8.4v6.2l-2.2 2.2" opacity=".7"/>',
 		'fam-land': '<path d="M2.4 19.8c3.2-4.8 6.2-6.8 9.6-6.8s6.4 2 9.6 6.8"/><path d="M16.2 13.6V10"/><circle cx="16.2" cy="7.4" r="2.6"/><path d="M5.6 19.8c1.2-1.4 2.2-2.2 3.4-2.6" opacity=".6"/>',
 		'fam-furnish': '<path d="M6 12.2V8.2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M3.8 12.8a1.5 1.5 0 0 1 3 0v2.4h10.4v-2.4a1.5 1.5 0 0 1 3 0V18H3.8z"/><path d="M6 18v2.4M18 18v2.4"/>',
-		paint: '<rect x="4" y="3.6" width="13" height="5.4" rx="1.2"/><path d="M17 6.3h2.8v5.4h-8.3v2.8"/><rect x="10" y="14.4" width="3" height="6.2" rx=".8"/>',
+		paint: '<path d="M14.5 3.5 20.5 9.5 11 19a2.1 2.1 0 0 1-3 0l-3-3a2.1 2.1 0 0 1 0-3Z"/><path d="M5.5 13.5h11" opacity=".55"/><path d="M19.5 15.5c0 1.6 1 2.4 1 3.5a1.5 1.5 0 0 1-3 0c0-1.1 1-1.9 1-3.5Z"/>',
 		erase: '<path d="m14.4 4.4 5.2 5.2-9.4 9.6H5.6l-2.1-2.1a1.4 1.4 0 0 1 0-2z"/><path d="m8.6 10.2 5.2 5.2M10.2 19.2h10"/>',
-		library: '<path d="M3 20h18"/><path d="M4.6 20V4.6h3.2V20M7.8 20V7h3.2v13"/><path d="m13.2 8.2 3-.9 3.8 12.7-3 .9z"/>'
+		library: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><circle cx="17" cy="17" r="3"/><path d="m19.2 19.2 1.8 1.8"/>'
 	};
 </script>
 

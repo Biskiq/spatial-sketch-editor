@@ -176,8 +176,11 @@
 	 *
 	 *  · engaged (a mode, selected key or pressed panel): light neutral fill,
 	 *    forest ink. Weight never changes, so a bar cannot reflow when it moves;
-	 *  · armed (a temporary tool such as Measure or Place a View): a translucent
-	 *    light wash with a light underline, so it never reads as a settled mode;
+	 *  · armed (the dock tool that is live, and temporary tools such as Measure or
+	 *    Place a View): a quiet forest-3 step with ivory ink and a faint inner
+	 *    edge (D12), so gold and cobalt stay the loudest marks on screen. One
+	 *    token for every tool family; primary buttons, the lens and pressed
+	 *    segments keep the engaged ivory key;
 	 *  · idle: transparent with the muted light ink;
 	 *  · focus: one halo on forest, moss on paper.
 	 *
@@ -185,8 +188,9 @@
 	 */
 	--shell-mode-active-bg: var(--shell-ivory);
 	--shell-mode-active-ink: var(--shell-forest);
-	--shell-tool-armed-bg: var(--shell-on-forest-wash-strong);
+	--shell-tool-armed-bg: var(--shell-forest-3);
 	--shell-tool-armed-ink: var(--shell-ivory);
+	--shell-tool-armed-edge: inset 0 0 0 1px rgb(255 255 255 / 0.16);
 	--shell-press-ring: inset 0 0 0 1px var(--shell-line-on-forest);
 	--shell-control-disabled-opacity: 0.42;
 	--shell-focus-ring: 2px solid var(--shell-focus-halo);
@@ -297,6 +301,8 @@
 	--ld-forest-deep: #0d1c13;
 	--ld-forest-2: #1b3426;
 	--ld-forest-3: #24432f;
+	/* D12: the armed tool key is forest 3 of the appearance design, not this skin's forest 3. */
+	--ld-armed: #2d5e48;
 	--ld-leaf: #7f9150;
 	--ld-mint: #9dbb73;
 	--ld-gold: #d4ad45;
@@ -390,6 +396,7 @@
 	--shell-on-forest-wash: rgb(244 245 241 / 0.08);
 	--shell-on-forest-wash-strong: rgb(244 245 241 / 0.14);
 	--shell-focus-halo: rgb(244 245 241 / 0.7);
+	--shell-tool-armed-bg: var(--ld-armed);
 	--shell-serif: var(--ld-serif);
 	--shell-sans: var(--ld-sans);
 	--shell-mono: var(--ld-mono);
