@@ -45,7 +45,7 @@
 			"masonry-brick-painted",
 			"stone-marble-white"
 		],
-		"legacy": "The six pre-F entries stay resolvable with legacy: true and leave the creator shelf; authored creation defaults move to plaster-painted; render fallbacks for documents without a material stay on the legacy entries."
+		"legacy": "The six pre-F entries stay resolvable with legacy: true and leave the creator shelf; new shapes, candidates and native definitions default to plaster-painted and the room portal to metal-brass-satin; generated walls and ceilings without a Finish keep the plaster-warm scalars (they bind no maps), and texturing them is left to a later look slice."
 	},
 	"tool": {
 		"script": "apps/editor/assets-source/textures/derive.ts",

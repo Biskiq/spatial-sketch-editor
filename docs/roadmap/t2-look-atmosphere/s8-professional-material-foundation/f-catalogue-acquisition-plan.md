@@ -34,8 +34,16 @@ catalogue was preferred to the count (D7).
 - **Render-path fix:** the texture loaders treated a missing colour map as failure, so metal sets
   (normal and ORM only) fell back to flat colour. A set that binds no colour map is now ready on its
   structure maps, with a regression test.
-- **Defaults:** new shapes and native objects default to `plaster-painted`. Render fallbacks for
-  documents without a material stay on the legacy entries, which resolve unchanged.
+- **Defaults (D8):**
+  - New shapes, candidates and native object definitions default to `plaster-painted`.
+  - The room portal moves to `metal-brass-satin`.
+  - Generated walls and ceilings with no Finish keep the `plaster-warm` scalars. They bind no
+    maps: they borrow only roughness 0.92 and metalness 0.02 under the room tint. Swapping in
+    `plaster-painted`'s scalar factor (roughness 1, which its ORM map normally modulates) would be
+    less accurate, not more. Texturing generated walls is new render behaviour: every default wall
+    in every project and release would take texture residency. That belongs with a later look
+    slice, not F's catalogue intake.
+  - Internal uses (fallback-shape parts, the Finish-image base, model fallbacks) stay as §3 says.
 - **Rendered QA:** run on `/dev/s8-f` with B's inspection rigs (studio and grazing, lighting v2).
   The matrix is the board plus three vignettes × two rigs × WebGPU and WebGL2. Every cell settled
   with no failures and no console errors.

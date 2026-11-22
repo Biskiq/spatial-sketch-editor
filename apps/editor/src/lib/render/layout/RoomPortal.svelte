@@ -12,7 +12,7 @@
     height,
     wallThickness,
     color = '#d6b35f',
-    materialId = 'brass-aged' as MaterialId
+    materialId = 'metal-brass-satin' as MaterialId
   }: {
     position: Vec3;
     rotation?: Vec3;
