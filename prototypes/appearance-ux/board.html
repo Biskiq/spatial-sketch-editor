@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Responsive board · U appearance study</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<style>
+  main.doc{max-width:1680px}
+  .frames{display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:18px;align-items:start;margin-top:12px}
+  .fr{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
+  .fr h4{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin:0 0 8px;font-size:13px}
+  .fr h4 span{font:11px var(--mono);color:var(--ink2);font-weight:400}
+  .vp{position:relative;overflow:hidden;border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);background:var(--paper)}
+  .vp iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:var(--paper)}
+  .fr .note-sm a{color:var(--moss-ink)}
+  .wide{grid-column:1/-1}
+  @media(max-width:600px){.frames{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="top"><b>U · Appearance</b>
+  <a href="index.html">Decision sheet</a><a href="app.html">Prototype</a><a href="concepts.html">Concepts</a>
+  <a href="lab.html">Thumbnail lab</a><a href="board.html" aria-current="page">Responsive board</a>
+</nav>
+<main class="doc">
+  <header style="padding:22px 0 4px">
+    <h1>Responsive board</h1>
+    <p class="lede">The same prototype at real laptop, desktop and iPad viewports, each frame a live <code>app.html</code> scaled
+      down to fit. Pick a step of the flow; every frame jumps to it. Frames run task presets, which start fresh and never touch
+      your saved prototype state. Phone widths are out of scope (brief).</p>
+    <div class="row" style="margin-top:8px"><span class="lab">Step</span><div class="seg" id="sc"></div></div>
+    <p class="note" id="scNote" style="margin-top:8px"></p>
+  </header>
+  <div class="frames" id="frames"></div>
+  <section class="sec">
+    <header><h2>What changes with width <small>Light &amp; Sky rules, applied to appearance</small></h2></header>
+    <div class="tw"><table>
+      <thead><tr><th>Width</th><th>Index</th><th>Card</th><th>Tray / Library</th><th>Stage</th></tr></thead>
+      <tbody>
+        <tr><td>≥ 1100</td><td>Column, 256 px, always visible</td><td>288 px, right, below the context bar</td><td>Tray above the dock; Library a sheet between Index and Card</td><td>Between Index and Card</td></tr>
+        <tr><td>861–1099</td><td>Overlay from the head button</td><td>288 px</td><td>Library spans the Stage column; expanded tray limits the Card's height</td><td>Full width minus Card</td></tr>
+        <tr><td>≤ 860 (iPad portrait)</td><td>Overlay</td><td>252 px; folds to its identity row while the Library or the expanded tray is open</td><td>Library becomes a bottom sheet with a scrim; tray stays above the dock</td><td>Full width minus Card</td></tr>
+        <tr><td>Coarse pointer</td><td colspan="4">44 px swatches and targets, 44 px slider hit areas, long-press samples (the dropper), drag paints. iframes cannot emulate a coarse pointer: check it on a device or with the browser's touch emulation on <code>app.html</code> itself.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</main>
+<script>
+const SC = [
+  ['paint', 'Arm & paint', 'scene=walnut', 'Paint armed with Walnut from the tray; hover a wall to see the cobalt ghost and the consequence line.'],
+  ['card', 'Finish Card', 'scene=walnut&focus=table:top&card=finish', 'Card for the coffee table top: reach chosen before the edit (This part · All 2), then Colour, Sheen, Pattern, Relief.'],
+  ['tray', 'Colours expanded', 'scene=walnut&tab=colours&tray=open', 'The tray expanded upward: project palette and the wheel. At ≤ 860 the Card folds to its identity row.'],
+  ['library', 'Library', 'scene=walnut&lib=curated', 'Library sheet: search, sources, filters, categories, 256 px sample cards. A bottom sheet with a scrim at ≤ 860.'],
+  ['detail', 'Library detail', 'scene=walnut&lib=curated&expand=cat:wood-oak-veneer', 'Expanded card: 512 sample, close-up and sphere, facts and what travels.'],
+  ['inspect', 'Inspector', 'scene=walnut&focus=table:top&card=finish&inspect=table:top', 'View-only inspector: shape, light, display channel, A/B against the curated base.'],
+  ['import', 'Import', 'scene=artist', 'Five dropped files: the roughness collision refuses until chosen; the normal direction needs a check.'],
+  ['repair', 'Repair', 'scene=repair', 'Two Finishes need repair on open: missing image and a UV-set mismatch.'],
+  ['transfer', 'Transfer', 'scene=transfer', 'Imported Finish in focus: Save to library, switch project, insert from My library.']
+];
+const FR = [
+  [1440, 900, 'Desktop', '1440 × 900'],
+  [1280, 800, 'Laptop', '1280 × 800'],
+  [1180, 820, 'iPad Air landscape', '1180 × 820'],
+  [1024, 768, 'iPad landscape (small)', '1024 × 768'],
+  [820, 1180, 'iPad Air portrait', '820 × 1180']
+];
+let cur = new URLSearchParams(location.search).get('step') || 'paint';
+const sc = document.getElementById('sc'), host = document.getElementById('frames');
+for (const [id, label] of SC) { const b = document.createElement('button'); b.textContent = label; b.dataset.id = id; b.onclick = () => { cur = id; history.replaceState(null, '', '?step=' + id); draw(); }; sc.append(b); }
+const frames = FR.map(([w, h, name, dim]) => {
+  const f = document.createElement('div'); f.className = 'fr';
+  f.innerHTML = `<h4>${name}<span>${dim}</span></h4><div class="vp"><iframe width="${w}" height="${h}" loading="lazy" title="${name} ${dim}"></iframe></div><div class="note-sm"><a target="_blank" rel="noopener">open this frame full size ↗</a></div>`;
+  host.append(f);
+  const vp = f.querySelector('.vp'), ifr = f.querySelector('iframe');
+  new ResizeObserver(() => { const s = vp.clientWidth / w; ifr.style.transform = `scale(${s})`; vp.style.height = h * s + 'px'; }).observe(vp);
+  return { ifr, a: f.querySelector('a') };
+});
+function draw() {
+  sc.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === cur)));
+  const s = SC.find((x) => x[0] === cur) || SC[0];
+  document.getElementById('scNote').textContent = s[3];
+  for (const fr of frames) { const url = 'app.html?' + s[2]; fr.ifr.src = url; fr.a.href = url; }
+}
+draw();
+</script>
+</body>
+</html>

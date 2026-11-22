@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concepts · U appearance study</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<style>
+  .verdict{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .pc{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:12.5px;margin-top:10px}
+  .pc b{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+  .pc ul{margin:0;padding-left:16px} .pc li{margin:2px 0}
+  @media(max-width:860px){.g2,.g3{grid-template-columns:minmax(0,1fr)} .pc{grid-template-columns:1fr}}
+
+  /* mini stage used by the instrument mocks */
+  .mock{position:relative;height:300px;border-radius:10px;background:linear-gradient(180deg,#f1eee6,#e7e3d8);overflow:hidden;border:1px solid var(--line);margin-top:8px;user-select:none}
+  .mock .room{position:absolute;left:50%;top:30px;transform:translateX(-50%);width:200px;height:150px}
+  .mock .room i{position:absolute;display:block;background:center/cover;box-shadow:inset 0 0 0 1px rgba(18,38,29,.15)}
+  .mock .cons{position:absolute;left:8px;top:8px;right:8px;font:11px var(--mono);color:var(--ink2);background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3}
+  .mock .dock{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);height:34px;background:var(--forest);border-radius:10px;display:flex;align-items:center;gap:4px;padding:0 8px;color:#cfe0d3}
+  .mock .dock span{display:grid;place-items:center;width:28px;height:26px;border-radius:7px}
+  .mock .dock span.on{background:var(--forest3);color:#fff}
+  .mock .tray{position:absolute;left:50%;bottom:48px;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 10px rgba(18,38,29,.12);padding:6px 8px;display:grid;gap:6px;width:max-content;max-width:calc(100% - 16px)}
+  .mock .row{display:flex;gap:6px;align-items:center}
+  .mock .sep{width:1px;height:22px;background:var(--line);flex:none}
+  .mock .mini{font:9px var(--mono);color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+  .mock .rail{position:absolute;left:8px;top:44px;bottom:50px;width:46px;background:#fff;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 0;overflow:auto}
+  .mock .index{position:absolute;left:0;top:0;bottom:0;width:70px;background:var(--panel);border-right:1px solid var(--line);font:8.5px var(--mono);color:var(--ink2);padding:36px 6px 0;display:grid;align-content:start;gap:5px}
+  .mock .index i{display:block;height:7px;border-radius:3px;background:#e4e0d4}
+  .mock .clash{position:absolute;left:54px;top:110px;font:10px var(--mono);color:var(--refuse);background:#fff;border:1px solid #e7b9a4;border-radius:6px;padding:2px 6px}
+  .ring{position:absolute;width:150px;height:150px;left:50%;top:58px;transform:translateX(-50%);border-radius:50%}
+  .ring .hub{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--forest)}
+  .ring .sw{position:absolute}
+
+  /* swatch grammar */
+  .gram{display:grid;gap:10px}
+  .gram .gr{display:grid;grid-template-columns:200px 1fr 220px;gap:12px;align-items:center;padding:10px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+  .gram .gr.rec{border-color:var(--moss);box-shadow:inset 0 0 0 1px var(--moss)}
+  .gram .gr .strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px;border-radius:9px}
+  .gram.dark .strip{background:var(--forest)}
+  .gram.card .strip{background:var(--panel)}
+  .gram .gr .m{font:11px var(--mono);color:var(--ink2)}
+  .shape-circle{border-radius:50% !important} .shape-rsq{border-radius:var(--sw-r) !important} .shape-sq{border-radius:4px !important}
+  @media(max-width:960px){.gram .gr{grid-template-columns:1fr}}
+
+  /* library card variants */
+  .lv{display:grid;gap:12px;margin-top:10px}
+  .lv.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .lv.large{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+  .lv.list{grid-template-columns:1fr}
+  .lc{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;position:relative}
+  .lc:hover{border-color:var(--moss)}
+  .lc .im{aspect-ratio:1;background:center/cover}
+  .lc .tx{padding:6px 8px 8px} .lc b{display:block;font-size:12.5px} .lc span{font:10.5px var(--mono);color:var(--ink2)}
+  .lv.large .lc .tx{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(18,38,29,.72));color:#fff;padding:24px 10px 8px}
+  .lv.large .lc .tx span{color:#dfe7dd}
+  .lv.list .lc{display:grid;grid-template-columns:56px 1fr auto auto;align-items:center;gap:12px;padding:6px 10px;border-radius:10px}
+  .lv.list .lc .im{width:56px;border-radius:var(--sw-r)}
+  .lv.list .lc .tx{padding:0}
+  .lc .fx{font:10.5px var(--mono);color:var(--ink2);white-space:nowrap}
+  .lc.open{grid-column:span 2;grid-row:span 2}
+  .lc.open .det{display:grid}
+  .lc .det{display:none;grid-template-columns:1fr 1fr;gap:6px;padding:0 8px 8px}
+  .lc .det i{display:block;aspect-ratio:1;border-radius:8px;background:center/cover}
+  .lv.list .lc.open,.lv.large .lc.open{grid-column:auto;grid-row:auto}
+
+  /* toolbar alternatives */
+  .tb{display:flex;align-items:center;gap:4px;background:var(--forest);border-radius:12px;padding:6px 8px;color:#cfe0d3;width:max-content;max-width:100%;overflow:auto;margin-top:8px}
+  .tb span{display:grid;justify-items:center;gap:2px;font-size:10px;padding:4px 7px;border-radius:8px;color:#cfe0d3;min-width:42px}
+  .tb span.dim{opacity:.4} .tb span.on{background:var(--forest3);color:#fff}
+  .tb span.new{box-shadow:inset 0 0 0 1px #a9c47a}
+  .tb .dv{width:1px;min-width:0;padding:0;height:24px;background:#3b5a4b;margin:0 2px}
+
+  /* colour on material */
+  .com{display:grid;grid-template-columns:140px repeat(3,minmax(0,170px));gap:10px;align-items:center}
+  .com .h{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+  .com img{width:100%;aspect-ratio:1;border-radius:var(--sw-r);display:block;box-shadow:inset 0 0 0 1px rgba(18,38,29,.12)}
+  .com .nm b{display:block;font-size:13px} .com .nm span{font:10.5px var(--mono);color:var(--ink2)}
+  @media(max-width:760px){.com{grid-template-columns:90px repeat(3,minmax(0,1fr))}}
+
+  /* finish card layouts */
+  .fc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px;display:grid;gap:6px;align-content:start;min-height:280px}
+  .fc .hd{display:flex;gap:8px;align-items:center} .fc .hd i{width:28px;height:28px;border-radius:7px;background:center/cover;flex:none}
+  .fc .hd b{font-size:13px}
+  .fc .ln{display:flex;justify-content:space-between;border-top:1px solid var(--line2);padding-top:5px;color:var(--ink2)}
+  .fc .ln em{font:11px var(--mono);font-style:normal;color:var(--ink)}
+  .fc .bar{height:6px;border-radius:9px;background:linear-gradient(90deg,var(--moss) 0 var(--p,50%),var(--track0) var(--p,50%))}
+  .fc .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line)} .fc .tabs span{padding:3px 8px;border-radius:6px 6px 0 0} .fc .tabs span.on{background:var(--forest);color:#fff}
+  .fc .acc2{border:1px solid var(--line);border-radius:7px;padding:4px 8px;display:flex;justify-content:space-between;color:var(--ink2)}
+  .fc .hidden{opacity:.35;text-decoration:line-through}
+</style>
+</head>
+<body>
+<nav class="top"><b>U · Appearance</b>
+  <a href="index.html">Decision sheet</a><a href="app.html">Prototype</a><a href="concepts.html" aria-current="page">Concepts</a>
+  <a href="lab.html">Thumbnail lab</a><a href="board.html">Responsive board</a>
+</nav>
+<main class="doc">
+  <header style="padding:22px 0 4px">
+    <h1>Competing directions</h1>
+    <p class="lede">Each question below has two to four genuinely different answers, drawn with the real S8 texture bytes so the
+      comparison is about the interaction, not the art. Every mock is clickable. The recommended answer is the one the
+      <a href="app.html">end-to-end prototype</a> builds; the others are kept here with the reason they lost, so the owner can
+      overrule with the trade-off in view.</p>
+    <p id="status" class="note mono">Loading textures…</p>
+  </header>
+
+  <!-- 1 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="instrument">
+    <header><h2>1 · Where quick colours and materials live <small>one instrument, four placements</small></h2></header>
+    <p class="note">The brief asks for colours and materials to feel like one instrument with no duplicated writers. Every
+      option below only <b>arms</b> Paint; the Stage gesture is the one writer (<code>model.assign</code>). Click swatches in each
+      mock: the line at the top says what the next Stage click will do.</p>
+    <div class="g2" id="inst"></div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="grammar">
+    <header><h2>2 · Swatch grammar <small>shape tells the consequence</small></h2>
+      <div class="ctlbar row">
+        <span class="note">Size</span>
+        <div class="seg" id="gSize"><button data-v="28">28</button><button data-v="40" aria-pressed="true">40</button><button data-v="52">52</button><button data-v="72">72</button></div>
+        <span class="note">Ground</span>
+        <div class="seg" id="gBg"><button data-v="" aria-pressed="true">White tray</button><button data-v="card">Panel</button><button data-v="dark">Forest</button></div>
+      </div>
+    </header>
+    <p class="note">The same eight picks (four palette colours, four materials), drawn in four grammars. The right column is
+      measured: visible image area relative to a square of the same height, and whether a beige colour and a beige
+      material (Painted Plaster) can be told apart before clicking.</p>
+    <div class="gram" id="gram"></div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="cards">
+    <header><h2>3 · Library cards <small>browse, compare, choose</small></h2>
+      <div class="ctlbar row">
+        <div class="seg" id="lvSeg"><button data-v="grid" aria-pressed="true">Grid + expand</button><button data-v="large">Large previews</button><button data-v="list">List rows</button></div>
+      </div>
+    </header>
+    <div class="g3" style="margin-top:4px" id="lvWhy"></div>
+    <div class="lv grid" id="lv"></div>
+    <p class="cap">Click a card to expand it in place (close-up and sphere beside the sample). In the prototype a click chooses and
+      closes; ⤢ expands. Larger previews are one CSS variable (<code>--mcard</code>), not a separate layout.</p>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="toolbar">
+    <header><h2>4 · Toolbar <small>how Paint enters the dock</small></h2></header>
+    <div class="g2" id="tbs"></div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="colour">
+    <header><h2>5 · Colour on a material <small>replacement vs tint</small></h2>
+      <div class="ctlbar row"><span class="note">Colour</span><div class="seg" id="comHex"></div></div>
+    </header>
+    <p class="note">Three outcomes the Card offers as one segmented control. <b>Tint</b> multiplies the image: grain and pattern
+      stay, but it can only darken (a white-washed brick is impossible). <b>Colour</b> replaces the image with a flat colour and
+      keeps relief and sheen (the S8 <i>disabled colour map + colour literal</i> state). A colour picked from the Paint tray
+      is always <b>Colour</b>; Tint is a Card-only refinement.</p>
+    <div class="com" id="com"></div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────────────────────────── -->
+  <section class="sec" id="card-layout">
+    <header><h2>6 · Finish Card layout <small>what is visible before any disclosure</small></h2></header>
+    <div class="g3" id="fcs"></div>
+  </section>
+</main>
+
+<script type="module">
+import * as T from './app/thumbs.js';
+import { CATALOGUE, BY_ID } from './shared/catalogue.js';
+import { icon } from './shared/icons.js';
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v); else if (k === 'style') Object.assign(e.style, v); else e.setAttribute(k, v); } if (html) e.innerHTML = html; return e; };
+const look = (id, extra = {}) => { const e = BY_ID[id]; return { set: id, tint: e.tint, rough: e.rough, metal: e.metal, normalScale: 1, tile: e.tile, rot: 0, colour: 'natural', ...extra }; };
+const img = (id, pres = 'sample', px = 112, extra) => T.url(look(id, extra), pres, px);
+const PAL = [['Chalk', '#ece7dc'], ['Sage', '#9aa58c'], ['Clay', '#b9775a'], ['Ink', '#2f3a44'], ['Ochre', '#c9a14a'], ['Mist', '#c7d0d4']];
+const MATS = ['wood-walnut-veneer', 'plaster-painted', 'wood-oak-planks', 'concrete-smooth', 'metal-brass-satin', 'textile-linen'];
+const dpr = Math.min(2, devicePixelRatio || 1);
+const pxFor = (s) => Math.round(s * dpr);
+function sw(item, size, cls = '') {
+  const b = el('button', { class: `sw ${item.hex ? 'c' : 'm'} ${cls}`, type: 'button', title: item.name, 'aria-label': item.name, 'aria-pressed': 'false' });
+  b.style.width = b.style.height = size + 'px';
+  if (item.hex) b.style.background = item.hex; else b.style.backgroundImage = `url(${img(item.id, size <= 34 ? 'xs' : 'sample', pxFor(size))})`;
+  return b;
+}
+const colourItems = PAL.slice(0, 4).map(([name, hex]) => ({ name, hex }));
+const matItems = MATS.slice(0, 4).map((id) => ({ name: BY_ID[id].label, id }));
+const consequence = (it) => it.hex ? `Armed · ${it.name} — a click coats the surface; relief and sheen stay` : `Armed · ${it.name} — a click replaces the surface's Finish`;
+const box = (title, tag, body, pros, cons) => {
+  const b = el('div', { class: 'box' + (tag === 'rec' ? ' rec' : tag === 'rej' ? ' rej' : '') });
+  b.append(el('h4', {}, `<span>${title}</span><span class="verdict">${tag === 'rec' ? '<span class="tag rec">recommended</span>' : tag === 'alt' ? '<span class="tag warn">close alternative</span>' : tag === 'later' ? '<span class="tag fut">later · accelerator</span>' : '<span class="tag no">rejected</span>'}</span>`));
+  if (body) b.append(body);
+  b.append(el('div', { class: 'pc' }, `<div><b>For</b><ul>${pros.map((p) => `<li>${p}</li>`).join('')}</ul></div><div><b>Against</b><ul>${cons.map((p) => `<li>${p}</li>`).join('')}</ul></div>`));
+  return b;
+};
+let roomN = 0;
+function room() {
+  // an isometric interior corner: two back walls and the floor, filled with real sample tiles
+  const n = roomN++, P = (id, k, px) => `<pattern id="r${n}${k}" patternUnits="userSpaceOnUse" width="${px}" height="${px}"><image href="${img(id, 'xs', 96)}" width="${px}" height="${px}"/></pattern>`;
+  const r = el('div', { class: 'room' });
+  r.innerHTML = `<svg viewBox="0 0 200 150" width="200" height="150" aria-hidden="true"><defs>${P('plaster-painted', 'w', 60)}${P('wood-oak-planks', 'f', 50)}</defs>
+    <polygon points="100,8 12,52 12,112 100,68" fill="url(#r${n}w)"/><polygon points="100,8 12,52 12,112 100,68" fill="#000" opacity=".06"/>
+    <polygon points="100,8 188,52 188,112 100,68" fill="url(#r${n}w)"/>
+    <polygon points="100,68 12,112 100,148 188,112" fill="url(#r${n}f)"/>
+    <path d="M100 8v60M12 52l88-44 88 44" fill="none" stroke="rgba(18,38,29,.18)"/></svg>`;
+  return r;
+}
+function dock(active = 'paint') {
+  const d = el('div', { class: 'dock' });
+  for (const j of ['select', 'build', 'furnish', 'paint', 'erase', 'library']) d.append(el('span', { class: j === active ? 'on' : '' }, icon(j, 16)));
+  return d;
+}
+function armable(container, items, consEl) {
+  container.querySelectorAll('.sw').forEach((b, i) => b.addEventListener('click', () => {
+    container.querySelectorAll('.sw').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true'); consEl.textContent = consequence(items[i]);
+  }));
+}
+
+// ---------------------------------------------------------------- 1 instrument
+function inst() {
+  const host = $('#inst'); host.innerHTML = '';
+  // A · tabbed tray
+  {
+    const m = el('div', { class: 'mock' }); const cons = el('div', { class: 'cons' }, 'Armed · Walnut Veneer — a click replaces the surface’s Finish');
+    m.append(room(), cons, dock());
+    const tray = el('div', { class: 'tray' }); let tab = 'materials';
+    const draw = () => {
+      tray.innerHTML = '';
+      const seg = el('div', { class: 'mseg' });
+      for (const [v, t] of [['colours', 'Colours'], ['materials', 'Materials']]) seg.append(el('button', { 'aria-pressed': String(tab === v), onClick: () => { tab = v; draw(); } }, t));
+      tray.append(el('div', { class: 'row' }), seg);
+      const items = tab === 'colours' ? colourItems : matItems;
+      const row = el('div', { class: 'row' }); items.forEach((it) => row.append(sw(it, 30)));
+      row.append(el('span', { class: 'sep' }), tab === 'colours' ? el('span', { class: 'sw c dashed', style: { width: '30px', height: '30px' } }, icon('plus', 14)) : el('span', { class: 'mini' }, 'Browse all'));
+      tray.append(row); armable(row, items, cons);
+      row.querySelector('.sw').setAttribute('aria-pressed', 'true'); cons.textContent = consequence(items[0]);
+    };
+    draw(); m.append(tray);
+    host.append(box('A · Tabbed tray on the dock', 'rec', m,
+      ['Sits where the hand already is (on Paint in the dock), never over the Card or the Index', 'One row, one consequence per tab: Colours coat, Materials replace — the tab says what the click will do', '1–9 keys stay stable inside a tab', 'Expands upward to palette + wheel, or all materials; the Library takes over beyond that'],
+      ['One extra click (T) to switch kinds', 'Favourites are per tab: a mixed “my scheme” needs a palette or a saved set (future)']));
+  }
+  // B · mixed row
+  {
+    const m = el('div', { class: 'mock' }); const cons = el('div', { class: 'cons' }, '');
+    m.append(room(), cons, dock());
+    const tray = el('div', { class: 'tray' }); const items = [colourItems[0], matItems[0], colourItems[1], matItems[1], colourItems[2], matItems[2], colourItems[3]];
+    const row = el('div', { class: 'row' }); items.forEach((it) => row.append(sw(it, 30))); row.append(el('span', { class: 'sep' }), el('span', { class: 'mini' }, 'More'));
+    tray.append(row); m.append(tray); armable(row, items, cons); row.querySelector('.sw').click();
+    host.append(box('B · One mixed row, no tabs', 'alt', m,
+      ['Truly one instrument: favourites of both kinds side by side, no mode', 'Shape grammar alone carries the consequence (circle coats, square replaces)'],
+      ['Nine number keys shared by two kinds — the key for “Sage” moves when a material is starred', 'Two consequences in one row: a slip between neighbours changes the whole Finish instead of its colour', 'Expanded view still has to split by kind (palette ≠ catalogue)', 'Kept as the owner’s alternative: it is A with the tab removed, so it costs nothing to try later']));
+  }
+  // C · rail
+  {
+    const m = el('div', { class: 'mock' }); const cons = el('div', { class: 'cons', style: { left: '78px' } }, '');
+    m.append(el('div', { class: 'index' }, 'INDEX<i></i><i></i><i></i><i></i><i></i>FINISHES<i></i><i></i><i></i>'), room(), cons, dock());
+    const rail = el('div', { class: 'rail', style: { left: '76px' } }); const items = [...colourItems, ...matItems];
+    items.forEach((it) => rail.append(sw(it, 26))); m.append(rail, el('div', { class: 'clash', style: { left: '128px' } }, '← two columns list project Finishes'));
+    armable(rail, items, cons); rail.querySelector('.sw').click();
+    host.append(box('C · Vertical rail on the Stage edge', 'rej', m,
+      ['Always visible; tall enough for many favourites', 'Familiar from paint programs'],
+      ['Collides with the Light & Sky Index column at ≥1100 px and steals Stage width on iPad', 'A second list of project Finishes beside the Index’s “Finishes in this project” — two places to look, one to trust', 'Far from the dock tool that arms it; the eye travels across the Stage on every pick']));
+  }
+  // D · ring
+  {
+    const m = el('div', { class: 'mock' }); const cons = el('div', { class: 'cons' }, 'Long-press or right-click the Stage: the ring opens at the cursor');
+    m.append(cons, dock('select'));
+    const ring = el('div', { class: 'ring' }); ring.append(el('span', { class: 'hub' }));
+    const items = [...colourItems, ...matItems];
+    items.forEach((it, i) => { const a = (i / items.length) * Math.PI * 2 - Math.PI / 2; const b = sw(it, 30); b.style.left = 75 + Math.cos(a) * 58 - 15 + 'px'; b.style.top = 75 + Math.sin(a) * 58 - 15 + 'px'; ring.append(b); });
+    m.append(ring); armable(ring, items, cons);
+    host.append(box('D · Radial ring at the cursor', 'later', m,
+      ['Zero travel: pick where you paint', 'Good expert accelerator for a few favourites'],
+      ['Hidden until you know the gesture; nothing to discover on first use', 'Eight slots, no names, no recents, no path to the Library', 'Long-press is already the semantic dropper; right-click is not available on iPad', 'Covers the surface you are about to judge']));
+  }
+}
+
+// ---------------------------------------------------------------- 2 grammar
+let gSize = 40, gBg = '';
+function gram() {
+  const host = $('#gram'); host.className = 'gram ' + gBg; host.innerHTML = '';
+  const items = [...PAL.slice(0, 4).map(([name, hex]) => ({ name, hex })), ...['plaster-painted', 'wood-walnut-veneer', 'textile-linen', 'metal-brass-satin'].map((id) => ({ name: BY_ID[id].label, id }))];
+  const rows = [
+    ['G1 · Shape = consequence', 'Circle = colour (coats, relief stays) · rounded square = material (replaces)', (it) => (it.hex ? 'shape-circle' : 'shape-rsq'), 1, 'π/4 = 0.79 colour · 0.96 material', true, 'yes — beige circle vs beige square'],
+    ['G2 · All circles', 'Materials cropped round, like paint chips', () => 'shape-circle', 1, '0.79 for all', false, 'no — Chalk and Painted Plaster look alike'],
+    ['G3 · All rounded squares', 'One tile shape for everything', () => 'shape-rsq', 1, '0.96 for all', false, 'no — only the image grain tells them apart'],
+    ['G4 · Wide chips (3:2)', 'Rectangles that show more pattern', (it) => (it.hex ? 'shape-circle' : 'shape-sq'), 1.5, '1.5× width → ⅓ fewer per row', false, 'yes, at a third fewer picks']
+  ];
+  for (const [name, desc, shape, wide, area, rec, tell] of rows) {
+    const strip = el('div', { class: 'strip' });
+    for (const it of items) { const b = sw(it, gSize, shape(it)); if (wide > 1 && !it.hex) { b.style.width = gSize * wide + 'px'; b.style.backgroundImage = `url(${img(it.id, 'chip', pxFor(gSize * wide))})`; } strip.append(b); }
+    strip.addEventListener('click', (e) => { const b = e.target.closest('.sw'); if (!b) return; strip.querySelectorAll('.sw').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); });
+    host.append(el('div', { class: 'gr' + (rec ? ' rec' : '') }, `<div><b>${name}</b> ${rec ? '<span class="tag rec">recommended</span>' : ''}<div class="note">${desc}</div></div>`), );
+    host.lastChild.append(strip, el('div', { class: 'm' }, `area ${area}<br>tell apart: ${tell}`));
+  }
+}
+
+// ---------------------------------------------------------------- 3 library cards
+let lvMode = 'grid'; let lvOpen = null;
+const LV_IDS = ['wood-oak-veneer', 'wood-walnut-veneer', 'wood-herringbone-parquet', 'stone-travertine', 'masonry-brick-red', 'concrete-smooth', 'metal-brass-satin', 'textile-carpet-loop'];
+const LV_WHY = {
+  grid: ['rec', 'Grid + expand in place', 'Dense enough to compare a family at a glance (8–10 per row on a laptop), name always readable under the image; detail opens in place without losing the grid.'],
+  large: ['rej', 'Large previews', 'Beautiful for one material, poor for choosing between six oaks; text on the image fails contrast on light stone and plaster.'],
+  list: ['alt', 'List rows', 'Best for search results and for “This project” (users, origin, size as columns); kept as the project/My library view at narrow widths.']
+};
+function lv() {
+  const host = $('#lv'); host.className = 'lv ' + lvMode; host.innerHTML = '';
+  const [tag, title, why] = LV_WHY[lvMode];
+  $('#lvWhy').innerHTML = Object.entries(LV_WHY).map(([k, [t, n, w]]) => `<div class="box ${t === 'rec' ? 'rec' : t === 'rej' ? 'rej' : ''}" style="${k === lvMode ? '' : 'opacity:.55'}"><h4><span>${n}</span>${t === 'rec' ? '<span class="tag rec">recommended</span>' : t === 'alt' ? '<span class="tag warn">kept for lists</span>' : '<span class="tag no">rejected</span>'}</h4><p class="note" style="margin:0">${w}</p></div>`).join('');
+  for (const id of LV_IDS) {
+    const e = BY_ID[id];
+    const c = el('div', { class: 'lc' + (lvOpen === id ? ' open' : ''), role: 'button', tabindex: '0', onClick: () => { lvOpen = lvOpen === id ? null : id; lv(); } });
+    const px = lvMode === 'large' ? 512 : lvMode === 'list' ? 112 : (lvOpen === id ? 512 : 256);
+    c.append(el('div', { class: 'im', style: { backgroundImage: `url(${img(id, 'sample', px)})` } }), el('div', { class: 'tx' }, `<b>${e.label}</b><span>${e.sub} · ${e.tile[0]} m</span>`));
+    if (lvMode === 'list') c.append(el('span', { class: 'fx' }, e.colorMap ? 'textured' : 'plain'), el('span', { class: 'fx' }, e.metal ? 'metal' : 'dielectric'));
+    if (lvOpen === id && lvMode === 'grid') { const d = el('div', { class: 'det' }); d.append(el('i', { style: { backgroundImage: `url(${img(id, 'close', 256)})` } }), el('i', { style: { backgroundImage: `url(${img(id, 'sphere', 256)})` } })); c.append(d); }
+    host.append(c);
+  }
+}
+
+// ---------------------------------------------------------------- 4 toolbar
+function tbs() {
+  const host = $('#tbs'); host.innerHTML = '';
+  const bar = (spec) => { const d = el('div', { class: 'tb' }); for (const s of spec) { if (s === '|') { d.append(el('span', { class: 'dv' })); continue; } const [j, t, c] = s; d.append(el('span', { class: c || '' }, icon(j, 18) + t)); } return d; };
+  const base = [['select', 'Select'], '|', ['build', 'Build', 'dim'], ['form', 'Form', 'dim'], ['landscape', 'Landscape', 'dim'], ['furnish', 'Furnish', 'dim'], '|'];
+  host.append(
+    box('T1 · One Paint tool + Erase + Library', 'rec', bar([...base, ['paint', 'Paint', 'on new'], ['erase', 'Erase', 'new'], ['library', 'Library', 'new']]),
+      ['One arming path for colours and materials; the tray’s tab chooses which', 'Erase is its own tool (it is a different consequence: back to the surface default)', 'Library is reachable without arming Paint first (browse, inspect, import)'],
+      ['Three new dock slots; the dock grows from 6 to 8 targets (still inside the 656 px Light & Sky dock)']),
+    box('T2 · Separate Colour and Material tools', 'rej', bar([...base, ['colour', 'Colour', 'new'], ['finish', 'Material', 'new'], ['erase', 'Erase', 'new']]),
+      ['Each tool has one consequence, no tab'],
+      ['Two tools arm the same Stage writer: switching kinds re-arms and loses the stroke mode', 'Dropper must decide which tool to return to', 'Two sets of favourites, two trays, two expanded states']),
+    box('T3 · No tool: contextual Replace on the Card only', 'rej', bar([...base, ['library', 'Library', 'new']]),
+      ['Nothing to arm; every change is explicit and single-surface'],
+      ['Painting six walls is six select → replace → pick loops', 'No drag strokes, no Space scope, no quick colour', 'Kept inside T1 as the Card’s “Replace…” for one-offs']),
+    box('T4 · Floating palette window', 'rej', bar([...base, ['paint', 'Palette', 'new']]),
+      ['Desktop-paint familiarity; can stay open while selecting'],
+      ['Window management on iPad; overlaps the Card or the Stage', 'A second panel family beside Card and Index, outside Light & Sky geometry'])
+  );
+}
+
+// ---------------------------------------------------------------- 5 colour on material
+let comHex = '#ece7dc';
+function com() {
+  const segHost = $('#comHex'); segHost.innerHTML = '';
+  for (const [n, h] of [['Chalk', '#ece7dc'], ['Sage', '#9aa58c'], ['Clay', '#b9775a'], ['Ink', '#2f3a44']]) segHost.append(el('button', { 'aria-pressed': String(h === comHex), onClick: () => { comHex = h; com(); } }, `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${h};margin-right:6px;box-shadow:inset 0 0 0 1px #0002"></span>${n}`));
+  const host = $('#com'); host.innerHTML = '<span></span><span class="h">Natural</span><span class="h">Tint · multiplies</span><span class="h">Colour · replaces image</span>';
+  for (const id of ['wood-oak-planks', 'masonry-brick-red', 'textile-linen', 'wood-herringbone-parquet']) {
+    const e = BY_ID[id];
+    host.append(el('div', { class: 'nm' }, `<b>${e.label}</b><span>${e.sub}</span>`));
+    for (const extra of [{}, { colour: 'tint', tint: comHex }, { colour: 'coat', coat: comHex }]) { const i = el('img', { alt: '' }); i.src = img(id, 'sample', 256, extra); host.append(i); }
+  }
+}
+
+// ---------------------------------------------------------------- 6 card layouts
+function fcs() {
+  const host = $('#fcs'); host.innerHTML = '';
+  const hd = `<div class="hd"><i style="background-image:url(${img('wood-walnut-veneer', 'xs', 64)})"></i><div><div class="fut-k">Finish · project</div><b>Walnut · table</b></div></div>`;
+  const ln = (a, b, p) => `<div class="ln"><span>${a}</span><em>${b}</em></div>${p != null ? `<div class="bar" style="--p:${p}%"></div>` : ''}`;
+  host.append(
+    box('Progressive Card', 'rec', el('div', { class: 'fc' }, hd + ln('Changes apply to', 'This part · All 2') + ln('Colour', 'Natural · Tint · Colour') + ln('Sheen', 'Satin r 0.60', 60) + ln('Pattern', '1.00 m', 50) + ln('Relief', '1.00×', 50) + '<div class="acc2"><span>Maps & channels</span><span>3 on ▸</span></div><div class="acc2"><span>Mapping</span><span>UV0 ▸</span></div><div class="acc2"><span>Exact values</span><span>▸</span></div><div class="acc2"><span>Used by 2</span><span>▸</span></div>'),
+      ['Reach is chosen before the edit and sits above every control', 'Four plain-language controls answer most requests; channels and numbers one click away', 'Diagnostics, when present, come first'],
+      ['Long on short laptop screens; mitigated by one-open accordion']),
+    box('Tabbed Card', 'rej', el('div', { class: 'fc' }, hd + '<div class="tabs"><span class="on">Basic</span><span>Maps</span><span>Mapping</span><span>Info</span></div>' + ln('Colour', 'Natural') + ln('Sheen', 'Satin', 60) + ln('Pattern', '1.00 m', 50) + '<div class="note-sm hidden">Changes apply to …</div><div class="note-sm hidden">Missing image …</div>'),
+      ['Short; familiar from 3D tools'],
+      ['Reach and diagnostics land on a tab, so a shared edit can happen without seeing who it reaches', 'Tabs inside a Card inside a workspace: three levels of mode']),
+    box('Channel-first inspector', 'rej', el('div', { class: 'fc' }, hd + ln('Base colour', 'map · tint #7a6e63') + ln('Roughness', 'ORM.G × 1.00') + ln('Metalness', 'ORM.B × 0.00') + ln('Normal', '+Y × 1.00') + ln('Occlusion', 'ORM.R') + ln('UV', 'set 0 · 1.00 m · 0°')),
+      ['Complete and exact; what a technical artist expects'],
+      ['Speaks recipe, not outcome: “Satin” becomes “ORM.G × 0.63”', 'Kept, unchanged, as the Maps & channels and Exact values sections of the progressive Card'])
+  );
+}
+
+// ---------------------------------------------------------------- boot
+const bindSeg = (sel, cb) => $(sel).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $(sel).querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); cb(b.dataset.v); });
+bindSeg('#gSize', (v) => { gSize = +v; gram(); });
+bindSeg('#gBg', (v) => { gBg = v; gram(); });
+bindSeg('#lvSeg', (v) => { lvMode = v; lvOpen = null; lv(); });
+await T.preload(CATALOGUE);
+inst(); gram(); lv(); tbs(); com(); fcs();
+$('#status').textContent = 'Rendered live from apps/editor/static/textures (prototype renderer; see the thumbnail lab for the measured comparison).';
+</script>
+</body>
+</html>

@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thumbnail lab · U appearance study</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<style>
+  .mx{display:grid;gap:0;font-size:12px}
+  .mx .hd{position:sticky;top:44px;z-index:5;background:var(--panel);padding:8px 0 6px;border-bottom:1px solid var(--line)}
+  .mx .rw{display:grid;grid-template-columns:150px repeat(var(--cols),minmax(0,1fr));gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2)}
+  .mx .rw.cat{padding:14px 0 4px;border:0;font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+  .mx .nm b{display:block;font-size:12.5px} .mx .nm span{font:10.5px var(--mono);color:var(--ink2)}
+  .mx .th b{display:flex;gap:6px;align-items:center;font-size:12.5px} .mx .th span{font:10.5px var(--mono);color:var(--ink2);display:block}
+  .cell{display:flex;justify-content:center}
+  .thumb{display:block;border-radius:var(--sw-r);box-shadow:inset 0 0 0 1px rgba(18,38,29,.12)}
+  .thumb.round{border-radius:50%}
+  .bg-card .cell{background:#fff}
+  .bg-dark .cell,.bg-dark{background:var(--forest)}
+  .bg-dark .cell{border-radius:10px;padding:6px 0}
+  .bg-card .cell{border-radius:10px;padding:6px 0}
+  .ctlbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:6px 0 4px}
+  .frame-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:end}
+  .frame-grid figure{display:grid;gap:6px;justify-items:start}
+  @media(max-width:900px){.frame-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .ladder{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+  .ladder figure{display:grid;gap:6px;justify-items:start}
+  .mcard{width:128px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 6px 8px;box-shadow:0 1px 4px rgba(18,38,29,.08)}
+  .mcard .thumb{width:100%;height:auto;aspect-ratio:1}
+  .mcard b{display:block;font-size:12px;margin-top:6px;line-height:1.25} .mcard span{font:10px var(--mono);color:var(--ink2)}
+  .ldet{display:grid;grid-template-columns:240px 112px;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
+  .ldet .side{display:grid;gap:8px;align-content:start} .ldet .side figcaption{margin:0}
+  .pairs{display:grid;gap:10px}
+  .pr{display:grid;grid-template-columns:170px repeat(var(--cols),minmax(0,1fr));gap:10px;align-items:start;padding:8px 0;border-bottom:1px solid var(--line2)}
+  .pr .two{display:flex;gap:4px;justify-content:center}
+  .pr .num{font:10.5px var(--mono);color:var(--ink2);text-align:center;margin-top:4px}
+  .pr .num.fail{color:var(--refuse)} .pr .num.pass{color:var(--moss-ink)}
+  .sweep td,.sweep th{font-size:12px}
+  .pill{display:inline-block;font:10.5px var(--mono);padding:0 6px;border-radius:999px;border:1px solid var(--line);margin:1px 2px;white-space:nowrap}
+  .pill.f{border-color:#e7b9a4;background:#f8e9e1;color:#8a3d25}
+  .pill.n{border-color:#e6d49a;background:#fbf4dc;color:#6f5611}
+  .rec-col{background:var(--moss-tint);border-radius:10px;padding:6px 0}
+  #status{font:11.5px var(--mono);color:var(--ink2)}
+</style>
+</head>
+<body>
+<nav class="top"><b>U · Appearance</b>
+  <a href="index.html">Decision sheet</a><a href="app.html">Prototype</a><a href="concepts.html">Concepts</a>
+  <a href="lab.html" aria-current="page">Thumbnail lab</a><a href="board.html">Responsive board</a>
+</nav>
+<main class="doc">
+  <header style="padding:22px 0 4px">
+    <h1>Thumbnail lab</h1>
+    <p class="lede">The 21 S8 catalogue entries, rendered live from the shipped texture bytes in six presentations, at real
+      display sizes, and measured with E7's distinctness method. The renderer here is a <b>prototype approximation</b> of the
+      metallic–roughness path: it decides <i>which presentation and crop to take to E7</i>, not the shipped pixels. Final
+      revalidation runs on the E7 inspection host (decision sheet, slice U1).</p>
+    <p id="status">Loading textures…</p>
+  </header>
+
+  <section class="sec" id="matrix">
+    <header><h2>Six presentations <small>all 21 entries</small></h2>
+      <div class="ctlbar">
+        <span class="note">Display</span>
+        <div class="seg" id="sizeSeg"><button data-s="28">XS 28</button><button data-s="56">S 56</button><button data-s="128" aria-pressed="true">M 128</button><button data-s="240">L 240</button></div>
+        <span class="note">Ground</span>
+        <div class="seg" id="bgSeg"><button data-b="panel" aria-pressed="true">Panel</button><button data-b="card">Card</button><button data-b="dark">Forest tray</button></div>
+      </div>
+    </header>
+    <p class="note">Each cell is drawn at the chosen CSS size × device pixel ratio. “Window” crops show a physical window in metres
+      (the proposed framing hint), not a repeat count; the E7 column is the committed 192 px reference, resampled by the browser.</p>
+    <div class="mx" id="mx"></div>
+  </section>
+
+  <section class="sec" id="framing">
+    <header><h2>Framing: physical window, not repeats <small>sample tile presentation</small></h2></header>
+    <p class="note">The same texture set at four crops. “One repeat” shows the whole authored tile, which for large sets
+      (herringbone 3.4 m, concrete 2.4 m) turns detail into noise at S; four repeats exposes tiling. The framing hint frames a window a
+      person would recognise — two or three boards, one brick course with its joints, a few linen threads.</p>
+    <div class="ctlbar"><span class="note">Material</span><select class="fld" id="frameSel" style="width:auto"></select>
+      <span class="note">Custom window</span><input type="range" id="frameWin" min="-3" max="1.4" step="0.01" style="width:220px"><span class="mono note" id="frameRead"></span></div>
+    <div class="frame-grid" id="frameGrid"></div>
+  </section>
+
+  <section class="sec" id="ladder">
+    <header><h2>Size ladder <small>recommended presentation per size</small></h2></header>
+    <p class="note">XS circles are colour-first (inline readouts, recents, chips) and use a tight crop; S and M use the sample tile; L adds a
+      grazing close-up for relief and a sphere for shape and sheen. One stored 256 px flat master serves XS to M; the L close-up and sphere render on demand through the inspection host.</p>
+    <div class="ctlbar"><span class="note">Material</span><select class="fld" id="ladSel" style="width:auto"></select></div>
+    <div class="ladder" id="lad"></div>
+  </section>
+
+  <section class="sec" id="pairs">
+    <header><h2>The F watch pairs <small>side by side, measured at M@2×</small></h2></header>
+    <p class="note">The three pairs that failed F (ΔE00 &lt; 3 and SSIM &gt; 0.95) and the two narrow passes, in each presentation.
+      Numbers fill in after the sweep below.</p>
+    <div class="pairs" id="pairGrid"></div>
+  </section>
+
+  <section class="sec" id="sweep">
+    <header><h2>Distinctness sweep <small>210 pairs × presentation × size</small></h2>
+      <div class="row"><button class="btn pri" id="runSweep">Run sweep</button><button class="btn" id="copyJson" disabled>Copy results JSON</button><button class="btn" id="saveJson" disabled title="Writes evidence/u-thumbnail-lab.json through serve.py">Save evidence</button></div></header>
+    <p class="note">Method: E7's — per-patch mean in linear sRGB → CIEDE2000 → mean of an 8×8 patch grid; SSIM on Rec.601 luma, 8 px windows,
+      stride 4. The region is E7's central crop for spheres and the subject inset for flat crops. <b>Method check:</b> the E7 references at
+      192 px must reproduce E7's committed numbers before any other reading is trusted.</p>
+    <div class="tw"><table class="sweep" id="sweepTable"><thead><tr><th>Presentation</th><th>Size</th><th>Failing pairs</th><th>Narrowest passes (ΔE00 · SSIM)</th><th>Clipped</th><th>Centre luma</th><th>Colour shift</th></tr></thead><tbody></tbody></table></div>
+    <div class="readout" id="sweepOut" hidden></div>
+  </section>
+</main>
+
+<script type="module">
+import { CATALOGUE, TAXONOMY, BY_ID, WATCH_PAIRS, E7_REF, E7_DIR, TEX } from './shared/catalogue.js';
+import { createRenderer } from './shared/render.js';
+import * as M from './shared/measure.js';
+import { icon } from './shared/icons.js';
+
+const $ = (id) => document.getElementById(id);
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
+const R = createRenderer();
+const INSET = [0.06, 0.94];
+
+export const TREATMENTS = [
+  { id: 'e7', label: 'E7 reference', sub: 'sphere · studio v2 · shipped PNG', region: M.E7_CENTRAL },
+  { id: 'sphere', label: 'Re-lit sphere', sub: 'sphere · brighter studio', spec: { geom: 'sphere' }, region: M.E7_CENTRAL },
+  { id: 'albedo', label: 'Flat colour', sub: 'unlit · window', spec: { geom: 'flat', shade: 'unlit' }, region: INSET },
+  { id: 'relief', label: 'Flat relief', sub: 'lit · no sheen · window', spec: { geom: 'flat', sheen: false }, region: INSET },
+  { id: 'sample', label: 'Sample tile', sub: 'lit · sheen band · window', spec: { geom: 'flat', strip: true, eye: 0.8 }, region: INSET, rec: true },
+  { id: 'chip', label: 'Chip', sub: 'bevelled · sheen band', spec: { geom: 'chip', strip: true, eye: 0.9 }, region: [0.12, 0.88] }
+];
+
+const e7Images = {};
+function loadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+
+function specFor(t, e, over = {}) { return { entry: e, texBase: TEX, bg: '#e9e6dd', ...t.spec, ...over }; }
+
+function drawThumb(canvas, t, e, css, over = {}) {
+  const px = Math.round(css * DPR);
+  canvas.width = canvas.height = px; canvas.style.width = canvas.style.height = css + 'px';
+  if (t.id === 'e7') {
+    const ctx = canvas.getContext('2d'); ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(e7Images[e.id], 0, 0, px, px);
+  } else R.paint(specFor(t, e, over), canvas);
+}
+
+function seg(el, cb) {
+  el.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button'); if (!b) return;
+    el.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    cb(b.dataset);
+  });
+}
+
+// ---------- matrix ----------
+let size = 128;
+function buildMatrix() {
+  const mx = $('mx'); mx.style.setProperty('--cols', TREATMENTS.length); mx.innerHTML = '';
+  const hd = document.createElement('div'); hd.className = 'rw hd';
+  hd.innerHTML = '<div></div>' + TREATMENTS.map((t) => `<div class="th ${t.rec ? '' : ''}"><b>${t.label}${t.rec ? ' <span class="tag rec">rec</span>' : ''}</b><span>${t.sub}</span></div>`).join('');
+  mx.append(hd);
+  for (const cat of TAXONOMY) {
+    const items = CATALOGUE.filter((e) => e.cat === cat.id); if (!items.length) continue;
+    const c = document.createElement('div'); c.className = 'rw cat'; c.textContent = cat.label; mx.append(c);
+    for (const e of items) {
+      const rw = document.createElement('div'); rw.className = 'rw';
+      rw.innerHTML = `<div class="nm"><b>${e.label}</b><span>${e.frame.w} m window · tile ${e.tile[0]} m</span></div>`;
+      for (const t of TREATMENTS) {
+        const cell = document.createElement('div'); cell.className = 'cell' + (t.rec ? ' rec-col' : '');
+        const cv = document.createElement('canvas'); cv.className = 'thumb' + (size <= 28 ? ' round' : '');
+        drawThumb(cv, t, e, size); cell.append(cv); rw.append(cell);
+      }
+      mx.append(rw);
+    }
+  }
+}
+
+// ---------- framing ----------
+function buildFraming() {
+  const e = BY_ID[$('frameSel').value];
+  const custom = Math.pow(10, +$('frameWin').value);
+  $('frameRead').textContent = `${custom.toFixed(2)} m · ${(custom / e.tile[0]).toFixed(2)} repeats`;
+  const S = TREATMENTS.find((t) => t.id === 'sample');
+  const crops = [
+    ['One repeat', e.tile[0]], ['Framing hint', e.frame.w], ['Four repeats', e.tile[0] * 4], ['Custom', custom]
+  ];
+  $('frameGrid').innerHTML = '';
+  for (const [name, w] of crops) {
+    const f = document.createElement('figure');
+    const big = document.createElement('canvas'); big.className = 'thumb';
+    const small = document.createElement('canvas'); small.className = 'thumb';
+    drawThumb(big, S, e, 128, { window: w }); drawThumb(small, S, e, 56, { window: w });
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:10px;align-items:flex-end';
+    row.append(big, small);
+    const cap = document.createElement('figcaption'); cap.innerHTML = `${name}<br>${w.toFixed(2)} m · ${(w / e.tile[0]).toFixed(2)}× tile`;
+    f.append(row, cap); $('frameGrid').append(f);
+  }
+}
+
+// ---------- ladder ----------
+function buildLadder() {
+  const e = BY_ID[$('ladSel').value];
+  const S = TREATMENTS.find((t) => t.id === 'sample');
+  const SP = TREATMENTS.find((t) => t.id === 'sphere');
+  const lad = $('lad'); lad.innerHTML = '';
+  const fig = (node, cap) => { const f = document.createElement('figure'); f.append(node); const c = document.createElement('figcaption'); c.innerHTML = cap; f.append(c); lad.append(f); return f; };
+  const cv = (t, css, over, cls = 'thumb') => { const c = document.createElement('canvas'); c.className = cls; drawThumb(c, t, e, css, over); return c; };
+  const xs = document.createElement('div'); xs.style.cssText = 'display:flex;gap:8px;align-items:center';
+  xs.append(cv(S, 24, { window: e.frame.w * 0.55 }, 'thumb round'), cv(S, 32, { window: e.frame.w * 0.55 }, 'thumb round'));
+  fig(xs, 'XS 24 / 32 · circle<br>tight crop (0.55×)');
+  const s = document.createElement('div'); s.style.cssText = 'display:flex;gap:8px;align-items:flex-end';
+  s.append(cv(S, 48), cv(S, 56)); fig(s, 'S 48 / 56 · sample tile');
+  const m = document.createElement('div'); m.className = 'mcard'; m.append(cv(S, 116));
+  m.insertAdjacentHTML('beforeend', `<b>${e.label}</b><span>${e.sub || ''}</span>`); fig(m, 'M card · 128 wide');
+  const l = document.createElement('div'); l.className = 'ldet';
+  l.append(cv(S, 240));
+  const side = document.createElement('div'); side.className = 'side';
+  const close = cv(TREATMENTS.find((t) => t.id === 'relief'), 112, { window: e.frame.w / 3, grazing: true });
+  const sph = cv(SP, 112, {}, 'thumb round');
+  side.append(close); side.insertAdjacentHTML('beforeend', '<figcaption>close-up · grazing · ⅓ window</figcaption>');
+  side.append(sph); side.insertAdjacentHTML('beforeend', '<figcaption>shape &amp; sheen · sphere</figcaption>');
+  l.append(side); fig(l, 'L detail · 240 + close-up + sphere');
+}
+
+// ---------- watch pairs ----------
+let sweepResult = null;
+function buildPairs() {
+  const g = $('pairGrid'); g.style.setProperty('--cols', TREATMENTS.length); g.innerHTML = '';
+  const hd = document.createElement('div'); hd.className = 'pr';
+  hd.innerHTML = '<div></div>' + TREATMENTS.map((t) => `<div class="th" style="font-size:12px"><b>${t.label}</b></div>`).join('');
+  g.append(hd);
+  for (const [a, b, why] of WATCH_PAIRS) {
+    const r = document.createElement('div'); r.className = 'pr';
+    r.innerHTML = `<div class="nm"><b style="font-size:12.5px">${BY_ID[a].label}<br>vs ${BY_ID[b].label}</b><span class="tag ${why === 'failed' ? 'no' : 'warn'}">F ${why}</span></div>`;
+    for (const t of TREATMENTS) {
+      const cell = document.createElement('div');
+      const two = document.createElement('div'); two.className = 'two';
+      for (const id of [a, b]) { const c = document.createElement('canvas'); c.className = 'thumb'; drawThumb(c, t, BY_ID[id], 56); two.append(c); }
+      const num = document.createElement('div'); num.className = 'num'; num.dataset.k = `${t.id}|${a}|${b}`; num.textContent = '—';
+      cell.append(two, num); r.append(cell);
+    }
+    g.append(r);
+  }
+}
+
+// ---------- sweep ----------
+function pixelsFor(t, e, n) {
+  if (t.id === 'e7') return M.imagePixels(e7Images[e.id], n);
+  return R.pixels(specFor(t, e), n, n);
+}
+function meanLab(px, n, region) { return M.patchLabs(px, n, region, 1)[0]; }
+
+async function runSweep() {
+  $('runSweep').disabled = true; $('status').textContent = 'Sweeping…';
+  const tbody = $('sweepTable').querySelector('tbody'); tbody.innerHTML = '';
+  const out = {
+    schema: 'u-thumbnail-lab/1',
+    measuredAt: new Date().toISOString(),
+    renderer: 'prototype WebGL2 approximation (prototypes/appearance-ux/shared/render.js); NOT the E7 inspection host',
+    userAgent: navigator.userAgent,
+    method: {
+      colour: 'per-patch mean in linear sRGB, CIEDE2000, mean over an 8x8 patch grid',
+      ssim: 'Rec.601 luma, uniform 8 px windows, stride 4, K1 0.01, K2 0.03, L 255',
+      regions: { sphere: 'E7 central crop 54/192..138/192', flat: 'subject inset 0.06..0.94', chip: '0.12..0.88' },
+      criterion: 'fails when meanPatchDeltaE00 < 3 and luminanceSSIM > 0.95; narrow = within 1.5 dE00 or 0.02 SSIM of failing',
+      colourShift: 'CIEDE2000 between the presentation mean and the unlit flat-colour mean of the same window (lower = lit thumbnail reads closer to the base colour)'
+    },
+    readings: []
+  };
+  const sizes = { e7: [192, 112, 256] };
+  const albedoMean = {};
+  for (const n of [112, 256, 192]) {
+    const A = TREATMENTS.find((t) => t.id === 'albedo');
+    for (const e of CATALOGUE) albedoMean[e.id + n] = meanLab(pixelsFor(A, e, n), n, INSET);
+  }
+  for (const t of TREATMENTS) {
+    for (const n of sizes[t.id] || [112, 256]) {
+      await new Promise((r) => setTimeout(r, 0));
+      const prep = {}; let maxClip = 0, lumaMin = 255, lumaMax = 0, shift = 0;
+      for (const e of CATALOGUE) {
+        const px = pixelsFor(t, e, n);
+        prep[e.id] = M.prepare(px, n, t.region);
+        maxClip = Math.max(maxClip, prep[e.id].clipped);
+        lumaMin = Math.min(lumaMin, prep[e.id].centre); lumaMax = Math.max(lumaMax, prep[e.id].centre);
+        shift += M.ciede2000(meanLab(px, n, t.region), albedoMean[e.id + (n === 192 ? 192 : n)]);
+      }
+      const pairs = [];
+      for (let i = 0; i < CATALOGUE.length; i++) for (let j = i + 1; j < CATALOGUE.length; j++) {
+        const a = CATALOGUE[i].id, b = CATALOGUE[j].id;
+        const r = M.comparePrepared(prep[a], prep[b]);
+        pairs.push({ pair: [a, b], meanPatchDeltaE00: +r.meanPatchDeltaE00.toFixed(2), maxPatchDeltaE00: +r.maxPatchDeltaE00.toFixed(2), luminanceSSIM: +r.luminanceSSIM.toFixed(3), fails: r.fails });
+      }
+      const failing = pairs.filter((p) => p.fails);
+      const margin = (p) => Math.max((p.meanPatchDeltaE00 - 3) / 1.5, (0.95 - p.luminanceSSIM) / 0.02);
+      const narrow = pairs.filter((p) => !p.fails).sort((x, y) => margin(x) - margin(y)).slice(0, 3);
+      const watch = WATCH_PAIRS.map(([a, b]) => pairs.find((p) => p.pair[0] === a && p.pair[1] === b) || pairs.find((p) => p.pair[0] === b && p.pair[1] === a));
+      const reading = { presentation: t.id, label: t.label, px: n, failingPairs: failing, narrowest: narrow, watchPairs: watch,
+        maxClippedFraction: +maxClip.toFixed(4), centreLuma: [Math.round(lumaMin), Math.round(lumaMax)], meanColourShiftDeltaE00: +(shift / CATALOGUE.length).toFixed(2) };
+      out.readings.push(reading);
+      const tr = document.createElement('tr');
+      const nm = (id) => BY_ID[id].label.replace(/ (Steel|Floor|Tile)$/, '');
+      tr.innerHTML = `<td><b>${t.label}</b>${t.rec ? ' <span class="tag rec">rec</span>' : ''}${t.id === 'e7' && n === 192 ? ' <span class="tag">method check</span>' : ''}</td><td class="mono">${n}px</td>
+        <td class="${failing.length ? 'fail' : 'pass'}">${failing.length ? failing.map((p) => `<span class="pill f">${nm(p.pair[0])} / ${nm(p.pair[1])} · ${p.meanPatchDeltaE00} · ${p.luminanceSSIM}</span>`).join('') : 'none'}</td>
+        <td>${narrow.slice(0, 3).map((p) => `<span class="pill n">${nm(p.pair[0])} / ${nm(p.pair[1])} · ${p.meanPatchDeltaE00} · ${p.luminanceSSIM}</span>`).join('')}</td>
+        <td class="mono ${maxClip >= 0.01 ? 'fail' : 'pass'}">${(maxClip * 100).toFixed(2)}%</td>
+        <td class="mono">${reading.centreLuma.join('–')}</td><td class="mono">${reading.meanColourShiftDeltaE00}</td>`;
+      tbody.append(tr);
+      if (n === 256 || (t.id === 'e7' && n === 192)) {
+        for (const w of watch) {
+          const el = document.querySelector(`.num[data-k="${t.id}|${w.pair[0]}|${w.pair[1]}"]`);
+          if (el && !(t.id === 'e7' && n === 256)) { el.textContent = `${w.meanPatchDeltaE00} · ${w.luminanceSSIM}${t.id === 'e7' ? ' @192' : ''}`; el.className = 'num ' + (w.fails ? 'fail' : 'pass'); }
+        }
+      }
+    }
+  }
+  // Variant study: can a stronger sheen band separate a roughness-only variant pair without harming the rest?
+  const S = TREATMENTS.find((t) => t.id === 'sample'); out.variantStudy = { pair: ['concrete-smooth', 'concrete-polished'], px: 256, note: 'sample tile with the strip light gain raised; gain 6 is the shipped study value', rows: [] };
+  for (const g of [6, 8, 10, 12]) {
+    const [pa, pb] = out.variantStudy.pair.map((id) => M.prepare(R.pixels(specFor(S, BY_ID[id], { stripGain: g }), 256, 256), 256, S.region));
+    const r = M.comparePrepared(pa, pb);
+    out.variantStudy.rows.push({ stripGain: g, meanPatchDeltaE00: +r.meanPatchDeltaE00.toFixed(2), luminanceSSIM: +r.luminanceSSIM.toFixed(3), fails: r.fails });
+  }
+  sweepResult = out; window.__labResults = out;
+  $('sweepOut').hidden = false;
+  $('sweepOut').textContent = 'Results are on window.__labResults; the committed copy is evidence/u-thumbnail-lab.json.';
+  $('copyJson').disabled = false; $('saveJson').disabled = false; $('runSweep').disabled = false;
+  $('status').textContent = 'Sweep complete.';
+}
+$('runSweep').addEventListener('click', runSweep);
+$('copyJson').addEventListener('click', () => navigator.clipboard.writeText(JSON.stringify(sweepResult, null, 2)));
+$('saveJson').addEventListener('click', async () => {
+  const r = await fetch('evidence/u-thumbnail-lab.json', { method: 'PUT', body: JSON.stringify(sweepResult) });
+  $('status').textContent = r.ok ? 'Saved evidence/u-thumbnail-lab.json' : 'Save refused (' + r.status + ')';
+});
+
+// ---------- boot ----------
+(async function boot() {
+  await Promise.all(CATALOGUE.map(async (e) => {
+    await R.load(e, TEX);
+    e7Images[e.id] = await loadImg(E7_DIR + E7_REF[e.id]);
+  }));
+  for (const sel of ['frameSel', 'ladSel']) $(sel).innerHTML = CATALOGUE.map((e) => `<option value="${e.id}">${e.label}</option>`).join('');
+  $('frameSel').value = 'wood-herringbone-parquet'; $('ladSel').value = 'wood-walnut-veneer';
+  $('frameWin').value = Math.log10(BY_ID['wood-herringbone-parquet'].frame.w);
+  seg($('sizeSeg'), (d) => { size = +d.s; buildMatrix(); });
+  seg($('bgSeg'), (d) => { $('matrix').classList.remove('bg-card', 'bg-dark'); if (d.b !== 'panel') $('matrix').classList.add('bg-' + d.b); });
+  $('frameSel').addEventListener('change', () => { $('frameWin').value = Math.log10(BY_ID[$('frameSel').value].frame.w); buildFraming(); });
+  $('frameWin').addEventListener('input', buildFraming);
+  $('ladSel').addEventListener('change', buildLadder);
+  buildMatrix(); buildFraming(); buildLadder(); buildPairs();
+  $('status').textContent = `Ready · ${CATALOGUE.length} entries · DPR ${DPR}`;
+  if (new URLSearchParams(location.search).has('sweep')) runSweep();
+})().catch((err) => { $('status').textContent = 'Error: ' + err.message; console.error(err); });
+</script>
+</body>
+</html>
