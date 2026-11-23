@@ -1,6 +1,6 @@
 # T2.S8 U5 — Professional Material Library (acceptance report)
 
-**Status:** implementation and verification complete; PR open for owner review. No merge.
+**Status:** functional implementation accepted by the owner; visual/interaction parity is open and tracked in [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405) for the consolidated post-U7 QA PR. Ready to merge; no further U5 code changes for parity.
 
 **Branch:** `t2-s8-u5-professional-library`
 
@@ -9,6 +9,8 @@
 **Plan-first commit:** `83603d7f6` — `T2.S8 U5: professional Library plan`
 
 **Implementation commit:** `ff8e90be4` — `T2.S8 U5: professional Library`
+
+**Reviewed head:** `a268f69fe` — all required CI checks green.
 
 **Authority:** the S8 implementation plan, the approved #399 appearance prototype (D1, D8, D9),
 the existing Library/Finish infrastructure, and completed U1–U4/U8.
@@ -48,6 +50,30 @@ the existing Library/Finish infrastructure, and completed U1–U4/U8.
 | Applying a draft uses the established authoring path with correct Undo/Redo | Service tests assert exactly one `scene-finish-patch` for in-place, just-this and curated materialization, then Undo restores the previous project state. Browser QA changed a project Finish through the draft (Matte), saw Library close with one Undo, Undid it back to Satin, and saw Redo become available. |
 | Paint, Finish Card and thumbnail integration | Browser QA used the Finish Card to create a project Finish, then inspected it in This project with usage 1 and Select all 1. **Use for Paint** closed the sheet, armed Paint (the dock key read pressed), showed the Paint tray and left Undo disabled; it arms through `pickMaterialKey` + the route's Paint arm and never assigns. |
 | Responsive layout, keyboard accessibility, empty/refusal states | Dialog semantics, focus trap/restore, Escape ordering and button-only actions are implemented. Browser QA saw the no-artwork empty state, no-match empty state, disabled Apply with its refusal reason, and a disabled Customise when no other sheen is reachable. |
+
+## Owner review follow-up — #405 (2026-11-23)
+
+The owner accepted U5's functionality and recorded six visual/interaction differences from the approved
+[#399 appearance prototype](https://github.com/Biskiq/spatial-sketch-editor/pull/399) in
+[#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405). They are **not waived**: they are
+deliberately deferred to the consolidated post-U7 QA PR. No visual-parity work was done on this branch.
+
+| #405 finding | Classification | Disposition |
+| --- | --- | --- |
+| Workspace footprint (prototype bounded inside Stage; production near-full workspace; <=760 px bottom sheet not exercised) | **Confirmed U5 parity gap** | Deferred to #405; final QA covers desktop, 1024 and narrow/coarse-pointer. |
+| Category hierarchy (families nested under Materials versus production's flat rail plus filter chips) | **Confirmed U5 gap** | Deferred to #405. |
+| Card anatomy (square image window, borders, two-line names, overlay metadata versus production's smaller thumbnails and one-line names) | **Confirmed U5 gap** | Deferred to #405. |
+| All-source grouping (compact project/library shelves with **See all** before the curated gallery) | **Confirmed U5 gap** for source grouping; the **My library** shelf's data is **U7, not yet delivered** | Grouping presentation returns with the post-U7 QA; no U7 placeholder or transfer work was added. |
+| Card-click semantics (context choice plus `⤢` detail and Shift-keep-open versus click always opening detail) | **U5 interaction deviation requiring an explicit owner ruling** | Deferred to #405; not treated as a CSS-only fix. |
+| Detail presentation (square interactive inspection preview and Sphere/Flat/Tile + Studio/Grazing/World selectors versus production's static 178×128 tile) | **U5 gap** for the static preview; the geometry/light selector component is **U6/E7 inspection work, not delivered** | Deferred; the final QA decides whether the interactive inspection lands there or with U6. |
+| No screenshots and no <=760 px browser pass in U5 evidence | **U5 verification gap** | Deferred to the final QA's side-by-side prototype/production capture at desktop, 1024 and narrow/coarse-pointer. |
+| Sheen-only, non-writing Customise draft versus D9's full editor draft | **Not a U5 defect** — the deliberate U5 seam | U6 owns the full Material editor; U5 adds no placeholder. |
+
+U5's completed functionality, contracts and tests are unchanged by this classification. The temporary
+`u5-library-plan.md` is removed at closeout; the accepted functional rules are promoted to
+[Scene content](../../../reference/components/scene-content.md#material-and-light-semantic-gaps)
+and the S8 status, and this report remains the retained acceptance evidence for the deferred parity
+debt. The visual anatomy is not promoted while #405 is open.
 
 ## Verification
 
