@@ -4,8 +4,12 @@ How a creator picks, applies, edits, inspects, repairs and reuses colours and ma
 merged S8 material foundation, in the Light & Sky language. Competing directions, one recommended
 end-to-end instrument, a thumbnail lab measured with E7's method, and a responsive board.
 
-**Status:** approved by the owner on 2026-11-22 (D1–D12, recorded in the S8 plan). Still not a production contract: the S8 plan and U's implementation plan are. No
-product file imports it. The prototype simulates S8's operations; the lab approximates its renderer.
+**Status:** **owner-approved UX target** (#399, 2026-11-22, D1–D12). The working prototype
+sets the approved visual and interaction behavior for its designed surfaces; implementation plans
+translate that target rather than replace it. No product file imports prototype code. The
+prototype's simulated operations and approximate renderer do **not** override production domain,
+security, persistence, history or renderer contracts. See `docs/workflow.md` and the S8 parity
+harvest for the acceptance gate.
 
 ## Open it
 
