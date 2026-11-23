@@ -16,12 +16,14 @@ the North Star states intent. Do not read the archive unless current evidence ne
   `@portfolio/layout-core`, `@portfolio/project-model`, `@portfolio/camera-core` and
   `@portfolio/geometry-core`. PR #115 removed `apps/museum`, superseded by the separately hosted
   frozen project.
-- `prototypes/` holds runnable studies and **owner-approved design targets**
-  ([`prototypes/README.md`](./prototypes/README.md)). They are not production workspaces,
-  and simulated mechanics are not domain contracts. **An approved prototype is the UX authority
-  for the scope the owner approved**: reproduce its composition, dimensions, visual hierarchy,
-  tokens, interaction and responsive states. Older shell references or a less-detailed execution
-  plan do not license a competing design. Unapproved studies remain evidence, not authority.
+- `prototypes/` holds **two approval modes** ([`prototypes/README.md`](./prototypes/README.md)).
+  **Interaction donors / exploratory studies** authorize only explicitly harvested and accepted
+  findings, not the prototype's entire visual design. **Owner-approved production UX targets**
+  govern layout, dimensions, hierarchy, colour, typography, interactions and responsive states
+  **within their explicitly approved scope**. Never promote a whole prototype merely because
+  some interaction or research was accepted. No prototype owns production domain, persistence
+  or implementation architecture. Older shell references and narrower plans cannot override
+  a subsequently approved full design. If the approval mode or scope is unclear, ask the owner.
 - “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
 - **Frozen, separate projects are outside product scope.** The Chopin museum project was externalized
   by PR #115: it is independently hosted and versioned, the folder is absent from this repository,
