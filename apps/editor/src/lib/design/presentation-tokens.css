@@ -196,6 +196,25 @@
 	--shell-focus-ring: 2px solid var(--shell-focus-halo);
 	--shell-focus-ring-light: 2px solid var(--shell-leaf);
 
+	/*
+	 * Dock anatomy (accepted appearance design, #399; T2.S8 U8) — one chassis and one key for
+	 * the World and Experience docks: a 56 px forest bar carrying 46 px inset, rounded,
+	 * icon-over-label keys with a quiet shortcut hint and 28 px separators.
+	 */
+	--shell-dock-height: 56px;
+	--shell-dock-pad-x: 6px;
+	--shell-dock-gap: 2px;
+	--shell-dock-key-height: 46px;
+	--shell-dock-key-min-width: 54px;
+	--shell-dock-key-pad-x: 6px;
+	--shell-dock-key-radius: 10px;
+	--shell-dock-sep-height: 28px;
+	--shell-dock-sep-margin: 3px;
+	--shell-dock-label-size: 10.5px;
+	--shell-dock-hint-size: 9px;
+	--shell-dock-hint-ink: color-mix(in srgb, var(--shell-ivory) 60%, transparent);
+	--shell-dock-shadow: 0 6px 18px rgb(17 41 31 / 0.28);
+
 	/* Gold: selection and the primary accent. */
 	--shell-gold: #d4ad45;
 	--shell-gold-ink: #74560c;

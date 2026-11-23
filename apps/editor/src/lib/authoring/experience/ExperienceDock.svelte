@@ -20,6 +20,12 @@
 		onToggleGuide: () => void;
 	} = $props();
 
+	/** Select is the resting tool: pressing it while Place a View is armed cancels placement
+	 *  through the same controller toggle Place a View uses (no second tool-state owner). */
+	function selectPressed(): void {
+		if (placeArmed) onPlaceView?.();
+	}
+
 	const captureHint = $derived(
 		captureDisabled && captureReason ? captureReason : 'Capture: what you see becomes a View'
 	);
@@ -28,30 +34,34 @@
 <nav class="dock" aria-label="Experience dock" data-experience-dock>
 	<button
 		type="button"
-		class="key armed"
-		aria-pressed="true"
+		class="key"
+		class:armed={!placeArmed}
+		aria-pressed={!placeArmed}
 		aria-label="Select"
 		title="Select: the pointer selects subjects on the Stage"
 		data-dock-tool="select"
+		onclick={selectPressed}
 	>
-		<ShellIcon name="select" size={16} />
+		<ShellIcon name="select" size={20} />
+		<span class="kl">Select</span>
 	</button>
 	<button
 		type="button"
 		class="key"
-		class:place-armed={placeArmed}
+		class:armed={placeArmed}
 		aria-pressed={placeArmed}
 		aria-label="Place a View"
 		title={placeArmed ? 'Place a View: click to place or drag to aim · Esc' : 'Place a View where the camera stands'}
 		data-dock-tool="place-view"
 		onclick={onPlaceView}
 	>
-		<ShellIcon name="camera" size={16} />
+		<ShellIcon name="camera" size={20} />
+		<span class="kl">Place a View</span>
 	</button>
 	<span class="separator" aria-hidden="true"></span>
 	<button
 		type="button"
-		class="key labeled"
+		class="key"
 		aria-label="Capture"
 		title={captureHint}
 		disabled={captureDisabled}
@@ -59,20 +69,21 @@
 		data-dock-tool="capture"
 		onclick={onCapture}
 	>
-		<ShellIcon name="capture" size={16} />
-		<span class="label">Capture</span>
+		<ShellIcon name="capture" size={20} />
+		<span class="kl">Capture</span>
 	</button>
 	<button
 		type="button"
-		class="key labeled"
+		class="key"
+		class:engaged={guideOpen}
 		aria-pressed={guideOpen}
 		aria-label="Guide"
 		title="Guide: Stop composition, transitions and playback"
 		data-dock-tool="guide"
 		onclick={onToggleGuide}
 	>
-		<ShellIcon name="guide" size={16} />
-		<span class="label">Guide</span>
+		<ShellIcon name="guide" size={20} />
+		<span class="kl">Guide</span>
 	</button>
 	{#if captureDisabled && captureReason}
 		<span id="experience-dock-capture-reason" class="visually-hidden">{captureReason}</span>
@@ -80,75 +91,64 @@
 </nav>
 
 <style>
+	/* The shared dock anatomy (--shell-dock-*), the same chassis and key as the World dock. */
 	.dock {
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 2px;
-		padding: 4px;
-		border: 1px solid var(--shell-line-on-forest);
-		border-radius: 14px;
-		background: var(--shell-dock-surface);
+		justify-content: center;
+		gap: var(--shell-dock-gap);
+		height: var(--shell-dock-height);
+		padding: 0 var(--shell-dock-pad-x);
+		border-radius: var(--shell-instrument-radius);
+		background: var(--shell-forest);
 		color: var(--shell-ink-light);
-		box-shadow:
-			inset 0 1px 0 var(--shell-on-forest-wash),
-			0 10px 28px rgb(0 0 0 / 0.28);
-		backdrop-filter: blur(8px);
+		box-shadow: var(--shell-dock-shadow);
+		max-width: 100%;
+		overflow-x: auto;
+		overflow-y: hidden;
 	}
 	.separator {
+		flex: none;
 		width: 1px;
-		align-self: stretch;
-		margin: 6px 4px;
+		height: var(--shell-dock-sep-height);
+		margin: 0 var(--shell-dock-sep-margin);
 		background: var(--shell-line-on-forest);
 	}
 	.key {
 		position: relative;
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
+		flex: 0 0 auto;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		min-width: var(--shell-dock-key-min-width);
+		height: var(--shell-dock-key-height);
+		padding: 0 var(--shell-dock-key-pad-x);
 		border: 0;
-		border-radius: 9px;
+		border-radius: var(--shell-dock-key-radius);
 		background: transparent;
-		color: inherit;
+		color: var(--shell-ink-quiet);
 		cursor: pointer;
 	}
-	/* Labeled keys carry their word beside the icon, so the key widens to fit it. */
-	.key.labeled {
-		grid-auto-flow: column;
-		gap: 6px;
-		width: auto;
-		padding: 0 9px;
-		font: 500 var(--shell-text-control)/1 var(--shell-sans);
+	.kl {
+		font: 500 var(--shell-dock-label-size)/1 var(--shell-sans);
+		letter-spacing: -0.005em;
+		white-space: nowrap;
 	}
-	.key:hover {
+	.key:hover:not(.armed):not(:disabled) {
 		background: var(--shell-on-forest-wash);
+		color: var(--shell-ink-light);
 	}
+	/* Select, and Place a View while it is armed: the one quiet forest-3 key. */
 	.key.armed {
 		background: var(--shell-tool-armed-bg);
 		color: var(--shell-tool-armed-ink);
 		box-shadow: var(--shell-tool-armed-edge);
 	}
-	/* Place a View is a temporary arm, not a second Select: a wash and an underline. */
-	.key.place-armed {
-		background: var(--shell-tool-armed-bg);
-		color: var(--shell-tool-armed-ink);
-		box-shadow: var(--shell-tool-armed-edge);
-	}
-	.key.place-armed::after {
-		content: '';
-		position: absolute;
-		right: 10px;
-		bottom: 4px;
-		left: 10px;
-		height: 2px;
-		border-radius: 1px;
-		background: var(--shell-tool-armed-ink);
-		opacity: 0.8;
-	}
 	/* An open panel is engaged, so it wears the same light key as a mode. */
-	.key[aria-pressed='true']:not(.armed):not(.place-armed) {
+	.key.engaged {
 		background: var(--shell-mode-active-bg);
 		color: var(--shell-mode-active-ink);
 	}
@@ -158,7 +158,7 @@
 	}
 	.key:focus-visible {
 		outline: var(--shell-focus-ring);
-		outline-offset: 1px;
+		outline-offset: -2px;
 	}
 	.visually-hidden {
 		position: absolute;
@@ -171,13 +171,10 @@
 		white-space: nowrap;
 		border: 0;
 	}
-	@media (pointer: coarse) {
+	@media (max-width: 700px) {
 		.key {
-			height: var(--shell-touch-target);
-			width: var(--shell-touch-target);
-		}
-		.key.labeled {
-			width: auto;
+			min-width: 44px;
+			padding: 0 3px;
 		}
 	}
 </style>

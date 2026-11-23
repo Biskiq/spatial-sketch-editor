@@ -33,7 +33,7 @@ Creators need to discover deeper work from an ordinary selection, recognize thei
 | **Ratified — shared authorities** | [Architecture](../../docs/reference/architecture.md), [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md): one Stage, canonical selection, Camera, source history and Card writer; distinct Scene/Layout/resource responsibilities. World Index is a scope locator, not an outline tree. |
 | **Proposed here** | Edit object discovery, contextual entry/return, unplaced New object, focused Parts navigation, draft discovery and direct editable-copy entry. All await owner judgment and owning-track design. |
 
-Current [dock source](../../apps/editor/src/lib/authoring/stage/shell/StageDock.svelte) and O10/O11 govern the mockups. Older Ink → Shape instructions and shell rosters are historical. Retained [shaping](../../prototypes/native-object-shaping/UX-SPEC.md), [Form Lab](../../prototypes/native-form-lab/FINDINGS.md) and [composition](../../prototypes/object-composition-prototype/README.md) studies inform reach, revision and reuse; none is a production contract.
+Current [dock source](../../apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte) and O10/O11 govern the mockups. Older Ink → Shape instructions and shell rosters are historical. Retained [shaping](../../prototypes/native-object-shaping/UX-SPEC.md), [Form Lab](../../prototypes/native-form-lab/FINDINGS.md) and [composition](../../prototypes/object-composition-prototype/README.md) studies inform reach, revision and reuse; none is a production contract.
 
 ## Alternatives reconsidered
 

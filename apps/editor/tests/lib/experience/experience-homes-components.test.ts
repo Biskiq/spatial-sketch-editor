@@ -699,6 +699,45 @@ describe('R217.S25 — the Experience dock', () => {
 		expect(onPlaceView).toHaveBeenCalledTimes(1);
 	});
 
+	it('arms Select iff Place a View is not armed, and Select cancels placement', async () => {
+		const read = (target: HTMLElement) => {
+			const select = target.querySelector<HTMLButtonElement>('[data-dock-tool="select"]')!;
+			const place = target.querySelector<HTMLButtonElement>('[data-dock-tool="place-view"]')!;
+			return { select, place };
+		};
+
+		const resting = vi.fn();
+		const idle = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), onPlaceView: resting, placeArmed: false });
+		await settle();
+		const a = read(idle);
+		expect(a.select.getAttribute('aria-pressed')).toBe('true');
+		expect(a.select.classList.contains('armed')).toBe(true);
+		expect(a.place.getAttribute('aria-pressed')).toBe('false');
+		expect(a.place.classList.contains('armed')).toBe(false);
+		a.select.click();
+		expect(resting).not.toHaveBeenCalled();
+
+		const cancel = vi.fn();
+		const placing = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), onPlaceView: cancel, placeArmed: true });
+		await settle();
+		const b = read(placing);
+		expect(b.select.getAttribute('aria-pressed')).toBe('false');
+		expect(b.select.classList.contains('armed')).toBe(false);
+		expect(b.place.getAttribute('aria-pressed')).toBe('true');
+		expect(b.place.classList.contains('armed')).toBe(true);
+		b.select.click();
+		expect(cancel).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the Guide engaged state distinct from the armed key', async () => {
+		const target = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), guideOpen: true });
+		await settle();
+		const guide = target.querySelector<HTMLButtonElement>('[data-dock-tool="guide"]')!;
+		expect(guide.classList.contains('engaged')).toBe(true);
+		expect(guide.classList.contains('armed')).toBe(false);
+		expect(target.querySelector('[data-dock-tool="select"]')!.classList.contains('armed')).toBe(true);
+	});
+
 	it('keeps path editing on the Stage while the Guide is open', async () => {
 		const dock = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), guideOpen: true });
 		await settle();
