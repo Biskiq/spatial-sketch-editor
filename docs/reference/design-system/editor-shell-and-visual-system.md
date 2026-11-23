@@ -1,27 +1,10 @@
 # Editor shell and visual system
 
-**Authority:** the approved UX target for World and Experience over one project. This contract
-owns composition, disclosure, information homes, visual roles and return behavior. Design leads
-implementation within its approved scope: implementation is planned backward from the design,
-never reconciled downward to fit current code. A conflict with a hard invariant requires owner
-judgment. Routine implementation does not amend this contract; accepted enduring design rules
-are deliberately promoted here when implementation is accepted.
-
-**Approved designs supersede older shell reference for their approved UX scope, immediately on
-owner approval, not only when a slice lands.** T2.S8 appearance prototype #399
-(`prototypes/appearance-ux`, approved 2026-11-22) governs Paint, the colour picker, Library,
-Finish Card, Material editor, Align, import/repair and cross-project usage as designed, including
-layout, dimensions, typography hierarchy, component anatomy, actions and responsive states.
-The older shell and scoped execution plans cannot redefine these surfaces. Only *undesignated*
-shell concerns (e.g. the Index and Guide in #399) stay with this reference. U8's dock and U2's
-tray promotion implement this authority; they are not prerequisites to its force.
-
-**Conflict and acceptance:** domain identity, security, accepted source and history remain hard
-constraints; a genuine conflict requires an explicit owner-approved design deviation. Implement
-backward from the approved prototype, compare screenshots and interactions at matched states and
-viewports, and do not claim visual acceptance on code/DOM/CI alone. Prototype-only mock data,
-render shortcuts and simulated history are never production authorities. See
-[`docs/workflow.md`](../../workflow.md#design-and-reference-maintenance).
+The shared shell sets the editor's landmarks, visual and interaction roles, spatial continuity,
+and how surfaces coexist across World and Experience. Feature composition and interactions come
+from the [approved design for that scope](../../../prototypes/README.md). For example, follow the
+[Appearance UX](../../../prototypes/appearance-ux/README.md) for its Library and Paint surfaces.
+[Workflow](../../workflow.md#design-and-reference-maintenance) defines design precedence and review.
 
 **Accepted foundation:** Core Product Stability at PR #271 (`ce4e232c`) includes room and shape
 creation, direct manipulation, Camera and Experience authoring, and visitor Preview. This does
@@ -40,7 +23,8 @@ Authority is **by concern**, not a ranking that puts shell design above domain t
 
 | Concern | Authority |
 | --- | --- |
-| Approved UX composition, placement, appearance, typography, interaction and responsive states | The **latest explicitly owner-approved design for that scope**; this document only where it does not conflict |
+| Shared landmarks, visual roles, focus, coexistence and return | This document |
+| Feature composition, controls, interaction and responsive states | The [approved feature design](../../../prototypes/README.md), applying shared shell grammar where relevant |
 | Stage representation, handles/helpers, precision readouts, layering, hit legibility and correspondence between readings | [Spatial-instrument grammar](./spatial-instrument-grammar.md), consuming this document's visual/state roles and domain operations |
 | Product direction and semantic ownership | [North Star](../north-star.md) and [architecture](../architecture.md) |
 | Common identity, persisted units, channels, acceptance and release shapes | [F composition/execution](../composition-execution.md) |
@@ -84,10 +68,10 @@ The shell preserves these invariants:
 
 ### One writable owner per fact
 
-The visual host decides how a control paints; the lens/task context decides what
-is exposed. Every writable fact has one exposed control owner. Another surface
-may display it or open that owner, but must not mount a second writer. Mutually
-exclusive postures may expose the same operation through a deliberate host gate.
+The visual host decides how a control paints and the lens or task context decides what
+is exposed. Every writable fact has one operation owner and one active editing context.
+A picker or task may provide another entry point through that same qualified operation.
+The active context controls which action is offered and where its reach is shown.
 A Card header and its body always describe the same canonical target, with each
 property's actual owner made clear when relevant.
 
@@ -124,9 +108,9 @@ INDEX (collapses to nothing)   STAGE — dominant spatial work; reading control,
 | **Head** | Persistent project/application context, lens switch, **Find**, save/history and Preview | Index toggle; the project name's menu (rename, delete, source download and replacement); Find, which also reaches viewing preferences and Keys; viewing preferences live in the Stage's ⚙ | Active Experience identity in context; the same app and project actions |
 | **Index** | Where am I, and where is that thing? Locator and orientation, not a primary property editor | **Scope model**: one scope at a time with crumbs, sibling menus and kind facets; relation-aware contents | Presentations and relevant relationships, including Guide awareness where present |
 | **Stage** | Continuous spatial truth, readings, spatial marks and direct manipulation | Architecture, objects, inspection, drawing and manipulation; reading control, Height Sheet, state pill | Camera View placement/framing, contextual paths and playback |
-| **Card** | What is canonically selected, what does it mean here, and what owns/reaches beyond this use? The one writer for ordinary facts | Identity, editable facts, Look, scoped ⋯ list; advanced fields under More | One contextual inspector for the selected Presentation, View, subject, Stop, transition or path point |
-| **Dock and palette** | Pointer tools: what the pointer does next | Select · Ink · Measure · Eraser, then Objects | Select · Place a View · Path, then Capture and Guide |
-| **Instrument** | Work invoked at the lower edge that needs room; selection identity stays in the Card | Library and repair only | One active **Guide context**, integrating Stop composition, Cut/Travel, path authoring and playback |
+| **Card** | Canonical selection, its editable facts and the reach of a proposed edit | Identity, context and progressive disclosure | One contextual inspector for the selected Presentation, View, subject, Stop, transition or path point |
+| **Dock and palette** | Pointer tools and what the next gesture does | World tools and their gesture options | Experience tools and companion actions |
+| **Instrument** | Invoked work that needs room while the Card retains selection identity | Tasks such as Library and repair | One active **Guide context**, integrating Stop composition, Cut/Travel, path authoring and playback |
 
 The wide shell has Index left and Stage as the working ground. Index and Card
 overlay the Stage edges without resizing or reframing the viewport. There is no
@@ -145,9 +129,9 @@ shared shell and preserve Stage dominance.
 
 ### The lower working edge
 
-The lower edge is one column. The **dock** sits at the bottom; the armed tool's **palette**
-rises directly above it; an invoked **Instrument** rises above the palette. The palette
-never grows sideways, and a tool never opens a second row of controls.
+The **dock** anchors the lower working edge. An armed tool's **palette** stays attached to
+the dock, and an invoked **Instrument** makes room for a task. Their composition needs to
+preserve spatial context and usable access to the dock and reading controls.
 
 - **Dock and palette material.** Both use the dark forest Instrument material with thin
   white icons, so they read as one instrument over any Stage. The armed tool sits on a
@@ -155,7 +139,7 @@ never grows sideways, and a tool never opens a second row of controls.
   (appearance design D12), one shell token for every tool family, so gold and cobalt stay
   the loudest marks on screen. Tool colour survives only as a 2 px mark under an icon
   and is never a state colour. **Dock keys carry their word** (icon over label, with the
-  key hint in the corner), as in the accepted design; palette controls carry no words at rest.
+  key hint in the corner). Palette labels and disclosure follow the tool's approved design.
 - **Dock anatomy (accepted #399 design, T2.S8 U8).** One chassis and one key serve the World
   and Experience docks, declared once as `--shell-dock-*` in `presentation-tokens.css`: a
   **56 px** forest bar (14 px radius, `--shell-dock-shadow`) with 6 px side padding and 2 px
@@ -521,15 +505,14 @@ owns no source data. Reading settings are view/session state, never source or Un
 | **Head** | Index toggle; the project name's menu (rename, delete, source download and replacement); lens switch; Find; Undo/Redo with a verb label; save; Preview. Viewing preferences (paper or shaded, Height Sheet side, reduced motion, motion speed) live in the Stage's ⚙, and Keys are reached from Find. No separate history-list panel |
 | **Index** | Scope-model locator and Browse. No tools, measures, capability search or task state |
 | **Stage furniture** | Reading control (2D \| 3D with a ▾ for the rest), the drafting words, the scale bar, the Height Sheet and, while a temporary reading is active, its state pill. No World status rail or persistent message band |
-| **Dock and palette** | What the pointer does; never facts, procedure steps or Apply |
-| **Card** | Contextual overlay: identity/name, kind, editable facts, a condition only while true, Look, scoped ⋯ list and More; no permanently allocated column |
-| **Instrument** | Library or repair, one at a time; no subject-results browser |
+| **Dock and palette** | What the pointer does next and the options for that gesture |
+| **Card** | Contextual overlay for the selection's identity and editable facts, with depth disclosed on demand |
+| **Instrument** | One active invoked task, such as Library or repair |
 
-**Permanent pointer tools.** The dock is **Select · Ink · Slice · Eraser · Brush ·
-Measure**, with the **Library** beside it. A tool needs a distinct pairing of pointer
-target and gesture result, must be armable with nothing selected, and must find its own
-target or refuse in words. Frequency or familiarity never earns a slot. Variants stay
-inside the tool's palette; a new permanent slot needs an owner ruling.
+**Pointer tool roles.** A tool pairs a pointer target with a distinct gesture result. It can
+arm without a selection and finds its target or gives a reason for refusal. Use an existing
+tool's variant when the gesture has the same intent. Review changes to the dock as shared shell
+work, including how they affect reachability at constrained widths.
 
 - **Select** picks and manipulates. Dragging a legible mark pulls the fact it addresses;
   empty-Stage drag orbits or pans per reading.
@@ -1332,15 +1315,15 @@ reopen shell acceptance or create unfinished design gates.
 
 ### Retained alternatives
 
-The default is approved. Alternatives remain research candidates: adoption requires an explicit
-design decision supported by evidence, never an incidental implementation choice.
+Historical exploration below records the defaults and alternatives at the time of the shell
+study. Use the active shared grammar and scoped designs for current decisions.
 
 | Question | Default (ratified) | Retained alternative |
 | --- | --- | --- |
-| Collapsed Index | Head location chip (shows where you are, works on touch) | Minimal translucent edge arrow, tap zone on touch; the owner's choice between the two, with the chip favoured |
+| Collapsed Index | Head location chip (shows where you are, works on touch) | Minimal translucent edge arrow with a tap zone |
 | Collapsed palette cue | Faint caret above the armed key (small and faint; size calibrated at implementation) | No cue |
 | Width · depth · height | Progressive: click the scale point | Always shown, plus a possible zoom-dependent rule |
-| Pen and ordinary shapes | Context first: Shape is placed from Objects, not read by the Pen | Revisit only by owner decision; no Shape intent toggle in the Ink palette |
+| Pen and ordinary shapes | Shape is placed from Objects | Shape intent in the Ink palette |
 | Eraser kinds | Filter disclosure in the palette (owner choice) | Kind chips in the acceptance bar, the lighter answer for occasional use |
 | When erasing asks | Only across domains; up to three simple things go at once | Also when hosts, rooms or roofs are affected |
 | Roof Section 2D | Takes the Stage as a roof-local reading | Inset editor over the 3D Stage, expandable |
@@ -1350,8 +1333,7 @@ Considered and **not** retained as candidates: dimension lines beside the front 
 (they converge and crowd small objects), the round 1.1 knob disks (retired), edge grips for
 architecture (a small target with no touch affordance), the Card editing posture for
 Edit shape, the outline-tree Index, a Dimensions Instrument, a persistent Object Pen and
-Conservatory/Paper-era chrome. They reopen only through a named design decision that
-answers the stated reason.
+Conservatory/Paper-era chrome.
 
 ### Open usability problems
 
@@ -1407,9 +1389,10 @@ Its proposal must make these outcomes visible together:
 - Lens parking, explicit revalidated Resume, spatial return and Preview exit following
   their different contracts, without source or identity surprises.
 
-Acceptance assesses the promoted written contract and interaction outcomes. Reference images
-support relative hierarchy, information homes and spatial grammar; literal pixels, fixture
-names/counts and demonstration mechanisms are not product contracts.
+Review shared shell changes against the interaction outcomes above. Reference images show
+relative hierarchy, information homes and spatial grammar. Use the
+[design review guidance](../../workflow.md#design-and-reference-maintenance) for scoped
+visual comparisons and material departures.
 
 ## Stage state pill
 

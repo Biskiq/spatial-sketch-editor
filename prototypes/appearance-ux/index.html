@@ -43,9 +43,8 @@
   <header style="padding:22px 0 4px">
     <h1>Appearance UX · decision sheet</h1>
     <p class="lede">T2.S8 U: how a creator picks, applies, edits, inspects, repairs and reuses colours and materials, built on the
-      merged S8 engine (A–G, E7) and the Light &amp; Sky language. <b>Owner-approved UX target (#399, 2026-11-22).</b> The visual and
-      interaction design governs its approved scope; no product code imports the prototype. The
-      prototype simulates S8 operations and the lab approximates its renderer.</p>
+      merged S8 engine (A–G, E7) and the Light &amp; Sky language. <b>Approved production UX target (#399, 2026-11-22).</b>
+      See the <a href="../README.md">catalogue</a> for scope. The prototype simulates S8 operations and the lab approximates its renderer.</p>
     <div class="open">
       <a href="app.html"><b>Prototype</b><span>The recommended instrument end to end: Paint and its tray, the Library, the Finish Card, the Material editor, Align on wall, import, repair, transfer.</span></a>
       <a href="concepts.html"><b>Concepts</b><span>Competing directions for six questions, the finishing ladder storyboard (layers, masks, brush), and what the second round rejected.</span></a>
@@ -303,9 +302,7 @@
 
   <section class="sec" id="decisions">
     <header><h2>Owner decisions <small>all decided 2026-11-22</small></h2></header>
-    <p class="note">The owner accepted every recommendation below (D7: tray A). Where this design differs from the approved
-      shell design — the armed key (D12), and the Paint tray's labelled tabs, radius, <i>Browse all</i> and expanded palette —
-      this design governs; the shell contract is amended when U's implementation is accepted. The number quick-pick
+    <p class="note">The owner accepted every recommendation below (D7: tray A). The number quick-pick
       (<code>1</code>–<code>9</code>) is deferred, and the quick wheel is promoted as Paint's future accelerator.</p>
     <ol class="dec">
       <li><b>Smooth and Polished concrete.</b><p>No presentation separates them (same scan, factor only). <b>Recommend</b> one card, <i>Smooth Concrete</i>, with a <i>Matte / Polished</i> variant chip, and F's rule applied between cards, not between a card's variants. F's rule is then recorded between cards.</p></li>
@@ -322,8 +319,7 @@
       <li><b>Armed tool key.</b> <span class="tag now">decided 2026-11-22</span><p>The armed key on every dock is
         forest&nbsp;3 (<code>#2d5e48</code>) with an ivory icon and a 1&nbsp;px inner edge at 16% white, replacing the soft
         ivory key. The fill alone is about 2.1 : 1 against the dock, so the icon and edge carry the state too; the tool-colour
-        mark and the collapsed-palette caret are unchanged. It changes the approved shell design (the armed key and its state
-        row), so that slice is Tier&nbsp;2 and promotes the rule into the contract when accepted.</p></li>
+        mark and the collapsed-palette caret are unchanged. U8 adopts this shared shell decision.</p></li>
     </ol>
   </section>
 
@@ -334,7 +330,7 @@
       <tbody>
         <tr><td>Tray</td><td>Favourites, recents (creator prefs), palette, thumbnails</td><td>none: arms Paint</td><td><i>picked</i> lead swatch; empty state <i>Star colours or materials to keep them here</i></td></tr>
         <tr><td>Stage hover</td><td>Pick, target, scope</td><td>none until release</td><td>Consequence line: <i>&lt;pick&gt; replaces / colours &lt;current&gt; on &lt;target&gt;</i>; cobalt dashed ghost</td></tr>
-        <tr><td>Library</td><td>Catalogue, project Finishes and users, private library listing, thumbnails</td><td><code>assign</code> on <i>Apply</i>; G insert on My library; nothing while drafting</td><td>Kind rail, sources, filters, detail pane, <i>Customise…</i>, <i>Used by n · select</i>, edited mark, <i>what travels</i> for library items</td></tr>
+        <tr><td>Library</td><td>Catalogue, project Finishes and users, private library listing, thumbnails</td><td>Card activation chooses in context through the existing operation for Paint, Replace or Swap. A separate control opens detail. G handles My library insert. Draft preview is read-only.</td><td>Kind rail, sources, filters, detail pane, <i>Customise…</i>, <i>Used by n · select</i>, edited mark, <i>what travels</i> for library items</td></tr>
         <tr><td>Finish Card</td><td><code>inspectFinish</code>: provenance, users, operations, diagnostics</td><td>E4 patch with reach; swap; rename</td><td>Reach line; original markers; <i>Material · treatment</i> names; other-kind note; one undo per release</td></tr>
         <tr><td>Material editor</td><td>E7 host frames; raw map facts; the original Finish</td><td>E4 patch through the same adapter</td><td>Raw / exact split, faint original tick and double-click reset, <i>N changes · Reset all</i>, Compare, bottom sheet on iPad portrait</td></tr>
         <tr><td>Align on wall</td><td>Surface frame, tiling</td><td>E4 tiling patch (offset, rotation)</td><td>Ruler, grid and handles never saved; snaps (1 cm, 15°); <i>Put back</i></td></tr>
@@ -366,8 +362,8 @@
 
   <section class="sec" id="readiness">
     <header><h2>Before implementation <small>what a U plan still needs</small></h2></header>
-    <p class="note"><b>Settled 2026-11-22:</b> D1–D12 accepted; the thumbnail treatment is recorded in the S8 plan; this design
-      governs where it differs from the shell contract; picking by number is deferred. The rules below were accepted the same
+    <p class="note"><b>Settled 2026-11-22:</b> D1–D12 accepted; the thumbnail treatment is recorded in the S8 plan.
+      The rules below were accepted the same
       day, each chosen as the smallest rule that leaves room to grow.</p>
     <ol>
       <li><b>Stored facts.</b>

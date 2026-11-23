@@ -16,14 +16,8 @@ the North Star states intent. Do not read the archive unless current evidence ne
   `@portfolio/layout-core`, `@portfolio/project-model`, `@portfolio/camera-core` and
   `@portfolio/geometry-core`. PR #115 removed `apps/museum`, superseded by the separately hosted
   frozen project.
-- `prototypes/` holds **two approval modes** ([`prototypes/README.md`](./prototypes/README.md)).
-  **Interaction donors / exploratory studies** authorize only explicitly harvested and accepted
-  findings, not the prototype's entire visual design. **Owner-approved production UX targets**
-  govern layout, dimensions, hierarchy, colour, typography, interactions and responsive states
-  **within their explicitly approved scope**. Never promote a whole prototype merely because
-  some interaction or research was accepted. No prototype owns production domain, persistence
-  or implementation architecture. Older shell references and narrower plans cannot override
-  a subsequently approved full design. If the approval mode or scope is unclear, ask the owner.
+- Find scoped UX targets and research in the [prototype catalogue](./prototypes/README.md).
+  [Workflow](./docs/workflow.md#design-and-reference-maintenance) owns approval and review.
 - “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
 - **Frozen, separate projects are outside product scope.** The Chopin museum project was externalized
   by PR #115: it is independently hosted and versioned, the folder is absent from this repository,
@@ -88,16 +82,9 @@ change whose visual or interaction behavior matters, an agent may open the runni
 interact with the changed feature, inspect rendering and console errors, and capture targeted
 evidence. That is **focused manual browser QA**, and it is allowed.
 
-For **owner-approved visual design implementation**, compare prototype and production at matched
-states/viewports, capture focused **side-by-side screenshots**, and record visual and interaction
-parity before claiming acceptance. This is ordinary **scoped design QA**, not permission for
-unrelated bulk E2E/screenshot collection. Do **not** require exhaustive scripted browser journeys
-or bulk screenshot/video recording for ordinary non-design changes without owner authorization.
-The owner retains final manual browser acceptance; agent QA supports but never replaces it. Historical browser artifacts and unrelated test coverage stay
-in place: this policy changes what is *required*, not what is preserved.
-
-Concrete commands and lane semantics stay owned by `apps/editor/tests/README.md`; do not duplicate
-them here.
+See [design review](./docs/workflow.md#design-and-reference-maintenance) for approved UX changes
+and the [editor test contract](./apps/editor/tests/README.md#browser-qa-policy) for browser scope
+and verification lanes. The owner retains final manual browser acceptance.
 
 ## Workflow
 
@@ -114,7 +101,7 @@ closeout: no acceptance document, anchor PR, closeout PR or phase-close record.
 **Tier 1** contract details within the hard rules, visitor/public or shared shell surface, or a
 persisted-format change the previous reader can still read (or with a tested recovery) → agent
 review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-rule, North Star,
-approved-design or ledger-shape change, incompatible format, check removal, owner review,
+ledger-shape or material approved-design change, incompatible format, check removal, owner review,
 production activation, licence or new dependency → owner decides before merge.
 
 **Integration is native.** The target path is implement → focused local tests → PR → review → CI →

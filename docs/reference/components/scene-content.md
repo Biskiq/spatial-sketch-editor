@@ -559,6 +559,13 @@ Materials (definitions/instances and shared-vs-unique already exist):
   an imported material it suppresses appearance maps and emissive while keeping
   displacement, alpha maps and every alpha/transparency flag, and a Natural
   model keeps its exact pre-S6 material key, clone and lease counts.
+- T2.S8 U5 exposes curated and project Finishes through the Library. Usage comes from
+  the current Scene and selects existing users through canonical selection. Arming
+  a Finish for Paint and previewing a draft are nonwriting operations. Applying an
+  assignment or draft uses the accepted Finish operation, validates reach and records
+  one Undo. Browsing uses thumbnail derivatives without opening full-resolution catalogue
+  maps. The [Appearance UX](../../../prototypes/appearance-ux/README.md) defines the Library
+  interaction and presentation.
 - Remaining gaps: per-face and Wall painting (T5/S5) and approved PBR map sets.
   Save and cold Load now verify the complete Finish/Artwork image closure, including
   Finish-only projects, through the shared project-image enumerator.

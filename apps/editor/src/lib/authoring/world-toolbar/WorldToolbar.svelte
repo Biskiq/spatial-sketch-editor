@@ -181,7 +181,12 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 
 	function openLibrary(category: WorldLibraryCategory = 'objects'): void {
 		libraryCategory = category;
-		if (!libraryOpen) onLibrary();
+		// The armed Library key toggles the external sheet; a closed key opens it.
+		if (libraryOpen) {
+			onLibrary();
+			return;
+		}
+		onLibrary();
 		onPlateOpen(true);
 	}
 
@@ -202,7 +207,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		data-world-toolbar
 		data-active-tool={activeTool}
 	>
-		{#if activeTool !== 'select' && !trayOwnsPlate}
+		<!-- The external Library sheet owns the plate while it is open; the dock stays. -->
+		{#if activeTool !== 'select' && !trayOwnsPlate && !libraryOpen}
 		<div class="tier" id={plateId} hidden={!plateOpen}>
 		<div class="row words">
 			<div class="strip words-strip">

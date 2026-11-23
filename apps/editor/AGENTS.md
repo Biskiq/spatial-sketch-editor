@@ -11,12 +11,14 @@ public visitor route, and the editor's tests. Shared domain math belongs to its 
 - One Stage Canvas, one evaluated viewport and one Camera realizer. No `OrbitControls`, second scene
   graph or independent pose/FOV interpolation.
 - One canonical selection and one chronological F4 history. Session state is never saved.
-- Shell behavior consumes the accepted PLATE roles; do not invent component-local metrics when an
-  existing semantic role is equivalent. Preserve coarse-pointer targets and narrow layouts.
 - `visitor/*` and public chunks import no editor-only machinery. Runtime-safe domain evaluators may be
   shared; editor session/authoring code may not.
 - Experience authoring follows [AM-11](../../docs/reference/components/experience.md#current-authoring-and-runtime-contract):
   linear Guide order, one entry View/stay per Stop, strip-owned Guide editing, one Camera evaluator.
+
+Use the [shared shell grammar](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+and the [approved design for the affected feature](../../prototypes/README.md). Reuse equivalent
+presentation roles and preserve coarse-pointer targets and narrow layouts.
 
 ## Commands
 
@@ -34,9 +36,5 @@ Use the lane and evidence requirements in [`tests/README.md`](tests/README.md), 
 
 ## Browser QA
 
-Focused agent-driven manual browser QA is allowed: open the app, exercise the changed interaction,
-inspect rendering and console errors, and capture targeted evidence where it helps review. Do not
-require full Playwright capture, exhaustive browser journeys, scripted E2E replay or bulk
-screenshots/video for ordinary changes; those need explicit owner authorization. The owner keeps
-final manual browser acceptance. Unit, integration, contract, geometry, typecheck and build checks
-remain the routine gate.
+Use [focused browser QA](tests/README.md#browser-qa-policy) for affected behavior and
+[design review](../../docs/workflow.md#design-and-reference-maintenance) for approved UX changes.

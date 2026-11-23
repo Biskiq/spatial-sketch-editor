@@ -232,11 +232,21 @@ function worldKey(label: string): HTMLButtonElement {
 	return key;
 }
 
-/** Open the Library and choose its first object, which arms Stage placement. */
+/** One kind in the external Library's rail. */
+function libraryKind(label: string): HTMLButtonElement {
+	const kind = [...target.querySelectorAll<HTMLButtonElement>('.library .rail button')]
+		.find((node) => node.textContent?.includes(label));
+	if (kind === undefined) throw new Error(`the Library offers no ${label} kind`);
+	return kind;
+}
+
+/** Open the Library, show Objects, and choose the first approved object to arm placement. */
 async function openPlacement(): Promise<void> {
 	worldKey('Library').click();
 	await settled();
-	const tile = target.querySelector<HTMLButtonElement>('[data-world-toolbar] .tile');
+	libraryKind('Objects').click();
+	await settled();
+	const tile = target.querySelector<HTMLButtonElement>('.library .simple-open');
 	if (tile === null) throw new Error('the Library offers no object tile');
 	tile.click();
 	await settled();
@@ -2948,12 +2958,9 @@ describe('mounted X2 gesture lifetimes', () => {
 
 		worldKey('Library').click();
 		await settled();
-		const artworkTab = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .sub')]
-			.find((node) => node.textContent?.trim() === 'Artwork');
-		if (artworkTab === undefined) throw new Error('the Library offers no Artwork category');
-		artworkTab.click();
+		libraryKind('Artwork').click();
 		await settled();
-		const tile = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .tile')]
+		const tile = [...target.querySelectorAll<HTMLButtonElement>('.library .simple-open')]
 			.find((node) => node.textContent?.includes('Gesture print'));
 		if (tile === undefined) throw new Error('the Library offers no Gesture print tile');
 		tile.click();

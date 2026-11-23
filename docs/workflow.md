@@ -36,7 +36,8 @@ Tier 1  contract details within the retained hard rules; the visitor/public surf
         with a tested migration and recovery path
         → fresh-context review; merge on green CI; owner reviews at the next checkpoint
 
-Tier 2  a retained hard rule, the North Star, an approved design or the ledger's shape;
+Tier 2  a retained hard rule, the North Star, the ledger's shape or a material departure
+        from an approved design;
         a persisted-format change without that compatibility or tested recovery;
         removing or downgrading a check; recording an owner review; production data or
         activation; licence; new dependency
@@ -44,8 +45,8 @@ Tier 2  a retained hard rule, the North Star, an approved design or the ledger's
 ```
 
 Tier 0 and Tier 1 merge on the required green gate after one fresh-context review; Tier 2 waits
-for the owner's decision. This workflow takes effect after the owner merges #259; until then the
-current rules apply, and #259 itself remains owner-final-check/owner-merge only.
+for the owner's decision. A prior scoped owner approval covers implementation of that design,
+including a shared shell change within the approval. Apply the other Tier 2 criteria independently.
 
 ## Work units and plans
 
@@ -55,7 +56,9 @@ current rules apply, and #259 itself remains owner-final-check/owner-merge only.
   commit of the work's own draft pull request. It is reviewed in that draft before code is written
   (by the owner for Tier 2, otherwise by a fresh-context agent), then the same pull request
   implements it. Sections, as needed: Goal, Design, Scope, Specification, Checks, Flags, Risks.
-  Detail is set by the no-invention test, not by length. Before final merge, promote genuinely enduring rules where needed and delete the completed plan.
+  Detail is set by the no-invention test. Link settled designs and specify only unresolved decisions,
+  integration and checks. Before final merge, promote genuinely enduring rules where needed and
+  delete the completed plan.
   Git/PR history retains its review. Archive only evidence with a concrete retention purpose.
 - **One review round:** a fresh-context reviewer receives the diff, the touched areas' `AGENTS.md`,
   the linked design and the capability checks. P0/P1 findings block; P2 and below become issues
@@ -94,39 +97,29 @@ defect into a failing tagged test or `bug` issue.
 
 ## Design and reference maintenance
 
-**Prototype approval has two distinct levels.** A prototype's existence, retention, positive
-review, or approval of selected interactions **does not** approve its entire UI.
+Prototype approvals have two modes. Record the mode, scope and exclusions in the existing design
+PR or [prototype catalogue](../prototypes/README.md).
 
-1. **Exploratory / interaction donor.** Throwaway prototypes, research exercises, technical labs
-   and prototypes with accepted *selected* findings contribute only explicitly harvested behaviors,
-   constraints or interaction contracts. Their styling, layout, proportions, architecture, fake
-   state and unharvested flows remain non-authoritative. A donor can be valuable and even have
-   accepted interaction evidence without becoming a full-design specification.
-2. **Owner-approved production UX target.** An explicit owner decision designates a prototype or
-   design artifact as the faithful target for **named surfaces, states and viewports**. For that
-   scope, its visual composition, placement, sizing, typography, colour roles, component anatomy,
-   labels, interaction and responsive behavior are governing. Approval does not extend beyond
-   named scope or to simulated domain operations/architecture.
+- **Exploratory / interaction donor.** Only explicitly harvested and accepted findings become
+  product decisions. An accepted gesture leaves the rest of the prototype as research evidence.
+- **Approved production UX target.** An explicit owner decision sets the intended experience for
+  the named surfaces, interactions and responsive states. Plan implementation from that target.
+  Treat unclear approval as research evidence and clarify scope when it affects the work.
 
-**Approval must record the mode and approved scope.** When unclear, do not infer full visual
-authority from a prototype label, a merged research PR, or 'accepted findings'. Resolve with the
-owner. Harvested donor behaviors become binding only where separately accepted into a product
-contract or scoped owner decision. An explicitly owner-approved full UX design **including a
-runnable approved prototype** is the design authority for its approved scope. Plan backward from it, **not** from existing code, older shell
-references or omissions in a slice plan. A narrower implementation plan cannot revise the design:
-preserve approved composition, placement, size/proportions, typography hierarchy, colours/tokens,
-control anatomy, labels, interaction, responsive states and visual polish. A deviation requires
-**explicit owner approval before implementation or acceptance**. Hard domain/security/persistence/
-history invariants are independent constraints: surface real conflicts for owner judgment, not
-silent simplification. Unapproved research remains evidence, not design authority.
+A later explicit approval supersedes an older design prescription within the scope it addresses,
+from the time of approval. Other shared shell rules continue to apply. Execution plans inherit
+approved decisions. Domain ownership, identity, geometry, security, persistence, selection, history
+and visitor isolation are independent constraints. Prototype simulations supply examples. Bring a
+genuine conflict with a production invariant to the owner before changing the design.
 
-**Design acceptance gate:** a PR that implements an approved visual design must provide matched
-prototype/production screenshots (desktop, laptop, narrow/coarse-pointer where relevant), a
-state-by-state behavior comparison, a discrepancy ledger and explicit owner-approved exceptions.
-DOM assertions, green CI, claimed feature coverage or a missing CSS specification do **not**
-establish visual parity. Do not merge or promote a design slice as accepted with unresolved
-non-approved visual or interaction differences. Focused screenshot comparison is required design
-QA and does not imply permission for unrelated exhaustive E2E capture.
+In the implementation PR, link the approved states and show representative comparisons with running
+production for material visual changes. Match the relevant viewport and state, and exercise the
+critical interaction journeys, including a constrained layout when behavior changes there. Record
+material departures in the PR for an owner decision before merge. A departure is material when it
+changes the agreed composition or hierarchy, what creators can reach or understand, what an action
+does, or how the design adapts. Equivalent token, spacing, layout-fit and accessibility adjustments
+can be handled in ordinary review. CI shows functional verification. Design review supplies visual
+and interaction evidence.
 
 Implementation acceptance triggers deliberate promotion of genuinely enduring rules when needed.
 References describe enduring principles, ownership, interfaces and invariants. Update them only for
