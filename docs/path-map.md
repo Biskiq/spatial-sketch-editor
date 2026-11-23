@@ -11,6 +11,7 @@
 | `packages/camera-core/src/` | [Camera and tour](./reference/components/camera-tour.md) | [Stage grammar](./reference/design-system/spatial-instrument-grammar.md#camera-framing-instruments) |
 | `packages/geometry-core/src/` | [Scene content](./reference/components/scene-content.md) | [Architecture](./reference/architecture.md) |
 | `apps/editor/src/lib/authoring/stage/` | [Shell / PLATE](./reference/design-system/editor-shell-and-visual-system.md) | [Stage grammar](./reference/design-system/spatial-instrument-grammar.md), [acceptance](../apps/editor/tests/README.md) |
+| `apps/editor/src/lib/authoring/library/` | [Appearance UX](../prototypes/appearance-ux/README.md) | [Scene content](./reference/components/scene-content.md#material-and-light-semantic-gaps), [material inspection](./reference/components/rendering.md#material-inspection) |
 | `apps/editor/src/lib/authoring/experience/` | [Shell — Experience expression](./reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) | [Experience](./reference/components/experience.md), [Camera](./reference/components/camera-tour.md) |
 | `apps/editor/src/lib/render/` | [Rendering](./reference/components/rendering.md) | [Architecture — Ownership](./reference/architecture.md#ownership-current-source-of-truth), [Performance](./reference/components/performance.md) |
 | `apps/editor/src/lib/visitor/` | [Camera — Visitor guided runtime](./reference/components/camera-tour.md#visitor-guided-runtime) | [Architecture — platform boundary](./reference/architecture.md#platform-boundary-current) |
@@ -20,4 +21,4 @@
 | `apps/editor/tests/` | [Test contract](../apps/editor/tests/README.md) | [Harness operation](./workflow.md) |
 | `tools/harness/` | [Harness operation](./workflow.md) | [Merge gate](../.github/workflows/merge-gate.yml) |
 | `docs/reference/design-system/` | [Shell](./reference/design-system/editor-shell-and-visual-system.md) | [Stage grammar](./reference/design-system/spatial-instrument-grammar.md), accepted sheets |
-| `prototypes/` | [Prototype hub](../prototypes/README.md) | not product or persisted-format authority |
+| `prototypes/` | [Prototype catalogue](../prototypes/README.md) | [Approval and design review](./workflow.md#design-and-reference-maintenance) |
