@@ -91,10 +91,14 @@
 	const openPart = $derived(parts.find((part) => finishCardTargetKey(part.target) === openKey) ?? null);
 
 	// The adapter's reach and gesture belong to the open surface only.
+	// Teardown must not re-read `services`: the parent's prop getter can already
+	// point at a retired writer, so the release uses the adapter it last focused.
+	let focusedCard: typeof card = null;
 	$effect(() => {
+		focusedCard = card;
 		card?.focus(openPart?.target ?? null);
 	});
-	$effect(() => () => card?.focus(null));
+	$effect(() => () => focusedCard?.focus(null));
 
 	const view = $derived.by((): FinishCardView | null => {
 		void revision;
