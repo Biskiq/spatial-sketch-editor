@@ -23,6 +23,7 @@ import {
 	baseMaterialIdOf,
 	catalogueBaseOf,
 	followerSlotOf,
+	coatColourOf,
 	finishOf,
 	finishRefOfKey,
 	finishKeyOfSurface,
@@ -97,6 +98,7 @@ import {
 	type FinishImageState
 } from './finish-image.svelte';
 import type { ImportedProjectImage } from '../artwork/project-artwork';
+import type { CoatReading } from './colour-coat-port';
 
 export type FinishAuthoringHost = {
 	readonly services: () => StageAdapterServices | null;
@@ -201,6 +203,8 @@ export type PaintColourPort = {
 		targets: { readonly entityIds: readonly string[]; readonly surfaces: readonly SceneSurfaceRef[] },
 		colour: PaintColour
 	) => boolean;
+	/** What a colour does to one target: refuse in place, or coat it keeping the named relief. */
+	readonly read?: (target: { readonly entityId: string } | { readonly surface: SceneSurfaceRef }) => CoatReading | null;
 };
 
 export type PaintSwatch = {
@@ -1297,8 +1301,26 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			await edit(dropperState.forEntityId, { color: source });
 			return true;
 		}
+		if (armCoatColour(view.instance)) return true;
 		activate(view.key);
 		host.onNotice(`Paint · ${view.label}`);
+		return true;
+	}
+
+	/**
+	 * The dropper over a coat arms its colour (a palette slot or a literal), as
+	 * in the accepted design; anything else arms the Finish.
+	 */
+	function armCoatColour(instance: SceneMaterialInstance | null | undefined): boolean {
+		if (host.colourCoat === undefined || instance === null || instance === undefined) return false;
+		const recipes = scene()?.materialIndex?.definitions as ReadonlyMap<string, import('@portfolio/project-model/materials').Recipe> | undefined;
+		const colour = coatColourOf(instance, recipes);
+		if (colour === null) return false;
+		const pick: PaintColour = typeof colour === 'string' ? { kind: 'literal', hex: colour } : { kind: 'slot', slotId: colour.slot };
+		if (pick.kind === 'slot' && !colourKeyResolves(colourKey(pick))) return false;
+		activeColour = pick;
+		activeKey = null;
+		host.onNotice(`Paint · ${colourLabel(pick)}`);
 		return true;
 	}
 
@@ -1443,6 +1465,9 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			return true;
 		}
 		const key = finishKeyOfSurface(current, assignment);
+		if ('materialInstanceId' in assignment.finish && armCoatColour(materialInstanceById(current.materials, assignment.finish.materialInstanceId))) {
+			return true;
+		}
 		activate(key);
 		host.onNotice(`Paint · ${labelOfKey(key)}`);
 		return true;
@@ -1454,6 +1479,12 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const current = scene();
 		const assignment = current?.surfaceFinishes?.find((entry) => surfaceKey(entry.surface) === surfaceKey(target.surface));
 		return current === null || assignment === undefined ? null : labelOfKey(finishKeyOfSurface(current, assignment));
+	}
+
+	/** What the active colour does to a target; `null` while the pick is a material. */
+	function coatReading(target: { readonly surface: PaintableSurface } | { readonly entityId: string }): CoatReading | null {
+		if (activeColour === null) return null;
+		return host.colourCoat?.read?.(target) ?? null;
 	}
 
 	function setActive(entityId: string): void {
@@ -1543,6 +1574,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		activeSurfaceIsAlready,
 		copySurface,
 		wornLabel,
+		coatReading,
 		edit,
 		setColor,
 		setOriginal,

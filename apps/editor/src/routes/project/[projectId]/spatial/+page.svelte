@@ -164,6 +164,8 @@
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
+	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
+	import { getMaterial, materialById } from '$lib/content/materials';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
@@ -921,7 +923,12 @@
 			shell.setPaletteOpen(false);
 		},
 		isPaintArmed: () => shell.armedHostTool === 'paint',
-		armPaint: () => commands.armWorldTool('paint')
+		armPaint: () => commands.armWorldTool('paint'),
+		colourCoat: createColourCoatPort({
+			services: () => adapterServices,
+			onNotice: (message) => shell.setNotice(message),
+			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
+		})
 	});
 	artworkInteraction = createStageArtworkInteraction({
 		api,
