@@ -559,17 +559,6 @@ Materials (definitions/instances and shared-vs-unique already exist):
   an imported material it suppresses appearance maps and emissive while keeping
   displacement, alpha maps and every alpha/transparency flag, and a Natural
   model keeps its exact pre-S6 material key, clone and lease counts.
-- T2.S8 U5 gives the Library one browse surface for curated and project
-  Finishes: All / Curated / This project sources, family categories, search,
-  attribute filters, and one D1 card for Concrete with Matte / Polished
-  variants. Detail reports effective values and real usage; **Select all n**
-  selects existing users only. **Use for Paint** arms the normal Paint path and
-  never assigns. **Customise…** opens a non-destructive sheen draft: it issues
-  no authoring call until **Apply**, which is one `scene-finish-patch` with one
-  Undo under the Finish Card's reach. Browse and detail use the 256 px
-  `FinishTile` and do not load full-resolution catalogue maps. U6 owns the full
-  editor; U7 owns the private-library shelf. U5's visual/interaction parity with
-  #399 remains open in #405 for the post-U7 QA PR.
 - Remaining gaps: per-face and Wall painting (T5/S5) and approved PBR map sets.
   Save and cold Load now verify the complete Finish/Artwork image closure, including
   Finish-only projects, through the shared project-image enumerator.
