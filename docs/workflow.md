@@ -94,8 +94,25 @@ defect into a failing tagged test or `bug` issue.
 
 ## Design and reference maintenance
 
-An explicitly owner-approved UX **including a runnable approved prototype** is the design
-authority for its approved scope. Plan backward from it, **not** from existing code, older shell
+**Prototype approval has two distinct levels.** A prototype's existence, retention, positive
+review, or approval of selected interactions **does not** approve its entire UI.
+
+1. **Exploratory / interaction donor.** Throwaway prototypes, research exercises, technical labs
+   and prototypes with accepted *selected* findings contribute only explicitly harvested behaviors,
+   constraints or interaction contracts. Their styling, layout, proportions, architecture, fake
+   state and unharvested flows remain non-authoritative. A donor can be valuable and even have
+   accepted interaction evidence without becoming a full-design specification.
+2. **Owner-approved production UX target.** An explicit owner decision designates a prototype or
+   design artifact as the faithful target for **named surfaces, states and viewports**. For that
+   scope, its visual composition, placement, sizing, typography, colour roles, component anatomy,
+   labels, interaction and responsive behavior are governing. Approval does not extend beyond
+   named scope or to simulated domain operations/architecture.
+
+**Approval must record the mode and approved scope.** When unclear, do not infer full visual
+authority from a prototype label, a merged research PR, or 'accepted findings'. Resolve with the
+owner. Harvested donor behaviors become binding only where separately accepted into a product
+contract or scoped owner decision. An explicitly owner-approved full UX design **including a
+runnable approved prototype** is the design authority for its approved scope. Plan backward from it, **not** from existing code, older shell
 references or omissions in a slice plan. A narrower implementation plan cannot revise the design:
 preserve approved composition, placement, size/proportions, typography hierarchy, colours/tokens,
 control anatomy, labels, interaction, responsive states and visual polish. A deviation requires
