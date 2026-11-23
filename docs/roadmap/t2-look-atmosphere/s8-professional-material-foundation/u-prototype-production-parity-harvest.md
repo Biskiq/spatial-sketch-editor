@@ -17,7 +17,7 @@
 
 ## A. Exact Library comparison (U5 #406; now REVERTED)
 
-Design: `prototypes/appearance-ux/app.html`, `app/ui-library.js`, `index.html`, `board.html`. Observed implementation: #406 `apps/editor/src/lib/authoring/library/StageLibrary.svelte` and `library-catalogue.ts` at merge `9231e321`. The U5 report records DOM/network acceptance at 1440×900 and 1024×768, **no screenshot capture**, no ≤760px browser run.
+Design: `prototypes/appearance-ux/app.html`, `app/ui-library.js`, `index.html`, `board.html`. Observed implementation: [#406 StageLibrary.svelte at merge](https://github.com/Biskiq/spatial-sketch-editor/blob/9231e3210b92ed333ed92f73231f92596033ac7f/apps/editor/src/lib/authoring/library/StageLibrary.svelte) and its `library-catalogue.ts` at `9231e321` (historical files reverted from the current branch). The U5 report records DOM/network acceptance at 1440×900 and 1024×768, **no screenshot capture**, no ≤760px browser run.
 
 | ID | Approved prototype | Observed in #406 | Verdict / requirement |
 | --- | --- | --- | --- |
