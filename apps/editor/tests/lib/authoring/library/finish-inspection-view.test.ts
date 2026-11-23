@@ -44,6 +44,7 @@ function render(initial: Record<string, unknown> = {}) {
 		color: '#a08060',
 		label: 'Oak',
 		materialKey: 'curated:wood-oak-veneer',
+		caption: null as string | null,
 		onSettings,
 		...initial
 	});
@@ -107,6 +108,25 @@ describe('T2.S8 U5 Library inspection', () => {
 		expect(fx.q('[data-inspect-canvas]')?.classList.contains('hidden')).toBe(true);
 		fx.answer();
 		expect(fx.state()).toBe('ready');
+	});
+
+	it('keeps the held frame\'s caption until the Compare frame arrives', () => {
+		const fx = render({ caption: 'Draft' });
+		fx.answer();
+		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Draft');
+		fx.props.source = { kind: 'catalogue', id: 'wood-walnut-veneer' };
+		fx.props.caption = 'Original';
+		flushSync();
+		// Same material key: the Draft frame still shows, still labelled Draft.
+		expect(fx.state()).toBe('redrawing');
+		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Draft');
+		fx.answer();
+		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Original');
+		fx.props.caption = 'Draft';
+		flushSync();
+		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Original');
+		fx.answer();
+		expect(fx.q('[data-inspect-caption]')?.textContent).toBe('Draft');
 	});
 
 	it('opens on the remembered session geometry and lighting', () => {

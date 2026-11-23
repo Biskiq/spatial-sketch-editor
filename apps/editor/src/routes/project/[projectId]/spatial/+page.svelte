@@ -2957,6 +2957,17 @@
 		}
 	}
 	/*
+		Below 1100 px the Index floats over the Stage and reserves no lane, but the
+		Library and its draft editor still keep clear of an open Index so it stays
+		visible beside them (owner decision on #408). Under 860 px the Library is
+		a full-width sheet and takes the Stage.
+	*/
+	@media (860px < width <= 1100px) {
+		.editor-body[data-index-open='true'] {
+			--library-index-cover: var(--shell-index-width);
+		}
+	}
+	/*
 		The Library and the draft editor keep clear of a shown Card: --card-cover is
 		the span from the Stage's right edge to the Card's left edge, matching the
 		Card's own placement.
@@ -2968,11 +2979,12 @@
 		--card-cover: calc(var(--shell-card-width) + 10px);
 	}
 	/*
-		Where the Index is an overlay, the Library takes its place while open. The
-		Index keeps its open state, contents and scroll (visibility only), and comes
-		back as it was when the Library closes.
+		Where the Library is a full-width sheet it takes the Index's place while
+		open. The Index keeps its open state, contents and scroll (visibility only),
+		and comes back as it was when the Library closes. Above 860 px the Library
+		keeps clear of the Index instead (--library-index-cover).
 	*/
-	@media (max-width: 1100px) {
+	@media (max-width: 860px) {
 		.editor-body[data-library-open='true'] > :global(.plate-index),
 		.editor-body[data-library-open='true'] > :global([data-index-scrim]) {
 			visibility: hidden;

@@ -779,14 +779,14 @@
 <style>
 	/*
 		The Library is bounded to the usable Stage: between the visible Index lane
-		(--index-cover, desktop only) and the Card lane (--card-cover: the span from
+		(--index-cover on desktop, --library-index-cover where the Index floats) and the Card lane (--card-cover: the span from
 		the Stage's right edge to a shown Card's left edge, set by the route), above the dock's measured lower column, with
 		a band of Stage left above it. It starts near 900 × 560 and shrinks to the
 		lanes; its bounds never depend on what is open inside it.
 	*/
 	.scrim,
 	.library {
-		--lane-l: calc(var(--index-cover, 0px) + var(--sheet-lane-left, 0px));
+		--lane-l: calc(var(--library-index-cover, var(--index-cover, 0px)) + var(--sheet-lane-left, 0px));
 		--lane-r: max(var(--card-cover, 0px), var(--sheet-lane-right, 0px));
 		--lane-b: var(--lower-column-height, 168px);
 	}

@@ -315,7 +315,7 @@
 		top: 12px;
 		right: calc(max(var(--card-cover, 0px), var(--sheet-lane-right, 0px)) + 12px);
 		bottom: calc(var(--lower-column-height, 168px) + 12px);
-		width: min(560px, calc(100% - max(var(--card-cover, 0px), var(--sheet-lane-right, 0px)) - var(--index-cover, 0px) - 24px));
+		width: min(560px, calc(100% - max(var(--card-cover, 0px), var(--sheet-lane-right, 0px)) - var(--library-index-cover, var(--index-cover, 0px)) - 24px));
 		display: flex;
 		flex-direction: column;
 		min-height: 0;

@@ -77,6 +77,8 @@
 	let refused = $state.raw<{ readonly key: string; readonly code: string } | null>(null);
 	let partial = $state(false);
 	let pending = $state(false);
+	/** The caption of the frame on the canvas: it changes with the frame, never ahead of it. */
+	let shownCaption = $state<string | null>(null);
 
 	const subject = $derived.by((): InspectionSubject | null => {
 		if (source === null) return null;
@@ -118,6 +120,7 @@
 					? 'library-grazing'
 					: 'library-studio';
 		const shape = geometry;
+		const label = caption;
 		void tiles?.epoch;
 		if (current === null || tiles === null || material === null) return;
 		pending = true;
@@ -134,6 +137,7 @@
 				refused = null;
 				partial = next.status === 'partial';
 				shownKey = material;
+				shownCaption = label;
 			}
 		);
 		return () => stop?.();
@@ -143,6 +147,8 @@
 	// Holding: the canvas shows this material's last frame while it redraws.
 	const holding = $derived(live && !showsRefusal && shownKey !== null && shownKey === key);
 	const loading = $derived(live && !showsRefusal && !holding);
+	// A held frame keeps its own caption until its replacement arrives.
+	const visibleCaption = $derived(holding ? shownCaption : caption);
 	const phase = $derived(
 		!live ? 'off' : showsRefusal ? 'refused' : loading ? 'loading' : pending ? 'redrawing' : partial ? 'partial' : 'ready'
 	);
@@ -173,7 +179,7 @@
 		{:else if loading}
 			<div class="loading" data-inspect-loading><span class="dot"></span><span>Rendering preview…</span></div>
 		{/if}
-		{#if caption !== null}<span class="caption" data-inspect-caption>{caption}</span>{/if}
+		{#if visibleCaption !== null}<span class="caption" data-inspect-caption>{visibleCaption}</span>{/if}
 	</div>
 	<div class="controls">
 		<span class="seg" role="group" aria-label="Preview geometry">
