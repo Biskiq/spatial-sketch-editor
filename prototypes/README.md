@@ -23,6 +23,25 @@ start with the [accepted product](../README.md) and [canonical references](../do
 | [Render cost calibration](./render-cost-calibration/README.md) | Three r187 backends on deterministic scenes: per-draw/per-triangle/light/shadow constants, light-budget curves, a P1 count census and a prepared Gate C prediction | Runnable research evidence on one M2 laptop; synthetic scenes, one device, no product visuals; the P3 prediction is not yet checked against a real reading |
 | [Experience donor](../docs/archive/prototypes/experience-authoring/README.md) | Executable behavior and regression cases | Historical regression evidence; retain until successors demonstrably catch the same failures |
 
+## Approval modes
+
+A retained prototype is not automatically an approved product design. Record **which mode** the
+owner accepted, **what scope** it covers, and what fidelity is expected:
+
+- **Exploratory / interaction donor:** a throwaway experiment, proof or interaction study. Harvest
+  *selected* evidence and behavior into a scoped contract when accepted; no obligation to reproduce
+  its overall UI, spacing, typography, layout, mock data or implementation. Accepting a gesture
+  from Vellum or World creation tools does **not** approve those entire prototype UIs.
+- **Approved production UX target:** explicit owner approval of the visual and interaction design
+  for named surfaces, states and responsive compositions, e.g. **Appearance UX #399 (T2.S8)**.
+  Production must match the approved design rather than treating it as a loose reference.
+  Differences require explicit owner permission. Simulated mechanics/renderer/backend remain
+  non-authoritative in either mode.
+
+If a status is absent or ambiguous, treat the prototype as **evidence only**, not an entire
+design specification. Distinguish an accepted *finding* from approved *full design*. A full design
+can still approve only specified surfaces, not the whole application.
+
 ## Authority and use
 
 [Shell](../docs/reference/design-system/editor-shell-and-visual-system.md),
