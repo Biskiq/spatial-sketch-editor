@@ -139,6 +139,8 @@ const allowed = new Map<string, readonly string[]>([
 			'$lib/layout/wall-face',
 			'./LayoutCardFields.svelte',
 			'./LayoutRegionCard.svelte',
+			// T2.S8 U4 — the Room Card's writer: area facts and the shared Finish section.
+			'./LayoutRoomCard.svelte',
 			'./LayoutInkPalette.svelte',
 			'./LayoutPlacementInstrument.svelte',
 			'./adapter-support',

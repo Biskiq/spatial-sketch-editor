@@ -85,6 +85,13 @@ import { analysisRequestOf, analysisSubjectOf, finishIdIsReferenced, finishUsers
 import { applyFinishPatch, baseRecipeOf, FINISH_PATCH_FIELDS, type FinishPatchEdit, type FinishPatchField } from './finish-patch';
 import { planPaletteAdoption } from './palette-adoption';
 import { planColourCoats, type CoatTarget } from './colour-coat';
+import {
+	generatedFinishName,
+	isGeneratedFinishName,
+	uniqueFinishName,
+	type FinishNameContext,
+	type FinishTreatmentFacts
+} from './finish-treatment';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import {
 	finishTextureResource,
@@ -161,6 +168,13 @@ export type FinishPlannerOptions = {
 	 * is admitted: caller assertions are never a substitute.
 	 */
 	readonly targetAnalysis?: TargetAnalysis;
+	/**
+	 * Presentation facts for generated Finish names (T2.S8 U4): a Finish named
+	 * `<material> · <treatment>` is renamed with its treatment while its name
+	 * is still the generated one. Absent, patch and palette names keep the
+	 * pre-U4 rule (`nextFinishName` on copies, names never regenerate).
+	 */
+	readonly treatmentFacts?: FinishTreatmentFacts;
 };
 
 function refuse(message: string, code = 'invalid-value'): Result {
@@ -169,6 +183,18 @@ function refuse(message: string, code = 'invalid-value'): Result {
 
 function labelOf(options: FinishPlannerOptions, materialId: MaterialId): string {
 	return options.labelForMaterial?.(materialId) ?? materialId;
+}
+
+function nameContextOf(
+	options: FinishPlannerOptions,
+	recipes: ReadonlyMap<string, Recipe>,
+	palette: SceneDocument['palette']
+): FinishNameContext {
+	return {
+		recipes,
+		...(palette === undefined ? {} : { palette }),
+		facts: { ...options.treatmentFacts, labelForMaterial: (id) => labelOf(options, id) }
+	};
 }
 
 type MaterialGrant = NonNullable<SceneRecordScope['materials']>;
@@ -478,7 +504,7 @@ function readFinishRef(reader: ShapeReader, raw: unknown, path: string): SceneFi
 const TILE_MIN_METERS = 0.01;
 const TILE_MAX_METERS = 100;
 const TWO_PI = Math.PI * 2;
-const FINISH_NAME_MAX_LENGTH = 120;
+export const FINISH_NAME_MAX_LENGTH = 120;
 
 /** Normalise radians into the Scene format's [0, 2π) domain. */
 function normalizeRotation(value: number): number {
@@ -1393,7 +1419,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			colour: colour.value,
 			targets: coatTargets,
 			materialRecipes: materialRecipesOf(envelope),
-			labelForMaterial: (id) => labelOf(options, id)
+			labelForMaterial: (id) => labelOf(options, id),
+			...(options.treatmentFacts === undefined ? {} : { facts: options.treatmentFacts })
 		});
 		if (plan.kind === 'refused') return refuse(plan.message, plan.code);
 		if (plan.already) return refuse('Every chosen target already wears that colour.', 'no-change');
@@ -2009,13 +2036,29 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			'mode',
 			'selectedUsers',
 			'expectedUsers',
-			'images'
+			'images',
+			'base'
 		]);
 		if (payload === null) return refuse(reader.issues[0]?.message ?? 'A Finish patch must be an object.');
+		// Swap (U4): an optional catalogue base the patched Finish takes; the
+		// treatment edits travel alongside it in the same patch.
+		let swapBase: { catalogue: MaterialId } | null = null;
+		if (payload.base !== undefined) {
+			const baseRecord = reader.object(payload.base, '$.payload.base', ['catalogue']);
+			const catalogue = baseRecord === null ? null : reader.opaqueId(baseRecord.catalogue, '$.payload.base.catalogue');
+			if (catalogue === null || reader.issues.length > 0) {
+				return refuse(reader.issues[0]?.message ?? 'A swap names one catalogue base.');
+			}
+			if (catalogueRecipe(catalogue) === undefined) return refuse('That curated material does not exist.', 'unknown-catalogue');
+			swapBase = { catalogue: catalogue as MaterialId };
+		}
 		const finish = readFinishRef(reader, payload.finish, '$.payload.finish');
 		const mode = reader.tag(payload.mode, '$.payload.mode', ['in-place', 'all', 'just-this']) as
 			| 'in-place' | 'all' | 'just-this' | null;
-		const edits = readPatchEdits(reader, payload.edits, '$.payload.edits');
+		const edits =
+			swapBase !== null && Array.isArray(payload.edits) && payload.edits.length === 0
+				? []
+				: readPatchEdits(reader, payload.edits, '$.payload.edits');
 		const selected = readUserKeys(reader, payload.selectedUsers, '$.payload.selectedUsers');
 		const expected = readUserKeys(reader, payload.expectedUsers, '$.payload.expectedUsers');
 		const rawImages = payload.images === undefined ? [] : readRegisterImages(reader, payload.images, '$.payload.images');
@@ -2086,7 +2129,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			if (staged !== null) return refuse(staged.message, staged.code);
 		}
 		const recipes = materialRecipesOf(envelope);
-		const seed: SceneMaterialInstance = !needsNew
+		const copy: SceneMaterialInstance = !needsNew
 			? project!
 			: curated
 				? {
@@ -2095,7 +2138,13 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 						base: { catalogue: (finish as { curated: MaterialId }).curated }
 					}
 				: { ...project!, id: allocation.id!, name: nextFinishName(project!.name, before.materials) };
-		const patched = applyFinishPatch(seed, edits, baseRecipeOf(seed, recipes));
+		const baseChanges = swapBase !== null && !sameSceneValues(swapBase, copy.base);
+		const seed: SceneMaterialInstance = baseChanges ? { ...copy, base: swapBase! } : copy;
+		let patched = applyFinishPatch(seed, edits, baseRecipeOf(seed, recipes));
+		if (!patched.ok && patched.problem.code === 'no-change' && baseChanges) {
+			patched = { ok: true, instance: seed, touchesSampling: true };
+		}
+		if (patched.ok && baseChanges) patched = { ...patched, touchesSampling: true };
 		if (!patched.ok) {
 			return {
 				kind: 'rejected',
@@ -2104,7 +2153,19 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				diagnostics: [{ path: patched.problem.path, code: patched.problem.code, message: patched.problem.message }]
 			};
 		}
-		const next = patched.instance;
+		let next = patched.instance;
+		if (options.treatmentFacts !== undefined) {
+			// U4 naming: a Finish whose name is still generated is renamed with its
+			// treatment; a renamed one keeps its name (a copy takes the next free one).
+			const context = nameContextOf(options, recipes, before.palette);
+			const wasGenerated = curated || isGeneratedFinishName(project!.name, project!, context);
+			if (wasGenerated) {
+				// The material half of a resource-backed name comes from the source's
+				// name, never from a copy's free-name suffix ("Rough Oak 2").
+				const label = generatedFinishName(curated ? next : { ...next, name: project!.name }, context);
+				next = { ...next, name: uniqueFinishName(label, before.materials, needsNew ? null : next.id) };
+			}
+		}
 		const affected = needsNew
 			? users.filter((user) => mode !== 'just-this' || selected.includes(user.key))
 			: users;
@@ -2251,8 +2312,30 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			const index = materials.findIndex((instance) => instance.id === next.id);
 			materials[index] = next;
 			changedMaterials.push(next.id);
-			// A shared reset back to its catalogue base leaves a pristine instance,
-			// which surfaces never store: keep every assignment's effective base.
+			if (baseChanges) {
+				// A swapped Finish's primitive users keep the host's catalogue base in step.
+				const nextBase = (catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID) as MaterialId;
+				entities = before.entities.map((entity) => {
+					const instanceId = (entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId;
+					if (instanceId !== next.id || entity.kind === 'model') return entity;
+					changedEntityIds.push(entity.id);
+					return { ...entity, materialId: nextBase } as SceneEntity;
+				});
+			}
+			// A reset back to its catalogue base leaves a pristine instance, which
+			// primitives, Forms and surfaces never store: they take the curated
+			// normal form (a model keeps the instance), and an instance nobody
+			// still needs is collected below.
+			if (isPristineInstance(next)) {
+				const nextBase = (catalogueBaseOf(next) ?? MATERIAL_NEUTRAL_BASE_ID) as MaterialId;
+				entities = entities.map((entity) => {
+					const instanceId = (entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId;
+					if (instanceId !== next.id || entity.kind === 'model') return entity;
+					if (!changedEntityIds.includes(entity.id)) changedEntityIds.push(entity.id);
+					const { materialInstanceId: _dropped, ...rest } = entity as SceneEntity & { materialInstanceId?: string };
+					return { ...rest, materialId: nextBase } as SceneEntity;
+				});
+			}
 			if (isPristineInstance(next) && before.surfaceFinishes !== undefined) {
 				surfaceFinishes = before.surfaceFinishes.map((assignment) =>
 					'materialInstanceId' in assignment.finish && assignment.finish.materialInstanceId === next.id
@@ -2291,7 +2374,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 				changedEntityFields: ['materialId', 'materialInstanceId'],
 				surfaceFinishes: { changedKeys: changedSurfaceKeys },
 				textures: { added: addedTextureResources.map((resource) => resource.id) },
-				materials: materialGrant({ added: addedMaterials, changed: changedMaterials, removed: removedMaterials })
+				materials: materialGrant({ added: addedMaterials, changed: changedMaterials.filter((id) => !removedMaterials.includes(id)), removed: removedMaterials })
 			},
 			addedTextureResources.length === 0 ? null : resources,
 			null,
@@ -2656,7 +2739,31 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 		const palette = before.palette!.map((entry) =>
 			entry.id === slotId ? { ...entry, name } : entry
 		);
-		return complete({ ...before, palette }, { palette: { change: 'slots' } }, [], ['palette']);
+		if (options.treatmentFacts === undefined) {
+			return complete({ ...before, palette }, { palette: { change: 'slots' } }, [], ['palette']);
+		}
+		// U4 naming: followers whose names are still generated take the new slot name.
+		const recipes = materialRecipesOf(envelope);
+		const was = nameContextOf(options, recipes, before.palette);
+		const now = nameContextOf(options, recipes, palette);
+		const renamed: string[] = [];
+		let materials = [...before.materials];
+		for (const follower of paletteFollowers(before.materials, slotId)) {
+			if (isPristineInstance(follower) || !isGeneratedFinishName(follower.name, follower, was)) continue;
+			const label = uniqueFinishName(generatedFinishName(follower, now), materials, follower.id);
+			if (label === follower.name) continue;
+			materials = materials.map((instance) => (instance.id === follower.id ? { ...instance, name: label } : instance));
+			renamed.push(follower.id);
+		}
+		if (renamed.length === 0) {
+			return complete({ ...before, palette }, { palette: { change: 'slots' } }, [], ['palette']);
+		}
+		return complete(
+			{ ...before, palette, materials },
+			{ palette: { change: 'slots' }, materials: materialGrant({ changed: renamed }) },
+			[],
+			['palette', 'materials']
+		);
 	}
 
 	if (kind === SCENE_PALETTE_ADOPT) {

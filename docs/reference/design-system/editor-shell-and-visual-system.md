@@ -486,9 +486,9 @@ project is an ordinary state with no empty-workspace banner.
 ### Shared source and repair
 
 Owner, Source and Reach appear where the proposed operation needs them. For a source
-finish change, the Ask Rule's scope decision names the source, selected use, affected uses
-and acceptance scope where the edit is made (the Card, an acceptance bubble or the
-Library) while the Card keeps the placed object selected.
+finish change, the scope decision is the reach line shown **before** the edit, not a
+prompt after it: it names the source, the selected use and the affected uses, and the
+reached uses are drawn as proposals while the Card keeps the placed object selected.
 
 Broken relationships are discoverable with a proportional parent warning. Repair
 machinery appears on invocation and distinguishes selecting the broken entity, focusing

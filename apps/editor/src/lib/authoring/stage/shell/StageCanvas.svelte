@@ -111,6 +111,7 @@ import StageMatGround from './StageMatGround.svelte';
 		selection = null,
 		hover = null,
 		hoverTone = 'hover',
+		proposals = [],
 		scenePick,
 		/** The Stage's captured pointer ids, read before a renderer generation retires. */
 		capturedPointers = null,
@@ -179,6 +180,8 @@ import StageMatGround from './StageMatGround.svelte';
 		hover?: StageSelectionEntry | null;
 		/** The armed Eraser draws its winner in red dashes instead of hover. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
+		/** Finish Card reach proposals, inked in cobalt beside the selection. */
+		proposals?: readonly StageSelectionEntry[];
 		dial?: CelestialDialModel | null;
 		scenePick: ScenePickSource;
 		capturedPointers?: (() => readonly number[]) | null;
@@ -565,6 +568,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{selection}
 			{hover}
 			{hoverTone}
+			{proposals}
 			{geometry}
 			{scenePick}
 			width={evaluation?.rect.width ?? 1}

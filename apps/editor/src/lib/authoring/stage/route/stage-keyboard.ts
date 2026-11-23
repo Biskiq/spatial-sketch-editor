@@ -52,7 +52,8 @@ export type StageKeyboardInput = {
 	readonly openCard: () => void;
 	readonly pendingDelete: () => boolean;
 	readonly clearPendingDelete: () => void;
-	readonly cancelFinishAsk?: () => boolean;
+	/** Esc drops a live Finish Card gesture (preview) before anything else unwinds. */
+	readonly cancelFinishGesture?: () => boolean;
 	readonly interrupt: (reason: StageInterruptionReason) => void;
 	readonly task: () => StageTask | null;
 	readonly closeTask: () => void;
@@ -311,7 +312,7 @@ export function createStageKeyboard(input: StageKeyboardInput): StageKeyboard {
 					input.clearPendingDelete();
 					break;
 				}
-				if (input.cancelFinishAsk?.() === true) break;
+				if (input.cancelFinishGesture?.() === true) break;
 				const stage = input.facade();
 				// A live mark writer cancels first, then an open disclosure closes; neither
 				// is a task, and neither may reach the task/selection unwinding below.

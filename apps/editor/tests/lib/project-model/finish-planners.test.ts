@@ -39,7 +39,8 @@ import {
 	SCENE_SURFACE_FINISH_ASSIGN,
 	finishOf,
 	isPristineInstance,
-	withFinishPreviews,
+	withFinishInstancePreview,
+	FINISH_PREVIEW_INSTANCE_ID,
 	usersOfFinish
 } from '@portfolio/project-model/scene-planning';
 import {
@@ -734,31 +735,26 @@ describe('scene-finish-assign', () => {
 	});
 });
 
-describe('the picker preview', () => {
-	it('is a render-only synthetic instance and leaves the accepted Scene untouched', () => {
+describe('the Finish Card preview', () => {
+	it('is a render-only synthetic instance on every listed user and leaves the accepted Scene untouched', () => {
 		const accepted = sceneDocument({
-			entities: [box('a', 'wood-walnut', 'p1'), box('b', 'wood-walnut')],
+			entities: [box('a', 'wood-walnut', 'p1'), box('b', 'wood-walnut', 'p1'), box('c', 'wood-walnut')],
 			materials: [
 				{ id: 'p1', name: 'Walnut', base: { catalogue: 'wood-walnut' }, overrides: { color: '#111111' } }
 			]
 		});
-		const preview = withFinishPreviews(accepted, new Map([['a', '#ff0000']]));
-		expect(withFinishPreviews(accepted, new Map())).toBe(accepted);
+		const instance = { id: FINISH_PREVIEW_INSTANCE_ID, name: 'Walnut', base: { catalogue: 'wood-walnut' }, overrides: { color: '#ff0000' } } as const;
+		expect(withFinishInstancePreview(accepted, null)).toBe(accepted);
+		const preview = withFinishInstancePreview(accepted, { users: ['entity:a', 'entity:b'], instance });
 		expect(accepted.materials).toHaveLength(1);
 		expect(accepted.entities[0]).toMatchObject({ materialInstanceId: 'p1' });
-		const entity = preview.entities.find((candidate) => candidate.id === 'a')!;
-		const instanceId = (entity as { materialInstanceId?: string }).materialInstanceId!;
-		expect(instanceId).not.toBe('p1');
-		expect(preview.materials.find((material) => material.id === instanceId)?.overrides?.color).toBe('#ff0000');
-		expect(effectiveColorOf(entity, preview, () => '#000000')).toBe('#ff0000');
-	});
-
-	it('creates a synthetic instance from a curated primitive without writing one', () => {
-		const accepted = sceneDocument({ entities: [box('a', 'wood-walnut')] });
-		const preview = withFinishPreviews(accepted, new Map([['a', '#00ff00']]));
-		expect(accepted.materials).toHaveLength(0);
-		expect(preview.materials).toHaveLength(1);
-		expect(preview.materials[0]).toMatchObject({ base: { catalogue: 'wood-walnut' }, overrides: { color: '#00ff00' } });
+		for (const id of ['a', 'b']) {
+			const entity = preview.entities.find((candidate) => candidate.id === id)!;
+			expect((entity as { materialInstanceId?: string }).materialInstanceId).toBe(FINISH_PREVIEW_INSTANCE_ID);
+			expect(effectiveColorOf(entity, preview, () => '#000000')).toBe('#ff0000');
+		}
+		expect(preview.entities.find((candidate) => candidate.id === 'c')).toBe(accepted.entities[2]);
+		expect(preview.materials.find((material) => material.id === FINISH_PREVIEW_INSTANCE_ID)?.overrides?.color).toBe('#ff0000');
 	});
 });
 

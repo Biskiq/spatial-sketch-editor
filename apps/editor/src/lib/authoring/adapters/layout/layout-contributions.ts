@@ -36,6 +36,7 @@ import LayoutInkPalette from './LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './LayoutPlacementInstrument.svelte';
 import LayoutCardFields from './LayoutCardFields.svelte';
 import LayoutRegionCard from './LayoutRegionCard.svelte';
+import LayoutRoomCard from './LayoutRoomCard.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import { interiorLift } from '$lib/authoring/layout/interior-lift-store.svelte';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
@@ -1029,6 +1030,15 @@ export function createLayoutContributions({
 		 * Dimensions task and its Find/keyboard route are retired in this cutover.
 		 */
 		cardWriter(cardSubject: StageCardSubject) {
+			if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
+				// U4: a Room's Floor and Ceiling Finishes. It writes no Layout field,
+				// so every Room fact stays a Card fact.
+				return {
+					summary: 'Room surfaces',
+					fieldIds: [],
+					view: { component: LayoutRoomCard, services }
+				};
+			}
 			if (cardSubject.sourceKind === 'region') {
 				return {
 					summary: 'Region fields',

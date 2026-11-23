@@ -492,15 +492,45 @@ was already owed.
 
 Materials (definitions/instances and shared-vs-unique already exist):
 
-- S4a closes whole-object Finish authoring: a Card row writes colour (literal or
-  palette follower), Sheen as a view of roughness, exact roughness and Metal; the
-  Library lists curated and project Finishes; and the host Paint tool assigns one
-  whole object per click. Every shared-Finish edit asks *Just this* / *All N* and
-  is one planner intent, so one Undo restores it. Project Finishes follow the
-  assignment normal form: primitives and Forms carry no needless instance, a model
-  reaches a curated Finish through one pristine instance, and a pristine instance
-  with no user is collected in the same write. *Model's own* deletes the instance
-  and restores the imported material.
+- S4a closed whole-object Finish authoring: the Library lists curated and project
+  Finishes and the host Paint tool assigns one whole object per click. Project
+  Finishes follow the assignment normal form: primitives and Forms carry no
+  needless instance, a model reaches a curated Finish through one pristine
+  instance, and a pristine instance with no user is collected in the same write.
+  *Model's own* deletes the instance and restores the imported material.
+- T2.S8 U4 replaces the S4a Card row and its after-the-fact *Just this* / *All N*
+  Ask with the **Finish Card**, mounted on the object Card, on each side of a
+  Wall Card and on a Room Card's Floor and Ceiling. The Card header stays the
+  selection; which surface is open is Card-local session state. Every control is
+  one `scene-finish-patch` (names: `scene-finish-rename`), so one Undo restores
+  it; a slider previews render-only on every reached user and writes once on
+  release, and Esc, deselection or a reach switch cancels with no write.
+  - **Reach is shown before the edit (D2).** A curated Finish on one user
+    materializes; on several it defaults to *This* (`just-this`). A project
+    Finish on one user edits in place; on several it defaults to *All* (in
+    place) and *This* copies. *All* on a curated Finish reaches **same-kind
+    users only** (D5: objects or surfaces) and the Card says how many of the
+    other kind keep it. While *All* is chosen the other reached users are drawn
+    as Paint-tone proposals (a surface outlines its owning Wall or Room). The
+    patch carries the inspected users; if Paint changed them meanwhile the
+    write is refused, the Card re-reads the reach in place and nothing changes.
+    Any other refusal is one line in place.
+  - **Colour:** Natural (no colour), Stained (colour over the kept colour
+    image) and Painted (colour with the image removed: structurally a U3 coat).
+    Plain bases offer Natural / Painted. Chips follow palette slots; *+* writes
+    a literal. Palette editing lives in the Paint tray's *Edit palette*.
+  - **Sheen (D6):** Matte / Satin / Gloss over effective roughness
+    (factor × the base map's scanned mean) against per-family targets; ±0.05
+    shows a step, anything else reads Custom, a step needing a factor above 1
+    is disabled, and the original step resets roughness.
+  - **Swap** sets a curated base and keeps the treatment (colour mode
+    re-derived for the new base, effective sheen, metal, direction; real size
+    reset). An untreated swap collapses to the curated Finish.
+  - **Naming:** `Material · Colour[ stain][ · Sheen]` regenerates while the
+    name is still generated (including a palette slot rename); a renamed
+    Finish keeps its name. Curated names are not editable.
+  - *More* keeps exact roughness, Metal, the colour image and tile size /
+    direction through the same writer and reach.
 - S4b adds one colour image per Finish through P20, the Finish's Scale in
   metres and Direction. The image is a `scene.textures` record plus one pinned
   `texture` resource, created with the Finish in one write; Cancel, refusal or
@@ -510,8 +540,8 @@ Materials (definitions/instances and shared-vs-unique already exist):
   width × depth and say so), and a model hides Scale and Direction because its
   own UVs are authoritative. Scale writes `tileMeters [s, s × h/w]` from the
   image aspect, or `[s, s]` with no aspect; Direction writes radians normalised
-  to [0, 2π). A map-less Finish shows neither field. Both follow the ordinary
-  shared-Finish Ask, and *Remove* deletes the image and restores the base's
+  to [0, 2π). A map-less Finish shows neither field. Both follow the Finish
+  Card's reach, and *Remove* deletes the image and restores the base's
   colour rule. Under Flat colour the image keeps its authored colour field and
   drops its base map; there is no average colour (Q7 closed, D2).
 - S6 adds **Looks**: curated Atmosphere + Treatment tiles in the Environment

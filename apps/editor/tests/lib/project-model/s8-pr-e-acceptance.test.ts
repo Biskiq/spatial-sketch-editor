@@ -672,6 +672,68 @@ describe('T2.S8 E exit — editing one Finish', () => {
 	});
 });
 
+describe('T2.S8 U4 — Swap through the Finish patch', () => {
+	it('swaps an untreated curated material to the curated normal form, with no project Finish', async () => {
+		const fx = await fixture();
+		const users = ['entity:plinth'];
+		const swapped = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { curated: 'plaster-warm' }, mode: 'all', selectedUsers: users, expectedUsers: users,
+			base: { catalogue: 'wood-walnut-veneer' }, edits: []
+		}, 'swap-curated', [{ kind: 'scene-finish', id: 'swap-reserved' }]));
+		expect(swapped.kind).toBe('accepted');
+		expect(scene(fx).materials.map((instance) => instance.id)).toEqual(['shared']);
+		const plinth = scene(fx).entities.find((entity) => entity.id === 'plinth') as { materialId?: string; materialInstanceId?: string };
+		expect(plinth).toMatchObject({ materialId: 'wood-walnut-veneer' });
+		expect(plinth.materialInstanceId).toBeUndefined();
+	});
+
+	it('swaps a shared project Finish in place for every user, keeping its id, its renamed name and its stain', async () => {
+		const fx = await fixture();
+		const all = ['entity:plinth-b', surfaceUserKey(LID), surfaceUserKey(WALL)].sort();
+		const before = snapshot(fx);
+		const swapped = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { project: 'shared' }, mode: 'all', selectedUsers: all, expectedUsers: all,
+			base: { catalogue: 'wood-oak-veneer' }, edits: []
+		}, 'swap-shared'));
+		expect(swapped.kind).toBe('accepted');
+		expect(project(fx, 'shared')).toEqual({
+			id: 'shared',
+			name: 'Shared plaster',
+			base: { catalogue: 'wood-oak-veneer' },
+			overrides: { color: '#aabbcc' }
+		});
+		// A primitive user keeps the host's catalogue base in step.
+		expect(scene(fx).entities.find((entity) => entity.id === 'plinth-b')).toMatchObject({ materialId: 'wood-oak-veneer', materialInstanceId: 'shared' });
+		expect((await fx.coordinator.undo()).kind).toBe('restored');
+		expect(snapshot(fx)).toBe(before);
+	});
+
+	it('refuses a swap to the base a Finish already has with nothing else changed', async () => {
+		const fx = await fixture();
+		const all = ['entity:plinth-b', surfaceUserKey(LID), surfaceUserKey(WALL)].sort();
+		const same = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { project: 'shared' }, mode: 'all', selectedUsers: all, expectedUsers: all,
+			base: { catalogue: 'plaster-warm' }, edits: []
+		}, 'swap-same'));
+		expect(same).toMatchObject({ kind: 'rejected', reason: 'no-change' });
+		const unknown = await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { project: 'shared' }, mode: 'all', selectedUsers: all, expectedUsers: all,
+			base: { catalogue: 'no-such-material' }, edits: []
+		}, 'swap-unknown'));
+		expect(unknown).toMatchObject({ kind: 'rejected', reason: 'unknown-catalogue' });
+	});
+
+	it('names a materialized swap by its treatment', async () => {
+		const fx = await fixture();
+		const users = ['entity:plinth'];
+		await fx.coordinator.accept(intent(fx, SCENE_FINISH_PATCH, {
+			finish: { curated: 'plaster-warm' }, mode: 'all', selectedUsers: users, expectedUsers: users,
+			base: { catalogue: 'wood-oak-veneer' }, edits: [{ field: 'color', op: 'set', value: '#8a9a7b' }]
+		}, 'stain-oak', [{ kind: 'scene-finish', id: 'oak-stain' }]));
+		expect(project(fx, 'oak-stain')).toMatchObject({ name: 'Oak Veneer · #8A9A7B stain', base: { catalogue: 'wood-oak-veneer' } });
+	});
+});
+
 describe('T2.S8 E exit — correctable set import', () => {
 	it('proposes the same set for every file order and blocks a packed/loose or GL/DX duplicate', async () => {
 		const reference = JSON.stringify(proposeMaterialSet((await readSetFileFacts(STEEL, new AbortController().signal)).facts, 'r'));

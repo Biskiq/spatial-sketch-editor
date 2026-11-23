@@ -50,6 +50,8 @@ import {
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
 import { getMaterial, materialById } from '$lib/content/materials';
+import { materialTreatmentFacts } from '$lib/content/material-presentation';
+import type { MaterialId } from '$lib/types/materials';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import { armedModelDefinition, creatorDefinitions } from './scene/import/definitions';
@@ -71,6 +73,8 @@ import {
 	SCENE_PROFILE_REVISION_KIND
 } from './scene/scene-task-ids';
 
+const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
+
 export const createAdapter: StageAdapterFactory = (services: StageAdapterServices) => {
 	// Every planner is registered once, and the placement planner's definitions
 	// are re-read for each preparation instead of being frozen at registration:
@@ -84,7 +88,8 @@ export const createAdapter: StageAdapterFactory = (services: StageAdapterService
 	const planners = [
 		...createArtworkPlanners(),
 		...createFinishPlanners({
-			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id),
+			labelForMaterial: catalogueLabel,
+			treatmentFacts: materialTreatmentFacts(catalogueLabel),
 			materialProof: () => services.materialProofs.proof(),
 			targetAnalysis: services.targetAnalysis
 		}),

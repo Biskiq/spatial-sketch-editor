@@ -54,7 +54,7 @@
 	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
 	import { createStageEraser, STAGE_ERASER_TASK } from '$lib/authoring/stage/stage-eraser';
 	import { createStageAssetLeases } from '$lib/authoring/stage/route/stage-asset-leases.svelte';
-	import { provideFinishTiles } from '$lib/authoring/look/finish-tiles-context';
+	import { provideFinishTiles } from '$lib/authoring/look/finish-tiles-provider';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import {
 		analyzeModelDerivativeBytes,
@@ -159,7 +159,7 @@
 		type FinishAuthoring
 	} from '$lib/authoring/look/finish-authoring.svelte';
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
-	import { withFinishPreviews } from '@portfolio/project-model/scene-planning';
+	import { withFinishInstancePreview } from '@portfolio/project-model/scene-planning';
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
@@ -373,7 +373,15 @@
 		previewing: () => preview !== null,
 		lens: () => experience.lensState,
 		selection: () => selection,
-		finishes: () => finishes
+		finishes: () => finishes,
+		onPaintedOne: (target) => {
+			// A Paint click selects what it painted and opens that Finish; Paint stays armed.
+			const hit = target.hit.sourceKind === 'room-lid' ? { ...target.hit, sourceKind: 'room-floor' as const } : target.hit;
+			commands.selectHit(hit);
+			const surface = target.assignmentSurfaces[0] ?? target.surface;
+			if (target.entityId !== null) finishes?.card.requestOpen({ kind: 'entity', entityId: target.entityId });
+			else if (surface !== null) finishes?.card.requestOpen({ kind: 'surface', surface });
+		}
 	});
 	experience = createStageExperienceBinding({
 		session,
@@ -545,15 +553,16 @@
 	}
 
 	const selectionView = createStageSelectionView();
-	let finishAskSelectionKey = '';
+	let finishCardSelectionKey = '';
 	$effect(() => {
 		const entry = selection;
 		const key = entry === null
 			? ''
 			: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
-		if (key === finishAskSelectionKey) return;
-		finishAskSelectionKey = key;
-		untrack(() => finishes.cancelAsk());
+		if (key === finishCardSelectionKey) return;
+		finishCardSelectionKey = key;
+		// A selection change discards a Card gesture: nothing is written.
+		untrack(() => finishes.card.cancel());
 	});
 	const sceneRooms = $derived(
 		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
@@ -843,7 +852,7 @@
 				shell.setNotice('Finish or cancel the current gesture first.');
 				return false;
 			}
-			finishes.cancelAsk();
+			finishes.card.cancel();
 			artworkInteraction.cancel();
 			commands.armWorldTool('select');
 			return true;
@@ -1041,7 +1050,7 @@
 		openCard: () => shell.setCardOpen(true),
 		pendingDelete: () => shell.pendingDelete !== null,
 		clearPendingDelete: () => { shell.setPendingDelete(null); shell.setNotice(''); },
-		cancelFinishAsk: () => finishes.cancelAsk(),
+		cancelFinishGesture: () => finishes.card.cancel(),
 		interrupt: interruptPress,
 		task: () => shell.task,
 		closeTask: () => commands.closeTask(),
@@ -1060,7 +1069,7 @@
 				shell.paintTool?.setSurfaceScope(next);
 			} else {
 				if (finishes.dropperArmed) finishes.cancelDropper();
-				else finishes.armDropper(null);
+				else finishes.armDropper();
 			}
 			return true;
 		},
@@ -1799,7 +1808,7 @@
 	}
 
 	function setReading(reading: '3d' | 'plan'): void {
-		finishes.cancelAsk();
+		finishes.card.cancel();
 		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
 		if (stageInput.drag !== null && session.gesture() === null) {
 			if (stageInput.drag.mode === 'adapter' && facade !== null) {
@@ -1928,6 +1937,8 @@
 		const onWindowBlur = () => {
 			shell.suspendSnap(false);
 			nearWallCutaway.setHeld(false);
+			// A Finish Card drag that loses the window is a cancel, never a write.
+			finishes?.card.cancel();
 		};
 		window.addEventListener('keydown', onKey);
 		window.addEventListener('keyup', onReleaseSnap);
@@ -2015,9 +2026,7 @@
 			get scene() {
 				const accepted = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
 				if (accepted === null) return boot.snapshot.domain.scene;
-				return finishes.previewFinish.size === 0
-					? accepted
-					: withFinishPreviews(accepted, finishes.previewFinish);
+				return withFinishInstancePreview(accepted, finishes.card.preview);
 			},
 			get evaluation() { return evaluation; },
 			get ghosts() { return ghosts; },
@@ -2050,6 +2059,7 @@
 						: stageInput.hoverSelection;
 			},
 			get hoverTone() { return shell.armedHostTool === 'erase' ? 'erase' as const : shell.armedHostTool === 'paint' ? 'paint' as const : 'hover' as const; },
+			get proposals() { return finishes.card.proposalEntries(); },
 			get liftedRoomIds() { return liftedRoomIds; },
 			get liftedRegionIds() { return liftedRegionIds; },
 			get liftSources() { return liftedSources; },
@@ -2222,8 +2232,8 @@
 			redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 			canUndo={historyState.canUndo}
 			canRedo={historyState.canRedo}
-			onUndo={() => { finishes.cancelAsk(); void stageEpoch.undo(); }}
-			onRedo={() => { finishes.cancelAsk(); void stageEpoch.redo(); }}
+			onUndo={() => { finishes.card.cancel(); void stageEpoch.undo(); }}
+			onRedo={() => { finishes.card.cancel(); void stageEpoch.redo(); }}
 			save={headSave}
 			onReloadRemote={(offer) => void applyReloadOffer(offer)}
 			saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
@@ -2304,7 +2314,7 @@
 				onChoose={(id) => studio.chooseRoot(id)}
 				onOpenChooser={() => studio.openChooser()}
 				onNewObject={() => studio.newObjectHere()}
-				onUndo={() => { finishes.cancelAsk(); void stageEpoch.undo(); }}
+				onUndo={() => { finishes.card.cancel(); void stageEpoch.undo(); }}
 				onBackToWorld={() => studio.backToWorld()}
 				onBackToProjects={() => studio.backToProjects()}
 				onOpenInWorld={() => studio.openInWorld()}
@@ -2595,8 +2605,15 @@
 				}}
 				onColour={(colour) => finishes.pickColour(colour)}
 				onFavourite={() => finishes.toggleActiveFavourite()}
-				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper(null))}
+				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper())}
 				onLibrary={() => finishes.openFinishes()}
+				palette={{
+					...finishes.paletteView(),
+					rename: (slotId, name) => void finishes.renamePaletteSlot(slotId, name),
+					setColor: (slotId, color) => void finishes.setPaletteSlotColor(slotId, color),
+					remove: (slotId) => void finishes.removePaletteSlot(slotId),
+					add: (color) => void finishes.addPaletteSlot(color)
+				}}
 				tileSource={finishTileSource}
 			/>
 		{/if}

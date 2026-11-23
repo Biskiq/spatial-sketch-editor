@@ -32,6 +32,7 @@
 		onDropper,
 		onRadius,
 		onLibrary,
+		palette = null,
 		tileSource = () => null
 	}: {
 		tray: PaintTrayView;
@@ -43,6 +44,18 @@
 		onDropper: () => void;
 		onRadius: (radius: PaintRadius) => void;
 		onLibrary: () => void;
+		/**
+		 * Paint › ⌃ › Edit palette (U4): the project palette's own writes, each one
+		 * Undo. A slot change reaches every surface that follows it.
+		 */
+		palette?: {
+			readonly slots: readonly { readonly id: string; readonly name: string; readonly color: string; readonly users: number }[];
+			readonly room: boolean;
+			readonly rename: (slotId: string, name: string) => void;
+			readonly setColor: (slotId: string, color: string) => void;
+			readonly remove: (slotId: string) => void;
+			readonly add: (color: string) => void;
+		} | null;
 		/** U1's project-Finish picture source (the route's, shared with the Library shelf). */
 		tileSource?: (finishId: string) => FinishTileSource | null;
 	} = $props();
@@ -87,6 +100,16 @@
 	const leadVisible = $derived(
 		activeInTab && tray.active !== null && !row.some((entry) => entry.key === tray.active?.key && entry.kind === tray.active.kind)
 	);
+
+	let paletteEditing = $state(false);
+	let renamingSlot = $state<string | null>(null);
+	let slotDraft = $state('');
+
+	function commitSlotRename(): void {
+		const slotId = renamingSlot;
+		renamingSlot = null;
+		if (slotId !== null && palette !== null) palette.rename(slotId, slotDraft);
+	}
 
 	const wheelStart = $derived(
 		tray.active?.kind === 'colour'
@@ -222,9 +245,52 @@
 	{#if view.expanded}
 		<div class="more" data-paint-more>
 			{#if tab === 'colours'}
-				{#if tray.colours.palette.length > 0}
+				{#if paletteEditing && palette !== null}
+					<div class="group" role="group" aria-label="Edit project palette" data-paint-palette-edit>
+						<span class="heading">
+							Project palette
+							<button type="button" class="linkb" aria-pressed="true" title="Done editing the palette" data-paint-palette-edit-toggle onclick={() => { paletteEditing = false; renamingSlot = null; }}>Done editing</button>
+						</span>
+						{#if palette.slots.length === 0}<p class="hint">No project colours yet.</p>{/if}
+						<ul class="slots">
+							{#each palette.slots as slot (slot.id)}
+								<li>
+									<input type="color" class="slot-colour" value={slot.color} aria-label={`${slot.name} colour`} title={`Change ${slot.name} everywhere it is followed`} data-paint-palette-colour={slot.id} onchange={(event) => palette.setColor(slot.id, event.currentTarget.value)} />
+									{#if renamingSlot === slot.id}
+										<!-- svelte-ignore a11y_autofocus -->
+										<input
+											type="text"
+											class="slot-name-input"
+											maxlength="40"
+											aria-label="Palette colour name"
+											autofocus
+											bind:value={slotDraft}
+											onkeydown={(event) => {
+												if (event.key === 'Enter') commitSlotRename();
+												if (event.key === 'Escape') { event.stopPropagation(); renamingSlot = null; }
+											}}
+											onblur={commitSlotRename}
+										/>
+									{:else}
+										<button type="button" class="slot-name" title="Rename" data-paint-palette-rename={slot.id} onclick={() => { renamingSlot = slot.id; slotDraft = slot.name; }}>{slot.name}</button>
+									{/if}
+									<span class="followers" title={`${slot.users} follow${slot.users === 1 ? 's' : ''} it`}>{slot.users}</span>
+									<button type="button" class="slot-remove" aria-label={`Remove ${slot.name}`} title="Remove — followers keep their colour" data-paint-palette-remove={slot.id} onclick={() => palette.remove(slot.id)}>×</button>
+								</li>
+							{/each}
+						</ul>
+						<label class="slot-add" class:disabled={!palette.room} title={palette.room ? 'Add a palette colour' : 'The palette already holds eight colours'}>
+							<input type="color" value={wheelStart} disabled={!palette.room} aria-label="Add a palette colour" data-paint-palette-add onchange={(event) => palette.add(event.currentTarget.value)} />
+							<span aria-hidden="true">+ Add colour</span>
+						</label>
+						<p class="hint">A palette change reaches every surface that follows it, as one undo.</p>
+					</div>
+				{:else if tray.colours.palette.length > 0 || palette !== null}
 					<div class="group" role="group" aria-label="Project palette">
-						<span class="heading">Project palette</span>
+						<span class="heading">
+							Project palette
+							{#if palette !== null}<button type="button" class="linkb" aria-pressed="false" title="Change a palette colour everywhere it is followed, as one undo" data-paint-palette-edit-toggle onclick={() => (paletteEditing = true)}>Edit palette</button>{/if}
+						</span>
 						<span class="grid">
 							{#each tray.colours.palette as slot (slot.id)}
 								<button
@@ -488,6 +554,88 @@
 	.ib[aria-pressed='true'] {
 		background: var(--shell-forest);
 		color: var(--shell-white);
+	}
+	.linkb {
+		margin-left: 0.4rem;
+		border: 0;
+		padding: 0;
+		background: transparent;
+		color: inherit;
+		text-decoration: underline;
+		font-size: var(--shell-text-utility);
+		cursor: pointer;
+	}
+	.slots {
+		display: grid;
+		gap: 0.2rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.slots li {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.slot-colour {
+		width: var(--shell-control-height);
+		height: var(--shell-control-height);
+		padding: 0;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 999px;
+		background: transparent;
+	}
+	.slot-name,
+	.slot-name-input {
+		flex: 1;
+		min-height: var(--shell-control-height);
+		border: 1px solid transparent;
+		background: transparent;
+		color: inherit;
+		text-align: left;
+		font: inherit;
+	}
+	.slot-name-input {
+		border-color: var(--shell-hairline);
+	}
+	.followers {
+		color: var(--shell-ink-quiet);
+		font-family: var(--shell-mono);
+		font-size: var(--shell-text-utility);
+	}
+	.slot-remove {
+		min-width: var(--shell-control-height);
+		min-height: var(--shell-control-height);
+		border: 0;
+		background: transparent;
+		color: var(--shell-ink-quiet);
+	}
+	.slot-add {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		min-height: var(--shell-control-height);
+		cursor: pointer;
+	}
+	.slot-add.disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+	.slot-add input {
+		width: 1.4rem;
+		height: 1.4rem;
+		padding: 0;
+		border: 1px dashed var(--shell-hairline);
+		border-radius: 999px;
+		background: transparent;
+	}
+	@media (pointer: coarse) {
+		.slot-colour,
+		.slot-remove,
+		.slot-name,
+		.slot-add {
+			min-height: var(--shell-touch-target);
+		}
 	}
 	.ib[aria-expanded='true'] {
 		background: var(--shell-leaf-tint);

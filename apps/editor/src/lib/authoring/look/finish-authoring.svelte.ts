@@ -5,20 +5,17 @@
  *
  * - the **active** pick Paint applies (a Finish, or a colour through the
  *   colour-coat seam) and the creator's favourites and recents;
- * - the shared-Finish **Ask**: one pending edit (or palette adoption), its
- *   reach, *Just this* / *All N* / *Cancel*, and the optional "apply to all
- *   edits while this is open" memory;
- * - the transient colour **preview** the picker streams while the pointer is
- *   down; it never writes and never enters Undo;
- * - the semantic **dropper** target, which copies an authored Finish or colour
- *   rather than rendered pixels.
+ * - the Finish Card adapter (U4, `finish-card.svelte.ts`), which shows reach
+ *   before an edit and owns the Card's preview;
+ * - the project palette's own writes and the From-image flow;
+ * - the semantic **dropper**, which copies an authored Finish or colour rather
+ *   than rendered pixels.
  *
  * Every write is one F.4 intent through the route's one acceptance host. The
  * service reads the live accepted snapshot each time, so the Card and the
  * planner compute the same reach.
  */
 import {
-	FINISH_SHEEN_STOPS,
 	PALETTE_NAME_MAX_LENGTH,
 	baseMaterialIdOf,
 	catalogueBaseOf,
@@ -34,16 +31,13 @@ import {
 	metalReading,
 	nextFinishName,
 	paletteHasRoom,
-	sheenReading,
 	usersOfFinish,
 	type FinishKey,
-	type SceneFinishEdit,
 	type SceneFinishRef
 } from '@portfolio/project-model/scene-planning';
 import type {
 	AcceptedRevision,
 	MaterialId,
-	SceneColor,
 	SceneEntity,
 	SceneMaterialInstance,
 	SceneSurfaceRef,
@@ -99,6 +93,8 @@ import {
 } from './finish-image.svelte';
 import type { ImportedProjectImage } from '../artwork/project-artwork';
 import type { CoatReading } from './colour-coat-port';
+import { createFinishCard, type FinishCard } from './finish-card.svelte';
+import { materialTreatmentFacts } from '$lib/content/material-presentation';
 
 export type FinishAuthoringHost = {
 	readonly services: () => StageAdapterServices | null;
@@ -156,8 +152,6 @@ export type FinishEntityView = {
 	readonly followerSlot: string | null;
 	readonly roughness: number;
 	readonly roughnessAuthored: boolean;
-	readonly sheenStop: ReturnType<typeof sheenReading>['stop'];
-	readonly sheenCaption: string;
 	readonly metalOn: boolean;
 	readonly metalCaption: string;
 	readonly hasColorImage: boolean;
@@ -235,49 +229,11 @@ export type PaintTrayView = {
 	};
 };
 
-type PendingEdit = {
-	readonly kind: 'edit';
-	readonly entityId: string;
-	readonly from: FinishKey;
-	readonly edit: SceneFinishEdit;
-};
-
-type PendingPalette = {
-	readonly kind: 'palette-add';
-	readonly entityId: string;
-	readonly color: string;
-	readonly slotId: string;
-};
-
 /** The Stage and revision an upload began in; a write may not outlive either. */
 type ImageWriteContext = {
 	readonly services: StageAdapterServices;
 	readonly acceptedRevision: AcceptedRevision;
 };
-
-/**
- * A Replace that has already uploaded its bytes and now needs the shared-Finish
- * decision. The asset stays in P20 storage whatever the answer; the planner
- * reuses it, so Cancel costs no upload and writes nothing.
- */
-type PendingImageReplace = {
-	readonly kind: 'image-replace';
-	readonly entityId: string;
-	readonly reach: number;
-	readonly image: ImportedProjectImage;
-	readonly warning: string | null;
-	readonly context: ImageWriteContext;
-};
-
-export type FinishAsk = {
-	readonly kind: 'edit' | 'palette-add' | 'image-replace';
-	readonly entityId: string;
-	readonly label: string;
-	readonly reach: number;
-	readonly applyToAllEdits: boolean;
-};
-
-type Pending = PendingEdit | PendingPalette | PendingImageReplace;
 
 function entityReference(services: StageAdapterServices, entityId: string) {
 	const snapshot = services.stage.snapshot();
@@ -302,14 +258,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	let activeColour = $state.raw<PaintColour | null>(null);
 	const preferenceStore = host.preferences ?? createDevicePaintPreferences();
 	let prefs = $state.raw<PaintPreferences>(preferenceStore.load());
-	let ask = $state.raw<FinishAsk | null>(null);
-	let pending = $state.raw<Pending | null>(null);
-	let applyToAllEdits = $state(false);
-	/** The one remembered Ask choice for the open row, cleared by a subject change. */
-	let sticky = $state.raw<{ readonly key: string; readonly mode: 'just-this' | 'all' } | null>(null);
-	let preview = $state.raw<ReadonlyMap<string, string>>(new Map());
-	let dropper = $state.raw<{ readonly forEntityId: string | null } | null>(null);
-	let rowEntityId: string | null = null;
+	let dropper = $state(false);
 	let busy = $state(false);
 
 	/** The one From-image flow: upload states, cancellation and retry. */
@@ -360,20 +309,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (entity.kind === 'light') return 'Lights have no Finish.';
 		if (entity.kind === 'artwork') return 'Artwork is not painted.';
 		return 'That subject cannot be painted.';
-	}
-
-	/**
-	 * Preview a colour on one object without writing. The map is a render-only
-	 * override the Stage consumes; it never enters the Scene, history or a planner.
-	 */
-	function previewColor(entityId: string, color: string): void {
-		const next = new Map(preview);
-		next.set(entityId, color);
-		preview = next;
-	}
-
-	function clearPreview(): void {
-		if (preview.size > 0) preview = new Map();
 	}
 
 	/** Arm a Finish. Arming never writes and never touches the recents. */
@@ -488,7 +423,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		const roughness = instance?.overrides?.roughness ?? definition?.roughness ?? catalogue?.roughness ?? 0.5;
 		const roughnessAuthored = instance?.overrides?.roughness !== undefined;
 		const metalness = instance?.overrides?.metalness ?? definition?.metalness ?? catalogue?.metalness ?? 0;
-		const sheen = sheenReading({ effectiveRoughness: roughness, authored: roughnessAuthored, baseLabel });
 		const metal = metalReading(metalness);
 		const literal = literalColorOf(entity, current.materials);
 		const follower = followerSlotOf(entity, current.materials);
@@ -532,8 +466,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			followerSlot: follower,
 			roughness,
 			roughnessAuthored,
-			sheenStop: sheen.stop,
-			sheenCaption: sheen.caption,
 			metalOn: metal.on,
 			metalCaption: metal.caption,
 			hasColorImage,
@@ -847,264 +779,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		);
 	}
 
-	function stickyMode(key: string): 'just-this' | 'all' | null {
-		return sticky?.key === key ? sticky.mode : null;
-	}
-
-	async function applyEdit(
-		entityId: string,
-		edit: SceneFinishEdit,
-		mode: 'just-this' | 'all' | 'in-place'
-	): Promise<void> {
-		const view = viewFor(entityId);
-		if (view === null || !view.editable) {
-			host.onNotice(view === null ? paintabilityNotice(entityOf(entityId)) : "Model's own has no Finish to edit.");
-			return;
-		}
-		const needsNew = view.ref !== 'model-own' && ('curated' in view.ref || mode === 'just-this');
-		busy = true;
-		try {
-			const outcome = await accept({
-				kind: 'scene-finish-edit',
-				payload: {
-					entityId,
-					from: view.key,
-					reach: view.users,
-					mode,
-					edit
-				},
-				entityIds: [entityId],
-				allocatedIds: needsNew ? [newId('scene-finish', crypto.randomUUID())] : []
-			});
-			if (outcome.kind === 'accepted') {
-				clearPreview();
-				ask = null;
-				pending = null;
-				return;
-			}
-			clearPreview();
-			if (outcome.code === 'stale-reach') {
-				// The editor's reach was stale: recompute from the live source and ask
-				// again rather than widening the write.
-				pending = { kind: 'edit', entityId, from: view.key, edit };
-				const latest = viewFor(entityId);
-				if (latest !== null && latest.users > 1) {
-					ask = { kind: 'edit', entityId, label: latest.label, reach: latest.users, applyToAllEdits };
-					host.onNotice(`That Finish is now used by ${latest.users} objects.`);
-				} else {
-					ask = null;
-					pending = null;
-				}
-			}
-		} finally {
-			busy = false;
-		}
-	}
-
-	/** An edit gesture: writes at once, or opens the Ask for a shared Finish. */
-	async function edit(entityId: string, edit: SceneFinishEdit): Promise<void> {
-		const view = viewFor(entityId);
-		if (view === null) {
-			host.onNotice(paintabilityNotice(entityOf(entityId)));
-			return;
-		}
-		if (!view.editable) {
-			host.onNotice("Model's own has no Finish to edit.");
-			return;
-		}
-		if (view.users === 1) {
-			await applyEdit(entityId, edit, view.ref !== 'model-own' && 'curated' in view.ref ? 'just-this' : 'in-place');
-			return;
-		}
-		const remembered = stickyMode(view.key);
-		if (applyToAllEdits && remembered !== null) {
-			await applyEdit(entityId, edit, remembered);
-			return;
-		}
-		pending = { kind: 'edit', entityId, from: view.key, edit };
-		ask = { kind: 'edit', entityId, label: view.label, reach: view.users, applyToAllEdits };
-	}
-
-	/** Palette adoption: one slot append plus the follower edit. */
-	async function saveToPalette(entityId: string): Promise<void> {
-		const view = viewFor(entityId);
-		if (view === null || view.literalColor === null) {
-			host.onNotice('Only an authored colour can be saved to the palette.');
-			return;
-		}
-		if (!paletteHasRoom(scene()?.palette)) {
-			host.onNotice('The palette already holds eight colours.');
-			return;
-		}
-		const slotId = crypto.randomUUID();
-		if (view.users > 1) {
-			pending = { kind: 'palette-add', entityId, color: view.literalColor, slotId };
-			ask = {
-				kind: 'palette-add',
-				entityId,
-				label: view.label,
-				reach: view.users,
-				applyToAllEdits
-			};
-			return;
-		}
-		await applyPalette(entityId, view.literalColor, slotId, view.users, view.ref !== 'model-own' && 'curated' in view.ref ? 'just-this' : 'in-place');
-	}
-
-	async function applyPalette(
-		entityId: string,
-		color: string,
-		slotId: string,
-		reach: number,
-		mode: 'just-this' | 'all' | 'in-place'
-	): Promise<void> {
-		const view = viewFor(entityId);
-		if (view === null) return;
-		const needsFinish = view.ref !== 'model-own' && ('curated' in view.ref || mode === 'just-this');
-		const allocations = [
-			newId('scene-palette-slot', slotId),
-			...(needsFinish ? [newId('scene-finish', crypto.randomUUID())] : [])
-		];
-		busy = true;
-		try {
-			const outcome = await accept({
-				kind: 'scene-palette-slot-add',
-				payload: { color, adoptEntityId: entityId, reach, mode },
-				entityIds: [entityId],
-				allocatedIds: allocations
-			});
-			if (outcome.kind === 'accepted') {
-				ask = null;
-				pending = null;
-			}
-		} finally {
-			busy = false;
-		}
-	}
-
-	/** Dismiss a pending shared-Finish Ask without writing. */
-	function cancelAsk(): boolean {
-		if (ask === null && pending === null) return false;
-		ask = null;
-		pending = null;
-		applyToAllEdits = false;
-		clearPreview();
-		return true;
-	}
-
-	async function resolveAsk(choice: 'just-this' | 'all' | 'cancel'): Promise<void> {
-		const current = pending;
-		const asked = ask;
-		if (choice === 'cancel' || current === null || asked === null) {
-			ask = null;
-			pending = null;
-			applyToAllEdits = false;
-			clearPreview();
-			return;
-		}
-		const mode = choice === 'all' ? 'all' : 'just-this';
-		ask = null;
-		pending = null;
-		if (applyToAllEdits && current.kind === 'edit') {
-			sticky = { key: current.from, mode };
-		}
-		if (current.kind === 'edit') {
-			await applyEdit(current.entityId, current.edit, mode);
-		} else if (current.kind === 'image-replace') {
-			await applyImageReplace(
-				current.entityId,
-				current.image,
-				asked.reach,
-				mode,
-				current.warning,
-				current.context
-			);
-		} else {
-			await applyPalette(current.entityId, current.color, current.slotId, asked.reach, mode);
-		}
-	}
-
-	function setApplyToAllEdits(value: boolean): void {
-		applyToAllEdits = value;
-		if (ask !== null) ask = { ...ask, applyToAllEdits: value };
-	}
-
-	function noteRow(entityId: string | null): void {
-		if (rowEntityId === entityId) return;
-		rowEntityId = entityId;
-		sticky = null;
-		ask = null;
-		pending = null;
-		applyToAllEdits = false;
-		clearPreview();
-	}
-
-	function setColor(entityId: string, color: string | { readonly slot: string }): Promise<void> {
-		return edit(entityId, { color });
-	}
-
-	/** *Original*: delete a curated override, or write white over an image Finish. */
-	function setOriginal(entityId: string): Promise<void> {
-		const view = viewFor(entityId);
-		if (view === null) return Promise.resolve();
-		return edit(entityId, { color: view.originalWritesWhite ? '#ffffff' : null });
-	}
-
-	function setSheen(entityId: string, stopId: (typeof FINISH_SHEEN_STOPS)[number]['id']): Promise<void> {
-		const stop = FINISH_SHEEN_STOPS.find((candidate) => candidate.id === stopId);
-		return stop === undefined ? Promise.resolve() : edit(entityId, { roughness: stop.roughness });
-	}
-
-	function setRoughness(entityId: string, roughness: number): Promise<void> {
-		if (!Number.isFinite(roughness) || roughness < 0 || roughness > 1) {
-			host.onNotice('Roughness must be between 0 and 1.');
-			return Promise.resolve();
-		}
-		return edit(entityId, { roughness });
-	}
-
-	function setMetal(entityId: string, on: boolean): Promise<void> {
-		return edit(entityId, { metalness: on ? 1 : 0 });
-	}
-
-	/**
-	 * One tile's metre size. With an image bound the pair keeps its aspect
-	 * (`[s, s × h/w]`); a map-less Finish has no aspect to keep and is not offered
-	 * the field at all.
-	 */
-	function tileFor(entityId: string, metres: number): [number, number] {
-		const view = viewFor(entityId);
-		const aspect =
-			view?.colorMapId === null || view?.colorMapId === undefined
-				? null
-				: (host.imageAspect?.(view.colorMapId) ?? null);
-		return aspect !== null && Number.isFinite(aspect) && aspect > 0 ? [metres, metres / aspect] : [metres, metres];
-	}
-
-	/** More › Scale: one tile in metres, written through the normal Finish edit. */
-	function setTileSize(entityId: string, metres: number): Promise<void> {
-		if (!Number.isFinite(metres) || metres < 0.01 || metres > 100) {
-			host.onNotice('One tile must be between 0.01 m and 100 m.');
-			return Promise.resolve();
-		}
-		return edit(entityId, { tileMeters: tileFor(entityId, metres) });
-	}
-
-	/** More › Direction: degrees are shown; radians are stored, normalised to [0, 2π). */
-	function setDirection(entityId: string, degrees: number): Promise<void> {
-		if (!Number.isFinite(degrees)) {
-			host.onNotice('Direction must be a number of degrees.');
-			return Promise.resolve();
-		}
-		const radians = (degrees * Math.PI) / 180;
-		return edit(entityId, { rotation: radians });
-	}
-
-	/** More › Image › Remove: delete `maps.color`, restoring the base's rule. */
-	function removeImage(entityId: string): Promise<void> {
-		return edit(entityId, { colorMap: null });
-	}
-
 	/** The one Scene write an imported image performs when replacing a Finish. */
 	async function applyImageReplace(
 		entityId: string,
@@ -1150,47 +824,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		} finally {
 			busy = false;
 		}
-	}
-
-	/**
-	 * More › Image › Replace. The upload runs first; a shared Finish then raises
-	 * the ordinary Ask in this row, and the answer is the one Write. Cancel keeps
-	 * the uploaded asset (P20 retention) and writes no Scene state.
-	 */
-	function replaceImage(entityId: string, file: File): Promise<void> {
-		const context = captureImageWrite();
-		const view = viewFor(entityId);
-		if (context === null || view === null || !view.editable) {
-			host.onNotice(
-				context === null
-					? 'The Stage is still opening.'
-					: view === null
-						? paintabilityNotice(entityOf(entityId))
-						: "Model's own has no Finish to edit."
-			);
-			return Promise.resolve();
-		}
-		return imageFlow.begin(file, async (image, warning) => {
-			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
-			const latest = viewFor(entityId);
-			if (latest === null || !latest.editable) {
-				return { kind: 'refused', message: "Model's own has no Finish to edit." };
-			}
-			if (latest.users > 1) {
-				pending = { kind: 'image-replace', entityId, reach: latest.users, image, warning, context };
-				ask = {
-					kind: 'image-replace',
-					entityId,
-					label: latest.label,
-					reach: latest.users,
-					applyToAllEdits: false
-				};
-				return { kind: 'no-op' };
-			}
-			const mode =
-				latest.ref !== 'model-own' && 'curated' in latest.ref ? 'just-this' : 'in-place';
-			return applyImageReplace(entityId, image, latest.users, mode, warning, context);
-		});
 	}
 
 	/**
@@ -1240,13 +873,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		});
 	}
 
-	/** Targeted Retry for a broken image: reload only that texture. */
-	function retryImage(textureId: string): void {
-		const uri = host.textureUri?.(textureId) ?? null;
-		if (uri === null) return;
-		host.retryTexture?.(uri);
-	}
-
 	function setPaletteSlotColor(slotId: string, color: string): Promise<void> {
 		return accept({
 			kind: 'scene-palette-slot-set',
@@ -1266,40 +892,46 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}).then((outcome) => outcome.kind === 'accepted' || outcome.code === 'no-change');
 	}
 
+	/** Paint › Edit palette's +: one new slot, nothing adopts it (one Undo). */
+	async function addPaletteSlot(color: string): Promise<string | null> {
+		if (!paletteHasRoom(scene()?.palette)) {
+			host.onNotice('The palette already holds eight colours.');
+			return null;
+		}
+		const slotId = crypto.randomUUID();
+		const outcome = await accept({
+			kind: 'scene-palette-slot-add',
+			payload: { color },
+			allocatedIds: [newId('scene-palette-slot', slotId)]
+		});
+		return outcome.kind === 'accepted' ? slotId : null;
+	}
+
 	function removePaletteSlot(slotId: string): Promise<void> {
 		return accept({ kind: 'scene-palette-slot-remove', payload: { slotId } }).then(() => undefined);
 	}
 
 	/**
 	 * Arm the semantic dropper. The Stage arms Paint in dropper mode; a click
-	 * copies an authored value and writes nothing until the Card applies it.
+	 * arms the copied Finish or coat colour and writes nothing.
 	 */
-	function armDropper(forEntityId: string | null): void {
-		dropper = { forEntityId };
+	function armDropper(): void {
+		dropper = true;
 		host.armPaint({ kind: 'dropper' });
 	}
 
 	function cancelDropper(): void {
-		dropper = null;
+		dropper = false;
 	}
 
 	/** The dropper's one click: copy the target's Finish, or its authored colour. */
 	async function copyFrom(target: { readonly sourceId: string } | string): Promise<boolean> {
 		const targetId = typeof target === 'string' ? target : target.sourceId;
 		const view = viewFor(targetId);
-		const dropperState = dropper;
-		dropper = null;
-		if (view === null || (view.key === 'model-own' && dropperState?.forEntityId != null)) {
+		dropper = false;
+		if (view === null) {
 			host.onNotice('That has no Finish colour.');
 			return false;
-		}
-		if (dropperState?.forEntityId != null) {
-			const source: SceneColor =
-				view.followerSlot !== null
-					? { slot: view.followerSlot }
-					: view.literalColor ?? view.effectiveColor;
-			await edit(dropperState.forEntityId, { color: source });
-			return true;
 		}
 		if (armCoatColour(view.instance)) return true;
 		activate(view.key);
@@ -1442,8 +1074,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	/** Copy the authored Finish from a Layout surface; an unpainted surface has nothing to copy. */
 	async function copySurface(surface: PaintableSurface): Promise<boolean> {
 		const current = scene();
-		const dropperState = dropper;
-		dropper = null;
+		dropper = false;
 		if (current === null) {
 			host.onNotice('That has no Finish colour.');
 			return false;
@@ -1452,17 +1083,6 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (assignment === undefined) {
 			host.onNotice('That has no Finish colour.');
 			return false;
-		}
-		if (dropperState?.forEntityId != null) {
-			const key = finishKeyOfSurface(current, assignment);
-			const ref = finishRefOfKey(key);
-			if (ref === null || ref === 'model-own') {
-				host.onNotice('That has no Finish colour.');
-				return false;
-			}
-			const source = colorOfKey(key);
-			await edit(dropperState.forEntityId, { color: source });
-			return true;
 		}
 		const key = finishKeyOfSurface(current, assignment);
 		if ('materialInstanceId' in assignment.finish && armCoatColour(materialInstanceById(current.materials, assignment.finish.materialInstanceId))) {
@@ -1486,6 +1106,49 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		if (activeColour === null) return null;
 		return host.colourCoat?.read?.(target) ?? null;
 	}
+
+	function isFavouriteMaterial(key: string): boolean {
+		return prefs.favouriteMaterials.includes(key);
+	}
+
+	function toggleFavouriteMaterial(key: string): void {
+		if (!finishKeyResolves(key)) return;
+		setPrefs({ ...prefs, favouriteMaterials: toggleFavouriteKey(prefs.favouriteMaterials, key) });
+	}
+
+	/** The Card's More › Image › Replace: the reach was chosen before the edit (D2). */
+	function replaceImageFor(entityId: string, file: File, mode: 'just-this' | 'all' | 'in-place'): Promise<void> {
+		const context = captureImageWrite();
+		if (context === null) {
+			host.onNotice('The Stage is still opening.');
+			return Promise.resolve();
+		}
+		return imageFlow.begin(file, async (image, warning) => {
+			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
+			const latest = viewFor(entityId);
+			if (latest === null || !latest.editable) {
+				return { kind: 'refused', message: "A model's own materials take no edits. Paint a material first." };
+			}
+			return applyImageReplace(entityId, image, latest.users, mode, warning, context);
+		});
+	}
+
+	const catalogueLabel = (id: MaterialId): string => (materialById.has(id) ? getMaterial(id).label : id);
+	/** The quick Finish on the Card (U4): its one adapter. */
+	const card: FinishCard = createFinishCard({
+		services: servicesNow,
+		labelForMaterial: catalogueLabel,
+		facts: materialTreatmentFacts(catalogueLabel),
+		swatchOf: (id) => {
+			if (!materialById.has(id)) return '#c4b4a0';
+			const material = getMaterial(id);
+			return material.swatchColor ?? material.fallbackColor;
+		},
+		isFavourite: isFavouriteMaterial,
+		toggleFavourite: toggleFavouriteMaterial,
+		replaceImage: replaceImageFor,
+		onAccepted: () => undefined
+	});
 
 	function setActive(entityId: string): void {
 		const view = viewFor(entityId);
@@ -1538,17 +1201,8 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 					? null
 					: { kind: 'finish', key: activeKey };
 		},
-		get ask() {
-			return ask;
-		},
-		get previewFinish() {
-			return preview;
-		},
-		get dropperTarget() {
-			return dropper?.forEntityId ?? null;
-		},
 		get dropperArmed() {
-			return dropper !== null;
+			return dropper;
 		},
 		get busy() {
 			return busy;
@@ -1556,17 +1210,10 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		get image(): FinishImageState {
 			return imageFlow.state;
 		},
-		get imageBusy(): boolean {
-			return imageFlow.busy;
-		},
-		get imageCanRetry(): boolean {
-			return imageFlow.canRetry;
-		},
-		viewFor,
+		card,
 		libraryShelf,
 		paletteView,
 		paintTray,
-		selectionEntityId,
 		pickFinish,
 		assign,
 		paintEntities,
@@ -1575,31 +1222,14 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		copySurface,
 		wornLabel,
 		coatReading,
-		edit,
-		setColor,
-		setOriginal,
-		setSheen,
-		setRoughness,
-		setMetal,
-		setTileSize,
-		setDirection,
-		removeImage,
 		addFromImage,
-		replaceImage,
-		retryImage,
 		retryImageUpload: () => imageFlow.retry(),
 		cancelImage: () => imageFlow.cancel(),
 		resetImage: () => imageFlow.reset(),
-		saveToPalette,
-		resolveAsk,
-		cancelAsk,
-		setApplyToAllEdits,
-		noteRow,
 		setPaletteSlotColor,
 		renamePaletteSlot,
 		removePaletteSlot,
-		previewColor,
-		clearPreview,
+		addPaletteSlot,
 		setActive,
 		pickMaterialKey,
 		pickColour,

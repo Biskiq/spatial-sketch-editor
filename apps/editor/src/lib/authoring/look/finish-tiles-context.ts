@@ -1,15 +1,13 @@
-/** The Stage's Finish picture service, shared by the shelf and the Stage-mounted renderer. */
-import { getContext, setContext } from 'svelte';
-import { createFinishTiles, type FinishTiles } from '$lib/render/materials/finish-tiles.svelte';
+/**
+ * The Stage's Finish picture service, read by the shelf, the Finish Card and the
+ * Stage-mounted renderer. Readers name the service by type only, so a Card that
+ * shows a tile never reaches the renderer; the route provides it
+ * (`finish-tiles-provider`).
+ */
+import { getContext } from 'svelte';
+import type { FinishTiles } from '$lib/render/materials/finish-tiles.svelte';
 
 export const FINISH_TILES_CONTEXT_KEY = Symbol('biskiq.finish-tiles');
-
-/** Called once by the route that owns the Stage. */
-export function provideFinishTiles(): FinishTiles {
-	const tiles = createFinishTiles();
-	setContext(FINISH_TILES_CONTEXT_KEY, tiles);
-	return tiles;
-}
 
 /** The nearest service, or null where none is provided (a harness, a test). */
 export function tryUseFinishTiles(): FinishTiles | null {

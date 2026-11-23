@@ -334,49 +334,6 @@ export function effectiveColorOf(
 	return base === null ? null : fallbackColor(base);
 }
 
-/** One Sheen stop. Roughness is the authored value the stop writes. */
-export type FinishSheenStop = {
-	readonly id: 'matte' | 'satin' | 'gloss' | 'high-gloss';
-	readonly label: string;
-	readonly roughness: number;
-};
-
-export const FINISH_SHEEN_STOPS: readonly FinishSheenStop[] = [
-	{ id: 'matte', label: 'Matte', roughness: 0.9 },
-	{ id: 'satin', label: 'Satin', roughness: 0.6 },
-	{ id: 'gloss', label: 'Gloss', roughness: 0.3 },
-	{ id: 'high-gloss', label: 'High gloss', roughness: 0.1 }
-];
-
-/** The comparator precision the material resolver uses for its variant seed. */
-export const FINISH_ROUGHNESS_PRECISION = 1000;
-
-/** The lit stop, the inherited/custom caption, and the authored value. */
-export type SheenReading = {
-	readonly stop: FinishSheenStop['id'] | null;
-	readonly caption: string;
-	readonly roughness: number;
-};
-
-export function sheenReading(input: {
-	readonly effectiveRoughness: number;
-	readonly authored: boolean;
-	readonly baseLabel: string;
-}): SheenReading {
-	const at = (value: number): number => Math.round(value * FINISH_ROUGHNESS_PRECISION);
-	const stop = FINISH_SHEEN_STOPS.find(
-		(candidate) => at(candidate.roughness) === at(input.effectiveRoughness)
-	);
-	const roughness = Math.round(input.effectiveRoughness * 100) / 100;
-	const caption =
-		stop !== undefined
-			? stop.label
-			: input.authored
-				? `Custom (${roughness.toFixed(2)})`
-				: `As ${input.baseLabel} (${roughness.toFixed(2)})`;
-	return { stop: stop?.id ?? null, caption, roughness };
-}
-
 export type MetalReading = {
 	readonly on: boolean;
 	readonly caption: string;
@@ -570,37 +527,42 @@ export function literalizePaletteFollowers(
 }
 
 /**
- * Resolve the picker's transient colours into a render-only Scene.
- *
- * The preview is a synthetic material instance per previewed object, resolved by
- * the one existing catalogue/resolver path. It never mutates the accepted Scene,
- * never allocates a planner id and never enters Undo; removing the map restores
+ * A render-only Finish preview (U4): every listed user — objects and Layout
+ * surfaces alike — draws one synthetic instance. It never mutates the accepted Scene, never enters Undo, and removing it restores
  * the accepted bytes exactly.
  */
-export function withFinishPreviews<TS extends FinishScene>(
+export type FinishInstancePreview = {
+	/** `entity:<id>` / `surface:<surfaceKey>` user keys. */
+	readonly users: readonly string[];
+	readonly instance: SceneMaterialInstance;
+};
+
+export const FINISH_PREVIEW_INSTANCE_ID = 'preview-finish-card';
+
+export function withFinishInstancePreview<TS extends FinishScene>(
 	scene: TS,
-	previews: ReadonlyMap<string, string>
+	preview: FinishInstancePreview | null
 ): TS {
-	if (previews.size === 0) return scene;
-	const materials = [...scene.materials];
-	const entities = scene.entities.map((entity) => {
-		const color = previews.get(entity.id);
-		if (color === undefined || !isFinishPaintable(entity)) return entity;
-		const base = baseMaterialIdOf(entity, scene.materials);
-		if (base === null) return entity;
-		const source = materialInstanceById(scene.materials, entity.materialInstanceId);
-		const id = `preview-finish-${entity.id}`;
-		const next = {
-			...(source ?? { name: 'Preview', base: { catalogue: base } }),
-			id,
-			overrides: { ...source?.overrides, color }
-		} as SceneMaterialInstance;
-		const index = materials.findIndex((material) => material.id === id);
-		if (index === -1) materials.push(next);
-		else materials[index] = next;
-		return { ...entity, materialInstanceId: id } as SceneEntity;
-	});
-	return { ...scene, materials, entities } as TS;
+	if (preview === null || preview.users.length === 0) return scene;
+	const users = new Set(preview.users);
+	const id = FINISH_PREVIEW_INSTANCE_ID;
+	const materials = [...scene.materials.filter((material) => material.id !== id), { ...preview.instance, id }];
+	const entities = scene.entities.map((entity) =>
+		users.has(`entity:${entity.id}`) && isFinishPaintable(entity)
+			? ({ ...entity, materialInstanceId: id } as SceneEntity)
+			: entity
+	);
+	const surfaceFinishes = scene.surfaceFinishes?.map((assignment) =>
+		users.has(`surface:${surfaceKey(assignment.surface)}`)
+			? { ...assignment, finish: { materialInstanceId: id } }
+			: assignment
+	);
+	return {
+		...scene,
+		materials,
+		entities,
+		...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
+	} as TS;
 }
 
 /** A stable, readable label for a Finish key when no catalogue is at hand. */

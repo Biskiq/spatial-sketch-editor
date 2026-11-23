@@ -108,6 +108,12 @@ export type StagePaintOptions = {
 	 * coat it keeping the named relief. `null` when the pick is a material.
 	 */
 	readonly coatReading?: (target: { readonly surface: PaintableSurface } | { readonly entityId: string }) => CoatReading | null;
+	/**
+	 * A click that painted exactly one subject (U4): the host selects it and opens
+	 * its Finish on the Card. Paint stays armed. A drag across several subjects or
+	 * a Space paint never calls this — the selection stays where it was.
+	 */
+	readonly onPaintedOne?: (target: StagePaintCandidate) => void;
 };
 
 export type StagePaintStroke = {
@@ -374,6 +380,9 @@ export function createStagePainter(
 			syncSource();
 			if (generation !== uiGeneration) return;
 			const count = surfaceStroke ? assignedSurfaces.length : entityIds.length;
+			if (accepted && ending.targets.length === 1 && ending.scope !== 'space' && (!surfaceStroke || assignedSurfaces.length === 1)) {
+				options.onPaintedOne?.(ending.targets[0]!);
+			}
 			notice = accepted
 				? {
 						kind: 'accepted',
