@@ -16,10 +16,8 @@ the North Star states intent. Do not read the archive unless current evidence ne
   `@portfolio/layout-core`, `@portfolio/project-model`, `@portfolio/camera-core` and
   `@portfolio/geometry-core`. PR #115 removed `apps/museum`, superseded by the separately hosted
   frozen project.
-- `prototypes/` holds durable runnable prototypes and their QA/reference evidence
-  ([`prototypes/README.md`](./prototypes/README.md)). They are **not** npm workspaces, not
-  production applications and not authority — a prototype shortcut never becomes a production
-  contract by being kept there.
+- Find scoped UX targets and research in the [prototype catalogue](./prototypes/README.md).
+  [Workflow](./docs/workflow.md#design-and-reference-maintenance) owns approval and review.
 - “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
 - **Frozen, separate projects are outside product scope.** The Chopin museum project was externalized
   by PR #115: it is independently hosted and versioned, the folder is absent from this repository,
@@ -43,9 +41,9 @@ the North Star states intent. Do not read the archive unless current evidence ne
    projection and evaluation; Experience owns visitor-facing composition and editorial occurrences;
    typed resources form their own independently versioned system. Never hide a new domain inside
    another document. World-local project placement with explicit internal frames; no mandatory Room
-   frame. The landed F2 encoding is separate Layout, Camera-free Scene 9, Camera 1, Experience 4 and
-   resources 2 units. Camera data inside `project.scene` was the pre-cutover encoding (historical, not
-   the destination); the separate Camera unit is the landed split.
+   frame. F2 encodes separate Layout, Camera-free Scene, Camera, Experience and typed resource
+   units. [Composition and execution](./docs/reference/composition-execution.md) lists the current
+   source versions.
 3. **Authored truth excludes generated/render/session state** — authored connection anchors are
    interior only; node-view endpoints are generated at runtime, never authored; generated geometry,
    Three objects, renderer handles, selection and history are never serialized. Immutable,
@@ -84,14 +82,9 @@ change whose visual or interaction behavior matters, an agent may open the runni
 interact with the changed feature, inspect rendering and console errors, and capture targeted
 evidence. That is **focused manual browser QA**, and it is allowed.
 
-Do **not** require full Playwright capture, exhaustive automated browser journeys, scripted E2E
-replay, or bulk screenshot/video recording for ordinary changes. Those need explicit owner
-authorization. The owner retains final manual browser acceptance; agent spot checks are evidence,
-not a substitute for that acceptance. Historical browser artifacts and unrelated test coverage stay
-in place: this policy changes what is *required*, not what is preserved.
-
-Concrete commands and lane semantics stay owned by `apps/editor/tests/README.md`; do not duplicate
-them here.
+See [design review](./docs/workflow.md#design-and-reference-maintenance) for approved UX changes
+and the [editor test contract](./apps/editor/tests/README.md#browser-qa-policy) for browser scope
+and verification lanes. The owner retains final manual browser acceptance.
 
 ## Workflow
 
@@ -108,7 +101,7 @@ closeout: no acceptance document, anchor PR, closeout PR or phase-close record.
 **Tier 1** contract details within the hard rules, visitor/public or shared shell surface, or a
 persisted-format change the previous reader can still read (or with a tested recovery) → agent
 review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-rule, North Star,
-approved-design or ledger-shape change, incompatible format, check removal, owner review,
+ledger-shape or material approved-design change, incompatible format, check removal, owner review,
 production activation, licence or new dependency → owner decides before merge.
 
 **Integration is native.** The target path is implement → focused local tests → PR → review → CI →

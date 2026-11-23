@@ -18,26 +18,18 @@ start with the [accepted product](../README.md) and [canonical references](../do
 | [Spatial Authoring](./spatial-authoring/README.md) | Plan/3D continuity, Rotunda, Section, Ceiling Lift, nested return and World journeys A–F | Specialized spatial interaction evidence; old Experience and shell treatments are historical |
 | [Conservatory](./experience-ux-alternative/README.md) | Dense Views, long Guides and reproducible Experience scenarios | Historical semantics/scenario evidence; its shell and old runtime model are not current authority |
 | [World creation tools](./world-creation-tools/README.md) | One lower-edge instrument: eight labelled keys (four families: Build, Form, Landscape, Furnish) and one tier for tools and options, selection actions or Library; Sky in the head; shared shape keys, in-place consequence tokens amendable in one undo step, Paint reach and the Ask Rule; Living Draft identity with Living and Paper profiles | Interaction and identity donor for T1/T2, for owner review; Canvas sketch geometry, snapshot history, no persistence |
-| [Production shell wireframe](./production-shell-wireframe/README.md) | Owner-approved shell target states, guided interaction and atlas | Approved design evidence for its scope; mock mechanisms are not architecture |
-| [Appearance UX](./appearance-ux/README.md) | T2.S8 U: one Paint instrument for colours and materials, contextual Finish Card, Library, inspection, import/repair and transfer; competing concepts; a thumbnail lab measured with E7's distinctness method; responsive board | Design study for owner review; simulated S8 operations and an approximate renderer, no creator study |
+| [Production shell wireframe](./production-shell-wireframe/README.md) | Ratified Round 2 shell states, guided interaction and atlas | Historical visual and interaction evidence for the shared shell reference |
+| [Appearance UX](./appearance-ux/README.md) | Paint, colour picker, Finish Card, Library and inspection, Material editor, Align, import, repair and transfer, plus the shared dock treatment in D12. See the [recommended app](./appearance-ux/app.html), [responsive board](./appearance-ux/board.html) and [owner decisions](./appearance-ux/index.html#decisions). | **Approved production UX target** ([#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399), 2026-11-22). Scope covers the recommended states. Index and Guide, prototype scaffold, alternatives and future ladder features sit outside this approval. |
 | [Render cost calibration](./render-cost-calibration/README.md) | Three r187 backends on deterministic scenes: per-draw/per-triangle/light/shadow constants, light-budget curves, a P1 count census and a prepared Gate C prediction | Runnable research evidence on one M2 laptop; synthetic scenes, one device, no product visuals; the P3 prediction is not yet checked against a real reading |
 | [Experience donor](../docs/archive/prototypes/experience-authoring/README.md) | Executable behavior and regression cases | Historical regression evidence; retain until successors demonstrably catch the same failures |
 
 ## Authority and use
 
-[Shell](../docs/reference/design-system/editor-shell-and-visual-system.md),
-[spatial grammar](../docs/reference/design-system/spatial-instrument-grammar.md),
-[World sheet](../docs/reference/design-system/world-interaction-sheet.html) and
-[Experience sheet](../docs/reference/design-system/experience-interaction-sheet.html) route approved UX.
-Design approval establishes the desired state for its approved scope: implementation is planned
-backward from it. Current code limitations do not lower an approved target. Surface genuine conflicts
-with hard domain invariants for owner judgment. Proposed experiments do not establish approval.
+[Workflow](../docs/workflow.md#design-and-reference-maintenance) defines the two approval modes
+and design review. The [shared shell](../docs/reference/design-system/editor-shell-and-visual-system.md)
+and [spatial grammar](../docs/reference/design-system/spatial-instrument-grammar.md) cover common
+editor behavior.
 
 Each package records its own run command, real versus simulated behavior, findings and limits.
 Preserve unique research, alternatives, counterexamples, mathematical findings and executable tests.
-Prototype snapshot Undo, mock Camera, renderer shortcuts and data shapes must never silently become
-production authorities. A retained package is not an instruction to resume its old phase plan.
-
-When editing or moving an executable, keep its assets/tests together and run its local checks.
-No product imports from prototypes. Documentation links remain checked by the unconditional
-architecture lane; being opt-in does not exempt a live research route from reference integrity.
+See [prototype area instructions](./AGENTS.md) for package maintenance.

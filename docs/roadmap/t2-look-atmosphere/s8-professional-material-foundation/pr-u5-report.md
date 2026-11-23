@@ -1,6 +1,8 @@
 # T2.S8 U5 — Professional Material Library (acceptance report)
 
-**Status:** functional implementation accepted by the owner; visual/interaction parity is open and tracked in [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405) for the consolidated post-U7 QA PR. Ready to merge; no further U5 code changes for parity.
+**Historical record:** #406 merged with functional acceptance and open visual and interaction
+findings. The review follow-up below records the disposition at merge. [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405)
+tracks the remaining findings for forward U5 correction.
 
 **Branch:** `t2-s8-u5-professional-library`
 

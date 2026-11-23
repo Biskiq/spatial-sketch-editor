@@ -1,7 +1,7 @@
 # Spatial instrument grammar
 
 **Authority:** approved Stage-local representation and interaction grammar. The
-[shell contract](./editor-shell-and-visual-system.md) owns composition and visual roles;
+[shell reference](./editor-shell-and-visual-system.md) owns shared landmarks and visual roles;
 domains own meaning, validity and evaluation. This document owns truthful spatial marks,
 manipulation affordances, precision, layering and hit legibility. It is a design target,
 not a claim that every described capability is implemented. Approved design leads implementation;
@@ -12,9 +12,9 @@ feature work does not silently reinterpret it to match current code.
 | Authority | Decides |
 | --- | --- |
 | [Product/domain contracts](../../README.md), including [Camera](../components/camera-tour.md), [Scene transform semantics](../components/scene-content.md), [architecture](../architecture.md) and [F](../composition-execution.md) | What exists, identity, legal operations/constraints, ownership, validity, evaluation, source acceptance and session lifecycle |
-| [Shell and visual system](./editor-shell-and-visual-system.md) | Persistent/contextual homes, lower-surface span, disclosure, material, semantic color/state roles, type/control roles, responsive composition and return/Preview behavior |
+| [Shell and visual system](./editor-shell-and-visual-system.md) | Shared homes, coexistence, semantic color/state and type/control roles, spatial return and Preview behavior |
 | **This reference** | How domain facts, direct spatial operations and their helpers communicate on Stage: truthful geometry, affordances, emphasis, precision/readout placement, layering, density, hit legibility and correspondence between readings |
-| Feature/domain design | Which supported facts/operations matter for the task, the appropriate domain-specific instrument, and its conformant composition/hit policy |
+| [Approved feature design](../../../prototypes/README.md) | Which supported facts and operations matter for the task, its instrument and controls, and its scoped composition and responsive behavior |
 | QA specimens | Falsifiable examples and calibration, not missing specification or mandatory drawing techniques |
 
 These responsibilities compose; neither shell nor instrument grammar outranks a

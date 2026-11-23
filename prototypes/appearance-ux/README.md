@@ -4,8 +4,8 @@ How a creator picks, applies, edits, inspects, repairs and reuses colours and ma
 merged S8 material foundation, in the Light & Sky language. Competing directions, one recommended
 end-to-end instrument, a thumbnail lab measured with E7's method, and a responsive board.
 
-**Status:** approved by the owner on 2026-11-22 (D1–D12, recorded in the S8 plan). Still not a production contract: the S8 plan and U's implementation plan are. No
-product file imports it. The prototype simulates S8's operations; the lab approximates its renderer.
+**Status:** Approved production UX target ([#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399),
+2026-11-22, D1–D12). See the [catalogue scope](../README.md) and [owner decisions](./index.html#decisions).
 
 ## Open it
 
@@ -77,10 +77,9 @@ The head menu's *Reset prototype* clears saved state.
   Brush) whose seams are agreed now and drawn in Concepts.
 - Thumbnails: a flat, lit sample tile framed on a physical window, one stored 256 px master per
   Finish. It separates satin/brushed stainless and plaster/plastic, which fail on E7's references.
-- Smooth and Polished concrete share one scan and differ only by a roughness factor; no
-  presentation separates them. That needs an owner decision (variant card recommended).
-- G's thumbnail slot (192×192) is too small for a 2× library card; a scoped change to 256 px is
-  proposed.
+- Smooth and Polished concrete share one scan and differ only by a roughness factor. D1 folds
+  them into one variant card.
+- D4 adopts the 256 px thumbnail edge for a sharper Library card. Existing 192 px items remain valid.
 
 ## Checks
 
@@ -89,9 +88,10 @@ page, and confirm no console errors; for the lab, run the sweep and check that t
 passes before saving evidence. The repository's documentation links are checked by
 `npm run test:arch` in `apps/editor`.
 
-## Authority
+## Design inputs
 
 [S8 plan § First deliverable of U](../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/implementation-plan.md#first-deliverable-of-u-swatch-treatment)
 and [E7 report](../../docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/pr-e7-report.md)
 set the questions; the [Light & Sky design](../../docs/roadmap/t2-look-atmosphere/gallery-ux-recovery/ux-design.html)
-is the visual foundation. Nothing here overrides them.
+is the visual foundation. Production contracts and design review are routed by
+[Workflow](../../docs/workflow.md#design-and-reference-maintenance).
