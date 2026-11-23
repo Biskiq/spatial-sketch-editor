@@ -53,7 +53,7 @@ import {
 } from './sample-tile';
 import {
 	INSPECTION_LIGHTING_VERSION,
-	LIBRARY_STUDIO_BACKGROUND,
+	libraryRigBackdrop,
 	createInspectionLighting,
 	type InspectionLighting,
 	type InspectionRig
@@ -652,9 +652,9 @@ export function createInspectionHost(options: {
 			}
 			leases += 1;
 
-			// Library Studio draws on its own light backdrop; every other rig keeps E7's.
+			// The Library's own rigs draw on a light backdrop; every other rig keeps E7's.
 			const backdrop =
-				display === 'lit' && lighting === 'library-studio' ? LIBRARY_STUDIO_BACKGROUND : INSPECTION_THUMBNAIL_BACKGROUND;
+				(display === 'lit' && typeof lighting === 'string' ? libraryRigBackdrop(lighting) : null) ?? INSPECTION_THUMBNAIL_BACKGROUND;
 			scene.background = new Color(backdrop);
 			// A channel display is unlit; it realizes no rig and no World light.
 			if (display === 'lit') {

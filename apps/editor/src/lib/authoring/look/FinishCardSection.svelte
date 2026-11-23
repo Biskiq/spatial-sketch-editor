@@ -403,6 +403,7 @@
 							<StagePaintWheel
 								title="Finish colour"
 								initial={view.colour.hex ?? '#9aa58c'}
+								original={view.colour.hex ?? null}
 								palette={view.colour.chips}
 								onChange={previewHex}
 								onUse={useColour}

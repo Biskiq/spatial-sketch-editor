@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
+import StagePaintWheel from '$lib/authoring/stage/shell/StagePaintWheel.svelte';
 import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 import type { PaintSwatch, PaintTrayView } from '$lib/authoring/look/finish-authoring.svelte';
 
@@ -130,8 +131,14 @@ describe('T2.S8 U2 — Paint tray', () => {
 		expect(picker).not.toBeNull();
 		expect(picker!.getAttribute('role')).toBe('dialog');
 		const hex = target.querySelector<HTMLInputElement>('[data-paint-hex]')!;
+		const before = target.querySelector<HTMLElement>('[data-paint-wheel-before]')!.style.background;
+		// #399: a compact labelled Hex field and a before/current pair in the header.
+		expect(hex.closest('label')?.textContent).toMatch(/Hex/);
 		hex.value = '#123456';
 		hex.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
+		expect(target.querySelector<HTMLElement>('[data-paint-wheel-before]')!.style.background).toBe(before);
+		expect(target.querySelector<HTMLElement>('[data-paint-wheel-current]')!.style.background).toBe('rgb(18, 52, 86)');
 		expect(onColour).not.toHaveBeenCalled();
 		target.querySelector<HTMLButtonElement>('[data-paint-wheel-use]')!.click();
 		expect(onColour).toHaveBeenCalledWith({ kind: 'literal', hex: '#123456' });
@@ -209,5 +216,18 @@ describe('T2.S8 U2 — Paint tray', () => {
 		expect(state.tab).toBe('materials');
 		state.toggleTab(true);
 		expect(state.tab).toBe('colours');
+	});
+
+	it('shows "no colour" as the before swatch when the Finish it opened on is untinted', () => {
+		const target = document.createElement('div');
+		document.body.append(target);
+		const props = { initial: '#9aa58c', original: null, palette: [], onUse: vi.fn(), onClose: vi.fn(), title: 'Finish colour' };
+		mounted.push(mount(StagePaintWheel, { target, props }));
+		flushSync();
+		const before = target.querySelector<HTMLElement>('[data-paint-wheel-before]')!;
+		expect(before.classList.contains('none')).toBe(true);
+		expect(before.style.background).toBe('');
+		expect(target.querySelector('[data-paint-wheel-pair]')?.getAttribute('title')).toMatch(/no colour/);
+		expect(target.querySelector<HTMLElement>('[data-paint-wheel-current]')!.style.background).toBe('rgb(154, 165, 140)');
 	});
 });

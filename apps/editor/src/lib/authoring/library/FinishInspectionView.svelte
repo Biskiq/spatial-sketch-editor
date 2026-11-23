@@ -8,20 +8,27 @@
 	 * leaving releases it. Browse cards never come here: they keep the 256 px
 	 * sample-tile derivatives. With no Stage renderer (a test, a lost context)
 	 * the view shows the subject's tile and says why.
- *
- * Studio here is the Library's brighter neutral `library-studio` rig on a
- * light backdrop; E7's engineering `studio` rig, U1's sample tiles and the
- * Stage's own lighting are untouched.
+	 *
+	 * Studio and Grazing here are the Library's own `library-studio` and
+	 * `library-grazing` rigs on a light backdrop; E7's engineering `studio` and
+	 * `grazing` rigs, U1's sample tiles and the Stage's lighting are untouched.
+	 *
+	 * One canvas stays mounted. While the same material redraws (a geometry,
+	 * lighting or Compare switch) the last valid frame holds; a new material, or
+	 * the first open, shows a neutral loading state instead of another picture.
 	 */
 	import { tryUseFinishTiles } from '$lib/authoring/look/finish-tiles-context';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import type { InspectionLightingMode, InspectionState } from '$lib/render/materials/inspection-host';
-	import type { InspectionSubject } from '$lib/render/materials/inspection-subject';
+	import { inspectionSubjectIdentity, type InspectionSubject } from '$lib/render/materials/inspection-subject';
 	import type { WorldLightSample } from '$lib/render/materials/inspection-world';
-
-	type Geometry = 'sphere' | 'plane' | 'block';
-	type Lighting = 'studio' | 'grazing' | 'world';
+	import {
+		LIBRARY_INSPECTION_DEFAULT,
+		type LibraryInspectionGeometry,
+		type LibraryInspectionLighting,
+		type LibraryInspectionSettings
+	} from './library-inspection';
 
 	let {
 		source,
@@ -30,7 +37,10 @@
 		label,
 		world = null,
 		worldReason = 'World light needs a placed surface to read from.',
-		caption = null
+		caption = null,
+		materialKey = null,
+		settings = LIBRARY_INSPECTION_DEFAULT,
+		onSettings = () => {}
 	}: {
 		source: FinishTileSource | null;
 		color: string;
@@ -41,46 +51,54 @@
 		worldReason?: string;
 		/** Which render this is (Original / Draft), shown over the picture. */
 		caption?: string | null;
+		/**
+		 * The material this view shows. Frames of the same material hold across
+		 * redraws; a different one starts from the neutral loading state.
+		 * Defaults to the subject's identity.
+		 */
+		materialKey?: string | null;
+		/** Geometry and lighting, remembered in the Library session. */
+		settings?: LibraryInspectionSettings;
+		onSettings?: (next: LibraryInspectionSettings) => void;
 	} = $props();
 
 	const tiles = tryUseFinishTiles();
 	const SIZE = 480;
 
-	let geometry = $state<Geometry>('sphere');
-	let lighting = $state<Lighting>('studio');
-	let reading = $state.raw<InspectionState | null>(null);
+	// Seeded from the session once; written back on every change.
+	// svelte-ignore state_referenced_locally
+	let geometry = $state<LibraryInspectionGeometry>(settings.geometry);
+	// svelte-ignore state_referenced_locally
+	let lighting = $state<LibraryInspectionLighting>(settings.lighting);
 	let canvas = $state<HTMLCanvasElement>();
+	/** The material whose frame the canvas holds; null before any frame. */
+	let shownKey = $state<string | null>(null);
+	/** The material the host refused, which shows the sample tile instead. */
+	let refused = $state.raw<{ readonly key: string; readonly code: string } | null>(null);
+	let partial = $state(false);
+	let pending = $state(false);
 
 	const subject = $derived.by((): InspectionSubject | null => {
 		if (source === null) return null;
 		return source.kind === 'catalogue' ? { kind: 'catalogue', id: source.id } : source.subject;
 	});
-	const live = $derived(tiles !== null);
+	const key = $derived(materialKey ?? (subject === null ? null : inspectionSubjectIdentity(subject)));
+	const live = $derived(tiles !== null && subject !== null);
+
+	function choose(next: Partial<LibraryInspectionSettings>): void {
+		if (next.geometry !== undefined) geometry = next.geometry;
+		if (next.lighting !== undefined) lighting = next.lighting;
+		onSettings({ geometry, lighting });
+	}
 
 	// World falls back to Studio the moment its anchor stops qualifying.
 	$effect(() => {
 		if (lighting === 'world' && world === null) lighting = 'studio';
 	});
 
-	$effect(() => {
-		const current = subject;
-		const mode: InspectionLightingMode =
-			lighting === 'world' && world !== null ? { world } : lighting === 'grazing' ? 'grazing' : 'library-studio';
-		void tiles?.epoch;
-		reading = null;
-		if (current === null || tiles === null) return;
-		const stop = tiles.inspect(
-			{ subject: current, geometry, lighting: mode, display: 'lit', sizePx: [SIZE, SIZE] },
-			(next) => (reading = next)
-		);
-		return () => stop?.();
-	});
-
-	$effect(() => {
-		const drawn = reading;
-		if (canvas === undefined || drawn === null || (drawn.status !== 'ready' && drawn.status !== 'partial')) return;
-		const context = canvas.getContext('2d');
-		if (context === null) return;
+	function paint(drawn: Extract<InspectionState, { status: 'ready' | 'partial' }>): void {
+		const context = canvas?.getContext('2d') ?? null;
+		if (canvas === undefined || context === null) return;
 		canvas.width = drawn.frame.width;
 		canvas.height = drawn.frame.height;
 		context.putImageData(
@@ -88,36 +106,79 @@
 			0,
 			0
 		);
+	}
+
+	$effect(() => {
+		const current = subject;
+		const material = key;
+		const mode: InspectionLightingMode =
+			lighting === 'world' && world !== null
+				? { world }
+				: lighting === 'grazing'
+					? 'library-grazing'
+					: 'library-studio';
+		const shape = geometry;
+		void tiles?.epoch;
+		if (current === null || tiles === null || material === null) return;
+		pending = true;
+		const stop = tiles.inspect(
+			{ subject: current, geometry: shape, lighting: mode, display: 'lit', sizePx: [SIZE, SIZE] },
+			(next) => {
+				if (next.status === 'pending') return;
+				pending = false;
+				if (next.status === 'refused') {
+					refused = { key: material, code: next.issues[0]?.code ?? 'refused' };
+					return;
+				}
+				paint(next);
+				refused = null;
+				partial = next.status === 'partial';
+				shownKey = material;
+			}
+		);
+		return () => stop?.();
 	});
 
-	const drawn = $derived(reading !== null && (reading.status === 'ready' || reading.status === 'partial'));
+	const showsRefusal = $derived(refused !== null && refused.key === key);
+	// Holding: the canvas shows this material's last frame while it redraws.
+	const holding = $derived(live && !showsRefusal && shownKey !== null && shownKey === key);
+	const loading = $derived(live && !showsRefusal && !holding);
+	const phase = $derived(
+		!live ? 'off' : showsRefusal ? 'refused' : loading ? 'loading' : pending ? 'redrawing' : partial ? 'partial' : 'ready'
+	);
 	const note = $derived.by((): string | null => {
-		if (!live || subject === null) return 'Live preview needs the Stage renderer; showing the sample tile.';
-		if (reading === null || reading.status === 'pending') return null;
-		if (reading.status === 'refused') {
-			const code = reading.issues[0]?.code ?? 'refused';
-			return code === 'world-anchor-required'
+		if (!live) return 'Live preview needs the Stage renderer; showing the sample tile.';
+		if (showsRefusal) {
+			return refused?.code === 'world-anchor-required'
 				? 'World light needs a placed surface to read from.'
 				: 'This Finish cannot be drawn live here; showing the sample tile.';
 		}
-		if (reading.status === 'partial') return 'Some images could not load; the rest still read.';
+		if (holding && partial && !pending) return 'Some images could not load; the rest still read.';
 		return null;
 	});
 </script>
 
-<div class="inspect" data-library-inspect data-inspect-lighting-mode={lighting} data-inspect-state={reading?.status ?? (live ? 'idle' : 'off')}>
+<div
+	class="inspect"
+	data-library-inspect
+	data-inspect-lighting-mode={lighting}
+	data-inspect-geometry-mode={geometry}
+	data-inspect-state={phase}
+	aria-busy={loading || pending}
+>
 	<div class="view" aria-label={`${label} preview`} role="img">
-		{#if drawn}
-			<canvas bind:this={canvas} width={SIZE} height={SIZE}></canvas>
-		{:else}
-			<FinishTile {source} {color} {imageUri} size={168} />
+		<canvas bind:this={canvas} width={SIZE} height={SIZE} class:hidden={!holding} data-inspect-canvas></canvas>
+		{#if !live || showsRefusal}
+			<div class="fallback"><FinishTile {source} {color} {imageUri} size={168} /></div>
+		{:else if loading}
+			<div class="loading" data-inspect-loading><span class="dot"></span><span>Rendering preview…</span></div>
 		{/if}
 		{#if caption !== null}<span class="caption" data-inspect-caption>{caption}</span>{/if}
 	</div>
 	<div class="controls">
 		<span class="seg" role="group" aria-label="Preview geometry">
 			{#each [['sphere', 'Sphere'], ['plane', 'Flat'], ['block', 'Block']] as const as [id, text] (id)}
-				<button type="button" aria-pressed={geometry === id} data-inspect-geometry={id} onclick={() => (geometry = id)}>{text}</button>
+				<button type="button" aria-pressed={geometry === id} data-inspect-geometry={id} onclick={() => choose({ geometry: id })}>{text}</button>
 			{/each}
 		</span>
 		<span class="seg" role="group" aria-label="Preview lighting">
@@ -128,7 +189,7 @@
 					disabled={id === 'world' && world === null}
 					title={id === 'world' && world === null ? worldReason : `${text} light`}
 					data-inspect-lighting={id}
-					onclick={() => (lighting = id)}
+					onclick={() => choose({ lighting: id })}
 				>{text}</button>
 			{/each}
 		</span>
@@ -148,8 +209,27 @@
 		display: grid;
 		place-items: center;
 	}
-	.view canvas { display: block; width: 100%; height: 100%; }
-	.view :global(.finish-tile), .view :global(img) { width: 100%; height: 100%; }
+	.view canvas { display: block; width: 100%; height: 100%; grid-area: 1 / 1; }
+	.view canvas.hidden { visibility: hidden; }
+	.fallback, .loading { grid-area: 1 / 1; width: 100%; height: 100%; }
+	.fallback :global(.finish-tile), .fallback :global(img) { width: 100%; height: 100%; }
+	.loading {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		color: #5d625d;
+		font-size: 11px;
+	}
+	.dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #8f938c;
+		animation: pulse 1s ease-in-out infinite alternate;
+	}
+	@keyframes pulse { from { opacity: 0.35; } to { opacity: 1; } }
+	@media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
 	.caption {
 		position: absolute;
 		left: 8px;

@@ -27,8 +27,15 @@ import {
 	type LayoutIdCapture,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import type { AcceptedRevision } from '@portfolio/project-model';
-import { createEmptyUnitEnvelope, createEmptyUnitSceneDocument, prepareUnitRuntime, skyFromPreset, type ProjectEnvelope } from '@portfolio/project-model/units';
+import type { AcceptedRevision, ScenePaletteSlot } from '@portfolio/project-model';
+import {
+	createEmptyUnitEnvelope,
+	createEmptyUnitSceneDocument,
+	prepareUnitRuntime,
+	skyFromPreset,
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import { aimThroughWindows } from '../look/aim-through-windows';
 
 /**
@@ -38,6 +45,24 @@ import { aimThroughWindows } from '../look/aim-through-windows';
  * collide with them.
  */
 export const STARTER_TEMPLATE_ID_CAPTURE: LayoutIdCapture = { nonce: 'starter-template' };
+
+/**
+ * The palette a new blank or starter project begins with (#399): four real
+ * linked slots, so Paint and the Finish Card have colours that follow later
+ * palette edits from the first stroke. Only new baselines are seeded; an
+ * opened project keeps its own palette, an empty one included.
+ */
+export const STARTER_PALETTE: readonly ScenePaletteSlot[] = [
+	{ id: 'chalk', name: 'Chalk', color: '#ece7dc' },
+	{ id: 'sage', name: 'Sage', color: '#9aa58c' },
+	{ id: 'clay', name: 'Clay', color: '#b9775a' },
+	{ id: 'ink', name: 'Ink', color: '#2f3a44' }
+];
+
+/** An empty Scene carrying the starter palette, for a new baseline. */
+export function seededSceneDocument(): CameraFreeSceneDocument {
+	return { ...createEmptyUnitSceneDocument(), palette: STARTER_PALETTE.map((slot) => ({ ...slot })) };
+}
 
 /** The starter enclosure, in project-world XZ meters: a 7 m x 6 m rectangle. */
 export const STARTER_ENCLOSURE_POINTS: readonly LayoutVec2[] = [
@@ -88,7 +113,7 @@ async function starterEnvelope(
 	name: string,
 	acceptedRevision: AcceptedRevision
 ): Promise<ProjectEnvelope> {
-	const input = { id: projectId, name, acceptedRevision, layout: buildStarterEnclosureLayout() };
+	const input = { id: projectId, name, acceptedRevision, layout: buildStarterEnclosureLayout(), scene: seededSceneDocument() };
 	const initial = await createEmptyUnitEnvelope(input);
 	const runtime = prepareUnitRuntime(initial);
 	if (runtime.kind !== 'ready') throw new Error('The starter gallery failed runtime preparation.');
@@ -96,7 +121,7 @@ async function starterEnvelope(
 	if (heading === null || heading === 0) return initial;
 	return createEmptyUnitEnvelope({
 		...input,
-		scene: { ...createEmptyUnitSceneDocument(), environment: { sky: skyFromPreset('studio', heading) } }
+		scene: { ...seededSceneDocument(), environment: { sky: skyFromPreset('studio', heading) } }
 	});
 }
 

@@ -2743,6 +2743,8 @@
 				objects={libraryObjects}
 				artwork={selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? []}
 				looks={look.libraryShelf}
+				inspection={shell.libraryInspection}
+				onInspection={(next) => shell.setLibraryInspection(next)}
 				onView={(next) => shell.setLibraryView(next)}
 				onClose={closeLibrary}
 				onPaint={(entry, keepOpen) => {
@@ -2812,6 +2814,8 @@
 				tileSource={draftEntry === null ? null : libraryTileSource(draftEntry)}
 				draftSource={libraryDraftRender.source}
 				draftReason={libraryDraftRender.reason}
+				inspection={shell.libraryInspection}
+				onInspection={(next) => shell.setLibraryInspection(next)}
 				onStep={(step) => finishes.setLibraryDraftStep(step)}
 				onReset={() => finishes.resetLibraryDraftStep()}
 				onApply={async () => {

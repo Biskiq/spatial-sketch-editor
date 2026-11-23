@@ -40,7 +40,7 @@ import {
 	type AdmissionOutcome,
 	type StageReadSnapshot
 } from './source-admission';
-import { DEFAULT_STARTER_TEMPLATE, starterTemplate } from './starter-gallery';
+import { DEFAULT_STARTER_TEMPLATE, seededSceneDocument, starterTemplate } from './starter-gallery';
 
 export type BootIntent = 'create' | 'open';
 
@@ -207,7 +207,8 @@ export async function bootEmpty(projectId: string, context: AdmissionContext): P
 	const envelope = await createEmptyUnitEnvelope({
 		id: projectId,
 		name: 'Untitled project',
-		acceptedRevision: context.acceptedRevision
+		acceptedRevision: context.acceptedRevision,
+		scene: seededSceneDocument()
 	});
 	return stateFromAdmission(projectId, await admitSource(envelope, context), 'empty');
 }

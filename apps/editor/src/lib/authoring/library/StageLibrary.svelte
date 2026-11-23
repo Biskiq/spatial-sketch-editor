@@ -29,6 +29,7 @@
 	import type { LibrarySwapRequest } from '$lib/authoring/look/finish-authoring.svelte';
 	import type { StageLibraryView } from '$lib/authoring/stage/route/stage-shell-state.svelte';
 	import FinishInspectionView from './FinishInspectionView.svelte';
+	import { LIBRARY_INSPECTION_DEFAULT, type LibraryInspectionSettings } from './library-inspection';
 	import {
 		LIBRARY_FILTERS,
 		LIBRARY_SOURCES,
@@ -60,6 +61,8 @@
 		objects = [],
 		artwork = null,
 		looks = null,
+		inspection = LIBRARY_INSPECTION_DEFAULT,
+		onInspection = () => {},
 		onView,
 		onClose,
 		onPaint,
@@ -88,6 +91,9 @@
 		objects?: readonly { readonly id: string; readonly name: string }[];
 		artwork?: readonly ArtworkLibraryEntry[] | null;
 		looks?: LookLibraryShelf | null;
+		/** Detail geometry and lighting, remembered in the Library session. */
+		inspection?: LibraryInspectionSettings;
+		onInspection?: (next: LibraryInspectionSettings) => void;
 		onView: (view: StageLibraryView) => void;
 		onClose: () => void;
 		/** Arm Paint with this Finish: zero project writes. */
@@ -694,14 +700,15 @@
 					<button type="button" class="lbd-x" aria-label="Close detail" data-library-detail-close onclick={closeDetail}>×</button>
 				</div>
 
-				{#key selectedCard.key}
-					<FinishInspectionView
-						source={tileSource(entry)}
-						color={entry.color}
-						imageUri={entry.imageUri}
-						label={selectedCard.title}
-					/>
-				{/key}
+				<FinishInspectionView
+					source={tileSource(entry)}
+					color={entry.color}
+					imageUri={entry.imageUri}
+					label={selectedCard.title}
+					materialKey={entry.key}
+					settings={inspection}
+					onSettings={onInspection}
+				/>
 
 				{#if selectedCard.variants.length > 0}
 					<div class="detail-variants" role="group" aria-label="Variant">
@@ -790,7 +797,8 @@
 		right: var(--lane-r);
 		bottom: calc(var(--lane-b) + 4px);
 		z-index: 50;
-		background: color-mix(in srgb, var(--shell-forest) 14%, transparent);
+		/* Outside-click only: the Stage is never dimmed; the panel's own shadow separates it. */
+		background: transparent;
 		border: 0;
 		padding: 0;
 	}

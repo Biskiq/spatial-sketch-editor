@@ -2,8 +2,10 @@
 	/**
 	 * *Paint colour* (T2.S8 U2, #405): a compact floating picker anchored above
 	 * the tray's *Custom colour* key. Hue around and saturation outward on a
-	 * prominent wheel, a Lightness ramp, the project palette as chips, a Hex field,
-	 * close, and a compact action row.
+	 * prominent wheel, a Lightness ramp, the project palette as linked chips, a
+	 * compact labelled Hex field, close, and a compact action row. The header's
+	 * before/current pair shows the colour it opened on beside the one chosen
+	 * (#399's picker).
 	 *
 	 * Wheel, Lightness and Hex edits stay local to the picker. Nothing here
 	 * writes: *Done* hands back a literal colour, a palette chip hands back its
@@ -26,7 +28,8 @@
 		room = true,
 		onAdd = null,
 		title = 'Paint colour',
-		onChange = null
+		onChange = null,
+		original = undefined
 	}: {
 		initial: string;
 		palette: readonly { readonly id: string; readonly name: string; readonly color: string }[];
@@ -41,6 +44,11 @@
 		title?: string;
 		/** Each local edit, for a caller's write-free preview. */
 		onChange?: ((hex: string) => void) | null;
+		/**
+		 * What the before swatch shows when it differs from where the dial
+		 * starts; null is "no colour" (an untinted Finish). Defaults to `initial`.
+		 */
+		original?: string | null;
 	} = $props();
 
 	// The picker opens on the active colour; it does not follow it afterwards.
@@ -52,6 +60,8 @@
 	let adding = $state(false);
 	let dial = $state<HTMLElement>();
 
+	// svelte-ignore state_referenced_locally
+	const before = original === null ? null : (normaliseHex(original ?? initial) ?? '#808080');
 	const hex = $derived(hslToHex(hsl));
 	const chosen = $derived(normaliseHex(text) ?? hex);
 
@@ -141,6 +151,10 @@
 <div class="wheel" data-paint-wheel role="dialog" aria-label={title} tabindex="-1" onkeydown={onKeydown}>
 	<header>
 		<strong>{title}</strong>
+		<span class="pair" title={before === null ? 'Before: no colour · current' : 'Before · current'} data-paint-wheel-pair>
+			<i class:none={before === null} style={before === null ? undefined : `background: ${before}`} data-paint-wheel-before></i>
+			<i style={`background: ${chosen}`} data-paint-wheel-current></i>
+		</span>
 		<button type="button" class="x" data-paint-wheel-cancel aria-label={`Close ${title}`} title="Close (Esc)" onclick={onClose}>×</button>
 	</header>
 	<div
@@ -172,13 +186,18 @@
 			oninput={(event) => set({ ...hsl, l: Number(event.currentTarget.value) })}
 		/>
 	</label>
+	<p class="hint">
+		{onChange !== null
+			? 'Previewed live; Done commits. Palette colours stay linked.'
+			: 'Palette colours keep surfaces linked to later palette changes.'}
+	</p>
 	{#if palette.length > 0}
-		<span class="chips" role="group" aria-label="Project palette">
+		<span class="chips" role="group" aria-label="Project palette · linked">
 			{#each palette as slot (slot.id)}
 				<button
 					type="button"
 					class="slot"
-					title={`${slot.name} · follows the palette`}
+					title={`${slot.name} · linked to the palette`}
 					aria-label={`Paint with ${slot.name}`}
 					data-paint-wheel-slot={slot.id}
 					style={`background: ${slot.color}`}
@@ -188,8 +207,7 @@
 		</span>
 	{/if}
 	<label class="hex">
-		<span class="chip" style={`background: ${chosen}`} aria-hidden="true"></span>
-		<span class="sr">Hex</span>
+		<span>Hex</span>
 		<input
 			type="text"
 			data-paint-hex
@@ -226,7 +244,7 @@
 		display: grid;
 		gap: 0.55rem;
 		box-sizing: border-box;
-		width: min(17.5rem, calc(100vw - 32px));
+		width: min(236px, calc(100vw - 32px));
 		max-height: 100%;
 		padding: 10px 12px 12px;
 		overflow: auto;
@@ -244,7 +262,28 @@
 	header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: 8px;
+	}
+	.pair {
+		display: inline-flex;
+		margin-left: auto;
+		overflow: hidden;
+		border-radius: 999px;
+		box-shadow: 0 0 0 1px var(--shell-hairline-strong);
+	}
+	.pair i {
+		display: block;
+		width: 16px;
+		height: 20px;
+	}
+	.pair i.none {
+		background: linear-gradient(135deg, transparent 45%, var(--shell-hairline-strong) 45% 55%, transparent 55%), var(--shell-ivory);
+	}
+	.hint {
+		margin: 0;
+		color: var(--shell-ink-3);
+		font-size: 11px;
+		line-height: 1.35;
 	}
 	header strong {
 		font-size: var(--shell-text-control);
@@ -252,8 +291,8 @@
 	.dial {
 		position: relative;
 		justify-self: center;
-		width: 11rem;
-		height: 11rem;
+		width: 180px;
+		height: 180px;
 		border-radius: 50%;
 		background:
 			radial-gradient(circle closest-side, hsl(0 0% var(--lightness)), transparent),
@@ -299,24 +338,14 @@
 	.hex {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
-	}
-	.sr {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-	}
-	.chip {
-		width: 1.4rem;
-		height: 1.4rem;
-		flex: none;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 50%;
+		gap: 8px;
+		padding-top: 8px;
+		border-top: 1px solid var(--shell-hairline);
+		color: var(--shell-ink-2);
+		font-size: 11px;
 	}
 	input[type='text'] {
-		flex: 1;
+		width: 84px;
 		min-width: 0;
 		min-height: var(--shell-control-height);
 		padding: 0 0.4rem;
@@ -325,12 +354,12 @@
 		background: var(--shell-white);
 		color: inherit;
 		font-family: var(--shell-mono);
-		font-size: var(--shell-text-utility);
+		font-size: 11.5px;
 	}
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem;
+		gap: 6px;
 	}
 	.message {
 		margin: 0;
@@ -368,9 +397,9 @@
 		line-height: 1;
 	}
 	.slot {
-		width: 1.5rem;
-		height: 1.5rem;
-		min-height: 1.5rem;
+		width: 22px;
+		height: 22px;
+		min-height: 22px;
 		padding: 0;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 50%;

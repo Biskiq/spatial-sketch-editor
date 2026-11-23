@@ -87,6 +87,10 @@ export type StageLibraryInvocation = {
 };
 import { worldTool } from '$lib/authoring/world-toolbar/registry';
 import {
+	LIBRARY_INSPECTION_DEFAULT,
+	type LibraryInspectionSettings
+} from '$lib/authoring/library/library-inspection';
+import {
 	sameEraseHover,
 	stageArmedHostTool,
 	stageHostToolOverlay,
@@ -184,6 +188,8 @@ export function createStageShellState(input: StageShellStateInput) {
 	/** Why the Library is open; set by the command that opened it, cleared on close. */
 	let libraryInvocation = $state.raw<StageLibraryInvocation>({ intent: 'browse', kind: null, from: 'dock', nonce: 0 });
 	let libraryView = $state.raw<StageLibraryView>(STAGE_LIBRARY_VIEW_DEFAULT);
+	/** Library detail and Customise… share one remembered geometry and lighting. */
+	let libraryInspection = $state.raw<LibraryInspectionSettings>(LIBRARY_INSPECTION_DEFAULT);
 	/** A one-shot Library shelf request; the World toolbar consumes the nonce. */
 	let libraryCategoryRequest = $state<{
 		readonly category: WorldLibraryCategory;
@@ -758,6 +764,12 @@ export function createStageShellState(input: StageShellStateInput) {
 		},
 		setLibraryView(value: StageLibraryView) {
 			libraryView = value;
+		},
+		get libraryInspection() {
+			return libraryInspection;
+		},
+		setLibraryInspection(value: LibraryInspectionSettings) {
+			libraryInspection = value;
 		},
 		setLibraryInvocation(value: Omit<StageLibraryInvocation, 'nonce'>) {
 			libraryInvocation = { ...value, nonce: libraryInvocation.nonce + 1 };

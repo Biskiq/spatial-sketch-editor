@@ -54,7 +54,7 @@ export const GRAZING_AMBIENT_INTENSITY = 0.15;
  * studio and grazing, their constants and their 192 px derivatives stay as E7
  * froze them.
  */
-export type InspectionRig = 'studio' | 'grazing' | 'sample-tile' | 'library-studio';
+export type InspectionRig = 'studio' | 'grazing' | 'sample-tile' | 'library-studio' | 'library-grazing';
 
 /**
  * `library-studio` is U5's creator-facing Studio for Library detail and the
@@ -83,6 +83,22 @@ export const LIBRARY_STUDIO_LIGHT_INTENSITY = 0.9;
 export const LIBRARY_STUDIO_KEY_DIRECTION: readonly [number, number, number] = [-0.7, 0.75, 0.9];
 export const LIBRARY_STUDIO_FILL_DIRECTION: readonly [number, number, number] = [1, 0.2, 0.6];
 export const LIBRARY_STUDIO_RIM_DIRECTION: readonly [number, number, number] = [0.2, 0.5, -1];
+
+/**
+ * The Library's Grazing (T2.S8 U5): a low side key that rakes across the
+ * surface to reveal relief, over a dim soft fill so colour and sheen still
+ * read, on the same light backdrop. E7's engineering `grazing` (key + 0.15
+ * ambient, no environment) stays the reference.
+ */
+export const LIBRARY_GRAZING_RECIPE = 'library-grazing/1';
+export const LIBRARY_GRAZING_FLOOR_RADIANCE = 0.16;
+export const LIBRARY_GRAZING_CEILING_RADIANCE = 0.34;
+export const LIBRARY_GRAZING_SIDE_RADIANCE = 1.1;
+export const LIBRARY_GRAZING_SIDE_DEGREES = 26;
+export const LIBRARY_GRAZING_KEY_INTENSITY = 2.4;
+export const LIBRARY_GRAZING_KEY_DIRECTION: readonly [number, number, number] = [1, 0.12, 0.25];
+
+type Patch = { readonly direction: readonly [number, number, number]; readonly radiance: number; readonly degrees: number };
 
 /**
  * The sample-tile rig's constants. Any change to one is a new thumbnail recipe
@@ -190,19 +206,21 @@ export function sampleTileEnvironmentPixels(
 	return pixels;
 }
 
-/** The library-studio field as linear RGBA floats, row-major equirectangular. */
-export function libraryStudioEnvironmentPixels(
-	width = STUDIO_ENVIRONMENT_WIDTH,
-	height = STUDIO_ENVIRONMENT_HEIGHT
+/** A floor-to-ceiling gradient with soft-edged light patches, as linear RGBA floats. */
+function patchedEnvironmentPixels(
+	width: number,
+	height: number,
+	floor: number,
+	ceiling: number,
+	patches: readonly Patch[]
 ): Float32Array {
 	const pixels = new Float32Array(width * height * 4);
 	const direction = new Vector3();
-	const key = new Vector3(...LIBRARY_STUDIO_KEY_DIRECTION).normalize();
-	const fill = new Vector3(...LIBRARY_STUDIO_FILL_DIRECTION).normalize();
-	const rim = new Vector3(...LIBRARY_STUDIO_RIM_DIRECTION).normalize();
-	const keyCos = Math.cos((LIBRARY_STUDIO_KEY_DEGREES * Math.PI) / 180);
-	const fillCos = Math.cos((LIBRARY_STUDIO_FILL_DEGREES * Math.PI) / 180);
-	const rimCos = Math.cos((LIBRARY_STUDIO_RIM_DEGREES * Math.PI) / 180);
+	const lights = patches.map((patch) => ({
+		axis: new Vector3(...patch.direction).normalize(),
+		edge: Math.cos((patch.degrees * Math.PI) / 180),
+		radiance: patch.radiance
+	}));
 	// A soft edge (smoothstep over the outer quarter of each patch's cosine span).
 	const soft = (dot: number, edge: number): number => {
 		const t = Math.min(Math.max((dot - edge) / ((1 - edge) * 0.25), 0), 1);
@@ -211,12 +229,8 @@ export function libraryStudioEnvironmentPixels(
 	for (let y = 0; y < height; y += 1) {
 		for (let x = 0; x < width; x += 1) {
 			direction.copy(directionFor((x + 0.5) / width, (y + 0.5) / height));
-			const up = (direction.y + 1) / 2;
-			let radiance =
-				LIBRARY_STUDIO_FLOOR_RADIANCE + (LIBRARY_STUDIO_CEILING_RADIANCE - LIBRARY_STUDIO_FLOOR_RADIANCE) * up;
-			radiance += LIBRARY_STUDIO_KEY_RADIANCE * soft(direction.dot(key), keyCos);
-			radiance += LIBRARY_STUDIO_FILL_RADIANCE * soft(direction.dot(fill), fillCos);
-			radiance += LIBRARY_STUDIO_RIM_RADIANCE * soft(direction.dot(rim), rimCos);
+			let radiance = floor + (ceiling - floor) * ((direction.y + 1) / 2);
+			for (const light of lights) radiance += light.radiance * soft(direction.dot(light.axis), light.edge);
 			const offset = (y * width + x) * 4;
 			pixels[offset] = radiance;
 			pixels[offset + 1] = radiance;
@@ -227,9 +241,28 @@ export function libraryStudioEnvironmentPixels(
 	return pixels;
 }
 
-function createLibraryStudioEnvironmentTexture(): DataTexture {
-	return environmentTexture(libraryStudioEnvironmentPixels());
+/** The library-studio field as linear RGBA floats, row-major equirectangular. */
+export function libraryStudioEnvironmentPixels(
+	width = STUDIO_ENVIRONMENT_WIDTH,
+	height = STUDIO_ENVIRONMENT_HEIGHT
+): Float32Array {
+	return patchedEnvironmentPixels(width, height, LIBRARY_STUDIO_FLOOR_RADIANCE, LIBRARY_STUDIO_CEILING_RADIANCE, [
+		{ direction: LIBRARY_STUDIO_KEY_DIRECTION, radiance: LIBRARY_STUDIO_KEY_RADIANCE, degrees: LIBRARY_STUDIO_KEY_DEGREES },
+		{ direction: LIBRARY_STUDIO_FILL_DIRECTION, radiance: LIBRARY_STUDIO_FILL_RADIANCE, degrees: LIBRARY_STUDIO_FILL_DEGREES },
+		{ direction: LIBRARY_STUDIO_RIM_DIRECTION, radiance: LIBRARY_STUDIO_RIM_RADIANCE, degrees: LIBRARY_STUDIO_RIM_DEGREES }
+	]);
 }
+
+/** The library-grazing fill: dim, with a soft side patch along the key for reflective finishes. */
+export function libraryGrazingEnvironmentPixels(
+	width = STUDIO_ENVIRONMENT_WIDTH,
+	height = STUDIO_ENVIRONMENT_HEIGHT
+): Float32Array {
+	return patchedEnvironmentPixels(width, height, LIBRARY_GRAZING_FLOOR_RADIANCE, LIBRARY_GRAZING_CEILING_RADIANCE, [
+		{ direction: LIBRARY_GRAZING_KEY_DIRECTION, radiance: LIBRARY_GRAZING_SIDE_RADIANCE, degrees: LIBRARY_GRAZING_SIDE_DEGREES }
+	]);
+}
+
 
 function environmentTexture(pixels: Float32Array): DataTexture {
 	const texture = new DataTexture(pixels, STUDIO_ENVIRONMENT_WIDTH, STUDIO_ENVIRONMENT_HEIGHT, RGBAFormat, FloatType);
@@ -277,6 +310,32 @@ export function createStudioEnvironmentTexture(radianceScale = 1): DataTexture {
 	return texture;
 }
 
+const PRODUCT_RIGS: Record<
+	Exclude<InspectionRig, 'studio' | 'grazing'>,
+	{ environment(): DataTexture; readonly intensity: number; readonly direction: readonly [number, number, number] }
+> = {
+	'sample-tile': {
+		environment: createSampleTileEnvironmentTexture,
+		intensity: SAMPLE_TILE_KEY_INTENSITY,
+		direction: SAMPLE_TILE_KEY_DIRECTION
+	},
+	'library-studio': {
+		environment: () => environmentTexture(libraryStudioEnvironmentPixels()),
+		intensity: LIBRARY_STUDIO_LIGHT_INTENSITY,
+		direction: LIBRARY_STUDIO_KEY_DIRECTION
+	},
+	'library-grazing': {
+		environment: () => environmentTexture(libraryGrazingEnvironmentPixels()),
+		intensity: LIBRARY_GRAZING_KEY_INTENSITY,
+		direction: LIBRARY_GRAZING_KEY_DIRECTION
+	}
+};
+
+/** The light backdrop the Library's own rigs draw on. */
+export function libraryRigBackdrop(rig: InspectionRig): string | null {
+	return rig === 'library-studio' || rig === 'library-grazing' ? LIBRARY_STUDIO_BACKGROUND : null;
+}
+
 export type InspectionLighting = {
 	readonly rig: InspectionRig;
 	readonly group: Group;
@@ -302,12 +361,12 @@ export function createInspectionLighting(
 		key.position.copy(GRAZING_DIRECTION).multiplyScalar(10);
 		key.target.position.set(0, 0, 0);
 		group.add(ambient, key, key.target);
-	} else if (rig === 'sample-tile' || rig === 'library-studio') {
-		// Both product rigs pair a soft environment with one key at a fixed direction.
-		const tile = rig === 'sample-tile';
-		source = tile ? createSampleTileEnvironmentTexture() : createLibraryStudioEnvironmentTexture();
-		const key = new DirectionalLight(0xffffff, tile ? SAMPLE_TILE_KEY_INTENSITY : LIBRARY_STUDIO_LIGHT_INTENSITY);
-		key.position.set(...(tile ? SAMPLE_TILE_KEY_DIRECTION : LIBRARY_STUDIO_KEY_DIRECTION)).normalize().multiplyScalar(10);
+	} else if (rig !== 'studio') {
+		// The product rigs pair a soft environment with one key at a fixed direction.
+		const product = PRODUCT_RIGS[rig];
+		source = product.environment();
+		const key = new DirectionalLight(0xffffff, product.intensity);
+		key.position.set(...product.direction).normalize().multiplyScalar(10);
 		key.target.position.set(0, 0, 0);
 		group.add(key, key.target);
 	} else {

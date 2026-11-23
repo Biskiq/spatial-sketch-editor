@@ -15,6 +15,7 @@
 	import { onMount } from 'svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import FinishInspectionView from './FinishInspectionView.svelte';
+	import { LIBRARY_INSPECTION_DEFAULT, type LibraryInspectionSettings } from './library-inspection';
 	import type { LibraryFinishEntry } from './library-catalogue';
 	import type { LibraryDraft } from './library-draft';
 
@@ -36,6 +37,8 @@
 		tileSource,
 		draftSource,
 		draftReason,
+		inspection = LIBRARY_INSPECTION_DEFAULT,
+		onInspection = () => {},
 		onStep,
 		onReset,
 		onApply,
@@ -53,6 +56,9 @@
 		draftSource: FinishTileSource | null;
 		/** Why no draft render exists while the sheen is changed; null otherwise. */
 		draftReason: string | null;
+		/** Geometry and lighting, shared with Library detail for the session. */
+		inspection?: LibraryInspectionSettings;
+		onInspection?: (next: LibraryInspectionSettings) => void;
 		onStep: (step: LibraryDraft['step']) => void;
 		onReset: () => void;
 		onApply: () => Promise<boolean>;
@@ -150,6 +156,9 @@
 				imageUri={entry?.imageUri ?? null}
 				label={draft.name}
 				caption={showingOriginal ? 'Original' : 'Draft'}
+				materialKey={draft.finishKey}
+				settings={inspection}
+				onSettings={onInspection}
 			/>
 			<label class="switch-row">
 				<button
