@@ -66,12 +66,15 @@ export type LayoutObject = {
  * dividing or free-standing because of the topology it is part of, never because a
  * field says so.
  *
- * **`9` is the only recognized version.** Format 8 introduced open Spaces.
- * Format 9 keeps their Wall, virtual-edge and overhead fields, removes Room
- * padding, and adds independently authored Horizontal Regions and their names.
+ * **`10` is the only recognized version.** Format 8 introduced open Spaces.
+ * Format 9 kept their Wall, virtual-edge and overhead fields, removed Room
+ * padding, and added independently authored Horizontal Regions and their names.
+ * Format 10 adds the optional `round: { center, radius }` fact on Rooms and
+ * replaces the legacy fixed-tolerance closed-circle check with centre-local
+ * binary64 uncertainty-aware Round certification.
  * Other versions fail as `unsupported_format_version`.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 9 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 10 as const;
 
 /**
  * The approved closed-Wall representation is exactly 16 symmetric cubic
@@ -278,6 +281,15 @@ export type LayoutWallFirstFloor = {
  * collection and type keep the name Room, and `virtualEdges` is the only
  * derived reading that separates the two states.
  */
+/**
+ * Authored circular identity for a Round Room: project-world X/Z centre and
+ * exact positive radius in metres. Omitted on ordinary Rooms and open Spaces.
+ */
+export type LayoutRoomRound = {
+  center: LayoutVec2;
+  radius: number;
+};
+
 export type LayoutWallFirstRoom = {
   id: string;
   name: string;
@@ -293,8 +305,12 @@ export type LayoutWallFirstRoom = {
   virtualEdges: LayoutSpaceVirtualEdge[];
   /** Authored overhead intent. Geometry never changes it. */
   overhead: LayoutSpaceOverhead;
-
-
+  /**
+   * Optional Round Room source fact. Presence states Round; omitted on
+   * ordinary Rooms and open Spaces. The first oriented start Junction of
+   * `boundary` anchors the canonical seam.
+   */
+  round?: LayoutRoomRound;
 };
 
 /**

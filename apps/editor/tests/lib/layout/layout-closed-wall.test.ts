@@ -21,8 +21,8 @@ import {
 	hasBlockingLayoutIssues,
 	mintLayoutIdCapture,
 	parseWallFirstLayoutDocumentJson,
+	planCreateCircularRoom,
 	planDissolveJunction,
-	planFirstEnclosureCreation,
 	planWallSplit,
 	roomBoundaryPolygon,
 	serializeWallFirstLayoutDocument,
@@ -108,11 +108,20 @@ function allocator(): NodingIdAllocator {
 }
 
 function roomDocument(): LayoutDocumentWallFirst {
-	const created = circleDocument();
-	const plan = planFirstEnclosureCreation({
-		candidateDocument: created.document,
+	const base = circleDocument().document;
+	const plan = planCreateCircularRoom({
+		baseline: {
+			...base,
+			junctions: [],
+			walls: [],
+			rooms: []
+		},
+		center: CENTER,
+		rim: RIM,
+		thickness: 0.2,
+		height: 3,
 		capture: mintLayoutIdCapture(() => 'closed-wall-test'),
-		levelId: created.document.floor.id
+		levelId: base.floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(JSON.stringify(plan.rejection));
 	return plan.document;
@@ -218,7 +227,8 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 
 		const born = roomDocument();
 		expect(born.rooms).toHaveLength(1);
-		expect(born.rooms[0]!.boundary).toEqual([{ wallId: 'wall-circle', direction: 'forward' }]);
+		expect(born.rooms[0]!.boundary).toEqual([{ wallId: born.walls[0]!.id, direction: 'forward' }]);
+		expect(born.rooms[0]!.round).toEqual({ center: CENTER, radius: RADIUS });
 		const polygon = roomBoundaryPolygon(born, born.rooms[0]!.id);
 		expect(polygon).not.toBeNull();
 		expect(polygon!.length).toBeGreaterThan(3);
@@ -238,7 +248,8 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 
 	it('keeps the canonical seam at the authored rim through Save/Load and refuses format 6', () => {
 		const born = roomDocument();
-		const wallBefore = born.walls.find((wall) => wall.id === 'wall-circle')!;
+		const wallId = born.walls[0]!.id;
+		const wallBefore = born.walls[0]!;
 		const seamBefore = born.junctions.find((junction) => junction.id === wallBefore.startJunctionId)!.point;
 		expect(seamBefore).toEqual(RIM);
 
@@ -247,7 +258,7 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 		if (!parsed.success) throw new Error(JSON.stringify(parsed.issues));
 		expect(parsed.document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
 		expect(JSON.stringify(parsed.document)).toBe(JSON.stringify(born));
-		const wallAfter = parsed.document.walls.find((wall) => wall.id === 'wall-circle')!;
+		const wallAfter = parsed.document.walls.find((wall) => wall.id === wallId)!;
 		expect(wallAfter.startJunctionId).toBe(wallAfter.endJunctionId);
 		const seamAfter = parsed.document.junctions.find(
 			(junction) => junction.id === wallAfter.startJunctionId
@@ -276,14 +287,15 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 		short.walls[0]!.centerline.spans.pop();
 		expect(validateWallFirstLayoutDocument(short).success).toBe(false);
 
-		// Span count alone is not canonicality: a 16-span loop with one moved knot
-		// or handle is not the approved symmetric circular chain.
-		const offCircle = structuredClone(created.document);
+		// Span count alone is not canonicality: an enclosed 16-span Round loop
+		// with one moved knot or handle fails the Round consistency checker.
+		const born = roomDocument();
+		const offCircle = structuredClone(born);
 		if (offCircle.walls[0]!.centerline.kind !== 'cubic-chain') throw new Error('expected cubic chain');
 		offCircle.walls[0]!.centerline.knots[3]!.point[0] += 0.01;
 		expect(validateWallFirstLayoutDocument(offCircle).success).toBe(false);
 
-		const offHandle = structuredClone(created.document);
+		const offHandle = structuredClone(born);
 		if (offHandle.walls[0]!.centerline.kind !== 'cubic-chain') throw new Error('expected cubic chain');
 		offHandle.walls[0]!.centerline.spans[7]!.handleOut[1] += 0.01;
 		expect(validateWallFirstLayoutDocument(offHandle).success).toBe(false);
@@ -334,11 +346,11 @@ describe('C2 foundation — self-loop topology and D6 closed Bézier Wall', () =
 		expect(attachedIssue?.message).toContain('closed_wall_isolated');
 
 		const birth = roomDocument();
-		const split = planWallSplit(birth, 'wall-circle', Math.PI * RADIUS, allocator());
+		const split = planWallSplit(birth, birth.walls[0]!.id, Math.PI * RADIUS, allocator());
 		expect(split.kind).toBe('rejected');
 		const dissolve = planDissolveJunction(
 			birth,
-			'j-circle',
+			birth.walls[0]!.startJunctionId,
 			mintLayoutIdCapture(() => 'dissolve-closed'),
 			birth.floor.id
 		);

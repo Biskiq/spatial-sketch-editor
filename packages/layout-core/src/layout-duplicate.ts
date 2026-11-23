@@ -35,6 +35,7 @@ import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-open
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
 import { translateWallCenterline } from './layout-wall-centerline';
+import { buildRoundRoomGeometryFromCertified, certifyRoundRoom } from './layout-round-room';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
 	layoutCapturedId,
@@ -515,6 +516,23 @@ function cloneRoomEnclosure(
 	const hostedOpenings = document.openings.filter((opening) => boundaryWallSet.has(opening.wallId));
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 
+	// Round Rooms rebuild copied geometry from the certified centre-local
+	// template + destination centre (one add per point) and copy `round` with
+	// the translated centre and exact radius.
+	const roundRebuild = (() => {
+		if (!source.round) return undefined;
+		const cert = certifyRoundRoom(document, source);
+		if (cert.kind !== 'certified') return undefined;
+		const newCenter: LayoutVec2 = [cert.certified.center[0] + dx, cert.certified.center[1] + dz];
+		return buildRoundRoomGeometryFromCertified({
+			document,
+			certified: cert.certified,
+			center: newCenter,
+			radius: cert.certified.radius,
+			seamDirection: cert.certified.seamDirection
+		});
+	})();
+
 	// Pass 2: allocate all new IDs, build old→new maps, then clone once.
 	const junctionIdMap = new Map<string, string>();
 	const clonedJunctions: LayoutJunction[] = [];
@@ -527,9 +545,10 @@ function cloneRoomEnclosure(
 			const newId = allocateId(junctionTaken, `${oldJunctionId}-copy`, capture);
 			junctionTaken.add(newId);
 			junctionIdMap.set(oldJunctionId, newId);
+			const rebuiltPoint = roundRebuild?.junctionPoints.get(oldJunctionId);
 			clonedJunctions.push({
 				id: newId,
-				point: [oldJunction.point[0] + dx, oldJunction.point[1] + dz]
+				point: rebuiltPoint ?? [oldJunction.point[0] + dx, oldJunction.point[1] + dz]
 			});
 		}
 	}
@@ -542,6 +561,7 @@ function cloneRoomEnclosure(
 		const newId = allocateId(wallTaken, `${wallId}-copy`, capture);
 		wallTaken.add(newId);
 		wallIdMap.set(wallId, newId);
+		const rebuiltCenterline = roundRebuild?.wallCenterlines.get(wallId);
 		clonedWalls.push({
 			id: newId,
 			startJunctionId: junctionIdMap.get(wall.startJunctionId)!,
@@ -557,7 +577,7 @@ function cloneRoomEnclosure(
 			// document X/Z: leaving them at the source position would not
 			// preserve the shape (the curve would swing across the untranslated
 			// anchors and can cross a sibling Wall of the copy).
-			centerline: translateWallCenterline(wall.centerline, [dx, dz])
+			centerline: rebuiltCenterline ?? translateWallCenterline(wall.centerline, [dx, dz])
 		});
 	}
 
@@ -611,8 +631,16 @@ function cloneRoomEnclosure(
 			endJunctionId: junctionIdMap.get(edge.endJunctionId)!
 		})),
 		overhead: source.overhead,
-
-
+		...(roundRebuild
+			? { round: roundRebuild.round }
+			: source.round
+				? {
+						round: {
+							center: [source.round.center[0] + dx, source.round.center[1] + dz] as LayoutVec2,
+							radius: source.round.radius
+						}
+					}
+				: {})
 	};
 
 	// Associated Layout objects only: explicit roomId equals the source Room.

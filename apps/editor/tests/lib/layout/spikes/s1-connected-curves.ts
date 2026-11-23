@@ -247,6 +247,11 @@ export function resize(state: State, roomId: string, radius: number) {
 				)
 			};
 		}),
+		rooms: layout.rooms.map((entry) =>
+			entry.id === roomId && entry.round
+				? { ...entry, round: { center: [...round.center] as LayoutVec2, radius } }
+				: entry
+		),
 		openings: layout.openings.map((entry) => ring.has(entry.wallId)
 			? { ...entry, offset: entry.offset * ratio } : entry)
 	};

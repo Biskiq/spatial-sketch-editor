@@ -112,10 +112,14 @@ export function spaceAtPoint(point: LayoutVec2, spaces: readonly CompiledRoom[])
 /** Signed shoelace area in world X/Z. */
 function signedPolygonArea(polygon: readonly LayoutVec2[]): number {
 	let twiceArea = 0;
+	const origin = polygon[0]!;
+	const shift = Math.abs(origin[0]) > 1e6 || Math.abs(origin[1]) > 1e6;
+	const ox = shift ? origin[0] : 0;
+	const oz = shift ? origin[1] : 0;
 	for (let index = 0; index < polygon.length; index += 1) {
 		const current = polygon[index]!;
 		const next = polygon[(index + 1) % polygon.length]!;
-		twiceArea += current[0] * next[1] - next[0] * current[1];
+		twiceArea += (current[0] - ox) * (next[1] - oz) - (next[0] - ox) * (current[1] - oz);
 	}
 	return twiceArea / 2;
 }

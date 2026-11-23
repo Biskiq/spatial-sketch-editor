@@ -249,7 +249,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 9,
+		formatVersion: 10,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(

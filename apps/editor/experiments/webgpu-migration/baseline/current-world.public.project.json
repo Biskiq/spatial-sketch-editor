@@ -15,12 +15,12 @@
       "header": {
         "domain": "layout",
         "unitId": "project:t2-pr1-current-world:layout",
-        "formatVersion": 9,
-        "contentRevision": "sha256-4324afe2a3505ee62fe0efbc9ef6ea6a99ed4872fef76564f9b1f7835bb9f74d"
+        "formatVersion": 10,
+        "contentRevision": "sha256-ff5a1b9f8d0124cbd7d801380f9012a85b37476f8119d624392eaebb82af8471"
       },
       "data": {
         "units": "meters",
-        "formatVersion": 9,
+        "formatVersion": 10,
         "floor": {
           "id": "floor-ground",
           "name": "Ground Floor",

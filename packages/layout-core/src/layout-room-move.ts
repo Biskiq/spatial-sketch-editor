@@ -59,7 +59,13 @@ import {
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
 import { translateWallCenterline, wallCenterlineSamples } from './layout-wall-centerline';
-import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from './layout-wall-first-types';
+import { buildRoundRoomGeometryFromCertified, certifyRoundRoom } from './layout-round-room';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutRoomRound,
+	LayoutWallCenterline,
+	LayoutWallFirstRoom
+} from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
 
 /** Why a wall-first Room move rejected; stable machine codes. */
@@ -201,26 +207,62 @@ export function roomUnitMoveCandidate(
 	const movedJunctionIds = new Set(subgraph.junctionIds);
 	const movedWallIds = new Set(subgraph.wallIds);
 	const associatedObjectIds = new Set(subgraph.associatedObjectIds ?? []);
+
+	// Round Rooms rebuild from the certified centre-local template and add the
+	// destination centre once per point so old-location rounding never carries
+	// back when translating toward the origin.
+	const roundJunctionPoints = new Map<string, LayoutVec2>();
+	const roundWallCenterlines = new Map<string, LayoutWallCenterline>();
+	const updatedRoomRound = new Map<string, LayoutRoomRound>();
+	for (const room of document.rooms) {
+		if (!room.round) continue;
+		if (!room.boundary.some((ref) => movedWallIds.has(ref.wallId))) continue;
+		const cert = certifyRoundRoom(document, room);
+		if (cert.kind !== 'certified') continue;
+		const newCenter: LayoutVec2 = [cert.certified.center[0] + dx, cert.certified.center[1] + dz];
+		const rebuilt = buildRoundRoomGeometryFromCertified({
+			document,
+			certified: cert.certified,
+			center: newCenter,
+			radius: cert.certified.radius,
+			seamDirection: cert.certified.seamDirection
+		});
+		for (const [id, pt] of rebuilt.junctionPoints) roundJunctionPoints.set(id, pt);
+		for (const [id, cl] of rebuilt.wallCenterlines) roundWallCenterlines.set(id, cl);
+		updatedRoomRound.set(room.id, rebuilt.round);
+	}
+
 	return {
 		...document,
-		junctions: document.junctions.map((junction) =>
-			movedJunctionIds.has(junction.id)
+		junctions: document.junctions.map((junction) => {
+			const roundPoint = roundJunctionPoints.get(junction.id);
+			if (roundPoint) return { ...junction, point: roundPoint };
+			return movedJunctionIds.has(junction.id)
 				? {
 						...junction,
 						point: [junction.point[0] + dx, junction.point[1] + dz] as LayoutVec2
 					}
-				: junction
-		),
+				: junction;
+		}),
 		// A moved Wall's curve anchors are absolute document X/Z, so
 		// they translate with the same delta as its Junctions. Anchors left
 		// behind would not preserve the moved shape: the curve would swing back
 		// toward the baseline position and can cross a Wall outside the move
 		// group. Flat `line` centerlines carry no absolute data and are shared.
-		walls: document.walls.map((wall) =>
-			movedWallIds.has(wall.id)
+		walls: document.walls.map((wall) => {
+			const roundCenterline = roundWallCenterlines.get(wall.id);
+			if (roundCenterline) return { ...wall, centerline: roundCenterline };
+			return movedWallIds.has(wall.id)
 				? { ...wall, centerline: translateWallCenterline(wall.centerline, [dx, dz]) }
-				: wall
-		),
+				: wall;
+		}),
+		rooms:
+			updatedRoomRound.size > 0
+				? document.rooms.map((room) => {
+						const nextRound = updatedRoomRound.get(room.id);
+						return nextRound ? { ...room, round: nextRound } : room;
+					})
+				: document.rooms,
 		objects: document.objects.map((object) =>
 			associatedObjectIds.has(object.id)
 				? {
@@ -289,21 +331,60 @@ export function rotateRoomUnitMoveCandidate(
 	yaw: number
 ): LayoutDocumentWallFirst {
 	const rotate = (point: LayoutVec2): LayoutVec2 => rotatePointAbout(point, pivot, yaw);
+	const cos = Math.cos(yaw);
+	const sin = Math.sin(yaw);
 	const movedJunctionIds = new Set(subgraph.junctionIds);
 	const movedWallIds = new Set(subgraph.wallIds);
 	const associatedObjectIds = new Set(subgraph.associatedObjectIds ?? []);
+
+	const roundJunctionPoints = new Map<string, LayoutVec2>();
+	const roundWallCenterlines = new Map<string, LayoutWallCenterline>();
+	const updatedRoomRound = new Map<string, LayoutRoomRound>();
+	for (const room of document.rooms) {
+		if (!room.round) continue;
+		if (!room.boundary.some((ref) => movedWallIds.has(ref.wallId))) continue;
+		const cert = certifyRoundRoom(document, room);
+		if (cert.kind !== 'certified') continue;
+		const newCenter = rotate(cert.certified.center);
+		const [ux, uz] = cert.certified.seamDirection;
+		const rotatedDir: LayoutVec2 = [ux * cos + uz * sin, -ux * sin + uz * cos];
+		const rebuilt = buildRoundRoomGeometryFromCertified({
+			document,
+			certified: cert.certified,
+			center: newCenter,
+			radius: cert.certified.radius,
+			seamDirection: rotatedDir
+		});
+		for (const [id, pt] of rebuilt.junctionPoints) roundJunctionPoints.set(id, pt);
+		for (const [id, cl] of rebuilt.wallCenterlines) roundWallCenterlines.set(id, cl);
+		updatedRoomRound.set(room.id, rebuilt.round);
+	}
+
 	return {
 		...document,
-		junctions: document.junctions.map((junction) =>
-			movedJunctionIds.has(junction.id) ? { ...junction, point: rotate(junction.point) } : junction
-		),
+		junctions: document.junctions.map((junction) => {
+			const roundPoint = roundJunctionPoints.get(junction.id);
+			if (roundPoint) return { ...junction, point: roundPoint };
+			return movedJunctionIds.has(junction.id)
+				? { ...junction, point: rotate(junction.point) }
+				: junction;
+		}),
 		// A rotation is rigid about the pivot, so a moved Wall's absolute curve
 		// anchors rotate with its Junctions exactly as they translate with them.
-		walls: document.walls.map((wall) =>
-			movedWallIds.has(wall.id)
+		walls: document.walls.map((wall) => {
+			const roundCenterline = roundWallCenterlines.get(wall.id);
+			if (roundCenterline) return { ...wall, centerline: roundCenterline };
+			return movedWallIds.has(wall.id)
 				? { ...wall, centerline: transformWallCenterline(wall.centerline, rotate) }
-				: wall
-		),
+				: wall;
+		}),
+		rooms:
+			updatedRoomRound.size > 0
+				? document.rooms.map((room) => {
+						const nextRound = updatedRoomRound.get(room.id);
+						return nextRound ? { ...room, round: nextRound } : room;
+					})
+				: document.rooms,
 		// Associated objects follow the same rigid motion as the Walls: an object
 		// left in place would keep its baseline X/Z and stop being associated with
 		// the Room it travelled with — and an object that orbited with the Room but

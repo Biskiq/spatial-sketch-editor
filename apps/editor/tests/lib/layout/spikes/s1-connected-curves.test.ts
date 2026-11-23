@@ -234,14 +234,23 @@ describe('T1 S1 connected curves evidence', () => {
 		const released = clearRound(restored, roomId);
 		expect(serializeWallFirstLayoutDocument(released.layout)).toBe(serializeWallFirstLayoutDocument(restored.layout));
 		expect(decode(encode(released)).roundByRoom[roomId]).toBeUndefined();
-		const unsupportedEncoding = validateWallFirstLayoutDocument({
+		// C1 admitted `room.round` on rings as well as isolated circles; verify
+		// the admitted ring validates and an identical ring without `round` is ordinary.
+		const admittedEncoding = validateWallFirstLayoutDocument({
 			...restored.layout,
 			rooms: restored.layout.rooms.map((room) => room.id === roomId
 				? { ...room, round: restored.roundByRoom[roomId] } : room)
 		});
-		expect(unsupportedEncoding).toMatchObject({ success: false, issues: [expect.objectContaining({
-			path: expect.stringMatching(/\.round$/)
-		})] });
+		expect(admittedEncoding.success).toBe(true);
+		const ordinaryRing = validateWallFirstLayoutDocument({
+			...restored.layout,
+			rooms: restored.layout.rooms.map((room) => {
+				if (room.id !== roomId) return room;
+				const { round: _cleared, ...ordinary } = room;
+				return ordinary;
+			})
+		});
+		expect(ordinaryRing.success).toBe(true);
 	});
 
 	it('4 — moves every rim Junction and keeps the Opening station, or refuses the whole edit on a neighbour issue', () => {
@@ -285,7 +294,11 @@ describe('T1 S1 connected curves evidence', () => {
 		}
 		expect(wall(next.layout, host.id)).toEqual(host);
 		expect(wallFirstWallLength(next.layout, host.id)! - wallFirstWallLength(layout, host.id)!).toBeCloseTo(1, 6);
-		expect(next.layout.rooms).toEqual(layout.rooms);
+		expect(next.layout.rooms).toEqual(
+			layout.rooms.map((room) =>
+				room.id === roomId && room.round ? { ...room, round: { ...room.round, radius: 4 } } : room
+			)
+		);
 		const [oldArc, oldNeighbour] = layout.openings;
 		const [newArc, newNeighbour] = next.layout.openings;
 		expect(newArc).toEqual({ ...oldArc, offset: oldArc!.offset * 0.8 });

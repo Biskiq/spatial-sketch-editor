@@ -67,7 +67,7 @@ export type P23BFixtureVerdict = {
 /** The six CLASS 5 matrix cells, straight / target-curved / all-curved per size. */
 export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 	'p23b-12-wall-straight-v1': {
-		canonicalSha256: 'bedc86951d23391891113b9660b327365ea1647ccf1130533cf6ffa6452b4f56',
+		canonicalSha256: '7efea76009fe435b9200751e48c88d29a2e0d5ceb5bfaf31fcc5f0d346606ba4',
 		shape: {
 			rooms: 3,
 			walls: 12,
@@ -80,7 +80,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-12-wall-target-curved-v1': {
-		canonicalSha256: 'b5322df4412ca394335f40dc4bbce9d2589a3b70e62a326190d8ee56c74cd4a4',
+		canonicalSha256: 'cf050a9e6036dfbdd68f0f6cda0f836d8955b145aa8d2e446ab9e25b01d7272c',
 		shape: {
 			rooms: 3,
 			walls: 12,
@@ -93,7 +93,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-12-wall-all-curved-v1': {
-		canonicalSha256: '1974b3a26b5a1d03f4b2151f3d6bfd38c7e42c25f81165d85ca5ae17016f101c',
+		canonicalSha256: '999749d3b10026f689e6fcef4e5cc1ce42777bd013d1ef3f12c629ce05c32077',
 		shape: {
 			rooms: 3,
 			walls: 12,
@@ -106,7 +106,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-40-wall-straight-v1': {
-		canonicalSha256: 'ee48d880a1bca64be43e0b911520a9d000338daa67220036983e270047a2859c',
+		canonicalSha256: 'ad4c0f8caa491578e904670a1ebdf67fe65fbb49875573367de5be32324fd9c0',
 		shape: {
 			rooms: 10,
 			walls: 40,
@@ -119,7 +119,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-40-wall-target-curved-v1': {
-		canonicalSha256: '37aa38e2ade68b8f1d47be4e76044e00671c109ca78450dc4a461db03969b28e',
+		canonicalSha256: '5e639e6989a5fc8d36e9c4f7255fbd47efc7dca309e04644978c6aeaa7d23baa',
 		shape: {
 			rooms: 10,
 			walls: 40,
@@ -132,7 +132,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-40-wall-all-curved-v1': {
-		canonicalSha256: '8778b574f0091de872d5160c31df1890782d5a122b3f0eef4433d6306890b86e',
+		canonicalSha256: '14fc13a5f72affaf3c493cd77e43dc3d78790437142ffa33ffbf6a17b8614eb3',
 		shape: {
 			rooms: 10,
 			walls: 40,
@@ -152,7 +152,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
  */
 export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtureVerdict> = {
 	'd12-exact-coincidence-v1': {
-		canonicalSha256: 'b448c0e037ef413863767e49270d5dd345c53b0d234928fdda84245b2dcfa759',
+		canonicalSha256: '2eaa0604c01d24eedbb8152655d7437b527228b694232f21f8da84b76d522474',
 		shape: {
 			rooms: 2,
 			walls: 8,
@@ -165,7 +165,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'd12-partial-overlap-v1': {
-		canonicalSha256: '56d949ac6de7bc9b2a64ec6284f94dae0779b13cfabc40de582901a7959fe113',
+		canonicalSha256: '958cb02324b3ed0a49b8d382f4f5cb6c87ed0092eac85ef67757a67d154adc49',
 		shape: {
 			rooms: 2,
 			walls: 8,
@@ -178,7 +178,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'd12-full-containment-v1': {
-		canonicalSha256: 'e780d7990cb9ce209e5f766a90acb5f8f06c2bdc3c125e0b6be9596b8fc76561',
+		canonicalSha256: 'acad3086506185a6e3df738f56f96a616468fd5638e630ad2aa9c14192d9b895',
 		shape: {
 			rooms: 2,
 			walls: 8,
@@ -191,7 +191,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'N-2': {
-		canonicalSha256: '373e576ad967ed5dabcccc86341a28042ae491af5eec8c4ee03e4d90d952d848',
+		canonicalSha256: '6d477402c985f70e453bb599da248f135db323806fb10cf7efd653be0acb3e5d',
 		shape: {
 			rooms: 0,
 			walls: 2,
@@ -204,7 +204,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'N-2i': {
-		canonicalSha256: '1d9bea151d67e738b9a9d7f977862632f91ac249cbab0f1f975325a92df4f16b',
+		canonicalSha256: '603baefdcf609a7887cd1cfa7e0cf1ae21506be88cc39917f723c36efc86e712',
 		shape: {
 			rooms: 0,
 			walls: 2,
@@ -217,7 +217,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'class4-self-intersection-v1': {
-		canonicalSha256: '1b0a0af8fd3fd1c324e8f4ed48ccc750970683b2509a83149a68f91acbb77c11',
+		canonicalSha256: '7d0d7a80d52de6f0dd4c8e8cab1978e20448bf36c2a9207044e5fc812aa57541',
 		shape: {
 			rooms: 0,
 			walls: 1,
@@ -230,7 +230,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: ['wall_offset_overlap']
 	},
 	'class4-zero-length-wall-v1': {
-		canonicalSha256: 'def75dc6fe23e5c697ac484178213f26474e35fb8e7a8c2f3e4a2037151bd44b',
+		canonicalSha256: '80826f679e36a0addef27d81cb5668f9e40a010e1ebd6d000456f849a61922cb',
 		shape: {
 			rooms: 0,
 			walls: 1,
@@ -256,7 +256,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: ['disconnected_boundary']
 	},
 	'class4-component-duplicate-junction-v1': {
-		canonicalSha256: '89a334cf1cebd0722b18eb2908f658da417935f081317a95a13d0b196394965f',
+		canonicalSha256: 'f6d2d9c59ae9c2dd39fc9d25a97eb8a004d93066fd04879cdbf1f620cabf57cc',
 		shape: {
 			rooms: 1,
 			walls: 5,

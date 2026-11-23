@@ -1,6 +1,6 @@
 {
   "units": "meters",
-  "formatVersion": 9,
+  "formatVersion": 10,
   "floor": {
     "id": "floor",
     "name": "Floor",

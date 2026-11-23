@@ -84,8 +84,8 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 9, Scene 12, Camera 1, Experience 4 and resources 3
-(S8 D, #390). Scene 12 / resources 3 is the sole canonical format; by owner ruling (S8 E) no
+`units`. Unit payload versions are Layout 10, Scene 12, Camera 1, Experience 4 and resources 3
+(Layout 10 in T1 Wave 4 C1; Scene 12 / resources 3 in S8 D, #390). Scene 12 / resources 3 is the sole canonical format; by owner ruling (S8 E) no
 Scene 11 → 12 conversion, saved-head inventory or rollback campaign exists.
 Layout's envelope unit version is not a second number: `LAYOUT_UNIT_FORMAT_VERSION` is the Layout
 `formatVersion` itself (`LAYOUT_WALL_FIRST_FORMAT_VERSION`), so one authority governs the unit
@@ -96,7 +96,7 @@ are refused without conversion.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-Layout 8 source is refused at Open, Load and Save. Opening refused source preserves the
+Layout 9 and earlier source is refused at Open, Load and Save. Opening refused source preserves the
 current editor session. A refused Save leaves the stored head and receipt untouched.
 A pending Save with a recognizable incompatible Layout stamp keeps its exact stored bytes
 and remains available for download or explicit discard. A new sign-in handoff cannot
@@ -142,9 +142,9 @@ executable resource closure. The Stage discloses diagnostics and closure for ins
 inventing resources; closure refuses F4 acceptance, Save and release. An unresolved View remains
 repairable authored state and disables the affected visitor behavior.
 
-**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 9`, the only
-recognised version): one floor datum, junctions → walls → reconciled rooms → openings → layout
-objects, project/world-local. The former versionless shape (floors → rooms each carrying a finite
+**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 10`, the only
+recognised version): one floor datum, junctions → walls → reconciled rooms (with optional `round: { center, radius }` and seam-anchored boundary order) → openings → layout
+objects → regions, project/world-local. The former versionless shape (floors → rooms each carrying a finite
 `frame.origin: [x, z]` plus a normalized radian `frame.yaw`) is **no longer decoded**, and
 T1.P02.S05 removed its reader, codec and Room-frame helper entirely. Opening `offset` = meters along a segment,
 never a sample index. Door-only `connectsRoomIds: [string, string]` relations are explicit,

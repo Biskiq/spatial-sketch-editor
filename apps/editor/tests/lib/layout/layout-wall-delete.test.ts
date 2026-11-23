@@ -81,7 +81,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 9 as const,
+		formatVersion: 10 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({

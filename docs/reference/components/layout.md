@@ -7,17 +7,19 @@ reconstructs a second topology or navigation authority.
 
 ## Current contract
 
-Layout format 9 is wall-first. Wall role is derived. Every closed ring encloses. A free-standing
+Layout format 10 is wall-first. Wall role is derived. Every closed ring encloses. A free-standing
 Wall encloses nothing; a dividing Wall creates reconciled Room topology. Room identity is persistent
 through reconciliation, while Room geometry remains derived and is never directly editable.
 Authored placement is world-local with explicit internal frames, without mandatory Room ownership.
 [Editing-path rules](layout-performance.md) govern previews, commit and retained roots.
 
-Format 9 is the only recognized version. Source always includes a `regions` collection and a
+Format 10 is the only recognized version. Source always includes a `regions` collection and a
 `regions` map in the identity ledger whenever the ledger is present. Every Room carries the required `virtualEdges` and
 `overhead` fields; an enclosed Room has no virtual edges, and an open Space states the straight
-segments that close its Wall gaps. The reader refuses every other declared version strictly, with
-no migration and no second decoder: a format-8 payload fails as `unsupported_format_version`.
+segments that close its Wall gaps. A Round Room carries the optional `round: { center: [x, z], radius }`
+fact, omitted on ordinary Rooms and open Spaces; its first oriented `boundary` start Junction anchors
+the canonical seam. The reader refuses every other declared version strictly, with
+no migration and no second decoder: a format-9 or format-8 payload fails as `unsupported_format_version`.
 
 ## Open Spaces
 
@@ -47,19 +49,21 @@ format and the compiler only: no creator-facing operation produces an open Space
 ## Closed circular Walls
 
 A circular Room is **one ordinary Wall** whose `startJunctionId` and `endJunctionId` are the same
-Junction, enclosing **one persistent Room** derived by the ordinary face and Room path. The single
+Junction, enclosing **one persistent Room** derived by the ordinary face and Room path and carrying
+`round: { center, radius }`. The single
 Junction is the canonical seam, authored at the rim point of the centre → rim gesture. The Wall is
 not a parametric circle object and there is no second circle geometry vocabulary: its persisted
 `centerline` is a `cubic-chain` of exactly 16 symmetric cubic spans (15 interior bend points). The
-codec rejects any other closed representation and any chain that is not the canonical symmetric
-circle; its measured error at a 5 m reference radius is bounded at 3.4e-7 m radial and 1.1e-6 m
-circumference.
+codec rejects any other closed representation, a missing `round` fact on an enclosed closed circle,
+`round` on a virtual-edge or non-cubic boundary, and any chain whose controls fall outside the
+centre-local binary64 uncertainty-aware Round certification bounds; its measured error at a 5 m
+reference radius is bounded at 3.4e-7 m radial and 1.1e-6 m circumference.
 
 Closed Walls are isolated. A Wall may not connect at the seam, end on or attach to the circle,
 cross it, or be noded onto it; each refuses as `closed_wall_isolated`. Split and dissolve refuse,
 and bending refuses as `closed_wall_not_bendable`. Walls wholly inside the circle are allowed. The
-seam keeps its identity through Save/Load; radius and diameter are read from the persisted chain,
-not remembered gesture state.
+seam keeps its identity through Save/Load; radius and centre are read directly from `room.round`,
+never inferred by fitting Wall controls.
 
 - **Rigid move.** A body drag translates the seam Junction and the whole chain by the same delta.
   Radius, seam station, bend-point ids and every hosted Opening stay unchanged.

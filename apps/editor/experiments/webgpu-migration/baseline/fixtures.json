@@ -110,8 +110,8 @@
     },
     "fixture": {
       "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.project.json",
-      "bytes": 30030,
-      "digest": "sha256-bfb3378a61edfeff4a57dfb7b2c117bc735e61919e3527d4b74a2db3d7d80fd8",
+      "bytes": 30032,
+      "digest": "sha256-75e89a4b91edad5d0d5030817ee8291efa0bc5554764ea833968ee200de54702",
       "generator": "apps/editor/scripts/build-webgpu-current-world.ts",
       "counts": {
         "rooms": 10,
@@ -149,8 +149,8 @@
     },
     "publicationProjection": {
       "path": "apps/editor/experiments/webgpu-migration/baseline/current-world.public.project.json",
-      "bytes": 28593,
-      "digest": "sha256-044efa28a790cd75e86f29009394b987b63da7add46f28daf366367b33fc95a2",
+      "bytes": 28595,
+      "digest": "sha256-20323f576d067bb26054f883577ed9f5a92e535100837066086c7aad721b1aff",
       "removedContent": [
         "form"
       ],

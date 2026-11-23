@@ -99,6 +99,88 @@ function finitePoint(point: LayoutVec2 | undefined): point is LayoutVec2 {
 }
 
 /**
+ * Build the canonical 16-span closed cubic chain from an explicit centre,
+ * radius and unit seam ray, adding `center` once per point at the write
+ * boundary so world-coordinate rounding is never compounded.
+ */
+export function buildClosedWallCircleCenterlineFromRay(options: {
+	center: LayoutVec2;
+	radius: number;
+	seamDirection: LayoutVec2;
+	wallId: string;
+	/** Optional explicit seam point (used by the centre → rim wrapper). */
+	explicitSeam?: LayoutVec2;
+}): ClosedWallCircleConstruction {
+	const { center, radius, seamDirection, wallId, explicitSeam } = options;
+	if (
+		!finitePoint(center) ||
+		!finitePoint(seamDirection) ||
+		!Number.isFinite(radius) ||
+		!(radius > 1e-9)
+	) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'degenerate_radius',
+				message: 'A closed Wall needs a finite centre, seam direction and radius > 1e-9 m'
+			}
+		};
+	}
+	const dirLen = Math.hypot(seamDirection[0], seamDirection[1]);
+	if (!(dirLen > 0) || !Number.isFinite(dirLen)) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'degenerate_radius',
+				message: 'A closed Wall needs a non-zero seam direction'
+			}
+		};
+	}
+	const ux = seamDirection[0] / dirLen;
+	const uz = seamDirection[1] / dirLen;
+	const step = (Math.PI * 2) / CLOSED_WALL_CIRCLE_SPAN_COUNT;
+	const k = (4 / 3) * Math.tan(step / 4);
+
+	const toWorld = (localX: number, localZ: number): LayoutVec2 => [
+		center[0] + localX,
+		center[1] + localZ
+	];
+	const unitToWorld = (qx: number, qz: number): LayoutVec2 =>
+		toWorld(radius * (qx * ux - qz * uz), radius * (qx * uz + qz * ux));
+
+	const seam: LayoutVec2 = explicitSeam
+		? [explicitSeam[0], explicitSeam[1]]
+		: unitToWorld(1, 0);
+
+	const knots: LayoutWallCurveKnot[] = [];
+	const spans: LayoutWallCubicSpan[] = [];
+	for (let index = 0; index < CLOSED_WALL_CIRCLE_SPAN_COUNT; index += 1) {
+		const a0 = index * step;
+		const a1 = (index + 1) * step;
+		const c0 = index === 0 ? 1 : Math.cos(a0);
+		const s0 = index === 0 ? 0 : Math.sin(a0);
+		const c1 = index === CLOSED_WALL_CIRCLE_SPAN_COUNT - 1 ? 1 : Math.cos(a1);
+		const s1 = index === CLOSED_WALL_CIRCLE_SPAN_COUNT - 1 ? 0 : Math.sin(a1);
+
+		const handleOut = unitToWorld(c0 - k * s0, s0 + k * c0);
+		const handleIn = unitToWorld(c1 + k * s1, s1 - k * c1);
+		spans.push({ handleOut, handleIn });
+		if (index < CLOSED_WALL_CIRCLE_SPAN_COUNT - 1) {
+			knots.push({
+				id: `${wallId}:knot:${index + 1}`,
+				point: unitToWorld(c1, s1)
+			});
+		}
+	}
+	if (knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT || spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT) {
+		throw new Error('closed Wall construction invariant failed');
+	}
+	const centerline = wallCubicChain(knots, spans);
+	if (centerline.kind !== 'cubic-chain') throw new Error('closed Wall construction invariant failed');
+	return { kind: 'success', centerline, radius, seam };
+}
+
+/**
  * Build the canonical 16-span closed cubic chain for one centre → rim gesture.
  *
  * Knot and handle identity is derived from `wallId`, never from coordinates or
@@ -118,64 +200,22 @@ export function buildClosedWallCircleCenterline(options: {
 			rejection: { code: 'degenerate_radius', message: 'A closed Wall needs finite centre and rim points' }
 		};
 	}
-	const radius = Math.hypot(rim[0] - center[0], rim[1] - center[1]);
+	const dx = rim[0] - center[0];
+	const dz = rim[1] - center[1];
+	const radius = Math.hypot(dx, dz);
 	if (!(radius > 1e-9) || !Number.isFinite(radius)) {
 		return {
 			kind: 'rejected',
 			rejection: { code: 'degenerate_radius', message: 'The authored rim must be farther than 1e-9 m from the centre' }
 		};
 	}
-
-	const seam: LayoutVec2 = [rim[0], rim[1]];
-	const startAngle = Math.atan2(rim[1] - center[1], rim[0] - center[0]);
-	const step = (Math.PI * 2) / CLOSED_WALL_CIRCLE_SPAN_COUNT;
-	// Standard circular-arc cubic control distance for an arc of `step`.
-	const handleDistance = (4 / 3) * Math.tan(step / 4) * radius;
-	const pointAt = (angle: number): LayoutVec2 => [
-		center[0] + radius * Math.cos(angle),
-		center[1] + radius * Math.sin(angle)
-	];
-	const tangentAt = (angle: number): LayoutVec2 => [-Math.sin(angle), Math.cos(angle)];
-
-	const knots: LayoutWallCurveKnot[] = [];
-	const spans: LayoutWallCubicSpan[] = [];
-	let spanStart = seam;
-	for (let index = 0; index < CLOSED_WALL_CIRCLE_SPAN_COUNT; index += 1) {
-		const startAngleOfSpan = startAngle + index * step;
-		const endAngleOfSpan = startAngle + (index + 1) * step;
-		// The final endpoint reuses the authored seam object value, not a
-		// trigonometric recomputation, so closure is exact even after a JSON round
-		// trip. Every interior boundary point remains an ordinary authored knot.
-		const end =
-			index === CLOSED_WALL_CIRCLE_SPAN_COUNT - 1
-				? seam
-				: pointAt(endAngleOfSpan);
-		const startTangent = tangentAt(startAngleOfSpan);
-		const endTangent = tangentAt(endAngleOfSpan);
-		spans.push({
-			handleOut: [
-				spanStart[0] + handleDistance * startTangent[0],
-				spanStart[1] + handleDistance * startTangent[1]
-			],
-			handleIn: [
-				end[0] - handleDistance * endTangent[0],
-				end[1] - handleDistance * endTangent[1]
-			]
-		});
-		if (index < CLOSED_WALL_CIRCLE_SPAN_COUNT - 1) {
-			knots.push({
-				id: `${wallId}:knot:${index + 1}`,
-				point: [end[0], end[1]]
-			});
-		}
-		spanStart = end;
-	}
-	if (knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT || spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT) {
-		throw new Error('closed Wall construction invariant failed');
-	}
-	const centerline = wallCubicChain(knots, spans);
-	if (centerline.kind !== 'cubic-chain') throw new Error('closed Wall construction invariant failed');
-	return { kind: 'success', centerline, radius, seam };
+	return buildClosedWallCircleCenterlineFromRay({
+		center,
+		radius,
+		seamDirection: [dx / radius, dz / radius],
+		wallId,
+		explicitSeam: rim
+	});
 }
 
 export type ClosedWallCircleDocumentResult =

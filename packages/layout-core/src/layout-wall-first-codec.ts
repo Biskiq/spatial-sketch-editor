@@ -28,6 +28,7 @@ import type {
 	LayoutIdentityLedger,
 	LayoutJunction,
 	LayoutRegion,
+	LayoutRoomRound,
 	LayoutSpaceVirtualEdge,
 	LayoutWall,
 	LayoutWallCenterline,
@@ -39,6 +40,7 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import { composeSpaceBoundary } from './layout-room-reconciliation';
+import { validateRoundRooms } from './layout-round-room';
 import {
 	CLOSED_WALL_CIRCLE_KNOT_COUNT,
 	CLOSED_WALL_CIRCLE_SPAN_COUNT,
@@ -121,8 +123,10 @@ const ROOM_KEYS = [
 	'name',
 	'boundary',
 	'virtualEdges',
-	'overhead'
+	'overhead',
+	'round'
 ] as const;
+const ROOM_ROUND_KEYS = ['center', 'radius'] as const;
 const VIRTUAL_EDGE_KEYS = ['startJunctionId', 'endJunctionId'] as const;
 const SPACE_OVERHEAD_VALUES = ['closed', 'open-to-sky'] as const;
 const WALL_REF_KEYS = ['wallId', 'direction'] as const;
@@ -389,7 +393,6 @@ function parseDocument(
 		else previous.count += 1;
 	}
 
-	const junctionById = new Map(junctions.map((junction) => [junction.id, junction] as const));
 	for (const [index, wall] of walls.entries()) {
 		if (!junctionIds.has(wall.startJunctionId)) {
 			addIssue(
@@ -407,20 +410,6 @@ function parseDocument(
 				`Unknown junctionId '${wall.endJunctionId}'`
 			);
 			continue;
-		}
-		// The 16/15 count above proves only the structural envelope. A closed
-		// Wall is a CIRCULAR Wall, so the codec also proves the saved geometry is
-		// the one symmetric chain the constructor writes. Re-fitting at Save/Load is
-		// exact-safe because JSON preserves the authored doubles; without this a
-		// hand-edited 16-span loop would load as a closed Wall while failing the
-		// accuracy contract that makes a closed Wall a circle.
-		if (wall.startJunctionId === wall.endJunctionId) {
-			validateClosedWallCircle(
-				wall,
-				junctionById.get(wall.startJunctionId)!.point,
-				`${path}.walls[${index}].centerline`,
-				issues
-			);
 		}
 	}
 
@@ -561,6 +550,13 @@ function parseDocument(
 		}
 	}
 
+	if (issues.length === 0) {
+		// C1 Round certification: replaces the legacy fixed-tolerance closed-circle
+		// check with one centre-local binary64 uncertainty-aware checker shared
+		// across isolated closed circles and open cubic rings.
+		issues.push(...validateRoundRooms({ junctions, walls, rooms }, path));
+	}
+
 	if (issues.length > 0) return undefined;
 	if (!floor) return undefined;
 	return {
@@ -651,102 +647,6 @@ function parseIdentityLedger(
 	}
 	if (failed) return undefined;
 	return { cursor, ...assignments };
-}
-
-/**
- * Enforce the approved D6 closed-Wall geometry: 16 equal circular-arc spans
- * around one centre, in constructor order from the seam. The reconstruction is
- * derived only from persisted values (the seam Junction plus the 15 knots), so
- * this is a real read-boundary check rather than a comparison with a freshly
- * generated construction.
- *
- * Tolerance is relative to radius at 1e-9. At the 5 m reference radius that is
- * 5 nm, well below the constructor's 3.32e-7 m radial approximation error (which
- * is a property of the shape, not of how precisely it was saved). A chord,
- * missing handle, mirrored span order or off-circle knot fails by orders of
- * magnitude.
- */
-function validateClosedWallCircle(
-	wall: LayoutWall,
-	seam: LayoutVec2,
-	path: string,
-	issues: LayoutDocumentIssue[]
-): void {
-	if (
-		wall.centerline.kind !== 'cubic-chain' ||
-		wall.centerline.knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT ||
-		wall.centerline.spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT
-	) {
-		return;
-	}
-	const points: LayoutVec2[] = [
-		[seam[0], seam[1]],
-		...wall.centerline.knots.map((knot) => [knot.point[0], knot.point[1]] as LayoutVec2)
-	];
-	if (points.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT) return;
-	let centreX = 0;
-	let centreZ = 0;
-	for (const point of points) {
-		centreX += point[0];
-		centreZ += point[1];
-	}
-	centreX /= points.length;
-	centreZ /= points.length;
-	let radiusSum = 0;
-	for (const point of points) radiusSum += Math.hypot(point[0] - centreX, point[1] - centreZ);
-	const radius = radiusSum / points.length;
-	const validRadius = Number.isFinite(radius) && radius > 1e-9;
-	const tolerance = 1e-9 * Math.max(1, radius);
-	const step = (Math.PI * 2) / CLOSED_WALL_CIRCLE_SPAN_COUNT;
-	const startAngle = Math.atan2(seam[1] - centreZ, seam[0] - centreX);
-	const handleDistance = (4 / 3) * Math.tan(step / 4) * radius;
-	let valid = validRadius;
-	if (validRadius) {
-		for (let index = 0; index < points.length; index += 1) {
-			const point = points[index]!;
-			const end = points[(index + 1) % points.length]!;
-			const distance = Math.hypot(point[0] - centreX, point[1] - centreZ);
-			const angle = Math.atan2(point[1] - centreZ, point[0] - centreX);
-			const expectedAngle = startAngle + index * step;
-			const angleError = Math.atan2(
-				Math.sin(angle - expectedAngle),
-				Math.cos(angle - expectedAngle)
-			);
-			const startTangent: LayoutVec2 = [
-				-Math.sin(expectedAngle),
-				Math.cos(expectedAngle)
-			];
-			const endTangent: LayoutVec2 = [
-				-Math.sin(expectedAngle + step),
-				Math.cos(expectedAngle + step)
-			];
-			const span = wall.centerline.spans[index]!;
-			const expectedOut: LayoutVec2 = [
-				point[0] + handleDistance * startTangent[0],
-				point[1] + handleDistance * startTangent[1]
-			];
-			const expectedIn: LayoutVec2 = [
-				end[0] - handleDistance * endTangent[0],
-				end[1] - handleDistance * endTangent[1]
-			];
-			valid &&=
-				Math.abs(distance - radius) <= tolerance &&
-				Math.abs(angleError) <= 1e-9 &&
-				Math.hypot(span.handleOut[0] - expectedOut[0], span.handleOut[1] - expectedOut[1]) <=
-					tolerance &&
-				Math.hypot(span.handleIn[0] - expectedIn[0], span.handleIn[1] - expectedIn[1]) <=
-					tolerance;
-			if (!valid) break;
-		}
-	}
-	if (!valid) {
-		addIssue(
-			issues,
-			path,
-			'invalid_value',
-			'A closed Wall must be the canonical 16-span symmetric circular chain'
-		);
-	}
 }
 
 /** Optional authored name: absent means unnamed, blank rejects. */
@@ -989,6 +889,7 @@ function parseRoom(
 		SPACE_OVERHEAD_VALUES,
 		issues
 	);
+	const round = parseRoomRound(record.round, `${path}.round`, issues);
 	// A canonical Room with zero boundary references is not a
 	// degenerate architecture, it is invalid state: the codec previously accepted
 	// `boundary: []` because an empty array parses cleanly, which let a Room with
@@ -1002,8 +903,39 @@ function parseRoom(
 			'A canonical Room boundary must reference at least one Wall'
 		);
 	}
-	if (!id || !name || !boundary || !virtualEdges || !overhead) return undefined;
-	return { id, name, boundary, virtualEdges, overhead };
+	if (
+		!id ||
+		!name ||
+		!boundary ||
+		!virtualEdges ||
+		!overhead ||
+		(record.round !== undefined && !round)
+	) {
+		return undefined;
+	}
+	return {
+		id,
+		name,
+		boundary,
+		virtualEdges,
+		overhead,
+		...(round ? { round } : {})
+	};
+}
+
+function parseRoomRound(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): ParsedValue<LayoutRoomRound> {
+	if (input === undefined) return undefined;
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	assertAllowedKeys(record, ROOM_ROUND_KEYS, path, issues);
+	const center = readVec2(record.center, `${path}.center`, issues);
+	const radius = readPositiveNumber(record.radius, `${path}.radius`, issues);
+	if (!center || radius === undefined) return undefined;
+	return { center, radius };
 }
 
 function parseRegion(input: unknown, path: string, issues: LayoutDocumentIssue[]): ParsedValue<LayoutRegion> {

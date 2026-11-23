@@ -16,12 +16,15 @@ import { validateClosedWallContacts } from './layout-wall-first-precision';
  */
 import type { LayoutDocumentWallFirst, LayoutWall } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
-import { translateWallCenterline } from './layout-wall-centerline';
 import {
-	buildClosedWallCircleCenterline,
 	createClosedWallCircleDocument,
 	isClosedWall
 } from './layout-closed-wall';
+import {
+	buildRoundRoomGeometryFromCertified,
+	certifyRoundRoom,
+	findEnclosingRoundRoomForWall
+} from './layout-round-room';
 import {
 	allocateCapturedId,
 	layoutWorkingLevelIssue,
@@ -85,11 +88,9 @@ export type ClosedWallCircleFacts = {
 };
 
 /**
- * Read the centre and radius of a canonical closed Wall.
- *
- * The 16 boundary points are equally spaced by construction, so their mean is
- * the centre and every point is the same radius from it. This deliberately
- * reads the persisted cubic chain rather than any remembered gesture state.
+ * Read the centre and radius of a canonical closed Wall from its enclosing
+ * Round Room's authored `round` fact. Never fits or infers centre/radius from
+ * Wall control points.
  */
 export function readClosedWallCircle(
 	document: LayoutDocumentWallFirst,
@@ -97,19 +98,14 @@ export function readClosedWallCircle(
 ): ClosedWallCircleFacts | null {
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (wall === undefined || !isClosedWall(wall) || wall.centerline.kind !== 'cubic-chain') return null;
+	const room = findEnclosingRoundRoomForWall(document, wallId);
+	if (room === undefined || room.round === undefined) return null;
 	const seam = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
 	if (seam === undefined) return null;
-	const points: LayoutVec2[] = [seam, ...wall.centerline.knots.map((knot) => knot.point)];
-	const center: LayoutVec2 = [
-		points.reduce((sum, point) => sum + point[0], 0) / points.length,
-		points.reduce((sum, point) => sum + point[1], 0) / points.length
-	];
-	const radius =
-		points.reduce((sum, point) => sum + Math.hypot(point[0] - center[0], point[1] - center[1]), 0) /
-		points.length;
+	const { center, radius } = room.round;
 	if (!(radius > 0) || !Number.isFinite(radius)) return null;
 	return {
-		center,
+		center: [center[0], center[1]],
 		radius,
 		seam: [seam[0], seam[1]],
 		angleRadians: Math.atan2(seam[1] - center[1], seam[0] - center[0])
@@ -253,7 +249,21 @@ export function planCreateCircularRoom(options: {
 		if ('rejection' in result) {
 			return reject('invalid_candidate_document', result.rejection.message);
 		}
-		const gated = validateCandidate(result.document, wallId);
+		const withRound: LayoutDocumentWallFirst = {
+			...result.document,
+			rooms: result.document.rooms.map((room) =>
+				room.boundary.length === 1 && room.boundary[0]!.wallId === wallId
+					? {
+							...room,
+							round: {
+								center: [options.center[0], options.center[1]],
+								radius: created.radius
+							}
+						}
+					: room
+			)
+		};
+		const gated = validateCandidate(withRound, wallId);
 		if (gated.kind === 'rejected') return gated;
 		return {
 			kind: 'success',
@@ -292,38 +302,42 @@ export function planResizeClosedWallRadius(options: {
 	if (!isClosedWall(wall) || wall.centerline.kind !== 'cubic-chain') {
 		return reject('not_closed_wall', `Wall '${wallId}' is not a closed Wall`);
 	}
-	const facts = readClosedWallCircle(document, wallId);
-	if (facts === null) {
-		return reject('not_closed_wall', `Wall '${wallId}' has no resolvable circular centre`);
+	const room = findEnclosingRoundRoomForWall(document, wallId);
+	if (room === undefined) {
+		return reject('not_closed_wall', `Wall '${wallId}' has no enclosing Round Room`);
 	}
+	const certification = certifyRoundRoom(document, room);
+	if (certification.kind === 'invalid') {
+		return reject('invalid_candidate_document', certification.issue.message);
+	}
+	const { certified } = certification;
 	if (!Number.isFinite(radius) || radius <= wall.thickness / 2 + 1e-6) {
 		return reject(
 			'invalid_radius',
 			'Radius must be finite and greater than half the Wall thickness.'
 		);
 	}
-	const direction: LayoutVec2 = [
-		(facts.seam[0] - facts.center[0]) / facts.radius,
-		(facts.seam[1] - facts.center[1]) / facts.radius
-	];
-	const construction = buildClosedWallCircleCenterline({
-		center: facts.center,
-		rim: [facts.center[0] + direction[0] * radius, facts.center[1] + direction[1] * radius],
-		wallId
+	const rebuilt = buildRoundRoomGeometryFromCertified({
+		document,
+		certified,
+		center: certified.center,
+		radius,
+		seamDirection: certified.seamDirection
 	});
-	if (construction.kind === 'rejected') {
-		return reject('invalid_radius', construction.rejection.message);
+	const nextCenterline = rebuilt.wallCenterlines.get(wallId);
+	const newJunctionPoint = rebuilt.junctionPoints.get(wall.startJunctionId);
+	if (!nextCenterline || !newJunctionPoint) {
+		return reject('invalid_candidate_document', `Failed to rebuild closed Wall '${wallId}'`);
 	}
 	const oldLength = wallFirstWallLength(document, wallId);
 	if (!(oldLength !== undefined && oldLength > 0)) {
 		return reject('invalid_candidate_document', `Wall '${wallId}' has no resolvable length`);
 	}
-	const newLength = (oldLength / facts.radius) * radius;
-	const scale = radius / facts.radius;
-	const newJunctionPoint: LayoutVec2 = [construction.seam[0], construction.seam[1]];
+	const newLength = (oldLength / certified.radius) * radius;
+	const scale = radius / certified.radius;
 	const candidateWall: LayoutWall = {
 		...wall,
-		centerline: construction.centerline
+		centerline: nextCenterline
 	};
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
@@ -331,6 +345,9 @@ export function planResizeClosedWallRadius(options: {
 			junction.id === wall.startJunctionId ? { ...junction, point: newJunctionPoint } : junction
 		),
 		walls: document.walls.map((entry) => (entry.id === wallId ? candidateWall : entry)),
+		rooms: document.rooms.map((entry) =>
+			entry.id === room.id ? { ...entry, round: rebuilt.round } : entry
+		),
 		openings: document.openings.map((opening) => {
 			if (opening.wallId !== wallId) return opening;
 			// Authored offsets stay in `[0, circumference)`: wrap once after scaling,
@@ -383,21 +400,38 @@ export function planTranslateClosedWall(options: {
 	if (delta[0] === 0 && delta[1] === 0) {
 		return reject('invalid_delta', 'A closed Wall move needs a non-zero delta.');
 	}
-	const seam = document.junctions.find((junction) => junction.id === wall.startJunctionId);
-	if (seam === undefined) {
+	const room = findEnclosingRoundRoomForWall(document, wallId);
+	if (room === undefined) {
+		return reject('not_closed_wall', `Wall '${wallId}' has no enclosing Round Room`);
+	}
+	const certification = certifyRoundRoom(document, room);
+	if (certification.kind === 'invalid') {
+		return reject('invalid_candidate_document', certification.issue.message);
+	}
+	const { certified } = certification;
+	const newCenter: LayoutVec2 = [certified.center[0] + delta[0], certified.center[1] + delta[1]];
+	const rebuilt = buildRoundRoomGeometryFromCertified({
+		document,
+		certified,
+		center: newCenter,
+		radius: certified.radius,
+		seamDirection: certified.seamDirection
+	});
+	const nextCenterline = rebuilt.wallCenterlines.get(wallId);
+	const nextSeam = rebuilt.junctionPoints.get(wall.startJunctionId);
+	if (!nextCenterline || !nextSeam) {
 		return reject('invalid_candidate_document', `Wall '${wallId}' has no resolvable seam Junction`);
 	}
 	const candidate: LayoutDocumentWallFirst = {
 		...document,
 		junctions: document.junctions.map((junction) =>
-			junction.id === wall.startJunctionId
-				? { ...junction, point: [junction.point[0] + delta[0], junction.point[1] + delta[1]] }
-				: junction
+			junction.id === wall.startJunctionId ? { ...junction, point: nextSeam } : junction
 		),
 		walls: document.walls.map((entry) =>
-			entry.id === wallId
-				? { ...entry, centerline: translateWallCenterline(entry.centerline, delta) }
-				: entry
+			entry.id === wallId ? { ...entry, centerline: nextCenterline } : entry
+		),
+		rooms: document.rooms.map((entry) =>
+			entry.id === room.id ? { ...entry, round: rebuilt.round } : entry
 		)
 	};
 	const gated = validateCandidate(candidate, wallId);

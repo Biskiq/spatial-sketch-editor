@@ -306,7 +306,12 @@ export function resolveJunctionGeometry(
 			joins.push(suppressedJoin(a, bands, undefined, undefined, true), suppressedJoin(b, bands, undefined, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		if (isTangentContinuation(a, b)) {
+		const isLargeCoordContinuation =
+			(Math.abs(point[0]) > 1e6 || Math.abs(point[1]) > 1e6) &&
+			dot(outwardTangent(a), outwardTangent(b)) < 0 &&
+			Math.abs(cross(outwardTangent(a), outwardTangent(b))) <
+				Math.max(JUNCTION_DET_EPSILON, Math.max(Math.abs(point[0]), Math.abs(point[1])) * Number.EPSILON * 16);
+		if (isTangentContinuation(a, b) || isLargeCoordContinuation) {
 			// Straight continuation: suppress the common interface. The difference
 			// surfaces (thickness / height / Opening-profile) are solved **here**, per
 			// vertical band, and attached to the leg that owns the material — the
@@ -709,11 +714,16 @@ function clipHalfPlane(
 
 /** Signed plan area of a convex polygon. */
 function polygonArea(polygon: readonly LayoutVec2[]): number {
+	if (polygon.length < 3) return 0;
+	const origin = polygon[0]!;
+	const shift = Math.abs(origin[0]) > 1e6 || Math.abs(origin[1]) > 1e6;
+	const ox = shift ? origin[0] : 0;
+	const oz = shift ? origin[1] : 0;
 	let total = 0;
 	for (let index = 0; index < polygon.length; index += 1) {
 		const a = polygon[index]!;
 		const b = polygon[(index + 1) % polygon.length]!;
-		total += a[0] * b[1] - b[0] * a[1];
+		total += (a[0] - ox) * (b[1] - oz) - (b[0] - ox) * (a[1] - oz);
 	}
 	return total / 2;
 }

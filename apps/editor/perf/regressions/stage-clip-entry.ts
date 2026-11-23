@@ -402,7 +402,7 @@ function fixture() {
 	}
 	const orbitDocument: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 9,
+		formatVersion: 10,
 		floor: { id: 'orbit-floor', name: 'Orbit Floor', elevation: 0 },
 		junctions: orbitJunctions,
 		walls: orbitWalls,
