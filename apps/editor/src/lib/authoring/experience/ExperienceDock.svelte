@@ -20,6 +20,12 @@
 		onToggleGuide: () => void;
 	} = $props();
 
+	/** Select is the resting tool: pressing it while Place a View is armed cancels placement
+	 *  through the same controller toggle Place a View uses (no second tool-state owner). */
+	function selectPressed(): void {
+		if (placeArmed) onPlaceView?.();
+	}
+
 	const captureHint = $derived(
 		captureDisabled && captureReason ? captureReason : 'Capture: what you see becomes a View'
 	);
@@ -28,11 +34,13 @@
 <nav class="dock" aria-label="Experience dock" data-experience-dock>
 	<button
 		type="button"
-		class="key armed"
-		aria-pressed="true"
+		class="key"
+		class:armed={!placeArmed}
+		aria-pressed={!placeArmed}
 		aria-label="Select"
 		title="Select: the pointer selects subjects on the Stage"
 		data-dock-tool="select"
+		onclick={selectPressed}
 	>
 		<ShellIcon name="select" size={20} />
 		<span class="kl">Select</span>
