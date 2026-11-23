@@ -54,7 +54,8 @@
 			readonly rename: (slotId: string, name: string) => void;
 			readonly setColor: (slotId: string, color: string) => void;
 			readonly remove: (slotId: string) => void;
-			readonly add: (color: string) => void;
+			/** One Undo; resolves to the new slot id when the add is accepted. */
+			readonly add: (color: string) => Promise<string | null> | void;
 		} | null;
 		/** U1's project-Finish picture source (the route's, shared with the Library shelf). */
 		tileSource?: (finishId: string) => FinishTileSource | null;
@@ -111,6 +112,59 @@
 		if (slotId !== null && palette !== null) palette.rename(slotId, slotDraft);
 	}
 
+	let trayEl = $state<HTMLElement>();
+	let wheelTrigger = $state<HTMLButtonElement>();
+	let pickerPlace = $state<{ left: number; bottom: number; maxHeight: number } | null>(null);
+	const PICKER_WIDTH = 280;
+
+	/**
+	 * *Paint colour* floats above its trigger inside the usable Stage: centred on
+	 * *Custom colour*, clamped to the Stage's side gutters, never under the dock.
+	 */
+	function placePicker(): void {
+		const trigger = wheelTrigger;
+		const parent = trayEl?.offsetParent;
+		if (trigger === undefined || !(parent instanceof HTMLElement)) return;
+		const box = parent.getBoundingClientRect();
+		const at = trigger.getBoundingClientRect();
+		const width = Math.min(PICKER_WIDTH, Math.max(0, box.width - 24));
+		const centre = at.left + at.width / 2 - box.left;
+		const left = Math.max(12, Math.min(centre - width / 2, box.width - width - 12));
+		pickerPlace = {
+			left,
+			bottom: Math.max(0, box.bottom - at.top + 8),
+			maxHeight: Math.max(160, at.top - box.top - 12)
+		};
+	}
+
+	$effect(() => {
+		if (!view.wheelOpen || tab !== 'colours') {
+			pickerPlace = null;
+			return;
+		}
+		placePicker();
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => placePicker());
+		if (trayEl !== undefined) observer?.observe(trayEl);
+		const parent = trayEl?.offsetParent;
+		if (parent instanceof HTMLElement) observer?.observe(parent);
+		window.addEventListener('resize', placePicker);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener('resize', placePicker);
+		};
+	});
+
+	function closePicker(): void {
+		view.setWheelOpen(false);
+		wheelTrigger?.focus();
+	}
+
+	const addToPalette = $derived(
+		palette === null
+			? null
+			: async (hex: string): Promise<string | null> => (await palette.add(hex)) ?? null
+	);
+
 	const wheelStart = $derived(
 		tray.active?.kind === 'colour'
 			? tray.active.color
@@ -122,7 +176,7 @@
 	<FinishTile source={sourceOf(swatch)} color={swatch.color} imageUri={swatch.imageUri ?? null} {size} />
 {/snippet}
 
-<div class="tray" data-paint-tray aria-label="Paint" data-paint-tab={tab} data-expanded={view.expanded}>
+<div class="tray" bind:this={trayEl} data-paint-tray aria-label="Paint" data-paint-tab={tab} data-expanded={view.expanded}>
 	<div class="head">
 		<span class="seg tabs" role="tablist" aria-label="Paint with">
 			{#if tray.colourEnabled}
@@ -205,7 +259,7 @@
 			{/if}
 			<span class="sep"></span>
 			{#if tab === 'colours'}
-				<button type="button" class="swatch-button colour dashed" data-paint-wheel-open aria-expanded={view.wheelOpen} title="Any colour: open the wheel" aria-label="Custom colour" onclick={() => view.setWheelOpen(!view.wheelOpen)}>
+				<button type="button" class="swatch-button colour dashed" bind:this={wheelTrigger} data-paint-wheel-open aria-haspopup="dialog" aria-expanded={view.wheelOpen} title="Any colour: open Paint colour" aria-label="Custom colour" onclick={() => view.setWheelOpen(!view.wheelOpen)}>
 					<ShellIcon name="plus" size={16} />
 				</button>
 			{:else}
@@ -309,17 +363,6 @@
 						</span>
 					</div>
 				{/if}
-				{#if view.wheelOpen}
-					<StagePaintWheel
-						initial={wheelStart}
-						palette={tray.colours.palette}
-						onUse={(colour) => {
-							onColour(colour);
-							view.setWheelOpen(false);
-						}}
-						onClose={() => view.setWheelOpen(false)}
-					/>
-				{/if}
 				<p class="hint">Circles colour a surface and keep its relief and sheen · rounded squares replace the Finish.</p>
 			{:else}
 				{#if tray.materials.project.length > 0}
@@ -355,7 +398,39 @@
 	{/if}
 </div>
 
+{#if tab === 'colours' && view.wheelOpen}
+	<div
+		class="picker"
+		data-paint-picker
+		style:left={pickerPlace === null ? undefined : `${pickerPlace.left}px`}
+		style:bottom={pickerPlace === null ? undefined : `${pickerPlace.bottom}px`}
+		style:max-height={pickerPlace === null ? undefined : `${pickerPlace.maxHeight}px`}
+	>
+		<StagePaintWheel
+			initial={wheelStart}
+			palette={tray.colours.palette}
+			room={palette?.room ?? false}
+			onAdd={addToPalette}
+			onUse={(colour) => {
+				onColour(colour);
+				closePicker();
+			}}
+			onClose={closePicker}
+		/>
+	</div>
+{/if}
+
 <style>
+	/* Paint colour floats above Custom colour, inside the Stage, over the tray. */
+	.picker {
+		position: absolute;
+		left: calc(12px + var(--index-cover, 0px));
+		bottom: calc(var(--lower-column-height, 0px) + 96px);
+		z-index: 14;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+	}
 	/* A light instrument above the dock, the dock's own width: the approved
 	   appearance prototype's tray. Swatch rings and the pill controls are its. */
 	.tray {

@@ -563,6 +563,8 @@ describe('Stage shell composition', () => {
 				'stage.getBoundingClientRect()', 'dock?.getBoundingClientRect()', 'item.getBoundingClientRect()'
 			],
 			'StagePopover.svelte': ['node.getBoundingClientRect()'],
+			// U5: the floating Paint colour picker anchors above Custom colour inside its lane.
+			'StagePaintTray.svelte': ['parent.getBoundingClientRect()', 'trigger.getBoundingClientRect()'],
 			'EditorCard.svelte': ['cardNode.getBoundingClientRect()']
 		};
 		const measurers = sources

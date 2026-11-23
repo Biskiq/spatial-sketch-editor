@@ -82,6 +82,11 @@ export type StageShellCommandInput = {
 	 * tool the Studio dock does not show.
 	 */
 	readonly studioActive?: () => boolean;
+	/**
+	 * Whether the Select-mode selection qualifies as a Library Replace target
+	 * (one paintable object or present surface). Read when the dock or `L` opens it.
+	 */
+	readonly libraryReplaceQualified?: () => boolean;
 	/** Run one of Find's Object Studio entries by its id. */
 	readonly runStudioEntry?: (id: string) => void;
 };
@@ -403,6 +408,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 			key.slot === 'select' || key.slot === 'library' ||
 			(key.adapterId === STAGE_HOST_ADAPTER_ID && key.id !== STAGE_PAINT_TASK)
 		)) return;
+		shell.setFurnishStripOpen(false);
 		if (key.slot === 'slice') {
 			// Arming Slice opens the reading, not a task. Level is the immediate SL1
 			// reading; the plate's Drawn arm replaces it with the finite gesture.
@@ -448,6 +454,8 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 	/** The Living Draft row's one bridge into the existing dock/host controllers. */
 	function armWorldTool(id: WorldToolId): void {
 		if (studioRefuses(isStudioWorldTool(id))) return;
+		// One tool strip at a time: any tool press folds Furnish's quick strip.
+		shell.setFurnishStripOpen(false);
 		input.cancelArtwork();
 		shell.setWorldPlateOpen(id !== 'select');
 		if (id === 'library') {
@@ -477,6 +485,7 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		if (id === 'lights') {
 			const previous = shell.activeWorldTool;
 			closeTask();
+			shell.setLibraryInvocation({ intent: 'browse', kind: 'lights', from: 'lights' });
 			shell.setLibraryOpen(true);
 			shell.setToolBeforeLibrary(previous === 'library' ? 'select' : previous);
 			shell.setActiveWorldTool('lights');
@@ -524,15 +533,39 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		shell.setPaletteOpen(false);
 	}
 
-	function toggleWorldLibrary(): void {
+	/**
+	 * Open or close the Library. The opener names why it opened: Paint's *Browse
+	 * all* picks for Paint, the Card's *Swap…* swaps, Furnish browses Objects, and
+	 * the dock or `L` replaces a qualified Select-mode selection or browses.
+	 * Closing a Furnish visit returns to its quick strip.
+	 */
+	function toggleWorldLibrary(
+		opener: 'dock' | 'paint' | 'furnish' | 'card' = 'dock'
+	): void {
 		if (studioRefuses(false)) return;
 		if (shell.libraryOpen) {
+			const returnsToFurnish = shell.libraryInvocation.from === 'furnish';
 			shell.setLibraryOpen(false);
 			shell.setActiveWorldTool(
 				shell.toolBeforeLibrary === 'library' ? 'select' : shell.toolBeforeLibrary
 			);
+			if (returnsToFurnish) shell.setFurnishStripOpen(true);
 			return;
 		}
+		const intent =
+			opener === 'paint' || (opener === 'dock' && shell.armedHostTool === 'paint')
+				? 'paint'
+				: opener === 'card'
+					? 'swap'
+					: opener === 'dock' && shell.activeWorldTool === 'select' && input.libraryReplaceQualified?.() === true
+						? 'replace'
+						: 'browse';
+		shell.setLibraryInvocation({
+			intent,
+			kind: opener === 'furnish' ? 'objects' : intent === 'browse' ? null : 'materials',
+			from: opener
+		});
+		shell.setFurnishStripOpen(false);
 		shell.setToolBeforeLibrary(
 			shell.activeWorldTool === 'library' ? 'select' : shell.activeWorldTool
 		);
@@ -541,6 +574,33 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		shell.setActiveWorldTool('library');
 		shell.setWorldPlateOpen(true);
 		shell.setPaletteOpen(false);
+	}
+
+	/**
+	 * Furnish's key: toggle its placeholder quick strip. The current selection
+	 * stays, and any armed tool is put down so no placement is armed.
+	 */
+	function toggleFurnishStrip(): void {
+		if (studioRefuses(false)) return;
+		if (shell.furnishStripOpen) {
+			shell.setFurnishStripOpen(false);
+			return;
+		}
+		if (shell.libraryOpen) toggleWorldLibrary();
+		if (shell.activeWorldTool !== 'select') {
+			input.cancelArtwork();
+			shell.setActiveWorldTool('select');
+			selectTool();
+		}
+		shell.setWorldPlateOpen(false);
+		shell.setPaletteOpen(false);
+		shell.setFurnishStripOpen(true);
+	}
+
+	/** Furnish › *Browse all*: the shared Library on Objects, in ordinary browse mode. */
+	function browseFurnish(): void {
+		if (shell.libraryOpen) return;
+		toggleWorldLibrary('furnish');
 	}
 
 	function pickWorldObject(assetId: string): void {
@@ -570,6 +630,11 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 
 	/** A dock shortcut: the same press as the key, or a word when the key is absent. */
 	function pressDockSlot(slot: StageDockSlot): void {
+		// `L` is the Library key in the World: the same press as the dock's Library.
+		if (slot === 'library' && input.studioActive?.() !== true) {
+			toggleWorldLibrary('dock');
+			return;
+		}
 		const key = input.dockKeys().find((candidate) => candidate.slot === slot);
 		if (key === undefined) {
 			input.notice('That tool is not available in this project.');
@@ -789,6 +854,8 @@ export function createStageShellCommands(input: StageShellCommandInput) {
 		armDockKey,
 		armWorldTool,
 		toggleWorldLibrary,
+		toggleFurnishStrip,
+		browseFurnish,
 		pickWorldObject,
 		pressDockKey,
 		pressDockSlot,

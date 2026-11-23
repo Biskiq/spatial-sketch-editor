@@ -55,7 +55,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		requestedCategory = null,
 		studio = false,
 		paintChip = null,
-		trayOwnsPlate = false
+		trayOwnsPlate = false,
+		furnishOpen = false,
+		onFurnish = () => {},
+		onFurnishBrowse = () => {}
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -101,6 +104,13 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		paintChip?: { readonly color: string; readonly shape: 'colour' | 'material'; readonly source?: FinishTileSource | null } | null;
 		/** An armed tool's own tray stands in for the words plate (Paint's tray), so no second card opens above the dock. */
 		trayOwnsPlate?: boolean;
+		/**
+		 * Furnish's quick strip (owner decision): a placeholder strip with no tool
+		 * armed, whose one action opens the Library on Objects.
+		 */
+		furnishOpen?: boolean;
+		onFurnish?: () => void;
+		onFurnishBrowse?: () => void;
 	} = $props();
 
 	/**
@@ -153,6 +163,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	});
 
 	function pressFamily(family: WorldFamily): void {
+		if (family.id === 'furnish' && !studio) {
+			onFurnish();
+			return;
+		}
 		if (activeFamily?.id === family.id) {
 			onPlateOpen(!plateOpen);
 			return;
@@ -196,6 +210,12 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 
 	const approvedAssets = assets.filter((asset) => asset.status === 'approved').slice(0, 8);
 	const visibleMaterials = materials.slice(0, 6);
+	/** World (not Studio) strips hover above a stationary dock, like Paint's tray. */
+	const detached = $derived(!studio);
+	const familyArmed = (family: WorldFamily): boolean =>
+		family.id === 'furnish' && !studio
+			? furnishOpen && !libraryOpen
+			: activeFamily?.id === family.id && !libraryOpen;
 	const directTools = $derived(
 		studio
 			? [dockToolFor('objects'), dockToolFor('measure'), dockToolFor('erase')]
@@ -203,13 +223,30 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	);
 </script>	<section
 		class="world-toolbar"
-		class:folded={!plateOpen || activeTool === 'select' || trayOwnsPlate}
+		class:folded={(!plateOpen || activeTool === 'select' || trayOwnsPlate) && !furnishOpen}
+		class:detached
 		data-world-toolbar
 		data-active-tool={activeTool}
 	>
 		<!-- The external Library sheet owns the plate while it is open; the dock stays. -->
-		{#if activeTool !== 'select' && !trayOwnsPlate && !libraryOpen}
-		<div class="tier" id={plateId} hidden={!plateOpen}>
+		{#if furnishOpen && !libraryOpen && !studio}
+			<!-- Furnish's quick strip: placeholder state; quick picks arrive with Furnish customisation. -->
+			<div class="tier furnish-strip" id={plateId} data-world-strip="furnish" role="group" aria-label="Furnish">
+				<div class="row furnish-row">
+					<div class="strip">
+						<span class="pn">
+							<b>Furnish</b>
+							<span>Quick picks will live here. Browse the Library for objects, artwork and lights.</span>
+						</span>
+						<button type="button" class="pill-browse" data-furnish-browse onclick={onFurnishBrowse}>
+							<WorldIcon name="library" size={16} />
+							Browse all
+						</button>
+					</div>
+				</div>
+			</div>
+		{:else if activeTool !== 'select' && !trayOwnsPlate && !libraryOpen}
+		<div class="tier" id={plateId} hidden={!plateOpen} data-world-strip={activeFamily?.id ?? activeTool}>
 		<div class="row words">
 			<div class="strip words-strip">
 				{#if libraryOpen}
@@ -477,8 +514,9 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		<button
 			type="button"
 			class="key"
-			class:armed={activeTool === 'select' && !libraryOpen}
-			aria-pressed={activeTool === 'select' && !libraryOpen}
+			class:armed={activeTool === 'select' && !libraryOpen && !furnishOpen}
+			aria-pressed={activeTool === 'select' && !libraryOpen && !furnishOpen}
+			data-world-select
 			title="Select (V)"
 			onclick={pressSelect}
 		>
@@ -491,10 +529,11 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			<button
 				type="button"
 				class="key family"
-				class:armed={activeFamily?.id === family.id && !libraryOpen}
-				aria-pressed={activeFamily?.id === family.id && !libraryOpen}
-				aria-expanded={activeFamily?.id === family.id && !libraryOpen ? plateOpen : undefined}
-				aria-controls={activeFamily?.id === family.id && !libraryOpen ? plateId : undefined}
+				class:armed={familyArmed(family)}
+				aria-pressed={familyArmed(family)}
+				aria-expanded={family.id === 'furnish' && !studio ? furnishOpen && !libraryOpen : familyArmed(family) ? plateOpen : undefined}
+				aria-controls={familyArmed(family) ? plateId : undefined}
+				data-world-family={family.id}
 				title={`${family.label}: ${family.tools.map((id) => worldTool(id).label).join(', ')}`}
 				onclick={() => pressFamily(family)}
 			>
@@ -536,6 +575,7 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 			aria-pressed={libraryOpen}
 			aria-expanded={libraryOpen ? plateOpen : undefined}
 			aria-controls={libraryOpen ? plateId : undefined}
+			data-world-library-key
 			title="Library (L)"
 			onclick={() => openLibrary('objects')}
 		>
@@ -565,6 +605,60 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		color: var(--shell-ink-light);
 		font-family: var(--shell-sans);
 		overflow: hidden;
+	}
+	/*
+	 * World strips hover above a stationary dock (owner direction): the strip is
+	 * its own instrument with the same 8 px Stage gap as Paint's tray, and the
+	 * dock keeps its height and alignment whether a strip is open or not.
+	 */
+	.world-toolbar.detached {
+		gap: 8px;
+		max-height: none;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		overflow: visible;
+	}
+	.detached .tier {
+		overflow: hidden;
+		border: 1px solid var(--shell-hairline);
+		border-radius: var(--shell-instrument-radius);
+		box-shadow: 0 8px 24px rgb(18 38 29 / 16%);
+	}
+	.detached .tier[hidden] {
+		display: none;
+	}
+	.detached .dock {
+		border-radius: var(--shell-instrument-radius);
+		box-shadow: var(--shell-dock-shadow);
+	}
+	.furnish-row {
+		height: 48px;
+	}
+	.furnish-row .strip {
+		gap: 10px;
+	}
+	.furnish-row .pn {
+		flex: 1;
+	}
+	.pill-browse {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		gap: 6px;
+		height: 32px;
+		padding: 0 12px;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 999px;
+		background: var(--shell-white);
+		color: var(--shell-forest);
+		font: 500 var(--shell-text-utility)/1 var(--shell-sans);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.pill-browse:hover {
+		border-color: var(--shell-leaf);
+		background: var(--shell-leaf-tint);
 	}
 	/* The menu is the same off-white key as the selected dock control. */
 	.tier {
@@ -1070,7 +1164,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	}
 	@media (pointer: coarse) {
 		.sub,
-		.key {
+		.key,
+		.pill-browse {
 			min-height: 44px;
 		}
 	}

@@ -52,6 +52,39 @@ import {
 import { STAGE_DRAFTING_DEFAULTS } from '../stage-drafting';
 import type { WorldScope } from '../shell/world-index-model';
 import type { WorldLibraryCategory, WorldToolId } from '$lib/authoring/world-toolbar/registry';
+
+/**
+ * Why the Library opened (T2.S8 U5 recovery): Paint's *Browse all* picks for
+ * Paint, the dock and `L` Replace a qualified selection, the Card's *Swap…*
+ * swaps, Furnish browses Objects, anything else browses. `kind` names the shelf
+ * to open on; null keeps the session's last view.
+ */
+/**
+ * The Library's last browse view (U5): session state, never saved. It survives
+ * closing and reopening the Library; detail and invocation do not.
+ */
+export type StageLibraryView = {
+	readonly kind: 'materials' | 'objects' | 'artwork' | 'lights';
+	readonly source: string;
+	readonly category: string;
+	readonly filters: readonly string[];
+	readonly query: string;
+};
+
+export const STAGE_LIBRARY_VIEW_DEFAULT: StageLibraryView = {
+	kind: 'materials',
+	source: 'all',
+	category: 'all',
+	filters: [],
+	query: ''
+};
+
+export type StageLibraryInvocation = {
+	readonly intent: 'browse' | 'paint' | 'replace' | 'swap';
+	readonly kind: 'materials' | 'objects' | 'artwork' | 'lights' | null;
+	readonly from: 'dock' | 'paint' | 'furnish' | 'card' | 'lights';
+	readonly nonce: number;
+};
 import { worldTool } from '$lib/authoring/world-toolbar/registry';
 import {
 	sameEraseHover,
@@ -143,6 +176,14 @@ export function createStageShellState(input: StageShellStateInput) {
 	let worldPlateOpen = $state(false);
 	let libraryOpen = $state(false);
 	let toolBeforeLibrary = $state<WorldToolId>('select');
+	/**
+	 * Furnish's quick strip (owner decision, supersedes #399's direct Library
+	 * launch): a placeholder strip over the dock with no tool armed.
+	 */
+	let furnishStripOpen = $state(false);
+	/** Why the Library is open; set by the command that opened it, cleared on close. */
+	let libraryInvocation = $state.raw<StageLibraryInvocation>({ intent: 'browse', kind: null, from: 'dock', nonce: 0 });
+	let libraryView = $state.raw<StageLibraryView>(STAGE_LIBRARY_VIEW_DEFAULT);
 	/** A one-shot Library shelf request; the World toolbar consumes the nonce. */
 	let libraryCategoryRequest = $state<{
 		readonly category: WorldLibraryCategory;
@@ -390,6 +431,10 @@ export function createStageShellState(input: StageShellStateInput) {
 				surfaceScope: () => paintScope,
 				setSurfaceScope: (scope) => { paintScope = scope; },
 				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish',
+				sampleMessage: () => {
+					const target = input.finishes()?.libraryDraft != null ? input.finishes()?.libraryDraftTarget() : undefined;
+					return target == null ? null : `Draft preview on ${target.label} · nothing is written`;
+				},
 				wornLabel: (target) => input.finishes()?.wornLabel(target) ?? null,
 				coatReading: (target) => input.finishes()?.coatReading(target) ?? null,
 				onPaintedOne: (target) => input.onPaintedOne?.(target)
@@ -698,6 +743,24 @@ export function createStageShellState(input: StageShellStateInput) {
 		},
 		get toolBeforeLibrary() {
 			return toolBeforeLibrary;
+		},
+		get furnishStripOpen() {
+			return furnishStripOpen;
+		},
+		setFurnishStripOpen(value: boolean) {
+			furnishStripOpen = value;
+		},
+		get libraryInvocation() {
+			return libraryInvocation;
+		},
+		get libraryView() {
+			return libraryView;
+		},
+		setLibraryView(value: StageLibraryView) {
+			libraryView = value;
+		},
+		setLibraryInvocation(value: Omit<StageLibraryInvocation, 'nonce'>) {
+			libraryInvocation = { ...value, nonce: libraryInvocation.nonce + 1 };
 		},
 		setToolBeforeLibrary(value: WorldToolId) {
 			toolBeforeLibrary = value;

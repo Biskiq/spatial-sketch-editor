@@ -1,6 +1,6 @@
 /**
  * The Paint tray's own session state (T2.S8 U2): which tab is showing, whether
- * the tray is expanded and whether the colour wheel is open. None of it is
+ * the tray is expanded and whether the floating *Paint colour* picker is open. None of it is
  * project data or a preference; it resets when Paint is left.
  */
 export type PaintTrayTab = 'colours' | 'materials';
@@ -31,11 +31,13 @@ export function createPaintTrayState() {
 		},
 		toggleExpanded(): void {
 			expanded = !expanded;
-			if (!expanded) wheelOpen = false;
 		},
+		/**
+		 * *Paint colour*: a floating picker anchored on *Custom colour*. It opens
+		 * whether or not the tray is expanded and never changes the expansion.
+		 */
 		setWheelOpen(open: boolean): void {
 			wheelOpen = open;
-			if (open) expanded = true;
 		},
 		/**
 		 * One Escape rung: the wheel, then the expansion. Returns whether it closed

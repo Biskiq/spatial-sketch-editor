@@ -415,5 +415,45 @@ describe('stage keyboard arbitration', () => {
 		expect(slice).toBe(false);
 	});
 
+	it('moves toolbar focus to Select when Escape disarms a tool, and keeps Stage focus otherwise', () => {
+		let tool: string = 'build';
+		let toolbar = true;
+		const { calls, keyboard } = harness({
+			activeWorldTool: () => tool,
+			clearWorldTool: () => {
+				tool = 'select';
+				calls.push('clear-world-tool');
+			},
+			toolbarFocused: () => toolbar,
+			focusSelectKey: () => calls.push('focus-select')
+		});
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'clear-world-tool', 'focus-select']);
+
+		tool = 'build';
+		toolbar = false;
+		calls.length = 0;
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'clear-world-tool']);
+	});
+
+	it('closes the Furnish strip before the selection and settles toolbar focus on Select', () => {
+		let strip = true;
+		const { calls, keyboard } = harness({
+			selectionPresent: () => true,
+			furnishStripOpen: () => strip,
+			closeFurnishStrip: () => {
+				strip = false;
+				calls.push('close-furnish');
+			},
+			toolbarFocused: () => true,
+			focusSelectKey: () => calls.push('focus-select')
+		});
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls).toEqual(['interrupt:escape', 'close-furnish', 'focus-select']);
+		keyboard.handleKey(keyEvent('Escape'));
+		expect(calls.slice(3)).toEqual(['interrupt:escape', 'close-selection']);
+	});
+
 });
 
