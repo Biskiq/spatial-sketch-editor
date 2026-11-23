@@ -56,6 +56,7 @@ Commands run from `spatial-sketch-editor` (all exit 0):
 - `npm run check` — 0 errors, 16 pre-existing warnings in 6 files.
 - `npm run test:arch` — 38 files, 358 tests passed.
 - `cd apps/editor && npx vitest run tests/lib/authoring/library` — 3 files, 21 tests passed.
+- `cd apps/editor && npx vitest run tests/lib/authoring/spatial-route-gesture.test.ts` — 121 tests passed, including the Library object/artwork placement paths against the external sheet.
 - `npm run build` — production client and server bundles built with adapter-vercel.
 
 Browser QA used the editor-only dev server at `http://localhost:5173/project/u5qa/spatial?create=1`
