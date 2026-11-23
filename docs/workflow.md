@@ -94,9 +94,22 @@ defect into a failing tagged test or `bug` issue.
 
 ## Design and reference maintenance
 
-An explicitly owner-approved UX is target authority for its approved scope. Plan backward from it;
-never lower it to match current code or shell limitations. Surface genuine conflicts with hard
-invariants for owner judgment. Proposed research does not establish design approval.
+An explicitly owner-approved UX **including a runnable approved prototype** is the design
+authority for its approved scope. Plan backward from it, **not** from existing code, older shell
+references or omissions in a slice plan. A narrower implementation plan cannot revise the design:
+preserve approved composition, placement, size/proportions, typography hierarchy, colours/tokens,
+control anatomy, labels, interaction, responsive states and visual polish. A deviation requires
+**explicit owner approval before implementation or acceptance**. Hard domain/security/persistence/
+history invariants are independent constraints: surface real conflicts for owner judgment, not
+silent simplification. Unapproved research remains evidence, not design authority.
+
+**Design acceptance gate:** a PR that implements an approved visual design must provide matched
+prototype/production screenshots (desktop, laptop, narrow/coarse-pointer where relevant), a
+state-by-state behavior comparison, a discrepancy ledger and explicit owner-approved exceptions.
+DOM assertions, green CI, claimed feature coverage or a missing CSS specification do **not**
+establish visual parity. Do not merge or promote a design slice as accepted with unresolved
+non-approved visual or interaction differences. Focused screenshot comparison is required design
+QA and does not imply permission for unrelated exhaustive E2E capture.
 
 Implementation acceptance triggers deliberate promotion of genuinely enduring rules when needed.
 References describe enduring principles, ownership, interfaces and invariants. Update them only for
