@@ -924,8 +924,8 @@ function compileWallFirstWithPhysicalWalls(
 			compiled.samples.length < 2
 				? {}
 				: {
-						...(wall.startJunctionId && pointById.has(wall.startJunctionId) ? { start: junctionLeg(compiled, 'start') } : {}),
-						...(wall.endJunctionId && pointById.has(wall.endJunctionId) ? { end: junctionLeg(compiled, 'end') } : {})
+						...(wall.startJunctionId && pointById.has(wall.startJunctionId) ? { start: junctionLeg(compiled, 'start', wall.centerline) } : {}),
+						...(wall.endJunctionId && pointById.has(wall.endJunctionId) ? { end: junctionLeg(compiled, 'end', wall.centerline) } : {})
 					}
 		);
 	}
@@ -1140,6 +1140,7 @@ function compileWallFirstJunctions(
 	legsByWallId?: ReadonlyMap<string, { start?: CompiledJunctionLeg; end?: CompiledJunctionLeg }>
 ): CompiledJunction[] {
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
+	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 	const legsByJunction = new Map<string, CompiledJunctionLeg[]>();
 	const pushLeg = (junctionId: string, leg: CompiledJunctionLeg): void => {
 		const list = legsByJunction.get(junctionId);
@@ -1159,11 +1160,12 @@ function compileWallFirstJunctions(
 			if (retainedLegs.end && endId && pointById.has(endId)) pushLeg(endId, retainedLegs.end);
 			continue;
 		}
+		const centerline = wallById.get(wall.wallId)?.centerline;
 		if (wall.startJunctionId && pointById.has(wall.startJunctionId)) {
-			pushLeg(wall.startJunctionId, junctionLeg(wall, 'start'));
+			pushLeg(wall.startJunctionId, junctionLeg(wall, 'start', centerline));
 		}
 		if (wall.endJunctionId && pointById.has(wall.endJunctionId)) {
-			pushLeg(wall.endJunctionId, junctionLeg(wall, 'end'));
+			pushLeg(wall.endJunctionId, junctionLeg(wall, 'end', centerline));
 		}
 	}
 	const junctions: CompiledJunction[] = [];
@@ -1232,7 +1234,8 @@ function compileWallFirstJunctions(
 					role: leg.role,
 					endpointOpen: leg.endpointOpen,
 					endpointSolidBands: leg.endpointSolidBands.map((band) => [band.bottomY, band.topY, band.solid, band.openingId ?? null])
-				}))
+				})),
+				...(resolved.roundedContinuation ? ['rounded-continuation'] : [])
 			]),
 			junctionId,
 			point,
@@ -1250,7 +1253,7 @@ function compileWallFirstJunctions(
 }
 
 /** One compiled Junction leg: outward frame + endpoint solid/Opening facts. */
-function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): CompiledJunctionLeg {
+function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end', centerline?: LayoutWall['centerline']): CompiledJunctionLeg {
 	const first = wall.samples[0]!;
 	const last = wall.samples.at(-1)!;
 	const sign = end === 'start' ? 1 : -1;
@@ -1258,6 +1261,9 @@ function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): Compiled
 	const normal = end === 'start' ? first.normal : last.normal;
 	const tangentOut: LayoutVec2 = [sign * tangent[0], sign * tangent[1]];
 	const normalOut: LayoutVec2 = [sign * normal[0], sign * normal[1]];
+	const anchor = centerline?.kind === 'cubic-chain'
+		? (end === 'start' ? centerline.spans[0]?.handleOut : centerline.spans.at(-1)?.handleIn)
+		: (end === 'start' ? last.point : first.point);
 	const atDistance = end === 'start' ? 0 : (last.distance ?? 0);
 	const length = last.distance ?? 0;
 	const endpointOpen =
@@ -1269,6 +1275,7 @@ function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): Compiled
 		end,
 		tangentOut,
 		normalOut,
+		tangentAnchor: anchor && [anchor[0], anchor[1]],
 		outwardAngle: Math.atan2(tangentOut[1], tangentOut[0]),
 		thickness: wall.thickness,
 		halfThickness: wall.thickness / 2,
@@ -2873,10 +2880,10 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				? {}
 				: {
 						...(wall.startJunctionId && pointById.has(wall.startJunctionId)
-							? { start: junctionLeg(baseCompiled, 'start') }
+							? { start: junctionLeg(baseCompiled, 'start', wall.centerline) }
 							: {}),
 						...(wall.endJunctionId && pointById.has(wall.endJunctionId)
-							? { end: junctionLeg(baseCompiled, 'end') }
+							? { end: junctionLeg(baseCompiled, 'end', wall.centerline) }
 							: {})
 					};
 		return {
@@ -2947,7 +2954,8 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 						band.solid,
 						band.openingId ?? null
 					])
-				}))
+				})),
+				...(resolved.roundedContinuation ? ['rounded-continuation'] : [])
 			]),
 			junctionId,
 			point,

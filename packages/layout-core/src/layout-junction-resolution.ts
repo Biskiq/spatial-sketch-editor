@@ -31,7 +31,7 @@
  * evaluator already produced.
  */
 import type { LayoutVec2 } from './layout-coordinates';
-import { nextUp } from './layout-round-room';
+import { ivAdd, ivEncloseWorld, ivMul, ivSub } from './layout-binary64-interval';
 import { p2311Measure } from './p2311-perf';
 import {
 	geometryId,
@@ -188,42 +188,17 @@ export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctio
 	return Math.abs(cross(ta, tb)) < JUNCTION_DET_EPSILON && dot(ta, tb) < 0;
 }
 
-/**
- * Representation-aware tangent continuation check for a degree-2 Junction at
- * `point`.
- *
- * Near the origin, this is identical to `isTangentContinuation(a, b)`
- * (`|cross(ta, tb)| < JUNCTION_DET_EPSILON`). At large world coordinates where
- * binary64 ULP `u` exceeds `JUNCTION_DET_EPSILON * h / 2`, two truly
- * antiparallel legs whose tangents were derived from world-rounded points can
- * differ by `O(u / L)` while their offset-line endpoints at half-thickness
- * `h = min(a.halfThickness, b.halfThickness)` coincide within `2 * u`.
- *
- * We admit that representation-level continuation ONLY while the Wall
- * cross-section itself remains well-resolved (`u <= h * 1e-4`), capping the
- * maximum angular width at `2e-4` rad (~0.011°). Consequently, an arbitrarily
- * large coordinate offset can never widen the criterion into swallowing a real
- * corner; unresolvable geometry fails honestly at the seam clearance gate.
- */
-function isRepresentationTangentContinuation(
-	point: LayoutVec2,
-	a: CompiledJunctionLeg,
-	b: CompiledJunctionLeg
-): boolean {
-	if (isTangentContinuation(a, b)) return true;
-	const ta = outwardTangent(a);
-	const tb = outwardTangent(b);
-	if (!(dot(ta, tb) < 0)) return false;
-	const h = Math.min(a.halfThickness, b.halfThickness);
-	if (!(h > 0)) return false;
-	const absX = Math.abs(point[0]);
-	const absZ = Math.abs(point[1]);
-	const u = Math.max(nextUp(absX) - absX, nextUp(absZ) - absZ);
-	// Never widen once coordinate ULP reaches 1e-4 of half-thickness: real
-	// corners stay corners at every coordinate scale.
-	if (!(u <= h * 1e-4)) return false;
-	const representationCrossLimit = (2 * u) / h;
-	return representationCrossLimit > JUNCTION_DET_EPSILON && Math.abs(cross(ta, tb)) <= representationCrossLimit;
+/** Can the stored derivative anchors represent antiparallel rays at their shared Junction? */
+function tangentAnchorsAllowContinuation(point: LayoutVec2, a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
+	if (!a.tangentAnchor || !b.tangentAnchor || dot(a.tangentOut, b.tangentOut) >= 0) return false;
+	const ox = ivEncloseWorld(point[0]);
+	const oz = ivEncloseWorld(point[1]);
+	const ax = ivSub(ivEncloseWorld(a.tangentAnchor[0]), ox);
+	const az = ivSub(ivEncloseWorld(a.tangentAnchor[1]), oz);
+	const bx = ivSub(ivEncloseWorld(b.tangentAnchor[0]), ox);
+	const bz = ivSub(ivEncloseWorld(b.tangentAnchor[1]), oz);
+	const determinant = ivSub(ivMul(ax, bz), ivMul(az, bx));
+	return determinant.lo <= 0 && determinant.hi >= 0 && ivAdd(ivMul(ax, bx), ivMul(az, bz)).hi < 0;
 }
 
 /** Is the outward-ray pair a fold (≈0°, walls overlap)? */
@@ -322,7 +297,7 @@ export function resolveJunctionGeometry(
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
 	options: { miterLimit?: number } = {}
-): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[] } {
+): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[]; roundedContinuation?: true } {
 	const miterLimit = options.miterLimit ?? JUNCTION_MITER_LIMIT;
 	const issues: LayoutGeometryIssue[] = [];
 	const legOrder = legs.map((leg) => ({ wallId: leg.wallId, end: leg.end }));
@@ -345,7 +320,8 @@ export function resolveJunctionGeometry(
 			joins.push(suppressedJoin(a, bands, undefined, undefined, true), suppressedJoin(b, bands, undefined, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		if (isRepresentationTangentContinuation(point, a, b)) {
+		const exactContinuation = isTangentContinuation(a, b);
+		if (exactContinuation || tangentAnchorsAllowContinuation(point, a, b)) {
 			// Straight continuation: suppress the common interface. The difference
 			// surfaces (thickness / height / Opening-profile) are solved **here**, per
 			// vertical band, and attached to the leg that owns the material — the
@@ -358,7 +334,11 @@ export function resolveJunctionGeometry(
 				suppressedJoin(a, bands, neighborFacts(b), step.forA),
 				suppressedJoin(b, bands, neighborFacts(a), step.forB)
 			);
-			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
+			return {
+				resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) },
+				issues,
+				...(!exactContinuation ? { roundedContinuation: true } : {})
+			};
 		}
 		// Canonical roles: prefer the departing (start) leg as `cur`.
 		const swap = a.end === 'start' && b.end === 'end';

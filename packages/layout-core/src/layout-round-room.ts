@@ -9,6 +9,8 @@
  * never fits or infers Round, centre or radius from Wall controls, and never
  * widens bounds in response to a residual.
  */
+import { ivAdd, ivEncloseWorld, ivMul, ivSub, nextDown, nextUp, type Iv } from './layout-binary64-interval';
+import { TEMPLATE_HANDLE_K, TEMPLATE_STEP, UNIT_TEMPLATE_SCALARS, unitToWorldPoint, type UnitCubicScalar } from './layout-round-template';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutDocumentIssue } from './layout-issue';
 import { WALL_CURVE_SPLIT_PARAMETER_TOLERANCE } from './layout-wall-curve-algebra';
@@ -28,68 +30,13 @@ import {
 
 const TWO_PI = Math.PI * 2;
 const TEMPLATE_SPAN_COUNT = CLOSED_WALL_CIRCLE_SPAN_COUNT;
-const TEMPLATE_STEP = TWO_PI / TEMPLATE_SPAN_COUNT;
-const TEMPLATE_HANDLE_K = (4 / 3) * Math.tan(TEMPLATE_STEP / 4);
 const MIN_RADIUS_THICKNESS_SLACK = 1e-6;
-
-// ---------------------------------------------------------------------------
-// Exact binary64 adjacent values and outward-rounded interval arithmetic
-// ---------------------------------------------------------------------------
-
-const f64View = new Float64Array(1);
-const u64View = new BigUint64Array(f64View.buffer);
-
-/** Smallest IEEE-754 binary64 value strictly greater than `x`. */
-export function nextUp(x: number): number {
-	if (Number.isNaN(x) || x === Infinity) return x;
-	if (x === -Infinity) return -Number.MAX_VALUE;
-	if (x === 0) return Number.MIN_VALUE;
-	f64View[0] = x;
-	u64View[0] = x > 0 ? u64View[0]! + 1n : u64View[0]! - 1n;
-	return f64View[0]!;
-}
-
-/** Largest IEEE-754 binary64 value strictly less than `x`. */
-export function nextDown(x: number): number {
-	return -nextUp(-x);
-}
-
-/** Closed real interval `[lo, hi]` with outward-rounded operations. */
-type Iv = { readonly lo: number; readonly hi: number };
 
 const IV_ZERO: Iv = { lo: 0, hi: 0 };
 const IV_ONE: Iv = { lo: 1, hi: 1 };
 
 function ivPoint(x: number): Iv {
 	return { lo: x, hi: x };
-}
-
-/** Enclose a stored world coordinate by its adjacent binary64 values. */
-function ivEncloseWorld(x: number): Iv {
-	return { lo: nextDown(x), hi: nextUp(x) };
-}
-
-function ivAdd(a: Iv, b: Iv): Iv {
-	return { lo: nextDown(a.lo + b.lo), hi: nextUp(a.hi + b.hi) };
-}
-
-function ivSub(a: Iv, b: Iv): Iv {
-	return { lo: nextDown(a.lo - b.hi), hi: nextUp(a.hi - b.lo) };
-}
-
-function ivNeg(a: Iv): Iv {
-	return { lo: -a.hi, hi: -a.lo };
-}
-
-function ivMul(a: Iv, b: Iv): Iv {
-	const p1 = a.lo * b.lo;
-	const p2 = a.lo * b.hi;
-	const p3 = a.hi * b.lo;
-	const p4 = a.hi * b.hi;
-	return {
-		lo: nextDown(Math.min(p1, p2, p3, p4)),
-		hi: nextUp(Math.max(p1, p2, p3, p4))
-	};
 }
 
 function ivDiv(a: Iv, b: Iv): Iv | null {
@@ -163,8 +110,6 @@ type UnitCubicIv = readonly [
 	readonly [Iv, Iv]
 ];
 
-type UnitCubicScalar = readonly [LayoutVec2, LayoutVec2, LayoutVec2, LayoutVec2];
-
 function trigIv(fn: (x: number) => number, angle: number): Iv {
 	const value = fn(angle);
 	// Elementary libm trig in binary64 is accurate to <= 1 ULP; 2 ULPs outward
@@ -176,23 +121,6 @@ const TEMPLATE_HANDLE_K_IV: Iv = {
 	lo: nextDown(nextDown(TEMPLATE_HANDLE_K)),
 	hi: nextUp(nextUp(TEMPLATE_HANDLE_K))
 };
-
-const UNIT_TEMPLATE_SCALARS: readonly UnitCubicScalar[] = Array.from(
-	{ length: TEMPLATE_SPAN_COUNT },
-	(_, index) => {
-		const a0 = index * TEMPLATE_STEP;
-		const a1 = (index + 1) * TEMPLATE_STEP;
-		const c0 = Math.cos(a0);
-		const s0 = Math.sin(a0);
-		const c1 = index === TEMPLATE_SPAN_COUNT - 1 ? 1 : Math.cos(a1);
-		const s1 = index === TEMPLATE_SPAN_COUNT - 1 ? 0 : Math.sin(a1);
-		const p0: LayoutVec2 = [c0, s0];
-		const p1: LayoutVec2 = [c0 - TEMPLATE_HANDLE_K * s0, s0 + TEMPLATE_HANDLE_K * c0];
-		const p2: LayoutVec2 = [c1 + TEMPLATE_HANDLE_K * s1, s1 - TEMPLATE_HANDLE_K * c1];
-		const p3: LayoutVec2 = [c1, s1];
-		return [p0, p1, p2, p3] as const;
-	}
-);
 
 const UNIT_TEMPLATE_INTERVALS: readonly UnitCubicIv[] = Array.from(
 	{ length: TEMPLATE_SPAN_COUNT },
@@ -240,14 +168,15 @@ function unitSpan0PolarAngle(t: number): number {
  * span 0 via monotone bisection, stopping at
  * `WALL_CURVE_SPLIT_PARAMETER_TOLERANCE`.
  */
-function invertLocalPolarAngle(deltaPhi: number): Iv {
+function invertLocalPolarAngle(deltaPhi: number, tolerance = WALL_CURVE_SPLIT_PARAMETER_TOLERANCE): Iv {
 	if (deltaPhi <= 0) return IV_ZERO;
 	if (deltaPhi >= TEMPLATE_STEP) return IV_ONE;
 	let lo = 0;
 	let hi = 1;
 	for (let iter = 0; iter < 64; iter += 1) {
-		if (hi - lo <= WALL_CURVE_SPLIT_PARAMETER_TOLERANCE) break;
+		if (hi - lo <= tolerance) break;
 		const mid = lo + (hi - lo) * 0.5;
+		if (mid === lo || mid === hi) break;
 		if (unitSpan0PolarAngle(mid) < deltaPhi) lo = mid;
 		else hi = mid;
 	}
@@ -369,17 +298,92 @@ function unitToLocalIv(
 	return [ivMul(radiusIv, rx), ivMul(radiusIv, rz)];
 }
 
-/** Rotate and scale a seam-aligned unit scalar point to centre-local, then add `center` once. */
-function unitToWorldPoint(
-	unitPoint: LayoutVec2,
-	center: LayoutVec2,
-	radius: number,
-	seamDirection: LayoutVec2
-): LayoutVec2 {
-	const [ux, uz] = seamDirection;
-	const localX = radius * (unitPoint[0] * ux - unitPoint[1] * uz);
-	const localZ = radius * (unitPoint[0] * uz + unitPoint[1] * ux);
-	return [center[0] + localX, center[1] + localZ];
+/** Trig range on an unwrapped phase bracket, including interior extrema. */
+function phaseDirection(phase: Iv, reference: LayoutVec2): readonly [Iv, Iv] {
+	const range = (fn: (x: number) => number, peak: number): Iv => {
+		const ends = ivHull(trigIv(fn, phase.lo), trigIv(fn, phase.hi));
+		const includes = (offset: number): boolean => {
+			const first = offset + Math.ceil((phase.lo - offset) / TWO_PI) * TWO_PI;
+			return first <= phase.hi;
+		};
+		return { lo: includes(peak + Math.PI) ? -1 : ends.lo, hi: includes(peak) ? 1 : ends.hi };
+	};
+	if (phase.lo === 0 && phase.hi === 0) return [ivPoint(reference[0]), ivPoint(reference[1])];
+	return unitToLocalIv(range(Math.cos, 0), range(Math.sin, Math.PI / 2), IV_ONE, ivPoint(reference[0]), ivPoint(reference[1]));
+}
+
+type RoundSpanCheck = {
+	readonly templateSpan: number;
+	readonly startStation: number | null;
+	readonly endStation: number | null;
+	readonly stored: UnitCubicIv;
+};
+
+function spanControlsFit(check: RoundSpanCheck, radius: Iv, direction: readonly [Iv, Iv], stations: readonly Iv[]): boolean {
+	const u = check.startStation === null ? IV_ZERO : stations[check.startStation]!;
+	const v = check.endStation === null ? IV_ONE : stations[check.endStation]!;
+	const expected = templateSubspanUnitIv(check.templateSpan, u, v);
+	return expected.every(([x, z], i) => {
+		const [expectedX, expectedZ] = unitToLocalIv(x, z, radius, direction[0], direction[1]);
+		const [storedX, storedZ] = check.stored[i]!;
+		return ivOverlaps(storedX, expectedX) && ivOverlaps(storedZ, expectedZ);
+	});
+}
+
+/**
+ * Find one witness for the whole boundary. Independent interval overlaps only
+ * rule out a span; they can otherwise accept controls requiring opposite phases
+ * or different parameters on the two sides of one cut.
+ */
+function findRoundWitness(
+	checks: readonly RoundSpanCheck[], radius: Iv, reference: LayoutVec2, bounds: readonly Iv[], preferred: readonly number[]
+): number[] | null {
+	// Dimension 0 is the seam angle; the other dimensions are shared cut
+	// parameters. Full template spans introduce no dimensions of their own.
+	const stack: Array<readonly Iv[]> = [bounds];
+	// Fail closed on ill-conditioned inputs. Each box can only shrink the bounds
+	// derived from source precision. The common case checks the preferred ray once.
+	for (let budget = 128 + 16 * bounds.length; budget > 0 && stack.length > 0; budget--) {
+		const box = stack.pop()!;
+		const values = box.map((interval, index) => {
+			const value = preferred[index]!;
+			return interval.lo <= value && value <= interval.hi ? value : ivMid(interval);
+		});
+		const candidate = values.map(ivPoint);
+		const ray = phaseDirection(candidate[0]!, reference);
+		const failures = checks.filter((check) => !spanControlsFit(check, radius, ray, candidate));
+		if (failures.length === 0) return values;
+		const rayBounds = phaseDirection(box[0]!, reference);
+		if (failures.some((check) => !spanControlsFit(check, radius, rayBounds, box))) continue;
+
+		// Refine only dimensions that might explain the failing controls. Compare
+		// widths in radians so a cut's parameter and the seam phase are comparable.
+		let splitIndex = -1;
+		let widest = 0;
+		for (const check of failures) {
+			for (const index of [0, check.startStation, check.endStation]) {
+				if (index === null) continue;
+				const { lo, hi } = box[index]!;
+				const midpoint = ivMid(box[index]!);
+				const width = (hi - lo) * (index === 0 ? 1 : TEMPLATE_STEP);
+				if (lo < midpoint && midpoint < hi && width > widest) {
+					splitIndex = index;
+					widest = width;
+				}
+			}
+		}
+		if (splitIndex === -1) continue;
+		const { lo, hi } = box[splitIndex]!;
+		const midpoint = ivMid(box[splitIndex]!);
+		const left = box.slice();
+		const right = box.slice();
+		left[splitIndex] = { lo, hi: midpoint };
+		right[splitIndex] = { lo: midpoint, hi };
+		// Keep the initially preferred side on top for deterministic edits.
+		if (preferred[splitIndex]! <= midpoint) stack.push(right, left);
+		else stack.push(left, right);
+	}
+	return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -720,8 +724,17 @@ export function certifyRoundRoom(
 			`Round Room '${room.id}' seam ray is degenerate`
 		);
 	}
-	const seamDirection: LayoutVec2 = [seamDxRep / seamLenRep, seamDzRep / seamLenRep];
-	const seamAngleRadians = Math.atan2(seamDirection[1], seamDirection[0]);
+	const seamReference: LayoutVec2 = [seamDxRep / seamLenRep, seamDzRep / seamLenRep];
+	const referenceX = ivPoint(seamReference[0]);
+	const referenceZ = ivPoint(seamReference[1]);
+	const phaseBounds = polarAngleInterval(
+		ivAdd(ivMul(seamLx, referenceX), ivMul(seamLz, referenceZ)),
+		ivSub(ivMul(seamLz, referenceX), ivMul(seamLx, referenceZ)),
+		0
+	);
+	if (!phaseBounds) {
+		return fail(`${roomPath}.round`, 'round_geometry_invalid', `Round Room '${room.id}' seam phase cannot be resolved`);
+	}
 
 	// Step 2: Walk the M = cubics.length oriented spans and compute one shared
 	// station bracket per endpoint vertex V_0 .. V_M.
@@ -787,9 +800,13 @@ export function certifyRoundRoom(
 	// Step 2 & 3: Monotone walk through the 16 template spans, certifying all 4
 	// de Casteljau control points of every cubic subspan.
 	const subspans: CertifiedRoundSubspan[] = [];
+	const checks: RoundSpanCheck[] = [];
+	const witnessBounds = [phaseBounds];
+	const preferred = [0];
 	let templateSpan = 0;
 	let currentStartT: Iv = IV_ZERO;
 	let currentStartRep = 0;
+	let currentStartStation: number | null = null;
 
 	for (let k = 0; k < M; k += 1) {
 		if (templateSpan >= TEMPLATE_SPAN_COUNT) {
@@ -807,6 +824,7 @@ export function certifyRoundRoom(
 
 		let endT: Iv;
 		let endRep: number;
+		let endStation: number | null = null;
 		let advanceTemplateSpan = false;
 
 		if (endCoversNextBoundary) {
@@ -863,18 +881,24 @@ export function certifyRoundRoom(
 			}
 			endT = clipped;
 			endRep = rep;
+			endStation = witnessBounds.length;
+			witnessBounds.push(clipped);
+			const dx = cubic.p3[0] - center[0];
+			const dz = cubic.p3[1] - center[1];
+			const [ux, uz] = seamReference;
+			const angle = Math.atan2(dz * ux - dx * uz, dx * ux + dz * uz);
+			const spanStart = templateSpan * TEMPLATE_STEP;
+			const localAngle = angle + Math.round((spanStart - angle) / TWO_PI) * TWO_PI - spanStart;
+			// Refine the measured angle only to choose a candidate inside the
+			// certified bracket. The tolerance above still sets its coverage.
+			preferred.push(Math.max(clipped.lo, Math.min(clipped.hi, ivMid(invertLocalPolarAngle(localAngle, 0)))));
 		}
 
 		// Certify all 4 de Casteljau control points against centre-local bounds.
 		const unitExpected = templateSubspanUnitIv(templateSpan, currentStartT, endT);
-		const storedControls: readonly LayoutVec2[] = [cubic.p0, cubic.p1, cubic.p2, cubic.p3];
+		const stored: UnitCubicIv = [vertexLocalIv[k]!, toLocalIv(cubic.p1), toLocalIv(cubic.p2), vertexLocalIv[k + 1]!];
 		for (let c = 0; c < 4; c += 1) {
-			const [storedX, storedZ] =
-				c === 0
-					? vertexLocalIv[k]!
-					: c === 3
-						? vertexLocalIv[k + 1]!
-						: toLocalIv(storedControls[c]!);
+			const [storedX, storedZ] = stored[c]!;
 			const [expX, expZ] = unitToLocalIv(
 				unitExpected[c]![0],
 				unitExpected[c]![1],
@@ -890,6 +914,7 @@ export function certifyRoundRoom(
 				);
 			}
 		}
+		checks.push({ templateSpan, startStation: currentStartStation, endStation, stored });
 
 		subspans.push({
 			wallId: cubic.wallId,
@@ -904,10 +929,30 @@ export function certifyRoundRoom(
 			templateSpan += 1;
 			currentStartT = IV_ZERO;
 			currentStartRep = 0;
+			currentStartStation = null;
 		} else {
 			currentStartT = endT;
 			currentStartRep = endRep;
+			currentStartStation = endStation;
 		}
+	}
+	const witness = findRoundWitness(checks, radiusIv, seamReference, witnessBounds, preferred);
+	if (!witness) {
+		return fail(`${roomPath}.round`, 'round_geometry_invalid', `Round Room '${room.id}' has no certifiable common phase and cut partition`);
+	}
+	const phase = witness[0]!;
+	const cos = Math.cos(phase);
+	const sin = Math.sin(phase);
+	const [ux, uz] = seamReference;
+	const seamDirection: LayoutVec2 = [ux * cos - uz * sin, ux * sin + uz * cos];
+	for (let k = 0; k < subspans.length; k++) {
+		const { startStation, endStation } = checks[k]!;
+		const subspan = subspans[k]!;
+		subspans[k] = {
+			...subspan,
+			tStart: startStation === null ? 0 : witness[startStation]!,
+			tEnd: endStation === null ? 1 : witness[endStation]!
+		};
 	}
 
 	if (templateSpan !== TEMPLATE_SPAN_COUNT) {
@@ -927,7 +972,7 @@ export function certifyRoundRoom(
 			seamJunctionId: firstStartId,
 			seamPoint,
 			seamDirection,
-			seamAngleRadians,
+			seamAngleRadians: Math.atan2(seamDirection[1], seamDirection[0]),
 			isIsolatedClosedWall: isSingleClosed,
 			subspans
 		}

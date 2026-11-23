@@ -450,6 +450,32 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 		if (!bigRes.success) expect(bigRes.issues[0]!.code).toBe('round_geometry_invalid');
 	});
 
+	it('requires both sides of the seam to agree on one phase', () => {
+		const center: LayoutVec2 = [2 ** 32 + 1024, 2 ** 32 + 1024];
+		const circle = createCircle({ center, rim: [center[0] + 5, center[1]] });
+		const chain = circle.walls[0]!.centerline;
+		if (chain.kind !== 'cubic-chain') throw new Error('expected cubic-chain');
+
+		// Each shifted handle fits the loose enclosure on its own. One needs a
+		// positive phase and the other needs a negative one for the same seam ray.
+		const twoUlps = 2 ** -19;
+		chain.spans[0]!.handleOut[1] -= twoUlps;
+		chain.spans.at(-1)!.handleIn[1] += twoUlps;
+		const result = certifyRoundRoom(circle, circle.rooms[0]!);
+		expect(result.kind).toBe('invalid');
+	});
+
+	it('requires both cubic subspans to use the station certified by their shared cut', () => {
+		const ring = createTwoWallRoundRing([0, 0], [5, 0]);
+		expect(certifyRoundRoom(ring, ring.rooms[0]!).kind).toBe('certified');
+		const chain = ring.walls[0]!.centerline;
+		if (chain.kind !== 'cubic-chain') throw new Error('expected cubic-chain');
+		// Smaller than the initial polar inversion bracket, but far larger than
+		// the coordinate uncertainty of the measured cut and unchanged controls.
+		chain.spans.at(-1)!.handleIn[1] += 2e-13;
+		expect(certifyRoundRoom(ring, ring.rooms[0]!).kind).toBe('invalid');
+	});
+
 	it('rejects a candidate whose distinct cuts collapse at destination precision without mutating source', () => {
 		// Create a ring with two cuts separated by 1e-7 m in span 8: valid at origin,
 		// collapses to the same world coordinate at [2**32, -(2**32)] where ULP ≈ 9.54e-7 m.
@@ -524,7 +550,7 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 	});
 
 	it('preserves resolvable corner classification under translation and never misclassifies corners as straight continuations at extreme coordinates', () => {
-		const buildCornerDoc = (origin: LayoutVec2, interiorDegrees: number): LayoutDocumentWallFirst => {
+		const buildCornerDoc = (origin: readonly [number, number], interiorDegrees: number): LayoutDocumentWallFirst => {
 			const rad = (interiorDegrees * Math.PI) / 180;
 			const len = 5;
 			const base = createEmptyWallFirstLayoutDocument();
@@ -556,20 +582,31 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 			};
 		};
 
-		// Resolvable corners from 45° up to 179.9° keep identical corner classification at [0, 0] and [2**32, -(2**32)].
-		for (const angleDeg of [45, 90, 135, 179, 179.9]) {
+		const positiveShift: LayoutVec2 = [2 ** 32, 2 ** 32];
+		const tinyBend = buildCornerDoc(positiveShift, 179.9995);
+		expect((tinyBend.junctions[2]!.point[1] - positiveShift[1]) * 2 ** 20).toBe(46);
+		for (const angleDeg of [45, 90, 135, 179, 179.9, 179.9995]) {
 			const atOrigin = compileWallFirstLayoutGeometry(buildCornerDoc([0, 0], angleDeg));
-			const atBig = compileWallFirstLayoutGeometry(buildCornerDoc(BIG_SHIFT, angleDeg));
 			expect(hasBlockingLayoutIssues(atOrigin.issues), `origin ${angleDeg}°`).toBe(false);
-			expect(hasBlockingLayoutIssues(atBig.issues), `2**32 ${angleDeg}°`).toBe(false);
-
 			const jOrigin = atOrigin.geometry.junctions!.find((j) => j.junctionId === 'j-corner')!;
-			const jBig = atBig.geometry.junctions!.find((j) => j.junctionId === 'j-corner')!;
 			expect(jOrigin.resolution.joins.map((j) => j.kind)).toEqual(['miter', 'miter']);
-			expect(jBig.resolution.joins.map((j) => j.kind)).toEqual(
-				jOrigin.resolution.joins.map((j) => j.kind)
-			);
-			expect(jBig.resolution.joins.every((j) => !j.interfaceSuppressed)).toBe(true);
+			for (const shift of [[BIG_SHIFT[0], 0], BIG_SHIFT, positiveShift] as const) {
+				const translated = compileWallFirstLayoutGeometry(buildCornerDoc(shift, angleDeg));
+				expect(hasBlockingLayoutIssues(translated.issues), `${shift} ${angleDeg}°`).toBe(false);
+				const junction = translated.geometry.junctions!.find((j) => j.junctionId === 'j-corner')!;
+				expect(junction.resolution.joins.map((j) => j.kind), `${shift} ${angleDeg}°`).toEqual(['miter', 'miter']);
+				expect(junction.resolution.joins.every((j) => !j.interfaceSuppressed)).toBe(true);
+			}
+		}
+		for (const origin of [[0, 0], BIG_SHIFT] as const) {
+			const continuation = buildCornerDoc(origin, 180);
+			const [x, z] = origin;
+			continuation.junctions[0]!.point = [x - 5 * Math.cos(0.55), z - 5 * Math.sin(0.55)];
+			continuation.junctions[2]!.point = [x + 3 * Math.cos(0.55), z + 3 * Math.sin(0.55)];
+			const compiled = compileWallFirstLayoutGeometry(continuation);
+			expect(compiled.issues, `${origin} true continuation`).toEqual([]);
+			const junction = compiled.geometry.junctions!.find((j) => j.junctionId === 'j-corner')!;
+			expect(junction.resolution.joins.map((j) => j.kind)).toEqual(['suppressed', 'suppressed']);
 		}
 
 		// Direct resolver check at extreme offsets (2**44 and 2**50) and near-origin tiny bend (1e-5 rad):

@@ -1,6 +1,6 @@
 import { validateClosedWallContacts } from './layout-wall-first-precision';
 /**
- * `layout-circular-room.ts` — C2 product planners for the canonical closed Wall.
+ * `layout-circular-room.ts` — product planners for the canonical closed Wall.
  *
  * Creation is deliberately two ordinary facts composed here, never a parallel
  * circle object: one closed Wall built by `buildClosedWallCircleCenterline`, and
@@ -22,6 +22,7 @@ import {
 } from './layout-closed-wall';
 import {
 	buildRoundRoomGeometryFromCertified,
+	type CertifiedRoundRoom,
 	certifyRoundRoom,
 	findEnclosingRoundRoomForWall
 } from './layout-round-room';
@@ -36,6 +37,7 @@ import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import {
 	validateWallFirstOpeningSet,
+	validateWallFirstOpeningSubset,
 	wallFirstWallLength,
 	type WallFirstWallIndex
 } from './layout-opening-set';
@@ -112,7 +114,9 @@ export function readClosedWallCircle(
 	};
 }
 
-function reject(code: CircularRoomRejectionCode, message: string): CircularRoomPlan {
+type Refused = Extract<CircularRoomPlan, { kind: 'rejected' }>;
+
+function reject(code: CircularRoomRejectionCode, message: string): Refused {
 	return { kind: 'rejected', rejection: { code, message } };
 }
 
@@ -123,9 +127,7 @@ function reject(code: CircularRoomRejectionCode, message: string): CircularRoomP
  * as every other Wall; a radius that folds the chain or an Opening that no
  * longer fits refuses rather than installing a repaired candidate.
  */
-function validateCandidate(document: LayoutDocumentWallFirst, wallId: string): CircularRoomPlan {
-	const contact = validateClosedWallContacts(document, new Set([wallId]));
-	if (contact) return reject('closed_wall_isolated', contact.message);
+function validateCandidate(document: LayoutDocumentWallFirst): CircularRoomPlan {
 	const validated = validateWallFirstLayoutDocument(document);
 	if (!validated.success) {
 		return reject(
@@ -157,16 +159,7 @@ function validateCandidate(document: LayoutDocumentWallFirst, wallId: string): C
 	};
 }
 
-/**
- * Create one closed Wall from a centre → rim gesture and birth its enclosed
- * Room through the existing P23.8 reconciliation.
- *
- * The candidate contains the existing document plus the new isolated Wall, so
- * every pre-existing Room participates in the same correspondence pass. An
- * isolated closed Wall changes no existing face; the new face has no
- * predecessor and therefore becomes exactly one born Room.
- */
-export function planCreateCircularRoom(options: {
+type CircularRoomCreateOptions = {
 	readonly baseline: LayoutDocumentWallFirst;
 	readonly center: LayoutVec2;
 	readonly rim: LayoutVec2;
@@ -175,7 +168,17 @@ export function planCreateCircularRoom(options: {
 	readonly thickness?: number;
 	readonly height?: number;
 	readonly roomNamePrefix?: string;
-}): CircularRoomPlan {
+};
+
+type CircularWallCandidate = {
+	kind: 'proposed';
+	candidate: LayoutDocumentWallFirst;
+	wallId: string;
+	junctionId: string;
+	radius: number;
+};
+
+function circularWallCandidate(options: CircularRoomCreateOptions): CircularWallCandidate | Refused {
 	const { baseline, capture } = options;
 	const levelIssue = layoutWorkingLevelIssue(baseline, options.levelId);
 	if (levelIssue !== null) return reject('invalid_candidate_document', levelIssue);
@@ -209,6 +212,40 @@ export function planCreateCircularRoom(options: {
 			walls: [...baseline.walls, ...created.document.walls],
 			openings: [...baseline.openings]
 		};
+		if (created.radius <= created.wall.thickness / 2 + 1e-6) {
+			return reject('invalid_radius', 'Radius must be finite and greater than half the Wall thickness.');
+		}
+		const contact = validateClosedWallContacts(candidate, new Set([wallId]));
+		if (contact) return reject('closed_wall_isolated', contact.message);
+		return { kind: 'proposed', candidate, wallId, junctionId, radius: created.radius };
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) return reject('captured_id_in_use', error.message);
+		throw error;
+	}
+}
+
+/** A live Circle attempt uses the same Wall builder and contact check as release. */
+export function proposeCreateCircularWall(options: CircularRoomCreateOptions): CircularRoomPlan {
+	const built = circularWallCandidate(options);
+	if (built.kind === 'rejected') return built;
+	return { kind: 'success', document: built.candidate, wallId: built.wallId, junctionId: built.junctionId, createdRoomIds: [], surfaceLineage: [] };
+}
+
+/**
+ * Create one closed Wall from a centre → rim gesture and birth its enclosed
+ * Room through the existing P23.8 reconciliation.
+ *
+ * The candidate contains the existing document plus the new isolated Wall, so
+ * every pre-existing Room participates in the same correspondence pass. An
+ * isolated closed Wall changes no existing face; the new face has no
+ * predecessor and therefore becomes exactly one born Room.
+ */
+export function planCreateCircularRoom(options: CircularRoomCreateOptions): CircularRoomPlan {
+	const { baseline, capture } = options;
+	const built = circularWallCandidate(options);
+	if (built.kind === 'rejected') return built;
+	const { candidate, wallId, junctionId, radius } = built;
+	try {
 		const extraction = extractBoundaryCandidateFaces(candidate);
 		if (extraction.faces.length === 0) {
 			return reject('invalid_candidate_document', 'The closed Wall encloses no candidate face');
@@ -257,13 +294,13 @@ export function planCreateCircularRoom(options: {
 							...room,
 							round: {
 								center: [options.center[0], options.center[1]],
-								radius: created.radius
+								radius
 							}
 						}
 					: room
 			)
 		};
-		const gated = validateCandidate(withRound, wallId);
+		const gated = validateCandidate(withRound);
 		if (gated.kind === 'rejected') return gated;
 		return {
 			kind: 'success',
@@ -283,34 +320,74 @@ export function planCreateCircularRoom(options: {
 	}
 }
 
-/**
- * Resize one closed Wall to an exact radius.
- *
- * D3b semantics: the authored seam angle is retained, every hosted Opening's
- * angular station is retained (`offset` scales with the circumference), and its
- * physical width is unchanged. An Opening whose width no longer fits, or whose
- * scaled interval would overlap a sibling, refuses the whole edit.
- */
+type ClosedCircleEdit = {
+	kind: 'prepared';
+	document: LayoutDocumentWallFirst;
+	wall: LayoutWall;
+	roomId: string;
+	certified: CertifiedRoundRoom;
+	length: number | undefined;
+	openingIndexes: readonly number[];
+};
+
+function prepareCircleEdit(document: LayoutDocumentWallFirst, wallId: string): ClosedCircleEdit | Refused {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return reject('unknown_wall', `Wall '${wallId}' does not exist`);
+	if (!isClosedWall(wall) || wall.centerline.kind !== 'cubic-chain') {
+		return reject('not_closed_wall', `Wall '${wallId}' is not a closed Wall`);
+	}
+	const room = findEnclosingRoundRoomForWall(document, wallId);
+	if (!room) return reject('not_closed_wall', `Wall '${wallId}' has no enclosing Round Room`);
+	const certification = certifyRoundRoom(document, room);
+	if (certification.kind === 'invalid') return reject('invalid_candidate_document', certification.issue.message);
+	return {
+		kind: 'prepared',
+		document,
+		wall,
+		roomId: room.id,
+		certified: certification.certified,
+		length: wallFirstWallLength(document, wallId),
+		openingIndexes: document.openings.flatMap((opening, i) => opening.wallId === wallId ? [i] : [])
+	};
+}
+
+/** Capture Round certification once, before the first live gesture move. */
+export function prepareClosedCircleProposal(document: LayoutDocumentWallFirst, wallId: string) {
+	const edit = prepareCircleEdit(document, wallId);
+	if (edit.kind === 'rejected') return edit;
+	return {
+		kind: 'prepared' as const,
+		resize: (radius: number) => resizeCircle(edit, radius),
+		translate: (delta: LayoutVec2) => translateCircle(edit, delta)
+	};
+}
+
+function circleProposal(document: LayoutDocumentWallFirst, wallId: string, junctionId: string): CircularRoomPlan {
+	const contact = validateClosedWallContacts(document, new Set([wallId]));
+	if (contact) return reject('closed_wall_isolated', contact.message);
+	return { kind: 'success', document, wallId, junctionId, createdRoomIds: [], surfaceLineage: [] };
+}
+
+function finishCircleEdit(proposal: CircularRoomPlan): CircularRoomPlan {
+	if (proposal.kind === 'rejected') return proposal;
+	const gated = validateCandidate(proposal.document);
+	if (gated.kind === 'rejected') return gated;
+	return { ...proposal, document: gated.document };
+}
+
+/** Resize to the stated radius, preserving Opening angular stations and widths. */
 export function planResizeClosedWallRadius(options: {
 	readonly document: LayoutDocumentWallFirst;
 	readonly wallId: string;
 	readonly radius: number;
 }): CircularRoomPlan {
-	const { document, wallId, radius } = options;
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
-	if (wall === undefined) return reject('unknown_wall', `Wall '${wallId}' does not exist`);
-	if (!isClosedWall(wall) || wall.centerline.kind !== 'cubic-chain') {
-		return reject('not_closed_wall', `Wall '${wallId}' is not a closed Wall`);
-	}
-	const room = findEnclosingRoundRoomForWall(document, wallId);
-	if (room === undefined) {
-		return reject('not_closed_wall', `Wall '${wallId}' has no enclosing Round Room`);
-	}
-	const certification = certifyRoundRoom(document, room);
-	if (certification.kind === 'invalid') {
-		return reject('invalid_candidate_document', certification.issue.message);
-	}
-	const { certified } = certification;
+	const edit = prepareCircleEdit(options.document, options.wallId);
+	return edit.kind === 'rejected' ? edit : finishCircleEdit(resizeCircle(edit, options.radius));
+}
+
+function resizeCircle(edit: ClosedCircleEdit, radius: number): CircularRoomPlan {
+	const { document, wall, roomId, certified, length: oldLength, openingIndexes } = edit;
+	const wallId = wall.id;
 	if (!Number.isFinite(radius) || radius <= wall.thickness / 2 + 1e-6) {
 		return reject(
 			'invalid_radius',
@@ -329,7 +406,6 @@ export function planResizeClosedWallRadius(options: {
 	if (!nextCenterline || !newJunctionPoint) {
 		return reject('invalid_candidate_document', `Failed to rebuild closed Wall '${wallId}'`);
 	}
-	const oldLength = wallFirstWallLength(document, wallId);
 	if (!(oldLength !== undefined && oldLength > 0)) {
 		return reject('invalid_candidate_document', `Wall '${wallId}' has no resolvable length`);
 	}
@@ -346,7 +422,7 @@ export function planResizeClosedWallRadius(options: {
 		),
 		walls: document.walls.map((entry) => (entry.id === wallId ? candidateWall : entry)),
 		rooms: document.rooms.map((entry) =>
-			entry.id === room.id ? { ...entry, round: rebuilt.round } : entry
+			entry.id === roomId ? { ...entry, round: rebuilt.round } : entry
 		),
 		openings: document.openings.map((opening) => {
 			if (opening.wallId !== wallId) return opening;
@@ -356,8 +432,8 @@ export function planResizeClosedWallRadius(options: {
 			return { ...opening, offset: offset < 0 ? offset + newLength : offset };
 		})
 	};
-	for (const opening of candidate.openings) {
-		if (opening.wallId !== wallId) continue;
+	const entries = openingIndexes.map((index) => ({ index, opening: candidate.openings[index]! }));
+	for (const { opening } of entries) {
 		if (opening.width >= newLength - 1e-6) {
 			return reject(
 				'opening_does_not_fit',
@@ -365,13 +441,12 @@ export function planResizeClosedWallRadius(options: {
 			);
 		}
 	}
-	const openingIssues = validateWallFirstOpeningSet(candidate);
-	if (openingIssues.length > 0) {
-		return reject('opening_does_not_fit', openingIssues[0]!.message);
-	}
-	const gated = validateCandidate(candidate, wallId);
-	if (gated.kind === 'rejected') return gated;
-	return { ...gated, wallId, junctionId: wall.startJunctionId, createdRoomIds: [] };
+	const openingIssues = validateWallFirstOpeningSubset(candidate, entries, {
+		wallById: new Map([[wallId, candidateWall]]),
+		pointById: new Map([[wall.startJunctionId, newJunctionPoint]])
+	});
+	if (openingIssues.length > 0) return reject('opening_does_not_fit', openingIssues[0]!.message);
+	return circleProposal(candidate, wallId, wall.startJunctionId);
 }
 
 /**
@@ -388,27 +463,19 @@ export function planTranslateClosedWall(options: {
 	readonly wallId: string;
 	readonly delta: LayoutVec2;
 }): CircularRoomPlan {
-	const { document, wallId, delta } = options;
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
-	if (wall === undefined) return reject('unknown_wall', `Wall '${wallId}' does not exist`);
-	if (!isClosedWall(wall) || wall.centerline.kind !== 'cubic-chain') {
-		return reject('not_closed_wall', `Wall '${wallId}' is not a closed Wall`);
-	}
+	const edit = prepareCircleEdit(options.document, options.wallId);
+	return edit.kind === 'rejected' ? edit : finishCircleEdit(translateCircle(edit, options.delta));
+}
+
+function translateCircle(edit: ClosedCircleEdit, delta: LayoutVec2): CircularRoomPlan {
+	const { document, wall, roomId, certified } = edit;
+	const wallId = wall.id;
 	if (!Number.isFinite(delta[0]) || !Number.isFinite(delta[1])) {
 		return reject('invalid_delta', 'A closed Wall move needs a finite X/Z delta in meters.');
 	}
 	if (delta[0] === 0 && delta[1] === 0) {
 		return reject('invalid_delta', 'A closed Wall move needs a non-zero delta.');
 	}
-	const room = findEnclosingRoundRoomForWall(document, wallId);
-	if (room === undefined) {
-		return reject('not_closed_wall', `Wall '${wallId}' has no enclosing Round Room`);
-	}
-	const certification = certifyRoundRoom(document, room);
-	if (certification.kind === 'invalid') {
-		return reject('invalid_candidate_document', certification.issue.message);
-	}
-	const { certified } = certification;
 	const newCenter: LayoutVec2 = [certified.center[0] + delta[0], certified.center[1] + delta[1]];
 	const rebuilt = buildRoundRoomGeometryFromCertified({
 		document,
@@ -431,12 +498,10 @@ export function planTranslateClosedWall(options: {
 			entry.id === wallId ? { ...entry, centerline: nextCenterline } : entry
 		),
 		rooms: document.rooms.map((entry) =>
-			entry.id === room.id ? { ...entry, round: rebuilt.round } : entry
+			entry.id === roomId ? { ...entry, round: rebuilt.round } : entry
 		)
 	};
-	const gated = validateCandidate(candidate, wallId);
-	if (gated.kind === 'rejected') return gated;
-	return { ...gated, wallId, junctionId: wall.startJunctionId, createdRoomIds: [] };
+	return circleProposal(candidate, wallId, wall.startJunctionId);
 }
 
 /** The current radius of one closed Wall, for Card facts and gesture previews. */

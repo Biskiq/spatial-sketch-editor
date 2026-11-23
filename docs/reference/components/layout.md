@@ -59,13 +59,20 @@ codec rejects any other closed representation, a missing `round` fact on an encl
 centre-local binary64 uncertainty-aware Round certification bounds; its measured error at a 5 m
 reference radius is bounded at 3.4e-7 m radial and 1.1e-6 m circumference.
 
+All controls must fit one seam phase and one ordered partition of the 16-span template. Adjoining
+subspans share their cut parameter. A certificate with unresolved or collapsed cuts refuses.
+For Junction resolution, rounding can explain a tangent continuation only when the stored
+centerline endpoints or cubic handles can support antiparallel tangents. Wall thickness does
+not determine angular continuity.
+
 Closed Walls are isolated. A Wall may not connect at the seam, end on or attach to the circle,
 cross it, or be noded onto it; each refuses as `closed_wall_isolated`. Split and dissolve refuse,
 and bending refuses as `closed_wall_not_bendable`. Walls wholly inside the circle are allowed. The
 seam keeps its identity through Save/Load; radius and centre are read directly from `room.round`,
 never inferred by fitting Wall controls.
 
-- **Rigid move.** A body drag translates the seam Junction and the whole chain by the same delta.
+- **Rigid move.** A body drag rebuilds the center-local chain at the translated centre, adding the
+  destination centre once per point.
   Radius, seam station, bend-point ids and every hosted Opening stay unchanged.
 - **Radius edits.** A Card radius or diameter edit retains the seam angle and rebuilds the canonical
   chain at the new radius. Every hosted Opening keeps its angular station by scaling `offset` with

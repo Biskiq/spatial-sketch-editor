@@ -421,6 +421,8 @@ export type CompiledJunctionLeg = {
 	end: 'start' | 'end';
 	tangentOut: LayoutVec2;
 	normalOut: LayoutVec2;
+	/** Stored endpoint or cubic handle that determines the outward derivative. */
+	tangentAnchor?: LayoutVec2;
 	/** CCW angle of `tangentOut` from +X — cyclic ordering only. */
 	outwardAngle: number;
 	thickness: number;

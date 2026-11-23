@@ -1,6 +1,5 @@
 import {
-	planResizeClosedWallRadius,
-	planTranslateClosedWall,
+	prepareClosedCircleProposal,
 	prepareWallBend,
 	proposeWallKnotRemoval,
 	validateWallFirstOpeningSubset,
@@ -83,6 +82,8 @@ const BEND_BODY_TOLERANCE_METERS = 0.35;
 const REMOVE_ENTER_METERS = 0.12;
 /** It must leave this wider zone once before removal can arm; the hysteresis stops flicker. */
 const REMOVE_LEAVE_METERS = 0.3;
+type PreparedCircleProposal = Extract<ReturnType<typeof prepareClosedCircleProposal>, { kind: 'prepared' }>;
+
 export function createCurveGestureSession({
 	services,
 	document,
@@ -111,7 +112,7 @@ export function createCurveGestureSession({
 		readonly pressCss: readonly [number, number];
 		readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
 		readonly wallId: string;
-		readonly baseline: LayoutDocumentWallFirst;
+		readonly proposeRadius: PreparedCircleProposal['resize'];
 		readonly center: LayoutVec2;
 		preview: LayoutDocumentWallFirst | null;
 		radius: number | null;
@@ -128,7 +129,7 @@ export function createCurveGestureSession({
 		readonly evaluationId: string;
 		readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
 		readonly wallId: string;
-		readonly baseline: LayoutDocumentWallFirst;
+		readonly proposeTranslation: PreparedCircleProposal['translate'];
 		readonly pressPoint: LayoutVec2;
 		preview: LayoutDocumentWallFirst | null;
 		delta: LayoutVec2 | null;
@@ -216,7 +217,7 @@ export function createCurveGestureSession({
 
 	/**
 	 * The radius grip. A press captures the selected closed Wall and
-	 * one gesture lease; every move previews the retained radius planner; the
+	 * one gesture lease and resolves Round once. Every move previews the proposal; the
 	 * release accepts exactly that radius once. Bending never enters this path.
 	 */
 	function circleRadiusPointer(
@@ -228,6 +229,11 @@ export function createCurveGestureSession({
 			if (intent.phase !== 'down' || intent.handleId !== 'layout-circle-radius-mark') return false;
 			const selected = selectedClosedWall(adapterContext);
 			if (selected === null) return false;
+			const proposal = prepareClosedCircleProposal(stageLayout(adapterContext.snapshot), selected.wallId);
+			if (proposal.kind === 'rejected') {
+				publishRefusal(proposal.rejection.message);
+				return false;
+			}
 			const acquisition = services.stage.acquireGesture({
 				owner: 'layout-circle-radius',
 				evaluationId: intent.evaluationId,
@@ -242,7 +248,7 @@ export function createCurveGestureSession({
 				pressCss: intent.css,
 				lease: acquisition,
 				wallId: selected.wallId,
-				baseline: stageLayout(adapterContext.snapshot),
+				proposeRadius: proposal.resize,
 				center: selected.center,
 				preview: null,
 				radius: null,
@@ -260,11 +266,7 @@ export function createCurveGestureSession({
 			const point = pointerDatumPoint(adapterContext, intent.css);
 			if (point === null) return true;
 			const radius = Math.hypot(point[0] - active.center[0], point[1] - active.center[1]);
-			const planned = planResizeClosedWallRadius({
-				document: active.baseline,
-				wallId: active.wallId,
-				radius
-			});
+			const planned = active.proposeRadius(radius);
 			if (planned.kind === 'rejected') {
 				active.preview = null;
 				active.radius = null;
@@ -296,7 +298,9 @@ export function createCurveGestureSession({
 					contentRevision: stageUnitRevision(snapshot, 'layout'),
 					levelId: snapshot.domain.layoutLevelId
 				})
-			);
+			).then((outcome) => {
+				if (outcome.kind === 'refused') publishRefusal(outcome.message);
+			});
 		}
 		services.stage.notifySurfaceChange();
 		return true;
@@ -339,6 +343,11 @@ export function createCurveGestureSession({
 				return false;
 			const point = pointerDatumPoint(adapterContext, intent.css);
 			if (point === null) return false;
+			const proposal = prepareClosedCircleProposal(stageLayout(adapterContext.snapshot), selected.wallId);
+			if (proposal.kind === 'rejected') {
+				publishRefusal(proposal.rejection.message);
+				return false;
+			}
 			const acquisition = services.stage.acquireGesture({
 				owner: 'layout-circle-move',
 				evaluationId: intent.evaluationId,
@@ -352,7 +361,7 @@ export function createCurveGestureSession({
 				evaluationId: intent.evaluationId,
 				lease: acquisition,
 				wallId: selected.wallId,
-				baseline: stageLayout(adapterContext.snapshot),
+				proposeTranslation: proposal.translate,
 				pressPoint: [point[0], point[1]],
 				preview: null,
 				delta: null,
@@ -377,11 +386,7 @@ export function createCurveGestureSession({
 				services.stage.notifySurfaceChange();
 				return true;
 			}
-			const planned = planTranslateClosedWall({
-				document: active.baseline,
-				wallId: active.wallId,
-				delta
-			});
+			const planned = active.proposeTranslation(delta);
 			if (planned.kind === 'rejected') {
 				active.preview = null;
 				active.delta = null;
@@ -415,7 +420,9 @@ export function createCurveGestureSession({
 					contentRevision: stageUnitRevision(snapshot, 'layout'),
 					levelId: snapshot.domain.layoutLevelId
 				})
-			);
+			).then((outcome) => {
+				if (outcome.kind === 'refused') publishRefusal(outcome.message);
+			});
 		}
 		services.stage.notifySurfaceChange();
 		return true;

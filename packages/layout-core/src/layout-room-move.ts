@@ -216,7 +216,7 @@ export function roomUnitMoveCandidate(
 	const updatedRoomRound = new Map<string, LayoutRoomRound>();
 	for (const room of document.rooms) {
 		if (!room.round) continue;
-		if (!room.boundary.some((ref) => movedWallIds.has(ref.wallId))) continue;
+		if (!room.boundary.every((ref) => movedWallIds.has(ref.wallId))) continue;
 		const cert = certifyRoundRoom(document, room);
 		if (cert.kind !== 'certified') continue;
 		const newCenter: LayoutVec2 = [cert.certified.center[0] + dx, cert.certified.center[1] + dz];
@@ -342,7 +342,7 @@ export function rotateRoomUnitMoveCandidate(
 	const updatedRoomRound = new Map<string, LayoutRoomRound>();
 	for (const room of document.rooms) {
 		if (!room.round) continue;
-		if (!room.boundary.some((ref) => movedWallIds.has(ref.wallId))) continue;
+		if (!room.boundary.every((ref) => movedWallIds.has(ref.wallId))) continue;
 		const cert = certifyRoundRoom(document, room);
 		if (cert.kind !== 'certified') continue;
 		const newCenter = rotate(cert.certified.center);

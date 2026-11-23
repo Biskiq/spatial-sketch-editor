@@ -37,6 +37,7 @@ import type {
 import { CLOSED_WALL_CIRCLE_KNOT_COUNT, CLOSED_WALL_CIRCLE_SPAN_COUNT } from './layout-wall-first-types';
 import { createEmptyWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { wallCubicChain } from './layout-wall-centerline';
+import { UNIT_TEMPLATE_SCALARS, unitToWorldPoint } from './layout-round-template';
 
 /** A closed Wall is exactly a Wall whose endpoint Junction identity is equal. */
 export function isClosedWall(wall: Pick<LayoutWall, 'startJunctionId' | 'endJunctionId'>): boolean {
@@ -136,39 +137,22 @@ export function buildClosedWallCircleCenterlineFromRay(options: {
 			}
 		};
 	}
-	const ux = seamDirection[0] / dirLen;
-	const uz = seamDirection[1] / dirLen;
-	const step = (Math.PI * 2) / CLOSED_WALL_CIRCLE_SPAN_COUNT;
-	const k = (4 / 3) * Math.tan(step / 4);
-
-	const toWorld = (localX: number, localZ: number): LayoutVec2 => [
-		center[0] + localX,
-		center[1] + localZ
-	];
-	const unitToWorld = (qx: number, qz: number): LayoutVec2 =>
-		toWorld(radius * (qx * ux - qz * uz), radius * (qx * uz + qz * ux));
+	const ray: LayoutVec2 = [seamDirection[0] / dirLen, seamDirection[1] / dirLen];
+	const toWorld = (point: LayoutVec2): LayoutVec2 => unitToWorldPoint(point, center, radius, ray);
 
 	const seam: LayoutVec2 = explicitSeam
 		? [explicitSeam[0], explicitSeam[1]]
-		: unitToWorld(1, 0);
+		: toWorld([1, 0]);
 
 	const knots: LayoutWallCurveKnot[] = [];
 	const spans: LayoutWallCubicSpan[] = [];
 	for (let index = 0; index < CLOSED_WALL_CIRCLE_SPAN_COUNT; index += 1) {
-		const a0 = index * step;
-		const a1 = (index + 1) * step;
-		const c0 = index === 0 ? 1 : Math.cos(a0);
-		const s0 = index === 0 ? 0 : Math.sin(a0);
-		const c1 = index === CLOSED_WALL_CIRCLE_SPAN_COUNT - 1 ? 1 : Math.cos(a1);
-		const s1 = index === CLOSED_WALL_CIRCLE_SPAN_COUNT - 1 ? 0 : Math.sin(a1);
-
-		const handleOut = unitToWorld(c0 - k * s0, s0 + k * c0);
-		const handleIn = unitToWorld(c1 + k * s1, s1 - k * c1);
-		spans.push({ handleOut, handleIn });
+		const [, handleOut, handleIn, end] = UNIT_TEMPLATE_SCALARS[index]!;
+		spans.push({ handleOut: toWorld(handleOut), handleIn: toWorld(handleIn) });
 		if (index < CLOSED_WALL_CIRCLE_SPAN_COUNT - 1) {
 			knots.push({
 				id: `${wallId}:knot:${index + 1}`,
-				point: unitToWorld(c1, s1)
+				point: toWorld(end)
 			});
 		}
 	}

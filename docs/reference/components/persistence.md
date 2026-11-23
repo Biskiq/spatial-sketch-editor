@@ -422,6 +422,18 @@ obligations. It is independent of release durability: an already supported
 visitor package does not force every intermediate source schema to become
 permanent.
 
+**Disposable alpha.** Biskiq currently has no retained user projects or promised publications.
+Owner tests and hosted acceptance fixtures are disposable. A strict Layout format bump may
+make those files, drafts and saved revisions unreadable by the new reader. No converter,
+dual reader or migration subsystem is required for disposable alpha source. Keep strict
+validation, failed-Load isolation and pending Save export. A format bump grants no authority
+to delete old rows, assets or snapshots.
+
+When a format change reaches a store with existing data, record the inventory and disposition
+on its PR. A retained project, promised editable file or durable publication requires its own
+preservation and recovery plan before cutover. Reassess this policy before accepting the first
+retained trial project or promising durable delivery.
+
 **Before the Source Baseline**, development formats may change without
 accumulating historical readers. Real trial creators' accepted projects receive
 bounded, scripted migrations as named pre-baseline exceptions with covered data,
