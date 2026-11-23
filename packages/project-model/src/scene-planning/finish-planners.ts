@@ -7,7 +7,10 @@
  *   model's own materials onto whole objects;
  * - `scene-finish-edit` changes a Finish's colour, Sheen or Metal, choosing
  *   *Just this* or *All N* for a shared Finish;
- * - `scene-palette-slot-add/set/rename/remove` own the World palette.
+ * - `scene-palette-slot-add/set/rename/remove` own the World palette;
+ * - `scene-colour-coat` paints a colour that keeps the target's relief and
+ *   sheen, through one deduplicated derived Finish per source and colour
+ *   (`colour-coat.ts`, T2.S8 U3).
  *
  * Every writer leaves the **assignment normal form** behind (§3 of the plan):
  * a primitive or Form never carries an instance it does not need, a model
@@ -81,6 +84,7 @@ import { sceneEntityTargetProblem } from './intent-payload';
 import { analysisRequestOf, analysisSubjectOf, finishIdIsReferenced, finishUsersWithLifecycle } from './finish-inspect';
 import { applyFinishPatch, baseRecipeOf, FINISH_PATCH_FIELDS, type FinishPatchEdit, type FinishPatchField } from './finish-patch';
 import { planPaletteAdoption } from './palette-adoption';
+import { planColourCoats, type CoatTarget } from './colour-coat';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import {
 	finishTextureResource,
@@ -103,6 +107,7 @@ export const SCENE_FINISH_REGISTER = 'scene-finish-register';
 export const SCENE_FINISH_RENAME = 'scene-finish-rename';
 export const SCENE_FINISH_PATCH = 'scene-finish-patch';
 export const SCENE_FINISH_REMOVE = 'scene-finish-remove';
+export const SCENE_COLOUR_COAT = 'scene-colour-coat';
 
 const kinds = [
 	SCENE_FINISH_ASSIGN,
@@ -113,6 +118,7 @@ const kinds = [
 	SCENE_FINISH_RENAME,
 	SCENE_FINISH_PATCH,
 	SCENE_FINISH_REMOVE,
+	SCENE_COLOUR_COAT,
 	SCENE_PALETTE_SLOT_ADD,
 	SCENE_PALETTE_SLOT_SET,
 	SCENE_PALETTE_SLOT_RENAME,
@@ -991,6 +997,38 @@ function surfaceTargetComponent(surface: SceneSurfaceRef): { kind: 'wall' | 'roo
 	}
 }
 
+/** The refusal for a surface target that is not the exact qualified reference, or a surface that is gone. */
+function surfaceTargetProblem(
+	target: PlannerRequest<ProjectEnvelope>['intent']['targets'][number],
+	surface: SceneSurfaceRef,
+	layoutUnit: ProjectEnvelope['units']['layout']
+): Result | null {
+	const layout = layoutUnit.data;
+	const expected = surfaceTargetComponent(surface);
+	if (
+		target.domain !== 'layout' || target.subject.kind !== expected.kind || target.subject.id !== expected.id ||
+		target.componentId !== expected.componentId || target.capabilityId !== null || target.instancePath.length !== 0 ||
+		target.revision.kind !== 'exact' || target.revision.contentRevision !== layoutUnit.header.contentRevision ||
+		target.location.kind !== 'layout-location' || target.location.levelId !== layout.floor.id ||
+		target.location.structureInstancePath.length !== 0
+	) {
+		return refuse('Paint needs an exact qualified reference to each surface.', 'invalid-target');
+	}
+	if (resolveLayoutSurface(layout, surface) !== 'present') {
+		return refuse('That surface changed. Try again.', 'surface_not_present');
+	}
+	return null;
+}
+
+/** Surface Finish assignments in their canonical key order. */
+function sortedSurfaceFinishes(assignments: ReadonlyMap<string, SceneSurfaceFinish>): SceneSurfaceFinish[] {
+	return [...assignments.values()].sort((left, right) => {
+		const leftKey = surfaceKey(left.surface);
+		const rightKey = surfaceKey(right.surface);
+		return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+	});
+}
+
 function sameSequence(left: readonly string[], right: readonly string[]): boolean {
 	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -1299,20 +1337,8 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			? { materialId: finish.curated }
 			: { materialInstanceId: finish.project };
 		for (const [index, surface] of surfaces.entries()) {
-			const target = request.intent.targets[index]!;
-			const expected = surfaceTargetComponent(surface);
-			if (
-				target.domain !== 'layout' || target.subject.kind !== expected.kind || target.subject.id !== expected.id ||
-				target.componentId !== expected.componentId || target.capabilityId !== null || target.instancePath.length !== 0 ||
-				target.revision.kind !== 'exact' || target.revision.contentRevision !== layoutUnit.header.contentRevision ||
-				target.location.kind !== 'layout-location' || target.location.levelId !== layout.floor.id ||
-				target.location.structureInstancePath.length !== 0
-			) {
-				return refuse('Paint needs an exact qualified reference to each surface.', 'invalid-target');
-			}
-			if (resolveLayoutSurface(layout, surface) !== 'present') {
-				return refuse('That surface changed. Try again.', 'surface_not_present');
-			}
+			const problem = surfaceTargetProblem(request.intent.targets[index]!, surface, layoutUnit);
+			if (problem !== null) return problem;
 			const key = surfaceKey(surface);
 			const assignment: SceneSurfaceFinish = { surface, finish: assignedFinish };
 			const previous = existing.get(key);
@@ -1320,12 +1346,7 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			else if (JSON.stringify(previous) !== JSON.stringify(assignment)) changedKeys.push(key);
 			next.set(key, assignment);
 		}
-		const assignments = [...next.values()].sort((left, right) => {
-			const leftKey = surfaceKey(left.surface);
-			const rightKey = surfaceKey(right.surface);
-			return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
-		});
-		const after: SceneDocument = { ...before, surfaceFinishes: assignments };
+		const after: SceneDocument = { ...before, surfaceFinishes: sortedSurfaceFinishes(next) };
 		if (sameSceneValues(before, after)) return refuse('Every chosen surface already has that Finish.', 'no-change');
 		return complete(
 			after,
@@ -1337,6 +1358,133 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind, options: 
 			},
 			[...new Set([...addedKeys, ...changedKeys])].sort(),
 			['surfaceFinishes', 'finish']
+		);
+	}
+
+	if (kind === SCENE_COLOUR_COAT) {
+		const payload = reader.object(request.intent.payload, '$.payload', ['colour', 'entityIds', 'surfaces']);
+		if (payload === null) return refuse(reader.issues[0]?.message ?? 'A colour coat needs a colour and its targets.');
+		const colour = readColor(reader, payload.colour, '$.payload.colour');
+		const namesEntities = 'entityIds' in payload;
+		const namesSurfaces = 'surfaces' in payload;
+		if (namesEntities === namesSurfaces) {
+			return refuse('A colour coat paints objects or Layout surfaces, one kind per stroke.');
+		}
+		const entityIds = namesEntities ? readMaterialIdList(reader, payload.entityIds, '$.payload.entityIds') : [];
+		const surfaces = namesSurfaces ? readSurfaceRefs(reader, payload.surfaces, '$.payload.surfaces') : [];
+		if (!colour.ok || entityIds === null || surfaces === null || reader.issues.length > 0) {
+			return refuse(reader.issues[0]?.message ?? 'A colour coat needs a colour and its targets.');
+		}
+		const targetCount = entityIds.length + surfaces.length;
+		if (request.intent.targets.length !== targetCount) return refuse('Paint must address exactly the targets it names.');
+		const layoutUnit = envelope.units.layout;
+		for (const [index, id] of entityIds.entries()) {
+			const problem = sceneEntityTargetProblem(request.intent.targets[index]!, id, header.contentRevision);
+			if (problem !== null) return refuse(problem.message);
+		}
+		for (const [index, surface] of surfaces.entries()) {
+			const problem = surfaceTargetProblem(request.intent.targets[index]!, surface, layoutUnit);
+			if (problem !== null) return problem;
+		}
+		const coatTargets: CoatTarget[] = namesEntities
+			? entityIds.map((id) => ({ kind: 'entity' as const, id }))
+			: surfaces.map((surface) => ({ kind: 'surface' as const, surface }));
+		const plan = planColourCoats(before, {
+			colour: colour.value,
+			targets: coatTargets,
+			materialRecipes: materialRecipesOf(envelope),
+			labelForMaterial: (id) => labelOf(options, id)
+		});
+		if (plan.kind === 'refused') return refuse(plan.message, plan.code);
+		if (plan.already) return refuse('Every chosen target already wears that colour.', 'no-change');
+		const allocations = request.allocatedIds;
+		if (allocations.length !== plan.creates.length) {
+			return refuse(
+				`This colour coat needs ${plan.creates.length} allocated Finish id${plan.creates.length === 1 ? '' : 's'}.`,
+				allocations.length < plan.creates.length ? 'missing-allocation' : 'unexpected-allocation'
+			);
+		}
+		const allocatedIds: string[] = [];
+		for (const allocation of allocations) {
+			if (!['scene-finish', 'scene-material'].includes(allocation.kind)) {
+				return refuse('A colour coat allocates Finish ids only.', 'unexpected-allocation');
+			}
+			if (before.materials.some((instance) => instance.id === allocation.id) || allocatedIds.includes(allocation.id)) {
+				return refuse('That Finish id is already in use.', 'unexpected-allocation');
+			}
+			allocatedIds.push(allocation.id);
+		}
+		const created: SceneMaterialInstance[] = plan.creates.map((entry, index) => ({
+			id: allocatedIds[index]!,
+			name: entry.name,
+			base: entry.base,
+			...(entry.overrides === undefined ? {} : { overrides: entry.overrides })
+		}) as SceneMaterialInstance);
+		const materials = [...before.materials, ...created];
+		const finishIdOf = (index: number): string => {
+			const assignment = plan.assignments[index]!;
+			return assignment.kind === 'existing' ? assignment.finishId : allocatedIds[assignment.index]!;
+		};
+		const coatByEntity = new Map(entityIds.map((id, index) => [id, finishIdOf(index)]));
+		const entities = before.entities.map((entity) => {
+			const finishId = coatByEntity.get(entity.id);
+			return finishId === undefined
+				? entity
+				: assignOne(entity, { project: finishId }, materials, () => {
+						throw new Error('a coat never assigns a curated Finish');
+					});
+		});
+		let surfaceFinishes = before.surfaceFinishes;
+		const changedKeys: string[] = [];
+		const addedKeys: string[] = [];
+		if (namesSurfaces) {
+			const existing = new Map((before.surfaceFinishes ?? []).map((entry) => [surfaceKey(entry.surface), entry]));
+			const next = new Map(existing);
+			for (const [index, surface] of surfaces.entries()) {
+				const key = surfaceKey(surface);
+				const assignment: SceneSurfaceFinish = { surface, finish: { materialInstanceId: finishIdOf(index) } };
+				const previous = existing.get(key);
+				if (previous === undefined) addedKeys.push(key);
+				else if (!sameSceneValues(previous, assignment)) changedKeys.push(key);
+				next.set(key, assignment);
+			}
+			surfaceFinishes = sortedSurfaceFinishes(next);
+		}
+		// A model leaving a pristine curated instance releases it in the same write.
+		const used = new Set([
+			...entities.flatMap((entity) => {
+				const id = (entity as SceneEntity & { materialInstanceId?: string }).materialInstanceId;
+				return id === undefined ? [] : [id];
+			}),
+			...(surfaceFinishes ?? []).flatMap((entry) => ('materialInstanceId' in entry.finish ? [entry.finish.materialInstanceId] : []))
+		]);
+		const ordered = materials.filter((instance) => !isPristineInstance(instance) || used.has(instance.id));
+		const after: SceneDocument = {
+			...before,
+			materials: ordered,
+			entities,
+			...(surfaceFinishes === undefined ? {} : { surfaceFinishes })
+		};
+		if (sameSceneValues(before, after)) return refuse('Every chosen target already wears that colour.', 'no-change');
+		const added = created.map((instance) => instance.id);
+		const removed = before.materials
+			.filter((instance) => !ordered.includes(instance))
+			.map((instance) => instance.id);
+		const changedEntityIds = entityIds.filter((id) => {
+			const previous = before.entities.find((entity) => entity.id === id);
+			const next = entities.find((entity) => entity.id === id);
+			return !sameSceneValues(previous, next);
+		});
+		return complete(
+			after,
+			{
+				changedEntityIds,
+				changedEntityFields: changedEntityIds.length === 0 ? [] : ['materialId', 'materialInstanceId'],
+				materials: materialGrant({ added, removed }),
+				...(namesSurfaces ? { surfaceFinishes: { changedKeys, addedKeys } } : {})
+			},
+			namesSurfaces ? [...new Set([...addedKeys, ...changedKeys])].sort() : entityIds,
+			namesSurfaces ? ['surfaceFinishes', 'finish', 'materials'] : ['finish', 'materialId', 'materialInstanceId', 'materials']
 		);
 	}
 
@@ -2606,7 +2754,7 @@ export function createFinishPlanners(
 			// Registration may name compile-qualified Layout surfaces as targets it
 			// paints, exactly as the surface assignment planner does. Layout is a
 			// reference input: the candidate still writes only the Scene unit.
-			...(kind === SCENE_SURFACE_FINISH_ASSIGN || kind === SCENE_FINISH_REGISTER
+			...(kind === SCENE_SURFACE_FINISH_ASSIGN || kind === SCENE_FINISH_REGISTER || kind === SCENE_COLOUR_COAT
 				? { referenceDomains: ['layout'] as const }
 				: {}),
 			compound: false,

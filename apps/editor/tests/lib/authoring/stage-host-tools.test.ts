@@ -490,6 +490,45 @@ describe('T2.S4a — Paint', () => {
 		expect(painter.candidate()?.consequence).toBe('Terrazzo on this floor');
 	});
 
+	it('reads a colour pick as a coat that keeps relief, and refuses a model\'s own materials in place (U3)', () => {
+		const snapshot = {};
+		let answer: unknown = {
+			kind: 'paintable-surface' as const,
+			surface: { kind: 'room-floor' as const, roomId: 'room' },
+			space: { kind: 'unique' as const, roomId: 'room', surfaces: [{ kind: 'room-floor' as const, roomId: 'room' }], excluded: [] }
+		};
+		const facade = {
+			snapshot: () => snapshot,
+			hostToolTarget: () => ({
+				kind: 'hit' as const,
+				adapterId: 'layout',
+				hit: {
+					sourceId: 'room', sourceKind: 'room-floor', generationId: 'generation-1',
+					stream: 'projected', subRef: null, worldPoint: [0, 0, 0]
+				},
+				refusal: null
+			}),
+			evaluation: () => ({ renderedReading: '3d' }),
+			paintAnswer: () => answer
+		} as unknown as StageFacade;
+		let reading: import('$lib/authoring/look/colour-coat-port').CoatReading = { kind: 'coat', keeps: 'Walnut Wood' };
+		const painter = createStagePainter(facade, {
+			...paintOptions().options,
+			activeLabel: () => 'Sage',
+			wornLabel: () => 'Walnut Wood',
+			coatReading: () => reading
+		});
+		painter.hover({ css: [0, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Sage on this floor · keeps Walnut Wood relief and sheen');
+		reading = { kind: 'coat', keeps: null };
+		painter.hover({ css: [1, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.consequence).toBe('Sage on this floor');
+		answer = { kind: 'paintable', entityId: 'chair' };
+		reading = { kind: 'refused', message: "A model's own materials take no colour. Paint a material first." };
+		painter.hover({ css: [2, 0], evaluationId: 'generation-1' });
+		expect(painter.candidate()?.refusal).toBe("A model's own materials take no colour. Paint a material first.");
+	});
+
 	it('samples on a touch long-press and paints on a touch tap', async () => {
 		const snapshot = {};
 		const facade = {

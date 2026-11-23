@@ -19,6 +19,10 @@
  * the stroke and write nothing. A press that slides off its only subject and
  * releases there is also a cancel, which is how a single click is abandoned.
  *
+ * A colour pick (U3) coats instead of replacing: the line names the relief it
+ * keeps, and a subject that takes no coat (a model's own materials) refuses in
+ * place and is skipped by the stroke.
+ *
  * Paint never edits a Finish, so it never opens the shared-Finish Ask. The
  * Finish service owns the active pick, the dropper flag and the recents; this
  * controller only translates a press.
@@ -28,6 +32,7 @@ import { surfaceKey, type LayoutSurfaceRef, type SpaceSurfaceExclusion } from '@
 import type { StagePaintSpaceScope } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 import type { PaintRadius } from '../look/paint-pick';
+import type { CoatReading } from '../look/colour-coat-port';
 
 type PaintableSurface = LayoutSurfaceRef;
 
@@ -98,6 +103,11 @@ export type StagePaintOptions = {
 	/** Clock for long-press sampling; tests inject one. */
 	readonly now?: () => number;
 	readonly wornLabel?: (target: { readonly surface: PaintableSurface } | { readonly entityId: string }) => string | null;
+	/**
+	 * What the active **colour** pick does to a target (U3): refuse in place, or
+	 * coat it keeping the named relief. `null` when the pick is a material.
+	 */
+	readonly coatReading?: (target: { readonly surface: PaintableSurface } | { readonly entityId: string }) => CoatReading | null;
 };
 
 export type StagePaintStroke = {
@@ -198,6 +208,12 @@ export function createStagePainter(
 		return worn !== null && worn !== pick ? `${pick} replaces ${worn} on ${target}` : `${pick} on ${target}`;
 	}
 
+	/** A colour keeps the target's relief and sheen: `Sage on this wall · keeps Oak relief and sheen`. */
+	function coatWords(reading: CoatReading & { kind: 'coat' }, target: string): string {
+		const keeps = reading.keeps === null ? '' : ` · keeps ${reading.keeps} relief and sheen`;
+		return `${options.activeLabel()} on ${target}${keeps}`;
+	}
+
 	function candidateAt(input: PointerInput, reach: PaintRadius): StagePaintCandidate | null {
 		syncSource();
 		const target = facade.hostToolTarget({ ...input, tool: 'paint' });
@@ -246,9 +262,12 @@ export function createStagePainter(
 			const hit: StageSourceHit = surface.kind === 'wall-side' && target.hit.reference === undefined
 				? { ...target.hit, subRef: { kind: 'component', componentId: `side:${surface.side}` } }
 				: target.hit;
+			const coat = options.coatReading?.({ surface }) ?? null;
 			const consequence = reach === 'space' && space.kind === 'unique'
 				? `${pickWords()} ${assignmentSurfaces.length} surface${assignmentSurfaces.length === 1 ? '' : 's'} in this Space${excludedWords(space.excluded)}`
-				: replaceWords(options.wornLabel?.({ surface }) ?? null, `this ${surfaceNoun(surface)}`);
+				: coat?.kind === 'coat'
+					? coatWords(coat, `this ${surfaceNoun(surface)}`)
+					: replaceWords(options.wornLabel?.({ surface }) ?? null, `this ${surfaceNoun(surface)}`);
 			return {
 				adapterId: target.adapterId,
 				hit,
@@ -257,9 +276,10 @@ export function createStagePainter(
 				space,
 				assignmentSurfaces,
 				consequence,
-				refusal: target.refusal ?? refusal
+				refusal: target.refusal ?? refusal ?? (reach === 'surface' && coat?.kind === 'refused' ? coat.message : null)
 			};
 		}
+		const coat = options.coatReading?.({ entityId: answer.entityId }) ?? null;
 		return {
 			adapterId: target.adapterId,
 			hit: target.hit,
@@ -267,8 +287,10 @@ export function createStagePainter(
 			surface: null,
 			space: null,
 			assignmentSurfaces: [],
-			consequence: replaceWords(options.wornLabel?.({ entityId: answer.entityId }) ?? null, 'this object'),
-			refusal: target.refusal
+			consequence: coat?.kind === 'coat'
+				? coatWords(coat, 'this object')
+				: replaceWords(options.wornLabel?.({ entityId: answer.entityId }) ?? null, 'this object'),
+			refusal: target.refusal ?? (coat?.kind === 'refused' ? coat.message : null)
 		};
 	}
 

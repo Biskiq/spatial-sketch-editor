@@ -27,6 +27,7 @@ export * from './intent-payload';
 export * from './model-resource';
 export * from './planners';
 
+export * from './colour-coat';
 export * from './finish-model';
 export * from './finish-planners';
 export * from './finish-inspect';
