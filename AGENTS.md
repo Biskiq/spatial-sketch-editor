@@ -16,10 +16,12 @@ the North Star states intent. Do not read the archive unless current evidence ne
   `@portfolio/layout-core`, `@portfolio/project-model`, `@portfolio/camera-core` and
   `@portfolio/geometry-core`. PR #115 removed `apps/museum`, superseded by the separately hosted
   frozen project.
-- `prototypes/` holds durable runnable prototypes and their QA/reference evidence
-  ([`prototypes/README.md`](./prototypes/README.md)). They are **not** npm workspaces, not
-  production applications and not authority — a prototype shortcut never becomes a production
-  contract by being kept there.
+- `prototypes/` holds runnable studies and **owner-approved design targets**
+  ([`prototypes/README.md`](./prototypes/README.md)). They are not production workspaces,
+  and simulated mechanics are not domain contracts. **An approved prototype is the UX authority
+  for the scope the owner approved**: reproduce its composition, dimensions, visual hierarchy,
+  tokens, interaction and responsive states. Older shell references or a less-detailed execution
+  plan do not license a competing design. Unapproved studies remain evidence, not authority.
 - “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
 - **Frozen, separate projects are outside product scope.** The Chopin museum project was externalized
   by PR #115: it is independently hosted and versioned, the folder is absent from this repository,
@@ -84,10 +86,12 @@ change whose visual or interaction behavior matters, an agent may open the runni
 interact with the changed feature, inspect rendering and console errors, and capture targeted
 evidence. That is **focused manual browser QA**, and it is allowed.
 
-Do **not** require full Playwright capture, exhaustive automated browser journeys, scripted E2E
-replay, or bulk screenshot/video recording for ordinary changes. Those need explicit owner
-authorization. The owner retains final manual browser acceptance; agent spot checks are evidence,
-not a substitute for that acceptance. Historical browser artifacts and unrelated test coverage stay
+For **owner-approved visual design implementation**, compare prototype and production at matched
+states/viewports, capture focused **side-by-side screenshots**, and record visual and interaction
+parity before claiming acceptance. This is ordinary **scoped design QA**, not permission for
+unrelated bulk E2E/screenshot collection. Do **not** require exhaustive scripted browser journeys
+or bulk screenshot/video recording for ordinary non-design changes without owner authorization.
+The owner retains final manual browser acceptance; agent QA supports but never replaces it. Historical browser artifacts and unrelated test coverage stay
 in place: this policy changes what is *required*, not what is preserved.
 
 Concrete commands and lane semantics stay owned by `apps/editor/tests/README.md`; do not duplicate
