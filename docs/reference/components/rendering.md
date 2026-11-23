@@ -181,10 +181,11 @@ resolved values, drop every map and therefore select a different variant. The St
 and a published visit run this one resolver over the same `RuntimeScene`, so their descriptors cannot
 drift.
 
-The Card's colour picker previews through the same resolver: `withFinishPreviews`
-adds one synthetic instance per previewed object and changes no accepted bytes, no
-history and no planner allocation. Releasing the pointer, cancelling or accepting
-drops the map, so the rendered Scene is exactly the accepted one again.
+The Finish Card previews through the same resolver: `withFinishInstancePreview`
+adds one synthetic instance (`FINISH_PREVIEW_INSTANCE_ID`) and points every reached
+object and surface at it, changing no accepted bytes, no history and no planner
+allocation. Releasing, cancelling or accepting drops the preview, so the rendered
+Scene is exactly the accepted one again.
 
 **Guards:** `materials/scene-instance-material`, `materials/look-parity-golden`.
 

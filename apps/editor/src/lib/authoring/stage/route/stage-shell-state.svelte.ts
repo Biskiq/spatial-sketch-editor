@@ -77,6 +77,8 @@ export type StageShellStateInput = {
 	readonly selection: () => StageSelectionEntry | null;
 	/** The Finish service Paint consumes; `null` until the route has built it. */
 	readonly finishes: () => FinishAuthoring | null;
+	/** A click that painted one subject: select it and open that Finish (U4). */
+	readonly onPaintedOne?: (target: StagePaintCandidate) => void;
 };
 
 export function createStageShellState(input: StageShellStateInput) {
@@ -389,7 +391,8 @@ export function createStageShellState(input: StageShellStateInput) {
 				setSurfaceScope: (scope) => { paintScope = scope; },
 				activeLabel: () => input.finishes()?.activeLabel() ?? 'Finish',
 				wornLabel: (target) => input.finishes()?.wornLabel(target) ?? null,
-				coatReading: (target) => input.finishes()?.coatReading(target) ?? null
+				coatReading: (target) => input.finishes()?.coatReading(target) ?? null,
+				onPaintedOne: (target) => input.onPaintedOne?.(target)
 			},
 			() => refreshHostTools()
 		);

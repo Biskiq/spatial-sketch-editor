@@ -25,7 +25,7 @@
 	} from './object-marks';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import type { SceneEntity } from '@portfolio/project-model';
-	import SceneFinishRow from './SceneFinishRow.svelte';
+	import FinishCardSection, { type FinishCardPart } from '$lib/authoring/look/FinishCardSection.svelte';
 
 	let {
 		services,
@@ -52,6 +52,13 @@
 	 */
 	let controller = $state<SceneObjectCardController | null>(null);
 	let activeEntityId = $state<string | null>(null);
+	/** The object's one Finish part (U4); lights and Artwork carry none. */
+	const finishParts = $derived.by((): readonly FinishCardPart[] => {
+		const id = activeEntityId;
+		if (id === null || entityKind === null || entityKind === 'light' || entityKind === 'artwork') return [];
+		const name = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === id)?.name ?? 'this object';
+		return [{ target: { kind: 'entity', entityId: id }, label: '', place: name }];
+	});
 
 	let values = $state<Record<SceneObjectCardFieldId, string>>({
 		'position-x': '',
@@ -253,7 +260,7 @@
 {/snippet}
 {#if controller !== null}
 	<div class="object-fields" data-scene-object-card-fields aria-label="Scene object fields">
-		<SceneFinishRow {services} entityId={activeEntityId} />
+		<FinishCardSection {services} parts={finishParts} subjectLabel={finishParts[0]?.place ?? 'Object'} />
 		<fieldset disabled={busy}>
 			{#each sizeIds as id (id)}{@render fieldRow(id)}{/each}
 		</fieldset>

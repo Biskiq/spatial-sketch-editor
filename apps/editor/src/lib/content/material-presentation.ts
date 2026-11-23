@@ -17,6 +17,11 @@
  */
 import type { MaterialId } from '$lib/types/materials';
 import type { SampleTileFraming } from '$lib/render/materials/sample-tile';
+import {
+	DEFAULT_SHEEN_TARGETS,
+	type FinishTreatmentFacts,
+	type SheenTargets
+} from '@portfolio/project-model/scene-planning';
 
 const frame = (windowMeters: number, cx = 0.5, cy = 0.5): SampleTileFraming => ({
 	windowMeters,
@@ -153,4 +158,68 @@ export function groupByMaterialFamily<T extends { readonly id: MaterialId }>(
 		entries: entries.filter((entry) => (materialFamilyOf(entry.id) ?? 'other') === family.id)
 	}));
 	return groups.filter((group) => group.entries.length > 0);
+}
+
+/**
+ * D6 sheen facts (T2.S8 U4). The scanned mean of each curated entry's roughness
+ * image, from F's qualified catalogue evidence
+ * (`docs/roadmap/t2-look-atmosphere/s8-professional-material-foundation/evidence/s8-f-catalogue.json`,
+ * `sets[].measurements.qualified.roughnessMean`), keyed by catalogue id: entries
+ * that share an image set share its mean. An entry without a mean (legacy
+ * images, imported Finishes) reads as approximate on the Card.
+ */
+export const materialRoughnessMean: Readonly<Partial<Record<MaterialId, number>>> = {
+	'wood-oak-veneer': 0.7334,
+	'wood-walnut-veneer': 0.6458,
+	'wood-oak-planks': 0.4715,
+	'wood-herringbone-parquet': 0.0981,
+	'stone-travertine': 0.0371,
+	'stone-terrazzo': 0.2766,
+	'masonry-brick-red': 0.5317,
+	'plaster-painted': 0.9188,
+	'concrete-smooth': 0.4947,
+	'concrete-polished': 0.4947,
+	'tile-ceramic-white': 0.0537,
+	'metal-stainless-satin': 0.4083,
+	'metal-brass-satin': 0.4083,
+	'metal-copper-satin': 0.4083,
+	'metal-gold-satin': 0.4083,
+	'metal-stainless-brushed': 0.4698,
+	'metal-aluminium-brushed': 0.4698,
+	'textile-linen': 0.6593,
+	'textile-carpet-loop': 0.6481,
+	'leather-cognac': 0.6171,
+	'synthetic-plastic-matte': 0.4007
+};
+
+/** D6: the sheen targets on effective roughness, one row per family. */
+export const sheenTargetsByFamily: Readonly<Record<MaterialFamilyId, SheenTargets>> = {
+	wood: DEFAULT_SHEEN_TARGETS,
+	stone: DEFAULT_SHEEN_TARGETS,
+	masonry: DEFAULT_SHEEN_TARGETS,
+	'plaster-concrete': DEFAULT_SHEEN_TARGETS,
+	'tile-ceramic': DEFAULT_SHEEN_TARGETS,
+	metal: DEFAULT_SHEEN_TARGETS,
+	textile: DEFAULT_SHEEN_TARGETS,
+	leather: DEFAULT_SHEEN_TARGETS,
+	'synthetic-paper': DEFAULT_SHEEN_TARGETS
+};
+
+/** Families whose colour reads as a stain by default: grain and pattern stay. */
+const stainFamilies: ReadonlySet<MaterialFamilyId> = new Set(['wood', 'stone', 'masonry', 'leather', 'textile']);
+
+/** The presentation facts the Finish treatment words read (labels come from the catalogue). */
+export function materialTreatmentFacts(labelForMaterial: (id: MaterialId) => string): FinishTreatmentFacts {
+	return {
+		labelForMaterial,
+		stainsByDefault: (id) => {
+			const family = materialFamilyOf(id);
+			return family !== null && stainFamilies.has(family);
+		},
+		roughnessMeanOf: (id) => materialRoughnessMean[id],
+		sheenTargetsOf: (id) => {
+			const family = materialFamilyOf(id);
+			return family === null ? DEFAULT_SHEEN_TARGETS : sheenTargetsByFamily[family];
+		}
+	};
 }

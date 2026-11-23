@@ -777,6 +777,38 @@ describe('T2.S8 U2 — Paint strokes', () => {
 		expect(assignSurface.mock.calls[0]![0]).toHaveLength(1);
 	});
 
+	it('U4: a click that paints one subject hands it to the Card; a drag and a Space paint do not', async () => {
+		const { facade } = await mount();
+		const { options } = paintOptions();
+		const painted: (string | null)[] = [];
+		const painter = createStagePainter(facade, { ...options, onPaintedOne: (target) => painted.push(target.entityId) });
+		const evaluationId = facade.evaluationId()!;
+		const at = css(facade, [2, 0, 2]);
+		painter.down({ css: at, evaluationId });
+		await painter.up({ css: at, evaluationId });
+		expect(painted).toEqual([PRIMITIVE.id]);
+
+		painter.down({ css: at, evaluationId });
+		painter.move({ css: css(facade, FORM_AT), evaluationId });
+		await painter.up({ css: css(facade, FORM_AT), evaluationId });
+		expect(painted).toEqual([PRIMITIVE.id]);
+	});
+
+	it('U4: a Space paint never moves the selection to the Card', async () => {
+		const { facade } = await mount('plan', [LIGHT], undefined, false, true);
+		const { options } = paintOptions();
+		const painted: unknown[] = [];
+		const painter = createStagePainter(facade, { ...options, onPaintedOne: (target) => painted.push(target.surface) });
+		const evaluationId = facade.evaluationId()!;
+		const wall = css(facade, [3, 0, 0.06]);
+		painter.down({ css: wall, evaluationId, shift: true });
+		await painter.up({ css: wall, evaluationId, shift: true });
+		expect(painted).toEqual([]);
+		painter.down({ css: wall, evaluationId });
+		await painter.up({ css: wall, evaluationId });
+		expect(painted).toHaveLength(1);
+	});
+
 	it('does not paint when Paint has no pick', async () => {
 		const { facade } = await mount();
 		const { assign, options } = paintOptions();

@@ -24,11 +24,17 @@ import {
 	isFinishPaintable,
 	isPristineInstance,
 	materialInstanceById,
-	nextFinishName,
 	type FinishEntity,
 	type FinishScene
 } from './finish-model';
 import { sameSceneValues } from './record-scope';
+import {
+	finishColourLabel,
+	finishMaterialLabel,
+	generatedFinishName,
+	uniqueFinishName,
+	type FinishTreatmentFacts
+} from './finish-treatment';
 
 /**
  * The catalogue an unassigned Layout surface coats over: the one the Layout
@@ -160,15 +166,11 @@ export function coatMaterialLabel(
 	source: Pick<CoatSource, 'base' | 'name'>,
 	labelForMaterial: (id: MaterialId) => string
 ): string {
-	if ('catalogue' in source.base) return labelForMaterial(source.base.catalogue as MaterialId);
-	const name = source.name ?? 'Material';
-	const cut = name.indexOf(' · ');
-	return cut > 0 ? name.slice(0, cut) : name;
+	return finishMaterialLabel(source, labelForMaterial);
 }
 
 export function coatColourLabel(scene: Pick<FinishScene, 'palette'>, colour: SceneColor): string | null {
-	if (typeof colour === 'string') return colour.toUpperCase();
-	return scene.palette?.find((slot) => slot.id === colour.slot)?.name ?? null;
+	return finishColourLabel(scene.palette, colour);
 }
 
 export type CoatAssignment =
@@ -198,6 +200,8 @@ export function planColourCoats(
 		readonly targets: readonly CoatTarget[];
 		readonly materialRecipes?: ReadonlyMap<string, Recipe>;
 		readonly labelForMaterial?: (id: MaterialId) => string;
+		/** U4 naming facts (sheen step words); labels come from `labelForMaterial`. */
+		readonly facts?: FinishTreatmentFacts;
 	}
 ): ColourCoatPlan {
 	const recipes = input.materialRecipes ?? new Map<string, Recipe>();
@@ -226,9 +230,18 @@ export function planColourCoats(
 			assignments.push({ kind: 'create', index: pending });
 			continue;
 		}
-		const label = `${coatMaterialLabel(source, input.labelForMaterial ?? ((id) => id))} · ${colourLabel}`;
+		// The U4 generated name (`<material> · <colour>[ · <sheen>]`), so a coat
+		// keeps regenerating with its treatment until it is renamed.
+		const label = generatedFinishName(
+			{ ...recipe, name: source.name },
+			{
+				recipes,
+				...(scene.palette === undefined ? {} : { palette: scene.palette }),
+				facts: { ...input.facts, labelForMaterial: input.labelForMaterial ?? ((id) => id) }
+			}
+		);
 		const taken = [...scene.materials, ...creates.map((entry) => ({ name: entry.name }) as SceneMaterialInstance)];
-		const name = taken.some((material) => material.name === label) ? nextFinishName(label, taken) : label;
+		const name = uniqueFinishName(label, taken);
 		creates.push({ ...recipe, name });
 		assignments.push({ kind: 'create', index: creates.length - 1 });
 	}

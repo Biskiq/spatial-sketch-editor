@@ -31,6 +31,7 @@
 	} from '$lib/layout/wall-unfold';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 	import LayoutOpeningRepeat from './LayoutOpeningRepeat.svelte';
+	import FinishCardSection, { type FinishCardPart } from '$lib/authoring/look/FinishCardSection.svelte';
 
 	let {
 		services,
@@ -72,12 +73,18 @@
 	// The writer follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
 	// editing the subject it was opened on.
+	// The Stage's selection and snapshot are plain reads: the Card stays mounted
+	// from one Wall to the next, so it re-reads them when the Stage says so.
+	let revision = $state(0);
+	$effect(() => services.stage.onAdaptersChanged?.(() => (revision += 1)));
 	const selectionKey = $derived.by(() => {
+		void revision;
 		const selection = services.stage.selection();
 		return selection === null ? null : `${selection.sourceKind}:${selection.sourceId}`;
 	});
 	/** The compiled Wall a selected Wall or Opening names, for entry and names. */
 	const selectedHostWall = $derived.by(() => {
+		void revision;
 		const stage = services.stage;
 		// Pure Card controller tests mount a narrow fake stage; a missing read
 		// simply means there is no compiled Wall to offer unfold controls for.
@@ -117,15 +124,18 @@
 	});
 	const sessionShown = $derived(sessionWall !== null && selectedHostWall !== null);
 	const entryShown = $derived.by(() => {
+		void revision;
 		const stage = services.stage;
 		if (wallUnfold.state !== null || selectedHostWall === null) return false;
 		return typeof stage.selection === 'function' && stage.selection()?.sourceKind === 'wall';
 	});
 	const sessionContextual = $derived.by(() => {
+		void revision;
 		const stage = services.stage;
 		return typeof stage.selection === 'function' && stage.selection()?.sourceKind === 'opening';
 	});
 	const layoutDocument = $derived.by(() => {
+		void revision;
 		const stage = services.stage;
 		if (typeof stage.snapshot !== 'function') return null;
 		try {
@@ -242,6 +252,35 @@
 	const instrument = $derived.by(() => {
 		void selectionKey;
 		return createCardFieldsInstrument(services);
+	});
+	/**
+	 * A Wall's two sides, each its own Finish user (U4). A side that faces a Room
+	 * is named for it: Inside/Outside for a perimeter Wall, the Room's name on a
+	 * dividing Wall; a free Wall's sides are Left and Right.
+	 */
+	const wallFinishParts = $derived.by((): readonly FinishCardPart[] => {
+		if (instrument?.subject.kind !== 'wall' || layoutDocument === null) return [];
+		const wallId = instrument.subject.id;
+		const wallLabel = layoutLabels?.walls.get(wallId)?.label ?? 'Wall';
+		const facing = new Map<'left' | 'right', string>();
+		for (const room of layoutDocument.rooms) {
+			for (const boundary of room.boundary) {
+				if (boundary.wallId !== wallId) continue;
+				const side = boundary.direction === 'forward' ? 'left' : 'right';
+				if (!facing.has(side)) facing.set(side, layoutLabels?.rooms.get(room.id)?.label ?? 'Room');
+			}
+		}
+		const nameOf = (side: 'left' | 'right'): string => {
+			if (facing.size === 0) return side === 'left' ? 'Left side' : 'Right side';
+			if (facing.size === 2) return `Faces ${facing.get(side)}`;
+			return facing.has(side) ? 'Inside' : 'Outside';
+		};
+		const sides: ('left' | 'right')[] = facing.size === 1 && facing.has('right') ? ['right', 'left'] : ['left', 'right'];
+		return sides.map((side) => ({
+			target: { kind: 'surface', surface: { kind: 'wall-side', wallId, side } },
+			label: nameOf(side),
+			place: `${wallLabel} · ${nameOf(side)}`
+		}));
 	});
 	const editable = $derived(fields.filter((field) => field.id !== 'name'));
 	const ordinaryFields = $derived(
@@ -455,6 +494,9 @@
 		     new tool: count, spacing and the planner's proposal in one place. -->
 		{#if instrument.subject.kind === 'opening'}
 			<LayoutOpeningRepeat {services} />
+		{/if}
+		{#if wallFinishParts.length > 0}
+			<FinishCardSection {services} parts={wallFinishParts} subjectLabel={layoutLabels?.walls.get(instrument.subject.id)?.label ?? 'Wall'} />
 		{/if}
 		<!-- The foot icon enters; the Card owns the whole Unroll session. -->
 		{#if entryShown && selectedHostWall !== null}

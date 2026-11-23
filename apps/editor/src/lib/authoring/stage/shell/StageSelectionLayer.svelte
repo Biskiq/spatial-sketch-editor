@@ -49,7 +49,7 @@
 	import { selectionObjectsOf } from './stage-selection-source';
 	import { STAGE_PAINT } from './stage-paint';
 	import { renderIdentityOf } from '$lib/render/render-identity';
-	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
+	import { sameReference, sameSubject, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
 	import {
 		contourPolylines,
@@ -64,6 +64,7 @@
 		selection,
 		hover,
 		hoverTone = 'hover',
+		proposals = [],
 		geometry,
 		scenePick,
 		width = 1,
@@ -77,6 +78,11 @@
 		hover: StageSelectionEntry | null;
 		/** The armed Eraser's winner reads as red dashes, never gold. */
 		hoverTone?: 'hover' | 'erase' | 'paint';
+		/**
+		 * The other users a Finish Card edit reaches while *All* is chosen (U4):
+		 * cobalt dashes, the same proposal ink Paint uses. Never the selection itself.
+		 */
+		proposals?: readonly StageSelectionEntry[];
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;
 		/**
@@ -428,6 +434,10 @@
 		fades.length = 0;
 		releaseAll();
 		apply(selection, 'selection');
+		for (const proposal of proposals) {
+			if (selection !== null && sameSubject(proposal.reference, selection.reference)) continue;
+			apply(proposal, 'paint');
+		}
 		// Hover is subordinate and never drawn for the selected subject itself. The
 		// full canonical reference is the identity, not just its id.
 		// The Eraser's winner is drawn even when it is the selection: it says what the
@@ -450,6 +460,7 @@
 		selection;
 		hover;
 		hoverTone;
+		proposals;
 		geometry;
 		width;
 		height;
