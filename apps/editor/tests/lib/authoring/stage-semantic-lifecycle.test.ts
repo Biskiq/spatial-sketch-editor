@@ -70,17 +70,20 @@ describe('Stage accepted read and ordered semantic selection', () => {
 		expect(stage.selectionState().ordered[0]?.reference).toEqual(canonical);
 		expect(stage.selectionState().primary).toEqual(canonical);
 	});
-	it('requalifies Scene through accepted edit and history, reports absent correspondence, and clears on replacement', async () => {
+	it('requalifies Scene through accepted edit and history, keeps an unrelated subject, and clears on replacement', async () => {
 		const { stage, session, scene, edit, host, objectId, snapshot } = await mount();
 		const layout = layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId);
 		stage.setSelection({ ordered: [{ reference: layout }, { reference: scene() }], primary: scene() });
+		const [layoutEntry] = stage.selectionState().ordered;
+		// A Scene edit leaves the Layout unit byte-identical: an unrelated edit needs no
+		// identity map (F.1), so the Layout subject survives as itself.
 		const edited = await edit();
-		expect(edited).toMatchObject({ kind: 'installed', selectionClearedReason: null, install: { selectionRemovals: [{ reference: layout, reason: 'no-correspondence' }] } });
-		expect(stage.selectionState()).toEqual({ ordered: [{ reference: scene() }], primary: scene() });
+		expect(edited).toMatchObject({ kind: 'installed', selectionClearedReason: null, install: { selectionRemovals: [] } });
+		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: scene() });
 		expect((await host.undo()).kind).toBe('installed');
-		expect(stage.selectionState()).toEqual({ ordered: [{ reference: scene() }], primary: scene() });
+		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: scene() });
 		expect((await host.redo()).kind).toBe('installed');
-		expect(stage.selectionState()).toEqual({ ordered: [{ reference: scene() }], primary: scene() });
+		expect(stage.selectionState()).toEqual({ ordered: [layoutEntry, { reference: scene() }], primary: scene() });
 		const stale = stage.selectionState();
 		session.replace(snapshot);
 		expect(stage.setSelection(stale)).toMatchObject({ kind: 'refused', code: 'stale-session' });

@@ -140,7 +140,7 @@ export type EntryRequalification = { readonly kind: 'requalified'; readonly entr
  */
 export function requalifySelectionEntry(entry: StageSelectionEntry, correspondence: readonly CorrespondenceEntry[], next: StageReadSnapshot): EntryRequalification {
 	const mapping = correspondence.find((candidate) => candidate.before !== null && sameSubject(candidate.before, entry.reference));
-	if (!mapping) return { kind: 'cleared', reason: 'no-correspondence' };
+	if (!mapping) return unrelatedEntry(entry, next);
 	const after = mapping.after;
 	if (!after || after.domain !== entry.reference.domain || after.subject.kind !== entry.reference.subject.kind) return { kind: 'cleared', reason: 'subject-retired' };
 	// The reference names the owning unit's content revision. An F.2 envelope has
@@ -168,5 +168,23 @@ export function requalifySelectionEntry(entry: StageSelectionEntry, corresponden
 			representation.subRef?.kind === 'interval' && reference.subject.id !== entry.reference.subject.id) return { kind: 'cleared', reason: 'subject-retired' };
 		representation = { ...representation, sourceId: reference.subject.id, generationId: next.compileGeneration };
 	}
+	return { kind: 'requalified', entry: { reference, ...(representation ? { representation } : {}) } };
+}
+
+/**
+ * An unrelated edit needs no identity map (F.1): a subject whose owning unit the
+ * change left byte-identical still resolves at its stored address, so it survives
+ * as itself. A Scene-only Finish write keeps a selected Wall or Room this way. The
+ * owning unit's revision, not a nearby or same-named subject, is the evidence; an
+ * owner that changed its unit without publishing correspondence still clears.
+ */
+function unrelatedEntry(entry: StageSelectionEntry, next: StageReadSnapshot): EntryRequalification {
+	const revision = entry.reference.revision;
+	const current = next.domain.unitRevisions[entry.reference.domain as UnitDomain];
+	if (revision.kind !== 'exact' || current === undefined || revision.contentRevision !== current) return { kind: 'cleared', reason: 'no-correspondence' };
+	const resolved = resolveReference(entry.reference, next.domain.references);
+	if (resolved.kind !== 'resolved') return { kind: 'cleared', reason: 'no-correspondence' };
+	const reference = canonicalReference(resolved.subject);
+	const representation = entry.representation ? { ...entry.representation, generationId: next.compileGeneration } : undefined;
 	return { kind: 'requalified', entry: { reference, ...(representation ? { representation } : {}) } };
 }

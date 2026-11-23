@@ -375,9 +375,10 @@
 		selection: () => selection,
 		finishes: () => finishes,
 		onPaintedOne: (target) => {
-			// A Paint click selects what it painted and opens that Finish; Paint stays armed.
-			const hit = target.hit.sourceKind === 'room-lid' ? { ...target.hit, sourceKind: 'room-floor' as const } : target.hit;
-			commands.selectHit(hit);
+			// A Paint click selects what it painted and opens that Finish; Paint stays
+			// armed. The stroke's hit names the pre-write revision, so the subject is
+			// selected by id against the source the write just installed.
+			commands.selectSource(target.entityId ?? target.hit.sourceId);
 			const surface = target.assignmentSurfaces[0] ?? target.surface;
 			if (target.entityId !== null) finishes?.card.requestOpen({ kind: 'entity', entityId: target.entityId });
 			else if (surface !== null) finishes?.card.requestOpen({ kind: 'surface', surface });

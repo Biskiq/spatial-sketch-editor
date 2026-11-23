@@ -187,7 +187,12 @@ export function createStagePainter(
 	let press: Press | null = null;
 	let source = facade.snapshot();
 	let inFlight = false;
-	let uiGeneration = 0;
+	/**
+	 * Bumped only by the creator's own interruptions (cancel, clear, a reach
+	 * change). A stroke's own write changes the source, so it must not count as
+	 * one: the stroke still reports its result and opens what it painted.
+	 */
+	let strokeGeneration = 0;
 	let scope: PaintRadius = options.surfaceScope?.() ?? 'surface';
 
 	function syncSource(): void {
@@ -197,7 +202,6 @@ export function createStagePainter(
 		endPress();
 		current = null;
 		notice = null;
-		uiGeneration += 1;
 	}
 
 	/**
@@ -371,14 +375,14 @@ export function createStagePainter(
 			notice = { kind: 'already', message: `Already ${options.activeLabel()}`, css };
 			return;
 		}
-		const generation = uiGeneration;
+		const generation = strokeGeneration;
 		inFlight = true;
 		try {
 			const accepted = surfaceStroke
 				? await options.assignSurface(assignedSurfaces)
 				: await options.assign(entityIds);
 			syncSource();
-			if (generation !== uiGeneration) return;
+			if (generation !== strokeGeneration) return;
 			const count = surfaceStroke ? assignedSurfaces.length : entityIds.length;
 			if (accepted && ending.targets.length === 1 && ending.scope !== 'space' && (!surfaceStroke || assignedSurfaces.length === 1)) {
 				options.onPaintedOne?.(ending.targets[0]!);
@@ -391,7 +395,7 @@ export function createStagePainter(
 					}
 				: null;
 		} catch {
-			if (generation === uiGeneration) {
+			if (generation === strokeGeneration) {
 				notice = { kind: 'refused', message: 'The paint could not finish. Try again.', css };
 			}
 		} finally {
@@ -500,7 +504,7 @@ export function createStagePainter(
 			endPress();
 			current = null;
 			notice = null;
-			uiGeneration += 1;
+			strokeGeneration += 1;
 		},
 		candidate() {
 			syncSource();
@@ -518,7 +522,7 @@ export function createStagePainter(
 			};
 		},
 		clear() {
-			uiGeneration += 1;
+			strokeGeneration += 1;
 			const had = notice !== null || press !== null || current !== null;
 			endPress();
 			notice = null;
@@ -537,7 +541,7 @@ export function createStagePainter(
 			options.setSurfaceScope?.(next);
 			current = null;
 			notice = null;
-			uiGeneration += 1;
+			strokeGeneration += 1;
 			onChange();
 		}
 	};

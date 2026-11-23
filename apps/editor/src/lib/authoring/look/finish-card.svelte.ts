@@ -283,6 +283,8 @@ export function createFinishCard(host: FinishCardHost) {
 	let openTarget = $state.raw<FinishCardTarget | null>(null);
 	/** A surface the host asked the Card to open (a Paint click), until the Card shows it. */
 	let requested = $state<string | null>(null);
+	/** The surface whose More disclosure is open; it survives an install's remount. */
+	let moreOpenFor = $state<string | null>(null);
 	let choice = $state<FinishReachChoice | null>(null);
 	let refusal = $state.raw<{ readonly targetKey: string; readonly message: string } | null>(null);
 	let preview = $state.raw<FinishInstancePreview | null>(null);
@@ -590,6 +592,15 @@ export function createFinishCard(host: FinishCardHost) {
 
 	// ---------------------------------------------------------------- writes
 
+	/**
+	 * An install rebinds the adapters and remounts the Card, which forgets which
+	 * surface was open. The surface the creator just edited asks to stay open; the
+	 * request is consumed only by a Card that lists it, like a Paint click's.
+	 */
+	function reopenAfterInstall(targetKey: string): void {
+		requested = targetKey;
+	}
+
 	async function write(
 		target: FinishCardTarget,
 		build: (inspected: Inspected) => { readonly edits: readonly FinishPatchEdit[]; readonly base?: { readonly catalogue: MaterialId } } | null
@@ -623,6 +634,7 @@ export function createFinishCard(host: FinishCardHost) {
 			});
 			if (outcome.kind === 'installed') {
 				refusal = null;
+				reopenAfterInstall(found.targetKey);
 				host.onAccepted?.(found.finishKey);
 				return true;
 			}
@@ -788,6 +800,7 @@ export function createFinishCard(host: FinishCardHost) {
 		});
 		if (outcome.kind === 'installed') {
 			refusal = null;
+			reopenAfterInstall(found.targetKey);
 			return true;
 		}
 		if (outcome.kind === 'refused' && outcome.code !== 'no-change' && outcome.reason !== 'no-change') {
@@ -886,6 +899,12 @@ export function createFinishCard(host: FinishCardHost) {
 			return openTarget;
 		},
 		/** The host asks the Card to open this user once it lists it. */
+		get moreOpenFor() {
+			return moreOpenFor;
+		},
+		setMoreOpen(targetKey: string | null): void {
+			moreOpenFor = targetKey;
+		},
 		requestOpen(target: FinishCardTarget): void {
 			requested = finishCardTargetKey(target);
 		},

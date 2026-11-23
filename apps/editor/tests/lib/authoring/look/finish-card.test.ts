@@ -11,7 +11,7 @@ import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-mode
 import { createEmptyWallFirstLayoutDocument, type LayoutSurfaceRef } from '@portfolio/layout-core';
 import { SCENE_UNIT_FORMAT_VERSION, type ScenePaletteSlot } from '@portfolio/project-model/units';
 import { createFinishPlanners } from '@portfolio/project-model/scene-planning';
-import { createFinishCard, finishWritePlan, type FinishCardTarget } from '$lib/authoring/look/finish-card.svelte';
+import { createFinishCard, finishCardTargetKey, finishWritePlan, type FinishCardTarget } from '$lib/authoring/look/finish-card.svelte';
 import { materialTreatmentFacts } from '$lib/content/material-presentation';
 import { getMaterial, materialById } from '$lib/content/materials';
 import type { MaterialId } from '$lib/types/materials';
@@ -211,6 +211,21 @@ describe('T2.S8 U4 — Finish Card adapter', () => {
 		if (view?.kind !== 'finish') throw new Error('expected a Finish');
 		expect(view.reach.choice).toBe('all');
 		expect(fx.scene().materials).toEqual([shared]);
+	});
+
+	it('asks the edited surface to stay open across the install, and keeps its More open', async () => {
+		const fx = await harness({ entities: [box('a')] });
+		const key = finishCardTargetKey(entity('a'));
+		fx.card.setMoreOpen(key);
+		expect(fx.card.requested).toBeNull();
+		expect(await fx.card.setSheen(entity('a'), 'satin')).toBe(true);
+		expect(fx.card.requested).toBe(key);
+		expect(fx.card.moreOpenFor).toBe(key);
+		fx.card.clearRequest();
+		// A refused write installs nothing, so nothing asks to reopen.
+		fx.race.next = { code: 'stale-revision', message: 'The project changed. Try again.' };
+		expect(await fx.card.setSheen(entity('a'), 'gloss')).toBe(false);
+		expect(fx.card.requested).toBeNull();
 	});
 
 	it('shows any other refusal in place', async () => {

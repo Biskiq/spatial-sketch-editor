@@ -56,7 +56,6 @@
 	let swapOpen = $state(false);
 	let renaming = $state(false);
 	let renameDraft = $state('');
-	let moreOpen = $state(false);
 	let menuOpen = $state(false);
 	let imageInput = $state<HTMLInputElement>();
 	let lastPartsKey = '';
@@ -64,6 +63,9 @@
 	$effect(() => services.stage.onAdaptersChanged(() => (revision += 1)));
 
 	const card = $derived(services.finishes?.current?.card ?? null);
+	// More stays open across the remount an install causes: the adapter keeps
+	// which surface's More is open, so another subject starts closed.
+	const moreOpen = $derived(card !== null && openKey !== null && card.moreOpenFor === openKey);
 	const partsKey = $derived(parts.map((part) => finishCardTargetKey(part.target)).join('|'));
 
 	// A new subject starts on its surface list (or its one surface).
@@ -125,7 +127,7 @@
 		openKey = null;
 		swapOpen = false;
 		renaming = false;
-		moreOpen = false;
+		card?.setMoreOpen(null);
 	}
 
 	/** Esc ladder: the innermost Card-local level closes first; deselect is the Card's. */
@@ -142,6 +144,18 @@
 			event.stopPropagation();
 			event.preventDefault();
 		}
+	}
+
+	/**
+	 * A cancelled drag writes nothing, and the range input is uncontrolled while
+	 * the Finish's value stays the same: put the thumb back on the written value.
+	 */
+	function cancelRoughness(input: HTMLInputElement): void {
+		card?.cancel();
+		restoreRoughness(input);
+	}
+	function restoreRoughness(input: HTMLInputElement): void {
+		if (view?.kind === 'finish') input.value = String(view.more.roughness);
 	}
 
 	function startRename(): void {
@@ -390,7 +404,7 @@
 					</div>
 				{/if}
 
-				<button type="button" class="disclosure" aria-expanded={moreOpen} data-finish-more onclick={() => (moreOpen = !moreOpen)}>
+				<button type="button" class="disclosure" aria-expanded={moreOpen} data-finish-more onclick={() => card.setMoreOpen(moreOpen ? null : openKey)}>
 					<span aria-hidden="true">{moreOpen ? '▾' : '▸'}</span> More
 				</button>
 				{#if moreOpen}
@@ -406,8 +420,12 @@
 								data-finish-roughness
 								oninput={(event) => card.previewRoughness(openPart.target, Number(event.currentTarget.value))}
 								onchange={(event) => void card.setRoughness(openPart.target, Number(event.currentTarget.value))}
-								onpointercancel={() => card.cancel()}
-								onblur={() => card.cancel()}
+								onpointercancel={(event) => cancelRoughness(event.currentTarget)}
+								onblur={(event) => cancelRoughness(event.currentTarget)}
+								onkeydown={(event) => {
+									// The Card's Esc ladder cancels the gesture; this only resets the thumb.
+									if (event.key === 'Escape') restoreRoughness(event.currentTarget);
+								}}
 							/>
 							<span class="num">{view.more.roughness.toFixed(2)}</span>
 						</label>
@@ -656,9 +674,10 @@
 	.seg button:last-child {
 		border-right: 0;
 	}
+	/* A light surface: the Paint tray's pressed segment, not the dark toolbar's. */
 	.seg button[aria-pressed='true'] {
-		background: var(--shell-mode-active-bg);
-		color: var(--shell-mode-active-ink);
+		background: var(--shell-forest);
+		color: var(--shell-white);
 	}
 	.seg button:disabled {
 		opacity: 0.45;
