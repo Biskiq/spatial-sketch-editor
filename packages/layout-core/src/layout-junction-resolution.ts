@@ -189,14 +189,13 @@ export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctio
 }
 
 /** Can the stored derivative anchors represent antiparallel rays at their shared Junction? */
-function tangentAnchorsAllowContinuation(point: LayoutVec2, a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
-	if (!a.tangentAnchor || !b.tangentAnchor || dot(a.tangentOut, b.tangentOut) >= 0) return false;
+function tangentAnchorsAllowContinuation(point: LayoutVec2, [a, b]: readonly [LayoutVec2, LayoutVec2]): boolean {
 	const ox = ivEncloseWorld(point[0]);
 	const oz = ivEncloseWorld(point[1]);
-	const ax = ivSub(ivEncloseWorld(a.tangentAnchor[0]), ox);
-	const az = ivSub(ivEncloseWorld(a.tangentAnchor[1]), oz);
-	const bx = ivSub(ivEncloseWorld(b.tangentAnchor[0]), ox);
-	const bz = ivSub(ivEncloseWorld(b.tangentAnchor[1]), oz);
+	const ax = ivSub(ivEncloseWorld(a[0]), ox);
+	const az = ivSub(ivEncloseWorld(a[1]), oz);
+	const bx = ivSub(ivEncloseWorld(b[0]), ox);
+	const bz = ivSub(ivEncloseWorld(b[1]), oz);
 	const determinant = ivSub(ivMul(ax, bz), ivMul(az, bx));
 	return determinant.lo <= 0 && determinant.hi >= 0 && ivAdd(ivMul(ax, bx), ivMul(az, bz)).hi < 0;
 }
@@ -296,7 +295,7 @@ export function resolveJunctionGeometry(
 	junctionId: string,
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
-	options: { miterLimit?: number } = {}
+	options: { miterLimit?: number; tangentAnchors?: readonly [LayoutVec2, LayoutVec2] } = {}
 ): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[]; roundedContinuation?: true } {
 	const miterLimit = options.miterLimit ?? JUNCTION_MITER_LIMIT;
 	const issues: LayoutGeometryIssue[] = [];
@@ -321,7 +320,9 @@ export function resolveJunctionGeometry(
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
 		const exactContinuation = isTangentContinuation(a, b);
-		if (exactContinuation || tangentAnchorsAllowContinuation(point, a, b)) {
+		const roundedContinuation = !exactContinuation && options.tangentAnchors &&
+			dot(a.tangentOut, b.tangentOut) < 0 && tangentAnchorsAllowContinuation(point, options.tangentAnchors);
+		if (exactContinuation || roundedContinuation) {
 			// Straight continuation: suppress the common interface. The difference
 			// surfaces (thickness / height / Opening-profile) are solved **here**, per
 			// vertical band, and attached to the leg that owns the material — the
@@ -337,7 +338,7 @@ export function resolveJunctionGeometry(
 			return {
 				resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) },
 				issues,
-				...(!exactContinuation ? { roundedContinuation: true } : {})
+				...(roundedContinuation ? { roundedContinuation: true } : {})
 			};
 		}
 		// Canonical roles: prefer the departing (start) leg as `cur`.

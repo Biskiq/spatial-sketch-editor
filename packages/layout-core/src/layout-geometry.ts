@@ -51,6 +51,7 @@ import { junctionSeamFailureOf } from './layout-junction-clearance';
 import {
 	compiledJunctionId,
 	endpointSolidBands,
+	isTangentContinuation,
 	JUNCTION_BAND_EPSILON,
 	resolveJunctionGeometry
 } from './layout-junction-resolution';
@@ -924,8 +925,8 @@ function compileWallFirstWithPhysicalWalls(
 			compiled.samples.length < 2
 				? {}
 				: {
-						...(wall.startJunctionId && pointById.has(wall.startJunctionId) ? { start: junctionLeg(compiled, 'start', wall.centerline) } : {}),
-						...(wall.endJunctionId && pointById.has(wall.endJunctionId) ? { end: junctionLeg(compiled, 'end', wall.centerline) } : {})
+						...(wall.startJunctionId && pointById.has(wall.startJunctionId) ? { start: junctionLeg(compiled, 'start') } : {}),
+						...(wall.endJunctionId && pointById.has(wall.endJunctionId) ? { end: junctionLeg(compiled, 'end') } : {})
 					}
 		);
 	}
@@ -1160,12 +1161,11 @@ function compileWallFirstJunctions(
 			if (retainedLegs.end && endId && pointById.has(endId)) pushLeg(endId, retainedLegs.end);
 			continue;
 		}
-		const centerline = wallById.get(wall.wallId)?.centerline;
 		if (wall.startJunctionId && pointById.has(wall.startJunctionId)) {
-			pushLeg(wall.startJunctionId, junctionLeg(wall, 'start', centerline));
+			pushLeg(wall.startJunctionId, junctionLeg(wall, 'start'));
 		}
 		if (wall.endJunctionId && pointById.has(wall.endJunctionId)) {
-			pushLeg(wall.endJunctionId, junctionLeg(wall, 'end', centerline));
+			pushLeg(wall.endJunctionId, junctionLeg(wall, 'end'));
 		}
 	}
 	const junctions: CompiledJunction[] = [];
@@ -1185,7 +1185,8 @@ function compileWallFirstJunctions(
 		// elevation (its `bounds3` vertical extent). All four are in hand here, so
 		// an unchanged set reuses the retained resolution (and its issues,
 		// replayed in the same order).
-		const junctionAuthored = [point, legs, document.floor.id, floorElevationOf(document)];
+		const tangentAnchors = junctionTangentAnchors(legs, wallById, pointById);
+		const junctionAuthored = [point, legs, document.floor.id, floorElevationOf(document), ...(tangentAnchors ?? [])];
 		if (reuse) reuse.counters.signatureVisits += 1;
 		const retainedJunction = reuse?.junctions.get(junctionId);
 		if (reuse && retainedJunction && sameAuthored(retainedJunction.authored, junctionAuthored)) {
@@ -1196,7 +1197,7 @@ function compileWallFirstJunctions(
 		}
 		if (reuse) reuse.counters.junctionsEvaluated += 1;
 		const junctionIssues: LayoutGeometryIssue[] = [];
-		const resolved = resolveJunctionGeometry(junctionId, point, legs);
+		const resolved = resolveJunctionGeometry(junctionId, point, legs, { tangentAnchors });
 		junctionIssues.push(...resolved.issues);
 		// Canonical seam acceptance. Validity is decided HERE, from the
 		// resolved geometry the renderers consume, so a mesh builder is never the
@@ -1252,8 +1253,32 @@ function compileWallFirstJunctions(
 	return junctions;
 }
 
+/** Resolve the source points that set a degree-two pair's derivatives. */
+function junctionTangentAnchors(
+	legs: readonly CompiledJunctionLeg[],
+	wallById: ReadonlyMap<string, LayoutWall>,
+	pointById: ReadonlyMap<string, LayoutVec2>
+): readonly [LayoutVec2, LayoutVec2] | undefined {
+	if (legs.length !== 2) return undefined;
+	const [a, b] = legs as readonly [CompiledJunctionLeg, CompiledJunctionLeg];
+	const [ax, az] = a.tangentOut;
+	const [bx, bz] = b.tangentOut;
+	if (ax * bx + az * bz >= 0 || isTangentContinuation(a, b)) return undefined;
+	const endpointAnchor = (leg: CompiledJunctionLeg): LayoutVec2 | undefined => {
+		const wall = wallById.get(leg.wallId);
+		if (!wall) return undefined;
+		if (wall.centerline.kind === 'line') {
+			return pointById.get(leg.end === 'start' ? wall.endJunctionId : wall.startJunctionId);
+		}
+		return leg.end === 'start' ? wall.centerline.spans[0]?.handleOut : wall.centerline.spans.at(-1)?.handleIn;
+	};
+	const anchorA = endpointAnchor(a);
+	const anchorB = endpointAnchor(b);
+	return anchorA && anchorB ? [[...anchorA], [...anchorB]] : undefined;
+}
+
 /** One compiled Junction leg: outward frame + endpoint solid/Opening facts. */
-function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end', centerline?: LayoutWall['centerline']): CompiledJunctionLeg {
+function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): CompiledJunctionLeg {
 	const first = wall.samples[0]!;
 	const last = wall.samples.at(-1)!;
 	const sign = end === 'start' ? 1 : -1;
@@ -1261,9 +1286,6 @@ function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end', centerlin
 	const normal = end === 'start' ? first.normal : last.normal;
 	const tangentOut: LayoutVec2 = [sign * tangent[0], sign * tangent[1]];
 	const normalOut: LayoutVec2 = [sign * normal[0], sign * normal[1]];
-	const anchor = centerline?.kind === 'cubic-chain'
-		? (end === 'start' ? centerline.spans[0]?.handleOut : centerline.spans.at(-1)?.handleIn)
-		: (end === 'start' ? last.point : first.point);
 	const atDistance = end === 'start' ? 0 : (last.distance ?? 0);
 	const length = last.distance ?? 0;
 	const endpointOpen =
@@ -1275,7 +1297,6 @@ function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end', centerlin
 		end,
 		tangentOut,
 		normalOut,
-		tangentAnchor: anchor && [anchor[0], anchor[1]],
 		outwardAngle: Math.atan2(tangentOut[1], tangentOut[0]),
 		thickness: wall.thickness,
 		halfThickness: wall.thickness / 2,
@@ -2880,10 +2901,10 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 				? {}
 				: {
 						...(wall.startJunctionId && pointById.has(wall.startJunctionId)
-							? { start: junctionLeg(baseCompiled, 'start', wall.centerline) }
+							? { start: junctionLeg(baseCompiled, 'start') }
 							: {}),
 						...(wall.endJunctionId && pointById.has(wall.endJunctionId)
-							? { end: junctionLeg(baseCompiled, 'end', wall.centerline) }
+							? { end: junctionLeg(baseCompiled, 'end') }
 							: {})
 					};
 		return {
@@ -2898,9 +2919,10 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		};
 	},
 
-	resolveJunction(document, junctionId, point, sortedLegs, reuse): ResolvedJunctionUnit {
+	resolveJunction(document, junctionId, point, sortedLegs, reuse, wallById, pointById): ResolvedJunctionUnit {
 		const floorElevation = floorElevationOf(document);
-		const junctionAuthored = [point, sortedLegs, document.floor.id, floorElevation];
+		const tangentAnchors = junctionTangentAnchors(sortedLegs, wallById, pointById);
+		const junctionAuthored = [point, sortedLegs, document.floor.id, floorElevation, ...(tangentAnchors ?? [])];
 		reuse.counters.signatureVisits += 1;
 		const retainedJunction = reuse.junctions.get(junctionId);
 		if (retainedJunction && sameAuthored(retainedJunction.authored, junctionAuthored)) {
@@ -2913,7 +2935,7 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		}
 		reuse.counters.junctionsEvaluated += 1;
 		const junctionIssues: LayoutGeometryIssue[] = [];
-		const resolved = resolveJunctionGeometry(junctionId, point, sortedLegs);
+		const resolved = resolveJunctionGeometry(junctionId, point, sortedLegs, { tangentAnchors });
 		junctionIssues.push(...resolved.issues);
 		const seam = junctionSeamFailureOf({
 			junctionId,

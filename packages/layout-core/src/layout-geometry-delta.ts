@@ -139,7 +139,9 @@ export type CanonicalDeltaBuilders = {
 		junctionId: string,
 		point: LayoutVec2,
 		sortedLegs: CompiledJunctionLeg[],
-		reuse: LayoutCompileReuse
+		reuse: LayoutCompileReuse,
+		wallById: ReadonlyMap<string, LayoutWall>,
+		pointById: ReadonlyMap<string, LayoutVec2>
 	): ResolvedJunctionUnit;
 	expandWall(
 		floorId: string,
@@ -1118,7 +1120,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				(a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0) ||
 				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
 		);
-		const resolved = builders.resolveJunction(document, jId, point, legs, reuse);
+		const resolved = builders.resolveJunction(document, jId, point, legs, reuse, world.wallById, world.pointById);
 		if (world.sortedJunctions.get(jSortedIdx) !== resolved.compiled) {
 			world.sortedJunctions = world.sortedJunctions.set(jSortedIdx, resolved.compiled);
 		}
