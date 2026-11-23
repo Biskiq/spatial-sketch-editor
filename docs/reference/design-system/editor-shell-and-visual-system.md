@@ -7,12 +7,21 @@ never reconciled downward to fit current code. A conflict with a hard invariant 
 judgment. Routine implementation does not amend this contract; accepted enduring design rules
 are deliberately promoted here when implementation is accepted.
 
-**Accepted appearance design (#399) supersedes older shell references.** Where the accepted
-appearance study (`prototypes/appearance-ux`, approved 2026-11-22) and an older reference in this
-document, the sheets or an archived plan disagree about a surface it designed, the accepted
-design governs that surface. T2.S8 U8 promotes its dock anatomy; U2 promoted its armed key and
-Paint tray. Surfaces it did not design (Index, Card internals, Library, Material editor, Guide)
-keep their existing authority until their own slice adopts the design.
+**Approved designs supersede older shell reference for their approved UX scope, immediately on
+owner approval, not only when a slice lands.** T2.S8 appearance prototype #399
+(`prototypes/appearance-ux`, approved 2026-11-22) governs Paint, the colour picker, Library,
+Finish Card, Material editor, Align, import/repair and cross-project usage as designed, including
+layout, dimensions, typography hierarchy, component anatomy, actions and responsive states.
+The older shell and scoped execution plans cannot redefine these surfaces. Only *undesignated*
+shell concerns (e.g. the Index and Guide in #399) stay with this reference. U8's dock and U2's
+tray promotion implement this authority; they are not prerequisites to its force.
+
+**Conflict and acceptance:** domain identity, security, accepted source and history remain hard
+constraints; a genuine conflict requires an explicit owner-approved design deviation. Implement
+backward from the approved prototype, compare screenshots and interactions at matched states and
+viewports, and do not claim visual acceptance on code/DOM/CI alone. Prototype-only mock data,
+render shortcuts and simulated history are never production authorities. See
+[`docs/workflow.md`](../../workflow.md#design-and-reference-maintenance).
 
 **Accepted foundation:** Core Product Stability at PR #271 (`ce4e232c`) includes room and shape
 creation, direct manipulation, Camera and Experience authoring, and visitor Preview. This does
@@ -31,7 +40,7 @@ Authority is **by concern**, not a ranking that puts shell design above domain t
 
 | Concern | Authority |
 | --- | --- |
-| Shell composition, disclosure, information homes, material, typography, control metrics and state grammar | This document |
+| Approved UX composition, placement, appearance, typography, interaction and responsive states | The **latest explicitly owner-approved design for that scope**; this document only where it does not conflict |
 | Stage representation, handles/helpers, precision readouts, layering, hit legibility and correspondence between readings | [Spatial-instrument grammar](./spatial-instrument-grammar.md), consuming this document's visual/state roles and domain operations |
 | Product direction and semantic ownership | [North Star](../north-star.md) and [architecture](../architecture.md) |
 | Common identity, persisted units, channels, acceptance and release shapes | [F composition/execution](../composition-execution.md) |
