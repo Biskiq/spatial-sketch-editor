@@ -31,6 +31,7 @@
  * evaluator already produced.
  */
 import type { LayoutVec2 } from './layout-coordinates';
+import { nextUp } from './layout-round-room';
 import { p2311Measure } from './p2311-perf';
 import {
 	geometryId,
@@ -187,6 +188,44 @@ export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctio
 	return Math.abs(cross(ta, tb)) < JUNCTION_DET_EPSILON && dot(ta, tb) < 0;
 }
 
+/**
+ * Representation-aware tangent continuation check for a degree-2 Junction at
+ * `point`.
+ *
+ * Near the origin, this is identical to `isTangentContinuation(a, b)`
+ * (`|cross(ta, tb)| < JUNCTION_DET_EPSILON`). At large world coordinates where
+ * binary64 ULP `u` exceeds `JUNCTION_DET_EPSILON * h / 2`, two truly
+ * antiparallel legs whose tangents were derived from world-rounded points can
+ * differ by `O(u / L)` while their offset-line endpoints at half-thickness
+ * `h = min(a.halfThickness, b.halfThickness)` coincide within `2 * u`.
+ *
+ * We admit that representation-level continuation ONLY while the Wall
+ * cross-section itself remains well-resolved (`u <= h * 1e-4`), capping the
+ * maximum angular width at `2e-4` rad (~0.011°). Consequently, an arbitrarily
+ * large coordinate offset can never widen the criterion into swallowing a real
+ * corner; unresolvable geometry fails honestly at the seam clearance gate.
+ */
+function isRepresentationTangentContinuation(
+	point: LayoutVec2,
+	a: CompiledJunctionLeg,
+	b: CompiledJunctionLeg
+): boolean {
+	if (isTangentContinuation(a, b)) return true;
+	const ta = outwardTangent(a);
+	const tb = outwardTangent(b);
+	if (!(dot(ta, tb) < 0)) return false;
+	const h = Math.min(a.halfThickness, b.halfThickness);
+	if (!(h > 0)) return false;
+	const absX = Math.abs(point[0]);
+	const absZ = Math.abs(point[1]);
+	const u = Math.max(nextUp(absX) - absX, nextUp(absZ) - absZ);
+	// Never widen once coordinate ULP reaches 1e-4 of half-thickness: real
+	// corners stay corners at every coordinate scale.
+	if (!(u <= h * 1e-4)) return false;
+	const representationCrossLimit = (2 * u) / h;
+	return representationCrossLimit > JUNCTION_DET_EPSILON && Math.abs(cross(ta, tb)) <= representationCrossLimit;
+}
+
 /** Is the outward-ray pair a fold (≈0°, walls overlap)? */
 export function isFoldPair(a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
 	const ta = outwardTangent(a);
@@ -306,12 +345,7 @@ export function resolveJunctionGeometry(
 			joins.push(suppressedJoin(a, bands, undefined, undefined, true), suppressedJoin(b, bands, undefined, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		const isLargeCoordContinuation =
-			(Math.abs(point[0]) > 1e6 || Math.abs(point[1]) > 1e6) &&
-			dot(outwardTangent(a), outwardTangent(b)) < 0 &&
-			Math.abs(cross(outwardTangent(a), outwardTangent(b))) <
-				Math.max(JUNCTION_DET_EPSILON, Math.max(Math.abs(point[0]), Math.abs(point[1])) * Number.EPSILON * 16);
-		if (isTangentContinuation(a, b) || isLargeCoordContinuation) {
+		if (isRepresentationTangentContinuation(point, a, b)) {
 			// Straight continuation: suppress the common interface. The difference
 			// surfaces (thickness / height / Opening-profile) are solved **here**, per
 			// vertical band, and attached to the leg that owns the material — the

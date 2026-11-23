@@ -24,6 +24,7 @@ import {
 	planWallFirstRoomRotation,
 	planWallSplit,
 	readClosedWallCircle,
+	resolveJunctionGeometry,
 	rotateBoundaryToSeam,
 	roundRoomSeamJunctionId,
 	serializeWallFirstLayoutDocument,
@@ -31,6 +32,7 @@ import {
 	validateWallFirstLayoutDocument,
 	wallCubicChain,
 	wallFirstWallLength,
+	type CompiledJunctionLeg,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -519,5 +521,97 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 		if (!res.success) {
 			expect(res.issues[0]!.code).toBe('round_geometry_invalid');
 		}
+	});
+
+	it('preserves resolvable corner classification under translation and never misclassifies corners as straight continuations at extreme coordinates', () => {
+		const buildCornerDoc = (origin: LayoutVec2, interiorDegrees: number): LayoutDocumentWallFirst => {
+			const rad = (interiorDegrees * Math.PI) / 180;
+			const len = 5;
+			const base = createEmptyWallFirstLayoutDocument();
+			return {
+				...base,
+				junctions: [
+					{ id: 'j-start', point: [origin[0] - len, origin[1]] },
+					{ id: 'j-corner', point: [origin[0], origin[1]] },
+					{ id: 'j-end', point: [origin[0] + len * Math.cos(Math.PI - rad), origin[1] + len * Math.sin(Math.PI - rad)] }
+				],
+				walls: [
+					{
+						id: 'w-a',
+						startJunctionId: 'j-start',
+						endJunctionId: 'j-corner',
+						thickness: 0.2,
+						height: 3,
+						centerline: { kind: 'line' }
+					},
+					{
+						id: 'w-b',
+						startJunctionId: 'j-corner',
+						endJunctionId: 'j-end',
+						thickness: 0.2,
+						height: 3,
+						centerline: { kind: 'line' }
+					}
+				]
+			};
+		};
+
+		// Resolvable corners from 45° up to 179.9° keep identical corner classification at [0, 0] and [2**32, -(2**32)].
+		for (const angleDeg of [45, 90, 135, 179, 179.9]) {
+			const atOrigin = compileWallFirstLayoutGeometry(buildCornerDoc([0, 0], angleDeg));
+			const atBig = compileWallFirstLayoutGeometry(buildCornerDoc(BIG_SHIFT, angleDeg));
+			expect(hasBlockingLayoutIssues(atOrigin.issues), `origin ${angleDeg}°`).toBe(false);
+			expect(hasBlockingLayoutIssues(atBig.issues), `2**32 ${angleDeg}°`).toBe(false);
+
+			const jOrigin = atOrigin.geometry.junctions!.find((j) => j.junctionId === 'j-corner')!;
+			const jBig = atBig.geometry.junctions!.find((j) => j.junctionId === 'j-corner')!;
+			expect(jOrigin.resolution.joins.map((j) => j.kind)).toEqual(['miter', 'miter']);
+			expect(jBig.resolution.joins.map((j) => j.kind)).toEqual(
+				jOrigin.resolution.joins.map((j) => j.kind)
+			);
+			expect(jBig.resolution.joins.every((j) => !j.interfaceSuppressed)).toBe(true);
+		}
+
+		// Direct resolver check at extreme offsets (2**44 and 2**50) and near-origin tiny bend (1e-5 rad):
+		// real corners must NEVER be classified as straight continuations.
+		const makeLeg = (wallId: string, end: 'start' | 'end', angle: number): CompiledJunctionLeg => {
+			const tx = Math.cos(angle);
+			const tz = Math.sin(angle);
+			return {
+				wallId,
+				end,
+				tangentOut: [tx, tz],
+				normalOut: [-tz, tx],
+				outwardAngle: angle,
+				thickness: 0.2,
+				halfThickness: 0.1,
+				bottomY: 0,
+				topY: 3,
+				role: 'free-standing',
+				endpointOpen: false,
+				endpointSolidBands: [{ bottomY: 0, topY: 3, solid: true }]
+			};
+		};
+		for (const extremePoint of [
+			[2 ** 44, -(2 ** 44)] as LayoutVec2,
+			[2 ** 50, -(2 ** 50)] as LayoutVec2
+		]) {
+			for (const turnRad of [Math.PI / 2, (5 * Math.PI) / 180, (0.5 * Math.PI) / 180]) {
+				const resolved = resolveJunctionGeometry('j-extreme', extremePoint, [
+					makeLeg('w-a', 'end', Math.PI),
+					makeLeg('w-b', 'start', turnRad)
+				]);
+				expect(resolved.resolution.joins.every((j) => j.kind !== 'suppressed')).toBe(true);
+				expect(resolved.resolution.joins.every((j) => !j.interfaceSuppressed)).toBe(true);
+			}
+		}
+
+		// Near-origin preservation: a 1e-5 rad bend at [0, 0] stays a corner, not a continuation.
+		const nearOriginTiny = resolveJunctionGeometry('j-origin', [0, 0], [
+			makeLeg('w-a', 'end', Math.PI),
+			makeLeg('w-b', 'start', 1e-5)
+		]);
+		expect(nearOriginTiny.resolution.joins.every((j) => j.kind === 'miter')).toBe(true);
+		expect(nearOriginTiny.resolution.joins.every((j) => !j.interfaceSuppressed)).toBe(true);
 	});
 });
