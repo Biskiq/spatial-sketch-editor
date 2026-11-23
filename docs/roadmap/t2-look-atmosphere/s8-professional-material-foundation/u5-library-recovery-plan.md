@@ -1,11 +1,16 @@
-# T2.S8 U5 Library recovery plan
+# T2.S8 U1–U5 visual and interaction parity recovery
 
-**Goal** Recover the approved Library experience in [#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399)
-on top of the working [#406](https://github.com/Biskiq/spatial-sketch-editor/pull/406) implementation.
-Use the [runnable design](../../../../prototypes/appearance-ux/app.html), [responsive board](../../../../prototypes/appearance-ux/board.html)
-and [decision sheet](../../../../prototypes/appearance-ux/index.html#flow) for composition and interaction.
-The [source comparison](./u-prototype-production-parity-harvest.md) identifies the gaps this PR
-addresses. Use it to start implementation and verify rendered parity in this PR.
+**Goal** Recover visual and interaction parity for the shipped U1–U5 Appearance flow on the
+working [#406](https://github.com/Biskiq/spatial-sketch-editor/pull/406) foundation. Implement the
+Library recovery below, the [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405)
+Paint colour picker gap, and the owner-directed World toolbar, Furnish and Escape fixes.
+Use the approved [#399](https://github.com/Biskiq/spatial-sketch-editor/pull/399)
+[runnable design](../../../../prototypes/appearance-ux/app.html),
+[responsive board](../../../../prototypes/appearance-ux/board.html) and
+[decision sheet](../../../../prototypes/appearance-ux/index.html#flow) for concrete states.
+The [existing Library findings](./u-prototype-production-parity-harvest.md) and the decisions
+below are the implementation brief. Start implementation from them and check rendered parity
+in this PR. A new prototype harvest is unnecessary.
 
 ## Delivery boundary
 
@@ -17,8 +22,54 @@ unavailable field or action a truthful state in the same surface.
 **U6 extends that same editor.** It connects remaining exact-edit capabilities and the
 Finish Card entry point to the U5 surface. U6 also delivers the separate Align, import and
 repair workflows. **U7** connects *Save to My library* and delivers the private source and
-transfer. This recovery split supersedes the earlier slice handoff. The separate Paint
-colour picker gap stays in [#405](https://github.com/Biskiq/spatial-sketch-editor/issues/405).
+transfer. This recovery split supersedes the earlier slice handoff. Verify shipped U1 thumbnail,
+U3 colour coat and U4 Finish Card behavior along the review journeys below. Correct material
+deviations with a clear approved target in those journeys. Preserve existing authoring,
+selection, history, persistence and visitor boundaries.
+
+## Paint, World toolbar and focus recovery
+
+- **U2 Paint colour picker.** Open *Paint colour* from *Custom colour* in the quick Colours strip,
+  including while the strip is collapsed. Anchor a compact floating picker above the trigger within
+  the usable Stage, with the wheel prominent, Lightness, palette chips, Hex, close and a compact
+  action row. Keep it reachable at narrow widths and with touch and keyboard. The tray's own
+  expansion still exposes the palette and materials. Reuse the wheel, Paint state and palette
+  commands. Wheel, Lightness and Hex edits stay local. *Done* arms a literal colour, a palette
+  chip arms its linked slot, and *Add to palette* uses the existing one-Undo slot-add command
+  and arms the returned linked slot after success. Preserve the current pick on dismiss or
+  refusal, explain a full palette, and keep the picker available after a rejected add. Close and
+  Escape dismiss the picker first and return focus to *Custom colour*. Opening, editing, choosing
+  a swatch or arming a colour leaves project content unchanged. Paint gestures still commit
+  through the existing owner.
+- **World toolbar expansion.** Use Paint's detached tray as the reference. Build, Form and
+  Landscape put their existing quick controls in a separate hovering strip above the stationary
+  dock, with the same visible Stage gap as Paint. Use the same placement for Furnish and any
+  existing Erase controls shown above the dock. Select stays strip-free. Keep matching dock
+  alignment, measured side lanes, safe insets and usable scrolling on narrow screens. Show one
+  tool strip at a time. Keep the existing tool choices, gestures, remembered options and collapse
+  behavior. Limit the layout change to the World dock; Experience and Object Studio remain
+  outside this change.
+- **Furnish.** This owner decision supersedes #399's direct Library launch. Clicking or
+  keyboard-activating Furnish toggles a small hovering quick strip in placeholder state, with
+  the current selection intact and no placement armed. Its sole action is *Browse all*, which
+  opens the shared Library on Objects in ordinary browse mode.
+  Dismissing the Library returns to the strip and focuses *Browse all*. Keep existing Library
+  object, artwork and light paths and their placement owners. The strip has no asset tiles or
+  placement actions yet. The long-term interaction is shared with Paint: quick choices live in
+  the strip, and *Browse all* leads to Library detail for customisation and adding to quick
+  access. In this PR, the existing Material *Favourite* action continues to populate Paint quick
+  access. Furnish's asset customisation, pinning and quick picks remain future work.
+- **Escape and focus.** Fix the stale grey halo on the previously used dock key, such as Build,
+  after Escape has returned the editor to Select. If focus was on that key or in the closing
+  strip, move it to Select. Keep existing Stage focus when it is already there. Keep a visible,
+  in-key keyboard focus indication and the separate armed state. Preserve the existing order
+  for cancelling gestures, dismissing deeper surfaces and clearing selection. Library, draft
+  and picker close paths still restore focus to their respective invokers.
+
+Use the existing [World toolbar](../../../../apps/editor/src/lib/authoring/world-toolbar/WorldToolbar.svelte),
+[Paint tray](../../../../apps/editor/src/lib/authoring/stage/shell/StagePaintTray.svelte)
+and [Stage keyboard handler](../../../../apps/editor/src/lib/authoring/stage/route/stage-keyboard.ts)
+as integration points.
 
 ## Integration decisions
 
@@ -78,12 +129,28 @@ colour picker gap stays in [#405](https://github.com/Biskiq/spatial-sketch-edito
 
 ## Evidence for review
 
-Compare the approved app and running editor at a representative desktop width and in portrait
-under the [shared design-review workflow](../../../workflow.md#design-and-reference-maintenance).
-Cover project shelf overflow, live detail and the draft editor with the Stage still available. Exercise
-card versus detail activation, Paint arm, Replace and Swap with Undo, Shift and last-view reopen.
-Open *Customise…* with and without a target, retarget the preview, try an unavailable action,
-check that Cancel and Escape restore focus without a write, and apply a supported change with
-one Undo. Keep #406's service and route coverage. Verify that browse avoids full-resolution
-catalogue requests and that switching or closing detail or draft releases its resources. Run
-the affected editor checks and the repository merge gate.
+Compare representative desktop and portrait states under the
+[shared design-review workflow](../../../workflow.md#design-and-reference-maintenance). Use the
+owner-directed outcomes above as the target for the toolbar, Furnish and Escape changes.
+
+- **Paint and toolbar.** Compare the floating picker and a detached family strip. Open the
+  picker from compact Colours, use the wheel and Hex, then exercise literal Done, linked
+  swatch, palette add with Undo, full-palette refusal and Escape with focus return. Verify
+  Paint quick Materials opens the correct Library context and that favouriting an eligible
+  Material feeds quick access. Switch between Build, Form, Landscape, Paint and Furnish with
+  one strip at a time and a visible gap where a strip is open. Exercise Furnish → *Browse all*
+  → Objects → dismiss and check the return path on a constrained viewport.
+- **Escape.** Activate Build, return to Select through the existing Escape sequence, and check
+  that Build has no stale halo. Select a Stage item and press Escape. Confirm the normal
+  selection result, visible keyboard focus during Tab navigation and correct dismissal of the
+  active layer before selection clears.
+- **Library and Finish.** Cover project shelf overflow, interactive detail and the draft editor
+  with the Stage still available. Exercise card versus detail activation, Paint arm, Replace and
+  treatment-preserving Swap with Undo, Shift and last-view reopen. Verify literal and palette-linked
+  coat behavior, Finish Card reach and the existing object/artwork/light paths. Open *Customise…*
+  with and without a target, retarget, try an unavailable action, cancel with focus return and
+  apply a supported edit with one Undo. Verify thumbnail browsing avoids full-resolution
+  catalogue requests and detail or draft teardown releases its resources.
+
+Keep existing service and route regression coverage. Run affected editor checks and the
+repository merge gate.
