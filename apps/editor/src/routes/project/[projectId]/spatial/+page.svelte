@@ -26,7 +26,7 @@
 	import { perfMark } from '$lib/platform/perf-marks';
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
-	import type { SceneArtworkEntity } from '@portfolio/project-model';
+	import type { ArtworkLibraryEntry, SceneArtworkEntity } from '@portfolio/project-model';
 	import { primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import { bootIntentFromSearch, type BootIntent } from '$lib/authoring/stage/boot-state';
 	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
@@ -161,11 +161,13 @@
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { withFinishInstancePreview } from '@portfolio/project-model/scene-planning';
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
+	import StageLibrary from '$lib/authoring/library/StageLibrary.svelte';
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
+	import { assets } from '$lib/content/assets';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
@@ -635,6 +637,33 @@
 		void shell.contributionsVersion;
 		return finishes.libraryShelf();
 	});
+	const libraryEntries = $derived.by(() => {
+		void shell.contributionsVersion;
+		return finishes.libraryBrowse();
+	});
+	const libraryTarget = $derived.by(() => {
+		void selection;
+		void shell.contributionsVersion;
+		return finishes.libraryTarget();
+	});
+	const libraryDraftStatus = $derived.by(() => {
+		void selection;
+		void shell.contributionsVersion;
+		return finishes.libraryDraftStatus();
+	});
+	const libraryObjects = assets
+		.filter((asset) => asset.status === 'approved')
+		.slice(0, 8)
+		.map((asset) => ({ id: asset.id, name: asset.name }));
+
+	/** Close the external Library; a Paint pick behind it returns to the tray, never Select. */
+	function closeLibrary(): void {
+		finishes.cancelLibraryDraft();
+		if (!shell.libraryOpen) return;
+		const returnsToPaint = shell.toolBeforeLibrary === 'paint';
+		commands.toggleWorldLibrary();
+		if (returnsToPaint || shell.armedHostTool === 'paint') commands.armWorldTool('paint');
+	}
 	const dockKeys = $derived(dockView.keys);
 	const inactiveTask = $derived(stageInactiveTask({
 		facade,
@@ -926,11 +955,8 @@
 		retryTexture: (uri) => stageAssets.retryTexture(uri),
 		onNotice: (message) => shell.setNotice(message),
 		openFinishes: () => {
-			shell.setLibraryOpen(true);
-			shell.requestLibraryCategory('materials');
-			shell.setActiveWorldTool('objects');
+			if (!shell.libraryOpen) commands.toggleWorldLibrary();
 			shell.setWorldPlateOpen(true);
-			shell.setPaletteOpen(false);
 		},
 		isPaintArmed: () => shell.armedHostTool === 'paint',
 		armPaint: () => commands.armWorldTool('paint'),
@@ -939,6 +965,10 @@
 			onNotice: (message) => shell.setNotice(message),
 			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
 		})
+	});
+	/** Every close path (header, scrim, dock, Objects pick) drops a draft; only Apply writes. */
+	$effect(() => {
+		if (!shell.libraryOpen) finishes.cancelLibraryDraft();
 	});
 	artworkInteraction = createStageArtworkInteraction({
 		api,
@@ -2593,6 +2623,66 @@
 			onCloseKeys={() => shell.setKeysOpen(false)}
 		/>
 
+		{#if shell.libraryOpen && preview === null && experience.lensState === 'world' && adapterServices !== null}
+			<StageLibrary
+				entries={libraryEntries}
+				target={libraryTarget}
+				draft={finishes.libraryDraft}
+				draftStatus={libraryDraftStatus}
+				busy={finishes.busy}
+				tileSource={(entry) =>
+					entry.source === 'curated' && entry.curatedId !== null
+						? { kind: 'catalogue', id: entry.curatedId }
+						: entry.projectId === null
+							? null
+							: finishTileSource(entry.projectId)}
+				objects={libraryObjects}
+				artwork={selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? []}
+				looks={look.libraryShelf}
+				onClose={closeLibrary}
+				onUse={(entry, keepOpen) => {
+					finishes.cancelLibraryDraft();
+					finishes.pickMaterialKey(entry.key);
+					if (!keepOpen && shell.libraryOpen) commands.toggleWorldLibrary();
+					commands.armWorldTool('paint');
+				}}
+				onApply={async (entry) => {
+					const accepted = await finishes.applyLibraryFinish(entry.ref);
+					if (accepted) closeLibrary();
+					return accepted;
+				}}
+				onSelectUsers={async (entry) => {
+					const selected = await finishes.selectFinishUsers(entry.ref);
+					if (selected) closeLibrary();
+					return selected;
+				}}
+				onCustomise={(entry) => finishes.openLibraryDraft(entry.ref)}
+				onDraftStep={(step) => finishes.setLibraryDraftStep(step)}
+				onDraftApply={async () => {
+					const accepted = await finishes.applyLibraryDraft();
+					if (accepted) closeLibrary();
+					return accepted;
+				}}
+				onDraftCancel={() => finishes.cancelLibraryDraft()}
+				onToggleFavourite={(key) => finishes.toggleFavouriteMaterial(key)}
+				onObject={(assetId) => commands.pickWorldObject(assetId)}
+				onArtwork={(entry: ArtworkLibraryEntry) => {
+					closeLibrary();
+					commands.selectTool();
+					artworkInteraction.arm(entry);
+				}}
+				onArtworkImport={(files) => {
+					closeLibrary();
+					commands.selectTool();
+					void artworkInteraction.importFiles(files);
+				}}
+				onLook={(id) => {
+					closeLibrary();
+					look.pickLibraryEntry(id);
+				}}
+			/>
+		{/if}
+
 		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen}
 			<StagePaintTray
 				tray={paintTray}
@@ -2607,7 +2697,7 @@
 				onColour={(colour) => finishes.pickColour(colour)}
 				onFavourite={() => finishes.toggleActiveFavourite()}
 				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper())}
-				onLibrary={() => finishes.openFinishes()}
+				onLibrary={() => commands.toggleWorldLibrary()}
 				palette={{
 					...finishes.paletteView(),
 					rename: (slotId, name) => void finishes.renamePaletteSlot(slotId, name),

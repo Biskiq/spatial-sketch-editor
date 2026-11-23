@@ -53,7 +53,7 @@ export function layoutSurfaceTarget(snapshot: Snapshot, surface: SceneSurfaceRef
 	};
 }
 
-function sceneEntityTarget(snapshot: Snapshot, id: string): SemanticReference {
+export function sceneEntityTarget(snapshot: Snapshot, id: string): SemanticReference {
 	return {
 		version: 1,
 		domain: 'scene',
