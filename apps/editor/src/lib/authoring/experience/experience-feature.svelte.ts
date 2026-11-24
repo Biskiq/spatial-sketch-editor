@@ -11,16 +11,23 @@ import type { StageExperienceBinding } from '../stage/route/stage-experience-bin
 import { experienceFocus } from './focus.svelte';
 import { createExperienceHostPorts, type ExperienceHostPortsDeps } from './experience-host-ports.svelte';
 import { createExperiencePreviewHost, type ExperiencePreviewHostInput } from './experience-preview-host';
+import { createExperienceRegionViews, type ExperienceRegionViewDeps } from './experience-region-views.svelte';
 
 export type ExperienceFeatureDeps = {
 	readonly binding: StageExperienceBinding;
 	readonly preview: ExperiencePreviewHostInput;
 	readonly host: Omit<ExperienceHostPortsDeps, 'binding'>;
+	readonly regions: Omit<ExperienceRegionViewDeps, 'binding' | 'previewActive'>;
 };
 
 export function createExperienceFeature(deps: ExperienceFeatureDeps) {
 	const preview = createExperiencePreviewHost(deps.preview);
 	const host = createExperienceHostPorts({ binding: deps.binding, ...deps.host });
+	const views = createExperienceRegionViews({
+		binding: deps.binding,
+		previewActive: () => preview.openState,
+		...deps.regions
+	});
 	return {
 		ports: {
 			binding: deps.binding,
@@ -63,7 +70,15 @@ export function createExperienceFeature(deps: ExperienceFeatureDeps) {
 				return host.floorDatum;
 			},
 			cursor: host.cursor,
-			lookThroughSession: host.lookThroughSession
+			lookThroughSession: host.lookThroughSession,
+			regions: {
+				get viewport() {
+					return views.viewport;
+				},
+				get toolbars() {
+					return views.toolbars;
+				}
+			}
 		},
 		lifecycle: {
 			resetFocus: { 'reset-focus': () => experienceFocus.reset() },

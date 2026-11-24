@@ -392,7 +392,7 @@ describe('the workspace reads committed geometry only', () => {
 		const host = composedSpatialHost();
 		for (const { file, code } of host) expect(code, file).not.toContain('candidateBounds');
 		// StageCanvas is a shell slot owned by the composition root, not the lens.
-		const route = readFileSync(resolve(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'), 'utf8');
+		const route = readFileSync(resolve(process.cwd(), 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'), 'utf8');
 		const views = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/route/core-region-views.ts'), 'utf8');
 		expect(views).toMatch(/get contentBounds\(\)\s*\{\s*return input\.paperContentBounds\(\)\s*;/);
 		expect(route).toContain('paperContentBounds: () => paperContentBounds');

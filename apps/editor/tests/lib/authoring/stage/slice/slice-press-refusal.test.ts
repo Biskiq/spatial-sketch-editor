@@ -37,7 +37,7 @@ describe('the arbiter asks about the tool, not the reading', () => {
 		'utf8'
 	);
 	const route = readFileSync(
-		path.join(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'),
+		path.join(process.cwd(), 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'),
 		'utf8'
 	);
 

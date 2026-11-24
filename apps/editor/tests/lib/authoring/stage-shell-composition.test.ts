@@ -43,7 +43,8 @@ import {
 
 const STAGE_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'stage');
 const SHELL_DIR = join(STAGE_DIR, 'shell');
-const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
+const ROUTE = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'workspace-host.svelte.ts');
+const ROUTE_COMPONENT = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'WorkspaceHost.svelte');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
 const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
@@ -151,7 +152,7 @@ describe('Stage shell composition', () => {
 		const owner = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'playback.svelte.ts');
 		const source = (script: string) => `<script lang="ts">${script}</script>`;
 		const specifier = '$lib/authoring/experience/playback.svelte';
-		const check = (script: string) => constructsImportedOwner(ROUTE, source(script), owner, 'createExperiencePlayback');
+		const check = (script: string) => constructsImportedOwner(ROUTE_COMPONENT, source(script), owner, 'createExperiencePlayback');
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();`)).toBe(true);
 		expect(check(`import { createExperiencePlayback as make } from '${specifier}'; const playback = make(); playback.play();`)).toBe(true);
 		expect(check(`import { createExperiencePlayback } from '${specifier}';`)).toBe(false);
@@ -165,8 +166,8 @@ describe('Stage shell composition', () => {
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play;`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play?.();`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; playback.play(); const playback = createExperiencePlayback();`)).toBe(false);
-		expect(constructsImportedOwner(ROUTE, `<script module lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
-		expect(constructsImportedOwner(ROUTE, `<script context="module" lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
+		expect(constructsImportedOwner(ROUTE_COMPONENT, `<script module lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
+		expect(constructsImportedOwner(ROUTE_COMPONENT, `<script context="module" lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; // createExperiencePlayback();`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; function unused() { createExperiencePlayback(); }`)).toBe(false);
 		expect(check(`import { createExperiencePlayback } from '${specifier}'; if (false) createExperiencePlayback();`)).toBe(false);
@@ -761,7 +762,7 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 	});
 
 	it('ends the constrained Index above the lower column and drops the viewport-sized shadow', () => {
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const route = stripComments(readFileSync(ROUTE_COMPONENT, 'utf8'));
 		const panels = stripComments(readFileSync(ROUTE_PANELS, 'utf8'));
 		// Extracted Experience markup cannot reintroduce the viewport-sized shadow.
 		for (const { file, code } of composedSpatialHost()) expect(stripComments(code), file).not.toContain('100vmax');

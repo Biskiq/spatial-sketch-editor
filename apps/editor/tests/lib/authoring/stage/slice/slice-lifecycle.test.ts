@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 const read = (relative: string): string =>
 	readFileSync(path.join(process.cwd(), relative), 'utf8');
-const route = read('src/routes/project/[projectId]/spatial/+page.svelte');
+const route = read('src/lib/authoring/workspace/host/workspace-host.svelte.ts');
 
 const readings = read('src/lib/authoring/stage/readings/layout-readings-feature.svelte.ts');
 const lifetime = read('src/lib/authoring/stage/readings/layout-readings-lifecycle.ts');

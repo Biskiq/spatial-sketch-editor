@@ -31,7 +31,7 @@ import {
 	stripComments
 } from '../../helpers/import-closure';
 
-const ROUTE = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+const ROUTE = path.join(EDITOR_LIB, 'authoring/workspace/host/workspace-host.svelte.ts');
 const CORE_LIFECYCLE = path.join(EDITOR_LIB, 'authoring/stage/route/core-lifecycle-steps.svelte.ts');
 const CORE_REGIONS = path.join(EDITOR_LIB, 'authoring/stage/route/core-region-views.ts');
 const HISTORY = path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-command.ts');
@@ -121,8 +121,10 @@ function x3OwnershipSites(source: string): string[] {
 	return X3_OWNERSHIP_SITES.filter(({ pattern }) => pattern.test(source)).map(({ id }) => id);
 }
 
+const COMPONENT = path.join(EDITOR_LIB, 'authoring/workspace/host/WorkspaceHost.svelte');
 const source = fs.readFileSync(ROUTE, 'utf8');
 const code = stripComments(source);
+const markup = stripComments(fs.readFileSync(COMPONENT, 'utf8'));
 
 describe('spatial route composition boundary (X1)', () => {
 	it('constructs the extracted epoch and asset controllers', () => {
@@ -134,7 +136,7 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(core).toContain("'dispose-epoch': input.stageEpoch.dispose");
 		// U4 drops a live Finish Card gesture before delegating to the same epoch history owner.
 		const regions = stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'));
-		expect(code).toContain('{...coreRegions.head}');
+		expect(markup).toContain('{...coreRegions.head}');
 		expect(regions).toContain('onUndo: input.history.undo');
 		expect(regions).toContain('onRedo: input.history.redo');
 		const history = stripComments(fs.readFileSync(HISTORY, 'utf8'));
@@ -280,7 +282,7 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('stageFindView({');
 		expect(stripComments(fs.readFileSync(CORE_REGIONS, 'utf8'))).toContain('get hostTools() { return shell.hostToolOverlay; }');
 		for (const region of ['StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars']) {
-			expect(code.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
+			expect(markup.match(new RegExp(`<${region}\\b`, 'g')) ?? [], region).toHaveLength(1);
 		}
 	});
 

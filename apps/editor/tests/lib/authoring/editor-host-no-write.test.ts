@@ -47,6 +47,9 @@ import {
 /** The stage route host — the editor's one authoring entry point. */
 const ROUTE_ROOT = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const ROUTE_MEMBER = 'apps/editor/src/routes/project/[projectId]/spatial/+page.svelte';
+const HOST_ROOT = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'workspace-host.svelte.ts');
+const HOST_MEMBER = 'apps/editor/src/lib/authoring/workspace/host/workspace-host.svelte.ts';
+const HOST_COMPONENT_MEMBER = 'apps/editor/src/lib/authoring/workspace/host/WorkspaceHost.svelte';
 const PLATFORM_PERSISTENCE_MEMBER = 'apps/editor/src/lib/platform/project-persistence.ts';
 const PLATFORM_PENDING_SAVE_MEMBER = 'apps/editor/src/lib/platform/project-pending-save.ts';
 const EDITOR_SOURCE_PREFIX = 'apps/editor/src/';
@@ -107,9 +110,9 @@ function sessionOwnerWith(pattern: RegExp): { member: string; code: string } {
 	if (owner.member === PROJECT_EPOCH_MEMBER) {
 		// The epoch is constructed as a typed owner and passed into project-session's
 		// host, so the route's proof is the direct factory construction.
-		expect(sourceOf(ROUTE_MEMBER)).toMatch(/const\s+[A-Za-z_$][\w$]*\s*=\s*createStageProjectEpoch\s*\(/);
+		expect(sourceOf(HOST_MEMBER)).toMatch(/const\s+[A-Za-z_$][\w$]*\s*=\s*createStageProjectEpoch\s*\(/);
 	} else if (owner.member !== ROUTE_MEMBER) {
-		expect(constructsImportedOwner(ROUTE_ROOT, sourceOf(ROUTE_MEMBER), join(REPO_ROOT, owner.member), 'createProjectSession')).toBe(true);
+		expect(constructsImportedOwner(HOST_ROOT, sourceOf(HOST_MEMBER), join(REPO_ROOT, owner.member), 'createProjectSession')).toBe(true);
 	}
 	return owner;
 }
@@ -142,7 +145,7 @@ describe('the editor host reaches only authorized write paths', () => {
 	});
 
 	it('mounts the one authorized Save controller on the Head', () => {
-		const route = stripComments(sourceOf(ROUTE_MEMBER));
+		const route = stripComments(sourceOf(HOST_COMPONENT_MEMBER));
 		// The exception stays scoped to the Head Save mount; the composed session
 		// owner builds the state machine and supplies the one Head controller.
 		const owner = sessionOwnerWith(/\bcreateSaveState\s*\(/);
@@ -169,7 +172,7 @@ describe('the editor host reaches only authorized write paths', () => {
 	it('reaches the TD-9 capture only through the Save-owned pending transport', () => {
 		// The route must not call the raw helpers; the capture seam is the only
 		// editor module that does, and it must reach all three operations.
-		expect(callsIn(sourceOf(ROUTE_MEMBER))).toEqual([]);
+		expect(callsIn(sourceOf(HOST_MEMBER))).toEqual([]);
 		expect(callsIn(sourceOf(PENDING_CAPTURE_MEMBER))).toEqual([
 			'writePendingCloudSave',
 			'clearPendingCloudSave'

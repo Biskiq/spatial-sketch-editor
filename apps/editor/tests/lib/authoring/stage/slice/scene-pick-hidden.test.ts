@@ -79,7 +79,7 @@ describe('the face ray — artwork placement aims at what is drawn', () => {
 
 	it('is the predicate the Artwork owner gives placement', () => {
 		const route = readFileSync(
-			path.join(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'),
+			path.join(process.cwd(), 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'),
 			'utf8'
 		);
 		const host = readFileSync(path.join(process.cwd(), 'src/lib/authoring/artwork/artwork-host.svelte.ts'), 'utf8');

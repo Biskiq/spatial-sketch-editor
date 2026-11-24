@@ -138,7 +138,7 @@ describe('R217.S30 playback', () => {
 	});
 
 	it('keeps the accepted map and clock on the Stage, not in the Guide panel', () => {
-		const route = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+		const route = path.join(EDITOR_LIB, 'authoring/workspace/host/workspace-host.svelte.ts');
 		const experience = path.join(EDITOR_LIB, 'authoring/experience');
 		const sources = [...importClosure([route])]
 			.filter((file) => file === route || file.startsWith(`${experience}${path.sep}`))

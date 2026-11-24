@@ -297,29 +297,42 @@ export function constructsImportedOwner(importer: string, source: string, owner:
 		return ts.isCallExpression(expression) && !expression.questionDotToken && ts.isIdentifier(expression.expression) &&
 			factories.has(checker.getSymbolAtLocation(expression.expression)!);
 	}
-	for (const [index, statement] of tree.statements.entries()) {
-		if (!ts.isVariableStatement(statement)) continue;
-		for (const declaration of statement.declarationList.declarations) {
-			if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !callsFactory(declaration.initializer)) continue;
-			const symbol = checker.getSymbolAtLocation(declaration.name);
-			if (!symbol) continue;
-			// A property read inside an unused callback, a conditional branch, or a
-			// short circuit is not evidence the controller is invoked. Accept only a
-			// direct top-level method call after the controller was constructed.
-			for (const later of tree.statements.slice(index + 1)) {
-				if (!ts.isExpressionStatement(later) || !ts.isCallExpression(later.expression) || later.expression.questionDotToken) continue;
-				const method = later.expression.expression;
-				if (!ts.isPropertyAccessExpression(method) || method.questionDotToken || !ts.isIdentifier(method.expression)) continue;
-				if (checker.getSymbolAtLocation(method.expression) === symbol) return true;
+	// The composition root is either the module's top level (a route script) or
+	// the body of the workspace host factory (X9's workspace host).
+	const scopes: readonly ts.NodeArray<ts.Statement>[] = [
+		tree.statements,
+		...tree.statements.flatMap((statement) =>
+			ts.isFunctionDeclaration(statement) && statement.name?.text === 'createWorkspaceHost' && statement.body
+				? [statement.body.statements]
+				: []
+		)
+	];
+	const constructs = (statements: readonly ts.Statement[]): boolean => {
+		for (const [index, statement] of statements.entries()) {
+			if (!ts.isVariableStatement(statement)) continue;
+			for (const declaration of statement.declarationList.declarations) {
+				if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !callsFactory(declaration.initializer)) continue;
+				const symbol = checker.getSymbolAtLocation(declaration.name);
+				if (!symbol) continue;
+				// A property read inside an unused callback, a conditional branch, or a
+				// short circuit is not evidence the controller is invoked. Accept only a
+				// direct top-level method call after the controller was constructed.
+				for (const later of statements.slice(index + 1)) {
+					if (!ts.isExpressionStatement(later) || !ts.isCallExpression(later.expression) || later.expression.questionDotToken) continue;
+					const method = later.expression.expression;
+					if (!ts.isPropertyAccessExpression(method) || method.questionDotToken || !ts.isIdentifier(method.expression)) continue;
+					if (checker.getSymbolAtLocation(method.expression) === symbol) return true;
+				}
 			}
 		}
-	}
-	return false;
+		return false;
+	};
+	return scopes.some(constructs);
 }
 
 /** Spatial route and its explicitly constructed extracted controllers. */
 export function composedSpatialHost(): { file: string; code: string }[] {
-	const route = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+	const route = path.join(EDITOR_LIB, 'authoring/workspace/host/workspace-host.svelte.ts');
 	const code = fs.readFileSync(route, 'utf8');
 	const reachable = importClosure([route]);
 	const controllers = [
