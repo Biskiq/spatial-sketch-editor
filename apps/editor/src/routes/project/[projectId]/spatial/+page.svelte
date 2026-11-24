@@ -28,7 +28,6 @@
 	import { perfMark } from '$lib/platform/perf-marks';
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
-	import type { ArtworkLibraryEntry } from '@portfolio/project-model';
 	import { primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
 	import { createStageSession } from '$lib/authoring/stage/stage-session';
@@ -135,7 +134,8 @@
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { withFinishInstancePreview } from '@portfolio/project-model/scene-planning';
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
-	import StageLibrary from '$lib/authoring/library/StageLibrary.svelte';
+	import LibraryWorldRegion from '$lib/authoring/library/LibraryWorldRegion.svelte';
+	import { createLibraryFeature } from '$lib/authoring/library/library-feature.svelte';
 	import LibraryMaterialEditor from '$lib/authoring/library/LibraryMaterialEditor.svelte';
 	import MaterialImportSheet from '$lib/authoring/library/MaterialImportSheet.svelte';
 	import { createMaterialImportSession, type ImportTargetChoice } from '$lib/authoring/library/material-import.svelte';
@@ -152,7 +152,6 @@
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
 	import { materialTreatmentFacts } from '$lib/content/material-presentation';
-	import { assets } from '$lib/content/assets';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
@@ -607,15 +606,23 @@
 		void shell.contributionsVersion;
 		return finishes.libraryShelf();
 	});
-	const libraryEntries = $derived.by(() => {
-		void shell.contributionsVersion;
-		return finishes.libraryBrowse();
+	const library = createLibraryFeature({
+		shell,
+		selection: () => selection,
+		finishes: () => finishes,
+		commands: () => commands,
+		scene: () => selectionViewView.scenePayload,
+		looks: () => sky.libraryShelf,
+		lens: () => experience.lensState,
+		previewing: () => preview !== null,
+		available: () => adapterServices !== null,
+		finishTileSource,
+		armArtwork: (entry) => artwork.ports.arm(entry),
+		importArtwork: (files) => artwork.ports.importFiles(files),
+		importMaterial: (files, invoker) => materialImport.start(files, currentImportTargets(), invoker),
+		pickLook: (id) => sky.ports.pickLibraryEntry(id)
 	});
-	const libraryTarget = $derived.by(() => {
-		void selection;
-		void shell.contributionsVersion;
-		return finishes.libraryTarget();
-	});
+
 	/**
 	 * The draft's render-only Stage projection, held stable between scene reads:
 	 * a fresh object per read would make every Stage evaluation look changed.
@@ -770,45 +777,7 @@
 		void shell.contributionsVersion;
 		return finishes.libraryDraftStatus();
 	});
-	function libraryTileSource(entry: (typeof libraryEntries)[number]): FinishTileSource | null {
-		if (entry.source === 'curated' && entry.curatedId !== null) return { kind: 'catalogue', id: entry.curatedId };
-		return entry.projectId === null ? null : finishTileSource(entry.projectId);
-	}
-	const libraryObjects = assets
-		.filter((asset) => asset.status === 'approved')
-		.slice(0, 8)
-		.map((asset) => ({ id: asset.id, name: asset.name }));
 
-	/** Where focus lands when the Library closes: the control that opened it. */
-	const LIBRARY_INVOKERS = {
-		dock: '[data-world-library-key]',
-		lights: '[data-world-library-key]',
-		paint: '[data-paint-library], [data-paint-library-open]',
-		furnish: '[data-furnish-browse]',
-		card: '[data-finish-swap]'
-	} as const;
-	function returnLibraryFocus(from: keyof typeof LIBRARY_INVOKERS): void {
-		void tick().then(() => {
-			const invoker =
-				document.querySelector<HTMLElement>(LIBRARY_INVOKERS[from]) ??
-				document.querySelector<HTMLElement>(LIBRARY_INVOKERS.dock);
-			invoker?.focus();
-		});
-	}
-	/**
-	 * Close the external Library; a Paint pick behind it returns to the tray,
-	 * never Select, and a Furnish visit returns to its strip. Focus goes back to
-	 * the invoking control unless the close hands the creator to the Stage.
-	 */
-	function closeLibrary(returnFocus = true): void {
-		finishes.clearLibrarySwap();
-		if (!shell.libraryOpen) return;
-		const returnsToPaint = shell.toolBeforeLibrary === 'paint';
-		const from = shell.libraryInvocation.from;
-		commands.toggleWorldLibrary();
-		if (returnsToPaint || shell.armedHostTool === 'paint') commands.armWorldTool('paint');
-		if (returnFocus) returnLibraryFocus(from);
-	}
 	const dockKeys = $derived(dockView.keys);
 	const inactiveTask = $derived(stageInactiveTask({
 		facade,
@@ -1387,8 +1356,7 @@
 		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
 		paletteOpen: () => shell.paletteOpen,
 		closePalette: () => shell.setPaletteOpen(false),
-		libraryOpen: () => shell.libraryOpen,
-		toggleLibrary: () => closeLibrary(),
+		...library.escape,
 		activeWorldTool: () => shell.activeWorldTool,
 		clearWorldTool: () => { shell.setLibraryOpen(false); shell.setActiveWorldTool('select'); },
 		worldPlateOpen: () => shell.worldPlateOpen,
@@ -1969,7 +1937,7 @@
 			requestedCategory: shell.libraryCategoryRequest,
 			onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
 			onTool: (id) => commands.armWorldTool(id),
-			onLibrary: () => (shell.libraryOpen ? closeLibrary() : commands.toggleWorldLibrary('dock')),
+			onLibrary: () => (shell.libraryOpen ? library.ports.close() : commands.toggleWorldLibrary('dock')),
 			furnishOpen: shell.furnishStripOpen,
 			onFurnish: () => commands.toggleFurnishStrip(),
 			onFurnishBrowse: () => commands.browseFurnish(),
@@ -2244,83 +2212,7 @@
 			previewing={preview !== null}
 		/>
 
-		{#if shell.libraryOpen && preview === null && experience.lensState === 'world' && adapterServices !== null}
-			{#key shell.libraryInvocation.nonce}
-			<StageLibrary
-				entries={libraryEntries}
-				intent={shell.libraryInvocation.intent}
-				target={libraryTarget}
-				swap={finishes.librarySwap}
-				view={shell.libraryView}
-				openKind={shell.libraryInvocation.kind}
-				busy={finishes.busy}
-				tileSource={libraryTileSource}
-				objects={libraryObjects}
-				artwork={selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? []}
-				looks={sky.libraryShelf}
-				inspection={shell.libraryInspection}
-				onInspection={(next) => shell.setLibraryInspection(next)}
-				onView={(next) => shell.setLibraryView(next)}
-				onClose={closeLibrary}
-				onPaint={(entry, keepOpen) => {
-					finishes.pickMaterialKey(entry.key);
-					if (keepOpen) return;
-					if (shell.libraryOpen) commands.toggleWorldLibrary();
-					commands.armWorldTool('paint');
-				}}
-				onReplace={async (entry, keepOpen) => {
-					const accepted = await finishes.applyLibraryFinish(entry.ref);
-					if (!accepted) {
-						return {
-							ok: false,
-							message: libraryTarget === null
-								? 'Select an object or surface first. Nothing changed.'
-								: libraryTarget.finishKey === entry.key
-									? `${libraryTarget.label} already wears ${entry.name}.`
-									: 'That change could not be made. Nothing changed.'
-						};
-					}
-					if (!keepOpen) closeLibrary();
-					return { ok: true };
-				}}
-				onSwap={async (materialId, keepOpen) => {
-					const outcome = await finishes.applyLibrarySwap(materialId);
-					if (outcome.ok && !keepOpen) closeLibrary();
-					return outcome;
-				}}
-				onSelectUsers={async (entry) => {
-					const selected = await finishes.selectFinishUsers(entry.ref);
-					if (selected) closeLibrary();
-					return selected;
-				}}
-				onCustomise={(entry) => {
-					closeLibrary(false);
-					if (!finishes.openLibraryDraft(entry.ref)) return;
-					commands.armWorldTool('paint');
-				}}
-				onToggleFavourite={(key) => finishes.toggleFavouriteMaterial(key)}
-				onObject={(assetId) => commands.pickWorldObject(assetId)}
-				onArtwork={(entry: ArtworkLibraryEntry) => {
-					closeLibrary();
-					commands.selectTool();
-					artwork.ports.arm(entry);
-				}}
-				onArtworkImport={(files) => {
-					closeLibrary();
-					commands.selectTool();
-					void artwork.ports.importFiles(files);
-				}}
-				onMaterialImport={(files, invoker) => {
-					closeLibrary();
-					void materialImport.start(files, currentImportTargets(), invoker);
-				}}
-				onLook={(id) => {
-					closeLibrary();
-					sky.ports.pickLibraryEntry(id);
-				}}
-			/>
-			{/key}
-		{/if}
+		<LibraryWorldRegion view={library.view} />
 
 		{#if materialImport.open && preview === null && experience.lensState === 'world'}
 			<MaterialImportSheet session={materialImport} />
@@ -2350,12 +2242,12 @@
 		{/if}
 
 		{#if finishes.libraryDraft !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
-			{@const draftEntry = libraryEntries.find((entry) => entry.key === finishes.libraryDraft?.finishKey) ?? null}
+			{@const draftEntry = library.view.props.entries.find((entry) => entry.key === finishes.libraryDraft?.finishKey) ?? null}
 			{@const draftInst = finishes.libraryDraftInstance()}
 			{@const draftFields = finishes.libraryDraftFields()}
 			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
 			{#if draftFields !== null && draftInst !== null && draftInst.ok && sceneNow !== null}
-				{@const origTile = draftEntry === null ? null : libraryTileSource(draftEntry)}
+				{@const origTile = draftEntry === null ? null : library.ports.tileSource(draftEntry)}
 				<LibraryMaterialEditor
 					mode="draft"
 					name={finishes.libraryDraft.name}
