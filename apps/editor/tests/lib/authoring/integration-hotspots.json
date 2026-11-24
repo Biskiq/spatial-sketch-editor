@@ -1,9 +1,9 @@
 {
 	"src/lib/authoring/workspace/host/workspace-host.svelte.ts": {
-		"lines": 1604,
-		"imports": 93,
+		"lines": 1447,
+		"imports": 95,
 		"state": 6,
-		"derived": 64,
+		"derived": 52,
 		"effects": 2,
 		"functions": 13
 	},
@@ -222,5 +222,21 @@
 		"derived": 0,
 		"effects": 0,
 		"functions": 74
+	},
+	"src/lib/authoring/workspace/host/wiring/stage-canvas-views.svelte.ts": {
+		"lines": 72,
+		"imports": 7,
+		"state": 0,
+		"derived": 2,
+		"effects": 0,
+		"functions": 1
+	},
+	"src/lib/authoring/workspace/host/wiring/stage-region-models.svelte.ts": {
+		"lines": 220,
+		"imports": 15,
+		"state": 0,
+		"derived": 9,
+		"effects": 0,
+		"functions": 2
 	}
 }

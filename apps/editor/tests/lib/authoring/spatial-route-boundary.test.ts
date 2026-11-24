@@ -34,6 +34,7 @@ import {
 const ROUTE = path.join(EDITOR_LIB, 'authoring/workspace/host/workspace-host.svelte.ts');
 const CORE_LIFECYCLE = path.join(EDITOR_LIB, 'authoring/stage/route/core-lifecycle-steps.svelte.ts');
 const CORE_REGIONS = path.join(EDITOR_LIB, 'authoring/stage/route/core-region-views.ts');
+const CANVAS_VIEWS = path.join(EDITOR_LIB, 'authoring/workspace/host/wiring/stage-canvas-views.svelte.ts');
 const HISTORY = path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-command.ts');
 const LISTENERS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-window-listeners.ts');
 const EPOCH = path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts');
@@ -163,7 +164,8 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(history).toMatch(/run\(direction:[\s\S]*?if \(direction === 'undo'\) void input\.epoch\.undo\(\);\s*else void input\.epoch\.redo\(\);/);
 		expect(code).toContain('artworkScope: () => stageAssets.artworkScope');
 		expect(stripComments(fs.readFileSync(ARTWORK_HOST, 'utf8'))).toMatch(/get artworkScope\(\)\s*\{\s*return input\.artworkScope\(\)\s*;/);
-		expect(code).toContain('Object.getOwnPropertyDescriptors(artwork.regions.canvas)');
+		// String retarget: the Canvas assembly lives in the host's canvas-view owner.
+		expect(stripComments(fs.readFileSync(CANVAS_VIEWS, 'utf8'))).toContain('Object.getOwnPropertyDescriptors(input.artwork.regions.canvas)');
 	});
 
 	it('keeps no second epoch, history or asset-lease owner in the route', () => {

@@ -656,7 +656,8 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		expect(owners).toHaveLength(1);
 		expect(owners[0]!.code).toMatch(/const cameraEdit =\s*lease !== null &&\s*\(lease\.owner === 'experience-view-edit' \|\| lease\.owner === 'experience-path-point'\);/);
 		expect(owners[0]!.code).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
-		expect(route).toContain('gesturing: shell.cardGesturing');
+		const regionModels = stripComments(readFileSync(join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring', 'stage-region-models.svelte.ts'), 'utf8'));
+		expect(regionModels).toContain('gesturing: input.shell.cardGesturing');
 	});
 
 	it('states no plain "Nothing selectable there." for an ordinary empty click, but keeps the excluded-subjects reason', () => {

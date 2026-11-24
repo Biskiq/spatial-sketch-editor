@@ -33,6 +33,8 @@
 	import { createProjectReadyPort } from '$lib/authoring/stage/route/project-ready-port.svelte';
 	import { createStageViewing } from '$lib/authoring/stage/route/stage-viewing';
 	import { createStageContentBounds, readStageContentBounds } from '$lib/authoring/stage/route/stage-content-bounds.svelte';
+import { createStageCanvasViews } from './wiring/stage-canvas-views.svelte';
+import { createStageRegionModels } from './wiring/stage-region-models.svelte';
 	import { installLookThroughFrame } from '$lib/authoring/stage/route/look-through-frame.svelte';
 	import { createStageHistoryCommand } from '$lib/authoring/stage/route/stage-history-command';
 	import { createStageWindowListeners } from '$lib/authoring/stage/route/stage-window-listeners';
@@ -866,7 +868,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		focus: experienceFocus,
 		lens: experience.lens,
 		active: () => experience.active,
-		cardActions: () => worldCard.actions,
+		cardActions: () => regionModels.worldCard.actions,
 		dockKeys: () => dockKeys,
 		notice: (message) => shell.setNotice(message),
 		refreshHostTools: () => shell.refreshHostTools(),
@@ -1078,41 +1080,27 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	installLeaveProject(lifecycleCell);
 	artwork.attachGuard();
 
-	const lookCardStratum = $derived.by(() => {
-		void shell.contributionsVersion;
-		const subject = selectionViewView.cardSubject;
-		const entity = subject?.reference?.domain === 'scene'
-			? selectionViewView.scenePayload?.entities.find((entry) => entry.id === subject.sourceId)
-			: undefined;
-		return (entity?.kind === 'artwork' ? artwork.ports.card(entity) : null) ?? sky.ports.cardStratum(subject);
-	});
-	const worldCard = $derived(stageWorldCardView({
-		facade,
-		subject: selectionViewView.cardSubject,
-		datumMeters: experienceFeature.ports.floorDatum,
-		look: lookCardStratum,
-		revision: shell.contributionsVersion
-	}));
-	const experienceShownCard = $derived(experienceFeature.ports.shownCard);
-	const shownCard = $derived.by(() => {
-		if (experience.lensState === 'experience') return experienceShownCard;
-		return {
-			identity: selectionViewView.cardIdentity,
-			facts: worldCard.facts,
-			nameWriter: worldCard.nameWriter,
-			writer: worldCard.writer,
-			// Studio offers only what it owns: no World functions (Paint, Section, Present),
-			// no Look recipes; the facade withholds Duplicate/Delete of the root being edited.
-			actions: worldCard.actions,
-			functions: studio.active ? [] : null,
-			kindLink: null,
-			menu: null,
-			back: null,
-			bringIntoView: () => {
-				const target = selectionViewView.selectedWorldPoint();
-				if (target !== null) bringIntoView(target);
-			}
-		};
+	const regionModels = createStageRegionModels({
+		previewing: () => preview !== null,
+		shell,
+		commands,
+		experience,
+		experienceFeature,
+		studioFeature,
+		appearance,
+		readings,
+		sky,
+		artwork,
+		library,
+		selectionViewView: () => selectionViewView,
+		selection: () => selection,
+		contributedInstrument: () => contributedInstrument,
+		taskHost: () => taskHost,
+		inactiveTask: () => inactiveTask,
+		facade: () => facade,
+		bringIntoView,
+		lookThroughActive: lookThroughActiveNow,
+		toggleReveal
 	});
 
 	function toggleReveal(sourceId: string): void {
@@ -1228,57 +1216,28 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		cursor: () => stageCursor,
 		lookThrough: () => viewportLookThrough,
 		viewportInput,
-		canvas: () => canvas,
-		overlay: () => overlay,
+		canvas: () => canvasViews.canvas,
+		overlay: () => canvasViews.overlay,
 		downloadSource: downloadSourceJson,
 		locationLabel: () => selectionViewView.locationLabel,
 		findEntries: () => findView.entries,
 		projectActionsUnavailableReason: () => projectActionsUnavailableReason,
-		index: () => indexRegion,
-		card: () => cardRegion,
-		inactiveTask: () => inactiveTaskRegion,
-		worldToolbar: () => worldRegion,
-		instrument: () => instrumentRegion,
-		show: () => showRegion
+		index: () => regionModels.indexRegion,
+		card: () => regionModels.cardRegion,
+		inactiveTask: () => regionModels.inactiveTaskRegion,
+		worldToolbar: () => regionModels.worldRegion,
+		instrument: () => regionModels.instrumentRegion,
+		show: () => regionModels.showRegion
 	});
 
-	const canvas = $derived.by(() => {
-		const snapshot = ready.snapshot();
-		if (snapshot === null) return null;
-		const coreCanvas = coreRegions.canvas(snapshot);
-		const appearanceCanvas = appearance.regions.regionsCanvas(snapshot);
-		const features = {
-			get studio() {
-				void studioFeature.ports.revision();
-				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
-			},
-		};
-		// Assemble descriptors once per admitted source so Svelte reads each
-		// Canvas getter independently of the other regions and source props.
-		const { liftCanvas, cutawayCanvas, sliceCanvas, unfoldCanvas } = readings.regions;
-		// The idle Unfold anchor was sampled with the source props.
-		const unfold = {
-			...Object.getOwnPropertyDescriptors(unfoldCanvas),
-			unfoldAnchorPin: { value: unfoldCanvas.unfoldAnchorPin, enumerable: true }
-		};
-		return Object.defineProperties(coreCanvas, {
-			...Object.getOwnPropertyDescriptors(features),
-			...Object.getOwnPropertyDescriptors(appearanceCanvas),
-			...Object.getOwnPropertyDescriptors(sky.regions.canvas),
-			...Object.getOwnPropertyDescriptors(artwork.regions.canvas),
-			...Object.getOwnPropertyDescriptors(liftCanvas),
-			...Object.getOwnPropertyDescriptors(cutawayCanvas),
-			...Object.getOwnPropertyDescriptors(sliceCanvas),
-			...unfold
-		}) as typeof coreCanvas & typeof features & typeof appearanceCanvas & typeof sky.regions.canvas & typeof artwork.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
-	});
-
-	const overlay = $derived({
-		...coreRegions.overlay,
-		celestial: sky.regions.overlay.celestial,
-		marks: [...coreRegions.overlay.marks!, ...(sky.regions.overlay.marks ?? [])],
-		candidates: [...coreRegions.overlay.candidates!, ...(artwork.regions.overlay.candidates ?? [])],
-		sliceDraft: readings.regions.overlay.sliceDraft
+	const canvasViews = createStageCanvasViews({
+		snapshot: ready.snapshot,
+		coreRegions,
+		appearance,
+		readings,
+		sky,
+		artwork,
+		studioFeature
 	});
 
 	const stageCursor = $derived(readStageCursor({
@@ -1341,122 +1300,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			active: preview !== null
 		};
 	});
-
-	const showRegion = $derived.by((): RegionProps['toolbars']['show'] => (preview === null && experience.lensState === 'experience'
-		? {
-			open: shell.showOpen,
-			mode: shell.showMode,
-			markers: shell.showMarkers,
-			frustums: shell.showFrustums,
-			paths: shell.showPaths,
-			labels: shell.showLabels,
-			offCount: shell.showOffCount,
-			hidden: lookThroughActiveNow(),
-			onToggle: () => shell.setShowOpen(!shell.showOpen),
-			onClose: () => shell.setShowOpen(false),
-			onMode: (mode) => shell.setShowMode(mode),
-			onMarkers: (value) => shell.setShowMarkers(value),
-			onFrustums: (value) => shell.setShowFrustums(value),
-			onPaths: (value) => shell.setShowPaths(value),
-			onLabels: (value) => shell.setShowLabels(value),
-			onShowAll: () => shell.showAll()
-		}
-		: null));
-	const worldRegion = $derived.by((): RegionProps['toolbars']['world'] => (preview === null && experience.lensState === 'world'
-		? {
-			studio: studio.active,
-			activeTool: shell.activeWorldTool,
-			libraryOpen: shell.libraryOpen,
-			plateOpen: shell.worldPlateOpen,
-			requestedCategory: shell.libraryCategoryRequest,
-			onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
-			onTool: (id) => commands.armWorldTool(id),
-			onLibrary: () => (shell.libraryOpen ? library.ports.close() : commands.toggleWorldLibrary('dock')),
-			furnishOpen: shell.furnishStripOpen,
-			onFurnish: () => commands.toggleFurnishStrip(),
-			onFurnishBrowse: () => commands.browseFurnish(),
-			onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
-			onMaterialPick: sky.ports.pickMaterial,
-			finishShelf: appearance.regions.finishShelf,
-			onFinishPick: (ref) => {
-				// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
-				const fromPaint = shell.armedHostTool === 'paint';
-				void finishes.pickFinish(ref);
-				if (fromPaint && shell.libraryOpen) commands.armWorldTool('paint');
-			},
-			finishTileSource: appearance.ports.finishTileSource,
-			finishImage: finishes.image,
-			onFinishImageImport: (file: File) => void finishes.addFromImage(file),
-			onFinishImageCancel: () => finishes.cancelImage(),
-			onFinishImageRetry: () => void finishes.retryImageUpload(),
-			onFinishImageReset: () => finishes.resetImage(),
-			lookShelf: sky.libraryShelf,
-			artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
-			onArtworkPick: (entry) => { commands.selectTool(); artwork.ports.arm(entry); },
-			onArtworkImport: (files: File[]) => { commands.selectTool(); void artwork.ports.importFiles(files); },
-			onLookPick: sky.ports.pickLibraryEntry,
-			trayOwnsPlate: appearance.regions.ownsPaintPlate,
-			paintChip: appearance.regions.paintChip,
-			plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
-			inkReading: shell.inkReading,
-			sliceMode: readings.sliceMode,
-			sliceDrawing: sliceDraw.armed,
-			onSliceLevel: readings.ports.levelSlice,
-			onSliceDrawn: readings.ports.drawSlice,
-			onTogglePalette: () => shell.togglePalette()
-		}
-		: null));
-	const instrumentRegion = $derived.by((): RegionProps['toolbars']['instrument'] => (preview === null && contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || shell.paletteOpen)
-		? {
-			task: taskHost,
-			onClose: () => commands.closeTask(),
-			onCollapse: () => shell.setPaletteOpen(false),
-			instrument: contributedInstrument
-		}
-		: null));
-	const indexRegion = $derived.by((): RegionProps['panels']['index'] => ({
-		open: shell.indexOpen,
-		model: selectionViewView.worldIndex,
-		scope: selectionViewView.resolvedScope,
-		onScope: (scope) => shell.setWorldScope(scope),
-		onClose: () => shell.setIndexOpen(false),
-		selectionId: selectionViewView.selectedLocatorId,
-		query: shell.query,
-		onQuery: (next: string) => shell.setQuery(next),
-		onSelect: (sourceId: string) => commands.selectSource(sourceId),
-		onBringIntoView: (sourceId: string) => {
-			const target = selectionViewView.sourceWorldPoint(sourceId);
-			if (target !== null) bringIntoView(target);
-		},
-		onReveal: (id: string) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); },
-		onRename: () => shell.requestCardRename(),
-		experience: experience.index
-	}));
-	const cardRegion = $derived.by((): RegionProps['panels']['card'] => ({
-		identity: preview === null && shell.cardOpen ? shownCard.identity : null,
-		facts: shownCard.facts,
-		nameWriter: shownCard.nameWriter,
-		renameRequest: shell.cardRenameTarget === null || (selection !== null && sameReference(selection.reference, shell.cardRenameTarget))
-			? shell.cardRenameRequest : 0,
-		onRenameRequestConsumed: shell.consumeCardRename,
-		writer: shownCard.writer as StageCardWriterRecord | null,
-		actions: shownCard.actions as readonly StageCardActionRecord[],
-		functions: shownCard.functions,
-		kindLink: shownCard.kindLink,
-		menu: shownCard.menu,
-		back: shownCard.back,
-		gesturing: shell.cardGesturing,
-		onClose: () => commands.closeCard(),
-		onBringIntoView: shownCard.bringIntoView,
-		onPaint: shownCard.identity !== null &&
-			!['wall', 'room', 'opening', 'light', 'artwork'].includes(
-				shownCard.identity.kind.toLowerCase()
-			)
-			? () => commands.armWorldTool('paint')
-			: null
-	}));
-	const inactiveTaskRegion = $derived.by((): RegionProps['panels']['inactiveTask'] => (preview === null && inactiveTask !== null ? { label: inactiveTask.label } : null));
-
 
 	return {
 		get experienceViewport() {
