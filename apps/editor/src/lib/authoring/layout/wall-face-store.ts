@@ -30,6 +30,8 @@ export type WallFaceReading = {
 export type WallFaceCameraPort = {
 	standpoint(): ViewportCameraState | null;
 	face(frame: WallFaceFrame): boolean;
+	/** Plan reading + fit on floor bounds (Align on floor, U6). */
+	frameFloor?(bounds: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] }): boolean;
 	putBack(entry: ViewportCameraState): boolean;
 };
 
@@ -62,6 +64,20 @@ class WallFaceStore {
 		if (entry === null) return { kind: 'refused', reason: 'no-camera' };
 		if (!port.face(input.frame)) return { kind: 'refused', reason: 'camera-refused' };
 		this.#reading = { wallId: input.wallId, entry };
+		return { kind: 'applied' };
+	}
+
+	/** Frame one Room floor in Plan reading; Put back restores the entry standpoint. */
+	faceFloor(input: {
+		readonly roomId: string;
+		readonly bounds: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
+	}): WallFaceOutcome {
+		const port = this.#port;
+		if (port === null || port.frameFloor === undefined) return { kind: 'refused', reason: 'no-camera' };
+		const entry = port.standpoint();
+		if (entry === null) return { kind: 'refused', reason: 'no-camera' };
+		if (!port.frameFloor(input.bounds)) return { kind: 'refused', reason: 'camera-refused' };
+		this.#reading = { wallId: `floor:${input.roomId}`, entry };
 		return { kind: 'applied' };
 	}
 

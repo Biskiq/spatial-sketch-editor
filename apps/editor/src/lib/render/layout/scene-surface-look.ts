@@ -14,15 +14,21 @@ export function resolveSceneSurfaceLook(
 	const target = 'materialId' in assignment.finish
 		? { materialInstanceId: null, fallbackCatalogueId: assignment.finish.materialId }
 		: { materialInstanceId: assignment.finish.materialInstanceId, fallbackCatalogueId: 'plaster-warm' as const };
+	const finishKey = 'materialId' in assignment.finish
+		? `curated:${assignment.finish.materialId}`
+		: `project:${assignment.finish.materialInstanceId}`;
 	const sceneWithTreatment = treatment === scene.environment?.treatment
 		? scene
 		: { ...scene, environment: { ...(scene.environment ?? {}), treatment } };
 	// Scene surfaces are metre charts (Forms, Walls, Room floor/lid and Region
 	// faces). One native UV unit is one metre; the canonical plan supplies the
 	// per-mapping repeat and rotation.
-	return sceneFinishFor(sceneWithTreatment, target, {
-		kind: 'metric',
-		uvMeters: [1, 1],
-		surfaceMeters: [1, 1]
-	});
+	return {
+		...sceneFinishFor(sceneWithTreatment, target, {
+			kind: 'metric',
+			uvMeters: [1, 1],
+			surfaceMeters: [1, 1]
+		}),
+		finishKey
+	};
 }

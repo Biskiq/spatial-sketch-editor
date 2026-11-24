@@ -181,6 +181,8 @@ export type SceneRenderItem = {
 	readonly geometryScale: SceneVec3;
 	readonly material: StandardMaterialDescriptor;
 	readonly textures: SceneTextureSpec | null;
+	/** Canonical Finish key (`project:<id>` or `curated:<id>`) for outcome reporting. */
+	readonly finishKey?: string;
 	readonly transform: SceneTransform;
 	readonly castShadow: boolean;
 	readonly receiveShadow: boolean;
@@ -252,6 +254,8 @@ export type SceneModelLook = {
 	readonly finish?: StandardFinishPlan;
 	/** The views the sampled plan names. */
 	readonly views?: readonly SceneFinishViewSource[];
+	/** Canonical Finish key (`project:<id>` or `curated:<id>`) for outcome reporting. */
+	readonly finishKey?: string;
 };
 
 /**

@@ -52,6 +52,10 @@ import {
 	type FinishViewLease
 } from './resources/finish-views';
 import {
+	classifyFinishViewIssues,
+	type FinishOutcomeSink
+} from './resources/finish-outcome-sink';
+import {
 	createArrivalGate,
 	modelLookFor,
 	nextModelEntityId,
@@ -170,6 +174,8 @@ export type SceneModelRepresentationOptions = {
 	readonly onState?: (id: string, state: SceneModelState) => void;
 	/** The owning Canvas's generation; a replacement refuses only its own loads. */
 	readonly viewGeneration?: () => FinishViewGeneration | null;
+	/** Optional Stage-only sink for sampled Finish view outcomes. */
+	readonly onFinishOutcome?: FinishOutcomeSink;
 };
 
 export type SceneModelRepresentation = {
@@ -445,7 +451,11 @@ export function createSceneModelRepresentation(
 			entry.controller?.abort();
 			const controller = new AbortController();
 			entry.controller = controller;
-							track(
+			const targetKey = `entity:${entry.id}`;
+			if (active.finishKey !== undefined) {
+				options.onFinishOutcome?.({ targetKey, finishKey: active.finishKey, state: 'pending', issues: [] });
+			}
+			track(
 				acquireFinishViews(
 					active.views ?? [],
 					look.scope,
@@ -460,6 +470,14 @@ export function createSceneModelRepresentation(
 						}
 						const named = new Set((active.views ?? []).map((source) => source.view));
 						const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+						if (active.finishKey !== undefined) {
+							options.onFinishOutcome?.({
+								targetKey,
+								finishKey: active.finishKey,
+								state: classifyFinishViewIssues(lease.issues, complete),
+								issues: lease.issues
+							});
+						}
 						if (!complete && import.meta.env.DEV) {
 							for (const issue of lease.issues) console.warn(`[scene-model] ${entry.id}: ${issue.code}`, issue);
 						}

@@ -102,6 +102,8 @@ export type InspectionRequest = {
 	readonly lighting: InspectionLightingMode;
 	readonly display: InspectionDisplay;
 	readonly sizePx: readonly [width: number, height: number];
+	/** Optional yaw rotation of the inspection light rig or World light sample about +Y (radians). */
+	readonly lightTurnRadians?: number;
 	/**
 	 * U1's sample-tile presentation: a front-on window of this many metres on
 	 * the reference plane, lit by the `sample-tile` rig. `geometry` and
@@ -609,6 +611,7 @@ export function createInspectionHost(options: {
 		let leased: AcquiredViews | null = null;
 		let releaseMaterial: (() => void) | null = null;
 		let worldLighting: WorldInspectionLighting | null = null;
+		let activeRig: InspectionLighting | null = null;
 		const windowGeometries: BufferGeometry[] = [];
 		const scene = new Scene();
 		try {
@@ -657,15 +660,18 @@ export function createInspectionHost(options: {
 				(display === 'lit' && typeof lighting === 'string' ? libraryRigBackdrop(lighting) : null) ?? INSPECTION_THUMBNAIL_BACKGROUND;
 			scene.background = new Color(backdrop);
 			// A channel display is unlit; it realizes no rig and no World light.
+			const turn = request.lightTurnRadians ?? 0;
 			if (display === 'lit') {
 				if (world !== null) {
 					worldLighting = createWorldInspectionLighting(world, lights);
+					if (turn !== 0) worldLighting.group.rotation.y = turn;
 					leases += 1;
 					scene.add(worldLighting.group);
 				} else {
-					const rig = rigFor(current, lighting as InspectionRig);
-					scene.add(rig.group);
-					scene.environment = rig.environment(current.renderer);
+					activeRig = rigFor(current, lighting as InspectionRig);
+					if (turn !== 0) activeRig.group.rotation.y = turn;
+					scene.add(activeRig.group);
+					scene.environment = activeRig.environment(current.renderer);
 				}
 			}
 			if (sampleTile === undefined) {
@@ -705,6 +711,7 @@ export function createInspectionHost(options: {
 				issues: [{ code: 'inspection-draw-failed', message: error instanceof Error ? error.message : String(error) }]
 			};
 		} finally {
+			if (activeRig !== null) activeRig.group.rotation.y = 0;
 			scene.clear();
 			for (const windowGeometry of windowGeometries) disposeQuietly(windowGeometry);
 			if (worldLighting !== null) {
@@ -769,7 +776,7 @@ export function createInspectionHost(options: {
 		let owner = '';
 		if (subject.kind === 'finish') owner = subject.scope.scopeId;
 		if (subject.kind === 'draft') owner = String(idOf(subject.draft));
-		return JSON.stringify([
+		const base = [
 			owner,
 			inspectionSubjectIdentity(subject),
 			request.geometry,
@@ -777,7 +784,11 @@ export function createInspectionHost(options: {
 			request.display,
 			request.sizePx,
 			request.sampleTile === undefined ? null : sampleTileFramingKey(request.sampleTile)
-		]);
+		];
+		if (request.lightTurnRadians !== undefined && request.lightTurnRadians !== 0) {
+			base.push(`turn:${request.lightTurnRadians.toFixed(4)}`);
+		}
+		return JSON.stringify(base);
 	}
 
 	function finishJob(job: ThumbnailJob, result: InspectionThumbnail): void {

@@ -1,20 +1,20 @@
 /**
- * T2.S8 U5 — the Library's Customise… draft.
+ * T2.S8 U6 — the Library's Customise… draft and derived-recipe prediction.
  *
- * Beginning, changing and closing a draft is pure view state; Apply's plan is
- * the only thing that becomes an authoring call, and it keeps the Finish Card's
- * reach rules: one user edits in place, a shared project Finish copies just the
- * selected user, and a curated Finish materializes one Finish for its users.
+ * Beginning, editing and closing a draft is pure view state. Apply and the
+ * first draft Paint stroke predict and commit through the shared
+ * `findIdenticalFinish` helper (`identity: 'reuse'`), never mutating any
+ * existing Finish definition or unrelated shared user.
  */
 import { describe, expect, it } from 'vitest';
 import type { FinishSheenReading } from '@portfolio/project-model/scene-planning';
+import type { SceneMaterialInstance } from '@portfolio/project-model';
 import {
 	beginLibraryDraft,
 	libraryDraftChanged,
-	libraryDraftPlan,
+	predictDerivedAssign,
 	type LibraryDraftEntry
 } from '$lib/authoring/library/library-draft';
-import type { LibraryTarget } from '$lib/authoring/library/library-target';
 
 function reading(current: 'matte' | 'satin' | 'gloss' = 'satin'): FinishSheenReading {
 	return {
@@ -44,115 +44,82 @@ function entry(source: 'project' | 'curated', users: readonly string[]): Library
 	};
 }
 
-const table: LibraryTarget = {
-	kind: 'entity',
-	key: 'entity:a',
-	entityId: 'a',
-	label: 'Table',
-	finishKey: 'project:oak'
-};
-const wall: LibraryTarget = {
-	kind: 'surface',
-	key: 'surface:wall:left',
-	surface: { kind: 'wall-side', wallId: 'wall', side: 'left' },
-	label: 'Wall · left',
-	finishKey: 'project:oak'
-};
+const emptyRecipes = new Map();
 
-describe('T2.S8 U5 — Library draft', () => {
-	it('opens on the current sheen and changes only its local step', () => {
+describe('T2.S8 U6 — Library draft & derived prediction', () => {
+	it('opens unchanged with empty edits and changes only locally', () => {
 		const source = entry('project', ['entity:a']);
 		const draft = beginLibraryDraft(source);
 		expect(draft.step).toBe('satin');
-		const gloss = { ...draft, step: 'gloss' as const };
-		expect(gloss.step).toBe('gloss');
-		expect(draft.step).toBe('satin');
-		expect(source.reading.current).toBe('satin');
+		expect(draft.edits).toEqual([]);
+		expect(libraryDraftChanged(draft)).toBe(false);
+		const edited = { ...draft, edits: [{ field: 'roughness' as const, op: 'set' as const, value: 0.3 }] };
+		expect(libraryDraftChanged(edited)).toBe(true);
+		expect(libraryDraftChanged(draft)).toBe(false);
 	});
 
-	it('plans one in-place patch for a project Finish with one user', () => {
-		const draft = { ...beginLibraryDraft(entry('project', ['entity:a'])), step: 'gloss' as const };
-		expect(libraryDraftPlan(draft, table, reading(), ['entity:a'])).toMatchObject({
-			ok: true,
-			mode: 'in-place',
-			selectedUsers: ['entity:a'],
-			expectedUsers: ['entity:a'],
-			allocates: false,
-			edits: [{ field: 'roughness', op: 'set', value: 1 }]
+	it('predicts allocation when no identical Finish exists, and reuse when one matches (name ignored)', () => {
+		const source: SceneMaterialInstance = { id: 'curated:wood-oak-veneer', name: 'Oak', base: { catalogue: 'wood-oak-veneer' } };
+		const first = predictDerivedAssign({
+			materials: [],
+			sourceInstance: source,
+			edits: [{ field: 'roughness', op: 'set', value: 0.4 }],
+			recipes: emptyRecipes,
+			includesModel: false
 		});
-	});
+		expect(first).toMatchObject({ ok: true, existingKey: null, allocates: true });
 
-	it('copies just the selected user of a shared project Finish', () => {
-		const draft = { ...beginLibraryDraft(entry('project', ['entity:a', 'surface:wall:left'])), step: 'gloss' as const };
-		expect(libraryDraftPlan(draft, wall, reading(), ['entity:a', 'surface:wall:left'])).toMatchObject({
-			ok: true,
-			mode: 'just-this',
-			selectedUsers: ['surface:wall:left'],
-			expectedUsers: ['entity:a', 'surface:wall:left'],
-			allocates: true
-		});
-	});
-
-	it('materializes a curated Finish for its single user', () => {
-		const curatedTarget = { ...table, finishKey: 'curated:wood-oak-veneer' };
-		const draft = { ...beginLibraryDraft(entry('curated', ['entity:a'])), step: 'matte' as const };
-		expect(libraryDraftPlan(draft, curatedTarget, reading(), ['entity:a'])).toMatchObject({
-			ok: true,
-			mode: 'all',
-			selectedUsers: ['entity:a'],
-			allocates: true,
-			edits: [{ field: 'roughness', op: 'set', value: 0.3 }]
-		});
-	});
-
-	it('refuses no target, another Finish, a vanished user and the current sheen', () => {
-		const draft = { ...beginLibraryDraft(entry('project', ['entity:a'])), step: 'gloss' as const };
-		expect(libraryDraftPlan(draft, null, reading(), ['entity:a'])).toEqual({
-			ok: false,
-			message: 'Select an object or surface first.'
-		});
-		expect(libraryDraftPlan(draft, { ...table, finishKey: 'curated:wood-walnut-veneer' }, reading(), ['entity:a'])).toMatchObject({
-			ok: false,
-			message: 'Select a surface wearing Lobby oak first.'
-		});
-		expect(libraryDraftPlan(draft, table, reading(), ['entity:b'])).toMatchObject({
-			ok: false,
-			message: 'Table no longer wears Lobby oak.'
-		});
-		const settled = { ...reading(), current: 'gloss' as const, original: 'gloss' as const, originalExact: true };
-		expect(libraryDraftPlan({ ...draft, step: 'gloss' }, table, settled, ['entity:a'])).toEqual({
-			ok: false,
-			message: 'That sheen is already set. Choose another.'
-		});
-	});
-
-	it('reads a draft as changed only when its step would write', () => {
-		const settled = {
-			...reading(),
-			current: 'satin' as const,
-			original: 'satin' as const,
-			originalExact: true
+		const existing: SceneMaterialInstance = {
+			id: 'fin-existing',
+			name: 'Renamed Oak',
+			base: { catalogue: 'wood-oak-veneer' },
+			overrides: { roughness: 0.4 }
 		};
-		const draft = beginLibraryDraft({ ...entry('project', ['entity:a']), reading: settled });
-		expect(libraryDraftChanged(draft, settled)).toBe(false);
-		expect(libraryDraftChanged({ ...draft, step: 'gloss' }, settled)).toBe(true);
+		const second = predictDerivedAssign({
+			materials: [existing],
+			sourceInstance: source,
+			edits: [{ field: 'roughness', op: 'set', value: 0.4 }],
+			recipes: emptyRecipes,
+			includesModel: false
+		});
+		expect(second).toMatchObject({ ok: true, existingKey: 'project:fin-existing', allocates: false });
 	});
 
-	it('does not arm Apply when the draft already sits on an overridden current sheen', () => {
-		const overridden = {
-			...reading(),
-			current: 'satin' as const,
-			original: 'matte' as const,
-			originalExact: true,
-			changed: true
+	it('predicts curated path when edits reset overrides to pristine, including model pristine allocation', () => {
+		const existing: SceneMaterialInstance = {
+			id: 'fin-rough',
+			name: 'Rough Oak',
+			base: { catalogue: 'wood-oak-veneer' },
+			overrides: { roughness: 0.4 }
 		};
-		const source = { ...entry('project', ['entity:a']), reading: overridden };
-		const draft = beginLibraryDraft(source);
-		expect(draft.step).toBe('satin');
-		expect(libraryDraftChanged(draft, overridden)).toBe(false);
-		expect(libraryDraftPlan(draft, table, overridden, ['entity:a'])).toEqual({
-			ok: false,
-			message: 'That sheen is already set. Choose another.'
+		const onBox = predictDerivedAssign({
+			materials: [existing],
+			sourceInstance: existing,
+			edits: [{ field: 'roughness', op: 'reset' }],
+			recipes: emptyRecipes,
+			includesModel: false
 		});
+		expect(onBox).toMatchObject({ ok: true, existingKey: 'curated:wood-oak-veneer', allocates: false });
+
+		const onModel = predictDerivedAssign({
+			materials: [existing],
+			sourceInstance: existing,
+			edits: [{ field: 'roughness', op: 'reset' }],
+			recipes: emptyRecipes,
+			includesModel: true
+		});
+		expect(onModel).toMatchObject({ ok: true, existingKey: 'curated:wood-oak-veneer', allocates: true });
+	});
+
+	it('refuses inadmissible edits with their E4 problem code', () => {
+		const source: SceneMaterialInstance = { id: 'curated:wood-oak-veneer', name: 'Oak', base: { catalogue: 'wood-oak-veneer' } };
+		const bad = predictDerivedAssign({
+			materials: [],
+			sourceInstance: source,
+			edits: [{ field: 'roughness', op: 'set', value: 9 }],
+			recipes: emptyRecipes,
+			includesModel: false
+		});
+		expect(bad).toMatchObject({ ok: false, code: 'invalid-value' });
 	});
 });

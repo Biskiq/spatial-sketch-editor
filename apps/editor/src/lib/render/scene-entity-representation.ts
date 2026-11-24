@@ -68,6 +68,10 @@ import {
 	type FinishViewGeneration,
 	type FinishViewLease
 } from './resources/finish-views';
+import {
+	classifyFinishViewIssues,
+	type FinishOutcomeSink
+} from './resources/finish-outcome-sink';
 
 /** What one update did, as counts — tests read these, never a stopwatch. */
 export type SceneEntityRepresentationStats = {
@@ -120,6 +124,8 @@ export type SceneEntityRepresentationOptions = {
 	readonly onModelDrawn?: (id: string) => void;
 	/** A model's load status changed. */
 	readonly onModelState?: (id: string, state: SceneModelState) => void;
+	/** Optional Stage-only sink for sampled Finish view outcomes. */
+	readonly onFinishOutcome?: FinishOutcomeSink;
 };
 
 export type SceneEntityRepresentation = {
@@ -223,7 +229,8 @@ export function createSceneEntityRepresentation(
 		viewGeneration: options.viewGeneration,
 		onRoot: (id, root) => options.onRoot?.(id, root),
 		onDrawn: (id) => options.onModelDrawn?.(id),
-		onState: (id, state) => options.onModelState?.(id, state)
+		onState: (id, state) => options.onModelState?.(id, state),
+		onFinishOutcome: options.onFinishOutcome
 	});
 	object3d.add(models.object3d);
 	const retained = new Map<string, RetainedItem>();
@@ -272,6 +279,10 @@ export function createSceneEntityRepresentation(
 			const controller = new AbortController();
 			entry.controller?.abort();
 			entry.controller = controller;
+			const targetKey = `entity:${item.id}`;
+			if (item.finishKey !== undefined) {
+				options.onFinishOutcome?.({ targetKey, finishKey: item.finishKey, state: 'pending', issues: [] });
+			}
 			const job: Promise<void> = acquireFinishViews(
 				sources,
 				scope,
@@ -285,6 +296,14 @@ export function createSceneEntityRepresentation(
 					}
 					const named = new Set(sources.map((source) => source.view));
 					const complete = lease.issues.length === 0 && Object.keys(lease.views).length === named.size;
+					if (item.finishKey !== undefined) {
+						options.onFinishOutcome?.({
+							targetKey,
+							finishKey: item.finishKey,
+							state: classifyFinishViewIssues(lease.issues, complete),
+							issues: lease.issues
+						});
+					}
 					if (!complete) {
 						lease.release();
 						if (import.meta.env.DEV) {

@@ -85,7 +85,10 @@
 		onProjectActionComplete = async () => {},
 		onProjectActionBusyChange = () => {},
 		onRefreshRemoteProject = null,
-		find = null
+		find = null,
+		repairIssueCount = 0,
+		repairOpen = false,
+		onToggleRepair = () => {}
 	}: {
 		projectId: string;
 		projectName: string;
@@ -147,6 +150,10 @@
 			readonly onQuery: (value: string) => void;
 			readonly onRun: (entry: HeadFindEntry) => void;
 		} | null;
+		/** Open appearance issues count; hidden when 0 and drawer is closed. */
+		repairIssueCount?: number;
+		repairOpen?: boolean;
+		onToggleRepair?: () => void;
 	} = $props();
 
 	const LENSES = [
@@ -647,6 +654,25 @@
 			{refusalAnnouncement}
 		</p>
 
+		{#if repairIssueCount > 0 || repairOpen}
+			<button
+				type="button"
+				class="head-repair-pill"
+				class:open={repairOpen}
+				data-head-repair
+				aria-pressed={repairOpen}
+				aria-label={repairIssueCount > 0 ? `${repairIssueCount} to repair — Appearance issues` : 'Appearance issues'}
+				title="Appearance issues"
+				onclick={() => onToggleRepair()}
+			>
+				<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+					<path d="M8 2.2 14.2 13.4H1.8Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+					<path d="M8 6.4v3.3M8 11.4v.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+				</svg>
+				<span class="repair-pill-label">{repairIssueCount} to repair</span>
+			</button>
+		{/if}
+
 		{#if canPreview}
 			<div
 				class="cap preview"
@@ -1049,6 +1075,36 @@
 		}
 		.find {
 			min-height: 44px;
+		}
+	}
+	.head-repair-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		height: 28px;
+		padding: 0 9px;
+		border: 1px solid transparent;
+		border-radius: 8px;
+		background: var(--shell-caution);
+		color: var(--shell-white);
+		font: 500 12px/1 inherit;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.head-repair-pill:hover {
+		filter: brightness(1.06);
+	}
+	.head-repair-pill.open {
+		background: var(--shell-forest-3);
+		border-color: var(--shell-caution);
+		color: var(--shell-ink-light);
+	}
+	@media (max-width: 900px) {
+		.head-repair-pill {
+			padding: 0 7px;
+		}
+		.repair-pill-label {
+			display: none;
 		}
 	}
 </style>

@@ -36,6 +36,8 @@ import {
 	checkSceneRecordScope,
 	createFinishPlanners,
 	effectiveColorOf,
+	findIdenticalFinish,
+	SCENE_FINISH_ASSIGN,
 	SCENE_SURFACE_FINISH_ASSIGN,
 	finishOf,
 	isPristineInstance,
@@ -1553,5 +1555,221 @@ describe('the textures record-scope grant', () => {
 			textures: [{ id: 'two', name: 'Two', uri: '/textures/two.png' }, ...before().textures]
 		};
 		expect(checkSceneRecordScope(before(), reordered, { ...baseScope, textures: { added: ['two'] } }).length).toBeGreaterThan(0);
+	});
+});
+
+describe('derived-recipe assign and findIdenticalFinish (T2.S8 U6)', () => {
+	it('findIdenticalFinish matches first non-pristine Finish in document order, ignoring name', () => {
+		const materials: SceneMaterialInstance[] = [
+			{ id: 'pristine', name: 'Walnut', base: { catalogue: 'wood-walnut' } },
+			{ id: 'fin-a', name: 'First Name', base: { catalogue: 'wood-walnut' }, overrides: { roughness: 0.4, color: '#224466' } },
+			{ id: 'fin-b', name: 'Second Name', base: { catalogue: 'wood-walnut' }, overrides: { color: '#224466', roughness: 0.4 } }
+		];
+		expect(findIdenticalFinish(materials, { catalogue: 'wood-walnut' }, { color: '#224466', roughness: 0.4 })?.id).toBe('fin-a');
+		expect(findIdenticalFinish(materials, { catalogue: 'wood-walnut' }, undefined)).toBeNull();
+		expect(findIdenticalFinish(materials, { catalogue: 'wood-walnut' }, { roughness: 0.9 })).toBeNull();
+	});
+
+	it('scene-finish-assign derive reuse creates one Finish when none matches, and reuses it on a second target', async () => {
+		const coordinator = await boot({ entities: [box('a'), box('b')] });
+		const first = await coordinator.accept(
+			intentOf(
+				coordinator,
+				SCENE_FINISH_ASSIGN,
+				{
+					finish: { curated: 'wood-walnut' },
+					entityIds: ['a'],
+					derive: { edits: [{ field: 'roughness', op: 'set', value: 0.4 }], identity: 'reuse' }
+				},
+				['a'],
+				[{ kind: 'scene-finish', id: 'fin-derived-1' }]
+			)
+		);
+		expect(first.kind).toBe('accepted');
+		const created = sourceScene(coordinator).materials.find((m) => m.id === 'fin-derived-1');
+		expect(created?.base).toEqual({ catalogue: 'wood-walnut' });
+		expect(created?.overrides).toEqual({ roughness: 0.4 });
+		const entityFinishId = (scene: ReturnType<typeof sourceScene>, id: string) => {
+			const e = scene.entities.find((entry) => entry.id === id);
+			return e && 'materialInstanceId' in e ? e.materialInstanceId : undefined;
+		};
+		expect(entityFinishId(sourceScene(coordinator), 'a')).toBe('fin-derived-1');
+
+		// Unexpected allocation when an identical Finish already exists
+		const overAllocated = await coordinator.accept(
+			intentOf(
+				coordinator,
+				SCENE_FINISH_ASSIGN,
+				{
+					finish: { curated: 'wood-walnut' },
+					entityIds: ['b'],
+					derive: { edits: [{ field: 'roughness', op: 'set', value: 0.4 }], identity: 'reuse' }
+				},
+				['b'],
+				[{ kind: 'scene-finish', id: 'fin-unused' }]
+			)
+		);
+		expect(overAllocated.kind).toBe('rejected');
+		if (overAllocated.kind === 'rejected') expect(overAllocated.reason).toBe('unexpected-allocation');
+
+		// Reuse succeeds with no allocation
+		const reused = await coordinator.accept(
+			intentOf(
+				coordinator,
+				SCENE_FINISH_ASSIGN,
+				{
+					finish: { curated: 'wood-walnut' },
+					entityIds: ['b'],
+					derive: { edits: [{ field: 'roughness', op: 'set', value: 0.4 }], identity: 'reuse' }
+				},
+				['b']
+			)
+		);
+		expect(reused.kind).toBe('accepted');
+		expect(entityFinishId(sourceScene(coordinator), 'b')).toBe('fin-derived-1');
+		expect(sourceScene(coordinator).materials).toHaveLength(1);
+	});
+
+	it('scene-finish-assign derive reuse resolving to curated with no overrides takes the curated/pristine path', async () => {
+		const existing: SceneMaterialInstance = {
+			id: 'fin-rough',
+			name: 'Rough Walnut',
+			base: { catalogue: 'wood-walnut' },
+			overrides: { roughness: 0.4 }
+		};
+		const outcome = await directPlan(
+			{ entities: [model('m1')], materials: [existing] },
+			SCENE_FINISH_ASSIGN,
+			{
+				finish: { project: 'fin-rough' },
+				entityIds: ['m1'],
+				derive: { edits: [{ field: 'roughness', op: 'reset' }], identity: 'reuse' }
+			},
+			['m1'],
+			[{ kind: 'scene-finish', id: 'fin-pristine-walnut' }]
+		);
+		const sceneAfter = plannedScene(outcome);
+		const m1 = sceneAfter.entities.find((e) => e.id === 'm1');
+		expect(m1 && 'materialInstanceId' in m1 ? m1.materialInstanceId : undefined).toBe('fin-pristine-walnut');
+		const pristine = sceneAfter.materials.find((m) => m.id === 'fin-pristine-walnut');
+		expect(pristine && isPristineInstance(pristine)).toBe(true);
+	});
+
+	it('scene-finish-assign derive fresh with empty edits always creates a new id and leaves other users untouched', async () => {
+		const shared: SceneMaterialInstance = {
+			id: 'fin-shared',
+			name: 'Custom Walnut',
+			base: { catalogue: 'wood-walnut' },
+			overrides: { roughness: 0.35 }
+		};
+		const coordinator = await boot({ entities: [box('a', 'plaster-warm', 'fin-shared'), box('b', 'plaster-warm', 'fin-shared')], materials: [shared] });
+
+		const missingAlloc = await coordinator.accept(
+			intentOf(
+				coordinator,
+				SCENE_FINISH_ASSIGN,
+				{
+					finish: { project: 'fin-shared' },
+					entityIds: ['a'],
+					derive: { edits: [], identity: 'fresh' }
+				},
+				['a']
+			)
+		);
+		expect(missingAlloc.kind).toBe('rejected');
+		if (missingAlloc.kind === 'rejected') expect(missingAlloc.reason).toBe('missing-allocation');
+
+		const copy = await coordinator.accept(
+			intentOf(
+				coordinator,
+				SCENE_FINISH_ASSIGN,
+				{
+					finish: { project: 'fin-shared' },
+					entityIds: ['a'],
+					derive: { edits: [], identity: 'fresh' }
+				},
+				['a'],
+				[{ kind: 'scene-finish', id: 'fin-own-copy' }]
+			)
+		);
+		expect(copy.kind).toBe('accepted');
+		const scene = sourceScene(coordinator);
+		const entA = scene.entities.find((e) => e.id === 'a');
+		const entB = scene.entities.find((e) => e.id === 'b');
+		expect(entA && 'materialInstanceId' in entA ? entA.materialInstanceId : undefined).toBe('fin-own-copy');
+		expect(entB && 'materialInstanceId' in entB ? entB.materialInstanceId : undefined).toBe('fin-shared');
+		expect(scene.materials.find((m) => m.id === 'fin-shared')).toEqual(shared);
+		expect(scene.materials.find((m) => m.id === 'fin-own-copy')?.overrides).toEqual({ roughness: 0.35 });
+	});
+
+	it('scene-surface-finish-assign supports derive reuse, fresh, and refuses inadmissible edits', async () => {
+		const layout = wallLayout(['wall-a']);
+		const left: LayoutSurfaceRef = { kind: 'wall-side', wallId: 'wall-a', side: 'left' };
+		const right: LayoutSurfaceRef = { kind: 'wall-side', wallId: 'wall-a', side: 'right' };
+		const coordinator = await boot({ entities: [], layout });
+		const surfaceIntent = (
+			payload: unknown,
+			surfaces: readonly LayoutSurfaceRef[],
+			allocatedIds: readonly { kind: string; id: string }[] = []
+		) => ({
+			...intentOf(coordinator, SCENE_SURFACE_FINISH_ASSIGN, payload, [], allocatedIds),
+			targets: surfaces.map((surface) => surfaceTarget(coordinator.current().source, surface))
+		});
+
+		const bad = await coordinator.accept(
+			surfaceIntent(
+				{
+					finish: { curated: 'wood-walnut' },
+					surfaces: [left],
+					derive: { edits: [{ field: 'roughness', op: 'set', value: 99 }], identity: 'reuse' }
+				},
+				[left],
+				[{ kind: 'scene-finish', id: 'fin-bad' }]
+			)
+		);
+		expect(bad.kind).toBe('rejected');
+		if (bad.kind === 'rejected') expect(bad.reason).toBe('invalid-value');
+
+		const first = await coordinator.accept(
+			surfaceIntent(
+				{
+					finish: { curated: 'wood-walnut' },
+					surfaces: [left],
+					derive: { edits: [{ field: 'roughness', op: 'set', value: 0.5 }], identity: 'reuse' }
+				},
+				[left],
+				[{ kind: 'scene-finish', id: 'fin-surf-1' }]
+			)
+		);
+		expect(acceptedScene(first).materials.some((m) => m.id === 'fin-surf-1')).toBe(true);
+
+		const second = await coordinator.accept(
+			surfaceIntent(
+				{
+					finish: { curated: 'wood-walnut' },
+					surfaces: [right],
+					derive: { edits: [{ field: 'roughness', op: 'set', value: 0.5 }], identity: 'reuse' }
+				},
+				[right]
+			)
+		);
+		expect(second.kind).toBe('accepted');
+		expect(sourceScene(coordinator).materials).toHaveLength(1);
+
+		const ownCopy = await coordinator.accept(
+			surfaceIntent(
+				{
+					finish: { project: 'fin-surf-1' },
+					surfaces: [right],
+					derive: { edits: [], identity: 'fresh' }
+				},
+				[right],
+				[{ kind: 'scene-finish', id: 'fin-surf-copy' }]
+			)
+		);
+		expect(ownCopy.kind).toBe('accepted');
+		const finishes = sourceScene(coordinator).surfaceFinishes ?? [];
+		expect(finishes.find((s) => surfaceKey(s.surface) === surfaceKey(left))?.finish).toEqual({ materialInstanceId: 'fin-surf-1' });
+		expect(finishes.find((s) => surfaceKey(s.surface) === surfaceKey(right))?.finish).toEqual({ materialInstanceId: 'fin-surf-copy' });
 	});
 });

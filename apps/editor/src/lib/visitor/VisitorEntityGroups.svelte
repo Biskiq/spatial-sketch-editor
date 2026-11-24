@@ -21,6 +21,7 @@
 	import type { RuntimeScene } from '$lib/content/scene';
 	import { isSceneFormEntity } from '$lib/content/scene';
 	import type { TextureLoadScope } from '$lib/render/resources/texture-store';
+	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import { tryUseCanvasRendererState } from '$lib/render/renderer-context';
 	import { createSceneEntityRepresentation } from '$lib/render/scene-entity-representation';
@@ -45,7 +46,8 @@
 		/** Paper is an editor-only reading: it never draws authored Scene lights. */
 		includeLights = true,
 		modelSupport,
-		onModelDrawn
+		onModelDrawn,
+		onFinishOutcome
 	}: {
 		scene: RuntimeScene;
 		textureScope?: TextureLoadScope | null;
@@ -68,6 +70,8 @@
 		/** Optional Stage-only notification after a model instance was drawn or restyled. */
 		onModelDrawn?: () => void;
 		includeLights?: boolean;
+		/** Optional Stage-only sink for sampled Finish view outcomes. */
+		onFinishOutcome?: FinishOutcomeSink;
 	} = $props();
 
 	/**
@@ -98,7 +102,8 @@
 		onModelDrawn: () => {
 			invalidate();
 			onModelDrawn?.();
-		}
+		},
+		onFinishOutcome: (outcome) => onFinishOutcome?.(outcome)
 	});
 
 	/**

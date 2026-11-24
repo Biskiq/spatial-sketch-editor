@@ -286,6 +286,7 @@
 	--stage-selection: #d4ad45;
 	--stage-hover: #4f8f6c;
 	--stage-erase: #d0412d;
+	--stage-repair: #a9631f;
 	/* Drafting stone: a neutral sage sheet under Plan and the 3D plate. */
 	--stage-paper: #e5e8e1;
 	/* Its one-pixel perimeter, so Paper reads as a sheet on the mat. */

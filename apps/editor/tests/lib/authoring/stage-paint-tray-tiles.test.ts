@@ -39,7 +39,11 @@ function liveTiles() {
 	const asked: { source: FinishTileSource; size: number }[] = [];
 	const held = new Map<string, number>();
 	const urlOf = (source: FinishTileSource) =>
-		source.kind === 'catalogue' ? `blob:${source.id}` : `blob:project:${source.subject.finishId}`;
+		source.kind === 'catalogue'
+			? `blob:${source.id}`
+			: source.kind === 'finish'
+				? `blob:project:${source.subject.finishId}`
+				: `blob:draft:${source.subject.draft.recipeHash}`;
 	const lease = (source: FinishTileSource): FinishTileLease => {
 		const url = urlOf(source);
 		held.set(url, (held.get(url) ?? 0) + 1);

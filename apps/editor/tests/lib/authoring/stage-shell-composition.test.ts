@@ -256,6 +256,7 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageSliceLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/slice/stage-clip.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageCelestialDial.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageRepairLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',

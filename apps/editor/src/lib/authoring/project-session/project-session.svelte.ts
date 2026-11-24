@@ -7,7 +7,8 @@ import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/sav
 import { serializeProjectEnvelope, validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	ProjectImageLoadError,
-	verifyProjectImageClosure
+	verifyProjectImageClosure,
+	type ProjectImageDiagnostic
 } from '$lib/authoring/artwork/project-artwork';
 import type { VerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
 import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
@@ -1031,6 +1032,61 @@ export function createProjectSession(host: {
 		return null;
 	}
 
+	async function repairProjectAsset(
+		assetId: string,
+		bytes: Uint8Array,
+		expectedPin: string,
+		signal?: AbortSignal
+	): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
+		if (api === null) {
+			return { ok: false, message: 'Cloud storage is unavailable in this session.' };
+		}
+		const savedBaseToken = pendingSavedBase?.token ?? null;
+		if (savedBaseToken === null) {
+			return { ok: false, message: 'Save this project to Cloud before relinking saved images.' };
+		}
+		try {
+			await api.repairAsset(
+				projectId,
+				assetId,
+				bytes,
+				{ expectedPin, savedBaseToken },
+				signal
+			);
+			return { ok: true };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'That file could not restore the saved image.';
+			return { ok: false, message };
+		}
+	}
+
+	async function repairBootImage(
+		diagnostic: ProjectImageDiagnostic,
+		bytes: Uint8Array,
+		signal?: AbortSignal
+	): Promise<{ readonly ok: true } | { readonly ok: false; readonly message: string }> {
+		if (api === null) {
+			return { ok: false, message: 'Cloud storage is unavailable in this session.' };
+		}
+		if (diagnostic.expectedPin === null || diagnostic.savedBase === null) {
+			return { ok: false, message: 'This project does not hold a saved pin for exact-byte recovery.' };
+		}
+		try {
+			await api.repairAsset(
+				diagnostic.projectId,
+				diagnostic.assetId,
+				bytes,
+				{ expectedPin: diagnostic.expectedPin.hash, savedBaseToken: diagnostic.savedBase },
+				signal
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'That file does not match the original image.';
+			return { ok: false, message };
+		}
+		await load(projectId, intent);
+		return { ok: true };
+	}
+
 	return {
 		get boot() { return boot; },
 		get headSave() { return headSave; },
@@ -1050,6 +1106,7 @@ export function createProjectSession(host: {
 		bindNavigation, mountSave, unmountSave, projectActionsUnavailableReason, activeProject, load,
 		requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer,
 		prepareProjectLifecycle, renameCurrentProject, deleteCurrentProject,
-		finishCurrentProjectAction, reloadLifecycleRemote, applyReloadOffer
+		finishCurrentProjectAction, reloadLifecycleRemote, applyReloadOffer,
+		repairProjectAsset, repairBootImage
 	};
 }

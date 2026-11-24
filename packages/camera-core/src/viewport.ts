@@ -1379,10 +1379,11 @@ export function requestViewingIntent(
 			const width = max[0] - min[0];
 			const height = max[1] - min[1];
 			const depth = max[2] - min[2];
-			// The framed extent is the reading's own: Plan frames X/Z, 3D frames height plus the
-			// horizontal diagonal, which is the extent a perspective view can bring into frame.
-			const horizontal = settled.reading === 'plan' ? width : Math.hypot(width, depth);
-			const vertical = settled.reading === 'plan' ? depth : height;
+			// The framed extent is the declared endpoint reading's own: Plan frames X/Z, 3D frames
+			// height plus the horizontal diagonal, which is the extent a perspective view can bring into frame.
+			const reading = settled.transition?.to ?? settled.reading;
+			const horizontal = reading === 'plan' ? width : Math.hypot(width, depth);
+			const vertical = reading === 'plan' ? depth : height;
 			const aspect = rect.width / rect.height;
 			const targetPlaneHeightMeters = clamp(
 				Math.max(vertical / usable, horizontal / aspect / usable, VIEWPORT_TARGET_PLANE_MIN_METERS),

@@ -150,6 +150,26 @@ export function wallFaceFrame(
 	return { bounds: facePlaneBounds(bounds, look), look };
 }
 
+/**
+ * Exact face frame for an explicit straight wall side (`'left' | 'right'`),
+ * taken from the Card target's surface ref rather than the camera's side.
+ */
+export function wallSideFaceFrame(
+	wall: CompiledPhysicalWall,
+	surfaceSide: 'left' | 'right'
+): WallFaceFrame | null {
+	const samples = wall.samples;
+	if (samples.length === 0) return null;
+	const mid = samples[Math.floor(samples.length / 2)]!;
+	const normal = unitHorizontal(-mid.tangent[1], mid.tangent[0]);
+	if (normal === null) return null;
+	const bounds = orderedBounds(wall.bounds3.min, wall.bounds3.max);
+	if (bounds === null) return null;
+	const side = surfaceSide === 'left' ? 1 : -1;
+	const look: Vec3 = [-side * normal[0], 0, -side * normal[2]];
+	return { bounds: facePlaneBounds(bounds, look), look };
+}
+
 /** The displayed sheet's own extent and the face normal at its pin. */
 function sheetFaceFrame(display: WallUnfoldDisplay, anchorStation: number): WallFaceFrame | null {
 	const positions = display.positions;

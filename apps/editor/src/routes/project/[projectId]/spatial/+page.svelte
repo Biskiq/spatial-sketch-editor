@@ -108,6 +108,9 @@
 	import '$lib/authoring/stage/shell/shell-roles.css';
 	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
+	import StageRepairDrawer from '$lib/authoring/stage/shell/StageRepairDrawer.svelte';
+	import { invalidateFinishViewsForSource } from '$lib/render/resources/finish-views';
+	import { invalidateTextureSource } from '$lib/render/resources/texture-store';
 	import StagePanels from '$lib/authoring/stage/shell/StagePanels.svelte';
 	import StageProjectNotices from '$lib/authoring/stage/shell/StageProjectNotices.svelte';
 	import StageToolbars from '$lib/authoring/stage/shell/StageToolbars.svelte';
@@ -163,11 +166,15 @@
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
 	import StageLibrary from '$lib/authoring/library/StageLibrary.svelte';
 	import LibraryMaterialEditor from '$lib/authoring/library/LibraryMaterialEditor.svelte';
+	import MaterialImportSheet from '$lib/authoring/library/MaterialImportSheet.svelte';
+	import { createMaterialImportSession, type ImportTargetChoice } from '$lib/authoring/library/material-import.svelte';
+	import StageFinishAlign from '$lib/authoring/stage/shell/StageFinishAlign.svelte';
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
+	import { materialTreatmentFacts } from '$lib/content/material-presentation';
 	import { assets } from '$lib/content/assets';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
@@ -651,6 +658,116 @@
 	 * The draft's render-only Stage projection, held stable between scene reads:
 	 * a fresh object per read would make every Stage evaluation look changed.
 	 */
+	const materialImport = createMaterialImportSession({
+		acceptHost: () => {
+			if ((boot.status !== 'ready' && boot.status !== 'empty') || adapterServices === null || api === null) return null;
+			const services = adapterServices;
+			const cloudApi = api;
+			return {
+				api: cloudApi,
+				projectId,
+				current: () => {
+					const shot = services.stage.snapshot();
+					return { revision: shot.acceptedRevision, source: stageEnvelope(shot) };
+				},
+				accept: async (intent) => {
+					const outcome = await services.authoring.accept(intent);
+					if (outcome.kind === 'installed') return { kind: 'accepted' };
+					if (outcome.kind === 'refused') return { kind: 'rejected', code: outcome.code, message: outcome.message };
+					return { kind: 'rejected', code: outcome.kind, message: 'No change was made.' };
+				},
+				entityReference: (source, entityId) => ({
+					version: 1 as const,
+					domain: 'scene' as const,
+					revision: { kind: 'exact' as const, contentRevision: source.units.scene.header.contentRevision },
+					subject: { kind: 'entity' as const, id: entityId },
+					instancePath: [],
+					location: { kind: 'project-root' as const },
+					componentId: null,
+					capabilityId: null
+				}),
+				surfaceReference: (source, surface) => ({
+					version: 1 as const,
+					domain: 'layout' as const,
+					revision: { kind: 'exact' as const, contentRevision: source.units.layout.header.contentRevision },
+					subject:
+						surface.kind === 'wall-side'
+							? { kind: 'wall' as const, id: surface.wallId }
+							: surface.kind === 'region-face'
+								? { kind: 'region' as const, id: surface.regionId }
+								: { kind: 'room' as const, id: surface.roomId },
+					instancePath: [],
+					location: { kind: 'project-root' as const },
+					componentId: null,
+					capabilityId: null
+				})
+			};
+		},
+		expectedRevision: () => (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.acceptedRevision : null),
+		materialProofs: () => materialProofs,
+		onAccepted: ({ finishKey, name, targetCount, targetKind, firstTarget }) => {
+			finishes.noteUsedFinish?.(finishKey);
+			if (targetCount > 0 && firstTarget !== null) {
+				const nouns = targetKind === 'layout' ? 'surfaces' : 'parts';
+				const other = targetKind === 'layout' ? 'objects' : 'walls';
+				shell.setNotice(`${name} is on ${targetCount} ${nouns} · paint it on ${other} from Materials — same Finish`);
+				if (firstTarget.kind === 'surface') {
+					finishes.card.requestOpen({ kind: 'surface', surface: firstTarget.surface });
+				} else {
+					finishes.card.requestOpen({ kind: 'entity', entityId: firstTarget.id });
+				}
+			} else {
+				shell.setNotice(`${name} added to This project`);
+			}
+		}
+	});
+
+	function currentImportTargets(): ImportTargetChoice[] {
+		const out: ImportTargetChoice[] = [];
+		const target = finishes.libraryTarget();
+		if (target !== null) {
+			if (target.kind === 'entity') {
+				out.push({ kind: 'entity', id: target.entityId, label: target.label });
+			} else {
+				out.push({ kind: 'surface', surface: target.surface, label: target.label });
+			}
+		}
+		return out;
+	}
+
+	const editorTreatmentFacts = materialTreatmentFacts((id) => (materialById.has(id) ? getMaterial(id).label : id));
+
+	function baseSourceOfInstance(instance: { readonly base: { readonly catalogue: string } | { readonly material: string } }): FinishTileSource | null {
+		if ('catalogue' in instance.base) {
+			return { kind: 'catalogue', id: instance.base.catalogue as import('$lib/types/materials').MaterialId };
+		}
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		const scene = boot.snapshot.domain.scene;
+		const id = 'material-editor-base-inspection';
+		return {
+			kind: 'finish',
+			subject: {
+				kind: 'finish',
+				document: {
+					...scene,
+					materials: [
+						...scene.materials.filter((material) => material.id !== id),
+						{ id, name: 'Original', base: instance.base }
+					]
+				},
+				finishId: id,
+				revision: `${boot.snapshot.sourceContentId}#base:${instance.base.material}`,
+				scope: stageAssets.textureScope
+			}
+		};
+	}
+
+	const finishEditorView = $derived.by(() => {
+		void shell.contributionsVersion;
+		void finishes.card.preview;
+		return finishes.editor.view();
+	});
+
 	/** The draft's own render subject for Compare: the patched Finish in a draft-only document. */
 	const libraryDraftRender = $derived.by((): { source: FinishTileSource | null; reason: string | null } => {
 		void shell.contributionsVersion;
@@ -663,7 +780,7 @@
 		}
 		const scene = boot.snapshot.domain.scene;
 		const id = 'library-draft-inspection';
-		const step = finishes.libraryDraft?.step ?? 'draft';
+		const editsSig = JSON.stringify(finishes.libraryDraft?.edits ?? []);
 		return {
 			reason: null,
 			source: {
@@ -675,7 +792,7 @@
 						materials: [...scene.materials.filter((material) => material.id !== id), { ...drafted.instance, id }]
 					},
 					finishId: id,
-					revision: `${boot.snapshot.sourceContentId}#draft:${finishes.libraryDraft?.finishKey}:${step}`,
+					revision: `${boot.snapshot.sourceContentId}#draft:${finishes.libraryDraft?.finishKey}:${editsSig}`,
 					scope: stageAssets.textureScope
 				}
 			}
@@ -1036,8 +1153,54 @@
 			services: () => adapterServices,
 			onNotice: (message) => shell.setNotice(message),
 			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
-		})
+		}),
+		repairAsset: (assetId, bytes, expectedPin, signal) =>
+			projectSession.repairProjectAsset(assetId, bytes, expectedPin, signal),
+		invalidateAndReloadAsset: (assetId) => {
+			const uri = `project-asset://${assetId}`;
+			const scopeId = stageAssets.textureScope?.scopeId ?? null;
+			if (scopeId !== null) invalidateFinishViewsForSource(scopeId, uri);
+			invalidateTextureSource(scopeId, uri);
+			stageAssets.retryTexture(uri);
+		},
+		retryTextures: () => {
+			for (const issue of finishes.issues.open) {
+				if (issue.assetId !== null) {
+					stageAssets.retryTexture(`project-asset://${issue.assetId}`);
+				}
+			}
+		}
 	});
+	let repairDrawerOpen = $state(false);
+	let bootRepairBusy = $state(false);
+	let bootRepairError = $state<string | null>(null);
+	let bootRepairInput = $state<HTMLInputElement>();
+
+	$effect(() => {
+		void projectId;
+		untrack(() => {
+			finishes.issues.reset();
+			repairDrawerOpen = false;
+			bootRepairError = null;
+		});
+	});
+
+	async function onBootRepairFileChosen(event: Event): Promise<void> {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (file === undefined || boot.status !== 'error' || boot.image === undefined) return;
+		bootRepairBusy = true;
+		bootRepairError = null;
+		try {
+			const bytes = new Uint8Array(await file.arrayBuffer());
+			const outcome = await projectSession.repairBootImage(boot.image, bytes);
+			if (!outcome.ok) bootRepairError = outcome.message;
+		} catch {
+			bootRepairError = 'Could not read that file.';
+		} finally {
+			bootRepairBusy = false;
+		}
+	}
 	/**
 	 * The Customise… draft lives in the Material editor while Paint is armed for
 	 * its Stage retarget; putting Paint down discards it. Only Apply writes.
@@ -1188,6 +1351,32 @@
 			}
 			return true;
 		},
+		dismissAlign: () => {
+			if (!finishes.align.active) return false;
+			finishes.align.putBack();
+			return true;
+		},
+		dismissMaterialEditor: () => {
+			if (finishes.editor.open) {
+				finishes.editor.close(true);
+				return true;
+			}
+			if (finishes.libraryDraft !== null) {
+				endLibraryDraft();
+				return true;
+			}
+			return false;
+		},
+		dismissMaterialImport: () => {
+			if (!materialImport.open) return false;
+			materialImport.cancel();
+			return true;
+		},
+		dismissRepairDrawer: () => {
+			if (!repairDrawerOpen) return false;
+			repairDrawerOpen = false;
+			return true;
+		},
 		dismissPaint: () => {
 			if (finishes.libraryDraft !== null) {
 				endLibraryDraft();
@@ -1260,7 +1449,10 @@
 		wallUnfold.ensureAnchor(candidate.wall, candidate.defaultStation);
 	});
 
-	const paperVisible = $derived(isPaperPlanVisible(evaluation, shell.preferences.planAppearance));
+	const effectivePlanAppearance = $derived(
+		finishes.align.active?.surface === 'floor' ? 'shaded' : shell.preferences.planAppearance
+	);
+	const paperVisible = $derived(isPaperPlanVisible(evaluation, effectivePlanAppearance));
 	const modelUrls = $derived(stageAssets.urls);
 
 	/**
@@ -2016,6 +2208,30 @@
 				);
 				return result?.kind === 'accepted';
 			},
+			frameFloor: (bounds) => {
+				const stage = facade;
+				const viewport = rect;
+				if (stage === null || viewport === null) return false;
+				const t = readingIntentClockSeconds(shell.reducedMotion, nowSeconds());
+				const current = stage.camera.state();
+				if (current.reading !== 'plan') {
+					const flip = submit({ kind: 'set-reading', reading: 'plan' }, t);
+					if (flip?.kind !== 'accepted') return false;
+				}
+				const fitted = submit(
+					{
+						kind: 'fit',
+						bounds: {
+							min: [bounds.min[0], bounds.min[1], bounds.min[2]],
+							max: [bounds.max[0], bounds.max[1], bounds.max[2]]
+						},
+						rect: viewport,
+						paddingFraction: 0.14
+					},
+					t
+				);
+				return fitted?.kind === 'accepted';
+			},
 			putBack: (entry) => facade?.camera.restoreStandpoint(entry) ?? false
 		});
 		return () => {
@@ -2174,7 +2390,7 @@
 				void studioRevision;
 				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
 			},
-			get planAppearance() { return shell.preferences.planAppearance; },
+			get planAppearance() { return effectivePlanAppearance; },
 			get paperInk2d() { return PAPER_TONES[shell.preferences.paperTone2d].ink; },
 			get paperInk3d() { return PAPER_TONES[shell.preferences.paperTone3d].ink; },
 			get drafting() { return shell.drafting; },
@@ -2207,7 +2423,9 @@
 			get heightPlaneVisible() { return experience.lensState === 'world' && shell.heightPlaneVisible; },
 			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
 			get unfoldPinActive() { return unfoldGestures.sheetPinActive; },
-			unfoldAnchorPin: unfoldGestures.idlePin?.point ?? null
+			unfoldAnchorPin: unfoldGestures.idlePin?.point ?? null,
+			onFinishOutcome: finishes.issues.recordOutcome,
+			get repairAffectedTargets() { return finishes.issues.hatchedTargets; }
 		};
 	});
 
@@ -2394,6 +2612,9 @@
 				onQuery: (value: string) => shell.setFindQuery(value),
 				onRun: (entry: Pick<StageHeadFindEntry, 'id' | 'adapterId'>) => commands.runHeadFindEntry(entry)
 			}}
+			repairIssueCount={finishes.issues.count}
+			repairOpen={repairDrawerOpen}
+			onToggleRepair={() => (repairDrawerOpen = !repairDrawerOpen)}
 		/>
 	{/if}
 
@@ -2795,6 +3016,10 @@
 					commands.selectTool();
 					void artworkInteraction.importFiles(files);
 				}}
+				onMaterialImport={(files, invoker) => {
+					closeLibrary();
+					void materialImport.start(files, currentImportTargets(), invoker);
+				}}
 				onLook={(id) => {
 					closeLibrary();
 					look.pickLibraryEntry(id);
@@ -2803,32 +3028,129 @@
 			{/key}
 		{/if}
 
+		{#if materialImport.open && preview === null && experience.lensState === 'world'}
+			<MaterialImportSheet session={materialImport} />
+		{/if}
+
+		{#if finishes.align.active !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
+			{@const activeAlign = finishes.align.active}
+			{@const alignInspected = finishes.card.inspectedOf(activeAlign.target)}
+			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
+			{#if alignInspected !== null && sceneNow !== null}
+				{@const alignFields = finishes.editor.view()?.fields ?? null}
+				{@const mappingNow = alignInspected.instance.overrides?.mapping}
+				{@const tileM = mappingNow && mappingNow.kind !== 'uv' ? mappingNow.metric.tileMeters[0] : (alignFields?.pattern.tileMeters ?? 1)}
+				{@const rotDeg = mappingNow ? ((((mappingNow.kind === 'uv' ? mappingNow.rotation : mappingNow.metric.rotation) * 180) / Math.PI) % 360 + 360) % 360 : 0}
+				{@const normOff = mappingNow ? (mappingNow.kind === 'uv' ? mappingNow.offset : mappingNow.metric.offset) : [0, 0]}
+				<StageFinishAlign
+					align={activeAlign}
+					tileMeters={tileM}
+					offsetMeters={[normOff[0] * tileM, normOff[1] * tileM]}
+					angleDeg={rotDeg}
+					viewportWidth={rect?.width ?? 856}
+					viewportHeight={rect?.height ?? 608}
+					source={{ base: alignInspected.instance.base, overrides: alignInspected.instance.overrides }}
+					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
+					onPreview={(edits) => finishes.card.previewEdits(activeAlign.target, () => edits)}
+					onCancelPreview={() => finishes.card.cancel()}
+					onCommit={(edits) => finishes.card.edit(activeAlign.target, () => edits)}
+					onPutBack={() => finishes.align.putBack(true)}
+				/>
+			{/if}
+		{/if}
+
 		{#if finishes.libraryDraft !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
 			{@const draftEntry = libraryEntries.find((entry) => entry.key === finishes.libraryDraft?.finishKey) ?? null}
-			<LibraryMaterialEditor
-				draft={finishes.libraryDraft}
-				entry={draftEntry}
-				status={libraryDraftStatus}
-				busy={finishes.busy}
-				previewing={libraryDraftPreview !== null}
-				tileSource={draftEntry === null ? null : libraryTileSource(draftEntry)}
-				draftSource={libraryDraftRender.source}
-				draftReason={libraryDraftRender.reason}
-				inspection={shell.libraryInspection}
-				onInspection={(next) => shell.setLibraryInspection(next)}
-				onStep={(step) => finishes.setLibraryDraftStep(step)}
-				onReset={() => finishes.resetLibraryDraftStep()}
-				onApply={async () => {
-					const accepted = await finishes.applyLibraryDraft();
-					if (accepted) {
-						commands.armWorldTool('select');
-						void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
-					}
-					return accepted;
-				}}
-				onPaint={() => finishes.paintLibraryDraft()}
-				onCancel={endLibraryDraft}
-			/>
+			{@const draftInst = finishes.libraryDraftInstance()}
+			{@const draftFields = finishes.libraryDraftFields()}
+			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
+			{#if draftFields !== null && draftInst !== null && draftInst.ok && sceneNow !== null}
+				{@const origTile = draftEntry === null ? null : libraryTileSource(draftEntry)}
+				<LibraryMaterialEditor
+					mode="draft"
+					name={finishes.libraryDraft.name}
+					baseLabel={finishes.libraryDraft.baseLabel}
+					finishKey={finishes.libraryDraft.finishKey}
+					color={draftEntry?.color ?? '#999999'}
+					imageUri={draftEntry?.imageUri ?? null}
+					tileSource={libraryDraftRender.source ?? origTile}
+					originalSource={origTile}
+					fields={draftFields}
+					source={{ base: draftInst.instance.base, overrides: draftInst.instance.overrides }}
+					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
+					palette={sceneNow.palette ?? []}
+					facts={editorTreatmentFacts}
+					inspection={shell.libraryInspection}
+					onInspection={(next) => shell.setLibraryInspection(next)}
+					display={finishes.editor.display}
+					onDisplay={(next) => finishes.editor.setDisplay(next)}
+					lightTurnRadians={finishes.editor.lightTurnRadians}
+					onTurnLight={() => finishes.editor.turnLight()}
+					compare={finishes.editor.compare}
+					onCompare={(next) => finishes.editor.setCompare(next)}
+					draftStatus={libraryDraftStatus}
+					previewing={libraryDraftPreview !== null}
+					busy={finishes.busy}
+					onCommit={(_field, edits) => finishes.patchLibraryDraft(edits)}
+					onResetAll={() => finishes.resetLibraryDraftStep()}
+					onApplyDraft={async () => {
+						const accepted = await finishes.applyLibraryDraft();
+						if (accepted) {
+							commands.armWorldTool('select');
+							void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
+						}
+						return accepted;
+					}}
+					onPaintDraft={() => finishes.paintLibraryDraft()}
+					onCancelDraft={endLibraryDraft}
+				/>
+			{/if}
+		{:else if finishes.editor.open && finishEditorView !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
+			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
+			{#if sceneNow !== null}
+				{@const liveSource =
+					finishEditorView.curated && 'catalogue' in finishEditorView.instance.base
+						? { kind: 'catalogue' as const, id: finishEditorView.instance.base.catalogue as import('$lib/types/materials').MaterialId }
+						: finishTileSource(finishEditorView.instance.id)}
+				<LibraryMaterialEditor
+					mode="finish"
+					name={finishEditorView.name}
+					baseLabel={finishEditorView.fields.raw.label}
+					canRename={finishEditorView.canRename}
+					onRename={(nextName) => finishes.card.rename(finishEditorView.target, nextName)}
+					finishKey={finishEditorView.finishKey}
+					tileSource={liveSource}
+					originalSource={baseSourceOfInstance(finishEditorView.instance)}
+					fields={finishEditorView.fields}
+					source={{ base: finishEditorView.instance.base, overrides: finishEditorView.instance.overrides }}
+					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
+					palette={sceneNow.palette ?? []}
+					facts={editorTreatmentFacts}
+					inspection={shell.libraryInspection}
+					onInspection={(next) => shell.setLibraryInspection(next)}
+					display={finishes.editor.display}
+					onDisplay={(next) => finishes.editor.setDisplay(next)}
+					lightTurnRadians={finishes.editor.lightTurnRadians}
+					onTurnLight={() => finishes.editor.turnLight()}
+					compare={finishes.editor.compare}
+					onCompare={(next) => finishes.editor.setCompare(next)}
+					fieldRefusal={finishes.editor.fieldRefusal}
+					usersCount={finishEditorView.usersCount}
+					reach={finishEditorView.reach}
+					place={finishEditorView.place}
+					onToggleReach={() => finishes.editor.toggleReach()}
+					align={finishEditorView.align}
+					onAlign={() => {
+						const res = finishes.requestAlign(finishEditorView.target, finishEditorView.place);
+						if (!res.ok && res.message) finishes.editor.setFieldRefusal('pattern', res.message);
+					}}
+					onPreview={(edits) => finishes.editor.preview(() => edits)}
+					onCancelPreview={() => finishes.editor.cancelPreview()}
+					onCommit={(field, edits) => finishes.editor.commit(field, () => edits)}
+					onResetAll={() => finishes.editor.resetAll()}
+					onDone={() => finishes.editor.close(true)}
+				/>
+			{/if}
 		{/if}
 
 		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen && finishes.libraryDraft === null}
@@ -2854,6 +3176,19 @@
 					add: (color) => finishes.addPaletteSlot(color)
 				}}
 				tileSource={finishTileSource}
+			/>
+		{/if}
+
+		{#if preview === null}
+			<StageRepairDrawer
+				open={repairDrawerOpen}
+				issues={finishes.issues.open}
+				repaired={finishes.issues.repaired}
+				onOpenCard={(issue) => {
+					finishes.focusIssueTarget(issue);
+					repairDrawerOpen = false;
+				}}
+				onClose={() => (repairDrawerOpen = false)}
 			/>
 		{/if}
 
@@ -2906,6 +3241,32 @@
 			{:else if boot.status === 'error'}
 				<h1>Project unavailable</h1>
 				<p>{boot.message}</p>
+				{#if boot.image !== undefined && boot.image.expectedPin !== null && boot.image.savedBase !== null}
+					<input
+						bind:this={bootRepairInput}
+						type="file"
+						accept="image/*"
+						style="display:none"
+						onchange={(event) => void onBootRepairFileChosen(event)}
+					/>
+					<button
+						type="button"
+						class="primary"
+						disabled={bootRepairBusy}
+						data-boot-repair-image
+						onclick={() => {
+							if (bootRepairInput !== undefined) {
+								bootRepairInput.value = '';
+								bootRepairInput.click();
+							}
+						}}
+					>
+						{bootRepairBusy ? 'Repairing…' : 'Repair with the original file…'}
+					</button>
+					{#if bootRepairError !== null}
+						<p role="alert" data-boot-repair-error>{bootRepairError}</p>
+					{/if}
+				{/if}
 			{/if}
 			{#if transfer !== null && boot.status !== 'loading'}
 				<!-- A destination that will not load never strands the saved object. -->

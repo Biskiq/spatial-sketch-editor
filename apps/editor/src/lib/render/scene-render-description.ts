@@ -484,7 +484,10 @@ function sceneModelItem(entity: SceneModelEntity, scene: RuntimeScene): SceneMod
 						? {}
 						: { normalScale: effective.material.normalScale }),
 					...(effective.material.finish === undefined ? {} : { finish: effective.material.finish }),
-					...(effective.textures?.views === undefined ? {} : { views: effective.textures.views })
+					...(effective.textures?.views === undefined ? {} : { views: effective.textures.views }),
+					...(entity.materialInstanceId !== undefined
+						? { finishKey: `project:${entity.materialInstanceId}` }
+						: {})
 				};
 	const footprint = scene.modelFootprints?.get(entity.assetId);
 	return describeSceneModel({
@@ -550,6 +553,10 @@ export function describeSceneRender(
 					geometryScale: geometry.scale,
 					material: look.material,
 					textures: look.textures,
+					finishKey:
+						entity.materialInstanceId !== undefined
+							? `project:${entity.materialInstanceId}`
+							: `curated:${entity.materialId}`,
 					transform,
 					castShadow: entity.castShadow,
 					receiveShadow: entity.receiveShadow
@@ -595,6 +602,10 @@ export function describeSceneRender(
 				geometryScale: scale,
 				material: look.material,
 				textures: look.textures,
+				finishKey:
+					entity.materialInstanceId !== undefined
+						? `project:${entity.materialInstanceId}`
+						: `curated:${entity.materialId}`,
 				transform,
 				castShadow: entity.castShadow,
 				receiveShadow: entity.receiveShadow

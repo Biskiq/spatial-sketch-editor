@@ -57,6 +57,8 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageLiftLayer from './StageLiftLayer.svelte';
 	import StageOpenSideLayer from './StageOpenSideLayer.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
+	import StageRepairLayer from './StageRepairLayer.svelte';
+	import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 	import { ghostSubjectOf, selectionObjectsOf } from './stage-selection-source';
 	import { subjectWhollyHidden } from '../slice/slice-ghost';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
@@ -137,7 +139,9 @@ import StageMatGround from './StageMatGround.svelte';
 		cutawayWallIds = [],
 		cutawayStubTopY = null,
 		onCutawayFailure,
-		studio = null
+		studio = null,
+		onFinishOutcome,
+		repairAffectedTargets
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -217,6 +221,10 @@ import StageMatGround from './StageMatGround.svelte';
 		 * set separately on the facade, and nothing here writes source.
 		 */
 		studio?: { readonly rootId: string | null; readonly context: 'world' | 'mat' } | null;
+		/** Optional Stage-only sink for sampled Finish view outcomes (U6 Repair). */
+		onFinishOutcome?: FinishOutcomeSink;
+		/** Union of open appearance issues' affected target keys (U6 Repair hatch). */
+		repairAffectedTargets?: ReadonlySet<string>;
 	} = $props();
 
 	/**
@@ -491,6 +499,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{liftedRoomIds}
 			{liftedRegionIds}
 			{cutawayWallIds}
+			{onFinishOutcome}
 			onIdentity={scenePick.registerLayoutIdentity} />
 	</T.Group>
 	{/if}
@@ -524,6 +533,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{scenePick}
 		scene={drawnScene}
 		{modelUrls}
+		{onFinishOutcome}
 		includeLights={sky !== null}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
@@ -576,6 +586,13 @@ import StageMatGround from './StageMatGround.svelte';
 			fade={1 - (paperReveal?.sheet ?? 0)}
 			unclippedSelection={sliceGhostSelection !== null}
 		/>
+		{#if repairAffectedTargets && repairAffectedTargets.size > 0}
+			<StageRepairLayer
+				affectedTargets={repairAffectedTargets}
+				{scenePick}
+				revision={`${layoutRevision}:${sceneRootRevision + entityRenderRevision}`}
+			/>
+		{/if}
 		{/if}
 	{/if}
 	{#if !paperVisible && framedViewport === null}

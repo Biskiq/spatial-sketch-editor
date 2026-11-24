@@ -36,7 +36,8 @@ export type FinishTileSubject = Extract<InspectionSubject, { kind: 'finish' }>;
 
 export type FinishTileSource =
 	| { readonly kind: 'catalogue'; readonly id: MaterialId }
-	| { readonly kind: 'finish'; readonly subject: FinishTileSubject };
+	| { readonly kind: 'finish'; readonly subject: FinishTileSubject }
+	| { readonly kind: 'draft'; readonly subject: Extract<InspectionSubject, { kind: 'draft' }> };
 
 /** Draw one master through the Stage's inspection host. */
 export type FinishTileRender = (
@@ -49,10 +50,12 @@ export type FinishTileRender = (
  * editor). A new observation replaces the previous one; the returned stop
  * releases it. Null while no Stage renderer is registered.
  */
-export type FinishTileInspect = (
+export type FinishTileInspect = ((
 	request: InspectionRequest,
 	onState: (state: InspectionState) => void
-) => () => void;
+) => () => void) & {
+	readonly retry?: () => void;
+};
 
 /**
  * A held picture. The URL stays valid until `release()`: eviction, a scope
@@ -100,7 +103,9 @@ export const FINISH_TILE_RENDER_CONCURRENCY = 2;
 
 /** The cache namespace: a catalogue picture is shared, a project one is its scope's. */
 function namespaceOf(source: FinishTileSource): string {
-	return source.kind === 'catalogue' ? 'catalogue' : `scope:${source.subject.scope.scopeId}`;
+	if (source.kind === 'catalogue') return 'catalogue';
+	if (source.kind === 'draft') return 'draft';
+	return `scope:${source.subject.scope.scopeId}`;
 }
 
 function subjectOf(source: FinishTileSource): InspectionSubject {
@@ -442,6 +447,10 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 			// Retired while this waiter was on its way and nobody else took it.
 			if (lease === null) reap(entry);
 			return lease;
+		},
+		/** Reload the live inspection request's failed images and redraw. */
+		retry(): void {
+			inspector?.retry?.();
 		},
 		/** Drop every picture of one project scope (its textures were disposed). In-use URLs live to their last release. */
 		forgetScope(scopeId: string): void {

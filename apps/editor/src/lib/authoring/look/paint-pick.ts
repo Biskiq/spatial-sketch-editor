@@ -13,6 +13,7 @@
  */
 
 import type { MaterialId } from '$lib/types/materials';
+import type { FinishPatchEdit, SceneFinishRef } from '@portfolio/project-model/scene-planning';
 
 /** The creator preference lists are 12 recents and 24 favourites per kind. */
 export const PAINT_RECENTS_LIMIT = 12;
@@ -24,9 +25,17 @@ export type PaintColour =
 	| { readonly kind: 'slot'; readonly slotId: string }
 	| { readonly kind: 'literal'; readonly hex: string };
 
+export type PaintDraftPick = {
+	readonly kind: 'draft';
+	readonly ref: Exclude<SceneFinishRef, 'model-own'>;
+	readonly edits: readonly FinishPatchEdit[];
+	readonly name: string;
+};
+
 export type PaintPick =
 	| { readonly kind: 'finish'; readonly key: string }
-	| { readonly kind: 'colour'; readonly colour: PaintColour };
+	| { readonly kind: 'colour'; readonly colour: PaintColour }
+	| PaintDraftPick;
 
 /** Paint's reach. A future freeform Brush joins this table; nothing else names it. */
 export const PAINT_RADII = [
@@ -58,7 +67,10 @@ export function parseColourKey(key: string): PaintColour | null {
 }
 
 export function pickKey(pick: PaintPick): string {
-	return pick.kind === 'finish' ? pick.key : colourKey(pick.colour);
+	if (pick.kind === 'finish') return pick.key;
+	if (pick.kind === 'colour') return colourKey(pick.colour);
+	const base = 'curated' in pick.ref ? `curated:${pick.ref.curated}` : `project:${pick.ref.project}`;
+	return `draft:${base}:${JSON.stringify(pick.edits)}`;
 }
 
 export function samePick(a: PaintPick | null, b: PaintPick | null): boolean {

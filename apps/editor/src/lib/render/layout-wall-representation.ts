@@ -50,6 +50,7 @@ import type {
 } from '$lib/render/resources/material-descriptor';
 import type { SceneSurfaceLookResolver } from '$lib/render/layout/surface-look';
 import type { FinishViewGeneration } from '$lib/render/resources/finish-views';
+import type { FinishOutcomeSink } from '$lib/render/resources/finish-outcome-sink';
 
 type WallMaterialFactory = ReturnType<typeof createVisitorWallMaterialFactory>['factory'];
 
@@ -204,7 +205,8 @@ export function createWallRepresentation(
 	initialScope: TextureLoadScope | null = null,
 	onMaterialChange: () => void = () => {},
 	resolveSurfaceLook?: SceneSurfaceLookResolver,
-	viewGeneration?: () => FinishViewGeneration | null
+	viewGeneration?: () => FinishViewGeneration | null,
+	onFinishOutcome?: FinishOutcomeSink
 ): WallRepresentation {
 	const object3d = new Group();
 	object3d.name = 'VisitorLayoutWalls';
@@ -254,7 +256,8 @@ export function createWallRepresentation(
 				scope: activeScope,
 				resolveSurfaceLook,
 				onMaterialChange: refreshMaterials,
-				viewGeneration
+				viewGeneration,
+				onFinishOutcome
 			}
 		);
 	}

@@ -23,6 +23,8 @@
  */
 import {
 	FINISH_NAME_MAX_LENGTH,
+	SCENE_FINISH_ASSIGN,
+	SCENE_SURFACE_FINISH_ASSIGN,
 	applyFinishPatch,
 	baseRecipeOf,
 	baseTileMeters,
@@ -141,6 +143,7 @@ export type FinishCardView =
 			readonly colour: FinishCardColour;
 			readonly sheen: FinishSheenReading & { readonly caption: string };
 			readonly pattern: FinishCardPattern | null;
+			readonly align: { readonly kind: 'wall' | 'floor'; readonly label: string } | null;
 			readonly more: {
 				readonly roughness: number;
 				readonly roughnessMax: number;
@@ -165,6 +168,10 @@ export type FinishCardHost = {
 	readonly replaceImage?: (entityId: string, file: File, mode: 'in-place' | 'all' | 'just-this') => Promise<void>;
 	/** Called after any accepted write (e.g. to note the Finish as recently used). */
 	readonly onAccepted?: (finishKey: string) => void;
+	/** Select every user of a Finish (Card ⋯ › Select all). */
+	readonly selectFinishUsers?: (ref: Exclude<SceneFinishRef, 'model-own'>) => Promise<boolean>;
+	/** Toast notification after "Give this surface its own copy". */
+	readonly onOwnCopy?: () => void;
 };
 
 type Inspected = {
@@ -492,6 +499,12 @@ export function createFinishCard(host: FinishCardHost) {
 			colour: colourOf(found),
 			sheen,
 			pattern,
+			align:
+				target.kind === 'surface' && target.surface.kind === 'wall-side'
+					? { kind: 'wall', label: 'Align on wall…' }
+					: target.kind === 'surface' && target.surface.kind === 'room-floor'
+						? { kind: 'floor', label: 'Align on floor…' }
+						: null,
 			more: {
 				roughness: sheen.effective,
 				roughnessMax: Math.min(1, sheen.scan.mean),
@@ -775,6 +788,70 @@ export function createFinishCard(host: FinishCardHost) {
 		return write(target, (inspected) => ({ edits: editsToward(inspected.instance.overrides, undefined) }));
 	}
 
+	/** Give this surface/object its own independent copy (`derive` with `identity: 'fresh'`). */
+	async function giveOwnCopy(target: FinishCardTarget): Promise<boolean> {
+		const services = host.services();
+		const inspected = inspect(target);
+		if (services === null || inspected === null || !('ref' in inspected)) return false;
+		const found = inspected as Inspected;
+		if ('curated' in found.ref || found.users.length < 2) return false;
+		clearPreview();
+		busy = true;
+		try {
+			const shot = services.stage.snapshot();
+			const freshId = `finish:${crypto.randomUUID()}`;
+			const isEntity = target.kind === 'entity';
+			const intentTarget = isEntity
+				? {
+						version: 1 as const,
+						domain: 'scene' as const,
+						revision: { kind: 'exact' as const, contentRevision: stageEnvelope(shot).units.scene.header.contentRevision },
+						subject: { kind: 'entity' as const, id: target.entityId },
+						instancePath: [],
+						location: { kind: 'project-root' as const },
+						componentId: null,
+						capabilityId: null
+					}
+				: layoutSurfaceTarget(shot, target.surface);
+			if (intentTarget === null) return false;
+			const outcome = await services.authoring.accept({
+				version: 1,
+				kind: isEntity ? SCENE_FINISH_ASSIGN : SCENE_SURFACE_FINISH_ASSIGN,
+				operationId: crypto.randomUUID(),
+				expectedRevision: shot.acceptedRevision,
+				targets: [intentTarget],
+				payload: (isEntity
+					? { finish: found.ref, entityIds: [target.entityId], derive: { edits: [], identity: 'fresh' } }
+					: { finish: found.ref, surfaces: [target.surface], derive: { edits: [], identity: 'fresh' } }) as never,
+				capturedInputs: [],
+				allocatedIds: [{ kind: 'scene-finish', id: freshId }]
+			});
+			if (outcome.kind === 'installed') {
+				refusal = null;
+				reopenAfterInstall(found.targetKey);
+				host.onAccepted?.(`project:${freshId}`);
+				host.onOwnCopy?.();
+				return true;
+			}
+			if (outcome.kind === 'refused') {
+				refusal = { targetKey: found.targetKey, message: outcome.message ?? 'Could not make a separate copy.' };
+			}
+			return false;
+		} finally {
+			busy = false;
+		}
+	}
+
+	/** Select all users of this Finish and set reach to All. */
+	async function selectAllUsers(target: FinishCardTarget): Promise<boolean> {
+		const inspected = inspect(target);
+		if (inspected === null || !('ref' in inspected)) return false;
+		const found = inspected as Inspected;
+		if (found.users.length < 2) return false;
+		setReach(target, 'all');
+		return (await host.selectFinishUsers?.(found.ref)) ?? false;
+	}
+
 	/** Rename a project Finish; curated names stay fixed. */
 	async function rename(target: FinishCardTarget, name: string): Promise<boolean> {
 		const services = host.services();
@@ -863,6 +940,14 @@ export function createFinishCard(host: FinishCardHost) {
 		}
 	}
 
+	/** Generic render-only preview over any typed Finish patch (reused by editor and Align). */
+	function previewEdits(
+		target: FinishCardTarget,
+		edits: (source: FinishSource, recipes: ReadonlyMap<string, Recipe>) => readonly FinishPatchEdit[]
+	): void {
+		schedulePreview(target, (inspected) => edits(sourceOf(inspected), inspected.recipes));
+	}
+
 	/** A colour gesture in progress (the wheel): preview only. */
 	function previewColour(target: FinishCardTarget, colour: SceneColor): void {
 		schedulePreview(target, (inspected) => colourEdits(inspected, colour));
@@ -926,11 +1011,19 @@ export function createFinishCard(host: FinishCardHost) {
 		setDirection,
 		swap,
 		resetToOriginal,
+		giveOwnCopy,
+		selectAllUsers,
 		rename,
 		replaceImage,
+		previewEdits,
 		previewColour,
 		previewRoughness,
 		cancel,
+		inspectedOf(target: FinishCardTarget) {
+			const found = inspect(target);
+			if (found === null || !('ref' in found)) return null;
+			return { ...found, reach: choiceFor(found) };
+		},
 		toggleFavourite: (finishKey: string) => host.toggleFavourite?.(finishKey),
 		surfaceKeyOf: (surface: SceneSurfaceRef) => surfaceKey(surface)
 	};
