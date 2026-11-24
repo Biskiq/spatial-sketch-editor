@@ -121,6 +121,25 @@ export function subdivideWallCubicSpan(
 	t: number
 ): { left: LayoutWallCubicSpan; right: LayoutWallCubicSpan; point: LayoutVec2 } {
 	const amount = Math.min(1, Math.max(0, t));
+	if (Math.abs(startPoint[0]) > 1e6 || Math.abs(startPoint[1]) > 1e6) {
+		const ox = startPoint[0];
+		const oz = startPoint[1];
+		const localStart: LayoutVec2 = [0, 0];
+		const localOut: LayoutVec2 = [span.handleOut[0] - ox, span.handleOut[1] - oz];
+		const localIn: LayoutVec2 = [span.handleIn[0] - ox, span.handleIn[1] - oz];
+		const localEnd: LayoutVec2 = [endPoint[0] - ox, endPoint[1] - oz];
+		const first = lerp(localStart, localOut, amount);
+		const middle = lerp(localOut, localIn, amount);
+		const last = lerp(localIn, localEnd, amount);
+		const leftHandleIn = lerp(first, middle, amount);
+		const rightHandleOut = lerp(middle, last, amount);
+		const localPoint = lerp(leftHandleIn, rightHandleOut, amount);
+		return {
+			left: { handleOut: [ox + first[0], oz + first[1]], handleIn: [ox + leftHandleIn[0], oz + leftHandleIn[1]] },
+			right: { handleOut: [ox + rightHandleOut[0], oz + rightHandleOut[1]], handleIn: [ox + last[0], oz + last[1]] },
+			point: [ox + localPoint[0], oz + localPoint[1]]
+		};
+	}
 	const first = lerp(startPoint, span.handleOut, amount);
 	const middle = lerp(span.handleOut, span.handleIn, amount);
 	const last = lerp(span.handleIn, endPoint, amount);
@@ -285,7 +304,16 @@ export function resolveWallCurveSplit(
 		if (high - low <= WALL_CURVE_SPLIT_PARAMETER_TOLERANCE) break;
 	}
 	const t = (low + high) / 2;
-	const point = cubicBezierPoint(cubic, t);
+	const cubicStart = cubic.start;
+	const useLocalShift = Math.abs(cubicStart[0]) > 1e6 || Math.abs(cubicStart[1]) > 1e6;
+	const point = useLocalShift
+		? subdivideWallCubicSpan(
+				chain.spans[spanIndex]!,
+				wallCurveChainPoints(chain)[spanIndex]!,
+				wallCurveChainPoints(chain)[spanIndex + 1]!,
+				t
+			).point
+		: cubicBezierPoint(cubic, t);
 	const resolvedDistance = cumulative + cubicBezierArcLengthAt(cubic, t);
 
 	// Knot identity: a split landing on an existing knot promotes it rather than

@@ -47,10 +47,16 @@ import type {
 	LayoutJunction,
 	LayoutWall,
 	LayoutWallFirstRoom,
+	LayoutWallOpening,
 	OrientedWallRef
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
-import { roomSurfaceLineage, type LayoutSurfaceLineage } from './layout-surface-reference';
+import {
+	normalizeLayoutSurfaceLineage,
+	roomSurfaceLineage,
+	splitWallSurfaceLineage,
+	type LayoutSurfaceLineage
+} from './layout-surface-reference';
 import { p2311Measure } from './p2311-perf';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
@@ -58,6 +64,8 @@ import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from './layout
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import type { WallFirstAcceptanceCompile } from './layout-wall-first-precision';
 import {
+	CURVE_ARC_LENGTH_TOLERANCE,
+	cubicBezierPoint,
 	projectPointToSampledSegment
 } from './layout-geometry-curve';
 import {
@@ -77,6 +85,7 @@ import {
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import {
+	allocateCapturedId,
 	assertCapturedIdUnused,
 	layoutCapturedId,
 	layoutWorkingLevelIssue,
@@ -92,8 +101,28 @@ import {
 } from './layout-topology-components';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
-import { wallCenterlineCarriesPoint, wallCenterlineSamples, wallCubicChain } from './layout-wall-centerline';
-import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
+import {
+	wallCenterlineCarriesPoint,
+	wallCenterlineCubics,
+	wallCenterlineSamples,
+	wallCubicChain
+} from './layout-wall-centerline';
+import {
+	resolveWallCurveSplit,
+	wallCurveChainLength,
+	type ResolvedWallSplitResult
+} from './layout-wall-curve-algebra';
+import { isClosedWall } from './layout-closed-wall';
+import {
+	certifyRoundRoom,
+	enumerateClosedWallSafeCutStations,
+	findEnclosingRoundRoomForWall,
+	partitionClosedWallChainAtStations,
+	type RoundOperationCorrespondence,
+	type RoundOperationJunctionCorrespondence,
+	type RoundOperationOpeningCorrespondence
+} from './layout-round-room';
+import { carryRegionWallIntents } from './layout-region-validation';
 import type { LayoutDocumentIssue } from './layout-issue';
 import {
 	coincidesAsJunction,
@@ -342,6 +371,10 @@ export type WallChainPlan =
 			retiredRoomIds: readonly string[];
 			/** Open Spaces whose boundary gained a drawn Wall and lost part of an open side. */
 			absorbedRoomIds: readonly string[];
+			/** Round Rooms whose `round` fact cleared (e.g., divided by a chord). */
+			clearedRoundRoomIds?: readonly string[];
+			/** Operation-local Round Room correspondence when a Round Room was partitioned or cleared. */
+			roundCorrespondence?: RoundOperationCorrespondence;
 			/**
 			 * The compile the final canonical gate already produced for
 			 * exactly `document` (canonical JSON, geometry and issues). It is the same
@@ -513,7 +546,6 @@ export function planWallChain(options: WallChainPlanOptions): WallChainPlan {
 }
 
 function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
-	const allocator = createCapturedWallChainAllocator(options.capture);
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
 	const levelIssue = layoutWorkingLevelIssue(options.baseline, options.levelId);
@@ -704,10 +736,398 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		}
 	}
 
+	// --- closed-to-ring transaction (C2) ------------------------------------
+	// If any declared snap targets a closed Wall or its seam Junction, partition
+	// the closed 16-span Wall once into open arcs before inserting the new chain
+	// legs so no intermediate ring is ever installed.
+	const baselineWallsById = new Map(options.baseline.walls.map((w) => [w.id, w] as const));
+	const targetedClosedWallIds = new Set<string>();
+	for (const wallId of declaredHostByPointIndex.values()) {
+		const w = baselineWallsById.get(wallId);
+		if (w && isClosedWall(w)) targetedClosedWallIds.add(w.id);
+	}
+	for (const junctionId of declaredAnchorByPointIndex.values()) {
+		for (const w of options.baseline.walls) {
+			if (isClosedWall(w) && w.startJunctionId === junctionId) {
+				targetedClosedWallIds.add(w.id);
+			}
+		}
+	}
+
+	if (targetedClosedWallIds.size > 0) {
+		const sortedClosedWallIds = [...targetedClosedWallIds].sort();
+		type SnappedClosedPoint =
+			| { readonly pointIndex: number; readonly kind: 'seam' }
+			| { readonly pointIndex: number; readonly kind: 'interior'; readonly split: ResolvedWallSplitResult };
+		type PreparedClosedHost = {
+			readonly closedWall: LayoutWall;
+			readonly roundRoomId: string;
+			readonly seamPoint: LayoutVec2;
+			readonly closedLength: number;
+			readonly snappedPoints: readonly SnappedClosedPoint[];
+			readonly stationCandidates: readonly (readonly ResolvedWallSplitResult[])[];
+		};
+		const preparedHosts: PreparedClosedHost[] = [];
+
+		for (const closedWallId of sortedClosedWallIds) {
+			const closedWall = baselineWallsById.get(closedWallId)!;
+			const roundRoom = findEnclosingRoundRoomForWall(options.baseline, closedWallId);
+			if (!roundRoom) {
+				return reject({
+					code: 'closed_wall_isolated',
+					message: `Closed Wall '${closedWallId}' has no enclosing Round Room`,
+					wallIds: [closedWallId]
+				});
+			}
+			const cert = certifyRoundRoom(options.baseline, roundRoom);
+			if (cert.kind === 'invalid') {
+				return reject({
+					code: 'invalid_candidate_document',
+					message: cert.issue.message,
+					wallIds: [closedWallId]
+				});
+			}
+			if (closedWall.centerline.kind !== 'cubic-chain') {
+				return reject({
+					code: 'invalid_candidate_document',
+					message: `Closed Wall '${closedWallId}' must be a cubic-chain`,
+					wallIds: [closedWallId]
+				});
+			}
+			const seamPoint = cert.certified.seamPoint;
+			const closedChain = {
+				startPoint: seamPoint,
+				endPoint: seamPoint,
+				knots: closedWall.centerline.knots,
+				spans: closedWall.centerline.spans
+			};
+			const closedLength = wallCurveChainLength(closedChain);
+			const safeCuts = enumerateClosedWallSafeCutStations(
+				options.baseline.openings,
+				closedWallId,
+				closedLength
+			);
+			if (safeCuts.seamOccupied) {
+				return reject({
+					code: 'noding_rejected',
+					message: `Opening '${safeCuts.seamBlockingOpeningIds.join(', ')}' spans the seam of closed Wall '${closedWallId}'; move it off the seam before attaching`,
+					wallIds: [closedWallId]
+				});
+			}
+			const sampledClosed = wallCenterlineSamples(closedWall, seamPoint, seamPoint, 'forward');
+			if (!sampledClosed) {
+				return reject({
+					code: 'noding_rejected',
+					message: `Closed Wall '${closedWallId}' cannot be sampled`,
+					wallIds: [closedWallId]
+				});
+			}
+
+			const snappedPoints: SnappedClosedPoint[] = [];
+			const closedSnappedIndices = new Set<number>();
+			for (const [pointIndex, wallId] of declaredHostByPointIndex) {
+				if (wallId === closedWallId) closedSnappedIndices.add(pointIndex);
+			}
+			for (const [pointIndex, junctionId] of declaredAnchorByPointIndex) {
+				if (junctionId === closedWall.startJunctionId) closedSnappedIndices.add(pointIndex);
+			}
+
+			for (const pointIndex of [...closedSnappedIndices].sort((a, b) => a - b)) {
+				const pt = resolved[pointIndex]!.point;
+				if (
+					declaredAnchorByPointIndex.get(pointIndex) === closedWall.startJunctionId ||
+					coincidesAsJunction(pt, seamPoint)
+				) {
+					snappedPoints.push({ pointIndex, kind: 'seam' });
+					continue;
+				}
+				const proj = projectPointToSampledSegment(pt, sampledClosed);
+				const splitRes = resolveWallCurveSplit(closedChain, proj.distance);
+				if (splitRes.kind === 'rejected') {
+					if (splitRes.code === 'split_at_endpoint') {
+						snappedPoints.push({ pointIndex, kind: 'seam' });
+						continue;
+					}
+					return reject({
+						code: 'noding_rejected',
+						message: splitRes.message,
+						wallIds: [closedWallId]
+					});
+				}
+				snappedPoints.push({ pointIndex, kind: 'interior', split: splitRes.result });
+			}
+
+			const uniqueInteriorCuts: ResolvedWallSplitResult[] = [];
+			const interiorEntries = snappedPoints
+				.filter((entry): entry is Extract<SnappedClosedPoint, { kind: 'interior' }> => entry.kind === 'interior')
+				.sort((a, b) => a.split.distance - b.split.distance);
+			for (const entry of interiorEntries) {
+				if (!uniqueInteriorCuts.some((existing) => coincidesAsJunction(existing.point, entry.split.point))) {
+					uniqueInteriorCuts.push(entry.split);
+				}
+			}
+
+			let stationCandidates: (readonly ResolvedWallSplitResult[])[];
+			if (uniqueInteriorCuts.length > 0) {
+				stationCandidates = [uniqueInteriorCuts];
+			} else {
+				stationCandidates = [];
+				for (const candidateStation of safeCuts.candidates) {
+					const splitRes = resolveWallCurveSplit(closedChain, candidateStation);
+					if (splitRes.kind !== 'resolved') continue;
+					if (coincidesAsJunction(splitRes.result.point, seamPoint)) continue;
+					stationCandidates.push([splitRes.result]);
+				}
+				if (stationCandidates.length === 0) {
+					return reject({
+						code: 'noding_rejected',
+						message: `No admissible second cut found to attach at seam of closed Wall '${closedWallId}'`,
+						wallIds: [closedWallId]
+					});
+				}
+			}
+
+			preparedHosts.push({
+				closedWall,
+				roundRoomId: roundRoom.id,
+				seamPoint,
+				closedLength,
+				snappedPoints,
+				stationCandidates
+			});
+		}
+
+		// Enumerate combinations ordered by increasing index sum so `[0, 0, ...]`
+		// (opposite station on each seam-only host) is tried first, capped at 64.
+		const MAX_SEAM_CANDIDATE_COMBINATIONS = 64;
+		const maxSum = preparedHosts.reduce((sum, host) => sum + host.stationCandidates.length - 1, 0);
+		const combinations: number[][] = [];
+		const collectWithSum = (hostIndex: number, remainingSum: number, current: number[]): void => {
+			if (combinations.length >= MAX_SEAM_CANDIDATE_COMBINATIONS) return;
+			if (hostIndex === preparedHosts.length - 1) {
+				const maxIdx = preparedHosts[hostIndex]!.stationCandidates.length - 1;
+				if (remainingSum >= 0 && remainingSum <= maxIdx) {
+					combinations.push([...current, remainingSum]);
+				}
+				return;
+			}
+			const maxIdx = Math.min(remainingSum, preparedHosts[hostIndex]!.stationCandidates.length - 1);
+			for (let idx = 0; idx <= maxIdx; idx += 1) {
+				current.push(idx);
+				collectWithSum(hostIndex + 1, remainingSum - idx, current);
+				current.pop();
+				if (combinations.length >= MAX_SEAM_CANDIDATE_COMBINATIONS) return;
+			}
+		};
+		for (let targetSum = 0; targetSum <= maxSum && combinations.length < MAX_SEAM_CANDIDATE_COMBINATIONS; targetSum += 1) {
+			collectWithSum(0, targetSum, []);
+		}
+
+		let firstRejection: WallChainPlan | null = null;
+		for (const combo of combinations) {
+			const closedSpecs: ClosedToRingSpec[] = preparedHosts.map((host, hostIdx) => ({
+				closedWall: host.closedWall,
+				roundRoomId: host.roundRoomId,
+				seamPoint: host.seamPoint,
+				closedLength: host.closedLength,
+				stations: host.stationCandidates[combo[hostIdx]!]!,
+				snappedPoints: host.snappedPoints
+			}));
+			const attempt = executeWallChainCandidate(
+				options,
+				thickness,
+				height,
+				resolved,
+				legEndpoints,
+				close,
+				arcLeg,
+				declaredHostByPointIndex,
+				closedSpecs
+			);
+			if (attempt.kind === 'success') return attempt;
+			firstRejection ??= attempt;
+		}
+		return firstRejection ?? reject({
+			code: 'noding_rejected',
+			message: `No admissible second cut found to attach at seam of closed Wall '${sortedClosedWallIds[0]!}'`,
+			wallIds: sortedClosedWallIds
+		});
+	}
+
+	return executeWallChainCandidate(options, thickness, height, resolved, legEndpoints, close, arcLeg, declaredHostByPointIndex, []);
+}
+
+type ClosedToRingSpec = {
+	readonly closedWall: LayoutWall;
+	readonly roundRoomId: string;
+	readonly seamPoint: LayoutVec2;
+	readonly closedLength: number;
+	readonly stations: readonly ResolvedWallSplitResult[];
+	readonly snappedPoints: ReadonlyArray<
+		| { readonly pointIndex: number; readonly kind: 'seam' }
+		| { readonly pointIndex: number; readonly kind: 'interior'; readonly split: ResolvedWallSplitResult }
+	>;
+};
+
+function executeWallChainCandidate(
+	options: WallChainPlanOptions,
+	thickness: number,
+	height: number,
+	resolvedInput: ReadonlyArray<{ junctionId: string | null; point: LayoutVec2 }>,
+	legEndpoints: ReadonlyArray<{ start: { junctionId: string | null; point: LayoutVec2 }; end: { junctionId: string | null; point: LayoutVec2 } }>,
+	close: boolean,
+	arcLeg: { readonly pointIndex: number; readonly centerline: LayoutWall['centerline'] } | null,
+	declaredHostByPointIndexInput: ReadonlyMap<number, string>,
+	closedSpecs: readonly ClosedToRingSpec[]
+): WallChainPlan {
+	const allocator = createCapturedWallChainAllocator(options.capture);
+	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
+	const resolved = resolvedInput.map((entry) => ({
+		junctionId: entry.junctionId,
+		point: [entry.point[0], entry.point[1]] as LayoutVec2
+	}));
+	const declaredHostByPointIndex = new Map(declaredHostByPointIndexInput);
+
 	// --- candidate construction ---------------------------------------------
 	const candidate: LayoutDocumentWallFirst = cloneWallFirstDocument(options.baseline);
 	const createdJunctionIds: string[] = [];
 	const createdWallIds: string[] = [];
+	const splitWallIds = new Set<string>();
+	const closedPartitionSurfaceLineage: LayoutSurfaceLineage[number][] = [];
+	const closedPartitionJunctionCorr: RoundOperationJunctionCorrespondence[] = [];
+	const closedPartitionOpeningCorr: RoundOperationOpeningCorrespondence[] = [];
+	const closedPartitionWallCorrs: RoundOperationCorrespondence['walls'][number][] = [];
+	const regionWallSplits = new Map<string, readonly string[]>();
+	const closedHostFragmentIds: string[] = [];
+
+	for (const closedSpec of closedSpecs) {
+		const { closedWall, roundRoomId, seamPoint, closedLength, stations, snappedPoints } = closedSpec;
+		const seamJunctionId = closedWall.startJunctionId;
+		const segments = partitionClosedWallChainAtStations({
+			closedWall,
+			seamPoint,
+			totalLength: closedLength,
+			stations
+		});
+		const rimJunctionIds: string[] = [];
+		for (let i = 0; i < stations.length; i += 1) {
+			const takenJ = new Set(candidate.junctions.map((j) => j.id));
+			const jId = allocateCapturedId(takenJ, `${closedWall.id}:rim:${i + 1}`, options.capture);
+			candidate.junctions.push({ id: jId, point: [stations[i]!.point[0], stations[i]!.point[1]] });
+			createdJunctionIds.push(jId);
+			rimJunctionIds.push(jId);
+			closedPartitionJunctionCorr.push({
+				kind: 'born',
+				junctionId: jId,
+				sourceWallId: closedWall.id,
+				station: stations[i]!.distance
+			});
+		}
+
+		const fragmentWalls: LayoutWall[] = [];
+		const createdArcIds: string[] = [];
+		for (let i = 0; i < segments.length; i += 1) {
+			const seg = segments[i]!;
+			const startJ = i === 0 ? seamJunctionId : rimJunctionIds[i - 1]!;
+			const endJ = i === segments.length - 1 ? seamJunctionId : rimJunctionIds[i]!;
+			const takenW = new Set([...candidate.walls.map((w) => w.id), ...createdArcIds]);
+			const fragId = i === 0 ? closedWall.id : allocateCapturedId(takenW, `${closedWall.id}:arc:${i}`, options.capture);
+			if (i > 0) {
+				createdArcIds.push(fragId);
+				createdWallIds.push(fragId);
+				closedPartitionSurfaceLineage.push(...splitWallSurfaceLineage(closedWall.id, fragId));
+			}
+			fragmentWalls.push({
+				id: fragId,
+				startJunctionId: startJ,
+				endJunctionId: endJ,
+				thickness: closedWall.thickness,
+				height: closedWall.height,
+				centerline: wallCubicChain(seg.knots, seg.spans),
+				...(closedWall.name !== undefined ? { name: closedWall.name } : {})
+			});
+		}
+
+		// Rebase hosted Openings across the k+1 fragments.
+		const rebasedOpenings: LayoutWallOpening[] = [];
+		for (const opening of candidate.openings) {
+			if (opening.wallId !== closedWall.id) {
+				rebasedOpenings.push(opening);
+				continue;
+			}
+			const rawStart = ((opening.offset % closedLength) + closedLength) % closedLength;
+			const oStart = closedLength - rawStart <= CURVE_ARC_LENGTH_TOLERANCE ? 0 : rawStart;
+			const oEnd = oStart + opening.width;
+			for (const station of stations) {
+				if (
+					station.distance > oStart + CURVE_ARC_LENGTH_TOLERANCE &&
+					station.distance < oEnd - CURVE_ARC_LENGTH_TOLERANCE
+				) {
+					return reject({
+						code: 'noding_rejected',
+						message: `Attachment cut on closed Wall '${closedWall.id}' passes through Opening '${opening.id}' interior`,
+						wallIds: [closedWall.id]
+					});
+				}
+			}
+			let targetIndex = 0;
+			for (let i = 0; i < segments.length; i += 1) {
+				const seg = segments[i]!;
+				if (
+					oStart >= seg.startDistance - CURVE_ARC_LENGTH_TOLERANCE &&
+					oEnd <= seg.endDistance + CURVE_ARC_LENGTH_TOLERANCE
+				) {
+					targetIndex = i;
+					break;
+				}
+			}
+			const targetSeg = segments[targetIndex]!;
+			const targetWall = fragmentWalls[targetIndex]!;
+			const offset = Math.max(0, oStart - targetSeg.startDistance);
+			rebasedOpenings.push({ ...opening, wallId: targetWall.id, offset });
+			closedPartitionOpeningCorr.push({
+				openingId: opening.id,
+				beforeWallId: closedWall.id,
+				afterWallId: targetWall.id
+			});
+		}
+
+		candidate.walls = candidate.walls.flatMap((w) => (w.id === closedWall.id ? fragmentWalls : [w]));
+		candidate.openings = rebasedOpenings;
+		candidate.rooms = candidate.rooms.map((r) =>
+			r.id === roundRoomId
+				? {
+						...r,
+						boundary: fragmentWalls.map((w): OrientedWallRef => ({ wallId: w.id, direction: 'forward' }))
+					}
+				: r
+		);
+		const allFragIds = fragmentWalls.map((w) => w.id);
+		regionWallSplits.set(closedWall.id, allFragIds);
+		splitWallIds.add(closedWall.id);
+		closedHostFragmentIds.push(...allFragIds);
+		closedPartitionWallCorrs.push({
+			kind: 'subdivision',
+			sourceWallId: closedWall.id,
+			fragmentWallIds: allFragIds
+		});
+
+		// Bind snapped draft points to the resolved rim Junctions and remove closed-Wall host declarations.
+		for (const snapped of snappedPoints) {
+			if (snapped.kind === 'seam') {
+				resolved[snapped.pointIndex] = { junctionId: seamJunctionId, point: [seamPoint[0], seamPoint[1]] };
+			} else {
+				const cutIdx = stations.findIndex((s) => coincidesAsJunction(s.point, snapped.split.point));
+				const jId = rimJunctionIds[cutIdx]!;
+				const jPt = stations[cutIdx]!.point;
+				resolved[snapped.pointIndex] = { junctionId: jId, point: [jPt[0], jPt[1]] };
+			}
+			declaredHostByPointIndex.delete(snapped.pointIndex);
+		}
+	}
+	if (regionWallSplits.size > 0) {
+		candidate.regions = carryRegionWallIntents(candidate.regions, regionWallSplits);
+	}
 
 	// Allocate one junction per distinct unresolved chain point (resolved
 	// entries carry the IDs forward; legs read them directly).
@@ -753,16 +1173,23 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	// off pre-existing walls stay host-derived and never enter this set —
 	// they are still reported via `createdWallIds`/`splitWallIds` but they
 	// must not participate as authored walls in later noding passes.
-	const splitWallIds = new Set<string>();
 	const nodedJunctionIds = new Set<string>();
-	const authoredWallIds = new Set<string>(createdWallIds);
+	const authoredWallIds = new Set<string>(
+		createdWallIds.filter((id) => !closedHostFragmentIds.includes(id))
+	);
 	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
 	// The validated declarations, re-keyed onto the Junction each declared point
 	// actually resolved to (a declared identity, or the chain's own minted node).
-	const endpointHostWallIds = new Map<string, string>();
+	// Stored as a Set per Junction so a multi-snap stroke splitting one host arc
+	// propagates authorization to the newly split fragment as well.
+	const endpointHostWallIds = new Map<string, Set<string>>();
 	for (const [pointIndex, wallId] of declaredHostByPointIndex) {
 		const junctionId = resolved[pointIndex]?.junctionId;
-		if (junctionId) endpointHostWallIds.set(junctionId, wallId);
+		if (junctionId) {
+			const set = endpointHostWallIds.get(junctionId) ?? new Set<string>();
+			set.add(wallId);
+			endpointHostWallIds.set(junctionId, set);
+		}
 	}
 	const baselineJunctionIds = new Set(options.baseline.junctions.map((junction) => junction.id));
 	const junctionIdRedirects = new Map<string, string>();
@@ -859,6 +1286,13 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 			}
 		}
 		for (const split of plan.splitWallIds) splitWallIds.add(split);
+		if (fix.kind === 'tee') {
+			for (const hostSet of endpointHostWallIds.values()) {
+				if (hostSet.has(fix.interiorWallId)) {
+					for (const created of plan.createdWallIds) hostSet.add(created);
+				}
+			}
+		}
 		if (!baselineJunctionIds.has(plan.junctionId)) {
 			nodedJunctionIds.add(plan.junctionId);
 			operationOwnedJunctionIds.add(plan.junctionId);
@@ -867,6 +1301,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		candidate.junctions = document.junctions;
 		candidate.walls = document.walls;
 		candidate.rooms = document.rooms;
+		candidate.regions = document.regions;
 		candidate.openings = document.openings;
 	}
 
@@ -1023,6 +1458,42 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		});
 	}
 
+	const normalizedSurfaceLineage = normalizeLayoutSurfaceLineage({
+		beforeLayout: options.baseline,
+		afterLayout: validated.document,
+		lineage: [...closedPartitionSurfaceLineage, ...nodingSurfaceLineage, ...surfaceLineage]
+	});
+	if (normalizedSurfaceLineage.kind === 'rejected') {
+		return reject({
+			code: 'invalid_candidate_document',
+			message: normalizedSurfaceLineage.message
+		});
+	}
+
+	const clearedRoundRoomIds: string[] = [];
+	const roundRoomCorr: RoundOperationCorrespondence['rooms'][number][] = [];
+	for (const baseRoom of options.baseline.rooms) {
+		if (baseRoom.round === undefined) continue;
+		const afterRoom = validated.document.rooms.find((r) => r.id === baseRoom.id);
+		if (!afterRoom) {
+			roundRoomCorr.push({ roomId: baseRoom.id, status: 'retired' });
+		} else if (afterRoom.round === undefined) {
+			clearedRoundRoomIds.push(baseRoom.id);
+			roundRoomCorr.push({ roomId: baseRoom.id, status: 'cleared-round' });
+		} else {
+			roundRoomCorr.push({ roomId: baseRoom.id, status: 'preserved' });
+		}
+	}
+	const roundCorrespondence: RoundOperationCorrespondence | undefined =
+		closedPartitionWallCorrs.length > 0 || clearedRoundRoomIds.length > 0
+			? {
+					rooms: roundRoomCorr,
+					walls: closedPartitionWallCorrs,
+					junctions: closedPartitionJunctionCorr,
+					openings: closedPartitionOpeningCorr
+				}
+			: undefined;
+
 	return {
 		kind: 'success',
 		document: validated.document,
@@ -1034,9 +1505,11 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		startJunctionId,
 		endJunctionId,
 		lineage,
-		surfaceLineage: [...nodingSurfaceLineage, ...surfaceLineage],
+		surfaceLineage: normalizedSurfaceLineage.lineage,
 		retiredRoomIds,
 		absorbedRoomIds,
+		...(clearedRoundRoomIds.length > 0 ? { clearedRoundRoomIds } : {}),
+		...(roundCorrespondence ? { roundCorrespondence } : {}),
 		// P23B.11 M-4 — the final canonical gate above is the ONLY compile
 		// authority; this carries its result so an installing caller does not pay
 		// for a second compile of the same accepted document.
@@ -1137,25 +1610,48 @@ function validateEndpointHostSnaps(input: {
 	// (An UNRELATED component the chain merely crosses stays untouched: this check
 	// reads declarations only, never the draft geometry.)
 	const declarationComponentKeys = new Set<string | symbol>();
+	const targetedClosedComponentKeys = new Set<string | symbol>();
+	const wallByIdMap = new Map(baseline.walls.map((w) => [w.id, w] as const));
 	for (const wallId of declaredHostByPointIndex.values()) {
 		const key = componentKeyByWallId.get(wallId);
-		if (key !== undefined) declarationComponentKeys.add(key);
+		if (key !== undefined) {
+			declarationComponentKeys.add(key);
+			const w = wallByIdMap.get(wallId);
+			if (w && isClosedWall(w)) targetedClosedComponentKeys.add(key);
+		}
 	}
 	for (const junctionId of declaredJunctionByPointIndex.values()) {
 		const key = componentKeyByJunctionId.get(junctionId);
-		if (key !== undefined) declarationComponentKeys.add(key);
+		if (key !== undefined) {
+			declarationComponentKeys.add(key);
+			for (const w of baseline.walls) {
+				if (isClosedWall(w) && w.startJunctionId === junctionId) {
+					targetedClosedComponentKeys.add(key);
+				}
+			}
+		}
 	}
 	if (declarationComponentKeys.size > 1) {
-		// F3 — one open Space is one authored group even when its surviving Walls
-		// sit in several topology components (an opposite-Wall erase). A chain that
-		// declares only that Space's own boundary Junctions/Walls re-closes the
-		// Space; it is not the deferred class-4 join of two independent structures.
-		const declaredJunctionIds = [...declaredJunctionByPointIndex.values()];
-		const declaredHostWallIds = [...declaredHostByPointIndex.values()];
-		if (!declarationsRecloseOneOpenSpace(baseline, declaredJunctionIds, declaredHostWallIds)) {
-			return invalid(
-				'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
-			);
+		const nonClosedComponentKeys = [...declarationComponentKeys].filter(
+			(key) => !targetedClosedComponentKeys.has(key)
+		);
+		// C2 multi-host attachment: explicitly targeted closed Walls are isolated
+		// single-Wall components before first attachment, so bridging O–O (or R–O)
+		// in one stroke is admitted whenever at most one non-closed component is
+		// involved. Two or more independent non-closed groups still require either
+		// re-closing one open Space (F3) or the deferred class-4 join (D-10).
+		if (nonClosedComponentKeys.length > 1) {
+			// F3 — one open Space is one authored group even when its surviving Walls
+			// sit in several topology components (an opposite-Wall erase). A chain that
+			// declares only that Space's own boundary Junctions/Walls re-closes the
+			// Space; it is not the deferred class-4 join of two independent structures.
+			const declaredJunctionIds = [...declaredJunctionByPointIndex.values()];
+			const declaredHostWallIds = [...declaredHostByPointIndex.values()];
+			if (!declarationsRecloseOneOpenSpace(baseline, declaredJunctionIds, declaredHostWallIds)) {
+				return invalid(
+					'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
+				);
+			}
 		}
 	}
 
@@ -1235,6 +1731,52 @@ function declarationMeetsHost(
 	const endpoints = wallEndpointPoints(baseline, host);
 	if (!endpoints) return false;
 	if (wallCenterlineCarriesPoint(host, endpoints.start, endpoints.end, point)) return true;
+	if (host.centerline.kind === 'cubic-chain') {
+		const cubics = wallCenterlineCubics(host.centerline, endpoints.start, endpoints.end, 'forward');
+		const ulp = Math.max(1, Math.abs(point[0]), Math.abs(point[1])) * Number.EPSILON;
+		const tol = Math.max(JUNCTION_COINCIDENCE_EPSILON, 8 * ulp);
+		const pad = Math.max(1e-3, tol);
+		for (const cubic of cubics) {
+			const xs = [cubic.start[0], cubic.handleOut[0], cubic.handleIn[0], cubic.end[0]];
+			const zs = [cubic.start[1], cubic.handleOut[1], cubic.handleIn[1], cubic.end[1]];
+			if (
+				point[0] < Math.min(...xs) - pad ||
+				point[0] > Math.max(...xs) + pad ||
+				point[1] < Math.min(...zs) - pad ||
+				point[1] > Math.max(...zs) + pad
+			) {
+				continue;
+			}
+			// Sample 16 coarse intervals, then ternary-refine the closest bracket.
+			let bestT = 0;
+			let bestDistSq = Infinity;
+			for (let s = 0; s <= 16; s += 1) {
+				const t = s / 16;
+				const p = cubicBezierPoint(cubic, t);
+				const dSq = (p[0] - point[0]) ** 2 + (p[1] - point[1]) ** 2;
+				if (dSq < bestDistSq) {
+					bestDistSq = dSq;
+					bestT = t;
+				}
+			}
+			let lo = Math.max(0, bestT - 1 / 16);
+			let hi = Math.min(1, bestT + 1 / 16);
+			for (let iter = 0; iter < 48; iter += 1) {
+				const m1 = lo + (hi - lo) / 3;
+				const m2 = hi - (hi - lo) / 3;
+				const p1 = cubicBezierPoint(cubic, m1);
+				const p2 = cubicBezierPoint(cubic, m2);
+				const d1 = (p1[0] - point[0]) ** 2 + (p1[1] - point[1]) ** 2;
+				const d2 = (p2[0] - point[0]) ** 2 + (p2[1] - point[1]) ** 2;
+				if (d1 < d2) hi = m2;
+				else lo = m1;
+			}
+			const bestPt = cubicBezierPoint(cubic, (lo + hi) * 0.5);
+			if (Math.hypot(point[0] - bestPt[0], point[1] - bestPt[1]) <= tol) {
+				return true;
+			}
+		}
+	}
 	return legs.some((leg) => legMeetsWall(host, endpoints, leg));
 }
 
@@ -1402,7 +1944,7 @@ function nextNodingFix(
 	document: LayoutDocumentWallFirst,
 	chainDerivedWallIds: readonly string[],
 	operationOwnedJunctionIds: ReadonlySet<string>,
-	endpointHostWallIds: ReadonlyMap<string, string>
+	endpointHostWallIds: ReadonlyMap<string, ReadonlySet<string>>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
 	// The operation's DECLARED scope. `declaredHostWallIds` are the
@@ -1413,7 +1955,10 @@ function nextNodingFix(
 	// pre-existing Wall is authorizable and this function finds no fix at all:
 	// independent placement neither adopts nor splits, and its overlaps stay the
 	// permitted geometry S4/S5 admit.
-	const declaredHostWallIds = new Set(endpointHostWallIds.values());
+	const declaredHostWallIds = new Set<string>();
+	for (const wallIds of endpointHostWallIds.values()) {
+		for (const id of wallIds) declaredHostWallIds.add(id);
+	}
 	const componentKeyByWallId = topologyComponentKeyByWallId(document);
 	const junctionComponentKeyById = topologyComponentKeyByJunctionId(document, componentKeyByWallId);
 	const segments = new Map<string, TopologySegment>();
@@ -1581,7 +2126,7 @@ function projectedAuthoredEndpointTee(
 	segmentB: TopologySegment,
 	chainSet: ReadonlySet<string>,
 	operationOwnedJunctionIds: ReadonlySet<string>,
-	endpointHostWallIds: ReadonlyMap<string, string>,
+	endpointHostWallIds: ReadonlyMap<string, ReadonlySet<string>>,
 	sharedJunctionIds: readonly string[]
 ): NodingFix | undefined {
 	if (sharedJunctionIds.length > 0) return undefined;
@@ -1604,8 +2149,8 @@ function projectedAuthoredEndpointTee(
 		];
 		for (const endpoint of endpoints) {
 			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
-			const snappedHostWallId = endpointHostWallIds.get(endpoint.junctionId);
-			if (snappedHostWallId !== undefined && snappedHostWallId !== hostWall.id) continue;
+			const snappedHostWallIds = endpointHostWallIds.get(endpoint.junctionId);
+			if (snappedHostWallIds !== undefined && !snappedHostWallIds.has(hostWall.id)) continue;
 			const hostEndpoints = [
 				{ junctionId: hostWall.startJunctionId, point: hostSegment.start },
 				{ junctionId: hostWall.endJunctionId, point: hostSegment.end }
@@ -1637,7 +2182,7 @@ function projectedAuthoredEndpointTee(
 				// relationship. Without that identity, retain only the existing
 				// Junction coincidence tolerance; sampler flatness is normalization
 				// error and must not acquire topology by itself.
-				const hasExplicitHostIdentity = snappedHostWallId === hostWall.id;
+				const hasExplicitHostIdentity = snappedHostWallIds?.has(hostWall.id) ?? false;
 				if (!hasExplicitHostIdentity && projection.distanceToPath > JUNCTION_COINCIDENCE_EPSILON) continue;
 				const resolution = resolveWallCurveSplit(
 					{

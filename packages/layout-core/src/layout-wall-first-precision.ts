@@ -79,6 +79,11 @@ import {
 	type WallSamplingDerivation
 } from './layout-wall-centerline';
 import { isClosedWall } from './layout-closed-wall';
+import {
+	guardRoundRoomMemberGeometryEdit,
+	ROUND_ROOM_MEMBER_EDIT_MESSAGE,
+	type RoundRoomMemberGuardHit
+} from './layout-round-room';
 import { deriveChainSpans } from './layout-geometry-curve';
 import {
 	deleteWallCurveKnot,
@@ -279,7 +284,9 @@ export type PrecisionRejection = {
 		/** The moved open side would contain, or be contained by, another Space. */
 		| 'space_contains_space'
 		/** An end slide would release a fragment that still hosts an Opening. */
-		| 'opening_on_released_stub';
+		| 'opening_on_released_stub'
+		/** A member Wall or rim Junction of a Round Room cannot be edited directly. */
+		| 'round_room_member_locked';
 	message: string;
 	targetIds?: readonly string[];
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];
@@ -326,6 +333,32 @@ export type PrecisionPlan =
 			rejection: PrecisionRejection;
 		};
 
+function rejectRoundMember(hit: RoundRoomMemberGuardHit): PrecisionPlan {
+	return reject('round_room_member_locked', hit.message, [
+		hit.roomId,
+		...hit.wallIds,
+		...hit.junctionIds
+	]);
+}
+
+function guardRoundRoomIntent(
+	document: LayoutDocumentWallFirst,
+	intent: WallFirstArchitectureProposalIntent
+): RoundRoomMemberGuardHit | null {
+	if (intent.kind === 'junction-move') {
+		return guardRoundRoomMemberGeometryEdit(document, { junctionIds: [intent.junctionId] });
+	}
+	if (intent.kind === 'wall-move') {
+		const wall = document.walls.find((entry) => entry.id === intent.wallId);
+		const junctionIds = wall ? [wall.startJunctionId, wall.endJunctionId] : [];
+		return guardRoundRoomMemberGeometryEdit(document, {
+			wallIds: [intent.wallId],
+			junctionIds
+		});
+	}
+	return guardRoundRoomMemberGeometryEdit(document, { wallIds: [intent.wallId] });
+}
+
 /** Move one canonical Junction exactly in document X/Z space. */
 export function planExactJunctionMove(
 	document: LayoutDocumentWallFirst,
@@ -337,6 +370,8 @@ export function planExactJunctionMove(
 		? worldIndex.junctionById.get(junctionId)
 		: document.junctions.find((candidate) => candidate.id === junctionId);
 	if (!junction) return reject('unknown_junction', `Unknown junction '${junctionId}'`, [junctionId]);
+	const roundHit = guardRoundRoomMemberGeometryEdit(document, { junctionIds: [junctionId] });
+	if (roundHit) return rejectRoundMember(roundHit);
 	if (!finitePoint(point)) return reject('invalid_value', 'Junction X/Z must be finite', [junctionId]);
 	if (coincidesAsJunction(junction.point, point)) return reject('no_op', `Junction '${junctionId}' is already at that point`, [junctionId]);
 
@@ -382,6 +417,11 @@ export function planRigidWallMove(
 		? worldIndex.wallById.get(intent.wallId)
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
+	const roundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: [wall.id],
+		junctionIds: [wall.startJunctionId, wall.endJunctionId]
+	});
+	if (roundHit) return rejectRoundMember(roundHit);
 	if (!finitePoint(intent.delta)) return reject('invalid_value', 'Wall move delta must be finite X/Z', [wall.id]);
 	if (intent.delta[0] === 0 && intent.delta[1] === 0) return reject('no_op', `Wall '${wall.id}' already has that position`, [wall.id]);
 
@@ -456,6 +496,10 @@ export function planSpaceOpenSideOffset(
 	if (Math.abs(offset) <= POINT_EPSILON) {
 		return reject('no_op', 'The open side is already at that position', [roomId]);
 	}
+	const roundHit = guardRoundRoomMemberGeometryEdit(document, {
+		junctionIds: [frame.startJunctionId, frame.endJunctionId]
+	});
+	if (roundHit) return rejectRoundMember(roundHit);
 	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const start = junctionById.get(frame.startJunctionId);
@@ -547,6 +591,20 @@ export function planSpaceOpenSideEndSlide(
 	}
 	const adjoining = end === 'start' ? frame.startWall : frame.endWall;
 	const endpoint = end === 'start' ? frame.startJunctionId : frame.endJunctionId;
+	const slideRoundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: adjoining ? [adjoining.wallId] : [wallId],
+		junctionIds: [endpoint]
+	});
+	if (slideRoundHit) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'round_room_member_locked',
+				message: slideRoundHit.message,
+				targetIds: [slideRoundHit.roomId, ...slideRoundHit.wallIds, ...slideRoundHit.junctionIds]
+			}
+		};
+	}
 	if (
 		adjoining === null ||
 		adjoining.wallId !== wallId ||
@@ -789,6 +847,16 @@ export function planExactWallLength(
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
+	const angleRoundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: [wall.id],
+		junctionIds: [intent.fixed === 'start' ? wall.endJunctionId : wall.startJunctionId]
+	});
+	if (angleRoundHit) return rejectRoundMember(angleRoundHit);
+	const lengthRoundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: [wall.id],
+		junctionIds: [intent.fixed === 'start' ? wall.endJunctionId : wall.startJunctionId]
+	});
+	if (lengthRoundHit) return rejectRoundMember(lengthRoundHit);
 	// An exact *length* is a chord solve: the endpoint moves along the
 	// endpoint direction and the curve would have to be re-solved to keep its
 	// shape. Curves use the canonical anchor planners instead.
@@ -850,6 +918,16 @@ export function planExactWallAngle(
 		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
+	const angleRoundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: [wall.id],
+		junctionIds: [intent.fixed === 'start' ? wall.endJunctionId : wall.startJunctionId]
+	});
+	if (angleRoundHit) return rejectRoundMember(angleRoundHit);
+	const lengthRoundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: [wall.id],
+		junctionIds: [intent.fixed === 'start' ? wall.endJunctionId : wall.startJunctionId]
+	});
+	if (lengthRoundHit) return rejectRoundMember(lengthRoundHit);
 	// An exact *angle* is the endpoint-chord direction of a straight
 	// Wall; a curve has no single angle to set.
 	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact angle', wall.id);
@@ -1139,6 +1217,8 @@ export function planConvertWallToCurve(
 		? worldIndex.wallById.get(wallId)
 		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
+	const curveRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (curveRoundHit) return rejectRoundMember(curveRoundHit);
 	if (wall.centerline.kind === 'cubic-chain') {
 		return reject('no_op', `Wall '${wallId}' is already curved`, [wallId]);
 	}
@@ -1181,6 +1261,8 @@ export function planConvertWallToLine(
 		? worldIndex.wallById.get(wallId)
 		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
+	const lineRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (lineRoundHit) return rejectRoundMember(lineRoundHit);
 	if (wall.centerline.kind === 'line') {
 		return reject('no_op', `Wall '${wallId}' is already straight`, [wallId]);
 	}
@@ -1213,6 +1295,8 @@ export function planInsertWallCurveKnot(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
+	const insertRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (insertRoundHit) return rejectRoundMember(insertRoundHit);
 	const { chain } = target;
 	if (!Number.isFinite(distance)) {
 		return reject('invalid_value', 'Bend point distance must be a finite number of meters', [wallId]);
@@ -1256,6 +1340,8 @@ export function planMoveWallCurveKnot(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
+	const moveRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (moveRoundHit) return rejectRoundMember(moveRoundHit);
 	const { chain } = target;
 	const existing = chain.knots.find((knot) => knot.id === knotId);
 	if (!existing) {
@@ -1354,6 +1440,7 @@ export function resolveProposedCurveChain(
 ): { start: LayoutVec2; end: LayoutVec2; centerline: LayoutWallCenterline } | undefined {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return undefined;
+	if (guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] })) return undefined;
 	const { start, end, chain } = target;
 	if (intent.kind === 'knot-move') {
 		if (!finitePoint(intent.point)) return undefined;
@@ -1396,9 +1483,9 @@ export function proposeWallCurveShape(
 	wallId: string,
 	intent: WallCurveProposeIntent
 ): LayoutVec2[] | undefined {
-	const proposed = resolveProposedCurveChain(document, wallId, intent);
-	if (!proposed) return undefined;
-	return sampleProposedChain(wallId, proposed.start, proposed.end, proposed.centerline);
+	const target = resolveProposedCurveChain(document, wallId, intent);
+	if (!target) return undefined;
+	return sampleProposedChain(wallId, target.start, target.end, target.centerline);
 }
 
 /**
@@ -1414,6 +1501,7 @@ export function proposeWallCurveShape(
 	document: LayoutDocumentWallFirst,
 	intent: WallFirstArchitectureProposalIntent
 ): WallFirstArchitectureProposalWall[] | undefined {
+	if (guardRoundRoomIntent(document, intent)) return undefined;
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
@@ -1453,6 +1541,7 @@ export function readWallFirstDragProposal(
 	scope: WallFirstArchitectureVerdictScope
 ): { kind: 'pending'; walls: WallFirstArchitectureProposalWall[] } |
 	{ kind: 'refused'; code: string } {
+	if (guardRoundRoomIntent(document, intent)) return { kind: 'refused', code: 'round_room_member_locked' };
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return { kind: 'refused', code: 'unsupported_geometry' };
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
@@ -1512,6 +1601,7 @@ function architectureCandidatePatch(
 	document: LayoutDocumentWallFirst,
 	intent: WallFirstArchitectureProposalIntent
 ): ArchitectureCandidatePatch | undefined {
+	if (guardRoundRoomIntent(document, intent)) return undefined;
 	if (intent.kind === 'curve-control-move') {
 		const proposed = resolveProposedCurveChain(document, intent.wallId, {
 			kind: 'knot-move',
@@ -1664,6 +1754,7 @@ function architectureCandidateExtent(
 	document: LayoutDocumentWallFirst,
 	intent: WallFirstArchitectureProposalIntent
 ): { patch: ArchitectureCandidatePatch; extent: WallFirstArchitectureAffectedExtent } | undefined {
+	if (guardRoundRoomIntent(document, intent)) return undefined;
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	// Conservative on both counts: every centreline override counts as affected even if a
@@ -1866,6 +1957,8 @@ export function createWallFirstArchitectureVerdictScope(
 				baseline = document;
 				initializedTarget = null;
 			}
+			const roundHit = guardRoundRoomIntent(baseline, intent);
+			if (roundHit) return { code: roundHit.code, message: roundHit.message };
 			const prepared = architectureCandidateExtent(baseline, intent);
 			if (!prepared) return undefined;
 			const candidate = spliceWallFirstArchitectureCandidate(baseline, prepared.patch);
@@ -1962,6 +2055,8 @@ export function preflightWallFirstArchitectureCandidate(
 	verdictScope?: WallFirstArchitectureVerdictScope | null
 ): WallFirstArchitecturePreflightFailure | undefined {
 	if (verdictScope) return verdictScope.verdict(document, intent, sampling);
+	const roundHit = guardRoundRoomIntent(document, intent);
+	if (roundHit) return { code: roundHit.code, message: roundHit.message };
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
@@ -2025,10 +2120,12 @@ export function prepareWallBend(
 	if (isClosedWall(wall)) {
 		return reject(
 			'closed_wall_not_bendable',
-			'A circular Wall is resized by its radius; it cannot be bent.',
+			ROUND_ROOM_MEMBER_EDIT_MESSAGE,
 			[wallId]
 		);
 	}
+	const bendRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (bendRoundHit) return rejectRoundMember(bendRoundHit);
 	if (!Number.isFinite(distance)) {
 		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
 	}
@@ -2109,6 +2206,10 @@ export function planBendWallCurveKnot(
 export function proposeWallKnotRemoval(document: LayoutDocumentWallFirst, wallId: string, knotId: string) {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
+	const removeRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (removeRoundHit) return rejectRoundMember(removeRoundHit);
+	const moveRoundHit = guardRoundRoomMemberGeometryEdit(document, { wallIds: [wallId] });
+	if (moveRoundHit) return rejectRoundMember(moveRoundHit);
 	const deletion = deleteWallCurveKnot(target.chain, knotId);
 	return deletion.kind === 'rejected'
 		? reject(curveEditRejection(deletion.code), deletion.message, [wallId, knotId])
@@ -2131,6 +2232,15 @@ export function planExactRectangleDimensions(
 ): PrecisionPlan {
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
+	if (room.round !== undefined) {
+		return rejectRoundMember({
+			code: 'round_room_member_locked',
+			message: ROUND_ROOM_MEMBER_EDIT_MESSAGE,
+			roomId: room.id,
+			wallIds: room.boundary.map((ref) => ref.wallId),
+			junctionIds: []
+		});
+	}
 			if (!finitePositive(width) || !finitePositive(depth)) return reject('invalid_value', 'Rectangle width and depth must be finite and greater than zero', [roomId]);
 	if (room.virtualEdges.length > 0) return reject('unsupported_geometry', 'Exact rectangle dimensions apply to enclosed Rooms only', [roomId]);
 	if (room.boundary.length !== 4) return reject('unsupported_geometry', 'Exact rectangle dimensions require four straight boundary Walls', [roomId]);
@@ -2167,6 +2277,12 @@ export function planExactRectangleDimensions(
 		[depthCorner.id, add(anchor.point, scale(depthAxis, depth))],
 		[opposite.id, add(add(anchor.point, scale(widthAxis, width)), scale(depthAxis, depth))]
 	]);
+	const movedCornerIds = [widthCorner.id, depthCorner.id, opposite.id];
+	const rectRoundHit = guardRoundRoomMemberGeometryEdit(document, {
+		wallIds: roomWallIds,
+		junctionIds: movedCornerIds
+	});
+	if (rectRoundHit) return rejectRoundMember(rectRoundHit);
 	if ([...targetPoints].every(([id, point]) => coincidesAsJunction(currentJunctionPoint(document, id), point))) {
 		return reject('no_op', `Room '${roomId}' already has those rectangle dimensions`, [roomId]);
 	}

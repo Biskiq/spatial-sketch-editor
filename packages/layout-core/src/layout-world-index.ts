@@ -149,6 +149,9 @@ export type DocumentWorldIndex = {
 	/** Walls and Junctions on an open Space's boundary. Their deltas go cold. */
 	readonly openRoomWallIdSet: ReadonlySet<string>;
 	readonly openRoomJunctionIdSet: ReadonlySet<string>;
+	/** Walls and Junctions on a Round Room's boundary. Their deltas go cold for certification. */
+	readonly roundRoomWallIdSet: ReadonlySet<string>;
+	readonly roundRoomJunctionIdSet: ReadonlySet<string>;
 	readonly openingsByWallId: ReadonlyMap<string, readonly IndexedOpeningEntry[]>;
 	readonly openingIndicesByWallId: ReadonlyMap<string, readonly number[]>;
 	readonly componentKeyByJunctionId: ReadonlyMap<string, string | symbol>;
@@ -947,6 +950,10 @@ export function verifySweptBoundsGeometryDelta(options: {
 	if (changedJunctionIds.some((id) => worldIndex.openRoomJunctionIdSet.has(id))) {
 		return 'delegate-cold';
 	}
+	if (changedWallIds.some((id) => worldIndex.roundRoomWallIdSet.has(id))) return 'delegate-cold';
+	if (changedJunctionIds.some((id) => worldIndex.roundRoomJunctionIdSet.has(id))) {
+		return 'delegate-cold';
+	}
 
 	// Guard against in-place mutation of non-frozen test baselines on touched entities.
 	for (const jId of changedJunctionIds) {
@@ -1470,6 +1477,8 @@ function buildCertifiedWorldIndex(
 	const roomsByWallMutable = new Map<string, string[]>();
 	const openRoomWallIdSet = new Set<string>();
 	const openRoomJunctionIdSet = new Set<string>();
+	const roundRoomWallIdSet = new Set<string>();
+	const roundRoomJunctionIdSet = new Set<string>();
 	for (let i = 0; i < layoutLength(document, 'rooms'); i += 1) {
 		const r = layoutItem(document, 'rooms', i)!;
 		// Enclosed one-Wall Rooms keep their preexisting certification behaviour:
@@ -1501,6 +1510,16 @@ function buildCertifiedWorldIndex(
 			}
 		}
 		if (r.virtualEdges.length === 0 && prevEnd !== firstStart) return undefined;
+		if (r.round !== undefined) {
+			for (const ref of r.boundary) {
+				roundRoomWallIdSet.add(ref.wallId);
+				const wall = wallById.get(ref.wallId);
+				if (wall) {
+					roundRoomJunctionIdSet.add(wall.startJunctionId);
+					roundRoomJunctionIdSet.add(wall.endJunctionId);
+				}
+			}
+		}
 		if (!isOpenSpace(r)) continue;
 		// I4/I5 — an open Space is certified by its composed outline, never by a
 		// Wall face. The composer proves one closed cycle that consumes every
@@ -1668,6 +1687,8 @@ function buildCertifiedWorldIndex(
 		roomsByWallId: roomsByWallMutable,
 		openRoomWallIdSet,
 		openRoomJunctionIdSet,
+		roundRoomWallIdSet,
+		roundRoomJunctionIdSet,
 		openingIndicesByWallId,
 		componentKeyByJunctionId,
 		componentKeyByWallId,

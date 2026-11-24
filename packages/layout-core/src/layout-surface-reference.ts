@@ -85,6 +85,27 @@ export function joinWallSurfaceLineage(input: {
 	}));
 }
 
+/**
+ * Repack lineage maps every oriented arc of a Round ring onto the canonical
+ * CCW closed Wall, keeping the seam-side survivor first (Q17) and flipping
+ * `left`/`right` on any member traversed in `reverse`.
+ */
+export function repackWallSurfaceLineage(input: {
+	readonly survivorWallId: string;
+	readonly members: readonly { readonly wallId: string; readonly direction: 'forward' | 'reverse' }[];
+}): LayoutSurfaceLineage {
+	const ordered = [
+		...input.members.filter((member) => member.wallId === input.survivorWallId),
+		...input.members.filter((member) => member.wallId !== input.survivorWallId)
+	];
+	return (['left', 'right'] as const).map((side) => ({
+		to: wallSideSurfaceRef(input.survivorWallId, side),
+		from: ordered.map((member) =>
+			wallSideSurfaceRef(member.wallId, member.direction === 'forward' ? side : oppositeWallSide(side))
+		)
+	}));
+}
+
 /** Convert Room reconciliation correspondence into deterministic plane lineage. */
 export function roomSurfaceLineage(records: readonly {
 	readonly roomId: string;

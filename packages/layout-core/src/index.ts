@@ -34,6 +34,7 @@ export * from './layout-id-capture';
 export * from './layout-wall-first-codec';
 export * from './layout-closed-wall';
 export * from './layout-round-room';
+export * from './layout-round-ops';
 export * from './layout-circular-room';
 export * from './layout-wall-first-precision';
 export * from './p2311-perf';

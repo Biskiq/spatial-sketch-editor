@@ -239,6 +239,23 @@ export function nextInteriorAnchorId(segmentId: string, existing: readonly Layou
 export function cubicBezierPoint(segment: CubicBezierShape, t: number): LayoutVec2 {
 	const u = 1 - clamp01(t);
 	const tt = clamp01(t);
+	if (Math.abs(segment.start[0]) > 1e6 || Math.abs(segment.start[1]) > 1e6) {
+		const ox = segment.start[0];
+		const oz = segment.start[1];
+		const d1x = segment.handleOut[0] - ox;
+		const d1z = segment.handleOut[1] - oz;
+		const d2x = segment.handleIn[0] - ox;
+		const d2z = segment.handleIn[1] - oz;
+		const d3x = segment.end[0] - ox;
+		const d3z = segment.end[1] - oz;
+		const w1 = 3 * u * u * tt;
+		const w2 = 3 * u * tt * tt;
+		const w3 = tt * tt * tt;
+		return [
+			ox + (w1 * d1x + w2 * d2x + w3 * d3x),
+			oz + (w1 * d1z + w2 * d2z + w3 * d3z)
+		];
+	}
 	return [
 		u * u * u * segment.start[0] + 3 * u * u * tt * segment.handleOut[0] + 3 * u * tt * tt * segment.handleIn[0] + tt * tt * tt * segment.end[0],
 		u * u * u * segment.start[1] + 3 * u * u * tt * segment.handleOut[1] + 3 * u * tt * tt * segment.handleIn[1] + tt * tt * tt * segment.end[1]
