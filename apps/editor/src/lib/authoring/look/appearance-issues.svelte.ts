@@ -131,7 +131,8 @@ export function classifyRuntimeFailure(issue: FinishViewIssue): RuntimeRepairCod
 		if (issue.httpStatus === 404 || issue.httpStatus === 410) return 'image-unavailable';
 		return 'image-unreachable';
 	}
-	return 'image-unavailable';
+	// Untyped: a cancellation (closed scope, superseded, released source), never an issue.
+	return null;
 }
 
 function roleLabel(role: MapRole | null): string {
@@ -356,6 +357,9 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 
 	// Session-owned fix list for *Repaired (…)*. Never serialized.
 	let repairedList = $state.raw<readonly RepairedIssueEntry[]>([]);
+	// Authored entries whose issue came back (Undo). Dropped for good: a later Redo
+	// re-applies the edit but does not resurrect the entry; only a new fix notes it.
+	const droppedAuthored = new Set<string>();
 
 	// Inline refusal message for the last failed Relink / repair action, keyed by issue id.
 	let refusal = $state.raw<{ readonly issueId: string; readonly message: string } | null>(null);
@@ -397,6 +401,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		runtimeByTarget.clear();
 		runtimeVersion += 1;
 		repairedList = [];
+		droppedAuthored.clear();
 		refusal = null;
 	}
 
@@ -543,7 +548,12 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 	/** Visible *Repaired (…)* list: drops `history: 'authored'` entries whose issue is open again. */
 	const repaired = $derived.by((): readonly RepairedIssueEntry[] => {
 		const openIds = new Set(openIssues.map((issue) => issue.id));
-		return repairedList.filter((entry) => entry.history === 'none' || !openIds.has(entry.id));
+		for (const entry of repairedList) {
+			if (entry.history === 'authored' && openIds.has(entry.id)) droppedAuthored.add(entry.id);
+		}
+		return repairedList.filter(
+			(entry) => entry.history === 'none' || !droppedAuthored.has(entry.id)
+		);
 	});
 
 	/** Union of all open issues' affected targets (drives the Stage amber hatch layer). */
@@ -574,6 +584,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		readonly history: 'none' | 'authored';
 	}): void {
 		const id = issueKey(entry.finishKey, entry.code, entry.role);
+		droppedAuthored.delete(id);
 		repairedList = [
 			...repairedList.filter((item) => item.id !== id),
 			{ id, ...entry }

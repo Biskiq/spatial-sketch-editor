@@ -86,6 +86,7 @@
 
 <div
 	class="imp-backdrop"
+	role="presentation"
 	data-material-import-sheet
 	onkeydown={onKeydown}
 >

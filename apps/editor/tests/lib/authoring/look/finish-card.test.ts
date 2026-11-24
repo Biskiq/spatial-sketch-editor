@@ -11,7 +11,7 @@ import type { SceneEntity, SceneMaterialInstance } from '@portfolio/project-mode
 import { createEmptyWallFirstLayoutDocument, type LayoutSurfaceRef } from '@portfolio/layout-core';
 import { SCENE_UNIT_FORMAT_VERSION, type ScenePaletteSlot } from '@portfolio/project-model/units';
 import { createFinishPlanners } from '@portfolio/project-model/scene-planning';
-import { createFinishCard, finishCardTargetKey, finishWritePlan, type FinishCardTarget } from '$lib/authoring/look/finish-card.svelte';
+import { createFinishCard, finishCardTargetKey, finishWritePlan, roleImageBinding, type FinishCardTarget } from '$lib/authoring/look/finish-card.svelte';
 import { materialTreatmentFacts } from '$lib/content/material-presentation';
 import { getMaterial, materialById } from '$lib/content/materials';
 import type { MaterialId } from '$lib/types/materials';
@@ -143,6 +143,9 @@ describe('T2.S8 U4 — Finish Card adapter', () => {
 		expect(view.curated).toBe(true);
 		expect(view.reach.choice).toBe('this');
 		expect(view.reach.users).toBe(2);
+		// The prototype's meta line and Material sub-line (`finish.js`, `ui-card.js`).
+		expect(view.meta).toBe('Curated material · your first change makes a Finish');
+		expect(view.material.sub).toMatch(/ · Curated$/);
 		expect(await card.setSheen(entity('a'), 'satin')).toBe(true);
 		expect(accepted).toEqual(['scene-finish-patch']);
 		const materials = scene().materials;
@@ -160,6 +163,8 @@ describe('T2.S8 U4 — Finish Card adapter', () => {
 		const view = card.view(entity('a'), 'a');
 		if (view?.kind !== 'finish') throw new Error('expected a Finish');
 		expect(view.reach.choice).toBe('all');
+		expect(view.meta).toBe('Project Finish · from Walnut Wood');
+		expect(view.material.sub).toBe('Wood · Curated');
 		expect(card.proposals(entity('a')).entityIds).toEqual(['b', 'c']);
 		card.focus(entity('a'));
 		expect(card.proposalEntries().map((entry) => entry.reference.subject.id)).toEqual(['b', 'c']);
@@ -333,5 +338,44 @@ describe('T2.S8 U4 — Finish Card adapter', () => {
 		const { card } = await harness({ entities: [box('a')] });
 		expect(card.view(surface(LEFT), 'wall')?.kind).toBe('none');
 		expect(card.view(entity('missing'), 'x')).toBeNull();
+	});
+});
+
+describe('T2.S8 U6 — role-aware Replace image…', () => {
+	const HASH = `sha256-${'a'.repeat(64)}`;
+	const ASSET = '00000000-0000-4000-8000-0000000000b1';
+	const IMAGE = { assetId: ASSET, sha256: HASH, mime: 'image/png', byteSize: 1024, name: 'relief.png' } as const;
+
+	it('binds each role in its own shape and keeps the existing mapping, convention and component', () => {
+		const mapping = { kind: 'metric', size: [2, 2] } as never;
+		const source = {
+			base: { catalogue: 'wood-walnut' },
+			overrides: {
+				maps: {
+					normal: { image: { textureId: 'old' }, convention: '-Y', mapping },
+					roughness: { image: { textureId: 'old' }, component: 'a', invert: true }
+				}
+			}
+		} as never;
+		const recipes = new Map();
+		expect(roleImageBinding(source, recipes, 'normal', 'tex-new')).toEqual({ image: { textureId: 'tex-new' }, convention: '-Y', mapping });
+		expect(roleImageBinding(source, recipes, 'roughness', 'tex-new')).toEqual({ image: { textureId: 'tex-new' }, component: 'a', invert: true });
+		// No binding yet: the role's defaults.
+		expect(roleImageBinding(source, recipes, 'metalness', 'tex-new')).toEqual({ image: { textureId: 'tex-new' }, component: 'b', invert: false });
+		expect(roleImageBinding(source, recipes, 'occlusion', 'tex-new')).toEqual({ image: { textureId: 'tex-new' }, component: 'r', invert: false });
+		expect(roleImageBinding({ base: { catalogue: 'wood-walnut' } } as never, recipes, 'normal', 'tex-new')).toEqual({ image: { textureId: 'tex-new' }, convention: '+Y' });
+		expect(roleImageBinding({ base: { catalogue: 'wood-walnut' } } as never, recipes, 'color', 'tex-new')).toEqual({ image: { textureId: 'tex-new' } });
+	});
+
+	it('replaces a non-colour role on a surface as one Finish patch that stages the image', async () => {
+		const { card, accepted, scene } = await harness({
+			entities: [],
+			surfaces: [{ surface: LEFT, finish: { materialId: 'wood-walnut' } }]
+		});
+		expect(await card.replaceRoleImage(surface(LEFT), 'normal', IMAGE)).toBe(true);
+		expect(accepted).toEqual(['scene-finish-patch']);
+		const finish = scene().materials.find((material) => (material.overrides?.maps as Record<string, unknown> | undefined)?.normal !== undefined);
+		expect((finish?.overrides?.maps as Record<string, { image: unknown }>).normal.image).toEqual({ textureId: ASSET });
+		expect(scene().textures.map((texture) => texture.id)).toContain(ASSET);
 	});
 });

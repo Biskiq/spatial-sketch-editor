@@ -169,8 +169,18 @@
 	import MaterialImportSheet from '$lib/authoring/library/MaterialImportSheet.svelte';
 	import { createMaterialImportSession, type ImportTargetChoice } from '$lib/authoring/library/material-import.svelte';
 	import StageFinishAlign from '$lib/authoring/stage/shell/StageFinishAlign.svelte';
+	import {
+		ALIGN_CARD_COVER_PX,
+		ALIGN_INDEX_LANE_PX,
+		faceBoundsOf,
+		faceScreenAxes,
+		planFitBoundsOf,
+		planScreenAxes,
+		regionFraming
+	} from '$lib/authoring/look/align-chart';
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
+	import { finishCardTargetKey } from '$lib/authoring/look/finish-card.svelte';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
@@ -439,6 +449,9 @@
 			// Preview takes the one Camera output: the light inspection restores its
 			// entry standpoint synchronously before the ticket moves.
 			lightInspection?.cancel();
+			// Align, the material Editor, Import and the repair pickers end by their
+			// cancel paths; Align restores its entry standpoint first (U6 lifecycle).
+			endMaterialOperations(true);
 			experience.stopAndRestore();
 		},
 		snapSuspended: () => shell.drafting.snapSuspended,
@@ -573,8 +586,16 @@
 			: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
 		if (key === finishCardSelectionKey) return;
 		finishCardSelectionKey = key;
-		// A selection change discards a Card gesture: nothing is written.
-		untrack(() => finishes.card.cancel());
+		// A selection change discards a Card gesture: nothing is written. The
+		// material Editor and the image/repair pickers it opened belong to the old
+		// target and close by their cancel paths (U6 lifecycle); Align follows the
+		// Card's open user below.
+		untrack(() => {
+			finishes.card.cancel();
+			if (finishes.editor.open) finishes.editor.close(false);
+			finishes.cancelImage();
+			finishes.issues.cancelRepairs();
+		});
 	});
 	const sceneRooms = $derived(
 		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
@@ -1642,11 +1663,27 @@
 		for (const wallId of effective) if (!cutawayFailedIds.has(wallId)) next.add(wallId);
 		return next;
 	});
+	/**
+	 * Wall Align (T2.S8 U6) — a view-only mask while a wall side is faced: every
+	 * other Wall in front of the faced plane is cut to the floor (picks pass
+	 * through) and hidden, so nothing covers the surface being aligned. Hiding is
+	 * what draws it: a cutaway twin of a plain material can reuse the uncut program
+	 * (reported on the PR), so the cut alone is not relied on for display. Whole,
+	 * the hold key and the classifier are ignored for the session, as Paper is
+	 * during floor Align; no preference changes.
+	 */
+	const alignCutaway = $derived.by((): { readonly ids: readonly string[]; readonly top: number } | null => {
+		const active = finishes.align.active;
+		if (active === null || active.surface !== 'wall') return null;
+		const ids = active.occluders.filter((wallId) => !cutawayFailedIds.has(wallId));
+		return { ids, top: (active.corners[0]?.[1] ?? 0) + 0.005 };
+	});
 	const cutawayWallIds = $derived.by(() => {
+		if (alignCutaway !== null) return alignCutaway.ids;
 		const unfolded = wallUnfold.state?.wallId ?? null;
 		return [...cutawayEffective].filter((wallId) => wallId !== unfolded).sort();
 	});
-	const cutawayStubTopY = $derived(nearWallCutaway.stubTopY);
+	const cutawayStubTopY = $derived(alignCutaway !== null && alignCutaway.ids.length > 0 ? alignCutaway.top : nearWallCutaway.stubTopY);
 
 	/**
 	 * The one classification write (§3.3). Pose, geometry revision, reading and press
@@ -2207,23 +2244,58 @@
 		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
 	}
 
+	/**
+	 * The Align surface region in canvas-local CSS px, from JS-known shell values
+	 * only (no DOM measurement). It mirrors the overlay CSS: the Stage inset
+	 * (10 px; 14 px above the lower column), the Index lane above 860 px, the
+	 * Card lane, then the bar (41 px, or 107 px wrapped in a narrow region), the
+	 * note (46 px) and the ruler padding (l 44, r 24, t 20, b 40).
+	 */
+	function alignRegion(viewport: { readonly width: number; readonly height: number }): { x: number; y: number; width: number; height: number } | null {
+		const windowWidth = typeof window === 'undefined' ? viewport.width : window.innerWidth;
+		const indexCover = preview === null && shell.indexOpen && windowWidth > 860 ? ALIGN_INDEX_LANE_PX : 0;
+		const left = indexCover + 10;
+		const right = viewport.width - ALIGN_CARD_COVER_PX - 10;
+		const bar = right - left < 640 ? 107 : 41;
+		const top = 10 + bar;
+		const bottom = viewport.height - shell.lowerColumnHeight - 14 - 46;
+		const region = { x: left + 44, y: top + 20, width: right - left - 44 - 24, height: bottom - top - 20 - 40 };
+		return region.width > 40 && region.height > 40 ? region : null;
+	}
+
+	function alignFraming(
+		fit: { readonly center: readonly [number, number, number]; readonly surfaceMeters: readonly [number, number] },
+		axes: { readonly right: readonly [number, number, number]; readonly up: readonly [number, number, number] },
+		viewport: { readonly width: number; readonly height: number }
+	) {
+		const region = alignRegion(viewport);
+		if (region === null) return null;
+		return regionFraming({ center: fit.center, right: axes.right, up: axes.up, surfaceMeters: fit.surfaceMeters, canvas: viewport, region });
+	}
+
 	// A6 — the Face reading's one camera port. The route owns the session clock and
 	// the reduced-motion rule; the Layout adapter supplies only bounds and a look
 	// direction, and Put back restores the exact standpoint Face started from.
 	$effect(() => {
 		wallFace.setCameraPort({
 			standpoint: () => facade?.camera.state() ?? null,
-			face: (frame) => {
+			face: (frame, fit) => {
 				const stage = facade;
 				const viewport = rect;
 				if (stage === null || viewport === null) return false;
+				// Align (U6): frame the surface inside the chrome-free region, not the
+				// whole canvas. Plain Face keeps its conservative whole-canvas frame.
+				const axes = faceScreenAxes(frame.look);
+				const framing = fit === undefined ? null : alignFraming(fit, axes, viewport);
 				const result = submit(
-					{ kind: 'face', bounds: frame.bounds, look: frame.look, rect: viewport },
+					framing === null
+						? { kind: 'face', bounds: frame.bounds, look: frame.look, rect: viewport }
+						: { kind: 'face', bounds: faceBoundsOf(framing, axes.right), look: frame.look, rect: viewport, paddingFraction: 0 },
 					readingIntentClockSeconds(shell.reducedMotion, nowSeconds())
 				);
 				return result?.kind === 'accepted';
 			},
-			frameFloor: (bounds) => {
+			frameFloor: (bounds, fit) => {
 				const stage = facade;
 				const viewport = rect;
 				if (stage === null || viewport === null) return false;
@@ -2233,16 +2305,20 @@
 					const flip = submit({ kind: 'set-reading', reading: 'plan' }, t);
 					if (flip?.kind !== 'accepted') return false;
 				}
+				// Plan snaps its azimuth to a quarter turn; frame with the axes it lands on.
+				const framing = fit === undefined ? null : alignFraming(fit, planScreenAxes(current.pose.azimuthRadians), viewport);
 				const fitted = submit(
-					{
-						kind: 'fit',
-						bounds: {
-							min: [bounds.min[0], bounds.min[1], bounds.min[2]],
-							max: [bounds.max[0], bounds.max[1], bounds.max[2]]
-						},
-						rect: viewport,
-						paddingFraction: 0.14
-					},
+					framing === null
+						? {
+								kind: 'fit',
+								bounds: {
+									min: [bounds.min[0], bounds.min[1], bounds.min[2]],
+									max: [bounds.max[0], bounds.max[1], bounds.max[2]]
+								},
+								rect: viewport,
+								paddingFraction: 0.14
+							}
+						: { kind: 'fit', bounds: planFitBoundsOf(framing), rect: viewport, paddingFraction: 0 },
 					t
 				);
 				return fitted?.kind === 'accepted';
@@ -2431,6 +2507,7 @@
 			get liftSources() { return liftedSources; },
 			get cutawayWallIds() { return cutawayWallIds; },
 			get cutawayStubTopY() { return cutawayStubTopY; },
+			get alignHiddenWallIds() { return alignCutaway?.ids ?? []; },
 			onCutawayFailure: (wallIds: readonly string[]) => {
 				cutawayFailedIds = new Set([...cutawayFailedIds, ...wallIds]);
 			},
@@ -2447,35 +2524,61 @@
 	});
 
 	/**
-	 * Project the Align target's own four surface corners through the live
-	 * Camera, in canvas-local CSS pixels. The overlay places its ruler, grid,
-	 * mask and handles from this rectangle, so they sit on the drawn surface
-	 * (the conservative face frame only framed the view).
+	 * World → canvas-local CSS px through the live Camera evaluation, for the
+	 * Align overlay. Null while there is no evaluation; the overlay then shows
+	 * a waiting line and disables its handles instead of inventing a frame.
 	 */
-	function projectAlignBounds(active: {
-		readonly corners: readonly (readonly [number, number, number])[];
-	}): { left: number; top: number; right: number; bottom: number } | null {
+	const alignProject = $derived.by(() => {
 		const stage = facade;
 		const current = evaluation;
-		if (stage === null || current === null || active.corners.length === 0) return null;
+		if (finishes.align.active === null || stage === null || current === null) return null;
 		const id = stage.evaluationId();
 		if (id === null) return null;
-		let left = Infinity;
-		let top = Infinity;
-		let right = -Infinity;
-		let bottom = -Infinity;
-		for (const corner of active.corners) {
-			const projected = stage.projectWorld(corner, id);
-			if (projected.kind !== 'projected') return null;
-			const x = projected.css[0] - current.rect.left;
-			const y = projected.css[1] - current.rect.top;
-			if (x < left) left = x;
-			if (x > right) right = x;
-			if (y < top) top = y;
-			if (y > bottom) bottom = y;
+		const left = current.rect.left;
+		const top = current.rect.top;
+		return (point: readonly [number, number, number]): readonly [number, number] | null => {
+			const projected = stage.projectWorld(point, id);
+			return projected.kind === 'projected' ? [projected.css[0] - left, projected.css[1] - top] : null;
+		};
+	});
+
+	// Re-frame Align when its chrome-free region changes (resize, Index toggled,
+	// lower column resized). The first run per Align only records the region.
+	/** The Align target's Finish, re-read whenever an adapter commit lands (the Card's own signal). */
+	const alignInspectedNow = $derived.by(() => {
+		void shell.contributionsVersion;
+		const active = finishes.align.active;
+		return active === null ? null : finishes.card.inspectedOf(active.target);
+	});
+
+	// Align belongs to the Card's open user: deselect, delete, another surface or
+	// Back ends it exactly as Put back does (U6 lifecycle).
+	$effect(() => {
+		const active = finishes.align.active;
+		if (active === null) return;
+		if (finishes.card.focusedKey === finishCardTargetKey(active.target)) return;
+		untrack(() => finishes.align.putBack(false));
+	});
+
+	let alignRegionKey: string | null = null;
+	let alignRegionFor: object | null = null;
+	$effect(() => {
+		const active = finishes.align.active;
+		const viewport = rect;
+		if (active === null || viewport === null) {
+			alignRegionFor = null;
+			return;
 		}
-		return right > left && bottom > top ? { left, top, right, bottom } : null;
-	}
+		const key = JSON.stringify(alignRegion(viewport));
+		if (alignRegionFor !== active) {
+			alignRegionFor = active;
+			alignRegionKey = key;
+			return;
+		}
+		if (key === alignRegionKey) return;
+		alignRegionKey = key;
+		untrack(() => finishes.align.reframe());
+	});
 
 	/** The live drawn proposal in both worlds: one for the ink, one for the tag. */
 	const sliceDraftWorld = $derived.by(() => {
@@ -3082,26 +3185,19 @@
 
 		{#if finishes.align.active !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
 			{@const activeAlign = finishes.align.active}
-			{@const alignInspected = finishes.card.inspectedOf(activeAlign.target)}
+			{@const alignInspected = alignInspectedNow}
 			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
 			{#if alignInspected !== null && sceneNow !== null}
-				{@const alignFields = finishes.editor.view()?.fields ?? null}
-				{@const alignBounds = projectAlignBounds(activeAlign)}
-				{@const mappingNow = alignInspected.instance.overrides?.mapping}
-				{@const tileM = mappingNow && mappingNow.kind !== 'uv' ? mappingNow.metric.tileMeters[0] : (alignFields?.pattern.tileMeters ?? 1)}
-				{@const rotDeg = mappingNow ? ((((mappingNow.kind === 'uv' ? mappingNow.rotation : mappingNow.metric.rotation) * 180) / Math.PI) % 360 + 360) % 360 : 0}
-				{@const normOff = mappingNow ? (mappingNow.kind === 'uv' ? mappingNow.offset : mappingNow.metric.offset) : [0, 0]}
+				{@const alignSource = { base: alignInspected.instance.base, overrides: alignInspected.instance.overrides }}
+				{@const alignRecipes = sceneNow.materialIndex?.definitions ?? new Map()}
 				<StageFinishAlign
 					align={activeAlign}
 					refusal={finishes.align.refusal}
-					tileMeters={tileM}
-					offsetMeters={[normOff[0] * tileM, normOff[1] * tileM]}
-					angleDeg={rotDeg}
+					project={alignProject}
 					viewportWidth={rect?.width ?? 856}
 					viewportHeight={rect?.height ?? 608}
-					projected={alignBounds}
-					source={{ base: alignInspected.instance.base, overrides: alignInspected.instance.overrides }}
-					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
+					source={alignSource}
+					recipes={alignRecipes}
 					onMaterialPreview={(edits) => finishes.card.previewEdits(activeAlign.target, () => edits)}
 					onCancelPreview={() => finishes.card.cancel()}
 					onCommit={(edits) => finishes.card.edit(activeAlign.target, () => edits)}

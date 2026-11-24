@@ -138,6 +138,7 @@ import StageMatGround from './StageMatGround.svelte';
 		sliceDraft = null,
 		cutawayWallIds = [],
 		cutawayStubTopY = null,
+		alignHiddenWallIds = [],
 		onCutawayFailure,
 		studio = null,
 		onFinishOutcome,
@@ -212,6 +213,11 @@ import StageMatGround from './StageMatGround.svelte';
 		 */
 		cutawayWallIds?: readonly string[];
 		cutawayStubTopY?: number | null;
+		/**
+		 * Wall Align (T2.S8 U6): the Walls in front of the faced side, hidden for the
+		 * session so nothing covers the surface being aligned. Display-only, never authored.
+		 */
+		alignHiddenWallIds?: readonly string[];
 		/** Walls whose cap component failed; the route closes them to whole (D12). */
 		onCutawayFailure?: (wallIds: readonly string[]) => void;
 		/**
@@ -495,7 +501,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<VisitorLayoutShell {geometry} {scene} textureScope={textureScope} plinth={false} doorFrames={false}
 			{textureRevision}
 			treatment={scene.environment?.treatment}
-			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]}
+			hiddenWallIds={unfoldedWallId === null ? alignHiddenWallIds : [unfoldedWallId, ...alignHiddenWallIds]}
 			{liftedRoomIds}
 			{liftedRegionIds}
 			{cutawayWallIds}

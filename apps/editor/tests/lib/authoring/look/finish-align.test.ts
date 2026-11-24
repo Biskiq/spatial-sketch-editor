@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-	alignMappingEdits,
+	alignArrowDirection,
+	alignArrowTurn,
+	alignOccluders,
+	alignPlacementEdits,
 	alignResetEdits,
-	createFinishAlign,
-	nudgeAlignAngle,
-	nudgeAlignOffset,
-	snapAlignAngle,
-	snapAlignOffset
+	alignSetMapping,
+	createFinishAlign
 } from '$lib/authoring/look/finish-align.svelte';
 import { wallSideFaceFrame } from '$lib/layout/wall-face';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
@@ -19,6 +19,7 @@ function straightWall(id: string): CompiledPhysicalWall {
 		wallId: id,
 		length: 4,
 		height: 3,
+		thickness: 0.2,
 		bounds3: { min: [0, 0, -0.1], max: [4, 3, 0.1] },
 		samples: [
 			{ distance: 0, point: [0, 0], tangent: [1, 0] },
@@ -29,37 +30,45 @@ function straightWall(id: string): CompiledPhysicalWall {
 }
 
 describe('Align math and session (T2.S8 U6)', () => {
-	it('snaps offsets (1 cm default, 1 mm Shift) and angles (15° default, free Alt)', () => {
-		expect(snapAlignOffset(0.124, false)).toBe(0.12);
-		expect(snapAlignOffset(0.1244, true)).toBe(0.124);
-		expect(snapAlignAngle(23, false)).toBe(30);
-		expect(snapAlignAngle(23.4, true)).toBe(23.4);
-		expect(snapAlignAngle(-15, false)).toBe(345);
+	it('maps arrows to screen directions and ±15° turns', () => {
+		expect(alignArrowDirection('ArrowRight')).toEqual([1, 0]);
+		expect(alignArrowDirection('ArrowUp')).toEqual([0, -1]);
+		expect(alignArrowDirection('KeyA')).toBeNull();
+		expect(alignArrowTurn('ArrowLeft')).toBe(1);
+		expect(alignArrowTurn('ArrowDown')).toBe(-1);
 	});
 
-	it('nudges offset by 1 cm / 10 cm with Shift and angle by ±15°', () => {
-		expect(nudgeAlignOffset([0.2, 0.3], 'ArrowRight', false)).toEqual([0.21, 0.3]);
-		expect(nudgeAlignOffset([0.2, 0.3], 'ArrowRight', true)).toEqual([0.3, 0.3]);
-		expect(nudgeAlignOffset([0.2, 0.3], 'ArrowUp', false)).toEqual([0.2, 0.31]);
-		expect(nudgeAlignOffset([0.2, 0.3], 'KeyA', false)).toBeNull();
-		expect(nudgeAlignAngle(0, 'ArrowLeft')).toBe(15);
-		expect(nudgeAlignAngle(0, 'ArrowRight')).toBe(345);
-	});
-
-	it('emits one E4 mapping patch for offset/angle and Reset', () => {
+	it('emits one E4 mapping patch in tile fractions and radians, keeping tile size', () => {
 		const source = { base: { catalogue: 'wood-oak-veneer' as const } };
-		const moved = alignMappingEdits(source, emptyRecipes, [0.25, 0.1], 90);
+		const base = alignSetMapping(source, emptyRecipes).mapping;
+		expect(base.kind).toBe('target');
+		const moved = alignPlacementEdits(source, emptyRecipes, Math.PI / 2, [0.25, 1.1]);
 		expect(moved).toHaveLength(1);
-		expect(moved[0]).toMatchObject({ field: 'mapping', op: 'set' });
+		const edit = moved[0] as { field: string; op: string; value: { kind: string; metric: { tileMeters: number[]; rotation: number; offset: number[] } } };
+		expect(edit).toMatchObject({ field: 'mapping', op: 'set' });
+		expect(edit.value.metric.rotation).toBeCloseTo(Math.PI / 2, 9);
+		expect(edit.value.metric.offset[0]).toBeCloseTo(0.25, 9);
+		expect(edit.value.metric.offset[1]).toBeCloseTo(0.1, 9);
+		expect(edit.value.metric.tileMeters).toEqual(base.kind === 'uv' ? [] : [...base.metric.tileMeters]);
+		expect(alignPlacementEdits(source, emptyRecipes, 0, [0, 0])).toEqual([]);
 
 		const reset = alignResetEdits(
 			{
 				base: { catalogue: 'wood-oak-veneer' as const },
-				overrides: { mapping: { kind: 'target', metric: { tileMeters: [0.5, 0.5], rotation: Math.PI / 2, offset: [0.5, 0.2] } } }
+				overrides: { mapping: { ...base, metric: { ...(base as unknown as { metric: { tileMeters: [number, number] } }).metric, rotation: Math.PI / 2, offset: [0.5, 0.2] } } as never }
 			},
 			emptyRecipes
 		);
 		expect(reset).toEqual([{ field: 'mapping', op: 'reset' }]);
+	});
+
+	it('names roles whose own binding mapping would ignore the set mapping', () => {
+		const source = {
+			base: { catalogue: 'wood-oak-veneer' as const },
+			overrides: { maps: { color: { image: 'img-1', mapping: { kind: 'uv', set: 0, repeat: [1, 1], rotation: 0, offset: [0, 0] } } } }
+		} as never;
+		expect(alignSetMapping(source, emptyRecipes).separateRoles).toContain('color');
+		expect(alignSetMapping({ base: { catalogue: 'wood-oak-veneer' as const } }, emptyRecipes).separateRoles).toEqual([]);
 	});
 
 	it('faces the explicit wall side from the surface ref regardless of camera side', () => {
@@ -107,7 +116,15 @@ describe('Align math and session (T2.S8 U6)', () => {
 		});
 		expect(floor.ok).toBe(true);
 		expect(frameFloor).toHaveBeenCalledTimes(1);
+		expect(frameFloor.mock.calls[0]).toHaveLength(2);
 		expect(align.active?.surface).toBe('floor');
+		// The floor chart is the renderer's (u = x, v = −z) over the polygon bounds.
+		expect(align.active?.chart).toMatchObject({ uMin: 0, uMax: 5, vMin: -4, vMax: -0 });
+		expect((frameFloor.mock.calls[0] as unknown[])[1]).toMatchObject({ center: [2.5, 0, 2], surfaceMeters: [5, 4] });
+		// A resized Stage re-frames without a new standpoint.
+		expect(align.reframe()).toBe(true);
+		expect(frameFloor).toHaveBeenCalledTimes(2);
+		expect(wallFace.reading()?.entry).toBe(entryState);
 
 		expect(align.putBack(false)).toBe(false);
 		expect(align.active?.surface).toBe('floor');
@@ -118,5 +135,58 @@ describe('Align math and session (T2.S8 U6)', () => {
 		expect(align.active).toBeNull();
 		expect(align.refusal).toBeNull();
 		wallFace.setCameraPort(null);
+	});
+});
+
+describe('Align wall entry', () => {
+	it('faces the Card target side and charts that side with a region fit', () => {
+		const face = vi.fn(() => true);
+		wallFace.setCameraPort({ standpoint: () => ({ reading: '3d' }) as never, face, putBack: vi.fn(() => true) });
+		const align = createFinishAlign();
+		const wall = {
+			wallId: 'w1', length: 4, height: 3, thickness: 0.2,
+			bounds3: { min: [0, 0, -0.1], max: [4, 3, 0.1] },
+			samples: [
+				{ distance: 0, point: [0, 0], tangent: [1, 0] },
+				{ distance: 4, point: [4, 0], tangent: [1, 0] }
+			]
+		};
+		const res = align.enter({
+			target: { kind: 'surface', surface: { kind: 'wall-side', wallId: 'w1', side: 'right' } },
+			place: 'Wall · B',
+			layout: { walls: [{ id: 'w1', centerline: { kind: 'line' } }] } as never,
+			geometry: { walls: [wall], rooms: [] } as never
+		});
+		expect(res.ok).toBe(true);
+		const [frame, fit] = face.mock.calls[0] as unknown as [{ look: number[] }, { center: number[]; surfaceMeters: number[] }];
+		// Right side = −normal (normal = (−t_z, t_x) = (0, 1)): the eye looks toward +z.
+		expect(frame.look[2]).toBeCloseTo(1, 9);
+		expect(fit.center).toEqual([2, 1.5, -0.1]);
+		expect(fit.surfaceMeters).toEqual([4, 3]);
+		expect(align.active?.corners[0]).toEqual([0, 0, -0.1]);
+		expect(align.active?.occluders).toEqual([]);
+		wallFace.setCameraPort(null);
+		wallFace.clear();
+	});
+});
+
+describe('Align occluders', () => {
+	it('cuts every other Wall in front of the faced plane, never the faced one or those behind', () => {
+		const box = (id: string, min: number[], max: number[]) => ({ wallId: id, bounds3: { min, max } });
+		const active = {
+			surface: 'wall' as const,
+			target: { kind: 'surface' as const, surface: { kind: 'wall-side' as const, wallId: 'far', side: 'right' as const } },
+			// Inside face of the far wall at z = 0.1, eye toward +z.
+			corners: [[0, 0, 0.1], [4, 0, 0.1], [4, 3, 0.1], [0, 3, 0.1]] as const,
+			toward: [0, 0, 1] as const
+		};
+		const walls = [
+			box('far', [0, 0, -0.1], [4, 3, 0.1]),
+			box('near', [0, 0, 3.9], [4, 3, 4.1]),
+			box('side', [-0.1, 0, -0.1], [0.1, 3, 4.1]),
+			box('behind', [0, 0, -3], [4, 3, -2.8])
+		];
+		expect(alignOccluders(active, walls)).toEqual(['near', 'side']);
+		expect(alignOccluders({ ...active, surface: 'floor' }, walls)).toEqual([]);
 	});
 });

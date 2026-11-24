@@ -10,105 +10,106 @@ import {
 	type FinishPatchEdit,
 	type FinishSource
 } from '@portfolio/project-model/scene-planning';
-import { NEUTRAL_RECIPE, type Mapping, type Recipe } from '@portfolio/project-model/materials';
+import {
+	MATERIAL_MAP_ROLES,
+	NEUTRAL_RECIPE,
+	type MapRole,
+	type Mapping,
+	type Recipe
+} from '@portfolio/project-model/materials';
 import type { CompiledLayoutGeometry, LayoutDocumentWallFirst } from '@portfolio/layout-core';
-import { wallSideFaceFrame } from '$lib/layout/wall-face';
+import { wallSideFaceFrame, type WallFaceFrame } from '$lib/layout/wall-face';
 import { wallFace } from '$lib/authoring/layout/wall-face-store';
 import type { FinishCardTarget } from './finish-card.svelte';
+import {
+	chartCorners,
+	chartToWorld,
+	floorChart,
+	wallSideChart,
+	withPlacement,
+	wrapRotation,
+	type AlignSurfaceChart
+} from './align-chart';
 
 export function mod(value: number, period: number): number {
 	return ((value % period) + period) % period;
 }
 
-/** Snap an offset in metres: 1 cm default, 1 mm with Shift. */
-export function snapAlignOffset(meters: number, shiftKey: boolean): number {
-	const step = shiftKey ? 0.001 : 0.01;
-	return Number((Math.round(meters / step) * step).toFixed(4));
-}
-
-/** Snap a rotation in degrees: 15° default, free with Alt. */
-export function snapAlignAngle(degrees: number, altKey: boolean): number {
-	const next = altKey ? degrees : Math.round(degrees / 15) * 15;
-	return Number(mod(next, 360).toFixed(1));
-}
-
-/** Keyboard arrow nudge for offset: 1 cm default, 10 cm with Shift. */
-export function nudgeAlignOffset(
-	current: readonly [number, number],
-	key: string,
-	shiftKey: boolean
-): [number, number] | null {
-	const step = shiftKey ? 0.1 : 0.01;
-	switch (key) {
-		case 'ArrowLeft':
-			return [Number((current[0] - step).toFixed(4)), current[1]];
-		case 'ArrowRight':
-			return [Number((current[0] + step).toFixed(4)), current[1]];
-		case 'ArrowUp':
-			return [current[0], Number((current[1] + step).toFixed(4))];
-		case 'ArrowDown':
-			return [current[0], Number((current[1] - step).toFixed(4))];
-		default:
-			return null;
+/**
+ * The set mapping Align edits (E4 `mapping`), and the bound roles whose own
+ * binding mapping would ignore it. Align refuses when the colour image is one
+ * of those, because the grid would describe a mapping the creator cannot see.
+ */
+export function alignSetMapping(
+	source: FinishSource,
+	recipes: ReadonlyMap<string, Recipe>
+): { readonly mapping: Mapping; readonly base: Mapping; readonly separateRoles: readonly MapRole[] } {
+	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
+	const mapping = source.overrides?.mapping ?? base.mapping;
+	const separate: MapRole[] = [];
+	for (const role of MATERIAL_MAP_ROLES) {
+		const override = source.overrides?.maps?.[role];
+		if (override === null) continue;
+		const binding = (override ?? base.maps[role]) as { readonly mapping?: Mapping } | undefined;
+		if (binding?.mapping !== undefined) separate.push(role);
 	}
+	return { mapping, base: base.mapping, separateRoles: separate };
 }
 
-/** Keyboard arrow nudge for rotation: ±15°. */
-export function nudgeAlignAngle(currentDeg: number, key: string): number | null {
-	if (key === 'ArrowLeft' || key === 'ArrowUp') return mod(currentDeg + 15, 360);
-	if (key === 'ArrowRight' || key === 'ArrowDown') return mod(currentDeg - 15, 360);
-	return null;
-}
-
-/** Build one E4 `mapping` patch for offset (metres) and angle (degrees). */
-export function alignMappingEdits(
+/** One E4 `mapping` patch placing the pattern (rotation radians, offset tile fractions); tile size unchanged. */
+export function alignPlacementEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>,
-	offsetMeters: readonly [number, number],
-	angleDeg: number
+	rotation: number,
+	offset: readonly [number, number]
 ): FinishPatchEdit[] {
-	const base = baseRecipeOf({ id: '', name: '', base: source.base }, recipes) ?? NEUTRAL_RECIPE;
-	const current = source.overrides?.mapping ?? base.mapping;
-	const rotation = (mod(angleDeg, 360) * Math.PI) / 180;
-	if (current.kind === 'uv') {
-		const next: Mapping = {
-			...current,
-			rotation,
-			offset: [Number(offsetMeters[0].toFixed(4)), Number(offsetMeters[1].toFixed(4))]
-		};
-		return JSON.stringify(base.mapping) === JSON.stringify(next)
-			? source.overrides?.mapping === undefined
-				? []
-				: [{ field: 'mapping', op: 'reset' }]
-			: [{ field: 'mapping', op: 'set', value: next }];
-	}
-	const tileX = Math.max(0.02, current.metric.tileMeters[0]);
-	const tileY = Math.max(0.02, current.metric.tileMeters[1]);
-	const ox = mod(offsetMeters[0], tileX) / tileX;
-	const oy = mod(offsetMeters[1], tileY) / tileY;
-	const next: Mapping = {
-		kind: current.kind,
-		metric: {
-			tileMeters: [current.metric.tileMeters[0], current.metric.tileMeters[1]],
-			rotation,
-			offset: [Number(ox.toFixed(4)), Number(oy.toFixed(4))]
-		}
-	} as Mapping;
-	if (JSON.stringify(base.mapping) === JSON.stringify(next)) {
+	const { mapping, base } = alignSetMapping(source, recipes);
+	const next = withPlacement(mapping, wrapRotation(rotation), [mod(offset[0], 1) % 1, mod(offset[1], 1) % 1]);
+	if (JSON.stringify(next) === JSON.stringify(mapping)) return [];
+	if (JSON.stringify(next) === JSON.stringify(base)) {
 		return source.overrides?.mapping === undefined ? [] : [{ field: 'mapping', op: 'reset' }];
 	}
 	return [{ field: 'mapping', op: 'set', value: next }];
 }
 
-/** One E4 `mapping` patch resetting offset to [0, 0] and rotation to 0. */
+/** One E4 `mapping` patch: no offset, no turn. */
 export function alignResetEdits(
 	source: FinishSource,
 	recipes: ReadonlyMap<string, Recipe>
 ): FinishPatchEdit[] {
-	return alignMappingEdits(source, recipes, [0, 0], 0);
+	return alignPlacementEdits(source, recipes, 0, [0, 0]);
+}
+
+/** Arrow key → screen direction (px, y down). Null for other keys. */
+export function alignArrowDirection(key: string): readonly [number, number] | null {
+	switch (key) {
+		case 'ArrowLeft':
+			return [-1, 0];
+		case 'ArrowRight':
+			return [1, 0];
+		case 'ArrowUp':
+			return [0, -1];
+		case 'ArrowDown':
+			return [0, 1];
+		default:
+			return null;
+	}
+}
+
+/** Arrow key on the round handle → ±15° (counter-clockwise as seen for Left/Up). */
+export function alignArrowTurn(key: string): number | null {
+	if (key === 'ArrowLeft' || key === 'ArrowUp') return 1;
+	if (key === 'ArrowRight' || key === 'ArrowDown') return -1;
+	return null;
 }
 
 export type AlignCorner = readonly [number, number, number];
+
+/** What the Camera port needs to frame the surface inside the chrome-free region. */
+export type AlignFit = {
+	readonly center: AlignCorner;
+	readonly surfaceMeters: readonly [number, number];
+};
 
 export type ActiveFinishAlign = {
 	readonly target: Extract<FinishCardTarget, { kind: 'surface' }>;
@@ -116,14 +117,65 @@ export type ActiveFinishAlign = {
 	readonly place: string;
 	readonly widthMeters: number;
 	readonly heightMeters: number;
-	/** The four world corners of the faced surface plane (bottom and top edges). */
+	/** The surface's native UV chart in world space: the renderer's own parametrisation. */
+	readonly chart: AlignSurfaceChart;
+	/** The chart's four world corners: (uMin,vMin) (uMax,vMin) (uMax,vMax) (uMin,vMax). */
 	readonly corners: readonly AlignCorner[];
+	/** Unit direction from the surface toward the faced eye (walls: −look; floors: up). */
+	readonly toward: AlignCorner;
+	/** Walls in front of a faced wall side, cut to the floor while Align is open ([] for floors). */
+	readonly occluders: readonly string[];
 	readonly invoker: HTMLElement | null;
 };
+
+/**
+ * Walls that could hide a faced wall side: every other Wall with any part on the
+ * eye's side of the faced plane. Wall Align cuts them to the floor for the
+ * session (view-only, like Paper during floor Align), whatever the near-wall
+ * switch says, so the whole surface stays visible.
+ */
+export function alignOccluders(
+	active: Pick<ActiveFinishAlign, 'surface' | 'target' | 'corners' | 'toward'>,
+	walls: readonly { readonly wallId: string; readonly bounds3: { readonly min: readonly number[]; readonly max: readonly number[] } }[]
+): string[] {
+	if (active.surface !== 'wall' || active.target.surface.kind !== 'wall-side') return [];
+	const faced = active.target.surface.wallId;
+	const p = active.corners[0];
+	if (p === undefined) return [];
+	const [tx, ty, tz] = active.toward;
+	const ids: string[] = [];
+	for (const wall of walls) {
+		if (wall.wallId === faced) continue;
+		const { min, max } = wall.bounds3;
+		let front = false;
+		for (let corner = 0; corner < 8 && !front; corner += 1) {
+			const x = (corner & 1) === 0 ? min[0]! : max[0]!;
+			const y = (corner & 2) === 0 ? min[1]! : max[1]!;
+			const z = (corner & 4) === 0 ? min[2]! : max[2]!;
+			front = (x - p[0]) * tx + (y - p[1]) * ty + (z - p[2]) * tz > 1e-3;
+		}
+		if (front) ids.push(wall.wallId);
+	}
+	return ids.sort();
+}
+
+function fitOf(chart: AlignSurfaceChart): AlignFit {
+	return {
+		center: chartToWorld(chart, [(chart.uMin + chart.uMax) / 2, (chart.vMin + chart.vMax) / 2]),
+		surfaceMeters: [(chart.uMax - chart.uMin) * chart.uvMeters[0], (chart.vMax - chart.vMin) * chart.uvMeters[1]]
+	};
+}
 
 export function createFinishAlign() {
 	let active = $state.raw<ActiveFinishAlign | null>(null);
 	let refusal = $state<string | null>(null);
+	/** The last framing request, so a resize or a lane change can re-frame without a new standpoint. */
+	let framing: { readonly kind: 'wall'; readonly frame: WallFaceFrame; readonly fit: AlignFit } | { readonly kind: 'floor'; readonly bounds: { readonly min: AlignCorner; readonly max: AlignCorner }; readonly fit: AlignFit } | null = null;
+
+	function refuse(message: string): { readonly ok: false; readonly message: string } {
+		refusal = message;
+		return { ok: false, message };
+	}
 
 	function enter(input: {
 		readonly target: FinishCardTarget;
@@ -141,64 +193,50 @@ export function createFinishAlign() {
 		if (surface.kind === 'wall-side') {
 			const wallDoc = layout.walls.find((w) => w.id === surface.wallId);
 			if (wallDoc !== undefined && wallDoc.centerline.kind !== 'line') {
-				const message = 'Align needs a straight wall · use Pattern size and ↻ 90°';
-				refusal = message;
-				return { ok: false, message };
+				return refuse('Align needs a straight wall · use Pattern size and ↻ 90°');
 			}
 			const compiled = geometry.walls.find((w) => w.wallId === surface.wallId);
-			if (compiled === undefined) {
-				const message = 'That wall is not compiled yet.';
-				refusal = message;
-				return { ok: false, message };
-			}
+			if (compiled === undefined || compiled.samples.length === 0) return refuse('That wall is not compiled yet.');
 			const frame = wallSideFaceFrame(compiled, surface.side);
-			if (frame === null) {
-				const message = 'Could not frame that wall side.';
-				refusal = message;
-				return { ok: false, message };
-			}
-			const outcome = wallFace.face({ wallId: compiled.wallId, frame });
-			if (outcome.kind === 'refused') {
-				const message = 'Camera could not face this wall right now.';
-				refusal = message;
-				return { ok: false, message };
-			}
-			// The faced surface plane: the compiled centreline endpoints moved to
-			// the Card target's own side, between the Wall's floor and top. These
-			// corners are projected through the live Camera so the ruler, grid and
-			// mask sit on the drawn wall rather than on a guess.
+			if (frame === null) return refuse('Could not frame that wall side.');
+			// The renderer's own chart: u is arc length from the wall's start on both
+			// sides, v is height above the wall's floor, on the Card target's side.
 			const first = compiled.samples[0]!;
-			const last = compiled.samples[compiled.samples.length - 1]!;
 			const mid = compiled.samples[Math.floor(compiled.samples.length / 2)]!;
-			const tangentLength = Math.hypot(mid.tangent[0], mid.tangent[1]);
-			const sideSign = surface.side === 'left' ? 1 : -1;
-			const ox = tangentLength > 1e-9 ? (-mid.tangent[1] / tangentLength) * (compiled.thickness / 2) * sideSign : 0;
-			const oz = tangentLength > 1e-9 ? (mid.tangent[0] / tangentLength) * (compiled.thickness / 2) * sideSign : 0;
-			const y0 = compiled.bounds3.min[1];
-			const y1 = compiled.bounds3.max[1];
+			const chart = wallSideChart({
+				start: first.point,
+				startDistance: first.distance,
+				tangent: mid.tangent,
+				normal: [-mid.tangent[1], mid.tangent[0]],
+				side: surface.side,
+				thickness: compiled.thickness,
+				length: compiled.length,
+				floorY: compiled.bounds3.min[1],
+				topY: compiled.bounds3.max[1]
+			});
+			const fit = fitOf(chart);
+			const outcome = wallFace.face({ wallId: compiled.wallId, frame, fit });
+			if (outcome.kind === 'refused') return refuse('Camera could not face this wall right now.');
+			framing = { kind: 'wall', frame, fit };
+			const corners = chartCorners(chart).map((uv) => chartToWorld(chart, uv));
+			const toward: AlignCorner = [-frame.look[0], -frame.look[1], -frame.look[2]];
 			active = {
 				target,
 				surface: 'wall',
 				place,
-				widthMeters: Math.max(0.5, compiled.length),
-				heightMeters: Math.max(0.5, compiled.height),
-				corners: [
-					[first.point[0] + ox, y0, first.point[1] + oz],
-					[last.point[0] + ox, y0, last.point[1] + oz],
-					[last.point[0] + ox, y1, last.point[1] + oz],
-					[first.point[0] + ox, y1, first.point[1] + oz]
-				],
+				widthMeters: Math.max(0.01, compiled.length),
+				heightMeters: Math.max(0.01, chart.vMax - chart.vMin),
+				chart,
+				corners,
+				toward,
+				occluders: alignOccluders({ surface: 'wall', target, corners, toward }, geometry.walls),
 				invoker: invoker ?? null
 			};
 			return { ok: true };
 		}
 		if (surface.kind === 'room-floor') {
 			const room = geometry.rooms.find((r) => r.roomId === surface.roomId);
-			if (room === undefined) {
-				const message = 'That floor is not compiled yet.';
-				refusal = message;
-				return { ok: false, message };
-			}
+			if (room === undefined) return refuse('That floor is not compiled yet.');
 			const floorY = room.floorElevation;
 			let minX = Infinity;
 			let maxX = -Infinity;
@@ -210,37 +248,47 @@ export function createFinishAlign() {
 				if (z < minZ) minZ = z;
 				if (z > maxZ) maxZ = z;
 			}
-			if (!Number.isFinite(minX) || !(maxX > minX) || !(maxZ > minZ)) {
-				const message = 'Floor bounds could not be framed.';
-				refusal = message;
-				return { ok: false, message };
-			}
-			const outcome = wallFace.faceFloor({
-				roomId: room.roomId,
-				bounds: { min: [minX, floorY, minZ], max: [maxX, floorY + 0.05, maxZ] }
-			});
-			if (outcome.kind === 'refused') {
-				const message = 'Camera could not frame this floor right now.';
-				refusal = message;
-				return { ok: false, message };
-			}
+			if (!Number.isFinite(minX) || !(maxX > minX) || !(maxZ > minZ)) return refuse('Floor bounds could not be framed.');
+			const chart = floorChart({ floorY, minX, maxX, minZ, maxZ });
+			const fit = fitOf(chart);
+			const bounds = { min: [minX, floorY, minZ] as AlignCorner, max: [maxX, floorY + 0.05, maxZ] as AlignCorner };
+			const outcome = wallFace.faceFloor({ roomId: room.roomId, bounds, fit });
+			if (outcome.kind === 'refused') return refuse('Camera could not frame this floor right now.');
+			framing = { kind: 'floor', bounds, fit };
 			active = {
 				target,
 				surface: 'floor',
 				place,
-				widthMeters: Math.max(0.5, maxX - minX),
-				heightMeters: Math.max(0.5, maxZ - minZ),
-				corners: [
-					[minX, floorY, minZ],
-					[maxX, floorY, minZ],
-					[maxX, floorY, maxZ],
-					[minX, floorY, maxZ]
-				],
+				widthMeters: maxX - minX,
+				heightMeters: maxZ - minZ,
+				chart,
+				corners: chartCorners(chart).map((uv) => chartToWorld(chart, uv)),
+				toward: [0, 1, 0],
+				occluders: [],
 				invoker: invoker ?? null
 			};
 			return { ok: true };
 		}
 		return { ok: false, message: 'Align works on wall sides and room floors.' };
+	}
+
+	/**
+	 * Re-frame the active surface for a changed region (resize, Index or Card
+	 * toggled). The entry standpoint is untouched, so Put back still returns to
+	 * where Align started. A refusal leaves one line in the bar.
+	 */
+	function reframe(): boolean {
+		if (active === null || framing === null) return false;
+		const outcome =
+			framing.kind === 'wall'
+				? wallFace.reframe({ frame: framing.frame, fit: framing.fit })
+				: wallFace.reframe({ floor: framing.bounds, fit: framing.fit });
+		if (outcome.kind === 'refused') {
+			refusal = 'Camera could not re-frame this surface. Put back and try again.';
+			return false;
+		}
+		if (refusal?.startsWith('Camera could not re-frame')) refusal = null;
+		return true;
 	}
 
 	function putBack(restoreFocus = true): boolean {
@@ -252,6 +300,7 @@ export function createFinishAlign() {
 			return false;
 		}
 		active = null;
+		framing = null;
 		refusal = null;
 		if (restoreFocus && returnTo && returnTo.isConnected) {
 			queueMicrotask(() => returnTo.focus());
@@ -261,6 +310,7 @@ export function createFinishAlign() {
 
 	function clear(): void {
 		active = null;
+		framing = null;
 		refusal = null;
 	}
 
@@ -272,6 +322,7 @@ export function createFinishAlign() {
 			return refusal;
 		},
 		enter,
+		reframe,
 		putBack,
 		clear
 	};

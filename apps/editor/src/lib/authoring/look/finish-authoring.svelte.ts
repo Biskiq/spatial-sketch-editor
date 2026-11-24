@@ -2038,11 +2038,28 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 		if (kind === 'replace') {
 			if (file === undefined) return false;
-			if (issue.role !== 'color') {
-				issues.setRefusal(issue.id, 'Replacing this map role is not available yet.');
-				return false;
+			const role = issue.role ?? 'color';
+			let outcome: FinishImageOutcome;
+			if (role === 'color' && target.kind === 'entity') {
+				// An object's colour image: S4's own replace, with its tint rule.
+				outcome = await card.replaceImage(target, file);
+			} else {
+				// Any other role, or a surface: the S4 import, then one E4 patch that
+				// binds the image to exactly this role and registers its pin.
+				const context = captureImageWrite();
+				if (context === null) {
+					issues.setRefusal(issue.id, 'The Stage is still opening.');
+					return false;
+				}
+				outcome = await imageFlow.begin(file, async (image, warning) => {
+					if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
+					if (await card.replaceRoleImage(target, role, image)) {
+						if (warning !== null) host.onNotice(warning);
+						return { kind: 'accepted' };
+					}
+					return { kind: 'refused', message: card.refusalFor(target) ?? 'The image was not replaced.' };
+				});
 			}
-			const outcome = await card.replaceImage(target, file);
 			if (outcome.kind !== 'accepted') {
 				issues.setRefusal(issue.id, outcome.message ?? 'The image was not replaced.');
 				return false;

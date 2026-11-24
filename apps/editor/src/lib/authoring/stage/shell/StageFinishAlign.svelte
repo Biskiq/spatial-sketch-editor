@@ -3,31 +3,49 @@
 	 * Align on wall / floor overlay (T2.S8 U6).
 	 *
 	 * View-only DOM + SVG chrome around the live Stage framed by Camera (`face`
-	 * or Plan + `fit`). Ruler, repeat grid and offset/rotation handles are placed
-	 * from the surface's metric mapping frame and are never serialized.
+	 * or Plan + `fit`). Every mark is placed from the renderer's own sampling:
+	 * a surface point's native uv goes through
+	 *   t = diag(repeat) · R(−θ) · (uv − ½) + ½ + offset
+	 * (`align-chart.ts`), so tile boundaries are drawn where `t_x` or `t_y` is an
+	 * integer and projected through the live Camera, never as a screen pattern.
 	 * Dragging or nudging previews through the Card adapter; pointerup / keyup
-	 * commits once (C12).
+	 * commits once (C12). Nothing here is serialized.
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import {
-		alignMappingEdits,
+		alignArrowDirection,
+		alignArrowTurn,
+		alignPlacementEdits,
 		alignResetEdits,
-		mod,
-		nudgeAlignAngle,
-		nudgeAlignOffset,
-		snapAlignAngle,
-		snapAlignOffset,
+		alignSetMapping,
 		type ActiveFinishAlign
 	} from '$lib/authoring/look/finish-align.svelte';
+	import {
+		chartToWorld,
+		dragOffset,
+		handleLattice,
+		handleMetersOf,
+		offsetPlacing,
+		samplingOf,
+		screenToUvDelta,
+		tileGridLines,
+		tileToUv,
+		turnAbout,
+		turnBy,
+		type AlignJacobian,
+		type AlignSampling,
+		type Vec2
+	} from '$lib/authoring/look/align-chart';
 	import type { FinishPatchEdit, FinishSource } from '@portfolio/project-model/scene-planning';
 	import type { Recipe } from '@portfolio/project-model/materials';
+
+	type Project = (point: readonly [number, number, number]) => readonly [number, number] | null;
+	type Placement = { readonly rotation: number; readonly offset: readonly [number, number] };
 
 	let {
 		align,
 		refusal = null,
-		tileMeters,
-		offsetMeters,
-		angleDeg,
+		project = null,
 		source,
 		recipes,
 		onMaterialPreview,
@@ -35,14 +53,12 @@
 		onCommit,
 		onPutBack,
 		viewportWidth = 856,
-		viewportHeight = 608,
-		projected = null
+		viewportHeight = 608
 	}: {
 		align: ActiveFinishAlign;
 		refusal?: string | null;
-		tileMeters: number;
-		offsetMeters: readonly [number, number];
-		angleDeg: number;
+		/** World → Stage-local CSS px through the live Camera; null while unavailable. */
+		project?: Project | null;
 		source: FinishSource;
 		recipes: ReadonlyMap<string, Recipe>;
 		onMaterialPreview: (edits: readonly FinishPatchEdit[]) => void;
@@ -51,20 +67,19 @@
 		onPutBack: () => void;
 		viewportWidth?: number;
 		viewportHeight?: number;
-		/** The target surface's four corners projected through the live Camera, in Stage-local CSS px. */
-		projected?: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } | null;
 	} = $props();
 
-	let liveOff = $state<[number, number] | null>(null);
-	let liveRot = $state<number | null>(null);
+	let live = $state.raw<Placement | null>(null);
+	/** The lattice point held under the square handle for the current gesture. */
+	let heldK = $state.raw<readonly [number, number] | null>(null);
 	let keyDirty = $state<'offset' | 'angle' | null>(null);
 	let cancelDrag: (() => void) | null = null;
 
 	function discardGesture(): void {
 		cancelDrag?.();
 		cancelDrag = null;
-		liveOff = null;
-		liveRot = null;
+		live = null;
+		heldK = null;
 		keyDirty = null;
 		onCancelPreview();
 	}
@@ -88,203 +103,289 @@
 	const boxW = $derived(Math.max(320, viewportWidth));
 	const boxH = $derived(Math.max(240, viewportHeight));
 
-	const tile = $derived(Math.max(0.02, tileMeters));
-	const curOff = $derived<readonly [number, number]>(liveOff ?? [offsetMeters[0], offsetMeters[1]]);
-	const curRot = $derived(liveRot ?? angleDeg);
-	const displayOx = $derived(mod(curOff[0], tile));
-	const displayOy = $derived(mod(curOff[1], tile));
+	const chart = $derived(align.chart);
+	const setMap = $derived(alignSetMapping(source, recipes));
+	/** The colour image follows its own mapping: the grid could not describe what the creator sees. */
+	const separate = $derived(setMap.separateRoles.includes('color'));
+	const accepted = $derived<AlignSampling>(samplingOf(setMap.mapping, chart.uvMeters));
+	const sampling = $derived<AlignSampling>(
+		live === null ? accepted : { ...accepted, rotation: live.rotation, offset: live.offset }
+	);
 
-	// Ruler padding (l 44, r 24, t 20, b 40) only frames the fallback rectangle.
-	const pad = { l: 44, r: 24, t: 20, b: 40 };
-	/**
-	 * The faced surface rectangle in the SVG's own pixel frame. When the live
-	 * Camera projection is available it is the target's projected corners; the
-	 * fallback (no evaluation yet, or tests) fits the declared extent.
-	 */
-	const surfaceRect = $derived.by(() => {
-		const width = boxW;
-		const height = boxH;
-		const live = projected;
-		if (live !== null) {
-			return {
-				boxW: width,
-				boxH: height,
-				x0: live.left,
-				y0: live.top,
-				w: Math.max(1, live.right - live.left),
-				h: Math.max(1, live.bottom - live.top)
-			};
-		}
-		const scale = Math.min((width - pad.l - pad.r) / align.widthMeters, (height - pad.t - pad.b) / align.heightMeters);
-		const w = align.widthMeters * scale;
-		const h = align.heightMeters * scale;
-		return {
-			boxW: width,
-			boxH: height,
-			x0: pad.l + (width - pad.l - pad.r - w) / 2,
-			y0: pad.t + (height - pad.t - pad.b - h) / 2,
-			w,
-			h
-		};
-	});
-	const rectW = $derived(surfaceRect.w);
-	const rectH = $derived(surfaceRect.h);
-	const x0 = $derived(surfaceRect.x0);
-	const y0 = $derived(surfaceRect.y0);
-	const y1 = $derived(y0 + rectH);
-	const scaleX = $derived(rectW / align.widthMeters);
-	const scaleY = $derived(rectH / align.heightMeters);
-	const tilePxX = $derived(Math.max(8, tile * scaleX));
-	const tilePxY = $derived(Math.max(8, tile * scaleY));
-
-	const hx = $derived(x0 + Math.min(displayOx, align.widthMeters) * scaleX);
-	const hy = $derived(y1 - Math.min(displayOy, align.heightMeters) * scaleY);
-	const armRadius = $derived(Math.min(Math.max(Math.min(tilePxX, tilePxY) * 0.9, 56), 120));
-	const armAngleRad = $derived((-curRot * Math.PI) / 180);
-	const rx = $derived(hx + Math.cos(armAngleRad) * armRadius);
-	const ry = $derived(hy + Math.sin(armAngleRad) * armRadius);
-
-	const xTicks = $derived.by(() => {
-		const out: { x: number; major: boolean; label: string }[] = [];
-		for (let m = 0; m <= align.widthMeters + 1e-6; m = Number((m + 0.1).toFixed(2))) {
-			const major = Math.abs(m - Math.round(m)) < 1e-4;
-			out.push({ x: x0 + m * scaleX, major, label: `${Math.round(m)} m` });
-		}
-		return out;
-	});
-	const yTicks = $derived.by(() => {
-		const out: { y: number; major: boolean; label: string }[] = [];
-		for (let m = 0; m <= align.heightMeters + 1e-6; m = Number((m + 0.1).toFixed(2))) {
-			const major = Math.abs(m - Math.round(m)) < 1e-4;
-			out.push({ y: y1 - m * scaleY, major, label: `${Math.round(m)}` });
-		}
-		return out;
-	});
-
-	function previewNow(off: readonly [number, number], rot: number): void {
-		onMaterialPreview(alignMappingEdits(source, recipes, off, rot));
+	function projectUv(uv: Vec2): readonly [number, number] | null {
+		return project === null ? null : project(chartToWorld(chart, uv));
 	}
 
-	function commitNow(off: readonly [number, number], rot: number): void {
-		liveOff = null;
-		liveRot = null;
+	const cornersUv = $derived<readonly Vec2[]>([
+		[chart.uMin, chart.vMin],
+		[chart.uMax, chart.vMin],
+		[chart.uMax, chart.vMax],
+		[chart.uMin, chart.vMax]
+	]);
+	const cornersPx = $derived.by(() => {
+		if (project === null) return null;
+		const out: (readonly [number, number])[] = [];
+		for (const uv of cornersUv) {
+			const p = projectUv(uv);
+			if (p === null || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) return null;
+			out.push(p);
+		}
+		return out;
+	});
+	const available = $derived(cornersPx !== null && !separate);
+
+	/** The corner that reads as bottom-left on screen (largest y − x), and its two edges. */
+	const frame = $derived.by(() => {
+		const px = cornersPx;
+		if (px === null) return null;
+		let b = 0;
+		for (let i = 1; i < 4; i += 1) if (px[i]![1] - px[i]![0] > px[b]![1] - px[b]![0]) b = i;
+		const n1 = (b + 1) % 4;
+		const n3 = (b + 3) % 4;
+		const horizontalness = (i: number) => Math.abs(px[i]![0] - px[b]![0]) - Math.abs(px[i]![1] - px[b]![1]);
+		const bottom = horizontalness(n1) >= horizontalness(n3) ? n1 : n3;
+		const left = bottom === n1 ? n3 : n1;
+		return { b, bottom, left };
+	});
+
+	const jacobianAt = (uv: Vec2): AlignJacobian | null => {
+		const p0 = projectUv(uv);
+		const pu = projectUv([uv[0] + 1, uv[1]]);
+		const pv = projectUv([uv[0], uv[1] + 1]);
+		if (p0 === null || pu === null || pv === null) return null;
+		return { du: [pu[0] - p0[0], pu[1] - p0[1]], dv: [pv[0] - p0[0], pv[1] - p0[1]] };
+	};
+
+	const handle = $derived.by(() => {
+		const f = frame;
+		if (f === null) return null;
+		if (heldK !== null) return { k: heldK, uv: tileToUv(heldK, sampling) };
+		return handleLattice(chart, sampling, cornersUv[f.b]!);
+	});
+	const handlePx = $derived(handle === null ? null : projectUv(handle.uv));
+	const jacobian = $derived(handle === null ? null : jacobianAt(handle.uv));
+	/** +1 when a positive uv rotation turns counter-clockwise as seen (screen y grows down). */
+	const ccwSign = $derived(jacobian === null ? 1 : jacobian.du[0] * jacobian.dv[1] - jacobian.dv[0] * jacobian.du[1] < 0 ? 1 : -1);
+
+	const arm = $derived.by(() => {
+		if (handlePx === null || jacobian === null) return null;
+		const c = Math.cos(sampling.rotation);
+		const n = Math.sin(sampling.rotation);
+		const dx = jacobian.du[0] * c + jacobian.dv[0] * n;
+		const dy = jacobian.du[1] * c + jacobian.dv[1] * n;
+		const pxPerMetre = Math.hypot(dx, dy);
+		if (!(pxPerMetre > 0)) return null;
+		const length = Math.min(Math.max(pxPerMetre * sampling.tileMeters[0] * 0.9, 56), 120);
+		return { x: handlePx[0] + (dx / pxPerMetre) * length, y: handlePx[1] + (dy / pxPerMetre) * length };
+	});
+
+	const gridPaths = $derived.by(() => {
+		if (!available) return '';
+		const lines = tileGridLines(chart, sampling);
+		if (lines === null) return '';
+		let d = '';
+		for (const line of lines) {
+			const a = projectUv(line.from);
+			const b = projectUv(line.to);
+			if (a === null || b === null) continue;
+			d += `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}`;
+		}
+		return d;
+	});
+
+	const surfacePolygon = $derived(cornersPx === null ? '' : cornersPx.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' '));
+	const surroundPath = $derived(
+		cornersPx === null
+			? ''
+			: `M0 0H${boxW}V${boxH}H0Z M${cornersPx.map((p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L')}Z`
+	);
+
+	type Tick = { x1: number; y1: number; x2: number; y2: number; label: string | null; lx: number; ly: number };
+	/** 0.1 m ticks along an edge from the bottom-left corner, labelled each metre, pushed outward by `out`. */
+	function edgeTicks(from: number, to: number, out: readonly [number, number], labelSuffix: string): Tick[] {
+		const px = cornersPx;
+		if (px === null) return [];
+		const a = cornersUv[from]!;
+		const b = cornersUv[to]!;
+		const metres = Math.hypot((b[0] - a[0]) * chart.uvMeters[0], (b[1] - a[1]) * chart.uvMeters[1]);
+		if (!(metres > 0) || metres / 0.1 > 400) return [];
+		const pa = px[from]!;
+		const pb = px[to]!;
+		const ticks: Tick[] = [];
+		for (let i = 0; i * 0.1 <= metres + 1e-6; i += 1) {
+			const f = (i * 0.1) / metres;
+			const x = pa[0] + (pb[0] - pa[0]) * f;
+			const y = pa[1] + (pb[1] - pa[1]) * f;
+			const major = i % 10 === 0;
+			const len = major ? 14 : 8;
+			ticks.push({
+				x1: x + out[0] * 4,
+				y1: y + out[1] * 4,
+				x2: x + out[0] * len,
+				y2: y + out[1] * len,
+				label: major ? `${i / 10}${labelSuffix}` : null,
+				lx: x + out[0] * (out[1] !== 0 ? 27 : 18),
+				ly: y + out[1] * 27 + (out[0] !== 0 ? 4 : 0)
+			});
+		}
+		return ticks;
+	}
+	const xTicks = $derived(frame === null ? [] : edgeTicks(frame.b, frame.bottom, [0, 1], ' m'));
+	const yTicks = $derived(frame === null ? [] : edgeTicks(frame.b, frame.left, [-1, 0], ''));
+
+	const readOff = $derived<[number, number]>(
+		frame === null || handle === null
+			? [0, 0]
+			: handleMetersOf(
+					handle.uv,
+					{ origin: cornersUv[frame.b]!, right: cornersUv[frame.bottom]!, up: cornersUv[frame.left]! },
+					chart.uvMeters,
+					sampling.tileMeters
+				)
+	);
+	const readDeg = $derived(Math.round(((((sampling.rotation * ccwSign * 180) / Math.PI) % 360) + 360) % 360) % 360);
+	const repeatLabel = $derived(
+		Math.abs(sampling.tileMeters[0] - sampling.tileMeters[1]) < 1e-6
+			? `${sampling.tileMeters[0].toFixed(2)} m`
+			: `${sampling.tileMeters[0].toFixed(2)} × ${sampling.tileMeters[1].toFixed(2)} m`
+	);
+
+	function previewNow(next: Placement): void {
+		live = next;
+		const edits = alignPlacementEdits(source, recipes, next.rotation, next.offset);
+		if (edits.length === 0) onCancelPreview();
+		else onMaterialPreview(edits);
+	}
+
+	function commitNow(next: Placement): void {
+		live = null;
+		heldK = null;
 		keyDirty = null;
 		onCancelPreview();
-		const edits = alignMappingEdits(source, recipes, off, rot);
+		const edits = alignPlacementEdits(source, recipes, next.rotation, next.offset);
 		if (edits.length > 0) void onCommit(edits);
+	}
+
+	function trackPointer(
+		event: PointerEvent,
+		onMove: (pe: PointerEvent) => void,
+		onUp: () => void
+	): void {
+		const el = event.currentTarget as Element;
+		el.setPointerCapture?.(event.pointerId);
+		const move = (ev: Event) => {
+			const pe = ev as PointerEvent;
+			if (pe.pointerId !== event.pointerId) return;
+			onMove(pe);
+		};
+		const cleanup = () => {
+			el.removeEventListener('pointermove', move);
+			el.removeEventListener('pointerup', up);
+			el.removeEventListener('pointercancel', cancel);
+			el.removeEventListener('lostpointercapture', cancel);
+			window.removeEventListener('blur', cancel);
+			cancelDrag = null;
+		};
+		const up = (ev: Event) => {
+			if ((ev as PointerEvent).pointerId !== event.pointerId) return;
+			cleanup();
+			onUp();
+		};
+		const cancel = () => discardGesture();
+		cancelDrag = cleanup;
+		el.addEventListener('pointermove', move);
+		el.addEventListener('pointerup', up);
+		el.addEventListener('pointercancel', cancel);
+		el.addEventListener('lostpointercapture', cancel);
+		window.addEventListener('blur', cancel);
 	}
 
 	function startOffsetDrag(event: PointerEvent): void {
 		discardGesture();
+		if (!available || handle === null || jacobian === null) return;
 		event.preventDefault();
-		const el = event.currentTarget as Element;
-		el.setPointerCapture(event.pointerId);
-		const startX = event.clientX;
-		const startY = event.clientY;
-		const startOff: [number, number] = [curOff[0], curOff[1]];
-		let latest: [number, number] = [...startOff];
-		const onMove = (ev: Event) => {
-			const pe = ev as PointerEvent;
-			if (pe.pointerId !== event.pointerId) return;
-			const dx = pe.clientX - startX;
-			const dy = pe.clientY - startY;
-			latest = [
-				snapAlignOffset(startOff[0] + dx / scaleX, pe.shiftKey),
-				snapAlignOffset(startOff[1] - dy / scaleY, pe.shiftKey)
-			];
-			liveOff = latest;
-			previewNow(latest, curRot);
-		};
-		const cleanup = () => {
-			el.removeEventListener('pointermove', onMove);
-			el.removeEventListener('pointerup', onUp);
-			el.removeEventListener('pointercancel', onCancel);
-			el.removeEventListener('lostpointercapture', onCancel);
-			window.removeEventListener('blur', onCancel);
-			cancelDrag = null;
-		};
-		const onUp = (ev: Event) => {
-			if ((ev as PointerEvent).pointerId !== event.pointerId) return;
-			cleanup();
-			commitNow(latest, curRot);
-		};
-		const onCancel = () => discardGesture();
-		cancelDrag = cleanup;
-		el.addEventListener('pointermove', onMove);
-		el.addEventListener('pointerup', onUp);
-		el.addEventListener('pointercancel', onCancel);
-		el.addEventListener('lostpointercapture', onCancel);
-		window.addEventListener('blur', onCancel);
+		// preventDefault stops the browser focusing the handle; focus it so its arrow keys reach it.
+		(event.currentTarget as SVGElement | null)?.focus?.();
+		const start = { ...sampling };
+		const k = handle.k;
+		const startUv = handle.uv;
+		const jac = jacobian;
+		const x0 = event.clientX;
+		const y0 = event.clientY;
+		heldK = k;
+		let latest: Placement = { rotation: start.rotation, offset: start.offset };
+		trackPointer(
+			event,
+			(pe) => {
+				const delta = screenToUvDelta(jac, [pe.clientX - x0, pe.clientY - y0]);
+				if (delta === null) return;
+				latest = { rotation: start.rotation, offset: dragOffset(start, k, startUv, delta, pe.shiftKey) };
+				previewNow(latest);
+			},
+			() => commitNow(latest)
+		);
 	}
 
 	function startAngleDrag(event: PointerEvent): void {
 		discardGesture();
+		if (!available || handle === null || jacobian === null || handlePx === null || arm === null) return;
 		event.preventDefault();
-		const el = event.currentTarget as Element;
-		el.setPointerCapture(event.pointerId);
-		const originClientX = event.clientX - (hx + Math.cos((-curRot * Math.PI) / 180) * 64);
-		const originClientY = event.clientY - (hy + Math.sin((-curRot * Math.PI) / 180) * 64);
-		let latest = curRot;
-		const onMove = (ev: Event) => {
-			const pe = ev as PointerEvent;
-			if (pe.pointerId !== event.pointerId) return;
-			const px = pe.clientX - originClientX;
-			const py = pe.clientY - originClientY;
-			const rawDeg = (-Math.atan2(py - hy, px - hx) * 180) / Math.PI;
-			latest = snapAlignAngle(rawDeg, pe.altKey);
-			liveRot = latest;
-			previewNow(curOff, latest);
-		};
-		const cleanup = () => {
-			el.removeEventListener('pointermove', onMove);
-			el.removeEventListener('pointerup', onUp);
-			el.removeEventListener('pointercancel', onCancel);
-			el.removeEventListener('lostpointercapture', onCancel);
-			window.removeEventListener('blur', onCancel);
-			cancelDrag = null;
-		};
-		const onUp = (ev: Event) => {
-			if ((ev as PointerEvent).pointerId !== event.pointerId) return;
-			cleanup();
-			commitNow(curOff, latest);
-		};
-		const onCancel = () => discardGesture();
-		cancelDrag = cleanup;
-		el.addEventListener('pointermove', onMove);
-		el.addEventListener('pointerup', onUp);
-		el.addEventListener('pointercancel', onCancel);
-		el.addEventListener('lostpointercapture', onCancel);
-		window.addEventListener('blur', onCancel);
+		(event.currentTarget as SVGElement | null)?.focus?.();
+		const start = { ...sampling };
+		const k = handle.k;
+		const pivotUv = handle.uv;
+		const pivotPx = handlePx;
+		const jac = jacobian;
+		// Stage-local pointer = the round handle's position + the client delta (no DOM read).
+		const origin: [number, number] = [arm.x - event.clientX, arm.y - event.clientY];
+		heldK = k;
+		let latest: Placement = { rotation: start.rotation, offset: start.offset };
+		trackPointer(
+			event,
+			(pe) => {
+				const px = origin[0] + pe.clientX - pivotPx[0];
+				const py = origin[1] + pe.clientY - pivotPx[1];
+				const dir = screenToUvDelta(jac, [px, py]);
+				if (dir === null || Math.hypot(dir[0], dir[1]) < 1e-9) return;
+				latest = turnAbout(start, k, pivotUv, dir, pe.altKey);
+				previewNow(latest);
+			},
+			() => commitNow(latest)
+		);
 	}
 
 	function onOffsetKeydown(event: KeyboardEvent): void {
-		const next = nudgeAlignOffset(curOff, event.key, event.shiftKey);
-		if (next === null) return;
+		const dir = alignArrowDirection(event.key);
+		if (dir === null || !available || handle === null || jacobian === null) return;
 		event.preventDefault();
 		event.stopPropagation();
-		liveOff = next;
+		const uvDir = screenToUvDelta(jacobian, dir);
+		if (uvDir === null) return;
+		const length = Math.hypot(uvDir[0] * chart.uvMeters[0], uvDir[1] * chart.uvMeters[1]);
+		if (!(length > 0)) return;
+		const step = event.shiftKey ? 0.1 : 0.01;
+		const k = handle.k;
+		heldK = k;
+		const target: Vec2 = [handle.uv[0] + (uvDir[0] / length) * step, handle.uv[1] + (uvDir[1] / length) * step];
+		const raw = offsetPlacing(k, target, sampling, sampling.rotation);
 		keyDirty = 'offset';
-		previewNow(next, curRot);
-	}
-
-	function onOffsetKeyup(event: KeyboardEvent): void {
-		if (keyDirty !== 'offset' || nudgeAlignOffset(curOff, event.key, event.shiftKey) === null) return;
-		commitNow(curOff, curRot);
+		previewNow({ rotation: sampling.rotation, offset: [((raw[0] % 1) + 1) % 1, ((raw[1] % 1) + 1) % 1] });
 	}
 
 	function onAngleKeydown(event: KeyboardEvent): void {
-		const next = nudgeAlignAngle(curRot, event.key);
-		if (next === null) return;
+		const turn = alignArrowTurn(event.key);
+		if (turn === null || !available || handle === null) return;
 		event.preventDefault();
 		event.stopPropagation();
-		liveRot = next;
+		heldK = handle.k;
 		keyDirty = 'angle';
-		previewNow(curOff, next);
+		previewNow(turnBy(sampling, handle.k, handle.uv, (turn * ccwSign * Math.PI) / 12));
 	}
 
-	function onAngleKeyup(event: KeyboardEvent): void {
-		if (keyDirty !== 'angle' || nudgeAlignAngle(curRot, event.key) === null) return;
-		commitNow(curOff, curRot);
+	function onKeyup(kind: 'offset' | 'angle', event: KeyboardEvent): void {
+		const isArrow = kind === 'offset' ? alignArrowDirection(event.key) !== null : alignArrowTurn(event.key) !== null;
+		if (keyDirty !== kind || !isArrow || live === null) return;
+		commitNow(live);
 	}
 
 	function resetAlign(): void {
@@ -293,7 +394,6 @@
 		if (edits.length > 0) void onCommit(edits);
 	}
 
-	const patternTransform = $derived(`translate(${x0 + curOff[0] * scaleX} ${y1 - curOff[1] * scaleY}) rotate(${-curRot})`);
 </script>
 
 <div
@@ -305,13 +405,14 @@
 		<strong>{align.surface === 'floor' ? 'Align on floor' : 'Align on wall'}</strong>
 		<span class="al-meta">{align.place} · {align.widthMeters.toFixed(1)} × {align.heightMeters.toFixed(1)} m · straight on</span>
 		<span class="al-read mono" data-align-readout>
-			offset {displayOx.toFixed(2)} → · {displayOy.toFixed(2)} ↑ m · {curRot.toFixed(0)}° · repeat {tile.toFixed(2)} m
+			offset {readOff[0].toFixed(2)} → · {readOff[1].toFixed(2)} ↑ m · {readDeg}° · repeat {repeatLabel}
 		</span>
 		<button
 			type="button"
 			class="al-btn ghost"
 			title="No offset, no turn — one undo"
 			data-align-reset
+			disabled={separate}
 			onclick={resetAlign}
 		>Reset</button>
 		<button
@@ -325,128 +426,97 @@
 	{#if refusal}<div role="status" class="al-refusal">{refusal}</div>{/if}
 
 	<div class="al-clip">
-		<svg
-			class="al-svg"
-			style={`width:${surfaceRect.boxW}px;height:${surfaceRect.boxH}px`}
-			width={surfaceRect.boxW}
-		height={surfaceRect.boxH}
-		viewBox={`0 0 ${surfaceRect.boxW} ${surfaceRect.boxH}`}
-		role="img"
-		aria-label={`${align.place} faced straight on, ${align.widthMeters.toFixed(1)} by ${align.heightMeters.toFixed(1)} metres`}
-	>
-		<defs>
-			<pattern
-				id="stage-align-grid"
-				patternUnits="userSpaceOnUse"
-				x="0"
-				y="0"
-				width={tilePxX}
-				height={tilePxY}
-				patternTransform={patternTransform}
+		{#if available && cornersPx !== null}
+			<svg
+				class="al-svg"
+				style={`width:${boxW}px;height:${boxH}px`}
+				width={boxW}
+				height={boxH}
+				viewBox={`0 0 ${boxW} ${boxH}`}
+				role="img"
+				aria-label={`${align.place} faced straight on, ${align.widthMeters.toFixed(1)} by ${align.heightMeters.toFixed(1)} metres`}
 			>
+				<defs>
+					<clipPath id="stage-align-clip">
+						<polygon points={surfacePolygon} />
+					</clipPath>
+				</defs>
+
+				<!-- Ivory surround over the live Stage, with the faced surface cut out -->
+				<path d={surroundPath} fill="var(--shell-ivory)" fill-rule="evenodd" data-align-surround />
+
+				<!-- Dashed tile boundaries (t_x ∈ ℤ, t_y ∈ ℤ), projected -->
 				<path
-					d={`M0 0.7h${Math.max(1, tilePxX - 0.7)}v${tilePxY}`}
+					d={gridPaths}
 					fill="none"
 					stroke="#ffffff"
 					stroke-width="1.4"
 					stroke-dasharray="5 4"
 					opacity="0.9"
+					clip-path="url(#stage-align-clip)"
+					pointer-events="none"
+					data-align-grid
 				/>
-			</pattern>
-			<clipPath id="stage-align-clip">
-				<rect x={x0} y={y0} width={rectW} height={rectH} />
-			</clipPath>
-			<!-- Ivory surround masks everything outside the faced surface so the surface reads alone -->
-			<mask id="stage-align-surround-mask">
-				<rect x="0" y="0" width={boxW} height={boxH} fill="#ffffff" />
-				<rect x={x0} y={y0} width={rectW} height={rectH} fill="#000000" />
-			</mask>
-		</defs>
+				<polygon points={surfacePolygon} fill="none" stroke="rgb(18 38 29 / 0.55)" stroke-width="1.5" pointer-events="none" />
 
-		<!-- Surround mask over live Stage -->
-		<rect
-			x="0"
-			y="0"
-			width={boxW}
-			height={boxH}
-			fill="var(--shell-ivory)"
-			mask="url(#stage-align-surround-mask)"
-		/>
+				<!-- Rulers: 0.1 m ticks, metre labels, from the bottom-left corner as seen -->
+				<g class="al-ruler" pointer-events="none">
+					{#each xTicks as t, i (i)}
+						<line x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} />
+						{#if t.label !== null}<text x={t.lx} y={t.ly} text-anchor="middle">{t.label}</text>{/if}
+					{/each}
+					{#each yTicks as t, i (i)}
+						<line x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} />
+						{#if t.label !== null}<text x={t.lx} y={t.ly} text-anchor="end">{t.label}</text>{/if}
+					{/each}
+				</g>
 
-		<!-- Dashed repeat grid over the live surface -->
-		<rect
-			x={x0}
-			y={y0}
-			width={rectW}
-			height={rectH}
-			fill="url(#stage-align-grid)"
-			clip-path="url(#stage-align-clip)"
-			pointer-events="none"
-		/>
-		<rect
-			x={x0}
-			y={y0}
-			width={rectW}
-			height={rectH}
-			fill="none"
-			stroke="rgb(18 38 29 / 0.55)"
-			stroke-width="1.5"
-			pointer-events="none"
-		/>
-
-		<!-- Rulers: 0.1 m ticks, metre labels -->
-		<g class="al-ruler" pointer-events="none">
-			{#each xTicks as t (t.x)}
-				<line x1={t.x} x2={t.x} y1={y1 + 4} y2={y1 + (t.major ? 14 : 8)} />
-				{#if t.major}
-					<text x={t.x} y={y1 + 27} text-anchor="middle">{t.label}</text>
+				<!-- Offset (square, on a tile corner) and rotation (round) handles -->
+				{#if handlePx !== null && arm !== null}
+					<g class="al-handles">
+						<line class="arm" x1={handlePx[0]} y1={handlePx[1]} x2={arm.x} y2={arm.y} />
+						<rect
+							class="hsq"
+							x={handlePx[0] - 8}
+							y={handlePx[1] - 8}
+							width="16"
+							height="16"
+							rx="3"
+							tabindex="0"
+							role="slider"
+							aria-label="Move the pattern (offset)"
+							aria-valuenow={Number(readOff[0].toFixed(2))}
+							data-align-handle-offset
+							onpointerdown={startOffsetDrag}
+							onkeydown={onOffsetKeydown}
+							onkeyup={(event) => onKeyup('offset', event)}
+							onblur={discardGesture}
+						/>
+						<circle
+							class="hrot"
+							cx={arm.x}
+							cy={arm.y}
+							r="8"
+							tabindex="0"
+							role="slider"
+							aria-label="Turn the pattern"
+							aria-valuenow={readDeg}
+							data-align-handle-angle
+							onpointerdown={startAngleDrag}
+							onkeydown={onAngleKeydown}
+							onkeyup={(event) => onKeyup('angle', event)}
+							onblur={discardGesture}
+						/>
+					</g>
 				{/if}
-			{/each}
-			{#each yTicks as t (t.y)}
-				<line x1={x0 - 4} x2={x0 - (t.major ? 14 : 8)} y1={t.y} y2={t.y} />
-				{#if t.major}
-					<text x={x0 - 18} y={t.y + 4} text-anchor="end">{t.label}</text>
-				{/if}
-			{/each}
-		</g>
-
-		<!-- Offset (square) and rotation (round) handles -->
-		<g class="al-handles">
-			<line class="arm" x1={hx} y1={hy} x2={rx} y2={ry} />
-			<rect
-				class="hsq"
-				x={hx - 8}
-				y={hy - 8}
-				width="16"
-				height="16"
-				rx="3"
-				tabindex="0"
-				role="slider"
-				aria-label="Move the pattern (offset)"
-				aria-valuenow={Number(displayOx.toFixed(2))}
-				data-align-handle-offset
-				onpointerdown={startOffsetDrag}
-				onkeydown={onOffsetKeydown}
-				onkeyup={onOffsetKeyup}
-				onblur={discardGesture}
-			/>
-			<circle
-				class="hrot"
-				cx={rx}
-				cy={ry}
-				r="8"
-				tabindex="0"
-				role="slider"
-				aria-label="Turn the pattern"
-				aria-valuenow={Math.round(curRot)}
-				data-align-handle-angle
-				onpointerdown={startAngleDrag}
-				onkeydown={onAngleKeydown}
-				onkeyup={onAngleKeyup}
-				onblur={discardGesture}
-			/>
-			</g>
-		</svg>
+			</svg>
+		{:else}
+			<div class="al-waiting" role="status" data-align-unavailable>
+				{separate
+					? 'This Finish maps its colour image on its own · use the Material editor’s Pattern fields.'
+					: 'Waiting for the faced view…'}
+			</div>
+		{/if}
 	</div>
 
 	<div class="al-frame" aria-hidden="true"></div>
@@ -548,6 +618,17 @@
 		left: calc(-1 * (var(--library-index-cover, var(--index-cover, 0px)) + 10px));
 		display: block;
 		pointer-events: none;
+	}
+	.al-waiting {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		background: var(--shell-ivory);
+		color: var(--shell-ink-2);
+		font-size: 12px;
+		padding: 0 24px;
+		text-align: center;
 	}
 	.al-ruler line { stroke: var(--shell-ink-2); stroke-width: 1; }
 	.al-ruler text {

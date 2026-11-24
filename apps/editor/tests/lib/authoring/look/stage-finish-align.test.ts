@@ -2,6 +2,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import StageFinishAlign from '$lib/authoring/stage/shell/StageFinishAlign.svelte';
+import { floorChart } from '$lib/authoring/look/align-chart';
+
+/** Plan at azimuth 0, 100 px per metre: x → right, −z → up. */
+const planProject = (p: readonly [number, number, number]) => [100 + p[0] * 100, 500 + p[2] * 100] as const;
 
 let mounted: ReturnType<typeof mount> | null = null;
 afterEach(() => {
@@ -26,10 +30,19 @@ describe('Align gesture cancellation', () => {
 			mounted = mount(StageFinishAlign, {
 				target: document.body,
 				props: {
-					align: { target: { kind: 'surface', surface: { kind: 'room-floor', roomId: 'r' } }, surface: 'floor', place: 'Floor', widthMeters: 4, heightMeters: 3, invoker: null, corners: [[0, 0, 0], [4, 0, 0], [4, 0, 3], [0, 0, 3]] },
-					tileMeters: 1,
-					offsetMeters: [0, 0],
-					angleDeg: 0,
+					align: {
+						target: { kind: 'surface', surface: { kind: 'room-floor', roomId: 'r' } },
+						surface: 'floor',
+						place: 'Floor',
+						widthMeters: 4,
+						heightMeters: 3,
+						invoker: null,
+						chart: floorChart({ floorY: 0, minX: 0, maxX: 4, minZ: 0, maxZ: 3 }),
+						corners: [[0, 0, 0], [4, 0, 0], [4, 0, -3], [0, 0, -3]],
+						toward: [0, 1, 0],
+						occluders: []
+					},
+					project: planProject,
 					source: { base: { catalogue: 'wood-oak-veneer' } },
 					recipes: new Map(),
 					onMaterialPreview: preview,
@@ -54,4 +67,47 @@ describe('Align gesture cancellation', () => {
 			expect(commit).not.toHaveBeenCalled();
 		}
 	);
+});
+
+describe('Align overlay placement', () => {
+	it('draws the projected surface, a tile grid and a tile-corner handle; waits without a projection', async () => {
+		const props = {
+			align: {
+				target: { kind: 'surface', surface: { kind: 'room-floor', roomId: 'r' } },
+				surface: 'floor',
+				place: 'Floor',
+				widthMeters: 4,
+				heightMeters: 3,
+				invoker: null,
+				chart: floorChart({ floorY: 0, minX: 0, maxX: 4, minZ: 0, maxZ: 3 }),
+				corners: [],
+				toward: [0, 1, 0],
+				occluders: []
+			},
+			project: planProject,
+			source: { base: { catalogue: 'wood-oak-veneer' } },
+			recipes: new Map(),
+			onMaterialPreview: vi.fn(),
+			onCancelPreview: vi.fn(),
+			onCommit: vi.fn(),
+			onPutBack: vi.fn()
+		} as never;
+		mounted = mount(StageFinishAlign, { target: document.body, props });
+		await tick();
+		const grid = document.querySelector('[data-align-grid]')!;
+		expect(grid.getAttribute('d')).toMatch(/^M/);
+		const handle = document.querySelector('[data-align-handle-offset]')!;
+		const x = Number(handle.getAttribute('x')) + 8;
+		const y = Number(handle.getAttribute('y')) + 8;
+		// Inside the projected floor (x 100…500, y 500…800).
+		expect(x).toBeGreaterThanOrEqual(100);
+		expect(x).toBeLessThanOrEqual(500);
+		expect(y).toBeGreaterThanOrEqual(500);
+		expect(y).toBeLessThanOrEqual(800);
+		unmount(mounted);
+		mounted = mount(StageFinishAlign, { target: document.body, props: { ...(props as object), project: null } as never });
+		await tick();
+		expect(document.querySelector('[data-align-unavailable]')?.textContent).toContain('Waiting for the faced view');
+		expect(document.querySelector('[data-align-handle-offset]')).toBeNull();
+	});
 });

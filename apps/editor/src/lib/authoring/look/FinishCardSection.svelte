@@ -284,7 +284,7 @@
 {#if card !== null && parts.length > 0}
 	<!-- The Esc ladder listens where the Card's controls are; it is not a control itself. -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-	<section class="finish-card" aria-label="Finish" data-finish-card onkeydown={onKeydown}>
+	<section class="finish-card" class:open={openPart !== null && view !== null} aria-label="Finish" data-finish-card onkeydown={onKeydown}>
 		{#if openPart === null}
 			<div class="parts" role="group" aria-label={`${subjectLabel} surfaces`}>
 				{#each rows as row (finishCardTargetKey(row.part.target))}
@@ -438,7 +438,7 @@
 					</span>
 					<div class="value">
 						<FinishTile source={view.tile.source} color={view.tile.color} size={22} />
-						<span class="material">{view.material.label}</span>
+						<span class="material"><span class="material-name">{view.material.label}</span><span class="material-sub">{view.material.sub}</span></span>
 						<button
 							type="button"
 							class="link push"
@@ -544,7 +544,7 @@
 							Pattern
 						</span>
 						<div class="value">
-							<span class="caption pattern">{view.pattern.caption}</span>
+							<span class="pattern-value">{view.pattern.caption}</span>
 							<span class="push steps">
 								<button type="button" class="step" aria-label="Smaller pattern" title="Smaller pattern (½×)" disabled={!view.pattern.canSmaller} data-finish-pattern-smaller onclick={() => void card.stepPattern(openPart.target, -1)}>−</button>
 								<button type="button" class="step" aria-label="Larger pattern" title="Larger pattern (2×)" disabled={!view.pattern.canLarger} data-finish-pattern-larger onclick={() => void card.stepPattern(openPart.target, 1)}>+</button>
@@ -660,10 +660,22 @@
 
 <style>
 	.finish-card {
+		container: finish-card / inline-size;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-width: 0;
 		gap: 0.4rem;
 		padding: 0.35rem 0;
 		border-top: 1px solid var(--shell-hairline);
+	}
+	/*
+		An open Finish reads as the prototype Card body (`ui-card.js`, tokens.css
+		.card .body): 12 px inline inset in every host, rows ruled apart rather
+		than gapped, and the foot spanning the Card edge to edge.
+	*/
+	.finish-card.open {
+		gap: 0;
+		padding: 0.35rem 12px 0;
 	}
 	.parts {
 		display: grid;
@@ -705,22 +717,38 @@
 		border: 1px dashed var(--shell-hairline);
 		border-radius: 0.25rem;
 	}
+	/* tokens.css .card .ch: ‹ back 24 × 32, 32 px tile, the name at 15 / 650. */
 	.head {
 		display: flex;
-		align-items: center;
-		gap: 0.45rem;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 6px 0 10px;
 	}
 	.back {
-		min-width: var(--shell-control-height);
-		min-height: var(--shell-control-height);
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 24px;
+		height: 32px;
+		margin-right: -4px;
+		padding: 0;
 		border: 0;
+		border-radius: 7px;
 		background: transparent;
-		color: inherit;
-		font-size: 1.1rem;
+		color: var(--shell-ink-2);
+		font-size: 17px;
+		cursor: pointer;
+	}
+	.back:hover {
+		background: var(--shell-hover);
+		color: var(--shell-forest);
 	}
 	.name {
 		flex: 1;
-		font-weight: 600;
+		align-self: center;
+		font-size: 15px;
+		font-weight: 650;
+		line-height: 1.25;
 		overflow-wrap: anywhere;
 	}
 	.name.editable {
@@ -729,7 +757,8 @@
 		background: transparent;
 		color: inherit;
 		font: inherit;
-		font-weight: 600;
+		font-size: 15px;
+		font-weight: 650;
 		text-align: left;
 		cursor: text;
 	}
@@ -747,14 +776,30 @@
 	.note,
 	.note-sm {
 		margin: 0;
+		font-size: 11.5px;
 		color: var(--shell-ink-quiet);
 		font-size: var(--shell-text-utility);
+	}
+	.meta {
+		margin: 2px 0 6px;
+		color: var(--shell-ink-2);
 	}
 	.reach {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.35rem;
+		gap: 6px;
+		min-height: 28px;
+		padding: 2px 0 6px;
+		margin-bottom: 2px;
+		font-size: 12px;
+	}
+	.reach .row-icon {
+		display: inline-grid;
+	}
+	.reach .seg button {
+		padding: 1px 8px;
+		font-size: 11.5px;
 	}
 	.reach .seg {
 		margin-left: auto;
@@ -769,14 +814,36 @@
 	}
 	.row {
 		display: grid;
-		gap: 0.25rem;
+		grid-template-columns: 74px minmax(0, 1fr);
+		gap: 4px 8px;
+		align-items: center;
+		padding: 8px 0;
+		border-top: 1px solid var(--shell-hairline);
+	}
+	.row > :not(.label) {
+		grid-column: 2;
+	}
+	/*
+		The prototype Card is 288 wide; a host narrower than that (the shell Card
+		is 252 at ≤ 860 px) cannot fit the three-step segments beside a 74 px label,
+		so the value drops under its label instead of clipping (262 content px fits).
+	*/
+	@container finish-card (max-width: 259px) {
+		.row {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.row > :not(.label) {
+			grid-column: 1;
+		}
 	}
 	.label {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
-		gap: 0.35rem;
+		align-self: start;
+		gap: 5px;
+		padding-top: 2px;
 		color: var(--shell-ink-2);
-		font-size: 12.5px;
+		font-size: 11.5px;
 	}
 	.row-icon {
 		flex: 0 0 auto;
@@ -786,33 +853,57 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.35rem;
+		gap: 6px;
+		min-width: 0;
+	}
+	.material {
+		display: grid;
+		min-width: 0;
+		font-size: 12.5px;
+		font-weight: 600;
+		line-height: 1.25;
+	}
+	.material-sub {
+		color: var(--shell-ink-2);
+		font-size: 11px;
+		font-weight: 400;
+	}
+	.pattern-value {
+		font-size: 12.5px;
 	}
 	.push {
 		margin-left: auto;
 	}
 	.caption {
-		color: var(--shell-ink-quiet);
-		font-size: var(--shell-text-utility);
+		color: var(--shell-ink-2);
+		font-size: 11.5px;
+		white-space: nowrap;
 	}
+	/* The prototype's mseg: a pill on the panel tint, 12 px steps. */
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 0.3rem;
-		overflow: hidden;
+		padding: 2px;
+		border-radius: 999px;
+		background: var(--shell-ivory);
+		box-shadow: inset 0 0 0 1px var(--shell-hairline-strong);
 	}
 	.seg button {
 		position: relative;
-		min-height: var(--shell-control-height);
-		padding: 0 0.5rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 1px 9px;
 		border: 0;
-		border-right: 1px solid var(--shell-hairline);
+		border-radius: 999px;
 		background: transparent;
-		color: inherit;
-		font-size: var(--shell-text-utility);
+		color: var(--shell-ink-2);
+		font-size: 12px;
+		line-height: 18px;
+		cursor: pointer;
 	}
-	.seg button:last-child {
-		border-right: 0;
+	.seg button:hover:not(:disabled):not([aria-pressed='true']) {
+		background: var(--shell-hover);
+		color: var(--shell-forest);
 	}
 	/* A light surface: the Paint tray's pressed segment, not the dark toolbar's. */
 	.seg button[aria-pressed='true'] {
@@ -820,51 +911,59 @@
 		color: var(--shell-white);
 	}
 	.seg button:disabled {
-		opacity: 0.45;
+		opacity: 0.38;
+		cursor: default;
 	}
 	.dot {
 		display: inline-block;
-		width: 0.3rem;
-		height: 0.3rem;
-		margin-left: 0.25rem;
+		width: 5px;
+		height: 5px;
+		margin-left: 1px;
 		border-radius: 50%;
-		background: currentColor;
-		vertical-align: middle;
+		background: var(--shell-gold);
 	}
 	.link {
-		min-height: var(--shell-control-height);
-		padding: 0 0.25rem;
+		padding: 0;
 		border: 0;
 		background: transparent;
-		color: inherit;
-		font-size: var(--shell-text-utility);
+		color: var(--shell-forest-3);
+		font-size: 12px;
+		line-height: 18px;
 		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: pointer;
 	}
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.3rem;
+		gap: 6px;
 	}
 	.chip {
 		position: relative;
-		display: inline-grid;
+		display: grid;
 		place-items: center;
-		width: 1.6rem;
-		height: 1.6rem;
+		flex: none;
+		width: 22px;
+		height: 22px;
 		padding: 0;
-		border: 1px solid rgb(0 0 0 / 25%);
+		border: 0;
 		border-radius: 50%;
 		background: var(--chip, transparent);
-		color: var(--shell-ink-quiet);
+		box-shadow: inset 0 0 0 1px rgb(18 38 29 / 20%);
+		color: var(--shell-ink-2);
 		cursor: pointer;
+	}
+	.chip:hover {
+		box-shadow: inset 0 0 0 1px rgb(18 38 29 / 20%), 0 0 0 2px var(--shell-white), 0 0 0 3px var(--shell-leaf);
 	}
 	.chip[aria-pressed='true'],
 	.chip.lit {
-		outline: 2px solid var(--shell-ink);
-		outline-offset: 1px;
+		box-shadow: inset 0 0 0 1px rgb(18 38 29 / 20%), 0 0 0 2px var(--shell-white), 0 0 0 3.5px var(--shell-forest);
 	}
 	.chip.add {
-		border-style: dashed;
+		border: 1px dashed var(--shell-ink-2);
+		background: var(--chip, var(--shell-white));
+		box-shadow: none;
 	}
 	/*
 		Finish colour floats beside the Card, on the Stage side, top-aligned with it.
@@ -881,50 +980,81 @@
 	}
 	.steps {
 		display: inline-flex;
-		gap: 0.25rem;
+		gap: 4px;
 	}
+	/* The prototype's stepb. */
 	.step {
-		min-width: var(--shell-control-height);
-		min-height: var(--shell-control-height);
-		border: 1px solid var(--shell-hairline);
-		border-radius: 0.25rem;
-		background: transparent;
-		color: inherit;
+		display: inline-grid;
+		place-items: center;
+		min-width: 26px;
+		height: 24px;
+		padding: 0 6px;
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 7px;
+		background: var(--shell-white);
+		color: var(--shell-forest);
+		font-size: 13px;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.step:hover:not(:disabled) {
+		background: var(--shell-hover);
 	}
 	.step.wide {
-		padding: 0 0.4rem;
-		font-size: var(--shell-text-utility);
+		font-size: 12px;
 	}
 	.step:disabled {
 		opacity: 0.45;
 	}
+	/* tokens.css .card .foot: edge to edge, 6 × 8 padding, plain text buttons. */
 	.foot {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 0.25rem;
-		padding-top: 0.35rem;
-		border-top: 1px solid var(--shell-hairline);
+		gap: 4px;
+		margin: 0 -12px;
+		padding: 6px 8px;
+		border-top: 1px solid var(--shell-hairline-strong);
+		color: var(--shell-ink-2);
+		font-size: 12px;
 	}
 	.foot button {
-		min-width: 26px;
-		min-height: 26px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 6px;
+		padding: 4px 8px;
+		border: 0;
+		border-radius: 7px;
 		background: transparent;
-		color: inherit;
-		font-size: 11.5px;
+		color: var(--shell-forest);
+		font-size: 12px;
+		line-height: 18px;
+		white-space: nowrap;
 		cursor: pointer;
 	}
+	/* A host narrower than the prototype's 288 shortens the words, never drops ⋯. */
 	.foot .foot-text {
-		padding: 0 0.45rem;
-		border-color: transparent;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
-	.foot .foot-text:hover:not(:disabled) {
+	.foot .menu-wrap {
+		flex: none;
+	}
+	.foot button:hover:not(:disabled) {
 		background: var(--shell-hover);
 	}
+	.foot button:focus-visible {
+		outline: var(--shell-focus-ring-light);
+	}
+	.foot .star {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 17px;
+		height: 28px;
+		padding: 0;
+		color: var(--shell-ink-2);
+		font-size: 16px;
+	}
 	.foot button:disabled {
-		opacity: 0.5;
+		opacity: 0.45;
 		cursor: not-allowed;
 	}
 	.menu-sep {
@@ -952,7 +1082,10 @@
 		box-shadow: 0 0.4rem 1rem rgb(6 20 14 / 12%);
 	}
 	.menu button {
+		display: flex;
+		align-items: center;
 		justify-content: start;
+		min-height: 28px;
 		border: 0;
 		text-align: left;
 		padding: 0 0.5rem;
@@ -1033,15 +1166,18 @@
 	}
 	@media (pointer: coarse) {
 		.seg button,
-		.step,
 		.foot button,
 		.back,
 		.link {
 			min-height: var(--shell-touch-target);
 		}
+		.step {
+			min-width: 40px;
+			height: 40px;
+		}
 		.chip {
-			width: var(--shell-touch-target);
-			height: var(--shell-touch-target);
+			width: 32px;
+			height: 32px;
 		}
 	}
 </style>

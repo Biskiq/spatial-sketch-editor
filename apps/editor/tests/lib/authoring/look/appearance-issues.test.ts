@@ -124,6 +124,23 @@ describe('appearance-issues service (T2.S8 · U6)', () => {
 		).toBe('image-undecodable');
 	});
 
+	it('never counts a cancellation (untyped load error) as failed or as an issue', () => {
+		// A closed scope, a superseded load or a released source reach the outcome
+		// as an untyped error: no phase, so the acquisition is still pending.
+		const cancelled = {
+			code: 'image-load-failed',
+			role: 'color',
+			uri: 'project-asset://a',
+			message: 'That texture load was superseded.'
+		} as const;
+		expect(classifyFinishViewIssues([cancelled], false)).toBe('pending');
+		expect(classifyFinishViewIssues([{ code: 'cancelled' }], false)).toBe('pending');
+		expect(classifyFinishViewIssues([{ code: 'generation-mismatch' }], false)).toBe('pending');
+		expect(classifyRuntimeFailure(cancelled)).toBeNull();
+		expect(classifyRuntimeFailure({ code: 'cancelled' })).toBeNull();
+		expect(classifyRuntimeFailure({ code: 'texture-budget' })).toBeNull();
+	});
+
 	it('scopes runtime failures strictly to affected targets and ignores pending/budget', async () => {
 		const envelope = await makeEnvelopeWithTwoUsers();
 		const service = createAppearanceIssues({ envelope: () => envelope });
@@ -288,6 +305,11 @@ describe('appearance-issues service (T2.S8 · U6)', () => {
 				}
 			]
 		});
+		expect(service.repaired).toHaveLength(0);
+
+		// Redo clears the issue again; the dropped entry stays dropped.
+		service.clearTargetOutcome('entity:box-1');
+		expect(service.count).toBe(0);
 		expect(service.repaired).toHaveLength(0);
 
 		service.reset();

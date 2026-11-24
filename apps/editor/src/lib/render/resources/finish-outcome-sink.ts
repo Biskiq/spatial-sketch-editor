@@ -23,7 +23,10 @@ export function classifyFinishViewIssues(
 	complete: boolean
 ): FinishTargetOutcomeState {
 	if (complete && issues.length === 0) return 'ready';
-	if (issues.some((issue) => issue.code === 'image-load-failed')) return 'failed';
+	// Only a typed load failure (it carries its phase) is a failure. An untyped
+	// error is a closed scope, a superseded load or a released source: the
+	// acquisition was cancelled and the Stage acquires again.
+	if (issues.some((issue) => issue.code === 'image-load-failed' && issue.phase !== undefined)) return 'failed';
 	if (issues.some((issue) => issue.code === 'texture-budget')) return 'budget';
 	return 'pending';
 }

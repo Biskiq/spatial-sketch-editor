@@ -262,12 +262,36 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
 				throw new Error('Raw material maps require fetch and createImageBitmap.');
 			}
-			const response = await fetch(uri, { signal });
-			if (!response.ok) throw new Error(`Could not load raw material map (${response.status}).`);
+			let response: Response;
+			try {
+				response = await fetch(uri, { signal });
+			} catch (error) {
+				if (signal?.aborted || disposed) throw error;
+				throw new ImageLoadFailure(
+					error instanceof Error ? error.message : 'The material map is unreachable.',
+					'acquire'
+				);
+			}
+			if (!response.ok) {
+				throw new ImageLoadFailure(
+					`Could not load raw material map (${response.status}).`,
+					'acquire',
+					response.status
+				);
+			}
 			const blob = await response.blob();
 			const bytes = new Uint8Array(await blob.arrayBuffer());
-			probeRawImage(bytes);
-			const bitmap = await decodeRaw(bytes, blob.type || 'image/png');
+			let bitmap: Awaited<ReturnType<typeof decodeRaw>>;
+			try {
+				probeRawImage(bytes);
+				bitmap = await decodeRaw(bytes, blob.type || 'image/png');
+			} catch (error) {
+				if (signal?.aborted || disposed || isImageLoadFailure(error)) throw error;
+				throw new ImageLoadFailure(
+					error instanceof Error ? error.message : 'The material map cannot be decoded.',
+					'decode'
+				);
+			}
 			if (signal?.aborted) {
 				bitmap?.close();
 				signal.throwIfAborted();
@@ -281,7 +305,16 @@ export function createProjectTextureScope(input: ProjectTextureScopeInput): Proj
 			(texture.userData ??= {}).s8SourceBytes = bytes.byteLength;
 			return texture;
 		}
-		const texture = await loader.loadAsync(uri);
+		let texture: ThreeTexture;
+		try {
+			texture = await loader.loadAsync(uri);
+		} catch (error) {
+			if (signal?.aborted || disposed) throw error;
+			throw new ImageLoadFailure(
+				error instanceof Error ? error.message : 'The material image could not load.',
+				'acquire'
+			);
+		}
 		if (disposed) {
 			texture.dispose();
 			throw new Error('The project texture scope is closed.');
