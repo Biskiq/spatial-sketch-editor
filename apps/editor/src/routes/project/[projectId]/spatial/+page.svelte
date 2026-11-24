@@ -28,7 +28,7 @@
 	import { perfMark } from '$lib/platform/perf-marks';
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
-	import type { ArtworkLibraryEntry, SceneArtworkEntity } from '@portfolio/project-model';
+	import type { ArtworkLibraryEntry } from '@portfolio/project-model';
 	import { primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import type { StageDomainRead } from '$lib/authoring/stage/source-admission';
 	import { createStageSession } from '$lib/authoring/stage/stage-session';
@@ -54,7 +54,7 @@
 	import { readStageCursor } from '$lib/authoring/stage/route/stage-cursor';
 	import { createCoreLifecycleSteps, installLeaveProject, installStageMount } from '$lib/authoring/stage/route/core-lifecycle-steps.svelte';
 	import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
-	import { createStageArtworkInteraction } from '$lib/authoring/stage/route/stage-artwork-interaction.svelte';
+	import { createArtworkFeature } from '$lib/authoring/artwork/artwork-feature.svelte';
 	import { createLayoutReadingsFeature } from '$lib/authoring/stage/readings/layout-readings-feature.svelte';
 	import type { AlignCutawayRequest } from '$lib/authoring/stage/readings/layout-readings-view';
 	import { createStageInputArbiter } from '$lib/authoring/stage/route/stage-input.svelte';
@@ -82,7 +82,7 @@
 		type ViewportEvaluation,
 		type ViewportRect
 	} from '@portfolio/camera-core';
-	import { pickThroughSlice, pickVisibleFaceThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
+	import { pickThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -100,7 +100,6 @@
 	import StageProjectNotices from '$lib/authoring/stage/shell/StageProjectNotices.svelte';
 	import StageToolbars from '$lib/authoring/stage/shell/StageToolbars.svelte';
 	import StageViewportRegion from '$lib/authoring/stage/shell/StageViewportRegion.svelte';
-	import { artworkHangingGuides, snapArtworkHeight, activeArtworkHangGuide } from '$lib/authoring/artwork/artwork-hanging';
 	import { artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
@@ -864,7 +863,6 @@
 		fading: () => liveStageGesture || stageInput.drag?.mode === 'orbit'
 	});
 
-	let artworkInteraction!: ReturnType<typeof createStageArtworkInteraction>;
 	let stageInput!: ReturnType<typeof createStageInputArbiter>;
 	let stageKeyboard!: ReturnType<typeof createStageKeyboard>;
 
@@ -905,7 +903,7 @@
 		dockKeys: () => dockKeys,
 		notice: (message) => shell.setNotice(message),
 		refreshHostTools: () => shell.refreshHostTools(),
-		cancelArtwork: () => artworkInteraction.cancel(),
+		cancelArtwork: () => artwork.ports.cancel(),
 		view: {
 			zoomIn: () => zoomIn(),
 			zoomOut: () => zoomOut(),
@@ -1090,7 +1088,7 @@
 		services: () => adapterServices,
 		api: () => api,
 		projectId: () => projectId,
-		canEdit: canPlaceArtwork,
+		canEdit: () => artwork.ports.canPlace(),
 		isSaved: () => headSave?.snapshot().savedBaseToken != null,
 		imageAspect: (textureId) => stageAssets.textureAspect(textureId),
 		imageDimensions: (textureId) => stageAssets.textureDimensions(textureId),
@@ -1165,25 +1163,30 @@
 		commands.armWorldTool('select');
 		void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
 	}
-	artworkInteraction = createStageArtworkInteraction({
-		api,
-		services: () => adapterServices,
-		canEdit: canPlaceArtwork,
-		isSaved: () => headSave?.snapshot().savedBaseToken != null,
-		selected: () => selectionViewView.selectedArtwork,
-		facade: () => facade,
-		evaluation: () => evaluation,
-		rect: () => rect,
-		measure: () => stageViewport.measure(),
-		stageElement: () => stageEl,
-		// Artwork hangs on a **drawn** face: the cut's filter applies to the placement
-		// ray too, so a click through a removed Wall reaches the one behind it.
-		pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => readings.ports.resolvedSlice()),
-		press,
-		capturePointer,
-		onNotice: (message) => shell.setNotice(message),
-		onSelect: (services, id) => commands.selectStageReference(artworkReference(services, id)),
-		selectTool: () => commands.selectTool()
+	const artwork = createArtworkFeature({
+		interaction: {
+			api,
+			services: () => adapterServices,
+			isSaved: () => headSave?.snapshot().savedBaseToken != null,
+			selected: () => selectionViewView.selectedArtwork,
+			facade: () => facade,
+			evaluation: () => evaluation,
+			rect: () => rect,
+			measure: () => stageViewport.measure(),
+			stageElement: () => stageEl,
+			press,
+			capturePointer,
+			onNotice: (message) => shell.setNotice(message),
+			onSelect: (services, id) => commands.selectStageReference(artworkReference(services, id)),
+			selectTool: () => commands.selectTool()
+		},
+		ready: () => boot.status === 'ready' || boot.status === 'empty',
+		lens: () => experience.lensState,
+		previewing: () => preview !== null,
+		unfoldActive: () => readings.ports.unfoldActive(),
+		resolvedSlice: () => readings.ports.resolvedSlice(),
+		scenePick,
+		artworkScope: () => stageAssets.artworkScope
 	});
 
 	const readings = createLayoutReadingsFeature({
@@ -1261,7 +1264,7 @@
 		stageElement: () => stageEl,
 		session,
 		activeLayer: () => activeLayer,
-		artwork: artworkInteraction,
+		artwork: artwork.ports.input,
 		unfold: readings.ports.unfold,
 		stageCss,
 		capturePointer,
@@ -1295,7 +1298,7 @@
 	});
 
 	stageKeyboard = createStageKeyboard({
-		artworkEscape: () => artworkInteraction.escape(),
+		artworkEscape: artwork.ports.escape,
 		previewActive: () => preview !== null,
 		closePreview: () => previewController.close(),
 		activeLayer: () => activeLayer,
@@ -1510,40 +1513,17 @@
 	const stageContentBounds = $derived(contentBounds.stage);
 	const paperContentBounds = $derived(contentBounds.paper);
 
-	function canPlaceArtwork(): boolean {
-		return experience.lensState === 'world' && preview === null && !readings.ports.unfoldActive();
-	}
-
 	installLeaveProject(lifecycleCell);
 	readings.attachTeardown();
-	$effect(() => {
-		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
-		if (!canPlaceArtwork()) {
-			artworkInteraction.cancel();
-			artworkInteraction.cancelResize();
-		}
-	});
+	artwork.attachGuard();
 
-	const selectedArtwork = $derived(selectionViewView.selectedArtwork);
-	const hangingCandidate = $derived(artworkInteraction.hangingCandidate);
-	const hangingGuides = $derived.by(() => {
-		const stage = facade;
-		const candidate = hangingCandidate;
-		if (stage === null || candidate === null) return [];
-		const snapshot = stage.snapshot();
-		return artworkHangingGuides(snapshot.domain.scene, candidate, snapshot.domain.datumMeters);
-	});
-	const activeHangingGuide = $derived.by(() => {
-		const candidate = hangingCandidate;
-		return candidate === null ? null : activeArtworkHangGuide(hangingGuides, candidate.position[1]);
-	});
 	const lookCardStratum = $derived.by(() => {
 		void shell.contributionsVersion;
 		const subject = selectionViewView.cardSubject;
 		const entity = subject?.reference?.domain === 'scene'
 			? selectionViewView.scenePayload?.entities.find((entry) => entry.id === subject.sourceId)
 			: undefined;
-		return (entity?.kind === 'artwork' ? artworkInteraction.card(entity) : null) ?? sky.ports.cardStratum(subject);
+		return (entity?.kind === 'artwork' ? artwork.ports.card(entity) : null) ?? sky.ports.cardStratum(subject);
 	});
 	const worldCard = $derived(stageWorldCardView({
 		facade,
@@ -1738,19 +1718,7 @@
 				}
 			},
 			readings,
-			{
-				id: 'artwork',
-				lifecycle: {
-					resetPresentation: {
-						cancel: () => {
-							artworkInteraction.cancel();
-							artworkInteraction.cancelResize();
-						}
-					},
-					settlePending: { cancel: () => { artworkInteraction.cancel(); } },
-					leaveProject: { dispose: () => artworkInteraction.dispose() }
-				}
-			}
+			artwork
 		]
 	});
 
@@ -1765,9 +1733,9 @@
 		lostPointerCapture: (event: PointerEvent) => stageInput.lostPointerCapture(event),
 		click: (event: MouseEvent) => stageInput.click(event),
 		wheel: (event: WheelEvent) => stageInput.wheel(event),
-		pointerLeave: () => { clearHover(); artworkInteraction.leave(); },
-		dragOver: (event: DragEvent) => { if (artworkInteraction.acceptsDrop(event.dataTransfer)) event.preventDefault(); },
-		drop: (event: DragEvent) => artworkInteraction.drop(event),
+		pointerLeave: () => { clearHover(); artwork.ports.leave(); },
+		dragOver: artwork.ports.dragOver,
+		drop: artwork.ports.drop,
 		contextMenu: (event: MouseEvent) => { if (lookThroughActiveNow()) event.preventDefault(); }
 	};
 
@@ -1817,9 +1785,6 @@
 				const accepted = ready.snapshot()?.domain.scene;
 				return accepted === undefined ? snapshot.domain.scene : withFinishInstancePreview(accepted, libraryDraftPreview ?? finishes.card.preview);
 			},
-			get artworkScope() { return stageAssets.artworkScope; },
-			get artworkGhost() { return artworkInteraction.resizeGhost ?? artworkInteraction.ghost; },
-			onArtworkError: (message: string) => shell.setNotice(message),
 			get studio() {
 				void studioRevision;
 				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
@@ -1840,11 +1805,12 @@
 		return Object.defineProperties(coreCanvas, {
 			...Object.getOwnPropertyDescriptors(features),
 			...Object.getOwnPropertyDescriptors(sky.regions.canvas),
+			...Object.getOwnPropertyDescriptors(artwork.regions.canvas),
 			...Object.getOwnPropertyDescriptors(liftCanvas),
 			...Object.getOwnPropertyDescriptors(cutawayCanvas),
 			...Object.getOwnPropertyDescriptors(sliceCanvas),
 			...unfold
-		}) as typeof coreCanvas & typeof features & typeof sky.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
+		}) as typeof coreCanvas & typeof features & typeof sky.regions.canvas & typeof artwork.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
 	});
 
 	/**
@@ -1908,7 +1874,7 @@
 		...coreRegions.overlay,
 		celestial: sky.regions.overlay.celestial,
 		marks: [...coreRegions.overlay.marks!, ...(sky.regions.overlay.marks ?? [])],
-		candidates: [...coreRegions.overlay.candidates!, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])],
+		candidates: [...coreRegions.overlay.candidates!, ...(artwork.regions.overlay.candidates ?? [])],
 		sliceDraft: readings.regions.overlay.sliceDraft
 	});
 
@@ -2024,8 +1990,8 @@
 			onFinishImageReset: () => finishes.resetImage(),
 			lookShelf: sky.libraryShelf,
 			artworkShelf: selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? [],
-			onArtworkPick: (entry) => { commands.selectTool(); artworkInteraction.arm(entry); },
-			onArtworkImport: (files: File[]) => { commands.selectTool(); void artworkInteraction.importFiles(files); },
+			onArtworkPick: (entry) => { commands.selectTool(); artwork.ports.arm(entry); },
+			onArtworkImport: (files: File[]) => { commands.selectTool(); void artwork.ports.importFiles(files); },
 			onLookPick: sky.ports.pickLibraryEntry,
 			trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
 			paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
@@ -2200,20 +2166,7 @@
 			onCancelPendingViewWrite={() => experience.clearPendingViewWrite()}
 			welcome={experience.lensState === 'experience' && experience.welcome && !lookThroughActiveNow() && experience.experienceTool === 'select'}
 			onDismissWelcome={() => experience.dismissWelcome()}
-			hanging={facade !== null && evaluation?.renderedReading === '3d' && hangingGuides.length > 0
-				? { guides: hangingGuides, stage: facade, evaluation, activeGuideId: activeHangingGuide }
-				: null}
-			artwork={selectedArtwork !== null && facade !== null && evaluation?.renderedReading === '3d' && canPlaceArtwork() && !artworkInteraction.armed
-				? {
-					entity: artworkInteraction.resizeGhost ?? selectedArtwork,
-					stage: facade,
-					evaluation,
-					resizing: artworkInteraction.resizeGhost !== null,
-					blocked: artworkInteraction.resizeBlocked,
-					canTurn: selectedArtwork === null || !artworkInteraction.isHungNow(selectedArtwork),
-					onStart: artworkInteraction.startResize
-				}
-				: null}
+			{...artwork.regions.viewport}
 			preview={viewportPreview}
 			previewLoading={preview !== null && viewportPreview === null}
 			homes={experience.lensState === 'experience' && adapterServices !== null && currentEnvelope !== null
@@ -2350,12 +2303,12 @@
 				onArtwork={(entry: ArtworkLibraryEntry) => {
 					closeLibrary();
 					commands.selectTool();
-					artworkInteraction.arm(entry);
+					artwork.ports.arm(entry);
 				}}
 				onArtworkImport={(files) => {
 					closeLibrary();
 					commands.selectTool();
-					void artworkInteraction.importFiles(files);
+					void artwork.ports.importFiles(files);
 				}}
 				onMaterialImport={(files, invoker) => {
 					closeLibrary();

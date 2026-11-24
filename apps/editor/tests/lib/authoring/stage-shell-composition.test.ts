@@ -57,6 +57,8 @@ const X2_INPUT_FILE = join(STAGE_DIR, 'route', 'stage-input.svelte.ts');
 const READINGS_ENTRY = join(STAGE_DIR, 'readings', 'layout-readings-feature.svelte.ts');
 const UNFOLD_OWNER = join(STAGE_DIR, 'readings', 'unfold-host.svelte.ts');
 const X2_UNFOLD_FILE = join(STAGE_DIR, 'route', 'stage-unfold-gestures.svelte.ts');
+const ARTWORK_ENTRY = join(EDITOR_SRC, 'lib', 'authoring', 'artwork', 'artwork-feature.svelte.ts');
+const ARTWORK_HOST = join(EDITOR_SRC, 'lib', 'authoring', 'artwork', 'artwork-host.svelte.ts');
 const X2_ARTWORK_FILE = join(STAGE_DIR, 'route', 'stage-artwork-interaction.svelte.ts');
 const X2_INPUT = relativeToRepo(X2_INPUT_FILE);
 const X2_ARTWORK = relativeToRepo(X2_ARTWORK_FILE);
@@ -106,17 +108,11 @@ function postureSources(): { file: string; code: string }[] {
 		expect(readFileSync(EXPERIENCE_BINDING, 'utf8')).toContain('createExperienceLens({');
 		files.push(EXPERIENCE_BINDING, EXPERIENCE_LENS);
 	}
-	// X2's input owners are constructed by the route and own its handler bodies.
-	const x2 = [
-		[X2_INPUT_FILE, 'createStageInputArbiter'],
-		[X2_ARTWORK_FILE, 'createStageArtworkInteraction']
-	] as const;
-	for (const [file, factory] of x2) {
-		// These owners are consumed by template handlers and named route commands,
-		// so their construction is the top-level composition fact to prove.
-		expect(route, file).toContain(`${factory}({`);
-		files.push(file);
-	}
+	// The route composes one input arbiter and the Artwork feature owns its controller.
+	expect(route).toContain('createStageInputArbiter({');
+	expect(route).toContain('createArtworkFeature({');
+	expect(readFileSync(ARTWORK_ENTRY, 'utf8')).toContain('createStageArtworkInteraction({');
+	files.push(X2_INPUT_FILE, ARTWORK_ENTRY, ARTWORK_HOST, X2_ARTWORK_FILE);
 	expect(route).toContain('createLayoutReadingsFeature({');
 	expect(readFileSync(READINGS_ENTRY, 'utf8')).toContain('createUnfoldHost(deps.unfold)');
 	expect(readFileSync(UNFOLD_OWNER, 'utf8')).toContain('createStageUnfoldGestures({');

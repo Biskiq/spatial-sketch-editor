@@ -43,6 +43,8 @@ const KEYBOARD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-keyboard.ts'
 const READINGS = path.join(EDITOR_LIB, 'authoring/stage/readings/layout-readings-feature.svelte.ts');
 const UNFOLD_HOST = path.join(EDITOR_LIB, 'authoring/stage/readings/unfold-host.svelte.ts');
 const UNFOLD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-unfold-gestures.svelte.ts');
+const ARTWORK_ENTRY = path.join(EDITOR_LIB, 'authoring/artwork/artwork-feature.svelte.ts');
+const ARTWORK_HOST = path.join(EDITOR_LIB, 'authoring/artwork/artwork-host.svelte.ts');
 const ARTWORK = path.join(EDITOR_LIB, 'authoring/stage/route/stage-artwork-interaction.svelte.ts');
 const EXPERIENCE_BINDING = path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts');
 const SHELL_STATE = path.join(EDITOR_LIB, 'authoring/stage/route/stage-shell-state.svelte.ts');
@@ -141,7 +143,9 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toMatch(/historyStep:\s*\{\s*'cancel-card-gesture': \(\) => \{ finishes\.card\.cancel\(\); \}/);
 		expect(core).toContain("'run-history': input.history.run");
 		expect(history).toMatch(/run\(direction:[\s\S]*?if \(direction === 'undo'\) void input\.epoch\.undo\(\);\s*else void input\.epoch\.redo\(\);/);
-		expect(code).toMatch(/get artworkScope\(\)\s*\{\s*return stageAssets\.artworkScope\s*;/);
+		expect(code).toContain('artworkScope: () => stageAssets.artworkScope');
+		expect(stripComments(fs.readFileSync(ARTWORK_HOST, 'utf8'))).toMatch(/get artworkScope\(\)\s*\{\s*return input\.artworkScope\(\)\s*;/);
+		expect(code).toContain('Object.getOwnPropertyDescriptors(artwork.regions.canvas)');
 	});
 
 	it('keeps no second epoch, history or asset-lease owner in the route', () => {
@@ -154,7 +158,8 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(code).toContain('createLayoutReadingsFeature({');
 		expect(stripComments(fs.readFileSync(READINGS, 'utf8'))).toContain('createUnfoldHost(deps.unfold)');
 		expect(stripComments(fs.readFileSync(UNFOLD_HOST, 'utf8'))).toContain('createStageUnfoldGestures({');
-		expect(code).toContain('createStageArtworkInteraction({');
+		expect(code).toContain('createArtworkFeature({');
+		expect(stripComments(fs.readFileSync(ARTWORK_ENTRY, 'utf8'))).toContain('createStageArtworkInteraction({');
 		// One drag/click authority, injected into every input owner.
 		expect(code.match(/createStagePressTracker\(\)/g) ?? []).toHaveLength(1);
 		expect(code).toContain('pointerDown: (event: PointerEvent) => stageInput.pointerDown(event)');
@@ -189,7 +194,11 @@ describe('spatial route composition boundary (X1)', () => {
 			edge.kind === 'import-named' && edge.imported === 'createStageUnfoldGestures' &&
 			resolveSpecifier(UNFOLD_HOST, edge.specifier) === UNFOLD
 		)).toBe(true);
-		expect(direct).toContain(ARTWORK);
+		expect(direct).toContain(ARTWORK_ENTRY);
+		expect(moduleBindingEdges(ARTWORK_ENTRY, fs.readFileSync(ARTWORK_ENTRY, 'utf8')).some((edge) =>
+			edge.kind === 'import-named' && edge.imported === 'createStageArtworkInteraction' &&
+			resolveSpecifier(ARTWORK_ENTRY, edge.specifier) === ARTWORK
+		)).toBe(true);
 		expect(resolved.filter(({ target }) => target.endsWith('host-acceptance.ts'))).toEqual([]);
 
 		const executableAdapterHost = resolved.filter(
