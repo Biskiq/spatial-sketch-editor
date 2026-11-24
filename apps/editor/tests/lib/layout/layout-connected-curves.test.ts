@@ -2134,7 +2134,10 @@ describe('C3 · Round move and enclosure copy', () => {
 			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: withDoor.junctions.find((j) => j.point[0] === 10 && j.point[1] === 10)!.id }],
 			capture: cap('c3-branch'), levelId: withDoor.floor.id
 		}));
-		const doc = branch.document;
+		const doc: LayoutDocumentWallFirst = {
+			...branch.document,
+			objects: [{ id: 'c3-move-object', kind: 'box', position: [0, 0.5, 0], rotation: [0, 0, 0], dimensions: [1, 1, 1], roomId: gal.rotundaId }]
+		};
 		const before = serializeWallFirstLayoutDocument(doc);
 		const group = resolveIsolatedRoomGroupSubgraph(doc, gal.rotundaId, { includePhysicalAttachments: true });
 		expect(group.kind).toBe('success');
@@ -2145,6 +2148,8 @@ describe('C3 · Round move and enclosure copy', () => {
 		expect(new Set(moved.movedRoomIds)).toEqual(new Set([gal.rotundaId, gal.galleryId]));
 		expect(moved.document.rooms.find((r) => r.id === gal.rotundaId)!.round).toEqual({ center: [20, -10], radius: 5 });
 		expect(moved.document.openings).toEqual(doc.openings);
+		expect(moved.changedObjectIds).toEqual(['c3-move-object']);
+		expect(moved.document.objects[0]!.position).toEqual([20, 0.5, -10]);
 		for (const junction of doc.junctions) {
 			const point = moved.document.junctions.find((j) => j.id === junction.id)!.point;
 			expect(point[0]).toBeCloseTo(junction.point[0] + 20, 8);
@@ -2165,9 +2170,19 @@ describe('C3 · Round move and enclosure copy', () => {
 		const withWindow = expectSuccess(planCreateWallFirstOpening(door, {
 			wallId: otherWallId, kind: 'window', offset: 1, width: 0.5, profile: 'rounded'
 		}, cap('c3-copy-window'), door.floor.id)).document;
-		const doc = { ...withWindow, walls: withWindow.walls.map((wall, i) => source.boundary.some((ref) => ref.wallId === wall.id) ? { ...wall, name: `Arc ${i}` } : wall) };
+		const doc: LayoutDocumentWallFirst = {
+			...withWindow,
+			walls: withWindow.walls.map((wall, i) => source.boundary.some((ref) => ref.wallId === wall.id)
+				? { ...wall, name: `Arc ${i}`, height: 3 + i * 0.1, thickness: 0.2 + i * 0.01 } : wall),
+			objects: [{ id: 'c3-object', kind: 'box', position: [0, 0.5, 0], rotation: [0, 0, 0], dimensions: [1, 1, 1], roomId: gal.rotundaId }]
+		};
 		const before = serializeWallFirstLayoutDocument(doc);
-		const copy = expectSuccess(planDuplicateRoom(doc, { roomId: gal.rotundaId, delta: [30, 0] }, cap('c3-copy'), doc.floor.id));
+		const capture = cap('c3-copy');
+		const copy = expectSuccess(planDuplicateRoom(doc, { roomId: gal.rotundaId, delta: [30, 0] }, capture, doc.floor.id));
+		const replay = expectSuccess(planDuplicateRoom(doc, { roomId: gal.rotundaId, delta: [30, 0] }, capture, doc.floor.id));
+		expect(serializeWallFirstLayoutDocument(replay.document)).toBe(serializeWallFirstLayoutDocument(copy.document));
+		expect(copy.roomCopyCorrespondence!.objects).toEqual([{ sourceId: 'c3-object', copyId: copy.createdObjectIds[0] }]);
+		expect(copy.document.objects.find((object) => object.id === copy.createdObjectIds[0])).toMatchObject({ roomId: copy.createdRoomId, position: [30, 0.5, 0] });
 		const copied = copy.document.rooms.find((r) => r.id === copy.createdRoomId)!;
 		expect(copied.round).toEqual({ center: [30, 0], radius: 5 });
 		expect(copied.boundary).toHaveLength(source.boundary.length);
@@ -2223,12 +2238,29 @@ describe('C3 · Round move and enclosure copy', () => {
 		}
 		for (const junction of original.junctions) {
 			const point = current.junctions.find((j) => j.id === junction.id)!.point;
-			expect(Math.hypot(point[0] - junction.point[0], point[1] - junction.point[1])).toBeLessThan(0.0001);
+			expect(Math.hypot(point[0] - junction.point[0], point[1] - junction.point[1])).toBeLessThan(4 * 2 ** -20);
 		}
 	}, 120000);
 });
 
 describe('C3 · scope closure and refusal', () => {
+	it('finds an attached chain regardless of Wall storage order', () => {
+		const ring = createConnectedRing({ seed: 'c3-order' });
+		const anchor = ring.document.walls.find((wall) => wall.id === ring.outsideWallIds[0])!.endJunctionId;
+		const junctions = Array.from({ length: 200 }, (_, index) => ({ id: `chain-j-${index}`, point: [0, 20 + index] as LayoutVec2 }));
+		const walls: LayoutWall[] = junctions.map((junction, index) => ({
+			id: `chain-w-${index}`, startJunctionId: junctions[index - 1]?.id ?? anchor,
+			endJunctionId: junction.id, height: 3, thickness: 0.2, centerline: { kind: 'line' }
+		}));
+		for (const ordered of [walls, [...walls].reverse()]) {
+			const document = { ...ring.document, junctions: [...ring.document.junctions, ...junctions], walls: [...ring.document.walls, ...ordered] };
+			const scope = resolveIsolatedRoomGroupSubgraph(document, ring.roomId, { includePhysicalAttachments: true });
+			if (scope.kind !== 'success') throw new Error(JSON.stringify(scope));
+			for (const wall of walls) expect(scope.subgraph.wallIds).toContain(wall.id);
+			for (const junction of junctions) expect(scope.subgraph.junctionIds).toContain(junction.id);
+		}
+	});
+
 	it('carries a virtual-linked open Space and every physical Wall attached to its other component', () => {
 		const gal = createAttachedGallery({ seed: 'c3-open' });
 		const first = expectSuccess(planDeleteWall(gal.document, gal.annexWallIds[1]!, cap('c3-open-delete'), gal.document.floor.id)).document;
@@ -2247,7 +2279,24 @@ describe('C3 · scope closure and refusal', () => {
 		expect(moved.document.rooms.find((room) => room.id === space.id)!.virtualEdges).toEqual(space.virtualEdges);
 	});
 
-	it('refuses a collapsed high-coordinate move without changing the source', () => {
+	it('refuses a move into an independent open Space without changing the source', () => {
+		const rot = createRotunda({ seed: 'c3-move-overlap' });
+		const box = expectSuccess(planWallChain({
+			baseline: rot.document,
+			points: [[18, -5], [22, -5], [22, 5], [18, 5]],
+			close: true, capture: cap('c3-overlap-box'), levelId: rot.document.floor.id
+		}));
+		const opened = expectSuccess(planDeleteWall(box.document, box.authoredWallIds[3]!, cap('c3-overlap-open'), box.document.floor.id)).document;
+		const before = serializeWallFirstLayoutDocument(opened);
+		for (const delta of [[14, 0], [20, 0]] as LayoutVec2[]) {
+			const moved = planWallFirstRoomMove(opened, rot.roomId, delta);
+			expect(moved).toMatchObject({ kind: 'rejected', rejection: { code: 'room_identity_lost' } });
+			expect(moved).not.toHaveProperty('document');
+			expect(serializeWallFirstLayoutDocument(opened)).toBe(before);
+		}
+	});
+
+	it('refuses an unresolvable high-coordinate move without changing the source', () => {
 		const ring = createConnectedRing({ seed: 'c3-collapse' });
 		const before = serializeWallFirstLayoutDocument(ring.document);
 		const moved = planWallFirstRoomMove(ring.document, ring.roomId, [2 ** 55, -(2 ** 55)]);

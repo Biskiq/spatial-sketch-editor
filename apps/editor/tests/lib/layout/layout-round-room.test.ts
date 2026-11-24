@@ -26,11 +26,14 @@ import {
 	planWallSplit,
 	readClosedWallCircle,
 	resolveJunctionGeometry,
+	resolveIsolatedRoomGroupSubgraph,
+	roomUnitMoveCandidate,
 	rotateBoundaryToSeam,
 	roundRoomSeamJunctionId,
 	serializeWallFirstLayoutDocument,
 	subdivideWallCubicSpan,
 	validateWallFirstLayoutDocument,
+	wallCenterlineCubics,
 	wallCubicChain,
 	wallFirstWallLength,
 	type CompiledJunctionLeg,
@@ -550,6 +553,90 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 		}
 	});
 
+
+	it('refuses moving or copying distinct cuts that collapse at destination precision', () => {
+		// Two distinct cuts at the origin collapse when translated to a location
+		// whose binary64 spacing is wider than the short arc.
+		const base = createCircle({ center: [0, 0], rim: [5, 0], seed: 'c1-collapse' });
+		const wall = base.walls[0]!;
+		if (wall.centerline.kind !== 'cubic-chain') throw new Error('expected cubic-chain');
+		const seamPoint = base.junctions[0]!.point;
+		const pts: LayoutVec2[] = [seamPoint, ...wall.centerline.knots.map((k) => k.point), seamPoint];
+		const cutSpan = 8;
+		const firstSplit = subdivideWallCubicSpan(
+			wall.centerline.spans[cutSpan]!,
+			pts[cutSpan]!,
+			pts[cutSpan + 1]!,
+			0.5
+		);
+		const tinySplit = subdivideWallCubicSpan(
+			firstSplit.right,
+			firstSplit.point,
+			pts[cutSpan + 1]!,
+			1e-5
+		);
+		const collapsedRing: LayoutDocumentWallFirst = {
+			...base,
+			junctions: [
+				...base.junctions,
+				{ id: 'j-cut-a', point: firstSplit.point },
+				{ id: 'j-cut-b', point: tinySplit.point }
+			],
+			walls: [
+				{
+					...wall,
+					endJunctionId: 'j-cut-a',
+					centerline: wallCubicChain(
+						wall.centerline.knots.slice(0, cutSpan),
+						[...wall.centerline.spans.slice(0, cutSpan), firstSplit.left]
+					)
+				},
+				{
+					...wall,
+					id: 'wall-tiny',
+					startJunctionId: 'j-cut-a',
+					endJunctionId: 'j-cut-b',
+					centerline: wallCubicChain([], [tinySplit.left])
+				},
+				{
+					...wall,
+					id: 'wall-rest',
+					startJunctionId: 'j-cut-b',
+					endJunctionId: wall.startJunctionId,
+					centerline: wallCubicChain(
+						wall.centerline.knots.slice(cutSpan),
+						[tinySplit.right, ...wall.centerline.spans.slice(cutSpan + 1)]
+					)
+				}
+			],
+			rooms: [
+				{
+					...base.rooms[0]!,
+					boundary: [
+						{ wallId: wall.id, direction: 'forward' },
+						{ wallId: 'wall-tiny', direction: 'forward' },
+						{ wallId: 'wall-rest', direction: 'forward' }
+					]
+				}
+			]
+		};
+		expect(validateWallFirstLayoutDocument(collapsedRing).success).toBe(true);
+		const before = serializeWallFirstLayoutDocument(collapsedRing);
+		const destination: LayoutVec2 = [2 ** 40, -(2 ** 40)];
+		const scope = resolveIsolatedRoomGroupSubgraph(collapsedRing, collapsedRing.rooms[0]!.id, { includePhysicalAttachments: true });
+		if (scope.kind !== 'success') throw new Error(JSON.stringify(scope));
+		const proposal = roomUnitMoveCandidate(collapsedRing, scope.subgraph, destination);
+		expect(proposal.junctions.find((junction) => junction.id === 'j-cut-a')!.point)
+			.toEqual(proposal.junctions.find((junction) => junction.id === 'j-cut-b')!.point);
+		const move = planWallFirstRoomMove(collapsedRing, collapsedRing.rooms[0]!.id, destination);
+		expect(move.kind).toBe('rejected');
+		expect(move).not.toHaveProperty('document');
+		const copy = planDuplicateRoom(collapsedRing, { roomId: collapsedRing.rooms[0]!.id, delta: destination }, mintLayoutIdCapture(() => 'c3-collapse-copy'), collapsedRing.floor.id);
+		expect(copy.kind).toBe('rejected');
+		expect(copy).not.toHaveProperty('document');
+		expect(serializeWallFirstLayoutDocument(collapsedRing)).toBe(before);
+	});
+
 	it('preserves resolvable corner classification under translation and never misclassifies corners as straight continuations at extreme coordinates', () => {
 		const buildCornerDoc = (origin: readonly [number, number], interiorDegrees: number): LayoutDocumentWallFirst => {
 			const rad = (interiorDegrees * Math.PI) / 180;
@@ -657,6 +744,7 @@ describe('C1 · Translation and numerical consistency falsifiers', () => {
 describe('C3 · non-axis ring translation and copy', () => {
 	it('preserves a non-axis ring through repeated radius and world-translation cycles with reloads', () => {
 		let current = createTwoWallRoundRing([0, 0], [3, 4], true);
+		let reference = current;
 		const roomId = current.rooms[0]!.id;
 		const seam = current.walls[0]!.startJunctionId;
 		const wallIds = current.rooms[0]!.boundary.map((ref) => ref.wallId);
@@ -675,6 +763,9 @@ describe('C3 · non-axis ring translation and copy', () => {
 			const resize = planResizeRoundRoomRadius({ document: current, roomId, radius });
 			if (resize.kind !== 'success') throw new Error(JSON.stringify(resize));
 			current = reload(resize.document);
+			const referenceResize = planResizeRoundRoomRadius({ document: reference, roomId, radius });
+			if (referenceResize.kind !== 'success') throw new Error(JSON.stringify(referenceResize));
+			reference = reload(referenceResize.document);
 			const outward = planWallFirstRoomMove(current, roomId, BIG_SHIFT);
 			if (outward.kind !== 'success') throw new Error(JSON.stringify(outward));
 			const high = reload(outward.document);
@@ -689,6 +780,27 @@ describe('C3 · non-axis ring translation and copy', () => {
 			expect(current.rooms[0]!.boundary.map((ref) => ref.wallId)).toEqual(wallIds);
 			expect(roundRoomSeamJunctionId(current.rooms[0]!, new Map(current.walls.map((wall) => [wall.id, wall])))).toBe(seam);
 			expect(current.openings[0]!.offset).toBeCloseTo(radius / 5, 8);
+			// Regression bound for this fixture: four ULPs at the destination.
+			// The production certifier independently checks propagated bounds.
+			const bound = 4 * 2 ** -20;
+			for (const wallId of wallIds) {
+				const cubics = (doc: LayoutDocumentWallFirst) => {
+					const wall = doc.walls.find((entry) => entry.id === wallId)!;
+					return wallCenterlineCubics(wall.centerline,
+						doc.junctions.find((junction) => junction.id === wall.startJunctionId)!.point,
+						doc.junctions.find((junction) => junction.id === wall.endJunctionId)!.point, 'forward');
+				};
+				const actual = cubics(current);
+				const expected = cubics(reference);
+				expect(actual).toHaveLength(expected.length);
+				for (let span = 0; span < actual.length; span++) {
+					for (const key of ['start', 'handleOut', 'handleIn', 'end'] as const) {
+						for (let axis = 0; axis < 2; axis++) {
+							expect(Math.abs(actual[span]![key][axis]! - expected[span]![key][axis]!)).toBeLessThan(bound);
+						}
+					}
+				}
+			}
 		}
 	}, 120000);
 });

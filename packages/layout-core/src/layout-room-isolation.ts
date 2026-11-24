@@ -515,40 +515,61 @@ export function resolveIsolatedRoomGroupSubgraph(
 		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
 	}
 
-	const memberIdSet = new Set(connectedRoomIds(document, roomId));
+	const memberIdSet = new Set<string>();
 	let memberIds: string[];
 	let graph: BoundaryGraph;
 	if (options.includePhysicalAttachments && anchor.round) {
-		// Close alternately over physical incidence and complete Room/Space
-		// boundaries. Virtual edges connect moving scopes, not Wall topology.
+		// Index physical incidence and Room/Space boundary membership once, then
+		// traverse each reached Junction. Virtual edges extend the moving scope,
+		// but do not themselves join Wall topology.
+		const wallsByJunction = new Map<string, typeof document.walls>();
+		const roomsByJunction = new Map<string, LayoutWallFirstRoom[]>();
+		const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+		for (const wall of document.walls) {
+			for (const id of new Set([wall.startJunctionId, wall.endJunctionId])) {
+				const walls = wallsByJunction.get(id) ?? [];
+				walls.push(wall);
+				wallsByJunction.set(id, walls);
+			}
+		}
+		const roomJunctions = new Map<string, Set<string>>();
+		for (const room of document.rooms) {
+			const junctions = new Set<string>();
+			for (const ref of room.boundary) {
+				const wall = wallById.get(ref.wallId);
+				if (wall) { junctions.add(wall.startJunctionId); junctions.add(wall.endJunctionId); }
+			}
+			for (const edge of room.virtualEdges) {
+				junctions.add(edge.startJunctionId);
+				junctions.add(edge.endJunctionId);
+			}
+			roomJunctions.set(room.id, junctions);
+			for (const id of junctions) {
+				const rooms = roomsByJunction.get(id) ?? [];
+				rooms.push(room);
+				roomsByJunction.set(id, rooms);
+			}
+		}
 		const wallIds = new Set<string>();
 		const junctionIds = new Set<string>();
-		let changed = true;
-		while (changed) {
-			changed = false;
-			const members = document.rooms.filter((room) => memberIdSet.has(room.id));
-			const collected = collectBoundaryGraph(document, members);
-			if (collected.kind === 'rejected') return collected;
-			for (const id of collected.graph.wallIds) {
-				if (!wallIds.has(id)) { wallIds.add(id); changed = true; }
-			}
-			for (const id of collected.graph.junctionIds) {
-				if (!junctionIds.has(id)) { junctionIds.add(id); changed = true; }
-			}
-			for (const wall of document.walls) {
-				if (!wallIds.has(wall.id) && !junctionIds.has(wall.startJunctionId) && !junctionIds.has(wall.endJunctionId)) continue;
-				if (!wallIds.has(wall.id)) { wallIds.add(wall.id); changed = true; }
-				for (const id of [wall.startJunctionId, wall.endJunctionId]) {
-					if (!junctionIds.has(id)) { junctionIds.add(id); changed = true; }
-				}
-			}
-			for (const room of document.rooms) {
-				if (memberIdSet.has(room.id)) continue;
-				if (room.boundary.some((ref) => wallIds.has(ref.wallId)) ||
-					room.virtualEdges.some((edge) => junctionIds.has(edge.startJunctionId) || junctionIds.has(edge.endJunctionId))) {
-					memberIdSet.add(room.id);
-					changed = true;
-				}
+		const queue: string[] = [];
+		const addJunction = (id: string) => {
+			if (!junctionIds.has(id)) { junctionIds.add(id); queue.push(id); }
+		};
+		const addRoom = (room: LayoutWallFirstRoom) => {
+			if (memberIdSet.has(room.id)) return;
+			memberIdSet.add(room.id);
+			for (const id of roomJunctions.get(room.id) ?? []) addJunction(id);
+		};
+		addRoom(anchor);
+		for (let i = 0; i < queue.length; i++) {
+			const id = queue[i]!;
+			for (const room of roomsByJunction.get(id) ?? []) addRoom(room);
+			for (const wall of wallsByJunction.get(id) ?? []) {
+				if (wallIds.has(wall.id)) continue;
+				wallIds.add(wall.id);
+				addJunction(wall.startJunctionId);
+				addJunction(wall.endJunctionId);
 			}
 		}
 		memberIds = [roomId, ...document.rooms.map((room) => room.id).filter((id) => id !== roomId && memberIdSet.has(id))];
@@ -565,6 +586,7 @@ export function resolveIsolatedRoomGroupSubgraph(
 		graph.hostedOpenings = document.openings.filter((opening) => graph.wallIdSet.has(opening.wallId));
 	} else {
 		memberIds = connectedRoomIds(document, roomId);
+		for (const id of memberIds) memberIdSet.add(id);
 		const memberRooms = memberIds.map((id) => document.rooms.find((room) => room.id === id)!);
 		const collected = collectBoundaryGraph(document, memberRooms);
 		if (collected.kind === 'rejected') return collected;
