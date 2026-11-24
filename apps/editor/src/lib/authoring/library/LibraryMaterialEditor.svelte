@@ -81,7 +81,7 @@
 		onToggleReach,
 		align = null,
 		onAlign,
-		onPreview,
+		onMaterialPreview,
 		onCancelPreview,
 		onCommit,
 		onResetAll,
@@ -127,7 +127,7 @@
 		onToggleReach?: () => void;
 		align?: { readonly kind: 'wall' | 'floor'; readonly label: string } | null;
 		onAlign?: () => void;
-		onPreview?: (edits: readonly FinishPatchEdit[]) => void;
+		onMaterialPreview?: (edits: readonly FinishPatchEdit[]) => void;
 		onCancelPreview?: () => void;
 		onCommit: (field: string, edits: readonly FinishPatchEdit[]) => Promise<boolean> | void;
 		onResetAll: () => Promise<boolean> | void;
@@ -229,7 +229,7 @@
 
 	function previewColour(hex: string): void {
 		const edits = editorColourValueEdits(source, recipes, facts, hex.toLowerCase());
-		onPreview?.(edits);
+		onMaterialPreview?.(edits);
 	}
 
 	function commitColour(colour: SceneColor): void {
@@ -259,7 +259,7 @@
 	// ---- Sliders (preview while moving; commit once on release or keyup)
 	function onSheenInput(v: number): void {
 		liveSheen = v;
-		onPreview?.(editorSheenEdits(source, recipes, facts, v));
+		onMaterialPreview?.(editorSheenEdits(source, recipes, facts, v));
 	}
 	function commitSheen(v: number): void {
 		liveSheen = null;
@@ -271,7 +271,7 @@
 
 	function onMetalInput(v: number): void {
 		liveMetal = v;
-		onPreview?.(editorMetalEdits(source, recipes, v));
+		onMaterialPreview?.(editorMetalEdits(source, recipes, v));
 	}
 	function commitMetal(v: number): void {
 		liveMetal = null;
@@ -283,7 +283,7 @@
 
 	function onReliefInput(v: number): void {
 		liveRelief = v;
-		onPreview?.(editorReliefEdits(source, recipes, v));
+		onMaterialPreview?.(editorReliefEdits(source, recipes, v));
 	}
 	function commitRelief(v: number): void {
 		liveRelief = null;

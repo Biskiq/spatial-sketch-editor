@@ -165,7 +165,7 @@ export type FinishCardHost = {
 	readonly isFavourite?: (finishKey: string) => boolean;
 	readonly toggleFavourite?: (finishKey: string) => void;
 	/** More › Image › Replace for an object (S4b's From-image flow). */
-	readonly replaceImage?: (entityId: string, file: File, mode: 'in-place' | 'all' | 'just-this') => Promise<void>;
+	readonly replaceImage?: (entityId: string, file: File, mode: 'in-place' | 'all' | 'just-this') => Promise<import('./finish-image.svelte').FinishImageOutcome>;
 	/** Called after any accepted write (e.g. to note the Finish as recently used). */
 	readonly onAccepted?: (finishKey: string) => void;
 	/** Select every user of a Finish (Card ⋯ › Select all). */
@@ -886,10 +886,10 @@ export function createFinishCard(host: FinishCardHost) {
 		return false;
 	}
 
-	function replaceImage(target: FinishCardTarget, file: File): Promise<void> {
-		if (target.kind !== 'entity' || host.replaceImage === undefined) return Promise.resolve();
+	function replaceImage(target: FinishCardTarget, file: File): Promise<import('./finish-image.svelte').FinishImageOutcome> {
+		if (target.kind !== 'entity' || host.replaceImage === undefined) return Promise.resolve({ kind: 'refused', message: 'Replacing this surface image is not available yet.' });
 		const inspected = inspect(target);
-		if (inspected === null || !('ref' in inspected)) return Promise.resolve();
+		if (inspected === null || !('ref' in inspected)) return Promise.resolve({ kind: 'refused', message: 'That Finish is no longer available.' });
 		const found = inspected as Inspected;
 		const plan = planOf(found);
 		// The From-image flow names one object's reach: a D5 subset it cannot

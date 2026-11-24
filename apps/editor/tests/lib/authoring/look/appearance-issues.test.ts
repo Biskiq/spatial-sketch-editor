@@ -7,7 +7,7 @@ import {
 } from '$lib/authoring/look/appearance-issues.svelte';
 import { classifyFinishViewIssues } from '$lib/render/resources/finish-outcome-sink';
 
-async function makeEnvelopeWithTwoUsers(): Promise<ProjectEnvelope> {
+async function makeEnvelopeWithTwoUsers(options: { readonly overrides?: boolean } = {}): Promise<ProjectEnvelope> {
 	const base = await createEmptyUnitEnvelope({
 		id: 'proj-1',
 		name: 'Test Project',
@@ -32,11 +32,15 @@ async function makeEnvelopeWithTwoUsers(): Promise<ProjectEnvelope> {
 				id: 'fin-tile',
 				name: 'Client Tile',
 				base: { catalogue: 'plaster-warm' as const },
-				overrides: {
-					maps: {
-						color: { image: { textureId: 'tex-tile' } }
-					}
-				}
+				...(options.overrides === false
+					? {}
+					: {
+						overrides: {
+							maps: {
+								color: { image: { textureId: 'tex-tile' } }
+							}
+						}
+					})
 			}
 		],
 		entities: [
@@ -168,6 +172,32 @@ describe('appearance-issues service (T2.S8 · U6)', () => {
 		]);
 	});
 
+	it('canonicalises a pristine project instance to its curated Finish before merging', async () => {
+		// A pristine instance renders exactly as its catalogue base; the Stage
+		// still names `project:<id>` when it reports a failed image. The issue must
+		// merge under the curated Finish that `inspectFinish` lists its users on.
+		const envelope = await makeEnvelopeWithTwoUsers({ overrides: false });
+		const service = createAppearanceIssues({ envelope: () => envelope });
+		service.recordOutcome({
+			targetKey: 'entity:box-1',
+			finishKey: 'project:fin-tile',
+			state: 'failed',
+			issues: [
+				{
+					code: 'image-load-failed',
+					role: 'color',
+					uri: 'project-asset://tex-tile',
+					phase: 'acquire',
+					httpStatus: 404
+				}
+			]
+		});
+		expect(service.count).toBe(1);
+		expect(service.open[0]?.code).toBe('image-unavailable');
+		expect(service.open[0]?.finishKey).toBe('curated:plaster-warm');
+		expect(service.open[0]?.affected).toEqual(['entity:box-1']);
+	});
+
 	it('Relink restores bytes with zero history, invalidates cache, and records a non-undoable fix', async () => {
 		const envelope = await makeEnvelopeWithTwoUsers();
 		const repairAsset = vi.fn(async () => ({ ok: true as const }));
@@ -197,11 +227,36 @@ describe('appearance-issues service (T2.S8 · U6)', () => {
 		const file = new File([new Uint8Array([1, 2, 3, 4])], 'client-tile_basecolor.png', { type: 'image/png' });
 		const outcome = await service.relink(issue, file);
 		expect(outcome.ok).toBe(true);
-		expect(repairAsset).toHaveBeenCalledWith('tex-tile', expect.any(Uint8Array), 'sha256-abc123', undefined);
+		expect(repairAsset).toHaveBeenCalledWith('tex-tile', expect.any(Uint8Array), 'sha256-abc123', expect.any(AbortSignal));
 		expect(invalidateAndReloadAsset).toHaveBeenCalledWith('tex-tile');
 		expect(service.count).toBe(0);
 		expect(service.repaired).toHaveLength(1);
 		expect(service.repaired[0]?.history).toBe('none');
+	});
+
+	it('ignores a relink completion after the project session is reset', async () => {
+		const envelope = await makeEnvelopeWithTwoUsers();
+		let resolveRepair: ((value: { ok: true }) => void) | undefined;
+		const repairAsset = vi.fn((_assetId: string, _bytes: Uint8Array, _pin: string, _signal?: AbortSignal) =>
+			new Promise<{ ok: true }>((resolve) => { resolveRepair = resolve; })
+		);
+		const invalidateAndReloadAsset = vi.fn();
+		const service = createAppearanceIssues({ envelope: () => envelope, repairAsset, invalidateAndReloadAsset });
+		service.recordOutcome({
+			targetKey: 'entity:box-1',
+			finishKey: 'project:fin-tile',
+			state: 'failed',
+			issues: [{ code: 'image-load-failed', role: 'color', uri: 'project-asset://tex-tile', phase: 'verify' }]
+		});
+		const pending = service.relink(service.open[0]!, new File([new Uint8Array([1])], 'tile.png'));
+		await vi.waitFor(() => expect(resolveRepair).toBeDefined());
+		const signal = repairAsset.mock.calls[0]![3];
+		service.reset();
+		expect(signal?.aborted).toBe(true);
+		resolveRepair!({ ok: true });
+		expect((await pending).ok).toBe(false);
+		expect(invalidateAndReloadAsset).not.toHaveBeenCalled();
+		expect(service.repaired).toHaveLength(0);
 	});
 
 	it('drops authored Repaired entries if Undo brings the issue back, and clears all on reset()', async () => {

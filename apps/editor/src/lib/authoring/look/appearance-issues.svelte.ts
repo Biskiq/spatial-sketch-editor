@@ -23,12 +23,14 @@ import type { MapRole, TargetAnalysis } from '@portfolio/project-model/materials
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	analysisSubjectOf,
+	catalogueBaseOf,
 	entityUserKey,
 	finishKeyOfRef,
 	finishKeyOfSurface,
 	finishRefOfKey,
 	inspectFinish,
 	isFinishPaintable,
+	isPristineInstance,
 	surfaceUserKey,
 	type FinishKey,
 	type InspectedFinishUser
@@ -244,11 +246,30 @@ function issueKey(finishKey: string, code: AppearanceIssueCode, role: MapRole | 
 	return `${finishKey}|${code}|${role ?? ''}`;
 }
 
+/**
+ * Runtime callers name a project instance even when it is pristine.
+ * A pristine instance renders exactly as its catalogue base, and
+ * `inspectFinish` only lists users under that curated key, so the runtime key
+ * must be canonicalised the same way or its issue is dropped.
+ */
+function canonicalFinishKey(envelope: ProjectEnvelope, key: FinishKey): FinishKey {
+	if (!key.startsWith('project:')) return key;
+	const id = key.slice('project:'.length);
+	const instance = (envelope.units.scene.data.materials ?? []).find((entry) => entry.id === id);
+	if (instance === undefined || !isPristineInstance(instance)) return key;
+	const catalogue = catalogueBaseOf(instance);
+	return catalogue === null ? key : `curated:${catalogue}`;
+}
+
 function activeFinishKeys(envelope: ProjectEnvelope): readonly FinishKey[] {
 	const scene = envelope.units.scene.data;
 	const keys = new Set<FinishKey>();
 	for (const instance of scene.materials ?? []) {
 		keys.add(`project:${instance.id}`);
+		if (isPristineInstance(instance)) {
+			const catalogue = catalogueBaseOf(instance);
+			if (catalogue !== null) keys.add(`curated:${catalogue}`);
+		}
 	}
 	for (const entity of scene.entities) {
 		if (!isFinishPaintable(entity)) continue;
@@ -312,10 +333,26 @@ function assetIdForFinishRole(
 	return null;
 }
 
+/** Decode the canonical Layout surface key used in Finish issue targets. */
+export function repairSurfaceRef(targetKey: string): import('@portfolio/layout-core').LayoutSurfaceRef | null {
+	if (!targetKey.startsWith('surface:')) return null;
+	try {
+		const parts: unknown = JSON.parse(targetKey.slice('surface:'.length));
+		if (!Array.isArray(parts) || typeof parts[1] !== 'string' || !parts[1]) return null;
+		if (parts[0] === 'wall-side' && parts.length === 3 && (parts[2] === 'left' || parts[2] === 'right')) return { kind: 'wall-side', wallId: parts[1], side: parts[2] };
+		if (parts[0] === 'room-floor' && parts.length === 2) return { kind: 'room-floor', roomId: parts[1] };
+		if (parts[0] === 'room-lid' && parts.length === 2) return { kind: 'room-lid', roomId: parts[1] };
+		if (parts[0] === 'region-face' && parts.length === 3 && (parts[2] === 'top' || parts[2] === 'underside')) return { kind: 'region-face', regionId: parts[1], face: parts[2] };
+	} catch { /* Invalid target keys are not drawable surfaces. */ }
+	return null;
+}
+
 export function createAppearanceIssues(host: AppearanceIssuesHost) {
 	// Runtime outcomes keyed by targetKey (`entity:<id>` | `surface:<key>`).
 	const runtimeByTarget = new Map<string, FinishTargetOutcome>();
 	let runtimeVersion = $state(0);
+	let repairGeneration = 0;
+	const repairControllers = new Set<AbortController>();
 
 	// Session-owned fix list for *Repaired (…)*. Never serialized.
 	let repairedList = $state.raw<readonly RepairedIssueEntry[]>([]);
@@ -349,7 +386,14 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		if (runtimeByTarget.delete(targetKey)) runtimeVersion += 1;
 	}
 
+	function cancelRepairs(): void {
+		repairGeneration += 1;
+		for (const controller of repairControllers) controller.abort();
+		repairControllers.clear();
+	}
+
 	function reset(): void {
+		cancelRepairs();
 		runtimeByTarget.clear();
 		runtimeVersion += 1;
 		repairedList = [];
@@ -439,25 +483,26 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		// Merge runtime failures — strictly for failing targets that still use that Finish.
 		for (const outcome of runtimeByTarget.values()) {
 			if (outcome.state !== 'failed') continue;
-			const users = usersByFinish.get(outcome.finishKey);
+			const finishKey = canonicalFinishKey(envelope, outcome.finishKey);
+			const users = usersByFinish.get(finishKey);
 			if (users === undefined || !users.some((user) => user.key === outcome.targetKey)) continue;
-			const finishName = nameByFinish.get(outcome.finishKey) ?? outcome.finishKey;
+			const finishName = nameByFinish.get(finishKey) ?? finishKey;
 			for (const viewIssue of outcome.issues) {
 				const code = classifyRuntimeFailure(viewIssue);
 				if (code === null) continue;
 				const role: MapRole | null = viewIssue.role ?? null;
-				const id = issueKey(outcome.finishKey, code, role);
+				const id = issueKey(finishKey, code, role);
 				const uriAssetId = viewIssue.uri ? (PROJECT_ASSET_URI.exec(viewIssue.uri)?.[1] ?? null) : null;
 				let bucket = buckets.get(id);
 				if (bucket === undefined) {
 					bucket = {
-						finishKey: outcome.finishKey,
+						finishKey,
 						finishName,
 						code,
 						role,
 						source: 'runtime',
 						affected: new Set(),
-						assetId: uriAssetId ?? assetIdForFinishRole(envelope, outcome.finishKey, role),
+						assetId: uriAssetId ?? assetIdForFinishRole(envelope, finishKey, role),
 						hasMetricBasis: false
 					};
 					buckets.set(id, bucket);
@@ -562,15 +607,28 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 			refusal = { issueId: issue.id, message };
 			return { ok: false, message };
 		}
-		let bytes: Uint8Array;
+		const generation = repairGeneration;
+		const controller = new AbortController();
+		repairControllers.add(controller);
+		const abort = () => controller.abort();
+		if (signal?.aborted) abort();
+		else signal?.addEventListener('abort', abort, { once: true });
+		const cancelled = () => controller.signal.aborted || generation !== repairGeneration;
+		let outcome: Awaited<ReturnType<NonNullable<AppearanceIssuesHost['repairAsset']>>>;
 		try {
-			bytes = new Uint8Array(await file.arrayBuffer());
-		} catch {
-			const message = 'Could not read that file.';
+			const bytes = new Uint8Array(await file.arrayBuffer());
+			if (cancelled()) return { ok: false, message: 'Repair was cancelled.' };
+			outcome = await host.repairAsset(issue.assetId, bytes, issue.expectedPin, controller.signal);
+			if (cancelled()) return { ok: false, message: 'Repair was cancelled.' };
+		} catch (error) {
+			if (cancelled()) return { ok: false, message: 'Repair was cancelled.' };
+			const message = error instanceof Error ? error.message : 'Could not read that file.';
 			refusal = { issueId: issue.id, message };
 			return { ok: false, message };
+		} finally {
+			repairControllers.delete(controller);
+			signal?.removeEventListener('abort', abort);
 		}
-		const outcome = await host.repairAsset(issue.assetId, bytes, issue.expectedPin, signal);
 		if (!outcome.ok) {
 			refusal = { issueId: issue.id, message: outcome.message };
 			return outcome;
@@ -634,6 +692,7 @@ export function createAppearanceIssues(host: AppearanceIssuesHost) {
 		noteRepaired,
 		relink,
 		retry,
+		cancelRepairs,
 		reset
 	};
 }

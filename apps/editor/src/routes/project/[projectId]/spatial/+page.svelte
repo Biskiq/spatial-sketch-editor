@@ -559,6 +559,7 @@
 		// Experience is the visitor's reading of the same source: Studio's pending task
 		// is resolved and its posture ends first, or the lens stays where it is.
 		if (next !== 'world' && studio !== undefined && !studio.leaveForLens()) return;
+		if (next !== 'world' && experience.lensState === 'world' && !endMaterialOperations(true)) return;
 		lightInspection?.cancel();
 		experience.changeLens(next);
 	}
@@ -2032,14 +2033,28 @@
 		stageViewport.reset();
 	}
 
+	function endMaterialOperations(restoreCamera: boolean): boolean {
+		finishes?.card.cancel();
+		if (restoreCamera && finishes?.align.active && !finishes.align.putBack(false)) return false;
+		if (!restoreCamera) finishes?.align.clear();
+		finishes?.editor.close(false);
+		finishes?.cancelLibraryDraft();
+		finishes?.cancelImage();
+		finishes?.issues.cancelRepairs();
+		materialImport.cancel(false);
+		repairDrawerOpen = false;
+		return true;
+	}
+
 	function interruptForReplacement(): void {
 		// The old facade is about to be disposed; its inspection restores the entry
 		// standpoint now, never through the replacement's Camera.
 		lightInspection?.cancel();
 		clearHover();
 		interruptPress('replacement');
-		// An image upload from the old source must not complete into the new one.
-		finishes?.cancelImage();
+		// Cancel old material operations before the facade and its Camera are replaced.
+		endMaterialOperations(false);
+		finishes?.issues.reset();
 	}
 
 	function resetPresentationBeforeSwap(): void {
@@ -2297,6 +2312,8 @@
 		void projectSession.load(projectId, intent);
 
 		return () => {
+			endMaterialOperations(false);
+			finishes.issues.reset();
 			unfoldGestures.dispose();
 			lightInspection?.dispose();
 			experience.dispose();
@@ -2428,6 +2445,37 @@
 			get repairAffectedTargets() { return finishes.issues.hatchedTargets; }
 		};
 	});
+
+	/**
+	 * Project the Align target's own four surface corners through the live
+	 * Camera, in canvas-local CSS pixels. The overlay places its ruler, grid,
+	 * mask and handles from this rectangle, so they sit on the drawn surface
+	 * (the conservative face frame only framed the view).
+	 */
+	function projectAlignBounds(active: {
+		readonly corners: readonly (readonly [number, number, number])[];
+	}): { left: number; top: number; right: number; bottom: number } | null {
+		const stage = facade;
+		const current = evaluation;
+		if (stage === null || current === null || active.corners.length === 0) return null;
+		const id = stage.evaluationId();
+		if (id === null) return null;
+		let left = Infinity;
+		let top = Infinity;
+		let right = -Infinity;
+		let bottom = -Infinity;
+		for (const corner of active.corners) {
+			const projected = stage.projectWorld(corner, id);
+			if (projected.kind !== 'projected') return null;
+			const x = projected.css[0] - current.rect.left;
+			const y = projected.css[1] - current.rect.top;
+			if (x < left) left = x;
+			if (x > right) right = x;
+			if (y < top) top = y;
+			if (y > bottom) bottom = y;
+		}
+		return right > left && bottom > top ? { left, top, right, bottom } : null;
+	}
 
 	/** The live drawn proposal in both worlds: one for the ink, one for the tag. */
 	const sliceDraftWorld = $derived.by(() => {
@@ -3038,20 +3086,25 @@
 			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
 			{#if alignInspected !== null && sceneNow !== null}
 				{@const alignFields = finishes.editor.view()?.fields ?? null}
+				{@const alignBounds = projectAlignBounds(activeAlign)}
 				{@const mappingNow = alignInspected.instance.overrides?.mapping}
 				{@const tileM = mappingNow && mappingNow.kind !== 'uv' ? mappingNow.metric.tileMeters[0] : (alignFields?.pattern.tileMeters ?? 1)}
 				{@const rotDeg = mappingNow ? ((((mappingNow.kind === 'uv' ? mappingNow.rotation : mappingNow.metric.rotation) * 180) / Math.PI) % 360 + 360) % 360 : 0}
 				{@const normOff = mappingNow ? (mappingNow.kind === 'uv' ? mappingNow.offset : mappingNow.metric.offset) : [0, 0]}
 				<StageFinishAlign
 					align={activeAlign}
+					refusal={finishes.align.refusal}
 					tileMeters={tileM}
 					offsetMeters={[normOff[0] * tileM, normOff[1] * tileM]}
 					angleDeg={rotDeg}
 					viewportWidth={rect?.width ?? 856}
 					viewportHeight={rect?.height ?? 608}
+					projected={alignBounds}
+					canvasLeft={evaluation?.rect.left ?? 0}
+					canvasTop={evaluation?.rect.top ?? 0}
 					source={{ base: alignInspected.instance.base, overrides: alignInspected.instance.overrides }}
 					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
-					onPreview={(edits) => finishes.card.previewEdits(activeAlign.target, () => edits)}
+					onMaterialPreview={(edits) => finishes.card.previewEdits(activeAlign.target, () => edits)}
 					onCancelPreview={() => finishes.card.cancel()}
 					onCommit={(edits) => finishes.card.edit(activeAlign.target, () => edits)}
 					onPutBack={() => finishes.align.putBack(true)}
@@ -3144,7 +3197,7 @@
 						const res = finishes.requestAlign(finishEditorView.target, finishEditorView.place);
 						if (!res.ok && res.message) finishes.editor.setFieldRefusal('pattern', res.message);
 					}}
-					onPreview={(edits) => finishes.editor.preview(() => edits)}
+					onMaterialPreview={(edits) => finishes.editor.preview(() => edits)}
 					onCancelPreview={() => finishes.editor.cancelPreview()}
 					onCommit={(field, edits) => finishes.editor.commit(field, () => edits)}
 					onResetAll={() => finishes.editor.resetAll()}

@@ -16,11 +16,11 @@
 		MeshBasicMaterial,
 		RepeatWrapping
 	} from 'three';
-	import type { LayoutSurfaceRef } from '@portfolio/layout-core';
 	import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
-	import { drawnMeshesOf } from './stage-selection-source';
+	import { drawnMeshesOf, repairSurfaceGeometry } from './stage-selection-source';
+	import { repairSurfaceRef } from '$lib/authoring/look/appearance-issues.svelte';
 
 	let {
 		affectedTargets = new Set<string>(),
@@ -79,21 +79,10 @@
 
 	function clearOverlays(): void {
 		while (root.children.length > 0) {
-			root.remove(root.children[0]!);
+			const child = root.children[0]!;
+			if (child instanceof Mesh && child.userData.ownsRepairGeometry === true) child.geometry.dispose();
+			root.remove(child);
 		}
-	}
-
-	function parseSurfaceRefKey(raw: string): LayoutSurfaceRef | null {
-		const parts = raw.split(':');
-		if (parts[0] === 'wall-side' && parts[1] && (parts[2] === 'left' || parts[2] === 'right')) {
-			return { kind: 'wall-side', wallId: parts[1], side: parts[2] };
-		}
-		if (parts[0] === 'room-floor' && parts[1]) return { kind: 'room-floor', roomId: parts[1] };
-		if (parts[0] === 'room-lid' && parts[1]) return { kind: 'room-lid', roomId: parts[1] };
-		if (parts[0] === 'region-face' && parts[1] && (parts[2] === 'top' || parts[2] === 'underside')) {
-			return { kind: 'region-face', regionId: parts[1], face: parts[2] };
-		}
-		return null;
 	}
 
 	function collectTargetMeshes(targetKey: string): Mesh[] {
@@ -103,7 +92,7 @@
 			return obj === null ? [] : drawnMeshesOf([obj]);
 		}
 		if (targetKey.startsWith('surface:')) {
-			const surface = parseSurfaceRefKey(targetKey.slice('surface:'.length));
+			const surface = repairSurfaceRef(targetKey);
 			if (surface === null) return [];
 			if (surface.kind === 'wall-side') {
 				const obj = scenePick.layoutObjectOf('wall', surface.wallId);
@@ -112,12 +101,7 @@
 			if (surface.kind === 'room-floor' || surface.kind === 'room-lid') {
 				const obj = scenePick.layoutObjectOf('floor', surface.roomId);
 				if (obj === null) return [];
-				return drawnMeshesOf([obj]).filter((mesh) => {
-					const name = mesh.name.toLowerCase();
-					return surface.kind === 'room-floor'
-						? name.includes('floor') || !name.includes('ceiling')
-						: name.includes('ceiling') || name.includes('lid');
-				});
+				return drawnMeshesOf([obj.parent ?? obj]);
 			}
 			if (surface.kind === 'region-face') {
 				const obj = scenePick.layoutObjectOf('region', surface.regionId);
@@ -136,8 +120,12 @@
 		}
 		for (const targetKey of affectedTargets) {
 			for (const sourceMesh of collectTargetMeshes(targetKey)) {
+				const surface = repairSurfaceRef(targetKey);
+				const geometry = surface === null ? sourceMesh.geometry : repairSurfaceGeometry(sourceMesh, surface);
+				if (geometry === null) continue;
 				sourceMesh.updateWorldMatrix(true, false);
-				const overlay = new Mesh(sourceMesh.geometry, hatchMaterial);
+				const overlay = new Mesh(geometry, hatchMaterial);
+				overlay.userData.ownsRepairGeometry = geometry !== sourceMesh.geometry;
 				overlay.matrixAutoUpdate = false;
 				overlay.matrix.copy(sourceMesh.matrixWorld);
 				overlay.matrixWorldNeedsUpdate = true;

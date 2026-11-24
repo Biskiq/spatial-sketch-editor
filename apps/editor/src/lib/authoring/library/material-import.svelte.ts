@@ -103,7 +103,28 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	let errorMessage = $state<string | null>(null);
 
 	let controller: AbortController | null = null;
+	let writingController: AbortController | null = null;
+	let generation = 0;
+	let preparationGeneration = 0;
+	let sessionRevision: AcceptedRevision | null = null;
 	let slowTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function releasePrepared(draft: PreparedFinishDraft | null): void {
+		if (draft !== null) for (const source of draft.sources.values()) source.release();
+	}
+
+	function sameRevision(left: AcceptedRevision | null, right: AcceptedRevision | null): boolean {
+		return left !== null && right !== null && left.projectId === right.projectId && left.revisionId === right.revisionId;
+	}
+
+	function invalidatePreparation(): void {
+		preparationGeneration += 1;
+		writingController?.abort();
+		writingController = null;
+		if (phase === 'writing') phase = 'ready';
+		releasePrepared(prepared);
+		prepared = null;
+	}
 
 	function clearSlowTimer(): void {
 		if (slowTimer !== null) {
@@ -115,12 +136,11 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 
 	function releaseSession(): void {
 		clearSlowTimer();
+		generation += 1;
+		invalidatePreparation();
 		controller?.abort();
 		controller = null;
-		if (prepared !== null) {
-			for (const src of prepared.sources.values()) src.release();
-			prepared = null;
-		}
+		sessionRevision = null;
 		fileSession?.release();
 		fileSession = null;
 		proposal = null;
@@ -199,21 +219,22 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	}
 
 	async function refreshPrepared(): Promise<void> {
-		if (fileSession === null || controller === null) return;
+		invalidatePreparation();
+		const run = controller;
+		const files = fileSession;
+		const rev = sessionRevision;
+		const revision = host.expectedRevision();
 		const edits = buildDraftEdits();
-		const rev = host.expectedRevision();
 		const proofs = host.materialProofs();
-		if (edits === null || rev === null || proofs === null) {
-			prepared = null;
+		const sequence = preparationGeneration;
+		const session = generation;
+		if (run === null || files === null || edits === null || rev === null || proofs === null || !sameRevision(rev, revision)) return;
+		const res = await prepareDraft(edits, files, rev, run.signal, proofs);
+		if (run.signal.aborted || controller !== run || generation !== session || sequence !== preparationGeneration || !sameRevision(rev, host.expectedRevision())) {
+			if (res.ok) releasePrepared(res.draft);
 			return;
 		}
-		const res = await prepareDraft(edits, fileSession, rev, controller.signal, proofs);
-		if (controller?.signal.aborted) return;
-		if (res.ok) {
-			prepared = res.draft;
-		} else {
-			prepared = null;
-		}
+		if (res.ok) prepared = res.draft;
 	}
 
 	function applyProposal(next: SetProposal): void {
@@ -260,8 +281,9 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 
 		const run = new AbortController();
 		controller = run;
+		sessionRevision = host.expectedRevision();
 		slowTimer = setTimeout(() => {
-			if (phase === 'reading') showSlowRead = true;
+			if (controller === run && phase === 'reading') showSlowRead = true;
 		}, 300);
 
 		try {
@@ -275,6 +297,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				if (run.signal.aborted) return;
 				bytes.set(key, data);
 				facts.push(await readSetFileFact(key, file.name, data));
+				if (run.signal.aborted || controller !== run) return;
 				readCount = i + 1;
 			}
 			clearSlowTimer();
@@ -291,14 +314,14 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				}
 			};
 			fileSession = session;
-			const rev = host.expectedRevision()?.revisionId ?? 'rev-0';
+			const rev = sessionRevision?.revisionId ?? 'rev-0';
 			const nextProposal = proposeMaterialSet(facts, rev);
 			applyProposal(nextProposal);
 			phase = 'ready';
 			await refreshPrepared();
 		} catch (error) {
+			if (run.signal.aborted || controller !== run) return;
 			clearSlowTimer();
-			if (run.signal.aborted) return;
 			errorMessage = error instanceof Error ? error.message : 'Could not read the selected files.';
 			phase = 'ready';
 		}
@@ -314,7 +337,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 		const next = { ...conflictChoices };
 		delete next[role];
 		conflictChoices = next;
-		prepared = null;
+		invalidatePreparation();
 	}
 
 	function setNormalConvention(conv: NormalConvention): void {
@@ -328,7 +351,7 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	function reopenNormalChoice(): void {
 		normalDetected = false;
 		normalAck = false;
-		prepared = null;
+		invalidatePreparation();
 	}
 
 	function setNormalAck(checked: boolean): void {
@@ -350,7 +373,9 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	}
 
 	function setTargetKind(kind: 'layout' | 'scene'): void {
+		if (targetKind === kind) return;
 		targetKind = kind;
+		void refreshPrepared();
 	}
 
 	function blockingCount(): number {
@@ -428,10 +453,20 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 	async function accept(): Promise<boolean> {
 		if (!isReady() || fileSession === null || controller === null) return false;
 		const acceptHost = host.acceptHost();
-		const rev = host.expectedRevision();
+		const rev = sessionRevision;
 		const proofs = host.materialProofs();
 		if (acceptHost === null || rev === null || proofs === null) {
 			errorMessage = 'The project is not ready to accept imports yet.';
+			return false;
+		}
+		if (!sameRevision(rev, host.expectedRevision())) {
+			const latest = host.expectedRevision();
+			if (latest !== null) {
+				sessionRevision = latest;
+				applyProposal(proposeMaterialSet(fileSession.facts, latest.revisionId));
+				void refreshPrepared();
+			}
+			errorMessage = 'The project changed since this material was prepared. Review it again.';
 			return false;
 		}
 		const edits = buildDraftEdits();
@@ -439,27 +474,41 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 			errorMessage = 'Answer the open questions above before importing.';
 			return false;
 		}
+		const run = controller;
+		const files = fileSession;
+		const currentGeneration = generation;
+		const currentPreparation = preparationGeneration;
+		const chosen = [...selectedTargets()];
+		const finishName = nameText.trim();
+		const write = new AbortController();
+		writingController = write;
+		const isCurrent = () => controller === run && !run.signal.aborted && !write.signal.aborted && generation === currentGeneration && preparationGeneration === currentPreparation;
 		phase = 'writing';
 		errorMessage = null;
+		let draft: PreparedFinishDraft | null = null;
 		try {
-			const prep = await prepareDraft(edits, fileSession, rev, controller.signal, proofs);
+			const prep = await prepareDraft(edits, files, rev, write.signal, proofs);
+			if (!isCurrent()) {
+				if (prep.ok) releasePrepared(prep.draft);
+				return false;
+			}
 			if (!prep.ok) {
 				errorMessage = prep.issues[0]?.action ?? 'Some fields still need attention.';
 				phase = 'ready';
 				return false;
 			}
-			const chosen = selectedTargets();
+			draft = prep.draft;
 			const entityIds = chosen.filter((t): t is Extract<ImportTargetChoice, { kind: 'entity' }> => t.kind === 'entity').map((t) => t.id);
 			const surfaces = chosen.filter((t): t is Extract<ImportTargetChoice, { kind: 'surface' }> => t.kind === 'surface').map((t) => t.surface);
 			const result: AcceptDraftResult = await acceptDraft(
 				prep.draft,
 				{ entityIds, surfaces },
 				crypto.randomUUID(),
-				controller.signal,
+				write.signal,
 				acceptHost
 			);
+			if (!isCurrent()) return false;
 			if (result.ok) {
-				const finishName = validateImportName(nameText).ok ? nameText.trim() : 'Imported Material';
 				const firstTarget = chosen[0] ?? null;
 				const kindUsed = surfaces.length > 0 ? 'layout' : entityIds.length > 0 ? 'scene' : null;
 				const returnTo = invoker;
@@ -479,8 +528,9 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 				return true;
 			}
 			if (result.code === 'stale-revision') {
-				const latestRev = host.expectedRevision()?.revisionId ?? rev.revisionId;
-				applyProposal(proposeMaterialSet(fileSession.facts, latestRev));
+				const latest = host.expectedRevision();
+				sessionRevision = latest;
+				applyProposal(proposeMaterialSet(files.facts, latest?.revisionId ?? rev.revisionId));
 				errorMessage = result.message;
 				phase = 'ready';
 				await refreshPrepared();
@@ -490,10 +540,13 @@ export function createMaterialImportSession(host: MaterialImportHost) {
 			phase = 'ready';
 			return false;
 		} catch (error) {
-			if (controller?.signal.aborted) return false;
+			if (!isCurrent()) return false;
 			errorMessage = error instanceof Error ? error.message : 'Import could not be completed.';
 			phase = 'ready';
 			return false;
+		} finally {
+			releasePrepared(draft);
+			if (writingController === write) writingController = null;
 		}
 	}
 

@@ -96,24 +96,28 @@ export function createFinishImageFlow(host: {
 		state = { phase: 'refused', fileName, message, warning: null };
 	}
 
-	async function run(file: File, apply: FinishImageApply): Promise<void> {
+	async function run(file: File, apply: FinishImageApply): Promise<FinishImageOutcome> {
 		const api = host.api();
 		const projectId = host.projectId();
 		if (api === null || projectId === null) {
-			refuse('Save this project to the cloud before adding a Finish image.', file.name);
-			return;
+			const message = 'Save this project to the cloud before adding a Finish image.';
+			refuse(message, file.name);
+			return { kind: 'refused', message };
 		}
 		if (!host.canEdit() || !host.isSaved()) {
-			refuse('Save this project to the cloud before adding a Finish image.', file.name);
-			return;
+			const message = 'Save this project to the cloud before adding a Finish image.';
+			refuse(message, file.name);
+			return { kind: 'refused', message };
 		}
 		if (!ACCEPTED_TYPES.has(file.type)) {
-			refuse('Finish images must be a PNG, JPEG or WebP.', file.name);
-			return;
+			const message = 'Finish images must be a PNG, JPEG or WebP.';
+			refuse(message, file.name);
+			return { kind: 'refused', message };
 		}
 		if (file.size > FINISH_IMAGE_POLICY.maxBytes) {
-			refuse('Finish images must be 25 MiB or smaller.', file.name);
-			return;
+			const message = 'Finish images must be 25 MiB or smaller.';
+			refuse(message, file.name);
+			return { kind: 'refused', message };
 		}
 		last = { file, apply };
 		const abort = new AbortController();
@@ -126,7 +130,7 @@ export function createFinishImageFlow(host: {
 					state = { ...state, phase };
 				}
 			});
-			if (abort.signal.aborted || request !== abort) return;
+			if (abort.signal.aborted || request !== abort) return { kind: 'no-op' };
 			const warning = finishImageWarning(imported.pixelWidth, imported.pixelHeight);
 			const label = finishImageLabel(file.name);
 			// The Scene write belongs to the Finish service. It is one intent and
@@ -134,7 +138,7 @@ export function createFinishImageFlow(host: {
 			// upload is still ours to abort.
 			state = { phase: 'saving', fileName: file.name, message: null, warning };
 			const outcome = await apply(imported, warning, label);
-			if (abort.signal.aborted || request !== abort) return;
+			if (abort.signal.aborted || request !== abort) return { kind: 'no-op' };
 			if (outcome.kind === 'accepted') {
 				state = { phase: 'done', fileName: file.name, message: null, warning };
 			} else if (outcome.kind === 'refused') {
@@ -142,17 +146,20 @@ export function createFinishImageFlow(host: {
 			} else {
 				state = IDLE;
 			}
+			return outcome;
 		} catch (error) {
 			if (abort.signal.aborted) {
-				state = IDLE;
-				return;
+				if (request === abort) state = IDLE;
+				return { kind: 'no-op' };
 			}
+			const message = error instanceof Error ? error.message : 'Upload failed.';
 			state = {
 				phase: 'failed',
 				fileName: file.name,
-				message: error instanceof Error ? error.message : 'Upload failed.',
+				message,
 				warning: null
 			};
+			return { kind: 'refused', message };
 		} finally {
 			if (request === abort) request = null;
 		}
@@ -168,14 +175,14 @@ export function createFinishImageFlow(host: {
 		get canRetry() {
 			return last !== null && (state.phase === 'failed');
 		},
-		begin(file: File, apply: FinishImageApply): Promise<void> {
+		begin(file: File, apply: FinishImageApply): Promise<FinishImageOutcome> {
 			if (state.phase === 'checking' || state.phase === 'uploading' || state.phase === 'saving') {
-				return Promise.resolve();
+				return Promise.resolve({ kind: 'no-op' });
 			}
 			return run(file, apply);
 		},
-		retry(): Promise<void> {
-			if (last === null) return Promise.resolve();
+		retry(): Promise<FinishImageOutcome> {
+			if (last === null) return Promise.resolve({ kind: 'no-op' });
 			return run(last.file, last.apply);
 		},
 		cancel(): void {

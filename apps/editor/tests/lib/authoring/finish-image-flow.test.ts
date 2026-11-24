@@ -51,7 +51,7 @@ describe('Finish image flow', () => {
 			return IMAGE;
 		});
 		const { flow, apply } = harness();
-		await flow.begin(FILE, apply);
+		expect(await flow.begin(FILE, apply)).toEqual({ kind: 'accepted' });
 		expect(flow.state).toMatchObject({
 			phase: 'done',
 			fileName: 'Brick wall.png',
@@ -64,7 +64,7 @@ describe('Finish image flow', () => {
 
 	it('refuses a wrong type and an unsaved project before any bytes leave the browser', async () => {
 		const { flow, apply } = harness();
-		await flow.begin(new File([], 'notes.txt', { type: 'text/plain' }), apply);
+		expect((await flow.begin(new File([], 'notes.txt', { type: 'text/plain' }), apply)).kind).toBe('refused');
 		expect(flow.state).toMatchObject({ phase: 'refused', fileName: 'notes.txt' });
 		expect(importProjectImage).not.toHaveBeenCalled();
 
@@ -84,7 +84,7 @@ describe('Finish image flow', () => {
 		expect(flow.busy).toBe(true);
 		flow.cancel();
 		finish(IMAGE);
-		await running;
+		expect((await running).kind).toBe('no-op');
 		expect(flow.state.phase).toBe('idle');
 		expect(apply).not.toHaveBeenCalled();
 	});
@@ -146,7 +146,7 @@ describe('Finish image flow', () => {
 	it('a no-op apply returns the tile to idle', async () => {
 		vi.mocked(importProjectImage).mockResolvedValue(IMAGE);
 		const { flow } = harness();
-		await flow.begin(FILE, async () => ({ kind: 'no-op' }));
+		expect((await flow.begin(FILE, async () => ({ kind: 'no-op' }))).kind).toBe('no-op');
 		expect(flow.state.phase).toBe('idle');
 	});
 });

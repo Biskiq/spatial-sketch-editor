@@ -108,12 +108,16 @@ export function alignResetEdits(
 	return alignMappingEdits(source, recipes, [0, 0], 0);
 }
 
+export type AlignCorner = readonly [number, number, number];
+
 export type ActiveFinishAlign = {
 	readonly target: Extract<FinishCardTarget, { kind: 'surface' }>;
 	readonly surface: 'wall' | 'floor';
 	readonly place: string;
 	readonly widthMeters: number;
 	readonly heightMeters: number;
+	/** The four world corners of the faced surface plane (bottom and top edges). */
+	readonly corners: readonly AlignCorner[];
 	readonly invoker: HTMLElement | null;
 };
 
@@ -159,12 +163,31 @@ export function createFinishAlign() {
 				refusal = message;
 				return { ok: false, message };
 			}
+			// The faced surface plane: the compiled centreline endpoints moved to
+			// the Card target's own side, between the Wall's floor and top. These
+			// corners are projected through the live Camera so the ruler, grid and
+			// mask sit on the drawn wall rather than on a guess.
+			const first = compiled.samples[0]!;
+			const last = compiled.samples[compiled.samples.length - 1]!;
+			const mid = compiled.samples[Math.floor(compiled.samples.length / 2)]!;
+			const tangentLength = Math.hypot(mid.tangent[0], mid.tangent[1]);
+			const sideSign = surface.side === 'left' ? 1 : -1;
+			const ox = tangentLength > 1e-9 ? (-mid.tangent[1] / tangentLength) * (compiled.thickness / 2) * sideSign : 0;
+			const oz = tangentLength > 1e-9 ? (mid.tangent[0] / tangentLength) * (compiled.thickness / 2) * sideSign : 0;
+			const y0 = compiled.bounds3.min[1];
+			const y1 = compiled.bounds3.max[1];
 			active = {
 				target,
 				surface: 'wall',
 				place,
 				widthMeters: Math.max(0.5, compiled.length),
 				heightMeters: Math.max(0.5, compiled.height),
+				corners: [
+					[first.point[0] + ox, y0, first.point[1] + oz],
+					[last.point[0] + ox, y0, last.point[1] + oz],
+					[last.point[0] + ox, y1, last.point[1] + oz],
+					[first.point[0] + ox, y1, first.point[1] + oz]
+				],
 				invoker: invoker ?? null
 			};
 			return { ok: true };
@@ -207,6 +230,12 @@ export function createFinishAlign() {
 				place,
 				widthMeters: Math.max(0.5, maxX - minX),
 				heightMeters: Math.max(0.5, maxZ - minZ),
+				corners: [
+					[minX, floorY, minZ],
+					[maxX, floorY, minZ],
+					[maxX, floorY, maxZ],
+					[minX, floorY, maxZ]
+				],
 				invoker: invoker ?? null
 			};
 			return { ok: true };
@@ -217,7 +246,11 @@ export function createFinishAlign() {
 	function putBack(restoreFocus = true): boolean {
 		if (active === null) return false;
 		const returnTo = active.invoker;
-		wallFace.putBack();
+		const outcome = wallFace.putBack();
+		if (outcome.kind !== 'restored') {
+			refusal = 'Camera could not return to the previous view. Try Put back again.';
+			return false;
+		}
 		active = null;
 		refusal = null;
 		if (restoreFocus && returnTo && returnTo.isConnected) {

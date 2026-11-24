@@ -86,6 +86,85 @@ describe('Material import session over E5 (T2.S8 U6)', () => {
 		expect(session.open).toBe(false);
 	});
 
+	it('discards out-of-order preparation and results from a cancelled session', async () => {
+		const proofs = createMaterialProofRegistry();
+		const session = createMaterialImportSession({
+			acceptHost: () => null,
+			expectedRevision: () => ({ projectId: 'p1', revisionId: 'r1' }),
+			materialProofs: () => proofs
+		});
+		await session.start([pngFile('oak_albedo.png')], []);
+		const original = proofs.prepareFinishRegistration.bind(proofs);
+		const pending: Array<() => void> = [];
+		const spy = vi.spyOn(proofs, 'prepareFinishRegistration').mockImplementation(async (recipe) => {
+			const result = await original(recipe);
+			await new Promise<void>((resolve) => pending.push(resolve));
+			return result;
+		});
+
+		session.setName('Earlier');
+		session.setName('Later');
+		await vi.waitFor(() => expect(pending).toHaveLength(2));
+		pending[1]!();
+		await vi.waitFor(() => expect(session.prepared?.name).toBe('Later'));
+		pending[0]!();
+		await vi.waitFor(() => expect(session.prepared?.name).toBe('Later'));
+
+		session.setName('Cancelled');
+		await vi.waitFor(() => expect(pending).toHaveLength(3));
+		session.cancel(false);
+		spy.mockRestore();
+		await session.start([pngFile('maple_albedo.png')], []);
+		expect(session.prepared?.name).toBe('Maple');
+		pending[2]!();
+		await vi.waitFor(() => expect(session.prepared?.name).toBe('Maple'));
+		session.cancel(false);
+	});
+
+	it('requires review again when the accepted project revision changes', async () => {
+		const proofs = createMaterialProofRegistry();
+		const accept = vi.fn();
+		let revision = 'r1';
+		const session = createMaterialImportSession({
+			acceptHost: () => ({ accept }) as never,
+			expectedRevision: () => ({ projectId: 'p1', revisionId: revision }),
+			materialProofs: () => proofs
+		});
+		await session.start([pngFile('oak_albedo.png')], []);
+		revision = 'r2';
+		expect(await session.accept()).toBe(false);
+		expect(accept).not.toHaveBeenCalled();
+		expect(session.errorMessage).toContain('project changed');
+		expect(session.proposal?.expectedRevision).toBe('r2');
+		session.cancel(false);
+	});
+
+	it('does not accept a draft if a field changes while acceptance is preparing', async () => {
+		const proofs = createMaterialProofRegistry();
+		const accept = vi.fn();
+		const session = createMaterialImportSession({
+			acceptHost: () => ({ accept }) as never,
+			expectedRevision: () => ({ projectId: 'p1', revisionId: 'r1' }),
+			materialProofs: () => proofs
+		});
+		await session.start([pngFile('oak_albedo.png')], []);
+		const original = proofs.prepareFinishRegistration.bind(proofs);
+		let release: (() => void) | undefined;
+		vi.spyOn(proofs, 'prepareFinishRegistration').mockImplementationOnce(async (recipe) => {
+			const result = await original(recipe);
+			await new Promise<void>((resolve) => { release = resolve; });
+			return result;
+		});
+		const accepting = session.accept();
+		await vi.waitFor(() => expect(release).toBeDefined());
+		session.setName('Changed');
+		release!();
+		expect(await accepting).toBe(false);
+		expect(accept).not.toHaveBeenCalled();
+		expect(session.phase).toBe('ready');
+		session.cancel(false);
+	});
+
 	it('auto-settles a clean vendor set (_gl + _arm) with zero blocking questions', async () => {
 		const proofs = createMaterialProofRegistry();
 		const session = createMaterialImportSession({

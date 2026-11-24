@@ -119,6 +119,7 @@ import {
 import { createFinishAlign, type FinishAlign } from './finish-align.svelte';
 import {
 	createAppearanceIssues,
+	repairSurfaceRef,
 	type AppearanceIssue,
 	type AppearanceIssueActionKind,
 	type AppearanceIssuesService
@@ -1501,7 +1502,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				// asset was reused and the Scene already says exactly this.
 				if (outcome.reason === 'no-change' || outcome.code === 'no-change') {
 					host.onNotice('That image is already applied.');
-					return { kind: 'accepted' };
+					return { kind: 'no-op', message: 'That image is already applied.' };
 				}
 				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
 			}
@@ -1555,7 +1556,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 				return { kind: 'refused', message: outcome.message ?? 'The image could not be saved.' };
 			}
 			return { kind: 'no-op' };
-		});
+		}).then(() => undefined);
 	}
 
 	function setPaletteSlotColor(slotId: string, color: string): Promise<void> {
@@ -1929,11 +1930,11 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 	}
 
 	/** The Card's More › Image › Replace: the reach was chosen before the edit (D2). */
-	function replaceImageFor(entityId: string, file: File, mode: 'just-this' | 'all' | 'in-place'): Promise<void> {
+	function replaceImageFor(entityId: string, file: File, mode: 'just-this' | 'all' | 'in-place'): Promise<FinishImageOutcome> {
 		const context = captureImageWrite();
 		if (context === null) {
 			host.onNotice('The Stage is still opening.');
-			return Promise.resolve();
+			return Promise.resolve({ kind: 'refused', message: 'The Stage is still opening.' });
 		}
 		return imageFlow.begin(file, async (image, warning) => {
 			if (!imageWriteIsCurrent(context)) return { kind: 'no-op' };
@@ -1987,25 +1988,12 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		retryTextures: host.retryTextures
 	});
 
-	function parseSurfaceRefKey(raw: string): SceneSurfaceRef | null {
-		const parts = raw.split(':');
-		if (parts[0] === 'wall-side' && parts[1] && (parts[2] === 'left' || parts[2] === 'right')) {
-			return { kind: 'wall-side', wallId: parts[1], side: parts[2] };
-		}
-		if (parts[0] === 'room-floor' && parts[1]) return { kind: 'room-floor', roomId: parts[1] };
-		if (parts[0] === 'room-lid' && parts[1]) return { kind: 'room-lid', roomId: parts[1] };
-		if (parts[0] === 'region-face' && parts[1] && (parts[2] === 'top' || parts[2] === 'underside')) {
-			return { kind: 'region-face', regionId: parts[1], face: parts[2] };
-		}
-		return null;
-	}
-
 	function targetFromKey(targetKey: string): FinishCardTarget | null {
 		if (targetKey.startsWith('entity:')) {
 			return { kind: 'entity', entityId: targetKey.slice('entity:'.length) };
 		}
 		if (targetKey.startsWith('surface:')) {
-			const surface = parseSurfaceRefKey(targetKey.slice('surface:'.length));
+			const surface = repairSurfaceRef(targetKey);
 			return surface === null ? null : { kind: 'surface', surface };
 		}
 		return null;
@@ -2050,7 +2038,15 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		}
 		if (kind === 'replace') {
 			if (file === undefined) return false;
-			await card.replaceImage(target, file);
+			if (issue.role !== 'color') {
+				issues.setRefusal(issue.id, 'Replacing this map role is not available yet.');
+				return false;
+			}
+			const outcome = await card.replaceImage(target, file);
+			if (outcome.kind !== 'accepted') {
+				issues.setRefusal(issue.id, outcome.message ?? 'The image was not replaced.');
+				return false;
+			}
 			issues.noteRepaired({
 				finishKey: issue.finishKey,
 				finishName: issue.finishName,
@@ -2065,8 +2061,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 			const role = issue.role ?? 'color';
 			let ok = false;
 			if (role === 'color') {
-				await card.setColourMode(target, 'painted');
-				ok = true;
+				ok = await card.setColourMode(target, 'painted');
 			} else {
 				ok = await card.edit(target, () => [{ field: `maps.${role}` as const, op: 'disable' }]);
 			}
@@ -2251,7 +2246,7 @@ export function createFinishAuthoring(host: FinishAuthoringHost) {
 		wornLabel,
 		coatReading,
 		addFromImage,
-		retryImageUpload: () => imageFlow.retry(),
+		retryImageUpload: () => imageFlow.retry().then(() => undefined),
 		cancelImage: () => imageFlow.cancel(),
 		resetImage: () => imageFlow.reset(),
 		setPaletteSlotColor,

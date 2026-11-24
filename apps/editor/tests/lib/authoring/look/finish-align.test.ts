@@ -77,7 +77,7 @@ describe('Align math and session (T2.S8 U6)', () => {
 		const entryState = { reading: '3d', pose: { target: [0, 0, 0] } } as never;
 		const face = vi.fn(() => true);
 		const frameFloor = vi.fn(() => true);
-		const putBack = vi.fn(() => true);
+		const putBack = vi.fn().mockReturnValueOnce(false).mockReturnValue(true);
 		wallFace.setCameraPort({
 			standpoint: () => entryState,
 			face,
@@ -109,9 +109,14 @@ describe('Align math and session (T2.S8 U6)', () => {
 		expect(frameFloor).toHaveBeenCalledTimes(1);
 		expect(align.active?.surface).toBe('floor');
 
+		expect(align.putBack(false)).toBe(false);
+		expect(align.active?.surface).toBe('floor');
+		expect(align.refusal).toContain('Camera could not return');
+		expect(wallFace.reading()?.entry).toBe(entryState);
 		expect(align.putBack(false)).toBe(true);
 		expect(putBack).toHaveBeenCalledWith(entryState);
 		expect(align.active).toBeNull();
+		expect(align.refusal).toBeNull();
 		wallFace.setCameraPort(null);
 	});
 });

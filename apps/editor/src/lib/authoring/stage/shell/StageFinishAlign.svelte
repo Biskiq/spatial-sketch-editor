@@ -8,6 +8,7 @@
 	 * Dragging or nudging previews through the Card adapter; pointerup / keyup
 	 * commits once (C12).
 	 */
+	import { onDestroy, onMount } from 'svelte';
 	import {
 		alignMappingEdits,
 		alignResetEdits,
@@ -23,35 +24,87 @@
 
 	let {
 		align,
+		refusal = null,
 		tileMeters,
 		offsetMeters,
 		angleDeg,
 		source,
 		recipes,
-		onPreview,
+		onMaterialPreview,
 		onCancelPreview,
 		onCommit,
 		onPutBack,
 		viewportWidth = 856,
-		viewportHeight = 608
+		viewportHeight = 608,
+		projected = null,
+		canvasLeft = 0,
+		canvasTop = 0
 	}: {
 		align: ActiveFinishAlign;
+		refusal?: string | null;
 		tileMeters: number;
 		offsetMeters: readonly [number, number];
 		angleDeg: number;
 		source: FinishSource;
 		recipes: ReadonlyMap<string, Recipe>;
-		onPreview: (edits: readonly FinishPatchEdit[]) => void;
+		onMaterialPreview: (edits: readonly FinishPatchEdit[]) => void;
 		onCancelPreview: () => void;
 		onCommit: (edits: readonly FinishPatchEdit[]) => Promise<boolean> | void;
 		onPutBack: () => void;
 		viewportWidth?: number;
 		viewportHeight?: number;
+		/** The target surface's four corners projected through the live Camera, in canvas-local CSS px. */
+		projected?: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } | null;
+		canvasLeft?: number;
+		canvasTop?: number;
 	} = $props();
 
 	let liveOff = $state<[number, number] | null>(null);
 	let liveRot = $state<number | null>(null);
+	let svgEl = $state<SVGSVGElement | null>(null);
+	let svgBox = $state({ left: 0, top: 0, width: 0, height: 0 });
 	let keyDirty = $state<'offset' | 'angle' | null>(null);
+	let cancelDrag: (() => void) | null = null;
+
+	function discardGesture(): void {
+		cancelDrag?.();
+		cancelDrag = null;
+		liveOff = null;
+		liveRot = null;
+		keyDirty = null;
+		onCancelPreview();
+	}
+
+	onMount(() => {
+		const onEscape = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') discardGesture();
+		};
+		window.addEventListener('keydown', onEscape, true);
+		window.addEventListener('blur', discardGesture);
+		return () => {
+			window.removeEventListener('keydown', onEscape, true);
+			window.removeEventListener('blur', discardGesture);
+		};
+	});
+
+	// Measure the SVG's own box so projected canvas pixels map exactly onto it.
+	$effect(() => {
+		const element = svgEl;
+		if (element === null) return;
+		const measure = () => {
+			const box = element.getBoundingClientRect();
+			svgBox = { left: box.left, top: box.top, width: box.width, height: box.height };
+		};
+		measure();
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+		observer?.observe(element);
+		window.addEventListener('resize', measure);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener('resize', measure);
+		};
+	});
+	onDestroy(discardGesture);
 
 	const boxW = $derived(Math.max(320, viewportWidth));
 	const boxH = $derived(Math.max(240, viewportHeight - 88));
@@ -62,19 +115,52 @@
 	const displayOx = $derived(mod(curOff[0], tile));
 	const displayOy = $derived(mod(curOff[1], tile));
 
-	// Fit the faced surface rectangle with ruler padding (l 44, r 24, t 20, b 40)
+	// Ruler padding (l 44, r 24, t 20, b 40) only frames the fallback rectangle.
 	const pad = { l: 44, r: 24, t: 20, b: 40 };
-	const scale = $derived(Math.min((boxW - pad.l - pad.r) / align.widthMeters, (boxH - pad.t - pad.b) / align.heightMeters));
-	const rectW = $derived(align.widthMeters * scale);
-	const rectH = $derived(align.heightMeters * scale);
-	const x0 = $derived(pad.l + (boxW - pad.l - pad.r - rectW) / 2);
-	const y0 = $derived(pad.t + (boxH - pad.t - pad.b - rectH) / 2);
+	/**
+	 * The faced surface rectangle in the SVG's own pixel frame. When the live
+	 * Camera projection is available it is the target's projected corners; the
+	 * fallback (no evaluation yet, or tests) fits the declared extent.
+	 */
+	const surfaceRect = $derived.by(() => {
+		const width = svgBox.width > 0 ? svgBox.width : boxW;
+		const height = svgBox.height > 0 ? svgBox.height : boxH;
+		const live = projected;
+		if (live !== null && svgBox.width > 0) {
+			return {
+				boxW: width,
+				boxH: height,
+				x0: live.left - (svgBox.left - canvasLeft),
+				y0: live.top - (svgBox.top - canvasTop),
+				w: Math.max(1, live.right - live.left),
+				h: Math.max(1, live.bottom - live.top)
+			};
+		}
+		const scale = Math.min((width - pad.l - pad.r) / align.widthMeters, (height - pad.t - pad.b) / align.heightMeters);
+		const w = align.widthMeters * scale;
+		const h = align.heightMeters * scale;
+		return {
+			boxW: width,
+			boxH: height,
+			x0: pad.l + (width - pad.l - pad.r - w) / 2,
+			y0: pad.t + (height - pad.t - pad.b - h) / 2,
+			w,
+			h
+		};
+	});
+	const rectW = $derived(surfaceRect.w);
+	const rectH = $derived(surfaceRect.h);
+	const x0 = $derived(surfaceRect.x0);
+	const y0 = $derived(surfaceRect.y0);
 	const y1 = $derived(y0 + rectH);
-	const tilePx = $derived(Math.max(12, tile * scale));
+	const scaleX = $derived(rectW / align.widthMeters);
+	const scaleY = $derived(rectH / align.heightMeters);
+	const tilePxX = $derived(Math.max(8, tile * scaleX));
+	const tilePxY = $derived(Math.max(8, tile * scaleY));
 
-	const hx = $derived(x0 + Math.min(displayOx, align.widthMeters) * scale);
-	const hy = $derived(y1 - Math.min(displayOy, align.heightMeters) * scale);
-	const armRadius = $derived(Math.min(Math.max(tilePx * 0.9, 56), 120));
+	const hx = $derived(x0 + Math.min(displayOx, align.widthMeters) * scaleX);
+	const hy = $derived(y1 - Math.min(displayOy, align.heightMeters) * scaleY);
+	const armRadius = $derived(Math.min(Math.max(Math.min(tilePxX, tilePxY) * 0.9, 56), 120));
 	const armAngleRad = $derived((-curRot * Math.PI) / 180);
 	const rx = $derived(hx + Math.cos(armAngleRad) * armRadius);
 	const ry = $derived(hy + Math.sin(armAngleRad) * armRadius);
@@ -83,7 +169,7 @@
 		const out: { x: number; major: boolean; label: string }[] = [];
 		for (let m = 0; m <= align.widthMeters + 1e-6; m = Number((m + 0.1).toFixed(2))) {
 			const major = Math.abs(m - Math.round(m)) < 1e-4;
-			out.push({ x: x0 + m * scale, major, label: `${Math.round(m)} m` });
+			out.push({ x: x0 + m * scaleX, major, label: `${Math.round(m)} m` });
 		}
 		return out;
 	});
@@ -91,13 +177,13 @@
 		const out: { y: number; major: boolean; label: string }[] = [];
 		for (let m = 0; m <= align.heightMeters + 1e-6; m = Number((m + 0.1).toFixed(2))) {
 			const major = Math.abs(m - Math.round(m)) < 1e-4;
-			out.push({ y: y1 - m * scale, major, label: `${Math.round(m)}` });
+			out.push({ y: y1 - m * scaleY, major, label: `${Math.round(m)}` });
 		}
 		return out;
 	});
 
 	function previewNow(off: readonly [number, number], rot: number): void {
-		onPreview(alignMappingEdits(source, recipes, off, rot));
+		onMaterialPreview(alignMappingEdits(source, recipes, off, rot));
 	}
 
 	function commitNow(off: readonly [number, number], rot: number): void {
@@ -110,6 +196,7 @@
 	}
 
 	function startOffsetDrag(event: PointerEvent): void {
+		discardGesture();
 		event.preventDefault();
 		const el = event.currentTarget as Element;
 		el.setPointerCapture(event.pointerId);
@@ -119,27 +206,40 @@
 		let latest: [number, number] = [...startOff];
 		const onMove = (ev: Event) => {
 			const pe = ev as PointerEvent;
+			if (pe.pointerId !== event.pointerId) return;
 			const dx = pe.clientX - startX;
 			const dy = pe.clientY - startY;
 			latest = [
-				snapAlignOffset(startOff[0] + dx / scale, pe.shiftKey),
-				snapAlignOffset(startOff[1] - dy / scale, pe.shiftKey)
+				snapAlignOffset(startOff[0] + dx / scaleX, pe.shiftKey),
+				snapAlignOffset(startOff[1] - dy / scaleY, pe.shiftKey)
 			];
 			liveOff = latest;
 			previewNow(latest, curRot);
 		};
-		const onUp = () => {
+		const cleanup = () => {
 			el.removeEventListener('pointermove', onMove);
 			el.removeEventListener('pointerup', onUp);
-			el.removeEventListener('pointercancel', onUp);
+			el.removeEventListener('pointercancel', onCancel);
+			el.removeEventListener('lostpointercapture', onCancel);
+			window.removeEventListener('blur', onCancel);
+			cancelDrag = null;
+		};
+		const onUp = (ev: Event) => {
+			if ((ev as PointerEvent).pointerId !== event.pointerId) return;
+			cleanup();
 			commitNow(latest, curRot);
 		};
+		const onCancel = () => discardGesture();
+		cancelDrag = cleanup;
 		el.addEventListener('pointermove', onMove);
 		el.addEventListener('pointerup', onUp);
-		el.addEventListener('pointercancel', onUp);
+		el.addEventListener('pointercancel', onCancel);
+		el.addEventListener('lostpointercapture', onCancel);
+		window.addEventListener('blur', onCancel);
 	}
 
 	function startAngleDrag(event: PointerEvent): void {
+		discardGesture();
 		event.preventDefault();
 		const el = event.currentTarget as Element;
 		el.setPointerCapture(event.pointerId);
@@ -148,6 +248,7 @@
 		let latest = curRot;
 		const onMove = (ev: Event) => {
 			const pe = ev as PointerEvent;
+			if (pe.pointerId !== event.pointerId) return;
 			const px = pe.clientX - originClientX;
 			const py = pe.clientY - originClientY;
 			const rawDeg = (-Math.atan2(py - hy, px - hx) * 180) / Math.PI;
@@ -155,15 +256,26 @@
 			liveRot = latest;
 			previewNow(curOff, latest);
 		};
-		const onUp = () => {
+		const cleanup = () => {
 			el.removeEventListener('pointermove', onMove);
 			el.removeEventListener('pointerup', onUp);
-			el.removeEventListener('pointercancel', onUp);
+			el.removeEventListener('pointercancel', onCancel);
+			el.removeEventListener('lostpointercapture', onCancel);
+			window.removeEventListener('blur', onCancel);
+			cancelDrag = null;
+		};
+		const onUp = (ev: Event) => {
+			if ((ev as PointerEvent).pointerId !== event.pointerId) return;
+			cleanup();
 			commitNow(curOff, latest);
 		};
+		const onCancel = () => discardGesture();
+		cancelDrag = cleanup;
 		el.addEventListener('pointermove', onMove);
 		el.addEventListener('pointerup', onUp);
-		el.addEventListener('pointercancel', onUp);
+		el.addEventListener('pointercancel', onCancel);
+		el.addEventListener('lostpointercapture', onCancel);
+		window.addEventListener('blur', onCancel);
 	}
 
 	function onOffsetKeydown(event: KeyboardEvent): void {
@@ -197,14 +309,12 @@
 	}
 
 	function resetAlign(): void {
-		onCancelPreview();
-		liveOff = null;
-		liveRot = null;
+		discardGesture();
 		const edits = alignResetEdits(source, recipes);
 		if (edits.length > 0) void onCommit(edits);
 	}
 
-	const patternTransform = $derived(`translate(${x0 + curOff[0] * scale} ${y1 - curOff[1] * scale}) rotate(${-curRot})`);
+	const patternTransform = $derived(`translate(${x0 + curOff[0] * scaleX} ${y1 - curOff[1] * scaleY}) rotate(${-curRot})`);
 </script>
 
 <div
@@ -230,15 +340,17 @@
 			class="al-btn pri"
 			title="Back to the room view (Esc)"
 			data-align-put-back
-			onclick={onPutBack}
+			onclick={() => { discardGesture(); onPutBack(); }}
 		>Put back</button>
 	</div>
+	{#if refusal}<div role="status" class="al-refusal">{refusal}</div>{/if}
 
 	<svg
 		class="al-svg"
-		width={boxW}
-		height={boxH}
-		viewBox={`0 0 ${boxW} ${boxH}`}
+		bind:this={svgEl}
+		width={surfaceRect.boxW}
+		height={surfaceRect.boxH}
+		viewBox={`0 0 ${surfaceRect.boxW} ${surfaceRect.boxH}`}
 		role="img"
 		aria-label={`${align.place} faced straight on, ${align.widthMeters.toFixed(1)} by ${align.heightMeters.toFixed(1)} metres`}
 	>
@@ -247,13 +359,13 @@
 				id="stage-align-grid"
 				patternUnits="userSpaceOnUse"
 				x="0"
-				y={-tilePx}
-				width={tilePx}
-				height={tilePx}
+				y="0"
+				width={tilePxX}
+				height={tilePxY}
 				patternTransform={patternTransform}
 			>
 				<path
-					d={`M0 0.7h${Math.max(1, tilePx - 0.7)}v${tilePx}`}
+					d={`M0 0.7h${Math.max(1, tilePxX - 0.7)}v${tilePxY}`}
 					fill="none"
 					stroke="#ffffff"
 					stroke-width="1.4"
@@ -336,6 +448,7 @@
 				onpointerdown={startOffsetDrag}
 				onkeydown={onOffsetKeydown}
 				onkeyup={onOffsetKeyup}
+				onblur={discardGesture}
 			/>
 			<circle
 				class="hrot"
@@ -350,6 +463,7 @@
 				onpointerdown={startAngleDrag}
 				onkeydown={onAngleKeydown}
 				onkeyup={onAngleKeyup}
+				onblur={discardGesture}
 			/>
 		</g>
 	</svg>
@@ -390,6 +504,12 @@
 		pointer-events: auto;
 	}
 	.al-meta { color: var(--shell-ink-2); }
+	.al-refusal {
+		padding: 6px 12px;
+		background: var(--shell-caution-bg);
+		color: var(--shell-caution);
+		font-size: 12px;
+	}
 	.al-read {
 		margin-left: auto;
 		font-size: 11px;
