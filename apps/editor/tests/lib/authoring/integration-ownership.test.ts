@@ -105,6 +105,39 @@ describe('feature entry contract', () => {
 	});
 });
 
+function sourceFiles(path: string): string[] {
+	return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
+		const next = join(path, entry.name);
+		if (entry.isDirectory()) return sourceFiles(next);
+		return entry.name.endsWith('.ts') || entry.name.endsWith('.svelte') ? [next] : [];
+	});
+}
+
+describe('composition roots', () => {
+	it('lets only the spatial route import the host factory (D4)', () => {
+		const files = sourceFiles(join(ROOT, 'src')).filter((file) => /\.(ts|svelte)$/.test(file));
+		const importers = files.filter((file) => /workspace\/host\/workspace-host/.test(readFileSync(file, 'utf8')));
+		expect(importers.map((file) => file.slice(ROOT.length + 1))).toEqual([
+			'src/routes/project/[projectId]/spatial/+page.svelte'
+		]);
+	});
+
+	it('mounts each shared region exactly once (RM)', () => {
+		const files = sourceFiles(join(ROOT, 'src')).filter((file) => file.endsWith('.svelte'));
+		for (const component of [
+			'EditorHead', 'StageProjectNotices', 'StageViewportRegion', 'StagePanels', 'StageToolbars',
+			'StageCanvas', 'StageCamera', 'EditorIndex', 'EditorCard', 'ExperienceGuide',
+			'ExperienceDock', 'StageDraftingControl', 'StageScaleBar', 'StageHeightSheet'
+		]) {
+			const mounts = files.flatMap((file) => {
+				const count = readFileSync(file, 'utf8').match(new RegExp(`<${component}\\b`, 'g'))?.length ?? 0;
+				return count === 0 ? [] : [`${file.slice(ROOT.length + 1)} ×${count}`];
+			});
+			expect(mounts, component).toHaveLength(1);
+		}
+	});
+});
+
 describe('authority uniqueness', () => {
 	const AUTHORITIES = [
 		'createStageProjectEpoch',
@@ -126,14 +159,6 @@ describe('authority uniqueness', () => {
 		'createStudioController',
 		'createFinishAuthoring'
 	];
-
-	function sourceFiles(path: string): string[] {
-		return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
-			const next = join(path, entry.name);
-			if (entry.isDirectory()) return sourceFiles(next);
-			return entry.name.endsWith('.ts') || entry.name.endsWith('.svelte') ? [next] : [];
-		});
-	}
 
 	it('constructs each authority exactly once anywhere in src', () => {
 		const files = sourceFiles(join(ROOT, 'src'));
