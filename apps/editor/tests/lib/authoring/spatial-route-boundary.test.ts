@@ -38,6 +38,7 @@ const HISTORY = path.join(EDITOR_LIB, 'authoring/stage/route/stage-history-comma
 const LISTENERS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-window-listeners.ts');
 const EPOCH = path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.svelte.ts');
 const ASSETS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts');
+const APPEARANCE = path.join(EDITOR_LIB, 'authoring/look/appearance-feature.svelte.ts');
 const INPUT = path.join(EDITOR_LIB, 'authoring/stage/route/stage-input.svelte.ts');
 const KEYBOARD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-keyboard.ts');
 const READINGS = path.join(EDITOR_LIB, 'authoring/stage/readings/layout-readings-feature.svelte.ts');
@@ -140,7 +141,8 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(history).toContain("undo: () => input.lifecycle().historyStep('undo')");
 		expect(history).toContain("redo: () => input.lifecycle().historyStep('redo')");
 		expect(LIFECYCLE_ORDER.historyStep).toEqual(['appearance:cancel-card-gesture', 'core:run-history']);
-		expect(code).toMatch(/historyStep:\s*\{\s*'cancel-card-gesture': \(\) => \{ finishes\.card\.cancel\(\); \}/);
+		// String retarget (Appendix B B.3): the step's handler now lives in its owner.
+		expect(stripComments(fs.readFileSync(APPEARANCE, 'utf8'))).toMatch(/historyStep:\s*\{\s*'cancel-card-gesture': card\.cancelCardGesture\s*\}/);
 		expect(core).toContain("'run-history': input.history.run");
 		expect(history).toMatch(/run\(direction:[\s\S]*?if \(direction === 'undo'\) void input\.epoch\.undo\(\);\s*else void input\.epoch\.redo\(\);/);
 		expect(code).toContain('artworkScope: () => stageAssets.artworkScope');

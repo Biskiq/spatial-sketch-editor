@@ -55,7 +55,6 @@
 	import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
 	import { createArtworkFeature } from '$lib/authoring/artwork/artwork-feature.svelte';
 	import { createLayoutReadingsFeature } from '$lib/authoring/stage/readings/layout-readings-feature.svelte';
-	import type { AlignCutawayRequest } from '$lib/authoring/stage/readings/layout-readings-view';
 	import { createStageInputArbiter } from '$lib/authoring/stage/route/stage-input.svelte';
 	import { createStageKeyboard } from '$lib/authoring/stage/route/stage-keyboard';
 	import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
@@ -92,7 +91,6 @@
 	import '$lib/authoring/stage/shell/shell-roles.css';
 	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
-	import StageRepairDrawer from '$lib/authoring/stage/shell/StageRepairDrawer.svelte';
 	import { invalidateFinishViewsForSource } from '$lib/render/resources/finish-views';
 	import { invalidateTextureSource } from '$lib/render/resources/texture-store';
 	import StagePanels from '$lib/authoring/stage/shell/StagePanels.svelte';
@@ -132,26 +130,13 @@
 		type FinishAuthoring
 	} from '$lib/authoring/look/finish-authoring.svelte';
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
-	import { withFinishInstancePreview } from '@portfolio/project-model/scene-planning';
-	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
+	import { createAppearanceFeature } from '$lib/authoring/look/appearance-feature.svelte';
+	import AppearanceWorldRegions from '$lib/authoring/look/AppearanceWorldRegions.svelte';
+	import AppearanceSharedRegions from '$lib/authoring/look/AppearanceSharedRegions.svelte';
 	import LibraryWorldRegion from '$lib/authoring/library/LibraryWorldRegion.svelte';
 	import { createLibraryFeature } from '$lib/authoring/library/library-feature.svelte';
-	import LibraryMaterialEditor from '$lib/authoring/library/LibraryMaterialEditor.svelte';
-	import MaterialImportSheet from '$lib/authoring/library/MaterialImportSheet.svelte';
-	import { createMaterialImportSession, type ImportTargetChoice } from '$lib/authoring/library/material-import.svelte';
-	import StageFinishAlign from '$lib/authoring/stage/shell/StageFinishAlign.svelte';
-	import {
-		ALIGN_CARD_COVER_PX,
-		ALIGN_INDEX_LANE_PX,
-		regionFraming
-	} from '$lib/authoring/look/align-chart';
-	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
-	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
-	import { finishCardTargetKey } from '$lib/authoring/look/finish-card.svelte';
-	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
-	import { materialTreatmentFacts } from '$lib/content/material-presentation';
 	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
@@ -260,7 +245,7 @@
 		assets: stageAssets,
 		materialProofs,
 		ports: {
-			finishCard: () => finishes,
+			finishCard: () => appearance.ports.adapter(),
 			lightInspection: () => lightInspection.ports.card,
 			objectStudio: () => objectStudioPort,
 			openSpaceCreated: () => openSpaceCreated
@@ -394,7 +379,7 @@
 			lightInspection.ports.cancel();
 			// Align, the material Editor, Import and the repair pickers end by their
 			// cancel paths; Align restores its entry standpoint first (U6 lifecycle).
-			endMaterialOperations(true);
+			appearance.ports.endOperations(true);
 			experience.stopAndRestore();
 		},
 		snapSuspended: () => shell.drafting.snapSuspended,
@@ -517,24 +502,52 @@
 	}
 
 	const selectionView = createStageSelectionView();
-	let finishCardSelectionKey = '';
-	$effect(() => {
-		const entry = selection;
-		const key = entry === null
-			? ''
-			: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
-		if (key === finishCardSelectionKey) return;
-		finishCardSelectionKey = key;
-		// A selection change discards a Card gesture: nothing is written. The
-		// material Editor and the image/repair pickers it opened belong to the old
-		// target and close by their cancel paths (U6 lifecycle); Align follows the
-		// Card's open user below.
-		untrack(() => {
-			finishes.card.cancel();
-			if (finishes.editor.open) finishes.editor.close(false);
-			finishes.cancelImage();
-			finishes.issues.cancelRepairs();
-		});
+	const appearance = createAppearanceFeature({
+		card: {
+			selection: () => selection,
+			finishes: () => finishes,
+			snapshot: ready.snapshot
+		},
+		draft: {
+			snapshot: ready.snapshot,
+			textureScope: () => stageAssets.textureScope,
+			finishes: () => finishes,
+			selection: () => selection,
+			shell,
+			canShowEditor: () => preview === null && experience.lensState === 'world' && adapterServices !== null,
+			entries: () => library.view.props.entries,
+			tileSource: (entry) => library.ports.tileSource(entry),
+			armWorldTool: (tool) => commands.armWorldTool(tool)
+		},
+		materialImport: {
+			api, projectId, materialProofs,
+			snapshot: ready.snapshot,
+			services: () => adapterServices,
+			onNotice: (message) => shell.setNotice(message),
+			finishes: () => finishes
+		},
+		paint: {
+			shell,
+			finishes: () => finishes,
+			previewing: () => preview !== null,
+			openLibrary: () => commands.toggleWorldLibrary('paint')
+		},
+		align: {
+			shell,
+			finishes: () => finishes,
+			previewing: () => preview !== null,
+			lens: () => experience.lensState,
+			available: () => adapterServices !== null,
+			rect: () => rect,
+			facade: () => facade,
+			evaluation: () => evaluation,
+			snapshot: ready.snapshot,
+			alignHiddenWallIds: () => readings.alignHiddenWallIds
+		},
+		repair: {
+			projectId,
+			finishes: () => finishes
+		}
 	});
 	const sceneRooms = $derived(
 		currentEnvelope === null ? new Map<string, string>() : acceptedSceneRoomMembership(currentEnvelope)
@@ -571,41 +584,6 @@
 		};
 	});
 	const dockView = $derived(stageDockView({ facade, revision: shell.contributionsVersion }));
-	const paintTray = $derived(finishes.paintTray());
-	const paintTrayState = createPaintTrayState();
-	// Paint's consequence line, read on the Stage view bar while the tray is up.
-	const paintLine = $derived(
-		shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen && finishes.libraryDraft === null
-			? paintConsequence({
-				stroke: shell.paintTool?.stroke() ?? null,
-				dropper: paintTray.dropper,
-				picked: paintTray.active !== null,
-				tab: paintTray.colourEnabled ? paintTrayState.tab : 'materials',
-				candidate: shell.paintCandidate
-			})
-			: null
-	);
-	$effect(() => {
-		if (shell.armedHostTool !== 'paint') paintTrayState.reset();
-	});
-	/** One project Finish's picture source: the accepted Scene, read at its content id, through the project's texture scope. */
-	function finishTileSource(finishId: string): FinishTileSource | null {
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		return {
-			kind: 'finish',
-			subject: {
-				kind: 'finish',
-				document: boot.snapshot.domain.scene,
-				finishId,
-				revision: boot.snapshot.sourceContentId,
-				scope: stageAssets.textureScope
-			}
-		};
-	}
-	const finishShelf = $derived.by(() => {
-		void shell.contributionsVersion;
-		return finishes.libraryShelf();
-	});
 	const library = createLibraryFeature({
 		shell,
 		selection: () => selection,
@@ -616,166 +594,11 @@
 		lens: () => experience.lensState,
 		previewing: () => preview !== null,
 		available: () => adapterServices !== null,
-		finishTileSource,
+		finishTileSource: appearance.ports.finishTileSource,
 		armArtwork: (entry) => artwork.ports.arm(entry),
 		importArtwork: (files) => artwork.ports.importFiles(files),
-		importMaterial: (files, invoker) => materialImport.start(files, currentImportTargets(), invoker),
+		importMaterial: (files, invoker) => appearance.ports.importMaterial(files, invoker),
 		pickLook: (id) => sky.ports.pickLibraryEntry(id)
-	});
-
-	/**
-	 * The draft's render-only Stage projection, held stable between scene reads:
-	 * a fresh object per read would make every Stage evaluation look changed.
-	 */
-	const materialImport = createMaterialImportSession({
-		acceptHost: () => {
-			if ((boot.status !== 'ready' && boot.status !== 'empty') || adapterServices === null || api === null) return null;
-			const services = adapterServices;
-			const cloudApi = api;
-			return {
-				api: cloudApi,
-				projectId,
-				current: () => {
-					const shot = services.stage.snapshot();
-					return { revision: shot.acceptedRevision, source: stageEnvelope(shot) };
-				},
-				accept: async (intent) => {
-					const outcome = await services.authoring.accept(intent);
-					if (outcome.kind === 'installed') return { kind: 'accepted' };
-					if (outcome.kind === 'refused') return { kind: 'rejected', code: outcome.code, message: outcome.message };
-					return { kind: 'rejected', code: outcome.kind, message: 'No change was made.' };
-				},
-				entityReference: (source, entityId) => ({
-					version: 1 as const,
-					domain: 'scene' as const,
-					revision: { kind: 'exact' as const, contentRevision: source.units.scene.header.contentRevision },
-					subject: { kind: 'entity' as const, id: entityId },
-					instancePath: [],
-					location: { kind: 'project-root' as const },
-					componentId: null,
-					capabilityId: null
-				}),
-				surfaceReference: (source, surface) => ({
-					version: 1 as const,
-					domain: 'layout' as const,
-					revision: { kind: 'exact' as const, contentRevision: source.units.layout.header.contentRevision },
-					subject:
-						surface.kind === 'wall-side'
-							? { kind: 'wall' as const, id: surface.wallId }
-							: surface.kind === 'region-face'
-								? { kind: 'region' as const, id: surface.regionId }
-								: { kind: 'room' as const, id: surface.roomId },
-					instancePath: [],
-					location: { kind: 'project-root' as const },
-					componentId: null,
-					capabilityId: null
-				})
-			};
-		},
-		expectedRevision: () => (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.acceptedRevision : null),
-		materialProofs: () => materialProofs,
-		onAccepted: ({ finishKey, name, targetCount, targetKind, firstTarget }) => {
-			finishes.noteUsedFinish?.(finishKey);
-			if (targetCount > 0 && firstTarget !== null) {
-				const nouns = targetKind === 'layout' ? 'surfaces' : 'parts';
-				const other = targetKind === 'layout' ? 'objects' : 'walls';
-				shell.setNotice(`${name} is on ${targetCount} ${nouns} · paint it on ${other} from Materials — same Finish`);
-				if (firstTarget.kind === 'surface') {
-					finishes.card.requestOpen({ kind: 'surface', surface: firstTarget.surface });
-				} else {
-					finishes.card.requestOpen({ kind: 'entity', entityId: firstTarget.id });
-				}
-			} else {
-				shell.setNotice(`${name} added to This project`);
-			}
-		}
-	});
-
-	function currentImportTargets(): ImportTargetChoice[] {
-		const out: ImportTargetChoice[] = [];
-		const target = finishes.libraryTarget();
-		if (target !== null) {
-			if (target.kind === 'entity') {
-				out.push({ kind: 'entity', id: target.entityId, label: target.label });
-			} else {
-				out.push({ kind: 'surface', surface: target.surface, label: target.label });
-			}
-		}
-		return out;
-	}
-
-	const editorTreatmentFacts = materialTreatmentFacts((id) => (materialById.has(id) ? getMaterial(id).label : id));
-
-	function baseSourceOfInstance(instance: { readonly base: { readonly catalogue: string } | { readonly material: string } }): FinishTileSource | null {
-		if ('catalogue' in instance.base) {
-			return { kind: 'catalogue', id: instance.base.catalogue as import('$lib/types/materials').MaterialId };
-		}
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		const scene = boot.snapshot.domain.scene;
-		const id = 'material-editor-base-inspection';
-		return {
-			kind: 'finish',
-			subject: {
-				kind: 'finish',
-				document: {
-					...scene,
-					materials: [
-						...scene.materials.filter((material) => material.id !== id),
-						{ id, name: 'Original', base: instance.base }
-					]
-				},
-				finishId: id,
-				revision: `${boot.snapshot.sourceContentId}#base:${instance.base.material}`,
-				scope: stageAssets.textureScope
-			}
-		};
-	}
-
-	const finishEditorView = $derived.by(() => {
-		void shell.contributionsVersion;
-		void finishes.card.preview;
-		return finishes.editor.view();
-	});
-
-	/** The draft's own render subject for Compare: the patched Finish in a draft-only document. */
-	const libraryDraftRender = $derived.by((): { source: FinishTileSource | null; reason: string | null } => {
-		void shell.contributionsVersion;
-		const drafted = finishes.libraryDraftInstance();
-		if (drafted === null) return { source: null, reason: null };
-		if (!drafted.ok) return { source: null, reason: drafted.reason };
-		if (!drafted.changed) return { source: null, reason: null };
-		if (boot.status !== 'ready' && boot.status !== 'empty') {
-			return { source: null, reason: 'The project is not loaded.' };
-		}
-		const scene = boot.snapshot.domain.scene;
-		const id = 'library-draft-inspection';
-		const editsSig = JSON.stringify(finishes.libraryDraft?.edits ?? []);
-		return {
-			reason: null,
-			source: {
-				kind: 'finish',
-				subject: {
-					kind: 'finish',
-					document: {
-						...scene,
-						materials: [...scene.materials.filter((material) => material.id !== id), { ...drafted.instance, id }]
-					},
-					finishId: id,
-					revision: `${boot.snapshot.sourceContentId}#draft:${finishes.libraryDraft?.finishKey}:${editsSig}`,
-					scope: stageAssets.textureScope
-				}
-			}
-		};
-	});
-	const libraryDraftPreview = $derived.by(() => {
-		void finishes.libraryDraft;
-		void shell.contributionsVersion;
-		return finishes.libraryDraftPreview();
-	});
-	const libraryDraftStatus = $derived.by(() => {
-		void selection;
-		void shell.contributionsVersion;
-		return finishes.libraryDraftStatus();
 	});
 
 	const dockKeys = $derived(dockView.keys);
@@ -1102,36 +925,13 @@
 			}
 		}
 	});
-	let repairDrawerOpen = $state(false);
-	$effect(() => {
-		void projectId;
-		untrack(() => {
-			finishes.issues.reset();
-			repairDrawerOpen = false;
-		});
-	});
+	appearance.attachAuthoring();
 	const bootRepair = createBootRepair({
 		boot: () => boot,
 		projectId: () => projectId,
 		repair: projectSession.repairBootImage
 	});
 
-	/**
-	 * The Customise… draft lives in the Material editor while Paint is armed for
-	 * its Stage retarget; putting Paint down discards it. Only Apply writes.
-	 */
-	$effect(() => {
-		if (finishes.libraryDraft !== null && shell.armedHostTool !== 'paint') finishes.cancelLibraryDraft();
-	});
-	$effect(() => {
-		if (!shell.libraryOpen && finishes.librarySwap !== null) untrack(() => finishes.clearLibrarySwap());
-	});
-	/** Leave the draft editor: discard the draft and hand focus back to the Library key. */
-	function endLibraryDraft(): void {
-		finishes.cancelLibraryDraft();
-		commands.armWorldTool('select');
-		void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
-	}
 	const artwork = createArtworkFeature({
 		interaction: {
 			api,
@@ -1212,12 +1012,12 @@
 			scenePick,
 			pressing: () => stageInput.drag !== null,
 			previewing: () => preview !== null,
-			alignCutaway: readAlignCutaway
+			alignCutaway: appearance.ports.alignCutaway
 		},
 		wallFace: {
 			facade: () => facade,
 			rect: () => rect,
-			alignFraming,
+			alignFraming: appearance.ports.alignFraming,
 			reducedMotion: () => shell.reducedMotion,
 			nowSeconds,
 			submit
@@ -1286,7 +1086,7 @@
 		openCard: () => shell.setCardOpen(true),
 		pendingDelete: () => shell.pendingDelete !== null,
 		clearPendingDelete: () => { shell.setPendingDelete(null); shell.setNotice(''); },
-		cancelFinishGesture: () => finishes.card.cancel(),
+		cancelFinishGesture: appearance.ports.cancelGesture,
 		interrupt: interruptPress,
 		task: () => shell.task,
 		closeTask: () => commands.closeTask(),
@@ -1296,62 +1096,12 @@
 		paintTool: () => shell.paintTool,
 		clearEraseHover: () => shell.setEraseHover(null),
 		clearPaintHover: () => shell.setPaintHover(null),
-		paintKey: (key) => {
-			if (key === 'tab') {
-				if (!finishes.paintTray().colourEnabled) return false;
-				paintTrayState.toggleTab(true);
-			} else if (key === 'reach') {
-				const next = shell.paintTool?.surfaceScope() === 'space' ? 'surface' : 'space';
-				shell.paintTool?.setSurfaceScope(next);
-			} else {
-				if (finishes.dropperArmed) finishes.cancelDropper();
-				else finishes.armDropper();
-			}
-			return true;
-		},
-		dismissAlign: () => {
-			if (!finishes.align.active) return false;
-			finishes.align.putBack();
-			return true;
-		},
-		dismissMaterialEditor: () => {
-			if (finishes.editor.open) {
-				finishes.editor.close(true);
-				return true;
-			}
-			if (finishes.libraryDraft !== null) {
-				endLibraryDraft();
-				return true;
-			}
-			return false;
-		},
-		dismissMaterialImport: () => {
-			if (!materialImport.open) return false;
-			materialImport.cancel();
-			return true;
-		},
-		dismissRepairDrawer: () => {
-			if (!repairDrawerOpen) return false;
-			repairDrawerOpen = false;
-			return true;
-		},
-		dismissPaint: () => {
-			if (finishes.libraryDraft !== null) {
-				endLibraryDraft();
-				return true;
-			}
-			if (paintTrayState.wheelOpen) {
-				// Paint colour closes first and hands focus back to Custom colour.
-				paintTrayState.setWheelOpen(false);
-				document.querySelector<HTMLElement>('[data-paint-wheel-open]')?.focus();
-				return true;
-			}
-			if (finishes.dropperArmed) {
-				finishes.cancelDropper();
-				return true;
-			}
-			return paintTrayState.dismiss();
-		},
+		paintKey: appearance.ports.paintKey,
+		dismissAlign: appearance.ports.dismissAlign,
+		dismissMaterialEditor: appearance.ports.dismissMaterialEditor,
+		dismissMaterialImport: appearance.ports.dismissMaterialImport,
+		dismissRepairDrawer: appearance.ports.dismissRepairDrawer,
+		dismissPaint: appearance.ports.dismissPaint,
 		refreshHostTools: () => shell.refreshHostTools(),
 		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
 		paletteOpen: () => shell.paletteOpen,
@@ -1379,18 +1129,10 @@
 		setCutawayHeld: readings.ports.setCutawayHeld
 	});
 
-	const effectivePlanAppearance = $derived(
-		finishes.align.active?.surface === 'floor' ? 'shaded' : shell.preferences.planAppearance
-	);
+	const effectivePlanAppearance = $derived(appearance.regions.planAppearance);
 	const paperVisible = $derived(isPaperPlanVisible(evaluation, effectivePlanAppearance));
 	const modelUrls = $derived(stageAssets.urls);
 
-	function readAlignCutaway(): AlignCutawayRequest | null {
-		const active = finishes.align.active;
-		return active === null || active.surface !== 'wall'
-			? null
-			: { ids: active.occluders, top: (active.corners[0]?.[1] ?? 0) + 0.005 };
-	}
 
 	readings.attachReadings();
 
@@ -1541,19 +1283,6 @@
 
 	projectSession.bindNavigation();
 
-	function endMaterialOperations(restoreCamera: boolean): boolean {
-		finishes?.card.cancel();
-		if (restoreCamera && finishes?.align.active && !finishes.align.putBack(false)) return false;
-		if (!restoreCamera) finishes?.align.clear();
-		finishes?.editor.close(false);
-		finishes?.cancelLibraryDraft();
-		finishes?.cancelImage();
-		finishes?.issues.cancelRepairs();
-		materialImport.cancel(false);
-		repairDrawerOpen = false;
-		return true;
-	}
-
 	function nowSeconds(): number {
 		return shell.nowSeconds();
 	}
@@ -1588,34 +1317,6 @@
 		stageInput.interrupt(reason);
 	}
 
-	/**
-	 * The Align surface region in canvas-local CSS px, from JS-known shell values
-	 * only (no DOM measurement). It mirrors the overlay CSS: the Stage inset
-	 * (10 px; 14 px above the lower column), the Index lane above 860 px, the
-	 * Card lane, then the bar (41 px, or 107 px wrapped in a narrow region), the
-	 * note (46 px) and the ruler padding (l 44, r 24, t 20, b 40).
-	 */
-	function alignRegion(viewport: { readonly width: number; readonly height: number }): { x: number; y: number; width: number; height: number } | null {
-		const windowWidth = typeof window === 'undefined' ? viewport.width : window.innerWidth;
-		const indexCover = preview === null && shell.indexOpen && windowWidth > 860 ? ALIGN_INDEX_LANE_PX : 0;
-		const left = indexCover + 10;
-		const right = viewport.width - ALIGN_CARD_COVER_PX - 10;
-		const bar = right - left < 640 ? 107 : 41;
-		const top = 10 + bar;
-		const bottom = viewport.height - shell.lowerColumnHeight - 14 - 46;
-		const region = { x: left + 44, y: top + 20, width: right - left - 44 - 24, height: bottom - top - 20 - 40 };
-		return region.width > 40 && region.height > 40 ? region : null;
-	}
-
-	function alignFraming(
-		fit: { readonly center: readonly [number, number, number]; readonly surfaceMeters: readonly [number, number] },
-		axes: { readonly right: readonly [number, number, number]; readonly up: readonly [number, number, number] },
-		viewport: { readonly width: number; readonly height: number }
-	) {
-		const region = alignRegion(viewport);
-		if (region === null) return null;
-		return regionFraming({ center: fit.center, right: axes.right, up: axes.up, surfaceMeters: fit.surfaceMeters, canvas: viewport, region });
-	}
 
 	readings.attachCameraPorts();
 
@@ -1640,29 +1341,7 @@
 		core,
 		features: [
 			lightInspection,
-			{
-				id: 'appearance',
-				lifecycle: {
-					interruptForReplacement: {
-						'end-operations-no-camera': () => { endMaterialOperations(false); },
-						'reset-issues': () => finishes?.issues.reset()
-					},
-					historyStep: { 'cancel-card-gesture': () => { finishes.card.cancel(); } },
-					readingChange: { 'cancel-card-gesture': () => { finishes.card.cancel(); } },
-					settlePending: { 'cancel-card-gesture': () => { finishes.card.cancel(); } },
-					leaveLens: {
-						'end-operations-restore-camera': (next) => {
-							if (next !== 'world' && experience.lensState === 'world') return endMaterialOperations(true);
-						}
-					},
-					windowBlur: { 'cancel-card-gesture': () => { finishes?.card.cancel(); } },
-					leaveProject: { 'cancel-image': () => finishes?.cancelImage() },
-					dispose: {
-						'end-operations-no-camera': () => { endMaterialOperations(false); },
-						'reset-issues': () => finishes.issues.reset()
-					}
-				}
-			},
+			appearance,
 			{
 				id: 'experience',
 				lifecycle: {
@@ -1709,6 +1388,8 @@
 
 	sky.attachSession();
 
+	appearance.attachAlign();
+
 	const coreRegions = createCoreRegionViews({
 		projectId, heightSheet, project: projectSession, shell, history, scenePick, lightPreview,
 		facade: () => facade,
@@ -1748,19 +1429,12 @@
 		const snapshot = ready.snapshot();
 		if (snapshot === null) return null;
 		const coreCanvas = coreRegions.canvas(snapshot);
+		const appearanceCanvas = appearance.regions.regionsCanvas(snapshot);
 		const features = {
-			get scene() {
-				const accepted = ready.snapshot()?.domain.scene;
-				return accepted === undefined ? snapshot.domain.scene : withFinishInstancePreview(accepted, libraryDraftPreview ?? finishes.card.preview);
-			},
 			get studio() {
 				void studioRevision;
 				return studio.active ? { rootId: studio.rootId, context: studio.context } : null;
 			},
-			get proposals() { return finishes.card.proposalEntries(); },
-			get alignHiddenWallIds() { return readings.alignHiddenWallIds; },
-			onFinishOutcome: finishes.issues.recordOutcome,
-			get repairAffectedTargets() { return finishes.issues.hatchedTargets; }
 		};
 		// Assemble descriptors once per admitted source so Svelte reads each
 		// Canvas getter independently of the other regions and source props.
@@ -1772,70 +1446,14 @@
 		};
 		return Object.defineProperties(coreCanvas, {
 			...Object.getOwnPropertyDescriptors(features),
+			...Object.getOwnPropertyDescriptors(appearanceCanvas),
 			...Object.getOwnPropertyDescriptors(sky.regions.canvas),
 			...Object.getOwnPropertyDescriptors(artwork.regions.canvas),
 			...Object.getOwnPropertyDescriptors(liftCanvas),
 			...Object.getOwnPropertyDescriptors(cutawayCanvas),
 			...Object.getOwnPropertyDescriptors(sliceCanvas),
 			...unfold
-		}) as typeof coreCanvas & typeof features & typeof sky.regions.canvas & typeof artwork.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
-	});
-
-	/**
-	 * World → canvas-local CSS px through the live Camera evaluation, for the
-	 * Align overlay. Null while there is no evaluation; the overlay then shows
-	 * a waiting line and disables its handles instead of inventing a frame.
-	 */
-	const alignProject = $derived.by(() => {
-		const stage = facade;
-		const current = evaluation;
-		if (finishes.align.active === null || stage === null || current === null) return null;
-		const id = stage.evaluationId();
-		if (id === null) return null;
-		const left = current.rect.left;
-		const top = current.rect.top;
-		return (point: readonly [number, number, number]): readonly [number, number] | null => {
-			const projected = stage.projectWorld(point, id);
-			return projected.kind === 'projected' ? [projected.css[0] - left, projected.css[1] - top] : null;
-		};
-	});
-
-	// Re-frame Align when its chrome-free region changes (resize, Index toggled,
-	// lower column resized). The first run per Align only records the region.
-	/** The Align target's Finish, re-read whenever an adapter commit lands (the Card's own signal). */
-	const alignInspectedNow = $derived.by(() => {
-		void shell.contributionsVersion;
-		const active = finishes.align.active;
-		return active === null ? null : finishes.card.inspectedOf(active.target);
-	});
-
-	// Align belongs to the Card's open user: deselect, delete, another surface or
-	// Back ends it exactly as Put back does (U6 lifecycle).
-	$effect(() => {
-		const active = finishes.align.active;
-		if (active === null) return;
-		if (finishes.card.focusedKey === finishCardTargetKey(active.target)) return;
-		untrack(() => finishes.align.putBack(false));
-	});
-
-	let alignRegionKey: string | null = null;
-	let alignRegionFor: object | null = null;
-	$effect(() => {
-		const active = finishes.align.active;
-		const viewport = rect;
-		if (active === null || viewport === null) {
-			alignRegionFor = null;
-			return;
-		}
-		const key = JSON.stringify(alignRegion(viewport));
-		if (alignRegionFor !== active) {
-			alignRegionFor = active;
-			alignRegionKey = key;
-			return;
-		}
-		if (key === alignRegionKey) return;
-		alignRegionKey = key;
-		untrack(() => finishes.align.reframe());
+		}) as typeof coreCanvas & typeof features & typeof appearanceCanvas & typeof sky.regions.canvas & typeof artwork.regions.canvas & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
 	});
 
 	const overlay = $derived({
@@ -1943,14 +1561,14 @@
 			onFurnishBrowse: () => commands.browseFurnish(),
 			onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
 			onMaterialPick: sky.ports.pickMaterial,
-			finishShelf,
+			finishShelf: appearance.regions.finishShelf,
 			onFinishPick: (ref) => {
 				// Library opened from the Paint tray: a pick arms Paint and hands back to the tray.
 				const fromPaint = shell.armedHostTool === 'paint';
 				void finishes.pickFinish(ref);
 				if (fromPaint && shell.libraryOpen) commands.armWorldTool('paint');
 			},
-			finishTileSource,
+			finishTileSource: appearance.ports.finishTileSource,
 			finishImage: finishes.image,
 			onFinishImageImport: (file: File) => void finishes.addFromImage(file),
 			onFinishImageCancel: () => finishes.cancelImage(),
@@ -1961,8 +1579,8 @@
 			onArtworkPick: (entry) => { commands.selectTool(); artwork.ports.arm(entry); },
 			onArtworkImport: (files: File[]) => { commands.selectTool(); void artwork.ports.importFiles(files); },
 			onLookPick: sky.ports.pickLibraryEntry,
-			trayOwnsPlate: shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen,
-			paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
+			trayOwnsPlate: appearance.regions.ownsPaintPlate,
+			paintChip: appearance.regions.paintChip,
 			plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 			inkReading: shell.inkReading,
 			sliceMode: readings.sliceMode,
@@ -2036,9 +1654,7 @@
 			previewUnavailableReason={currentEnvelope === null
 				? 'Preview needs an admitted project source.'
 				: 'Create an Experience in the Experience lens to Preview it.'}
-			repairIssueCount={finishes.issues.count}
-			repairOpen={repairDrawerOpen}
-			onToggleRepair={() => (repairDrawerOpen = !repairDrawerOpen)}
+			{...appearance.regions.head}
 		/>
 	{/if}
 
@@ -2149,7 +1765,7 @@
 			<StageToolbars
 				{...coreRegions.toolbars}
 				previewing={preview !== null}
-				{paintLine}
+				{...appearance.regions.toolbars}
 				viewLine={preview === null
 					? {
 						drafting: {
@@ -2214,165 +1830,15 @@
 
 		<LibraryWorldRegion view={library.view} />
 
-		{#if materialImport.open && preview === null && experience.lensState === 'world'}
-			<MaterialImportSheet session={materialImport} />
-		{/if}
+		<AppearanceWorldRegions
+			importSheet={appearance.regions.importSheet}
+			align={appearance.regions.align}
+			materialEditor={appearance.regions.materialEditor}
+			paint={appearance.regions.paint}
+		/>
 
-		{#if finishes.align.active !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
-			{@const activeAlign = finishes.align.active}
-			{@const alignInspected = alignInspectedNow}
-			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
-			{#if alignInspected !== null && sceneNow !== null}
-				{@const alignSource = { base: alignInspected.instance.base, overrides: alignInspected.instance.overrides }}
-				{@const alignRecipes = sceneNow.materialIndex?.definitions ?? new Map()}
-				<StageFinishAlign
-					align={activeAlign}
-					refusal={finishes.align.refusal}
-					project={alignProject}
-					viewportWidth={rect?.width ?? 856}
-					viewportHeight={rect?.height ?? 608}
-					source={alignSource}
-					recipes={alignRecipes}
-					onMaterialPreview={(edits) => finishes.card.previewEdits(activeAlign.target, () => edits)}
-					onCancelPreview={() => finishes.card.cancel()}
-					onCommit={(edits) => finishes.card.edit(activeAlign.target, () => edits)}
-					onPutBack={() => finishes.align.putBack(true)}
-				/>
-			{/if}
-		{/if}
+		<AppearanceSharedRegions previewing={preview === null} repair={appearance.regions.repair} />
 
-		{#if finishes.libraryDraft !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
-			{@const draftEntry = library.view.props.entries.find((entry) => entry.key === finishes.libraryDraft?.finishKey) ?? null}
-			{@const draftInst = finishes.libraryDraftInstance()}
-			{@const draftFields = finishes.libraryDraftFields()}
-			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
-			{#if draftFields !== null && draftInst !== null && draftInst.ok && sceneNow !== null}
-				{@const origTile = draftEntry === null ? null : library.ports.tileSource(draftEntry)}
-				<LibraryMaterialEditor
-					mode="draft"
-					name={finishes.libraryDraft.name}
-					baseLabel={finishes.libraryDraft.baseLabel}
-					finishKey={finishes.libraryDraft.finishKey}
-					color={draftEntry?.color ?? '#999999'}
-					imageUri={draftEntry?.imageUri ?? null}
-					tileSource={libraryDraftRender.source ?? origTile}
-					originalSource={origTile}
-					fields={draftFields}
-					source={{ base: draftInst.instance.base, overrides: draftInst.instance.overrides }}
-					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
-					palette={sceneNow.palette ?? []}
-					facts={editorTreatmentFacts}
-					inspection={shell.libraryInspection}
-					onInspection={(next) => shell.setLibraryInspection(next)}
-					display={finishes.editor.display}
-					onDisplay={(next) => finishes.editor.setDisplay(next)}
-					lightTurnRadians={finishes.editor.lightTurnRadians}
-					onTurnLight={() => finishes.editor.turnLight()}
-					compare={finishes.editor.compare}
-					onCompare={(next) => finishes.editor.setCompare(next)}
-					draftStatus={libraryDraftStatus}
-					previewing={libraryDraftPreview !== null}
-					busy={finishes.busy}
-					onCommit={(_field, edits) => finishes.patchLibraryDraft(edits)}
-					onResetAll={() => finishes.resetLibraryDraftStep()}
-					onApplyDraft={async () => {
-						const accepted = await finishes.applyLibraryDraft();
-						if (accepted) {
-							commands.armWorldTool('select');
-							void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
-						}
-						return accepted;
-					}}
-					onPaintDraft={() => finishes.paintLibraryDraft()}
-					onCancelDraft={endLibraryDraft}
-				/>
-			{/if}
-		{:else if finishes.editor.open && finishEditorView !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
-			{@const sceneNow = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null}
-			{#if sceneNow !== null}
-				{@const liveSource =
-					finishEditorView.curated && 'catalogue' in finishEditorView.instance.base
-						? { kind: 'catalogue' as const, id: finishEditorView.instance.base.catalogue as import('$lib/types/materials').MaterialId }
-						: finishTileSource(finishEditorView.instance.id)}
-				<LibraryMaterialEditor
-					mode="finish"
-					name={finishEditorView.name}
-					baseLabel={finishEditorView.fields.raw.label}
-					canRename={finishEditorView.canRename}
-					onRename={(nextName) => finishes.card.rename(finishEditorView.target, nextName)}
-					finishKey={finishEditorView.finishKey}
-					tileSource={liveSource}
-					originalSource={baseSourceOfInstance(finishEditorView.instance)}
-					fields={finishEditorView.fields}
-					source={{ base: finishEditorView.instance.base, overrides: finishEditorView.instance.overrides }}
-					recipes={sceneNow.materialIndex?.definitions ?? new Map()}
-					palette={sceneNow.palette ?? []}
-					facts={editorTreatmentFacts}
-					inspection={shell.libraryInspection}
-					onInspection={(next) => shell.setLibraryInspection(next)}
-					display={finishes.editor.display}
-					onDisplay={(next) => finishes.editor.setDisplay(next)}
-					lightTurnRadians={finishes.editor.lightTurnRadians}
-					onTurnLight={() => finishes.editor.turnLight()}
-					compare={finishes.editor.compare}
-					onCompare={(next) => finishes.editor.setCompare(next)}
-					fieldRefusal={finishes.editor.fieldRefusal}
-					usersCount={finishEditorView.usersCount}
-					reach={finishEditorView.reach}
-					place={finishEditorView.place}
-					onToggleReach={() => finishes.editor.toggleReach()}
-					align={finishEditorView.align}
-					onAlign={() => {
-						const res = finishes.requestAlign(finishEditorView.target, finishEditorView.place);
-						if (!res.ok && res.message) finishes.editor.setFieldRefusal('pattern', res.message);
-					}}
-					onMaterialPreview={(edits) => finishes.editor.preview(() => edits)}
-					onCancelPreview={() => finishes.editor.cancelPreview()}
-					onCommit={(field, edits) => finishes.editor.commit(field, () => edits)}
-					onResetAll={() => finishes.editor.resetAll()}
-					onDone={() => finishes.editor.close(true)}
-				/>
-			{/if}
-		{/if}
-
-		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen && finishes.libraryDraft === null}
-			<StagePaintTray
-				tray={paintTray}
-				view={paintTrayState}
-				radius={shell.paintTool?.surfaceScope() ?? 'surface'}
-				onRadius={(radius) => shell.paintTool?.setSurfaceScope(radius)}
-				onPick={(swatch) => {
-					const colour = swatch.kind === 'colour' ? parseColourKey(swatch.key) : null;
-					if (colour !== null) finishes.pickColour(colour);
-					else finishes.pickMaterialKey(swatch.key);
-				}}
-				onColour={(colour) => finishes.pickColour(colour)}
-				onFavourite={() => finishes.toggleActiveFavourite()}
-				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper())}
-				onLibrary={() => commands.toggleWorldLibrary('paint')}
-				palette={{
-					...finishes.paletteView(),
-					rename: (slotId, name) => void finishes.renamePaletteSlot(slotId, name),
-					setColor: (slotId, color) => void finishes.setPaletteSlotColor(slotId, color),
-					remove: (slotId) => void finishes.removePaletteSlot(slotId),
-					add: (color) => finishes.addPaletteSlot(color)
-				}}
-				tileSource={finishTileSource}
-			/>
-		{/if}
-
-		{#if preview === null}
-			<StageRepairDrawer
-				open={repairDrawerOpen}
-				issues={finishes.issues.open}
-				repaired={finishes.issues.repaired}
-				onOpenCard={(issue) => {
-					finishes.focusIssueTarget(issue);
-					repairDrawerOpen = false;
-				}}
-				onClose={() => (repairDrawerOpen = false)}
-			/>
-		{/if}
 
 	</div>
 
