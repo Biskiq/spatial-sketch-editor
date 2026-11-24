@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
+import StagePaintWheel from '$lib/authoring/stage/shell/StagePaintWheel.svelte';
 import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
 import type { PaintSwatch, PaintTrayView } from '$lib/authoring/look/finish-authoring.svelte';
 
@@ -118,24 +119,91 @@ describe('T2.S8 U2 — Paint tray', () => {
 		expect(render(view({ active: material('curated:a', 'Alpha') })).target.querySelector('[data-paint-consequence]')).toBeNull();
 	});
 
-	it('expands to the palette and wheel on Colours, and the wheel hands back a literal colour', () => {
+	it('opens Paint colour above Custom colour while collapsed, and Done hands back a literal colour', () => {
+		const { target, state, onColour } = render(view({ colourEnabled: true }));
+		state.setTab('colours');
+		flushSync();
+		target.querySelector<HTMLButtonElement>('[data-paint-wheel-open]')!.click();
+		flushSync();
+		expect(state.expanded).toBe(false);
+		expect(target.querySelector('[data-paint-more]')).toBeNull();
+		const picker = target.querySelector('[data-paint-picker] [data-paint-wheel]');
+		expect(picker).not.toBeNull();
+		expect(picker!.getAttribute('role')).toBe('dialog');
+		const hex = target.querySelector<HTMLInputElement>('[data-paint-hex]')!;
+		const before = target.querySelector<HTMLElement>('[data-paint-wheel-before]')!.style.background;
+		// #399: a compact labelled Hex field and a before/current pair in the header.
+		expect(hex.closest('label')?.textContent).toMatch(/Hex/);
+		hex.value = '#123456';
+		hex.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
+		expect(target.querySelector<HTMLElement>('[data-paint-wheel-before]')!.style.background).toBe(before);
+		expect(target.querySelector<HTMLElement>('[data-paint-wheel-current]')!.style.background).toBe('rgb(18, 52, 86)');
+		expect(onColour).not.toHaveBeenCalled();
+		target.querySelector<HTMLButtonElement>('[data-paint-wheel-use]')!.click();
+		expect(onColour).toHaveBeenCalledWith({ kind: 'literal', hex: '#123456' });
+		expect(state.wheelOpen).toBe(false);
+	});
+
+	it('arms a linked slot from a picker chip and from the expanded palette', () => {
 		const { target, state, onColour } = render(view({ colourEnabled: true }));
 		state.setTab('colours');
 		state.setWheelOpen(true);
 		flushSync();
-		expect(target.querySelector('[data-paint-more]')).not.toBeNull();
-		const hex = target.querySelector<HTMLInputElement>('[data-paint-hex]')!;
-		hex.value = '#123456';
-		hex.dispatchEvent(new Event('input', { bubbles: true }));
-		target.querySelector<HTMLButtonElement>('[data-paint-wheel-use]')!.click();
-		expect(onColour).toHaveBeenCalledWith({ kind: 'literal', hex: '#123456' });
-		expect(state.wheelOpen).toBe(false);
+		target.querySelector<HTMLButtonElement>('[data-paint-wheel-slot="sage"]')!.click();
+		expect(onColour).toHaveBeenLastCalledWith({ kind: 'slot', slotId: 'sage' });
+		state.toggleExpanded();
+		flushSync();
 		target.querySelector<HTMLButtonElement>('[data-paint-palette-slot="sage"]')!.click();
 		expect(onColour).toHaveBeenLastCalledWith({ kind: 'slot', slotId: 'sage' });
 	});
 
+	it('closes Paint colour on Escape without arming and returns focus to Custom colour', () => {
+		const { target, state, onColour } = render(view({ colourEnabled: true }));
+		state.setTab('colours');
+		state.setWheelOpen(true);
+		flushSync();
+		const dialog = target.querySelector<HTMLElement>('[data-paint-wheel]')!;
+		dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		flushSync();
+		expect(state.wheelOpen).toBe(false);
+		expect(onColour).not.toHaveBeenCalled();
+		expect(document.activeElement).toBe(target.querySelector('[data-paint-wheel-open]'));
+	});
+
+	it('adds to the palette through the one-Undo command, then arms the returned slot', async () => {
+		const add = vi.fn(async () => 'slot-new');
+		const palette = { slots: [], room: true, add, rename: vi.fn(), setColor: vi.fn(), remove: vi.fn() };
+		const { target, state, onColour } = render(view({ colourEnabled: true }), { palette });
+		state.setTab('colours');
+		state.setWheelOpen(true);
+		flushSync();
+		target.querySelector<HTMLButtonElement>('[data-paint-wheel-add]')!.click();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		flushSync();
+		expect(add).toHaveBeenCalledTimes(1);
+		expect(onColour).toHaveBeenLastCalledWith({ kind: 'slot', slotId: 'slot-new' });
+	});
+
+	it('explains a full palette and keeps the picker open', async () => {
+		const add = vi.fn(async () => null);
+		const palette = { slots: [], room: false, add, rename: vi.fn(), setColor: vi.fn(), remove: vi.fn() };
+		const { target, state, onColour } = render(view({ colourEnabled: true }), { palette });
+		state.setTab('colours');
+		state.setWheelOpen(true);
+		flushSync();
+		target.querySelector<HTMLButtonElement>('[data-paint-wheel-add]')!.click();
+		await Promise.resolve();
+		flushSync();
+		expect(add).not.toHaveBeenCalled();
+		expect(onColour).not.toHaveBeenCalled();
+		expect(state.wheelOpen).toBe(true);
+		expect(target.querySelector('[data-paint-wheel-message]')?.textContent ?? '').toMatch(/full|eight/i);
+	});
+
 	it('folds the wheel, then the expansion, one Escape rung at a time', () => {
 		const state = createPaintTrayState();
+		state.toggleExpanded();
 		state.setWheelOpen(true);
 		expect(state.expanded).toBe(true);
 		expect(state.dismiss()).toBe(true);
@@ -148,5 +216,18 @@ describe('T2.S8 U2 — Paint tray', () => {
 		expect(state.tab).toBe('materials');
 		state.toggleTab(true);
 		expect(state.tab).toBe('colours');
+	});
+
+	it('shows "no colour" as the before swatch when the Finish it opened on is untinted', () => {
+		const target = document.createElement('div');
+		document.body.append(target);
+		const props = { initial: '#9aa58c', original: null, palette: [], onUse: vi.fn(), onClose: vi.fn(), title: 'Finish colour' };
+		mounted.push(mount(StagePaintWheel, { target, props }));
+		flushSync();
+		const before = target.querySelector<HTMLElement>('[data-paint-wheel-before]')!;
+		expect(before.classList.contains('none')).toBe(true);
+		expect(before.style.background).toBe('');
+		expect(target.querySelector('[data-paint-wheel-pair]')?.getAttribute('title')).toMatch(/no colour/);
+		expect(target.querySelector<HTMLElement>('[data-paint-wheel-current]')!.style.background).toBe('rgb(154, 165, 140)');
 	});
 });

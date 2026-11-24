@@ -123,6 +123,8 @@ export function libraryDraftPlan(
 export function libraryDraftChanged(draft: LibraryDraft, reading: FinishSheenReading): boolean {
 	const step = reading.steps.find((candidate) => candidate.id === draft.step);
 	if (step === undefined || step.disabled) return false;
+	// A sheen between steps opens on its nearest named step; only choosing another one is an edit.
+	if (reading.current === null) return step.id !== defaultStep(reading);
 	if (step.id !== reading.current) return true;
 	// Re-selecting the current step writes nothing, except the explicit reset of
 	// a Finish whose base already reads as that step.

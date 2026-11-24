@@ -23,7 +23,7 @@ import type { MaterialId } from '$lib/types/materials';
 import { catalogueTile } from './catalogue-tiles';
 import { materialThumbnailFraming } from '$lib/content/material-presentation';
 import type { InspectionSubject } from './inspection-subject';
-import type { InspectionThumbnail } from './inspection-host';
+import type { InspectionRequest, InspectionState, InspectionThumbnail } from './inspection-host';
 import { resolveSampleTile } from './sample-tile-resolve';
 import {
 	deriveTile,
@@ -43,6 +43,16 @@ export type FinishTileRender = (
 	request: { readonly subject: InspectionSubject; readonly framing: SampleTileFraming | 'default' },
 	signal?: AbortSignal
 ) => Promise<InspectionThumbnail>;
+
+/**
+ * The Stage's one interactive inspection (Library detail and the Material
+ * editor). A new observation replaces the previous one; the returned stop
+ * releases it. Null while no Stage renderer is registered.
+ */
+export type FinishTileInspect = (
+	request: InspectionRequest,
+	onState: (state: InspectionState) => void
+) => () => void;
 
 /**
  * A held picture. The URL stays valid until `release()`: eviction, a scope
@@ -157,6 +167,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		});
 
 	let render: FinishTileRender | null = null;
+	let inspector: FinishTileInspect | null = null;
 	/** Bumps when a renderer registers or leaves, so pending pictures retry. */
 	let epoch = $state(0);
 	let disposed = false;
@@ -370,6 +381,25 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 				}
 			};
 		},
+		/** The Stage registers its interactive inspection here; returns the unregister. */
+		registerInspector(next: FinishTileInspect): () => void {
+			inspector = next;
+			epoch += 1;
+			return () => {
+				if (inspector === next) {
+					inspector = null;
+					epoch += 1;
+				}
+			};
+		},
+		/**
+		 * Observe one interactive inspection through the Stage's host. Returns the
+		 * release, or null when no Stage renderer is registered (read `epoch`).
+		 */
+		inspect(request: InspectionRequest, onState: (state: InspectionState) => void): (() => void) | null {
+			if (disposed || inspector === null) return null;
+			return inspector(request, onState);
+		},
 		/** Reactive: a renderer registered or left. */
 		get epoch(): number {
 			return epoch;
@@ -444,6 +474,7 @@ export function createFinishTiles(options: { readonly fetchMaster?: (uri: string
 		dispose(): void {
 			disposed = true;
 			render = null;
+			inspector = null;
 			for (const job of masters.values()) if (!job.settled) job.controller.abort();
 			masters.clear();
 			// A picture a tile still shows lives to its last release, as after an eviction.

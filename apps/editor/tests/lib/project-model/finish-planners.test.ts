@@ -756,6 +756,17 @@ describe('the Finish Card preview', () => {
 		expect(preview.entities.find((candidate) => candidate.id === 'c')).toBe(accepted.entities[2]);
 		expect(preview.materials.find((material) => material.id === FINISH_PREVIEW_INSTANCE_ID)?.overrides?.color).toBe('#ff0000');
 	});
+
+	it('previews a first Finish on a surface that has none yet, and leaves the accepted Scene unassigned', () => {
+		const accepted = sceneDocument({ entities: [], materials: [] });
+		const instance = { id: FINISH_PREVIEW_INSTANCE_ID, name: 'Oak', base: { catalogue: 'wood-oak-veneer' } } as const;
+		const wall = JSON.stringify(['wall-side', 'w1', 'left']);
+		const preview = withFinishInstancePreview(accepted, { users: [`surface:${wall}`, 'surface:not-a-key'], instance });
+		expect(accepted.surfaceFinishes ?? []).toHaveLength(0);
+		expect(preview.surfaceFinishes).toEqual([
+			{ surface: { kind: 'wall-side', wallId: 'w1', side: 'left' }, finish: { materialInstanceId: FINISH_PREVIEW_INSTANCE_ID } }
+		]);
+	});
 });
 
 describe('scene-finish-edit and the shared-Finish Ask', () => {

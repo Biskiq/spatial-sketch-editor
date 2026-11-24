@@ -5,7 +5,7 @@
 	 * It gives the Finish picture service the E7 inspection host on the Stage's
 	 * **existing** renderer: no second GPU context. The host draws each sample
 	 * tile into its own offscreen target, one job at a time, and only when a
-	 * shelf asks, so an idle Stage pays nothing. It is attached to the live
+	 * shelf or the active Library detail asks, so an idle Stage pays nothing. It is attached to the live
 	 * renderer generation on demand and detached when the generation changes or
 	 * this component leaves.
 	 */
@@ -14,7 +14,7 @@
 	import { useRenderResources } from '$lib/render/resources/render-resources';
 	import { createInspectionHost } from '$lib/render/materials/inspection-host';
 	import { tryUseFinishTiles } from '$lib/authoring/look/finish-tiles-context';
-	import type { FinishTileRender } from '$lib/render/materials/finish-tiles.svelte';
+	import type { FinishTileInspect, FinishTileRender } from '$lib/render/materials/finish-tiles.svelte';
 
 	const rendererState = useCanvasRendererState();
 	const resources = useRenderResources();
@@ -39,10 +39,21 @@
 		return host.thumbnail({ subject: request.subject, sampleTile: request.framing }, signal);
 	};
 
+	/** The one interactive inspection: Library detail or the draft editor, released on stop. */
+	const inspect: FinishTileInspect = (request, onState) => {
+		if (!attach()) {
+			onState({ status: 'refused', issues: [{ code: 'renderer-unavailable' }] });
+			return () => {};
+		}
+		return host.observe(request, onState);
+	};
+
 	onMount(() => {
 		const unregister = tiles?.registerRenderer(render);
+		const unregisterInspector = tiles?.registerInspector(inspect);
 		return () => {
 			unregister?.();
+			unregisterInspector?.();
 			host.dispose();
 		};
 	});

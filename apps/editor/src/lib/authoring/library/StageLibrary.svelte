@@ -2,22 +2,34 @@
 	/**
 	 * The professional Library sheet (T2.S8 U5).
 	 *
-	 * One route-level surface above the Stage: a kind rail, sources, family and
-	 * attribute filters, a searchable grid, and a detail pane that inspects one
-	 * Finish before any action. Cards and the detail use `FinishTile` only, so
-	 * opening the Library leases 256 px masters or a project's retained preview,
-	 * never a full-resolution catalogue texture.
+	 * One Stage-bounded surface in the measured shell lanes (a bottom sheet above
+	 * the dock in portrait): a kind rail with the Materials families nested under
+	 * it, sources, attribute filters, a searchable grid of square cards and a
+	 * detail pane. Browse cards use `FinishTile` sample-tile derivatives only;
+	 * the one active detail asks the Stage's E7 inspection host for a live draw
+	 * and releases it on change or close.
 	 *
-	 * Nothing here writes. *Use for Paint* arms; *Select all* selects; *Apply*
-	 * hands one explicit action to the route's authoring host; *Customise…* opens
-	 * a local draft whose Apply is the one write. U6 replaces the draft control,
-	 * and U7 owns saving a Finish to the private Library.
+	 * **One action per card.** Click and keyboard activation do what the
+	 * invocation says, shown before activation in the context line:
+	 * Paint arms (zero writes), Replace assigns to the captured target, Swap
+	 * changes the Card target's material and keeps its treatment, and ordinary
+	 * browse arms Paint for curated cards or selects a project Finish's users.
+	 * The separate detail control never chooses. Shift keeps the Library open
+	 * for Paint, Replace and Swap. A stale or unsupported target refuses in place.
+	 *
+	 * The last browse view is session state the route holds; detail is local and
+	 * ends with the sheet. *Customise…* hands the chosen Finish to the Material
+	 * editor, which owns the draft.
 	 */
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import type { ArtworkLibraryEntry, MaterialId } from '@portfolio/project-model';
 	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
 	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
 	import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';
+	import type { LibrarySwapRequest } from '$lib/authoring/look/finish-authoring.svelte';
+	import type { StageLibraryView } from '$lib/authoring/stage/route/stage-shell-state.svelte';
+	import FinishInspectionView from './FinishInspectionView.svelte';
+	import { LIBRARY_INSPECTION_DEFAULT, type LibraryInspectionSettings } from './library-inspection';
 	import {
 		LIBRARY_FILTERS,
 		LIBRARY_SOURCES,
@@ -25,42 +37,39 @@
 		libraryCardsOf,
 		libraryCategoryOptions,
 		librarySourceCount,
+		type LibraryCard,
 		type LibraryCategory,
 		type LibraryFilter,
 		type LibraryFinishEntry,
 		type LibrarySource
 	} from './library-catalogue';
-	import type { LibraryDraft } from './library-draft';
 	import type { LibraryTarget } from './library-target';
 
-	type LibraryKind = 'materials' | 'objects' | 'artwork' | 'lights';
-
-	type DraftStatus = {
-		readonly active: boolean;
-		readonly canApply: boolean;
-		readonly changed: boolean;
-		readonly targetLabel: string | null;
-		readonly reason: string | null;
-	};
+	type LibraryKind = StageLibraryView['kind'];
+	type Intent = 'browse' | 'paint' | 'replace' | 'swap';
+	type Outcome = { readonly ok: true } | { readonly ok: false; readonly message: string };
 
 	let {
 		entries,
+		intent = 'browse',
 		target = null,
-		draft = null,
-		draftStatus,
+		swap = null,
+		view,
+		openKind = null,
 		busy = false,
 		tileSource,
 		objects = [],
 		artwork = null,
 		looks = null,
+		inspection = LIBRARY_INSPECTION_DEFAULT,
+		onInspection = () => {},
+		onView,
 		onClose,
-		onUse,
-		onApply,
+		onPaint,
+		onReplace,
+		onSwap,
 		onSelectUsers,
 		onCustomise,
-		onDraftStep,
-		onDraftApply,
-		onDraftCancel,
 		onToggleFavourite,
 		onObject,
 		onArtwork,
@@ -68,22 +77,31 @@
 		onLook
 	}: {
 		entries: readonly LibraryFinishEntry[];
+		intent?: Intent;
+		/** The qualified selected target now; Replace requalifies against it. */
 		target?: LibraryTarget | null;
-		draft?: LibraryDraft | null;
-		draftStatus: DraftStatus;
+		/** The Card's captured Swap target and reach. */
+		swap?: LibrarySwapRequest | null;
+		/** The last browse view, from session state. */
+		view: StageLibraryView;
+		/** The kind this invocation opens on, overriding the remembered one. */
+		openKind?: LibraryKind | null;
 		busy?: boolean;
 		tileSource: (entry: LibraryFinishEntry) => FinishTileSource | null;
 		objects?: readonly { readonly id: string; readonly name: string }[];
 		artwork?: readonly ArtworkLibraryEntry[] | null;
 		looks?: LookLibraryShelf | null;
+		/** Detail geometry and lighting, remembered in the Library session. */
+		inspection?: LibraryInspectionSettings;
+		onInspection?: (next: LibraryInspectionSettings) => void;
+		onView: (view: StageLibraryView) => void;
 		onClose: () => void;
-		onUse: (entry: LibraryFinishEntry, keepOpen: boolean) => void;
-		onApply: (entry: LibraryFinishEntry) => Promise<boolean>;
+		/** Arm Paint with this Finish: zero project writes. */
+		onPaint: (entry: LibraryFinishEntry, keepOpen: boolean) => void;
+		onReplace: (entry: LibraryFinishEntry, keepOpen: boolean) => Promise<Outcome>;
+		onSwap: (materialId: MaterialId, keepOpen: boolean) => Promise<Outcome>;
 		onSelectUsers: (entry: LibraryFinishEntry) => Promise<boolean>;
 		onCustomise: (entry: LibraryFinishEntry) => void;
-		onDraftStep: (step: LibraryDraft['step']) => void;
-		onDraftApply: () => Promise<boolean>;
-		onDraftCancel: () => void;
 		onToggleFavourite: (key: string) => void;
 		onObject: (assetId: string) => void;
 		onArtwork: (entry: ArtworkLibraryEntry) => void;
@@ -91,23 +109,36 @@
 		onLook: (id: string) => void;
 	} = $props();
 
-	let kind = $state<LibraryKind>('materials');
-	let source = $state<LibrarySource>('all');
-	let category = $state<LibraryCategory>('all');
-	let filters = $state<ReadonlySet<LibraryFilter>>(new Set());
-	let query = $state('');
+	const FILTER_IDS = new Set<string>(LIBRARY_FILTERS.map((option) => option.id));
+	const SOURCE_IDS = new Set<string>(LIBRARY_SOURCES.map((option) => option.id));
+	/**
+	 * The project shelf renders at most this many; container queries show only the
+	 * cards that fit one row (`display: none`, so hidden cards leave the Tab order).
+	 */
+	const SHELF_MAX = 8;
+
+	// The sheet opens on the remembered view; an invocation may name its kind.
+	const start = untrack(() => view);
+	let kind = $state<LibraryKind>(untrack(() => openKind) ?? start.kind);
+	let source = $state<LibrarySource>(SOURCE_IDS.has(start.source) ? (start.source as LibrarySource) : 'all');
+	let category = $state<LibraryCategory>(start.category as LibraryCategory);
+	let filters = $state<ReadonlySet<LibraryFilter>>(
+		new Set(start.filters.filter((id) => FILTER_IDS.has(id)) as LibraryFilter[])
+	);
+	let query = $state(start.query);
 	let selectedKey = $state<string | null>(null);
 	let variantChoice = $state<Record<string, MaterialId>>({});
-	let applying = $state(false);
-	let selecting = $state(false);
-	let draftApplying = $state(false);
+	let working = $state(false);
+	let refusal = $state<string | null>(null);
+	let note = $state<string | null>(null);
 	let searchEl = $state<HTMLInputElement>();
 	let sectionEl = $state<HTMLElement>();
 	let artworkInput = $state<HTMLInputElement>();
 
-	const groups = $derived(
-		browseLibrary(entries, { source, category, filters, query }, variantChoice)
-	);
+	/** Replace writes to the target the sheet opened with, or refuses. */
+	const capturedTarget = untrack(() => (intent === 'replace' ? target : null));
+
+	const groups = $derived(browseLibrary(entries, { source, category, filters, query }, variantChoice));
 	const cards = $derived(libraryCardsOf(groups));
 	const selectedCard = $derived(cards.find((card) => card.key === selectedKey) ?? null);
 	const categories = $derived(libraryCategoryOptions(entries, source));
@@ -115,28 +146,24 @@
 	const projectCount = $derived(librarySourceCount(entries, 'project'));
 	const allCount = $derived(librarySourceCount(entries, 'all', variantChoice));
 	const hasProject = $derived(entries.some((entry) => entry.source === 'project'));
-	const draftOnSelected = $derived(
-		draft !== null && selectedCard !== null && draft.finishKey === selectedCard.entry.key
-	);
+	const keepable = $derived(intent !== 'browse');
 
-	const filteredObjects = $derived(
-		objects.filter((object) => object.name.toLowerCase().includes(query.trim().toLowerCase()))
-	);
-	const filteredArtwork = $derived(
-		(artwork ?? []).filter((entry) => entry.name.toLowerCase().includes(query.trim().toLowerCase()))
-	);
+	const needle = $derived(query.trim().toLowerCase());
+	const filteredObjects = $derived(objects.filter((object) => object.name.toLowerCase().includes(needle)));
+	const filteredArtwork = $derived((artwork ?? []).filter((entry) => entry.name.toLowerCase().includes(needle)));
 	const filteredLooks = $derived(
-		(looks?.entries ?? []).filter((entry) =>
-			`${entry.label} ${entry.summary ?? ''}`.toLowerCase().includes(query.trim().toLowerCase())
-		)
+		(looks?.entries ?? []).filter((entry) => `${entry.label} ${entry.summary ?? ''}`.toLowerCase().includes(needle))
 	);
 
-	// A selected card that a filter hides closes its detail rather than
-	// pointing at nothing.
+	// The browse view outlives the sheet (session state), detail does not.
 	$effect(() => {
-		if (selectedKey !== null && !cards.some((card) => card.key === selectedKey)) {
-			selectedKey = null;
-		}
+		const next: StageLibraryView = { kind, source, category, filters: [...filters], query };
+		untrack(() => onView(next));
+	});
+
+	// A selected card that a filter hides closes its detail rather than pointing at nothing.
+	$effect(() => {
+		if (selectedKey !== null && !cards.some((card) => card.key === selectedKey)) selectedKey = null;
 	});
 
 	$effect(() => {
@@ -144,9 +171,7 @@
 	});
 
 	onMount(() => {
-		const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		searchEl?.focus();
-		return () => previous?.focus();
 	});
 
 	function toggleFilter(id: LibraryFilter): void {
@@ -167,50 +192,99 @@
 		kind = next;
 		selectedKey = null;
 		query = '';
+		refusal = null;
 	}
 
-	function selectCard(cardKey: string): void {
-		selectedKey = selectedKey === cardKey ? null : cardKey;
+	function selectCategory(next: LibraryCategory): void {
+		kind = 'materials';
+		category = next;
+		selectedKey = null;
 	}
 
-	function switchVariant(card: (typeof cards)[number], id: MaterialId): void {
+	/** Close detail and hand focus back to the card's detail control. */
+	function closeDetail(): void {
+		const key = selectedKey;
+		selectedKey = null;
+		if (key === null) return;
+		queueMicrotask(() => sectionEl?.querySelector<HTMLElement>(`[data-library-detail-open="${CSS.escape(key)}"]`)?.focus());
+	}
+
+	function toggleDetail(card: LibraryCard): void {
+		selectedKey = selectedKey === card.key ? null : card.key;
+	}
+
+	function switchVariant(card: LibraryCard, id: MaterialId): void {
 		if (card.primary === null) return;
 		variantChoice = { ...variantChoice, [card.primary]: id };
 	}
 
-	function pickStep(card: (typeof cards)[number]): void {
-		selectedKey = card.key;
-		onCustomise(card.entry);
+	/** What activating a card does now, shown in its title and the context line. */
+	function verb(entry: LibraryFinishEntry): string {
+		if (intent === 'swap') {
+			return entry.source === 'curated' && entry.curatedId !== null
+				? 'swap to this material'
+				: 'Swap takes a curated material';
+		}
+		if (intent === 'replace' && capturedTarget !== null) return `apply to ${capturedTarget.label}`;
+		if (intent === 'browse' && entry.source === 'project' && entry.usage > 0) return 'select every surface using it';
+		return 'pick for Paint';
 	}
 
-	async function apply(entry: LibraryFinishEntry): Promise<void> {
-		if (applying || busy) return;
-		applying = true;
+	async function run(work: () => Promise<Outcome>): Promise<void> {
+		if (working || busy) return;
+		working = true;
+		refusal = null;
 		try {
-			await onApply(entry);
+			const outcome = await work();
+			if (!outcome.ok) refusal = outcome.message;
 		} finally {
-			applying = false;
+			working = false;
 		}
+	}
+
+	/** The one card action, from click, Enter or Space. */
+	function choose(entry: LibraryFinishEntry, keepOpen: boolean): void {
+		const keep = keepable && keepOpen;
+		note = null;
+		if (intent === 'swap') {
+			if (entry.source !== 'curated' || entry.curatedId === null) {
+				refusal = 'Swap takes a curated material. Apply a project Finish from Replace instead.';
+				return;
+			}
+			const id = entry.curatedId;
+			void run(() => onSwap(id, keep)).then(() => {
+				if (keep && refusal === null) note = `${entry.name} · Library stays open`;
+			});
+			return;
+		}
+		if (intent === 'replace') {
+			const stale = capturedTarget === null || target === null || target.key !== capturedTarget.key;
+			if (stale) {
+				refusal = 'The selection changed since the Library opened. Nothing changed.';
+				return;
+			}
+			void run(() => onReplace(entry, keep)).then(() => {
+				if (keep && refusal === null) note = `${entry.name} · Library stays open`;
+			});
+			return;
+		}
+		if (intent === 'browse' && entry.source === 'project' && entry.usage > 0) {
+			void selectUsers(entry);
+			return;
+		}
+		refusal = null;
+		onPaint(entry, keep);
+		if (keep) note = `${entry.name} · Library stays open`;
 	}
 
 	async function selectUsers(entry: LibraryFinishEntry): Promise<void> {
-		if (selecting) return;
-		selecting = true;
-		try {
-			await onSelectUsers(entry);
-		} finally {
-			selecting = false;
-		}
+		await run(async () => ((await onSelectUsers(entry)) ? { ok: true } : { ok: false, message: `No present surface uses ${entry.name}.` }));
 	}
 
-	async function applyDraft(): Promise<void> {
-		if (draftApplying || busy) return;
-		draftApplying = true;
-		try {
-			await onDraftApply();
-		} finally {
-			draftApplying = false;
-		}
+	function cardKeydown(event: KeyboardEvent, entry: LibraryFinishEntry): void {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		choose(entry, event.shiftKey);
 	}
 
 	function chooseArtwork(files: FileList | null): void {
@@ -225,19 +299,15 @@
 			sectionEl.querySelectorAll<HTMLElement>(
 				'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 			)
-		).filter((element) => element.offsetParent !== null);
+		).filter((element) => element.offsetParent !== null && getComputedStyle(element).visibility !== 'hidden');
 	}
 
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Escape') {
 			event.preventDefault();
 			event.stopPropagation();
-			if (draft !== null) {
-				onDraftCancel();
-				return;
-			}
 			if (selectedKey !== null) {
-				selectedKey = null;
+				closeDetail();
 				return;
 			}
 			onClose();
@@ -257,168 +327,265 @@
 		}
 	}
 
-	function canCustomise(entry: LibraryFinishEntry): boolean {
-		return entry.reading.steps.some((step) => !step.disabled && step.id !== entry.reading.current);
+	function variantLabel(card: LibraryCard): string {
+		return card.variant === null ? '' : `, ${card.variants.find((variant) => variant.id === card.variant)?.label ?? ''}`;
 	}
 
-	function stepWash(id: LibraryDraft['step']): string {
-		if (id === 'matte') return 'color-mix(in srgb, #0b120e 26%, transparent)';
-		if (id === 'satin') return 'color-mix(in srgb, #ffffff 6%, transparent)';
-		return 'color-mix(in srgb, #ffffff 24%, transparent)';
+	function tileSizeOf(entry: LibraryFinishEntry): string {
+		return entry.subline.split('·').at(-1)?.trim() ?? '—';
 	}
 </script>
 
+{#snippet card(item: LibraryCard, shelf: boolean)}
+	{@const entry = item.entry}
+	{@const blocked = intent === 'swap' && (entry.source !== 'curated' || entry.curatedId === null)}
+	<article class="mc" class:open={selectedKey === item.key} class:blocked data-library-card={item.key} data-library-shelf={shelf ? 'project' : undefined}>
+		<button
+			type="button"
+			class="choose"
+			title={`${item.title} — ${verb(entry)}`}
+			aria-label={`${item.title}${variantLabel(item)} — ${verb(entry)}`}
+			aria-disabled={blocked}
+			disabled={working || busy}
+			data-library-choose={item.key}
+			onclick={(event) => choose(entry, event.shiftKey)}
+			onkeydown={(event) => cardKeydown(event, entry)}
+		>
+			<span class="th">
+				<FinishTile source={tileSource(entry)} color={entry.color} imageUri={entry.imageUri} size={124} />
+			</span>
+			<span class="mt">
+				<span class="mn">
+					<span class="mnt">{item.title}</span>
+					{#if entry.changes > 0}<i class="edm" title={`Edited · ${entry.changes} change${entry.changes === 1 ? '' : 's'}`}></i>{/if}
+				</span>
+				<span class="ms">{entry.subline}</span>
+			</span>
+		</button>
+		<button
+			type="button"
+			class="star"
+			class:on={entry.favourite}
+			aria-label={entry.favourite ? `Remove ${item.title} from favourites` : `Add ${item.title} to favourites`}
+			title={entry.favourite ? 'In your Paint tray — click to remove' : 'Keep in your Paint tray'}
+			aria-pressed={entry.favourite}
+			data-library-favourite={item.key}
+			onclick={() => onToggleFavourite(entry.key)}
+		>★</button>
+		<button
+			type="button"
+			class="xp"
+			aria-label={`Show detail for ${item.title}`}
+			aria-expanded={selectedKey === item.key}
+			title="Detail"
+			data-library-detail-open={item.key}
+			onclick={() => toggleDetail(item)}
+		>⤢</button>
+		{#if entry.usage > 0}
+			<button
+				type="button"
+				class="users"
+				title={`Used by ${entry.usage} — select every surface using it`}
+				aria-label={`Used by ${entry.usage}, select them`}
+				data-library-users={item.key}
+				onclick={() => void selectUsers(entry)}
+			>{entry.usage}</button>
+		{/if}
+		{#if item.variants.length > 0}
+			<div class="vchips" role="group" aria-label={`${item.title} variant`}>
+				{#each item.variants as variant (variant.id)}
+					<button
+						type="button"
+						class:on={item.variant === variant.id}
+						aria-pressed={item.variant === variant.id}
+						onclick={() => switchVariant(item, variant.id)}
+					>{variant.label}</button>
+				{/each}
+			</div>
+		{/if}
+	</article>
+{/snippet}
+
 <button class="scrim" type="button" tabindex="-1" aria-label="Close Library" onclick={onClose}></button>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-<section
+<div
 	class="library"
+	class:with-detail={selectedCard !== null && kind === 'materials'}
 	bind:this={sectionEl}
 	role="dialog"
+	tabindex="-1"
 	aria-modal="true"
 	aria-labelledby="library-title"
+	data-stage-library
+	data-library-intent={intent}
 	onkeydown={onKeydown}
 >
-	<header class="head">
-		<div class="title-row">
-			<h2 id="library-title">Library</h2>
-			<span class="context">
-				{kind === 'materials' ? `${curatedCount} curated · ${projectCount} in this project` : ''}
-			</span>
-			{#if draft !== null}
-				<span class="draft-pill">
-					Draft · {draft.name}
-					<button type="button" aria-label="Discard draft" onclick={onDraftCancel}>×</button>
-				</span>
+	<header class="lb-h">
+		<h2 id="library-title" class="lb-t">Library</h2>
+		<label class="search">
+			<span class="sr">Search the Library</span>
+			<input
+				bind:this={searchEl}
+				bind:value={query}
+				type="search"
+				placeholder={kind === 'materials'
+					? 'Search materials and finishes'
+					: kind === 'objects'
+						? 'Search objects'
+						: kind === 'artwork'
+							? 'Search artwork'
+							: 'Search lights'}
+				aria-label="Search the Library"
+				data-library-search
+			/>
+			{#if query !== ''}
+				<button type="button" class="clear-search" aria-label="Clear search" onclick={() => (query = '')}>×</button>
 			{/if}
-			<button type="button" class="close" aria-label="Close Library" onclick={onClose}>Close</button>
-		</div>
-
-		<div class="search-row">
-			<label class="search">
-				<span class="sr">Search the Library</span>
-				<input
-					bind:this={searchEl}
-					bind:value={query}
-					type="search"
-					placeholder={kind === 'materials'
-						? 'Search materials and finishes'
-						: kind === 'objects'
-							? 'Search objects'
-							: kind === 'artwork'
-								? 'Search artwork'
-								: 'Search lights'}
-					aria-label="Search the Library"
-				/>
-				{#if query !== ''}
-					<button type="button" class="clear-search" aria-label="Clear search" onclick={() => (query = '')}>×</button>
-				{/if}
-			</label>
-			{#if kind === 'materials'}
-				<div class="sources" role="group" aria-label="Material sources">
-					{#each LIBRARY_SOURCES as option (option.id)}
-						<button
-							type="button"
-							class:on={source === option.id}
-							aria-pressed={source === option.id}
-							onclick={() => { source = option.id; selectedKey = null; }}
-						>
-							{option.label}
-							<span>{option.id === 'all' ? allCount : option.id === 'curated' ? curatedCount : projectCount}</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-			{#if kind === 'artwork' && artwork !== null}
-				<input
-					type="file"
-					accept="image/png,image/jpeg,image/webp"
-					multiple
-					hidden
-					bind:this={artworkInput}
-					onchange={() => chooseArtwork(artworkInput?.files ?? null)}
-				/>
-				<button type="button" class="import" onclick={() => artworkInput?.click()}>+ Import artwork</button>
-			{/if}
-		</div>
-
+		</label>
 		{#if kind === 'materials'}
-			<div class="filter-row" aria-label="Filter materials">
+			<div class="sources" role="group" aria-label="Material sources">
+				{#each LIBRARY_SOURCES as option (option.id)}
+					<button
+						type="button"
+						class:on={source === option.id}
+						aria-pressed={source === option.id}
+						data-library-source={option.id}
+						onclick={() => { source = option.id; selectedKey = null; }}
+					>
+						{option.label}
+						<span>{option.id === 'all' ? allCount : option.id === 'curated' ? curatedCount : projectCount}</span>
+					</button>
+				{/each}
+			</div>
+			<label class="sources-menu">
+				<span class="sr">Material source</span>
+				<select
+					value={source}
+					data-library-source-menu
+					onchange={(event) => { source = event.currentTarget.value as LibrarySource; selectedKey = null; }}
+				>
+					{#each LIBRARY_SOURCES as option (option.id)}
+						<option value={option.id}>{option.label} · {option.id === 'all' ? allCount : option.id === 'curated' ? curatedCount : projectCount}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
+		{#if kind === 'artwork' && artwork !== null}
+			<input
+				type="file"
+				accept="image/png,image/jpeg,image/webp"
+				multiple
+				hidden
+				bind:this={artworkInput}
+				onchange={() => chooseArtwork(artworkInput?.files ?? null)}
+			/>
+			<button type="button" class="btn sm" onclick={() => artworkInput?.click()}>+ Import artwork</button>
+		{/if}
+		<button type="button" class="lb-x" aria-label="Close Library" title="Close (Esc · L)" data-library-close onclick={onClose}>×</button>
+	</header>
+
+	<div class="lb-f">
+		<span class="ctx" data-library-context>
+			{#if intent === 'swap' && swap !== null}
+				Swap the material of <b>{swap.place}</b> · {swap.reachLine} — keeps its colour and sheen
+			{:else if intent === 'replace' && capturedTarget !== null}
+				Replace <b>{capturedTarget.label}</b>
+			{:else if intent === 'paint'}
+				Pick for Paint
+			{:else}
+				Browse{#if target !== null}<span class="sel"> · Selection <b>{target.label}</b></span>{/if}
+			{/if}
+		</span>
+		{#if kind === 'materials'}
+			{#each LIBRARY_FILTERS as option (option.id)}
+				<button
+					type="button"
+					class="fchip"
+					aria-pressed={filters.has(option.id)}
+					data-library-filter={option.id}
+					onclick={() => toggleFilter(option.id)}
+				>{option.label}</button>
+			{/each}
+			{#if filters.size > 0 || category !== 'all' || query !== ''}
+				<button type="button" class="fchip clear" onclick={clearFilters}>Clear</button>
+			{/if}
+		{/if}
+		{#if keepable}<span class="note-sm push">Shift-click keeps it open</span>{/if}
+	</div>
+	{#if refusal !== null}
+		<p class="refusal" role="alert" data-library-refusal>{refusal}</p>
+	{:else if note !== null}
+		<p class="kept" role="status" data-library-note>{note}</p>
+	{/if}
+
+	<div class="lb-b">
+		<nav class="lb-rail" aria-label="Library kinds">
+			<button
+				type="button"
+				class="ix parent"
+				class:on={kind === 'materials'}
+				aria-current={kind === 'materials' ? 'page' : undefined}
+				data-library-kind="materials"
+				onclick={() => selectKind('materials')}
+			>
+				<span class="nm">Materials</span>
+				<span class="sub">{allCount}</span>
+			</button>
+			{#if kind === 'materials'}
 				{#each categories as option (option.id)}
 					<button
 						type="button"
-						class="chip family"
+						class="ix sub2"
 						class:on={category === option.id}
-						aria-pressed={category === option.id}
-						onclick={() => { category = option.id; selectedKey = null; }}
-					>{option.label}</button>
+						aria-current={category === option.id ? 'true' : undefined}
+						data-library-family={option.id}
+						onclick={() => selectCategory(option.id)}
+					><span class="nm">{option.label}</span></button>
 				{/each}
-				<span class="divide" aria-hidden="true"></span>
-				{#each LIBRARY_FILTERS as option (option.id)}
-					<button
-						type="button"
-						class="chip"
-						class:on={filters.has(option.id)}
-						aria-pressed={filters.has(option.id)}
-						onclick={() => toggleFilter(option.id)}
-					>{option.label}</button>
-				{/each}
-				{#if filters.size > 0 || category !== 'all' || query !== ''}
-					<button type="button" class="chip clear" onclick={clearFilters}>Clear</button>
-				{/if}
-			</div>
-		{/if}
-	</header>
-
-	<div class="body">
-		<nav class="rail" aria-label="Library kinds">
+			{/if}
 			<button
 				type="button"
-				class:on={kind === 'materials'}
-				aria-current={kind === 'materials' ? 'page' : undefined}
-				onclick={() => selectKind('materials')}
-			>
-				<span class="rail-name">Materials</span>
-				<span class="rail-count">{allCount}</span>
-			</button>
-			<button
-				type="button"
+				class="ix parent"
 				class:on={kind === 'objects'}
 				aria-current={kind === 'objects' ? 'page' : undefined}
+				data-library-kind="objects"
 				onclick={() => selectKind('objects')}
 			>
-				<span class="rail-name">Objects</span>
-				<span class="rail-count">{objects.length}</span>
+				<span class="nm">Objects</span>
+				<span class="sub">{objects.length}</span>
 			</button>
 			{#if artwork !== null}
 				<button
 					type="button"
+					class="ix parent"
 					class:on={kind === 'artwork'}
 					aria-current={kind === 'artwork' ? 'page' : undefined}
+					data-library-kind="artwork"
 					onclick={() => selectKind('artwork')}
 				>
-					<span class="rail-name">Artwork</span>
-					<span class="rail-count">{artwork.length}</span>
+					<span class="nm">Artwork</span>
+					<span class="sub">{artwork.length}</span>
 				</button>
 			{/if}
 			{#if looks !== null && looks.entries.length > 0}
 				<button
 					type="button"
+					class="ix parent"
 					class:on={kind === 'lights'}
 					aria-current={kind === 'lights' ? 'page' : undefined}
+					data-library-kind="lights"
 					onclick={() => selectKind('lights')}
 				>
-					<span class="rail-name">{looks.label}</span>
-					<span class="rail-count">{looks.entries.length}</span>
+					<span class="nm">{looks.label}</span>
+					<span class="sub">{looks.entries.length}</span>
 				</button>
 			{/if}
-			<p class="rail-note">Materials you customise are saved in this project.</p>
 		</nav>
 
-		<div class="browse" class:with-detail={selectedCard !== null}>
+		<div class="lb-grid-wrap">
 			{#if kind === 'materials'}
 				{#if cards.length === 0}
-					<div class="empty">
+					<div class="lb-empty">
 						{#if !hasProject && source === 'project'}
 							<strong>No project Finishes yet.</strong>
 							<span>Paint a material onto a surface, then customise it here.</span>
@@ -430,73 +597,41 @@
 						{/if}
 					</div>
 				{:else}
-					{#each groups as group (group.label ?? 'all')}
-						{#if group.label !== null}
-							<h3 class="group">{group.label}<span>{group.cards.length}</span></h3>
-						{/if}
-						<div class="grid">
-							{#each group.cards as card (card.key)}
-								<article class="card" class:on={selectedKey === card.key}>
-									<button
-										type="button"
-										class="card-open"
-										aria-pressed={selectedKey === card.key}
-										aria-label={`${card.title}${card.variant === null ? '' : `, ${card.variants.find((variant) => variant.id === card.variant)?.label ?? ''}`}`}
-										onclick={() => selectCard(card.key)}
-									>
-										<span class="thumb">
-											<FinishTile
-												source={tileSource(card.entry)}
-												color={card.entry.color}
-												imageUri={card.entry.imageUri}
-												size={92}
-											/>
-											{#if card.entry.usage > 0}
-												<span class="used" title={`Used by ${card.entry.usage}`}>{card.entry.usage}</span>
-											{/if}
-											{#if card.entry.source === 'project'}
-												<span class="project-mark">Project</span>
-											{/if}
-										</span>
-										<span class="name">{card.title}</span>
-										<span class="meta">{card.entry.subline}</span>
-									</button>
-									<button
-										type="button"
-										class="star"
-										class:on={card.entry.favourite}
-										aria-label={card.entry.favourite ? `Remove ${card.title} from favourites` : `Add ${card.title} to favourites`}
-										aria-pressed={card.entry.favourite}
-										onclick={() => onToggleFavourite(card.entry.key)}
-									>★</button>
-									{#if card.variants.length > 0}
-										<div class="variants" role="group" aria-label={`${card.title} variant`}>
-											{#each card.variants as variant (variant.id)}
-												<button
-													type="button"
-													class:on={card.variant === variant.id}
-													aria-pressed={card.variant === variant.id}
-													onclick={() => switchVariant(card, variant.id)}
-												>{variant.label}</button>
-											{/each}
-										</div>
+					<div class="lb-grid">
+						{#each groups as group (group.label ?? 'all')}
+							{@const shelf = source === 'all' && needle === '' && group.label === 'This project'}
+							{#if group.label !== null}
+								<h3 class="lb-g">
+									{group.label}<span>{group.cards.length}</span>
+									{#if shelf && group.cards.length > 1}
+										<button type="button" class="see" class:overflowing={group.cards.length > SHELF_MAX} data-library-see-all="project" onclick={() => { source = 'project'; selectedKey = null; }}>See all {group.cards.length} ›</button>
 									{/if}
-								</article>
-							{/each}
-						</div>
-					{/each}
+								</h3>
+							{/if}
+							{#if shelf}
+								<div class="shelf" data-library-shelf-row>
+									{#each group.cards.slice(0, SHELF_MAX) as item (item.key)}
+										{@render card(item, true)}
+									{/each}
+								</div>
+							{:else}
+								{#each group.cards as item (item.key)}
+									{@render card(item, false)}
+								{/each}
+							{/if}
+						{/each}
+					</div>
 				{/if}
 			{:else if kind === 'objects'}
 				{#if filteredObjects.length === 0}
-					<div class="empty"><strong>No objects match.</strong><span>Clear the search to see every approved object.</span><button type="button" onclick={() => (query = '')}>Clear search</button></div>
+					<div class="lb-empty"><strong>No objects match.</strong><span>Clear the search to see every approved object.</span><button type="button" onclick={() => (query = '')}>Clear search</button></div>
 				{:else}
-					<div class="grid plain">
+					<div class="lb-grid">
 						{#each filteredObjects as object (object.id)}
-							<article class="simple-card">
-								<button type="button" class="simple-open" onclick={() => onObject(object.id)}>
-									<span class="glyph" aria-hidden="true">◇</span>
-									<span class="name">{object.name}</span>
-									<span class="meta">Approved object</span>
+							<article class="mc simple">
+								<button type="button" class="choose" data-library-simple data-library-object={object.id} onclick={() => onObject(object.id)}>
+									<span class="th glyph" aria-hidden="true">◇</span>
+									<span class="mt"><span class="mn"><span class="mnt">{object.name}</span></span><span class="ms">Approved object</span></span>
 								</button>
 							</article>
 						{/each}
@@ -504,7 +639,7 @@
 				{/if}
 			{:else if kind === 'artwork'}
 				{#if filteredArtwork.length === 0}
-					<div class="empty">
+					<div class="lb-empty">
 						<strong>{artwork === null || artwork.length === 0 ? 'No artwork in this project.' : 'No artwork matches.'}</strong>
 						<span>{artwork === null || artwork.length === 0 ? 'Import an image to pin it in this World.' : 'Clear the search to see every artwork.'}</span>
 						{#if artwork === null || artwork.length === 0}
@@ -514,13 +649,12 @@
 						{/if}
 					</div>
 				{:else}
-					<div class="grid plain">
+					<div class="lb-grid">
 						{#each filteredArtwork as entry (entry.assetId)}
-							<article class="simple-card">
-								<button type="button" class="simple-open" onclick={() => onArtwork(entry)}>
-									<span class="glyph artwork" aria-hidden="true">{entry.name.slice(0, 1).toUpperCase()}</span>
-									<span class="name">{entry.name}</span>
-									<span class="meta">Project artwork</span>
+							<article class="mc simple">
+								<button type="button" class="choose" data-library-simple data-library-artwork={entry.assetId} onclick={() => onArtwork(entry)}>
+									<span class="th glyph artwork" aria-hidden="true">{entry.name.slice(0, 1).toUpperCase()}</span>
+									<span class="mt"><span class="mn"><span class="mnt">{entry.name}</span></span><span class="ms">Project artwork</span></span>
 								</button>
 							</article>
 						{/each}
@@ -528,15 +662,14 @@
 				{/if}
 			{:else}
 				{#if filteredLooks.length === 0}
-					<div class="empty"><strong>No lights match.</strong><span>Clear the search to see every light.</span><button type="button" onclick={() => (query = '')}>Clear search</button></div>
+					<div class="lb-empty"><strong>No lights match.</strong><span>Clear the search to see every light.</span><button type="button" onclick={() => (query = '')}>Clear search</button></div>
 				{:else}
-					<div class="grid plain">
+					<div class="lb-grid">
 						{#each filteredLooks as entry (entry.id)}
-							<article class="simple-card">
-								<button type="button" class="simple-open" onclick={() => onLook(entry.id)}>
-									<span class="glyph light" aria-hidden="true">☼</span>
-									<span class="name">{entry.label}</span>
-									<span class="meta">{entry.summary ?? 'Place in this World'}</span>
+							<article class="mc simple">
+								<button type="button" class="choose" data-library-simple data-library-look={entry.id} onclick={() => onLook(entry.id)}>
+									<span class="th glyph light" aria-hidden="true">☼</span>
+									<span class="mt"><span class="mn"><span class="mnt">{entry.label}</span></span><span class="ms">{entry.summary ?? 'Place in this World'}</span></span>
 								</button>
 							</article>
 						{/each}
@@ -545,25 +678,37 @@
 			{/if}
 		</div>
 
-		{#if selectedCard !== null}
-			<aside class="detail" aria-label={`${selectedCard.title} details`}>
-				<div class="detail-head">
-					<span class="eyebrow">{selectedCard.entry.source === 'curated' ? 'Curated material' : 'Project Finish'}</span>
-					<button type="button" class="detail-close" aria-label="Close details" onclick={() => (selectedKey = null)}>×</button>
+		{#if selectedCard !== null && kind === 'materials'}
+			{@const entry = selectedCard.entry}
+			{@const swappable = entry.source === 'curated' && entry.curatedId !== null}
+			<aside class="lb-d" aria-label={`${selectedCard.title} details`} data-library-detail={selectedCard.key}>
+				<div class="lbd-h">
+					<button type="button" class="back" data-library-detail-back onclick={closeDetail}>‹ Back</button>
+					<div class="tt">
+						<span class="k">{entry.source === 'curated' ? 'Material' : 'Finish'}</span>
+						<h3>{selectedCard.title}</h3>
+					</div>
+					<button
+						type="button"
+						class="star big"
+						class:on={entry.favourite}
+						aria-pressed={entry.favourite}
+						aria-label="Favourite"
+						title={entry.favourite ? 'In your Paint tray' : 'Keep in your Paint tray'}
+						onclick={() => onToggleFavourite(entry.key)}
+					>★</button>
+					<button type="button" class="lbd-x" aria-label="Close detail" data-library-detail-close onclick={closeDetail}>×</button>
 				</div>
-				<h3>{selectedCard.title}</h3>
-				<div class="detail-art">
-					<FinishTile
-						source={tileSource(selectedCard.entry)}
-						color={selectedCard.entry.color}
-						imageUri={selectedCard.entry.imageUri}
-						size={168}
-					/>
-					{#if draftOnSelected && draft !== null}
-						<span class="draft-wash" style:background={stepWash(draft.step)}></span>
-						<span class="draft-mark">Draft preview</span>
-					{/if}
-				</div>
+
+				<FinishInspectionView
+					source={tileSource(entry)}
+					color={entry.color}
+					imageUri={entry.imageUri}
+					label={selectedCard.title}
+					materialKey={entry.key}
+					settings={inspection}
+					onSettings={onInspection}
+				/>
 
 				{#if selectedCard.variants.length > 0}
 					<div class="detail-variants" role="group" aria-label="Variant">
@@ -576,213 +721,132 @@
 							>{variant.label}</button>
 						{/each}
 					</div>
+					<p class="note-sm">Two presets of one image set that differ only in sheen; the chip says which you get.</p>
 				{/if}
 
 				<dl class="facts">
-					<div><dt>Base</dt><dd>{selectedCard.entry.materialLabel}</dd></div>
-					<div><dt>Family</dt><dd>{selectedCard.entry.familyLabel}</dd></div>
-					<div><dt>Sheen</dt><dd>{selectedCard.entry.sheen.toFixed(2)} effective</dd></div>
-					<div><dt>Metal</dt><dd>{Math.round(selectedCard.entry.metalness * 100)}%</dd></div>
-					<div><dt>Used by</dt><dd>{selectedCard.entry.usage} {selectedCard.entry.usage === 1 ? 'surface' : 'surfaces'}</dd></div>
-					{#if selectedCard.entry.changes > 0}
-						<div><dt>Changes</dt><dd>{selectedCard.entry.changes}</dd></div>
-					{/if}
-					{#if selectedCard.entry.warning !== null}
-						<div class="warn"><dt>Image</dt><dd>{selectedCard.entry.warning}</dd></div>
-					{/if}
+					<dt>{entry.source === 'curated' ? 'Material' : 'From'}</dt>
+					<dd>{entry.source === 'curated' ? entry.familyLabel : `${entry.materialLabel}${entry.changes > 0 ? ` · ${entry.changes} change${entry.changes === 1 ? '' : 's'}` : ''}`}</dd>
+					<dt>Real size</dt><dd>{tileSizeOf(entry)}</dd>
+					<dt>Sheen</dt><dd>{entry.reading.steps.find((step) => step.id === entry.reading.current)?.label ?? 'Custom'} · r {entry.sheen.toFixed(2)}{entry.metalness >= 0.5 ? ' · metal' : ''}</dd>
+					<dt>Maps</dt><dd>{entry.hasColourImage ? 'colour · relief · sheen' : 'relief · sheen'}</dd>
+					<dt>Source</dt><dd>{entry.source === 'curated' ? 'Curated · CC0 source' : 'In this project'}</dd>
+					<dt>Used by</dt><dd>{entry.usage === 0 ? 'nothing' : `${entry.usage} ${entry.usage === 1 ? 'surface' : 'surfaces'}`}</dd>
+					{#if entry.warning !== null}<dt class="warn">Image</dt><dd class="warn">{entry.warning}</dd>{/if}
 				</dl>
 
-				<div class="target-note">
-					{#if target === null}
-						No object or surface selected.
-					{:else}
-						Selection · <strong>{target.label}</strong>
-					{/if}
-				</div>
-
-				<div class="actions">
-					<button
-						type="button"
-						class="primary"
-						disabled={applying || busy}
-						onclick={(event) => onUse(selectedCard.entry, event.shiftKey)}
-					>Use for Paint <kbd>Shift</kbd> keeps open</button>
-					<button
-						type="button"
-						disabled={applying || busy || target === null}
-						title={target === null ? 'Select an object or surface first.' : `Apply to ${target.label}`}
-						onclick={() => void apply(selectedCard!.entry)}
-					>{applying ? 'Applying…' : target === null ? 'Apply to selection' : `Apply to ${target.label}`}</button>
-					{#if selectedCard.entry.usage > 0}
-						<button type="button" class="ghost" disabled={selecting} onclick={() => void selectUsers(selectedCard!.entry)}>
-							{selecting ? 'Selecting…' : `Select all ${selectedCard.entry.usage}`}
-						</button>
-					{/if}
-					<button
-						type="button"
-						class="ghost"
-						disabled={busy || !canCustomise(selectedCard.entry)}
-						title={canCustomise(selectedCard.entry) ? 'Open a draft with another sheen' : 'No other sheen is reachable for this material.'}
-						onclick={() => pickStep(selectedCard!)}
-					>Customise…</button>
-					<button
-						type="button"
-						class="ghost star-wide"
-						aria-pressed={selectedCard.entry.favourite}
-						onclick={() => onToggleFavourite(selectedCard!.entry.key)}
-					>{selectedCard.entry.favourite ? '★ Favourite' : '☆ Favourite'}</button>
-				</div>
-
-				{#if draftOnSelected && draft !== null}
-					<section class="draft" aria-label="Draft">
-						<header>
-							<strong>Draft</strong>
-							<span>Preview only · nothing written</span>
-						</header>
-						<p class="draft-line">Sheen for <strong>{draft.name}</strong></p>
-						<div class="steps" role="group" aria-label="Draft sheen">
-							{#each draft.reading.steps as step (step.id)}
-								<button
-									type="button"
-									disabled={step.disabled}
-									class:on={draft.step === step.id}
-									aria-pressed={draft.step === step.id}
-									title={step.disabled ? 'This step is rougher than the base image can reach.' : `${step.label} sheen`}
-									onclick={() => onDraftStep(step.id)}
-								>{step.label}</button>
-							{/each}
-						</div>
+				<div class="acts">
+					{#if intent === 'swap'}
 						<button
 							type="button"
-							class="primary draft-apply"
-							disabled={!draftStatus.canApply || draftApplying || busy}
-							onclick={() => void applyDraft()}
-						>{draftApplying ? 'Applying…' : draftStatus.targetLabel === null ? 'Apply to selection' : `Apply to ${draftStatus.targetLabel}`}</button>
-						{#if draftStatus.reason !== null}
-							<p class="reason">{draftStatus.reason}</p>
-						{:else}
-							<p class="reason ok">One edit · one Undo. {draftStatus.changed ? '' : 'Choose a different sheen.'}</p>
+							class="btn pri"
+							disabled={!swappable || working || busy}
+							title={swappable ? 'Keeps its colour and sheen' : 'Swap takes a curated material.'}
+							data-library-detail-primary
+							onclick={(event) => choose(entry, event.shiftKey)}
+						>Swap to this</button>
+					{:else if intent === 'replace' && capturedTarget !== null}
+						<button type="button" class="btn pri" disabled={working || busy} data-library-detail-primary onclick={(event) => choose(entry, event.shiftKey)}>Apply to {capturedTarget.label}</button>
+						<button type="button" class="btn" onclick={() => onPaint(entry, false)}>Use for Paint</button>
+					{:else}
+						<button type="button" class="btn pri" data-library-detail-primary onclick={() => onPaint(entry, false)}>Use for Paint</button>
+						{#if target !== null}
+							<button
+								type="button"
+								class="btn"
+								disabled={working || busy}
+								data-library-detail-apply
+								onclick={() => void run(() => onReplace(entry, false))}
+							>Apply to {target.label}</button>
 						{/if}
-						<button type="button" class="discard" onclick={onDraftCancel}>Discard draft</button>
-					</section>
-				{/if}
-
-				<p class="hint">Sample tile at Library size; the full-resolution map is never loaded just to browse.</p>
+					{/if}
+					<button
+						type="button"
+						class="btn"
+						title="Open it in the Material editor as a draft — nothing is written until you apply"
+						data-library-customise
+						onclick={() => onCustomise(entry)}
+					>Customise…</button>
+					{#if entry.usage > 0}
+						<button type="button" class="btn ghost" disabled={working} onclick={() => void selectUsers(entry)}>Select all {entry.usage}</button>
+					{/if}
+				</div>
 			</aside>
 		{/if}
 	</div>
-</section>
+</div>
 
 <style>
+	/*
+		The Library is bounded to the usable Stage: between the visible Index lane
+		(--index-cover on desktop, --library-index-cover where the Index floats) and the Card lane (--card-cover: the span from
+		the Stage's right edge to a shown Card's left edge, set by the route), above the dock's measured lower column, with
+		a band of Stage left above it. It starts near 900 × 560 and shrinks to the
+		lanes; its bounds never depend on what is open inside it.
+	*/
+	.scrim,
+	.library {
+		--lane-l: calc(var(--library-index-cover, var(--index-cover, 0px)) + var(--sheet-lane-left, 0px));
+		--lane-r: max(var(--card-cover, 0px), var(--sheet-lane-right, 0px));
+		--lane-b: var(--lower-column-height, 168px);
+	}
 	.scrim {
 		position: absolute;
 		top: 0;
-		left: 0;
-		right: 0;
-		bottom: calc(var(--lower-column-height, 168px) + 12px);
+		left: var(--lane-l);
+		right: var(--lane-r);
+		bottom: calc(var(--lane-b) + 4px);
 		z-index: 50;
-		background: color-mix(in srgb, var(--shell-forest) 22%, transparent);
+		/* Outside-click only: the Stage is never dimmed; the panel's own shadow separates it. */
+		background: transparent;
 		border: 0;
+		padding: 0;
 	}
 	.library {
+		--lib-w: min(900px, calc(100% - var(--lane-l) - var(--lane-r) - 24px));
 		position: absolute;
 		z-index: 51;
-		top: 12px;
-		left: 12px;
-		right: 12px;
-		bottom: calc(var(--lower-column-height, 168px) + 12px);
-		display: flex;
-		flex-direction: column;
+		width: var(--lib-w);
+		height: min(560px, calc(100% - var(--lane-b) - 12px - 96px));
+		left: calc(var(--lane-l) + (100% - var(--lane-l) - var(--lane-r) - var(--lib-w)) / 2);
+		bottom: calc(var(--lane-b) + 12px);
+		box-sizing: border-box;
+		display: grid;
+		grid-template-rows: auto auto auto minmax(0, 1fr);
 		min-height: 0;
 		color: var(--shell-ink);
 		background: var(--shell-card);
 		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 12px;
-		box-shadow: 0 18px 50px color-mix(in srgb, var(--shell-forest) 30%, transparent);
+		border-radius: 14px;
+		box-shadow: 0 14px 40px color-mix(in srgb, var(--shell-forest) 26%, transparent);
 		overflow: hidden;
+		container: library / inline-size;
 	}
-	.head {
-		flex: none;
-		padding: 12px 14px 8px;
-		border-bottom: 1px solid var(--shell-hairline);
-		background: var(--shell-ivory);
-	}
-	.title-row {
+	.library:focus { outline: none; }
+	.lb-h {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		min-height: 28px;
-	}
-	h2 {
-		margin: 0;
-		font-size: 15px;
-		letter-spacing: 0.01em;
-	}
-	.context {
-		font-size: 11px;
-		color: var(--shell-ink-2);
-	}
-	.draft-pill {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		padding: 2px 4px 2px 8px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--shell-forest) 10%, transparent);
-		font-size: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-	}
-	.draft-pill button {
-		border: 0;
-		background: transparent;
-		color: inherit;
-		cursor: pointer;
-		font-size: 14px;
-		padding: 0 3px;
-	}
-	.close {
-		margin-left: auto;
-		border: 1px solid var(--shell-hairline-strong);
-		background: transparent;
-		color: var(--shell-ink);
-		border-radius: 6px;
-		padding: 4px 10px;
-		font-size: 11px;
-		cursor: pointer;
-	}
-	.close:hover {
-		background: var(--shell-paper);
-	}
-	.search-row {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		margin-top: 8px;
-	}
-	.search {
-		position: relative;
-		flex: 1 1 220px;
+		gap: 8px;
+		padding: 10px 12px 8px;
 		min-width: 0;
 	}
+	.lb-t { margin: 0; font-size: 14px; white-space: nowrap; }
+	.search { position: relative; flex: 1; min-width: 120px; }
 	.search input {
 		width: 100%;
 		box-sizing: border-box;
-		border: 1px solid var(--shell-field-line, var(--shell-hairline-strong));
-		border-radius: 7px;
-		background: var(--shell-card);
-		color: inherit;
-		padding: 7px 28px 7px 10px;
+		padding: 7px 28px 7px 12px;
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 999px;
 		font: inherit;
-		font-size: 12px;
+		font-size: 13px;
+		background: var(--shell-ivory);
+		color: inherit;
 	}
-	.search input:focus-visible {
-		outline: 2px solid var(--shell-forest);
-		outline-offset: 1px;
-	}
+	.search input:focus-visible { outline: 2px solid var(--shell-forest); border-color: var(--shell-forest); }
 	.clear-search {
 		position: absolute;
-		right: 4px;
+		right: 6px;
 		top: 50%;
 		transform: translateY(-50%);
 		border: 0;
@@ -790,12 +854,12 @@
 		color: var(--shell-ink-2);
 		font-size: 16px;
 		cursor: pointer;
-		padding: 0 4px;
 	}
 	.sources {
 		display: inline-flex;
+		flex: none;
 		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 7px;
+		border-radius: 8px;
 		overflow: hidden;
 	}
 	.sources button {
@@ -804,590 +868,384 @@
 		background: transparent;
 		color: var(--shell-ink-2);
 		font: inherit;
-		font-size: 11px;
-		padding: 6px 9px;
+		font-size: 12px;
+		padding: 6px 10px;
 		cursor: pointer;
 		white-space: nowrap;
+		min-height: 30px;
 	}
 	.sources button:last-child { border-right: 0; }
-	.sources button span {
-		margin-left: 5px;
-		font-size: 10px;
-		opacity: 0.65;
-	}
-	.sources button.on {
-		background: var(--shell-forest);
-		color: var(--shell-ivory);
-	}
-	.import {
-		border: 1px solid var(--shell-hairline-strong);
-		background: transparent;
-		color: var(--shell-ink);
-		border-radius: 7px;
-		padding: 6px 9px;
-		font: inherit;
-		font-size: 11px;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.filter-row {
-		display: flex;
-		gap: 4px;
-		align-items: center;
-		margin-top: 8px;
-		overflow-x: auto;
-		padding-bottom: 2px;
-		scrollbar-width: thin;
-	}
-	.chip {
-		flex: none;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 999px;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font: inherit;
-		font-size: 10px;
-		padding: 3px 8px;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.chip.family {
-		font-weight: 600;
-		color: var(--shell-ink);
-	}
-	.chip.on {
-		background: var(--shell-forest);
-		border-color: var(--shell-forest);
-		color: var(--shell-ivory);
-	}
-	.chip.clear { color: var(--shell-ink); text-decoration: underline; }
-	.divide { width: 1px; height: 14px; background: var(--shell-hairline-strong); flex: none; margin: 0 2px; }
-	.body {
-		position: relative;
-		flex: 1 1 auto;
-		display: grid;
-		grid-template-columns: 128px minmax(0, 1fr);
-		min-height: 0;
-	}
-	.body:has(.detail) {
-		grid-template-columns: 128px minmax(0, 1fr) 286px;
-	}
-	.rail {
-		border-right: 1px solid var(--shell-hairline);
-		padding: 10px 8px;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-height: 0;
-		overflow-y: auto;
-	}
-	.rail button {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 6px;
-		border: 0;
-		background: transparent;
-		color: var(--shell-ink-2);
+	.sources button span { margin-left: 5px; font-size: 10px; opacity: 0.65; }
+	.sources button.on { background: var(--shell-forest); color: var(--shell-ivory); }
+	.sources-menu { display: none; flex: none; }
+	.sources-menu select {
 		font: inherit;
 		font-size: 12px;
-		padding: 6px 7px;
-		border-radius: 6px;
-		cursor: pointer;
-		text-align: left;
-	}
-	.rail button:hover { background: var(--shell-paper); }
-	.rail button.on {
-		background: var(--shell-forest);
-		color: var(--shell-ivory);
-	}
-	.rail-name { font-weight: 600; }
-	.rail-count { font-size: 10px; opacity: 0.7; }
-	.rail-note {
-		margin-top: auto;
-		padding: 10px 7px 2px;
-		font-size: 10px;
-		line-height: 1.35;
-		color: var(--shell-ink-2);
-	}
-	.browse {
-		min-width: 0;
-		min-height: 0;
-		overflow-y: auto;
-		padding: 10px 12px 14px;
-	}
-	.group {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		margin: 2px 0 7px;
-		font-size: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--shell-ink-2);
-	}
-	.group span { font-weight: 400; opacity: 0.7; }
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-		gap: 8px;
-		margin-bottom: 14px;
-	}
-	.card {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		min-width: 0;
-		border: 1px solid transparent;
-		border-radius: 9px;
-		padding: 4px;
-		background: transparent;
-	}
-	.card:hover { background: var(--shell-paper); }
-	.card.on {
-		border-color: var(--shell-forest);
-		background: var(--shell-ivory);
-		box-shadow: 0 0 0 1px var(--shell-forest);
-	}
-	.card-open {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		gap: 3px;
-		border: 0;
-		padding: 0;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-		min-width: 0;
-	}
-	.card-open:focus-visible,
-	.star:focus-visible,
-	.variants button:focus-visible,
-	.chip:focus-visible,
-	.rail button:focus-visible,
-	.actions button:focus-visible,
-	.sources button:focus-visible {
-		outline: 2px solid var(--shell-forest);
-		outline-offset: 1px;
-	}
-	.thumb {
-		position: relative;
-		display: flex;
-		justify-content: center;
-		padding: 4px 0 2px;
-	}
-	.thumb :global(.finish-tile) {
-		width: 100% !important;
-		max-width: 104px;
-		height: 78px !important;
-		border-radius: 6px;
-	}
-	.thumb :global(.finish-tile img) { object-fit: cover; }
-	.used {
-		position: absolute;
-		left: 3px;
-		bottom: 4px;
-		min-width: 15px;
-		padding: 1px 4px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--shell-forest) 82%, transparent);
-		color: var(--shell-ivory);
-		font-size: 9px;
-		text-align: center;
-	}
-	.project-mark {
-		position: absolute;
-		right: 3px;
-		top: 4px;
-		padding: 1px 4px;
-		border-radius: 3px;
-		background: color-mix(in srgb, var(--shell-card) 88%, transparent);
-		font-size: 8px;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-	.name {
-		font-size: 11px;
-		font-weight: 600;
-		line-height: 1.2;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.meta {
-		font-size: 9.5px;
-		line-height: 1.25;
-		color: var(--shell-ink-2);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.star {
-		position: absolute;
-		right: 5px;
-		bottom: 24px;
-		border: 0;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font-size: 12px;
-		line-height: 1;
-		padding: 2px;
-		cursor: pointer;
-		opacity: 0.65;
-	}
-	.star.on { color: #b8860b; opacity: 1; }
-	.variants {
-		display: flex;
-		gap: 2px;
-		margin-top: 2px;
-	}
-	.variants button {
-		flex: 1;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 4px;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font: inherit;
-		font-size: 9px;
-		padding: 2px 1px;
-		cursor: pointer;
-	}
-	.variants button.on {
-		background: var(--shell-forest);
-		border-color: var(--shell-forest);
-		color: var(--shell-ivory);
-	}
-	.grid.plain { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-	.simple-card {
-		border: 1px solid var(--shell-hairline);
-		border-radius: 8px;
-		background: var(--shell-ivory);
-	}
-	.simple-open {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 3px;
-		width: 100%;
-		border: 0;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		text-align: left;
-		padding: 10px;
-		cursor: pointer;
-	}
-	.glyph {
-		display: grid;
-		place-items: center;
-		width: 100%;
-		height: 66px;
-		margin-bottom: 4px;
-		border-radius: 5px;
-		background: color-mix(in srgb, var(--shell-forest) 8%, var(--shell-paper));
-		font-size: 24px;
-		color: var(--shell-forest);
-	}
-	.glyph.artwork { font-size: 20px; font-weight: 600; }
-	.glyph.light { font-size: 28px; }
-	.empty {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 5px;
-		max-width: 330px;
-		margin: 26px auto;
-		padding: 18px;
-		border: 1px dashed var(--shell-hairline-strong);
-		border-radius: 9px;
-		font-size: 12px;
-		color: var(--shell-ink-2);
-	}
-	.empty strong { color: var(--shell-ink); font-size: 13px; }
-	.empty button {
-		margin-top: 4px;
-		border: 1px solid var(--shell-hairline-strong);
-		background: transparent;
-		color: var(--shell-ink);
-		border-radius: 6px;
+		min-height: 30px;
 		padding: 4px 8px;
-		font: inherit;
-		font-size: 11px;
-		cursor: pointer;
-	}
-	.detail {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		min-height: 0;
-		overflow-y: auto;
-		border-left: 1px solid var(--shell-hairline);
-		padding: 10px 12px 14px;
-		background: var(--shell-ivory);
-	}
-	.detail-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-	.eyebrow {
-		font-size: 9px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--shell-ink-2);
-	}
-	.detail-close {
-		border: 0;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font-size: 17px;
-		cursor: pointer;
-		padding: 0 3px;
-	}
-	.detail h3 {
-		margin: 0;
-		font-size: 16px;
-	}
-	.detail-art {
-		position: relative;
-		display: flex;
-		justify-content: center;
-		padding: 6px 0;
-	}
-	.detail-art :global(.finish-tile) {
-		width: 100% !important;
-		max-width: 178px;
-		height: 128px !important;
-		border-radius: 7px;
-	}
-	.draft-wash {
-		position: absolute;
-		inset: 6px calc(50% - 89px);
-		border-radius: 7px;
-		pointer-events: none;
-	}
-	.draft-mark {
-		position: absolute;
-		left: 50%;
-		bottom: 10px;
-		transform: translateX(-50%);
-		padding: 2px 6px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--shell-forest) 78%, transparent);
-		color: var(--shell-ivory);
-		font-size: 8px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-	.detail-variants, .steps {
-		display: flex;
-		gap: 3px;
-	}
-	.detail-variants button, .steps button {
-		flex: 1;
 		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 5px;
-		background: transparent;
-		color: var(--shell-ink-2);
-		font: inherit;
-		font-size: 10px;
-		padding: 4px 4px;
-		cursor: pointer;
-	}
-	.detail-variants button.on, .steps button.on {
-		background: var(--shell-forest);
-		border-color: var(--shell-forest);
-		color: var(--shell-ivory);
-	}
-	.steps button:disabled { opacity: 0.35; cursor: not-allowed; }
-	.facts {
-		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		font-size: 10.5px;
-	}
-	.facts div {
-		display: flex;
-		justify-content: space-between;
-		gap: 10px;
-		padding: 2px 0;
-		border-bottom: 1px solid color-mix(in srgb, var(--shell-hairline) 70%, transparent);
-	}
-	.facts dt { color: var(--shell-ink-2); }
-	.facts dd { margin: 0; text-align: right; }
-	.facts .warn dd { color: #8a5a00; }
-	.target-note {
-		font-size: 10.5px;
-		color: var(--shell-ink-2);
-		padding: 5px 7px;
-		border-radius: 6px;
-		background: var(--shell-paper);
-	}
-	.target-note strong { color: var(--shell-ink); }
-	.actions {
-		display: flex;
-		flex-direction: column;
-		gap: 5px;
-	}
-	.actions button {
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 6px;
+		border-radius: 8px;
 		background: var(--shell-card);
 		color: var(--shell-ink);
-		font: inherit;
-		font-size: 11px;
-		padding: 6px 8px;
-		cursor: pointer;
-		text-align: center;
 	}
-	.actions button.primary {
-		background: var(--shell-forest);
-		border-color: var(--shell-forest);
-		color: var(--shell-ivory);
-	}
-	.actions button.ghost {
-		background: transparent;
-		border-color: transparent;
-		text-align: left;
-		color: var(--shell-ink-2);
-	}
-	.actions button.ghost:hover { background: var(--shell-paper); color: var(--shell-ink); }
-	.actions button:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-	.actions kbd {
-		margin-left: 5px;
-		font-size: 8px;
-		font-weight: 400;
-		opacity: 0.75;
-	}
-	.draft {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		padding: 8px;
-		border: 1px solid var(--shell-forest);
-		border-radius: 8px;
-		background: color-mix(in srgb, var(--shell-forest) 6%, var(--shell-card));
-	}
-	.draft header {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 6px;
-	}
-	.draft header strong {
-		font-size: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-	.draft header span { font-size: 9px; color: var(--shell-ink-2); }
-	.draft-line { margin: 0; font-size: 10.5px; }
-	.draft-apply { width: 100%; }
-	.reason {
-		margin: 0;
-		font-size: 9.5px;
-		line-height: 1.3;
-		color: #8a5a00;
-	}
-	.reason.ok { color: var(--shell-ink-2); }
-	.discard {
-		align-self: flex-start;
+	.sources-menu select:focus-visible { outline: 2px solid var(--shell-forest); }
+	.lb-x, .lbd-x {
 		border: 0;
 		background: transparent;
+		color: var(--shell-ink);
+		font-size: 20px;
+		line-height: 1;
+		width: 30px;
+		height: 30px;
+		border-radius: 8px;
+		cursor: pointer;
+		flex: none;
+	}
+	.lb-x:hover, .lbd-x:hover { background: var(--shell-paper); }
+	.lb-f {
+		display: flex;
+		gap: 6px;
+		padding: 0 12px 8px;
+		flex-wrap: wrap;
+		align-items: center;
+		border-bottom: 1px solid var(--shell-hairline);
+	}
+	.ctx { font-size: 12px; color: var(--shell-ink-2); margin-right: 4px; }
+	.ctx b { color: var(--shell-ink); }
+	.push { margin-left: auto; }
+	.note-sm { font-size: 11px; color: var(--shell-ink-2); margin: 0; }
+	.fchip {
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 999px;
+		background: transparent;
 		color: var(--shell-ink-2);
 		font: inherit;
-		font-size: 9.5px;
-		text-decoration: underline;
-		padding: 0;
+		font-size: 11px;
+		padding: 3px 9px;
 		cursor: pointer;
-	}
-	.hint {
-		margin: auto 0 0;
-		font-size: 9px;
-		line-height: 1.35;
-		color: var(--shell-ink-2);
-		padding-top: 8px;
-	}
-	.sr {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
 		white-space: nowrap;
 	}
-
-	@media (max-width: 1180px) {
-		.body:has(.detail) { grid-template-columns: 112px minmax(0, 1fr) 260px; }
-		.grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
-		.thumb :global(.finish-tile) { height: 68px !important; }
+	.fchip[aria-pressed='true'] { background: var(--shell-forest); border-color: var(--shell-forest); color: var(--shell-ivory); }
+	.fchip.clear { text-decoration: underline; color: var(--shell-ink); }
+	.refusal, .kept { margin: 0; padding: 6px 12px; font-size: 12px; border-bottom: 1px solid var(--shell-hairline); }
+	.refusal { color: #8a3a12; background: color-mix(in srgb, #d98a3a 10%, transparent); }
+	.kept { color: var(--shell-ink-2); }
+	.lb-b {
+		position: relative;
+		display: grid;
+		grid-template-columns: 176px minmax(0, 1fr);
+		min-height: 0;
 	}
-
-	@media (max-width: 900px) {
-		.library { top: 8px; left: 8px; right: 8px; bottom: calc(var(--lower-column-height, 150px) + 8px); }
-		.body, .body:has(.detail) { grid-template-columns: 94px minmax(0, 1fr); }
-		.detail {
-			position: absolute;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			width: min(300px, 46%);
-			box-shadow: -8px 0 24px color-mix(in srgb, var(--shell-forest) 16%, transparent);
-			z-index: 2;
-		}
-		.search-row { flex-wrap: wrap; }
-		.sources { order: 3; }
+	.library.with-detail .lb-b { grid-template-columns: 176px minmax(0, 1fr) minmax(260px, 300px); }
+	.lb-rail {
+		border-right: 1px solid var(--shell-hairline);
+		overflow: auto;
+		padding: 8px;
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
 	}
+	.ix {
+		all: unset;
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 4px 6px;
+		border-radius: 7px;
+		cursor: pointer;
+		color: var(--shell-ink);
+		font-size: 12.5px;
+		min-height: 28px;
+	}
+	.ix:hover { background: var(--shell-paper); }
+	.ix:focus-visible { outline: 2px solid var(--shell-forest); outline-offset: -2px; }
+	.ix .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.ix .sub { font-size: 10.5px; color: var(--shell-ink-2); }
+	.ix.parent.on { font-weight: 600; }
+	.ix.sub2 { padding-left: 22px; min-height: 24px; font-size: 12px; color: var(--shell-ink-2); }
+	.ix.sub2.on { color: var(--shell-ink); background: color-mix(in srgb, var(--shell-gold, #c9a54a) 18%, transparent); }
+	.lb-grid-wrap { overflow: auto; min-height: 0; container: grid / inline-size; }
+	.lb-grid {
+		padding: 12px;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+		gap: 12px;
+		align-content: start;
+		grid-auto-rows: max-content;
+	}
+	/*
+		One row of the project's own Finishes; the rest are a See all away. The grid
+		fits floor((w - 12) / 136) columns of 124 px + 12 px gap in a wrap w wide, so
+		each step hides the cards past one row with display: none (out of the Tab
+		order) and shows See all only when something is hidden.
+	*/
+	.shelf {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+		column-gap: 12px;
+	}
+	.lb-g .see { display: none; }
+	.lb-g .see.overflowing { display: inline; }
+	@container grid (width < 1100px) {
+		.shelf > :nth-child(n + 8) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(8)) .see { display: inline; }
+	}
+	@container grid (width < 964px) {
+		.shelf > :nth-child(n + 7) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(7)) .see { display: inline; }
+	}
+	@container grid (width < 828px) {
+		.shelf > :nth-child(n + 6) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(6)) .see { display: inline; }
+	}
+	@container grid (width < 692px) {
+		.shelf > :nth-child(n + 5) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(5)) .see { display: inline; }
+	}
+	@container grid (width < 556px) {
+		.shelf > :nth-child(n + 4) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(4)) .see { display: inline; }
+	}
+	@container grid (width < 420px) {
+		.shelf > :nth-child(n + 3) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(3)) .see { display: inline; }
+	}
+	@container grid (width < 284px) {
+		.shelf > :nth-child(n + 2) { display: none; }
+		.lb-grid:has(.shelf > :nth-child(2)) .see { display: inline; }
+	}
+	.lb-g {
+		grid-column: 1 / -1;
+		margin: 2px 0 -4px;
+		font-size: 10px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--shell-ink-2);
+		display: flex;
+		gap: 6px;
+		align-items: baseline;
+	}
+	.lb-g .see {
+		margin-left: auto;
+		border: 0;
+		background: transparent;
+		color: var(--shell-forest);
+		font: inherit;
+		font-size: 12px;
+		letter-spacing: 0;
+		text-transform: none;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.mc {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		border-radius: 12px;
+		border: 1px solid var(--shell-hairline-strong);
+		background: var(--shell-card);
+		overflow: hidden;
+		transition: box-shadow 0.12s, border-color 0.12s;
+	}
+	.mc:hover { border-color: var(--shell-forest); box-shadow: 0 2px 10px color-mix(in srgb, var(--shell-forest) 12%, transparent); }
+	.mc.open { border-color: var(--shell-forest); box-shadow: 0 0 0 1px var(--shell-forest); }
+	.mc.blocked .th { filter: grayscale(0.6); opacity: 0.7; }
+	.choose {
+		all: unset;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		cursor: pointer;
+		width: 100%;
+	}
+	.choose:focus-visible { outline: 2px solid var(--shell-forest); outline-offset: -2px; border-radius: 12px; }
+	.choose:disabled { cursor: progress; }
+	.th {
+		display: block;
+		aspect-ratio: 1 / 1;
+		background: #e9e6dd;
+		position: relative;
+		overflow: hidden;
+	}
+	.th :global(*) { width: 100% !important; height: 100% !important; border-radius: 0 !important; }
+	.th.glyph { display: grid; place-items: center; font-size: 28px; color: var(--shell-ink-2); }
+	.mt { padding: 6px 8px 8px; display: grid; gap: 1px; align-content: start; min-height: 47px; }
+	.mn { font-size: 12.5px; font-weight: 600; line-height: 1.25; display: flex; align-items: flex-start; gap: 5px; }
+	.mnt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+	.edm { width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--shell-gold, #c9a54a); flex: none; }
+	.ms { font-size: 11px; color: var(--shell-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.mc .star, .mc .xp, .mc .users {
+		position: absolute;
+		border: 0;
+		background: rgb(255 255 255 / 92%);
+		box-shadow: 0 1px 3px rgb(18 38 29 / 20%);
+		cursor: pointer;
+		display: grid;
+		place-items: center;
+		font: inherit;
+	}
+	.mc .star { left: 6px; top: 6px; width: 26px; height: 26px; border-radius: 8px; color: var(--shell-ink-2); font-size: 13px; }
+	.mc .star.on { color: #b8892a; }
+	.mc .xp { right: 6px; top: 6px; width: 26px; height: 26px; border-radius: 8px; color: var(--shell-forest); font-size: 14px; }
+	.mc .users {
+		right: 6px;
+		top: calc(min(100%, 1px) * 0 + 6px + 26px + 4px);
+		height: 22px;
+		min-width: 26px;
+		padding: 0 7px;
+		border-radius: 999px;
+		font-size: 11px;
+		color: #2a4aa8;
+	}
+	.mc .star:focus-visible, .mc .xp:focus-visible, .mc .users:focus-visible { outline: 2px solid var(--shell-forest); }
+	.vchips { position: absolute; left: 6px; top: calc(6px + 26px + 4px); display: flex; gap: 4px; }
+	.vchips button {
+		font-size: 10px;
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 999px;
+		padding: 1px 7px;
+		color: var(--shell-ink-2);
+		background: rgb(255 255 255 / 92%);
+		cursor: pointer;
+	}
+	.vchips button.on { background: var(--shell-forest); color: var(--shell-ivory); border-color: var(--shell-forest); }
+	.lb-empty {
+		display: grid;
+		gap: 6px;
+		justify-items: center;
+		color: var(--shell-ink-2);
+		padding: 30px;
+		text-align: center;
+		font-size: 12px;
+	}
+	.lb-empty strong { color: var(--shell-ink); }
+	.lb-empty button, .btn {
+		border: 1px solid var(--shell-hairline-strong);
+		background: var(--shell-card);
+		color: var(--shell-ink);
+		border-radius: 7px;
+		padding: 6px 11px;
+		font: inherit;
+		font-size: 12px;
+		min-height: 30px;
+		cursor: pointer;
+	}
+	.btn.sm { padding: 5px 9px; font-size: 11px; white-space: nowrap; }
+	.btn.pri { background: var(--shell-forest); border-color: var(--shell-forest); color: var(--shell-ivory); }
+	.btn.ghost { border-color: transparent; text-decoration: underline; }
+	.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+	.btn:focus-visible { outline: 2px solid var(--shell-forest); outline-offset: 1px; }
+	.lb-d {
+		border-left: 1px solid var(--shell-hairline);
+		overflow: auto;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		background: var(--shell-ivory);
+		min-height: 0;
+	}
+	.lb-d > :global(*) { flex: none; }
+	.lbd-h { display: flex; gap: 6px; align-items: flex-start; }
+	.back {
+		display: none;
+		flex: none;
+		border: 1px solid var(--shell-hairline-strong);
+		background: var(--shell-card);
+		color: var(--shell-ink);
+		border-radius: 7px;
+		padding: 4px 9px;
+		font: inherit;
+		font-size: 12px;
+		min-height: 30px;
+		cursor: pointer;
+	}
+	.back:focus-visible { outline: 2px solid var(--shell-forest); }
+	.tt { flex: 1; min-width: 0; }
+	.k { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--shell-ink-2); }
+	.tt h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+	.star.big {
+		border: 1px solid var(--shell-hairline-strong);
+		background: var(--shell-card);
+		width: 30px;
+		height: 30px;
+		border-radius: 8px;
+		cursor: pointer;
+		color: var(--shell-ink-2);
+	}
+	.star.big.on { color: #b8892a; }
+	.detail-variants { display: flex; gap: 4px; }
+	.detail-variants button {
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 999px;
+		padding: 3px 10px;
+		font-size: 11px;
+		background: transparent;
+		color: var(--shell-ink-2);
+		cursor: pointer;
+	}
+	.detail-variants button.on { background: var(--shell-forest); color: var(--shell-ivory); border-color: var(--shell-forest); }
+	.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; margin: 0; }
+	.facts dt { color: var(--shell-ink-2); }
+	.facts dd { margin: 0; overflow-wrap: anywhere; }
+	.facts .warn { color: #8a5a12; }
+	.acts { display: flex; gap: 6px; flex-wrap: wrap; }
+	.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-	@media (max-width: 760px) {
-		.library {
-			top: 6px;
-			left: 6px;
-			right: 6px;
-			bottom: 6px;
-			border-radius: 10px;
-		}
-		.body, .body:has(.detail) { grid-template-columns: minmax(0, 1fr); }
-		.rail {
+	/* Not room for rail, grid and inspector: the rail folds into a row and the sources into a menu. */
+	@container library (width < 780px) {
+		.lb-b { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+		.library.with-detail .lb-b { grid-template-columns: minmax(0, 1fr) minmax(250px, 280px); grid-template-rows: auto minmax(0, 1fr); }
+		.lb-rail {
+			grid-column: 1 / -1;
 			flex-direction: row;
 			overflow-x: auto;
-			overflow-y: hidden;
 			border-right: 0;
 			border-bottom: 1px solid var(--shell-hairline);
-			padding: 5px 7px;
-			gap: 3px;
+			padding: 6px 8px;
+			gap: 4px;
 		}
-		.rail button { flex: none; }
-		.rail-note { display: none; }
-		.browse { padding-bottom: 30%; }
-		.detail {
-			position: absolute;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			top: auto;
-			width: auto;
-			max-height: 72%;
-			border-left: 0;
-			border-top: 1px solid var(--shell-hairline-strong);
-			border-radius: 10px 10px 0 0;
-			box-shadow: 0 -10px 28px color-mix(in srgb, var(--shell-forest) 18%, transparent);
-		}
-		.detail-art :global(.finish-tile) { height: 96px !important; }
-		.filter-row { padding-bottom: 4px; }
-		.context { display: none; }
+		.ix { width: auto; flex: none; }
+		.ix.sub2 { padding-left: 8px; }
+		.sources { display: none; }
+		.sources-menu { display: block; }
 	}
-
-	@media (pointer: coarse) {
-		.rail button, .chip, .sources button, .close, .actions button, .variants button, .detail-variants button, .steps button {
-			min-height: 44px;
+	/*
+		Not room for grid and inspector side by side: detail becomes an in-panel view
+		with Back over the same bounds; the browse behind it leaves the Tab order.
+	*/
+	@container library (width < 600px) {
+		.library.with-detail .lb-b { grid-template-columns: minmax(0, 1fr); }
+		.library.with-detail .lb-rail,
+		.library.with-detail .lb-grid-wrap { visibility: hidden; }
+		.lb-d {
+			position: absolute;
+			inset: 0;
+			z-index: 2;
+			border-left: 0;
 		}
-		.star { min-width: 44px; min-height: 44px; bottom: 16px; }
+		.back { display: inline-flex; align-items: center; }
+	}
+	/* Portrait: a bottom sheet above the dock, the upper third of the usable Stage left visible. */
+	@media (max-width: 860px) {
+		.scrim { left: 0; right: var(--card-cover, 0px); }
+		.library {
+			--lib-w: 100%;
+			left: 0;
+			width: 100%;
+			bottom: var(--lane-b);
+			height: calc((100% - var(--lane-b)) * 2 / 3);
+			border-radius: 16px 16px 0 0;
+		}
+		.lb-h { flex-wrap: wrap; }
+		.search { order: 3; flex-basis: 100%; }
+	}
+	@media (pointer: coarse) {
+		.ix, .fchip, .sources button, .btn, .lb-empty button { min-height: 44px; }
+		.mc .star, .mc .xp { width: 36px; height: 36px; }
+		.lb-x, .lbd-x { width: 44px; height: 44px; }
 	}
 </style>

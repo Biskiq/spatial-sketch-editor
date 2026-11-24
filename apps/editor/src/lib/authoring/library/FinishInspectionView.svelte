@@ -1,0 +1,276 @@
+<script lang="ts">
+	/**
+	 * Interactive Library detail (T2.S8 U5): the one active inspection.
+	 *
+	 * It asks the Stage's E7 inspection host, through the Finish picture
+	 * service, for a live draw of one subject with real geometry and lighting
+	 * controls. A changed subject, geometry or lighting replaces the request;
+	 * leaving releases it. Browse cards never come here: they keep the 256 px
+	 * sample-tile derivatives. With no Stage renderer (a test, a lost context)
+	 * the view shows the subject's tile and says why.
+	 *
+	 * Studio and Grazing here are the Library's own `library-studio` and
+	 * `library-grazing` rigs on a light backdrop; E7's engineering `studio` and
+	 * `grazing` rigs, U1's sample tiles and the Stage's lighting are untouched.
+	 *
+	 * One canvas stays mounted. While the same material redraws (a geometry,
+	 * lighting or Compare switch) the last valid frame holds; a new material, or
+	 * the first open, shows a neutral loading state instead of another picture.
+	 */
+	import { tryUseFinishTiles } from '$lib/authoring/look/finish-tiles-context';
+	import FinishTile from '$lib/authoring/look/FinishTile.svelte';
+	import type { FinishTileSource } from '$lib/render/materials/finish-tiles.svelte';
+	import type { InspectionLightingMode, InspectionState } from '$lib/render/materials/inspection-host';
+	import { inspectionSubjectIdentity, type InspectionSubject } from '$lib/render/materials/inspection-subject';
+	import type { WorldLightSample } from '$lib/render/materials/inspection-world';
+	import {
+		LIBRARY_INSPECTION_DEFAULT,
+		type LibraryInspectionGeometry,
+		type LibraryInspectionLighting,
+		type LibraryInspectionSettings
+	} from './library-inspection';
+
+	let {
+		source,
+		color,
+		imageUri = null,
+		label,
+		world = null,
+		worldReason = 'World light needs a placed surface to read from.',
+		caption = null,
+		materialKey = null,
+		settings = LIBRARY_INSPECTION_DEFAULT,
+		onSettings = () => {}
+	}: {
+		source: FinishTileSource | null;
+		color: string;
+		imageUri?: string | null;
+		label: string;
+		/** A World light sample at a qualified anchor; null keeps World unavailable. */
+		world?: WorldLightSample | null;
+		worldReason?: string;
+		/** Which render this is (Original / Draft), shown over the picture. */
+		caption?: string | null;
+		/**
+		 * The material this view shows. Frames of the same material hold across
+		 * redraws; a different one starts from the neutral loading state.
+		 * Defaults to the subject's identity.
+		 */
+		materialKey?: string | null;
+		/** Geometry and lighting, remembered in the Library session. */
+		settings?: LibraryInspectionSettings;
+		onSettings?: (next: LibraryInspectionSettings) => void;
+	} = $props();
+
+	const tiles = tryUseFinishTiles();
+	const SIZE = 480;
+
+	// Seeded from the session once; written back on every change.
+	// svelte-ignore state_referenced_locally
+	let geometry = $state<LibraryInspectionGeometry>(settings.geometry);
+	// svelte-ignore state_referenced_locally
+	let lighting = $state<LibraryInspectionLighting>(settings.lighting);
+	let canvas = $state<HTMLCanvasElement>();
+	/** The material whose frame the canvas holds; null before any frame. */
+	let shownKey = $state<string | null>(null);
+	/** The material the host refused, which shows the sample tile instead. */
+	let refused = $state.raw<{ readonly key: string; readonly code: string } | null>(null);
+	let partial = $state(false);
+	let pending = $state(false);
+	/** The caption of the frame on the canvas: it changes with the frame, never ahead of it. */
+	let shownCaption = $state<string | null>(null);
+
+	const subject = $derived.by((): InspectionSubject | null => {
+		if (source === null) return null;
+		return source.kind === 'catalogue' ? { kind: 'catalogue', id: source.id } : source.subject;
+	});
+	const key = $derived(materialKey ?? (subject === null ? null : inspectionSubjectIdentity(subject)));
+	const live = $derived(tiles !== null && subject !== null);
+
+	function choose(next: Partial<LibraryInspectionSettings>): void {
+		if (next.geometry !== undefined) geometry = next.geometry;
+		if (next.lighting !== undefined) lighting = next.lighting;
+		onSettings({ geometry, lighting });
+	}
+
+	// World falls back to Studio the moment its anchor stops qualifying.
+	$effect(() => {
+		if (lighting === 'world' && world === null) lighting = 'studio';
+	});
+
+	function paint(drawn: Extract<InspectionState, { status: 'ready' | 'partial' }>): void {
+		const context = canvas?.getContext('2d') ?? null;
+		if (canvas === undefined || context === null) return;
+		canvas.width = drawn.frame.width;
+		canvas.height = drawn.frame.height;
+		context.putImageData(
+			new ImageData(new Uint8ClampedArray(drawn.frame.pixels), drawn.frame.width, drawn.frame.height),
+			0,
+			0
+		);
+	}
+
+	$effect(() => {
+		const current = subject;
+		const material = key;
+		const mode: InspectionLightingMode =
+			lighting === 'world' && world !== null
+				? { world }
+				: lighting === 'grazing'
+					? 'library-grazing'
+					: 'library-studio';
+		const shape = geometry;
+		const label = caption;
+		void tiles?.epoch;
+		if (current === null || tiles === null || material === null) return;
+		pending = true;
+		const stop = tiles.inspect(
+			{ subject: current, geometry: shape, lighting: mode, display: 'lit', sizePx: [SIZE, SIZE] },
+			(next) => {
+				if (next.status === 'pending') return;
+				pending = false;
+				if (next.status === 'refused') {
+					refused = { key: material, code: next.issues[0]?.code ?? 'refused' };
+					return;
+				}
+				paint(next);
+				refused = null;
+				partial = next.status === 'partial';
+				shownKey = material;
+				shownCaption = label;
+			}
+		);
+		return () => stop?.();
+	});
+
+	const showsRefusal = $derived(refused !== null && refused.key === key);
+	// Holding: the canvas shows this material's last frame while it redraws.
+	const holding = $derived(live && !showsRefusal && shownKey !== null && shownKey === key);
+	const loading = $derived(live && !showsRefusal && !holding);
+	// A held frame keeps its own caption until its replacement arrives.
+	const visibleCaption = $derived(holding ? shownCaption : caption);
+	const phase = $derived(
+		!live ? 'off' : showsRefusal ? 'refused' : loading ? 'loading' : pending ? 'redrawing' : partial ? 'partial' : 'ready'
+	);
+	const note = $derived.by((): string | null => {
+		if (!live) return 'Live preview needs the Stage renderer; showing the sample tile.';
+		if (showsRefusal) {
+			return refused?.code === 'world-anchor-required'
+				? 'World light needs a placed surface to read from.'
+				: 'This Finish cannot be drawn live here; showing the sample tile.';
+		}
+		if (holding && partial && !pending) return 'Some images could not load; the rest still read.';
+		return null;
+	});
+</script>
+
+<div
+	class="inspect"
+	data-library-inspect
+	data-inspect-lighting-mode={lighting}
+	data-inspect-geometry-mode={geometry}
+	data-inspect-state={phase}
+	aria-busy={loading || pending}
+>
+	<div class="view" aria-label={`${label} preview`} role="img">
+		<canvas bind:this={canvas} width={SIZE} height={SIZE} class:hidden={!holding} data-inspect-canvas></canvas>
+		{#if !live || showsRefusal}
+			<div class="fallback"><FinishTile {source} {color} {imageUri} size={168} /></div>
+		{:else if loading}
+			<div class="loading" data-inspect-loading><span class="dot"></span><span>Rendering preview…</span></div>
+		{/if}
+		{#if visibleCaption !== null}<span class="caption" data-inspect-caption>{visibleCaption}</span>{/if}
+	</div>
+	<div class="controls">
+		<span class="seg" role="group" aria-label="Preview geometry">
+			{#each [['sphere', 'Sphere'], ['plane', 'Flat'], ['block', 'Block']] as const as [id, text] (id)}
+				<button type="button" aria-pressed={geometry === id} data-inspect-geometry={id} onclick={() => choose({ geometry: id })}>{text}</button>
+			{/each}
+		</span>
+		<span class="seg" role="group" aria-label="Preview lighting">
+			{#each [['studio', 'Studio'], ['grazing', 'Grazing'], ['world', 'World']] as const as [id, text] (id)}
+				<button
+					type="button"
+					aria-pressed={lighting === id}
+					disabled={id === 'world' && world === null}
+					title={id === 'world' && world === null ? worldReason : `${text} light`}
+					data-inspect-lighting={id}
+					onclick={() => choose({ lighting: id })}
+				>{text}</button>
+			{/each}
+		</span>
+	</div>
+	{#if note !== null}<p class="note" data-inspect-note>{note}</p>{/if}
+</div>
+
+<style>
+	.inspect { display: grid; gap: 8px; }
+	.view {
+		position: relative;
+		width: 100%;
+		aspect-ratio: 1;
+		border-radius: 10px;
+		overflow: hidden;
+		background: #e2dfd8;
+		display: grid;
+		place-items: center;
+	}
+	.view canvas { display: block; width: 100%; height: 100%; grid-area: 1 / 1; }
+	.view canvas.hidden { visibility: hidden; }
+	.fallback, .loading { grid-area: 1 / 1; width: 100%; height: 100%; }
+	.fallback :global(.finish-tile), .fallback :global(img) { width: 100%; height: 100%; }
+	.loading {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		color: #5d625d;
+		font-size: 11px;
+	}
+	.dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #8f938c;
+		animation: pulse 1s ease-in-out infinite alternate;
+	}
+	@keyframes pulse { from { opacity: 0.35; } to { opacity: 1; } }
+	@media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+	.caption {
+		position: absolute;
+		left: 8px;
+		top: 8px;
+		padding: 2px 7px;
+		border-radius: 999px;
+		background: color-mix(in srgb, #fff 82%, transparent);
+		color: #23302a;
+		font-size: 10.5px;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		pointer-events: none;
+	}
+	.controls { display: flex; flex-wrap: wrap; gap: 6px; }
+	.seg {
+		display: inline-flex;
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 7px;
+		overflow: hidden;
+	}
+	.seg button {
+		border: 0;
+		border-right: 1px solid var(--shell-hairline);
+		background: transparent;
+		color: var(--shell-ink-2);
+		font: inherit;
+		font-size: 11px;
+		padding: 5px 8px;
+		cursor: pointer;
+		min-height: 28px;
+	}
+	.seg button:last-child { border-right: 0; }
+	.seg button[aria-pressed='true'] { background: var(--shell-forest); color: var(--shell-ivory); }
+	.seg button:disabled { opacity: 0.5; cursor: not-allowed; }
+	.seg button:focus-visible { outline: 2px solid var(--shell-forest); outline-offset: -2px; }
+	.note { margin: 0; font-size: 11px; color: var(--shell-ink-2); }
+	@media (pointer: coarse) { .seg button { min-height: 44px; padding: 0 12px; } }
+</style>

@@ -147,6 +147,7 @@ async function harness(input: {
 		onNotice: (message) => notices.push(message),
 		openFinishes: () => undefined,
 		armPaint: () => undefined,
+		openLibrarySwap: () => undefined,
 		preferences: createMemoryPaintPreferences()
 	});
 	const scene = () => coordinator.current().source.units.scene.data;
@@ -289,6 +290,62 @@ describe('T2.S8 U5 — Library service', () => {
 		expect(await fx.finishes.applyLibraryDraft()).toBe(false);
 		expect(fx.accepted).toEqual([]);
 		expect(fx.finishes.libraryDraft?.finishKey).toBe('project:oak');
-		expect(fx.notices.at(-1)).toBe('Select a surface wearing Oak first.');
+		expect(fx.finishes.libraryDraftStatus().reason).toMatch(/applies only where Oak is worn/);
+	});
+
+	it('assigns an unchanged draft to another target as one Undo', async () => {
+		const oak: SceneMaterialInstance = { id: 'oak', name: 'Oak', base: { catalogue: 'wood-oak-veneer' }, overrides: { color: '#a07850' } } as SceneMaterialInstance;
+		const walnut: SceneMaterialInstance = { id: 'walnut', name: 'Walnut', base: { catalogue: 'wood-walnut-veneer' }, overrides: { roughness: 0.9 } };
+		const fx = await harness({ entities: [box('a', 'oak'), box('b', 'walnut')], materials: [oak, walnut] });
+		fx.selectEntity('b');
+		expect(fx.finishes.openLibraryDraft({ project: 'oak' })).toBe(true);
+		expect(fx.finishes.libraryDraftStatus()).toMatchObject({ canApply: true, changed: false, canPaint: true });
+		expect(fx.finishes.libraryDraftPreview()?.instance.id).toBe('oak');
+		expect(await fx.finishes.applyLibraryDraft()).toBe(true);
+		expect(fx.accepted).toHaveLength(1);
+		expect((fx.scene().entities[1] as { materialInstanceId?: string }).materialInstanceId).toBe('oak');
+		expect(fx.finishes.libraryDraft).toBeNull();
+		expect((await fx.coordinator.undo()).kind).toBe('restored');
+		expect((fx.scene().entities[1] as { materialInstanceId?: string }).materialInstanceId).toBe('walnut');
+	});
+
+	it('retargets the draft preview without touching the selection or writing', async () => {
+		const oak: SceneMaterialInstance = { id: 'oak', name: 'Oak', base: { catalogue: 'wood-oak-veneer' }, overrides: { color: '#a07850' } } as SceneMaterialInstance;
+		const fx = await harness({ entities: [box('a', 'oak'), box('b', 'oak')], materials: [oak] });
+		fx.selectEntity('a');
+		const before = fx.selection();
+		expect(fx.finishes.openLibraryDraft({ project: 'oak' })).toBe(true);
+		expect(fx.finishes.libraryDraftTarget()?.label).toBe('a');
+		const moved = fx.finishes.retargetLibraryDraft({ kind: 'entity', entityId: 'b' });
+		expect(moved).toBe(true);
+		expect(fx.finishes.libraryDraftTarget()?.label).toBe('b');
+		expect(fx.finishes.retargetLibraryDraft({ kind: 'entity', entityId: 'missing' })).toBe(false);
+		expect(fx.finishes.libraryDraftTarget()?.label).toBe('b');
+		expect(fx.selection()).toEqual(before);
+		fx.finishes.setLibraryDraftStep('gloss');
+		expect(fx.finishes.libraryDraftPreview()?.users).toEqual([fx.finishes.libraryDraftTarget()?.key]);
+		expect(fx.finishes.paintLibraryDraft()).toBe(false);
+		expect(fx.finishes.libraryDraftStatus().reason).toMatch(/no Paint path/);
+		fx.finishes.resetLibraryDraftStep();
+		expect(fx.finishes.paintLibraryDraft()).toBe(true);
+		expect(fx.finishes.libraryDraft).toBeNull();
+		expect(fx.accepted).toEqual([]);
+	});
+
+	it('swaps the Card target through the treatment-preserving command and refuses a stale reach', async () => {
+		const oak: SceneMaterialInstance = { id: 'oak', name: 'Oak', base: { catalogue: 'wood-oak-veneer' }, overrides: { roughness: 0.9 } };
+		const fx = await harness({ entities: [box('a', 'oak')], materials: [oak] });
+		const target = { kind: 'entity' as const, entityId: 'a' };
+		expect(fx.finishes.requestLibrarySwap(target, 'a')).toBe(true);
+		expect(fx.finishes.librarySwap).toMatchObject({ place: 'a', currentId: 'wood-oak-veneer', users: 1 });
+		expect(await fx.finishes.applyLibrarySwap('wood-oak-veneer')).toMatchObject({ ok: false });
+		expect(fx.accepted).toEqual([]);
+		expect(await fx.finishes.applyLibrarySwap('wood-walnut-veneer')).toEqual({ ok: true });
+		expect(fx.accepted).toHaveLength(1);
+		const finish = fx.scene().materials.find((material) => material.id === (fx.scene().entities[0] as { materialInstanceId?: string }).materialInstanceId);
+		const worn = fx.scene().entities[0] as { materialId?: string };
+		expect(finish?.base ?? { catalogue: worn.materialId }).toEqual({ catalogue: 'wood-walnut-veneer' });
+		fx.finishes.clearLibrarySwap();
+		expect(await fx.finishes.applyLibrarySwap('wood-oak-veneer')).toMatchObject({ ok: false });
 	});
 });

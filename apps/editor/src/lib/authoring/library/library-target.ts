@@ -102,6 +102,38 @@ export function libraryTargetOf(
 	};
 }
 
+/**
+ * The Library target a Stage pick names (the draft editor's retarget), read
+ * fresh from the accepted envelope: null when it cannot take a Finish.
+ */
+export function libraryTargetOfPick(
+	pick: { readonly kind: 'entity'; readonly entityId: string } | { readonly kind: 'surface'; readonly surface: SceneSurfaceRef },
+	envelope: ProjectEnvelope
+): LibraryTarget | null {
+	const scene = envelope.units.scene.data;
+	if (pick.kind === 'entity') {
+		const entity = scene.entities.find((candidate) => candidate.id === pick.entityId);
+		if (entity === undefined || !isFinishPaintable(entity)) return null;
+		return {
+			kind: 'entity',
+			key: `entity:${entity.id}`,
+			entityId: entity.id,
+			label: entity.name,
+			finishKey: finishOf(entity, scene.materials)
+		};
+	}
+	const layout = envelope.units.layout.data;
+	if (resolveLayoutSurface(layout, pick.surface) !== 'present') return null;
+	const assignment = surfaceFinishFor(scene, pick.surface);
+	return {
+		kind: 'surface',
+		key: `surface:${surfaceKey(pick.surface)}`,
+		surface: pick.surface,
+		label: surfaceLabel(pick.surface),
+		finishKey: assignment === null ? null : finishKeyOfSurface(scene, assignment)
+	};
+}
+
 /** A selection of every present user an inspection found; dormant surfaces are listed but not selected. */
 export function selectionEntriesOfFinishUsers(
 	users: readonly InspectedFinishUser[],

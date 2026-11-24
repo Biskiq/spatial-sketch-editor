@@ -18,7 +18,7 @@
 	 * EditorHead/Index/Card, Unfold, Artwork, Experience lens/controller, drafting
 	 * and the Height Sheet remain exactly where they were.
 	 */
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
@@ -162,6 +162,7 @@
 	import { withFinishInstancePreview } from '@portfolio/project-model/scene-planning';
 	import StagePaintTray from '$lib/authoring/stage/shell/StagePaintTray.svelte';
 	import StageLibrary from '$lib/authoring/library/StageLibrary.svelte';
+	import LibraryMaterialEditor from '$lib/authoring/library/LibraryMaterialEditor.svelte';
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
 	import { paintTileSource, parseColourKey } from '$lib/authoring/look/paint-pick';
 	import { createPaintTrayState } from '$lib/authoring/look/paint-tray-state.svelte';
@@ -606,7 +607,7 @@
 	const paintTrayState = createPaintTrayState();
 	// Paint's consequence line, read on the Stage view bar while the tray is up.
 	const paintLine = $derived(
-		shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen
+		shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen && finishes.libraryDraft === null
 			? paintConsequence({
 				stroke: shell.paintTool?.stroke() ?? null,
 				dropper: paintTray.dropper,
@@ -646,23 +647,88 @@
 		void shell.contributionsVersion;
 		return finishes.libraryTarget();
 	});
+	/**
+	 * The draft's render-only Stage projection, held stable between scene reads:
+	 * a fresh object per read would make every Stage evaluation look changed.
+	 */
+	/** The draft's own render subject for Compare: the patched Finish in a draft-only document. */
+	const libraryDraftRender = $derived.by((): { source: FinishTileSource | null; reason: string | null } => {
+		void shell.contributionsVersion;
+		const drafted = finishes.libraryDraftInstance();
+		if (drafted === null) return { source: null, reason: null };
+		if (!drafted.ok) return { source: null, reason: drafted.reason };
+		if (!drafted.changed) return { source: null, reason: null };
+		if (boot.status !== 'ready' && boot.status !== 'empty') {
+			return { source: null, reason: 'The project is not loaded.' };
+		}
+		const scene = boot.snapshot.domain.scene;
+		const id = 'library-draft-inspection';
+		const step = finishes.libraryDraft?.step ?? 'draft';
+		return {
+			reason: null,
+			source: {
+				kind: 'finish',
+				subject: {
+					kind: 'finish',
+					document: {
+						...scene,
+						materials: [...scene.materials.filter((material) => material.id !== id), { ...drafted.instance, id }]
+					},
+					finishId: id,
+					revision: `${boot.snapshot.sourceContentId}#draft:${finishes.libraryDraft?.finishKey}:${step}`,
+					scope: stageAssets.textureScope
+				}
+			}
+		};
+	});
+	const libraryDraftPreview = $derived.by(() => {
+		void finishes.libraryDraft;
+		void shell.contributionsVersion;
+		return finishes.libraryDraftPreview();
+	});
 	const libraryDraftStatus = $derived.by(() => {
 		void selection;
 		void shell.contributionsVersion;
 		return finishes.libraryDraftStatus();
 	});
+	function libraryTileSource(entry: (typeof libraryEntries)[number]): FinishTileSource | null {
+		if (entry.source === 'curated' && entry.curatedId !== null) return { kind: 'catalogue', id: entry.curatedId };
+		return entry.projectId === null ? null : finishTileSource(entry.projectId);
+	}
 	const libraryObjects = assets
 		.filter((asset) => asset.status === 'approved')
 		.slice(0, 8)
 		.map((asset) => ({ id: asset.id, name: asset.name }));
 
-	/** Close the external Library; a Paint pick behind it returns to the tray, never Select. */
-	function closeLibrary(): void {
-		finishes.cancelLibraryDraft();
+	/** Where focus lands when the Library closes: the control that opened it. */
+	const LIBRARY_INVOKERS = {
+		dock: '[data-world-library-key]',
+		lights: '[data-world-library-key]',
+		paint: '[data-paint-library], [data-paint-library-open]',
+		furnish: '[data-furnish-browse]',
+		card: '[data-finish-swap]'
+	} as const;
+	function returnLibraryFocus(from: keyof typeof LIBRARY_INVOKERS): void {
+		void tick().then(() => {
+			const invoker =
+				document.querySelector<HTMLElement>(LIBRARY_INVOKERS[from]) ??
+				document.querySelector<HTMLElement>(LIBRARY_INVOKERS.dock);
+			invoker?.focus();
+		});
+	}
+	/**
+	 * Close the external Library; a Paint pick behind it returns to the tray,
+	 * never Select, and a Furnish visit returns to its strip. Focus goes back to
+	 * the invoking control unless the close hands the creator to the Stage.
+	 */
+	function closeLibrary(returnFocus = true): void {
+		finishes.clearLibrarySwap();
 		if (!shell.libraryOpen) return;
 		const returnsToPaint = shell.toolBeforeLibrary === 'paint';
+		const from = shell.libraryInvocation.from;
 		commands.toggleWorldLibrary();
 		if (returnsToPaint || shell.armedHostTool === 'paint') commands.armWorldTool('paint');
+		if (returnFocus) returnLibraryFocus(from);
 	}
 	const dockKeys = $derived(dockView.keys);
 	const inactiveTask = $derived(stageInactiveTask({
@@ -765,6 +831,7 @@
 		showExperienceWelcome: () => experience.showWelcome(),
 		disarmSliceDraw: () => sliceDraw.disarm(),
 		studioActive: () => studio?.active === true,
+		libraryReplaceQualified: () => finishes?.libraryTarget() != null,
 		runStudioEntry: (id) => {
 			if (id === 'edit') {
 				const selectedId =
@@ -958,6 +1025,11 @@
 			if (!shell.libraryOpen) commands.toggleWorldLibrary();
 			shell.setWorldPlateOpen(true);
 		},
+		// The Card's Swap… opens the Library on its Swap intent (a fresh invocation).
+		openLibrarySwap: () => {
+			if (shell.libraryOpen) commands.toggleWorldLibrary();
+			commands.toggleWorldLibrary('card');
+		},
 		isPaintArmed: () => shell.armedHostTool === 'paint',
 		armPaint: () => commands.armWorldTool('paint'),
 		colourCoat: createColourCoatPort({
@@ -966,10 +1038,22 @@
 			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
 		})
 	});
-	/** Every close path (header, scrim, dock, Objects pick) drops a draft; only Apply writes. */
+	/**
+	 * The Customise… draft lives in the Material editor while Paint is armed for
+	 * its Stage retarget; putting Paint down discards it. Only Apply writes.
+	 */
 	$effect(() => {
-		if (!shell.libraryOpen) finishes.cancelLibraryDraft();
+		if (finishes.libraryDraft !== null && shell.armedHostTool !== 'paint') finishes.cancelLibraryDraft();
 	});
+	$effect(() => {
+		if (!shell.libraryOpen && finishes.librarySwap !== null) untrack(() => finishes.clearLibrarySwap());
+	});
+	/** Leave the draft editor: discard the draft and hand focus back to the Library key. */
+	function endLibraryDraft(): void {
+		finishes.cancelLibraryDraft();
+		commands.armWorldTool('select');
+		void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
+	}
 	artworkInteraction = createStageArtworkInteraction({
 		api,
 		services: () => adapterServices,
@@ -1105,7 +1189,16 @@
 			return true;
 		},
 		dismissPaint: () => {
-			if (paintTrayState.wheelOpen) return paintTrayState.dismiss();
+			if (finishes.libraryDraft !== null) {
+				endLibraryDraft();
+				return true;
+			}
+			if (paintTrayState.wheelOpen) {
+				// Paint colour closes first and hands focus back to Custom colour.
+				paintTrayState.setWheelOpen(false);
+				document.querySelector<HTMLElement>('[data-paint-wheel-open]')?.focus();
+				return true;
+			}
 			if (finishes.dropperArmed) {
 				finishes.cancelDropper();
 				return true;
@@ -1117,11 +1210,20 @@
 		paletteOpen: () => shell.paletteOpen,
 		closePalette: () => shell.setPaletteOpen(false),
 		libraryOpen: () => shell.libraryOpen,
-		toggleLibrary: () => commands.toggleWorldLibrary(),
+		toggleLibrary: () => closeLibrary(),
 		activeWorldTool: () => shell.activeWorldTool,
 		clearWorldTool: () => { shell.setLibraryOpen(false); shell.setActiveWorldTool('select'); },
 		worldPlateOpen: () => shell.worldPlateOpen,
 		closeWorldPlate: () => shell.setWorldPlateOpen(false),
+		furnishStripOpen: () => shell.furnishStripOpen,
+		closeFurnishStrip: () => shell.setFurnishStripOpen(false),
+		toolbarFocused: () => {
+			const active = document.activeElement;
+			return active instanceof HTMLElement &&
+				active.closest('[data-world-toolbar], [data-paint-tray]') !== null &&
+				!active.matches('[data-world-select]');
+		},
+		focusSelectKey: () => document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
 		dismissSky: () => {
 			if (!look.panelOpen) return false;
 			look.setPanelOpen(false);
@@ -2057,7 +2159,7 @@
 			get scene() {
 				const accepted = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
 				if (accepted === null) return boot.snapshot.domain.scene;
-				return withFinishInstancePreview(accepted, finishes.card.preview);
+				return withFinishInstancePreview(accepted, libraryDraftPreview ?? finishes.card.preview);
 			},
 			get evaluation() { return evaluation; },
 			get ghosts() { return ghosts; },
@@ -2311,6 +2413,7 @@
 		class="editor-body"
 		style={`--lower-column-height: ${shell.lowerColumnHeight}px; ${experience.lensState === 'experience' ? '--card-right: 10px; ' : ''}${experience.lensState === 'experience' && !experience.guideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${shell.sheetLaneRight}px; --sheet-lane-left: ${shell.sheetLaneLeft}px`}
 		data-index-open={preview === null && shell.indexOpen}
+		data-library-open={shell.libraryOpen && preview === null}
 	>
 		{#if preview === null && experience.lensState === 'world' && transfer !== null && !studio.active && (boot.status === 'ready' || boot.status === 'empty')}
 			<StudioTransferStrip
@@ -2504,7 +2607,10 @@
 						requestedCategory: shell.libraryCategoryRequest,
 						onPlateOpen: (open: boolean) => shell.setWorldPlateOpen(open),
 						onTool: (id) => commands.armWorldTool(id),
-						onLibrary: () => commands.toggleWorldLibrary(),
+						onLibrary: () => (shell.libraryOpen ? closeLibrary() : commands.toggleWorldLibrary('dock')),
+						furnishOpen: shell.furnishStripOpen,
+						onFurnish: () => commands.toggleFurnishStrip(),
+						onFurnishBrowse: () => commands.browseFurnish(),
 						onObjectPick: (assetId: string) => commands.pickWorldObject(assetId),
 						onMaterialPick: look.pickMaterial,
 						finishShelf,
@@ -2624,46 +2730,59 @@
 		/>
 
 		{#if shell.libraryOpen && preview === null && experience.lensState === 'world' && adapterServices !== null}
+			{#key shell.libraryInvocation.nonce}
 			<StageLibrary
 				entries={libraryEntries}
+				intent={shell.libraryInvocation.intent}
 				target={libraryTarget}
-				draft={finishes.libraryDraft}
-				draftStatus={libraryDraftStatus}
+				swap={finishes.librarySwap}
+				view={shell.libraryView}
+				openKind={shell.libraryInvocation.kind}
 				busy={finishes.busy}
-				tileSource={(entry) =>
-					entry.source === 'curated' && entry.curatedId !== null
-						? { kind: 'catalogue', id: entry.curatedId }
-						: entry.projectId === null
-							? null
-							: finishTileSource(entry.projectId)}
+				tileSource={libraryTileSource}
 				objects={libraryObjects}
 				artwork={selectionViewView.scenePayload === null ? null : selectionViewView.scenePayload.artworkLibrary ?? []}
 				looks={look.libraryShelf}
+				inspection={shell.libraryInspection}
+				onInspection={(next) => shell.setLibraryInspection(next)}
+				onView={(next) => shell.setLibraryView(next)}
 				onClose={closeLibrary}
-				onUse={(entry, keepOpen) => {
-					finishes.cancelLibraryDraft();
+				onPaint={(entry, keepOpen) => {
 					finishes.pickMaterialKey(entry.key);
-					if (!keepOpen && shell.libraryOpen) commands.toggleWorldLibrary();
+					if (keepOpen) return;
+					if (shell.libraryOpen) commands.toggleWorldLibrary();
 					commands.armWorldTool('paint');
 				}}
-				onApply={async (entry) => {
+				onReplace={async (entry, keepOpen) => {
 					const accepted = await finishes.applyLibraryFinish(entry.ref);
-					if (accepted) closeLibrary();
-					return accepted;
+					if (!accepted) {
+						return {
+							ok: false,
+							message: libraryTarget === null
+								? 'Select an object or surface first. Nothing changed.'
+								: libraryTarget.finishKey === entry.key
+									? `${libraryTarget.label} already wears ${entry.name}.`
+									: 'That change could not be made. Nothing changed.'
+						};
+					}
+					if (!keepOpen) closeLibrary();
+					return { ok: true };
+				}}
+				onSwap={async (materialId, keepOpen) => {
+					const outcome = await finishes.applyLibrarySwap(materialId);
+					if (outcome.ok && !keepOpen) closeLibrary();
+					return outcome;
 				}}
 				onSelectUsers={async (entry) => {
 					const selected = await finishes.selectFinishUsers(entry.ref);
 					if (selected) closeLibrary();
 					return selected;
 				}}
-				onCustomise={(entry) => finishes.openLibraryDraft(entry.ref)}
-				onDraftStep={(step) => finishes.setLibraryDraftStep(step)}
-				onDraftApply={async () => {
-					const accepted = await finishes.applyLibraryDraft();
-					if (accepted) closeLibrary();
-					return accepted;
+				onCustomise={(entry) => {
+					closeLibrary(false);
+					if (!finishes.openLibraryDraft(entry.ref)) return;
+					commands.armWorldTool('paint');
 				}}
-				onDraftCancel={() => finishes.cancelLibraryDraft()}
 				onToggleFavourite={(key) => finishes.toggleFavouriteMaterial(key)}
 				onObject={(assetId) => commands.pickWorldObject(assetId)}
 				onArtwork={(entry: ArtworkLibraryEntry) => {
@@ -2681,9 +2800,38 @@
 					look.pickLibraryEntry(id);
 				}}
 			/>
+			{/key}
 		{/if}
 
-		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen}
+		{#if finishes.libraryDraft !== null && preview === null && experience.lensState === 'world' && adapterServices !== null}
+			{@const draftEntry = libraryEntries.find((entry) => entry.key === finishes.libraryDraft?.finishKey) ?? null}
+			<LibraryMaterialEditor
+				draft={finishes.libraryDraft}
+				entry={draftEntry}
+				status={libraryDraftStatus}
+				busy={finishes.busy}
+				previewing={libraryDraftPreview !== null}
+				tileSource={draftEntry === null ? null : libraryTileSource(draftEntry)}
+				draftSource={libraryDraftRender.source}
+				draftReason={libraryDraftRender.reason}
+				inspection={shell.libraryInspection}
+				onInspection={(next) => shell.setLibraryInspection(next)}
+				onStep={(step) => finishes.setLibraryDraftStep(step)}
+				onReset={() => finishes.resetLibraryDraftStep()}
+				onApply={async () => {
+					const accepted = await finishes.applyLibraryDraft();
+					if (accepted) {
+						commands.armWorldTool('select');
+						void tick().then(() => document.querySelector<HTMLElement>('[data-world-library-key]')?.focus());
+					}
+					return accepted;
+				}}
+				onPaint={() => finishes.paintLibraryDraft()}
+				onCancel={endLibraryDraft}
+			/>
+		{/if}
+
+		{#if shell.armedHostTool === 'paint' && preview === null && !shell.libraryOpen && finishes.libraryDraft === null}
 			<StagePaintTray
 				tray={paintTray}
 				view={paintTrayState}
@@ -2697,13 +2845,13 @@
 				onColour={(colour) => finishes.pickColour(colour)}
 				onFavourite={() => finishes.toggleActiveFavourite()}
 				onDropper={() => (finishes.dropperArmed ? finishes.cancelDropper() : finishes.armDropper())}
-				onLibrary={() => commands.toggleWorldLibrary()}
+				onLibrary={() => commands.toggleWorldLibrary('paint')}
 				palette={{
 					...finishes.paletteView(),
 					rename: (slotId, name) => void finishes.renamePaletteSlot(slotId, name),
 					setColor: (slotId, color) => void finishes.setPaletteSlotColor(slotId, color),
 					remove: (slotId) => void finishes.removePaletteSlot(slotId),
-					add: (color) => void finishes.addPaletteSlot(color)
+					add: (color) => finishes.addPaletteSlot(color)
 				}}
 				tileSource={finishTileSource}
 			/>
@@ -2806,6 +2954,40 @@
 	@media (width > 1100px) {
 		.editor-body[data-index-open='true'] {
 			--index-cover: var(--shell-index-width);
+		}
+	}
+	/*
+		Below 1100 px the Index floats over the Stage and reserves no lane, but the
+		Library and its draft editor still keep clear of an open Index so it stays
+		visible beside them (owner decision on #408). Under 860 px the Library is
+		a full-width sheet and takes the Stage.
+	*/
+	@media (860px < width <= 1100px) {
+		.editor-body[data-index-open='true'] {
+			--library-index-cover: var(--shell-index-width);
+		}
+	}
+	/*
+		The Library and the draft editor keep clear of a shown Card: --card-cover is
+		the span from the Stage's right edge to the Card's left edge, matching the
+		Card's own placement.
+	*/
+	.editor-body:has(> :global(aside.card)) {
+		--card-cover: calc(var(--shell-card-width) + var(--sheet-lane-right, 0px) + 18px);
+	}
+	.editor-host[data-shell='living-draft'] .editor-body:has(> :global(aside.card)) {
+		--card-cover: calc(var(--shell-card-width) + 10px);
+	}
+	/*
+		Where the Library is a full-width sheet it takes the Index's place while
+		open. The Index keeps its open state, contents and scroll (visibility only),
+		and comes back as it was when the Library closes. Above 860 px the Library
+		keeps clear of the Index instead (--library-index-cover).
+	*/
+	@media (max-width: 860px) {
+		.editor-body[data-library-open='true'] > :global(.plate-index),
+		.editor-body[data-library-open='true'] > :global([data-index-scrim]) {
+			visibility: hidden;
 		}
 	}
 	@media (pointer: coarse) {

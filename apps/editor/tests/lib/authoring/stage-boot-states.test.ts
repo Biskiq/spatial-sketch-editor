@@ -38,6 +38,7 @@ import {
 	type BootState
 } from '$lib/authoring/stage/boot-state';
 import {
+	createEmptyUnitEnvelope,
 	serializeProjectEnvelope,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
@@ -312,6 +313,26 @@ describe('the editor host boots into exactly one named state', () => {
 		expect(state.snapshot.domain.geometry.floors.every((floor) => floor.roomIds.length === 0)).toBe(true);
 		expect(state.snapshot.domain.datumMeters).toBe(0);
 		expect(stageEnvelope(state.snapshot).name).toBe('Untitled project');
+	});
+
+	it('seeds new blank and starter baselines with the linked starter palette, and only those', async () => {
+		const palette = [
+			{ id: 'chalk', name: 'Chalk', color: '#ece7dc' },
+			{ id: 'sage', name: 'Sage', color: '#9aa58c' },
+			{ id: 'clay', name: 'Clay', color: '#b9775a' },
+			{ id: 'ink', name: 'Ink', color: '#2f3a44' }
+		];
+		const empty = await bootEmpty(PROJECT_ID, contextFor());
+		const starter = await bootStarterGallery(PROJECT_ID, contextFor());
+		if (empty.status !== 'empty' || starter.status !== 'ready') throw new Error('baselines did not boot');
+		expect(empty.snapshot.domain.scene.palette).toEqual(palette);
+		expect(starter.snapshot.domain.scene.palette).toEqual(palette);
+
+		// An opened project keeps its own palette, an empty (absent) one included.
+		const unseeded = await createEmptyUnitEnvelope({ id: PROJECT_ID, name: 'Saved', acceptedRevision: contextFor().acceptedRevision });
+		const opened = await bootFromLoadOutcome(initialBootState(PROJECT_ID, 'open'), { kind: 'loaded', document: unseeded }, contextFor());
+		if (opened.status !== 'ready') throw new Error(`opened project did not boot: ${opened.status}`);
+		expect(opened.snapshot.domain.scene.palette ?? []).toEqual([]);
 	});
 
 	it('opens explicit source JSON through the one admission path', async () => {
