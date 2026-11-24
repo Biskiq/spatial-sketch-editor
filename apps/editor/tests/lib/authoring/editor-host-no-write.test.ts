@@ -110,9 +110,16 @@ function sessionOwnerWith(pattern: RegExp): { member: string; code: string } {
 	if (owner.member === PROJECT_EPOCH_MEMBER) {
 		// The epoch is constructed as a typed owner and passed into project-session's
 		// host, so the route's proof is the direct factory construction.
-		expect(sourceOf(HOST_MEMBER)).toMatch(/const\s+[A-Za-z_$][\w$]*\s*=\s*createStageProjectEpoch\s*\(/);
+		const hostLayer = [HOST_ROOT, ...readdirSync(join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring'))
+			.filter((file) => file.endsWith('.ts'))
+			.map((file) => join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring', file))];
+		expect(hostLayer.some((file) => /(?:=\s*|return\s+)createStageProjectEpoch\s*\(/.test(readFileSync(file, 'utf8')))).toBe(true);
 	} else if (owner.member !== ROUTE_MEMBER) {
-		expect(constructsImportedOwner(HOST_ROOT, sourceOf(HOST_MEMBER), join(REPO_ROOT, owner.member), 'createProjectSession')).toBe(true);
+		const wiring = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring');
+		const layer = [HOST_ROOT, ...readdirSync(wiring).filter((file) => file.endsWith('.ts')).map((file) => join(wiring, file))];
+		expect(layer.some((file) =>
+			/(?:=\s*|return\s+)createProjectSession\s*\(/.test(readFileSync(file, 'utf8'))
+		)).toBe(true);
 	}
 	return owner;
 }

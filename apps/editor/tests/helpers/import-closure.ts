@@ -297,17 +297,23 @@ export function constructsImportedOwner(importer: string, source: string, owner:
 		return ts.isCallExpression(expression) && !expression.questionDotToken && ts.isIdentifier(expression.expression) &&
 			factories.has(checker.getSymbolAtLocation(expression.expression)!);
 	}
-	// The composition root is either the module's top level (a route script) or
-	// the body of the workspace host factory (X9's workspace host).
+	// The composition root is the module's top level (a route script), the body of
+	// the workspace host factory, or one `wire*` function in the wiring layer.
 	const scopes: readonly ts.NodeArray<ts.Statement>[] = [
 		tree.statements,
 		...tree.statements.flatMap((statement) =>
-			ts.isFunctionDeclaration(statement) && statement.name?.text === 'createWorkspaceHost' && statement.body
+			ts.isFunctionDeclaration(statement) && statement.body &&
+			(statement.name?.text === 'createWorkspaceHost' || statement.name?.text.startsWith('wire'))
 				? [statement.body.statements]
 				: []
 		)
 	];
 	const constructs = (statements: readonly ts.Statement[]): boolean => {
+		// A wiring function's shape is `return createOwner({...})`: the construction
+		// and its hand-off are one statement.
+		if (statements.some((statement) =>
+			ts.isReturnStatement(statement) && statement.expression !== undefined && callsFactory(statement.expression)
+		)) return true;
 		for (const [index, statement] of statements.entries()) {
 			if (!ts.isVariableStatement(statement)) continue;
 			for (const declaration of statement.declarationList.declarations) {
@@ -335,13 +341,20 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	const route = path.join(EDITOR_LIB, 'authoring/workspace/host/workspace-host.svelte.ts');
 	const code = fs.readFileSync(route, 'utf8');
 	const reachable = importClosure([route]);
+	// X9's wiring layer is part of the composition root: a factory literal lives in
+	// `workspace/host/wiring`, one function per factory, and the host calls it.
+	const wiringRoot = `${path.join(EDITOR_LIB, 'authoring/workspace/host/wiring')}${path.sep}`;
+	const wiring = [...reachable].filter((file) => file.startsWith(wiringRoot) && file.endsWith('.ts'));
+	const constructsInLayer = (file: string, factory: string): boolean =>
+		constructsImportedOwner(route, code, file, factory) ||
+		wiring.some((source) => constructsImportedOwner(source, fs.readFileSync(source, 'utf8'), file, factory));
 	const controllers = [
 		[path.join(EDITOR_LIB, 'authoring/project-session/project-session.svelte.ts'), 'createProjectSession']
 	] as const;
 	const sources = [{ file: route, code }];
 	for (const [file, factory] of controllers) {
 		if (!reachable.has(file)) continue;
-		if (!constructsImportedOwner(route, code, file, factory)) throw new Error(`Route must construct ${factory} from ${file}`);
+		if (!constructsInLayer(file, factory)) throw new Error(`Route must construct ${factory} from ${file}`);
 		sources.push({ file, code: fs.readFileSync(file, 'utf8') });
 	}
 	// X1's controllers are constructed as typed owners and passed into the
@@ -363,7 +376,10 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	] as const;
 	for (const [file, factory] of constructed) {
 		if (!reachable.has(file)) throw new Error(`Route must import ${factory} from ${file}`);
-		if (!new RegExp(`(?:(?:const|let|var)\\s+[\\w$]+|^\\s*[\\w$]+)\\s*=\\s*${factory}\\s*\\(`, 'm').test(code)) {
+		const layerCode = [code, ...wiring.map((source) => fs.readFileSync(source, 'utf8'))].join('\n');
+		const constructs = new RegExp(`(?:(?:const|let|var)\\s+[\\w$]+|^\\s*[\\w$]+)\\s*=\\s*${factory}\\s*\\(`, 'm').test(layerCode) ||
+			constructsInLayer(file, factory);
+		if (!constructs) {
 			throw new Error(`Route must construct ${factory} from ${file}`);
 		}
 		if (!sources.some((source) => source.file === file)) {
@@ -380,6 +396,11 @@ export function composedSpatialHost(): { file: string; code: string }[] {
 	for (const file of reachable) {
 		if (ownerDirs.some((dir) => file.startsWith(`${dir}${path.sep}`)) && /\.(svelte|ts)$/.test(file) &&
 			!sources.some((source) => source.file === file)) {
+			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
+		}
+	}
+	for (const file of wiring) {
+		if (!sources.some((source) => source.file === file)) {
 			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
 		}
 	}

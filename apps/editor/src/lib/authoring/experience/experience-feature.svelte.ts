@@ -7,11 +7,13 @@
  * stage. Contextual navigation stays on the binding's own path; the Head's
  * workspace request still goes through `leaveLens`, which reaches `changeLens`.
  */
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import type { StageExperienceBinding } from '../stage/route/stage-experience-binding.svelte';
 import { experienceFocus } from './focus.svelte';
 import { createExperienceHostPorts, type ExperienceHostPortsDeps } from './experience-host-ports.svelte';
 import { createExperiencePreviewHost, type ExperiencePreviewHostInput } from './experience-preview-host';
-import { createExperienceRegionViews, type ExperienceRegionViewDeps } from './experience-region-views.svelte';
+import { createExperienceRegionViews, experienceHomesView, type ExperienceRegionViewDeps } from './experience-region-views.svelte';
 
 export type ExperienceFeatureDeps = {
 	readonly binding: StageExperienceBinding;
@@ -77,7 +79,9 @@ export function createExperienceFeature(deps: ExperienceFeatureDeps) {
 				},
 				get toolbars() {
 					return views.toolbars;
-				}
+				},
+				homes: (services: StageAdapterServices | null, envelope: ProjectEnvelope | null) =>
+					experienceHomesView(deps.binding, services, envelope)
 			}
 		},
 		lifecycle: {

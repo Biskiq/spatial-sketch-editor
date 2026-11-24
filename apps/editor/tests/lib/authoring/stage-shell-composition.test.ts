@@ -22,7 +22,7 @@
  * shell is mountable only in a browser. It belongs to the arch lane for the same
  * reason `wall-mesh-shell-boundary` does — it guards a boundary, not a behaviour.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -45,6 +45,7 @@ const STAGE_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'stage');
 const SHELL_DIR = join(STAGE_DIR, 'shell');
 const ROUTE = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'workspace-host.svelte.ts');
 const ROUTE_COMPONENT = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'WorkspaceHost.svelte');
+const WIRING = join(EDITOR_SRC, 'lib', 'authoring', 'workspace', 'host', 'wiring');
 const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
 const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
 const EXPERIENCE_BINDING = join(STAGE_DIR, 'route', 'stage-experience-binding.svelte.ts');
@@ -110,7 +111,8 @@ function postureSources(): { file: string; code: string }[] {
 		files.push(EXPERIENCE_BINDING, EXPERIENCE_LENS);
 	}
 	// The route composes one input arbiter and the Artwork feature owns its controller.
-	expect(route).toContain('createStageInputArbiter({');
+	expect([route, ...readdirSync(WIRING).filter((file) => file.endsWith('.ts')).map((file) => readFileSync(join(WIRING, file), 'utf8'))].join('\n'))
+		.toContain('createStageInputArbiter({');
 	expect(route).toContain('createArtworkFeature({');
 	expect(readFileSync(ARTWORK_ENTRY, 'utf8')).toContain('createStageArtworkInteraction({');
 	files.push(X2_INPUT_FILE, ARTWORK_ENTRY, ARTWORK_HOST, X2_ARTWORK_FILE);
@@ -425,7 +427,10 @@ describe('Stage shell composition', () => {
 		expect(owners).toHaveLength(1);
 		const owner = owners[0]!.code;
 		if (owners[0]!.file !== ROUTE) {
-			expect(constructsImportedOwner(ROUTE, readFileSync(ROUTE, 'utf8'), owners[0]!.file, 'createProjectSession')).toBe(true);
+			const layer = [ROUTE, ...readdirSync(WIRING).filter((file) => file.endsWith('.ts')).map((file) => join(WIRING, file))];
+			expect(layer.some((file) =>
+				constructsImportedOwner(file, readFileSync(file, 'utf8'), owners[0]!.file, 'createProjectSession')
+			)).toBe(true);
 		}
 		expect(owner).toContain('runBoundLoad(session,');
 		expect(owner).toContain('session.isCurrent(token)');

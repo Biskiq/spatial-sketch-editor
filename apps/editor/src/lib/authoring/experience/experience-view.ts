@@ -13,7 +13,6 @@ export type ExperienceViewportView = Pick<
 	| 'onCancelPendingViewWrite'
 	| 'welcome'
 	| 'onDismissWelcome'
-	| 'homes'
 	| 'onExperienceController'
 >;
 

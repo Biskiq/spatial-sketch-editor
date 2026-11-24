@@ -118,9 +118,7 @@
 			{...artwork.regions.viewport}
 			preview={viewportPreview}
 			previewLoading={preview !== null && viewportPreview === null}
-			homes={experience.lensState === 'experience' && adapterServices !== null && currentEnvelope !== null
-				? { services: adapterServices, snapshot: currentEnvelope }
-				: null}
+			homes={host.experienceHomes}
 			onExperienceController={host.experienceViewport.onExperienceController}
 			bind:stageElement={host.stageEl}
 			bind:throughFrameElement={host.throughFrameEl}

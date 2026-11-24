@@ -122,13 +122,27 @@ function x3OwnershipSites(source: string): string[] {
 }
 
 const COMPONENT = path.join(EDITOR_LIB, 'authoring/workspace/host/WorkspaceHost.svelte');
+const WIRING = path.join(EDITOR_LIB, 'authoring/workspace/host/wiring');
+const wiringFiles = fs.readdirSync(WIRING).filter((file) => file.endsWith('.ts')).map((file) => path.join(WIRING, file));
+const wiringCode = wiringFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+/** The host's edges plus its wiring layer's edges: the composition root is both. */
+function compositionTargets(): string[] {
+	return [ROUTE, ...wiringFiles].flatMap((file) => {
+		const content = file === ROUTE ? source : fs.readFileSync(file, 'utf8');
+		return moduleBindingEdges(file, content).flatMap((edge) => {
+			if (!('specifier' in edge)) return [];
+			const target = resolveSpecifier(file, edge.specifier);
+			return target === null ? [] : [target];
+		});
+	});
+}
 const source = fs.readFileSync(ROUTE, 'utf8');
 const code = stripComments(source);
 const markup = stripComments(fs.readFileSync(COMPONENT, 'utf8'));
 
 describe('spatial route composition boundary (X1)', () => {
 	it('constructs the extracted epoch and asset controllers', () => {
-		expect(code).toContain('createStageProjectEpoch({');
+		expect(code + wiringCode).toContain('createStageProjectEpoch({');
 		expect(code).toContain('createStageAssetLeases({');
 		expect(code).toContain('stageEpoch.activate(snapshot)');
 		const core = stripComments(fs.readFileSync(CORE_LIFECYCLE, 'utf8'));
@@ -157,8 +171,8 @@ describe('spatial route composition boundary (X1)', () => {
 	});
 
 	it('constructs the one input arbiter, keyboard leaf, Unfold and Artwork owners', () => {
-		expect(code).toContain('createStageInputArbiter({');
-		expect(code).toContain('createStageKeyboard({');
+		expect(code + wiringCode).toContain('createStageInputArbiter({');
+		expect(code + wiringCode).toContain('createStageKeyboard({');
 		expect(code).toContain('createLayoutReadingsFeature({');
 		expect(stripComments(fs.readFileSync(READINGS, 'utf8'))).toContain('createUnfoldHost(deps.unfold)');
 		expect(stripComments(fs.readFileSync(UNFOLD_HOST, 'utf8'))).toContain('createStageUnfoldGestures({');
@@ -187,7 +201,7 @@ describe('spatial route composition boundary (X1)', () => {
 			const target = resolveSpecifier(ROUTE, edge.specifier);
 			return target === null ? [] : [{ edge, target }];
 		});
-		const direct = resolved.map(({ target }) => target);
+		const direct = [...new Set([...resolved.map(({ target }) => target), ...compositionTargets()])];
 		expect(direct).toContain(EPOCH);
 		expect(direct).toContain(ASSETS);
 		expect(direct).toContain(INPUT);
@@ -275,8 +289,8 @@ describe('spatial route composition boundary (X1)', () => {
 
 	it('composes the X3 presentation controllers and shell regions', () => {
 		expect(code).toContain('createStageExperienceBinding({');
-		expect(code).toContain('createStageShellState({');
-		expect(code).toContain('createStageShellCommands({');
+		expect(code + wiringCode).toContain('createStageShellState({');
+		expect(code + wiringCode).toContain('createStageShellCommands({');
 		expect(code).toContain('createStageSelectionView()');
 		expect(code).toContain('stageDockView({');
 		expect(code).toContain('stageFindView({');
@@ -326,11 +340,7 @@ describe('spatial route composition boundary (X1)', () => {
 	});
 
 	it('imports the X3 controllers and regions directly, and no region reaches a route owner', () => {
-		const direct = moduleBindingEdges(ROUTE, source).flatMap((edge) => {
-			if (!('specifier' in edge)) return [];
-			const target = resolveSpecifier(ROUTE, edge.specifier);
-			return target === null ? [] : [target];
-		});
+		const direct = compositionTargets();
 		for (const target of [EXPERIENCE_BINDING, SHELL_STATE, SHELL_COMMANDS, SELECTION_VIEW, CONTRIBUTION_VIEW, NOTICES, VIEWPORT_REGION, PANELS, TOOLBARS]) {
 			expect(direct).toContain(target);
 		}

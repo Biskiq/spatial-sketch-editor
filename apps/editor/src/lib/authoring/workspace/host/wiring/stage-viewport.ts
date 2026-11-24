@@ -7,6 +7,7 @@
  */
 import type { ViewportRect } from '@portfolio/camera-core';
 import type { StageFacade } from '../../../stage/stage-facade';
+import type { StageShellState } from '../../../stage/route/stage-shell-state.svelte';
 import { createStageViewport } from '../../../stage/route/stage-viewport.svelte';
 
 export type StageViewportWiring = {
@@ -17,7 +18,7 @@ export type StageViewportWiring = {
 	readonly previewing: () => boolean;
 	readonly lens: () => 'world' | 'experience';
 	readonly revealed: () => string[];
-	readonly roomLabels: () => { readonly plan: boolean; readonly threeD: boolean };
+	readonly preferences: () => StageShellState['preferences'];
 	readonly groundReachMeters: () => number | undefined;
 	readonly nowSeconds: () => number;
 	readonly advanceLookThroughZoom: (now: number) => void;
@@ -35,7 +36,10 @@ export function wireStageViewport(deps: StageViewportWiring) {
 		previewing: deps.previewing,
 		lens: deps.lens,
 		revealed: deps.revealed,
-		roomLabels: deps.roomLabels,
+		roomLabels: () => ({
+			plan: deps.preferences().roomLabels2d,
+			threeD: deps.preferences().roomLabels3d
+		}),
 		groundReachMeters: deps.groundReachMeters,
 		nowSeconds: deps.nowSeconds,
 		advanceLookThroughZoom: deps.advanceLookThroughZoom,

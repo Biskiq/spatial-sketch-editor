@@ -44,8 +44,8 @@
 	import { wireStageViewport } from '$lib/authoring/workspace/host/wiring/stage-viewport';
 	import { createArtworkFeature } from '$lib/authoring/artwork/artwork-feature.svelte';
 	import { createLayoutReadingsFeature } from '$lib/authoring/stage/readings/layout-readings-feature.svelte';
-	import { createStageInputArbiter } from '$lib/authoring/stage/route/stage-input.svelte';
-	import { createStageKeyboard } from '$lib/authoring/stage/route/stage-keyboard';
+	import { wireStageInput } from '$lib/authoring/workspace/host/wiring/stage-input';
+	import { wireStageKeyboard } from '$lib/authoring/workspace/host/wiring/stage-keyboard';
 	import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 	import { createStageMeasure, STAGE_MEASURE_TASK } from '$lib/authoring/stage/stage-measure';
@@ -58,7 +58,7 @@
 		createModelAnalysisCache
 	} from '$lib/render/materials/model-derivative-analysis';
 	import { createVerifiedProjectImageCache } from '$lib/authoring/artwork/project-image-cache';
-	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
+	import { wireStageProjectEpoch } from '$lib/authoring/workspace/host/wiring/stage-project-epoch';
 	import {
 		developmentPointAtStationFromBuffers,
 		type PlanEvaluation
@@ -96,7 +96,7 @@
 	import { experienceProblems, loweringProblem, type ExperienceProblem } from '$lib/authoring/experience/experience-problems';
 	import { createExperienceFeature, type ExperienceFeature } from '$lib/authoring/experience/experience-feature.svelte';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
-	import { createProjectSession } from '$lib/authoring/project-session/project-session.svelte';
+	import { wireProjectSession } from '$lib/authoring/workspace/host/wiring/project-session';
 	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
 	import { acceptedSceneRoomMembership } from '$lib/authoring/adapters/scene/room-membership';
 	import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
@@ -110,7 +110,7 @@
 		stageTaskHost,
 		type StageHeadFindEntry
 	} from '$lib/authoring/stage/route/stage-contribution-view';
-	import { createStageShellState } from '$lib/authoring/stage/route/stage-shell-state.svelte';
+	import { wireStageShellState } from '$lib/authoring/workspace/host/wiring/stage-shell-state';
 	import {
 		createFinishAuthoring,
 		type FinishAuthoring
@@ -123,7 +123,7 @@
 	import { createLibraryFeature } from '$lib/authoring/library/library-feature.svelte';
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
-	import { createStageShellCommands } from '$lib/authoring/stage/route/stage-shell-commands';
+	import { wireStageShellCommands } from '$lib/authoring/workspace/host/wiring/stage-shell-commands';
 	import {
 		createStageExperienceBinding,
 		type StageExperienceBinding
@@ -257,16 +257,14 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 
 	const lifecycleCell = late<FeatureLifecycle>();
 
-	const stageEpoch = createStageProjectEpoch({
+	const stageEpoch = wireStageProjectEpoch({
 		session,
 		assets: stageAssets,
 		materialProofs,
-		ports: {
-			finishCard: () => appearance.ports.adapter(),
-			lightInspection: () => lightInspection.ports.card,
-			objectStudio: () => studioFeature.ports.objectStudio,
-			openSpaceCreated: () => openSpaceCreated
-		},
+		finishCard: () => appearance.ports.adapter(),
+		lightInspection: () => lightInspection.ports.card,
+		objectStudio: () => studioFeature.ports.objectStudio,
+		openSpaceCreated: () => openSpaceCreated,
 		projectSession: () => projectSession,
 		preview: () => previewController,
 		createFacade: (snapshot) => createStageFacade({
@@ -285,14 +283,14 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		isActiveProject: () => boot.status === 'ready' || boot.status === 'empty'
 	});
 
-	const projectSession = createProjectSession({
+	const projectSession = wireProjectSession({
 		projectId, intent, api, auth, session, images: verifiedImages, materialProofs,
 		url: routeInput.url,
 		acceptance: () => stageEpoch.acceptance,
 		tornDown: () => stageEpoch.tornDown,
 		activate: (snapshot) => stageEpoch.activate(snapshot),
-		get notice() { return shell.notice; },
-		set notice(value) { shell.setNotice(value); }
+		readNotice: () => shell.notice,
+		writeNotice: (value) => shell.setNotice(value)
 	});
 	const boot = $derived(projectSession.boot);
 	const ready = createProjectReadyPort(() => boot);
@@ -333,7 +331,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	let experienceFeature!: ExperienceFeature;
 	/** Paint's one Finish intent home, built after the commands it calls. */
 	let finishes!: FinishAuthoring;
-	const shell = createStageShellState({
+	const shell = wireStageShellState({
 		session,
 		facade: () => facade,
 		evaluation: () => evaluation,
@@ -343,15 +341,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		lens: () => experience.lensState,
 		selection: () => selection,
 		finishes: () => finishes,
-		onPaintedOne: (target) => {
-			// A Paint click selects what it painted and opens that Finish; Paint stays
-			// armed. The stroke's hit names the pre-write revision, so the subject is
-			// selected by id against the source the write just installed.
-			commands.selectSource(target.entityId ?? target.hit.sourceId);
-			const surface = target.assignmentSurfaces[0] ?? target.surface;
-			if (target.entityId !== null) finishes?.card.requestOpen({ kind: 'entity', entityId: target.entityId });
-			else if (surface !== null) finishes?.card.requestOpen({ kind: 'surface', surface });
-		}
+		selectSource: (id) => commands.selectSource(id)
 	});
 	const experienceBinding = createStageExperienceBinding({
 		session,
@@ -427,8 +417,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		regions: {
 			shell: () => shell,
 			evaluation: () => evaluation,
-			services: () => adapterServices,
-			envelope: () => currentEnvelope,
 			lookThroughActive: lookThroughActiveNow,
 			datum: () => experienceFeature.ports.floorDatum,
 			setReading: (reading) => viewing.setReading(reading),
@@ -496,7 +484,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		previewing: () => preview !== null,
 		lens: () => experience.lensState,
 		revealed: () => revealed,
-		roomLabels: () => ({ plan: shell.preferences.roomLabels2d, threeD: shell.preferences.roomLabels3d }),
+		preferences: () => shell.preferences,
 		groundReachMeters: () => sky.ports.groundReachMeters(),
 		nowSeconds,
 		advanceLookThroughZoom: (now) => experience.advanceLookThroughZoom(now),
@@ -520,6 +508,9 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	const marks = $derived(stageViewport.marks);
 	const tracePreview = $derived(stageViewport.tracePreview);
 	const currentEnvelope = $derived(ready.envelope());
+	const experienceHomes = $derived(
+		experienceFeature.ports.regions.homes(adapterServices, currentEnvelope)
+	);
 	const activeLayer = $derived(
 		experience.posture ?? (lightInspection.ports.active() ? lightInspection.posture : null)
 	);
@@ -672,8 +663,8 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		fading: () => liveStageGesture || stageInput.drag?.mode === 'orbit'
 	});
 
-	let stageInput!: ReturnType<typeof createStageInputArbiter>;
-	let stageKeyboard!: ReturnType<typeof createStageKeyboard>;
+	let stageInput!: ReturnType<typeof wireStageInput>;
+	let stageKeyboard!: ReturnType<typeof wireStageKeyboard>;
 
 	function downloadSourceJson(): void {
 		const snapshot = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null;
@@ -696,7 +687,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		}
 	});
 
-	const commands = createStageShellCommands({
+	const commands = wireStageShellCommands({
 		facade: () => facade,
 		planView: () => planView,
 		session,
@@ -704,25 +695,19 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		selection: () => selection,
 		setSelection: (entry) => { selection = entry; },
 		focus: experienceFocus,
-		experience: {
-			lens: experience.lens,
-			active: () => experience.active
-		},
+		lens: experience.lens,
+		active: () => experience.active,
 		cardActions: () => worldCard.actions,
 		dockKeys: () => dockKeys,
 		notice: (message) => shell.setNotice(message),
 		refreshHostTools: () => shell.refreshHostTools(),
 		cancelArtwork: () => artwork.ports.cancel(),
-		view: {
-			zoomIn: () => zoomIn(),
-			zoomOut: () => zoomOut(),
-			fit: () => fit(),
-			requestScaleDetent: (ratio) => requestScaleDetent(ratio)
-		},
-		project: {
-			requestReplacement: (kind) => requestReplacement(kind),
-			downloadSourceJson: () => downloadSourceJson()
-		},
+		zoomIn: () => zoomIn(),
+		zoomOut: () => zoomOut(),
+		fit: () => fit(),
+		requestScaleDetent: (ratio) => requestScaleDetent(ratio),
+		requestReplacement: (kind) => requestReplacement(kind),
+		downloadSourceJson: () => downloadSourceJson(),
 		showExperienceWelcome: () => experience.showWelcome(),
 		levelSlice: () => readings.ports.levelSlice(),
 		lightArmed: lightInspection.ports.lightArmed,
@@ -1024,7 +1009,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	});
 	const sliceDraw = readings.ports.sliceDraw;
 
-	stageInput = createStageInputArbiter({
+	stageInput = wireStageInput({
 		facade: () => facade,
 		evaluation: () => evaluation,
 		rect: () => rect,
@@ -1037,26 +1022,12 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		stageCss,
 		capturePointer,
 		press,
-		armedHostTool: () => shell.armedHostTool,
-		measureTool: () => shell.measureTool,
-		eraserTool: () => shell.eraserTool,
-		paintTool: () => shell.paintTool,
-		task: () => shell.task,
-		dockToolArmed: () => shell.armedTool !== null,
-		adapterTapOnly: () => shell.activeWorldTool === 'room',
 		planView: () => planView,
 		previewing: () => preview !== null,
 		pick: stagePick,
 		viewMarkAt: (event) => experience.viewMarkAt(event),
-		eraseHover: () => shell.eraseHover,
-		setEraseHover: (entry) => shell.setEraseHover(entry),
-		setPaintHover: (entry) => shell.setPaintHover(entry),
-		// The refusal belongs to the armed Slice **tool**, not to a live cut: back on
-		// Select, the creator selects and drags everything below the cut.
-		sliceToolArmed: () => shell.activeWorldTool === 'slice' && !sliceDraw.armed,
 		sliceDraw: () => (sliceDraw.armed ? sliceDraw : null),
-		onNotice: (message) => shell.setNotice(message),
-		onRefreshHostTools: () => shell.refreshHostTools(),
+		shell,
 		selectHit: (hit) => commands.selectHit(hit),
 		pan,
 		orbit,
@@ -1065,7 +1036,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		nowSeconds
 	});
 
-	stageKeyboard = createStageKeyboard({
+	stageKeyboard = wireStageKeyboard({
 		artworkEscape: artwork.ports.escape,
 		previewActive: () => preview !== null,
 		closePreview: () => previewController.close(),
@@ -1082,36 +1053,18 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		pan,
 		pressDockSlot: (slot) => commands.pressDockSlot(slot),
 		requestDelete: () => commands.requestDelete(),
-		openCard: () => shell.setCardOpen(true),
-		pendingDelete: () => shell.pendingDelete !== null,
-		clearPendingDelete: () => { shell.setPendingDelete(null); shell.setNotice(''); },
 		cancelFinishGesture: appearance.ports.cancelGesture,
 		interrupt: interruptPress,
-		task: () => shell.task,
+		shell,
 		closeTask: () => commands.closeTask(),
-		armedHostTool: () => shell.armedHostTool,
-		measureTool: () => shell.measureTool,
-		eraserTool: () => shell.eraserTool,
-		paintTool: () => shell.paintTool,
-		clearEraseHover: () => shell.setEraseHover(null),
-		clearPaintHover: () => shell.setPaintHover(null),
 		paintKey: appearance.ports.paintKey,
 		dismissAlign: appearance.ports.dismissAlign,
 		dismissMaterialEditor: appearance.ports.dismissMaterialEditor,
 		dismissMaterialImport: appearance.ports.dismissMaterialImport,
 		dismissRepairDrawer: appearance.ports.dismissRepairDrawer,
 		dismissPaint: appearance.ports.dismissPaint,
-		refreshHostTools: () => shell.refreshHostTools(),
 		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
-		paletteOpen: () => shell.paletteOpen,
-		closePalette: () => shell.setPaletteOpen(false),
-		...library.escape,
-		activeWorldTool: () => shell.activeWorldTool,
-		clearWorldTool: () => { shell.setLibraryOpen(false); shell.setActiveWorldTool('select'); },
-		worldPlateOpen: () => shell.worldPlateOpen,
-		closeWorldPlate: () => shell.setWorldPlateOpen(false),
-		furnishStripOpen: () => shell.furnishStripOpen,
-		closeFurnishStrip: () => shell.setFurnishStripOpen(false),
+		libraryEscape: library.escape,
 		toolbarFocused: () => {
 			const active = document.activeElement;
 			return active instanceof HTMLElement &&
@@ -1119,12 +1072,12 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 				!active.matches('[data-world-select]');
 		},
 		focusSelectKey: () => document.querySelector<HTMLElement>('[data-world-toolbar] [data-world-select]')?.focus(),
-		...sky.escape,
+		skyEscape: sky.escape,
 		lens: () => experience.lensState,
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
 		leaveStudio: studioFeature.ports.leaveStudio,
-		...readings.escape,
+		readingsEscape: readings.escape,
 		setCutawayHeld: readings.ports.setCutawayHeld
 	});
 
@@ -1552,6 +1505,9 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		},
 		get experienceToolbar() {
 			return experienceFeature.ports.regions.toolbars;
+		},
+		get experienceHomes() {
+			return experienceHomes;
 		},
 		get world() {
 			return experience.lensState === 'world';

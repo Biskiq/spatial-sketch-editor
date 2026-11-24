@@ -21,8 +21,6 @@ export type ExperienceRegionViewDeps = {
 	readonly previewActive: () => boolean;
 	readonly shell: () => StageShellState;
 	readonly evaluation: () => ViewportEvaluation | null;
-	readonly services: () => StageAdapterServices | null;
-	readonly envelope: () => ProjectEnvelope | null;
 	readonly lookThroughActive: () => boolean;
 	readonly datum: () => number;
 	readonly setReading: DraftingView['onReading'];
@@ -80,9 +78,6 @@ export function createExperienceRegionViews(deps: ExperienceRegionViewDeps) {
 				onCancelPendingViewWrite,
 				welcome: binding.lensState === 'experience' && binding.welcome && !lookThroughActive && binding.experienceTool === 'select',
 				onDismissWelcome,
-				// Homes needs the admitted services and envelope; the host composes it
-				// from those two reads until the homes host takes the port directly.
-				homes: null,
 				onExperienceController
 			};
 		},
@@ -148,6 +143,24 @@ export function createExperienceRegionViews(deps: ExperienceRegionViewDeps) {
 			};
 		}
 	};
+}
+
+/**
+ * The homes payload, owned by Experience.
+ *
+ * The host passes its own services and envelope reads, so those dependencies
+ * stay in the host's template effect. Taking them from inside the viewport
+ * getter made the region that mounts the Canvas depend on the adapter state it
+ * publishes, and the region re-rendered itself.
+ */
+export function experienceHomesView(
+	binding: StageExperienceBinding,
+	services: StageAdapterServices | null,
+	envelope: ProjectEnvelope | null
+): { readonly services: StageAdapterServices; readonly snapshot: ProjectEnvelope } | null {
+	return binding.lensState === 'experience' && services !== null && envelope !== null
+		? { services, snapshot: envelope }
+		: null;
 }
 
 export type ExperienceRegionViews = ReturnType<typeof createExperienceRegionViews>;

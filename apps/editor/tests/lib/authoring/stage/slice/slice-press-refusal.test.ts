@@ -37,7 +37,7 @@ describe('the arbiter asks about the tool, not the reading', () => {
 		'utf8'
 	);
 	const route = readFileSync(
-		path.join(process.cwd(), 'src/lib/authoring/workspace/host/workspace-host.svelte.ts'),
+		path.join(process.cwd(), 'src/lib/authoring/workspace/host/wiring/stage-input.ts'),
 		'utf8'
 	);
 
@@ -50,6 +50,6 @@ describe('the arbiter asks about the tool, not the reading', () => {
 	it('wires the tool state from the shell', () => {
 		const at = route.indexOf('sliceToolArmed:');
 		expect(at).toBeGreaterThan(0);
-		expect(route.slice(at, at + 120)).toContain("shell.activeWorldTool === 'slice'");
+		expect(route.slice(at, at + 120)).toContain("input.shell.activeWorldTool === 'slice'");
 	});
 });
