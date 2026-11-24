@@ -31,6 +31,7 @@
  * evaluator already produced.
  */
 import type { LayoutVec2 } from './layout-coordinates';
+import { ivAdd, ivEncloseWorld, ivMul, ivSub } from './layout-binary64-interval';
 import { p2311Measure } from './p2311-perf';
 import {
 	geometryId,
@@ -187,6 +188,18 @@ export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctio
 	return Math.abs(cross(ta, tb)) < JUNCTION_DET_EPSILON && dot(ta, tb) < 0;
 }
 
+/** Can the stored derivative anchors represent antiparallel rays at their shared Junction? */
+export function tangentAnchorsAllowContinuation(point: LayoutVec2, [a, b]: readonly [LayoutVec2, LayoutVec2]): boolean {
+	const ox = ivEncloseWorld(point[0]);
+	const oz = ivEncloseWorld(point[1]);
+	const ax = ivSub(ivEncloseWorld(a[0]), ox);
+	const az = ivSub(ivEncloseWorld(a[1]), oz);
+	const bx = ivSub(ivEncloseWorld(b[0]), ox);
+	const bz = ivSub(ivEncloseWorld(b[1]), oz);
+	const determinant = ivSub(ivMul(ax, bz), ivMul(az, bx));
+	return determinant.lo <= 0 && determinant.hi >= 0 && ivAdd(ivMul(ax, bx), ivMul(az, bz)).hi < 0;
+}
+
 /** Is the outward-ray pair a fold (≈0°, walls overlap)? */
 export function isFoldPair(a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
 	const ta = outwardTangent(a);
@@ -282,7 +295,7 @@ export function resolveJunctionGeometry(
 	junctionId: string,
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
-	options: { miterLimit?: number } = {}
+	options: { miterLimit?: number; roundedContinuation?: boolean } = {}
 ): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[] } {
 	const miterLimit = options.miterLimit ?? JUNCTION_MITER_LIMIT;
 	const issues: LayoutGeometryIssue[] = [];
@@ -306,7 +319,7 @@ export function resolveJunctionGeometry(
 			joins.push(suppressedJoin(a, bands, undefined, undefined, true), suppressedJoin(b, bands, undefined, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		if (isTangentContinuation(a, b)) {
+		if (isTangentContinuation(a, b) || options.roundedContinuation) {
 			// Straight continuation: suppress the common interface. The difference
 			// surfaces (thickness / height / Opening-profile) are solved **here**, per
 			// vertical band, and attached to the leg that owns the material — the
@@ -709,11 +722,16 @@ function clipHalfPlane(
 
 /** Signed plan area of a convex polygon. */
 function polygonArea(polygon: readonly LayoutVec2[]): number {
+	if (polygon.length < 3) return 0;
+	const origin = polygon[0]!;
+	const shift = Math.abs(origin[0]) > 1e6 || Math.abs(origin[1]) > 1e6;
+	const ox = shift ? origin[0] : 0;
+	const oz = shift ? origin[1] : 0;
 	let total = 0;
 	for (let index = 0; index < polygon.length; index += 1) {
 		const a = polygon[index]!;
 		const b = polygon[(index + 1) % polygon.length]!;
-		total += a[0] * b[1] - b[0] * a[1];
+		total += (a[0] - ox) * (b[1] - oz) - (b[0] - ox) * (a[1] - oz);
 	}
 	return total / 2;
 }

@@ -105,7 +105,7 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 		// is a genuine reconciled cycle, exactly as the editor produces it.
 		const shell = {
 			units: 'meters' as const,
-			formatVersion: 9 as const,
+			formatVersion: 10 as const,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j1', point: p(0, 0) },

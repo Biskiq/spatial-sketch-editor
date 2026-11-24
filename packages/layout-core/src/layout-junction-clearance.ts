@@ -158,11 +158,16 @@ export function junctionOutwardRay(leg: CompiledJunctionLeg): LayoutVec2 {
 
 /** Twice the signed area of a polygon (shoelace). */
 function doubleSignedArea(polygon: readonly Vec2Like[]): number {
+	if (polygon.length < 3) return 0;
+	const origin = polygon[0]!;
+	const shift = Math.abs(origin[0]) > 1e6 || Math.abs(origin[1]) > 1e6;
+	const ox = shift ? origin[0] : 0;
+	const oz = shift ? origin[1] : 0;
 	let total = 0;
 	for (let index = 0; index < polygon.length; index += 1) {
 		const a = polygon[index]!;
 		const b = polygon[(index + 1) % polygon.length]!;
-		total += a[0] * b[1] - b[0] * a[1];
+		total += (a[0] - ox) * (b[1] - oz) - (b[0] - ox) * (a[1] - oz);
 	}
 	return total;
 }

@@ -52,7 +52,7 @@ function awaitEmptyDocument(): LayoutDocumentWallFirst {
 	// A zero-Wall current-format document: the same shape the editor boots.
 	return {
 		units: 'meters',
-		formatVersion: 9,
+		formatVersion: 10,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [],
 		walls: [],
@@ -305,7 +305,11 @@ it('[cap:layout.circular-room edge] refuses a new circular contact while allowin
 	const moved = planWallFirstRoomMove(legacy, second.createdRoomIds[0]!, [19.5, -0.44]);
 	expect(moved.kind).toBe('success');
 	if (moved.kind === 'success') {
-		expect(moved.document.rooms).toEqual(legacy.rooms);
+		const movedRoom = moved.document.rooms.find((room) => room.id === second.createdRoomIds[0]!);
+		const stationaryRoom = moved.document.rooms.find((room) => room.id !== second.createdRoomIds[0]!);
+		const legacyStationary = legacy.rooms.find((room) => room.id !== second.createdRoomIds[0]!);
+		expect(stationaryRoom).toEqual(legacyStationary);
+		expect(movedRoom?.round).toEqual({ center: [49.5, -0.44], radius: 2 });
 		expect(moved.document.walls.find((wall) => wall.id === circleWall.id)).toEqual(circleWall);
 	}
 });

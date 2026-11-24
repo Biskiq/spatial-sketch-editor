@@ -46,7 +46,7 @@ function oversizedProjectDocument(projectId) {
 	const document = projectDocument('Oversized project', { id: projectId });
 	const layout = {
 		units: 'meters',
-		formatVersion: 9,
+		formatVersion: 10,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'j-1', point: [0, 0] },
@@ -369,11 +369,9 @@ test('Layout 9 regions round-trip and an outgoing Layout head remains listed and
 	assert.equal(loaded.statusCode, 200, loaded.body);
 	assert.deepEqual(loaded.json().document, JSON.parse(request.capture.canonicalJson));
 
-	// Restore an outgoing-reader fixture in the isolated test database at its accepted head.
+	// Restore an outgoing-reader Layout 9 fixture in the isolated test database at its accepted head.
 	const outgoing = JSON.parse(request.capture.canonicalJson);
-	outgoing.units.layout.header.formatVersion = outgoing.units.layout.data.formatVersion = 8;
-	delete outgoing.units.layout.data.regions;
-	delete outgoing.units.layout.data.identity.regions;
+	outgoing.units.layout.header.formatVersion = outgoing.units.layout.data.formatVersion = 9;
 	outgoing.units.layout.header.contentRevision =
 		`sha256-${createHash('sha256').update(canonicalUnitJson(outgoing.units.layout.data)).digest('hex')}`;
 	await pool.query('UPDATE project_versions SET document = $2 WHERE project_id = $1', [projectId, outgoing]);

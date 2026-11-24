@@ -48,6 +48,7 @@ import { countWork } from './p2311-perf';
 import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
 import { spaceOutlineSelfIntersects, spaceOutlineSignedArea, spacePairIssue } from './layout-space-outline';
+import { rotateBoundaryToSeam, roundRoomSeamJunctionId } from './layout-round-room';
 import {
 	canonicalBoundaryCycleKey,
 	type DerivedCandidateFace,
@@ -1418,12 +1419,38 @@ export function reconcileRooms(options: {
 			// predecessor to exactly one candidate face.
 			const predecessor = predecessorRooms.get(component.predecessorRoomIds[0]!)!;
 			const face = facesByKey.get(component.candidateFaceKeys[0]!)!;
+			const candidateRoom = options.candidateRooms?.find((r) => r.id === predecessor.id);
+			const survivingRound = candidateRoom !== undefined ? candidateRoom.round : predecessor.round;
+			let boundary = [...face.boundary];
+			if (survivingRound !== undefined) {
+				const baselineWallById = new Map(baseline.walls.map((w) => [w.id, w] as const));
+				const candidateWallById = new Map(candidateDocument.walls.map((w) => [w.id, w] as const));
+				const seamJunctionId = roundRoomSeamJunctionId(predecessor, baselineWallById);
+				if (!seamJunctionId) {
+					return failure({
+						code: 'unsupported_component',
+						message: `Round Room '${predecessor.id}' has no resolvable seam Junction`,
+						roomIds: [predecessor.id]
+					});
+				}
+				const rotated = rotateBoundaryToSeam(boundary, seamJunctionId, candidateWallById);
+				if (!rotated) {
+					return failure({
+						code: 'unsupported_component',
+						message: `Round Room '${predecessor.id}' cannot retain seam Junction '${seamJunctionId}'`,
+						roomIds: [predecessor.id]
+					});
+				}
+				boundary = rotated;
+			}
+			const { round: _discardRound, ...predecessorBase } = predecessor;
 			finalRooms.push({
-				...predecessor,
-				boundary: [...face.boundary],
+				...predecessorBase,
+				boundary,
 				// A predecessor claimed by a face becomes enclosed: the face is its
 				// whole boundary, so no open side survives.
-				virtualEdges: []
+				virtualEdges: [],
+				...(survivingRound !== undefined ? { round: survivingRound } : {})
 			});
 			lineage.push({
 				faceKey: face.key,
@@ -1457,8 +1484,10 @@ export function reconcileRooms(options: {
 			);
 			const newName = allocator.nextRoomName([...takenNames]);
 			takenNames.add(newName);
+			// Dividing a Round Room clears Round from both the survivor and born descendant.
+			const { round: _clearedSplitRound, ...predecessorWithoutRound } = predecessor;
 			finalRooms.push({
-				...predecessor,
+				...predecessorWithoutRound,
 				boundary: [...winner.boundary],
 				virtualEdges: []
 			});
@@ -1503,11 +1532,13 @@ export function reconcileRooms(options: {
 				});
 			}
 			const retired = predecessors.find((room) => room.id !== winner.id)!;
-		finalRooms.push({
-			...winner,
-			boundary: [...face.boundary],
-			virtualEdges: []
-		});
+			// Merging clears Round on the changed enclosure.
+			const { round: _clearedMergeRound, ...winnerWithoutRound } = winner;
+			finalRooms.push({
+				...winnerWithoutRound,
+				boundary: [...face.boundary],
+				virtualEdges: []
+			});
 		lineage.push({
 			faceKey: face.key,
 			roomId: winner.id,
@@ -1673,7 +1704,8 @@ export function reconcileRooms(options: {
 				retireSpace(entry.room.id, 'last-boundary-wall');
 				continue;
 			}
-			carriedRooms.push({ ...entry.room, boundary: parts.boundary, virtualEdges: parts.virtualEdges });
+			const { round: _clearedCarriedRound, ...carriedBase } = entry.room;
+			carriedRooms.push({ ...carriedBase, boundary: parts.boundary, virtualEdges: parts.virtualEdges });
 		}
 
 		// Outline gate (I4/I7) over the provisional candidate. Carried Spaces are

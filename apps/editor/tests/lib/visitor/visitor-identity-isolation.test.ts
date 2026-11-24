@@ -32,7 +32,7 @@ const LINE = { kind: 'line' } as const;
 function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 	const base: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 9,
+		formatVersion: 10,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] },

@@ -29,6 +29,7 @@ import {
 	measureWallArc,
 	mintLayoutIdCapture,
 	planCreateCircularRoom,
+	proposeCreateCircularWall,
 	type LayoutVec2,
 	type WallChainArc
 } from '@portfolio/layout-core';
@@ -360,9 +361,8 @@ export function createInkSession(
 			return;
 		}
 		if (memory.reading === 'wall' && memory.wallMode === 'circle') {
-			// Circle previews the exact captured centre → rim plan its release
-			// commits. The authored rim point is the canonical seam, so the ghost
-			// shows the same seam the saved Wall will carry.
+			// The Circle proposal shares the release Wall builder and keeps
+			// reconciliation and source admission at release.
 			const circle = circlePreviewPoints();
 			inkPreview = circle === null ? null : circleDraftPreview(circle);
 			if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
@@ -456,9 +456,7 @@ export function createInkSession(
 	}
 
 	/**
-	 * The live Circle preview plan, once per distinct centre → rim, size and
-	 * capture. The preview reads only its outcome and words; the release
-	 * plans for itself through `planCircleDraft`.
+	 * The live Circle proposal, once per distinct centre → rim, size and capture.
 	 */
 	function circleDraftPreview(circle: { center: ChainDraftPoint; rim: ChainDraftPoint }): ChainPlanPreview {
 		return presenter.proposal(
@@ -466,13 +464,17 @@ export function createInkSession(
 				'circle', document, chainCapture, memory.thickness, memory.height,
 				circle.center.point[0], circle.center.point[1], circle.rim.point[0], circle.rim.point[1]
 			],
-			() => planCircleDraft(circle.center, circle.rim)
+			() => planCircleDraft(circle.center, circle.rim, proposeCreateCircularWall)
 		);
 	}
 
 	/** One retained circular-Room plan over the live centre → rim pair. */
-	function planCircleDraft(center: ChainDraftPoint, rim: ChainDraftPoint): ChainPlanPreview {
-		const plan = planCreateCircularRoom({
+	function planCircleDraft(
+		center: ChainDraftPoint,
+		rim: ChainDraftPoint,
+		planCircle = planCreateCircularRoom
+	): ChainPlanPreview {
+		const plan = planCircle({
 			baseline: document,
 			center: [center.point[0], center.point[1]],
 			rim: [rim.point[0], rim.point[1]],

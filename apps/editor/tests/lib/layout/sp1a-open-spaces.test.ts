@@ -15,7 +15,6 @@ import {
 	compileWallFirstLayoutGeometry,
 	composeSpaceBoundary,
 	cowMoveJunctions,
-	createClosedWallCircleDocument,
 	createEmptyWallFirstLayoutDocument,
 	ensureLayoutWorldIndex,
 	findPolygonContaining,
@@ -24,8 +23,8 @@ import {
 	isOpenSpace,
 	mintLayoutIdCapture,
 	parseWallFirstLayoutDocumentJson,
+	planCreateCircularRoom,
 	planCreateOpenSpace,
-	planFirstEnclosureCreation,
 	planWallChain,
 	polygonContainsPolygon,
 	roomBoundaryPolygon,
@@ -221,10 +220,10 @@ function compiledRoom(document: LayoutDocumentWallFirst) {
 }
 
 describe('SP1a — format 9 and canonical composition', () => {
-	it('T1 compiles an enclosed Space with the Layout 9 generated-surface bounds', () => {
+	it('T1 compiles an enclosed Space with the Layout 10 generated-surface bounds', () => {
 		const document = twoRoomDocument();
 		expect(document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(9);
+		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(10);
 		const compiled = compileWallFirstLayoutGeometry(document);
 		expect(hasBlockingLayoutIssues(compiled.issues)).toBe(false);
 		expect(compiled.geometry.rooms).toHaveLength(2);
@@ -540,20 +539,14 @@ describe('SP1a — canonical Space point ownership', () => {
 
 describe('SP1a — R-1 one-Wall certification', () => {
 	it('pins the preexisting closed circular Room refusal', () => {
-		const created = createClosedWallCircleDocument({
+		const plan = planCreateCircularRoom({
+			baseline: createEmptyWallFirstLayoutDocument(),
 			center: [0, 0],
 			rim: [5, 0],
-			junctionId: 'j-circle',
-			wallId: 'wall-circle',
 			thickness: 0.2,
-			height: 3
-		});
-		expect(created.kind).toBe('success');
-		if (created.kind !== 'success') return;
-		const plan = planFirstEnclosureCreation({
-			candidateDocument: created.document,
+			height: 3,
 			capture: mintLayoutIdCapture(() => 'sp1a-circle'),
-			levelId: created.document.floor.id
+			levelId: 'floor'
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -637,21 +630,21 @@ describe('SP1a — R-2 persistence version ownership', () => {
 		});
 	}
 
-	it('has one authority: the Layout unit header and payload are both format 9', async () => {
+	it('has one authority: the Layout unit header and payload are both format 10', async () => {
 		const project = await projectWithOpenSpace();
-		expect(project.units.layout.header.formatVersion).toBe(9);
-		expect(project.units.layout.data.formatVersion).toBe(9);
+		expect(project.units.layout.header.formatVersion).toBe(10);
+		expect(project.units.layout.data.formatVersion).toBe(10);
 		expect(LAYOUT_UNIT_FORMAT_VERSION).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(9);
+		expect(LAYOUT_WALL_FIRST_FORMAT_VERSION).toBe(10);
 	});
 
-	it('Save then Load round-trips byte-identically at format 9', async () => {
+	it('Save then Load round-trips byte-identically at format 10', async () => {
 		const project = await projectWithOpenSpace();
 		const saved = serializeProjectEnvelope(project);
 		const loaded = validateProjectEnvelope(JSON.parse(saved));
 		expect(loaded.success).toBe(true);
 		if (!loaded.success) return;
-		expect(loaded.envelope.units.layout.data.formatVersion).toBe(9);
+		expect(loaded.envelope.units.layout.data.formatVersion).toBe(10);
 		expect(loaded.envelope.units.layout.data.rooms[0]!.virtualEdges).toHaveLength(1);
 		expect(serializeProjectEnvelope(loaded.envelope)).toBe(saved);
 	});

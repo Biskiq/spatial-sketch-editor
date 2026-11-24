@@ -117,6 +117,13 @@ export type FloorAndAabbsUnit = {
 };
 
 export type CanonicalDeltaBuilders = {
+	junctionInputs(
+		document: LayoutDocumentWallFirst,
+		point: LayoutVec2,
+		legs: readonly CompiledJunctionLeg[],
+		wallById: ReadonlyMap<string, LayoutWall>,
+		pointById: ReadonlyMap<string, LayoutVec2>
+	): { authored: readonly unknown[] };
 	evaluateRoom(
 		document: LayoutDocumentWallFirst,
 		roomIndex: number,
@@ -139,7 +146,9 @@ export type CanonicalDeltaBuilders = {
 		junctionId: string,
 		point: LayoutVec2,
 		sortedLegs: CompiledJunctionLeg[],
-		reuse: LayoutCompileReuse
+		reuse: LayoutCompileReuse,
+		wallById: ReadonlyMap<string, LayoutWall>,
+		pointById: ReadonlyMap<string, LayoutVec2>
 	): ResolvedJunctionUnit;
 	expandWall(
 		floorId: string,
@@ -486,9 +495,12 @@ export function seedReuseFromPassiveCompile(
 	}
 
 	// Verify unique IDs before partitioning query records.
-	const uniqueWallIds = new Set<string>();
-	for (let i = 0; i < layoutLength(document, 'walls'); i += 1) uniqueWallIds.add(layoutItem(document, 'walls', i)!.id);
-	if (uniqueWallIds.size !== layoutLength(document, 'walls')) return false;
+	const wallById = new Map<string, LayoutWall>();
+	for (let i = 0; i < layoutLength(document, 'walls'); i += 1) {
+		const wall = layoutItem(document, 'walls', i)!;
+		wallById.set(wall.id, wall);
+	}
+	if (wallById.size !== layoutLength(document, 'walls')) return false;
 
 	const objCount = layoutLength(document, 'objects');
 	const roomCount = layoutLength(document, 'rooms');
@@ -566,7 +578,7 @@ export function seedReuseFromPassiveCompile(
 			else endLegByWallId.set(leg.wallId, leg);
 		}
 		reuse.junctions.set(cj.junctionId, {
-			authored: [cj.point, cj.legs, document.floor.id, document.floor.elevation],
+			authored: builders.junctionInputs(document, cj.point, cj.legs, wallById, pointById).authored,
 			compiled: cj,
 			issues: []
 		});
@@ -1118,7 +1130,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				(a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0) ||
 				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
 		);
-		const resolved = builders.resolveJunction(document, jId, point, legs, reuse);
+		const resolved = builders.resolveJunction(document, jId, point, legs, reuse, world.wallById, world.pointById);
 		if (world.sortedJunctions.get(jSortedIdx) !== resolved.compiled) {
 			world.sortedJunctions = world.sortedJunctions.set(jSortedIdx, resolved.compiled);
 		}

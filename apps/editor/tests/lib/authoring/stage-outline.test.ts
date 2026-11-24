@@ -26,7 +26,7 @@ import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 function bodyOf(points: Record<string, [number, number]>, walls: LayoutWall[], wallId: string, openings: LayoutWallOpening[] = []): BufferGeometry {
 	const document = {
 		units: 'meters',
-		formatVersion: 9,
+		formatVersion: 10,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: Object.entries(points).map(([id, point]) => ({ id, point })),
 		walls,

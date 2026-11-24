@@ -19,11 +19,16 @@ import { classifyWallIntersection } from './layout-wall-topology';
 
 /** Signed shoelace area of a composed outline in X/Z (positive = face orientation). */
 export function spaceOutlineSignedArea(polygon: readonly LayoutVec2[]): number {
+	if (polygon.length < 3) return 0;
+	const origin = polygon[0]!;
+	const shift = Math.abs(origin[0]) > 1e6 || Math.abs(origin[1]) > 1e6;
+	const ox = shift ? origin[0] : 0;
+	const oz = shift ? origin[1] : 0;
 	let sum = 0;
 	for (let index = 0; index < polygon.length; index += 1) {
 		const current = polygon[index]!;
 		const next = polygon[(index + 1) % polygon.length]!;
-		sum += current[0] * next[1] - next[0] * current[1];
+		sum += (current[0] - ox) * (next[1] - oz) - (next[0] - ox) * (current[1] - oz);
 	}
 	return sum / 2;
 }
