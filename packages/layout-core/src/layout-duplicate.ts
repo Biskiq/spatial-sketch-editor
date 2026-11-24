@@ -94,6 +94,15 @@ export type DuplicateRejection = {
 	issues?: readonly (LayoutDocumentIssue | OpeningSetIssue)[];
 };
 
+/** Authored source-to-copy identities for one enclosure operation. */
+export type RoomCopyCorrespondence = {
+	readonly room: { readonly sourceId: string; readonly copyId: string };
+	readonly junctions: readonly { readonly sourceId: string; readonly copyId: string }[];
+	readonly walls: readonly { readonly sourceId: string; readonly copyId: string }[];
+	readonly openings: readonly { readonly sourceId: string; readonly copyId: string }[];
+	readonly objects: readonly { readonly sourceId: string; readonly copyId: string }[];
+};
+
 export type DuplicatePlan =
 	| {
 			kind: 'success';
@@ -109,6 +118,8 @@ export type DuplicatePlan =
 			createdRoomId?: string;
 			/** Door relations the copy could not carry; set only by `planDuplicateRoom`. */
 			droppedRoomRelations?: readonly RoomCopyDroppedRelation[];
+			/** Source identities remain live; each entry names its privately captured copy. */
+			roomCopyCorrespondence?: RoomCopyCorrespondence;
 	  }
 	| { kind: 'rejected'; rejection: DuplicateRejection };
 
@@ -200,6 +211,7 @@ function finalizeCandidate(
 		createdRoomId?: string;
 		surfaceLineage?: LayoutSurfaceLineage;
 		droppedRoomRelations?: readonly RoomCopyDroppedRelation[];
+		roomCopyCorrespondence?: RoomCopyCorrespondence;
 	}
 ): DuplicatePlan {
 	const structural = validateWallFirstLayoutDocument(candidate);
@@ -273,6 +285,9 @@ function finalizeCandidate(
 		...(created.createdRoomId !== undefined ? { createdRoomId: created.createdRoomId } : {}),
 		...(created.droppedRoomRelations !== undefined
 			? { droppedRoomRelations: created.droppedRoomRelations }
+			: {}),
+		...(created.roomCopyCorrespondence !== undefined
+			? { roomCopyCorrespondence: created.roomCopyCorrespondence }
 			: {})
 	};
 }
@@ -481,6 +496,7 @@ type ClonedRoomEnclosure = {
 	readonly createdRoomId: string;
 	readonly surfaceLineage: LayoutSurfaceLineage;
 	readonly droppedRoomRelations: readonly RoomCopyDroppedRelation[];
+	readonly roomCopyCorrespondence: RoomCopyCorrespondence;
 };
 
 /**
@@ -650,11 +666,13 @@ function cloneRoomEnclosure(
 	const objectTaken = new Set(document.objects.map((object) => object.id));
 	const clonedObjects: LayoutObject[] = [];
 	const createdObjectIds: string[] = [];
+	const objectIdMap = new Map<string, string>();
 	for (const object of document.objects) {
 		if (object.roomId !== source.id) continue;
 		const newId = allocateId(objectTaken, `${object.id}-copy`, capture);
 		objectTaken.add(newId);
 		createdObjectIds.push(newId);
+		objectIdMap.set(object.id, newId);
 		clonedObjects.push({
 			...cloneObject(object),
 			id: newId,
@@ -678,7 +696,14 @@ function cloneRoomEnclosure(
 		createdWallIds: clonedWalls.map((wall) => wall.id),
 		createdRoomId: newRoomId,
 		surfaceLineage: duplicateRoomSurfaceLineage(wallIdMap, source.id, newRoomId),
-		droppedRoomRelations
+		droppedRoomRelations,
+		roomCopyCorrespondence: {
+			room: { sourceId: source.id, copyId: newRoomId },
+			junctions: Array.from(junctionIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
+			walls: Array.from(wallIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
+			openings: Array.from(openingIdMap, ([sourceId, copyId]) => ({ sourceId, copyId })),
+			objects: Array.from(objectIdMap, ([sourceId, copyId]) => ({ sourceId, copyId }))
+		}
 	};
 }
 
@@ -743,7 +768,8 @@ function planDuplicateIsolatedRoomInternal(
 		createdWallIds: cloned.createdWallIds,
 		createdRoomId: cloned.createdRoomId,
 		surfaceLineage: cloned.surfaceLineage,
-		droppedRoomRelations: cloned.droppedRoomRelations
+		droppedRoomRelations: cloned.droppedRoomRelations,
+		roomCopyCorrespondence: cloned.roomCopyCorrespondence
 	});
 }
 
@@ -817,6 +843,7 @@ function planDuplicateRoomInternal(
 		createdWallIds: cloned.createdWallIds,
 		createdRoomId: cloned.createdRoomId,
 		surfaceLineage: cloned.surfaceLineage,
-		droppedRoomRelations: cloned.droppedRoomRelations
+		droppedRoomRelations: cloned.droppedRoomRelations,
+		roomCopyCorrespondence: cloned.roomCopyCorrespondence
 	});
 }

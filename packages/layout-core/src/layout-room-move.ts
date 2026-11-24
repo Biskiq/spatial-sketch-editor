@@ -214,7 +214,9 @@ export function roomUnitMoveCandidate(
 	const roundJunctionPoints = new Map<string, LayoutVec2>();
 	const roundWallCenterlines = new Map<string, LayoutWallCenterline>();
 	const updatedRoomRound = new Map<string, LayoutRoomRound>();
-	for (const room of document.rooms) {
+	// Choose each shared Junction and Wall once, by stable Room identity rather
+	// than document array order. The release planner certifies all owners below.
+	for (const room of [...document.rooms].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
 		if (!room.round) continue;
 		if (!room.boundary.every((ref) => movedWallIds.has(ref.wallId))) continue;
 		const cert = certifyRoundRoom(document, room);
@@ -227,8 +229,8 @@ export function roomUnitMoveCandidate(
 			radius: cert.certified.radius,
 			seamDirection: cert.certified.seamDirection
 		});
-		for (const [id, pt] of rebuilt.junctionPoints) roundJunctionPoints.set(id, pt);
-		for (const [id, cl] of rebuilt.wallCenterlines) roundWallCenterlines.set(id, cl);
+		for (const [id, pt] of rebuilt.junctionPoints) if (!roundJunctionPoints.has(id)) roundJunctionPoints.set(id, pt);
+		for (const [id, cl] of rebuilt.wallCenterlines) if (!roundWallCenterlines.has(id)) roundWallCenterlines.set(id, cl);
 		updatedRoomRound.set(room.id, rebuilt.round);
 	}
 
@@ -500,9 +502,9 @@ export function planWallFirstRoomMove(
 		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
 	}
 
-	// Shared isolation policy in its group scope (amendment A): the
-	// movable unit is the connected Room group containing this Room.
-	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
+	// Round translation carries the complete attached physical component;
+	// ordinary Rooms retain the existing group isolation policy.
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId, { includePhysicalAttachments: true });
 	if (isolation.kind === 'rejected') {
 		return reject(
 			isolation.rejection.code,
@@ -513,13 +515,47 @@ export function planWallFirstRoomMove(
 	const { subgraph } = isolation;
 
 	// --- candidate: translate boundary Junctions + associated objects only ---
-	return finalizeRoomUnitMotion(
-		document,
-		roomId,
-		subgraph,
-		roomUnitMoveCandidate(document, subgraph, delta),
-		'room-move'
-	);
+	const candidate = roomUnitMoveCandidate(document, subgraph, delta);
+
+	// A shared Junction was reconstructed by more than one Round owner. The
+	// deterministic choice must satisfy every owner's existing C1/C2 numerical
+	// certificate before reconciliation can install anything. This is deliberately
+	// a validation, not a solver: if the chosen reconstruction is not jointly
+	// certifiable, reject the entire motion rather than picking the last owner.
+	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+	const ownersByJunction = new Map<string, string[]>();
+	const movedWallIds = new Set(subgraph.wallIds);
+	for (const room of document.rooms) {
+		if (!room.round || !room.boundary.every((ref) => movedWallIds.has(ref.wallId))) continue;
+		const junctions = new Set<string>();
+		for (const ref of room.boundary) {
+			const wall = wallById.get(ref.wallId);
+			if (wall) { junctions.add(wall.startJunctionId); junctions.add(wall.endJunctionId); }
+		}
+		for (const id of junctions) {
+			const owners = ownersByJunction.get(id) ?? [];
+			owners.push(room.id);
+			ownersByJunction.set(id, owners);
+		}
+	}
+	const shared = document.rooms.find((room) => room.id === roomId)?.round
+		? [...ownersByJunction].filter(([, owners]) => owners.length > 1)
+		: [];
+	const sharedOwners = new Set(shared.flatMap(([, owners]) => owners));
+	for (const room of [...candidate.rooms].filter((entry) => sharedOwners.has(entry.id)).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+		const certification = certifyRoundRoom(candidate, room);
+		if (certification.kind === 'invalid') {
+			const junctionIds = shared.filter(([, owners]) => owners.includes(room.id)).map(([id]) => id).sort();
+			return reject(
+				'invalid_candidate_document',
+				`Chosen shared Round Junction reconstruction cannot be certified for Room '${room.id}': ${certification.issue.message}`,
+				[room.id, ...junctionIds],
+				[certification.issue]
+			);
+		}
+	}
+
+	return finalizeRoomUnitMotion(document, roomId, subgraph, candidate, 'room-move');
 }
 
 /**
