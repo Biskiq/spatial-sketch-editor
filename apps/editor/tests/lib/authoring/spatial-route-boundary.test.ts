@@ -40,6 +40,8 @@ const EPOCH = path.join(EDITOR_LIB, 'authoring/stage/route/stage-project-epoch.s
 const ASSETS = path.join(EDITOR_LIB, 'authoring/stage/route/stage-asset-leases.svelte.ts');
 const INPUT = path.join(EDITOR_LIB, 'authoring/stage/route/stage-input.svelte.ts');
 const KEYBOARD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-keyboard.ts');
+const READINGS = path.join(EDITOR_LIB, 'authoring/stage/readings/layout-readings-feature.svelte.ts');
+const UNFOLD_HOST = path.join(EDITOR_LIB, 'authoring/stage/readings/unfold-host.svelte.ts');
 const UNFOLD = path.join(EDITOR_LIB, 'authoring/stage/route/stage-unfold-gestures.svelte.ts');
 const ARTWORK = path.join(EDITOR_LIB, 'authoring/stage/route/stage-artwork-interaction.svelte.ts');
 const EXPERIENCE_BINDING = path.join(EDITOR_LIB, 'authoring/stage/route/stage-experience-binding.svelte.ts');
@@ -149,7 +151,9 @@ describe('spatial route composition boundary (X1)', () => {
 	it('constructs the one input arbiter, keyboard leaf, Unfold and Artwork owners', () => {
 		expect(code).toContain('createStageInputArbiter({');
 		expect(code).toContain('createStageKeyboard({');
-		expect(code).toContain('createStageUnfoldGestures({');
+		expect(code).toContain('createLayoutReadingsFeature({');
+		expect(stripComments(fs.readFileSync(READINGS, 'utf8'))).toContain('createUnfoldHost(deps.unfold)');
+		expect(stripComments(fs.readFileSync(UNFOLD_HOST, 'utf8'))).toContain('createStageUnfoldGestures({');
 		expect(code).toContain('createStageArtworkInteraction({');
 		// One drag/click authority, injected into every input owner.
 		expect(code.match(/createStagePressTracker\(\)/g) ?? []).toHaveLength(1);
@@ -179,7 +183,12 @@ describe('spatial route composition boundary (X1)', () => {
 		expect(direct).toContain(ASSETS);
 		expect(direct).toContain(INPUT);
 		expect(direct).toContain(KEYBOARD);
-		expect(direct).toContain(UNFOLD);
+		expect(direct).toContain(READINGS);
+		expect(resolveSpecifier(READINGS, './unfold-host.svelte')).toBe(UNFOLD_HOST);
+		expect(moduleBindingEdges(UNFOLD_HOST, fs.readFileSync(UNFOLD_HOST, 'utf8')).some((edge) =>
+			edge.kind === 'import-named' && edge.imported === 'createStageUnfoldGestures' &&
+			resolveSpecifier(UNFOLD_HOST, edge.specifier) === UNFOLD
+		)).toBe(true);
 		expect(direct).toContain(ARTWORK);
 		expect(resolved.filter(({ target }) => target.endsWith('host-acceptance.ts'))).toEqual([]);
 

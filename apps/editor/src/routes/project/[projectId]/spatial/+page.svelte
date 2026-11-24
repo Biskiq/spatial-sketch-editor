@@ -55,7 +55,8 @@
 	import { createCoreLifecycleSteps, installLeaveProject, installStageMount } from '$lib/authoring/stage/route/core-lifecycle-steps.svelte';
 	import { createStageViewport } from '$lib/authoring/stage/route/stage-viewport.svelte';
 	import { createStageArtworkInteraction } from '$lib/authoring/stage/route/stage-artwork-interaction.svelte';
-	import { createStageUnfoldGestures, selectedCurvedWallOf } from '$lib/authoring/stage/route/stage-unfold-gestures.svelte';
+	import { createLayoutReadingsFeature } from '$lib/authoring/stage/readings/layout-readings-feature.svelte';
+	import type { AlignCutawayRequest } from '$lib/authoring/stage/readings/layout-readings-view';
 	import { createStageInputArbiter } from '$lib/authoring/stage/route/stage-input.svelte';
 	import { createStageKeyboard } from '$lib/authoring/stage/route/stage-keyboard';
 	import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
@@ -73,7 +74,6 @@
 	import { createStageProjectEpoch } from '$lib/authoring/stage/route/stage-project-epoch.svelte';
 	import {
 		developmentPointAtStationFromBuffers,
-		overheadSourcesOf,
 		type PlanEvaluation
 	} from '@portfolio/layout-core';
 	import {
@@ -82,29 +82,7 @@
 		type ViewportEvaluation,
 		type ViewportRect
 	} from '@portfolio/camera-core';
-	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-	import { wallFace } from '$lib/authoring/layout/wall-face-store';
-	import {
-		initialLiftScope,
-		interiorLift
-	} from '$lib/authoring/layout/interior-lift-store.svelte';
-	import { nearWallCutaway } from '$lib/authoring/stage/cutaway/near-wall-cutaway.svelte';
-	import { setResolvedCutaway } from '$lib/authoring/stage/cutaway/cutaway-resolved';
-	import { sliceReading } from '$lib/authoring/stage/slice/slice-reading.svelte';
-	import { createSliceDraw } from '$lib/authoring/stage/slice/slice-draw.svelte';
 	import { pickThroughSlice, pickVisibleFaceThroughSlice } from '$lib/authoring/stage/slice/stage-slice-pick';
-	import { setResolvedSlice } from '$lib/authoring/stage/slice/slice-resolved';
-	import {
-		planOverridesOf,
-		resolveSlice,
-		sliceDepthItems,
-		type ResolvedSlice
-	} from '$lib/authoring/stage/slice/slice-cut';
-	import { PLAN_DEFAULT_DEPTH_METERS } from '$lib/authoring/stage/plan-parameters';
-	import {
-		wallUnfoldShouldReturn,
-		wallUnfoldViewCentreStation
-	} from '$lib/layout/wall-unfold';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -123,8 +101,6 @@
 	import StageToolbars from '$lib/authoring/stage/shell/StageToolbars.svelte';
 	import StageViewportRegion from '$lib/authoring/stage/shell/StageViewportRegion.svelte';
 	import { artworkHangingGuides, snapArtworkHeight, activeArtworkHangGuide } from '$lib/authoring/artwork/artwork-hanging';
-	import { artworkBackWallHit } from '$lib/authoring/artwork/artwork-wall-move';
-	import { isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
 	import { artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
@@ -174,10 +150,6 @@
 	import {
 		ALIGN_CARD_COVER_PX,
 		ALIGN_INDEX_LANE_PX,
-		faceBoundsOf,
-		faceScreenAxes,
-		planFitBoundsOf,
-		planScreenAxes,
 		regionFraming
 	} from '$lib/authoring/look/align-chart';
 	import { paintConsequence } from '$lib/authoring/stage/paint-consequence';
@@ -235,7 +207,7 @@
 	 * back change what a click can select without re-creating the facade or its
 	 * adapters. With no reading the wrapper is the unwrapped pick exactly.
 	 */
-	const stagePick = pickThroughSlice(scenePick, () => resolvedSlice, subjectScope.get);
+	const stagePick = pickThroughSlice(scenePick, () => readings.ports.resolvedSlice(), subjectScope.get);
 
 	/**
 	 * The cold-load scope's verified bytes. `verifyProjectImageClosure` fills this
@@ -892,8 +864,6 @@
 	});
 
 	let artworkInteraction!: ReturnType<typeof createStageArtworkInteraction>;
-	let unfoldGestures!: ReturnType<typeof createStageUnfoldGestures>;
-	let sliceDraw!: ReturnType<typeof createSliceDraw>;
 	let stageInput!: ReturnType<typeof createStageInputArbiter>;
 	let stageKeyboard!: ReturnType<typeof createStageKeyboard>;
 
@@ -946,10 +916,7 @@
 			downloadSourceJson: () => downloadSourceJson()
 		},
 		showExperienceWelcome: () => experience.showWelcome(),
-		levelSlice: () => {
-			sliceDraw.disarm();
-			sliceReading.level();
-		},
+		levelSlice: () => readings.ports.levelSlice(),
 		lightArmed: lightInspection.ports.lightArmed,
 		isStudioTool: isStudioWorldTool,
 		studioActive: () => studio?.active === true,
@@ -1210,7 +1177,7 @@
 		stageElement: () => stageEl,
 		// Artwork hangs on a **drawn** face: the cut's filter applies to the placement
 		// ray too, so a click through a removed Wall reaches the one behind it.
-		pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => resolvedSlice),
+		pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => readings.ports.resolvedSlice()),
 		press,
 		capturePointer,
 		onNotice: (message) => shell.setNotice(message),
@@ -1218,34 +1185,72 @@
 		selectTool: () => commands.selectTool()
 	});
 
-	unfoldGestures = createStageUnfoldGestures({
-		facade: () => facade,
-		evaluation: () => evaluation,
-		rect: () => rect,
-		measure: () => stageViewport.measure(),
-		stageElement: () => stageEl,
-		stageCss,
-		layout: () => selectionViewView.layoutPayload,
-		task: () => shell.task,
-		selectedCurvedWall: () => selectedCurvedWall,
-		services: () => adapterServices,
-		acceptOpening: (services, intent) => services.authoring.accept(intent),
-		selectSubject: (wallId, openingId) => commands.selectUnfoldedSubject(wallId, openingId),
-		press,
-		capturePointer,
-		clearHover,
-		onNotice: (message) => shell.setNotice(message)
+	const readings = createLayoutReadingsFeature({
+		unfold: {
+			snapshot: ready.snapshot,
+			selection: () => selection,
+			gestures: {
+				facade: () => facade,
+				evaluation: () => evaluation,
+				rect: () => rect,
+				measure: () => stageViewport.measure(),
+				stageElement: () => stageEl,
+				stageCss,
+				layout: () => selectionViewView.layoutPayload,
+				task: () => shell.task,
+				services: () => adapterServices,
+				acceptOpening: (services, intent) => services.authoring.accept(intent),
+				selectSubject: (wallId, openingId) => commands.selectUnfoldedSubject(wallId, openingId),
+				press,
+				capturePointer,
+				clearHover,
+				onNotice: (message) => shell.setNotice(message)
+			}
+		},
+		slice: {
+			draw: {
+				facade: () => facade,
+				evaluationId: () => facade?.evaluationId() ?? null,
+				renderedReading: () => (evaluation?.renderedReading === 'plan' ? 'plan' : evaluation?.renderedReading === '3d' ? '3d' : null),
+				eye: () => (evaluation === null ? null : eyeOfInspectionPose(evaluation.pose)),
+				bounds: () => stageContentBounds,
+				datumMeters: ready.datumMeters,
+				notice: (message) => shell.setNotice(message)
+			},
+			shell,
+			snapshot: ready.snapshot,
+			lens: () => experience.lensState,
+			evaluation: () => evaluation
+		},
+		lift: {
+			snapshot: ready.snapshot,
+			envelope: ready.envelope,
+			evaluation: () => evaluation,
+			selection: () => selection,
+			notice: shell.setNotice
+		},
+		cutaway: {
+			snapshot: ready.snapshot,
+			selection: () => selection,
+			selectedArtwork: () => selectionViewView.selectedArtwork,
+			facade: () => facade,
+			evaluation: () => evaluation,
+			lens: () => experience.lensState,
+			scenePick,
+			pressing: () => stageInput.drag !== null,
+			previewing: () => preview !== null,
+			alignCutaway: readAlignCutaway
+		},
+		wallFace: {
+			facade: () => facade,
+			rect: () => rect,
+			alignFraming,
+			reducedMotion: () => shell.reducedMotion,
+			nowSeconds,
+			submit
+		}
 	});
-
-	sliceDraw = createSliceDraw({
-		facade: () => facade,
-		evaluationId: () => facade?.evaluationId() ?? null,
-		renderedReading: () => (evaluation?.renderedReading === 'plan' ? 'plan' : evaluation?.renderedReading === '3d' ? '3d' : null),
-		eye: () => (evaluation === null ? null : eyeOfInspectionPose(evaluation.pose)),
-		bounds: () => stageContentBounds,
-		datumMeters: () => boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0,
-		notice: (message) => shell.setNotice(message)
-	});
+	const sliceDraw = readings.ports.sliceDraw;
 
 	stageInput = createStageInputArbiter({
 		facade: () => facade,
@@ -1256,7 +1261,7 @@
 		session,
 		activeLayer: () => activeLayer,
 		artwork: artworkInteraction,
-		unfold: unfoldGestures,
+		unfold: readings.ports.unfold,
 		stageCss,
 		capturePointer,
 		press,
@@ -1403,30 +1408,8 @@
 		selectionPresent: () => selection !== null,
 		closeSelection: () => commands.closeSelection(),
 		leaveStudio: () => studio.active && studio.backToWorld(),
-		liftActive: () => interiorLift.isActive(),
-		putBackLift: () => interiorLift.putBack(),
-		sliceDraftActive: () => sliceDraw.hasDraft(),
-		cancelSliceDraft: () => sliceDraw.cancelDraft(),
-		sliceActive: () => sliceReading.isActive(),
-		putBackSlice,
-		setCutawayHeld: (held) => nearWallCutaway.setHeld(held)
-	});
-
-	const selectedCurvedWall = $derived.by(() =>
-		boot.status === 'ready' || boot.status === 'empty'
-			? selectedCurvedWallOf(
-				selection,
-				boot.snapshot.domain.geometry,
-				boot.snapshot.domain.datumMeters,
-				evaluation?.pose.target ?? null,
-				wallUnfoldViewCentreStation
-			)
-			: null
-	);
-	$effect(() => {
-		const candidate = selectedCurvedWall;
-		if (candidate === null) return;
-		wallUnfold.ensureAnchor(candidate.wall, candidate.defaultStation);
+		...readings.escape,
+		setCutawayHeld: readings.ports.setCutawayHeld
 	});
 
 	const effectivePlanAppearance = $derived(
@@ -1435,349 +1418,14 @@
 	const paperVisible = $derived(isPaperPlanVisible(evaluation, effectivePlanAppearance));
 	const modelUrls = $derived(stageAssets.urls);
 
-	/**
-	 * The overheads the live Lift reading has lifted: Room lids **and** authored
-	 * region slabs. The route only maps Layout's sources to representation ids;
-	 * which overheads a scope names is `overheadSourcesOf`'s answer.
-	 * `VisitorPreviewSurface` never receives either list, so Preview stays as-built.
-	 */
-	const liftedSources = $derived.by(() => {
-		const reading = interiorLift.reading;
-		if (reading === null) return [];
-		if (boot.status !== 'ready' && boot.status !== 'empty') return [];
-		return overheadSourcesOf(boot.snapshot.domain.geometry, reading.scope);
-	});
-	const liftedRoomIds = $derived(
-		liftedSources
-			.filter((source) => source.key.kind === 'room-lid')
-			.map((source) => source.subject.id)
-	);
-	const liftedRegionIds = $derived(
-		liftedSources
-			.filter((source) => source.key.kind === 'region')
-			.map((source) => source.subject.id)
-	);
-	/** The selected Room, when the selection is one: a lift is selected through its Room. */
-	const selectedLiftRoomId = $derived(
-		selection !== null &&
-			selection.reference.domain === 'layout' &&
-			selection.reference.subject.kind === 'room'
-			? selection.reference.subject.id
-			: null
-	);
-
-	/**
-	 * The entry rule, stated once: a Room selection wins, then the Room the eye is
-	 * inside in 3D, then everything. Plan has no eye to be occupied by, and the
-	 * reading never re-derives its scope after entry.
-	 */
-	function toggleLift(): void {
-		if (interiorLift.isActive()) {
-			interiorLift.putBack();
-			return;
-		}
-		if (boot.status !== 'ready' && boot.status !== 'empty') return;
-		interiorLift.lift(
-			initialLiftScope({
-				selectedRoomId: selectedLiftRoomId,
-				reading: evaluation?.renderedReading === 'plan' ? 'plan' : '3d',
-				eye: evaluation === null ? null : eyeOfInspectionPose(evaluation.pose),
-				compiled: boot.snapshot.domain.geometry
-			})
-		);
-	}
-
-	const liftControl = $derived({ active: interiorLift.isActive(), toggle: toggleLift });
-
-	/** X2's two-way switch, under Lift in the reading control's ▾ (never a pill). */
-	const nearWallsControl = $derived({
-		mode: nearWallCutaway.mode,
-		set: (mode: 'cut' | 'whole') => nearWallCutaway.setMode(mode)
-	});
-
-	// Preview is an isolated visitor run: a held `W` never leaks into it.
-	$effect(() => {
-		if (preview !== null) nearWallCutaway.setHeld(false);
-	});
-
-	/**
-	 * The Lift pill's reads. The scoped Room is named as its Card titles it, and the
-	 * menu's candidate is the same rule entry uses: selected Room, occupied Room,
-	 * then the Room already scoped. Everything else is Today's scope.
-	 */
-	const liftPill = $derived.by(() => {
-		const reading = interiorLift.reading;
-		if (reading === null) return null;
-		const scopeRoomId = reading.scope.kind === 'space' ? reading.scope.roomId : null;
-		const nameOf = (roomId: string | null): string | null =>
-			roomId === null
-				? null
-				: (currentEnvelope?.units.layout.data.rooms.find((room) => room.id === roomId)?.name ??
-					null);
-		const geometry = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.geometry : null;
-		const occupiedRoomId =
-			geometry === null || evaluation === null
-				? null
-				: (() => {
-						const occupied = initialLiftScope({
-							selectedRoomId: null,
-							reading: '3d',
-							eye: eyeOfInspectionPose(evaluation.pose),
-							compiled: geometry
-						});
-						return occupied.kind === 'space' ? occupied.roomId : null;
-					})();
-		const candidateId = selectedLiftRoomId ?? occupiedRoomId ?? scopeRoomId;
-		const candidateName = nameOf(candidateId);
-		return {
-			scopeRoomId,
-			scopeLabel: nameOf(scopeRoomId),
-			candidate:
-				candidateId === null || candidateName === null
-					? null
-					: { id: candidateId, label: candidateName },
-			onScope: (roomId: string | null) => {
-				interiorLift.setScope(roomId === null ? { kind: 'all' } : { kind: 'space', roomId });
-			},
-			onPutBack: () => interiorLift.putBack()
-		};
-	});
-
-	/**
-	 * The live Slice, resolved against the Sheet. World only: Preview is the visitor's
-	 * as-built world and never receives a cut.
-	 */
-	const resolvedSlice = $derived.by((): ResolvedSlice | null => {
-		const reading = sliceReading.reading;
-		if (reading === null) return null;
-		if (experience.lensState !== 'world') return null;
-		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
-		return resolveSlice(reading, {
-			sheetHeight: shell.heightMeters,
-			datumMeters: boot.snapshot.domain.datumMeters
-		});
-	});
-
-	/**
-	 * Publish the resolved reading to the plain-module pick providers.
-	 *
-	 * `layout.adapter.ts` is created by an adapter factory, not by a component, so it
-	 * reads the same value through this mirror (the shape `liftedSourcesNow` already
-	 * uses). Written here — the one place the value is derived — so no consumer can
-	 * hold a cut the Canvas is not drawing.
-	 */
-	$effect(() => {
-		setResolvedSlice(resolvedSlice);
-	});
-
-	/**
-	 * X2 — the selection's host Walls (D9).
-	 *
-	 * A selected Wall, a selected Opening's host Wall, and a selected hung
-	 * Artwork's **derived** host (O-1 keeps Scene objects as built; the derived host
-	 * is what the as-built back-wall ray finds within 1 cm). These Walls are exempt
-	 * from the cutaway so the thing the creator selected keeps its whole body.
-	 */
-	const cutawaySelectionHosts = $derived.by((): ReadonlySet<string> => {
-		const hosts = new Set<string>();
-		const entry = selection;
-		const geometry =
-			boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.geometry : null;
-		if (entry === null || geometry === null) return hosts;
-		if (entry.reference.domain === 'layout') {
-			const subject = entry.reference.subject;
-			if (subject.kind === 'wall') hosts.add(subject.id);
-			else if (subject.kind === 'opening') {
-				for (const wall of geometry.walls) {
-					if (wall.openings.some((opening) => opening.openingId === subject.id)) hosts.add(wall.wallId);
-				}
-			}
-		}
-		const artwork = selectionViewView.selectedArtwork;
-		const stage = facade;
-		if (artwork !== null && stage !== null && experience.lensState === 'world') {
-			const snapshot = stage.snapshot();
-			// An as-built query, never the display predicate: a host is a document fact
-			// (plan §3.6 step 8).
-			const hit = artworkBackWallHit(artwork.position, artwork.rotation[1], (ray) =>
-				scenePick.pickVisibleFace(ray, snapshot.domain.scene, (candidate) =>
-					isArtworkWallFace(candidate, snapshot.domain.geometry)
-				)
-			);
-			if (hit !== null && hit.wallId !== undefined && hit.distanceMeters <= 0.01) hosts.add(hit.wallId);
-		}
-		return hosts;
-	});
-
-	/** D12: Walls whose cap component failed close to whole until the next decision. */
-	let cutawayFailedIds = $state<ReadonlySet<string>>(new Set());
-
-	const cutawayEffective = $derived.by((): ReadonlySet<string> => {
-		// Read the decision so the mask re-evaluates when classification changes.
-		nearWallCutaway.classified;
-		const effective = nearWallCutaway.effective(cutawaySelectionHosts);
-		if (cutawayFailedIds.size === 0) return effective;
-		const next = new Set<string>();
-		for (const wallId of effective) if (!cutawayFailedIds.has(wallId)) next.add(wallId);
-		return next;
-	});
-	/**
-	 * Wall Align (T2.S8 U6) — a view-only mask while a wall side is faced: every
-	 * other Wall in front of the faced plane is cut to the floor (picks pass
-	 * through) and hidden, so nothing covers the surface being aligned. Hiding is
-	 * what draws it: a cutaway twin of a plain material can reuse the uncut program
-	 * (reported on the PR), so the cut alone is not relied on for display. Whole,
-	 * the hold key and the classifier are ignored for the session, as Paper is
-	 * during floor Align; no preference changes.
-	 */
-	const alignCutaway = $derived.by((): { readonly ids: readonly string[]; readonly top: number } | null => {
+	function readAlignCutaway(): AlignCutawayRequest | null {
 		const active = finishes.align.active;
-		if (active === null || active.surface !== 'wall') return null;
-		const ids = active.occluders.filter((wallId) => !cutawayFailedIds.has(wallId));
-		return { ids, top: (active.corners[0]?.[1] ?? 0) + 0.005 };
-	});
-	const cutawayWallIds = $derived.by(() => {
-		if (alignCutaway !== null) return alignCutaway.ids;
-		const unfolded = wallUnfold.state?.wallId ?? null;
-		return [...cutawayEffective].filter((wallId) => wallId !== unfolded).sort();
-	});
-	const cutawayStubTopY = $derived(alignCutaway !== null && alignCutaway.ids.length > 0 ? alignCutaway.top : nearWallCutaway.stubTopY);
-
-	/**
-	 * The one classification write (§3.3). Pose, geometry revision, reading and press
-	 * state are the only inputs; selection, mode and hold are presentation masks.
-	 */
-	$effect(() => {
-		const stage = facade;
-		const current = evaluation;
-		const snapshot = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null;
-		if (stage === null || snapshot === null || current === null) {
-			if (nearWallCutaway.decision !== null) nearWallCutaway.reset();
-			return;
-		}
-		const geometry = snapshot.domain.geometry;
-		const reading =
-			experience.lensState === 'world' && current.renderedReading === '3d'
-				? '3d'
-				: experience.lensState === 'world' && current.renderedReading === 'plan'
-					? 'plan'
-					: 'transition';
-		const changed = nearWallCutaway.evaluate({
-			eye: eyeOfInspectionPose(current.pose),
-			target: current.pose.target,
-			rooms: geometry.rooms,
-			walls: geometry.walls,
-			floors: geometry.floors,
-			renderedReading: reading,
-			geometryRevision: snapshot.domain.unitRevisions.layout,
-			pressing: stageInput.drag !== null
-		});
-		// A new decision is the moment a D12 failure is retried.
-		if (changed && cutawayFailedIds.size > 0) cutawayFailedIds = new Set();
-	});
-
-	$effect(() => {
-		nearWallCutaway.setSelectionHosts(cutawaySelectionHosts);
-	});
-
-	/** Publish the effective set to the plain pick providers (the Slice mirror's shape). */
-	$effect(() => {
-		const ids = cutawayWallIds;
-		const top = cutawayStubTopY;
-		setResolvedCutaway(
-			ids.length > 0 && top !== null ? { wallIds: new Set(ids), stubTopY: top } : null
-		);
-	});
-
-	/** Plan's membership follows the cut: a finite depth narrows what Plan shows. */
-	$effect(() => {
-		const reading = resolvedSlice;
-		if (facade === null) return;
-		facade.setPlanParameters({
-			depthMeters:
-				reading === null
-					? PLAN_DEFAULT_DEPTH_METERS
-					: (planOverridesOf(reading).depthMeters ?? PLAN_DEFAULT_DEPTH_METERS)
-		});
-	});
-
-	/**
-	 * The Slice pill: **Cut at {h} m · depth ▾ · Put back**. Its depth rows are the
-	 * Sheet's own ticks strictly below the cut, labelled as the Sheet labels them,
-	 * and there are no disabled rows: an item that could not be below the cut is not
-	 * offered at all.
-	 */
-	const slicePill = $derived.by(() => {
-		const reading = sliceReading.reading;
-		if (reading === null) return null;
-		if (reading.kind === 'drawn') {
-			return {
-				mode: 'drawn' as const,
-				cutLabel: 'Drawn cut',
-				depthLabel: `${reading.depthMeters.toFixed(2)} m`,
-				items: [],
-				onDepth: () => {},
-				onFlip: () => sliceDraw.flip(),
-				onPutBack: () => putBackSlice()
-			};
-		}
-		const items = sliceDepthItems({
-			reading,
-			sheetHeightMeters: shell.heightMeters,
-			ticks: shell.heightTicks
-		});
-		const depth = reading.depth;
-		const current =
-			depth.kind === 'below'
-				? items.find(
-						(item) =>
-							item.kind === 'below' &&
-							Math.abs(item.meters - depth.meters) <= 1e-3
-					)
-				: undefined;
-		const depthLabel =
-			depth.kind === 'below'
-				? (current?.label ?? `${depth.meters.toFixed(2)} m below`)
-				: 'To the floor';
-		return {
-			cutLabel: shell.heightMeters.toFixed(2),
-			depthLabel,
-			items: items.map((item) =>
-				item.kind === 'below'
-					? { kind: item.kind, label: item.label, checked: item.checked, meters: item.meters }
-					: { kind: item.kind, label: item.label, checked: item.checked }
-			),
-			onDepth: (item: { readonly kind: 'to-floor' | 'below'; readonly meters?: number }) => {
-				sliceReading.setDepth(
-					item.kind === 'below' && item.meters !== undefined
-						? { kind: 'below', meters: item.meters }
-						: { kind: 'to-floor' }
-				);
-			},
-			onPutBack: () => putBackSlice()
-		};
-	});
-
-	function putBackSlice(): void {
-		sliceDraw.disarm();
-		sliceReading.putBack();
-		shell.setActiveWorldTool('select');
+		return active === null || active.surface !== 'wall'
+			? null
+			: { ids: active.occluders, top: (active.corners[0]?.[1] ?? 0) + 0.005 };
 	}
 
-	/**
-	 * A scoped Space that stops compiling (deleted, merged, undone away) ends the
-	 * reading in words instead of leaving a pill pointing at nothing. This is a
-	 * read-side reconciliation: it writes no document and no history.
-	 */
-	$effect(() => {
-		const reading = interiorLift.reading;
-		if (reading === null || reading.scope.kind !== 'space') return;
-		if (boot.status !== 'ready' && boot.status !== 'empty') return;
-		const roomId = reading.scope.roomId;
-		if (boot.snapshot.domain.geometry.rooms.some((room) => room.roomId === roomId)) return;
-		interiorLift.clear();
-		shell.setNotice('Lift ended: the Space is gone.');
-	});
+	readings.attachReadings();
 
 
 	let renderRootsRevision = $state(0);
@@ -1867,24 +1515,11 @@
 	const paperContentBounds = $derived(contentBounds.paper);
 
 	function canPlaceArtwork(): boolean {
-		return experience.lensState === 'world' && preview === null && wallUnfold.state === null;
+		return experience.lensState === 'world' && preview === null && !readings.ports.unfoldActive();
 	}
 
 	installLeaveProject(lifecycleCell);
-	$effect(() => {
-		if (experience.lensState === 'world') return;
-		// The Slice reads the world Stage: leaving the lens ends it exactly as a replaced
-		// project does, or the pill would offer a cut over an uncut Stage.
-		if (!sliceReading.isActive()) return;
-		sliceDraw.disarm();
-		sliceReading.clear();
-		setResolvedSlice(null);
-	});
-	$effect(() => {
-		// Changing the World row away from Slice ends the drawn gesture; the cut
-		// itself stays and is edited after Put back or under Select as usual.
-		if (shell.activeWorldTool !== 'slice' && sliceDraw.armed) sliceDraw.disarm();
-	});
+	readings.attachTeardown();
 	$effect(() => {
 		if (boot.status !== 'ready' && boot.status !== 'empty') artworkInteraction.cancel();
 		if (!canPlaceArtwork()) {
@@ -1962,22 +1597,6 @@
 
 	projectSession.bindNavigation();
 
-	function resetLayoutReadings(): void {
-		// A replaced project starts with no Wall Face, Lift, Slice or cutaway.
-		wallFace.clear();
-		clearProjectReadings();
-		cutawayFailedIds = new Set();
-	}
-
-	function clearProjectReadings(): void {
-		interiorLift.clear();
-		sliceDraw.disarm();
-		sliceReading.clear();
-		setResolvedSlice(null);
-		nearWallCutaway.reset();
-		setResolvedCutaway(null);
-	}
-
 	function endMaterialOperations(restoreCamera: boolean): boolean {
 		finishes?.card.cancel();
 		if (restoreCamera && finishes?.align.active && !finishes.align.putBack(false)) return false;
@@ -2054,91 +1673,7 @@
 		return regionFraming({ center: fit.center, right: axes.right, up: axes.up, surfaceMeters: fit.surfaceMeters, canvas: viewport, region });
 	}
 
-	// A6 — the Face reading's one camera port. The route owns the session clock and
-	// the reduced-motion rule; the Layout adapter supplies only bounds and a look
-	// direction, and Put back restores the exact standpoint Face started from.
-	$effect(() => {
-		wallFace.setCameraPort({
-			standpoint: () => facade?.camera.state() ?? null,
-			face: (frame, fit) => {
-				const stage = facade;
-				const viewport = rect;
-				if (stage === null || viewport === null) return false;
-				// Align (U6): frame the surface inside the chrome-free region, not the
-				// whole canvas. Plain Face keeps its conservative whole-canvas frame.
-				const axes = faceScreenAxes(frame.look);
-				const framing = fit === undefined ? null : alignFraming(fit, axes, viewport);
-				const result = submit(
-					framing === null
-						? { kind: 'face', bounds: frame.bounds, look: frame.look, rect: viewport }
-						: { kind: 'face', bounds: faceBoundsOf(framing, axes.right), look: frame.look, rect: viewport, paddingFraction: 0 },
-					readingIntentClockSeconds(shell.reducedMotion, nowSeconds())
-				);
-				return result?.kind === 'accepted';
-			},
-			frameFloor: (bounds, fit) => {
-				const stage = facade;
-				const viewport = rect;
-				if (stage === null || viewport === null) return false;
-				const t = readingIntentClockSeconds(shell.reducedMotion, nowSeconds());
-				const current = stage.camera.state();
-				if (current.reading !== 'plan') {
-					const flip = submit({ kind: 'set-reading', reading: 'plan' }, t);
-					if (flip?.kind !== 'accepted') return false;
-				}
-				// Plan snaps its azimuth to a quarter turn; frame with the axes it lands on.
-				const framing = fit === undefined ? null : alignFraming(fit, planScreenAxes(current.pose.azimuthRadians), viewport);
-				const fitted = submit(
-					framing === null
-						? {
-								kind: 'fit',
-								bounds: {
-									min: [bounds.min[0], bounds.min[1], bounds.min[2]],
-									max: [bounds.max[0], bounds.max[1], bounds.max[2]]
-								},
-								rect: viewport,
-								paddingFraction: 0.14
-							}
-						: { kind: 'fit', bounds: planFitBoundsOf(framing), rect: viewport, paddingFraction: 0 },
-					t
-				);
-				return fitted?.kind === 'accepted';
-			},
-			putBack: (entry) => facade?.camera.restoreStandpoint(entry) ?? false
-		});
-		return () => {
-			wallFace.setCameraPort(null);
-			wallFace.clear();
-		};
-	});
-
-	$effect(() => {
-		wallUnfold.setCameraExecutor((request) => {
-			const stage = facade;
-			const current = stage?.evaluation() ?? null;
-			if (stage === null || current === null) return false;
-			const ticket = stage.inspectionTicket();
-			if (ticket === null) return false;
-			const camera = stage.camera.state();
-			if (!wallUnfoldShouldReturn({
-				entryAdjusted: request.entryAdjusted,
-				settled: request.settled,
-				current: { pose: camera.pose, reading: camera.reading }
-			})) return false;
-			return stage.requestViewingIntent(
-				{
-					kind: 'set-view',
-					eye: eyeOfInspectionPose(request.pose),
-					target: request.pose.target,
-					fovYDegrees: fovYDegreesOf(request.pose),
-					transition: true
-				},
-				ticket,
-				performance.now() / 1000
-			).kind === 'accepted';
-		});
-		return () => wallUnfold.setCameraExecutor(null);
-	});
+	readings.attachCameraPorts();
 
 	const history = createStageHistoryCommand({ epoch: stageEpoch, lifecycle: lifecycleCell.get });
 	const listeners = createStageWindowListeners({
@@ -2206,19 +1741,7 @@
 					}
 				}
 			},
-			{
-				id: 'layout-readings',
-				lifecycle: {
-					resetPresentation: { reset: resetLayoutReadings },
-					windowBlur: { 'release-hold': () => nearWallCutaway.setHeld(false) },
-					leaveProject: { 'clear-readings': clearProjectReadings },
-					dispose: {
-						'dispose-unfold': () => unfoldGestures.dispose(),
-						'release-hold': () => nearWallCutaway.setHeld(false),
-						'clear-cutaway-mirror': () => setResolvedCutaway(null)
-					}
-				}
-			},
+			readings,
 			{
 				id: 'artwork',
 				lifecycle: {
@@ -2336,26 +1859,25 @@
 			},
 			get sky() { return look.stageSky; },
 			get proposals() { return finishes.card.proposalEntries(); },
-			get liftedRoomIds() { return liftedRoomIds; },
-			get liftedRegionIds() { return liftedRegionIds; },
-			get liftSources() { return liftedSources; },
-			get cutawayWallIds() { return cutawayWallIds; },
-			get cutawayStubTopY() { return cutawayStubTopY; },
-			get alignHiddenWallIds() { return alignCutaway?.ids ?? []; },
-			onCutawayFailure: (wallIds: readonly string[]) => {
-				cutawayFailedIds = new Set([...cutawayFailedIds, ...wallIds]);
-			},
-			get resolvedSlice() { return resolvedSlice; },
-			get sliceDraft() { return sliceDraftWorld; },
-			get unfoldPinHovered() { return unfoldGestures.pinHovered; },
-			get unfoldPinActive() { return unfoldGestures.sheetPinActive; },
-			unfoldAnchorPin: unfoldGestures.idlePin?.point ?? null,
+			get alignHiddenWallIds() { return readings.alignHiddenWallIds; },
 			onFinishOutcome: finishes.issues.recordOutcome,
 			get repairAffectedTargets() { return finishes.issues.hatchedTargets; }
 		};
 		// Assemble descriptors once per admitted source so Svelte reads each
 		// Canvas getter independently of the other regions and source props.
-		return Object.defineProperties(coreCanvas, Object.getOwnPropertyDescriptors(features)) as typeof coreCanvas & typeof features;
+		const { liftCanvas, cutawayCanvas, sliceCanvas, unfoldCanvas } = readings.regions;
+		// The idle Unfold anchor was sampled with the source props.
+		const unfold = {
+			...Object.getOwnPropertyDescriptors(unfoldCanvas),
+			unfoldAnchorPin: { value: unfoldCanvas.unfoldAnchorPin, enumerable: true }
+		};
+		return Object.defineProperties(coreCanvas, {
+			...Object.getOwnPropertyDescriptors(features),
+			...Object.getOwnPropertyDescriptors(liftCanvas),
+			...Object.getOwnPropertyDescriptors(cutawayCanvas),
+			...Object.getOwnPropertyDescriptors(sliceCanvas),
+			...unfold
+		}) as typeof coreCanvas & typeof features & typeof liftCanvas & typeof cutawayCanvas & typeof sliceCanvas & typeof unfoldCanvas;
 	});
 
 	/**
@@ -2415,34 +1937,12 @@
 		untrack(() => finishes.align.reframe());
 	});
 
-	/** The live drawn proposal in both worlds: one for the ink, one for the tag. */
-	const sliceDraftWorld = $derived.by(() => {
-		const draft = sliceDraw.view().draft;
-		return draft === null ? null : { start: draft.start, end: draft.end };
-	});
-	const sliceDraftOverlay = $derived.by(() => {
-		const draft = sliceDraw.view().draft;
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		const rect = evaluation?.rect ?? null;
-		if (draft === null || stage === null || id === null || rect === null) return null;
-		const project = (point: readonly [number, number, number]): readonly [number, number] | null => {
-			const projected = stage.projectWorld(point, id);
-			return projected.kind === 'projected'
-				? [projected.css[0] - rect.left, projected.css[1] - rect.top]
-				: null;
-		};
-		const from = project(draft.start);
-		const to = project(draft.end);
-		return from === null || to === null ? null : { from, to, label: draft.label };
-	});
-
 	const overlay = $derived({
 		...coreRegions.overlay,
 		celestial: dial && evaluation ? { dial, camera: evaluation, haze: look.shownSky.haze, owner: look.gesture.owner } : null,
 		marks: [...coreRegions.overlay.marks!, ...look.stageMarks],
 		candidates: [...coreRegions.overlay.candidates!, ...(artworkInteraction.placementCandidate === null ? [] : [artworkInteraction.placementCandidate])],
-		sliceDraft: sliceDraftOverlay
+		sliceDraft: readings.regions.overlay.sliceDraft
 	});
 
 	const stageCursor = $derived(readStageCursor({
@@ -2564,10 +2064,10 @@
 			paintChip: paintTray.active === null ? null : { color: paintTray.active.color, shape: paintTray.active.kind === 'colour' ? 'colour' : 'material', source: paintTray.active.kind === 'finish' ? paintTileSource(paintTray.active.key, finishTileSource) : null },
 			plateKind: shell.activeWorldTool === 'walls' || shell.activeWorldTool === 'opening' || shell.activeWorldTool === 'room' || shell.activeWorldTool === 'terrace' || shell.activeWorldTool === 'roofline' ? 'ink' : shell.activeWorldTool === 'objects' ? 'objects' : shell.activeWorldTool === 'slice' ? 'slice' : null,
 			inkReading: shell.inkReading,
-			sliceMode: sliceReading.reading?.kind ?? null,
+			sliceMode: readings.sliceMode,
 			sliceDrawing: sliceDraw.armed,
-			onSliceLevel: () => { sliceDraw.disarm(); sliceReading.level(); },
-			onSliceDrawn: () => { sliceDraw.arm(); shell.setActiveWorldTool('slice'); },
+			onSliceLevel: readings.ports.levelSlice,
+			onSliceDrawn: readings.ports.drawSlice,
 			onTogglePalette: () => shell.togglePalette()
 		}
 		: null));
@@ -2725,8 +2225,8 @@
 			viewEditTurn={experience.viewEdit?.moved && !experience.viewEdit.advanced && experience.viewEditPreview?.turn
 				? experience.viewEditPreview.turn
 				: null}
-			lift={liftPill}
-			slice={slicePill}
+			{...readings.regions.liftViewport}
+			{...readings.regions.sliceViewport}
 			{...lightInspection.regions.viewport}
 			pendingViewWrite={experience.pendingViewWrite}
 			onResolvePendingViewWrite={() => void experience.confirmPendingViewWrite()}
@@ -2789,8 +2289,8 @@
 							onToggleReducedMotion: () => shell.toggleReducedMotion(),
 							motionSpeed: shell.preferences.motionSpeed,
 							onMotionSpeed: (motionSpeed) => shell.updatePreferences({ ...shell.preferences, motionSpeed }),
-							lift: liftControl,
-							nearWalls: nearWallsControl
+							lift: readings.liftControl,
+							nearWalls: readings.nearWallsControl
 						}
 					}
 					: null}

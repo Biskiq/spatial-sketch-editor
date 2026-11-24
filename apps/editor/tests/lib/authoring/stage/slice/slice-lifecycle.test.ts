@@ -20,21 +20,21 @@ const read = (relative: string): string =>
 	readFileSync(path.join(process.cwd(), relative), 'utf8');
 const route = read('src/routes/project/[projectId]/spatial/+page.svelte');
 
+const readings = read('src/lib/authoring/stage/readings/layout-readings-feature.svelte.ts');
+const lifetime = read('src/lib/authoring/stage/readings/layout-readings-lifecycle.ts');
+const lift = read('src/lib/authoring/stage/readings/lift-host.svelte.ts');
+const slice = read('src/lib/authoring/stage/readings/slice-host.svelte.ts');
+
 describe('the reading ends with the project and with the lens', () => {
 	it('clears the reading wherever Lift is cleared', () => {
-		const lifts = route.match(/interiorLift\.clear\(\)/g) ?? [];
-		const slices = route.match(/sliceReading\.clear\(\)/g) ?? [];
-		// Route teardown, a replaced project's view reset, and (alongside) the lens. The
-		// second teardown path clears Lift without a reading beside it, so the count is
-		// a floor rather than an equality.
-		expect(lifts.length).toBeGreaterThanOrEqual(2);
-		expect(slices.length).toBeGreaterThanOrEqual(2);
-		const at = route.indexOf('function clearProjectReadings(): void {');
-		expect(at).toBeGreaterThan(0);
-		expect(route.slice(at, at + 300)).toMatch(/interiorLift\.clear\(\);[\s\S]*sliceReading\.clear\(\);[\s\S]*setResolvedSlice\(null\);/);
-		expect(route).toMatch(/function resetLayoutReadings\(\): void \{[\s\S]*?wallFace\.clear\(\);\s*clearProjectReadings\(\);/);
-		expect(route).toContain('resetPresentation: { reset: resetLayoutReadings }');
-		expect(route).toContain("leaveProject: { 'clear-readings': clearProjectReadings }");
+		expect(lift).toContain('clear: () => interiorLift.clear()');
+		expect(slice).toMatch(/function clear\(\): void \{\s*sliceDraw\.disarm\(\);\s*sliceReading\.clear\(\);\s*setResolvedSlice\(null\);/);
+		expect(lifetime).toMatch(/function clearReadings\(\): void \{\s*input\.clearLift\(\);\s*input\.clearSlice\(\);\s*input\.resetCutaway\(\);/);
+		expect(lifetime).toMatch(/function reset\(\): void \{\s*input\.clearFace\(\);\s*clearReadings\(\);/);
+		expect(readings).toContain('clearLift: lift.clear');
+		expect(readings).toContain('clearSlice: slice.clear');
+		expect(readings).toContain('resetPresentation: { reset: lifetime.reset }');
+		expect(readings).toContain("leaveProject: { 'clear-readings': lifetime.clearReadings }");
 		expect(route).toContain('installLeaveProject(lifecycleCell);');
 		const lifecycle = read('src/lib/authoring/stage/route/core-lifecycle-steps.svelte.ts');
 		expect(lifecycle).toContain('$effect(() => () => cell.get().leaveProject())');
@@ -43,16 +43,19 @@ describe('the reading ends with the project and with the lens', () => {
 	});
 
 	it('ends the reading when the lens leaves World', () => {
-		const at = route.indexOf("if (experience.lensState === 'world') return;");
+		const at = slice.indexOf("if (input.lens() === 'world') return;");
 		expect(at).toBeGreaterThan(0);
-		const window = route.slice(at, at + 500);
-		expect(window).toContain('sliceReading.clear()');
-		// The pick provider's mirror is cleared with it, or a stale cut survives.
-		expect(window).toContain('setResolvedSlice(null)');
+		const window = slice.slice(at, at + 500);
+		expect(window).toMatch(/if \(!sliceReading\.isActive\(\)\) return;\s*clear\(\);/);
+		expect(slice).toMatch(/function clear\(\): void \{[\s\S]{0,140}setResolvedSlice\(null\);/);
+		expect(route).toContain('readings.attachTeardown()');
 	});
 
 	it('clears the pick mirror at teardown and on a replaced project', () => {
-		expect((route.match(/setResolvedSlice\(null\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+		expect(readings).toContain('clearSlice: slice.clear');
+		expect(lifetime).toContain('input.clearSlice()');
+		expect(lifetime).toContain('clearReadings()');
+		expect(slice).toContain('setResolvedSlice(null)');
 	});
 });
 

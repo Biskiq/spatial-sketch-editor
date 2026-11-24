@@ -54,6 +54,8 @@ const ROUTE_VIEWPORT = join(SHELL_DIR, 'StageViewportRegion.svelte');
 const ROUTE_PANELS = join(SHELL_DIR, 'StagePanels.svelte');
 const ROUTE_TOOLBARS = join(SHELL_DIR, 'StageToolbars.svelte');
 const X2_INPUT_FILE = join(STAGE_DIR, 'route', 'stage-input.svelte.ts');
+const READINGS_ENTRY = join(STAGE_DIR, 'readings', 'layout-readings-feature.svelte.ts');
+const UNFOLD_OWNER = join(STAGE_DIR, 'readings', 'unfold-host.svelte.ts');
 const X2_UNFOLD_FILE = join(STAGE_DIR, 'route', 'stage-unfold-gestures.svelte.ts');
 const X2_ARTWORK_FILE = join(STAGE_DIR, 'route', 'stage-artwork-interaction.svelte.ts');
 const X2_INPUT = relativeToRepo(X2_INPUT_FILE);
@@ -107,7 +109,6 @@ function postureSources(): { file: string; code: string }[] {
 	// X2's input owners are constructed by the route and own its handler bodies.
 	const x2 = [
 		[X2_INPUT_FILE, 'createStageInputArbiter'],
-		[X2_UNFOLD_FILE, 'createStageUnfoldGestures'],
 		[X2_ARTWORK_FILE, 'createStageArtworkInteraction']
 	] as const;
 	for (const [file, factory] of x2) {
@@ -116,6 +117,10 @@ function postureSources(): { file: string; code: string }[] {
 		expect(route, file).toContain(`${factory}({`);
 		files.push(file);
 	}
+	expect(route).toContain('createLayoutReadingsFeature({');
+	expect(readFileSync(READINGS_ENTRY, 'utf8')).toContain('createUnfoldHost(deps.unfold)');
+	expect(readFileSync(UNFOLD_OWNER, 'utf8')).toContain('createStageUnfoldGestures({');
+	files.push(READINGS_ENTRY, UNFOLD_OWNER, X2_UNFOLD_FILE);
 	return files.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
 }
 

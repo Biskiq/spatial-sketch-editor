@@ -82,6 +82,6 @@ describe('the face ray — artwork placement aims at what is drawn', () => {
 			path.join(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'),
 			'utf8'
 		);
-		expect(route).toContain('pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => resolvedSlice)');
+		expect(route).toContain('pickVisibleFace: pickVisibleFaceThroughSlice(scenePick, () => readings.ports.resolvedSlice())');
 	});
 });
