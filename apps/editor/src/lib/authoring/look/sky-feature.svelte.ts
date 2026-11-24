@@ -3,10 +3,8 @@ import { createSkyHost } from './sky/sky-host.svelte';
 export type SkyDependencies = Parameters<typeof createSkyHost>[0];
 
 export function createSkyFeature(deps: SkyDependencies) {
-	const sky = createSkyHost(deps);
-	return {
+	const sky = createSkyHost(deps);	return {
 		id: 'sky' as const,
-		attachSession: sky.attachSession,
 		regions: { canvas: sky.canvas, overlay: sky.overlay, panels: sky.panels },
 		escape: { dismissSky: sky.dismiss },
 		ports: {

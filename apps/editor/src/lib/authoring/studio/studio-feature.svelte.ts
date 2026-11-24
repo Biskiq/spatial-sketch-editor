@@ -1,8 +1,9 @@
 import { createStudioPort } from './studio-port.svelte';
 import { createStudioFind } from './studio-find.svelte';
 import { createStudioEntrySession } from './studio-entry-session.svelte';
-import type { StudioController } from './studio-controller.svelte';
-import type { StudioLens, StudioRootView, StudioScopeView } from './studio-view';
+import { createStudioStrips } from './studio-strips.svelte';
+import { createStudioController, type StudioController, type StudioPorts } from './studio-controller.svelte';
+import type { StudioLens } from './studio-view';
 
 /**
  * Studio: the Object Studio session, its Find projection, its URL entry and
@@ -13,7 +14,7 @@ import type { StudioLens, StudioRootView, StudioScopeView } from './studio-view'
  * write. This entry holds no state of its own.
  */
 export function createStudioFeature(deps: {
-	readonly controller: () => StudioController | undefined;
+	readonly ports: StudioPorts;
 	readonly lens: () => StudioLens;
 	readonly previewing: () => boolean;
 	readonly ready: () => boolean;
@@ -31,15 +32,16 @@ export function createStudioFeature(deps: {
 	readonly libraryOpen: () => boolean;
 	readonly navigate: (href: string) => void;
 }) {
+	const controller = createStudioController(deps.ports);
 	const port = createStudioPort({
-		controller: deps.controller,
+		controller: () => controller,
 		lens: deps.lens,
 		previewing: deps.previewing,
 		armObjects: deps.armObjects,
 		dockReady: deps.dockReady
 	});
 	const find = createStudioFind({
-		controller: deps.controller,
+		controller: () => controller,
 		revision: () => port.revision,
 		lens: deps.lens,
 		previewing: deps.previewing,
@@ -47,7 +49,7 @@ export function createStudioFeature(deps: {
 		entities: deps.entities
 	});
 	const entry = createStudioEntrySession({
-		controller: deps.controller,
+		controller: () => controller,
 		ready: deps.ready,
 		intent: deps.intent,
 		entry: deps.entry,
@@ -66,47 +68,30 @@ export function createStudioFeature(deps: {
 		navigate: deps.navigate
 	});
 
-	const scope = $derived.by((): StudioScopeView | null => {
-		const studio = deps.controller();
-		if (studio === undefined || !studio.active || deps.previewing() || deps.lens() !== 'world') return null;
-		return {
-			phase: studio.phase,
-			origin: studio.origin,
-			context: studio.context,
-			name: studio.rootName,
-			rootCount: studio.roots.length,
-			onContext: (next) => studio.setContext(next),
-			onNewObject: () => studio.newObjectHere(),
-			onChoose: () => studio.openChooser(),
-			onBackToWorld: () => studio.backToWorld(),
-			onBackToProjects: () => studio.backToProjects(),
-			onOpenInWorld: () => studio.openInWorld(),
-			onPlaceCopy: () => void studio.placeCopyInWorld(),
-			placingCopy: studio.placingCopy
-		};
-	});
-
-	const root = $derived.by((): StudioRootView | null => {
-		const studio = deps.controller();
-		if (studio === undefined || !studio.active || deps.previewing() || deps.lens() !== 'world') return null;
-		return {
-			phase: studio.phase,
-			roots: studio.roots,
-			origin: studio.origin,
-			creating: studio.creating,
-			onChoose: (id) => studio.chooseRoot(id),
-			onOpenChooser: () => studio.openChooser(),
-			onNewObject: () => studio.newObjectHere(),
-			onBackToWorld: () => studio.backToWorld(),
-			onBackToProjects: () => studio.backToProjects(),
-			onOpenInWorld: () => studio.openInWorld(),
-			onCancelCreation: () => studio.cancelCreation()
-		};
+	const strips = createStudioStrips({
+		controller: () => controller,
+		previewing: deps.previewing,
+		lens: deps.lens
 	});
 
 	return {
 		id: 'studio' as const,
-		attachEntry: entry.attachEntry,
+		get controller(): StudioController {
+			return controller;
+		},
+		lifecycle: {
+			resetPresentation: { end: () => controller.end() },
+			accepted: {
+				reconcile: () => controller.reconcile(),
+				'settle-transfer': entry.settleTransfer
+			},
+			historyInstalled: { reconcile: () => controller.reconcile() },
+			leaveLens: {
+				'leave-for-lens': (next: 'world' | 'experience') => {
+					if (next !== 'world') return controller.leaveForLens();
+				}
+			}
+		},
 		ports: {
 			objectStudio: port.objectStudioPort,
 			armCreation: port.armCreation,
@@ -121,8 +106,8 @@ export function createStudioFeature(deps: {
 		regions: {
 			get find() { return find.state; },
 			get transfer() { return entry.transfer; },
-			get scope() { return scope; },
-			get root() { return root; }
+			get scope() { return strips.scope; },
+			get root() { return strips.root; }
 		}
 	};
 }

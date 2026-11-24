@@ -117,9 +117,7 @@
 	} from '$lib/authoring/look/finish-authoring.svelte';
 	import { createMaterialProofRegistry } from '$lib/authoring/material-proof';
 	import { createAppearanceFeature } from '$lib/authoring/look/appearance-feature.svelte';
-	import AppearanceWorldRegions from '$lib/authoring/look/AppearanceWorldRegions.svelte';
 	import AppearanceSharedRegions from '$lib/authoring/look/AppearanceSharedRegions.svelte';
-	import LibraryWorldRegion from '$lib/authoring/library/LibraryWorldRegion.svelte';
 	import { createLibraryFeature } from '$lib/authoring/library/library-feature.svelte';
 	import { createColourCoatPort } from '$lib/authoring/look/colour-coat-port';
 	import { getMaterial, materialById } from '$lib/content/materials';
@@ -130,8 +128,6 @@
 	} from '$lib/authoring/stage/route/stage-experience-binding.svelte';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 	import { isStudioOperation, isStudioWorldTool, studioAdmitsCardAction } from '$lib/authoring/studio/studio-model';
-	import { createStudioController, type StudioController } from '$lib/authoring/studio/studio-controller.svelte';
-	import StudioWorldRegions from '$lib/authoring/studio/StudioWorldRegions.svelte';
 	import { createStudioFeature } from '$lib/authoring/studio/studio-feature.svelte';
 	import { createSubjectScope } from '$lib/authoring/stage/subject-scope';
 	import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
@@ -222,10 +218,149 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		notice: { read: () => shell.notice, write: (message) => shell.setNotice(message) }
 	});
 
-	/** Object Studio's one session value, created once the commands it calls exist. */
-	let studio!: StudioController;
 	const studioFeature = createStudioFeature({
-		controller: () => studio,
+		ports: {
+		entities: () =>
+			(facade?.snapshot().domain.scene.entities ?? []).map((entity) => ({
+				id: entity.id,
+				name: entity.name,
+				kind: entity.kind
+			})),
+		selectedEntityId: () =>
+			selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null,
+		select: (entityId) => {
+			const stage = facade;
+			if (stage === null) return false;
+			if (entityId === null) {
+				commands.closeSelection();
+				return true;
+			}
+			commands.selectStageReference(
+				sceneEntityReference(entityId, stage.snapshot().domain.unitRevisions.scene)
+			);
+			return true;
+		},
+		setScope: (scope) => {
+			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation, admitsCardAction: (adapterId, subjectId, actionId) => studioAdmitsCardAction(scope.entityId, adapterId, subjectId, actionId) });
+			clearHover();
+			shell.bumpContributions();
+			facade?.notifySurfaceChange();
+			studioFeature.ports.bumpRevision();
+		},
+		captureView: () => {
+			const camera = facade?.camera.state();
+			if (camera === undefined) return null;
+			return {
+				reading: camera.reading,
+				eye: eyeOfInspectionPose(camera.pose),
+				target: camera.pose.target,
+				fovYDegrees: fovYDegreesOf(camera.pose),
+				targetPlaneHeightMeters: camera.pose.targetPlaneHeightMeters
+			};
+		},
+		restoreView: (record) => {
+			const result = submit(
+				{
+					kind: 'set-view',
+					eye: [record.eye[0], record.eye[1], record.eye[2]],
+					target: [record.target[0], record.target[1], record.target[2]],
+					fovYDegrees: record.fovYDegrees,
+					transition: !shell.reducedMotion
+				},
+				nowSeconds()
+			);
+			if (result?.kind !== 'accepted') return false;
+			if (record.reading === 'plan') {
+				submit({ kind: 'set-reading', reading: 'plan' }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
+			}
+			return true;
+		},
+		rootBounds: (entityId) => facade?.sceneBounds(entityId) ?? null,
+		fit: (bounds) => {
+			if (facade === null || rect === null) return false;
+			return submit(
+				{
+					kind: 'fit',
+					bounds: { min: [...bounds.min], max: [...bounds.max] },
+					rect,
+					// A lone object is framed with room around it, not edge to edge.
+					paddingFraction: 0.3
+				},
+				nowSeconds()
+			)?.kind === 'accepted';
+		},
+		contentBounds: () => (facade === null ? null : readStageContentBounds(facade)),
+		fitAll: () => {
+			const bounds = facade === null ? null : readStageContentBounds(facade);
+			if (bounds === null || rect === null) return;
+			submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect, paddingFraction: 0.25 }, nowSeconds());
+		},
+		armCreation: () => studioFeature.ports.armCreation(),
+		closeCreation: () => {
+			const close = (): void => {
+				// The placement task stays armed for repeat placing: Studio has its root now.
+				commands.closeTask();
+				if (shell.activeWorldTool === 'objects' || shell.libraryOpen) commands.armWorldTool('select');
+				shell.setWorldPlateOpen(false);
+				shell.setLibraryOpen(false);
+			};
+			close();
+			// Placement settles its own tray after the accepted source: close it once more then.
+			setTimeout(() => {
+				if (studio.active && !studio.creating) close();
+			}, 0);
+		},
+		settlePending: () => lifecycle.settlePending(),
+		notice: (message) => shell.setNotice(message),
+		syncUrl: (state) => {
+			try {
+				const url = new URL(window.location.href);
+				if (state === null) {
+					url.searchParams.delete(STUDIO_ENTRY_PARAM);
+					url.searchParams.delete(STUDIO_OBJECT_PARAM);
+				} else {
+					url.searchParams.set(STUDIO_ENTRY_PARAM, STUDIO_ENTRY_VALUE);
+					if (state.objectId === null) url.searchParams.delete(STUDIO_OBJECT_PARAM);
+					else url.searchParams.set(STUDIO_OBJECT_PARAM, state.objectId);
+				}
+				replaceState(`${url.pathname}${url.search}`, {});
+			} catch {
+				// The address is a courtesy: a router that is not ready keeps the posture.
+			}
+		},
+		navigate: (href) => void goto(href),
+		placeCopy: async (rootId, current) => {
+			const { saveFormCopyToMyObjects } = await import('$lib/authoring/adapters/scene/library/save');
+			if (!current()) return false;
+			const outcome = await runPlaceCopy(rootId, current, {
+				entity: (id) => {
+					const entry = facade?.snapshot().domain.scene.entities.find((candidate) => candidate.id === id);
+					return entry?.kind === 'form' ? entry : null;
+				},
+				isDirty: () => headSave?.isDirty() === true,
+				saveFirst: () => projectSession.saveBeforeSwitch(),
+				saveToLibrary: (entity) => saveFormCopyToMyObjects(entity),
+				beginTransfer: (itemId, name) => beginFormCopyTransfer({
+					sourceProjectId: projectId, objectId: rootId, objectName: name, itemId,
+					// Mint the exact entity the copy will occupy; it travels through the
+					// intake to place-form-copy and identifies this insertion at settlement.
+					entityId: `entity-${crypto.randomUUID()}`
+				}),
+				openChooser: (itemId) => goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`),
+				notice: (message) => shell.setNotice(message)
+			});
+			return outcome === 'navigated';
+		},
+		focusReturn: () => {
+			setTimeout(() => {
+				const card = document.querySelector<HTMLElement>('[data-editor-card], .card');
+				const target = card?.querySelector<HTMLElement>('button, [tabindex]') ?? stageEl ?? null;
+				target?.focus({ preventScroll: true });
+			}, 0);
+		},
+		indexOpen: () => shell.indexOpen,
+		setIndexOpen: (open) => shell.setIndexOpen(open)
+	},
 		lens: () => experience.lensState,
 		previewing: () => preview !== null,
 		ready: () => boot.status === 'ready' || boot.status === 'empty',
@@ -244,6 +379,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		libraryOpen: () => shell.libraryOpen,
 		navigate: (href) => void goto(href)
 	});
+	const studio = studioFeature.controller;
 
 	function openSpaceCreated(reference: Parameters<typeof sameReference>[0]): void {
 		const stage = facade;
@@ -329,8 +465,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	 * the feature owns the Preview host, the host reads and its lifecycle stage.
 	 */
 	let experienceFeature!: ExperienceFeature;
-	/** Paint's one Finish intent home, built after the commands it calls. */
-	let finishes!: FinishAuthoring;
 	const shell = wireStageShellState({
 		session,
 		facade: () => facade,
@@ -520,7 +654,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		lightSession: lightInspection.ports.session,
 		refresh
 	});
-	lightInspection.attachGuards();
 
 	function changeLens(next: 'world' | 'experience'): void {
 		lifecycle.leaveLens(next);
@@ -528,15 +661,55 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 
 	const selectionView = createStageSelectionView();
 	const appearance = createAppearanceFeature({
+		finishes: {
+	services: () => adapterServices,
+	api: () => api,
+	projectId: () => projectId,
+	canEdit: () => artwork.ports.canPlace(),
+	isSaved: () => headSave?.snapshot().savedBaseToken != null,
+	imageAspect: (textureId) => stageAssets.textureAspect(textureId),
+	imageDimensions: (textureId) => stageAssets.textureDimensions(textureId),
+	textureUri: (textureId) => {
+		const scene = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
+		return scene?.textures.find((texture) => texture.id === textureId)?.uri ?? null;
+	},
+	texturePreviewUri: (textureId) => stageAssets.texturePreviewUri(textureId),
+	textureFailed: (uri) => stageAssets.textureFailed(uri),
+	retryTexture: (uri) => stageAssets.retryTexture(uri),
+	onNotice: (message) => shell.setNotice(message),
+	openFinishes: () => {
+		if (!shell.libraryOpen) commands.toggleWorldLibrary();
+		shell.setWorldPlateOpen(true);
+	},
+	// The Card's Swap… opens the Library on its Swap intent (a fresh invocation).
+	openLibrarySwap: () => {
+		if (shell.libraryOpen) commands.toggleWorldLibrary();
+		commands.toggleWorldLibrary('card');
+	},
+	isPaintArmed: () => shell.armedHostTool === 'paint',
+	armPaint: () => commands.armWorldTool('paint'),
+	colourCoat: createColourCoatPort({
+		services: () => adapterServices,
+		onNotice: (message) => shell.setNotice(message),
+		labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
+	}),
+	repairAsset: (assetId, bytes, expectedPin, signal) =>
+		projectSession.repairProjectAsset(assetId, bytes, expectedPin, signal),
+	invalidateAndReloadAsset: (assetId) => {
+		const uri = `project-asset://${assetId}`;
+		const scopeId = stageAssets.textureScope?.scopeId ?? null;
+		if (scopeId !== null) invalidateFinishViewsForSource(scopeId, uri);
+		invalidateTextureSource(scopeId, uri);
+		stageAssets.retryTexture(uri);
+	},
+},
 		card: {
 			selection: () => selection,
-			finishes: () => finishes,
 			snapshot: ready.snapshot
 		},
 		draft: {
 			snapshot: ready.snapshot,
 			textureScope: () => stageAssets.textureScope,
-			finishes: () => finishes,
 			selection: () => selection,
 			shell,
 			canShowEditor: () => preview === null && experience.lensState === 'world' && adapterServices !== null,
@@ -549,17 +722,14 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			snapshot: ready.snapshot,
 			services: () => adapterServices,
 			onNotice: (message) => shell.setNotice(message),
-			finishes: () => finishes
 		},
 		paint: {
 			shell,
-			finishes: () => finishes,
 			previewing: () => preview !== null,
 			openLibrary: () => commands.toggleWorldLibrary('paint')
 		},
 		align: {
 			shell,
-			finishes: () => finishes,
 			previewing: () => preview !== null,
 			lens: () => experience.lensState,
 			available: () => adapterServices !== null,
@@ -571,7 +741,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		},
 		repair: {
 			projectId,
-			finishes: () => finishes
 		}
 	});
 	const sceneRooms = $derived(
@@ -713,202 +882,14 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		lightArmed: lightInspection.ports.lightArmed,
 		isStudioTool: isStudioWorldTool,
 		studioActive: () => studio?.active === true,
-		libraryReplaceQualified: () => finishes?.libraryTarget() != null,
+		libraryReplaceQualified: () => appearance.ports.finishes().libraryTarget() != null,
 		runStudioEntry: studioFeature.ports.runStudioEntry
 	});
 
-	studio = createStudioController({
-		entities: () =>
-			(facade?.snapshot().domain.scene.entities ?? []).map((entity) => ({
-				id: entity.id,
-				name: entity.name,
-				kind: entity.kind
-			})),
-		selectedEntityId: () =>
-			selection !== null && selection.reference.domain === 'scene' ? selection.reference.subject.id : null,
-		select: (entityId) => {
-			const stage = facade;
-			if (stage === null) return false;
-			if (entityId === null) {
-				commands.closeSelection();
-				return true;
-			}
-			commands.selectStageReference(
-				sceneEntityReference(entityId, stage.snapshot().domain.unitRevisions.scene)
-			);
-			return true;
-		},
-		setScope: (scope) => {
-			subjectScope.set(scope === null ? null : { entityId: scope.entityId, admitsOperation: isStudioOperation, admitsCardAction: (adapterId, subjectId, actionId) => studioAdmitsCardAction(scope.entityId, adapterId, subjectId, actionId) });
-			clearHover();
-			shell.bumpContributions();
-			facade?.notifySurfaceChange();
-			studioFeature.ports.bumpRevision();
-		},
-		captureView: () => {
-			const camera = facade?.camera.state();
-			if (camera === undefined) return null;
-			return {
-				reading: camera.reading,
-				eye: eyeOfInspectionPose(camera.pose),
-				target: camera.pose.target,
-				fovYDegrees: fovYDegreesOf(camera.pose),
-				targetPlaneHeightMeters: camera.pose.targetPlaneHeightMeters
-			};
-		},
-		restoreView: (record) => {
-			const result = submit(
-				{
-					kind: 'set-view',
-					eye: [record.eye[0], record.eye[1], record.eye[2]],
-					target: [record.target[0], record.target[1], record.target[2]],
-					fovYDegrees: record.fovYDegrees,
-					transition: !shell.reducedMotion
-				},
-				nowSeconds()
-			);
-			if (result?.kind !== 'accepted') return false;
-			if (record.reading === 'plan') {
-				submit({ kind: 'set-reading', reading: 'plan' }, readingIntentClockSeconds(shell.reducedMotion, nowSeconds()));
-			}
-			return true;
-		},
-		rootBounds: (entityId) => facade?.sceneBounds(entityId) ?? null,
-		fit: (bounds) => {
-			if (facade === null || rect === null) return false;
-			return submit(
-				{
-					kind: 'fit',
-					bounds: { min: [...bounds.min], max: [...bounds.max] },
-					rect,
-					// A lone object is framed with room around it, not edge to edge.
-					paddingFraction: 0.3
-				},
-				nowSeconds()
-			)?.kind === 'accepted';
-		},
-		contentBounds: () => (facade === null ? null : readStageContentBounds(facade)),
-		fitAll: () => {
-			const bounds = facade === null ? null : readStageContentBounds(facade);
-			if (bounds === null || rect === null) return;
-			submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect, paddingFraction: 0.25 }, nowSeconds());
-		},
-		armCreation: studioFeature.ports.armCreation,
-		closeCreation: () => {
-			const close = (): void => {
-				// The placement task stays armed for repeat placing: Studio has its root now.
-				commands.closeTask();
-				if (shell.activeWorldTool === 'objects' || shell.libraryOpen) commands.armWorldTool('select');
-				shell.setWorldPlateOpen(false);
-				shell.setLibraryOpen(false);
-			};
-			close();
-			// Placement settles its own tray after the accepted source: close it once more then.
-			setTimeout(() => {
-				if (studio.active && !studio.creating) close();
-			}, 0);
-		},
-		settlePending: () => lifecycle.settlePending(),
-		notice: (message) => shell.setNotice(message),
-		syncUrl: (state) => {
-			try {
-				const url = new URL(window.location.href);
-				if (state === null) {
-					url.searchParams.delete(STUDIO_ENTRY_PARAM);
-					url.searchParams.delete(STUDIO_OBJECT_PARAM);
-				} else {
-					url.searchParams.set(STUDIO_ENTRY_PARAM, STUDIO_ENTRY_VALUE);
-					if (state.objectId === null) url.searchParams.delete(STUDIO_OBJECT_PARAM);
-					else url.searchParams.set(STUDIO_OBJECT_PARAM, state.objectId);
-				}
-				replaceState(`${url.pathname}${url.search}`, {});
-			} catch {
-				// The address is a courtesy: a router that is not ready keeps the posture.
-			}
-		},
-		navigate: (href) => void goto(href),
-		placeCopy: async (rootId, current) => {
-			const { saveFormCopyToMyObjects } = await import('$lib/authoring/adapters/scene/library/save');
-			if (!current()) return false;
-			const outcome = await runPlaceCopy(rootId, current, {
-				entity: (id) => {
-					const entry = facade?.snapshot().domain.scene.entities.find((candidate) => candidate.id === id);
-					return entry?.kind === 'form' ? entry : null;
-				},
-				isDirty: () => headSave?.isDirty() === true,
-				saveFirst: () => projectSession.saveBeforeSwitch(),
-				saveToLibrary: (entity) => saveFormCopyToMyObjects(entity),
-				beginTransfer: (itemId, name) => beginFormCopyTransfer({
-					sourceProjectId: projectId, objectId: rootId, objectName: name, itemId,
-					// Mint the exact entity the copy will occupy; it travels through the
-					// intake to place-form-copy and identifies this insertion at settlement.
-					entityId: `entity-${crypto.randomUUID()}`
-				}),
-				openChooser: (itemId) => goto(`/projects?${PLACE_COPY_PARAM}=${encodeURIComponent(itemId)}`),
-				notice: (message) => shell.setNotice(message)
-			});
-			return outcome === 'navigated';
-		},
-		focusReturn: () => {
-			setTimeout(() => {
-				const card = document.querySelector<HTMLElement>('[data-editor-card], .card');
-				const target = card?.querySelector<HTMLElement>('button, [tabindex]') ?? stageEl ?? null;
-				target?.focus({ preventScroll: true });
-			}, 0);
-		},
-		indexOpen: () => shell.indexOpen,
-		setIndexOpen: (open) => shell.setIndexOpen(open)
-	});
 
-	finishes = createFinishAuthoring({
-		services: () => adapterServices,
-		api: () => api,
-		projectId: () => projectId,
-		canEdit: () => artwork.ports.canPlace(),
-		isSaved: () => headSave?.snapshot().savedBaseToken != null,
-		imageAspect: (textureId) => stageAssets.textureAspect(textureId),
-		imageDimensions: (textureId) => stageAssets.textureDimensions(textureId),
-		textureUri: (textureId) => {
-			const scene = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.scene : null;
-			return scene?.textures.find((texture) => texture.id === textureId)?.uri ?? null;
-		},
-		texturePreviewUri: (textureId) => stageAssets.texturePreviewUri(textureId),
-		textureFailed: (uri) => stageAssets.textureFailed(uri),
-		retryTexture: (uri) => stageAssets.retryTexture(uri),
-		onNotice: (message) => shell.setNotice(message),
-		openFinishes: () => {
-			if (!shell.libraryOpen) commands.toggleWorldLibrary();
-			shell.setWorldPlateOpen(true);
-		},
-		// The Card's Swap… opens the Library on its Swap intent (a fresh invocation).
-		openLibrarySwap: () => {
-			if (shell.libraryOpen) commands.toggleWorldLibrary();
-			commands.toggleWorldLibrary('card');
-		},
-		isPaintArmed: () => shell.armedHostTool === 'paint',
-		armPaint: () => commands.armWorldTool('paint'),
-		colourCoat: createColourCoatPort({
-			services: () => adapterServices,
-			onNotice: (message) => shell.setNotice(message),
-			labelForMaterial: (id) => (materialById.has(id) ? getMaterial(id).label : id)
-		}),
-		repairAsset: (assetId, bytes, expectedPin, signal) =>
-			projectSession.repairProjectAsset(assetId, bytes, expectedPin, signal),
-		invalidateAndReloadAsset: (assetId) => {
-			const uri = `project-asset://${assetId}`;
-			const scopeId = stageAssets.textureScope?.scopeId ?? null;
-			if (scopeId !== null) invalidateFinishViewsForSource(scopeId, uri);
-			invalidateTextureSource(scopeId, uri);
-			stageAssets.retryTexture(uri);
-		},
-		retryTextures: () => {
-			for (const issue of finishes.issues.open) {
-				if (issue.assetId !== null) {
-					stageAssets.retryTexture(`project-asset://${issue.assetId}`);
-				}
-			}
-		}
-	});
+
+
+	const finishes = appearance.ports.finishes();
 	appearance.attachAuthoring();
 	const bootRepair = createBootRepair({
 		boot: () => boot,
@@ -1037,6 +1018,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	});
 
 	stageKeyboard = wireStageKeyboard({
+		appearanceRungs: appearance.rungs,
 		artworkEscape: artwork.ports.escape,
 		previewActive: () => preview !== null,
 		closePreview: () => previewController.close(),
@@ -1053,16 +1035,9 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		pan,
 		pressDockSlot: (slot) => commands.pressDockSlot(slot),
 		requestDelete: () => commands.requestDelete(),
-		cancelFinishGesture: appearance.ports.cancelGesture,
 		interrupt: interruptPress,
 		shell,
 		closeTask: () => commands.closeTask(),
-		paintKey: appearance.ports.paintKey,
-		dismissAlign: appearance.ports.dismissAlign,
-		dismissMaterialEditor: appearance.ports.dismissMaterialEditor,
-		dismissMaterialImport: appearance.ports.dismissMaterialImport,
-		dismissRepairDrawer: appearance.ports.dismissRepairDrawer,
-		dismissPaint: appearance.ports.dismissPaint,
 		armedDockKey: () => dockKeys.find((key) => key.id === armedDockId),
 		libraryEscape: library.escape,
 		toolbarFocused: () => {
@@ -1086,12 +1061,12 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	const modelUrls = $derived(stageAssets.urls);
 
 
-	readings.attachReadings();
 
+
+	readings.attachReadings();
 
 	let renderRootsRevision = $state(0);
 	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
-	studioFeature.attachEntry();
 	const contentBounds = createStageContentBounds({
 		renderRootsRevision: () => renderRootsRevision,
 		snapshot: ready.snapshot,
@@ -1101,7 +1076,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	const paperContentBounds = $derived(contentBounds.paper);
 
 	installLeaveProject(lifecycleCell);
-	readings.attachTeardown();
 	artwork.attachGuard();
 
 	const lookCardStratum = $derived.by(() => {
@@ -1184,7 +1158,6 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 	}
 
 
-	readings.attachCameraPorts();
 
 	const history = createStageHistoryCommand({ epoch: stageEpoch, lifecycle: lifecycleCell.get });
 	const listeners = createStageWindowListeners({
@@ -1209,19 +1182,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 			lightInspection,
 			appearance,
 			{ id: 'experience', lifecycle: experienceFeature.lifecycle },
-			{
-				id: 'studio',
-				lifecycle: {
-					resetPresentation: { end: () => studio?.end() },
-					accepted: { reconcile: () => studio?.reconcile(), 'settle-transfer': studioFeature.ports.settleTransfer },
-					historyInstalled: { reconcile: () => studio?.reconcile() },
-					leaveLens: {
-						'leave-for-lens': (next) => {
-							if (next !== 'world' && studio !== undefined) return studio.leaveForLens();
-						}
-					}
-				}
-			},
+			studioFeature,
 			readings,
 			artwork
 		]
@@ -1244,9 +1205,7 @@ export function createWorkspaceHost(input: WorkspaceHostInput) {
 		contextMenu: (event: MouseEvent) => { if (lookThroughActiveNow()) event.preventDefault(); }
 	};
 
-	sky.attachSession();
 
-	appearance.attachAlign();
 
 	const coreRegions = createCoreRegionViews({
 		projectId, heightSheet, project: projectSession, shell, history, scenePick, lightPreview,

@@ -70,5 +70,6 @@ export function createWallFaceHost(input: {
 		});
 	}
 
+	attachCameraPort();
 	return { attachCameraPort, clear: () => wallFace.clear() };
 }

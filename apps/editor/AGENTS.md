@@ -6,6 +6,18 @@
 **Owns:** the SvelteKit product surface, authoring shell/adjacent Stage work, visitor Preview and
 public visitor route, and the editor's tests. Shared domain math belongs to its package.
 
+## Composition
+
+- The spatial route is only `createWorkspaceHost` + `<WorkspaceHost>`. Put a capability in its
+  feature entry and sub-owners (`src/lib/authoring/<feature>/`), never in the route or host.
+- Shared composition changes are declarative: one manifest entry
+  (`tests/lib/authoring/integration-ownership.manifest.ts`), the feature's `LIFECYCLE_ORDER` steps,
+  its `ESCAPE_LADDER` rung, its `REGION_KEY_OWNER` keys and its declared ports.
+- Feature entries compose; they hold no runes, state or helper functions. Sub-owners never import
+  a sibling at runtime.
+- `npm run test:arch` proves the ownership contract; `integration-ownership.test.ts` is the
+  admission check for a new capability.
+
 ## Invariants
 
 - One Stage Canvas, one evaluated viewport and one Camera realizer. No `OrbitControls`, second scene

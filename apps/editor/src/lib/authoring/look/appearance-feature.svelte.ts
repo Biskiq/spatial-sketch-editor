@@ -5,8 +5,8 @@ import { createPaintSession } from './appearance/paint-session.svelte';
 import { createAlignSession } from './appearance/align-session.svelte';
 import { createRepairSession } from './appearance/repair-session.svelte';
 import { createAppearanceOperations } from './appearance/operations';
-import { contribution } from '../workspace/region-ownership';
-import type { StageReadSnapshot } from '../stage/accepted-read';
+import { createAppearanceFinishAuthority } from './appearance/finish-authority';
+import { createAppearanceCanvasRegion } from './appearance/canvas-region';
 
 /**
  * Appearance: Finish Card and Paint, Import and the Library Draft, Align,
@@ -16,45 +16,52 @@ import type { StageReadSnapshot } from '../stage/accepted-read';
  * project session for the repair and import acceptance paths; the Card's own
  * session for previews and gestures. This entry holds no state of its own.
  */
+import type { createFinishAuthoring } from './finish-authoring.svelte';
+type FinishesInput = Parameters<typeof createFinishAuthoring>[0];
+
 export type AppearanceDependencies = {
-	readonly card: Omit<Parameters<typeof createCardSession>[0], 'draftPreview'>;
-	readonly draft: Parameters<typeof createLibraryDraftSession>[0];
-	readonly materialImport: Omit<Parameters<typeof createAppearanceImportSession>[0], 'previewing' | 'lens'>;
-	readonly paint: Omit<Parameters<typeof createPaintSession>[0], 'finishTileSource' | 'endLibraryDraft'>;
-	readonly align: Parameters<typeof createAlignSession>[0];
-	readonly repair: Parameters<typeof createRepairSession>[0];
+	/** Appearance's one Finish authority; the entry constructs it. */
+	readonly finishes: Omit<FinishesInput, 'retryTextures'>;
+	readonly card: Omit<Parameters<typeof createCardSession>[0], 'draftPreview' | 'finishes'>;
+	readonly draft: Omit<Parameters<typeof createLibraryDraftSession>[0], 'finishes'>;
+	readonly materialImport: Omit<Parameters<typeof createAppearanceImportSession>[0], 'previewing' | 'lens' | 'finishes'>;
+	readonly paint: Omit<Parameters<typeof createPaintSession>[0], 'finishTileSource' | 'endLibraryDraft' | 'finishes'>;
+	readonly align: Omit<Parameters<typeof createAlignSession>[0], 'finishes'>;
+	readonly repair: Omit<Parameters<typeof createRepairSession>[0], 'finishes'>;
 };
 
 export function createAppearanceFeature(deps: AppearanceDependencies) {
-	const draft = createLibraryDraftSession(deps.draft);
-	const card = createCardSession({ ...deps.card, draftPreview: draft.draftPreview });
+	const finishes = createAppearanceFinishAuthority(deps.finishes);
+	const draft = createLibraryDraftSession({ ...deps.draft, finishes: () => finishes });
+	const card = createCardSession({ ...deps.card, finishes: () => finishes, draftPreview: draft.draftPreview });
 	const paint = createPaintSession({
 		...deps.paint,
+		finishes: () => finishes,
 		finishTileSource: draft.finishTileSource,
 		endLibraryDraft: draft.endLibraryDraft
 	});
 	const materialImport = createAppearanceImportSession({
 		...deps.materialImport,
+		finishes: () => finishes,
 		previewing: deps.paint.previewing,
 		lens: deps.align.lens
 	});
-	const align = createAlignSession(deps.align);
-	const repair = createRepairSession(deps.repair);
+	const align = createAlignSession({ ...deps.align, finishes: () => finishes });
+	const repair = createRepairSession({ ...deps.repair, finishes: () => finishes });
+	const canvasRegion = createAppearanceCanvasRegion({ card, align, repair });
 	const operations = createAppearanceOperations({
-		finishes: deps.card.finishes,
+		finishes: () => finishes,
 		lens: deps.align.lens,
 		repair,
 		cancelImport: materialImport.cancel
 	});
 	return {
 		id: 'appearance' as const,
-		/** Appendix A row 17: the draft swap and the project issue reset. */
+		/** Compatibility phase: the draft swap and project issue reset follow Paint. */
 		attachAuthoring: () => {
 			draft.attachGuards();
 			repair.attachAuthoring();
 		},
-		/** Appendix A row 27: Align ownership, then its region reframe. */
-		attachAlign: align.attach,
 		lifecycle: {
 			interruptForReplacement: {
 				'end-operations-no-camera': operations.endNoCamera,
@@ -71,7 +78,17 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 				'reset-issues': repair.reset
 			}
 		},
+		rungs: {
+			cancelFinishGesture: card.cancelGesture,
+			dismissAlign: align.dismiss,
+			dismissMaterialEditor: draft.dismissMaterialEditor,
+			dismissMaterialImport: materialImport.dismissMaterialImport,
+			dismissRepairDrawer: repair.dismiss,
+			dismissPaint: paint.dismissPaint,
+			paintKey: paint.paintKey
+		},
 		ports: {
+			finishes: () => finishes,
 			adapter: card.adapter,
 			finishTileSource: draft.finishTileSource,
 			dismissMaterialEditor: draft.dismissMaterialEditor,
@@ -88,16 +105,7 @@ export function createAppearanceFeature(deps: AppearanceDependencies) {
 			alignFraming: align.framing
 		},
 		regions: {
-			/**
-			 * Appearance's canvas keys span three sub-owners, so the entry composes
-			 * the one contribution the region ownership type requires.
-			 */
-			regionsCanvas: (snapshot: StageReadSnapshot) =>
-				contribution<'appearance', 'canvas'>()({
-					...card.canvasKeys(snapshot),
-					...align.canvasKeys,
-					...repair.canvasKeys
-				}),
+			regionsCanvas: canvasRegion,
 			head: repair.head,
 			toolbars: paint.toolbars,
 			get importSheet() { return materialImport.props; },

@@ -50,6 +50,7 @@ export function createLightInspectionGuards(input: {
 		get lightCoverage() { return coverage; }
 	});
 
+	attachGuards();
 	return {
 		card, cancel, lightArmed, attachGuards, viewport,
 		get frame() { return frame; }

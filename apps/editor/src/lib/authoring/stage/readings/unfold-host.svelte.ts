@@ -70,6 +70,7 @@ export function createUnfoldHost(input: {
 		get unfoldAnchorPin() { return gestures.idlePin?.point ?? null; }
 	});
 
+	attachCameraPort();
 	return {
 		canvas, gestures, attachAnchor, attachCameraPort,
 		active: () => wallUnfold.state !== null,

@@ -94,6 +94,7 @@ export function createSkyHost(input: {
 		}
 	});
 
+	attachSession();
 	return {
 		canvas, overlay, panels, attachSession, dismiss, groundReachMeters,
 		cardStratum: look.cardStratum,

@@ -28,7 +28,6 @@ export function createLightInspectionFeature(deps: LightInspectionDependencies) 
 	});
 	return {
 		id: 'light-inspection' as const,
-		attachGuards: guards.attachGuards,
 		get frame() { return guards.frame; },
 		get posture() { return inspection.posture; },
 		ports: {

@@ -11,6 +11,7 @@ export function createArtworkFeature(deps: ArtworkDependencies) {
 	const view = host.connect(interaction);
 	return {
 		id: 'artwork' as const,
+		/** Compatibility phase: its cancel effect follows the cutaway Preview-hold effect. */
 		attachGuard: view.attachGuard,
 		ports: {
 			input: interaction,

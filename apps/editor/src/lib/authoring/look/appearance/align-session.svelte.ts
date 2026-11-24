@@ -166,6 +166,7 @@ export function createAlignSession(input: {
 		};
 	});
 
+	attach();
 	return {
 		framing,
 		cutaway,

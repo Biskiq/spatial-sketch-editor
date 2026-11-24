@@ -142,6 +142,7 @@ export function createStudioEntrySession(input: {
 		};
 	});
 
+	attachEntry();
 	return {
 		runStudioEntry,
 		settleTransfer,

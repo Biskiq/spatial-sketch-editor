@@ -173,6 +173,7 @@ export function createSliceHost(input: {
 		get sliceDraft() { return sliceDraftOverlay; }
 	});
 
+	attachTeardown();
 	return {
 		canvas, viewport, overlay, attachMirror, attachTeardown,
 		clear, level, draw, controller: sliceDraw,

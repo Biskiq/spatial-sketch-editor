@@ -9,8 +9,8 @@
 	import StageBootPanels from '$lib/authoring/stage/shell/StageBootPanels.svelte';
 	import StageReplaceDialog from '$lib/authoring/stage/shell/StageReplaceDialog.svelte';
 	import AppearanceSharedRegions from '$lib/authoring/look/AppearanceSharedRegions.svelte';
-	import WorldLeading from '../world/WorldLeading.svelte';
-	import WorldTrailing from '../world/WorldTrailing.svelte';
+	import { WORLD_WORKSPACE } from '../world/world-workspace';
+	const { leading: WorldLeading, trailing: WorldTrailing } = WORLD_WORKSPACE;
 	import type { WorkspaceHost } from './workspace-host.svelte';
 
 	let { host }: { host: WorkspaceHost } = $props();
@@ -151,7 +151,7 @@
 			/>
 		{/if}
 
-		<AppearanceSharedRegions previewing={preview === null} repair={appearance.regions.repair} />
+		<AppearanceSharedRegions previewing={preview !== null} repair={appearance.regions.repair} />
 
 
 	</div>

@@ -581,12 +581,25 @@ One persistent Threlte Canvas/Stage serves all readings and lenses; renderer Cam
 realize evaluated output only. Editor mounting contracts stay editor-only and must not pull
 selection/history/runes/DOM into shared packages.
 
-### Route as composition root
+### Workspace host and feature modules
 
-The spatial route mounts the Stage, constructs controllers, routes raw DOM events in one fixed
-order and renders shell slots. A new posture or capability adds a module and a wiring line, not
-route branches; no line budget applies. The fixed order is pinch/second pointer → active posture
-layer → adapter intents → navigation, so a posture claims a gesture before adapters see it.
+The spatial route is two calls: `createWorkspaceHost` and `<WorkspaceHost>`. The host factory is a
+construction sequence of core factories, feature entries, `wiring/<controller>` modules and the
+one lifecycle runner; it holds no reactive state, projections or event logic of its own. The
+host's `WorkspaceHost.svelte` mounts the shared regions in today's DOM order and selects a
+workspace through one member.
+
+A capability lives in its feature: one entry, cohesive sub-owners, its region components and one
+view type. The entry composes only; sub-owners never import a sibling at runtime. Shared
+composition changes are declarative and bounded: one manifest feature entry, its
+`LIFECYCLE_ORDER` steps, its `ESCAPE_LADDER` rung, its `REGION_KEY_OWNER` keys, its singleton
+consumers and its cross-feature ports. The guards in
+`apps/editor/tests/lib/authoring/integration-ownership.test.ts` and the manifest beside them check
+that contract; `test:arch` runs them.
+
+The fixed input order is unchanged: pinch/second pointer → active posture layer → adapter intents →
+navigation, so a posture claims a gesture before adapters see it. Escape precedence is the data
+table in `workspace/escape-ladder.ts`, not a second list of keyboard branches.
 
 ### Posture layer
 

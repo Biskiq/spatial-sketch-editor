@@ -48,7 +48,8 @@ describe('the reading ends with the project and with the lens', () => {
 		const window = slice.slice(at, at + 500);
 		expect(window).toMatch(/if \(!sliceReading\.isActive\(\)\) return;\s*clear\(\);/);
 		expect(slice).toMatch(/function clear\(\): void \{[\s\S]{0,140}setResolvedSlice\(null\);/);
-		expect(route).toContain('readings.attachTeardown()');
+		// The Slice owner installs its own lens-leave teardown during construction.
+		expect(slice).toContain('attachTeardown();');
 	});
 
 	it('clears the pick mirror at teardown and on a replaced project', () => {

@@ -30,6 +30,7 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 	});
 	return {
 		id: 'layout-readings' as const,
+		/** Compatibility phase: the cutaway Preview-hold effect must precede Artwork's guard effect. */
 		attachReadings: () => {
 			unfold.attachAnchor();
 			cutaway.attachPreviewHold();
@@ -37,11 +38,6 @@ export function createLayoutReadingsFeature(deps: LayoutReadingsDependencies) {
 			cutaway.attachClassification();
 			plan.attach();
 			lift.attachScope();
-		},
-		attachTeardown: slice.attachTeardown,
-		attachCameraPorts: () => {
-			wallFace.attachCameraPort();
-			unfold.attachCameraPort();
 		},
 		get liftControl() { return lift.control; },
 		get nearWallsControl() { return cutaway.control; },

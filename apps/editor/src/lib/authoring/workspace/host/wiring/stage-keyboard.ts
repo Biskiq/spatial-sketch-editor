@@ -9,6 +9,16 @@ import { createStageKeyboard } from '../../../stage/route/stage-keyboard';
 import type { StageShellState } from '../../../stage/route/stage-shell-state.svelte';
 
 type KeyboardInput = Parameters<typeof createStageKeyboard>[0];
+type AppearanceRungs = Pick<
+	KeyboardInput,
+	| 'cancelFinishGesture'
+	| 'dismissAlign'
+	| 'dismissMaterialEditor'
+	| 'dismissMaterialImport'
+	| 'dismissRepairDrawer'
+	| 'dismissPaint'
+	| 'paintKey'
+>;
 
 export type StageKeyboardWiring = Omit<
 	KeyboardInput,
@@ -40,8 +50,16 @@ export type StageKeyboardWiring = Omit<
 	| 'paintTool'
 	| 'clearEraseHover'
 	| 'clearPaintHover'
+	| 'cancelFinishGesture'
+	| 'dismissAlign'
+	| 'dismissMaterialEditor'
+	| 'dismissMaterialImport'
+	| 'dismissRepairDrawer'
+	| 'dismissPaint'
+	| 'paintKey'
 > & {
 	readonly shell: StageShellState;
+	readonly appearanceRungs: AppearanceRungs;
 	readonly libraryEscape: Pick<KeyboardInput, 'libraryOpen' | 'toggleLibrary'>;
 	readonly skyEscape: Pick<KeyboardInput, 'dismissSky'>;
 	readonly readingsEscape: Pick<
@@ -71,7 +89,7 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		openCard: () => input.shell.setCardOpen(true),
 		pendingDelete: () => input.shell.pendingDelete !== null,
 		clearPendingDelete: () => { input.shell.setPendingDelete(null); input.shell.setNotice(''); },
-		cancelFinishGesture: input.cancelFinishGesture,
+		...input.appearanceRungs,
 		interrupt: input.interrupt,
 		task: () => input.shell.task,
 		closeTask: input.closeTask,
@@ -81,12 +99,6 @@ export function wireStageKeyboard(input: StageKeyboardWiring) {
 		paintTool: () => input.shell.paintTool,
 		clearEraseHover: () => input.shell.setEraseHover(null),
 		clearPaintHover: () => input.shell.setPaintHover(null),
-		paintKey: input.paintKey,
-		dismissAlign: input.dismissAlign,
-		dismissMaterialEditor: input.dismissMaterialEditor,
-		dismissMaterialImport: input.dismissMaterialImport,
-		dismissRepairDrawer: input.dismissRepairDrawer,
-		dismissPaint: input.dismissPaint,
 		refreshHostTools: () => input.shell.refreshHostTools(),
 		armedDockKey: input.armedDockKey,
 		paletteOpen: () => input.shell.paletteOpen,

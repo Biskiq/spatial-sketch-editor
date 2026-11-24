@@ -129,6 +129,7 @@ export const ARCH_FILES: string[] = [
 	// controllers, and those controllers keep their named dependency direction.
 	'tests/lib/authoring/spatial-route-boundary.test.ts',
 	'tests/lib/authoring/authoring-controller-boundary.test.ts',
+	'tests/lib/authoring/integration-ownership.test.ts',
 	// X7: the Scene adapter composes its placement, mark-gesture, contribution and
 	// presenter owners and keeps no lifetime of its own.
 	'tests/lib/authoring/scene-adapter-boundary.test.ts',
