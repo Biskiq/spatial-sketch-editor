@@ -189,7 +189,7 @@ export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctio
 }
 
 /** Can the stored derivative anchors represent antiparallel rays at their shared Junction? */
-function tangentAnchorsAllowContinuation(point: LayoutVec2, [a, b]: readonly [LayoutVec2, LayoutVec2]): boolean {
+export function tangentAnchorsAllowContinuation(point: LayoutVec2, [a, b]: readonly [LayoutVec2, LayoutVec2]): boolean {
 	const ox = ivEncloseWorld(point[0]);
 	const oz = ivEncloseWorld(point[1]);
 	const ax = ivSub(ivEncloseWorld(a[0]), ox);
@@ -295,8 +295,8 @@ export function resolveJunctionGeometry(
 	junctionId: string,
 	point: LayoutVec2,
 	legs: readonly CompiledJunctionLeg[],
-	options: { miterLimit?: number; tangentAnchors?: readonly [LayoutVec2, LayoutVec2] } = {}
-): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[]; roundedContinuation?: true } {
+	options: { miterLimit?: number; roundedContinuation?: boolean } = {}
+): { resolution: CompiledJunctionResolution; issues: LayoutGeometryIssue[] } {
 	const miterLimit = options.miterLimit ?? JUNCTION_MITER_LIMIT;
 	const issues: LayoutGeometryIssue[] = [];
 	const legOrder = legs.map((leg) => ({ wallId: leg.wallId, end: leg.end }));
@@ -319,10 +319,7 @@ export function resolveJunctionGeometry(
 			joins.push(suppressedJoin(a, bands, undefined, undefined, true), suppressedJoin(b, bands, undefined, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		const exactContinuation = isTangentContinuation(a, b);
-		const roundedContinuation = !exactContinuation && options.tangentAnchors &&
-			dot(a.tangentOut, b.tangentOut) < 0 && tangentAnchorsAllowContinuation(point, options.tangentAnchors);
-		if (exactContinuation || roundedContinuation) {
+		if (isTangentContinuation(a, b) || options.roundedContinuation) {
 			// Straight continuation: suppress the common interface. The difference
 			// surfaces (thickness / height / Opening-profile) are solved **here**, per
 			// vertical band, and attached to the leg that owns the material — the
@@ -335,11 +332,7 @@ export function resolveJunctionGeometry(
 				suppressedJoin(a, bands, neighborFacts(b), step.forA),
 				suppressedJoin(b, bands, neighborFacts(a), step.forB)
 			);
-			return {
-				resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) },
-				issues,
-				...(roundedContinuation ? { roundedContinuation: true } : {})
-			};
+			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
 		// Canonical roles: prefer the departing (start) leg as `cur`.
 		const swap = a.end === 'start' && b.end === 'end';
